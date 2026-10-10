@@ -64,7 +64,7 @@ describe('Grace, an admin, reads time sheets', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Time sheets' })).toBeInTheDocument()
     expect(screen.getByText('Hours spent on each client or project, ready for billing. People tell Groundwork their hours in their check-in or in chat. There is no grid to fill in.')).toBeInTheDocument()
     expect(screen.getByText('Hours are for billing only.')).toBeInTheDocument()
-    expect(screen.getByText('They never appear in anyone’s check-in report, their signals or a review. Being busy is not the same as making progress.')).toBeInTheDocument()
+    expect(screen.getByText('They are never used in a report or a review.')).toBeInTheDocument()
   })
 
   it('reads the week as the prototype’s table, with Approve or Approved', async () => {

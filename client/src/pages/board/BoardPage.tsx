@@ -2061,9 +2061,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * note). Every other kind of work keeps the plain heading and note it already had.
    */
   const patternsHeading = kindOfWorkKey === 'asset loans' ? 'One person, a place, or the model?' : 'What keeps coming up'
+  /*
+   * B-138, DECISION 8: "Patterns show only after three periods, whether or not they are in a row."
+   * The old note said the opposite - that three in a row were required - for both the default
+   * heading and the asset-loans cohort's own one.
+   */
   const patternsNote = kindOfWorkKey === 'asset loans'
-    ? 'Patterns named after three check-ins in a row'
-    : 'Named after three check-ins in a row, never after one. Each describes the work.'
+    ? 'Shown only after the same thing comes up in three check-ins, in a row or not'
+    : 'Shown only after the same thing comes up in three check-ins, in a row or not. Each describes the work.'
 
   const patternsAndCoachingSection = () => (
     <>
@@ -2080,7 +2085,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             <Panel pad={false}>
               <RowList label="What keeps coming up">
               {visiblePatterns.length === 0 ? (
-                <Row columns="1fr" inset="panel"><Text size="15" ink="muted">Nothing to show here yet. A pattern appears only after three check-ins in a row, and the person it is about always sees it first.</Text></Row>
+                <Row columns="1fr" inset="panel"><Text size="15" ink="muted">Nothing to show here yet. A pattern appears only after the same thing comes up in three check-ins, in a row or not, and the person it is about always sees it first.</Text></Row>
               ) : (
                 <>
                   {/*
@@ -2443,7 +2448,20 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           "Views ▾" slot (not built - nothing answers what that menu would offer), restyled for a
           light ground. NOT WHEN THE BOARDS PAGE IS ALREADY SWITCHING: on /boards the tabs above do
           this job, and two switchers is a reader asking which of them is the real one.
+
+          B-151... B-150, RATHER: NONE OF THIS WHEN /boards IS ALREADY SHOWING ITS OWN SWITCHER.
+          The comment above only ever silenced this header's OWN inner board-switcher
+          (`trailing`), gated on `!groundId` - the breadcrumb, the serif title, "Your check-in",
+          "Ask" and the full six-tab bar were never gated at all, so TeamBoardsPage, which passes
+          `groundId` as a prop precisely so it can draw its own tab strip above the board, got this
+          whole header a second time underneath it: a second "Check-ins / <name>", a second title,
+          and all six tabs where the deep page audit found them. `groundId` (present only when a
+          caller supplies it, as TeamBoardsPage does; absent on this page's own route,
+          `/grounds/:id/board`, where `id` comes from `useParams` instead) is exactly the flag the
+          `trailing` line already reasoned from - so the rest of the header now reasons from it
+          too, rather than only the one piece of it that happened to get checked.
         */}
+        {!groundId && (
         <CheckInHeader
           crumbs={[{ label: 'Check-ins', to: '/grounds' }, { label: b.title }]}
           title={b.title}
@@ -2493,6 +2511,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           tabs={headerTabs}
           trailing={!groundId ? <TheOtherBoardsYouAreIn groundId={id!} /> : undefined}
         />
+        )}
 
         {/*
           WHEN IT LAST CHANGED, AND THAT OPENING IT CHANGES NOTHING (U.10). The same line for every
@@ -2902,7 +2921,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {onlyOnePersonHere && kindOfWorkKey !== "founder's own check-in" && (
           <div role="status" className="gwui-rule-amber gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14 gwui-mt-12 gwui-fs-15 gwui-ink-amber" style={{background: 'var(--gw-amber-bg)', borderRadius: 12, lineHeight: 1.6}}>
             This board compares what people said, and there is one person on this check-in.{' '}
-            {b.canEditFrame ? 'Add somebody and it will build from the next round.' : 'It will build once the person running this check-in adds somebody.'}
+            {b.canEditFrame ? 'Add somebody and it will build from the next session.' : 'It will build once the person running this check-in adds somebody.'}
           </div>
         )}
 
@@ -3102,7 +3121,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {!foldTeam && shown.eachPerson && (
           <Section
             heading="The team today"
-            note="Each person’s line, their last 10 check-ins, and what keeps coming up."
+            note="Each person’s line, their last 10 sessions, and what keeps coming up."
             /*
               BOARD REVIEW, SALES PIECE C, ITEM 10: THE PROTOTYPE'S OWN FOOTNOTE, ONLY WHEN IT IS
               TRUE. board-as-lead.txt ends this section: "These are about the work. Open anyone to
@@ -3313,7 +3332,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             {shown.eachPerson && (
               <Section
                 heading="The team today"
-                note="Each person’s line, their last 10 check-ins, and what keeps coming up."
+                note="Each person’s line, their last 10 sessions, and what keeps coming up."
                 foot="These are about the work."
               >
                 {activeLineForTheLead && <Note>{activeLineForTheLead}</Note>}

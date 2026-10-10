@@ -40,11 +40,18 @@ describe('opening the link', () => {
     expect(calls).toEqual(['stop'])
   })
 
-  it('a link we do not know says so plainly and offers nothing', async () => {
+  /*
+   * UPDATED FOR B-131: this used to be headed "Done." over "That link does not match anything",
+   * and the page had nothing to press but the logo - a dead end the deep page audit flagged,
+   * since nothing was in fact done. It now says plainly that the reminders could not be found,
+   * and offers a way to Settings for whoever wants to check their email preferences.
+   */
+  it('a link we do not know says plainly that it could not be found, with a way to Settings', async () => {
     answer({ stop: { known: false } })
     open()
-    expect(await screen.findByText(/That link does not match anything/)).toBeTruthy()
-    expect(screen.queryByRole('button')).toBeNull()
+    expect(await screen.findByRole('heading', { name: 'We could not find those reminders' })).toBeTruthy()
+    expect(screen.getByText(/That link does not match anything/)).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Sign in to change your emails in Settings' })).toBeTruthy()
   })
 
   it('a server that cannot answer says nothing changed and what to do', async () => {

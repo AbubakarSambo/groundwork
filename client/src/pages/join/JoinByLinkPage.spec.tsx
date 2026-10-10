@@ -84,16 +84,19 @@ describe('the link, for somebody signed in', () => {
 })
 
 describe('a link that is off', () => {
+  /* UPDATED FOR B-158: the heading is now "That link didn't work", the prototype's own words
+     (F4-small-states/badlink.txt) - this page used to say "This invite link is not open any
+     more", one of five different headings the deep page audit found for the same state. */
   it('says so and what to do', async () => {
     open({ open: false })
-    expect(await screen.findByRole('heading', { name: 'This invite link is not open any more' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'That link didn’t work' })).toBeTruthy()
     expect(screen.getByText('Ask whoever sent it for the new one.')).toBeTruthy()
   })
 
   /* Walkthrough pass 2, item 4: this used to stop at the sentence, with nothing to press. */
   it('is not a dead end: the Groundwork mark is there, and so is a way on', async () => {
     open({ open: false })
-    await screen.findByRole('heading', { name: 'This invite link is not open any more' })
+    await screen.findByRole('heading', { name: 'That link didn’t work' })
     expect(screen.getByRole('link', { name: 'Groundwork' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Sign in' })).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Go to the Groundwork home page' })).toBeTruthy()

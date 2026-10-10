@@ -193,6 +193,15 @@ export function GroundAdminPage() {
     const asked = searchParams.get('tab') ?? ''
     return FROM_TAB_KEY[asked] ?? (['chat', 'checkins', 'docs', 'report', 'settings'].includes(asked) ? (asked as Tab) : 'chat')
   })
+  /*
+   * THE CURRENT TAB, READABLE FROM INSIDE AN ALREADY-IN-FLIGHT REQUEST. `tab` itself is fine for
+   * anything that renders, but the auto-open effect below fires a request the moment the page
+   * mounts on the Check-in tab, and that request can still be pending once the reader has clicked
+   * away to another tab - `tab` as a plain closed-over value would answer with whatever it was
+   * when the effect ran, not what it is now. See the effect, and useOpenSession's `shouldNavigate`.
+   */
+  const tabRef = useRef(tab)
+  useEffect(() => { tabRef.current = tab }, [tab])
   /** So a tab can be linked to and come back to. Replace, not push: tabs are not history. */
   const goTab = (t: Tab) => {
     setTab(t)
@@ -561,43 +570,54 @@ export function GroundAdminPage() {
       return
     }
     myOpenSessionAutoOpenFired.current = true
+    /*
+     * SCREEN FAULT (engine workspace, 9 October night, test bed copy a): this fires the moment the
+     * page lands on the Check-in tab, silently, before the reader has read anything - and the
+     * probe it starts can still be pending once she has clicked over to another tab and started
+     * something there (Wairimu Njoroge, sending her first message in Context and resources). Its
+     * own navigate, landing later, took her back to `/checkin/...` regardless, and her message's
+     * reply was lost. `shouldNavigate` is checked right before that navigate fires, against the
+     * tab she is actually on then, not the tab she was on when this effect ran - so a silent
+     * auto-open from the Check-in tab never pulls her away once she has moved on.
+     */
     openMySession(myOpenCheckIn, {
       isFreeGround: (ground as any)?.isFreeGround,
       groundLabel: (ground as any)?.label,
       isInitiator,
+      shouldNavigate: () => tabRef.current === 'chat',
     })
   }, [tab, viewerChecksIn, myOpenCheckIn, myOpenOpensLater, openMySession, ground, isInitiator])
 
   /**
-   * REVIEW ROUND 3, ITEM 3: AN ADMIN WHO NEITHER RUNS THIS CHECK-IN NOR TAKES PART IN IT LANDS ON
-   * A TAB THE READ-ONLY ROW STILL SHOWS. The tab bar itself already drops Check-in and My work for
-   * this reader (see the header below); this catches the default landing tab (`chat`) and a link
-   * carrying `?tab=checkins`/`report`/`record`, and sends them to Context instead - one of the
-   * three tabs they do have.
+   * HAFSAH, 10 OCTOBER: AN ADMIN WHO ONLY READS A CHECK-IN LANDS ON THE BOARD, NOT ON CONTEXT.
+   * The tab bar itself already drops Check-in and My work for this reader (see the header
+   * below); this catches the default landing tab (`chat`) and a link carrying
+   * `?tab=checkins`/`report`/`record`, and sends them to the Board page instead - the page an
+   * admin who does not run this check-in is here to read (decision 16, comparison first). This
+   * replaces the earlier choice (REVIEW ROUND 3, ITEM 3) to land this reader on Context, which
+   * B-143's second deep page audit found confusing: the board, not Context, is what a read-only
+   * admin is there for. Context is still reachable, from its own tab.
    *
    * BUG FOUND ON RE-REVIEW: this ran the moment the page mounted, before the check-in had
    * loaded. While `ground` is still undefined, `isInitiator` and `viewerIsAParty` are both
    * their unloaded default of false - indistinguishable from a real read-only admin - so
-   * every reader, including the lead and a party arriving on `?tab=chat`, was sent to
-   * Context for an instant. Waiting for the check-in to load before asking who the reader
-   * is fixes that: by the time this can fire, the two flags are the server's real answer.
+   * every reader, including the lead and a party arriving on `?tab=chat`, was sent away for
+   * an instant. Waiting for the check-in to load before asking who the reader is fixes that:
+   * by the time this can fire, the two flags are the server's real answer.
    *
    * GROUP 3'S REVIEW, CONTRADICTION 1: "?tab=report" LANDED SOMEWHERE WITH NO REPORT IN IT.
    * The note under the tabs tells a read-only admin "You can read this check-in's board and
    * reports", which is true - the reports live on the Board page (`/grounds/:id/board`), opened
-   * from the Board tab, where each session is listed with an "Open" link to its report - but a
-   * link carrying `?tab=report` used to land this reader on Context, one tab away from either
-   * "reports" word in that sentence. `?tab=report` now takes this reader to the Board page
-   * itself, the one of their three tabs that actually gets them there; `checkins` and `myrecord`
-   * still go to Context, since neither name is a promise this reader was given.
+   * from the Board tab, where each session is listed with an "Open" link to its report. All four
+   * of this reader's redirected cases (the default landing, `report`, `checkins` and `myrecord`)
+   * now go to the same place: the Board page.
    */
   useEffect(() => {
     if (isLoading || !ground) return
     if (isInitiator || viewerIsAParty) return
-    if (tab === 'report') { navigate(`/grounds/${id}/board`, { replace: true }); return }
     const inMyWorkGroup = (['checkins', 'myrecord'] as Tab[]).includes(tab)
-    if (tab !== 'chat' && !inMyWorkGroup) return
-    goTab('docs')
+    if (tab !== 'report' && tab !== 'chat' && !inMyWorkGroup) return
+    navigate(`/grounds/${id}/board`, { replace: true })
   }, [isLoading, ground, isInitiator, viewerIsAParty, tab, id, navigate])
 
   /**
@@ -1384,7 +1404,7 @@ export function GroundAdminPage() {
       : (ground as any).status === 'REPORT_READY'
         ? 'the report is ready. It has not been shared yet'
         : (ground as any).report
-          ? (everyoneIn ? 'everyone is in, report on its way' : clockRoundDone > 0 ? 'report being written' : 'waiting for the first check-in')
+          ? (everyoneIn ? 'everyone is in, report on its way' : clockRoundDone > 0 ? 'report being written' : 'waiting for the first session')
           : 'no report yet'
   // contact-visibility toggle state (default: hidden). true = peers cannot see each other's email.
   /**
@@ -1779,10 +1799,21 @@ export function GroundAdminPage() {
                * sentence anybody writes - nobody says "zero people" where "nobody" is the plain
                * word, and "1 people" is simply wrong. Zero says so plainly; one person is a person,
                * not a one-member "people".
+               *
+               * B-148: NOT SAID TWICE. When the lead takes part herself, has already answered, and
+               * is only waiting on others, the attention Note just above already says exactly this
+               * ("One of the three has not answered yet."), from `railAttention`'s own count.
+               * Saying it again here, in different words, read as the product repeating itself -
+               * the audit's own complaint. Left out only in that one case: `viewerChecksIn` keeps
+               * this sentence for a lead who only manages (an anchor check-in), whose own "waiting"
+               * state has no Note above it to duplicate, and for the lead's own turn or anybody
+               * who is not the initiator, none of which this guard touches.
                */
-              parts.push(
-                howManyCheckedInSentence(clockRoundDone, total, clockRound),
-              )
+              if (!(isInitiator && viewerChecksIn && attention.kind === 'waiting')) {
+                parts.push(
+                  howManyCheckedInSentence(clockRoundDone, total, clockRound),
+                )
+              }
             }
             if (roundWentBack) parts.push(`It went back to session ${openRound}, because somebody new was added. Nothing anybody wrote is lost.`)
           }
@@ -2627,21 +2658,25 @@ export function GroundAdminPage() {
                 <Stack gap={10}>
                   {/* GROUP 3'S REVIEW, BATCH A FAULT 6: "SESSION" IS INTERNAL JARGON HERE; THE
                       PRODUCT CALLS THE THING A PERSON ANSWERS A "CHECK-IN" EVERYWHERE ELSE. */}
-                  <Callout tone="warning" title="Begin the last check-in?">
-                    Everyone's next check-in becomes their final one. It is the same conversation,
-                    marked as closing. The final report reads the whole record, then you and the
-                    others agree the end state.
+                  {/* B-136: this ends the check-in early, at any session, not only near the planned
+                      last one - the old wording ("Begin the last check-in?") read like the normal,
+                      on-schedule final session, and at session 1 of 6 that read as plain wrong. The
+                      control itself is kept (restored on purpose, see the file above this one). */}
+                  <Callout tone="warning" title="End early with a last check-in?">
+                    Everyone's next check-in becomes their final one, ending this check-in earlier
+                    than planned. It is the same conversation, marked as closing. The final report
+                    reads the whole record, then you and the others agree the end state.
                   </Callout>
                   <div className="gwui-button-row">
                     <Button kind="secondary" redText onClick={() => closingSession.mutate()} disabled={closingSession.isPending}>
-                      Begin the last check-in
+                      End early with a last check-in
                     </Button>
                     <Button kind="quiet" onClick={() => setConfirmClosing(false)}>Cancel</Button>
                   </div>
                 </Stack>
               ) : (
                 <Button kind="secondary" redText wide onClick={() => setConfirmClosing(true)}>
-                  Begin the last check-in
+                  End early with a last check-in
                 </Button>
               )
             )}

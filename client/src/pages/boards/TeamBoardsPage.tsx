@@ -138,6 +138,17 @@ export function TeamBoardsPage() {
       </div>
 
       {/*
+        B-150: ONE WAY TO THE CHECK-IN ITSELF, NOT ITS WHOLE PAGE REDRAWN. The six-tab chrome this
+        page used to draw a second time under the switcher is gone (BoardPage no longer carries
+        TheCheckInHeader at all), but that left nothing on this page pointing at the check-in
+        behind the board it is showing - someone reading a board who wants to open it had no way
+        to. One plain link does what the duplicated chrome never needed to.
+      */}
+      <div style={{ marginBottom: 10 }}>
+        <Link to={`/grounds/${active!.id}`} className="gwui-plain-link">Open this check-in</Link>
+      </div>
+
+      {/*
         THE BOARD ITSELF, not a summary of it. Keyed by the check-in so switching tabs remounts
         rather than showing one board's answers under another's name while the next request runs.
       */}

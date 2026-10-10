@@ -13,7 +13,7 @@ import type { ReviewsBoard, AReview } from '@/api/suites'
  * Here: what each person reads, in the prototype's words (suite-reviews.txt), and that no reader sees
  * a label, a verdict, a score or a rating.
  */
-vi.mock('@/api/suites', () => ({ reviewsApi: { board: vi.fn(), mine: vi.fn(), start: vi.fn(), one: vi.fn(), words: vi.fn(), view: vi.fn(), decide: vi.fn() } }))
+vi.mock('@/api/suites', () => ({ reviewsApi: { board: vi.fn(), mine: vi.fn(), start: vi.fn(), one: vi.fn(), words: vi.fn(), view: vi.fn(), decide: vi.fn(), appealsToDecide: vi.fn() } }))
 import { reviewsApi } from '@/api/suites'
 
 const BOARD: ReviewsBoard = {
@@ -88,7 +88,11 @@ const refusal = (status: number, message: string) => Object.assign(new Error(Str
 const text = () => document.body.textContent ?? ''
 const LABELS = /\b(PIP|performance improvement plan|exit|at[- ]risk|low[- ]performer|verdict|rating|score \d|scored)\b/i
 
-beforeEach(() => { vi.clearAllMocks(); (reviewsApi.mine as any).mockResolvedValue([]) })
+beforeEach(() => {
+  vi.clearAllMocks()
+  ;(reviewsApi.mine as any).mockResolvedValue([])
+  ;(reviewsApi.appealsToDecide as any).mockResolvedValue({ appeals: [], waitingForAnotherAdmin: [] })
+})
 
 describe('the board of the next reviews', () => {
   it('reads the prototype’s heading, sentence and box, with the organisation’s own cycle', async () => {
@@ -179,21 +183,38 @@ describe('the board of the next reviews', () => {
     expect(document.querySelectorAll('tr')).toHaveLength(0)
   })
 
-  /* Group 2's review, fault E: the subtitle used to read "It is built from..." alone, with nothing
-     before "It", whenever the organisation had not answered "How often is each person reviewed?" -
-     every time the suite was off, and the first moment it was switched on. A true sentence - the
-     product's own default cadence - is read instead, never a sentence with nothing before "it". */
-  it('while the organisation has not said how often, still reads a true sentence, never "It is built..." alone', async () => {
+  /*
+   * Group 2's review, fault E: the subtitle used to read "It is built from..." alone, with nothing
+   * before "It", whenever the organisation had not answered "How often is each person reviewed?" -
+   * every time the suite was off, and the first moment it was switched on. That was first fixed by
+   * filling in a made-up default ("every 6 months"), but Msingi Foods has not set how often and
+   * that default is not true of it - Imani Hassan read "A review happens every 6 months." as if it
+   * were the organisation's own answer (engine workspace, 9 October night, test bed copy a).
+   *
+   * These two tests are changed because they pinned that made-up default. Now, with nothing set,
+   * the first sentence is left out, and the rest reads as its own sentence starting with "A review"
+   * - still never a sentence with nothing before "it".
+   */
+  it('while the organisation has not said how often, leaves out "A review happens...", never "It is built..." alone', async () => {
     ;(reviewsApi.board as any).mockResolvedValue({ every: null, next: [] })
     open(GRACE, '/suite/reviews')
-    expect(await screen.findByText('A review happens every 6 months. It is built from what each person did and proved in their check-ins, with their own view beside it. There are no scores.')).toBeInTheDocument()
+    expect(await screen.findByText('A review is built from what each person did and proved in their check-ins, with their own view beside it. There are no scores.')).toBeInTheDocument()
+    expect(text()).not.toContain('A review happens')
+  })
+
+  it('the same when the organisation’s answer is an empty string, not only null', async () => {
+    ;(reviewsApi.board as any).mockResolvedValue({ every: '', next: [] })
+    open(GRACE, '/suite/reviews')
+    expect(await screen.findByText('A review is built from what each person did and proved in their check-ins, with their own view beside it. There are no scores.')).toBeInTheDocument()
+    expect(text()).not.toContain('A review happens')
   })
 
   it('while the suite is off, still reads a true sentence above the server’s refusal, never "It is built..." alone', async () => {
     ;(reviewsApi.board as any).mockRejectedValue(refusal(404, 'The performance reviews suite is not switched on.'))
     open(GRACE, '/suite/reviews')
     expect(await screen.findByRole('alert')).toHaveTextContent('The performance reviews suite is not switched on.')
-    expect(screen.getByText('A review happens every 6 months. It is built from what each person did and proved in their check-ins, with their own view beside it. There are no scores.')).toBeInTheDocument()
+    expect(screen.getByText('A review is built from what each person did and proved in their check-ins, with their own view beside it. There are no scores.')).toBeInTheDocument()
+    expect(text()).not.toContain('A review happens')
   })
 })
 
@@ -276,7 +297,14 @@ describe('one review', () => {
     const decision = screen.getByRole('region', { name: 'The decision' })
     expect(within(decision).getByText('Aisha leads the supermarket accounts from April.')).toBeInTheDocument()
     expect(within(decision).getByText('She closed 9 sales, all paid.')).toBeInTheDocument()
-    expect(screen.getByText('No scores. You and Wairimu talk it through, and Wairimu decides.')).toBeInTheDocument()
+    /*
+     * SCREEN FAULT (engine workspace, 9 October night, test bed copy a): Imani Hassan still read
+     * "No scores. You and Grace talk it through, and Grace decides." once her review was decided -
+     * a sentence about how the decision gets made, left standing once it had already been made.
+     * This test pinned that fault (it asserted the line was present once decided); it is changed
+     * because the decision itself is already shown above, with nothing left for this line to say.
+     */
+    expect(screen.queryByText('No scores. You and Wairimu talk it through, and Wairimu decides.')).toBeNull()
     const view = screen.getByRole('region', { name: 'Your own view' })
     expect(within(view).getByText('You have not written your view yet.')).toBeInTheDocument()
     expect(within(view).queryByRole('textbox')).toBeNull()

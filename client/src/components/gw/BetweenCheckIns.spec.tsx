@@ -70,6 +70,29 @@ describe('between check-ins', () => {
     expect(await screen.findByText(/Two things, from Tuesday.s check-in/)).toBeTruthy()
   })
 
+  it('shows "Groundwork is writing…" while a reply is pending, and clears it once the reply arrives (Hafsah, 9 October: nothing showed here before)', async () => {
+    let resolveAsk!: (v: unknown) => void
+    ;(askApi.ask as any).mockReturnValue(new Promise((resolve) => { resolveAsk = resolve }))
+    mount()
+    await userEvent.click(screen.getByRole('button', { name: 'What did I say I’d do?' }))
+    expect(await screen.findByText('Groundwork is writing…')).toBeTruthy()
+    resolveAsk({ blocks: [{ type: 'text', body: 'Here is what you said.' }], composedBy: 'model', lane: 'test' })
+    expect(await screen.findByText('Here is what you said.')).toBeTruthy()
+    expect(screen.queryByText('Groundwork is writing…')).toBeNull()
+  })
+
+  it('clears "Groundwork is writing…" when the question fails', async () => {
+    let rejectAsk!: (e: unknown) => void
+    ;(askApi.ask as any).mockReturnValue(new Promise((_resolve, reject) => { rejectAsk = reject }))
+    mount()
+    await userEvent.click(screen.getByRole('button', { name: 'What did I say I’d do?' }))
+    expect(await screen.findByText('Groundwork is writing…')).toBeTruthy()
+    rejectAsk(new Error('network'))
+    await waitFor(() => expect(screen.queryByText('Groundwork is writing…')).toBeNull())
+    /* The card is still there, still usable - no thrown error reaches the screen. */
+    expect(screen.getByText('No check-in open right now')).toBeTruthy()
+  })
+
   it('"Add a note for next time" opens the private note box, not a question', async () => {
     mount()
     expect(screen.queryByPlaceholderText('Note something for your next check-in…')).toBeNull()

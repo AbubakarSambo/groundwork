@@ -11,8 +11,11 @@ import { useAuthStore } from '@/stores/auth'
  * the answer box is there only when a question waits, and a person whose suite is off is told so in
  * the server's words.
  */
-vi.mock('@/api/suites', () => ({ yourRequestsApi: { leave: vi.fn(), spending: vi.fn(), hours: vi.fn(), answerLeave: vi.fn(), answerSpending: vi.fn() } }))
-import { yourRequestsApi } from '@/api/suites'
+vi.mock('@/api/suites', () => ({
+  yourRequestsApi: { leave: vi.fn(), spending: vi.fn(), hours: vi.fn(), answerLeave: vi.fn(), answerSpending: vi.fn() },
+  reviewsApi: { mineQuietly: vi.fn(async () => []) },
+}))
+import { yourRequestsApi, reviewsApi } from '@/api/suites'
 
 const refusal = (status: number, message: string) => Object.assign(new Error(String(status)), { response: { status, data: { message } } })
 const AISHA = { id: 'u-a', firstName: 'Aisha', role: 'MEMBER', organizationName: 'Baridi Appliances' }
@@ -103,16 +106,26 @@ describe('Aisha reads her own requests', () => {
   /*
    * WALKTHROUGH PASS 2, ITEM 3: AN ADMIN IS TOLD WHERE TO SWITCH A SUITE ON; A PARTICIPANT ISN'T
    * POINTED AT A PAGE THAT REFUSES THEM.
+   *
+   * UPDATED (B-122, deep page audit, 9 October): the fixture used to stop at "...is not switched
+   * on.", which was never what the server actually sends - every "not switched on" refusal ends
+   * "An admin switches it on under Suites." (`a-suite-that-is-off-says-what-to-do.ts`). Checked
+   * against the old ending, `isSuiteOffMessage` never matched the server's real sentence, so an
+   * admin read it as plain text with nothing to press - a dead end this fixture was not catching.
+   * The fixture now carries the server's real sentence, and the test still proves the same thing:
+   * an admin gets a working link.
+   *
+   * UPDATED AGAIN (B-123, coordinator follow-up): this page lost its own "Suites" crumb when it
+   * was retitled to be the member's own Suites page rather than a page nested under one an admin
+   * would reach by a different route - so there is now exactly one "Suites" link here (the one
+   * this off-sentence adds), not two.
    */
   it('tells an admin where to switch the suite on', async () => {
-    open(refusal(404, 'The leave suite is not switched on.'), SPENDING)
+    open(refusal(404, 'The leave suite is not switched on. An admin switches it on under Suites.'), SPENDING)
     useAuthStore.setState({ user: { ...AISHA, role: 'ADMIN' } } as any)
     expect(await screen.findByText(/The leave suite is not switched on\./)).toBeTruthy()
-    /* Two links read "Suites" here: the breadcrumb, and the one this message adds - both to the
-       same place, since both are real doors for an admin. */
-    const links = screen.getAllByRole('link', { name: 'Suites' })
-    expect(links.length).toBeGreaterThanOrEqual(2)
-    for (const link of links) expect(link).toHaveAttribute('href', '/settings/suites')
+    const link = screen.getByRole('link', { name: 'Suites' })
+    expect(link).toHaveAttribute('href', '/settings/suites')
   })
 
   /*
@@ -120,7 +133,7 @@ describe('Aisha reads her own requests', () => {
    * sentence with no link - the whole section is left out for whoever cannot switch it on.
    */
   it('leaves the section out for a participant entirely, rather than a sentence with no way to act on it', async () => {
-    open(refusal(404, 'The leave suite is not switched on.'), SPENDING)
+    open(refusal(404, 'The leave suite is not switched on. An admin switches it on under Suites.'), SPENDING)
     await screen.findByText('Your request to spend KES 12,000 for tyres for the van is approved by Fatuma.')
     expect(screen.queryByText(/The leave suite is not switched on/)).toBeNull()
     expect(screen.queryByRole('heading', { name: 'Your leave' })).toBeNull()
@@ -200,5 +213,50 @@ describe('Aisha reads her own requests', () => {
     render(<QueryClientProvider client={qc}><MemoryRouter><YourRequestsPage /></MemoryRouter></QueryClientProvider>)
     expect(await screen.findByRole('heading', { name: 'Your hours' })).toBeTruthy()
     expect(await screen.findByText(/The time sheets suite is not switched on/)).toBeTruthy()
+  })
+
+  /*
+   * B-123 (Hafsah's design, coordinator follow-up): this IS the member's own "Suites" page, not a
+   * page called "Your requests" nested under one she cannot open. Buttons to make a new request sit
+   * beside the sections that have a form, and never beside time sheets, which has none.
+   */
+  it('is titled "Suites", as the member’s own Suites page', async () => {
+    open(LEAVE, SPENDING)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Suites' })).toBeInTheDocument()
+    expect(screen.getByText('Your own part of each suite your organisation has switched on.')).toBeInTheDocument()
+  })
+
+  it('has "Request leave" and "Ask to spend money" beside the sections that have a form, to open it filled in', async () => {
+    open(LEAVE, SPENDING)
+    await screen.findByText('You have 16 days of leave left this year, out of 21.')
+    expect(screen.getByRole('link', { name: 'Request leave' })).toHaveAttribute('href', '/suite/leave/new')
+    expect(screen.getByRole('link', { name: 'Ask to spend money' })).toHaveAttribute('href', '/suite/spend/new')
+    /* Time sheets has no form at all (the prototype: "There is no grid to fill in."), so no button
+       sits beside it, and nothing suggests one exists. */
+    expect(screen.queryByRole('link', { name: /Add hours|Request hours/ })).toBeNull()
+  })
+
+  /*
+   * "YOUR REVIEWS" (B-123, Hafsah's design): status and, where there is one, the appeal - read
+   * exactly as `ReviewsBoardPage.tsx`'s own "Your reviews" section already reads the same data, so
+   * the two pages never disagree about what a review says.
+   */
+  it('reads her own reviews, with status and her appeal where one exists', async () => {
+    ;(reviewsApi.mineQuietly as any).mockResolvedValue([
+      { id: 'r1', dueOn: '2027-03-01', writtenWithFirstName: 'Wairimu', stands: 'decided', says: 'Decided on 2 March. Wairimu wrote it with you.', mayAppeal: false, appealSays: 'You appealed on 4 March. Wairimu is deciding it.' },
+    ])
+    open(LEAVE, SPENDING)
+    expect(await screen.findByRole('heading', { name: 'Your reviews' })).toBeInTheDocument()
+    expect(screen.getByText('Your review, March')).toBeInTheDocument()
+    expect(screen.getByText('Decided on 2 March. Wairimu wrote it with you.')).toBeInTheDocument()
+    expect(screen.getByText('You appealed on 4 March. Wairimu is deciding it.')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Open your review, March' })).toHaveAttribute('href', '/suite/reviews/r1')
+  })
+
+  it('leaves "Your reviews" out entirely when she has none', async () => {
+    ;(reviewsApi.mineQuietly as any).mockResolvedValue([])
+    open(LEAVE, SPENDING)
+    await screen.findByText('You have 16 days of leave left this year, out of 21.')
+    expect(screen.queryByRole('heading', { name: 'Your reviews' })).toBeNull()
   })
 })

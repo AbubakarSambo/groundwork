@@ -59,8 +59,11 @@ export function JoinByLinkPage() {
      * sentence with a way through. `AuthCard` already carries the Groundwork mark; a way on is
      * added here - sign in, for somebody who already has an account, or the home page.
      */
+    /* B-158: the prototype's own heading for a link that does not work
+       (F4-small-states/badlink.txt), the same one LinkProblem.tsx uses - this page had its own,
+       different wording for the same state. */
     return (
-      <AuthCard title="This invite link is not open any more" sub="Ask whoever sent it for the new one.">
+      <AuthCard title="That link didn’t work" sub="Ask whoever sent it for the new one.">
         <div className="gw-auth-actions">
           <Button wide size="big" onClick={() => navigate('/auth')}>Sign in</Button>
         </div>

@@ -305,9 +305,10 @@ export function YourWork({
                   <div>
                     <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-text)' }}>{completedCount} of {totalSessions}</div>
                     {/* RE-REVIEW: "check-ins of 12" repeated the number already above it and read as
-                        a clipped fragment rather than a caption. "Check-ins so far" says what the
-                        number is without saying it twice. */}
-                    <div className="gwui-panel-text-muted">check-ins so far</div>
+                        a clipped fragment rather than a caption. "Sessions so far" says what the
+                        number is without saying it twice. "Session" is the one word for a single
+                        occurrence of a check-in (B-147); "check-ins" would mean separate check-ins. */}
+                    <div className="gwui-panel-text-muted">sessions so far</div>
                   </div>
                 )}
                 {keptThisMonth && (

@@ -80,10 +80,14 @@ describe('a link with nothing after /invite', () => {
 })
 
 describe('a link we do not recognise', () => {
+  /* UPDATED FOR B-158: the heading is now "That link didn't work" everywhere a link does not
+     work (LinkProblem.tsx), the prototype's own wording (F4-small-states/badlink.txt) - it used
+     to be "This invite link did not work" here and four other, different headings elsewhere for
+     the same state. */
   it('says what to do once, not twice', async () => {
     ;(participantsApi.preview as any).mockRejectedValue({ response: { status: 404 } })
     open()
-    expect(await screen.findByText('This invite link did not work')).toBeTruthy()
+    expect(await screen.findByText('That link didn’t work')).toBeTruthy()
     const body = document.body.textContent ?? ''
     /* U.20 sixth round (Hafsah's first review): the page's own sentence changed - "sign in with
        your email - and if you have not, ask whoever added you to send a new invite." is now two

@@ -61,7 +61,7 @@ describe('the sessions tab', () => {
      * everywhere else on this screen ("Start a new check-in"). This does not reopen the settled
      * "session" vs "round" naming (one-word-and-it-is-session.spec.ts) - that is a different axis.
      */
-    expect(SESSIONS_TAB).toContain('Begin the last check-in')
+    expect(SESSIONS_TAB).toContain('End early with a last check-in')
   })
 })
 

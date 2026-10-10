@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { billingApi, PLAN_LABELS, PLAN_PRICES, formatMemberCap, formatDollars, type SubscriptionPlan, FALLBACK_FREE_LIMITS } from '@/api/billing'
 import { theFreeTrialSentence } from '@/lib/the-free-trial'
 import { whatCoversThem } from './what-plan-and-billing-says'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
+import { Mark } from '@/components/gw/ui'
 
 const PLANS: SubscriptionPlan[] = ['STARTER', 'SMALL_TEAM', 'GROWTH', 'BUSINESS', 'SCALE']
 
@@ -95,6 +96,26 @@ export function PricingPage() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--gw-page)', padding: '48px 24px 80px' }}>
       <div style={{ maxWidth: 900, margin: '0 auto' }}>
+
+        {/*
+          B-162: A SIGNED-OUT VISITOR HAD NO WAY OFF THIS PAGE BUT THE BROWSER'S OWN BACK BUTTON.
+          Every other public page (Talk to us, the invitation, "Almost in") carries the logo, which
+          always goes home; this one had neither it nor a way to sign in or sign up, only five
+          "Subscribe" buttons that each demand an account anyway. A signed-in visitor gets a way
+          back into the product instead, matching what B-046 already notes about this page losing
+          the side menu.
+        */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
+          <Mark />
+          {user ? (
+            <Link to="/today" className="gwui-plain-link">Go to your check-ins</Link>
+          ) : (
+            <div style={{ display: 'flex', gap: 16 }}>
+              <Link to="/auth" className="gwui-plain-link">Sign in</Link>
+              <Link to="/auth?mode=signup" className="gwui-plain-link">Sign up</Link>
+            </div>
+          )}
+        </div>
 
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 56 }}>

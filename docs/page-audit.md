@@ -1,5 +1,30 @@
 # Page audit: the screens
 
+## Second, deeper audit, 9 October 2026: summary
+
+**Nothing has been fixed yet. Every finding waits for Hafsah to read this summary.**
+
+- **What was read.** 72 pages, as each role that can open them: the admin Naomi, the lead Tendai, the member Esther, Amina from another organisation (she is admin of Suites Test Company), and signed out. That is 197 page-and-role views, each at 1440 and 390 wide (394 screenshots), plus every tab of every page that has tabs (186 more). Every sentence on each was read, every link and button was listed, the harmless ones were pressed, and the wording was checked against `docs/prototype/screens/*/*.txt` and `docs/decisions-merged.md`.
+- **Where everything goes.** `docs/page-links.md`: for each page, where each button goes for each role, and every page, email and WhatsApp message that leads there.
+- **Findings.** 50, B-122 to B-171 in `docs/bug-log-screens.md`, most serious first. No privacy fault was found. 6 stop someone using the product, 12 give wrong information, 28 are confusing and 4 are cosmetic.
+  - **Screens, 45:** dead end 6, unreachable 2, unexpected link 5, too many steps 1, AI-sounding 4, confusing 12, inconsistent 12, unlike the prototype 3.
+  - **Engine wording, 5** (B-164 to B-168, all in request 210 in `docs/requests-to-engine.md`, and part of B-133): AI-sounding 2, confusing 3.
+- **The ten that matter most.**
+  1. B-122. An admin on a switched-off suite reads "An admin switches it on under Suites." and gets no link, because the client only adds one to an older sentence.
+  2. B-123. Nobody can ask for leave or money from any page: the two forms have no link, and "Your requests" does not say how.
+  3. B-124. Days of leave, the review cadence and budgets cannot be set anywhere; "See or change its settings" only says it cannot change them.
+  4. B-125. Company and Company context have nothing to press: no owner can be named, no priority changed, no question answered.
+  5. B-132. Today says the same leave or spending request twice, under "What needs you" and again under "Needs you".
+  6. B-133. One session is counted four ways: "One of the two people has checked in", "Nobody has answered this session yet", "Everyone has answered", "You'll get it once everyone has answered".
+  7. B-134. Esther, who finished session 1 and has her report, is told "This appears once you finish your first check-in." and "Your report is still being written."
+  8. B-137 and B-138. The board breaks two decisions: the ending panel shows at session 1 of 6 (decision 70), and patterns are said to need three check-ins "in a row" (decision 8).
+  9. B-147. A session is still called a check-in or a round on Today, You, the board, My work, the reports and Company.
+  10. B-165 (engine). Esther's own report says "Three shops are waiting on a credit decision", and the team's half of the same page says "Nobody is waiting on anybody." and "Everything anybody raised has been settled."
+- **One change to this computer's data.** The click test's press on One person's role choices changed Esther's role on the local database at once (now `LEAD`, was `MEMBER`; B-169 is about that control). Two suggested questions were also sent to Ask as Tendai, and one correction session was opened for him. Putting Esther's role back was refused by this computer's safety settings, so Hafsah needs to put it back on People.
+- **Screenshots** stay on this computer, never committed: `docs/page-audit/deep/<page>-<role>-<width>.png`, and `<page>~<tab>-<role>-<width>.png` for tabs.
+
+## The first audit
+
 Part 2 of `docs/user-journey-tests.md`. There is one row per page and role. The screenshots are in `docs/page-audit/`, named `<number>-<page>-<role>-<width>.png`, at desktop (1440) and phone (390) width.
 
 | # | Page | Who can see it | What it's for | How people get here | Where people go next | Its one main action | What doesn't make sense | Screenshots |

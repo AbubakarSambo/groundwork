@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { AuthCard } from '@/pages/auth/auth-kit'
 import { Button } from '@/components/gw/kit'
@@ -72,9 +72,11 @@ export function StopRemindersPage() {
   if (state.kind === 'unknown') {
     return (
       <AuthCard
-        title="Done."
-        sub="That link does not match anything, which usually means the reminders were already stopped or the check-in has closed. Either way nothing more is going to you from it."
-      />
+        title="We could not find those reminders"
+        sub="That link does not match anything, which usually means the reminders were already stopped or the check-in has closed. Either way, nothing more is going to you from it."
+      >
+        <p className="gw-auth-small"><Link to="/settings">Sign in to change your emails in Settings</Link></p>
+      </AuthCard>
     )
   }
   if (state.kind === 'all-off') {

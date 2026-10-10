@@ -13,7 +13,7 @@ import { useAuthStore } from '@/stores/auth'
 import { justTheQuestion } from '@/pages/invite/the-link-opens-on-the-question'
 import { groundsApi } from '@/api/grounds'
 import { todayApi } from '@/api/today'
-import { queueApi } from '@/api/suites'
+import { queueApi, yourRequestsApi, reviewsApi } from '@/api/suites'
 import { useEntryStore } from '@/stores/entry'
 import { useFeedbackStore } from '@/stores/feedback'
 import { useHelpStore } from '@/stores/help'
@@ -657,7 +657,32 @@ export function AppSidebar() {
   useEffect(() => {
     if (queueServesThem.isError && (queueServesThem.error as any)?.response?.status === 404) setSuitesKnownOff()
   }, [queueServesThem.isError, queueServesThem.error, setSuitesKnownOff])
-  const navOpts = { queueServesThem: user?.role === 'MEMBER' && !!queueServesThem.data?.counts?.all }
+  /*
+   * "SUITES" FOR A MEMBER, SO IT CAN BE FOUND WITHOUT TODAY (Hafsah's design for B-123). A lead
+   * and an admin already have the door by role (`leadOnly`/`adminOnly` above); an ordinary member
+   * had none at all - the only way to their own leave, spending and hours was Today's own
+   * "Your own leave and spending requests" link, which Today itself (`TodayPage.tsx`) may not even
+   * draw that day. The same reads Today already makes (`your-leave`/`your-spending`/`your-hours`,
+   * the same query keys, so the two pages share one cached answer) decide whether this reader has
+   * any suite of their own switched on; `offByKey` is the same remembered-404 store Today uses, so
+   * a suite that has already said no stops asking here too. Reviews are never gated on "switched
+   * on" at all (`SuitesService.mine` reads whatever reviews exist for this person, suite on or
+   * off), so that one is gated on there being any to show instead. */
+  const offByKey = useSuitesKnownOffStore(s => s.offByKey)
+  const setKeyOff = useSuitesKnownOffStore(s => s.setKeyOff)
+  const myLeaveForNav = useQuery({ queryKey: ['your-leave'], queryFn: yourRequestsApi.leave, enabled: isAuthenticated && user?.role === 'MEMBER' && !offByKey.leave, retry: false, staleTime: 60_000 })
+  const mySpendingForNav = useQuery({ queryKey: ['your-spending'], queryFn: yourRequestsApi.spending, enabled: isAuthenticated && user?.role === 'MEMBER' && !offByKey.spending, retry: false, staleTime: 60_000 })
+  const myHoursForNav = useQuery({ queryKey: ['your-hours'], queryFn: yourRequestsApi.hours, enabled: isAuthenticated && user?.role === 'MEMBER' && !offByKey.hours, retry: false, staleTime: 60_000 })
+  const myReviewsForNav = useQuery({ queryKey: ['your-reviews'], queryFn: reviewsApi.mineQuietly, enabled: isAuthenticated && user?.role === 'MEMBER', retry: false, staleTime: 60_000 })
+  useEffect(() => {
+    const notFound = (q: { isError: boolean; error: unknown }) => q.isError && (q.error as any)?.response?.status === 404
+    if (notFound(myLeaveForNav)) setKeyOff('leave')
+    if (notFound(mySpendingForNav)) setKeyOff('spending')
+    if (notFound(myHoursForNav)) setKeyOff('hours')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myLeaveForNav.isError, mySpendingForNav.isError, myHoursForNav.isError, setKeyOff])
+  const suiteOnForMember = myLeaveForNav.isSuccess || mySpendingForNav.isSuccess || myHoursForNav.isSuccess || (myReviewsForNav.data?.length ?? 0) > 0
+  const navOpts = { queueServesThem: user?.role === 'MEMBER' && !!queueServesThem.data?.counts?.all, suiteOnForMember }
 
   const location = useLocation()
   /*

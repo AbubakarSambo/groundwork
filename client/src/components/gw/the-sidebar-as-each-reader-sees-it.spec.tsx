@@ -216,8 +216,19 @@ describe('the sidebar, as a participant and as an admin read it', () => {
   it('a participant sees their check-ins and their own menu, and no organisation pages', () => {
     const { rail } = shell({ ...LEAD, id: 'u-other', firstName: 'Adam', lastName: 'Grunewald' })
     expect(rail).toHaveTextContent('Coamana growth, Q3')
-    expect(within(rail).queryByRole('link', { name: /People|Connections|Suites|Plan and billing|Boards/ })).toBeNull()
+    expect(within(rail).queryByRole('link', { name: /People|Connections|Suites|Plan and billing/ })).toBeNull()
     expect(within(rail).queryAllByRole('button', { name: /^Rename / })).toHaveLength(0)
+  })
+
+  /*
+   * HAFSAH, 10 OCTOBER (B-146): A PARTICIPANT NOW SEES "BOARDS" TOO. The second deep page audit
+   * found /boards already worked for a member - groundsApi.list already scopes it to what they
+   * take part in - but there was no door to it in her side menu or her More menu. This used to be
+   * folded into the list above, pinning that gap; it is its own assertion now, with the reason.
+   */
+  it('a participant also has "Boards", reaching the check-ins they take part in', () => {
+    const { rail } = shell({ ...LEAD, id: 'u-other', firstName: 'Adam', lastName: 'Grunewald' })
+    expect(within(rail).getByRole('link', { name: 'Boards' })).toHaveAttribute('href', '/boards')
   })
 
   it('an admin also sees Boards, and the organisation\'s pages under its name', () => {

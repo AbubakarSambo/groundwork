@@ -12,6 +12,7 @@ import { useAuthStore } from '@/stores/auth'
 import { whatWentWrong, whyYouCannotSeeThis } from '@/pages/report/why-you-cannot-see-this'
 import { Mark } from './kit'
 import { Composer } from './ui/Composer'
+import { GroundworkIsWriting } from './ui/GroundworkIsWriting'
 import { PRIVATE_LINE } from './what-ask-groundwork-says'
 
 /** What the Context page already says while a document's read has not landed yet (AddADocument.tsx). */
@@ -452,6 +453,9 @@ export function AskGroundwork({
     })
   }
 
+  /* Named here once, so the header and the "is writing…" indicator always agree. */
+  const askDisplayName = page.data?.askName ?? askNameFor(orgName)
+
   return (
     <section aria-labelledby="gw-ask-title" style={{
       display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0,
@@ -459,7 +463,7 @@ export function AskGroundwork({
     }}>
       <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid var(--gw-line)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <h2 id="gw-ask-title" style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>{page.data?.askName ?? askNameFor(orgName)}</h2>
+          <h2 id="gw-ask-title" style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>{askDisplayName}</h2>
           {onClose && (
             <button type="button" className="gw-tap44" onClick={onClose} aria-label="Close"
               style={{ border: 0, background: 'transparent', fontSize: 20, cursor: 'pointer', color: 'var(--gw-sub)' }}>×</button>
@@ -528,27 +532,20 @@ export function AskGroundwork({
           /*
            * ITEM 3: A SIGN OF WORK WHILE WAITING. A reply can take up to 90 seconds, and until now
            * nothing showed at all in that time - the buttons went quietly unresponsive with no
-           * explanation. The same three dots the check-in's own conversation uses (ChatPage.tsx),
-           * and after four seconds the same sentence it says once a wait is long enough to need
-           * explaining.
+           * explanation. Now the one shared "<name> is writing…" indicator every chat uses
+           * (GroundworkIsWriting.tsx), under Ask's own name, and after four seconds the same
+           * sentence the check-in conversation says once a wait is long enough to need explaining.
            */
-          <p style={bubble(false)}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-              {[0, 1, 2].map((i) => (
-                <span key={i} style={{
-                  display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
-                  background: 'var(--gw-sub)', animation: 'gwAskDotBounce 1.2s ease-in-out infinite',
-                  animationDelay: `${i * 0.2}s`,
-                }} />
-              ))}
-              <style>{'@keyframes gwAskDotBounce { 0%,80%,100%{transform:translateY(0);opacity:.4} 40%{transform:translateY(-5px);opacity:1} }'}</style>
-              {waitedAWhile && (
+          <>
+            <GroundworkIsWriting name={askDisplayName} />
+            {waitedAWhile && (
+              <p style={bubble(false)}>
                 <span role="status" style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
                   Still reading what you wrote. Nothing was lost, you do not need to send it again.
                 </span>
-              )}
-            </span>
-          </p>
+              </p>
+            )}
+          </>
         )}
         <div ref={end} />
       </div>

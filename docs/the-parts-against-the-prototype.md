@@ -830,3 +830,36 @@ there for a later batch that also carries one of those inline alongside the size
 this round's first use of `Text` is the plain, style-free case only - see `docs/style-cleanup.md`
 for exactly which lines moved. A caller whose inline style sets a property `Text` does not offer
 (a margin, a different colour not already a `gwui-ink-*`) is not an exact match and was left alone.
+
+## GroundworkIsWriting: one indicator for every chat, now that replies arrive whole
+
+**`GroundworkIsWriting`** (`components/gw/ui/GroundworkIsWriting.tsx`). Hafsah's instruction of 9
+October: replies now arrive whole, as the engine sends them, rather than drawn in piece by piece,
+so every chat needs a clear sign of work while one is on its way, in the prototype's own
+language - since the prototype itself has no typing indicator, this is built from the pieces it
+does have: Groundwork's own bubble shape and colours (`Bubble.tsx`, which already follows
+`docs/prototype/source/app.css`'s `.bub.them`), its muted ink and type sizes, and its only
+animation's spirit (`@keyframes up`) rather than its exact keyframes, since nothing in the
+prototype fades in place the way three waiting dots do.
+
+It renders the sentence "Groundwork is writing…" (or "Ask Kijani Foods is writing…" where the
+reply comes from Ask and its name is known), with `role="status"` and `aria-live="polite"`, and
+three small dots that fade and stop under `prefers-reduced-motion`. Two new classes, both written
+up here as the guard requires: `.gwui-writing` (the row: inline-flex, 14px, `var(--gw-sub)`, the
+same muted ink the check-in's own waiting note already used) and `.gwui-writing-dots`/
+`.gwui-writing-dot` (each dot 6px, `var(--gw-sub)`, the existing `gwDotBounce` keyframes,
+switched off under reduced motion - `gw-ui.css` had no reduced-motion rule before this).
+
+`wrap` (default true) draws the sentence inside its own `Bubble`; a caller that already wraps this
+turn's content in a `Bubble` of its own (`ChatPage.tsx`'s placeholder `AI` message, `EntryChatPage.tsx`'s
+onboarding and check-in placeholders) passes `wrap={false}` so the sentence sits inside the one
+bubble already there, never a second one nested in it.
+
+**Replaces, so every chat reads the same:** `ChatPage.tsx`'s waiting dots (in its `AI` placeholder
+bubble) and its unlabelled "Opening your session…" status line; `EntryChatPage.tsx`'s "Thinking"
+label and dots (the onboarding conversation) and its typing placeholder (`m.content === '…'`, the
+check-in portion); `AskGroundwork.tsx`'s own three-dot indicator (sent under its own `askName`);
+`BetweenCheckIns.tsx`, which had no waiting indicator at all while `asking` was true; and
+`ContextChat.tsx`'s bare "Thinking…" line (drawn with `wrap={false}`, since that chat draws no
+bubbles of its own at all - a citation-style rule down its left edge instead - so wrapping only
+this one line in a bubble would be a shape nothing else in that screen has).

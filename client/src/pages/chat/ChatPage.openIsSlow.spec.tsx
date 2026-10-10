@@ -56,6 +56,19 @@ describe('opening a session that is taking a while', () => {
     expect(screen.queryByText(/can take a minute or two/i)).toBeNull()
   })
 
+  it('shows the same animated dots every other wait shows, in Groundwork\'s own bubble shape (Hafsah, 9 October)', async () => {
+    ;(conversationApi.transcript as any).mockResolvedValue({
+      checkIn: { status: 'NOT_STARTED', sessionNumber: 1, groundId: 'g1' },
+      turns: [],
+    })
+    ;(conversationApi.open as any).mockImplementation(neverSettles)
+
+    renderChat()
+    const status = await screen.findByText('Opening your session…')
+    const region = status.closest('[role="status"]')
+    expect(region?.querySelector('.gwui-writing-dots')).toBeTruthy()
+  })
+
   it('says the wait can take a minute or two once it has gone on a few seconds', async () => {
     ;(conversationApi.transcript as any).mockResolvedValue({
       checkIn: { status: 'NOT_STARTED', sessionNumber: 1, groundId: 'g1' },

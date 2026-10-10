@@ -114,17 +114,31 @@ export function GroundParticipantPage() {
     retry: false,
   })
 
+  /*
+   * B-190: GATED ON THE GROUND HAVING ACTUALLY LOADED, NOT JUST ON HAVING AN ID.
+   *
+   * These three used to ask `enabled: !!id` (or `!!id && tab === 'record'`), so when `ground`
+   * itself came back 403 (not yours to open) or 404 (gone), each of these fired anyway - and
+   * unlike `groundsApi.get`, none of them is called with `skipForbiddenToast`/`skipNotFoundToast`.
+   * The result was the generic "That one is not yours to open … whoever runs this check-in can
+   * let you in" toast landing on top of the GroundGone panel: a second, contradictory message
+   * that also leaks exactly what GW-PRI-04 and GroundGone's own wording are written not to say
+   * (that a real check-in, with someone who runs it, sits behind the link). `GroundAdminPage`
+   * already gates its matching three queries on `viewerIsAParty`, which is derived from `ground`
+   * and so is naturally false while `ground` is undefined; gating on `!!ground` here does the same
+   * job without needing a party flag this page does not otherwise compute up front.
+   */
   const { data: specificity } = useQuery({
     queryKey: ['my-specificity', id],
     queryFn: () => groundsApi.getMySpecificity(id!),
-    enabled: !!id,
+    enabled: !!id && !!ground,
     retry: false,
   })
 
   const { data: myRecord } = useQuery({
     queryKey: ['my-record', id],
     queryFn: () => groundsApi.getMyRecord(id!),
-    enabled: !!id && tab === 'record',
+    enabled: !!id && !!ground && tab === 'record',
     retry: false,
   })
 
@@ -133,7 +147,7 @@ export function GroundParticipantPage() {
     queryFn: () => groundsApi.getMySoloReport(id!),
     /* MY RECORD, NOT REPORT. `MyPrivateReport` renders this and lives on the record tab, so the
        carry-forward line only loaded for somebody who had happened to open Report first. */
-    enabled: !!id && tab === 'record',
+    enabled: !!id && !!ground && tab === 'record',
     retry: false,
   })
 

@@ -17,7 +17,7 @@ import { A_FAILURE } from './people-here'
  * own 4px amber edge, 17px bold name and email, a 15px sentence under it, and "Don't let them in" /
  * "Let them in" on the right, both 44px tall).
  */
-interface Waiting { id: string; email: string; name: string | null; addedBy: string | null; forCheckIn: string | null; waitingSince?: string }
+interface Waiting { id: string; email: string; name: string | null; addedBy: string | null; forCheckIn: string | null; waitingSince?: string; onTheOrganisationsOwnAddress?: boolean }
 
 function whenAsked(at: string | undefined, now = new Date()): string {
   if (!at) return ''
@@ -72,11 +72,22 @@ export function WaitingToBeLetIn({ orgName }: { orgName: string }) {
   if (!rows.length) return null
   const people = status.data?.people
   const seatsFree = people && people.cap != null ? Math.max(0, people.cap - people.count) : null
+  /*
+   * B-096 (engine workspace, 9 October night, test bed copy a): this always read "People from
+   * outside <organisation>, invited to a check-in", even for Halima Yusuf, who is on Msingi Foods'
+   * own address. Now: when anyone on the list is on the organisation's own address, the heading
+   * says only that people are waiting to be added, naming nobody as being from outside; when
+   * everyone really is from outside, the heading keeps saying so.
+   */
+  const anyoneOnTheOrgsOwnAddress = rows.some(p => p.onTheOrganisationsOwnAddress)
+  const note = anyoneOnTheOrgsOwnAddress
+    ? 'People invited to a check-in, waiting to be added'
+    : `People from outside ${orgName}, invited to a check-in`
 
   return (
     <Section
       heading="Waiting to be let in"
-      note={`People from outside ${orgName}, invited to a check-in`}
+      note={note}
       foot="Letting someone in tells them straight away, and tells whoever invited them."
     >
       <EdgeList label="Waiting to be let in">

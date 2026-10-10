@@ -116,6 +116,9 @@ export function theAnchorStartSucceededForThisTab(): boolean {
 
 export const THE_SETUP = {
   whenItStarts: 'When it starts',
+  /* B-147 follow-up: this is the prototype's own exact sentence (B1-starting-a-check-in/setup.txt),
+     word for word - "check-in" here, not "session", so left as the prototype has it rather than
+     swept into the session rename. */
   opensAtTheStart: 'The first check-in opens at the start time.',
   invitationsWhenItStarts: 'Adding someone sends their invitation when it starts.',
   now: 'Now',

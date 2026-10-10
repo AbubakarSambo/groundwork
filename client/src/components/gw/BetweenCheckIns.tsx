@@ -6,6 +6,7 @@ import { groundsApi } from '@/api/grounds'
 import { ConversationCard } from './ui/ConversationCard'
 import { TheCheckInHeader } from './checkin/TheCheckInHeader'
 import { Bubble } from './ui/Bubble'
+import { GroundworkIsWriting } from './ui/GroundworkIsWriting'
 import { QuickReplies } from './ui/QuickReplies'
 import { Composer } from './ui/Composer'
 import { Button } from './ui/Button'
@@ -190,6 +191,9 @@ export function BetweenCheckIns({ groundLabel, nextOpensSaying, groundId, canCha
           {exchanges.map((ex, i) => (
             <Bubble key={i} mine={ex.mine}>{ex.text}</Bubble>
           ))}
+          {/* No sign of work while waiting existed here at all before this (Hafsah, 9 October):
+              the composer just went quietly disabled. Same shared indicator every chat uses. */}
+          {asking && <GroundworkIsWriting />}
           {waitingNotes.length > 0 && (
             <div style={{ marginTop: 4 }}>
               <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 6 }}>

@@ -63,7 +63,7 @@ export function SpendRequestNewPage() {
   return (
     <Page>
       <PageTitle
-        crumbs={[{ label: 'Your requests', to: '/suite/mine' }, { label: 'Ask to spend money' }]}
+        crumbs={[{ label: 'Suites', to: '/suite/mine' }, { label: 'Ask to spend money' }]}
         title="Ask to spend money"
         subtitle="Say how much, and what it is for, and Groundwork will send it to the right person."
       />

@@ -112,8 +112,19 @@ describe('"More", as a lead and a participant read it', () => {
   it.each([['lead', LEAD], ['participant', PARTICIPANT]])('a %s gets their settings, help, feedback and sign out, and no admin pages', (_, user) => {
     mount(user)
     expect(hrefOf(main(), 'Your settings')).toEqual(['/settings'])
-    for (const name of ['People', 'Connections', 'Plan and billing', 'Boards']) expect(hrefOf(main(), name)).toEqual([])
+    for (const name of ['People', 'Connections', 'Plan and billing']) expect(hrefOf(main(), name)).toEqual([])
     expect(within(main()).getByRole('button', { name: 'Sign out' })).toBeInTheDocument()
+  })
+
+  /*
+   * HAFSAH, 10 OCTOBER (B-146): A MEMBER NOW HAS "BOARDS" HERE TOO. The second deep page audit
+   * found /boards already worked for a member - the server already scopes it to what they take
+   * part in - but neither her side menu nor her More menu had a door to it. This used to be in the
+   * list above, pinning that gap; it is its own assertion now, with the reason.
+   */
+  it.each([['lead', LEAD], ['participant', PARTICIPANT]])('a %s has "Boards", reaching the check-ins they take part in', (_, user) => {
+    mount(user)
+    expect(hrefOf(main(), 'Boards')).toEqual(['/boards'])
   })
 })
 

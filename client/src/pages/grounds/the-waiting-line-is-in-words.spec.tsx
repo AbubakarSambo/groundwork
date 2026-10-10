@@ -68,4 +68,17 @@ describe('the lead’s attention line, when one of the team has not answered yet
     expect((await screen.findAllByText('One of the three has not answered yet.')).length).toBeGreaterThan(0)
     expect(screen.queryByText(/1 of the 3/)).toBeNull()
   })
+
+  /*
+   * B-148. The same fact used to be said twice: the Note above ("One of the three has not
+   * answered yet.") and, further down the page, a second, independently-worded sentence built
+   * from the same counts ("Two of the three people have checked in for session 1."). Only the
+   * Note is kept once the lead has already answered and is only waiting on others.
+   */
+  it('does not also say "Two of the three people have checked in for session 1." underneath (B-148)', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getAllByText(/Sales team, Q3/i).length).toBeGreaterThan(0))
+    await screen.findAllByText('One of the three has not answered yet.')
+    expect(screen.queryByText(/have checked in for session 1/)).toBeNull()
+  })
 })

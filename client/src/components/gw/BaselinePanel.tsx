@@ -4,6 +4,7 @@ import { groundsApi } from '@/api/grounds'
 import { Section, Panel } from '@/components/gw/ui'
 import { toast } from 'sonner'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import { withSentenceCase } from '@/lib/an-aim-reads-as-a-sentence'
 
 /**
  * THE TEAM'S STARTING POINT. `GroundBaseline`, which had no reader and no writer.
@@ -31,7 +32,7 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
  * read against is the last thing that should be private from them, and if it moved mid-ground, the
  * move is the part they most need to see.
  */
-export function BaselinePanel({ groundId, canState }: { groundId: string; canState: boolean }) {
+export function BaselinePanel({ groundId, canState, groundStartedAt }: { groundId: string; canState: boolean; groundStartedAt?: string | null }) {
   const qc = useQueryClient()
   const [open, setOpen] = useState(false)
   const [success, setSuccess] = useState('')
@@ -72,7 +73,7 @@ export function BaselinePanel({ groundId, canState }: { groundId: string; canSta
         {current ? (
           <>
             <div style={{ fontSize: 13.5, color: 'var(--gw-text)', lineHeight: 1.65 }}>
-              {current.successLooksLike || 'Not stated yet.'}
+              {current.successLooksLike ? withSentenceCase(current.successLooksLike) : 'Not stated yet.'}
             </div>
             {current.conditions.length > 0 && (
               <div style={{ marginTop: 12 }}>
@@ -97,8 +98,15 @@ export function BaselinePanel({ groundId, canState }: { groundId: string; canSta
               * that had actually been restated, not by reading the code.
               */}
             <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 10, lineHeight: 1.55 }}>
+              {/**
+                * B-141: version 1 is never a restatement, so its date is the check-in's own start
+                * date, not whenever the version-1 row happened to be written on the record
+                * (`effectiveFrom` can trail the real start - see when-the-clock-starts.ts for how the
+                * server itself picks a start date). A later version really did change something on
+                * that date, so it keeps `effectiveFrom`.
+                */}
               {current.version === 1
-                ? `Stated at the start, ${whenItWas(current.effectiveFrom, 'dayAndMonthLong')}.`
+                ? `Stated at the start, ${whenItWas(groundStartedAt || current.effectiveFrom, 'dayAndMonthLong')}.`
                 : `Version ${current.version}, from ${whenItWas(current.effectiveFrom, 'dayAndMonthLong')}.`}
               {current.changeReason && (
                 <> Changed because: {current.changeReason}</>
@@ -125,7 +133,7 @@ export function BaselinePanel({ groundId, canState }: { groundId: string; canSta
           <Panel>
             {earlier.map(v => (
               <div key={v.version} style={{ marginBottom: 10, paddingBottom: 10, borderBottom: '1px solid var(--gw-border)' }}>
-                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>{v.successLooksLike}</div>
+                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>{withSentenceCase(v.successLooksLike)}</div>
                 <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 4 }}>
                   Version {v.version}, until it was restated
                   {v.changeReason ? `. Changed because: ${v.changeReason}` : '.'}

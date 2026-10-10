@@ -44,6 +44,13 @@ export interface WaitingAtTheDoor {
   /** Who added them. Named, because "somebody added them" is not something an admin can act on. */
   addedBy: string | null
   forCheckIn: string | null
+  /**
+   * Whether this person's own address belongs to the organisation (B-096). The heading above the
+   * list used to say "People from outside <organisation>" no matter who was on it; Halima Yusuf,
+   * on Msingi Foods' own address, was invited to a check-in and still read as if she were from
+   * outside. Optional because an older server may not send it yet.
+   */
+  onTheOrganisationsOwnAddress?: boolean
 }
 
 /** "Fewer than 20" or "20 or more": what they chose, and the line they were shown. */

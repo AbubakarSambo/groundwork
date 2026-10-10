@@ -943,6 +943,10 @@ export function DropoffsTab({ data }: { data: UsageFunnelData }) {
       </section>
 
       <section>
+        {/* B-147 follow-up: `avgDaysToFirstCheckin` measures days from an organisation signing up
+            to its first check-in being CREATED (an activation metric, like every other stat in
+            this section) - a fact about the check-in as an entity, not about a session within
+            one, so this was never the word B-147 was about. Reverted after a full run caught it. */}
         <div style={SL}>Avg days to first check-in</div>
         <div style={{ ...C, display: 'inline-block' }}>
           <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--gw-navy)' }}>{data.avgDaysToFirstCheckin.value ?? ' - '}</div>
@@ -1023,7 +1027,7 @@ const ACTIVATION_STAGE_LABELS: Record<ActivationStage, string> = {
   enoughToReport: 'A report was made',
   firstInsight: 'The report went out',
   leadActed: 'The lead acted on it',
-  secondRound: 'A second round finished',
+  secondRound: 'A second session finished',
 }
 const ACTIVATION_STAGE_ORDER: ActivationStage[] = ['created', 'peopleAdded', 'firstResponse', 'enoughToReport', 'firstInsight', 'leadActed', 'secondRound']
 
@@ -1077,7 +1081,7 @@ function ActivationSection({ activation }: { activation: ActivationFunnel | null
         <div style={SL}>Leads who came back</div>
         <div style={{ ...C, display: 'inline-block' }}>
           <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--gw-navy)' }}>{activation.leadsWhoCameBack}</div>
-          <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 2 }}>leads with a second check-in</div>
+          <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 2 }}>leads with a second session</div>
         </div>
       </section>
 

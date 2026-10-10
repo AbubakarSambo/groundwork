@@ -54,7 +54,7 @@ export function TimeSheetsPage() {
 
       <Panel>
         <p className="gwui-panel-text"><b>Hours are for billing only.</b></p>
-        <p className="gwui-panel-text">They never appear in anyone’s check-in report, their signals or a review. Being busy is not the same as making progress.</p>
+        <p className="gwui-panel-text">They are never used in a report or a review.</p>
       </Panel>
 
       {isLoading && <Note>Loading…</Note>}

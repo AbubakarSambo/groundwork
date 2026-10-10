@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -11,6 +11,108 @@ import { WhatsAppKeysNeedTypingAgainNote, WhatsAppKeysRetypeForm } from './Whats
 import {
   Page, PageTitle, Section, Panel, Stack, SubHeading, FieldRows, FieldRow, Button, Tag, TextField, Note, Folded, OpsConsoleExample, WhatsAppConversationExample,
 } from '@/components/gw/ui'
+
+/**
+ * B-144, HAFSAH, 10 OCTOBER: FEWER, GROUPED BUTTONS, NOT ELEVEN SEPARATE ONES.
+ *
+ * The second deep page audit found that "Your numbers" (2 buttons) and "More you can connect"
+ * (6 buttons) all opened the same page, /settings/tools, which - before API access is approved -
+ * offers only one plain "Ask for access" box, with nothing carried over to say which of the eight
+ * things someone actually pressed. Grouped here as the prototype's own sections already are
+ * ("Your numbers", "More you can connect"): one button per group opens a choice, right there,
+ * of what inside that group to connect, and only then goes on to /settings/tools?want=<key> -
+ * which the choice is carried forward to (see WANT below), so the specific thing somebody asked
+ * for still reaches Groundwork, in `whatFor`, exactly where that free-text request already lived.
+ * "Figures from your other systems" keeps its own two buttons: one asks, the other only reads -
+ * two different actions, not eleven answers to the same question.
+ */
+export type WantKey = 'product' | 'accounting' | 'people' | 'goals' | 'roles' | 'handbook' | 'start' | 'brief'
+
+export const SCOPE_FOR = {
+  people: 'graph:write',
+  goals: 'subjects:write',
+  roles: 'handovers:read',
+  handbook: 'knowledge:write',
+  start: 'grounds:write',
+  brief: 'handovers:read',
+  figures: 'graph:write',
+} as const
+
+export const WANT: Record<WantKey, { title: string; sentence: string; scope?: string }> = {
+  product: {
+    title: 'Your own product sends its numbers',
+    sentence: 'I want our own product to send Groundwork its usage numbers.',
+  },
+  accounting: {
+    title: 'Accounting or sales tools',
+    sentence: 'I want to connect our accounting or sales tools, so Groundwork reads which invoices are paid and which deals are won.',
+    scope: SCOPE_FOR.figures,
+  },
+  people: {
+    title: 'Your people come in',
+    sentence: 'I want our people to come in from our HR system, with joiners, movers and leavers kept up to date.',
+    scope: SCOPE_FOR.people,
+  },
+  goals: {
+    title: 'Your goals come in',
+    sentence: 'I want our goals, projects and decisions to come in from wherever we keep them.',
+    scope: SCOPE_FOR.goals,
+  },
+  roles: {
+    title: 'Roles and handovers',
+    sentence: 'I want roles and handovers connected, so a handover leaves a written brief.',
+    scope: SCOPE_FOR.roles,
+  },
+  handbook: {
+    title: 'Your handbook',
+    sentence: 'I want our handbook connected, so people can ask it questions in plain words.',
+    scope: SCOPE_FOR.handbook,
+  },
+  start: {
+    title: 'Start a check-in from your own system',
+    sentence: 'I want to start a check-in from our own system.',
+    scope: SCOPE_FOR.start,
+  },
+  brief: {
+    title: 'The brief before a hard conversation',
+    sentence: 'I want the brief before a hard conversation.',
+    scope: SCOPE_FOR.brief,
+  },
+}
+
+/**
+ * One button that opens a choice inline, then carries it on to `/settings/tools?want=<key>`. The
+ * choice stays open until "Continue" is pressed, so pressing the group's button is never itself a
+ * commitment to one specific thing - only choosing one, and continuing, is.
+ */
+export function GroupedConnect({ label, groupName, options }: {
+  label: string
+  groupName: string
+  options: { key: WantKey; title: string; status: ReactNode }[]
+}) {
+  const [open, setOpen] = useState(false)
+  const [choice, setChoice] = useState<WantKey | null>(null)
+  if (!open) {
+    return <Button kind="secondary" size="small" onClick={() => setOpen(true)}>{label}</Button>
+  }
+  return (
+    <Stack gap={10}>
+      <fieldset className="gwui-check-list">
+        <legend className="gwui-field-help">Choose what you want to connect.</legend>
+        {options.map(o => (
+          <label key={o.key} className="gwui-check-row">
+            <input type="radio" name={groupName} checked={choice === o.key} onChange={() => setChoice(o.key)} />
+            <span>{o.title} {o.status}</span>
+          </label>
+        ))}
+      </fieldset>
+      <div className="gwui-invite-actions">
+        <Button kind="secondary" size="small" to={choice ? `/settings/tools?want=${choice}` : undefined} disabled={!choice}>Continue</Button>
+        <button type="button" className="gwui-plain-link" onClick={() => { setOpen(false); setChoice(null) }}>Never mind</button>
+      </div>
+    </Stack>
+  )
+}
 
 /**
  * CONNECTIONS (F1, #/settings/connections, group 1 of the screens rebuilt from the shared parts).
@@ -58,16 +160,6 @@ export function OnlyAnAdmin() {
   )
 }
 
-const SCOPE_FOR = {
-  people: 'graph:write',
-  goals: 'subjects:write',
-  roles: 'handovers:read',
-  handbook: 'knowledge:write',
-  start: 'grounds:write',
-  brief: 'handovers:read',
-  figures: 'graph:write',
-} as const
-
 export function hasAKeyFor(creds: Credential[] | undefined, scope: string): boolean {
   return (creds ?? []).some(c => !c.revokedAt && c.scopes.includes(scope))
 }
@@ -83,7 +175,8 @@ export function kindOf(url: string): 'slack' | 'teams' {
  * conversation", the two backed directly by a credential on "Connect your own tools", but not of
  * the other four, which the prototype's own screen (connections.txt) says are simply "Not set up".
  */
-const MORE: { key: keyof typeof SCOPE_FOR; title: string; line: string; needsKey?: boolean }[] = [
+type MoreKey = 'people' | 'goals' | 'roles' | 'handbook' | 'start' | 'brief'
+const MORE: { key: MoreKey; title: string; line: string; needsKey?: boolean }[] = [
   { key: 'people', title: 'Your people come in', line: 'Your HR system tells Groundwork who works here and who they report to. People who join, change roles or leave are updated too.' },
   { key: 'goals', title: 'Your goals come in', line: 'Groundwork reads your goals, projects and decisions from wherever you keep them. Groundwork points at yours instead of copying them.' },
   { key: 'roles', title: 'Roles and handovers', line: 'Groundwork knows who holds each role and since when, so a handover leaves a written brief.' },
@@ -128,27 +221,30 @@ export function ConnectionsPage() {
 
       {/* FIELDROWS SIT FLAT (Hafsah, 30 September, the setting row): `srow` in the prototype has
           no side padding and sits on the page, not inside a white Panel - see FieldRow.tsx. */}
-      <Section heading="Your numbers" note="Groundwork checks what people say against the numbers where the work shows up.">
+      <Section
+        heading="Your numbers"
+        note="Groundwork checks what people say against the numbers where the work shows up."
+        action={(
+          <GroupedConnect
+            label="Connect"
+            groupName="connect-your-numbers"
+            options={[
+              { key: 'product', title: WANT.product.title, status: <Tag tone={glance.data?.figures?.fromYourProduct ? 'proven' : 'plain'}>{glance.data?.figures?.fromYourProduct ? 'Connected' : 'Not set up'}</Tag> },
+              { key: 'accounting', title: WANT.accounting.title, status: hasAKeyFor(creds.data, SCOPE_FOR.figures) ? <Tag tone="proven">Connected</Tag> : <Tag tone="plain">Needs a key</Tag> },
+            ]}
+          />
+        )}
+      >
         <FieldRows>
           <FieldRow
             label="Your own product sends its numbers"
             value={<span>Your own product sends Groundwork its usage numbers.</span>}
-            action={(
-              <span className="gwui-invite-actions">
-                <Tag tone={glance.data?.figures?.fromYourProduct ? 'proven' : 'plain'}>{glance.data?.figures?.fromYourProduct ? 'Connected' : 'Not set up'}</Tag>
-                <Button kind="secondary" size="small" to="/settings/tools">Set it up</Button>
-              </span>
-            )}
+            action={<Tag tone={glance.data?.figures?.fromYourProduct ? 'proven' : 'plain'}>{glance.data?.figures?.fromYourProduct ? 'Connected' : 'Not set up'}</Tag>}
           />
           <FieldRow
             label="Accounting or sales tools"
             value={<span>Groundwork reads which invoices are paid and which deals are won.</span>}
-            action={(
-              <span className="gwui-invite-actions">
-                {!hasAKeyFor(creds.data, SCOPE_FOR.figures) && <Tag tone="plain">Needs a key</Tag>}
-                <Button kind="secondary" size="small" to="/settings/tools">Connect</Button>
-              </span>
-            )}
+            action={!hasAKeyFor(creds.data, SCOPE_FOR.figures) ? <Tag tone="plain">Needs a key</Tag> : undefined}
           />
         </FieldRows>
       </Section>
@@ -173,7 +269,25 @@ export function ConnectionsPage() {
         </Panel>
       </Section>
 
-      <Section heading="More you can connect" note="Each one means one less list you keep in two places.">
+      <Section
+        heading="More you can connect"
+        note="Each one means one less list you keep in two places."
+        action={(
+          <GroupedConnect
+            label="Set up"
+            groupName="connect-more"
+            options={MORE.map(m => ({
+              key: m.key,
+              title: m.title,
+              status: hasAKeyFor(creds.data, SCOPE_FOR[m.key])
+                ? <Tag tone="proven">Connected</Tag>
+                : m.needsKey
+                  ? <Tag tone="attention">Needs a key</Tag>
+                  : <Tag tone="plain">Not set up</Tag>,
+            }))}
+          />
+        )}
+      >
         <div className="gwui-two-up">
           {MORE.map(m => (
             <Panel key={m.key} role="region" aria-label={m.title}>
@@ -186,7 +300,6 @@ export function ConnectionsPage() {
                     : m.needsKey
                       ? <Tag tone="attention">Needs a key</Tag>
                       : <Tag tone="plain">Not set up</Tag>}
-                  <Button kind="quiet" size="small" to="/settings/tools">Set up</Button>
                 </div>
               </Stack>
             </Panel>

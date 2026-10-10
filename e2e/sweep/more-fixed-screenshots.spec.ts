@@ -96,7 +96,10 @@ test('B-045: the checkout page starts near the top, with no empty band above its
     await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
     await page.waitForTimeout(600);
     await shoot(page, 'B-045', width);
-    const heading = page.getByText('Add sessions to this check-in');
+    /* B-145: retitled from "Add sessions to this check-in", which contradicted the page's own
+       body ("Sessions are not charged for"), to "Use an access code" - the one thing this page
+       still does. */
+    const heading = page.getByText('Use an access code');
     await expect(heading).toBeVisible();
     const box = await heading.boundingBox();
     expect(box, 'the heading must be found').not.toBeNull();

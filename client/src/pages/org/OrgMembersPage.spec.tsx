@@ -92,6 +92,44 @@ describe('waiting to be let in', () => {
     expect(whoAskedForThem({ id: 'x', email: 'a@b.co', name: null, addedBy: null, forCheckIn: null }, 0))
       .toBe('Someone who is no longer here invited them. Letting them in takes a seat, and you have none free.')
   })
+
+  /*
+   * B-096 (engine workspace, 9 October night, test bed copy a): this heading always said "People
+   * from outside <organisation>", even for Halima Yusuf, who is on Msingi Foods' own address -
+   * `onTheOrganisationsOwnAddress: true`. Fails before the fix (the old heading always shows) and
+   * passes after (when anyone on the list is on the organisation's own address, the heading no
+   * longer names anybody as being from outside).
+   */
+  it('reads "waiting to be added" rather than "from outside" when anyone waiting is on the organisation\'s own address', async () => {
+    vi.spyOn(apiClient, 'get').mockImplementation(async (url: string) => {
+      if (url.startsWith('/users?')) return { data: { data: people, meta: { total: people.length } } } as any
+      if (url === '/users/organization/owner') return { data: { ownerUserId: 'amani' } } as any
+      if (url === '/billing/status') return { data: { people: { count: 27, cap: 100 }, subscription: { plan: 'GROWTH' } } } as any
+      if (url === '/users/organization/check-ins') return { data: { whoMayOpen: 'NAMED_LEADS', needsApproval: false } } as any
+      if (url === '/users/organization/joining') return { data: { on: false, domain: 'baridi.co.ke', whyNot: null } } as any
+      if (url === '/users/organization/invite-link') return { data: { on: false, code: null } } as any
+      return { data: [] } as any
+    })
+    vi.spyOn(authApi, 'whoIsWaiting').mockResolvedValue([
+      { id: 'r1', email: 'peter@ouma-agencies.co.ke', name: 'Peter Ouma', addedBy: 'Wairimu Kamau', forCheckIn: 'Sales team, Q3', waitingSince: new Date(Date.now() - 86_400_000).toISOString() },
+      { id: 'r2', email: 'halima@baridi.co.ke', name: 'Halima Yusuf', addedBy: 'Baraka Mutua', forCheckIn: 'Help my team understand', waitingSince: new Date().toISOString(), onTheOrganisationsOwnAddress: true },
+    ] as any)
+    vi.spyOn(authApi, 'waitingForASeat').mockResolvedValue([] as any)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={['/org/members']}>
+          <Routes>
+            <Route path="/org/members" element={<OrgMembersPage />} />
+            <Route path="/org/members/:id" element={<p>One person</p>} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    expect(await screen.findByRole('heading', { name: 'Waiting to be let in' })).toBeTruthy()
+    expect(screen.getByText('People invited to a check-in, waiting to be added')).toBeTruthy()
+    expect(screen.queryByText(/People from outside/)).toBeNull()
+  })
 })
 
 describe('everyone at Baridi', () => {
@@ -178,6 +216,21 @@ describe('everyone at Baridi', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'Everyone' }))
     fireEvent.change(screen.getByLabelText('Team'), { target: { value: 'Sales' } })
     expect(screen.getByText('2 people shown.')).toBeTruthy()
+  })
+
+  /*
+   * B-154. The role filter used to say "Take part" while every row for that same role read
+   * "Takes part" (`roleWord`'s own word) - the same role, two different words, one letter apart.
+   * The filter now says "Takes part" too, and still finds exactly the people with that role.
+   */
+  it('the "Takes part" filter says the same word the table itself uses for that role', async () => {
+    open()
+    await screen.findByText('Miriam Wanjiku', { selector: '.gwui-person-name' })
+    expect(screen.queryByRole('radio', { name: 'Take part' })).toBeNull()
+    fireEvent.click(screen.getByRole('radio', { name: 'Takes part' }))
+    expect(screen.getByText('2 people shown.')).toBeTruthy()
+    expect(screen.getByText('Miriam Wanjiku', { selector: '.gwui-person-name' })).toBeTruthy()
+    expect(screen.getAllByText('Takes part').length).toBeGreaterThan(1)
   })
 
   /*

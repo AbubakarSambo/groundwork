@@ -417,6 +417,9 @@ export function InvitePage() {
             */}
             {opensLater && (
               <p role="status" className="gwui-callout">
+                {/* B-147 follow-up: the prototype's own exact phrase (B1-starting-a-check-in/
+                    new.txt, "the first check-in opens tomorrow at 4pm") says "check-in" here, not
+                    "session" - left as the prototype has it rather than swept into the rename. */}
                 {`Your first check-in opens on ${theDayOf(opensLater)}.`}
               </p>
             )}

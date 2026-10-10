@@ -30,8 +30,8 @@ import {
  * plan" red, the rest plain (item 9); and "Open" is a 14.5px regular navy link, not a bold button
  * (item 8).
  */
-type RoleFilter = 'Everyone' | 'Owner' | 'Admins' | 'Can open check-ins' | 'Take part' | 'Guests' | 'Needs something'
-const ROLE_FILTERS: RoleFilter[] = ['Everyone', 'Owner', 'Admins', 'Can open check-ins', 'Take part', 'Guests', 'Needs something']
+type RoleFilter = 'Everyone' | 'Owner' | 'Admins' | 'Can open check-ins' | 'Takes part' | 'Guests' | 'Needs something'
+const ROLE_FILTERS: RoleFilter[] = ['Everyone', 'Owner', 'Admins', 'Can open check-ins', 'Takes part', 'Guests', 'Needs something']
 
 /** Team, Role, Status, Check-ins, Open - the name column is PersonRow's own (PEOPLE_NAME_COLUMN). */
 const EXTRA_COLUMNS = '120px 170px 230px minmax(150px, 1fr) 40px'
@@ -43,7 +43,7 @@ function matches(filter: RoleFilter, m: OrgMember, ownerId: string | null): bool
     case 'Owner': return role === 'Owner'
     case 'Admins': return role === 'Admin' || role === 'Owner'
     case 'Can open check-ins': return role === 'Can open check-ins'
-    case 'Take part': return role === 'Takes part'
+    case 'Takes part': return role === 'Takes part'
     case 'Guests': return role === 'Guest'
     case 'Needs something': return needsSomething(m)
   }

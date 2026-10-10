@@ -65,26 +65,26 @@ function renderPage() {
 
 beforeEach(() => { vi.clearAllMocks() })
 
-describe('"Begin the last check-in" is offered throughout the run, as live had it', () => {
+describe('"End early with a last check-in" is offered throughout the run, as live had it', () => {
   it('is offered in session 1 of 6, five sessions from the end', async () => {
     (groundsApi.get as any).mockResolvedValue(ground(0))
     renderPage()
     await waitFor(() => expect(screen.getAllByText(/Sales team, Q3/i).length).toBeGreaterThan(0))
-    expect(await screen.findByText('Begin the last check-in')).toBeTruthy()
+    expect(await screen.findByText('End early with a last check-in')).toBeTruthy()
   })
 
   it('is offered once session 6 - the last one - is next', async () => {
     (groundsApi.get as any).mockResolvedValue(ground(5))
     renderPage()
     await waitFor(() => expect(screen.getAllByText(/Sales team, Q3/i).length).toBeGreaterThan(0))
-    expect(await screen.findByText('Begin the last check-in')).toBeTruthy()
+    expect(await screen.findByText('End early with a last check-in')).toBeTruthy()
   })
 
   it('is offered on a check-in with no planned number of sessions', async () => {
     (groundsApi.get as any).mockResolvedValue(ground(0, { timelineDays: null }))
     renderPage()
     await waitFor(() => expect(screen.getAllByText(/Sales team, Q3/i).length).toBeGreaterThan(0))
-    expect(await screen.findByText('Begin the last check-in')).toBeTruthy()
+    expect(await screen.findByText('End early with a last check-in')).toBeTruthy()
   })
 
   it('is not offered once the check-in has closed', async () => {
@@ -92,6 +92,6 @@ describe('"Begin the last check-in" is offered throughout the run, as live had i
     renderPage()
     await waitFor(() => expect(screen.getAllByText(/Sales team, Q3/i).length).toBeGreaterThan(0))
     await screen.findByText('People')
-    expect(screen.queryByText('Begin the last check-in')).toBeNull()
+    expect(screen.queryByText('End early with a last check-in')).toBeNull()
   })
 })

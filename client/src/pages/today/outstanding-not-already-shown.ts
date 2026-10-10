@@ -98,6 +98,25 @@ function leaveRequestKey(sentence: string): { name: string; dates: string } | nu
 }
 
 /**
+ * B-132: THE SAME SPEND REQUEST, "asked to spend" against "'s request to spend ... is waiting". Like
+ * `leaveRequestKey` above, matched by the person and what the sentence is actually about rather than
+ * its exact words, because the two sides are never worded the same: "What needs you" (`GET /today`)
+ * says "Tendai asked to spend 300,000 on the Mwangi agency, for the quarter.", and the lead's daily
+ * nudge (`GET /today/outstanding`) says "Tendai's request to spend 300,000 for the Mwangi agency, for
+ * the quarter is waiting for you to approve or decline." - the same amount and the same "what" (both
+ * built from `whatTheMoneyIsFor`), with "for" where the other sentence says "on".
+ *
+ * `about` (request 205) cannot be used for this one: the row in "What needs you" is keyed
+ * `approve-spend-<i>`, a position in the list rather than the request's own id, so an id can never
+ * match it (see the request to the engine in docs/requests-to-engine.md). This wording match is the
+ * only way left to catch it.
+ */
+function spendRequestKey(sentence: string): { name: string; amount: string; what: string } | null {
+  const m = /^([A-Z][A-Za-z]+)['’]s request to spend ([A-Z]{0,4}\s?[\d.,]+) for (.+?) is waiting for (?:you|them|him|her) to approve or decline\.?$/i.exec(sentence.trim())
+  return m ? { name: m[1].toLowerCase(), amount: normalise(m[2]), what: normalise(m[3]) } : null
+}
+
+/**
  * "Two requests are waiting for you to approve or decline." has no person and no subject of its own
  * to match on - only a count. Safe to drop only once Today already lists at least that many rows each
  * waiting for the reader to approve or decline it (`waitingForYouToApprove`'s own "It is waiting for
@@ -117,10 +136,25 @@ export function outstandingNotAlreadyShown(existingNeeds: Need[], sentences: str
 
   return sentences.filter((sentence, i) => {
     const entry = about?.[i]
-    /* REQUEST 205: matched by what the sentence is about, not by its words, whenever the server
-       says what that is. The wording checks below run only where it does not (an older server, or
-       a row `about` has nothing for). */
-    if (entry) return !alreadyShownByAbout(entry, existingNeeds)
+    /*
+     * B-191: AN `about` ENTRY THAT SAYS "NOT FOUND" NO LONGER SKIPS THE WORDING CHECKS BELOW.
+     *
+     * This used to stop here once `about` had an entry at all: "found by id, keep; not found by id,
+     * keep" - on the reasoning (request 205) that the wording checks were only a fallback for a
+     * server that sent no `about`. That held as long as every row `about` could point at carried the
+     * matching id on its own key. It broke for leave: `GET /today/outstanding` now sends
+     * `{ kind: 'requests', ids: ['leave:<uuid>'] }` for "Chidi's leave ... is waiting for you to
+     * approve or decline.", but "What needs you" (`GET /today`) keys its own leave row
+     * `approve-leave-0` - a position, not the request's id (the same shape `spendRequestKey`'s own
+     * comment already describes for spend) - so `alreadyShownByAbout` could never find it, and
+     * Chidi's leave (and Amani's, the same shape) was said twice on the same page.
+     *
+     * The id match still runs first and is still trusted on its own when it DOES find a row - it is
+     * the more precise test and nothing here should make it less certain. Only when it comes back
+     * "not shown" does this now fall through to the same wording checks a sentence with no `about`
+     * at all already relies on, so a row `about`'s ids cannot reach is still caught by what it says.
+     */
+    if (entry && alreadyShownByAbout(entry, existingNeeds)) return false
 
     if (alreadyOnScreen.some((text) => text.includes(sentence) || sentence.includes(text))) return false
 
@@ -129,6 +163,9 @@ export function outstandingNotAlreadyShown(existingNeeds: Need[], sentences: str
 
     const leave = leaveRequestKey(sentence)
     if (leave && normalisedAlready.some((text) => text.includes(leave.name) && text.includes(leave.dates))) return false
+
+    const spend = spendRequestKey(sentence)
+    if (spend && normalisedAlready.some((text) => text.includes(spend.name) && text.includes(spend.amount) && text.includes(spend.what))) return false
 
     const count = approvalSummaryCount(sentence)
     if (count !== null && approvalRowCount >= count) return false

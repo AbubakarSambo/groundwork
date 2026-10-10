@@ -165,7 +165,10 @@ function ARequest({ w, board }: { w: SpendWaiting; board: SpendBoard }) {
     <Row columns="minmax(0, 1fr) auto">
       <div>
         <b>{w.says}</b>
-        {w.category && <Tag>{w.category}</Tag>}
+        {/* B-155: the tag ran straight into the sentence on both sides with no space
+            ("...the Mombasa depotLabels", then the tag ran into the next line too), because
+            nothing separated the three inline pieces. */}
+        {w.category && <> <Tag>{w.category}</Tag>{' '}</>}
         {known && <p className="gwui-panel-text">{known}</p>}
         <p className="gwui-panel-text">{w.where}</p>
         {w.needs.map((n, i) => <p key={`n${i}`} className="gwui-panel-text">{n}</p>)}

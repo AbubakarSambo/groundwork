@@ -4,6 +4,8 @@ import { useSearchParams } from 'react-router-dom'
 import { groundsApi } from '@/api/grounds'
 import { AskGroundwork } from '@/components/gw/AskGroundwork'
 import { useAskStore } from '@/stores/ask'
+import { useAuthStore } from '@/stores/auth'
+import { askNameFor } from '@/lib/ask-name'
 
 /**
  * #/chat (D1, ask-on-a-phone.txt): Ask Groundwork as a page of its own, which is how a phone opens
@@ -30,6 +32,15 @@ export function AskPage() {
   const [searchParams] = useSearchParams()
   const about = searchParams.get('about')
   const askedAboutRef = useRef<string | null>(null)
+  /*
+   * B-163: THIS PAGE'S OWN HEADING SAID "CHAT", WHILE THE PANEL IT OPENS NAMES ITSELF AFTER THE
+   * ORGANISATION ("Ask Kijani Foods", decision 100). Read the same way AskGroundwork.tsx already
+   * does, from the signed-in person's own organisation, so a reader never sees two different names
+   * for the one assistant.
+   */
+  const authUser = useAuthStore(s => s.user) as any
+  const orgName = authUser?.organization?.name?.trim() || authUser?.organizationName || ''
+  const askDisplayName = askNameFor(orgName)
 
   const { data: ground, isFetched } = useQuery({
     queryKey: ['ask-about-ground', about],
@@ -58,7 +69,7 @@ export function AskPage() {
 
   return (
     <div style={{ maxWidth: 680, margin: '0 auto', padding: '24px 16px 16px', display: 'flex', flexDirection: 'column', gap: 16, height: 'calc(100dvh - var(--gw-bottom-nav, 0px))', boxSizing: 'border-box' }}>
-      <h1 style={{ margin: 0, fontFamily: 'var(--gw-font-name)', fontSize: 26, fontWeight: 500 }}>Chat</h1>
+      <h1 style={{ margin: 0, fontFamily: 'var(--gw-font-name)', fontSize: 26, fontWeight: 500 }}>{askDisplayName}</h1>
       <div style={{ flex: 1, minHeight: 0 }}>
         <AskGroundwork initialMessage={pendingAskMessage} onSentInitialMessage={consumePendingAskMessage} />
       </div>

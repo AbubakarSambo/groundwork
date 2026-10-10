@@ -47,6 +47,16 @@ export function LinkSentPanel({ email, resend: sendAgain, onUseDifferent, forRes
    * server-side already (entrySave sends it, and it does sign the person in afterwards); what was
    * missing was saying so here, since confirming the email first is still required either way -
    * nothing can let somebody claim an address they have not proved they own.
+   *
+   * B-192: "OPEN IT TO FINISH" WAS NOT ALWAYS TRUE. Opening the link signs somebody in straight away
+   * only when the server can place them in an organisation on its own. When it cannot - most plainly,
+   * a brand new organisation, which nothing but the person themselves can name - the link's own page
+   * asks "Where do you work?" first (`MagicVerifyPage`'s `whereDoYouWork` branch), and the account,
+   * password included, does not exist until that is answered. Halima opened the link, saw that
+   * question, and left; no account existed, and her password was then refused at sign-in. This
+   * component never sees which case it will be, so it says the true, general thing: opening the link
+   * is the first step, with anything it still asks for on the way, rather than promising it is the
+   * only one.
    */
   withPassword?: boolean
 }) {
@@ -72,7 +82,7 @@ export function LinkSentPanel({ email, resend: sendAgain, onUseDifferent, forRes
       sub={forReset
         ? <>If there is an account for <strong>{email}</strong>, we sent it a link to choose a new password. The link works for an hour.</>
         : withPassword
-          ? <>Your password is saved. We sent a link to <strong>{email}</strong> to confirm it is yours. Open it to finish, then sign in with your password any time.</>
+          ? <>Your password is saved. We sent a link to <strong>{email}</strong> to confirm it is yours. Open it, and answer anything it still asks you - once that is done, you can sign in with your password any time.</>
           : <>We sent a sign-in link to <strong>{email}</strong>. Open it on any device.</>}
     >
       {failed && <AuthError>{failed}</AuthError>}

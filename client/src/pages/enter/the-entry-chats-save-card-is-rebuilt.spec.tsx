@@ -62,7 +62,7 @@ vi.mock('@/api/entry', () => ({
 vi.mock('@/api/auth', () => ({ authApi: { entrySave: vi.fn(), colleagues: vi.fn().mockResolvedValue([]) } }))
 vi.mock('@/api/billing', () => ({ billingApi: { checkCanCreateGround: vi.fn().mockResolvedValue({ allowed: true }) } }))
 
-let authedUser: { id: string; email: string } | null = null
+let authedUser: { id: string; email: string; firstName?: string } | null = null
 vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ user: authedUser, isAuthenticated: !!authedUser }) }))
 
 function expectAtMostOnePrimaryButton(container: HTMLElement) {
@@ -152,18 +152,33 @@ describe('the save card, anonymous, before saving', () => {
 
 describe('the save card, already signed in', () => {
   it('offers one save button straight to the account, with no email step', async () => {
-    authedUser = { id: 'u1', email: 'rukia@example.test' }
+    authedUser = { id: 'u1', email: 'rukia@example.test', firstName: 'Rukia' }
     const { authApi } = await import('@/api/auth')
     seedClosedSession()
     const { container } = renderPage()
     fireEvent.click(await screen.findByText(/Invite and finish/))
     expect(screen.getByRole('button', { name: 'Save this' })).toBeTruthy()
     /* FAULT E (reviewer, third round): "Saving to rukia@example.test. No confirmation needed,
-       you are already signed in." read like a log line. One plain sentence instead. */
-    expect(screen.getByText('We save this to your account, rukia@example.test.')).toBeTruthy()
+       you are already signed in." read like a log line. One plain sentence instead.
+
+       SCREEN FAULT (engine workspace, 9 October night, test bed copy a): that plain sentence
+       still named the account and gave the address ("We save this to your account,
+       admin@fieldnote.test."). Updated to speak to the person by first name, with no "account"
+       and no address. This test is changed because it pinned the old, faulty wording. */
+    expect(screen.getByText('We save this for you, Rukia.')).toBeTruthy()
+    expect(screen.queryByText(/We save this to your account/)).toBeNull()
     expect(screen.queryByPlaceholderText('your@email.com')).toBeNull()
     expectAtMostOnePrimaryButton(container)
     expect(authApi.entrySave).not.toHaveBeenCalled()
+  })
+
+  it('falls back to a plain sentence with no address when no name is known', async () => {
+    authedUser = { id: 'u1', email: 'rukia@example.test' }
+    seedClosedSession()
+    renderPage()
+    fireEvent.click(await screen.findByText(/Invite and finish/))
+    expect(screen.getByText('We save this for you.')).toBeTruthy()
+    expect(screen.queryByText(/rukia@example\.test/)).toBeNull()
   })
 
   /*
@@ -240,7 +255,7 @@ describe('the save card, already signed in', () => {
    * for whom it is still true.
    */
   it('setting more than one session never tells an already signed-in lead to sign in', async () => {
-    authedUser = { id: 'u1', email: 'rukia@example.test' }
+    authedUser = { id: 'u1', email: 'rukia@example.test', firstName: 'Rukia' }
     localStorage.setItem('gw_entry_session', JSON.stringify({
       scenario: 'PIP', closed: false, flowPath: 'self', onboardingStep: 7,
       history: [{ role: 'assistant', content: 'How is it going?' }],
@@ -264,8 +279,11 @@ describe('the save card, already signed in', () => {
     expect(screen.queryByText(/Save your session below to get set up/)).toBeNull()
     expect(screen.queryByText(/means signing in/)).toBeNull()
     /* FAULT E (reviewer, third round): this line is reworded too, from "Saving to ... No
-       confirmation needed, you are already signed in." */
-    expect(screen.getByText(/We save this to your account, rukia@example\.test\./)).toBeTruthy()
+       confirmation needed, you are already signed in."
+
+       SCREEN FAULT (engine workspace, 9 October night): reworded again, by first name, with no
+       "account" and no address. This test is changed for the same reason as above. */
+    expect(screen.getByText('We save this for you, Rukia.')).toBeTruthy()
   })
 
   /** And the same prompt still says it to a stranger, for whom it remains true. */

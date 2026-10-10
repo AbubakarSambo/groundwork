@@ -613,6 +613,14 @@ export default function App() {
               it exist in the wild and in old emails.
             */}
             <Route path="/chat/:checkInId" element={<ChatRedirect />} />
+            {/*
+              B-128: a webhook's `permalink` for a finished check-in builds `/check-in/<id>`, with a
+              hyphen - a real address the client never had. Opened from a connected tool's
+              notification, it read "Nothing is at this address". Same redirect as `/chat/:id` above,
+              to the one real route; a request to fix the hyphen at its source is in
+              docs/requests-to-engine.md.
+            */}
+            <Route path="/check-in/:checkInId" element={<ChatRedirect />} />
             <Route path="/checkin/:checkInId" element={<RequireOrgSetup><ChatPage /></RequireOrgSetup>} />
             {/*
               THE REPORT ONE SESSION ENDED ON, on its own route.

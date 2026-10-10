@@ -12,12 +12,13 @@ import { SCENARIO_LABELS, SCENARIO_GROUPS, scenarioLabel, SCENARIO_FACTS, CADENC
 import { groupOfCard } from '@/pages/grounds/CreateGroundPage'
 import { useSearchParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { entryApi, entryAnchorApi } from '@/api/entry'
+import { entryApi, entryAnchorApi, type OnboardResult } from '@/api/entry'
 import { billingApi } from '@/api/billing'
 import { authApi } from '@/api/auth'
 import { PeoplePicker } from '@/components/gw/PeoplePicker'
 import { useEntryStore } from '@/stores/entry'
 import { useAuthStore } from '@/stores/auth'
+import { planLimitNotice } from '@/lib/the-plan-limit-notice-fits-the-reader'
 import { VennIcon } from '@/components/gw/VennIcon'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
@@ -41,7 +42,7 @@ import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-t
 import { copy } from '@/components/gw/copying-can-fail'
 import { whatIsSetAndWhatIsNot, whenTheCheckInsLand } from '@/components/gw/when-the-check-ins-land'
 import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
-import { Button, Callout, Note, TextField, TextArea, Bubble, Composer, PhaseSteps, Modal, Mark } from '@/components/gw/ui'
+import { Button, Callout, Note, TextField, TextArea, Bubble, Composer, PhaseSteps, Modal, Mark, GroundworkIsWriting } from '@/components/gw/ui'
 
 /*
  * A COLLEAGUE ON THE INVITE LIST, BY ID (U.4). The list of colleagues carries no addresses, so a
@@ -66,6 +67,10 @@ function asSomeoneToInvite(entry: string, displayNames?: Record<string, string>)
 
 /** What a person may say in one message. The API's cap on every door; the same number here so a turn is never refused. */
 const A_MESSAGE_MAX = 8000
+
+/* B-193: how long a set-up message may go without even its first delta before the watchdog in
+   `sendOnboarding` gives up on it. See the comment at its call site. */
+const ENTRY_SEND_MAY_TAKE = 45_000
 
 const STORAGE_KEY = 'gw_entry_session'
 /** Where the API lives, for the one place we hand the browser away (Google). */
@@ -2322,11 +2327,29 @@ export function EntryChatPage() {
        */
       setOnboardingDraft('')
       let draft = ''
-      const res = await entryApi.onboardStream(
+      let gotAnyDelta = false
+      /*
+       * B-193: A HUNG STREAM USED TO LEAVE THE SCREEN SILENT FOREVER.
+       *
+       * `onboardStream` had no watchdog, unlike `ChatPage`'s own `open()` (see "A WATCHDOG" there).
+       * If the stream never sent a delta and never settled - the real shape of "Entry stream
+       * failed" on the server, seen live as a description that sat on screen for 90 seconds with
+       * no writing indicator and no error, even after reopening the page - nothing here ever threw,
+       * so the `catch` below never ran: no message, no composer text restored, no way forward.
+       *
+       * `entryStreamPromise` is raced against a timeout that only fires if NOT ONE delta has
+       * arrived yet - a reply that is genuinely streaming (even slowly) is never cut off, only one
+       * that has said nothing at all in 45 seconds, the same generous allowance ChatPage's own
+       * watchdog uses for a request that never truly started. The original promise is left running
+       * and given a no-op `catch` so a late answer arriving after the timeout has already fired
+       * does not surface as an unhandled rejection; if it resolves anyway, the reply is simply
+       * never shown; a sent message is already not lost either way (persisted just above).
+       */
+      const entryStreamPromise = entryApi.onboardStream(
         withoutPickedOpener(newHistory) as Turn[],
         isAnchorDraft() ? 'HELP_TEAM_UNDERSTAND' : (onboardingSelections.classifiedScenario || (scenarioNow === undefined ? pickedScenario : scenarioNow) || scenario || undefined),
         onboardingSelections.mode === 'something_new' ? 'STARTING' : undefined,
-        (text) => { draft += text; setOnboardingDraft(draft) },
+        (text) => { gotAnyDelta = true; draft += text; setOnboardingDraft(draft) },
         /*
          * WHAT THE LAST TURN ALREADY WORKED OUT, HANDED BACK.
          *
@@ -2343,6 +2366,15 @@ export function EntryChatPage() {
           ...(plannedFrom?.timelineDays ? { timelineDays: plannedFrom.timelineDays } : {}),
         },
       )
+      entryStreamPromise.catch(() => { /* a late answer after the watchdog already fired - see above */ })
+      const res = await Promise.race([
+        entryStreamPromise,
+        new Promise<OnboardResult>((_, reject) => {
+          setTimeout(() => {
+            if (!gotAnyDelta) reject(Object.assign(new Error('The conversation could not be reached just now.'), { isTimeout: true }))
+          }, ENTRY_SEND_MAY_TAKE)
+        }),
+      ])
       setOnboardingDraft('')
       // Safety net: if the endpoint says we are ready to wrap up but the reply
       // still asks a question, showing the wrap-up card would strand that
@@ -2482,7 +2514,7 @@ export function EntryChatPage() {
       setTimeout(() => {
         if (msgsRef.current) msgsRef.current.scrollTop = msgsRef.current.scrollHeight
       }, 50)
-    } catch {
+    } catch (err: any) {
       /**
        * IT SAID THE MESSAGE WAS STILL HERE AND PUT IT NOWHERE.
        *
@@ -2495,7 +2527,18 @@ export function EntryChatPage() {
        */
       setOnboardingHistory(onboardingHistory)
       setInput(text.trim())
-      toast.error('That did not send - your message is back in the box. Try again.')
+      /*
+       * B-193: THE WATCHDOG'S OWN FAILURE SAYS SO, LIKE THE CHECK-IN CHAT DOES.
+       *
+       * `err.isTimeout` is only set by the race above - a stream that genuinely sent nothing in
+       * 45 seconds, Groundwork's own version of what the check-in chat calls "The conversation
+       * could not be reached just now". An ordinary send failure (a 400, a dropped connection that
+       * rejected quickly) keeps the plainer "That did not send" wording, since it is not the same
+       * fact: that one failed and said so at once; this one never answered at all.
+       */
+      toast.error(err?.isTimeout
+        ? 'The conversation could not be reached just now, so this cannot continue this minute. Nothing you wrote is lost - it is back in the box below. Try again.'
+        : 'That did not send - your message is back in the box. Try again.')
     } finally {
       setOnboardingLoading(false)
     }
@@ -2935,7 +2978,7 @@ export function EntryChatPage() {
     if (history.length === 0) {
       setShowSave(false)
       setClosed(false)
-      toast.info('Nothing is on record yet. Your first check-in opens now; save when it closes.')
+      toast.info('Nothing is on record yet. Your first session opens now; save when it closes.')
       startCheckin.mutate()
       return
     }
@@ -3982,8 +4025,12 @@ export function EntryChatPage() {
             {refusedByThePlan && (
               <div className="gwui-ec-refusal-band">
                 <Callout tone="warning" title={whetherTheyMayOpenOne.data?.noPlan ? 'No plan yet' : 'You have used all of your free check-ins'}>
-                  {refusedByThePlan} You can still set this one up and it stays on this device, but it cannot be saved to your account until then.{' '}
-                  <button type="button" className="gwui-plain-link" onClick={() => navigate('/billing')}>See plans</button>
+                  {planLimitNotice({
+                    reason: refusedByThePlan,
+                    isAdmin: user?.role === 'ADMIN',
+                    continuation: 'You can still set this one up and it stays on this device, but it cannot be saved to your account until then.',
+                    onSeePlans: () => navigate('/billing'),
+                  })}
                 </Callout>
               </div>
             )}
@@ -4071,14 +4118,7 @@ export function EntryChatPage() {
 
               {onboardingLoading && (
                 <Bubble mine={false}>
-                  {onboardingDraft ? onboardingDraft : (
-                    <span className="gwui-ci-dots">
-                      <span className="gwui-ec-thinking">Thinking</span>
-                      {[0, 1, 2].map(i => (
-                        <span key={i} className="gwui-ci-dot" style={{ animationDelay: `${i * 0.2}s` }} />
-                      ))}
-                    </span>
-                  )}
+                  {onboardingDraft ? onboardingDraft : <GroundworkIsWriting wrap={false} />}
                 </Bubble>
               )}
 
@@ -4426,13 +4466,7 @@ export function EntryChatPage() {
                 const typing = m.content === '…'
                 return (
                   <Bubble key={i} mine={m.role === 'user'} opacity={typing ? 0.45 : 1}>
-                    {typing ? (
-                      <span className="gwui-ci-dots">
-                        {[0, 1, 2].map(i2 => (
-                          <span key={i2} className="gwui-ci-dot" style={{ animationDelay: `${i2 * 0.2}s` }} />
-                        ))}
-                      </span>
-                    ) : nothingInternalReachesTheBubble(m.content)}
+                    {typing ? <GroundworkIsWriting wrap={false} /> : nothingInternalReachesTheBubble(m.content)}
                     {streamingIdx === i && <span className="gwui-ci-caret" />}
                   </Bubble>
                 )
@@ -4919,8 +4953,14 @@ export function EntryChatPage() {
                   {/* FAULT E (reviewer, third round): "Saving to amina@suites.test. No confirmation
                       needed, you are already signed in." read like a log line, not a sentence a
                       person would read - "saving to" an address is what a form does, not what a
-                      person says. Said as what it actually is: the account this goes to. */}
-                  We save this to your account, {user.email}.
+                      person says. Said as what it actually is: the account this goes to.
+
+                      SCREEN FAULT (engine workspace, 9 October night): it still said "to your
+                      account" and gave the address, when the person reading it is signed in and
+                      has a name - the address is the login word's business, not theirs. Now it
+                      speaks to them, by name, with no "account" and no address. Only when no name
+                      is known does it fall back to the plain sentence with nobody named. */}
+                  {user.firstName ? `We save this for you, ${user.firstName}.` : 'We save this for you.'}
                 </div>
                 {/* A WAY OUT OF THE CARD. It covers the whole page, including the page's own Start over,
                     so a card that cannot save (an old empty lead session) was a screen with one button
