@@ -1799,10 +1799,21 @@ export function GroundAdminPage() {
                * sentence anybody writes - nobody says "zero people" where "nobody" is the plain
                * word, and "1 people" is simply wrong. Zero says so plainly; one person is a person,
                * not a one-member "people".
+               *
+               * B-148: NOT SAID TWICE. When the lead takes part herself, has already answered, and
+               * is only waiting on others, the attention Note just above already says exactly this
+               * ("One of the three has not answered yet."), from `railAttention`'s own count.
+               * Saying it again here, in different words, read as the product repeating itself -
+               * the audit's own complaint. Left out only in that one case: `viewerChecksIn` keeps
+               * this sentence for a lead who only manages (an anchor check-in), whose own "waiting"
+               * state has no Note above it to duplicate, and for the lead's own turn or anybody
+               * who is not the initiator, none of which this guard touches.
                */
-              parts.push(
-                howManyCheckedInSentence(clockRoundDone, total, clockRound),
-              )
+              if (!(isInitiator && viewerChecksIn && attention.kind === 'waiting')) {
+                parts.push(
+                  howManyCheckedInSentence(clockRoundDone, total, clockRound),
+                )
+              }
             }
             if (roundWentBack) parts.push(`It went back to session ${openRound}, because somebody new was added. Nothing anybody wrote is lost.`)
           }
