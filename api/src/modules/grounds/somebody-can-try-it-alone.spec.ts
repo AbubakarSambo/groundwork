@@ -47,7 +47,7 @@ describe('trying it on your own', () => {
 
   it('carries the three facts and no fourth thing', () => {
     expect(HELP).toContain('Be both people from one inbox');
-    expect(HELP).toContain('Do the second round today');
+    expect(HELP).toContain('Do the second session today');
     expect(HELP).toContain('See how it ends');
     /* Three steps in the list. A fourth would be the product explaining itself to itself. */
     const at = HELP.indexOf('const TRY_IT = [');

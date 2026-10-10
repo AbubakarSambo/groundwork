@@ -1407,10 +1407,12 @@ export class GroundsService {
         });
       }
 
-      const links = await this.prisma.groundParticipant.findMany({
-        where: { userId, ground: { organizationId: { not: organizationId } } },
-        select: { groundId: true },
-      });
+      /*
+       * ONLY THE ORGANISATION CHOSEN (B-197, 10 October 2026). This used to add the check-ins of every OTHER organisation the person takes part in, from the days
+       * before the switcher. Somebody in two organisations (Neema, in Msingi Foods and Lakeview Clinic) read each one's check-ins under the other's name, on Today, You, the
+       * switcher and Ask's picker. The list is the chosen organisation's alone; to read the other's, she switches to it.
+       */
+      const links: { groundId: string }[] = [];
       if (links.length) {
         participantGrounds = await this.prisma.ground.findMany({
           where: { id: { in: links.map(l => l.groundId) } },
