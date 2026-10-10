@@ -2,6 +2,38 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## The role interview made lighter, and two more 24-scenario runs at 9 answers (10 October, evening)
+
+**Why.** Under the baseline's own conditions (9 answers a person) the first version of the interview scored WORSE on specific detail, blocker checked and patterns found, because it added about three turns. The coordinator asked for a lighter one that adds no more than one turn.
+
+**What changed** (`conversation/their-role-in-the-first-check-in.ts`, stored prompts now v3 on the test bed): the first check-in asks one question, once, about what they are responsible for and what doing well looks like in it, from their second answer on, and not at all when the check-in has already asked what they understood their role to be. Who they depend on and what gets in their way are no longer asked; the reading takes them from the answers the check-in already asks for (what they need from others, what is blocked). Asked once is asked: a short answer is not asked for again. The reading was also told to prefer the answer that describes their own job over one about this piece of work. That last change came after the two runs below and was checked on a fourth walk: "I write and review the payments code, I'm on call when charges fail, and I own the webhook handlers." is now what is kept as what they own. It does not touch the conversation, so it cannot move the scorer's numbers.
+
+**Walks, lighter code (every turn read).** The role is still learned in all three. Joseph (sales rep): job, responsible for, doing well, depends on and in the way all kept. Amina (backend developer): job, depends on (Paystack support, Daniel in finance) and in the way (interruptions) kept; "responsible for" first came out as the project task rather than her job, which the reading fix above corrects. Naledi (finance officer): job, responsible for, depends on, in the way kept; "doing well" was not, because it is no longer asked on its own. In two of three walks the job was already asked by the check-in's own questions ("What did you understand your role in this billing move to be, in your own words?", "It sounds like most of your work is sales. Is that right?"), so no extra turn was added.
+
+**The Context in Ask journey, once more: 35 of 35.**
+
+**The two runs at 9 answers, scored against `docs/baseline.json`** (`run-oct10c`, `run-oct10d`; shards 2 and 3 of the second run crashed at their start on a prompt-seeding race of the in-process runner and were started again, which changes nothing in what was run):
+
+| Engine value | Baseline | Heavy interview, 9 answers | Lighter, run c | Lighter, run d |
+| --- | --- | --- | --- | --- |
+| proof asked for | 42 | 40 | **30** | **26** |
+| past words | 25 | 36 | 37 | 36 |
+| specific detail | 88 | 78 | 111 | 102 |
+| blocker checked | 37 | 32 | 55 | 60 |
+| differences | 29 | 37 | 41 | 38 |
+| agreements | 56 | 93 | 78 | 86 |
+| findings | 81 | 87 | 87 | 87 |
+| patterns found | 100 | 83 | 102 | 119 |
+| commitments | 33 | 51 | 59 | 50 |
+| central question | 29 | 29 | 28 | 29 |
+| judgement present | 21 | 29 | 29 | 29 |
+| every problem | 0 | 0 | 0 | 0 |
+| turns asking more than one question | 37 | 0 | 0 | 0 |
+| jargon in Groundwork's turns | 42 | 17 | 18 | 21 |
+| closed on their own inside 9 answers (of 87) | | 15 | 33 | 38 |
+
+**Verdict: not got back on one number.** Specific detail, blocker checked and patterns found are back above the baseline (patterns 102 and 119). **Proof asked for is below 90% of the baseline in both runs (30 and 26 against 42), so the scorer says WORSE both times.** Plainly: that count is made from a few turns per scenario (0 to 7 in each), and on code without any role interview it was 38, 27 and 34 in the earlier runs of this branch and 41 and 35 on wip/next, so the baseline's 42 is at the top of its range. But 30 and 26 are at the bottom of that range, two runs in a row, and I cannot tell from these whether the lighter interview takes some of it. A control run of the engine without the interview, at 9 answers, would tell, and I have not run one. As instructed, I stopped here and changed nothing further.
+
 ## Decision 129 on wip/release: Context in Ask, the role interview in a first check-in, and the pattern run (10 October)
 
 All on the test bed (copy a, the real model, `api/journey/sweep/bed.sh`), built from the main folder. Nothing from `wip/next` except the commits named in the task.

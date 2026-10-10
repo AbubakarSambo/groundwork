@@ -1,0 +1,49 @@
+# Scores for 24 scenarios
+
+## Problems in what people read (must go down to zero)
+
+| What | Now | Baseline | Change |
+| --- | --- | --- | --- |
+| slot names glued to answers | 0 | 734 | -734 |
+| internal labels shown (initiator, Participant A, the person who set this up) | 0 | 1153 | -1153 |
+| machine table words shown (FIELD:, standing:, by kind -, answered ·) | 1 | 1461 | -1460 |
+| sentence starting in lower case | 0 | 579 | -579 |
+| "nothing contradicts" then differences | 0 | 104 | -104 |
+| name with a stray full stop | 0 | 122 | -122 |
+| "1 people" | 0 | 61 | -61 |
+| role description used as a name | 0 | 312 | -312 |
+| text cut mid-word | 0 | 48 | -48 |
+| participant report carries the lead's judgement | 0 | 21 | -21 |
+| report with no judgement | 0 | 8 | -8 |
+
+## Engine value (must not go down)
+
+| What | Now | Baseline | Change |
+| --- | --- | --- | --- |
+| proof asked for (turns) | 26 | 42 | -16 |
+| past words brought back (turns) | 36 | 25 | +11 |
+| specific detail asked for (turns) | 102 | 88 | +14 |
+| blocker checked: who, what was tried, by when (turns) | 60 | 37 | +23 |
+| differences found (reports) | 38 | 29 | +9 |
+| agreements found (reports) | 86 | 56 | +30 |
+| per-person findings (reports) | 87 | 81 | +6 |
+| patterns found | 119 | 100 | +19 |
+| commitments recorded | 50 | 33 | +17 |
+| central question present (reports) | 29 | 29 | 0 |
+| judgement present (reports) | 29 | 21 | +8 |
+
+## The conversation
+
+| What | Now | Baseline | Change |
+| --- | --- | --- | --- |
+| Groundwork turns | 820 | 747 | +73 |
+| turns that ask more than one question | 0 | 37 | -37 |
+| curt turns (under 5 words, not a question) | 0 | 0 | 0 |
+| jargon in Groundwork's turns | 21 | 42 | -21 |
+| jargon in reports and boards | 61 | 511 | -450 |
+| average words per Groundwork turn | 23.7 | 26.4 | -2.6999999999999993 |
+
+## Verdict
+
+WORSE THAN THE BASELINE:
+- engine value dropped: proof asked for (turns) (42 to 26)
