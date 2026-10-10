@@ -107,7 +107,7 @@ function Row({ row, onTakeBack, busy }: { row: MyRow; onTakeBack: () => void; bu
                 minHeight: 32, display: 'inline-flex', alignItems: 'center',
               }}
             >
-              This is not what I said
+              Something here isn’t right
             </button>
           )}
       </div>
