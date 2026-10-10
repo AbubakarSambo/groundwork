@@ -59,14 +59,13 @@ describe('who this is for', () => {
 describe('what the conversation is given', () => {
   const turns = (...t: [string, string][]) => t.map(([role, content]) => ({ role: role as 'AI' | 'PERSON', content }));
 
-  it('is the four things and how to ask them, in plain words, and not for the opener', async () => {
+  it('is one question about the job, with who they depend on and what gets in their way read from the work\'s own answers, and not for the opener', async () => {
     const w = world();
     expect((await theRoleBlock(w.deps, CHECK_IN, [], { forTheOpener: true })).block).toBe('');
     const { block } = await theRoleBlock(w.deps, CHECK_IN, turns(['AI', 'What are you working on this week?'], ['PERSON', 'The Mombasa pitch.']));
-    for (const part of ['what they are responsible for', 'what doing well looks like in their job', 'who they depend on to do it, and who depends on them', 'what usually gets in their way']) expect(block).toContain(part);
-    expect(block).toMatch(/one question at a time/);
-    expect(block).toMatch(/Ask four short questions at most/);
-    expect(block).toMatch(/Never ask one as your first question/);
+    expect(block).toMatch(/ONE question, once/);
+    expect(block).toMatch(/never as your first question/);
+    expect(block).toMatch(/Never ask a separate question about who they depend on or what gets in their way/);
     expect(block).not.toMatch(/\brecord\b|\bround\b|\bslot\b|\bpackage\b/i);
   });
 
@@ -89,19 +88,19 @@ describe('what the conversation is given', () => {
     const { block } = await theRoleBlock(world().deps, CHECK_IN, t);
     expect(block).toMatch(/ALREADY ANSWERED THIS SESSION/);
     expect(block).toContain('Nairobi accounts');
-    expect(block).toMatch(/NOT ASKED YET:[\s\S]*doing well looks like/);
-    expect(block.split('NOT ASKED YET:')[1].split('ALREADY')[0]).not.toContain('responsible for');
+    expect(block).toMatch(/Everything above is covered for this session/);
   });
 
-  it('where the job\'s name is not known, it is asked in the same breath as what they are responsible for', async () => {
-    const { block } = await theRoleBlock(world().deps, CHECK_IN, turns(['AI', 'Hello.']));
-    expect(block).toMatch(/NOT ASKED YET:\n- what their job is, and what they are responsible for in it/);
+  it('asked once is asked: a short answer is not asked for again', async () => {
+    const t = turns(['AI', 'What are you responsible for in your job?'], ['PERSON', 'Sales.']);
+    const r = await theRoleBlock(world().deps, CHECK_IN, [...t, ...turns(['AI', 'By when?'], ['PERSON', 'Friday.'])]);
+    expect(r.thisTurn).toBe('');
   });
 
   it('a person whose job we know is not asked what it is called', async () => {
     const { block } = await theRoleBlock(world({ jobTitle: 'Sales representative' }).deps, CHECK_IN, turns(['AI', 'Hello.']));
     expect(block).toContain('WE ALREADY KNOW THEIR JOB AS: "Sales representative". Do not ask what it is called.');
-    expect(block).toMatch(/NOT ASKED YET:\n- what they are responsible for in their job/);
+    expect(block).toContain('NOT ASKED YET:\n- what they are responsible for in their job, and what doing well looks like in it');
   });
 
   it('from their second answer, on every other turn, one thing is named for this turn, and never twice in a row', async () => {
@@ -109,34 +108,29 @@ describe('what the conversation is given', () => {
     expect((await theRoleBlock(world().deps, CHECK_IN, one)).thisTurn).toBe('');
     const two = [...one, ...turns(['AI', 'By when?'], ['PERSON', 'The 30th of November.'])];
     const r = await theRoleBlock(world().deps, CHECK_IN, two);
-    expect(r.thisTurn).toBe('FOR THIS TURN, ABOUT THEIR JOB. This turn, do not ask your next question about the work. Open with one short sentence that responds to what they just said (if they voiced a worry, acknowledge it) and leads into your question. Then ask ONE friendly question, in your own words, about what their job is, and what they are responsible for in it. Do not explain why you are asking, do not add a sentence after the question, and do not say what check-in this is. It is the only question in this turn. Next turn, go back to the work.');
+    expect(r.thisTurn).toBe('FOR THIS TURN, ABOUT THEIR JOB. This turn, do not ask your next question about the work. Open with one short sentence that responds to what they just said (if they voiced a worry, acknowledge it) and leads into your question. Then ask ONE friendly question, in your own words, about what their job is, what they are responsible for in it, and what doing well looks like in it. Do not explain why you are asking, do not add a sentence after the question, and do not say what check-in this is. It is the only question in this turn. Next turn, go back to the work.');
     const asked = [...two, ...turns(['AI', 'What are you responsible for in your job?'], ['PERSON', 'I look after the Nairobi accounts and the monthly number.'])];
     expect((await theRoleBlock(world().deps, CHECK_IN, asked)).thisTurn).toBe('');
-    const later = [...asked, ...turns(['AI', 'What is the biggest risk?'], ['PERSON', 'The Serena committee, they sit once a month.'])];
-    expect((await theRoleBlock(world().deps, CHECK_IN, later)).thisTurn).toMatch(/about what doing well looks like in their job\./);
   });
 
   it('nothing at all for somebody who has done a check-in before', async () => {
     expect((await theRoleBlock(world({ earlier: 1 }).deps, CHECK_IN, turns(['AI', 'Hello.']))).block).toBe('');
   });
 
-  it('the topics are what decision 129 lists', () => {
-    expect(ROLE_TOPICS.map((t) => t.what)).toEqual([
-      'what they are responsible for in their job', 'what doing well looks like in their job',
-      'who they depend on in their job, and who depends on them', 'what usually gets in their way in their job',
-    ]);
+  it('the one thing asked is what decision 129 puts first: responsible for, and what doing well looks like', () => {
+    expect(ROLE_TOPICS.map((t) => t.what)).toEqual(['what they are responsible for in their job, and what doing well looks like in it']);
   });
 });
 
 describe('what the check-in already asked counts for the job', () => {
   const turns = (...t: [string, string][]) => t.map(([role, content]) => ({ role: role as 'AI' | 'PERSON', content }));
-  it('"what did you understand your role to be" and a real answer cover what they are responsible for', () => {
+  it('"what did you understand your role to be" and a real answer cover it', () => {
     const c = coverageOf(ROLE_TOPICS, turns(['AI', 'What did you understand your role in this to be, in your own words?'], ['PERSON', 'I would lead the engineering team and own the product roadmap decisions.']));
-    expect(c.answered.map((a) => a.what)).toEqual(['what they are responsible for in their job']);
+    expect(c.answered.map((a) => a.what)).toEqual(['what they are responsible for in their job, and what doing well looks like in it']);
   });
-  it('a question about what is blocking them covers what usually gets in their way', () => {
+  it('a question about the work, such as what is blocked, is not the job question', () => {
     const c = coverageOf(ROLE_TOPICS, turns(['AI', 'Is there anything blocked on someone else right now?'], ['PERSON', 'Yes, the depot is slow to confirm stock and finance sits on approvals.']));
-    expect(c.answered.map((a) => a.what)).toEqual(['what usually gets in their way in their job']);
+    expect(c.notAsked).toHaveLength(1);
   });
 });
 
@@ -153,7 +147,7 @@ describe('a turn that was meant to ask about the job', () => {
     expect(asksAboutTheirJob(owns, 'What is the next thing you will do about the Serena account, and by when?')).toBe(false);
   });
   it('is asked again with one plain line', () => {
-    expect(THE_REPLY_DID_NOT_ASK_ABOUT_THEIR_JOB(owns.what)).toBe('YOUR REPLY DID NOT ASK ABOUT THEIR JOB, AND THIS TURN IS THE ONE FOR IT. Write the reply again: one short sentence that responds to what they just said (if they voiced a worry, acknowledge it), then ONE friendly question, in your own words, about what they are responsible for in their job. Do not explain why you are asking, do not add a sentence after the question, and do not say what check-in this is. It is the only question in the reply.');
+    expect(THE_REPLY_DID_NOT_ASK_ABOUT_THEIR_JOB(owns.what)).toBe('YOUR REPLY DID NOT ASK ABOUT THEIR JOB, AND THIS TURN IS THE ONE FOR IT. Write the reply again: one short sentence that responds to what they just said (if they voiced a worry, acknowledge it), then ONE friendly question, in your own words, about what they are responsible for in their job, and what doing well looks like in it. Do not explain why you are asking, do not add a sentence after the question, and do not say what check-in this is. It is the only question in the reply.');
   });
 });
 

@@ -34,17 +34,13 @@ export const theRoleMapQuestion = (roleName: string, owns: string): string =>
 /** The things the conversation learns about the job, in the words used about them. Never questions to be read out. */
 /** How each thing is asked in a conversation. Only these words count as having asked it, so a turn about something else is never taken for one of these. */
 const ASKED_AS: Record<string, RegExp> = {
-  'role-owns': /\b(?:what did you understand your (?:role|part)|understand(?:ing)? (?:of )?your role in this|what is your (?:job|role)(?: title)?(?: called)?|what do you do (?:here|for work|at \w+)|your job title|what do you call your (?:job|role)|what (?:would|do) you call (?:your|the) (?:job|role)|responsible for|you own|in charge of|accountable for|what does your (?:job|role) (?:cover|involve|include)|what (?:is|are) (?:your|the) main (?:responsibilit|part)|what is your job (?:made of|about)|your day[- ]to[- ]day)/i,
-  'role-good': /\b(?:doing (?:it |this |the job |your job |your role )?well|good looks like|what does (?:a )?good|how (?:will|would|do) you know (?:you(?:'| a)re|it is|that you(?:'| a)re) (?:doing|going) well|success (?:in|for) your (?:job|role))\b/i,
-  'role-depends': /\b(?:depend(?:s|ing)? on|rely on|relies on|who (?:do )?you (?:need|wait for|count on)|who needs you|who (?:waits|is waiting) for you|who counts on you)\b/i,
-  'role-way': /\b(?:blocked on|blocking|holding (?:you|it|this) up|holding you back|what(?:'s| is) stopping|gets? in your way|in your way|gets? in the way|what (?:usually )?(?:slows|blocks|holds) you|most often (?:slows|stops|blocks))\b/i,
+  /* One question, about their job and what doing well is in it, however it is worded. What they depend on and what gets in their way are read from the answers the check-in already asks for. */
+  'role-owns': /\b(?:what did you understand your (?:role|part)|understand(?:ing)? (?:of )?your role in this|what is your (?:job|role)(?: title)?(?: called)?|what do you do (?:here|for work|at \w+)|your job title|what do you call your (?:job|role)|what (?:would|do) you call (?:your|the) (?:job|role)|responsible for|you own|in charge of|accountable for|what does your (?:job|role) (?:cover|involve|include)|what (?:is|are) (?:your|the) main (?:responsibilit|part)|what is your job (?:made of|about)|your day[- ]to[- ]day|doing (?:it |this |the job |your job |your role )?well|good looks like|what does (?:a )?good|success (?:in|for) your (?:job|role))/i,
 };
 
-export const ROLE_TOPICS: (AThingToCover & { field: 'owns' | 'doingWell' | 'dependsOn' | 'inTheWay' })[] = [
-  { id: 'role-owns', field: 'owns', what: 'what they are responsible for in their job' },
-  { id: 'role-good', field: 'doingWell', what: 'what doing well looks like in their job' },
-  { id: 'role-depends', field: 'dependsOn', what: 'who they depend on in their job, and who depends on them' },
-  { id: 'role-way', field: 'inTheWay', what: 'what usually gets in their way in their job' },
+/** The one thing asked in the first check-in. The rest of the job (who they depend on, what gets in their way) is taken from the answers the check-in already asks for. */
+export const ROLE_TOPICS: (AThingToCover & { field: 'owns' })[] = [
+  { id: 'role-owns', field: 'owns', what: 'what they are responsible for in their job, and what doing well looks like in it' },
 ];
 
 /**
@@ -54,27 +50,21 @@ export const ROLE_TOPICS: (AThingToCover & { field: 'owns' | 'doingWell' | 'depe
  */
 export const FIRST_CHECK_IN_ROLE_PROMPT = [
   'THIS IS THE FIRST TIME THIS PERSON HAS DONE A CHECK-IN, AND WE DO NOT YET KNOW THEIR JOB WELL.',
-  'As well as everything else, learn these things about their job, in their own words:',
-  '- what they are responsible for',
-  '- what doing well looks like in their job',
-  '- who they depend on to do it, and who depends on them',
-  '- what usually gets in their way',
-  'Fold them into the conversation where they fit, one question at a time and in your own words. Never ask one as your first question.',
-  'It is a short, friendly part of the conversation and not a form. Ask four short questions at most for all of it.',
-  'Do not ask again what they have already told you without being asked. Say back what you heard in a few of their own words and move on. Leave anything they do not want to say or do not know.',
+  'As well as everything else, learn what they are responsible for in their job and what doing well looks like in it, in their own words. Ask both in ONE question, once, where the conversation turns to their work, and never as your first question.',
+  'Never ask a separate question about who they depend on or what gets in their way. The questions you already ask about the work tell us that.',
+  'Do not ask again what they have already told you without being asked. Say back what you heard in a few of their own words and move on. Leave it if they do not want to say or do not know.',
   'Ask about the job and the work, never about how good they are. Do not say that this is a part of a first check-in, that something is outstanding, or that it is saved anywhere. Nobody is being marked.',
-  'Near the end, ask only the one that matters most for understanding their work, when some of these are still not covered.',
 ].join('\n');
 
 export const ROLE_READING_PROMPT = [
   'You read what one person said in their first check-in, and pick out only what they said about their own job.',
   'Use only their own words. Copy each part from ONE of their answers, exactly as they said it, trimmed to the sentence or sentences that answer it. Never write anything of your own, never join words from two different answers, and never guess. If they did not say it, leave it out.',
-  'Each answer is shown under the question it answered, so you can tell which part of their job it is about. Take a part only from the answer to the question about it, or from an answer where they volunteered it. A worry about a customer or a deal is not part of their job.',
+  'Each answer is shown under the question it answered, so you can tell what it is about. Take a part from whichever single answer says it, including answers to the check-in\'s own questions about the work, such as what they need from others or what is blocked. A worry about a customer or a deal is not part of their job.',
   'roleName: what they call their job, if they said it, in a few words such as "sales representative". Otherwise leave it out.',
   'owns: what they said they are responsible for.',
   'doingWell: what they said doing well looks like in their job.',
-  'dependsOn: who they said they depend on, and who depends on them. One entry for both is fine.',
-  'inTheWay: what they said usually gets in their way.',
+  'dependsOn: who they said they depend on or need things from, and who depends on them. One entry for both is fine.',
+  'inTheWay: what they said gets in their way or holds them up.',
   'Copy only from the lines that start with "They said". The lines that start with "They were asked" are only there so you know what was being answered.',
 ].join('\n');
 
@@ -202,7 +192,7 @@ export function coverageOf(topics: AThingToCover[], turns: { role: 'AI' | 'PERSO
       if (reply.split(/\s+/).length >= 5) best = reply;
     });
     if (best) answered.push({ what: topic.what, answer: (best as string).replace(/\s+/g, ' ').slice(0, 240) });
-    else if (declined || asked >= 2) left.push(topic);
+    else if (declined || asked >= 1) left.push(topic);
     else notAsked.push(topic);
   }
   return { notAsked, left, answered };
@@ -254,7 +244,7 @@ export async function theRoleBlock(
   if (!first) return { block: '', thisTurn: '', thing: null, promptVersionId: null, first: false };
   const known = await whatIsKnownOfTheirJob(deps, first.userId, first.organizationId);
   /* Where the job's name is not known, it is asked in the same breath as what they are responsible for. */
-  const topics = ROLE_TOPICS.map((t) => (t.field === 'owns' && !known ? { ...t, what: 'what their job is, and what they are responsible for in it' } : t));
+  const topics = ROLE_TOPICS.map((t) => (!known ? { ...t, what: 'what their job is, what they are responsible for in it, and what doing well looks like in it' } : t));
   const { notAsked, answered, left } = coverageOf(topics, turns);
   const version = await theVersionThatRuns(deps, FIRST_CHECK_IN_ROLE_KEY, FIRST_CHECK_IN_ROLE_PROMPT);
   const lines = [version.content];
