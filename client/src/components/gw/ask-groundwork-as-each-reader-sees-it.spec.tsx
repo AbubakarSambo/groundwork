@@ -286,12 +286,15 @@ describe('where it opens', () => {
     await waitFor(() => expect(screen.queryByRole('heading', { name: 'Ask Baridi' })).toBeNull())
   })
 
-  it('on a phone, #/chat is its own page called "Chat"', async () => {
+  /* UPDATED FOR B-163: the page's own heading used to say "Chat", a different name from the Ask
+     panel it opens right underneath - now both read "Ask Baridi", the organisation's own name. */
+  it('on a phone, #/chat is its own page named for the organisation', async () => {
     ;vi.mocked(askApi.mine).mockResolvedValue(MIRIAMS)
+    useAuthStore.setState({ user: USER, token: 't', isAuthenticated: true } as unknown as Parameters<typeof useAuthStore.setState>[0])
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/chat']}><AskPage /></MemoryRouter></QueryClientProvider>)
-    expect(screen.getByRole('heading', { level: 1, name: 'Chat' })).toBeInTheDocument()
-    expect(await screen.findByRole('heading', { name: 'Ask Baridi' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Ask Baridi' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 2, name: 'Ask Baridi' })).toBeInTheDocument()
     expect(await screen.findByText('Why is Green Mart next quarter?')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Close' })).toBeNull()
   })

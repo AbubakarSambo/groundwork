@@ -389,3 +389,24 @@ describe('Juma’s check-in: what the lead wrote, and what Groundwork put togeth
   })
 })
 
+/*
+ * B-151. The empty-brief panel spoke of the lead in the third person even when the lead herself
+ * was the one reading it ("The lead can write a few lines...") - as though somebody else was being
+ * described. Everyone else still needs the third person, since it names who they should expect
+ * this from.
+ */
+describe('B-151: the empty-brief panel speaks to the lead directly, and about her to everyone else', () => {
+  it('tells the lead "you" when she is the one reading it, with no brief written yet', async () => {
+    ;(documentsApi.list as any).mockResolvedValue(leadsDocs)
+    draw('lead', 'u-lead', { brief: null, briefAsEveryoneReadsIt: null })
+    expect(screen.getByText('You have not said what this check-in is for yet. Write a few lines, and everyone reads them before they answer.')).toBeTruthy()
+    expect(screen.queryByText(/The lead can write a few lines/)).toBeNull()
+  })
+
+  it('still speaks of the lead in the third person to a party', async () => {
+    ;(documentsApi.list as any).mockResolvedValue(aishasDocs)
+    draw('party', 'u-aisha', { brief: null, briefAsEveryoneReadsIt: null })
+    expect(screen.getByText(/Nobody has said what this check-in is for yet\. The lead can write a few lines/)).toBeTruthy()
+  })
+})
+

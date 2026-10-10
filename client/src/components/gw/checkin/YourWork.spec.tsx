@@ -53,13 +53,16 @@ describe('Your work', () => {
     expect(screen.queryByText(/apart from the pattern below/)).toBeNull()
   })
 
-  it('the check-ins tile, but not the promises-kept tile while nothing has settled this month', async () => {
+  it('the sessions tile, but not the promises-kept tile while nothing has settled this month', async () => {
     mount()
     expect(await screen.findByText('1 of 12')).toBeTruthy()
     /* Changed from "check-ins of 12" (re-review): it repeated the number already shown above it -
-       "1 of 12" over "check-ins of 12" - and read as a clipped fragment. "check-ins so far" says
-       what the tile counts without saying the number twice. */
-    expect(screen.getByText('check-ins so far')).toBeTruthy()
+       "1 of 12" over "check-ins of 12" - and read as a clipped fragment. "sessions so far" says
+       what the tile counts without saying the number twice.
+       UPDATED FOR B-147: "check-ins so far" was itself the one-check-ins-mean-sessions mistake the
+       audit found repeated across the product - this tile counts SESSIONS of the one check-in,
+       not separate check-ins, so "session" (the product's one word for that) replaces it. */
+    expect(screen.getByText('sessions so far')).toBeTruthy()
     expect(screen.queryByText(/promises kept this month/)).toBeNull()
   })
 

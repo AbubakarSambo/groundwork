@@ -553,9 +553,13 @@ export function ContextPage({
             {!whatEveryoneReads && briefDraft === null && (
               <Panel className="gwui-rule-dashed">
                 <p className="gwui-panel-text-muted">
-                  Nobody has said what this check-in is for yet. The lead can write a few lines
-                  about what it is for and what they want from it. Everyone in this check-in
-                  reads it before they answer.
+                  {/* B-151: THE LEAD READ ABOUT HERSELF IN THE THIRD PERSON. "The lead can write a
+                      few lines" said to the one person who IS the lead reads as though somebody
+                      else is being spoken about; everyone else still needs the third person,
+                      since it names who they should expect this from. */}
+                  {isTheLead
+                    ? 'You have not said what this check-in is for yet. Write a few lines, and everyone reads them before they answer.'
+                    : 'Nobody has said what this check-in is for yet. The lead can write a few lines about what it is for and what they want from it. Everyone in this check-in reads it before they answer.'}
                 </p>
                 {mayRewriteTheBrief && (
                   <div className="gwui-mt-8">
@@ -631,7 +635,11 @@ export function ContextPage({
                   */}
                   {mayRewriteTheBrief && contextEnabled
                     ? (oldChatIsOpen
-                      ? 'Nothing yet. Say what this is counted by in the conversation below and it lands here.'
+                      /* B-151: the conversation this points at (ContextChat, above the Targets
+                         band) is ABOVE this sentence on the page, not below it - the same mistake
+                         already caught and fixed on the nearby "What people are down as doing"
+                         panel further down this file. */
+                      ? 'Nothing yet. Say what this is counted by in the conversation above and it lands here.'
                       : `Nothing yet. Tell ${askName} what this is counted by and it lands here.`)
                     : 'Nothing yet.'}
                 </Callout>
