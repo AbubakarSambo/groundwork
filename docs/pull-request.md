@@ -8,11 +8,11 @@ Tick each one before merging. The full steps are in `docs/deploy.md`, "The relea
 
 - [ ] **#324 is merged first.** This branch contains it.
 - [ ] **Take a backup of the database first**, and write down the time.
-- [ ] **Two new migrations**, both only adding empty columns: `20261008100000_a_review_can_be_appealed` (nine on `performance_reviews`) and `20261009100000_an_organisation_has_a_time_zone` (`time_zone` on `organizations`). The API applies them itself when it starts. Checked on a database built to live's schema with client rows: every existing row unchanged.
+- [ ] **Four new migrations**, all only adding empty columns and one index: `20261008100000_a_review_can_be_appealed` (nine on `performance_reviews`), `20261009100000_an_organisation_has_a_time_zone` (`time_zone` on `organizations`), `20261010100000_a_pattern_records_which_prompt_version_read_it` (`prompt_version_id` on `pattern_detections`) and `20261010200000_the_role_learned_in_the_first_check_in` (six on `role_interview_answers`, with one index). The API applies them itself when it starts. Checked on a database built to live's schema with client rows: every existing row unchanged. The start also adds three stored prompts (`pattern_detection`, `first_check_in_role`, `role_reading`) and activates each only when nobody activated a version of that key by hand.
 - [ ] **The settings from #324 are still in place:** `SETTINGS_ENCRYPTION_KEY`, `TRUST_PROXY_HOPS` (if more than one proxy), `NODE_ENV=production`, the Google client id and secret with `GOOGLE_CALLBACK_URL`, and `FRONTEND_URL`.
 - [ ] **Abubakar: run one read-only query on the live data and send the result to Hafsah:** how many organisations are over their plan's limit, and by how much. Nobody existing loses anything (decision 123); Hafsah wants to talk to them. The query is in `docs/deploy.md`, "Organisations over their plan".
 - [ ] **WhatsApp:** no new templates (decision 124). `lead_daily_summary` must be approved by Meta for the lead's daily nudge to go on WhatsApp outside the 24 hours; until then it goes by email. Review appeals are told by email and in the app only.
-- [ ] **Two switches change their default** (see "Switches"). Nothing needs writing for them; to switch any back, write the row shown.
+- [ ] **Three switches change their default** (see "Switches"). Nothing needs writing for them; to switch any back, write the row shown.
 - [ ] **The product's first service worker is in this release.** `client/public/sw.js` acts only on page loads that fail, and then shows `offline.html`; it caches and changes nothing else. How to turn it off is in `docs/deploy-notes-screens.md`. The optional `Cache-Control` header for `/sw.js` described there is not added.
 - [ ] **The rollback rule:** restore the database backup and the old code together, never the code alone.
 
@@ -22,7 +22,7 @@ Tick each one before merging. The full steps are in `docs/deploy.md`, "The relea
 2. **Participant activation and engagement** (`docs/participant-activation-spec.md`, `docs/engagement-spec.md`): a first insight in the report email, a Friday letter for leads, value-first follow-ups, a one-time WhatsApp welcome to anyone never reached, at most one routine message a day for each person, and the lead's sentences on Today ("From Groundwork").
 3. **The anchor scenario, switched on**, through the normal entry chat, invitations, check-ins, board and reports (decision 114), with its own board sections, the month's end, and up to 20 team members besides the lead.
 4. **Appealing a decided review** (decisions 113 and 118), on screen and on the server, told by email and in the app.
-5. **Ask points to the Context and resources page, and the old context chat stays on there** (decision 124). Ask cannot yet take a document or file a typed fact, so it no longer says it can. The line under its name and its welcome now read "To add context or a document, open the check-in's Context and resources page.", said only to someone who may add context, and the starter "Add a document or some context to my check-in." is gone. Moving Context fully into Ask is the next round.
+5. **Context and resources fully in Ask Groundwork** (decisions 50 and 129; the five commits of piece 1 from `wip/next` and nothing else from it). A lead sets a check-in up by talking to Ask: a fact for everybody, a rule, a decision, a private note, a question for one person, a goal, or "I want to add a document" (a file control, never a measure) is each sorted, said back, and written only after a yes, through the writers the old context chat and the Context page use. A check-in that is already set up is not asked how long it runs. The old context chat is off by default (a row `release.oldContextChat` of `{ "on": true }` brings it back) and Ask's own promise to take context and documents is back. Proved side by side with the old chat on the real model; see "Every result".
 6. **Plain sentences for every refusal and empty state**, and the three restored screens (beginning the last check-in early, your own requests on Today, the request forms' way to try again).
 7. **The user journey sweep's fixes** (`docs/bug-log-engine.md`): 70 of 83 closed. The rest are prompt wording, by design, or after release.
 8. **Hafsah's decisions 117 to 123**, among them: the person reviewed reads the manager's words again (D16); "your report is ready" at most twice; the narrowings from the nothing-removed audit (decision 119, H3 to H11, with the server refusing an admin's set-up changes to a check-in she does not run); an admin who joins someone else's check-in reads it as a participant; organisations over their plan at release keep everyone (decision 123).
@@ -39,6 +39,7 @@ Each is one row in `platform_settings`; the full table is `docs/deploy.md`, sect
 | --- | --- | --- |
 | `release.anchorScenario` | **On** | `{ "on": false }` |
 | `release.contextInAskGroundwork` | **On** | `{ "on": false }` |
+| `release.oldContextChat` | **Off** (the old context chat on the check-in page is closed and points to Ask) | `{ "on": true }` |
 | Everything else | As in #324 | |
 
 ## Every result
