@@ -34,10 +34,10 @@ export const theRoleMapQuestion = (roleName: string, owns: string): string =>
 /** The things the conversation learns about the job, in the words used about them. Never questions to be read out. */
 /** How each thing is asked in a conversation. Only these words count as having asked it, so a turn about something else is never taken for one of these. */
 const ASKED_AS: Record<string, RegExp> = {
-  'role-owns': /\b(?:what is your (?:job|role)(?: title)?(?: called)?|what do you do (?:here|for work|at \w+)|your job title|what do you call your (?:job|role)|what (?:would|do) you call (?:your|the) (?:job|role)|responsible for|you own|in charge of|accountable for|what does your (?:job|role) (?:cover|involve|include)|what (?:is|are) (?:your|the) main (?:responsibilit|part)|what is your job (?:made of|about)|your day[- ]to[- ]day)/i,
+  'role-owns': /\b(?:what did you understand your (?:role|part)|understand(?:ing)? (?:of )?your role in this|what is your (?:job|role)(?: title)?(?: called)?|what do you do (?:here|for work|at \w+)|your job title|what do you call your (?:job|role)|what (?:would|do) you call (?:your|the) (?:job|role)|responsible for|you own|in charge of|accountable for|what does your (?:job|role) (?:cover|involve|include)|what (?:is|are) (?:your|the) main (?:responsibilit|part)|what is your job (?:made of|about)|your day[- ]to[- ]day)/i,
   'role-good': /\b(?:doing (?:it |this |the job |your job |your role )?well|good looks like|what does (?:a )?good|how (?:will|would|do) you know (?:you(?:'| a)re|it is|that you(?:'| a)re) (?:doing|going) well|success (?:in|for) your (?:job|role))\b/i,
   'role-depends': /\b(?:depend(?:s|ing)? on|rely on|relies on|who (?:do )?you (?:need|wait for|count on)|who needs you|who (?:waits|is waiting) for you|who counts on you)\b/i,
-  'role-way': /\b(?:gets? in your way|in your way|gets? in the way|what (?:usually )?(?:slows|blocks|holds) you|most often (?:slows|stops|blocks))\b/i,
+  'role-way': /\b(?:blocked on|blocking|holding (?:you|it|this) up|holding you back|what(?:'s| is) stopping|gets? in your way|in your way|gets? in the way|what (?:usually )?(?:slows|blocks|holds) you|most often (?:slows|stops|blocks))\b/i,
 };
 
 export const ROLE_TOPICS: (AThingToCover & { field: 'owns' | 'doingWell' | 'dependsOn' | 'inTheWay' })[] = [

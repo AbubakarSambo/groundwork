@@ -1,5 +1,5 @@
 import {
-  FIRST_CHECK_IN_ROLE_PROMPT, ROLE_READING_PROMPT, ROLE_TOPICS, asksAboutTheirJob, THE_REPLY_DID_NOT_ASK_ABOUT_THEIR_JOB, SAYS_WHICH_CHECK_IN_THIS_IS, isTheirFirstCheckIn, keepWhatTheySaidAboutTheirJob, onlyWhatTheySaid,
+  FIRST_CHECK_IN_ROLE_PROMPT, ROLE_READING_PROMPT, ROLE_TOPICS, asksAboutTheirJob, THE_REPLY_DID_NOT_ASK_ABOUT_THEIR_JOB, SAYS_WHICH_CHECK_IN_THIS_IS, coverageOf, isTheirFirstCheckIn, keepWhatTheySaidAboutTheirJob, onlyWhatTheySaid,
   theRoleBlock, theirJobAsTheyToldUs, theRoleMapQuestion,
 } from './their-role-in-the-first-check-in';
 
@@ -125,6 +125,18 @@ describe('what the conversation is given', () => {
       'what they are responsible for in their job', 'what doing well looks like in their job',
       'who they depend on in their job, and who depends on them', 'what usually gets in their way in their job',
     ]);
+  });
+});
+
+describe('what the check-in already asked counts for the job', () => {
+  const turns = (...t: [string, string][]) => t.map(([role, content]) => ({ role: role as 'AI' | 'PERSON', content }));
+  it('"what did you understand your role to be" and a real answer cover what they are responsible for', () => {
+    const c = coverageOf(ROLE_TOPICS, turns(['AI', 'What did you understand your role in this to be, in your own words?'], ['PERSON', 'I would lead the engineering team and own the product roadmap decisions.']));
+    expect(c.answered.map((a) => a.what)).toEqual(['what they are responsible for in their job']);
+  });
+  it('a question about what is blocking them covers what usually gets in their way', () => {
+    const c = coverageOf(ROLE_TOPICS, turns(['AI', 'Is there anything blocked on someone else right now?'], ['PERSON', 'Yes, the depot is slow to confirm stock and finance sits on approvals.']));
+    expect(c.answered.map((a) => a.what)).toEqual(['what usually gets in their way in their job']);
   });
 });
 
