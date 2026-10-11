@@ -22,6 +22,8 @@ export interface OrgMember {
    * wherever a name goes.
    */
   displayName?: string
+  /** The other organisations they belong to, by name. Removing them here leaves those untouched. */
+  alsoIn?: string[]
   role: string
   isActive: boolean
   isEmailVerified: boolean
@@ -209,3 +211,22 @@ export function checkInsWordApart(m: Pick<OrgMember, 'checkIns'>, startOf: Map<s
 }
 
 export const A_FAILURE = 'That did not go through, and nothing has changed. Try again.'
+
+/**
+ * WHAT REMOVE SAYS (Hafsah, 11 October 2026): removing somebody takes them out of this organisation
+ * only. When they belong to another one, the sentence says they keep their place there.
+ */
+export function whatRemovingSays(name: string, orgName: string, alsoIn: string[] | undefined): { question: string; detail: string } {
+  const others = (alsoIn ?? []).filter((n) => n && n.trim())
+  const list = others.length <= 1 ? (others[0] ?? '') : `${others.slice(0, -1).join(', ')} and ${others[others.length - 1]}`
+  if (others.length) {
+    return {
+      question: `Remove ${name} from ${orgName}? They keep their place in ${list}.`,
+      detail: `They lose access to ${orgName} and their seat here is freed. Their sign-in and everything in ${list} stay as they are. What they shared stays in the check-ins they were part of here.`,
+    }
+  }
+  return {
+    question: `Remove ${name} from ${orgName}?`,
+    detail: 'They lose access and their seat is freed. What they shared stays in the check-ins they were part of.',
+  }
+}

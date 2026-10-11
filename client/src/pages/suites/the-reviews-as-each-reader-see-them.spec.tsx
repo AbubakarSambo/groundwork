@@ -13,7 +13,7 @@ import type { ReviewsBoard, AReview } from '@/api/suites'
  * Here: what each person reads, in the prototype's words (suite-reviews.txt), and that no reader sees
  * a label, a verdict, a score or a rating.
  */
-vi.mock('@/api/suites', () => ({ reviewsApi: { board: vi.fn(), mine: vi.fn(), start: vi.fn(), one: vi.fn(), words: vi.fn(), view: vi.fn(), decide: vi.fn(), appealsToDecide: vi.fn() } }))
+vi.mock('@/api/suites', () => ({ suitesApi: { mine: vi.fn(async () => ({ leave: true, spend: true, time: true, reviews: true, any: true, says: '' })) }, reviewsApi: { board: vi.fn(), mine: vi.fn(), start: vi.fn(), one: vi.fn(), words: vi.fn(), view: vi.fn(), decide: vi.fn(), appealsToDecide: vi.fn() } }))
 import { reviewsApi } from '@/api/suites'
 
 const BOARD: ReviewsBoard = {

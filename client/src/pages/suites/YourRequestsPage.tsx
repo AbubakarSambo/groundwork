@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { yourRequestsApi, reviewsApi, type YourRequest, type YourHours, type YourReview } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
+import { useSuitesOnForYou } from '@/hooks/useSuitesOnForYou'
 import { Page, PageTitle, Section, Button, Note, Callout, Empty, RowList, Row, Tag, FieldLabel, TextArea } from '@/components/gw/ui'
 import { maySwitchSuitesOn, SuiteOffMessage } from '@/lib/suite-is-off'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
@@ -56,10 +57,13 @@ export function YourRequestsPage() {
      one. Read once from router state, not kept on a reload - the confirmation belongs to the
      moment of arriving here, not to the page itself. */
   const sentMessage = (location.state as { sentMessage?: string } | null)?.sentMessage
-  const leave = useQuery({ queryKey: ['your-leave'], queryFn: yourRequestsApi.leave, enabled: !!user, retry: false })
-  const spending = useQuery({ queryKey: ['your-spending'], queryFn: yourRequestsApi.spending, enabled: !!user, retry: false })
-  const hours = useQuery({ queryKey: ['your-hours'], queryFn: yourRequestsApi.hours, enabled: !!user, retry: false })
-  const reviews = useQuery({ queryKey: ['your-reviews'], queryFn: reviewsApi.mineQuietly, enabled: !!user, retry: false })
+  /* Journey walk row 5: a suite's own route is asked only once GET /suites/mine says that suite is on.
+     A suite that is off is said in the server's own sentence, without asking its route for a 404. */
+  const suitesOn = useSuitesOnForYou()
+  const leave = useQuery({ queryKey: ['your-leave'], queryFn: yourRequestsApi.leave, enabled: !!user && suitesOn.leave, retry: false })
+  const spending = useQuery({ queryKey: ['your-spending'], queryFn: yourRequestsApi.spending, enabled: !!user && suitesOn.spending, retry: false })
+  const hours = useQuery({ queryKey: ['your-hours'], queryFn: yourRequestsApi.hours, enabled: !!user && suitesOn.hours, retry: false })
+  const reviews = useQuery({ queryKey: ['your-reviews'], queryFn: reviewsApi.mineQuietly, enabled: !!user && suitesOn.reviews, retry: false })
 
   return (
     <Page>
@@ -70,7 +74,7 @@ export function YourRequestsPage() {
 
       {sentMessage && <Callout tone="success" role="status">{sentMessage}</Callout>}
 
-      <SuiteSection heading="Your leave" q={leave} off="Leave is not switched on in your organisation." role={user?.role}
+      <SuiteSection heading="Your leave" q={leave} isOff={suitesOn.known && !suitesOn.leave} off="The leave suite is not switched on. An admin switches it on under Suites." role={user?.role}
         action={<Button kind="secondary" size="small" to="/suite/leave/new">Request leave</Button>}>
         {data => (
           <>
@@ -80,12 +84,12 @@ export function YourRequestsPage() {
         )}
       </SuiteSection>
 
-      <SuiteSection heading="Your requests to spend" q={spending} off="Spending requests are not switched on in your organisation." role={user?.role}
+      <SuiteSection heading="Your requests to spend" q={spending} isOff={suitesOn.known && !suitesOn.spending} off="The spending suite is not switched on. An admin switches it on under Suites." role={user?.role}
         action={<Button kind="secondary" size="small" to="/suite/spend/new">Ask to spend money</Button>}>
         {data => <Requests rows={data.requests} none="You have not asked to spend anything." answer={yourRequestsApi.answerSpending} queryKey={['your-spending']} />}
       </SuiteSection>
 
-      <SuiteSection heading="Your hours" q={hours} off="Time sheets are not switched on in your organisation." role={user?.role}>
+      <SuiteSection heading="Your hours" q={hours} isOff={suitesOn.known && !suitesOn.hours} off="The time sheets suite is not switched on. An admin switches it on under Suites." role={user?.role}>
         {data => <YourHoursSection data={data} />}
       </SuiteSection>
 
@@ -144,8 +148,10 @@ function YourHoursSection({ data }: { data: YourHours }) {
  * is left out entirely, the same way a suite nobody has switched on leaves no trace elsewhere on the
  * product.
  */
-function SuiteSection<T>({ heading, q, off, role, action, children }: {
+function SuiteSection<T>({ heading, q, isOff, off, role, action, children }: {
   heading: string
+  /** GET /suites/mine said this suite is off, so its own route was never asked. */
+  isOff?: boolean
   q: { data?: T; isLoading: boolean; isError: boolean; error: unknown; refetch: () => unknown; isFetching: boolean }
   off: string
   role?: string
@@ -155,6 +161,10 @@ function SuiteSection<T>({ heading, q, off, role, action, children }: {
   action?: React.ReactNode
   children: (data: T) => React.ReactNode
 }) {
+  if (isOff) {
+    if (!maySwitchSuitesOn(role)) return null
+    return <Section heading={heading}><Empty><SuiteOffMessage message={off} role={role} /></Empty></Section>
+  }
   if (q.isLoading) return <Section heading={heading}><Note>Loading…</Note></Section>
   if (q.isError) {
     const refused = refusalOf(q.error)

@@ -14,6 +14,7 @@ import { useAuthStore } from '@/stores/auth'
 vi.mock('@/api/suites', () => ({
   yourRequestsApi: { leave: vi.fn(), spending: vi.fn(), hours: vi.fn(), answerLeave: vi.fn(), answerSpending: vi.fn() },
   reviewsApi: { mineQuietly: vi.fn(async () => []) },
+  suitesApi: { mine: vi.fn(async () => ({ leave: true, spend: true, time: true, reviews: true, any: true, says: '' })) },
 }))
 import { yourRequestsApi, reviewsApi } from '@/api/suites'
 

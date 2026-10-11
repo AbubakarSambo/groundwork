@@ -28,7 +28,7 @@ import { yourRequestsApi } from '@/api/suites'
 vi.mock('@/api/today', () => ({ todayApi: { get: vi.fn().mockResolvedValue({ count: 0, line: '', needs: [], comingUp: [] }), outstanding: vi.fn().mockResolvedValue(null) } }))
 vi.mock('@/api/suites', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/api/suites')>()
-  return { ...actual, yourRequestsApi: { leave: vi.fn(), spending: vi.fn(), hours: vi.fn() } }
+  return { ...actual, suitesApi: { ...actual.suitesApi, mine: vi.fn(async () => ({ leave: true, spend: true, time: true, reviews: true, any: true, says: '' })) }, yourRequestsApi: { leave: vi.fn(), spending: vi.fn(), hours: vi.fn() } }
 })
 
 const MEMBER = { id: 'u1', email: 'amani@kilima.test', firstName: 'Amani', role: 'MEMBER', organizationName: 'Kilima Traders' }

@@ -8,6 +8,7 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { WhereToFocus } from './where-to-focus'
 import { atTheStart } from '@/lib/a-colleague'
 import { Panel, SubHeading, Note, Callout, EdgeList, EdgeRow } from '@/components/gw/ui'
+import { splitAtFieldNames, readableWithoutFieldNames } from '@/lib/no-field-names-on-the-page'
 
 /**
  * ONE SESSION'S SHARED REPORT.
@@ -799,7 +800,7 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
                 <EdgeRow
                   key={i}
                   kind="look"
-                  title={o.topic}
+                  title={splitAtFieldNames(o.topic).head || o.topic}
                   detail={
                     <div>
                       {o.positions.length > 0 && (
@@ -825,10 +826,10 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
                         caption above its own full sentence, the same pattern the block's own note
                         already uses.
                       */}
-                      {o.atStake && (
+                      {(o.atStake ?? splitAtFieldNames(o.topic).fields.atStake) && (
                         <div>
                           <p className="gwui-sr-caption-label">Why this matters</p>
-                          <p className="gwui-sr-caption-text">{o.atStake}</p>
+                          <p className="gwui-sr-caption-text">{readableWithoutFieldNames(o.atStake ?? splitAtFieldNames(o.topic).fields.atStake)}</p>
                         </div>
                       )}
                       {o.settledBy && (
@@ -957,7 +958,7 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
               advances `step`, which the "nothing yet" empty state below reads. */}
           {(() => { next(); return null })()}
           <Callout tone="info" title="The conversation worth having now">
-            {d.theConversationWorthHaving}
+            {readableWithoutFieldNames(d.theConversationWorthHaving)}
           </Callout>
         </div>
       ) : d.whyNoQuestion ? (

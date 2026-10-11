@@ -15,6 +15,7 @@ import { TheReasonYouMissed } from './TheReasonYouMissed'
 import { firstWordOfAName } from '@/lib/the-first-word-of-a-name'
 import { QueueLink } from '@/pages/suites/QueuePage'
 import { yourRequestsApi, reviewsApi } from '@/api/suites'
+import { useSuitesOnForYou } from '@/hooks/useSuitesOnForYou'
 import { useSuitesKnownOffStore } from '@/stores/suites-known-off'
 import { useEffect } from 'react'
 import { todayGreetingLine } from '@/lib/the-greeting-line-does-not-claim-what-needs-you-does-not'
@@ -87,9 +88,11 @@ export function TodayPage() {
    */
   const offByKey = useSuitesKnownOffStore(s => s.offByKey)
   const setKeyOff = useSuitesKnownOffStore(s => s.setKeyOff)
-  const yourLeave = useQuery({ queryKey: ['your-leave'], queryFn: yourRequestsApi.leave, enabled: !!user && !offByKey.leave, retry: false, staleTime: 60_000 })
-  const yourSpending = useQuery({ queryKey: ['your-spending'], queryFn: yourRequestsApi.spending, enabled: !!user && !offByKey.spending, retry: false, staleTime: 60_000 })
-  const yourHours = useQuery({ queryKey: ['your-hours'], queryFn: yourRequestsApi.hours, enabled: !!user && !offByKey.hours, retry: false, staleTime: 60_000 })
+  /* Journey walk row 5: ask a suite's own route only once GET /suites/mine says that suite is on. */
+  const suitesOn = useSuitesOnForYou()
+  const yourLeave = useQuery({ queryKey: ['your-leave'], queryFn: yourRequestsApi.leave, enabled: !!user && suitesOn.leave && !offByKey.leave, retry: false, staleTime: 60_000 })
+  const yourSpending = useQuery({ queryKey: ['your-spending'], queryFn: yourRequestsApi.spending, enabled: !!user && suitesOn.spending && !offByKey.spending, retry: false, staleTime: 60_000 })
+  const yourHours = useQuery({ queryKey: ['your-hours'], queryFn: yourRequestsApi.hours, enabled: !!user && suitesOn.hours && !offByKey.hours, retry: false, staleTime: 60_000 })
   useEffect(() => {
     const notFound = (q: { isError: boolean; error: unknown }) => q.isError && (q.error as any)?.response?.status === 404
     if (notFound(yourLeave)) setKeyOff('leave')
@@ -113,7 +116,7 @@ export function TodayPage() {
    * already carries that (the same call the reviews board makes for "Your reviews"), so it is read
    * again here, and only a review with something to say about an appeal is drawn.
    */
-  const myReviews = useQuery({ queryKey: ['suite-reviews-mine-today'], queryFn: reviewsApi.mineQuietly, enabled: !!user, retry: false })
+  const myReviews = useQuery({ queryKey: ['suite-reviews-mine-today'], queryFn: reviewsApi.mineQuietly, enabled: !!user && suitesOn.reviews, retry: false })
   const myReviewAppeals = (Array.isArray(myReviews.data) ? myReviews.data : []).filter(r => r.mayAppeal || r.appealSays)
 
   const now = new Date()

@@ -9,10 +9,12 @@ import { useAuthStore } from '@/stores/auth'
  * stop.txt; what follows each button is ours.
  */
 const calls: string[] = []
+/* A GET to /reminders/tok is recorded as 'read', so a test can tell reading from pressing. */
 function answer(map: Record<string, any>) {
-  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
-    const what = url.split('/').pop()!
-    calls.push(what)
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: { method?: string }) => {
+    const last = url.split('/').pop()!
+    const what = init?.method === 'POST' ? last : 'read'
+    calls.push(`${init?.method ?? 'GET'} ${what}`)
     const body = map[what]
     if (body === 500) return { status: 500, json: async () => null }
     return { status: 200, json: async () => ({ success: true, data: body }) }
@@ -29,16 +31,47 @@ function open() {
 
 beforeEach(() => { calls.length = 0; vi.unstubAllGlobals() })
 
+/*
+ * CHANGED 11 OCTOBER: opening the link used to stop the reminders at once, so a mail scanner that
+ * opens every link stopped them for people who never asked. Opening now only reads and asks; the
+ * prototype's stopped page (stop.txt) comes after "Stop the reminders" is pressed. The tests below
+ * that opened straight onto the stopped page now press that button first.
+ */
+const READ = { known: true, checkInName: 'Sales team, Q3', reminders: 'on' }
+const STOPPED = { known: true, checkInName: 'Sales team, Q3', reminders: 'off' }
+async function openAndStop(more: Record<string, any> = {}) {
+  answer({ read: READ, stop: STOPPED, ...more })
+  open()
+  fireEvent.click(await screen.findByRole('button', { name: 'Stop the reminders' }))
+  await screen.findByRole('heading', { name: 'Done. No more reminders for Sales team, Q3.' })
+}
+
 describe('opening the link', () => {
-  it('stops the reminders at once and names the check-in, in the prototype\'s words', async () => {
-    answer({ stop: { known: true, checkInName: 'Sales team, Q3', reminders: 'off' } })
+  it('asks first, in a plain sentence, and stops nothing until the button is pressed', async () => {
+    answer({ read: READ, stop: STOPPED })
     open()
-    expect(await screen.findByRole('heading', { name: 'Done. No more reminders for Sales team, Q3.' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Do you want to stop the reminders for Sales team, Q3?' })).toBeTruthy()
+    expect(screen.getByText('You’ll still get your check-ins and reports. You just won’t be nudged if you haven’t answered. Nothing changes until you press the button.')).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Keep the reminders' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Stop the reminders' })).toBeTruthy()
+    await new Promise(r => setTimeout(r, 20))
+    expect(calls).toEqual(['GET read'])
+  })
+
+  it('pressing "Stop the reminders" stops them and shows the prototype\'s page', async () => {
+    await openAndStop()
     expect(screen.getByText('You’ll still get your check-ins and reports. You just won’t be nudged if you haven’t answered.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Turn them back on' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Stop all email from Groundwork instead' })).toBeTruthy()
     expect(screen.getByText('No sign-in needed; the link in the email was enough. You can change any of this later in Settings.')).toBeTruthy()
-    expect(calls).toEqual(['stop'])
+    expect(calls).toEqual(['GET read', 'POST stop'])
+  })
+
+  it('reminders already off open straight onto the stopped page, with nothing sent', async () => {
+    answer({ read: STOPPED })
+    open()
+    expect(await screen.findByRole('heading', { name: 'Done. No more reminders for Sales team, Q3.' })).toBeTruthy()
+    expect(calls).toEqual(['GET read'])
   })
 
   /*
@@ -54,7 +87,7 @@ describe('opening the link', () => {
    * offers reopening the link as well as Settings.
    */
   it('a link we do not know says plainly that it could not be found, with a way to Settings', async () => {
-    answer({ stop: { known: false } })
+    answer({ read: { known: false } })
     open()
     expect(await screen.findByRole('heading', { name: 'We could not find those reminders' })).toBeTruthy()
     expect(screen.getByText('That link does not match anything. It may have been cut short when it was copied.')).toBeTruthy()
@@ -67,7 +100,7 @@ describe('opening the link', () => {
    */
   it('a link we do not know, signed in, offers Settings without "sign in"', async () => {
     useAuthStore.setState({ isAuthenticated: true, user: { id: 'u1' }, token: 't' } as any)
-    answer({ stop: { known: false } })
+    answer({ read: { known: false } })
     open()
     await screen.findByRole('heading', { name: 'We could not find those reminders' })
     expect(screen.getByRole('link', { name: 'change your emails in Settings' })).toBeTruthy()
@@ -76,7 +109,7 @@ describe('opening the link', () => {
   })
 
   it('a server that cannot answer says nothing changed and what to do', async () => {
-    answer({ stop: 500 })
+    answer({ read: 500 })
     open()
     expect(await screen.findByRole('heading', { name: 'That did not go through' })).toBeTruthy()
   })
@@ -84,16 +117,14 @@ describe('opening the link', () => {
 
 describe('the two ways on', () => {
   it('"Turn them back on"', async () => {
-    answer({ stop: { known: true, checkInName: 'Sales team, Q3' }, start: { known: true, checkInName: 'Sales team, Q3', reminders: 'on' } })
-    open()
+    await openAndStop({ start: { known: true, checkInName: 'Sales team, Q3', reminders: 'on' } })
     fireEvent.click(await screen.findByRole('button', { name: 'Turn them back on' }))
     expect(await screen.findByRole('heading', { name: 'Your reminders for Sales team, Q3 are back on.' })).toBeTruthy()
-    await waitFor(() => expect(calls).toEqual(['stop', 'start']))
+    await waitFor(() => expect(calls).toEqual(['GET read', 'POST stop', 'POST start']))
   })
 
   it('"Stop all email from Groundwork instead"', async () => {
-    answer({ stop: { known: true, checkInName: 'Sales team, Q3' }, 'stop-all': { known: true, allEmail: 'off' } })
-    open()
+    await openAndStop({ 'stop-all': { known: true, allEmail: 'off' } })
     fireEvent.click(await screen.findByRole('button', { name: 'Stop all email from Groundwork instead' }))
     expect(await screen.findByRole('heading', { name: 'Done. No more email from Groundwork.' })).toBeTruthy()
     expect(screen.getByText('Only what you ask for yourself still comes, such as a sign-in link.')).toBeTruthy()

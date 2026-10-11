@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { reviewsApi, type NextReview, type YourReview, type AppealToDecide, type AppealWaitingForAnotherAdmin } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
+import { useSuitesOnForYou } from '@/hooks/useSuitesOnForYou'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { Page, PageTitle, Section, Panel, Button, Note, Empty, Tag, RowList, Row } from '@/components/gw/ui'
 import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
@@ -65,7 +66,8 @@ export function ReviewsBoardPage() {
   })
   const refused = (error as { response?: { status?: number; data?: { message?: string } } } | null)?.response
   /* The reviews about the reader themselves, whoever they are, once somebody has started them. */
-  const mine = useQuery({ queryKey: ['suite-reviews-mine'], queryFn: reviewsApi.mine, enabled: !!user, retry: false })
+  const suitesOn = useSuitesOnForYou()
+  const mine = useQuery({ queryKey: ['suite-reviews-mine'], queryFn: reviewsApi.mine, enabled: !!user && suitesOn.reviews, retry: false })
   const yours = mine.data ?? []
   const months = [...new Set((data?.next ?? []).map(n => n.dueOn.slice(0, 7)))]
   /*

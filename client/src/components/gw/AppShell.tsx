@@ -15,6 +15,7 @@ import { groundsApi } from '@/api/grounds'
 import { authApi } from '@/api/auth'
 import { todayApi } from '@/api/today'
 import { queueApi, yourRequestsApi, reviewsApi } from '@/api/suites'
+import { useSuitesOnForYou } from '@/hooks/useSuitesOnForYou'
 import { useEntryStore } from '@/stores/entry'
 import { useFeedbackStore } from '@/stores/feedback'
 import { useHelpStore } from '@/stores/help'
@@ -821,10 +822,12 @@ export function AppSidebar() {
    * off), so that one is gated on there being any to show instead. */
   const offByKey = useSuitesKnownOffStore(s => s.offByKey)
   const setKeyOff = useSuitesKnownOffStore(s => s.setKeyOff)
-  const myLeaveForNav = useQuery({ queryKey: ['your-leave'], queryFn: yourRequestsApi.leave, enabled: isAuthenticated && user?.role === 'MEMBER' && !offByKey.leave, retry: false, staleTime: 60_000 })
-  const mySpendingForNav = useQuery({ queryKey: ['your-spending'], queryFn: yourRequestsApi.spending, enabled: isAuthenticated && user?.role === 'MEMBER' && !offByKey.spending, retry: false, staleTime: 60_000 })
-  const myHoursForNav = useQuery({ queryKey: ['your-hours'], queryFn: yourRequestsApi.hours, enabled: isAuthenticated && user?.role === 'MEMBER' && !offByKey.hours, retry: false, staleTime: 60_000 })
-  const myReviewsForNav = useQuery({ queryKey: ['your-reviews'], queryFn: reviewsApi.mineQuietly, enabled: isAuthenticated && user?.role === 'MEMBER', retry: false, staleTime: 60_000 })
+  /* Journey walk row 5: ask a suite's own route only once GET /suites/mine says that suite is on. */
+  const suitesOn = useSuitesOnForYou()
+  const myLeaveForNav = useQuery({ queryKey: ['your-leave'], queryFn: yourRequestsApi.leave, enabled: isAuthenticated && user?.role === 'MEMBER' && suitesOn.leave && !offByKey.leave, retry: false, staleTime: 60_000 })
+  const mySpendingForNav = useQuery({ queryKey: ['your-spending'], queryFn: yourRequestsApi.spending, enabled: isAuthenticated && user?.role === 'MEMBER' && suitesOn.spending && !offByKey.spending, retry: false, staleTime: 60_000 })
+  const myHoursForNav = useQuery({ queryKey: ['your-hours'], queryFn: yourRequestsApi.hours, enabled: isAuthenticated && user?.role === 'MEMBER' && suitesOn.hours && !offByKey.hours, retry: false, staleTime: 60_000 })
+  const myReviewsForNav = useQuery({ queryKey: ['your-reviews'], queryFn: reviewsApi.mineQuietly, enabled: isAuthenticated && user?.role === 'MEMBER' && suitesOn.reviews, retry: false, staleTime: 60_000 })
   useEffect(() => {
     const notFound = (q: { isError: boolean; error: unknown }) => q.isError && (q.error as any)?.response?.status === 404
     if (notFound(myLeaveForNav)) setKeyOff('leave')

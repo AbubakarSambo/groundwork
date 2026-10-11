@@ -51,7 +51,14 @@ export const suitesApi = {
   get: async (): Promise<SuitesPage> => (await apiClient.get('/suites', { skipForbiddenToast: true } as any)).data,
   switch: async (key: string, on: boolean, answers?: Answers): Promise<SuitesPage> =>
     (await apiClient.put(`/suites/${key}`, answers ? { on, answers } : { on })).data,
+  /**
+   * WHICH OF YOUR SUITES ARE ON (GET /suites/mine, journey walk row 5). Open to everybody in the
+   * organisation, and a suite that is off is a no here, never a 404. The screens read this once and
+   * never ask `/suites/{leave,spend,time,reviews}/mine` for a suite that is off.
+   */
+  mine: async (): Promise<SuitesOnForYou> => (await apiClient.get('/suites/mine', { skipNotFoundToast: true, skipForbiddenToast: true } as any)).data,
 }
+export interface SuitesOnForYou { leave: boolean; spend: boolean; time: boolean; reviews: boolean; any: boolean; says: string }
 
 /** One new person on the onboarding board (GET /suites/onboard/board). */
 export interface NewPerson {

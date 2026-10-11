@@ -21,7 +21,7 @@ import type { SuitesForAnAdmin, SuitesForALead, SuitesForADutyHolder, AdminSuite
    every existing test keeps its default (no override) unless a test sets it. */
 const reviewsBoard: any = vi.fn(() => Promise.resolve({ every: null as string | null, next: [] as any[] }))
 vi.mock('@/api/suites', () => ({
-  suitesApi: { get: vi.fn(), switch: vi.fn() },
+  suitesApi: { get: vi.fn(), switch: vi.fn(), mine: vi.fn(async () => ({ leave: true, spend: true, time: true, reviews: true, any: true, says: '' })) },
   reviewsApi: { board: () => reviewsBoard() },
   yourRequestsApi: {
     leave: vi.fn(() => Promise.reject(Object.assign(new Error('off'), { response: { status: 404 } }))),

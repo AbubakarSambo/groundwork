@@ -17,6 +17,7 @@ vi.mock('@/api/suites', async (orig) => {
   const real: any = await orig()
   return {
     ...real,
+    suitesApi: { ...real.suitesApi, mine: vi.fn(async () => ({ leave: true, spend: true, time: true, reviews: true, any: true, says: '' })) },
     yourRequestsApi: { ...real.yourRequestsApi, leave: vi.fn(), spending: vi.fn(), hours: vi.fn() },
     queueApi: { get: vi.fn().mockRejectedValue(Object.assign(new Error('off'), { response: { status: 404 } })) },
   }

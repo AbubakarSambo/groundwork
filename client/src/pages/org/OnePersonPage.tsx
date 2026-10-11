@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
-import { type OrgMember, fetchMembers, nameOf, firstNameOf, initialsOf, statusWord, A_FAILURE } from './people-here'
+import { type OrgMember, fetchMembers, nameOf, firstNameOf, initialsOf, statusWord, A_FAILURE, whatRemovingSays } from './people-here'
 import { Page, PageTitle, Section, Panel, Stack, FieldRows, FieldRow, ChoiceCards, Tag, Button, TextField, Select, Note } from '@/components/gw/ui'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { WHAT_AN_ADMIN_CANNOT_READ_WITHOUT_ACCESS } from '@/lib/what-an-admin-cannot-read-without-access'
@@ -310,12 +310,13 @@ export function OnePersonPage() {
         <Section heading={`Remove from ${orgName}`}>
           <Panel>
             <div className="gwui-sentence-row">
-              <p className="gwui-panel-text-muted">They lose access and their seat is freed. What they shared stays in the check-ins they were part of.</p>
+              <p className="gwui-panel-text-muted">{whatRemovingSays(name, orgName, m.alsoIn).detail}</p>
               <Button
                 kind="secondary"
                 disabled={removeThem.isPending}
                 onClick={() => {
-                  if (window.confirm(`Remove ${name} from ${orgName}?\n\nThey lose access and their seat is freed. What they shared stays in the check-ins they were part of.`)) {
+                  const says = whatRemovingSays(name, orgName, m.alsoIn)
+                  if (window.confirm(`${says.question}\n\n${says.detail}`)) {
                     removeThem.mutate(name)
                   }
                 }}

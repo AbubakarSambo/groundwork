@@ -15,6 +15,7 @@ import { useAuthStore } from '@/stores/auth'
 vi.mock('@/api/today', () => ({ todayApi: { get: vi.fn().mockResolvedValue({ count: 0, line: '', needs: [], comingUp: [] }), everywhere: vi.fn(), outstanding: vi.fn().mockResolvedValue(null) } }))
 vi.mock('@/api/suites', () => ({
   reviewsApi: { mineQuietly: vi.fn() },
+  suitesApi: { mine: vi.fn(async () => ({ leave: true, spend: true, time: true, reviews: true, any: true, says: '' })) },
   yourRequestsApi: { leave: vi.fn().mockRejectedValue({ response: { status: 404 } }), spending: vi.fn().mockRejectedValue({ response: { status: 404 } }), hours: vi.fn().mockRejectedValue({ response: { status: 404 } }) },
 }))
 import { reviewsApi } from '@/api/suites'

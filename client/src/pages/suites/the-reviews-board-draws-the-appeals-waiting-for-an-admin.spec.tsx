@@ -14,6 +14,7 @@ import type { AppealsToDecide } from '@/api/suites'
  */
 vi.mock('@/api/suites', () => ({
   reviewsApi: { board: vi.fn(), mine: vi.fn(), appealsToDecide: vi.fn() },
+  suitesApi: { mine: vi.fn(async () => ({ leave: true, spend: true, time: true, reviews: true, any: true, says: '' })) },
 }))
 import { reviewsApi } from '@/api/suites'
 

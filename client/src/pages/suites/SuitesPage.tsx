@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { suitesApi, reviewsApi, yourRequestsApi, type AdminSuite, type Answers, type Question, type SuitesForAnAdmin, type SuitesForALead, type SuitesForADutyHolder } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
+import { useSuitesOnForYou } from '@/hooks/useSuitesOnForYou'
 import { Page, PageTitle, Section, Panel, Button, Tag, Toggle, Note, Empty, RowList, Row, FieldLabel, TextField, TextArea, Select, Modal } from '@/components/gw/ui'
 import { QueueLink } from './QueuePage'
 import { everySays } from './ReviewsBoardPage'
@@ -105,9 +106,10 @@ export function SuitesPage() {
      and the two pages agree on when the link shows.
      FAULT 1 OF THE LIVE WALK (6 October): hours gates it the same way, and the link's own words
      change with it - "Your own requests" once hours are part of what it opens. */
-  const yourLeave = useQuery({ queryKey: ['your-leave'], queryFn: yourRequestsApi.leave, enabled: !!user, retry: false, staleTime: 60_000 })
-  const yourSpending = useQuery({ queryKey: ['your-spending'], queryFn: yourRequestsApi.spending, enabled: !!user, retry: false, staleTime: 60_000 })
-  const yourHours = useQuery({ queryKey: ['your-hours'], queryFn: yourRequestsApi.hours, enabled: !!user, retry: false, staleTime: 60_000 })
+  const suitesOn = useSuitesOnForYou()
+  const yourLeave = useQuery({ queryKey: ['your-leave'], queryFn: yourRequestsApi.leave, enabled: !!user && suitesOn.leave, retry: false, staleTime: 60_000 })
+  const yourSpending = useQuery({ queryKey: ['your-spending'], queryFn: yourRequestsApi.spending, enabled: !!user && suitesOn.spending, retry: false, staleTime: 60_000 })
+  const yourHours = useQuery({ queryKey: ['your-hours'], queryFn: yourRequestsApi.hours, enabled: !!user && suitesOn.hours, retry: false, staleTime: 60_000 })
   const aSuiteIsOnForYou = yourLeave.isSuccess || yourSpending.isSuccess || yourHours.isSuccess
   const requestsLinkLabel = yourHours.isSuccess ? 'Your own requests' : 'Your own leave and spending requests'
 
@@ -224,7 +226,7 @@ function ASuite({ s, people, forYou }: { s: AdminSuite; people: SuitesForAnAdmin
   const [problem, setProblem] = useState<string | null>(null)
   const flip = useMutation({
     mutationFn: ({ on, given }: { on: boolean; given?: Answers }) => suitesApi.switch(s.key, on, given),
-    onSuccess: (page) => { setProblem(null); setAsking(false); qc.setQueryData(['suites'], page) },
+    onSuccess: (page) => { setProblem(null); setAsking(false); qc.setQueryData(['suites'], page); qc.invalidateQueries({ queryKey: ['suites-on-for-you'] }) },
     onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
   })
 

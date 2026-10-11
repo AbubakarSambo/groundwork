@@ -17,6 +17,7 @@ const people = [
   { id: 'grace', email: 'grace@baridi.co.ke', firstName: 'Grace', lastName: 'Achieng', role: 'ADMIN', isEmailVerified: true, state: 'checked in', checkInsOn: 0, checkInsAnswered: 0, level: null, team: null, reportsTo: null, checkIns: [] },
   { id: 'amani', email: 'amani@baridi.co.ke', firstName: 'Amani', lastName: 'Njoroge', role: 'ADMIN', isEmailVerified: true, state: 'checked in', checkInsOn: 1, checkInsAnswered: 1, level: 'Chief executive', team: 'Leadership', reportsTo: null, checkIns: [] },
   { id: 'wairimu', email: 'wairimu@baridi.co.ke', firstName: 'Wairimu', lastName: 'Kamau', role: 'LEAD', isEmailVerified: true, state: 'checked in', checkInsOn: 1, checkInsAnswered: 1, level: 'Sales lead', team: 'Sales', reportsTo: { id: 'amani', name: 'Amani Njoroge' }, checkIns: [] },
+  { id: 'neema', email: 'neema@lakeview.test', firstName: 'Neema', lastName: 'Kamau', role: 'MEMBER', isEmailVerified: true, state: 'checked in', checkInsOn: 1, checkInsAnswered: 1, level: null, team: null, reportsTo: null, checkIns: [], alsoIn: ['Lakeview Clinic'] },
   { id: 'miriam', email: 'miriam@baridi.co.ke', firstName: 'Miriam', lastName: 'Wanjiku', role: 'MEMBER', isEmailVerified: true, state: 'checked in', checkInsOn: 1, checkInsAnswered: 1, level: 'Sales rep', team: 'Sales', reportsTo: { id: 'wairimu', name: 'Wairimu Kamau' }, phoneNumber: '+254722118440', checkIns: [{ id: 'sales', label: 'Sales team, Q3', runsIt: false }] },
 ]
 
@@ -190,6 +191,24 @@ describe('removing somebody from the organisation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }))
     await waitFor(() => expect(del).toHaveBeenCalledWith('/users/miriam'))
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Miriam Wanjiku no longer has access to Baridi Appliances.'))
+  })
+
+  it('says plainly that somebody in another organisation keeps their place there (Hafsah, 11 October 2026)', async () => {
+    const del = vi.spyOn(apiClient, 'delete').mockResolvedValue({ data: {} } as any)
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    open('neema')
+    expect(await screen.findByRole('heading', { name: 'Remove from Baridi Appliances' })).toBeTruthy()
+    expect(screen.getByText('They lose access to Baridi Appliances and their seat here is freed. Their sign-in and everything in Lakeview Clinic stay as they are. What they shared stays in the check-ins they were part of here.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }))
+    expect(confirm).toHaveBeenCalledWith('Remove Neema Kamau from Baridi Appliances? They keep their place in Lakeview Clinic.\n\nThey lose access to Baridi Appliances and their seat here is freed. Their sign-in and everything in Lakeview Clinic stay as they are. What they shared stays in the check-ins they were part of here.')
+    await waitFor(() => expect(del).toHaveBeenCalledWith('/users/neema'))
+  })
+
+  it('names no other organisation for somebody who has only this one', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove' }))
+    expect(confirm).toHaveBeenCalledWith('Remove Miriam Wanjiku from Baridi Appliances?\n\nThey lose access and their seat is freed. What they shared stays in the check-ins they were part of.')
   })
 
   it('does nothing without confirming first', async () => {
