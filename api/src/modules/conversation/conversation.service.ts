@@ -7369,6 +7369,7 @@ ${told}` : '';
         anchorDay: ground?.cadenceAnchorDay ?? null,
         workingDays: ground?.workingDays ?? [],
         startedAt: ground?.startsAt ?? ground?.createdAt ?? lastOpenedAt,
+        startsNow: !ground?.startsAt,
         zone,
       },
       new Date(lastOpenedAt),
