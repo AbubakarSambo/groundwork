@@ -715,6 +715,26 @@ export class UsersService {
     }
     const namedFor = <T extends { id: string }>(all: T[]) => ({ checkIns: all.filter((c) => mayOpen.has(c.id)) });
 
+    /*
+     * THE OTHER ORGANISATIONS THEY BELONG TO, BY NAME ONLY, so Remove can say they keep their place
+     * there (Hafsah, 11 October 2026: removing somebody takes them out of this organisation only).
+     * Names only: nothing about what they do there. One held for a seat is not one they have been
+     * told about, so it is left out. Read by an admin of this organisation only (the route is ADMIN).
+     */
+    const alsoIn = new Map<string, string[]>();
+    if (ids.length) {
+      const elsewhere: any[] = await Promise.resolve().then(() => this.prisma.organizationMembership.findMany({
+        where: { userId: { in: ids }, organizationId: { not: organizationId }, heldForASeat: false },
+        orderBy: { createdAt: 'asc' },
+        select: { userId: true, organization: { select: { name: true } } },
+      })).catch(() => []);
+      for (const m of elsewhere ?? []) {
+        const name = m?.organization?.name;
+        if (!m?.userId || typeof name !== 'string' || !name.trim()) continue;
+        alsoIn.set(m.userId, [...(alsoIn.get(m.userId) ?? []), name.trim()]);
+      }
+    }
+
     return {
       data: [...users.map((u) => ({
         ...u,
@@ -742,6 +762,8 @@ export class UsersService {
         ...(sits.get(u.id) ?? { level: null, team: null, reportsTo: null }),
         /* Which of this organisation's check-ins they are on, and whether they run it. */
         ...namedFor(theirCheckIns.get(u.id) ?? []),
+        /** The other organisations they belong to, by name. Removing them here leaves those untouched. */
+        alsoIn: alsoIn.get(u.id) ?? [],
       })), ...heldRows.map(({ checkIns, ...h }) => ({ ...h, ...namedFor(checkIns) }))],
       meta: { page, limit, total: total + heldRows.length, totalPages: Math.ceil((total + heldRows.length) / limit) },
       /* One sentence, the same one Plan and billing says; null when nobody is over the plan. */
@@ -973,10 +995,41 @@ export class UsersService {
     return { left: true as const };
   }
 
+  /**
+   * REMOVE SOMEBODY FROM THIS ORGANISATION (Hafsah, 11 October 2026: "removing them takes them out
+   * of this organisation only; their place, check-ins and data in the other organisation stay
+   * untouched").
+   *
+   * Found by their membership here, not by `User.organizationId`: that column is whichever
+   * organisation they last switched to, so somebody invited in from another company read "We could
+   * not find that sign-in". Then:
+   *
+   *   - somebody who belongs to no other organisation is removed as before: the sign-in is
+   *     deactivated and its address anonymised;
+   *   - somebody who also belongs elsewhere loses only their membership here. They leave this
+   *     People page, cannot switch in, and cannot open this organisation's check-ins (the
+   *     conversation's loader asks for the membership). Their sign-in, their other memberships and
+   *     everything there is untouched, and if this was the organisation their sign-in pointed at, it
+   *     now points at their next one, so signing in still works.
+   *
+   * Either way nothing they said is deleted: the participant rows, check-ins and reports here stay,
+   * as they always have. Delete the way in, not the record.
+   */
   async remove(id: string, organizationId: string, actingUserId: string) {
     if (id === actingUserId) throw new BadRequestException('You cannot turn off your own place here, so ask another admin to do it.');
-    const user = await this.prisma.user.findFirst({ where: { id, organizationId, deletedAt: null } });
-    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
+    const user = await this.prisma.user.findFirst({ where: { id, deletedAt: null } });
+    const here = user
+      ? await this.prisma.organizationMembership.findUnique({
+        where: { userId_organizationId: { userId: id, organizationId } },
+        select: { id: true, role: true },
+      })
+      : null;
+    /* No membership here and not pointed here either: not somebody this organisation can remove. */
+    if (!user || (!here && user.organizationId !== organizationId)) {
+      throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
+    }
+    /* Their role HERE: `User.role` is their role in whichever organisation they are looking at. */
+    const roleHere = (here?.role ?? user.role) as string;
 
     /* The same protection as `update`, on the path that deactivates and anonymises somebody. */
     const orgForRemoval = await this.prisma.organization.findUnique({
@@ -989,31 +1042,49 @@ export class UsersService {
     });
     const allowedToRemove = mayChange(
       { id: remover?.id ?? actingUserId, role: remover?.role ?? 'MEMBER' },
-      { id: user.id, role: user.role },
+      { id: user.id, role: roleHere as any },
       orgForRemoval?.ownerUserId ?? null,
     );
     if (!allowedToRemove.may) throw new ForbiddenException(allowedToRemove.because);
 
-    // Last-admin safeguard - see update() above for the same rule.
-    if (user.role === 'ADMIN') {
-      const otherActiveAdmins = await this.prisma.user.count({
-        where: { organizationId, role: 'ADMIN', isActive: true, id: { not: id }, deletedAt: null },
+    // Last-admin safeguard - see update() above for the same rule. Counted by membership here.
+    if (roleHere === 'ADMIN') {
+      const otherActiveAdmins = await this.prisma.organizationMembership.count({
+        where: { organizationId, role: 'ADMIN', userId: { not: id }, user: { isActive: true, deletedAt: null } },
       });
       if (otherActiveAdmins === 0) {
         throw new BadRequestException('This is the only active admin here, so make somebody else an admin first.');
       }
     }
 
-    // Soft-delete: stamp deletedAt, anonymise email, deactivate.
-    await this.prisma.user.update({
-      where: { id },
-      data: {
-        isActive: false,
-        deletedAt: new Date(),
-        email: `deleted-${id}@groundwork.deleted`,
-      },
+    const elsewhere = await this.prisma.organizationMembership.findMany({
+      where: { userId: id, organizationId: { not: organizationId } },
+      orderBy: { createdAt: 'asc' },
+      select: { organizationId: true, role: true, heldForASeat: true },
     });
-    return { message: 'User deactivated' };
+
+    if (elsewhere.length === 0) {
+      // Their only organisation. Soft-delete: stamp deletedAt, anonymise email, deactivate.
+      await this.prisma.user.update({
+        where: { id },
+        data: {
+          isActive: false,
+          deletedAt: new Date(),
+          email: `deleted-${id}@groundwork.deleted`,
+        },
+      });
+      return { message: 'User deactivated' };
+    }
+
+    /* Their next organisation: one they have been told about before one held for a seat. */
+    const next = elsewhere.find((m) => !m.heldForASeat) ?? elsewhere[0];
+    await this.prisma.$transaction(async (tx) => {
+      await tx.organizationMembership.deleteMany({ where: { userId: id, organizationId } });
+      if (user.organizationId === organizationId) {
+        await tx.user.update({ where: { id }, data: { organizationId: next.organizationId, role: next.role } });
+      }
+    });
+    return { message: 'Removed from this organisation', keptElsewhere: true };
   }
 
   /**

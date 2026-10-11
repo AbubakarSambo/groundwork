@@ -7889,7 +7889,7 @@ ${told}` : '';
       WHAT_HAPPENED_SCHEMA as any,
       { fast: true, thinkingBudget: 0 },
     );
-    const settled = theSettlements(once, read?.outcomes).flatMap((s) => {
+    const settled = theSettlements(once, read?.outcomes, said).flatMap((s) => {
       const key = aCommitmentKey(once.find((o) => o.id === s.id)?.text ?? '', once.find((o) => o.id === s.id)?.whenSaid);
       return open.filter((o) => o.id === s.id || (key && aCommitmentKey(o.text, o.whenSaid) === key)).map((o) => ({ id: o.id, status: s.status }));
     });
@@ -11550,6 +11550,29 @@ ${told}` : '';
     if (checkIn.participant.user?.awaitingOrgApproval) {
       throw new ForbiddenException(CANNOT_CHECK_IN_YET);
     }
+    /* AND NOT AFTER THEY WERE REMOVED FROM THE ORGANISATION. Here for the same reason as the gate above. */
+    if (typeof who === 'string' && await this.removedFromThatOrganisation(checkIn.groundId, who)) {
+      throw new ForbiddenException(REMOVED_FROM_THAT_ORGANISATION);
+    }
     return checkIn;
   }
+
+  /**
+   * REMOVED FROM THE ORGANISATION THIS CHECK-IN BELONGS TO (Hafsah, 11 October 2026). Somebody who
+   * belongs to two organisations and is removed from one keeps their sign-in, so the sign-in no
+   * longer stops them; their membership is what went. A check-in is opened by the person's own id
+   * whichever organisation they are looking at, so the loader asks: do they still belong to some
+   * organisation, but not to this one? Somebody with no membership rows at all is left as before.
+   * The record stays: nothing here deletes what they said.
+   */
+  private async removedFromThatOrganisation(groundId: string | null | undefined, userId: string): Promise<boolean> {
+    if (!groundId || typeof (this.prisma as any).organizationMembership?.findMany !== 'function' || typeof (this.prisma as any).ground?.findUnique !== 'function') return false;
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true } });
+    if (!ground?.organizationId) return false;
+    const theirs = await this.prisma.organizationMembership.findMany({ where: { userId }, select: { organizationId: true } });
+    if (!Array.isArray(theirs) || theirs.length === 0) return false;
+    return !theirs.some((m) => m?.organizationId === ground.organizationId);
+  }
 }
+
+const REMOVED_FROM_THAT_ORGANISATION = 'You are no longer part of the organisation this check-in belongs to, so you cannot open it.';

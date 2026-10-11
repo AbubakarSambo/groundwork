@@ -1,9 +1,12 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { theSettlements, thePrompt, READ_WHAT_HAPPENED } from './what-happened-to-what-they-said';
+import { theSettlements, thePrompt, READ_WHAT_HAPPENED, itHappenedInTheirWords } from './what-happened-to-what-they-said';
 import { ConversationService } from './conversation.service';
 
 /** WHAT HAPPENED TO WHAT THEY SAID THEY WOULD DO (week 9). See what-happened-to-what-they-said.ts. */
+
+const SAID = ['I sent the quote on Tuesday.', 'I did not get to Westgate.'];
+const SENT = { item: 1, happened: 'DONE', words: 'I sent the quote on Tuesday' };
 
 const OPEN = [
   { id: 'c1', text: 'Send Green Mart the quote', whenSaid: 'by Friday', status: 'UNKNOWN' },
@@ -13,17 +16,41 @@ const OPEN = [
 
 describe('what is settled', () => {
   it('done and not done, by the number given', () => {
-    expect(theSettlements(OPEN, [{ item: 1, happened: 'DONE' }, { item: 3, happened: 'NOT_DONE' }])).toEqual([
+    expect(theSettlements(OPEN, [SENT, { item: 3, happened: 'NOT_DONE' }], SAID)).toEqual([
       { id: 'c1', status: 'DONE' }, { id: 'c3', status: 'NOT_DONE' },
     ]);
   });
   it('open, anything unknown, a number not given, and a second answer for one item are all left alone', () => {
-    expect(theSettlements(OPEN, [{ item: 2, happened: 'OPEN' }, { item: 9, happened: 'DONE' }, { item: 0, happened: 'DONE' }, { item: 1.5, happened: 'DONE' }, { item: 2, happened: 'MAYBE' }])).toEqual([]);
-    expect(theSettlements(OPEN, [{ item: 1, happened: 'DONE' }, { item: 1, happened: 'NOT_DONE' }])).toEqual([{ id: 'c1', status: 'DONE' }]);
-    expect(theSettlements(OPEN, null)).toEqual([]);
+    expect(theSettlements(OPEN, [{ item: 2, happened: 'OPEN' }, { ...SENT, item: 9 }, { ...SENT, item: 0 }, { ...SENT, item: 1.5 }, { item: 2, happened: 'MAYBE' }], SAID)).toEqual([]);
+    expect(theSettlements(OPEN, [SENT, { item: 1, happened: 'NOT_DONE' }], SAID)).toEqual([{ id: 'c1', status: 'DONE' }]);
+    expect(theSettlements(OPEN, null, SAID)).toEqual([]);
   });
   it('never a row that is already settled', () => {
-    expect(theSettlements([{ ...OPEN[0], status: 'DONE' }], [{ item: 1, happened: 'NOT_DONE' }])).toEqual([]);
+    expect(theSettlements([{ ...OPEN[0], status: 'DONE' }], [{ item: 1, happened: 'NOT_DONE' }], SAID)).toEqual([]);
+  });
+});
+
+describe('a promise is done only when they say it happened (change 3)', () => {
+  const DONHOLM = [{ id: 'd1', text: 'Get Donholm Distributors to place a 100-bag order', whenSaid: 'this week', status: 'UNKNOWN' }];
+  it('Victor\'s plan, "Donholm placing a 100-bag order this week counts as a new account", stays open', () => {
+    const said = ['Donholm Distributors placing a 100-bag order this week counts as a new account and meets the minimum order size.'];
+    expect(theSettlements(DONHOLM, [{ item: 1, happened: 'DONE', words: 'Donholm Distributors placing a 100-bag order this week counts as a new account' }], said)).toEqual([]);
+    expect(theSettlements(DONHOLM, [{ item: 1, happened: 'DONE' }], said)).toEqual([]);
+  });
+  it('a real confirmation in his own words, "Donholm placed their 100-bag order on Tuesday", is done', () => {
+    const said = ['Yes. Donholm placed their 100-bag order on Tuesday, order number 4471.'];
+    expect(theSettlements(DONHOLM, [{ item: 1, happened: 'DONE', words: 'Donholm placed their 100-bag order on Tuesday' }], said)).toEqual([{ id: 'd1', status: 'DONE' }]);
+  });
+  it('words that are not theirs, only in the question, or that say "not yet" or "will" are never done', () => {
+    expect(itHappenedInTheirWords('Donholm placed the order', [{ asked: 'Has Donholm placed the order?', said: 'I am chasing them.' }])).toBe(false);
+    expect(itHappenedInTheirWords('I have not sent the quote yet', ['I have not sent the quote yet.'])).toBe(false);
+    expect(itHappenedInTheirWords("I'll chase Fatuma again", ["I'll chase Fatuma again for the final prices."])).toBe(false);
+    expect(itHappenedInTheirWords('I chased Fatuma on Monday', ['I chased Fatuma on Monday and she sent the prices.'])).toBe(true);
+    expect(itHappenedInTheirWords('that is done', ['That is done.'])).toBe(true);
+  });
+  it('the model is told a plan is open, with the Donholm example', () => {
+    expect(READ_WHAT_HAPPENED).toContain('A plan, a promise, an expectation, or something they say will count when it happens is OPEN, never DONE');
+    expect(READ_WHAT_HAPPENED).toContain('For DONE, also give "words"');
   });
 });
 
@@ -51,7 +78,7 @@ describe('after a check-in', () => {
     return { svc: new ConversationService(prisma, {} as any, anthropic, {} as any, nothing, nothing, nothing, nothing, nothing, nothing) as any, prisma, anthropic };
   }
   it('settles what they said, with when and which check-in, and only if still open', async () => {
-    const { svc, prisma } = aService([{ item: 1, happened: 'DONE' }, { item: 3, happened: 'NOT_DONE' }]);
+    const { svc, prisma } = aService([SENT, { item: 3, happened: 'NOT_DONE' }]);
     expect(await svc.settleWhatTheySaidTheyWouldDo('ci2')).toBe(2);
     const where = prisma.groundCommitment.findMany.mock.calls[0][0].where;
     expect(where).toMatchObject({ groundId: 'g1', participantId: 'p1', status: 'UNKNOWN', createdAt: { lt: new Date('2026-09-29T09:00:00Z') } });
@@ -59,6 +86,11 @@ describe('after a check-in', () => {
       { where: { id: 'c1', status: 'UNKNOWN' }, data: { status: 'DONE', settledAt: expect.any(Date), settledInCheckInId: 'ci2', settledBy: 'SAID' } },
       { where: { id: 'c3', status: 'UNKNOWN' }, data: { status: 'NOT_DONE', settledAt: expect.any(Date), settledInCheckInId: 'ci2', settledBy: 'SAID' } },
     ]);
+  });
+  it('a DONE the model gives without their words is not written: the promise stays open', async () => {
+    const { svc, prisma } = aService([{ item: 1, happened: 'DONE', words: 'I will send the quote' }]);
+    expect(await svc.settleWhatTheySaidTheyWouldDo('ci2')).toBe(0);
+    expect(prisma.groundCommitment.updateMany).not.toHaveBeenCalled();
   });
   it('asks nothing when nothing of theirs was open', async () => {
     const { svc, prisma, anthropic } = aService([]);

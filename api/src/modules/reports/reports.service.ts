@@ -1,3 +1,4 @@
+import { filesSentWith } from './files-sent-with-a-check-in';
 import { theOpenSession } from '../engagement/heres-what-is-new';
 import { recordThatTheLeadRead } from './a-lead-read-this-report';
 import { aNumberInWords } from '../engagement/a-number-in-words';
@@ -44,6 +45,7 @@ import { whenThisWouldHaveSurfaced } from './when-this-would-have-surfaced';
 import { ONE_SITTING_ONLY, ALREADY_IN_THE_OPEN } from './there-is-not-always-a-next-time';
 import { isThisACascade } from '../board/is-this-a-cascade';
 import { theSessionReport, hasOwnerAndDate } from './the-session-report';
+import { readableWithoutFieldNames } from './no-field-names-on-the-page';
 import { whatToWorkOnNext, theNoteBeforeYouHaveCheckedIn } from './what-to-work-on-next';
 import { whatToProbe } from './what-to-probe';
 import { wordedByTheModel, type Drafted, type Compose } from './the-engine-drafts-it-the-model-words-it';
@@ -3278,8 +3280,18 @@ Close the report by framing - neutrally, without recommending one - the choice n
         participantId: { in: readableParticipantIds },
         OR: [{ visibility: 'OPEN' as any }, ...(me ? [{ participantId: me.id }] : [])],
       },
-      select: { fileName: true, participantId: true, origin: true },
+      select: { fileName: true, participantId: true, origin: true, createdAt: true },
     });
+    /*
+     * AND HOW MANY OF THEM WERE SENT WITH THIS SESSION'S CHECK-INS (B-103): in the app, on WhatsApp,
+     * a photo or a location pin, each kept the same way. A file is with a check-in when its sender
+     * sent it while that check-in was open. Only what this reader may see is counted.
+     */
+    const thisSessionsCheckIns = await (this.prisma.checkIn?.findMany?.({
+      where: { groundId, sessionNumber, participantId: { in: readableParticipantIds } },
+      select: { participantId: true, startedAt: true, completedAt: true },
+    }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
+    const filesSentThisSession = filesSentWith(docs as any[], thisSessionsCheckIns as any[]);
 
     /*
      * NAMED WHERE THIS READER IS ALLOWED TO SEE A NAME, and labelled where they are not.
@@ -3488,6 +3500,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       theFirstBlocker: held.theFirstBlocker,
       worries: held.worries,
       theFirstWorry: held.theFirstWorry,
+      filesSentThisSession,
       whyNoWorryIsShown: held.whyNoWorryIsShown,
       waitsFromEarlier: held.waitsFromEarlier,
       saidInAll,
@@ -4071,6 +4084,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
           differences: ((snapshot?.divergences ?? ground.report?.divergences ?? []) as any[])
             .filter((d) => d?.topic)
             .map((d) => ({ topic: String(d.topic), settledBy: d.settledBy ?? d.atStake ?? null })),
+          /* The role map's probe is the lead's question to ask, never put to a participant (B-103). */
+          forTheLead: viewerIsLead,
         });
         /* Two wording passes that do not depend on each other, in parallel. Measured serial: this
            endpoint took ten seconds and the page waited on it before drawing the shared half. */
@@ -4136,8 +4151,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
           finding,
           sharedPicture: drafts.length ? pictureLines.join(' ') : null,
           pictureBasis: drafts.length ? 'engines' : 'none',
-          theConversationWorthHaving: question ? (wordedQ.question ?? question.text) : null,
-          whyNoQuestion: question || oneTime ? null : WHY_NO_QUESTION,
+          /* An old row's field names come out and a sentence said twice is said once (journey walk rows 1 and 2; no-field-names-on-the-page.ts). */
+          theConversationWorthHaving: question ? readableWithoutFieldNames(wordedQ.question ?? question.text) : null,
+          /* How the question is found is the lead's method; a participant with none is told nothing about it. */
+          whyNoQuestion: question || oneTime || !viewerIsLead ? null : WHY_NO_QUESTION,
           /* The direction itself, for the page to draw as lists. Null off a discovery ground. */
           direction: oneTime ? await this.theDirectionFrom({ ...(ground as any), report: ground.report }, me ? (labels.get(me.id) ?? null) : null).catch(() => null) : null,
           /*

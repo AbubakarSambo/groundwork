@@ -397,6 +397,14 @@ export const EACH_THING_AS_STRONGLY_AS_THE_BLOCK_SAYS_IT = 'SAY EACH THING AS ST
 
 export const AN_OUT_OF_DATE_THING_IS_THE_FINDING = 'AN OUT-OF-DATE THING IS THE FINDING. When a block says a list, a rota, a contact, a rule or an owner was out of date, or named somebody who had left, put that in the gap as what the record holds, and name the person who held that piece. Several people each assuming something different about it is one finding about that thing, and it matters more than which one of them missed something. Say it only where a block says it.';
 
+/**
+ * A WAIT ON A COLLEAGUE OR ON THE LEAD IS THE SPEAKER'S ACCOUNT (change 4, decision 137). Week 1 of the
+ * final evaluation told Baraka "Felix Ndungu is blocked by you" from Felix's own words alone, about
+ * Felix's own job. In the room judgement's stored prompt (`the_judgement_room`), so the version that runs
+ * says it and the judgement's `promptVersionId` shows it.
+ */
+export const A_WAIT_ON_A_COLLEAGUE_IS_THEIR_ACCOUNT = 'A WAIT ON A COLLEAGUE, OR ON THE PERSON RUNNING THIS, IS THE ACCOUNT OF THE PERSON WHO SAID IT, NEVER A FACT. When one block says that person is blocked by, held up by, or waiting on another person in this check-in, or on the person running it, write it as what they say: "Participant A says Participant A is waiting on Participant B for the Kenya Power contacts." Never write it as a fact about the other person, and never make the other person the cause of it in the gap, in what the record shows, or in a move. It is a fact only when the other person\'s own block confirms it: they said they owe that thing or promised it. Where the other person\'s block says nothing about it, say that too. A move about it asks the person who said it what was in their own hands, before anything is asked of anybody else.';
+
 export const SOMEBODY_CREDITED_WHO_IS_NOT_IN_THE_ROOM = 'SOMEBODY CREDITED WHO IS NOT IN THE ROOM. When a block names a person who has no block of their own, and says what that person did, name that person in the gap and say who said it. That person cannot speak in this check-in, and somebody one account thanks and no other account names is often the finding. Write what the block says they did, and nothing more.';
 
 export const EVERY_PIECE_NOT_THE_FIRST_ONE = 'EVERY PIECE, NOT THE FIRST ONE. When several people each hold a piece of one story, write every piece the blocks give, one short sentence each, with the person who held it, before you write who did not know. A story told with one piece when the blocks give three has left out the rest of what the reader asked for.';
@@ -571,6 +579,8 @@ export function theRoomJudgementTemplate(): string {
     'AND NOTHING IS ANYBODY\'S FAULT UNLESS AN ACCOUNT SAYS SO. This is the limit on the line above, and it was written because the line above was taken too far. State what the record holds. Never write that somebody caused a problem, failed to do something, or made the situation happen, unless one of the blocks actually says it. "Nobody wrote the target down" is what the record holds. "You created this problem" is a charge, and a charge nobody made is an invention, however reasonable it looks from the blocks. If you find yourself explaining why things are as they are, stop and write what is on the record instead.',
     '',
     'A REASON IS ONLY A REASON IF SOMEBODY SAID IT. Naming a person is not the same as being right about them. Two live reports: "Kwame Mensah is also blocked by the credit committee", when Kwame had said "I haven\'t actually checked in with Credit about those specific 19 applications yet" - he is not blocked, he has not understood what is being counted; and "Martin Vogel is waiting on a decision to hire more analysts", when hiring analysts was the CUSTOMER\'s problem that Martin reported, not anything Martin is waiting on. Where you write that somebody is blocked, waiting, or held up, one block must say so in their own words. Where their words say the opposite, their words win.',
+    '',
+    A_WAIT_ON_A_COLLEAGUE_IS_THEIR_ACCOUNT,
     '',
     'AND TWO FACTS SIDE BY SIDE ARE NOT A CAUSE. One block says a number rose; another says something ended. Writing that the first caused the second puts a claim in somebody\'s mouth that they did not make, and anything you tell the reader on top of it - that they are looking in the wrong place, that they have the reason wrong - is then built on your own invention. Where two things are both on the record and nobody has joined them, leave them unjoined and put them in order, as the rule on pieces of one story says.',
     '',

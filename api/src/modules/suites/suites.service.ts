@@ -657,7 +657,7 @@ export class SuitesService {
    * `false`, not an error. Somebody who is not in the organisation (a guest, or no one) has none, and is not refused either,
    * so a page can ask without a refusal ever hiding something that is on. Only yes or no for each suite; nothing of its answers.
    */
-  async forYourRequests(reader: Reader): Promise<{ leave: boolean; spend: boolean; time: boolean; any: boolean; says: string }> {
+  async forYourRequests(reader: Reader): Promise<{ leave: boolean; spend: boolean; time: boolean; reviews: boolean; any: boolean; says: string }> {
     const role = await this.roleOf(reader);
     const rows = role && role !== 'GUEST' ? await this.rows(reader.organizationId) : new Map<string, { isOn: boolean }>();
     const on = (key: string) => rows.get(key)?.isOn === true;
@@ -665,6 +665,9 @@ export class SuitesService {
     const any = out.leave || out.spend || out.time;
     return {
       ...out,
+      /* Journey walk row 5: GET /suites/reviews/mine answers 404 while reviews are off, and every screen asked it anyway.
+       * The screens read this one yes or no first. It is not a request, so `any` and the sentence stay about the three requests. */
+      reviews: on('reviews'),
       any,
       says: any
         ? 'These are the requests you can make in your organisation.'

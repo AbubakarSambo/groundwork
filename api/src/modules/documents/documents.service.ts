@@ -11,6 +11,7 @@ const JSZip = require('jszip') as typeof import('jszip');
 import { ConfigService } from '@nestjs/config';
 import { documentWhereFor, whoCanSeeItInWords } from './who-can-see-a-document';
 import { defaultVisibilityForUpload } from './a-document-is-context';
+import { ALocationPin, aLocationPinOnTheRecord, aLocationPinsName } from './a-location-pin';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { ConversationService } from '../conversation/conversation.service';
@@ -498,6 +499,8 @@ export class DocumentsService {
        */
       askingAboutIt: held ? theContextWeHave(held, { asking: true, willNoteIt: { visibility: (doc as any).visibility } }) : null,
       numbersWaiting: (held as any)?.waiting?.length ?? 0,
+      /* Kept, but nothing in it could be read: the person is asked to say what it shows. */
+      couldNotRead: weCouldNotReadIt(content),
     };
   }
 
@@ -611,9 +614,16 @@ export class DocumentsService {
       forOnePerson.push({ who: nameOf(who as any), what: name, target: Math.round(r.target), by: r.by?.trim() || null, ownerParticipantId: who.id, asWritten: theFigureAsWritten(Math.round(r.target), content, name) });
     }
 
-    /* The group's own numbers. A participant may add one: a total in a plan is not a claim about anybody. */
+    /*
+     * THE GROUP'S OWN NUMBERS ARE SET BY THE LEAD (B-102, Hafsah 11 October 2026). A member's
+     * pipeline sheet listing "Acme 40000 won" was offered back to her as "For everyone in this
+     * check-in, the target for Acme is 40,000. Is that right?". A file a member sends is her own
+     * evidence, kept in her words; it is never turned into a target for everyone. So the read keeps
+     * the document as it is and says what it left out, and nothing waits on a yes.
+     */
     const forEverybody: WhatLanded['forEverybody'] = [];
-    for (const t of (read.forEverybody ?? []).filter((t) => t?.what?.trim()).map((t) => ({ ...t, target: theNumberAsWritten(t.target, content) as number })).filter((t) => t.target != null)) {
+    const notAMembersToSet = !isLead && (read.forEverybody ?? []).some((t) => t?.what?.trim());
+    for (const t of (isLead ? (read.forEverybody ?? []) : []).filter((t) => t?.what?.trim()).map((t) => ({ ...t, target: theNumberAsWritten(t.target, content) as number })).filter((t) => t.target != null)) {
       const name = t.what.trim().slice(0, 120);
       /* Found on a quarterly plan (4 October 2026): each priority's number was waiting for its owner AND for everyone. */
       if (givenToSomebody.some((g) => g.target === t.target && theSameWords(g.what, t.what))) continue;
@@ -640,6 +650,7 @@ export class DocumentsService {
       /* Bank details the file held go under what it left out, never under what it took (request 40). */
       ...(Object.values(HIDDEN).some((h) => content.includes(h)) ? [{ ...BANK_DETAILS_LEFT_OUT }] : []),
       ...notTheirsToSet.map((name) => ({ what: `The numbers for ${name}`, why: 'Only the lead can set a number for someone else.' })),
+      ...(notAMembersToSet ? [{ what: 'Targets for everyone in this check-in', why: 'Only the lead sets a target for everyone. The numbers stay in your file as your own evidence, in your words.' }] : []),
       ...(content.length > MOST_OF_A_DOCUMENT_WE_READ
         ? [{ what: 'The rest of the document', why: 'It is too long to read in full, so only the first part was read.' }]
         : []),
@@ -661,6 +672,35 @@ export class DocumentsService {
     await this.prisma.groundDocument.update({ where: { id: docId }, data: { holds: landed as any } }).catch(() => undefined);
     this.logger?.log?.(`Read ${JSON.stringify(fileName)}: ${forOnePerson.length} for one person, ${forEverybody.length} for everybody, ${landed.dates.length} date(s), ${unmatched.length} unmatched name(s).`);
     return landed;
+  }
+
+  /**
+   * A LOCATION PIN SENT ON WHATSAPP, KEPT WITH THE CHECK-IN AS PROOF (see a-location-pin.ts).
+   *
+   * Kept the way an upload is: on the ground, against the person who sent it, with the same default
+   * visibility, so whoever sees their other proof sees this and nobody else does. The coordinates,
+   * and the name and address WhatsApp sent with it, are its content; nothing is read into it.
+   */
+  async keepALocationPin(groundId: string, userId: string, pin: ALocationPin, sentAt: Date, zone?: string) {
+    const participant: any = await this.assertParticipant(groundId, userId);
+    const user = await (this.prisma as any).user?.findUnique?.({ where: { id: userId }, select: { firstName: true } }).catch(() => null);
+    const who = (user?.firstName ?? '').trim() || (participant?.nameGiven ?? '').trim().split(/\s+/)[0] || 'Somebody';
+    const doc = await this.prisma.groundDocument.create({
+      data: {
+        groundId,
+        participantId: participant.id,
+        isConversation: false,
+        visibility: defaultVisibilityForUpload(),
+        fileName: aLocationPinsName(sentAt, zone),
+        mimeType: 'text/plain',
+        content: aLocationPinOnTheRecord(who, pin, sentAt, zone),
+        origin: null,
+        createdAt: sentAt,
+      } as any,
+      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, uploaderNote: true, visibility: true, participantId: true, holds: true },
+    });
+    this.anchorAfterUpload(participant.id, groundId);
+    return toDocShape(doc, doc.participantId ?? undefined, this.config.get<boolean>('app.contextEnabled') === true);
   }
 
   /** Update a document's assessment (user-corrected version). */

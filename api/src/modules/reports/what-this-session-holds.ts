@@ -393,6 +393,13 @@ export function atAGlanceTiles(a: {
   targetsMoved?: number;
   backedPct: number | null; numberWasSaid: boolean;
   /**
+   * FILES, PHOTOS AND LOCATION PINS SENT WITH THIS SESSION'S CHECK-INS THAT THIS READER MAY SEE (B-103).
+   * Her report said "Nothing said this session has a document behind it." after she sent a PDF and
+   * two photos on WhatsApp: the tile counted only lines a document had been matched to, and never
+   * the files themselves. Where a caller does not pass it, nothing is said about files.
+   */
+  filesSent?: number;
+  /**
    * WHETHER ANYBODY IS STILL TO ANSWER, because the Differences tile was guessing.
    *
    * With nothing agreed and nothing open it said "one side has answered so far", on a card whose
@@ -548,15 +555,17 @@ export function atAGlanceTiles(a: {
       label: 'How much was said',
       value: a.backedPct == null
         ? 'Nothing on record yet'
-        : a.backedPct > 0 ? `${a.backedPct}% documented` : 'All from memory',
+        : a.backedPct > 0 ? `${a.backedPct}% documented` : (a.filesSent ?? 0) > 0 ? (a.filesSent === 1 ? '1 file sent' : `${a.filesSent} files sent`) : 'All from memory',
       /* One whole sentence, never a fragment that only reads once joined to the figure by eye
          (request 67). The value stays the short figure the screens compose from. */
       sub: a.backedPct == null
         ? 'There are no answers to read yet.'
         : a.backedPct > 0
           ? `${a.backedPct} of every 100 things people said ${a.backedPct === 1 ? 'has' : 'have'} a document behind ${a.backedPct === 1 ? 'it' : 'them'}.`
-          : 'Nothing said this session has a document behind it.',
-      tone: a.backedPct == null ? 'flat' : a.backedPct > 0 ? 'good' : 'warn',
+          : (a.filesSent ?? 0) > 0
+            ? `${a.filesSent === 1 ? 'One file was' : `${a.filesSent} files were`} sent with this session's check-ins. Nothing said has been matched to ${a.filesSent === 1 ? 'it' : 'one of them'} yet.`
+            : 'Nothing said this session has a document behind it.',
+      tone: a.backedPct == null ? 'flat' : a.backedPct > 0 ? 'good' : (a.filesSent ?? 0) > 0 ? 'flat' : 'warn',
     },
   ];
 }

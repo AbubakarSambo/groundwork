@@ -106,8 +106,10 @@ describe('a document read item by item, with the page each item came from', () =
   it("a colleague's number in a participant's own file is left out, and said to be the lead's to set, not missing from the check-in", async () => {
     const { s, row } = await aRowReadAs('amina', 'OWN');
     const [doc] = await servedTo(s, [row], 'amina');
-    expect(doc.read.took.map((t: any) => t.kind)).toEqual(['a number for everyone', 'a date']);
+    /* B-102: a participant's file offers no number for everyone either; it stays her own evidence. */
+    expect(doc.read.took.map((t: any) => t.kind)).toEqual(['a date']);
     expect(doc.read.leftOut).toContainEqual({ what: 'The numbers for Otieno', why: 'Only the lead can set a number for someone else.' });
+    expect(doc.read.leftOut).toContainEqual({ what: 'Targets for everyone in this check-in', why: 'Only the lead sets a target for everyone. The numbers stay in your file as your own evidence, in your words.' });
     expect(doc.theContextWeHave).not.toContain('is not on this check-in');
   });
 

@@ -64,7 +64,13 @@ describe('one call says which request suites are on', () => {
     const w = world(['leave', 'spend']);
     const read = JSON.stringify(await w.svc.forYourRequests(w.as('u-miriam')));
     expect(read).not.toMatch(/secret|never served|u-|org-/);
-    expect(Object.keys(JSON.parse(read)).sort()).toEqual(['any', 'leave', 'says', 'spend', 'time']);
+    expect(Object.keys(JSON.parse(read)).sort()).toEqual(['any', 'leave', 'reviews', 'says', 'spend', 'time']);
+  });
+
+  it('says whether reviews are on, so the screens never ask GET /suites/reviews/mine while they are off (journey walk row 5)', async () => {
+    expect(await world(['reviews']).svc.forYourRequests({ userId: 'u-miriam', organizationId: ORG })).toMatchObject({ reviews: true, any: false });
+    expect(await world(['leave']).svc.forYourRequests({ userId: 'u-miriam', organizationId: ORG })).toMatchObject({ reviews: false, any: true });
+    expect(await world(['reviews']).svc.forYourRequests({ userId: 'u-tomas', organizationId: ORG })).toMatchObject({ reviews: false });
   });
 });
 

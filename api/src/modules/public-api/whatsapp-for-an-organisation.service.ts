@@ -1,3 +1,5 @@
+import { thePhonesOwnZone } from '../whatsapp/the-persons-own-time-zone';
+import { aLocationPinSaidBack } from '../documents/a-location-pin';
 import { createHash } from 'crypto';
 import { askNameOf } from '../assistant/ask-name';
 import { endsOnTheClose } from '../conversation/the-close-says-what-comes-next';
@@ -51,6 +53,8 @@ import {
  */
 /** What a person reads when a file they sent could not be read (B-104): a sentence of ours, never the library's ("Invalid PDF structure."). */
 export const THAT_FILE_COULD_NOT_BE_READ = 'I could not read that file. It may be damaged, or not the kind of file its name says. Send it again, or upload it in Groundwork. A PDF, an image or a text document works.';
+/** What a person reads when a file they sent is kept but nothing in it could be opened: we never say we read or saw it. */
+export const I_COULD_NOT_OPEN_THAT_FILE = 'I could not open that file. Could you tell me what it shows?';
 export function aFileProblemInWords(err: any): string {
   const said = typeof err?.message === 'string' ? err.message.trim() : '';
   /* One of our own refusals is already a sentence a person can use: a capital, a full stop, several words, and no library words. */
@@ -168,7 +172,7 @@ export class WhatsAppForAnOrganisationService {
       await out.say(t);
     };
 
-    if (arrived.kind === 'other') { await say('I can read text, photos and documents here. Say it in words, or send the file.'); return; }
+    if (arrived.kind === 'other') { await say('I can read text, photos, documents and location pins here. Say it in words, or send the file.'); return; }
     /* The same checks as every other door, on the one field this door plucks off a raw request. */
     if (arrived.kind === 'text') {
       const checked = validateSync(plainToInstance(AMessageIntoACheckInDto, { message: arrived.text }));
@@ -321,7 +325,7 @@ export class WhatsAppForAnOrganisationService {
       if (arrived.kind === 'text' && A_BACK_WORD.test(said)) { await say(BACK_TO_NOTHING(ask)); return; }
       const waiting = await this.invitationWaitingFor(organizationId, who.personId);
       if (waiting) { await say(`You are invited to "${waiting}" and the invitation has not been accepted yet. Open the email, accept it, then reply here and your answers go straight in.`); return; }
-      if (arrived.kind === 'media') { await say('There is no check-in open to put that on. I will message you here when the next one opens; send it again then.'); return; }
+      if (arrived.kind === 'media' || arrived.kind === 'location') { await say('There is no check-in open to put that on. I will message you here when the next one opens; send it again then.'); return; }
       if (who.personId && arrived.kind === 'text') { await say(asATextMessage(await this.assistant.respondOnWhatsApp(organizationId, who.personId, arrived.text)) || 'Noted.'); return; }
       await say('You have no check-in open right now. I will message you here when the next one is ready.');
       return;
@@ -375,7 +379,22 @@ export class WhatsAppForAnOrganisationService {
       const ground = await this.prisma.checkIn.findUnique({ where: { id: current.id }, select: { groundId: true } });
       try {
         const doc: any = await this.documents.upload(ground!.groundId, userId!, { originalname: arrived.fileName, mimetype: fetched.mimeType, buffer: fetched.buffer, size: fetched.buffer.length } as any, false, arrived.caption || undefined);
+        if (doc?.couldNotRead) { await say(I_COULD_NOT_OPEN_THAT_FILE); return; }
         await say(`${whatTheFileIsCalled(arrived)} is on your check-in${arrived.caption ? ` with your note: ${arrived.caption}` : ''}. ${doc?.whoCanSeeIt ?? 'Only you can see it until you say otherwise.'} Anything it backs up is read against what you said.`);
+      } catch (err: any) {
+        await say(aFileProblemInWords(err));
+      }
+      return;
+    }
+
+    /* A location pin, kept with the check-in as proof of where they were when they sent it. */
+    if (arrived.kind === 'location') {
+      const ground = await this.prisma.checkIn.findUnique({ where: { id: current.id }, select: { groundId: true } });
+      const sentAt = arrived.sentAt ?? new Date();
+      const zone = thePhonesOwnZone(from) ?? undefined;
+      try {
+        const doc: any = await this.documents.keepALocationPin(ground!.groundId, userId!, arrived, sentAt, zone);
+        await say(`${aLocationPinSaidBack(arrived, sentAt, zone)} ${doc?.whoCanSeeIt ?? 'Only you can see it until you say otherwise.'}`);
       } catch (err: any) {
         await say(aFileProblemInWords(err));
       }

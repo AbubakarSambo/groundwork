@@ -24,6 +24,9 @@ export class TheWeeklyReportController {
     /* An earlier week, by the date of its Monday (decision 73). Omitted, the latest week. */
     @Query('week') week?: string,
   ) {
-    return this.weekly.read(groundId, { userId, role, organizationId }, new Date(), week ?? null);
+    const served = await this.weekly.read(groundId, { userId, role, organizationId }, new Date(), week ?? null);
+    /* Change 6 (decision 133): the lead's reading of the week served is recorded, after the read was allowed. Never a rebuild. */
+    await this.weekly.noteTheLeadRead(groundId, served?.weekStart ?? null, userId);
+    return served;
   }
 }

@@ -8,6 +8,7 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { OnEvent } from '@nestjs/event-emitter';
 import { CheckInStatus, PartyType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { recordThatTheLeadReadTheWeek } from './a-lead-read-this-report';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { whatTheyMayRead, type Viewer } from '../grounds/who-may-read-this-check-in';
 import { labelsForParties, namesVisibleTo, viewerLabelOf, withNames } from './party-labels';
@@ -275,6 +276,11 @@ export class TheWeeklyReportService {
    * was kept. Each week is its own row; a later week never overwrites an earlier one. Omitted, the
    * latest week is read.
    */
+  /** Change 6: when the lead opens a stored weekly report, the time is recorded (a-lead-read-this-report.ts). It never fails the read. */
+  async noteTheLeadRead(groundId: string, weekStart: string | null, userId: string): Promise<void> {
+    await recordThatTheLeadReadTheWeek(this.prisma, groundId, weekStart, userId).catch((err: any) => console.warn(`A weekly report read was not recorded: ${err?.message}`));
+  }
+
   async read(groundId: string, who: { userId: string; role?: string | null; organizationId?: string | null }, now: Date = new Date(), week?: string | null): Promise<TheWeeklySentences> {
     if (week != null && !/^\d{4}-\d{2}-\d{2}$/.test(week)) throw new BadRequestException('Pick a week by the date of its Monday, for example 2026-09-21.');
     /* Nobody held for a seat reads the weekly report either (privacy sweep finding 3). */

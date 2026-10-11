@@ -14,6 +14,7 @@ import { GroundScenario, PartyType, GroundMoment } from '@prisma/client';
 import { FIRST_CHECK_IN_ROLE_KEY, FIRST_CHECK_IN_ROLE_PROMPT, ROLE_READING_KEY, ROLE_READING_PROMPT } from './their-role-in-the-first-check-in';
 import { ALIGNMENT_FEED_ONLY_CODES, PATTERN_DETECTION_PROMPT, PATTERN_DETECTION_PROMPT_KEY } from '../patterns/pattern-library';
 import { whereInTheRun } from './where-in-the-run';
+import { THE_JUDGEMENT_ROOM_KEY, theRoomJudgementTemplate } from '../reports/the-judgement-over-the-answers';
 /*
  * THE ONE WORDING RULEBOOK, IMPORTED AND NEVER RETYPED. See plain-words.ts for why there is only
  * one: three surfaces with their own copy is how three surfaces come to disagree about whether a
@@ -5127,6 +5128,8 @@ export const SEED_PROMPTS: { key: string; content: string }[] = [
   /* A person's first check-in also learns their job (decision 129): what the conversation is told, and what reads their words afterwards. The version stored is the one that runs. */
   { key: FIRST_CHECK_IN_ROLE_KEY, content: FIRST_CHECK_IN_ROLE_PROMPT },
   { key: ROLE_READING_KEY, content: ROLE_READING_PROMPT },
+  /* The judgement over a check-in's people (change 4): seeded, so the version stored is the one that runs and the judgement's promptVersionId names it. Filled with fillTheJudgement, as the code text is. */
+  { key: THE_JUDGEMENT_ROOM_KEY, content: theRoomJudgementTemplate() },
   ...buildPartySeeds(),
 ];
 

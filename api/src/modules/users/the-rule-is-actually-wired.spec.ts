@@ -26,6 +26,8 @@ const svc = (over: { targetId?: string; targetRole?: string } = {}) => {
       count: async () => 5,
       update: async () => { throw new Error('should not have been written'); },
     },
+    /* Remove finds the person by their membership here (11 October 2026), so the stub has one. */
+    organizationMembership: { findUnique: async () => ({ id: 'm-target', role: target.role }) },
     organization: { findUnique: async () => ({ ownerUserId: OWNER }) },
     $transaction: async () => { throw new Error('should not have opened a transaction'); },
   };

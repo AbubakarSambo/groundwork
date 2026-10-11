@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { TheReminderLinkController } from './the-reminder-link.controller';
+import { StopRemindersController } from '../conversation/stop-reminders.controller';
 
 /**
  * THE "STOP THESE REMINDERS" PAGE'S THREE BUTTONS (A3, #/stop, U.3), BY BEHAVIOUR.
@@ -64,5 +65,31 @@ describe('the reminder link', () => {
     for (const m of ['stop', 'start', 'stopAll'] as const) {
       expect(Reflect.getMetadata('method', (TheReminderLinkController.prototype as any)[m])).toBe(1 /* RequestMethod.POST */);
     }
+  });
+
+  /* 11 October: opening the link must change nothing, because a mail scanner opens every link. */
+  it('opening the link (a GET) reads the check-in and changes nothing', async () => {
+    const { c, updates, many, users } = make(PARTY);
+    expect(await c.read('tok')).toEqual({ known: true, checkInName: 'Sales team, Q3', reminders: 'on' });
+    expect(await c.read('nope')).toEqual({ known: false });
+    expect(Reflect.getMetadata('method', (TheReminderLinkController.prototype as any).read)).toBe(0 /* RequestMethod.GET */);
+    expect(updates.length + many.length + users.length).toBe(0);
+  });
+
+  it('the old GET /stop-reminders/:token changes nothing either, and says the reminders are still on', async () => {
+    const { updates, many, users } = make(PARTY);
+    const prisma: any = { groundParticipant: { findUnique: jest.fn(async () => ({ id: 'p1', remindersStoppedAt: null })), update: jest.fn(async (a: any) => { updates.push(a); }), updateMany: jest.fn(async (a: any) => { many.push(a); }) }, user: { update: jest.fn(async (a: any) => { users.push(a); }) } };
+    const r = await new StopRemindersController(prisma).stop('tok');
+    expect(r.stopped).toBe(false);
+    expect(r.says).toBe('Your reminders are still on. Open the link in your browser and press "Stop the reminders" to stop them.');
+    expect(updates.length + many.length + users.length).toBe(0);
+  });
+
+  it('only the POST stops them, and only with a token we know', async () => {
+    const { c, updates } = make(PARTY);
+    await c.stop('nope');
+    expect(updates).toHaveLength(0);
+    await c.stop('tok');
+    expect(updates).toHaveLength(1);
   });
 });

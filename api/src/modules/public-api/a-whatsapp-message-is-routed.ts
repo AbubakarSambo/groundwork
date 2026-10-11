@@ -67,7 +67,7 @@ export function whatTheFileIsCalled(arrived: { fileName: string; named?: boolean
 }
 
 /** The kind of thing that arrived, from Meta's message shape. */
-export function whatArrived(message: any): { kind: 'text'; text: string } | { kind: 'pick'; id: string } | { kind: 'media'; mediaId: string; mimeType: string; fileName: string; caption: string; /** The sender gave the file a name. A photo has none, and is named here only so it can be stored. */ named?: boolean; /** What it is, for a sentence: photo, document, recording or video. */ what?: 'photo' | 'document' | 'recording' | 'video' } | { kind: 'other' } {
+export function whatArrived(message: any): { kind: 'text'; text: string } | { kind: 'pick'; id: string } | { kind: 'media'; mediaId: string; mimeType: string; fileName: string; caption: string; /** The sender gave the file a name. A photo has none, and is named here only so it can be stored. */ named?: boolean; /** What it is, for a sentence: photo, document, recording or video. */ what?: 'photo' | 'document' | 'recording' | 'video' } | { kind: 'location'; latitude: number; longitude: number; name: string | null; address: string | null; sentAt: Date | null } | { kind: 'other' } {
   if (!message) return { kind: 'other' };
   if (message.type === 'text') return { kind: 'text', text: (message.text?.body ?? '').trim() };
   /* A template's quick-reply button ("Start", "Not now") arrives as its own type, with the words on it. */
@@ -75,6 +75,17 @@ export function whatArrived(message: any): { kind: 'text'; text: string } | { ki
   if (message.type === 'interactive') {
     const id = message.interactive?.list_reply?.id ?? message.interactive?.button_reply?.id;
     return id ? { kind: 'pick', id } : { kind: 'other' };
+  }
+  /* A location pin: the coordinates, and the name and address only where WhatsApp sent them with it. */
+  if (message.type === 'location' && Number.isFinite(Number(message.location?.latitude)) && Number.isFinite(Number(message.location?.longitude))) {
+    const l = message.location;
+    const sent = Number(message.timestamp);
+    return {
+      kind: 'location', latitude: Number(l.latitude), longitude: Number(l.longitude),
+      name: typeof l.name === 'string' && l.name.trim() ? l.name.trim() : null,
+      address: typeof l.address === 'string' && l.address.trim() ? l.address.trim() : null,
+      sentAt: Number.isFinite(sent) && sent > 0 ? new Date(sent * 1000) : null,
+    };
   }
   for (const t of ['image', 'document', 'audio', 'video'] as const) {
     if (message.type === t && message[t]?.id) {

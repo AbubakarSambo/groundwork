@@ -7,6 +7,7 @@ import { RecordEntryType } from '@prisma/client';
 import { howMuchThereIsToGoOn, type Confidence } from './how-much-there-is-to-go-on';
 import { atAGlanceTiles, type AGlanceRead, type WhyNoWorryIsShown } from './what-this-session-holds';
 import { howSolid, MARK } from './a-figure-nobody-can-check-says-so';
+import { splitAtFieldNames, withoutRepeatedSentences, readableWithoutFieldNames } from './no-field-names-on-the-page';
 
 /**
  * THE PER-SESSION REPORT, IN THE SHAPE WE PROMISED A CLIENT.
@@ -240,6 +241,8 @@ export interface SessionReportInputs {
   theFirstBlocker?: string | null;
   worries?: number;
   theFirstWorry?: string | null;
+  /** Files, photos and location pins sent with this session's check-ins that the reader may see (B-103). */
+  filesSentThisSession?: number;
   whyNoWorryIsShown?: WhyNoWorryIsShown;
   /** Waits raised before this session and still open (see whatThisSessionHolds). */
   waitsFromEarlier?: number;
@@ -258,7 +261,8 @@ export interface SessionReportInputs {
  * the three fields is filled rather than asserting one. Nothing is invented: an entry with no
  * words in it is dropped instead of being printed as an empty bullet.
  */
-function titleOf(x: unknown): string | null {
+/** The title as stored, which on a report written before the rebuild can carry its other fields joined on ("Topic. atStake: ..."). */
+function storedTitleOf(x: unknown): string | null {
   if (typeof x === 'string') return x.trim() || null;
   if (!x || typeof x !== 'object') return null;
   const o = x as Record<string, unknown>;
@@ -267,6 +271,20 @@ function titleOf(x: unknown): string | null {
     if (typeof v === 'string' && v.trim()) return v.trim();
   }
   return null;
+}
+
+/** The title a reader sees: the stored title without any field joined onto it (journey walk rows 1 and 2; no-field-names-on-the-page.ts). */
+function titleOf(x: unknown): string | null {
+  const stored = storedTitleOf(x);
+  return stored ? splitAtFieldNames(stored).head || stored : null;
+}
+
+/** A field the old rows joined onto the title, read back out of it, when the row does not carry it on its own. */
+function fieldOf(d: any, key: string): string | null {
+  const own = d?.[key];
+  if (typeof own === 'string' && own.trim()) return withoutRepeatedSentences(own.trim());
+  const stored = storedTitleOf(d);
+  return stored ? splitAtFieldNames(stored).fields[key] ?? null : null;
 }
 
 const said = (e: { type?: string; text: string; who: string | null; recallBased: boolean; backedBy?: string | null; confirmedAt?: Date | null; documentIsTheirOwn?: boolean }): SaidThing => {
@@ -329,8 +347,8 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
         positions: theSides,
         restsOn: evidence.map((e) => String(e ?? '').trim()).filter(Boolean),
         ...(evidenceMarks ? { restsOnMarks: evidenceMarks } : {}),
-        atStake: typeof d?.atStake === 'string' && d.atStake.trim() ? d.atStake.trim() : null,
-        settledBy: typeof d?.settledBy === 'string' && d.settledBy.trim() ? d.settledBy.trim() : null,
+        atStake: fieldOf(d, 'atStake') ?? fieldOf(d, 'whyItMatters'),
+        settledBy: fieldOf(d, 'settledBy'),
       };
     })
     .filter(Boolean) as SessionReportShape['whereThingsStand']['openWithReasons'];
@@ -544,6 +562,7 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     targetsWithANumber: input.targetsWithANumber ?? input.targetsSet ?? 0,
     targetsMoved: input.targetsMoved,
     backedPct, numberWasSaid: aNumberWasSaid(input),
+    filesSent: input.filesSentThisSession ?? 0,
     /* So the Differences tile stops saying somebody has not answered when everybody has. */
     stillToAnswer: Math.max(0, (input.peopleInAll ?? input.answeredThisSession.length) - input.answeredThisSession.length),
     /* And so the two that have something to name, name it rather than repeating their own label. */
@@ -668,7 +687,7 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
       level: input.specificityLevel ?? null,
       saying: howClear(input.specificityLevel),
     },
-    theConversationWorthHaving: input.centralQuestion ?? null,
+    theConversationWorthHaving: readableWithoutFieldNames(input.centralQuestion ?? null),
   };
 }
 

@@ -557,7 +557,8 @@ export class EmailService implements OnModuleInit {
       try {
         /* MAIL_CATCHER_PORT is for a test bed only (two testers, two catchers). Unset, it is 1025 as it always was. This branch is only ever reached when nothing is sent for real. */
         const transport = nodemailer.createTransport({ host: '127.0.0.1', port: Number(process.env.MAIL_CATCHER_PORT) || 1025, secure: false, ignoreTLS: true });
-        await transport.sendMail({ from: this.fromEmail, to: options.to, subject: options.subject, html: options.html });
+        /* The text part too (11 October): this copy is the one a person testing locally reads, and it went with the HTML only, so every mail looked as if its text part were empty. */
+        await transport.sendMail({ from: this.fromEmail, to: options.to, subject: options.subject, html: options.html, text });
       } catch (_) { /* mailcatcher not running - console log is still available */ }
       const devId = `dev-${crypto.randomUUID()}`;
       await this.delivery.recordSend(devId, options.to, context);
@@ -1963,16 +1964,38 @@ function inDollars(cents: number): string {
 }
 
 /** The plain-text part, from the HTML every sender already composes: links kept as their address. */
+/**
+ * THE TEXT PART OF EVERY MAIL, MADE FROM ITS HTML IN ONE PLACE (deliverNow). The same words, in the
+ * same order: each paragraph is followed by a blank line, a link reads "its words (its address)",
+ * and no tag, style block or entity is left for somebody whose mail program shows only text.
+ */
 export function plainTextOf(html: string): string {
-  return html
-    .replace(/<a [^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi, (_m, href, label) => `${label.replace(/<[^>]+>/g, '').trim()} (${href})`)
-    .replace(/<\/(p|div|h[1-6]|li|tr)>/gi, '\n')
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
-    .replace(/[ \t]+\n/g, '\n')
+  const withoutTags = (t: string) => t.replace(/<[^>]+>/g, '');
+  return decodeEntities(
+    html
+      .replace(/<(style|script|head|title)\b[^>]*>[\s\S]*?<\/\1>/gi, '')
+      .replace(/<a\b[^>]*?href=(["'])([^"']+)\1[^>]*>([\s\S]*?)<\/a>/gi, (_m, _q, href: string, label: string) => {
+        const words = withoutTags(label).replace(/\s+/g, ' ').trim();
+        return !words || words === href ? href : `${words} (${href})`;
+      })
+      .replace(/<\/(p|div|h[1-6]|ul|ol|table|blockquote)>/gi, '\n\n')
+      .replace(/<\/(li|tr)>/gi, '\n')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      /* The indentation of a template literal is not part of the words. */
+      .replace(/\r/g, '')
+      .split('\n').map((line) => line.replace(/[ \t]+/g, ' ').trim()).join('\n'),
+  )
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+}
+
+function decodeEntities(t: string): string {
+  const named: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“', mdash: '—', ndash: '–', hellip: '…', rarr: '→', middot: '·' };
+  return t
+    .replace(/&#(\d+);/g, (_m, n) => String.fromCodePoint(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_m, n) => String.fromCodePoint(parseInt(n, 16)))
+    .replace(/&([a-z]+);/gi, (m, n: string) => named[n.toLowerCase()] ?? m);
 }
 
 /** Appended to every mail we decided to send. The link works with no sign-in (round-digest.service.ts#unsubscribe). */
