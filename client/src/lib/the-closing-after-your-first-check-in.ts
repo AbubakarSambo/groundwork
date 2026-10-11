@@ -74,7 +74,7 @@ function aStartStillToCome(s: TheSchedule, today: Date): string | null {
 
 /**
  * "NOW" (Hafsah, 11 October 2026): with no start chosen, the team's first check-in opens at once and
- * stays open until the next set day a full cycle or more away, the same rule as the server and the
+ * stays open until the next set day at least half a cycle away, the same rule as the server and the
  * setup's date list. This is that day, said in words ("Monday 19 October"), for a weekly, fortnightly
  * or monthly check-in. Null when it cannot be known (no day it was made), or when it has already come.
  */

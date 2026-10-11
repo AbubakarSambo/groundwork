@@ -185,7 +185,7 @@ describe('the chosen end, as the server will keep it (U.6 review)', () => {
 
 /*
  * ITEM 5 (the walk, Sunday 11 October 2026, "every Monday"). With "Now", Hafsah decided (11 October):
- * the first check-in opens at once and stays open until the next set day a full cycle or more away,
+ * the first check-in opens at once and stays open until the next set day at least half a cycle away,
  * so the list reads Sun 11 October, Mon 19, Mon 26, never Sun 11 and Mon 12 a day apart. With
  * Tomorrow or a date, the next check-in is the first set day after the start.
  */
@@ -199,13 +199,17 @@ describe('the dates after the start the lead chose follow the set day', () => {
     expect(whenTheyOpen({ cadence: 'WEEKLY', anchorDay: 1, startsOn: '', endsOn: '', workingDays: [], today: new Date(2026, 9, 12, 9, 0) }))
       .toBe('Check-ins open on Mon 12 October, Mon 19, Mon 26, Mon 2 November, Mon 9 and on from there.')
   })
-  it('Now, on Saturday 17: Monday 19 is less than a week away, so the next is Monday 26', () => {
+  it('Now, on Thursday 15: Monday 19 is 4 days away, at least half a week, so it is the next', () => {
+    expect(whenTheyOpen({ cadence: 'WEEKLY', anchorDay: 1, startsOn: '', endsOn: '', workingDays: [], today: new Date(2026, 9, 15, 9, 0) }))
+      .toBe('Check-ins open on Thu 15 October, Mon 19, Mon 26, Mon 2 November, Mon 9 and on from there.')
+  })
+  it('Now, on Saturday 17: Monday 19 is less than half a week away, so the next is Monday 26', () => {
     expect(whenTheyOpen({ cadence: 'WEEKLY', anchorDay: 1, startsOn: '', endsOn: '', workingDays: [], today: new Date(2026, 9, 17, 9, 0) }))
       .toBe('Check-ins open on Sat 17 October, Mon 26, Mon 2 November, Mon 9, Mon 16 and on from there.')
   })
   it('Now, every other Monday, on a Sunday', () => {
     expect(whenTheyOpen({ cadence: 'FORTNIGHTLY', anchorDay: 1, startsOn: '', endsOn: '', workingDays: [], today: SUNDAY_11 }))
-      .toBe('Check-ins open on Sun 11 October, Mon 26, Mon 9 November, Mon 23, Mon 7 December and on from there.')
+      .toBe('Check-ins open on Sun 11 October, Mon 19, Mon 2 November, Mon 16, Mon 30 and on from there.')
   })
   it('Tomorrow, a Monday', () => {
     expect(whenTheyOpen({ cadence: 'WEEKLY', anchorDay: 1, startsOn: '2026-10-12', endsOn: '', workingDays: [], today: SUNDAY_11 }))
@@ -215,13 +219,13 @@ describe('the dates after the start the lead chose follow the set day', () => {
     expect(whenTheyOpen({ cadence: 'WEEKLY', anchorDay: 1, startsOn: '2026-10-21', endsOn: '', workingDays: [], today: SUNDAY_11 }))
       .toBe('Check-ins open on Wed 21 October, Mon 26, Mon 2 November, Mon 9, Mon 16 and on from there.')
   })
-  it('Now, monthly on the 20th, on the 11th: the 20th of this month is less than a month away', () => {
+  it('Now, monthly on the 20th, on the 11th: the 20th of this month is 9 days away, less than half a month', () => {
     expect(whenTheyOpen({ cadence: 'MONTHLY', anchorDay: 20, startsOn: '', endsOn: '', workingDays: [], today: SUNDAY_11 }))
       .toBe('Check-ins open on Sun 11 October, Fri 20 November, Sun 20 December, Wed 20 January, Sat 20 February and on from there.')
   })
-  it('Now, monthly on the 20th, on the 25th: 20 November is less than a month away', () => {
+  it('Now, monthly on the 20th, on the 25th: 20 November is 26 days away, at least half a month', () => {
     expect(whenTheyOpen({ cadence: 'MONTHLY', anchorDay: 20, startsOn: '', endsOn: '', workingDays: [], today: new Date(2026, 9, 25, 9, 0) }))
-      .toBe('Check-ins open on Sun 25 October, Sun 20 December, Wed 20 January, Sat 20 February, Sat 20 March and on from there.')
+      .toBe('Check-ins open on Sun 25 October, Fri 20 November, Sun 20 December, Wed 20 January, Sat 20 February and on from there.')
   })
   it('On a date, monthly on the 20th, starting Monday 12: the 20th of the same month', () => {
     expect(whenTheyOpen({ cadence: 'MONTHLY', anchorDay: 20, startsOn: '2026-10-12', endsOn: '', workingDays: [], today: SUNDAY_11 }))

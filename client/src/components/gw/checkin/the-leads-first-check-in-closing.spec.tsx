@@ -86,15 +86,27 @@ describe('the closing beside each start the lead can choose', () => {
   const SUNDAY_11 = new Date(2026, 9, 11, 16, 0)
   const weekly = { cadence: 'WEEKLY', cadenceAnchorDay: 1 }
 
-  /* "Now" (Hafsah, 11 October 2026): the first check-in stays open until the next set day a full
-     cycle or more away, so the closing says so rather than "every Monday" alone, which read as if the
+  /* "Now" (Hafsah, 11 October 2026): the first check-in stays open until the next set day at least
+     half a cycle away, so the closing says so rather than "every Monday" alone, which read as if the
      team checked in again on Monday 12. Her sentence is kept around it. */
   it('Now on Sunday 11: the first check-in is open now and stays open until Monday 19', () => {
     expect(theClosingAsOneSentence({ ...weekly, startsAt: null, createdAt: '2026-10-11T15:00:00.000Z' }, SUNDAY_11)).toBe(
       "That's your first check-in done. Come back any time to add updates. Your team's first check-in is open now and stays open until Monday 19 October, and after that they check in every Monday, as you set it. You can change how often in setup.")
   })
 
-  it('Now on Saturday 17: Monday 19 is less than a week away, so it stays open until Monday 26', () => {
+  it('Now on Thursday 15: Monday 19 is 4 days away, at least half a week, so it stays open until Monday 19', () => {
+    const thursday = new Date(2026, 9, 15, 10, 0)
+    expect(theClosingAsOneSentence({ ...weekly, startsAt: null, createdAt: thursday.toISOString() }, thursday)).toContain(
+      "Your team's first check-in is open now and stays open until Monday 19 October, and after that they check in every Monday, as you set it.")
+  })
+
+  it('Now, monthly on the 20th, on the 25th: it stays open until 20 November, 26 days away', () => {
+    const the25th = new Date(2026, 9, 25, 10, 0)
+    expect(theClosingAsOneSentence({ cadence: 'MONTHLY', cadenceAnchorDay: 20, startsAt: null, createdAt: the25th.toISOString() }, the25th)).toContain(
+      "Your team's first check-in is open now and stays open until Friday 20 November, and after that they check in on the 20th of each month, as you set it.")
+  })
+
+  it('Now on Saturday 17: Monday 19 is less than half a week away, so it stays open until Monday 26', () => {
     const saturday = new Date(2026, 9, 17, 10, 0)
     expect(theClosingAsOneSentence({ ...weekly, startsAt: null, createdAt: saturday.toISOString() }, saturday)).toContain(
       "Your team's first check-in is open now and stays open until Monday 26 October, and after that they check in every Monday, as you set it.")
