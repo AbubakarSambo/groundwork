@@ -1,6 +1,8 @@
 import { BLOCKER_TRACE_PROMPT, BLOCKER_TRACE_PROMPT_KEY } from './where-the-blocker-started';
 import { ANCHOR_LEAD_PROMPT, ANCHOR_LEAD_PROMPT_KEY } from './the-anchor-lead-conversation';
 import { ANCHOR_PARTICIPANT_PROMPT, ANCHOR_PARTICIPANT_PROMPT_KEY } from './the-anchor-weekly-check-in';
+import { ANCHOR_BASELINE_PROMPT, ANCHOR_BASELINE_PROMPT_KEY } from './the-anchor-baseline';
+import { IDEA_SPOTTING_KEY, THE_IDEA_SPOTTING_PROMPT } from './ideas-from-the-team';
 import { THE_BRIEF_IS_CONTEXT_ONLY } from './the-leads-brief-is-never-quoted-to-them';
 import { COMPANY_PICTURE_PROMPT, COMPANY_PICTURE_PROMPT_KEY } from '../grounds/the-company-picture';
 import { CUSTOMER_STANDING_PROMPT, CUSTOMER_STANDING_PROMPT_KEY } from '../suites/the-customer-standing';
@@ -9,7 +11,8 @@ import { alreadyEstablished } from './setup-already-asked-this';
 import { whatThisCheckInIsFor, whichStage, THE_SCENARIO_TABLE, type Stage } from './the-scenario-table';
 import { NOTHING_HERE_IS_PLEASED_WITH_YOU } from './nothing-here-is-pleased-with-you';
 import { GroundScenario, PartyType, GroundMoment } from '@prisma/client';
-import { ALIGNMENT_FEED_ONLY_CODES } from '../patterns/pattern-library';
+import { FIRST_CHECK_IN_ROLE_KEY, FIRST_CHECK_IN_ROLE_PROMPT, ROLE_READING_KEY, ROLE_READING_PROMPT } from './their-role-in-the-first-check-in';
+import { ALIGNMENT_FEED_ONLY_CODES, PATTERN_DETECTION_PROMPT, PATTERN_DETECTION_PROMPT_KEY } from '../patterns/pattern-library';
 import { whereInTheRun } from './where-in-the-run';
 /*
  * THE ONE WORDING RULEBOOK, IMPORTED AND NEVER RETYPED. See plain-words.ts for why there is only
@@ -678,8 +681,9 @@ IF THEY NAME AN OUTCOME RATHER THAN AN ACTION - "she needs to change it", "the t
 that is what they want, not what they will do. Ask once more for their own part: "That is the
 outcome. What is the first thing you do towards it, and when?"
 
-IF THEY GENUINELY HAVE NOTHING, record that plainly and close anyway. "Nothing until the review" is
-a real answer and a useful one; pressing a third time turns a record into a demand. Never invent a
+IF THEY GENUINELY HAVE NOTHING, record that plainly and close anyway. Having nothing to do until a
+later meeting is a real answer and a useful one. Acknowledge what they wrote in their words, and never
+answer it with a line they did not write; pressing a third time turns a record into a demand. Never invent a
 date they did not say, and never turn a vague intention into a deadline: "soon" stays "soon".
 Reading a date OUT OF A DOCUMENT they can open is not inventing one - see the exception in the
 TIMEFRAME RULE. Quoting "the plan your lead shared says 19 September" is showing them what is
@@ -2842,7 +2846,7 @@ const CRISIS_PACK_COMBINED = [
 ].join('\n\n');
 
 /** The scenarios whose packs carry role-specific questions for the person the check-in is about. */
-export const STARTING_SCENARIOS = new Set(['NEW_HIRE', 'NEW_COFOUNDER', 'NEW_ADVISOR', 'NEW_PROJECT', 'NEW_MANAGER', 'CONTRACT_RENEWAL', 'ROLE_HANDOVER']);
+export const STARTING_SCENARIOS = new Set(['NEW_HIRE', 'NEW_COFOUNDER', 'NEW_ADVISOR', 'NEW_PROJECT', 'HELP_TEAM_UNDERSTAND', 'NEW_MANAGER', 'CONTRACT_RENEWAL', 'ROLE_HANDOVER']);
 
 /**
  * THE PRODUCT'S OWN FIRST QUESTION TO A NON-LEAD IN A STARTING SCENARIO. See ConversationService.open.
@@ -2854,6 +2858,9 @@ export const WHO_ARE_YOU_IN_THIS =
 /** For the participant who is NOT the person the check-in is about. Their side of the shared work. */
 const SOMEBODY_ELSE_IN_THIS =
   '"From where you sit, what has this work looked like so far? What have you needed from them, or they from you, and did it arrive? Then separately: what would you point to in three months to say this had gone well from your side?"';
+
+/** The anchor's role questions are a project's, as they were before it had a situation of its own. */
+const startingRoleQuestionsFor = (scenario: string) => STARTING_ROLE_QUESTIONS[(scenario === 'HELP_TEAM_UNDERSTAND' ? 'NEW_PROJECT' : scenario) as keyof typeof STARTING_ROLE_QUESTIONS];
 
 function composeStartingPack(scenario: keyof typeof STARTING_ROLE_QUESTIONS): string {
   const role = STARTING_ROLE_QUESTIONS[scenario];
@@ -3500,6 +3507,7 @@ export const SCENARIO_PACKS: Record<GroundScenario, string> = {
   NEW_COFOUNDER: composeStartingPack('NEW_COFOUNDER'),
   NEW_ADVISOR: composeStartingPack('NEW_ADVISOR'),
   NEW_PROJECT: composeStartingPack('NEW_PROJECT'),
+  HELP_TEAM_UNDERSTAND: composeStartingPack('NEW_PROJECT'),
   NEW_MANAGER: composeStartingPack('NEW_MANAGER'),
   CONTRACT_RENEWAL: composeStartingPack('CONTRACT_RENEWAL'),
   CONTRACT_REVIEW: CONTRACT_REVIEW_PACK,
@@ -3565,6 +3573,7 @@ function theScenariosOwnPack(
     case GroundScenario.NEW_COFOUNDER:
     case GroundScenario.NEW_ADVISOR:
     case GroundScenario.NEW_PROJECT:
+    case GroundScenario.HELP_TEAM_UNDERSTAND:
     case GroundScenario.NEW_MANAGER:
     case GroundScenario.CONTRACT_RENEWAL:
     /*
@@ -3581,7 +3590,7 @@ function theScenariosOwnPack(
      * cases is at the bottom of this change - see every-scenario-is-reachable.spec.ts.
      */
     case GroundScenario.ROLE_HANDOVER: {
-      const role = STARTING_ROLE_QUESTIONS[scenario as keyof typeof STARTING_ROLE_QUESTIONS];
+      const role = startingRoleQuestionsFor(scenario);
       /*
        * SEVEN CARDS, SEVEN PROMISES, AND ONE LINE THAT ANSWERED NONE OF THEM.
        *
@@ -3968,6 +3977,7 @@ function situationTypeFromScenario(scenario: GroundScenario): string {
     case GroundScenario.NEW_COFOUNDER:
     case GroundScenario.NEW_ADVISOR:
     case GroundScenario.NEW_PROJECT:
+    case GroundScenario.HELP_TEAM_UNDERSTAND:
     case GroundScenario.NEW_MANAGER:
     case GroundScenario.CONTRACT_RENEWAL:
       return 'Starting';
@@ -4004,6 +4014,7 @@ function resolveRelationshipHistory(
     case GroundScenario.NEW_COFOUNDER:
     case GroundScenario.NEW_ADVISOR:
     case GroundScenario.NEW_PROJECT:
+    case GroundScenario.HELP_TEAM_UNDERSTAND:
     case GroundScenario.NEW_MANAGER:
       return 'new';
     case GroundScenario.DRIFT:
@@ -4033,7 +4044,8 @@ function relationshipTypeFromScenario(scenario: GroundScenario): string {
     case GroundScenario.NEW_HIRE: return 'new_hire';
     case GroundScenario.NEW_COFOUNDER: return 'cofounder';
     case GroundScenario.NEW_ADVISOR: return 'advisor';
-    case GroundScenario.NEW_PROJECT: return 'project_member';
+    case GroundScenario.NEW_PROJECT:
+    case GroundScenario.HELP_TEAM_UNDERSTAND: return 'project_member';
     case GroundScenario.NEW_MANAGER: return 'manager_contractor';
     case GroundScenario.CONTRACT_RENEWAL: return 'contract_renewal';
     case GroundScenario.DRIFT: return 'drifted_relationship';
@@ -4072,6 +4084,7 @@ function selectPathwayNumber(
     case GroundScenario.NEW_ADVISOR:
       return isInitiator ? 14 : 5;
     case GroundScenario.NEW_PROJECT:
+    case GroundScenario.HELP_TEAM_UNDERSTAND:
       return isInitiator ? 14 : 8;
     case GroundScenario.NEW_MANAGER:
       return isInitiator ? 14 : 7;
@@ -5106,6 +5119,14 @@ export const SEED_PROMPTS: { key: string; content: string }[] = [
   { key: ANCHOR_LEAD_PROMPT_KEY, content: ANCHOR_LEAD_PROMPT },
   /* The weekly check-in of somebody on the anchor lead's team (anchor piece 15): the version stored here is the one that runs. */
   { key: ANCHOR_PARTICIPANT_PROMPT_KEY, content: ANCHOR_PARTICIPANT_PROMPT },
+  /* The first conversation of somebody on the lead's team (anchor piece 14), and the reading that spots an idea (anchor piece 19): seeded so that a clean install stores them, and the version stored is the one that runs. */
+  { key: ANCHOR_BASELINE_PROMPT_KEY, content: ANCHOR_BASELINE_PROMPT },
+  { key: IDEA_SPOTTING_KEY, content: THE_IDEA_SPOTTING_PROMPT },
+  /* What reads a check-in for patterns (decision 128): the version stored here is the one that runs, and each pattern records which one read it. */
+  { key: PATTERN_DETECTION_PROMPT_KEY, content: PATTERN_DETECTION_PROMPT },
+  /* A person's first check-in also learns their job (decision 129): what the conversation is told, and what reads their words afterwards. The version stored is the one that runs. */
+  { key: FIRST_CHECK_IN_ROLE_KEY, content: FIRST_CHECK_IN_ROLE_PROMPT },
+  { key: ROLE_READING_KEY, content: ROLE_READING_PROMPT },
   ...buildPartySeeds(),
 ];
 

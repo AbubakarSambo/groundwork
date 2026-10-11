@@ -1,5 +1,6 @@
 import { HOW_I_WILL_WORK_WITH_YOUR_TEAM } from './the-anchor-served-shapes';
 import type { TheLeadsReveal } from './the-anchor-served-shapes';
+import type { TheSevenItems } from './the-anchor-setup';
 
 /**
  * THE LEAD'S REVEAL, "Help my team understand" (docs/anchor-scenario.md, sections 11 and 12; plan piece 8;
@@ -57,6 +58,18 @@ export function whoSheIsTryingToMove(names: string[]): string {
   return `You are trying to move ${listed(more > 0 ? [...shown, more === 1 ? 'one other person' : `${more} other people`] : shown)} with you.`;
 }
 
+/** Who she is trying to move, as a sentence: as the read wrote it when it is one ("You are trying to move..."), else the group she named, put into one. */
+/** First words that are never a name, so they read in the middle of a sentence in lower case. */
+const GENERAL_FIRST_WORDS = 'everyone|everybody|all|both|those|these|some|most|each|every|people|staff|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty';
+
+export function whoYouAreMovingSaid(text: string): string {
+  const t = text.trim().replace(/[.!?]+$/, '');
+  if (/^you\b/i.test(t)) return asASentence(t);
+  /* Only a leading "The", "A" or "An" is lower-cased, and "My" or "Our" becomes "your"; a name or anything else stays as written. */
+  const said = t.replace(new RegExp(`^(?:the|a|an|${GENERAL_FIRST_WORDS})\\b`, 'i'), (m) => m.toLowerCase()).replace(/^(?:my|our)\s/i, 'your ');
+  return `You are trying to move ${said} with you.`;
+}
+
 export const NOT_WRITTEN_DOWN = {
   carrying: 'Groundwork has not yet written down what you are carrying.',
   whatTheTeamNeedsToUnderstand: 'Groundwork has not yet written down what you need the team to understand.',
@@ -71,20 +84,36 @@ export const WHAT_GROUNDWORK_WILL_EXPLORE = [
 
 export type TheRevealReader = 'lead' | 'team';
 
-export function theLeadsReveal(input: { messages: Turn[]; peopleNamed?: string[]; reader?: TheRevealReader; sharedWithTheTeam?: boolean }): TheLeadsReveal {
+/** A sentence as the lead reads it: a capital letter to start and one full stop to end, nothing else changed. */
+export const asASentence = (t: string): string => {
+  const x = t.trim();
+  if (!x) return '';
+  const up = x[0].toUpperCase() + x.slice(1);
+  return /[.!?]$/.test(up) ? up : `${up}.`;
+};
+
+/** What she is carrying: what sits with her, and why it bothers her, in the words she gave. Nothing when she gave neither. */
+const whatSheIsCarrying = (h: TheSevenItems): string | null => {
+  const parts = [h.responsibleFor, h.whyItBothersYou].map((p) => asASentence(p ?? '')).filter(Boolean);
+  return parts.length ? parts.join(' ') : null;
+};
+
+export function theLeadsReveal(input: { messages: Turn[]; peopleNamed?: string[]; reader?: TheRevealReader; sharedWithTheTeam?: boolean; heard?: TheSevenItems }): TheLeadsReveal {
   const reader = input.reader ?? 'lead';
   const shared = input.sharedWithTheTeam === true;
   const hers = herAnswerToTheHopeQuestion(input.messages);
-  const change = hers ? whatSheSaidOneAtATime(hers) : [];
+  const heard = input.heard ?? {};
+  /* Her answer as the read wrote it to her ("you", one thing to a sentence), else exactly as she wrote it. */
+  const change = heard.whatTheyWouldDoDifferently ? whatSheSaidOneAtATime(heard.whatTheyWouldDoDifferently) : hers ? whatSheSaidOneAtATime(hers) : [];
   const forTheLead = reader === 'lead';
   return {
     title: 'Help my team understand',
     subtitle: 'One-month Groundwork',
-    carrying: forTheLead ? NOT_WRITTEN_DOWN.carrying : null,
-    whatTheTeamNeedsToUnderstand: forTheLead ? NOT_WRITTEN_DOWN.whatTheTeamNeedsToUnderstand : null,
+    carrying: forTheLead ? whatSheIsCarrying(heard) ?? NOT_WRITTEN_DOWN.carrying : null,
+    whatTheTeamNeedsToUnderstand: forTheLead ? (heard.whatTheyDontUnderstand ? asASentence(heard.whatTheyDontUnderstand) : NOT_WRITTEN_DOWN.whatTheTeamNeedsToUnderstand) : null,
     sharedWithTheTeam: shared,
-    whoYouAreTryingToMove: whoSheIsTryingToMove(input.peopleNamed ?? []),
-    seeingToday: forTheLead ? NOT_WRITTEN_DOWN.seeingToday : null,
+    whoYouAreTryingToMove: heard.tryingToMove ? whoYouAreMovingSaid(heard.tryingToMove) : whoSheIsTryingToMove(input.peopleNamed ?? []),
+    seeingToday: forTheLead ? (heard.seeingToday ? asASentence(heard.seeingToday) : NOT_WRITTEN_DOWN.seeingToday) : null,
     whatMeaningfulChangeWouldLookLike: change.length ? change : [NOT_WRITTEN_DOWN.change],
     whatGroundworkWillExplore: [...WHAT_GROUNDWORK_WILL_EXPLORE],
     howIWillWorkWithYourTeam: HOW_I_WILL_WORK_WITH_YOUR_TEAM.map((w) => ({ ...w })),

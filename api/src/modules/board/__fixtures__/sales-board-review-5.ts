@@ -54,7 +54,7 @@ export const REVIEW_5_CHECK_INS = [
 
 /** What each person typed, word for word, in the check-in it came from. */
 export const REVIEW_5_TURNS = [
-  { checkInId: 'c1-p-rukia', content: 'Twelve signed supply contracts with shops is what success looks like, and I want us to sign 12 shops by 20 December.' },
+  { checkInId: 'c1-p-rukia', content: 'Success means twelve signed supply contracts with shops, and I want us to sign 12 shops by 20 December.' },
   { checkInId: 'c1-p-rukia', content: 'I have signed Tuskys Westgate already, on 18 September.' },
   { checkInId: 'c1-p-rukia', content: 'I still need to approve a discount for Baraka and send a price list to Amani.' },
   { checkInId: 'c2-p-rukia', content: 'I will visit Naivas Karen on Monday to show them the cookers.' },
@@ -78,7 +78,7 @@ export const REVIEW_5_OBJECTIVES = [
   aim('o-team', 'Sign 12 shops for kitchen appliances in Nairobi.', { sortOrder: 0 }),
   aim('o-said-again', 'They want us to sign 12 shops by 20 December.', {
     target: 12, count: 12, prevCount: 0, sortOrder: 1, direction: 'AIM',
-    suggestedSaid: 'Twelve signed supply contracts with shops is what success looks like, and I want us to sign 12 shops by 20 December.', suggestedAtSession: 1,
+    suggestedSaid: 'Success means twelve signed supply contracts with shops, and I want us to sign 12 shops by 20 December.', suggestedAtSession: 1,
     updatedAt: on('27', '11:05:00'),
   }),
   aim('o-onboarded', 'They want to get 12 shops onboarded.', { target: 12, sortOrder: 2 }),
@@ -118,7 +118,7 @@ export const REVIEW_5_DEALS = [
 
 /** The record's lines, with the check-in each came from. */
 export const REVIEW_5_LINES = [
-  { id: 'e-rukia-success', participantId: 'p-rukia', checkInId: 'c1-p-rukia', type: 'SUCCESS_DEFINITION', text: 'Twelve signed supply contracts with shops is what success looks like, and I want us to sign 12 shops by 20 December.', saidWordForWord: true, recallBased: false, verifiability: 'MEDIUM', checkIn: { sessionNumber: 1 }, disputedAt: null, createdAt: on('26', '09:05:00') },
+  { id: 'e-rukia-success', participantId: 'p-rukia', checkInId: 'c1-p-rukia', type: 'SUCCESS_DEFINITION', text: 'Success means twelve signed supply contracts with shops, and I want us to sign 12 shops by 20 December.', saidWordForWord: true, recallBased: false, verifiability: 'MEDIUM', checkIn: { sessionNumber: 1 }, disputedAt: null, createdAt: on('26', '09:05:00') },
   { id: 'e-rukia-tuskys', participantId: 'p-rukia', checkInId: 'c1-p-rukia', type: 'PROGRESS', text: 'I have signed Tuskys Westgate already, on 18 September.', saidWordForWord: true, recallBased: false, verifiability: 'HIGH', checkIn: { sessionNumber: 1 }, disputedAt: null, createdAt: on('26', '09:06:00') },
   { id: 'e-rukia-naivas', participantId: 'p-rukia', checkInId: 'c2-p-rukia', type: 'COMMITMENT', text: 'I will visit Naivas Karen on Monday to show them the cookers.', saidWordForWord: true, recallBased: false, verifiability: 'HIGH', checkIn: { sessionNumber: 2 }, disputedAt: null, createdAt: on('30', '09:06:00') },
   { id: 'e-amani-aim', participantId: 'p-amani', checkInId: 'c1-p-amani', type: 'INTENT', text: 'I am aiming for 3 shops in Kilimani by 20 December.', saidWordForWord: true, recallBased: false, verifiability: 'MEDIUM', checkIn: { sessionNumber: 1 }, disputedAt: null, createdAt: on('26', '10:05:00') },

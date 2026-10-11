@@ -27,7 +27,7 @@ export type RowResult =
   | 'not an email' /* Kept out here rather than failing at the send. */
   | 'no seat';     /* The plan has no room. The whole reason a preview exists. */
 
-export interface Row { email: string; result: RowResult }
+export interface Row { email: string; result: RowResult; /** The name typed beside the address, so the preview can show what was read. */ name?: string }
 
 /**
  * How many addresses one paste may carry.
@@ -97,6 +97,11 @@ export function namesIn(pasted: string): Map<string, string> {
   for (const line of (pasted ?? '').split(/\r?\n/)) {
     const p = aPersonOnALine(line);
     if (p) names.set(p.email.trim().toLowerCase(), p.name);
+    /* "Name <address>", the way a mail client writes a person, on its own line or in a To field (B-128). It was read for the address and the name thrown away. */
+    for (const m of line.matchAll(/([^,;<>\t]*?)<([^<>\s,;]+@[^<>\s,;]+)>/g)) {
+      const name = m[1].replace(/["']/g, ' ').replace(/\s+/g, ' ').trim();
+      if (name && A_NAME.test(name)) names.set(m[2].trim().toLowerCase(), name);
+    }
   }
   return names;
 }
@@ -129,16 +134,19 @@ export function planFor(
   let left = seats;
   const rows: Row[] = [];
 
+  const names = namesIn(pasted);
   for (const email of addressesIn(pasted)) {
-    if (seen.has(email)) { rows.push({ email, result: 'repeated' }); continue; }
+    const name = names.get(email);
+    const withName = (result: RowResult): Row => (name ? { email, result, name } : { email, result });
+    if (seen.has(email)) { rows.push(withName('repeated')); continue; }
     seen.add(email);
 
     if (!LOOKS_LIKE_AN_ADDRESS.test(email)) { rows.push({ email, result: 'not an email' }); continue; }
-    if (alreadyHere(email)) { rows.push({ email, result: 'already here' }); continue; }
+    if (alreadyHere(email)) { rows.push(withName('already here')); continue; }
     /* Only a new person consumes a seat, which is the same rule `canInviteMember` applies. */
-    if (left !== null && left <= 0) { rows.push({ email, result: 'no seat' }); continue; }
+    if (left !== null && left <= 0) { rows.push(withName('no seat')); continue; }
     if (left !== null) left -= 1;
-    rows.push({ email, result: 'invited' });
+    rows.push(withName('invited'));
   }
   return rows;
 }
@@ -167,6 +175,12 @@ export function summarise(rows: Row[], sent = false): string {
   const bad = n('not an email');
   if (bad) said.push(one(bad) ? '1 line is not an email address.' : `${bad} lines are not email addresses.`);
   const noSeat = n('no seat');
-  if (noSeat) said.push(one(noSeat) ? '1 person has no seat on your plan.' : `${noSeat} people have no seat on your plan.`);
+  if (noSeat) {
+    const has = one(noSeat) ? '1 person has' : `${noSeat} people have`;
+    /* After the send they are kept (B-129); before it they will be. */
+    said.push(sent
+      ? `${has} no seat on your plan, so ${one(noSeat) ? 'the invitation is' : 'the invitations are'} kept and will go out when there is room.`
+      : `${has} no seat on your plan, so ${one(noSeat) ? 'the invitation' : 'the invitations'} will be kept until there is room.`);
+  }
   return said.length ? said.join(' ') : 'There is nobody new to invite.';
 }

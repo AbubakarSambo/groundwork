@@ -74,7 +74,8 @@ describe('a document read item by item, with the page each item came from', () =
     const [doc] = await servedTo(s, [row], 'lead');
     expect(doc.read.pages).toBe(4);
     expect(doc.read.took).toEqual([
-      { kind: 'a number for everyone', sentence: 'For everyone in this check-in, lowest price for the 600L must stay at or under 76,000.', what: 'lowest price for the 600L', detail: 'At most 76,000', page: 1 },
+      { kind: 'a number for everyone', /* Changed (B-014): the document wrote "KES 76,000", and a number keeps the currency it was written with. */
+      sentence: 'Lowest price for the 600L must stay at or under KES 76,000 for everyone in this check-in.', what: 'lowest price for the 600L', detail: 'At most KES 76,000', page: 1 },
       { kind: 'a number for one person', sentence: "Otieno Ouma's target for Q3 sales is 45,000,000.", what: 'Q3 sales', detail: '45,000,000', who: 'Otieno Ouma', page: 2 },
       { kind: 'a date', sentence: 'The date it sets for delivery is by 9 October.', what: 'delivery', detail: 'by 9 October', page: 2 },
     ]);

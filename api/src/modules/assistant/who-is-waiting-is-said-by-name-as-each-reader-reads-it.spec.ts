@@ -266,7 +266,7 @@ describe('Grace, an admin who is in none of these check-ins', () => {
   it('reads that nothing needs her, and nothing of anybody else\'s waits', async () => {
     for (const door of DOORS) {
       expect(await aBaridi().ask(door, 'grace', 'where am I needed')).toBe(
-        'Nothing in the record needs you this week. That is not the same as everybody being fine. It is the record being quiet,'
+        'Nothing in the record needs you this week. The record is quiet, which does not tell you how anybody is,'
         + ' and the people who most need a conversation are often the quietest in it.',
       );
       expect(await aBaridi().ask(door, 'grace', 'who is waiting on me')).toBe('Nothing is recorded as waiting on you, and you have not named anything you are waiting on.');

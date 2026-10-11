@@ -68,6 +68,7 @@ export function situationInWords(scenario: GroundScenario | null): string | null
     case GroundScenario.CONTRACT_REVIEW: return 'an agreement before it is signed';
     case GroundScenario.IMPLEMENTATION_TRACKING: return 'an agreement that is running';
     case GroundScenario.NEW_PROJECT: return 'a new project starting';
+    case GroundScenario.HELP_TEAM_UNDERSTAND: return 'a lead who wants the team to see the bigger picture';
     case GroundScenario.NEW_COFOUNDER: return 'a new co-founder or partner joining';
     case GroundScenario.NEW_MANAGER: return 'a new manager taking over';
     case GroundScenario.NEW_ADVISOR: return 'a new advisor or board member joining';

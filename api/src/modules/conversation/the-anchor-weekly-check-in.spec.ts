@@ -25,7 +25,7 @@ const COLLEAGUE = { id: 'p2', groundId: 'g1', partyType: PartyType.PARTICIPANT, 
 const THEIR_WORDS = 'I sent the district data to the programme office on Tuesday.';
 const THEIR_PROMISE = 'I will ask Ngozi for the Kano attendance sheets';
 
-type World = { turns?: { role: string; content: string }[]; answer?: string; startedFrom?: string | null; switchOn?: boolean; sessionNumber?: number; asTheLead?: boolean; scenario?: GroundScenario; stored?: { id: string; content: string } | null };
+type World = { modelSays?: string; turns?: { role: string; content: string }[]; answer?: string; startedFrom?: string | null; switchOn?: boolean; sessionNumber?: number; asTheLead?: boolean; scenario?: GroundScenario; onRecord?: { name: string; target: number | null; count: number; ownerParticipantId: string | null; setByParticipantId: string | null; direction: null }[]; stored?: { id: string; content: string } | null };
 
 function aWorld(w: World = {}) {
   const sessionNumber = w.sessionNumber ?? 2;
@@ -47,7 +47,7 @@ function aWorld(w: World = {}) {
   };
   const seed: Record<string, any> = {
     ground: { findUnique: jest.fn(async () => ground), findFirst: jest.fn(async () => ground) },
-    platformSetting: { findUnique: jest.fn(async () => (w.switchOn ? { value: { on: true } } : null)) },
+    platformSetting: { findUnique: jest.fn(async () => (w.switchOn ? { value: { on: true } } : { value: { on: false } })) },
     checkIn: {
       findUnique: jest.fn(async () => checkIn),
       findMany: jest.fn(async () => []),
@@ -56,6 +56,7 @@ function aWorld(w: World = {}) {
       update: jest.fn(async () => ({})),
     },
     recordEntry: { findMany: jest.fn(async () => [{ text: THEIR_WORDS }]), count: jest.fn(async () => 0) },
+    groundObjective: { findMany: jest.fn(async () => w.onRecord ?? []) },
     groundCommitment: { findMany: jest.fn(async () => [{ text: THEIR_PROMISE, whenSaid: 'this week' }]) },
     groundParticipant: { count: jest.fn(async () => 3), findUnique: jest.fn(async () => ({ specificityHistory: [] })), findFirst: jest.fn(async () => me), findMany: jest.fn(async () => [LEAD, PERSON, COLLEAGUE].map((p) => ({ ...p, checkIns: [] }))) },
     conversationTurn: { count: jest.fn(async () => 1), findMany: jest.fn(async (a: any) => { const t = (w.turns ?? []).map((x, n) => ({ id: `t${n}`, createdAt: new Date(2026, 9, 1, 9, n), ...x })); return a?.orderBy?.createdAt === 'desc' ? [...t].reverse().slice(0, a.take ?? 99) : t; }), create: jest.fn(async (a: any) => ({ id: 't1', content: a.data.content })) },
@@ -69,11 +70,12 @@ function aWorld(w: World = {}) {
   const promptStore: any = { getActiveContent: jest.fn(async (k: string) => (k === 'system' ? 'SYS' : null)), getActive };
   const nothing: any = { get: () => undefined };
   const seen: string[] = [];
-  const respond = jest.fn(async (system: string) => { seen.push(system); return 'Thank you. What is taking most of your attention now?'; });
+  const respond = jest.fn(async (system: string) => { seen.push(system); return w.modelSays ?? 'Thank you. What is taking most of your attention now?'; });
   const service = new ConversationService(prisma, promptStore, { respond } as any, new ConversationContextService(prisma), nothing, nothing, nothing, nothing, nothing, nothing);
   /* A real turn of the person's check-in, through sendMessage; what is read is the prompt the model was handed. */
   const compose = async () => { await service.sendMessage('ci2', 'user-1', w.answer ?? 'It is moving slowly.'); return seen[0] ?? ''; };
-  return { service, checkIn, compose, seen, seed, version: () => (service as any).anchorVersionForThisTurn.get('ci2') };
+  const reply = async () => ((await service.sendMessage('ci2', 'user-1', w.answer ?? 'It is moving slowly.')) as any).reply as string;
+  return { service, checkIn, compose, reply, seen, seed, version: () => (service as any).anchorVersionForThisTurn.get('ci2') };
 }
 
 describe('anchor piece 15: the weekly check-in, as the model reads it', () => {
@@ -95,10 +97,14 @@ describe('anchor piece 15: the weekly check-in, as the model reads it', () => {
     expect(prompt).toContain(`- ${THEIR_PROMISE} (this week)`);
   });
 
-  it('names only the aims this person has been told, never a colleague\'s number', async () => {
-    const prompt = await aWorld({ startedFrom: 'anchor', switchOn: true }).compose();
-    expect(prompt).toContain('- District reports reach the donor on time');
-    expect(prompt).not.toContain('Ngozi owns the Kano target');
+  /* Changed 8 October (anchor walk): this test pinned the old rule, that the weekly words name the aims on the check-in. Every aim on an anchor check-in came out of the lead's own conversation, which is hers alone until she says so (decision 96, item 8), and the model said one to a team member. The member's words now name only what they were told. */
+  it('names none of the lead\'s aims, and never a colleague\'s number', async () => {
+    for (const w of [{ startedFrom: 'anchor' }, { scenario: GroundScenario.HELP_TEAM_UNDERSTAND }] as World[]) {
+      const prompt = await aWorld({ ...w, switchOn: true }).compose();
+      expect(prompt).not.toContain('District reports reach the donor on time');
+      expect(prompt).not.toContain('Ngozi owns the Kano target');
+      expect(prompt).toContain('- This check-in is about why the quarterly donor reports matter for the programme team.');
+    }
   });
 
   it('names the wider aim as this person has been told it, and never the lead\'s own brief', async () => {
@@ -106,6 +112,42 @@ describe('anchor piece 15: the weekly check-in, as the model reads it', () => {
     expect(prompt).toContain('- This check-in is about why the quarterly donor reports matter for the programme team.');
     const block = prompt.slice(prompt.indexOf('# What this person has told you before'));
     expect(block.slice(0, block.indexOf('\n\n#', 10) > 0 ? block.indexOf('\n\n#', 10) : undefined)).not.toContain('Amina will review everyone in March');
+  });
+
+  it('hands the model none of the lead\'s brief and none of her aims for a team member, and still hands the lead her own', async () => {
+    const member = await aWorld({ startedFrom: 'anchor', switchOn: true }).compose();
+    expect(member).toMatch(/^ADMIN_BRIEF: none provided$/m);
+    expect(member).toMatch(/^OBJECTIVES: none stated$/m);
+    expect(member).not.toMatch(/Amina will review everyone in March|District reports reach the donor/);
+    const lead = await aWorld({ startedFrom: 'anchor', switchOn: true, asTheLead: true }).compose();
+    expect(lead).toContain('Amina will review everyone in March');
+  });
+
+  it('takes a rating of what they did off the reply for a team member, and not for the lead', async () => {
+    const modelSays = 'You finished the route plan, which is progress. What do you think could happen next?';
+    expect(await aWorld({ startedFrom: 'anchor', switchOn: true, modelSays }).reply()).toBe('You finished the route plan. What do you think could happen next?');
+    expect(await aWorld({ startedFrom: 'anchor', switchOn: true, asTheLead: true, modelSays }).reply()).toContain('which is progress');
+    expect(await aWorld({ switchOn: true, modelSays }).reply()).toContain('which is progress');
+  });
+
+  /*
+   * AND NOT THROUGH THE RECORD EITHER (review, 8 October, on test bed copy a). The lead's aims were taken off OBJECTIVES, but the block "what is already on
+   * the record for this check-in" read the same aims from the table and told a team member's model "ask where they are against it": on the bed, Amani's
+   * anchor prompt still held "The team is aiming for 20 depots on the new stock system, the whole check-in is at 4 of 20". On an anchor check-in every aim
+   * came out of the lead's own conversation (decision 96, item 8); her own model and every check-in that is not an anchor one still read them.
+   */
+  it('hands a team member\'s model none of the lead\'s aims through what is already on the record, and still hands them to the lead and to a check-in that is not an anchor one', async () => {
+    const onRecord = [{ name: 'Depots on the new stock system', target: 20, count: 4, ownerParticipantId: null, setByParticipantId: 'p0', direction: null }];
+    for (const w of [{ startedFrom: 'anchor' }, { scenario: GroundScenario.HELP_TEAM_UNDERSTAND }] as World[]) {
+      for (const switchOn of [true, false]) {
+        const member = await aWorld({ ...w, switchOn, onRecord }).compose();
+        expect(member).not.toMatch(/depots on the new stock system/i);
+      }
+      const lead = await aWorld({ ...w, switchOn: true, asTheLead: true, onRecord }).compose();
+      expect(lead).toMatch(/depots on the new stock system, the whole check-in is at 4 of 20/i);
+    }
+    const ordinary = await aWorld({ switchOn: false, onRecord }).compose();
+    expect(ordinary).toMatch(/depots on the new stock system, the whole check-in is at 4 of 20/i);
   });
 
   it('ends on the short reminder, read last', async () => {
@@ -204,7 +246,8 @@ describe('anchor piece 15: who it is for, and who it is not for', () => {
 });
 
 describe('with the anchor in play or not, every other prompt is byte for byte what it was', () => {
-  const every = Object.values(GroundScenario);
+  /* The anchor's own scenario is left out: by decision 114 a check-in with it IS the anchor's, so it reads the anchor's words with the switch on. */
+  const every = Object.values(GroundScenario).filter((s) => s !== GroundScenario.HELP_TEAM_UNDERSTAND);
   it.each(every.map((s) => [s, s]))('the second-session prompt for %s is the same with the switch off or on, when the check-in is not an anchor one', async (_n, scenario) => {
     const off = await aWorld({ scenario, switchOn: false }).compose();
     const on = await aWorld({ scenario, switchOn: true }).compose();
@@ -215,6 +258,10 @@ describe('with the anchor in play or not, every other prompt is byte for byte wh
   it('an anchor check-in with the switch off reads exactly what a check-in that is not an anchor one reads', async () => {
     const plain = await aWorld({ switchOn: false }).compose();
     const anchorOff = await aWorld({ startedFrom: 'anchor', switchOn: false }).compose();
-    expect(anchorOff).toBe(plain);
+    /* Changed 8 October (anchor walk): the lead's own brief and aims are never handed to a team member's model on an anchor check-in, with the switch on or off (decision 96, item 8: the wall is about who may read her words, not about the switch). That is the one difference. */
+    expect(anchorOff).not.toContain('Amina will review everyone in March');
+    expect(anchorOff).not.toContain('District reports reach the donor on time');
+    const without = (t: string) => t.replace(/^OBJECTIVES: .*$/m, 'OBJECTIVES: none stated').replace(/^ADMIN_BRIEF: .*$/m, 'ADMIN_BRIEF: none provided').replace(/^ +Amina wrote this about the situation: .*\n/m, '').replace(/^ADMIN_BRIEF_ATTRIBUTION: .*\n/m, '');
+    expect(without(anchorOff)).toBe(without(plain));
   });
 });

@@ -18,7 +18,7 @@ describe('Obligations, as each person reads them', () => {
     expect(side(b, 'You')).toEqual({
       participantId: 'p-bisi', who: 'You',
       promised: ['In session 2, you said, "I\'ll follow up directly with the committee members." Nobody has said yet whether it happened.'],
-      othersWaitFor: ['Kwame Mensah is waiting on you for the approval of five applications.'],
+      othersWaitFor: ['Kwame Mensah says the work is waiting on you for the approval of five applications. Not backed: no attempt to unblock mentioned.'],
     });
     expect(side(b, 'Femi Okonkwo').promised).toEqual([FEMIS]);
     expect(side(b, 'Mr. Adebayo')).toEqual({ participantId: null, who: 'Mr. Adebayo', promised: [], othersWaitFor: ['Ngozi Eze is waiting on Mr. Adebayo for a date for the credit decision.'] });
@@ -45,7 +45,7 @@ describe('Obligations, as each person reads them', () => {
   it('and Kwame reads the wait on the lead he is in, as "You", among his own blockers', async () => {
     const b = await boardAs({ ...SALES_RUN, peersVisibleToEachOther: false }, ...KWAME);
     expect(side(b, 'Bisi Adeyemi')).toBeUndefined();
-    expect(b.blockers.map((x: any) => x.says)).toEqual(['You are waiting on Bisi Adeyemi for the approval of five applications.']);
+    expect(b.blockers.map((x: any) => x.says)).toEqual(['You say the work is waiting on Bisi Adeyemi for the approval of five applications. Not backed: no attempt to unblock mentioned.']);
   });
 
   it('an admin who only reads an ordinary check-in reads every side, with names', async () => {

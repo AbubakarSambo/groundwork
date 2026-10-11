@@ -9,7 +9,7 @@ import { atAGlanceTiles } from '../reports/what-this-session-holds';
  *
  * "A second founder joining" (local test database, 9a904212): Ada, who runs it, read "Blockers 2
  * worries. You said, "We haven't actually gotten to that part yet, specifically." There is 1 more
- * worry on record, and nobody is waiting on anybody." On the same board Tunde had been waiting on her
+ * worry on record, and no wait has been recorded against a named person." On the same board Tunde had been waiting on her
  * for three things since session 4. This session raised no new wait; the earlier ones were still
  * open. The tile now says so, for every reader it is served to.
  */
@@ -107,7 +107,7 @@ describe('the tile itself', () => {
   it('with nothing waiting anywhere, nobody waits, as before', () => {
     expect(atAGlanceTiles({ ...base, worries: 1, theWorry: null }).find((t) => t.label === 'Blockers')!.sub)
       /* Changed 5 Oct 2026 (request 127 item 7): the count says why no worry is shown. */
-      .toBe('1 worry is on record. It was not kept in the words it was said, so it is not quoted here. Nobody is waiting on anybody.');
+      .toBe('1 worry is on record. It was not kept in the words it was said, so it is not quoted here. No wait has been recorded against a named person.');
   });
   it('with one earlier wait and no worry, it says so', () => {
     expect(atAGlanceTiles({ ...base, waitsFromEarlier: 1 }).find((t) => t.label === 'Blockers')!.sub)

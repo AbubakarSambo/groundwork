@@ -22,6 +22,7 @@ import {
   SUGGESTION_THRESHOLDS_KEY, SUGGESTION_THRESHOLD_LABELS, isValidSuggestionThresholds,
   thresholdsInForce, type SuggestionThresholds,
 } from '../suggestions/thresholds';
+import { fullNameToCall } from '../engagement/a-name-to-call-them';
 
 @Injectable()
 export class AdminService implements OnApplicationBootstrap {
@@ -96,7 +97,7 @@ export class AdminService implements OnApplicationBootstrap {
         include: {
           participant: {
             select: {
-              id: true, roleAsDescribed: true, detectedFunction: true, detectedFunctionConfidence: true,
+              id: true, roleAsDescribed: true, detectedFunction: true, detectedFunctionConfidence: true, nameGiven: true,
               user: { select: { firstName: true, lastName: true, email: true } },
               ground: { select: { id: true, label: true, scenario: true, organization: { select: { name: true } } } },
             },
@@ -109,7 +110,8 @@ export class AdminService implements OnApplicationBootstrap {
       count: rows.length,
       rows: rows.map((r) => ({
         participantId: r.participantId,
-        who: [r.participant.user?.firstName, r.participant.user?.lastName].filter(Boolean).join(' ') || r.participant.user?.email || r.participantId,
+        /* The name they were given when invited, before "Someone" (review of 1678157c). */
+        who: fullNameToCall({ user: r.participant.user, nameGiven: (r.participant as any).nameGiven }),
         organisation: r.participant.ground?.organization?.name ?? null,
         ground: r.participant.ground?.label ?? null,
         scenario: r.participant.ground?.scenario ?? null,
@@ -189,7 +191,7 @@ export class AdminService implements OnApplicationBootstrap {
     if (!isValidSuggestionThresholds(thresholds)) {
       throw new BadRequestException(
         'Each verdict (keep, reward, support, plan, exit) needs a keptBelow fraction greater than 0 and no more than 1, ' +
-          'and a whole number of settled commitments (overPeriods) greater than 0. Send only those keys.',
+          'and a whole number of settled commitments (overPeriods) greater than 0, and nothing else should be sent.',
       );
     }
     await this.prisma.platformSetting.upsert({
@@ -495,7 +497,7 @@ export class AdminService implements OnApplicationBootstrap {
       },
     });
 
-    if (!code) throw new NotFoundException(`ContributorCode ${codeId} not found`);
+    if (!code) throw new NotFoundException('That contributor code could not be found, so refresh the page.');
     return code;
   }
 
@@ -580,7 +582,7 @@ export class AdminService implements OnApplicationBootstrap {
         report: { select: { id: true, releasedAt: true, createdAt: true } },
       },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     const pendingParticipantRequests = await this.prisma.participantRequest.count({
       where: { groundId, status: 'PENDING' },
@@ -755,7 +757,7 @@ export class AdminService implements OnApplicationBootstrap {
 
   async disableCode(codeId: string) {
     const code = await this.prisma.contributorCode.findUnique({ where: { id: codeId } });
-    if (!code) throw new NotFoundException(`ContributorCode ${codeId} not found`);
+    if (!code) throw new NotFoundException('That contributor code could not be found, so refresh the page.');
 
     return this.prisma.contributorCode.update({
       where: { id: codeId },
@@ -777,12 +779,12 @@ export class AdminService implements OnApplicationBootstrap {
      * person reading it has no way to tell a capital letter from a missing account.
      */
     const address = targetEmail?.trim().toLowerCase();
-    if (!address) throw new BadRequestException('email is required');
+    if (!address) throw new BadRequestException('Add an email address and try again.');
 
     const user = await this.prisma.user.findUnique({ where: { email: address } });
     if (!user) {
       throw new NotFoundException(
-        `No Groundwork account uses ${address}. They have to sign up and verify the address first - this promotes an account, it does not create one.`,
+        `Nobody has signed up with ${address} yet. They have to sign up and confirm that address first, because this makes an existing person an admin and does not create one.`,
       );
     }
 
@@ -831,7 +833,7 @@ export class AdminService implements OnApplicationBootstrap {
     });
     if (others === 0) {
       throw new ConflictException(
-        `${user.email} is the only platform admin. Add somebody else first - with none, nobody can ever add one, because adding requires being one.`,
+        `${user.email} is the only platform admin, so add somebody else first, because with none left nobody could ever add one.`,
       );
     }
 
@@ -856,7 +858,7 @@ export class AdminService implements OnApplicationBootstrap {
 
   async generateOtpForAdmin(userId: string): Promise<{ otp?: string; sent: boolean }> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new NotFoundException(`User ${userId} not found`);
+    if (!user) throw new NotFoundException('That person could not be found, so refresh the page.');
 
     /* The platform's CSPRNG, not Math.random - this is the whole of the second factor in front of
        a platform-admin action. See GUESSES_ALLOWED for the other half. */
@@ -910,7 +912,7 @@ export class AdminService implements OnApplicationBootstrap {
 
   async verifyOtpForAdmin(userId: string, plainOtp: string): Promise<boolean> {
     const profile = await this.prisma.adminProfile.findUnique({ where: { userId } });
-    if (!profile) throw new BadRequestException('No OTP has been generated for this user');
+    if (!profile) throw new BadRequestException('No code has been sent to you yet, so ask for a new code.');
 
     const stored = profile.adminOtp as unknown as {
       hash: string;
@@ -918,12 +920,12 @@ export class AdminService implements OnApplicationBootstrap {
       used: boolean;
     } | null;
 
-    if (!stored) throw new BadRequestException('No OTP has been generated for this user');
-    if (stored.used) throw new BadRequestException('OTP has already been used');
-    if (new Date(stored.expiresAt) < new Date()) throw new BadRequestException('OTP has expired');
+    if (!stored) throw new BadRequestException('No code has been sent to you yet, so ask for a new code.');
+    if (stored.used) throw new BadRequestException('That code has already been used, so ask for a new one.');
+    if (new Date(stored.expiresAt) < new Date()) throw new BadRequestException('That code has expired, so ask for a new one.');
 
     const valid = await bcrypt.compare(plainOtp, stored.hash);
-    if (!valid) throw new BadRequestException('Invalid OTP');
+    if (!valid) throw new BadRequestException('That code is not right, so check it and try again.');
 
     // Mark as used
     await this.prisma.adminProfile.update({

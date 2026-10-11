@@ -1,5 +1,4 @@
 import { PartyType } from '@prisma/client';
-import { theNameInAnAddress } from './the-name-in-an-address';
 import { fromTheReadersSide, noInstructionToAskYourself, theirOwnIsTheReaders } from './a-sentence-from-the-readers-side';
 import { aNameInTheirWordsIsTheLabel } from './a-name-in-their-words-is-the-label';
 import { theShortNameOf } from './a-title-is-not-a-first-name';
@@ -264,9 +263,8 @@ export function displayName(p: LabelParty, theEmailIsFair = false): string | nul
    * `theEmailIsFair` is kept so callers need not change; it no longer turns an address into a name.
    */
   void theEmailIsFair;
-  /* The name the address holds ("amani.wekesa@" is Amani Wekesa), the same read the Context tab makes. Not the address itself. */
-  const inTheAddress = theNameInAnAddress(p.email ?? p.user?.email);
-  return inTheAddress ? withOrg(inTheAddress) : null;
+  /* NOT EVEN THE START OF AN ADDRESS (Hafsah, 6 October): a person with no name is served by the plain words ("one colleague"), never "Amani Wekesa" read out of "amani.wekesa@". */
+  return null;
 }
 
 /**
@@ -1054,6 +1052,22 @@ export function theVerbAgreesWithYouIn(input: string): string {
     .replace(/\bdoes you\b(?=\s+[a-z])/g, 'do you')
     .replace(/\bDoes you\b(?=\s+[a-z])/g, 'Do you')
     .replace(/\bdoesn['’]t you\b(?=\s+[a-z])/g, "don't you");
+  /*
+   * AND THE SAME IN A QUESTION, WITH "IS", "WAS" AND "HAS" (decision 139, item 1, left from change 1). "Is Participant A
+   * waiting on the price list?" named for the reader became "Is you waiting on the price list?". Only where the
+   * auxiliary opens the question (start of a line or sentence) or follows a question word, with a word after "you":
+   * "the one waiting is you." is right and stays.
+   */
+  const INVERTED: Record<string, string> = { is: 'are', was: 'were', has: 'have' };
+  text = text
+    .replace(/(^|[.?!:]\s+|\n\s*|["“]\s*)(Is|Was|Has)( you\b)(?=\s+[a-z])/g, (_m, before: string, aux: string, you: string) => {
+      const right = INVERTED[aux.toLowerCase()];
+      return `${before}${right[0].toUpperCase()}${right.slice(1)}${you}`;
+    })
+    .replace(/\b(what|why|how|where|when|who|which|whether|if)( )(is|was|has)( you\b)(?=\s+[a-z])/gi, (_m, q: string, sp: string, aux: string, you: string) => {
+      const right = INVERTED[aux.toLowerCase()];
+      return `${q}${sp}${aux[0] === aux[0].toUpperCase() ? right[0].toUpperCase() + right.slice(1) : right}${you}`;
+    });
   text = text
     /**
      * AND THE PRONOUN THAT FOLLOWS, NARROWLY.

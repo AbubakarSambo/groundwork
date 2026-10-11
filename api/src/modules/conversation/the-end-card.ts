@@ -62,6 +62,25 @@ export const HOW: Record<'photo' | 'screenshot' | 'receipt' | 'invoice' | 'docum
 export const WHAT_WOULD_MAKE_IT_PROVEN =
   'If you have something written for any of these, such as a message or a photo, add it. Then that line counts as proven.';
 
+/**
+ * THE CARD'S WORDS IN THE PLAINER FORM, FOR A CHECK-IN SET TO "USE SIMPLER WORDS". Short sentences,
+ * everyday words. Picked only when the lead has switched the setting on; the lines themselves, which
+ * are the person's own words, are never changed.
+ */
+export const HOW_IN_SIMPLER_WORDS: typeof HOW = {
+  photo: 'This comes from the photo you added.',
+  screenshot: 'This comes from the screenshot you added.',
+  receipt: 'This comes from the receipt you added.',
+  invoice: 'This comes from the invoice you added.',
+  document: 'This comes from the document you added.',
+  confirmed: 'The person who received it said this is true.',
+  commitment: 'You said you will do this. I will ask you how it went.',
+  memory: 'You said this from memory. You have nothing written for it yet.',
+  said: 'You said this.',
+};
+export const WHAT_WOULD_MAKE_IT_PROVEN_IN_SIMPLER_WORDS =
+  'Do you have something written for any of these, like a message or a photo? Add it. Then that line is proven.';
+
 /** At most this many lines: the card is read in the moment before finishing, on a phone. Commitments come first, and a card that leaves lines out says how many. */
 export const AT_MOST = 6;
 
@@ -71,21 +90,23 @@ export const AT_MOST = 6;
  * a card built from the stored record (not only the first card, which also knew the file type) says
  * "From the photo you added." too.
  */
-export function whatProvedIt(line: Pick<ALineForTheCard, 'backedByAPhoto' | 'anchoredOrigin'>): string {
-  if (line.anchoredOrigin === 'receipt') return HOW.receipt;
-  if (line.anchoredOrigin === 'invoice') return HOW.invoice;
-  if (line.anchoredOrigin === 'screenshot') return HOW.screenshot;
-  if (line.anchoredOrigin === 'photo' || line.backedByAPhoto) return HOW.photo;
-  return HOW.document;
+export function whatProvedIt(line: Pick<ALineForTheCard, 'backedByAPhoto' | 'anchoredOrigin'>, simplerWords = false): string {
+  const how = simplerWords ? HOW_IN_SIMPLER_WORDS : HOW;
+  if (line.anchoredOrigin === 'receipt') return how.receipt;
+  if (line.anchoredOrigin === 'invoice') return how.invoice;
+  if (line.anchoredOrigin === 'screenshot') return how.screenshot;
+  if (line.anchoredOrigin === 'photo' || line.backedByAPhoto) return how.photo;
+  return how.document;
 }
 
 /* The mark is the reports' rule (reports/how-a-line-is-known.ts), so a line reads the same on both. */
-function markFor(line: ALineForTheCard): { mark: EndCardMark; how: string } {
+function markFor(line: ALineForTheCard, simplerWords = false): { mark: EndCardMark; how: string } {
+  const how = simplerWords ? HOW_IN_SIMPLER_WORDS : HOW;
   const mark = howALineIsKnown(line);
-  if (mark === 'proven') return { mark, how: whatProvedIt(line) };
-  if (mark === 'confirmed') return { mark, how: HOW.confirmed };
-  if (mark === 'memory') return { mark, how: HOW.memory };
-  return { mark, how: line.type === 'COMMITMENT' ? HOW.commitment : HOW.said };
+  if (mark === 'proven') return { mark, how: whatProvedIt(line, simplerWords) };
+  if (mark === 'confirmed') return { mark, how: how.confirmed };
+  if (mark === 'memory') return { mark, how: how.memory };
+  return { mark, how: line.type === 'COMMITMENT' ? how.commitment : how.said };
 }
 
 /**
@@ -106,28 +127,33 @@ export function asTheyReadIt(text: string): string {
  * line that matters most, because it came seventh. Commitments now come first, and a card that
  * leaves lines out says how many, in one plain sentence.
  */
-export function theLinesLeftOut(count: number): string | null {
+export function theLinesLeftOut(count: number, simplerWords = false): string | null {
   if (count <= 0) return null;
+  if (simplerWords) {
+    return count === 1
+      ? '1 more line is in your record. You can read it after you finish.'
+      : `${count} more lines are in your record. You can read them after you finish.`;
+  }
   return count === 1
     ? 'There is 1 more line in your record. You can read it in your record after you finish.'
     : `There are ${count} more lines in your record. You can read them all in your record after you finish.`;
 }
 
-export function theEndCard(lines: readonly ALineForTheCard[]): EndCard | null {
+export function theEndCard(lines: readonly ALineForTheCard[], simplerWords = false): EndCard | null {
   const all = (lines ?? []).filter((l) => !l.disputedAt && asTheyReadIt(l.text));
   /* Commitments first, then the rest in the order they were said. */
   const ordered = [...all.filter((l) => l.type === 'COMMITMENT'), ...all.filter((l) => l.type !== 'COMMITMENT')];
   const shown = ordered
     .slice(0, AT_MOST)
-    .map((l) => ({ says: asTheyReadIt(l.text), ...markFor(l), type: l.type }));
+    .map((l) => ({ says: asTheyReadIt(l.text), ...markFor(l, simplerWords), type: l.type }));
   if (!shown.length) return null;
-  const leftOut = theLinesLeftOut(ordered.length - shown.length);
+  const leftOut = theLinesLeftOut(ordered.length - shown.length, simplerWords);
   /* What would change a line: something written, for a line that is only their word or memory. A
      commitment is not proven by a document now; it is asked about next time. */
   const couldBeProven = shown.some((l) => l.mark === 'memory' || (l.mark === 'said' && l.type !== 'COMMITMENT'));
   return {
     inYourRecord: shown.map(({ says, how, mark }) => ({ says, how, mark })),
-    ...(couldBeProven || leftOut ? { next: [...(leftOut ? [leftOut] : []), ...(couldBeProven ? [WHAT_WOULD_MAKE_IT_PROVEN] : [])] } : {}),
+    ...(couldBeProven || leftOut ? { next: [...(leftOut ? [leftOut] : []), ...(couldBeProven ? [simplerWords ? WHAT_WOULD_MAKE_IT_PROVEN_IN_SIMPLER_WORDS : WHAT_WOULD_MAKE_IT_PROVEN] : [])] } : {}),
   };
 }
 

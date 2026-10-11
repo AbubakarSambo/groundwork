@@ -45,7 +45,7 @@ export class MyOwnRecordService {
     if (!externalId) {
       return {
         externalId: null,
-        note: 'Your account is not linked to a directory record here, so none of the organisation-wide '
+        note: 'Your sign-in is not linked to a directory record here, so none of the organisation-wide '
           + 'material applies to you. What is in your check-ins is covered by the other export.',
         commitments: [], contributions: [], findings: [], handoffs: [],
         onboarding: [], suggestedConversations: [], emailPreferences: null,

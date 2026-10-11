@@ -19,6 +19,8 @@ function aService({ members = [] as any[], held = [] as any[] } = {}) {
     },
     membershipRequest: { findMany: jest.fn(async () => []) },
     user: { findMany: jest.fn(async () => []) },
+    /* Changed (request 179): only the check-ins the reader may open are named; this reader may open both. */
+    ground: { findMany: jest.fn(async () => [{ id: 'ground-sales' }, { id: 'ground-ops' }]) },
   };
   const service = new UsersService(prisma, {} as any, {} as any, {} as any, { emit: () => undefined } as any);
   return { service, prisma };
@@ -41,7 +43,7 @@ const ZAWADI_HELD = {
 describe('somebody held for a seat', () => {
   it('is a row, with no seat, no level, no team, and no account to open', async () => {
     const { service } = aService({ members: [AMANI], held: [ZAWADI_HELD] });
-    const r: any = await service.findAll("kilima", { page: 1, limit: 20 } as any);
+    const r: any = await service.findAll("kilima", { page: 1, limit: 20 } as any, 'grace');
     expect(r.data).toHaveLength(2);
     const zawadi = r.data.find((m: any) => m.email === 'zawadi.u8@example.test')!;
     expect(zawadi).toBeTruthy();
@@ -61,7 +63,7 @@ describe('somebody held for a seat', () => {
       members: [],
       held: [ZAWADI_HELD, { ...ZAWADI_HELD, id: 'gp-zawadi-2', ground: { id: 'ground-ops', label: 'Asset loans, cohort 3' } }],
     });
-    const r: any = await service.findAll("kilima", { page: 1, limit: 20 } as any);
+    const r: any = await service.findAll("kilima", { page: 1, limit: 20 } as any, 'grace');
     expect(r.data).toHaveLength(1);
     expect(r.data[0].checkIns).toEqual([
       { id: 'ground-sales', label: 'Sales team, Q3', runsIt: false },
@@ -74,14 +76,14 @@ describe('somebody held for a seat', () => {
       members: [{ ...AMANI, user: { ...AMANI.user, email: 'zawadi.u8@example.test' } }],
       held: [ZAWADI_HELD],
     });
-    const r: any = await service.findAll("kilima", { page: 1, limit: 20 } as any);
+    const r: any = await service.findAll("kilima", { page: 1, limit: 20 } as any, 'grace');
     expect(r.data).toHaveLength(1);
     expect(r.data[0].noAccountYet).toBeUndefined();
   });
 
   it('is only read on the first page, so a large roster never shows the same held email twice', async () => {
     const { service, prisma } = aService({ members: [AMANI], held: [ZAWADI_HELD] });
-    const r2: any = await service.findAll("kilima", { page: 2, limit: 20 } as any);
+    const r2: any = await service.findAll("kilima", { page: 2, limit: 20 } as any, 'grace');
     expect(r2.data.find((m: any) => m.noAccountYet)).toBeUndefined();
     expect(prisma.groundParticipant.findMany).toHaveBeenCalledTimes(1); // the memberships lookup only; held is skipped on page 2
   });

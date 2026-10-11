@@ -112,17 +112,17 @@ describe.each([['a performance plan', 'PIP'], ['a promotion', 'RECOGNITION'], ['
   it('cannot be approved by an admin who was not given access', async () => {
     const svc = groundsService(scenario);
     (svc as any).prisma.ground.findFirst = jest.fn(async () => null);
-    await expect(svc.approve('g1', 'org1', OTHER_ADMIN)).rejects.toThrow('Check-in not found');
-    await expect(svc.declineGround('g1', 'org1', OTHER_ADMIN)).rejects.toThrow('Check-in not found');
+    await expect(svc.approve('g1', 'org1', OTHER_ADMIN)).rejects.toThrow('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    await expect(svc.declineGround('g1', 'org1', OTHER_ADMIN)).rejects.toThrow('That check-in could not be found, so go back to your check-ins and open it from the list.');
   });
 
   it('GET /grounds/:id is refused to an admin without access and served to the one who set it up', async () => {
-    await expect(groundsService(scenario).get('g1', 'org1', OTHER_ADMIN)).rejects.toThrow('Check-in not found');
+    await expect(groundsService(scenario).get('g1', 'org1', OTHER_ADMIN)).rejects.toThrow('That check-in could not be found, so go back to your check-ins and open it from the list.');
     await expect(groundsService(scenario).get('g1', 'org1', SETTER)).resolves.toMatchObject({ id: 'g1' });
   });
 
   it('its board is refused to an admin without access and served to the one who set it up', async () => {
-    await expect(boardService(scenario).get('g1', OTHER_ADMIN)).rejects.toThrow('Check-in not found');
+    await expect(boardService(scenario).get('g1', OTHER_ADMIN)).rejects.toThrow('That check-in could not be found, so go back to your check-ins and open it from the list.');
     await expect(boardService(scenario).get('g1', SETTER)).resolves.toBeTruthy();
   });
 

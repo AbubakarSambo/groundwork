@@ -58,6 +58,20 @@ export const A_GROUND_THE_JOBS_LEAVE_ALONE: GroundStatus[] = [...A_GROUND_IS_OVE
  */
 export const A_GROUND_IS_HELD: GroundStatus[] = [GroundStatus.PAUSED];
 
+/**
+ * WHAT NO SCHEDULED MESSAGE IS EVER ABOUT: ended, stalled, held, and waiting for somebody to let it start.
+ * Found on the test bed on 7 October 2026: after a one-day clock move the lead of an old organisation got
+ * five emails saying people "have not started" check-ins that had stalled weeks before, because the morning
+ * reminder read every NOT_STARTED session and never asked the check-in's own state. A job that sends a
+ * message to a person about a check-in reads this list.
+ */
+export const A_GROUND_NO_MESSAGE_IS_ABOUT: GroundStatus[] = [
+  ...A_GROUND_THE_JOBS_LEAVE_ALONE,
+  ...A_GROUND_IS_HELD,
+  GroundStatus.AWAITING_APPROVAL,
+  GroundStatus.AWAITING_LEAD,
+];
+
 export function hasEnded(status: GroundStatus | string | null | undefined): boolean {
   return !!status && (A_GROUND_IS_OVER as string[]).includes(status);
 }
@@ -119,6 +133,21 @@ export const IT_RAN_OUT_OF_TIME_ASK_THE_LEAD =
 
 /** What to say about a ground that is held. One sentence, written once, the same everywhere it is refused. */
 export const WHILE_IT_IS_HELD = 'This check-in is on hold. Nothing can be added to it until it is resumed.';
+
+/**
+ * A JOIN LINK INTO A CHECK-IN THAT WAITS FOR AN ADMIN (reviewed on the server, 7 October). With 'each new check-in waits for an admin' on,
+ * the check-in made from the entry chat stays held (1957f86f), but its join link still let anybody ask, confirm and be added to it, and
+ * mailed them a way in, before any admin had said yes. The link is refused until it is accepted, and says why.
+ */
+export const WHILE_IT_WAITS_FOR_AN_ADMIN = 'This check-in is waiting for an admin to accept it. The link will work as soon as they do.';
+export function whyAJoinLinkRefuses(
+  status: GroundStatus | string | null | undefined,
+  endStateLabel?: string | null,
+  scenario?: GroundScenario | string | null,
+): string | null {
+  if (status === 'AWAITING_APPROVAL') return WHILE_IT_WAITS_FOR_AN_ADMIN;
+  return whyItRefuses(status, endStateLabel, 'anybody else', scenario);
+}
 
 /**
  * Why nothing can be added to this ground right now - ended or held - or null while it is live.

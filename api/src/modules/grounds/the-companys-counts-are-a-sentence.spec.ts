@@ -33,4 +33,9 @@ describe('countsLine', () => {
   it('nothing at all is no sentence, not a bare full stop', () => {
     expect(countsLine({ teams: 0, people: 0, checkInsThisWeek: null })).toBeNull();
   });
+
+  it('none this week is "no check-ins", never "0 check-ins" (request 161, item 4)', () => {
+    expect(countsLine({ teams: 0, people: 8, checkInsThisWeek: 0 })).toBe('8 people work here, and there were no check-ins this week.');
+    expect(countsLine({ teams: 0, people: 0, checkInsThisWeek: 0 })).toBe('There were no check-ins this week.');
+  });
 });

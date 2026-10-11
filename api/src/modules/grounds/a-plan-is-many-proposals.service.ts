@@ -9,8 +9,9 @@ import { whoThisNameIs, theNameWeUseFor } from '../documents/what-a-document-hol
 import { ONLY_WHO_ADDED_IT_CAN_SHARE_IT } from '../documents/write-a-documents-numbers';
 import { whyItRefuses } from './a-ground-that-has-ended';
 import { BoardService } from '../board/board.service';
+import { GroundsService } from './grounds.service';
 import { asADirection, type TargetDirection } from '../board/an-aim-or-a-limit';
-import { A_PLAN_PROMPT, A_PLAN_SCHEMA, proposalsFromAPlan, type PlanProposal, type PlanProposalFields, type PlanRead } from './a-plan-is-many-proposals';
+import { A_PLAN_PROMPT, A_PLAN_SCHEMA, aPersonToAdd, flatten, proposalsFromAPlan, type PlanProposal, type PlanProposalFields, type PlanRead } from './a-plan-is-many-proposals';
 
 interface StoredProposal {
   id: string; groundId: string; kind: string; says: string; fields: unknown; fromThePlan: string;
@@ -45,11 +46,11 @@ export class APlanIsManyProposalsService {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
-        id: true, initiatorId: true, status: true, endState: true, scenario: true,
+        id: true, organizationId: true, initiatorId: true, status: true, endState: true, scenario: true,
         participants: { select: { id: true, email: true, nameGiven: true, roleAsDescribed: true, managingOnly: true, userId: true, leftAt: true, user: { select: { firstName: true, lastName: true } } } },
       },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     if (ground.initiatorId !== userId) throw new ForbiddenException(refusal);
     const refused = opts.evenIfItCannotTakeThings ? null : whyItRefuses(ground.status, ground.endState, 'the lead', ground.scenario);
     if (refused) throw new BadRequestException(refused);
@@ -98,6 +99,14 @@ export class APlanIsManyProposalsService {
    * on trust. Null when it no longer holds.
    */
   private recheck(row: StoredProposal, people: any[], change?: { says?: string; fields?: Partial<PlanProposalFields> }): PlanProposal | null {
+    /* A person to add: still the plan's own words, and still not on the check-in (somebody added since needs no card). */
+    if (String(row.kind).toLowerCase() === 'person') {
+      const name = String((row.fields as any)?.personName ?? '').trim();
+      if (!name || !flatten(row.fromThePlan).includes(flatten(name))) return null;
+      const who = whoThisNameIs(name, people);
+      if (who) return null;
+      return { ...aPersonToAdd(name, row.fromThePlan, row.fromDocument ?? 'the plan you pasted', row.id) };
+    }
     const f = { ...((row.fields ?? {}) as any), ...(change?.fields ?? {}) } as Partial<PlanProposalFields>;
     const [held] = this.check(row.fromThePlan, row.fromDocument ?? '', [{
       kind: String(row.kind).toLowerCase(),
@@ -169,7 +178,9 @@ export class APlanIsManyProposalsService {
     const ground = await this.theLeadsCheckIn(groundId, userId, ONLY_THE_LEAD_READS_A_PLAN, { evenIfItCannotTakeThings: true });
     const rows = await this.prisma.planProposal.findMany({ where: { groundId, status: 'PENDING' }, orderBy: { createdAt: 'asc' } });
     const people = this.people(ground);
-    return { proposals: rows.map((r: any) => this.served(r, people)) };
+    /* A person already added since the plan was read needs no card any more. */
+    const stillOffered = rows.filter((r: any) => String(r.kind).toLowerCase() !== 'person' || this.recheck(r, people));
+    return { proposals: stillOffered.map((r: any) => this.served(r, people)) };
   }
 
   /** Not now: kept, and off the waiting list. Nothing is written anywhere else. */
@@ -205,13 +216,21 @@ export class APlanIsManyProposalsService {
    * Confirm ONE stored proposal. It is checked again against its own quote, and the person in it is
    * found again on this side. Exactly one row is written, and the proposal remembers which.
    */
-  async confirm(groundId: string, userId: string, pid: string, answer: { direction?: unknown } = {}) {
+  async confirm(groundId: string, userId: string, pid: string, answer: { direction?: unknown; email?: unknown } = {}) {
     const ground = await this.theLeadsCheckIn(groundId, userId, ONLY_THE_LEAD_CONFIRMS);
     const row = await this.theWaitingOne(groundId, pid);
     const held = this.recheck(row, this.people(ground));
     if (!held) throw new BadRequestException('That is not in the plan as written, so nothing was added.');
     const f = held.fields;
-    if (f.personName && !f.participantId) {
+    /* A person to add needs an address to invite: the plan's own, or the one the lead types with this yes. Checked before anything is claimed. */
+    let inviteAt: string | null = null;
+    if (held.kind === 'person') {
+      inviteAt = (typeof answer?.email === 'string' && answer.email.trim()) || f.email || null;
+      if (!inviteAt || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteAt)) {
+        throw new BadRequestException(`Type ${f.personName}'s email address, so Groundwork can invite them. Nobody is invited until you say yes.`);
+      }
+    }
+    if (held.kind !== 'person' && f.personName && !f.participantId) {
       throw new BadRequestException(`${f.personName} is not on this check-in yet. Add them first, then confirm this.`);
     }
     /* Claimed before anything is written, so two confirms at once write one row, not two. */
@@ -222,7 +241,7 @@ export class APlanIsManyProposalsService {
     if (!claimed?.count) throw new BadRequestException('That one is already confirmed.');
     let wrote: { table: string; id: string };
     try {
-      wrote = await this.writeTheOne(groundId, userId, held, asADirection(answer?.direction));
+      wrote = await this.writeTheOne(groundId, userId, held, asADirection(answer?.direction), inviteAt, ground.organizationId);
     } catch (err) {
       await this.prisma.planProposal.update({ where: { id: row.id }, data: { status: 'PENDING', decidedAt: null, decidedByUserId: null } }).catch(() => undefined);
       throw err;
@@ -231,9 +250,17 @@ export class APlanIsManyProposalsService {
     return { confirmed: { ...held, status: 'CONFIRMED' }, wrote };
   }
 
-  private async writeTheOne(groundId: string, userId: string, held: PlanProposal, direction: TargetDirection | null = null): Promise<{ table: string; id: string }> {
+  private async writeTheOne(groundId: string, userId: string, held: PlanProposal, direction: TargetDirection | null = null, inviteAt: string | null = null, organizationId = ''): Promise<{ table: string; id: string }> {
     const f = held.fields;
     switch (held.kind) {
+      case 'person': {
+        /* The normal way a person is added and invited, with everything it checks (a check-in that can take people, the plan's limits, consent). The lead's yes is their consent to the invitation. */
+        const grounds = this.moduleRef?.get(GroundsService, { strict: false });
+        if (!grounds) throw new BadRequestException('People cannot be added just now. Please try again in a minute.');
+        await grounds.addParticipant(groundId, organizationId, userId, { email: inviteAt!, displayName: f.personName } as any);
+        const made = await this.prisma.groundParticipant.findFirst({ where: { groundId, email: inviteAt! }, select: { id: true } });
+        return { table: 'GroundParticipant', id: made?.id ?? '' };
+      }
       case 'goal': {
         /* The board's own writer: the lead only, a board that tracks targets, stamped with the round. */
         const board = this.moduleRef?.get(BoardService, { strict: false });

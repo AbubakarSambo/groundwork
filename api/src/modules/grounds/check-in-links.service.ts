@@ -27,7 +27,7 @@ export class CheckInLinksService {
         .map((g) => [g.id, { id: g.id, label: g.label ?? null, initiatorId: g.initiatorId ?? null, scenario: g.scenario, peersVisibleToEachOther: g.peersVisibleToEachOther ?? null, participants: g.participants ?? null }]),
     );
     const here = mayOpen.get(groundId);
-    if (!here) throw new NotFoundException('Check-in not found');
+    if (!here) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     const rows = await this.prisma.groundDependency.findMany({
       where: {

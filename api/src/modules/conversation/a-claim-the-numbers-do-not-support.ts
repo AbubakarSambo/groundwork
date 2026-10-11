@@ -51,6 +51,18 @@ const SAID_THEY_FELL_SHORT = /\b(missed|short|behind|below|under|did not (?:hit|
 
 const RECALLS = /^(last (time|session|week|month)|previously|earlier|before,? you|you (said|mentioned|told|gave|named)|at the (start|beginning)|when we (last|first) spoke|the last time)/i;
 
+const CLAIMS_A_COST = /\b(?:is|are|was|were|has been|have been)\s+(?:stopping|costing|blocking|holding back|keeping|preventing)\b/i;
+const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty'];
+/** A count written as a word, "six shops", as a number. "one" is left out: it is as often "one of" as a count. */
+export function numberWordsIn(text: string): number[] {
+  const out: number[] = [];
+  for (const m of (text ?? '').toLowerCase().matchAll(/\b([a-z]+)\b/g)) {
+    const i = NUMBER_WORDS.indexOf(m[1]);
+    if (i >= 2) out.push(i);
+  }
+  return out;
+}
+
 export interface WhatTheyHaveSaid {
   /** Everything this person has said, this session and in their earlier sessions' entries. */
   theirWords: string[];
@@ -78,7 +90,7 @@ export function claimsTheNumbersDoNotSupport(reply: string, said: WhatTheyHaveSa
       continue;
     }
     const nums = numbersIn(s);
-    if (!nums.length) continue;
+    if (!nums.length && !(CLAIMS_A_COST.test(s) && numberWordsIn(s).length)) continue;
     if (CLAIMS_TO_BE_PAST.test(s)) {
       const claimed = Math.max(...nums);
       if (theirMax < claimed) {
@@ -90,6 +102,16 @@ export function claimsTheNumbersDoNotSupport(reply: string, said: WhatTheyHaveSa
       const target = Math.max(...nums);
       if (!reached.some((n) => n < target)) {
         out.push({ sentence: s, why: `says they fell short of ${target} and they have said no figure below it, nor that they fell short` });
+        continue;
+      }
+    }
+    /* B-016: "That stock is stopping six shops from happening." to Amani, who had said 15 a week and about 9;
+       six is only the gap, and she named stock as one cause. A sentence that says something is stopping,
+       costing or blocking a number of things stands only where they said that number. */
+    if (CLAIMS_A_COST.test(s)) {
+      const unsaid = [...nums, ...numberWordsIn(s)].filter((n) => !theirNumbers.has(n));
+      if (unsaid.length) {
+        out.push({ sentence: s, why: `says something is costing them ${unsaid.join(', ')}, which they never said` });
         continue;
       }
     }

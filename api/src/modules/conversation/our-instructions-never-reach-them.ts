@@ -68,15 +68,28 @@ const ABOUT_THE_CONVERSATION =
 
 export type InstructionCut = { text: string; cut: string[] };
 
+/*
+ * AND A NOTE ABOUT THIS REPLY, WHICH IS NEVER A LINE TO SAY. Wairimu, the lead, read in her first session
+ * (final evaluation, profile 1, week 1): "Still thinking about Brian, no decision yet. Let it go and ask about
+ * something else that matters here. Do not rephrase it and do not explain why you wanted it. If it genuinely
+ * matters and nobody has answered it, it belongs in the report as still open, not in a fourth question."
+ * That is ASKED_IT_TWICE_ALREADY, the note a reply is asked for again with, copied out. None of its copied
+ * runs says "they" or "your last turns", so the voice test above let it by. A retry's note is written to the
+ * model about the reply it is fixing; unlike the base prompt it teaches no line to say in the model's own
+ * voice. So any sentence that copies a run from a note is cut, whatever voice the run is in.
+ */
 export function withoutOurInstructions(
   reply: string,
   prompt: string,
   sayable: string[] = [],
   alreadyAsked: string[] = [],
+  notes: string[] = [],
 ): InstructionCut {
-  if (!reply || !prompt) return { text: reply, cut: [] };
-  const instructions = theInstructionSentences(prompt);
+  if (!reply || (!prompt && !notes.length)) return { text: reply, cut: [] };
+  const noteInstructions = notes.flatMap((n) => theInstructionSentences(n));
+  const instructions = [...theInstructionSentences(prompt ?? ''), ...noteInstructions];
   const runs = new Set(instructions.flatMap((s) => runsOf(wordsOf(s), A_COPIED_RUN)));
+  const noteRuns = new Set(noteInstructions.flatMap((s) => runsOf(wordsOf(s), A_COPIED_RUN)));
   if (!runs.size) return { text: reply, cut: [] };
   /* Their own words, and what the turn may say as fact, are never a copy of an instruction. */
   const theirs = new Set(sayable.flatMap((s) => runsOf(wordsOf(s), A_COPIED_RUN)));
@@ -86,7 +99,7 @@ export function withoutOurInstructions(
   const copied = sentences.map((s) => {
     if (/\?\s*$/.test(s.trim())) return false;
     const r = runsOf(wordsOf(s), A_COPIED_RUN);
-    return r.some((x) => runs.has(x) && !theirs.has(x) && ABOUT_THE_CONVERSATION.test(x));
+    return r.some((x) => runs.has(x) && !theirs.has(x) && (noteRuns.has(x) || ABOUT_THE_CONVERSATION.test(x)));
   });
   if (!copied.some(Boolean)) return { text: reply, cut: [] };
   /* A short piece of the same instruction beside a cut sentence ("This one should not.") goes with it. */
@@ -100,6 +113,6 @@ export function withoutOurInstructions(
   const cut: string[] = [];
   const kept: string[] = [];
   sentences.forEach((s, i) => ((copied[i] || alsoCut[i]) ? cut.push(s.trim()) : kept.push(s)));
-  const text = kept.join('').replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+  const text = kept.join('').replace(/[ \t]{2,}/g, ' ').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
   return { text: text || (aQuestionNotYetAsked(WHAT_ELSE, alreadyAsked) ?? WHAT_ELSE), cut };
 }

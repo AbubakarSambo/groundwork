@@ -47,10 +47,10 @@ describe('the lead\'s weekly letter, as the lead reads it', () => {
     expect(out).toEqual({ tried: 1 });
     expect(w.sent).toEqual([{
       to: 'wairimu@baridi.test',
-      subject: "Your team's week",
+      subject: 'Two things people said they would do were done; three handoffs are still waiting',
       lines: [
         'Your team is starting to move.',
-        'This week, 8 of 10 people checked in. Four people said what they will do next. Two things people said they would do were done. Three handoffs are still waiting on someone. Omar and Juma did not check in.',
+        'This week, eight of ten people checked in. Four people said what they will do next. Two things people said they would do were done. Three handoffs are still waiting. Omar and Juma did not check in.',
       ],
       linkLabel: "See this week's picture",
       linkUrl: 'https://app.test/grounds/g-anchor/board',
@@ -60,7 +60,8 @@ describe('the lead\'s weekly letter, as the lead reads it', () => {
   it('is built from check-ins started from the anchor that are still going, and never reads what anybody said', async () => {
     const w = aFriday();
     await sendTheLeadsWeeklyLetters({ prisma: w.prisma, email: w.email, frontendUrl: 'https://app.test' }, NOW);
-    expect(w.prisma.lastWhere.startedFrom).toBe('anchor');
+    /* Changed by decision 114: a check-in with the anchor's scenario is the anchor's too, so it asks for either (the-anchor-is-recognised-by-its-scenario.spec.ts). */
+    expect(w.prisma.lastWhere.OR).toEqual([{ startedFrom: 'anchor' }, { scenario: 'HELP_TEAM_UNDERSTAND' }]);
     /* Only counts: no turn, message, question to Ask Groundwork or report is read. */
     expect([...w.touched].sort()).toEqual(['checkIn', 'ground', 'groundCommitment', 'groundDependency', 'groundParticipant', 'user']);
   });
@@ -93,11 +94,11 @@ describe('the words, in other weeks', () => {
   });
   it('everyone in, and single counts, read as a person would say them', () => {
     expect(theWeekInSentences(week({ ofHowMany: 3, checkedIn: 3, saidWhatNext: 1, done: 1, waiting: 1 })).join(' ')).toBe(
-      'This week, all 3 people checked in. One person said what they will do next. One thing people said they would do was done. One handoff is still waiting on someone.');
+      'This week, all three people checked in. One person said what they will do next. One thing people said they would do was done. One handoff is still waiting.');
   });
   it('names up to three who did not check in, then counts the rest, and the lead is "you"', () => {
     expect(theWeekInSentences(week({ checkedIn: 1, notYet: ['you', 'Omar', 'Juma'] })).slice(-1)[0]).toBe('You, Omar and Juma did not check in.');
-    expect(theWeekInSentences(week({ checkedIn: 1, notYet: ['Omar', 'Juma', 'Femi', 'Bisi'] })).slice(-1)[0]).toBe('Omar, Juma and 2 others did not check in.');
+    expect(theWeekInSentences(week({ checkedIn: 1, notYet: ['Omar', 'Juma', 'Femi', 'Bisi'] })).slice(-1)[0]).toBe('Omar, Juma and two others did not check in.');
   });
   it('a check-in nobody can answer yet has no letter', () => {
     expect(theLeadsLetter([week({ ofHowMany: 0 })])).toBeNull();
@@ -121,25 +122,60 @@ describe('the mail itself, with the sender stubbed', () => {
 describe('the job, behind the switch', () => {
   const cron = (on: boolean) => {
     const c: any = Object.create(GroundsCron.prototype);
-    c.prisma = { platformSetting: { findUnique: async () => (on ? { value: { on: true } } : null) }, ground: { findMany: jest.fn(async () => []) } };
+    c.prisma = { platformSetting: { findUnique: async () => (on ? { value: { on: true } } : { value: { on: false } }) }, ground: { findMany: jest.fn(async () => []) } };
     c.email = { sendTheLeadsWeeklyLetter: jest.fn() };
     c.config = { get: () => 'https://app.test' };
     c.logger = { log: jest.fn(), warn: jest.fn() };
     return c;
   };
-  it('with the switch off it looks at nothing and sends nothing', async () => {
+  /* Changed on 8 October (engagement spec section 24, decision 117): the anchor is off at release and its check-ins follow through the ordinary flow, so with
+     the switch off the job no longer looks at nothing. It looks at every check-in that is NOT the anchor's, and the anchor's only while the switch is on. */
+  it('with the switch off it looks only at check-ins that are not the anchor\'s', async () => {
     const c = cron(false);
     expect(await c.sendTheLeadsWeeklyLettersInner(NOW)).toEqual({ tried: 0 });
-    expect(c.prisma.ground.findMany).not.toHaveBeenCalled();
+    expect(c.prisma.ground.findMany).toHaveBeenCalled();
+    const where = c.prisma.ground.findMany.mock.calls[0][0].where;
+    expect(JSON.stringify(where)).toContain('"not":"HELP_TEAM_UNDERSTAND"');
+    expect(JSON.stringify(where)).not.toContain('"scenario":"HELP_TEAM_UNDERSTAND"');
   });
-  it('with the switch on it looks for the anchor check-ins', async () => {
+  it('with the switch on it looks at every check-in, the anchor\'s included', async () => {
     const c = cron(true);
     expect(await c.sendTheLeadsWeeklyLettersInner(NOW)).toEqual({ tried: 0 });
     expect(c.prisma.ground.findMany).toHaveBeenCalled();
+    expect(JSON.stringify(c.prisma.ground.findMany.mock.calls[0][0].where)).not.toContain('HELP_TEAM_UNDERSTAND');
   });
   it('is scheduled for Friday at three in the afternoon in Lagos', () => {
     const opts = Reflect.getMetadata('SCHEDULE_CRON_OPTIONS', GroundsCron.prototype.sendTheLeadsWeeklyLetters);
     expect(opts.cronTime).toBe('0 15 * * 5');
     expect(opts.timeZone).toBe('Africa/Lagos');
+  });
+});
+
+/*
+ * KEVIN'S CLAIM IN WAIRIMU'S LETTER (decision 137; change 4). Her letters said for three weeks that the work "is waiting on Fatuma Bello", on
+ * Kevin's word alone. The claim stays, as Kevin's account with the note beside it, and the subject never names Fatuma as the one it waits on.
+ */
+describe('a wait on a colleague only the speaker claims, in the letter', () => {
+  function withWaits(waits: any[], promises: any[] = []) {
+    const w = aFriday();
+    w.prisma.groundDependency = { count: async () => waits.length, findMany: async () => waits };
+    const before = w.prisma.groundCommitment;
+    w.prisma.groundCommitment = { ...before, findMany: async (q: any) => (q?.where?.participantId?.in ? promises : before.findMany(q)) };
+    return w;
+  }
+  const kevinOnFatuma = { id: 'd1', groundId: 'g-anchor', fromParticipantId: 'p1', onParticipantId: 'p2', status: 'WAITING', what: 'the final prices', triedSaid: null };
+
+  it('is Kennedy\'s account with the note, and the subject does not name Femi', async () => {
+    const w = withWaits([kevinOnFatuma]);
+    await sendTheLeadsWeeklyLetters({ prisma: w.prisma, email: w.email, frontendUrl: 'https://app.test/' }, NOW);
+    expect(w.sent[0].subject).toBe('Two things people said they would do were done; one handoff is still waiting');
+    expect(w.sent[0].lines).toContain('Kennedy says the work is waiting on Femi for the final prices. Not backed: no attempt to unblock mentioned.');
+  });
+
+  it('once Femi has promised it, the handoff is counted on Femi, as before', async () => {
+    const w = withWaits([kevinOnFatuma], [{ groundId: 'g-anchor', participantId: 'p2', text: 'I will send the final prices on Monday.' }]);
+    await sendTheLeadsWeeklyLetters({ prisma: w.prisma, email: w.email, frontendUrl: 'https://app.test/' }, NOW);
+    expect(w.sent[0].subject).toBe('Two things people said they would do were done; one handoff is still waiting, on Femi');
+    expect(w.sent[0].lines.join(' ')).not.toMatch(/Not backed/);
   });
 });

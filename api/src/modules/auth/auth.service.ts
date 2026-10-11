@@ -1,3 +1,4 @@
+import { TheWaysToStopMail } from '../engagement/the-ways-to-stop-mail';
 import { theDomainOf, mayBeJoinedBy } from '../../common/an-email-domain';
 import { aPathInThisApp, theInviteLinkCodeIn } from '../../common/a-path-in-this-app';
 import { whatTheirWorkspaceIsCalled } from './a-roster-row-is-not-a-life-sentence';
@@ -127,6 +128,9 @@ function goOnTo<T extends object>(res: T, kept: string | null | undefined): T & 
  * NEVER "ACCOUNT" IN WHAT A PERSON READS (Hafsah's standing rule; request 141, review of 5 October 2026).
  * The sign-up answer names the address only because it is the person's own: they typed it a moment ago.
  */
+/** Said to somebody who set a password and never opened the link. */
+export const YOUR_SIGN_UP_IS_NOT_FINISHED = 'You have not finished creating your account yet. We have emailed you the link again. Open it, say where you work, and then sign in with your password.';
+
 export const theConfirmationLinkWasSent = (email: string): string =>
   `Check your email. We sent a link to ${email} to confirm it is yours. Open it on any device.`;
 export const YOU_CAN_NO_LONGER_SIGN_IN_HERE =
@@ -155,10 +159,28 @@ export class AuthService {
     }
   }
 
-  /** The back office hears about every new organisation. Best-effort; a sign-up never fails on it. */
-  private signedUp(org: { id: string; name: string }, adminEmail: string) {
+  /**
+   * A TEAM NAMED ON THE SIGN-UP FORM HAS ITS TRIAL BEFORE THE LINK ANSWERS (release check, 8 October 2026). The month was
+   * given by a listener of the sign-up event, which is sent from inside the transaction that makes the organisation, so
+   * it landed a moment after this answer. The page then saved the check-in it was holding at once, and that save was
+   * refused with "Your organisation has no plan yet" (seen on the test bed: the refusal at 15:48:29.136, the month
+   * written at 15:48:29.21). This waits for the same rule, after the organisation exists: the form promises the month to
+   * teams of fewer than 20, and billing still checks that against who is really there. Never throws.
+   */
+  private async theTrialIsGivenBeforeTheyGoOn(organizationId: string): Promise<void> {
     try {
-      this.events.emit(GroundworkEvents.ORG_SIGNED_UP, { organizationId: org.id, organizationName: org.name, adminEmail } satisfies OrgSignedUpEvent);
+      const events: any = this.events;
+      if (typeof events?.emitAsync !== 'function') return;
+      await events.emitAsync(GroundworkEvents.ORG_SIZE_SAID, { organizationId, said: 'fewer', line: 20 } satisfies OrgSizeSaidEvent);
+    } catch (err: any) {
+      this.logger.warn(`The trial for ${organizationId} was not in place before the link answered: ${err?.message}`);
+    }
+  }
+
+  /** The back office hears about every new organisation. Best-effort; a sign-up never fails on it. */
+  private signedUp(org: { id: string; name: string }, adminEmail: string, namedOnTheForm = false) {
+    try {
+      this.events.emit(GroundworkEvents.ORG_SIGNED_UP, { organizationId: org.id, organizationName: org.name, adminEmail, ...(namedOnTheForm ? { namedOnTheForm: true } : {}) } satisfies OrgSignedUpEvent);
     } catch (err: any) {
       this.logger.warn(`org.signedUp did not emit for ${org.id}: ${err?.message}`);
     }
@@ -187,7 +209,7 @@ export class AuthService {
     }
 
     const existingUser = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
-    if (existingUser) throw new ConflictException('Email already registered');
+    if (existingUser) throw new ConflictException('That email address already has a sign-in, so sign in with it instead.');
 
     /**
      * NOTHING IS CREATED UNTIL THE ADDRESS IS PROVED. GW-001, closed here too.
@@ -247,7 +269,7 @@ export class AuthService {
     }
 
     const existingUser = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
-    if (existingUser) throw new ConflictException('Email already registered');
+    if (existingUser) throw new ConflictException('That email address already has a sign-in, so sign in with it instead.');
 
     const emailLocal = dto.email.toLowerCase().split('@')[0];
     const firstName = dto.firstName?.trim() || emailLocal.charAt(0).toUpperCase() + emailLocal.slice(1);
@@ -298,7 +320,22 @@ export class AuthService {
       throw new UnauthorizedException(THE_SAME_ANSWER_EITHER_WAY);
     };
 
-    if (!user || user.deletedAt) refuse('no such account');
+    if (!user || user.deletedAt) {
+      /*
+       * SOMEBODY WHO SET A PASSWORD AND NEVER FINISHED (B-192, server half). Their account does not exist until the link is opened and an organisation chosen, so the password
+       * "did not work" and the one answer at the door told them to check it. If the password is the one they set, that proves the address is theirs, so they are told plainly
+       * what is left and the link is sent again (new, in case the old one ran out). Anybody else reads the same answer as before, so nothing is learnt about a stranger's address.
+       */
+      const pending = !user ? await this.prisma.pendingSignup.findUnique({ where: { email: dto.email.toLowerCase() } }).catch(() => null) : null;
+      if (pending?.passwordHash && (await bcrypt.compare(dto.password, pending.passwordHash).catch(() => false))) {
+        const token = crypto.randomBytes(32).toString('hex');
+        await this.prisma.pendingSignup.update({ where: { id: pending.id }, data: { token, expiresAt: expiresAtFor('verify an address') } });
+        await this.emailService.sendVerificationEmail(pending.email, pending.firstName, token).catch((err) => this.logger.error(`Failed to send the sign-up link again to ${pending.email}: ${err?.message}`));
+        this.logger.log(`Sign-in refused for ${dto.email.toLowerCase()}: the sign-up was never finished; the link was sent again.`);
+        throw new UnauthorizedException(YOUR_SIGN_UP_IS_NOT_FINISHED);
+      }
+      refuse('no such account');
+    }
     if (!user.isActive) refuse('the account is deactivated');
     if (!user.isEmailVerified) refuse('the address is not verified');
 
@@ -440,7 +477,7 @@ export class AuthService {
           /* A sign-in made with no number takes the roster's (decision 106 item 3). */
           await aSignInWithNoNumberTakesTheRosters(tx, u.id, listed?.phone);
           await tx.groundParticipant.updateMany({
-            where: { email: pending.email, userId: null, awaitingSeat: false },
+            where: { email: pending.email, userId: null, awaitingSeat: false, ground: { status: { not: 'AWAITING_APPROVAL' } } },
             data: { userId: u.id },
           });
           await tx.pendingSignup.delete({ where: { id: pending.id } });
@@ -506,7 +543,7 @@ export class AuthService {
                   data: { userId: u.id, draftToken: pending.draftToken, payload: (pending.payload ?? {}) as any, history: (pending.history ?? []) as any },
                 });
               }
-              await tx.groundParticipant.updateMany({ where: { email: pending.email, userId: null, awaitingSeat: false }, data: { userId: u.id } });
+              await tx.groundParticipant.updateMany({ where: { email: pending.email, userId: null, awaitingSeat: false, ground: { status: { not: 'AWAITING_APPROVAL' } } }, data: { userId: u.id } });
               await tx.pendingSignup.delete({ where: { id: pending.id } });
               return u;
             });
@@ -545,7 +582,8 @@ export class AuthService {
       const created = await this.prisma.$transaction(async (tx) => {
         /* The contact email is the admin's until they say otherwise - see the note on register. */
         const org = await tx.organization.create({ data: { name: orgName, slug, email: pending.email } });
-        this.signedUp(org, pending.email);
+        /* A sign-up link that makes an organisation never asks the team's size, named or not (decision 121, item 3), so billing applies the trial rule itself. */
+        this.signedUp(org, pending.email, true);
         const u = await tx.user.create({
           data: {
             organizationId: org.id,
@@ -575,12 +613,15 @@ export class AuthService {
         }
         // Connect any check-ins made under this address before the account existed.
         await tx.groundParticipant.updateMany({
-          where: { email: pending.email, userId: null, awaitingSeat: false },
+          where: { email: pending.email, userId: null, awaitingSeat: false, ground: { status: { not: 'AWAITING_APPROVAL' } } },
           data: { userId: u.id },
         });
         await tx.pendingSignup.delete({ where: { id: pending.id } });
         return u;
       });
+
+      /* Named or left blank: the trial is in place before the page saves the check-in it was holding. */
+      await this.theTrialIsGivenBeforeTheyGoOn(created.organizationId);
 
       /* This link has just made the account and its organisation (U.2). */
       /* Chosen on "Where do you work?": on to the new organisation's Today, not back to where they came from. */
@@ -595,7 +636,7 @@ export class AuthService {
       // Link any groundParticipant records whose email matches but have no userId yet.
       // This connects participants who checked in before creating their account.
       await tx.groundParticipant.updateMany({
-        where: { email: tokenRecord.user.email.toLowerCase(), userId: null, awaitingSeat: false },
+        where: { email: tokenRecord.user.email.toLowerCase(), userId: null, awaitingSeat: false, ground: { status: { not: 'AWAITING_APPROVAL' } } },
         data: { userId: tokenRecord.userId },
       });
       return { user: tokenRecord.user };
@@ -615,7 +656,7 @@ export class AuthService {
       // Link any groundParticipant records whose email matches - same as verifyEmail.
       // Covers participants who were invited before creating their account.
       await tx.groundParticipant.updateMany({
-        where: { email: tokenRecord.user.email.toLowerCase(), userId: null, awaitingSeat: false },
+        where: { email: tokenRecord.user.email.toLowerCase(), userId: null, awaitingSeat: false, ground: { status: { not: 'AWAITING_APPROVAL' } } },
         data: { userId: tokenRecord.userId },
       });
       return tokenRecord.user;
@@ -660,7 +701,7 @@ export class AuthService {
     if (password !== undefined && isTheirEmail(password, lower)) throw new BadRequestException(IS_THEIR_EMAIL);
 
     if (draft && JSON.stringify(draft).length > 500_000) {
-      throw new BadRequestException('Draft too large');
+      throw new BadRequestException('That draft is too long to keep, so shorten it and try again.');
     }
 
     let user = await this.prisma.user.findUnique({ where: { email: lower } });
@@ -1160,7 +1201,7 @@ export class AuthService {
         user = await this.prisma.$transaction(async (tx) => {
           /* The contact email is the admin's until they say otherwise - see the note on register. */
           const organization = await tx.organization.create({ data: { name: orgName, slug, email } });
-          this.signedUp(organization, email);
+          this.signedUp(organization, email, true);
           const created = await tx.user.create({
             data: {
               organizationId: organization.id,
@@ -1232,11 +1273,13 @@ export class AuthService {
    */
   async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { organization: true } });
-    if (!user) throw new BadRequestException('User not found');
+    if (!user) throw new BadRequestException('We could not find that sign-in, so sign in again and try once more.');
     /* One builder. A field added to it cannot fail to reach this route now. */
     const belongsElsewhere = await this.belongsElsewhere(user.id, user.organizationId);
     return {
       ...this.theUserShape(user as unknown as UserWithOrg, belongsElsewhere), orgCode: user.organization.slug, emailNotifications: user.emailNotifications,
+      /* True when they used the link in one of our emails. Settings says so, in the words of THE_SETTINGS_LABEL, and the switch turns it back on (decision 109). */
+      emailsStoppedFromAMail: await new TheWaysToStopMail(this.prisma).stoppedFromAMail(user.email).catch(() => false),
       /* "Connect WhatsApp" for the person's own Settings, or null (decision 106 item 4). Only on their own read. */
       connectWhatsApp: await connectWhatsAppFor(this.prisma, this.configService, { organizationId: user.organizationId, userId: user.id, email: user.email }),
     };
@@ -1258,7 +1301,7 @@ export class AuthService {
    */
   async userShapeFor(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { organization: true } });
-    if (!user) throw new BadRequestException('User not found');
+    if (!user) throw new BadRequestException('We could not find that sign-in, so sign in again and try once more.');
     const belongsElsewhere = await this.belongsElsewhere(user.id, user.organizationId);
     return this.theUserShape(user as unknown as UserWithOrg, belongsElsewhere);
   }
@@ -1495,6 +1538,10 @@ export class AuthService {
     if (dto.emailNotifications !== undefined) userUpdate.emailNotifications = dto.emailNotifications;
 
     const me = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    /* A first name of only spaces would wipe the name everybody reads (B-130). Somebody who has no name yet may still save the rest of the form. */
+    if (dto.firstName !== undefined && !dto.firstName.trim() && me.firstName?.trim()) throw new BadRequestException('Please write your first name. It cannot be left empty.');
+    /* Turning the switch on is the undo for a stop made from a link in a mail: the one choice, in both places (decision 109). */
+    if (dto.emailNotifications === true) await new TheWaysToStopMail(this.prisma).turnBackOnFor(me.email).catch(() => undefined);
     /* One stored form for every number, the way WhatsApp sends it; a local number takes the
        organisation's country, or is refused with a sentence asking for the whole number (survey item 6). */
     if (dto.phoneNumber !== undefined) userUpdate.phoneNumber = dto.phoneNumber?.trim() ? await tidyANumberFor(this.prisma as any, me.organizationId, dto.phoneNumber) : null;
@@ -1554,7 +1601,7 @@ export class AuthService {
       where: { id: userId },
       select: { organizationId: true, role: true },
     });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
 
     /* Never one they are held out of for want of a seat (U.4 third review): they have not been told
        about it, so it is not theirs to see or switch to until the hold is cleared. */
@@ -1621,7 +1668,7 @@ export class AuthService {
     if (!membership || membership.heldForASeat) {
       // Not "not found": from the caller's side this is being refused, and saying so
       // plainly is better than implying the organisation does not exist.
-      throw new ForbiddenException('You are not a member of that organisation');
+      throw new ForbiddenException('You are not a member of that organisation, so switch to one you belong to.');
     }
 
     const updated = await this.prisma.user.update({
@@ -1675,7 +1722,7 @@ export class AuthService {
    */
   async whereCanIJoin(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, isEmailVerified: true } });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
     const mine = await this.prisma.organizationMembership.findMany({ where: { userId }, select: { organizationId: true } });
     const inIt = new Set(mine.map((m) => m.organizationId));
     const domain = theDomainOf(user.email);
@@ -1747,7 +1794,7 @@ export class AuthService {
   /** "Join": by email domain, as "Takes part", through the seat check, then into it. */
   async joinByDomain(userId: string, organizationId: string, via: SignedInVia = 'password') {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, isEmailVerified: true } });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
     const domain = theDomainOf(user.email);
     const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { id: true, name: true, joinDomain: true } });
     const allowed = !!org && !!domain && user.isEmailVerified && mayBeJoinedBy(domain) && org.joinDomain === domain;
@@ -1783,7 +1830,7 @@ export class AuthService {
       where: { id: userId },
       select: { id: true, email: true, firstName: true, lastName: true, organizationId: true },
     });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
 
     /*
      * MORE THAN ONE OF YOUR OWN, AS THE PROTOTYPE HAS IT (Hafsah, 26 September). This used to refuse

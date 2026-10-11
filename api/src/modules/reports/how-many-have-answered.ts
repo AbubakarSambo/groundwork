@@ -1,7 +1,8 @@
 import { CheckInStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { AN_ANSWER } from '../grounds/an-answer-includes-a-refusal';
-import { waitsOnAManagingOnlyLead } from '../grounds/the-lead-who-only-asks';
+import { AN_ANSWER, wasAQuietClose } from '../grounds/an-answer-includes-a-refusal';
+import { checksInOnlyWhenTheyChoose, whoASessionCounts } from '../grounds/the-lead-checks-in-when-they-choose';
+import { THE_LEAD_ONLY_ASKS } from '../grounds/the-lead-who-only-asks';
 import { whoOnACheckInIsAway } from '../suites/who-is-away';
 import { isNotLetInYet, whoIsNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 
@@ -31,6 +32,8 @@ import { isNotLetInYet, whoIsNotLetInYet } from '../grounds/who-an-admin-did-not
 export interface SomebodyWhoMightAnswer {
   id: string;
   managingOnly?: boolean | null;
+  /** INITIATOR is the lead, who checks in only when they choose (decision 133). */
+  partyType?: string | null;
   userId?: string | null;
   invitedAt?: Date | string | null;
   inviteTokenExpiresAt?: Date | string | null;
@@ -45,12 +48,16 @@ export interface SomebodyWhoMightAnswer {
    */
   notLetIn?: boolean;
   user?: { awaitingOrgApproval?: boolean | null } | null;
-  /** This session's rows for them, whatever the state. */
-  checkIns?: { status: string; sessionNumber?: number }[];
+  /** This session's rows for them, whatever the state. With `closedReason` and their person turns, a session the clock closed with nothing said is told apart. */
+  checkIns?: { status: string; sessionNumber?: number; closedReason?: string | null; turns?: unknown[] | null }[];
 }
 
+/* A session the clock closed where the person said nothing is not an answer (57e7f40e5): the same rule as the query below, over rows in hand. */
 const theyAnswered = (p: SomebodyWhoMightAnswer, sessionNumber: number): boolean =>
-  (p.checkIns ?? []).some((c) => (c.sessionNumber ?? sessionNumber) === sessionNumber && (AN_ANSWER as string[]).includes(c.status));
+  (p.checkIns ?? []).some((c) => (c.sessionNumber ?? sessionNumber) === sessionNumber && (AN_ANSWER as string[]).includes(c.status) && !wasAQuietClose(c));
+/* ...and it is closed, so nobody waits on them for it either. */
+const theClockClosedIt = (p: SomebodyWhoMightAnswer, sessionNumber: number): boolean =>
+  (p.checkIns ?? []).some((c) => (c.sessionNumber ?? sessionNumber) === sessionNumber && (AN_ANSWER as string[]).includes(c.status) && wasAQuietClose(c));
 
 /**
  * WHO THIS SESSION WAITS ON. The release rule, as a predicate over rows.
@@ -65,9 +72,12 @@ export function whoIsExpected<T extends SomebodyWhoMightAnswer>(
   scenario?: string | null,
   now: Date = new Date(),
 ): T[] {
-  const waitsOnTheLead = waitsOnAManagingOnlyLead(scenario, sessionNumber);
+  /* The anchor's own rule, unchanged: where the lead only asks, a managing lead is never waited on or counted. */
+  const theLeadOnlyAsks = THE_LEAD_ONLY_ASKS.includes(scenario ?? '');
   return (people ?? []).filter((p) => {
-    if (p.managingOnly && !waitsOnTheLead) return false;
+    if (p.managingOnly && theLeadOnlyAsks) return false;
+    /* Decision 133: the lead is never waited on, and counts only in a session they answered. */
+    if (checksInOnlyWhenTheyChoose(p) && !theyAnswered(p, sessionNumber)) return false;
     if (p.awayUntil && !theyAnswered(p, sessionNumber)) return false;
     /* Not let in yet (decision 77): not waited on. Anything they did answer still counts. */
     if (isNotLetInYet(p) && !theyAnswered(p, sessionNumber)) return false;
@@ -95,11 +105,12 @@ export function whoIsExpected<T extends SomebodyWhoMightAnswer>(
  * which also leaves out an invitation that lapsed; that stays for deciding when a round is done and
  * who is still waited on, but it is not the number people read.
  */
-export function whoIsInTheRound<T extends { managingOnly?: boolean | null; awayUntil?: string | null; checkIns?: { status: string; sessionNumber?: number }[] }>(people: T[], sessionNumber: number, scenario?: string | null): T[] {
-  const waitsOnTheLead = waitsOnAManagingOnlyLead(scenario, sessionNumber);
+export function whoIsInTheRound<T extends { managingOnly?: boolean | null; partyType?: string | null; awayUntil?: string | null; checkIns?: { status: string; sessionNumber?: number }[] }>(people: T[], sessionNumber: number, scenario?: string | null): T[] {
+  const theLeadOnlyAsks = THE_LEAD_ONLY_ASKS.includes(scenario ?? '');
   /* Somebody away, who has not answered, is not in the count this round waits on (week 23). */
   /* And somebody an admin has not let in yet, who has not answered, is not in it either (decision 77). */
-  return (people ?? []).filter((p) => (!p.managingOnly || waitsOnTheLead)
+  /* Decision 133: the lead is in a round's numbers only when they answered it. */
+  return (people ?? []).filter((p) => !(p.managingOnly && theLeadOnlyAsks) && (!checksInOnlyWhenTheyChoose(p) || theyAnswered(p as unknown as SomebodyWhoMightAnswer, sessionNumber))
     && !((p as unknown as SomebodyWhoMightAnswer).awayUntil && !theyAnswered(p as unknown as SomebodyWhoMightAnswer, sessionNumber))
     && !(isNotLetInYet(p) && !theyAnswered(p as unknown as SomebodyWhoMightAnswer, sessionNumber)));
 }
@@ -122,7 +133,7 @@ export function howManyOfThemAnswered<T extends SomebodyWhoMightAnswer>(
   return {
     answered: answered.length,
     expected: expected.length,
-    waitingOn: expected.filter((p) => !theyAnswered(p, sessionNumber)).map((p) => p.id),
+    waitingOn: expected.filter((p) => !theyAnswered(p, sessionNumber) && !theClockClosedIt(p, sessionNumber)).map((p) => p.id),
   };
 }
 export interface HowManyHaveAnswered {
@@ -151,15 +162,28 @@ export async function howManyHaveAnswered(prisma: PrismaService, groundId: strin
   const everyone = await prisma.groundParticipant.findMany({
     where: {
       groundId,
-      ...(waitsOnAManagingOnlyLead(ground?.scenario, sessionNumber) ? {} : { managingOnly: false }),
+      /* Decision 133: the lead is counted only when they answered this session. */
+      AND: [whoASessionCounts(sessionNumber, AN_ANSWER)],
+      /* The anchor's own rule, unchanged: where the lead only asks, a managing lead is never counted. */
+      ...(THE_LEAD_ONLY_ASKS.includes(ground?.scenario ?? '') ? { managingOnly: false } : {}),
       OR: [
         { userId: { not: null } },
         { checkIns: { some: { sessionNumber, status: { in: AN_ANSWER } } } },
         { userId: null, invitedAt: { not: null }, inviteTokenExpiresAt: { gt: new Date() } },
       ],
     },
-    select: { id: true, userId: true, checkIns: { where: { sessionNumber, status: { in: AN_ANSWER } }, select: { status: true } } },
-  });
+    select: {
+      id: true, userId: true,
+      checkIns: {
+        where: { sessionNumber, status: { in: AN_ANSWER } },
+        select: { status: true, closedReason: true, turns: { where: { role: 'PERSON' as any }, take: 1, select: { id: true } } },
+      },
+    },
+  }).then((rows: any[]) => rows.map((p) => {
+    /* A session the clock closed with nothing said is not an answer: not counted, and not waited on either (it is closed). */
+    const real = p.checkIns.filter((c: any) => !wasAQuietClose(c));
+    return { id: p.id, userId: p.userId, checkIns: real as { status: string }[], quiet: real.length === 0 && p.checkIns.length > 0 };
+  }));
   /* Not let in yet and not answered: not waited on, and not in the count (decision 77). */
   const notLetIn = await whoIsNotLetInYet(prisma, everyone as any[]);
   const heldOut = (p: { id: string; checkIns: unknown[] }) => notLetIn.has(p.id) && p.checkIns.length === 0;
@@ -171,7 +195,7 @@ export async function howManyHaveAnswered(prisma: PrismaService, groundId: strin
     expected: expected.length,
     expectedIds: expected.map((p) => p.id),
     awayUntil: Object.fromEntries(everyone.filter((p) => away.has(p.id) && p.checkIns.length === 0 && !heldOut(p)).map((p) => [p.id, away.get(p.id) as string])),
-    waitingOn: expected.filter((p) => p.checkIns.length === 0).map((p) => p.id),
+    waitingOn: expected.filter((p) => p.checkIns.length === 0 && !p.quiet).map((p) => p.id),
     completed: answeredRows.filter((p) => p.checkIns.some((c) => c.status === CheckInStatus.COMPLETED)).length,
     declinedIds: expected
       .filter((p) => p.checkIns.length > 0 && !p.checkIns.some((c) => c.status === CheckInStatus.COMPLETED))

@@ -1,6 +1,6 @@
 import {
   commitmentsOverTime, dependenciesOverTime, patternsOverTime, gapsOverTime, theOnesStillOpen,
-  whatThisCannotTellYou, toSettleFirst,
+  whatThisCannotTellYou, toSettleFirst, inOurVoice,
 } from './what-the-record-shows-over-time';
 
 /*
@@ -215,13 +215,24 @@ describe('what the record shows over time', () => {
       }
     });
 
-    it('says so plainly when somebody did go back about it', () => {
-      const [d] = dependenciesOverTime([{
+    /*
+     * Changed 11 October (decision 139, must-fix 3). This read "somebody went back about it after that" from `escalatedAt` alone, which is
+     * the product's own overnight stamp: nobody had gone back about anything. Now it is said only from what the person said they did.
+     */
+    it('says so plainly when they said they went back about it, and never from the product\'s own stamp', () => {
+      const [stampOnly] = dependenciesOverTime([{
         what: 'the signed lease', fromParticipantId: 'amina', onParticipantId: 'marcus',
         onLabel: null, status: 'WAITING', escalatedAt: new Date('2026-09-01'), statedInSession: 2,
       }], labelOf, 6);
+      expect(stampOnly.say).toContain('for 4 sessions now, and nothing on record says anybody has chased it since.');
+      expect(stampOnly.say).not.toMatch(/went back about it|taken above/);
+      expect(stampOnly.chased).toBe(false);
+      const [d] = dependenciesOverTime([{
+        what: 'the signed lease', fromParticipantId: 'amina', onParticipantId: 'marcus',
+        onLabel: null, status: 'WAITING', escalatedAt: null, triedSaid: 'I chased Marcus twice by email.', statedInSession: 2,
+      } as any], labelOf, 6);
       /* In the same sentence as the thing, since 1 October 2026 (see above). */
-      expect(d.say).toContain('for 4 sessions now, and somebody went back about it after that.');
+      expect(d.say).toContain('for 4 sessions now, and it has been chased more than once since.');
       expect(d.chased).toBe(true);
       expect(Object.keys(d)).not.toContain('escalated');
     });
@@ -373,5 +384,14 @@ describe('what the record shows over time', () => {
       );
       expect(questions[0]).not.toContain('"');
     });
+  });
+});
+
+/* Found in the anchor walk (8 October): "Amani committed to ask Zawadi themselves whether she can send it...", which reads as though Zawadi does it. */
+describe('a line said in our voice', () => {
+  it('drops the "myself" that only stresses who asks, and still turns a "myself" that is the object', () => {
+    expect(inOurVoice('I will ask Zawadi myself whether she can send it at half past four every day.', 'them')).toBe('ask Zawadi whether she can send it at half past four every day');
+    expect(inOurVoice('I will ask Zawadi myself whether she can send it.', 'you')).toBe('ask Zawadi whether she can send it');
+    expect(inOurVoice('I will remind myself to call the supplier.', 'them')).toBe('remind themselves to call the supplier');
   });
 });

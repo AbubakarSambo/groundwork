@@ -61,7 +61,8 @@ export class RoleMapService {
         where: { organizationId: org, active: true },
         select: { externalId: true, displayName: true, givenName: true, familyName: true, title: true },
       }) as Promise<Person[]>,
-      this.prisma.roleInterviewAnswer.findMany({ where: { organizationId: org }, select: { roleName: true, owns: true, createdAt: true }, orderBy: { createdAt: 'desc' } }),
+      /* Only what the person agreed to show: an interview they said yes to, or a first-check-in reading they said yes to. What they said in a check-in stays theirs until then. */
+      this.prisma.roleInterviewAnswer.findMany({ where: { organizationId: org, OR: [{ source: 'interview' }, { sharedAt: { not: null } }] }, select: { roleName: true, owns: true, createdAt: true }, orderBy: { createdAt: 'desc' } }),
       this.prisma.roleGapNote.findMany({ where: { organizationId: org }, select: { roleName: true, says: true, groundId: true, createdAt: true }, orderBy: { createdAt: 'desc' } }),
     ]);
     const byId = new Map(people.map((p) => [p.externalId, p]));

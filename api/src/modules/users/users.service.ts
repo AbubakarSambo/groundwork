@@ -1,9 +1,10 @@
+import { theOrganisationsZone, isAZone, forgetTheOrganisationsZone } from '../../common/the-organisations-own-day';
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
 import { Injectable, Logger, Inject, forwardRef, NotFoundException, ConflictException, BadRequestException, ForbiddenException, Optional } from '@nestjs/common';
 import { alreadyOpen, Subject } from './what-a-call-is-about';
 import * as crypto from 'crypto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { GroundworkEvents, CallAskedEvent, OrgSizeSaidEvent } from '../../common/events';
+import { GroundworkEvents, CallAskedEvent, OrgSizeSaidEvent, AdminMadeEvent } from '../../common/events';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
@@ -21,8 +22,11 @@ import { theDomainOf, mayBeJoinedBy, effectiveJoinDomain } from '../../common/an
 import { isCovered } from '../../common/subscription';
 import { HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
 import { mayChange, mayHandOver } from './the-person-who-set-this-up';
-import { colleaguesOf } from '../../common/colleagues';
+import { colleaguesOf, A_COLLEAGUE_WITH_NO_NAME } from '../../common/colleagues';
+import { theInvitationsWaiting, keepThemWaiting, stopWaiting, type AnInvitationWaiting } from './invitations-waiting-for-a-seat';
 import { aLineOrNothing, wouldMakeALoop, CANNOT_REPORT_TO_THEMSELVES, THAT_WOULD_MAKE_A_LOOP, NOT_IN_THIS_ORGANISATION } from './where-they-sit';
+import { groundsAViewerMayList } from '../grounds/who-may-read-this-check-in';
+import { fullNameToCall } from '../engagement/a-name-to-call-them';
 
 @Injectable()
 export class UsersService {
@@ -87,6 +91,20 @@ export class UsersService {
     };
   }
 
+  /** The zone an admin named, and the zone in use now (named, else from where people's numbers are, else the product's own). */
+  async theTimeZone(organizationId: string) {
+    const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { timeZone: true } });
+    return { timeZone: org?.timeZone ?? null, inUse: await theOrganisationsZone(this.prisma as any, organizationId) };
+  }
+
+  async setTheTimeZone(organizationId: string, timeZone: string | null) {
+    const zone = typeof timeZone === 'string' ? timeZone.trim() : '';
+    if (zone && !isAZone(zone)) throw new BadRequestException('That is not a time zone I know. A time zone is written like Africa/Nairobi.');
+    await this.prisma.organization.update({ where: { id: organizationId }, data: { timeZone: zone || null } });
+    forgetTheOrganisationsZone(organizationId);
+    return this.theTimeZone(organizationId);
+  }
+
   /**
    * "WHO CAN JOIN": "Anyone with an @baridi.co.ke email" (A4 people.txt; U.3, Hafsah, 26 September;
    * changed 30 September, item 3, to read from `effectiveJoinDomain` rather than the current
@@ -145,6 +163,15 @@ export class UsersService {
    * the organisation's founding address was.
    */
   async changeJoinDomain(organizationId: string, adminId: string) {
+    /*
+     * CHANGING THE DOMAIN NEVER SWITCHES JOINING ON (request 179). "Joining by email is on" is stored as the domain itself, so writing a domain while
+     * it was off turned it on, with no say and no confirmation. While it is off, nothing is written: the admin is told to switch it on, which is
+     * a choice of its own, and then to change the domain.
+     */
+    const now = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { joinDomain: true } });
+    if (!now?.joinDomain) {
+      throw new BadRequestException('Joining by email is switched off, so there is no domain to change. Switch it on first, and then you can change the domain.');
+    }
     const admin = await this.prisma.user.findUnique({ where: { id: adminId }, select: { email: true, isEmailVerified: true } });
     const domain = theDomainOf(admin?.email);
     if (!domain || !admin?.isEmailVerified) {
@@ -251,10 +278,10 @@ export class UsersService {
    */
   async setHowCheckInsWork(organizationId: string, body: { whoMayOpen?: string; needsApproval?: boolean }) {
     if (body.whoMayOpen !== undefined && !['NAMED_LEADS', 'EVERYONE'].includes(body.whoMayOpen)) {
-      throw new BadRequestException('whoMayOpen must be NAMED_LEADS or EVERYONE.');
+      throw new BadRequestException('Choose who may start check-ins, either the people you name or everyone.');
     }
     if (body.needsApproval !== undefined && typeof body.needsApproval !== 'boolean') {
-      throw new BadRequestException('needsApproval must be true or false.');
+      throw new BadRequestException('Choose whether each new check-in waits for an admin, yes or no.');
     }
     await this.prisma.organization.update({
       where: { id: organizationId },
@@ -310,6 +337,24 @@ export class UsersService {
     return { ownerUserId: org?.ownerUserId ?? null };
   }
 
+  /**
+   * One admin's name, and only the name (request 225c): the owner where the owner is an admin, otherwise
+   * the admin who has been one longest. Null where there is no admin with a name.
+   */
+  async anAdminByName(organizationId: string): Promise<{ name: string | null }> {
+    if (!organizationId) return { name: null };
+    const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { ownerUserId: true } });
+    const admins = await this.prisma.user.findMany({
+      where: { organizationId, role: 'ADMIN', deletedAt: null, isActive: true },
+      select: { id: true, firstName: true, lastName: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    const named = admins.filter((a) => (a.firstName ?? '').trim());
+    const chosen = named.find((a) => a.id === org?.ownerUserId) ?? named[0];
+    if (!chosen) return { name: null };
+    return { name: [chosen.firstName, chosen.lastName].map((x) => (x ?? '').trim()).filter(Boolean).join(' ') };
+  }
+
   /** The organisation's own name, which is what an invitation says it is from. */
   async organisationName(organizationId: string): Promise<string> {
     const org = await this.prisma.organization.findUnique({
@@ -322,8 +367,8 @@ export class UsersService {
     const addresses = addressesIn(pasted);
     if (addresses.length > MOST_IN_ONE_PASTE) {
       throw new BadRequestException(
-        `That is ${addresses.length} addresses. ${MOST_IN_ONE_PASTE} at a time is the most this takes - `
-        + 'past that, connect your directory instead of pasting.',
+        `That is ${addresses.length} addresses, and ${MOST_IN_ONE_PASTE} at a time is the most this takes, `
+        + 'so for more than that, connect your directory instead of pasting.',
       );
     }
 
@@ -368,7 +413,45 @@ export class UsersService {
         sent.push({ email: row.email, result: 'no seat' });
       }
     }
+    /* The people with no seat are kept, so the admin can see who they were and let them in when there is room (B-129). */
+    const noSeat = sent.filter((r) => r.result === 'no seat').map((r) => ({ email: r.email, name: names.get(r.email) ?? null, role }));
+    if (noSeat.length) await keepThemWaiting(this.prisma, organizationId, noSeat).catch(() => undefined);
     return { preview: false, seatsLeft: await this.billing.seatsLeft(organizationId), rows: sent, summary: summarise(sent, true) };
+  }
+
+  /** The invitations kept for want of a seat, as rows for the queue of people waiting for one. */
+  async theInvitationsWaitingForASeat(organizationId: string) {
+    return (await theInvitationsWaiting(this.prisma, organizationId)).map((w) => ({
+      id: `invite:${w.email}`,
+      email: w.email,
+      name: w.name,
+      waitingSince: new Date(w.at),
+      addedBy: null,
+      forCheckIn: null,
+      kind: 'INVITATION' as const,
+      /* The one line an admin needs to know what pressing the button does. */
+      saying: 'Invited, and not yet written to. Their invitation goes out when there is a seat.',
+    }));
+  }
+
+  /** Send the kept invitations, oldest first, as far as there is room; the rest stay kept. Returns how many went and how many still wait. */
+  async releaseTheInvitationsWaiting(organizationId: string, orgName: string): Promise<{ sent: number; stillWaiting: number }> {
+    const waiting = await theInvitationsWaiting(this.prisma, organizationId);
+    if (!waiting.length) return { sent: 0, stillWaiting: 0 };
+    const room = await this.billing.seatsLeft(organizationId);
+    const may = room === null ? waiting.length : Math.max(0, room);
+    const went: string[] = [];
+    for (const w of waiting.slice(0, may)) {
+      try {
+        await this.auth.teamInvite(orgName, w.email, organizationId, { role: w.role, name: w.name });
+        went.push(w.email);
+      } catch {
+        /* The seat gate closed in the meantime: this one and the rest stay kept. */
+        break;
+      }
+    }
+    await stopWaiting(this.prisma, organizationId, went);
+    return { sent: went.length, stillWaiting: waiting.length - went.length };
   }
 
   /** See UsersController.colleagues and common/colleagues.ts: name, role and team, and a guest sees only their own check-ins' people. */
@@ -376,7 +459,7 @@ export class UsersService {
     return colleaguesOf(this.prisma as any, organizationId, callerId);
   }
 
-  async findAll(organizationId: string, pagination: PaginationDto) {
+  async findAll(organizationId: string, pagination: PaginationDto, readerId?: string) {
     const page = pagination.page ?? 1;
     const limit = pagination.limit ?? 20;
     const skip = (page - 1) * limit;
@@ -411,7 +494,11 @@ export class UsersService {
       }),
       this.prisma.organizationMembership.count({ where: inThisOrganisation }),
     ]);
-    const users = rows.map((r) => ({ ...r.user, role: r.role as string, heldForASeat: !!r.heldForASeat }));
+    /* Over the plan: the most recently added, never an admin or anyone who runs a check-in (request 197, common/over-the-plan.ts). */
+    const overThePlan = typeof (this.billing as any)?.whoIsOverThePlan === 'function'
+      ? await this.billing.whoIsOverThePlan(organizationId).catch(() => ({ over: 0, held: new Set<string>(), saying: null as string | null }))
+      : { over: 0, held: new Set<string>(), saying: null as string | null };
+    const users = rows.map((r) => ({ ...r.user, role: r.role as string, heldForASeat: !!r.heldForASeat || overThePlan.held.has(r.user.id) }));
 
     /*
      * WHERE EACH PERSON ACTUALLY GOT TO, which is the only question an admin has at any scale
@@ -569,7 +656,7 @@ export class UsersService {
         select: { id: true, email: true, createdAt: true, ground: { select: { id: true, label: true } } },
       })
       : [];
-    const heldByEmail = new Map<string, { id: string; email: string; createdAt: Date; checkIns: { id: string; label: string | null; runsIt: boolean }[] }>();
+    const heldByEmail = new Map<string, { id: string; email: string; createdAt: Date; name?: string | null; checkIns: { id: string; label: string | null; runsIt: boolean }[] }>();
     for (const h of held) {
       const key = (h.email ?? '').toLowerCase();
       if (!key || idByEmail.has(key)) continue; // already a real row (an account exists after all)
@@ -577,9 +664,17 @@ export class UsersService {
       if (!row.checkIns.some((c) => c.id === h.ground.id)) row.checkIns.push({ id: h.ground.id, label: h.ground.label, runsIt: false });
       heldByEmail.set(key, row);
     }
+    /* And the people a paste invited who had no seat, kept until there is room (B-129). Only page 1, like the others. */
+    const keptInvitations: AnInvitationWaiting[] = page === 1 ? await theInvitationsWaiting(this.prisma, organizationId) : [];
+    for (const w of keptInvitations) {
+      const key = w.email.toLowerCase();
+      if (idByEmail.has(key) || heldByEmail.has(key)) continue;
+      heldByEmail.set(key, { id: `invite-${key}`, email: w.email, createdAt: new Date(w.at), name: w.name, checkIns: [] });
+    }
     const heldRows = [...heldByEmail.values()].map((h) => ({
       id: `held:${h.id}`,
       email: h.email,
+      displayName: h.name?.trim() || 'Somebody invited by email',
       firstName: null,
       lastName: null,
       role: null as string | null,
@@ -604,9 +699,27 @@ export class UsersService {
       checkIns: h.checkIns,
     }));
 
+    /*
+     * ONLY THE CHECK-INS THE READER MAY OPEN ARE NAMED (request 179). This named every check-in a person is on, including a performance plan or a
+     * contract the admin was never given access to ("Arjun Shah, first ninety days"). Those are served as a count, so the screen can say "1
+     * check-in you have no access to". The rule is the one the check-in list uses (who-may-read-this-check-in.ts). With no reader named, or a
+     * lookup that fails, nothing may be opened: the more private answer.
+     */
+    const mayOpen = new Set<string>();
+    if (readerId) {
+      const rows: any[] = await Promise.resolve().then(() => this.prisma.ground.findMany({
+        where: groundsAViewerMayList(readerId, { userId: readerId, role: 'ADMIN', organizationId }, organizationId) as any,
+        select: { id: true },
+      })).catch(() => []);
+      for (const r of rows ?? []) mayOpen.add(r.id);
+    }
+    const namedFor = <T extends { id: string }>(all: T[]) => ({ checkIns: all.filter((c) => mayOpen.has(c.id)) });
+
     return {
       data: [...users.map((u) => ({
         ...u,
+        /* The name to put in the list (B-030): theirs, else a plain stand-in, so no screen has to put the address where a name goes (decision 115). */
+        displayName: [u.firstName, u.lastName].filter(Boolean).join(' ').trim() || A_COLLEAGUE_WITH_NO_NAME,
         /*
          * Named for what is true, not for what is missing. "Never checked in" on somebody who
          * joined yesterday is a fact about the calendar; the page decides how to say it.
@@ -628,9 +741,11 @@ export class UsersService {
         /* Where they sit here (U.4). Describes the organisation; grants nothing. */
         ...(sits.get(u.id) ?? { level: null, team: null, reportsTo: null }),
         /* Which of this organisation's check-ins they are on, and whether they run it. */
-        checkIns: theirCheckIns.get(u.id) ?? [],
-      })), ...heldRows],
+        ...namedFor(theirCheckIns.get(u.id) ?? []),
+      })), ...heldRows.map(({ checkIns, ...h }) => ({ ...h, ...namedFor(checkIns) }))],
       meta: { page, limit, total: total + heldRows.length, totalPages: Math.ceil((total + heldRows.length) / limit) },
+      /* One sentence, the same one Plan and billing says; null when nobody is over the plan. */
+      overThePlanSays: overThePlan.saying,
     };
   }
 
@@ -639,7 +754,7 @@ export class UsersService {
       where: { id, organizationId, deletedAt: null },
       select: { id: true, email: true, firstName: true, lastName: true, role: true, isActive: true, isEmailVerified: true, createdAt: true },
     });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
     return user;
   }
 
@@ -661,7 +776,7 @@ export class UsersService {
         select: { id: true, firstName: true, lastName: true, email: true },
       })
       : [];
-    const nameOf = new Map(managers.map((m) => [m.id, [m.firstName, m.lastName].filter(Boolean).join(' ').trim() || m.email]));
+    const nameOf = new Map(managers.map((m) => [m.id, fullNameToCall({ user: m })]));
     for (const r of rows) {
       const name = r.reportsToUserId ? nameOf.get(r.reportsToUserId) : undefined;
       out.set(r.userId, {
@@ -713,10 +828,10 @@ export class UsersService {
 
   async create(organizationId: string, dto: CreateUserDto) {
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
-    if (existing) throw new ConflictException('A user with that email already exists');
+    if (existing) throw new ConflictException('Someone with that email address is already here, so use a different address.');
 
     const organization = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true } });
-    if (!organization) throw new NotFoundException('Organization not found');
+    if (!organization) throw new NotFoundException('We could not find that organisation, so sign in again and try once more.');
 
     const { user, token } = await this.prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
@@ -745,11 +860,11 @@ export class UsersService {
 
   async update(id: string, organizationId: string, dto: UpdateUserDto, _actingUserId: string) {
     const user = await this.prisma.user.findFirst({ where: { id, organizationId } });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
 
     if (dto.email && dto.email.toLowerCase() !== user.email) {
       const taken = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
-      if (taken) throw new ConflictException('Email already in use');
+      if (taken) throw new ConflictException('Someone with that email address is already here, so use a different address.');
     }
 
     /*
@@ -787,7 +902,7 @@ export class UsersService {
         where: { organizationId, role: 'ADMIN', isActive: true, id: { not: id }, deletedAt: null },
       });
       if (otherActiveAdmins === 0) {
-        throw new BadRequestException('This is the only active admin here - make somebody else an admin first.');
+        throw new BadRequestException('This is the only active admin here, so make somebody else an admin first.');
       }
     }
 
@@ -823,13 +938,15 @@ export class UsersService {
     });
     /* The roster entry follows the sign-in (decision 106 item 3). */
     if (phoneNumber !== undefined) await aSignInsNumberChanged(this.prisma, id, phoneNumber);
+    /* A new admin may be the one an appeal of a review waits for (decision 113); the reviews suite tells them. */
+    if (dto.role === 'ADMIN') this.events?.emit?.(GroundworkEvents.ADMIN_MADE, { organizationId, userId: id } satisfies AdminMadeEvent);
     return done;
   }
 
   async resendInvite(id: string, organizationId: string) {
     const user = await this.prisma.user.findFirst({ where: { id, organizationId }, include: { organization: { select: { name: true } } } });
-    if (!user) throw new NotFoundException('User not found');
-    if (user.isEmailVerified && user.passwordHash) throw new BadRequestException('User has already activated their account');
+    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
+    if (user.isEmailVerified && user.passwordHash) throw new BadRequestException('That person has already joined, so there is nothing to activate.');
 
     await this.prisma.emailVerificationToken.updateMany({
       where: { userId: user.id, type: TokenType.PASSWORD_SETUP, usedAt: null },
@@ -847,7 +964,7 @@ export class UsersService {
 
   async leaveOrg(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
 
     await this.prisma.user.update({
       where: { id: userId },
@@ -857,9 +974,9 @@ export class UsersService {
   }
 
   async remove(id: string, organizationId: string, actingUserId: string) {
-    if (id === actingUserId) throw new BadRequestException('You cannot deactivate yourself');
+    if (id === actingUserId) throw new BadRequestException('You cannot turn off your own place here, so ask another admin to do it.');
     const user = await this.prisma.user.findFirst({ where: { id, organizationId, deletedAt: null } });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
 
     /* The same protection as `update`, on the path that deactivates and anonymises somebody. */
     const orgForRemoval = await this.prisma.organization.findUnique({
@@ -883,7 +1000,7 @@ export class UsersService {
         where: { organizationId, role: 'ADMIN', isActive: true, id: { not: id }, deletedAt: null },
       });
       if (otherActiveAdmins === 0) {
-        throw new BadRequestException('This is the only active admin here - make somebody else an admin first.');
+        throw new BadRequestException('This is the only active admin here, so make somebody else an admin first.');
       }
     }
 
@@ -909,7 +1026,7 @@ export class UsersService {
       where: { id: userId },
       select: { id: true, email: true, firstName: true, lastName: true },
     });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
 
     // Collect all participant links for this user.
     const participantLinks = await this.prisma.groundParticipant.findMany({
@@ -990,7 +1107,7 @@ export class UsersService {
    */
   async eraseAccount(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
 
     const anonymisedEmail = `deleted-${userId}@deleted`;
 

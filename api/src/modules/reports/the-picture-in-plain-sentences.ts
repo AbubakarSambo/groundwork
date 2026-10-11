@@ -76,6 +76,11 @@ reason people disagree, and leaving it out produces an opening that does not mak
 saying the target was five, that they have done six, and that somebody says they are behind, is a
 picture with the explanation cut out of it. Say the other number, and say plainly that it was never
 written down or given to them. Open with this sentence, exactly as it is: "${howManyAnsweredInWords(a.peopleAnswered, a.peopleExpected)}"
+AFTER THAT SENTENCE, WRITE ONLY ABOUT THE PEOPLE WHO HAVE ANSWERED. Never describe everybody on the
+check-in as if all of them had answered, and never give a count of people larger than the number who
+have answered. "One of the six people has answered so far. Five people report that the main piece of
+work is on track" was read by a lead (B-111): one person had answered, so only one person reports
+anything.
 ${a.differenceTopics.length
     ? `People disagree on ${a.differenceTopics.length}: ${a.differenceTopics.join('; ')}.`
     : 'Nothing in the record yet shows one account disagreeing with another, so say that plainly.'}

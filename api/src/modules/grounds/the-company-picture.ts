@@ -234,7 +234,7 @@ export function plainReading(f: PriorityFacts, tag: string): string {
     parts.push(feeding === 0 ? 'and no check-in feeds it.' : `and ${plural(feeding, 'check-in feeds', 'check-ins feed')} it.`);
     return parts.join(' ');
   }
-  if (feeding === 0) return 'No check-in feeds this priority, so nothing on the record shows it moving.';
+  if (feeding === 0) return 'No check-in feeds this priority yet, so nothing on the record can show it moving. Once a check-in reports against it, the record can show how it is going.';
   parts.push(`${plural(feeding, 'check-in feeds', 'check-ins feed')} this priority, and ${plural(f.finishedLast30, 'was', 'were')} finished in the last 30 days.`);
   if (f.blocked > 0) parts.push(`${plural(f.blocked, 'handoff is', 'handoffs are')} stopping work on it.`);
   else if (f.waiting > 0) parts.push(`${plural(f.waiting, 'handoff is', 'handoffs are')} waiting on other work.`);
@@ -541,7 +541,12 @@ function readingsFrom(input: PictureInput, model: TheModelsPicture | null | unde
     const tag = tagFor(p);
     const given = model?.readings?.find((r) => r?.priorityId === p.id)?.says;
     const allowed = [p.number, p.feedingGroundIds.length, p.finishedLast30, p.blocked, p.waiting, p.teams.length, 30, 1, 2, 3];
-    const says = aSentenceTheRecordSupports(given, { allowedNumbers: allowed, names: input.names, sources, max: 300 }) ?? plainReading(p, tag);
+    /*
+     * A PRIORITY NO CHECK-IN FEEDS IS READ FROM THE COUNTS, NOT FROM THE MODEL (B-166). The model said the same two sentences under all four priorities, "This priority
+     * is not moving because no teams are working on it. To make progress, teams would need to start checking in their work against it.", which repeats the tag
+     * and says nothing about the priority. With nothing feeding it there is nothing to add, so the plain reading stands.
+     */
+    const says = (p.feedingGroundIds.length === 0 ? null : aSentenceTheRecordSupports(given, { allowedNumbers: allowed, names: input.names, sources, max: 300 })) ?? plainReading(p, tag);
     return { priorityId: p.id, number: p.number, tag, says, restsOn: [...p.feedingGroundIds].sort(), levels: levels.get(p.id) ?? [] };
   });
   /*

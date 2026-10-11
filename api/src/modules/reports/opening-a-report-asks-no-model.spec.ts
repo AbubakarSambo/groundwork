@@ -177,7 +177,7 @@ describe('the wording is done when something new comes in, and served from then 
     const admin: any = await reportsFor('ADMIN').get('g-sales', 'u-grace', 'org-1');
     expect(modelCalls()).toBe(0);
     expect(lead.probes[0].encourage[0]).toBe('Aisha Otieno put two things on record that anyone could check later, which is worth recognising, as worded.');
-    expect(lead.probes[1].triedToUnblock).toBe('Nothing recorded as blocked, so there is nothing here about unblocking, as worded.');
+    expect(lead.probes[1].triedToUnblock).toBe("Nothing is recorded as holding up Miriam Wanjiku's work, as worded.");
     /*
      * Decision 58 (screens request 84, 30 September 2026): the probe list is a pattern surface (it
      * carries each person's patterns), so an admin who only reads - and was not the one who set

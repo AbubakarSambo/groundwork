@@ -19,6 +19,8 @@ export type SessionStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'DECLI
 
 export interface APartyToNudge {
   id: string;
+  /** The lead (INITIATOR) checks in when they choose and is never sent a participant reminder (decision 133). */
+  partyType?: string | null;
   /**
    * Whether they have accepted their invitation and have an account.
    *
@@ -48,6 +50,7 @@ export interface APartyToNudge {
   remindersStoppedAt?: Date | string | null;
 }
 
+import { checksInOnlyWhenTheyChoose, owesThisSession } from '../grounds/the-lead-checks-in-when-they-choose';
 import { whyNotRemindThem } from './ignoring-it-should-be-enough';
 
 export const NOT_TWICE_WITHIN_HOURS = 24;
@@ -60,7 +63,8 @@ export type WhyNot =
   | 'they turned these emails off'
   | 'they were nudged in the last day'
   | 'their account here has been deactivated'
-  | 'they asked us to stop reminding them, which the invitation told them they could do';
+  | 'they asked us to stop reminding them, which the invitation told them they could do'
+  | 'they lead this check-in and check in only when they choose';
 
 export function whyNotNudge(party: APartyToNudge): WhyNot | null {
   /* FIRST, and before anything about check-in state. Somebody who has asked us to stop is done
@@ -69,6 +73,7 @@ export function whyNotNudge(party: APartyToNudge): WhyNot | null {
   const asked = whyNotRemindThem(party);
   if (asked) return asked as WhyNot;
   if (party.managingOnly) return 'they oversee this check-in rather than answering it';
+  if (checksInOnlyWhenTheyChoose(party)) return 'they lead this check-in and check in only when they choose';
   /* Somebody who has not accepted has a check-in row and no way into it, so the id being present
      is not the question for them — `whatToSendThem` decides what they get instead. */
   if (party.hasAccepted !== false && (!party.session || !party.session.id)) {

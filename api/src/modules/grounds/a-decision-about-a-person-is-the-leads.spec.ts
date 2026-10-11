@@ -194,6 +194,6 @@ describe('the board write routes: only the lead may set the field, when the targ
   it('nobody but the lead can create or edit a target at all, so nobody else can set the field either', async () => {
     const { service } = boardServiceWith(WANJIRU);
     await expect(service.createObjective('g1', 'u-somebody-else', { name: 'Decide on Aisha', isADecisionAboutAPerson: true }))
-      .rejects.toThrow('Only the person who set this check-in up can change what it is aiming for');
+      .rejects.toThrow('Only the person who set this check-in up can change what it is aiming for, so ask them to.');
   });
 });

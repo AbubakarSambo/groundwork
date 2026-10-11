@@ -370,6 +370,16 @@ export async function whereWhatPeopleSaidDiffers(prisma: any, groundId: string, 
   const report = await prisma.report?.findUnique?.({ where: { groundId }, select: { divergences: true } })?.catch?.(() => null);
   const divs = (Array.isArray(report?.divergences) ? report.divergences : []) as any[];
   if (!divs.length) return [];
+  /*
+   * NO DIFFERENCE UNTIL TWO PEOPLE WHO CHECK IN HAVE ANSWERED (B-098), as the board says: "Groundwork needs to hear from at least two people before it
+   * can show where they differ." Today said "Settle the difference between what you and Halima Yusuf said" when only Halima had answered, and the
+   * board beside it had nothing to show. A lead who only manages, and her set-up conversation, are not two people answering.
+   */
+  const answered = await prisma.checkIn?.findMany?.({ where: { groundId, isSetup: false, status: 'COMPLETED' }, select: { participantId: true } })?.catch?.(() => null);
+  if (Array.isArray(answered)) {
+    const checkIn = new Set((participants as any[]).filter((p) => !p.managingOnly).map((p) => p.id));
+    if (new Set(answered.map((a: any) => a.participantId).filter((id: string) => checkIn.has(id))).size < 2) return [];
+  }
   const labels = labelsForParties(participants as any);
   const visible = namesVisibleTo(lead?.id ?? null, participants as any);
   const leadLabel = lead ? labels.get(lead.id) ?? null : null;

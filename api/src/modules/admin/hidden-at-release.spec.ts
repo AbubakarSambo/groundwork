@@ -2,7 +2,7 @@ import { GroundsService } from '../grounds/grounds.service';
 import { AssistantService } from '../assistant/assistant.service';
 import { WhatsAppAddOnService } from '../billing/whatsapp-add-on.service';
 import { SCENARIO_FAMILY, BoardFamily } from '../board/board-families';
-import { KINDS_OFFERED_AT_RELEASE, theBoardKindsOffered, aKindMayBeGiven, contextIsInAskGroundwork, theNewBillingPartsAreShown, theAnchorScenarioIsOn } from './what-is-hidden-at-release';
+import { KINDS_OFFERED_AT_RELEASE, theBoardKindsOffered, aKindMayBeGiven, contextIsInAskGroundwork, theNewBillingPartsAreShown, theAnchorScenarioIsOn, theOldContextChatIsOpen } from './what-is-hidden-at-release';
 
 /**
  * WHAT THE RELEASE HIDES (decisions 78, 88 and 90): a hidden thing is not offered to anything NEW,
@@ -11,28 +11,28 @@ import { KINDS_OFFERED_AT_RELEASE, theBoardKindsOffered, aKindMayBeGiven, contex
 const settings = (rows: Record<string, unknown>) => ({ platformSetting: { findUnique: jest.fn(async ({ where }: any) => (where.key in rows ? { value: rows[where.key] } : null)) } });
 
 describe('the anchor scenario switch (piece 0 of docs/anchor-scenario-plan.md)', () => {
-  it('is off with no row, and off for any row that is not exactly on', async () => {
-    expect(await theAnchorScenarioIsOn(settings({}))).toBe(false);
-    for (const bad of ['yes', 1, { on: 'true' }, { on: false }, null, {}]) {
-      expect(await theAnchorScenarioIsOn(settings({ 'release.anchorScenario': bad }))).toBe(false);
-    }
-    expect(await theAnchorScenarioIsOn({ platformSetting: { findUnique: async () => { throw new Error('down'); } } })).toBe(false);
-  });
-  it('is on only when the row says so', async () => {
+  it('is ON with no row (the anchor now uses the normal flow, decision 114), and off only when the row says so', async () => {
+    expect(await theAnchorScenarioIsOn(settings({}))).toBe(true);
     expect(await theAnchorScenarioIsOn(settings({ 'release.anchorScenario': { on: true } }))).toBe(true);
+    expect(await theAnchorScenarioIsOn(settings({ 'release.anchorScenario': { on: false } }))).toBe(false);
+    expect(await theAnchorScenarioIsOn(settings({ 'release.anchorScenario': false }))).toBe(false);
+  });
+  it('is off when the row cannot be read, so a database fault never starts one', async () => {
+    expect(await theAnchorScenarioIsOn({ platformSetting: { findUnique: async () => { throw new Error('down'); } } })).toBe(false);
   });
 });
 
 describe('the three settings, with no row at all', () => {
-  it('offer sales and engineering of the eleven kinds, and keep the context and billing parts off', async () => {
+  it('offer sales and engineering of the eleven kinds, keep the billing parts off, and have Context in Ask (on since it moved there)', async () => {
     const p = settings({});
     expect(await theBoardKindsOffered(p)).toEqual(['sales org', 'engineering release']);
-    expect(await contextIsInAskGroundwork(p)).toBe(false);
+    expect(await contextIsInAskGroundwork(p)).toBe(true);
     expect(await theNewBillingPartsAreShown(p)).toBe(false);
   });
   it('read a broken row as the default, never as everything on', async () => {
     const p = settings({ 'release.boardKindsOffered': 'nonsense', 'release.contextInAskGroundwork': 'yes', 'release.planAndBillingNewParts': { on: 'true' } });
     expect(await theBoardKindsOffered(p)).toEqual(['sales org', 'engineering release']);
+    /* A context row nobody can read fails closed: off, not on by guesswork. */
     expect(await contextIsInAskGroundwork(p)).toBe(false);
     expect(await theNewBillingPartsAreShown(p)).toBe(false);
   });
@@ -108,7 +108,7 @@ describe('the Context tab\'s move to Ask Groundwork', () => {
   function assistant(on: boolean) {
     const contextChat = jest.fn(async () => ({ reply: 'How long does this check-in run for?', gaps: ['duration'], done: false, proposal: null }));
     const prisma: any = {
-      ...settings(on ? { 'release.contextInAskGroundwork': { on: true } } : {}),
+      ...settings({ 'release.contextInAskGroundwork': { on } }),
       person: { findFirst: jest.fn(async () => ({ id: 'p1', externalId: 'u-1', active: true, linkedUserId: 'lead-1' })) },
       user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'org-a' })) },
       ground: { findMany: jest.fn(async () => [{ id: 'g1', label: 'Q4 sales', initiatorId: 'lead-1', organizationId: 'org-a', scenario: 'NEW_PROJECT' }]) },
@@ -162,8 +162,11 @@ describe('plan and billing\'s new parts', () => {
   it('shows an admin the price, the use and the limit only when turned on', async () => {
     const hidden = await read(false, true);
     /* Whether WhatsApp is on, and why no reminder comes while it is off, is everybody's to read (screens gap, 5 October). */
-    expect(hidden).toEqual({ on: false, sending: true, says: 'Your organisation has not turned on WhatsApp, so Groundwork does not send you reminders or summaries on WhatsApp.' });
+    expect(hidden).toEqual({ sending: true, says: 'Your organisation has not turned on WhatsApp, so Groundwork does not send you reminders or summaries on WhatsApp.' });
     expect(JSON.stringify(hidden)).not.toContain('costs');
+    /* Nothing the screen can mistake for the admin's full answer (clean-install run, 6 October): the admin reads what a member reads. */
+    expect(hidden).toEqual(await read(false, false));
+    expect('on' in (hidden as object)).toBe(false);
     const shown = await read(true, true);
     expect((shown as any).says?.price).toContain('WhatsApp costs');
   });
@@ -181,5 +184,17 @@ describe('onboarding and project check-ins get their board without a kind', () =
   });
   it('offers nothing but the two kinds the paid client needs', () => {
     expect([...KINDS_OFFERED_AT_RELEASE]).toEqual(['sales org', 'engineering release']);
+  });
+});
+
+describe('the old context chat switch (off by default on wip/next)', () => {
+  it('is OFF with no row, off when the row cannot be read or is garbage, and on only when the row says on', async () => {
+    expect(await theOldContextChatIsOpen(settings({}))).toBe(false);
+    expect(await theOldContextChatIsOpen({ platformSetting: { findUnique: async () => { throw new Error('down'); } } } as any)).toBe(false);
+    expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': 'garbage' }))).toBe(false);
+    expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': { on: false } }))).toBe(false);
+    expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': false }))).toBe(false);
+    expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': { on: true } }))).toBe(true);
+    expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': true }))).toBe(true);
   });
 });

@@ -98,6 +98,13 @@ enum GroundScenario {
   /// this enum is an objective agreed at the start and a run of check-ins testing work against it.
   SNAPSHOT
 
+  /// THE ANCHOR SCENARIO: a lead who arrived from the shared link and brings up to 20 people for a month.
+  ///
+  /// It behaves exactly like NEW_PROJECT everywhere a situation decides something (every table that is keyed
+  /// by this enum copies NEW_PROJECT's row), and differs only in its own name. It is saved so that the check-in
+  /// keeps the situation it was started as, rather than being recorded as a project. Existing rows are untouched.
+  HELP_TEAM_UNDERSTAND
+
   /// ONE LINE, SOME EMAIL ADDRESSES, AND A RHYTHM. THE LIGHTEST THING IN THIS ENUM.
   ///
   /// Hafsah, 18 September 2026: "You write one line about what you want to know, drop in their
@@ -557,6 +564,11 @@ model Organization {
   /// belongs to one organisation. Null means nobody joins by domain.
   joinDomain String? @unique @map("join_domain")
 
+  /// THE ORGANISATION'S OWN TIME ZONE (B-094, 9 October 2026), a zone name such as "Africa/Nairobi". Every day a board, a report or Today writes in a
+  /// sentence ("raised on 9 October", "Session 2 opens on 16 October") is the day in this zone, not the day in UTC. Null means nobody has said: the day is
+  /// then worked out from where the people's phone numbers are, and failing that the product's own (common/the-organisations-own-day.ts).
+  timeZone String? @map("time_zone")
+
   /// THE ORGANISATION'S OWN INVITE LINK (U.3): /j/<code>, where the code is the organisation's name
   /// with a random part, such as "baridi-7k2p". Joining through it gives "Takes part". Null while an
   /// admin has it off; turning it on again makes a new code, so an old link stops working.
@@ -964,6 +976,15 @@ model Ground {
   /// True sends it. False keeps this one in Groundwork even though the organisation has a number,
   /// which is the case that had no way to be said at all: it was all of them or none of them.
   overWhatsApp Boolean? @map("over_whatsapp")
+
+  /// USE SIMPLER WORDS: THE LEAD (OR AN ADMIN WHO RUNS IT) SWITCHES THIS ON FOR EVERYBODY IN THE CHECK-IN.
+  ///
+  /// False is every check-in that existed before, and it changes nothing: the conversation and
+  /// everything sent afterwards read exactly as they did. True gives the model the same plain-words
+  /// rule a person's own style profile can give it, for every person in the check-in, and sends the
+  /// plainer form of every fixed sentence (the closing, the end card, the report message, reminders).
+  /// A boolean with a default of false is safe here: nobody has been decided for.
+  simplerWords Boolean @default(false) @map("simpler_words")
 
   /// WHAT THE ROOM IS ABOUT: THE AIMS, THE PLACES AND THE THINGS, READ ONCE WHEN A ROUND CLOSES.
   ///
@@ -1663,6 +1684,14 @@ model CheckIn {
   // Closing-round marker: same conversation, flagged final - the person is
   // told to document thoroughly and the final report reads the whole arc.
   isFinal                     Boolean       @default(false) @map("is_final")
+  /// THE LEAD'S CHECK-IN IS OPTIONAL (decision 133). True on every check-in of the lead (the INITIATOR row):
+  /// after their first check-in the lead checks in only when they choose, and a session they skip is never
+  /// counted as missed. Counts such as the missed check-ins pattern leave an optional row out unless it was answered.
+  optional                    Boolean       @default(false)
+  /// WHY THEY MISSED (decision 136). The reason a person gave, in their own words, for missing their check-ins, kept on the
+  /// latest missed session. Served only to the person and to the lead of this check-in, beside the lead's line.
+  missedReason                String?       @map("missed_reason") @db.Text
+  missedReasonAt              DateTime?     @map("missed_reason_at")
   createdAt                   DateTime      @default(now()) @map("created_at")
 
   ground        Ground             @relation(fields: [groundId], references: [id], onDelete: Cascade)
@@ -2442,6 +2471,10 @@ model PatternDetection {
   /// the lead is told "Two separate reads of the record found this." beside the pattern; the rule is
   /// evidence, never shown as an accusation or a score.
   evidenceSource   String?       @map("evidence_source")
+  /// Which stored version of the detector's prompt (`pattern_detection`) read the check-in that last
+  /// kept this pattern. Empty on rows written before the prompt was stored; those stay valid.
+  promptVersionId  String?       @map("prompt_version_id")
+  promptVersion    PromptVersion? @relation(fields: [promptVersionId], references: [id])
   firstSeenAt      DateTime      @default(now()) @map("first_seen_at")
   lastSeenAt       DateTime      @default(now()) @map("last_seen_at")
   createdAt        DateTime      @default(now()) @map("created_at")
@@ -2557,12 +2590,29 @@ model RoleInterviewAnswer {
   decides          String?  @db.Text
   dependsOn        String?  @map("depends_on") @db.Text
   dependedOnBy     String?  @map("depended_on_by") @db.Text
+  /// What the person said they know doing well looks like in their job, and what usually gets in their way.
+  /// Written only by the reading of a first check-in or by the person's own correction, and read by the person
+  /// themselves and by their own conversations. The role map never shows these two.
+  doingWell        String?  @map("doing_well") @db.Text
+  inTheWay         String?  @map("in_the_way") @db.Text
+  /// 'interview' (an admin sent it and the person said yes), 'first_check_in' (read from the person's first
+  /// check-in) or 'correction' (the person corrected it, in Ask or by the route).
+  source           String   @default("interview") @db.VarChar(40)
+  /// When the person said yes to the role map showing what they own. Null until then. Rows from 'interview'
+  /// were agreed to when written. The role map reads only rows that were agreed to.
+  sharedAt         DateTime? @map("shared_at")
+  /// The first check-in a 'first_check_in' row was read from.
+  checkInId        String?  @map("check_in_id")
+  /// The stored version of the prompt that read the person's words (role_reading).
   promptVersionId  String?  @map("prompt_version_id")
+  /// The stored version of the prompt that told the conversation to learn the role (first_check_in_role).
+  askedWithPromptVersionId String? @map("asked_with_prompt_version_id")
   createdAt        DateTime @default(now()) @map("created_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, roleName])
+  @@index([organizationId, personExternalId])
   @@map("role_interview_answers")
 }
 
@@ -2735,6 +2785,20 @@ model PerformanceReview {
   recordRead             Json?     @map("record_read")
   /// The first day of the period the record was read for. The last day is `startedAt`.
   recordFrom             DateTime? @map("record_from")
+  /// THE APPEAL (decision 113, bug B-024). The person appeals a decided review, saying why; they may add to it
+  /// until it is decided. It goes to an admin who is not whoever decided the review (and not the person).
+  /// With no such admin it is saved and stays open, and `appealAskedForAdminAt` says the reviewer was asked to
+  /// add one. Read by the person, the admin who decides it, and (once decided) the reviewer; nobody else.
+  appeal                 String?   @map("appeal") @db.Text
+  appealAdditions        Json?     @map("appeal_additions")
+  appealedAt             DateTime? @map("appealed_at")
+  appealAskedForAdminAt  DateTime? @map("appeal_asked_for_admin_at")
+  appealOutcome          String?   @map("appeal_outcome")
+  appealReasons          String?   @map("appeal_reasons") @db.Text
+  appealDecidedById      String?   @map("appeal_decided_by_id")
+  appealDecidedAt        DateTime? @map("appeal_decided_at")
+  /// The decision and reasons as they stood before an appeal changed them, so nothing is lost.
+  appealDecisionWas      Json?     @map("appeal_decision_was")
 
   organization Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   corrections  PerformanceReviewCorrection[]
@@ -3077,6 +3141,7 @@ model PromptVersion {
 
   grounds Ground[]
   reports Report[]
+  patternDetections PatternDetection[]
 
   @@unique([key, version])
   @@map("prompt_versions")
@@ -8475,6 +8540,26 @@ model CompanyPicture {
   @@map("company_pictures")
 }
 
+/// THE STRATEGY'S VERSIONS (decision 80, item 68): each time the organisation's priorities change, a
+/// new version begins, with the day it began and the priorities it held. Written when a priority is
+/// brought in, agreed or removed, never when the Company page opens. A check-in ran under the
+/// version that was newest on the day it started, which is found from the dates, so no check-in row
+/// carries a version. Holds the priorities' titles (which everybody in the organisation reads) and
+/// the customer's own ids, never a person.
+model StrategyVersion {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  number         Int
+  startedAt      DateTime @map("started_at")
+  /// [{ sourceSystem, externalId, title }], in the order the priorities were set.
+  priorities     Json
+  prioritiesKey  String   @map("priorities_key")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@unique([organizationId, number])
+  @@map("strategy_versions")
+}
+
 // ---------------------------------------------------------------------------
 // Self-learning counts (week 8b, decisions 55 and 57 point 9). COUNTS ONLY.
 // ---------------------------------------------------------------------------
@@ -8531,4 +8616,34 @@ model WeeklyReport {
 
   @@unique([groundId, weekStart])
   @@map("weekly_reports")
+}
+
+/// THE WAY OUT FOR AN ADDRESS WITH NO ROW ON ANY ROSTER (decision 109). The footer link used to exist only
+/// for people on a roster; somebody invited by address, or who has only an account, had no way to stop
+/// the mail. Keyed by the address alone, lower case. Read with `EmailPreference` by the one door every
+/// mail goes through, so either one stops what we decided to send.
+model EmailAddressPreference {
+  id               String    @id @default(uuid())
+  email            String    @unique
+  unsubscribeToken String    @unique @map("unsubscribe_token")
+  unsubscribedAt   DateTime? @map("unsubscribed_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@map("email_address_preferences")
+}
+
+/// WHEN A LEAD READ A REPORT (decision 133). One row per lead per report (the check-in and its session),
+/// written the first time they open it and kept with the latest time; opening it never rebuilds the report.
+model ReportRead {
+  id            String   @id @default(uuid())
+  groundId      String   @map("ground_id")
+  sessionNumber Int      @map("session_number")
+  userId        String   @map("user_id")
+  firstReadAt   DateTime @default(now()) @map("first_read_at")
+  lastReadAt    DateTime @default(now()) @map("last_read_at")
+
+  @@unique([groundId, sessionNumber, userId])
+  @@index([userId])
+  @@map("report_reads")
 }

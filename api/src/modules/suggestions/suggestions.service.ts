@@ -119,7 +119,7 @@ export class SuggestionsService {
       throw new BadRequestException('A suggestion never puts a label on a person. Say what happened instead.');
     }
     const ground = await this.prisma.ground.findUnique({ where: { id: input.groundId }, select: { id: true, organizationId: true, scenario: true } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     if (!aVerdictIsReachedOn(ground)) {
       throw new BadRequestException('A suggestion is only reached on a performance plan, a recognition, a contract renewal or a probation.');
     }
@@ -406,7 +406,7 @@ export class SuggestionsService {
         participants: { select: PARTY_SELECT },
       },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     return ground as any;
   }
 

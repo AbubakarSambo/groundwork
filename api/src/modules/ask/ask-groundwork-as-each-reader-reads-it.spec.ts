@@ -1,3 +1,4 @@
+import { askStarters } from '../assistant/ask-name';
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { readFileSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
@@ -90,7 +91,7 @@ const STORED_REPORTS: Record<string, any> = {
 /* Kofi's next check-in opens in three days. */
 const KOFI_NEXT = new Date(Date.now() + 3 * 24 * 3600 * 1000);
 
-function fixture(opts: { leakyReport?: boolean } = {}) {
+function fixture(opts: { leakyReport?: boolean; contextInAsk?: boolean; suitesOn?: string[] } = {}) {
   const db: Record<string, any[]> = {
     organization: [{ id: ORG, name: 'Baridi' }],
     person: [
@@ -199,6 +200,10 @@ function fixture(opts: { leakyReport?: boolean } = {}) {
       : r.id === where.id)) ?? null, select)),
   });
   const prisma: any = Object.fromEntries(Object.keys(db).map((k) => [k, table(k)]));
+  /* The line about adding context is read only while `release.contextInAskGroundwork` is on. It is on as shipped now (a missing row reads on); these tests say it explicitly either way, `{ on: false }` for the hidden state they were written about. */
+  /* Leave and spending are switched on unless a test says otherwise: Ask offers to file them only where they are on. */
+  prisma.organizationSuite = { findMany: jest.fn(async () => (opts.suitesOn ?? ['leave', 'spend']).map((suite: string) => ({ suite }))) };
+  prisma.platformSetting = { findUnique: jest.fn(async ({ where }: any) => (where.key === 'release.contextInAskGroundwork' ? { value: { on: !!opts.contextInAsk } } : null)) };
   prisma.subject = { findMany: jest.fn(async () => []), count: jest.fn(async () => 0) };
   prisma.detectionQuietPeriod = { findMany: jest.fn(async () => []) };
 
@@ -228,9 +233,9 @@ function fixture(opts: { leakyReport?: boolean } = {}) {
       const ground = db.ground.find((g) => g.id === groundId);
       const party = partyOf(groundId, userId);
       const isLead = ground?.initiatorId === userId;
-      if (!ground || (!party && !isLead)) throw new ForbiddenException('You are not a participant in this check-in');
+      if (!ground || (!party && !isLead)) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
       const row = STORED_REPORTS[groundId];
-      if (!row) throw new NotFoundException('Report not found');
+      if (!row) throw new NotFoundException('That report could not be found, so go back to the check-in and open it from there.');
       if (opts.leakyReport) return row;
       return {
         ...whatAParticipantMayRead(row, { isLead, participantId: party?.id ?? null }),
@@ -241,7 +246,7 @@ function fixture(opts: { leakyReport?: boolean } = {}) {
   const grounds = {
     getMyCheckinStatus: jest.fn(async (groundId: string, userId: string) => {
       const party = partyOf(groundId, userId);
-      if (!party) throw new ForbiddenException('You are not a participant in this check-in');
+      if (!party) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
       const checkIns = db.checkIn.filter((c) => c.participantId === party.id);
       return { participantId: party.id, partyType: null, checkIns, latestStatus: null, latestSessionNumber: null };
     }),
@@ -259,13 +264,18 @@ function fixture(opts: { leakyReport?: boolean } = {}) {
 const BARIDI_ASK = {
   askName: 'Ask Baridi',
   caption: 'Ask about the company, your work or your check-ins.',
-  addLine: 'You can also add context or documents to your check-ins here.',
+  /* Left out while `release.contextInAskGroundwork` is off (these tests switch it off with { on: false }). */
+  addLine: null,
+  /* Request 169: whether Ask can add context for this reader. False while it is off here, and for everyone who runs no check-in. The old chat is open unless its own switch says off (decision 124). */
+  addsContext: false,
+  oldContextChatIsOpen: false,
   /* Decision 101: four of the five need a check-in, so a reader with none is left with the one
      that does not. One true starter rather than four invented ones. */
   starters: ["What are the company's priorities right now?", 'Ask for leave, or to spend money.'],
 };
 /* And the five, in Hafsah's order, for somebody who has a check-in. */
-const STARTERS_WITH_A_CHECK_IN = [
+/* As shipped, with the switch for context in Ask off, the starter about adding context is left out. */
+const STARTERS_WITH_A_CHECK_IN_AND_CONTEXT = [
   'What did I say I would do?',
   'What is my check-in for, and who reads it?',
   'When is my next check-in?',
@@ -273,7 +283,10 @@ const STARTERS_WITH_A_CHECK_IN = [
   'Add a document or some context to my check-in.',
   'Ask for leave, or to spend money.',
 ];
-const BARIDI_WELCOME = 'This is Ask Baridi. I answer about the whole organisation and about your own work, and you can point me at one of your check-ins whenever you want to. Ask me about the company, about your work, or about your check-ins. You can add context or a document to one of your check-ins here, and ask for leave or to spend money. What you ask me stays private. Anything you choose to add to a check-in works differently. I say it back to you first, it goes in only once you say yes, and from then on it is part of that check-in.';
+const STARTERS_WITH_A_CHECK_IN = STARTERS_WITH_A_CHECK_IN_AND_CONTEXT.filter((l) => !/context/.test(l));
+/* As shipped, with adding context hidden (`release.contextInAskGroundwork` off): nothing is offered that cannot be done. */
+const BARIDI_WELCOME = 'This is Ask Baridi. I answer about the whole organisation and about your own work, and you can point me at one of your check-ins whenever you want to. Ask me about the company, about your work, or about your check-ins. You can also ask me for leave or to spend money. What you ask me stays private.';
+const BARIDI_WELCOME_WITH_CONTEXT = 'This is Ask Baridi. I answer about the whole organisation and about your own work, and you can point me at one of your check-ins whenever you want to. Ask me about the company, about your work, or about your check-ins. You can add context or a document to one of your check-ins here, and ask for leave or to spend money. What you ask me stays private. Anything you choose to add to a check-in works differently. I say it back to you first, it goes in only once you say yes, and from then on it is part of that check-in.';
 
 const everything = (x: unknown) => JSON.stringify(x);
 
@@ -407,7 +420,7 @@ describe('an entry with their address that nobody has claimed', () => {
 
   it('is never claimed with an address nobody confirmed, and nothing is made instead', async () => {
     const { controller, asUser, db, prisma } = fixture();
-    expect(await controller.mine(asUser(readers.uma))).toEqual({ canAsk: false, why: CONFIRM_YOUR_EMAIL('Ask Baridi'), about: [], turns: [], ...BARIDI_ASK, welcome: null });
+    expect(await controller.mine(asUser(readers.uma))).toEqual({ canAsk: false, why: CONFIRM_YOUR_EMAIL('Ask Baridi'), about: [], turns: [], ...BARIDI_ASK, starters: [], welcome: null });
     await expect(controller.question(asUser(readers.uma), { message: REQUEST })).rejects.toThrow(new ForbiddenException(CONFIRM_YOUR_EMAIL('Ask Baridi')));
     expect(db.person.find((p) => p.id === 'pe-uma')!.linkedUserId).toBeNull();
     expect(prisma.person.create).not.toHaveBeenCalled();
@@ -431,7 +444,7 @@ describe('somebody the directory switched off', () => {
   for (const [who, how] of [['sid', 'whose entry is linked to them'], ['sue', 'whose address is on it']] as const) {
     it(`${who}, ${how}, is refused and nothing is written`, async () => {
       const { controller, asUser, db, prisma } = fixture();
-      expect(await controller.mine(asUser(readers[who]))).toEqual({ canAsk: false, why: SWITCHED_OFF('Ask Baridi'), about: [], turns: [], ...BARIDI_ASK, welcome: null });
+      expect(await controller.mine(asUser(readers[who]))).toEqual({ canAsk: false, why: SWITCHED_OFF('Ask Baridi'), about: [], turns: [], ...BARIDI_ASK, starters: [], welcome: null });
       await expect(controller.question(asUser(readers[who]), { message: REQUEST })).rejects.toThrow(new ForbiddenException(SWITCHED_OFF('Ask Baridi')));
       await expect(controller.answer(asUser(readers[who]), { proposalId: '00000000-0000-4000-8000-000000000999', answer: 'yes' }))
         .rejects.toThrow(new ForbiddenException(SWITCHED_OFF('Ask Baridi')));
@@ -545,7 +558,8 @@ describe('a guest from another organisation', () => {
     /* A guest reads the host organisation's name too: he is a guest in Baridi's Groundwork, and
        the sentence he is already given says "so Ask Baridi can only answer...". (Decision 100.) */
     expect(await controller.mine(asUser(readers.kofi))).toEqual({
-      canAsk: true, about: [{ id: 'g-sales', label: 'Sales team, Q3' }], turns: [], ...BARIDI_ASK, starters: STARTERS_WITH_A_CHECK_IN, welcome: BARIDI_WELCOME,
+      /* Changed under the starters review: a guest is offered only what Ask answers a guest (their own check-in), never the company, leave or spending, and is welcomed as a guest. */
+      canAsk: true, about: [{ id: 'g-sales', label: 'Sales team, Q3' }], turns: [], ...BARIDI_ASK, starters: STARTERS_WITH_A_CHECK_IN.filter((l) => /my check-in|did I say|next check-in/.test(l)).filter((l) => !/priorities|leave/.test(l)), welcome: 'This is Ask Baridi. You are a guest here, so I answer you only about your own check-in. What you ask me stays private.',
     });
   });
 
@@ -972,13 +986,38 @@ describe('the detectors', () => {
 
 
 describe('Ask is named for the organisation, and tells a person what it can do the first time (decision 100)', () => {
-  it('a member with no questions yet reads the name, the caption, the one line and the welcome', async () => {
-    const { controller, asUser } = fixture();
+  /* Changed on wip/next: Ask makes its promise to add context or a document only to somebody who runs a check-in (it was made to every reader, including a
+     member who could not do it). A member reads the name, the caption and the welcome without it; a lead reads the one line and the welcome with it. */
+  it('a member with no questions yet reads the name, the caption and the welcome, and no promise to add context', async () => {
+    const { controller, asUser } = fixture({ contextInAsk: true });
     const tom: any = await controller.mine(asUser(readers.tom));
     expect(tom.askName).toBe('Ask Baridi');
     expect(tom.caption).toBe('Ask about the company, your work or your check-ins.');
-    expect(tom.addLine).toBe('You can also add context or documents to your check-ins here.');
+    expect(tom.addLine).toBeNull();
     expect(tom.welcome).toBe(BARIDI_WELCOME);
+  });
+
+  it('a lead who runs a check-in reads the one line that says Ask takes context and documents, and is told she may add it', async () => {
+    const { controller, asUser } = fixture({ contextInAsk: true });
+    const wairimu: any = await controller.mine(asUser(readers.wairimu));
+    expect(wairimu.addLine).toBe('You can also add context or documents to your check-ins here.');
+    expect(wairimu.addsContext).toBe(true);
+  });
+
+  it('while the switch for context in Ask is off, nobody is told they can add context or documents here', async () => {
+    const { controller, asUser } = fixture();
+    const tom: any = await controller.mine(asUser(readers.tom));
+    expect(tom.addLine).toBeNull();
+    expect(JSON.stringify(tom)).not.toContain('add context or documents');
+    expect(tom.welcome).not.toContain('add context');
+    expect(tom.welcome).toBe(BARIDI_WELCOME);
+  });
+
+  it('the starter about adding a document or context is offered only while that part is on', () => {
+    const line = 'Add a document or some context to my check-in.';
+    expect(askStarters(true, false)).not.toContain(line);
+    expect(askStarters(true, true)).toContain(line);
+    expect(askStarters(true, false)).toHaveLength(askStarters(true, true).length - 1);
   });
 
   it('a member who has already asked is not welcomed again, and still reads the name', async () => {

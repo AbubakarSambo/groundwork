@@ -214,7 +214,9 @@ export function proposalFrom(
   }
 
   if (gap === 'timeline') {
-    if (heard.runsUntilEnded === true || saidUntilIEndIt(said, true)) {
+    /* The model's own flag counts only when the lead's words say something about an end or a length. A worry about a person ("Miriam is struggling") was once read as "run until you end it", found live on 10 October 2026. */
+    const wordsAboutAnEnd = /\b(end|ends|ending|stop|until|till|finish|open|ongoing|forever|indefinite|indefinitely|set\s+length|fixed)\b/i.test(said ?? '');
+    if ((heard.runsUntilEnded === true && (!said || wordsAboutAnEnd)) || saidUntilIEndIt(said, true)) {
       return { kind: 'timeline', days: 0, untilEnded: true, say: 'I will set this to run until you end it.' };
     }
     const days = heard.timelineDays;

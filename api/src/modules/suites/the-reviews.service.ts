@@ -1,4 +1,6 @@
 import { notToldYet } from '../grounds/a-goal-not-told-stays-with-the-lead';
+import { answersUnderTheQuestionsOwnIds } from './the-answers-under-the-questions-own-ids';
+import { suiteOf } from './the-ten-suites';
 import { thisSuiteIsOff } from './a-suite-that-is-off-says-what-to-do';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -14,9 +16,14 @@ import {
 } from './the-record-read-for-a-review';
 import { monthsToDrawOn, theFirstCheckInOf, theOpenDecisionsAbout, whereItStandsSaid, type Stands } from './where-a-review-stands';
 import { SuggestionsService } from '../suggestions/suggestions.service';
-import { PATTERNS_NOTE, theBriefingsHeading, theCountsSaid, theEarlierReviews, thePatternsForTheBriefing, whoDecidesTheReview, type ABriefing } from './a-review-briefing';
+import { PATTERNS_NOTE, theBriefingsHeading, theCountsSaid, theEarlierReviews, theOneWhoDecidesSaid, thePatternsForTheBriefing, whoDecidesTheReview, type ABriefing } from './a-review-briefing';
 import type { ForTheLead } from '../suggestions/a-suggestion-told-like-a-signal';
 import { AReviewToldOnWhatsApp } from './a-review-told-on-whatsapp.service';
+import { AReviewAppealToldService } from './a-review-appeal-told.service';
+import {
+  APPEAL_OUTCOMES, APPEAL_REFUSED, aDaySaid, theAdditions, theAdminReadsSaid, theReviewerReadsSaid, wasAppealDecided, wasAppealed,
+  yourAppealSaid, youMayAppealSaid, type AppealStands,
+} from './a-review-appeal';
 import {
   recogniseForAnotherReader, recogniseForThePerson, recogniseForTheWriter, theRecordForRecognising, theWriterMayReadIt,
   type RecogniseForThePerson, type RecogniseForTheWriter,
@@ -49,6 +56,8 @@ export interface NextReview {
   dueId: string;
   name: string;
   writtenWith: string | null;
+  /** What the "Written with" cell reads: the name, or "Any admin" where any admin may write it. Never blank. */
+  writtenWithSays: string;
   dueOn: Day;
   /** 'not-yet' while a check-in that decides something about the person is still open (where-a-review-stands.ts). */
   stands: Stands;
@@ -74,6 +83,56 @@ export interface YourReview {
   writtenWithFirstName: string | null;
   stands: 'started' | 'decided';
   says: string;
+  /** Once decided: whether the person may appeal, and (when they have) where the appeal stands, in a plain sentence. Decision 113. */
+  mayAppeal: boolean;
+  appealStands: AppealStands | null;
+  appealSays: string | null;
+}
+
+/** The person's own appeal, as they read it (decision 113). */
+export interface YourAppeal {
+  stands: AppealStands;
+  says: string;
+  appealedOn: string;
+  yourReasons: string;
+  additions: { said: string; on: string }[];
+  /** Once decided: 'stands' or 'changed', the admin who decided it, and their reasons. */
+  outcome: 'stands' | 'changed' | null;
+  decidedByFirstName: string | null;
+  reasons: string | null;
+  /** When the decision was changed: what it said before, so nothing is lost. */
+  decisionWas: { says: string; reasons: string } | null;
+}
+
+/** An appeal as the admin who decides it reads it: the person's side and reasons as well. */
+export interface AppealForTheAdmin {
+  reader: 'admin';
+  stands: AppealStands;
+  says: string;
+  personFirstName: string;
+  appealedOn: string;
+  /** The person's reasons: for an admin who may decide it while it waits, and once decided for the admin who decided it. Null for any other admin. */
+  theirReasons: string | null;
+  additions: { said: string; on: string }[];
+  mayDecide: boolean;
+  outcome: 'stands' | 'changed' | null;
+  decidedByFirstName: string | null;
+  reasons: string | null;
+  decisionWas: { says: string; reasons: string } | null;
+}
+
+/** An appeal as the reviewer reads it: that it was appealed and where it stands. Not the person's reasons, until it is decided. */
+export interface AppealForTheReviewer {
+  reader: 'reviewer';
+  stands: AppealStands;
+  says: string;
+  personFirstName: string;
+  appealedOn: string;
+  mayDecide: false;
+  outcome: 'stands' | 'changed' | null;
+  decidedByFirstName: string | null;
+  reasons: string | null;
+  decisionWas: { says: string; reasons: string } | null;
 }
 
 /** What the person reads about their own review. Nothing of what it says, only that it waits for them. */
@@ -121,8 +180,16 @@ export interface ForTheWriter {
   /** What Groundwork understands from the record, only the lines from check-ins this reader is in. Null for a review started before it existed. */
   record: TheRecordServed | null;
   managersWords: string | null;
+  /** Who wrote those words, by sign-in, so the screen can tell the reader's own from somebody else's even where two people share a first name (request 162, item 6). Null until they are written. */
+  managersWordsById: string | null;
   theirView: string | null;
   decision: { says: string; reasons: string } | null;
+  /**
+   * Who made the decision as it stands now, so the screen says "Your decision" only to that person. Once an appeal has
+   * changed it, it is the admin who changed it, not the reviewer (decision 113). Both null until it is decided.
+   */
+  decidedByYou: boolean | null;
+  decidedByFirstName: string | null;
   mayWrite: boolean;
   /**
    * Groundwork's suggestion about this person, when one was reached on a check-in this reader runs,
@@ -142,6 +209,11 @@ export interface ForTheWriter {
    * may already read: counts and corrections from check-ins they are in, patterns from ones they run.
    */
   briefing: ABriefing;
+  /**
+   * The appeal of the decision (decision 113), only for the two who may read it: an admin who is not the reviewer, with the
+   * person's reasons, and the reviewer, with where it stands. Null for everybody else, and when there is none.
+   */
+  appeal: AppealForTheAdmin | AppealForTheReviewer | null;
 }
 
 /** The person's own review: the facts, their own view, and the decision with its reasons. */
@@ -160,7 +232,14 @@ export interface ForThePerson {
    * the prototype's "What Wairimu writes"). Null until then. The heading beside it is `managersWordsHeading`.
    */
   managersWords: string | null;
+  /** Who wrote them, by sign-in (request 162, item 6). Null until they are written. */
+  managersWordsById: string | null;
   managersWordsHeading: string | null;
+  /**
+   * Who writes the review with them, for "What Grace writes" before anything is written. Not `writtenWithFirstName`, which
+   * names the admin who changed the decision on appeal (decision 113): that admin never writes the review's words.
+   */
+  writerFirstName: string | null;
   /**
    * WHERE THE TWO VIEWS DIFFER (decision 93, row 15; the prototype's "where she and Wairimu see things differently").
    * Both views, side by side, once the writer and the person have each written theirs. Groundwork does not say
@@ -170,6 +249,11 @@ export interface ForThePerson {
   decision: { says: string; reasons: string } | null;
   /** Their own count, the line, and who decides, when Groundwork suggests recognising their work. Absent otherwise. */
   recognise?: RecogniseForThePerson;
+  /** Decision 113: once decided and not yet appealed, they may appeal; the sentence says to whom. */
+  mayAppeal: boolean;
+  mayAppealSays: string | null;
+  /** Their appeal, once made. Null before. */
+  appeal: YourAppeal | null;
 }
 
 /** The sentence over the two views side by side, said to the person the review is about. */
@@ -228,6 +312,8 @@ export class ReviewsService {
     @Optional() private readonly suggestions?: SuggestionsService,
     /* Last and optional, so the specs that build this with one argument keep working. */
     @Optional() private readonly toldOnWhatsApp?: AReviewToldOnWhatsApp,
+    /* Decision 113: who is told of an appeal. Optional, so the specs that build this without it keep working. */
+    @Optional() private readonly appealTold?: AReviewAppealToldService,
   ) {}
 
   async board(reader: Reader, today = new Date()): Promise<{ reader: 'admin' | 'lead' | 'approver'; every: string | null; next: NextReview[] }> {
@@ -251,7 +337,7 @@ export class ReviewsService {
     const me = [...directory.values()].find((p) => p.userId === reader.userId) ?? null;
     const reviews = await this.prisma.performanceReview.findMany({
       where: { organizationId: reader.organizationId, evaluationDueId: { in: dues.map((d) => d.id) } },
-      select: { id: true, evaluationDueId: true, decidedAt: true, startedAt: true, startedById: true, decidedById: true },
+      select: { id: true, evaluationDueId: true, decidedAt: true, startedAt: true, startedById: true, decidedById: true, managersWords: true, managersWordsById: true, theirView: true },
     });
     const byDue = new Map(reviews.map((r) => [r.evaluationDueId, r]));
     const signIns = dues.map((d) => directory.get(d.personExternalId)?.userId).filter((u): u is string => !!u);
@@ -274,12 +360,19 @@ export class ReviewsService {
         dueId: d.id,
         name: this.nameOf(p),
         writtenWith,
+        writtenWithSays: writtenWith ?? 'Any admin',
         dueOn: dayOf(d.dueOn),
         stands,
         standsSays: whereItStandsSaid({
           stands, firstName: this.firstOf(p), readerUserId: reader.userId, waitingFor,
           months: monthsToDrawOn(p.userId ? firstCheckIns.get(p.userId) : null, today),
           startedAt: (r as any)?.startedAt ?? null, decidedAt: r?.decidedAt ?? null,
+          /* What is written so far, so the sentence is true of this review (request 162, item 2). */
+          wordsBy: r?.managersWords?.trim() && r.managersWordsById
+            ? (r.managersWordsById === reader.userId ? 'you' : await this.firstNameOf(r.managersWordsById, directory)) : null,
+          hasTheirView: !!r?.theirView?.trim(),
+          /* Who writes and decides it: the reader ("you"), the person the rule names, or an admin (the same answer as `mayWrite`). */
+          decider: r && !r.decidedAt ? (writesIt ? 'you' : (await this.theWriterNamed(reader.organizationId, r as any, p, answers.writer, directory)).first ?? 'an admin') : null,
         }),
         reviewId: r?.id ?? null,
         mayStart: stands === 'ready' && writesIt,
@@ -338,13 +431,16 @@ export class ReviewsService {
    * reviews about this reader, only once started, and only what one() already serves them is said.
    */
   async mine(reader: Reader): Promise<YourReview[]> {
-    await this.suiteAnswers(reader.organizationId);
+    const answers = await this.suiteAnswers(reader.organizationId);
     const directory = await this.directory(reader.organizationId);
     const me = [...directory.values()].find((p) => p.userId === reader.userId);
     if (!me) return [];
     const rows = await this.prisma.performanceReview.findMany({
       where: { organizationId: reader.organizationId, personExternalId: me.externalId },
-      select: { id: true, evaluationDueId: true, theirView: true, decidedAt: true, decision: true, decisionReasons: true, startedById: true, decidedById: true },
+      select: {
+        id: true, evaluationDueId: true, theirView: true, decidedAt: true, decision: true, decisionReasons: true, startedById: true, decidedById: true,
+        appeal: true, appealAdditions: true, appealedAt: true, appealOutcome: true, appealReasons: true, appealDecidedById: true, appealDecisionWas: true,
+      },
     });
     const out: YourReview[] = [];
     for (const r of rows) {
@@ -352,8 +448,16 @@ export class ReviewsService {
       if (!due) continue;
       const stands = r.decidedAt && r.decision && r.decisionReasons ? 'decided' : 'started';
       /* The person who actually started it, or decided it: never the line manager by default (bug 2). */
-      const writer = await this.firstNameOf(theOneWhoWrote(r), directory);
-      out.push({ id: r.id, dueOn: dayOf(due.dueOn), writtenWithFirstName: writer, stands, says: yourReviewSaid(stands, writer, !!r.theirView?.trim()) });
+      const writer = (await this.theWriterNamed(reader.organizationId, r, me, answers.writer, directory)).first;
+      const yours = stands === 'decided' && wasAppealed(r as any) ? await this.yourAppeal(r as any, writer, directory) : null;
+      /* Once an appeal has changed the decision, the decision is the admin's who changed it, and that is who has decided the review now. */
+      const decidedNow = await this.whoHasDecidedItNow(r as any, writer, directory);
+      out.push({
+        id: r.id, dueOn: dayOf(due.dueOn), writtenWithFirstName: decidedNow, stands, says: yourReviewSaid(stands, decidedNow, !!r.theirView?.trim()),
+        mayAppeal: stands === 'decided' && !wasAppealed(r as any),
+        appealStands: yours?.stands ?? null,
+        appealSays: yours?.says ?? null,
+      });
     }
     return out.sort((a, b) => b.dueOn.localeCompare(a.dueOn));
   }
@@ -363,9 +467,17 @@ export class ReviewsService {
     const answers = await this.suiteAnswers(reader.organizationId);
     const { row, person, directory } = await this.theReview(reader, id);
     const role = await this.roleOf(reader);
-    /* Whoever started it, or decided it, is named; never the line manager by default (bug 2). */
-    const writerId = theOneWhoWrote(row as any);
-    const writerFirst = await this.firstNameOf(writerId, directory);
+    /*
+     * Whoever started it, or decided it, is named, while they may still write it; never the line manager by default (bug 2).
+     * Where the person who started it can no longer write it, the name is whoever the organisation's rule lets write it now,
+     * or "an admin", so the words and `mayWrite` always agree (request 162, item 1).
+     */
+    const named = await this.theWriterNamed(reader.organizationId, row as any, person, answers.writer, directory);
+    const writerId = named.id;
+    const writerFirst = named.first;
+    /* The words' own author, which can be somebody other than whoever decides now (request 162, item 6). */
+    const wordsById = row.managersWords?.trim() ? ((row as any).managersWordsById ?? null) : null;
+    const wordsFirst = wordsById ? (wordsById === writerId ? writerFirst : await this.firstNameOf(wordsById, directory)) : null;
     const startedByFirst = await this.firstNameOf((row as any).startedById ?? null, directory);
     const decision = row.decision && row.decisionReasons ? { says: row.decision, reasons: row.decisionReasons } : null;
     const dueOn = dayOf(row.due.dueOn);
@@ -376,18 +488,23 @@ export class ReviewsService {
     }).catch(() => null);
     if (person.userId === reader.userId) {
       return {
-        reader: 'person', id: row.id, firstName: this.firstOf(person), writtenWithFirstName: writerFirst,
+        reader: 'person', id: row.id, firstName: this.firstOf(person), writtenWithFirstName: await this.whoHasDecidedItNow(row as any, writerFirst, directory),
         dueOn, noticed: this.noticedOf(row.noticed, true),
         record: await this.theRecordServed(row, person, reader.userId, writerId, writerFirst),
         theirView: row.theirView ?? null,
         managersWords: row.managersWords?.trim() ? row.managersWords : null,
-        managersWordsHeading: row.managersWords?.trim() ? `What ${writerFirst ?? 'the person who writes your review'} writes` : null,
+        managersWordsById: wordsById,
+        writerFirstName: writerFirst,
+        managersWordsHeading: row.managersWords?.trim() ? `What ${wordsFirst ?? writerFirst ?? 'the person who writes your review'} writes` : null,
         whereYouDiffer: row.managersWords?.trim() && row.theirView?.trim()
-          ? { says: whereYouDifferSaid(writerFirst), managersWords: row.managersWords, yourView: row.theirView }
+          ? { says: whereYouDifferSaid(wordsFirst ?? writerFirst), managersWords: row.managersWords, yourView: row.theirView }
           : null,
         decision,
         /* The count is of check-ins with whoever started the review (theRecordForRecognising), so that person is named. */
         ...(recognising ? { recognise: recogniseForThePerson(recognising, startedByFirst) } : {}),
+        mayAppeal: !!decision && !wasAppealed(row as any),
+        mayAppealSays: decision && !wasAppealed(row as any) ? youMayAppealSaid(await this.firstNameOf((row as any).decidedById ?? null, directory) ?? writerFirst) : null,
+        appeal: decision && wasAppealed(row as any) ? await this.yourAppeal(row as any, writerFirst, directory) : null,
       };
     }
     const writes = await this.writes(reader, role, person, answers.writer);
@@ -395,8 +512,10 @@ export class ReviewsService {
     const readsIt = writes || role === 'ADMIN' || (role === 'LEAD' && !!me && inTheLeadsTeam(me, person));
     if (!readsIt) throw new ForbiddenException(REVIEW_REFUSED.notYours);
     const record = await this.theRecordServed(row, person, reader.userId, writerId, writerFirst);
-    const briefing = await this.theBriefing(row, person, reader.userId, writes, writerFirst, record);
+    const briefing = await this.theBriefing(row, person, reader.userId, writes, theOneWhoDecidesSaid(writerFirst, named.anAdmin), record);
     /* The writer, and (decision 93, row 17) an admin; the suggestion service itself reads only a check-in the admin has access to. A lead who does not write it reads none. */
+    /* Whoever made the decision as it stands now: the admin who changed it on appeal, or else whoever decided it. */
+    const decidedNowId: string | null = (row as any).appealOutcome === 'changed' && (row as any).appealDecidedById ? (row as any).appealDecidedById : ((row as any).decidedById ?? null);
     const suggestion = (writes || role === 'ADMIN') && person.userId && this.suggestions
       ? await this.suggestions.latestForTheLeadAbout(person.userId, reader).catch(() => null)
       : null;
@@ -406,12 +525,16 @@ export class ReviewsService {
       writtenWith: await this.fullNameOf(writerId, directory), writtenWithFirstName: writerFirst,
       dueOn, noticed: this.noticedOf(row.noticed, writes),
       record,
-      managersWords: row.managersWords ?? null, theirView: row.theirView ?? null, decision, mayWrite: writes, suggestion,
+      managersWords: row.managersWords ?? null, managersWordsById: wordsById, theirView: row.theirView ?? null, decision,
+      decidedByYou: decision ? decidedNowId === reader.userId : null,
+      decidedByFirstName: decision ? await this.firstNameOf(decidedNowId, directory) : null,
+      mayWrite: writes, suggestion,
       /* The writer reads it as "you"; an admin and a lead of the team who does not write it read it too, with the writer named (decision 93, row 16). */
       recognise: recognising && theWriterMayReadIt({ theirView: row.theirView ?? null, startedAt: (row as any).startedAt })
         ? (writes ? recogniseForTheWriter(this.firstOf(person), recognising) : recogniseForAnotherReader(this.firstOf(person), recognising, startedByFirst))
         : null,
       briefing,
+      appeal: decision && wasAppealed(row as any) ? await this.appealForTheReader(row as any, person, reader, role, directory) : null,
     };
   }
 
@@ -420,6 +543,8 @@ export class ReviewsService {
     const answers = await this.suiteAnswers(reader.organizationId);
     const { row, person } = await this.theReview(reader, id);
     if (!(await this.writes(reader, await this.roleOf(reader), person, answers.writer))) throw new ForbiddenException(REVIEW_REFUSED.onlyTheWriter);
+    /* Once appealed, the admin who decides the appeal reads the review as it was when the person appealed it (decision 113). */
+    if (wasAppealed(row as any)) throw new BadRequestException(APPEAL_REFUSED.wordsKept);
     const text = (words ?? '').trim();
     if (!text) throw new BadRequestException(REVIEW_REFUSED.writeSomething);
     await this.prisma.performanceReview.update({ where: { id: row.id }, data: { managersWords: text.slice(0, 4000), managersWordsById: reader.userId, managersWordsAt: new Date() } });
@@ -472,6 +597,8 @@ export class ReviewsService {
     const says = (input.decision ?? '').trim();
     const reasons = (input.reasons ?? '').trim();
     if (!says || !reasons) throw new BadRequestException(REVIEW_REFUSED.sayWhatAndWhy);
+    /* Once the person has appealed, an admin other than the reviewer decides (decision 113); the reviewer cannot change it from under them. */
+    if (wasAppealed(row as any)) throw new BadRequestException(APPEAL_REFUSED.appealedAlready);
     await this.prisma.performanceReview.update({
       where: { id: row.id },
       data: { decision: says.slice(0, 1000), decisionReasons: reasons.slice(0, 2000), decidedById: reader.userId, decidedAt: new Date() },
@@ -481,6 +608,219 @@ export class ReviewsService {
     /* Told once, the first time it is decided; a reason corrected later is not a second message. */
     if (!row.decidedAt) await this.toldOnWhatsApp?.toThePerson(reader.organizationId, person.userId, reader.userId, 'decided').catch(() => false);
     return this.one(reader, id);
+  }
+
+
+  // ---------------------------------------------------------------------------------------------
+  // AN APPEAL OF A DECIDED REVIEW (decision 113, bug B-024). Words and reading rules: a-review-appeal.ts.
+
+  /** The person appeals the decision, once, saying why. It goes to an admin who is not the reviewer, or waits for one. */
+  async appeal(reader: Reader, id: string, why: string) {
+    await this.suiteAnswers(reader.organizationId);
+    const { row, person, directory } = await this.theReview(reader, id);
+    if (person.userId !== reader.userId) throw new ForbiddenException(APPEAL_REFUSED.onlyThePerson);
+    if (!(row.decision && row.decisionReasons)) throw new BadRequestException(APPEAL_REFUSED.notDecided);
+    if (wasAppealed(row as any)) throw new BadRequestException(APPEAL_REFUSED.alreadyAppealed);
+    const text = (why ?? '').trim();
+    if (!text) throw new BadRequestException(APPEAL_REFUSED.sayWhy);
+    await this.prisma.performanceReview.update({ where: { id: row.id }, data: { appeal: text.slice(0, 2000), appealedAt: new Date() } });
+    await recordIt(this.prisma, { organizationId: reader.organizationId, suite: 'reviews', ref: row.id, kind: 'appealed', byUserId: reader.userId, basis: { row: 'performance_reviews', id: row.id } });
+    const reviewerId = (row as any).decidedById as string | null;
+    const admins = await this.admins(reader.organizationId, [reviewerId, reader.userId]);
+    const personFirst = this.firstOf(person);
+    try {
+      if (admins.length) {
+        const reviewerFirst = await this.firstNameOf(reviewerId, directory);
+        for (const a of admins) await this.toldAnAdmin(reader.organizationId, row.id, a, personFirst, reviewerFirst);
+      } else if (reviewerId) {
+        /* Nobody else can decide it: it is saved and stays open, and the reviewer is asked to add a second admin. */
+        await this.prisma.performanceReview.update({ where: { id: row.id }, data: { appealAskedForAdminAt: new Date() } });
+        const reviewerRole = await this.roleOf({ userId: reviewerId, organizationId: reader.organizationId });
+        await this.appealTold?.toTheReviewerToAddAnAdmin(reader.organizationId, row.id, reviewerId, personFirst, reviewerRole === 'ADMIN');
+      }
+    } catch { /* The appeal is saved; whoever could not be told reads it in the app. */ }
+    return this.one(reader, id);
+  }
+
+  /** The person adds to their reasons, until the appeal is decided. What they wrote first is kept. */
+  async addToTheAppeal(reader: Reader, id: string, more: string) {
+    await this.suiteAnswers(reader.organizationId);
+    const { row, person } = await this.theReview(reader, id);
+    if (person.userId !== reader.userId) throw new ForbiddenException(APPEAL_REFUSED.onlyThePerson);
+    if (!wasAppealed(row as any)) throw new BadRequestException(APPEAL_REFUSED.notAppealed);
+    if (wasAppealDecided(row as any)) throw new BadRequestException(APPEAL_REFUSED.alreadyDecided);
+    const text = (more ?? '').trim();
+    if (!text) throw new BadRequestException(APPEAL_REFUSED.addSomething);
+    const kept = theAdditions(row as any);
+    if (kept.length >= 10) throw new BadRequestException(APPEAL_REFUSED.tooMany);
+    await this.prisma.performanceReview.update({ where: { id: row.id }, data: { appealAdditions: [...kept, { said: text.slice(0, 2000), at: new Date().toISOString() }] as never } });
+    return this.one(reader, id);
+  }
+
+  /** An admin who is not the reviewer and not the person decides the appeal, giving reasons that the person and the reviewer read. */
+  async decideTheAppeal(reader: Reader, id: string, input: { outcome?: string; reasons?: string; decision?: string }) {
+    await this.suiteAnswers(reader.organizationId);
+    const { row, person, directory } = await this.theReview(reader, id);
+    if ((await this.roleOf(reader)) !== 'ADMIN') throw new ForbiddenException(APPEAL_REFUSED.onlyAnAdmin);
+    if (person.userId === reader.userId) throw new ForbiddenException(APPEAL_REFUSED.yourOwnReview);
+    if ((row as any).decidedById === reader.userId) throw new ForbiddenException(APPEAL_REFUSED.yourOwnDecision);
+    if (!wasAppealed(row as any)) throw new BadRequestException(APPEAL_REFUSED.notAppealed);
+    if (wasAppealDecided(row as any)) throw new BadRequestException(APPEAL_REFUSED.alreadyDecided);
+    if (!(APPEAL_OUTCOMES as readonly string[]).includes(input.outcome ?? '')) throw new BadRequestException(APPEAL_REFUSED.keepOrChange);
+    const reasons = (input.reasons ?? '').trim();
+    if (!reasons) throw new BadRequestException(APPEAL_REFUSED.sayWhyToBoth);
+    const changed = input.outcome === 'changed';
+    const now = (input.decision ?? '').trim();
+    if (changed && !now) throw new BadRequestException(APPEAL_REFUSED.sayWhatItIsNow);
+    await this.prisma.performanceReview.update({
+      where: { id: row.id },
+      data: {
+        appealOutcome: input.outcome, appealReasons: reasons.slice(0, 2000), appealDecidedById: reader.userId, appealDecidedAt: new Date(),
+        /* A changed decision becomes the one the person reads, with the admin's reasons; what it said before is kept. */
+        ...(changed ? { appealDecisionWas: { says: row.decision, reasons: row.decisionReasons } as never, decision: now.slice(0, 1000), decisionReasons: reasons.slice(0, 2000) } : {}),
+      },
+    });
+    await recordIt(this.prisma, { organizationId: reader.organizationId, suite: 'reviews', ref: row.id, kind: 'appeal-decided', byUserId: reader.userId, basis: { row: 'performance_reviews', id: row.id, outcome: input.outcome } });
+    try { await this.appealTold?.decided(reader.organizationId, row.id, reader.userId, person.userId, this.firstOf(person), (row as any).decidedById ?? null, input.outcome ?? null); } catch { /* It is decided; they read it in the app. */ }
+    void directory;
+    return this.one(reader, id);
+  }
+
+  /**
+   * An admin's list of appeals (decision 113): those they may decide, and those that wait for an admin other than
+   * them (they decided the review, and nobody else is an admin yet). No reasons here, they are read on the review.
+   */
+  async appealsToDecide(reader: Reader): Promise<{
+    appeals: { id: string; name: string; firstName: string; dueOn: Day; appealedOn: string; reviewerFirstName: string | null }[];
+    waitingForAnotherAdmin: { id: string; name: string; firstName: string; dueOn: Day; appealedOn: string; says: string }[];
+  }> {
+    await this.suiteAnswers(reader.organizationId);
+    if ((await this.roleOf(reader)) !== 'ADMIN') throw new ForbiddenException(APPEAL_REFUSED.onlyAnAdmin);
+    const rows = await this.prisma.performanceReview.findMany({ where: { organizationId: reader.organizationId, appealedAt: { not: null }, appealOutcome: null } });
+    const directory = await this.directory(reader.organizationId);
+    const out = { appeals: [] as any[], waitingForAnotherAdmin: [] as any[] };
+    for (const r of [...rows].sort((a: any, b: any) => +new Date(a.appealedAt) - +new Date(b.appealedAt))) {
+      const person = directory.get(r.personExternalId);
+      const due = await this.prisma.evaluationDue.findUnique({ where: { id: r.evaluationDueId }, select: { dueOn: true } });
+      if (!person || !due || !wasAppealed(r as any)) continue;
+      const base = { id: r.id, name: this.nameOf(person), firstName: this.firstOf(person), dueOn: dayOf(due.dueOn), appealedOn: aDaySaid((r as any).appealedAt) };
+      if (person.userId === reader.userId) continue;
+      if ((r as any).decidedById === reader.userId) {
+        if (!(await this.admins(reader.organizationId, [(r as any).decidedById, person.userId])).length) {
+          out.waitingForAnotherAdmin.push({ ...base, says: theReviewerReadsSaid('needs-another-admin', this.firstOf(person), true, null, null) });
+        }
+        continue;
+      }
+      out.appeals.push({ ...base, reviewerFirstName: await this.firstNameOf((r as any).decidedById ?? null, directory) });
+    }
+    return out;
+  }
+
+  /**
+   * AN ADMIN ADDED AFTER THE APPEAL IS TOLD IT WAITS FOR THEM, ONCE (decision 113). When the person appealed, only the admins
+   * there then were told; with none other than the reviewer, the reviewer was asked to add one. Whoever becomes an admin later,
+   * and is not the reviewer or the person, is told the same as they would have been (by email, and on WhatsApp where it is on),
+   * with no word of the review or the reasons. Run when somebody is made an admin, and every hour for the other ways an admin
+   * appears. Each admin told is kept as 'appeal-told', which no history says, so nobody is told twice.
+   */
+  async tellNewAdminsOfOpenAppeals(organizationId: string): Promise<{ told: number }> {
+    if (!this.appealTold) return { told: 0 };
+    /* With the reviews suite off, nobody could open the appeal, so nobody is told; they are told once it is on again. */
+    if (!(await this.suiteAnswers(organizationId).then(() => true, () => false))) return { told: 0 };
+    const rows = await this.prisma.performanceReview.findMany({ where: { organizationId, appealedAt: { not: null }, appealOutcome: null } });
+    const open = rows.filter((r: any) => wasAppealed(r) && !wasAppealDecided(r));
+    if (!open.length) return { told: 0 };
+    const directory = await this.directory(organizationId);
+    let told = 0;
+    for (const r of open as any[]) {
+      const person = directory.get(r.personExternalId);
+      if (!person) continue;
+      const admins = await this.admins(organizationId, [r.decidedById, person.userId]);
+      if (!admins.length) continue;
+      const already: any[] = (await (this.prisma as any).suiteEvent?.findMany?.({
+        where: { organizationId, suite: 'reviews', ref: r.id, kind: 'appeal-told' }, select: { toUserId: true },
+      }).catch(() => [])) ?? [];
+      const toldBefore = new Set(already.map((e) => e.toUserId).filter(Boolean));
+      const reviewerFirst = await this.firstNameOf(r.decidedById ?? null, directory);
+      for (const a of admins) {
+        if (toldBefore.has(a)) continue;
+        await this.toldAnAdmin(organizationId, r.id, a, this.firstOf(person), reviewerFirst);
+        told += 1;
+      }
+    }
+    return { told };
+  }
+
+  /** The organisations with an appeal still open, for the hourly sweep. */
+  async organisationsWithAnOpenAppeal(): Promise<string[]> {
+    const rows: any[] = (await (this.prisma.performanceReview as any).findMany({
+      where: { appealedAt: { not: null }, appealOutcome: null }, select: { organizationId: true }, distinct: ['organizationId'],
+    }).catch(() => [])) ?? [];
+    return [...new Set(rows.map((r) => r.organizationId as string))];
+  }
+
+  /** Tells one admin an appeal waits for them, and keeps that they were told (never in a history). */
+  private async toldAnAdmin(organizationId: string, reviewId: string, adminUserId: string, personFirst: string, reviewerFirst: string | null): Promise<void> {
+    if (!this.appealTold) return;
+    await this.appealTold.toAnAdmin(organizationId, reviewId, adminUserId, personFirst, reviewerFirst).catch(() => undefined);
+    await recordIt(this.prisma, { organizationId, suite: 'reviews', ref: reviewId, kind: 'appeal-told', toUserId: adminUserId, basis: { row: 'performance_reviews', id: reviewId } });
+  }
+
+  /** The admins of an organisation, except these, and except sign-ins that have been deleted. */
+  private async admins(organizationId: string, except: (string | null | undefined)[]): Promise<string[]> {
+    const ms = await (this.prisma.organizationMembership as any).findMany({ where: { organizationId, role: 'ADMIN' }, select: { userId: true } }).catch(() => []);
+    const skip = new Set(except.filter((x): x is string => !!x));
+    const ids = ((ms ?? []) as { userId: string }[]).map((m) => m.userId).filter((u) => u && !skip.has(u));
+    if (!ids.length) return [];
+    const live = await (this.prisma as any).user?.findMany?.({ where: { id: { in: ids }, deletedAt: null }, select: { id: true } }).catch(() => null);
+    return Array.isArray(live) ? ids.filter((i) => live.some((u: { id: string }) => u.id === i)) : ids;
+  }
+
+  /** Where the appeal stands: decided, or with an admin who may decide it, or saved and waiting for one to be added. */
+  private async standsOfTheAppeal(row: { personExternalId?: string; appealOutcome?: string | null; decidedById?: string | null }, personUserId: string | null, organizationId: string): Promise<AppealStands> {
+    if (row.appealOutcome) return 'decided';
+    return (await this.admins(organizationId, [row.decidedById, personUserId])).length ? 'with-an-admin' : 'needs-another-admin';
+  }
+
+  private async yourAppeal(row: any, writerFirst: string | null, directory: Map<string, Person>): Promise<YourAppeal> {
+    const person = directory.get(row.personExternalId);
+    const stands = await this.standsOfTheAppeal(row, person?.userId ?? null, row.organizationId);
+    const reviewerFirst = (await this.firstNameOf(row.decidedById ?? null, directory)) ?? writerFirst;
+    const decider = row.appealDecidedById ? await this.firstNameOf(row.appealDecidedById, directory) : null;
+    const was = row.appealDecisionWas && typeof row.appealDecisionWas === 'object' ? (row.appealDecisionWas as { says: string; reasons: string }) : null;
+    return {
+      stands, says: yourAppealSaid(stands, reviewerFirst, row.appealOutcome ?? null, decider), appealedOn: aDaySaid(row.appealedAt),
+      yourReasons: row.appeal, additions: theAdditions(row).map((a) => ({ said: a.said, on: a.at ? aDaySaid(a.at) : '' })),
+      outcome: (row.appealOutcome as 'stands' | 'changed' | null) ?? null, decidedByFirstName: decider, reasons: row.appealOutcome ? (row.appealReasons ?? null) : null, decisionWas: was,
+    };
+  }
+
+  /** The appeal as an admin who may decide it, or the reviewer, reads it. Anybody else reads nothing of it. */
+  private async appealForTheReader(row: any, person: Person, reader: Reader, role: string | null, directory: Map<string, Person>): Promise<AppealForTheAdmin | AppealForTheReviewer | null> {
+    const stands = await this.standsOfTheAppeal(row, person.userId, reader.organizationId);
+    const personFirst = this.firstOf(person);
+    const appealedOn = aDaySaid(row.appealedAt);
+    const decider = row.appealDecidedById ? await this.firstNameOf(row.appealDecidedById, directory) : null;
+    const was = row.appealDecisionWas && typeof row.appealDecisionWas === 'object' ? (row.appealDecisionWas as { says: string; reasons: string }) : null;
+    const outcome = (row.appealOutcome as 'stands' | 'changed' | null) ?? null;
+    const reasons = row.appealOutcome ? (row.appealReasons ?? null) : null;
+    if (row.decidedById === reader.userId) {
+      return { reader: 'reviewer', stands, says: theReviewerReadsSaid(stands, personFirst, role === 'ADMIN', outcome, decider), personFirstName: personFirst, appealedOn, mayDecide: false, outcome, decidedByFirstName: decider, reasons, decisionWas: was };
+    }
+    if (role === 'ADMIN' && person.userId !== reader.userId) {
+      const reviewerFirst = await this.firstNameOf(row.decidedById ?? null, directory);
+      /* The person's reasons go to every admin who may read this review, before and after it is decided (decision 118,
+         Hafsah 8 October: decision 5 and the evaluation access rule decide which admins those are; an admin without
+         access never reaches this line). The reviewer is answered above and never reads them. */
+      const readsTheReasons = true;
+      return {
+        reader: 'admin', stands, says: theAdminReadsSaid(stands, personFirst, reviewerFirst, appealedOn, decider, outcome, !!row.appealDecidedById && row.appealDecidedById === reader.userId), personFirstName: personFirst, appealedOn,
+        theirReasons: readsTheReasons ? row.appeal : null,
+        additions: readsTheReasons ? theAdditions(row).map((a) => ({ said: a.said, on: a.at ? aDaySaid(a.at) : '' })) : [],
+        mayDecide: stands !== 'decided', outcome, decidedByFirstName: decider, reasons, decisionWas: was,
+      };
+    }
+    return null;
   }
 
   // ---------------------------------------------------------------------------------------------
@@ -595,6 +935,37 @@ export class ReviewsService {
     };
   }
 
+  /**
+   * WHO THE WORDS NAME AS WRITING A REVIEW (request 162, item 1): whoever decided it; else whoever started it, while the
+   * organisation's rule still lets them write it; else whoever the rule names now; else nobody by name, and `anAdmin` says
+   * any admin may. So the name a reader is told always agrees with what `mayWrite` lets somebody do.
+   */
+  private async theWriterNamed(
+    organizationId: string, row: { startedById?: string | null; decidedById?: string | null; decidedAt?: Date | null }, p: Person, writer: string | null, directory: Map<string, Person>,
+  ): Promise<{ id: string | null; first: string | null; anAdmin: boolean }> {
+    const rule = await this.theWriter(organizationId, p, writer).catch(() => null);
+    const candidate = theOneWhoWrote(row);
+    if (candidate) {
+      const decided = !!(row.decidedAt && row.decidedById);
+      const role = decided || !rule ? null : await this.roleOf({ userId: candidate, organizationId });
+      if (decided || !rule || decidesIt(rule, { userId: candidate, role }, p.userId ?? `person:${p.externalId}`)) {
+        return { id: candidate, first: await this.firstNameOf(candidate, directory), anAdmin: false };
+      }
+    }
+    if (rule && rule.kind !== 'admin') return { id: rule.userId, first: await this.firstNameOf(rule.userId, directory), anAdmin: false };
+    return { id: null, first: null, anAdmin: !!rule && rule.kind === 'admin' };
+  }
+
+  /**
+   * WHO HAS DECIDED THIS REVIEW NOW (8 October). The person read "Grace has decided your review" and "You and Grace talk it through, and Grace decides" after an
+   * admin had read the appeal and changed the decision: the decision on the page is that admin's, so that admin is named. If the decision stands, or there was no
+   * appeal, it is the one who decided it first.
+   */
+  private async whoHasDecidedItNow(row: { appealOutcome?: string | null; appealDecidedById?: string | null }, writerFirst: string | null, directory: Map<string, Person>): Promise<string | null> {
+    if (row.appealOutcome !== 'changed' || !row.appealDecidedById) return writerFirst;
+    return (await this.firstNameOf(row.appealDecidedById, directory)) ?? writerFirst;
+  }
+
   /** Whether this reader writes the review with this person, by the organisation's answer (who-may-decide.ts). */
   private async writes(reader: Reader, role: string | null, p: Person, writer: string | null): Promise<boolean> {
     return decidesIt(await this.theWriter(reader.organizationId, p, writer), { userId: reader.userId, role }, p.userId ?? `person:${p.externalId}`);
@@ -602,9 +973,10 @@ export class ReviewsService {
 
   /** Who writes this person's review, by rule: "Their manager" is their manager, else an admin; "An admin" is an admin. */
   private theWriter(organizationId: string, p: Person, writer: string | null): Promise<WhoDecides> {
+    /* Nobody stands in to write a review: it is not a request that waits for an answer, and who writes it does not change with somebody's leave. */
     return theOneWhoDecides(this.prisma, theStepsFor('reviews', { writer })[0], {
       organizationId, requesterUserId: p.userId ?? `person:${p.externalId}`, managerExternalId: p.managerExternalId, team: p.department,
-    });
+    }, { noCover: true });
   }
 
   /**
@@ -650,8 +1022,8 @@ export class ReviewsService {
       select: { isOn: true, answers: true },
     });
     if (!suite?.isOn) throw new NotFoundException(REVIEW_REFUSED.notOn);
-    const a = (suite.answers ?? {}) as Record<string, unknown>;
-    return { every: typeof a.every === 'string' ? a.every : null, writer: typeof a.writer === 'string' ? a.writer : null };
+    const a = answersUnderTheQuestionsOwnIds(suiteOf('reviews')!, suite.answers) as Record<string, unknown>;
+    return { every: typeof a.every === 'string' && a.every ? a.every : null, writer: typeof a.writer === 'string' && a.writer ? a.writer : null };
   }
 
   private async roleOf(reader: Reader): Promise<string | null> {

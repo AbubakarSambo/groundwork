@@ -6,7 +6,7 @@ import { totalSessionsFor } from './session-count';
 import { isNotLetInYet } from './who-an-admin-did-not-let-in';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
 import { notTheWordParty } from '../reports/not-the-word-party';
-import { inOneFormOfNumber, theStoryHasSomeoneToPointTo } from '../reports/the-picture-in-plain-sentences';
+import { inOneFormOfNumber, theStoryHasSomeoneToPointTo, theCountSaidRight } from '../reports/the-picture-in-plain-sentences';
 
 /**
  * HOW A CHECK-IN IS GOING, COMPUTED ONCE, BECAUSE THREE SCREENS ASK IT.
@@ -48,6 +48,12 @@ export interface WhatItTakes {
   leave?: Map<string, Stretch[]>;
   /** The check-ins list only: it adds where the team is in words, and keeps who the oldest blocker is waited on from, so it can be named to a reader who may be told. */
   forTheList?: boolean;
+  /**
+   * The round the opening was written for, passed only to a reader who is told the count (the lead's board). The opening is written once, when the round's report is
+   * taken, with the count of that moment in its first sentence. While that round is the open one, the count is the record's now, so the board's story and its
+   * "active" line cannot disagree for the minutes the next report takes to write (decision 7: nothing is rebuilt on opening; this is arithmetic on the record).
+   */
+  storyRound?: number | null;
 }
 
 export function howACheckInIsGoing(it: WhatItTakes, now: Date = new Date()): HowItIsGoing {
@@ -144,5 +150,6 @@ export function howACheckInIsGoing(it: WhatItTakes, now: Date = new Date()): How
     now,
   );
 
-  return { latestSummary, glance };
+  const countIsLive = !it.forTheList && !!latestSummary && it.storyRound != null && it.storyRound === openRound && glance.progress.ofPeople > 0;
+  return { latestSummary: countIsLive ? theCountSaidRight(latestSummary!, glance.progress.answeredThisRound, glance.progress.ofPeople) : latestSummary, glance };
 }

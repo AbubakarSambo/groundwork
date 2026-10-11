@@ -39,6 +39,7 @@ export const FINANCE_REFUSED = {
   badDay: 'Give the day it was paid as a date, no later than today and no earlier than the day it was asked for.',
   notNeeded: 'This request does not need that. Say which of the receipt or the quote finance has had.',
   badFormat: 'Ask for the file as csv or xlsx.',
+  badMonth: 'Give the month as a year and a month, such as 2026-10.',
   notYourOwn: 'Nobody checks or pays their own request. Somebody else in finance, or an admin, can.',
 };
 
@@ -68,6 +69,39 @@ export interface ForFinance {
   said: string[];
 }
 
+/** One line of the month's totals: a team, or a category, or all of them. Money is in the organisation's currency. */
+export interface ATotal {
+  /** The team or category, or "All teams". */
+  name: string;
+  /** Everything asked for in the month, whatever became of it: the number of requests and what they add up to. */
+  asked: { count: number; amount: number };
+  /** Approved (paid ones included). */
+  approved: { count: number; amount: number };
+  /** Approved and marked paid. */
+  paid: { count: number; amount: number };
+  /** Still waiting for an answer. */
+  waiting: { count: number; amount: number };
+  /** Declined: only how many, because nothing is spent. */
+  declined: { count: number };
+  /** The line in one full sentence. */
+  says: string;
+}
+
+/** The month's spending for finance: each team, each category, and the whole, from the requests asked for in that month. */
+export interface TheMonthsTotals {
+  reader: 'finance' | 'admin';
+  currency: string | null;
+  /** "2026-10". */
+  month: string;
+  /** "October 2026". */
+  monthSays: string;
+  all: ATotal;
+  byTeam: ATotal[];
+  byCategory: ATotal[];
+  /** One full sentence for the top of the page. */
+  says: string;
+}
+
 export interface TheFinanceView {
   reader: 'finance' | 'admin';
   currency: string | null;
@@ -87,6 +121,26 @@ type Row = {
 };
 
 const n = (x: unknown) => Number(x ?? 0);
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const money = (currency: string | null, amount: number) => `${currency ? `${currency} ` : ''}${amount.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+
+/**
+ * "Operations has KES 120,000 approved in October 2026, KES 31,000 of it paid, and KES 60,000 still waiting for an answer."
+ * "Requests without a team have KES 9,800 approved in October 2026, ..." (and "without a category").
+ * "Across all teams, KES 139,600 was approved in October 2026, and KES 3,909,500 is still waiting for an answer."
+ */
+function aTotalSaid(t: Omit<ATotal, 'says'>, currency: string | null, monthSays: string): string {
+  const all = t.name === 'All teams';
+  const who = all ? 'Across all teams,' : t.name === 'Without a team' ? 'Requests without a team have' : t.name === 'Without a category' ? 'Requests without a category have' : `${t.name} has`;
+  const approved = all
+    ? (t.approved.amount > 0 ? `${money(currency, t.approved.amount)} was approved in ${monthSays}` : `nothing was approved in ${monthSays}`)
+    : (t.approved.amount > 0 ? `${money(currency, t.approved.amount)} approved in ${monthSays}` : `nothing approved in ${monthSays}`);
+  const parts = [approved];
+  if (t.paid.amount > 0) parts.push(`${money(currency, t.paid.amount)} of it ${all ? 'was paid' : 'paid'}`);
+  if (t.waiting.amount > 0) parts.push(`${money(currency, t.waiting.amount)} ${all ? 'is still waiting' : 'still waiting'} for an answer`);
+  const joined = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')}, and ${parts[parts.length - 1]}`;
+  return `${who} ${joined}.`;
+}
 const dayOf = (d: Date) => d.toISOString().slice(0, 10);
 const DAY = 86_400_000;
 const EVIDENCE_WORD: Record<string, string> = { receipt: 'a receipt', quote: 'a quote' };
@@ -115,6 +169,49 @@ export class SpendingForFinanceService {
       toPay: toPay.map((r) => said.get(r.id)!),
       paid: paid.map((r) => said.get(r.id)!),
       lines: [...new Set([...rules, ...(budgets ?? []).map((b: any) => b.team as string)])].filter(Boolean).sort(),
+    };
+  }
+
+  /**
+   * THE MONTH'S TOTALS, for whoever looks after finance and an admin, and nobody else (the same refusal as the rest of this
+   * file). Added up from the requests themselves: every request asked for in the month (the first of the month to the last, as
+   * the budgets count it), by its team and by its category, with what was approved, what was paid and what still waits. The
+   * team is the one on the request, or else the person's department. Money is in the organisation's currency, and says so.
+   * Nothing here is about a person: no name, and no request is listed.
+   */
+  async totals(reader: Reader, monthGiven?: unknown, today = new Date()): Promise<TheMonthsTotals> {
+    const { currency, role } = await this.mayAct(reader);
+    const month = monthGiven == null || monthGiven === '' ? today.toISOString().slice(0, 7) : String(monthGiven);
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw new BadRequestException(FINANCE_REFUSED.badMonth);
+    const [y, m] = month.split('-').map(Number);
+    const from = new Date(Date.UTC(y, m - 1, 1));
+    const to = new Date(Date.UTC(y, m, 1));
+    const rows = (await this.prisma.spendRequest.findMany({
+      where: { organizationId: reader.organizationId, createdAt: { gte: from, lt: to } },
+      select: { userId: true, team: true, category: true, status: true, amount: true, paidOn: true },
+    })) as Pick<Row, 'userId' | 'team' | 'category' | 'status' | 'amount' | 'paidOn'>[];
+    const missing = [...new Set(rows.filter((r) => !r.team?.trim()).map((r) => r.userId))];
+    const entries: Map<string, any> = missing.length ? await theirRosterEntries(this.prisma, reader.organizationId, missing, { department: true }).catch(() => new Map()) : new Map();
+    const monthSays = `${MONTHS[m - 1]} ${y}`;
+    const sum = (name: string, of: typeof rows): ATotal => {
+      const pick = (f: (r: (typeof rows)[number]) => boolean) => { const hit = of.filter(f); return { count: hit.length, amount: hit.reduce((t, r) => t + n(r.amount), 0) }; };
+      const t = {
+        name, asked: pick(() => true), approved: pick((r) => r.status === 'approved'), paid: pick((r) => r.status === 'approved' && !!r.paidOn),
+        waiting: pick((r) => r.status === 'waiting'), declined: { count: of.filter((r) => r.status === 'declined').length },
+      };
+      return { ...t, says: aTotalSaid(t, currency, monthSays) };
+    };
+    const group = (key: (r: (typeof rows)[number]) => string) => {
+      const by = new Map<string, typeof rows>();
+      for (const r of rows) by.set(key(r), [...(by.get(key(r)) ?? []), r]);
+      return [...by].map(([name, of]) => sum(name, of)).sort((a, b) => b.approved.amount - a.approved.amount || b.asked.amount - a.asked.amount || a.name.localeCompare(b.name));
+    };
+    const all = sum('All teams', rows);
+    return {
+      reader: role === 'ADMIN' ? 'admin' : 'finance', currency, month, monthSays, all,
+      byTeam: group((r) => r.team?.trim() || entries.get(r.userId)?.department?.trim() || 'Without a team'),
+      byCategory: group((r) => r.category?.trim() || 'Without a category'),
+      says: rows.length ? `In ${monthSays}, ${all.asked.count} ${all.asked.count === 1 ? 'request was' : 'requests were'} asked for, adding up to ${money(currency, all.asked.amount)}. ${all.says}` : `Nobody asked to spend anything in ${monthSays}.`,
     };
   }
 

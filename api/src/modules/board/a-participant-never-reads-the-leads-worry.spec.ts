@@ -36,7 +36,7 @@ describe('the Blockers tile, where people do not see each other', () => {
   it('Sunday reads his own worry and the count, and not Amaka\'s doubt or Musa\'s worry', async () => {
     const t = await tileFor({ participantId: 'p-sunday', isLead: false, ownWaitsOnly: true });
     expect(t.value).toBe('3 worries');
-    expect(t.sub).toBe('You said, "I missed the first three repayments." There are 2 more worries on record, and nobody is waiting on anybody.');
+    expect(t.sub).toBe('You said, "I missed the first three repayments." There are 2 more worries on record, and no wait has been recorded against a named person.');
     expect(t.sub).not.toMatch(/selection process|Amaka|supplier/);
   });
   it('Sunday with only the lead\'s and Musa\'s worries reads the count and no words', async () => {

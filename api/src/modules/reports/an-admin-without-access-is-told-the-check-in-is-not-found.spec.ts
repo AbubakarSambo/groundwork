@@ -6,7 +6,7 @@ import { ReportsService } from './reports.service';
  * PRIVACY SWEEP 5 OCTOBER 2026, FINDING 7 (GW-PRI-04, decision 5).
  *
  * An admin who was not given access to a performance plan or a first-90-days check-in read "You are not a participant in this
- * check-in" on its board and its report, which tells them the check-in is real. Every other route answers "Check-in not found".
+ * check-in" on its board and its report, which tells them the check-in is real. Every other route answers "That check-in could not be found, so go back to your check-ins and open it from the list.".
  * The board and the report now do too, for every scenario, and the admin who was given access (the one who set it up) still reads.
  */
 const person = (id: string, userId: string, partyType: string, first: string, createdAt: string, managingOnly = false) => ({
@@ -44,15 +44,15 @@ describe.each(['PIP', 'NEW_HIRE', 'CONTRACT_RENEWAL', 'OKR_ALIGNMENT'])('an admi
     const err: any = await new BoardService(p, { respond: async () => null } as any, { getSessionProgress: async () => null } as any, reports(p)).get('g1', 'u-other-admin').then(() => null, (e) => e);
     if (scenario === 'OKR_ALIGNMENT') { /* an ordinary check-in: an admin of the organisation reads it */ expect(err).toBeNull(); return; }
     expect(err).toBeInstanceOf(NotFoundException);
-    expect(err.message).toBe('Check-in not found');
+    expect(err.message).toBe('That check-in could not be found, so go back to your check-ins and open it from the list.');
   });
 
   it('is told the check-in is not found on its report', async () => {
     const p = prismaFor(scenario);
     const err: any = await reports(p).get('g1', 'u-other-admin', 'org1').then(() => null, (e) => e);
-    if (scenario === 'OKR_ALIGNMENT') { expect(err?.message ?? '').not.toBe('You are not a participant in this check-in'); return; }
+    if (scenario === 'OKR_ALIGNMENT') { expect(err?.message ?? '').not.toBe('You are not one of the people in this check-in, so ask whoever runs it to add you.'); return; }
     expect(err).toBeInstanceOf(NotFoundException);
-    expect(err.message).toBe('Check-in not found');
+    expect(err.message).toBe('That check-in could not be found, so go back to your check-ins and open it from the list.');
   });
 });
 
@@ -62,7 +62,7 @@ describe('a stranger to the organisation', () => {
     p.user.findUnique = jest.fn(async () => ({ role: 'ADMIN', organizationId: 'org-elsewhere', awaitingOrgApproval: false }));
     const board: any = await new BoardService(p, { respond: async () => null } as any, { getSessionProgress: async () => null } as any, reports(p)).get('g1', 'u-stranger').then(() => null, (e) => e);
     const report: any = await reports(p).get('g1', 'u-stranger', 'org-elsewhere').then(() => null, (e) => e);
-    expect(board.message).toBe('Check-in not found');
-    expect(report.message).toBe('Check-in not found');
+    expect(board.message).toBe('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    expect(report.message).toBe('That check-in could not be found, so go back to your check-ins and open it from the list.');
   });
 });

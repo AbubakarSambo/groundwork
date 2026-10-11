@@ -18,6 +18,7 @@ import {
 } from './a-period-at-the-line-is-settled-on-all-the-evidence';
 import { whatWasSeenLastPeriod, lastPeriodBlockFor, evidenceBorrowedFromAnotherCode, HOW_FAR_BACK } from './the-detector-has-no-memory-of-last-period';
 import { AnthropicService } from '../conversation';
+import { PromptsService } from '../prompts/prompts.service';
 import { runIntake } from '../conversation/intake';
 import { plainVoice } from './plain-voice';
 import { PERIODS_BEFORE_A_PATTERN_IS_SHOWN, PATTERN_ROW_SELECT, patternRowsThisReaderMayRead, servedPatterns, periodsSeen, type AServedPattern, type ALeadPatternMark } from './who-reads-a-pattern';
@@ -32,6 +33,7 @@ import { mirrorDetection } from '../detectors/mirror-a-detection';
 import { isBackedByADocument } from '../reports/backed-by-a-document';
 import {
   PATTERN_DETECTION_PROMPT,
+  PATTERN_DETECTION_PROMPT_KEY,
   PATTERN_DETECTION_SCHEMA,
   BAD_FAITH_CODES,
   isBadFaithCode,
@@ -101,7 +103,15 @@ export class PatternsService {
     private anthropic: AnthropicService,
     /* Optional so that a service built by hand (most specs) still works; tells the learning counts a new signal came in. */
     @Optional() private events?: EventEmitter2,
+    /* Optional so that a service built by hand still works: the stored detector prompt is read through it, the code's text is the fallback. */
+    @Optional() private prompts?: PromptsService,
   ) {}
+
+  /** The detector's prompt that runs: the version stored under `pattern_detection`, else the text in the code. */
+  private async theDetectorPrompt(): Promise<{ content: string; id: string | null }> {
+    const stored = await this.prompts?.getActive(PATTERN_DETECTION_PROMPT_KEY).catch(() => null);
+    return stored ? { content: stored.content, id: stored.id } : { content: PATTERN_DETECTION_PROMPT, id: null };
+  }
 
   private learnFrom(detectionId: string): void {
     try { this.events?.emit(LEARNING_SIGNAL, { detectionId }); } catch { /* counting must never break a mark */ }
@@ -134,7 +144,8 @@ export class PatternsService {
 
     const [turns, records, statedGoalRows] = await Promise.all([
       this.prisma.conversationTurn.findMany({ where: { checkInId }, orderBy: { createdAt: 'asc' } }),
-      this.prisma.recordEntry.findMany({ where: { checkInId } }),
+      /* In the order they were written, so two readings of one check-in are given the same text (9 Oct 2026). */
+      this.prisma.recordEntry.findMany({ where: { checkInId }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] }),
       /* What they said this was for, in earlier periods. See against-the-goal-they-stated. */
       this.prisma.recordEntry.findMany({
         where: { participantId: checkIn.participantId, disputedAt: null, type: 'SUCCESS_DEFINITION' as any, checkIn: { sessionNumber: { lt: checkIn.sessionNumber } } },
@@ -198,6 +209,7 @@ export class PatternsService {
           participantId: checkIn.participantId,
           lastPeriodNumber: { gte: period - HOW_FAR_BACK, lte: period - 1 },
         },
+        orderBy: [{ lastPeriodNumber: 'asc' }, { code: 'asc' }],
         select: { code: true, observationText: true, lastPeriodNumber: true },
       })
       .catch(() => [] as { code: string; observationText: string | null; lastPeriodNumber: number | null }[]);
@@ -211,8 +223,16 @@ export class PatternsService {
      */
     const theirDependencies = await (this.prisma.groundDependency?.findMany?.({
       where: { groundId: checkIn.groundId, fromParticipantId: checkIn.participantId },
-      select: { onParticipantId: true, status: true, what: true },
+      select: { onParticipantId: true, status: true, what: true, groundId: true },
     }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
+    /* And what those colleagues promised in their own check-ins: only a colleague's own word confirms a wait (decision 137). */
+    const theirColleaguesIds = [...new Set((theirDependencies as any[]).map((d) => d?.onParticipantId).filter(Boolean))] as string[];
+    const theColleaguesOwnPromises: any[] = theirColleaguesIds.length
+      ? await Promise.resolve(this.prisma.groundCommitment?.findMany?.({
+          where: { groundId: checkIn.groundId, participantId: { in: theirColleaguesIds } },
+          select: { groundId: true, participantId: true, text: true },
+        }) ?? []).catch(() => [] as any[])
+      : [];
 
     /*
      * THE NUMBER-BASED RULES ARE A SECOND SOURCE OF EVIDENCE (decision 57, item 4), wherever one
@@ -248,11 +268,12 @@ export class PatternsService {
      */
     /* What each read left out because it rested on a record nobody holds, for one line at the end. */
     const leftOutForARecord: { code: string; observation: string }[][] = [];
+    const detector = await this.theDetectorPrompt();
     const attempts = await Promise.allSettled(
       Array.from({ length: READS_PER_CHECK_IN }, () => {
         const leftOut: { code: string; observation: string }[] = [];
         leftOutForARecord.push(leftOut);
-        return this.whatOneReadKeeps(checkInId, content, recogniseBlock, lastPeriod, statedGoals, theirDependencies, getDetectionInput, whatThePersonSaid, leftOut);
+        return this.whatOneReadKeeps(checkInId, content, recogniseBlock, lastPeriod, statedGoals, theirDependencies, theColleaguesOwnPromises, getDetectionInput, whatThePersonSaid, leftOut, detector.content);
       }),
     );
 
@@ -299,7 +320,7 @@ export class PatternsService {
         Array.from({ length: MORE_READS_WHEN_SPLIT }, () => {
           const leftOut: { code: string; observation: string }[] = [];
           leftOutForARecord.push(leftOut);
-          return this.whatOneReadKeeps(checkInId, content, recogniseBlock, lastPeriod, statedGoals, theirDependencies, getDetectionInput, whatThePersonSaid, leftOut);
+          return this.whatOneReadKeeps(checkInId, content, recogniseBlock, lastPeriod, statedGoals, theirDependencies, theColleaguesOwnPromises, getDetectionInput, whatThePersonSaid, leftOut, detector.content);
         }),
       );
       moreAttempts.forEach((attempt, i) => {
@@ -319,9 +340,9 @@ export class PatternsService {
     for (const [code, { observation, votes, reads, settled }] of countsThisPeriod) {
       if (settled) this.logger.log(`Check-in ${checkInId}: ${code} was kept by ${votes} of ${reads} reads after the first five were split, so it counts for period ${period}.`);
       if (isPositiveCode(code)) {
-        await this.observePositive(checkIn.groundId, checkIn.participantId, code, observation, period, await evidenceSourceFor(code));
+        await this.observePositive(checkIn.groundId, checkIn.participantId, code, observation, period, await evidenceSourceFor(code), detector.id);
       } else {
-        await this.observe(checkIn.groundId, checkIn.participantId, code, observation, period, await evidenceSourceFor(code));
+        await this.observe(checkIn.groundId, checkIn.participantId, code, observation, period, await evidenceSourceFor(code), detector.id);
       }
     }
 
@@ -360,14 +381,16 @@ export class PatternsService {
     lastPeriod: { code: string; observationText: string | null; lastPeriodNumber: number | null }[],
     statedGoals: string[],
     theirDependencies: any[],
+    theColleaguesOwnPromises: any[],
     getDetectionInput: () => Promise<DetectionInput>,
     whatThePersonSaid: string[] = [],
     leftOutForARecord: { code: string; observation: string }[] = [],
+    detectorPrompt: string = PATTERN_DETECTION_PROMPT,
   ): Promise<{ code: string; observation: string }[]> {
     const kept: { code: string; observation: string }[] = [];
 
     const result = await this.anthropic.extract<{ detections: { code: string; observation: string }[] }>(
-      PATTERN_DETECTION_PROMPT + recogniseBlock,
+      detectorPrompt + recogniseBlock,
       [{ role: 'user', content }],
       PATTERN_DETECTION_SCHEMA,
       PATTERN_DETECTION_STEADY_OPTIONS,
@@ -440,7 +463,7 @@ export class PatternsService {
        * hired is not delivering - it surfaced on the client, not the consultant, and her coaching
        * then told her to communicate better. See a-chaser-is-not-the-blocker.
        */
-      const mine = shouldThisCodeBeAboutThem(d.code, theirDependencies as any[]);
+      const mine = shouldThisCodeBeAboutThem(d.code, theirDependencies as any[], theColleaguesOwnPromises as any[]);
       if (!mine.keep) {
         this.logger.log(`Check-in ${checkInId}: ${d.code} not written about this person; ${mine.because}.`);
         continue;
@@ -494,6 +517,7 @@ export class PatternsService {
     rawObservation: string,
     periodNumber: number,
     evidenceSource?: AnEvidenceSource,
+    promptVersionId?: string | null,
   ) {
     /**
      * Strip the courtroom opener before it is stored, not on the way out.
@@ -518,6 +542,7 @@ export class PatternsService {
         seenInSessions: [periodNumber],
         status: PatternStatus.CANDIDATE,
         evidenceSource: evidenceSource ?? null,
+        ...(promptVersionId ? { promptVersionId } : {}),
       });
     }
 
@@ -546,6 +571,7 @@ export class PatternsService {
         observationText,
         status: enough || existing.status === PatternStatus.SURFACED ? PatternStatus.SURFACED : PatternStatus.CANDIDATE,
         evidenceSource: mergedEvidenceSource(existing.evidenceSource as AnEvidenceSource | null, evidenceSource),
+        ...(promptVersionId ? { promptVersionId } : {}),
         /* The moment the person it is about may first read it. Set once, never moved. See who-reads-a-pattern. */
         ...(!existing.readyAt && seenInSessions.length >= PERIODS_BEFORE_A_PATTERN_IS_SHOWN ? { readyAt: new Date() } : {}),
       },
@@ -563,6 +589,7 @@ export class PatternsService {
     observationText: string,
     periodNumber: number,
     evidenceSource?: AnEvidenceSource,
+    promptVersionId?: string | null,
   ) {
     const existing = await this.prisma.patternDetection.findUnique({
       where: { participantId_code: { participantId, code } },
@@ -581,6 +608,7 @@ export class PatternsService {
           // Positive signals surface immediately.
           status: PatternStatus.SURFACED,
           evidenceSource: evidenceSource ?? null,
+        ...(promptVersionId ? { promptVersionId } : {}),
         },
       });
     }
@@ -604,6 +632,7 @@ export class PatternsService {
         observationText,
         status: PatternStatus.SURFACED,
         evidenceSource: mergedEvidenceSource(existing.evidenceSource as AnEvidenceSource | null, evidenceSource),
+        ...(promptVersionId ? { promptVersionId } : {}),
         ...(!existing.readyAt && Math.max(seenInSessions.length, periodsObserved) >= PERIODS_BEFORE_A_PATTERN_IS_SHOWN ? { readyAt: new Date() } : {}),
       },
     });

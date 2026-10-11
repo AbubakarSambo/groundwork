@@ -70,8 +70,9 @@ describe('only an admin', () => {
     it(`${who} is refused the board and every change, and nothing changes`, async () => {
       const { svc, as, items } = setup();
       await expect(svc.board(as(userId))).rejects.toThrow(new ForbiddenException(EQUIPMENT_REFUSED.onlyAnAdmin));
-      await expect(svc.add(as(userId), { name: 'Laptop 07' })).rejects.toThrow(ForbiddenException);
-      await expect(svc.change(as(userId), 'e-1', { condition: 'Fixed.' })).rejects.toThrow(ForbiddenException);
+      /* Reading and changing are told apart (request 181 item 5): a refused change says "change this list", not "open this board". */
+      await expect(svc.add(as(userId), { name: 'Laptop 07' })).rejects.toThrow(new ForbiddenException('Only an admin can change this list.'));
+      await expect(svc.change(as(userId), 'e-1', { condition: 'Fixed.' })).rejects.toThrow(new ForbiddenException('Only an admin can change this list.'));
       expect(items).toHaveLength(2);
       expect(items[0].condition).toBe('Broken screen.');
     });

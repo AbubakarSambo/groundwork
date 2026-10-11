@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { PrismaService } from '../prisma/prisma.service';
 import { ROLES_REFUSED } from './the-role-map.service';
 import { INTERVIEW_INVITATION, ROLE_INTERVIEW_KIND } from '../assistant/the-role-interview';
+import { correctTheirJob, theirJobForThem, type APatch } from './correct-their-job';
 
 export const INTERVIEW_REFUSED = {
   nobodyNamed: 'Say which person, or which role, the role interview is for.',
@@ -94,19 +95,24 @@ export class RoleInterviewService {
     return out;
   }
 
-  /** The answers this person gave, read by them and by nobody else through this route. */
+  /** What this person told us about their job, read by them and by nobody else through this route. Newest first. */
   async mine(reader: Reader) {
     const me = await this.prisma.person.findFirst({
       where: { organizationId: reader.organizationId, linkedUserId: reader.userId },
       select: { externalId: true },
     });
-    if (!me) return { answers: [] };
     const rows = await this.prisma.roleInterviewAnswer.findMany({
-      where: { organizationId: reader.organizationId, personExternalId: me.externalId },
-      select: { roleName: true, owns: true, decides: true, dependsOn: true, dependedOnBy: true, createdAt: true },
+      where: { organizationId: reader.organizationId, personExternalId: { in: [me?.externalId, reader.userId].filter((x): x is string => !!x) } },
+      select: { roleName: true, owns: true, decides: true, dependsOn: true, dependedOnBy: true, doingWell: true, inTheWay: true, source: true, createdAt: true },
       orderBy: { createdAt: 'desc' },
     });
-    return { answers: rows };
+    return { answers: rows, current: await theirJobForThem(this.prisma, reader) };
+  }
+
+  /** The person corrects what they told us. Their own act, so it is their yes; the earlier rows stay as history. */
+  async correctMine(reader: Reader, patch: APatch) {
+    const done = await correctTheirJob(this.prisma, reader, patch);
+    return { saved: true, roleName: done.roleName, changed: done.changed, current: await theirJobForThem(this.prisma, reader) };
   }
 
   private async admitAdmin(reader: Reader) {

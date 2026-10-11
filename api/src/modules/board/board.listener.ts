@@ -5,6 +5,7 @@ import { cleanText } from '../reports/what-the-record-actually-holds';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { GroundworkEvents, type RoundCompletedEvent, type CheckInCompletedEvent } from '../../common/events';
 import { oneOfTheKinds, theRecordsPrompt, THE_RECORDS_SCHEMA, onlyRecordsTheLinesSay, theSameName, type AnOfferedRecord, type APersonALineMayName , KINDS_THAT_ARE_NOT_WORK } from './the-kind-of-work';
+import { theRoomsLabelFor } from './the-room-is-stored-with-labels';
 import { withAClaim } from './a-claim-on-a-record-is-checked-first';
 import {
   WHAT_THE_RECORD_SAYS_PROMPT,
@@ -232,18 +233,16 @@ export class BoardListener {
         },
         select: {
           text: true,
-          participant: { select: { nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
+          participant: { select: { id: true } },
         },
       });
       const lines = said
         .map((s: any) => ({
           text: cleanText(s.text),
-          /* THE SAME NAME THE BOARD PRINTS. A model answer keyed on anything else cannot be matched
-             back to a person, and `onlyWhatHolds` drops every row it cannot match. A name only, never
-             the lead's description of them (request 36): somebody with no name is left out here, as
-             the board has no name to match them by either. */
-          who: [s.participant?.user?.firstName, s.participant?.user?.lastName].filter(Boolean).join(' ').trim()
-            || (s.participant?.nameGiven ?? '').trim() || '',
+          /* A LABEL, NEVER THEIR NAME AND NEVER THE LEAD'S DESCRIPTION OF THEM (decision 110, P9; request 36): an opaque one made from the person's
+             row id, so it does not move when somebody's role or name is changed. A model answer keyed on anything else cannot be matched back,
+             and `onlyWhatHolds` drops every row it cannot match. */
+          who: s.participant?.id ? theRoomsLabelFor(s.participant.id) : '',
         }))
         .filter((s: { text: string; who: string }) => s.text && s.who);
       if (lines.length < 2) return;

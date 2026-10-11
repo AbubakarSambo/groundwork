@@ -55,8 +55,20 @@ export function inYourPerson(sentence: string, personSaid: string[]): string {
       const re = new RegExp(`\\b${ws.map(escape).join(`[^a-z0-9]+`)}\\b`, 'i');
       const m = re.exec(out);
       if (!m) continue;
+      /*
+       * THEIR WORDS IN QUOTATION MARKS STAY THEIRS (release check, 9 October). "Would you like me to write down "I will ask Grace
+       * ..." as something you will do?" quotes them exactly, as the prompt asks; turning it read "write down "You will ask Grace
+       * ...". A span inside quotation marks is left as they said it.
+       */
+      const before = out.slice(0, m.index);
+      const openStraight = (before.match(/"/g) ?? []).length % 2 === 1;
+      const openCurly = before.lastIndexOf('\u201c') > before.lastIndexOf('\u201d');
+      if (openStraight || openCurly) continue;
+      /* A capital only where the span opens a sentence: "write down You will ask" is not a sentence. */
+      const opensASentence = /(^|[.!?]\s+)$/.test(before);
+      const flipped = turned(m[0]);
       /* "I am one payment behind" copied is theirs; "I am here to help" is the product's own I. Only turn what is theirs. */
-      out = out.slice(0, m.index) + capitalisedLike(m[0], turned(m[0])) + out.slice(m.index + m[0].length);
+      out = before + (opensASentence ? capitalisedLike(m[0], flipped) : flipped) + out.slice(m.index + m[0].length);
     }
   }
   return out;

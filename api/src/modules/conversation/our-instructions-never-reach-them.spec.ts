@@ -136,6 +136,43 @@ describe('a reply asked for again is read against the instruction it was asked a
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/^\s*\/\/.*$/gm, '');
     expect(src).not.toMatch(/\.respond\(`\$\{fullSystem\}/);
-    expect((src.match(/\.respond\(this\.keptForTheLeakCheck\(/g) ?? []).length).toBe(17);
+    expect((src.match(/\.respond\(this\.keptForTheLeakCheck\(/g) ?? []).length).toBe(18);
+  });
+});
+
+describe('the note a reply is asked for again with is cut, whatever voice it copies', () => {
+  /* Exactly as Wairimu, the lead, read it (final evaluation, profile 1, week 1, her first session). */
+  const WAIRIMU_READ =
+    'Still thinking about Brian, no decision yet. Let it go and ask about something else that matters here. Do not rephrase it and do not explain why you wanted it. If it genuinely matters and nobody has answered it, it belongs in the report as still open, not in a fourth question.\n\nWhat else is on your mind this week?';
+  const lead = { id: 'ci-wairimu', groundId: 'g1', participantId: 'p-wairimu', participant: { partyType: PartyType.INITIATOR } };
+  const saving = () => {
+    const prisma: any = {
+      ground: { findUnique: jest.fn(async () => null) },
+      conversationTurn: { findMany: jest.fn(async (a: any) => (a?.where?.role === 'PERSON' ? [{ content: 'Still thinking about Brian, no decision yet.' }] : [])) },
+      groundObjective: { findMany: jest.fn(async () => []) },
+    };
+    const s: any = new ConversationService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, { get: () => '' } as any);
+    jest.spyOn(s.logger, 'warn').mockImplementation(() => undefined);
+    return s;
+  };
+
+  it('saved, the lead reads her own words back and the question, and none of our note', async () => {
+    const s = saving();
+    s.setThePromptForThisTurn('ci-wairimu', PROMPT);
+    const saved: string = await s.theTurnAsItIsSaved(lead, WAIRIMU_READ);
+    expect(saved).not.toMatch(/Let it go|Do not rephrase|fourth question|belongs in the report/);
+    expect(saved).toBe('Still thinking about Brian, no decision yet.\n\nWhat else is on your mind this week?');
+  });
+
+  it('and it is cut even where the retry went out by a path that did not keep it', async () => {
+    const s = saving();
+    const saved: string = await s.theTurnAsItIsSaved(lead, WAIRIMU_READ);
+    expect(saved).not.toMatch(/Let it go|Do not rephrase|fourth question/);
+  });
+
+  it('the function alone: a note copied in any voice is cut', () => {
+    const { ASKED_IT_TWICE_ALREADY } = jest.requireActual('./asked-twice-and-told-no-twice');
+    const r = withoutOurInstructions(WAIRIMU_READ, '', ['Still thinking about Brian, no decision yet.'], [], [ASKED_IT_TWICE_ALREADY]);
+    expect(r.cut).toHaveLength(3);
   });
 });

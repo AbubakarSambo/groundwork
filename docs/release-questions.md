@@ -168,6 +168,18 @@ How to create it: on any computer, run `openssl rand -base64 32` and paste the r
 | Added before release. | Hafsah saves the WhatsApp details on `/admin/whatsapp` and switches WhatsApp on there. WhatsApp then uses the saved details, with the server's `WHATSAPP_*` settings only as a fallback for a field nothing was saved for. |
 | Not added. | Nothing breaks. The page cannot save secrets and says so, and WhatsApp keeps using the server's `WHATSAPP_*` settings, as before. |
 
+### 10d. How many proxies sit in front of the live API?
+
+The API now counts each visitor by their own address in its rate limits (known issue B10). To do that it has to know how many proxies stand in front of it, for example the host's load balancer, plus a content network like Cloudflare. It reads that number from the server setting `TRUST_PROXY_HOPS`. Unset, it assumes 1 in production. When the API starts in production without the setting, it writes a warning in the log once and carries on.
+
+**Please tell us** how many proxies sit in front of the live API, and of the preview API.
+
+| Answer | What we would do |
+| --- | --- |
+| One. | Nothing to set. Setting `TRUST_PROXY_HOPS=1` quietens the warning. |
+| More than one. | Set `TRUST_PROXY_HOPS` to that number before release. If it is left at 1, everybody who comes through the same content network may share one allowance, so five sign-ins a minute could be refused for several people at once. |
+| None (the API is reached directly). | Set `TRUST_PROXY_HOPS=0`, so a made-up header is never believed. |
+
 ### 11. Has anybody changed a prompt in production through `/prompts`?
 
 **Why it matters.** Since decision 74, a start never replaces a version somebody activated by hand: it adds the code's new words as an inactive version beside it. It still creates and activates new versions of the changed keys, and the 4 new ones, where the active version is one a start put there. Before this release nothing recorded who activated a version, so a version activated by hand before release, and labelled "Seeded on deploy", cannot be told apart and would be replaced.

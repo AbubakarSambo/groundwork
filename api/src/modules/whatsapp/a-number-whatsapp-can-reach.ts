@@ -60,6 +60,15 @@ export function tidyANumber(raw: string, countryCode?: string | null): ATidiedNu
     if (!countryCode) return { refused: WRITE_THE_FULL_NUMBER };
     digits = countryCode + digits.replace(/^0+/, '');
   }
+  /*
+   * A SHORT NUMBER WITH NO PLUS AND NO LEADING 0 ("722000114") IS NOT AN INTERNATIONAL ONE (found 10 October 2026): it was kept as "+722000114", a number no phone has, and the
+   * person was never reached. It is a local number written without its 0 when the organisation's country is known and the number does not already start with it;
+   * otherwise they are asked for the whole number. WhatsApp's own form ("254722000114") is long enough, or starts with the country code, and is untouched.
+   */
+  if (!plus && digits.length >= 8 && digits.length <= 10 && !digits.startsWith('0')) {
+    if (!countryCode) return { refused: WRITE_THE_FULL_NUMBER };
+    if (!digits.startsWith(countryCode)) digits = countryCode + digits;
+  }
   if (digits.length < 8 || digits.length > 15 || digits.startsWith('0')) return { refused: NOT_A_FULL_NUMBER };
   return { number: `+${digits}` };
 }

@@ -1,4 +1,5 @@
 import { CheckInStatus } from '@prisma/client';
+import { CLOSED_BY_THE_CLOCK } from '../../common/closed-by-the-clock';
 
 /**
  * AN ANSWER INCLUDES A REFUSAL.
@@ -21,3 +22,33 @@ export const AN_ANSWER: CheckInStatus[] = [CheckInStatus.COMPLETED, CheckInStatu
 
 /** What a shared report is built from. A round of refusals has answered, and has nothing to report. */
 export const AT_LEAST_ONE_ACCOUNT = 1;
+
+/**
+ * A SESSION THE CLOCK CLOSED, WHERE THE PERSON SAID NOTHING, IS NOT AN ANSWER.
+ *
+ * The auto-close marks such a session COMPLETED so the round can close and a next session can open
+ * (the record the clock writes is unchanged). But it was then counted as answered everywhere: "All
+ * three people have answered", the picture unlocking for that person and the shared-picture mail.
+ * Nothing was said, so nothing counts. The round still closes without waiting on them; they are only
+ * not counted as having answered or having given an account.
+ *
+ * Old rows have the same shape (closedReason set, no word of the person's), so they are read the
+ * same way and need no migration.
+ */
+export const aQuietCloseWhere = { closedReason: CLOSED_BY_THE_CLOCK, turns: { none: { role: 'PERSON' as any } } };
+
+/** Prisma: everything except a session the clock closed with nothing said. Add it under `AND`. A null reason is kept explicitly, since `not` drops nulls. */
+export const NOT_A_QUIET_CLOSE = {
+  OR: [
+    { closedReason: null },
+    { closedReason: { not: CLOSED_BY_THE_CLOCK } },
+    { turns: { some: { role: 'PERSON' as any } } },
+  ],
+};
+
+/** The same, over a row already read with `closedReason` and a person-turn count (or the first person turn). */
+export function wasAQuietClose(c: { closedReason?: string | null; turns?: unknown[] | null; personTurns?: number | null }): boolean {
+  if (c.closedReason !== CLOSED_BY_THE_CLOCK) return false;
+  if (typeof c.personTurns === 'number') return c.personTurns === 0;
+  return Array.isArray(c.turns) ? c.turns.length === 0 : false;
+}

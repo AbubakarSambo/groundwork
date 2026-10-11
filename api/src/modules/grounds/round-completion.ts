@@ -2,9 +2,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CheckInStatus } from '@prisma/client';
 import { GroundworkEvents, RoundCompletedEvent } from '../../common/events';
-import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT } from './an-answer-includes-a-refusal';
+import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT, NOT_A_QUIET_CLOSE } from './an-answer-includes-a-refusal';
 import { whoOnACheckInIsAway } from '../suites/who-is-away';
 import { whoIsNotLetInYet } from './who-an-admin-did-not-let-in';
+import { whoASessionCounts } from './the-lead-checks-in-when-they-choose';
 
 /**
  * A ROUND CLOSING, DECIDED IN ONE PLACE.
@@ -35,7 +36,8 @@ export async function recordRoundCompletion(
   roundNumber: number,
 ): Promise<boolean> {
   const everyone = await prisma.groundParticipant.findMany({
-    where: { groundId, managingOnly: false },
+    /* Decision 133: the lead is counted only when they answered this round, never waited on. */
+    where: { groundId, ...whoASessionCounts(roundNumber, AN_ANSWER) },
     select: { id: true, userId: true },
   });
   /*
@@ -83,6 +85,8 @@ export async function recordRoundCompletion(
       groundId,
       sessionNumber: roundNumber,
       status: CheckInStatus.COMPLETED,
+      /* A session the clock closed with nothing said is not an account (the round still closes without waiting on it). */
+      AND: [NOT_A_QUIET_CLOSE],
       participantId: { in: participants.map((p) => p.id) },
     },
   });

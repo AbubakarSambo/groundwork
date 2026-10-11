@@ -137,7 +137,7 @@ describe('where each person is against their number', () => {
 
   it('says what happened for every reason, in full sentences with the name', () => {
     const says = (over: Partial<PersonRow>) => whereEachPersonIs([rep({ who: 'Femi', ...over })], 12)[0].says;
-    expect(says({ answeredThisRound: false })).toBe('Femi has not checked in for this round yet.');
+    expect(says({ answeredThisRound: false })).toBe('Femi has not checked in for this session yet.');
     expect(says({ inTheWay: [{ what: 'the lease', owner: null, days: 16, tried: 'asked-once' }] }))
       .toBe('Femi has had something in the way for 16 days, and so far it has only been asked about. Chasing it, or asking someone else, would move it.');
     expect(says({ inTheWay: [{ what: 'the lease', owner: null, days: 16, tried: 'nothing' }] }))
@@ -152,13 +152,13 @@ describe('where each person is against their number', () => {
   it('still reads where the name is a role, or where nobody can be named', () => {
     const one = (over: Partial<PersonRow>) => whereEachPersonIs([rep(over)], 12)[0].says;
     expect(one({ who: 'Head of Sales', nameIsTheirRole: true, answeredThisRound: false }))
-      .toBe('The person listed as Head of Sales has not checked in for this round yet.');
+      .toBe('The person listed as Head of Sales has not checked in for this session yet.');
     expect(one({ who: 'Head of Sales', nameIsTheirRole: true, saidAnythingCheckable: false }))
       .toMatch(/^Nothing the person listed as Head of Sales said this round/);
     expect(one({ who: 'A colleague', nameIsTheirRole: true, answeredThisRound: false }))
-      .toBe('A colleague has not checked in for this round yet.');
+      .toBe('A colleague has not checked in for this session yet.');
     expect(one({ who: 'Another colleague', nameIsTheirRole: true, answeredThisRound: false }))
-      .toBe('Another colleague has not checked in for this round yet.');
+      .toBe('Another colleague has not checked in for this session yet.');
   });
 
   it('never says what somebody is, only what has happened and what to ask for', () => {

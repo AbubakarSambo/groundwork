@@ -1,3 +1,6 @@
+import { withoutComparisonsBetweenPeople } from './no-comparison-between-people';
+import { onlyWhoIsActuallyOutside } from '../board/somebody-carrying-work-with-no-account';
+import { WHERE_IT_BELONGS } from './the-four-reports';
 /**
  * A READ OF HOW SOMEBODY IS DOING BELONGS TO THAT PERSON, NOT TO THEIR COLLEAGUES.
  *
@@ -35,8 +38,10 @@ export interface OwnReadsInput {
   viewerLabel: string | null;
   /** The reader's participant id, for the fields keyed that way. */
   viewerParticipantId: string | null;
-  /** A lead or org admin. They keep concernFlags and leadershipGaps; like everyone, only their own rating. */
+  /** A lead or org admin. They keep leadershipGaps; like everyone, only their own rating, and no concernFlags. */
   viewerIsLead: boolean;
+  /** Everybody on the check-in, by name. Lets the lead's list of people outside the room be cut the way the board cuts it. */
+  partyNames?: string[];
 }
 
 /** Anything shaped `{ label, ... }`, which is how the per-party reads are stored. */
@@ -76,9 +81,14 @@ const keepOwnById = (map: any, viewerParticipantId: string | null): any => {
  *   concernFlags, which is a list of concerns about named parties and has no
  *   business in anybody's hands but the lead's.
  */
-export function withoutOtherPeoplesReads<T extends Record<string, any>>(
+export function withoutOtherPeoplesReads<T extends Record<string, any>>(report: T, input: OwnReadsInput): T {
+  /* And no sentence that ranks a person against others, for any reader (no-comparison-between-people.ts). */
+  return withoutComparisonsBetweenPeople(withoutOtherPeoplesRatings(report, input));
+}
+
+function withoutOtherPeoplesRatings<T extends Record<string, any>>(
   report: T,
-  { viewerLabel, viewerParticipantId, viewerIsLead }: OwnReadsInput,
+  { viewerLabel, viewerParticipantId, viewerIsLead, partyNames }: OwnReadsInput,
 ): T {
   /**
    * WHAT A PERSON WAS PRIVATELY ADVISED TO SAY IS NOBODY ELSE'S, INCLUDING THE LEAD'S.
@@ -150,13 +160,33 @@ export function withoutOtherPeoplesReads<T extends Record<string, any>>(
     finalSynthesis.tiers = keepOwnById(finalSynthesis.tiers, viewerParticipantId);
   }
 
+  /*
+   * B-110: `concernFlags` says, per named person, how thin or generic their answers were ("significantly
+   * fewer and less specific entries than others on the same ground"). That is a rating of how a person's
+   * answers were rated, so it goes for every reader, the lead and an org admin included (CLAUDE.md, and
+   * the Hafsah decision that a lead reads only the plain forms). The engine still builds it and may use it inside.
+   */
+  if (engagement) delete engagement.concernFlags;
+
   const withoutRatings: Record<string, any> = {
     ...withoutGuides,
     ...(engagement ? { engagement } : {}),
     ...(finalSynthesis ? { finalSynthesis } : {}),
   };
 
-  if (viewerIsLead) return withoutRatings as T;
+  if (viewerIsLead) {
+    /* The lead keeps the people carrying work outside the room, cut the way the board cuts it. */
+    if (engagement && Array.isArray(engagement.hiddenContributors)) {
+      engagement.hiddenContributors = onlyWhoIsActuallyOutside(engagement.hiddenContributors, partyNames ?? []).keep;
+    }
+    return withoutRatings as T;
+  }
+
+  /* Every field the map marks lead-only is the lead's alone. Stripped here, on the server, for
+     everybody else, so a member's API call never carries it (the-four-reports, leadOnly). */
+  if (engagement) {
+    for (const [field, placed] of Object.entries(WHERE_IT_BELONGS)) if (placed.leadOnly) delete engagement[field];
+  }
 
   /* Concerns about people. Not a participant's to read about anyone, including themselves - a
      concern is raised with a person, never delivered to them in a document alongside their
@@ -182,5 +212,6 @@ export function withoutOtherPeoplesReads<T extends Record<string, any>>(
    */
   const out: Record<string, any> = { ...withoutRatings };
   delete out.leadershipGaps;
+  for (const [field, placed] of Object.entries(WHERE_IT_BELONGS)) if (placed.leadOnly) delete out[field];
   return out as T;
 }

@@ -1,4 +1,5 @@
-import { theWaitSaid, aHolderThatIsOnlyTheThing } from './a-wait-said-in-full';
+import { theNoteBesideTheClaim } from '../grounds/a-wait-is-the-speakers-account';
+import { theWaitSaid, aHolderThatIsOnlyTheThing, PLAIN_WORDS } from './a-wait-said-in-full';
 import { howManyGoalsAreNotTold } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { holdsItSaid, theReaderSaidAsYou, aThingWithoutItsHolder } from './a-holder-in-their-own-words';
 import { aCommitmentSaid, looksLikeATimeOrADate, inOurVoice } from '../reports/what-the-record-shows-over-time';
@@ -74,6 +75,12 @@ export interface ACommitment {
 
 export interface AHandoff {
   id: string;
+  /**
+   * False where this names a colleague who has not said, in their own promise here, that it is theirs to give (decision 137; change 4).
+   * The wait is then the speaker's account: said as theirs, with the note beside it, and never a count of days against the colleague.
+   * Undefined is the old reading, for callers that have not asked.
+   */
+  confirmed?: boolean;
   fromParticipantId: string;
   onParticipantId: string | null;
   onLabel: string | null;
@@ -171,7 +178,8 @@ export function theTimeGivenSaid(d: AHandoff, who: string): string | null {
   return 'A time has been given for it.';
 }
 
-const midSentence = (who: string) => (who === 'You' ? 'you' : who);
+/* Inside a sentence: "you" for the reader, and the plain words for somebody with no name ("a colleague") are not capitalised (final check, 9 October: "…the ward that A colleague is waiting for"). */
+const midSentence = (who: string) => (who === 'You' ? 'you' : PLAIN_WORDS.test(who) ? who.toLowerCase() : who);
 const possessive = (who: string) => (who === 'You' ? 'Your' : `${who}'s`);
 
 /** Who, as a sentence starts with them: the reader's own name is 'You', somebody they may not name is 'A colleague'. */
@@ -196,6 +204,16 @@ export function whoIsWaitedOn(r: WhoIsReading, d: { onParticipantId?: string | n
  * somebody: " That waits on a decision on who owns them." Nothing where it is somebody, or the same
  * thing as what is waited for (request 107 b). Put after the sentence about the wait, never inside it.
  */
+/*
+ * A WAIT ON A COLLEAGUE ONLY THE SPEAKER CLAIMS (decision 137; change 4). Said as their account, in their words, with the note beside it,
+ * and nothing counted against the colleague: "Kevin Odhiambo says the work is waiting on Fatuma Bello for the final prices. Not backed: no
+ * attempt to unblock mentioned." A confirmed wait reads as it always did.
+ */
+export const aClaimOnlyTheSpeakerMakes = (d: { onParticipantId?: string | null; confirmed?: boolean }): boolean => !!d.onParticipantId && d.confirmed === false;
+export function theirAccountOfTheWait(who: string, on: string, what: string, d: { what?: string | null; triedSaid?: string | null }): string {
+  return `${who} ${who === 'You' ? 'say' : 'says'} the work is waiting on ${on} for ${what.replace(/[.\s]+$/, '')}. ${theNoteBesideTheClaim(d)}`;
+}
+
 export function thatWaitsOn(d: { what: string; onLabel?: string | null; onParticipantId?: string | null }): string {
   const on = (d.onLabel ?? '').trim();
   if (d.onParticipantId || !on || aPartyOutside(d) || theSameThing(on, d.what)) return '';
@@ -324,7 +342,7 @@ export function theRisks(
     const says = blocking
       ? (on ? `${who} cannot move on ${what} until it comes from ${on}.` : `${who} cannot move on ${what}, and nobody has been named to provide it.`)
       : (on ? theWaitSaid(who, isAre(who), on, what) : `${who} ${isAre(who)} waiting for ${what}, and nobody has been named to provide it.`);
-    out.push({ id: `handoff-${d.id}`, says: `${says}${thatWaitsOn(d)}`, because: theFactsOfAWait(d, who) });
+    out.push({ id: `handoff-${d.id}`, says: on && aClaimOnlyTheSpeakerMakes(d) ? theirAccountOfTheWait(who, on, what, d) : `${says}${thatWaitsOn(d)}`, because: theFactsOfAWait(d, who) });
   }
 
   /* 2. Commitments still open with no time, and ones said again and again and still open. */
@@ -413,7 +431,7 @@ export function theTimeline(
     const who = whoIs(r, d.fromParticipantId);
     const on = whoIsWaitedOn(r, d);
     const what = inASentence(on ? aThingWithoutItsHolder(d.what, d.onLabel) : d.what);
-    push(d.createdAt, `${on ? `${who} said the work was waiting on ${on} for ${what}.` : `${who} said the work was waiting for ${what}.`}${thatWaitsOn(d)}`);
+    push(d.createdAt, `${on ? `${who} said the work was waiting on ${on} for ${what}.` : `${who} said the work was waiting for ${what}.`}${thatWaitsOn(d)}${on && aClaimOnlyTheSpeakerMakes(d) ? ` ${theNoteBesideTheClaim(d)}` : ''}`);
     if (d.clearedAt) push(d.clearedAt, `The wait for ${inASentence(d.what)} was cleared.`);
   }
   if (closedAt) push(closedAt, 'The check-in was closed.');
@@ -514,7 +532,7 @@ export function theBlockerCheck(handoffs: AHandoff[], r: WhoIsReading): ABlocker
     out.push({
       id: d.id,
       who,
-      says: `${theWaitSaid(who, isAre(who), on, what)}${thatWaitsOn(d)}`,
+      says: on && aClaimOnlyTheSpeakerMakes(d) ? theirAccountOfTheWait(who, on, what, d) : `${theWaitSaid(who, isAre(who), on, what)}${thatWaitsOn(d)}`,
       namesWhoHoldsIt: named,
       saidWhatWasTried: wentBack,
       timeGiven,
@@ -730,6 +748,7 @@ export function theObligations(
   const waitSaid = (d: AHandoff) => {
     const who = whoIs(r, d.fromParticipantId);
     const on = whoIsWaitedOn(r, d);
+    if (on && aClaimOnlyTheSpeakerMakes(d)) return theirAccountOfTheWait(who, on, inASentence(aThingWithoutItsHolder(d.what, d.onLabel)), d);
     return `${on ? theWaitSaid(who, isAre(who), on, inASentence(aThingWithoutItsHolder(d.what, d.onLabel))) : `${who} ${isAre(who)} waiting for ${inASentence(d.what)}.`}${thatWaitsOn(d)}`;
   };
   const out: AnObligationSide[] = [];
@@ -857,6 +876,17 @@ export function whoWaitedOnWhom(handoffs: AHandoff[], r: WhoIsReading): AWait[] 
       const cleared = !isOpen(d);
       const days = since && clearedOn ? Math.round((Date.parse(clearedOn) - Date.parse(since)) / 86_400_000) : null;
       const onWhom = on ? ` on ${on}` : '';
+      if (d.onParticipantId && d.confirmed === false) {
+        /* "Kevin Odhiambo waited on you for the final prices ... 22 days in all" was a count against Fatuma on his word alone. */
+        const account = cleared
+          ? (since && clearedOn
+            ? `${who} said the work was waiting${onWhom} for ${what} from ${saidAsDate(since)} until it was cleared on ${saidAsDate(clearedOn)}.`
+            : `${who} said the work was waiting${onWhom} for ${what}, and it has been cleared.`)
+          : (since
+            ? `${who} ${who === 'You' ? 'say' : 'says'} the work has been waiting${onWhom} for ${what} since ${saidAsDate(since)}.`
+            : `${who} ${who === 'You' ? 'say' : 'says'} the work is waiting${onWhom} for ${what}.`);
+        return { id: d.id, says: `${account}${thatWaitsOn(d)} ${theNoteBesideTheClaim(d)}`, startedAt: since, clearedAt: cleared ? clearedOn : null, days: null };
+      }
       const says = cleared
         ? (since && clearedOn && days === 0
           ? `${who} waited${onWhom} for ${what} on ${saidAsDate(since)}, and it was cleared the same day.`

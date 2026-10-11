@@ -306,3 +306,32 @@ describe('a review keeps who started and decided it, never its words', () => {
     expect(JSON.stringify(s.events)).not.toContain('Her shops grew');
   });
 });
+
+/*
+ * EACH TEAM MEMBER'S OWN DATA (9 October 2026). A lead of another team (Kamau leads Operations, not Sales) and a colleague outside the team (Otieno) are neither
+ * Aisha's approver nor an admin, so they read nothing of her leave, her spending, her hours or her review: not its record, and not the review itself. The
+ * ones who may read it still do. The same sweep was run on the test bed against every route that takes an id.
+ */
+describe('a lead who is not the approver, and a colleague, read none of a team member’s own requests', () => {
+  it('leave, spending, hours and review: Aisha, her lead Wairimu and Grace, an admin, read them; Kamau and Otieno are told they are not found', async () => {
+    const s = setup(opts);
+    clock.now = new Date('2026-10-01T08:00:00Z');
+    const leaveId = (await s.leave.ask(ORG, 'u-aisha', { startsOn: '2026-10-08', endsOn: '2026-10-09', proposalId: 'p-a' })).id;
+    const spendId = (await s.spending.ask(ORG, 'u-aisha', { amount: 8000, what: 'fuel', proposalId: 'p-b' })).id;
+    await s.time.record(ORG, 'u-aisha', [{ client: 'Naivas', onDay: '2026-09-29', hours: 2 }], { proposalId: 'p-c' });
+    const reviewId = (await s.reviews.start(s.as('u-wairimu'), 'd-aisha')).id;
+    for (const u of ['u-aisha', 'u-wairimu', 'u-grace']) {
+      await expect(s.leave.history(s.as(u), leaveId)).resolves.toBeDefined();
+      await expect(s.spending.history(s.as(u), spendId)).resolves.toBeDefined();
+      await expect(s.time.history(s.as(u), 'u-aisha', '2026-09-28')).resolves.toBeDefined();
+      await expect(s.reviews.one(s.as(u), reviewId)).resolves.toBeDefined();
+    }
+    for (const u of ['u-kamau', 'u-otieno']) {
+      await expect(s.leave.history(s.as(u), leaveId)).rejects.toThrow(NotFoundException);
+      await expect(s.spending.history(s.as(u), spendId)).rejects.toThrow(NotFoundException);
+      await expect(s.time.history(s.as(u), 'u-aisha', '2026-09-28')).rejects.toThrow(NotFoundException);
+      await expect(s.reviews.one(s.as(u), reviewId)).rejects.toThrow();
+      await expect(s.reviews.history(s.as(u), reviewId)).rejects.toThrow();
+    }
+  });
+});

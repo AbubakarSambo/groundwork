@@ -149,13 +149,13 @@ describe('point 8: a no, and a yes to a change to a line, are answered in full s
     expect(changeContextLine).toHaveBeenCalled();
   });
 
-  it('a yes to a line reads "I have added the line to this check-in."', async () => {
+  it('a yes to a line reads "I have added the line to this check-in. Everybody in it can read it now."', async () => {
     const addContextLine = jest.fn(async () => ({}));
     const { service } = askGroundwork({
       groundsService: { addContextLine },
       parked: { id: 'pr1', kind: 'context_line', state: 'PARKED', payload: { groundId: 'g1', kind: 'NOTE', text: 'Visit every shop.' }, summary: 's' },
     });
-    expect(textOf(await service.respond('org-a', 'p1', 'yes', 'g1'))).toBe('I have added the line to this check-in.');
+    expect(textOf(await service.respond('org-a', 'p1', 'yes', 'g1'))).toBe('I have added the line to this check-in. Everybody in it can read it now.');
   });
 
   it('a doubled mark is never written: a quote that ends in its own punctuation takes no second one', async () => {
@@ -254,7 +254,7 @@ describe('point 11: "ask NAME whether ..." is a question for that person', () =>
     const groundsService = theGrounds();
     const { service, created } = askGroundwork({ groundsService });
     const reply = await service.respond('org-a', 'p1', 'I want to ask Amani whether the Kilimani shops have paid', 'g1');
-    expect(textOf(reply)).toBe('Groundwork will ask Amani Wekesa, word for word, "Have the Kilimani shops paid their deposits yet?" in Amani\'s next check-in. Shall I send it?');
+    expect(textOf(reply)).toBe('Groundwork will ask Amani Wekesa, word for word, "Have the Kilimani shops paid their deposits yet?" in Amani\'s next check-in. Shall I keep it for then?');
     expect(reply.blocks.some((b: any) => b.type === 'proposal')).toBe(true);
     expect(groundsService.keepAQuestionForAPerson).not.toHaveBeenCalled();
     expect(created[0].kind).toBe('question_for_person');

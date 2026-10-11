@@ -138,8 +138,10 @@ describe('the lead\'s judgement carries the conversation point for an untold goa
 
   it('an admin who only reads the judgement does not get the lead\'s conversation point', async () => {
     const r: any = await makeService(makeGround(), 'ADMIN').get('g1', 'user-admin', 'org-1');
-    expect(r.theJudgement).toBeDefined();
-    expect(JSON.stringify(r.theJudgement)).not.toContain('has not been told about this goal');
+    /* CHANGED 11 October 2026 (decision 139, item 1): an admin who only reads is now served no judgement at all, which is
+       stricter than before; the conversation point is still asserted absent from everything she reads. */
+    expect(r.theJudgement).toBeUndefined();
+    expect(JSON.stringify(r)).not.toContain('has not been told about this goal');
   });
 });
 

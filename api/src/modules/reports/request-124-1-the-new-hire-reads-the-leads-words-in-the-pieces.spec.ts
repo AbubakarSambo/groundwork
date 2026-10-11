@@ -11,9 +11,10 @@ const ROWS = [
 ];
 
 describe('request 124 (1): who the new hire reads the words of', () => {
-  it('only a new hire\'s check-in is the new hire\'s case', () => {
-    expect(theNewHireReadsTheLeadsWords('NEW_HIRE')).toBe(true);
-    for (const s of ['PIP', 'RECOGNITION', 'CONTRACT_RENEWAL', 'COHORT_CHECK', 'NEW_MANAGER', 'OKR_ALIGNMENT', null, undefined]) expect(theNewHireReadsTheLeadsWords(s as any)).toBe(false);
+  /* Changed 8 October (decision 117, D16): every evaluation check-in is the person reviewed's case, not only a new hire's. */
+  it('every evaluation check-in is the person reviewed\'s case, and nothing else is', () => {
+    for (const s of ['NEW_HIRE', 'PIP', 'RECOGNITION', 'CONTRACT_RENEWAL']) expect(theNewHireReadsTheLeadsWords(s as any)).toBe(true);
+    for (const s of ['COHORT_CHECK', 'NEW_MANAGER', 'OKR_ALIGNMENT', null, undefined]) expect(theNewHireReadsTheLeadsWords(s as any)).toBe(false);
   });
 
   it('"Who owns what": the lead\'s row keeps the lead\'s words, a colleague\'s loses them', () => {

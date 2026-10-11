@@ -27,6 +27,7 @@ import { whatTheyMayRead } from '../grounds/who-may-read-this-check-in';
 import { quotedThenEnding } from './a-quote-takes-no-second-mark';
 import { aCheckInSource } from './a-source-says-where-it-came-from';
 import { Reply, SourceBlock, rules, text } from './a-reply-is-a-payload-not-a-string';
+import { WHAT_THEY_SAID_OPENS_WHEN_SHARED } from '../reports/the-session-report';
 
 export const I_CANNOT_SHOW_YOU_THAT = 'I cannot show you that.';
 
@@ -62,6 +63,22 @@ export function theNameAsked(subject: string | undefined): string {
     .replace(/\b(?:last|this)\s+week\b|\byesterday\b|\btoday\b/gi, '')
     .trim();
 }
+
+/**
+ * THE SUBJECT THE READER ASKED ABOUT, when they named one: "What did Amani say about pricing approvals?" is about
+ * pricing approvals (B-125). Nothing is returned when no subject was named, or when what follows "about" is only a
+ * word about when ("last week"), so the question that names nobody's subject is answered as before.
+ */
+const NOT_A_SUBJECT = new Set(['the', 'a', 'an', 'my', 'our', 'their', 'his', 'her', 'its', 'this', 'that', 'those', 'these', 'and', 'or', 'of', 'in', 'on', 'for', 'to', 'with', 'last', 'week', 'today', 'yesterday', 'recently', 'lately', 'earlier', 'check', 'checkin', 'session', 'time', 'it', 'them', 'things', 'thing']);
+const stemOf = (w: string) => (w.length > 5 ? w.replace(/(ing|ed|es|s)$/, '') : w.replace(/s$/, ''));
+export function theSubjectAsked(message: string): { said: string; stems: string[] } | null {
+  const m = /\babout\s+(.+?)\s*[?.!]*\s*$/i.exec(message ?? '');
+  if (!m) return null;
+  const said = m[1].replace(/\b(?:last|this)\s+week\b|\byesterday\b|\btoday\b/gi, '').replace(/\s+/g, ' ').trim();
+  const stems = said.toLowerCase().replace(/[^\p{L}\p{N}\s'-]/gu, ' ').split(/\s+/).filter((w) => w.length >= 3 && !NOT_A_SUBJECT.has(w)).map(stemOf);
+  return stems.length ? { said, stems } : null;
+}
+const aboutIt = (line: string, stems: string[]) => { const l = line.toLowerCase(); return stems.some((s) => l.includes(s)); };
 
 const lower = (s: string) => s.toLowerCase().replace(/[’]/g, "'");
 
@@ -159,6 +176,7 @@ export async function whatSomeoneSaid(
   if (!asked || !reader.userId || !deps.reports) return nothing;
 
   const asker = { ...reader, userId: reader.userId };
+  const subjectAsked = theSubjectAsked(message);
   const found: Found[] = [];
   for (const g of await checkInsTheyMayRead(deps.db, asker)) {
     for (const round of await latestRounds(deps.db, g.id)) {
@@ -171,7 +189,10 @@ export async function whatSomeoneSaid(
       }
       for (const row of Array.isArray(served?.whatEachPersonSaid) ? served.whatEachPersonSaid : []) {
         if (!row || typeof row.who !== 'string' || !nameMatches(row.who, asked)) continue;
-        const lines = Array.isArray(row.lines) ? row.lines.filter((l: unknown) => typeof l === 'string' && l.trim()) : [];
+        const allLines = Array.isArray(row.lines) ? row.lines.filter((l: unknown) => typeof l === 'string' && l.trim()) : [];
+        /* Only what was said about the subject asked about, where one was named (B-125); a round with nothing on it is left out. */
+        const lines = subjectAsked ? allLines.filter((l: string) => aboutIt(l, subjectAsked.stems)) : allLines;
+        if (subjectAsked && allLines.length && !lines.length) continue;
         const saying = typeof row.saying === 'string' && row.saying.trim() ? row.saying.trim() : undefined;
         const finding = typeof row.finding === 'string' && row.finding.trim() ? row.finding.trim() : undefined;
         if (!lines.length && !saying && !finding) continue;
@@ -179,7 +200,10 @@ export async function whatSomeoneSaid(
       }
     }
   }
-  if (!found.length) return nothing;
+  if (!found.length) {
+    /* Said as the same refusal whether nothing was said about it or it is not theirs to read (the answer never shows a check-in they cannot read exists). */
+    return subjectAsked ? rules(lane, text(`${I_CANNOT_SHOW_YOU_THAT} I have nothing from ${asked} about ${subjectAsked.said} in the check-ins you can read.`)) : nothing;
+  }
 
   const people = [...new Set(found.map((f) => f.row.who))];
   if (people.length > 1) {
@@ -219,13 +243,25 @@ export async function whatSomeoneSaid(
       entry.push(f.row.lines.map((l) => `- ${quotedThenEnding(l)}`).join('\n'));
     } else {
       /* Not served as words to this reader: the report's own sentence, or the wall's, and never a guess at what was said. */
-      entry.push(`I cannot show you ${f.row.who}'s words from ${inIt}.`);
-      if (f.row.saying) entry.push(f.row.saying);
+      if (f.row.saying === WHAT_THEY_SAID_OPENS_WHEN_SHARED) {
+        /* The wall before the team's report is shared: said once, by name, as it is (user journeys, F-12). Not "nothing specific enough to record", which is untrue, and not twice. */
+        const named = /^\p{Lu}\p{Ll}+(?:\s+\p{Lu}\p{Ll}+)+$/u.test(f.row.who) && !/^(?:Participant|The)\b/.test(f.row.who) ? f.row.who.split(/\s+/)[0] : f.row.who;
+        entry.push(`${named}'s words open to you when the team's report is shared.`);
+      } else {
+        entry.push(`I cannot show you ${f.row.who}'s words from ${inIt}.`);
+        if (f.row.saying) entry.push(f.row.saying);
+      }
       if (f.row.finding) entry.push(`What the report says: ${f.row.finding}`);
     }
-    entry.push(source.says);
+    /*
+     * "THIS IS ABOUT", NOT "THIS IS FROM", WHERE THE WORDS ARE NOT SHOWN (B-168). Esther was told "Kwesi's words open to you when the team's report is
+     * shared." and, on the next line, "This is from Kwesi Boateng's check-in of 26 September ...", which reads as if those words had just been shown.
+     */
+    const shown = source.kind === 'check_in' && !!f.row.lines?.length;
+    const theSource = shown ? source : { ...source, says: `This is about ${source.label}.` };
+    entry.push(theSource.says);
     parts.push(entry.join('\n'));
-    sources.push(source);
+    sources.push(theSource);
   }
   return rules(lane, text(parts.join('\n\n')), ...sources);
 }

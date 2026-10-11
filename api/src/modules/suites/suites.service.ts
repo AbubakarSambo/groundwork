@@ -1,5 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { answersUnderTheQuestionsOwnIds, theOldNamesOf } from './the-answers-under-the-questions-own-ids';
 import { readDuties } from './who-holds-each-duty';
+import { thisSuiteIsOff } from './a-suite-that-is-off-says-what-to-do';
 import { PrismaService } from '../prisma/prisma.service';
 import { GROUPS, SUITES, checkAnswers, suiteOf, type Answers, type Question, type SuiteGroup } from './the-ten-suites';
 import { DUTIES_REFUSED, DUTIES_ROW, ORGANISATION_DUTIES, TEAM_DUTIES, changeDuties, dutiesFrom, type Duties } from './who-holds-each-duty';
@@ -147,6 +149,10 @@ export interface ForALead {
  *   - a member and a guest from another company are refused.
  * Access comes from the reader's role in this organisation, never from a title (decisions rule 3).
  */
+/** The refusals of the two forms: the same sentences the boards use. */
+const LEAVE_FORM_REFUSED = { notInIt: 'Only people in this organisation can ask for leave here.', notOn: thisSuiteIsOff('The leave suite') };
+const SPEND_FORM_REFUSED = { notInIt: 'Only people in this organisation can ask to spend here.', notOn: thisSuiteIsOff('The spending suite') };
+
 @Injectable()
 export class SuitesService {
   constructor(private readonly prisma: PrismaService) {}
@@ -154,6 +160,7 @@ export class SuitesService {
   async forReader(reader: Reader): Promise<ForAnAdmin | ForALead | ForADutyHolder> {
     const role = await this.roleOf(reader);
     const rows = await this.rows(reader.organizationId);
+    const adminIds = await this.adminIdsOf(reader.organizationId);
     if (role === 'ADMIN') {
       return {
         reader: 'admin',
@@ -163,7 +170,7 @@ export class SuitesService {
             key: s.key, name: s.name, line: s.line,
             on: rows.get(s.key)?.isOn ?? false,
             questions: s.questions,
-            answers: (rows.get(s.key)?.answers as Answers) ?? {},
+            answers: answersUnderTheQuestionsOwnIds(s, rows.get(s.key)?.answers, adminIds),
           })),
         })),
         people: await this.people(reader.organizationId),
@@ -172,7 +179,7 @@ export class SuitesService {
     /* Whoever holds the HR or finance duty also reads the suites that duty sets up (decision 85). */
     const mine = role && role !== 'GUEST' ? await this.suitesTheySetUp(reader, role) : new Set<string>();
     const youSetUp = SUITES.filter((s) => mine.has(s.key)).map((s) => ({
-      key: s.key, name: s.name, line: s.line, on: rows.get(s.key)?.isOn ?? false, questions: s.questions, answers: (rows.get(s.key)?.answers as Answers) ?? {},
+      key: s.key, name: s.name, line: s.line, on: rows.get(s.key)?.isOn ?? false, questions: s.questions, answers: answersUnderTheQuestionsOwnIds(s, rows.get(s.key)?.answers, adminIds),
     }));
     if (role === 'LEAD') {
       return {
@@ -183,6 +190,12 @@ export class SuitesService {
     }
     if (role === 'MEMBER' && youSetUp.length) return { reader: 'duty', youSetUp, people: await this.people(reader.organizationId) };
     throw new ForbiddenException(REFUSED.onlyAdminsAndLeads);
+  }
+
+  /** Who in the organisation is an admin, so a person kept as the approver can be read as "An admin". */
+  private async adminIdsOf(organizationId: string): Promise<Set<string>> {
+    const rows = await (this.prisma.organizationMembership?.findMany?.({ where: { organizationId, role: 'ADMIN' as never }, select: { userId: true } }) ?? Promise.resolve([])).catch(() => []);
+    return new Set((rows as { userId: string }[]).map((r) => r.userId));
   }
 
   /**
@@ -224,8 +237,12 @@ export class SuitesService {
     const before = (await this.rows(reader.organizationId).catch(() => new Map())).get(suite.key) ?? null;
     if (on) {
       const people = new Set((await this.people(reader.organizationId)).map((p) => p.id));
-      const answers = checkAnswers(suite, input.answers, people);
-      if (!answers) throw new BadRequestException(REFUSED.answerFirst);
+      const given = checkAnswers(suite, input.answers, people);
+      if (!given) throw new BadRequestException(REFUSED.answerFirst);
+      /* Whatever else the row holds stays (an old setting under a name the questions do not use), except the old names the answers now replace. */
+      const old = theOldNamesOf(suite.key);
+      const kept = Object.fromEntries(Object.entries((before?.answers && typeof before.answers === 'object' ? before.answers : {}) as Record<string, unknown>).filter(([k]) => !old.includes(k) && !(k in given)));
+      const answers = { ...kept, ...given } as typeof given;
       await this.prisma.organizationSuite.upsert({
         where,
         create: { organizationId: reader.organizationId, suite: suite.key, isOn: true, answers, changedById: reader.userId },
@@ -595,6 +612,64 @@ export class SuitesService {
   private async teams(organizationId: string): Promise<string[]> {
     const ps = await this.prisma.person.findMany({ where: { organizationId, active: true }, select: { department: true } });
     return [...new Set(ps.map((p) => p.department?.trim()).filter((t): t is string => !!t))].sort();
+  }
+
+  /**
+   * WHAT THE LEAVE FORM MAY OFFER (request 165). Any person in the organisation may read it, because they are the one asking:
+   * the kinds of leave (their key and what people call them) and the colleagues who could stand in (a name and an id, never an
+   * address). Not the rules behind them, and not who has what days left. With the suite off, the same refusal as the board.
+   */
+  async leaveForm(reader: Reader): Promise<{ kinds: { key: string; name: string }[]; standIns: { userId: string; name: string }[] }> {
+    const role = await this.roleOf(reader);
+    if (!role || role === 'GUEST') throw new ForbiddenException(LEAVE_FORM_REFUSED.notInIt);
+    const rows = await this.rows(reader.organizationId);
+    if (!rows.get('leave')?.isOn) throw new NotFoundException(LEAVE_FORM_REFUSED.notOn);
+    const kinds = leaveRulesFrom(rows.get(LEAVE_RULES_ROW)?.answers).kinds ?? [];
+    const people = (await this.people(reader.organizationId)).filter((p) => p.id !== reader.userId);
+    return { kinds: kinds.map((k) => ({ key: k.key, name: k.name })), standIns: people.map((p) => ({ userId: p.id, name: p.name })) };
+  }
+
+  /**
+   * WHAT THE PAYMENT REQUEST FORM MAY OFFER (request 165): the categories the organisation set, what it calls one
+   * ("project", "category"), and the currency. Not the limits, the thresholds, the budgets or who approves.
+   */
+  async spendForm(reader: Reader): Promise<{ currency: string | null; categoryCalled: string; categories: string[] }> {
+    const role = await this.roleOf(reader);
+    if (!role || role === 'GUEST') throw new ForbiddenException(SPEND_FORM_REFUSED.notInIt);
+    const rows = await this.rows(reader.organizationId);
+    const suite = rows.get('spend');
+    if (!suite?.isOn) throw new NotFoundException(SPEND_FORM_REFUSED.notOn);
+    const rules = spendRulesFrom(rows.get(SPEND_RULES_ROW)?.answers);
+    const answers = (suite.answers ?? {}) as Record<string, unknown>;
+    return {
+      currency: typeof answers.currency === 'string' ? answers.currency : null,
+      categoryCalled: rules.categoryCalled?.trim() || 'category',
+      categories: (rules.categories ?? []).map((c) => c.name),
+    };
+  }
+
+  /**
+   * WHICH OF THE REQUEST SUITES ARE ON FOR THIS PERSON, IN ONE CALL (S2 of the nothing-removed audit).
+   *
+   * Today's link to "Your own leave and spending requests" asked three routes, one for each suite, and took a single 404
+   * (one suite off) to mean all three were off, so a person in an organisation with leave on and spending off lost the link.
+   * This answers for all three at once and never refuses a person who is in the organisation: a suite that is off is a
+   * `false`, not an error. Somebody who is not in the organisation (a guest, or no one) has none, and is not refused either,
+   * so a page can ask without a refusal ever hiding something that is on. Only yes or no for each suite; nothing of its answers.
+   */
+  async forYourRequests(reader: Reader): Promise<{ leave: boolean; spend: boolean; time: boolean; any: boolean; says: string }> {
+    const role = await this.roleOf(reader);
+    const rows = role && role !== 'GUEST' ? await this.rows(reader.organizationId) : new Map<string, { isOn: boolean }>();
+    const on = (key: string) => rows.get(key)?.isOn === true;
+    const out = { leave: on('leave'), spend: on('spend'), time: on('time') };
+    const any = out.leave || out.spend || out.time;
+    return {
+      ...out,
+      any,
+      says: any
+        ? 'These are the requests you can make in your organisation.'
+        : 'No requests for leave, spending or hours are switched on in your organisation yet. An admin switches them on under Suites.',
+    };
   }
 
   private async roleOf(reader: Reader): Promise<string | null> {

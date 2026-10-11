@@ -131,6 +131,8 @@ function setup(opts: { above?: string; duties?: Record<string, unknown> } = {}) 
 /* One approval step, its rules tried in order (theStepsFor gives a list of steps since build step 4). */
 function theRulesAre(rulesOfTheStep: rules.Step) {
   jest.spyOn(rules, 'theStepsFor').mockImplementation((() => [rulesOfTheStep]) as any);
+  /* Spending asks theStepsADecisionFollows since B-004 (09b14bd7), which calls theStepsFor inside its own module, out of the spy's reach. */
+  jest.spyOn(rules, 'theStepsADecisionFollows').mockImplementation((() => [rulesOfTheStep]) as any);
 }
 
 beforeEach(() => {

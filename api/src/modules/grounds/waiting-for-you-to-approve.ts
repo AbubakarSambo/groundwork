@@ -1,5 +1,6 @@
 import type { Need } from './what-needs-you';
 import { saidAsADay } from '../suites/who-is-away';
+import { whatTheMoneyIsFor } from '../suites/a-request-in-words';
 
 /**
  * WHAT IS WAITING FOR YOU TO APPROVE, TOLD ON TODAY (week 21). Leave, hours and spending, said in
@@ -67,7 +68,7 @@ export function waitingForYouToApprove(
   } else {
     spend.forEach((s, i) => out.push({
       ...base, key: `approve-spend-${i}`,
-      title: `${s.firstName} asked to spend ${amountSaid(s.amount, input.currency ?? null)} on ${s.what}.`,
+      title: `${s.firstName} asked to spend ${amountSaid(s.amount, input.currency ?? null)} on ${whatTheMoneyIsFor(s.what)}.`,
       detail: WAITING, action: { label: 'Look at it', to: '/suite/spend' },
     }));
   }

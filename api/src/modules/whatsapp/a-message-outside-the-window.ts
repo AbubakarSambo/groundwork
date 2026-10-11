@@ -25,8 +25,12 @@ export function insideTheServiceWindow(lastInboundAt: Date | string | null | und
 /** The kinds of send the product starts, as opposed to a reply to something the person just wrote. */
 export const BUSINESS_INITIATED: ReadonlySet<string> = new Set([
   'checkin-open', 'due-tomorrow', 'opens-soon', 'closes-soon', 'overdue', 'team-almost-in', 'your-view-matters', 'lead-summary',
+  /* The same words as the opening notice, to somebody it never reached (engagement/a-person-the-opening-never-reached.ts). It is the day's routine message and not an opening, so it counts. */
+  'checkin-catch-up',
   'anchor-weekly-insight', 'anchor-follow-up',
   'report', 'report-retry', 'request-waiting', 'request-decided', 'review-started', 'review-decided',
+  /* What waits for an approver, said once for all of it (the-approvals-summary.ts). */
+  'requests-waiting',
   /* A check-in left halfway (a-check-in-left-halfway.ts): the reminder to carry on, the half-hour warning, and the clock closing it. */
   'carry-on', 'closes-in-half-an-hour', 'closed-by-the-clock',
 ]);
@@ -44,6 +48,8 @@ export const BUSINESS_INITIATED: ReadonlySet<string> = new Set([
  */
 export const FIRST_MESSAGES: ReadonlySet<string> = new Set([
   'checkin-open', 'due-tomorrow', 'opens-soon', 'closes-soon', 'overdue', 'team-almost-in', 'your-view-matters', 'lead-summary',
+  /* The same words as the opening notice, to somebody it never reached (engagement/a-person-the-opening-never-reached.ts). It is the day's routine message and not an opening, so it counts. */
+  'checkin-catch-up',
   /*
    * A REVIEW (item 16). The person did nothing to start their review or to have it decided, so both
    * count towards their one message of the day. Held back, the review still waits for them in the app
@@ -67,7 +73,15 @@ export const FIRST_MESSAGES: ReadonlySet<string> = new Set([
  * the morning summary, whatever else the person has had today, and it does not use up the one message
  * of the day either. Only "Not now" and "stop" still hold it: those are the person's own word.
  */
-export const APPROVALS: ReadonlySet<string> = new Set(['request-waiting']);
+/* `requests-waiting` is the same kind of message said once for several that arrived together (the-approvals-summary.ts): it goes straight away too, and is not the person's one message of the day. */
+export const APPROVALS: ReadonlySet<string> = new Set(['request-waiting', 'requests-waiting']);
+/**
+ * THE CLOCK CLOSING A SESSION (decision 107). It is not one of the day's first messages, so it never uses up the
+ * count (it is told with what the person said kept, and the report follows). But it is still Groundwork writing
+ * first, so the person's own "Not now" today holds it, as it holds the others; STOP and the 24 hours hold it
+ * anyway, through the gates before this one.
+ */
+export const ONLY_HELD_BY_NOT_NOW: ReadonlySet<string> = new Set(['closed-by-the-clock']);
 /** The messages that mark a day a check-in opens or closes, when two may go. */
 export const OPENING_OR_CLOSING: ReadonlySet<string> = new Set(['checkin-open', 'opens-soon', 'closes-soon', 'closes-in-half-an-hour']);
 /**
@@ -148,9 +162,9 @@ export const TEMPLATES: Record<string, ATemplate> = {
   'opens-soon': aTemplate('checkin_opens_soon', "Hi {{1}}, your check-in for {{2}} opens in an hour, at {{3}}. Reply here when it opens and we'll begin."),
   'closes-soon': aTemplate('checkin_closes_soon', 'Hi {{1}}, your check-in for {{2}} closes in an hour, at {{3}}. Five minutes now means your view is part of this round.'),
   overdue: aTemplate('checkin_overdue', "Hi {{1}}, your check-in for {{2}} is overdue. It's still open, so you can answer here now."),
-  'team-almost-in': aTemplate('checkin_team_almost_in', "Hi {{1}}, {{3}} of {{4}} people have checked in for {{2}}, and the team's picture is coming together without your part. Add yours and it's included."),
+  'team-almost-in': aTemplate('checkin_team_almost_in', 'Hi {{1}}, {{2}} of {{3}} people have checked in for {{4}}. Your check-in is still open, and you can answer here.'),
   'your-view-matters': aTemplate('checkin_your_view_matters', "Hi {{1}}, your check-in for {{2}} is still waiting. Your answers help {{3}} understand what's in your way, and where they can help. It takes about five minutes, and you can answer here."),
-  'lead-summary': aTemplate('lead_daily_summary', "Good morning {{1}}. Here's today's summary of your check-ins: {{2}} Open the board for the full picture: {{3}}"),
+  'lead-summary': aTemplate('lead_daily_summary', "Good morning {{1}}. Here is today's summary of your check-ins. {{2}} You can open your board for the full picture here {{3}} If you would rather not hear from us here again today, reply \"not now\"."),
   /* Ours, proposed to Hafsah (anchor piece 28, decision 105 item 2): the weekly insight. It ends with words, not a blank. */
   /* Ours, proposed to Hafsah (anchor piece 30, decision 105 item 3): the nudge with the person's own promise, to them only. */
   'anchor-follow-up': aTemplate('anchor_checkin_follow_up', "Hi {{1}}, last time you said you would {{2}}. I'd love to hear how it went. Your check-in for {{3}} is open, and you can answer here."),
@@ -159,6 +173,8 @@ export const TEMPLATES: Record<string, ATemplate> = {
   report: aTemplate('groundwork_report_ready', 'Your report for {{1}} is ready. {{2}} Open Groundwork to read it.'),
   /* Ours, proposed to Hafsah (decision 82, item 1): an approval waiting, and the decision told to the person. */
   'request-waiting': aTemplate('groundwork_request_waiting', 'Hi {{1}}, {{2}} has asked for {{3}}, and it is waiting for you. Reply here to approve or decline it, or open Groundwork to read it first.'),
+  /* Ours, proposed to Hafsah: everything waiting for an approver, said once. {{2}} is the whole paragraph, in plain full sentences. */
+  'requests-waiting': aTemplate('groundwork_requests_waiting', 'Hi {{1}}. {{2}} You can read and answer them in Groundwork here {{3}} and nothing is decided until you do.'),
   'request-decided': aTemplate('groundwork_request_decided', 'Hi {{1}}, your request for {{2}} was {{3}} by {{4}}. Open Groundwork to read it.'),
   /*
    * Ours, proposed to Hafsah (item 16): a review waits for the person in the app. Never anything the
@@ -166,8 +182,11 @@ export const TEMPLATES: Record<string, ATemplate> = {
    */
   'review-started': aTemplate('groundwork_review_started', 'Hi {{1}}, {{2}} has started your review. Open Groundwork to read it and add your own view before you meet.'),
   'review-decided': aTemplate('groundwork_review_decided', 'Hi {{1}}, {{2}} has decided your review. Open Groundwork to read the decision and the reasons.'),
+  /* No template for the appeal of a decided review (decision 124, item 4): its messages go by email and in the app only. */
 };
 TEMPLATES['report-retry'] = TEMPLATES.report;
+/* The catch-up for somebody the opening notice never reached is the opening notice's own template: no new template (Hafsah, 8 October). */
+TEMPLATES['checkin-catch-up'] = TEMPLATES['checkin-open'];
 /*
  * THE FIRST MESSAGE TO A NUMBER (decision 106 item 2). Ours, for Hafsah: whatever the first message is, it goes
  * in this one template, naming the organisation, with the message's own words, and how to end it. Hafsah's

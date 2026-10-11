@@ -43,7 +43,12 @@ const prismaError = (name: string, message: string, code?: string) => {
 };
 
 describe('a missing field', () => {
+  /* The developer API names the field in its own vocabulary; the screens' routes say it in a plain sentence (piece 6). */
   const answer = whatToSayAboutADatabaseError(
+    prismaError('PrismaClientValidationError', THE_SHAPE_OF_A_REAL_ONE),
+    true,
+  )!;
+  const forAPerson = whatToSayAboutADatabaseError(
     prismaError('PrismaClientValidationError', THE_SHAPE_OF_A_REAL_ONE),
   )!;
 
@@ -53,6 +58,10 @@ describe('a missing field', () => {
 
   it('names the field, which is the one useful fact in the whole message', () => {
     expect(answer.message).toBe('itemType is required and was not sent.');
+  });
+
+  it('tells a person, plainly, that something needed was left out, without the field name', () => {
+    expect(forAPerson.message).toBe('Part of what is needed was left out, so check what you filled in and try again.');
   });
 
   it('leaks no path from our server', () => {
@@ -71,6 +80,7 @@ describe('a missing field', () => {
   it('and still says something when the field cannot be picked out', () => {
     const vague = whatToSayAboutADatabaseError(
       prismaError('PrismaClientValidationError', 'Something is off somewhere'),
+      true,
     )!;
     expect(vague.status).toBe(HttpStatus.BAD_REQUEST);
     expect(vague.message).toMatch(/wrong shape/);
@@ -84,8 +94,9 @@ describe('the constraints', () => {
   it('treats a duplicate as a conflict the caller can fix', () => {
     expect(known('P2002')).toEqual({
       status: HttpStatus.CONFLICT,
-      message: 'Something with that name or key already exists.',
+      message: 'That is already taken, so choose a different one.',
     });
+    expect(whatToSayAboutADatabaseError(prismaError('PrismaClientKnownRequestError', 'x', 'P2002'), true)!.message).toBe('Something with that name or key already exists.');
   });
 
   it('treats a missing record as a 404', () => {
@@ -99,7 +110,7 @@ describe('the constraints', () => {
   it('and an unrecognised code as a 400 that says nothing about itself', () => {
     const other = known('P2099');
     expect(other.status).toBe(HttpStatus.BAD_REQUEST);
-    expect(other.message).toBe('The database refused that request.');
+    expect(other.message).toBe('That could not be saved, so check what you typed and try again.');
   });
 });
 
@@ -109,7 +120,8 @@ describe('everything else Prisma throws', () => {
     const answer = whatToSayAboutADatabaseError(
       prismaError('PrismaClientInitializationError', 'Cannot reach database at 10.0.0.4:5432'),
     )!;
-    expect(answer.status).toBe(HttpStatus.INTERNAL_SERVER_ERROR);
+    /* B-151: an unreachable database is a temporary 503, said as a moment to wait. */
+    expect(answer.status).toBe(HttpStatus.SERVICE_UNAVAILABLE);
     expect(answer.message).not.toMatch(/10\.0\.0\.4/);
     expect(answer.message).toMatch(/Nothing was changed/);
   });

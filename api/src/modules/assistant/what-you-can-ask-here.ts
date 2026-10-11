@@ -46,7 +46,7 @@ export function whatYouCanAskSaid(f: WhatYouCanAskFacts): string {
     out.push('You are not in a check-in right now, so for the moment you can ask me about your own list and how things work here.');
   }
   if (f.checkInsYouRun > 0) {
-    out.push(`You run ${plural(f.checkInsYouRun, 'check-in', 'check-ins')}, so you can also ask who needs you this week, what is stuck, what people said, and what to talk about next.`);
+    out.push(`You run ${plural(f.checkInsYouRun, 'check-in', 'check-ins')}, so you can also ask who needs you this week, what is stuck, and what to talk about next.`);
   }
 
   const suites = [f.leaveIsOn && 'leave', f.spendingIsOn && 'spending', f.hoursAreOn && 'hours'].filter(Boolean) as string[];

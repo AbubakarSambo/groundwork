@@ -122,7 +122,7 @@ describe('Wairimu, Aisha’s manager, who decides it', () => {
     expect(w?.said).toEqual([
       'Aisha asked for leave from Monday 12 October to Friday 16 October, which is 5 working days.',
       'Aisha has 21 days left.',
-      'Brian and Neema are also off on some of those days, so Sales would be three short.',
+      'Brian and Neema are also off on some of those days. On the busiest of them, Sales would be two short.',
       'Aisha\'s target “Close 3 overdue invoices” on Aisha, support plan is due on Tuesday 13 October.',
       'Aisha owns “Open the Nakuru shop”, due on Wednesday 14 October.',
       'Aisha committed to “Send the Atlas price list”, due on Thursday 15 October.',

@@ -78,7 +78,7 @@ function makeService(groundRow: any, activationStatus: 'ACTIVATED' | 'PENDING' |
 
 describe('GW-PRI-01: non-party user is denied the report', () => {
   /* The two tests below said ForbiddenException. A 403 tells a stranger the check-in is real (GW-PRI-04), so the report now answers
-     NotFoundException ("Check-in not found") as every other route does (privacy sweep finding 7). The stranger is still denied. */
+     NotFoundException ("That check-in could not be found, so go back to your check-ins and open it from the list.") as every other route does (privacy sweep finding 7). The stranger is still denied. */
   it('throws NotFoundException when userId is not in participants and is not initiator', async () => {
     const ground = makeGround({ report: makeReleasedReport() });
     const service = makeService(ground);

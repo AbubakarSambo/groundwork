@@ -76,7 +76,7 @@ describe('updateRole: the lead describing somebody else still writes roleAsDescr
   it('a stranger may not', async () => {
     const { prisma } = prismaWith(OWNED_PARTICIPANT);
     const svc: any = serviceWith(prisma);
-    await expect(svc.updateRole('part1', 'u-stranger', 'Anything')).rejects.toThrow('Participant not found');
+    await expect(svc.updateRole('part1', 'u-stranger', 'Anything')).rejects.toThrow('That person is not in this check-in, so check the name and try again.');
   });
 });
 
@@ -117,6 +117,6 @@ describe('confirmDetectedFunction: "yes, that\'s right" - stamps the confirmatio
   it('a stranger may not', async () => {
     const { prisma } = prismaWith(OWNED_PARTICIPANT);
     const svc: any = serviceWith(prisma);
-    await expect(svc.confirmDetectedFunction('part1', 'u-stranger')).rejects.toThrow('Participant not found');
+    await expect(svc.confirmDetectedFunction('part1', 'u-stranger')).rejects.toThrow('That person is not in this check-in, so check the name and try again.');
   });
 });

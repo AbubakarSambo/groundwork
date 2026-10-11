@@ -3,7 +3,7 @@ import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { workingDays, type Day } from './the-leave-board.service';
 import { whoApprovesFor } from './who-approves';
 import { readWorkflow, whoInWords } from './the-approval-steps';
-import { theStepsFor, whoDecidesNow } from './who-may-decide';
+import { theStepsFor, whoDecidesNow, nobodyElseCanDecide, NOBODY_ELSE_CAN_DECIDE } from './who-may-decide';
 import { theThresholdCrossed } from './the-spending-rules';
 import { theirRosterEntries, theirRosterEntry } from './a-roster-entry-and-its-sign-in';
 import { hereSince, inASentence, moreThanWorkingDays, readLeaveRules, theKindOf, theKindSaid, theRulesThatApply, type LeaveRules } from './the-leave-rules';
@@ -116,6 +116,9 @@ function theNextDayNumbered(day: number, today: Date): Date | null {
   return null;
 }
 
+/** "Friday " before a date: "from Monday 19 October to Friday 23 October" is the whole range, not one day (B-124). */
+const ONE_OF_THE_DAYS = `(?:(?:${WEEKDAYS.join('|')})\\s+)?`;
+
 /** The days a message asks for, or null when they cannot be read without guessing. */
 export function readLeaveDates(message: string, today: Date = new Date()): LeaveDates | null {
   const t = (message ?? '').toLowerCase().replace(/[,]/g, ' ').replace(/\s+/g, ' ');
@@ -145,7 +148,7 @@ export function readLeaveDates(message: string, today: Date = new Date()): Leave
   if (isos.length > 2) return null;
 
   /* 12 to 16 October, 12 October to 16 October, 12th - 16th october 2026. */
-  const dayFirst = new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?(?:\\s+${MONTH_RE})?\\s*(?:-|to|until|till|through)\\s*(\\d{1,2})(?:st|nd|rd|th)?\\s+${MONTH_RE}(?:\\s+(\\d{4}))?`).exec(t);
+  const dayFirst = new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?(?:\\s+${MONTH_RE})?\\s*(?:-|to|until|till|through)\\s*${ONE_OF_THE_DAYS}(\\d{1,2})(?:st|nd|rd|th)?\\s+${MONTH_RE}(?:\\s+(\\d{4}))?`).exec(t);
   if (dayFirst) {
     const m2 = monthNo(dayFirst[4]);
     const m1 = dayFirst[2] ? monthNo(dayFirst[2]) : m2;
@@ -153,7 +156,7 @@ export function readLeaveDates(message: string, today: Date = new Date()): Leave
     return out(dateOn(+dayFirst[1], m1, today, year), dateOn(+dayFirst[3], m2, today, year));
   }
   /* October 12 to 16, October 12 to October 16. */
-  const monthFirst = new RegExp(`\\b${MONTH_RE}\\s+(\\d{1,2})(?:st|nd|rd|th)?\\s*(?:-|to|until|till|through)\\s*(?:${MONTH_RE}\\s+)?(\\d{1,2})(?:st|nd|rd|th)?(?:\\s+(\\d{4}))?`).exec(t);
+  const monthFirst = new RegExp(`\\b${MONTH_RE}\\s+(\\d{1,2})(?:st|nd|rd|th)?\\s*(?:-|to|until|till|through)\\s*${ONE_OF_THE_DAYS}(?:${MONTH_RE}\\s+)?(\\d{1,2})(?:st|nd|rd|th)?(?:\\s+(\\d{4}))?`).exec(t);
   if (monthFirst) {
     const m1 = monthNo(monthFirst[1]);
     const m2 = monthFirst[3] ? monthNo(monthFirst[3]) : m1;
@@ -179,7 +182,8 @@ export function readLeaveDates(message: string, today: Date = new Date()): Leave
   /* Next Thursday and Friday, this Monday to Wednesday, Thursday. */
   const wd = new RegExp(`\\b(?:(next|this)\\s+)?${WEEKDAY_RE}(?:\\s*(and|to|until|till|through|-)\\s*(?:(?:next|this)\\s+)?${WEEKDAY_RE})?`).exec(t);
   if (wd) {
-    const how = wd[1] === 'next' ? 'next' : 'this';
+    /* "Friday off next week" is next week's Friday: "next" after the day counts as much as before it. A day nobody asked for is the worst way to be wrong here. */
+    const how = wd[1] === 'next' || (!wd[1] && new RegExp(`\\b${wd[4] ?? wd[2]}\\b(?:\\s+(?:off|of|on))?\\s+next week\\b`, 'i').test(t)) ? 'next' : 'this';
     const first = weekdayFrom(wd[2], how, today);
     if (!wd[4]) return out(first, endOf(first, weeksSaid(t)));
     const want = WEEKDAYS.indexOf(wd[4]);
@@ -282,6 +286,14 @@ export async function sayBackLeave(
 
   const n = workingDays(new Date(`${dates.startsOn}T00:00:00.000Z`), new Date(`${dates.endsOn}T00:00:00.000Z`));
   const { name, team, managerExternalId } = await whoApproves(prisma, reader.organizationId, reader.userId, n);
+  /* The only admin is told now that nobody else could decide it, not offered "send it to an admin" (B-137). */
+  if (name == null) {
+    const role = (await (prisma as any).organizationMembership?.findUnique?.({ where: { userId_organizationId: { userId: reader.userId, organizationId: reader.organizationId } }, select: { role: true } }).catch(() => null))?.role ?? null;
+    const workflow = await readWorkflow(prisma, reader.organizationId, 'leave').catch(() => null);
+    if (await nobodyElseCanDecide(prisma, theStepsFor('leave', { workflow }, n), { organizationId: reader.organizationId, requesterUserId: reader.userId, managerExternalId }, role)) {
+      return { ok: false, say: NOBODY_ELSE_CAN_DECIDE };
+    }
+  }
   const off = await alsoOff(prisma, reader.organizationId, reader.userId, team, dates);
   const rules: LeaveRules = await readLeaveRules(prisma, reader.organizationId).catch(() => ({}));
   const longer = await longerLeaveSaid(prisma, reader.organizationId, reader.userId, rules, n, name, managerExternalId).catch(() => null);
@@ -326,6 +338,14 @@ export async function sendLeave(
   } catch (err: any) {
     return typeof err?.message === 'string' && err.message ? `I could not send it. ${err.message}` : 'I could not send it.';
   }
+  return theLeaveRequestSent(prisma, reader, dates);
+}
+
+/**
+ * THE SENTENCE AFTER A LEAVE REQUEST WAS SENT, whichever way it was asked for: said in a chat, or filed from the form
+ * (request 165). One sentence, so the two can never differ.
+ */
+export async function theLeaveRequestSent(prisma: PrismaService, reader: { userId: string; organizationId: string }, dates: LeaveAsked): Promise<string> {
   const n = workingDays(new Date(`${dates.startsOn}T00:00:00.000Z`), new Date(`${dates.endsOn}T00:00:00.000Z`));
   const { name } = await whoApproves(prisma, reader.organizationId, reader.userId, n);
   const kind = dates.kind ? theKindOf(dates.kind, await readLeaveRules(prisma, reader.organizationId).catch(() => ({}))) : null;

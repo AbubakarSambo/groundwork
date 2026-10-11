@@ -11,7 +11,7 @@ import { GroundsController } from './grounds.controller';
  * lead, or an admin of the organisation (only with access, on an evaluation check-in). Nobody else.
  * Once cleared by the lead, a later read of the setup words never puts a kind back.
  */
-function build(ground: Record<string, any>, viewer: Record<string, any> = { role: 'MEMBER', organizationId: 'org1' }, answer: any = { kind: 'sales org' }) {
+function build(ground: Record<string, any>, viewer: Record<string, any> = { role: 'MEMBER', organizationId: 'org1' }, answer: any = { kind: 'sales org' }, leadHasLeft = false) {
   const updates: any[] = [];
   const prisma: any = {
     ground: {
@@ -23,7 +23,7 @@ function build(ground: Record<string, any>, viewer: Record<string, any> = { role
         return { id: 'g1', kindOfWork: ground.kindOfWork ?? null, kindOfWorkSetBy: ground.kindOfWorkSetBy ?? null, workStages: ground.workStages ?? null };
       }),
     },
-    user: { findUnique: jest.fn(async () => viewer) },
+    user: { findUnique: jest.fn(async (a: any) => (a?.where?.id === ground.initiatorId ? { role: 'MEMBER', organizationId: 'org1', isActive: !leadHasLeft, firstName: 'Wanjiru', lastName: 'Mwangi' } : viewer)) },
   };
   const anthropic: any = { extract: jest.fn(async () => answer) };
   const svc = new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, anthropic);
@@ -61,23 +61,23 @@ describe('request 106: the kind of work can be set back to none', () => {
     expect(updates).toEqual([{ kindOfWork: null, kindOfWorkSetBy: 'lead' }]);
   });
 
-  it('lets an admin of the organisation clear it, as they may set it', async () => {
-    const { svc, updates } = build(aTeamCheckIn(), { role: 'ADMIN', organizationId: 'org1' });
+  it('lets an admin of the organisation clear it once the lead has left, as they may set it (decision 119, H10)', async () => {
+    const { svc, updates } = build(aTeamCheckIn(), { role: 'ADMIN', organizationId: 'org1' }, undefined, true);
     const set = await svc.setKindOfWork('g1', 'an-admin', { kind: null });
     expect(set.kindOfWork).toBeNull();
     expect(updates).toHaveLength(1);
   });
 
-  it('refuses a participant, an admin of another organisation, and an admin without access to an evaluation check-in, and changes nothing', async () => {
+  it('refuses a participant, an admin of another organisation, and an admin while the lead is there, and changes nothing', async () => {
     const cases: Array<[Record<string, any>, Record<string, any>, string]> = [
       [aTeamCheckIn(), { role: 'MEMBER', organizationId: 'org1' }, 'rukia'],
       [aTeamCheckIn(), { role: 'ADMIN', organizationId: 'org2' }, 'another-admin'],
-      [{ ...aTeamCheckIn(), scenario: 'PIP' }, { role: 'ADMIN', organizationId: 'org1' }, 'an-admin'],
+      [aTeamCheckIn(), { role: 'ADMIN', organizationId: 'org1' }, 'an-admin-while-the-lead-is-there'],
     ];
     for (const [ground, viewer, who] of cases) {
       const { svc, updates } = build(ground, viewer);
       await expect(svc.setKindOfWork('g1', who, { kind: null })).rejects.toThrow(
-        'Only the lead of this check-in, or an admin in this organisation, can change this.',
+        'Only Wanjiru Mwangi, who runs this check-in, can change how it is set up. An admin can only do that once Wanjiru has left the organisation. Nothing was changed.',
       );
       expect(updates).toEqual([]);
       expect(ground.kindOfWork).toBe('marketview q4');

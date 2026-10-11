@@ -21,6 +21,8 @@ export interface WhatTheBoardIsBuiltFrom {
   documentsEveryoneMayRead?: { createdAt?: Date | string | null }[];
   /** When the lead decided how the check-in ends (U.11). A decision is something new coming in. */
   decidedAt?: Date | string | null;
+  /** When an anchor check-in's month ended (decision 121, item 2): a scheduled event, written once by the sweep, never by opening the board. */
+  monthEndedAt?: Date | string | null;
 }
 
 export function whenTheBoardLastChanged(from: WhatTheBoardIsBuiltFrom): string | null {
@@ -31,6 +33,7 @@ export function whenTheBoardLastChanged(from: WhatTheBoardIsBuiltFrom): string |
     ...(from.dependencies ?? []).map((d) => d.updatedAt ?? d.createdAt),
     ...(from.documentsEveryoneMayRead ?? []).map((d) => d.createdAt),
     from.decidedAt,
+    from.monthEndedAt,
   ];
   let newest: number | null = null;
   for (const t of times) {

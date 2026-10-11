@@ -39,7 +39,7 @@ const SALES: any = {
   /* Released, as it was on the run once everybody had answered: a participant reads the team's picture only once it is shared (request 105). */
   report: {
     releasedAt: daysAgo(1),
-    sharedPicture: 'All four people have answered. They disagree on three things: the definition of an "approved" sale is not the same for everyone, there is a disconnect about whether individual targets are in place, and the deadline for the work is not known by everyone.\n\nYour target for the team is 40 approved facilities. You report that the team has 11 approved facilities so far.',
+    sharedPicture: 'All four people have answered. They disagree on three things. The definition of an "approved" sale is not the same for everyone. People disagree about whether individual targets are in place. Not everyone knows the deadline for the work.\n\nYour target for the team is 40 approved facilities. You report that the team has 11 approved facilities so far.',
     agreements: ['Everyone is working toward the team goal of 40 approved facilities.'],
     divergences: [
       {

@@ -37,13 +37,20 @@ function today(list: any[]) {
 }
 
 describe('request 122 (2): Today gives the day the next check-in opens that the board gives', () => {
+  /* A FIXED CLOCK (user journeys, F-22). "Coming up" is what opens after today, so the spec read the real date and failed on 7 October, the very day it names. */
+  beforeAll(() => {
+    jest.useFakeTimers({ now: NOW, doNotFake: ['nextTick', 'setImmediate', 'clearImmediate', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'queueMicrotask'] });
+  });
+  afterAll(() => {
+    jest.useRealTimers();
+  });
   const comingUp = async (list: any) => (await today([list]).svc.forReader('u-rukia', 'r@x.test', 'org-1', 'MEMBER')).comingUp;
 
   it('is session 3 on 7 October, though a second-session row of somebody else opens on 4 October', async () => {
     const late = { id: 'c2-late', participantId: 'p-late', sessionNumber: 2, status: 'NOT_STARTED', isSetup: false, completedAt: null, availableFrom: new Date('2026-10-04T06:00:00Z') };
     const person = { id: 'p-late', userId: 'u-late', user: { firstName: 'Zawadi', lastName: 'Mutua' } };
     const c = await comingUp(listRow([person], [late]));
-    expect(c[0]).toMatchObject({ what: 'The third check-in for Sales team, Q3 opens.', at: '2026-10-07T06:00:00.000Z' });
+    expect(c[0]).toMatchObject({ what: 'The third check-in for “Sales team, Q3” opens.', at: '2026-10-07T06:00:00.000Z' });
     expect(JSON.stringify(c)).not.toMatch(/second check-in/);
   });
 
@@ -52,7 +59,7 @@ describe('request 122 (2): Today gives the day the next check-in opens that the 
     const list: any = listRow([], [late]);
     list.participants = list.participants.map((p: any) => (p.id === 'p-faraji' ? { ...p, notLetIn: true } : p));
     const c = await comingUp(list);
-    expect(c[0]).toMatchObject({ what: 'The third check-in for Sales team, Q3 opens.', at: '2026-10-07T06:00:00.000Z' });
+    expect(c[0]).toMatchObject({ what: 'The third check-in for “Sales team, Q3” opens.', at: '2026-10-07T06:00:00.000Z' });
   });
 
   it('Amani reads her own next check-in, as hers', async () => {

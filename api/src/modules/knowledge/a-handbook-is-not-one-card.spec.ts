@@ -159,7 +159,7 @@ describe('ingesting a document', () => {
   it('refuses what it cannot store, and says which part is missing', async () => {
     const { service } = svc();
     await expect(service.ingestDocument('org-a', { key: '', title: 'T', text: 'x' })).rejects.toThrow(/key is required/);
-    await expect(service.ingestDocument('org-a', { key: 'k', title: '', text: 'x' })).rejects.toThrow(/title is required/);
+    await expect(service.ingestDocument('org-a', { key: 'k', title: '', text: 'x' })).rejects.toThrow(/Add a title/);
     await expect(service.ingestDocument('org-a', { key: 'k', title: 'T', text: '  ' })).rejects.toThrow(/text is required/);
   });
 });

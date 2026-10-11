@@ -76,7 +76,7 @@ export class AgreementsService {
       where: { id: groundId, organizationId },
       select: { initiatorId: true },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     const why = whyThisIsNotYoursToSay('speaking for this side', {
       userId: who.userId,
@@ -330,6 +330,8 @@ export class AgreementsService {
       differences: { about: string; reads: string; termId: string }[];
       notInTheDocument: { about: string; reads: string }[];
     },
+    /** Whose reading it is, by their row, when it came from their check-in. The name alone is not who they are: two people with no name both read "Someone". */
+    whoId?: string | null,
   ) {
     const version = await this.prisma.agreementVersion.findFirst({
       where: { id: versionId, agreement: { organizationId, groundId } },
@@ -341,12 +343,12 @@ export class AgreementsService {
     for (const d of said.differences) {
       const term = await this.prisma.agreementTerm.findFirst({ where: { id: d.termId, versionId: version.id } });
       if (!term) continue;
-      const existing = (term.readDifferently as { by: string; reads: string }[] | null) ?? [];
-      /* Said twice by the same person is one understanding, not two. */
-      if (existing.some((e) => e.by === who)) continue;
+      const existing = (term.readDifferently as { by: string; reads: string; byId?: string }[] | null) ?? [];
+      /* Said twice by the same person is one understanding, not two. The same person is the same row where both say whose; otherwise the same name, as before. */
+      if (existing.some((e) => (whoId && e.byId ? e.byId === whoId : e.by === who))) continue;
       const both = [
         ...(existing.length ? existing : [{ by: 'the document', reads: term.reads }]),
-        { by: who, reads: d.reads },
+        { by: who, reads: d.reads, ...(whoId ? { byId: whoId } : {}) },
       ];
       await this.prisma.agreementTerm.update({
         where: { id: term.id },

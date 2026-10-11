@@ -1,4 +1,5 @@
 import { howALineIsKnown, type HowALineIsKnown } from './how-a-line-is-known';
+import { theDifferencesReadAgreesWithTheQuestion } from '../board/the-quick-read-agrees-with-the-report';
 import { WHAT_EACH_MARK_SAYS, type AMarkOnALine, type TheMarksOfAReport } from './the-mark-on-every-line';
 import { WHERE_IT_WAS_READ_FROM } from '../conversation/how-checkable-a-session-was';
 import { COUNTS_AS_A_SOURCE } from '../documents/what-kind-of-thing-a-document-is';
@@ -112,6 +113,12 @@ export interface SessionReportShape {
     settledMarks?: AMarkOnALine[];
     /** The same for `open`. */
     openMarks?: AMarkOnALine[];
+    /**
+     * THE DIFFERENCES ALONE (B-165). `open` is what the screen lists under "What is still open", and where the report lists no difference but the
+     * record holds a blocker, a wait or a worry, `open` says what the record holds, so the screen never reads "Nothing is open. Everything anybody
+     * raised has been settled." beside Esther's three shops waiting on a credit decision. Anything that means a difference between people reads this.
+     */
+    differences?: string[];
     /*
      * AND WHY EACH OPEN ONE IS OPEN, WHICH THIS THREW AWAY.
      *
@@ -185,6 +192,11 @@ export interface SessionReportInputs {
   whoEndsIt?: string | null;
   /** Whether the round closed and was snapshotted. */
   closed: boolean;
+  /**
+   * Whether other people's words are not yet open to this reader: the team's report has not been shared with them. Read from the release, which is what the wall
+   * is. Where it is not given, it is read from `closed` as it always was, which was wrong once a round had closed and still not been shared (user journeys, F-12).
+   */
+  othersWordsAreNotYetOpen?: boolean;
   /**
    * From the report: what the records agree on and what is still open between them.
    *
@@ -275,6 +287,9 @@ const ofTypes = (
   types: RecordEntryType[],
 ): SaidThing[] => entries.filter((e) => types.includes(e.type)).map(said);
 
+/** What a person reads on another person's row, before the team's report is shared with them. The words are walled, and nobody is said to have said nothing. */
+export const WHAT_THEY_SAID_OPENS_WHEN_SHARED = 'This person has answered, and what they said opens to you when the team\'s report is shared.';
+
 export function theSessionReport(input: SessionReportInputs): SessionReportShape {
   /* FILTER FIRST, THEN COUNT. These were the raw array lengths while the lists under them went
      through .filter(Boolean), so "4 still open" could sit above a list of two. */
@@ -326,9 +341,12 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
    * WHERE THINGS STAND. The one line the site promises every report carries, and the only place
    * a number is allowed to stand on its own - because both halves of it are countable.
    */
+  /* ONE TRUE STATEMENT ABOUT WHO HAS ANSWERED (B-118). When the count of people is known it decides, here and in the Differences tile alike: a round closed half-done said
+     "Not everyone has answered" in one sentence and "Everybody has answered" in the next. Closed or not decides only when nobody passed a count. */
+  const everyoneHasAnswered = input.peopleInAll ? input.answeredThisSession.length >= input.peopleInAll : input.closed;
   const standing =
     agreed === 0 && stillOpen === 0
-      ? input.closed
+      ? everyoneHasAnswered
         ? 'Everybody has answered and this has not yet named anything they agree or differ on.'
         : 'Not everyone has answered yet, so there is nothing to agree or differ with.'
       : `${agreed} settled, ${stillOpen} still open.`;
@@ -520,7 +538,7 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
      shows as backed, and it does not raise the documented share. */
   const documented = input.entries.filter((e) => !e.recallBased && countsAsASource(e.backedBy)).length;
   const backedPct = input.entries.length ? Math.round((documented / input.entries.length) * 100) : null;
-  const atAGlance: AGlanceRead[] = atAGlanceTiles({
+  const atAGlance: AGlanceRead[] = theDifferencesReadAgreesWithTheQuestion(atAGlanceTiles({
     agreed, stillOpen, movedOnTargets: input.movedOnTargets, blocked: input.blocked, waiting: input.waiting ?? 0,
     targetsSet: input.targetsSet ?? 0,
     targetsWithANumber: input.targetsWithANumber ?? input.targetsSet ?? 0,
@@ -535,7 +553,7 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     theWorry: input.theFirstWorry ?? null,
     whyNoWorry: input.whyNoWorryIsShown ?? null,
     waitsFromEarlier: input.waitsFromEarlier ?? 0,
-  });
+  }), input.centralQuestion);
 
   /**
    * WHAT EACH PERSON SAID THEY DID, under their own name.
@@ -599,7 +617,7 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
          specific enough to record came out of it" beside twenty-three names whose lines he was not yet entitled
          to (run 10, 21 Sep 2026). The wall says so; it does not claim the person said nothing. */
       ...(lines.length === 0
-        ? { saying: !input.closed && !p.isYou ? 'This person has answered, and what they said opens to you when the report is released.' : 'This person has answered, and nothing specific enough to record came out of it.' }
+        ? { saying: (input.othersWordsAreNotYetOpen ?? !input.closed) && !p.isYou ? WHAT_THEY_SAID_OPENS_WHEN_SHARED : 'This person has answered, and nothing specific enough to record came out of it.' }
         : {}),
     };
   });
@@ -622,6 +640,17 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     commitmentsWithOwnerAndDate: input.commitmentsWithOwnerAndDate ?? 0,
   });
 
+  /*
+   * WHAT IS STILL OPEN IS NEVER "NOTHING" WHILE THE RECORD HOLDS A BLOCKER, A WAIT OR A WORRY (B-165). The page says "Nothing is open. Everything anybody
+   * raised has been settled." when it is handed something settled and nothing open. Where the report lists no difference, the Blockers read says what the
+   * record holds, in the one sentence the quick read uses, and it goes on the list too. Counts of differences are left as they were.
+   */
+  const theBlockersRead = atAGlance.find((t) => t.label === 'Blockers');
+  const theRecordHoldsSomethingOpen = !!(input.blocked || input.waiting || input.worries || input.waitsFromEarlier);
+  const theOpenListWithWhatTheRecordHolds = openNow.length === 0 && settled.length > 0 && theRecordHoldsSomethingOpen && theBlockersRead?.sub
+    ? [theBlockersRead.sub]
+    : openNow;
+
   return {
     sessionNumber: input.sessionNumber,
     plannedSessions: input.runsUntilEnded ? null : input.plannedSessions ?? null,
@@ -631,7 +660,7 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
       : input.plannedSessions ? `Session ${input.sessionNumber} of ${input.plannedSessions}.` : `Session ${input.sessionNumber}.`,
     state: input.closed ? 'final' : 'forming',
     confidence,
-    whereThingsStand: { agreed, stillOpen, saying: standing, settled, ...(settledMarks ? { settledMarks } : {}), open: openNow, ...(openMarks ? { openMarks } : {}), openWithReasons },
+    whereThingsStand: { agreed, stillOpen, saying: standing, settled, ...(settledMarks ? { settledMarks } : {}), open: theOpenListWithWhatTheRecordHolds, differences: openNow, ...(openMarks ? { openMarks } : {}), openWithReasons },
     atAGlance,
     whatEachPersonSaid,
     sections,

@@ -46,6 +46,8 @@ export interface ProbeInput {
   /** Of `concrete`, the ones stamped as the person's own words, word for word. Only those are quoted. */
   concreteWordForWord?: string[];
   documentsAttached: number;
+  /** How many worries or tensions this person has on record, so "nothing is blocked" is not said beside one (B-164). */
+  worries?: number;
   sessionNumber: number;
   totalSessions: number | null;
   scenario: string | null;
@@ -270,7 +272,14 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
    */
   let triedToUnblock: string;
   if (!i.waitingOn.length && !i.holdingUp.length) {
-    triedToUnblock = 'Nothing recorded as blocked, so there is nothing here about unblocking.';
+    /*
+     * A FULL SENTENCE THAT IS TRUE OF THE RECORD (B-164). "There is nothing recorded as blocked." was read beside Esther's own worry that three shops
+     * were waiting on a credit decision. No wait row is not no worry, so the sentence says which of the two the record holds.
+     */
+    const ownWork = (i.whoInASentence ?? i.who) === 'you' ? 'your work' : `${i.who}'s work`;
+    triedToUnblock = (i.worries ?? 0) > 0
+      ? `No wait has been recorded against a named person, but ${i.worries === 1 ? `a worry about ${ownWork} is` : `${i.worries} worries about ${ownWork} are`} on record, so the record does not say what was done about it.`
+      : `Nothing is recorded as holding up ${ownWork}.`;
   } else {
     const escalated = i.waitingOn.filter((d) => d.escalated).length;
     const asked = i.waitingOn.length - escalated;

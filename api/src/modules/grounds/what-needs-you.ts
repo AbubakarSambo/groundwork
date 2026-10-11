@@ -1,4 +1,5 @@
 import { theDayInWords } from '../board/the-day-in-words';
+import { namesTheyCanTellApart } from '../../common/check-ins-you-can-tell-apart';
 import { theAwayLine } from '../suites/who-is-away';
 import { isNotLetInYet } from './who-an-admin-did-not-let-in';
 import { theCheckIn, yourCheckIn } from './which-check-in-it-is';
@@ -41,6 +42,11 @@ export interface Need {
    * The board page draws Today's items for its check-in, so it leaves these out rather than say each one twice.
    */
   onTheBoardToo?: true;
+  /**
+   * MISSED CHECK-INS, told to the person first (decision 136). Only on the person's own item about their own missed check-ins: the check-in where
+   * the reason they give is kept, and the reason they already gave. Never on anybody else's Today.
+   */
+  missedReason?: { checkInId: string; given: string | null };
   /** The check-in this item belongs to, in its own words (request 152, 2), so a reader in several can see which one. Empty where the item is not about one check-in. */
   checkInLabel?: string;
 }
@@ -50,6 +56,15 @@ export interface ComingUp {
   at: string;
   what: string;
   to: string;
+  /** The check-in it is about, and the day that check-in started, so two close names can be told apart by the thing and not by a clause in the sentence (request 193). */
+  groundId?: string;
+  checkInStartedOn?: string;
+}
+
+/** The check-in a "coming up" row is about, by id, with the day it started when that is known. */
+function aboutTheCheckIn(g: { id: string; createdAt?: string | Date | null }): { groundId: string; checkInStartedOn?: string } {
+  const started = g.createdAt ? new Date(g.createdAt) : null;
+  return { groundId: g.id, ...(started && !Number.isNaN(started.getTime()) ? { checkInStartedOn: started.toISOString() } : {}) };
 }
 
 export interface WhatNeedsYou {
@@ -67,6 +82,9 @@ export interface ListedCheckIn {
   status?: string | null;
   organizationId: string;
   initiatorId?: string | null;
+  /* For telling two check-ins of the same name apart: when it started, and who runs it. */
+  createdAt?: string | Date | null;
+  initiator?: { firstName?: string | null } | null;
   closedAt?: string | Date | null;
   resolvedAt?: string | Date | null;
   endsAt?: string | Date | null;
@@ -171,13 +189,18 @@ function whoHasNotYet(missing: { name: string | null; isMe: boolean }[]): string
 const theSession = theCheckIn;
 
 export function whatNeedsYou(
-  list: ListedCheckIn[],
+  listAsGiven: ListedCheckIn[],
   reader: Reader,
   waiting: WaitingForApproval[] = [],
   now: Date = new Date(),
   /** What is waiting for this reader to approve, already said (waiting-for-you-to-approve.ts). Only ever the approver's. */
   toApprove: Need[] = [],
 ): WhatNeedsYou {
+  /* Two check-ins of the same name read as two: "Sales team, Q4, started 2 September". A unique name reads as it is. */
+  const toldApart = namesTheyCanTellApart(listAsGiven
+    .filter((g) => (g.status ?? '') !== 'AWAITING_APPROVAL' && (g.status ?? '') !== 'DECLINED')
+    .map((g) => ({ id: g.id, label: g.label ?? '', startedAt: g.createdAt, leadName: g.initiator?.firstName })));
+  const list = listAsGiven.map((g) => (toldApart.has(g.id) ? { ...g, label: toldApart.get(g.id)! } : g));
   const at = now.getTime();
   const isAdmin = reader.role === 'ADMIN';
   const firstTurns: Need[] = [];
@@ -195,7 +218,8 @@ export function whatNeedsYou(
     const over = isOver(g);
     const me = (g.participants ?? []).find((p) => p.userId && p.userId === reader.userId) ?? null;
     const iRunIt = !!g.initiatorId && g.initiatorId === reader.userId;
-    const mayName = iRunIt || (isAdmin && g.organizationId === reader.organizationId);
+    /* An admin who takes part in it reads it as a person in it does (decision 121, item 7). */
+    const mayName = iRunIt || (isAdmin && g.organizationId === reader.organizationId && !me);
     const sessions = sessionsOf(g);
     const base = { groundId: g.id, organizationId: g.organizationId, ...(g.label?.trim() ? { checkInLabel: g.label.trim() } : {}) };
     /* THE TEAM'S ROUND, from the one clock the board and the list read (request 97a). Only where the row
@@ -392,13 +416,15 @@ export function whatNeedsYou(
       if (future) {
         comingUp.push({
           at: new Date(future.at).toISOString(),
-          what: mayName ? `${cap(theCheckIn(future.sessionNumber))} for ${g.label} opens.` : `${yourCheckIn(future.sessionNumber)} for ${g.label} opens.`,
+          /* The name is in quotation marks, so a name with a comma in it ("Wanjiru, first 90 days") is not read as two pieces (B-167). */
+          what: mayName ? `${cap(theCheckIn(future.sessionNumber))} for “${g.label}” opens.` : `${yourCheckIn(future.sessionNumber)} for “${g.label}” opens.`,
           to: `/grounds/${g.id}`,
+          ...aboutTheCheckIn(g),
         });
       }
       const ends = time(g.endsAt);
       if ((iRunIt || me) && ends !== null && ends > at && ends <= at + AHEAD) {
-        comingUp.push({ at: new Date(ends).toISOString(), what: `${g.label} ends.`, to: `/grounds/${g.id}` });
+        comingUp.push({ at: new Date(ends).toISOString(), what: `${g.label} ends.`, to: `/grounds/${g.id}`, ...aboutTheCheckIn(g) });
       }
     }
   }

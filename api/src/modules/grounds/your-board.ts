@@ -180,6 +180,16 @@ function sessionsLine(done: number): string {
   return `You have finished ${howManyCheckIns(done)} check-ins.`;
 }
 
+/**
+ * AN AIM STORED AS A SENTENCE ABOUT THE READER IS SAID TO THE READER (B-167). Amina read "Amina is aiming for early success for Wanjiru." on her own You page, her own
+ * name in the third person. A sentence that opens with the reader's own first name and "is aiming for" or "is working on" now opens with "You are".
+ */
+export function aboutTheReaderAsYou(text: string, firstNames: readonly string[]): string {
+  const names = firstNames.map((n) => n.trim()).filter(Boolean).map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  if (!names.length) return text;
+  return text.replace(new RegExp(`^(?:${names.join('|')})\\s+is\\s+(aiming for|working on|working to|trying to)\\b`, 'iu'), (_m, what) => `You are ${what}`);
+}
+
 /** A bare field name ("shops"), not a phrase anybody wrote as a sentence: one lowercase word. */
 const A_BARE_WORD = /^[a-z][a-z-]*$/;
 
@@ -195,8 +205,8 @@ const A_BARE_WORD = /^[a-z][a-z-]*$/;
  * 30000000." is now "30 million naira disbursed. You have 4 million naira of 30 million naira.", and a
  * goal written in the first person ("I'm aiming for ...") is about the reader, whose goal it is.
  */
-function goalFromTarget(t: OwnedTargetRow): string {
-  const readable = theNumbersPeopleCanRead(t.name.trim().replace(/[.\s]+$/, ''));
+function goalFromTarget(t: OwnedTargetRow, firstNames: readonly string[] = []): string {
+  const readable = aboutTheReaderAsYou(theNumbersPeopleCanRead(t.name.trim().replace(/[.\s]+$/, '')), firstNames);
   const asYours = asTheReader(readable);
   const name = asYours.toLowerCase() === readable.toLowerCase() ? readable : asYours;
   const hasTarget = t.target !== null && t.target !== undefined;
@@ -204,6 +214,8 @@ function goalFromTarget(t: OwnedTargetRow): string {
   const n = (x: number) => `${aNumberPeopleCanRead(x)}${money && x !== 0 ? ` ${money}` : ''}`;
   if (A_BARE_WORD.test(name) && hasTarget) return `You have ${n(t.count ?? 0)} of ${n(t.target as number)} ${name}.`;
   if (!hasTarget) return asASentence(name);
+  /* A target of one on a sentence is done or not done; "You have 0 of 1." counted a piece that is not a thing (B-167). */
+  if (t.target === 1 && !A_BARE_WORD.test(name)) return `${asASentence(name)} ${(t.count ?? 0) >= 1 ? 'You have reached it.' : 'You have not reached it yet.'}`;
   return `${asASentence(name)} You have ${n(t.count ?? 0)} of ${n(t.target as number)}.`;
 }
 
@@ -359,6 +371,7 @@ export function yourBoard(
   for (const g of mine) {
     for (const p of g.participants ?? []) if (p.userId === reader.userId) myParticipantIds.add(p.id);
   }
+  const myFirstNames = [...new Set(mine.flatMap((g) => (g.participants ?? []).filter((p) => p.userId === reader.userId).map((p) => (p.user?.firstName ?? '').trim()).filter(Boolean)))];
   /* A row counts only when it is in one of your check-ins AND belongs to your own place in it. */
   const isMine = (groundId: string, participantId: string | null) =>
     labelOf.has(groundId) && !!participantId && myParticipantIds.has(participantId);
@@ -420,11 +433,11 @@ export function yourBoard(
      */
     const text = (o.text ?? '').trim();
     const theirOwnWords = o.authoredBy === 'self';
-    if (text) goals.push({ id: o.id, says: asASentence(theirOwnWords ? text : asTheReader(text)), checkIn: labelOf.get(o.groundId)! });
+    if (text) goals.push({ id: o.id, says: asASentence(theirOwnWords ? text : aboutTheReaderAsYou(asTheReader(text), myFirstNames)), checkIn: labelOf.get(o.groundId)! });
   }
   for (const t of rows.ownedTargets) {
     if (!labelOf.has(t.groundId) || !(t.name ?? '').trim()) continue;
-    goals.push({ id: t.id, says: goalFromTarget(t), checkIn: labelOf.get(t.groundId)! });
+    goals.push({ id: t.id, says: goalFromTarget(t, myFirstNames), checkIn: labelOf.get(t.groundId)! });
   }
 
   /* What you said you would do, in your own check-ins. Dropped ones are gone, as they are elsewhere.
@@ -510,4 +523,36 @@ export function yourBoard(
     ownReports: ownReports.sort((a, b) => b.t - a.t).map(({ t: _t, ...r }) => r),
     keptLately: keptLately(mineCommitments, now, rows.leave ?? []),
   };
+}
+
+
+/**
+ * THE PART OF YOUR OWN BOARD THAT YOUR WEEKLY EMAIL SAYS (decision 109, spec 25).
+ *
+ * Cut from the board served to you and nowhere else, so that the count of what you kept stays worked out in this file alone (the guard in
+ * kept-in-the-last-four-weeks-is-yours-alone.spec.ts reads that). It only repeats what is already on your own board, for you.
+ */
+export function theOwnWeekOf(board: (Partial<YourBoard> & { askedOfYou?: { items?: { who: string | null; what: string; checkIn: string }[] } | null }) | null | undefined): {
+  kept: { kept: number; of: number } | null;
+  open: { text: string; checkIn: string }[];
+  askedOfYou: { who: string | null; what: string; checkIn: string }[];
+} {
+  return {
+    kept: board?.keptLately ? { kept: board.keptLately.kept, of: board.keptLately.of } : null,
+    open: (board?.saidYoudDo ?? []).filter((s) => s.state === 'open').map((s) => ({ text: s.text, checkIn: s.checkIn })),
+    askedOfYou: (board?.askedOfYou?.items ?? []).map((i) => ({ who: i.who ?? null, what: i.what, checkIn: i.checkIn })),
+  };
+}
+
+
+/**
+ * THE COUNT OF WHAT YOU KEPT, FOR YOUR OWN WEEKLY EMAIL (decision 109, spec 25), over the rows of the check-ins the email is about. Kept here so that the
+ * count is worked out in this file alone (the guard in kept-in-the-last-four-weeks-is-yours-alone.spec.ts). It is yours and goes to you.
+ */
+export function theOwnKept(
+  rows: readonly { status: string | null; createdAt?: Date | string | null; settledAt?: Date | string | null }[],
+  now: Date = new Date(),
+): { kept: number; of: number } | null {
+  const r = keptLately(rows, now, []);
+  return r ? { kept: r.kept, of: r.of } : null;
 }

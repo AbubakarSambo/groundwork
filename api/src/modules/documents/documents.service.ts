@@ -1,4 +1,5 @@
 import { theNumberAsWritten, theSameWords } from '../grounds/a-dump-is-many-things';
+import { theFigureAsWritten } from './a-number-keeps-its-unit';
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger, Inject, forwardRef } from '@nestjs/common';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { PDFParse } = require('pdf-parse') as { PDFParse: new (opts: { data: Buffer }) => { getText: () => Promise<{ text: string }>; destroy: () => Promise<void> } };
@@ -349,8 +350,8 @@ export class DocumentsService {
     /* What they want looked for in it, in their words. Kept exactly - see the schema note. */
     uploaderNote?: string,
   ) {
-    if (!file) throw new BadRequestException('No file provided');
-    if (file.size > MAX_BYTES) throw new BadRequestException('File must be under 10 MB');
+    if (!file) throw new BadRequestException('No file came through, so choose a file and try again.');
+    if (file.size > MAX_BYTES) throw new BadRequestException('That file is larger than 10 MB, so choose a smaller one.');
     const browserWasNoHelp = UNHELPFUL_MIMES.includes(file.mimetype ?? '');
     const readableByName = browserWasNoHelp && looksLikeTextFromItsName(file.originalname);
     if (!ALLOWED_MIME.includes(file.mimetype) && !isPlainTextMime(file.mimetype) && !readableByName) {
@@ -607,7 +608,7 @@ export class DocumentsService {
       if (held.has(`${who.id}::${name.toLowerCase()}`)) continue;
       held.add(`${who.id}::${name.toLowerCase()}`);
       toWrite.push({ groundId, name, target: Math.round(r.target), ownerParticipantId: who.id, setByParticipantId: participantId, sortOrder: sortOrder++ });
-      forOnePerson.push({ who: nameOf(who as any), what: name, target: Math.round(r.target), by: r.by?.trim() || null, ownerParticipantId: who.id });
+      forOnePerson.push({ who: nameOf(who as any), what: name, target: Math.round(r.target), by: r.by?.trim() || null, ownerParticipantId: who.id, asWritten: theFigureAsWritten(Math.round(r.target), content, name) });
     }
 
     /* The group's own numbers. A participant may add one: a total in a plan is not a claim about anybody. */
@@ -619,7 +620,7 @@ export class DocumentsService {
       if (held.has(`team::${name.toLowerCase()}`)) continue;
       held.add(`team::${name.toLowerCase()}`);
       toWrite.push({ groundId, name, target: Math.round(t.target), ownerParticipantId: null, setByParticipantId: participantId, sortOrder: sortOrder++ });
-      forEverybody.push({ what: name, target: Math.round(t.target), kind: t.kind ?? null, by: t.by?.trim() || null });
+      forEverybody.push({ what: name, target: Math.round(t.target), kind: t.kind ?? null, by: t.by?.trim() || null, asWritten: theFigureAsWritten(Math.round(t.target), content, name) });
     }
 
     /*
@@ -666,7 +667,7 @@ export class DocumentsService {
   async correctAssessment(groundId: string, docId: string, userId: string, assessment: { suggests: string[]; willDo: string[] }) {
     const participant = await this.assertParticipant(groundId, userId);
     const doc = await this.prisma.groundDocument.findFirst({ where: { id: docId, groundId, participantId: participant.id } });
-    if (!doc) throw new NotFoundException('Document not found');
+    if (!doc) throw new NotFoundException('That document could not be found, so refresh the page to see what is there now.');
     const updated = await this.prisma.groundDocument.update({
       where: { id: docId },
       data: { assessment: assessment as any },
@@ -831,8 +832,8 @@ export class DocumentsService {
 
   /** Upload a document from a pre-auth participant identified by invite token. */
   async uploadByInviteToken(token: string, file: Express.Multer.File) {
-    if (!file) throw new BadRequestException('No file provided');
-    if (file.size > MAX_BYTES) throw new BadRequestException('File must be under 10 MB');
+    if (!file) throw new BadRequestException('No file came through, so choose a file and try again.');
+    if (file.size > MAX_BYTES) throw new BadRequestException('That file is larger than 10 MB, so choose a smaller one.');
     if (!ALLOWED_MIME.includes(file.mimetype) && !isPlainTextMime(file.mimetype)) {
       throw new BadRequestException('Unsupported file type. Accepted: PDF, TXT, CSV, HTML, code/text, DOCX, XLSX, JPEG, PNG, HEIC.');
     }
@@ -925,7 +926,7 @@ export class DocumentsService {
     visibility: 'OPEN' | 'OWN' | 'CLOSED',
   ) {
     if (this.config.get<boolean>('app.contextEnabled') !== true) {
-      throw new ForbiddenException('Context is not enabled on this deployment');
+      throw new ForbiddenException('Adding documents is switched off here, so ask your Groundwork contact to switch it on.');
     }
     /*
      * The body is a plain type, not a validated DTO, so the string arrives unchecked. That was
@@ -933,7 +934,7 @@ export class DocumentsService {
      * file, an unrecognised value is refused here rather than handed to Prisma to reject.
      */
     if (visibility !== 'OPEN' && visibility !== 'OWN' && visibility !== 'CLOSED') {
-      throw new BadRequestException('Unknown visibility');
+      throw new BadRequestException('Choose who may see the document, either everyone in the check-in or only you.');
     }
     const participant = await this.assertParticipant(groundId, userId);
 
@@ -947,7 +948,7 @@ export class DocumentsService {
         select: { initiatorId: true },
       });
       if (ground?.initiatorId !== userId) {
-        throw new ForbiddenException('Only the person running this check-in can keep a document to themselves');
+        throw new ForbiddenException('Only the person who runs this check-in can keep a document to themselves, so share it with the check-in instead.');
       }
     }
 
@@ -956,7 +957,7 @@ export class DocumentsService {
     });
     // Deliberately the same message whether it does not exist or is not theirs:
     // "not yours" tells somebody a document exists, which is itself a leak.
-    if (!doc) throw new NotFoundException('Document not found');
+    if (!doc) throw new NotFoundException('That document could not be found, so refresh the page to see what is there now.');
 
     const updated = await this.prisma.groundDocument.update({
       where: { id: docId },
@@ -981,7 +982,7 @@ export class DocumentsService {
       where: { id: docId, groundId, participantId: participant.id },
       select: { id: true },
     });
-    if (!doc) throw new NotFoundException('Document not found');
+    if (!doc) throw new NotFoundException('That document could not be found, so refresh the page to see what is there now.');
     const said = (note ?? '').toString().trim().slice(0, 500) || null;
     const updated = await this.prisma.groundDocument.update({
       where: { id: docId },
@@ -1005,16 +1006,16 @@ export class DocumentsService {
     const doc = await this.prisma.groundDocument.findFirst({
       where: { id: docId, groundId, participantId: participant.id },
     });
-    if (!doc) throw new NotFoundException('Document not found');
+    if (!doc) throw new NotFoundException('That document could not be found, so refresh the page to see what is there now.');
     await this.prisma.groundDocument.delete({ where: { id: docId } });
     return { deleted: true };
   }
 
   private async assertParticipant(groundId: string, userId: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const participant = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId } });
-    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!participant) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
     return participant;
   }
 }

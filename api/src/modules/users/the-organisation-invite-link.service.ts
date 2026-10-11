@@ -66,7 +66,7 @@ export class TheOrganisationInviteLinkService {
       return this.state(organizationId);
     }
     const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true } });
-    if (!org) throw new NotFoundException('Organisation not found');
+    if (!org) throw new NotFoundException('We could not find that organisation, so sign in again and try once more.');
     for (let i = 0; i < 5; i += 1) {
       const code = aNewCode(org.name);
       const taken = await this.prisma.organization.findFirst({ where: { inviteLinkCode: code }, select: { id: true } });

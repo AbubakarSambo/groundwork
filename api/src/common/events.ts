@@ -51,7 +51,17 @@ export const GroundworkEvents = {
    * (a suggestion, week 10) listens for this too, or it would always read the record one check-in late.
    */
   COMMITMENTS_SETTLED: 'commitments.settled',
+  /**
+   * SOMEBODY WAS MADE AN ADMIN of an organisation. The reviews suite listens, so an appeal that waits for an admin
+   * other than the reviewer is told to them at once (decision 113, suites/an-appeal-waits-for-a-new-admin.ts).
+   */
+  ADMIN_MADE: 'admin.made',
 } as const;
+
+export interface AdminMadeEvent {
+  organizationId: string;
+  userId: string;
+}
 
 export interface CommitmentsSettledEvent {
   groundId: string;
@@ -138,6 +148,8 @@ export interface OrgSignedUpEvent {
   organizationId: string;
   organizationName: string;
   adminEmail: string;
+  /** True when the organisation was made by a sign-up that never asks the team's size, whether it was named on the form or left blank (decision 121, item 3). */
+  namedOnTheForm?: boolean;
 }
 
 export interface ApiAccessAskedEvent {

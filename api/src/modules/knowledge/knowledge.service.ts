@@ -209,7 +209,7 @@ export class KnowledgeService {
     const key = (input.key ?? '').trim();
     const title = (input.title ?? '').trim();
     if (!key) throw new BadRequestException('key is required - it is what makes this a new version of a document rather than a new document.');
-    if (!title) throw new BadRequestException('title is required.');
+    if (!title) throw new BadRequestException('Add a title and try again.');
     if (!(input.text ?? '').trim()) throw new BadRequestException('text is required. This takes text, not a file.');
 
     const pieces = chunk(title, input.text);

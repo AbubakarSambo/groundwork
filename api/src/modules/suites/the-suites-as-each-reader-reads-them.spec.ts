@@ -172,7 +172,7 @@ describe('what the lead, Wairimu, reads', () => {
       reader: 'lead',
       suites: [
         { key: 'time', name: 'Time sheets', line: 'People say how many hours they spent, and on which client or project. Used for billing only.' },
-        { key: 'todos', name: 'To-dos', line: 'Everything people said they will do, from every check-in and chat, in one list for each person.' },
+        { key: 'todos', name: 'To-dos', line: 'Everything people said they will do, in each check-in.' /* Changed (request 181 item 1, decision 110): to-dos are served by check-in, not as one list from every check-in and chat. */ },
       ],
     });
     expect(served(page)).not.toMatch(/Naivas|u-kamau|"answers"|"questions"|"people"|"on"/);

@@ -80,6 +80,9 @@ export function theQuestionsTheLeadWants(confirmed: string[]): string {
     `${rows.length === 1 ? 'A QUESTION' : 'QUESTIONS'} TO ASK THIS PERSON, WORD FOR WORD. Each one was confirmed exactly as it is written here:`,
     ...rows.slice(0, 5).map((r) => `- "${r}"`),
     'Ask each one exactly as it is written, word for word, as a sentence of its own, once, at the point where it fits what is being discussed. Do not change its words and do not add to it. Never say who wants it asked, and never read them out as a list.',
+    /* B-017: Amani's first check-in opened three minutes after Wairimu confirmed her question, and closed without it.
+       "Where it fits" left it to chance, so it is asked in this check-in, before it closes, whatever else came up. */
+    'Ask it in this check-in. If the conversation is about to close and it has not been asked yet, ask it before you close.',
   ].join('\n');
 }
 

@@ -13,13 +13,16 @@ export const SPEND_SUITE_OFF = 'Spending requests are not switched on in your or
 export const SPEND_NOT_SENT = 'I have not sent it. Nothing was kept.';
 /** The parked proposal in Ask Groundwork while Groundwork asks for the one thing the rules need and the words did not say (build step 9). */
 export const SPEND_MISSING_KIND = 'spend_missing';
+/** The parked proposal while Groundwork asks what an amount is for, so that the next thing the person types is read as the answer. */
+export const SPEND_PURPOSE_KIND = 'spend_purpose';
 export const SPEND_NOTHING_WAITING = 'There is no spending request waiting to be sent. Tell me what you want to spend and I will ask.';
 
 export interface SpendSaid { amount: number; what: string; currency: string | null }
 
 export type SpendRead =
   | { kind: 'none' }
-  | { kind: 'ask'; say: string }
+  /** `purpose` is set when only the reason is missing: the amount is kept, and the next reply is taken as the reason. */
+  | { kind: 'ask'; say: string; purpose?: { amount: number; currency: string | null } }
   | { kind: 'ok'; said: SpendSaid };
 
 /*
@@ -44,7 +47,10 @@ const SAYS_SPEND_ALSO = new RegExp(
 );
 
 const CURRENCY = '(kes|ksh|ngn|usd|gbp|eur|zar|ugx|tzs|ghs|rwf|₦|\\$|£|€)';
-const MONEY = new RegExp(`(?:${CURRENCY}\\.?\\s*)?(\\d{1,3}(?:,\\d{3})+|\\d+)(\\.\\d+)?\\s*(k|m|thousand|million)?\\b(?:\\s*${CURRENCY}\\b)?`, 'gi');
+/* "15,000 shillings", "20,000 naira", "300 dollars": the currency said as a word after the amount. */
+const CURRENCY_WORD = 'shillings?|naira|dollars?|cedis?|rand|pounds?|euros?';
+const MONEY = new RegExp(`(?:${CURRENCY}\\.?\\s*)?(\\d{1,3}(?:,\\d{3})+|\\d+)(\\.\\d+)?\\s*(k|m|thousand|million)?\\b(?:\\s*${CURRENCY}\\b|\\s*(${CURRENCY_WORD})\\b)?`, 'gi');
+const WORD_CODE: Record<string, string | null> = { shilling: null, shillings: null, naira: 'NGN', dollar: 'USD', dollars: 'USD', cedi: 'GHS', cedis: 'GHS', rand: 'ZAR', pound: 'GBP', pounds: 'GBP', euro: 'EUR', euros: 'EUR' };
 const SYMBOL: Record<string, string> = { '₦': 'NGN', $: 'USD', '£': 'GBP', '€': 'EUR', ksh: 'KES' };
 const codeOf = (c: string) => SYMBOL[c.toLowerCase()] ?? c.toUpperCase();
 
@@ -95,7 +101,7 @@ export function readSpending(message: string, suiteCurrency: string | null): Spe
    * "Can we order 12 chairs for 30,000?" holds two numbers. The one that follows "for", "costing",
    * "worth" or "at", or that carries a currency or a k, is the money; the other is a quantity.
    */
-  const pricedBy = (m: RegExpMatchArray) => /(?:\bfor|\bat|\bcosts?|\bcosting|\bworth|@)\s*$/i.test(afterVerb.slice(0, m.index ?? 0)) || !!m[1] || !!m[5] || !!m[4];
+  const pricedBy = (m: RegExpMatchArray) => /(?:\bfor|\bat|\bcosts?|\bcosting|\bworth|@)\s*$/i.test(afterVerb.slice(0, m.index ?? 0)) || !!m[1] || !!m[5] || !!m[6] || !!m[4];
   const priced = found.length > 1 && !SAYS_SPEND_BEFORE.test(t) ? found.filter(pricedBy) : found;
   const used = priced.length === 1 ? priced : found;
   const amounts = [...new Set(used.map(asAmount))];
@@ -108,12 +114,18 @@ export function readSpending(message: string, suiteCurrency: string | null): Spe
     return { kind: 'ask', say: 'I could not read how much that is. Tell me the amount as a number and what it is for, and I will ask again.' };
   }
   const said = first[1] ?? first[5];
-  const currency = said ? codeOf(said) : null;
+  /* "shillings" alone does not say which country's, so it is taken as the organisation's own currency. */
+  const word = first[6]?.toLowerCase() ?? null;
+  const currency = said ? codeOf(said) : word ? (WORD_CODE[word] ?? null) : null;
+  /* Shillings are Kenya's, Uganda's and Tanzania's: they are the organisation's own only when it counts in one of those. */
+  if (word && /^shillings?$/.test(word) && suiteCurrency && !['KES', 'UGX', 'TZS'].includes(suiteCurrency.toUpperCase())) {
+    return { kind: 'ask', say: `Your organisation counts spending in ${suiteCurrency}, and you wrote shillings. Tell me the amount in ${suiteCurrency} and I will ask again.` };
+  }
   if (currency && suiteCurrency && currency !== suiteCurrency.toUpperCase()) {
     return { kind: 'ask', say: `Your organisation counts spending in ${suiteCurrency}, and you wrote ${currency}. Tell me the amount in ${suiteCurrency} and I will ask again.` };
   }
   const what = whatFor(afterVerb.slice((first.index ?? 0) + first[0].length)) || whatWasBought(afterVerb.slice(0, first.index ?? 0));
-  if (!what) return { kind: 'ask', say: `What is the ${money(suiteCurrency, amount)} for? Tell me in a few words and I will ask again.` };
+  if (!what) return { kind: 'ask', say: `What is the ${money(currency ?? suiteCurrency, amount)} for? Tell me in a few words and I will ask again.`, purpose: { amount, currency: currency ?? suiteCurrency } };
   return { kind: 'ok', said: { amount, what, currency: currency ?? suiteCurrency } };
 }
 
@@ -188,4 +200,18 @@ export function spendingSaidBack(said: SpendSaid, facts: SpendFacts, month: stri
 
 export function spendingSent(said: SpendSaid, currency: string | null, approverFirstName: string | null): string {
   return `I have sent your request to spend ${money(currency ?? said.currency, said.amount)} on ${said.what} to ${approverFirstName ?? 'an admin'}. It is not approved until they decide, and nothing is spent until then.`;
+}
+
+/**
+ * The reason as it joins "on ...": the first letter is lower-case, so it reads as one sentence, unless it is somebody's own
+ * word to keep. That is an "I", an acronym, a word with a capital inside it, a name the organisation knows (a person, a
+ * customer, a site, a team), or a word the person wrote with a capital again later in the same message.
+ */
+export function aReasonInASentence(what: string, knownNames: string[] = []): string {
+  const first = what.split(/\s+/)[0] ?? '';
+  const word = first.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, '');
+  const aKnownName = !!word && word.length >= 2 && knownNames.some((n) => n.split(/[\s,.\-]+/).some((w) => w.toLowerCase() === word.toLowerCase()));
+  const again = !!word && new RegExp(`\\s${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(what.slice(first.length));
+  const aName = first === 'I' || /^[A-Z]{2,}\b/.test(first) || /^.[A-Z]/.test(first) || aKnownName || again;
+  return !what || aName ? what : what[0].toLowerCase() + what.slice(1);
 }

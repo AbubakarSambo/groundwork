@@ -78,8 +78,8 @@ describe('(a) one round, from one place', () => {
   it('Coming up is the team\'s next check-in to the lead, and is Amani\'s own to Amani, and both are the third', async () => {
     const lead = whatNeedsYou([(await listAs(LEAD, 'MEMBER')) as ListedCheckIn], { userId: LEAD, role: 'MEMBER', organizationId: 'org1' }, [], NOW);
     const amani = whatNeedsYou([(await listAs(AMANI, 'MEMBER')) as ListedCheckIn], { userId: AMANI, role: 'MEMBER', organizationId: 'org1' }, [], NOW);
-    expect(lead.comingUp.map((c) => c.what)).toEqual(['The third check-in for Sales team, Q3 opens.']);
-    expect(amani.comingUp.map((c) => c.what)).toEqual(['Your third check-in for Sales team, Q3 opens.']);
+    expect(lead.comingUp.map((c) => c.what)).toEqual(['The third check-in for “Sales team, Q3” opens.']);
+    expect(amani.comingUp.map((c) => c.what)).toEqual(['Your third check-in for “Sales team, Q3” opens.']);
   });
 
   it('the You board counts what you finished in the same word', () => {

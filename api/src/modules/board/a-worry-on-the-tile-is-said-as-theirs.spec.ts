@@ -6,7 +6,7 @@ import { ReportsService } from '../reports/reports.service';
 /**
  * THE BLOCKERS TILE'S WORRY, AS EACH READER READS IT (review of 1 October 2026, re-d, seniorhire and
  * pip). The tile served a person's worry in their own first-person words with no name: "I still set up
- * the meetings. There are 4 more worries on record, and nobody is waiting on anybody." It is now their
+ * the meetings. There are 4 more worries on record, and no wait has been recorded against a named person." It is now their
  * words in quotation marks after their name, "You said, ..." for them.
  */
 const at = (d: string) => new Date(`2026-09-${d}T16:00:00Z`);
@@ -79,7 +79,7 @@ const w: World = {
     { text: 'The committee is slow.', participantId: 'p-ngozi', saidWordForWord: true },
   ],
 };
-const REST = 'There is 1 more worry on record, and nobody is waiting on anybody.';
+const REST = 'There is 1 more worry on record, and no wait has been recorded against a named person.';
 
 describe('the Blockers tile says whose worry it is', () => {
   it('Bisi, who runs it, reads Kwame\'s words after his name', async () => {
@@ -106,7 +106,7 @@ describe('the Blockers tile says whose worry it is', () => {
 describe('a line the record did not keep word for word is never put in quotation marks', () => {
   it('the tile passes over it and gives the count', async () => {
     const paraphrased: World = { ...w, worries: [{ text: 'I still set up the meetings.', participantId: 'p-kwame', saidWordForWord: false }] };
-    expect((await readAs(paraphrased, 'u-bisi')).blockers).toEqual({ value: '1 worry', sub: '1 worry is on record. It was not kept in the words it was said, so it is not quoted here. Nobody is waiting on anybody.' }); /* Changed 5 Oct 2026, request 127 item 7: the true reason, which is the lead's as well. */
+    expect((await readAs(paraphrased, 'u-bisi')).blockers).toEqual({ value: '1 worry', sub: '1 worry is on record. It was not kept in the words it was said, so it is not quoted here. No wait has been recorded against a named person.' }); /* Changed 5 Oct 2026, request 127 item 7: the true reason, which is the lead's as well. */
   });
 });
 
@@ -145,7 +145,7 @@ describe('request 127 (7): the Blockers tile says why no worry is named', () => 
   it.each([['Bisi, who runs it', 'u-bisi', 'MEMBER'], ['Grace, an admin', 'u-grace', 'ADMIN']])('%s reads that none was kept word for word', async (_who, u, role) => {
     expect((await readAs(notKept, u, role)).blockers).toEqual({
       value: '2 worries',
-      sub: '2 worries are on record. None was kept in the words it was said, so none is quoted here. Nobody is waiting on anybody.',
+      sub: '2 worries are on record. None was kept in the words it was said, so none is quoted here. No wait has been recorded against a named person.',
     });
   });
   it('Kwame and Ngozi, who check in, are served no tile before the team picture is shared', async () => {
@@ -166,14 +166,14 @@ describe('request 127 (7): the Blockers tile says why no worry is named', () => 
     return atAGlanceTiles({ agreed: 0, stillOpen: 0, movedOnTargets: null, blocked: held.blocked, waiting: held.waiting, worries: held.worries, theWorry: held.theFirstWorry, whyNoWorry: held.whyNoWorryIsShown, waitsFromEarlier: held.waitsFromEarlier }).find((t: any) => t.label === 'Blockers');
   };
   it('Ngozi, walled from Kwame\'s words, reads that one is another person\'s words', async () => {
-    expect((await tileFor(w.worries!.slice(0, 1))).sub).toBe('1 worry is on record. It is another person\'s words, so it is not shown to you. Nobody is waiting on anybody.');
+    expect((await tileFor(w.worries!.slice(0, 1))).sub).toBe('1 worry is on record. It is another person\'s words, so it is not shown to you. No wait has been recorded against a named person.');
   });
   it('and with two of them, the plural', async () => {
     const two = [w.worries![0], { text: 'The van broke down again.', participantId: 'p-kwame', saidWordForWord: true }];
-    expect((await tileFor(two)).sub).toBe('2 worries are on record. They are other people\'s words, so they are not shown to you. Nobody is waiting on anybody.');
+    expect((await tileFor(two)).sub).toBe('2 worries are on record. They are other people\'s words, so they are not shown to you. No wait has been recorded against a named person.');
   });
   it('and where none was kept word for word, she reads that reason instead, not the wall', async () => {
-    expect((await tileFor([{ ...w.worries![0], saidWordForWord: false }])).sub).toBe('1 worry is on record. It was not kept in the words it was said, so it is not quoted here. Nobody is waiting on anybody.');
+    expect((await tileFor([{ ...w.worries![0], saidWordForWord: false }])).sub).toBe('1 worry is on record. It was not kept in the words it was said, so it is not quoted here. No wait has been recorded against a named person.');
   });
 });
 
@@ -202,7 +202,7 @@ describe('request 127 (7), second review: a mixed reason, and a worry that canno
     { text: 'I am tired.', participantId: 'p-kwame', saidWordForWord: false },
     { text: 'The van broke down.', participantId: 'p-ngozi', saidWordForWord: false },
   ];
-  const THE_MIX = '3 worries are on record. Some are other people\'s words, which are not shown to you. The rest were not kept in the words they were said. Nobody is waiting on anybody.';
+  const THE_MIX = '3 worries are on record. Some are other people\'s words, which are not shown to you. The rest were not kept in the words they were said. No wait has been recorded against a named person.';
   it('Kwame, walled from Ngozi\'s words, is not told his own words are other people\'s', async () => {
     const sub = await tileFor(MIXED, { participantId: 'p-kwame', isLead: false, colleaguesWordsWalled: true });
     expect(sub).toBe(THE_MIX);
@@ -212,21 +212,21 @@ describe('request 127 (7), second review: a mixed reason, and a worry that canno
   });
   it('where every worry was kept and all are walled, it is other people\'s words, as before', async () => {
     expect(await tileFor([MIXED[0]], { participantId: 'p-kwame', isLead: false, colleaguesWordsWalled: true }))
-      .toBe('1 worry is on record. It is another person\'s words, so it is not shown to you. Nobody is waiting on anybody.');
+      .toBe('1 worry is on record. It is another person\'s words, so it is not shown to you. No wait has been recorded against a named person.');
   });
 
   const QUOTED = { text: 'He said "next week" and nothing came.', participantId: 'p-kwame', saidWordForWord: true };
   it('Bisi, who runs it, is told a kept worry cannot be quoted whole, on the served board', async () => {
     expect((await readAs({ ...w, worries: [QUOTED] }, 'u-bisi')).blockers)
-      .toEqual({ value: '1 worry', sub: '1 worry is on record. It cannot be quoted here whole, so it is not shown. Nobody is waiting on anybody.' });
+      .toEqual({ value: '1 worry', sub: '1 worry is on record. It cannot be quoted here whole, so it is not shown. No wait has been recorded against a named person.' });
   });
   it('and with more than one, the plural', async () => {
     const two = [QUOTED, { ...QUOTED, text: 'She said "maybe" again.', participantId: 'p-ngozi' }];
     expect((await readAs({ ...w, worries: two }, 'u-bisi')).blockers.sub)
-      .toBe('2 worries are on record. None can be quoted here whole, so none is shown. Nobody is waiting on anybody.');
+      .toBe('2 worries are on record. None can be quoted here whole, so none is shown. No wait has been recorded against a named person.');
   });
   it('Kwame, walled from others, reads his own unquotable worry the same way', async () => {
     expect(await tileFor([QUOTED], { participantId: 'p-kwame', isLead: false, colleaguesWordsWalled: true }))
-      .toBe('1 worry is on record. It cannot be quoted here whole, so it is not shown. Nobody is waiting on anybody.');
+      .toBe('1 worry is on record. It cannot be quoted here whole, so it is not shown. No wait has been recorded against a named person.');
   });
 });

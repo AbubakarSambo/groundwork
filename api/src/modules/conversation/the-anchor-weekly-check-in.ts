@@ -66,8 +66,45 @@ export const ANCHOR_PARTICIPANT_PROMPT = [THE_WEEKLY_CHECK_IN_GUIDANCE, THE_AGEN
 export type TheAnchorParticipantGuidance = { text: string; last: string; promptVersionId: string | null };
 
 /** A check-in belongs to the anchor when it was started from the anchor link. */
-export function aCheckInStartedFromTheAnchor(ground: { startedFrom?: string | null } | null | undefined): boolean {
-  return ground?.startedFrom === STARTED_FROM_THE_ANCHOR;
+export function aCheckInStartedFromTheAnchor(ground: { startedFrom?: string | null; scenario?: unknown } | null | undefined): boolean {
+  /* By how it was started or by its scenario (decision 114): a check-in made through the ordinary set-up with the anchor's scenario is the anchor's. */
+  return ground?.startedFrom === STARTED_FROM_THE_ANCHOR || ground?.scenario === THE_ANCHOR_SCENARIO_VALUE;
+}
+
+/**
+ * A CHECK-IN IS THE ANCHOR'S by how it was started OR by its scenario (decision 114: the anchor is a scenario like the others, so a check-in made
+ * through the ordinary set-up with that scenario is the anchor's even though it did not come in by the anchor link). The weekly letter, the nudge and
+ * the schedule ask this, and so recognise either.
+ */
+export const THE_ANCHOR_SCENARIO_VALUE = 'HELP_TEAM_UNDERSTAND';
+export function aGroundIsTheAnchors(ground: { startedFrom?: string | null; scenario?: unknown } | null | undefined): boolean {
+  return ground?.startedFrom === STARTED_FROM_THE_ANCHOR || ground?.scenario === THE_ANCHOR_SCENARIO_VALUE;
+}
+/** The same as a filter on the ground table. */
+export const WHERE_A_GROUND_IS_THE_ANCHORS = { OR: [{ startedFrom: STARTED_FROM_THE_ANCHOR }, { scenario: THE_ANCHOR_SCENARIO_VALUE }] };
+/**
+ * The opposite, as a filter. Written out and not as `NOT: {...}`, because a null `startedFrom` (every check-in that did not come in by the anchor link) makes
+ * `NOT (startedFrom = x OR scenario = y)` unknown in SQL, and a row for which it is unknown is left out, which would leave out nearly every check-in.
+ */
+export const WHERE_A_GROUND_IS_NOT_THE_ANCHORS = {
+  AND: [
+    { OR: [{ startedFrom: null }, { startedFrom: { not: STARTED_FROM_THE_ANCHOR } }] },
+    { scenario: { not: THE_ANCHOR_SCENARIO_VALUE } },
+  ],
+};
+
+/**
+ * What `startedFrom` is to anything that still asks only that: 'anchor' for a check-in that is the anchor's by its scenario too, and what the
+ * row holds for any other. Lets a caller that passes `startedFrom` on keep passing it on, and still recognise the anchor (decision 114).
+ */
+export function theAnchorMarkOf(ground: { startedFrom?: string | null; scenario?: unknown } | null | undefined): string | null {
+  return aGroundIsTheAnchors(ground) ? STARTED_FROM_THE_ANCHOR : (ground?.startedFrom ?? null);
+}
+
+/** Whether the check-in with this id is the anchor's, by how it was started or by its scenario: read from its row, for a caller that was not handed it. */
+export async function theCheckInWasStartedFromTheAnchor(prisma: any, id: string): Promise<boolean> {
+  const row = await prisma.ground.findUnique({ where: { id }, select: { startedFrom: true, scenario: true } }).catch(() => null);
+  return aCheckInStartedFromTheAnchor(row);
 }
 
 /**
@@ -77,7 +114,7 @@ export function aCheckInStartedFromTheAnchor(ground: { startedFrom?: string | nu
 export async function theAnchorParticipantGuidance(
   switchIsOn: () => Promise<boolean>,
   prompts: Pick<PromptsService, 'getActive'> | undefined,
-  who: { ground: { startedFrom?: string | null } | null | undefined; isTheLead: boolean; sessionNumber: number },
+  who: { ground: { startedFrom?: string | null; scenario?: unknown } | null | undefined; isTheLead: boolean; sessionNumber: number },
 ): Promise<TheAnchorParticipantGuidance | null> {
   if (!aCheckInStartedFromTheAnchor(who.ground)) return null;
   if (who.isTheLead || who.sessionNumber < 2) return null;

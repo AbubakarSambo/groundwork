@@ -120,7 +120,8 @@ describe('only an admin', () => {
     it(`${who} is refused the board and every change, and nothing changes`, async () => {
       const { svc, as, lists } = setup();
       await expect(svc.board(as(userId), TODAY)).rejects.toThrow(new ForbiddenException(LEAVING_REFUSED.onlyAnAdmin));
-      await expect(svc.start(as(userId), { personId: 'p-tom', lastDay: '2026-10-09' })).rejects.toThrow(ForbiddenException);
+      /* Reading and changing are told apart (request 181 item 5). */
+      await expect(svc.start(as(userId), { personId: 'p-tom', lastDay: '2026-10-09' })).rejects.toThrow(new ForbiddenException('Only an admin can change this list.'));
       expect(lists).toHaveLength(0);
     });
   }

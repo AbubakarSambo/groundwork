@@ -350,7 +350,7 @@ describe('Wairimu declines in Ask Groundwork, or by a WhatsApp reply, with a rea
       'You are declining Samuel\'s leave on Monday 19 October, and I will tell Samuel your reason, “Sales is two short that week.” Is that right?',
     );
     expect(a.decide).not.toHaveBeenCalled();
-    expect(await a.said('yes')).toBe('Samuel\'s leave on Monday 19 October is declined now. I have let Samuel know, with your reason.');
+    expect(await a.said('yes')).toBe('Samuel\'s leave on Monday 19 October is declined now. I have let Samuel know. They can read your reason in Groundwork.');
     expect(a.decide).toHaveBeenCalledWith({ userId: 'u-wairimu', organizationId: ORG }, 'r-samuel', 'declined', 'Sales is two short that week');
   });
 

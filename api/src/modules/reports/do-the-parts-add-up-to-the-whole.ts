@@ -28,6 +28,30 @@ export interface ATarget {
   name: string;
   target: number | null;
   ownerParticipantId?: string | null;
+  /** AIM or LIMIT where the lead said which way the number is read. */
+  direction?: string | null;
+}
+
+/**
+ * WHICH NUMBER IS THE OBJECTIVE (after-piece check, 8 October). The whole was "the first number nobody owns", in whatever order the rows came back. On a check-in
+ * set up from a plan, one of those rows was the lead's promise "Wairimu will settle the 21 day credit rule with finance", with 21 read out of its words, and the
+ * report was told "the objective is 21" while the team's sales target was 18 million. A promise is not a measure, so it is never the whole. Of the measures, the
+ * one the people's own numbers are counted in comes first (the same name, then the same thing counted), then one the lead said is an aim.
+ */
+export function anActionNotAMeasure(name: string): boolean {
+  return /\b(will|should|must|needs? to|has to|have to|going to)\b/i.test(name ?? '');
+}
+
+export function theWholeAmong(candidates: ATarget[], parts: ATarget[]): ATarget | null {
+  const measures = candidates.filter((t) => !anActionNotAMeasure(t.name));
+  if (!measures.length) return null;
+  const partNames = new Set(parts.map((p) => (p.name ?? '').trim().toLowerCase()));
+  const partUnits = new Set(parts.map((p) => whatIsBeingCounted(p.name)));
+  const score = (t: ATarget) =>
+    (partNames.has((t.name ?? '').trim().toLowerCase()) ? 4 : 0)
+    + (partUnits.has(whatIsBeingCounted(t.name)) ? 2 : 0)
+    + (t.direction === 'AIM' ? 1 : 0);
+  return [...measures].sort((a, b) => score(b) - score(a))[0];
 }
 
 /** The last noun in a target's name: "10,000 units of tea" -> "tea", "Carry 150 contracts" -> "contracts". */
@@ -77,8 +101,9 @@ export function theObjectiveSaid(target: number, name: string): string {
 
 export function howTheNumbersSit(targets: ATarget[], peopleInTheCheckIn: number): HowTheNumbersSit {
   const withNumbers = (targets ?? []).filter((t) => typeof t.target === 'number' && t.target! > 0);
-  const whole = withNumbers.filter((t) => !t.ownerParticipantId);
   const parts = withNumbers.filter((t) => !!t.ownerParticipantId);
+  const whole = withNumbers.filter((t) => !t.ownerParticipantId);
+  const theWhole_ = theWholeAmong(whole, parts);
   const peopleWithATarget = new Set(parts.map((p) => p.ownerParticipantId)).size;
 
   const nothing: HowTheNumbersSit = {
@@ -91,8 +116,8 @@ export function howTheNumbersSit(targets: ATarget[], peopleInTheCheckIn: number)
    * objective belongs to everybody and to nobody cannot tell anybody whether they are behind.
    */
   if (parts.length === 0) {
-    if (whole.length === 0) return nothing;
-    const theWhole = whole[0];
+    if (!theWhole_) return nothing;
+    const theWhole = theWhole_;
     return {
       ...nothing,
       whole: theWhole.target!,
@@ -100,8 +125,8 @@ export function howTheNumbersSit(targets: ATarget[], peopleInTheCheckIn: number)
     };
   }
 
-  if (whole.length === 0) return nothing;
-  const theWhole = whole[0];
+  if (!theWhole_) return nothing;
+  const theWhole = theWhole_;
 
   /*
    * THE UNITS HAVE TO MATCH BEFORE ANYTHING IS ADDED UP. Two thousand units, a hundred and fifty

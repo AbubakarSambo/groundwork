@@ -38,8 +38,15 @@ export function whatWasSaid(reply: { blocks?: unknown[] } | null | undefined): s
   const blocks = (reply?.blocks ?? []) as ABlock[];
   const said = blocks.filter((b) => b.type === 'text').map((b) => (b.body ?? '').trim()).filter(Boolean);
   const choices = theChoicesIn(blocks);
-  /* A trailing full stop goes, so the list does not read "a., b. or c.". A question mark stays:
-     "What am I on?" is the label the person was shown and cutting it changes what they saw. */
-  if (choices.length) said.push(`You could ${inPlainList(choices.map((c) => c.replace(/\.+$/, '')))}.`);
+  /* Each choice is in quotation marks, as the words on its button, so the sentence reads whole: "You could
+     choose "Tell me what you can see", "What am I on?" or "What is on my list?"". Run in bare, the labels
+     kept their capitals mid-sentence and broke it ("You could Tell me what you can see, What am I on?, ...",
+     request 225). A trailing full stop on a label goes; a question mark stays, and then the sentence
+     needs no full stop after it. */
+  if (choices.length) {
+    const quoted = choices.map((c) => `"${c.replace(/\.+$/, '')}"`);
+    const last = choices[choices.length - 1].replace(/\.+$/, '');
+    said.push(`You could choose ${inPlainList(quoted)}${/[?!]$/.test(last) ? '' : '.'}`);
+  }
   return said.join(' ');
 }

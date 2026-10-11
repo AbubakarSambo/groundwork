@@ -110,7 +110,7 @@ describe('Grace, an admin, reads the whole board', () => {
     expect(waiting.map((w) => w.name)).toEqual(['Aisha Otieno', 'Samuel Njoroge', 'Otieno Ouma']);
     expect(waiting[0]).toEqual({
       id: 'r-aisha', name: 'Aisha Otieno', startsOn: '2026-10-01', endsOn: '2026-10-02', days: 2, daysLeft: 16,
-      team: 'Sales', alsoOff: [], standIn: 'Miriam Wanjiku', mayDecide: false,
+      team: 'Sales', alsoOff: [], clash: null /* Added by item 5 of the suites at scale: nobody is off, so nothing to say. */, standIn: 'Miriam Wanjiku', mayDecide: false,
       /* Where it is, in a full sentence (decision 85, build step 4): one step, waiting for her manager. */
       where: 'It is waiting for Wairimu.',
       /* The manager's view in full sentences (decision 85, build step 7). */

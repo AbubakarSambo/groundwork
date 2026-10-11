@@ -1,7 +1,7 @@
 import { Body, Controller, Get, HttpStatus, Param, Post, Put, Query, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { IsArray, IsBoolean, IsNumber, IsObject, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsArray, IsBoolean, IsNumber, IsObject, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 import { CurrentUser, CurrentUserData } from '../../common';
 import { SuitesService } from './suites.service';
 import { OnboardingBoardService } from './the-onboarding-board.service';
@@ -12,6 +12,9 @@ import { LeavingBoardService } from './the-leaving-board.service';
 import { RoleMapService } from './the-role-map.service';
 import { SpendingService } from './the-spending.service';
 import { SpendingForFinanceService } from './the-spending-for-finance.service';
+import { ApprovalsQueueService } from './the-approvals-queue.service';
+import { DecisionsInABatchService } from './the-decisions-in-a-batch.service';
+import { ARequestFiledFromItsForm } from './a-request-filed-from-its-form';
 import { TodosService } from './the-todos.service';
 import { CustomersService } from './the-customers.service';
 import { EquipmentService } from './the-equipment.service';
@@ -19,6 +22,10 @@ import { EquipmentService } from './the-equipment.service';
 class SwitchDto {
   @IsBoolean() on!: boolean;
   @IsOptional() @IsObject() answers?: Record<string, unknown>;
+}
+
+class DecisionsDto {
+  @IsArray() decisions!: unknown[];
 }
 
 class WordsDto {
@@ -40,6 +47,20 @@ class AnswerDto {
 class ReviewDecisionDto {
   @IsOptional() @IsString() @MaxLength(1000) decision?: string;
   @IsOptional() @IsString() @MaxLength(2000) reasons?: string;
+}
+
+class AppealDto {
+  @IsString() @MaxLength(2000) why!: string;
+}
+
+class AppealMoreDto {
+  @IsString() @MaxLength(2000) text!: string;
+}
+
+class AppealDecisionDto {
+  @IsOptional() @IsString() @MaxLength(40) outcome?: string;
+  @IsOptional() @IsString() @MaxLength(2000) reasons?: string;
+  @IsOptional() @IsString() @MaxLength(1000) decision?: string;
 }
 
 class StartLeavingDto {
@@ -103,6 +124,23 @@ class TimeRulesDto {
   @IsOptional() @IsObject() billable?: Record<string, unknown> | null;
 }
 
+/**
+ * A REQUEST FILED FROM ITS FORM (request 165). For the signed-in person only: there is no field for whose it is.
+ * The dates are the same plain days the chat reads; what is not valid is refused by the same writer, in the same words.
+ */
+class LeaveRequestDto {
+  @IsString() @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'Give a first and a last day, with the last day on or after the first.' }) startsOn!: string;
+  @IsString() @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'Give a first and a last day, with the last day on or after the first.' }) endsOn!: string;
+  @IsOptional() @IsString() @MaxLength(60) kind?: string | null;
+  @IsOptional() @IsString() @MaxLength(64) standInUserId?: string | null;
+}
+
+class SpendRequestDto {
+  @IsNumber({ allowNaN: false, allowInfinity: false }, { message: 'Give an amount of more than nothing.' }) amount!: number;
+  @IsString({ message: 'Say what the money is for.' }) @MaxLength(300) what!: string;
+  @IsOptional() @IsString() @MaxLength(80) category?: string | null;
+}
+
 class FinanceCodeDto {
   @IsString() @MaxLength(80) code!: string;
 }
@@ -140,6 +178,9 @@ export class SuitesController {
     private readonly customers: CustomersService,
     private readonly equipment: EquipmentService,
     private readonly finance: SpendingForFinanceService,
+    private readonly filed: ARequestFiledFromItsForm,
+    private readonly queue: ApprovalsQueueService,
+    private readonly batch: DecisionsInABatchService,
   ) {}
 
   @Get()
@@ -148,10 +189,28 @@ export class SuitesController {
     return this.suites.forReader({ userId: user.id, organizationId: user.organizationId });
   }
 
+  @Get('mine')
+  @ApiOperation({ summary: 'Which of leave, spending and hours are switched on for you, in one call: three yes-or-no answers and a sentence. A suite that is off is a no here, never an error, so one suite being off never hides another.' })
+  whichAreOnForYou(@CurrentUser() user: CurrentUserData) {
+    return this.suites.forYourRequests({ userId: user.id, organizationId: user.organizationId });
+  }
+
   @Get('onboard/board')
   @ApiOperation({ summary: 'The onboarding board, while the suite is on, for an admin or the lead of the team' })
   onboardingBoard(@CurrentUser() user: CurrentUserData) {
     return this.onboarding.forReader({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Get('queue')
+  @ApiOperation({ summary: 'Everything that waits for you to approve or decline, leave and spending together, oldest first, a page at a time, with the counts of the whole of it. Only what waits for you.' })
+  theQueue(@CurrentUser() user: CurrentUserData, @Query('page') page?: string, @Query('pageSize') pageSize?: string, @Query('suite') suite?: string) {
+    return this.queue.queue({ userId: user.id, organizationId: user.organizationId }, { page, pageSize, suite });
+  }
+
+  @Post('decisions')
+  @ApiOperation({ summary: 'Answer up to 50 requests in one call: { decisions: [{ suite: leave|spend|hours, id, answer: approve|decline, reason? }] }. Each is checked exactly as its own route checks it, and each gets its own result; one that fails never stops the others.' })
+  decisions(@CurrentUser() user: CurrentUserData, @Body() dto: DecisionsDto) {
+    return this.batch.decide({ userId: user.id, organizationId: user.organizationId }, dto);
   }
 
   @Get('leave/board')
@@ -188,6 +247,18 @@ export class SuitesController {
   @ApiOperation({ summary: 'The person who asked for time off answers the question waiting for them. The request keeps waiting.' })
   answerAboutLeave(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: AnswerDto) {
     return this.leave.answerAQuestion({ userId: user.id, organizationId: user.organizationId }, id, dto.answer);
+  }
+
+  @Get('leave/form')
+  @ApiOperation({ summary: 'What the leave form may offer a person asking for time off: the kinds of leave and the people who could stand in. Names and keys only.' })
+  leaveForm(@CurrentUser() user: CurrentUserData) {
+    return this.suites.leaveForm({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Post('leave/requests')
+  @ApiOperation({ summary: 'A person asks for time off, from the leave form. Always their own request, by the same rules as asking in a chat.' })
+  fileLeave(@CurrentUser() user: CurrentUserData, @Body() dto: LeaveRequestDto) {
+    return this.filed.leaveRequest({ userId: user.id, organizationId: user.organizationId }, dto);
   }
 
   @Get('leave/rules')
@@ -278,6 +349,12 @@ export class SuitesController {
     return this.reviews.mine({ userId: user.id, organizationId: user.organizationId });
   }
 
+  @Get('reviews/appeals')
+  @ApiOperation({ summary: 'Appeals of decided reviews: those this admin may decide, and those waiting for another admin to be added (admins only)' })
+  reviewAppeals(@CurrentUser() user: CurrentUserData) {
+    return this.reviews.appealsToDecide({ userId: user.id, organizationId: user.organizationId });
+  }
+
   @Get('reviews/:id')
   @ApiOperation({ summary: 'One review, as this reader may read it' })
   oneReview(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
@@ -306,6 +383,24 @@ export class SuitesController {
   @ApiOperation({ summary: 'The person marks one line of their review as wrong and says what is true. It is kept beside the line, and the record is not changed.' })
   correctAReviewLine(@Param('id') id: string, @Param('key') key: string, @CurrentUser() user: CurrentUserData, @Body() dto: WordsDto) {
     return this.reviews.correct({ userId: user.id, organizationId: user.organizationId }, id, key, dto.text);
+  }
+
+  @Post('reviews/:id/appeal')
+  @ApiOperation({ summary: 'The person appeals a decided review, saying why. An admin who is not the reviewer decides it.' })
+  appealAReview(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: AppealDto) {
+    return this.reviews.appeal({ userId: user.id, organizationId: user.organizationId }, id, dto.why);
+  }
+
+  @Post('reviews/:id/appeal/more')
+  @ApiOperation({ summary: 'The person adds to their reasons, until the appeal is decided' })
+  addToAnAppeal(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: AppealMoreDto) {
+    return this.reviews.addToTheAppeal({ userId: user.id, organizationId: user.organizationId }, id, dto.text);
+  }
+
+  @Post('reviews/:id/appeal/decision')
+  @ApiOperation({ summary: 'An admin who is not the reviewer decides the appeal, giving reasons the person and the reviewer read' })
+  decideAnAppeal(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: AppealDecisionDto) {
+    return this.reviews.decideTheAppeal({ userId: user.id, organizationId: user.organizationId }, id, dto);
   }
 
   @Post('reviews/:id/decision')
@@ -440,6 +535,18 @@ export class SuitesController {
     return this.suites.setWorkflows({ userId: user.id, organizationId: user.organizationId }, dto);
   }
 
+  @Get('spend/form')
+  @ApiOperation({ summary: 'What the payment request form may offer a person asking to spend: the categories, and the currency. Names only.' })
+  spendForm(@CurrentUser() user: CurrentUserData) {
+    return this.suites.spendForm({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Post('spend/requests')
+  @ApiOperation({ summary: 'A person asks to spend money, from the payment request form. Always their own request, by the same rules as asking in a chat.' })
+  fileSpend(@CurrentUser() user: CurrentUserData, @Body() dto: SpendRequestDto) {
+    return this.filed.spendingRequest({ userId: user.id, organizationId: user.organizationId }, dto);
+  }
+
   @Get('spend/rules')
   @ApiOperation({ summary: 'The spending rules: categories, the receipt or quote needed, and thresholds by amount with their own approval steps. For an admin only.' })
   spendRules(@CurrentUser() user: CurrentUserData) {
@@ -456,6 +563,12 @@ export class SuitesController {
   @ApiOperation({ summary: 'Approved requests to spend, for whoever looks after finance or an admin: only what is on each request, to check, code and mark paid' })
   financeView(@CurrentUser() user: CurrentUserData) {
     return this.finance.view({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Get('spend/finance/totals')
+  @ApiOperation({ summary: 'The month\'s spending added up from the requests, by team and by category, in the organisation\'s currency (month=2026-10; the current month when left out). For whoever looks after finance or an admin only.' })
+  financeTotals(@CurrentUser() user: CurrentUserData, @Query('month') month?: string) {
+    return this.finance.totals({ userId: user.id, organizationId: user.organizationId }, month);
   }
 
   @Get('spend/finance/export')

@@ -24,7 +24,7 @@ describe('a wait on "the lead", written four ways', () => {
   it('the lead reads one wait, on her, and never "the lead"', async () => {
     const b = JSON.stringify(await boardAs(FOUR, ...BISI));
     expect(b).not.toMatch(/waiting on the lead|Waiting on: the lead|on the lead for/i);
-    expect(b).toMatch(/Kwame Mensah is waiting on you for/);
+    expect(b).toMatch(/Kwame Mensah says the work is waiting on you for/);
     const board: any = await boardAs(FOUR, ...BISI);
     expect((board.whoWaitedOnWhom ?? []).length).toBe(1);
     expect((board.blockers ?? []).length).toBe(1);

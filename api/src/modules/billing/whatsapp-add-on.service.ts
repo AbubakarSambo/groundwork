@@ -124,7 +124,7 @@ export class WhatsAppAddOnService {
   /** Where this organisation stands with WhatsApp now. Throws only for an organisation that does not exist. */
   async standing(organizationId: string, now: Date = new Date()): Promise<WhatsAppStanding> {
     const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: ORG_FIELDS });
-    if (!org) throw new NotFoundException('Organization not found');
+    if (!org) throw new NotFoundException('We could not find that organisation, so sign in again and try once more.');
     const [trial, plans, use] = await Promise.all([
       this.pricing.getFreeTrial(),
       this.prisma.pricingPlan.findMany(),
@@ -324,7 +324,8 @@ export class WhatsAppAddOnService {
    */
   async whatTheyRead(organizationId: string, isAdmin: boolean, now: Date = new Date()) {
     const s = await this.standing(organizationId, now);
-    const personSays = s.heldBecause ? whatThePersonReads(s.heldBecause, now) : null;
+    /* This read is about the organisation, not one check-in: when WhatsApp is not turned on it says the one sentence the other readers of the page say (B-007), not "this check-in stays in the app". */
+    const personSays = s.heldBecause === 'not turned on' ? WHATSAPP_REMINDERS_ARE_OFF : s.heldBecause ? whatThePersonReads(s.heldBecause, now) : null;
     /* The price, the trial, the use and the limit are hidden at release (docs/deploy.md): an admin reads what everybody reads. */
     /*
      * A LEAD OR A PERSON IN A CHECK-IN READS WHY NOT, ON THEIR OWN READ (screens gap, 5 October). With the add-on off and
@@ -333,7 +334,9 @@ export class WhatsAppAddOnService {
      * So they read that, plainly, and whether it is on.
      */
     const offSays = !s.addOnOn ? WHATSAPP_REMINDERS_ARE_OFF : null;
-    if (!isAdmin || !(await theNewBillingPartsAreShown(this.prisma))) return { on: s.addOnOn, sending: s.sending, says: personSays ?? offSays };
+    if (!isAdmin || !(await theNewBillingPartsAreShown(this.prisma))) /* Exactly what a member reads, with no `on`: the screen takes an answer that has `on` for the admin's full one, so an
+       admin with the switch off would read an empty part (clean-install run, 6 October). */
+      return { sending: s.sending, says: personSays ?? offSays };
 
     const label = s.plan ? PLAN_LABELS[s.plan] : null;
     const says: Record<string, string | null> = {
@@ -350,7 +353,8 @@ export class WhatsAppAddOnService {
         : s.onTheFreePlan
           ? 'Nothing is charged for WhatsApp while you are on the free plan.'
           : s.inAFreeRun && s.freeTrial
-            ? `Your free trial lasts ${s.freeTrial.months} ${s.freeTrial.months === 1 ? 'month' : 'months'} and ends on ${aDay(s.freeTrial.endsOn)}. Nothing is charged for WhatsApp until then.`
+            /* No date here: the plan line on the same page already says when it ends, and two calendars (the screen's and the server's UTC) gave two different days (clean-install run, 6 October). */
+            ? `Your free trial lasts ${s.freeTrial.months} ${s.freeTrial.months === 1 ? 'month' : 'months'}. Nothing is charged for WhatsApp until it ends.`
             : s.inAFreeRun
               ? 'Nothing is charged for WhatsApp while your free months last.'
               : s.charged

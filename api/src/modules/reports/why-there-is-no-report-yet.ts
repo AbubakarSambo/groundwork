@@ -18,7 +18,7 @@ export interface WhereEverybodyIs {
 
 export function whyThereIsNoReportYet(where: WhereEverybodyIs): string {
   const { parties } = where;
-  if (!parties.length) return 'Report not found';
+  if (!parties.length) return 'That report could not be found, so go back to the check-in and open it from there.';
 
   const done = parties.filter((p) => p.completed).length;
   const waiting = parties.length - done;

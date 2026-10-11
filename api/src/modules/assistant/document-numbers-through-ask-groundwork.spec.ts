@@ -194,3 +194,16 @@ describe('a document\'s numbers, said back through Ask Groundwork', () => {
     expect(prisma.assistantProposal.create).not.toHaveBeenCalled();
   });
 });
+
+describe('a link to a document is not the document (B-027)', () => {
+  it('is told the link is not read, and is never shown another file\'s numbers or asked to record them', async () => {
+    const { service, prisma, created } = svc({ docs: [A_DOC] });
+    const reply = await service.respond('org-a', 'p1', 'Here is a document https://docs.google.com/document/d/abc123/edit for Sales team, Q4');
+    const said = (reply.blocks[0] as any).body as string;
+    expect(said).toBe('I cannot open a link to a document, so I have not read it and nothing has been added. Upload the file itself, or paste the words from it here, and I will read it.');
+    expect(said).not.toContain('Q4 targets.xlsx');
+    expect(reply.blocks.some((b: any) => b.type === 'proposal')).toBe(false);
+    expect(created).toEqual([]);
+    expect(prisma.groundObjective.createMany).not.toHaveBeenCalled();
+  });
+});

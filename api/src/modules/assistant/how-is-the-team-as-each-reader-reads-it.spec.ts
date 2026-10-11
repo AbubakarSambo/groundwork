@@ -19,7 +19,7 @@ function svc(me: { linkedUserId: string; role: string }) {
   const prisma: any = {
     person: { findFirst: jest.fn(async () => ({ id: 'p1', externalId: 'u-1', active: true, linkedUserId: me.linkedUserId, department: 'Sales' })), findMany: jest.fn(async () => []) },
     organizationMembership: { findUnique: jest.fn(async () => ({ role: me.role })) },
-    ground: { findFirst: jest.fn(async () => null), findMany: jest.fn(async ({ where }: any) => (where?.initiatorId === 'u-wairimu' ? [{ id: 'g-sales', label: 'Sales team, last quarter' }] : [])) },
+    ground: { findFirst: jest.fn(async () => null), findMany: jest.fn(async ({ where }: any) => (where?.initiatorId === 'u-wairimu' ? [{ id: 'g-sales', label: 'Sales team, last quarter' }] : where?.AND ? [{ id: 'g-ops', label: 'Warehouse rollout' }, { id: 'g-sales', label: 'Sales team, last quarter' }] : [])) },
     assistantTurn: { count: jest.fn(async () => 5), createMany: jest.fn(async () => ({ count: 2 })) },
     assistantProposal: { findFirst: jest.fn(async () => null), create: jest.fn(async ({ data }: any) => ({ id: 'pr1', ...data })), update: jest.fn(async () => ({})) },
     commitment: { findMany: jest.fn(async () => []) }, todo: { findMany: jest.fn(async () => []) },
@@ -46,6 +46,11 @@ describe('how is the team doing', () => {
   it.each(['How is the team doing?', 'how is my team getting on', "how's the team", 'How is everyone doing'])('"%s" goes to the team reading', (q) => {
     expect(route(q).lane).toBe('how_is_the_team');
   });
+  it('and the team may be named: "the sales team", "our operations team"', () => {
+    expect(route('How is the sales team doing?')).toEqual({ lane: 'how_is_the_team', subject: 'sales' });
+    expect(route('how is our operations team getting on').lane).toBe('how_is_the_team');
+    expect(route('How is the team doing?')).toEqual({ lane: 'how_is_the_team' });
+  });
   it('and "how am I doing" is still about the asker', () => {
     expect(route('how am I doing?').lane).not.toBe('how_is_the_team');
   });
@@ -61,11 +66,30 @@ describe('how is the team doing', () => {
     expect(s.board.get).toHaveBeenCalledWith('g-sales', 'u-wairimu');
   });
 
+  it('where the report already says "All three people have answered.", it is said once, not twice (F-14)', async () => {
+    const s = svc({ linkedUserId: 'u-wairimu', role: 'LEAD' });
+    (s.board.get as jest.Mock).mockResolvedValueOnce({ renders: true, howItIsGoing: { latestSummary: 'All three people have answered. Their accounts suggest they are working on different things.', glance: { progress: { answeredThisRound: 3, ofPeople: 3 }, inTheWay: { count: 4, oldest: 'the 21 day rule agreement with finance', sinceSays: 'since 7 October' } } } });
+    const r = await said(s, 'Where are we on the quarter?');
+    expect(r.text.split('All three people have answered.').length - 1).toBe(1);
+    expect(r.text).toContain('Their accounts suggest they are working on different things.');
+    expect(r.text).toContain('4 things are in the way.');
+  });
+
   it('Amani, who takes part and runs nothing, is told plainly that there is no team to tell her about, and the board is never read for her', async () => {
     const s = svc({ linkedUserId: 'u-amani', role: 'MEMBER' });
     const r = await said(s, 'How is the team doing?');
     expect(r.text).toBe('You do not run a check-in yet, so there is no team for me to tell you about. You can ask me how you are doing, or what you are waiting on.');
     expect(s.board.get).not.toHaveBeenCalled();
+  });
+
+  it('Grace, an admin who runs nothing, is told about the check-in named, from the boards she may read (B-134)', async () => {
+    const s = svc({ linkedUserId: 'u-grace', role: 'ADMIN' });
+    const r = await said(s, 'How is the sales team doing?');
+    expect(r.lane).toBe('how_is_the_team');
+    expect(r.text).toContain('All three people have answered.');
+    expect(r.text).toContain('This is what the boards and the latest reports say, and only you can read it here.');
+    expect(s.board.get).toHaveBeenCalledTimes(1);
+    expect(s.board.get).toHaveBeenCalledWith('g-sales', 'u-grace');
   });
 
   it('an empty board is not read out as a state of the team', async () => {

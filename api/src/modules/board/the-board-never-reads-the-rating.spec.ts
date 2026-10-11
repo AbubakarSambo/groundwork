@@ -125,7 +125,7 @@ describe('the board reads how checkable the answers were, and nothing more', () 
 
   it("and what the lead reads is said in full sentences, in the prototype's words", async () => {
     expect(served(await boardRatedAs('leastFlattering'))).toEqual([
-      { who: 'Femi Adeyemi', reason: 'has not answered', says: 'Femi Adeyemi has not checked in for this round yet.' },
+      { who: 'Femi Adeyemi', reason: 'has not answered', says: 'Femi Adeyemi has not checked in for this session yet.' },
       /* In name order within a reason; Miriam's first round had nothing checkable either. */
       { who: 'Aisha Otieno', reason: 'nothing checkable', says: 'Nothing Aisha Otieno said this round can be checked yet. A number, a date or a document for what moved would change that.' },
       { who: 'Miriam Wanjiku', reason: 'nothing checkable', says: 'Nothing Miriam Wanjiku said this round can be checked yet. This is the second week in a row. A number, a date or a document for what moved would change that.' },
