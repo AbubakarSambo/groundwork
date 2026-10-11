@@ -142,6 +142,15 @@ export function scenarioLabel(key: string, brief?: string | null): string {
    * conversation this is, and a caller with no brief to hand gets the same answer as before.
    */
   if (key === 'OKR_ALIGNMENT' && SOUNDS_LIKE_A_CASCADE.test(brief ?? '')) return 'Connect Goals Across the Team'
+  /*
+   * THE ANCHOR'S OWN SCENARIO HAS A NAME BUT NO CARD.
+   *
+   * `HELP_TEAM_UNDERSTAND` is served for an anchor check-in and must read as a plain sentence
+   * everywhere a situation's name is printed - but it must never gain a card, because nobody
+   * picks it from a situation picker; it is set only by the anchor's own path. Keeping it out of
+   * `SCENARIO_LABELS` keeps it out of `SCENARIO_KEYS`, which both pickers build their cards from.
+   */
+  if (key === 'HELP_TEAM_UNDERSTAND') return 'Help my team understand'
   const known = (SCENARIO_LABELS as Record<string, string>)[key]
   if (known) return known
   return key.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())

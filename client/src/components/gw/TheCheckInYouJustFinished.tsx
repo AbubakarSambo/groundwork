@@ -107,7 +107,7 @@ function Row({ row, onTakeBack, busy }: { row: MyRow; onTakeBack: () => void; bu
                 minHeight: 32, display: 'inline-flex', alignItems: 'center',
               }}
             >
-              This is not what I said
+              Something here isn’t right
             </button>
           )}
       </div>
@@ -260,7 +260,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
           {closed ? 'Where this ended, in your own words' : 'What you said this time'}
         </div>
         <div className="gw-stamp" style={{ marginTop: 4, color: 'var(--gw-sub)' }}>
-          {`Check-in ${sessionNumber}${d?.plannedSessions ? ` of ${d.plannedSessions}` : ''}`}
+          {`Session ${sessionNumber}${d?.plannedSessions ? ` of ${d.plannedSessions}` : ''}`}
           {/* The date this sitting happened. A report with no date on it is a report somebody
               cannot place against anything else that was going on that week. */}
           {thisSitting?.completedAt ? `, on ${whenItWas(thisSitting.completedAt, 'dayAndMonth')}` : ''}

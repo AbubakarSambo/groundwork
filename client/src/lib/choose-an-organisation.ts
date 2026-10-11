@@ -26,3 +26,8 @@ export function takeJustSignedIn(): boolean {
 export function stillToChoose(): boolean {
   try { return window.sessionStorage.getItem(KEY) === '1' } catch { return false }
 }
+
+/** Discards the flag without reading it: the question belonged to whoever was signed in before. */
+export function forgetChosenOrganisation(): void {
+  try { window.sessionStorage.removeItem(KEY) } catch { /* private mode: nothing to forget */ }
+}

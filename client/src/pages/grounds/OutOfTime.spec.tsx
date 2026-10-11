@@ -23,16 +23,20 @@ function open(onOpenMyWork = vi.fn()) {
 beforeEach(() => { vi.clearAllMocks() })
 
 describe('out of time', () => {
-  /* UPDATED 29 September, item 11: "All 38 of your check-ins" is back, reading the server's own
-     count of check-ins (Grounds), never sessions - see theirAnswersAreKept below. */
-  it('reads as the prototype\'s card, with the server\'s own check-in count', async () => {
+  /* B-233: this used to read "All 38 of your check-ins and your history stay as they are," the
+     server's own count of check-ins (Grounds) this person has ever been part of - but this screen
+     is for ONE check-in that ran out of time, and that sentence reads as if every one of the
+     person's check-ins had run out, which is not true for someone like Dov with several others
+     still running. Updated to say only what is true for this one check-in - see
+     theirAnswersAreKept below. */
+  it('reads as the prototype\'s card', async () => {
     ;(groundsApi.moreTime as any).mockResolvedValue(STANDING)
     open()
     expect(await screen.findByText('It ran until 30 September. Nothing new can be added until Wairimu gives it more time.')).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'This check-in reached its end date' })).toBeTruthy()
     expect(screen.getByText('Out of time')).toBeTruthy()
     expect(screen.getByText('Your answers are kept')).toBeTruthy()
-    expect(screen.getByText('All 38 of your check-ins and your history stay as they are.')).toBeTruthy()
+    expect(screen.getByText('What you have said in this check-in stays as it is.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Ask Wairimu for more time' })).toBeEnabled()
     expect(screen.getByRole('button', { name: 'Open my work' })).toBeTruthy()
     expect(screen.getByText('Wairimu gets your request with one button to extend it.')).toBeTruthy()
@@ -126,16 +130,8 @@ describe('the floating feedback button', () => {
   })
 })
 
-describe('"All 38 of your check-ins" counts check-ins, never sessions (item 11)', () => {
-  it('the prototype\'s own sentence, with the count', () => {
-    expect(theirAnswersAreKept(38)).toBe('All 38 of your check-ins and your history stay as they are.')
-  })
-
-  it('one check-in reads as a full sentence, not "All 1 of your check-ins"', () => {
-    expect(theirAnswersAreKept(1)).toBe('Your check-in and your history stay as they are.')
-  })
-
-  it('falls back to the count-free sentence while it has not loaded', () => {
-    expect(theirAnswersAreKept(undefined)).toBe('Your answers and your history stay as they are.')
+describe('B-233: says only what is true for this one check-in, not every check-in the person has', () => {
+  it('always reads the same, true, sentence', () => {
+    expect(theirAnswersAreKept()).toBe('What you have said in this check-in stays as it is.')
   })
 })

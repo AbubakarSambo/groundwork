@@ -102,6 +102,8 @@ describe('Miriam reads her own You board', () => {
     open(MIRIAM, MIRIAMS)
     await screen.findByRole('heading', { name: 'Your own reports' })
     expect(hrefOf(section('Your own reports'), 'Read')).toBe('/checkin/c38/report')
+    /* SCREEN FAULT 10: 30px tall on a phone before the shared 40px tap class was added. */
+    expect(within(section('Your own reports')).getByRole('link', { name: 'Read' }).className).toContain('gwui-tap-40')
     /* Walkthrough pass 2, item 4: dates read in full ("23 September", not "23 Sept"). */
     expect(within(section('Your own reports')).getByText('23 September')).toBeInTheDocument()
     const each = section('Your work in each')
@@ -177,6 +179,18 @@ describe('Grace, an admin in no check-in, reads her own', () => {
     open(GRACE, EMPTY)
     expect(await screen.findByText('You are not in any check-in yet.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Download it' })).toBeInTheDocument()
+  })
+})
+
+describe('Grace, an admin who runs check-ins but has never been one’s own subject (B-043)', () => {
+  it('does not print the "Your board" heading with nothing under it', async () => {
+    open(GRACE, {
+      ...EMPTY,
+      checkIns: [{ id: 's', label: 'Sales team, Q3', youRunIt: true, line: 'You run this check-in. You have finished 38 sessions.', to: '/grounds/s' }],
+    })
+    await screen.findByRole('heading', { name: 'Your work in each' })
+    expect(screen.queryByRole('heading', { name: 'Your board' })).not.toBeInTheDocument()
+    expect(screen.queryByText('You are not in any check-in yet.')).not.toBeInTheDocument()
   })
 })
 

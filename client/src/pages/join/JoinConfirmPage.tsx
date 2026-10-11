@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { joinApi } from '@/api/entry'
 import { authApi } from '@/api/auth'
-import { Arrival } from '@/components/gw/Arrival'
 import { LinkProblem } from '@/components/gw/LinkProblem'
+import { Page, Mark } from '@/components/gw/ui'
 import { useAuthStore } from '@/stores/auth'
 
 /**
@@ -75,20 +75,30 @@ export function JoinConfirmPage() {
       })
   }, [token, navigate, setAuth])
 
+  /*
+   * B-047: this page used to wrap both states in `Arrival` (a full-width header band with
+   * `GroundworkLogo`, "a left-aligned top bar... in small letter-spaced capitals"), the one
+   * refusal screen in the whole audit drawn that way - every other one ("This link did not
+   * work"-style pages included, `/join` itself among them) centres a card on the cream page with
+   * the plain inline `Mark`, via `Page narrow`. `/join`'s own `LinkProblem` (its "error" phase,
+   * `JoinPage.tsx`) is rendered exactly this way already; this page now matches it.
+   */
   if (problem) {
     return (
-      <Arrival>
+      <Page narrow>
+        <Mark />
         {/* The server's sentence in place of the generic one, not under it in smaller type. LinkProblem
             deliberately does not say which token failed; the server's join sentences say what to do, which is a
             smaller move against that stance and is made knowingly. */}
         <LinkProblem kind="join" detail={problem} />
-      </Arrival>
+      </Page>
     )
   }
 
   return (
-    <Arrival>
+    <Page narrow>
+      <Mark />
       <div style={{ textAlign: 'center', color: 'var(--gw-muted)', fontSize: 13 }}>Starting your session…</div>
-    </Arrival>
+    </Page>
   )
 }

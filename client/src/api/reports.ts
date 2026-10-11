@@ -79,6 +79,35 @@ export const reportsApi = {
 
   startSelfCorrection: (groundId: string, sessionNumber: number) =>
     apiClient.post<{ checkInId: string }>(`/grounds/${groundId}/correct-session`, { sessionNumber }).then(r => r.data),
+
+  /**
+   * THE WEEKLY REPORT (B4, "This week"; docs/answers-from-engine.md, request 9 part (d), and
+   * decision 73). `week` reads an earlier week by the date of its Monday ("2026-09-21"); without
+   * it, the latest week. A week with no report comes back as `saying` alone. Drawn for whoever
+   * runs the check-in (and an org admin, on an ordinary check-in) with every field below; a
+   * participant reads only their own sentence in `eachPerson` and never `forNextWeek` (the
+   * server decides this - the screen draws only what it is sent).
+   */
+  week: (groundId: string, week?: string) =>
+    apiClient
+      .get<WeeklyReport>(`/grounds/${groundId}/report/week`, { params: week ? { week } : undefined, skipNotFoundToast: true, skipForbiddenToast: true } as any)
+      .then(r => r.data),
+}
+
+/** `GET /grounds/:groundId/report/week`. See reportsApi.week above for how it is drawn. */
+export interface WeeklyReport {
+  weekStart: string | null
+  builtAt: string | null
+  saying?: string
+  heading?: string
+  whatThisIs?: string
+  inNumbers?: { figure: string; of: string; says: string }[]
+  eachPerson: { who: string; isYou: boolean; says: string }[]
+  acrossTheTeam?: string[]
+  threeInARow?: { who: string; isYou: boolean; says: string }[]
+  saidAndProof?: string | null
+  whatChanged?: { moved: string[]; dropped: string[]; result: string[] }
+  forNextWeek?: { do: string; why: string; comesFrom: string }[]
 }
 
 /**

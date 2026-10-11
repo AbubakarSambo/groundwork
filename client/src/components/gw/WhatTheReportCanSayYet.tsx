@@ -144,7 +144,7 @@ export function whatItCanSay(f: CoverageFacts): { rows: Row[]; headline: string 
       can: f.roundsFinished >= 2,
       short: "what's changed",
       says: 'How this has changed since last time',
-      because: 'Needs a second round',
+      because: 'Needs a second session',
     },
   ]
 

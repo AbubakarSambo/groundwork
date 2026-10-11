@@ -13,6 +13,15 @@ export interface OrgMember {
   email: string
   firstName: string | null
   lastName: string | null
+  /**
+   * DECISION 115: A NAME FOR EVERY PERSON, NEVER AN ADDRESS IN ITS PLACE. `GET /users` now carries
+   * this on every row - the person's name, "Someone who has not given a name yet" for one who has
+   * not, and for somebody added or invited with no seat, the name typed beside their address, or
+   * "Somebody invited by email". Seven of twelve people at one real organisation had no name, and
+   * `nameOf`/`firstNameOf` used to fall back to the raw email address for them. Read this first,
+   * wherever a name goes.
+   */
+  displayName?: string
   role: string
   isActive: boolean
   isEmailVerified: boolean
@@ -50,12 +59,15 @@ export interface OrgMember {
 const MOST_PAGES = 10
 const PER_PAGE = 100
 
-export async function fetchMembers(): Promise<{ data: OrgMember[]; meta: { total: number } }> {
+export async function fetchMembers(): Promise<{ data: OrgMember[]; meta: { total: number }; overThePlanSays?: string | null }> {
   const all: OrgMember[] = []
   let total = 0
+  /* Request 197: the server's one sentence about who waits for a seat because the plan is full, the same one Plan and billing says. */
+  let overThePlanSays: string | null = null
   for (let page = 1; page <= MOST_PAGES; page += 1) {
     const r = await apiClient.get(`/users?limit=${PER_PAGE}&page=${page}`)
     const body = r.data.data ? r.data : { data: r.data, meta: { total: 0 } }
+    if (page === 1 && typeof body.overThePlanSays === 'string') overThePlanSays = body.overThePlanSays
     all.push(...(body.data ?? []))
     total = body.meta?.total ?? all.length
     if (all.length >= total || (body.data ?? []).length < PER_PAGE) break
@@ -63,10 +75,11 @@ export async function fetchMembers(): Promise<{ data: OrgMember[]; meta: { total
   /* Somebody who left is not one of the organisation's people (U.4 fourth review). The server leaves
      them out already; this keeps every filter's count true even against an older server. */
   const here = all.filter((m) => m.isActive !== false)
-  return { data: here, meta: { total: total - (all.length - here.length) } }
+  return { data: here, meta: { total: total - (all.length - here.length) }, overThePlanSays }
 }
 
-export function nameOf(m: Pick<OrgMember, 'firstName' | 'lastName' | 'email'>): string {
+export function nameOf(m: Pick<OrgMember, 'firstName' | 'lastName' | 'email' | 'displayName'>): string {
+  if (m.displayName) return m.displayName
   return `${m.firstName ?? ''} ${m.lastName ?? ''}`.trim() || m.email || ''
 }
 
@@ -77,14 +90,39 @@ export function nameOf(m: Pick<OrgMember, 'firstName' | 'lastName' | 'email'>): 
  * field whole read "What Rukia Otieno can do..." and "Rukia Otieno owns this organisation..." where
  * every other person on the same page reads their first name alone ("What Faraji can do...").
  */
-export function firstNameOf(m: Pick<OrgMember, 'firstName' | 'lastName' | 'email'>): string {
+export function firstNameOf(m: Pick<OrgMember, 'firstName' | 'lastName' | 'email' | 'displayName'>): string {
   const whole = (m.firstName ?? '').trim() || nameOf(m)
   return whole.split(/\s+/)[0] || whole
 }
 
+/**
+ * B-066: "SOMEONE WHO HAS NOT GIVEN A NAME YET" READ AS THE INITIALS "SW".
+ *
+ * `initialsOf` took the first letter of the first two words of whatever it was given, which is
+ * right for an actual name but wrong for the placeholder sentence decision 115 serves in its place
+ * - "Someone" and "who" are not a first and last name, they are the start of a sentence that says
+ * there isn't one. E1 on Riverbank Trading's old data found every person with no name on People
+ * reading "SW" in their avatar circle. Both of the app's own placeholder sentences are matched
+ * literally and read as a plain neutral mark instead, never initials made out of their own words.
+ */
+const NO_NAME_PLACEHOLDERS = new Set(['Someone who has not given a name yet', 'Somebody invited by email'])
+
 export function initialsOf(name: string | null | undefined): string {
-  const parts = (name ?? '').replace(/@.*/, '').split(/[\s._-]+/).filter(Boolean)
+  const trimmed = (name ?? '').trim()
+  if (NO_NAME_PLACEHOLDERS.has(trimmed)) return ''
+  const parts = trimmed.replace(/@.*/, '').split(/[\s._-]+/).filter(Boolean)
   return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?'
+}
+
+/**
+ * B-212: THE FIRST WORD OF EITHER "NO NAME" PLACEHOLDER SENTENCE - NEVER A REAL PERSON'S FIRST
+ * NAME. `firstNameOf` on a placeholder (decision 115's "Someone who has not given a name yet" or
+ * "Somebody invited by email") reads back "Someone" or "Somebody", which a list-of-names sentence
+ * then joined like a real name: two people with no name read "Someone and Someone are waiting to
+ * be let in." Used wherever such a list needs to fall back to a plain count instead.
+ */
+export function isNamePlaceholder(firstName: string): boolean {
+  return firstName === 'Someone' || firstName === 'Somebody'
 }
 
 /** Role, in the prototype's words. The owner is one field, not a role, and reads as "Owner". */
@@ -99,6 +137,13 @@ export function roleWord(m: Pick<OrgMember, 'id' | 'role'>, ownerId: string | nu
  * has not answered one, which the prototype has no word for and an admin rolling out needs. "Not let
  * in" is Hafsah's decision of 29 September: once this organisation's own admin has said no, "waiting"
  * is no longer true.
+ *
+ * "RUNS N CHECK-INS", NOT "NOT ANSWERED YET", FOR SOMEBODY WHO ONLY RUNS THEM (real-user walk,
+ * Kijani Foods, fault 8d). Naomi, who leads check-ins but answers in none of them, read "Not
+ * answered yet" - untrue: nothing is waiting on her to answer, because a lead who is not also a
+ * party to their own check-in never answers one. `checkIns[].runsIt` already says which of
+ * `checkInsOn` she runs rather than takes part in; where every one of them is hers to run, and
+ * none is a seat she is still expected to answer from, the status says what is actually true.
  */
 export function statusWord(m: OrgMember): string {
   if (m.notLetIn) return 'Not let in'
@@ -106,6 +151,11 @@ export function statusWord(m: OrgMember): string {
   if (m.heldForASeat) return 'No seat on your plan'
   if (m.state === 'invited') return 'Invited, not opened'
   if ((m.checkInsOn ?? 0) === 0) return 'Signed in, not on a check-in'
+  const onlyRuns = (m.checkIns ?? []).length > 0 && (m.checkIns ?? []).every((c) => c.runsIt)
+  if (onlyRuns && (m.checkInsAnswered ?? 0) === 0) {
+    const n = m.checkIns!.length
+    return `Runs ${n} check-in${n === 1 ? '' : 's'}`
+  }
   /* Added to a check-in, and has not opened the invitation yet (U.4 review). */
   if ((m.checkInsAnswered ?? 0) === 0 && (m.checkInsNotOpened ?? 0) >= (m.checkInsOn ?? 0)) return 'Invited, not opened'
   if ((m.checkInsAnswered ?? 0) === 0) return 'Not answered yet'

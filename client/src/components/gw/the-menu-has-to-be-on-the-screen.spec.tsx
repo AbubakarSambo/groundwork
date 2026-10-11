@@ -24,6 +24,10 @@ const ADMIN = {
 
 function shell(path: string) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  /* B-202 (review round 3): AppShell now waits for the same ['my-waiting'] read RequireOrgSetup
+  already makes before it mounts the sidebar at all - without this cached answer the real
+  authApi.myWaiting (not mocked in this file) would be asked for real. */
+  qc.setQueryData(['my-waiting'], { waiting: false })
   return render(
     <QueryClientProvider client={qc}>
       <MemoryRouter initialEntries={[path]}>
@@ -129,6 +133,10 @@ describe('and it appears when you move, not only when you arrive', () => {
     }
 
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    /* B-202 (review round 3): AppShell now waits for the same ['my-waiting'] read RequireOrgSetup
+    already makes before it mounts the sidebar at all - without this cached answer the real
+    authApi.myWaiting (not mocked in this file) would be asked for real. */
+    qc.setQueryData(['my-waiting'], { waiting: false })
     /*
        Scoped to this render's own container rather than `document`. Querying the document passes
        alone and fails in the full run, because another suite's leftover markup is still in it -

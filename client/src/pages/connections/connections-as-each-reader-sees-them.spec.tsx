@@ -24,6 +24,43 @@ vi.mock('@/api/integrations', () => ({
 }))
 let whatsappOn = true
 vi.mock('@/lib/whatsapp-is-on', () => ({ useWhatsAppIsOn: () => whatsappOn }))
+/*
+ * B-219 (REVIEW 4): THE "YOU CAN TURN WHATSAPP ON" SENTENCE NOW READS THE ORGANISATION'S OWN
+ * ADD-ON (`billingApi.getWhatsApp().on`), NOT THE PLATFORM SWITCH ABOVE (`whatsappOn`) - see
+ * ConnectionsPage.tsx's own note on `orgWhatsAppAddOnOff`. `undefined` (the minimal shape's real
+ * shape while `release.planAndBillingNewParts` is off, checked live against the sweep bed) reads
+ * as "unknown", not "off" - the tests below set it explicitly, per case.
+ *
+ * B-219 (REVIEW 5): `on` IS NEVER SENT BY THE MINIMAL SHAPE AT ALL (not merely sometimes
+ * `undefined`) - `sending: false` is its own, real way of saying the add-on is off (checked live
+ * against the bed, Mira at Riverbank). `billingWhatsAppSending` and `billingWhatsAppSays` let the
+ * tests below set that shape explicitly, per case; `isWhatsAppBillingAdmin` is real, not mocked,
+ * since ConnectionsPage now imports it to read the admin shape's own `says.onOrOff`.
+ *
+ * B-219 (REVIEW 6): THE "PLAN AND BILLING" LINK IS NOW GATED ON THE ADMIN SHAPE ITSELF
+ * (`isWhatsAppBillingAdmin`), THE SAME CHECK PLAN AND BILLING USES TO DRAW ITS OWN WHATSAPP PART -
+ * not shown at release, where the server serves every admin the minimal shape (no `says` object).
+ * `billingWhatsAppAdminShape` lets a test ask for the full admin shape instead, to pin the one case
+ * where the link is real.
+ */
+let billingWhatsAppOn: boolean | undefined = true
+let billingWhatsAppSending = true
+let billingWhatsAppSays: string | null = null
+let billingWhatsAppAdminShape = false
+const getWhatsAppMock = vi.fn(() => Promise.resolve(
+  billingWhatsAppAdminShape
+    ? {
+        on: billingWhatsAppOn, sending: billingWhatsAppSending, plan: null, price: null, charged: false,
+        freeTrial: null, onTheFreePlan: true, use: { month: '2026-10', sent: 0, limit: null, startsAgainOn: '2026-11-01' },
+        heldBecause: null,
+        says: { onOrOff: billingWhatsAppSays, price: null, charge: '', use: '', atTheLimit: null, reachedTheLimit: null, held: null },
+      }
+    : { sending: billingWhatsAppSending, says: billingWhatsAppSays, on: billingWhatsAppOn },
+))
+vi.mock('@/api/billing', async () => {
+  const actual = await vi.importActual<typeof import('@/api/billing')>('@/api/billing')
+  return { ...actual, billingApi: { getWhatsApp: () => getWhatsAppMock() } }
+})
 import { integrationsApi } from '@/api/integrations'
 import { ConnectionsPage } from './ConnectionsPage'
 import { WhatsAppSetupPage } from './WhatsAppSetupPage'
@@ -65,7 +102,7 @@ function open(user: any, page: 'connections' | 'whatsapp' = 'connections') {
 }
 const hrefOf = (el: HTMLElement, name: string) => within(el).getByRole('link', { name }).getAttribute('href')
 
-beforeEach(() => { vi.clearAllMocks(); whatsappOn = true })
+beforeEach(() => { vi.clearAllMocks(); whatsappOn = true; billingWhatsAppOn = true; billingWhatsAppSending = true; billingWhatsAppSays = null; billingWhatsAppAdminShape = false })
 
 describe('a lead, a member and a guest', () => {
   for (const [who, user] of [['Wairimu, a lead', WAIRIMU], ['Miriam, a member', MIRIAM], ['Tomas, a guest', TOMAS]] as const) {
@@ -78,7 +115,7 @@ describe('a lead, a member and a guest', () => {
       unmount()
       open(user, 'whatsapp')
       expect(screen.getByText('Only an admin in your organisation can set this up. Ask whoever manages Groundwork for your organisation.')).toBeTruthy()
-      expect(screen.queryByText('Connect WhatsApp')).toBeNull()
+      expect(screen.queryByText('Use your organisation’s own WhatsApp number')).toBeNull()
       for (const fn of Object.values(api)) expect(fn).not.toHaveBeenCalled()
     })
   }
@@ -101,7 +138,19 @@ describe('Grace, an admin, reads Connections', () => {
     open(GRACE)
     const wa = await screen.findByRole('region', { name: 'WhatsApp' })
     await within(wa).findByText('Connected')
-    expect(wa.textContent).toContain('Your people check in by replying to +254 709 000 111, Baridi Appliances’s WhatsApp Business number. A reply is their check-in, exactly as if typed here.')
+    /* SCREEN FAULT 5b, FIXED: "Baridi Appliances’s" was wrong English - a name already ending in
+       "s" takes just an apostrophe (possessiveOf, client/src/lib/a-possessive.ts). This used to pin
+       that mistake; it now reads "Baridi Appliances’". */
+    expect(wa.textContent).toContain('Your people check in by replying to +254 709 000 111, Baridi Appliances’ WhatsApp Business number. A reply is their check-in, exactly as if typed here.')
+  })
+
+  it('a name ending in "s" ("Kijani Foods") takes just an apostrophe, not "\'s" (screen fault 5b)', async () => {
+    serve({ connection: CONNECTED })
+    open({ ...GRACE, organizationName: 'Kijani Foods' })
+    const wa = await screen.findByRole('region', { name: 'WhatsApp' })
+    await within(wa).findByText('Connected')
+    expect(wa.textContent).toContain('Kijani Foods’ WhatsApp Business number')
+    expect(wa.textContent).not.toContain('Kijani Foods’s')
     await within(wa).findByText('people checking in on WhatsApp')
     expect(within(wa).getByText('6')).toBeTruthy()
     expect(within(wa).getByText('212')).toBeTruthy()
@@ -135,13 +184,150 @@ describe('Grace, an admin, reads Connections', () => {
     await waitFor(() => expect(api.disconnectWhatsapp).toHaveBeenCalledTimes(1))
   })
 
-  it('with WhatsApp on and no number of her own: "Not set up", and the way to set it up', async () => {
+  /*
+   * A SEALED KEY THAT CANNOT BE OPENED (6 October, answers-from-engine.md: "an organisation's own
+   * WhatsApp number, when its keys cannot be opened"). `keysNeedTypingAgain` and its sentence are
+   * served on `connection`; the sentence is shown word for word, as a Note, at the top of the
+   * WhatsApp section, with the token and app secret fields to retype it right there.
+   */
+  it('with her own keys sealed and unreadable: the served sentence, and the fields to type them again', async () => {
+    serve({ connection: { ...CONNECTED, keysNeedTypingAgain: true, keysNeedTypingAgainSays: "Your number's keys need to be typed in again. Nothing is sent from your number until they are." } })
+    api.connectWhatsapp.mockResolvedValue({ connection: CONNECTED, webhookPath: '/x' })
+    open(GRACE)
+    const wa = await screen.findByRole('region', { name: 'WhatsApp' })
+    const note = await within(wa).findByRole('alert')
+    expect(note.textContent).toBe("Your number's keys need to be typed in again. Nothing is sent from your number until they are.")
+    fireEvent.change(within(wa).getByLabelText('Access token'), { target: { value: 'EAA-new-token' } })
+    fireEvent.change(within(wa).getByLabelText('App secret'), { target: { value: 'new-secret' } })
+    fireEvent.click(within(wa).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(api.connectWhatsapp).toHaveBeenCalledWith(expect.objectContaining({
+      phoneNumberId: CONNECTED.phoneNumberId, accessToken: 'EAA-new-token', appSecret: 'new-secret',
+    })))
+  })
+
+  it('with keys sealed and readable, says nothing about retyping them', async () => {
+    serve({ connection: CONNECTED })
+    open(GRACE)
+    const wa = await screen.findByRole('region', { name: 'WhatsApp' })
+    expect(within(wa).queryByRole('alert')).toBeNull()
+    expect(within(wa).queryByLabelText('Access token')).toBeNull()
+    expect(within(wa).queryByLabelText('App secret')).toBeNull()
+  })
+
+  /*
+   * DECISION 112, 7 October: with no number of her own, this section used to lead with "People
+   * check in by replying to your organisation's WhatsApp number" and a "Set it up" button, which
+   * read as though setting up an own number were the normal next step. It now leads with how
+   * WhatsApp works on Groundwork's own number, and folds setting up her own number under
+   * "Advanced", shut, with "Not set up" moved onto that fold.
+   *
+   * B-219 (said why in the commit): this test used to also assert a "Plan and billing" link
+   * reading "An admin turns WhatsApp on for your organisation" - WHILE WhatsApp was already on
+   * (`whatsappOn` defaults to `true` in this file). Grace is an admin (this whole page is
+   * admin-only), reading that she herself needs to turn on a setting that is already on. That
+   * sentence is now said only while the organisation's own add-on is confirmed off - see the two
+   * tests below.
+   */
+  it('with WhatsApp on and no number of her own: Groundwork’s own number, and her own folded under "Advanced"', async () => {
     serve()
     open(GRACE)
     const wa = await screen.findByRole('region', { name: 'WhatsApp' })
-    expect(within(wa).getByText('Not set up')).toBeTruthy()
-    expect(within(wa).getByText('People check in by replying to your organisation’s WhatsApp number.')).toBeTruthy()
-    expect(hrefOf(wa, 'Set it up')).toBe('/settings/whatsapp')
+    expect(within(wa).getByText('Your people check in by replying to Groundwork’s WhatsApp number. A reply is their check-in, exactly as if typed here.')).toBeTruthy()
+    expect(within(wa).queryByText(/turns WhatsApp on|turn WhatsApp on/)).toBeNull()
+    // B-231 (said why in the commit): "Advanced: ..." joined two pieces with a colon.
+    const advanced = within(wa).getByText('Use your organisation’s own WhatsApp number').closest('details') as HTMLElement
+    expect(advanced).toBeTruthy()
+    expect(advanced.hasAttribute('open')).toBe(false)
+    expect(within(advanced).getByText('Not set up')).toBeTruthy()
+    expect(within(advanced).getByText('Most organisations never need this. Groundwork’s own number already works for everyone.')).toBeTruthy()
+    expect(hrefOf(advanced, 'Set it up')).toBe('/settings/whatsapp')
+  })
+
+  /*
+   * B-219 (REVIEW 4): THE PLATFORM SWITCH AND THE ORGANISATION'S OWN ADD-ON CAN DISAGREE, AND
+   * DID. Walked live at Riverbank: the platform switch (`whatsappOn`, which still gates whether
+   * this section shows at all) was on while Riverbank's own add-on (`billingApi.getWhatsApp().on`)
+   * was off - so this state is real, not academic, and Mira read no way to turn WhatsApp on about
+   * a setting that was genuinely off for her. An earlier note here called this state
+   * "unreachable", reasoning from the old code that tied the sentence to the same `whatsappOn` the
+   * section's own visibility already depends on - that reasoning no longer holds now that the
+   * sentence reads a different, independent fact.
+   */
+  /*
+   * B-219 (REVIEW 6): THE FIRST SENTENCE IS NOW SAID TO HER, AS THE ADMIN WHO CAN FIX IT - NOT THE
+   * SERVER'S OWN SENTENCE FOR SETTINGS, WHERE A MEMBER READS IT ABOUT THEMSELVES. And the "Plan and
+   * billing" link no longer shows here: at release the server serves every admin the minimal shape
+   * (no `says` object - `billingWhatsAppAdminShape` stays false, its default), so Plan and billing's
+   * own WhatsApp part - gated on that same admin shape - is not there for the link to go to, and
+   * showing it would have sent Mira and Esther to a page with no WhatsApp section on it at all
+   * (see the next test for the one case the link is real).
+   */
+  it('with WhatsApp on for Groundwork but the organisation’s own add-on off: told as hers to fix, with no dead link', async () => {
+    billingWhatsAppOn = false
+    billingWhatsAppSending = false
+    billingWhatsAppSays = 'Your organisation has not turned on WhatsApp, so Groundwork does not send you reminders or summaries on WhatsApp.'
+    serve()
+    open(GRACE)
+    const wa = await screen.findByRole('region', { name: 'WhatsApp' })
+    await within(wa).findByText('Your organisation has not turned on WhatsApp, so Groundwork does not send your people reminders or summaries on WhatsApp.')
+    expect(within(wa).queryByText('Your people check in by replying to Groundwork’s WhatsApp number. A reply is their check-in, exactly as if typed here.')).toBeNull()
+    expect(within(wa).queryByText(/You can turn it on in/)).toBeNull()
+    expect(within(wa).queryByRole('link', { name: 'Plan and billing' })).toBeNull()
+  })
+
+  /*
+   * B-219 (REVIEW 5): MIRA'S ACTUAL SHAPE - `on` MISSING ENTIRELY (never `false`), `sending: false`.
+   * The minimal shape an ordinary admin reads never sends `on` at all (`whatTheyRead`'s own branch
+   * for everyone but a full admin read); only the test above forced `on: false` to pin the admin
+   * shape's own case. This is what Mira, at Riverbank, actually got back, checked live against the
+   * bed - the platform switch on, `on` undefined, `sending: false` - and (review 6) it must read
+   * exactly the same as the test above: told as hers to fix, no dead "Plan and billing" link.
+   */
+  it('Mira’s real shape - `on` missing, `sending: false` - is read as off too, with no dead link', async () => {
+    billingWhatsAppOn = undefined
+    billingWhatsAppSending = false
+    billingWhatsAppSays = 'Your organisation has not turned on WhatsApp, so Groundwork does not send you reminders or summaries on WhatsApp.'
+    serve()
+    open(GRACE)
+    const wa = await screen.findByRole('region', { name: 'WhatsApp' })
+    await within(wa).findByText('Your organisation has not turned on WhatsApp, so Groundwork does not send your people reminders or summaries on WhatsApp.')
+    expect(within(wa).queryByText('Your people check in by replying to Groundwork’s WhatsApp number. A reply is their check-in, exactly as if typed here.')).toBeNull()
+    expect(within(wa).queryByRole('link', { name: 'Plan and billing' })).toBeNull()
+  })
+
+  /*
+   * B-219 (REVIEW 6): AND THE ONE CASE THE LINK IS REAL - PLAN AND BILLING HAS ACTUALLY TURNED ITS
+   * OWN WHATSAPP PART ON. Once the server serves the full admin shape (`says` an object, the same
+   * `isWhatsAppBillingAdmin` check BillingPage.tsx itself uses to draw that part), "You can turn it
+   * on in Plan and billing" is true again, and the link goes somewhere real.
+   */
+  it('once Plan and billing actually shows its WhatsApp part: the link is there too', async () => {
+    billingWhatsAppOn = false
+    billingWhatsAppSending = false
+    billingWhatsAppSays = 'Turn WhatsApp on for your organisation.'
+    billingWhatsAppAdminShape = true
+    serve()
+    open(GRACE)
+    const wa = await screen.findByRole('region', { name: 'WhatsApp' })
+    await within(wa).findByText('Your organisation has not turned on WhatsApp, so Groundwork does not send your people reminders or summaries on WhatsApp.')
+    await within(wa).findByText(/You can turn it on in/)
+    expect(hrefOf(wa, 'Plan and billing')).toBe('/billing#billing-whatsapp')
+  })
+
+  /*
+   * B-219 (REVIEW 4): AN ANSWER THE SERVER HAS NOT GIVEN YET IS NOT READ AS "OFF". The minimal
+   * shape `GET /billing/whatsapp` serves while `release.planAndBillingNewParts` is off - every
+   * admin in the sweep bed, checked live - carries no `on` field at all. Guessing "off" from its
+   * absence would have been exactly as wrong as the bug this fixes, just for a different reason;
+   * nothing is said until the server actually answers.
+   */
+  it('with no answer yet on the organisation’s own add-on: nothing extra is said', async () => {
+    billingWhatsAppOn = undefined
+    serve()
+    open(GRACE)
+    const wa = await screen.findByRole('region', { name: 'WhatsApp' })
+    await waitFor(() => expect(getWhatsAppMock).toHaveBeenCalled())
+    expect(within(wa).queryByText(/turn WhatsApp on/)).toBeNull()
   })
 
   it('while WhatsApp is not switched on, and she has no number of her own, the page does not mention it', async () => {
@@ -172,9 +358,30 @@ describe('Grace, an admin, reads Connections', () => {
     expect(nums.textContent).toContain('Groundwork reads which invoices are paid and which deals are won.')
     await within(nums).findByText('Connected')
     expect(within(nums).getByText('Needs a key')).toBeTruthy()
-    expect(hrefOf(nums, 'Set it up')).toBe('/settings/tools')
-    expect(hrefOf(nums, 'Connect')).toBe('/settings/tools')
     expect(nums.textContent).not.toMatch(/Paystack|Flutterwave|M-Pesa|spreadsheet|Upload|MarketView/)
+  })
+
+  /*
+   * HAFSAH, 10 OCTOBER (B-144): ONE GROUPED BUTTON, NOT TWO, EACH OPENING A CHOICE INLINE.
+   * This used to pin two separate buttons ("Set it up", "Connect"), both opening /settings/tools
+   * with nothing to say which of the two somebody actually wanted. The second deep page audit
+   * found all eleven of Connections' buttons collapsed into the one generic "Ask for access" page
+   * that way. Hafsah's answer groups them as the prototype's own sections already are: one button
+   * per group, opening the choice right there, which is then carried on to /settings/tools?want=.
+   */
+  it('"Your numbers" offers one "Connect" button, which opens a choice of the two things here', async () => {
+    serve({ glance: { whatsapp: null, figures: { fromYourProduct: true } } })
+    open(GRACE)
+    const nums = await screen.findByRole('region', { name: 'Your numbers' })
+    expect(within(nums).queryByRole('link', { name: 'Set it up' })).toBeNull()
+    expect(within(nums).queryByRole('link', { name: 'Connect' })).toBeNull()
+    fireEvent.click(within(nums).getByRole('button', { name: 'Connect' }))
+    expect(within(nums).getByRole('radio', { name: /Your own product sends its numbers/ })).toBeTruthy()
+    expect(within(nums).getByRole('radio', { name: /Accounting or sales tools/ })).toBeTruthy()
+    const continueLink = within(nums).getByRole('button', { name: 'Continue' })
+    expect(continueLink.hasAttribute('disabled')).toBe(true)
+    fireEvent.click(within(nums).getByRole('radio', { name: /Accounting or sales tools/ }))
+    expect(hrefOf(nums, 'Continue')).toBe('/settings/tools?want=accounting')
   })
 
   /* UPDATED 29 September, item 11: "Your own address" used to stay on the page as "Not set up",
@@ -204,6 +411,32 @@ describe('Grace, an admin, reads Connections', () => {
     await waitFor(() => expect(api.connectWorkspace).toHaveBeenCalledWith('slack', 'https://hooks.slack.com/services/T0/B0/x'))
   })
 
+  /*
+   * RESTORED (nothing-removed-screens.md item 3): live let an admin name the channel when
+   * connecting it ("Channel, as you call it (optional)", sent as `channelSaid`); the connected
+   * list already shows that name once saved, but there was no way to set one on a new connection.
+   */
+  it('naming the channel sends it alongside the address, and the list later shows it', async () => {
+    serve()
+    api.connectWorkspace.mockResolvedValue({ kind: 'SLACK', channelSaid: '#sales-leads', enabled: false })
+    open(GRACE)
+    const n = await screen.findByRole('region', { name: 'Notices in Slack or Teams' })
+    fireEvent.change(within(n).getByRole('textbox', { name: 'The channel’s address from Slack or Teams' }), { target: { value: 'https://hooks.slack.com/services/T0/B0/x' } })
+    fireEvent.change(within(n).getByRole('textbox', { name: 'The channel’s name (optional)' }), { target: { value: '#sales-leads' } })
+    fireEvent.click(within(n).getByRole('button', { name: 'Add it, switched off' }))
+    await waitFor(() => expect(api.connectWorkspace).toHaveBeenCalledWith('slack', 'https://hooks.slack.com/services/T0/B0/x', '#sales-leads'))
+  })
+
+  it('leaving the channel name blank connects with the address alone, same as before', async () => {
+    serve()
+    api.connectWorkspace.mockResolvedValue({ kind: 'SLACK', channelSaid: null, enabled: false })
+    open(GRACE)
+    const n = await screen.findByRole('region', { name: 'Notices in Slack or Teams' })
+    fireEvent.change(within(n).getByRole('textbox', { name: 'The channel’s address from Slack or Teams' }), { target: { value: 'https://hooks.slack.com/services/T0/B0/x' } })
+    fireEvent.click(within(n).getByRole('button', { name: 'Add it, switched off' }))
+    await waitFor(() => expect(api.connectWorkspace).toHaveBeenCalledWith('slack', 'https://hooks.slack.com/services/T0/B0/x'))
+  })
+
   it('a Teams address is added as Teams, and a connected channel can be tested, switched and removed', async () => {
     serve({ notifiers: [{ kind: 'TEAMS', channelSaid: null, enabled: false, lastPostedAt: null, lastError: null }] })
     api.connectWorkspace.mockResolvedValue({ kind: 'TEAMS', channelSaid: null, enabled: false })
@@ -213,7 +446,7 @@ describe('Grace, an admin, reads Connections', () => {
     expect(within(n).getByRole('button', { name: 'Post a test' })).toBeTruthy()
     expect(within(n).getByRole('button', { name: 'Switch on' })).toBeTruthy()
     expect(within(n).getByRole('button', { name: 'Remove' })).toBeTruthy()
-    fireEvent.change(within(n).getByRole('textbox'), { target: { value: 'https://example.webhook.office.com/x' } })
+    fireEvent.change(within(n).getByRole('textbox', { name: 'The channel’s address from Slack or Teams' }), { target: { value: 'https://example.webhook.office.com/x' } })
     fireEvent.click(within(n).getByRole('button', { name: 'Add it, switched off' }))
     await waitFor(() => expect(api.connectWorkspace).toHaveBeenCalledWith('teams', 'https://example.webhook.office.com/x'))
   })
@@ -253,8 +486,26 @@ describe('Grace, an admin, reads Connections', () => {
       const region = within(more).getByRole('region', { name })
       expect(within(region).getByText('Not set up')).toBeTruthy()
       expect(within(region).queryByText('Needs a key')).toBeNull()
-      expect(hrefOf(region, 'Set up')).toBe('/settings/tools')
     }
+  })
+
+  /*
+   * HAFSAH, 10 OCTOBER (B-144): ONE GROUPED "SET UP" BUTTON FOR THE WHOLE SECTION, NOT SIX.
+   * This used to pin a "Set up" link on every card, each one opening /settings/tools with no way
+   * to tell which of the six was meant. Grouped now, the same way as "Your numbers" above, with the
+   * choice opening inline and carried on to /settings/tools?want=.
+   */
+  it('"More you can connect" offers one "Set up" button, which opens a choice of all six', async () => {
+    serve()
+    open(GRACE)
+    const more = await screen.findByRole('region', { name: 'More you can connect' })
+    expect(within(more).queryAllByRole('link', { name: 'Set up' })).toHaveLength(0)
+    fireEvent.click(within(more).getByRole('button', { name: 'Set up' }))
+    for (const title of ['Your people come in', 'Your goals come in', 'Roles and handovers', 'Your handbook', 'Start a check-in from your own system', 'The brief before a hard conversation']) {
+      expect(within(more).getByRole('radio', { name: new RegExp(title) })).toBeTruthy()
+    }
+    fireEvent.click(within(more).getByRole('radio', { name: /Your handbook/ }))
+    expect(hrefOf(more, 'Continue')).toBe('/settings/tools?want=handbook')
   })
 
   it('no label on a person anywhere on the page', async () => {
@@ -304,9 +555,10 @@ describe('Grace, an admin, connects WhatsApp step by step', () => {
     const connectionsLink = screen.getByRole('link', { name: 'Connections' })
     expect(connectionsLink.getAttribute('href')).toBe('/settings/connections')
     expect(connectionsLink.closest('nav')?.textContent).toBe('Connections')
-    expect(screen.getByRole('heading', { name: 'Connect WhatsApp' })).toBeTruthy()
-    /* GROUP 1'S THIRD REVIEW: full plain sentences. */
-    expect(screen.getByText('People check in by replying to your organisation’s WhatsApp number. Most of it happens in Meta’s settings. You can stop at any step, and what you have entered is kept.')).toBeTruthy()
+    /* DECISION 112, 7 October: retitled, and its first sentence says it is optional and advanced,
+       because Groundwork's own number already works for everyone without any of this. */
+    expect(screen.getByRole('heading', { name: 'Use your organisation’s own WhatsApp number' })).toBeTruthy()
+    expect(screen.getByText('This is optional and advanced. Groundwork’s own number already works for everyone, without any of this. Most of it happens in Meta’s settings. You can stop at any step, and what you have entered is kept.')).toBeTruthy()
     await screen.findByText('Paste three things from Meta')
     for (const [label, hint] of [
       ['Phone number ID', 'You find it in Meta, under WhatsApp, then API Setup.'],
@@ -377,6 +629,21 @@ describe('Grace, an admin, connects WhatsApp step by step', () => {
     await screen.findByText('Whoever sets up a check-in chooses whether people answer it here or on WhatsApp.')
     expect((screen.getByLabelText('Access token') as HTMLInputElement).value).toBe('')
     expect((screen.getByLabelText('App secret') as HTMLInputElement).value).toBe('')
+  })
+
+  it('with a sealed key that cannot be opened, the sentence shows at the top and step 2 reopens with the fields to retype it, even with everything else done', async () => {
+    serve({
+      connection: { ...CONNECTED, keysNeedTypingAgain: true, keysNeedTypingAgainSays: "Your number's keys need to be typed in again. Nothing is sent from your number until they are." },
+      wa: { canStartAConversation: true, approvedHere: ['gw_session_ready', 'gw_opening', 'gw_report'] },
+    })
+    open(GRACE, 'whatsapp')
+    const note = await screen.findByRole('alert')
+    expect(note.textContent).toBe("Your number's keys need to be typed in again. Nothing is sent from your number until they are.")
+    expect(screen.getByLabelText('Access token')).toBeTruthy()
+    expect(screen.getByLabelText('App secret')).toBeTruthy()
+    /* Every step, including step 2, is still marked done - a sealed key does not undo that - and
+       step 2's own content keeps rendering regardless, which is what shows the fields. */
+    await waitFor(() => expect(screen.getAllByText('Done')).toHaveLength(6))
   })
 
   it('with everything done, steps 5 and 6 carry today’s words and the switch', async () => {

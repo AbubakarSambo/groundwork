@@ -70,6 +70,41 @@ function renderRoster(sessionParties?: { id: string; done: boolean; isSelf: bool
   )
 }
 
+/*
+ * FAULT 5 (live walk, 6 October 2026): PLAIN SENTENCES, NOT JARGON OR A DASH JOIN.
+ *
+ * "You cannot see what they write until the report releases" used the filing-cabinet word
+ * ("releases") for sharing a report with people, and "adding somebody is the approval - there is
+ * no queue" joined two separate statements with a dash rather than saying each as its own
+ * sentence - both against the wording rule in CLAUDE.md.
+ */
+describe('the "add a person" panel reads plain sentences (fault 5, live walk, 6 October 2026)', () => {
+  function renderAddPanel(isOrgAdmin: boolean) {
+    return render(
+      <MemoryRouter>
+        <WhosInItRoster
+          {...baseProps()}
+          isOrgAdmin={isOrgAdmin}
+          ground={{ initiatorId: 'lead-1', createdAt: '2026-09-27T09:00:00.000Z', participants: [] }}
+          showAdd
+        />
+      </MemoryRouter>,
+    )
+  }
+
+  it('says "until you share the report", not "until the report releases"', () => {
+    renderAddPanel(true)
+    expect(screen.getByText(/You cannot see what they write until you share the report\./)).toBeTruthy()
+    expect(document.body.textContent).not.toContain('until the report releases')
+  })
+
+  it('for an admin, says adding is the approval and nobody waits in a queue, as two sentences', () => {
+    renderAddPanel(true)
+    expect(screen.getByText(/You are an admin here, so adding someone here is all the approval they need\. Nobody waits in a queue\./)).toBeTruthy()
+    expect(document.body.textContent).not.toContain('is the approval - there is no queue')
+  })
+})
+
 describe('somebody an admin has declined, in "Who is in it"', () => {
   it('never says he has not checked in for this session, because he cannot check in at all', () => {
     renderRoster([
@@ -154,6 +189,9 @@ describe('somebody with no name, whose email this reader may not see', () => {
       { id: 'p-zawadi', userId: null, email: null, awaitingSeat: true, user: null },
     ],
   }
+  /* PHONE WALK, SCREEN FAULT 1: the held-for-a-seat sentence now names who it is about instead of
+     burying it in the middle ("Your plan has no seat for..."), the same sentence GroundAdminPage's
+     own "Who has answered" roster uses for the same state. */
   it('heads the row plainly and says "this person" in a sentence, never "A colleague"', () => {
     render(
       <MemoryRouter>
@@ -161,7 +199,34 @@ describe('somebody with no name, whose email this reader may not see', () => {
       </MemoryRouter>,
     )
     expect(screen.getAllByText('Somebody invited by email').length).toBeGreaterThan(0)
-    expect(screen.getByText('Your plan has no seat for this person. Free one or move to a larger plan, and the invitation goes out.')).toBeTruthy()
+    expect(screen.getByText('Somebody invited by email is waiting for a seat on your plan. They will get their invitation as soon as there is one.')).toBeTruthy()
     expect(document.body.textContent).not.toMatch(/A colleague/)
+  })
+})
+
+/**
+ * IN AN ANCHOR CHECK-IN THE LEAD WHO ONLY MANAGES IS NOT COUNTED AND NOT "CHECKING IN" (screens' item a, 8 October).
+ * Before: "1 person. 1 is checking in." and "Checking in" on her own row.
+ */
+describe('an anchor check-in with a lead who only manages', () => {
+  const anchor = (scenario: string) => ({
+    scenario,
+    initiatorId: 'lead-1',
+    createdAt: '2026-09-27T09:00:00.000Z',
+    participants: [
+      { id: 'p-lead', userId: 'lead-1', email: 'baraka@example.test', invitedAt: null, managingOnly: true },
+      { id: 'p-kito', userId: 'u-kito', email: 'kito@example.test', user: { firstName: 'Kito', lastName: 'Mwangi' }, invitedAt: '2026-09-28T09:00:00.000Z', managingOnly: false },
+    ],
+  })
+  const draw = (scenario: string) => render(<MemoryRouter><WhosInItRoster {...baseProps()} ground={anchor(scenario)} notOpenYet={false} /></MemoryRouter>)
+
+  it('counts one person, one checking in, and shows "Checking in" once', () => {
+    const { container } = draw('HELP_TEAM_UNDERSTAND')
+    expect(container.textContent).toContain('1 person. 1 is checking in.')
+    expect(screen.getAllByText('Checking in')).toHaveLength(1)
+  })
+  it('counts both in any other check-in', () => {
+    const { container } = draw('OKR_ALIGNMENT')
+    expect(container.textContent).toContain('2 people. 2 are checking in.')
   })
 })

@@ -44,6 +44,13 @@ export interface WaitingAtTheDoor {
   /** Who added them. Named, because "somebody added them" is not something an admin can act on. */
   addedBy: string | null
   forCheckIn: string | null
+  /**
+   * Whether this person's own address belongs to the organisation (B-096). The heading above the
+   * list used to say "People from outside <organisation>" no matter who was on it; Halima Yusuf,
+   * on Msingi Foods' own address, was invited to a check-in and still read as if she were from
+   * outside. Optional because an older server may not send it yet.
+   */
+  onTheOrganisationsOwnAddress?: boolean
 }
 
 /** "Fewer than 20" or "20 or more": what they chose, and the line they were shown. */
@@ -199,8 +206,16 @@ export const authApi = {
    * Separate from the one above on purpose - a membership request is a judgement about a person,
    * this is a purchase - and answered by making room rather than by saying yes.
    */
+  /**
+   * NIGHT NOTE ITEM 3 (B-129): A ROW CAN NOW BE A BARE INVITATION, NOT JUST A PARTICIPANT ON A
+   * CHECK-IN WITH NO SEAT. `kind: 'INVITATION'` (id like `invite:<address>`) is one of the people
+   * kept by a paste with no seat on the plan - never added to any check-in, so `forCheckIn` is
+   * null for them. `saying` is the server's own sentence for the row, true for either kind; drawn
+   * instead of a sentence this client would otherwise have to build itself and might get wrong for
+   * a kind it does not know about.
+   */
   waitingForASeat: () =>
-    apiClient.get<{ id: string; email: string; addedBy: string | null; forCheckIn: string | null; waitingSince: string; saying: string }[]>('/users/waiting/seats').then(r => (Array.isArray(r.data) ? r.data : [])),
+    apiClient.get<{ id: string; email: string; name: string | null; addedBy: string | null; forCheckIn: string | null; waitingSince: string; saying: string; kind?: 'INVITATION' }[]>('/users/waiting/seats').then(r => (Array.isArray(r.data) ? r.data : [])),
 
   sendTheHeldInvitations: () =>
     apiClient.post<{ sent: number; stillWaiting: number }>('/users/waiting/seats/release', {}).then(r => r.data),

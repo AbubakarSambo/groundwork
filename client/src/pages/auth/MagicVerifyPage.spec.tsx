@@ -121,4 +121,35 @@ describe('MagicVerifyPage - Bug A (wrong-flow routing)', () => {
 
     await waitFor(() => expect(screen.getByText(/your check-in is set up/i)).toBeInTheDocument())
   })
+
+  /*
+   * SCREEN FAULT 6(c) (live walk, 6 October 2026): "NAME (EMAIL)" ON THE INVITED LIST, WHEN A NAME
+   * WAS GIVEN. The server's own answer carries only each contributor's email; the name typed for
+   * them at the people step travelled in the COMMIT PAYLOAD instead (`displayName`, request 166),
+   * read back here by email the same way `shownAs` does on the entry page itself.
+   */
+  it('reads "Name (email)" on the invited list, when a name was given at the people step', async () => {
+    localStorage.setItem('gw_commit_payload', JSON.stringify({
+      groundLabel: 'Help my team understand',
+      history: [{ role: 'user', content: 'hi' }],
+      contributors: [{ email: 'musa@anchor.test', displayName: 'Musa Bello' }, { email: 'noname@anchor.test' }],
+    }))
+    vi.mocked(authApi.verifyEmail).mockResolvedValue({
+      user: { id: 'u6', email: 'lead@x.test', role: 'ADMIN', jobTitle: null } as any,
+      accessToken: 'tok',
+    })
+    vi.mocked(entryApi.commit).mockResolvedValue({
+      groundId: 'g1',
+      joinToken: null,
+      contributors: [{ email: 'musa@anchor.test' }, { email: 'noname@anchor.test' }],
+      failedInvites: [],
+    } as any)
+
+    renderPage('tok-named-invite')
+
+    await waitFor(() => expect(screen.getByText(/your check-in is set up/i)).toBeInTheDocument())
+    expect(screen.getByText('Musa Bello (musa@anchor.test)')).toBeInTheDocument()
+    expect(screen.getByText('noname@anchor.test')).toBeInTheDocument()
+    expect(screen.queryByText('musa@anchor.test', { exact: true })).not.toBeInTheDocument()
+  })
 })

@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { API_ORIGIN } from '@/lib/where-the-api-lives'
+import { AuthCard } from '@/pages/auth/auth-kit'
+import { Button, Stack } from '@/components/gw/ui'
+import { useAuthStore } from '@/stores/auth'
 
 /**
  * THE PAGE THE LINK ON A MAIL LANDS ON, AND UNTIL NOW THERE WAS NONE.
@@ -18,18 +21,42 @@ import { API_ORIGIN } from '@/lib/where-the-api-lives'
  * me. What differs is scope, and the API says which in its own words rather than this page
  * guessing at it.
  *
- * NO HEX FALLBACKS IN THE var() CALLS. This page is reached from a mail client and renders with no
- * app chrome around it, which is the situation that tempts a `var(--gw-text, #1A1916)` "just in
- * case". `one-vocabulary.spec.ts` refuses it, and it is right: a fallback is a second definition of
- * a colour that the palette already owns, and it goes stale silently the moment the token moves.
- * The tokens are defined on :root in index.css, which this page loads like every other.
+ * BUILT FROM THE SHARED PARTS ONLY (`AuthCard`, `Button`, `Stack`), as its sibling
+ * `StopRemindersPage.tsx` already is - no inline styles, no one-off classes. The page is reached
+ * from a mail client with no app chrome around it, which used to tempt a hand-rolled `<div style=
+ * {{...}}>` card; `AuthCard` already draws exactly that narrow cream-page card (Mark, PageTitle,
+ * a panel), so this page no longer needs its own copy of it.
  */
 type Which = 'unsubscribe' | 'stop-reminders'
 
 export function StopMailPage({ which }: { which: Which }) {
   const { token } = useParams<{ token: string }>()
-  const [state, setState] = useState<'working' | 'done' | 'failed'>('working')
+  const signedIn = useAuthStore(s => !!s.isAuthenticated)
+  const [state, setState] = useState<'working' | 'done' | 'failed' | 'asking'>('working')
   const [says, setSays] = useState('')
+  /* The question for the unsubscribe link, which asks before it stops anything (decision 109). */
+  const [question, setQuestion] = useState<{ title: string; says: string[]; keepLabel: string; stopLabel: string; turnBackOnLabel: string; stopped: boolean } | null>(null)
+  const [busy, setBusy] = useState(false)
+  /* After a stop: its heading, and whether the page offers the undo (somebody with no account has
+     only this link to come back by). From the engine's review of the opt-out (1fe53cb2). */
+  const [doneTitle, setDoneTitle] = useState('Done.')
+  const [canUndo, setCanUndo] = useState(false)
+  /* B-131: a link whose token matches nothing is not the same as a successful unsubscribe, and
+     reads differently - it offers a way to Settings instead of "Turn them back on". */
+  const [unknownToken, setUnknownToken] = useState(false)
+  async function answer(path: '' | '/undo') {
+    setBusy(true)
+    try {
+      const r = await fetch(`${API_ORIGIN}/api/v1/unsubscribe/${encodeURIComponent(token ?? '')}${path}`, { method: 'POST' })
+      const body = await r.json().catch(() => null)
+      if (r.status >= 500 || !body) { setState('failed'); return }
+      const d = body?.data ?? body
+      setSays(Array.isArray(d?.says) ? d.says.join(' ') : d?.says ?? '')
+      setDoneTitle(d?.title ?? (path === '/undo' ? 'These emails are back on' : 'These emails are turned off'))
+      setCanUndo(path === '' && d?.canUndo === true)
+      setState('done')
+    } catch { setState('failed') } finally { setBusy(false) }
+  }
 
   useEffect(() => {
     /* No button to press. They already pressed one, in their mail client. Asking for a second is
@@ -37,13 +64,51 @@ export function StopMailPage({ which }: { which: Which }) {
     let alive = true
     void (async () => {
       try {
-        const r = await fetch(`${API_ORIGIN}/api/v1/${which}/${encodeURIComponent(token ?? '')}`)
+        /* The unsubscribe question is read from its own address (the engine's 1fe53cb2); an API from
+           before it has none and answers 404 there, so the page falls back to the plain read. */
+        const base = `${API_ORIGIN}/api/v1/${which}/${encodeURIComponent(token ?? '')}`
+        let r = await fetch(which === 'unsubscribe' ? `${base}/question` : base)
+        if (which === 'unsubscribe' && r.status === 404) r = await fetch(base)
         const body = await r.json().catch(() => null)
         if (!alive) return
         /* A 404 here still means the mail stops, because the token is gone. Only a server that
            could not answer at all is a failure worth showing somebody. */
         if (r.status >= 500 || !body) {
           setState('failed')
+          return
+        }
+        if (which === 'unsubscribe') {
+          const q = body?.data ?? body
+          /* An API from before decision 109 answers `says` as one sentence and no question; the page
+             must still read it (the client and the API are not always released at the same moment). */
+          const lines: string[] = Array.isArray(q?.says) ? q.says : (typeof q?.says === 'string' ? [q.says] : [])
+          /* B-131: a token that matches nothing, whether or not the server also sent a question's
+             title, is not a successful unsubscribe - it reads as the server's own sentence for it,
+             with a way to Settings, never "Done." with nothing to press.
+             B-209: TWO THINGS HERE WERE NOT TRUE. The heading was this page's own fixed sentence,
+             borrowed from StopRemindersPage ("We could not find those reminders"), instead of the
+             server's own title for this exact case ("That link is not one we recognise",
+             the-ways-to-stop-mail.ts's NOT_A_LINK_WE_KNOW_TITLE) - said now, with that as the
+             fallback should an older server ever send none. And the server's own sentence here goes
+             on to say "reply to one and we will stop them by hand" - mail from Groundwork comes from
+             a no-reply address (email.service.ts's fromEmail), so nobody ever reads a reply. That
+             clause is left out; "Sign in to change your emails in Settings" below is the way that
+             actually works. */
+          if (q?.known === false) {
+            setUnknownToken(true)
+            setDoneTitle(q?.title || 'That link is not one we recognise')
+            setSays('Nothing has been changed.')
+            setState('done')
+            return
+          }
+          if (!q?.title) {
+            setSays(lines.join(' ') || 'No more of this mail is going to you.')
+            setState('done')
+            return
+          }
+          setQuestion({ ...q, says: lines })
+          setState('asking')
+          setSays(lines.join(' '))
           return
         }
         /* THE ENVELOPE. Every API response here is wrapped as `{ success, data }`, so reading
@@ -60,35 +125,50 @@ export function StopMailPage({ which }: { which: Which }) {
     }
   }, [token, which])
 
+  if (state === 'working') return <AuthCard title="One moment." />
+
+  if (state === 'failed') {
+    /* Never "try again later" and nothing else. Somebody at this point wants the mail to stop,
+       and the honest fallback is a person who can do it by hand. */
+    return (
+      <AuthCard
+        title="That did not go through"
+        sub="We could not reach our own system just now, so nothing changed. Reload this page, or reply to any of our mail with the word stop and a person will do it by hand."
+      />
+    )
+  }
+
+  if (state === 'asking' && question) {
+    /* The prototype pre-selects keeping the mail, so only the stop control may read as the one
+       navy primary button there is on the page - which here is none: `keepLabel` is a quiet link
+       and `stopLabel` a plain secondary button, never filled navy. */
+    return (
+      <AuthCard title={question.title} sub={question.says.join(' ')}>
+        <Stack gap={12}>
+          {question.stopped ? (
+            <Button kind="secondary" wide disabled={busy} onClick={() => void answer('/undo')}>{question.turnBackOnLabel}</Button>
+          ) : (
+            <>
+              <Button kind="quiet" to="/">{question.keepLabel}</Button>
+              <Button kind="secondary" disabled={busy} onClick={() => void answer('')}>{question.stopLabel}</Button>
+            </>
+          )}
+        </Stack>
+      </AuthCard>
+    )
+  }
+
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--gw-page)' }}>
-      <div style={{ maxWidth: 460, textAlign: 'left' }}>
-        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 1.4, color: 'var(--gw-navy)', marginBottom: 10 }}>
-          GROUNDWORK
-        </div>
-        {state === 'working' && (
-          <p style={{ fontSize: 15, color: 'var(--gw-sub)', margin: 0 }}>One moment.</p>
-        )}
-        {state === 'done' && (
-          <>
-            <h1 style={{ fontSize: 21, fontWeight: 800, color: 'var(--gw-text)', margin: '0 0 10px' }}>Done.</h1>
-            <p style={{ fontSize: 14.5, color: 'var(--gw-sub)', lineHeight: 1.7, margin: 0 }}>{says}</p>
-          </>
-        )}
-        {state === 'failed' && (
-          <>
-            <h1 style={{ fontSize: 21, fontWeight: 800, color: 'var(--gw-text)', margin: '0 0 10px' }}>
-              That did not go through
-            </h1>
-            {/* Never "try again later" and nothing else. Somebody at this point wants the mail to
-                stop, and the honest fallback is a person who can do it by hand. */}
-            <p style={{ fontSize: 14.5, color: 'var(--gw-sub)', lineHeight: 1.7, margin: 0 }}>
-              We could not reach our own system just now, so nothing changed. Reload this page, or
-              reply to any of our mail with the word stop and a person will do it by hand.
-            </p>
-          </>
-        )}
-      </div>
-    </div>
+    <AuthCard title={which === 'unsubscribe' ? doneTitle : 'Done.'} sub={says}>
+      {which === 'unsubscribe' && canUndo && (
+        <Button kind="secondary" disabled={busy} onClick={() => void answer('/undo')}>Turn them back on</Button>
+      )}
+      {/* B-209 (review round 2): somebody already signed in is not told to sign in to reach Settings. */}
+      {which === 'unsubscribe' && unknownToken && (
+        <p className="gw-auth-small">
+          <Link to="/settings">{signedIn ? 'Change your emails in Settings' : 'Sign in to change your emails in Settings'}</Link>
+        </p>
+      )}
+    </AuthCard>
   )
 }

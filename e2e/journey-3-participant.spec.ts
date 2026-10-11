@@ -65,9 +65,14 @@ test('Amani opens her invitation, checks in, reads the board, asks Groundwork an
     const panel = await askGroundwork(page, 'I would like leave from 20 October to 22 October please.');
     await expect(panel.getByText(/20 October/).first()).toBeVisible({ timeout: 90_000 });
     await panel.getByRole('button', { name: 'Yes' }).last().click();
+    /* Wait until the request is really sent before looking for it: reading the page straight after "Yes" raced the save (run of 6 October). */
+    await expect(panel.getByText(/I have sent your (leave )?request/)).toBeVisible({ timeout: 30_000 });
     await page.goto(`${APP}/suite/mine`);
     await expect(page.getByRole('heading', { name: 'Your requests', exact: true })).toBeVisible();
-    await expect(page.getByText(/20 October/).first()).toBeVisible();
+    await expect(async () => {
+      await page.reload();
+      await expect(page.getByText(/20 October/).first()).toBeVisible({ timeout: 3_000 });
+    }).toPass({ timeout: 30_000 });
     readsAsPlainSentences(await whatIsOnThePage(page));
   });
 });

@@ -18,9 +18,13 @@ import { peersVisibilitySentence } from './CheckInPeopleAndSetup'
  * manager of hers that this page was never about - `peersVisibilitySentence` now takes `isInitiator`
  * and drops "including your manager" only for her; a participant's wording (reached on a different
  * page) is untouched.
+ *
+ * FAULT 5, 6 Oct 2026: `viewerIsInIt` added. An admin reading People and setup without being in
+ * the check-in herself is not "you" in "...can see what you say in it" - see the third describe
+ * block below.
  */
 describe('the "Each other\'s check-ins" switch says a true sentence in every position', () => {
-  const base = { peersVisible: false, peersVisibleToEachOther: false, peersDefaultHidden: false, isInitiator: false }
+  const base = { peersVisible: false, peersVisibleToEachOther: false, peersDefaultHidden: false, isInitiator: false, viewerIsInIt: true }
 
   it('no longer claims nobody sees another person\'s answers', () => {
     expect(peersVisibilitySentence(base)).not.toMatch(/Nobody sees another person's answers/)
@@ -41,5 +45,21 @@ describe('the "Each other\'s check-ins" switch says a true sentence in every pos
     const toTheLead = peersVisibilitySentence({ ...base, isInitiator: true })
     expect(toTheLead).not.toContain('including your manager')
     expect(toTheLead).toContain('The people in this check-in can see what you say in it')
+  })
+})
+
+describe('FAULT 5: an admin reading People and setup without being in the check-in is never told "you say in it"', () => {
+  const base = { peersVisible: false, peersVisibleToEachOther: false, peersDefaultHidden: false, isInitiator: false, viewerIsInIt: false }
+
+  it('reads a true third-person sentence, not "you"', () => {
+    const toAnOutsideAdmin = peersVisibilitySentence(base)
+    expect(toAnOutsideAdmin).toContain('The people in this check-in can see what each other say in it')
+    expect(toAnOutsideAdmin).not.toMatch(/\byou say in it\b/i)
+    expect(toAnOutsideAdmin).not.toContain('including your manager')
+  })
+
+  it('says "They are named" rather than "You are named" to her', () => {
+    expect(peersVisibilitySentence({ ...base, peersVisible: true })).toContain('They are named to each other.')
+    expect(peersVisibilitySentence(base)).toContain('They are not named to each other.')
   })
 })

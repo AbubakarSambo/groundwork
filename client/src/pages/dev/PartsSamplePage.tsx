@@ -155,7 +155,7 @@ export default function PartsSamplePage() {
       </Section>
 
       <Section heading="Folded panel" note="People: &quot;Who reports to whom&quot;">
-        <Folded summary="Who reports to whom" note="Level and reporting lines describe the organisation; what someone can do still comes from their role">
+        <Folded summary="Who reports to whom" note="Level and reporting lines describe the organisation. What someone can do still comes from their role.">
           <p className="gwui-panel-text">Amani Njoroge, Chief executive</p>
         </Folded>
       </Section>

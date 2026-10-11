@@ -3,6 +3,7 @@ import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { billingApi } from '@/api/billing'
 import { groundsApi } from '@/api/grounds'
+import { useBackOrFallback } from '@/lib/a-back-button-never-leaves-groundwork'
 
 export function PaymentPage() {
   const navigate = useNavigate()
@@ -24,6 +25,15 @@ export function PaymentPage() {
     queryFn: () => groundsApi.get(groundId!),
     enabled: !!groundId,
   })
+
+  // B-126: opened from an email link or a new tab, there is no browser history to go back to, and
+  // a bare `navigate(-1)` fell through to about:blank. A paid checkout is always reached from this
+  // ground's own page when there is one; Today is the named fallback when there is nothing to
+  // return to and no ground to name.
+  const back = useBackOrFallback(
+    groundId ? `/grounds/${groundId}` : '/today',
+    groundId ? 'Back to this check-in' : 'Back to Today',
+  )
 
   const [showCode, setShowCode] = useState(false)
   const [code, setCode] = useState('')
@@ -48,13 +58,23 @@ export function PaymentPage() {
   })
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 20px' }}>
+    /* B-045: `justifyContent: 'center'` on a `minHeight: '100vh'` column centred this page's own
+       content vertically in the whole viewport, leaving an empty band of roughly 300px above
+       "Back" and the heading - every other page in the audit starts at the same height, near the
+       top. `flex-start` with the same 48px top padding PricingPage already uses for its own
+       centred column removes the band without changing how this page looks once its content is
+       on screen. */
+    <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', padding: '48px 20px' }}>
       <div style={{ width: '100%', maxWidth: 400 }}>
 
-        <button type="button" style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 20, cursor: 'pointer' }} onClick={() => navigate(-1)}>Back</button>
+        <button type="button" style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 20, cursor: 'pointer' }} onClick={back.onClick}>{back.label}</button>
 
+        {/* B-145: this page titled itself "Add sessions to this check-in" and then said, right
+            underneath, that sessions are not charged for - a title that contradicted its own
+            body. The only thing left to do here is redeem an access code (the session-purchase
+            form is gone; see the comment below), so the title now says that. */}
         <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 4 }}>
-          {ground?.isFreeGround ? 'This check-in' : 'Add sessions to this check-in'}
+          {ground?.isFreeGround ? 'This check-in' : 'Use an access code'}
         </div>
         {groundName && (
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 20 }}>{groundName}</div>
@@ -78,8 +98,9 @@ export function PaymentPage() {
                 grants access and costs nobody anything. */}
             <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '12px 16px', marginBottom: 14 }}>
               <div style={{ fontSize: 13, color: 'var(--gw-green-t)', lineHeight: 1.6 }}>
-                <strong>Sessions are not charged for.</strong> Every check-in on the free tier runs
-                unlimited sessions and reports; a subscription lifts the ten check-in cap.
+                <strong>Sessions are not charged for.</strong> Every check-in runs as many sessions
+                and reports as it needs. An access code is only for the number of check-ins your
+                organisation can run at once.
               </div>
             </div>
           </>

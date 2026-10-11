@@ -51,12 +51,17 @@ export async function acceptTheTeamInvitation(page: Page, email: string, since: 
   await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => undefined);
 }
 
-/** Opens Ask Groundwork from the page header and asks one question. Returns the panel. */
+/*
+ * Opens Ask from the page header and asks one question. Returns the panel.
+ * Since decision 100 Ask is named for the organisation ("Ask Kito Foods"), not "Ask Groundwork", and its box reads
+ * "Ask about the company, your work or your check-ins." (a check-in's own panel still says "Ask about this check-in"),
+ * so the journeys look for the name with its first word, not for the old fixed words.
+ */
 export async function askGroundwork(page: Page, question: string) {
-  const panel = page.getByRole('region', { name: 'Ask Groundwork' });
-  if (!(await panel.isVisible().catch(() => false))) await page.getByRole('button', { name: 'Ask Groundwork' }).first().click();
+  const panel = page.getByRole('region', { name: /^Ask \S/ });
+  if (!(await panel.isVisible().catch(() => false))) await page.getByRole('button', { name: /^Ask \S/ }).first().click();
   await expect(panel).toBeVisible();
-  const box = panel.getByRole('textbox', { name: /Ask a question|Ask about this check-in/ });
+  const box = panel.getByRole('textbox', { name: /Ask about the company, your work or your check-ins|Ask about this check-in/ });
   await box.fill(question);
   await box.press('Enter');
   return panel;

@@ -1,5 +1,5 @@
 import { Tag, type TagTone } from './ui'
-import { theLeadsNote } from '@/lib/the-leads-note'
+import { TheLeadsNote } from '@/components/gw/TheLeadsNote'
 
 /**
  * WHO CHECKED IN, WHEN THE SCREEN IS TOO NARROW FOR A GRID.
@@ -197,9 +197,8 @@ export function NineColumnsIsNotAPhoneScreen({ rows, sessions, openSessions, myP
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
               <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 15 }}>{displayName}</span>
               {r.role && r.role !== r.name && (
-                <span data-leads-note style={{ fontSize: 13, color: 'var(--gw-sub)' }}>{theLeadsNote(r.role)}</span>
+                <TheLeadsNote role={r.role} style={{ fontSize: 13, color: 'var(--gw-sub)' }} />
               )}
-              {!r.role && r.managingOnly && <span style={{ fontSize: 13, color: 'var(--gw-sub)' }}>Managing only</span>}
             </div>
 
             {sentence && (

@@ -19,13 +19,28 @@ export interface WhereDoYouWorkProps {
   onJoinAsAGuest?: (invitePath: string) => void
   /** A link to go to, or a button to press. */
   create: { to: string } | { onCreate: () => void }
+  /**
+   * Whether the caller already knows what this person can join (true once `GET
+   * /auth/where-can-i-join` has answered, or when there was never anything to wait for - MagicVerifyPage's
+   * own offer, already in hand before this renders). Default true, so a caller that does not pass
+   * it keeps today's behaviour. WelcomePage passes false until its query settles, so the page does
+   * not say "only create one" for the half-second before the server has actually said there is
+   * nothing to join (B-049).
+   */
+  settled?: boolean
 }
 
-export function WhereDoYouWork({ byDomain, asAGuest = [], problem, busy, onJoin, onJoinAsAGuest, create }: WhereDoYouWorkProps) {
+export function WhereDoYouWork({ byDomain, asAGuest = [], problem, busy, onJoin, onJoinAsAGuest, create, settled = true }: WhereDoYouWorkProps) {
+  /* B-049: with nothing pending to join, the page showed only "Create a new organisation" under
+     a first sentence that still promised "Join an organisation you belong to, or create a new
+     one." The sentence now says only what the page actually offers. */
+  const hasSomethingToJoin = !settled || byDomain.length > 0 || asAGuest.length > 0
   return (
     <AuthCard
       title="Where do you work?"
-      sub="Join an organisation you belong to, or create a new one. You can be in more than one and switch between them."
+      sub={hasSomethingToJoin
+        ? 'Join an organisation you belong to, or create a new one. You can be in more than one and switch between them.'
+        : 'Create a new organisation for your team. If somebody invited you to join theirs, use the link they sent you.'}
     >
       {problem && <AuthError>{problem}</AuthError>}
       <ul className="gw-org-rows">

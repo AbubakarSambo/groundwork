@@ -85,9 +85,16 @@ describe('Grace, an admin, reads the onboarding board', () => {
     expect(text()).not.toMatch(/nobody has shown|Who helps|asked Groundwork|at risk|behind|late/i)
   })
 
-  it('says so plainly when nobody is being set up', async () => {
+  /*
+   * FAULT 7A OF THE LIVE WALK (6 October): "Nobody is being set up right now." gave no next step.
+   * A new person is actually set up by starting a "Help a new hire get started" check-in (the
+   * switchboard's own situation), so the empty state now says so, with a link to it.
+   */
+  it('says so plainly when nobody is being set up, and how to set someone up', async () => {
     open(GRACE, { people: [] })
     expect(await screen.findByText('Nobody is being set up right now.')).toBeInTheDocument()
+    expect(await screen.findByText('Set someone up by starting a “Help a new hire get started” check-in.')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Start a check-in' })).toHaveAttribute('href', '/start')
   })
 
   /* Group 2's review, fault F: while off, this page used to show only "Onboarding / Onboarding" and

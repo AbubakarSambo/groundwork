@@ -49,6 +49,7 @@ export function TheCheckInHeader({
   endedSaying,
   canRunThisCheckIn,
   isAParty,
+  hasOpenSessionNow,
   active,
   trailing,
   tabs: tabsOverride,
@@ -64,6 +65,14 @@ export function TheCheckInHeader({
   endedSaying?: string | null
   canRunThisCheckIn: boolean
   isAParty: boolean
+  /**
+   * B-142: whether a session is actually open for this party right now. Only changes the label -
+   * "Start my check-in" when one is open, "Back to the check-in" when none is - never the
+   * destination, which is always the check-in's own page either way. Left undefined by callers
+   * that have not been taught to compute it keeps the old "Start my check-in" label, so nothing
+   * that already worked changes.
+   */
+  hasOpenSessionNow?: boolean
   active: string
   /**
    * U.10 PICTURE-CHECK ROUND 6, ITEM A: drawn at the right of the tab row, in the same slot the
@@ -133,7 +142,10 @@ export function TheCheckInHeader({
         underlined navy - not plain grey text (picture-check round 6, item B).
       */}
       <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginBottom: 6 }}>
-        <Link to="/grounds" style={{ color: 'var(--gw-navy)', textDecoration: 'underline' }}>Check-ins</Link>
+        {/* SCREEN FAULT 10: 16px tall on a phone - `.gwui-tap-40` (gw-ui.css) gives it the same
+            40px floor every other tappable link on this header already has, without touching its
+            size or look at any other width. */}
+        <Link to="/grounds" className="gwui-tap-40" style={{ color: 'var(--gw-navy)', textDecoration: 'underline' }}>Check-ins</Link>
         {' / '}{title}
       </div>
 
@@ -165,7 +177,9 @@ export function TheCheckInHeader({
           */}
           {(canRunThisCheckIn || isAParty) && (
             <Link to={`/grounds/${id}`} className="gwui-plain-link">
-              {isAParty && !canRunThisCheckIn ? 'Start my check-in' : 'Your check-in'}
+              {isAParty && !canRunThisCheckIn
+                ? (hasOpenSessionNow === false ? 'Back to the check-in' : 'Start my check-in')
+                : 'Your check-in'}
             </Link>
           )}
           <button type="button" onClick={showAsk} className="gwui-plain-link">

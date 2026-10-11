@@ -89,10 +89,23 @@ export function OrgNewPage() {
     else navigate('/grounds', { replace: true })
   }
 
-  const sub = 'Its check-ins, people and plan are separate from any other organisation you’re in. You’ll be its owner.'
+  /*
+   * B-050 (docs/bug-log-screens.md): THIS SCREEN SAID "CREATE" FOR A NAMING STEP.
+   *
+   * After a new Google sign-up, the server has already made the organisation (see the comment at
+   * the top of this file) - this screen only names it. It read "Create an organisation", "You'll
+   * be its owner" and "Create it" regardless, which told somebody to create something that already
+   * existed, and that the button would make them its owner, when it only renames what they already
+   * own. Said instead as what is actually happening: the organisation is ready, and this asks what
+   * to call it.
+   */
+  const title = naming ? 'Your organisation is ready' : 'Create an organisation'
+  const sub = naming
+    ? 'What should it be called?'
+    : 'Its check-ins, people and plan are separate from any other organisation you’re in. You’ll be its owner.'
 
   return (
-    <AuthCard title="Create an organisation" sub={sub}>
+    <AuthCard title={title} sub={sub}>
       <form noValidate onSubmit={e => { e.preventDefault(); submit() }}>
         <AuthField
           id="org-new-name"
@@ -130,7 +143,9 @@ export function OrgNewPage() {
 
         <div className="gw-auth-actions">
           <Button type="submit" wide size="big" disabled={create.isPending}>
-            {create.isPending ? 'Creating it…' : 'Create it'}
+            {naming
+              ? (create.isPending ? 'Saving…' : 'Save the name')
+              : (create.isPending ? 'Creating it…' : 'Create it')}
           </Button>
           <Button kind="quiet" wide onClick={cancel}>Cancel</Button>
         </div>

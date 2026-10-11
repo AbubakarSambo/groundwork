@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { equipmentApi, type EquipmentBoard } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { Page, PageTitle, Section, Panel, Button, Note, Empty, FieldLabel, Select, TextField } from '@/components/gw/ui'
+import { SuiteOffMessage } from '@/lib/suite-is-off'
 
 /**
  * EQUIPMENT (E10, #/suite/equipment, group 2 piece 4). ADMINS ONLY, on the server. The wording is
@@ -10,6 +11,12 @@ import { Page, PageTitle, Section, Panel, Button, Note, Empty, FieldLabel, Selec
  * and demo freezer, and what needs fixing. People update it by telling Groundwork." (group 2's
  * second review, fault 3: "Laptops, phones and demo freezers. See who has what..." was still two
  * fragments stapled together with a full stop), "Item", "Who has it" and "How it is".
+ *
+ * FAULT 5 OF THE LIVE WALK (6 October): "People update it by telling Groundwork." is dropped from
+ * the subtitle below. It was never true here - no assistant lane reads or writes equipment yet
+ * (request 29, "telling Groundwork is the engine's and does not work yet", above) - and a screen
+ * that promises a way in which does not exist is worse than a shorter, true one. Put back once
+ * request 29 is answered.
  *
  * REBUILT FROM THE SHARED PARTS: `Page`/`PageTitle` (crumbs, subtitle), `Panel` with
  * `.gwui-record-table`, `Section` for "Add an item", `FieldLabel`/`Select`/`TextField` for every
@@ -40,13 +47,13 @@ export function EquipmentPage() {
       <PageTitle
         crumbs={[{ label: 'Suites', to: '/settings/suites' }, { label: 'Equipment' }]}
         title="Equipment"
-        subtitle="See who has each laptop, phone and demo freezer, and what needs fixing. People update it by telling Groundwork."
+        subtitle="See who has each laptop, phone and other piece of equipment, and what needs fixing."
       />
 
       {isLoading && <Note>Loading…</Note>}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
-          <Note tone="error">{refused.data?.message ?? 'Only an admin can open this board.'}</Note>
+          <Note tone="error"><SuiteOffMessage message={refused.data?.message ?? 'Only an admin can open this board.'} role={user?.role} /></Note>
         ) : (
           <div>
             <Note tone="error">The board did not load.</Note>
@@ -83,11 +90,14 @@ function AnItem({ item, people }: { item: EquipmentBoard['items'][number]; peopl
     onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
   })
   if (!editing) {
+    /* FAULT 3 OF THE LIVE WALK (6 October): stacked at 375 wide, a row read as a bare "Laptop 07 /
+       Peter Okoro / Broken screen / Change", with nothing to say which value was who has it and
+       which was how it is. Labelled the same way ReviewsBoardPage's table already is. */
     return (
       <tr>
         <th scope="row">{item.name}</th>
-        <td>{item.holder ?? 'Nobody'}</td>
-        <td>{item.condition ?? ''}</td>
+        <td><span className="gwui-record-table-label" aria-hidden="true">Who has it</span>{item.holder ?? 'Nobody'}</td>
+        <td><span className="gwui-record-table-label" aria-hidden="true">How it is</span>{item.condition ?? ''}</td>
         <td><Button kind="quiet" size="small" onClick={() => setEditing(true)} aria-label={`Change ${item.name}`}>Change</Button></td>
       </tr>
     )

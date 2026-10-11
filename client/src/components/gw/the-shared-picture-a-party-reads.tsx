@@ -74,7 +74,7 @@ export function TheSharedPictureAPartyReads({ report }: { report: any }) {
       {divergences.length > 0 && (
         <div style={{ padding: '4px 20px 16px' }}>
           <div style={{ ...LABEL, marginTop: 12 }}>
-            Where accounts differ ({divergences.length})
+            Where answers differ ({divergences.length})
           </div>
           {divergences.map((d, i) => (
             <TwoAccountsSideBySide key={i} difference={d} />

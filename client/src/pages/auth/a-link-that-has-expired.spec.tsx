@@ -54,12 +54,15 @@ function readable(container: HTMLElement) {
    module lives, so that a remount cannot verify the same link twice. */
 const refused = (message: string) => ({ response: { status: 400, data: { message } } })
 
+/* UPDATED FOR B-130: "Sign in instead" is now on this card too (a dead end otherwise, for anyone
+   who already has a password), so the expected full text grew that one button. */
 const THE_CARD = [
   'Groundwork',
   'That link has expired',
   'Links from our emails work for a short while. Nothing is lost; ask for a fresh one.',
   'Email',
   'Send me a fresh link',
+  'Sign in instead',
 ].join('')
 
 beforeEach(() => {
@@ -94,17 +97,25 @@ describe('an old sign-in link (/verify-email)', () => {
     expect(authApi.entrySave).not.toHaveBeenCalled()
   })
 
-  it('a link already used gets "That link didn’t work" on the card, with a way to ask for a new one', async () => {
-    /* U.2 review: this used to be LinkProblem under the old header, with the server's sentence. */
+  /*
+   * B-208: UPDATED. This used to land on the generic "That link didn't work" card and offer to send
+   * a new link - wrong for this exact sentence, which already says the address is confirmed and the
+   * one thing left to do is sign in. Asking the page to send a new link for an address that is
+   * already proved was never going to help; the test now checks the server's own sentence is shown,
+   * with a way to sign in, and nothing about sending a new one.
+   */
+  it('a used sign-in link whose address is already confirmed says so, with a way to sign in', async () => {
     ;(authApi.verifyEmail as any).mockRejectedValue(refused('This link has already been used, so your address is confirmed. Sign in from the sign-in page.'))
     const { container } = renderAt('/verify-email?token=t3')
-    await screen.findByRole('heading', { name: 'That link didn’t work' })
+    await screen.findByRole('heading', { name: 'Your email is already confirmed' })
     expect(readable(container)).toBe(
-      'Groundwork' + 'That link didn’t work' +
-      'It may have been cut short when it was copied, or it has already been used. Open it again from the email, or ask for a new one.' +
-      'Email' + 'Send me a new link',
+      'Groundwork' + 'Your email is already confirmed' +
+      'This link has already been used, so your address is confirmed. Sign in from the sign-in page.' +
+      'Sign in',
     )
     expect(screen.queryByText('That link has expired')).toBeNull()
+    expect(screen.queryByText('That link didn’t work')).toBeNull()
+    expect(screen.queryByLabelText('Email')).toBeNull()
   })
 
   it('an address that is not an address is caught before anything is sent', async () => {
@@ -190,8 +201,14 @@ describe('the sentences the server sends are the ones this page reads', () => {
   it('no "already used" sentence reads as expired', () => {
     const used = [...lifetimes.matchAll(/'(This link has already been used[^']*)'/g)].map(m => m[1])
     expect(used.length).toBeGreaterThan(2)
-    /* They read as "did not work" (U.2 review), never as expired. */
-    for (const s of used) expect(whatTheLinkDid(s)).toBe('did-not-work')
+    /* None of them is "expired" (U.2 review). B-208: the one sign-in sentence that already says the
+       address is confirmed reads as its own thing ("used-confirmed"), because unlike the rest of
+       "used" it has somewhere to send the person and nothing to ask for; every other "already used"
+       sentence still reads as "did not work". */
+    for (const s of used) {
+      expect(whatTheLinkDid(s)).not.toBe('expired')
+      expect(whatTheLinkDid(s)).toBe(/so your address is confirmed\./.test(s) ? 'used-confirmed' : 'did-not-work')
+    }
   })
 })
 

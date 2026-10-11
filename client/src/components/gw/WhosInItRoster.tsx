@@ -48,7 +48,7 @@ export function WhosInItRoster({
   ground: any
   isInitiator: boolean
   isOrgAdmin: boolean
-  colleagues?: { id: string; name: string }[]
+  colleagues?: { id: string; name: string; role?: string; team?: string | null }[]
   addingMany: boolean
   addManyParticipants: (picked: { id: string; name: string }[]) => void
   newParticipantEmail: string
@@ -85,8 +85,12 @@ export function WhosInItRoster({
   viewerIsTheLead?: boolean
 }) {
   const participants: any[] = ground.participants ?? []
-  const checkingIn = participants.filter((p) => p.userId && p.inviteDeliveryStatus !== 'BOUNCED' && !p.awaitingSeat && !p.user?.awaitingOrgApproval).length
-  const needSomething = participants.length - checkingIn
+  /* IN AN ANCHOR CHECK-IN THE LEAD WHO ONLY MANAGES DOES NOT CHECK IN (engine's note, 8 October): she is left out of the count and out of "Checking in". */
+  const leavesOutTheManager = ground.scenario === 'HELP_TEAM_UNDERSTAND'
+  const isNotCounted = (p: any) => leavesOutTheManager && p.managingOnly === true
+  const counted = participants.filter((p) => !isNotCounted(p))
+  const checkingIn = counted.filter((p) => p.userId && p.inviteDeliveryStatus !== 'BOUNCED' && !p.awaitingSeat && !p.user?.awaitingOrgApproval).length
+  const needSomething = counted.length - checkingIn
 
   const seats = billingStatus?.people
   const seatsFull = seats?.cap != null && seats?.count != null && seats.count >= seats.cap
@@ -94,8 +98,10 @@ export function WhosInItRoster({
   return (
     <div>
       <p className="gwui-panel-text" style={{ fontWeight: 700 }}>
-        {participants.length} {participants.length === 1 ? 'person' : 'people'}.
-        {' '}{checkingIn} checking in{needSomething > 0 ? `; ${needSomething} need${needSomething === 1 ? 's' : ''} something before they can start.` : '.'}
+        {counted.length} {counted.length === 1 ? 'person' : 'people'}.
+        {/* FAULT H (reviewer, third round): a semicolon joined two separate counts into one
+            clipped clause. Two plain sentences instead. */}
+        {' '}{checkingIn} {checkingIn === 1 ? 'is' : 'are'} checking in.{needSomething > 0 ? ` ${needSomething} ${needSomething === 1 ? 'needs' : 'need'} something before they can start.` : ''}
       </p>
 
       {/* WHAT THE PILLS SAID THAT WAS NOT PER-PERSON: whether peers can see each other here, and what
@@ -131,14 +137,20 @@ export function WhosInItRoster({
               <Link className="gwui-open-link" to="/billing">View plans</Link>
             </div>
           )}
+          {/*
+            FAULT 5 (live walk, 6 October 2026): PLAIN SENTENCES, NOT JARGON OR A DASH JOIN. "Until
+            the report releases" used the filing-cabinet word for sharing a report with people; "is
+            the approval - there is no queue" joined two pieces with a dash instead of saying each
+            as its own sentence.
+          */}
           <p className="gwui-note">
-            They give their own version of the same work. You cannot see what they write until the
-            report releases.
+            They give their own version of the same work. You cannot see what they write until you
+            share the report.
           </p>
           <p className="gwui-note">
             {isOrgAdmin
-              ? "You are an admin here, so adding somebody is the approval - there is no queue. Anybody from outside your organisation gets a login here and appears on your People page, where you can take them off again."
-              : "Somebody from outside your organisation is invited straight away, and an admin here has to let them in before they can check in. They are told the same thing, and you can see it beside their name below."}
+              ? 'You are an admin here, so adding someone here is all the approval they need. Nobody waits in a queue. Anybody from outside your organisation gets a login here and appears on your People page, where you can take them off again.'
+              : 'Somebody from outside your organisation is invited straight away, and an admin here has to let them in before they can check in. They are told the same thing, and you can see it beside their name below.'}
           </p>
           <PeoplePicker
             people={colleagues ?? []}
@@ -191,7 +203,8 @@ export function WhosInItRoster({
                   <div className="gwui-field-row-value">
                     {q.email}
                     <div className="gwui-switch-row-detail">
-                      {q.note || 'No note - they will be asked the general questions for this situation.'}
+                      {/* FAULT 5 (live walk, 6 October 2026): a plain sentence, not two pieces joined by a dash. */}
+                      {q.note || 'There is no note. They will be asked the general questions for this situation.'}
                     </div>
                   </div>
                   <button
@@ -272,7 +285,8 @@ export function WhosInItRoster({
 
           let statusText = 'Checking in'
           let tone: TagTone = 'proven'
-          if (bounced) { statusText = 'The email bounced'; tone = 'concern' }
+          if (isNotCounted(p)) { statusText = 'Runs it'; tone = 'plain' }
+          else if (bounced) { statusText = 'The email bounced'; tone = 'concern' }
           else if (waitingForSeat) { statusText = 'Waiting for a seat'; tone = 'attention' }
           else if (notLetIn) { statusText = 'Not let in'; tone = 'concern' }
           else if (waitingForAdmin) { statusText = 'Waiting for an admin'; tone = 'attention' }
@@ -333,12 +347,17 @@ export function WhosInItRoster({
              *
              * A PLAIN LINK, NOT A BUTTON (Hafsah, 30 September): it only goes to another page, and
              * does nothing here.
+             *
+             * PHONE WALK, SCREEN FAULT 1: SAID PLAINLY, WITH THEIR NAME. Said truly for either
+             * reader already (no Resend is offered here - the `waitingForSeat` branch is checked
+             * before the final `!p.userId && isInitiator` branch that offers it), but "Your plan
+             * has no seat for them yet" buried who this was about in the middle of the sentence.
+             * Leads with their name instead, the same shape for an admin (who still gets "View
+             * plans" below it) and anyone else reading the same row.
              */
             help = {
               tone: 'look',
-              text: isOrgAdmin
-                ? `Your plan has no seat for ${inASentence}. Free one or move to a larger plan, and the invitation goes out.`
-                : 'Your plan has no seat for them yet. An admin has to make room before their invitation goes out.',
+              text: `${atTheStart(name)} is waiting for a seat on your plan. They will get their invitation as soon as there is one.`,
               action: isOrgAdmin
                 ? <Link className="gwui-open-link" to="/billing">View plans</Link>
                 : undefined,

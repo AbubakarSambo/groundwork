@@ -12,7 +12,7 @@ import './gw-ui.css'
  * late.", "Ended well.") - the same three colours `Tag`'s own tones already draw from, not a new
  * one invented for this. `tone="muted"` (board task, batch 3) is the same 13.5px line in
  * `--gw-muted` - the fainter of the product's two secondary inks (see index.css's own note on
- * `--gw-sub`/`--gw-muted`), already on a one-off `gwui-ink-muted` combined with `gwui-fs-13-5`
+ * `--gw-sub`/`--gw-muted`), already on a one-off muted-colour-plus-13.5px-size pair of classes
  * across several board rows (a person's "ask"/"finding" line, a blocker's history, a record row's
  * caption) - named here rather than left as that pair. `Callout` is the tinted line the prototype shows above the
  * invitation's heading (s44.js: `background:var(--chat)`, 10px corners, 10/14px inside, 14.5px

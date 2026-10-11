@@ -122,4 +122,25 @@ describe('OpenTheRequest, anchor pieces 26 and 27', () => {
     expect(screen.getByText(spendingOpenOff.says)).toBeTruthy()
     expect(screen.queryByRole('button')).toBeNull()
   })
+
+  /*
+   * FAULT 7 (LIVE RE-WALK): "YOU CAN SUBMIT THAT THROUGH LEAVE HERE..." TWICE - once as the
+   * assistant's own chat bubble (passed in as `replyText`), once again in this card, when the
+   * model's reply already said the spec's sentence word for word.
+   */
+  it('draws only the button, not the sentence again, when the reply already said it', () => {
+    renderWithRouter(<OpenTheRequest open={leaveOpenOn} replyText={`Got it. ${leaveOpenOn.says} Anything else?`} />)
+    expect(screen.queryByText(leaveOpenOn.says)).toBeNull()
+    expect(screen.getByRole('button', { name: 'Request leave' })).toBeTruthy()
+  })
+
+  it('draws the sentence when the reply did not already say it', () => {
+    renderWithRouter(<OpenTheRequest open={leaveOpenOn} replyText="Got it, I've noted that." />)
+    expect(screen.getByText(leaveOpenOn.says)).toBeTruthy()
+  })
+
+  it('draws the sentence as before when no reply text is given at all', () => {
+    renderWithRouter(<OpenTheRequest open={leaveOpenOn} />)
+    expect(screen.getByText(leaveOpenOn.says)).toBeTruthy()
+  })
 })

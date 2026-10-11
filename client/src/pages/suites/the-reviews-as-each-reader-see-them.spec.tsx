@@ -13,7 +13,7 @@ import type { ReviewsBoard, AReview } from '@/api/suites'
  * Here: what each person reads, in the prototype's words (suite-reviews.txt), and that no reader sees
  * a label, a verdict, a score or a rating.
  */
-vi.mock('@/api/suites', () => ({ reviewsApi: { board: vi.fn(), mine: vi.fn(), start: vi.fn(), one: vi.fn(), words: vi.fn(), view: vi.fn(), decide: vi.fn() } }))
+vi.mock('@/api/suites', () => ({ reviewsApi: { board: vi.fn(), mine: vi.fn(), start: vi.fn(), one: vi.fn(), words: vi.fn(), view: vi.fn(), decide: vi.fn(), appealsToDecide: vi.fn() } }))
 import { reviewsApi } from '@/api/suites'
 
 const BOARD: ReviewsBoard = {
@@ -34,6 +34,7 @@ const FOR_WAIRIMU: AReview = {
   reader: 'writer', id: 'r-a', name: 'Aisha Otieno', firstName: 'Aisha', writtenWith: 'Wairimu Kamau', writtenWithFirstName: 'Wairimu',
   dueOn: '2027-03-01', noticed: NOTICED,
   managersWords: 'Aisha is our strongest closer with butcheries. I want her to lead supermarkets next.',
+  managersWordsById: 'u-w',
   theirView: 'I want to lead the supermarket accounts, but I need faster stock.', decision: null, mayWrite: true,
 }
 const FOR_GRACE: AReview = { ...FOR_WAIRIMU, reader: 'admin', mayWrite: false }
@@ -41,6 +42,7 @@ const FOR_AISHA: AReview = {
   reader: 'person', id: 'r-a', firstName: 'Aisha', writtenWithFirstName: 'Wairimu', dueOn: '2027-03-01', noticed: NOTICED,
   theirView: null,
   managersWords: 'Aisha is our strongest closer with butcheries. I want her to lead supermarkets next.',
+  managersWordsById: 'u-w',
   managersWordsHeading: 'What Wairimu writes',
   whereYouDiffer: null,
   decision: { says: 'Aisha leads the supermarket accounts from April.', reasons: 'She closed 9 sales, all paid.' },
@@ -50,16 +52,21 @@ const GRACE = { id: 'u-g', firstName: 'Grace', role: 'ADMIN', organizationName: 
 const WAIRIMU = { id: 'u-w', firstName: 'Wairimu', role: 'LEAD', organizationName: 'Baridi Appliances' }
 const AISHA = { id: 'u-a', firstName: 'Aisha', role: 'MEMBER', organizationName: 'Baridi Appliances' }
 const AMINA = { id: 'u-am', firstName: 'Amina', role: 'ADMIN', organizationName: 'Baridi Appliances' }
+/* A second Daniel: the organisation has two people called Daniel, so a first-name guess would get this wrong. */
+const DANIEL_TWO = { id: 'u-d2', firstName: 'Daniel', role: 'ADMIN', organizationName: 'Baridi Appliances' }
 
 /*
  * Fault 3 of the live walk: Peter's review, started by Daniel, his manager, who had already written
  * his words; Amina, an admin the rules now also name to write it, read "What you write" with Daniel's
- * words pre-filled, so saving would have overwritten Daniel's words as her own.
+ * words pre-filled, so saving would have overwritten Daniel's words as her own. `managersWordsById`
+ * ('u-d', the first Daniel's own sign-in, never 'u-d2') is what the screen now checks (request 162,
+ * item 6) - not `writtenWithFirstName`, which only ever held a name and cannot tell two Daniels apart.
  */
 const FOR_AMINA_ON_PETER: AReview = {
   reader: 'writer', id: 'r-p', name: 'Peter Otieno', firstName: 'Peter', writtenWith: 'Daniel Kiprotich', writtenWithFirstName: 'Daniel',
   dueOn: '2027-03-01', noticed: [],
   managersWords: 'Peter has carried the Kisumu route on his own since June.',
+  managersWordsById: 'u-d',
   theirView: null, decision: null, mayWrite: true,
 }
 
@@ -81,7 +88,11 @@ const refusal = (status: number, message: string) => Object.assign(new Error(Str
 const text = () => document.body.textContent ?? ''
 const LABELS = /\b(PIP|performance improvement plan|exit|at[- ]risk|low[- ]performer|verdict|rating|score \d|scored)\b/i
 
-beforeEach(() => { vi.clearAllMocks(); (reviewsApi.mine as any).mockResolvedValue([]) })
+beforeEach(() => {
+  vi.clearAllMocks()
+  ;(reviewsApi.mine as any).mockResolvedValue([])
+  ;(reviewsApi.appealsToDecide as any).mockResolvedValue({ appeals: [], waitingForAnotherAdmin: [] })
+})
 
 describe('the board of the next reviews', () => {
   it('reads the prototype’s heading, sentence and box, with the organisation’s own cycle', async () => {
@@ -172,21 +183,38 @@ describe('the board of the next reviews', () => {
     expect(document.querySelectorAll('tr')).toHaveLength(0)
   })
 
-  /* Group 2's review, fault E: the subtitle used to read "It is built from..." alone, with nothing
-     before "It", whenever the organisation had not answered "How often is each person reviewed?" -
-     every time the suite was off, and the first moment it was switched on. A true sentence - the
-     product's own default cadence - is read instead, never a sentence with nothing before "it". */
-  it('while the organisation has not said how often, still reads a true sentence, never "It is built..." alone', async () => {
+  /*
+   * Group 2's review, fault E: the subtitle used to read "It is built from..." alone, with nothing
+   * before "It", whenever the organisation had not answered "How often is each person reviewed?" -
+   * every time the suite was off, and the first moment it was switched on. That was first fixed by
+   * filling in a made-up default ("every 6 months"), but Msingi Foods has not set how often and
+   * that default is not true of it - Imani Hassan read "A review happens every 6 months." as if it
+   * were the organisation's own answer (engine workspace, 9 October night, test bed copy a).
+   *
+   * These two tests are changed because they pinned that made-up default. Now, with nothing set,
+   * the first sentence is left out, and the rest reads as its own sentence starting with "A review"
+   * - still never a sentence with nothing before "it".
+   */
+  it('while the organisation has not said how often, leaves out "A review happens...", never "It is built..." alone', async () => {
     ;(reviewsApi.board as any).mockResolvedValue({ every: null, next: [] })
     open(GRACE, '/suite/reviews')
-    expect(await screen.findByText('A review happens every 6 months. It is built from what each person did and proved in their check-ins, with their own view beside it. There are no scores.')).toBeInTheDocument()
+    expect(await screen.findByText('A review is built from what each person did and proved in their check-ins, with their own view beside it. There are no scores.')).toBeInTheDocument()
+    expect(text()).not.toContain('A review happens')
+  })
+
+  it('the same when the organisation’s answer is an empty string, not only null', async () => {
+    ;(reviewsApi.board as any).mockResolvedValue({ every: '', next: [] })
+    open(GRACE, '/suite/reviews')
+    expect(await screen.findByText('A review is built from what each person did and proved in their check-ins, with their own view beside it. There are no scores.')).toBeInTheDocument()
+    expect(text()).not.toContain('A review happens')
   })
 
   it('while the suite is off, still reads a true sentence above the server’s refusal, never "It is built..." alone', async () => {
     ;(reviewsApi.board as any).mockRejectedValue(refusal(404, 'The performance reviews suite is not switched on.'))
     open(GRACE, '/suite/reviews')
     expect(await screen.findByRole('alert')).toHaveTextContent('The performance reviews suite is not switched on.')
-    expect(screen.getByText('A review happens every 6 months. It is built from what each person did and proved in their check-ins, with their own view beside it. There are no scores.')).toBeInTheDocument()
+    expect(screen.getByText('A review is built from what each person did and proved in their check-ins, with their own view beside it. There are no scores.')).toBeInTheDocument()
+    expect(text()).not.toContain('A review happens')
   })
 })
 
@@ -269,7 +297,14 @@ describe('one review', () => {
     const decision = screen.getByRole('region', { name: 'The decision' })
     expect(within(decision).getByText('Aisha leads the supermarket accounts from April.')).toBeInTheDocument()
     expect(within(decision).getByText('She closed 9 sales, all paid.')).toBeInTheDocument()
-    expect(screen.getByText('No scores. You and Wairimu talk it through, and Wairimu decides.')).toBeInTheDocument()
+    /*
+     * SCREEN FAULT (engine workspace, 9 October night, test bed copy a): Imani Hassan still read
+     * "No scores. You and Grace talk it through, and Grace decides." once her review was decided -
+     * a sentence about how the decision gets made, left standing once it had already been made.
+     * This test pinned that fault (it asserted the line was present once decided); it is changed
+     * because the decision itself is already shown above, with nothing left for this line to say.
+     */
+    expect(screen.queryByText('No scores. You and Wairimu talk it through, and Wairimu decides.')).toBeNull()
     const view = screen.getByRole('region', { name: 'Your own view' })
     expect(within(view).getByText('You have not written your view yet.')).toBeInTheDocument()
     expect(within(view).queryByRole('textbox')).toBeNull()
@@ -287,6 +322,19 @@ describe('one review', () => {
     expect(await screen.findByText('Groundwork has not written this part yet.')).toBeInTheDocument()
     expect(screen.getByText('Wairimu has not written anything yet.')).toBeInTheDocument()
     expect(screen.getByText('Aisha’s own view is not in yet.')).toBeInTheDocument()
+  })
+
+  /*
+   * SCREEN FAULT 9 (FINAL WALK): "WHAT DANIEL WRITES", WITH NOTHING UNDER IT. Grace's review page
+   * (reader: 'person', reading about themselves) drew the heading and nothing else when the writer
+   * had not written their part yet. Said in words now, and never a guessed pronoun ("his part").
+   */
+  it('says the writer has not written anything yet, rather than a heading with nothing under it', async () => {
+    ;(reviewsApi.one as any).mockResolvedValue({ ...FOR_AISHA, managersWords: null })
+    open(AISHA, '/suite/reviews/r-a')
+    const section = await screen.findByRole('region', { name: 'What Wairimu writes' })
+    expect(within(section).getByText('Wairimu has not written anything yet.')).toBeInTheDocument()
+    expect(within(section).queryByText(/his part|her part|their part/)).toBeNull()
   })
 
   it('a colleague reads the server’s refusal', async () => {
@@ -338,5 +386,30 @@ describe('one review', () => {
     fireEvent.change(own, { target: { value: 'Peter is ready for a bigger route.' } })
     fireEvent.click(save)
     await waitFor(() => expect(reviewsApi.words).toHaveBeenCalledWith('r-p', 'Peter is ready for a bigger route.'))
+  })
+
+  /*
+   * Request 162, item 6: whose words these are is decided by sign-in (`managersWordsById`), never by
+   * comparing first names. Two people called Daniel: the one who actually wrote `managersWords` is
+   * 'u-d', not this reader, 'u-d2' - a first-name guess would have matched "Daniel" to "Daniel" and
+   * wrongly pre-filled the other Daniel's words into this reader's own, editable box.
+   */
+  it('a second Daniel reads the first Daniel’s words read-only, by id, though their first names match', async () => {
+    ;(reviewsApi.one as any).mockResolvedValue(FOR_AMINA_ON_PETER)
+    open(DANIEL_TWO, '/suite/reviews/r-p')
+    const words = await screen.findByRole('region', { name: 'What Daniel writes' })
+    expect(within(words).getByText('“Peter has carried the Kisumu route on his own since June.”')).toBeInTheDocument()
+    const own = within(words).getByLabelText('What you write') as HTMLTextAreaElement
+    expect(own.value).toBe('')
+  })
+})
+
+
+/* Screens item e: nobody in particular writes it, and the cell says so instead of staying blank. */
+describe('the Written with cell when no one is named', () => {
+  it('says what the server says, "Any admin"', async () => {
+    ;(reviewsApi.board as any).mockResolvedValue({ every: 'Every 6 months', next: [{ ...BOARD.next[1], writtenWith: null, writtenWithSays: 'Any admin' }] })
+    open(GRACE, '/suite/reviews')
+    expect(await screen.findByText('Any admin')).toBeTruthy()
   })
 })

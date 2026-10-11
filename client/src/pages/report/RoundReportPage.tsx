@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/auth'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { TheCheckInHeader } from '@/components/gw/TheCheckInHeader'
 import { checkInHeaderTabs } from '@/pages/grounds/ground-tabs'
+import { GroundGone } from '@/components/gw/GroundGone'
 
 /**
  * ONE ROUND'S REPORT, FOR SOMEBODY WHO HAS NO SESSION OF THEIR OWN ON IT.
@@ -26,12 +27,25 @@ export default function RoundReportPage() {
    * report's own count can disagree with it (engine request 56). This reader has no session of
    * their own, so their only count is this one - it should still be the product's one count.
    */
-  const { data: ground } = useQuery({
+  const { data: ground, isError, error } = useQuery({
     queryKey: ['ground', id],
     queryFn: () => groundsApi.get(id!),
     enabled: !!id,
     retry: false,
   })
+
+  /**
+   * B-201: A STRANGER OPENING ONE SESSION'S REPORT BY ITS OWN ADDRESS READS THE SAME REFUSAL EVERY
+   * OTHER GROUND PAGE DOES, NOT AN EMPTY SHELL.
+   *
+   * This page had no isError branch at all: a 403 (not this reader's check-in) or 404 (made-up id)
+   * left `ground` undefined and rendered straight through to the header ("Check-in", no cadence)
+   * over an empty "Session N" with nothing below it - `TheSessionsReport` itself answers `null` for
+   * the same two statuses. The same two reasons GroundAdminPage and GroundParticipantPage already
+   * read as "gone" (GW-PRI-04: one screen, whichever reason) apply here too.
+   */
+  const definitelyGone = isError && [404, 403].includes((error as any)?.response?.status)
+  if (definitelyGone) return <GroundGone />
 
   const canRunThisCheckIn = !!user?.id && (ground as any)?.initiatorId === user.id
   const isAParty = !!(ground as any)?.viewerIsInitiator || !!(ground as any)?.participants?.some((p: any) => p.userId === user?.id)
@@ -80,7 +94,7 @@ export default function RoundReportPage() {
           <TheSessionsReport
             groundId={id}
             sessionNumber={n}
-            totalInThisRound={ground ? whoIsInRound(((ground as any).participants ?? []), n, (ground as any).scenario).length : null}
+            totalInThisRound={ground ? whoIsInRound(((ground as any).participants ?? []), n, (ground as any).scenario, (ground as any).checkIns ?? []).length : null}
           />
         )}
       </div>

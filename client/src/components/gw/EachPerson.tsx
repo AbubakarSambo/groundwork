@@ -19,7 +19,7 @@
  * including the lead, who cannot mark somebody else's work done. A lead changes what is EXPECTED,
  * and does it in the conversation, because a change has a reason and a form does not take one.
  */
-import { theLeadsNote } from '@/lib/the-leads-note'
+import { TheLeadsNote } from '@/components/gw/TheLeadsNote'
 import { useState } from 'react'
 import { peopleLabels, atTheStart } from '@/lib/utils'
 import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
@@ -85,6 +85,9 @@ export function EachPerson({
   isLead,
   isTheLead = false,
   leadFirstName = null,
+  groundLabel = 'this check-in',
+  oldChatIsOpen = true,
+  askName = 'Ask Groundwork',
   onChangeInChat,
   onUploadFor,
   onSetToDo,
@@ -102,8 +105,14 @@ export function EachPerson({
   isTheLead?: boolean
   /** The lead's first name, so nobody but the lead reads "your" about the lead's own things. */
   leadFirstName?: string | null
-  /** The lead changes what is expected of somebody in the conversation, not in a form. */
-  onChangeInChat?: (said: string) => void
+  /** This check-in's own name, said to Ask so it knows which one (B-082). */
+  groundLabel?: string
+  /** Whether the old context chat is still drawn below this page (B-082). */
+  oldChatIsOpen?: boolean
+  /** What Ask is called for this organisation, read before its own panel has opened. */
+  askName?: string
+  /** The lead changes what is expected of somebody in the conversation, or, once that chat is gone, by asking Ask. */
+  onChangeInChat?: (said: string, askSaid: string) => void
   /** A person attaching the thing they said they would show. */
   onUploadFor?: (participantId: string, ask?: AnAskOnTheCard) => void
   /** Their own to-do, moved by them. */
@@ -183,7 +192,7 @@ export function EachPerson({
                     WORD. These sat as two inline spans with nothing between them, so the lead's
                     note ran straight into the summary with no space - "I sell fridges in
                     KilimaniNothing on record yet." A column, not a row, puts each on its own line. */}
-                {isTheLead && p.roleAsDescribed && <span data-leads-note>{theLeadsNote(p.roleAsDescribed)}</span>}
+                {isTheLead && p.roleAsDescribed && <TheLeadsNote role={p.roleAsDescribed} />}
                 <span>{summary}</span>
               </div>
             )}
@@ -206,22 +215,47 @@ export function EachPerson({
                     : (
                       /*
                         "THE LEAD" SAID TO THE LEAD.
-                        
+
                         Hafsah, 23 September 2026, reading her own check-in: "why would you say it
                         comes from the lead's own check-in when I am actually the lead, why can't it
                         say your own check-in." `isLead` was already in scope one line below, used
                         to decide whether to offer the chat link.
+
+                        "A MEMBER HAS NO CONVERSATION ON THIS PAGE" (Esther, live re-walk, fault 3a).
+                        "...or from the conversation on this page." named a half this screen only
+                        ever gives the check-in's own lead - a member reading her own context tab,
+                        or an admin reading someone else's, has no conversation here to point at
+                        (the chat link just below, `onChangeInChat`, is itself only ever passed for
+                        `isTheLead`, never for an admin whom `isLead` alone would also cover), and
+                        read a sentence naming something that was never true for her. Only the
+                        check-in's own lead, who does have it, reads that second half now.
                       */
                       <Empty>
-                        Nothing yet. It comes from {isTheLead ? 'your' : leadsOwn} own check-in,
-                        or from the conversation on this page.
+                        {isTheLead
+                          ? (oldChatIsOpen
+                            ? <>Nothing yet. It comes from your own check-in, or from the conversation on this page.</>
+                            : <>Nothing yet. It comes from your own check-in, or from telling {askName}.</>)
+                          : <>Nothing yet. It comes from {leadsOwn} own check-in.</>}
                       </Empty>
                     )}
                   {/* THIS ONLY GOES ELSEWHERE (Hafsah, 30 September, the button rules): it hands the
                       change to the conversation rather than doing anything itself, so it is a quiet
-                      text link, `.gwui-plain-link`, not a button. */}
+                      text link, `.gwui-plain-link`, not a button. B-082: once the old chat is gone,
+                      the same link asks Ask the whole question instead of filling a box nobody can see. */}
                   {isLead && onChangeInChat && (
-                    <QuietLink onClick={() => onChangeInChat(`Change what I expect of ${labelOf(p)} to `)}>Change this in the chat</QuietLink>
+                    /*
+                      B-116: ON HER OWN CARD, THE FILLED LINE MUST SPEAK AS HER. The lead can also be
+                      a participant on her own check-in (isMe true here), and `labelOf(p)` always
+                      gives her real name - there is no "you" form of it (see the "You" summary
+                      above, handled as its own special case). Filling the chat with "Change what I
+                      expect of Tendai Moyo to " read as if she were talking about somebody else.
+                      Worded for the reader instead, same as every other "you"/"your" branch on this
+                      card: "myself" in what she types, "me" in the sentence handed to Ask.
+                    */
+                    <QuietLink onClick={() => onChangeInChat(
+                      isMe ? 'Change what I expect of myself to ' : `Change what I expect of ${labelOf(p)} to `,
+                      isMe ? `I want to change what ${groundLabel} expects of me.` : `I want to change what ${groundLabel} expects of ${labelOf(p)}.`,
+                    )}>Change this in the chat</QuietLink>
                   )}
                 </Part>
 

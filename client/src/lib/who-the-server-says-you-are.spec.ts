@@ -83,4 +83,51 @@ describe('who the server says you are', () => {
     expect(useAuthStore.getState().isAuthenticated).toBe(true)
     expect(useAuthStore.getState().user?.mayOpenCheckIns).toBe(true)
   })
+
+  /**
+   * B-200. Grace, signed in, opens Wairimu's own sign-in link - which replaces the signed-in
+   * person on this SAME page load (`setAuth`, stores/auth.ts). Grace's own `GET /auth/me`, asked
+   * for when she first signed in, can still be in flight at that moment; if it resolves after
+   * Wairimu's session is set, `updateUser` would merge Grace's own fields back over Wairimu's -
+   * the token stays Wairimu's (set directly, not through this hook), but the rest of the signed-in
+   * person would not. Walked live: exactly this mismatch, token for one person and `user` for
+   * another.
+   */
+  const WAIRIMU = {
+    id: 'u2', email: 'wairimu@msingi.test', firstName: 'Wairimu', lastName: 'Njoroge',
+    role: 'LEAD', organizationId: 'o2', mayOpenCheckIns: true, isPlatformAdmin: false,
+  } as unknown as User
+
+  it('a slow answer about the person who WAS signed in does not overwrite the person signed in now', async () => {
+    let resolveGrace!: (u: User) => void
+    const me = vi.spyOn(authApi, 'me').mockImplementation(() => new Promise<User>((res) => { resolveGrace = res }))
+    signedIn()
+    renderHook(() => useWhoTheServerSaysYouAre())
+    await waitFor(() => expect(me).toHaveBeenCalledTimes(1))
+
+    // Wairimu's own sign-in link verifies on this browser while Grace's own /auth/me is still out.
+    useAuthStore.getState().setAuth(WAIRIMU, 'wairimu-token')
+    expect(useAuthStore.getState().user?.id).toBe('u2')
+
+    // Grace's slow answer finally arrives.
+    resolveGrace({ ...SIGNED_IN_YESTERDAY })
+    await new Promise((r) => setTimeout(r, 10))
+
+    expect(useAuthStore.getState().user?.id).toBe('u2')
+    expect(useAuthStore.getState().user?.email).toBe('wairimu@msingi.test')
+    expect(useAuthStore.getState().token).toBe('wairimu-token')
+  })
+
+  it('asks fresh for a genuinely new person, rather than staying silent for the rest of the page life', async () => {
+    const me = vi.spyOn(authApi, 'me').mockResolvedValue({ ...SIGNED_IN_YESTERDAY } as never)
+    signedIn()
+    const { rerender } = renderHook(() => useWhoTheServerSaysYouAre())
+    await waitFor(() => expect(me).toHaveBeenCalledTimes(1))
+
+    me.mockResolvedValue({ ...WAIRIMU } as never)
+    useAuthStore.getState().setAuth(WAIRIMU, 'wairimu-token')
+    rerender()
+
+    await waitFor(() => expect(me).toHaveBeenCalledTimes(2))
+  })
 })

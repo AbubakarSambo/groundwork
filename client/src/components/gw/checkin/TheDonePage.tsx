@@ -1,6 +1,8 @@
+import { isSessionShared } from '@/lib/session-rows'
 import { useId } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useNavigate, Link } from 'react-router-dom'
+import { theClosingAfterYourFirstCheckIn } from '@/lib/the-closing-after-your-first-check-in'
 import { toast } from 'sonner'
 import { StageLadder } from '@/components/gw/kit'
 import { PageTitle } from '@/components/gw/ui/PageTitle'
@@ -196,9 +198,11 @@ export function TheDonePage({
    * already carries on `report.releasedAt` - the same field the report endpoint itself is built
    * from, so this cannot disagree with it.
    */
-  const teamReportReleased = !!(g?.report as { releasedAt?: string | null } | null | undefined)?.releasedAt
   const carry: string | null = artifact.data?.artifact?.whatToCarry ?? null
   const thisOne = ((g?.checkIns ?? []) as any[]).find(c => c.id === checkInId)
+  /* THIS session's team report, not any session's (confirm walk, 7 October): after session 1 was
+     shared, session 2's Done page said "Shared" too. The same rule as the board's rows. */
+  const teamReportReleased = isSessionShared(g?.report as { releasedAt?: string | null; releasedSessions?: number[] | null } | null | undefined, thisOne?.sessionNumber ?? 1)
   const dims: Record<string, string> | null = thisOne?.specificityDimensions ?? null
   const five = dims && Object.keys(dims).length > 0 ? THE_FIVE.map(f => ({ ...f, there: wasItThere(dims[f.key]) })) : null
   const changed = (whatChanged?.items ?? []).filter(i => i?.name && Array.isArray(i.stages))
@@ -216,6 +220,19 @@ export function TheDonePage({
           </Link>
         </p>
       )}
+
+      {/* DECISION 133: the lead's FIRST check-in ends on one closing message, built from the
+          check-in's real schedule. Never on a later check-in, and never for a participant. */}
+      {isInitiator && sessionNumber === 1 && g && (() => {
+        const c = theClosingAfterYourFirstCheckIn(g)
+        return (
+          <p data-testid="the-leads-first-closing" style={{ margin: 0, fontSize: 15, lineHeight: 1.5 }}>
+            {c.before}
+            <Link to={`/grounds/${groundId}?tab=settings`} style={{ color: 'var(--gw-navy)', fontWeight: 700, textDecoration: 'underline' }}>{c.link}</Link>
+            {c.after}
+          </p>
+        )
+      })()}
 
       {/**
         * THE HEADING IS THE TEAM'S NEWS, NOT A LABEL ON A LONE CARD.

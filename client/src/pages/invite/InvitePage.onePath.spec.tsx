@@ -33,6 +33,7 @@ const PREVIEW = {
   scenario: 'NEW_PROJECT',
   roleAsDescribed: null,
   alreadyAccepted: false,
+  organisationName: 'Acme Inc',
 }
 
 function renderInvite() {
@@ -82,7 +83,7 @@ describe('ONE-PATH: invite accept lands in the real engine', () => {
 
   /* U.3: the invitation now reads as the prototype's (join-invite.txt). The old
      top box ("builds the shared report") and footer ("come back any time to add to") are replaced by
-     the prototype's box and "About two minutes. You make your account afterwards."
+     the prototype's box and "About two minutes. You choose how you sign in afterwards."
      U.20 fifth review (Hafsah, pictured at 1440px): "What happens to what you write" no longer
      prints in full on the page (it made the page twice the prototype's length, which has none of
      it) - it is a plain link that opens the same four claims in the shared Modal, so this test now
@@ -94,18 +95,24 @@ describe('ONE-PATH: invite accept lands in the real engine', () => {
      just held - they are not true once admins and the people in a check-in can read it (decision 1).
      NEW_PROJECT is not a performance plan, a promotion or a renewal, so the admins sentence is
      included. The old "Nobody you work with reads it" panel said the opposite of decision 1 and is
-     replaced by "Who can read what you write", carrying the same true sentence as the callout. */
+     replaced by "Who can read what you write", carrying the same true sentence as the callout.
+
+     B-205: THE SENTENCE NAMES THE ORGANISATION RATHER THAN CALLING IT "YOURS". The preview is read
+     before anyone signs in, so the server cannot yet tell a colleague from an outsider added as a
+     guest (one read "Admins in your organisation can read every check-in." about an organisation
+     that was not theirs). Naming the organisation is true either way, so PREVIEW above now carries
+     `organisationName` and the assertions read the named form. */
   it('keeps the privacy panel once, reachable from a link, and says what the prototype says', async () => {
     renderInvite()
     await screen.findByText('Sarah invited you to “Groundwork project”')
-    expect(screen.getByText(/The people in this check-in, including your manager, can see what you say in it\. Admins in your organisation can read every check-in\. Your own report and your questions to Ask\s+Groundwork stay private\./)).toBeTruthy()
+    expect(screen.getByText(/The people in this check-in, including your manager, can see what you say in it\. Admins at Acme Inc can read every check-in\. Your own report and your questions to Ask\s+Acme Inc stay private\./)).toBeTruthy()
     expect(screen.queryByText('Nobody you work with reads it')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'What happens to what you write' }))
     expect(screen.getByText('Who can read what you write')).toBeTruthy()
-    expect(screen.getAllByText(/Admins in your organisation can read every check-in\./).length).toBe(2)
+    expect(screen.getAllByText(/Admins at Acme Inc can read every check-in\./).length).toBe(2)
     expect(screen.queryByText(/Nobody else reads your answers/i)).toBeNull()
     expect(screen.queryByText(/reads the report, not your words/i)).toBeNull()
-    expect(screen.getByText('About two minutes. You make your account afterwards.')).toBeTruthy()
+    expect(screen.getByText('About two minutes. You choose how you sign in afterwards.')).toBeTruthy()
   })
 
   it('the inline entry-pipeline chat is gone (no onboarding cards, no chat input)', async () => {

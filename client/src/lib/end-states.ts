@@ -52,6 +52,14 @@ export const END_STATES: Record<string, EndStateOption[]> = {
     { value: 'END', label: 'The work with the adviser ends.' },
     { value: 'NOT_YET', label: 'It is not decided yet, and what is missing is named so it can be looked at again.' },
   ],
+  /* The anchor's own endings (mirrors the engine). */
+  HELP_TEAM_UNDERSTAND: [
+    { value: 'KEEP_RUNNING', label: 'The check-in keeps running, so the team keeps being asked.' },
+    { value: 'START_RECOMMENDED', label: 'The check-ins Groundwork recommended are started.' },
+    { value: 'TURN_ON_SUITES', label: 'The suites that fit the work the team is already doing are turned on.' },
+    { value: 'CONTINUE_FOR_THE_TEAM', label: 'Groundwork carries on for the team.' },
+    { value: 'ENDS_HERE', label: 'The check-in ends here, and what the month found stays in the record.' },
+  ],
   NEW_PROJECT: [
     { value: 'COMPLETE', label: 'The project is complete.' },
     { value: 'CONTINUE', label: 'The project carries on.' },

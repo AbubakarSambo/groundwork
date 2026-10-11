@@ -53,22 +53,41 @@ describe('Grace, an admin', () => {
        in place of the page's prior "Breadcrumb". */
     expect(screen.getByRole('navigation', { name: 'Where you are' }).textContent).toBe('Suites/Equipment')
     expect(screen.getByRole('heading', { level: 1, name: 'Equipment' })).toBeInTheDocument()
-    expect(screen.getByText('See who has each laptop, phone and demo freezer, and what needs fixing. People update it by telling Groundwork.')).toBeInTheDocument()
+    /*
+     * FAULT 5 OF THE LIVE WALK (6 October): "People update it by telling Groundwork." is dropped -
+     * it was never true, since no assistant lane reads or writes equipment yet (request 29).
+     */
+    expect(screen.getByText('See who has each laptop, phone and other piece of equipment, and what needs fixing.')).toBeInTheDocument()
+    expect(screen.queryByText(/People update it by telling Groundwork/)).toBeNull()
   })
 
   it('reads each item, who has it and how it is, as the prototype writes them', async () => {
     open(GRACE, BOARD)
     await screen.findByRole('table')
     expect([...document.querySelectorAll('thead th')].slice(0, 3).map(th => th.textContent)).toEqual(['Item', 'Who has it', 'How it is'])
+    /*
+     * FAULT 3 OF THE LIVE WALK (6 October): each stacked cell now carries its own visible label
+     * ("Who has it"/"How it is" prefixed, as ReviewsBoardPage's table already does), which `rows()`
+     * reads too, since it reads each cell's whole text content.
+     */
     expect(rows()).toEqual([
-      ['Laptop 07', 'Faith Kerubo', 'New. Given out on Monday.'],
-      ['Phone 12', 'Kwame Boateng', 'Working.'],
-      ['Demo freezer, 300 litres', 'Miriam Wanjiku', 'At Westgate Deli for a trial.'],
-      ['Laptop 03', 'Kamau Njenga', 'Broken screen.'],
-      ['Spare phone', 'Nobody', ''],
+      ['Laptop 07', 'Who has itFaith Kerubo', 'How it isNew. Given out on Monday.'],
+      ['Phone 12', 'Who has itKwame Boateng', 'How it isWorking.'],
+      ['Demo freezer, 300 litres', 'Who has itMiriam Wanjiku', 'How it isAt Westgate Deli for a trial.'],
+      ['Laptop 03', 'Who has itKamau Njenga', 'How it isBroken screen.'],
+      ['Spare phone', 'Who has itNobody', 'How it is'],
     ])
     expect(screen.queryByText('Book a repair')).toBeNull()
     expect(screen.queryByText('How people use it')).toBeNull()
+  })
+
+  it('each stacked value carries its own visible label, marked aria-hidden since a screen reader already has the real column headers (fault 3 of the live walk)', async () => {
+    open(GRACE, BOARD)
+    await screen.findByRole('table')
+    const labels = [...document.querySelectorAll('tbody .gwui-record-table-label')]
+    expect(labels.length).toBe(BOARD.items.length * 2)
+    expect(labels.every(l => l.textContent === 'Who has it' || l.textContent === 'How it is')).toBe(true)
+    expect(labels.every(l => l.getAttribute('aria-hidden') === 'true')).toBe(true)
   })
 
   it('gives Laptop 03 to Faith and says it is fixed', async () => {

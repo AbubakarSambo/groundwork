@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { openLinkApi } from '@/api/entry'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 import { WhatYouGaveUs, type WhatYouGave } from '@/components/gw/WhatYouGaveUs'
 import { Mark } from '@/components/gw/ui'
 import { MARKETING_URL } from '@/lib/marketing'
+import { useAuthStore } from '@/stores/auth'
 
 /**
  * ANSWER FIRST, SAY WHO YOU ARE AT THE END.
@@ -35,6 +36,8 @@ export function whatIsStillNeeded(name: string, org: string, email: string): str
 
 export function AnswerFirstPage() {
   const [params] = useSearchParams()
+  const navigate = useNavigate()
+  const signedIn = useAuthStore(s => !!s.isAuthenticated)
   const token = params.get('t') ?? ''
   const [what, setWhat] = useState<{ groundLabel: string; theQuestion: string | null; askedBy: string | null; schedule?: string | null } | null>(null)
   const [problem, setProblem] = useState('')
@@ -201,15 +204,38 @@ export function AnswerFirstPage() {
    * and a way through - sign in, for somebody who already has an account, or the Groundwork home
    * page for anybody else.
    */
+  /*
+   * B-207 (review round 2): SOMEBODY ALREADY SIGNED IN IS NOT OFFERED "SIGN IN, OR GO TO THE
+   * GROUNDWORK HOME PAGE". Both of those are for somebody signed out; signed in, Today is where
+   * they already belong, and sending them to /auth or the marketing page both lead away from the
+   * product they are already using.
+   */
   if (problem && !what) return (
     <div style={{ ...card, justifyContent: 'center', textAlign: 'center' }}>
       <Mark />
-      <p style={{ color: 'var(--gw-sub)', marginTop: 18, lineHeight: 1.5 }}>{problem}</p>
-      <p style={{ marginTop: 18, fontSize: 14.5 }}>
-        <a href="/auth" style={{ color: 'var(--gw-navy)', fontWeight: 600 }}>Sign in</a>
-        {', or '}
-        <a href={MARKETING_URL} style={{ color: 'var(--gw-navy)', fontWeight: 600 }}>go to the Groundwork home page</a>.
-      </p>
+      {/* B-158: this state had no heading at all, one of five different readings the deep page
+          audit found for the same "a link does not work" state. "That link didn't work" is the
+          prototype's own heading for it (F4-small-states/badlink.txt), used wherever else a link
+          fails; `problem` is the detail sentence underneath it, as LinkProblem.tsx already does. */}
+      <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--gw-text)', marginTop: 18 }}>That link didn’t work</h1>
+      <p style={{ color: 'var(--gw-sub)', marginTop: 8, lineHeight: 1.5 }}>{problem}</p>
+      {signedIn ? (
+        <p style={{ marginTop: 18, fontSize: 14.5 }}>
+          <button
+            type="button"
+            onClick={() => navigate('/today')}
+            style={{ color: 'var(--gw-navy)', fontWeight: 600, background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer' }}
+          >
+            Go to Today
+          </button>
+        </p>
+      ) : (
+        <p style={{ marginTop: 18, fontSize: 14.5 }}>
+          <a href="/auth" style={{ color: 'var(--gw-navy)', fontWeight: 600 }}>Sign in</a>
+          {', or '}
+          <a href={MARKETING_URL} style={{ color: 'var(--gw-navy)', fontWeight: 600 }}>go to the Groundwork home page</a>.
+        </p>
+      )}
     </div>
   )
   if (!what) return <div style={{ ...card, justifyContent: 'center', textAlign: 'center' }}><p style={{ color: 'var(--gw-muted)' }}>One moment.</p></div>

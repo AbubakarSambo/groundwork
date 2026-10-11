@@ -17,11 +17,13 @@ import { spendApi } from '@/api/suites'
 
 const KAMAU = {
   id: 's-1', name: 'Kamau Njenga', firstName: 'Kamau', amount: 18000, what: 'fuel for Kisumu deliveries', team: 'Operations',
+  says: 'Kamau: KES 18,000 for fuel for Kisumu deliveries',
   left: 38000, over: false, approver: { kind: 'manager' as const }, mayDecide: false,
   where: 'It is waiting for Fatuma.', category: null as string | null, needs: [] as string[], questions: [] as string[],
 }
 const LINA = {
   id: 's-2', name: 'Lina Mutua', firstName: 'Lina', amount: 95000, what: 'a new laptop', team: 'Product',
+  says: 'Lina: KES 95,000 for a new laptop',
   left: 60000, over: true, approver: { kind: 'person' as const, firstName: 'Grace' }, mayDecide: true,
   where: 'It is waiting for you.', category: null as string | null, needs: [] as string[], questions: [] as string[],
 }
@@ -150,6 +152,7 @@ describe('Grace, an admin', () => {
 describe('what the server says about each request is drawn, not the screen’s own line', () => {
   const FUEL = {
     ...KAMAU, id: 's-3', name: 'Chidi Okeke', firstName: 'Chidi', amount: 12000, what: 'fuel for the Kisumu trip', team: 'Sales', left: 26000,
+    says: 'Chidi: KES 12,000 for fuel for the Kisumu trip',
     mayDecide: false, where: 'Wairimu has approved it, and it is now waiting for Omar in finance.', category: 'Fuel',
     needs: ['Spending on Fuel needs a receipt.'],
     questions: ['You asked Chidi on 5 October, “Is this for the Kisumu van?”', 'Chidi answered on 6 October, “Yes, the van.”'],
@@ -248,5 +251,18 @@ describe('everybody else', () => {
   it('while the suite is off, the server says so', async () => {
     open(GRACE, refusal(404, 'The spending suite is not switched on.'))
     expect(await screen.findByRole('alert')).toHaveTextContent('The spending suite is not switched on.')
+  })
+})
+
+/*
+ * B-155. A category tag ran straight into the sentence before it with no space - "...for the
+ * Mombasa depotLabels" - because nothing separated the two inline elements.
+ */
+describe('B-155: a category tag never runs into the sentence before it', () => {
+  it('reads with a space between the line and its tag', async () => {
+    open(GRACE, { ...GRACES, waiting: [{ ...KAMAU, category: 'Fuel' }] })
+    const item = (await screen.findByRole('list', { name: 'Waiting for a yes or no' })).querySelector('li')!
+    expect(item.textContent).not.toMatch(/\wFuel\b/)
+    expect(item.textContent).toMatch(/\sFuel\b/)
   })
 })

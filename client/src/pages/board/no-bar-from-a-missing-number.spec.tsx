@@ -60,15 +60,28 @@ describe('the coverage bar draws no bar from a missing number', () => {
     ;(boardApi.get as any).mockResolvedValue(board(40))
     const { container } = renderBoard()
     await screen.findByText('Rukia Otieno')
+    expect(container.querySelector('[data-testid="coverage-bar-fill"]')).toBeTruthy()
     expect(container.querySelector('[style*="width: 40%"]')).toBeTruthy()
   })
 
+  /*
+   * B-204 FOLLOW-UP: SCOPED TO THE BAR ITSELF, NOT THE WHOLE PAGE.
+   *
+   * `container.querySelector('[style*="width:"]')` against the WHOLE rendered page asked something
+   * wider than this test's own name: not just "no bar on this row", but "no element anywhere on
+   * this page has an inline width of any kind" - true by accident, because nothing else on the
+   * board happened to set one yet. B-204 gave the header's own "next session" note a `max-width`
+   * (so a long sentence wraps instead of running the page sideways on a phone), and `max-width:`
+   * contains the substring `width:` too, so this unrelated, correct style failed a query that was
+   * never really about the header. `coverage-bar-fill` names the one element this test is actually
+   * about, the same one `data-testid` now marks at its source, so a style added anywhere else on
+   * the page can no longer make this test fail for a reason that has nothing to do with it.
+   */
   it('draws the row with no bar, and no "width: undefined", when pct is not sent', async () => {
     ;(boardApi.get as any).mockResolvedValue(board(undefined))
     const { container } = renderBoard()
     await screen.findByText('Rukia Otieno')
     expect(screen.getByText('Nothing has shifted this week.')).toBeTruthy()
-    expect(container.querySelector('[style*="width: undefined"]')).toBeNull()
-    expect(container.querySelector('[style*="width:"]')).toBeNull()
+    expect(container.querySelector('[data-testid="coverage-bar-fill"]')).toBeNull()
   })
 })

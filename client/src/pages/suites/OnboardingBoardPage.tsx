@@ -3,6 +3,7 @@ import { onboardingBoardApi, type NewPerson } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { Page, PageTitle, Section, Panel, Button, Tag, Note, Empty, RowList, Row } from '@/components/gw/ui'
+import { SuiteOffMessage } from '@/lib/suite-is-off'
 
 /**
  * THE ONBOARDING BOARD (E1, #/suite/onboard, group 2 piece 4). The wording is copied from
@@ -27,7 +28,13 @@ import { Page, PageTitle, Section, Panel, Button, Tag, Note, Empty, RowList, Row
  * prototype's sentence, under the heading "Onboarding".
  *
  * WORDING NO SCREEN SHOWS (item 28): "Onboarding" as the page heading, "Done", "Not needed",
- * "Optional", "Nobody is being set up right now." and "The board did not load."
+ * "Optional" and "The board did not load."
+ *
+ * FAULT 7A OF THE LIVE WALK (6 October): "Nobody is being set up right now." gave no next step. A
+ * new person is actually set up by starting a "Help a new hire get started" check-in (the
+ * switchboard's own situation, the-switchboard-g2-table.ts), which seeds this board's steps and
+ * roster entry (the-onboarding-board.service.ts: "built only from... onboarding statuses"). The
+ * empty state now says so, with a link to the switchboard (`/start`).
  *
  * A SUBTITLE SAYING WHAT THE BOARD IS FOR (group 2's review, fault F): while the suite is off this
  * page used to show only "Onboarding / Onboarding" and the server's off sentence, with nothing
@@ -55,7 +62,7 @@ export function OnboardingBoardPage() {
       {isLoading && <Note>Loading…</Note>}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
-          <Note tone="error">{refused.data?.message ?? 'Only an admin or a lead can open this board.'}</Note>
+          <Note tone="error"><SuiteOffMessage message={refused.data?.message ?? 'Only an admin or a lead can open this board.'} role={user?.role} /></Note>
         ) : (
           <div>
             <Note tone="error">The board did not load.</Note>
@@ -63,7 +70,11 @@ export function OnboardingBoardPage() {
           </div>
         )
       )}
-      {data && (data.people ?? []).length === 0 && <Empty>Nobody is being set up right now.</Empty>}
+      {data && (data.people ?? []).length === 0 && (
+        <Empty title="Nobody is being set up right now." action={<Button kind="secondary" to="/start">Start a check-in</Button>}>
+          Set someone up by starting a “Help a new hire get started” check-in.
+        </Empty>
+      )}
       {(data?.people ?? []).map(p => <ANewPerson key={p.id} p={p} />)}
     </Page>
   )

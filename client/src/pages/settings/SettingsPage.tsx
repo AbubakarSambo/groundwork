@@ -1,12 +1,14 @@
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api/auth'
+import { billingApi, isWhatsAppBillingAdmin } from '@/api/billing'
 import { myDataApi, type MyData } from '@/api/my-data'
 import { todaysPasswordRules } from '@/pages/auth/password-rules'
+import { scrollToId } from '@/lib/scroll-to'
 import {
   Page, PageTitle, Section, Panel, Stack, FieldRows, FieldRow, SwitchRow, Steps, Step,
   Button, TextField, FieldLabel, SubHeading,
@@ -63,6 +65,17 @@ function ChangePassword({ email }: { email?: string | null }) {
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const setAuth = useAuthStore(s => s.setAuth)
+  /*
+   * "You can also sign in with Google" is only true where this deployment has Google configured
+   * (authApi.methods, the same gate AuthPage and GoogleFailedPage use). Saying it when Google is
+   * off would promise a button that does not exist anywhere else in the product.
+   */
+  const { data: methods } = useQuery({
+    queryKey: ['auth-methods'],
+    queryFn: authApi.methods,
+    staleTime: 10 * 60 * 1000,
+    retry: false,
+  })
 
   const change = useMutation({
     mutationFn: async () => {
@@ -83,7 +96,7 @@ function ChangePassword({ email }: { email?: string | null }) {
   const met = rules.every(r => r.met)
 
   return (
-    <Section heading="Password" note="You can also sign in with Google or an email link">
+    <Section heading="Password" note={methods?.google ? 'You can also sign in with Google or an email link' : 'You can also sign in with an email link'}>
       <Panel>
         {!open ? (
           <Button kind="primary" onClick={() => setOpen(true)}>Change password</Button>
@@ -120,6 +133,23 @@ export function SettingsPage() {
   const updateUser = useAuthStore(s => s.updateUser)
   const logout = useAuthStore(s => s.logout)
   const orgName = user?.organizationName ?? ''
+  const isAdmin = user?.role === 'ADMIN'
+
+  /*
+   * THE WHATSAPP ADD-ON, FOR A LEAD OR A MEMBER (decision 78, screens gap closed 5 October). Plan
+   * and billing says why their check-ins stay in the app, but that page is admin-only - a lead or
+   * member who opens it reads only "You need admin access". So the server's own sentence lands
+   * here instead, on the one row that already talks about WhatsApp. An admin manages this on
+   * /settings/billing already, so this does not ask for it again.
+   */
+  const { data: whatsappBilling } = useQuery({
+    queryKey: ['billing-whatsapp', 'settings'],
+    queryFn: billingApi.getWhatsApp,
+    enabled: whatsappOn && !isAdmin,
+  })
+  const whatsAppOffSays = whatsappBilling && !isWhatsAppBillingAdmin(whatsappBilling) && !whatsappBilling.on
+    ? whatsappBilling.says
+    : null
 
   const [firstName, setFirstName] = useState(user?.firstName ?? '')
   const [lastName, setLastName] = useState(user?.lastName ?? '')
@@ -151,7 +181,7 @@ export function SettingsPage() {
     onError: () => toast.error('That did not save. Try again.'),
   })
 
-  const [emailNotif, setEmailNotif] = useState(user?.emailNotifications ?? true)
+  const [emailNotif, setEmailNotif] = useState((user?.emailNotifications ?? true) && !user?.emailsStoppedFromAMail)
   const toggleNotif = useMutation({
     mutationFn: (val: boolean) => authApi.setEmailNotifications(val),
     onSuccess: (updated) => updateUser(updated),
@@ -215,6 +245,54 @@ export function SettingsPage() {
     onSuccess: () => { logout(); navigate('/auth') },
     onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Could not leave the organisation. Try again.'),
   })
+
+  /**
+   * B-221: THE "YOURS TO KEEP" EMAIL'S LINK OPENS STRAIGHT ON "YOUR DATA".
+   *
+   * `/settings#your-data` is the address the email now sends (request 224) - the same one a
+   * signed-out person is sent back to from sign-in, since `RequireAuth`/`RequireOrgSetup` now
+   * carry `window.location.hash` into `?next=` (App.tsx). This runs once, after the page's own
+   * data has a user to show (so it does not scroll a page that is still deciding what to render -
+   * the organisation and WhatsApp rows above "Your data" both depend on `user`), scrolls that
+   * section fully into view (clear of the sticky header - `.gwui-section`'s own `scroll-margin-top`)
+   * and moves keyboard focus to its heading, so a screen reader announces where you landed rather
+   * than leaving you on whatever the page's first focusable control happens to be.
+   */
+  const yourDataHeadingRef = useRef<HTMLHeadingElement>(null)
+  const didArriveOnYourData = useRef(false)
+  useEffect(() => {
+    if (didArriveOnYourData.current) return
+    if (window.location.hash !== '#your-data') return
+    if (!user) return
+    /*
+     * THE "ARRIVED" FLAG IS SET ONLY ONCE THE FRAME ACTUALLY RUNS, NOT WHEN IT IS SCHEDULED.
+     *
+     * React 18's StrictMode runs this effect, cleans it up, then runs it again on the very same
+     * mount in development - and the cleanup below cancels whatever frame is still pending. Setting
+     * the flag before scheduling marked the visit as handled after that first, cancelled frame, so
+     * the second (real) run saw the flag already true and never scheduled another - the scroll and
+     * the focus silently never happened. Setting it inside the callback means only a frame that
+     * truly ran can mark the visit as handled.
+     */
+    const frame = requestAnimationFrame(() => {
+      didArriveOnYourData.current = true
+      scrollToId('your-data', 'start')
+      /*
+       * `preventScroll: true` - A FOCUSED ELEMENT SCROLLS ITSELF INTO VIEW BY DEFAULT TOO, AND THE
+       * TWO SCROLLS RACED.
+       *
+       * At 390 wide, `scrollToId`'s smooth scroll was still animating toward the section's top when
+       * `.focus()` ran its own default "scroll the newly focused element into view" - an instant,
+       * "nearest" scroll that only moves as far as making the heading itself visible, not the
+       * section around it. That one landed last and won, leaving the scroll short of where
+       * `scrollToId` was taking it, with the section's own lower half still under the bottom nav
+       * bar and the Feedback button. Telling focus not to scroll leaves the one scroll in charge of
+       * where the page ends up.
+       */
+      yourDataHeadingRef.current?.focus({ preventScroll: true })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [user])
 
   return (
     <Page>
@@ -290,6 +368,29 @@ export function SettingsPage() {
                 <span>
                   {user?.phoneNumber || 'Not set'}
                   <span className="gwui-field-help">You can check in by replying on WhatsApp.</span>
+                  {whatsAppOffSays && (
+                    <span className="gwui-field-help">{whatsAppOffSays}</span>
+                  )}
+                  {/*
+                   * "CONNECT WHATSAPP" (decision 106, 5 October, night): an optional convenience,
+                   * never something a person must do to get their check-ins. Groundwork already
+                   * writes to every saved number once the templates are approved - this one tap
+                   * just says hello back, so the engine serves it only while that would still do
+                   * something: while it hasn't happened yet. Null otherwise, so nothing draws.
+                   */}
+                  {user?.connectWhatsApp && (
+                    <span className="gwui-field-help">
+                      Optional. Tap to say hello to Groundwork on WhatsApp.{' '}
+                      <a
+                        className="gwui-btn gwui-btn-quiet gwui-btn-small"
+                        href={user.connectWhatsApp.link}
+                        target="_blank"
+                        rel="noopener"
+                      >
+                        {user.connectWhatsApp.says}
+                      </a>
+                    </span>
+                  )}
                 </span>
               ) : (
                 <Stack gap={10}>
@@ -311,8 +412,10 @@ export function SettingsPage() {
       <Section heading="What we send you">
         <FieldRows>
           <SwitchRow
-            title="Check-in reminders"
-            detail="When a check-in opens and, once, if you haven’t answered."
+            title="Emails from Groundwork that we decide to send"
+            detail={user?.emailsStoppedFromAMail
+              ? 'You turned these off from a link in one of our emails. Turn them back on here whenever you like.'
+              : 'Reminders, summaries and insights Groundwork sends without being asked.'}
             on={emailNotif}
             onChange={(v) => { setEmailNotif(v); toggleNotif.mutate(v) }}
             disabled={toggleNotif.isPending}
@@ -321,7 +424,7 @@ export function SettingsPage() {
         <p className="gwui-fine">Notices say something is ready and link to it. They never include what anyone said.</p>
       </Section>
 
-      <Section heading="Your data">
+      <Section heading="Your data" id="your-data" headingRef={yourDataHeadingRef}>
         <Panel>
           <Stack gap={12}>
             <div className="gwui-sentence-row">

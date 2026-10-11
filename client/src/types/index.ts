@@ -30,7 +30,27 @@ export interface User {
    */
   mayOpenCheckIns?: boolean
   emailNotifications?: boolean
+  /** True when they stopped these emails from the link in one of our mails. The switch turns it back on. */
+  emailsStoppedFromAMail?: boolean
   phoneNumber?: string | null
+  /**
+   * "Connect WhatsApp" (decision 106, 5 October, night): a one-tap link that opens WhatsApp with
+   * "Hi" already typed to Groundwork's number. An optional convenience, never something a person
+   * must do to get their check-ins - the engine serves it only while it would actually work, and
+   * null once there is nothing to offer. See `ConnectWhatsApp`.
+   */
+  connectWhatsApp?: ConnectWhatsApp | null
+}
+
+/**
+ * "Connect WhatsApp" (decision 106): `says` is the button's own label, `link` opens WhatsApp with
+ * "Hi" already typed to Groundwork's number, and `number` is there to show if wanted. Served on
+ * `GET /auth/me` and on the person's own `GET /check-ins/:id/transcript`, nowhere else.
+ */
+export interface ConnectWhatsApp {
+  link: string
+  number: string
+  says: string
 }
 
 export type GroundScenario =
@@ -204,6 +224,14 @@ export interface Ground {
   daysLeft?: number | null
   /** The day this ends, from the start on record and how long it runs; null where it has no fixed length. */
   endsOn?: string | null
+  /**
+   * REQUEST 206: whether this check-in's lead has left the organisation, and whether this viewer
+   * may change its setup - the same rule `GET /grounds/:id` already serves as `mayChangeSetup`,
+   * now on every row of the list too, worked out for the viewer who asked for it
+   * (`who-may-rename-a-check-in.ts`).
+   */
+  leadHasLeft?: boolean
+  mayChangeSetup?: boolean
   checkInsToday?: number
   overdue?: number
   contextNotes?: string[]
@@ -239,7 +267,21 @@ export interface Ground {
   commitments?: { id: string; participantId: string | null; text: string; whenSaid: string | null; explicit: boolean; status: string; settledAt?: string | null }[]
   checkIns?: CheckInSummary[]
   signals?: GroundSignal[]
-  report?: { id: string; releasedAt: string | null; createdAt?: string } | null
+  /**
+   * THE CHECK-IN'S OWN CLOCK (B-112, night note item 5). The same count the board already uses
+   * (request 101 f): `currentSession`/`plannedSessions` are the open round, capped at the plan;
+   * `says` is the prototype's own header sentence ("Session 2 of 12."); `whileOpen` is a second,
+   * true sentence for when a later session has started for some people while an earlier one is
+   * still open for others ("Session 3 has started for some people, while session 2 is still
+   * open."), and null otherwise. Both are kept as two sentences on purpose - draw them together.
+   */
+  sessionClock?: {
+    currentSession: number
+    plannedSessions: number | null
+    says: string
+    whileOpen: string | null
+  }
+  report?: { id: string; releasedAt: string | null; releasedSessions?: number[] | null; createdAt?: string } | null
   sessionProgress?: {
     sessionNumber: number
     total: number

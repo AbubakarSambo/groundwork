@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { StopRemindersPage } from './StopRemindersPage'
+import { useAuthStore } from '@/stores/auth'
 
 /**
  * "STOP THESE REMINDERS" (A3, #/stop), AS THE PERSON WHO PRESSED THE LINK READS IT. Wording from
@@ -40,11 +41,38 @@ describe('opening the link', () => {
     expect(calls).toEqual(['stop'])
   })
 
-  it('a link we do not know says so plainly and offers nothing', async () => {
+  /*
+   * UPDATED FOR B-131: this used to be headed "Done." over "That link does not match anything",
+   * and the page had nothing to press but the logo - a dead end the deep page audit flagged,
+   * since nothing was in fact done. It now says plainly that the reminders could not be found,
+   * and offers a way to Settings for whoever wants to check their email preferences.
+   *
+   * UPDATED FOR B-209: the sentence used to go on to guess why ("which usually means the reminders
+   * were already stopped or the check-in has closed") and then promise something that guess could
+   * not support ("nothing more is going to you from it") - not true for a link simply cut short
+   * when it was copied, whose reminders could still be going. It now says only what is certain, and
+   * offers reopening the link as well as Settings.
+   */
+  it('a link we do not know says plainly that it could not be found, with a way to Settings', async () => {
     answer({ stop: { known: false } })
     open()
-    expect(await screen.findByText(/That link does not match anything/)).toBeTruthy()
-    expect(screen.queryByRole('button')).toBeNull()
+    expect(await screen.findByRole('heading', { name: 'We could not find those reminders' })).toBeTruthy()
+    expect(screen.getByText('That link does not match anything. It may have been cut short when it was copied.')).toBeTruthy()
+    expect(screen.queryByText(/nothing more is going to you/i)).toBeNull()
+    expect(screen.getByRole('link', { name: 'sign in to change your emails in Settings' })).toBeTruthy()
+  })
+
+  /*
+   * B-209 (review round 2): SOMEBODY ALREADY SIGNED IN IS NOT TOLD TO SIGN IN TO REACH SETTINGS.
+   */
+  it('a link we do not know, signed in, offers Settings without "sign in"', async () => {
+    useAuthStore.setState({ isAuthenticated: true, user: { id: 'u1' }, token: 't' } as any)
+    answer({ stop: { known: false } })
+    open()
+    await screen.findByRole('heading', { name: 'We could not find those reminders' })
+    expect(screen.getByRole('link', { name: 'change your emails in Settings' })).toBeTruthy()
+    expect(screen.queryByText(/sign in to change/i)).toBeNull()
+    useAuthStore.setState({ isAuthenticated: false, user: null, token: null } as any)
   })
 
   it('a server that cannot answer says nothing changed and what to do', async () => {

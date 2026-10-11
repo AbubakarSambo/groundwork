@@ -23,18 +23,28 @@ import './gw-ui.css'
  * only the heading row is drawn: no empty body div, so a heading-only call costs nothing beyond the
  * heading itself, same as the old `Sec size="board"` it replaces.
  */
-export function Section({ heading, note, action, foot, children }: {
+export function Section({ heading, note, action, foot, children, id, headingRef }: {
   heading: string
   note?: string
   action?: React.ReactNode
   foot?: string
   children?: React.ReactNode
+  /** So another part of the same page, or another page, can link straight to this section. */
+  id?: string
+  /**
+   * So a caller can move keyboard focus to this section's own heading once it has scrolled there
+   * - a `#your-data`-style arrival, where a click or a reload should land you reading the heading
+   * that explains the section, not somewhere on the page with nothing said about where you are
+   * (B-221). Carries `tabIndex={-1}` itself, since a heading a caller means to focus this way is
+   * never also a stop on the page's own tab order.
+   */
+  headingRef?: React.Ref<HTMLHeadingElement>
 }) {
   const headingId = useId()
   return (
-    <section className="gwui-section" aria-labelledby={headingId}>
+    <section id={id} className="gwui-section" aria-labelledby={headingId}>
       <div className="gwui-section-h">
-        <h2 id={headingId} className="gwui-section-title">{heading}</h2>
+        <h2 id={headingId} ref={headingRef} tabIndex={headingRef ? -1 : undefined} className="gwui-section-title">{heading}</h2>
         {note && <span className="gwui-section-note">{note}</span>}
         {action && <span className="gwui-section-action">{action}</span>}
       </div>

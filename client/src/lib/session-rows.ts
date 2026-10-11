@@ -2,6 +2,32 @@ import type { SessionRow } from '@/components/gw/TheReportIsAListOfSessions'
 import { whoIsInRound } from '@/lib/who-is-in-this-round'
 
 /**
+ * WHETHER A SESSION'S TEAM PICTURE HAS BEEN SHARED, THE SAME RULE THE ENGINE USES.
+ *
+ * SCREEN FAULT 1 (FINAL WALK): "NOT SHARED" WHEN THE REPORT WAS SHARED. `SessionRow.closed` answers
+ * "did everyone in this round finish" (from `roundCompletions`), which is a DIFFERENT fact from
+ * "has the lead released this session's report to everyone" (`report.releasedAt` /
+ * `report.releasedSessions`, decision 76) - a lead can cut a session short and release it before
+ * everyone has answered, and a finished round is not released until the lead shares it. The Reports
+ * list and the board both drew "Shared"/"Not shared" from `closed`, so a released-but-not-fully-
+ * answered session read "Not shared", and the "Share it" button it drew pointed at a page the
+ * engine never gave a share control. This mirrors the server's own
+ * `isThisSessionReleased` (api/src/modules/reports/each-sessions-picture-is-released-on-its-own.ts)
+ * so the two can never disagree.
+ */
+export function isSessionShared(
+  report: { releasedAt?: string | null; releasedSessions?: number[] | null } | null | undefined,
+  sessionNumber: number,
+): boolean {
+  if (!report?.releasedAt) return false
+  const list = Array.isArray(report.releasedSessions)
+    ? [...new Set(report.releasedSessions.filter((n) => Number.isInteger(n) && n > 0))]
+    : null
+  if (list === null) return true
+  return list.includes(sessionNumber)
+}
+
+/**
  * ONE ROW PER SESSION, AND WHO EACH ROW IS COUNTING.
  *
  * U.10: LIFTED OUT OF GroundAdminPage SO THE BOARD CAN USE THE SAME ROWS.
@@ -40,17 +66,42 @@ export function buildSessionRows(
    * see `answered`/`total` turning `null` below.
    */
   fullParticipants?: { id: string; managingOnly?: boolean | null; notLetInYet?: boolean | null }[] | null,
+  /**
+   * SCREEN FAULT 9, PART 2: THE BOARD CALLED SOMEBODY BOTH "NOT ON ANY OF THESE SESSIONS" AND
+   * "NOT YET CHECKED IN", FOR THE SAME SESSION.
+   *
+   * `whoIsInRound` counts anyone not managing-only and not held at the door as in EVERY round -
+   * right for "whether this round's count should include them" once they are in it, but it has
+   * no notion of when somebody joined, so a party added to the check-in after session `n` had
+   * already run was still named in that round's own `waitingOn`. A missing check-in row at `n` is
+   * not a safe test either: a row for an existing party who simply has not started `n` yet can be
+   * just as absent (proven by session-rows.spec.ts's own "4 of 5... 2 of 5" case, Baraka and
+   * Neema have no row at session 2 and are still correctly counted).
+   *
+   * The server's own grid (`checkInGrid.rows[].cells`, nine-columns-is-not-a-phone-screen.tsx)
+   * already knows the true answer and says "na" for exactly this case - this is that same map,
+   * participant id to the sessions they are actually on, passed in from where the board already
+   * has it (BoardPage.tsx). `null`/absent when it is not to hand (every existing caller, and
+   * every test of this file that predates it), in which case this falls back to `whoIsInRound`
+   * alone, exactly as before.
+   */
+  onSessionFromGrid?: Map<string, Set<number>> | null,
 ): SessionRow[] {
   const everybody = (ground?.participants ?? []) as any[]
   const checkIns = (ground?.checkIns ?? []) as any[]
+  const report = (ground as any)?.report as { releasedAt?: string | null; releasedSessions?: number[] | null } | null | undefined
   const numbers = [...new Set(checkIns.filter((c) => !c.isSetup).map((c) => c.sessionNumber as number))]
     .filter((n) => checkIns.some((c) => c.sessionNumber === n && c.status === 'COMPLETED'))
     .sort((a, b) => b - a)
 
   return numbers.map((n) => {
-    /* Who this round counts: a managing-only lead is in session 1 and not after. See who-is-in-this-round. */
-    const parties = whoIsInRound(everybody, n, ground?.scenario)
-    const fullParties = fullParticipants ? whoIsInRound(fullParticipants, n, ground?.scenario) : null
+    /* Who this round counts: a managing-only lead is in session 1 and not after. See who-is-in-this-round.
+       Screen fault 9, part 2: and, when the server's own grid is to hand, only somebody actually on
+       this session by it - see the parameter's own note above. */
+    /* Decision 133: the lead is in a round only when they answered it. */
+    const parties = whoIsInRound(everybody, n, ground?.scenario, checkIns)
+      .filter((p) => !onSessionFromGrid || onSessionFromGrid.get(p.id)?.has(n))
+    const fullParties = fullParticipants ? whoIsInRound(fullParticipants, n, ground?.scenario, checkIns) : null
     /* `ground.participants` is restricted to the viewer's own row when it is shorter than the full
        roster the board sent for the same round - the only case this read can be too small. */
     const restricted = !!fullParties && fullParties.length > parties.length
@@ -76,6 +127,7 @@ export function buildSessionRows(
       answered: restricted ? (closed ? fullParties!.length : null) : parties.filter((p) => answeredIds.has(p.id)).length,
       total: restricted ? fullParties!.length : parties.length,
       closed,
+      shared: isSessionShared(report, n),
       /* The reader is "you", never their own name (the wording rule); everybody else as labelled. */
       waitingOn: parties.filter((p) => !answeredIds.has(p.id)).map((p) => (p.userId && p.userId === userId ? 'you' : labelInASentence(p))),
       /* WHEN THIS SESSION REALLY OPENED, for the row's "Wed, 23 Sept" (U.9).

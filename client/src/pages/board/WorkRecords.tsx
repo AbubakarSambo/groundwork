@@ -551,7 +551,7 @@ function DealMarkAndName({ row }: { row: AServedWorkRow }) {
 /** A small muted line under a row's name - a due date, or (the sales deal grid's own row) the
     rep and the deal's value - shared, so the same small-print styling is only written once. */
 function SmallSubLine({ text }: { text: string | null }) {
-  return text ? <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-2">{text}</div> : null
+  return text ? <div className="gwui-note gwui-mt-2">{text}</div> : null
 }
 
 /** A due date, as a sentence, where the row has one - shared by every table row. */
@@ -592,7 +592,7 @@ function WorkRow({ row, leadFirstName, readerIsLead, kindOfWork, hasStageColumn,
         {fieldEntries.map(([label, value]) => (
           /* Board review, 30 September, item 3: a detail read as a label and a bare value stuck
              together ("Amount KES 45,000") - now a sentence ("The amount is KES 45,000."). */
-          <div key={label} className="gwui-fs-13-5 gwui-ink-sub gwui-mt-2">{`The ${label.toLowerCase()} is ${value}.`}</div>
+          <div key={label} className="gwui-note gwui-mt-2">{`The ${label.toLowerCase()} is ${value}.`}</div>
         ))}
         <DueLine due={row.due} />
       </div>
@@ -1285,7 +1285,7 @@ export function YourOwnRecordsSections({ groundId, kindOfWork, sections, myParti
                       {row.name}
                     </div>
                     {row.stage && <div className="gwui-mt-2"><Tag tone="plain">{row.stage}</Tag></div>}
-                    {dueSentence(row.due) && <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-2">{dueSentence(row.due)}</div>}
+                    {dueSentence(row.due) && <div className="gwui-note gwui-mt-2">{dueSentence(row.due)}</div>}
                     <div className="gwui-mt-4">
                       <Stack gap={4}>
                         <WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={false} />

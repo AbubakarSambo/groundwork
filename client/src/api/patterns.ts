@@ -56,4 +56,16 @@ export const patternsApi = {
   /** The person a pattern is about says what is behind it, in their own words. */
   answer: (id: string, text: string) =>
     apiClient.post<ServedPattern>(`/patterns/${id}/answer`, { text }).then(r => r.data),
+  /**
+   * WHOEVER RUNS THE CHECK-IN marks what they made of a pattern, after talking it through (decision
+   * 57, item 2). 403 for anybody else, including the person it is about.
+   */
+  mark: (id: string, mark: 'RIGHT' | 'WRONG' | 'NOT_SURE') =>
+    apiClient.post<ServedPattern>(`/patterns/${id}/mark`, { mark }).then(r => r.data),
+  /**
+   * WHOEVER RUNS THE CHECK-IN says they talked a pattern through with the person (decision 57, item
+   * 3). A second press is a no-op on the server, not an error.
+   */
+  talkedAbout: (id: string) =>
+    apiClient.post<ServedPattern>(`/patterns/${id}/talked-about`, {}).then(r => r.data),
 }

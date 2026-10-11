@@ -156,13 +156,19 @@ function ARequest({ w, board }: { w: SpendWaiting; board: SpendBoard }) {
     onSuccess: (b) => { setProblem(null); qc.setQueryData(['suite-spend'], b) },
     onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
   })
-  const title = `${w.firstName}: ${withCurrency(board.currency, w.amount)} for ${w.what}`
+  /* THE LINE IS THE SERVER'S (request 162, item 3): `says` already reads "Kamau: KES 18,000 for fuel
+     for Kisumu deliveries", built once (a-request-in-words.ts) rather than here a second time - this
+     used to build its own title from the raw fields, which is exactly the kind of drift that put the
+     wrong capitalisation on "The Mwangi agency" (fault 1) in the first place. */
   const known = whatToKnow(w, board.currency, board.limit)
   return (
     <Row columns="minmax(0, 1fr) auto">
       <div>
-        <b>{title}</b>
-        {w.category && <Tag>{w.category}</Tag>}
+        <b>{w.says}</b>
+        {/* B-155: the tag ran straight into the sentence on both sides with no space
+            ("...the Mombasa depotLabels", then the tag ran into the next line too), because
+            nothing separated the three inline pieces. */}
+        {w.category && <> <Tag>{w.category}</Tag>{' '}</>}
         {known && <p className="gwui-panel-text">{known}</p>}
         <p className="gwui-panel-text">{w.where}</p>
         {w.needs.map((n, i) => <p key={`n${i}`} className="gwui-panel-text">{n}</p>)}

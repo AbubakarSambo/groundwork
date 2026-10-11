@@ -68,6 +68,23 @@ describe('a check-in that has already ended, with no outcome ever recorded throu
     expect(screen.queryByText('Save the outcome and end it')).toBeNull()
   })
 
+  /**
+   * FAULT 5 (live walk, 6 October 2026): "DECIDE HOW IT ENDS" NO LONGER LINKS BACK TO THIS SAME
+   * PAGE.
+   *
+   * `ResolutionPanel`'s own `board-top` branch, with no outcome ever recorded, offered "It’s
+   * yours to decide how this ends." and a "Decide how it ends" button to `/grounds/g1/end` -
+   * exactly the page already open - whenever `nearTheEnd` was not explicitly `false`, which this
+   * page never said. The plain "This check-in has ended." panel above sat right beside a second
+   * panel inviting the lead back into itself.
+   */
+  it('never offers "Decide how it ends" once the check-in has ended', async () => {
+    renderPage()
+    await screen.findByText('This check-in has ended.')
+    expect(screen.queryByText('It’s yours to decide how this ends.')).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Decide how it ends' })).toBeNull()
+  })
+
   it('gives a way back to the board', async () => {
     renderPage()
     await screen.findByText('This check-in has ended.')

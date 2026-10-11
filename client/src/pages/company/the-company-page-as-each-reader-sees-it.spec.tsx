@@ -163,11 +163,22 @@ describe('Grace, an admin, reads the Company page', () => {
 
   it('reads company context: priorities with what success looks like, the handbook, resources and the rest', async () => {
     open(GRACE, '/company/context', GRACES)
+    /*
+     * FAULT 7 (live walk, 6 October 2026): "Company context" IS NOW ITS OWN HEADING LINE, as
+     * company-context.txt has it, above the full-sentence title - the page used to go straight
+     * from the breadcrumb to the sentence with nothing naming the page itself.
+     */
+    expect(screen.getByText('Company context')).toBeInTheDocument()
     expect(await screen.findByRole('heading', { level: 2, name: 'Priorities' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 1, name: 'What the company is trying to do, and how it reaches every team' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Company' })).toHaveAttribute('href', '/company')
     expect(screen.getByText('Everyone reads the priorities. Targets and numbers are leadership only.')).toBeInTheDocument()
-    expect(priority(1).textContent).toBe('Priority 1Grow revenue 50%, enterprise firstWhat success looks like Leadership onlyQualified enterprise deals12 this quarterOwner: Wairimu Kamau')
+    /*
+     * FAULT 7: THE MEASURE AND THE TARGET ARE ONE SENTENCE NOW, not "Qualified enterprise
+     * deals" and "12 this quarter" as two bare lines with nothing joining them - the same
+     * sentence `whatSuccessLooksLike` already gives the Company page for the same fact.
+     */
+    expect(priority(1).textContent).toBe('Priority 1Grow revenue 50%, enterprise firstWhat success looks like Leadership onlyIt is measured by qualified enterprise deals, and the target is 12 this quarter.Owner: Wairimu Kamau')
     expect(priority(3).textContent).toBe('Priority 3Build a stronger organisationOwner: No owner yet')
     expect(await screen.findByRole('heading', { name: 'The staff handbook, short and simple' })).toBeInTheDocument()
     /* Ask is named for the organisation (decision 100) - "Ask Baridi Appliances", not "Ask Groundwork". */

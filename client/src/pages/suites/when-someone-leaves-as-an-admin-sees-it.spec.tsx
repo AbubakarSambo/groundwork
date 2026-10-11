@@ -68,21 +68,25 @@ describe('Grace, an admin', () => {
     expect(within(region).getByText('0 of 4 done')).toBeInTheDocument()
     const rows = [...region.querySelectorAll('li')]
     expect(rows.map(r => r.querySelector('b')?.textContent)).toEqual([
-      'Hand over Tom’s work', 'Collect Tom’s laptop and phone', 'Remove Tom’s access on their last day', 'Work out Tom’s final pay',
+      'Hand over Tom’s work', 'Collect Tom’s laptop and phone', 'Remove Tom’s access on their last day' /* Changed in the privacy sweep: the name was said twice; "their" is the person's own last day, no pronoun guessed. */, 'Work out Tom’s final pay',
     ])
     expect(rows.map(r => (r.querySelector('select') as HTMLSelectElement).selectedOptions[0].textContent)).toEqual([
       'Wairimu Kamau', 'Kamau Njenga', 'Grace Achieng', 'Grace Achieng',
     ])
-    expect(within(region).getAllByRole('button', { name: /^Mark done/ })).toHaveLength(4)
+    /* FAULT 7C OF THE LIVE WALK (6 October): the aria-label reads as a phrase, "Mark "..." as
+       done", not "Mark done: ..." stapled together with a colon - the visible button text stays
+       "Mark done". */
+    expect(within(region).getAllByRole('button', { name: /^Mark “.+” as done$/ })).toHaveLength(4)
+    expect(within(region).getAllByText('Mark done')).toHaveLength(4)
   })
 
   it('marking a step done and changing its owner go to the server', async () => {
     open(GRACE, BOARD)
     ;(leavingApi.step as any).mockResolvedValue({ ...BOARD, lists: [{ ...TOM, done: 1, steps: TOM.steps.map(s => (s.step === 'equipment' ? { ...s, done: true } : s)) }] })
-    fireEvent.click(await screen.findByRole('button', { name: 'Mark done: Collect Tom’s laptop and phone' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Mark “Collect Tom’s laptop and phone” as done' }))
     await waitFor(() => expect(leavingApi.step).toHaveBeenCalledWith('l-tom', 'equipment', { ownerUserId: undefined, done: true }))
     expect(await screen.findByText('1 of 4 done')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Undo: Collect Tom’s laptop and phone' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Undo marking “Collect Tom’s laptop and phone” as done' })).toBeInTheDocument()
     fireEvent.change(screen.getAllByLabelText('Who does this')[0], { target: { value: 'u-g' } })
     await waitFor(() => expect(leavingApi.step).toHaveBeenCalledWith('l-tom', 'handover', { ownerUserId: 'u-g', done: undefined }))
   })

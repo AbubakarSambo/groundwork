@@ -210,4 +210,31 @@ describe('small cases, said as sentences', () => {
     expect(asMiriam.needs).toBeNull()
     expect(asMiriam.about).toBe('Run by Hafsah Jumare. Daily, weekdays. Session 6 of 12.')
   })
+
+  /**
+   * SCREEN FAULT 9: THE LIST AND THE BOARD DISAGREED ABOUT WHICH SESSION A CHECK-IN IS ON.
+   *
+   * Amani's list read "Session 2 of 12" while the board, for the same check-in at the same
+   * moment, read "Session 1 of 12" - and the list's own "0 of 26 sessions done" sat beside a
+   * session she had, in fact, already finished. Session 2 had opened by the clock (its
+   * `availableFrom` had passed), but nobody had yet finished session 1 (`roundsDone: 0` - the
+   * board's own number, `whichSessionIsThisCheckInOn`, reads this the same way): a session opening
+   * on schedule is not the same as everybody having answered it. The list now takes whichever of
+   * the schedule's own number and `roundsDone + 1` is lower, which agrees with the board exactly
+   * when the two differ like this.
+   */
+  it('agrees with the board when a session has opened by the clock before everybody has finished the one before it', () => {
+    const AMANIS_GROUND = {
+      id: 'g-amani', label: 'Finance, Q4', status: 'ACTIVE', initiatorId: 'u-amani', scenario: 'OKR_ALIGNMENT', cadence: 'MONTHLY',
+      participants: [p('p-am', 'u-amani', 'Amani', '', 'INITIATOR'), p('p-t', 'u-t', 'Tendai')],
+      /* Session 2 has become available by the clock; nobody has completed session 1 yet. */
+      checkIns: [{ participantId: 'p-am', sessionNumber: 2, status: 'NOT_STARTED', availableFrom: ago(1) }],
+      glance: { progress: { roundsDone: 0, roundsPlanned: 12, answeredThisRound: 0, ofPeople: 2 } },
+    }
+    const r = howARowReads(AMANIS_GROUND, 'u-amani', NOW)
+    expect(r.about).toContain('Session 1 of 12.')
+    expect(r.about).not.toContain('Session 2 of 12')
+    /* And not "0 of 26 sessions done" beside a session that has, in fact, just started. */
+    expect(r.stands).toBe('Just started')
+  })
 })

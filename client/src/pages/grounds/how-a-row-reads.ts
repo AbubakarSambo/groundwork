@@ -142,7 +142,26 @@ export function howARowReads(g: ListRow, me: string | null | undefined, now: Dat
   const planned = g.glance?.progress?.roundsPlanned
     ?? plannedSessionsFor(g.timelineDays ?? null, g.cadence as never, g.maxSessions ?? g.totalSessions ?? null)
   const done = g.glance?.progress?.roundsDone ?? g.roundsDone ?? 0
-  const round = openRound(g.checkIns as never, now)
+  /*
+   * SCREEN FAULT 9: "SESSION 2 OF 12" HERE, "SESSION 1 OF 12" ON THE BOARD, FOR THE SAME CHECK-IN
+   * AT THE SAME MOMENT.
+   *
+   * This read `openRound` (rail-attention.ts) alone - the highest session number that has become
+   * AVAILABLE by the clock. The board and the header read `whichSessionIsThisCheckInOn`
+   * (which-session-are-we-on.ts) instead: one past the lowest number of sessions anybody still in
+   * it has actually FINISHED - it can only go lower than the schedule, never higher, because a
+   * session opening on time does not mean everybody still owes it has answered.
+   *
+   * The list is not served that same full per-participant history (only the open round's rows),
+   * so it cannot run that rule itself without inventing a number from thinner material. What it
+   * IS served, the same as the board, is `roundsDone` (`done` here) - the server's own count of
+   * sessions everybody has actually finished, the number `whichSessionIsThisCheckInOn` is built
+   * from. One past that (`done + 1`) is the same answer the board's rule would give; taking
+   * whichever of that and the schedule's own number is LOWER agrees with the board whenever the
+   * two differ, and still agrees with the schedule once everybody has caught up to it.
+   */
+  const scheduleRound = openRound(g.checkIns as never, now)
+  const round = scheduleRound > 0 ? Math.min(done + 1, scheduleRound) : 0
 
   /* FINISHED: when it ended, and the way back to it. */
   if (isFinished(g)) {

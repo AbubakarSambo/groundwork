@@ -4,6 +4,7 @@ import { timeSheetsApi, type TimeAgreement, type TimeWeek } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { Page, PageTitle, Section, Panel, Button, Tag, Note, Empty } from '@/components/gw/ui'
+import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
 
 /**
  * TIME SHEETS (E3, #/suite/time, group 2 piece 4). The wording is copied from
@@ -47,20 +48,28 @@ export function TimeSheetsPage() {
   return (
     <Page>
       <PageTitle
-        crumbs={[{ label: 'Suites', to: '/settings/suites' }, { label: 'Time sheets' }]}
+        /*
+         * B-228 (REVIEW 5): "Suites" WAS A LINK HERE FOR A MEMBER TOO, UNLIKE EVERY OTHER SUITE
+         * PAGE. Spending and Performance reviews already gate this crumb on `maySeeSuites` - only
+         * an admin or a lead can open Suites, so the crumb only links for them; a member who
+         * followed it landed on "Only an admin or a lead can open the suites." This page carried
+         * its own, unconditional `to: '/settings/suites'` instead, the one suite page that still
+         * offered a member a link to a refusal. Made the same as the other two.
+         */
+        crumbs={[{ label: 'Suites', to: maySeeSuites(user?.role) ? '/settings/suites' : undefined }, { label: 'Time sheets' }]}
         title="Time sheets"
         subtitle="Hours spent on each client or project, ready for billing. People tell Groundwork their hours in their check-in or in chat. There is no grid to fill in."
       />
 
       <Panel>
         <p className="gwui-panel-text"><b>Hours are for billing only.</b></p>
-        <p className="gwui-panel-text">They never appear in anyone’s check-in report, their signals or a review. Being busy is not the same as making progress.</p>
+        <p className="gwui-panel-text">They are never used in a report or a review.</p>
       </Panel>
 
       {isLoading && <Note>Loading…</Note>}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
-          <Note tone="error">{refused.data?.message ?? 'Only an admin or a lead can open this board.'}</Note>
+          <Note tone="error"><SuiteOffMessage message={refused.data?.message ?? 'Only an admin or a lead can open this board.'} role={user?.role} /></Note>
         ) : (
           <div>
             <Note tone="error">The board did not load.</Note>
@@ -107,15 +116,23 @@ function AWeek({ heading, week, empty }: { heading: string; week: TimeWeek; empt
               {week.people.map(p => (
                 <tr key={p.personId}>
                   <th scope="row">{p.name}</th>
-                  {week.clients.map(c => <td key={c}>{inHours(p.minutes[c] ?? 0)} h</td>)}
-                  <td><b>{inHours(p.total)} h</b></td>
+                  {week.clients.map(c => (
+                    <td key={c}><span className="gwui-record-table-label" aria-hidden="true">{c}</span>{inHours(p.minutes[c] ?? 0)} h</td>
+                  ))}
+                  <td><span className="gwui-record-table-label" aria-hidden="true">Total</span><b>{inHours(p.total)} h</b></td>
                   <td>
                     {p.approved
                       ? <Tag>Approved</Tag>
-                      : p.mayApprove && (
-                        <Button kind="secondary" size="small" onClick={() => approve.mutate(p.personId)} disabled={approve.isPending}
-                          aria-label={`Approve ${p.name}’s hours`}>Approve</Button>
-                      )}
+                      : p.mayApprove
+                        ? (
+                          <Button kind="secondary" size="small" onClick={() => approve.mutate(p.personId)} disabled={approve.isPending}
+                            aria-label={`Approve ${p.name}’s hours`}>Approve</Button>
+                        )
+                        /* FAULT 2 OF THE LIVE WALK (6 October): neither Approved nor mayApprove left this
+                           cell blank for a reader who reads the row but does not approve it themselves -
+                           the server's own sentence for where it stands ("They are waiting for Daniel.")
+                           was never drawn. */
+                        : (p.where && <p className="gwui-panel-text">{p.where}</p>)}
                   </td>
                 </tr>
               ))}

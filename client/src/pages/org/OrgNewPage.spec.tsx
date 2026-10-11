@@ -142,11 +142,26 @@ describe('somebody who already has an organisation of their own', () => {
 })
 
 describe('naming the organisation a first Google sign-in made', () => {
+  /*
+   * B-050 (docs/bug-log-screens.md): this screen said "Create an organisation", "You'll be its
+   * owner" and "Create it" here, though the organisation already exists and the button renames it.
+   * Worded now as naming the organisation that is ready.
+   */
+  it('says the organisation is ready and asks what to call it, rather than offering to create one', async () => {
+    open('/org-new?naming=1')
+    expect(await screen.findByRole('heading', { name: 'Your organisation is ready' })).toBeTruthy()
+    expect(screen.getByText('What should it be called?')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Save the name' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Create an organisation' })).toBeNull()
+    expect(screen.queryByText(/You’ll be its owner/)).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Create it' })).toBeNull()
+  })
+
   it('names it rather than making a second one, and goes on to start a check-in', async () => {
     ;(authApi.renameOrganization as any).mockResolvedValue({ id: 'o1', name: 'Nyali Foods' })
     open('/org-new?naming=1')
     fireEvent.change(await screen.findByLabelText('Organisation name'), { target: { value: 'Nyali Foods' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Create it' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save the name' }))
     await waitFor(() => expect(authApi.renameOrganization).toHaveBeenCalledWith('Nyali Foods', { billingEmail: undefined, teamSize: undefined }))
     expect(authApi.createOrganisation).not.toHaveBeenCalled()
     expect(await screen.findByText('Start a check-in')).toBeTruthy()

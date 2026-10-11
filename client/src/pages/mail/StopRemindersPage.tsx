@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { AuthCard } from '@/pages/auth/auth-kit'
 import { Button } from '@/components/gw/kit'
+import { useAuthStore } from '@/stores/auth'
 
 /**
  * "STOP THESE REMINDERS", FROM AN EMAIL (A3, #/stop). The words are stop.txt's.
@@ -32,6 +33,7 @@ async function post(token: string, what: 'stop' | 'start' | 'stop-all') {
 
 export function StopRemindersPage() {
   const { token = '' } = useParams<{ token: string }>()
+  const signedIn = useAuthStore(s => !!s.isAuthenticated)
   const [state, setState] = useState<State>({ kind: 'working' })
   const [busy, setBusy] = useState(false)
 
@@ -70,11 +72,27 @@ export function StopRemindersPage() {
     )
   }
   if (state.kind === 'unknown') {
+    /*
+     * B-209: THE OLD SENTENCE CLAIMED TO KNOW WHY, AND THEN PROMISED SOMETHING IT COULD NOT BE SURE
+     * OF. "Which usually means the reminders were already stopped or the check-in has closed" is a
+     * guess, and "nothing more is going to you from it" is not true for a link that was simply cut
+     * short when it was copied - the reminders it was meant to stop may still be going. This says
+     * only what is certain: the link does not match anything, and what to do about it.
+     */
+    /*
+     * B-209 (review round 2): SOMEBODY ALREADY SIGNED IN IS NOT TOLD TO SIGN IN TO REACH SETTINGS -
+     * they can already open it.
+     */
     return (
       <AuthCard
-        title="Done."
-        sub="That link does not match anything, which usually means the reminders were already stopped or the check-in has closed. Either way nothing more is going to you from it."
-      />
+        title="We could not find those reminders"
+        sub="That link does not match anything. It may have been cut short when it was copied."
+      >
+        <p className="gw-auth-small">
+          Open the link again from the email, or{' '}
+          <Link to="/settings">{signedIn ? 'change your emails in Settings' : 'sign in to change your emails in Settings'}</Link>.
+        </p>
+      </AuthCard>
     )
   }
   if (state.kind === 'all-off') {

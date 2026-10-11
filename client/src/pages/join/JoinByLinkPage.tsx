@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { apiClient } from '@/api/client'
 import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
+import { useYourOrganisations } from '@/components/gw/your-organisations'
 import { Button } from '@/components/gw/kit'
 import { AuthCard, AuthError } from '@/pages/auth/auth-kit'
 
@@ -26,6 +27,9 @@ export function JoinByLinkPage() {
   const navigate = useNavigate()
   const signedIn = useAuthStore(s => s.isAuthenticated)
   const setAuth = useAuthStore(s => s.setAuth)
+  /* B-206 (review round 2): every organisation this person belongs to, not only the one currently
+     chosen - see `alreadyThere`, below. */
+  const { myOrgs } = useYourOrganisations()
   const [problem, setProblem] = useState('')
   const here = `/j/${encodeURIComponent(code)}`
 
@@ -50,6 +54,18 @@ export function JoinByLinkPage() {
     onError: (e: any) => setProblem(e?.response?.data?.message ?? 'That did not work, and you have not joined. Try again.'),
   })
 
+  /** B-206 (review round 2): opens an organisation this person is ALREADY in but has not currently
+      chosen - the same switch `/orgs` itself makes (`authApi.switchOrganization`), not a second
+      join. See `alreadyThere`/`matchingOrg`, below. */
+  const openExisting = useMutation({
+    mutationFn: (organizationId: string) => authApi.switchOrganization(organizationId),
+    onSuccess: (res) => {
+      setAuth(res.user, res.accessToken)
+      window.location.assign('/today')
+    },
+    onError: () => setProblem('That organisation did not open. Try again.'),
+  })
+
   if (isLoading) return <AuthCard title="One moment." />
   if (!data || !data.open) {
     /*
@@ -59,20 +75,82 @@ export function JoinByLinkPage() {
      * sentence with a way through. `AuthCard` already carries the Groundwork mark; a way on is
      * added here - sign in, for somebody who already has an account, or the home page.
      */
+    /* B-158: the prototype's own heading for a link that does not work
+       (F4-small-states/badlink.txt), the same one LinkProblem.tsx uses - this page had its own,
+       different wording for the same state. */
+    /*
+     * B-206: A SIGNED-IN PERSON WHOSE LINK HAS STOPPED WORKING IS NOT ASKED TO SIGN IN. They
+     * already are. Offered "Sign in" anyway, after the link they followed was turned off, the page
+     * reads as if nothing it knows about them is true - Today is where they already belong.
+     */
     return (
-      <AuthCard title="This invite link is not open any more" sub="Ask whoever sent it for the new one.">
+      <AuthCard title="That link didn’t work" sub="Ask whoever sent it for the new one.">
         <div className="gw-auth-actions">
-          <Button wide size="big" onClick={() => navigate('/auth')}>Sign in</Button>
+          {signedIn ? (
+            <Button wide size="big" onClick={() => navigate('/today')}>Go to Today</Button>
+          ) : (
+            <Button wide size="big" onClick={() => navigate('/auth')}>Sign in</Button>
+          )}
         </div>
-        <p className="gw-auth-small">
-          <Link to="/">Go to the Groundwork home page</Link> instead.
-        </p>
+        {!signedIn && (
+          <p className="gw-auth-small">
+            <Link to="/">Go to the Groundwork home page</Link> instead.
+          </p>
+        )}
       </AuthCard>
     )
   }
 
   const org = data.organisationName
   const how = methods?.google ? 'Join with your email or Google.' : 'Join with your email.'
+
+  /*
+   * B-206: A MEMBER PRESSING THEIR OWN ORGANISATION'S JOIN LINK IS ALREADY IN IT. Grace, the admin
+   * of Msingi Foods, read "Grace Achieng invited you to Msingi Foods" with a "Join Msingi Foods"
+   * button under her own name; Tobi, already a member, pressed it and landed on /today with nothing
+   * said - the server's own `join()` (the-organisation-invite-link.service.ts) finds the membership
+   * that already exists and quietly switches him into it rather than making a new one, so nothing
+   * in the response says "you were already in this".
+   *
+   * B-206 (review round 2): "ALREADY THERE" MEANS "A MEMBER OF IT AT ALL", NOT ONLY "IT HAPPENS TO
+   * BE THE ONE CURRENTLY CHOSEN". The first fix compared the invite's organisation only to
+   * `ownOrganisationName` - whichever organisation this person currently has open - so Neema, who
+   * belongs to both Msingi Foods and Lakeview Clinic and had Lakeview chosen, read "Grace Achieng
+   * invited you to Msingi Foods... Join Msingi Foods" as though she had never been part of it,
+   * because Lakeview, not Msingi, was her CURRENT one. `useYourOrganisations` (the same list `/orgs`
+   * itself reads) is the full membership, not only the active organisation, so the match is made
+   * against every one of them; matched by name (the preview the server sends carries no id to match
+   * on - noted for the engine, docs/requests-to-engine.md, the same way the first fix already was).
+   * Matched but not the one currently chosen, the right offer is to OPEN it (the same switch `/orgs`
+   * makes), not to say there is nothing to do here - there is: open it.
+   */
+  const matchingOrg = signedIn && org
+    ? myOrgs.find(o => o.name.trim().toLowerCase() === org.trim().toLowerCase())
+    : undefined
+
+  if (matchingOrg?.active) {
+    return (
+      <AuthCard title={`You’re already part of ${org}`} sub="There is nothing to join here.">
+        <div className="gw-auth-actions">
+          <Button wide size="big" onClick={() => navigate('/today')}>Go to Today</Button>
+        </div>
+      </AuthCard>
+    )
+  }
+
+  if (matchingOrg) {
+    return (
+      <AuthCard title={`You’re already part of ${org}`} sub="It is not the organisation you currently have open.">
+        <div className="gw-auth-actions">
+          {problem && <AuthError>{problem}</AuthError>}
+          <Button wide size="big" disabled={openExisting.isPending} onClick={() => openExisting.mutate(matchingOrg.id)}>
+            {openExisting.isPending ? 'Opening…' : `Open ${org}`}
+          </Button>
+        </div>
+      </AuthCard>
+    )
+  }
+
   return (
     <AuthCard
       title={data.inviterName ? `${data.inviterName} invited you to ${org}` : `You’re invited to ${org}`}

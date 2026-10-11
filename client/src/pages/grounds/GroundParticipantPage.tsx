@@ -3,9 +3,9 @@ import { OutOfTime } from './OutOfTime'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useEffect, useRef, useState } from 'react'
 import { GroundGone } from '@/components/gw/GroundGone'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { whichSessionIsThisCheckInOn, hasDoneThisSession } from '@/lib/which-session-are-we-on'
+import { whichSessionIsThisCheckInOn, whichSessionAreWeOn, hasDoneThisSession } from '@/lib/which-session-are-we-on'
 import { groundsApi } from '@/api/grounds'
 import { useAuthStore } from '@/stores/auth'
 import { reportsApi } from '@/api/reports'
@@ -40,6 +40,15 @@ type Tab = 'checkin' | 'record' | 'report' | 'docs' | 'settings'
 /** The shared tab keys, and this page's own older names for the same tabs. Both directions. */
 const FROM_TAB_KEY: Record<string, Tab> = {
   chat: 'checkin', report: 'report', record: 'record', context: 'docs', settings: 'settings',
+  /**
+   * B-223: `?tab=mywork` AND `?tab=people` ARE THE OUTER TAB ROW'S OWN KEYS (see `outerTabOf`
+   * and the tab row below), not in this map before now - so a link carrying either one fell
+   * through to the default, `checkin`, which silently opens the reader's own session the moment
+   * it mounts. Arriving on My work or People and setup must never open a session - only going to
+   * the Check-in tab itself, or pressing to start, does that. `mywork` lands on `record`, the same
+   * tab the tab row itself goes to for this key; `people` lands on `settings`, its only tab.
+   */
+  mywork: 'record', people: 'settings',
 }
 const TO_TAB_KEY: Partial<Record<Tab, string>> = {
   checkin: 'chat', report: 'report', record: 'record', docs: 'context', settings: 'settings',
@@ -60,6 +69,16 @@ export function GroundParticipantPage() {
    */
   const [searchParams, setSearchParams] = useSearchParams()
   const [tab, setTab] = useState<Tab>(() => FROM_TAB_KEY[searchParams.get('tab') ?? ''] ?? 'checkin')
+  /**
+   * B-203: "VIEW YOUR REPORT" IN THE REPORT EMAIL OPENS WITH THE REPORT SHOWING.
+   *
+   * `/grounds/:id/report` (the email link) redirects straight to `?tab=report` - the same address
+   * this tab already keeps in the URL when somebody switches to it from inside the page. Read once,
+   * at the address this page was actually opened at, so only a direct arrival on the report (the
+   * email link, or a bookmark to it) asks `SharedReportForAParty` to open the shared picture already
+   * unfolded and scrolled to - not an ordinary visit to "My work" that happens to switch here.
+   */
+  const [openedDirectlyOnReport] = useState(() => searchParams.get('tab') === 'report')
   const goTab = (t: Tab) => {
     setTab(t)
     const key = TO_TAB_KEY[t]
@@ -70,7 +89,7 @@ export function GroundParticipantPage() {
   const [seenOutOfTime, setSeenOutOfTime] = useState(false)
   /* REVIEW ROUND 3, ITEM 2: THE OPENING FLOW (probe + paywall) MOVED TO A SHARED HOOK, so
      GroundAdminPage.tsx can open a session the same way without landing on this page. */
-  const { open: openSession, opening: sessionOpening, paywall } = useOpenSession(id)
+  const { open: openSession, opening: sessionOpening, openFailed: sessionOpenFailed, openError: sessionOpenError, retryOpen: retrySessionOpen, paywall } = useOpenSession(id)
 
   const user = useAuthStore(s => s.user)
 
@@ -80,8 +99,11 @@ export function GroundParticipantPage() {
     enabled: !!id,
   })
 
-  /* Only a 404 means gone. Everything else is a failure to reach it - see the guard below. */
-  const definitelyGone = isError && (error as any)?.response?.status === 404
+  /* A 404 or a 403 means gone, the same way (B-110, GW-PRI-04): the only other true sentence for
+     a 403 would say this check-in exists and just isn't yours, which leaks exactly what the 404
+     wording is written not to leak. Everything else is a failure to reach it - see the guard
+     below. */
+  const definitelyGone = isError && [404, 403].includes((error as any)?.response?.status)
 
   /*
    * "ASK TO JOIN" IS NOT DRAWN YET (U.20 review). The prototype offers it under "You’re not in this
@@ -111,17 +133,31 @@ export function GroundParticipantPage() {
     retry: false,
   })
 
+  /*
+   * B-190: GATED ON THE GROUND HAVING ACTUALLY LOADED, NOT JUST ON HAVING AN ID.
+   *
+   * These three used to ask `enabled: !!id` (or `!!id && tab === 'record'`), so when `ground`
+   * itself came back 403 (not yours to open) or 404 (gone), each of these fired anyway - and
+   * unlike `groundsApi.get`, none of them is called with `skipForbiddenToast`/`skipNotFoundToast`.
+   * The result was the generic "That one is not yours to open … whoever runs this check-in can
+   * let you in" toast landing on top of the GroundGone panel: a second, contradictory message
+   * that also leaks exactly what GW-PRI-04 and GroundGone's own wording are written not to say
+   * (that a real check-in, with someone who runs it, sits behind the link). `GroundAdminPage`
+   * already gates its matching three queries on `viewerIsAParty`, which is derived from `ground`
+   * and so is naturally false while `ground` is undefined; gating on `!!ground` here does the same
+   * job without needing a party flag this page does not otherwise compute up front.
+   */
   const { data: specificity } = useQuery({
     queryKey: ['my-specificity', id],
     queryFn: () => groundsApi.getMySpecificity(id!),
-    enabled: !!id,
+    enabled: !!id && !!ground,
     retry: false,
   })
 
   const { data: myRecord } = useQuery({
     queryKey: ['my-record', id],
     queryFn: () => groundsApi.getMyRecord(id!),
-    enabled: !!id && tab === 'record',
+    enabled: !!id && !!ground && tab === 'record',
     retry: false,
   })
 
@@ -130,7 +166,7 @@ export function GroundParticipantPage() {
     queryFn: () => groundsApi.getMySoloReport(id!),
     /* MY RECORD, NOT REPORT. `MyPrivateReport` renders this and lives on the record tab, so the
        carry-forward line only loaded for somebody who had happened to open Report first. */
-    enabled: !!id && tab === 'record',
+    enabled: !!id && !!ground && tab === 'record',
     retry: false,
   })
 
@@ -220,16 +256,48 @@ export function GroundParticipantPage() {
    * lands here with the flag set; opening the tab directly on this page is the same action without
    * a round trip through the address bar.
    */
-  useEffect(() => {
-    if (tab !== 'checkin') return
-    if (!myOpenForAutoOpen) return
-    if (sessionOpening) return
-    openSession(myOpenForAutoOpen, {
+  /**
+   * ONE ATTEMPT PER CHECK-IN, NOT ONE PER RENDER.
+   *
+   * This had no "already tried" guard at all - only `sessionOpening`, which is true for the few
+   * seconds the request is actually in flight and false every other moment, including the instant
+   * after it settles. `myOpenForAutoOpen` is rebuilt fresh on every render (a new object from
+   * `.find()`), so it never equals its previous value by reference either - which means this fired
+   * again on essentially every re-render of the page once the first attempt had settled: a
+   * paywall shown, a toast dismissed, any unrelated state change. Request 174, item 2 is this
+   * effect: a check-in that could not open yet (still waiting on approval) was probed again and
+   * again a few seconds apart, each attempt racing the server's own idempotency check before the
+   * previous one's reply had been written, which is how one session ended up with three different
+   * opening questions and one of the `/open` calls back with a 400.
+   *
+   * Guarded by the check-in's own id, kept in a ref so it survives re-renders and (with no cleanup
+   * to undo it) React StrictMode's double-invoked effects alike: once this check-in has been
+   * probed, it is not probed again until `retryOpen` below explicitly clears it.
+   */
+  const checkinTabOpenAttempted = useRef<string | null>(null)
+  function attemptCheckinTabOpen(checkIn: any) {
+    checkinTabOpenAttempted.current = checkIn.id
+    openSession(checkIn, {
       isFreeGround: ground?.isFreeGround,
       groundLabel: ground?.label,
       isInitiator: ((ground as any)?.participants ?? []).find((p: any) => p.userId === user?.id)?.partyType === 'INITIATOR',
     })
-  }, [tab, myOpenForAutoOpen, sessionOpening, openSession])
+  }
+  useEffect(() => {
+    if (tab !== 'checkin') return
+    if (!myOpenForAutoOpen) return
+    if (sessionOpening) return
+    if (checkinTabOpenAttempted.current === myOpenForAutoOpen.id) return
+    /*
+     * B-019: THE SAME FALSE "CLOSED" REFUSAL, ONE MORE WAY IN. A ground that ended early (the lead
+     * stopped it with a session still IN_PROGRESS or not started) still had a row here that is not
+     * COMPLETED, so this still tried to open it - the server's own "This check-in is closed."
+     * error toasted on top of the "This check-in has ended" message this tab now shows instead.
+     * Nothing can open once the ground itself has ended, whatever any one row still says.
+     */
+    if (howItEnded(ground as any)) return
+    attemptCheckinTabOpen(myOpenForAutoOpen)
+  }, [tab, myOpenForAutoOpen, sessionOpening, ground])
 
   if (isLoading) return <Page narrow><Note>Loading…</Note></Page>
   /*
@@ -355,6 +423,22 @@ export function GroundParticipantPage() {
   const myCheckIns: any[] = (ground.checkIns ?? []).filter((ci: any) => ci.participantId === myParticipant?.id)
   const openCheckIn = myCheckIns.find((ci: any) => ci.status !== 'COMPLETED')
   const completedCheckIns = myCheckIns.filter((ci: any) => ci.status === 'COMPLETED').sort((a: any, b: any) => b.sessionNumber - a.sessionNumber)
+  /**
+   * WHICH SESSION THIS IS, THE SAME WAY THE SHARED RULE ANSWERS IT (fault 3b, Esther, live
+   * re-walk): the header read "Session 1 of 6" while this reader's own line, right below it, read
+   * "This is your session 2 of 6" - `completedCheckIns.length + 1` counts ROWS, and a corrected
+   * session (`isSelfCorrection`) leaves two completed rows for the one session actually finished,
+   * so a single self-correction inflated this count past the real next session. `whichSessionAreWeOn`
+   * (lib/which-session-are-we-on.ts) is the one place this product already answers "which session
+   * is a person on" - open if there is one, otherwise the highest session number actually
+   * completed - and was written for exactly this drift between two screens, but was never called
+   * from here. Used now, so this reads the same served session every other reader of the shared
+   * rule does.
+   */
+  const mySessionNumber = whichSessionAreWeOn(
+    (openCheckIn as any)?.sessionNumber ?? null,
+    completedCheckIns.map((c: any) => c.sessionNumber),
+  )
 
   /**
    * OPEN IS NOT THE SAME AS DUE.
@@ -479,7 +563,17 @@ export function GroundParticipantPage() {
         same narrower, shifted frame GroundAdminPage.tsx had (see the matching note there) - rather
         than the real shared `Page` (components/gw/ui/Page.tsx) the board itself uses. Fixed the
         same way here.
+
+        B-231 (REVIEW 6): AND ITS OWN BOTTOM PADDING IS FOR WHEN IT IS THE LAST THING ON THE
+        SCREEN, WHICH THIS NEVER IS. `.gwui-page-main`'s large bottom padding (140px on a phone) is
+        right for a page that ends there - it never does here, since the conversation (or the
+        failure/opening note below it) always follows. At 390, that left a roughly 150px empty gap
+        above a check-in's own failure note ("The conversation could not be reached...") before a
+        single word of it: measured live, Dov's own account. `gwui-ground-header-wrap`'s own
+        narrow-screen rule (gw-ui.css, written up in docs/the-parts-against-the-prototype.md)
+        zeros it out.
       */}
+      <div className="gwui-ground-header-wrap">
       <Page>
         <CheckInHeader
           crumbs={[{ label: 'Check-ins', to: '/grounds' }, { label: ground.label }]}
@@ -502,9 +596,56 @@ export function GroundParticipantPage() {
                 before its tabs - only "Add people" is navy on that screen. Without this, the People
                 and setup tab carried two navy buttons at once.
               */}
-              {myOpenForAutoOpen && outerTabOf(tab) !== 'people' && (
+              {/*
+                B-215 (REVIEW 6): "Start my check-in" WAS STILL OFFERED ON A CHECK-IN NOBODY CAN
+                ADD TO. `myOpenForAutoOpen` only asks whether a session of Dov's own has not been
+                completed - it does not ask whether the ground itself has stalled, so a STALLED
+                check-in (its last session still not COMPLETED, because the clock ran out while he
+                was answering it) still carried this button here, on every tab but People. Pressing
+                it would only ever fail, since nothing can open while the ground is stalled. His own
+                Check-in tab already offers the real next step for this state ("Ask Mira for more
+                time", OutOfTime.tsx) - rather than duplicate that flow in this header too, the
+                button is left off here; the Check-in tab is still one click away, on the tab bar
+                above, exactly where it says why.
+              */}
+              {myOpenForAutoOpen && outerTabOf(tab) !== 'people' && !hasStalled((ground as any).status) && (
                 <Button
-                  onClick={() => openSession(myOpenForAutoOpen, { isFreeGround: ground?.isFreeGround, groundLabel: ground?.label, isInitiator })}
+                  /*
+                   * B-226 (REVIEW 5): A FAILED OPEN FROM CONTEXT OR MY WORK SHOWED NOTHING AT ALL.
+                   * Pressed from here, this used to call `openSession` directly, right where it
+                   * stood - on a 503, the hook's own failure state (`sessionOpenFailed`) was set,
+                   * but the only place that reads it (the Check-in tab's own failure note, just
+                   * above) never rendered, because the reader was never on that tab. Dov and Amani,
+                   * on Context and My work, pressed a button that silently failed.
+                   *
+                   * Off the Check-in tab, this now goes there instead of opening directly - the
+                   * same tab switch `useEffect` just above then makes the one open attempt itself
+                   * (guarded by `checkinTabOpenAttempted`, so this is not a second call), and its
+                   * failure note and "Try again" are exactly what the reader lands on. On the
+                   * Check-in tab itself, nothing changes: opening directly from here already shows
+                   * its own result in place.
+                   *
+                   * B-226 (REVIEW 6): AND A SECOND PRESS, AFTER THAT FAILURE, SENT NOTHING AT ALL.
+                   * `checkinTabOpenAttempted` only ever remembers the check-in it last tried, and a
+                   * failed attempt never clears it - so going back to Context or My work and pressing
+                   * this again just reran the tab-switch effect's own guard, found the same id
+                   * already "attempted", and did nothing: no request, and the Check-in tab the reader
+                   * landed on still showed the old failure note. A second press off this tab, once
+                   * the first has failed, is a retry, and is treated as one: the same `retrySessionOpen`
+                   * and `attemptCheckinTabOpen` pair the Check-in tab's own "Try again" already calls
+                   * (just below), called here before the tab switch rather than left for an effect
+                   * that will not run again on its own. Still exactly one request - the tab-switch
+                   * effect's `sessionOpening` guard skips its own attempt once this one is already
+                   * under way.
+                   */
+                  onClick={() => {
+                    if (tab !== 'checkin') {
+                      if (sessionOpenFailed) { retrySessionOpen(); attemptCheckinTabOpen(myOpenForAutoOpen) }
+                      goTab('checkin')
+                      return
+                    }
+                    openSession(myOpenForAutoOpen, { isFreeGround: ground?.isFreeGround, groundLabel: ground?.label, isInitiator })
+                  }}
                   disabled={sessionOpening}
                 >
                   {sessionOpening ? 'Opening…' : 'Start my check-in'}
@@ -573,7 +714,22 @@ export function GroundParticipantPage() {
           )}
           {/* Once it has ended, the clock is not the news. See lib/a-ground-that-has-ended. */}
           {howItEnded(ground as any) ? (
-            <span className="gwui-note-green" style={{ fontWeight: 600 }}>{howItEnded(ground as any)}</span>
+            /*
+             * B-215 (REVIEW 6): A STALLED CHECK-IN IS NOT A SUCCESS, AND GREEN SAYS IT IS. Green
+             * (`gwui-note-green`) is the colour this line uses for a check-in that genuinely ended -
+             * a decision was made. Dov's check-in has not ended; it ran out of time while everyone
+             * was still busy, and the lead can still give it more time (his own Check-in tab already
+             * offers "Ask Mira for more time"). Mira's own version of this sentence sits in an amber
+             * box ("Out of time", GroundAdminPage.tsx) - this reads the same tone here.
+             */
+            <span className={hasStalled((ground as any).status) ? 'gwui-note-amber' : 'gwui-note-green'} style={{ fontWeight: 600 }}>
+              {/* B-215 (review 5): this read the bare word "Out of time" here, with no sentence -
+                  unlike every other state this line can be in. Dov read it with nothing to tell
+                  him what it meant or what, if anything, he could do. */}
+              {hasStalled((ground as any).status)
+                ? 'This check-in ran past the time it was given, so nobody can add to it for now.'
+                : howItEnded(ground as any)}
+            </span>
           ) : (
             <>
               {/* OPEN IS NOT DUE, in the header too. `opensLater` is derived above to tell the two
@@ -584,15 +740,20 @@ export function GroundParticipantPage() {
                   a heading with a dot, which CLAUDE.md's wording rule rules out same as anywhere
                   else a person reads.
 
-                  "YOUR", NOT "THIS" (U.4 re-review, item 8). `completedCheckIns` and `openCheckIn`
-                  are this reader's own rows, staggered by when THEY personally started, never the
-                  team's shared phase (that is `phaseSpine.currentSession`, on the board, counted
-                  from sessions everybody has finished). Walked on one real check-in: the lead's
-                  board read "Session 1 of 12" because the team, as a whole, had not all finished
-                  session 1 yet, while Amani, who had, read the bare "This is session 2 of 12" here -
-                  two numbers for what read as one fact on two different screens of the same
-                  check-in. Each is true; only one of them was ever about the team. Saying "your"
-                  makes plain which one this is, on every reader's own page, lead included. */}
+                  "YOUR", NOT "THIS" (U.4 re-review, item 8). `mySessionNumber` is this reader's
+                  own position, staggered by when THEY personally started, never the team's shared
+                  phase (that is `phaseSpine.currentSession`, on the board, counted from sessions
+                  everybody has finished). Saying "your" makes plain which one this is, on every
+                  reader's own page, lead included.
+
+                  FAULT 3b (ESTHER, LIVE RE-WALK): THE NUMBER ITSELF WAS WRONG, NOT JUST ITS NAME.
+                  This used to read `completedCheckIns.length + 1` - a count of ROWS, which a
+                  self-correction (a second completed row for the same session) inflates past the
+                  session she was actually on. `mySessionNumber`, computed above with the shared
+                  `whichSessionAreWeOn` rule, reads the open session if there is one, else the
+                  highest session number actually completed - immune to a duplicate row, and the
+                  same rule the rest of this product already uses to answer "which session is a
+                  person on". */}
               {/*
                 GROUP 3'S REVIEW, CONTRADICTION 5: THE SAME DATE, SAID TWICE, ONE OF THEM LESS
                 TRUE. On the Check-in tab, between sessions, this header's "Your next session opens
@@ -605,9 +766,9 @@ export function GroundParticipantPage() {
               {opensLater ? (
                 tab !== 'checkin' && <span>Your next session opens on {whenItWas(openAvailableFrom, 'dayAndMonthLong')}.</span>
               ) : totalSessions != null ? (
-                <span>This is your session {Math.min(completedCheckIns.length + 1, totalSessions)} of {totalSessions}.</span>
+                <span>This is your session {Math.min(mySessionNumber, totalSessions)} of {totalSessions}.</span>
               ) : (
-                <span>This is your session {completedCheckIns.length + 1}.</span>
+                <span>This is your session {mySessionNumber}.</span>
               )}
               {/* A finished run has nothing remaining. "0 days remaining" sat on a one-session check-in everybody
                   had done (21 Sep 2026); the count is for a run that is still going. */}
@@ -621,6 +782,7 @@ export function GroundParticipantPage() {
           )}
         </div>
       </Page>
+      </div>
 
       {/*
         THE CHAT GETS THE WHOLE SPACE, LIKE A CHAT.
@@ -658,8 +820,54 @@ export function GroundParticipantPage() {
         */}
       {tab === 'checkin' && (
         <>
-          {dueNow ? (
-            <Note>Opening your check-in…</Note>
+          {/*
+           * B-19: AN ENDED CHECK-IN STILL PROMISED A NEXT ONE.
+           *
+           * `BetweenCheckIns` is written for a check-in still running - "Your next check-in opens
+           * on Tuesday" - and said that, unchanged, once the ground had ended, with no outcome
+           * shown anywhere on this tab. The board is where the full ending (who decided, when, and
+           * why) is read, once it has one; this stops the false promise of a next session here.
+           */}
+          {howItEnded(ground as any) ? (
+            <Callout tone="info" title={howItEnded(ground as any)!}>
+              <Link to={`/grounds/${id}/board`}>Go to the board</Link> to read how it ended and why.
+            </Callout>
+          ) : dueNow ? (
+            /*
+             * B-211: INSIDE THE PAGE COLUMN, NOT FLUSH WITH THE SIDEBAR. This sat in the same
+             * full-bleed block as the conversation itself (the "THE CHAT GETS THE WHOLE SPACE"
+             * block below `</Page>`, just above), which is right for a live conversation but left
+             * this plain note with no margin at all - x=0 against the sidebar at desktop widths,
+             * the viewport edge on a phone. A `<Page narrow>` of its own, the same wrapper this
+             * file already uses for its loading and error states above, gives it the ordinary
+             * page padding instead.
+             *
+             * A FAILED OPEN SAYS SO, WITH A WAY BACK IN - not the same "Opening…" line left
+             * standing after the attempt it describes is already over. See
+             * attemptCheckinTabOpen above.
+             *
+             * B-231 (REVIEW 6): A LARGE EMPTY GAP ABOVE THIS NOTE AT 390. `<Page narrow>` always
+             * carries `.gwui-page-main`'s own padding (B-211's own note just above), including its
+             * large bottom padding - 140px on a phone - meant for whatever Page is the LAST thing on
+             * the screen. This one is not: it sits right after the header's own `<Page>`, which
+             * already ends with that same bottom padding, so the two stacked gave this note roughly
+             * 140 + 20 = 160px of empty space above it before a single word of it. Only the narrow
+             * centred column (`.gwui-page-narrow`'s own `max-width`/`margin: 0 auto`, with none of
+             * `.gwui-page-main`'s padding) is wanted here - a bare div with that one class, not a
+             * second full `<Page>`.
+             */
+            <div className="gwui-page-narrow">
+              {sessionOpenFailed ? (
+                <Note>
+                  {sessionOpenError}{' '}
+                  <Button kind="quiet" size="small" onClick={() => { retrySessionOpen(); attemptCheckinTabOpen(myOpenForAutoOpen!) }}>
+                    Try again
+                  </Button>
+                </Note>
+              ) : (
+                <Note>Opening your check-in…</Note>
+              )}
+            </div>
           ) : (
             <BetweenCheckIns
               groundLabel={ground.label}
@@ -762,6 +970,7 @@ export function GroundParticipantPage() {
               report={report}
               ground={ground}
               onOpenBoard={() => navigate(`/grounds/${id}/board`)}
+              onOpenWeek={() => navigate(`/grounds/${id}/report/week`)}
               /*
                 U.9 THIRD REVIEW, ITEM 6: THE SAME RATING THE SESSION'S OWN METER READS, NOT A
                 SEPARATE NUMBER. This used to come from `specificity.scores`, a continuous 0-1
@@ -779,6 +988,7 @@ export function GroundParticipantPage() {
                   .map((c) => [c.sessionNumber, c.specificityLevel ?? null]),
               )}
               viewerUserId={user?.id}
+              openReportByDefault={openedDirectlyOnReport}
             />
           </Stack>
         )}
@@ -854,7 +1064,7 @@ export function GroundParticipantPage() {
       </div>
 
       {/* REVIEW ROUND 3, ITEM 2: THE PAYWALL, PULLED OUT INTO A SHARED COMPONENT (see useOpenSession.ts) */}
-      <SessionPaywallModal paywall={paywall} canPayHere={canPayHere} />
+      <SessionPaywallModal paywall={paywall} canPayHere={canPayHere} groundId={id} />
 
 
     </div>

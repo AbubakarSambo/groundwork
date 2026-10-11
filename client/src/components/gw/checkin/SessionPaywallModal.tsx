@@ -1,4 +1,9 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useMutation } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { billingApi } from '@/api/billing'
+import { useAuthStore } from '@/stores/auth'
 
 /**
  * REVIEW ROUND 3, ITEM 2: THE PAYWALL OVERLAY, PULLED OUT OF GroundParticipantPage.tsx SO
@@ -10,11 +15,25 @@ import { useNavigate } from 'react-router-dom'
 export function SessionPaywallModal({
   paywall,
   canPayHere,
+  groundId,
 }: {
   paywall: ReturnType<typeof import('@/hooks/useOpenSession').useOpenSession>['paywall']
   canPayHere: boolean
+  /**
+   * "REMIND THEM" (decision 106's neighbour, upgrade.txt, "Anyone else, once it has paused"):
+   * `POST /billing/remind-the-admins` with this check-in's ground. An admin, a lead or a member
+   * may press it; the server refuses a guest, so it is never offered to one here either.
+   */
+  groundId?: string
 }) {
   const navigate = useNavigate()
+  const user = useAuthStore(s => s.user)
+  const [remindedSays, setRemindedSays] = useState<string | null>(null)
+  const remindTheAdmins = useMutation({
+    mutationFn: () => billingApi.remindTheAdmins(groundId!),
+    onSuccess: (r) => setRemindedSays(r.says),
+    onError: () => toast.error('Could not send the reminder. Nothing has changed - try again.'),
+  })
   if (!paywall.show) return null
   return (
     <div
@@ -73,6 +92,19 @@ export function SessionPaywallModal({
             <div style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: '12px 14px', marginBottom: 14, fontSize: 13, color: 'var(--gw-sub-d)', lineHeight: 1.6 }}>
               Only an organisation admin can add sessions. We have told them you are waiting.
             </div>
+            {groundId && user?.role !== 'GUEST' && (
+              remindedSays ? (
+                <div style={{ fontSize: 13, color: 'var(--gw-sub-d)', lineHeight: 1.6, marginBottom: 14 }}>{remindedSays}</div>
+              ) : (
+                <button
+                  onClick={() => remindTheAdmins.mutate()}
+                  disabled={remindTheAdmins.isPending}
+                  style={{ width: '100%', padding: '9px 14px', marginBottom: 14, borderRadius: 7, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: remindTheAdmins.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
+                >
+                  {remindTheAdmins.isPending ? 'Reminding…' : 'Remind them'}
+                </button>
+              )
+            )}
           </>
         )}
 

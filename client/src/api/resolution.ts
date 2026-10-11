@@ -60,7 +60,10 @@ export const resolutionApi = {
       // A non-party (an admin who set the ground up but is not in it) gets a
       // 403 here, and that is a correct answer to "may I see this?", not an
       // error worth shouting about. The panel hides itself instead.
-      .get<ResolutionState>(`/grounds/${groundId}/resolution`, { skipForbiddenToast: true })
+      // B-201: and a stranger with no claim on this check-in at all gets a 404 for a made-up id -
+      // read alongside groundsApi.get and suggestionsApi.onCheckIn on the same page (EndingPage),
+      // neither toast may fire, or the 403 and the 404 would read differently after all.
+      .get<ResolutionState>(`/grounds/${groundId}/resolution`, { skipForbiddenToast: true, skipNotFoundToast: true } as any)
       .then(r => r.data),
 
   /** The lead's outcome and why. The server refuses an ending without a reason. */

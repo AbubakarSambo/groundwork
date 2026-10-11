@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { reviewsApi, type AReview, type ReviewForThePerson, type TheRecord, type ABriefing, type RecogniseForTheWriter, type RecogniseForThePerson } from '@/api/suites'
+import { reviewsApi, type AReview, type ReviewForTheWriter, type YourAppeal, type AppealForAnotherReader, type ReviewForThePerson, type TheRecord, type ABriefing, type RecogniseForTheWriter, type RecogniseForThePerson } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { Page, PageTitle, Section, Panel, Button, Note, ProofMark, FieldLabel, TextArea, TextField, RowList, Row } from '@/components/gw/ui'
@@ -25,12 +25,14 @@ import { Page, PageTitle, Section, Panel, Button, Note, ProofMark, FieldLabel, T
  * already did this; `ManagersWords` and the person's own view now check `r.decision` too).
  *
  * THE WRITER'S WORDS (`managersWords`) are shown read-only, attributed to whoever wrote them
- * (`writtenWithFirstName`), unless this reader is that very writer (their own first name matches),
- * when it reads "What you write" and is editable, pre-filled with their own words as before. Where the
- * API says this reader may still write (`mayWrite`) but the words on record are someone else's - the
- * review was reassigned after its first writer wrote something - the existing words stay read-only
- * under that name, and this reader is offered their own box instead, which never starts pre-filled
- * with somebody else's words.
+ * (`writtenWithFirstName`), unless this reader is that very writer, when it reads "What you write"
+ * and is editable, pre-filled with their own words as before. WHOSE WORDS THEY ARE IS DECIDED BY
+ * `managersWordsById` (request 162, item 6), by sign-in, never by comparing first names - two people
+ * can share a first name, and the saved words can be a reassigned writer's rather than this reader's
+ * even when the names happen to match. Where the API says this reader may still write (`mayWrite`)
+ * but the words on record are someone else's - the review was reassigned after its first writer wrote
+ * something - the existing words stay read-only under that name, and this reader is offered their own
+ * box instead, which never starts pre-filled with somebody else's words.
  *
  * REBUILT FROM THE SHARED PARTS: `Page`/`PageTitle` (its own `crumbs`), `Section` (`.gwui-cards-3`,
  * the review's own three-column row, the prototype's own shape) for "What Groundwork noticed",
@@ -83,16 +85,34 @@ export function ReviewPage() {
           </div>
         )
       )}
-      {data && <TheReview r={data} myFirstName={user?.firstName ?? null} />}
+      {data && <TheReview r={data} myUserId={user?.id ?? null} />}
     </Page>
   )
 }
 
-function TheReview({ r, myFirstName }: { r: AReview; myFirstName: string | null }) {
+function TheReview({ r, myUserId }: { r: AReview; myUserId: string | null }) {
   const person = r.reader === 'person'
   const writer = r.reader === 'writer'
   const manager = r.writtenWithFirstName
-  const footer = !manager
+  /* A decision somebody else made, for a reader who is not the person: after an appeal changed it, it is the admin's, not the reviewer's. */
+  const someoneElseDecided = !person && !!r.decision && r.decidedByYou === false
+  const decidedBy = !person ? r.decidedByFirstName ?? null : null
+  /*
+   * SCREEN FAULT (engine workspace, 9 October night, test bed copy a): Imani Hassan, after Grace
+   * decided her review and Imani appealed, still read "No scores. You and Grace talk it through,
+   * and Grace decides." under "Your appeal" - a sentence about how the decision gets made, left
+   * standing after it had already been made. For the person it is about, once the review is
+   * decided this line has nothing left to say: the decision itself is shown above (`Decision`),
+   * and once appealed, the appeal's own sentence (`YourAppealSection`, `a.says`) already says who
+   * decides the appeal, by name, from the server. So it is left out entirely for the person once
+   * `r.decision` exists. For every other reader the line keeps its own meaning (who decided, for
+   * someone reading about somebody else's review) and is unchanged.
+   */
+  const footer = person && r.decision
+    ? null
+    : someoneElseDecided
+    ? (decidedBy ? `No scores. ${decidedBy} decided, and ${r.firstName} reads the decision and the reasons.` : 'No scores.')
+    : !manager
     ? 'No scores.'
     : person ? `No scores. You and ${manager} talk it through, and ${manager} decides.`
       : writer ? `No scores. You and ${r.firstName} talk it through, and you decide.`
@@ -116,7 +136,7 @@ function TheReview({ r, myFirstName }: { r: AReview; myFirstName: string | null 
             )}
         </Section>
 
-        <ManagersWords r={r} myFirstName={myFirstName} />
+        <ManagersWords r={r} myUserId={myUserId} />
 
         <Words
           heading={person ? 'Your own view' : `${r.firstName}’s own view`}
@@ -136,7 +156,9 @@ function TheReview({ r, myFirstName }: { r: AReview; myFirstName: string | null 
 
       <Decision r={r} />
 
-      <p className="gwui-panel-text-muted">{footer}</p>
+      <Appeal r={r} />
+
+      {footer && <p className="gwui-panel-text-muted">{footer}</p>}
     </>
   )
 }
@@ -146,26 +168,42 @@ function TheReview({ r, myFirstName }: { r: AReview; myFirstName: string | null 
  * `managersWordsHeading` ("What Wairimu writes"), since the person never writes it (decision 93, row 15).
  *
  * For whoever writes it, a lead or an admin: always shown read-only, attributed by name
- * (`writtenWithFirstName`), UNLESS this reader is that very writer (their own first name matches), in
- * which case it reads "What you write" and stays editable, pre-filled with their own words, exactly as
- * before. Where the API says this reader may write (`mayWrite`) but the words on record were somebody
- * else's - the writer was reassigned after they wrote something - the existing words stay read-only
- * under their name, and this reader is offered their own box instead, starting empty, never pre-filled
- * with somebody else's words (item 3).
+ * (`writtenWithFirstName`), UNLESS the words on record are this reader's own. WHOSE WORDS THEY ARE IS
+ * `managersWordsById` (request 162, item 6), by sign-in, never a first-name guess - two people can
+ * share a first name, and a review can be reassigned after its first writer has already written
+ * something, in which case the new writer's own name can equal the old writer's `writtenWithFirstName`
+ * by coincidence. Once words exist, this reader is the writer only when `managersWordsById` is their
+ * own id; with none written yet, this reader is the writer when the API says they may write it
+ * (`mayWrite`). Where the words on record are somebody else's but the API still says this reader may
+ * write - the review was reassigned after its first writer wrote something - the existing words stay
+ * read-only under their name, and this reader is offered their own box instead, starting empty, never
+ * pre-filled with somebody else's words (item 3).
  */
-function ManagersWords({ r, myFirstName }: { r: AReview; myFirstName: string | null }) {
+function ManagersWords({ r, myUserId }: { r: AReview; myUserId: string | null }) {
   if (r.reader === 'person') {
-    const heading = r.managersWordsHeading ?? (r.writtenWithFirstName ? `What ${r.writtenWithFirstName} writes` : null)
+    /* The one who writes it, never the admin who changed the decision on appeal (decision 113), who writes nothing here. */
+    const writes = r.writerFirstName ?? r.writtenWithFirstName
+    const heading = r.managersWordsHeading ?? (writes ? `What ${writes} writes` : null)
     if (!heading) return null
+    /*
+     * SCREEN FAULT 9 (FINAL WALK): "WHAT DANIEL WRITES", WITH NOTHING UNDER IT. Grace's own review
+     * showed the heading and nothing else when the writer had not written their part yet - this
+     * drew `null` for an empty `managersWords`, leaving the heading standing over a blank. Said in
+     * words instead, the same way the other reader of this same section already is, below.
+     * Nobody's gender is known, so this never guesses a pronoun ("his part"): it names the writer
+     * and says what is true, "has not written anything yet.".
+     */
     return (
       <Section heading={heading}>
-        {r.managersWords ? <p className="gwui-quoted-text">“{r.managersWords}”</p> : null}
+        {r.managersWords
+          ? <p className="gwui-quoted-text">“{r.managersWords}”</p>
+          : <p className="gwui-panel-text-muted">{writes ? `${writes} has not written anything yet.` : 'Nobody has written this yet.'}</p>}
       </Section>
     )
   }
 
   const manager = r.writtenWithFirstName
-  const theWriterIsMe = !manager || (!!myFirstName && manager === myFirstName)
+  const theWriterIsMe = r.managersWords ? (!!myUserId && r.managersWordsById === myUserId) : r.mayWrite
   const mayEdit = r.mayWrite && !r.decision
 
   if (theWriterIsMe) {
@@ -390,12 +428,15 @@ function Decision({ r }: { r: AReview }) {
   const suggestion = r.reader !== 'person' ? r.recognise ?? null : null
 
   if (r.decision) {
+    /* "Your decision" only to whoever made it as it stands now: never to the reviewer once an admin changed it on appeal, nor to another admin (decision 113). */
+    const by = r.reader !== 'person' ? r.decidedByFirstName ?? null : null
+    const mine = r.reader === 'writer' && r.decidedByYou !== false
     return (
-      <Section heading={writer ? 'Your decision' : 'The decision'}>
+      <Section heading={mine ? 'Your decision' : by ? `${by}’s decision` : 'The decision'}>
         <p className="gwui-panel-text">{r.decision.says}</p>
-        <h3 className="gwui-panel-heading">{writer ? 'Your reasons' : 'The reasons'}</h3>
+        <h3 className="gwui-panel-heading">{mine ? 'Your reasons' : by ? `${by}’s reasons` : 'The reasons'}</h3>
         <p className="gwui-panel-text">{r.decision.reasons}</p>
-        {writer && <p className="gwui-panel-text-muted">{r.firstName} sees your decision and your reasons.</p>}
+        {mine && <p className="gwui-panel-text-muted">{r.firstName} sees your decision and your reasons.</p>}
       </Section>
     )
   }
@@ -418,6 +459,157 @@ function Decision({ r }: { r: AReview }) {
         <div><Button type="submit" disabled={!says.trim() || !reasons.trim() || saving.isPending}>Save my decision</Button></div>
         {problem && <Note tone="error">{problem}</Note>}
       </form>
+    </Section>
+  )
+}
+
+/**
+ * APPEALING A DECIDED REVIEW (decision 113, bug B-024). Every sentence is the server's, drawn as it is
+ * (`mayAppealSays`, `appeal.says`). The person appeals with their reasons, adds to them until it is
+ * decided, and reads the outcome and the admin's reasons. An admin who did not decide the review
+ * reads the person's reasons and decides. The reviewer reads only where it stands (the server sends
+ * no reasons for the reviewer, and nothing here asks for them).
+ */
+function Appeal({ r }: { r: AReview }) {
+  if (r.reader === 'person') {
+    if (r.appeal) return <YourAppealSection r={r} a={r.appeal} />
+    if (r.mayAppeal && r.mayAppealSays) return <MakeAnAppeal r={r} says={r.mayAppealSays} />
+    return null
+  }
+  if (r.appeal) return <AnAppealForAnotherReader r={r} a={r.appeal} />
+  return null
+}
+
+function DecisionWas({ was }: { was: { says: string; reasons: string } }) {
+  return (
+    <>
+      <h3 className="gwui-panel-heading">What the decision said before</h3>
+      <p className="gwui-panel-text-muted">{was.says}</p>
+      <p className="gwui-panel-text-muted">{was.reasons}</p>
+    </>
+  )
+}
+
+function MakeAnAppeal({ r, says }: { r: ReviewForThePerson; says: string }) {
+  const qc = useQueryClient()
+  const [asking, setAsking] = useState(false)
+  const [why, setWhy] = useState('')
+  const [problem, setProblem] = useState<string | null>(null)
+  const appeal = useMutation({
+    mutationFn: () => reviewsApi.appeal(r.id, why.trim()),
+    onSuccess: (x) => { setProblem(null); qc.setQueryData(['suite-review', r.id], x) },
+    onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
+  })
+  return (
+    <Section heading="Appeal this decision">
+      <p className="gwui-panel-text">{says}</p>
+      {!asking
+        ? <div><Button kind="secondary" size="small" onClick={() => setAsking(true)}>Appeal this decision</Button></div>
+        : (
+          <form className="gwui-suite-ask" onSubmit={e => { e.preventDefault(); if (why.trim()) appeal.mutate() }}>
+            <div className="gwui-suite-q">
+              <FieldLabel htmlFor="rv-appeal-why">Why you disagree</FieldLabel>
+              <TextArea id="rv-appeal-why" rows={4} value={why} onChange={e => setWhy(e.target.value)} maxLength={2000} />
+            </div>
+            <div className="gwui-edge-acts">
+              <Button kind="secondary" type="submit" size="small" disabled={!why.trim() || appeal.isPending}>Send my appeal</Button>
+              <Button kind="quiet" size="small" onClick={() => { setAsking(false); setProblem(null) }}>Cancel</Button>
+            </div>
+            {problem && <Note tone="error">{problem}</Note>}
+          </form>
+        )}
+    </Section>
+  )
+}
+
+function YourAppealSection({ r, a }: { r: ReviewForThePerson; a: YourAppeal }) {
+  const qc = useQueryClient()
+  const [more, setMore] = useState('')
+  const [problem, setProblem] = useState<string | null>(null)
+  const add = useMutation({
+    mutationFn: () => reviewsApi.addToTheAppeal(r.id, more.trim()),
+    onSuccess: (x) => { setProblem(null); setMore(''); qc.setQueryData(['suite-review', r.id], x) },
+    onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
+  })
+  const decided = a.stands === 'decided'
+  return (
+    <Section heading="Your appeal">
+      <p className="gwui-panel-text">{a.says}</p>
+      <h3 className="gwui-panel-heading">Your reasons</h3>
+      <p className="gwui-quoted-text">“{a.yourReasons}”</p>
+      {a.additions.map((x, i) => <p key={i} className="gwui-quoted-text">“{x.said}”</p>)}
+      {decided && a.reasons && a.reasons !== r.decision?.reasons && (
+        <>
+          <h3 className="gwui-panel-heading">{a.decidedByFirstName ? `${a.decidedByFirstName}’s reasons` : 'The reasons'}</h3>
+          <p className="gwui-panel-text">{a.reasons}</p>
+        </>
+      )}
+      {decided && a.outcome === 'changed' && a.decisionWas && <DecisionWas was={a.decisionWas} />}
+      {!decided && (
+        <form className="gwui-suite-ask" onSubmit={e => { e.preventDefault(); if (more.trim()) add.mutate() }}>
+          <div className="gwui-suite-q">
+            <FieldLabel htmlFor="rv-appeal-more">Add to your reasons</FieldLabel>
+            <TextArea id="rv-appeal-more" rows={3} value={more} onChange={e => setMore(e.target.value)} maxLength={2000} />
+          </div>
+          <div><Button kind="secondary" size="small" type="submit" disabled={!more.trim() || add.isPending}>Add to my reasons</Button></div>
+          {problem && <Note tone="error">{problem}</Note>}
+        </form>
+      )}
+    </Section>
+  )
+}
+
+function AnAppealForAnotherReader({ r, a }: { r: ReviewForTheWriter; a: AppealForAnotherReader }) {
+  const qc = useQueryClient()
+  const [outcome, setOutcome] = useState<'stands' | 'changed' | ''>('')
+  const [reasons, setReasons] = useState('')
+  const [now, setNow] = useState('')
+  const [problem, setProblem] = useState<string | null>(null)
+  const decide = useMutation({
+    mutationFn: () => reviewsApi.decideTheAppeal(r.id, { outcome: outcome as 'stands' | 'changed', reasons: reasons.trim(), ...(outcome === 'changed' ? { decision: now.trim() } : {}) }),
+    onSuccess: (x) => { setProblem(null); qc.setQueryData(['suite-review', r.id], x) },
+    onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
+  })
+  const decided = a.stands === 'decided'
+  const ready = !!outcome && !!reasons.trim() && (outcome !== 'changed' || !!now.trim())
+  return (
+    <Section heading={`${a.personFirstName}’s appeal`}>
+      <p className="gwui-panel-text">{a.says}</p>
+      {a.theirReasons && (
+        <>
+          <h3 className="gwui-panel-heading">{`${a.personFirstName}’s reasons`}</h3>
+          <p className="gwui-quoted-text">“{a.theirReasons}”</p>
+          {(a.additions ?? []).map((x, i) => <p key={i} className="gwui-quoted-text">“{x.said}”</p>)}
+        </>
+      )}
+      {decided && a.reasons && a.reasons !== r.decision?.reasons && (
+        <>
+          <h3 className="gwui-panel-heading">The reasons for the outcome of the appeal</h3>
+          <p className="gwui-panel-text">{a.reasons}</p>
+        </>
+      )}
+      {decided && a.outcome === 'changed' && a.decisionWas && <DecisionWas was={a.decisionWas} />}
+      {a.mayDecide && !decided && (
+        <form className="gwui-suite-ask" onSubmit={e => { e.preventDefault(); if (ready) decide.mutate() }}>
+          <fieldset className="gwui-suite-q">
+            <legend>Your decision on the appeal</legend>
+            <label><input type="radio" name="rv-appeal-outcome" checked={outcome === 'stands'} onChange={() => setOutcome('stands')} /> The decision stands</label>
+            <label><input type="radio" name="rv-appeal-outcome" checked={outcome === 'changed'} onChange={() => setOutcome('changed')} /> Change the decision</label>
+          </fieldset>
+          {outcome === 'changed' && (
+            <div className="gwui-suite-q">
+              <FieldLabel htmlFor="rv-appeal-now">What the decision is now</FieldLabel>
+              <TextField id="rv-appeal-now" value={now} onChange={e => setNow(e.target.value)} maxLength={1000} />
+            </div>
+          )}
+          <div className="gwui-suite-q">
+            <FieldLabel htmlFor="rv-appeal-reasons">Your reasons, in a sentence or two</FieldLabel>
+            <TextArea id="rv-appeal-reasons" rows={3} value={reasons} onChange={e => setReasons(e.target.value)} maxLength={2000} />
+          </div>
+          <div><Button kind="secondary" type="submit" disabled={!ready || decide.isPending}>Save my decision on the appeal</Button></div>
+          {problem && <Note tone="error">{problem}</Note>}
+        </form>
+      )}
     </Section>
   )
 }
