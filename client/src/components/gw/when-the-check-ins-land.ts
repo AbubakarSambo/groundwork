@@ -72,11 +72,20 @@ export function whenTheCheckInsLand(a: {
     /* Item 5, the same rule as the server's the-check-ins-own-schedule.ts: after the start, the next
        one is the first set day still to come, so a Sunday start for "every Monday" lists Monday 12,
        not Monday 19, and a start on the 11th for "the 20th" lists the 20th of the same month. */
+    /* "Now" (Hafsah, 11 October 2026), the same as the server: with no start chosen, the first one
+       stays open until the next set day a full cycle or more away, so "every Monday" set up on Sunday
+       11 lists Sun 11 October, Mon 19, Mon 26, and never two a day apart. */
     const second = out.length === 1
+    const startsNow = a.startsAt == null
+    const onTheDay = (year: number, month: number, day: number) => new Date(year, month, Math.min(day, new Date(year, month + 1, 0).getDate()))
     if (a.cadence === 'MONTHLY') {
       const anchored = a.anchorDay != null && a.anchorDay >= 1 && a.anchorDay <= 31
-      const thisMonth = anchored ? new Date(d.getFullYear(), d.getMonth(), Math.min(a.anchorDay!, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate())) : null
-      if (second && thisMonth && thisMonth > first) d.setDate(thisMonth.getDate())
+      const thisMonth = anchored ? onTheDay(d.getFullYear(), d.getMonth(), a.anchorDay!) : null
+      if (second && startsNow && anchored) {
+        const aMonthOn = onTheDay(first.getFullYear(), first.getMonth() + 1, first.getDate())
+        const next = onTheDay(first.getFullYear(), first.getMonth() + 1, a.anchorDay!)
+        d.setTime((next >= aMonthOn ? next : onTheDay(first.getFullYear(), first.getMonth() + 2, a.anchorDay!)).getTime())
+      } else if (second && thisMonth && thisMonth > first) d.setDate(thisMonth.getDate())
       else {
         d.setMonth(d.getMonth() + 1)
         if (anchored) {
@@ -85,7 +94,7 @@ export function whenTheCheckInsLand(a: {
         }
       }
     } else {
-      d.setDate(d.getDate() + (second && a.cadence === 'WEEKLY' && a.anchorDay != null && a.anchorDay >= 0 && a.anchorDay <= 6 ? 1 : s))
+      d.setDate(d.getDate() + (second && !startsNow && a.cadence === 'WEEKLY' && a.anchorDay != null && a.anchorDay >= 0 && a.anchorDay <= 6 ? 1 : s))
       if ((a.cadence === 'WEEKLY' || a.cadence === 'FORTNIGHTLY') && a.anchorDay != null && a.anchorDay >= 0 && a.anchorDay <= 6) {
         while (d.getDay() !== a.anchorDay) d.setDate(d.getDate() + 1)
       }

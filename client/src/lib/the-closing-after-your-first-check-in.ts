@@ -6,6 +6,8 @@
  * and no start date), the sentence says how often and leaves the day out rather than guessing one.
  * "in setup" is a link to People and setup, where the day and how often are actually changed.
  */
+import { whenTheCheckInsLand, type Cadence } from '../components/gw/when-the-check-ins-land'
+
 export type TheSchedule = {
   cadence?: string | null
   /** Weekly and fortnightly: 0 = Sunday .. 6 = Saturday. Monthly: the day of the month. */
@@ -70,11 +72,36 @@ function aStartStillToCome(s: TheSchedule, today: Date): string | null {
   return `${DAYS[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`
 }
 
+/**
+ * "NOW" (Hafsah, 11 October 2026): with no start chosen, the team's first check-in opens at once and
+ * stays open until the next set day a full cycle or more away, the same rule as the server and the
+ * setup's date list. This is that day, said in words ("Monday 19 October"), for a weekly, fortnightly
+ * or monthly check-in. Null when it cannot be known (no day it was made), or when it has already come.
+ */
+function staysOpenUntil(s: TheSchedule, today: Date): string | null {
+  if (s.startsAt) return null
+  const c = (s.cadence ?? '').toUpperCase()
+  if (c !== 'WEEKLY' && c !== 'FORTNIGHTLY' && c !== 'MONTHLY') return null
+  /* Never guessed: without the day the check-in was made, the day it stays open until is not known. */
+  if (!s.createdAt) return null
+  const from = new Date(s.createdAt)
+  if (Number.isNaN(from.getTime())) return null
+  const anchor = typeof s.cadenceAnchorDay === 'number' ? s.cadenceAnchorDay : null
+  const [, next] = whenTheCheckInsLand({ cadence: c as Cadence, anchorDay: anchor, startsAt: null, workingDays: s.workingDays ?? [], today: from, howMany: 2 })
+  if (!next) return null
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  if (next <= startOfToday) return null
+  return `${DAYS[next.getDay()]} ${next.getDate()} ${MONTHS[next.getMonth()]}`
+}
+
 /** The closing message in three parts, so "in setup" can be a link and the rest plain text. */
 export function theClosingAfterYourFirstCheckIn(s: TheSchedule, today: Date = new Date()): TheClosing {
   const often = howOftenTheTeamChecksIn(s)
   const starts = aStartStillToCome(s, today)
-  const team = starts
+  const until = often ? staysOpenUntil(s, today) : null
+  const team = until
+    ? ` Your team's first check-in is open now and stays open until ${until}, and after that they check in ${often}, as you set it.`
+    : starts
     ? often === 'once'
       ? ` Your team checks in once, on ${starts}, as you set it.`
       : often

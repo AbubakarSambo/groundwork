@@ -44,6 +44,13 @@ describe('the lead, at the end of their first check-in', () => {
     expect(screen.getByRole('link', { name: 'in setup' }).getAttribute('href')).toBe('/grounds/g1?tab=settings')
   })
 
+  it('Now: reads that the team\'s first check-in is open now and until which Monday, as the lead sees it', async () => {
+    ;(groundsApi.get as any).mockResolvedValue({ ...GROUND, startsAt: null, createdAt: new Date().toISOString() })
+    renderAs(true, 1)
+    const p = await screen.findByTestId('the-leads-first-closing')
+    expect(p.textContent).toMatch(/^That's your first check-in done\. Come back any time to add updates\. Your team's first check-in is open now and stays open until Monday \d{1,2} [A-Z][a-z]+, and after that they check in every Monday, as you set it\. You can change how often in setup\.$/)
+  })
+
   it('does not read it on a later check-in', async () => {
     renderAs(true, 2)
     await screen.findByText(/Your check-in is saved/)
@@ -79,9 +86,23 @@ describe('the closing beside each start the lead can choose', () => {
   const SUNDAY_11 = new Date(2026, 9, 11, 16, 0)
   const weekly = { cadence: 'WEEKLY', cadenceAnchorDay: 1 }
 
-  it('Now: the sentence is the one Hafsah wrote, unchanged', () => {
+  /* "Now" (Hafsah, 11 October 2026): the first check-in stays open until the next set day a full
+     cycle or more away, so the closing says so rather than "every Monday" alone, which read as if the
+     team checked in again on Monday 12. Her sentence is kept around it. */
+  it('Now on Sunday 11: the first check-in is open now and stays open until Monday 19', () => {
     expect(theClosingAsOneSentence({ ...weekly, startsAt: null, createdAt: '2026-10-11T15:00:00.000Z' }, SUNDAY_11)).toBe(
-      "That's your first check-in done. Come back any time to add updates. Your team will check in every Monday, as you set it. You can change how often in setup.")
+      "That's your first check-in done. Come back any time to add updates. Your team's first check-in is open now and stays open until Monday 19 October, and after that they check in every Monday, as you set it. You can change how often in setup.")
+  })
+
+  it('Now on Saturday 17: Monday 19 is less than a week away, so it stays open until Monday 26', () => {
+    const saturday = new Date(2026, 9, 17, 10, 0)
+    expect(theClosingAsOneSentence({ ...weekly, startsAt: null, createdAt: saturday.toISOString() }, saturday)).toContain(
+      "Your team's first check-in is open now and stays open until Monday 26 October, and after that they check in every Monday, as you set it.")
+  })
+
+  it('Now, monthly on the 20th, on the 11th: it stays open until 20 November', () => {
+    expect(theClosingAsOneSentence({ cadence: 'MONTHLY', cadenceAnchorDay: 20, startsAt: null, createdAt: SUNDAY_11.toISOString() }, SUNDAY_11)).toContain(
+      "Your team's first check-in is open now and stays open until Friday 20 November, and after that they check in on the 20th of each month, as you set it.")
   })
 
   it('Tomorrow: it names the day the team starts, then how often', () => {
