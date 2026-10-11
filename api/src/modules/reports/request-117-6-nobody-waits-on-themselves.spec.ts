@@ -73,8 +73,9 @@ describe('request 117 (6): on the board, as each reader', () => {
   it('Rukia reads Baraka and Amani waiting on her, each once on their own row', async () => {
     const board = await boardAs(review5(), ...RUKIA_RUNS_IT);
     expect(board.blockers.map((b: any) => b.says)).toEqual(expect.arrayContaining([
-      'Baraka Mwangi is waiting on you for the discount.',
-      'Amani Wekesa is waiting on you for the price list.',
+      /* Change 4: neither has Rukia's own promise of it, so each reads as the speaker's account, with the note. */
+      'Baraka Mwangi says the work is waiting on you for the discount. Not backed: no attempt to unblock mentioned.',
+      'Amani Wekesa says the work is waiting on you for the price list. Not backed: no attempt to unblock mentioned.',
     ]));
   });
 });

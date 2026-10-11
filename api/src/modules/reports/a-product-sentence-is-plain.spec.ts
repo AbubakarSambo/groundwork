@@ -30,4 +30,10 @@ describe('the wording check for sentences the product composes', () => {
   it('never reads what somebody said in their own words', () => {
     expect(rules('Rukia said, "Done: the pipeline 2026-09-03 -> Finance." Then nothing moved.', { whole: true })).toEqual([]);
   });
+  it('lets through only the colon of the note beside a claim about a colleague, which is Hafsah\'s own wording (change 4)', () => {
+    expect(rules('Baraka Otieno says the work is waiting on you for the depot keys. Not backed: no attempt to unblock mentioned.', { whole: true })).toEqual([]);
+    expect(rules('Baraka Otieno says the work is waiting on you for the depot keys. Tried: emailed Rukia twice.', { whole: true })).toEqual([]);
+    expect(rules('Baraka Otieno is waiting. Waiting on: Rukia Mwangi.', { whole: true })).toContain('pieces joined with a colon');
+    expect(rules('Not backed by anything. Done: the stock count.', { whole: true })).toContain('pieces joined with a colon');
+  });
 });

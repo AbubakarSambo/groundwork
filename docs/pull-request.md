@@ -87,6 +87,79 @@ Hafsah stopped quality testing on 11 October until after the release, so the las
 | A missed check-ins case (11 October) | The person reads the notice on Today and by email after two; the lead reads it in the daily nudge and on the board after 3 of 4; the lead's own skipped sessions produce nothing. |
 | Earlier, 10 October | The whole API suite (19,498) and client suite (5,005) passed; the production start passed; all migrations applied on an empty database and on one built to live's schema with every existing row unchanged; browser journeys, the communications check and two full privacy sweeps passed. |
 
+## Old tests this removes
+
+Hafsah's rule (11 October): tests already on the base that only read source text, mirror the prototype or belong to our testing machinery, and that fail against this release's code even with the CI's own settings (`JWT_SECRET`, `RESEND_API_KEY`, `NODE_ENV=development`, an empty database with every migration applied), are removed here rather than kept failing. Tests that still pass are left untouched. Behaviour tests that failed were brought up to date, never removed. The existing-users check (`api/journey/existing-clients-carry-on.spec.ts`) is kept and updated to today's migrations.
+
+The API's 64 removed tests, each reading source text only:
+
+- `api/src/a-guard-that-a-comment-satisfies-is-not-a-guard.spec.ts`
+- `api/src/common/guards/a-public-route-still-knows-who-is-signed-in.spec.ts`
+- `api/src/modules/a-check-that-can-never-be-true.spec.ts`
+- `api/src/modules/assistant/nothing-leaves-without-a-yes.spec.ts`
+- `api/src/modules/assistant/what-was-said-is-what-is-kept.spec.ts`
+- `api/src/modules/auth/one-answer-at-the-door.spec.ts`
+- `api/src/modules/board/a-board-has-no-empty-line.spec.ts`
+- `api/src/modules/board/a-pattern-says-what-to-ask.spec.ts`
+- `api/src/modules/board/no-board-is-not-a-permission-problem.spec.ts`
+- `api/src/modules/conversation/a-colleagues-target-is-not-given-to-your-check-in.spec.ts`
+- `api/src/modules/conversation/a-line-somebody-unsaid-counts-toward-nothing.spec.ts`
+- `api/src/modules/conversation/a-period-is-not-a-day.spec.ts`
+- `api/src/modules/conversation/a-request-offered-in-the-check-in.spec.ts`
+- `api/src/modules/conversation/ideas-from-the-team.spec.ts`
+- `api/src/modules/conversation/the-card-and-the-pack-are-one-product.spec.ts`
+- `api/src/modules/conversation/the-chasing-belongs-to-the-lead.spec.ts`
+- `api/src/modules/conversation/the-close-says-what-comes-next.spec.ts`
+- `api/src/modules/conversation/the-engine-knows-the-target.spec.ts`
+- `api/src/modules/conversation/the-streamed-route-is-the-plain-route.spec.ts`
+- `api/src/modules/detectors/a-week-is-not-a-league-table.spec.ts`
+- `api/src/modules/documents/the-context-page-keeps-its-promises.spec.ts`
+- `api/src/modules/documents/what-a-document-holds.spec.ts`
+- `api/src/modules/email/a-reminder-does-not-quote-what-you-wrote.spec.ts`
+- `api/src/modules/email/every-message-has-a-plain-text-part.spec.ts`
+- `api/src/modules/email/nothing-goes-out-that-was-turned-off.spec.ts`
+- `api/src/modules/email/one-report-one-message.spec.ts`
+- `api/src/modules/email/the-stop-link-stops-every-engine.spec.ts`
+- `api/src/modules/email/what-groundwork-is.spec.ts`
+- `api/src/modules/entry/the-role-question-comes-last.spec.ts`
+- `api/src/modules/grounds/a-lead-reads-what-they-run.spec.ts`
+- `api/src/modules/grounds/a-note-the-team-can-read.spec.ts`
+- `api/src/modules/grounds/a-start-date-can-be-changed-until-it-matters.spec.ts`
+- `api/src/modules/grounds/added-but-waiting-for-a-seat.spec.ts`
+- `api/src/modules/grounds/an-admin-of-this-org-runs-the-ground.spec.ts`
+- `api/src/modules/grounds/an-invite-waits-for-the-first-day.spec.ts`
+- `api/src/modules/grounds/an-objective-nobody-has-seen.spec.ts`
+- `api/src/modules/grounds/covering-for-a-lead-means-steering-it.spec.ts`
+- `api/src/modules/grounds/every-way-a-check-in-completes-closes-its-round.spec.ts`
+- `api/src/modules/grounds/lead-confirmation-not-skipped.spec.ts`
+- `api/src/modules/grounds/not-invited-yet-says-why.spec.ts`
+- `api/src/modules/grounds/one-count-of-who-is-in-this-round.spec.ts`
+- `api/src/modules/grounds/one-note-shared-on-purpose.spec.ts`
+- `api/src/modules/grounds/setting-up-is-not-testifying.spec.ts`
+- `api/src/modules/grounds/setup-admin-can-add.spec.ts`
+- `api/src/modules/grounds/somebody-can-try-it-alone.spec.ts`
+- `api/src/modules/grounds/specificity-belongs-to-the-person.spec.ts`
+- `api/src/modules/grounds/the-context-chat-can-close-what-it-opens.spec.ts`
+- `api/src/modules/grounds/the-count-matches-the-report.spec.ts`
+- `api/src/modules/grounds/the-read-is-the-same-on-both-pages.spec.ts`
+- `api/src/modules/grounds/the-setup-chat-goes-through-the-boundary.spec.ts`
+- `api/src/modules/grounds/the-weekend-can-be-said-later.spec.ts`
+- `api/src/modules/grounds/there-is-no-round-after-the-last.spec.ts`
+- `api/src/modules/public-api/their-number-stays-theirs.spec.ts`
+- `api/src/modules/reports/a-report-link-opens-the-report.spec.ts`
+- `api/src/modules/reports/a-report-that-does-not-contradict-itself.spec.ts`
+- `api/src/modules/reports/an-org-admin-reads-with-the-lead-s-eyes.spec.ts`
+- `api/src/modules/reports/n-of-m-is-computed-once.spec.ts`
+- `api/src/modules/reports/the-lead-is-told-who-by-name.spec.ts`
+- `api/src/modules/reports/the-session-report-is-readable.spec.ts`
+- `api/src/modules/reports/why-there-is-no-report-yet.spec.ts`
+- `api/src/modules/resolution/the-lead-decides-a-persons-role.spec.ts`
+- `api/src/modules/whatsapp/a-check-in-left-halfway.spec.ts`
+- `api/src/modules/whatsapp/there-is-one-way-in-from-whatsapp.spec.ts`
+- `api/src/nothing-in-here-is-wired-to-nothing.spec.ts`
+
+**Already on the base, not changed here:** the "Migrations match the schema" check reports one index on `leaving_checklists` whose name Postgres shortens (`..._last_day_key` from migration `20260927120000_when_someone_leaves`). It is on the base already and this release does not touch it.
+
 ## Still to come, after the release
 
 Pushing harder in conversations, the managers' and admin tests, re-running the evaluation's profiles, decision 132's 24-scenario run, and next month's work (reviews with ratings, finance batches) are in Hafsah's roadmap.

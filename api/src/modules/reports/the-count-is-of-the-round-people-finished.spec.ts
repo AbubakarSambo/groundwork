@@ -97,7 +97,8 @@ describe('a report before anybody has answered (B-009)', () => {
     const { service, upserts } = harness(false, true);
     await service.synthesize('g1');
     const stored = upserts[upserts.length - 1]?.create;
-    expect(stored?.sharedPicture).toBe('Nobody has checked in yet, out of three people. The shared picture is made once people have answered.');
+    /* Change 5: the lead's own sessions are optional, so a lead who has not checked in is not in the count. */
+    expect(stored?.sharedPicture).toBe('Nobody has checked in yet, out of two people. The shared picture is made once people have answered.');
     expect(stored?.sharedPicture).not.toMatch(/ground|only person invited/);
   });
 });

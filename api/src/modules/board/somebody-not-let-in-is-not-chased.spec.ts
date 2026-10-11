@@ -170,11 +170,12 @@ describe('decision 77 on the board: Faraji is not counted, and is said apart', (
   const pending = (b: { prisma: any }) => { b.prisma.membershipRequest = STILL_WAITING; return b; };
 
   it.each([['the lead', 'u-wairimu', 'MEMBER'], ['the admin who set it up', 'u-setup', 'ADMIN'], ['an admin', 'u-other-admin', 'ADMIN'], ['Miriam, who checks in', 'u-miriam', 'MEMBER']])(
-    '%s reads 2 of 3 answered this round (Wairimu answers session 1 too), not 2 of 4',
+    '%s reads 2 of 2 answered this round (Wairimu, the lead, has not checked in, so is not counted), not 2 of 3',
     async (_who, userId, role) => {
       const b = await boardFor(userId, role, {}, withFaraji).board;
       expect(b.howItIsGoing.glance.progress.answeredThisRound).toBe(2);
-      expect(b.howItIsGoing.glance.progress.ofPeople).toBe(3);
+      /* Change 5: the lead is counted only once she checks in. */
+      expect(b.howItIsGoing.glance.progress.ofPeople).toBe(2);
       expect(b.howItIsGoing.glance.progress.waitingOn).not.toContain('p-faraji');
     },
   );
@@ -217,11 +218,11 @@ describe('decision 77 on the board: Faraji is not counted, and is said apart', (
     expect(JSON.stringify(b)).not.toContain('not let in');
   });
 
-  it('once he is let in, he is counted again: 2 of 4, and nobody is told he is waiting', async () => {
+  it('once he is let in, he is counted again: 2 of 3 (the lead is not counted until she checks in), and nobody is told he is waiting', async () => {
     const letIn = { ...withFaraji, participants: [...GROUND.participants, { ...FARAJI, user: { firstName: 'Faraji', lastName: 'Odhiambo', awaitingOrgApproval: false } }] };
     const b = await boardFor('u-wairimu', 'MEMBER', {}, letIn).board;
     expect(b.howItIsGoing.glance.progress.answeredThisRound).toBe(2);
-    expect(b.howItIsGoing.glance.progress.ofPeople).toBe(4);
+    expect(b.howItIsGoing.glance.progress.ofPeople).toBe(3);
     expect(b.howItIsGoing.glance.progress.waitingOn).toContain('p-faraji');
     expect(b.waitingToBeLetIn).toBeNull();
   });
