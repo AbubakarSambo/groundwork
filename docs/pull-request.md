@@ -158,6 +158,52 @@ The API's 64 removed tests, each reading source text only:
 - `api/src/modules/whatsapp/there-is-one-way-in-from-whatsapp.spec.ts`
 - `api/src/nothing-in-here-is-wired-to-nothing.spec.ts`
 
+
+The screens' 42 removed tests, each reading source text only or mirroring the prototype's text. Eleven tests that read each person's screen as that person ("as each reader sees it") were on the same list because they mention the prototype; they check what each reader is shown, so they are kept, at their current version, and pass:
+
+- `client/src/api/every-endpoint-has-a-caller.spec.ts`
+- `client/src/components/gw/a-line-is-changed-by-talking-about-it.spec.tsx`
+- `client/src/components/gw/a-round-everybody-answered-is-not-forming.spec.ts`
+- `client/src/components/gw/one-arrival.spec.ts`
+- `client/src/components/gw/one-context-page.spec.ts`
+- `client/src/components/gw/one-vocabulary.spec.ts`
+- `client/src/components/gw/the-feedback-sheet-sits-on-the-screen.spec.ts`
+- `client/src/components/gw/the-org-is-not-a-ground.spec.ts`
+- `client/src/components/gw/the-page-is-cream-and-opens-light.spec.ts`
+- `client/src/components/gw/the-page-says-what-it-is-doing.spec.ts`
+- `client/src/components/gw/the-rail-is-where-it-belongs.spec.tsx`
+- `client/src/components/gw/the-way-home-and-the-way-out.spec.ts`
+- `client/src/components/gw/ui/no-new-class-without-a-shared-part.spec.ts`
+- `client/src/every-page-can-be-reached.spec.ts`
+- `client/src/lib/a-colleague.spec.ts`
+- `client/src/lib/end-state-mirror.spec.ts`
+- `client/src/lib/one-way-to-name-a-person.spec.ts`
+- `client/src/lib/the-leads-note.spec.ts`
+- `client/src/lib/who-may-rename-a-check-in.spec.ts`
+- `client/src/one-word-and-it-is-session.spec.ts`
+- `client/src/pages/a-failure-is-never-a-success.spec.ts`
+- `client/src/pages/a-number-is-a-measurement.spec.ts`
+- `client/src/pages/an-error-says-which-one.spec.tsx`
+- `client/src/pages/auth/enter-submits-the-form.spec.tsx`
+- `client/src/pages/enter/a-question-already-answered-is-not-asked-again.spec.ts`
+- `client/src/pages/enter/entry-knows-who-you-are.spec.ts`
+- `client/src/pages/enter/going-back-to-the-cards.spec.ts`
+- `client/src/pages/enter/nobody-typed-in-gets-dropped.spec.ts`
+- `client/src/pages/enter/nothing-says-your-work-is-safe-when-it-is-not.spec.tsx`
+- `client/src/pages/grounds/a-forming-report-does-not-claim-to-be-finished.spec.ts`
+- `client/src/pages/grounds/every-situation-is-offered.spec.ts`
+- `client/src/pages/grounds/many-parties-at-once.spec.ts`
+- `client/src/pages/grounds/one-door-per-place.spec.ts`
+- `client/src/pages/grounds/one-row-per-person-per-session.spec.ts`
+- `client/src/pages/grounds/the-lead-sees-the-ground-not-a-blank.spec.tsx`
+- `client/src/pages/grounds/the-sessions-tab-is-about-sessions.spec.ts`
+- `client/src/pages/grounds/what-now-is-buttons.spec.ts`
+- `client/src/pages/invite/three-things-the-run-left-broken.spec.tsx`
+- `client/src/pages/org/one-guide-not-two-copies.spec.ts`
+- `client/src/pages/preview/ours-not-a-customers.spec.ts`
+- `client/src/pages/report/one-report-not-two.spec.ts`
+- `client/src/pages/the-button-goes-where-it-says.spec.ts`
+
 **Already on the base, not changed here:** the "Migrations match the schema" check reports one index on `leaving_checklists` whose name Postgres shortens (`..._last_day_key` from migration `20260927120000_when_someone_leaves`). It is on the base already and this release does not touch it.
 
 ## Still to come, after the release
