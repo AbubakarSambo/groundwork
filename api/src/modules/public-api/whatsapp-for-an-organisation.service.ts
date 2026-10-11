@@ -55,6 +55,14 @@ import {
 export const THAT_FILE_COULD_NOT_BE_READ = 'I could not read that file. It may be damaged, or not the kind of file its name says. Send it again, or upload it in Groundwork. A PDF, an image or a text document works.';
 /** What a person reads when a file they sent is kept but nothing in it could be opened: we never say we read or saw it. */
 export const I_COULD_NOT_OPEN_THAT_FILE = 'I could not open that file. Could you tell me what it shows?';
+/**
+ * SAID ONCE, THE FIRST TIME A PERSON EVER SENDS A PHOTO, A DOCUMENT OR A LOCATION PIN DURING A WHATSAPP
+ * CHECK-IN (Hafsah, 11 October 2026, her words, the same sentence for all three): sending it in reply
+ * is choosing to share it, so it is added to the check-in where whoever sees their other proof sees it.
+ */
+export const PHOTOS_YOU_SEND_HERE_ARE_PROOF = 'Photos you send here are added to your check-in as proof, so your lead can see them.';
+/** The note that it was said, kept on the number so it is never said again. */
+export const TOLD_PROOF_IS_SHARED = 'told:proof-is-shared';
 export function aFileProblemInWords(err: any): string {
   const said = typeof err?.message === 'string' ? err.message.trim() : '';
   /* One of our own refusals is already a sentence a person can use: a capital, a full stop, several words, and no library words. */
@@ -378,9 +386,11 @@ export class WhatsAppForAnOrganisationService {
       if (!fetched) { await say('I could not fetch that file from WhatsApp. Send it again, or upload it in Groundwork.'); return; }
       const ground = await this.prisma.checkIn.findUnique({ where: { id: current.id }, select: { groundId: true } });
       try {
-        const doc: any = await this.documents.upload(ground!.groundId, userId!, { originalname: arrived.fileName, mimetype: fetched.mimeType, buffer: fetched.buffer, size: fetched.buffer.length } as any, false, arrived.caption || undefined);
-        if (doc?.couldNotRead) { await say(I_COULD_NOT_OPEN_THAT_FILE); return; }
-        await say(`${whatTheFileIsCalled(arrived)} is on your check-in${arrived.caption ? ` with your note: ${arrived.caption}` : ''}. ${doc?.whoCanSeeIt ?? 'Only you can see it until you say otherwise.'} Anything it backs up is read against what you said.`);
+        /* Sent in reply during a check-in, so shared with it (Hafsah, 11 October 2026). */
+        const doc: any = await this.documents.upload(ground!.groundId, userId!, { originalname: arrived.fileName, mimetype: fetched.mimeType, buffer: fetched.buffer, size: fetched.buffer.length } as any, false, arrived.caption || undefined, { sharedWithTheCheckIn: true });
+        const once = await this.sayOnceThatProofIsShared(doc, organizationId, from);
+        if (doc?.couldNotRead) { await say(`${I_COULD_NOT_OPEN_THAT_FILE}${once}`); return; }
+        await say(`${whatTheFileIsCalled(arrived)} is on your check-in${arrived.caption ? ` with your note: ${arrived.caption}` : ''}.${doc?.visibility === 'OPEN' ? '' : ` ${doc?.whoCanSeeIt ?? 'Only you can see it until you say otherwise.'}`} Anything it backs up is read against what you said.${once}`);
       } catch (err: any) {
         await say(aFileProblemInWords(err));
       }
@@ -393,8 +403,8 @@ export class WhatsAppForAnOrganisationService {
       const sentAt = arrived.sentAt ?? new Date();
       const zone = thePhonesOwnZone(from) ?? undefined;
       try {
-        const doc: any = await this.documents.keepALocationPin(ground!.groundId, userId!, arrived, sentAt, zone);
-        await say(`${aLocationPinSaidBack(arrived, sentAt, zone)} ${doc?.whoCanSeeIt ?? 'Only you can see it until you say otherwise.'}`);
+        const doc: any = await this.documents.keepALocationPin(ground!.groundId, userId!, arrived, sentAt, zone, { sharedWithTheCheckIn: true });
+        await say(`${aLocationPinSaidBack(arrived, sentAt, zone)}${await this.sayOnceThatProofIsShared(doc, organizationId, from)}`);
       } catch (err: any) {
         await say(aFileProblemInWords(err));
       }
@@ -720,6 +730,23 @@ export class WhatsAppForAnOrganisationService {
       select: { checkInId: true },
     })?.catch?.(() => null);
     return last?.checkInId ? open.find((c) => c.id === last.checkInId) ?? null : null;
+  }
+
+  /**
+   * The sentence that sending proof here shares it, with a leading space, the first time this number
+   * ever sends something that was kept shared; '' every other time. Said only when it is true: a file
+   * kept private (adding documents switched off) is not announced as seen by the lead. The note that it
+   * was said is written before it is said, so a second message arriving at once does not repeat it.
+   */
+  private async sayOnceThatProofIsShared(doc: any, organizationId: string, from: string): Promise<string> {
+    if (doc?.visibility !== 'OPEN') return '';
+    const phone = WhatsAppService.normalize(from);
+    try {
+      const told = await this.prisma.whatsAppSend.findFirst({ where: { phone, kind: { startsWith: TOLD_PROOF_IS_SHARED } }, select: { id: true } });
+      if (told) return '';
+      await this.prisma.whatsAppSend.create({ data: { organizationId, phone, kind: TOLD_PROOF_IS_SHARED, checkInId: null, sentAt: null, failedAt: null, status: null, error: null } });
+    } catch { return ''; }
+    return ` ${PHOTOS_YOU_SEND_HERE_ARE_PROOF}`;
   }
 
   private async remember(organizationId: string, from: string, checkInId: string) {

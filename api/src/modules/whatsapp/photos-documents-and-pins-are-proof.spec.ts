@@ -2,7 +2,10 @@ import { anInboundHarness } from './a-whatsapp-inbound-harness';
 import { DocumentsService } from '../documents/documents.service';
 import { canSeeDocument } from '../documents/who-can-see-a-document';
 import { defaultVisibilityForUpload } from '../documents/a-document-is-context';
-import { I_COULD_NOT_OPEN_THAT_FILE } from '../public-api/whatsapp-for-an-organisation.service';
+import { I_COULD_NOT_OPEN_THAT_FILE, PHOTOS_YOU_SEND_HERE_ARE_PROOF } from '../public-api/whatsapp-for-an-organisation.service';
+import { DocumentVisibility } from '@prisma/client';
+
+const ONCE = 'Photos you send here are added to your check-in as proof, so your lead can see them.';
 
 /**
  * PHOTOS, DOCUMENTS AND LOCATION PINS SENT ON WHATSAPP ARE PROOF (Hafsah, 11 October 2026; B-102,
@@ -17,7 +20,7 @@ const AMANI = { id: 'p-amani', groundId: 'g-1', userId: 'u-amani', nameGiven: nu
 const TUESDAY_10_42 = Math.floor(new Date('2026-10-13T07:42:00Z').getTime() / 1000);
 
 /** The real documents service, with its database and readers mocked: what it writes is what the app's upload writes. */
-function realDocuments(content: string) {
+function realDocuments(content: string, contextOn = true) {
   const d = Object.create(DocumentsService.prototype) as any;
   const created: any[] = [];
   d.prisma = {
@@ -26,7 +29,7 @@ function realDocuments(content: string) {
     user: { findUnique: jest.fn(async () => ({ firstName: 'Amani' })) },
     groundDocument: { create: jest.fn(async (q: any) => { created.push(q.data); return { id: `d-${created.length}`, ...q.data }; }) },
   };
-  d.config = { get: () => true };
+  d.config = { get: () => contextOn };
   d.logger = { log: jest.fn(), warn: jest.fn() };
   d.extractContent = jest.fn(async () => content);
   d.decideOrigin = jest.fn(async (f: any) => (f.mimetype.startsWith('image/') ? 'photo' : 'typed'));
@@ -37,10 +40,14 @@ function realDocuments(content: string) {
   return { d, created };
 }
 
-function amaniSends(message: any, content = 'Acme 40000 won') {
+/** The notes kept on Amani's number, across everything she sends in one test: the told-once note lives here. */
+type Notes = { phone: string; kind: string }[];
+function amaniSends(message: any, content = 'Acme 40000 won', notes: Notes = [], contextOn = true) {
   const h = anInboundHarness({ open: [OPEN], thread: { checkInId: 'ci-1' }, who: { personId: 'person-amani', userId: 'u-amani' } });
   h.whatsapp.fetchMediaOn.mockResolvedValue({ buffer: Buffer.from('%PDF-1.4 fake'), mimeType: message[message.type]?.mime_type ?? 'application/pdf' });
-  const { d, created } = realDocuments(content);
+  h.prisma.whatsAppSend.findFirst = jest.fn(async (q: any) => notes.find((n) => n.phone === q.where.phone && n.kind.startsWith(q.where.kind.startsWith)) ?? null);
+  h.prisma.whatsAppSend.create = jest.fn(async (q: any) => { notes.push(q.data); return q.data; });
+  const { d, created } = realDocuments(content, contextOn);
   (h.service as any).documents = d;
   const body = { entry: [{ changes: [{ value: { messages: [{ id: `wamid.${Math.random()}`, from: '254700000001', timestamp: String(TUESDAY_10_42), ...message }] } }] }] };
   return { h, d, created, send: () => h.service.handle('org-1', body, 'ours') };
@@ -50,12 +57,13 @@ describe('a photo and a PDF sent on WhatsApp', () => {
   it.each([
     ['a PDF', { type: 'document', document: { id: 'm-1', mime_type: 'application/pdf', filename: 'pipeline.pdf' } }, '"pipeline.pdf"', 'typed'],
     ['a photo', { type: 'image', image: { id: 'm-2', mime_type: 'image/jpeg' } }, 'Your photo', 'photo'],
-  ])('%s is kept on her check-in exactly as an app upload, and counted as proof', async (_what, message, called, origin) => {
+  ])('%s is kept on her check-in as an app upload she has opened to the check-in, and counted as proof', async (_what, message, called, origin) => {
     const { h, d, created, send } = amaniSends(message);
     await send();
     expect(h.whatsapp.fetchMediaOn).toHaveBeenCalled();
     expect(created).toHaveLength(1);
-    expect(created[0]).toMatchObject({ groundId: 'g-1', participantId: 'p-amani', visibility: defaultVisibilityForUpload(), origin });
+    /* Sent in reply during her check-in, so shared with it: the state setVisibility writes when she opens an app upload. */
+    expect(created[0]).toMatchObject({ groundId: 'g-1', participantId: 'p-amani', visibility: DocumentVisibility.OPEN, origin });
     /* Read against what she said, as an app upload is: this is what makes a line backed by it. */
     expect(d.anchorAfterUpload).toHaveBeenCalledWith('p-amani', 'g-1');
     expect(h.said).toHaveLength(1);
@@ -73,7 +81,8 @@ describe('a photo and a PDF sent on WhatsApp', () => {
     const { h, created, send } = amaniSends({ type: 'image', image: { id: 'm-3', mime_type: 'image/jpeg' } }, '[Attached: image-1.jpg - could not read the image.]');
     await send();
     expect(created).toHaveLength(1);
-    expect(h.said).toEqual([I_COULD_NOT_OPEN_THAT_FILE]);
+    /* Her first file on WhatsApp, so the reply also tells her, once, that it went to her check-in. */
+    expect(h.said).toEqual([`${I_COULD_NOT_OPEN_THAT_FILE} ${ONCE}`]);
     expect(I_COULD_NOT_OPEN_THAT_FILE).toBe('I could not open that file. Could you tell me what it shows?');
   });
 });
@@ -84,13 +93,14 @@ describe('a location pin sent on WhatsApp', () => {
     await send();
     expect(created).toHaveLength(1);
     expect(created[0]).toMatchObject({
-      groundId: 'g-1', participantId: 'p-amani', visibility: defaultVisibilityForUpload(),
+      groundId: 'g-1', participantId: 'p-amani', visibility: DocumentVisibility.OPEN,
       fileName: 'Location pin shared at 10:42 on Tuesday 13 October',
       content: 'Amani shared a location pin at 10:42 on Tuesday 13 October. The pin is named Kilimani Shop. The address on the pin is Argwings Kodhek Road. The pin is at latitude -1.2921, longitude 36.7871.',
     });
     expect(created[0].createdAt).toEqual(new Date(TUESDAY_10_42 * 1000));
     expect(d.anchorAfterUpload).toHaveBeenCalledWith('p-amani', 'g-1');
-    expect(h.said).toEqual(['Your location pin is on your check-in. You shared it at 10:42 on Tuesday 13 October. The pin is named Kilimani Shop. The address on the pin is Argwings Kodhek Road. Only you can see this, and nobody else can open it.']);
+    expect(h.said).toEqual([`Your location pin is on your check-in. You shared it at 10:42 on Tuesday 13 October. The pin is named Kilimani Shop. The address on the pin is Argwings Kodhek Road. ${ONCE}`]);
+    expect(h.said[0]).not.toMatch(/Only you can see this|nobody else can open it/);
   });
 
   it('with no name from WhatsApp, no place is named', async () => {
@@ -109,20 +119,58 @@ describe('a location pin sent on WhatsApp', () => {
   });
 });
 
-describe('who sees a photo, a PDF or a pin: whoever sees her other proof today', () => {
-  it('kept with the same visibility as an app upload, so the same people can open it', async () => {
+describe('who sees a photo, a PDF or a pin: whoever sees her other shared proof today', () => {
+  const readers = {
+    'Rukia, the lead': { participantId: 'p-rukia', isLead: true },
+    'Baraka, a colleague': { participantId: 'p-baraka', isLead: false },
+    'Juma, a read-only admin': { participantId: null, isLead: true },
+    'Amani herself': { participantId: 'p-amani', isLead: false },
+    'Wanjiru, not on the check-in': { participantId: null, isLead: false },
+  };
+  /* Her other shared proof: an app upload she opened to the check-in. */
+  const herOtherSharedProof = { participantId: 'p-amani', visibility: DocumentVisibility.OPEN };
+
+  it('the lead can open the photo, and everyone else sees it exactly as they see her other shared proof', async () => {
     const pin = amaniSends({ type: 'location', location: { latitude: -1.2921, longitude: 36.7871 } });
     await pin.send();
     const photo = amaniSends({ type: 'image', image: { id: 'm-2', mime_type: 'image/jpeg' } });
     await photo.send();
-    const anAppUpload = { participantId: 'p-amani', visibility: defaultVisibilityForUpload() };
-    const readers = { Amani: { participantId: 'p-amani', isLead: false }, 'Rukia, the lead': { participantId: 'p-rukia', isLead: true }, 'Baraka, a colleague': { participantId: 'p-baraka', isLead: false }, 'Juma, a read-only admin': { participantId: null, isLead: true } };
+    expect(canSeeDocument(photo.created[0], readers['Rukia, the lead'], true)).toBe(true);
     for (const kept of [pin.created[0], photo.created[0]]) {
       for (const reader of Object.values(readers)) {
-        for (const contextOn of [true, false]) {
-          expect(canSeeDocument({ participantId: kept.participantId, visibility: kept.visibility }, reader, contextOn)).toBe(canSeeDocument(anAppUpload, reader, contextOn));
-        }
+        expect(canSeeDocument(kept, reader, true)).toBe(canSeeDocument(herOtherSharedProof, reader, true));
       }
     }
+  });
+
+  it('the first reply carries the sentence once, and the next one does not', async () => {
+    expect(PHOTOS_YOU_SEND_HERE_ARE_PROOF).toBe(ONCE);
+    const notes: Notes = [];
+    const first = amaniSends({ type: 'image', image: { id: 'm-2', mime_type: 'image/jpeg' } }, 'Acme 40000 won', notes);
+    await first.send();
+    expect(first.h.said).toEqual([`Your photo is on your check-in. Anything it backs up is read against what you said. ${ONCE}`]);
+    expect(first.h.said[0].split(ONCE)).toHaveLength(2);
+    const second = amaniSends({ type: 'location', location: { latitude: -1.2921, longitude: 36.7871 } }, 'x', notes);
+    await second.send();
+    expect(second.created[0].visibility).toBe(DocumentVisibility.OPEN);
+    expect(second.h.said[0]).not.toContain(ONCE);
+    expect(second.h.said[0]).not.toMatch(/Only you can see this/);
+    const third = amaniSends({ type: 'document', document: { id: 'm-1', mime_type: 'application/pdf', filename: 'pipeline.pdf' } }, 'Acme 40000 won', notes);
+    await third.send();
+    expect(third.h.said).toEqual(['"pipeline.pdf" is on your check-in. Anything it backs up is read against what you said.']);
+  });
+
+  it('with adding documents switched off, nothing is shared and she is not told the lead can see it', async () => {
+    const off = amaniSends({ type: 'image', image: { id: 'm-2', mime_type: 'image/jpeg' } }, 'Acme 40000 won', [], false);
+    await off.send();
+    expect(off.created[0].visibility).toBe(defaultVisibilityForUpload());
+    expect(off.h.said[0]).not.toContain(ONCE);
+  });
+
+  it('an app upload still starts private to the person who uploaded it', async () => {
+    const { d, created } = realDocuments('Acme 40000 won');
+    await d.upload('g-1', 'u-amani', { originalname: 'pipeline.pdf', mimetype: 'application/pdf', buffer: Buffer.from('%PDF-1.4 fake'), size: 13 } as any);
+    expect(created[0].visibility).toBe(DocumentVisibility.OWN);
+    expect(canSeeDocument(created[0], readers['Rukia, the lead'], true)).toBe(false);
   });
 });

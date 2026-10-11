@@ -17,7 +17,7 @@ import { AnthropicService } from '../conversation/anthropic.service';
 import { ConversationService } from '../conversation/conversation.service';
 import { originFromTheFile, looksGeneratedByAModel, type DocumentOrigin } from './what-kind-of-thing-a-document-is';
 import { DOCUMENT_ORIGIN_PROMPT, DOCUMENT_ORIGIN_SCHEMA, DESCRIPTION_CHECK_PROMPT, DESCRIPTION_CHECK_SCHEMA } from '../conversation/prompt-library';
-import { RecordEntryType } from '@prisma/client';
+import { DocumentVisibility, RecordEntryType } from '@prisma/client';
 import { slidesInOrder, textFromOneSlide, deckToText } from './slides-are-mostly-headings';
 import { looksLikeAConversation, THE_ASSUMPTION_WHEN_UPLOADING } from './a-conversation-belongs-to-the-people-in-it';
 import { aReceiptOrAnInvoice } from './a-receipt-is-not-a-conversation';
@@ -350,6 +350,12 @@ export class DocumentsService {
     consentConfirmed = false,
     /* What they want looked for in it, in their words. Kept exactly - see the schema note. */
     uploaderNote?: string,
+    /*
+     * SENT IN REPLY DURING A WHATSAPP CHECK-IN (Hafsah, 11 October 2026): sending it there is the person
+     * choosing to share it, so it is kept already opened to the check-in, the same state an app upload
+     * reaches when its uploader opens it. Never set by the app's upload, which keeps the private default.
+     */
+    opts: { sharedWithTheCheckIn?: boolean } = {},
   ) {
     if (!file) throw new BadRequestException('No file came through, so choose a file and try again.');
     if (file.size > MAX_BYTES) throw new BadRequestException('That file is larger than 10 MB, so choose a smaller one.');
@@ -427,7 +433,7 @@ export class DocumentsService {
         ...(isConversation ? { consentConfirmedAt: new Date(), consentConfirmedById: userId } : {}),
         // G24 rule 3: private unless somebody says otherwise. See
         // a-document-is-context.ts for why the lead is not an exception.
-        visibility: defaultVisibilityForUpload(),
+        visibility: this.visibilityWhenKept(opts.sharedWithTheCheckIn),
         fileName: file.originalname,
         mimeType: file.mimetype,
         uploaderNote: uploaderNote?.trim() || null,
@@ -681,7 +687,17 @@ export class DocumentsService {
    * visibility, so whoever sees their other proof sees this and nobody else does. The coordinates,
    * and the name and address WhatsApp sent with it, are its content; nothing is read into it.
    */
-  async keepALocationPin(groundId: string, userId: string, pin: ALocationPin, sentAt: Date, zone?: string) {
+  /**
+   * Private to the person who kept it, unless they shared it with the check-in as they sent it. Shared
+   * means OPEN, exactly what setVisibility writes when an uploader opens a file to the check-in, and
+   * only while adding documents is switched on: with it off every document is the uploader's own, so
+   * nothing is stored as shared that the read path would not honour.
+   */
+  private visibilityWhenKept(sharedWithTheCheckIn?: boolean): DocumentVisibility {
+    return sharedWithTheCheckIn && this.config.get<boolean>('app.contextEnabled') === true ? DocumentVisibility.OPEN : defaultVisibilityForUpload();
+  }
+
+  async keepALocationPin(groundId: string, userId: string, pin: ALocationPin, sentAt: Date, zone?: string, opts: { sharedWithTheCheckIn?: boolean } = {}) {
     const participant: any = await this.assertParticipant(groundId, userId);
     const user = await (this.prisma as any).user?.findUnique?.({ where: { id: userId }, select: { firstName: true } }).catch(() => null);
     const who = (user?.firstName ?? '').trim() || (participant?.nameGiven ?? '').trim().split(/\s+/)[0] || 'Somebody';
@@ -690,7 +706,7 @@ export class DocumentsService {
         groundId,
         participantId: participant.id,
         isConversation: false,
-        visibility: defaultVisibilityForUpload(),
+        visibility: this.visibilityWhenKept(opts.sharedWithTheCheckIn),
         fileName: aLocationPinsName(sentAt, zone),
         mimeType: 'text/plain',
         content: aLocationPinOnTheRecord(who, pin, sentAt, zone),
