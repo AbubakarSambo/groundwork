@@ -53,13 +53,16 @@ describe('Your work', () => {
     expect(screen.queryByText(/apart from the pattern below/)).toBeNull()
   })
 
-  it('the check-ins tile, but not the promises-kept tile while nothing has settled this month', async () => {
+  it('the sessions tile, but not the promises-kept tile while nothing has settled this month', async () => {
     mount()
     expect(await screen.findByText('1 of 12')).toBeTruthy()
     /* Changed from "check-ins of 12" (re-review): it repeated the number already shown above it -
-       "1 of 12" over "check-ins of 12" - and read as a clipped fragment. "check-ins so far" says
-       what the tile counts without saying the number twice. */
-    expect(screen.getByText('check-ins so far')).toBeTruthy()
+       "1 of 12" over "check-ins of 12" - and read as a clipped fragment. "sessions so far" says
+       what the tile counts without saying the number twice.
+       UPDATED FOR B-147: "check-ins so far" was itself the one-check-ins-mean-sessions mistake the
+       audit found repeated across the product - this tile counts SESSIONS of the one check-in,
+       not separate check-ins, so "session" (the product's one word for that) replaces it. */
+    expect(screen.getByText('sessions so far')).toBeTruthy()
     expect(screen.queryByText(/promises kept this month/)).toBeNull()
   })
 
@@ -200,5 +203,25 @@ describe('Your work', () => {
     await screen.findByText(/I am aiming for 3 shops in Kilimani/)
     const row = screen.getByText(/I am aiming for 3 shops in Kilimani/).closest('div')
     expect(row?.textContent).toBe('You said, “I am aiming for 3 shops in Kilimani”')
+  })
+})
+
+/**
+ * B-080: A LEAD WHO ONLY MANAGES IS NOT GIVEN A SESSION COUNT OF HER OWN. Grace runs her check-in
+ * and never checks in, so "0 of 4" would never move and "This appears once you finish your first
+ * check-in." would never stop being true. She reads what she does instead.
+ */
+describe('a lead who only manages', () => {
+  it('reads what she does, never a session count of her own', async () => {
+    mount({ myParticipant: { id: 'p1', managingOnly: true, objective: { all: [] } }, totalSessions: 4, completedCount: 0 })
+    expect(await screen.findByText('You check in when you choose. Use Check in yourself any time.')).toBeTruthy()
+    expect(screen.queryByText('0 of 4')).toBeNull()
+    expect(screen.queryByText('check-ins so far')).toBeNull()
+    expect(screen.queryByText('This appears once you finish your first check-in.')).toBeNull()
+  })
+
+  it('a lead who does check in still reads her own count', async () => {
+    mount({ myParticipant: { id: 'p1', managingOnly: false, objective: { all: [] } }, totalSessions: 4, completedCount: 0 })
+    expect(await screen.findByText('0 of 4')).toBeTruthy()
   })
 })

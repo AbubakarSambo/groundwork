@@ -12,17 +12,18 @@ import type { Cadence } from '@/components/gw/when-the-check-ins-land'
  */
 const TODAY = new Date(2026, 5, 30)
 
-function Harness({ start = '', end = '', cadence = 'FORTNIGHTLY' as Cadence, chosen = false, days = [] as number[] }) {
+function Harness({ start = '', end = '', cadence = 'FORTNIGHTLY' as Cadence, chosen = false, days = [] as number[], anchorDay = null as number | null }) {
   const [c, setC] = useState<Cadence>(cadence)
   const [picked, setPicked] = useState(chosen)
   const [wd, setWd] = useState<number[]>(days)
   const [s, setS] = useState(start)
   const [e, setE] = useState(end)
+  const [ad, setAd] = useState<number | null>(anchorDay)
   return (
     <>
-      <TheSetup cadence={c} cadenceChosen={picked} onCadence={(x) => { setC(x); setPicked(true) }} anchorDay={null}
+      <TheSetup cadence={c} cadenceChosen={picked} onCadence={(x) => { setC(x); setPicked(true) }} anchorDay={ad} onAnchorDay={setAd}
         workingDays={wd} daysPicker={<WhichDaysTheyWork value={wd} onChange={setWd} />} startsOn={s} onStartsOn={setS} endsOn={e} onEndsOn={setE} today={TODAY} />
-      <output data-testid="saved">{JSON.stringify({ c, s, e, wd })}</output>
+      <output data-testid="saved">{JSON.stringify({ c, s, e, wd, ad })}</output>
     </>
   )
 }
@@ -62,8 +63,10 @@ describe('the setup, as the lead reads it', () => {
   it('says which days the check-ins open, as the prototype does', () => {
     render(<Harness start="2026-07-01" end="2026-09-30" cadence="DAILY" chosen days={[1, 2, 3, 4, 5]} />)
     /* The prototype's sample says 65; counted for real, 1 July to 30 September 2026 has 66 weekdays
-       (23 in July, 21 in August, 22 in September). The sentence is the prototype's; the number is true. */
-    expect(screen.getByText('Check-ins open on Wed 1 July, Thu 2, Fri 3, Mon 6, Tue 7 and on from there, until 30 September: 66 in all.')).toBeTruthy()
+       (23 in July, 21 in August, 22 in September). The sentence is the prototype's; the number is true.
+       SCREEN FAULT 10 (FINAL WALK): "until 30 September: 66 in all." joined two pieces with a colon
+       and never said what was counted - now "until 30 September, 66 sessions in all.". */
+    expect(screen.getByText('Check-ins open on Wed 1 July, Thu 2, Fri 3, Mon 6, Tue 7 and on from there, until 30 September, 66 sessions in all.')).toBeTruthy()
     expect(screen.queryByText(/Not set yet/)).toBeNull()
   })
 
@@ -103,27 +106,61 @@ describe('counting the days (U.6 review)', () => {
     const now = whenTheyOpen({ cadence: 'DAILY', anchorDay: null, startsOn: '', endsOn: '2026-07-10', workingDays: [], today: afternoon })
     const onTheDate = whenTheyOpen({ cadence: 'DAILY', anchorDay: null, startsOn: '2026-06-30', endsOn: '2026-07-10', workingDays: [], today: afternoon })
     expect(now).toBe(onTheDate)
-    expect(now).toMatch(/: 11 in all\.$/)
+    /* Screen fault 10 (final walk): a comma, not a colon, and "sessions" said plainly. */
+    expect(now).toMatch(/, 11 sessions in all\.$/)
   })
   it('and a weekly run keeps its last day', () => {
     expect(whenTheyOpen({ cadence: 'WEEKLY', anchorDay: null, startsOn: '', endsOn: '2026-07-21', workingDays: [], today: afternoon }))
-      .toBe('Check-ins open on Tue 30 June, Tue 7 July, Tue 14 and Tue 21: 4 in all.')
+      .toBe('Check-ins open on Tue 30 June, Tue 7 July, Tue 14 and Tue 21, 4 sessions in all.')
   })
 })
 
-describe('one day picker (U.6 review)', () => {
-  /* Read live: "On which day?" said Saturday, "On which days" said weekdays only, and weekly came
-     out fortnightly. There is one picker now, the same as on the check-in's own Setup. */
-  it('a weekly rhythm offers "On which days" and nothing else about days', () => {
+describe('which day it lands on (nothing-removed-screens.md item 2)', () => {
+  /*
+   * RESTORED: live offered "On which day?" for a weekly or fortnightly rhythm, sent as
+   * `cadenceAnchorDay`. It was removed here (U.6 review, "one day picker") out of concern that a
+   * second, disconnected picker could say Saturday while "On which days" said weekdays only and the
+   * two together turned a weekly rhythm into a fortnightly one - but `whenTheCheckInsLand` already
+   * folds an anchor day and the working days together correctly (it lands on the anchor day, then
+   * moves forward to the next working day), so restoring the picker does not reintroduce that bug.
+   */
+  it('a weekly rhythm offers both "On which days" and which day it lands on', () => {
     render(<Harness cadence="WEEKLY" chosen />)
     expect(screen.getAllByRole('region', { name: 'On which days' })).toHaveLength(1)
-    expect(document.body.textContent).not.toContain('On which day?')
-    expect(screen.queryByRole('combobox')).toBeNull()
+    expect(screen.getByText('Which day of the week should check-ins open? (optional)')).toBeTruthy()
+    for (const label of ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']) {
+      expect(screen.getByRole('button', { name: label })).toBeTruthy()
+    }
   })
-  it('and so does a monthly one', () => {
+
+  it('picking a weekday saves it, and picking it again clears it', () => {
+    render(<Harness cadence="WEEKLY" chosen />)
+    fireEvent.click(screen.getByRole('button', { name: 'Mon' }))
+    expect(saved().ad).toBe(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Mon' }))
+    expect(saved().ad).toBeNull()
+  })
+
+  it('a monthly rhythm offers a day of the month, not a weekday', () => {
     render(<Harness cadence="MONTHLY" chosen />)
-    expect(document.body.textContent).not.toContain('On which day of the month?')
-    expect(screen.queryByRole('combobox')).toBeNull()
+    expect(screen.getByText('Which day of the month should check-ins open? (optional)')).toBeTruthy()
+    const select = screen.getByRole('combobox') as HTMLSelectElement
+    fireEvent.change(select, { target: { value: '15' } })
+    expect(saved().ad).toBe(15)
+    expect(screen.queryByRole('button', { name: 'Mon' })).toBeNull()
+  })
+
+  it('a check-in once, or when I choose, offers neither', () => {
+    render(<Harness cadence="ONE_TIME" chosen start="2026-07-01" />)
+    expect(document.body.textContent).not.toContain('Which day of the week')
+    expect(document.body.textContent).not.toContain('Which day of the month')
+  })
+
+  it('changing the rhythm clears a day picked for the one before it', () => {
+    render(<Harness cadence="MONTHLY" chosen anchorDay={15} />)
+    expect(saved().ad).toBe(15)
+    fireEvent.click(screen.getByRole('button', { name: 'Every week' }))
+    expect(saved().ad).toBeNull()
   })
 })
 
@@ -142,6 +179,52 @@ describe('the chosen end, as the server will keep it (U.6 review)', () => {
      so the check-in's header, its Setup and its invitation say the same. */
   it('weekly from Sunday 27 September until 6 November is 6 check-ins', () => {
     expect(whenTheyOpen({ cadence: 'WEEKLY', anchorDay: null, startsOn: '2026-09-27', endsOn: '2026-11-06', workingDays: [], today: new Date(2026, 8, 27) }))
-      .toBe('Check-ins open on Sun 27 September, Sun 4 October, Sun 11, Sun 18, Sun 25 and on from there, until 6 November: 6 in all.')
+      .toBe('Check-ins open on Sun 27 September, Sun 4 October, Sun 11, Sun 18, Sun 25 and on from there, until 6 November, 6 sessions in all.')
+  })
+})
+
+/*
+ * ITEM 5 (the walk, Sunday 11 October 2026, "every Monday"). With "Now", Hafsah decided (11 October):
+ * the first check-in opens at once and stays open until the next set day a full cycle or more away,
+ * so the list reads Sun 11 October, Mon 19, Mon 26, never Sun 11 and Mon 12 a day apart. With
+ * Tomorrow or a date, the next check-in is the first set day after the start.
+ */
+describe('the dates after the start the lead chose follow the set day', () => {
+  const SUNDAY_11 = new Date(2026, 9, 11, 16, 0)
+  it('Now, on a Sunday, every Monday: the first stays open until Monday 19', () => {
+    expect(whenTheyOpen({ cadence: 'WEEKLY', anchorDay: 1, startsOn: '', endsOn: '', workingDays: [], today: SUNDAY_11 }))
+      .toBe('Check-ins open on Sun 11 October, Mon 19, Mon 26, Mon 2 November, Mon 9 and on from there.')
+  })
+  it('Now, on the Monday itself', () => {
+    expect(whenTheyOpen({ cadence: 'WEEKLY', anchorDay: 1, startsOn: '', endsOn: '', workingDays: [], today: new Date(2026, 9, 12, 9, 0) }))
+      .toBe('Check-ins open on Mon 12 October, Mon 19, Mon 26, Mon 2 November, Mon 9 and on from there.')
+  })
+  it('Now, on Saturday 17: Monday 19 is less than a week away, so the next is Monday 26', () => {
+    expect(whenTheyOpen({ cadence: 'WEEKLY', anchorDay: 1, startsOn: '', endsOn: '', workingDays: [], today: new Date(2026, 9, 17, 9, 0) }))
+      .toBe('Check-ins open on Sat 17 October, Mon 26, Mon 2 November, Mon 9, Mon 16 and on from there.')
+  })
+  it('Now, every other Monday, on a Sunday', () => {
+    expect(whenTheyOpen({ cadence: 'FORTNIGHTLY', anchorDay: 1, startsOn: '', endsOn: '', workingDays: [], today: SUNDAY_11 }))
+      .toBe('Check-ins open on Sun 11 October, Mon 26, Mon 9 November, Mon 23, Mon 7 December and on from there.')
+  })
+  it('Tomorrow, a Monday', () => {
+    expect(whenTheyOpen({ cadence: 'WEEKLY', anchorDay: 1, startsOn: '2026-10-12', endsOn: '', workingDays: [], today: SUNDAY_11 }))
+      .toBe('Check-ins open on Mon 12 October, Mon 19, Mon 26, Mon 2 November, Mon 9 and on from there.')
+  })
+  it('On a date, Wednesday 21', () => {
+    expect(whenTheyOpen({ cadence: 'WEEKLY', anchorDay: 1, startsOn: '2026-10-21', endsOn: '', workingDays: [], today: SUNDAY_11 }))
+      .toBe('Check-ins open on Wed 21 October, Mon 26, Mon 2 November, Mon 9, Mon 16 and on from there.')
+  })
+  it('Now, monthly on the 20th, on the 11th: the 20th of this month is less than a month away', () => {
+    expect(whenTheyOpen({ cadence: 'MONTHLY', anchorDay: 20, startsOn: '', endsOn: '', workingDays: [], today: SUNDAY_11 }))
+      .toBe('Check-ins open on Sun 11 October, Fri 20 November, Sun 20 December, Wed 20 January, Sat 20 February and on from there.')
+  })
+  it('Now, monthly on the 20th, on the 25th: 20 November is less than a month away', () => {
+    expect(whenTheyOpen({ cadence: 'MONTHLY', anchorDay: 20, startsOn: '', endsOn: '', workingDays: [], today: new Date(2026, 9, 25, 9, 0) }))
+      .toBe('Check-ins open on Sun 25 October, Sun 20 December, Wed 20 January, Sat 20 February, Sat 20 March and on from there.')
+  })
+  it('On a date, monthly on the 20th, starting Monday 12: the 20th of the same month', () => {
+    expect(whenTheyOpen({ cadence: 'MONTHLY', anchorDay: 20, startsOn: '2026-10-12', endsOn: '', workingDays: [], today: SUNDAY_11 }))
+      .toBe('Check-ins open on Mon 12 October, Tue 20, Fri 20 November, Sun 20 December, Wed 20 January and on from there.')
   })
 })

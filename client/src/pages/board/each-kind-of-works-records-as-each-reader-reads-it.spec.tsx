@@ -274,10 +274,14 @@ describe('nobody has said the kind of work yet: every section not-known', () => 
     ],
   }
 
-  it('the lead is asked to choose a kind, and every section reads as not-known', async () => {
+  it('the lead is asked to choose a kind, and every section reads as not-known, said once', async () => {
     me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
     renderBoard(NO_KIND)
     expect(await screen.findByText('Nobody has said what kind of work this check-in is about yet. Choose one, so its board can keep the right kind of record.')).toBeTruthy()
-    expect(screen.getAllByText('Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind.').length).toBe(2)
+    /* Was pinned at 2 (the same sentence shown once per section), the exact repeated-line fault
+       found live on a role-handover board (real-user walk, Kijani Foods, fault 4b): the collapsing
+       this sentence already gets on a project or onboarding board was never scoped to apply here
+       too, though the check-in's family makes no difference to whether repeating it is right. */
+    expect(screen.getAllByText('Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind.').length).toBe(1)
   })
 })

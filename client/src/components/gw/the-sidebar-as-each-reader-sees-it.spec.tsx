@@ -53,6 +53,10 @@ const GROUNDS = [
 function shell(user: any, orgs: any[] = [{ id: 'o1', name: 'Coamana', role: 'MEMBER', active: true }], today: any = { count: 0, needs: [], line: null, comingUp: [] }) {
   useAuthStore.setState({ user, token: 't', isAuthenticated: true } as any)
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } })
+  /* B-202 (review round 3): AppShell now waits for the same ['my-waiting'] read RequireOrgSetup
+  already makes before it mounts the sidebar at all - without this cached answer the real
+  authApi.myWaiting (not mocked in this file) would be asked for real. */
+  qc.setQueryData(['my-waiting'], { waiting: false })
   qc.setQueryData(['grounds'], GROUNDS)
   qc.setQueryData(['today'], today)
   qc.setQueryData(['my-organizations'], orgs)
@@ -181,6 +185,10 @@ describe('two check-ins that share one label', () => {
   it('says when each one started, so the rail does not read the same name twice with nothing to tell them apart', () => {
     useAuthStore.setState({ user: LEAD, token: 't', isAuthenticated: true } as any)
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } })
+    /* B-202 (review round 3): AppShell now waits for the same ['my-waiting'] read RequireOrgSetup
+    already makes before it mounts the sidebar at all - without this cached answer the real
+    authApi.myWaiting (not mocked in this file) would be asked for real. */
+    qc.setQueryData(['my-waiting'], { waiting: false })
     qc.setQueryData(['grounds'], DUPES)
     qc.setQueryData(['today'], { count: 0, needs: [], line: null, comingUp: [] })
     qc.setQueryData(['my-organizations'], [{ id: 'o1', name: 'Coamana', role: 'MEMBER', active: true }])
@@ -216,8 +224,19 @@ describe('the sidebar, as a participant and as an admin read it', () => {
   it('a participant sees their check-ins and their own menu, and no organisation pages', () => {
     const { rail } = shell({ ...LEAD, id: 'u-other', firstName: 'Adam', lastName: 'Grunewald' })
     expect(rail).toHaveTextContent('Coamana growth, Q3')
-    expect(within(rail).queryByRole('link', { name: /People|Connections|Suites|Plan and billing|Boards/ })).toBeNull()
+    expect(within(rail).queryByRole('link', { name: /People|Connections|Suites|Plan and billing/ })).toBeNull()
     expect(within(rail).queryAllByRole('button', { name: /^Rename / })).toHaveLength(0)
+  })
+
+  /*
+   * HAFSAH, 10 OCTOBER (B-146): A PARTICIPANT NOW SEES "BOARDS" TOO. The second deep page audit
+   * found /boards already worked for a member - groundsApi.list already scopes it to what they
+   * take part in - but there was no door to it in her side menu or her More menu. This used to be
+   * folded into the list above, pinning that gap; it is its own assertion now, with the reason.
+   */
+  it('a participant also has "Boards", reaching the check-ins they take part in', () => {
+    const { rail } = shell({ ...LEAD, id: 'u-other', firstName: 'Adam', lastName: 'Grunewald' })
+    expect(within(rail).getByRole('link', { name: 'Boards' })).toHaveAttribute('href', '/boards')
   })
 
   it('an admin also sees Boards, and the organisation\'s pages under its name', () => {

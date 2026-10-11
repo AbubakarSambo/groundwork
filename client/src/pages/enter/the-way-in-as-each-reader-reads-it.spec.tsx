@@ -158,12 +158,84 @@ describe('a name, the topic in plain words, never the lead\'s words (U.6 review)
     expect(fallbackGroundName(undefined, 'U6 Review Co')).toBe('A check-in at U6 Review Co')
     expect(fallbackGroundName()).toBe('A check-in')
   })
+  /*
+   * SCREEN FAULT 2 (live walk, 6 October 2026): BOTH SITES NOW BRANCH ON THE ANCHOR FIRST. An
+   * anchor draft's name is the served `groundLabel` itself ("Help my team understand"), never the
+   * aim or the organisation fallback - so both call sites read `isAnchorDraft() ? anchorGroundLabel
+   * : (...)`, with the ordering this test already pinned (the lead's pick first, then the settled
+   * situation, never her words) unchanged inside that `(...)`.
+   *
+   * FAULTS 4 AND 6 (live walk, 6 October 2026): BOTH SITES NOW SHARE ONE `theDefaultGroundName()`
+   * HELPER, rather than each repeating the same `fallbackGroundName(...)` call - the one place the
+   * new hire's own default (faults 4 and 6, naming the person rather than the situation) has to
+   * live so the committed name and the side panel's preview can never disagree. The ordering this
+   * test pins (the lead's pick first, then the settled situation) now lives inside
+   * `theDefaultGroundName` itself, checked separately below.
+   */
   it('is handed the lead\'s pick first, then the settled situation, and never her words', async () => {
     const { readFileSync } = await import('fs')
     const { join } = await import('path')
     const src = readFileSync(join(__dirname, 'EntryChatPage.tsx'), 'utf8')
-    expect(src.match(/groundLabel: groundName\.trim\(\) \|\| fallbackGroundName\(theSituationTheLeadPicked\(\) \?\? onboardingSelections\.classifiedScenario, /g)).toHaveLength(2)
+    expect(src.match(/groundLabel: isAnchorDraft\(\)\s*\n\s*\? anchorGroundLabel\s*\n(?:\s*\/\*.*\*\/\s*\n)?\s*: \(groundName\.trim\(\) \|\| theDefaultGroundName\(\)\),/g)).toHaveLength(2)
+    expect(src).toMatch(/function theDefaultGroundName\(\): string \{\s*\n\s*return effectiveFallbackGroundName\(\s*\n\s*theSituationTheLeadPicked\(\) \?\? onboardingSelections\.classifiedScenario,/)
     expect(src).not.toMatch(/fallbackGroundName\([^)]*onboardingSelections\.initial/)
+  })
+
+  /*
+   * FAULT 6 (live walk, 6 October 2026): THE SAVED CHECK-IN'S DEFAULT NAME, FOR A NEW HIRE, IS THE
+   * PERSON IT IS ABOUT. Read live: a lead who never typed a name saved a check-in called "Help a
+   * new hire get started" - the situation's own label, where the prototype's own check-ins read a
+   * person's name ("Faith, first 90 days", new.txt's sidebar). Only the new-hire situation changes
+   * here; every other situation falls to the lead's own name when there is one to use (fault 15,
+   * checked below), and to `fallbackGroundName`'s own situation label only when there is not -
+   * proven here with no lead name passed, which is this test's whole point.
+   */
+  it('defaults a new hire\'s check-in to their name and the length of time, not the situation\'s label', async () => {
+    const { newHireDays, newHireGroundNameFallback, effectiveFallbackGroundName } = await import('./EntryChatPage')
+    expect(newHireDays('Imani is starting next week.')).toBe(90)
+    expect(newHireDays('Her first 60 days matter most.')).toBe(60)
+    expect(newHireDays('A 45-day plan would help.')).toBe(45)
+    expect(newHireGroundNameFallback(['Imani Wekesa'], 90)).toBe('Imani, first 90 days')
+    expect(newHireGroundNameFallback([], 90)).toBeUndefined()
+    expect(newHireGroundNameFallback(undefined, 90)).toBeUndefined()
+    expect(effectiveFallbackGroundName('NEW_HIRE', ['Imani Wekesa'], 'Imani starts in two weeks.'))
+      .toBe('Imani, first 90 days')
+    expect(effectiveFallbackGroundName('NEW_HIRE', ['Imani Wekesa'], 'Her first 60 days matter.'))
+      .toBe('Imani, first 60 days')
+    /* No name heard yet: falls back to the situation's own label, same as before. */
+    expect(effectiveFallbackGroundName('NEW_HIRE', [], 'Nobody named yet.'))
+      .toBe('Help a new hire get started')
+    /* Every other situation, with no lead name available either, is unaffected. */
+    expect(effectiveFallbackGroundName('PIP', ['Daniel'], 'Daniel is not delivering.'))
+      .toBe('Help someone get back on track')
+  })
+
+  /*
+   * FAULT 15 (coordinator, second round): WITH NO NAME TYPED, A NON-NEW-HIRE CHECK-IN TOOK THE
+   * SITUATION'S OWN LABEL AS ITS NAME ("Get a new project off to a good start"), the exact defect
+   * fault 6 above already fixed for a new hire, left standing everywhere else. Defaulted to the
+   * lead's own first name and a plain word for the kind of check-in instead - "Wairimu's project
+   * check-in", not the situation repeated back at her - whenever the lead's name is available.
+   * With no lead name (nobody signed in yet), this still falls to the situation's own label: a
+   * guess at her name would be worse, and that is exactly what the test just above still proves.
+   */
+  it('defaults an ordinary check-in to the lead\'s own name and the kind of check-in, once she has one', async () => {
+    const { effectiveFallbackGroundName, leadNameGroundNameFallback } = await import('./EntryChatPage')
+    expect(leadNameGroundNameFallback('Wairimu', 'NEW_PROJECT')).toBe('Wairimu\'s project check-in')
+    expect(leadNameGroundNameFallback('Wairimu', 'DRIFT')).toBe('Wairimu\'s project check-in')
+    expect(leadNameGroundNameFallback('Wairimu', 'PIP')).toBe('Wairimu\'s check-in')
+    expect(leadNameGroundNameFallback(undefined, 'NEW_PROJECT')).toBeUndefined()
+    expect(leadNameGroundNameFallback('  ', 'NEW_PROJECT')).toBeUndefined()
+
+    expect(effectiveFallbackGroundName('NEW_PROJECT', [], 'A new project is starting.', undefined, 'Wairimu'))
+      .toBe('Wairimu\'s project check-in')
+    expect(effectiveFallbackGroundName('DRIFT', [], 'The project has stalled.', undefined, 'Wairimu'))
+      .toBe('Wairimu\'s project check-in')
+    expect(effectiveFallbackGroundName('PIP', ['Daniel'], 'Daniel is not delivering.', undefined, 'Wairimu'))
+      .toBe('Wairimu\'s check-in')
+    /* The new-hire rule still wins over the lead's own name: the check-in is about the new hire. */
+    expect(effectiveFallbackGroundName('NEW_HIRE', ['Imani Wekesa'], 'Imani starts next week.', undefined, 'Wairimu'))
+      .toBe('Imani, first 90 days')
   })
 })
 
@@ -202,11 +274,13 @@ describe('who is on the list, in sentences (U.6 review)', () => {
     expect(whoIsWaitingSentence(['u6f-daniel@example.test'])).toBe('u6f-daniel@example.test is waiting to be invited.')
     expect(whoIsWaitingSentence(['a@x.test', 'b@x.test', 'c@x.test'])).toBe('a@x.test, b@x.test and c@x.test are waiting to be invited.')
   })
+  /* Screen fault 6(b), live walk 6 October 2026: "Your note:" was a label on a colon ("note:"),
+     which CLAUDE.md's wording rule forbids - "You wrote" and the words in quotation marks say who said it, with no colon. */
   it('says each person added without dashes', async () => {
     const { anEntryAsASentence } = await import('./EntryChatPage')
     expect(anEntryAsASentence('u6f-daniel@example.test - Daniel - He is the subject of this check-in'))
-      .toBe('u6f-daniel@example.test (Daniel). Your note: He is the subject of this check-in.')
-    expect(anEntryAsASentence('a@x.test - Runs the pipeline.')).toBe('a@x.test. Your note: Runs the pipeline.')
+      .toBe('u6f-daniel@example.test (Daniel). You wrote “He is the subject of this check-in”.')
+    expect(anEntryAsASentence('a@x.test - Runs the pipeline.')).toBe('a@x.test. You wrote “Runs the pipeline”.')
     expect(anEntryAsASentence('a@x.test')).toBe('a@x.test.')
   })
 })

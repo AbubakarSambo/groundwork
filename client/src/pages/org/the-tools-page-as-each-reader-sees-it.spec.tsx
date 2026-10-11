@@ -24,10 +24,10 @@ let whatsappOn = false
 vi.mock('@/lib/whatsapp-is-on', () => ({ useWhatsAppIsOn: () => whatsappOn }))
 import { IntegrationsPage } from './IntegrationsPage'
 
-function open(user: any) {
+function open(user: any, path = '/settings/tools') {
   useAuthStore.setState({ user, token: 't', isAuthenticated: true } as any)
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(<QueryClientProvider client={qc}><MemoryRouter><IntegrationsPage /></MemoryRouter></QueryClientProvider>)
+  return render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={[path]}><IntegrationsPage /></MemoryRouter></QueryClientProvider>)
 }
 
 beforeEach(() => { calls.length = 0; whatsappOn = false })
@@ -51,13 +51,31 @@ describe('Grace, an admin', () => {
        truncated sentence, missing tools.txt's own last clause ("unless you choose an event that
        carries it") - a real difference in meaning, not decoration: it says data only ever leaves
        because an admin chose an event that carries it, not merely that nothing sends today. Now
-       copied in full from docs/prototype/screens/F1-connections/tools.txt. */
-    expect(screen.getByText('For whoever runs Baridi Appliances’s systems. Everything here is off until you turn it on, and nothing sends what anyone said in a check-in unless you choose an event that carries it.')).toBeTruthy()
+       copied in full from docs/prototype/screens/F1-connections/tools.txt.
+       SCREEN FAULT 5b, FIXED: "Baridi Appliances’s" was wrong English - a name already ending in
+       "s" takes just an apostrophe. This test used to pin that mistake; it now reads "Baridi
+       Appliances’" (possessiveOf, client/src/lib/a-possessive.ts). The tests just below cover a
+       name that does not end in "s" ("’s" kept), and a second name that does. */
+    expect(screen.getByText('For whoever runs Baridi Appliances’ systems. Everything here is off until you turn it on, and nothing sends what anyone said in a check-in unless you choose an event that carries it.')).toBeTruthy()
     expect(await screen.findByText('Keys')).toBeTruthy()
     expect(screen.getByText('Be told when something happens')).toBeTruthy()
     expect(screen.getByText('Show Groundwork inside your own tool')).toBeTruthy()
     expect(screen.getByText('Recent deliveries')).toBeTruthy()
     expect(screen.getByText('How it looks inside your tool')).toBeTruthy()
+  })
+
+  /* SCREEN FAULT 5b: an organisation's name ending in "s" ("Kijani Foods") took just an apostrophe;
+     one that does not ("Nyali Traders") keeps the usual "'s". */
+  it('"Kijani Foods’ systems", for a name already ending in "s"', async () => {
+    open({ id: 'u-g', role: 'ADMIN', organizationName: 'Kijani Foods' })
+    expect(await screen.findByText(/For whoever runs/)).toBeTruthy()
+    expect(screen.getByText(/^For whoever runs Kijani Foods’ systems\./)).toBeTruthy()
+  })
+
+  it('"Nyali Metal’s systems" keeps the usual "\'s" for a name not ending in "s"', async () => {
+    open({ id: 'u-g', role: 'ADMIN', organizationName: 'Nyali Metal' })
+    expect(await screen.findByText(/For whoever runs/)).toBeTruthy()
+    expect(screen.getByText(/^For whoever runs Nyali Metal’s systems\./)).toBeTruthy()
   })
 
   it('reads nothing about WhatsApp, or Slack and Teams, here', async () => {
@@ -196,6 +214,38 @@ describe('before access is approved', () => {
     expect(screen.getByText(/I accept the terms for connecting your own tools\./)).toBeTruthy()
     expect(container.textContent).not.toMatch(/\(version/)
     expect(screen.getByRole('button', { name: 'Read them' })).toBeTruthy()
+  })
+
+  /*
+   * B-144, HAFSAH, 10 OCTOBER: THE CHOICE MADE ON CONNECTIONS ARRIVES HERE AS `?want=`, AND IS NOT
+   * LOST. Connections now groups its own buttons, with the specific thing somebody asked for
+   * carried on in the address; before access is approved, it pre-fills the free-text request so
+   * that specific thing still reaches Groundwork, in the same field this page already sends.
+   */
+  it('pre-fills "What do you want to build with it?" from a choice made on Connections', async () => {
+    open({ id: 'u-g', role: 'ADMIN', organizationName: 'Baridi Appliances' }, '/settings/tools?want=handbook')
+    await screen.findByText('Put check-ins inside your own product')
+    expect(screen.getByText('You chose “Your handbook” on Connections. Edit the message below if you want to say it differently.')).toBeTruthy()
+    expect(screen.getByRole('textbox', { name: 'What do you want to build with it?' })).toHaveValue(
+      'I want our handbook connected, so people can ask it questions in plain words.',
+    )
+  })
+})
+
+/**
+ * B-144, HAFSAH, 10 OCTOBER: ONCE APPROVED, THE SAME CHOICE OPENS "CREATE A KEY" WITH THE RIGHT
+ * PERMISSION ALREADY TICKED, instead of a blank form somebody has to remember to tick it on.
+ */
+describe('once approved, arriving with a choice from Connections', () => {
+  beforeEach(() => {
+    served.myApiAccess = { status: 'APPROVED', approved: true, whatFor: 'syncing sales', requestedAt: null, decidedAt: null, note: null, says: '' }
+  })
+
+  it('opens "Create a key" with the name filled in and the matching permission ticked', async () => {
+    open({ id: 'u-g', role: 'ADMIN', organizationName: 'Baridi Appliances' }, '/settings/tools?want=start')
+    await screen.findByText('You chose “Start a check-in from your own system” on Connections. The permission it needs is already ticked below.')
+    expect(screen.getByLabelText('What is it for?')).toHaveValue('Start a check-in from your own system')
+    expect((screen.getByRole('checkbox', { name: /Open check-ins/ }) as HTMLInputElement).checked).toBe(true)
   })
 })
 

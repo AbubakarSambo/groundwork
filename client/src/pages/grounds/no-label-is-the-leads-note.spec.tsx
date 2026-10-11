@@ -131,7 +131,9 @@ describe('the check-in’s page never names somebody with the lead’s note', ()
     expect(openTab(/^My work$/)).toBe(true)
     expect(openTab(/^Every session$/)).toBe(true)
     await waitFor(() => expect(document.body.textContent).toMatch(/not checked in yet\./))
-    expect(document.body.textContent).toContain('You, one colleague and a third colleague have not checked in yet.')
+    /* The lead checks in when they choose (change 5, decision 133), so the lead is never listed as not checked in. */
+    expect(document.body.textContent).toContain('One colleague and a third colleague have not checked in yet.')
+    expect(document.body.textContent).not.toContain('You, one colleague')
     noNoteAsAName('lead, report')
   })
 
