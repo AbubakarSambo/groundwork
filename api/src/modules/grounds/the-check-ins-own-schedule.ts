@@ -88,12 +88,18 @@ function roundDay(s: TheSchedule, start: Day, k: number): Day {
     const y = from.getUTCFullYear();
     const m = from.getUTCMonth() + k;
     const wanted = anchor != null && anchor >= 1 && anchor <= 31 ? anchor : from.getUTCDate();
-    const daysInMonth = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
-    return Date.UTC(y, m, Math.min(wanted, daysInMonth));
+    const on = (month: number) => Date.UTC(y, month, Math.min(wanted, new Date(Date.UTC(y, month + 1, 0)).getUTCDate()));
+    /* Item 5: the set day still to come in the start's own month is round 1, so a start on the 11th
+       for "the 20th" lands on the 20th of that month rather than skipping to the next one. */
+    return on(from.getUTCMonth()) > start ? on(m - 1) : on(m);
   }
   if (s.cadence === Cadence.DAILY) return start + k * DAY;
+  /* Item 5 (the walk, Sunday 11 October, "every Monday"): weekly, round 1 is the first set day after
+     the start, Monday 12. It was the start plus a week, then the set day, Monday 19, so Monday 12 was
+     skipped. Fortnightly keeps a fortnight before its set day. */
   const step = s.cadence === Cadence.FORTNIGHTLY ? 14 : 7;
-  let first = start + step * DAY;
+  const firstGap = s.cadence === Cadence.WEEKLY && anchor != null && anchor >= 0 && anchor <= 6 ? 1 : step;
+  let first = start + firstGap * DAY;
   if (anchor != null && anchor >= 0 && anchor <= 6) {
     while (new Date(first).getUTCDay() !== anchor) first += DAY;
   }

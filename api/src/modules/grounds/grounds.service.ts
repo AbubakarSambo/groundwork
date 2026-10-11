@@ -6013,7 +6013,16 @@ export class GroundsService {
     // Locked far in the future rather than null so it reads as "not yet open,"
     // not "no schedule" - the SEQUENTIAL branch of ensureNextSession() opens it
     // for real (sets it to now) once the lead completes session 1.
-    let session1AvailableFrom: Date | null = null;
+    /*
+     * THE TEAM'S FIRST SESSION OPENS AT THE START THE LEAD CHOSE (item 5, 11 October 2026). The
+     * choice ("Now", "Tomorrow" or a date) only held the invitation back; the session itself had no
+     * gate, so anybody holding the link could answer session 1 before the check-in started. A start
+     * still to come now opens session 1 on that day. "Now", or a start already passed, stays null.
+     */
+    const theStartChosen = [startsAt, (ground as any).startsAt ? new Date((ground as any).startsAt) : null]
+      .filter((d): d is Date => !!d && d.getTime() > Date.now())
+      .sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
+    let session1AvailableFrom: Date | null = theStartChosen;
     if (ground.cadence === Cadence.SEQUENTIAL) {
       const leadCompletedSession1 = await this.prisma.checkIn.findFirst({
         where: {

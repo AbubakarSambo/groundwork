@@ -187,9 +187,12 @@ describe('B-161: the other rhythms', () => {
     const c = aCheckIn({ cadence: Cadence.WEEKLY, cadenceAnchorDay: MONDAY, createdAt: at('2026-10-08T09:00:00Z'), timeZone: 'Africa/Nairobi' });
     c.opened('early', 1, null, at('2026-10-08T09:00:00Z'));
     c.opened('late', 1, null, at('2026-10-08T09:00:00Z'));
+    /* Item 5 (11 October 2026): the first Monday after a Thursday start is Monday 12, not Monday 19.
+       This used to expect Monday 19, which is the skipped Monday the walk found. So "late" here is a
+       Sunday answer, still before that Monday; an answer after Monday 12 is a whole round late. */
     const a = await c.finishes('early', 1, at('2026-10-09T08:00:00Z'));
-    const b = await c.finishes('late', 1, at('2026-10-13T17:00:00Z'));
-    expect(a).toEqual(at('2026-10-18T21:00:00Z'));
+    const b = await c.finishes('late', 1, at('2026-10-11T17:00:00Z'));
+    expect(a).toEqual(at('2026-10-11T21:00:00Z'));
     expect(b).toEqual(a);
   });
 
@@ -197,5 +200,62 @@ describe('B-161: the other rhythms', () => {
     const c = aCheckIn({ cadence: Cadence.WEEKLY, cadenceAnchorDay: MONDAY, startsAt: at('2026-10-12T05:00:00Z'), createdAt: at('2026-10-09T09:00:00Z'), timeZone: 'Africa/Nairobi', endsAt: at('2026-10-18T21:00:00Z') });
     c.opened('p', 1, at('2026-10-12T05:00:00Z'));
     expect(await c.finishes('p', 1, at('2026-10-13T10:00:00Z'))).toBeUndefined();
+  });
+});
+
+/*
+ * ITEM 5 (Hafsah, 11 October 2026): the team's first session opens at the start the lead chose, and
+ * every session after it follows the schedule. The walk: a lead in Lagos set up "every Monday" on
+ * Sunday 11 October and left the start on "Now". Session 1 opened that Sunday, as chosen, but the
+ * next one was Monday 19, so Monday 12 was skipped. The lead's own first check-in is session 1,
+ * closed at setup, so her session 2 must land on the same day as the team's session 2.
+ * Lagos is UTC+1, so midnight there on Monday 12 is 23:00 UTC on Sunday 11.
+ */
+describe('item 5: the start the lead chose, then the schedule (Lagos, every Monday, set up on Sunday 11 October)', () => {
+  const setUp = at('2026-10-11T15:00:00Z');
+  const MON12 = at('2026-10-11T23:00:00Z');
+  const MON19 = at('2026-10-18T23:00:00Z');
+  const MON26 = at('2026-10-25T23:00:00Z');
+
+  it('Now: session 1 is the Sunday of setup, and the next is Monday 12, then Monday 19', async () => {
+    const c = aCheckIn({ cadence: Cadence.WEEKLY, cadenceAnchorDay: MONDAY, createdAt: setUp, timeZone: 'Africa/Lagos' });
+    c.opened('lead', 1, null, setUp);
+    c.opened('amina', 1, null, setUp);
+    expect(await c.finishes('lead', 1, setUp)).toEqual(MON12);
+    expect(await c.finishes('amina', 1, at('2026-10-11T18:00:00Z'))).toEqual(MON12);
+    expect(await c.finishes('amina', 2, at('2026-10-12T10:00:00Z'))).toEqual(MON19);
+  });
+
+  it('Tomorrow: session 1 opens on Monday 12, the lead\'s setup check-in counts in it, and session 2 is Monday 19 for everyone', async () => {
+    const startsAt = at('2026-10-12T00:00:00Z');
+    const c = aCheckIn({ cadence: Cadence.WEEKLY, cadenceAnchorDay: MONDAY, startsAt, createdAt: setUp, timeZone: 'Africa/Lagos' });
+    c.opened('lead', 1, startsAt, setUp);
+    c.opened('amina', 1, startsAt, setUp);
+    /* The lead finishes session 1 at setup, the day before it opens for the team. */
+    expect(await c.finishes('lead', 1, setUp)).toEqual(MON19);
+    expect(await c.finishes('amina', 1, at('2026-10-12T09:00:00Z'))).toEqual(MON19);
+  });
+
+  it('On a date, Wednesday 21: session 1 opens on Wednesday 21, and session 2 is the Monday after, 26, for everyone', async () => {
+    const startsAt = at('2026-10-21T00:00:00Z');
+    const c = aCheckIn({ cadence: Cadence.WEEKLY, cadenceAnchorDay: MONDAY, startsAt, createdAt: setUp, timeZone: 'Africa/Lagos' });
+    c.opened('lead', 1, startsAt, setUp);
+    c.opened('amina', 1, startsAt, setUp);
+    expect(await c.finishes('lead', 1, setUp)).toEqual(MON26);
+    expect(await c.finishes('amina', 1, at('2026-10-21T09:00:00Z'))).toEqual(MON26);
+  });
+
+  it('monthly on the 20th, started on the 11th: the next one is the 20th of the same month', async () => {
+    const c = aCheckIn({ cadence: Cadence.MONTHLY, cadenceAnchorDay: 20, createdAt: setUp, timeZone: 'Africa/Lagos' });
+    c.opened('amina', 1, null, setUp);
+    expect(await c.finishes('amina', 1, at('2026-10-12T09:00:00Z'))).toEqual(at('2026-10-19T23:00:00Z'));
+    expect(await c.finishes('amina', 2, at('2026-10-20T09:00:00Z'))).toEqual(at('2026-11-19T23:00:00Z'));
+  });
+
+  it('a check-in that started on its set day keeps the same dates as before', async () => {
+    const startsAt = at('2026-10-12T00:00:00Z');
+    const c = aCheckIn({ cadence: Cadence.WEEKLY, cadenceAnchorDay: MONDAY, startsAt, createdAt: setUp, timeZone: 'Africa/Lagos' });
+    c.opened('amina', 1, startsAt);
+    expect(await c.finishes('amina', 1, at('2026-10-12T09:00:00Z'))).toEqual(MON19);
   });
 });
