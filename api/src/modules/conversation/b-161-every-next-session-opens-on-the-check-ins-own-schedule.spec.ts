@@ -188,10 +188,11 @@ describe('B-161: the other rhythms', () => {
     c.opened('early', 1, null, at('2026-10-08T09:00:00Z'));
     c.opened('late', 1, null, at('2026-10-08T09:00:00Z'));
     /* No start date of its own is "Now" (Hafsah, 11 October 2026): the first session stays open until
-       the first Monday a full week or more after the Thursday start, Monday 19, as this test first said. */
+       the first Monday at least half a week after the Thursday start. Monday 12 is 4 days on, so it is
+       that Monday; the "late" answer is a Sunday one, still before it. */
     const a = await c.finishes('early', 1, at('2026-10-09T08:00:00Z'));
-    const b = await c.finishes('late', 1, at('2026-10-13T17:00:00Z'));
-    expect(a).toEqual(at('2026-10-18T21:00:00Z'));
+    const b = await c.finishes('late', 1, at('2026-10-11T17:00:00Z'));
+    expect(a).toEqual(at('2026-10-11T21:00:00Z'));
     expect(b).toEqual(a);
   });
 
@@ -206,8 +207,8 @@ describe('B-161: the other rhythms', () => {
  * ITEM 5 (Hafsah, 11 October 2026): the team's first session opens at the start the lead chose, and
  * every session after it follows the schedule. The walk: a lead in Lagos set up "every Monday" on
  * Sunday 11 October and left the start on "Now". Session 1 opened that Sunday, as chosen. Hafsah then
- * decided (11 October): with "Now" it stays open until Monday 19, the next Monday a full week or more
- * away, so the team never gets Sunday 11 and Monday 12 a day apart. Tomorrow and a date are below. The lead's own first check-in is session 1,
+ * decided (11 October): with "Now" it stays open until Monday 19, the next Monday at least half a
+ * week away, so the team never gets Sunday 11 and Monday 12 a day apart. Tomorrow and a date are below. The lead's own first check-in is session 1,
  * closed at setup, so her session 2 must land on the same day as the team's session 2.
  * Lagos is UTC+1, so midnight there on Monday 12 is 23:00 UTC on Sunday 11.
  */
@@ -218,7 +219,8 @@ describe('item 5: the start the lead chose, then the schedule (Lagos, every Mond
   const MON26 = at('2026-10-25T23:00:00Z');
 
   /* "Now" (Hafsah, 11 October 2026): the first session opens at once and stays open until the next set
-     day a full cycle or more away, so the team never gets two sessions a day apart. */
+     day at least half a cycle away (4 days for weekly, 7 for fortnightly, half the month for monthly),
+     so the team never gets two sessions a day apart. */
   it('Now on Sunday 11: session 1 opens at once and stays open until Monday 19, then Monday 26', async () => {
     const c = aCheckIn({ cadence: Cadence.WEEKLY, cadenceAnchorDay: MONDAY, createdAt: setUp, timeZone: 'Africa/Lagos' });
     c.opened('lead', 1, null, setUp);
@@ -235,17 +237,33 @@ describe('item 5: the start the lead chose, then the schedule (Lagos, every Mond
     expect(await c.finishes('amina', 1, at('2026-10-12T15:00:00Z'))).toEqual(MON19);
   });
 
-  it('Now on Saturday 17: Monday 19 is two days away, less than a week, so the next is Monday 26', async () => {
+  it('Now on Thursday 15: Monday 19 is 4 days away, at least half a week, so the next is Monday 19', async () => {
+    const thu = at('2026-10-15T09:00:00Z');
+    const c = aCheckIn({ cadence: Cadence.WEEKLY, cadenceAnchorDay: MONDAY, createdAt: thu, timeZone: 'Africa/Lagos' });
+    c.opened('amina', 1, null, thu);
+    expect(await c.finishes('amina', 1, at('2026-10-16T10:00:00Z'))).toEqual(MON19);
+    expect(await c.finishes('amina', 2, at('2026-10-19T10:00:00Z'))).toEqual(MON26);
+  });
+
+  it('Now on Saturday 17: Monday 19 is two days away, less than half a week, so the next is Monday 26', async () => {
     const sat = at('2026-10-17T09:00:00Z');
     const c = aCheckIn({ cadence: Cadence.WEEKLY, cadenceAnchorDay: MONDAY, createdAt: sat, timeZone: 'Africa/Lagos' });
     c.opened('amina', 1, null, sat);
     expect(await c.finishes('amina', 1, at('2026-10-18T10:00:00Z'))).toEqual(MON26);
   });
 
-  it('Now, fortnightly on Mondays, on Sunday 11: the next is Monday 26, a fortnight or more away', async () => {
+  it('Now, fortnightly on Mondays, on Sunday 11: Monday 12 is a day away, so the next is Monday 19, a week or more away, then Monday 2 November', async () => {
     const c = aCheckIn({ cadence: Cadence.FORTNIGHTLY, cadenceAnchorDay: MONDAY, createdAt: setUp, timeZone: 'Africa/Lagos' });
     c.opened('amina', 1, null, setUp);
-    expect(await c.finishes('amina', 1, at('2026-10-12T10:00:00Z'))).toEqual(MON26);
+    expect(await c.finishes('amina', 1, at('2026-10-12T10:00:00Z'))).toEqual(MON19);
+    expect(await c.finishes('amina', 2, at('2026-10-19T10:00:00Z'))).toEqual(at('2026-11-01T23:00:00Z'));
+  });
+
+  it('Now, fortnightly on Mondays, on Wednesday 14: Monday 19 is 5 days away, less than a week, so the next is Monday 26', async () => {
+    const wed = at('2026-10-14T09:00:00Z');
+    const c = aCheckIn({ cadence: Cadence.FORTNIGHTLY, cadenceAnchorDay: MONDAY, createdAt: wed, timeZone: 'Africa/Lagos' });
+    c.opened('amina', 1, null, wed);
+    expect(await c.finishes('amina', 1, at('2026-10-15T10:00:00Z'))).toEqual(MON26);
   });
 
   it('Tomorrow: session 1 opens on Monday 12, the lead\'s setup check-in counts in it, and session 2 is Monday 19 for everyone', async () => {
@@ -267,18 +285,19 @@ describe('item 5: the start the lead chose, then the schedule (Lagos, every Mond
     expect(await c.finishes('amina', 1, at('2026-10-21T09:00:00Z'))).toEqual(MON26);
   });
 
-  it('Now, monthly on the 20th, on the 11th: the 20th of this month is less than a month away, so the next is 20 November', async () => {
+  it('Now, monthly on the 20th, on the 11th: 20 October is 9 days away, less than half a month, so the next is 20 November', async () => {
     const c = aCheckIn({ cadence: Cadence.MONTHLY, cadenceAnchorDay: 20, createdAt: setUp, timeZone: 'Africa/Lagos' });
     c.opened('amina', 1, null, setUp);
     expect(await c.finishes('amina', 1, at('2026-10-12T09:00:00Z'))).toEqual(at('2026-11-19T23:00:00Z'));
     expect(await c.finishes('amina', 2, at('2026-11-20T09:00:00Z'))).toEqual(at('2026-12-19T23:00:00Z'));
   });
 
-  it('Now, monthly on the 20th, on the 25th: 20 November is less than a month away, so the next is 20 December', async () => {
+  it('Now, monthly on the 20th, on the 25th: 20 November is 26 days away, at least half a month, so the next is 20 November', async () => {
     const the25th = at('2026-10-25T09:00:00Z');
     const c = aCheckIn({ cadence: Cadence.MONTHLY, cadenceAnchorDay: 20, createdAt: the25th, timeZone: 'Africa/Lagos' });
     c.opened('amina', 1, null, the25th);
-    expect(await c.finishes('amina', 1, at('2026-10-26T09:00:00Z'))).toEqual(at('2026-12-19T23:00:00Z'));
+    expect(await c.finishes('amina', 1, at('2026-10-26T09:00:00Z'))).toEqual(at('2026-11-19T23:00:00Z'));
+    expect(await c.finishes('amina', 2, at('2026-11-20T09:00:00Z'))).toEqual(at('2026-12-19T23:00:00Z'));
   });
 
   it('On a date, monthly on the 20th, starting Monday 12: the next one is the 20th of the same month', async () => {

@@ -50,8 +50,9 @@ export type TheSchedule = {
   startedAt: Date;
   /**
    * The lead chose "Now" in setup: the check-in has no start date of its own (`Ground.startsAt` is
-   * null). Then round 1 is the first set day a full cycle or more after the start, so the first
-   * session stays open until then and the team never gets two sessions a day apart.
+   * null). Then round 1 is the first set day at least half a cycle after the start (4 days for weekly,
+   * 7 for fortnightly, half the start's month for monthly), so the first session stays open until then
+   * and the team never gets two sessions a day apart. Daily is unchanged: the next day is a whole day on.
    */
   startsNow?: boolean;
   /** The organisation's own time zone. */
@@ -95,11 +96,15 @@ function roundDay(s: TheSchedule, start: Day, k: number): Day {
     const m = from.getUTCMonth() + k;
     const wanted = anchor != null && anchor >= 1 && anchor <= 31 ? anchor : from.getUTCDate();
     const on = (month: number) => Date.UTC(y, month, Math.min(wanted, new Date(Date.UTC(y, month + 1, 0)).getUTCDate()));
-    /* "Now" (Hafsah, 11 October 2026): round 1 is the first set day a month or more after the start,
-       so a start on the 25th for "the 20th" runs until the 20th of the month after next. */
+    /* "Now" (Hafsah, 11 October 2026, changed the same evening from a full month to half): round 1 is
+       the first set day at least half a month after the start, half being half the days of the start's
+       own month, rounded down (15 for October). Set up on the 25th for "the 20th", it runs to 20
+       November (26 days); set up on the 11th, 20 October is only 9 days away, so it runs to 20 November. */
     if (s.startsNow) {
-      const aMonthOn = Date.UTC(y, from.getUTCMonth() + 1, Math.min(from.getUTCDate(), new Date(Date.UTC(y, from.getUTCMonth() + 2, 0)).getUTCDate()));
-      return on(from.getUTCMonth() + 1) >= aMonthOn ? on(m) : on(m + 1);
+      const half = Math.floor(new Date(Date.UTC(y, from.getUTCMonth() + 1, 0)).getUTCDate() / 2) * DAY;
+      let j = 0;
+      while (on(from.getUTCMonth() + j) - start < half) j += 1;
+      return on(from.getUTCMonth() + j + k - 1);
     }
     /* Item 5: the set day still to come in the start's own month is round 1, so a start on the 11th
        for "the 20th" lands on the 20th of that month rather than skipping to the next one. */
@@ -110,9 +115,12 @@ function roundDay(s: TheSchedule, start: Day, k: number): Day {
      the start, Monday 12. It was the start plus a week, then the set day, Monday 19, so Monday 12 was
      skipped. Fortnightly keeps a fortnight before its set day.
      "Now" (Hafsah, 11 October 2026): the first session opens at once and stays open until the next set
-     day a full cycle or more away, so "Now" on Sunday 11 runs until Monday 19, never Monday 12. */
+     day at least half a cycle away: 4 days for weekly (half a week is three and a half), 7 for
+     fortnightly. "Now" on Sunday 11 runs until Monday 19, never Monday 12; on Thursday 15 it runs until
+     Monday 19 (4 days); on Saturday 17 until Monday 26. With no set day it stays a whole step. */
   const step = s.cadence === Cadence.FORTNIGHTLY ? 14 : 7;
-  const firstGap = s.cadence === Cadence.WEEKLY && !s.startsNow && anchor != null && anchor >= 0 && anchor <= 6 ? 1 : step;
+  const anchored = anchor != null && anchor >= 0 && anchor <= 6;
+  const firstGap = !anchored ? step : s.startsNow ? (s.cadence === Cadence.FORTNIGHTLY ? 7 : 4) : s.cadence === Cadence.WEEKLY ? 1 : step;
   let first = start + firstGap * DAY;
   if (anchor != null && anchor >= 0 && anchor <= 6) {
     while (new Date(first).getUTCDay() !== anchor) first += DAY;
