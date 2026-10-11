@@ -69,14 +69,23 @@ export function whenTheCheckInsLand(a: {
   let cursor = first
   while (out.length < want) {
     const d = new Date(cursor)
+    /* Item 5, the same rule as the server's the-check-ins-own-schedule.ts: after the start, the next
+       one is the first set day still to come, so a Sunday start for "every Monday" lists Monday 12,
+       not Monday 19, and a start on the 11th for "the 20th" lists the 20th of the same month. */
+    const second = out.length === 1
     if (a.cadence === 'MONTHLY') {
-      d.setMonth(d.getMonth() + 1)
-      if (a.anchorDay != null && a.anchorDay >= 1 && a.anchorDay <= 31) {
-        const daysInMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()
-        d.setDate(Math.min(a.anchorDay, daysInMonth))
+      const anchored = a.anchorDay != null && a.anchorDay >= 1 && a.anchorDay <= 31
+      const thisMonth = anchored ? new Date(d.getFullYear(), d.getMonth(), Math.min(a.anchorDay!, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate())) : null
+      if (second && thisMonth && thisMonth > first) d.setDate(thisMonth.getDate())
+      else {
+        d.setMonth(d.getMonth() + 1)
+        if (anchored) {
+          const daysInMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()
+          d.setDate(Math.min(a.anchorDay!, daysInMonth))
+        }
       }
     } else {
-      d.setDate(d.getDate() + s)
+      d.setDate(d.getDate() + (second && a.cadence === 'WEEKLY' && a.anchorDay != null && a.anchorDay >= 0 && a.anchorDay <= 6 ? 1 : s))
       if ((a.cadence === 'WEEKLY' || a.cadence === 'FORTNIGHTLY') && a.anchorDay != null && a.anchorDay >= 0 && a.anchorDay <= 6) {
         while (d.getDay() !== a.anchorDay) d.setDate(d.getDate() + 1)
       }

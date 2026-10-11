@@ -70,3 +70,29 @@ describe('the closing is built from the schedule, never invented', () => {
     expect(theClosingAsOneSentence({ cadence: null })).toBe("That's your first check-in done. Come back any time to add updates. You can change how often in setup.")
   })
 })
+
+/*
+ * ITEM 5 (Hafsah, 11 October 2026): the closing sits beside the start the lead chose in setup and
+ * never contradicts it. Set up on Sunday 11 October, every Monday.
+ */
+describe('the closing beside each start the lead can choose', () => {
+  const SUNDAY_11 = new Date(2026, 9, 11, 16, 0)
+  const weekly = { cadence: 'WEEKLY', cadenceAnchorDay: 1 }
+
+  it('Now: the sentence is the one Hafsah wrote, unchanged', () => {
+    expect(theClosingAsOneSentence({ ...weekly, startsAt: null, createdAt: '2026-10-11T15:00:00.000Z' }, SUNDAY_11)).toBe(
+      "That's your first check-in done. Come back any time to add updates. Your team will check in every Monday, as you set it. You can change how often in setup.")
+  })
+
+  it('Tomorrow: it names the day the team starts, then how often', () => {
+    expect(theClosingAsOneSentence({ ...weekly, startsAt: '2026-10-12T00:00:00.000Z' }, SUNDAY_11)).toBe(
+      "That's your first check-in done. Come back any time to add updates. Your team's first check-in opens on Monday 12 October, and after that they check in every Monday, as you set it. You can change how often in setup.")
+  })
+
+  it('On a date: a Wednesday start is said, so "every Monday" does not contradict it', () => {
+    expect(theClosingAsOneSentence({ ...weekly, startsAt: '2026-10-21T00:00:00.000Z' }, SUNDAY_11)).toBe(
+      "That's your first check-in done. Come back any time to add updates. Your team's first check-in opens on Wednesday 21 October, and after that they check in every Monday, as you set it. You can change how often in setup.")
+    expect(theClosingAsOneSentence({ cadence: 'ONE_TIME', startsAt: '2026-10-21T00:00:00.000Z' }, SUNDAY_11)).toBe(
+      "That's your first check-in done. Come back any time to add updates. Your team checks in once, on Wednesday 21 October, as you set it. You can change how often in setup.")
+  })
+})

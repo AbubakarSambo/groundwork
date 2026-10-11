@@ -52,10 +52,35 @@ export function howOftenTheTeamChecksIn(s: TheSchedule): string | null {
 
 export type TheClosing = { before: string; link: string; after: string }
 
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+/**
+ * ITEM 5 (Hafsah, 11 October 2026): the start the lead chose in setup, when it is still to come.
+ * "Tomorrow" or a date means the team's first check-in opens on that day, not on the set day, so
+ * "Your team will check in every Monday" alone would contradict a Wednesday start. Read as the
+ * calendar day it was saved as. "Now", or a start that has come, gives null and the sentence is unchanged.
+ */
+function aStartStillToCome(s: TheSchedule, today: Date): string | null {
+  if (!s.startsAt) return null
+  const d = new Date(s.startsAt)
+  if (Number.isNaN(d.getTime())) return null
+  const day = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+  const todayIs = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  if (day <= todayIs) return null
+  return `${DAYS[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`
+}
+
 /** The closing message in three parts, so "in setup" can be a link and the rest plain text. */
-export function theClosingAfterYourFirstCheckIn(s: TheSchedule): TheClosing {
+export function theClosingAfterYourFirstCheckIn(s: TheSchedule, today: Date = new Date()): TheClosing {
   const often = howOftenTheTeamChecksIn(s)
-  const team = often ? ` Your team will check in ${often}, as you set it.` : ''
+  const starts = aStartStillToCome(s, today)
+  const team = starts
+    ? often === 'once'
+      ? ` Your team checks in once, on ${starts}, as you set it.`
+      : often
+        ? ` Your team's first check-in opens on ${starts}, and after that they check in ${often}, as you set it.`
+        : ` Your team's first check-in opens on ${starts}, as you set it.`
+    : often ? ` Your team will check in ${often}, as you set it.` : ''
   return {
     before: `That's your first check-in done. Come back any time to add updates.${team} You can change how often `,
     link: 'in setup',
@@ -63,8 +88,8 @@ export function theClosingAfterYourFirstCheckIn(s: TheSchedule): TheClosing {
   }
 }
 
-export function theClosingAsOneSentence(s: TheSchedule): string {
-  const c = theClosingAfterYourFirstCheckIn(s)
+export function theClosingAsOneSentence(s: TheSchedule, today: Date = new Date()): string {
+  const c = theClosingAfterYourFirstCheckIn(s, today)
   return `${c.before}${c.link}${c.after}`
 }
 
