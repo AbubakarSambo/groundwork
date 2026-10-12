@@ -214,7 +214,10 @@ export function anAimIsAThing(name: string): string {
   const t = String(name ?? '').replace(/\s+/g, ' ').trim();
   if (!THEIR_OWN_SENTENCE.test(t)) return t;
   const m = new RegExp(`\\b${A_NUMBER}\\s+([a-z][a-z'-]*)`, 'i').exec(t);
-  return m && !/^(to|for|of|and|or|a|the|on|in|by|this|next|more|times?)$/i.test(m[1]) ? m[1].toLowerCase() : '';
+  if (!m || /^(to|for|of|and|or|a|the|on|in|by|this|next|more|times?)$/i.test(m[1])) return '';
+  /* The place they named stays with the thing ("3 shops in Kilimani" is "shops in Kilimani"): it is their own words. */
+  const where = /^\s+((?:in|at|across|around)\s+\p{Lu}[\p{L}'-]*(?:\s+\p{Lu}[\p{L}'-]*)*)/u.exec(t.slice(m.index + m[0].length));
+  return m[1].toLowerCase() + (where ? ` ${where[1]}` : '');
 }
 
 export function theAimItself(name: string, target: number | null): string | null {
