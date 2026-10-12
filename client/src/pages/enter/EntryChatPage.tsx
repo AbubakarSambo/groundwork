@@ -1172,6 +1172,15 @@ export function itIsStillAskingSomething(reply: string): boolean {
   return lastSentence.trim().endsWith('?')
 }
 
+/**
+ * WHETHER THE LAST REPLY ALREADY SAID GOODBYE (night quality run 1, the lead's walk). Esther read "Your report
+ * is ready now. Speak soon." and straight under it "This session has reached a natural close. Would you like to
+ * end and see your report?": the chat closed twice. Where the reply has said it, the card only offers the button.
+ */
+export function theReplyAlreadySaidGoodbye(reply: string): boolean {
+  return /\b(?:your report is ready now|speak soon)\b/i.test(reply ?? '')
+}
+
 /*
  * THE NAME WHEN THE LEAD GAVE NONE: THE TOPIC, IN PLAIN WORDS, NEVER HER OWN WORDS (U.6 review).
  *
@@ -1217,7 +1226,33 @@ export function whoIsWaitingSentence(who: string[]): string {
   return `${list} ${who.length === 1 ? 'is' : 'are'} waiting to be invited.`
 }
 
-export function fallbackGroundName(situation?: string, where?: string): string {
+/**
+ * A PLAIN NAME FROM WHAT THE LEAD DESCRIBED (night quality run 1, the lead's walk). Esther said "I run a field
+ * sales team of four selling solar home kits across Nyanza. I want a weekly check-in ..." and her check-in was
+ * named "A check-in at Lakeshore Solar", which tells her nothing. The name is built from a few fixed words
+ * only, never from her own sentence, so nothing she wrote about a person reaches an invitation's subject line.
+ */
+const KINDS_OF_WORK: [RegExp, string][] = [
+  [/\b(?:sales?|sell(?:s|ing)?|sold|customers?)\b/i, 'sales'],
+  [/\b(?:projects?|rollout|launch)\b/i, 'project'],
+  [/\b(?:stock|warehouse|deliver(?:y|ies)?|dispatch|operations?)\b/i, 'operations'],
+  [/\b(?:new hire|onboard(?:ing)?)\b/i, 'onboarding'],
+]
+const HOW_OFTEN: [RegExp, string][] = [
+  [/\b(?:weekly|every week|each week)\b/i, 'weekly'],
+  [/\b(?:fortnightly|every two weeks)\b/i, 'fortnightly'],
+  [/\b(?:monthly|every month|each month)\b/i, 'monthly'],
+]
+export function aPlainNameFromWhatTheyDescribed(said?: string): string | undefined {
+  const text = said ?? ''
+  const kind = KINDS_OF_WORK.find(([re]) => re.test(text))?.[1]
+  if (!kind) return undefined
+  const often = HOW_OFTEN.find(([re]) => re.test(text))?.[1]
+  const name = `${often ? `${often} ` : ''}${kind} check-in`
+  return name.charAt(0).toUpperCase() + name.slice(1)
+}
+
+export function fallbackGroundName(situation?: string, where?: string, saidSoFar?: string): string {
   const known = situation ? (SCENARIO_LABELS as Record<string, string>)[situation] : undefined
   if (known) return sentenceCase(known)
   const fromScenario = (situation ?? '')
@@ -1226,6 +1261,8 @@ export function fallbackGroundName(situation?: string, where?: string): string {
     .toLowerCase()
     .replace(/^\w/, (c) => c.toUpperCase())
   if (fromScenario) return fromScenario
+  const described = aPlainNameFromWhatTheyDescribed(saidSoFar)
+  if (described) return described
   const at = (where ?? '').trim()
   return at ? `A check-in at ${at}` : 'A check-in'
 }
@@ -1314,7 +1351,7 @@ export function effectiveFallbackGroundName(
     const named = leadNameGroundNameFallback(leadFirstName, situation)
     if (named) return named
   }
-  return fallbackGroundName(situation, where)
+  return fallbackGroundName(situation, where, saidSoFar)
 }
 
 /**
@@ -4398,15 +4435,17 @@ export function EntryChatPage() {
             {/* Natural close prompt */}
             {showEndPrompt && !closed && (
               <div className="gwui-ec-natural-close">
-                <Callout tone="info">
-                  This session has reached a natural close. Would you like to end and see your report?
-                </Callout>
+                {!theReplyAlreadySaidGoodbye([...displayedHistory].reverse().find((m) => m.role === 'assistant')?.content ?? '') && (
+                  <Callout tone="info">
+                    This session has reached a natural close. Would you like to end and see your report?
+                  </Callout>
+                )}
                 <div className="gwui-ec-natural-close-actions">
                   <Button kind="secondary" size="small" onClick={() => { setShowEndPrompt(false); setEndPromptDismissed(true) }}>
                     Keep going
                   </Button>
                   <Button kind="secondary" redText size="small" onClick={() => setShowEndConfirm(true)}>
-                    End session
+                    {theReplyAlreadySaidGoodbye([...displayedHistory].reverse().find((m) => m.role === 'assistant')?.content ?? '') ? 'End and see your report' : 'End session'}
                   </Button>
                 </div>
               </div>

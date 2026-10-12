@@ -1,6 +1,12 @@
 import type { SessionRow } from '@/components/gw/TheReportIsAListOfSessions'
 import { whoIsInRound } from '@/lib/who-is-in-this-round'
 
+
+/** A session the clock closed where the person said nothing (closedReason 'auto_closed', no turn of theirs). Rows served without either field read as before. */
+export function wasAQuietClose(c: { closedReason?: string | null; turns?: unknown[] | null }): boolean {
+  return c?.closedReason === 'auto_closed' && Array.isArray(c.turns) && c.turns.length === 0
+}
+
 /**
  * WHETHER A SESSION'S TEAM PICTURE HAS BEEN SHARED, THE SAME RULE THE ENGINE USES.
  *
@@ -106,8 +112,10 @@ export function buildSessionRows(
        roster the board sent for the same round - the only case this read can be too small. */
     const restricted = !!fullParties && fullParties.length > parties.length
     const closed = ((ground?.roundCompletions ?? []) as any[]).some((r) => r.sessionNumber === n)
+    /* A session the clock closed with nothing said is not an answer (api an-answer-includes-a-refusal.ts): night quality run 1
+       read "5 of 5 checked in" and "4 of 4" while Jared had missed both. */
     const answeredIds = new Set(
-      checkIns.filter((c) => c.sessionNumber === n && c.status === 'COMPLETED').map((c) => c.participantId),
+      checkIns.filter((c) => c.sessionNumber === n && c.status === 'COMPLETED' && !wasAQuietClose(c)).map((c) => c.participantId),
     )
     const mine = checkIns.find(
       (c) => c.sessionNumber === n && c.status === 'COMPLETED'
@@ -142,7 +150,11 @@ export function buildSessionRows(
        * same rule, so the two places on the board agree.
        */
       opened: (() => {
-        const these = checkIns.filter((c) => c.sessionNumber === n)
+        /* The lead's own optional row never dates the team's round: session 1 read "Mon 12 Oct", the day of her setup,
+           for a round the team ran from 19 October (night quality run 1, problem 4). Nor does a session nobody answered. */
+        const all = checkIns.filter((c) => c.sessionNumber === n && !wasAQuietClose(c))
+        const theTeams = all.filter((c) => !c.optional && c.completedAt)
+        const these = theTeams.length ? theTeams : all
         const completed = these.map((c) => c.completedAt).filter(Boolean)
         return completed.length
           ? completed.map((t: string) => new Date(t)).sort((a: Date, b: Date) => a.getTime() - b.getTime())[0].toISOString()

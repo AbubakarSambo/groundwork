@@ -57,7 +57,9 @@ export interface AToDoOnTheCard {
 
 export interface AFileOnTheCard {
   id: string
-  fileName: string
+  /** The list serves `name`; `fileName` is kept for callers that pass it. */
+  fileName?: string
+  name?: string
   participantId?: string | null
   visibility?: string
   mine?: boolean
@@ -149,7 +151,8 @@ export function EachPerson({
         const theirs = (p.objective?.all ?? []).filter((o: any) => o?.text?.trim())
         const theirTargets = targets.filter((t) => t.ownerParticipantId === p.id)
         const theirToDos = toDos.filter((t) => t.participantId === p.id && (t.status ?? 'UNKNOWN') === 'UNKNOWN')
-        const theirFiles = files.filter((f) => f.participantId === p.id)
+        /* Whose file it is, as the list serves it: theirs by id, or the reader's own by `mine` (night quality run 1). */
+        const theirFiles = files.filter((f) => f.participantId === p.id || (f.participantId == null && f.mine === true && p.userId === viewerUserId))
         const theirAsks = asks[p.id] ?? []
         const isOpen = !!open[p.id]
         /* The one line somebody reads when they are not opening it. Counts, never a verdict. */
@@ -324,7 +327,7 @@ export function EachPerson({
                 <Part title={isMe ? 'Your files' : 'Their files'}>
                   {theirFiles.length ? theirFiles.map((f) => (
                     <div key={f.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginBottom: 4, flexWrap: 'wrap' }}>
-                      <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', minWidth: 160 }}>{f.fileName}</span>
+                      <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', minWidth: 160 }}>{f.fileName ?? f.name}</span>
                       <span style={{ fontSize: 11.5, color: f.visibility === 'OPEN' ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
                         {f.visibility === 'OPEN'
                           ? 'Everyone in this check-in can read it.'

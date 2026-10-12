@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { groundsApi } from '@/api/grounds'
+import { documentsApi } from '@/api/documents'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { PageTitle } from '@/components/gw/ui/PageTitle'
 import { Section } from '@/components/gw/ui/Section'
@@ -171,6 +172,14 @@ export function YourWork({
   otherParties, postReportGuide, aTeamReportComes, onSeeEverySession, onReadTeamReport, onSeeRoster,
 }: YourWorkProps) {
   const myCommitments = ((ground?.commitments ?? []) as any[]).filter((c) => c.participantId === myParticipant?.id)
+  /* Their own files, the WhatsApp photos and pins included, from the same list and cache the Context tab reads. */
+  const { data: docsOnTheCheckIn } = useQuery({
+    queryKey: ['docs', groundId],
+    queryFn: () => documentsApi.list(groundId),
+    enabled: !!myParticipant?.id,
+    retry: false,
+  })
+  const myFiles = ((docsOnTheCheckIn ?? []) as any[]).filter((d) => d.participantId === myParticipant?.id || d.mine === true)
 
   /* "Promises kept this month": of the commitments settled this calendar month, how many were
      DONE. Undefined (not zero) while nothing has settled yet this month, so the tile does not
@@ -349,6 +358,7 @@ export function YourWork({
           waitingOn: [],
           corroborated: (report as any)?.engagement?.whatCouldBeChecked ?? null,
           documentBackedPct: (report as any)?.engagement?.documentBackedPct ?? null,
+          filesAttached: myFiles.length,
           roundsFinished: completedCount,
         }}
         alsoNoticed={[]}

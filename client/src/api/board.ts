@@ -865,7 +865,7 @@ export interface AServedWorkRow {
    * "cooling", "cold", "won"), and why it is there, in full sentences from its own record. Sales
    * deal rows only; absent on every other kind of work.
    */
-  group?: 'likely' | 'possible' | 'next-quarter' | 'cooling' | 'cold' | 'won'
+  group?: 'likely' | 'possible' | 'next-quarter' | 'cooling' | 'cold' | 'said-won' | 'won'
   groupSays?: string
   fields: Record<string, string>
   /** "said": read from somebody's check-in, with `said` holding their words exactly. "lead": added by the lead. */
@@ -921,7 +921,7 @@ export type AServedWorkSection =
        * groups that have a deal in them. `rowIds` are `AServedWorkRow.id`s in this section's own
        * `rows`. Present only on the sales org's "Deal grid" section.
        */
-      groups?: { group: 'likely' | 'possible' | 'next-quarter' | 'cooling' | 'cold' | 'won'; heading: string; reason: string; rowIds: string[] }[]
+      groups?: { group: 'likely' | 'possible' | 'next-quarter' | 'cooling' | 'cold' | 'said-won' | 'won'; heading: string; reason: string; rowIds: string[] }[]
       /** What the record cannot support, said plainly once under the grid - never claimed by a group. */
       groupsNote?: string[]
       /** Present only on a participant's own board, where this section already holds only their own rows ("Only yours."). */
