@@ -653,14 +653,16 @@ export class UsersService {
       ? await this.prisma.groundParticipant.findMany({
         where: { awaitingSeat: true, ground: { organizationId } },
         orderBy: { createdAt: 'asc' },
-        select: { id: true, email: true, createdAt: true, ground: { select: { id: true, label: true } } },
+        /* The name the lead typed beside the address (journey test, 12 October): the row read "Somebody invited by email" when a name was given. */
+        select: { id: true, email: true, createdAt: true, nameGiven: true, ground: { select: { id: true, label: true } } },
       })
       : [];
     const heldByEmail = new Map<string, { id: string; email: string; createdAt: Date; name?: string | null; checkIns: { id: string; label: string | null; runsIt: boolean }[] }>();
     for (const h of held) {
       const key = (h.email ?? '').toLowerCase();
       if (!key || idByEmail.has(key)) continue; // already a real row (an account exists after all)
-      const row = heldByEmail.get(key) ?? { id: h.id, email: h.email!, createdAt: h.createdAt, checkIns: [] };
+      const row = heldByEmail.get(key) ?? { id: h.id, email: h.email!, createdAt: h.createdAt, name: h.nameGiven ?? null, checkIns: [] };
+      if (!row.name?.trim() && h.nameGiven?.trim()) row.name = h.nameGiven;
       if (!row.checkIns.some((c) => c.id === h.ground.id)) row.checkIns.push({ id: h.ground.id, label: h.ground.label, runsIt: false });
       heldByEmail.set(key, row);
     }

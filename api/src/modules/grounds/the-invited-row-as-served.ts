@@ -6,6 +6,7 @@
  * or their private summary.
  */
 export function theInvitedRowAsServed(row: Record<string, any>) {
-  const { id, email, partyType, userId, roleAsDescribed, invitedAt, notifiedAt, soloArtifactAt, createdAt } = row;
-  return { id, email, partyType, userId, roleAsDescribed, invitedAt, notifiedAt, soloArtifactAt, createdAt };
+  const { id, email, partyType, userId, roleAsDescribed, invitedAt, notifiedAt, soloArtifactAt, createdAt, nameGiven } = row;
+  /* The name the lead typed beside the address, so the row she is given back is not nameless (journey test, 12 October). */
+  return { id, email, partyType, userId, roleAsDescribed, invitedAt, notifiedAt, soloArtifactAt, createdAt, nameGiven: nameGiven ?? null };
 }

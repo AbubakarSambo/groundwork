@@ -143,6 +143,16 @@ class UpdateTimelineDto {
   @Max(31)
   cadenceAnchorDay?: number | null;
 
+  /**
+   * THE LAST DAY, AS THE LEAD CHOSE IT ("Give it more time", journey test 12 October 2026). The sessions up to it are counted the
+   * way setup counts them (timelineDaysForAChosenEnd), and the end is stored, so People and setup, the invitation and the count agree.
+   */
+  @ApiPropertyOptional({ description: 'The last day, YYYY-MM-DD. Sets how long it runs, counted the way setup counts it.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  endsOn?: string;
+
   @ApiPropertyOptional({ description: 'Append a context note to this ground' })
   @IsOptional()
   contextNote?: string;

@@ -167,7 +167,7 @@ import { type ToLookAt } from './the-same-thing-for-three-check-ins';
 import { theSameThingFromTheRows } from './the-same-thing-read-from-the-record';
 import { whenTheBoardLastChanged, whatAReaderWhoOnlyReadsIsTold } from './when-the-board-last-changed';
 import { whatTheLeadShouldKnow, targetsFor } from './whose-number-is-whose-business';
-import { whichRoundIsOpen } from './which-round-is-open';
+import { whichRoundIsOpen, theTeamsOpenRound } from './which-round-is-open';
 import { splitTheTotal, sayingWhatTheSplitDoes } from '../alignment/a-total-splits-by-what-people-did';
 import { peopleFrom } from '../alignment/a-file-of-people-becomes-people';
 import { whatTheyTried } from '../conversation/a-blocker-is-not-a-blocker-until-you-have-tried';
@@ -1498,7 +1498,8 @@ export class BoardService {
       /* Not held back by somebody an admin has not let in yet (decision 77): the same givers as the header. */
       const heldAtTheDoor = new Set(ground.participants.filter((p: any) => isNotLetInYet(p)).map((p: any) => p.id));
       const roundRows = checkIns.filter((c) => !heldAtTheDoor.has(c.participantId) || c.status === CheckInStatus.COMPLETED || c.status === CheckInStatus.DECLINED);
-      const openRound = whichRoundIsOpen((roundRows.length ? roundRows : checkIns) as any);
+      /* And never set by the lead's own extra check-in (journey test, 12 October): theTeamsOpenRound. */
+      const openRound = theTeamsOpenRound((roundRows.length ? roundRows : checkIns) as any, ground.participants as any);
       /*
        * WHAT THIS ROUND PUT ON THE RECORD, so the board can say whether it holds anything to count.
        * The record, not the rating: the lead may read what was written down, and never how anybody's

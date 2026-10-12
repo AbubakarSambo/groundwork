@@ -21,6 +21,8 @@ export interface AnEntry { externalId: string; userId: string | null; department
 export interface Lookups {
   /** Each member's role in this organisation, by sign-in. A sign-in with no row is not in it. */
   roles: Map<string, string>;
+  /** Who each member reports to, as an admin set it on the People page, by sign-in. Absent when not read. */
+  reportsTo?: Map<string, string>;
   /** Each sign-in's directory entry (linked, or matched by address), by sign-in. */
   entryOf: Map<string, AnEntry>;
   /** Each active directory entry, by its external id. */
@@ -82,7 +84,7 @@ export async function whoTheyStandInFor(prisma: PrismaService, organizationId: s
  */
 export async function loadLookups(prisma: PrismaService, organizationId: string, on: Date = new Date(), already: { duties?: Duties } = {}): Promise<Lookups> {
   const [members, entries, duties, today] = await Promise.all([
-    prisma.organizationMembership.findMany({ where: { organizationId }, select: { userId: true, role: true } }),
+    prisma.organizationMembership.findMany({ where: { organizationId }, select: { userId: true, role: true, reportsToUserId: true } }),
     prisma.person.findMany({
       where: { organizationId, active: true },
       select: { externalId: true, linkedUserId: true, email: true, department: true, managerExternalId: true, givenName: true, familyName: true, displayName: true },
@@ -93,6 +95,7 @@ export async function loadLookups(prisma: PrismaService, organizationId: string,
   /* An organisation has members and every membership has a role. A read that says otherwise has not read what the resolver needs, and the caller asks the old way. */
   if (!Array.isArray(members) || !members.length || members.some((m) => !m?.userId || !m.role)) throw new Error('The memberships were read without their roles.');
   const roles = new Map<string, string>(members.map((m) => [m.userId, String(m.role)]));
+  const reportsTo = new Map<string, string>(members.filter((m: any) => m.reportsToUserId).map((m: any) => [m.userId, String(m.reportsToUserId)]));
   const signed = await withTheirSignIns(prisma, organizationId, entries ?? []);
   const byExternalId = new Map<string, AnEntry>();
   const entryOf = new Map<string, AnEntry>();
@@ -110,5 +113,5 @@ export async function loadLookups(prisma: PrismaService, organizationId: string,
     ...signed.flatMap((p) => [p.givenName, p.familyName, p.displayName, p.department]),
     ...customers.map((c) => c.title),
   ].filter((x): x is string => !!x && x.trim().length >= 2))];
-  return { roles, entryOf, byExternalId, duties, cover: today.cover, away: today.away, on, names: new Map(), knownNames };
+  return { roles, reportsTo, entryOf, byExternalId, duties, cover: today.cover, away: today.away, on, names: new Map(), knownNames };
 }

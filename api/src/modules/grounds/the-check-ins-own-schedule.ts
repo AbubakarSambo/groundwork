@@ -129,6 +129,29 @@ function roundDay(s: TheSchedule, start: Day, k: number): Day {
 }
 
 /**
+ * HOW MANY ROUNDS FALL FROM THE START UP TO AND INCLUDING THE END (journey test, 12 October 2026).
+ *
+ * The setup screen, the saved count and the invitation said 12, then 65, then 261 for one check-in,
+ * because the saved count walked its own dates (one step at a time from the start, no set day, no
+ * "Now" rule) while setup listed the rounds this schedule really opens. Counting the rounds here, with
+ * the same round days `whenTheNextSessionOpens` uses, makes the number saved the number the team gets.
+ *
+ * Both days are calendar days as midnight UTC. Rounds moved onto the same working day count once.
+ */
+export function howManyRoundsUpTo(s: Omit<TheSchedule, 'startedAt' | 'zone'>, startDay: number, endDay: number): number {
+  const sched = s as TheSchedule;
+  const start = onADayTheyWork(startDay, s.workingDays);
+  let last: Day = -Infinity;
+  let count = 0;
+  for (let k = 0; k < 5000; k += 1) {
+    const d = onADayTheyWork(roundDay(sched, start, k), s.workingDays);
+    if (d > endDay) break;
+    if (d > last) { count += 1; last = d; }
+  }
+  return count;
+}
+
+/**
  * The day the next session opens, as the instant that day starts in the organisation's zone.
  *
  * `lastOpenedAt` is when the session just finished became available (its `availableFrom`, else when it was

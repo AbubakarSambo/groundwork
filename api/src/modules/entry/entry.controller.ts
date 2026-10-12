@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Patch, Body, Query, UnauthorizedException, Res, Req, Logger } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Query, UnauthorizedException, BadRequestException, Res, Req, Logger } from '@nestjs/common';
 import type { Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { Public, OptionalAuth, CurrentUser, CurrentUserData } from '../../common';
@@ -677,10 +677,21 @@ export class EntryCommitController {
     private readonly openLink: TheOpenLinkService,
   ) {}
 
+  /**
+   * `?ifThereIsOne=1` is sent by the sign-in link's page for somebody with nothing saved in this
+   * browser (a new admin from the sign-up form, an invited person). It still saves a draft the server
+   * holds from another browser; with nothing to save anywhere it answers `{ nothing: true }` instead of
+   * a 400, so a new admin's first page logs no error (journey of 12 October). Without it, as before.
+   */
   @Post('commit')
-  async commit(@CurrentUser() user: CurrentUserData, @Body() dto: EntryCommitDto) {
+  async commit(@CurrentUser() user: CurrentUserData, @Body() dto: EntryCommitDto, @Query('ifThereIsOne') ifThereIsOne?: string) {
     if (!user?.organizationId) throw new UnauthorizedException('Your sign-in is not connected to an organisation yet, so ask the person who invited you to add you.');
-    return this.service.commit(user.organizationId, user.id, dto);
+    try {
+      return await this.service.commit(user.organizationId, user.id, dto);
+    } catch (err) {
+      if (ifThereIsOne && err instanceof BadRequestException && (err.getResponse() as { code?: string })?.code === 'NO_ENTRY_SESSION') return { nothing: true as const };
+      throw err;
+    }
   }
 
   /**

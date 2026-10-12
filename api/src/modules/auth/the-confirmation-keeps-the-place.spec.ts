@@ -31,6 +31,8 @@ function service(opts: { existingUser?: any; pending?: any; tokenRow?: any } = {
       delete: jest.fn(async () => ({})),
     },
     person: { findMany: jest.fn(async () => []) },
+    /* Nobody here is on a check-in, so the invited-person door (12 October) does not open. */
+    groundParticipant: { findFirst: jest.fn(async () => null) },
     organization: { findUnique: jest.fn(async () => null), findMany: jest.fn(async () => []) },
     organizationMembership: { count: jest.fn(async () => 0), findMany: jest.fn(async () => []) },
     emailVerificationToken: {

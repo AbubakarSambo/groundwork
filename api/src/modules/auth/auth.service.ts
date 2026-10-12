@@ -2,6 +2,8 @@ import { TheWaysToStopMail } from '../engagement/the-ways-to-stop-mail';
 import { theDomainOf, mayBeJoinedBy } from '../../common/an-email-domain';
 import { aPathInThisApp, theInviteLinkCodeIn } from '../../common/a-path-in-this-app';
 import { whatTheirWorkspaceIsCalled } from './a-roster-row-is-not-a-life-sentence';
+import { needsApproval, isAnAdminOf, whoToAsk } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
+import { tellTheAdminsSomebodyIsWaiting } from '../participants/somebody-is-waiting-at-the-door';
 import { hashed } from './a-token-is-stored-as-its-hash';
 import { sessionClaims, ASessionHolder, SignedInVia } from './a-session-token';
 import {
@@ -427,6 +429,77 @@ export class AuthService {
       if (already) {
         await this.prisma.pendingSignup.delete({ where: { id: pending.id } }).catch(() => undefined);
         return goOnTo(await this.withPasswordSetup(await this.buildAuthResponse(already as unknown as UserWithOrg, 'link'), already.id), pending.next);
+      }
+
+      /*
+       * INVITED TO A CHECK-IN, AND SIGNING UP INSTEAD OF OPENING THE INVITATION (journey test, 12 October).
+       *
+       * Pia was on Lena's check-in at Brightloom and asked for a sign-in link from the sign-in page. Her
+       * address had no account, so this made "Pia's workspace" with her as its admin, and her check-in was
+       * somewhere she could no longer reach. A person who has a place on a check-in never gets a new
+       * organisation made here. They are made exactly as opening the invitation makes them
+       * (participants.service.ts accept): a person of the inviting organisation, waiting for an admin there
+       * when somebody who is not an admin invited them, with their place on the check-in joined to them.
+       */
+      const invitedTo = await this.prisma.groundParticipant.findFirst({
+        where: { email: pending.email, userId: null },
+        orderBy: { createdAt: 'asc' },
+        select: { groundId: true, addedByUserId: true, ground: { select: { organizationId: true, initiatorId: true } } },
+      });
+      if (invitedTo?.ground) {
+        const orgId = invitedTo.ground.organizationId;
+        const inviter = await this.prisma.user.findUnique({
+          where: { id: whoToAsk(invitedTo.addedByUserId, invitedTo.ground.initiatorId) },
+          select: { role: true, organizationId: true },
+        });
+        const wait = needsApproval({
+          groundOrganizationId: orgId,
+          theirHomeOrganizationId: null,
+          alreadyAMemberHere: false,
+          addedByAnAdminOfThisOrg: isAnAdminOf(orgId, inviter as any),
+        });
+        const invited = await this.prisma.$transaction(async (tx) => {
+          const u = await tx.user.create({
+            data: {
+              organizationId: orgId,
+              email: pending.email,
+              firstName: pending.firstName,
+              lastName: pending.lastName ?? '',
+              passwordHash,
+              googleId: pending.googleId ?? undefined,
+              role: 'MEMBER',
+              isEmailVerified: true,
+              /* Holds no seat and cannot check in until somebody says yes, as on accepting. */
+              awaitingOrgApproval: wait,
+            },
+            include: { organization: true },
+          });
+          if (wait) {
+            await tx.membershipRequest.upsert({
+              where: { organizationId_userId: { organizationId: orgId, userId: u.id } },
+              create: { organizationId: orgId, userId: u.id, email: pending.email, requestedByUserId: invitedTo.ground!.initiatorId, groundId: invitedTo.groundId, viaInvitation: true },
+              update: {},
+            });
+          }
+          if (pending.draftToken) {
+            await tx.entryDraft.create({
+              data: { userId: u.id, draftToken: pending.draftToken, payload: (pending.payload ?? {}) as any, history: (pending.history ?? []) as any },
+            });
+          }
+          await tx.groundParticipant.updateMany({
+            where: { email: pending.email, userId: null, awaitingSeat: false, ground: { status: { not: 'AWAITING_APPROVAL' } } },
+            data: { userId: u.id },
+          });
+          await tx.pendingSignup.delete({ where: { id: pending.id } });
+          return u;
+        });
+        if (wait) {
+          tellTheAdminsSomebodyIsWaiting({ prisma: this.prisma, email: this.emailService, logger: this.logger }, orgId, invitedTo.groundId, invitedTo.ground.initiatorId, pending.email)
+            .catch((err: any) => this.logger.warn(`Could not tell the admins about ${pending.email}: ${err?.message}`));
+        }
+        this.logger.log(`${pending.email} confirmed an address that was invited to a check-in, and joined the organisation that invited them`);
+        /* Waiting: the app takes them to "Almost in". Not waiting: on to their check-ins. */
+        return goOnTo({ ...(await this.readyAfter(pending, await this.buildAuthResponse(invited as unknown as UserWithOrg, 'link'), invited.id)), justCreated: true }, wait ? '/join/waiting' : '/today');
       }
 
       /*

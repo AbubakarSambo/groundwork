@@ -1,4 +1,5 @@
 import { fullNameToCall } from '../engagement/a-name-to-call-them';
+import { theAddressAndNameIn, theDomainOf } from '../../common/an-email-domain';
 import { theInvitedRowAsServed } from './the-invited-row-as-served';
 import { withoutTheLeadsSetUpForAMember } from './the-leads-set-up-is-the-leads-in-the-anchor';
 import { aShortQuestionForAPerson, askedBackToTheLead, theQuestionTheyWereShown } from './a-short-question-for-a-person-in-the-old-chat';
@@ -5771,6 +5772,17 @@ export class GroundsService {
       dto = { ...dto, email: found.email };
       colleagueName = found.name;
     }
+    /*
+     * "PIA ALPHA <pia@brightloom.test>" IS PIA'S ADDRESS AND HER NAME, NOT ONE ADDRESS (journey test, 12 October).
+     * Every door that adds a person comes through here (the entry chat's commit calls this too, with no
+     * request check in between), so the address is taken out of such a line here, once, and the name
+     * goes beside it. Something that is still not an address is refused with the setup screen's sentence.
+     */
+    if (dto.email) {
+      const { email: address, name } = theAddressAndNameIn(dto.email);
+      if (!theDomainOf(address)) throw new BadRequestException('That does not look like an email address. Check it and try again.');
+      dto = { ...dto, email: address, ...(name && !dto.displayName?.trim() ? { displayName: name } : {}) };
+    }
     /* Added by address, but already working here: their own name from their membership, not the address (user journeys, F-7). */
     if (!colleagueName && !dto.displayName?.trim() && dto.email) {
       colleagueName = (await theMemberWithThisAddress(this.prisma as any, organizationId, dto.email))?.name ?? null;
@@ -6246,6 +6258,8 @@ export class GroundsService {
             : 'starts_later';
     return {
       id, email, partyType, userId, roleAsDescribed, invitedAt: emailFailed ? null : invitedAt, notifiedAt, soloArtifactAt, createdAt,
+      /* The name the lead typed, as she typed it, so the row she is shown is never "Somebody invited by email" (journey test, 12 October). */
+      nameGiven: colleagueName ?? (dto.displayName?.trim() ? dto.displayName.trim().slice(0, 120) : null),
       notInvitedBecause,
       devUrl: emailResult?.devUrl,
       emailFailed,
@@ -6806,7 +6820,7 @@ export class GroundsService {
   async updateTimeline(
     groundId: string,
     requestingUserId: string,
-    dto: { label?: string; timelineDays?: number; timelineWeeks?: number; runsUntilEnded?: boolean; cadence?: string; contextNote?: string; startsAt?: string; brief?: string; workingDays?: number[]; cadenceAnchorDay?: number | null },
+    dto: { label?: string; timelineDays?: number; timelineWeeks?: number; runsUntilEnded?: boolean; cadence?: string; contextNote?: string; startsAt?: string; brief?: string; workingDays?: number[]; cadenceAnchorDay?: number | null; endsOn?: string },
   ) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
     if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
@@ -6846,7 +6860,24 @@ export class GroundsService {
     /* "Until I end it" (request 37) is stored as no planned length: zero days and the flag. A finite
        length sent later turns the flag off again. */
     const goesOnUntilEnded = dto.runsUntilEnded === true;
-    const requestedDays = goesOnUntilEnded ? 0 : dto.timelineDays ?? (dto.timelineWeeks !== undefined ? dto.timelineWeeks * 7 : undefined);
+    /*
+     * "GIVE IT MORE TIME" TO A CHOSEN END (journey test, 12 October 2026). The page turned the date into calendar days, and the count
+     * was those days over the rhythm's gap, so a weekly check-in moved to an end could say a different number of sessions from the one
+     * setup lists for the same end, and the stored end never moved. The end now sets the length the same way setup's does: the
+     * schedule's own rounds from the real start (or the day it was made, with the "Now" rule) up to it, and the end is stored.
+     */
+    const theEndChosen = !goesOnUntilEnded && dto.endsOn && !Number.isNaN(new Date(dto.endsOn).getTime()) ? new Date(dto.endsOn) : null;
+    const cadenceNow = (dto.cadence as Cadence | undefined) ?? ground.cadence;
+    const requestedDays = goesOnUntilEnded ? 0 : theEndChosen
+      ? timelineDaysForAChosenEnd({
+        startsAt: dto.startsAt ? new Date(dto.startsAt) : ground.startsAt,
+        endsAt: theEndChosen,
+        cadence: cadenceNow,
+        workingDays: dto.workingDays ?? (ground as any).workingDays ?? null,
+        anchorDay: dto.cadenceAnchorDay !== undefined ? dto.cadenceAnchorDay : (ground as any).cadenceAnchorDay ?? null,
+        now: ground.createdAt,
+      })
+      : dto.timelineDays ?? (dto.timelineWeeks !== undefined ? dto.timelineWeeks * 7 : undefined);
     /*
      * AND WHICH DAYS THE TEAM WORKS, WHICH COULD ONLY EVER BE SAID AT CREATION.
      *
@@ -7107,7 +7138,7 @@ export class GroundsService {
       ? goesOnUntilEnded
         /* No end to be past: it opens again, and only the lead ending it closes it. */
         ? new Date(Date.now() + 86_400_000)
-        : deadlineOf({ createdAt: ground.createdAt, startsAt: dto.startsAt ? new Date(dto.startsAt) : ground.startsAt, timelineDays: requestedDays })
+        : deadlineOf({ createdAt: ground.createdAt, startsAt: dto.startsAt ? new Date(dto.startsAt) : ground.startsAt, timelineDays: requestedDays, ...(theEndChosen ? { endsAt: theEndChosen } : {}) })
       : null;
     const opensAgain = !!reopening && reopening.getTime() > Date.now();
     if (hasStalled(ground.status) && requestedDays !== undefined && !opensAgain) {
@@ -7141,6 +7172,7 @@ export class GroundsService {
           runsUntilEnded: goesOnUntilEnded,
           timelineStated: true,
           ...(goesOnUntilEnded && { endsAt: null }),
+          ...(theEndChosen && { endsAt: theEndChosen }),
         }),
         ...(dto.cadence !== undefined && { cadence: dto.cadence as Cadence, cadenceStated: true }),
         /* Normalised on the way in: seven days listed is the same instruction as saying nothing,
@@ -7160,9 +7192,9 @@ export class GroundsService {
          */
         ...(dto.startsAt !== undefined && {
           startsAt: dto.startsAt ? new Date(dto.startsAt) : null,
-          endsAt: dto.startsAt && !(goesOnUntilEnded || (requestedDays === undefined && (ground as any).runsUntilEnded))
+          endsAt: theEndChosen ?? (dto.startsAt && !(goesOnUntilEnded || (requestedDays === undefined && (ground as any).runsUntilEnded))
             ? new Date(new Date(dto.startsAt).getTime() + (requestedDays ?? ground.timelineDays ?? 90) * 24 * 60 * 60 * 1000)
-            : null,
+            : null),
         }),
         groundAuditLog: auditData,
       },
@@ -8441,7 +8473,7 @@ function theKindOfDayItLandsOn(c: Cadence): 'weekday' | 'month' | 'none' {
   return c === Cadence.MONTHLY ? 'month' : c === Cadence.WEEKLY || c === Cadence.FORTNIGHTLY ? 'weekday' : 'none';
 }
 
-function howLongItRuns(dto: { runsUntilEnded?: boolean; timelineDays?: number; endsAt?: string | Date | null; startsAt?: string | Date | null; cadence?: any; scenario: any; workingDays?: number[] | null }): number {
+function howLongItRuns(dto: { runsUntilEnded?: boolean; timelineDays?: number; endsAt?: string | Date | null; startsAt?: string | Date | null; cadence?: any; scenario: any; workingDays?: number[] | null; cadenceAnchorDay?: number | null }): number {
   /* No planned length. Zero is what every reader of the length already reads as "no end". */
   if (dto.runsUntilEnded === true) return 0;
   if (dto.timelineDays != null) return dto.timelineDays;
@@ -8451,6 +8483,7 @@ function howLongItRuns(dto: { runsUntilEnded?: boolean; timelineDays?: number; e
       endsAt: new Date(dto.endsAt),
       cadence: dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario as keyof typeof RECOMMENDED_CADENCE],
       workingDays: dto.workingDays ?? null,
+      anchorDay: dto.cadenceAnchorDay ?? null,
     });
   }
   return DEFAULT_TIMELINE_DAYS[dto.scenario as keyof typeof DEFAULT_TIMELINE_DAYS];

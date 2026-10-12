@@ -80,3 +80,25 @@ export function aNameFromAnEmailAddress(email: string): string | null {
   if (!name || name.length < 2) return null;
   return name.split('-').filter(Boolean).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
+
+/**
+ * AN ADDRESS WRITTEN THE WAY MAIL PROGRAMS WRITE IT (journey test, 12 October).
+ *
+ * Lena pasted her team as "Pia Alpha <pia@brightloom.test>", the way an address book copies them.
+ * The whole line was kept as Pia's address. So her domain could not be read and she was told she was
+ * "from outside" her own company, and when she later asked for a sign-in link with her real address
+ * nobody had that address, so a new organisation was made for her and her check-in was lost.
+ *
+ * This takes the address out of such a line and keeps the name beside it. A plain address comes back
+ * lowercased and trimmed. Anything that is still not an address comes back as it was typed, lowercased,
+ * so the caller's own check can refuse it with its own sentence.
+ */
+export function theAddressAndNameIn(raw: string | null | undefined): { email: string; name: string | null } {
+  const typed = (raw ?? '').trim();
+  const bracketed = typed.match(/^(.*?)<\s*([^<>\s]+@[^<>\s]+)\s*>\s*$/);
+  if (bracketed) {
+    const name = bracketed[1].replace(/^["'\s]+|["'\s]+$/g, '').replace(/\s+/g, ' ').trim();
+    return { email: bracketed[2].toLowerCase(), name: name || null };
+  }
+  return { email: typed.replace(/^mailto:/i, '').toLowerCase(), name: null };
+}

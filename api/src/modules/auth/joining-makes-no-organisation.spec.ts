@@ -40,6 +40,8 @@ function service(opts: { pending: any; linkOrg?: any; domainOrgs?: any[]; room?:
     pendingSignup: { findUnique: jest.fn(async () => opts.pending), delete: jest.fn(async () => ({})) },
     user: { findUnique: jest.fn(async () => null) },
     person: { findMany: jest.fn(async () => []) },
+    /* Nobody here is on a check-in, so the invited-person door (12 October) does not open. */
+    groundParticipant: { findFirst: jest.fn(async () => null) },
     organization: {
       findUnique: jest.fn(async ({ where }: any) => (where.inviteLinkCode && opts.linkOrg && where.inviteLinkCode === opts.linkOrg.code ? { id: opts.linkOrg.id, name: opts.linkOrg.name } : null)),
       findMany: jest.fn(async () => opts.domainOrgs ?? []),

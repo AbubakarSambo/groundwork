@@ -1,5 +1,5 @@
 import { Cadence } from '@prisma/client';
-import { theNextDayTheyWork } from './which-days-this-team-works';
+import { howManyRoundsUpTo } from './the-check-ins-own-schedule';
 
 /**
  * How many check-ins a ground actually holds.
@@ -45,22 +45,23 @@ export function timelineDaysForAChosenEnd(a: {
   endsAt: Date;
   cadence: Cadence;
   workingDays?: number[] | null;
+  /** Weekly and fortnightly: the weekday, 0 to 6. Monthly: the day of the month, 1 to 31. */
+  anchorDay?: number | null;
   now?: Date;
 }): number {
-  const dayOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const dayOf = (d: Date) => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
   const from = dayOf(a.startsAt ?? a.now ?? new Date());
   const end = dayOf(a.endsAt);
-  const inclusiveDays = Math.max(1, Math.round((end.getTime() - from.getTime()) / 86_400_000) + 1);
+  const inclusiveDays = Math.max(1, Math.round((end - from) / 86_400_000) + 1);
   const gap = DAYS_BETWEEN[a.cadence];
   if (!gap) return inclusiveDays;
-  let d = theNextDayTheyWork(from, a.workingDays);
-  let count = 0;
-  while (d <= end && count < 2000) {
-    count += 1;
-    const next = new Date(d);
-    if (a.cadence === Cadence.MONTHLY) next.setMonth(next.getMonth() + 1);
-    else next.setDate(next.getDate() + gap);
-    d = theNextDayTheyWork(next, a.workingDays);
-  }
+  /* The schedule's own rounds (the-check-ins-own-schedule.ts), so the count saved is the count the
+     setup listed and the count of sessions that will really open: the set day, and "Now" keeping the
+     first one open until the next set day at least half a cycle away, are both counted. */
+  const count = howManyRoundsUpTo(
+    { cadence: a.cadence, anchorDay: a.anchorDay ?? null, workingDays: a.workingDays ?? null, startsNow: a.startsAt == null },
+    from,
+    end,
+  );
   return Math.max(1, count) * gap;
 }

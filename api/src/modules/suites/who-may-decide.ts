@@ -113,7 +113,7 @@ async function aPersonWhoMay(prisma: PrismaService, request: ARequest, userId: s
 export async function whoMayDecide(prisma: PrismaService, rule: ARule, request: ARequest, known: Known = {}): Promise<WhoDecides | null> {
   if (rule === 'admin') return { kind: 'admin', rule: 'admin' };
   if (typeof rule === 'object') return (await aPersonWhoMay(prisma, request, rule.named, known)) ? { kind: 'person', rule: 'named', userId: rule.named } : null;
-  if (rule === 'manager') return theManager(prisma, request, known);
+  if (rule === 'manager') return (await theManager(prisma, request, known)) ?? theReportingLine(prisma, request, known);
 
   const duty = DUTY_OF[rule];
   let holder: string | null;
@@ -349,6 +349,36 @@ async function theManager(prisma: PrismaService, request: ARequest, known: Known
   if (role !== 'LEAD' && role !== 'ADMIN') return null;
   const firstName = m.givenName?.trim() || m.displayName?.trim().split(/\s+/)[0] || null;
   return { kind: 'manager', rule: 'manager', userId: managerUserId, firstName };
+}
+
+/**
+ * The manager an admin set on the People page ("Chidi reports to Bola", the membership's reporting
+ * line), when the staff directory names no manager who may decide. The journey of 12 October found
+ * the People page writing this line and the suites reading only the directory, so Chidi's leave went
+ * to an admin. The same conditions as the directory's manager: a lead or an admin here, never the
+ * requester.
+ */
+async function theReportingLine(prisma: PrismaService, request: ARequest, known: Known = {}): Promise<WhoDecides | null> {
+  if (!request.requesterUserId) return null;
+  const L = known.lookups;
+  let to: string | null | undefined = L?.reportsTo ? L.reportsTo.get(request.requesterUserId) : undefined;
+  if (!L?.reportsTo) {
+    const m = await (prisma as any).organizationMembership?.findUnique?.({
+      where: { userId_organizationId: { userId: request.requesterUserId, organizationId: request.organizationId } },
+      select: { reportsToUserId: true },
+    })?.catch?.(() => null);
+    to = m?.reportsToUserId ?? null;
+  }
+  if (!to || to === request.requesterUserId) return null;
+  const role = await roleIn(prisma, request.organizationId, to, known);
+  if (role !== 'LEAD' && role !== 'ADMIN') return null;
+  const entry = L?.entryOf.get(to);
+  let firstName = entry?.givenName?.trim() || entry?.displayName?.trim().split(/\s+/)[0] || null;
+  if (!firstName) {
+    const u = await (prisma as any).user?.findUnique?.({ where: { id: to }, select: { firstName: true } })?.catch?.(() => null);
+    firstName = u?.firstName?.trim() || null;
+  }
+  return { kind: 'manager', rule: 'manager', userId: to, firstName };
 }
 
 /** The request's team, or else the requester's department in the staff directory. */
