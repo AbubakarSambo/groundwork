@@ -1,3 +1,5 @@
+import { NOT_A_QUIET_CLOSE, wasAQuietClose } from '../grounds/an-answer-includes-a-refusal';
+import { theConfirmedWaits, theNoteBesideTheClaim } from '../grounds/a-wait-is-the-speakers-account';
 import { aGroundIsTheAnchors } from '../conversation/the-anchor-weekly-check-in';
 import { anAimTheHolderSet } from '../board/an-aim-is-a-sentence-about-somebody';
 import { refuseSomeoneHeldForASeat, refuseSomeoneAwaitingTheOrganisation } from '../participants/held-for-a-seat';
@@ -27,7 +29,7 @@ import { periodOf } from '../patterns/period-of';
 import { PATTERN_ROW_SELECT, servedPatterns, runsItForAPattern } from '../patterns/who-reads-a-pattern';
 import {
   theFactsIn, theSentencesIn, theWeeksHeading, whatThisReportIs, theCheckInsMade, theThingsWithProof, aTargetThisWeek,
-  movedThisWeek, whatCameUpAcrossTheTeam, whatWasSaidAndWhatTheProofShows, aCommitmentThatSettled, aHandoffThatCleared,
+  movedThisWeek, whatCameUpAcrossTheTeam, whatWasSaidAndWhatTheProofShows, aCommitmentThatSettled, aHandoffThatCleared, theirSideOfIt,
   forTheLeadToDo, yourOwnToDo, whereItComesFrom, NOTHING_MOVED, NOTHING_DROPPED, NO_RESULT,
   type TheWeeksFacts, type AWeeksCount, type AWeeksCommitment, type AFigure, type AThingToDo, type WhatChanged,
 } from './the-weekly-report';
@@ -131,7 +133,8 @@ export class TheWeeklyReportService {
     const labels = labelsForParties(parties as any);
     const namesOff = namesOffFor(parties, labels);
     const done: any[] = await this.prisma.checkIn.findMany({
-      where: { groundId, status: CheckInStatus.COMPLETED, completedAt: { gte: start } },
+      /* A session the clock closed with nothing said is not a check-in made (night quality run 1, problem 4). */
+      where: { groundId, status: CheckInStatus.COMPLETED, completedAt: { gte: start }, AND: [NOT_A_QUIET_CLOSE] },
       select: { participantId: true, sessionNumber: true, completedAt: true, isSetup: true },
     } as any);
     const checkedIn = new Set(done.map((c) => c.participantId));
@@ -173,7 +176,7 @@ export class TheWeeklyReportService {
     /* THE CHECK-INS DUE AND MADE: every check-in opened this week, and every one made this week. */
     const all: any[] = ((await (this.prisma.checkIn.findMany({
       where: { groundId },
-      select: { participantId: true, sessionNumber: true, status: true, completedAt: true, availableFrom: true, createdAt: true, isSetup: true, isClarification: true, isSelfCorrection: true },
+      select: { participantId: true, sessionNumber: true, status: true, completedAt: true, availableFrom: true, createdAt: true, isSetup: true, isClarification: true, isSelfCorrection: true, optional: true, closedReason: true, turns: { where: { role: 'PERSON' }, take: 1, select: { id: true } } },
     } as any) as Promise<any[]>).catch(() => [])) ?? []) as any[];
     const inTheWeek = (d: any) => !!d && new Date(d).getTime() >= start.getTime() && new Date(d).getTime() <= at.getTime();
     const due = all.filter((c) => c && !c.isSetup && !c.isClarification && !c.isSelfCorrection && c.status !== undefined)
@@ -182,8 +185,10 @@ export class TheWeeklyReportService {
       .filter((c) => c.status === CheckInStatus.COMPLETED
         || !(fallsInLeave(new Date(c.availableFrom ?? c.createdAt), leave.get(c.participantId) ?? []) || awayUntilOn(leave.get(c.participantId), at)))
       /* Nor one that waits for somebody an admin has not let in yet, who cannot make it (decision 77). */
-      .filter((c) => c.status === CheckInStatus.COMPLETED || !notLetIn.has(c.participantId));
-    const made = due.filter((c) => c.status === CheckInStatus.COMPLETED).length;
+      .filter((c) => c.status === CheckInStatus.COMPLETED || !notLetIn.has(c.participantId))
+      /* The lead's own optional row is due only when they answered it (decision 133). */
+      .filter((c) => !c.optional || (c.status === CheckInStatus.COMPLETED && !wasAQuietClose(c)));
+    const made = due.filter((c) => c.status === CheckInStatus.COMPLETED && !wasAQuietClose(c)).length;
 
     /* WHAT WAS SAID, AND HOW MUCH OF IT HAS SOMETHING BEHIND IT. Never the rating of an answer. */
     const said = rows.filter((r) => String(r.type) !== 'SUCCESS_DEFINITION');
@@ -223,21 +228,40 @@ export class TheWeeklyReportService {
 
     /* COMMITMENTS SETTLED THIS WEEK, AND THE ONES SAID THIS WEEK THAT ARE STILL OPEN. */
     const commitments: any[] = ((await ((this.prisma as any).groundCommitment?.findMany?.({
-      where: { groundId }, select: { participantId: true, text: true, status: true, whenSaid: true, settledAt: true, createdAt: true },
+      where: { groundId }, select: { participantId: true, text: true, status: true, whenSaid: true, settledAt: true, settledBy: true, createdAt: true },
     }) ?? Promise.resolve([])).catch(() => [])) ?? []) as any[];
     const asKept = (c: any): AWeeksCommitment => {
       const clause = inOurVoice(c.text);
-      return { participantId: c.participantId ?? null, clause: clause ? namesOff(clause) : null, status: String(c.status ?? 'UNKNOWN').toUpperCase() as any, whenSaid: c.whenSaid ? namesOff(c.whenSaid) : null };
+      return { participantId: c.participantId ?? null, clause: clause ? namesOff(clause) : null, status: String(c.status ?? 'UNKNOWN').toUpperCase() as any, whenSaid: c.whenSaid ? namesOff(c.whenSaid) : null, settledBy: c.settledBy ?? null };
     };
     const settled = commitments.filter((c) => ['DONE', 'NOT_DONE', 'DROPPED'].includes(String(c.status).toUpperCase()) && inTheWeek(c.settledAt)).map(asKept);
     const open = commitments.filter((c) => String(c.status ?? 'UNKNOWN').toUpperCase() === 'UNKNOWN' && c.participantId && inTheWeek(c.createdAt)).map(asKept);
 
     /* WHAT STOPPED BEING IN SOMEBODY'S WAY THIS WEEK. */
     const deps: any[] = ((await ((this.prisma as any).groundDependency?.findMany?.({
-      where: { groundId, status: 'CLEARED' }, select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, clearedAt: true },
+      where: { groundId, status: 'CLEARED' }, select: { id: true, fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, triedSaid: true, clearedAt: true },
     }) ?? Promise.resolve([])).catch(() => [])) ?? []) as any[];
-    const cleared = deps.filter((d) => inTheWeek(d.clearedAt) && (d.what ?? '').trim())
-      .map((d) => ({ fromParticipantId: d.fromParticipantId, onParticipantId: d.onParticipantId ?? null, onLabel: d.onLabel ? namesOff(d.onLabel) : null, what: namesOff(d.what) }));
+    const clearedThisWeek = deps.filter((d) => inTheWeek(d.clearedAt) && (d.what ?? '').trim()).map((d, i) => ({ ...d, id: d.id ?? `w-${i}`, groundId }));
+    /* Change 4 (decision 137): a wait on a colleague is the speaker's account until the colleague's own promise confirms it. */
+    const confirmedWaits = await theConfirmedWaits(this.prisma, clearedThisWeek).catch(() => new Set<string>());
+    const onSomebody = [...new Set(clearedThisWeek.filter((d) => d.onParticipantId && !confirmedWaits.has(d.id)).map((d) => d.onParticipantId as string))];
+    const theirLines: any[] = onSomebody.length ? ((await ((this.prisma as any).recordEntry?.findMany?.({
+      where: { participantId: { in: onSomebody }, type: 'PROGRESS', disputedAt: null, createdAt: { lte: at } },
+      select: { participantId: true, type: true, text: true, createdAt: true },
+    }) ?? Promise.resolve([])).catch(() => [])) ?? []) as any[] : [];
+    const namesOfParty = (pid: string) => {
+      const p = parties.find((x) => x.id === pid);
+      return [p?.user?.firstName, String(p?.nameGiven ?? '').split(/\s+/)[0], fullNameOf(p ?? {})].filter(Boolean) as string[];
+    };
+    const cleared = clearedThisWeek.map((d) => {
+      const confirmed = !d.onParticipantId || confirmedWaits.has(d.id);
+      const theirSide = confirmed ? null : theirSideOfIt(namesOfParty(d.fromParticipantId), (Array.isArray(theirLines) ? theirLines : []).filter((l) => l.participantId === d.onParticipantId));
+      return {
+        fromParticipantId: d.fromParticipantId, onParticipantId: d.onParticipantId ?? null, onLabel: d.onLabel ? namesOff(d.onLabel) : null, what: namesOff(d.what),
+        confirmed,
+        ...(confirmed ? {} : { note: namesOff(theNoteBesideTheClaim(d)), ...(theirSide ? { theirSide: namesOff(theirSide) } : {}) }),
+      };
+    });
 
     /* WHAT ONLY THE LEAD CAN SETTLE, as Today reads it for the lead, kept by label. */
     const forTheLead = ground.initiatorId

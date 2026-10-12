@@ -53,6 +53,11 @@ ${PLAIN_WORDS}
 
 ${SPOKEN_TO_THE_READER}`;
 
+/** What a wording may not put in the reader's mouth more often than its draft does (see safeToUse). "confirmed" added after night quality run 1: "You confirmed that everything you gave was from memory." */
+export const ATTRIBUTES_TO_THE_READER_SOURCE = String.raw`\byou(?:'ve| have)? (said|say|says|described|describe|mentioned|mention|told|tell|reported|report|admitted|admit|explained|explain|noted|note|stated|state|wrote|write|expect|expected|believe|believed|think|thought|feel|felt|hope|hoped|assume|assumed|acknowledge|acknowledged|agree|agreed|confirmed|confirm)\b`;
+/** How many times a line puts something in the reader's mouth. */
+export const timesItSaysTheReaderSaidIt = (s: string) => (s.match(new RegExp(ATTRIBUTES_TO_THE_READER_SOURCE, 'gi')) ?? []).length;
+
 /**
  * WHAT WOULD MAKE US KEEP THE DRAFT INSTEAD.
  *
@@ -156,10 +161,7 @@ export function safeToUse(draft: string, composed: string | null | undefined, mu
    * wording inventing testimony, which is the one thing this product cannot do.
    */
   /* "you expect that no pattern will emerge from work like this" (run 6, 20 Sep 2026): a belief, not a word, put in the reader's mouth. */
-  const ATTRIBUTES_TO_THE_READER = /\byou(?:'ve| have)? (said|say|says|described|describe|mentioned|mention|told|tell|reported|report|admitted|admit|explained|explain|noted|note|stated|state|wrote|write|expect|expected|believe|believed|think|thought|feel|felt|hope|hoped|assume|assumed|acknowledge|acknowledged|agree|agreed)\b/i;
-  /* Counted, not only looked for (5 October 2026, release round): a draft that held one real "you said" let a second, invented one
-     through ("You are in session 4 of 6 for this work, and you say that nothing has come up often enough yet to be called a pattern."). */
-  const attributions = (s: string) => (s.match(new RegExp(ATTRIBUTES_TO_THE_READER.source, 'gi')) ?? []).length;
+  const attributions = timesItSaysTheReaderSaidIt;
   if (attributions(text) > attributions(draft)) return false;
   /* Not splitting on a colon: "the client name: Alex Smith" would put an invented name in first
      position, where the sentence-start exemption lets it through. The conversation guard was

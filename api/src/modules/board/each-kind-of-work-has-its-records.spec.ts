@@ -117,7 +117,7 @@ describe('a sales check-in: deals and their stages', () => {
           due: null, fields: { Value: 'KES 90K' }, from: 'said', said: 'Nyama Choma Palace paid KES 90K on 22 September, so that one is won.',
           saidBy: 'Rukia', saidByParticipantId: 'p-rukia', saidByLine: "In Rukia's words,",
           known: 'said', knownSays: 'Someone said it.', mark: 'memory', next: null, nextKnown: null, nextSays: 'Nobody has said what happens next.',
-          lastSaidOn: null, group: 'won', groupSays: 'It rests on what somebody said, with no proof yet. No date has been given for it. Nobody has spoken about it in a check-in yet. Nobody has said what happens next.',
+          lastSaidOn: null, group: 'said-won', groupSays: 'It rests on what somebody said, with no proof yet. No date has been given for it. Nobody has spoken about it in a check-in yet. Nobody has said what happens next.',
           /* Request 115 (b): its value as said, the days it was spoken about, and the owner's own read where there is one. */
           value: 'KES 90K', valueSays: null, contactHistory: [], contactHistorySays: 'Each date is a day somebody spoke about this deal in a check-in. Nothing on record holds each contact with the customer.', theirRead: null,
         },
@@ -139,7 +139,8 @@ describe('a sales check-in: deals and their stages', () => {
       /* Request 112 (a): each deal in its group, from its own record. This check-in has no end date. */
       groups: [
         { group: 'possible', heading: 'Possible', reason: 'Each of these is still open. This check-in has no end date, so none can be said to be likely before the end.', rowIds: ['w-2', 'w-3'] },
-        { group: 'won', heading: 'Won', reason: 'Somebody reported each of these at Won, the last stage.', rowIds: ['w-1'] },
+        /* Night quality run 1, problem 3: a deal at Won on somebody's word alone is their claim, never counted as won. */
+        { group: 'said-won', heading: 'Said to be won, not shown yet', reason: 'Somebody said each of these was won, in their own words. Nothing has been shown to back them yet, so they are not counted as won.', rowIds: ['w-1'] },
       ],
       groupsNote: [
         'Nothing on record says what a deal must show at each stage, so no group here says whether a criterion is met.',

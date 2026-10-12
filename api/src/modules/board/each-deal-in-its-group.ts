@@ -24,8 +24,8 @@ import { theDayInWords } from './the-day-in-words';
 /** How recent "recent" is: somebody spoke about it in the last 7 days. Decided for Hafsah to confirm. */
 export const RECENT_DAYS = 7;
 
-export type ADealGroup = 'likely' | 'possible' | 'next-quarter' | 'cooling' | 'cold' | 'won';
-const ORDER: ADealGroup[] = ['likely', 'possible', 'next-quarter', 'cooling', 'cold', 'won'];
+export type ADealGroup = 'likely' | 'possible' | 'next-quarter' | 'cooling' | 'cold' | 'said-won' | 'won';
+const ORDER: ADealGroup[] = ['likely', 'possible', 'next-quarter', 'cooling', 'cold', 'said-won', 'won'];
 
 const dayKey = (d: Date): string =>
   new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Lagos', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
@@ -73,7 +73,13 @@ export function whyThisDealIsHere(f: Facts, now: Date): string {
 }
 
 function theGroup(f: Facts, endKey: string | null): ADealGroup {
-  if (f.won) return 'won';
+  /*
+   * A DEAL IS WON ONLY WHEN PROOF OR A COLLEAGUE SHOWS IT (decision 12, decision 138 point 1, change 3; night quality run 1,
+   * problem 3). Collins's "I did eleven, all the deliveries are done." sat under Won with no M-Pesa code, and a week later
+   * he said "maybe four or five". Reported at the last stage on somebody's word, it is their claim, in its own group.
+   * A deal the lead put at the last stage on the board is the lead's own entry, and stays under Won.
+   */
+  if (f.won) return f.shown || f.confirmed || f.addedOnTheBoard ? 'won' : 'said-won';
   if (endKey && f.due && dayKey(f.due) > endKey) return 'next-quarter';
   if (f.lastSaid && !f.recent && !f.next) return 'cooling';
   if (endKey && (f.shown || f.confirmed) && f.due && dayKey(f.due) <= endKey && f.recent) return 'likely';
@@ -101,6 +107,14 @@ function headingAndReason(g: ADealGroup, end: Date | null, now: Date, lastStage:
       return { heading: 'Cooling', reason: 'Nobody has spoken about these in the last week, and nobody has said what happens next.' };
     case 'cold':
       return { heading: 'Cold', reason: '' };
+    case 'said-won':
+    {
+      const at = lastStage ?? 'won';
+      return {
+        heading: `Said to be ${at.toLowerCase()}, not shown yet`,
+        reason: `Somebody said each of these was ${at.toLowerCase()}, in their own words. Nothing has been shown to back them yet, so they are not counted as ${at.toLowerCase()}.`,
+      };
+    }
     case 'won':
     {
       /* "Somebody reported each of these at Won" was said of a deal the lead added on the board, which nobody reported. */
@@ -126,6 +140,18 @@ export const NO_END_DATE = 'This check-in has no end date, so no deal can be sai
  * The deal grid with each row's `group` and `groupSays`, and the section's `groups` and `groupsNote`. Only on
  * a sales board's deal grid; every other section is returned as it was.
  */
+/**
+ * A DELIVERY OF STOCK IS NOT A SALE (night quality run 1, problem 7). The person who runs the stock sent kits out on
+ * numbered delivery notes, and the board listed them under Won ("Kisii, DN-1231"), so "8 deals were reported at Won"
+ * counted stock moving between the team's own people. A row whose name or line is a delivery note or a dispatch keeps
+ * its place on the grid as a delivery, and no deal count, group or total reads it.
+ */
+const A_DISPATCH = /\bDN-?\s?\d+\b|\bdelivery notes?\b|\bdispatch(?:ed|es|ing)?\b|\bstock count\b/i;
+export function isADispatchNotADeal(r: Pick<AServedRecord, 'name' | 'said'>): boolean {
+  return A_DISPATCH.test(`${r.name ?? ''} ${r.said ?? ''}`);
+}
+export const A_DISPATCH_SAYS = 'This is stock sent out on a delivery note, not a sale, so it is not counted as a deal.';
+
 export function eachDealInItsGroup(kind: KindOfWork | null, sections: AServedSection[] | null | undefined, end: Date | null, now: Date): AServedSection[] | null | undefined {
   if (kind !== 'sales org' || !Array.isArray(sections)) return sections;
   const endKey = end ? dayKey(end) : null;
@@ -134,6 +160,7 @@ export function eachDealInItsGroup(kind: KindOfWork | null, sections: AServedSec
     const stages: string[] = Array.isArray(sec.stages) ? sec.stages : [];
     const lastStage = stages.length ? stages[stages.length - 1] : null;
     const rows = sec.rows.map((r: any) => {
+      if (r.kind === 'deal' && isADispatchNotADeal(r)) return { ...r, kind: 'delivery', groupSays: A_DISPATCH_SAYS };
       if (r.kind !== 'deal') return r;
       const f = theFacts(r, lastStage, now);
       return { ...r, group: theGroup(f, endKey), groupSays: whyThisDealIsHere(f, now) };

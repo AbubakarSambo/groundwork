@@ -186,8 +186,10 @@ describe('the lead reads the whole week', () => {
   it('reads what changed', async () => {
     const { r } = await served(LEAD);
     expect(r.whatChanged!.moved).toEqual([
-      'Aisha committed to call Mama Fresh by Thursday, and it is now done.',
-      'Baraka is no longer waiting on you for the price list.',
+      /* Settled on her word alone, so it is her claim (night quality run 1, problem 3). */
+      'Aisha committed to call Mama Fresh by Thursday, and says it is done. Nothing has been shown to back it yet.',
+      /* Change 4: Baraka's wait on the lead is his account; the lead never promised the price list (night quality run 1, problem 2). */
+      'Baraka said the work was waiting on you for the price list, and it is no longer waiting. Not backed: no attempt to unblock mentioned.',
     ]);
     expect(r.whatChanged!.dropped).toEqual(['Baraka committed to visit Kwik Stores, and it has been dropped.']);
     expect(r.whatChanged!.result).toEqual([
@@ -237,7 +239,7 @@ describe('a person reads only what is about them, and the team\'s own counts', (
       'This week, you said 2 things in your check-ins. None of them has a photo or document behind it yet. 1 number was given as an estimate, and 1 number was given from memory with nothing attached, so they cannot be checked yet. It is worth confirming them before acting on them.',
     );
     expect(r.whatChanged).toEqual({
-      moved: ['You are no longer waiting on Wairimu for the price list.'],
+      moved: ['You said the work was waiting on Wairimu for the price list, and it is no longer waiting. Not backed: no attempt to unblock mentioned.'],
       dropped: ['You committed to visit Kwik Stores, and it has been dropped.'],
       result: [
         "The team's freezers sold went from 12 to 17 this week.",
@@ -257,7 +259,7 @@ describe('a person reads only what is about them, and the team\'s own counts', (
     const { r } = await served(AISHA);
     expect(r.inNumbers!.find((f) => f.of.startsWith('visits made'))).toEqual({ figure: '9', of: 'visits made, your own number', says: 'It stayed at 9 this week.' });
     expect(r.threeInARow).toEqual([]);
-    expect(r.whatChanged!.moved).toEqual(['You committed to call Mama Fresh by Thursday, and it is now done.']);
+    expect(r.whatChanged!.moved).toEqual(['You committed to call Mama Fresh by Thursday, and you say it is done. Nothing has been shown to back it yet.']);
     expect(r.whatChanged!.dropped).toEqual(['Nothing was dropped this week.']);
     expect(r.forNextWeek).toEqual([
       { do: 'Send the quote on Friday.', why: 'You said this week that you would do this, and it is still open.', comesFrom: 'This comes from what you said you would do.' },

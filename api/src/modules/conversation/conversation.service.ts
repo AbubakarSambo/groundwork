@@ -1,3 +1,5 @@
+import { whoMissedTheCheckInsJustBefore, whatTheSessionIsToldAboutMissing } from '../grounds/missed-check-ins';
+import { anAimIsAThing } from '../board/an-aim-is-a-sentence-about-somebody';
 import { HELD_FOR_A_SEAT } from '../participants/held-for-a-seat';
 import { checksInOnlyWhenTheyChoose } from '../grounds/the-lead-checks-in-when-they-choose';
 import { theWaitIsConfirmed } from '../grounds/a-wait-is-the-speakers-account';
@@ -19,7 +21,7 @@ import { aSentenceStartsWithACapital } from './a-sentence-starts-with-a-capital'
 import { theFirstNameFrom } from '../reports/a-title-is-not-a-first-name';
 import { theSpeakerLine } from './the-person-speaking';
 import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestException, ServiceUnavailableException } from '@nestjs/common';
-import { whereThisCameFrom, WHAT_TO_DO_WITH_THESE } from './where-this-document-came-from';
+import { whereThisCameFrom, WHAT_TO_DO_WITH_THESE, isAColleaguesProof, aColleaguesProofAsTheRecordHoldsIt, whatMayBeSaidAboutAColleaguesProof } from './where-this-document-came-from';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { whatAParticipantIsToldAboutThis } from '../grounds/what-a-participant-is-told-about-this';
 import { whatToPutToThem, theReplyAlreadyQuotesIt } from './the-line-that-touches-what-they-said';
@@ -4533,6 +4535,16 @@ export class ConversationService {
     let returningUserContext = '';
     if (checkIn.sessionNumber >= 2 && !checkIn.isSelfCorrection) {
       returningUserContext = await this.buildReturningUserContext(checkIn.participantId, checkIn.sessionNumber);
+      /*
+       * AND THE CHECK-INS THEY MISSED JUST BEFORE THIS ONE (night quality run 1, problem 5). Jared missed two and his
+       * session never said so or asked his numbers. The lead and managing-only rows are never counted (missed-check-ins.ts).
+       */
+      const missedJustBefore = (await whoMissedTheCheckInsJustBefore(this.prisma, checkIn.groundId).catch(() => new Map<string, number[]>())).get(checkIn.participantId) ?? [];
+      const toldAboutMissing = whatTheSessionIsToldAboutMissing(
+        [(checkIn.participant as any)?.user?.firstName, (checkIn.participant as any)?.user?.lastName].filter(Boolean).join(' ').trim() || (checkIn.participant as any)?.nameGiven,
+        missedJustBefore,
+      );
+      if (toldAboutMissing) returningUserContext = [toldAboutMissing, returningUserContext].filter(Boolean).join('\n\n');
     }
 
     const [{ block: dynamicContext }, uploadedDocs, personTurnCount, pendingNotes, pendingDeliveries] = await Promise.all([
@@ -4569,7 +4581,7 @@ export class ConversationService {
            can read it. Without that the block went in under one heading claiming the person being
            interviewed had written all of it - see where-this-document-came-from.ts. */
         select: {
-          fileName: true, content: true, uploaderNote: true, visibility: true,
+          fileName: true, content: true, uploaderNote: true, visibility: true, mimeType: true, createdAt: true,
           participant: {
             select: {
               userId: true, email: true,
@@ -4710,7 +4722,15 @@ export class ConversationService {
      */
     const nameOf = (u: { firstName: string | null; lastName: string | null } | null | undefined) =>
       [u?.firstName, u?.lastName].filter(Boolean).join(' ').trim() || null;
-    const withProvenance = uploadedDocs.map((d: any) => ({
+    const withProvenance = uploadedDocs.map((d: any) => {
+      const mine = d.participant?.userId === checkIn.participant.userId;
+      const fromTheLead = !!d.participant?.userId && d.participant.userId === ground.initiatorId;
+      const who = nameOf(d.participant?.user) ?? d.participant?.nameGiven ?? null;
+      /* A colleague's photo or pin goes in as the record holds it, with what may not be said about it. See where-this-document-came-from.ts. */
+      if (!mine && !fromTheLead && isAColleaguesProof(d)) {
+        return { ...aColleaguesProofAsTheRecordHoldsIt(d, who), provenance: whatMayBeSaidAboutAColleaguesProof(who) };
+      }
+      return {
       fileName: d.fileName,
       content: d.content,
       uploaderNote: d.uploaderNote,
@@ -4721,7 +4741,8 @@ export class ConversationService {
         fromTheLead: !!d.participant?.userId && d.participant.userId === ground.initiatorId,
         sharedWithEveryone: d.visibility === 'OPEN',
       }),
-    }));
+      };
+    });
     /* What they are talking about right now decides which passages of a long document go in. */
     const fitted = whatFitsInTheRoom([...withProvenance].reverse(), undefined, [latestMessage ?? '', (ground as any).brief ?? ''].join(' '));
     if (fitted.leftOut.length) {
@@ -10173,6 +10194,8 @@ ${told}` : '';
     rows: { participantId: string; name: string; target: number }[],
     setByParticipantId: string,
   ): Promise<{ participantId: string; name: string; target: number }[]> {
+    /* An aim's name is the thing counted, never their whole sentence (an-aim-is-a-sentence-about-somebody.ts, anAimIsAThing). */
+    rows = rows.map((t) => ({ ...t, name: anAimIsAThing(t.name) })).filter((t) => !!t.name);
     if (!rows.length) return [];
     const [owned, team] = await Promise.all([
       this.prisma.groundObjective.findMany({

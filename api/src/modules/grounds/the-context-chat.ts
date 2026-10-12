@@ -39,6 +39,12 @@ export interface ContextGaps {
   timelineDays: number | null;
   /** It runs until the lead ends it (request 37): the length is answered, so it is not asked. */
   runsUntilEnded?: boolean;
+  /**
+   * Whether the check-in is already set up: somebody has a session in it. A set-up check-in is never asked how long it
+   * runs (night quality run 1: Esther's "Add context" opened with "How long should this run?" on a check-in already running
+   * every week). Its length is changed from its settings, not asked for in a chat about context.
+   */
+  alreadySetUp?: boolean;
   /** No rhythm means the same. */
   cadence: string | null;
   /** How many measures this ground counts by. Zero means the board shows movement against nothing. */
@@ -127,7 +133,7 @@ const WORTH_COUNTING = new Set([
 export function contextGaps(g: ContextGaps): ContextGap[] {
   const gaps: ContextGap[] = [];
 
-  if (!g.runsUntilEnded && (!g.timelineDays || g.timelineDays <= 0)) {
+  if (!g.alreadySetUp && !g.runsUntilEnded && (!g.timelineDays || g.timelineDays <= 0)) {
     gaps.push({
       key: 'timeline',
       ask: 'How long should this run? You can give an end date or a number of weeks. I need it to work out how many check-ins there will be.',

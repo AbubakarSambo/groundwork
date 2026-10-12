@@ -61,6 +61,8 @@ export interface PersonRow {
    * count yet"; this puts back what the prototype shows. Only whoever runs the check-in reads it.
    */
   saidAnythingCheckable: boolean;
+  /** How many check-ins in a row they missed just before their latest one (night quality run 1: Jared missed two, then answered). */
+  missedJustBefore?: number;
   /** How many of their check-ins in a row, up to this one, had nothing checkable. */
   nothingCheckableInARow?: number;
   /** Whether what was missing was proof: a photo, a message or a document. */
@@ -262,6 +264,8 @@ export function whatHappened(row: PersonRow, reason: Reason, roundsPlanned: numb
        * was under a fortnight old, so there was nothing to ask. Something open is something.
        */
       if (row.inTheWay.length) return `${start} has checked in, and still has something in the way.`;
+      /* Never after two missed in a row (night quality run 1): Jared answered once after missing two, and the board said nothing needed the lead. The misses themselves reach the lead only at decision 136's threshold. */
+      if ((row.missedJustBefore ?? 0) >= 2) return `${start} has checked in.`;
       return `${start} has checked in, and nothing here needs you this week.`;
     }
   }

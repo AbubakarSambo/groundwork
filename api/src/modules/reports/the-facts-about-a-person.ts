@@ -128,6 +128,12 @@ export interface PersonFacts {
 const clean = (t: string): string =>
   (t ?? '').replace(/\[VERIFIABILITY:\w+\]\s*/g, '').replace(/\[INFERRED:[^\]]*\]/g, '').replace(/\s+/g, ' ').trim().replace(/[.]+$/, '');
 
+/** Their own words, with every bracket the extraction added taken out, are fewer than four words and carry no number. */
+export const onlyAFragment = (t: string): boolean => {
+  const own = (t ?? '').replace(/\[[^\]]*\]/g, ' ').replace(/[^\p{L}\p{N}\s'-]/gu, ' ').trim();
+  return !carriesANumber(own) && own.split(/\s+/).filter(Boolean).length < 4;
+};
+
 const latest = <T extends { session: number }>(xs: T[]): T | undefined => [...xs].sort((a, b) => b.session - a.session)[0];
 
 /** A figure, a date, or somebody's name in the middle of the sentence. */
@@ -168,7 +174,9 @@ export function factsAbout(p: APersonToWriteUp, thisSession: number): PersonFact
 
   /* Where they say they stand: the latest progress line with a number in it, else the latest.
      A number written as a word counts: "three approved" lost to "22" on run 8 because it did not. */
-  const progress = said.filter((s) => s.type === 'PROGRESS');
+  /* A line whose own words are only a few words with no number ("The owners.", the extraction's "[The conversations were
+     with]" in front) says nothing on its own: night quality run 1 wrote "Jared's latest report is The owners." from it. */
+  const progress = said.filter((s) => s.type === 'PROGRESS' && !onlyAFragment(s.text));
   const withNumber = progress.filter((s) => carriesANumber(s.text));
   const stand = latest(withNumber) ?? latest(progress);
   /* And the figure they gave before it, where it differs. See the field's note. */

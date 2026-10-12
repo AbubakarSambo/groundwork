@@ -176,6 +176,67 @@ export async function whoHasMissedCheckIns(prisma: any, groundIds: string[], now
   return out;
 }
 
+/**
+ * THE CHECK-INS MISSED IN A ROW JUST BEFORE EACH PERSON'S LATEST ONE (night quality run 1, problem 5).
+ *
+ * Jared missed sessions 1 and 2 and answered session 3. Counted the usual way, from the latest closed
+ * session, he had missed none by the time he answered, so his own session was never told and the lead's
+ * board said "nothing here needs you this week". This counts back from the session before his latest:
+ * the session numbers missed in a row there, oldest first. The lead and managing-only rows are never read.
+ */
+export function theMissesJustBefore(rows: ASessionOfTheirs[], leave: Stretch[] = [], now: Date = new Date()): number[] {
+  const sessions = rows.filter((r) => !r.isSetup);
+  if (!sessions.length) return [];
+  const latest = Math.max(...sessions.map((s) => s.sessionNumber));
+  const closed = theirClosedSessions(rows, leave, now).filter((c) => c.sessionNumber < latest);
+  const run: number[] = [];
+  for (let i = closed.length - 1; i >= 0 && closed[i].missed; i--) run.unshift(closed[i].sessionNumber);
+  return run;
+}
+
+/** The same, for everybody on one check-in, by participant id. */
+export async function whoMissedTheCheckInsJustBefore(prisma: any, groundId: string, now: Date = new Date()): Promise<Map<string, number[]>> {
+  const out = new Map<string, number[]>();
+  if (!prisma?.groundParticipant?.findMany) return out;
+  const people: any[] = await prisma.groundParticipant.findMany({
+    where: { groundId, leftAt: null },
+    select: {
+      id: true, groundId: true, userId: true, partyType: true, managingOnly: true,
+      checkIns: {
+        select: {
+          id: true, sessionNumber: true, status: true, isSetup: true, optional: true, closedReason: true, availableFrom: true,
+          createdAt: true, completedAt: true, missedReason: true, turns: { where: { role: 'PERSON' as any }, take: 1, select: { id: true } },
+        },
+      },
+    },
+  }).catch(() => []);
+  const theirs = (people ?? []).filter((p) => !checksInOnlyWhenTheyChoose(p));
+  if (!theirs.length) return out;
+  const leave = await leaveOfThePeopleOn(prisma, [groundId]).catch(() => new Map<string, Stretch[]>());
+  for (const p of theirs) {
+    const run = theMissesJustBefore(p.checkIns ?? [], leave.get(p.id) ?? [], now);
+    if (run.length) out.set(p.id, run);
+  }
+  return out;
+}
+
+/**
+ * WHAT THE PERSON'S OWN SESSION IS HANDED when the two or more check-ins before this one closed without
+ * their answer (decision 136's facts, decision 138 part 2's push). Facts, never a label: which sessions,
+ * and that nothing was said in them. Then the same asks as for everybody: what was finished, and the numbers.
+ */
+export function whatTheSessionIsToldAboutMissing(name: string | null | undefined, missed: number[]): string {
+  if (missed.length < 2) return '';
+  const who = (name ?? '').trim() || 'The person you are talking to';
+  const which = missed.length === 2 ? `sessions ${missed[0]} and ${missed[1]}` : `sessions ${missed.slice(0, -1).join(', ')} and ${missed[missed.length - 1]}`;
+  return [
+    'THE CHECK-INS BEFORE THIS ONE.',
+    `${who} missed the last ${aNumberInWords(missed.length)} check-ins here (${which}). Each one closed with nothing said.`,
+    'Say this once, early and plainly, as a fact: for example, "Your last two check-ins closed without an answer, so I have nothing from you since then." Never call it a pattern, never give it a label, and never guess why.',
+    'Then ask what was finished since the last time they answered, or since the check-in began if they never have, and ask for the numbers, as you would ask anybody: how many, of what, and what shows it. "Fine" or "nothing" is not yet an answer to either; ask once more for one thing done and one number.',
+  ].join('\n');
+}
+
 /* ---------------------------------------------------------------- the words ---------------------------------------------------------------- */
 
 /* Her wording keeps the comma before the last "and" when there are three. */

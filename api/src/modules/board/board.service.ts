@@ -1,6 +1,6 @@
 import { withoutTheLeadsSetUpForAMember } from '../grounds/the-leads-set-up-is-the-leads-in-the-anchor';
 import { owesThisSession } from '../grounds/the-lead-checks-in-when-they-choose';
-import { whoHasMissedCheckIns, whatTheLeadReads, theNextStepSuggested, TOLD_THE_LEAD } from '../grounds/missed-check-ins';
+import { whoHasMissedCheckIns, whatTheLeadReads, theNextStepSuggested, TOLD_THE_LEAD, whoMissedTheCheckInsJustBefore } from '../grounds/missed-check-ins';
 import { SOMEONE as SOMEONE_NAMED } from '../engagement/a-name-to-call-them';
 import { theConfirmedWaits } from '../grounds/a-wait-is-the-speakers-account';
 import { wholeDaysTo, theDayItBegan, theRecordsClock } from './a-wait-is-dated-not-counted';
@@ -1553,6 +1553,8 @@ export class BoardService {
       }
       /* Everybody not let in yet, declined or still waiting: the same givers as the header's count (decision 77, request 121 part 4). */
       const heldBack = await whoIsNotLetInYet(this.prisma, ground.participants as any[], (ground as any).organizationId);
+      /* Who missed the check-ins just before their latest one, so a row never reads "nothing here needs you" after two missed (night quality run 1). */
+      const missedJustBefore = await whoMissedTheCheckInsJustBefore(this.prisma, groundId).catch(() => new Map<string, number[]>());
       out.eachPerson = whereEachPersonIs(
         /*
          * AND THE MANAGER IS NOT IN THEIR OWN LIST.
@@ -1596,6 +1598,7 @@ export class BoardService {
             count: theirs?.count ?? 0,
             answeredThisRound: thisRound?.status === CheckInStatus.COMPLETED && !wasAQuietClose(thisRound as any),
             roundsSoFar: new Set(mine.map((c) => c.sessionNumber)).size,
+            missedJustBefore: missedJustBefore.get(p.id)?.length ?? 0,
             inTheWay: (ground.dependencies ?? [])
               .filter((d: any) => d.fromParticipantId === p.id && d.status !== 'CLEARED')
               .map((d: any) => ({

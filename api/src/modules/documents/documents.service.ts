@@ -117,7 +117,7 @@ const ASSESSMENT_TOOL = {
 
 
 
-function toDocShape(
+export function toDocShape(
   doc: { id: string; fileName: string; mimeType: string; createdAt: Date; assessment?: any; visibility?: any; participantId?: string | null; holds?: any; uploaderNote?: string | null },
   viewerParticipantId?: string,
   contextEnabled?: boolean,
@@ -148,6 +148,15 @@ function toDocShape(
      * Same rule as `visibility`: omitted rather than guessed when the column was not selected.
      */
     ...(doc.participantId !== undefined ? { mine: doc.participantId === viewerParticipantId } : {}),
+    /*
+     * AND WHOSE IT IS, for the person's own files and for files shared with everyone in the check-in, so the Context
+     * tab can list each under the person who sent it (night quality run 1: Amina's WhatsApp photo and pin were on the
+     * check-in and her files still read "Nothing attached yet", because no row said whose it was). A file shared with
+     * everyone is read by everyone here with who sent it (Hafsah, 12 October 2026); a private one names nobody else.
+     */
+    ...(doc.participantId !== undefined && (doc.participantId === viewerParticipantId || doc.visibility === 'OPEN')
+      ? { participantId: doc.participantId }
+      : {}),
     /*
      * WHAT THE UPLOADER SAID IT IS FOR, TO THE UPLOADER ONLY.
      *

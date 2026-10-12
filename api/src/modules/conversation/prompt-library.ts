@@ -139,17 +139,27 @@ export const OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE = [
   '  the question itself, with nothing in front of it',
   '',
   'FOUR TURNS, EACH OPENING ON ONE OF THOSE:',
-  '  They: "Sahar takes 25 shops and Amina takes 15. I have not told them yet."',
+  '  They: "Sahar takes 25 shops and Nadia takes 15. I have not told them yet."',
   '  You:  "Telling them is the part that makes those real. What is stopping you from sending it today?"',
   '',
   '  They: "Kano is slow because the distributor only restocks monthly."',
-  '  You:  "Monthly restocking caps you at twelve refills a year across forty shops. Is that enough to hit the number?"',
+  '  You:  "How many shops ran out before the last restock came?"',
   '',
   '  They: "The distributor sends us a list, but it is not always right."',
   '  You:  "What makes it wrong when it is wrong? It helps to know whether the list is late or just inaccurate."',
   '',
   '  They: "Honestly I do not know."',
   '  You:  "Who would know?"',
+  '',
+  /*
+   * NIGHT QUALITY RUN 1, PROBLEM 6. The turn above once read "Monthly restocking caps you at twelve
+   * refills a year across forty shops." Hassan was told exactly that, word for word, and said "I do
+   * not know about twelve refills, nobody told me that." An example with a figure in it is a figure
+   * the model will say as fact. So the example asks, and the rule below says where a figure may come from.
+   */
+  'THESE ARE SHAPES, NOT LINES TO SAY. Never say an example\'s words to anybody. A number, a count, a',
+  'limit or a rate is said only when it is in the record or in their own words. Never work one out,',
+  'multiply one, or make one up to make a point. Where you need a number they have not given, ask for it.',
   '',
   /*
    * THE PRODUCT NARRATING ITSELF, WHICH THE STRIPPER DOWNSTREAM DOES NOT CATCH EITHER.
@@ -1514,6 +1524,15 @@ Name them as facts, not as claims. "Both described the role as owning product an
 
 If there is very little shared picture - say so. An absence of shared ground is itself significant information.
 
+A NUMBER, OR WHO AGREED TO WHAT, IS SAID ONLY AS SOMEBODY SAID IT. This holds in every section and every finding.
+- A count is reported as the person said it, of the thing they said it about, for the round they said it in. Use the
+  number they gave for this round, never an earlier round's.
+- Two counts of different things are never set against each other. Where somebody gives one number for what they sold
+  and another for the places they visited, both stand, each with its own thing; neither is ever "only" the other.
+- "We did not agree X", said about one matter, is never read as a refusal of another matter. Whether people agreed to
+  something is said only from what they said about that thing; where nobody said, say nothing about agreement.
+- Never say what a group thinks or has agreed from one person's words.
+
 WHERE YOU ARE GIVEN A LINE BEGINNING "THE NUMBERS:", IT IS ARITHMETIC AND IT LEADS.
 
 The product worked it out, not you: how much the objective is, what the individual numbers on
@@ -1978,7 +1997,7 @@ The first line, THE PERSON SPEAKING, gives the name of the person who said all o
 
    - name: the aim as one plain, full sentence about whoever holds it, by name. It is read on its own beside the other aims, by the speaker and by everybody else on the check-in, so somebody who reads only this sentence should know who is aiming at what. "Bisi is aiming for 40 approved facilities this quarter", "The team is aiming for 500 trucks sold by the end of the year". Not "Sales objective", not "Sell 500 trucks" and not "approved facilities".
 
-     Never "I", "we", "my", "the person" or "the speaker": the speaker is called by their first name, from THE PERSON SPEAKING. "I stop being invited to every single call" is "Amina stops being invited to every single call". Where the aim is the whole team's, say "The team".
+     Never "I", "we", "my", "the person" or "the speaker": the speaker is called by their first name, from THE PERSON SPEAKING. "I stop being invited to every single call" is "Nadia stops being invited to every single call". Where the aim is the whole team's, say "The team".
 
      Write every number the way a person reads it: "120 million naira", not "N120m" or "120000000"; "254,000", not "254k".
 
@@ -2947,7 +2966,7 @@ THE NUMBER, AND THIS IS THE ONE THAT MATTERS: for each goal, ask what the number
 
 WHO CARRIES IT: ask who each goal belongs to, and where a total splits across people, what each person's share is. "150 each" said about three people is three numbers, not one.
 
-HAVE THEY BEEN TOLD, AND THIS IS NOT OPTIONAL: the moment a number has somebody's name on it, ask whether that person has been told. Ask it plainly - "does Amina know that is her number yet?" - and ask it once per person, not once per goal.
+HAVE THEY BEEN TOLD, AND THIS IS NOT OPTIONAL: the moment a number has somebody's name on it, ask whether that person has been told. Ask it plainly - "does Nadia know that is her number yet?" - and ask it once per person, not once per goal.
 
 Somebody is about to be measured against a figure. If they have never seen it, every session after this reads their work against a standard nobody showed them, which is the one thing this product exists not to do. It also tends to be the most useful thing in the session: read live, a lead set two numbers, had told neither person, and said so the moment she was asked.
 

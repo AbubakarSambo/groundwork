@@ -201,7 +201,24 @@ const theFirstPartAlone = (what: string): string | null => {
  * Kilimani." or from "shops in Kilimani" with a target of 3. Null where it cannot be said without
  * guessing; the caller then keeps the aim's own sentence.
  */
+/*
+ * AN AIM IS A THING, NEVER A WHOLE SENTENCE (night quality run 1, problem 8). Hassan's aim was stored as "my plan is five kits to
+ * the shops and three to households." and Collins's as "This week I will do twelve kits, six for the women's group on Wednesday
+ * and the Oyugis stockist, this time for sure.", and the board read "Hassan Mwenda is aiming for 8 my plan is five kits ...".
+ * Where the name is somebody's own sentence, the thing counted is the word after its first number ("kits"). Their sentence stays
+ * in their check-in, word for word; only the aim's name is the thing. Empty when no thing can be found.
+ */
+const THEIR_OWN_SENTENCE = /^(?:i|i'm|i'll|i've|my|we|we'll|our|this week|next week|today|tomorrow)\b|\b(?:i will|i'll|i can|i am going to|my plan)\b/i;
+const A_NUMBER = '(?:\\d+(?:[.,]\\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|hundred)';
+export function anAimIsAThing(name: string): string {
+  const t = String(name ?? '').replace(/\s+/g, ' ').trim();
+  if (!THEIR_OWN_SENTENCE.test(t)) return t;
+  const m = new RegExp(`\\b${A_NUMBER}\\s+([a-z][a-z'-]*)`, 'i').exec(t);
+  return m && !/^(to|for|of|and|or|a|the|on|in|by|this|next|more|times?)$/i.test(m[1]) ? m[1].toLowerCase() : '';
+}
+
 export function theAimItself(name: string, target: number | null): string | null {
+  name = anAimIsAThing(name) || name;
   const t = theNumbersPeopleCanRead((name ?? '').trim()).replace(/[.!?\s]+$/, '');
   if (!t) return null;
   let what: string | null = null;
