@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { InvitationExpired } from './InvitationExpired'
-import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import { theLastDay } from '@/lib/a-date-reads-the-same-everywhere'
 import { participantsApi } from '@/api'
 import type { InvitePreview } from '@/api/participants'
 import type { GroundScenario } from '@/types'
@@ -709,8 +709,8 @@ export function theInvitation(p: { leadFirstName?: string | null; initiatorName:
  * check-in, same end date, two different renderings of it. `whenItWas` already reads the same way
  * everywhere once nothing overrides it; this screen should not be the one surface that does.
  */
-export function whereAndUntil(p: { organisationName?: string | null; endsAt?: string | null }): string {
-  const until = p.endsAt ? whenItWas(p.endsAt, 'dayAndMonthLong') : null
+export function whereAndUntil(p: { organisationName?: string | null; endsAt?: string | null; today?: Date }): string {
+  const until = p.endsAt ? theLastDay(p.endsAt, p.today ?? new Date()) : null
   const org = (p.organisationName ?? '').trim()
   if (org && until) return `This runs at ${org} until ${until}.`
   if (org) return `A check-in at ${org}.`

@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row, Tabs, FieldLabel, TextArea } from '@/components/gw/ui'
 import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
 import { useSuitesKnownOffStore } from '@/stores/suites-known-off'
+import { useSuitesOnForYou } from '@/hooks/useSuitesOnForYou'
 
 /**
  * A LINK TO THE QUEUE, FOR TODAY AND THE SUITES PAGE, ONLY FOR SOMEBODY THE QUEUE SERVES ITEMS TO.
@@ -21,10 +22,13 @@ export function QueueLink({ userId }: { userId?: string }) {
      Today and Suites stop asking again. */
   const suitesKnownOff = useSuitesKnownOffStore(s => s.off)
   const setSuitesKnownOff = useSuitesKnownOffStore(s => s.setOff)
+  /* The journey of 12 October: an admin with no suite on logged a 404 here on every page. The queue holds
+     leave and spending only, so it is asked only once GET /suites/mine (read once) says one is on. */
+  const suitesOn = useSuitesOnForYou()
   const { data, isError, error } = useQuery({
     queryKey: ['suite-queue-count'],
     queryFn: () => queueApi.get({ pageSize: 1 }),
-    enabled: !!userId && !suitesKnownOff,
+    enabled: !!userId && !suitesKnownOff && (suitesOn.leave || suitesOn.spending),
     retry: false,
     staleTime: 30_000,
   })

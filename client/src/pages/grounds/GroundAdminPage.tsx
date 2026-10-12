@@ -50,7 +50,7 @@ import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-
 import { copy } from '@/components/gw/copying-can-fail'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { SendTheReportToEveryone } from '@/components/gw/SendTheReportToEveryone'
-import { howManyHaveNotAnsweredYet, numberUpToTenInWords } from '@/lib/a-number-up-to-ten-in-words'
+import { howManyHaveNotAnsweredYet, numberUpToTenInWords, andWhoIsNotCountedYet } from '@/lib/a-number-up-to-ten-in-words'
 
 /**
  * THE THIRD COPY OF THE SITUATION NAMES, DELETED.
@@ -1709,7 +1709,7 @@ export function GroundAdminPage() {
             /* U.9 re-review, item B: a sentence, not a label and a fraction. Screen fault 4
                (final walk): "1 of the 3 have not answered yet." is now said in words, with the
                right verb for one person left over - "One of the three has not answered yet." */
-            : a.kind === 'waiting' ? { t: howManyHaveNotAnsweredYet(a.total - a.done, a.total) }
+            : a.kind === 'waiting' ? { t: howManyHaveNotAnsweredYet(a.total - a.done, a.total) + andWhoIsNotCountedYet(a.notLetIn) }
             : null
           return say ? <Note tone={say.tone}>{say.t}</Note> : null
         })()}

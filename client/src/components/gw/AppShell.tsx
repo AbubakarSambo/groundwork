@@ -799,10 +799,13 @@ export function AppSidebar() {
      remembered for the rest of this session (stores/suites-known-off.ts) instead of asked again. */
   const suitesKnownOff = useSuitesKnownOffStore(s => s.off)
   const setSuitesKnownOff = useSuitesKnownOffStore(s => s.setOff)
+  /* Journey walk row 5: ask a suite's own route only once GET /suites/mine says that suite is on. The
+     queue holds leave and spending only, so it is asked only once one of those is on (journey of 12 October). */
+  const suitesOn = useSuitesOnForYou()
   const queueServesThem = useQuery({
     queryKey: ['suite-queue-count'],
     queryFn: () => queueApi.get({ pageSize: 1 }),
-    enabled: isAuthenticated && user?.role === 'MEMBER' && !suitesKnownOff,
+    enabled: isAuthenticated && user?.role === 'MEMBER' && !suitesKnownOff && (suitesOn.leave || suitesOn.spending),
     retry: false,
     staleTime: 30_000,
   })
@@ -822,8 +825,6 @@ export function AppSidebar() {
    * off), so that one is gated on there being any to show instead. */
   const offByKey = useSuitesKnownOffStore(s => s.offByKey)
   const setKeyOff = useSuitesKnownOffStore(s => s.setKeyOff)
-  /* Journey walk row 5: ask a suite's own route only once GET /suites/mine says that suite is on. */
-  const suitesOn = useSuitesOnForYou()
   const myLeaveForNav = useQuery({ queryKey: ['your-leave'], queryFn: yourRequestsApi.leave, enabled: isAuthenticated && user?.role === 'MEMBER' && suitesOn.leave && !offByKey.leave, retry: false, staleTime: 60_000 })
   const mySpendingForNav = useQuery({ queryKey: ['your-spending'], queryFn: yourRequestsApi.spending, enabled: isAuthenticated && user?.role === 'MEMBER' && suitesOn.spending && !offByKey.spending, retry: false, staleTime: 60_000 })
   const myHoursForNav = useQuery({ queryKey: ['your-hours'], queryFn: yourRequestsApi.hours, enabled: isAuthenticated && user?.role === 'MEMBER' && suitesOn.hours && !offByKey.hours, retry: false, staleTime: 60_000 })

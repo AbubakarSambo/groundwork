@@ -38,3 +38,17 @@ export function howManyHaveNotAnsweredYet(outstanding: number, total: number): s
   const verb = outstanding === 1 ? 'has' : 'have'
   return `${capped} of the ${numberUpToTenInWords(total)} ${verb} not answered yet.`
 }
+
+/**
+ * WHO THE COUNT LEAVES OUT, SAID BESIDE IT (journey test, 12 October 2026). The lead read "One of the
+ * two has not answered yet." with five people on the roster: three were waiting for an admin to let
+ * them in, and the count rightly leaves them out (decision 77), but nothing said so.
+ */
+export function andWhoIsNotCountedYet(notLetIn: number | null | undefined): string {
+  if (!notLetIn || notLetIn < 1) return ''
+  const word = numberUpToTenInWords(notLetIn)
+  const capped = word.charAt(0).toUpperCase() + word.slice(1)
+  return notLetIn === 1
+    ? ' One more person is not counted yet, because an admin has not let them in.'
+    : ` ${capped} more people are not counted yet, because an admin has not let them in.`
+}

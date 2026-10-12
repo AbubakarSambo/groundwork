@@ -1457,14 +1457,16 @@ export function ChatPage() {
               a blank screen. The jitter stays; the sentence starts earlier. */}
           {openingNow && (
             /*
-             * Still the pinned sentence, verbatim (the-page-says-what-it-is-doing.spec.ts), now in
-             * Groundwork's own bubble shape with the same animated dots every other wait uses
-             * (WritingDots - just the dots, since this status already has its own sentence, so it
-             * is not said twice).
+             * THE SAME "GROUNDWORK IS WRITING…" EVERY OTHER CHAT SHOWS (journey test, 12 October 2026).
+             * "Check in yourself" opened this page at once, but the opener took 94 seconds to be
+             * written, under "Opening your session…", which read as a page that had not opened. The
+             * page is open; Groundwork is writing its first message. Same bubble, sentence and dots
+             * as GroundworkIsWriting, kept as one status element so the slow-wait line below sits
+             * inside it (the-page-says-what-it-is-doing.spec.ts).
              */
             <Bubble mine={false}>
-              <div role="status" className="gwui-writing">
-                Opening your session…
+              <div role="status" aria-live="polite" className="gwui-writing">
+                Groundwork is writing…
                 <WritingDots />
                 {/* Said only once the wait is long enough to need explaining (U.8 review): opening a
                     session runs several model calls and can take up to a minute with nothing else on

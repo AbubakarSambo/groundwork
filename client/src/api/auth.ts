@@ -77,6 +77,8 @@ export type MyWaiting =
       canRemindFrom: string
       /** The true reason, when it is this: the plan has no free seat, not that this person is a stranger. */
       heldForASeat?: boolean
+      /** The whole sentence the server chose for the true reason: no free seat, the organisation's own address, or from outside (B-096). */
+      says?: string
     }
 
 export const authApi = {

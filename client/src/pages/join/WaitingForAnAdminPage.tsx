@@ -141,7 +141,10 @@ export function WaitingForAnAdminPage() {
  * seat right now, so an admin there has to make room before you can start. We've asked Grace
  * Achieng."
  */
-export function youAreFromOutside(w: Pick<Extract<MyWaiting, { waiting: true }>, 'organisationName' | 'admin' | 'heldForASeat'>): string {
+export function youAreFromOutside(w: Pick<Extract<MyWaiting, { waiting: true }>, 'organisationName' | 'admin' | 'heldForASeat' | 'says'>): string {
+  /* The server's own sentence when it sends one (B-096; journey test, 12 October): Pia, on Brightloom's own
+     address, was told "You're from outside Brightloom" because this page always built the outsider sentence. */
+  if (w.says?.trim()) return w.says
   const asked = w.admin?.name ? ` We’ve asked ${w.admin.name}.` : ' We’ve asked the admins there.'
   if (w.heldForASeat) {
     return `${w.organisationName} has no free seat right now, so an admin there has to make room before you can start.${asked}`

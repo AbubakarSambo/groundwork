@@ -325,7 +325,7 @@ export const groundsApi = {
   /** `brief` blank clears it; the server refuses both to anybody but the lead or an org admin. */
   /** `cadenceAnchorDay`: 0-6 (Sunday-Saturday) for a weekly or fortnightly rhythm, 1-31 for a
       monthly one, `null` to clear it (request 194). Applies from the next session that is made. */
-  update: (groundId: string, body: { label?: string; timelineDays?: number; cadence?: GroundCadence; workingDays?: number[]; cadenceAnchorDay?: number | null; contextNote?: string; startsAt?: string; brief?: string }, opts?: { quiet?: boolean }) =>
+  update: (groundId: string, body: { label?: string; timelineDays?: number; cadence?: GroundCadence; workingDays?: number[]; cadenceAnchorDay?: number | null; contextNote?: string; startsAt?: string; brief?: string; endsOn?: string }, opts?: { quiet?: boolean }) =>
     apiClient.patch<Ground>(`/grounds/${groundId}`, body, opts?.quiet
       ? ({ skipForbiddenToast: true, skipServerErrorToast: true } as any)
       : undefined).then(r => r.data),

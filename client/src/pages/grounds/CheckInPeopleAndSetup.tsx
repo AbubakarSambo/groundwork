@@ -14,7 +14,8 @@ import { AnchorDayPicker, DAY_NAMES, ordinal } from '@/components/gw/AnchorDayPi
 import type { GroundCadence } from '@/api/grounds'
 import { SELECTABLE_CADENCES, sessionsFor, cadenceLabel } from '@/lib/cadence'
 import { scenarioLabel } from '@/lib/scenario-catalog'
-import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import { whenItWas, theLastDay } from '@/lib/a-date-reads-the-same-everywhere'
+import { whenTheCheckInsLand, type Cadence } from '@/components/gw/when-the-check-ins-land'
 
 /**
  * "PEOPLE AND SETUP" (the lead's check-in tab), rebuilt from `components/gw/ui`.
@@ -406,7 +407,7 @@ export function CheckInPeopleAndSetup(props: {
               if (!end) return `Started ${startText}. Runs for ${ground.timelineDays ?? '?'} days.`
               const daysLeft = (ground as any).daysLeft
               const left = daysLeft != null ? ` ${daysLeft} day${daysLeft === 1 ? '' : 's'} left.` : ''
-              return `${startText} to ${whenItWas(end, 'dayAndMonthLong')}.${left}`
+              return `${startText} to ${theLastDay(end, start)}.${left}`
             })()}
             /*
              * B-018: THE PROTOTYPE'S OWN "GIVE IT MORE TIME" BUTTON (check-in-people-and-setup.txt:
@@ -481,11 +482,7 @@ export function CheckInPeopleAndSetup(props: {
             <TextField
               id="ends-on"
               type="date"
-              value={(() => {
-                const from = props.startsAtOnRecord ? new Date(props.startsAtOnRecord) : props.createdAtOnRecord ? new Date(props.createdAtOnRecord) : new Date()
-                const end = new Date(from.getTime() + props.timelineDaysDraft * 86_400_000)
-                return Number.isFinite(end.getTime()) ? end.toISOString().slice(0, 10) : ''
-              })()}
+              value={theEndOnTheField(props.startsAtOnRecord, props.createdAtOnRecord, props.timelineDaysDraft)}
               onChange={(e) => {
                 const from = props.startsAtOnRecord ? new Date(props.startsAtOnRecord) : props.createdAtOnRecord ? new Date(props.createdAtOnRecord) : new Date()
                 const days = Math.round((new Date(e.target.value).getTime() - from.getTime()) / 86_400_000)
@@ -518,7 +515,11 @@ export function CheckInPeopleAndSetup(props: {
               <WhichDaysTheyWork value={props.workingDaysDraft} onChange={props.setWorkingDaysDraft} />
             )}
             <Note>
-              {props.timelineDaysDraft} days, {sessionsFor(props.timelineDaysDraft, props.cadenceDraft) ?? 1} session{(sessionsFor(props.timelineDaysDraft, props.cadenceDraft) ?? 1) === 1 ? '' : 's'}.
+              {(() => {
+                /* Counted the way setup and the server count it (journey test, 12 October 2026): the sessions that open up to the end. */
+                const n = sessionsUpToTheEnd(props) ?? sessionsFor(props.timelineDaysDraft, props.cadenceDraft) ?? 1
+                return `${props.timelineDaysDraft} days, ${n} session${n === 1 ? '' : 's'}.`
+              })()}
               {' '}Sessions already completed are never removed. On the last one, everybody is asked
               how this should close, and it ends on the answer you agree.
               {/* Request 194, answered: a session already made keeps its own date. */}
@@ -530,7 +531,7 @@ export function CheckInPeopleAndSetup(props: {
               kind="secondary"
               size="small"
               disabled={!props.theTimeframeChanged || props.saveSetup.isPending}
-              onClick={() => props.saveSetup.mutate({ timelineDays: props.timelineDaysDraft, cadence: props.cadenceDraft, workingDays: props.workingDaysDraft, cadenceAnchorDay: props.anchorDayDraft })}
+              onClick={() => props.saveSetup.mutate(theTimeframeToSave(props))}
             >
               Save timeframe
             </Button>
@@ -807,4 +808,32 @@ export function CheckInPeopleAndSetup(props: {
           check-in's board and reports, which is the product's true, current state. */}
     </div>
   )
+}
+
+/** The date "Ends on" shows: the start (or the day it was made) plus the length in days. */
+export function theEndOnTheField(startsAtOnRecord: string | null | undefined, createdAtOnRecord: string | null | undefined, days: number): string {
+  const from = startsAtOnRecord ? new Date(startsAtOnRecord) : createdAtOnRecord ? new Date(createdAtOnRecord) : new Date()
+  const end = new Date(from.getTime() + days * 86_400_000)
+  return Number.isFinite(end.getTime()) ? end.toISOString().slice(0, 10) : ''
+}
+
+/**
+ * WHAT "SAVE TIMEFRAME" SENDS (journey test, 12 October 2026). The end date shown in "Ends on" goes too, so the server counts the
+ * sessions up to it the way setup does and stores the end, rather than dividing calendar days by the rhythm's gap.
+ */
+export function theTimeframeToSave(p: { startsAtOnRecord?: string | null; createdAtOnRecord?: string | null; timelineDaysDraft: number; cadenceDraft: string; workingDaysDraft: number[]; anchorDayDraft: number | null }) {
+  const endsOn = theEndOnTheField(p.startsAtOnRecord, p.createdAtOnRecord, p.timelineDaysDraft)
+  return { timelineDays: p.timelineDaysDraft, cadence: p.cadenceDraft, workingDays: p.workingDaysDraft, cadenceAnchorDay: p.anchorDayDraft, ...(endsOn ? { endsOn } : {}) }
+}
+
+/** How many sessions open from the start (or the day it was made, "Now") up to the end on the field: setup's own count. */
+export function sessionsUpToTheEnd(p: { startsAtOnRecord?: string | null; createdAtOnRecord?: string | null; timelineDaysDraft: number; cadenceDraft: string; workingDaysDraft: number[]; anchorDayDraft: number | null }): number | null {
+  if (!['DAILY', 'WEEKLY', 'FORTNIGHTLY', 'MONTHLY'].includes(p.cadenceDraft)) return null
+  const endsOn = theEndOnTheField(p.startsAtOnRecord, p.createdAtOnRecord, p.timelineDaysDraft)
+  if (!endsOn) return null
+  const startsAt = p.startsAtOnRecord ? new Date(p.startsAtOnRecord) : null
+  const today = p.createdAtOnRecord ? new Date(p.createdAtOnRecord) : new Date()
+  const all = whenTheCheckInsLand({ cadence: p.cadenceDraft as Cadence, anchorDay: p.anchorDayDraft, startsAt, workingDays: p.workingDaysDraft, today, howMany: 2000 })
+  const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return Math.max(1, all.filter((d) => iso(d) <= endsOn).length)
 }

@@ -322,9 +322,11 @@ export const entryApi = {
      *  somebody who has just said they are not a party is still given a session to answer. */
     managingOnly?: boolean
     brief?: string
-  }) =>
+  }, opts?: { ifThereIsOne?: boolean }) =>
     apiClient.post<{
       groundId: string
+      /* Only with `ifThereIsOne`: nothing was saved anywhere, so nothing was made (and `groundId` is absent). */
+      nothing?: boolean
       joinToken?: string | null
       // who the commit successfully invited - drives the positive "Invited"
       // confirmation on the completion screen
@@ -335,7 +337,7 @@ export const entryApi = {
       failedInvites?: string[]
       /* Why each one failed, in the API's own words. See entry.service.ts. */
       whyInvitesFailed?: { email: string; because: string }[]
-    }>('/entry/commit', payload).then(r => r.data),
+    }>(opts?.ifThereIsOne ? '/entry/commit?ifThereIsOne=1' : '/entry/commit', payload).then(r => r.data),
 
   // Pre-auth update of the server-side draft, authorized by the draftToken
   // issued at entry-save. Best-effort: callers swallow failures (localStorage

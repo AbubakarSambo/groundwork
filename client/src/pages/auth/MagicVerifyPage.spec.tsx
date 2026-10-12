@@ -90,6 +90,36 @@ describe('MagicVerifyPage - Bug A (wrong-flow routing)', () => {
     await waitFor(() => expect(mockedNavigate).toHaveBeenCalledWith('/grounds', { replace: true }))
   })
 
+  /* Journey of 12 October: a new admin opening the sign-up email link logged a 400 on POST /entry/commit.
+     With nothing saved in this browser the page now asks the server to save only if it holds a draft. */
+  it('a new admin with nothing saved in this browser asks only if there is a draft, and lands on their check-ins', async () => {
+    vi.mocked(authApi.verifyEmail).mockResolvedValue({
+      user: { id: 'u6', email: 'new-admin@x.com', role: 'ADMIN', jobTitle: null } as any,
+      accessToken: 'tok',
+    })
+    vi.mocked(entryApi.commit).mockResolvedValue({ nothing: true } as any)
+
+    renderPage('tok-new-admin')
+
+    await waitFor(() => expect(mockedNavigate).toHaveBeenCalledWith('/grounds', { replace: true }))
+    expect(entryApi.commit).toHaveBeenCalledWith(expect.anything(), { ifThereIsOne: true })
+    expect(screen.queryByText(/the check-in wasn.t saved/i)).not.toBeInTheDocument()
+  })
+
+  it('somebody with a check-in saved in this browser commits it as before, never only-if-there-is-one', async () => {
+    localStorage.setItem('gw_commit_payload', JSON.stringify({ groundLabel: 'My ground', history: [{ role: 'user', content: 'hi' }], contributors: [] }))
+    vi.mocked(authApi.verifyEmail).mockResolvedValue({
+      user: { id: 'u7', email: 'initiator4@x.com', role: 'ADMIN', jobTitle: null } as any,
+      accessToken: 'tok',
+    })
+    vi.mocked(entryApi.commit).mockResolvedValue({ groundId: 'g2', joinToken: null, contributors: [], failedInvites: [] } as any)
+
+    renderPage('tok-initiator-saved')
+
+    await waitFor(() => expect(entryApi.commit).toHaveBeenCalled())
+    expect(vi.mocked(entryApi.commit).mock.calls[0]).toHaveLength(1)
+  })
+
   it('a real, unrelated commit failure still shows the commitError branch (does not over-widen the fix)', async () => {
     vi.mocked(authApi.verifyEmail).mockResolvedValue({
       user: { id: 'u4', email: 'initiator2@x.com', role: 'ADMIN', jobTitle: null } as any,

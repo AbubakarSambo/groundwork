@@ -18,11 +18,13 @@ import type { AQueueItem, TheQueue } from '@/api/suites'
  */
 vi.mock('@/api/suites', () => ({
   queueApi: { get: vi.fn() },
+  /* Which suites are on, read once (useSuitesOnForYou): the link asks the queue only once leave or spending is. */
+  suitesApi: { mine: vi.fn() },
   leaveBoardApi: { decide: vi.fn() },
   spendApi: { decide: vi.fn() },
   decisionsApi: { decide: vi.fn() },
 }))
-import { queueApi, leaveBoardApi, spendApi, decisionsApi } from '@/api/suites'
+import { queueApi, leaveBoardApi, spendApi, decisionsApi, suitesApi } from '@/api/suites'
 
 const AISHA: AQueueItem = {
   id: 'q-1', suite: 'leave', name: 'Aisha Otieno', firstName: 'Aisha', team: 'Sales',
@@ -253,9 +255,12 @@ describe('the link to the queue, shown elsewhere (Today, the sidebar)', () => {
   /* Live walk at a hundred people, fault 2: the link under "What needs you" used to be the server's
      whole counts sentence drawn as the link text, which read as one long underlined sentence. It is
      now a short, plainly worded link. */
-  function openLink(served: TheQueue | Error = QUEUE) {
+  const ON = { leave: true, spend: false, time: false, reviews: false, any: true, says: '' }
+  function openLink(served: TheQueue | Error = QUEUE, on = ON) {
     if (served instanceof Error) (queueApi.get as any).mockRejectedValue(served)
     else (queueApi.get as any).mockResolvedValue(served)
+    ;(suitesApi.mine as any).mockResolvedValue(on)
+    useAuthStore.setState({ user: FATUMA, token: 't', isAuthenticated: true } as any)
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     return render(
       <QueryClientProvider client={qc}>
@@ -269,6 +274,17 @@ describe('the link to the queue, shown elsewhere (Today, the sidebar)', () => {
     const link = await screen.findByRole('link', { name: 'See everything waiting for you to decide' })
     expect(link).toHaveAttribute('href', '/suite/queue')
     expect(screen.queryByText(QUEUE.says)).toBeNull()
+  })
+
+  /* The journey of 12 October: an admin with no suite on logged a 404 on GET /suites/queue?pageSize=1 on
+     every page. With neither leave nor spending on, the queue is never asked. */
+  it('asks nothing, and draws nothing, while neither leave nor spending is on', async () => {
+    vi.mocked(queueApi.get).mockClear()
+    openLink(QUEUE, { leave: false, spend: false, time: true, reviews: true, any: true, says: '' })
+    await waitFor(() => expect(suitesApi.mine).toHaveBeenCalled())
+    await new Promise(r => setTimeout(r, 20))
+    expect(queueApi.get).not.toHaveBeenCalled()
+    expect(screen.queryByRole('link', { name: 'See everything waiting for you to decide' })).toBeNull()
   })
 
   it('draws nothing when nothing waits for this person', async () => {

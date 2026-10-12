@@ -179,7 +179,7 @@ export function whenTheyOpen(a: { cadence: Cadence; anchorDay: number | null; st
    */
   const sessionsInAll = `${inRange.length} session${inRange.length === 1 ? '' : 's'} in all`
   if (inRange.length <= 5) return `Check-ins open on ${list}, ${sessionsInAll}.`
-  return `Check-ins open on ${words.join(', ')} and on from there, until ${end.getDate()} ${MONTHS[end.getMonth()]}, ${sessionsInAll}.`
+  return `Check-ins open on ${words.join(', ')} and on from there, until ${end.getDate()} ${MONTHS[end.getMonth()]}${end.getFullYear() !== (startsAt ?? a.today ?? new Date()).getFullYear() ? ` ${end.getFullYear()}` : ''}, ${sessionsInAll}.`
 }
 
 function Choice({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {

@@ -164,7 +164,10 @@ export function MagicVerifyPage() {
    * the server-side draft persists and commit is idempotent. */
   async function commitFlow(payload: any, hadEntryIntent: boolean): Promise<VerifyOutcome> {
     try {
-      const result = await entryApi.commit(payload)
+      /* Somebody with nothing saved in this browser asks the server to save only if it holds a draft, so a
+         new admin from the sign-up form gets no 400 on their first page (journey of 12 October). */
+      const result = hadEntryIntent ? await entryApi.commit(payload) : await entryApi.commit(payload, { ifThereIsOne: true })
+      if (result?.nothing) return { kind: 'redirect', to: '/grounds' }
       /* Decision 133: the lead lands on the check-in page, where her first check-in's closing is said once. */
       rememberTheFirstCheckInClosing((result as any)?.groundId)
 

@@ -78,7 +78,7 @@ describe('B-129: a completed check-in with no turns on this endpoint still shows
     expect(await screen.findByRole('heading', { name: 'Done. Thanks, Esther.' }, { timeout: 5000 })).toBeTruthy()
     expect(screen.queryByText(/already finished this check-in/)).toBeNull()
     expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
-    expect(screen.queryByText(/Opening your session/)).toBeNull()
+    expect(screen.queryByText(/Groundwork is writing/)).toBeNull()
   })
 
   it('also shows Done when the transcript read itself fails and open() reports "already finished" (the onError fallback)', async () => {
@@ -106,7 +106,7 @@ describe('B-129 / B-201: a check-in a stranger cannot reach is the same plain re
     expect(screen.queryByText(/not yours to open/)).toBeNull()
     expect(screen.getByRole('link', { name: 'Go to Check-ins' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
-    expect(screen.queryByText(/Opening your session/)).toBeNull()
+    expect(screen.queryByText(/Groundwork is writing/)).toBeNull()
     expect(screen.queryByPlaceholderText(/Type, or hold to speak/)).toBeNull()
   })
 
@@ -120,6 +120,6 @@ describe('B-129 / B-201: a check-in a stranger cannot reach is the same plain re
     expect(screen.queryByText(/could not be found/)).toBeNull()
     expect(screen.getByRole('link', { name: 'Go to Check-ins' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
-    expect(screen.queryByText(/Opening your session/)).toBeNull()
+    expect(screen.queryByText(/Groundwork is writing/)).toBeNull()
   })
 })
