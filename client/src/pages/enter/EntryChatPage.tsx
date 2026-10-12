@@ -1235,7 +1235,7 @@ export function whoIsWaitingSentence(who: string[]): string {
 const KINDS_OF_WORK: [RegExp, string][] = [
   [/\b(?:sales?|sell(?:s|ing)?|sold|customers?)\b/i, 'sales'],
   [/\b(?:projects?|rollout|launch)\b/i, 'project'],
-  [/\b(?:stock|warehouse|deliver(?:y|ies)?|dispatch|operations?)\b/i, 'operations'],
+  [/\b(?:stock|warehouse|deliver(?:y|ies)?|dispatch|operations?|orders?|waste|wasted)\b/i, 'operations'],
   [/\b(?:new hire|onboard(?:ing)?)\b/i, 'onboarding'],
 ]
 const HOW_OFTEN: [RegExp, string][] = [
@@ -1253,6 +1253,10 @@ export function aPlainNameFromWhatTheyDescribed(said?: string): string | undefin
 }
 
 export function fallbackGroundName(situation?: string, where?: string, saidSoFar?: string): string {
+  /* What she described comes first (night quality run 2): Naomi's check-in stayed "Get a new project off to a
+     good start", the situation's own label, because the label was tried before her description. */
+  const described = aPlainNameFromWhatTheyDescribed(saidSoFar)
+  if (described) return described
   const known = situation ? (SCENARIO_LABELS as Record<string, string>)[situation] : undefined
   if (known) return sentenceCase(known)
   const fromScenario = (situation ?? '')
@@ -1261,8 +1265,6 @@ export function fallbackGroundName(situation?: string, where?: string, saidSoFar
     .toLowerCase()
     .replace(/^\w/, (c) => c.toUpperCase())
   if (fromScenario) return fromScenario
-  const described = aPlainNameFromWhatTheyDescribed(saidSoFar)
-  if (described) return described
   const at = (where ?? '').trim()
   return at ? `A check-in at ${at}` : 'A check-in'
 }

@@ -327,7 +327,7 @@ export type BoardPresent = {
     nameIsTheirRole: boolean
     target: number | null
     count: number
-    reason: 'has not answered' | 'stuck and not chasing' | 'behind the pace' | 'nothing checkable' | 'waiting on someone' | 'nothing to do' | 'not let in'
+    reason: 'has not answered' | 'something in the way two weeks' | 'behind the pace' | 'nothing checkable' | 'waiting on someone' | 'nothing to do' | 'not let in'
     /** What happened and what would change it, in a full sentence from the server. Shown under the pill in place of a fixed phrase. */
     says: string
     ask: string | null
@@ -855,6 +855,8 @@ export interface AServedWorkRow {
   kind: string
   name: string
   stage: string | null
+  /** The stage as the record holds it, when that differs from the stage said: "Said to be won, not shown yet". Shown in place of the stage. */
+  stageSays?: string | null
   owner: string | null
   ownerParticipantId: string | null
   due: string | null

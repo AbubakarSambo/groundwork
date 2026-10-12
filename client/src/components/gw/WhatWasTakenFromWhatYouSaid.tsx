@@ -27,6 +27,8 @@ export interface MyRow {
   documented?: boolean
   /** A document you can see states it differently. Yours stays yours; this is beside it. */
   documentSays?: string | null
+  /** What this line is called, filled in by the server from the record: "This is something you got done." only when it holds. */
+  typeSays?: string | null
 }
 
 /**
@@ -103,7 +105,7 @@ export function WhatWasTakenFromWhatYouSaid({ rows, groundId, sessionNumber }: {
                 quote.
               */}
               <div style={{ color: 'var(--gw-muted)', fontSize: 11, marginTop: 2 }}>
-                {KIND[r.type] ?? `This is ${r.type.toLowerCase().replace(/_/g, ' ')}.`}
+                {r.typeSays ?? KIND[r.type] ?? `This is ${r.type.toLowerCase().replace(/_/g, ' ')}.`}
                 {!r.disputedAt && r.documented && ' A document backs it.'}
                 {r.disputedAt && ' You said this is not what you said.'}
               </div>

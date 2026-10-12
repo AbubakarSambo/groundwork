@@ -54,6 +54,8 @@ interface MyRow {
   disputedAt: string | null
   documented?: boolean
   documentSays?: string | null
+  /** What this line is called, filled in by the server from the record: "This is something you got done." only when it holds. */
+  typeSays?: string | null
   checkInId: string | null
   sessionNumber: number | null
 }
@@ -90,7 +92,7 @@ function Row({ row, onTakeBack, busy }: { row: MyRow; onTakeBack: () => void; bu
       */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
         <span className="gw-stamp" style={{ color: 'var(--gw-sub-d)' }}>
-          {KIND[row.type] ?? `This is ${row.type.replace(/_/g, ' ').toLowerCase()}.`}
+          {row.typeSays ?? KIND[row.type] ?? `This is ${row.type.replace(/_/g, ' ').toLowerCase()}.`}
           {row.documented ? ' A document backs it.' : ''}
         </span>
         {gone

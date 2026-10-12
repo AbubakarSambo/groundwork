@@ -120,6 +120,21 @@ describe('MagicVerifyPage - Bug A (wrong-flow routing)', () => {
     expect(vi.mocked(entryApi.commit).mock.calls[0]).toHaveLength(1)
   })
 
+  /* 12 October, second pass: an invited person confirming a sign-up link is sent by the server straight to
+     their check-in. The page goes there and posts nothing to /entry/commit, so no 400 and nothing made. */
+  it('an invited person whose link names their check-in goes straight there, with no commit at all', async () => {
+    vi.mocked(authApi.verifyEmail).mockResolvedValue({
+      user: { id: 'u8', email: 'pia@brightloom.test', role: 'MEMBER', jobTitle: null } as any,
+      accessToken: 'tok',
+      next: '/checkin/c-pia-1',
+    } as any)
+
+    renderPage('tok-invited-pia')
+
+    await waitFor(() => expect(mockedNavigate).toHaveBeenCalledWith('/checkin/c-pia-1', { replace: true }))
+    expect(entryApi.commit).not.toHaveBeenCalled()
+  })
+
   it('a real, unrelated commit failure still shows the commitError branch (does not over-widen the fix)', async () => {
     vi.mocked(authApi.verifyEmail).mockResolvedValue({
       user: { id: 'u4', email: 'initiator2@x.com', role: 'ADMIN', jobTitle: null } as any,
