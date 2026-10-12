@@ -8,15 +8,15 @@ import { ReportsService } from './reports.service';
  * the route, for the lead and a participant, from a ground that has a length and a rhythm.
  */
 describe('a session report knows how many sessions there are', () => {
-  const ground = (timelineDays: number | null) => ({
-    id: 'g-1', organizationId: 'org-1', initiatorId: 'u-lead', scenario: 'OKR_ALIGNMENT', cadence: 'WEEKLY', brief: null, objectives: [], timelineDays,
+  const ground = (timelineDays: number | null, cadence = 'WEEKLY') => ({
+    id: 'g-1', organizationId: 'org-1', initiatorId: 'u-lead', scenario: 'OKR_ALIGNMENT', cadence, brief: null, objectives: [], timelineDays,
     participants: [
       { id: 'p-lead', userId: 'u-lead', partyType: 'INITIATOR', managingOnly: true, user: { firstName: 'Wairimu', lastName: 'Kamau' } },
       { id: 'p-miriam', userId: 'u-miriam', partyType: 'PARTICIPANT', managingOnly: false, user: { firstName: 'Miriam', lastName: 'Wanjiku' } },
     ],
     report: { releasedAt: new Date('2026-09-23'), agreements: [], divergences: [], centralQuestion: null, findings: [], direction: null },
   });
-  const serve = async (timelineDays: number | null, reader: string) => {
+  const serve = async (timelineDays: number | null, reader: string, cadence = 'WEEKLY', session = 2) => {
     let asked: any = null;
     const svc = Object.create(ReportsService.prototype) as any;
     const reads = { findMany: async () => [], findFirst: async () => null, findUnique: async () => null, count: async () => 1, aggregate: async () => ({ _max: {} }) };
@@ -25,7 +25,7 @@ describe('a session report knows how many sessions there are', () => {
         ...reads,
         /* Answers only what was asked for, as the database does. */
         findUnique: async (q: any) => {
-          const g: any = ground(timelineDays);
+          const g: any = ground(timelineDays, cadence);
           if (!q?.select) return g;
           if (!asked && q.select.participants) asked = q.select;
           return Object.fromEntries(Object.keys(q.select).filter((k) => k in g).map((k) => [k, g[k]]));
@@ -33,7 +33,7 @@ describe('a session report knows how many sessions there are', () => {
       },
     } as any, { get: (t: any, k: string) => t[k] ?? reads });
     svc.isAnAdminOf = async () => false;
-    const served = await svc.sessionReport('g-1', 2, reader, 'org-1');
+    const served = await svc.sessionReport('g-1', session, reader, 'org-1');
     return { served, asked };
   };
 
@@ -46,5 +46,16 @@ describe('a session report knows how many sessions there are', () => {
   it('with no length set, it stays null rather than invent one', async () => {
     const { served } = await serve(null, 'u-lead');
     expect(served.plannedSessions).toBeNull();
+  });
+
+  /*
+   * ONE RULE FOR HOW MANY (12 October). The header worked the count out inline from the length over the rhythm,
+   * which has no step for a one-time check-in, so the report read "Session 1." while the board read "of 1".
+   * The report now asks the same `totalSessionsFor` the board and the engine ask.
+   */
+  it.each(['u-lead', 'u-miriam'])('a one-time check-in, read by %s, is "Session 1 of 1."', async (reader) => {
+    const { served } = await serve(null, reader, 'ONE_TIME', 1);
+    expect(served.plannedSessions).toBe(1);
+    expect(JSON.stringify(served)).toContain('Session 1 of 1.');
   });
 });

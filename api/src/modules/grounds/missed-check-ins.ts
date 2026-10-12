@@ -330,7 +330,7 @@ async function theLeadsName(prisma: any, groundId: string): Promise<string | nul
 async function somebodyWaitsOn(prisma: any, participantId: string): Promise<boolean> {
   const waits: any[] = await prisma.groundDependency?.findMany?.({
     where: { onParticipantId: participantId, status: { not: 'CLEARED' } },
-    select: { id: true, groundId: true, onParticipantId: true, what: true, status: true },
+    select: { id: true, groundId: true, onParticipantId: true, what: true, status: true, triedSaid: true },
   }).catch(() => []) ?? [];
   if (!waits.length) return false;
   return (await theConfirmedWaits(prisma, waits)).size > 0;

@@ -179,8 +179,14 @@ export class TheWeeklyReportService {
       select: { participantId: true, sessionNumber: true, status: true, completedAt: true, availableFrom: true, createdAt: true, isSetup: true, isClarification: true, isSelfCorrection: true, optional: true, closedReason: true, turns: { where: { role: 'PERSON' }, take: 1, select: { id: true } } },
     } as any) as Promise<any[]>).catch(() => [])) ?? []) as any[];
     const inTheWeek = (d: any) => !!d && new Date(d).getTime() >= start.getTime() && new Date(d).getTime() <= at.getTime();
+    /*
+     * A CHECK-IN STILL WAITING THAT OPENED ON THE NIGHT BEFORE THE WEEK BEGAN IS DUE THIS WEEK (night quality run 2). Amina's fourth
+     * check-in opened at midnight on Sunday in Nairobi, two hours before Monday began in Lagos, so it was not counted as due, and Esther
+     * read "All 3 check-ins due this week were made." and "100%" while Amina was being reminded. A day of slack covers any time zone.
+     */
+    const openedForThisWeek = (d: any) => !!d && new Date(d).getTime() >= start.getTime() - 86_400_000 && new Date(d).getTime() <= at.getTime();
     const due = all.filter((c) => c && !c.isSetup && !c.isClarification && !c.isSelfCorrection && c.status !== undefined)
-      .filter((c) => (c.status === CheckInStatus.COMPLETED && inTheWeek(c.completedAt)) || (c.status !== CheckInStatus.COMPLETED && inTheWeek(c.availableFrom ?? c.createdAt)))
+      .filter((c) => (c.status === CheckInStatus.COMPLETED && inTheWeek(c.completedAt)) || (c.status !== CheckInStatus.COMPLETED && openedForThisWeek(c.availableFrom ?? c.createdAt)))
       /* Not one that opened while its person was away, nor one that waits for somebody away now. */
       .filter((c) => c.status === CheckInStatus.COMPLETED
         || !(fallsInLeave(new Date(c.availableFrom ?? c.createdAt), leave.get(c.participantId) ?? []) || awayUntilOn(leave.get(c.participantId), at)))
@@ -253,13 +259,20 @@ export class TheWeeklyReportService {
       const p = parties.find((x) => x.id === pid);
       return [p?.user?.firstName, String(p?.nameGiven ?? '').split(/\s+/)[0], fullNameOf(p ?? {})].filter(Boolean) as string[];
     };
+    /* Who the note names, by name: stored without names (namesOff), the names swapped in when served, as every other line. */
+    const nameOfParty = (pid: string | null | undefined) => {
+      const p = pid ? parties.find((x) => x.id === pid) : null;
+      return p ? fullNameOf(p) || String(p.nameGiven ?? '').trim() || null : null;
+    };
+    const theLeadsRow = parties.find((x) => x.partyType === 'INITIATOR');
+    const theNamesOf = (d: any) => ({ by: nameOfParty(d.fromParticipantId), on: nameOfParty(d.onParticipantId), lead: nameOfParty(theLeadsRow?.id) });
     const cleared = clearedThisWeek.map((d) => {
       const confirmed = !d.onParticipantId || confirmedWaits.has(d.id);
       const theirSide = confirmed ? null : theirSideOfIt(namesOfParty(d.fromParticipantId), (Array.isArray(theirLines) ? theirLines : []).filter((l) => l.participantId === d.onParticipantId));
       return {
         fromParticipantId: d.fromParticipantId, onParticipantId: d.onParticipantId ?? null, onLabel: d.onLabel ? namesOff(d.onLabel) : null, what: namesOff(d.what),
         confirmed,
-        ...(confirmed ? {} : { note: namesOff(theNoteBesideTheClaim(d)), ...(theirSide ? { theirSide: namesOff(theirSide) } : {}) }),
+        ...(confirmed ? {} : { note: namesOff(theNoteBesideTheClaim(d, theNamesOf(d))), ...(theirSide ? { theirSide: namesOff(theirSide) } : {}) }),
       };
     });
 

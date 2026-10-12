@@ -61,7 +61,7 @@ describe('finishing waits for the card, writes its lines, and returns it', () =>
     await service.waitForTheCardBeingBuilt('ci1');
     const card = await service.writeTheRecordAtTheEnd({ id: 'ci1', participantId: 'p1' });
     expect(card).toEqual(CARD);
-    expect(prisma.recordEntry.createMany).toHaveBeenCalledWith({ data: [{ ...ROWS[0], checkInId: 'ci1', participantId: 'p1' }] });
+    expect(prisma.recordEntry.createMany).toHaveBeenCalledWith({ data: [{ ...ROWS[0], checkInId: 'ci1', participantId: 'p1', createdAt: expect.any(Date) }] });
     expect(service.extractRecordEntries).not.toHaveBeenCalled();
   });
 

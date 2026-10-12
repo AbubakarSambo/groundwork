@@ -27,7 +27,7 @@ import { intoSentences } from './nothing-invented-reaches-them';
 import { aQuestionNotYetAsked } from './nobody-is-left-looking-at-a-paragraph';
 import { WHAT_IS_ASKED_WHEN_NOTHING_IS_LEFT } from './a-record-claim-nobody-holds';
 
-export type AClaim = 'a reminder sent' | 'an escalation' | 'a target' | 'a promise counted as done';
+export type AClaim = 'a reminder sent' | 'an escalation' | 'a target' | 'a promise counted as done' | 'a status the record does not hold';
 
 export interface WhatTheRecordHoldsForClaims {
   /** A reminder to check in really went (the record of messages; email/a-reminder-really-sent.ts). */
@@ -36,6 +36,8 @@ export interface WhatTheRecordHoldsForClaims {
   somebodySaidTheyTookItHigher?: boolean;
   /** Every text a target may be read from: target rows, the lead's setup, and what people said. */
   targetsMayComeFrom?: readonly string[];
+  /** The lines of this check-in's record that proof or a colleague's confirmation backs. Never somebody's word alone. */
+  shownOrConfirmed?: readonly string[];
 }
 
 /* ---------- A reminder Groundwork sent ---------- */
@@ -180,6 +182,65 @@ function countsAPromiseAsDone(sentence: string): boolean {
 /** "That's one of the six new wholesale accounts." straight after a cut claim: it only leans on it. */
 const LEANS_ON_IT = /^\s*(?:that|this|which)(?:'s|\s+is|\s+makes|\s+means|\s+counts)\b/i;
 
+/* ---------- A status or a count stated as fact ---------- */
+
+/*
+ * STATUSES AND COUNTS COME FROM THE RECORD, NEVER FROM THE MODEL (Hafsah, 12 October, after night quality run 2). Collins's report said
+ * "with weekly sales confirmed by M-Pesa messages" (no message was ever shown) and his session said "Nine or ten kits last week is
+ * strong." (two were sold). A sentence of Groundwork's own that says something was confirmed, proven or shown, or that praises a count,
+ * stands only where the record holds proof or a confirmation for it. People's own words in quotation marks are never read.
+ */
+const SAYS_IT_WAS_CONFIRMED = /\b(?:(?:confirmed|proven|verified|backed\s+up|backed|shown|evidenced)\s+by|(?:confirms|proves|verifies)\b(?!\s+(?:it|this|that)\s*\?))/i;
+const A_COUNT_WORD = `(?:\\d[\\d,]*|${Object.keys(NUMBER_WORDS).join('|')})`;
+const PRAISES_A_COUNT = new RegExp(`\\b${A_COUNT_WORD}\\b[^.?!]{0,60}?\\b(?:is|are|was|were|sounds|looks)\\s+(?:a\\s+)?(?:really\\s+|very\\s+)?(?:strong|great|good|impressive|solid|excellent|a\\s+good\\s+result|a\\s+strong\\s+result)\\b`, 'i');
+/** The sentence without anything in quotation marks: what people said is theirs, and is never cut. */
+/* A quote the sentence split left open ("You said "I kept it." splits at its full stop) is theirs to the end, too. */
+const withoutTheirWords = (s: string) => s.replace(/[“"][^”"]*(?:[”"]|$)/g, ' ');
+
+/*
+ * AND A PLAIN STATUS OR COUNT (Hafsah, 12 October, after night quality run 2): "All 3 check-ins due this week were made." with Amina still
+ * due, Collins's promises "kept" and "eleven" deals "won" with nothing shown. A sentence of Groundwork's own prose that says all of
+ * something was made, that N of M were, or that a promise was kept or a deal won, stands only where the record's backed lines hold it.
+ */
+const DONE_WORD = '(?:made|kept|done|won|sold|signed|met|finished|completed|closed|delivered)';
+const THINGS_WITH_A_STATUS = '(?:promises?|commitments?|deals?|orders?|accounts?|contracts?|sales?)';
+const STATES_A_STATUS = [
+  new RegExp(`\\ball\\s+${A_COUNT_WORD}\\b[^.?!]{0,50}?\\b(?:were|was|have\\s+been|has\\s+been|are)\\s+(?:all\\s+)?${DONE_WORD}\\b`, 'i'),
+  new RegExp(`\\b${A_COUNT_WORD}\\s+(?:out\\s+)?of\\s+(?:the\\s+|your\\s+|their\\s+|his\\s+|her\\s+)?${A_COUNT_WORD}\\b[^.?!]{0,50}?\\b(?:were|was|have\\s+been|has\\s+been|are)\\s+${DONE_WORD}\\b`, 'i'),
+  new RegExp(`\\b(?:kept|won)\\s+(?:all\\s+|every\\s+|both\\s+)?(?:the\\s+|your\\s+|their\\s+|his\\s+|her\\s+|its\\s+|this\\s+|that\\s+)?(?:${A_COUNT_WORD}\\s+)?(?:[\\w-]+\\s+)?${THINGS_WITH_A_STATUS}\\b`, 'i'),
+  new RegExp(`\\b${THINGS_WITH_A_STATUS}\\s+(?:[\\w-]+\\s+){0,6}?(?:was|were|is|are|has\\s+been|have\\s+been)\\s+(?:now\\s+|all\\s+)?(?:kept|won)\\b`, 'i'),
+];
+
+function statesAStatusAsFact(sentence: string): 'confirmed' | 'a count' | 'a status' | null {
+  const s = withoutTheirWords(sentence);
+  if (/\?\s*$/.test(s)) return null;
+  if (SAYS_IT_WAS_CONFIRMED.test(s)) return 'confirmed';
+  if (PRAISES_A_COUNT.test(s)) return 'a count';
+  if (STATES_A_STATUS.some((re) => re.test(s))) return 'a status';
+  return null;
+}
+/** Whether the record's backed lines hold what the sentence says was confirmed: a word of the thing it names, or the count it praises. */
+function theRecordBacksIt(sentence: string, how: 'confirmed' | 'a count' | 'a status', backed: readonly string[]): boolean {
+  if (!backed.length) return false;
+  const s = withoutTheirWords(sentence);
+  if (how === 'a status') {
+    /* Every count it states held by a backed line, and a word of what it names in one. */
+    const counts = (s.match(new RegExp(`\\b${A_COUNT_WORD}\\b`, 'gi')) ?? []).map(valueOf).filter((n): n is number => n !== null);
+    if (counts.some((n) => !theRecordHoldsTheTarget({ n, thing: null }, backed))) return false;
+    const words = new Set(backed.join(' ').split(/[\s/]+/).map(stem));
+    const named = s.split(/\s+/).map(stem).filter((w) => w.length > 3 && !NOT_THE_THING.has(w) && !/^(?:kept|won|were|was|have|been|made|done|this|week|your|their|with)$/.test(w));
+    return named.some((w) => words.has(w));
+  }
+  if (how === 'a count') {
+    const m = s.match(new RegExp(`\\b${A_COUNT_WORD}\\b`, 'i'));
+    const n = m ? valueOf(m[0]) : null;
+    return n !== null && theRecordHoldsTheTarget({ n, thing: null }, backed);
+  }
+  const by = (s.split(SAYS_IT_WAS_CONFIRMED)[1] ?? '').split(/\s+/).map(stem).filter((w) => w.length > 3 && !NOT_THE_THING.has(w)).slice(0, 4);
+  const words = new Set(backed.join(' ').split(/[\s/]+/).map(stem));
+  return !by.length || by.some((w) => words.has(w));
+}
+
 /* ---------- The check ---------- */
 
 /** The claim a sentence makes that the record does not hold, or null. */
@@ -193,6 +254,10 @@ export function aClaimTheRecordDoesNotHold(sentence: string, held: WhatTheRecord
     if (stated.some((t) => !theRecordHoldsTheTarget(t, held.targetsMayComeFrom!))) return 'a target';
   }
   if (countsAPromiseAsDone(s)) return 'a promise counted as done';
+  if (held.shownOrConfirmed !== undefined) {
+    const how = statesAStatusAsFact(s);
+    if (how && !theRecordBacksIt(s, how, held.shownOrConfirmed)) return 'a status the record does not hold';
+  }
   return null;
 }
 
@@ -204,6 +269,7 @@ export function theKindsOfClaimIn(text: string): Set<AClaim> {
     if (saysSomebodyEscalated(s)) out.add('an escalation');
     if (theTargetsStated(s).length) out.add('a target');
     if (countsAPromiseAsDone(s)) out.add('a promise counted as done');
+    if (statesAStatusAsFact(s)) out.add('a status the record does not hold');
   }
   return out;
 }

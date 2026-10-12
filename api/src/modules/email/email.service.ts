@@ -1,4 +1,5 @@
 import { theEndingSaid, theOutcomeIsThat, TheEndingIsAbout } from '../resolution/end-states';
+import { aPersonNeverReadsAnInternalName } from '../../common/no-internal-name-reaches-a-person';
 import { reportReadyReminderSubject } from './the-report-is-ready-reminder';
 import { THE_EMAILS } from '../grounds/what-is-sent-in-simpler-words';
 import { connectWhatsAppFor, youCanAlsoAnswerOnWhatsApp } from '../whatsapp/connect-whatsapp';
@@ -512,6 +513,8 @@ export class EmailService implements OnModuleInit {
     context?: DeliveryContext,
     sender?: string,
   ): Promise<string | undefined> {
+    /* NO INTERNAL NAME OR PLACEHOLDER IS EVER MAILED (night quality run 2). The last line, for every sender. */
+    options = { ...options, subject: aPersonNeverReadsAnInternalName(options.subject, `mail "${sender ?? 'unnamed'}" subject`, this.logger), html: aPersonNeverReadsAnInternalName(options.html, `mail "${sender ?? 'unnamed'}"`, this.logger) };
 
     /*
      * WHAT GROUNDWORK IS, on the mails where somebody might not know. Appended here rather than

@@ -2,7 +2,7 @@ import { GroundStatus } from '@prisma/client';
 import { A_GROUND_NO_MESSAGE_IS_ABOUT, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
 import { theEngagementMoment } from './the-engagement-release-moment';
 import { theWaitingWords, whoIsWaitedOn, WHAT_WAITING_READS } from './waiting-on-the-people-you-invited';
-import { theRestOfTheWeekIn, type AWeekInOneCheckIn } from '../email/the-leads-weekly-letter';
+import { theRestOfTheWeekIn, theReportsWordsHeldToTheRecord, type AWeekInOneCheckIn } from '../email/the-leads-weekly-letter';
 import { whatTheLeadsWeeklyReportSays } from './the-leads-own-weekly-report';
 import { saysTheSame } from './a-sentence-said-twice';
 
@@ -63,7 +63,8 @@ export async function whatTheLeadIsToldOnToday(
         }
       }
       const read = await deps.weeklyReport?.(g.id, now).catch(() => null);
-      const says = whatTheLeadsWeeklyReportSays(read, now);
+      /* The report's own words, held to the record by the final check, as the letter holds them (the-leads-weekly-letter). */
+      const says = await theReportsWordsHeldToTheRecord(prisma, g.id, whatTheLeadsWeeklyReportSays(read, now));
       if (says?.toDo.length) {
         const week: AWeekInOneCheckIn = { groundId: g.id, label: g.label, ofHowMany: 0, checkedIn: 0, notYet: [], saidWhatNext: 0, done: 0, waiting: 0, toDo: says.toDo.filter((t) => isNew(`${t.do} ${t.why ?? ''}`)) };
         const lines = week.toDo!.length ? theRestOfTheWeekIn(week, 3) : [];

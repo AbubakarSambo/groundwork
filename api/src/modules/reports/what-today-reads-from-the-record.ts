@@ -11,6 +11,8 @@ import { yourOwnWhereYouAreTheSubject, anAimTheHolderSet } from '../board/an-aim
 import { asADirection } from '../board/an-aim-or-a-limit';
 import { PATTERN_ROW_SELECT, servedPatterns, patternTalkNudge } from '../patterns/who-reads-a-pattern';
 import { anArticleSaidMidSentence } from '../board/a-holder-in-their-own-words';
+import { everyLineTheFinalCheckPasses, type WhatTheRecordHolds } from '../conversation/the-final-check';
+import { whatTheRecordHolds } from '../conversation/what-the-record-holds';
 
 /** A phrase put inside a sentence, as the board does it (board.service's inASentence, kept here so
  *  the report does not import the board's service). */
@@ -418,8 +420,35 @@ export async function whatTodayReads(prisma: any, groundId: string, reader: Read
   if (!l) return {};
   const sinceLast = await sinceLastFrom(prisma, groundId, l, reader);
   const forTheLead = await forTheLeadFrom(prisma, groundId, l, reader);
-  return {
+  const today = await todayHeldToTheRecord(prisma, groundId, {
     ...(sinceLast ? { sinceLast } : {}),
     ...(forTheLead && forTheLead.length ? { forTheLead } : {}),
-  };
+  });
+  if (today.forTheLead) today.forTheLead = today.forTheLead.filter((f) => String(f?.decide ?? '').trim());
+  if (!today.forTheLead?.length) delete today.forTheLead;
+  return today;
+}
+
+/**
+ * TODAY GOES THROUGH THE CREDIT, BLAME AND LABEL CHECK (Hafsah, 12 October, step 3: "Never invent credit or blame nobody gave"). Today's
+ * lines are the code's own, built from the record, so its counts and dates are not read again here. What is read: a credit stands only
+ * where a colleague's own words hold it, blame only as the speaker's account, and no label goes on a person. A lookup that fails serves
+ * Today as it was.
+ */
+export async function todayHeldToTheRecord<T extends { sinceLast?: SinceLast; forTheLead?: ForTheLead[] }>(prisma: any, groundId: string, today: T): Promise<T> {
+  if (!today || !Object.keys(today).length) return today;
+  try {
+    const full = await whatTheRecordHolds(prisma, { groundId, value: today });
+    if (!full.people?.length) return today;
+    /* No `people` and no `texts`: a place or a supplier Today names from the record is not read as a stranger, and its counts and
+       dates are the code's own. Who the people are comes from their own words, for the label check. */
+    const held: WhatTheRecordHolds = {
+      blame: full.blame,
+      theirOwnWords: (full.theirOwnWords ?? []).filter((w) => w.name !== 'the record'),
+      reader: full.reader,
+    };
+    return everyLineTheFinalCheckPasses(today, held, { where: `Today for ground ${groundId}` }).value;
+  } catch {
+    return today;
+  }
 }

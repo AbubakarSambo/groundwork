@@ -1995,12 +1995,27 @@ export class BoardService {
        * (decision 93, row 10); who said it is never served. See help-nobody-mentioned.
        */
       if (runsItForAPattern(ground as any, requestingUserId) || adminHere) {
+        /* What each colleague said in their own check-ins: a credit stands only where those words hold it (the final check). Read
+           only to check, never served. A lookup that fails checks nothing. */
+        const whoseCheckIn = new Map((checkIns as any[]).map((c) => [c.id, c.participantId as string]));
+        const theirOwnWordsBy = await (this.prisma as any).conversationTurn?.findMany?.({
+          where: { checkInId: { in: [...whoseCheckIn.keys()] }, role: 'PERSON' },
+          select: { checkInId: true, content: true },
+        }).then((rows: any[]) => {
+          const by = new Map<string, string[]>();
+          for (const r of rows ?? []) {
+            const pid = whoseCheckIn.get(r?.checkInId);
+            if (pid) by.set(pid, [...(by.get(pid) ?? []), String(r?.content ?? '')]);
+          }
+          return by;
+        }).catch(() => undefined);
         const help = helpNobodyMentioned(
           (readInput as any).mentions ?? [],
           ((readInput as any).entries ?? []).map((e: any) => ({ participantId: e.participantId, text: cleanText(e.text ?? '') })),
           ground.participants as any[],
           (pid) => nameOf(pid),
           me?.id ?? null,
+          theirOwnWordsBy,
         );
         if (help) out.helpNobodyMentioned = help;
       }

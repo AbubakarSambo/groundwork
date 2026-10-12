@@ -163,7 +163,13 @@ export function eachDealInItsGroup(kind: KindOfWork | null, sections: AServedSec
       if (r.kind === 'deal' && isADispatchNotADeal(r)) return { ...r, kind: 'delivery', groupSays: A_DISPATCH_SAYS };
       if (r.kind !== 'deal') return r;
       const f = theFacts(r, lastStage, now);
-      return { ...r, group: theGroup(f, endKey), groupSays: whyThisDealIsHere(f, now) };
+      const group = theGroup(f, endKey);
+      /*
+       * A DEAL IS WON ONLY WITH PROOF OR A COLLEAGUE'S OR THE LEAD'S CONFIRMATION, ON EVERY READER'S BOARD (night quality run 2). Collins's own
+       * board showed "eleven" and "The group orders six" as Won while the lead's grid said "Said to be won, not shown yet". The stage a
+       * reader sees is filled in here, from the record; the stage as said stays on the row for the lead's own edit.
+       */
+      return { ...r, group, groupSays: whyThisDealIsHere(f, now), ...(group === 'said-won' ? { stageSays: `Said to be ${(lastStage ?? 'won').toLowerCase()}, not shown yet` } : {}) };
     });
     const groups = ORDER
       .map((g) => ({ g, ids: rows.filter((r: any) => r.group === g).map((r: any) => r.id) }))

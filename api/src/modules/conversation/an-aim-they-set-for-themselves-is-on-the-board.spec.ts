@@ -45,8 +45,8 @@ describe('a number somebody sets for themselves is their target on the board', (
       { promise: AMANI_SAID, kind: 'TARGET', check: 'A_NUMBER', dueKind: 'NOT_SAID', target: '3', measure: 'shops in Kilimani' },
     ]);
     await svc.extractExpectations('c-1', 'p-amani', 'g-1');
-    /* Stored as the thing she counts, with the place she named, never her whole sentence (quality run, 12 October). */
-    expect(boardTargets).toEqual([expect.objectContaining({ groundId: 'g-1', name: 'shops in Kilimani', target: 3, ownerParticipantId: 'p-amani', setByParticipantId: 'p-amani' })]);
+    /* Stored whole, as she said it; the short label is worked out when it is read and shown beside it (Hafsah, 12 October). */
+    expect(boardTargets).toEqual([expect.objectContaining({ groundId: 'g-1', name: AMANI_SAID, target: 3, ownerParticipantId: 'p-amani', setByParticipantId: 'p-amani' })]);
   });
 
   it('and is read as a sentence about her: to Rukia by name, to Amani as "you"', () => {

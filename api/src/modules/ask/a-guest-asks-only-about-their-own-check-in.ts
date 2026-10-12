@@ -1,3 +1,4 @@
+import { wasAQuietClose } from '../grounds/an-answer-includes-a-refusal';
 import { askName } from '../assistant/ask-name';
 import { rules, text, Reply } from '../assistant/a-reply-is-a-payload-not-a-string';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
@@ -182,7 +183,7 @@ export const noReportYet = (label: string) =>
 export function answerAGuest(
   question: AGuestsQuestion,
   label: string,
-  reads: { report?: TheReportAsServed | null; checkIns?: { sessionNumber: number; status: string; availableFrom: Date | string | null }[] },
+  reads: { report?: TheReportAsServed | null; checkIns?: { sessionNumber: number; status: string; availableFrom: Date | string | null; closedReason?: string | null; personTurns?: number | null }[] },
   now: Date = new Date(),
   ask: string = askName(null),
 ): Reply {
@@ -195,7 +196,8 @@ export function answerAGuest(
     const all = reads.checkIns ?? [];
     const waiting = all.find((c) => c.status === 'NOT_STARTED' || c.status === 'IN_PROGRESS');
     if (!waiting) {
-      const done = all.filter((c) => c.status === 'COMPLETED').length;
+      /* Finished only when they answered it: one the clock closed with nothing said is not (night quality run 2, Jared). */
+      const done = all.filter((c) => c.status === 'COMPLETED' && !wasAQuietClose(c)).length;
       const sofar = done === 1 ? 'You have finished 1 check-in on it so far.' : `You have finished ${done} check-ins on it so far.`;
       return rules(lane, text(`There is no check-in waiting for you on ${label} now. ${sofar}`));
     }

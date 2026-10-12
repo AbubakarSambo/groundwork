@@ -207,8 +207,9 @@ describe('every part built at the read goes through the quote rule, by the code 
   const board = code('../board/board.service.ts');
 
   it('the report: the probe list, the coaching note, the guide, what they could try, their soft spots', () => {
-    expect(reports).toMatch(/probes: this\.readAsItWillBeRead\(probes, groundId, '[^']+', quotable\)/);
-    expect(reports).toMatch(/coaching: this\.readAsItWillBeRead\(coaching, groundId, '[^']+', quotable\)/);
+    /* The served parts also pass what the record holds for blame and the final check (a fifth argument), after the quote rule. */
+    expect(reports).toMatch(/probes: this\.readAsItWillBeRead\(probes, groundId, '[^']+', quotable(?:, [^)]*)?\)/);
+    expect(reports).toMatch(/coaching: this\.readAsItWillBeRead\(coaching, groundId, '[^']+', quotable(?:, [^)]*)?\)/);
     expect(reports).toMatch(/postReportGuide: quotesChecked\(postReportGuide,/);
     /* Four: the forming, released and withheld reads, and the read of a session not shared yet (decision 76, item 4). */
     expect(reports.match(/couldTry: quotesChecked\(await this\.whatTheyCouldTryNext\(/g) ?? []).toHaveLength(4);

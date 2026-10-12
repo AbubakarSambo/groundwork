@@ -11,6 +11,8 @@ import { whoWasReallyRemindedToCheckIn } from './a-reminder-really-sent';
 
 import { WHERE_A_GROUND_IS_THE_ANCHORS, WHERE_A_GROUND_IS_NOT_THE_ANCHORS } from '../conversation/the-anchor-weekly-check-in';
 import { theNextCheckInFor, theSuggestionSaid } from '../engagement/the-next-check-in-from-what-happened';
+import { everyLineTheFinalCheckPasses } from '../conversation/the-final-check';
+import { whatTheRecordHolds } from '../conversation/what-the-record-holds';
 
 /**
  * THE LEAD'S WEEKLY LETTER (docs/anchor-scenario-plan.md, piece 29; the prototype's "one weekly letter",
@@ -211,6 +213,24 @@ export function theLeadsLetter(weeks: AWeekInOneCheckIn[], opts: { onlyWhenSomet
   return { subject: theSubjectFor(counted), lines, linkLabel: THE_LINK_SAYS, linkPath: counted.length === 1 ? 'board' : 'grounds', groundId: counted.length === 1 ? counted[0].groundId : null };
 }
 
+/**
+ * THE LETTER'S GENERATED PARTS GO THROUGH THE FINAL CHECK (Hafsah, 12 October). What moved and what to do are the report's sentences, which
+ * the model wrote: "Collins Odhiambo committed to do ten kits, and it is now done." went out with nothing shown (quality run 1). A sentence
+ * holding a number, status, date, name or credit the record does not hold is taken out; a thing to do left with nothing goes. The counts
+ * above them are the code's own and are not read. A lookup that fails sends the words as they were.
+ */
+export async function theReportsWordsHeldToTheRecord<R extends { moved: string[]; toDo: { do: string; why: string }[] }>(prisma: any, groundId: string, report: R | null): Promise<R | null> {
+  if (!report) return report;
+  try {
+    const value = { moved: report.moved, toDo: report.toDo };
+    const held = await whatTheRecordHolds(prisma, { groundId, value });
+    const checked = everyLineTheFinalCheckPasses(value, held, { where: `the weekly letter for ground ${groundId}` });
+    return { ...report, moved: checked.value.moved, toDo: (checked.value.toDo ?? []).filter((t: any) => String(t?.do ?? '').trim()) };
+  } catch {
+    return report;
+  }
+}
+
 const TERMINAL: GroundStatus[] = A_GROUND_NO_MESSAGE_IS_ABOUT;
 const WEEK = 7 * 86_400_000;
 
@@ -263,7 +283,7 @@ export async function theWeekOf(prisma: any, g: { id: string; label: string; ini
       const from = r.fromParticipantId ? nameOf(r.fromParticipantId) : null;
       const on = nameOf(r.onParticipantId);
       if (!from || !on) return null;
-      return `${from === 'you' ? 'You say' : `${from} says`} the work is waiting on ${on} for ${String(r.what).trim().replace(/[.\s]+$/, '')}. ${theNoteBesideTheClaim(r)}`;
+      return `${from === 'you' ? 'You say' : `${from} says`} the work is waiting on ${on} for ${String(r.what).trim().replace(/[.\s]+$/, '')}. ${theNoteBesideTheClaim(r, { by: from, on, lead: 'you' })}`;
     })
     .filter((x): x is string => !!x);
   /*
@@ -320,7 +340,7 @@ export async function sendTheLeadsWeeklyLetters(
       for (const g of theirs) {
         const w = await theWeekOf(prisma, g, now);
         if (every) {
-          const report = await every.weeklyReport?.(g, now).catch(() => null);
+          const report = await theReportsWordsHeldToTheRecord(prisma, g.id, await every.weeklyReport?.(g, now).catch(() => null) ?? null);
           if (report?.moved.length) w.moved = report.moved;
           if (report?.toDo.length) w.toDo = report.toDo;
           /* One real next check-in, only where it is a different one and the record gives a reason. */

@@ -1,3 +1,4 @@
+import { wasAQuietClose } from '../grounds/an-answer-includes-a-refusal';
 import { CheckInStatus, GroundStatus } from '@prisma/client';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
@@ -124,13 +125,16 @@ export function theQuietIn(rows: any[], label: string, leadUserId: string, now: 
   }
   const counted = [...newestOf.values()].filter((r) => !r.participant?.managingOnly && !r.participant?.leftAt && !isNotLetInYet(r.participant) && r.participant?.userId !== leadUserId && !away.has(r.participantId));
   if (!counted.length) return null;
+  /* Answered means they said something: a session the clock closed with nothing said is a missed one, not an answer
+     (night quality run 1, Jared Okoth: two clock-closed sessions read as answered, so he was never counted as quiet). */
+  const answered = (r: any) => r.status === CheckInStatus.COMPLETED && !wasAQuietClose(r);
   let never = 0;
   const stopped: string[] = [];
   for (const r of counted) {
-    if (r.status === CheckInStatus.COMPLETED) continue;
+    if (answered(r)) continue;
     const opened = opensAt(r);
     if (opened < release.getTime() || now.getTime() - opened < QUIET_AFTER_DAYS * DAY) continue;
-    const before = rows.some((x) => x.participantId === r.participantId && (x.sessionNumber ?? 0) < (r.sessionNumber ?? 0) && x.status === CheckInStatus.COMPLETED);
+    const before = rows.some((x) => x.participantId === r.participantId && (x.sessionNumber ?? 0) < (r.sessionNumber ?? 0) && answered(x));
     if (before) stopped.push(nameToCall(r.participant));
     else never++;
   }
@@ -165,7 +169,7 @@ export async function sendWhoHasGoneQuiet(
       for (const g of theirs) {
         const rows: any[] = await prisma.checkIn.findMany({
           where: { groundId: g.id },
-          select: { participantId: true, sessionNumber: true, status: true, createdAt: true, availableFrom: true, participant: { select: { userId: true, managingOnly: true, leftAt: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } } },
+          select: { participantId: true, sessionNumber: true, status: true, createdAt: true, availableFrom: true, closedReason: true, turns: { where: { role: 'PERSON' }, take: 1, select: { id: true } }, participant: { select: { userId: true, managingOnly: true, leftAt: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } } },
         });
         /* Somebody on approved leave is not one who has gone quiet. */
         const away = await Promise.resolve(whoOnACheckInIsAway(prisma, g.id, now)).catch(() => new Map());

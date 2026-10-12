@@ -60,6 +60,8 @@ export interface ADependencyOnSomebodyHere {
   groundId?: string | null;
   status: string;
   what: string;
+  /** What they said they did to unblock it: an attempt on record confirms the wait. */
+  triedSaid?: string | null;
 }
 
 /**

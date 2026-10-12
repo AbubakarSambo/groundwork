@@ -19,4 +19,17 @@ describe('what a guest is told about their next check-in', () => {
     expect(r).toContain('Your check-in on Sales team, Q3 is open now, and you have already started it. You can carry on from the check-in page.');
     expect(r).not.toContain('opens on');
   });
+
+  /*
+   * Night quality run 2: Jared read "You have finished four check-ins." with two answered, because two
+   * of his four were closed by the clock with nothing said. Ask Groundwork counts the same way.
+   */
+  it('nothing waiting: counts only the check-ins they answered, not those the clock closed with nothing said', () => {
+    const done = (n: number) => ({ sessionNumber: n, status: 'COMPLETED', availableFrom: LATER, closedReason: null, personTurns: 1 });
+    const quiet = (n: number) => ({ sessionNumber: n, status: 'COMPLETED', availableFrom: LATER, closedReason: 'auto_closed', personTurns: 0 });
+    const r = said(answerAGuest('next', 'Field sales', { checkIns: [done(1), quiet(2), done(3), quiet(4)] }, NOW));
+    expect(r).toContain('There is no check-in waiting for you on Field sales now. You have finished 2 check-ins on it so far.');
+    expect(r).not.toContain('finished 4');
+  });
 });
+

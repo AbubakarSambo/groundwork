@@ -2,6 +2,7 @@ import { GroundsService } from './grounds.service';
 import { ReportsService } from '../reports/reports.service';
 import { whatNeedsYou, type ListedCheckIn } from './what-needs-you';
 import { yourBoard } from './your-board';
+import { CLOSED_BY_THE_CLOCK } from '../../common/closed-by-the-clock';
 
 /**
  * REQUEST 97, FROM GROUP 2'S REVIEW OF "SALES TEAM, Q3". One check-in, said one way, to each reader.
@@ -90,6 +91,35 @@ describe('(a) one round, from one place', () => {
       NOW,
     );
     expect(board.checkIns[0].line).toBe('You have finished two check-ins.');
+  });
+});
+
+describe('a check-in the clock closed with nothing said is not one they finished (night quality run 2, Jared)', () => {
+  /* Amani answered only her second; her first closed by the clock with nothing said, as two of Jared's four did. */
+  const quiet = () => row({ checkIns: row().checkIns.map((c: any) => (c.id === 'c1' ? { ...c, closedReason: CLOSED_BY_THE_CLOCK, turns: [] } : { ...c, turns: c.status === 'COMPLETED' ? [{ id: 't' }] : [] })) });
+  it('Amani reads "You have finished one check-in." and "Your next check-in", never "two" or "Your third"', () => {
+    const board = yourBoard([quiet() as any as ListedCheckIn], { userId: AMANI, organizationId: 'org1' }, { objectives: [], ownedTargets: [], commitments: [], coaching: [], todos: [] }, NOW);
+    expect(board.checkIns[0].line).toBe('You have finished one check-in.');
+    const t = whatNeedsYou([quiet() as any as ListedCheckIn], { userId: AMANI, role: 'MEMBER', organizationId: 'org1' }, [], NOW);
+    expect(t.comingUp.map((c) => c.what)).toEqual(['Your next check-in for “Sales team, Q3” opens.']);
+  });
+  it('the lead still reads the team\'s round by its number', () => {
+    const t = whatNeedsYou([quiet() as any as ListedCheckIn], { userId: LEAD, role: 'MEMBER', organizationId: 'org1' }, [], NOW);
+    expect(t.comingUp.map((c) => c.what)).toEqual(['The third check-in for “Sales team, Q3” opens.']);
+  });
+});
+
+/*
+ * NIGHT QUALITY RUN 1, PROBLEM 4, ON THE LEAD'S TODAY. Omar's second check-in closed by the clock with nothing said, as Jared's did. It is
+ * a miss: Rukia reads him in the count as not checked in, never "2 of 2", and Rukia herself, who checks in when she chooses, is never counted.
+ */
+describe('a check-in the clock closed with nothing said stays in the lead\'s count on Today', () => {
+  const omarMissed = () => row({ checkIns: row().checkIns.map((c: any) => (c.id === 'c4' ? { ...c, status: 'COMPLETED', completedAt: ago(1), closedReason: CLOSED_BY_THE_CLOCK, turns: [] } : { ...c, turns: c.status === 'COMPLETED' ? [{ id: 't' }] : [] })) });
+  it('Rukia reads "1 of 2 have checked in" with Omar named, and nothing about herself', async () => {
+    const r = await listAs(LEAD, 'MEMBER', { checkIns: omarMissed().checkIns });
+    const t = whatNeedsYou([r as ListedCheckIn], { userId: LEAD, role: 'MEMBER', organizationId: 'org1' }, [], NOW);
+    expect(t.line).toBe('In Sales team, Q3, 1 of 2 have checked in for the second check-in. Omar did not check in before it closed.');
+    expect(t.line).not.toMatch(/Rukia|2 of 2|All/);
   });
 });
 

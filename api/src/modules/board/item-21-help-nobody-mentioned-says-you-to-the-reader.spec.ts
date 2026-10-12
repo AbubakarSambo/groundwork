@@ -15,6 +15,12 @@ const RUN: Setup = {
     { id: 'm-1', groundId: 'g-1', sourceParticipantId: 'p-kwame', aboutParticipantId: 'p-bisi', kind: 'CREDIT', text: 'Bisi rang the bank about my approval', sessionNumber: 2 },
     { id: 'm-2', groundId: 'g-1', sourceParticipantId: 'p-ngozi', aboutParticipantId: 'p-kwame', kind: 'CREDIT', text: 'Kwame showed me how to fill the credit forms', sessionNumber: 2 },
   ],
+  /* What Kwame and Ngozi said: a credit stands only where the colleague's own words hold it (the final check, 12 October). */
+  turns: [
+    ...(SALES_RUN.turns ?? []),
+    { checkInId: 'c2-p-kwame', content: 'Bisi helped me. She rang the bank about my approval.' },
+    { checkInId: 'c2-p-ngozi', content: 'Kwame helped me. He showed me how to fill the credit forms.' },
+  ],
 } as any;
 
 describe('help nobody mentioned, about the person reading it', () => {
@@ -34,5 +40,13 @@ describe('help nobody mentioned, about the person reading it', () => {
       'A colleague said Bisi Adeyemi helped them. Bisi Adeyemi did not mention it in their own check-ins.',
       'A colleague said Kwame Mensah helped them. Kwame Mensah did not mention it in their own check-ins.',
     ]);
+  });
+});
+
+describe('help nobody mentioned, with nothing in any transcript (quality runs 1 and 2, issue 11)', () => {
+  it('Bisi reads no "A colleague said you helped them." when Kwame never said it', async () => {
+    const NOBODY_SAID_IT = { ...RUN, turns: SALES_RUN.turns } as any;
+    expect((await boardAs(NOBODY_SAID_IT, ...BISI)).helpNobodyMentioned).toBeUndefined();
+    expect((await boardAs(NOBODY_SAID_IT, ...JUMA)).helpNobodyMentioned).toBeUndefined();
   });
 });

@@ -1,4 +1,5 @@
 import { howManyCheckIns } from './which-check-in-it-is';
+import { wasAQuietClose } from './an-answer-includes-a-refusal';
 import { isShut } from './a-ground-that-has-ended';
 import { whatNeedsYou, type ListedCheckIn, type Need } from './what-needs-you';
 import type { AServedPattern } from '../patterns/who-reads-a-pattern';
@@ -382,7 +383,9 @@ export function yourBoard(
     const me = (g.participants ?? []).find((p) => p.userId === reader.userId) ?? null;
     const youRunIt = g.initiatorId === reader.userId;
     const done = me
-      ? (g.checkIns ?? []).filter((c) => !c.isSetup && c.participantId === me.id && c.status === 'COMPLETED')
+      /* Finished only when they answered it (night quality run 2): Jared read "You have finished four check-ins." with two answered,
+         because two closed by the clock with nothing said. */
+      ? (g.checkIns ?? []).filter((c) => !c.isSetup && c.participantId === me.id && c.status === 'COMPLETED' && !wasAQuietClose(c as any))
       : [];
     const parts = [youRunIt ? 'You run this check-in.' : null, me ? sessionsLine(done.length) : null].filter(Boolean);
     checkIns.push({ id: g.id, label: g.label, youRunIt, line: parts.join(' '), to: `/grounds/${g.id}` });

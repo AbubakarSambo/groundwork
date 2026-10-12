@@ -54,6 +54,27 @@ describe('a promise is done only when they say it happened (change 3)', () => {
   });
 });
 
+describe('a promise is kept only from what is confirmed (Hafsah, 12 October, night quality run 2)', () => {
+  it('Collins\'s "I will do ten kits" is not kept by "Last week I did nine, maybe ten, so I know it works."', () => {
+    const open = [{ id: 'k10', text: 'I will do ten kits', whenSaid: 'this week', status: 'UNKNOWN' }];
+    const said = ['Last week I did nine, maybe ten, so I know it works.'];
+    expect(theSettlements(open, [{ item: 1, happened: 'DONE', words: 'Last week I did nine' }], said)).toEqual([]);
+    expect(theSettlements(open, [{ item: 1, happened: 'DONE', words: 'Last week I did nine, maybe ten' }], said)).toEqual([]);
+  });
+  it('his "twelve kits" is not kept by "I did eleven", which he took back two answers later', () => {
+    const open = [{ id: 'k12', text: "This week I will do twelve kits, six for the women's group on Wednesday and the Oyugis stockist", whenSaid: 'This week', status: 'UNKNOWN' }];
+    const said = [
+      'I did eleven, all the deliveries are done. It was only the rain that stopped the twelfth, and the women\'s group.',
+      'I do not defer it, Mama Akinyi\'s group has not met and the rain closed the road. That is all.',
+      'The M-Pesa messages show it, but I do not have them with me. Honestly eleven was rounding up, it is lower, maybe four or five. I will send the codes.',
+    ];
+    expect(theSettlements(open, [{ item: 1, happened: 'DONE', words: 'all the deliveries are done' }], said)).toEqual([]);
+    expect(theSettlements(open, [{ item: 1, happened: 'DONE', words: 'I did eleven' }], said)).toEqual([]);
+    /* Not taken back and at least the number promised: kept. */
+    expect(theSettlements(open, [{ item: 1, happened: 'DONE', words: 'I did twelve' }], ['I did twelve, the codes are in the book.'])).toEqual([{ id: 'k12', status: 'DONE' }]);
+  });
+});
+
 describe('what the model is told', () => {
   it('a new date or work in progress is open, never a miss, and doubt is open', () => {
     expect(READ_WHAT_HAPPENED).toContain('A new date or a new plan for the same thing is OPEN, never NOT_DONE.');
@@ -107,5 +128,19 @@ describe('after a check-in', () => {
   it('a commitment settled by hand gets its date too, is marked as their word, and loses both when moved back to open', () => {
     const grounds = readFileSync(join(__dirname, '..', 'grounds', 'grounds.service.ts'), 'utf8');
     expect(grounds).toContain("data: { status: clean, settledAt: clean === 'DONE' || clean === 'NOT_DONE' ? new Date() : null, settledInCheckInId: null, settledBy: clean === 'DONE' || clean === 'NOT_DONE' ? 'SAID' : null },");
+  });
+});
+
+describe('what one of their own lines is called, from the record (night quality run 2, Collins)', () => {
+  const { whatALineOfTheirsIsCalled, A_LINE_DONE_SAYS, A_LINE_SAID_TO_HAVE_HAPPENED_SAYS } = jest.requireActual('./what-happened-to-what-they-said');
+  it('a hedged number or somebody else\'s word passed on is not "something you got done"', () => {
+    expect(whatALineOfTheirsIsCalled({ type: 'PROGRESS', text: 'Last week I did nine, maybe ten, so I know it works.', mark: 'memory' })).toBe(A_LINE_SAID_TO_HAVE_HAPPENED_SAYS);
+    expect(whatALineOfTheirsIsCalled({ type: 'PROGRESS', text: "Mama Akinyi says they are happy, they just want to see the kit working at a neighbour's house first.", mark: 'said' })).toBe(A_LINE_SAID_TO_HAVE_HAPPENED_SAYS);
+    expect(A_LINE_SAID_TO_HAVE_HAPPENED_SAYS).toBe('This is what you said happened. It is not counted as done until something shows it.');
+  });
+  it('their own past-tense words, or proof, are; and other kinds of line are left to their own name', () => {
+    expect(whatALineOfTheirsIsCalled({ type: 'PROGRESS', text: "the women's group met on Thursday.", mark: 'memory' })).toBe(A_LINE_DONE_SAYS);
+    expect(whatALineOfTheirsIsCalled({ type: 'PROGRESS', text: 'Last week I did nine, maybe ten.', mark: 'proven' })).toBe(A_LINE_DONE_SAYS);
+    expect(whatALineOfTheirsIsCalled({ type: 'COMMITMENT', text: 'I will visit them Thursday and Friday.', mark: 'said' })).toBeNull();
   });
 });

@@ -36,7 +36,7 @@ describe('the sales run, as Bisi who runs it', () => {
       wouldClearItSays: 'Nobody has said what would clear it yet.',
     });
     expect(b['the approval of five applications']).toMatchObject({
-      says: 'Kwame Mensah says the work is waiting on you for the approval of five applications. Not backed: no attempt to unblock mentioned.',
+      says: 'Kwame Mensah says the work is waiting on you for the approval of five applications. Not backed: no attempt to unblock mentioned. Kwame Mensah could have messaged you or asked again.',
       state: 'waiting',
       raised: { inSessions: null },
     });
@@ -62,7 +62,7 @@ describe('the sales run, as each person who checks in', () => {
 
   it('Kwame reads that he is waiting on Bisi by name', async () => {
     const b = byWhat(await boardAs(SALES_RUN, ...KWAME));
-    expect(b['the approval of five applications'].says).toBe('You say the work is waiting on Bisi Adeyemi for the approval of five applications. Not backed: no attempt to unblock mentioned.');
+    expect(b['the approval of five applications'].says).toBe('You say the work is waiting on Bisi Adeyemi for the approval of five applications. Not backed: no attempt to unblock mentioned. You could have messaged Bisi Adeyemi or asked again.');
   });
 
   it('where people see only themselves, Ngozi reads only her own blocker', async () => {
@@ -76,7 +76,7 @@ describe('the sales run, as an admin', () => {
   it('Juma, an admin who only reads, reads every blocker with names, as the lead does', async () => {
     const b = byWhat(await boardAs(SALES_RUN, ...JUMA));
     expect(b['the bank statements'].says).toBe('Femi Okonkwo is waiting for the bank statements.');
-    expect(b['the approval of five applications'].says).toBe('Kwame Mensah says the work is waiting on Bisi Adeyemi for the approval of five applications. Not backed: no attempt to unblock mentioned.');
+    expect(b['the approval of five applications'].says).toBe('Kwame Mensah says the work is waiting on Bisi Adeyemi for the approval of five applications. Not backed: no attempt to unblock mentioned. Kwame Mensah could have messaged Bisi Adeyemi or asked again.');
   });
 
   it('the admin who set it up reads the same', async () => {
@@ -101,7 +101,7 @@ describe('a blocker raised in three sessions, with a document behind one line an
     const b = byWhat(await boardAs(SETUP, ...AMINA));
     expect(Object.keys(b)).toEqual(['the pipeline fix']);
     const x = b['the pipeline fix'];
-    expect(x.says).toBe('Rukia Mwangi says the work is waiting on Baraka Otieno for the pipeline fix. Not backed: no attempt to unblock mentioned.');
+    expect(x.says).toBe('Rukia Mwangi says the work is waiting on Baraka Otieno for the pipeline fix. Not backed: no attempt to unblock mentioned. Rukia Mwangi could have messaged Baraka Otieno, asked again, or raised it with you.');
     expect(x.raised.says).toBe('This has been raised 3 times, from 1 September to 23 September.');
     expect(x.raised.inSessions).toBe('It was raised in sessions 1, 2 and 3.');
     expect(x.proof).toEqual({ state: 'shown', says: 'A document backs what Rukia Mwangi said about it.' });
@@ -111,7 +111,7 @@ describe('a blocker raised in three sessions, with a document behind one line an
 
   it('Baraka, who is waited on, reads it with "you"', async () => {
     const b = byWhat(await boardAs(SETUP, ...BARAKA));
-    expect(b['the pipeline fix'].says).toBe('Rukia Mwangi says the work is waiting on you for the pipeline fix. Not backed: no attempt to unblock mentioned.');
+    expect(b['the pipeline fix'].says).toBe('Rukia Mwangi says the work is waiting on you for the pipeline fix. Not backed: no attempt to unblock mentioned. Rukia Mwangi could have messaged you, asked again, or raised it with Amina Wanjiru.');
   });
 
   it('on a performance plan, an admin without access to it is not served the board at all', async () => {

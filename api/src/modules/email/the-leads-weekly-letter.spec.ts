@@ -169,7 +169,7 @@ describe('a wait on a colleague only the speaker claims, in the letter', () => {
     const w = withWaits([kevinOnFatuma]);
     await sendTheLeadsWeeklyLetters({ prisma: w.prisma, email: w.email, frontendUrl: 'https://app.test/' }, NOW);
     expect(w.sent[0].subject).toBe('Two things people said they would do were done; one handoff is still waiting');
-    expect(w.sent[0].lines).toContain('Kennedy says the work is waiting on Femi for the final prices. Not backed: no attempt to unblock mentioned.');
+    expect(w.sent[0].lines).toContain('Kennedy says the work is waiting on Femi for the final prices. Not backed: no attempt to unblock mentioned. Kennedy could have messaged Femi, asked again, or raised it with you.');
   });
 
   it('once Femi has promised it, the handoff is counted on Femi, as before', async () => {

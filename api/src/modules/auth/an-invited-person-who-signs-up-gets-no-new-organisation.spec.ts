@@ -11,7 +11,7 @@ import { AuthService } from './auth.service';
 const BRIGHTLOOM = 'o-brightloom';
 const future = () => new Date(Date.now() + 3600_000);
 
-function service(opts: { invitedBy?: { role: string; organizationId: string } | null; existingUser?: any }) {
+function service(opts: { invitedBy?: { role: string; organizationId: string } | null; existingUser?: any; openCheckIn?: string | null; draftToken?: string | null }) {
   const made = { orgs: [] as any[], users: [] as any[], requests: [] as any[], linked: [] as any[] };
   const tx: any = {
     organization: { create: jest.fn(async ({ data }: any) => { const o = { id: 'o-new', ...data }; made.orgs.push(o); return o; }), updateMany: jest.fn(async () => ({})), findUnique: jest.fn(async () => null), update: jest.fn(async () => ({})) },
@@ -22,7 +22,7 @@ function service(opts: { invitedBy?: { role: string; organizationId: string } | 
     groundParticipant: { updateMany: jest.fn(async (args: any) => { made.linked.push(args); return {}; }) },
     pendingSignup: { delete: jest.fn(async () => ({})) },
   };
-  const pending = { id: 'p1', email: 'pia@brightloom.test', token: 'link', firstName: 'Pia', lastName: null, orgName: null, passwordHash: null, payload: {}, history: [], draftToken: null, next: null, expiresAt: future() };
+  const pending = { id: 'p1', email: 'pia@brightloom.test', token: 'link', firstName: 'Pia', lastName: null, orgName: null, passwordHash: null, payload: {}, history: [], draftToken: opts.draftToken ?? null, next: null, expiresAt: future() };
   const prisma: any = {
     pendingSignup: { findUnique: jest.fn(async () => (opts.existingUser ? null : pending)), delete: jest.fn(async () => ({})), upsert: jest.fn(async () => ({})) },
     user: {
@@ -37,6 +37,7 @@ function service(opts: { invitedBy?: { role: string; organizationId: string } | 
       findFirst: jest.fn(async () => (opts.invitedBy ? { groundId: 'g-sales', addedByUserId: 'lena', ground: { organizationId: BRIGHTLOOM, initiatorId: 'lena' } } : null)),
     },
     ground: { findUnique: jest.fn(async () => ({ label: 'Sales team, weekly' })) },
+    checkIn: { findFirst: jest.fn(async () => (opts.openCheckIn ? { id: opts.openCheckIn } : null)) },
     person: { findMany: jest.fn(async () => []) },
     organization: { findUnique: jest.fn(async () => null), findMany: jest.fn(async () => []) },
     organizationMembership: { count: jest.fn(async () => 0), findMany: jest.fn(async () => []) },
@@ -69,6 +70,28 @@ describe('a person invited to a check-in who signs up by link instead of opening
     expect(made.orgs).toHaveLength(0);
     expect(made.users[0]).toMatchObject({ organizationId: BRIGHTLOOM, role: 'MEMBER', awaitingOrgApproval: false });
     expect(made.requests).toHaveLength(0);
+    expect(res.next).toBe('/today');
+  });
+
+  /* 12 October, second pass: '/today' made the link's page post /entry/commit for somebody with nothing to
+     save. Invited by an admin, they now go straight into their check-in, as opening the invitation does. */
+  it('invited by an admin, with a check-in open: no new organisation, straight into that check-in', async () => {
+    const { svc, made } = service({ invitedBy: { role: 'ADMIN', organizationId: BRIGHTLOOM }, openCheckIn: 'c-pia-1' });
+    const res: any = await svc.verifyEmail({ token: 'link' } as any);
+    expect(made.orgs).toHaveLength(0);
+    expect(made.users).toHaveLength(1);
+    expect(res.next).toBe('/checkin/c-pia-1');
+  });
+
+  it('invited by a lead, with a check-in open: still "Almost in", as opening the invitation does', async () => {
+    const { svc } = service({ invitedBy: { role: 'LEAD', organizationId: BRIGHTLOOM }, openCheckIn: 'c-pia-1' });
+    const res: any = await svc.verifyEmail({ token: 'link' } as any);
+    expect(res.next).toBe('/join/waiting');
+  });
+
+  it('a draft written in the entry chat still goes home, so the page saves it', async () => {
+    const { svc } = service({ invitedBy: { role: 'ADMIN', organizationId: BRIGHTLOOM }, openCheckIn: 'c-pia-1', draftToken: 'd1' });
+    const res: any = await svc.verifyEmail({ token: 'link' } as any);
     expect(res.next).toBe('/today');
   });
 

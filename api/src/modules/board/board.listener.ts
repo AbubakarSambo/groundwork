@@ -15,6 +15,9 @@ import {
   oneNumberLandsOnce,
   type AReadNumber,
   whatToDoWithTheRead,
+  theNumberItProves,
+  theLineWasSaid,
+  howMuchIsProven,
 } from './what-the-record-says-a-number-is';
 import {
   WHAT_THE_ROOM_IS_ABOUT_PROMPT,
@@ -155,7 +158,7 @@ export class BoardListener {
              only where a line reports the value - is what keeps a worry with no figure out. */
           type: { in: ['PROGRESS', 'COMMITMENT', 'SUCCESS_DEFINITION', 'WORRY', 'TENSION'] as any },
         },
-        select: { text: true, type: true, participantId: true, participant: { select: { partyType: true } } },
+        select: { text: true, type: true, participantId: true, participant: { select: { partyType: true } }, recallBased: true, anchoredDocumentId: true, anchoredOrigin: true, anchoredPassage: true },
       });
       if (!said.length) return;
 
@@ -170,7 +173,7 @@ export class BoardListener {
        * text column. `cleanText` is the one that knows how to take it off.
        */
       /* With the kind of line, so a line saying what success looks like is never read as where things stand (request 109 a). */
-      const lines = said.map((s: any) => ({ text: cleanText(s.text), who: s.participantId ?? null, saidByTheLead: s.participant?.partyType === 'INITIATOR', kind: s.type ?? null }));
+      const lines = said.map((s: any) => ({ text: cleanText(s.text), who: s.participantId ?? null, saidByTheLead: s.participant?.partyType === 'INITIATOR', kind: s.type ?? null, proven: howMuchIsProven(s) }));
       const answer = await this.anthropic.extract<{ numbers: AReadNumber[] }>(
         WHAT_THE_RECORD_SAYS_PROMPT,
         [{ role: 'user', content: theQuestion(targets, lines) }],
@@ -183,6 +186,9 @@ export class BoardListener {
         const target = targets.find((t) => t.id === n.objectiveId)!;
         if (whatToDoWithTheRead(n, target, lines) === 'land') {
           landed += 1;
+          /* A count proof backs lands as the number the proof holds (three codes, three sales). */
+          const proves = theNumberItProves(n, theLineWasSaid(n.said, lines));
+          if (proves !== null) n.count = proves;
           await this.prisma.groundObjective.update({
             where: { id: n.objectiveId },
             data: { count: n.count, suggestedCount: null, suggestedSaid: cleanText(n.said), suggestedAtSession: e.sessionNumber },

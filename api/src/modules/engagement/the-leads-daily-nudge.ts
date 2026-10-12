@@ -340,7 +340,7 @@ export async function whatIsOutstandingFor(
   const theirAccountOfAWait = (w: any, since?: string): string => {
     const from = hers.has(w.fromParticipantId) ? 'You' : nameToCall(w.fromParticipant);
     const on = w.onParticipant ? nameToCall(w.onParticipant) : (w.onLabel ?? '').trim();
-    return `${from} ${from === 'You' ? 'say' : 'says'} the work ${since ? 'has been' : 'is'} waiting on ${on} for ${String(w.what ?? '').trim().replace(/[.\s]+$/, '')}${THE_PLACE_MARK}${since ? ` since ${since}` : ''}. ${theNoteBesideTheClaim(w)}`;
+    return `${from} ${from === 'You' ? 'say' : 'says'} the work ${since ? 'has been' : 'is'} waiting on ${on} for ${String(w.what ?? '').trim().replace(/[.\s]+$/, '')}${THE_PLACE_MARK}${since ? ` since ${since}` : ''}. ${theNoteBesideTheClaim(w, { by: from, on, lead: 'you' })}`;
   };
   const counted = new Set<string>();
   for (const w of real) {
@@ -416,7 +416,7 @@ export async function whatIsOutstandingFor(
     for (const g of grounds) {
       const rows: any[] = await prisma.checkIn.findMany({
         where: { groundId: g.id },
-        select: { participantId: true, sessionNumber: true, status: true, createdAt: true, availableFrom: true, participant: { select: { userId: true, managingOnly: true, leftAt: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } } },
+        select: { participantId: true, sessionNumber: true, status: true, createdAt: true, availableFrom: true, closedReason: true, turns: { where: { role: 'PERSON' }, take: 1, select: { id: true } }, participant: { select: { userId: true, managingOnly: true, leftAt: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } } },
       }).catch(() => []);
       const away = await Promise.resolve(whoOnACheckInIsAway(prisma, g.id, now)).catch(() => new Map());
       const q = theQuietIn(rows, g.label, lead.userId, now, deps.release, new Set([...(away as Map<string, unknown>).keys()]));

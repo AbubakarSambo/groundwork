@@ -3,6 +3,8 @@ import { namesTheyCanTellApart } from '../../common/check-ins-you-can-tell-apart
 import { theAwayLine } from '../suites/who-is-away';
 import { isNotLetInYet } from './who-an-admin-did-not-let-in';
 import { theCheckIn, yourCheckIn } from './which-check-in-it-is';
+import { wasAQuietClose } from './an-answer-includes-a-refusal';
+import { checksInOnlyWhenTheyChoose } from './the-lead-checks-in-when-they-choose';
 import { isShut } from './a-ground-that-has-ended';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
 
@@ -186,6 +188,18 @@ function whoHasNotYet(missing: { name: string | null; isMe: boolean }[]): string
   return missing.length === 1 ? '1 person has not checked in yet.' : `${missing.length} people have not checked in yet.`;
 }
 
+/** "Omar did not check in before it closed.", for a session the clock closed with nothing said. */
+function whoDidNotCheckIn(missed: { name: string | null; isMe: boolean }[]): string {
+  if (!missed.length) return '';
+  const said = missed.map((m) => (m.isMe ? 'you' : m.name));
+  if (missed.length <= 2 && said.every(Boolean)) {
+    const [a, b] = said as string[];
+    const who = b ? `${a} and ${b}` : a;
+    return `${who[0].toUpperCase()}${who.slice(1)} did not check in before it closed.`;
+  }
+  return missed.length === 1 ? '1 person did not check in before it closed.' : `${missed.length} people did not check in before it closed.`;
+}
+
 const theSession = theCheckIn;
 
 export function whatNeedsYou(
@@ -362,17 +376,30 @@ export function whatNeedsYou(
        * Today says nothing about this round, rather than "4 of 5 have checked in." with nobody missing. This
        * threw "Cannot read properties of undefined" and Rukia's Today was a 500.
        */
-      if (n > 0 && total > 1 && answered < total && waitingIds.length > 0 && (!line || total > line.people)) {
-        const byId = new Map((g.participants ?? []).map((p) => [p.id, p]));
-        const missing = waitingIds.map((id) => {
+      /*
+       * A MISS STAYS IN THE COUNT (night quality run 1, problem 4: Jared Okoth). A session the clock closed with nothing said is not
+       * waited on any more, so it was in neither list and Today said nothing about the round. It is a miss, said as one. Never the
+       * lead's own row, or an optional one: they check in when they choose (decision 133).
+       */
+      const byId = new Map((g.participants ?? []).map((p) => [p.id, p]));
+      const missedIds = [...new Set(rows
+        .filter((c: any) => !c.optional && wasAQuietClose(c) && !waitingIds.includes(c.participantId))
+        .filter((c) => !checksInOnlyWhenTheyChoose(byId.get(c.participantId) as any))
+        .filter((c) => !rows.some((o: any) => o.participantId === c.participantId && o.status === 'COMPLETED' && !wasAQuietClose(o)))
+        .map((c) => c.participantId))];
+      if (n > 0 && total > 1 && answered < total && (waitingIds.length > 0 || missedIds.length > 0) && (!line || total > line.people)) {
+        const who = (id: string) => {
           const p = byId.get(id);
           return { name: p?.user?.firstName?.trim() || null, isMe: !!p?.userId && p.userId === reader.userId };
-        });
+        };
+        const missing = waitingIds.map(who);
+        const missed = missedIds.map(who);
+        const said = [whoHasNotYet(missing), whoDidNotCheckIn(missed)].filter(Boolean).join(' ');
         line = {
           people: total,
           text: answered === 0
-            ? `In ${g.label}, nobody has checked in for ${theSession(n)} yet.`
-            : `In ${g.label}, ${answered} of ${total} have checked in for ${theSession(n)}. ${whoHasNotYet(missing)}`,
+            ? `In ${g.label}, nobody has checked in for ${theSession(n)}${missing.length ? ' yet' : ''}.${missed.length ? ` ${whoDidNotCheckIn(missed)}` : ''}`
+            : `In ${g.label}, ${answered} of ${total} have checked in for ${theSession(n)}. ${said}`,
         };
       }
     }
@@ -384,7 +411,7 @@ export function whatNeedsYou(
      * check-in can be a round ahead of the team's.
      */
     if (!over) {
-      let future: { sessionNumber: number; at: number } | undefined;
+      let future: { sessionNumber: number; at: number; theirNext?: boolean } | undefined;
       if (mayName) {
         /*
          * THE TEAM'S NEXT CHECK-IN IS THE BOARD'S (request 122, part 2): the first session after the open round that has
@@ -411,13 +438,20 @@ export function whatNeedsYou(
             return t !== null && t > at && t <= at + AHEAD && c.status !== 'IN_PROGRESS' && c.status !== 'COMPLETED';
           })
           .sort((a, b) => (time(a.availableFrom) ?? 0) - (time(b.availableFrom) ?? 0))[0];
-        if (mineNext) future = { sessionNumber: mineNext.sessionNumber, at: time(mineNext.availableFrom)! };
+        /*
+         * "YOUR FIFTH CHECK-IN" ONLY WHEN THEY HAVE ANSWERED FOUR (night quality run 2). Jared read "Your fifth check-in ... opens." with
+         * two answered: two of his four closed by the clock with nothing said. The number is the record's count of check-ins they answered.
+         */
+        if (mineNext) {
+          const answered = sessions.filter((c: any) => c.participantId === me.id && !c.isSetup && c.status === 'COMPLETED' && !wasAQuietClose(c)).length;
+          future = { sessionNumber: mineNext.sessionNumber, at: time(mineNext.availableFrom)!, ...(answered + 1 !== mineNext.sessionNumber ? { theirNext: true } : {}) };
+        }
       }
       if (future) {
         comingUp.push({
           at: new Date(future.at).toISOString(),
           /* The name is in quotation marks, so a name with a comma in it ("Wanjiru, first 90 days") is not read as two pieces (B-167). */
-          what: mayName ? `${cap(theCheckIn(future.sessionNumber))} for “${g.label}” opens.` : `${yourCheckIn(future.sessionNumber)} for “${g.label}” opens.`,
+          what: mayName ? `${cap(theCheckIn(future.sessionNumber))} for “${g.label}” opens.` : `${future.theirNext ? 'Your next check-in' : yourCheckIn(future.sessionNumber)} for “${g.label}” opens.`,
           to: `/grounds/${g.id}`,
           ...aboutTheCheckIn(g),
         });

@@ -208,7 +208,7 @@ const theFirstPartAlone = (what: string): string | null => {
  * Where the name is somebody's own sentence, the thing counted is the word after its first number ("kits"). Their sentence stays
  * in their check-in, word for word; only the aim's name is the thing. Empty when no thing can be found.
  */
-const THEIR_OWN_SENTENCE = /^(?:i|i'm|i'll|i've|my|we|we'll|our|this week|next week|today|tomorrow)\b|\b(?:i will|i'll|i can|i am going to|my plan)\b/i;
+const THEIR_OWN_SENTENCE = /^(?:i|i'm|i'll|i've|my|we|we'll|our|this week|next week|today|tomorrow)\b|\b(?:i will|i'll|i can|i am|i'm|my plan)\b/i;
 const A_NUMBER = '(?:\\d+(?:[.,]\\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|hundred)';
 export function anAimIsAThing(name: string): string {
   const t = String(name ?? '').replace(/\s+/g, ' ').trim();
@@ -220,8 +220,45 @@ export function anAimIsAThing(name: string): string {
   return m[1].toLowerCase() + (where ? ` ${where[1]}` : '');
 }
 
+/*
+ * THEIR SENTENCE, ALWAYS, AND THE LABEL ONLY BESIDE IT (Hafsah, 12 October 2026). An aim is stored as the person said it.
+ * Where it is their own sentence ("I am aiming for 3 shops in Kilimani.", "my plan is five kits to the shops and three to
+ * households."), every surface shows it in quotation marks as their words, word for word, with the short label beside it.
+ * It is never spliced into "is aiming for": the run read "Hassan Mwenda is aiming for 8 my plan is five kits ...".
+ */
+export function theirOwnSentence(name: string | null | undefined): string | null {
+  const t = String(name ?? '').replace(/\s+/g, ' ').trim();
+  return t && THEIR_OWN_SENTENCE.test(t) ? t : null;
+}
+
+/**
+ * An aim a person set in their own check-in is their words, whatever the sentence: "This coming week I am targeting twelve
+ * kits." is quoted as it is, never with "I" changed to their name (Hafsah, 12 October). Only a bare thing ("shops in
+ * Kilimani") is not a sentence to quote.
+ */
+export function theirWordsWhenTheySetIt(name: string | null | undefined): string | null {
+  const t = String(name ?? '').replace(/\s+/g, ' ').trim();
+  if (!t) return null;
+  return theirOwnSentence(t) ?? (onlySaysWhatIsCounted(t) ? null : t);
+}
+
+/** "Hassan Mwenda said, \"my plan is five kits to the shops and three to households.\"" Their words are not changed. */
+export function inTheirWords(who: string, sentence: string): string {
+  /* The full stop goes after the quotation mark, so a sentence that follows never reads '."."'. Their words are as they said them. */
+  const t = sentence.replace(/\s+/g, ' ').trim().replace(/\.$/, '');
+  return `${who} said, "${t}".`;
+}
+
 export function theAimItself(name: string, target: number | null): string | null {
-  name = anAimIsAThing(name) || name;
+  /* Read from their whole sentence first ("My goal is 14 approved facilities this quarter" is "14 approved facilities this
+     quarter", never "approved"); only where that finds nothing, from the thing after its first number ("8 kits"). */
+  const fromTheSentence = theAimFrom(name, target);
+  if (fromTheSentence) return fromTheSentence;
+  const thing = anAimIsAThing(name);
+  return thing && thing !== String(name ?? '').replace(/\s+/g, ' ').trim() ? theAimFrom(thing, target) : null;
+}
+
+function theAimFrom(name: string, target: number | null): string | null {
   const t = theNumbersPeopleCanRead((name ?? '').trim()).replace(/[.!?\s]+$/, '');
   if (!t) return null;
   let what: string | null = null;
@@ -260,11 +297,13 @@ function anAimTheySetThemselves(sentence: string, name: string, who: WhoAnAimIsA
   const holder = who.holder as string;
   const whose = /^you$/i.test(holder) ? 'Your' : `${holder}'s`;
   /* Where there is no thing to name, the sentence stays and says who set it, with no possessive to repeat. */
-  if (who.direction === 'LIMIT') return `${sentence} ${holder} set this limit.`;
+  const theirs = theirWordsWhenTheySetIt(name);
+  if (who.direction === 'LIMIT') return theirs ? `${holder} set this limit. ${inTheirWords(holder, theirs)}` : `${sentence} ${holder} set this limit.`;
   const what = theAimItself(name, who.target);
-  if (!what) return `${sentence} ${holder} set this aim.`;
+  if (!what) return theirs ? `${holder} set this aim. ${inTheirWords(holder, theirs)}` : `${sentence} ${holder} set this aim.`;
   const by = who.dueOnSays && !/\bby\b/i.test(what) ? ` by ${who.dueOnSays}` : '';
-  return `${whose} own aim is ${what}${by}.`;
+  /* The label, then their own sentence beside it: never the label alone. */
+  return `${whose} own aim is ${what}${by}.${theirs ? ` ${inTheirWords(holder, theirs)}` : ''}`;
 }
 
 /**
@@ -291,6 +330,15 @@ export const THE_NAME_TO_DO = /^(\p{Lu}[\p{L}'’-]*(?:\s+\p{Lu}[\p{L}'’-]*)?)
 export function anAimAsASentence(name: string, who: WhoAnAimIsAbout): string {
   let t = theNumbersPeopleCanRead((name ?? '').trim());
   if (!t) return t;
+  /* Their own sentence that would read as a thing ("my plan is five kits ...") is quoted as theirs, with the label beside it. */
+  const theirs = theirOwnSentence(name);
+  const whoSaidIt = who.holder ?? who.speaker;
+  if (theirs && whoSaidIt && !who.setByTheHolder && onlySaysWhatIsCounted(t)) {
+    const what = theAimItself(name, who.target);
+    const aim = what && (who.direction == null || who.direction === 'AIM') ? `${whoSaidIt} is aiming for ${what}. ` : '';
+    const said = `${aim}${inTheirWords(whoSaidIt, theirs)}`;
+    return said.charAt(0).toUpperCase() + said.slice(1);
+  }
   if (onlySaysWhatIsCounted(t)) {
     const holder = who.holder ?? 'the team';
     /* "Aisha’s sales" held by Aisha is "sales": the holder is already said. A first word is made lower

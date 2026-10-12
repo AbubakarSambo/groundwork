@@ -114,6 +114,15 @@ whole finding.
 AND KEEP BOTH FIGURES. Where a person gave two different figures for the same work, keep both in
 their paragraph, because the difference is often the finding.
 
+A DIFFERENCE IS ONLY EVER WITHIN ONE WEEK. Two statements disagree only when they are about the same
+thing (the same kits, the same order, the same deal) and were said in the same week; then say which
+week: "In the week of 19 October, Hassan says he sent the order on Monday, and Amina says it came on
+Wednesday." Statements from different weeks never contradict each other: say them as a change over
+time, each week named, earlier week first: "In the week of 12 October, Collins said four or five. In
+the week of 19 October, he said nine or ten." Never write "first said ... and later said", "but also
+says" or "not the ... mentioned" across two weeks, and never merge two weeks into one sentence of
+disagreement.
+
 Use the label you are given for each person, exactly. The product turns it into a name, or into
 "you" for whoever is reading, when the report is served.
 
@@ -167,9 +176,11 @@ export function factsAsLines(f: PersonFacts, nameFor: (label: string) => string)
   const who = nameFor(f.label);
   const lines: string[] = [`PERSON id=${f.participantId} name=${who}${f.isLead ? ' (runs this check-in)' : ''}`];
   if (f.whatTheySaidItWasFor) lines.push(`  they said this was for, in their words: "${f.whatTheySaidItWasFor}"`);
-  if (f.whereTheySayTheyAre) lines.push(`  the latest thing they reported, in their words: "${f.whereTheySayTheyAre}"`);
-  /* The figure they gave before, where it differs. Kwame's 22 handled and three approved. */
-  if (f.anEarlierFigureTheyGave) lines.push(`  earlier they reported, in their words: "${f.anEarlierFigureTheyGave}"`);
+  const inTheWeekOf = (w: string | null | undefined) => (w ? ` in the week of ${w}` : '');
+  if (f.whereTheySayTheyAre) lines.push(`  the latest thing they reported${inTheWeekOf(f.weekOfWhereTheyAre)}, in their words: "${f.whereTheySayTheyAre}"`);
+  /* The figure they gave before, where it differs. Kwame's 22 handled and three approved. And the week
+     it was said in: two weeks' figures are a change over time, never a contradiction (Hafsah, 12 October). */
+  if (f.anEarlierFigureTheyGave) lines.push(`  earlier they reported${inTheWeekOf(f.weekOfTheEarlierFigure)}, in their words: "${f.anEarlierFigureTheyGave}"`);
   if (f.whatTheySayIsInTheWay) lines.push(`  what they named as being in the way, in their words: "${f.whatTheySayIsInTheWay}"`);
   /* Why they are on this work rather than something else. See whyTheySayTheyAreOnIt: an INTENT
      line, read by nothing until 26 September, and on the realign scenario it is the whole answer. */

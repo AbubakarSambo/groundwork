@@ -1,5 +1,7 @@
+import { aTypedReferenceBacksItsLine, proofAlreadyGiven, theLinesADocumentBacks, theLineADocumentWasSentFor } from './a-typed-reference-backs-its-line';
 import { whoMissedTheCheckInsJustBefore, whatTheSessionIsToldAboutMissing } from '../grounds/missed-check-ins';
-import { anAimIsAThing } from '../board/an-aim-is-a-sentence-about-somebody';
+import { situationInWords } from './setup-already-asked-this';
+import { aNameAPersonGave, aPersonNeverReadsAnInternalName } from '../../common/no-internal-name-reaches-a-person';
 import { HELD_FOR_A_SEAT } from '../participants/held-for-a-seat';
 import { checksInOnlyWhenTheyChoose } from '../grounds/the-lead-checks-in-when-they-choose';
 import { theWaitIsConfirmed } from '../grounds/a-wait-is-the-speakers-account';
@@ -21,7 +23,7 @@ import { aSentenceStartsWithACapital } from './a-sentence-starts-with-a-capital'
 import { theFirstNameFrom } from '../reports/a-title-is-not-a-first-name';
 import { theSpeakerLine } from './the-person-speaking';
 import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestException, ServiceUnavailableException } from '@nestjs/common';
-import { whereThisCameFrom, WHAT_TO_DO_WITH_THESE, isAColleaguesProof, aColleaguesProofAsTheRecordHoldsIt, whatMayBeSaidAboutAColleaguesProof } from './where-this-document-came-from';
+import { whereThisCameFrom, WHAT_TO_DO_WITH_THESE, withoutAColleaguesProof } from './where-this-document-came-from';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { whatAParticipantIsToldAboutThis } from '../grounds/what-a-participant-is-told-about-this';
 import { whatToPutToThem, theReplyAlreadyQuotesIt } from './the-line-that-touches-what-they-said';
@@ -164,8 +166,10 @@ import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTh
 import { aPromiseTheyNeverMade, whatIsLeftToSend } from './a-promise-they-never-made';
 import { withoutARecordClaimNobodyHolds } from './a-record-claim-nobody-holds';
 import { itWasTakenFurther } from '../reports/what-they-said-they-did-about-it';
-import { theKindsOfClaimIn, withoutAClaimTheRecordDoesNotHold } from './a-claim-the-record-does-not-hold';
+import { theKindsOfClaimIn } from './a-claim-the-record-does-not-hold';
+import { theFinalCheck, type WhatTheRecordHolds } from './the-final-check';
 import { whatTheRecordHoldsForClaims } from './what-the-record-holds-for-claims';
+import { mayStateAColleaguesFault, everyColleaguesFaultAsTheirAccount, whatTheRecordHoldsForBlame } from './a-colleagues-fault-is-the-speakers-account';
 import { withoutADateNobodyGave } from './a-date-nobody-gave';
 import { withoutCommentsOnTheAnswer } from './a-comment-is-not-a-question';
 import { withOneQuestionPerSentence } from './a-question-asks-one-thing-in-one-sentence';
@@ -1481,6 +1485,8 @@ export class ConversationService {
    * the model to say "you".
    */
   private async theTurnAsItIsSaved(checkIn: { groundId?: string; participant?: { partyType?: PartyType } }, raw: string): Promise<string> {
+    /* NO INTERNAL NAME, LAST OF ALL HERE TOO: every saved turn comes through (night quality run 2, "NEW_PROJECT"). */
+    raw = aPersonNeverReadsAnInternalName(raw, `check-in ${(checkIn as any)?.id ?? ''} turn`, this.logger);
     /*
      * AND A QUESTION THE LEAD CONFIRMED IS ASKED IN THE WORDS THEY CONFIRMED. Decision 34: the model
      * decides when to ask it, and where it asked it its own way the confirmed sentence is put back.
@@ -1531,16 +1537,39 @@ export class ConversationService {
      * stands only where the record holds it. The record is looked up only for the kinds of claim this turn makes. Every reader's turn,
      * the lead's included. See a-claim-the-record-does-not-hold.
      */
-    const claimsMade = theKindsOfClaimIn(raw);
-    if (claimsMade.size && checkIn?.groundId) {
+    /*
+     * THE FINAL CHECK (Hafsah, 12 October): one entry point, run on every turn before it is saved. A colleague's fault stated as fact
+     * becomes this person's account first (decision 137), then a claim the record does not hold is cut (decision 139, must-fix 3), then
+     * a number, status, date, name or credit the record does not hold. Held: what they said here and before, what the turn was given to
+     * say, and the record. No note in a turn: the person is spoken to here. Their own quoted words are never read. See the-final-check.
+     */
+    if (checkIn?.groundId) {
       const wordsSaidHere: string[] = (checkIn as any)?.id
         ? await (this.prisma.conversationTurn?.findMany?.({ where: { checkInId: (checkIn as any).id, role: TurnRole.PERSON }, select: { content: true } }) ?? Promise.resolve([]))
           .then((rows: any[]) => (rows ?? []).map((r) => r.content ?? '')).catch(() => [] as string[])
         : [];
-      const held = await whatTheRecordHoldsForClaims(this.prisma, { groundId: checkIn.groundId, kinds: claimsMade, wordsSaidHere }).catch(() => ({}));
-      const nothingMadeUp = withoutAClaimTheRecordDoesNotHold(raw, held, { earlierAiTurns: saidHereBefore });
-      for (const c of nothingMadeUp.cut) this.logger.warn(`Check-in ${(checkIn as any).id}: cut a sentence claiming ${c.claim} that the record does not hold.`);
-      raw = nothingMadeUp.text;
+      const claimsMade = theKindsOfClaimIn(raw);
+      const claims = claimsMade.size
+        ? await whatTheRecordHoldsForClaims(this.prisma, { groundId: checkIn.groundId, kinds: claimsMade, wordsSaidHere }).catch(() => ({}))
+        : {};
+      const blame = mayStateAColleaguesFault(raw)
+        ? await whatTheRecordHoldsForBlame(this.prisma, checkIn.groundId, { speakerParticipantId: (checkIn as any)?.participantId ?? null, speakerIsTheReader: true, withTheNote: false }).catch(() => null)
+        : null;
+      const sayable = [
+        ...wordsSaidHere,
+        ...(this.theirEarlierWordsForThisTurn.get((checkIn as any)?.id) ?? []),
+        ...(this.knownForThisTurn.get((checkIn as any)?.id) ?? []),
+      ];
+      const recordLines: string[] = await (this.prisma.recordEntry?.findMany?.({ where: { participant: { groundId: checkIn.groundId } }, select: { text: true }, take: 2000 }) ?? Promise.resolve([]))
+        .then((rows: any[]) => (rows ?? []).map((r) => r.text ?? '')).catch(() => [] as string[]);
+      const held: WhatTheRecordHolds = {
+        ...claims,
+        blame,
+        texts: [...sayable, ...recordLines],
+        people: blame?.people,
+      };
+      const checked = theFinalCheck(raw, held, { where: `check-in ${(checkIn as any)?.id ?? ''} turn`, log: this.logger, earlierAiTurns: saidHereBefore });
+      if (checked.text.trim()) raw = checked.text;
     }
     /*
      * AND NO THING THE LEAD LISTED IS SAID TO THEM AS THEIRS. Three borrowers were told they had the
@@ -4202,7 +4231,7 @@ export class ConversationService {
         escalated: itWasTakenFurther({ triedSaid: d.triedSaid ?? null }),
         then: d.then,
         onAColleagueHere: !!d.onParticipantId,
-        theyConfirmedIt: theWaitIsConfirmed({ onParticipantId: d.onParticipantId ?? null, what: d.what, groundId: ground.id }, theColleaguesOwnPromises as any[]),
+        theyConfirmedIt: theWaitIsConfirmed({ onParticipantId: d.onParticipantId ?? null, what: d.what, triedSaid: d.triedSaid ?? null, groundId: ground.id }, theColleaguesOwnPromises as any[]),
       })),
       saidLastTime: (lastTimeRows as any[]).map((e) => String(e.text ?? '').replace(/\s+/g, ' ').trim()).filter(Boolean).reverse(),
       /* The lead's call for this check-in, not a global rule. See the field on the ground. */
@@ -4275,6 +4304,17 @@ export class ConversationService {
         });
       })
       .catch(() => '');
+    /* PROOF ALREADY GIVEN (Hafsah, 12 October): Hassan typed three M-Pesa codes and was asked for them
+       again on the next turn. What they have typed this session is handed over as already given. */
+    /* And a photo, document or pin they sent during this check-in is already given too. */
+    const sentThisSession = await Promise.resolve()
+      .then(() => (this.prisma as any).groundDocument?.findMany?.({
+        where: { participantId: checkIn.participantId, createdAt: { gte: (checkIn as any).createdAt ?? new Date(0) }, isConversation: false },
+        select: { id: true, fileName: true, origin: true, uploaderNote: true, content: true, mimeType: true },
+      }))
+      .then((rows: any) => (Array.isArray(rows) ? rows : []))
+      .catch(() => [] as any[]);
+    const alreadyGiven = proofAlreadyGiven(turnsThisSession.filter((t) => t.role === 'PERSON').map((t) => String(t.content ?? '')), sentThisSession);
 
     /*
      * A MEETING HAPPENED AND NOBODY IS ON IT.
@@ -4581,7 +4621,7 @@ export class ConversationService {
            can read it. Without that the block went in under one heading claiming the person being
            interviewed had written all of it - see where-this-document-came-from.ts. */
         select: {
-          fileName: true, content: true, uploaderNote: true, visibility: true, mimeType: true, createdAt: true,
+          fileName: true, content: true, uploaderNote: true, visibility: true, mimeType: true, createdAt: true, origin: true,
           participant: {
             select: {
               userId: true, email: true,
@@ -4722,14 +4762,10 @@ export class ConversationService {
      */
     const nameOf = (u: { firstName: string | null; lastName: string | null } | null | undefined) =>
       [u?.firstName, u?.lastName].filter(Boolean).join(' ').trim() || null;
-    const withProvenance = uploadedDocs.map((d: any) => {
-      const mine = d.participant?.userId === checkIn.participant.userId;
-      const fromTheLead = !!d.participant?.userId && d.participant.userId === ground.initiatorId;
-      const who = nameOf(d.participant?.user) ?? d.participant?.nameGiven ?? null;
-      /* A colleague's photo or pin goes in as the record holds it, with what may not be said about it. See where-this-document-came-from.ts. */
-      if (!mine && !fromTheLead && isAColleaguesProof(d)) {
-        return { ...aColleaguesProofAsTheRecordHoldsIt(d, who), provenance: whatMayBeSaidAboutAColleaguesProof(who) };
-      }
+    /* A colleague's photo or pin is never handed to this session, so it is never put to them (withoutAColleaguesProof). It stays on
+       the shared pages as it is. */
+    const handed = withoutAColleaguesProof(uploadedDocs as any[], { userId: checkIn.participant.userId, leadUserId: ground.initiatorId });
+    const withProvenance = handed.map((d: any) => {
       return {
       fileName: d.fileName,
       content: d.content,
@@ -5677,7 +5713,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ['A_CORRECTION_IS_NOT_A_SCOLDING', A_CORRECTION_IS_NOT_A_SCOLDING],
       ['ANSWER_THE_REMARK', ANSWER_THE_REMARK],
       ['openWithSomethingNew', OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE],
-      ['planBlock', planBlock], ['disagreementBlock', disagreementBlock], ['recordAlreadyHolds', recordAlreadyHolds], ['doesNotAddUp', doesNotAddUp], ['owedBlock', owedBlock], ['spineSoFar', spineSoFar], ['intakeBlock', intakeBlock],
+      ['planBlock', planBlock], ['disagreementBlock', disagreementBlock], ['recordAlreadyHolds', recordAlreadyHolds], ['doesNotAddUp', doesNotAddUp], ['alreadyGiven', alreadyGiven], ['owedBlock', owedBlock], ['spineSoFar', spineSoFar], ['intakeBlock', intakeBlock],
       ['pendingLines', pendingLines.join('')], ['evidenceLines', evidenceLines.join('')],
       ['theirWeek', theirWeek], ['howWeDoIt', howWeDoIt], ['styleBlock', styleBlock],
       ['clarificationContext', clarificationContext], ['selfCorrectionContext', selfCorrectionContext],
@@ -5767,7 +5803,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     /* The engine's rules open the prompt and are never rewritten; everything joined after them is walked. */
     const theRules = [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE].filter(Boolean).join('\n\n');
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, theJob, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, burden, putThisToThem, askedWhenThisEnds, theJobThisTurn, theirHedge, theHole, heldBack, proofKindly, whereItIs, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n').replace(/^[\s\S]*$/, (all) => theRulesKeptTheRestWithoutStandInLabels(all, theRules, calledHere));
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, alreadyGiven, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, theJob, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, burden, putThisToThem, askedWhenThisEnds, theJobThisTurn, theirHedge, theHole, heldBack, proofKindly, whereItIs, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n').replace(/^[\s\S]*$/, (all) => theRulesKeptTheRestWithoutStandInLabels(all, theRules, calledHere));
   }
 
   /**
@@ -7487,7 +7523,8 @@ ${told}` : '';
       const codeOf = (code: string) => [...POSITIVE_CODES, ...CARRYING_CODES, ...BAD_FAITH_CODES].find((c) => c.code === code);
       const planned = totalSessionsFor(ground.timelineDays, ground.cadence) ?? null;
       const brief = theBriefForThePlanner({
-        scenarioLabel: `${ground.scenario}${ground.label ? `: ${ground.label}` : ''}`,
+        /* The situation in words, never its key (Naomi read "NEW_PROJECT" back in a reply). */
+        scenarioLabel: `${situationInWords(ground.scenario) ?? 'a check-in'}${aNameAPersonGave(ground.label) ? `, called "${aNameAPersonGave(ground.label)}"` : ''}`,
         pack: got.pack,
         sessionNumber: checkIn.sessionNumber ?? 1,
         sessionsPlanned: planned,
@@ -8494,7 +8531,95 @@ ${told}` : '';
   async extractRecordEntries(checkInId: string, participantId: string) {
     const rows = await this.readTheRecord(checkInId, participantId);
     if (!rows.length) return;
-    await this.prisma.recordEntry.createMany({ data: rows });
+    const on = await this.whenTheSessionWas(checkInId);
+    await this.prisma.recordEntry.createMany({ data: rows.map((r) => ({ ...r, createdAt: on })) });
+    await this.backTheLinesTheirSessionDocumentsWereSentFor(checkInId, participantId);
+    await this.backTheLinesTheirDocumentsName(participantId);
+  }
+
+  /**
+   * A PHOTO, DOCUMENT OR PIN BACKS THE LINE IT NAMES, whichever week the line was said in (Hafsah, 12
+   * October; Amina's photo of DN-1182 came the week after her DN-1182 line). Run after their record is
+   * written: every line of theirs not yet backed that names a reference one of their own documents
+   * names is backed by that document. Only ever adds backing; nothing else on the line changes.
+   */
+  /**
+   * AND A DOCUMENT, PHOTO OR PIN SENT DURING THIS CHECK-IN BACKS THE LINE IT WAS SENT FOR: the line the
+   * question it answered was about, or for a pin, the line naming its place (Hafsah, 12 October). See
+   * theLineADocumentWasSentFor. Only adds backing.
+   */
+  async backTheLinesTheirSessionDocumentsWereSentFor(checkInId: string, participantId: string): Promise<number> {
+    try {
+      const turns: any[] = (await (this.prisma as any).conversationTurn?.findMany?.({ where: { checkInId }, orderBy: { createdAt: 'asc' }, select: { role: true, content: true, createdAt: true } })) ?? [];
+      if (!turns.length) return 0;
+      const from = new Date(turns[0].createdAt);
+      const docs: any[] = (await (this.prisma as any).groundDocument?.findMany?.({
+        where: { participantId, isConversation: false, createdAt: { gte: from } },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, fileName: true, origin: true, uploaderNote: true, content: true, descriptionCheck: true, createdAt: true },
+      })) ?? [];
+      let rows: any[] = (await (this.prisma as any).recordEntry?.findMany?.({
+        where: { checkInId, disputedAt: null, recallBased: true, anchoredDocumentId: null },
+        select: { id: true, text: true, recallBased: true, anchoredDocumentId: true },
+      })) ?? [];
+      let n = 0;
+      for (const doc of docs.filter((d) => !(d.descriptionCheck && d.descriptionCheck.matches === false))) {
+        const hit = theLineADocumentWasSentFor(rows, doc, turns);
+        if (!hit) continue;
+        await this.prisma.recordEntry.update({
+          where: { id: hit.row.id },
+          data: { recallBased: false, anchoredDocumentId: doc.id, anchoredOrigin: doc.origin ?? null, anchoredPassage: hit.passage },
+        });
+        rows = rows.filter((r) => r.id !== hit.row.id);
+        n += 1;
+      }
+      return n;
+    } catch (err: any) {
+      this.logger?.warn?.(`Backing check-in ${checkInId}'s lines by what was sent in it failed: ${err?.message}`);
+      return 0;
+    }
+  }
+
+  async backTheLinesTheirDocumentsName(participantId: string): Promise<number> {
+    try {
+      const [rows, docs] = await Promise.all([
+        (this.prisma as any).recordEntry?.findMany?.({
+          where: { participantId, disputedAt: null, recallBased: true, anchoredDocumentId: null },
+          select: { id: true, text: true, recallBased: true, anchoredDocumentId: true },
+        }),
+        (this.prisma as any).groundDocument?.findMany?.({
+          where: { participantId, isConversation: false },
+          select: { id: true, fileName: true, origin: true, uploaderNote: true, content: true, descriptionCheck: true },
+        }),
+      ]);
+      const usable = ((docs ?? []) as any[]).filter((d) => !(d.descriptionCheck && d.descriptionCheck.matches === false));
+      const backed = theLinesADocumentBacks((rows ?? []) as any[], usable);
+      for (const b of backed) {
+        await this.prisma.recordEntry.update({
+          where: { id: (b.row as any).id },
+          data: { recallBased: false, anchoredDocumentId: b.doc.id, anchoredOrigin: b.doc.origin ?? null, anchoredPassage: b.reference },
+        });
+      }
+      return backed.length;
+    } catch (err: any) {
+      this.logger?.warn?.(`Backing ${participantId}'s lines by their documents failed: ${err?.message}`);
+      return 0;
+    }
+  }
+
+  /**
+   * THE DAY A LINE OR A WAIT IS DATED IS THE DAY OF THE SESSION IT WAS SAID IN (night quality run 2:
+   * every deal read "On 12 October" and every wait "since 12 October", the day the rows were written,
+   * for sessions held from 19 October on). A row left to the database's own default is dated when it is
+   * written, which for a record read again later is not when it was said. A finished session is dated
+   * when it finished; one still going, now, by the product's own clock.
+   */
+  private async whenTheSessionWas(checkInId: string | null | undefined): Promise<Date> {
+    if (!checkInId) return new Date();
+    const c = await Promise.resolve()
+      .then(() => (this.prisma as any).checkIn?.findUnique?.({ where: { id: checkInId }, select: { completedAt: true } }))
+      .catch(() => null);
+    return c?.completedAt ? new Date(c.completedAt) : new Date();
   }
 
   /**
@@ -8623,13 +8748,23 @@ ${told}` : '';
       ? await this.prisma.conversationTurn.count({ where: { checkInId: checkIn.id, role: TurnRole.PERSON, createdAt: { gt: closing!.createdAt } } })
       : 0;
     if (draft && saidSince === 0) {
-      if (draft.length) await this.prisma.recordEntry.createMany({ data: draft.map((r) => ({ ...r, checkInId: checkIn.id, participantId: checkIn.participantId })) });
+      if (draft.length) {
+        const on = await this.whenTheSessionWas(checkIn.id);
+        await this.prisma.recordEntry.createMany({ data: draft.map((r) => ({ ...r, checkInId: checkIn.id, participantId: checkIn.participantId, createdAt: on })) });
+      }
+      await this.backTheLinesTheirSessionDocumentsWereSentFor(checkIn.id, checkIn.participantId);
+      await this.backTheLinesTheirDocumentsName(checkIn.participantId);
       this.logger.log(`Check-in ${checkIn.id}: wrote the ${draft.length} line(s) the end card showed.`);
       return ((closing as any).endCard as EndCard | null) ?? null;
     }
     if (draft) this.logger.log(`Check-in ${checkIn.id}: they said more after the end card, so the record is read again.`);
     const rows = await this.readTheRecord(checkIn.id, checkIn.participantId);
-    if (rows.length) await this.prisma.recordEntry.createMany({ data: rows });
+    if (rows.length) {
+      const on = await this.whenTheSessionWas(checkIn.id);
+      await this.prisma.recordEntry.createMany({ data: rows.map((r) => ({ ...r, createdAt: on })) });
+    }
+    await this.backTheLinesTheirSessionDocumentsWereSentFor(checkIn.id, checkIn.participantId);
+    await this.backTheLinesTheirDocumentsName(checkIn.participantId);
     /*
      * AND THE CARD SAYS WHAT WAS WRITTEN. Read again, the record can differ from the card that was
      * shown (the reviewer saw it), so the card on the closing turn is replaced with the lines just
@@ -8803,7 +8938,8 @@ ${told}` : '';
      */
     /* What this person typed in this check-in, every turn of it, for the stamp below. */
     const whatTheyTyped = theirs.map((t) => String(t.content ?? ''));
-    return valid.map((e) => {
+    /* A reference they typed (an M-Pesa code, a delivery note) backs the line it was given for. See a-typed-reference-backs-its-line. */
+    return aTypedReferenceBacksItsLine(valid.map((e) => {
         /* Their quotation marks, where the marks are all the reader changed: the words are theirs, and
            the marks are part of them. See their-quotation-marks-are-theirs. */
         const line = theirQuotationMarksBack(theLineWithoutItsDanglingJoin(e.text), whatTheyTyped);
@@ -8823,7 +8959,7 @@ ${told}` : '';
              first may ever be quoted to anybody. See reports/a-quote-is-what-they-said. */
           saidWordForWord: saidWordForWord(line, whatTheyTyped),
         };
-      });
+      }), whatTheyTyped);
   }
 
   /**
@@ -10194,8 +10330,8 @@ ${told}` : '';
     rows: { participantId: string; name: string; target: number }[],
     setByParticipantId: string,
   ): Promise<{ participantId: string; name: string; target: number }[]> {
-    /* An aim's name is the thing counted, never their whole sentence (an-aim-is-a-sentence-about-somebody.ts, anAimIsAThing). */
-    rows = rows.map((t) => ({ ...t, name: anAimIsAThing(t.name) })).filter((t) => !!t.name);
+    /* The person's own sentence is kept as they said it. The short label ("8 kits", "3 shops in Kilimani") is worked out from it
+       when it is read (theAimItself), and only ever shown beside it (Hafsah, 12 October). */
     if (!rows.length) return [];
     const [owned, team] = await Promise.all([
       this.prisma.groundObjective.findMany({
@@ -10709,6 +10845,8 @@ ${told}` : '';
           namedTheThing: typeof d.namedTheThing === 'boolean' ? d.namedTheThing : null,
           status,
           sourceCheckInId: checkInId,
+          /* Dated as the session it was said in, not the moment the row was written (whenTheSessionWas). */
+          createdAt: await this.whenTheSessionWas(checkInId),
           clearedAt: status === DependencyStatus.CLEARED ? new Date() : null,
           /* Their own words for when, word for word, and the day they name if they name one. */
           dueSaid: dueSaidBy(d),
@@ -10861,10 +10999,22 @@ ${told}` : '';
       this.logger.warn(`Private record summary for participant ${participantId}: ${theirs.unquoted.length} quote(s) were not in their record word for word, so they are no longer quotes, and ${theirs.dropped.length} sentence(s) that could not stand without them were taken out.`);
     }
 
+    /*
+     * AND A COLLEAGUE'S FAULT IN IT IS THEIR OWN ACCOUNT, WITH THE NOTE (decision 139, must-fix 4). Hassan's read "and on one occasion
+     * the mix of kits was not right" when Amina had sent exactly his order. See a-colleagues-fault-is-the-speakers-account.
+     */
+    let summaryValue: { summary: string; whatToCarry?: string | null } = theirs.value as any;
+    const held = await whatTheRecordHoldsForBlame(this.prisma, groundId, { speakerParticipantId: participantId, speakerIsTheReader: true }).catch(() => null);
+    if (held) {
+      const asTheirs = everyColleaguesFaultAsTheirAccount(summaryValue, held);
+      if (asTheirs.rewritten.length) this.logger.warn(`Private record summary for participant ${participantId}: ${asTheirs.rewritten.length} sentence(s) stating a colleague's fault as fact made their own account or taken out.`);
+      if (String(asTheirs.value.summary ?? '').trim()) summaryValue = asTheirs.value;
+    }
+
     await this.prisma.groundParticipant.update({
       where: { id: participantId },
       data: {
-        soloArtifact: JSON.stringify({ ...theirs.value, summary: openingWithASentence(theirs.value.summary) }),
+        soloArtifact: JSON.stringify({ ...summaryValue, summary: openingWithASentence(summaryValue.summary) }),
         soloArtifactAt: new Date(),
       },
     });
@@ -11096,7 +11246,7 @@ ${told}` : '';
      */
     const fromTheSheet = await this.theContextNotYetSaid(checkIn);
 
-    const said = fromTheSheet ? `${reply}\n\n${fromTheSheet}` : reply;
+    const said = aPersonNeverReadsAnInternalName(fromTheSheet ? `${reply}\n\n${fromTheSheet}` : reply, `check-in ${checkIn.id} turn`, this.logger);
     await this.prisma.conversationTurn.create({
       data: { checkInId: checkIn.id, role: TurnRole.AI, content: said, askedFor: doc ? `${DESCRIBES_DOCUMENT}${doc.id}` : stampWhatItAskedFor(said) },
     });

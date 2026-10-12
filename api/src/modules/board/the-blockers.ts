@@ -191,7 +191,7 @@ export function theBlockers(
     const on = whoIsWaitedOn(r, d);
     const what = inASentence(on ? aThingWithoutItsHolder(d.what, d.onLabel) : d.what);
     /* A claim only the speaker makes is their account, with the note beside it (decision 137; change 4). */
-    const says = on && aClaimOnlyTheSpeakerMakes(d) ? theirAccountOfTheWait(who, on, what, d) : `${theWaitSaid(who, isAre(who), on, what)}${thatWaitsOn(d)}`;
+    const says = on && aClaimOnlyTheSpeakerMakes(d) ? theirAccountOfTheWait(who, on, what, d, r) : `${theWaitSaid(who, isAre(who), on, what)}${thatWaitsOn(d)}`;
 
     /* Every time it was raised: the days, and the sessions where the record says which. */
     const raisedRows = d.raisedAt?.length ? d.raisedAt : [{ at: d.createdAt ?? null, checkInId: d.sourceCheckInId ?? null }];

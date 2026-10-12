@@ -149,3 +149,18 @@ describe('request 112 (a): each deal in its group', () => {
     expect(JSON.stringify(b.workRecords)).not.toMatch(/"groups"/);
   });
 });
+
+describe('a deal is won only with proof or a confirmation, on every reader\'s board (night quality run 2, Collins)', () => {
+  /* Collins's own board showed "The group orders six." as Won; the lead's grid already said it was not shown yet. */
+  const SAID_ONLY: Setup = {
+    ...RUN,
+    recordLines: [...(RUN.recordLines ?? []), { id: 'e-femi-3', participantId: 'p-femi', text: 'The group orders six.', recallBased: true, createdAt: new Date('2026-09-22T16:30:00Z') }],
+    items: [...(RUN.items ?? []), item('w-femi-3', 'the group', { stage: 'Won', ownerParticipantId: 'p-femi', sourceEntryId: 'e-femi-3' })],
+  };
+  it.each([['Femi, whose deal it is', FEMI], ['Bisi, who runs it', BISI]] as const)('%s reads it as said to be won, not shown yet, never as Won', async (_who, reader) => {
+    const b = await boardAs(SAID_ONLY, reader[0], reader[1]);
+    const row = grid(b)?.rows.find((r: any) => r.id === 'w-femi-3');
+    expect(row.stageSays).toBe('Said to be won, not shown yet');
+    expect(grid(b)?.rows.find((r: any) => r.id === 'w-ngozi')?.stageSays).toBeUndefined();
+  });
+});

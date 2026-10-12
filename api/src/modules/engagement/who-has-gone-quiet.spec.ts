@@ -180,3 +180,35 @@ describe('when most of a team is quiet and one person has closed everything that
     expect(w.lines).toContain('Four things people said they would do were done, all by Amani Wekesa-Otieno.');
   });
 });
+
+/*
+ * NIGHT QUALITY RUN 1, JARED OKOTH: HE MISSED TWO, AND THE CLOCK CLOSED BOTH. A session the clock closed with nothing said was read as
+ * answered, so Esther was never told Jared had gone quiet, or was told he "answered before" when he never had.
+ */
+describe('a check-in the clock closed with nothing said is not an answer', () => {
+  const { CLOSED_BY_THE_CLOCK } = jest.requireActual('../../common/closed-by-the-clock');
+  const clockClosed = (pid: string, first: string, session: number, created: Date) => ({ ...row(pid, first, session, 'COMPLETED', created), closedReason: CLOSED_BY_THE_CLOCK, turns: [] });
+  const answered = (pid: string, first: string, session: number, created: Date) => ({ ...row(pid, first, session, 'COMPLETED', created), closedReason: null, turns: [{ id: 't' }] });
+  const team = (jared: any[]) => [
+    answered('lead', 'Esther', 1, S1), answered('lead', 'Esther', 2, S2),
+    answered('c', 'Collins', 1, S1), answered('c', 'Collins', 2, S2),
+    answered('h', 'Hassan', 1, S1), answered('h', 'Hassan', 2, S2),
+    ...jared,
+  ];
+
+  it('Jared, with both of his sessions closed by the clock, is counted as never having answered', () => {
+    const q = theQuietIn(team([clockClosed('j', 'Jared', 1, S1), clockClosed('j', 'Jared', 2, S2)]), 'Lakeshore sales', 'u-lead', NOW, RELEASE);
+    expect(q).toEqual({ label: 'Lakeshore sales', ofHowMany: 3, neverAnswered: 1, stoppedAfterAnswering: [] });
+  });
+
+  it('Jared, with a third session waiting after two the clock closed, is not said to have answered before', () => {
+    const q = theQuietIn(team([clockClosed('j', 'Jared', 1, S1), clockClosed('j', 'Jared', 2, S2), row('j', 'Jared', 3, 'NOT_STARTED', S2)]), 'Lakeshore sales', 'u-lead', NOW, RELEASE);
+    expect(q?.neverAnswered).toBe(1);
+    expect(q?.stoppedAfterAnswering).toEqual([]);
+  });
+
+  it('the lead, Esther, is never counted, whatever became of her own rows', () => {
+    const q = theQuietIn([clockClosed('lead', 'Esther', 1, S1), clockClosed('lead', 'Esther', 2, S2), answered('c', 'Collins', 2, S2)], 'Lakeshore sales', 'u-lead', NOW, RELEASE);
+    expect(q).toBeNull();
+  });
+});

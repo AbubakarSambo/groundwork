@@ -8002,8 +8002,9 @@ export class GroundsService {
       where: { participantId: participant.id },
       orderBy: { sessionNumber: 'asc' },
       /* availableFrom: the day the next one opens, which the finished screen tells the person. */
-      select: { id: true, sessionNumber: true, status: true, completedAt: true, availableFrom: true },
-    });
+      /* closedReason and the first word the person said: a session the clock closed with nothing said is not one they finished (wasAQuietClose). */
+      select: { id: true, sessionNumber: true, status: true, completedAt: true, availableFrom: true, closedReason: true, turns: { where: { role: 'PERSON' as any }, select: { id: true }, take: 1 } },
+    }).then((rows: any[]) => (rows ?? []).map(({ turns, ...c }) => ({ ...c, personTurns: Array.isArray(turns) ? turns.length : undefined })));
 
     const latest = checkIns[checkIns.length - 1];
     return {

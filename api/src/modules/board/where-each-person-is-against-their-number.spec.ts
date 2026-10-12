@@ -18,13 +18,21 @@ describe('where each person is against their number', () => {
 
   it('then somebody stuck a fortnight who has only asked', () => {
     const r = rep({ inTheWay: [{ what: 'the Sokoto lease', owner: null, days: 21, tried: 'asked-again' }] });
-    expect(whyThisRow(r, 12)).toBe('stuck and not chasing');
+    expect(whyThisRow(r, 12)).toBe('something in the way two weeks');
     /* Changed 27 Sep 2026: this pinned the clipped line "21 days on "...", asked more than once,
        same channel. Ask them to ...". It is now full sentences with his name.
        Changed again 27 Sep 2026: the blocker is no longer in quotation marks, because it is the
        dependency reader's phrase and not Musa's words. See whatToAskFor. */
     /* Changed 5 Oct 2026 (request 134 item 5): Hafsah decided the lead finds the owner, with the person waiting as the reason. */
     expect(whatToAskFor(r)).toBe('Musa has been waiting 21 days on the Sokoto lease, and so far they have asked about it more than once, the same way each time. Find out who owns this, so that Musa is not left waiting.');
+  });
+
+  it('never puts a label beside Collins or Amina: no "stuck and not chasing" anywhere in a row (Hafsah, 12 October)', () => {
+    const wait = { what: 'the stock from Kisumu', owner: 'Naomi', days: 15, tried: 'asked-once' as const };
+    const rows = whereEachPersonIs([rep({ participantId: 'c', who: 'Collins Odhiambo', inTheWay: [wait] }), rep({ participantId: 'a', who: 'Amina Otieno', inTheWay: [wait] })], 12);
+    expect(JSON.stringify(rows)).not.toMatch(/not chasing/i);
+    expect(rows.find((r) => r.who === 'Collins Odhiambo')!.says).toMatch(/^Collins Odhiambo has had something in the way for 15\sdays, and so far it has only been asked about\./);
+    expect(rows.find((r) => r.who === 'Amina Otieno')!.says).toMatch(/^Amina Otieno has had something in the way for 15\sdays, and so far it has only been asked about\./);
   });
 
   it('and on the board row, the ask does not repeat what the sentence above it already says', () => {

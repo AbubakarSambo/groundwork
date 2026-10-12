@@ -54,8 +54,9 @@ import { wordPatternEvidence } from './pattern-evidence-in-plain-words';
 import { runAtOnce, READERS_WARMED_TOGETHER } from './run-at-once-with-a-cap';
 import { Syntheses, theSentenceWhileItIsWritten, withoutTheCountWhileItIsWritten } from './the-report-is-being-written';
 import { itWasTakenFurther } from './what-they-said-they-did-about-it';
-import { theKindsOfClaimInAnything, everyClaimTheRecordHolds } from '../conversation/a-claim-the-record-does-not-hold';
-import { whatTheRecordHoldsForClaims } from '../conversation/what-the-record-holds-for-claims';
+import { everyLineTheFinalCheckPasses, type WhatTheRecordHolds } from '../conversation/the-final-check';
+import { whatTheRecordHolds } from '../conversation/what-the-record-holds';
+import { whatALineOfTheirsIsCalled } from '../conversation/what-happened-to-what-they-said';
 import { OneAtATime } from './one-warm-up-at-a-time';
 import { stillRaised, notRaisedAgain, sayingWhatWentQuiet } from '../board/a-blocker-nobody-raised-again';
 import { pickTheFinding, draftThePicture, draftTheQuestion, WHY_NO_QUESTION } from './the-picture-is-drafted-from-the-reads';
@@ -113,6 +114,7 @@ import { withoutOtherPeoplesReads } from './own-reads-only';
 import { findingsWithoutTheirLabels } from './a-finding-is-served-without-its-label';
 import { gapsAsTheirSentences } from './a-gap-is-served-as-its-sentence';
 import { linesBuiltAtTheRead } from './a-line-built-at-the-read-is-read-too';
+import { whatTheRecordHoldsForBlame, type WhatTheRecordHoldsForBlame } from '../conversation/a-colleagues-fault-is-the-speakers-account';
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom, theRecordAQuoteMayComeFromByParticipant } from './a-quote-built-at-the-read';
 import { whatTodayReads } from './what-today-reads-from-the-record';
 import { theSameThingForTheLead } from '../board/the-same-thing-read-from-the-record';
@@ -202,6 +204,7 @@ import { whyThereIsNoReportYet } from './why-there-is-no-report-yet';
 import { aReportWithNoEmptyLine } from './a-report-has-no-empty-line';
 import { whatThisRecordRestsOn, nothingRestsOnADocument } from './what-this-record-rests-on';
 import { documentsSection } from './a-document-in-the-corpus';
+import { differencesHeldToOneWeek, aDifferenceThatStands, theWeekOf as theWeekItWasSaidIn, type AStatementInItsWeek } from './a-difference-is-within-one-week';
 import { everybodySaidLittle } from './a-record-can-be-thin-for-everybody';
 import { whatTheRosterSaysAbout } from './a-party-who-spoke-is-not-absent';
 import { THE_LEAD_ONLY_ASKS } from '../grounds/the-lead-who-only-asks';
@@ -557,6 +560,8 @@ AND ONLY WHAT WAS REFERENCED. If you are reasoning from what success would imply
 14b. A LEADERSHIP PATTERN CAN LIVE IN ONE ACCOUNT. Several of these patterns are visible from a single person's record over time - a conversation named as still to be had across three sessions without it happening is a pattern whether or not anyone else mentions it. Do not require both sides to speak to it before reporting it. Where a second account does corroborate, say so in the note.
 15. "ALL", "EVERY" AND "EACH" ARE COUNTS YOU HAVE MADE. Before writing that all clients, every person or each participant does or has something, check every account in the corpus across every session. Where one account says otherwise - a bike that is with a cousin, a target that was not met - the sentence is false, and the exception is a divergence to write, not a detail to smooth. A cohort report read "All clients are using the asset they received a loan for" over a record in which one had said his cousin had it (20 Sep 2026). Prefer "the clients who..." with the exception named to a universal that one record contradicts.
 13. LEAD-SUPPLIED CONTEXT IS DIRECTION, NEVER A CLAIM. The LEAD-SUPPLIED CONTEXT section is private background from the initiator, not a party's statement. Use it only to decide what to weigh and what to probe. Never attribute it to a party, never quote it, never present it as an established fact, and never let it become a claim in the report. Every claim you write must trace to a party's own record entry - if lead context points at something no party's record supports, do not assert it.
+
+15a. A DIFFERENCE IS ONLY EVER WITHIN ONE WEEK. Each line of the corpus says the week it was said in. A divergence, or any sentence that sets one statement against another, is only between two statements about the same item (the same thing, person, order or deal) from the same week, and it names that week: "In the week of 19 October, ...". Statements from different weeks never contradict each other: they are a change over time, said with each week named, earlier week first, and they are never a divergence. Night run 2 wrote "first reporting nine or ten and later saying it was four or five" (four or five was the week before) and "Amina reports sending twenty kits, not the 15 kits Hassan mentioned" (two different weeks' orders). Both are wrong.
 
 16. ONE PAGE TELLS ONE STORY. The opening, the agreements, the divergences and the central question are read on one page, and none of them may say the opposite of another. Before you return, read them against each other:
   - If the opening says people disagree on something, that thing is in divergences. If divergences is empty, the opening does not say anybody disagrees.
@@ -1203,7 +1208,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       where: { participant: { groundId } },
       include: {
         participant: { select: { id: true } },
-        checkIn: { select: { sessionNumber: true } },
+        checkIn: { select: { sessionNumber: true, completedAt: true } },
       },
     });
     const records = theRecordAsItIs.map(withTheDisputeAttached)
@@ -1564,8 +1569,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
       records.map((r) => {
         const label = labelById.get(r.participant.id) ?? 'a party';
         const session = r.checkIn?.sessionNumber ? ` session ${r.checkIn.sessionNumber}` : '';
+        /* And the week it was said in: a difference is only ever between two statements of one week. See a-difference-is-within-one-week. */
+        const week = `, week of ${theWeekItWasSaidIn(new Date((r.checkIn as any)?.completedAt ?? r.createdAt))}`;
         /* A file only its owner can open is not named in what everybody reads. See a-private-file-is-not-named. */
-        return `[${label}${session}] (${r.type}) ${withoutPrivateFileNames(r.text, privateFileNames)}`;
+        return `[${label}${session}${week}] (${r.type}) ${withoutPrivateFileNames(r.text, privateFileNames)}`;
       }).join('\n');
 
     const NEW_STARTING_SCENARIOS: GroundScenario[] = [
@@ -1951,6 +1958,26 @@ Close the report by framing - neutrally, without recommending one - the choice n
        fillAtStake runs - otherwise that pass sees an atStake that is already populated (by the
        duplicate) and leaves the mangled topic standing. See a-field-name-is-not-a-heading.ts. */
     result.divergences = everyDivergenceReadable(result.divergences) as any;
+    /*
+     * A DIFFERENCE IS BETWEEN TWO STATEMENTS OF ONE WEEK, AND SAYS THE WEEK (Hafsah, 12 October). Night
+     * run 2 put "first reporting nine or ten and later saying it was four or five" on the lead's board:
+     * two weeks, the wrong way round. Every sentence that sets one statement against another is placed on
+     * the record here, before the quotes are put back into people's own words. See a-difference-is-within-one-week.
+     */
+    const saidInTheirWeeks: AStatementInItsWeek[] = records.map((r: any) => ({
+      who: labelById.get(r.participant.id) ?? 'a party',
+      text: String(r.text ?? ''),
+      saidOn: new Date(r.checkIn?.completedAt ?? r.createdAt ?? Date.now()),
+      wordForWord: r.saidWordForWord === true,
+    }));
+    if (Array.isArray((result as any).divergences)) {
+      (result as any).divergences = (result as any).divergences
+        .map((d: any) => {
+          const topic = typeof d?.topic === 'string' ? aDifferenceThatStands(d.topic, saidInTheirWeeks) : d?.topic;
+          return topic === null ? null : { ...d, topic };
+        })
+        .filter(Boolean);
+    }
 
     /* WEEK 25. The sentence on what each gap costs is independent of the picture below it (which is
        given only the gaps' topics, which this pass never changes), so both are asked at once and the
@@ -2347,7 +2374,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         participantId: p.id,
         label: labelById.get(p.id) ?? 'a party',
         isLead: p.partyType === PartyType.INITIATOR,
-        said: records.filter((r) => r.participant.id === p.id).map((r) => ({ text: cleanText(r.text), type: String(r.type), session: r.checkIn?.sessionNumber ?? 1 })),
+        said: records.filter((r) => r.participant.id === p.id).map((r) => ({ text: cleanText(r.text), type: String(r.type), session: r.checkIn?.sessionNumber ?? 1, week: theWeekItWasSaidIn(new Date((r.checkIn as any)?.completedAt ?? r.createdAt ?? Date.now())) })),
         targets: (objectivesForTheGaps as any[])
           .filter((o) => !o.ownerParticipantId || o.ownerParticipantId === p.id)
           .map((o) => ({ name: o.name, target: o.target, count: o.count ?? 0, yours: o.ownerParticipantId === p.id, setByThem: o.setByParticipantId === p.id })),
@@ -2486,6 +2513,11 @@ Close the report by framing - neutrally, without recommending one - the choice n
         headline: written?.headline ?? null,
       };
     }).filter((f) => f.text);
+
+    picture.opening = differencesHeldToOneWeek(picture.opening, saidInTheirWeeks);
+    for (const f of findings) f.text = differencesHeldToOneWeek(f.text, saidInTheirWeeks);
+    findings.splice(0, findings.length, ...findings.filter((f) => f.text));
+    (result as any).sharedPicture = differencesHeldToOneWeek(String((result as any).sharedPicture ?? ''), saidInTheirWeeks);
 
     const productHalf = [picture.opening, ...findings.map((f) => f.text)].filter(Boolean).join('\n\n');
     if (productHalf) {
@@ -2669,12 +2701,12 @@ Close the report by framing - neutrally, without recommending one - the choice n
     }
 
     /*
-     * AND NOTHING GROUNDWORK DID NOT DO, OR THE RECORD DOES NOT HOLD, BEFORE ANYTHING IS STORED (decision 138, part 1; decision 139,
-     * must-fix 3). The check that catches made-up claims: a reminder sent, an escalation, a target, a promise counted as done. "The
-     * objective for the pilot is 10 shops" went to every reader of Wairimu's report when nobody had set ten shops (final evaluation,
-     * profile 5, problem 7). Run after the check above, so a line it rewrote is read too, and over the same fields. Every reader is served
-     * from what is stored here, so no reader can be served what is cut. Best effort: a report is never lost to its own check. See
-     * conversation/a-claim-the-record-does-not-hold.
+     * THE FINAL CHECK, BEFORE ANYTHING IS STORED (Hafsah, 12 October). One entry point in place of the two checks that ran here: a
+     * colleague's fault stated as fact becomes the speaker's account first (decision 137), then a claim the record does not hold is cut
+     * (decision 139, must-fix 3), then a number, status, date, name or credit the record does not hold. Read with the labels the report
+     * is stored in. What the code worked out from the record (the findings, the record over time) is held, so a true count it wrote is
+     * never cut. Every reader is served from what is stored here. Best effort: a report is never lost to its own check. See
+     * conversation/the-final-check.
      */
     try {
       const stored = {
@@ -2689,27 +2721,23 @@ Close the report by framing - neutrally, without recommending one - the choice n
         theJudgement: theJudgement ? theJudgement.judgement : undefined,
         overTime,
       };
-      const kinds = theKindsOfClaimInAnything(stored);
-      if (kinds.size) {
-        const held = await whatTheRecordHoldsForClaims(this.prisma, { groundId, kinds });
-        const checked = everyClaimTheRecordHolds(stored, held);
-        if (checked.cut.length) {
-          this.logger.warn(`Report for ground ${groundId}: ${checked.cut.length} sentence(s) taken out, because each claimed something the record does not hold (${[...new Set(checked.cut.map((c) => c.claim))].join(', ')}).`);
-          const v = checked.value as typeof stored;
-          (result as any).sharedPicture = v.sharedPicture;
-          (result as any).theOpening = v.theOpening;
-          (result as any).agreements = v.agreements;
-          (result as any).divergences = v.divergences;
-          (result as any).centralQuestion = v.centralQuestion;
-          (result as any).leadershipGaps = v.leadershipGaps;
-          findings.splice(0, findings.length, ...((v.findings as any[]) ?? []));
-          inferences = v.inferences as any;
-          if (theJudgement && v.theJudgement) theJudgement.judgement = v.theJudgement;
-          overTime = v.overTime as any;
-        }
+      const held = await whatTheRecordHolds(this.prisma, { groundId, value: stored, codeWrote: { findings, overTime }, asLabels: true });
+      const checked = everyLineTheFinalCheckPasses(stored, held, { where: `report for ground ${groundId}`, log: this.logger });
+      if (checked.removed.length) {
+        const v = checked.value as typeof stored;
+        (result as any).sharedPicture = v.sharedPicture;
+        (result as any).theOpening = v.theOpening;
+        (result as any).agreements = v.agreements;
+        (result as any).divergences = v.divergences;
+        (result as any).centralQuestion = v.centralQuestion;
+        (result as any).leadershipGaps = v.leadershipGaps;
+        findings.splice(0, findings.length, ...((v.findings as any[]) ?? []));
+        inferences = v.inferences as any;
+        if (theJudgement && v.theJudgement) theJudgement.judgement = v.theJudgement;
+        overTime = v.overTime as any;
       }
     } catch (err: any) {
-      this.logger.warn(`Report for ground ${groundId}: the check for claims the record does not hold did not run (${err?.message}). The report is kept as written.`);
+      this.logger.warn(`Report for ground ${groundId}: the final check did not run (${err?.message}). The report is kept as written.`);
     }
 
     /*
@@ -3417,14 +3445,11 @@ Close the report by framing - neutrally, without recommending one - the choice n
       sessionNumber,
       runsUntilEnded: !!(ground as any).runsUntilEnded,
       whoEndsIt,
-      /* The same arithmetic the chat composer does when it says "session 3 of 6": the length over
-         the rhythm. Null where either is unset, so the header omits the position rather than
-         inventing a denominator. */
-      plannedSessions: (() => {
-        const step = { DAILY: 1, WEEKLY: 7, FORTNIGHTLY: 14, MONTHLY: 30 }[(ground as any).cadence as string];
-        const days = (ground as any).timelineDays;
-        return step && days ? Math.max(1, Math.floor(days / step)) : null;
-      })(),
+      /* The one rule the board and the engine use (session-count.ts): a one-time check-in is one,
+         otherwise the length over the rhythm. Null where either is unset, so the header omits the
+         position rather than inventing a denominator. Worked out inline it had no step for a one-time
+         check-in, so the report read "Session 1." while the board read "of 1" (12 October). */
+      plannedSessions: totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null,
       closed: !!snapshot,
       /* The wall is the release, not whether the round has closed (user journeys, F-12). */
       othersWordsAreNotYetOpen: !(released || viewerIsLead),
@@ -4123,13 +4148,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
           dueOn: soonestDue,
           thisSession: sessionNumber,
           /* How many this run holds, from the length and the rhythm - the same arithmetic the
-             chat composer does when it says "session 3 of 6". Null where either is unset, which
+             chat composer does when it says "session 3 of 6", by the one rule in session-count.ts. Null where either is unset, which
              makes the read fall silent rather than guess at a last session. */
-          plannedSessions: (() => {
-            const step = { DAILY: 1, WEEKLY: 7, FORTNIGHTLY: 14, MONTHLY: 30 }[(ground as any).cadence as string];
-            const days = (ground as any).timelineDays;
-            return step && days ? Math.max(1, Math.floor(days / step)) : null;
-          })(),
+          plannedSessions: totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null,
           thereIsALater: ONE_SITTING_ONLY.has((ground as any).scenario)
             ? false
             : ALREADY_IN_THE_OPEN.has((ground as any).scenario)
@@ -5480,13 +5501,37 @@ happened, and what is in the way.`;
    * quotes first, against `record`, the same lines the stored pass quotes from: see
    * a-quote-built-at-the-read.
    */
-  private readAsItWillBeRead<T>(value: T, groundId: string, what: string, record: string[]): T {
+  private readAsItWillBeRead<T>(value: T, groundId: string, what: string, record: string[], blame?: WhatTheRecordHoldsForBlame | null): T {
     if (value == null) return value;
     const quoted = this.quotesAsTheRecordHasThem(value, groundId, what, record);
     const dropped: string[] = [];
-    const out = linesBuiltAtTheRead(quoted, dropped);
+    let out = linesBuiltAtTheRead(quoted, dropped);
     if (dropped.length) this.logger.warn(`Report for ground ${groundId}: ${dropped.length} line(s) of ${what} not shown, because they still failed a test after the read's repairs. First: "${dropped[0].slice(0, 160)}"`);
+    /*
+     * AND A COLLEAGUE'S FAULT IS THE SPEAKER'S ACCOUNT, WITH THE NOTE (decision 139, must-fix 4). Hassan's coaching read "You have been
+     * waiting on Amina Otieno for the stock from Kisumu since 12 October" and the lead's "Hassan Mwenda has been waiting on Amina Otieno
+     * ... Ask what that is waiting on." when nothing confirmed it. See a-colleagues-fault-is-the-speakers-account.
+     */
+    /*
+     * THROUGH THE FINAL CHECK, which runs that check first and then removes a number, status, date, name or credit the record does not
+     * hold (Hafsah, 12 October): coaching and probes as they are served. Held: the record's lines and each person's own words.
+     */
+    if (blame) {
+      const held: WhatTheRecordHolds = {
+        blame,
+        texts: [...record, ...(blame.theirOwnWords ?? []).map((w) => w.text)],
+        people: blame.people,
+        theirOwnWords: blame.theirOwnWords,
+        reader: blame.speaker?.isTheReader ? blame.speaker.name : null,
+      };
+      out = everyLineTheFinalCheckPasses(out, held, { where: `report for ground ${groundId}, ${what}`, log: this.logger }).value;
+    }
     return out;
+  }
+
+  /** What the record holds for the check on a colleague's fault, read once for a read that has coaching or probes to serve. */
+  private async theBlameHeld(groundId: string, speakerParticipantId: string | null | undefined): Promise<WhatTheRecordHoldsForBlame | null> {
+    return whatTheRecordHoldsForBlame(this.prisma, groundId, { speakerParticipantId: speakerParticipantId ?? null, speakerIsTheReader: true }).catch(() => null);
   }
 
   /** Only the quote rule, for a part built at the read that has no other test to pass. */
@@ -6203,8 +6248,9 @@ happened, and what is in the way.`;
         })
         : Promise.resolve(null),
     ]);
-    const yours = this.readAsItWillBeRead(note, groundId, 'the coaching note', quotable);
-    const eachPerson = this.readAsItWillBeRead(probes, groundId, 'the probe list', quotable);
+    const blame = (note || probes) ? await this.theBlameHeld(groundId, participant?.id) : null;
+    const yours = this.readAsItWillBeRead(note, groundId, 'the coaching note', quotable, blame);
+    const eachPerson = this.readAsItWillBeRead(probes, groundId, 'the probe list', quotable, blame && { ...blame, speaker: null });
     if (!yours && !eachPerson) return null;
     return { yours: yours ?? null, eachPerson: eachPerson ?? null };
   }
@@ -6532,9 +6578,10 @@ happened, and what is in the way.`;
         : Promise.resolve(null),
     ]);
     const quotable = (note || probes) ? await theRecordAQuoteMayComeFrom(this.prisma as any, groundId) : [];
+    const blame = (note || probes) ? await this.theBlameHeld(groundId, (me as any)?.id) : null;
     return {
-      ...(me ? { coaching: this.readAsItWillBeRead(note, groundId, 'the coaching note', quotable) ?? null } : {}),
-      ...(runsIt ? { probes: this.readAsItWillBeRead(probes, groundId, 'the probe list', quotable) ?? null } : {}),
+      ...(me ? { coaching: this.readAsItWillBeRead(note, groundId, 'the coaching note', quotable, blame) ?? null } : {}),
+      ...(runsIt ? { probes: this.readAsItWillBeRead(probes, groundId, 'the probe list', quotable, blame && { ...blame, speaker: null }) ?? null } : {}),
       ...(viewerIsLead ? { inferences: theInferencesOfSession((stored as any)?.inferences, sessionNumber, holds) } : {}),
     };
   }
@@ -6811,6 +6858,8 @@ happened, and what is in the way.`;
           documented: !r.recallBased, documentSays: r.documentSays ?? null,
           mark,
           markSays: WHAT_EACH_MARK_SAYS[mark],
+          /* What the line is called, filled in from the record, never from the kind the model gave it (night quality run 2). */
+          ...(whatALineOfTheirsIsCalled({ type: r.type, text: cleanText(r.text), mark }) ? { typeSays: whatALineOfTheirsIsCalled({ type: r.type, text: cleanText(r.text), mark }) } : {}),
           checkInId: r.checkIn?.id ?? null, sessionNumber: r.checkIn?.sessionNumber ?? null,
           };
         });
@@ -7560,6 +7609,7 @@ happened, and what is in the way.`;
           return null;
         }),
     ]);
+    const blame = (coaching || probes) ? await this.theBlameHeld(groundId, participant?.id) : null;
     const base: any = {
       /*
        * AND THE LEAD'S LAYER, OFF, BEFORE ANYTHING ELSE RUNS.
@@ -7606,7 +7656,7 @@ happened, and what is in the way.`;
         (ground.report as any)?.builtFromAnswers ?? null,
       ),
       postReportGuide: quotesChecked(postReportGuide, 'the guide to the next conversation'),
-      coaching: this.readAsItWillBeRead(coaching, groundId, 'the coaching note', quotable),
+      coaching: this.readAsItWillBeRead(coaching, groundId, 'the coaching note', quotable, blame),
       /* Only a discovery session has one; everything else gets null and renders nothing. */
       theDirection: await this.theDirectionFrom(
         ground,
@@ -7632,7 +7682,7 @@ happened, and what is in the way.`;
        */
       /* Built at the read with the reader's "you" already in, so held to the same tests here. See
          a-line-built-at-the-read-is-read-too. */
-      probes: this.readAsItWillBeRead(probes, groundId, 'the probe list', quotable),
+      probes: this.readAsItWillBeRead(probes, groundId, 'the probe list', quotable, blame && { ...blame, speaker: null }),
       soloArtifact,
       /**
        * A RELEASED report is exactly where this matters most, and it was the branch that could not

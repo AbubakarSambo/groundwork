@@ -1,4 +1,5 @@
 import * as crypto from 'crypto';
+import { aPersonNeverReadsAnInternalName } from '../../common/no-internal-name-reaches-a-person';
 import { sealTheirKey, theirKey, theServerCanKeepSecrets, THE_SERVER_HAS_NO_KEY, isSealed, THEIR_KEYS_CANNOT_BE_OPENED, KEYS_NEED_TYPING_AGAIN, theKeysCannotBeOpened, whyItCannot } from './an-organisations-own-keys';
 import { OnModuleInit, Injectable, Logger, UnauthorizedException, BadRequestException, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -320,7 +321,8 @@ export class WhatsAppService implements OnModuleInit {
     if (aLocalForm(phoneNumber)) to = await this.reachable(org, phoneNumber);
     const held = await this.heldFor(org, to, context);
     if (held) return held;
-    return this.sendOnOurNumber(org, to, text, context);
+    /* Free text only: a template's fixed words are Meta's and never pass through here. No internal name is ever sent (night quality run 2). */
+    return this.sendOnOurNumber(org, to, aPersonNeverReadsAnInternalName(text, 'a WhatsApp reply', this.logger), context);
   }
 
   /** Our own number, once the add-on and the limit have said it may go. */

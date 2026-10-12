@@ -18,6 +18,7 @@
  * WORDS somebody used for a deadline and never a date inferred from them, and that reply asserted a
  * deadline the record does not have. Found by reading what came back rather than that it came back.
  */
+import { theRewordingHoldsNothingNew } from '../conversation/the-final-check';
 import { PLAIN_WORDS, SPOKEN_TO_THE_READER } from '../conversation/plain-words';
 
 /*
@@ -160,6 +161,12 @@ export function safeToUse(draft: string, composed: string | null | undefined, mu
    * introduces "you said / you described / you say" where the draft had no such attribution is the
    * wording inventing testimony, which is the one thing this product cannot do.
    */
+  /*
+   * AND NOTHING THE ENGINE'S LINE DOES NOT HOLD (the final check, Hafsah, 12 October; docs/records-plan.md line 10). A reworded line may
+   * not add a status ("kept", "won", "done", "confirmed"), a count in words, a date, a name or a credit the draft does not say. The
+   * draft is the record's value, and it ships instead. See conversation/the-final-check.
+   */
+  if (!theRewordingHoldsNothingNew(draft, text)) return false;
   /* "you expect that no pattern will emerge from work like this" (run 6, 20 Sep 2026): a belief, not a word, put in the reader's mouth. */
   const attributions = timesItSaysTheReaderSaidIt;
   if (attributions(text) > attributions(draft)) return false;

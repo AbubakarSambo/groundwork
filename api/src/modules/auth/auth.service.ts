@@ -498,8 +498,23 @@ export class AuthService {
             .catch((err: any) => this.logger.warn(`Could not tell the admins about ${pending.email}: ${err?.message}`));
         }
         this.logger.log(`${pending.email} confirmed an address that was invited to a check-in, and joined the organisation that invited them`);
-        /* Waiting: the app takes them to "Almost in". Not waiting: on to their check-ins. */
-        return goOnTo({ ...(await this.readyAfter(pending, await this.buildAuthResponse(invited as unknown as UserWithOrg, 'link'), invited.id)), justCreated: true }, wait ? '/join/waiting' : '/today');
+        /*
+         * Waiting: the app takes them to "Almost in". Not waiting: STRAIGHT INTO THEIR CHECK-IN, as opening
+         * the invitation does (InvitePage after accept). '/today' was a "home", and the link's page
+         * answers a home by posting /entry/commit for somebody who had nothing to save; a real
+         * destination goes there without a commit, so no 400 and nothing made. A draft they wrote in
+         * the entry chat still goes home, so the page saves it.
+         */
+        let onward = wait ? '/join/waiting' : '/today';
+        if (!wait && !pending.draftToken) {
+          const open = await Promise.resolve(this.prisma.checkIn?.findFirst?.({
+            where: { participant: { userId: invited.id, groundId: invitedTo.groundId }, status: { not: 'COMPLETED' as any } },
+            orderBy: { sessionNumber: 'asc' },
+            select: { id: true },
+          })).catch(() => null);
+          if (open?.id) onward = `/checkin/${open.id}`;
+        }
+        return goOnTo({ ...(await this.readyAfter(pending, await this.buildAuthResponse(invited as unknown as UserWithOrg, 'link'), invited.id)), justCreated: true }, onward);
       }
 
       /*

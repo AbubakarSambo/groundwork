@@ -236,7 +236,7 @@ describe('the risks', () => {
     await m.run();
     const risks: string[] = m.mails[0][2].risks;
     expect(risks[0]).toMatch(/^The target “25 shops signed” in “Sales team, Q3” is behind\. /);
-    expect(risks).toContain('Bisi says the work has been waiting on Omar for the price list since Monday 21 September. Not backed: no attempt to unblock mentioned.');
+    expect(risks).toContain('Bisi says the work has been waiting on Omar for the price list since Monday 21 September. Not backed: no attempt to unblock mentioned. Bisi could have messaged Omar, asked again, or raised it with you.');
     expect(risks).toContain('All three people in “Sales team, Q3” have not answered a check-in for more than a week.');
     expect(m.mails[0][1]).toBe('One risk is open'.replace('One risk is open', 'Three risks are open'));
   });
@@ -273,17 +273,19 @@ describe('the risks', () => {
     await m.run();
     const all = JSON.stringify(m.mails[0]?.[2] ?? {});
     expect(m.mails[0][2].overdueOnYourTeam).toEqual([]);
-    expect(m.mails[0][2].risks).toEqual(['Kofi says the work is waiting on Omar for the stock count. Not backed: no attempt to unblock mentioned.']);
+    expect(m.mails[0][2].risks).toEqual(['Kofi says the work is waiting on Omar for the stock count. Not backed: no attempt to unblock mentioned. Kofi could have messaged Omar, asked again, or raised it with you.']);
     expect(all).not.toMatch(/days late|due on/);
   });
 
-  it('and where Kofi said what he tried, the note says it', async () => {
+  it('and where Kofi said what he tried, it is a confirmed block and reads as any wait does', async () => {
     const m = aMorning({
       promises: [], waiting: false, phone: null,
       waits: [{ id: 'w-3', groundId: 'g-sales', what: 'the stock count', triedSaid: 'I nudged Omar on Tuesday.', namedTheThing: true, onLabel: null, status: 'WAITING', createdAt: day('2026-10-01'), dueOn: day('2026-10-09'), blockerKind: null, fromParticipantId: 'p-kofi', onParticipantId: 'p-omar', fromParticipant: PEOPLE['p-kofi'], onParticipant: PEOPLE['p-omar'] }],
     });
     await m.run();
-    expect(m.mails[0][2].risks).toEqual(['Kofi says the work is waiting on Omar for the stock count. Tried: nudged Omar on Tuesday.']);
+    /* Hafsah, 12 October: with his attempt in the record it is a confirmed block, so it reads as any wait does, late and all. */
+    expect(m.mails[0][2].risks).toEqual([]);
+    expect(m.mails[0][2].overdueOnYourTeam).toEqual(['Kofi is waiting on Omar for the stock count, which was due on Friday 9 October and is three days late.']);
   });
 });
 
@@ -402,7 +404,7 @@ describe('a wait is told only when it reads as a sentence', () => {
   it('but one that is whole is', async () => {
     const m = aMorning({ phone: null, promises: [], waiting: false, waits: [wait({})] });
     await m.run();
-    expect(m.mails[0][2].risks).toEqual(['Bisi says the work has been waiting on Omar for the price list since Monday 21 September. Not backed: no attempt to unblock mentioned.']);
+    expect(m.mails[0][2].risks).toEqual(['Bisi says the work has been waiting on Omar for the price list since Monday 21 September. Not backed: no attempt to unblock mentioned. Bisi could have messaged Omar, asked again, or raised it with you.']);
   });
 });
 

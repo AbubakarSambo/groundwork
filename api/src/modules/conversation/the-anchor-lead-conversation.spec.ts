@@ -253,7 +253,9 @@ describe('with the switch off, nothing changes anywhere', () => {
   it('the anchor conversation itself reads exactly the old prompt while the switch is off', async () => {
     const { service, seen } = world(false, { id: 'pv-7', content: 'STORED ANCHOR WORDS' });
     const out = await service.chat(said, ANCHOR_ENTRY_SCENARIO);
-    expect(seen[0]).toBe(oldWay(GroundScenario.NEW_PROJECT, ANCHOR_ENTRY_SCENARIO));
+    /* No longer the key as the name: the entry chat sent "GROUND: HELP_TEAM_UNDERSTAND" (night quality run 2). */
+    expect(seen[0]).toBe(oldWay(GroundScenario.NEW_PROJECT, ''));
+    expect(seen[0]).not.toContain('HELP_TEAM_UNDERSTAND');
     expect(out.promptVersionId).toBeUndefined();
   });
 });

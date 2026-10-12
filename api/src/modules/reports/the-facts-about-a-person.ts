@@ -67,6 +67,9 @@ export interface PersonFacts {
    * than `whereTheySayTheyAre`'s that carries a number the later one does not. Null otherwise.
    */
   anEarlierFigureTheyGave: string | null;
+  /** The week each of those two was said in, so the picture names the weeks and never merges them (Hafsah, 12 October). */
+  weekOfWhereTheyAre?: string | null;
+  weekOfTheEarlierFigure?: string | null;
   /** The latest worry or tension they named, preferring one in that session with a detail in it. */
   whatTheySayIsInTheWay: string | null;
   /**
@@ -270,6 +273,8 @@ export function factsAbout(p: APersonToWriteUp, thisSession: number): PersonFact
     whatTheySaidItWasFor: purpose ? clean(purpose.text) : null,
     whereTheySayTheyAre: stand ? clean(stand.text) : null,
     anEarlierFigureTheyGave: earlier ? clean(earlier.text) : null,
+    weekOfWhereTheyAre: stand?.week ?? null,
+    weekOfTheEarlierFigure: earlier?.week ?? null,
     whatTheySayIsInTheWay: worry ? clean(worry.text) : null,
     whyTheySayTheyAreOnIt: why ? clean(why.text) : null,
     howTheySayTheWorkReallyRuns: howItReallyRuns,

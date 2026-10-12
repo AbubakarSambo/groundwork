@@ -162,7 +162,7 @@ export async function sendTheParticipantsWeeks(
         select: { id: true, groundId: true, onParticipantId: true, what: true, triedSaid: true, ground: { select: { label: true } } },
       })).catch(() => []);
       const confirmed = await theConfirmedWaits(prisma, Array.isArray(onThem) ? onThem : []);
-      const onlyClaimed = new Map((Array.isArray(onThem) ? onThem : []).filter((d) => !confirmed.has(d.id)).map((d) => [`${d.ground?.label ?? ''}|${(d.what ?? '').trim().toLowerCase()}`, theNoteBesideTheClaim(d)] as [string, string]));
+      const onlyClaimed = new Map((Array.isArray(onThem) ? onThem : []).filter((d) => !confirmed.has(d.id)).map((d) => [`${d.ground?.label ?? ''}|${(d.what ?? '').trim().toLowerCase()}`, d] as [string, any]));
       const isOnlyClaimed = (i: { what: string; checkIn: string }) => onlyClaimed.has(`${i.checkIn}|${(i.what ?? '').trim().toLowerCase()}`);
       const askedOfThem = own.askedOfYou.filter((i) => inOpen(i.checkIn));
       const week: TheirWeek = {
@@ -173,7 +173,7 @@ export async function sendTheParticipantsWeeks(
           from: d.onLabel?.trim() || (d.ground?.peersVisibleToEachOther !== false ? (d.onParticipant && aNameToList(nameToCall(d.onParticipant)) ? nameToCall(d.onParticipant) : null) : null),
         })),
         waitingOnYou: askedOfThem.filter((i) => !isOnlyClaimed(i)),
-        saidToWaitOnYou: askedOfThem.filter(isOnlyClaimed).map((i) => ({ ...i, note: onlyClaimed.get(`${i.checkIn}|${(i.what ?? '').trim().toLowerCase()}`) })),
+        saidToWaitOnYou: askedOfThem.filter(isOnlyClaimed).map((i) => ({ ...i, note: theNoteBesideTheClaim(onlyClaimed.get(`${i.checkIn}|${(i.what ?? '').trim().toLowerCase()}`), { by: i.who, on: 'you' }) })),
         reportsReady: [...mine.reportsReady],
       };
       const words = theirWeekInWords(user.firstName, week);

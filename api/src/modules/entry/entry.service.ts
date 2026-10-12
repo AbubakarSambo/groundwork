@@ -45,6 +45,9 @@ import {
 import { oneScriptOnly } from '../conversation/one-script-per-conversation';
 import { withoutWhatTheyDeclined, saysTheOppositeOfWhatItMeans, putTheMissingWordBack } from './what-they-declined-is-not-a-gap';
 import { alreadyEstablished } from '../conversation/setup-already-asked-this';
+import { aNameAPersonGave, aPersonNeverReadsAnInternalName } from '../../common/no-internal-name-reaches-a-person';
+import { theBusinessTheyNamed } from './the-business-they-named';
+import { isAMadeUpWorkspaceName } from '../assistant/ask-name';
 import { VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE } from '../conversation/prompt-library';
 import { PLAIN_WORDS } from '../conversation/plain-words';
 import { forHumans, hadCloseMarker, whatIsNewSince } from '../presentation/outbound';
@@ -526,12 +529,13 @@ export function buildEntrySystemPrompt(
     partyType,
     sessionNumber: 1,
     otherPartyCheckedIn: false,
-    groundLabel: groundLabel || 'Entry session',
+    /* Never a key and never a made-up name: the model reads "GROUND:" as the check-in's name and says it back. */
+    groundLabel: aNameAPersonGave(groundLabel) ?? 'not named yet',
     trustLevel: 'building',
   });
   const settled = alreadyEstablished({
     scenario,
-    groundLabel: groundLabel || null,
+    groundLabel: aNameAPersonGave(groundLabel),
     otherParties: (peopleNamed ?? []).filter((p) => p?.trim()).map((label) => ({ label })),
     /* The entry chat has no participant row and no admin brief yet - the situation and the people
        are what it knows, and the people are what it was asking for twice. */
@@ -1532,7 +1536,7 @@ from finishing at all.`;
      * Otherwise it is null and the text below is exactly what it always was.
      */
     const anchor = await theAnchorGuidance(() => theAnchorScenarioIsOn(this.prisma), this.prompts, scenario, messages);
-    const entrySystem = `${buildEntrySystemPrompt(mapped, groundLabel || scenario || '', PartyType.INITIATOR, undefined, peopleNamed, anchor?.text)}\n\n---\n\n${theThingsThatCannotBeMissed(theirLast, theyPushedBackOnTheQuestions(theirLast))}${anchor ? `\n\n---\n\n${anchor.last}` : ''}`;
+    const entrySystem = `${buildEntrySystemPrompt(mapped, aNameAPersonGave(groundLabel) ?? '', PartyType.INITIATOR, undefined, peopleNamed, anchor?.text)}\n\n---\n\n${theThingsThatCannotBeMissed(theirLast, theyPushedBackOnTheQuestions(theirLast))}${anchor ? `\n\n---\n\n${anchor.last}` : ''}`;
     const out = await this.guardedReplyWithClose(
       entrySystem,
       messages,
@@ -1622,7 +1626,8 @@ from finishing at all.`;
         );
       }
     }
-    const restored = screened.text || ASK_AGAIN;
+    /* No internal name, last of all (night quality run 2: "this new project, NEW_PROJECT,"). */
+    const restored = aPersonNeverReadsAnInternalName(screened.text || ASK_AGAIN, 'the entry chat', this.logger);
 
     // The causal upgrade cannot be repaired by substitution - there is no word of
     // theirs to put back, because the causation was invented whole. Logged, as on
@@ -2188,6 +2193,16 @@ from finishing at all.`;
     throw new BadRequestException({ message: 'COMMIT_IN_PROGRESS', code: 'COMMIT_IN_PROGRESS' });
   }
 
+  /** The organisation takes the business she named, when its name is still one Groundwork made up. */
+  private async renameAMadeUpWorkspaceFromTheirWords(organizationId: string, theirWords: string[], peopleNamed: string[]): Promise<void> {
+    const named = theBusinessTheyNamed(theirWords, peopleNamed);
+    if (!named) return;
+    const org = await Promise.resolve(this.prisma.organization?.findUnique?.({ where: { id: organizationId }, select: { name: true } })).catch(() => null);
+    if (!org || !isAMadeUpWorkspaceName(org.name)) return;
+    await this.prisma.organization.update({ where: { id: organizationId }, data: { name: named } });
+    this.logger.log(`Named the organisation from what its admin said in setup, in place of "${org.name}".`);
+  }
+
   private async commitInner(
     organizationId: string,
     initiatorId: string,
@@ -2258,6 +2273,13 @@ from finishing at all.`;
         where: { id: organizationId },
         data: { name: dto.orgName.trim() },
       });
+    } else {
+      /* Naomi left the box empty and wrote "I run Ridge Bakery in Eldoret"; every page then said "Naomi's
+         workspace". Only a name Groundwork made up is replaced, never one somebody gave. */
+      await this.renameAMadeUpWorkspaceFromTheirWords(organizationId, [
+        ...(dto.leadsOwnWords ?? []).filter((t) => typeof t === 'string'),
+        ...(dto.history ?? []).filter((t) => t?.role === 'user').map((t) => t.content),
+      ], (dto.contributors ?? []).map((c) => c.displayName ?? '').filter(Boolean));
     }
 
     // Create the ground. This also creates session 1 check-in (NOT_STARTED) and

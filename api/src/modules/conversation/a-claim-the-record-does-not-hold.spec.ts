@@ -103,3 +103,53 @@ describe('a claim the record does not hold', () => {
     expect(r.cut).toHaveLength(2);
   });
 });
+
+describe('a status or a count stated as fact stands only on proof or a confirmation (night quality run 2, Collins)', () => {
+  const NOTHING_BACKED = { shownOrConfirmed: [] as string[] };
+  it('cuts "weekly sales confirmed by M-Pesa messages" and "Nine or ten kits last week is strong." when nothing backs them', () => {
+    const report = 'Collins sells kits to households and shops, with weekly sales confirmed by M-Pesa messages. He has not sent the codes.';
+    const r = withoutAClaimTheRecordDoesNotHold(report, NOTHING_BACKED, { whenNothingIsLeft: null });
+    expect(r.text).toBe('He has not sent the codes.');
+    expect(r.cut.map((c) => c.claim)).toEqual(['a status the record does not hold']);
+    const turn = withoutAClaimTheRecordDoesNotHold('Nine or ten kits last week is strong. How many of those can you show a code for?', NOTHING_BACKED);
+    expect(turn.text).toBe('How many of those can you show a code for?');
+    expect(theKindsOfClaimIn('Nine or ten kits last week is strong.').has('a status the record does not hold')).toBe(true);
+  });
+  it('keeps a true line, one the record backs, a question, and people\'s own words in quotation marks', () => {
+    const backed = { shownOrConfirmed: ['Sold nine kits, M-Pesa messages attached.'] };
+    expect(aClaimTheRecordDoesNotHold('His sales are confirmed by M-Pesa messages.', backed)).toBeNull();
+    expect(aClaimTheRecordDoesNotHold('Nine kits last week is strong.', backed)).toBeNull();
+    expect(aClaimTheRecordDoesNotHold('Collins said he sold nine or ten kits last week, and has not sent the codes yet.', NOTHING_BACKED)).toBeNull();
+    expect(aClaimTheRecordDoesNotHold('Can these be confirmed by M-Pesa messages?', NOTHING_BACKED)).toBeNull();
+    expect(aClaimTheRecordDoesNotHold('He said, "the sales are confirmed by M-Pesa messages".', NOTHING_BACKED)).toBeNull();
+  });
+  it('is not checked when the record could not be read', () => {
+    expect(aClaimTheRecordDoesNotHold('Nine or ten kits last week is strong.', {})).toBeNull();
+  });
+});
+
+describe('a plain status or count the record does not hold (night quality run 2)', () => {
+  const NOTHING_BACKED = { shownOrConfirmed: [] as string[] };
+  it.each([
+    'All 3 check-ins due this week were made.',
+    'Collins Odhiambo won eleven deals this week.',
+    'Your promise to send the M-Pesa codes was kept.',
+    '4 of 6 orders were delivered.',
+  ])('"%s" is taken out when nothing in the record backs it', (line) => {
+    const r = withoutAClaimTheRecordDoesNotHold(`${line} Ask how the week went.`, NOTHING_BACKED);
+    expect(r.text).toBe('Ask how the week went.');
+    expect(r.cut[0].claim).toBe('a status the record does not hold');
+  });
+
+  it('a count a backed line holds stays', () => {
+    const line = 'Collins Odhiambo won two deals this week.';
+    expect(withoutAClaimTheRecordDoesNotHold(line, { shownOrConfirmed: ['Sold two kits to Oyugis shop, deals paid by M-Pesa QX12'] }).text).toBe(line);
+  });
+
+  it("a person's own words in quotation marks, and a question, stay", () => {
+    const quoted = 'You said "I kept my promise and won the Oyugis deal."';
+    expect(withoutAClaimTheRecordDoesNotHold(quoted, NOTHING_BACKED).text).toBe(quoted);
+    const asked = 'Was your promise to send the codes kept?';
+    expect(withoutAClaimTheRecordDoesNotHold(asked, NOTHING_BACKED).text).toBe(asked);
+  });
+});

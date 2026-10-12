@@ -16,7 +16,10 @@
  * email telling them they are the hold-up, no holding a pattern back from the speaker).
  *
  * WHAT CONFIRMS IT, structurally: the colleague's own promise in this check-in names the same thing.
- * They said, in their own check-in, that they will do it, so they agree it is theirs to give. A wait
+ * They said, in their own check-in, that they will do it, so they agree it is theirs to give. Or the
+ * speaker's attempt to unblock it is in the record (Hafsah, 12 October): what they said they did
+ * (`triedSaid`) or their own words of the wait name an attempt, read with the same check the note
+ * beside the claim uses (anAttemptIsOnRecord). They tried and it is on record, so it is a block. A wait
  * being cleared does not confirm it (the speaker can clear their own row), and the speaker saying it
  * again, louder, or for longer, never confirms it.
  */
@@ -27,6 +30,8 @@ export interface AWaitOnSomebody {
   onParticipantId: string | null;
   what: string;
   status?: string | null;
+  /** What the speaker said they did to unblock it. An attempt on record confirms the wait (Hafsah, 12 October). */
+  triedSaid?: string | null;
 }
 
 export interface TheirOwnPromise {
@@ -72,6 +77,7 @@ export function theirOwnPromiseNamesIt(what: string, promise: string): boolean {
  */
 export function theWaitIsConfirmed(wait: AWaitOnSomebody, theirPromises: TheirOwnPromise[]): boolean {
   if (!wait.onParticipantId) return true;
+  if (anAttemptIsOnRecord(wait)) return true;
   return (theirPromises ?? []).some(
     (p) => p.participantId === wait.onParticipantId
       && (!wait.groundId || !p.groundId || p.groundId === wait.groundId)
@@ -108,11 +114,56 @@ const AN_ATTEMPT = /\b(nudg\w*|chas\w*|follow\w*[ -]up|followed up|asked (?:agai
 
 export const NOT_BACKED = 'Not backed: no attempt to unblock mentioned.';
 
-/** The note beside a claim about a colleague: what the speaker said they tried, or that they have not said. */
-export function theNoteBesideTheClaim(w: { what?: string | null; triedSaid?: string | null }): string {
+/** The speaker's words of an attempt to unblock it, from what they said they did, then their own words of the wait; null when there are none. */
+function theAttemptSaid(w: { what?: string | null; triedSaid?: string | null }): string | null {
   for (const said of [w.triedSaid, w.what]) {
     const text = String(said ?? '').replace(/\s+/g, ' ').trim();
-    if (!text || !AN_ATTEMPT.test(text)) continue;
+    if (text && AN_ATTEMPT.test(text)) return text;
+  }
+  return null;
+}
+
+/** Is the speaker's attempt to unblock it in the record? The same check the note uses, so a wait the note says they tried is confirmed. */
+export function anAttemptIsOnRecord(w: { what?: string | null; triedSaid?: string | null }): boolean {
+  return theAttemptSaid(w) !== null;
+}
+
+/**
+ * Who the note names, each already as this reader may read them: "You" or "you" for the reader, a name where the reader may read it,
+ * "a colleague" where not. Left out, the plain words stand in: "They", "the colleague", "the lead".
+ */
+export interface WhoTheNoteNames {
+  /** The speaker, who says the work is waiting. */
+  by?: string | null;
+  /** The colleague they say they wait on. */
+  on?: string | null;
+  /** The person who runs the check-in. */
+  lead?: string | null;
+}
+
+const theSame = (a: string, b: string) => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/** "Hassan Mwenda could have messaged Amina Otieno, asked again, or raised it with Esther Awuor." What anybody could do, never a label. */
+export function whatTheyCouldHaveDone(names: WhoTheNoteNames = {}): string {
+  const plain = (x: string | null | undefined) => String(x ?? '').replace(/\s+/g, ' ').trim();
+  let by = plain(names.by) || 'They';
+  by = /^you$/i.test(by) ? 'You' : by.charAt(0).toUpperCase() + by.slice(1);
+  let on = plain(names.on) || 'the colleague';
+  on = /^you$/i.test(on) ? 'you' : /^(?:A|Another|One) colleague\b/.test(on) ? on.charAt(0).toLowerCase() + on.slice(1) : on;
+  let lead = plain(names.lead) || 'the lead';
+  lead = /^you$/i.test(lead) ? 'you' : lead;
+  /* The lead is the one waited on, or the one waiting: there is nobody above them here to raise it with. */
+  if (theSame(on, lead) || theSame(by, lead)) return `${by} could have messaged ${on} or asked again.`;
+  return `${by} could have messaged ${on}, asked again, or raised it with ${lead}.`;
+}
+
+/**
+ * The note beside a claim about a colleague: what the speaker said they tried, or, where they said nothing of trying, that it is not
+ * backed and what they could have done to unblock it themselves (Hafsah, 12 October: the claim always stays, and this goes beside it).
+ */
+export function theNoteBesideTheClaim(w: { what?: string | null; triedSaid?: string | null }, names: WhoTheNoteNames = {}): string {
+  const text = theAttemptSaid(w);
+  if (text) {
     /* Their words from the attempt on, shortened at a word, said in the third person's place as they said it. */
     const from = text.slice(text.search(AN_ATTEMPT));
     const words = from.split(' ');
@@ -120,5 +171,5 @@ export function theNoteBesideTheClaim(w: { what?: string | null; triedSaid?: str
     if (words.length > 12) short = short.replace(/\s+\S*$/, '') || short;
     return `Tried: ${short.charAt(0).toLowerCase() === short.charAt(0) ? short : short.charAt(0).toLowerCase() + short.slice(1)}.`;
   }
-  return NOT_BACKED;
+  return `${NOT_BACKED} ${whatTheyCouldHaveDone(names)}`;
 }

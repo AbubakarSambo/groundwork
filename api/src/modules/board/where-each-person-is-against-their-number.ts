@@ -93,11 +93,12 @@ export interface PersonRow {
  * Why this row is where it is. One reason, the strongest. These are keys for the order and for the
  * screen to choose a colour by; they are never the words a lead reads about a person. What a lead
  * reads is `says`, a full sentence about what happened. Read on the board, 27 Sep 2026: the key sat
- * beside the name as a coloured pill, so "stuck and not chasing" read as a label on the person.
+ * beside the name as a coloured pill, so "stuck and not chasing" read as a label on the person. The key itself was renamed on 12 October
+ * (Hafsah: no labels on people), so the words cannot reach a page even by mistake.
  */
 export type Reason =
   | 'has not answered'
-  | 'stuck and not chasing'
+  | 'something in the way two weeks'
   | 'behind the pace'
   | 'nothing checkable'
   | 'waiting on someone'
@@ -105,7 +106,7 @@ export type Reason =
   | 'not let in';
 
 /** Ordered worst first. The order IS the product; a manager reads down until it stops mattering. */
-const ORDER: Reason[] = ['has not answered', 'stuck and not chasing', 'behind the pace', 'nothing checkable', 'waiting on someone', 'nothing to do', 'not let in'];
+const ORDER: Reason[] = ['has not answered', 'something in the way two weeks', 'behind the pace', 'nothing checkable', 'waiting on someone', 'nothing to do', 'not let in'];
 
 /**
  * A NUMBER, A DATE OR A DOCUMENT, READ OFF ONE LINE OF THE RECORD.
@@ -153,7 +154,7 @@ function sittingUnchased(row: PersonRow) {
 export function whyThisRow(row: PersonRow, roundsPlanned: number | null): Reason {
   if (row.notLetIn) return 'not let in';
   if (!row.answeredThisRound) return 'has not answered';
-  if (sittingUnchased(row).length) return 'stuck and not chasing';
+  if (sittingUnchased(row).length) return 'something in the way two weeks';
   if (behindThePace(row, roundsPlanned)) return 'behind the pace';
   if (!row.saidAnythingCheckable) return 'nothing checkable';
   /*
@@ -207,7 +208,7 @@ export function whatHappened(row: PersonRow, reason: Reason, roundsPlanned: numb
         : `${start} was not let in, so there is nobody to ask.`;
     case 'has not answered':
       return `${start} has not checked in for this session yet.`;
-    case 'stuck and not chasing': {
+    case 'something in the way two weeks': {
       const oldest = sittingUnchased(row)[0];
       /* The day it began, never a count of days from the reading (request 117, part 9). */
       const days = `${oldest.days} ${oldest.days === 1 ? 'day' : 'days'}`;
@@ -413,7 +414,7 @@ export function whereEachPersonIs(rows: PersonRow[], roundsPlanned: number | nul
         ? sorted[0]
         : reason === 'nothing to do' ? r.inTheWay.find((b) => b.onTheReader) : undefined;
       const theWaitAsked = sorted.filter((b) => b.tried !== 'escalated' && b.tried !== 'went-around')[0];
-      const saidAlready = reason === 'stuck and not chasing'
+      const saidAlready = reason === 'something in the way two weeks'
         ? true
         : theWaitSaid?.since && theWaitAsked && theWaitSaid === theWaitAsked ? (theWaitSaid.onTheReader ? true : 'the wait' as const) : false;
       const ask = whatToAskFor(r, saidAlready);

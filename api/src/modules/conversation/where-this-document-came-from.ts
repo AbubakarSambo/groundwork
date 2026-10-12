@@ -91,6 +91,28 @@ export function isAColleaguesProof(f: AColleaguesFile): boolean {
   return isAPin(f) || isAPhoto(f);
 }
 
+/**
+ * A COLLEAGUE'S PROOF IS NEVER HANDED TO ANOTHER PERSON'S SESSION (Hafsah, 12 October, step 3: "A colleague's proof is never put to
+ * another person in their session; proof goes into the person's own check-in").
+ *
+ * Commit 1fc4e4183 handed Amina's pin to Collins's session as the record holds it, with a rule against a story. Run 2 still put it to
+ * him: "Amina shared a location pin on Monday for a Rangwe stockist shop. Do you know about that one?" A rule in the prompt is not a
+ * guard, so the pin and the photo no longer reach his session at all. They stay exactly where they are on the shared pages, for
+ * everybody who sees them today: this decides only what one session is handed. The lead's documents and every brief are untouched, and
+ * the person's own proof always goes in.
+ */
+export function withoutAColleaguesProof<T extends AColleaguesFile & { origin?: string | null; participant?: { userId?: string | null } | null }>(
+  docs: readonly T[],
+  reader: { userId: string | null | undefined; leadUserId: string | null | undefined },
+): T[] {
+  return docs.filter((d) => {
+    const from = d.participant?.userId ?? null;
+    if (from && from === reader.userId) return true;
+    if (from && from === reader.leadUserId) return true;
+    return !(isAColleaguesProof(d) || d.origin === 'photo');
+  });
+}
+
 /** The line above a colleague's photo or pin, in place of the ordinary one. */
 export function whatMayBeSaidAboutAColleaguesProof(who: string | null | undefined): string {
   const name = who?.trim() || 'Somebody else in this check-in';

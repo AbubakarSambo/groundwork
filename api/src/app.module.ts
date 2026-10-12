@@ -48,6 +48,7 @@ import { OpsModule } from './modules/ops/ops.module';
 import { FeedbackModule } from './modules/feedback/feedback.module';
 import { CoachModule } from './modules/coach/coach.module';
 import { TheOrganisationsOwnDay } from './common/the-organisations-own-day';
+import { NoInternalNameInAResponse } from './common/no-internal-name-in-a-response';
 import { JwtAuthGuard, RolesGuard, GlobalExceptionFilter, TransformInterceptor } from './common';
 import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 import { ASyncLoopIsNotABrowser } from './common/guards/a-sync-loop-is-not-a-browser';
@@ -115,6 +116,8 @@ import { ASyncLoopIsNotABrowser } from './common/guards/a-sync-loop-is-not-a-bro
     { provide: APP_INTERCEPTOR, useClass: TransformInterceptor },
     /* Every day a sentence says is the organisation's own day (B-094). */
     { provide: APP_INTERCEPTOR, useClass: TheOrganisationsOwnDay },
+    /* No internal name or placeholder in any sentence served (night quality run 2, "NEW_PROJECT"). */
+    { provide: APP_INTERCEPTOR, useClass: NoInternalNameInAResponse },
   ],
 })
 export class AppModule {}

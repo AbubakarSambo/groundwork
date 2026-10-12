@@ -74,5 +74,15 @@ export async function whatTheRecordHoldsForClaims(
       ].map((t) => String(t ?? '').trim()).filter(Boolean);
     } catch { /* not read, so not checked */ }
   }
+  if (kinds.has('a status the record does not hold')) {
+    try {
+      /* Only lines a document backs or a colleague confirmed: somebody's word, or the conversation, is never proof. */
+      const rows = (await prisma.recordEntry?.findMany?.({
+        where: { participant: { groundId }, disputedAt: null, OR: [{ anchoredDocumentId: { not: null } }, { confirmedAt: { not: null } }] },
+        select: { text: true, documentSays: true }, take: 2000,
+      })) ?? [];
+      held.shownOrConfirmed = rows.flatMap((r: any) => [r?.text ?? '', r?.documentSays ?? '']).map((t: string) => String(t).trim()).filter(Boolean);
+    } catch { /* not read, so not checked */ }
+  }
   return held;
 }

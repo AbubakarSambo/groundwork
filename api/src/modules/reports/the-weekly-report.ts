@@ -28,7 +28,7 @@ import { theNoteBesideTheClaim } from '../grounds/a-wait-is-the-speakers-account
  * proportion of a person shown to somebody else. How anybody's answers were rated is never read.
  */
 
-import { aNumberPeopleCanRead, theNumbersPeopleCanRead, theAimItself, anAimIsAThing, yourOwnAimIsYours, THE_NAME_TO_DO } from '../board/an-aim-is-a-sentence-about-somebody';
+import { aNumberPeopleCanRead, theNumbersPeopleCanRead, theAimItself, anAimIsAThing, theirOwnSentence, theirWordsWhenTheySetIt, inTheirWords, yourOwnAimIsYours, THE_NAME_TO_DO } from '../board/an-aim-is-a-sentence-about-somebody';
 import { asADirection, whatTheWordsSuggest } from '../board/an-aim-or-a-limit';
 import { aDeadlineIsDone } from '../board/a-measure-that-goes-down-is-still-going-well';
 import { aCountThatMovedSaid, theMoneyItCountsIn } from './a-count-that-moved-is-one-sentence';
@@ -234,7 +234,14 @@ export function aTargetThisWeek(t: AWeeksTarget, whose: Whose, againstTheAim: bo
       : whose === 'you' ? ', your own number' : `, ${whose.label}'s number`;
   /* "Tobi to close 8 renewals per quarter" is what is counted, "close 8 renewals per quarter", with whose it is after it. */
   const whatIsDone = THE_NAME_TO_DO.exec(readable)?.[2];
-  const of = `${(t.setByTheHolder && whose !== 'team' ? theAimItself(name, anAimIsAThing(name) !== name.trim() ? t.target ?? null : null) : null) ?? lowerFirst(whatIsDone ?? readable)}${whoseWords}`;
+  /* Their own sentence is shown as their words, with the label beside it, never the label alone (Hafsah, 12 October):
+     "8 kits, Hassan Mwenda's own aim. Hassan Mwenda said, "my plan is five kits to the shops and three to households."" */
+  const theirs = whose === 'team' ? null : t.setByTheHolder ? theirWordsWhenTheySetIt(name) : theirOwnSentence(name);
+  const label = (t.setByTheHolder && whose !== 'team') || theirs ? theAimItself(name, anAimIsAThing(name) !== name.trim() ? t.target ?? null : null) : null;
+  const saidBy = whose === 'you' ? 'You' : typeof whose === 'object' ? whose.label : '';
+  const of = theirs
+    ? `${label ? `${label}${whoseWords}. ` : ''}${inTheirWords(saidBy, theirs)}`
+    : `${label ?? lowerFirst(whatIsDone ?? readable)}${whoseWords}`;
 
   /* An aim with no number that nothing has counted is not a "0": the run's five team aims read "0 ... It stayed at 0 this week." */
   if (t.target == null && !t.count && !t.from && direction !== 'ZERO' && direction !== 'DEADLINE') {
@@ -263,6 +270,8 @@ export function aTargetThisWeek(t: AWeeksTarget, whose: Whose, againstTheAim: bo
   } else {
     says = `It is at ${n(t.count)}, and there is no earlier count this week to compare it with.`;
   }
+  /* Their words are said once, in the line above the count, not again in it. */
+  if (theirs && saidBy) says = says.replace(` ${inTheirWords(saidBy, theirs)}`, '');
   /* Each of the other kinds says what it is, to whoever reads the figure (decision 75, item 17). */
   if (direction === 'ZERO' && t.count > 0) says += /should stay at zero/.test(says) ? ' Any at all is a breach.' : ' This should stay at zero, so any at all is a breach.';
   if (direction === 'DEADLINE') {
@@ -388,7 +397,7 @@ export function aHandoffThatCleared(d: AWeeksHandoff, who: string, onWhom: strin
   const forWhat = /^(whether|how|what|which|who|when|where|if)\b/i.test(what) ? `for a decision on ${what}` : `for ${what}`;
   if (d.onParticipantId && d.confirmed !== true) {
     const on = onWhom ?? 'a colleague';
-    const note = d.note || theNoteBesideTheClaim({ what: d.what });
+    const note = d.note || theNoteBesideTheClaim({ what: d.what }, { by: who, on });
     const theirs = (d.theirSide ?? '').trim().replace(/[.\s]+$/, '');
     const theySaid = theirs ? ` ${on.charAt(0).toUpperCase()}${on.slice(1)} said, "${theirs}."` : '';
     return `${who} said the work was waiting on ${on} ${forWhat}, and it is no longer waiting. ${note}${theySaid}`;

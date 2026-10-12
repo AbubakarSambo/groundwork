@@ -35,7 +35,7 @@ describe('a cleared wait on a colleague, in the weekly letter', () => {
 
   it('a week kept before the field existed reads as the speaker\'s account too, never as a fact about the colleague', () => {
     const says = aHandoffThatCleared({ fromParticipantId: 'p-hassan', onParticipantId: 'p-amina', onLabel: null, what: 'the stock from Kisumu' }, 'Hassan Mwenda', 'Amina Otieno');
-    expect(says).toBe('Hassan Mwenda said the work was waiting on Amina Otieno for the stock from Kisumu, and it is no longer waiting. Not backed: no attempt to unblock mentioned.');
+    expect(says).toBe('Hassan Mwenda said the work was waiting on Amina Otieno for the stock from Kisumu, and it is no longer waiting. Not backed: no attempt to unblock mentioned. Hassan Mwenda could have messaged Amina Otieno, asked again, or raised it with the lead.');
   });
 
   it('a wait the colleague confirmed, and a wait on something outside the check-in, read as before', () => {

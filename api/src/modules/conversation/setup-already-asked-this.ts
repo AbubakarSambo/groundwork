@@ -18,6 +18,7 @@
  * says "you told me" and never quotes a card as a person's words.
  */
 import { GroundScenario } from '@prisma/client';
+import { aNameAPersonGave } from '../../common/no-internal-name-reaches-a-person';
 
 export interface SetupFacts {
   scenario: GroundScenario | null;
@@ -100,7 +101,8 @@ export function alreadyEstablished(facts: SetupFacts): string {
   const situation = situationInWords(facts.scenario);
   if (situation) known.push(`This check-in was opened about ${situation}.`);
 
-  const label = facts.groundLabel?.trim();
+  /* A key or a made-up name is not a name (Naomi read "this new project, NEW_PROJECT,"): see no-internal-name-reaches-a-person. */
+  const label = aNameAPersonGave(facts.groundLabel);
   /* Only when it says something the situation line does not - an unrenamed check-in carries the
      card's own label, and repeating it back adds nothing but length. */
   if (label && situation && label.toLowerCase() !== situation.toLowerCase() && !label.toLowerCase().startsWith('a ')) {

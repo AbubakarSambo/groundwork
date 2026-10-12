@@ -223,7 +223,7 @@ export class PatternsService {
      */
     const theirDependencies = await (this.prisma.groundDependency?.findMany?.({
       where: { groundId: checkIn.groundId, fromParticipantId: checkIn.participantId },
-      select: { onParticipantId: true, status: true, what: true, groundId: true },
+      select: { onParticipantId: true, status: true, what: true, groundId: true, triedSaid: true },
     }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
     /* And what those colleagues promised in their own check-ins: only a colleague's own word confirms a wait (decision 137). */
     const theirColleaguesIds = [...new Set((theirDependencies as any[]).map((d) => d?.onParticipantId).filter(Boolean))] as string[];

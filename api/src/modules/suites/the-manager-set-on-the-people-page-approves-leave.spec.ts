@@ -2,6 +2,8 @@ import { UsersService } from '../users/users.service';
 import { whoApprovesFor, mayApproveFor } from './who-approves';
 import { theOneWhoDecides, theStepsFor } from './who-may-decide';
 import { loadLookups } from './the-lookups';
+import { ApprovalsQueueService } from './the-approvals-queue.service';
+import { LeaveBoardService } from './the-leave-board.service';
 
 /**
  * THE JOURNEY OF 12 OCTOBER: the admin set the leave approver to "Their manager", and set "Chidi
@@ -25,6 +27,11 @@ function anOrganisation() {
     { id: 'u-bola', firstName: 'Bola', lastName: 'Ade', email: 'bola@j1.test', organizationId: ORG, deletedAt: null },
     { id: 'u-chidi', firstName: 'Chidi', lastName: 'Eze', email: 'chidi@j1.test', organizationId: ORG, deletedAt: null },
   ];
+  /* Chidi asked for leave from Monday 19 October to Wednesday 21 October; it waits. */
+  const leave: any[] = [{
+    id: 'leave-1', organizationId: ORG, userId: 'u-chidi', status: 'waiting', startsOn: new Date('2026-10-19T00:00:00Z'), endsOn: new Date('2026-10-21T00:00:00Z'),
+    step: 0, escalatedTo: 0, approvedByIds: [], askedAt: new Date('2026-10-12T08:00:00Z'), stepSince: new Date('2026-10-12T08:00:00Z'), decidedById: null,
+  }];
   const pick = (row: any, select?: any) => (select ? Object.fromEntries(Object.keys(select).map((k) => [k, row[k]])) : row);
   const prisma: any = {
     organizationMembership: {
@@ -42,13 +49,20 @@ function anOrganisation() {
       findMany: jest.fn(async ({ where, select }: any) => users.filter((u) => !where?.id?.in || where.id.in.includes(u.id)).map((u) => pick(u, select))),
     },
     person: { findFirst: jest.fn(async () => null), findMany: jest.fn(async () => []) },
-    organizationSuite: { findUnique: jest.fn(async () => ({ isOn: true, answers: { approver: 'Their manager' } })) },
-    leaveRequest: { findMany: jest.fn(async () => []) },
+    organizationSuite: {
+      findUnique: jest.fn(async ({ where }: any) => (where?.organizationId_suite?.suite ?? 'leave') === 'leave' ? { isOn: true, answers: { approver: 'Their manager' } } : null),
+      findMany: jest.fn(async () => [{ suite: 'leave', isOn: true, answers: { approver: 'Their manager' } }]),
+    },
+    leaveRequest: {
+      findMany: jest.fn(async ({ where }: any) => leave.filter((r) => !where?.status || r.status === where.status)),
+      findUnique: jest.fn(async ({ where }: any) => leave.find((r) => r.id === where.id) ?? null),
+      updateMany: jest.fn(async ({ where, data }: any) => { const r = leave.find((x) => x.id === where.id && x.status === 'waiting'); if (!r) return { count: 0 }; Object.assign(r, data); return { count: 1 }; }),
+    },
     subject: { findMany: jest.fn(async () => []) },
     platformSetting: { findMany: jest.fn(async () => []), findUnique: jest.fn(async () => null) },
   };
   const people = new UsersService(prisma, {} as any, {} as any, {} as any, { emit: jest.fn() } as any);
-  return { prisma, people, members };
+  return { prisma, people, members, leave };
 }
 
 describe('the manager an admin sets on the People page approves leave', () => {
@@ -76,5 +90,26 @@ describe('the manager an admin sets on the People page approves leave', () => {
     members.find((m) => m.userId === 'u-bola')!.role = 'MEMBER';
     await people.setWhereTheySit(ORG, 'u-chidi', { reportsToUserId: 'u-bola' });
     expect(await whoApprovesFor(prisma, { organizationId: ORG, personUserId: 'u-chidi' })).toEqual({ kind: 'admin' });
+  });
+
+  it('on the screen: Bola\'s "Waiting for you to decide" queue holds Chidi\'s leave, in a full sentence, and his Approve is kept', async () => {
+    const { prisma, people, leave } = anOrganisation();
+    await people.setWhereTheySit(ORG, 'u-chidi', { reportsToUserId: 'u-bola' });
+    const today = new Date('2026-10-12T09:00:00Z');
+    const queue = new ApprovalsQueueService(prisma);
+
+    const bola = await queue.queue({ userId: 'u-bola', organizationId: ORG }, {}, today);
+    expect(bola.says).toBe('One request is waiting for you to approve or decline.');
+    expect(bola.items.map((i) => i.says)).toEqual(['Chidi asked for leave from Monday 19 October to Wednesday 21 October, which is 3 working days.']);
+    /* Nobody else reads it as theirs: not the admin, not Chidi. */
+    expect((await queue.queue({ userId: 'u-ada', organizationId: ORG }, {}, today)).counts.all).toBe(0);
+    expect((await queue.queue({ userId: 'u-chidi', organizationId: ORG }, {}, today)).counts.all).toBe(0);
+
+    /* Approve, as the queue's button sends it (the leave route). Chidi may not approve his own. */
+    const board = new LeaveBoardService(prisma);
+    await expect(board.decide({ userId: 'u-chidi', organizationId: ORG } as any, 'leave-1', 'approved', undefined, { lean: true })).rejects.toThrow();
+    await board.decide({ userId: 'u-bola', organizationId: ORG } as any, 'leave-1', 'approved', undefined, { lean: true });
+    expect(leave[0]).toMatchObject({ status: 'approved', decidedById: 'u-bola' });
+    expect((await queue.queue({ userId: 'u-bola', organizationId: ORG }, {}, today)).says).toBe('Nothing is waiting for you to approve or decline.');
   });
 });
