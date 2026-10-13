@@ -51,11 +51,12 @@ function renderBoard() {
   ;(groundsApi.get as any).mockResolvedValue({
     initiatorId: 'u-wairimu',
     participants: [{ id: 'p-amina', userId: 'u-amina' }],
-    /* Amina's own session 2 exists, NOT_STARTED, and does not open until 12 October - nothing of
-       hers is open right now, whatever the team's round says. */
+    /* Amina's own session 2 exists, NOT_STARTED, and does not open for another week - nothing of
+       hers is open right now, whatever the team's round says. (It was a fixed 12 October 2026, which
+       stopped being in the future on 13 October and turned this spec red; it is now always a week ahead.) */
     checkIns: [
       { participantId: 'p-amina', status: 'COMPLETED', sessionNumber: 1 },
-      { participantId: 'p-amina', status: 'NOT_STARTED', sessionNumber: 2, availableFrom: '2026-10-12T00:00:00.000Z' },
+      { participantId: 'p-amina', status: 'NOT_STARTED', sessionNumber: 2, availableFrom: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() },
     ],
   })
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
