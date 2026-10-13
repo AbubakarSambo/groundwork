@@ -63,6 +63,8 @@ export interface WhatNeedsYou {
   count: number
   line: string | null
   comingUp: ComingUp[]
+  /** For an admin while the organisation's free trial runs: one sentence with the day it ends. */
+  freeTrial?: string | null
   /** Absent for everybody but a lead with something here to add (request 198 (b)). */
   forTheLead?: ForTheLead
 }

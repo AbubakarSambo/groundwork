@@ -436,7 +436,24 @@ describe('what keeps coming up', () => {
     })
     await screen.findByText('The team today')
     const card = cardAfter('The team today')
-    expect(within(card).getByText(miriamsPattern.heading)).toBeTruthy()
+    /* Decision 2 (Hafsah, 12 October): the pattern's name never sits beside her name in this list; what happened does. Her pattern
+       has no "what happened" sentence served, so the line says that something keeps coming up and where it is. Changed from
+       expecting the heading here, which the decision rules out. */
+    expect(within(card).queryByText(miriamsPattern.heading)).toBeNull()
+    expect(within(card).getByText('Something keeps coming up in these check-ins. It is shown below, with what happened.')).toBeTruthy()
+  })
+
+  it('with a sentence of what happened served, that sentence is the line beside her name', async () => {
+    me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
+    const said = 'In three of the last five check-ins, a deal Miriam called qualified had no buying date.'
+    renderBoard({
+      ...AS_THE_LEAD, sections: ['objectives', 'patterns'], patterns: [{ ...miriamsPattern, whatHappened: said }],
+      eachPersonToday: [{ participantId: 'p-miriam', who: 'Miriam Wanjiku', line: 'Deals moving', keepsComingUp: null }],
+    })
+    await screen.findByText('The team today')
+    const card = cardAfter('The team today')
+    expect(within(card).queryByText(miriamsPattern.heading)).toBeNull()
+    expect(within(card).getByText(said)).toBeTruthy()
   })
 })
 

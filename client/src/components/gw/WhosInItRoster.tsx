@@ -89,7 +89,7 @@ export function WhosInItRoster({
   const leavesOutTheManager = ground.scenario === 'HELP_TEAM_UNDERSTAND'
   const isNotCounted = (p: any) => leavesOutTheManager && p.managingOnly === true
   const counted = participants.filter((p) => !isNotCounted(p))
-  const checkingIn = counted.filter((p) => p.userId && p.inviteDeliveryStatus !== 'BOUNCED' && !p.awaitingSeat && !p.user?.awaitingOrgApproval).length
+  const checkingIn = counted.filter((p) => p.userId && !p.notJoinedYet && p.inviteDeliveryStatus !== 'BOUNCED' && !p.awaitingSeat && !p.user?.awaitingOrgApproval).length
   const needSomething = counted.length - checkingIn
 
   const seats = billingStatus?.people
@@ -274,7 +274,7 @@ export function WhosInItRoster({
            * Peter, in that exact state, reads "Invited 22 September". `waitingForAdmin` now holds
            * that row out of "Joined" too, same as `notLetIn` and `waitingForSeat`.
            */
-          const inItAlready = !!p.userId && !notLetIn && !waitingForSeat && !waitingForAdmin
+          const inItAlready = !!p.userId && !(p as any).notJoinedYet && !notLetIn && !waitingForSeat && !waitingForAdmin
           const when = inItAlready
             ? (p.invitedAt
                 ? `Joined ${whenItWas(p.invitedAt, 'dayAndMonthLong')}`
@@ -290,7 +290,7 @@ export function WhosInItRoster({
           else if (waitingForSeat) { statusText = 'Waiting for a seat'; tone = 'attention' }
           else if (notLetIn) { statusText = 'Not let in'; tone = 'concern' }
           else if (waitingForAdmin) { statusText = 'Waiting for an admin'; tone = 'attention' }
-          else if (!p.userId) { statusText = waitsForItsStart(p) ? 'Invited' : 'Not joined yet'; tone = 'plain' }
+          else if (!p.userId || (p as any).notJoinedYet) { statusText = waitsForItsStart(p) ? 'Invited' : 'Not joined yet'; tone = 'plain' }
 
           /* WHETHER THEY HAVE CHECKED IN FOR THIS SESSION - what the old "Who is in this" pills said
              and this roster did not. Silent, exactly as the pills were, while the next session has
@@ -300,7 +300,8 @@ export function WhosInItRoster({
              for this session yet" reads as if a session were open and waiting on them, which is
              untrue of somebody an admin has refused. Left out entirely for them, same as before the
              next session opens. */
-          const sessionLine = notOpenYet || !session || notLetIn
+          /* Invited, not joined yet (Hafsah, 13 October): never said to be late for a session. */
+          const sessionLine = notOpenYet || !session || notLetIn || !!(p as any).notJoinedYet
             ? null
             : session.done
               ? `${session.isSelf ? 'You have' : `${atTheStart(name)} has`} checked in for this session.`

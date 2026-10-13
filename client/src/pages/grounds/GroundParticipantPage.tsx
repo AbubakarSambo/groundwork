@@ -538,6 +538,7 @@ export function GroundParticipantPage() {
         /* GROUP 3'S REVIEW, CONTRADICTION 4: held outside the organisation, by an admin - not by
            the session's own clock. See the matching note in WhoIsInThis.tsx. */
         waitingToBeLetIn: !!p.user?.awaitingOrgApproval,
+        notJoinedYet: !!(p as any)?.notJoinedYet,
       }
     })
 

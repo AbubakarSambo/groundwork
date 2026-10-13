@@ -1842,8 +1842,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
      person's line. The board's own line needs three finished sessions of rows; a pattern the
      server has served, and this reader may read, says it too, so the line never sits empty while
      the section below shows that person's pattern. */
+  /* WHAT HAPPENED, NEVER THE PATTERN'S NAME, beside a person in this list (Hafsah, 12 October: an approved pattern name may head a
+     pattern, never sit as a tag beside a person's name in a list or table). The name stays on the pattern's own heading below. */
   const patternHeadingByParticipant = new Map<string, string>()
-  for (const p of visiblePatterns) if (p.participantId && p.heading && !patternHeadingByParticipant.has(p.participantId)) patternHeadingByParticipant.set(p.participantId, p.heading)
+  for (const p of visiblePatterns) {
+    if (!p.participantId || patternHeadingByParticipant.has(p.participantId)) continue
+    patternHeadingByParticipant.set(p.participantId, p.whatHappened?.trim() || 'Something keeps coming up in these check-ins. It is shown below, with what happened.')
+  }
   /* Re-review, 30 September: "Nothing to do" beside somebody the "Waiting on" section already
      says is waiting on the reader - see where-each-person-is.tsx's `waitingOnReader`. */
   const readerIsOnThisDependency = (d: { on: string | null; onParticipantId?: string | null }) =>
@@ -4559,6 +4564,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                    already says "You" (see the comment below). `isReader` is the same test used
                    for the heading, reused here so both sentences agree with it. */
                 const isReader = r.participantId === b.myParticipantId
+                /* Decision 141 (3): the lead's percentage, beside the name. Rows stay in the order served. */
+                const percent = typeof r.landingPercent === 'number' ? r.landingPercent : undefined
+                const whose = isReader ? 'your' : `${nameOnTheBoard(b, r.participantId, r.name)}’s`
                 return (
                 <div key={r.participantId} className="gwui-rule gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14 gwui-mt-9" style={{borderRadius: 12, background: 'var(--gw-bg)'}}>
                   <FlexRow gap={9} align="baseline" wrap>
@@ -4570,6 +4578,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         the name, not a section of its own, so it no longer renders in capitals. */}
                     {/* Board review, 30 September, item 7: "at role level" is a fragment, not
                         something a person reads as a sentence. */}
+                    {percent !== undefined && (
+                      <span className="gwui-ink-dark gwui-fs-14" data-testid="coverage-percent" style={{fontWeight: 700}}>{`${percent}%`}</span>
+                    )}
                     <Text size="13" ink="muted" as="span">{`This is measured at the ${String(r.scope).toLowerCase()} level.`}</Text>
                     <span className="gwui-ml-auto">
                       <Tag tone={r.kind === 'LEAKING' ? 'attention' : r.kind === 'ABSORBING' ? 'action' : 'plain'}>
@@ -4585,10 +4596,17 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     behind it (CLAUDE.md: no score or label shown on a person). A row with no `pct`
                     now draws exactly as the text-only variant does - nothing invented in its place.
                   */}
-                  {b.coverageVariant === 'bar' && r.remitDefined && typeof r.pct === 'number' && (
-                    <div className="gwui-mt-9" style={{height: 7, borderRadius: 6, background: 'var(--gw-bar-track)', overflow: 'hidden'}}>
-                      <div data-testid="coverage-bar-fill" style={{height: '100%', width: `${r.pct}%`, borderRadius: 6, background: r.kind === 'LEAKING' ? 'var(--gw-amber-b)' : r.kind === 'ABSORBING' ? 'var(--gw-navy)' : 'var(--gw-muted)'}} />
-                    </div>
+                  {percent !== undefined && r.remitDefined && (
+                    <>
+                      {b.coverageVariant === 'bar' && (
+                        <div className="gwui-mt-9" style={{height: 7, borderRadius: 6, background: 'var(--gw-bar-track)', overflow: 'hidden'}}>
+                          <div data-testid="coverage-bar-fill" style={{height: '100%', width: `${percent}%`, borderRadius: 6, background: r.kind === 'LEAKING' ? 'var(--gw-amber-b)' : r.kind === 'ABSORBING' ? 'var(--gw-navy)' : 'var(--gw-muted)'}} />
+                        </div>
+                      )}
+                      <div className="gwui-mt-5 gwui-fs-14 gwui-ink-sub" data-testid="coverage-percent-says">
+                        {`${percent}% of ${whose} work is landing in what other people describe as theirs.`}
+                      </div>
+                    </>
                   )}
 
                   {/*

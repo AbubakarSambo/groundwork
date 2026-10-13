@@ -267,6 +267,8 @@ export type BoardPresent = {
     whatToDo?: { move: string; because: string; startWith?: string }[]
     whatThisCannotTellYou?: { about: string; why?: string; toKnow?: string }[]
     whatWeFailedToAsk?: { about: string; howManyMissedIt?: number }[]
+    /** Decision 141 (2): counted by code from the record, never by the model. Travels with the judgement. */
+    theCountsBehindThis?: { says: string[] } | null
   } | null
   /** The counts it was written from. Lead only: it is the working, not the finding. */
   theTable?: string | null
@@ -382,6 +384,9 @@ export type BoardPresent = {
       /** Request 111 (a): a score of where a person's work lands stays removed - the engine does
           not always send this any more, so the bar variant only draws when it is a real number. */
       participantId: string; name: string | null; scope: string; pct?: number
+      /** Decision 141 (3): the lead only. The share of the work in this person's role that other people
+          described doing as theirs, 0 to 100. Drawn beside the name; people are never sorted by it. */
+      landingPercent?: number
       kind: 'LEAKING' | 'ABSORBING' | 'STABLE'; trend: string; what: string | null
       reason: string; reasonText: string | null; ownVoice: string | null
       coupledToBlocker: boolean; remitDefined: boolean

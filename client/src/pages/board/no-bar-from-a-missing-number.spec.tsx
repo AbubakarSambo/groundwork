@@ -13,6 +13,9 @@ import { boardApi } from '@/api/board'
  * `undefined` drew `width: undefined%`, a zero-width sliver that still read as a verdict with
  * nothing behind it. A row with no `pct` now draws exactly as the text-only variant does: the name,
  * the tag, "What people said" and "Which of these this is" - just no bar.
+ *
+ * Decision 141 (3), 12 October 2026: the number comes back for the lead under its own name,
+ * `landingPercent` (the server never sends `pct`), so these rows carry that field now.
  */
 vi.mock('@/stores/auth', () => ({
   useAuthStore: (sel: any) => sel({ user: { id: 'u-lead', firstName: 'Wairimu', role: 'MEMBER' } }),
@@ -37,7 +40,7 @@ const board = (pct: number | undefined) => ({
   coverage: {
     scope: 'team',
     reads: [{
-      participantId: 'p-rukia', name: 'Rukia Otieno', scope: 'team', pct, kind: 'STABLE', trend: 'flat',
+      participantId: 'p-rukia', name: 'Rukia Otieno', scope: 'team', landingPercent: pct, kind: 'STABLE', trend: 'flat',
       what: 'Rukia said she closed the Nyali Fresh account this week.',
       reason: '', reasonText: 'Nothing has shifted this week.', ownVoice: null, coupledToBlocker: false, remitDefined: true, shown: true,
     }],

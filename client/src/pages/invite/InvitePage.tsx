@@ -555,6 +555,8 @@ export function InvitePage() {
                     </div>
                   </Stack>
                   <p className="gwui-field-help">Your name is optional. If you add it, the others will see it on the shared report.</p>
+                  {/* Whether they go straight in or wait for an admin, as the invitation said it (Hafsah, 12 October). */}
+                  {preview?.whatHappensWhenYouJoin && <p className="gwui-field-help">{preview.whatHappensWhenYouJoin}</p>}
                   <div className="gwui-form-actions">
                     <Button type="submit" size="big" wide disabled={accept.isPending} >
                       {accept.isPending ? 'Setting up your session…' : theInvitationWords?.button ?? 'Answer today’s check-in now'}

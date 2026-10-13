@@ -1226,7 +1226,8 @@ export function GroundAdminPage() {
    * of `roundDone`/`total`, so the header reads the same served state the rest of this page does.
    */
   const openRoundFromRule = whichSessionIsThisCheckInOn(
-    (ground.participants ?? []).filter((p: any) => !p.notLetInYet).map((p: any) =>
+    /* And nobody invited who has not joined yet (decision 8 redone): their empty row is not the team's place. */
+    (ground.participants ?? []).filter((p: any) => !p.notLetInYet && !p.notJoinedYet).map((p: any) =>
       ((ground.checkIns ?? []) as any[])
         .filter((c) => c.participantId === p.id && c.status === 'COMPLETED')
         .map((c) => c.sessionNumber ?? 0),
@@ -1544,6 +1545,7 @@ export function GroundAdminPage() {
            .spec.ts's check that "Invite pending" is decided before this field is - that rule is
            about the roster row below, not this one. */
         waitingToBeLetIn: !!p?.user?.awaitingOrgApproval,
+        notJoinedYet: !!(p as any)?.notJoinedYet,
       }
     })
 

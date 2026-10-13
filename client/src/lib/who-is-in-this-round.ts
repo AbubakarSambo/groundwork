@@ -20,17 +20,19 @@ export const THE_LEAD_ONLY_ASKS = ['TEAM_UPDATES', 'DISCOVERY', 'HELP_TEAM_UNDER
  * past session 1 - so `notLetInYet` is checked here first, before anything else.
  */
 export function countsInRound(
-  p: { managingOnly?: boolean | null; notLetInYet?: boolean | null },
+  p: { managingOnly?: boolean | null; notLetInYet?: boolean | null; notJoinedYet?: boolean | null },
   sessionNumber: number | null | undefined,
   scenario: string | null | undefined,
 ): boolean {
   if (p.notLetInYet) return false
+  /* Invited, not joined yet (decision 8 redone): not in the count, and never missed. */
+  if (p.notJoinedYet) return false
   if (!p.managingOnly) return true
   if (THE_LEAD_ONLY_ASKS.includes(scenario ?? '')) return false
   return (sessionNumber ?? 1) <= 1
 }
 
-export function whoIsInRound<T extends { id?: string; partyType?: string | null; managingOnly?: boolean | null; notLetInYet?: boolean | null }>(
+export function whoIsInRound<T extends { id?: string; partyType?: string | null; managingOnly?: boolean | null; notLetInYet?: boolean | null; notJoinedYet?: boolean | null }>(
   participants: T[],
   sessionNumber: number | null | undefined,
   scenario: string | null | undefined,
@@ -49,6 +51,7 @@ export function whoIsInRound<T extends { id?: string; partyType?: string | null;
     .map((c) => c.participantId))
   return (participants ?? []).filter((p) => {
     if (p.notLetInYet) return false
+    if (p.notJoinedYet && !answered.has(p.id)) return false
     /* The anchor's own rule, unchanged: where the lead only asks, a managing lead is never in a round. */
     if (p.managingOnly && THE_LEAD_ONLY_ASKS.includes(scenario ?? '')) return false
     const choosesWhen = p.partyType === 'INITIATOR' || !!p.managingOnly

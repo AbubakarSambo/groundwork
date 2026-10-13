@@ -164,6 +164,9 @@ export function TodayPage() {
             subtitle={`${whenItWas(now, 'weekdayAndDay')}.${greetingLine ? ` ${greetingLine}` : ''}`}
           />
 
+          {/* The free trial, one line, for an admin while it runs (Hafsah, 12 October). The server decides who reads it. */}
+          {data?.freeTrial && <Note>{data.freeTrial}</Note>}
+
           {/* Appeals to decide (C3, U.13): an admin's only. The server refuses anybody else. */}
           {user?.role === 'ADMIN' && <AppealsToDecide />}
 

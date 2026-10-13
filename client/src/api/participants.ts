@@ -12,6 +12,8 @@ export interface InvitePreview {
   /** They answered through an open link and have no sign-in yet; a report link should go straight through. */
   hasAnswered?: boolean
   nameGiven?: string | null
+  /** One plain sentence: whether they go straight in when they join, or wait for an admin first (Hafsah, 12 October). */
+  whatHappensWhenYouJoin?: string | null
   /** U.3: the organisation, the lead's first name, the end date and how often it asks. */
   organisationName?: string | null
   leadFirstName?: string | null

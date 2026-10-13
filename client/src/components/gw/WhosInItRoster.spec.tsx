@@ -230,3 +230,44 @@ describe('an anchor check-in with a lead who only manages', () => {
     expect(container.textContent).toContain('2 people. 2 are checking in.')
   })
 })
+
+/**
+ * JOURNEY ROUND 4 (Hafsah, 13 October 2026). Dara Delta accepted and never answered anything; her sessions were
+ * closed by the clock. People and setup said "Dara Delta has checked in for this session." A missed session is
+ * never "checked in". Eli Epsilon never accepted: he is "Not joined yet" and never said to be late.
+ */
+describe('People and setup, with the journey round 4 people', () => {
+  const quiet = (n: number) => ({ sessionNumber: n, status: 'COMPLETED', closedReason: 'auto_closed', turns: [] })
+  const said = (n: number) => ({ sessionNumber: n, status: 'COMPLETED', closedReason: null, turns: [{ id: 't' }] })
+  const round4 = {
+    initiatorId: 'lead-1',
+    createdAt: '2026-10-12T09:00:00.000Z',
+    participants: [
+      { id: 'p-lead', userId: 'lead-1', email: 'lena@example.test', invitedAt: null, checkIns: [said(1)] },
+      { id: 'p-dara', userId: 'user-dara', email: 'dara@example.test', invitedAt: '2026-10-12T09:00:00.000Z', user: { firstName: 'Dara', lastName: 'Delta' }, checkIns: [quiet(1), quiet(2)] },
+      { id: 'p-eli', userId: null, email: 'eli@example.test', nameGiven: 'Eli Epsilon', invitedAt: '2026-10-12T09:00:00.000Z', notJoinedYet: true, checkIns: [] },
+    ],
+  }
+
+  it('a session closed by the clock with nothing said is not one they did', async () => {
+    const { hasDoneThisSession } = await import('@/lib/which-session-are-we-on')
+    expect(hasDoneThisSession([quiet(2)], 2)).toBe(false)
+    expect(hasDoneThisSession([said(2)], 2)).toBe(true)
+  })
+
+  it('Dara reads "has not checked in for this session yet", and Eli reads "Not joined yet" with no session line', async () => {
+    const { hasDoneThisSession } = await import('@/lib/which-session-are-we-on')
+    const sessionParties = round4.participants.map((p) => ({ id: p.id, done: hasDoneThisSession(p.checkIns as any, 2), isSelf: p.id === 'p-lead' }))
+    render(
+      <MemoryRouter>
+        <WhosInItRoster {...baseProps()} ground={round4} sessionParties={sessionParties} notOpenYet={false} />
+      </MemoryRouter>,
+    )
+    const text = document.body.textContent ?? ''
+    console.log(`PEOPLE AND SETUP READS: ${text}`)
+    expect(text).not.toContain('Dara Delta has checked in for this session.')
+    expect(text).toContain('Dara Delta has not checked in for this session yet.')
+    expect(screen.getByText('Not joined yet')).toBeTruthy()
+    expect(text).not.toMatch(/Eli Epsilon has (not )?checked in/)
+  })
+})

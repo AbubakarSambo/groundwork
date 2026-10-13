@@ -32,6 +32,15 @@ describe('the sessions-this-phase row, as a sentence', () => {
    * to "so far" for every row, reader or not (the pinned wording below is updated for that reason,
    * not because the old behaviour it checked was wrong).
    */
+  /* Night quality run 3 (decision 8 redone): a session the clock closed with nothing said is missed, never "Checked in". */
+  it('a session closed with nothing said reads as not checked in, never as checked in', () => {
+    const shape = theShapeOfIt({ '1': 'missed', '2': 'missed', '3': 'missed' }, [1, 2, 3])
+    const said = theSentenceFor('Jared Okoth', shape)
+    console.log(`THE LEAD READS: ${said}`)
+    expect(said).not.toMatch(/has checked in/)
+    expect(said).toMatch(/^Jared Okoth did not check in for/)
+  })
+
   it('counts several sessions in one phrase, not doubled', () => {
     const shape = theShapeOfIt({ '1': 'done', '2': 'done', '3': 'done' }, [1, 2, 3])
     expect(theSentenceFor('Aisha Otieno', shape)).toBe('Aisha Otieno has checked in for 3 of 3 sessions so far.')

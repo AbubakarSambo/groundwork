@@ -1,3 +1,4 @@
+import { wasAQuietClose } from './session-rows'
 /**
  * WHICH SESSION ARE WE ON, ASKED ONCE.
  *
@@ -39,11 +40,16 @@ export function whichSessionAreWeOn(
  * `>=` rather than `===` on purpose: a check-in recorded against a later session still counts as
  * having done their part, and the alternative is telling somebody who is ahead that they are behind.
  */
+/*
+ * A SESSION THE CLOCK CLOSED WITH NOTHING SAID IS NOT CHECKING IN (journey round 4, 13 October 2026). Dara
+ * Delta never answered anything and People and setup said "Dara Delta has checked in for this session",
+ * because a missed session is stored as finished. A missed session is never "checked in".
+ */
 export function hasDoneThisSession(
-  theirCheckIns: { sessionNumber?: number | null; status?: string | null }[],
+  theirCheckIns: { sessionNumber?: number | null; status?: string | null; closedReason?: string | null; turns?: unknown[] | null }[],
   session: number,
 ): boolean {
-  return theirCheckIns.some(c => (c.sessionNumber ?? 0) >= session && c.status === 'COMPLETED');
+  return theirCheckIns.some(c => (c.sessionNumber ?? 0) >= session && c.status === 'COMPLETED' && !wasAQuietClose(c));
 }
 
 /**

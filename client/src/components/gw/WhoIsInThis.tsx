@@ -20,7 +20,7 @@ export function WhoIsInThis({ parties, peersHidden, notOpenYet, viewerIsParty, l
    *
    * It is coverage, not content: that somebody has checked in, never a word of what they said.
    */
-  parties?: { name: string; done: boolean; isSelf: boolean; waitingToBeLetIn?: boolean }[]
+  parties?: { name: string; done: boolean; isSelf: boolean; waitingToBeLetIn?: boolean; notJoinedYet?: boolean }[]
   peersHidden?: boolean
   /** Whether the reader is one of the people this card is talking about. */
   viewerIsParty?: boolean
@@ -68,6 +68,9 @@ export function WhoIsInThis({ parties, peersHidden, notOpenYet, viewerIsParty, l
             */
             const sentence = p.waitingToBeLetIn
               ? `${p.isSelf ? 'You are' : `${p.name} is`} waiting to be let in.`
+              /* Invited, not joined yet (decision 8 redone): neither missed nor counted, and said as that. */
+              : p.notJoinedYet && !p.done
+                ? `${p.isSelf ? 'You were' : `${p.name} was`} invited and ${p.isSelf ? 'have' : 'has'} not joined yet.`
               : p.done
                 ? `${p.isSelf ? 'You' : p.name} ${have} checked in.`
                 : notOpenYet
