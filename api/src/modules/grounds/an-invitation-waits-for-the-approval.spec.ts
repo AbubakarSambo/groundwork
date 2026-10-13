@@ -149,11 +149,12 @@ const THE_ROW = { id: 'p-1', groundId: 'g1', email: 'wanjiku@x.test', partyType:
   inviteToken: 'the-real-token', inviteTokenExpiresAt: new Date(), stopRemindersToken: 'STOP-TOKEN', specificityHistory: [0.4], soloArtifact: 'PRIVATE-SUMMARY', detectedFunction: 'SALES', detectedFunctionConfidence: 0.8 };
 
 describe('the lead adds somebody she has already added', () => {
+  /* nameGiven joined the served row on 12 October (the-invited-row-as-served.ts: the name the lead typed); this list had not been updated. */
   it('is given back what a first add gives back, and none of the rest of the row', async () => {
     const { service } = world({ status: 'OPEN', existing: { ...THE_ROW } });
     const out = await service.addParticipant('g1', 'org1', 'nandi', { email: 'wanjiku@x.test' } as any);
     expect(out.alreadyInvited).toBe(true);
-    expect(Object.keys(out).sort()).toEqual(['alreadyInvited', 'createdAt', 'devUrl', 'email', 'id', 'invitedAt', 'notifiedAt', 'partyType', 'roleAsDescribed', 'saying', 'soloArtifactAt', 'userId'].sort());
+    expect(Object.keys(out).sort()).toEqual(['alreadyInvited', 'createdAt', 'devUrl', 'email', 'id', 'invitedAt', 'nameGiven', 'notifiedAt', 'partyType', 'roleAsDescribed', 'saying', 'soloArtifactAt', 'userId'].sort());
     expect(JSON.stringify(out)).not.toMatch(/STOP-TOKEN|PRIVATE-SUMMARY|the-real-token|specificityHistory|detectedFunction/);
   });
 

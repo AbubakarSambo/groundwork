@@ -1,3 +1,5 @@
+import { whoHasNotJoinedYet } from '../grounds/invited-not-joined-yet';
+import { wasAQuietClose } from '../grounds/an-answer-includes-a-refusal';
 import { CheckInStatus, GroundStatus } from '@prisma/client';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
@@ -93,17 +95,22 @@ export function theWhatIsNewWords(firstName: string | null | undefined, checkIns
 export async function theOpenSession(prisma: any, groundId: string, leadUserId: string): Promise<AnExistingCheckIn | null> {
   const rows: any[] = await prisma.checkIn.findMany({
     where: { groundId },
-    select: { status: true, sessionNumber: true, participant: { select: { userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } } },
+    select: { status: true, sessionNumber: true, closedReason: true, turns: { where: { role: 'PERSON' }, take: 1, select: { id: true } }, participant: { select: { id: true, partyType: true, cameThroughTheLink: true, userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } } },
   });
   if (!rows.length) return null;
+  /* Invited, not joined yet: left out of the count like somebody not let in (decision 8 redone, night run 3). */
+  const notJoined = await whoHasNotJoinedYet(prisma, [...new Map(rows.map((r: any) => [r.participant?.id, r.participant])).values()].filter(Boolean)).catch(() => new Set<string>());
+  for (const r of rows) if (r.participant && notJoined.has(r.participant.id)) r.participant = { ...r.participant, notJoinedYet: true };
+  /* A session the clock closed with nothing said is not an answer. */
+  const answeredIt = (r: any) => r.status === CheckInStatus.COMPLETED && !wasAQuietClose(r);
   /* The round the board and Today call open, not whichever is newest: rows for the next round are written ahead. */
   const latest = theRoundACountIsAbout(rows.map((r) => ({ sessionNumber: r.sessionNumber ?? 0, status: r.status })));
   const counted = rows.filter((r) => (r.sessionNumber ?? 0) === latest && !r.participant?.managingOnly && !isNotLetInYet(r.participant));
   if (!counted.length) return null;
   /* A check-in where only the lead is in it has nothing to say about anybody else (decision 109 review). */
   if (!counted.some((r) => r.participant?.userId !== leadUserId)) return null;
-  const answered = counted.filter((r) => r.status === CheckInStatus.COMPLETED).length;
-  const notYet = counted.filter((r) => r.status !== CheckInStatus.COMPLETED)
+  const answered = counted.filter(answeredIt).length;
+  const notYet = counted.filter((r) => !answeredIt(r))
     .map((r) => (r.participant?.userId === leadUserId ? 'you' : nameToCall(r.participant)))
     .filter(aNameToList)
     .sort((a: string, b: string) => (a === 'you' ? -1 : b === 'you' ? 1 : 0));

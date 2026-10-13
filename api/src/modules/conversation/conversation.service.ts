@@ -6816,8 +6816,16 @@ ${told}` : '';
     // strand it: the AI signals done, the input disables, but completion 400s
     // for a turn the person can no longer add. We still require ONE substantive
     // turn so a correction cannot close empty.
+    /*
+     * IN THE ORDER THEY WERE SAID (journey 3, round 4). askedToFinish reads the LAST answer, and with no
+     * order the database hands rows back as they lie on disk: Ben's "Nothing more to add. That is
+     * everything for this week." came back first, "Next I will visit the two shops again" came back
+     * last, and the close the engine had just made (it reads in order) was refused with "I need a little
+     * more from you". Both ends now read the same last answer.
+     */
     const personTurnRows = await this.prisma.conversationTurn.findMany({
       where: { checkInId: checkIn.id, role: TurnRole.PERSON },
+      orderBy: { createdAt: 'asc' },
       select: { content: true },
     });
     /**
@@ -6921,6 +6929,35 @@ ${told}` : '';
     });
     if (!checkIn) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     return this.finishTheSession(checkIn, 'the clock', { waitForTheCard: false });
+  }
+
+  /**
+   * A SESSION NOBODY OPENED, CLOSED BY THE CLOCK AT ITS ROUND'S CLOSE, AS MISSED (see
+   * grounds/a-session-nobody-opened.ts). Nothing was said, so there is nothing to score, extract or
+   * learn from: none of finishTheSession's readers of the conversation run. What does run is what the
+   * rest of the product needs from any close: the row says the clock closed it, the person's next
+   * session is made on the check-in's own schedule, the completion is announced as the clock's, and the
+   * round is checked. The write is the claim: it only wins while the row is still not started and holds
+   * no word of theirs, so a person who opens it at the last minute keeps it.
+   */
+  async closeAsMissed(checkInId: string, closedAt: Date): Promise<boolean> {
+    const row = await this.prisma.checkIn.findUnique({ where: { id: checkInId }, select: { id: true, groundId: true, participantId: true, sessionNumber: true } });
+    if (!row) return false;
+    const won = await this.prisma.checkIn.updateMany({
+      where: { id: checkInId, status: CheckInStatus.NOT_STARTED, turns: { none: { role: TurnRole.PERSON } } },
+      data: { status: CheckInStatus.COMPLETED, completedAt: closedAt, closedReason: CLOSED_BY_THE_CLOCK },
+    });
+    if (won.count === 0) return false;
+    await this.ensureNextSession(row.groundId, row.participantId, row.sessionNumber);
+    this.events.emit(GroundworkEvents.CHECK_IN_COMPLETED, {
+      checkInId: row.id,
+      groundId: row.groundId,
+      participantId: row.participantId,
+      sessionNumber: row.sessionNumber,
+      source: 'auto-close' as const,
+    } satisfies CheckInCompletedEvent);
+    await recordRoundCompletion(this.prisma, this.events, row.groundId, row.sessionNumber);
+    return true;
   }
 
   /**
@@ -8673,9 +8710,28 @@ ${told}` : '';
     const turns = await this.prisma.conversationTurn.findMany({
       where: { checkInId: checkIn.id },
       orderBy: { createdAt: 'asc' },
+      select: { id: true, role: true, endCard: true },
+    });
+    const standing = theCardStillStanding(turns as any);
+    if (standing) return { endCard: standing };
+    /*
+     * "FINISH MY CHECK-IN NOW" BEFORE THE CONVERSATION CLOSED (journey 3, round 4). The card was only
+     * ever built when the engine closed the conversation, so somebody who had answered and pressed
+     * the button to finish read "I could not show you what I wrote down just now" (Pia at session 1,
+     * Ben at session 2). Their answers are there to read, so the card is built now, from the record,
+     * on the last thing Groundwork said, and finishing writes exactly what it shows.
+     */
+    const last = turns[turns.length - 1] as any;
+    const theyAnswered = turns.some((t: any) => t.role === TurnRole.PERSON);
+    if (checkIn.status !== CheckInStatus.IN_PROGRESS || !theyAnswered || !last || last.role !== TurnRole.AI) return { endCard: null };
+    this.startTheEndCard(checkIn as any, last.id);
+    await this.waitForTheCardBeingBuilt(checkIn.id);
+    const now = await this.prisma.conversationTurn.findMany({
+      where: { checkInId: checkIn.id },
+      orderBy: { createdAt: 'asc' },
       select: { role: true, endCard: true },
     });
-    return { endCard: theCardStillStanding(turns as any) };
+    return { endCard: theCardStillStanding(now as any) };
   }
 
   /**

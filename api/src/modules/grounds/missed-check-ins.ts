@@ -6,6 +6,8 @@ import { nameToCall, SOMEONE } from '../engagement/a-name-to-call-them';
 import { aNumberInWords } from '../engagement/a-number-in-words';
 import { A_GROUND_NO_MESSAGE_IS_ABOUT } from './a-ground-that-has-ended';
 import { theConfirmedWaits } from './a-wait-is-the-speakers-account';
+import { whoHasNotJoinedYet } from './invited-not-joined-yet';
+import { isNotLetInYet } from './who-an-admin-did-not-let-in';
 
 /**
  * REPEATEDLY MISSING CHECK-INS (decision 136, change 8).
@@ -25,6 +27,8 @@ import { theConfirmedWaits } from './a-wait-is-the-speakers-account';
  *   3. it goes on (four of the last five): Groundwork suggests a support plan, the lead decides;
  *   4. it still goes on (five of the last six): Groundwork suggests a formal process in the performance suite.
  * Each stage counts only while the latest closed session was missed: somebody who came back is not chased.
+ * Only people who have JOINED and been let in are ever read (decision 8, night run 3): somebody invited who has
+ * not come in yet, or is still waiting for an admin, has missed nothing and is told nothing, nor is their lead.
  * Never a score or a label on a person: each line says what happened and what it does.
  */
 
@@ -144,8 +148,8 @@ export async function whoHasMissedCheckIns(prisma: any, groundIds: string[], now
   const people: any[] = await prisma.groundParticipant.findMany({
     where: { groundId: { in: groundIds }, leftAt: null },
     select: {
-      id: true, groundId: true, userId: true, partyType: true, managingOnly: true, nameGiven: true,
-      user: { select: { firstName: true, lastName: true } },
+      id: true, groundId: true, userId: true, partyType: true, managingOnly: true, nameGiven: true, cameThroughTheLink: true,
+      user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } },
       checkIns: {
         select: {
           id: true, sessionNumber: true, status: true, isSetup: true, optional: true, closedReason: true, availableFrom: true,
@@ -154,7 +158,8 @@ export async function whoHasMissedCheckIns(prisma: any, groundIds: string[], now
       },
     },
   }).catch(() => []);
-  const theirs = people.filter((p) => !checksInOnlyWhenTheyChoose(p));
+  const notJoined = await whoHasNotJoinedYet(prisma, people);
+  const theirs = people.filter((p) => !checksInOnlyWhenTheyChoose(p) && !notJoined.has(p.id) && !isNotLetInYet(p));
   if (!theirs.length) return [];
   const leave = await leaveOfThePeopleOn(prisma, [...new Set(theirs.map((p) => p.groundId as string))]).catch(() => new Map<string, Stretch[]>());
   const out: SomebodyWhoMissed[] = [];
@@ -201,7 +206,8 @@ export async function whoMissedTheCheckInsJustBefore(prisma: any, groundId: stri
   const people: any[] = await prisma.groundParticipant.findMany({
     where: { groundId, leftAt: null },
     select: {
-      id: true, groundId: true, userId: true, partyType: true, managingOnly: true,
+      id: true, groundId: true, userId: true, partyType: true, managingOnly: true, cameThroughTheLink: true,
+      user: { select: { awaitingOrgApproval: true } },
       checkIns: {
         select: {
           id: true, sessionNumber: true, status: true, isSetup: true, optional: true, closedReason: true, availableFrom: true,
@@ -210,7 +216,8 @@ export async function whoMissedTheCheckInsJustBefore(prisma: any, groundId: stri
       },
     },
   }).catch(() => []);
-  const theirs = (people ?? []).filter((p) => !checksInOnlyWhenTheyChoose(p));
+  const notJoined = await whoHasNotJoinedYet(prisma, people ?? []);
+  const theirs = (people ?? []).filter((p) => !checksInOnlyWhenTheyChoose(p) && !notJoined.has(p.id) && !isNotLetInYet(p));
   if (!theirs.length) return out;
   const leave = await leaveOfThePeopleOn(prisma, [groundId]).catch(() => new Map<string, Stretch[]>());
   for (const p of theirs) {

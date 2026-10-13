@@ -2,7 +2,7 @@ import { theDayInWords } from '../board/the-day-in-words';
 import { startsWithAPronoun, whoseIsIt } from './a-blocker-that-says-her-or-his';
 import { whereTheTeamIs, howManyAreDone } from './which-check-in-it-is';
 import { DependencyStatus } from '@prisma/client';
-import { isNotLetInYet } from './who-an-admin-did-not-let-in';
+import { isNotLetInYet, isHeldAtTheDoor } from './who-an-admin-did-not-let-in';
 import { checksInOnlyWhenTheyChoose } from './the-lead-checks-in-when-they-choose';
 import { whoIsExpected, howManyOfThemAnswered, howManyInTheRoundAnswered, type SomebodyWhoMightAnswer } from '../reports/how-many-have-answered';
 import { ReadDependency, dedupeDependencies, blockerHasSubstance } from '../board/reads';
@@ -105,8 +105,12 @@ export function atAGlance(i: GlanceInput, now: Date = new Date()): AtAGlance {
   const answering = whoIsExpected(withRows, session, i.scenario, now);
   const done = new Set(answering.filter((p) => !counted.waitingOn.includes(p.id)).map((p) => p.id));
   /* Journey test, 12 October: "1 of 2" beside five people. Who the count leaves out at the door is said beside it. */
-  const notLetIn = withRows.filter((p) => isNotLetInYet(p) && !checksInOnlyWhenTheyChoose(p as any)
-    && !(p.checkIns ?? []).some((c: any) => (c.sessionNumber ?? session) === session && (c.status === 'COMPLETED' || c.status === 'DECLINED'))).length;
+  const notCounted = withRows.filter((p) => isNotLetInYet(p) && !checksInOnlyWhenTheyChoose(p as any)
+    && !(p.checkIns ?? []).some((c: any) => (c.sessionNumber ?? session) === session && (c.status === 'COMPLETED' || c.status === 'DECLINED')));
+  const notLetIn = notCounted.filter(isHeldAtTheDoor).length;
+  /* Invited, not joined yet (decision 8 redone): not counted either, and said for what it is, never as "not let in". */
+  const notJoined = notCounted.filter((p: any) => !isHeldAtTheDoor(p) && p.notJoinedYet === true).length;
+  const notCountedSays = [whoIsNotCountedYet(notLetIn), whoHasNotJoinedYetCount(notJoined)].filter(Boolean).join(' ') || null;
 
   return {
     progress: {
@@ -116,7 +120,7 @@ export function atAGlance(i: GlanceInput, now: Date = new Date()): AtAGlance {
       answeredThisRound: shown.answered,
       ofPeople: shown.ofPeople,
       waitingOn: counted.waitingOn,
-      ...(notLetIn ? { notLetIn, notCountedSays: whoIsNotCountedYet(notLetIn) } : {}),
+      ...(notLetIn || notJoined ? { notLetIn, notJoinedYet: notJoined, notCountedSays } : {}),
       ...(i.forTheList ? {
         openRound: session,
         whereItIs: whereTheTeamIs(i.sessionNumber ? session : 0, i.roundsPlanned, i.roundsDone),
@@ -194,6 +198,14 @@ export function theGlanceAsThisReaderMayReadIt(
 
 const SMALL = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
 /** The same sentence the lead's page says (client a-number-up-to-ten-in-words.ts, andWhoIsNotCountedYet). */
+/** "One more person is not counted yet, because they were invited and have not joined yet." */
+export function whoHasNotJoinedYetCount(n: number): string | null {
+  if (!n || n < 1) return null;
+  if (n === 1) return 'One more person is not counted yet, because they were invited and have not joined yet.';
+  const w = n < SMALL.length ? SMALL[n] : String(n);
+  return `${w.charAt(0).toUpperCase()}${w.slice(1)} more people are not counted yet, because they were invited and have not joined yet.`;
+}
+
 export function whoIsNotCountedYet(n: number): string | null {
   if (!n || n < 1) return null;
   if (n === 1) return 'One more person is not counted yet, because an admin has not let them in.';

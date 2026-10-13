@@ -334,8 +334,10 @@ describe('release night, for a check-in that already exists', () => {
        92 since 10 October: a pattern records which version of the detector's prompt read it (decision 128), one empty column, pattern_detections.prompt_version_id (docs/deploy.md row 92).
        93 since 10 October: the role learned in a first check-in (decision 129), six empty columns on role_interview_answers and one index, no data change (docs/deploy.md row 93).
        94 since 11 October: the lead checks in when they choose (decision 133), check_ins.optional set true on every lead's check-in, and one new empty table, report_reads.
-       95 since 11 October: why they missed their check-ins (decision 136), two empty columns on check_ins, no data change. */
-    expect(names).toHaveLength(95);
+       95 since 11 October: why they missed their check-ins (decision 136), two empty columns on check_ins, no data change.
+       96 since 13 October: when somebody accepted their invitation (Hafsah, 13 October), one column on ground_participants,
+          filled for the people already on a check-in who came in, so everybody who has joined stays counted. */
+    expect(names).toHaveLength(96);
     // The six statements deploy.md lists, plus the WhatsApp prices (five updates and one insert).
     expect(o.dataChangesRun).toBeGreaterThanOrEqual(8);
   }));
@@ -353,7 +355,12 @@ describe('release night, for a check-in that already exists', () => {
     const theLeads = new Set(after.participants.filter((p: any) => p.partyType === 'INITIATOR').map((p: any) => p.id));
     const leadRows = new Set(after.checkIns.filter((c: any) => theLeads.has(c.participantId)).map((c: any) => c.id));
     const moved = thatMoved(pick(o.before), after);
-    const allowed = moved.filter((m) => /^checkIns (\S+): optional went from false to true$/.test(m) && leadRows.has(m.split(' ')[1].replace(/:$/, '')));
+    /* CHANGED 13 OCTOBER: 20261013090000_accepted_the_invitation records that the people already on a check-in who came
+       in accepted their invitation, so they stay in every count (joined now means accepted). A participant's acceptedAt
+       going from null to a date, on a row that has a sign-in, is allowed; no date, status or stamp of a check-in moves. */
+    const signedIn = new Set(after.participants.filter((p: any) => p.partyType !== 'INITIATOR' && !!p.userId).map((p: any) => p.id));
+    const allowed = moved.filter((m) => (/^checkIns (\S+): optional went from false to true$/.test(m) && leadRows.has(m.split(' ')[1].replace(/:$/, '')))
+      || (/^participants (\S+): acceptedAt went from null to "/.test(m) && signedIn.has(m.split(' ')[1].replace(/:$/, ''))));
     expect(allowed.length).toBeGreaterThan(0);
     expect(moved.filter((m) => !allowed.includes(m))).toEqual([]);
   }));

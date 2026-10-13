@@ -1,3 +1,4 @@
+import { wasAQuietClose } from '../grounds/an-answer-includes-a-refusal';
 import { theNoteBesideTheClaim, WhoTheNoteNames } from '../grounds/a-wait-is-the-speakers-account';
 import { theWaitSaid, aHolderThatIsOnlyTheThing, PLAIN_WORDS } from './a-wait-said-in-full';
 import { howManyGoalsAreNotTold } from '../grounds/a-goal-not-told-stays-with-the-lead';
@@ -111,7 +112,15 @@ export interface ASession {
   status: string;
   completedAt: Date | string | null;
   isSetup?: boolean;
+  /** With `turns` (their first word, if any): a session the clock closed with nothing said was MISSED, never answered. */
+  closedReason?: string | null;
+  turns?: unknown[] | null;
 }
+
+/** Answered: finished, and not a session the clock closed with nothing said (decision 8, night run 3). */
+const answered = (s: ASession) => String(s.status).toUpperCase() === 'COMPLETED' && !wasAQuietClose(s);
+/** Missed: the clock closed it and they had said nothing. */
+const missed = (s: ASession) => String(s.status).toUpperCase() === 'COMPLETED' && wasAQuietClose(s);
 
 const day = (d: Date | string | null | undefined): string | null => {
   if (!d) return null;
@@ -232,7 +241,7 @@ export function thatWaitsOn(d: { what: string; onLabel?: string | null; onPartic
  * sessions" where the report said "open for 1 session" about the same commitment.
  */
 const theSessionsSoFar = (sessions: ASession[], commitments: ACommitment[]): number =>
-  Math.max(1, ...sessions.filter((s) => !s.isSetup && String(s.status).toUpperCase() === 'COMPLETED').map((s) => s.sessionNumber), ...commitments.map((c) => c.statedInSession ?? 0));
+  Math.max(1, ...sessions.filter((s) => !s.isSetup && answered(s)).map((s) => s.sessionNumber), ...commitments.map((c) => c.statedInSession ?? 0));
 
 /** What a person committed to, as the end of a sentence, or null when it cannot be said in our voice. */
 const clauseOf = (c: ACommitment, r?: WhoIsReading): string | null => {
@@ -415,7 +424,7 @@ export function theTimeline(
 
   const firstAnswer = new Map<number, Date | string>();
   for (const s of sessions) {
-    if (s.isSetup || !s.completedAt || String(s.status).toUpperCase() !== 'COMPLETED') continue;
+    if (s.isSetup || !s.completedAt || !answered(s)) continue;
     const at = firstAnswer.get(s.sessionNumber);
     if (!at || new Date(s.completedAt) < new Date(at)) firstAnswer.set(s.sessionNumber, s.completedAt);
   }
@@ -475,11 +484,13 @@ export function thePersonHistory(
     if (!r.personMayBeRead(p.id)) continue;
     const who = whoIs(r, p.id);
     const mine = sessions.filter((s) => s.participantId === p.id && !s.isSetup).sort((a, b) => a.sessionNumber - b.sessionNumber);
-    const done = mine.filter((s) => String(s.status).toUpperCase() === 'COMPLETED');
-    if (!done.length) continue;
+    const done = mine.filter(answered);
+    const gone = mine.filter(missed);
+    if (!done.length && !gone.length) continue;
     const theirCommitments = commitments.filter((c) => c.participantId === p.id);
     const theirWaits = handoffs.filter((d) => d.fromParticipantId === p.id);
-    const perSession = done.map((s) => {
+    const perSession = [...done, ...gone].sort((a, b) => a.sessionNumber - b.sessionNumber).map((s) => {
+      if (missed(s)) return { n: s.sessionNumber, on: day(s.completedAt), says: `In session ${s.sessionNumber}, ${midSentence(who)} did not check in before it closed.` };
       const made = theirCommitments.filter((c) => c.statedInSession === s.sessionNumber).length;
       const raised = theirWaits.filter((d) => !!s.id && d.sourceCheckInId === s.id).length;
       const bits: string[] = [];
@@ -500,7 +511,10 @@ export function thePersonHistory(
       ? `${who} ${who === 'You' ? 'have' : 'has'} answered ${plural(done.length, 'session', 'sessions')} and made ${plural(total, 'commitment', 'commitments')}.${theirOwn ? ` ${theTallySaid(doneCount, notDone, open)}` : ''}`
       /* The name once (run-25): "Kwame Mensah has answered 1 session, and the record holds no commitment from Kwame Mensah yet." */
       : `${who} ${who === 'You' ? 'have' : 'has'} answered ${plural(done.length, 'session', 'sessions')}, and ${who === 'You' ? 'have' : 'has'} made no commitment on record yet.`;
-    out.push({ participantId: p.id, who, says: summary, sessions: perSession });
+    const has = who === 'You' ? 'have' : 'has';
+    const missedToo = gone.length ? ` ${who} ${who === 'You' ? 'have' : 'has'} missed ${plural(gone.length, 'session', 'sessions')}.` : '';
+    const says = done.length ? `${summary}${missedToo}` : `${who} ${has} not answered a session yet, and ${has} missed ${plural(gone.length, 'session', 'sessions')}.`;
+    out.push({ participantId: p.id, who, says, sessions: perSession });
   }
   return out;
 }
@@ -612,20 +626,20 @@ export function theBusyOrMoving(
   const eachPerson: ABusyOrMoving['eachPerson'] = [];
   for (const p of people) {
     if (p.managingOnly || !r.personMayBeRead(p.id)) continue;
-    const answered = sessions.filter((s) => s.participantId === p.id && !s.isSetup && String(s.status).toUpperCase() === 'COMPLETED').length;
-    if (!answered) continue;
+    const answeredCount = sessions.filter((s) => s.participantId === p.id && !s.isSetup && answered(s)).length;
+    if (!answeredCount) continue;
     const mine = commitments.filter((c) => c.participantId === p.id);
     const waits = handoffs.filter((d) => d.fromParticipantId === p.id);
     if (!mine.length && !waits.length) continue;
     const who = whoIs(r, p.id);
     /* Counts of what was said, never of how many were kept: that tally is the person's own (decision 24). */
     const parts: string[] = [];
-    if (mine.length) parts.push(`${who} has made ${plural(mine.length, 'commitment', 'commitments')} across ${plural(answered, 'answered session', 'answered sessions')}.`);
+    if (mine.length) parts.push(`${who} has made ${plural(mine.length, 'commitment', 'commitments')} across ${plural(answeredCount, 'answered session', 'answered sessions')}.`);
     /* "also" only after the commitments (item 21): Kwabena read "Blessing Okafor also named 1 thing ..." with nothing before it. */
     if (waits.length) {
       parts.push(mine.length
         ? `${who} also named ${plural(waits.length, 'thing', 'things')} the work was waiting on.`
-        : `${who} named ${plural(waits.length, 'thing', 'things')} the work was waiting on, across ${plural(answered, 'answered session', 'answered sessions')}.`);
+        : `${who} named ${plural(waits.length, 'thing', 'things')} the work was waiting on, across ${plural(answeredCount, 'answered session', 'answered sessions')}.`);
     }
     eachPerson.push({ participantId: p.id, who, says: parts.join(' ') });
   }

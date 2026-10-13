@@ -1,3 +1,5 @@
+import { whoHasNotJoinedYet } from '../grounds/invited-not-joined-yet';
+import { wasAQuietClose } from '../grounds/an-answer-includes-a-refusal';
 import { nameToCall, aNameToList } from '../engagement/a-name-to-call-them';
 import { createHash } from 'crypto';
 import { CheckInStatus, GroundStatus } from '@prisma/client';
@@ -199,19 +201,24 @@ async function theOpenSession(prisma: PrismaService, groundId: string, now: Date
   const rows: any[] = await prisma.checkIn.findMany({
     where: { groundId, OR: [{ availableFrom: null }, { availableFrom: { lte: now } }] },
     select: {
-      status: true, sessionNumber: true, completedAt: true,
-      participant: { select: { userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } },
+      status: true, sessionNumber: true, completedAt: true, closedReason: true, turns: { where: { role: 'PERSON' }, take: 1, select: { id: true } },
+      participant: { select: { id: true, partyType: true, cameThroughTheLink: true, userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } },
     },
   });
   if (!rows.length) return null;
+  /* Invited, not joined yet: left out of the count like somebody not let in (decision 8 redone, night run 3). */
+  const notJoined = await whoHasNotJoinedYet(prisma, [...new Map(rows.map((r: any) => [r.participant?.id, r.participant])).values()].filter(Boolean)).catch(() => new Set<string>());
+  for (const r of rows) if (r.participant && notJoined.has(r.participant.id)) r.participant = { ...r.participant, notJoinedYet: true };
+  /* A session the clock closed with nothing said is not an answer. */
+  const answeredIt = (r: any) => r.status === CheckInStatus.COMPLETED && !wasAQuietClose(r);
   /* The round the board and Today call open, not whichever is newest: rows for the next round are written ahead. */
   const latest = theRoundACountIsAbout(rows.map((r) => ({ sessionNumber: r.sessionNumber ?? 0, status: r.status })));
   const session = rows.filter((r) => (r.sessionNumber ?? 0) === latest);
   if (!session.some((r) => r.status === CheckInStatus.NOT_STARTED || r.status === CheckInStatus.IN_PROGRESS)) return null;
   const counted = session.filter((r) => !r.participant?.managingOnly && !isNotLetInYet(r.participant));
-  const done = counted.filter((r) => r.status === CheckInStatus.COMPLETED);
+  const done = counted.filter(answeredIt);
   const notYet = counted
-    .filter((r) => r.status !== CheckInStatus.COMPLETED)
+    .filter((r) => !answeredIt(r))
     /* The lead is one of the people who can answer, and she is "you" to herself, never her own name in the third person. */
     .map((r) => (r.participant?.userId && r.participant.userId === leadUserId ? 'you' : nameToCall(r.participant as any)))
     .filter(aNameToList)

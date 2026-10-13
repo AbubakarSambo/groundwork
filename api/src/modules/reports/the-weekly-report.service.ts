@@ -5,6 +5,7 @@ import { anAimTheHolderSet } from '../board/an-aim-is-a-sentence-about-somebody'
 import { refuseSomeoneHeldForASeat, refuseSomeoneAwaitingTheOrganisation } from '../participants/held-for-a-seat';
 import { CANNOT_READ_THE_REPORT_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { whoIsNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
+import { whoHasNotJoinedYet } from '../grounds/invited-not-joined-yet';
 import { asADirection } from '../board/an-aim-or-a-limit';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
@@ -124,7 +125,7 @@ export class TheWeeklyReportService {
       where: { id: groundId },
       select: {
         initiatorId: true, cadence: true,
-        participants: { select: { id: true, userId: true, partyType: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, roleAsDescribed: true, user: { select: { firstName: true, lastName: true, email: true } } } },
+        participants: { select: { id: true, userId: true, partyType: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, roleAsDescribed: true, cameThroughTheLink: true, user: { select: { firstName: true, lastName: true, email: true } } } },
         objectives: { select: { id: true, name: true, target: true, count: true, direction: true, ownerParticipantId: true, setByParticipantId: true, isADecisionAboutAPerson: true } },
       } as any,
     });
@@ -156,6 +157,8 @@ export class TheWeeklyReportService {
 
     /* Somebody an admin has not let in yet cannot check in, so is neither due nor written up as absent (decision 77). */
     const notLetIn = await whoIsNotLetInYet(this.prisma, parties);
+    /* Nor somebody invited who has not joined yet: not due, not absent, never missed (decision 8 redone, night run 3). */
+    for (const id of await whoHasNotJoinedYet(this.prisma, parties).catch(() => new Set<string>())) if (!notLetIn.has(id)) notLetIn.set(id, { declined: false, decidedByUserId: null, decidedAt: null });
 
     /* THE SENTENCE ABOUT EACH PERSON. */
     const eachPerson: { participantId: string; says: string }[] = [];
@@ -330,7 +333,7 @@ export class TheWeeklyReportService {
         organizationId: true, initiatorId: true, createdByUserId: true, scenario: true, startedFrom: true, peersVisibleToEachOther: true, whoSeesTargets: true, cadence: true,
         /* Decision 75, item 2: the admin asked to approve an evaluation check-in reads it. */
         status: true, approvedById: true,
-        participants: { select: { id: true, userId: true, partyType: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, roleAsDescribed: true, user: { select: { firstName: true, lastName: true, email: true } } } },
+        participants: { select: { id: true, userId: true, partyType: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, roleAsDescribed: true, cameThroughTheLink: true, user: { select: { firstName: true, lastName: true, email: true } } } },
       } as any,
     });
     if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');

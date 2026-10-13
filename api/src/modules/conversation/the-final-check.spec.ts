@@ -194,7 +194,6 @@ describe('the final check refuses a pattern title or a label used of a named per
       'Collins Odhiambo is stuck and not chasing.',
       'Amina Otieno, stuck and not chasing.',
       'Collins Odhiambo presents well, delivers late, more than once.',
-      'Presents well, delivers late, more than once. Collins Odhiambo saw this first and said what is behind it.',
       'Presents well, delivers late, more than once, in your last three check-ins.',
       'Collins is a blame shifter.',
     ]) {
@@ -202,6 +201,20 @@ describe('the final check refuses a pattern title or a label used of a named per
       expect({ line, why: out.removed.map((r) => r.why) }).toEqual({ line, why: ['a label on a person'] });
       expect(out.text).not.toMatch(/stuck and not chasing|presents well, delivers late|blame shifter/i);
     }
+  });
+
+  /* Decision 2 (Hafsah, 12 October): "Approved pattern names may head a pattern, shown with what happened; never as a tag beside a
+     person's name." The heading line is kept; the same name joined to the person's name in one sentence is still removed. The line
+     "Presents well, delivers late, more than once. Collins Odhiambo saw this first ..." used to be in the list above, removed whole;
+     the decision changes that, so it moved here. */
+  it('keeps an approved pattern name heading its own pattern, with what happened under it', () => {
+    const card = 'Presents well, delivers late, more than once. In the last three check-ins, Collins Odhiambo said a number at the start of the week that was larger than what he later said he sold.';
+    const out = theFinalCheck(card, team, { whenNothingIsLeft: null, log: quiet });
+    console.log(`THE LEAD READS: ${out.text}`);
+    expect(out.removed).toEqual([]);
+    expect(out.text).toBe(card);
+    /* Beside his name, in one sentence, it is still a tag, and still removed. */
+    expect(theFinalCheck('Collins Odhiambo: presents well, delivers late, more than once.', team, { whenNothingIsLeft: null, log: quiet }).removed.map((r) => r.why)).toEqual(['a label on a person']);
   });
 
   it('keeps what happened, with dates and the person\'s own words, and never reads their words', () => {

@@ -5,6 +5,7 @@ import { checksInOnlyWhenTheyChoose, whoASessionCounts } from '../grounds/the-le
 import { THE_LEAD_ONLY_ASKS } from '../grounds/the-lead-who-only-asks';
 import { whoOnACheckInIsAway } from '../suites/who-is-away';
 import { isNotLetInYet, whoIsNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
+import { whoHasNotJoinedYet } from '../grounds/invited-not-joined-yet';
 
 /**
  * "N OF M ANSWERED", COMPUTED ONCE.
@@ -47,6 +48,11 @@ export interface SomebodyWhoMightAnswer {
    * so no count waits on them and they are not in "N of M". See who-an-admin-did-not-let-in.ts.
    */
   notLetIn?: boolean;
+  /**
+   * Invited and has not joined yet (accepted the invitation, or come in): see invited-not-joined-yet.ts. Not
+   * waited on and not in "N of M", in every session alike, until they join (Hafsah, 13 October 2026).
+   */
+  notJoinedYet?: boolean;
   user?: { awaitingOrgApproval?: boolean | null } | null;
   /** This session's rows for them, whatever the state. With `closedReason` and their person turns, a session the clock closed with nothing said is told apart. */
   checkIns?: { status: string; sessionNumber?: number; closedReason?: string | null; turns?: unknown[] | null }[];
@@ -81,6 +87,8 @@ export function whoIsExpected<T extends SomebodyWhoMightAnswer>(
     if (p.awayUntil && !theyAnswered(p, sessionNumber)) return false;
     /* Not let in yet (decision 77): not waited on. Anything they did answer still counts. */
     if (isNotLetInYet(p) && !theyAnswered(p, sessionNumber)) return false;
+    /* Invited, not joined yet: not waited on, not counted (Hafsah, 13 October). Anything they answered counts. */
+    if (p.notJoinedYet === true && !theyAnswered(p, sessionNumber)) return false;
     if (p.userId) return true;
     if (theyAnswered(p, sessionNumber)) return true;
     /*
@@ -112,7 +120,9 @@ export function whoIsInTheRound<T extends { managingOnly?: boolean | null; party
   /* Decision 133: the lead is in a round's numbers only when they answered it. */
   return (people ?? []).filter((p) => !(p.managingOnly && theLeadOnlyAsks) && (!checksInOnlyWhenTheyChoose(p) || theyAnswered(p as unknown as SomebodyWhoMightAnswer, sessionNumber))
     && !((p as unknown as SomebodyWhoMightAnswer).awayUntil && !theyAnswered(p as unknown as SomebodyWhoMightAnswer, sessionNumber))
-    && !(isNotLetInYet(p) && !theyAnswered(p as unknown as SomebodyWhoMightAnswer, sessionNumber)));
+    && !(isNotLetInYet(p) && !theyAnswered(p as unknown as SomebodyWhoMightAnswer, sessionNumber))
+    /* Invited, not joined yet (Hafsah, 13 October): in no session's "N of M", so the number is the same in each. */
+    && !((p as unknown as SomebodyWhoMightAnswer).notJoinedYet === true && !theyAnswered(p as unknown as SomebodyWhoMightAnswer, sessionNumber)));
 }
 
 /** Of the people in the round, by the header's rule, how many have answered this round. */
@@ -151,6 +161,8 @@ export interface HowManyHaveAnswered {
   declinedIds: string[];
   /** Participant ids of people an admin has not let in yet, who are not counted (decision 77). */
   notLetInIds: string[];
+  /** Participant ids of people invited who have not joined yet, who are not counted (Hafsah, 13 October). */
+  notJoinedIds: string[];
 }
 
 export async function howManyHaveAnswered(prisma: PrismaService, groundId: string, sessionNumber: number): Promise<HowManyHaveAnswered> {
@@ -173,7 +185,7 @@ export async function howManyHaveAnswered(prisma: PrismaService, groundId: strin
       ],
     },
     select: {
-      id: true, userId: true,
+      id: true, userId: true, partyType: true, cameThroughTheLink: true, acceptedAt: true,
       checkIns: {
         where: { sessionNumber, status: { in: AN_ANSWER } },
         select: { status: true, closedReason: true, turns: { where: { role: 'PERSON' as any }, take: 1, select: { id: true } } },
@@ -182,11 +194,14 @@ export async function howManyHaveAnswered(prisma: PrismaService, groundId: strin
   }).then((rows: any[]) => rows.map((p) => {
     /* A session the clock closed with nothing said is not an answer: not counted, and not waited on either (it is closed). */
     const real = p.checkIns.filter((c: any) => !wasAQuietClose(c));
-    return { id: p.id, userId: p.userId, checkIns: real as { status: string }[], quiet: real.length === 0 && p.checkIns.length > 0 };
+    return { id: p.id, userId: p.userId, partyType: p.partyType, cameThroughTheLink: p.cameThroughTheLink, acceptedAt: p.acceptedAt, checkIns: real as { status: string }[], quiet: real.length === 0 && p.checkIns.length > 0 };
   }));
+  /* Invited and not joined yet, and not answered: not waited on, and in no count (Hafsah, 13 October). */
+  const notJoined = await whoHasNotJoinedYet(prisma, everyone.map((p) => ({ id: p.id, userId: p.userId, partyType: p.partyType, cameThroughTheLink: p.cameThroughTheLink, acceptedAt: p.acceptedAt })) as any[]).catch(() => new Set<string>());
+  const notInYet = (p: { id: string; checkIns: unknown[] }) => notJoined.has(p.id) && p.checkIns.length === 0;
   /* Not let in yet and not answered: not waited on, and not in the count (decision 77). */
   const notLetIn = await whoIsNotLetInYet(prisma, everyone as any[]);
-  const heldOut = (p: { id: string; checkIns: unknown[] }) => notLetIn.has(p.id) && p.checkIns.length === 0;
+  const heldOut = (p: { id: string; checkIns: unknown[] }) => (notLetIn.has(p.id) && p.checkIns.length === 0) || notInYet(p);
   /* Away and not answered: not waited on. Away and answered anyway: counted like anybody. */
   const expected = everyone.filter((p) => !(away.has(p.id) && p.checkIns.length === 0) && !heldOut(p));
   const answeredRows = expected.filter((p) => p.checkIns.length > 0);
@@ -200,6 +215,7 @@ export async function howManyHaveAnswered(prisma: PrismaService, groundId: strin
     declinedIds: expected
       .filter((p) => p.checkIns.length > 0 && !p.checkIns.some((c) => c.status === CheckInStatus.COMPLETED))
       .map((p) => p.id),
-    notLetInIds: everyone.filter(heldOut).map((p) => p.id),
+    notLetInIds: everyone.filter((p) => notLetIn.has(p.id) && p.checkIns.length === 0).map((p) => p.id),
+    notJoinedIds: everyone.filter(notInYet).map((p) => p.id),
   };
 }

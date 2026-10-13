@@ -7,6 +7,8 @@ import * as crypto from 'crypto';
 import { needsApproval, isAnAdminOf, whoToAsk, WAITING_TO_BE_LET_IN } from './nobody-joins-your-company-by-being-invited-to-a-check-in';
 
 import { HELD_FOR_A_SEAT } from './held-for-a-seat';
+import { namedWhenAnAdminApproved, theyWaitForAnAdmin, whatHappensWhenYouJoin } from './named-when-an-admin-approved';
+import { canSignIn } from '../grounds/can-sign-in';
 export { HELD_FOR_A_SEAT };
 import { tellTheAdminsSomebodyIsWaiting } from './somebody-is-waiting-at-the-door';
 import { assertInviteLinkStillOpens, hasExpired } from './an-invite-link-still-opens';
@@ -139,6 +141,11 @@ export class ParticipantsService {
          to hear your version" - see InvitePage, which goes straight through on this. */
       hasAnswered: await this.prisma.checkIn.count({ where: { participantId: participant.id, status: CheckInStatus.COMPLETED } }).then((n) => n > 0).catch(() => false),
       nameGiven: (participant as any).nameGiven ?? null,
+      /* Whether they go straight in or wait for an admin, in one plain sentence (Hafsah, 12 October). Not for somebody already in. */
+      whatHappensWhenYouJoin: alreadyAccepted ? null : whatHappensWhenYouJoin(
+        await theyWaitForAnAdmin(this.prisma, ground as any, participant as any).catch(() => false),
+        (ground as any).organization?.name ?? null,
+      ),
       yourNumberIsSeenBy,
       /* The anchor scenario's own invitation, only for a check-in started from the anchor link and only while the switch is on (request 149). Nothing else about this answer changes. */
       ...(((ground as any).startedFrom === STARTED_FROM_THE_ANCHOR || (ground as any).scenario === THE_ANCHOR_SCENARIO_KEY) && (await theAnchorScenarioIsOn(this.prisma))
@@ -156,6 +163,19 @@ export class ParticipantsService {
    * participant, clear the token, and return an auth token + the check-in to
    * enter. Idempotent if already accepted (re-issues a token + the check-in).
    */
+  /** See accept(): the name a person gives for themselves when they join, kept as typed. */
+  private async theNameTheyGaveThemselves(participant: { id: string; userId: string | null }, names?: { firstName?: string; lastName?: string }) {
+    const first = names?.firstName?.trim() ?? '';
+    const last = names?.lastName?.trim() ?? '';
+    if (!first && !last) return;
+    if (participant.userId) {
+      const u = await this.prisma.user.findUnique({ where: { id: participant.userId }, select: { passwordHash: true, googleId: true, welcomeCardSeenAt: true } });
+      if (!u || canSignIn(u) || u.welcomeCardSeenAt) return;
+      await this.prisma.user.update({ where: { id: participant.userId }, data: { ...(first ? { firstName: first.slice(0, 120) } : {}), ...(first || last ? { lastName: last.slice(0, 120) } : {}) } });
+    }
+    await this.prisma.groundParticipant.update({ where: { id: participant.id }, data: { nameGiven: [first, last].filter(Boolean).join(' ').slice(0, 120) } });
+  }
+
   async accept(token: string, names?: { firstName?: string; lastName?: string }, returningUserId?: string | null) {
     const participant = await this.loadByToken(token);
     const ground = await this.prisma.ground.findUnique({ where: { id: participant.groundId } });
@@ -165,6 +185,16 @@ export class ParticipantsService {
      * invitation is sent, even with the link in hand (the lead can copy it). Nothing is created.
      */
     if (participant.awaitingSeat) throw new BadRequestException(HELD_FOR_A_SEAT);
+
+    /*
+     * THEIR OWN NAME, CORRECTED WHEN THEY JOIN (Hafsah, 12 October 2026: "people can correct their own name
+     * when they join"). The invite page fills the name their lead typed and lets them change it. That reached
+     * nobody when their sign-in had been made for them at setup: accept() went straight to "already joined"
+     * and dropped it. So the name they give is kept, exactly as they typed it, on their sign-in and on this row,
+     * while they have not come in yet. Once somebody has signed in, their name is changed in Settings, not here.
+     */
+    await this.theNameTheyGaveThemselves(participant as any, names).catch((err: any) =>
+      this.logger.warn(`Could not keep the name given on joining for ${participant.id}: ${err?.message ?? err}`));
 
     // AN INVITE LINK IS SINGLE USE FOR SIGNING IN.
     //
@@ -207,6 +237,11 @@ export class ParticipantsService {
      * from when they joined - not a new cookie layer. Presenting it is the proof.
      */
     if (participant.userId) {
+      /* Pressing Join on their own invitation is accepting it, whoever made their sign-in (Hafsah, 13 October). */
+      if (!(participant as any).acceptedAt) {
+        await Promise.resolve((this.prisma.groundParticipant as any).updateMany?.({ where: { id: participant.id, acceptedAt: null }, data: { acceptedAt: new Date() } }))
+          .catch((err: any) => this.logger.warn(`Could not record that ${participant.id} accepted: ${err?.message ?? err}`));
+      }
       if (returningUserId && returningUserId === participant.userId) {
         const checkIn = await this.prisma.checkIn.findFirst({
           where: { participantId: participant.id, status: { not: CheckInStatus.COMPLETED } },
@@ -314,7 +349,11 @@ export class ParticipantsService {
         alreadyAMemberHere,
         /* An admin of this organisation adding somebody IS the approval - asking them to approve
            their own action is a queue with one item in it that they put there. */
-        addedByAnAdminOfThisOrg: isAnAdminOf(ground.organizationId, inviter),
+        addedByAnAdminOfThisOrg: isAnAdminOf(ground.organizationId, inviter)
+          /* Named on the check-in when an admin approved it: let in by that approval (Hafsah, 12 October). */
+          || namedWhenAnAdminApproved(ground as any, participant as any, (ground as any).approvedById
+            ? await tx.user.findUnique({ where: { id: (ground as any).approvedById }, select: { role: true, organizationId: true } })
+            : null),
       });
 
       if (!user) {
@@ -394,7 +433,8 @@ export class ParticipantsService {
          * browser (see the branch above) - and keeping it is what lets their own
          * link go on working instead of dying the moment they first use it.
          */
-        data: { userId: user.id },
+        /* Accepting is on record from now: they are in every count, and missed is said of them (Hafsah, 13 October). */
+        data: { userId: user.id, acceptedAt: new Date() },
       });
 
       return user;

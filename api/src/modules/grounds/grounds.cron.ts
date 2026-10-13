@@ -13,6 +13,7 @@ import { sendTheLeadsWeeklyLetters } from '../email/the-leads-weekly-letter';
 import { theAnchorScenarioIsOn, theHalfwayMessagesAreOn } from '../admin/what-is-hidden-at-release';
 import { onceAcrossCopies, theDay, theWeek } from '../prisma/once-across-copies';
 import { theReleaseMoment, reachedTheWarningPointBefore } from './the-release-moment';
+import { theSessionsNobodyOpened } from './a-session-nobody-opened';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { deadlineOf } from './when-the-clock-starts';
 import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD, A_GROUND_HAS_STOPPED, A_GROUND_NO_MESSAGE_IS_ABOUT } from './a-ground-that-has-ended';
@@ -487,6 +488,34 @@ export class GroundsCron implements OnApplicationBootstrap {
   @Cron('*/30 * * * *', { timeZone: 'UTC' })
   async autoCloseStaleCheckIns() {
     await this.prisma.withAdvisoryLock(CronLock.AUTO_CLOSE_CHECK_INS, async () => {
+      await this.closeTheSessionsNobodyOpenedInner(new Date()).catch((err) =>
+        this.logger.error(`Could not close the sessions nobody opened: ${err?.message ?? err}`));
+      await this.closeTheStaleOnes();
+    });
+  }
+
+  /**
+   * THE SESSIONS NOBODY OPENED, CLOSED AT THEIR ROUND'S CLOSE AS MISSED, and the next one made on the
+   * check-in's own schedule (see a-session-nobody-opened.ts). Runs in the same half-hourly sweep, first, so
+   * a person's next session is there the morning their next round opens.
+   */
+  async closeTheSessionsNobodyOpenedInner(now: Date): Promise<{ closed: number }> {
+    const releaseMoment = await theReleaseMoment(this.prisma, now);
+    const due = await theSessionsNobodyOpened(this.prisma, now, releaseMoment);
+    let closed = 0;
+    for (const s of due) {
+      const done = await this.conversation.closeAsMissed(s.checkInId, s.closesAt).catch((err: any) => {
+        this.logger.error(`Could not close session ${s.sessionNumber} (${s.checkInId}) nobody opened: ${err?.message ?? err}`);
+        return false;
+      });
+      if (done) closed += 1;
+    }
+    if (closed > 0) this.logger.log(`Closed ${closed} session(s) nobody opened, at their round's close.`);
+    return { closed };
+  }
+
+  private async closeTheStaleOnes() {
+    {
       const inProgress = await this.prisma.checkIn.findMany({
         /* A session on a held ground is not stale, it is waiting. Its clock resumes when the ground does. */
         where: { status: CheckInStatus.IN_PROGRESS, ground: { status: { notIn: HELD } } },
@@ -542,7 +571,7 @@ export class GroundsCron implements OnApplicationBootstrap {
       if (closed > 0) {
         this.logger.log(`Auto-close sweep: closed ${closed} stale check-in(s)`);
       }
-    });
+    }
   }
 
   /**

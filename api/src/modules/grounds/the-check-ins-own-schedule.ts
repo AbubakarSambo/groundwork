@@ -159,23 +159,35 @@ export function howManyRoundsUpTo(s: Omit<TheSchedule, 'startedAt' | 'zone'>, st
  */
 export function whenTheNextSessionOpens(s: TheSchedule, lastOpenedAt: Date, now: Date = new Date()): Date {
   const zone = isAZone(s.zone) ? s.zone : THE_PRODUCTS_OWN_ZONE;
-  const start = onADayTheyWork(theDay(zone, s.startedAt), s.workingDays);
-  const opened = theDay(zone, lastOpenedAt);
   const today = theDay(zone, now);
-
-  /* The round the last session belonged to, and the round after it. */
-  let roundOfLast: Day = start;
-  let after: Day = today + DAY;
-  for (let k = 0; k < 5000; k += 1) {
-    const d = onADayTheyWork(roundDay(s, start, k), s.workingDays);
-    if (d <= opened) roundOfLast = d;
-    else if (d > roundOfLast) {
-      after = d;
-      break;
-    }
-  }
+  const after = theRoundAfter(s, zone, lastOpenedAt) ?? today + DAY;
   /* A whole round late: the round running now, open straight away. Not that round's first day, which has
      gone, so reminders count from when it really opened for them. */
   if (after <= today) return now;
   return theStartOfTheDayIn(zone, after);
+}
+
+/** The day the round after the one a session opened in begins, or null when the schedule has none. */
+function theRoundAfter(s: TheSchedule, zone: string, lastOpenedAt: Date): Day | null {
+  const start = onADayTheyWork(theDay(zone, s.startedAt), s.workingDays);
+  const opened = theDay(zone, lastOpenedAt);
+  /* The round the last session belonged to, and the round after it. */
+  let roundOfLast: Day = start;
+  for (let k = 0; k < 5000; k += 1) {
+    const d = onADayTheyWork(roundDay(s, start, k), s.workingDays);
+    if (d <= opened) roundOfLast = d;
+    else if (d > roundOfLast) return d;
+  }
+  return null;
+}
+
+/**
+ * WHEN THE ROUND A SESSION OPENED IN CLOSES (journey test, round 3, 12 October 2026): the instant the next
+ * round begins, at the start of that day in the organisation's zone. A session nobody opened is closed by
+ * the clock then, as missed. Null when the schedule has no next round.
+ */
+export function whenTheRoundCloses(s: TheSchedule, openedAt: Date): Date | null {
+  const zone = isAZone(s.zone) ? s.zone : THE_PRODUCTS_OWN_ZONE;
+  const after = theRoundAfter(s, zone, openedAt);
+  return after == null ? null : theStartOfTheDayIn(zone, after);
 }

@@ -2,6 +2,7 @@ import { theDayInWords } from '../board/the-day-in-words';
 import { namesTheyCanTellApart } from '../../common/check-ins-you-can-tell-apart';
 import { theAwayLine } from '../suites/who-is-away';
 import { isNotLetInYet } from './who-an-admin-did-not-let-in';
+import { theNotJoinedYetLine } from './invited-not-joined-yet';
 import { theCheckIn, yourCheckIn } from './which-check-in-it-is';
 import { wasAQuietClose } from './an-answer-includes-a-refusal';
 import { checksInOnlyWhenTheyChoose } from './the-lead-checks-in-when-they-choose';
@@ -75,6 +76,8 @@ export interface WhatNeedsYou {
   /** One sentence under the date: who has checked in, or that your check-in is open. */
   line: string | null;
   comingUp: ComingUp[];
+  /** For an admin whose organisation is on its free trial: "Your free trial has started. It ends on 12 November 2026." */
+  freeTrial?: string | null;
 }
 
 /** The parts of a check-ins list row this reads. Everything else on the row is ignored. */
@@ -337,7 +340,7 @@ export function whatNeedsYou(
     /* Your own report from a check-in you finished in the last day. Only you are given it. */
     if (me && !heldFromMyOwn) {
       const last = sessions
-        .filter((c) => c.participantId === me.id && c.status === 'COMPLETED' && (time(c.completedAt) ?? 0) > at - DAY)
+        .filter((c) => c.participantId === me.id && c.status === 'COMPLETED' && !wasAQuietClose(c as any) && (time(c.completedAt) ?? 0) > at - DAY)
         .sort((a, b) => (time(b.completedAt) ?? 0) - (time(a.completedAt) ?? 0))[0];
       if (last) {
         ownReports.push({
@@ -394,11 +397,13 @@ export function whatNeedsYou(
         };
         const missing = waitingIds.map(who);
         const missed = missedIds.map(who);
-        const said = [whoHasNotYet(missing), whoDidNotCheckIn(missed)].filter(Boolean).join(' ');
+        /* Invited, not joined yet: named apart, never as missed and never in the count (decision 8 redone). */
+        const notJoined = theNotJoinedYetLine((g.participants ?? []).filter((p: any) => p.notJoinedYet && !p.notLetIn && !p.managingOnly).map((p: any) => p?.user?.firstName?.trim() || null));
+        const said = [whoHasNotYet(missing), whoDidNotCheckIn(missed), notJoined].filter(Boolean).join(' ');
         line = {
           people: total,
           text: answered === 0
-            ? `In ${g.label}, nobody has checked in for ${theSession(n)}${missing.length ? ' yet' : ''}.${missed.length ? ` ${whoDidNotCheckIn(missed)}` : ''}`
+            ? `In ${g.label}, nobody has checked in for ${theSession(n)}${missing.length ? ' yet' : ''}.${missed.length ? ` ${whoDidNotCheckIn(missed)}` : ''}${notJoined ? ` ${notJoined}` : ''}`
             : `In ${g.label}, ${answered} of ${total} have checked in for ${theSession(n)}. ${said}`,
         };
       }

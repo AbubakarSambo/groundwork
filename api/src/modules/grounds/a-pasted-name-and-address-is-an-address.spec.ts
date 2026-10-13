@@ -60,10 +60,11 @@ describe('a pasted "Name <address>" line adds the address, with the name beside 
     const { service, tx } = makeService({});
     const served: any = await service.addParticipant('g1', 'org1', 'admin', { email: 'pia alpha <Pia.D2tbx@Brightloom.test>' } as any);
     /* And the row the lead is shown names her as typed, never "Somebody invited by email". */
-    expect(served.nameGiven).toBe('pia alpha');
+    /* Hafsah, 12 October: a name typed in lower case is capitalised per part. */
+    expect(served.nameGiven).toBe('Pia Alpha');
     const data = (tx.groundParticipant.create as jest.Mock).mock.calls[0][0].data;
     expect(data.email).toBe('pia.d2tbx@brightloom.test');
-    expect(data.nameGiven).toBe('pia alpha');
+    expect(data.nameGiven).toBe('Pia Alpha');
   });
 
   it('keeps a name the lead typed separately over the one in the line', async () => {

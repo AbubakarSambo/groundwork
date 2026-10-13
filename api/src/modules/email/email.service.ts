@@ -1,3 +1,4 @@
+import { theyWaitForAnAdmin, whatHappensWhenYouJoin } from '../participants/named-when-an-admin-approved';
 import { theEndingSaid, theOutcomeIsThat, TheEndingIsAbout } from '../resolution/end-states';
 import { aPersonNeverReadsAnInternalName } from '../../common/no-internal-name-reaches-a-person';
 import { reportReadyReminderSubject } from './the-report-is-ready-reminder';
@@ -726,6 +727,22 @@ export class EmailService implements OnModuleInit {
 
   // --- Team invites ---
 
+  /**
+   * SOMEBODY ALREADY ON GROUNDWORK, ADDED TO ANOTHER ORGANISATION (Hafsah, 12 October 2026: "Someone already in
+   * another organisation gets an email when added to a new one."). They used to get a bare sign-in link that did
+   * not say who had added them or that anything had changed. A plain email; no WhatsApp message.
+   */
+  async sendAddedToAnotherOrganisation(email: string, firstName: string, token: string, orgName: string): Promise<void> {
+    const url = `${this.frontendUrl}/verify-email?token=${token}`;
+    const named = !isAMadeUpWorkspaceName(orgName);
+    const them = named ? escapeHtml(orgName) : 'Another team';
+    await this.sendEmail({
+      to: email,
+      subject: named ? `You've been added to ${orgName} on Groundwork` : `You've been added to another team on Groundwork`,
+      html: this.layout(`<p>${greeting(firstName)}</p><p>${them} has added you on Groundwork. You already use Groundwork, and everything you have there stays as it is.</p><p>Use the link below to sign in. Then choose ${named ? escapeHtml(orgName) : 'the new team'} from your organisations to see what is there for you.</p><p><a href="${url}">Sign in</a></p><p>This link lasts ${howLongInWords('sign in from a team invitation')}.</p><p style="color:#888;font-size:12px;">If you were not expecting this, you can ignore this email.</p>`),
+    }, undefined, 'sendAddedToAnotherOrganisation');
+  }
+
   async sendUserInvite(email: string, firstName: string, token: string, orgName: string): Promise<void> {
     const url = `${this.frontendUrl}/set-password?token=${token}`;
     /* Groundwork's own placeholder ("Wanjiru's workspace") is not a name anyone says in a sentence. */
@@ -738,6 +755,22 @@ export class EmailService implements OnModuleInit {
   }
 
   // --- Ground / conversation lifecycle (see comms library, Part 3) ---
+
+  /** Whether they go straight in or wait for an admin, one plain sentence, as the invite page says it (Hafsah, 12 October). */
+  private async whatHappensWhenTheyJoin(context?: DeliveryContext): Promise<string> {
+    try {
+      if (!context?.participantId) return '';
+      const row: any = await this.prisma.groundParticipant.findUnique({
+        where: { id: context.participantId },
+        select: { email: true, createdAt: true, addedByUserId: true, ground: { select: { organizationId: true, initiatorId: true, approvedById: true, approvedAt: true, organization: { select: { name: true } } } } },
+      });
+      if (!row?.ground) return '';
+      const waits = await theyWaitForAnAdmin(this.prisma, row.ground, row);
+      return `<p>${escapeHtml(whatHappensWhenYouJoin(waits, row.ground.organization?.name ?? null))}</p>`;
+    } catch {
+      return '';
+    }
+  }
 
   /** Participant added to a check-in. They are NEVER added silently. */
   async sendParticipantInvite(email: string, founderName: string, groundLabel: string, token: string, note?: string, context?: DeliveryContext): Promise<{ devUrl?: string }> {
@@ -774,6 +807,7 @@ export class EmailService implements OnModuleInit {
          <p><strong>${escapeHtml(founderName)}</strong> would like to know what you are seeing in <strong>${escapeHtml(groundLabel)}</strong>.</p>
          <p>It is a short check-in, about ten minutes, where you say what is actually going on from where you sit.</p>
          <p>${escapeHtml(await this.whoSeesWhatYouSay(context))}</p>
+         ${await this.whatHappensWhenTheyJoin(context)}
          <p>You are not being asked to be fair or balanced. You are being asked to be honest. What you share here is yours.</p>
          ${noteHtml}
          <!--

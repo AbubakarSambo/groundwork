@@ -16,6 +16,7 @@ import { theJudgementWithItsConversationPoints } from './the-judgement-and-a-goa
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from './no-internal-label-reaches-anyone';
 import { thePrivateSummaryAsRead } from '../conversation/the-private-summary-opens-with-a-sentence';
 import { whoIsInTheRound } from './how-many-have-answered';
+import { whoHasNotJoinedYet } from '../grounds/invited-not-joined-yet';
 import { whoIsNotLetInYet, theWaitingToBeLetInLine } from '../grounds/who-an-admin-did-not-let-in';
 import { isFromOutside, whoOnACheckInIsAway } from '../suites/who-is-away';
 import { AsyncLocalStorage } from 'async_hooks';
@@ -2424,8 +2425,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const awayThisRound = await whoOnACheckInIsAway(this.prisma, groundId);
     /* Nobody an admin has not let in yet is in the count (decision 77). */
     const notLetInThisRound = await whoIsNotLetInYet(this.prisma, parties as any[]);
+    /* Nor anybody invited who has not joined yet (Hafsah, 13 October): not counted, and not in the judgement's room below. */
+    const notJoinedThisRound = await whoHasNotJoinedYet(this.prisma, parties as any[]).catch(() => new Set<string>());
     const inTheRound = whoIsInTheRound(
-      (parties as any[]).map((p: any) => ({ ...p, notLetIn: notLetInThisRound.has(p.id), awayUntil: awayThisRound.get(p.id) ?? null, checkIns: answeredThisRound.has(p.id) ? [{ status: 'COMPLETED', sessionNumber: roundNow }] : [] })),
+      (parties as any[]).map((p: any) => ({ ...p, notLetIn: notLetInThisRound.has(p.id), notJoinedYet: notJoinedThisRound.has(p.id), awayUntil: awayThisRound.get(p.id) ?? null, checkIns: answeredThisRound.has(p.id) ? [{ status: 'COMPLETED', sessionNumber: roundNow }] : [] })),
       roundNow,
       (ground as any).scenario,
     );
@@ -2560,7 +2563,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
        * the differences - rather than from the frame's field counts, which on four people produce
        * "3 of 4 are blocked" about three people in three different situations. See thisIsARoom.
        */
-      people: (parties as any[]).filter((p) => !p.managingOnly).map((p) => ({
+      /* Somebody invited who has not joined yet is not in the room: nothing is asked of them yet (Hafsah, 13 October). */
+      people: (parties as any[]).filter((p) => !p.managingOnly && !(notJoinedThisRound.has(p.id) && !answeredThisRound.has(p.id))).map((p) => ({
         who: labelById.get(p.id) ?? 'a party',
         isLead: p.partyType === PartyType.INITIATOR,
         role: (p.remitAsGiven ?? p.roleAsDescribed ?? null) as string | null,
@@ -3426,8 +3430,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * round waits on them. Who the round WAITS on before it is written stays whoAnswered, above.
      */
     const notLetInHere = new Set(whoAnswered.notLetInIds ?? []);
+    /* Invited, not joined yet: in no count and never named as not checked in (Hafsah, 13 October). */
+    const notJoinedHere = new Set(whoAnswered.notJoinedIds ?? []);
     const theRound = howManyInTheRoundAnswered(
-      (ground.participants as any[]).map((p: any) => ({ ...p, notLetIn: notLetInHere.has(p.id), awayUntil: whoAnswered.awayUntil?.[p.id] ?? null, checkIns: answeredIds.has(p.id) ? [{ status: CheckInStatus.COMPLETED, sessionNumber }] : [] })),
+      (ground.participants as any[]).map((p: any) => ({ ...p, notLetIn: notLetInHere.has(p.id), notJoinedYet: notJoinedHere.has(p.id), awayUntil: whoAnswered.awayUntil?.[p.id] ?? null, checkIns: answeredIds.has(p.id) ? [{ status: CheckInStatus.COMPLETED, sessionNumber }] : [] })),
       sessionNumber,
       (ground as any).scenario,
     );
@@ -3644,7 +3650,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
      */
     const awayNow = await whoOnACheckInIsAway(this.prisma, groundId);
     const counting = whoIsInTheRound(
-      ground.participants.map((p: any) => ({ ...p, notLetIn: notLetInHere.has(p.id), awayUntil: awayNow.get(p.id) ?? null, checkIns: answeredIds.has(p.id) ? [{ status: CheckInStatus.COMPLETED, sessionNumber }] : [] })),
+      ground.participants.map((p: any) => ({ ...p, notLetIn: notLetInHere.has(p.id), notJoinedYet: notJoinedHere.has(p.id), awayUntil: awayNow.get(p.id) ?? null, checkIns: answeredIds.has(p.id) ? [{ status: CheckInStatus.COMPLETED, sessionNumber }] : [] })),
       sessionNumber,
       (ground as any).scenario,
     )

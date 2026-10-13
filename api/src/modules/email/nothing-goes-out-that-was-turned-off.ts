@@ -158,6 +158,8 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendPasswordResetEmail: 'the way back in',
   sendJoinConfirmation: 'the way back in',
   sendUserInvite: 'the way back in',
+  /* Added to another organisation, by an admin there (Hafsah, 12 October): an invitation, like sendUserInvite. */
+  sendAddedToAnotherOrganisation: 'the way back in',
   sendParticipantInvite: 'the way back in',
   /* It is one of the two invites, picked by the situation. Classified as the invite it delegates to. */
   sendTheInviteThisGroundSends: 'the way back in',
@@ -269,6 +271,8 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendWaitingOnThePeople: 'we decided to send it',
   /* People have stopped answering: told to the lead once a week as an insight. */
   sendWhoHasGoneQuiet: 'we decided to send it',
+  /* Decision 136's notice: unclassified it was already treated this way; now it says so. */
+  sendMissedCheckIns: 'we decided to send it',
   /* What is outstanding for a lead, once each morning when something is (decision 120). */
   sendTheLeadsDailyNudge: 'we decided to send it',
 };

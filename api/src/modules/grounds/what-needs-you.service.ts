@@ -5,6 +5,8 @@ import { BoardService } from '../board/board.service';
 import { whatTheBoardAsksOfTheLead } from './what-the-board-asks-of-the-lead';
 import { isShut } from './a-ground-that-has-ended';
 import { isNotLetInYet, whoIsNotLetInYet } from './who-an-admin-did-not-let-in';
+import { whoHasNotJoinedYet } from './invited-not-joined-yet';
+import { theFreeTrialLine } from './the-free-trial-on-today';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService } from './grounds.service';
 import { whatNeedsYou, type Need, type WhatNeedsYou } from './what-needs-you';
@@ -260,6 +262,12 @@ export class WhatNeedsYouService {
       const held = await whoIsNotLetInYet(this.prisma, g.participants ?? [], organizationId);
       if (held.size) g.participants = (g.participants ?? []).map((p: any) => (held.has(p.id) ? { ...p, notLetIn: true } : p));
     }
+    /* Invited, not joined yet (decision 8 redone): neither counted nor missed, and said as that. The list may have marked them already. */
+    for (const g of here) {
+      if ((g.participants ?? []).some((p: any) => p.notJoinedYet)) continue;
+      const notJoined = await whoHasNotJoinedYet(this.prisma, g.participants ?? []).catch(() => new Set<string>());
+      if (notJoined.size) g.participants = (g.participants ?? []).map((p: any) => (notJoined.has(p.id) ? { ...p, notJoinedYet: true } : p));
+    }
     /* On approved leave today (week 23): their own check-in says the round does not wait for them. Dates only. */
     const awayUntil = (await whoIsAwayOn(this.prisma, [userId], organizationId).catch(() => new Map<string, string>())).get(userId) ?? null;
     const told = whatNeedsYou(here as any, { userId, role, organizationId, notLetIn: !!me?.awaitingOrgApproval, awayUntil }, waiting.map((w) => ({ ...w, organizationId })), new Date(), [...(await this.whatTheirBoardsAsk(userId, here as any[])), ...reviews, ...leaveQuestions, ...spendQuestions, ...toApprove, ...finance, ...hours, ...letIn]);
@@ -284,6 +292,11 @@ export class WhatNeedsYouService {
     /* Their own missed check-ins, told to them first (decision 136). Read only for this reader, about their own rows. */
     const missed = await this.missedCheckInsOf(userId, organizationId).catch(() => [] as Need[]);
     if (missed.length) { told.needs = [...missed, ...told.needs]; told.count = told.needs.length; }
+    /* An admin whose organisation is on its free trial reads one line about it (Hafsah, 12 October). */
+    if (role === 'ADMIN') {
+      const trial = await theFreeTrialLine(this.prisma as any, organizationId).catch(() => null);
+      if (trial) (told as any).freeTrial = trial;
+    }
     const weekly = this.moduleRef?.get(TheWeeklyReportService, { strict: false });
     const outstanding = await this.outstanding(userId, organizationId, told.needs).catch(() => null);
     const alreadySaid = [

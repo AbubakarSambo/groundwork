@@ -515,7 +515,8 @@ describe('with no setting at all, the lead reads Baraka’s pattern in the week 
 describe('somebody an admin has not let in yet, as the lead reads the week', () => {
   async function servedWithChidiHeld(held: boolean) {
     const c = aCheckIn();
-    c.prisma.user = { findMany: jest.fn(async () => (held ? [{ id: 'u-chidi', awaitingOrgApproval: true }] : [])) };
+    /* Everybody here has signed in once (decision 8 redone reads "joined" from that); only the hold differs. */
+    c.prisma.user = { findMany: jest.fn(async (a: any) => (a?.where?.awaitingOrgApproval ? (held ? [{ id: 'u-chidi', awaitingOrgApproval: true }] : []) : ((a?.where?.id?.in ?? []) as string[]).map((id) => ({ id, passwordHash: 'set' })))) };
     await c.svc.build('g1', AT);
     return c.svc.read('g1', LEAD, AT);
   }
@@ -523,6 +524,17 @@ describe('somebody an admin has not let in yet, as the lead reads the week', () 
   it('reads "Both check-ins due this week were made." and nothing about Chidi not checking in', async () => {
     const r = await servedWithChidiHeld(true);
     expect(r.inNumbers?.[0]).toEqual({ figure: '100%', of: 'of check-ins made this week', says: 'Both check-ins due this week were made.' });
+    expect(JSON.stringify(r)).not.toMatch(/Chidi has not checked in/);
+  });
+
+  /* Night quality run 3 (decision 8 redone): invited and never joined is the same as not let in for the count, never "due" and never absent. */
+  it('invited and never joined (no sign-in, nothing opened): not due, and nothing about him not checking in', async () => {
+    const c = aCheckIn();
+    c.prisma.user = { findMany: jest.fn(async (a: any) => (a?.where?.awaitingOrgApproval ? [] : ((a?.where?.id?.in ?? []) as string[]).filter((id) => id !== 'u-chidi').map((id) => ({ id, passwordHash: 'set' })))) };
+    c.prisma.emailVerificationToken = { findMany: jest.fn(async () => []) };
+    await c.svc.build('g1', AT);
+    const r = await c.svc.read('g1', LEAD, AT);
+    expect(r.inNumbers?.[0]?.says).toBe('Both check-ins due this week were made.');
     expect(JSON.stringify(r)).not.toMatch(/Chidi has not checked in/);
   });
 

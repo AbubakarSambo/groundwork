@@ -1,3 +1,4 @@
+import { aNameTypedInLowerCase } from '../../common/a-name-typed-in-lower-case';
 import { theOrganisationsZone, isAZone, forgetTheOrganisationsZone } from '../../common/the-organisations-own-day';
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
 import { Injectable, Logger, Inject, forwardRef, NotFoundException, ConflictException, BadRequestException, ForbiddenException, Optional } from '@nestjs/common';
@@ -852,18 +853,27 @@ export class UsersService {
 
   async create(organizationId: string, dto: CreateUserDto) {
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
-    if (existing) throw new ConflictException('Someone with that email address is already here, so use a different address.');
-
     const organization = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true } });
     if (!organization) throw new NotFoundException('We could not find that organisation, so sign in again and try once more.');
+    if (existing) {
+      /* Somebody already in another organisation is added here and told by email (Hafsah, 12 October), through
+         the one invite there is (auth.teamInvite). Somebody already here is still refused. */
+      const here = existing.organizationId === organizationId || !!(await this.prisma.organizationMembership.findUnique({
+        where: { userId_organizationId: { userId: existing.id, organizationId } }, select: { id: true },
+      }));
+      if (here || existing.deletedAt) throw new ConflictException('Someone with that email address is already here, so use a different address.');
+      await this.auth.teamInvite(organization.name, existing.email, organizationId, { role: (dto.role as any) ?? 'MEMBER' } as any);
+      return { id: existing.id, email: existing.email, message: 'Invite sent' };
+    }
 
     const { user, token } = await this.prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: {
           organizationId,
           email: dto.email.toLowerCase(),
-          firstName: dto.firstName,
-          lastName: dto.lastName ?? '',
+          /* Typed by an admin for somebody else: capitalised where it was typed in lower case (Hafsah, 12 October). */
+          firstName: aNameTypedInLowerCase(dto.firstName),
+          lastName: aNameTypedInLowerCase(dto.lastName ?? ''),
           role: (dto.role as any) ?? 'MEMBER',
           isEmailVerified: false,
           passwordHash: null,

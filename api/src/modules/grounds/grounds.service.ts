@@ -26,6 +26,8 @@ import { withoutBankDetails, withoutBankDetailsInEachTurn } from '../documents/b
 import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD, hasEnded, hasStalled, isHeld, isShut, mayChangeOnItsOwn, whyItRefuses, whyAJoinLinkRefuses, WHILE_IT_IS_HELD, IT_RAN_OUT_OF_TIME } from './a-ground-that-has-ended';
 import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT, wasAQuietClose } from './an-answer-includes-a-refusal';
 import { isNotLetInYet, whoIsNotLetInYet, theWaitingToBeLetInLine } from './who-an-admin-did-not-let-in';
+import { whoHasNotJoinedYet, theNotJoinedYetLine } from './invited-not-joined-yet';
+import { aNameTypedInLowerCase } from '../../common/a-name-typed-in-lower-case';
 import { whoASessionCounts } from './the-lead-checks-in-when-they-choose';
 import { openTheLeadsCheckIn } from './check-in-yourself';
 import { waitsOnAManagingOnlyLead } from './the-lead-who-only-asks';
@@ -1237,7 +1239,8 @@ export class GroundsService {
 
     /* `anna+chidi@gmail.com` was becoming "Anna+chidi" on the roster and in every sentence the
        check-in wrote about them. Sign-up already got this right; this door did not. */
-    const firstName = name ?? aNameOutOfAnAddress(email);
+    /* Typed by the lead for somebody else: capitalised where it was typed in lower case (Hafsah, 12 October). */
+    const firstName = name ? aNameTypedInLowerCase(name) : aNameOutOfAnAddress(email);
     const created = await db.user.create({
       data: { organizationId, email, firstName, lastName: '', role: 'MEMBER', isEmailVerified: true, passwordHash: null },
     });
@@ -1399,7 +1402,7 @@ export class GroundsService {
          */
         /* `awaitingOrgApproval`: whether an admin has let them in yet, which every count reads (decision 77). The
            same yes or no the check-in's own read serves (SAFE_PARTICIPANT_SELECT). */
-        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } },
+        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, managingOnly: true, nameGiven: true, cameThroughTheLink: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } },
         checkIns: {
           /** `isSetup` so a setup conversation can be kept out of every session count. GW-EXP-6. */
           /**
@@ -1483,7 +1486,7 @@ export class GroundsService {
          */
         /* `awaitingOrgApproval`: whether an admin has let them in yet, which every count reads (decision 77). The
            same yes or no the check-in's own read serves (SAFE_PARTICIPANT_SELECT). */
-        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } },
+        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, managingOnly: true, nameGiven: true, cameThroughTheLink: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } },
             checkIns: {
               /** Must match the sibling query above: both feed the same list. GW-EXP-6. */
               select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true, isSetup: true, availableFrom: true, closedReason: true, optional: true, turns: { where: { role: 'PERSON' as any }, take: 1, select: { id: true } } },
@@ -1509,6 +1512,15 @@ export class GroundsService {
     for (const g of [...orgGrounds, ...participantGrounds] as any[]) {
       if (!(g.participants ?? []).some(isNotLetInYet)) continue;
       notLetInOnTheList.set(g.id, await whoIsNotLetInYet(this.prisma, g.participants ?? [], g.organizationId).catch(() => new Map()));
+    }
+    /* INVITED, NOT JOINED YET (decision 8 redone, night run 3): marked on the row, so every count on the list, Today and
+       You leaves them out (isNotLetInYet), and named apart from "N of M" for whoever runs it. Never missed. */
+    const notJoinedOnTheList = new Map<string, Set<string>>();
+    for (const g of [...orgGrounds, ...participantGrounds] as any[]) {
+      const notJoined = await whoHasNotJoinedYet(this.prisma, g.participants ?? []).catch(() => new Set<string>());
+      if (!notJoined.size) continue;
+      notJoinedOnTheList.set(g.id, notJoined);
+      g.participants = (g.participants ?? []).map((p: any) => (notJoined.has(p.id) ? { ...p, notJoinedYet: true } : p));
     }
     /* NOBODY HELD FOR A SEAT READS ANYTHING OF THE CHECK-IN, AND THIS LIST FEEDS TODAY AND YOU (second review, new leak A; row 5). */
     const heldForASeat = await theCheckInsHeldForASeat(this.prisma as any, [...orgGrounds, ...participantGrounds].map((g: any) => g.id), userId);
@@ -1779,7 +1791,14 @@ export class GroundsService {
               })
               .filter((w) => !!w.p && !w.p.managingOnly && (runsIt || (!w.declined && !!myRowHere && w.p.id !== myRowHere.id && !readerIsOutsideTheOrg)))
               .map(({ name, declined }) => ({ name: runsIt || peersVisibleEffective ? name : null, declined })),
-          ),
+          ) ?? null,
+          /* Whoever runs it, or an admin here, reads who was invited and has not joined yet; nobody who checks in does. */
+          notJoinedYet: runsIt
+            ? theNotJoinedYetLine([...(notJoinedOnTheList.get(g.id) ?? new Set<string>())]
+              .map((pid) => ((allParticipants ?? []) as any[]).find((x) => x.id === pid))
+              .filter((p) => !!p && !p.managingOnly)
+              .map((p) => [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim() || (p?.nameGiven ?? '').trim() || null))
+            : null,
           /* Through the report's own door, for every reader, so no label is ever served (U.5 re-review). */
           ...(() => {
             if (!mayReadTheReport || (!latestFinding && !latestSummary)) return { latestFinding: null, latestSummary: null };
@@ -2455,6 +2474,8 @@ export class GroundsService {
       }
     }
 
+    /* Invited, not joined yet (decision 8 redone, night run 3): out of "N of M", and said as that on the check-in page. */
+    const notJoinedHere = await whoHasNotJoinedYet(this.prisma, (ground.participants ?? []) as any[]).catch(() => new Set<string>());
     const participantsWithCheckIns = (ground.participants ?? [])
       .filter((p: any) => !hidePeers || (!!requestingUserId && p.userId === requestingUserId))
       .map((p: any) => {
@@ -2468,6 +2489,7 @@ export class GroundsService {
         notLetIn: !!notLetInInfo,
         /* Not let in yet, still waiting or declined: not counted in "N of M" nor waited on (decision 77). */
         notLetInYet: isNotLetInYet(p),
+        notJoinedYet: notJoinedHere.has(p.id),
         notLetInBy: notLetInInfo && canReadWhoDecided ? (decidersById.get(notLetInInfo.decidedByUserId ?? '') ?? null) : null,
         notLetInAt: notLetInInfo && canReadWhoDecided ? (notLetInInfo.decidedAt ?? null) : null,
         email: hideContact && !isSelf && !viewerIsInitiator ? null : p.email,
@@ -6082,7 +6104,7 @@ export class GroundsService {
              moment `user.firstName` itself is not yet available (see theirName, party-labels.ts). */
           ...(colleagueName ? { nameGiven: colleagueName } : {}),
           /* What the lead calls this person, typed beside the address ("Name + email"), when they were not picked from the colleague list. */
-          ...(!colleagueName && dto.displayName?.trim() ? { nameGiven: dto.displayName.trim().slice(0, 120) } : {}),
+          ...(!colleagueName && dto.displayName?.trim() ? { nameGiven: aNameTypedInLowerCase(dto.displayName.trim()).slice(0, 120) } : {}),
           /* What they are accountable for, in the lead's words. It used to be emailed and then lost. */
           remitAsGiven: dto.note?.trim() || null,
           department: dto.department?.trim() || null,
@@ -6266,7 +6288,7 @@ export class GroundsService {
     return {
       id, email, partyType, userId, roleAsDescribed, invitedAt: emailFailed ? null : invitedAt, notifiedAt, soloArtifactAt, createdAt,
       /* The name the lead typed, as she typed it, so the row she is shown is never "Somebody invited by email" (journey test, 12 October). */
-      nameGiven: colleagueName ?? (dto.displayName?.trim() ? dto.displayName.trim().slice(0, 120) : null),
+      nameGiven: colleagueName ?? (dto.displayName?.trim() ? aNameTypedInLowerCase(dto.displayName.trim()).slice(0, 120) : null),
       notInvitedBecause,
       devUrl: emailResult?.devUrl,
       emailFailed,

@@ -5,6 +5,7 @@ import { theConfirmedWaits, theNoteBesideTheClaim } from '../grounds/a-wait-is-t
 import { nameToCall, aNameToList } from '../engagement/a-name-to-call-them';
 import { withoutRepeats, saysTheSame } from '../engagement/a-sentence-said-twice';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
+import { whoHasNotJoinedYet } from '../grounds/invited-not-joined-yet';
 import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 import { whoWasReallyRemindedToCheckIn } from './a-reminder-really-sent';
@@ -241,7 +242,7 @@ const WEEK = 7 * 86_400_000;
 export async function theWeekOf(prisma: any, g: { id: string; label: string; initiatorId: string }, now: Date): Promise<AWeekInOneCheckIn> {
   const since = new Date(now.getTime() - WEEK);
   const [people, finished, saidNext, done, waiting, doneRows, waitingRows] = await Promise.all([
-    prisma.groundParticipant.findMany({ where: { groundId: g.id }, select: { id: true, userId: true, email: true, managingOnly: true, partyType: true, nameGiven: true, lastNudgedAt: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } }),
+    prisma.groundParticipant.findMany({ where: { groundId: g.id }, select: { id: true, userId: true, email: true, managingOnly: true, partyType: true, nameGiven: true, lastNudgedAt: true, cameThroughTheLink: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } }),
     /* A session the clock closed with nothing said is not a check-in made (night quality run 1: "all four people checked in" with Jared missing). */
     prisma.checkIn.findMany({ where: { groundId: g.id, status: CheckInStatus.COMPLETED, completedAt: { gte: since, lte: now }, AND: [NOT_A_QUIET_CLOSE] }, select: { participantId: true } }),
     prisma.groundCommitment.findMany({ where: { groundId: g.id, participantId: { not: null }, createdAt: { gte: since, lte: now } }, select: { participantId: true } }),
@@ -253,7 +254,9 @@ export async function theWeekOf(prisma: any, g: { id: string; label: string; ini
   ]);
   /* Decision 133: the lead is counted only in a week they checked in, and never listed as not yet. */
   const checkedInThisWeek = new Set((finished as any[]).map((r) => r.participantId));
-  const counted = (people as any[]).filter((p) => !p.managingOnly && (owesThisSession(p) || checkedInThisWeek.has(p.id)) && !isNotLetInYet(p));
+  /* Invited, not joined yet: not counted and never "not yet" (decision 8 redone, night run 3). */
+  const notJoined = await whoHasNotJoinedYet(prisma, people as any[]).catch(() => new Set<string>());
+  const counted = (people as any[]).filter((p) => !notJoined.has(p.id) || checkedInThisWeek.has(p.id)).filter((p) => !p.managingOnly && (owesThisSession(p) || checkedInThisWeek.has(p.id)) && !isNotLetInYet(p));
   const countedIds = new Set(counted.map((p) => p.id));
   const finishedIds = new Set((finished as any[]).map((r) => r.participantId).filter((id: string) => countedIds.has(id)));
   const notYet = counted

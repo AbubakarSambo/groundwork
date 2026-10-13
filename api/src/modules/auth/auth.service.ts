@@ -1057,6 +1057,7 @@ export class AuthService {
        * ALWAYS MEMBER, never their role at home: being an admin of their own company says nothing
        * about what they should hold in somebody else's.
        */
+      let addedNow = false;
       if (inviterOrganizationId && user.organizationId !== inviterOrganizationId) {
         const already = await this.prisma.organizationMembership.findUnique({
           where: { userId_organizationId: { userId: user.id, organizationId: inviterOrganizationId } },
@@ -1071,6 +1072,7 @@ export class AuthService {
             data: { userId: user.id, organizationId: inviterOrganizationId, role },
           });
           this.logger?.log?.(`Existing account ${lower} added to org ${inviterOrganizationId} as a member.`);
+          addedNow = true;
         }
       }
 
@@ -1083,7 +1085,9 @@ export class AuthService {
       await this.prisma.emailVerificationToken.create({
         data: { userId: user.id, token: hashed(token), type: TokenType.EMAIL_VERIFICATION, expiresAt: expiresAtFor('sign in from a team invitation') },
       });
-      await this.emailService.sendMagicLinkEmail(lower, user.firstName, token);
+      /* Added to a new organisation just now: told so, by name, in a plain email (Hafsah, 12 October). */
+      if (addedNow) await this.emailService.sendAddedToAnotherOrganisation(lower, user.firstName, token, inviterOrgName);
+      else await this.emailService.sendMagicLinkEmail(lower, user.firstName, token);
     }
 
     return { message: 'Invite sent.' };

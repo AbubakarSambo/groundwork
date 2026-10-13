@@ -3135,10 +3135,12 @@ from finishing at all.`;
             department: pending.department ?? null,
             invitedAt: new Date(),
             notifiedAt: new Date(),
+            /* They came in through the check-in's own link themselves: that is accepting (Hafsah, 13 October). */
+            acceptedAt: new Date(),
           },
         });
-      } else if (!participant.userId) {
-        participant = await tx.groundParticipant.update({ where: { id: participant.id }, data: { userId: user.id } });
+      } else if (!participant.userId || !(participant as any).acceptedAt) {
+        participant = await tx.groundParticipant.update({ where: { id: participant.id }, data: { userId: participant.userId ?? user.id, acceptedAt: (participant as any).acceptedAt ?? new Date() } });
       }
 
       let checkIn = await tx.checkIn.findFirst({

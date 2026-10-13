@@ -149,6 +149,7 @@ import { askTheReportsDoor, theLeadsNamesOf, theLeadsLineAsAParticipantMayRead, 
 import { whatThisSessionHolds, atAGlanceTiles, theBlockersTileNamesThis } from '../reports/what-this-session-holds';
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-quote-built-at-the-read';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
+import { whoHasNotJoinedYet, theNotJoinedYetLine } from '../grounds/invited-not-joined-yet';
 import { wasAQuietClose } from '../grounds/an-answer-includes-a-refusal';
 /** The person's first turn on a check-in, if any: with `closedReason`, enough to tell a session the clock closed with nothing said (wasAQuietClose). */
 const SAID = { where: { role: 'PERSON' as any }, take: 1, select: { id: true } };
@@ -172,6 +173,7 @@ import { splitTheTotal, sayingWhatTheSplitDoes } from '../alignment/a-total-spli
 import { peopleFrom } from '../alignment/a-file-of-people-becomes-people';
 import { whatTheyTried } from '../conversation/a-blocker-is-not-a-blocker-until-you-have-tried';
 import { theBoardsJudgementFor } from '../reports/the-judgement-is-the-leads';
+import { withTheCountsBehindIt } from './the-counts-behind-this';
 import { isEvaluationCheckIn, theSubjectOfAnEvaluationCheckIn, viewerIsTheSubjectOfAnEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { whatEachHandoffPersonTyped, withTheirWordsChecked } from './the-handoff-words-the-person-typed';
 import { whatWasAgreedAtTheStart, theGoalsSetForAnyone } from './what-was-agreed-at-the-start';
@@ -906,12 +908,12 @@ export class BoardService {
        * SHARED picture is not permission to hand round the reading of it.
        * See reports/the-judgement-is-the-leads.
        */
-      ...theBoardsJudgementFor((ground as any).report, {
+      ...(await withTheCountsBehindIt(this.prisma, groundId, theBoardsJudgementFor((ground as any).report, {
         isLead: isInitiator,
         /* A check-in of one (request 136 item 7): the same reading the report uses, people who answer, not people managing. */
         theReaderIsTheOnlyPerson: ((ground.participants as any[]) ?? []).filter((x) => !x.managingOnly).length === 1
           && ((ground.participants as any[]) ?? []).filter((x) => !x.managingOnly)[0]?.userId === (ground as any).initiatorId,
-      }),
+      }))),
       /*
        * AND WHAT THE RECORD SHOWS ACROSS EVERY SESSION - commitments, dependencies, patterns, gaps,
        * what is still open. The lead's own surface, because it is the lead who has to decide
@@ -923,7 +925,7 @@ export class BoardService {
          same number of sessions in both (item 18). */
       overTime: isInitiator ? await (async () => {
         const served = overTimeAsServed((ground as any).report?.overTime ?? null, {
-          sessionsSoFar: Math.max(0, ...checkIns.filter((c: any) => !c.isSetup && c.status === CheckInStatus.COMPLETED).map((c: any) => c.sessionNumber ?? 0)),
+          sessionsSoFar: Math.max(0, ...checkIns.filter((c: any) => !c.isSetup && c.status === CheckInStatus.COMPLETED && !wasAQuietClose(c)).map((c: any) => c.sessionNumber ?? 0)),
           meetingsOnRecord: await meetingsOnRecordFor(this.prisma, groundId),
         });
         return served && patternQuestions.length ? { ...served, toSettleFirst: [...(served.toSettleFirst ?? []), ...patternQuestions] } : served;
@@ -1263,7 +1265,7 @@ export class BoardService {
             participantId: p.id,
             name: nameOf(p.id),
             asked: checkIns.some(
-              (c) => c.participantId === p.id && c.sessionNumber >= (o.addedAtSession as number) && c.status === CheckInStatus.COMPLETED,
+              (c) => c.participantId === p.id && c.sessionNumber >= (o.addedAtSession as number) && c.status === CheckInStatus.COMPLETED && !wasAQuietClose(c as any),
             ),
           })),
       }));
@@ -1717,6 +1719,8 @@ export class BoardService {
               if (p.managingOnly) return [n, 'na'];
               const ci = checkIns.find((c) => c.participantId === p.id && c.sessionNumber === n);
               if (!ci) return [n, 'na'];
+              /* Closed by the clock with nothing said: missed, never "Checked in" (decision 8, night run 3). */
+              if (ci.status === CheckInStatus.COMPLETED && wasAQuietClose(ci as any)) return [n, 'missed'];
               return [n, ci.status === CheckInStatus.COMPLETED ? 'done'
                 : ci.status === CheckInStatus.IN_PROGRESS ? 'in-progress'
                 : ci.status === CheckInStatus.DECLINED ? 'declined'
@@ -1986,8 +1990,16 @@ export class BoardService {
         /* Somebody still waiting for the organisation to let them in is not "has not checked in yet": they
            cannot, and the lead is not to be asked to chase them (request 85). Their row says nothing. */
         const waitingAtTheDoor = new Set(ground.participants.filter((p: any) => p.user?.awaitingOrgApproval).map((p: any) => p.id));
+        /* Invited and not joined yet (Hafsah, 13 October): never "has not checked in yet"; said for what it is. */
+        const notJoinedOnTheBoard = await whoHasNotJoinedYet(this.prisma, ground.participants as any[]).catch(() => new Set<string>());
         out.contribution = contributionAsThisReaderMayRead(buildContribution(readInput, nameOf), me?.id ?? null)!
-          .map((r) => ({ ...r, ...(r.notCheckedInYet && waitingAtTheDoor.has(r.participantId) ? { reason: null } : {}), remit: theLeadsWordsAbout({ roleAsDescribed: r.remit }, isInitiator) }));
+          .map((r) => ({
+            ...r,
+            ...(r.notCheckedInYet && waitingAtTheDoor.has(r.participantId) ? { reason: null } : {}),
+            ...(r.notCheckedInYet && !waitingAtTheDoor.has(r.participantId) && notJoinedOnTheBoard.has(r.participantId)
+              ? { reason: theNotJoinedYetLine([r.name ?? null]), notJoinedYet: true } : {}),
+            remit: theLeadsWordsAbout({ roleAsDescribed: r.remit }, isInitiator),
+          }));
       }
       /*
        * HELP NOBODY MENTIONED (request 115 c): a colleague named somebody as the reason something moved,
@@ -2021,7 +2033,7 @@ export class BoardService {
       }
       /* Built from what may be served, never the read passed through whole: no confidence, no percentage,
          no count of evidence, and nothing of a read too thin to show (request 111 a, no-rating-is-served). */
-      if (has('coverage')) out.coverage = coverageAsThisReaderMayRead(buildCoverage(readInput, nameOf), me?.id ?? null);
+      if (has('coverage')) out.coverage = coverageAsThisReaderMayRead(buildCoverage(readInput, nameOf), me?.id ?? null, { theLead: isInitiator });
       /*
        * THE REASON LINES, WORDED. Seventeen interpolated sentences in reads.ts read identically on
        * every board in the product. The engine's claims are unchanged: `safeToUse` holds every number
@@ -2113,7 +2125,7 @@ export class BoardService {
       // buildManagerAlignment for why the board needs one at all.
       /* The count of periods is made true here too, for a report stored before it was made true at the source
          (request 79 a): never more than the sessions that were answered, as decision 57 counts them. */
-      const answeredHere = ((ground as any).checkIns ?? []).filter((c: any) => c.status === CheckInStatus.COMPLETED && !c.isSetup);
+      const answeredHere = ((ground as any).checkIns ?? []).filter((c: any) => c.status === CheckInStatus.COMPLETED && !c.isSetup && !wasAQuietClose(c));
       const periodsHeld = periodsTheRecordHolds(answeredHere.map((c: any) => ({ sessionNumber: c.sessionNumber, when: c.completedAt })), ground as any);
       const reportWithTrueCounts = Array.isArray((reportSafe as any)?.leadershipGaps)
         ? { ...(reportSafe as any), leadershipGaps: (reportSafe as any).leadershipGaps.map((g: any) => ({ ...g, periods: aTruePeriodCount(g?.periods, periodsHeld) })) }
@@ -2590,7 +2602,7 @@ export class BoardService {
         aColleague: (pid) => aColleague(pid),
       };
       const mine = await this.theRecordTheSwitchboardsSectionsRead(groundId, checkIns as any[]);
-      const sessions = (checkIns as any[]).map((c) => ({ id: c.id, participantId: c.participantId, sessionNumber: c.sessionNumber, status: c.status, completedAt: c.completedAt ?? null, isSetup: !!c.isSetup }));
+      const sessions = (checkIns as any[]).map((c) => ({ id: c.id, participantId: c.participantId, sessionNumber: c.sessionNumber, status: c.status, completedAt: c.completedAt ?? null, isSetup: !!c.isSetup, closedReason: c.closedReason ?? null, turns: c.turns }));
       const people = (ground.participants as any[]).map((p) => ({ id: p.id, managingOnly: !!p.managingOnly }));
       /* A quotation mark goes only round words found character for character in what that person typed. */
       const handoffs = withTheirWordsChecked(
@@ -2936,7 +2948,7 @@ export class BoardService {
         /* Only for whoever runs the check-in: a person who checks in reads their own board (part 3), and the person
            reviewed on an evaluation check-in is never told how many others answered or are waiting (decision 17). */
         if (kind && readerRunsIt) {
-          const answeredBy = new Set((checkIns as any[]).filter((c) => String(c.status).toUpperCase() === 'COMPLETED').map((c) => c.participantId));
+          const answeredBy = new Set((checkIns as any[]).filter((c) => String(c.status).toUpperCase() === 'COMPLETED' && !wasAQuietClose(c)).map((c) => c.participantId));
           /* Somebody an admin has not let in yet is not one of the cohort's count (decision 77). */
           const people = (ground.participants as any[]).filter((p) => !isNotLetInYet(p) || answeredBy.has(p.id)).map((p) => ({
             id: p.id,
@@ -2985,7 +2997,7 @@ export class BoardService {
           meId: me.id,
           /* Each session's team picture is released on its own (decision 76, item 4): shared only once the session the report holds now is. */
           released: teamPictureShared,
-          hasOwnReport: (checkIns as any[]).some((c) => c.participantId === me.id && String(c.status).toUpperCase() === 'COMPLETED'),
+          hasOwnReport: (checkIns as any[]).some((c) => c.participantId === me.id && String(c.status).toUpperCase() === 'COMPLETED' && !wasAQuietClose(c)),
         });
       }
       /*
@@ -4084,7 +4096,7 @@ export class BoardService {
    * ground's rows instead of one session's. Names go through the same labels the board already uses.
    */
   private async everySessionThroughTheReportEngines(groundId: string, ground: any, checkIns: any[], openRound: number, reader: { participantId: string | null; isLead: boolean; runsIt?: boolean; colleaguesWordsWalled?: boolean }) {
-    const completed = checkIns.filter((c) => c.status === CheckInStatus.COMPLETED);
+    const completed = checkIns.filter((c) => c.status === CheckInStatus.COMPLETED && !wasAQuietClose(c as any));
     const [entries, docs, baseline, deps] = await Promise.all([
       this.prisma.recordEntry.findMany({
         where: { disputedAt: null, checkInId: { in: completed.map((c) => c.id) } },

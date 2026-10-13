@@ -1429,6 +1429,11 @@ model GroundParticipant {
   /// nothing on the roster said. The conversation happens in it; the record stays in English.
   language                   String?           @db.VarChar(8)
   invitedAt                  DateTime?         @map("invited_at")
+  /// WHEN THEY ACCEPTED THE INVITATION (Hafsah, 13 October 2026: "count someone as missed only if they joined
+  /// the check-in (accepted the invitation) and then never opened a session"). Written when they press Join on
+  /// their invitation or come in through the check-in's own join link. Being able to sign in, or having seen the
+  /// welcome, is not accepting: a sign-in can exist before anybody accepts. See grounds/invited-not-joined-yet.ts.
+  acceptedAt                 DateTime?         @map("accepted_at")
   notifiedAt                 DateTime?         @map("notified_at") // never added silently
   // Mirror of the LATEST invite-kind EmailDelivery status for this participant
   // (SENT | DELIVERED | BOUNCED | COMPLAINED) - written by the Resend webhook.

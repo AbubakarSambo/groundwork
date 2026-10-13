@@ -227,6 +227,8 @@ function theTranscriptHoldsTheCredit(helper: string, held: WhatTheRecordHolds): 
  */
 const A_PATTERN_TITLE = [...Object.values(PLAIN_PATTERN_NAMES).map((n) => n.name), ...Object.values(NEVER_NAMED_TO_A_PERSON)]
   .map((t) => t.toLowerCase().replace(/[.!?]+$/, ''));
+/* The names Hafsah approved (decision 52), which may head their own pattern. */
+const AN_APPROVED_NAME = new Set(Object.values(PLAIN_PATTERN_NAMES).map((n) => n.name.toLowerCase().replace(/[’']/g, "'").replace(/[.!?]+$/, '')));
 const A_LABEL = ['stuck and not chasing', 'blame shifter', 'blame-shifter', 'underperformer', 'under-performer', 'low performer', 'poor performer', 'exit candidate', 'on a pip', 'flight risk', 'a slacker'];
 const A_LABEL_AFTER_IS = /\b(?:is|are|was|were|seems|looks|has\s+become)\s+(?:now\s+|really\s+|clearly\s+)?(?:a|an|the)?\s*(?:blame[-\s]shifter|underperformer|low[-\s]performer|poor[-\s]performer|on\s+a\s+pip|exit\s+candidate)\b/i;
 
@@ -243,8 +245,12 @@ export function putsALabelOnAPerson(sentence: string, held: WhatTheRecordHolds =
   const s = withoutTheirWords(sentence);
   const lower = s.toLowerCase().replace(/[’']/g, "'");
   const titled = A_PATTERN_TITLE.some((t) => lower.includes(t.replace(/[’']/g, "'"))) || A_LABEL.some((l) => lower.includes(l));
-  /* A title on a line of its own, over a sentence that names the person, is the same label: the board's heading over Collins. */
-  if (titled && (theTextNamesAPerson || namesAPerson(s, held))) return true;
+  /* A title on a line of its own, over a sentence that names the person, is the same label: the board's heading over Collins.
+     EXCEPT an approved pattern name heading its own pattern (Hafsah, 12 October): "Approved pattern names may head a pattern, shown
+     with what happened; never as a tag beside a person's name". A line that is only the approved name, naming nobody, is kept; the
+     same name in a sentence with the person's name, and every word on the label list, are still removed. */
+  const anApprovedHeading = AN_APPROVED_NAME.has(lower.trim().replace(/[.!?:]+$/, '')) && !namesAPerson(s, held);
+  if (titled && !anApprovedHeading && (theTextNamesAPerson || namesAPerson(s, held))) return true;
   return A_LABEL_AFTER_IS.test(s) && namesAPerson(s, held);
 }
 
