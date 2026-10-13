@@ -14,7 +14,12 @@ export function answerFirst(work: () => Promise<unknown>, onError: (err: any) =>
   const job = Promise.resolve().then(work).catch(onError);
   running.add(job);
   void job.finally(() => running.delete(job));
-  const waits = process.env.NODE_ENV === 'test' && !process.env.GW_WEBHOOK_ANSWERS_FIRST;
+  /*
+   * "In the test suites" is read from Jest itself (JEST_WORKER_ID), not only NODE_ENV: CI runs the suites with NODE_ENV=development,
+   * so the work was not waited for there and the specs that read what a person was sent saw nothing. Never set outside Jest.
+   */
+  const inTheSuites = process.env.NODE_ENV === 'test' || !!process.env.JEST_WORKER_ID;
+  const waits = inTheSuites && !process.env.GW_WEBHOOK_ANSWERS_FIRST;
   return waits ? job.then(() => undefined) : Promise.resolve();
 }
 
