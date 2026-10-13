@@ -1,4 +1,5 @@
 import { isShut } from './a-ground-that-has-ended'
+import { whoIsInRound } from './who-is-in-this-round'
 
 /**
  * WHAT A GROUND IN THE RAIL NEEDS FROM YOU, IF ANYTHING.
@@ -29,15 +30,23 @@ export type RailAttention =
   /** An open check-in of your own, past the date it was due. */
   | { kind: 'overdue'; sessionNumber: number; daysLate: number }
   /** Not yours to do: other people have not checked in yet. */
-  | { kind: 'waiting'; done: number; total: number }
+  | {
+      kind: 'waiting'; done: number; total: number
+      /** People on it who are not counted because an admin has not let them in yet, and who have not answered. Said beside the count, so "one of the two" beside five names reads true. */
+      notLetIn?: number
+    }
 
 export interface RailGround {
   /** The ground's own status. Without it, the rail cannot tell a live check-in from a shut one. */
   status?: string | null
-  participants?: { id: string; userId?: string | null }[]
-  checkIns?: { participantId: string; sessionNumber: number; status: string; availableFrom?: string | null }[]
+  /** `managingOnly`: a lead who runs an anchor check-in and does not check in herself (the server's flag). */
+  participants?: { id: string; userId?: string | null; partyType?: string | null; managingOnly?: boolean | null; notLetInYet?: boolean | null }[]
+  /** `isSetup`: the lead's set-up conversation, kept as a check-in row; it is not a session and nobody answered it. */
+  checkIns?: { participantId: string; sessionNumber: number; status: string; availableFrom?: string | null; isSetup?: boolean | null }[]
   closedAt?: string | null
   resolvedAt?: string | null
+  /** B-078: needed to leave out a lead who only manages, the same rule `whoIsInRound` already uses. */
+  scenario?: string | null
 }
 
 /** How long after a check-in opens before it counts as late. */
@@ -62,7 +71,9 @@ export function railAttention(g: RailGround, myUserId: string | null | undefined
   if (isShut(g.status) || g.closedAt || g.resolvedAt) return { kind: 'none' }
 
   const me = (g.participants ?? []).find((p) => p.userId && p.userId === myUserId)
-  const checkIns = g.checkIns ?? []
+  /* The set-up conversation is not a session (screens item c), so it is never "done" for anybody here (release check, 9 October:
+     an anchor lead read "Two of the three have not answered yet." while nobody had checked in). */
+  const checkIns = (g.checkIns ?? []).filter((c) => !c.isSetup)
 
   if (me) {
     const mine = checkIns.filter((c) => c.participantId === me.id && c.status !== 'COMPLETED')
@@ -83,12 +94,35 @@ export function railAttention(g: RailGround, myUserId: string | null | undefined
 
   // Nothing of yours outstanding. Say who else is still out, which is what an admin
   // wants and what a party who has finished wants - both are "not your move".
-  const parties = (g.participants ?? []).length
+  /*
+   * THE TEAM'S ROUND, NOT THE LEAD'S OWN EXTRA ONE (journey test, 12 October 2026). Lena checked in
+   * herself a second time, so her session 2 row was the latest open one, and the team, all on session
+   * 1 (the line under it said "Session 1 of 261"), was counted against session 2, which none of them
+   * had. The round counted is the latest one opened for somebody who does not choose when to check in;
+   * only where nobody else has a row is it the lead's.
+   */
+  const choosesWhen = new Set((g.participants ?? []).filter((p) => p.partyType === 'INITIATOR' || !!p.managingOnly).map((p) => p.id))
+  const theTeams = checkIns.filter((c) => !choosesWhen.has(c.participantId))
+  const round = openRound(theTeams.length ? theTeams : checkIns, now)
+  /*
+   * B-078: A LEAD WHO ONLY MANAGES IS NOT COUNTED PAST HER OWN SET-UP ROUND. Grace runs "Shops
+   * reorder in two days" (HELP_TEAM_UNDERSTAND) and never checks in; `whoIsInRound` already leaves
+   * her out of this exact count everywhere else on the page (who-is-in-this-round.ts), but this
+   * function counted every participant and her completed set-up row as an answer, so the line at
+   * the top of every tab read "Three of the four have not answered yet." when none of the three
+   * people who actually check in had answered. One rule, used here too.
+   */
+  /* Decision 133: the lead is in the round only when they answered it. */
+  const inThisRound = whoIsInRound(g.participants ?? [], round, g.scenario, checkIns)
+  const parties = inThisRound.length
   if (parties > 1) {
-    const round = openRound(checkIns, now)
     if (round > 0) {
-      const done = checkIns.filter((c) => c.sessionNumber === round && c.status === 'COMPLETED').length
-      if (done < parties) return { kind: 'waiting', done, total: parties }
+      const inThisRoundIds = new Set(inThisRound.map((p) => p.id))
+      const done = checkIns.filter((c) => c.sessionNumber === round && c.status === 'COMPLETED' && inThisRoundIds.has(c.participantId)).length
+      /* Who is on it and not counted: not let in yet, not the lead, and not answered (decision 77, the same rule as whoIsInRound). */
+      const answeredHere = new Set(checkIns.filter((c) => c.sessionNumber === round && c.status === 'COMPLETED').map((c) => c.participantId))
+      const notLetIn = (g.participants ?? []).filter((p) => p.notLetInYet && !choosesWhen.has(p.id) && !answeredHere.has(p.id)).length
+      if (done < parties) return { kind: 'waiting', done, total: parties, ...(notLetIn ? { notLetIn } : {}) }
     }
   }
   return { kind: 'none' }

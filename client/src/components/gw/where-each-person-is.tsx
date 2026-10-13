@@ -19,7 +19,7 @@ import { initialsOf } from '@/pages/org/people-here'
  * could read off the board. What a manager can act on is how long something has sat against what
  * has actually been tried, and one move to put to them.
  */
-export type Reason = 'has not answered' | 'stuck and not chasing' | 'behind the pace' | 'nothing checkable' | 'waiting on someone' | 'nothing to do' | 'not let in'
+export type Reason = 'has not answered' | 'something in the way two weeks' | 'behind the pace' | 'nothing checkable' | 'waiting on someone' | 'nothing to do' | 'not let in'
 
 export interface Row {
   participantId: string
@@ -61,7 +61,7 @@ export interface Row {
     let in'` has no label: see the comment on `Row.reason` above - the row's own sentence is enough. */
 const LABEL: Record<Reason, string> = {
   'has not answered': 'Has not answered',
-  'stuck and not chasing': 'Stuck and not chasing',
+  'something in the way two weeks': 'Something in the way for two weeks',
   'behind the pace': 'Behind the pace',
   'nothing checkable': 'Nothing checkable',
   /* Engine request 115 (d): somebody waiting on a colleague is no longer sent as "nothing to do". */
@@ -72,7 +72,7 @@ const LABEL: Record<Reason, string> = {
 
 const TONE: Record<Reason, TagTone> = {
   'has not answered': 'concern',
-  'stuck and not chasing': 'concern',
+  'something in the way two weeks': 'concern',
   'behind the pace': 'attention',
   'nothing checkable': 'attention',
   'waiting on someone': 'attention',
@@ -245,13 +245,24 @@ export function WhereEachPersonIs({ rows, squaresFor }: { rows: Row[]; squaresFo
               )}
               <Stack gap={4}>
                 <div className="gwui-fs-15 gwui-ink-sub">{r.says}</div>
-                {/* `ask` and `finding`, kept as one quiet line rather than dropped - not in the
-                    prototype's table, but the whole point of a row for a lead who can act on it. */}
-                {(r.ask || r.finding) && (
-                  <Note tone={r.hasGap ? 'amber' : 'muted'}>
-                    {[r.ask, r.finding].filter(Boolean).join(' ')}
-                  </Note>
-                )}
+                {/*
+                  `ask` AND `finding` ARE NOT THE SAME VOICE (real-user walk, Kijani Foods, fault 3).
+                  `ask` is the coaching line, in the product's own words; `finding` is what the record
+                  holds against that, which can be the person's own words carried over verbatim (see
+                  the-facts-about-a-person.ts). Joined with a bare space, "Ask Fatou Diallo for a
+                  number or a date for what moved this round. The month-end reconciliation runs off a
+                  spreadsheet on my own drive." ran Fatou's own words on from the coaching sentence as
+                  if the product had said them, with no quote marks and no name to say whose they are.
+                  Now the coaching line stands as its own line, and the finding follows attributed to
+                  the person it is about, on its own line, in quotes.
+                */}
+                {r.ask && <Note tone={r.hasGap ? 'amber' : 'muted'}>{r.ask}</Note>}
+                {/* The finding is the product's own sentence, written from the record ("Neema Achieng has
+                    signed one shop."), which can carry a person's words inside it. Drawing it as
+                    `<name> said, "…"` put Groundwork's words in their mouth (walk of the existing
+                    clients' use cases, 7 October), so it stands on its own line, in the product's voice,
+                    until the engine marks which findings are the person's own words (request 174). */}
+                {r.finding && <Note tone={r.hasGap ? 'amber' : 'muted'}>{r.finding}</Note>}
                 {r.keepsComingUp && <Note tone="muted">{r.keepsComingUp}</Note>}
               </Stack>
             </Stack>

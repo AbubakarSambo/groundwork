@@ -98,4 +98,17 @@ describe('"Your check-in" in the header', () => {
     /* BetweenCheckIns' own header, B3 - the Check-in tab's "nothing open" state. */
     expect(await screen.findByText('No check-in open right now')).toBeTruthy()
   })
+
+  /*
+   * B-234: WITH NOTHING OPEN TO GO TO, THIS DID NOTHING A READER COULD SEE. Stalled, with no
+   * `myOpenCheckInId`, pressing it just called `goTab('chat')` while Mira was already on the
+   * Check-in tab - no request, nothing visible changed. Withheld here the same way Dov's own
+   * "Start my check-in" is withheld once a check-in has stalled.
+   */
+  it('is not shown once the check-in has stalled', async () => {
+    ;(groundsApi.get as any).mockResolvedValue(baseGround({ status: 'STALLED', checkIns: [] }))
+    renderPage()
+    await screen.findByRole('link', { name: 'board' })
+    expect(screen.queryByRole('button', { name: 'Your check-in' })).toBeNull()
+  })
 })

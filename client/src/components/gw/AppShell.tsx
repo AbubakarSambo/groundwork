@@ -1,4 +1,6 @@
 import { useNoRailStore } from '@/stores/no-rail'
+import { useCheckInFocusStore } from '@/stores/check-in-focus'
+import { useSuitesKnownOffStore } from '@/stores/suites-known-off'
 import { toast } from 'sonner'
 import { mayRenameACheckIn } from '@/lib/who-may-rename-a-check-in'
 import { MARKETING_URL } from '@/lib/marketing'
@@ -10,13 +12,17 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth'
 import { justTheQuestion } from '@/pages/invite/the-link-opens-on-the-question'
 import { groundsApi } from '@/api/grounds'
+import { authApi } from '@/api/auth'
 import { todayApi } from '@/api/today'
+import { queueApi, yourRequestsApi, reviewsApi } from '@/api/suites'
+import { useSuitesOnForYou } from '@/hooks/useSuitesOnForYou'
 import { useEntryStore } from '@/stores/entry'
 import { useFeedbackStore } from '@/stores/feedback'
 import { useHelpStore } from '@/stores/help'
 import { useAskStore } from '@/stores/ask'
+import { useEntryFillsInPanelStore } from '@/stores/entry-fills-in-panel'
 import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
-import { AskGroundwork } from './AskGroundwork'
+import { AskGroundwork, checkInOnThisPage } from './AskGroundwork'
 import { askNameFor } from '@/lib/ask-name'
 import { hasEnded } from '@/lib/a-ground-that-has-ended'
 import { Button } from './kit'
@@ -59,7 +65,26 @@ export const ORG_ROUTES = ['/org/members', '/settings/connections', '/settings/w
 type FbTab = 'reaction' | 'build' | 'wrong'
 
 const REACTION_OPTIONS = ['This clicked', 'I could see myself using this', 'Interesting but I am not sure', 'Not for me']
-const BUILD_OPTIONS    = ['Reminder / email nudge', 'Mobile app', 'Slack integration', 'Better reports', 'More templates', 'Team analytics']
+/*
+ * KEPT EXACTLY AS THE SERVER'S OWN BUILD_PILLS (feedback.controller.ts) - what gets SENT as `pill`,
+ * checked word for word by the-feedback-form-and-the-server-agree.spec.ts, and by the server's own
+ * `@IsIn(VALID_PILLS)` the moment the words disagree even slightly (every submission used to be
+ * rejected with a 400 for exactly that reason - see that spec's own history). Never reworded here
+ * on its own; see BUILD_OPTION_LABELS just below for what a person actually reads.
+ */
+const BUILD_OPTIONS = ['Reminder / email nudge', 'Mobile app', 'Slack integration', 'Better reports', 'More templates', 'Team analytics']
+/*
+ * B-225 (REVIEW 5): PLAIN FULL WORDS, NOT CLIPPED PHRASES, ON SCREEN ONLY. "Reminder / email
+ * nudge" is two fragments joined by a slash, and "Slack integration" and "Team analytics" are the
+ * kind of work jargon CLAUDE.md's wording rule rules out - said the way a person reading this
+ * panel would say them. The value actually SENT (`BUILD_OPTIONS`, above) is untouched: the server
+ * does not know this map exists and must keep validating the old words.
+ */
+const BUILD_OPTION_LABELS: Record<string, string> = {
+  'Reminder / email nudge': 'Reminders by email',
+  'Slack integration': 'Notices in Slack',
+  'Team analytics': 'A picture of how the team is doing',
+}
 
 function FeedbackWidget() {
   const location = useLocation()
@@ -111,6 +136,18 @@ function FeedbackWidget() {
    */
   const askOpen = useAskStore((s) => s.open)
   /*
+   * B-218: "0 OF N SET" IS A FULL-HEIGHT COLUMN, NOT A ROW SOMEWHERE DOWN THE PAGE.
+   *
+   * Once a situation is picked, `FillsInAsYouTalk`'s own side panel (EntryChatPage.tsx, U.6) runs
+   * the full height of the page down the right edge - there is no top-right (or bottom-right)
+   * corner left that is clear of it, so this is hidden exactly like the other moving-target pages
+   * below rather than chased with a new fixed position. `EntryChatPage` tells the shell the panel
+   * is up through `useEntryFillsInPanelStore`, the same way `useCheckInFocusStore` already tells it
+   * about the live conversation - the shell cannot read the panel's own state off the URL, since
+   * `/start` is the same address before and after a situation is picked.
+   */
+  const fillsInPanelShowing = useEntryFillsInPanelStore(s => s.showing)
+  /*
    * WALKTHROUGH PASS 2, ITEM 2: "/chat" IS THE SAME COMPOSER AS "/chat/:id", AND THE SAME TWO
    * CONTROL-COVERING PROBLEMS ELSEWHERE.
    *
@@ -123,10 +160,57 @@ function FeedbackWidget() {
    * both of which can be anywhere down a long page, so no single reposition clears every row.
    * Hidden here for the same reason as the two above: "Send feedback" on the person's own menu (and
    * on "More" on a phone) still opens the same panel.
+   *
+   * B-217: AND THE BOARD'S OWN ASK BAR, FOR THE SAME REASON AskTheBoard.tsx's bar is the LAST thing
+   * on the board, wherever that lands - a short board, a long one, more or fewer dependencies - so
+   * raising the trigger a fixed amount (the old `bottom: 84`) only ever worked for the one board
+   * height it was measured against; on a board short enough for that row to sit near the fold, the
+   * two still landed on each other (measured live: 1440px, an 8px overlap). "Send feedback" on the
+   * person's own menu still reaches the same panel.
+   *
+   * B-218 (REVIEW 4): AND "/settings" ITSELF, FOR THE SAME REASON AS PEOPLE. A fixed `bottom: 64`
+   * was raised to clear "Download it" (see the removed comment that used to sit on the position
+   * below) - but this page, like People, has several controls the trigger can land on depending on
+   * scroll position and what the organisation has switched on (the email notifications row on
+   * arrival at 1440, "Download it", "Leave", "Sign out" at others), not only the one it was raised
+   * for. No single reposition clears every one of them, so this page is hidden outright, the same
+   * as People; "Send feedback" on the person's own menu (and "More" on a phone) still opens the
+   * same panel.
    */
   const hideTrigger = location.pathname === '/more' || location.pathname.startsWith('/checkin/')
     || location.pathname === '/chat' || location.pathname === '/settings/suites' || location.pathname === '/org/members'
+    || location.pathname === '/settings'
+    || isGroundsBoard
+    || (location.pathname === '/start' && fillsInPanelShowing)
     || askOpen
+  /**
+   * FAULT 2, PHONE WALK (6 October 2026): "/start" HAS ITS OWN HEADER, AND THE TRIGGER'S PLAIN
+   * TOP POSITION SAT ON TOP OF IT.
+   *
+   * Once a setup conversation has a situation, EntryChatPage.tsx draws its own session header
+   * (the name, and "N sessions planned", the only way to change how many sessions the check-in
+   * runs) - the one real control that header's right edge carries, at the same top-right corner
+   * this trigger's plain `top: 12` rests in on every other chat page. At 1440px a click meant for
+   * "sessions planned" landed on Feedback instead, and the button underneath it could not be
+   * opened any other way. There is no header at all before a situation is picked, so clearing it
+   * here never gives up anything this page needs: the top-right corner is empty either way, except
+   * on the one screen this exists to clear.
+   *
+   * B-218: THIS CASE IS NOW ACADEMIC FOR /start ITSELF - once a situation is picked, the page is
+   * hidden outright by `fillsInPanelShowing` above, and before one is picked there is no header to
+   * clear. Left in place because `isEntryStartPage` only ever matched `/start`, so nothing else
+   * reads it differently; `top: 64` simply never fires for the one case it was written for any
+   * more.
+   */
+  const isEntryStartPage = location.pathname === '/start'
+  /*
+   * B-218: THE LEAD'S OWN "Your check-in" HEADER BUTTON, ON HER CHECK-IN TAB. `onGroundCheckInTab`
+   * (`/grounds/:id`, GroundAdminPage.tsx) carries a real control in the same top-right corner the
+   * other chat pages' plain `top: 12` already clears safely (`/chat/:id`, `/checkin/:id` have no
+   * header control there at all) - measured live, the button sits at roughly 88-124px from the
+   * top at every width from 1024 up. Given its own, taller clearance rather than sharing the
+   * other chat pages' `top: 12`, which would sit on top of it.
+   */
   const open = useFeedbackStore(s => s.open)
   const showPanel = useFeedbackStore(s => s.show)
   const hidePanel = useFeedbackStore(s => s.hide)
@@ -137,6 +221,53 @@ function FeedbackWidget() {
   const [wrongText, setWrongText] = useState('')
   const [contactEmail, setContactEmail] = useState('')
   const [sent, setSent] = useState(false)
+
+  /*
+   * B-225 (REVIEW 5): KEYBOARD FOCUS STAYED LOST ONCE THE PANEL OPENED. Tab moved focus out past
+   * the panel's own edges into whatever sat behind it on the page, and closing the panel (Cancel,
+   * Escape, a click outside it, or Send) left focus nowhere in particular rather than back on the
+   * button that opened it - the same two things `Modal.tsx` already does for every other dialog in
+   * the product (`opener.current?.focus?.()`), brought here since this panel is built from scratch
+   * rather than from that shared part.
+   */
+  const panelRef = useRef<HTMLDivElement | null>(null)
+  const openerRef = useRef<HTMLElement | null>(null)
+  const thankYouRef = useRef<HTMLDivElement | null>(null)
+  /*
+   * B-225 (REVIEW 6): AND FOCUS STAYED BEHIND WHEN THE FORM WAS REPLACED BY THE THANK-YOU LINE.
+   * Send unmounts the form's own fields, which can leave focus nowhere at all while the thank-you
+   * line shows (about 1.8 seconds) rather than moving it onto that line - so a keyboard or screen
+   * reader user heard nothing confirm the send. Moved onto the thank-you line itself, which only
+   * needs `tabIndex={-1}` to take focus programmatically; it goes back to the button that opened
+   * the panel once the panel closes, same as it already does when the panel is dismissed any other
+   * way (the effect above).
+   */
+  useEffect(() => {
+    if (sent) thankYouRef.current?.focus()
+  }, [sent])
+  useEffect(() => {
+    if (!open) return
+    openerRef.current = document.activeElement as HTMLElement | null
+    const focusable = () => Array.from(
+      panelRef.current?.querySelectorAll<HTMLElement>('button, input, textarea, a[href], [tabindex]:not([tabindex="-1"])') ?? [],
+    ).filter(el => !(el as HTMLButtonElement).disabled)
+    focusable()[0]?.focus()
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') { hidePanel(); return }
+      if (e.key !== 'Tab') return
+      const nodes = focusable()
+      if (nodes.length === 0) return
+      const first = nodes[0]
+      const last = nodes[nodes.length - 1]
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      openerRef.current?.focus?.()
+    }
+  }, [open, hidePanel])
 
   /*
    * WHERE THE FEEDBACK BUTTON SITS IS THE READER'S CALL, NOT OURS.
@@ -153,6 +284,21 @@ function FeedbackWidget() {
   const moved = resting !== null
 
   const view = () => ({ width: window.innerWidth, height: window.innerHeight })
+
+  /*
+   * B-227 (REVIEW 6): THE BUTTON STOPPED MOVING ITSELF. The measuring-and-lifting this used to do
+   * (re-checking what sat under the trigger on every DOM change, via a MutationObserver) only
+   * re-measured when something on the page changed - so after any change made while the reader had
+   * scrolled down, it moved to suit the scrolled view and could cover a real control, once "Start
+   * it" itself, under the reader's own pointer. It also missed a `<summary>` row and counted hidden
+   * fields as real controls.
+   *
+   * The trigger now rests at one plain spot and never moves: `bottom: 20, right: 20` below (84px on
+   * a phone, clear of the bottom bar). What used to be cleared by moving the button is instead
+   * cleared by giving the page itself enough room at its own foot - see `.gw-main-content`'s
+   * `padding-bottom` in the stylesheet below - so every control on every page can always be
+   * scrolled clear of the button, and the button is never the thing that moves.
+   */
 
   useEffect(() => {
     const stored = localStorage.getItem('gw-feedback-button-position')
@@ -229,7 +375,7 @@ function FeedbackWidget() {
   function whyNotValid(): string | null {
     if (valid()) return null
     if (tab === 'reaction') return 'Pick one to send.'
-    if (tab === 'build')    return 'Pick what you need built.'
+    if (tab === 'build')    return 'Pick what you would like us to build.'
     if (tab === 'wrong')    return wrongText.trim().length === 0 ? null : 'A few more words, so we can find it.'
     return null
   }
@@ -292,7 +438,9 @@ function FeedbackWidget() {
     setTimeout(() => { hidePanel(); setSent(false); setReaction(''); setBuildPick(''); setBuildDetail(''); setWrongText(''); setContactEmail('') }, 1800)
   }
 
-  const tabLabel = { reaction: 'Reaction', build: 'Build request', wrong: 'Something went wrong' }
+  /* B-225 (REVIEW 4): "Build request" is work jargon (docs/morning-report-ui.md, item flagged at
+     the time). "Something you would like" is the wording already suggested there. */
+  const tabLabel = { reaction: 'Reaction', build: 'Something you would like', wrong: 'Something went wrong' }
 
   return (
     <>
@@ -337,10 +485,20 @@ function FeedbackWidget() {
             ...(moved
               ? asStyle(resting)
               : isChatPage
-                ? { top: 12, right: 16 }
-                : isGroundsBoard
-                  ? { bottom: 84, right: 20 }
-                  : { bottom: 20, right: 20 }),
+                ? (isEntryStartPage
+                  ? { top: 64, right: 16 }
+                  /*
+                   * B-218: the lead's own "Your check-in" button, not the plain `top: 12` every
+                   * other chat page gets (see onGroundCheckInTab's own note above) - measured live,
+                   * that button's own box runs to roughly 124px from the top, so 140 clears it with
+                   * margin on every width this page carries a rail at (1024 and up; below that the
+                   * mobile-safe class takes over regardless of this value).
+                   */
+                  : onGroundCheckInTab ? { top: 140, right: 16 } : { top: 12, right: 16 })
+                /* B-227 (review 6): one plain spot, never computed from the page's own content -
+                   see the note above. `.gw-main-content`'s own padding-bottom keeps every page's
+                   controls clear of it. */
+                : { bottom: 20, right: 20 }),
             zIndex: 100,
             touchAction: 'none',
             cursor: dragging ? 'grabbing' : 'grab',
@@ -372,7 +530,7 @@ function FeedbackWidget() {
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
           className="gw-fb-overlay"
         >
-          <div className="gw-fb-panel" style={{ background: 'white', borderRadius: 12, padding: 20, width: '100%', maxWidth: 480, maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 18px 48px rgba(10,22,40,.28)' }}>
+          <div ref={panelRef} className="gw-fb-panel" role="dialog" aria-modal="true" aria-label="Feedback" style={{ background: 'white', borderRadius: 12, padding: 20, width: '100%', maxWidth: 480, maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 18px 48px rgba(10,22,40,.28)' }}>
             {/* Tabs */}
             <div style={{ display: 'flex', borderBottom: '1px solid var(--gw-border)', marginBottom: 16 }}>
               {(['reaction', 'build', 'wrong'] as FbTab[]).map(t => (
@@ -393,8 +551,15 @@ function FeedbackWidget() {
             </div>
 
             {sent ? (
-              <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--gw-green-t)', fontWeight: 600, fontSize: 14 }}>
-                Thanks - noted ✓
+              /* B-238: a focused div with no role said nothing to a screen reader - "Thank you. We
+                 have your note." only ever reached a sighted reader. role="status" announces it. */
+              <div
+                ref={thankYouRef}
+                tabIndex={-1}
+                role="status"
+                style={{ textAlign: 'center', padding: '20px 0', color: 'var(--gw-green-t)', fontWeight: 600, fontSize: 14, outline: 'none' }}
+              >
+                Thank you. We have your note.
               </div>
             ) : (
               <>
@@ -416,8 +581,9 @@ function FeedbackWidget() {
                         </button>
                       ))}
                     </div>
-                    <input type="email" placeholder="Email (optional - if you want a reply)" value={contactEmail} onChange={e => setContactEmail(e.target.value)}
-                      style={{ width: '100%', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 10, outline: 'none' }} />
+                    <input type="email" placeholder="Your email, if you'd like a reply" value={contactEmail} onChange={e => setContactEmail(e.target.value)}
+                      className="gwui-fb-field"
+                      style={{ width: '100%', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 10 }} />
                   </>
                 )}
 
@@ -435,21 +601,24 @@ function FeedbackWidget() {
                             cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1.3,
                           }}
                         >
-                          {o}
+                          {BUILD_OPTION_LABELS[o] ?? o}
                         </button>
                       ))}
                     </div>
                     <textarea placeholder="Any detail on what you need" value={buildDetail} onChange={e => setBuildDetail(e.target.value)}
-                      style={{ width: '100%', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', minHeight: 60, boxSizing: 'border-box', marginBottom: 10, outline: 'none' }} />
+                      className="gwui-fb-field"
+                      style={{ width: '100%', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', minHeight: 60, boxSizing: 'border-box', marginBottom: 10 }} />
                   </>
                 )}
 
                 {tab === 'wrong' && (
                   <>
                     <textarea placeholder="Tell us what happened" value={wrongText} onChange={e => setWrongText(e.target.value)}
-                      style={{ width: '100%', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', minHeight: 100, boxSizing: 'border-box', marginBottom: 10, outline: 'none' }} />
-                    <input type="email" placeholder="Email (optional - if you want a reply)" value={contactEmail} onChange={e => setContactEmail(e.target.value)}
-                      style={{ width: '100%', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 10, outline: 'none' }} />
+                      className="gwui-fb-field"
+                      style={{ width: '100%', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', minHeight: 100, boxSizing: 'border-box', marginBottom: 10 }} />
+                    <input type="email" placeholder="Your email, if you'd like a reply" value={contactEmail} onChange={e => setContactEmail(e.target.value)}
+                      className="gwui-fb-field"
+                      style={{ width: '100%', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 10 }} />
                   </>
                 )}
 
@@ -586,8 +755,18 @@ export function AppSidebar() {
    * Start, Chat, More) sat under the composer, on top of it, and behind it - a second navigation
    * fighting the one thing on screen that already has its own way out (Pause). `/checkin/:id` is
    * the one route this whole shell renders as a focused conversation.
+   *
+   * SCREEN FAULT 2: NOT THE WHOLE `/checkin/` SUBTREE, AND NOT ONCE THE SESSION HAS SETTLED.
+   * This used to match `/checkin/:id/report` too - never the conversation at all - and kept
+   * matching `/checkin/:id` itself once that session's own Done, completed or declined state had
+   * replaced the composer, when there is no Pause button left to protect and no other way back to
+   * Today on screen. Narrowed to the bare conversation route, and to ChatPage's own
+   * `checkInFocused` (false once it has settled - see stores/check-in-focus.ts), so the bar comes
+   * back exactly where this page no longer needs the full screen to itself.
    */
-  const onConversationPage = /^\/checkin\//.test(useLocation().pathname)
+  const isBareCheckInRoute = /^\/checkin\/[^/]+$/.test(useLocation().pathname)
+  const checkInFocused = useCheckInFocusStore(s => s.focused)
+  const onConversationPage = isBareCheckInRoute && checkInFocused
   /* The check-ins this person pinned to the top, in the order they pinned them. See pinned-check-ins. */
   const [pinState, setPinState] = useState(() => ({ of: user?.id, ids: pinnedFor(user?.id) }))
   /* Read again when a different person signs in on this browser, never someone else's. */
@@ -607,6 +786,59 @@ export function AppSidebar() {
   const { data: today } = useQuery({ queryKey: ['today'], queryFn: todayApi.get, staleTime: 30_000, enabled: isAuthenticated, retry: false })
   const todayCount = today?.count ?? 0
 
+  /* Live walk at a hundred people, fault 1: "Suites" in the sidebar was gated on role alone, so a
+     member who holds finance or HR, and decides requests in their own queue, had no door to it. The
+     same quiet read `QueueLink` uses (one row, just the counts) also opens the door for them, a lead
+     or an admin already having it by role. Read only for a member: a lead or an admin already has it,
+     and nobody else is ever served anything by the queue.
+
+     SCREEN FAULT 11: AND NOT AT ALL, ONCE THIS SESSION ALREADY KNOWS BOTH SUITES ARE OFF. This read
+     went out again every time its 30-second cache went stale, on whatever page this reader happened
+     to be on - a quiet 404 in Kilima Traders (suites off), but still a request on every page. There
+     is nowhere cheap to ask first (`/suites` itself refuses a member), so the first 404 is
+     remembered for the rest of this session (stores/suites-known-off.ts) instead of asked again. */
+  const suitesKnownOff = useSuitesKnownOffStore(s => s.off)
+  const setSuitesKnownOff = useSuitesKnownOffStore(s => s.setOff)
+  /* Journey walk row 5: ask a suite's own route only once GET /suites/mine says that suite is on. The
+     queue holds leave and spending only, so it is asked only once one of those is on (journey of 12 October). */
+  const suitesOn = useSuitesOnForYou()
+  const queueServesThem = useQuery({
+    queryKey: ['suite-queue-count'],
+    queryFn: () => queueApi.get({ pageSize: 1 }),
+    enabled: isAuthenticated && user?.role === 'MEMBER' && !suitesKnownOff && (suitesOn.leave || suitesOn.spending),
+    retry: false,
+    staleTime: 30_000,
+  })
+  useEffect(() => {
+    if (queueServesThem.isError && (queueServesThem.error as any)?.response?.status === 404) setSuitesKnownOff()
+  }, [queueServesThem.isError, queueServesThem.error, setSuitesKnownOff])
+  /*
+   * "SUITES" FOR A MEMBER, SO IT CAN BE FOUND WITHOUT TODAY (Hafsah's design for B-123). A lead
+   * and an admin already have the door by role (`leadOnly`/`adminOnly` above); an ordinary member
+   * had none at all - the only way to their own leave, spending and hours was Today's own
+   * "Your own leave and spending requests" link, which Today itself (`TodayPage.tsx`) may not even
+   * draw that day. The same reads Today already makes (`your-leave`/`your-spending`/`your-hours`,
+   * the same query keys, so the two pages share one cached answer) decide whether this reader has
+   * any suite of their own switched on; `offByKey` is the same remembered-404 store Today uses, so
+   * a suite that has already said no stops asking here too. Reviews are never gated on "switched
+   * on" at all (`SuitesService.mine` reads whatever reviews exist for this person, suite on or
+   * off), so that one is gated on there being any to show instead. */
+  const offByKey = useSuitesKnownOffStore(s => s.offByKey)
+  const setKeyOff = useSuitesKnownOffStore(s => s.setKeyOff)
+  const myLeaveForNav = useQuery({ queryKey: ['your-leave'], queryFn: yourRequestsApi.leave, enabled: isAuthenticated && user?.role === 'MEMBER' && suitesOn.leave && !offByKey.leave, retry: false, staleTime: 60_000 })
+  const mySpendingForNav = useQuery({ queryKey: ['your-spending'], queryFn: yourRequestsApi.spending, enabled: isAuthenticated && user?.role === 'MEMBER' && suitesOn.spending && !offByKey.spending, retry: false, staleTime: 60_000 })
+  const myHoursForNav = useQuery({ queryKey: ['your-hours'], queryFn: yourRequestsApi.hours, enabled: isAuthenticated && user?.role === 'MEMBER' && suitesOn.hours && !offByKey.hours, retry: false, staleTime: 60_000 })
+  const myReviewsForNav = useQuery({ queryKey: ['your-reviews'], queryFn: reviewsApi.mineQuietly, enabled: isAuthenticated && user?.role === 'MEMBER' && suitesOn.reviews, retry: false, staleTime: 60_000 })
+  useEffect(() => {
+    const notFound = (q: { isError: boolean; error: unknown }) => q.isError && (q.error as any)?.response?.status === 404
+    if (notFound(myLeaveForNav)) setKeyOff('leave')
+    if (notFound(mySpendingForNav)) setKeyOff('spending')
+    if (notFound(myHoursForNav)) setKeyOff('hours')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myLeaveForNav.isError, mySpendingForNav.isError, myHoursForNav.isError, setKeyOff])
+  const suiteOnForMember = myLeaveForNav.isSuccess || mySpendingForNav.isSuccess || myHoursForNav.isSuccess || (myReviewsForNav.data?.length ?? 0) > 0
+  const navOpts = { queueServesThem: user?.role === 'MEMBER' && !!queueServesThem.data?.counts?.all, suiteOnForMember }
+
   const location = useLocation()
   /*
    * GROUP 3 REVIEW, BATCH B: unreachable again, deliberately this time. `AppShell`'s own
@@ -622,8 +854,19 @@ export function AppSidebar() {
   const [entryRenameVal, setEntryRenameVal] = useState('')
   const entryRenameRef = useRef<HTMLInputElement>(null)
 
-  const fullName = user?.firstName ? `${user.firstName} ${user.lastName ?? ''}`.trim() : user?.email ?? ''
-  const initials = user ? (((user.firstName?.[0] ?? '') + (user.lastName?.[0] ?? '')) || user.email?.[0] || 'U').toUpperCase() : 'U'
+  /*
+   * B-066: YOUR OWN MENU SHOWING YOUR OWN ADDRESS WHERE YOUR NAME GOES. E1 on Riverbank Trading's
+   * old data (docs/existing-users-check.md) found a member with no name yet, signed in as
+   * themselves, reading "F" and "fo4@riverbank.test" in their own account menu - the one place
+   * nobody needs telling apart from anybody else, because it is always them. "You" is the same word
+   * every other screen already uses for the reader's own row (a-colleague.ts), and the subtitle says
+   * what to do about it rather than showing the address back to them.
+   */
+  const hasOwnName = !!user?.firstName?.trim()
+  const fullName = hasOwnName ? `${user!.firstName} ${user!.lastName ?? ''}`.trim() : 'You'
+  const meSubtitle = hasOwnName ? 'Settings, help, sign out' : 'Add your name'
+  /* A plain neutral mark, never initials made from the reader's own address. */
+  const initials = user ? (hasOwnName ? (((user.firstName?.[0] ?? '') + (user.lastName?.[0] ?? '')).toUpperCase() || 'U') : '•') : 'U'
   /*
    * NEVER A NAME THAT ISN'T THE ORGANISATION'S OWN (U.8 review, Hafsah's instruction of 27
    * September). "Your organisation" read as if it were the name, on a placeholder profile a join
@@ -715,7 +958,7 @@ export function AppSidebar() {
   const hiddenCount = Math.max(0, grounds.length - (pinned.length + shownUnpinned.length + shownClosed.length))
 
   /* ONE GATE. Every door below comes out of `navItemsFor`, and is only sorted into its part here. */
-  const items = navItemsFor(user)
+  const items = navItemsFor(user, navOpts)
   const pages = items.filter(i => !(i as any).adminOnly && !(i as any).platformAdminOnly && i.to !== '/grounds' && i.to !== '/settings')
   const adminItems = items.filter(i => (i as any).adminOnly)
   const staffItems = items.filter(i => (i as any).platformAdminOnly)
@@ -1050,7 +1293,7 @@ export function AppSidebar() {
         {collapsed && (
           <nav className="gw-rl-scroll folded" aria-label="Check-ins and pages">
             {/* Same gate as everywhere else: navItemsFor, never a filter of its own. */}
-            {navItemsFor(user).map(item => {
+            {navItemsFor(user, navOpts).map(item => {
               const active = window.location.pathname.startsWith(item.to)
               return (
                 <NavLink key={item.to} to={item.to} title={item.label} aria-label={item.label}
@@ -1098,16 +1341,16 @@ export function AppSidebar() {
                 onClick={() => { setMeOpen(v => !v); setOrgOpen(false) }}
                 aria-haspopup="true"
                 aria-expanded={meOpen}
-                title={collapsed ? `${fullName}. Settings, help, sign out` : undefined}
+                title={collapsed ? `${fullName}. ${meSubtitle}` : undefined}
               >
                 <span className="gw-rl-av" aria-hidden>{initials}</span>
                 {!collapsed && (
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <b className="gw-rl-org-name">{fullName}</b>
-                    <span className="gw-rl-org-role">Settings, help, sign out</span>
+                    <span className="gw-rl-org-role">{meSubtitle}</span>
                   </span>
                 )}
-                {collapsed && <span className="gw-sr-only">{fullName}. Settings, help, sign out</span>}
+                {collapsed && <span className="gw-sr-only">{fullName}. {meSubtitle}</span>}
               </button>
               {meOpen && (
                 <div className="gw-rl-menu gw-rl-menu-me" style={{ left: collapsed ? 70 : 10 }}>
@@ -1276,7 +1519,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isAPhone && askOpen) {
       hideAsk()
-      if (location.pathname !== '/chat') navigate('/chat')
+      /*
+       * B-224: AND THE CHECK-IN THE READER WAS ASKING ABOUT, CARRIED ACROSS THE NAVIGATION.
+       *
+       * On a computer the drawer stays beside the board (or any `/grounds/:id` page) it was opened
+       * from, and `AskGroundwork` reads which check-in that is straight from the still-current
+       * address (`checkInOnThisPage`, its own fallback for `aboutGroundId`). On a phone this
+       * navigates away to `/chat` instead - a bare `/chat`, with no address of its own to read
+       * from any more, so the board's own "Ask" lost the check-in: walked live at 390, asking from
+       * a board sent `{"message":"What is still open on this board?"}` with no `groundId` at all,
+       * where the same question at 1440 (the drawer, never navigating anywhere) carried it.
+       *
+       * Read from the CURRENT address before it changes, and carried as `?ground=`, a name of its
+       * own rather than reusing `?about=` - `about` already means something else to AskPage.tsx
+       * (B-210's first-insight link, which also asks its own canned opening question); `ground`
+       * only ever sets which check-in the panel opens focused on, exactly as the drawer's own
+       * fallback does, never asking anything by itself.
+       */
+      if (location.pathname !== '/chat') {
+        const groundId = checkInOnThisPage(location.pathname)
+        navigate(groundId ? `/chat?ground=${groundId}` : '/chat')
+      }
     }
   }, [isAPhone, askOpen, hideAsk, navigate, location.pathname])
   /*
@@ -1298,9 +1561,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [isAuthenticated, askOpen])
   /* REVIEW ROUND 3, ITEM 7: SEE AppSidebar's OWN COPY OF THIS - the app's bottom bar does not
      render at all on the conversation, and the room it used to reserve (`--gw-bottom-nav`) is
-     given back to the card so nothing leaves a blank strip where the bar used to sit. */
-  const onConversationPage = /^\/checkin\//.test(location.pathname)
+     given back to the card so nothing leaves a blank strip where the bar used to sit.
+
+     SCREEN FAULT 2: NOT THE WHOLE `/checkin/` SUBTREE, AND NOT ONCE THE SESSION HAS SETTLED.
+     This used to match `/checkin/:id/report` too - a page that was never the conversation at all
+     - and kept matching `/checkin/:id` itself once that session's own Done, completed or declined
+     state replaced the composer, when there is no longer a Pause button to protect and no other
+     way back to Today on screen. Narrowed to the bare conversation route, and to ChatPage's own
+     `checkInFocused` (false once it has settled into Done/completed/declined - see
+     stores/check-in-focus.ts), so the bar - and the "Today" link inside it - comes back exactly
+     where this page no longer needs the full screen to itself. */
+  const isBareCheckInRoute = /^\/checkin\/[^/]+$/.test(location.pathname)
+  const checkInFocused = useCheckInFocusStore(s => s.focused)
+  const onConversationPage = isBareCheckInRoute && checkInFocused
   const consumePendingAskMessage = useAskStore(s => s.consumePendingMessage)
+  /* Decision 65: a check-in's own Context and resources page tells Ask which one it was opened from. */
+  const pendingAskOpenedFromGroundId = useAskStore(s => s.openedFromCheckInSetupGroundId)
+  const consumeOpenedFromCheckInSetup = useAskStore(s => s.consumeOpenedFromCheckInSetup)
   /**
    * Signed-out visitors do not get the signed-in navigation.
    *
@@ -1377,7 +1654,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
    * it inside the customer's rail would put "New check-in" next to the funding
    * pipeline — two different companies' navigation on one screen.
    */
-  const CHROMELESS_PREFIXES = ['/admin', '/ops']
+  /**
+   * B-048: `/preview/reports` is the same kind of page - "a Groundwork tool", behind the same
+   * `RequirePlatformAdmin` gate as `/admin/*` (App.tsx's own comment on that route) - but it was
+   * missing from this list, so the identical "This part is for Groundwork staff" refusal rendered
+   * with the customer's sidebar there and without it on every `/admin/*` page: one sentence, two
+   * different templates, depending only on which of our own addresses happened to show it.
+   */
+  const CHROMELESS_PREFIXES = ['/admin', '/ops', '/preview']
   const isBackOffice = CHROMELESS_PREFIXES.some(
     p => location.pathname === p || location.pathname.startsWith(`${p}/`),
   )
@@ -1386,8 +1670,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const fromAnEmail = ['/stop-reminders/', '/unsubscribe/', '/j/'].some(p => location.pathname.startsWith(p))
   /* A page with no address of its own that the prototype draws with no sidebar: the not-found page. */
   const aPageAskedForNoRail = useNoRailStore(s => s.asked)
+  /**
+   * B-202 (review round 3): THE SHELL PAINTED BEHIND THE SAME WALL RequireOrgSetup ALREADY GUARDS,
+   * AND SENT ITS OWN REQUESTS WHILE IT DID.
+   *
+   * `RequireOrgSetup` (App.tsx) draws nothing, and asks nothing, for a page's own content until it
+   * knows a signed-in reader is not somebody still waiting to be let in - but AppShell wraps the
+   * routes from OUTSIDE that guard, and `showSidebar` here checked only `isAuthenticated`. So
+   * somebody waiting at the door, typing /today directly, saw the real sidebar - the organisation's
+   * name, every nav door, "Add your name" - for as long as this very `my-waiting` read took, and
+   * `AppSidebar` itself fired its own requests underneath it (/grounds, /today, the suite counts)
+   * before the wall ever caught up.
+   *
+   * The same `['my-waiting']` read RequireOrgSetup and WaitingForAnAdminPage already make (one
+   * cached answer, not a second request): the sidebar is not mounted - so none of its own queries
+   * run - until that answer is in AND says `waiting` is not true. A failed read lets the person
+   * through, the same rule RequireOrgSetup keeps, for the same reason: the safer failure is showing
+   * the app, not an endless blank wall.
+   */
+  const waitingQuery = useQuery({ queryKey: ['my-waiting'], queryFn: authApi.myWaiting, enabled: isAuthenticated, retry: false })
+  const stillWaitingOrUnknown = isAuthenticated
+    && (waitingQuery.isLoading || (!waitingQuery.isError && waitingQuery.data?.waiting === true))
   const showSidebar =
-    isAuthenticated && !CHROMELESS.includes(location.pathname) && !isBackOffice && !bare && !fromAnEmail && !aPageAskedForNoRail
+    isAuthenticated && !stillWaitingOrUnknown && !CHROMELESS.includes(location.pathname) && !isBackOffice && !bare && !fromAnEmail && !aPageAskedForNoRail
 
   if (!showSidebar) return <main id="main">{children}</main>
 
@@ -1412,7 +1717,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           position: 'fixed', top: 0, right: 0, bottom: 0, width: 400, maxWidth: '100vw', zIndex: 45,
           boxShadow: '-8px 0 24px rgba(26, 25, 22, 0.08)',
         }}>
-          <AskGroundwork onClose={hideAsk} initialMessage={pendingAskMessage} onSentInitialMessage={consumePendingAskMessage} />
+          <AskGroundwork
+            onClose={hideAsk}
+            initialMessage={pendingAskMessage}
+            onSentInitialMessage={consumePendingAskMessage}
+            initialOpenedFromGroundId={pendingAskOpenedFromGroundId}
+            onSentInitialOpenedFrom={consumeOpenedFromCheckInSetup}
+          />
         </div>
       )}
       <FeedbackWidget />
@@ -1466,7 +1777,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         @media (min-width: 641px) {
           .gw-sidebar-desktop { display: flex !important; }
           .gw-sidebar-mobile  { display: none !important; }
-          .gw-main-content    { margin-left: var(--gw-sidebar-w, 256px); min-height: 100vh; }
+          /*
+            B-227 (REVIEW 6): THE ROOM THE FEEDBACK BUTTON NEEDS, GIVEN BY THE PAGE, NOT TAKEN BY
+            THE BUTTON MOVING. The trigger now rests at one plain spot, bottom: 20, right: 20,
+            and never moves to clear a page's own content - so the page has to leave enough room at
+            its own foot instead. 64px is the button's own height (about 34px) plus the 20px it
+            rests above the edge, with a margin on top, so the last row of any list - Today's "What
+            needs you", a board, You - can always be scrolled clear of it.
+          */
+          .gw-main-content    { margin-left: var(--gw-sidebar-w, 256px); min-height: 100vh; padding-bottom: 64px; box-sizing: border-box; }
         }
       `}</style>
     </>

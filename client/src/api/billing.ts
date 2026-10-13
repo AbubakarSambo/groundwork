@@ -25,6 +25,8 @@ export interface BillingStatus {
   }
   /** `cap: null` means unlimited or no plan - render the count without a ceiling. W14-7. */
   people: { count: number; cap: number | null }
+  /** Request 197: "6 people are waiting for a seat because your plan is full. ...", the same sentence People says; null when nobody waits. */
+  overThePlanSays?: string | null
   /**
    * Set while a free run we gave them is running: what it covers and the day it ends. A free run
    * nobody can see ends as a surprise, which is the one thing it must not do.
@@ -41,6 +43,11 @@ export interface BillingStatus {
   invoices?: { paidOn: string; amountCents: number; currency: string }[]
   /** Admin only: counts of what the organisation has done. */
   usage?: { checkIns: number; reportsReleased: number; peopleTakingPart: number }
+  /**
+   * Admin only: what it began on, when it was set up - a plain sentence, never a figure.
+   * "When Baridi Appliances was set up, it had 20 or more people, so it began on a plan."
+   */
+  startedWith?: { said: 'fewer' | 'more'; line: number; says: string } | null
 }
 
 export interface ContributorCode {
@@ -217,6 +224,11 @@ export interface CodeShareCard {
  * sentence in `says` is built by the server and shown exactly as it comes.
  */
 export interface WhatsAppBillingMinimal {
+  /**
+   * Whether the organisation's WhatsApp add-on is on (5 October, evening: every reader is served
+   * this now, not only an admin). Still never a price or a limit - those stay admin only.
+   */
+  on: boolean
   sending: boolean
   says: string | null
 }
@@ -244,9 +256,13 @@ export interface WhatsAppBillingAdmin {
 
 export type WhatsAppBilling = WhatsAppBillingMinimal | WhatsAppBillingAdmin
 
-/** True only for the full admin shape (the `says` field differs in shape, `on` only exists here). */
+/**
+ * True only for the full admin shape. `on` is served to every reader now (5 October, evening), so
+ * it can no longer tell the two shapes apart - `says` still can: a plain sentence (or null) for
+ * everybody else, an object of sentences for an admin.
+ */
 export function isWhatsAppBillingAdmin(w: WhatsAppBilling | undefined): w is WhatsAppBillingAdmin {
-  return !!w && typeof (w as WhatsAppBillingAdmin).on === 'boolean'
+  return !!w && typeof (w as WhatsAppBillingAdmin).says === 'object' && (w as WhatsAppBillingAdmin).says !== null
 }
 
 export const billingApi = {
@@ -271,8 +287,11 @@ export const billingApi = {
   claimFreeExtension: (groundId: string) =>
     apiClient.post('/billing/free-extension', { groundId }).then(r => r.data),
 
+  /* Quiet on a server error: the billing page says what happened in one sentence of its own
+     ("Paying is not set up yet. Nothing was charged."), and the shared pop-up said the opposite
+     beside it (recheck, 7 October). */
   createSubscription: (plan: SubscriptionPlan) =>
-    apiClient.post<{ checkoutUrl: string }>('/billing/subscription', { plan }).then(r => r.data),
+    apiClient.post<{ checkoutUrl: string }>('/billing/subscription', { plan }, { skipServerErrorToast: true } as any).then(r => r.data),
 
   changeSubscriptionPlan: (plan: SubscriptionPlan) =>
     apiClient.patch<{ plan: SubscriptionPlan; periodEnd: string | null }>('/billing/subscription/plan', { plan }).then(r => r.data),
@@ -328,7 +347,14 @@ export const billingApi = {
 
   /** An admin only; a lead or member is refused by the server. */
   setWhatsApp: (on: boolean) =>
-    apiClient.patch<WhatsAppBilling>('/billing/whatsapp', { on }).then(r => r.data),
+    apiClient.patch<WhatsAppBilling>('/billing/whatsapp', { on }, { skipServerErrorToast: true } as any).then(r => r.data),
+
+  /**
+   * "Remind them", on a check-in paused until the team subscribes (upgrade.txt). An admin, a lead
+   * or a member may press it, at most once a day; a guest is refused by the server.
+   */
+  remindTheAdmins: (groundId: string) =>
+    apiClient.post<{ reminded: boolean; says: string }>('/billing/remind-the-admins', { groundId }).then(r => r.data),
 
   checkCanCreateGround: (accessCode?: string) =>
     apiClient.get<CanCreateGroundResult>('/billing/can-create-ground', {

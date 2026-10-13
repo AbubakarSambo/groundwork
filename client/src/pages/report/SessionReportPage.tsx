@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { TheLeadsOwnWayIn } from '@/components/gw/TheLeadsOwnWayIn'
 import { useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -21,6 +22,7 @@ import { copy } from '@/components/gw/copying-can-fail'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { whoIsInRound } from '@/lib/who-is-in-this-round'
 import { plannedSessionsFor } from '@/lib/sessionCount'
+import { useBackOrFallback } from '@/lib/a-back-button-never-leaves-groundwork'
 import { TheCheckInHeader } from '@/components/gw/TheCheckInHeader'
 import { checkInHeaderTabs } from '@/pages/grounds/ground-tabs'
 import { Page, Button, Panel, Callout, Section, SubHeading, Note, Tag, Stack } from '@/components/gw/ui'
@@ -72,6 +74,16 @@ export default function SessionReportPage() {
     queryKey: ['session-report', checkInId],
     queryFn: () => conversationApi.sessionReport(checkInId!),
     enabled: !!checkInId,
+    /*
+     * B-134: "Your report is still being written... this fills in as soon as it is ready" was never
+     * true - this query never re-fetched on its own, so whoever opened the page while the
+     * background job was mid-write (`conversationApi.sessionReport`'s own comment: a background job
+     * writes it after the session ends) stayed on "still being written" until they reloaded by hand,
+     * even once the list on My work had already moved to "Your report is ready". Polling here, the
+     * same way the shared report below already polls while it is behind (`theTeamsReportIsBehind`),
+     * makes the promise true and keeps every surface agreeing on the same served state.
+     */
+    refetchInterval: (q: any) => (q?.state?.data && !q.state.data.report ? 5_000 : false),
   })
 
   /* The per-session shape, for the one fact the correction control needs: whether the window is
@@ -161,10 +173,20 @@ export default function SessionReportPage() {
    * was last written is `updatedAt` (a regenerated report is upserted, so `createdAt` stays at the
    * first one), with `createdAt` only for a report written before that column existed.
    */
+  /*
+   * B-198: ONLY ASKED ONCE THE CHECK-IN SAYS IT HAS ONE.
+   *
+   * `GET /grounds/:id/report` answers 404 for "no report yet" by design (GW-PRI-04, the same 404 a
+   * check-in that does not exist answers, so the two cannot be told apart) - but a check-in's first
+   * session has no team report at all, so every first visit to its own session-1 report page asked
+   * anyway and logged a 404 that nothing was wrong about. `ground.report` already carries whether
+   * one exists (the same field `GroundParticipantPage`'s matching query is gated on), known from the
+   * `ground` query just above, so this waits for that rather than asking blind.
+   */
   const { data: groundReport } = useQuery({
     queryKey: ['report', data?.groundId],
     queryFn: () => reportsApi.get(data!.groundId as string),
-    enabled: !!data?.groundId,
+    enabled: !!data?.groundId && !!(ground as any)?.report,
     retry: false,
     refetchInterval: (q: any) => (theTeamsReportIsBehind(q?.state?.data, ground) ? 5_000 : false),
   })
@@ -201,6 +223,23 @@ export default function SessionReportPage() {
   const contextEnabled = (ground as any)?.contextEnabled === true
 
   /**
+   * B-142: "Start my check-in" PROMISED A SESSION THAT WAS NOT THERE.
+   *
+   * The header's link always said "Start my check-in" for a party who does not run the check-in,
+   * even when nothing is open for them right now - pressing it landed on "No check-in open right
+   * now". The same rule GroundParticipantPage already uses for its own "due now" state
+   * (an open check-in that has actually started, or whose available date has passed) decides
+   * whether this page may still offer that label.
+   */
+  const myParticipantForOpenCheck = ((ground as any)?.participants ?? []).find((p: any) => p.userId === viewerUserId)
+  const myOpenCheckIn = ((ground as any)?.checkIns ?? []).find(
+    (ci: any) => ci.participantId === myParticipantForOpenCheck?.id && ci.status !== 'COMPLETED',
+  )
+  const myOpenAvailableFrom = myOpenCheckIn?.availableFrom ?? null
+  const myOpenOpensLater = !!myOpenAvailableFrom && new Date(myOpenAvailableFrom).getTime() > Date.now() && myOpenCheckIn?.status !== 'IN_PROGRESS'
+  const hasOpenSessionNow = !!myOpenCheckIn && !myOpenOpensLater
+
+  /**
    * A PARTICIPANT ID, SAID AS A NAME, THE WAY THIS READER MAY READ IT.
    *
    * `peopleLabels` is the one function that decides this correctly for a given reader (a real name
@@ -215,6 +254,12 @@ export default function SessionReportPage() {
     })
     return labels.get(participantId) ?? 'a colleague'
   }
+
+  /* B-126: this "Back" only shows while the report is loading or has refused the viewer, so there
+     is nothing on this page yet to go back within - no browser history inside the app, say, from a
+     link in an email, must not fall through to about:blank. "Back to your check-ins" names where it
+     goes instead. */
+  const back = useBackOrFallback('/grounds', 'Back to your check-ins')
 
   return (
     <Page>
@@ -234,12 +279,13 @@ export default function SessionReportPage() {
           plannedSessions={plannedSessions}
           canRunThisCheckIn={amTheInitiator}
           isAParty
+          hasOpenSessionNow={hasOpenSessionNow}
           active="report"
           tabs={checkInHeaderTabs({ id: data.groundId as string, contextEnabled, canRunThisCheckIn: amTheInitiator, isAParty: true })}
         />
       ) : (
-        <button type="button" onClick={() => navigate(-1)} className="gwui-plain-link">
-          Back
+        <button type="button" onClick={back.onClick} className="gwui-plain-link">
+          {back.label}
         </button>
       )}
 
@@ -293,7 +339,11 @@ export default function SessionReportPage() {
                   ? 'The link may be out of date. Your check-ins page lists the sessions that are.'
                   : 'Nothing is wrong with the report - the request did not get through. Try again.'}
             </Note>
-            {(error as any)?.response?.status === 404 && (
+            {/* B-111: a 403 here left nothing to press but the page's own top-of-page browser-back
+                link - "There is nothing this page can usefully offer" (above) is true of "Start a
+                new check-in"/"Copy the link", which promise something false, but not of a plain
+                way back to the list, which promises nothing. Every small state needs a way on. */}
+            {((error as any)?.response?.status === 404 || (error as any)?.response?.status === 403) && (
               <a href="/grounds" className="gwui-plain-link">Back to check-ins</a>
             )}
             {!((error as any)?.response?.status === 403 || (error as any)?.response?.status === 404) && (
@@ -603,7 +653,7 @@ export default function SessionReportPage() {
           <TheSessionsReport
             groundId={data.groundId}
             sessionNumber={data.sessionNumber}
-            totalInThisRound={ground ? whoIsInRound(((ground as any).participants ?? []), data.sessionNumber, (ground as any).scenario).length : null}
+            totalInThisRound={ground ? whoIsInRound(((ground as any).participants ?? []), data.sessionNumber, (ground as any).scenario, (ground as any).checkIns ?? []).length : null}
           />
           {/* A self-correction shows up as a flagged, dated entry rather than being blended in
               silently. Visible to everyone who reads this report, same as the report itself. */}
@@ -686,6 +736,12 @@ export default function SessionReportPage() {
         U.9 REVIEW: "WHAT NOW?" WAS OFFERED ON THE PAGE THAT SAYS THIS ISN'T YOURS TO OPEN. Kept:
         nothing here is drawn on a page that has refused the reader.
       */}
+      {/* Decision 133: each report the lead reads ends with "Check in yourself" and "Add context". */}
+      {!isLoading && !isError && amTheInitiator && data?.groundId && !['CLOSED', 'RESOLVED', 'STALLED', 'PAUSED'].includes((ground as any)?.status) && (
+        <div className="gw-print-none">
+          <TheLeadsOwnWayIn groundId={data.groundId as string} />
+        </div>
+      )}
       {!isLoading && !isError && (
         <div className="gw-print-none">
           <button
@@ -699,7 +755,10 @@ export default function SessionReportPage() {
           >
             Copy the link to this report
           </button>
-          <Note>The link opens only for people already entitled to read this.</Note>
+          {/* "ENTITLED" IS JARGON (real-user walk, Kijani Foods, fault 6). Plain words for the
+              same fact: the link itself does nothing: whoever opens it still has to be someone
+              Groundwork already lets read this. */}
+          <Note>The link opens only for people who may already read this.</Note>
         </div>
       )}
     </Page>

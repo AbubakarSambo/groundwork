@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { roleWord } from './your-organisations'
 
 /**
  * ADDING PEOPLE THE WAY A GROUP CHAT DOES IT.
@@ -15,12 +16,36 @@ import { useMemo, useState } from 'react'
  * nothing else: Hafsah decided nobody sees anything of a colleague beyond name, role and team. So a
  * person is picked by id and the server looks their address up. Typing a team's name finds everyone
  * in it, and "Select these" adds the whole team.
+ *
+ * ROLE BESIDE THE NAME (8 October, night note item 2, found by the old-against-new check on
+ * Riverbank Trading). `GET /users/colleagues` serves `role` and `team` for every colleague, and
+ * several rows can read the same name - "Someone who has not given a name yet" among them - so both
+ * are shown under the name, not team alone, to tell two same-named rows apart.
  */
 export interface APerson {
   id: string
   name: string
   role?: string
   team?: string | null
+}
+
+/**
+ * B-054: THE PRODUCT'S OWN WORD FOR THE ROLE, NOT THE SERVER'S CODE. `GET /users/colleagues` serves
+ * `role` as it is stored - "MEMBER", "LEAD" - and this used to print that straight under the name,
+ * so a lead read "Arjun Shah, MEMBER" and searching "takes part" or "account manager" found nobody,
+ * because nothing on screen or in the search read those words. `roleWord` (your-organisations.ts) is
+ * the one mapping the People page itself already uses for the same codes - "Admin", "Can open
+ * check-ins", "Takes part" - so this reads and searches the same word a lead already knows from
+ * there, never a second translation of the same codes.
+ *
+ * Role and team together, comma-joined as the rest of the product already writes two facts side
+ * by side (see `whereTheySitLine`, people-here.ts) - never a colon, dot or arrow between them.
+ */
+function roleAndTeam(p: APerson): string {
+  const role = roleWord(p.role).trim()
+  const team = (p.team ?? '').trim()
+  if (role && team) return `${role}, ${team}`
+  return role || team
 }
 
 export function PeoplePicker({
@@ -43,7 +68,8 @@ export function PeoplePicker({
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return candidates
-    return candidates.filter((p) => p.name.toLowerCase().includes(q) || (p.team ?? '').toLowerCase().includes(q))
+    return candidates.filter((p) =>
+      p.name.toLowerCase().includes(q) || (p.team ?? '').toLowerCase().includes(q) || roleWord(p.role).toLowerCase().includes(q))
   }, [candidates, query])
 
   if (!candidates.length) return null
@@ -99,7 +125,7 @@ export function PeoplePicker({
               </span>
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
-                {p.team && <span style={{ display: 'block', fontSize: 11.5, color: 'var(--gw-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.team}</span>}
+                {roleAndTeam(p) && <span style={{ display: 'block', fontSize: 11.5, color: 'var(--gw-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{roleAndTeam(p)}</span>}
               </span>
             </label>
           )

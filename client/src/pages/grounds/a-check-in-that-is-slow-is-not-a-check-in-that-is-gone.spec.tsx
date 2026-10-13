@@ -112,6 +112,17 @@ describe('a check-in that is slow is not a check-in that is gone', () => {
     expect(container.textContent).not.toContain('Loading')
   })
 
+  it('and says so, the same words, when it is a 403 instead - B-110, GW-PRI-04', async () => {
+    /* A 403 must read exactly like a 404 here: the only other true sentence for a 403 would say
+       this check-in exists and simply is not this reader's, which tells a stranger holding a
+       stale link that something real sits behind it - precisely what the 404 wording does not say. */
+    vi.spyOn(groundsApi, 'get').mockRejectedValue(Object.assign(new Error('forbidden'), { response: { status: 403 } }))
+    const { container } = show()
+    await waitFor(() => expect(container.textContent).toContain('This check-in isn’t available any more'))
+    expect(container.textContent).not.toContain('We could not load this check-in')
+    expect(container.textContent).not.toContain('Loading')
+  })
+
   it('stops loading, and does not say gone, once the check-in arrives', async () => {
     /*
      * Deliberately not asserting the whole page renders - this fixture is a check-in with the

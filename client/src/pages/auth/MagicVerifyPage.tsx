@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { rememberTheFirstCheckInClosing } from '@/lib/the-closing-after-your-first-check-in'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { queryClient } from '@/lib/queryClient'
 import { authApi, type VerifyEmailResponse, type WhereDoYouWorkFirst } from '@/api/auth'
@@ -9,8 +10,8 @@ import { entryApi } from '@/api/entry'
 import { groundsApi } from '@/api/grounds'
 import { Page, Mark, PageTitle, Panel, SubHeading, Stack, Button, Note, Callout } from '@/components/gw/ui'
 import { useAuthStore } from '@/stores/auth'
-import { whatTheLinkDid, WE_SENT_A_NEW_ONE } from './a-link-that-has-expired'
-import { LinkExpired, LinkAlreadyResent, LinkDidNotWork } from './LinkExpired'
+import { whatTheLinkDid, WE_SENT_A_NEW_ONE, ALREADY_CONFIRMED } from './a-link-that-has-expired'
+import { LinkExpired, LinkAlreadyResent, LinkAlreadyUsedConfirmed, LinkDidNotWork } from './LinkExpired'
 import { EmailConfirmed } from './EmailConfirmed'
 
 const COMMIT_KEY = 'gw_commit_payload'
@@ -25,15 +26,23 @@ const FRONTEND_URL = window.location.origin
 // the success screen. Cache each token's outcome at module scope so remounts
 // replay the outcome instead of re-verifying.
 type VerifyOutcome =
-  | { kind: 'success'; groundId: string; joinUrl: string | null; invited: string[]; waitingInvites?: { email: string; because: string }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[]; passwordSetupToken?: string }
+  | { kind: 'success'; groundId: string; joinUrl: string | null; invited: string[]; waitingInvites?: { email: string; because: string }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[]; passwordSetupToken?: string; wasAnchorDraft: boolean }
   | { kind: 'noSession' }
   /* The save is still running somewhere else (COMMIT_IN_PROGRESS): not lost, not failed. */
   | { kind: 'stillSaving' }
   | { kind: 'commitError'; message?: string }
   | { kind: 'redirect'; to: string }
   | { kind: 'verifyError'; message: string }
-  /* The link ran out ('expired'), or ran out and the server has already sent a new one ('resent'). */
-  | { kind: 'deadLink'; what: 'expired' | 'resent'; sentence: string }
+  /* B-208 (review round 2): the server answered 429 (too many tries), which is neither an expired
+     link nor one already used - the token itself may well still be good. Said as what it is (wait,
+     try again), with the server's own sentence when it sends one, rather than falling through to
+     "That link didn't work... already been used", which is not true of a request that was simply
+     throttled. */
+  | { kind: 'rateLimited'; message: string }
+  /* The link ran out ('expired'), ran out and the server has already sent a new one ('resent'), or
+     (B-208) was a sign-in link already used, whose address that already confirmed ('used-confirmed') - see
+     a-link-that-has-expired.ts for what each one means and says. */
+  | { kind: 'deadLink'; what: 'expired' | 'resent' | 'used-confirmed'; sentence: string }
   /* The link has just created the account: say so first, then carry on to `then`. */
   | { kind: 'confirmed'; email: string | null; then: VerifyOutcome }
   /* The address is proved, nothing is made yet, and "Where do you work?" comes first (U.3 review). */
@@ -61,8 +70,16 @@ export function MagicVerifyPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const setAuth = useAuthStore(s => s.setAuth)
+  const signedIn = useAuthStore(s => !!s.isAuthenticated)
   const [error, setError] = useState('')
-  const [deadLink, setDeadLink] = useState<{ what: 'expired' | 'resent'; sentence: string } | null>(null)
+  /* B-208 (review round 2): a 429 from /auth/verify-email, kept apart from `error` so it reads as
+     "wait and try again" rather than falling through to the generic "That link didn't work" card. */
+  const [rateLimited, setRateLimited] = useState('')
+  /* B-208 (review round 3): the "Try again" button below needs to know it is mid-attempt, the same
+     way the commit-error retries elsewhere on this page already do (`retrying`), but kept separate
+     from them - a retry here re-attempts the VERIFY, not a commit. */
+  const [verifyRetrying, setVerifyRetrying] = useState(false)
+  const [deadLink, setDeadLink] = useState<{ what: 'expired' | 'resent' | 'used-confirmed'; sentence: string } | null>(null)
   const [confirmed, setConfirmed] = useState<{ email: string | null; then: VerifyOutcome } | null>(null)
   const [choosing, setChoosing] = useState<{ token: string; offers: WhereDoYouWorkFirst['whereDoYouWork'] } | null>(null)
   const [chooseBusy, setChooseBusy] = useState(false)
@@ -83,6 +100,13 @@ export function MagicVerifyPage() {
   // null while we do not know yet; the welcome panel waits rather than flashing.
   const [isFirstGround, setIsFirstGround] = useState<boolean | null>(null)
   const [joinUrl, setJoinUrl] = useState<string | null>(null)
+  /**
+   * FAULT 3: AN ANCHOR DRAFT'S OWN WORDING ON THIS SCREEN, AND NOWHERE ELSE.
+   *
+   * `payload.scenario` (the same commit DTO field fault 1 reads, `'HELP_TEAM_UNDERSTAND'`) is what
+   * `commitFlow` below reads to set this - never invented, and never applied to any other situation.
+   */
+  const [isAnchorCheckIn, setIsAnchorCheckIn] = useState(false)
   /**
    * THE PASSWORD STEP, HELD UNTIL AFTER THE CONFIRMATION.
    *
@@ -112,6 +136,7 @@ export function MagicVerifyPage() {
       setWaitingInvites(outcome.waitingInvites ?? [])
       setJoinUrl(outcome.joinUrl)
       setNextGroundId(outcome.groundId)
+      setIsAnchorCheckIn(outcome.wasAnchorDraft)
     } else if (outcome.kind === 'noSession') {
       setNoSession(true)
     } else if (outcome.kind === 'commitError') {
@@ -123,6 +148,8 @@ export function MagicVerifyPage() {
       navigate(outcome.to, { replace: true })
     } else if (outcome.kind === 'verifyError') {
       setError(outcome.message)
+    } else if (outcome.kind === 'rateLimited') {
+      setRateLimited(outcome.message)
     } else if (outcome.kind === 'deadLink') {
       setDeadLink({ what: outcome.what, sentence: outcome.sentence })
     } else if (outcome.kind === 'confirmed') {
@@ -137,7 +164,12 @@ export function MagicVerifyPage() {
    * the server-side draft persists and commit is idempotent. */
   async function commitFlow(payload: any, hadEntryIntent: boolean): Promise<VerifyOutcome> {
     try {
-      const result = await entryApi.commit(payload)
+      /* Somebody with nothing saved in this browser asks the server to save only if it holds a draft, so a
+         new admin from the sign-up form gets no 400 on their first page (journey of 12 October). */
+      const result = hadEntryIntent ? await entryApi.commit(payload) : await entryApi.commit(payload, { ifThereIsOne: true })
+      if (result?.nothing) return { kind: 'redirect', to: '/grounds' }
+      /* Decision 133: the lead lands on the check-in page, where her first check-in's closing is said once. */
+      rememberTheFirstCheckInClosing((result as any)?.groundId)
 
       /**
        * The sidebar has to learn the ground exists.
@@ -160,7 +192,21 @@ export function MagicVerifyPage() {
        * why, and never as invited.
        */
       const failed = new Set(result.failedInvites ?? [])
-      const invitedEmails = (result.contributors ?? []).filter(c => !failed.has(c.email) && !c.waiting).map(c => c.email)
+      /*
+       * SCREEN FAULT 6(c): "NAME (EMAIL)" WHEN A NAME WAS GIVEN. The server's own answer carries
+       * only each contributor's email; the name typed for them at the people step travelled in the
+       * COMMIT PAYLOAD instead (`asSomeoneToInvite`'s `displayName`, request 166) - read back here by
+       * email, the same lookup `shownAs` does on the entry page itself.
+       */
+      const namedAs = new Map<string, string>(
+        (payload?.contributors ?? [])
+          .filter((c: { email?: string; displayName?: string }) => c.email && c.displayName)
+          .map((c: { email: string; displayName: string }) => [c.email.trim().toLowerCase(), c.displayName]),
+      )
+      const invitedEmails = (result.contributors ?? []).filter(c => !failed.has(c.email) && !c.waiting).map(c => {
+        const name = namedAs.get(c.email.trim().toLowerCase())
+        return name ? `${name} (${c.email})` : c.email
+      })
       const waitingInvites = (result.contributors ?? []).filter(c => !failed.has(c.email) && c.waiting).map(c => ({
         email: c.email,
         because: c.waitingBecause === 'no_seat'
@@ -178,6 +224,8 @@ export function MagicVerifyPage() {
         failedInvites: result.failedInvites ?? [],
         /* Why each one did not go, which the server has always sent and this never passed on (U.6 review). */
         whyInvitesFailed: (result as { whyInvitesFailed?: { email: string; because: string }[] }).whyInvitesFailed ?? [],
+        /* FAULT 3: the commit payload's own `scenario` field (fault 1), never a guess. */
+        wasAnchorDraft: payload?.scenario === 'HELP_TEAM_UNDERSTAND',
       }
     } catch (err: any) {
       const msg: string = err?.response?.data?.message ?? ''
@@ -323,6 +371,54 @@ export function MagicVerifyPage() {
     return confirmFirst(outcome)
   }
 
+  /**
+   * ONE ATTEMPT AT VERIFYING THIS TOKEN, AS AN OUTCOME (never throws).
+   *
+   * Pulled out of the mount effect below (B-208, review round 3) so a 429's own "Try again" button
+   * can run the exact same attempt again, rather than duplicating it. Not cached in `verifyFlows`
+   * by this function itself - the caller decides whether this is the one-per-token first attempt
+   * (cached) or a deliberate retry (not: a throttled attempt must be asked again, not replayed from
+   * memory).
+   */
+  function attemptVerify(token: string, fromParam: string | null): Promise<VerifyOutcome> {
+    return (async (): Promise<VerifyOutcome> => {
+      let res: Awaited<ReturnType<typeof authApi.verifyEmail>>
+      try {
+        /* Only with a key when this browser chose a password at sign-up; otherwise exactly as before. */
+        const passwordKey = thePasswordKey()
+        res = passwordKey ? await authApi.verifyEmail(token, undefined, passwordKey) : await authApi.verifyEmail(token)
+        if ('accessToken' in res && res.accessToken) forgetThePasswordKey()
+      } catch (err: any) {
+        /* A link that ran out gets its own page (A2, "That link has expired"); a sign-in link
+           already used, whose address this already confirmed, gets its own too (B-208, "Your
+           email is already confirmed"); anything else stays with "That link didn’t work"
+           (LinkDidNotWork). */
+        const said = err?.response?.data?.message
+        /* B-208 (review round 2): checked BEFORE whatTheLinkDid, which reads the server's
+           sentence to decide "expired"/"used"/etc - a 429 is a different question entirely (too
+           many tries, not what the link itself did), and may carry no recognisable sentence of
+           that shape at all. */
+        if (err?.response?.status === 429) {
+          return { kind: 'rateLimited', message: typeof said === 'string' && said ? said : 'Too many tries. Wait a minute, then try again.' }
+        }
+        const what = whatTheLinkDid(said)
+        if (what === 'expired' || what === 'resent') return { kind: 'deadLink', what, sentence: typeof said === 'string' && what === 'resent' ? said : WE_SENT_A_NEW_ONE }
+        if (what === 'used-confirmed') return { kind: 'deadLink', what, sentence: typeof said === 'string' ? said : ALREADY_CONFIRMED }
+        return { kind: 'verifyError', message: typeof said === 'string' && said ? said : 'The link could not be checked.' }
+      }
+      /*
+       * Nothing has been made yet, and they choose where they work (U.3 review). In the natural
+       * order: "Your email is confirmed" first, then "Where do you work?". Somebody who came from
+       * Google confirmed no email, so they go straight to the choice.
+       */
+      if ('whereDoYouWork' in res && res.whereDoYouWork) {
+        const choice: VerifyOutcome = { kind: 'whereDoYouWork', token, offers: res.whereDoYouWork }
+        return params.get('via') === 'google' ? choice : { kind: 'confirmed', email: res.email ?? null, then: choice }
+      }
+      return afterVerify(res as SignedIn, token, fromParam)
+    })()
+  }
+
   useEffect(() => {
     const token = params.get('token')
     if (!token) { setError('This link has no token.'); return }
@@ -336,7 +432,7 @@ export function MagicVerifyPage() {
     if (!flow) {
       /*
         `next` AS WELL AS `from`, BECAUSE THE INVITE MAIL SENDS `next`.
-        
+
         This page has always honoured a destination on the URL - under the name `from`. The sign-in
         link an invite sends carried no destination at all, so somebody who clicked a link to one
         check-in, got mailed a way back, and signed in, landed on the list of everything. The mail
@@ -344,32 +440,7 @@ export function MagicVerifyPage() {
         thing - see `passwordStep` below, which appends `next=` to the password detour.
       */
       const fromParam = params.get('from') ?? params.get('next')
-      flow = (async (): Promise<VerifyOutcome> => {
-        let res: Awaited<ReturnType<typeof authApi.verifyEmail>>
-        try {
-          /* Only with a key when this browser chose a password at sign-up; otherwise exactly as before. */
-          const passwordKey = thePasswordKey()
-          res = passwordKey ? await authApi.verifyEmail(token, undefined, passwordKey) : await authApi.verifyEmail(token)
-          if ('accessToken' in res && res.accessToken) forgetThePasswordKey()
-        } catch (err: any) {
-          /* A link that ran out gets its own page (A2, "That link has expired"); anything else stays
-             with "That link didn’t work" (LinkDidNotWork). */
-          const said = err?.response?.data?.message
-          const what = whatTheLinkDid(said)
-          if (what === 'expired' || what === 'resent') return { kind: 'deadLink', what, sentence: typeof said === 'string' && what === 'resent' ? said : WE_SENT_A_NEW_ONE }
-          return { kind: 'verifyError', message: typeof said === 'string' && said ? said : 'The link could not be checked.' }
-        }
-        /*
-         * Nothing has been made yet, and they choose where they work (U.3 review). In the natural
-         * order: "Your email is confirmed" first, then "Where do you work?". Somebody who came from
-         * Google confirmed no email, so they go straight to the choice.
-         */
-        if ('whereDoYouWork' in res && res.whereDoYouWork) {
-          const choice: VerifyOutcome = { kind: 'whereDoYouWork', token, offers: res.whereDoYouWork }
-          return params.get('via') === 'google' ? choice : { kind: 'confirmed', email: res.email ?? null, then: choice }
-        }
-        return afterVerify(res as SignedIn, token, fromParam)
-      })()
+      flow = attemptVerify(token, fromParam)
       verifyFlows.set(token, flow)
     }
 
@@ -383,6 +454,26 @@ export function MagicVerifyPage() {
     })
     return () => { mounted = false }
   }, [])
+
+  /* B-208 (review round 3): THE 429 PAGE'S OWN "TRY AGAIN" - re-asks with the exact same token and
+     destination, rather than sending somebody to retype an address the link already answered. The
+     cached flow for this token is replaced (never trusted from memory: a throttled attempt earning
+     the same cached answer forever would make "Try again" do nothing), and a fresh one is cached in
+     its place so a remount mid-retry joins it rather than firing a third request. */
+  function retryVerify() {
+    const token = params.get('token')
+    if (!token) return
+    const fromParam = params.get('from') ?? params.get('next')
+    setVerifyRetrying(true)
+    setRateLimited('')
+    const flow = attemptVerify(token, fromParam)
+    verifyFlows.set(token, flow)
+    flow.then(outcome => {
+      setVerifyRetrying(false)
+      if (outcome.kind === 'commitError') verifyFlows.delete(token)
+      applyOutcome(outcome)
+    })
+  }
 
   /**
    * Count what they already have, once a ground id is in hand. One ground means
@@ -457,8 +548,17 @@ export function MagicVerifyPage() {
         return onward
       } catch (err: any) {
         const said = err?.response?.data?.message
+        /* B-208 (review round 2): same reason as the main verify flow above - a 429 is "wait and
+           try again", not whatever `whatTheLinkDid` would otherwise read the sentence as. */
+        if (err?.response?.status === 429) {
+          return {
+            kind: 'whereDoYouWork', token,
+            offers: { ...offers, problem: typeof said === 'string' && said ? said : 'Too many tries. Wait a minute, then try again.' },
+          }
+        }
         const what = whatTheLinkDid(said)
         if (what === 'expired' || what === 'resent') return { kind: 'deadLink', what, sentence: typeof said === 'string' && what === 'resent' ? said : WE_SENT_A_NEW_ONE }
+        if (what === 'used-confirmed') return { kind: 'deadLink', what, sentence: typeof said === 'string' ? said : ALREADY_CONFIRMED }
         return {
           kind: 'whereDoYouWork', token,
           offers: { ...offers, problem: typeof said === 'string' && said ? said : 'That did not go through, and nothing has changed. Try again.' },
@@ -502,7 +602,7 @@ export function MagicVerifyPage() {
           </Callout>
 
           {joinUrl && (
-            <Panel heading="Share this link to invite participants">
+            <Panel heading={isAnchorCheckIn ? 'Share this link to invite people' : 'Share this link to invite participants'}>
               <span className="gwui-invite-link-row">
                 <span className="gwui-invite-link-address">{joinUrl}</span>
                 <Button
@@ -572,17 +672,25 @@ export function MagicVerifyPage() {
           <Panel heading="What happens next">
             <div className="gwui-subheading-list">
               <div>
-                <SubHeading>Participants get their invite</SubHeading>
+                <SubHeading>The people you added get their invitation</SubHeading>
                 <p className="gwui-panel-text">Anyone you added will receive an email with a private link. They check in independently.</p>
               </div>
               <div>
                 <SubHeading>Their answers come in</SubHeading>
                 <p className="gwui-panel-text">Once they submit, Groundwork builds a picture from what everyone said. The report shows where people agree and where they differ.</p>
               </div>
+              {/*
+                SCREEN FAULT 1: NO RELEASE STEP FOR AN ANCHOR DRAFT. There is no shared report
+                nobody but the lead has ever held back - each person in `HELP_TEAM_UNDERSTAND` reads
+                their own account (see the reveal on the setup screen, and docs/anchor-scenario.md).
+                "You release it" describes a step this situation does not have.
+              */}
+              {!isAnchorCheckIn && (
               <div>
                 <SubHeading>You release the report</SubHeading>
                 <p className="gwui-panel-text">When you are ready, you release the report to everybody in it.</p>
               </div>
+              )}
             </div>
           </Panel>
 
@@ -699,6 +807,37 @@ export function MagicVerifyPage() {
 
   if (deadLink?.what === 'resent') return <LinkAlreadyResent sentence={deadLink.sentence} />
   if (deadLink?.what === 'expired') return <LinkExpired kind="sign-in" />
+  if (deadLink?.what === 'used-confirmed') return <LinkAlreadyUsedConfirmed sentence={deadLink.sentence} />
+
+  /* B-208 (review round 2): a 429 reads as what it is - too many tries, wait and try again - not
+     "That link didn't work... already been used", which was shown for this before and is not true
+     of a request that was simply throttled.
+
+     B-208 (review round 3): "TOO MANY TRIES" SAID THE SAME THING TWICE AND LEFT NO WAY FORWARD.
+     The heading repeated the server's own sentence below it, which already says what happened
+     ("too many tries in a short time"); the one thing the heading needed to add was what to do
+     about it - wait. And the card was a dead end: nothing on it could be pressed, so trying again
+     meant finding the original email and opening the link a second time. "Try again" re-asks with
+     this same link; somebody already signed in (the throttle can be tripped by other tabs or
+     devices on the same account) is also offered the one place they actually need to go. */
+  if (rateLimited) {
+    return (
+      <Page narrow>
+        <Mark />
+        <Stack gap={18}>
+          <PageTitle title="Wait a minute" subtitle={rateLimited} subtitleTone="ink" />
+          <Stack gap={10}>
+            <Button wide disabled={verifyRetrying} onClick={retryVerify}>
+              {verifyRetrying ? 'Trying again…' : 'Try again'}
+            </Button>
+            {signedIn && (
+              <Button kind="secondary" wide onClick={() => navigate('/today', { replace: true })}>Go to Today</Button>
+            )}
+          </Stack>
+        </Stack>
+      </Page>
+    )
+  }
 
   /* A link already used, one we do not know, or none at all: the account card, with one plain
      message and a way to ask for a new one (U.2 review). It used to be LinkProblem under the old

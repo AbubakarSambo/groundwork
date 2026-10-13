@@ -32,8 +32,6 @@ export const THE_OLD_STYLESHEETS_CLASSES: readonly string[] = [
   'ga-status-dot-done',
   'ga-status-dot-going',
   'ga-status-dot-waiting',
-  'gw-arrival-plain',
-  'gw-arrival-plain-col',
   'gw-ask-open',
   'gw-auth-actions',
   'gw-auth-brand',

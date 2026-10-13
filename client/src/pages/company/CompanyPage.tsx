@@ -182,7 +182,7 @@ function Priority({ pr }: { pr: CompanyPriority }) {
   return (
     <Panel as="section" aria-label={`Priority ${pr.number}`}>
       <div className="gwui-priority-top">
-        <span className="gwui-ink-sub gwui-fs-13-5">Priority {pr.number}</span>
+        <span className="gwui-note">Priority {pr.number}</span>
         {tag && <Tag tone="attention">{tag}</Tag>}
       </div>
       <h3 className="gwui-panel-heading">{pr.title}</h3>

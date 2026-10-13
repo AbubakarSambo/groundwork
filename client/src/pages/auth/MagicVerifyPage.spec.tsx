@@ -90,6 +90,51 @@ describe('MagicVerifyPage - Bug A (wrong-flow routing)', () => {
     await waitFor(() => expect(mockedNavigate).toHaveBeenCalledWith('/grounds', { replace: true }))
   })
 
+  /* Journey of 12 October: a new admin opening the sign-up email link logged a 400 on POST /entry/commit.
+     With nothing saved in this browser the page now asks the server to save only if it holds a draft. */
+  it('a new admin with nothing saved in this browser asks only if there is a draft, and lands on their check-ins', async () => {
+    vi.mocked(authApi.verifyEmail).mockResolvedValue({
+      user: { id: 'u6', email: 'new-admin@x.com', role: 'ADMIN', jobTitle: null } as any,
+      accessToken: 'tok',
+    })
+    vi.mocked(entryApi.commit).mockResolvedValue({ nothing: true } as any)
+
+    renderPage('tok-new-admin')
+
+    await waitFor(() => expect(mockedNavigate).toHaveBeenCalledWith('/grounds', { replace: true }))
+    expect(entryApi.commit).toHaveBeenCalledWith(expect.anything(), { ifThereIsOne: true })
+    expect(screen.queryByText(/the check-in wasn.t saved/i)).not.toBeInTheDocument()
+  })
+
+  it('somebody with a check-in saved in this browser commits it as before, never only-if-there-is-one', async () => {
+    localStorage.setItem('gw_commit_payload', JSON.stringify({ groundLabel: 'My ground', history: [{ role: 'user', content: 'hi' }], contributors: [] }))
+    vi.mocked(authApi.verifyEmail).mockResolvedValue({
+      user: { id: 'u7', email: 'initiator4@x.com', role: 'ADMIN', jobTitle: null } as any,
+      accessToken: 'tok',
+    })
+    vi.mocked(entryApi.commit).mockResolvedValue({ groundId: 'g2', joinToken: null, contributors: [], failedInvites: [] } as any)
+
+    renderPage('tok-initiator-saved')
+
+    await waitFor(() => expect(entryApi.commit).toHaveBeenCalled())
+    expect(vi.mocked(entryApi.commit).mock.calls[0]).toHaveLength(1)
+  })
+
+  /* 12 October, second pass: an invited person confirming a sign-up link is sent by the server straight to
+     their check-in. The page goes there and posts nothing to /entry/commit, so no 400 and nothing made. */
+  it('an invited person whose link names their check-in goes straight there, with no commit at all', async () => {
+    vi.mocked(authApi.verifyEmail).mockResolvedValue({
+      user: { id: 'u8', email: 'pia@brightloom.test', role: 'MEMBER', jobTitle: null } as any,
+      accessToken: 'tok',
+      next: '/checkin/c-pia-1',
+    } as any)
+
+    renderPage('tok-invited-pia')
+
+    await waitFor(() => expect(mockedNavigate).toHaveBeenCalledWith('/checkin/c-pia-1', { replace: true }))
+    expect(entryApi.commit).not.toHaveBeenCalled()
+  })
+
   it('a real, unrelated commit failure still shows the commitError branch (does not over-widen the fix)', async () => {
     vi.mocked(authApi.verifyEmail).mockResolvedValue({
       user: { id: 'u4', email: 'initiator2@x.com', role: 'ADMIN', jobTitle: null } as any,
@@ -120,5 +165,36 @@ describe('MagicVerifyPage - Bug A (wrong-flow routing)', () => {
     renderPage('tok-success')
 
     await waitFor(() => expect(screen.getByText(/your check-in is set up/i)).toBeInTheDocument())
+  })
+
+  /*
+   * SCREEN FAULT 6(c) (live walk, 6 October 2026): "NAME (EMAIL)" ON THE INVITED LIST, WHEN A NAME
+   * WAS GIVEN. The server's own answer carries only each contributor's email; the name typed for
+   * them at the people step travelled in the COMMIT PAYLOAD instead (`displayName`, request 166),
+   * read back here by email the same way `shownAs` does on the entry page itself.
+   */
+  it('reads "Name (email)" on the invited list, when a name was given at the people step', async () => {
+    localStorage.setItem('gw_commit_payload', JSON.stringify({
+      groundLabel: 'Help my team understand',
+      history: [{ role: 'user', content: 'hi' }],
+      contributors: [{ email: 'musa@anchor.test', displayName: 'Musa Bello' }, { email: 'noname@anchor.test' }],
+    }))
+    vi.mocked(authApi.verifyEmail).mockResolvedValue({
+      user: { id: 'u6', email: 'lead@x.test', role: 'ADMIN', jobTitle: null } as any,
+      accessToken: 'tok',
+    })
+    vi.mocked(entryApi.commit).mockResolvedValue({
+      groundId: 'g1',
+      joinToken: null,
+      contributors: [{ email: 'musa@anchor.test' }, { email: 'noname@anchor.test' }],
+      failedInvites: [],
+    } as any)
+
+    renderPage('tok-named-invite')
+
+    await waitFor(() => expect(screen.getByText(/your check-in is set up/i)).toBeInTheDocument())
+    expect(screen.getByText('Musa Bello (musa@anchor.test)')).toBeInTheDocument()
+    expect(screen.getByText('noname@anchor.test')).toBeInTheDocument()
+    expect(screen.queryByText('musa@anchor.test', { exact: true })).not.toBeInTheDocument()
   })
 })

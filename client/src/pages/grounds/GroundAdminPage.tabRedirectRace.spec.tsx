@@ -55,7 +55,10 @@ function renderPage() {
   return render(
     <QueryClientProvider client={qc}>
       <MemoryRouter initialEntries={['/grounds/g1?tab=chat']}>
-        <Routes><Route path="/grounds/:id" element={<GroundAdminPage />} /></Routes>
+        <Routes>
+          <Route path="/grounds/:id" element={<GroundAdminPage />} />
+          <Route path="/grounds/:id/board" element={<div>the board page itself</div>} />
+        </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -115,14 +118,20 @@ describe('the read-only redirect waits for the check-in to load', () => {
     expect(screen.queryByText('What this check-in is for')).toBeNull()
   })
 
-  it('a genuinely read-only admin still ends up on Context, once the check-in has loaded', async () => {
+  /*
+   * UPDATED, HAFSAH, 10 OCTOBER (B-143): a genuinely read-only admin now ends up on the Board
+   * page, not Context - the second deep page audit found Context a confusing landing for an admin
+   * who is only there to read, and Hafsah's answer sends this reader to the board instead.
+   */
+  it('a genuinely read-only admin ends up on the Board page, once the check-in has loaded', async () => {
     currentUser = { id: 'u-admin', role: 'ADMIN', email: 'admin@x.test' }
     const { promise, resolve } = deferred<any>()
     ;(groundsApi.get as any).mockReturnValue(promise)
     renderPage()
 
     resolve(ground())
-    expect(await screen.findByText('What this check-in is for')).toBeTruthy()
+    expect(await screen.findByText('the board page itself')).toBeTruthy()
     expect(screen.queryByText('No check-in open right now')).toBeNull()
+    expect(screen.queryByText('What this check-in is for')).toBeNull()
   })
 })

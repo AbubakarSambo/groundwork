@@ -54,6 +54,9 @@ describe('a closed session’s own page does not borrow a later session’s mate
     vi.mocked(reportsApi.get).mockResolvedValue(latestReport as any)
     vi.mocked(groundsApi.get).mockResolvedValue({
       id: 'g1',
+      /* B-198: `groundReport` is now gated on `ground.report` being truthy - true here, since a
+         check-in on session 2 with session 1 already closed obviously already has a team report. */
+      report: { any: 'thing' },
       participants: [{ userId: 'u-rukia', partyType: 'INITIATOR' }],
       sessionProgress: { sessionNumber: 2, total: 3, completed: 1, missingParticipantIds: [], requestingUserIsMissing: false },
     } as any)
@@ -64,10 +67,10 @@ describe('a closed session’s own page does not borrow a later session’s mate
     await screen.findByText('Closed 27 Sept 2026. This does not change. What each person said about their own work can appear here. Nobody\'s private judgement of somebody else does.')
     /* These belong to session 2, the one actually in progress, not to the closed session 1 this
        page is about - they must not appear above the new, clearly labelled section. */
-    const sinceThenHeading = screen.getByRole('heading', { name: 'Since then, in the latest check-in' })
+    const sinceThenHeading = await screen.findByRole('heading', { name: 'Since then, in the latest check-in' })
     const beforeSinceThen = (node: Node) => (sinceThenHeading.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_PRECEDING) !== 0
-    const aboutYou = screen.getByText('This is session 2 of sales and expansion work.')
-    const probe = screen.getByText('Has not answered this session. Nothing below is from this round.')
+    const aboutYou = await screen.findByText('This is session 2 of sales and expansion work.')
+    const probe = await screen.findByText('Has not answered this session. Nothing below is from this round.')
     expect(beforeSinceThen(aboutYou)).toBe(false)
     expect(beforeSinceThen(probe)).toBe(false)
   })
@@ -75,15 +78,16 @@ describe('a closed session’s own page does not borrow a later session’s mate
   it('labels the moved material plainly as the latest check-in, not the session above', async () => {
     renderIt()
     await screen.findByRole('heading', { name: 'Since then, in the latest check-in' })
-    expect(screen.getByText(/This session is closed and does not change\. Since it closed, a later check-in has added more\./)).toBeTruthy()
-    expect(screen.getByText('This is session 2 of sales and expansion work.')).toBeTruthy()
-    expect(screen.getByText('Has not answered this session. Nothing below is from this round.')).toBeTruthy()
+    expect(await screen.findByText(/This session is closed and does not change\. Since it closed, a later check-in has added more\./)).toBeTruthy()
+    expect(await screen.findByText('This is session 2 of sales and expansion work.')).toBeTruthy()
+    expect(await screen.findByText('Has not answered this session. Nothing below is from this round.')).toBeTruthy()
   })
 
   it('shows the coaching note and probe list under this session’s own heading when this session is the latest one', async () => {
     vi.mocked(conversationApi.sessionReport).mockResolvedValue({ groundId: 'g1', sessionNumber: 2, report: { any: 'thing' }, finishedAt: '2026-10-01T10:00:00.000Z' } as any)
     vi.mocked(groundsApi.get).mockResolvedValue({
       id: 'g1',
+      report: { any: 'thing' },
       participants: [{ userId: 'u-rukia', partyType: 'INITIATOR' }],
       sessionProgress: { sessionNumber: 2, total: 3, completed: 1, missingParticipantIds: [], requestingUserIsMissing: false },
     } as any)

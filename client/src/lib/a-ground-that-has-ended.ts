@@ -52,21 +52,49 @@ export function howItIsHeld(status?: string | null): string | null {
   return isHeld(status) ? 'On hold' : null
 }
 
-/** What the ground says about itself once it is over. Null while it is live. */
+/**
+ * What the ground says about itself once it is over. Null while it is live.
+ *
+ * B-020: this used to read "Ended · stop" - two pieces joined by a dot, the second being the
+ * outcome's own internal key, lowercased. A full sentence instead, in the same shape the server's
+ * own `howItEnded` (api/src/modules/grounds/a-ground-that-has-ended.ts) already writes: "This
+ * check-in has ended." followed by the outcome in a sentence of its own. The outcome's REAL
+ * wording is scenario-specific (api/src/modules/resolution/end-states.ts: "STOP" reads "The
+ * project stops." for a project and "The work stops." for a drifting one) and is not served on the
+ * ground yet, so `humanEndState` is a plain, generic stand-in until it is (see
+ * docs/requests-to-engine.md).
+ */
 export function howItEnded(ground: { status?: string | null; endState?: string | null; endStateLabel?: string | null } | null | undefined): string | null {
   /* Out of time is its own badge, and it does not say "ended" - it is the one state somebody can
      still do something about, and calling it ended is why nobody tried. */
   if (hasStalled(ground?.status)) return 'Out of time'
   if (!hasEnded(ground?.status)) return null
   const label = ground?.endStateLabel ?? ground?.endState
-  return label ? `Ended · ${humanEndState(label)}` : 'Ended'
+  if (!label) return 'This check-in has ended.'
+  const said = humanEndState(label)
+  const sentence = said.charAt(0).toUpperCase() + said.slice(1)
+  return `This check-in has ended. ${sentence.endsWith('.') ? sentence : `${sentence}.`}`
 }
 
-/** END_STATE values are stored shouted. Nobody says "KEEP" out loud. */
+/**
+ * END_STATE values are stored shouted, and nobody says "KEEP" out loud.
+ *
+ * The real, true-to-the-scenario sentence for each one lives server-side in
+ * `api/src/modules/resolution/end-states.ts`, keyed by both the value and the ground's scenario
+ * (the same value can mean different things - "STOP" is "The project stops." for a project and
+ * "The work stops." for a drifting one). That is not served on the ground yet (request to engine),
+ * so this is a plain, scenario-blind stand-in: good enough to read as a sentence, not yet as
+ * precise as the server's own words for it.
+ */
 export function humanEndState(value: string): string {
   const said: Record<string, string> = {
-    KEEP: 'keep the hire', RESTRUCTURE: 'restructure the role', EXIT: 'let them go', EXTEND: 'extend the evaluation',
-    RENEW: 'renew', END: 'end it', CONTINUE: 'carry on', RESOLVED: 'resolved', AGREED: 'agreed',
+    KEEP: 'the person stays in the role', RESTRUCTURE: 'the role is set up differently',
+    EXIT: 'the role does not continue', EXTEND: 'the time to decide is made longer',
+    RENEW: 'it is renewed', END: 'it ends', CONTINUE: 'it carries on', RESOLVED: 'it is resolved',
+    AGREED: 'it is agreed', STOP: 'the work stops', COMPLETE: 'the work is complete',
+    DESCOPE: 'it carries on with less in it', SEPARATE: 'the people involved go their separate ways',
+    HANDED_OVER: 'the work has been handed over', SIGNED: 'it is signed', NOT_YET: 'it is not decided yet',
+    ALIGNED: 'everyone now shares the same picture', ESCALATE: 'help is needed from outside the team',
   }
   return said[value] ?? value.toLowerCase().replace(/_/g, ' ')
 }

@@ -1,4 +1,5 @@
 import React from 'react'
+import { atTheStart } from '@/lib/a-colleague'
 
 /**
  * WHERE TWO ACCOUNTS DIFFER, SHOWN AS TWO ACCOUNTS.
@@ -35,6 +36,18 @@ export interface ADifference {
   note?: string | null
 }
 
+/**
+ * WHOSE ACCOUNT, AS THE SERVER NAMED IT (decision 139, item 1). The check-in page's
+ * `report.divergences[].positions[].participantLabel` now carries the person's name, or "you" for the
+ * reader, or "a colleague" where this reader may not read the name, never a stand-in label. It begins
+ * the line, so it begins with a capital.
+ */
+export function whoseAccount(p: APosition): string {
+  const who = String(p.who ?? p.participantLabel ?? '').trim()
+  if (!who) return 'One account'
+  return who.toLowerCase() === 'you' ? 'You' : atTheStart(who)
+}
+
 /** Whatever the server sent, as a printable line. A page must not assume which shape arrived. */
 function asText(v: unknown): string {
   if (typeof v === 'string') return v.trim()
@@ -62,7 +75,7 @@ export function TwoAccountsSideBySide({ difference }: { difference: ADifference 
       >
         {sides.map((p, i) => (
           <div key={i}>
-            <div className={CITE_CLASS} style={{ fontFamily: MONO, letterSpacing: '.08em', textTransform: 'uppercase' }}>{(p.who ?? p.participantLabel ?? 'One account').toString()}</div>
+            <div className={CITE_CLASS} style={{ fontFamily: MONO, letterSpacing: '.08em', textTransform: 'uppercase' }}>{whoseAccount(p)}</div>
             <div className="gwui-fs-13 gwui-ink-text" style={{ lineHeight: 1.6, maxWidth: '68ch' }}>{p.view}</div>
           </div>
         ))}

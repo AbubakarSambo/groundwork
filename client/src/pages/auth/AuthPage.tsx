@@ -227,7 +227,16 @@ export function AuthPage() {
     staleTime: 10 * 60 * 1000,
     retry: false,
   })
-  const trialSentence = theFreeTrialSentence(pricing?.trial)
+  /*
+   * B-206: THE TRIAL LINE IS ABOUT STARTING YOUR OWN ORGANISATION, NOT ABOUT JOINING SOMEONE
+   * ELSE'S. Signing up from an organisation's own invite link (/j/:code, JoinByLinkPage, which
+   * sends people here as `?mode=signup&next=/j/<code>`) is always joining an organisation that
+   * already exists - "Teams of fewer than 20 people get 3 months free" has nothing to do with it,
+   * and reading it here (j-baridi.txt has no such line) promises a trial that is not what is about
+   * to happen. Left out only on this one path; every other sign-up still reads it.
+   */
+  const openedFromAJoinLink = !!nextPath && nextPath.startsWith('/j/')
+  const trialSentence = openedFromAJoinLink ? null : theFreeTrialSentence(pricing?.trial)
 
   const signIn = useMutation({
     mutationFn: () => authApi.login(email.trim().toLowerCase(), password),
@@ -274,6 +283,18 @@ export function AuthPage() {
    * the second link carries exactly what the first did.
    */
   const [sentBy, setSentBy] = useState<'link' | 'create'>('link')
+  /*
+   * B-037: "WITH A PASSWORD" STILL READ "CHECK YOUR EMAIL... WE SENT A SIGN-IN LINK", with no
+   * mention anywhere that the password just typed had been kept.
+   *
+   * The password IS saved and does work (entrySave sends it, and it signs the person in
+   * afterwards exactly like any other password) - confirming the email is still required either
+   * way, since nothing can let somebody claim an address they have not proved they own. What was
+   * missing was telling them that: this page read identically whichever door was chosen, so
+   * choosing a password looked ignored even though it was not. Set once, when a password is
+   * actually sent with the account.
+   */
+  const [createdWithPassword, setCreatedWithPassword] = useState(false)
   /* `nextPath` rides with the link, so opening it from the mailbox comes back here (U.3 review). It is
      only sent when there is one, so every other request is exactly what it was. */
   const save = (draft: Parameters<typeof authApi.entrySave>[1], password?: string) => nextPath
@@ -361,7 +382,7 @@ export function AuthPage() {
       ? save({ payload: whatTheyTyped() }, signInBy === 'password' ? newPassword : undefined)
       : authApi.entrySave(email.trim().toLowerCase(), { payload: whatTheyTyped() }, trap.filled, signInBy === 'password' ? newPassword : undefined),
     /* The key for a password chosen here stays in this browser (the-password-key.ts, U.3 review). */
-    onSuccess: (data: any) => { keepThePasswordKey(data?.passwordKey); setSentBy('create'); setLinkSent(true) },
+    onSuccess: (data: any) => { keepThePasswordKey(data?.passwordKey); setSentBy('create'); setCreatedWithPassword(signInBy === 'password'); setLinkSent(true) },
     onError: (err: any) => {
       const status = err?.response?.status
       if (!status || status >= 500) {
@@ -512,6 +533,7 @@ export function AuthPage() {
         email={email}
         resend={sendTheLinkAgain}
         onUseDifferent={() => { setLinkSent(false); setView(defaultView === 'create' ? 'create' : 'link') }}
+        withPassword={sentBy === 'create' && createdWithPassword}
       />
     )
   }

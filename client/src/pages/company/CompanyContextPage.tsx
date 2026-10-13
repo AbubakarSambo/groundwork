@@ -3,6 +3,7 @@ import { companyApi, type CompanyCard, type CompanyPriority } from '@/api/compan
 import { useAuthStore } from '@/stores/auth'
 import { askNameFor } from '@/lib/ask-name'
 import { Page, PageTitle, Section, Panel, Button, Tag, Note, Empty, RowList, Row } from '@/components/gw/ui'
+import { whatSuccessLooksLike } from './CompanyPage'
 
 /**
  * COMPANY CONTEXT (D2 and B2, #/company/context, group 2 piece 3). The wording is copied from
@@ -43,8 +44,16 @@ export function CompanyContextPage() {
 
   return (
     <Page>
+      {/*
+        FAULT 7 (live walk, 6 October 2026): THE PROTOTYPE'S OWN HEADING WAS MISSING.
+        company-context.txt reads "Company context" as its own line, above the full sentence
+        title - this page went straight from the breadcrumb to the sentence, with nothing naming
+        the page itself. `eyebrow` is the shared part other pages already use for exactly this
+        line above the title.
+      */}
       <PageTitle
         crumbs={[{ label: 'Company', to: '/company' }, { label: name }]}
+        eyebrow="Company context"
         title="What the company is trying to do, and how it reaches every team"
       />
 
@@ -108,15 +117,22 @@ export function CompanyContextPage() {
 }
 
 function Priority({ pr, readsTargets }: { pr: CompanyPriority; readsTargets: boolean }) {
-  const success = [pr.measure, pr.target].filter((s): s is string => !!s && !!s.trim())
+  /*
+   * FAULT 7 (live walk, 6 October 2026): THE MEASURE AND THE TARGET WERE TWO BARE LINES, NOT A
+   * SENTENCE. "Shops ordering weekly" then "40" on its own, underneath - a label and a number,
+   * never joined into something a person reads as one thought. `whatSuccessLooksLike` already
+   * says this as one sentence for the Company page (decision 86, item 3); reused here rather than
+   * written a second time, so the two pages never say the same fact two different ways.
+   */
+  const success = whatSuccessLooksLike(pr.measure, pr.target)
   return (
     <Panel as="section" aria-label={`Priority ${pr.number}`}>
-      <span className="gwui-ink-sub gwui-fs-13-5">Priority {pr.number}</span>
+      <span className="gwui-note">Priority {pr.number}</span>
       <h3 className="gwui-panel-heading">{pr.title}</h3>
-      {readsTargets && success.length > 0 && (
+      {readsTargets && success && (
         <>
           <p className="gwui-panel-text"><b>What success looks like</b> <Tag>Leadership only</Tag></p>
-          {success.map(s => <p key={s} className="gwui-panel-text">{s}</p>)}
+          <p className="gwui-panel-text">{success}</p>
         </>
       )}
       <p className="gwui-panel-text-muted">Owner: {pr.owner ?? 'No owner yet'}</p>

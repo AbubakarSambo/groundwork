@@ -1,11 +1,21 @@
 import { apiClient } from './client'
 import type { ServedPattern } from './patterns'
-import type { TheMonthBoard, TheEndOfMonthRead, TheActiveLine, TheIdeasFromYourTeam } from './anchorShapes'
+import type { TheMonthBoard, TheEndOfMonthRead, TheActiveLine, TheIdeasFromYourTeam, TheAnchorBoardSections } from './anchorShapes'
 
 export type BoardSection =
   | 'phaseSpine' | 'quickRead' | 'objectives' | 'startingState' | 'divergence'
   | 'whatTheRoomIsAbout' | 'whoOwnsWhat' | 'dependencies' | 'checkInGrid' | 'contribution' | 'coverage'
   | 'cascade' | 'hiddenContributors' | 'patterns' | 'decisions' | 'poll'
+  /* The anchor scenario's own sections (decision 114; docs/anchor-scenario.md sections 11, 12, 18, 19,
+     23, 24), named by the switchboard for that scenario alone (api/src/modules/board/board-families.ts,
+     SCENARIO_SECTIONS_ADDED) and drawn by the ordinary board page like any other section. */
+  | 'whatYouAreCarrying'
+  | 'howGroundworkWillWork'
+  | 'theFourLenses'
+  | 'ideasFromTheTeam'
+  | 'peopleHelpingTheTeamMove'
+  | 'recommendations'
+  | 'weeklyInsight'
 
 export type BoardFamily = 'DELIVERY' | 'COHORT' | 'ONBOARDING' | 'EVALUATION' | 'SENSING' | 'AGREEMENT' | 'RECURRING' | 'SNAPSHOT' | 'UPDATE'
 export type CoverageVariant = 'text' | 'bar'
@@ -257,6 +267,8 @@ export type BoardPresent = {
     whatToDo?: { move: string; because: string; startWith?: string }[]
     whatThisCannotTellYou?: { about: string; why?: string; toKnow?: string }[]
     whatWeFailedToAsk?: { about: string; howManyMissedIt?: number }[]
+    /** Decision 141 (2): counted by code from the record, never by the model. Travels with the judgement. */
+    theCountsBehindThis?: { says: string[] } | null
   } | null
   /** The counts it was written from. Lead only: it is the working, not the finding. */
   theTable?: string | null
@@ -317,7 +329,7 @@ export type BoardPresent = {
     nameIsTheirRole: boolean
     target: number | null
     count: number
-    reason: 'has not answered' | 'stuck and not chasing' | 'behind the pace' | 'nothing checkable' | 'waiting on someone' | 'nothing to do' | 'not let in'
+    reason: 'has not answered' | 'something in the way two weeks' | 'behind the pace' | 'nothing checkable' | 'waiting on someone' | 'nothing to do' | 'not let in'
     /** What happened and what would change it, in a full sentence from the server. Shown under the pill in place of a fixed phrase. */
     says: string
     ask: string | null
@@ -372,6 +384,9 @@ export type BoardPresent = {
       /** Request 111 (a): a score of where a person's work lands stays removed - the engine does
           not always send this any more, so the bar variant only draws when it is a real number. */
       participantId: string; name: string | null; scope: string; pct?: number
+      /** Decision 141 (3): the lead only. The share of the work in this person's role that other people
+          described doing as theirs, 0 to 100. Drawn beside the name; people are never sorted by it. */
+      landingPercent?: number
       kind: 'LEAKING' | 'ABSORBING' | 'STABLE'; trend: string; what: string | null
       reason: string; reasonText: string | null; ownVoice: string | null
       coupledToBlocker: boolean; remitDefined: boolean
@@ -530,6 +545,8 @@ export type BoardPresent = {
   /** What the person who runs the check-in needs to do. At most 10, for that reader only. */
   /** `action` is sent to the lead alone - see `AnAction`. */
   leadActions?: { id: string; says: string; because: string | null; action?: AnAction }[]
+  /** MISSED CHECK-INS (decision 136), to the lead of this check-in alone: the whole line, already worded, with the reason the person gave and the next step suggested inside it. */
+  missedCheckIns?: { participantId: string; name: string; text: string; reason: string | null; suggestion: string | null }[]
   /** What each side promised, and what somebody here still waits on that side for. One per person, then each outside party named. */
   obligations?: { participantId: string | null; who: string; promised: string[]; othersWaitFor: string[] }[]
   /** Where a team's number would land by the last session at its current pace, against the aim or the limit. Never about one person. */
@@ -816,7 +833,7 @@ export type BoardPresent = {
     wouldClearItSays: string
     holdingUp: string | null
   }[]
-}
+} & TheAnchorBoardSections
 
 export type BoardResponse = BoardAbsent | BoardWithheld | BoardPresent
 
@@ -843,6 +860,8 @@ export interface AServedWorkRow {
   kind: string
   name: string
   stage: string | null
+  /** The stage as the record holds it, when that differs from the stage said: "Said to be won, not shown yet". Shown in place of the stage. */
+  stageSays?: string | null
   owner: string | null
   ownerParticipantId: string | null
   due: string | null
@@ -853,7 +872,7 @@ export interface AServedWorkRow {
    * "cooling", "cold", "won"), and why it is there, in full sentences from its own record. Sales
    * deal rows only; absent on every other kind of work.
    */
-  group?: 'likely' | 'possible' | 'next-quarter' | 'cooling' | 'cold' | 'won'
+  group?: 'likely' | 'possible' | 'next-quarter' | 'cooling' | 'cold' | 'said-won' | 'won'
   groupSays?: string
   fields: Record<string, string>
   /** "said": read from somebody's check-in, with `said` holding their words exactly. "lead": added by the lead. */
@@ -909,7 +928,7 @@ export type AServedWorkSection =
        * groups that have a deal in them. `rowIds` are `AServedWorkRow.id`s in this section's own
        * `rows`. Present only on the sales org's "Deal grid" section.
        */
-      groups?: { group: 'likely' | 'possible' | 'next-quarter' | 'cooling' | 'cold' | 'won'; heading: string; reason: string; rowIds: string[] }[]
+      groups?: { group: 'likely' | 'possible' | 'next-quarter' | 'cooling' | 'cold' | 'said-won' | 'won'; heading: string; reason: string; rowIds: string[] }[]
       /** What the record cannot support, said plainly once under the grid - never claimed by a group. */
       groupsNote?: string[]
       /** Present only on a participant's own board, where this section already holds only their own rows ("Only yours."). */
@@ -931,7 +950,15 @@ export const boardApi = {
     apiClient
       .get<BoardResponse>(`/grounds/${groundId}/board`, {
         params: coverage ? { coverage } : undefined,
+        /* B-110 (GW-PRI-04): the page already says GroundGone's one sentence for both a 404 and a
+           403 (see BoardPage.tsx). Without skipForbiddenToast, the client's own axios layer raised
+           a second, DIFFERENT message on top of it for a 403 only - "That one is not yours to
+           open... whoever runs this check-in can let you in" - which tells a stranger holding a
+           stale link exactly what GroundGone is written not to: that something real sits behind
+           it. skipNotFoundToast already did the equivalent for 404; this closes the same door for
+           403. */
         skipNotFoundToast: true,
+        skipForbiddenToast: true,
       } as any)
       .then((r) => r.data),
 

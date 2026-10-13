@@ -196,12 +196,18 @@ describe('the participant’s own view, first (board-as-participant.txt)', () =>
      * PROJECT BOARD REVIEW 1, FIX 6: POINTS AT THE TEAM REPORT, NOT A FOLD WITH NO TEAM PICTURE
      * IN IT. "Open today's team picture below." used to open and scroll to "The whole check-in"
      * fold, which never actually holds a team picture - only everything else this board sends
-     * (By area, coaching, the switchboard's own sections). Updated because the old assertion
-     * (opening the fold) was checking that exact defect: this now links straight to the report
-     * tab, where "The team's report" actually lives.
+     * (By area, coaching, the switchboard's own sections).
+     *
+     * SCREEN FAULT 4: AND NOT TO `/grounds/:id/report` EITHER - THAT IS ONLY A REDIRECT
+     * (ReportPage.tsx) TO THIS VERY PAGE'S OWN "My work" TAB, FOR A PARTICIPANT. Walked on a
+     * phone: landed on `?tab=report` showing about 350px of blank gap over two closed rows
+     * squeezed together, with the tab bar underlining "My work" - never the session's own report
+     * page. Updated to the same place "Read your own report" already opens
+     * (`myLatestCheckInId` - the session this team picture is for), the direct route, like that
+     * link above.
      */
     const open = screen.getByRole('link', { name: 'Open today’s team picture.' })
-    expect(open).toHaveAttribute('href', '/grounds/g1/report')
+    expect(open).toHaveAttribute('href', '/checkin/ci-miriam-1/report')
   })
 
   it('reads "Your share" when the engine sends one, ending with who else sees it', async () => {

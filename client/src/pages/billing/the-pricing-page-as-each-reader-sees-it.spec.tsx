@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, waitFor } from '@testing-library/react'
+import { render, waitFor, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { PricingPage } from './PricingPage'
@@ -55,8 +55,10 @@ beforeEach(() => {
 describe('a visitor who is not signed in', () => {
   it('is never told the free plan is theirs', async () => {
     renderIt()
-    /* $410, not the shipped $400: the page reads the table, not a number of its own. */
-    await waitFor(() => expect(text()).toContain('$410/mo'))
+    /* $410, not the shipped $400: the page reads the table, not a number of its own.
+       Screen fault 11 (final walk): "$410/mo" drawn as plain text became "$410 a month" -
+       the currency symbol and the number are kept, "/mo" becomes the plain words. */
+    await waitFor(() => expect(text()).toContain('$410 a month'))
     expect(text()).not.toContain('Your current plan')
     expect(text()).toContain('Start free with 10 check-ins, for teams of 5 or fewer, including you. Subscribe as your team grows. Unlimited sessions and reports on every plan.')
     expect(text()).toContain('For small teams getting each person’s own account written down.')
@@ -64,14 +66,14 @@ describe('a visitor who is not signed in', () => {
 
   it('reads nothing about a free trial while it is off, and none of the lines that were not true', async () => {
     renderIt()
-    await waitFor(() => expect(text()).toContain('$410/mo'))
+    await waitFor(() => expect(text()).toContain('$410 a month'))
     expect(text()).not.toMatch(/months free|Teams of fewer than/)
     expect(text()).not.toMatch(/no trial that expires|No proration surprises/)
   })
 
   it('while the switch is off, reads the free plan as today, but never as theirs', async () => {
     renderIt()
-    await waitFor(() => expect(text()).toContain('$410/mo'))
+    await waitFor(() => expect(text()).toContain('$410 a month'))
     expect(text()).toContain('forever')
     expect(text()).not.toContain('Your current plan')
   })
@@ -113,7 +115,32 @@ describe('somebody signed in', () => {
     m.user = { id: 'u4', role: 'GUEST', organization: { subscriptionPlan: null } }
     m.status = {}
     renderIt()
-    await waitFor(() => expect(text()).toContain('$410/mo'))
+    await waitFor(() => expect(text()).toContain('$410 a month'))
     expect(text()).not.toContain('Your current plan')
+  })
+
+  it('has a way back into the product, not only "Subscribe"', async () => {
+    m.user = { id: 'u1', role: 'ADMIN', organization: { subscriptionPlan: null } }
+    m.status = FREE
+    renderIt()
+    await waitFor(() => expect(text()).toContain('Your current plan'))
+    expect(screen.getByRole('link', { name: 'Go to your check-ins' })).toHaveAttribute('href', '/today')
+    expect(screen.queryByRole('link', { name: 'Sign in' })).toBeNull()
+  })
+})
+
+/*
+ * B-162. A signed-out visitor had no logo, no sign in and no sign up - only five "Subscribe"
+ * buttons, each of which demands an account anyway. Every other public page carries the logo
+ * (it always goes home); this one had neither it nor a way in besides the browser's own back
+ * button.
+ */
+describe('B-162: a signed-out visitor has a way in, not only "Subscribe"', () => {
+  it('offers the logo, Sign in and Sign up', async () => {
+    renderIt()
+    await waitFor(() => expect(text()).toContain('$410 a month'))
+    expect(screen.getByRole('link', { name: 'Groundwork' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/auth')
+    expect(screen.getByRole('link', { name: 'Sign up' })).toHaveAttribute('href', '/auth?mode=signup')
   })
 })

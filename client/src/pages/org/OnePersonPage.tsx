@@ -5,9 +5,10 @@ import { toast } from 'sonner'
 import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
-import { type OrgMember, fetchMembers, nameOf, firstNameOf, initialsOf, statusWord, A_FAILURE } from './people-here'
+import { type OrgMember, fetchMembers, nameOf, firstNameOf, initialsOf, statusWord, A_FAILURE, whatRemovingSays } from './people-here'
 import { Page, PageTitle, Section, Panel, Stack, FieldRows, FieldRow, ChoiceCards, Tag, Button, TextField, Select, Note } from '@/components/gw/ui'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import { WHAT_AN_ADMIN_CANNOT_READ_WITHOUT_ACCESS } from '@/lib/what-an-admin-cannot-read-without-access'
 
 /**
  * ONE PERSON, AS AN ADMIN READS THEM (U.4, A4 one-person.txt, #/settings/people/miriam).
@@ -208,7 +209,24 @@ export function OnePersonPage() {
           label={`Role at ${orgName}`}
           value={m.role}
           disabled={isOwner || isMe || role.isPending}
-          onChange={(next) => role.mutate({ what: next as RoleWrite, first })}
+          onChange={(next) => {
+            /*
+             * B-169: MAKING SOMEBODY AN ADMIN ASKS FIRST. Every other role here changes what one
+             * person can do; this one changes who else can be made an admin, see every member's
+             * organisation-wide data, and change anyone else's role in turn - the one choice this
+             * page cannot undo by picking something else, the way the deep page audit's own click
+             * test found out by accident (B-169's write-up: a single press changed a real role on
+             * this computer's database, with nothing asking first). The other three roles still
+             * apply the moment they are chosen, as "Changes apply straight away" still promises.
+             */
+            if (next === 'ADMIN') {
+              if (window.confirm(`Make ${name} an admin of ${orgName}?\n\nAn admin can see everyone's check-ins, change anyone's role, and manage billing.`)) {
+                role.mutate({ what: next as RoleWrite, first })
+              }
+              return
+            }
+            role.mutate({ what: next as RoleWrite, first })
+          }}
           options={ROLE_CHOICES.map((c) => ({ key: c.value, title: c.title, description: c.says }))}
         />
         {ownerId === user?.id && !isMe && m.role === 'ADMIN' && (
@@ -277,7 +295,14 @@ export function OnePersonPage() {
 
       <Section heading="What an admin can see">
         <Panel>
-          <p className="gwui-panel-text-muted">{`As an admin you can read every check-in at ${orgName}, change its setup, and ask us to end it. You don’t see anyone’s private notes.`}</p>
+          {/*
+            FAULT 5, 6 Oct 2026: "CHANGE ITS SETUP" WAS NEVER TRUE. Only the lead changes a
+            check-in's setup (the 1 October decision; `mayChangeSetup`, served on every check-in,
+            is the server's own answer). This also left out the one real limit on an admin's
+            reach: decision 5 and `who-may-read-this-check-in.ts` close a performance plan, a
+            promotion, a renewal or somebody's first 90 days unless the admin is given access.
+          */}
+          <p className="gwui-panel-text-muted">{`As an admin you can read every check-in at ${orgName}, and ask us to end it. ${WHAT_AN_ADMIN_CANNOT_READ_WITHOUT_ACCESS[0].toUpperCase()}${WHAT_AN_ADMIN_CANNOT_READ_WITHOUT_ACCESS.slice(1)} stays closed to you unless you are given access to it. You don’t see anyone’s private notes.`}</p>
         </Panel>
       </Section>
 
@@ -285,12 +310,13 @@ export function OnePersonPage() {
         <Section heading={`Remove from ${orgName}`}>
           <Panel>
             <div className="gwui-sentence-row">
-              <p className="gwui-panel-text-muted">They lose access and their seat is freed. What they shared stays in the check-ins they were part of.</p>
+              <p className="gwui-panel-text-muted">{whatRemovingSays(name, orgName, m.alsoIn).detail}</p>
               <Button
                 kind="secondary"
                 disabled={removeThem.isPending}
                 onClick={() => {
-                  if (window.confirm(`Remove ${name} from ${orgName}?\n\nThey lose access and their seat is freed. What they shared stays in the check-ins they were part of.`)) {
+                  const says = whatRemovingSays(name, orgName, m.alsoIn)
+                  if (window.confirm(`${says.question}\n\n${says.detail}`)) {
                     removeThem.mutate(name)
                   }
                 }}

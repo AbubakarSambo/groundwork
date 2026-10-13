@@ -61,7 +61,7 @@ export function OutOfTime({ groundId, onOpenMyWork }: { groundId: string; onOpen
     : null
   const sub = `${until ? `It ran until ${until}. ` : ''}Nothing new can be added until ${lead ?? 'the person who runs it'} gives it more time.`
   const asked = !!data?.askedAt || ask.isSuccess
-  const yourAnswersAreKept = theirAnswersAreKept(data?.checkInsCount)
+  const yourAnswersAreKept = theirAnswersAreKept()
 
   return createPortal(
     <div className="gwui-full-page-cover">
@@ -97,14 +97,16 @@ export function OutOfTime({ groundId, onOpenMyWork }: { groundId: string; onOpen
 }
 
 /**
- * "All 38 of your check-ins and your history stay as they are." (join-outoftime.txt), with the
- * server's own count, never a made-up number and never left out while it loads. A count of exactly
- * one reads as a full sentence of its own rather than "All 1 of your check-ins".
+ * B-233: this screen reads for ONE check-in that ran out of time, never for every check-in the
+ * person has ever been part of. The prototype's own join-outoftime.txt says "All 38 of your
+ * check-ins and your history stay as they are," but that line fits only the prototype's own story,
+ * where the whole org's check-ins ended together - it does not fit a person such as Dov, who has 11
+ * check-ins in total and only this one ran out. Said with the server's count, "All 11 of your
+ * check-ins stay as they are" reads as if all 11 had run out, which is not true. This now says only
+ * what is true for this one check-in, regardless of how many others the person has.
  */
-export function theirAnswersAreKept(checkInsCount: number | undefined): string {
-  if (checkInsCount == null) return 'Your answers and your history stay as they are.'
-  if (checkInsCount === 1) return 'Your check-in and your history stay as they are.'
-  return `All ${checkInsCount} of your check-ins and your history stay as they are.`
+export function theirAnswersAreKept(): string {
+  return 'What you have said in this check-in stays as it is.'
 }
 
 /**

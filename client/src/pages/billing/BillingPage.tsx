@@ -11,6 +11,9 @@ import { toast } from 'sonner'
 import { copy } from '@/components/gw/copying-can-fail'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { scrollToId } from '@/lib/scroll-to'
+import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
+import { aPersonsSentenceForAServerError } from '@/lib/a-persons-sentence-for-a-server-error'
+import { ADoorYouCannotOpen } from '@/components/gw/a-door-you-cannot-open-says-so'
 import {
   Page, PageTitle, Section, Panel, Stack, FieldRows, FieldRow, Button, Tag, Note, TextField, FieldLabel, SwitchRow,
 } from '@/components/gw/ui'
@@ -82,6 +85,15 @@ function ThingsWeDoByHand() {
     onError: () => toast.error('That did not send. What you wrote is still here - try again.'),
   })
 
+  /* SCREEN FAULT 4c, CHECKED: "Sahar Jamal, a partner at Groundwork" is not a prototype sample name
+     invented for a screenshot - she is a real, named member of Groundwork's own team (the "Partner,
+     coach and setup" on the public About page, docs/prototype/source/s19.js's `R.about`, and
+     about.txt), the actual person this paid "coach in the room" service names in the prototype's
+     own pricing page (s19.js). There is no served field for who she is - this is a fact about
+     Groundwork's own staff, the same kind of fact a company's own site names about itself, not
+     about the organisation using the product - so it stays hard-coded, same as the prototype has
+     it. A prior review (group 1) already checked this introduces her by name only after saying who
+     she is; see the "group 1 review fixes" tests below. */
   const open: Record<string, string> = asked.data?.open ?? {}
   const rows = [
     { subject: 'COACHING', title: 'A coach in the room', what: 'Sahar Jamal, a partner at Groundwork who coaches teams and helps them set up, reads the report with your team and turns what it found into a decision somebody owns.' },
@@ -126,11 +138,16 @@ export function BillingPage() {
   const { data: codes = [], isLoading: codesLoading } = useQuery({ queryKey: ['contributor-codes'], queryFn: billingApi.getContributorCodes, enabled: isAdmin })
   const { data: billingStatus } = useQuery({ queryKey: ['billing-status'], queryFn: billingApi.status, enabled: isAdmin })
   const { data: livePricing } = useQuery({ queryKey: ['public-pricing'], queryFn: billingApi.getPricing, enabled: isAdmin, staleTime: 60 * 1000 })
-  const { data: whatsapp } = useQuery({ queryKey: ['billing-whatsapp'], queryFn: billingApi.getWhatsApp, enabled: isAdmin })
+  /* U.6 (Hafsah): WhatsApp is mentioned only while it is switched on, platform-wide - GET
+     /auth/whatsapp, the same check every other screen makes before saying its name. Without it,
+     this page kept the organisation's own add-on (price, switch, usage) on screen even with
+     WhatsApp off across all of Groundwork, which no admin can act on. */
+  const whatsappIsOn = useWhatsAppIsOn()
+  const { data: whatsapp } = useQuery({ queryKey: ['billing-whatsapp'], queryFn: billingApi.getWhatsApp, enabled: isAdmin && whatsappIsOn })
   const setWhatsAppMut = useMutation({
     mutationFn: (on: boolean) => billingApi.setWhatsApp(on),
     onSuccess: (r) => qc.setQueryData(['billing-whatsapp'], r),
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'WhatsApp did not change. Try again.'),
+    onError: (e: any) => toast.error(aPersonsSentenceForAServerError(e?.response?.data?.message, 'WhatsApp did not change. Try again.')),
   })
 
   const freeGrounds = livePricing?.free?.groundLimit ?? FALLBACK_FREE_LIMITS.groundLimit
@@ -158,7 +175,7 @@ export function BillingPage() {
   const createSubscriptionMut = useMutation({
     mutationFn: (plan: SubscriptionPlan) => billingApi.createSubscription(plan),
     onSuccess: r => { if (r.checkoutUrl) window.location.href = r.checkoutUrl },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not start checkout. Try again.'),
+    onError: (e: any) => toast.error(aPersonsSentenceForAServerError(e?.response?.data?.message, 'Could not start checkout. Try again.')),
   })
   const changePlanMut = useMutation({
     mutationFn: (plan: SubscriptionPlan) => billingApi.changeSubscriptionPlan(plan),
@@ -167,7 +184,7 @@ export function BillingPage() {
       qc.invalidateQueries({ queryKey: ['billing-status'] })
       toast.success(`Switched to ${PLAN_LABELS[plan]}. The difference is prorated on your next invoice.`)
     },
-    onError: () => toast.error('Your plan did not change. You have not been charged - try again.'),
+    onError: () => toast.error('Your plan did not change, and you have not been charged. Try again.'),
   })
   const portalMut = useMutation({
     mutationFn: () => billingApi.portal(),
@@ -214,12 +231,14 @@ export function BillingPage() {
   const allFreeRows = grounds.length > 0 && (grounds as any[]).every((g: any) => g.isFreeGround)
   const anyExtensionUsed = (grounds as any[]).some((g: any) => g.org?.freeExtensionUsed ?? false)
 
+  /*
+   * B-216: A DEAD END, NOT ANY MORE. "You need admin access to manage billing for your
+   * organisation." gave a member nothing to press - the same fault the People page's own refusal
+   * was fixed for. Uses the same shared door, the same shape: who can open it, that the reader's
+   * role is not that, who can change it, and a way back.
+   */
   if (!isAdmin) {
-    return (
-      <Page>
-        <PageTitle title="Plan and billing" subtitle="You need admin access to manage billing for your organisation." />
-      </Page>
-    )
+    return <ADoorYouCannotOpen may={false} what="open Plan and billing"><></></ADoorYouCannotOpen>
   }
 
   if (groundsLoading || codesLoading) {
@@ -235,6 +254,16 @@ export function BillingPage() {
   const busy = createSubscriptionMut.isPending || changePlanMut.isPending
   const choosePlan = (plan: SubscriptionPlan) => (isSubscribed ? changePlanMut.mutate(plan) : createSubscriptionMut.mutate(plan))
   const scrollToPlans = () => scrollToId('billing-plans', 'start')
+  /* SCREEN FAULT 4b: a team of 8 used to be offered Starter, "Up to 5 people", with no warning that
+     it does not fit them - the plan grid drew `capLabel` and nothing else. Only served numbers: the
+     plan's own member cap (the pricing table) and the organisation's own people count (the status
+     the admin already reads as "27 of 100 people"). */
+  const peopleCount = billingStatus?.people?.count ?? null
+  function tooSmallFor(plan: SubscriptionPlan): string | null {
+    const cap = livePricing?.plans.find(p => p.plan === plan)?.memberCap ?? null
+    if (cap == null || peopleCount == null || peopleCount <= cap) return null
+    return `This plan is for up to ${cap} ${cap === 1 ? 'person' : 'people'}, and ${orgName} has ${peopleCount}.`
+  }
 
   return (
     <Page>
@@ -272,9 +301,23 @@ export function BillingPage() {
         <FieldRows>
           <FieldRow
             label="Plan"
-            value={`${thePlanLine(billingStatus, livePricing, freeGrounds)}${peopleOverCap ? ' More people have accounts here than this plan covers.' : ''}`}
-            action={<Button kind="quiet" size="small" onClick={scrollToPlans}>Change</Button>}
+            value={`${thePlanLine(billingStatus, livePricing, freeGrounds)}${peopleOverCap ? ` ${billingStatus?.overThePlanSays?.trim() || 'More people have accounts here than this plan covers.'}` : ''}`}
+            /*
+             * SCREEN FAULT 11 (FINAL WALK): "MORE PEOPLE HAVE ACCOUNTS HERE THAN THIS PLAN COVERS."
+             * NAMED A PROBLEM WITH NO NEXT STEP BESIDE IT. The row's own action was the same plain
+             * "Change" every other plan row carries, which says nothing about why somebody in this
+             * situation specifically would press it. Named for what it actually does here instead.
+             */
+            action={<Button kind="quiet" size="small" onClick={scrollToPlans}>{peopleOverCap ? "Choose a plan for your team's size" : 'Change'}</Button>}
           />
+          {/*
+           * "WHEN BARIDI APPLIANCES WAS SET UP, IT HAD 20 OR MORE PEOPLE, SO IT BEGAN ON A PLAN."
+           * `startedWith` is served to an admin only (5 October, evening) - one plain sentence, read
+           * exactly as it comes, never a number this page works out for itself.
+           */}
+          {billingStatus?.startedWith && (
+            <FieldRow label="How it began" value={billingStatus.startedWith.says} />
+          )}
           <FieldRow
             label="Next payment"
             value={theNextPaymentLine(billingStatus, livePricing)}
@@ -294,15 +337,25 @@ export function BillingPage() {
       </Section>
 
       {/*
-       * WHATSAPP, THE PAID ADD-ON (decision 78, 2 October). Behind `release.planAndBillingNewParts`,
-       * as the server decides: while it is off, `GET /billing/whatsapp` serves only `{ sending,
-       * says }` even to an admin (`isWhatsAppBillingAdmin` reads false), so nothing here shows.
+       * WHATSAPP, THE PAID ADD-ON (decision 78, 2 October; U.6, platform gate added as screen
+       * fault 2). Two switches, read at two levels, both of which must be on before this page says
+       * a word about WhatsApp: the platform switch (`useWhatsAppIsOn`, GET /auth/whatsapp - the
+       * same one every other screen checks before naming it), and `release.planAndBillingNewParts`,
+       * as the server decides: while either is off, the query above is not even asked, `whatsapp`
+       * stays undefined, and `isWhatsAppBillingAdmin` reads false, so nothing here shows.
        * Every price, limit and use figure is the server's own sentence (`whatsapp-add-on.service.ts`,
        * "WHAT PLAN AND BILLING SAYS ABOUT WHATSAPP") - this draws `says` exactly as it comes and
        * holds no number of its own.
+       *
+       * THE ALLOWANCE ONLY MEANS SOMETHING WHILE WHATSAPP IS ON (known issue U16): the server keeps
+       * serving an admin the full shape, `use`/`atTheLimit`/`reachedTheLimit` included, while
+       * `whatsapp.on` is false, because an admin who has just turned it off still needs the price
+       * and the switch itself to turn it back on. But "Your organisation has sent 0 of 500 WhatsApp
+       * messages this month" read next to a switch that is off is a number for an allowance nothing
+       * is drawing on. These three rows show only once the switch itself reads on.
        */}
       {isWhatsAppBillingAdmin(whatsapp) && (
-        <Section heading="WhatsApp">
+        <Section heading="WhatsApp" id="billing-whatsapp">
           <Panel>
             <Stack gap={12}>
               <SwitchRow
@@ -314,12 +367,12 @@ export function BillingPage() {
               <FieldRows>
                 {whatsapp.says.price && <FieldRow label="Price" value={whatsapp.says.price} />}
                 <FieldRow label="What is charged" value={whatsapp.says.charge} />
-                <FieldRow label="This month" value={whatsapp.says.use} />
-                {whatsapp.says.reachedTheLimit ? (
+                {whatsapp.on && <FieldRow label="This month" value={whatsapp.says.use} />}
+                {whatsapp.on && (whatsapp.says.reachedTheLimit ? (
                   <FieldRow label="Reached" value={whatsapp.says.reachedTheLimit} />
                 ) : whatsapp.says.atTheLimit ? (
                   <FieldRow label="At the limit" value={whatsapp.says.atTheLimit} />
-                ) : null}
+                ) : null)}
               </FieldRows>
             </Stack>
           </Panel>
@@ -357,6 +410,7 @@ export function BillingPage() {
                   <p className="gwui-plan-name">{PLAN_LABELS[plan]}</p>
                   <p className="gwui-plan-price">{priceFigure}{showsPerMonth && <span>/mo</span>}</p>
                   <p className="gwui-plan-cap">{capLabel(plan)}</p>
+                  {tooSmallFor(plan) && <Note tone="amber">{tooSmallFor(plan)}</Note>}
                   {/* tag("act","Your plan") in the prototype (s20.js/s21.js): the navy tag, not green. */}
                   {mine ? <Tag tone="action">Your plan</Tag> : (
                     <Button kind="secondary" size="small" wide disabled={busy || isPaused} onClick={() => choosePlan(plan)}>{pending ? 'Opening…' : 'Move to this'}</Button>
@@ -444,8 +498,20 @@ export function BillingPage() {
       <Section heading={isSubscribed ? 'Your check-ins' : 'In progress'}>
         {isSubscribed && grounds.length > 0 ? (
           <Panel>
+            {/*
+             * B-231: "All 1 of your check-ins have unlimited sessions" DID NOT READ RIGHT FOR ONE
+             * CHECK-IN, AND "have" DID NOT AGREE WITH ONE EITHER. Said plainly for both counts.
+             *
+             * B-232: "All 2 of your check-ins have..." read just as oddly for two. Two check-ins
+             * reads as "Both of your check-ins have...", and three or more keeps "All N of your
+             * check-ins have...".
+             */}
             <p className="gwui-panel-text-muted">
-              All {grounds.length} of your check-ins have unlimited sessions and reports on this plan. Nothing is counted or charged per session.
+              {grounds.length === 1
+                ? 'Your check-in has unlimited sessions and reports on this plan. Nothing is counted or charged per session.'
+                : grounds.length === 2
+                ? 'Both of your check-ins have unlimited sessions and reports on this plan. Nothing is counted or charged per session.'
+                : `All ${grounds.length} of your check-ins have unlimited sessions and reports on this plan. Nothing is counted or charged per session.`}
             </p>
           </Panel>
         ) : grounds.length === 0 ? (

@@ -23,6 +23,12 @@ function mount(user: any, orgs: any[] = [{ id: 'o1', name: 'Coamana', slug: 'coa
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } })
   qc.setQueryData(['grounds'], [])
   qc.setQueryData(['my-organizations'], orgs)
+  /* B-202 (review round 3): AppShell now waits for the same ['my-waiting'] read RequireOrgSetup
+     already makes before it mounts the sidebar at all (see AppShell.tsx) - without this cached
+     answer the real authApi.myWaiting (not mocked in this file) would be asked for real, and the
+     bar this suite is reading would never mount while that stayed unsettled. Same pattern this
+     file already uses for 'grounds' and 'my-organizations'. */
+  qc.setQueryData(['my-waiting'], { waiting: false })
   return render(
     <QueryClientProvider client={qc}>
       <MemoryRouter initialEntries={['/more']}><AppShell><MorePage /></AppShell></MemoryRouter>
@@ -112,8 +118,19 @@ describe('"More", as a lead and a participant read it', () => {
   it.each([['lead', LEAD], ['participant', PARTICIPANT]])('a %s gets their settings, help, feedback and sign out, and no admin pages', (_, user) => {
     mount(user)
     expect(hrefOf(main(), 'Your settings')).toEqual(['/settings'])
-    for (const name of ['People', 'Connections', 'Plan and billing', 'Boards']) expect(hrefOf(main(), name)).toEqual([])
+    for (const name of ['People', 'Connections', 'Plan and billing']) expect(hrefOf(main(), name)).toEqual([])
     expect(within(main()).getByRole('button', { name: 'Sign out' })).toBeInTheDocument()
+  })
+
+  /*
+   * HAFSAH, 10 OCTOBER (B-146): A MEMBER NOW HAS "BOARDS" HERE TOO. The second deep page audit
+   * found /boards already worked for a member - the server already scopes it to what they take
+   * part in - but neither her side menu nor her More menu had a door to it. This used to be in the
+   * list above, pinning that gap; it is its own assertion now, with the reason.
+   */
+  it.each([['lead', LEAD], ['participant', PARTICIPANT]])('a %s has "Boards", reaching the check-ins they take part in', (_, user) => {
+    mount(user)
+    expect(hrefOf(main(), 'Boards')).toEqual(['/boards'])
   })
 })
 
@@ -221,6 +238,9 @@ describe('the floating Feedback button', () => {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } })
     qc.setQueryData(['grounds'], [])
     qc.setQueryData(['my-organizations'], [])
+    /* B-202 (review round 3): see the comment on `mount` above - AppShell waits for this same
+       cached answer before it mounts the sidebar (and the feedback trigger inside it) at all. */
+    qc.setQueryData(['my-waiting'], { waiting: false })
     render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/grounds']}><AppShell><div /></AppShell></MemoryRouter></QueryClientProvider>)
     expect(screen.getByRole('button', { name: /^Feedback\. Drag to move/ })).toBeInTheDocument()
   })

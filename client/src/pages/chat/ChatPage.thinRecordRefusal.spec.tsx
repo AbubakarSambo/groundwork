@@ -49,6 +49,10 @@ vi.mock('@/api/documents', () => ({ documentsApi: { upload: vi.fn() } }))
 
 function renderChat() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  /* B-202 (review round 3): AppShell now waits for the same ['my-waiting'] read RequireOrgSetup
+  already makes before it mounts the sidebar at all - without this cached answer the real
+  authApi.myWaiting (not mocked in this file) would be asked for real. */
+  qc.setQueryData(['my-waiting'], { waiting: false })
   return render(
     <QueryClientProvider client={qc}>
       <MemoryRouter initialEntries={['/checkin/ci1']}>

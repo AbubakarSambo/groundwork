@@ -25,6 +25,7 @@ import { toast } from 'sonner'
 import {
   rememberConversation, recallConversation, forgetConversation,
 } from './remembering-the-context-conversation'
+import { GroundworkIsWriting } from './ui/GroundworkIsWriting'
 
 export function ContextChat({ groundId }: { groundId: string }) {
   const qc = useQueryClient()
@@ -233,7 +234,15 @@ export function ContextChat({ groundId }: { groundId: string }) {
 
   function submit() {
     const t = text.trim()
-    if (!t) return
+    /*
+     * ONE SEND PER ACTION. The Send button already disables itself while `send.isPending`, but the
+     * Enter key did not check it at all - pressing Enter twice in the instant before React
+     * re-rendered the disabled button queued a second `send.mutate` on top of the first, and the
+     * lead's own message was then saved and sent twice (engine workspace, 9 October night, test
+     * bed copy a, "Nakuru win-back"). Checked here, in the one function both the key and the
+     * button call, rather than in each caller.
+     */
+    if (!t || send.isPending) return
     const next = [...history, { role: 'user' as const, content: t }]
     setHistory(next)
     setText('')
@@ -366,7 +375,10 @@ export function ContextChat({ groundId }: { groundId: string }) {
           </div>
         ))}
         {(send.isPending || opening.isFetching) && (
-          <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', alignSelf: 'flex-start' }}>Thinking…</div>
+          /* `wrap={false}`: this chat draws no bubbles of its own (a citation-style rule down the
+             left edge instead, see the comment above), so the shared sentence sits plainly here
+             too, rather than in a bubble shape nothing else on this screen has. */
+          <div style={{ alignSelf: 'flex-start' }}><GroundworkIsWriting wrap={false} /></div>
         )}
       </div>
 

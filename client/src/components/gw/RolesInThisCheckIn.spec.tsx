@@ -135,6 +135,55 @@ describe('somebody with no name and no account', () => {
   })
 })
 
+/**
+ * B-077: A LEAD WHO ONLY MANAGES IS NEVER "CHECKING IN". Grace runs an anchor check-in
+ * (`HELP_TEAM_UNDERSTAND`) and does not check in herself - `WhosInItRoster.tsx` already leaves her
+ * out of "N are checking in" above this table, but her own row here still read "Runs it" in the
+ * first column and then the status tag "Checking in", because `statusFor` had no managing-only case.
+ */
+describe('a lead who only manages, in an anchor check-in', () => {
+  const groundWithAManager = {
+    initiatorId: 'lead-1',
+    scenario: 'HELP_TEAM_UNDERSTAND',
+    participants: [
+      { id: 'p-lead', userId: 'lead-1', email: 'grace@example.test', roleAsDescribed: null, managingOnly: true },
+      { id: 'p-2', userId: 'user-2', email: 'amani@example.test', roleAsDescribed: null },
+    ],
+  }
+
+  it('her status reads "Runs it", never "Checking in" - only Amani, who does check in, reads that', () => {
+    renderIt(groundWithAManager)
+    /* Two "Runs it" tags on Grace's row (the "In this check-in" column and the status column), and
+       exactly one "Checking in" (Amani's status - he does check in). */
+    expect(screen.getAllByText('Runs it').length).toBe(2)
+    expect(screen.getAllByText('Checking in').length).toBe(1)
+  })
+
+  it('in an ordinary check-in, a lead who only manages is not assumed - she still reads her real status', () => {
+    renderIt({ ...groundWithAManager, scenario: 'OTHER' })
+    expect(screen.getAllByText('Checking in').length).toBeGreaterThanOrEqual(1)
+  })
+
+  function renderIt(g: any) {
+    return render(
+      <MemoryRouter><RolesInThisCheckIn ground={g} isInitiator={false} updateRole={updateRole} /></MemoryRouter>,
+    )
+  }
+})
+
+/**
+ * B-108: "NOBODY HAS DESCRIBED IT YET.EDIT" RAN TWO SENTENCES TOGETHER WITH NO SPACE BETWEEN
+ * THEM. JSX drops the line break between the sentence and the "Edit" button, so without an
+ * explicit space the two sit side by side as one word.
+ */
+describe('the role sentence and "Edit" are not run together', () => {
+  it('reads "yet. Edit", with a space, not "yet.Edit"', () => {
+    renderTable(true)
+    expect(document.body.textContent).toContain('Nobody has described it yet. Edit')
+    expect(document.body.textContent).not.toContain('yet.Edit')
+  })
+})
+
 describe('somebody with no name, whose address this reader may not see', () => {
   it('is "Somebody invited by email", never "A colleague"', () => {
     render(

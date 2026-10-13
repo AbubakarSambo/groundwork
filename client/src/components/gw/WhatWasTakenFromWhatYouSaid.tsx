@@ -27,6 +27,8 @@ export interface MyRow {
   documented?: boolean
   /** A document you can see states it differently. Yours stays yours; this is beside it. */
   documentSays?: string | null
+  /** What this line is called, filled in by the server from the record: "This is something you got done." only when it holds. */
+  typeSays?: string | null
 }
 
 /**
@@ -70,7 +72,7 @@ export function WhatWasTakenFromWhatYouSaid({ rows, groundId, sessionNumber }: {
       </div>
       {/* Eleven identical 'Not what I said' buttons made the one that mattered invisible. One control opens them. */}
       <p style={{ margin: '0 0 8px', fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, maxWidth: '68ch' }}>
-        Not what you typed. What the product took from it, and what every count on this page is built from.{' '}
+        These lines are what Groundwork took from what you wrote. Every count on this page is built from them.{' '}
         {!disputing ? (
           /*
            * HAFSAH'S BUTTON-COUNT REVIEW (1 October 2026): THIS ONLY OPENS THE "NOT WHAT I SAID"
@@ -80,7 +82,7 @@ export function WhatWasTakenFromWhatYouSaid({ rows, groundId, sessionNumber }: {
            * already had, just no longer counted as a second button.
            */
           <button type="button" onClick={() => setDisputing(true)} className="gwui-plain-link">
-            Something here is not what I said
+            Something here isn’t right
           </button>
         ) : 'Pick the line, and it stops counting.'}
       </p>
@@ -103,7 +105,7 @@ export function WhatWasTakenFromWhatYouSaid({ rows, groundId, sessionNumber }: {
                 quote.
               */}
               <div style={{ color: 'var(--gw-muted)', fontSize: 11, marginTop: 2 }}>
-                {KIND[r.type] ?? `This is ${r.type.toLowerCase().replace(/_/g, ' ')}.`}
+                {r.typeSays ?? KIND[r.type] ?? `This is ${r.type.toLowerCase().replace(/_/g, ' ')}.`}
                 {!r.disputedAt && r.documented && ' A document backs it.'}
                 {r.disputedAt && ' You said this is not what you said.'}
               </div>

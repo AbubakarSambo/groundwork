@@ -51,8 +51,7 @@ export type TheLeadsReveal = {
 
 /* ------------------------------------------------------------------------------------------------
  * PIECE 10/11. UP TO 20 PEOPLE, AND THE INVITATION (section 13 and 14; decision 96, items 1, 3 and
- * 8). `mayAdd` is 19, not 20: the limit is 20 people including the lead, so the lead can add 19
- * others. Served as `thePeopleStep` on `GET /entry/anchor-start`.
+ * 8). `mayAdd` is 20: the limit is 20 people besides the lead, who is not counted (decision 121, item 4). Served as `thePeopleStep` on `GET /entry/anchor-start`.
  * ---------------------------------------------------------------------------------------------- */
 export type OnePersonTheLeadAdds = {
   /** Required unless `colleagueId` is given. */
@@ -61,18 +60,20 @@ export type OnePersonTheLeadAdds = {
   /** "What do they do / why are they part of this?" Optional. The lead's own note: never shown to the person. */
   context?: string
   note?: string
+  /** "Name + email" (section 13): what the lead calls this person, asked first, beside their email. Optional. */
+  displayName?: string
 }
 export type ThePeopleStepSends = { contributors: OnePersonTheLeadAdds[] }
 
 export type ThePeopleStepRules = {
   limit: 20
-  theLeadCounts: true
-  mayAdd: 19
+  theLeadCounts: false
+  mayAdd: 20
   heading: string
   intro: string
   contextLabel: string
   button: string
-  /** Said when the lead tries to add a twentieth other person. */
+  /** Said when the lead tries to add a twenty-first other person. */
   limitSentence: string
 }
 
@@ -85,6 +86,15 @@ export type TheAnchorInvitation = {
   button: string
 }
 
+/**
+ * THE SAME SHAPE, SERVED LIKE ANY SCENARIO'S WORDS (decision 114; docs/answers-from-engine.md,
+ * "8 October (later): the anchor through the ordinary routes, route by route"). `GET /participants/
+ * preview` now carries `invitationWords` in this shape for a scenario that has its own words - today
+ * only the anchor's, with the switch on - present for it and absent for the rest, drawn by the
+ * invitation page the way it draws any scenario's, with no scenario check in the screens at all.
+ */
+export type TheInvitationWords = TheAnchorInvitation
+
 /* ------------------------------------------------------------------------------------------------
  * PIECES 12 AND 13/20. THE MONTH BOARD, "Are we moving together?" (section 24). Lead only.
  * ---------------------------------------------------------------------------------------------- */
@@ -93,6 +103,8 @@ export type APersonHelpingThingsMove = { name: string; sentence: string }
 export type TheMonthBoard = {
   question: 'Are we moving together?'
   weekOfTheMonth: 1 | 2 | 3 | 4
+  /** Where the month is, as a sentence. An ended check-in says it has ended, never "Week 4 of the month". */
+  weekSaid: string
   lenses: TheLens[]
   whatIsMoving: string[]
   whatTheTeamIsContributing: string[]
@@ -109,7 +121,7 @@ export type TheMonthBoard = {
 export type TheActiveLine = {
   /** People who have checked in within the cadence. */
   active: number
-  /** People in the check-in, the lead included, never more than 20. */
+  /** People who check in, the lead not counted, never more than 20. */
   total: number
   /** People Groundwork has nudged and who are not yet active. */
   nudged: number
@@ -129,6 +141,8 @@ export type TheRevealCounts = {
   teamGeneratedIdeas: number
   suitesRelevantToWorkAlreadyBeingDone: number
 }
+/** The reveal as sentences the engine serves: no "Ground", no bare "0 projects". */
+export type TheRevealSaid = { heading: string; intro: string; lines: string[]; closing: string }
 export type TheContinueOption = { key: 'keepThisGroundRunning' | 'startRecommendedGrounds' | 'turnOnRelevantSuites' | 'continueGroundworkForTheTeam'; label: string }
 export type TheEndOfMonthRead = {
   /** "You wanted your team to understand..." followed by the lead's own words, quoted. */
@@ -142,7 +156,52 @@ export type TheEndOfMonthRead = {
   whatIsStillStuck: string[]
   whatShouldHappenNext: string[]
   reveal: TheRevealCounts
+  revealSaid: TheRevealSaid
   continueOptions: TheContinueOption[]
+}
+
+/* ------------------------------------------------------------------------------------------------
+ * THE ANCHOR'S SECTIONS, ON THE ORDINARY BOARD, NAMED BY THE SWITCHBOARD (decision 114;
+ * docs/answers-from-engine.md, "8 October (later): the anchor through the ordinary routes, route
+ * by route", and "8 October (evening): the anchor's last month parts are board sections"; mirrors
+ * `api/src/modules/board/the-anchor-sections-on-the-board.ts`, read only). Each is carried on the
+ * ordinary board payload under its own name, drawn by `BoardPage.tsx` the way it draws any other
+ * section - gated by `b.sections.includes(...)`, the same mechanism every other kind of work's
+ * sections already use. A lead-only one (`whatYouAreCarrying`, `theFourLenses`,
+ * `peopleHelpingTheTeamMove`, `recommendations`, `weeklyInsight`, `whereTheMonthIs`,
+ * `whatIsMoving`, `whatIsStillInTheWay`, `whatTheTeamIsContributing`, `wherePerspectivesDiffer`,
+ * `whatGroundworkIsWorkingOnNext`, `theEndOfTheMonth`) is served to whoever runs the check-in alone
+ * and absent for everybody else; `howGroundworkWillWork` and `ideasFromTheTeam` are for everybody
+ * in the check-in. WHO READS WHAT IS DECIDED BY THE SERVER: a section's absence from the payload is
+ * what keeps it off another reader's screen, never a client-side check.
+ *
+ * `whereTheMonthIs` through `whatGroundworkIsWorkingOnNext`, and `theEndOfTheMonth`, are the last
+ * parts of the older `TheMonthBoard` and `TheEndOfMonthRead`, now served as sections of their own -
+ * `theMonthBoard` and `theEndOfMonthRead` (below) are still also served while callers move across.
+ * ---------------------------------------------------------------------------------------------- */
+export type TheAnchorBoardSections = {
+  whatYouAreCarrying?: { heading: string; text: string }
+  howGroundworkWillWork?: { heading: string; ways: TheWayGroundworkWillHelp[] }
+  theFourLenses?: { heading: string; question: string; lenses: TheLens[] }
+  ideasFromTheTeam?: TheIdeasFromYourTeam
+  peopleHelpingTheTeamMove?: { heading: string; people: APersonHelpingThingsMove[] }
+  recommendations?: { heading: string; offers: import('./recommendedCheckIns').AnOfferTheLeadReads[] }
+  weeklyInsight?: { heading: string; text: string }
+  whereTheMonthIs?: { heading: string; weekOfTheMonth: 1 | 2 | 3 | 4; text: string }
+  whatIsMoving?: { heading: string; items: string[] }
+  whatIsStillInTheWay?: { heading: string; items: string[] }
+  whatTheTeamIsContributing?: { heading: string; items: string[] }
+  wherePerspectivesDiffer?: { heading: string; items: string[] }
+  whatGroundworkIsWorkingOnNext?: { heading: string; items: string[] }
+  theEndOfTheMonth?: {
+    heading: string
+    yourOwnWords: string
+    parts: { heading: string; items: string[] }[]
+    people: APersonHelpingThingsMove[]
+    reveal: TheRevealCounts
+    revealSaid: TheRevealSaid
+    continueOptions: TheContinueOption[]
+  }
 }
 
 /* ------------------------------------------------------------------------------------------------

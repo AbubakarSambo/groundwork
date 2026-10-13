@@ -1,4 +1,5 @@
 import { hasEnded, howItEnded, hasStalled } from '@/lib/a-ground-that-has-ended'
+import { TheLeadsNote } from '@/components/gw/TheLeadsNote'
 import { useState, type ReactNode } from 'react'
 import { WhatSuccessLooksLikeFor } from '@/components/gw/WhatSuccessLooksLike'
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
@@ -31,8 +32,7 @@ import { WhatTheNetworkSaid } from '@/components/gw/WhatTheNetworkSaid'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
 import { NineColumnsIsNotAPhoneScreen } from '@/components/gw/nine-columns-is-not-a-phone-screen'
-import { plainWordsByPerson, atTheStart } from '@/lib/a-colleague'
-import { theLeadsNote } from '@/lib/the-leads-note'
+import { plainWordsByPerson, atTheStart, midSentence } from '@/lib/a-colleague'
 import { whatTheSwitchboardAllows } from './what-the-switchboard-allows'
 import { tileSentence } from '@/components/gw/TheSessionsReport'
 import { PatternPanel } from '@/components/gw/ui'
@@ -40,8 +40,8 @@ import type { ServedPattern } from '@/api/patterns'
 import { WhatToWorkOnNext } from '@/components/gw/WhatToWorkOnNext'
 import { WhatToProbeThemOn } from '@/components/gw/WhatToProbeThemOn'
 import { recommendedCheckInsApi, type AnOfferTheLeadReads } from '@/api/recommendedCheckIns'
-import { TheMonthBoard } from '@/components/gw/TheMonthBoard'
 import { TheIdeasFromYourTeam } from '@/components/gw/TheIdeasFromYourTeam'
+import { TheAnchorBoardSections } from '@/components/gw/TheAnchorBoardSections'
 
 /**
  * WHO A ROW ON THE BOARD IS, WHERE THE SERVER HAS NO NAME TO GIVE. Request 36.
@@ -147,7 +147,7 @@ import { buildSessionRows } from '@/lib/session-rows'
 import { peopleLabels, personLabel } from '@/lib/utils'
 import { EVERY_SESSION, checkedIn } from '@/components/gw/TheReportIsAListOfSessions'
 import { useAskStore } from '@/stores/ask'
-import { Page, CheckInHeader, Section, Panel, RowList, Row, Tag, type TagTone, Button as UIButton, PeopleTable, PersonRow, EdgeRow, EdgeList, Folded, Callout, Stack, SubHeading, Note } from '@/components/gw/ui'
+import { Page, CheckInHeader, Section, Panel, RowList, Row, Tag, type TagTone, Button as UIButton, PeopleTable, PersonRow, EdgeRow, EdgeList, Folded, Callout, Stack, SubHeading, Note, FlexRow, Text } from '@/components/gw/ui'
 import { initialsOf } from '@/pages/org/people-here'
 import { cadenceLabel } from '@/lib/cadence'
 import { phaseSpineSentence } from '@/lib/phase-spine-sentence'
@@ -394,11 +394,11 @@ function HiddenContributorRow({ groundId, label, evidence, isInitiator }: {
     <div className="gwui-panel-row">
       <Stack gap={6}>
         <Stack gap={4}>
-          <div className="gwui-fs-16 gwui-ink-text" style={{ fontWeight: 600 }}>{label}</div>
-          <div className="gwui-fs-15 gwui-ink-sub" style={{ lineHeight: 1.55 }}>{evidence}</div>
+          <Text size="16" ink="text" weight={600}>{label}</Text>
+          <Text size="15" ink="sub" lineHeight={1.55}>{evidence}</Text>
         </Stack>
         {done ? (
-          <div className="gwui-fs-13 gwui-ink-green" style={{ fontWeight: 600 }}>{isInitiator ? 'Invited.' : 'Request sent.'}</div>
+          <Text size="13" ink="green" weight={600}>{isInitiator ? 'Invited.' : 'Request sent.'}</Text>
         ) : open ? (
           <Stack gap={6}>
             <input
@@ -415,8 +415,8 @@ function HiddenContributorRow({ groundId, label, evidence, isInitiator }: {
                 style={{ borderRadius: 6, fontFamily: 'inherit', outline: 'none' }}
               />
             )}
-            {emailError && <div className="gwui-fs-13 gwui-ink-red">{emailError}</div>}
-            <div className="gwui-gap-6" style={{ display: 'flex' }}>
+            {emailError && <Text size="13" ink="red">{emailError}</Text>}
+            <FlexRow gap={6}>
               <UIButton
                 kind="secondary"
                 onClick={() => {
@@ -432,7 +432,7 @@ function HiddenContributorRow({ groundId, label, evidence, isInitiator }: {
               <UIButton kind="secondary" onClick={() => { setOpen(false); setEmail(''); setName(''); setReason('') }}>
                 Cancel
               </UIButton>
-            </div>
+            </FlexRow>
           </Stack>
         ) : (
           <button onClick={() => { setOpen(true); setEmail(''); setName(''); setReason(evidence) }} className="gwui-plain-link gwui-fs-13">
@@ -663,9 +663,9 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
             whole check-in" (`MaybeFolded`), closed by default, so "below" alone left a reader to find
             and open it themselves. This instead opens that fold and jumps straight to it.
           */}
-          <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 700}}>
+          <Text size="16" ink="dark" weight={700}>
             {shared ? 'Today’s team picture is shared.' : 'Today’s team picture isn’t shared yet.'}
-          </div>
+          </Text>
           <div className="gwui-fs-15 gwui-ink-sub gwui-mt-4" style={{lineHeight: 1.55}}>
             {shared
               ? null
@@ -688,11 +688,20 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
               PICTURE IN IT. "Open today's team picture below." used to open and scroll to "The
               whole check-in" fold - which holds everything else this board sends (By area,
               coaching, the switchboard's own sections), never a team picture. The actual team
-              picture is "The team's report" (SessionReportPage.tsx), reached from the report tab
-              this board already links "Read your own report" to. This now sends the reader there
-              instead, and is left out entirely once there is nothing shared to point it at.
+              picture is "The team's report" (SessionReportPage.tsx).
+
+              SCREEN FAULT 4: IT WAS SENT THERE THE LONG WAY ROUND, AND LANDED SOMEWHERE ELSE.
+              `/grounds/${'${groundId}'}/report` is only a redirect (ReportPage.tsx) to
+              `/grounds/${'${groundId}'}?tab=report` - for a participant that is this very page's
+              own "My work" tab, not the session's own report page, and it showed as about 350px of
+              blank gap over two closed rows with no space between them ("Your sessionsYou have one
+              finished session…"), with the tab bar underlining "My work" rather than Report. The
+              session's own report page is exactly where "Read your own report" below already sends
+              this reader (`myLatestCheckInId`) - the same page, since this is the report for the
+              session that just closed and shared. Sent there directly now, with the ground-level
+              redirect kept only for the rare case nothing has completed for this reader yet.
             */
-            <Link to={`/grounds/${groundId}/report`} className="gwui-plain-link gwui-fs-15 gwui-mt-4">
+            <Link to={myLatestCheckInId ? `/checkin/${myLatestCheckInId}/report` : `/grounds/${groundId}/report`} className="gwui-plain-link gwui-fs-15 gwui-mt-4">
               Open today’s team picture.
             </Link>
           )}
@@ -777,7 +786,7 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
 const STARTING_STATE_STEPS = ['Day 1', 'By day 30', 'By day 60', 'By day 90', 'After day 90'] as const
 
 function StartingStateSentence({ children }: { children: React.ReactNode }) {
-  return <div className="gwui-fs-15 gwui-ink-dark" style={{lineHeight: 1.55}}>{children}</div>
+  return <Text size="15" ink="dark" lineHeight={1.55}>{children}</Text>
 }
 
 function StartingStateBody({ startingState }: { startingState: string | StartingStateAtTheStart }) {
@@ -906,24 +915,24 @@ function DivergenceSectionBody({ heading, divergence, whyNothingYet, onlyOnePers
           /* WHY IT IS EMPTY, NOT ONE SENTENCE FOR EVERY REASON. This said "This fills in once
              more than one person has checked in" on a round where everybody had, three inches
              under a tile that said so. The server computes it from the one counter. */
-          <Row columns="1fr" inset="panel"><div className="gwui-fs-15 gwui-ink-muted">{onlyOnePersonHere ? 'There is nothing to compare yet.' : (whyNothingYet ?? 'There is nothing to compare yet. This fills in once more than one person has answered.')}</div></Row>
+          <Row columns="1fr" inset="panel"><Text size="15" ink="muted">{onlyOnePersonHere ? 'There is nothing to compare yet.' : (whyNothingYet ?? 'There is nothing to compare yet. This fills in once more than one person has answered.')}</Text></Row>
         ) : (
           <>
             {divergence.items.map((d: any, i: number) => (
               <Row key={i} columns="1fr" inset="panel">
-                <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 600}}>
+                <Text size="16" ink="dark" weight={600}>
                   {d.topic ?? d.tag ?? 'Somewhere you see it differently'}
-                </div>
+                </Text>
                 <div className="gwui-fs-15 gwui-ink-amber gwui-mt-2">{whoSeesThisDifferently(d.positions, myName)}</div>
                 {d.text && <div className="gwui-fs-15 gwui-ink-sub gwui-mt-3">{d.text}</div>}
                 {Array.isArray(d.positions) && d.positions.some((pos: any) => pos.view) && (
                   <div className="gwui-mt-6">
                     <Stack gap={4}>
                       {d.positions.filter((pos: any) => pos.view).map((pos: any, j: number) => (
-                        <div key={j} className="gwui-fs-15 gwui-ink-text" style={{lineHeight: 1.55}}>
+                        <Text key={j} size="15" ink="text" lineHeight={1.55}>
                           <div style={{fontWeight: 700}}>{pos.who ?? 'A colleague'}</div>
                           <div className="gwui-ink-sub">{pos.view}</div>
-                        </div>
+                        </Text>
                       ))}
                     </Stack>
                   </div>
@@ -938,9 +947,9 @@ function DivergenceSectionBody({ heading, divergence, whyNothingYet, onlyOnePers
             ))}
             {divergence.agreements.map((a: any, i: number) => (
               <Row key={`a${i}`} columns="1fr" inset="panel">
-                <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 600}}>
+                <Text size="16" ink="dark" weight={600}>
                   {typeof a === 'string' ? a : a.topic ?? 'Agreed'}
-                </div>
+                </Text>
                 <div className="gwui-fs-15 gwui-ink-green gwui-mt-2">Everybody agrees on this.</div>
               </Row>
             ))}
@@ -1021,28 +1030,37 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * there is nothing to gate here beyond that - `recommendedCheckInsApi.list` is itself refused for
    * anybody who is not the lead.
    */
-  const anchorRecommendationsOn = viewerRunsThisCheckIn && !!(data as any)?.anchorScenarioOn
+  /** Whether this check-in was itself started as the anchor scenario - read once, for every reader. */
+  const anchorScenarioOn = !!(data as any)?.anchorScenarioOn
+  const anchorRecommendationsOn = viewerRunsThisCheckIn && anchorScenarioOn
+  /**
+   * THE SWITCHBOARD'S OWN SECTION LIST, READ OFF THE RAW ANSWER (decision 114;
+   * docs/answers-from-engine.md, "8 October (later): the anchor through the ordinary routes, route
+   * by route"). `sections` names which sections this scenario carries at all - the same for every
+   * reader of one check-in - read here, ahead of `b`/`has` below, because these hooks have to sit
+   * above every early return (the same reason `anchorScenarioOn` already reads raw `data`).
+   */
+  const sectionsServed: string[] = (data as any)?.sections ?? []
+  const hasSectionServed = (s: string) => sectionsServed.includes(s)
 
   /**
-   * PIECES 12, 13 AND 20: THE MONTH BOARD, "Are we moving together?" (section 24;
-   * docs/answers-from-engine.md, "Request 149 (5 of 6)", `TheMonthBoard`). Lead only, and only
-   * while the anchor switch is on - the same two gates `anchorRecommendationsOn` already uses, read
-   * off the raw board answer rather than `b` for the same reason (these hooks must sit above every
-   * early return below). `theMonthBoardForTheLead` is `undefined` for anybody else, or for a board
-   * the engine does not serve it on, and the component below draws nothing then.
+   * PIECES 12, 13 AND 20: "ARE WE MOVING TOGETHER?" (section 24) IS NOW DRAWN FROM SECTIONS, NOT
+   * FROM `theMonthBoard` (decision 114, 8 October evening). The engine still serves `theMonthBoard`
+   * for whoever runs the check-in while callers move across (its "kept for now" list), but this
+   * page no longer reads it: every part it used to carry now has its own section
+   * (`theAnchorSections`, below `has(...)`), drawn once through `TheAnchorBoardSections`. See
+   * the-anchor-old-and-new-sections-agree.spec.tsx for the proof the same sentences still appear.
    */
-  const theMonthBoardForTheLead = viewerRunsThisCheckIn && !!(data as any)?.anchorScenarioOn
-    ? (data as any)?.theMonthBoard
-    : undefined
 
   /**
    * PIECE 19/20, "IDEAS FROM YOUR TEAM" (plan section 5, row 7; docs/answers-from-engine.md,
-   * "Request 149, missing (1)"). To everyone in the check-in, not the lead alone - no
-   * `viewerRunsThisCheckIn` gate, unlike the month board above. The engine is itself the one that
-   * decides who this is served to (shape only today, so `ideasFromYourTeam` is undefined on every
-   * board), so this reads the raw answer directly rather than adding a reader check here.
+   * "Request 149, missing (1)"; decision 114's `ideasFromTheTeam`, the same shape named by the
+   * switchboard). To everyone in the check-in, not the lead alone - no `viewerRunsThisCheckIn`
+   * gate, and (decision 114) no `anchorScenarioOn` gate either: the new field is read first, the
+   * older one only as a fallback for a caller the server has not moved across yet, and the engine
+   * is itself the one that decides who either is served to.
    */
-  const ideasFromYourTeam = (data as any)?.ideasFromYourTeam
+  const ideasFromYourTeam = (data as any)?.ideasFromTheTeam ?? (data as any)?.ideasFromYourTeam
   const { data: recommended } = useQuery({
     queryKey: ['recommended-check-ins', id],
     queryFn: () => recommendedCheckInsApi.list(id!),
@@ -1086,7 +1104,21 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * "Reports" row built from it can say truthfully how many of the whole roster checked in,
    * instead of "1 of 1" for a reader who is restricted to their own one-person list.
    */
-  const sessionRows = buildSessionRows(groundForSignals as any, user?.id, labelInASentence, (data as any)?.participants)
+  /*
+   * SCREEN FAULT 9, PART 2: THE SERVER'S OWN GRID KNOWS WHICH SESSIONS SOMEBODY IS ACTUALLY ON.
+   * `checkInGrid.rows[].cells` already says "na" for a session somebody joined after - passed to
+   * `buildSessionRows` so its own "waitingOn" can agree with it, rather than naming them from
+   * `whoIsInRound`'s blanket eligibility rule alone. See the parameter's own note.
+   */
+  const onSessionFromGrid = (data as any)?.checkInGrid
+    ? new Map(
+        ((data as any).checkInGrid.rows as { participantId: string; cells: Record<string, string> }[]).map((r) => [
+          r.participantId,
+          new Set(Object.entries(r.cells).filter(([, v]) => v !== 'na').map(([s]) => Number(s))),
+        ]),
+      )
+    : null
+  const sessionRows = buildSessionRows(groundForSignals as any, user?.id, labelInASentence, (data as any)?.participants, onSessionFromGrid)
 
   /* Where the run is, read once, so the top and the foot of the board gate the ending panel on the
      same answer (the-exit-belongs-at-the-exit). */
@@ -1175,8 +1207,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     const why = whyYouCannotSeeThis(what)
     /* A 404 is the prototype's own "a check-in that's gone" (F4-small-states/c-gone-board): the
        board's address, with the sidebar, and the same words whether the check-in was ended,
-       removed, or was never this reader's (GW-PRI-04: the server answers all of them alike). */
-    if (what.status === 404) return <GroundGone />
+       removed, or was never this reader's (GW-PRI-04: the server answers all of them alike).
+       B-110: a 403 must read identically - GW-PRI-04 exists precisely so a stranger holding a
+       stale link cannot tell "this never existed" from "this exists, you're just not on it"
+       apart. This branch used to fall through to `why.say`'s 403 sentence instead, which does
+       exactly that ("This record belongs to a check-in you are not part of."). Same screen,
+       both codes. */
+    if (what.status === 404 || what.status === 403) return <GroundGone />
     /* The prototype's connection words only when it was the connection: no answer came back at all.
        A server error keeps its own true sentence, with Try again still offered (U.20 review). */
     const theConnection = what.status === undefined
@@ -1191,12 +1228,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
       <div className="gwui-mt-48 gwui-mr-auto gwui-mb-48 gwui-ml-auto gwui-pt-0 gwui-pr-20 gwui-pb-0 gwui-pl-20" style={{maxWidth: 620, textAlign: 'center'}}>
         <div className="gwui-fs-15 gwui-mb-6" style={{fontWeight: 700}}>{why.canRetry ? 'The board didn’t load' : 'This board could not be loaded.'}</div>
         <div className="gwui-fs-15 gwui-ink-sub gwui-mb-16">
-          {theConnection ? 'Nothing is lost; your check-ins are saved. It’s usually the connection.' : why.say}
+          {theConnection ? 'Nothing is lost. Your check-ins are saved. It is usually the connection.' : why.say}
         </div>
-        <div className="gwui-gap-8" style={{display: 'flex', justifyContent: 'center'}}>
+        <FlexRow gap={8} justify="center">
           {why.canRetry && <UIButton kind="primary" onClick={() => refetch()}>Try again</UIButton>}
           <UIButton kind={why.canRetry ? 'secondary' : 'primary'} onClick={() => navigate('/grounds')}>Back to check-ins</UIButton>
-        </div>
+        </FlexRow>
       </div>
     )
   }
@@ -1325,8 +1362,17 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * The same fact still exists, the same place the check-in page reads it for this very button
    * (`myOpenCheckInId`/`myNextOpensAt`, GroundAdminPage.tsx and GroundParticipantPage.tsx): the
    * reader's own open-or-next check-in row, off `GET /grounds/:id` (`groundForSignals`, already
-   * fetched above). Used only as a fallback, when no phase spine was sent - the spine's own read
-   * stays the one truth wherever it exists.
+   * fetched above).
+   *
+   * FAULT 8 (LIVE RE-WALK): NOT ONLY A FALLBACK FOR WHEN THERE IS NO PHASE SPINE. Amina finished
+   * her own part of the team's current round early - her next check-in exists, `NOT_STARTED`,
+   * `availableFrom` in the future - while the phase spine still called that same round `current`
+   * (it stays open, team-wide, until everybody else finishes it too). This reader's own next
+   * session not yet being open and the team's round still being open are two different facts, and
+   * the button only asked the second one: gated behind `!b.phaseSpine`, this reader's own read
+   * never ran at all on a board that does send a spine, so "Start my check-in" stayed up for a
+   * session that had not opened for her. It runs always now, alongside the spine's own read, not
+   * only in its absence.
    */
   const myParticipantIdForOpenCheck = ((groundForSignals as any)?.participants ?? []).find((p: any) => p.userId === user?.id)?.id ?? null
   const myOpenOrNextCheckIn = myParticipantIdForOpenCheck
@@ -1337,10 +1383,22 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const myOpenOrNextOpensLater = !!myOpenOrNextCheckIn?.availableFrom
     && new Date(myOpenOrNextCheckIn.availableFrom).getTime() > Date.now()
     && myOpenOrNextCheckIn?.status !== 'IN_PROGRESS'
-  const noSessionOpenForReaderFallback = !b.phaseSpine && myOpenOrNextOpensLater
+  const noSessionOpenForReaderFallback = myOpenOrNextOpensLater
   const whenTheNextSessionOpensFallback = myOpenOrNextOpensLater
     ? `Session ${myOpenOrNextCheckIn.sessionNumber} opens on ${whenItWas(myOpenOrNextCheckIn.availableFrom, 'dayAndMonthLong')}.`
     : null
+  /*
+   * SCREEN FAULT 6(d) (live walk, 6 October 2026), EVERY SITUATION: "START MY CHECK-IN" AFTER
+   * FINISHING THE OPEN ONE. Both reads above ask whether a ROUND is open - the phase spine's own
+   * "current" session, or, lacking a spine, whether this reader's next check-in is still in the
+   * future. Neither asks whether THIS READER still has anything unfinished in it: a phase-spine
+   * round can stay "current" (others still answering) after this one person has already completed
+   * theirs, and a spine-less ground with nothing non-completed left for this reader has no "next"
+   * row to be later than. `myOpenOrNextCheckIn` is already the one true source for that - a
+   * participant's own open-or-pending check-in, off the same read the button's destination uses -
+   * so its plain absence (nothing of mine left to open, whether a round is open for anyone else or
+   * not) hides the button regardless of which of the two reads above was used to show it. */
+  const iHaveNothingOpenOrPending = !!myParticipantIdForOpenCheck && !myOpenOrNextCheckIn
   /*
    * U.10 (a): THE SAME FIVE TABS, READ-ONLY FILTERED THE SAME WAY (an-admin-who-only-reads-has-no-
    * check-in-tab.spec.tsx pinned this against the old TheCheckInHeader; the-board-as-each-reader-
@@ -1555,6 +1613,37 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     { key: 'settings', label: 'People and setup', to: `/grounds/${id}?tab=settings` },
   ]
   const has = (s: string) => b.sections.includes(s as any)
+  /**
+   * THE ANCHOR'S REMAINING SECTIONS, NAMED BY THE SWITCHBOARD (decision 114;
+   * docs/answers-from-engine.md, "8 October (later): the anchor through the ordinary routes, route
+   * by route", and "8 October (evening): the anchor's last month parts are board sections"). Gated
+   * with the same `has(...)` every other kind of work's own sections already use - WHO READS WHAT IS
+   * DECIDED BY THE SERVER, so there is no reader check here either.
+   *
+   * `theMonthBoard` IS NO LONGER DRAWN (decision 114, 8 October evening): every part it used to
+   * carry - the four lenses, the week, what's moving, what the team is contributing, people helping
+   * the team move, where perspectives differ, what's still in the way, and what Groundwork is
+   * working on next - now has a section of its own below, drawn once through
+   * `TheAnchorBoardSections` instead of the retired `TheMonthBoard` component (see
+   * the-anchor-old-and-new-sections-agree.spec.tsx for the proof nothing was lost). `ideasFromTheTeam`
+   * is not here - it is the same shape `ideasFromYourTeam` above already draws through the existing
+   * `TheIdeasFromYourTeam`. `recommendations` is not drawn here either: the lead already reads
+   * "Groundwork recommends" through the dedicated `recommendedCheckInsApi` listing and its own
+   * yes/not-now handling (`recommendedOffers`, below), which this would only duplicate.
+   */
+  const theAnchorSections = {
+    whatYouAreCarrying: has('whatYouAreCarrying') ? (b as any).whatYouAreCarrying : undefined,
+    howGroundworkWillWork: has('howGroundworkWillWork') ? (b as any).howGroundworkWillWork : undefined,
+    theFourLenses: has('theFourLenses') ? (b as any).theFourLenses : undefined,
+    peopleHelpingTheTeamMove: has('peopleHelpingTheTeamMove') ? (b as any).peopleHelpingTheTeamMove : undefined,
+    weeklyInsight: has('weeklyInsight') ? (b as any).weeklyInsight : undefined,
+    whereTheMonthIs: has('whereTheMonthIs') ? (b as any).whereTheMonthIs : undefined,
+    whatIsMoving: has('whatIsMoving') ? (b as any).whatIsMoving : undefined,
+    whatTheTeamIsContributing: has('whatTheTeamIsContributing') ? (b as any).whatTheTeamIsContributing : undefined,
+    wherePerspectivesDiffer: has('wherePerspectivesDiffer') ? (b as any).wherePerspectivesDiffer : undefined,
+    whatIsStillInTheWay: has('whatIsStillInTheWay') ? (b as any).whatIsStillInTheWay : undefined,
+    whatGroundworkIsWorkingOnNext: has('whatGroundworkIsWorkingOnNext') ? (b as any).whatGroundworkIsWorkingOnNext : undefined,
+  }
   /* Said once, at the top - and the divergence card below stays short rather than repeating it. */
   /*
    * ITEM D, CHECKED AND DELIBERATELY LEFT AS IT WAS. `whoIsInRound` answers a different question
@@ -1568,6 +1657,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * for two different counting rules to disagree about. See the morning report.
    */
   const onlyOnePersonHere = (b.participants ?? []).filter(p => !p.managingOnly).length < 2
+  /* A lead who does not check in is not the one person on this board, so she is never told "You have answered this session." */
+  const viewerChecksIn = (b.participants ?? []).some((p) => p.id === b.myParticipantId && !p.managingOnly)
   /* The reader's own name, as this board already resolves it, so "who sees this differently" can say "You". */
   const myName = b.myParticipantId ? (b.participants ?? []).find((p) => p.id === b.myParticipantId)?.name ?? null : null
 
@@ -1699,10 +1790,16 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * fold. Onboarding's real work plan, shown separately as `WorkPlanSection`, never passes through
    * `b.workRecords` at all, so this collapsing a genuinely all-not-known `workRecords` list cannot
    * reach it either way.
+   *
+   * NOT SCOPED TO `isProjectBoard || isOnboarding` ANY MORE (real-user walk, Kijani Foods, fault 4b).
+   * Tendai's role-handover check-in, a scenario this list never covered, still sent six work-record
+   * sections back not-known with the same `why`, and the fold repeated the same sentence six times -
+   * the exact bug this collapsing exists to fix, just on a board whose scenario was never added to
+   * the list. The `allWorkRecords.every(...)` check below already proves it is safe everywhere: the
+   * moment one real row exists this is false and nothing collapses, whatever the board's family.
    */
   const allWorkRecords = b.workRecords ?? []
   const workRecordsAllNotKnownSameWhy =
-    (isProjectBoard || isOnboarding) &&
     allWorkRecords.length > 1 &&
     allWorkRecords.every((s) => s.state === 'not-known') &&
     new Set(allWorkRecords.map((s) => (s as { why: string }).why)).size === 1
@@ -1745,8 +1842,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
      person's line. The board's own line needs three finished sessions of rows; a pattern the
      server has served, and this reader may read, says it too, so the line never sits empty while
      the section below shows that person's pattern. */
+  /* WHAT HAPPENED, NEVER THE PATTERN'S NAME, beside a person in this list (Hafsah, 12 October: an approved pattern name may head a
+     pattern, never sit as a tag beside a person's name in a list or table). The name stays on the pattern's own heading below. */
   const patternHeadingByParticipant = new Map<string, string>()
-  for (const p of visiblePatterns) if (p.participantId && p.heading && !patternHeadingByParticipant.has(p.participantId)) patternHeadingByParticipant.set(p.participantId, p.heading)
+  for (const p of visiblePatterns) {
+    if (!p.participantId || patternHeadingByParticipant.has(p.participantId)) continue
+    patternHeadingByParticipant.set(p.participantId, p.whatHappened?.trim() || 'Something keeps coming up in these check-ins. It is shown below, with what happened.')
+  }
   /* Re-review, 30 September: "Nothing to do" beside somebody the "Waiting on" section already
      says is waiting on the reader - see where-each-person-is.tsx's `waitingOnReader`. */
   const readerIsOnThisDependency = (d: { on: string | null; onParticipantId?: string | null }) =>
@@ -1847,10 +1949,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     </Link>
   )
   const whatNeedsYouSection = () => {
-    if (!(viewerRunsThisCheckIn && (needsHere.length > 0 || (shown.leadActions && !sameAsTheWorkPlan(b.leadActions, b.workPlan, true)) || decisionsForWhatNeedsYou.length > 0))) return null
+    const missedHere = viewerRunsThisCheckIn ? (b.missedCheckIns ?? []) : []
+    if (!(viewerRunsThisCheckIn && (missedHere.length > 0 || needsHere.length > 0 || (shown.leadActions && !sameAsTheWorkPlan(b.leadActions, b.workPlan, true)) || decisionsForWhatNeedsYou.length > 0))) return null
     return (
       <Section heading="What needs you in this check-in">
         <EdgeList label="What needs you in this check-in">
+          {/* MISSED CHECK-INS (decision 136): the server's own sentences, facts and what they do, served to the lead alone. */}
+          {missedHere.map((m) => (
+            <EdgeRow key={`missed-${m.participantId}`} kind="look" title={m.text} />
+          ))}
           {needsHere.map((n: Need) => (
             <EdgeRow
               key={n.key}
@@ -1964,9 +2071,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * note). Every other kind of work keeps the plain heading and note it already had.
    */
   const patternsHeading = kindOfWorkKey === 'asset loans' ? 'One person, a place, or the model?' : 'What keeps coming up'
+  /*
+   * B-138, DECISION 8: "Patterns show only after three periods, whether or not they are in a row."
+   * The old note said the opposite - that three in a row were required - for both the default
+   * heading and the asset-loans cohort's own one.
+   */
   const patternsNote = kindOfWorkKey === 'asset loans'
-    ? 'Patterns named after three check-ins in a row'
-    : 'Named after three check-ins in a row, never after one. Each describes the work.'
+    ? 'Shown only after the same thing comes up in three check-ins, in a row or not'
+    : 'Shown only after the same thing comes up in three check-ins, in a row or not. Each describes the work.'
 
   const patternsAndCoachingSection = () => (
     <>
@@ -1983,7 +2095,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             <Panel pad={false}>
               <RowList label="What keeps coming up">
               {visiblePatterns.length === 0 ? (
-                <Row columns="1fr" inset="panel"><div className="gwui-fs-15 gwui-ink-muted">Nothing to show here yet. A pattern appears only after three check-ins in a row, and the person it is about always sees it first.</div></Row>
+                <Row columns="1fr" inset="panel"><Text size="15" ink="muted">Nothing to show here yet. A pattern appears only after the same thing comes up in three check-ins, in a row or not, and the person it is about always sees it first.</Text></Row>
               ) : (
                 <>
                   {/*
@@ -2057,7 +2169,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const whoCheckedIn = () => {
     if (!shown.checkInGrid || !b.checkInGrid) return null
           /** Does any row have a role worth a column of its own? */
-          const anyRoleToShow = b.checkInGrid.rows.some((r) => (r.role && r.role !== r.name) || r.managingOnly)
+          const anyRoleToShow = b.checkInGrid.rows.some((r) => (r.role && r.role !== r.name))
           /*
            * ITEM E: A SESSION THAT HAS NOT OPENED IS NOT THE SAME "-" AS ONE SOMEBODY WAS SIMPLY
            * NOT ON. A bare dash read the same for both, and for a session with nothing to say about
@@ -2113,7 +2225,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 /*
                   U.10 (c2): FROM THE SHARED PARTS. A PeopleTable of PersonRows, the same shape
                   "The team today" uses - name (and, where a role is worth its own column, the
-                  lead's note or "Managing only" as the level line), then the same ten squares
+                  lead's note as the level line), then the same ten squares
                   "The team today" draws, from the same `squaresFor` helper, in their own
                   fixed-width column so they line up across every row.
                 */
@@ -2131,8 +2243,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       person={{
                         initials: initialsOf(displayName),
                         name: displayName,
-                        level: anyRoleToShow && (r.role && r.role !== r.name || r.managingOnly)
-                          ? (r.role && r.role !== r.name ? <span data-leads-note>{theLeadsNote(r.role)}</span> : 'Managing only')
+                        level: anyRoleToShow && (r.role && r.role !== r.name)
+                          ? <TheLeadsNote role={r.role} />
                           : undefined,
                       }}
                     >
@@ -2141,7 +2253,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       {notYet ? (
                         <Note tone="muted">{displayName} is waiting to be let in.</Note>
                       ) : (
-                        <div className="gwui-gap-5" style={{display: 'flex', justifyContent: 'flex-end'}}>
+                        <FlexRow gap={5} justify="flex-end">
                           {squaresFor(r.participantId).map((sq) => (
                             <span
                               key={sq.key}
@@ -2151,7 +2263,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                               style={{display: 'inline-block', width: 14, height: 14, borderRadius: 3, flexShrink: 0, background: sq.state === 'done' ? 'var(--gw-navy)' : 'transparent'}}
                             />
                           ))}
-                        </div>
+                        </FlexRow>
                       )}
                     </PersonRow>
                     )
@@ -2227,7 +2339,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             return (
               <EdgeRow
                 key={r.sessionNumber}
-                kind={r.closed ? 'ready' : (viewerRunsThisCheckIn ? 'decide' : 'look')}
+                kind={r.shared ? 'ready' : (viewerRunsThisCheckIn ? 'decide' : 'look')}
                 /* Re-review, 30 September, item 8: `sessionDay` already returns "Sun, 27 Sept"
                    (weekday, comma, date) - wrapped in another ", " here it read "Session 1,
                    Sun, 27 Sept", two commas doing the work of one. The prototype's own Reports
@@ -2237,7 +2349,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 detail={checkedIn(r.answered, r.total)}
                 actions={(
                   <>
-                    <Tag tone={r.closed ? 'proven' : 'attention'}>{r.closed ? EVERY_SESSION.shared : notSharedText}</Tag>
+                    <Tag tone={r.shared ? 'proven' : 'attention'}>{r.shared ? EVERY_SESSION.shared : notSharedText}</Tag>
                     {/* Secondary, not navy: the board's one primary is "Your check-in", in the header.
                         Only whoever runs this check-in can share a round, so only they get
                         "Share it" for one that has not been shared yet - whether or not they also
@@ -2245,13 +2357,24 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         it exists (`myCheckInId`), shared or not; with neither - someone else's
                         session, not yet shared - there is nothing of theirs to press. */}
                     {(() => {
-                      const canShare = viewerRunsThisCheckIn && !r.closed
+                      const canShare = viewerRunsThisCheckIn && !r.shared
                       const canOpenMine = !!r.myCheckInId
-                      if (!r.closed && !canShare && !canOpenMine) return null
+                      if (!r.shared && !canShare && !canOpenMine) return null
+                      /*
+                       * SCREEN FAULT 1 (FINAL WALK): "SHARE IT" OPENED /grounds/:id/session/:n,
+                       * A PAGE WITH NO SHARE OR SEND BUTTON (RoundReportPage.tsx only reads a
+                       * session's report; it never offered a way to release it). The only place
+                       * that can actually share a session is the check-in's own Report tab
+                       * (GroundAdminPage.tsx, `SendTheReportToEveryone` and the release action),
+                       * so "Share it" goes there now instead.
+                       */
+                      const target = canShare
+                        ? `/grounds/${id}?tab=report`
+                        : (!r.shared && canOpenMine ? `/checkin/${r.myCheckInId}/report` : `/grounds/${id}/session/${r.sessionNumber}`)
                       return (
                         <UIButton
                           kind="secondary" size="small"
-                          onClick={() => navigate(!canShare && canOpenMine ? `/checkin/${r.myCheckInId}/report` : `/grounds/${id}/session/${r.sessionNumber}`)}
+                          onClick={() => navigate(target)}
                         >
                           {canShare ? 'Share it' : 'Open'}
                         </UIButton>
@@ -2283,17 +2406,20 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     )
   }
 
+  /*
+   * THE CENTRAL QUESTION IS DRAWN ONCE, ABOVE THE FOLD, FOR EVERY FAMILY (real-user walk, Kijani
+   * Foods, fault 4a). It used to be part of `divergenceBlock` below, which only an onboarding board
+   * called above its own fold - every other family's board only reached it inside "Everything else
+   * from this check-in", folded shut, while the top of the page read as if nothing needed the lead
+   * ("Does a shop count when it signs, or when it orders again?" sat unseen under a closed fold on
+   * Tendai's sales board). The full divergence detail (`DivergenceSectionBody`) stays exactly where
+   * each family already draws it - a deliberate choice (see "Everything else from this check-in",
+   * further down) - only the one-line question moves, drawn once, see where it is rendered below.
+   */
   const divergenceBlock = (heading: string) => (
-    <>
-      {b.divergence && shown.divergence && (
-        <DivergenceSectionBody heading={heading} divergence={b.divergence} whyNothingYet={b.divergence.whyNothingYet} onlyOnePersonHere={onlyOnePersonHere} myName={myName} />
-      )}
-      {b.divergence?.centralQuestion && (
-        <Panel>
-          <WhatToSettleTogether question={b.divergence.centralQuestion} />
-        </Panel>
-      )}
-    </>
+    b.divergence && shown.divergence
+      ? <DivergenceSectionBody heading={heading} divergence={b.divergence} whyNothingYet={b.divergence.whyNothingYet} onlyOnePersonHere={onlyOnePersonHere} myName={myName} />
+      : null
   )
 
   return (
@@ -2332,13 +2458,44 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           "Views ▾" slot (not built - nothing answers what that menu would offer), restyled for a
           light ground. NOT WHEN THE BOARDS PAGE IS ALREADY SWITCHING: on /boards the tabs above do
           this job, and two switchers is a reader asking which of them is the real one.
+
+          B-151... B-150, RATHER: NONE OF THIS WHEN /boards IS ALREADY SHOWING ITS OWN SWITCHER.
+          The comment above only ever silenced this header's OWN inner board-switcher
+          (`trailing`), gated on `!groundId` - the breadcrumb, the serif title, "Your check-in",
+          "Ask" and the full six-tab bar were never gated at all, so TeamBoardsPage, which passes
+          `groundId` as a prop precisely so it can draw its own tab strip above the board, got this
+          whole header a second time underneath it: a second "Check-ins / <name>", a second title,
+          and all six tabs where the deep page audit found them. `groundId` (present only when a
+          caller supplies it, as TeamBoardsPage does; absent on this page's own route,
+          `/grounds/:id/board`, where `id` comes from `useParams` instead) is exactly the flag the
+          `trailing` line already reasoned from - so the rest of the header now reasons from it
+          too, rather than only the one piece of it that happened to get checked.
         */}
+        {!groundId && (
         <CheckInHeader
           crumbs={[{ label: 'Check-ins', to: '/grounds' }, { label: b.title }]}
           title={b.title}
           subtitle={cadenceLine || undefined}
           action={(
-            <div className="gwui-gap-16" style={{display: 'flex', alignItems: 'center', flexShrink: 0}}>
+            /*
+              B-204: AT A PHONE WIDTH, THE NEXT-SESSION NOTE COULD RUN THE WHOLE PAGE SIDEWAYS.
+
+              `shrink0` is here to protect the "Start my check-in"/"Your check-in" BUTTON this row
+              usually holds from being squeezed by a long title - the header's own title/action row
+              already wraps this whole action block onto its own line below the title when the two
+              do not fit side by side, which is enough room for a short button. But the OTHER thing
+              this row can hold, in its place, is a full sentence ("Session 3 opened on 10 October,
+              while session 1 is still open.") - read live on Zawadi's view of Msingi's "Sales team,
+              Q4" at 390px, where that sentence plus "Ask" measured 424px wide against a 390px
+              screen, 34px of it permanently off the right edge, because `shrink0` kept the row at
+              that one-line width instead of letting it wrap. `wrap` lets the sentence and "Ask"
+              reflow onto their own lines within whatever width the row is actually given; `capWidth`
+              keeps the row from exceeding that width in the first place, the same way `shrink0`
+              already reaches past this one row's own inline style for a real, named need. Wairimu's
+              own view (the button, not the sentence) is one short word and was never the problem -
+              unaffected either way.
+            */
+            <FlexRow gap={16} align="center" shrink0 wrap capWidth>
               {/*
                 THE PROTOTYPE USES TWO DIFFERENT WORDS HERE. The lead's own board says "Your
                 check-in" (board-as-lead.txt); a party's says "Start my check-in"
@@ -2350,9 +2507,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 her own action regardless - she always has something to do here, open session or
                 not - but a participant with nothing open now reads when the next one does instead,
                 in the engine's own words.
+
+                FAULT 6 (live walk, 6 October 2026): NEVER "START MY CHECK-IN" ON AN ENDED CHECK-IN.
+                Amani, a member on a check-in that had already ended, still read "Start my check-in"
+                here - pressing it opened "No check-in open right now", because there is none. A
+                participant gets no action at all once `groundEnded`; the lead keeps "Your check-in"
+                either way, since she has other reasons to open it (reading past sessions).
               */}
-              {(viewerRunsThisCheckIn || isAParty) && (
-                !viewerRunsThisCheckIn && (noSessionOpenForReader || noSessionOpenForReaderFallback) ? (
+              {(viewerRunsThisCheckIn || (isAParty && !groundEnded)) && (
+                !viewerRunsThisCheckIn && (noSessionOpenForReader || noSessionOpenForReaderFallback || iHaveNothingOpenOrPending) ? (
                   (whenTheNextSessionOpens ?? whenTheNextSessionOpensFallback) && <Note tone="muted">{whenTheNextSessionOpens ?? whenTheNextSessionOpensFallback}</Note>
                 ) : (
                   <Link
@@ -2370,12 +2533,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               <button type="button" onClick={showAsk} className="gwui-plain-link">
                 Ask
               </button>
-            </div>
+            </FlexRow>
           )}
           active="board"
           tabs={headerTabs}
           trailing={!groundId ? <TheOtherBoardsYouAreIn groundId={id!} /> : undefined}
         />
+        )}
 
         {/*
           WHEN IT LAST CHANGED, AND THAT OPENING IT CHANGES NOTHING (U.10). The same line for every
@@ -2434,7 +2598,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           ANCHOR PIECE 22, A PERSON'S OWN RECOGNITION SENTENCE, "Helping the team move"
           (docs/anchor-scenario.md section 19; docs/answers-from-engine.md, "Anchor piece 22,
           hidden contributors, is served"). The lead reads the same sentence about this person on
-          `TheMonthBoard`'s own "People helping things move"; a person reads only their own, said
+          the "People helping the team move" section; a person reads only their own, said
           as "you" - never anybody else's, and the server sends nothing for anybody else's share of
           it. Drawn only for a participant, and only while the engine actually sends a sentence -
           `null` (closed nothing this month) or absent (any other check-in, or the switch off)
@@ -2455,8 +2619,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           Served only to a person in an anchor check-in who has not yet checked in for the open
           round; `null` once they have, and absent for anybody else or any other check-in - the
           screen draws nothing then either way.
+
+          FAULT 6 (live walk, 6 October 2026): NOT ONCE THE CHECK-IN HAS ENDED. The nudge is built
+          from the open round's own state and can still be sent stale; `!groundEnded` keeps it from
+          ever offering "Start my check-in" with nothing left to start.
         */}
-        {isParticipantView && b.aNudgeForYou && (
+        {isParticipantView && b.aNudgeForYou && !groundEnded && (
           <Panel>
             <Stack gap={12}>
               <Callout tone="info">{b.aNudgeForYou}</Callout>
@@ -2481,19 +2649,61 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         {!shown.checkInGrid && b.myParticipantId && kindOfWorkKey !== 'MarketView where next' && everySessionLink()}
 
+        {/*
+          FAULT 4 (live walk, 6 October 2026): FOR THE LEAD, "ARE WE MOVING TOGETHER?" COMES
+          BEFORE "IDEAS FROM YOUR TEAM", NOT AFTER.
+          Section 24 makes the month board the top question for the lead. Both already draw open,
+          never folded (see the fault 4 note just below this one, live walk 6 October 2026) - this
+          only changes which of the two comes first, by drawing the month's own sections here, ahead
+          of the ideas block. Those sections are undefined for anybody but the lead, so a member
+          sees no change at all: the ideas block below is still the first thing in this region for
+          them, open exactly where it was.
+        */}
+        {/*
+          THE ANCHOR'S REMAINING SECTIONS, AHEAD OF IDEAS (docs/anchor-scenario.md: "What you're
+          carrying" and "How I'll work with your team" are sections 11 and 12, read before "Are we
+          moving together?", section 24). `whatYouAreCarrying`, `theFourLenses`,
+          `peopleHelpingTheTeamMove` and the rest of the month's own sections draw for the lead only;
+          `howGroundworkWillWork` for everybody in the check-in - each is `undefined`, and draws
+          nothing, for a reader the server did not serve it to. `theMonthBoard` and its own component
+          are retired in favour of this one call (decision 114, 8 October evening) -
+          `theAnchorSections` above already carries every field this used to split across
+          `TheAnchorBoardSections` and `TheMonthBoard`, and `weeklyInsight` moves into the same
+          sections object rather than its own block, so there is nothing left to draw separately.
+        */}
+        <TheAnchorBoardSections sections={theAnchorSections} />
+
+        {/*
+          FAULT 4 (live walk, 6 October 2026): FOR AN ANCHOR CHECK-IN, "IDEAS FROM YOUR TEAM" SITS
+          OUTSIDE ANY FOLD, THE SAME MOVE AS "EVERY SESSION" JUST ABOVE.
+          `MaybeFolded` only ever closes anything for a sales-org participant
+          (`participantFoldsWhole`), so an anchor check-in's own lead already saw this open - but a
+          sales-org anchor's own PARTICIPANT would have had to open "The whole check-in" to reach it,
+          same bug, same fix: draw it here, before the fold, for an anchor check-in only. Every other
+          check-in keeps drawing it exactly where it always has, inside `MaybeFolded`, below.
+        */}
+        {/* Open, never folded, for every reader it is served to (anchor walk, 6 October). DECISION
+            114: positioned by the switchboard's own section list (`hasSectionServed`), not a
+            scenario flag - the same "who reads a section is decided by the server" rule as above;
+            the ideas themselves are also served only on such a check-in, so their presence alone
+            would already say the same thing, but the section list is the one mechanism every other
+            kind of work's own sections already use. */}
+        {(hasSectionServed('ideasFromTheTeam') || !!ideasFromYourTeam) && <TheIdeasFromYourTeam ideasFromYourTeam={ideasFromYourTeam} />}
+
         <MaybeFolded fold={participantFoldsWhole}>
 
         {/*
-          PIECES 12, 13 AND 20: THE MONTH BOARD, "Are we moving together?", AT THE TOP (plan
-          section 5, row 6). Lead only; draws nothing while `theMonthBoardForTheLead` is undefined.
+          PIECES 12, 13 AND 20: "ARE WE MOVING TOGETHER?" (plan section 5, row 6). Moved above,
+          before "Ideas from your team" (fault 4) - this fold no longer draws it a second time; the
+          month's own sections already drew above, or there was nothing to draw.
         */}
-        {theMonthBoardForTheLead && <TheMonthBoard monthBoard={theMonthBoardForTheLead} />}
 
         {/*
           PIECE 19/20, "IDEAS FROM YOUR TEAM" (plan section 5, row 7). To everyone in the check-in;
-          draws nothing while `ideasFromYourTeam` is undefined.
+          draws nothing while `ideasFromYourTeam` is undefined. Not drawn here for an anchor
+          check-in (fault 4) - it already drew above, before the fold.
         */}
-        <TheIdeasFromYourTeam ideasFromYourTeam={ideasFromYourTeam} />
+        {!hasSectionServed('ideasFromTheTeam') && !ideasFromYourTeam && <TheIdeasFromYourTeam ideasFromYourTeam={ideasFromYourTeam} />}
 
         {/*
           THE HEADLINE QUESTION, WITH ITS ANSWER AND ITS BAR (request 108 a; board-as-lead.txt:
@@ -2517,7 +2727,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         {(b as any).headline && (
           <Stack gap={12}>
-            <HeadlineSection headline={(b as any).headline} objectives={b.objectives} glance={(b as any).howItIsGoing?.glance ?? null} waitingToBeLetIn={b.waitingToBeLetIn ?? null} targetsFromObjectivesWhenNoBars={layoutFor(kindOfWorkKey)?.targetsBesideHeadlineFromObjectives} readerIsTheOnlyPerson={viewerRunsThisCheckIn && onlyOnePersonHere} />
+            <HeadlineSection headline={(b as any).headline} objectives={b.objectives} glance={(b as any).howItIsGoing?.glance ?? null} waitingToBeLetIn={b.waitingToBeLetIn ?? null} targetsFromObjectivesWhenNoBars={layoutFor(kindOfWorkKey)?.targetsBesideHeadlineFromObjectives} readerIsTheOnlyPerson={viewerRunsThisCheckIn && onlyOnePersonHere && viewerChecksIn} />
           </Stack>
         )}
 
@@ -2560,8 +2770,23 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {(b as any).howItIsGoing?.glance && !((b as any).headline && !(b as any).headline.answer) && (
           <div className="gwui-mt-16">
-            <HowItIsGoing glance={(b as any).howItIsGoing.glance} waitingToBeLetIn={b.waitingToBeLetIn ?? null} readerIsTheOnlyPerson={viewerRunsThisCheckIn && onlyOnePersonHere} />
+            <HowItIsGoing glance={(b as any).howItIsGoing.glance} waitingToBeLetIn={b.waitingToBeLetIn ?? null} readerIsTheOnlyPerson={viewerRunsThisCheckIn && onlyOnePersonHere && viewerChecksIn} />
           </div>
+        )}
+
+        {/*
+          THE QUESTION THIS CHECK-IN TURNS ON, UNDER THE HEADLINE AREA, FOR EVERY FAMILY (real-user
+          re-walk, Kijani Foods, fault 1). This used to draw once, but only after "Reports", "Help
+          nobody mentioned", "Open issues", "How it ends" and "Where this is heading" - a dozen
+          sections down the page, which read as the bottom of the board on any screen, not "above
+          the fold" in any sense a person would recognise. It now draws here instead, directly under
+          the headline and the glance line, before any kind-of-work's own sections - the prototype's
+          own place for the one thing a board asks the lead to settle (B5-the-board).
+        */}
+        {b.divergence?.centralQuestion && (
+          <Panel>
+            <WhatToSettleTogether question={b.divergence.centralQuestion} />
+          </Panel>
         )}
 
         {/*
@@ -2723,8 +2948,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         {onlyOnePersonHere && kindOfWorkKey !== "founder's own check-in" && (
           <div role="status" className="gwui-rule-amber gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14 gwui-mt-12 gwui-fs-15 gwui-ink-amber" style={{background: 'var(--gw-amber-bg)', borderRadius: 12, lineHeight: 1.6}}>
-            This board compares accounts, and there is one person on this check-in.{' '}
-            {b.canEditFrame ? 'Add somebody and it will build from the next round.' : 'It will build once the person running this check-in adds somebody.'}
+            This board compares what people said, and there is one person on this check-in.{' '}
+            {b.canEditFrame ? 'Add somebody and it will build from the next session.' : 'It will build once the person running this check-in adds somebody.'}
           </div>
         )}
 
@@ -2924,7 +3149,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {!foldTeam && shown.eachPerson && (
           <Section
             heading="The team today"
-            note="Each person’s line, their last 10 check-ins, and what keeps coming up."
+            note="Each person’s line, their last 10 sessions, and what keeps coming up."
             /*
               BOARD REVIEW, SALES PIECE C, ITEM 10: THE PROTOTYPE'S OWN FOOTNOTE, ONLY WHEN IT IS
               TRUE. board-as-lead.txt ends this section: "These are about the work. Open anyone to
@@ -3135,7 +3360,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             {shown.eachPerson && (
               <Section
                 heading="The team today"
-                note="Each person’s line, their last 10 check-ins, and what keeps coming up."
+                note="Each person’s line, their last 10 sessions, and what keeps coming up."
                 foot="These are about the work."
               >
                 {activeLineForTheLead && <Note>{activeLineForTheLead}</Note>}
@@ -3199,7 +3424,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {has('phaseSpine') && b.phaseSpine && (
           <div className="gwui-mt-10">
-            <div className="gwui-gap-10" style={{display: 'flex', flexWrap: 'wrap'}}>
+            <FlexRow gap={10} wrap>
               {/*
                 A FINISHED SESSION OPENS ITS REPORT, which is a rule this codebase already made
                 and this was the one list not keeping it: "a finished session opens the REPORT and
@@ -3233,7 +3458,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   </button>
                 )
               })}
-            </div>
+            </FlexRow>
           </div>
         )}
 
@@ -3411,11 +3636,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               )}
               <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-fs-15 gwui-ink-sub" style={{lineHeight: 1.55}}>{b.cascade.why}</p>
               {b.cascade.teamsNamed.length > 1 && (
-                <div className="gwui-mt-8 gwui-gap-6" style={{display: 'flex', flexWrap: 'wrap'}}>
+                <FlexRow gap={6} wrap className="gwui-mt-8">
                   {b.cascade.teamsNamed.map((t: string) => (
                     <Tag key={t} tone="plain">{t}</Tag>
                   ))}
-                </div>
+                </FlexRow>
               )}
             </Panel>
           </Section>
@@ -3479,7 +3704,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 const pct = o.journey?.covered ?? (o.target && o.target > 0 ? Math.min(100, Math.round((o.count / o.target) * 100)) : 0)
                 return (
                   <Row key={o.id} columns="1fr" inset="panel">
-                    <div className="gwui-gap-12" style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap'}}>
+                    <FlexRow gap={12} align="center" wrap>
                       <div className="gwui-fs-16" style={{flex: 1, fontWeight: 600, minWidth: 160}}>
                         {o.name}
                         {o.isNew && <span className="gwui-ml-7"><Tag tone="plain">new</Tag></span>}
@@ -3548,7 +3773,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       ) : (
                         <div className="gwui-fs-15 gwui-ink-muted" style={{minWidth: 92, textAlign: 'right'}}>No number is set yet.</div>
                       )}
-                    </div>
+                    </FlexRow>
                     {o.notSettled && (
                       <div className="gwui-fs-15 gwui-ink-amber gwui-mt-5" style={{lineHeight: 1.55, maxWidth: '68ch'}}>{o.notSettled}</div>
                     )}
@@ -3563,7 +3788,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       */}
                       {b.canEditFrame && (
                         editingTargetId === o.id ? (
-                          <span className="gwui-gap-6" style={{display: 'flex', alignItems: 'center'}}>
+                          <FlexRow gap={6} align="center" as="span">
                             <UIButton
                               kind="secondary" size="small"
                               onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: Math.max(0, o.count - 1) })}
@@ -3583,7 +3808,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                               aria-label={`Remove target: ${o.name}`}
                             >Remove</UIButton>
                             <UIButton kind="quiet" size="small" onClick={() => setEditingTargetId(null)}>Done</UIButton>
-                          </span>
+                          </FlexRow>
                         ) : (
                           <UIButton kind="quiet" size="small" onClick={() => setEditingTargetId(o.id)} aria-label={`Change target: ${o.name}`}>Change</UIButton>
                         )
@@ -3598,7 +3823,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     {/* The record suggests, the lead decides. Never auto-applied:
                         a number a person set is theirs until they change it. */}
                     {o.suggestedCount != null && b.canEditFrame && (
-                      <div className="gwui-fs-15 gwui-ink-navy gwui-mt-6 gwui-gap-8" style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap'}}>
+                      <FlexRow gap={8} align="center" wrap className="gwui-fs-15 gwui-ink-navy gwui-mt-6">
                         <span>
                           The record shows <b>{o.suggestedCount}</b> for this, not {o.count}.
                         </span>
@@ -3622,7 +3847,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         >
                           Use {o.suggestedCount}
                         </button>
-                      </div>
+                      </FlexRow>
                     )}
                     {/* A new target means nothing until people have checked in against it. */}
                     {o.isNew && o.askedOf && (
@@ -3641,7 +3866,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               {/* The lead sets the frame. A target, never an assessment of a person. */}
               {b.canEditFrame && (
                 <Row columns="1fr" inset="panel">
-                  <div className="gwui-gap-8" style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap'}}>
+                  <FlexRow gap={8} align="center" wrap>
                     <input
                       value={newObjName}
                       onChange={(e) => setNewObjName(e.target.value)}
@@ -3667,7 +3892,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     >
                       {addObjective.isPending ? 'Adding...' : 'Add target'}
                     </UIButton>
-                  </div>
+                  </FlexRow>
                 </Row>
               )}
               </RowList>
@@ -3716,16 +3941,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           so the literal `{shown.divergence && b.divergence && (` the order-pinning spec reads for
           stays exactly where it always was for every other family; the heavy content itself is
           `DivergenceSectionBody`, shared with the onboarding call, so it is never duplicated.
+          The central question itself no longer draws here - see where it is drawn once, above the
+          fold, for fault 4a.
         */}
         {!isOnboarding && (
           <>
             {shown.divergence && b.divergence && (
               <DivergenceSectionBody heading="Where people differ" divergence={b.divergence} onlyOnePersonHere={onlyOnePersonHere} myName={myName} />
-            )}
-            {b.divergence?.centralQuestion && (
-              <Panel>
-                <WhatToSettleTogether question={b.divergence.centralQuestion} />
-              </Panel>
             )}
           </>
         )}
@@ -3733,7 +3955,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {shown.whatTheRoomIsAbout && (
           <Section heading="What people are after, and where" note="Built from what everybody said.">
             {b.whatTheRoomIsAboutNote && (
-              <Panel><div className="gwui-fs-15 gwui-ink-sub">{b.whatTheRoomIsAboutNote}</div></Panel>
+              <Panel><Text size="15" ink="sub">{b.whatTheRoomIsAboutNote}</Text></Panel>
             )}
             {b.whatTheRoomIsAbout && (
               <div className={`gwui-gap-14 ${b.whatTheRoomIsAboutNote ? 'gwui-mt-14' : 'gwui-mt-0'}`} style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(300px,100%),1fr))'}}>
@@ -3753,13 +3975,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   <div className="gwui-pt-2 gwui-pb-12">
                     <RowList label="What people are trying to do">
                     {(b.whatTheRoomIsAbout.aims ?? []).length === 0 ? (
-                      <Row columns="1fr" inset="list"><div className="gwui-fs-15 gwui-ink-muted">Nobody has said what they are after yet.</div></Row>
+                      <Row columns="1fr" inset="list"><Text size="15" ink="muted">Nobody has said what they are after yet.</Text></Row>
                     ) : (b.whatTheRoomIsAbout.aims ?? []).map((a) => (
                       <Row key={a.aim} columns="1fr" inset="list">
-                        <div className="gwui-gap-10" style={{display: 'flex', alignItems: 'baseline'}}>
+                        <FlexRow gap={10} align="baseline">
                           <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 600, flex: 1}}>{a.aim}</div>
                           <Tag>{a.held.length === 1 ? '1 person' : `${a.held.length} people`}</Tag>
-                        </div>
+                        </FlexRow>
                         <div className="gwui-fs-15 gwui-ink-sub gwui-mt-3" style={{lineHeight: 1.5}}>{a.held.join(', ')}</div>
                       </Row>
                     ))}
@@ -3773,13 +3995,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     <div className="gwui-pt-2 gwui-pb-12">
                       <RowList label={label}>
                       {rows.length === 0 ? (
-                        <Row columns="1fr" inset="list"><div className="gwui-fs-15 gwui-ink-muted">Nobody named one.</div></Row>
+                        <Row columns="1fr" inset="list"><Text size="15" ink="muted">Nobody named one.</Text></Row>
                       ) : rows.map((r) => (
                         <Row key={r.name} columns="1fr" inset="list">
-                          <div className="gwui-gap-10" style={{display: 'flex', alignItems: 'baseline'}}>
+                          <FlexRow gap={10} align="baseline">
                             <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 600, flex: 1}}>{r.name}</div>
                             <Tag>{r.named.length}</Tag>
-                          </div>
+                          </FlexRow>
                           <div className="gwui-fs-15 gwui-ink-sub gwui-mt-3" style={{lineHeight: 1.5}}>{r.named.join(', ')}</div>
                         </Row>
                       ))}
@@ -3941,13 +4163,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     `certain` - the fallback below writes the same fact as one plain sentence
                     instead of the old "who — what" plus a separate "open since" note.
                   */}
-                  <span className="gwui-fs-16 gwui-ink-dark">
+                  <Text size="16" ink="dark" as="span">
                     {g.says ?? (
                       g.certain
                         ? `In session ${g.sinceRound}, ${g.who} was asked, "${g.what}" ${g.who} has not answered it yet.`
                         : `In session ${g.sinceRound}, ${g.who} was asked, "${g.what}" Nothing on record can confirm the answer yet.`
                     )}
-                  </span>
+                  </Text>
                 </div>
               ))}
             </Panel>
@@ -3966,7 +4188,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             <Panel pad={false}>
               {b.decisions.map((d, i) => (
                 <div key={i} className="gwui-panel-row">
-                  <div className="gwui-gap-11" style={{display: 'flex', alignItems: 'baseline'}}>
+                  <FlexRow gap={11} align="baseline">
                     <span className="gwui-fs-17 gwui-ink-navy" style={{fontFamily: 'var(--gw-font-name)', minWidth: 18}}>{i + 1}</span>
                     <div style={{flex: 1}}>
                       <div className="gwui-ink-dark gwui-fs-16" style={{fontWeight: 600}}>{d.question}</div>
@@ -3981,7 +4203,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         375px board measured 395px wide because of it) - this box must wrap like
                         any other sentence, not stay on one line. */}
                     <Note>{myName && d.owner === myName ? 'You' : d.owner}</Note>
-                  </div>
+                  </FlexRow>
                 </div>
               ))}
             </Panel>
@@ -4017,10 +4239,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       sentence inside the card already says "you" for its own record (see
                       progress-reported-is-never-they.spec.tsx); the heading above it did not.
                     */}
-                    <div className="gwui-fs-15 gwui-ink-dark" style={{fontWeight: 700}}>
+                    <Text size="15" ink="dark" weight={700}>
                       {p.participantId === b.myParticipantId ? 'You' : nameOnTheBoard(b, p.participantId, p.name)}
-                    </div>
-                    {p.role && p.role !== p.name && <div data-leads-note className="gwui-fs-13-5 gwui-ink-sub gwui-mt-1">{theLeadsNote(p.role)}</div>}
+                    </Text>
+                    {p.role && p.role !== p.name && <TheLeadsNote role={p.role} className="gwui-fs-13-5 gwui-ink-sub gwui-mt-1" />}
                   </div>
                   <div className="gwui-pt-2 gwui-pr-15 gwui-pb-10 gwui-pl-15">
                     {(() => { const said = p.items.filter((it) => theWordsOfALine(it.text)); return said.length === 0 ? (
@@ -4041,7 +4263,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     ) : said.map((it) => (
                       <div key={it.id} className="gwui-pt-10 gwui-pr-0 gwui-pb-10 gwui-pl-0 gwui-inner-row">
                         <div className="gwui-fs-15" style={{lineHeight: 1.45}}>{theWordsOfALine(it.text)}</div>
-                        <div className="gwui-mt-4 gwui-gap-6" style={{display: 'flex', alignItems: 'baseline', flexWrap: 'wrap'}}>
+                        <FlexRow gap={6} align="baseline" wrap className="gwui-mt-4">
                           {/*
                             RECORD TYPES ARE THE GOAL VOCABULARY, SAID AS A SENTENCE. "success
                             definition", "commitment", "intent" and "progress" as bare tags are the
@@ -4053,10 +4275,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                               progress.") - drawing this sentence too repeated it: "You have
                               reported progress. This is progress you reported." */}
                           {b.family !== 'UPDATE' && !it.itsKindIsSaid && whatThisItemIs(it.type, p.participantId === b.myParticipantId, nameOnTheBoard(b, p.participantId, p.name)) && (
-                            <span className="gwui-fs-13 gwui-ink-sub">{whatThisItemIs(it.type, p.participantId === b.myParticipantId, nameOnTheBoard(b, p.participantId, p.name))}</span>
+                            <Text size="13" ink="sub" as="span">{whatThisItemIs(it.type, p.participantId === b.myParticipantId, nameOnTheBoard(b, p.participantId, p.name))}</Text>
                           )}
-                          {it.sessionNumber && <span className="gwui-fs-13 gwui-ink-muted">Said in session {it.sessionNumber}.</span>}
-                        </div>
+                          {it.sessionNumber && <Text size="13" ink="muted" as="span">Said in session {it.sessionNumber}.</Text>}
+                        </FlexRow>
                       </div>
                     )) })()}
                   </div>
@@ -4085,7 +4307,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               for it. W8-24.
             */}
             {b.dependencies.length === 0 ? (
-              <Panel><div className="gwui-fs-15 gwui-ink-sub" style={{lineHeight: 1.6}}>Nothing here yet. Handoffs appear when somebody says in a check-in that they are waiting on another person.</div></Panel>
+              <Panel><Text size="15" ink="sub" lineHeight={1.6}>Nothing here yet. Handoffs appear when somebody says in a check-in that they are waiting on another person.</Text></Panel>
             ) : (
               <Stack gap={10}>
                 {b.dependencies.filter((d) => (d.what ?? '').trim().toLowerCase() !== (d.on ?? '').trim().toLowerCase()).map((d) => {
@@ -4120,17 +4342,20 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   const holdingUp = matchingBlocker?.holdingUp as string | null | undefined
                   return (
                     <Panel key={d.id}>
-                      <div className="gwui-gap-10" style={{display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between'}}>
-                        <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 700}}>{title}</div>
+                      <FlexRow gap={10} align="flex-start" justify="space-between">
+                        <Text size="16" ink="dark" weight={700}>{title}</Text>
                         <Tag tone={tone}>{word}</Tag>
-                      </div>
+                      </FlexRow>
                       <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-8">
                         {readerIsOnWhom
                           ? 'This is waiting on you.'
                           : <>This is waiting on <span className="gwui-ink-dark" style={{fontWeight: 600}}>{onWhom}</span>.</>}
                       </div>
                       <div className="gwui-fs-15 gwui-ink-dark gwui-mt-4" style={{lineHeight: 1.5}}>
-                        <b>{fromWord}</b> {needsWord} {d.what} from <b>{onWhomInSentence}</b>. {statusSaid}
+                        {/* `d.what` can open with a capitalised article ("The Mwangi agency") where the
+                            same string also stands as a title elsewhere; mid-sentence here, only that
+                            leading word is wrong (real-user walk, Kijani Foods, fault 1). */}
+                        <b>{fromWord}</b> {needsWord} {midSentence(d.what)} from <b>{onWhomInSentence}</b>. {statusSaid}
                       </div>
                       {holdingUp && (
                         <div className="gwui-rule-blue gwui-pt-8 gwui-pr-10 gwui-pb-8 gwui-pl-10 gwui-mt-8 gwui-fs-15 gwui-ink-text" style={{background: 'var(--gw-blue-bg)', borderRadius: 8, lineHeight: 1.5}}>
@@ -4195,12 +4420,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               */}
               {b.contribution.every((c) => !c.remitDefined) && b.contribution.length > 1 ? (
                 <div className="gwui-rule gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14 gwui-mt-9" style={{borderRadius: 12, background: 'var(--gw-bg)'}}>
-                  <div className="gwui-gap-9" style={{display: 'flex', alignItems: 'baseline', flexWrap: 'wrap'}}>
+                  <FlexRow gap={9} align="baseline" wrap>
                     <span className="gwui-ink-dark gwui-fs-14" style={{fontWeight: 700}}>Everyone here</span>
                     {/* Board review, 30 September, item 7: a two-word tag beside a name, not a
                         sentence a person reads. */}
-                    <span className="gwui-fs-13-5 gwui-ink-amber" style={{fontWeight: 600}}>Nobody here has said what their role covers yet.</span>
-                  </div>
+                    <Text size="13-5" ink="amber" weight={600} as="span">Nobody here has said what their role covers yet.</Text>
+                  </FlexRow>
                   <div className="gwui-fs-15 gwui-ink-navy gwui-rule-blue gwui-pt-8 gwui-pr-10 gwui-pb-8 gwui-pl-10 gwui-mt-8" style={{background: 'var(--gw-blue-bg)', borderRadius: 9, lineHeight: 1.5}}>
                     {b.contribution[0].note}
                   </div>
@@ -4217,16 +4442,16 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 const nameFirstWord = nameOnTheBoard(b, c.participantId, c.name).split(' ')[0]
                 return (
                 <div key={c.participantId} className="gwui-rule gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14 gwui-mt-9" style={{borderRadius: 12, background: 'var(--gw-bg)'}}>
-                  <div className="gwui-gap-9" style={{display: 'flex', alignItems: 'baseline', flexWrap: 'wrap'}}>
+                  <FlexRow gap={9} align="baseline" wrap>
                     <span className="gwui-ink-dark gwui-fs-14" style={{fontWeight: 700}}>{displayName}</span>
                     {/* "Your note" to the lead who wrote it, never to an admin (U.7 review). */}
                     {c.remitDefined
-                      ? (b.canEditFrame && c.remit ? <span data-leads-note className="gwui-fs-13-5 gwui-ink-sub">{theLeadsNote(c.remit)}</span> : null)
+                      ? (b.canEditFrame && c.remit ? <TheLeadsNote role={c.remit} className="gwui-fs-13-5 gwui-ink-sub" /> : null)
                       /* Board review, 30 September, item 7: "role not clearly defined" beside a
                          name is a tag, not a sentence about that person. */
-                      : <span className="gwui-fs-13-5 gwui-ink-amber" style={{fontWeight: 600}}>{isReader ? 'Nobody has said what your role covers yet.' : `Nobody has said what ${nameFirstWord || 'their'}'s role covers yet.`}</span>}
+                      : <Text size="13-5" ink="amber" weight={600} as="span">{isReader ? 'Nobody has said what your role covers yet.' : `Nobody has said what ${nameFirstWord || 'their'}'s role covers yet.`}</Text>}
 
-                  </div>
+                  </FlexRow>
 
                   {/* An undefined remit shows NO position. You cannot measure someone
                       against a bar that was never set. */}
@@ -4267,11 +4492,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       {/* `Note tone="muted"` is the shared part for this, not a fresh one-off class pair. */}
                       {c.basis && <Note tone="muted">{c.basis}</Note>}
                       {c.fnLabel && (
-                        <div className="gwui-mt-6 gwui-gap-6" style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap'}}>
+                        <FlexRow gap={6} align="center" wrap className="gwui-mt-6">
                           <Tag tone="action">read as {c.fnLabel.toLowerCase()}</Tag>
                           {!c.fnConfident && <span className="gwui-fs-13 gwui-ink-muted" style={{fontStyle: 'italic'}}>still provisional</span>}
                           {c.isBlocked && <Tag tone="attention">part of this is blocked</Tag>}
-                        </div>
+                        </FlexRow>
                       )}
                       <div className={`gwui-mt-8 gwui-fs-15 gwui-pt-6 gwui-pr-10 gwui-pb-6 gwui-pl-10 ${c.ownVoice ? 'gwui-ownvoice' : 'gwui-ownvoice-none'}`} style={{lineHeight: 1.4, borderRadius: 9, fontStyle: c.ownVoice ? 'normal' : 'italic'}}>
                         {c.ownVoice ?? (isReader ? 'No note. You can add your own context through your next check-in.' : 'No note. This person can add their own context through their next check-in.')}
@@ -4339,9 +4564,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                    already says "You" (see the comment below). `isReader` is the same test used
                    for the heading, reused here so both sentences agree with it. */
                 const isReader = r.participantId === b.myParticipantId
+                /* Decision 141 (3): the lead's percentage, beside the name. Rows stay in the order served. */
+                const percent = typeof r.landingPercent === 'number' ? r.landingPercent : undefined
+                const whose = isReader ? 'your' : `${nameOnTheBoard(b, r.participantId, r.name)}’s`
                 return (
                 <div key={r.participantId} className="gwui-rule gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14 gwui-mt-9" style={{borderRadius: 12, background: 'var(--gw-bg)'}}>
-                  <div className="gwui-gap-9" style={{display: 'flex', alignItems: 'baseline', flexWrap: 'wrap'}}>
+                  <FlexRow gap={9} align="baseline" wrap>
                     {/* Re-review, 2 October: the reader's own row here still headed with their own
                         name - "Rukia Otieno" over her own card, on the board she herself was
                         reading - the same mistake "Who owns what" was fixed for. */}
@@ -4350,13 +4578,16 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         the name, not a section of its own, so it no longer renders in capitals. */}
                     {/* Board review, 30 September, item 7: "at role level" is a fragment, not
                         something a person reads as a sentence. */}
-                    <span className="gwui-fs-13 gwui-ink-muted">{`This is measured at the ${String(r.scope).toLowerCase()} level.`}</span>
+                    {percent !== undefined && (
+                      <span data-testid="coverage-percent"><Text size="14" ink="dark" weight={700} as="span">{`${percent}%`}</Text></span>
+                    )}
+                    <Text size="13" ink="muted" as="span">{`This is measured at the ${String(r.scope).toLowerCase()} level.`}</Text>
                     <span className="gwui-ml-auto">
                       <Tag tone={r.kind === 'LEAKING' ? 'attention' : r.kind === 'ABSORBING' ? 'action' : 'plain'}>
                         {r.kind === 'LEAKING' ? 'Landing with others' : r.kind === 'ABSORBING' ? "Taking on others' work" : isReader ? 'Staying with you' : 'Staying with them'}
                       </Tag>
                     </span>
-                  </div>
+                  </FlexRow>
 
                   {/*
                     REQUEST 111 (a): A SCORE OF WHERE A PERSON'S WORK LANDS STAYS REMOVED. `pct` is
@@ -4365,9 +4596,18 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     behind it (CLAUDE.md: no score or label shown on a person). A row with no `pct`
                     now draws exactly as the text-only variant does - nothing invented in its place.
                   */}
-                  {b.coverageVariant === 'bar' && r.remitDefined && typeof r.pct === 'number' && (
-                    <div className="gwui-mt-9" style={{height: 7, borderRadius: 6, background: 'var(--gw-bar-track)', overflow: 'hidden'}}>
-                      <div style={{height: '100%', width: `${r.pct}%`, borderRadius: 6, background: r.kind === 'LEAKING' ? 'var(--gw-amber-b)' : r.kind === 'ABSORBING' ? 'var(--gw-navy)' : 'var(--gw-muted)'}} />
+                  {percent !== undefined && r.remitDefined && (
+                    <div className="gwui-mt-9">
+                      <Stack gap={6}>
+                        {b.coverageVariant === 'bar' && (
+                          <div style={{height: 7, borderRadius: 6, background: 'var(--gw-bar-track)', overflow: 'hidden'}}>
+                            <div data-testid="coverage-bar-fill" style={{height: '100%', width: `${percent}%`, borderRadius: 6, background: r.kind === 'LEAKING' ? 'var(--gw-amber-b)' : r.kind === 'ABSORBING' ? 'var(--gw-navy)' : 'var(--gw-muted)'}} />
+                          </div>
+                        )}
+                        <div data-testid="coverage-percent-says">
+                          <Text size="14" ink="sub">{`${percent}% of ${whose} work is landing in what other people describe as theirs.`}</Text>
+                        </div>
+                      </Stack>
                     </div>
                   )}
 
@@ -4452,8 +4692,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               </div>
               {b.managerAlignment.map((m, i) => (
                 <div key={i} className="gwui-panel-row">
-                  <div className="gwui-gap-8" style={{display: 'flex', alignItems: 'baseline', flexWrap: 'wrap'}}>
-                    <span className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 600}}>{m.label}</span>
+                  <FlexRow gap={8} align="baseline" wrap>
+                    <Text size="16" ink="dark" weight={600} as="span">{m.label}</Text>
                     {/* The pole matters more than the gap: holding on to everything
                         and holding nobody need opposite responses, and telling one
                         to do the other makes it worse. */}
@@ -4467,7 +4707,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         {seenAcross(m.periods, b.phaseSpine?.currentSession ?? null)}
                       </span>
                     )}
-                  </div>
+                  </FlexRow>
                   <div className="gwui-fs-15 gwui-ink-text gwui-mt-4" style={{lineHeight: 1.45}}>{m.gap}</div>
                   <div className="gwui-fs-15 gwui-ink-sub gwui-mt-4" style={{lineHeight: 1.45}}>{m.note}</div>
                 </div>
@@ -4505,7 +4745,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 />
               ))}
               <div className="gwui-panel-row">
-                <div className="gwui-fs-15 gwui-ink-sub" style={{lineHeight: 1.6}}>{b.hiddenContributors.why}</div>
+                <Text size="15" ink="sub" lineHeight={1.6}>{b.hiddenContributors.why}</Text>
               </div>
             </Panel>
           </Section>
@@ -4534,9 +4774,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       <textarea value={pollOpts} onChange={(e) => setPollOpts(e.target.value)} placeholder={'One time per line\nTue 16:00\nWed 09:00'}
                         className="gwui-pt-7 gwui-pr-10 gwui-pb-7 gwui-pl-10 gwui-fs-13-5 gwui-rule" style={{minHeight: 68, borderRadius: 7, fontFamily: 'inherit', outline: 'none', resize: 'vertical'}} />
                       {b.poll && (
-                        <div className="gwui-fs-13 gwui-ink-amber">
+                        <Text size="13" ink="amber">
                           Changing the times clears everyone's availability, because an answer to a question that changed is not an answer.
-                        </div>
+                        </Text>
                       )}
                       <div className="gwui-button-row">
                         {/* Secondary, not navy: the board's one primary is "Your check-in", in the header. */}
@@ -4555,7 +4795,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 </div>
               )}
               {!b.poll ? (
-                <div className="gwui-fs-15 gwui-ink-muted">No availability poll yet.</div>
+                <Text size="15" ink="muted">No availability poll yet.</Text>
               ) : (
                 <>
                   <div className="gwui-fs-14 gwui-ink-dark gwui-pt-4 gwui-pr-0 gwui-pb-4 gwui-pl-0" style={{fontWeight: 700}}>
@@ -4566,13 +4806,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     const max = Math.max(...b.poll!.options.map((x) => x.count))
                     const win = o.count === max && max > 0
                     return (
-                      <div key={o.id} className={`gwui-gap-10 gwui-pt-8 gwui-pr-8 gwui-pb-8 gwui-pl-8 gwui-inner-row ${win ? 'gwui-win-row' : ''}`} style={{display: 'flex', alignItems: 'center'}}>
+                      <FlexRow key={o.id} gap={10} align="center" className={`gwui-pt-8 gwui-pr-8 gwui-pb-8 gwui-pl-8 gwui-inner-row ${win ? 'gwui-win-row' : ''}`}>
                         <div className="gwui-fs-16" style={{fontWeight: 600, minWidth: 110}}>{o.label}</div>
                         {/* Only YOUR OWN availability is clickable. Everyone else is a
                             read-only indicator: the toggle endpoint acts on the caller,
                             so a clickable chip bearing someone else's name would set
                             your availability while appearing to set theirs. */}
-                        <div className="gwui-gap-5" style={{display: 'flex', flexWrap: 'wrap', flex: 1, alignItems: 'center'}}>
+                        <FlexRow gap={5} wrap flex1 align="center">
                           {(() => {
                             const iCanMakeThis = o.whoIds.some((w) => myIds.has(w))
                             return (
@@ -4588,13 +4828,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                             )
                           })()}
                           {o.who.filter(Boolean).length > 0 && (
-                            <span className="gwui-fs-13 gwui-ink-muted">
+                            <Text size="13" ink="muted" as="span">
                               also: {o.who.filter(Boolean).join(', ')}
-                            </span>
+                            </Text>
                           )}
-                        </div>
+                        </FlexRow>
                         <div className={`gwui-fs-13-5 ${win ? 'gwui-ink-green' : 'gwui-ink-sub'}`} style={{minWidth: 42, textAlign: 'right', fontWeight: win ? 700 : 400}}>{o.count} in</div>
-                      </div>
+                      </FlexRow>
                     )
                   })}
                 </>
@@ -4629,11 +4869,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             return (
               <Section heading="Alignment feed">
                 <Panel>
-                  <div className="gwui-fs-15 gwui-ink-muted">
+                  <Text size="15" ink="muted">
                     {sigs.length === 1
                       ? 'One pattern has come up so far. It is shown above, under What keeps coming up.'
                       : `${sigs.length} patterns have come up so far. They are shown above, under What keeps coming up.`}
-                  </div>
+                  </Text>
                 </Panel>
               </Section>
             )
@@ -4746,7 +4986,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               ].map((cell, i) => (
                 <Stack key={i} gap={4}>
                   <div className="gwui-fs-13-5 gwui-ink-muted" style={{letterSpacing: '.1px', fontWeight: 700}}>{cell.h}</div>
-                  <div className="gwui-fs-15 gwui-ink-sub" style={{lineHeight: 1.55}}>{cell.p}</div>
+                  <Text size="15" ink="sub" lineHeight={1.55}>{cell.p}</Text>
                 </Stack>
               ))}
             </Stack>
@@ -4809,10 +5049,14 @@ function AskTheBoard({ firstBlocker, myParticipantId }: {
    * would actually ask ("Why am I still waiting on the price list?").
    */
   const readerIsWaiting = !!myParticipantId && firstBlocker?.fromParticipantId === myParticipantId
+  /* `firstBlocker.what` can open with a capitalised article ("The Mwangi agency") where the same
+     string also stands as a title elsewhere; mid-sentence here, only that leading word is wrong
+     (real-user walk, Kijani Foods, fault 1). */
+  const what = firstBlocker ? midSentence(firstBlocker.what) : ''
   const example = firstBlocker?.from
     ? (readerIsWaiting
-      ? `Why am I still waiting on ${firstBlocker.what}?`
-      : `Why is ${firstBlocker.from} still waiting on ${firstBlocker.what}?`)
+      ? `Why am I still waiting on ${what}?`
+      : `Why is ${firstBlocker.from} still waiting on ${what}?`)
     : 'Who is waiting on whom?'
   /*
    * PHONE CHECK, ITEM 4: THE PLACEHOLDER READ CUT OFF MID-EXAMPLE ("Ask about this board, for
@@ -4823,7 +5067,10 @@ function AskTheBoard({ firstBlocker, myParticipantId }: {
   const isAPhone = useIsAPhone()
   const placeholder = isAPhone ? 'Ask about this board' : `Ask about this board, for example “${example}”`
   return (
-    <form
+    <FlexRow
+      as="form"
+      gap={8}
+      className="gwui-mt-22"
       onSubmit={(e) => {
         e.preventDefault()
         const m = draft.trim()
@@ -4831,7 +5078,6 @@ function AskTheBoard({ firstBlocker, myParticipantId }: {
         showWith(m)
         setDraft('')
       }}
-      className="gwui-gap-8 gwui-mt-22" style={{display: 'flex'}}
     >
       <input
         type="text"
@@ -4849,7 +5095,7 @@ function AskTheBoard({ firstBlocker, myParticipantId }: {
         rather than the prototype's own quirk here.
       */}
       <UIButton kind="secondary" type="submit">Ask</UIButton>
-    </form>
+    </FlexRow>
   )
 }
 

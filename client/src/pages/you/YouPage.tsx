@@ -112,8 +112,26 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
   const checkInsWithDates = checkIns.map(c => ({ id: c.id, label: c.label, ...startOf.get(c.id) }))
   const nothingYet = checkIns.length === 0 && todos.length === 0
   const myPatterns = (b.patterns ?? []).filter((p) => p.yours !== false)
+  /* B-043: an admin who runs check-ins but has never been one's own subject has no goals, no
+     to-dos, no reports of their own and nothing Groundwork has noticed about them - so every
+     panel this section can hold stays empty, and only "nothingYet" (no check-ins at all) earns
+     its own plain sentence. Without this check the "Your board" heading printed with nothing
+     under it, then jumped straight to "Your work in each" below. Shown only when there is
+     something to put under it. */
+  const boardHasContent = nothingYet
+    || !!b.suggestionsAboutYou?.length
+    || !!b.whereYouStand?.says
+    || !!b.worthKnowing?.length
+    || !!b.noticed?.says
+    || !!b.coachingOverTime
+    || goals.length > 0
+    || todos.length > 0
+    || !!b.contributed?.length
+    || !!b.coaching
+    || turns.length > 0
   return (
     <>
+      {boardHasContent && (
       <Section heading="Your board">
         {nothingYet && <Empty>You are not in any check-in yet.</Empty>}
 
@@ -210,6 +228,7 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
           </section>
         )}
       </Section>
+      )}
 
       {!!askedOfYouItems.length && (
         <Section
@@ -270,7 +289,10 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
                   <Row key={r.to} columns="minmax(0, 1fr) auto auto">
                     <b>{r.checkIn}</b>
                     <span>{whenItWas(r.at, 'dayAndMonthLong')}</span>
-                    <Link to={r.to}>Read</Link>
+                    {/* SCREEN FAULT 10: 30px tall on a phone, below the 40px tap floor -
+                        `.gwui-tap-40` (gw-ui.css), the same class YourWork.tsx's own "Read"
+                        links already use. */}
+                    <Link to={r.to} className="gwui-tap-40">Read</Link>
                   </Row>
                 ))}
               </RowList>

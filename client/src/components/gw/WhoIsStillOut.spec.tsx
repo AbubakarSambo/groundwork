@@ -82,4 +82,26 @@ describe('who is still out, as full sentences (U.8 review)', () => {
     expect(await screen.findByText('Baraka still has to answer.')).toBeInTheDocument()
     expect(screen.getByText('Baraka is part way through.')).toBeInTheDocument()
   })
+
+  /**
+   * B-058, DECISION 115: a person with no name was called by the front of their address -
+   * "Qx7 has not joined yet." - on this same sentence, found walking Riverbank Trading's old data
+   * (docs/existing-users-check.md). The person has no `user.firstName`/`lastName` and no name typed
+   * at an open link, only an address; the fix is the same placeholder sentence the People page uses
+   * for them, never a name guessed from "qx7@riverbank.test".
+   */
+  it('a person with no name reads as the placeholder sentence, never a name guessed from their address', async () => {
+    renderIt(groundWith({
+      participants: [
+        { id: 'p-lead', userId: 'u-lead', partyType: 'INITIATOR', user: { firstName: 'Rukia', lastName: '' } },
+        { id: 'p-q', userId: null, partyType: 'PARTICIPANT', email: 'qx7@riverbank.test' },
+      ],
+      checkIns: [
+        { id: 'c-lead', participantId: 'p-lead', sessionNumber: 1, status: 'COMPLETED' },
+      ],
+    }))
+    expect(await screen.findByText('Someone who has not given a name yet still has to answer.')).toBeInTheDocument()
+    expect(screen.getByText('Someone who has not given a name yet has not joined yet.')).toBeInTheDocument()
+    expect(screen.queryByText(/Qx7/)).toBeNull()
+  })
 })

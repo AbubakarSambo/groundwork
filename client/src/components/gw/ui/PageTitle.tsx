@@ -63,7 +63,10 @@ export function PageTitle({ eyebrow, crumbs, title, avatarInitials, subtitle, su
       )}
       <div className="gwui-pt-row">
         <div className="gwui-pt-head">
-          {avatarInitials && <Avatar initials={avatarInitials} size={56} />}
+          {/* B-066: `avatarInitials` can legitimately be '' (a nameless person's neutral mark,
+              via `initialsOf`) - `!== undefined` so that still draws the circle, rather than the
+              old `avatarInitials &&` silently dropping the avatar for them. */}
+          {avatarInitials !== undefined && <Avatar initials={avatarInitials} size={56} />}
           <div className="gwui-pt-headtext">
             {title && <h1 className="gwui-pt-title">{title}</h1>}
             {subtitle && (

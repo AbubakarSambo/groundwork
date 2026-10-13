@@ -28,7 +28,14 @@ import { Section, Panel, Stack, TextArea, Select, Button, Note, Tag } from '@/co
  * placeholder bold grey, which happened because the text box used to be nested INSIDE the bold
  * `FieldLabel`, inheriting its weight; the label is now a plain, regular-weight sentence beside it).
  */
-interface PastedRow { email: string; result: string }
+/**
+ * THE NAME READ BESIDE EACH ADDRESS (8 October, night note item 4, B-128). Each row of the preview
+ * and of the answer now carries `name` when one was typed or read beside the address - "Дмитрий
+ * Иванов <p01@fieldnote.test>", "Ada Obi, ada@x.com", a spreadsheet's two columns. Shown beside the
+ * address so the admin sees what was actually read, since the invitation itself begins with it
+ * ("Hi Дмитрий,").
+ */
+interface PastedRow { email: string; result: string; name?: string | null }
 interface PasteAnswer { preview: boolean; seatsLeft: number | null; rows: PastedRow[]; summary: string }
 
 /*
@@ -89,7 +96,9 @@ export function InvitePeople() {
       <Panel>
         <Stack gap={10}>
           <label htmlFor="invite-list" className="gwui-panel-text" style={{ display: 'block' }}>
-            One per line: a name and an email. Or paste a list from a spreadsheet.
+            {/* FAULT I (reviewer, third round): a label built from a clipped fragment joined by a
+                colon reads as a filing instruction, not a sentence. */}
+            Write one person on each line, with their name and email. Or paste a list from a spreadsheet.
           </label>
           <TextArea
             id="invite-list"
@@ -134,7 +143,9 @@ export function InvitePeople() {
           <p className="gwui-panel-text"><b>{answer.summary}</b></p>
           {answer.seatsLeft !== null && (
             <Note>
-              {`Your plan has room for ${answer.seatsLeft} more ${answer.seatsLeft === 1 ? 'person' : 'people'}.`}{' '}
+              {answer.seatsLeft === 0
+                ? 'Your plan has no room for anyone else.'
+                : `Your plan has room for ${answer.seatsLeft} more ${answer.seatsLeft === 1 ? 'person' : 'people'}.`}{' '}
               {answer.rows.some((r) => r.result === 'no seat') && <a href="/billing">See the plans</a>}
             </Note>
           )}
@@ -144,7 +155,7 @@ export function InvitePeople() {
               const tone = how.tone === 'good' ? 'proven' : how.tone === 'bad' ? 'concern' : 'plain'
               return (
                 <div key={`${r.email}-${i}`} className="gwui-invite-row">
-                  <span className="gwui-panel-text">{r.email}</span>
+                  <span className="gwui-panel-text">{r.name?.trim() ? `${r.name.trim()}, ${r.email}` : r.email}</span>
                   <Tag tone={tone}>{answer.preview ? how.says : (how.sent ?? how.says)}</Tag>
                 </div>
               )

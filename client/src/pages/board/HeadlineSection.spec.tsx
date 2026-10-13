@@ -58,7 +58,7 @@ describe('HeadlineSection: "Where each target stands" beside the question', () =
  * BOARD REVIEW, SALES PIECE D, ITEM 4: THE GLANCE LINE, INSIDE THE BOX, ONLY ONCE.
  *
  * While `headline.answer` is null, the box under the question used to sit empty, and the glance
- * line ("None of the 12 rounds is done yet. 4 of 6 people have answered this round.") drew again,
+ * line ("None of the 12 sessions is done yet. 4 of 6 people have answered this session.") drew again,
  * separately, below the whole headline section - so a reader with no answer yet saw an empty box
  * sitting right above the one fact Groundwork does have. It now moves inside the box, and `BoardPage.tsx`
  * no longer draws the separate copy in that case (not tested here, since that is a different
@@ -76,8 +76,8 @@ describe('HeadlineSection: the glance line moves inside the box while there is n
       />,
     )
     expect(screen.getByText('Will we reach 25 sales by 30 September?')).toBeTruthy()
-    expect(screen.getByText('None of the 12 rounds is done yet.')).toBeTruthy()
-    expect(screen.getByText('4 of 6 people have answered this round.')).toBeTruthy()
+    expect(screen.getByText('None of the 12 sessions is done yet.')).toBeTruthy()
+    expect(screen.getByText('4 of 6 people have answered this session.')).toBeTruthy()
   })
 
   it('draws no box at all when there is neither an answer nor a glance', () => {
@@ -101,6 +101,6 @@ describe('HeadlineSection: the glance line moves inside the box while there is n
       />,
     )
     expect(screen.getByText('Not yet. 21 are sold.')).toBeTruthy()
-    expect(screen.queryByText('None of the 12 rounds is done yet.')).toBeNull()
+    expect(screen.queryByText('None of the 12 sessions is done yet.')).toBeNull()
   })
 })

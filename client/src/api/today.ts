@@ -16,6 +16,8 @@ export interface Need {
   organizationId: string
   /** True for an item the board of that check-in already lists itself (request 122). The board leaves it out of its own "needs you" rows. */
   onTheBoardToo?: true
+  /** Only on your own item about your own missed check-ins (decision 136): where your reason is kept, and the reason you already gave. */
+  missedReason?: { checkInId: string; given: string | null }
 }
 
 export interface ComingUp {
@@ -23,6 +25,37 @@ export interface ComingUp {
   at: string
   what: string
   to: string
+  /** The check-in it is about, and the day it started, so two close names can be told apart by the thing (request 193). */
+  groundId?: string
+  checkInStartedOn?: string
+}
+
+/**
+ * REQUEST 198 (b), DONE (docs/answers-from-engine.md, 8 October (late night)). Built from the same
+ * functions the mail uses, so Today and the mail cannot disagree. Absent for anybody but a lead
+ * with something to add - a participant, an admin who does not run the check-in, and a lead with
+ * nothing new all get no key at all.
+ */
+export interface NobodyHasStarted {
+  groundId: string
+  label: string
+  /** The same subject the first-reminder mail has, e.g. "Nobody has started "Distributor review" yet, and Groundwork is following up". */
+  subject: string
+  lines: string[]
+  linkLabel: string
+  to: string
+}
+
+export interface WhatIWouldDoThisWeek {
+  groundId: string
+  label: string
+  /** "Here is what I would do this week." first, then each thing with its reason. */
+  lines: string[]
+}
+
+export interface ForTheLead {
+  nobodyHasStarted: NobodyHasStarted[]
+  whatIWouldDoThisWeek: WhatIWouldDoThisWeek[]
 }
 
 export interface WhatNeedsYou {
@@ -30,6 +63,36 @@ export interface WhatNeedsYou {
   count: number
   line: string | null
   comingUp: ComingUp[]
+  /** For an admin while the organisation's free trial runs: one sentence with the day it ends. */
+  freeTrial?: string | null
+  /** Absent for everybody but a lead with something here to add (request 198 (b)). */
+  forTheLead?: ForTheLead
+}
+
+/**
+ * WHAT IS OUTSTANDING FOR A LEAD (decision 120, GET /today/outstanding). The page the lead's daily
+ * nudge links to, "to see everything". Each array holds whole sentences, already worded by the
+ * server, in the order they should be read. `null` for anybody who is not a lead, or who has
+ * nothing outstanding.
+ */
+/** Request 205: what each `Outstanding` sentence is about, matched against `Need` rows by id
+    instead of by wording (`outstanding-not-already-shown.ts`). */
+export interface OutstandingAbout {
+  kind: 'requests' | 'wait' | 'decision' | 'promise' | 'plan-decision' | 'target' | 'quiet' | 'missed'
+  ids: string[]
+  groundId?: string
+}
+
+export interface Outstanding {
+  needsYou: string[]
+  overdueOnYourTeam: string[]
+  risks: string[]
+  /** One entry per sentence in each list above, in the same order. Absent on an older server. */
+  about?: {
+    needsYou: OutstandingAbout[]
+    overdueOnYourTeam: OutstandingAbout[]
+    risks: OutstandingAbout[]
+  }
 }
 
 export const todayApi = {
@@ -37,4 +100,9 @@ export const todayApi = {
   /** How many things need you in each organisation you belong to: "3 new" on "Choose an organisation". */
   everywhere: (): Promise<{ organizationId: string; count: number }[]> =>
     apiClient.get<{ organizationId: string; count: number }[]>('/today/everywhere').then(r => (Array.isArray(r.data) ? r.data : [])),
+  /** Give the reason you missed your check-ins. Only you can give it; the person who runs the check-in reads it beside the line about it. */
+  giveMissedReason: (checkInId: string, reason: string): Promise<{ kept: true }> =>
+    apiClient.post<{ kept: true }>('/today/missed-reason', { checkInId, reason }).then(r => r.data),
+  outstanding: (): Promise<Outstanding | null> =>
+    apiClient.get<{ outstanding: Outstanding | null }>('/today/outstanding').then(r => r.data.outstanding ?? null),
 }

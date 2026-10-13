@@ -49,3 +49,18 @@ export function whenItWas(d: Date | string | number | null | undefined, purpose:
   if (Number.isNaN(date.getTime())) return ''
   return date.toLocaleString(THE_LANGUAGE, { ...OPTIONS[purpose], timeZone: timeZone ?? theDisplayTimezone })
 }
+
+/**
+ * THE LAST DAY OF SOMETHING, WITH ITS YEAR WHEN THE YEAR IS NOT THE ONE IT IS COUNTED FROM (journey
+ * test, 12 October 2026). A check-in made on 11 October 2026 to run a year said "until 11 October" on
+ * its invitation and in setup, which reads as the day it was made. The year is said only when it
+ * differs, so "until 30 September" stays as the prototype has it.
+ */
+export function theLastDay(end: Date | string | number | null | undefined, from: Date | string | number = new Date(), timeZone?: string): string {
+  if (end === null || end === undefined || end === '') return ''
+  const e = end instanceof Date ? end : new Date(end)
+  const f = from instanceof Date ? from : new Date(from)
+  if (Number.isNaN(e.getTime())) return ''
+  const year = (d: Date) => Number(d.toLocaleString(THE_LANGUAGE, { year: 'numeric', timeZone: timeZone ?? theDisplayTimezone }))
+  return whenItWas(e, Number.isNaN(f.getTime()) || year(e) === year(f) ? 'dayAndMonthLong' : 'full', timeZone)
+}

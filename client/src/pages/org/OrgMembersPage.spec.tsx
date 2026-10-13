@@ -92,6 +92,44 @@ describe('waiting to be let in', () => {
     expect(whoAskedForThem({ id: 'x', email: 'a@b.co', name: null, addedBy: null, forCheckIn: null }, 0))
       .toBe('Someone who is no longer here invited them. Letting them in takes a seat, and you have none free.')
   })
+
+  /*
+   * B-096 (engine workspace, 9 October night, test bed copy a): this heading always said "People
+   * from outside <organisation>", even for Halima Yusuf, who is on Msingi Foods' own address -
+   * `onTheOrganisationsOwnAddress: true`. Fails before the fix (the old heading always shows) and
+   * passes after (when anyone on the list is on the organisation's own address, the heading no
+   * longer names anybody as being from outside).
+   */
+  it('reads "waiting to be added" rather than "from outside" when anyone waiting is on the organisation\'s own address', async () => {
+    vi.spyOn(apiClient, 'get').mockImplementation(async (url: string) => {
+      if (url.startsWith('/users?')) return { data: { data: people, meta: { total: people.length } } } as any
+      if (url === '/users/organization/owner') return { data: { ownerUserId: 'amani' } } as any
+      if (url === '/billing/status') return { data: { people: { count: 27, cap: 100 }, subscription: { plan: 'GROWTH' } } } as any
+      if (url === '/users/organization/check-ins') return { data: { whoMayOpen: 'NAMED_LEADS', needsApproval: false } } as any
+      if (url === '/users/organization/joining') return { data: { on: false, domain: 'baridi.co.ke', whyNot: null } } as any
+      if (url === '/users/organization/invite-link') return { data: { on: false, code: null } } as any
+      return { data: [] } as any
+    })
+    vi.spyOn(authApi, 'whoIsWaiting').mockResolvedValue([
+      { id: 'r1', email: 'peter@ouma-agencies.co.ke', name: 'Peter Ouma', addedBy: 'Wairimu Kamau', forCheckIn: 'Sales team, Q3', waitingSince: new Date(Date.now() - 86_400_000).toISOString() },
+      { id: 'r2', email: 'halima@baridi.co.ke', name: 'Halima Yusuf', addedBy: 'Baraka Mutua', forCheckIn: 'Help my team understand', waitingSince: new Date().toISOString(), onTheOrganisationsOwnAddress: true },
+    ] as any)
+    vi.spyOn(authApi, 'waitingForASeat').mockResolvedValue([] as any)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={['/org/members']}>
+          <Routes>
+            <Route path="/org/members" element={<OrgMembersPage />} />
+            <Route path="/org/members/:id" element={<p>One person</p>} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    expect(await screen.findByRole('heading', { name: 'Waiting to be let in' })).toBeTruthy()
+    expect(screen.getByText('People invited to a check-in, waiting to be added')).toBeTruthy()
+    expect(screen.queryByText(/People from outside/)).toBeNull()
+  })
 })
 
 describe('everyone at Baridi', () => {
@@ -121,6 +159,44 @@ describe('everyone at Baridi', () => {
     expect(peter.getByText('No team')).toBeTruthy()
   })
 
+  /*
+   * RESTORED (8 October, decision 115, night note item 1). `GET /users` now carries `displayName`
+   * on every row, and seven of twelve people at one real organisation (Riverbank Trading) had no
+   * name on record. Before this fix, a person with no firstName/lastName read by their raw email
+   * address in the People list; the server's own placeholder sentence is drawn now instead.
+   */
+  it('reads the server\'s displayName for a person with no name, never their address', async () => {
+    vi.spyOn(apiClient, 'get').mockImplementation(async (url: string) => {
+      if (url.startsWith('/users?')) {
+        const noName = {
+          id: 'noname', email: 'p07@fieldnote.test', firstName: null, lastName: null,
+          displayName: 'Someone who has not given a name yet',
+          role: 'MEMBER', isEmailVerified: true, state: 'signed in', checkInsOn: 0, checkInsAnswered: 0,
+          level: null, team: null, reportsTo: null, checkIns: [],
+        }
+        return { data: { data: [...people, noName], meta: { total: people.length + 1 } } } as any
+      }
+      if (url === '/users/organization/owner') return { data: { ownerUserId: 'amani' } } as any
+      if (url === '/billing/status') return { data: { people: { count: 27, cap: 100 }, subscription: { plan: 'GROWTH' } } } as any
+      if (url === '/users/organization/check-ins') return { data: { whoMayOpen: 'NAMED_LEADS', needsApproval: false } } as any
+      if (url === '/users/organization/joining') return { data: { on: false, domain: 'baridi.co.ke', whyNot: null } } as any
+      if (url === '/users/organization/invite-link') return { data: { on: false, code: null } } as any
+      return { data: [] } as any
+    })
+    vi.spyOn(authApi, 'whoIsWaiting').mockResolvedValue([] as any)
+    vi.spyOn(authApi, 'waitingForASeat').mockResolvedValue([] as any)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={['/org/members']}>
+          <Routes><Route path="/org/members" element={<OrgMembersPage />} /></Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    expect(await screen.findByText('Someone who has not given a name yet', { selector: '.gwui-person-name' })).toBeTruthy()
+    expect(screen.queryByText('p07@fieldnote.test', { selector: '.gwui-person-name' })).toBeNull()
+  })
+
   it('shows no label on anybody: no score, no rating, nothing but what they are and where they got to', async () => {
     const { container } = open()
     await screen.findByText('Miriam Wanjiku', { selector: '.gwui-person-name' })
@@ -140,6 +216,21 @@ describe('everyone at Baridi', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'Everyone' }))
     fireEvent.change(screen.getByLabelText('Team'), { target: { value: 'Sales' } })
     expect(screen.getByText('2 people shown.')).toBeTruthy()
+  })
+
+  /*
+   * B-154. The role filter used to say "Take part" while every row for that same role read
+   * "Takes part" (`roleWord`'s own word) - the same role, two different words, one letter apart.
+   * The filter now says "Takes part" too, and still finds exactly the people with that role.
+   */
+  it('the "Takes part" filter says the same word the table itself uses for that role', async () => {
+    open()
+    await screen.findByText('Miriam Wanjiku', { selector: '.gwui-person-name' })
+    expect(screen.queryByRole('radio', { name: 'Take part' })).toBeNull()
+    fireEvent.click(screen.getByRole('radio', { name: 'Takes part' }))
+    expect(screen.getByText('2 people shown.')).toBeTruthy()
+    expect(screen.getByText('Miriam Wanjiku', { selector: '.gwui-person-name' })).toBeTruthy()
+    expect(screen.getAllByText('Takes part').length).toBeGreaterThan(1)
   })
 
   /*
@@ -276,7 +367,9 @@ describe('everyone at Baridi', () => {
     open()
     await screen.findByText('Miriam Wanjiku', { selector: '.gwui-person-name' })
     expect(screen.getByText('Who reports to whom')).toBeTruthy()
-    expect(screen.getByText('Level and reporting lines describe the organisation; what someone can do still comes from their role')).toBeTruthy()
+    /* FAULT 13 (live review): one sentence joined to another with a semicolon. Two full
+       sentences now. */
+    expect(screen.getByText('Level and reporting lines describe the organisation. What someone can do still comes from their role.')).toBeTruthy()
   })
 })
 
@@ -284,7 +377,7 @@ describe('the rest of the page, in the prototype\'s order and words', () => {
   it('invite people, who can join, who can open a check-in, help your team get started', async () => {
     open()
     expect(await screen.findByRole('heading', { name: 'Invite people' })).toBeTruthy()
-    expect(screen.getByText('One per line: a name and an email. Or paste a list from a spreadsheet.')).toBeTruthy()
+    expect(screen.getByText('Write one person on each line, with their name and email. Or paste a list from a spreadsheet.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Send their invitations' })).toBeTruthy()
     expect(screen.getByText('They’ll get an email with a link to set themselves up.')).toBeTruthy()
     expect(await screen.findByRole('heading', { name: 'Who can open a check-in' })).toBeTruthy()
@@ -337,6 +430,28 @@ describe('the head count', () => {
     expect(howManyHere(5, null, 5, ['Faraji'], ['Zawadi']))
       .toBe('5 people, on the free plan, which is for up to 5. Faraji is waiting to be let in. Zawadi is on a check-in with no seat for them.')
     expect(howManyHere(5, null, 5, ['A', 'B', 'C', 'D'])).toBe('5 people, on the free plan, which is for up to 5. 4 more are waiting to be let in.')
+  })
+
+  /**
+   * B-212: "SOMEONE AND SOMEONE ARE WAITING TO BE LET IN." A person with no name on record still
+   * has to appear in this sentence somehow - `firstNameOf` gives back the first word of the "no
+   * name" placeholder (decision 115), "Someone" or "Somebody", which read as a real name once two
+   * of them were joined. Any unnamed person in the group now falls back to a plain count, the same
+   * way a group too long to name already does, rather than naming someone who has no name.
+   */
+  it('says the number, not a name, when someone in the group has no name', () => {
+    expect(howManyHere(26, 'GROWTH', 100, ['Someone', 'Someone']))
+      .toBe('26 people, on the Growth plan, which is for up to 100. 2 people are waiting to be let in.')
+    expect(howManyHere(26, 'GROWTH', 100, ['Someone']))
+      .toBe('26 people, on the Growth plan, which is for up to 100. 1 person is waiting to be let in.')
+    /* A real name alongside an unnamed person: still a count, not "Faraji and Someone". */
+    expect(howManyHere(26, 'GROWTH', 100, ['Faraji', 'Someone']))
+      .toBe('26 people, on the Growth plan, which is for up to 100. 2 people are waiting to be let in.')
+    /* The same rule for the other two name-based sentences this function builds. */
+    expect(howManyHere(5, null, 5, [], ['Somebody']))
+      .toBe('5 people, on the free plan, which is for up to 5. 1 person is on a check-in with no seat for them.')
+    expect(howManyHere(5, null, 5, [], [], ['Someone', 'Somebody']))
+      .toBe('5 people, on the free plan, which is for up to 5. 2 people were not let in.')
   })
 
   it('says nothing extra when the count and the table already agree', async () => {
@@ -431,7 +546,7 @@ describe('the head count keeps up', () => {
       return { data: {} }
     })
     vi.spyOn(apiClient, 'post').mockImplementation(async (_u: string, body: any) => ({ data: { preview: body.preview, seatsLeft: 71, rows: [{ email: 'a@x.co', result: 'invited' }, { email: 'b@x.co', result: 'invited' }], summary: body.preview ? '2 people will be invited.' : '2 people were invited.' } }) as any)
-    fireEvent.change(screen.getByLabelText('One per line: a name and an email. Or paste a list from a spreadsheet.'), { target: { value: 'a@x.co\nb@x.co' } })
+    fireEvent.change(screen.getByLabelText('Write one person on each line, with their name and email. Or paste a list from a spreadsheet.'), { target: { value: 'a@x.co\nb@x.co' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send their invitations' }))
     expect(await screen.findByText('29 people, on the Growth plan, which is for up to 100.')).toBeTruthy()
   })
@@ -440,8 +555,11 @@ describe('the head count keeps up', () => {
 describe('the people with no seat say who added them', () => {
   it('one person added them all: their name, and says who "them" is', async () => {
     const { whoAddedThem } = await import('./OrgMembersPage')
+    /* FAULT I (reviewer, third round): a missing comma before "and your plan is full" ran two
+       separate facts into one clause - "and" now joins a new sentence, not a third item in the
+       list of names. */
     expect(whoAddedThem([{ addedBy: 'Nadia Owino', email: 'tom@baridi.co.ke' }, { addedBy: 'Nadia Owino', email: 'ama@baridi.co.ke' }]))
-      .toBe('Nadia Owino added tom@baridi.co.ke and ama@baridi.co.ke and your plan is full, so nothing has been sent to them. Free a seat or move to a larger plan, then send the invitations. They have not been told any of this.')
+      .toBe('Nadia Owino added tom@baridi.co.ke and ama@baridi.co.ke, and your plan is full, so nothing has been sent to them. Free a seat or move to a larger plan, then send the invitations. They have not been told any of this.')
   })
   it('several people, or nobody recorded: a sentence true of all of them, never "A lead"', async () => {
     const { whoAddedThem } = await import('./OrgMembersPage')
@@ -451,7 +569,28 @@ describe('the people with no seat say who added them', () => {
   it('names the one person, from what is served, when only one is waiting', async () => {
     const { whoAddedThem } = await import('./OrgMembersPage')
     expect(whoAddedThem([{ addedBy: 'Nadia Owino', email: 'tom@baridi.co.ke' }]))
-      .toBe('Nadia Owino added tom@baridi.co.ke and your plan is full, so nothing has been sent to them. Free a seat or move to a larger plan, then send the invitations. They have not been told any of this.')
+      .toBe('Nadia Owino added tom@baridi.co.ke, and your plan is full, so nothing has been sent to them. Free a seat or move to a larger plan, then send the invitations. They have not been told any of this.')
+  })
+  /*
+   * FAULT I (reviewer, third round): READ BACK TO HERSELF AS A STRANGER. "Amina Yusuf added ..."
+   * named the admin reading it as though she were somebody else. When she is the one who added
+   * them, this now reads "You added ...", the way she would say it herself.
+   */
+  it('reads "You added" when the admin reading it is the one who added them', async () => {
+    const { whoAddedThem } = await import('./OrgMembersPage')
+    expect(whoAddedThem([{ addedBy: 'Amina Yusuf', email: 'wanjiru@suites.test' }, { addedBy: 'Amina Yusuf', email: 'peter.otieno@fitout.test' }], 0, 'Amina Yusuf'))
+      .toMatch(/^You added wanjiru@suites\.test and peter\.otieno@fitout\.test, and your plan is full/)
+  })
+  /*
+   * FAULT I (reviewer, third round): AN EMAIL WHERE A NAME WAS KNOWN. "wanjiru@suites.test" read
+   * by address when the row carries a name; used in place of it, address still the fallback.
+   */
+  it('names the waiting people themselves, when a name is known for them', async () => {
+    const { whoAddedThem } = await import('./OrgMembersPage')
+    expect(whoAddedThem([
+      { addedBy: 'Amina Yusuf', email: 'wanjiru@suites.test', name: 'Wanjiru' },
+      { addedBy: 'Amina Yusuf', email: 'peter.otieno@fitout.test', name: 'Peter Otieno' },
+    ], 0, 'Amina Yusuf')).toMatch(/^You added Wanjiru and Peter Otieno, and your plan is full/)
   })
   it('on the page, with each person\'s line', async () => {
     open()
@@ -465,9 +604,37 @@ describe('the people with no seat say who added them', () => {
     vi.spyOn(authApi, 'waitingForASeat').mockResolvedValue([{ id: 'p1', email: 'tom@baridi.co.ke', addedBy: 'Nadia Owino', forCheckIn: 'Sales team, Q3' }] as any)
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(<QueryClientProvider client={qc}><MemoryRouter><OrgMembersPage /></MemoryRouter></QueryClientProvider>)
-    expect(await screen.findByText(/^Nadia Owino added tom@baridi\.co\.ke and your plan is full/)).toBeTruthy()
+    expect(await screen.findByText(/^Nadia Owino added tom@baridi\.co\.ke, and your plan is full/)).toBeTruthy()
     expect(screen.getByText('Added by Nadia Owino for Sales team, Q3.')).toBeTruthy()
     expect(screen.queryByText(/A lead added them/)).toBeNull()
+  })
+})
+
+/*
+ * RESTORED (8 October, night note item 3, B-129). A paste can now keep people with no seat as a
+ * bare invitation (`kind: 'INVITATION'`), never added to any check-in - `forCheckIn` is null for
+ * them. The row used to build its own title, "<email> is on a check-in but has no seat", which was
+ * false for this kind: they were never added to one. The server's own `saying` is read instead, and
+ * it is true for either kind.
+ */
+describe('a bare invitation kept with no seat (not added to any check-in)', () => {
+  it('reads the server\'s own sentence, never "is on a check-in but has no seat"', async () => {
+    open()
+    ;(apiClient.get as any).mockImplementation(async (url: string) => {
+      if (url.startsWith('/users?')) return { data: { data: people, meta: { total: people.length } } }
+      if (url === '/users/organization/owner') return { data: { ownerUserId: 'amani' } }
+      if (url === '/billing/status') return { data: { people: { count: 27, cap: 100 }, subscription: { plan: 'GROWTH' } } }
+      return { data: {} }
+    })
+    vi.spyOn(authApi, 'waitingForASeat').mockResolvedValue([{
+      id: 'invite:p07@fieldnote.test', kind: 'INVITATION', email: 'p07@fieldnote.test', name: 'Дмитрий Иванов',
+      addedBy: 'Wairimu Kamau', forCheckIn: null, waitingSince: new Date().toISOString(),
+      saying: 'Дмитрий Иванов has no seat on your plan, so the invitation is kept and will go out when there is room.',
+    }] as any)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(<QueryClientProvider client={qc}><MemoryRouter><OrgMembersPage /></MemoryRouter></QueryClientProvider>)
+    expect(await screen.findByText('Дмитрий Иванов has no seat on your plan, so the invitation is kept and will go out when there is room.')).toBeTruthy()
+    expect(screen.queryByText(/is on a check-in but has no seat/)).toBeNull()
   })
 })
 
@@ -497,7 +664,7 @@ describe('the no-seat card once a seat is freed (U.4 fourth review)', () => {
     expect(whoAddedThem(three, null)).toBe('There are seats for all 3 of them now. Send their invitations when you are ready.')
     expect(whoAddedThem(three, 1)).toBe('There is a seat for 1 of them now. Send their invitations when you are ready, and the rest wait until there is room.')
     expect(whoAddedThem(three, 2)).toBe('There are seats for 2 of them now. Send their invitations when you are ready, and the rest wait until there is room.')
-    expect(whoAddedThem(one, 0)).toMatch(/^Nadia Owino added them and your plan is full/)
+    expect(whoAddedThem(one, 0)).toMatch(/^Nadia Owino added them, and your plan is full/)
   })
 
   it('on the page, after a seat was freed, the card no longer says the plan is full', async () => {

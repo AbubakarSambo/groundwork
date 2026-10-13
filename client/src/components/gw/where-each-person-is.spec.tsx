@@ -215,3 +215,34 @@ describe('WhereEachPersonIs: someone an admin did not let in', () => {
     }
   })
 })
+
+/*
+ * WALK OF THE EXISTING CLIENTS' USE CASES (7 October). The finding is the product's own sentence
+ * from the record, and drawing it as `<name> said, "…"` put Groundwork's words in the person's mouth
+ * ("Neema Achieng said, "Neema Achieng has signed one shop…""). It stands on its own line, in the
+ * product's voice, never as a quote.
+ */
+describe('the finding is never drawn as something the person said', () => {
+  it('shows the finding as it is, with no "said" and no quotation marks', () => {
+    render(<WhereEachPersonIs rows={[row({ who: 'Neema Achieng', finding: 'Neema Achieng has signed one shop.' })]} />)
+    expect(screen.getByText('Neema Achieng has signed one shop.')).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(/Neema Achieng said/)
+    expect(document.body.textContent).not.toMatch(/“Neema Achieng has signed/)
+  })
+})
+
+/*
+ * HAFSAH, 12 OCTOBER (night quality runs 1 and 2): "Stuck and not chasing" sat beside Collins and Amina on the lead's board. No label
+ * on a person: the tag says what happened to the work, and the row's own sentence says the rest.
+ */
+describe('no label beside a person', () => {
+  it('Collins and Amina read what happened, never "Stuck and not chasing"', () => {
+    render(<WhereEachPersonIs rows={[
+      row({ participantId: 'c', who: 'Collins Odhiambo', reason: 'something in the way two weeks', says: 'Collins Odhiambo has had something in the way since Monday 12 October, and so far it has only been asked about. Chasing it, or asking someone else, would move it.' }),
+      row({ participantId: 'a', who: 'Amina Otieno', reason: 'something in the way two weeks', says: 'Amina Otieno has had something in the way since Monday 12 October, and so far it has only been asked about. Chasing it, or asking someone else, would move it.' }),
+    ]} />)
+    expect(document.body.textContent).not.toMatch(/not chasing/i)
+    expect(screen.getAllByText('Something in the way for two weeks')).toHaveLength(2)
+    expect(screen.getByText(/Collins Odhiambo has had something in the way since Monday 12 October/)).toBeTruthy()
+  })
+})

@@ -18,7 +18,6 @@ import { GoogleCallbackPage } from '@/pages/auth/GoogleCallbackPage'
 import { ChoosePasswordPage } from '@/pages/auth/ChoosePasswordPage'
 import { GoogleFailedPage } from '@/pages/auth/GoogleFailedPage'
 import { EntryChatPage } from '@/pages/enter/EntryChatPage'
-import { AnchorLandingPage } from '@/pages/enter/AnchorLandingPage'
 import { ChatPage } from '@/pages/chat/ChatPage'
 import SessionReportPage from '@/pages/report/SessionReportPage'
 import RoundReportPage from '@/pages/report/RoundReportPage'
@@ -35,6 +34,23 @@ function ChatRedirect() {
   const { checkInId } = useParams()
   return <Navigate to={`/checkin/${checkInId}`} replace />
 }
+
+/**
+ * `/start/team` KEEPS WORKING, DECISION 114 (docs/decisions-merged.md). Links already sent (on
+ * WhatsApp, LinkedIn, email) still carry people here; this just redirects into the ordinary entry
+ * chat with the anchor's own scenario key, keeping whatever else was on the address (a `?source=`
+ * mark, say) - `/start/team?x=1` lands on `/start?scenario=HELP_TEAM_UNDERSTAND&x=1`. A `scenario`
+ * already on the address is replaced: this door only ever means the one scenario.
+ */
+export function AnchorTeamRedirect() {
+  const { search, hash } = useLocation()
+  const rest = new URLSearchParams(search)
+  rest.delete('scenario')
+  const query = new URLSearchParams()
+  query.set('scenario', 'HELP_TEAM_UNDERSTAND')
+  for (const [key, value] of rest) query.append(key, value)
+  return <Navigate to={`/start?${query.toString()}${hash}`} replace />
+}
 import { GroundsListPage } from '@/pages/grounds/GroundsListPage'
 import { TodayPage } from '@/pages/today/TodayPage'
 import { YouPage } from '@/pages/you/YouPage'
@@ -43,6 +59,7 @@ import { CompanyContextPage } from '@/pages/company/CompanyContextPage'
 import { SuitesPage } from '@/pages/suites/SuitesPage'
 import { OnboardingBoardPage } from '@/pages/suites/OnboardingBoardPage'
 import { LeaveBoardPage } from '@/pages/suites/LeaveBoardPage'
+import { QueuePage } from '@/pages/suites/QueuePage'
 import { YourRequestsPage } from '@/pages/suites/YourRequestsPage'
 import { LeaveRequestNewPage } from '@/pages/suites/LeaveRequestNewPage'
 import { SpendRequestNewPage } from '@/pages/suites/SpendRequestNewPage'
@@ -60,6 +77,7 @@ import { AskPage } from '@/pages/ask/AskPage'
 import { GroundParticipantPage } from '@/pages/grounds/GroundParticipantPage'
 import { GroundPage } from '@/pages/grounds/GroundPage'
 import { ReportPage } from '@/pages/report/ReportPage'
+import WeeklyReportPage from '@/pages/report/WeeklyReportPage'
 import { BoardPage } from '@/pages/board/BoardPage'
 import EndingPage from '@/pages/grounds/EndingPage'
 import { TeamBoardsPage } from '@/pages/boards/TeamBoardsPage'
@@ -129,6 +147,7 @@ import { authApi } from '@/api/auth'
 import { NotFoundPage } from '@/pages/notfound/NotFoundPage'
 import { StopMailPage } from '@/pages/mail/StopMailPage'
 import { HelpModal } from '@/components/gw/HelpModal'
+import { OfflineNote } from '@/components/gw/OfflineNote'
 import { AppShell } from '@/components/gw/AppShell'
 import { TalkToUsPage } from '@/pages/talk/TalkToUsPage'
 import type { JSX } from 'react'
@@ -139,7 +158,10 @@ const qc = queryClient
 function RequireAuth({ children }: { children: JSX.Element }) {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   if (!isAuthenticated) {
-    const dest = window.location.pathname + window.location.search
+    // B-221: THE HASH RIDES ALONG TOO, so a link to a section of the page you land on - the
+    // "yours to keep" email's `/settings#your-data` - still opens there once you are signed in,
+    // rather than at the top of the page with no sign anything was asked for.
+    const dest = window.location.pathname + window.location.search + window.location.hash
     // `next`, NOT `from`: AuthPage has only ever read `next`, so every person who was
     // sent here from a protected page lost their destination and landed on the grounds
     // list. Two spellings of one idea, and the one the redirects used was the dead one.
@@ -157,7 +179,7 @@ function RequirePlatformAdmin({ children }: { children: JSX.Element }) {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   const isPlatformAdmin = useAuthStore(s => s.user?.isPlatformAdmin)
   if (!isAuthenticated) {
-    const dest = window.location.pathname + window.location.search
+    const dest = window.location.pathname + window.location.search + window.location.hash
     // `next`, NOT `from`: AuthPage has only ever read `next`, so every person who was
     // sent here from a protected page lost their destination and landed on the grounds
     // list. Two spellings of one idea, and the one the redirects used was the dead one.
@@ -217,7 +239,7 @@ function MayOpenCheckIns({ children }: { children: React.ReactNode }) {
   return <ADoorYouCannotOpen may={user?.mayOpenCheckIns !== false} what="open a check-in">{children}</ADoorYouCannotOpen>
 }
 
-function AdminsOnly({ children, what = 'add people to your organisation' }: { children: React.ReactNode; what?: 'add people to your organisation' | 'connect your systems' | 'open People' }) {
+function AdminsOnly({ children, what = 'add people to your organisation' }: { children: React.ReactNode; what?: 'add people to your organisation' | 'connect your systems' | 'connect your organisation’s WhatsApp number' | 'open People' }) {
   const { user } = useAuthStore()
   return <ADoorYouCannotOpen may={user?.role === 'ADMIN'} what={what}>{children}</ADoorYouCannotOpen>
 }
@@ -228,12 +250,54 @@ function AdminsOnly({ children, what = 'add people to your organisation' }: { ch
  * for a column nothing ever mails and that only Stripe reads, at checkout, where it can be asked
  * for. The name stays because eleven routes wrap it and it also does the signed-in check; what it
  * requires now is exactly what RequireAuth requires. /org/setup is still reachable from settings.
+ *
+ * B-202: AND NOBODY STILL WAITING TO BE LET IN EVER SEES WHAT IS BEHIND THIS WALL.
+ *
+ * An outsider added to a check-in, who sets a password (or signs in later) before an admin lets
+ * them in, used to reach Today here and read "Nothing needs you right now" - true in the sense
+ * that nothing here is theirs to open yet, and false in what it implies: that nothing is stopping
+ * them. `/users/me/waiting` is the same read `WaitingForAnAdminPage` already makes of its own
+ * membership. Checked HERE, rather than only where `HomeOrChooseAnOrganisation` lands (the root
+ * and `/grounds`), because every one of the eleven routes this wraps is reachable directly - a
+ * bookmark, an old link, the server's own `next=/today` - and a wall that only stops some doors
+ * is not a wall. Nobody waiting ever renders what is behind any of them; they are sent to "Almost
+ * in" (`/join/waiting`) every time, until they are let in.
  */
-function RequireOrgSetup({ children }: { children: JSX.Element }) {
+export function RequireOrgSetup({ children }: { children: JSX.Element }) {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
+  const waiting = useQuery({ queryKey: ['my-waiting'], queryFn: authApi.myWaiting, enabled: isAuthenticated, retry: false })
   if (!isAuthenticated) {
-    const dest = window.location.pathname + window.location.search
+    const dest = window.location.pathname + window.location.search + window.location.hash
     return <Navigate to={`/auth?next=${encodeURIComponent(dest)}`} replace />
+  }
+  /**
+   * B-202 (review round 2), TWO FAULTS IN THE SAME WALL.
+   *
+   * (a) NOBODY IS SHOWN THE PAGE BEHIND THIS WALL WHILE IT IS STILL DECIDING.
+   *
+   * `children` used to render while this very `my-waiting` read was still in flight, so a person
+   * waiting to be let in briefly saw Today's "Nothing needs you right now", Ask, or a board - and
+   * the page under them fired its own requests (/today, /grounds, /ask, /you, /company,
+   * /users/colleagues, the board) before the redirect below ever caught up. Nothing renders, and
+   * nothing is asked for, until the first answer is in. A failed read lets the person through
+   * rather than locking everyone out of the whole product because one read failed - the safer
+   * failure here is showing the app, not an endless blank wall.
+   *
+   * (b) A CACHED "WAITING: TRUE" IS NEVER TRUSTED WITHOUT ASKING AGAIN.
+   *
+   * `WaitingForAnAdminPage` reads this exact same `['my-waiting']` key, so once somebody has been
+   * stuck on "Almost in", the cache holds `waiting: true` - and this component used to act on that
+   * cached answer the instant it was read, even though React Query (staleTime 0, the default) was
+   * at that very moment already re-fetching it in the background. An admin letting them in a moment
+   * later changed nothing on screen: the stale `true` sent them straight back to "Almost in" on
+   * every navigation, before the fresh answer ever arrived. So a cached `waiting: true` is acted on
+   * only once `isFetching` says the read for THIS mount has actually settled - never off a value
+   * that might be the one that got them stuck here in the first place.
+   */
+  if (waiting.isLoading) return null
+  if (!waiting.isError && waiting.data?.waiting === true) {
+    if (waiting.isFetching) return null
+    return <Navigate to="/join/waiting" replace />
   }
   return children
 }
@@ -403,8 +467,19 @@ export default function App() {
           {/* First in the document, so it is the first thing a keyboard reaches. It was inside the
               shell, behind the help button, which made it the second stop and therefore useless. */}
           <a href="#main" className="gw-skip">Skip to content</a>
-          <Toaster position="top-right" richColors />
+          {/* B-042: a toast fired the moment a page loads (for example, a suite that is switched
+              off) used to sit right over the page's own heading and subtitle - the two-line
+              subtitles on Time sheets, Onboarding, Leaving, Roles, To-dos and Customers and deals
+              were the ones long enough for the default 24px/16px offset to reach into. 150px (170
+              on a phone, where the toast also spans the full width and the subtitle can wrap to
+              three lines) clears every page's own heading and subtitle before a toast begins,
+              without moving the toast off the screen on any page. */}
+          <Toaster position="top-right" richColors offset={{ top: 150 }} mobileOffset={{ top: 170 }} />
           <HelpModal />
+          {/* B-113: the connection drops while the app is already open. The service worker
+              (public/sw.js) covers a fresh navigation that cannot reach the server at all; this
+              covers staying on a page that is already open. */}
+          <OfflineNote />
           {/* A render error in one page used to blank the entire app. W8-63. Outside the shell, so
               the crash card takes the whole window (crash.jpg) and a broken sidebar is caught too. */}
           <PageCrash>
@@ -453,12 +528,17 @@ export default function App() {
               */}
             <Route path="/start" element={<MayOpenCheckIns><EntryChatPage /></MayOpenCheckIns>} />
             {/*
-              The anchor scenario's own front door (plan pieces 1 and 2, docs/anchor-scenario-plan.md
-              section 5, address suggested in section 1). Open to a stranger, like /start: the page
-              itself redirects to /start unless the engine's public switch, `GET /entry/anchor-
-              available`, says the anchor scenario is on (request 144 (1)).
+              DECISION 114 (docs/decisions-merged.md; docs/answers-from-engine.md, "8 October:
+              decision 114, the anchor changes no screen"): the anchor scenario must not change the
+              UI. It used to have its own front door, `AnchorLandingPage.tsx` - now gone - which
+              asked the engine's public switch before showing itself at all. This address is kept,
+              for links already sent, as a plain redirect into the ordinary entry chat with the
+              anchor's own scenario key, which now makes the one call `AnchorLandingPage.tsx` used to
+              make (`GET /entry/anchor-start`, see `EntryChatPage.tsx`). `GET /entry/anchor-available`
+              is no longer called from the client at all: nothing here needs to know the switch is on
+              before asking anything else, and a 404 from `anchor-start` already says it is off.
             */}
-            <Route path="/start/team" element={<AnchorLandingPage />} />
+            <Route path="/start/team" element={<AnchorTeamRedirect />} />
             <Route path="/invite" element={<InvitePage />} />
             <Route path="/join" element={<JoinPage />} />
             {/* The QR code's own door: answer first, say who you are at the end. */}
@@ -495,6 +575,7 @@ export default function App() {
             <Route path="/suite/leave/new" element={<RequireOrgSetup><LeaveRequestNewPage /></RequireOrgSetup>} />
             <Route path="/suite/spend/new" element={<RequireOrgSetup><SpendRequestNewPage /></RequireOrgSetup>} />
             <Route path="/suite/leave" element={<RequireOrgSetup><LeaveBoardPage /></RequireOrgSetup>} />
+            <Route path="/suite/queue" element={<RequireOrgSetup><QueuePage /></RequireOrgSetup>} />
             <Route path="/suite/time" element={<RequireOrgSetup><TimeSheetsPage /></RequireOrgSetup>} />
             <Route path="/suite/reviews" element={<RequireOrgSetup><ReviewsBoardPage /></RequireOrgSetup>} />
             <Route path="/suite/reviews/:id" element={<RequireOrgSetup><ReviewPage /></RequireOrgSetup>} />
@@ -525,6 +606,8 @@ export default function App() {
             <Route path="/grounds/:id" element={<RequireOrgSetup><GroundPage /></RequireOrgSetup>} />
             <Route path="/grounds/:id/p" element={<RequireOrgSetup><GroundParticipantPage /></RequireOrgSetup>} />
             <Route path="/grounds/:id/report" element={<RequireOrgSetup><ReportPage /></RequireOrgSetup>} />
+            {/* THE WEEKLY REPORT (B4, "This week"): GET /grounds/:id/report/week. See WeeklyReportPage.tsx. */}
+            <Route path="/grounds/:id/report/week" element={<RequireOrgSetup><WeeklyReportPage /></RequireOrgSetup>} />
             {/*
               BACK, AND IT SHOULD NOT SHIP. It was deleted on the grounds that every surface had a
               real home - which was checked, and was the wrong question. The question is whether
@@ -575,6 +658,14 @@ export default function App() {
               it exist in the wild and in old emails.
             */}
             <Route path="/chat/:checkInId" element={<ChatRedirect />} />
+            {/*
+              B-128: a webhook's `permalink` for a finished check-in builds `/check-in/<id>`, with a
+              hyphen - a real address the client never had. Opened from a connected tool's
+              notification, it read "Nothing is at this address". Same redirect as `/chat/:id` above,
+              to the one real route; a request to fix the hyphen at its source is in
+              docs/requests-to-engine.md.
+            */}
+            <Route path="/check-in/:checkInId" element={<ChatRedirect />} />
             <Route path="/checkin/:checkInId" element={<RequireOrgSetup><ChatPage /></RequireOrgSetup>} />
             {/*
               THE REPORT ONE SESSION ENDED ON, on its own route.
@@ -686,7 +777,7 @@ export default function App() {
                 note above was written to remove. */}
             {/* Connections (F1, U.18): the page, WhatsApp step by step, and your own tools. The old address, which emails still carry, opens your own tools, the page it always was. */}
             <Route path="/settings/connections" element={<RequireOrgSetup><AdminsOnly what="connect your systems"><ConnectionsPage /></AdminsOnly></RequireOrgSetup>} />
-            <Route path="/settings/whatsapp" element={<RequireOrgSetup><AdminsOnly what="connect your systems"><WhatsAppSetupPage /></AdminsOnly></RequireOrgSetup>} />
+            <Route path="/settings/whatsapp" element={<RequireOrgSetup><AdminsOnly what="connect your organisation’s WhatsApp number"><WhatsAppSetupPage /></AdminsOnly></RequireOrgSetup>} />
             <Route path="/settings/tools" element={<RequireOrgSetup><AdminsOnly what="connect your systems"><IntegrationsPage /></AdminsOnly></RequireOrgSetup>} />
             <Route path="/org/integrations" element={<Navigate to="/settings/tools" replace />} />
             <Route path="/admin" element={<RequirePlatformAdmin><AdminPage /></RequirePlatformAdmin>} />

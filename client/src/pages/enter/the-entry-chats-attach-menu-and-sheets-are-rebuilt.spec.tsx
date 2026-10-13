@@ -86,9 +86,12 @@ vi.mock('@/api/entry', () => ({
     classifyIntent: vi.fn(),
   },
 }))
-vi.mock('@/api/auth', () => ({ authApi: { entrySave: vi.fn() } }))
+vi.mock('@/api/auth', () => ({ authApi: { entrySave: vi.fn(), colleagues: vi.fn().mockResolvedValue([]) } }))
 vi.mock('@/api/billing', () => ({ billingApi: { checkCanCreateGround: vi.fn().mockResolvedValue({ allowed: true }) } }))
-vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ user: null, isAuthenticated: false }) }))
+/* Mutable so screen fault 10's signed-in-lead test can flip it, without disturbing every other
+   test in this file, which reads an anonymous visitor exactly as before. */
+let authedUser: { id: string; email: string } | null = null
+vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ user: authedUser, isAuthenticated: !!authedUser }) }))
 
 function expectAtMostOnePrimaryButton(container: HTMLElement) {
   /* Excludes the save card's own primary button while the card is CSS-hidden (visibility:
@@ -130,7 +133,7 @@ function seedCheckInSession(extra: Record<string, unknown> = {}) {
   }))
 }
 
-beforeEach(() => { localStorage.clear() })
+beforeEach(() => { localStorage.clear(); authedUser = null })
 
 describe('the quick-action chip row, once a check-in is under way', () => {
   it('shows the chips and the attach chip, with one navy button at most', async () => {
@@ -164,6 +167,31 @@ describe('the quick-action chip row, once a check-in is under way', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Keep going' }))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'End this session?' })).toBeNull())
     expect(entryApi.report).not.toHaveBeenCalled()
+  })
+
+  /*
+   * SCREEN FAULT 10 (FINAL WALK): "YOUR ANSWERS ARE SAVED ON THIS DEVICE" TOLD A SIGNED-IN LEAD
+   * SOMETHING FALSE. That sentence is true of the anonymous draft kept in this browser before
+   * anybody has an account; once signed in, the answers are saved against the account, not the
+   * device.
+   */
+  it('tells an anonymous visitor their answers are saved on this device', async () => {
+    seedCheckInSession()
+    renderPage()
+    await waitFor(() => expect(screen.getAllByText('Once, in July. Not formally.').length).toBeGreaterThan(0))
+    fireEvent.click(screen.getByRole('button', { name: 'End session' }))
+    expect(await screen.findByText(/Your answers are saved on this device\./)).toBeTruthy()
+  })
+
+  it('never tells a signed-in lead their answers are saved on this device', async () => {
+    authedUser = { id: 'u1', email: 'rukia@example.test' }
+    seedCheckInSession()
+    renderPage()
+    await waitFor(() => expect(screen.getAllByText('Once, in July. Not formally.').length).toBeGreaterThan(0))
+    fireEvent.click(screen.getByRole('button', { name: 'End session' }))
+    expect(await screen.findByRole('dialog', { name: 'End this session?' })).toBeTruthy()
+    expect(screen.queryByText(/saved on this device/)).toBeNull()
+    expect(screen.getByText(/Ending this session generates your report/)).toBeTruthy()
   })
 })
 

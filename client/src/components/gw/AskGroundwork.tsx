@@ -2,12 +2,17 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { askApi, type AskBlock, type AskReply, type TextBlock, type ClaimBlock, type ProposalBlock, type PickerBlock, type NextStepBlock } from '@/api/ask'
+import { anOldAskAnswerReadsProperly } from '@/lib/an-old-ask-answer-reads-properly'
 import { documentsApi } from '@/api/documents'
 import { groundsApi } from '@/api/grounds'
 import { UPLOAD_ACCEPT_ATTR } from '@/lib/what-you-can-upload'
 import { whatTellsItApart } from '@/lib/tell-apart-the-same-name'
+import { askNameFor } from '@/lib/ask-name'
+import { useAuthStore } from '@/stores/auth'
+import { whatWentWrong, whyYouCannotSeeThis } from '@/pages/report/why-you-cannot-see-this'
 import { Mark } from './kit'
 import { Composer } from './ui/Composer'
+import { GroundworkIsWriting } from './ui/GroundworkIsWriting'
 import { PRIVATE_LINE } from './what-ask-groundwork-says'
 
 /** What the Context page already says while a document's read has not landed yet (AddADocument.tsx). */
@@ -15,6 +20,15 @@ const STILL_READING = 'Reading it now.'
 /** Recognised by Ask Groundwork whichever of the two upload routes sent it (docs/answers-from-engine.md,
     30 September, "a document's numbers, said back through Ask Groundwork"). */
 const SAID_AFTER_UPLOAD = "I've uploaded it."
+
+/**
+ * THE NAME AND CAPTION, BEFORE `GET /ask` HAS ANSWERED (screen fault 5d). Loading, or held up by
+ * a 429, used to show the bare "Ask Groundwork" with no caption at all - the organisation's own
+ * name was already in hand (the signed-in person's own profile), and the caption is a fixed
+ * sentence, decision 100, the same one `ASK_CAPTION` on the server always serves
+ * (api/src/modules/assistant/ask-name.ts) - so neither needs to wait for this request to land.
+ */
+const ASK_CAPTION_FALLBACK = 'Ask about the company, your work or your check-ins.'
 
 /*
  * WIDTH CHECK, ITEM 8: THE COMPOSER'S OWN RESTING HEIGHT CUT OFF ITS OWN HINT. The placeholder -
@@ -50,8 +64,15 @@ const COMPOSER_RESTING_HEIGHT = '70px'
  * read has had a chance to land - see `pollNumbersWaiting` below.
  */
 
-/** The check-in the page is about, from its address, so the panel opens on it. */
-function checkInOnThisPage(pathname: string): string | null {
+/**
+ * The check-in the page is about, from its address, so the panel opens on it.
+ *
+ * Exported for AppShell.tsx's own use (B-224): on a phone, "Ask" navigates away to `/chat` rather
+ * than opening a drawer beside the page that is still showing - so whatever this would have read
+ * from the page's own address has to be read and carried across before that navigation happens, or
+ * it is lost. See AppShell's phone redirect, just above where `/chat` is reached.
+ */
+export function checkInOnThisPage(pathname: string): string | null {
   const m = pathname.match(/^\/grounds\/([^/?#]+)/)
   return m ? m[1] : null
 }
@@ -142,19 +163,59 @@ export async function pollNumbersWaiting(
  */
 export function AskGroundwork({
   onClose, initialMessage, onSentInitialMessage,
+  initialOpenedFromGroundId, onSentInitialOpenedFrom,
+  aboutGroundId,
   /* Real values in the product; a test hands in small ones so it does not wait a minute. */
   pollIntervalMs = 2000, pollTimeoutMs = 60_000,
 }: {
   onClose?: () => void
   initialMessage?: string | null
   onSentInitialMessage?: () => void
+  /**
+   * DECISION 65: set only when the panel was opened from a check-in's own Context and resources
+   * page or setup. The panel's first message is sent empty, with this check-in's id and
+   * `openedFrom: "check_in_setup"`; every later message in the same opening carries both too.
+   */
+  initialOpenedFromGroundId?: string | null
+  onSentInitialOpenedFrom?: () => void
+  /**
+   * B-210: the check-in this panel should open already focused on, for a caller that is not
+   * itself a page living at `/grounds/:id` or `/checkin/:id` - the Ask page opened from
+   * `/chat?about=<id>`. The same rule `here` already follows below: it only takes effect once
+   * this check-in is confirmed to be one the reader may see (the caller passes `null` otherwise).
+   */
+  aboutGroundId?: string | null
   pollIntervalMs?: number
   pollTimeoutMs?: number
 }) {
   const location = useLocation()
+  const user = useAuthStore(s => s.user)
+  const orgName = (user as any)?.organization?.name?.trim() || user?.organizationName || ''
   const page = useQuery({ queryKey: ['ask'], queryFn: askApi.mine })
-  /* The check-in the page is about, from its address, so the panel opens on it. */
-  const here = checkInOnThisPage(location.pathname)
+  /*
+   * B-112: `GET /ask` FAILING, OR STILL LOADING, USED TO READ IDENTICALLY TO "YOU MAY NOT ASK" -
+   * the composer is gated on `page.data?.canAsk`, and a failed or slow fetch leaves `page.data`
+   * undefined, so the whole question box vanished with nothing on screen to say why. Only the
+   * name, the caption and the flag that turns the box off come from this payload at all (the
+   * name and caption already fall back to a fixed default, above); the flag is the one thing
+   * that cannot be guessed, so a failed load assumes the box still works rather than hiding it -
+   * `POST /ask` and `/ask/answer` enforce who may ask on their own (ask.service.ts), so a wrong
+   * guess here is caught there, not silently allowed. "About", the starters and the greeting are
+   * the extras this payload also carries; they simply wait for a load that lands.
+   */
+  const askSettled = !page.isLoading
+  const askOk = askSettled && (page.isError ? true : !!page.data?.canAsk)
+  /*
+   * ONE SENTENCE FOR EVERY WAY THIS LOAD CAN FAIL, NOT ONE PER STATUS CODE. `whyYouCannotSeeThis`
+   * is written for a record that either opened or did not ("this record could not be opened"),
+   * which reads oddly for a question box that keeps working regardless - there is no "it" that
+   * failed to open here, only an extra that has not arrived yet. `canRetry` is still worth
+   * keeping: a 401 (signed out) is the one case retrying this alone cannot fix.
+   */
+  const askWhy = page.isError ? whyYouCannotSeeThis(whatWentWrong(page.error)) : null
+  /* The check-in the page is about, from its address, so the panel opens on it. Or, for the Ask
+     page itself (`/chat?about=`), the id its caller confirmed the reader may see (B-210). */
+  const here = aboutGroundId ?? checkInOnThisPage(location.pathname)
   /*
    * WHEN THE PAGE'S OWN CHECK-IN IS NOT ONE THE ASKER RUNS OR TAKES PART IN, BUT THEY MAY STILL
    * READ IT - an admin of its organisation, opening the panel on somebody else's check-in's page.
@@ -188,6 +249,9 @@ export function AskGroundwork({
     return about.map((g) => ({ id: g.id, label: g.label, ...startOf.get(g.id) }))
   }, [about, allGrounds.data])
   const [chosen, setChosen] = useState<string | null>(null)
+  /* Decision 65: set once, from `initialOpenedFromGroundId`, for the life of this opening - every
+     message sent while it is set carries this check-in's id and `openedFrom: "check_in_setup"`. */
+  const [openedFromGroundId, setOpenedFromGroundId] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [said, setSaid] = useState<Said[]>([])
   const [answered, setAnswered] = useState<Set<string>>(new Set())
@@ -273,7 +337,9 @@ export function AskGroundwork({
     setProblem(null)
     try {
       const reply = await how()
-      setSaid((s) => [...s, { from: 'you', says: message }, { from: 'groundwork', reply }])
+      /* The very first message of a check-in-setup opening is sent empty, read as "start" - there
+         is nothing of the asker's own to show as a bubble for that one. */
+      setSaid((s) => [...s, ...(message ? [{ from: 'you' as const, says: message }] : []), { from: 'groundwork' as const, reply }])
       if (clearDraft) setDraft('')
     } catch (e: unknown) {
       const said = (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message
@@ -286,7 +352,10 @@ export function AskGroundwork({
   const ask = (message: string, clearDraft = false, groundIdOverride?: string) => {
     const m = message.trim()
     if (!m || sending) return
-    void send(m, () => askApi.ask(m, groundIdOverride ?? aboutId ?? undefined), clearDraft)
+    const gid = groundIdOverride ?? openedFromGroundId ?? aboutId ?? undefined
+    /* Never sent on an ordinary question - only while this opening is the check-in-setup one. An
+       ordinary call still passes exactly two arguments, as it always has. */
+    void send(m, () => (openedFromGroundId ? askApi.ask(m, gid, 'check_in_setup') : askApi.ask(m, gid)), clearDraft)
   }
 
   /** The "Choose a file" button on a `next_step` block: opens the picker for that check-in. */
@@ -325,12 +394,26 @@ export function AskGroundwork({
   }
 
   useEffect(() => {
-    if (!initialMessage || sentInitial.current || sending || !page.data?.canAsk) return
+    if (sentInitial.current || sending || !askOk) return
+    /*
+     * DECISION 65: OPENED FROM A CHECK-IN'S OWN SETUP. Sent before the ordinary `initialMessage`
+     * check below, and with an empty message - this is the one case an empty message is sent at
+     * all, so Ask Groundwork reads it as "start" rather than nothing being sent.
+     */
+    if (initialOpenedFromGroundId) {
+      sentInitial.current = true
+      setOpenedFromGroundId(initialOpenedFromGroundId)
+      setChosen(initialOpenedFromGroundId)
+      void send('', () => askApi.ask('', initialOpenedFromGroundId, 'check_in_setup'), false)
+      onSentInitialOpenedFrom?.()
+      return
+    }
+    if (!initialMessage) return
     sentInitial.current = true
     ask(initialMessage, false)
     onSentInitialMessage?.()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialMessage, page.data?.canAsk])
+  }, [initialMessage, initialOpenedFromGroundId, askOk])
 
   const answer = (proposalId: string, yes: boolean) => {
     if (sending) return
@@ -386,6 +469,9 @@ export function AskGroundwork({
     })
   }
 
+  /* Named here once, so the header and the "is writing…" indicator always agree. */
+  const askDisplayName = page.data?.askName ?? askNameFor(orgName)
+
   return (
     <section aria-labelledby="gw-ask-title" style={{
       display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0,
@@ -393,7 +479,7 @@ export function AskGroundwork({
     }}>
       <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid var(--gw-line)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <h2 id="gw-ask-title" style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>{page.data?.askName ?? 'Ask Groundwork'}</h2>
+          <h2 id="gw-ask-title" style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>{askDisplayName}</h2>
           {onClose && (
             <button type="button" className="gw-tap44" onClick={onClose} aria-label="Close"
               style={{ border: 0, background: 'transparent', fontSize: 20, cursor: 'pointer', color: 'var(--gw-sub)' }}>×</button>
@@ -405,7 +491,7 @@ export function AskGroundwork({
          * check-ins." and "You can also add context or documents to your check-ins here." -
          * printed under the name exactly as they arrive.
          */}
-        {page.data?.caption && <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--gw-text)', lineHeight: 1.4 }}>{page.data.caption}</p>}
+        <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--gw-text)', lineHeight: 1.4 }}>{page.data?.caption ?? ASK_CAPTION_FALLBACK}</p>
         {page.data?.addLine && <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{page.data.addLine}</p>}
         {about.length > 0 && (
           /*
@@ -420,9 +506,21 @@ export function AskGroundwork({
            * list always offers "The whole organisation and your work" first, and picking it sends
            * no `groundId` at all (the ordinary case, not a special one - docs/ask-definition.md).
            */
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 14, color: 'var(--gw-sub)', minWidth: 0 }}>
+          /*
+           * B-231: AT 390 THE SELECT READ "The whole organisation and your wor", CUT OFF. Item 6's
+           * own fix (`flex: 1, minWidth: 0`, kept exactly as is - the-live-checks.spec.tsx pins
+           * both) shrinks the select to whatever the row has left after "About", which at 390 was
+           * too little for the longest option, and a plain `<select>` clips rather than wraps. The
+           * row itself now wraps (`flexWrap: 'wrap'`), and `.gwui-ask-about-select`'s own narrow-
+           * screen rule (gw-ui.css, written up in docs/the-parts-against-the-prototype.md) gives the
+           * select `flex-basis: 100%` there, so it drops to its own full-width line instead of
+           * squeezing beside "About" - inline styles untouched, so item 6's own shrink-to-fit still
+           * holds at every width this rule does not apply at.
+           */
+          <label style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 14, color: 'var(--gw-sub)', minWidth: 0 }}>
             About
             <select value={aboutId} onChange={(e) => setChosen(e.target.value)}
+              className="gwui-ask-about-select"
               style={{ flex: 1, minWidth: 0, font: 'inherit', fontSize: 15, padding: '6px 8px', borderRadius: 8, border: '1px solid var(--gw-line)', background: 'var(--gw-card)', color: 'var(--gw-text)', maxWidth: '100%' }}>
               <option value="">The whole organisation and your work</option>
               {aboutWithDates.map((g) => {
@@ -452,7 +550,7 @@ export function AskGroundwork({
           </div>
         )}
         {(page.data?.turns ?? []).map((t, i) => (
-          <p key={`t-${i}`} style={bubble(t.from === 'you')}>{t.says}</p>
+          <p key={`t-${i}`} style={bubble(t.from === 'you')}>{t.from === 'you' ? t.says : anOldAskAnswerReadsProperly(t.says)}</p>
         ))}
         {said.map((s, i) => s.from === 'you'
           ? <p key={`s-${i}`} style={bubble(true)}>{s.says}</p>
@@ -462,27 +560,20 @@ export function AskGroundwork({
           /*
            * ITEM 3: A SIGN OF WORK WHILE WAITING. A reply can take up to 90 seconds, and until now
            * nothing showed at all in that time - the buttons went quietly unresponsive with no
-           * explanation. The same three dots the check-in's own conversation uses (ChatPage.tsx),
-           * and after four seconds the same sentence it says once a wait is long enough to need
-           * explaining.
+           * explanation. Now the one shared "<name> is writing…" indicator every chat uses
+           * (GroundworkIsWriting.tsx), under Ask's own name, and after four seconds the same
+           * sentence the check-in conversation says once a wait is long enough to need explaining.
            */
-          <p style={bubble(false)}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-              {[0, 1, 2].map((i) => (
-                <span key={i} style={{
-                  display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
-                  background: 'var(--gw-sub)', animation: 'gwAskDotBounce 1.2s ease-in-out infinite',
-                  animationDelay: `${i * 0.2}s`,
-                }} />
-              ))}
-              <style>{'@keyframes gwAskDotBounce { 0%,80%,100%{transform:translateY(0);opacity:.4} 40%{transform:translateY(-5px);opacity:1} }'}</style>
-              {waitedAWhile && (
+          <>
+            <GroundworkIsWriting name={askDisplayName} />
+            {waitedAWhile && (
+              <p style={bubble(false)}>
                 <span role="status" style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
                   Still reading what you wrote. Nothing was lost, you do not need to send it again.
                 </span>
-              )}
-            </span>
-          </p>
+              </p>
+            )}
+          </>
         )}
         <div ref={end} />
       </div>
@@ -491,14 +582,33 @@ export function AskGroundwork({
           nowhere to go in a text box. */}
       <input ref={fileInput} type="file" style={{ display: 'none' }} accept={UPLOAD_ACCEPT_ATTR} onChange={onFileChosen} />
 
-      {page.data?.canAsk && (
+      {(askOk || !askSettled) && (
         /*
          * ITEM 2: A MULTI-LINE MESSAGE BOX. This was a one-line `<input>`, so a pasted plan lost
          * its own line breaks the moment it landed here. The shared `Composer` (already the check-in
          * conversation's own footer, ChatPage.tsx) is a textarea that grows with its text - Enter
          * sends, Shift+Enter starts a new line, the same as the prototype's chat.
+         *
+         * B-112: rendered while `page` is still loading (disabled, so it never flashes empty space
+         * where it belongs) and after a failed load too (enabled - see `askOk`, above), not only
+         * once `canAsk` has actually arrived true.
          */
         <div style={{ borderTop: '1px solid var(--gw-line)' }}>
+          {page.isError && (
+            <p role="alert" style={{ margin: '8px 12px 0', fontSize: 14, color: 'var(--gw-red-t)' }}>
+              Ask didn't load fully. Nothing you have asked is lost. It is usually the connection.
+              {askWhy?.canRetry && (
+                <>
+                  {' '}
+                  <button type="button" onClick={() => page.refetch()}
+                    style={{ fontSize: 14, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
+                    Try again
+                  </button>
+                </>
+              )}
+            </p>
+          )}
+          {!askSettled && <p role="status" style={{ margin: '8px 12px 0', fontSize: 13, color: 'var(--gw-sub)' }}>Getting Ask ready.</p>}
           {problem && <p role="alert" style={{ margin: '8px 12px 0', fontSize: 14, color: 'var(--gw-red-t)' }}>{problem}</p>}
           <Composer
             inputRef={composerRef}
@@ -510,7 +620,7 @@ export function AskGroundwork({
             }}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(draft, true) } }}
             onSend={() => ask(draft, true)}
-            disabled={sending}
+            disabled={sending || !askSettled}
             sendDisabled={!draft.trim()}
             placeholder={page.data?.caption ?? 'Ask a question'}
             ariaLabel={page.data?.caption ?? 'Ask a question'}

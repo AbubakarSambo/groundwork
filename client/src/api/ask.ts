@@ -36,6 +36,19 @@ export interface AskPage {
    * priorities right now?" and "Ask for leave, or to spend money." - when there is none.
    */
   starters: string[]
+  /**
+   * CONTEXT AND RESOURCES IN ASK: ONE FLAG THE SCREENS CAN READ (request 169, decision 65). True
+   * only while the engine's switch is on and the reader may confirm setup on at least one check-in.
+   * Shows "Add context with Ask <organisation name>" on a check-in's own Context and resources
+   * page. Absent today, so that button stays hidden everywhere until the engine serves it.
+   */
+  addsContext?: boolean
+  /**
+   * THE OLD CONTEXT CHAT IS OPEN (8 October, answers-from-engine.md, "what the anchor's final check needs", item 6). False means the check-in
+   * page's own context chat is switched off on the server (its routes answer with a sentence that sends the person to Ask), so the page must
+   * not draw it. Absent from an older server, which still has it.
+   */
+  oldContextChatIsOpen?: boolean
 }
 
 export type TextBlock = { type: 'text'; body: string }
@@ -55,8 +68,15 @@ export interface AskReply { blocks: AskBlock[]; composedBy: 'model' | 'rules'; l
 
 export const askApi = {
   mine: (): Promise<AskPage> => apiClient.get<AskPage>('/ask').then(r => r.data),
-  ask: (message: string, groundId?: string): Promise<AskReply> =>
-    apiClient.post<AskReply>('/ask', { message, ...(groundId ? { groundId } : {}) }).then(r => r.data),
+  /**
+   * `openedFrom: 'check_in_setup'` is sent only when Ask Groundwork was opened from that check-in's
+   * own Context and resources page or setup (decision 65) - never on an ordinary question. `message`
+   * may be empty for the very first message of that opening; Ask reads it as "start".
+   */
+  ask: (message: string, groundId?: string, openedFrom?: 'check_in_setup'): Promise<AskReply> =>
+    apiClient
+      .post<AskReply>('/ask', { message, ...(groundId ? { groundId } : {}), ...(openedFrom ? { openedFrom } : {}) })
+      .then(r => r.data),
   /** Yes or no to the one request Ask Groundwork said back. Nothing is done without a yes. */
   answer: (proposalId: string, answer: 'yes' | 'no'): Promise<AskReply> =>
     apiClient.post<AskReply>('/ask/answer', { proposalId, answer }).then(r => r.data),

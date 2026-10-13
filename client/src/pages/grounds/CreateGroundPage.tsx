@@ -10,6 +10,7 @@ import { entryApi } from '@/api/entry'
 import { SCENARIO_LABELS, GROUPS_YOU_PICK_FROM, SCENARIO_FACTS, RECOMMENDED_MOMENT, COACH_CARD, type ScenarioGroupKey } from '@/lib/scenario-catalog'
 import { coachApi, MIN_INTENTION_LENGTH, COACHING_PRICE } from '@/api/coach'
 import { useAuthStore } from '@/stores/auth'
+import { planLimitNotice } from '@/lib/the-plan-limit-notice-fits-the-reader'
 import { STAGE, stepsThisPersonSees, stepAfter, stepBefore } from './the-steps-this-person-sees'
 import { theWordsForPickingASituation } from './whose-situation-is-it'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
@@ -694,6 +695,8 @@ export function CreateGroundPage() {
   const [step, setStep] = useState(1)
   /* Coaching is a paid feature, the same as the integration API. Null means nobody has ever paid. */
   const onAPaidPlan = !!useAuthStore(s => s.user?.organization?.subscriptionPlan)
+  /* B-127: only an admin can open Plan and billing, so only an admin is offered "See plans". */
+  const isAdmin = useAuthStore(s => s.user?.role === 'ADMIN')
 
   const [scenario, setScenario] = useState<GroundScenario | null>(
     () => scenarioFromParam(searchParams.get('scenario'))
@@ -1162,9 +1165,12 @@ export function CreateGroundPage() {
                 /* U.19: once the free trial's switch is on, a new organisation has no free check-ins at all. */
                 canCreate.data.noPlan ? 'No plan yet' : `You have used all ${freeLimit} of your free check-ins`
               }>
-                {canCreate.data.reason ?? 'Subscribe to open more.'} You can still look
-                around here, but this one cannot be created until then.{' '}
-                <button type="button" className="gwui-plain-link" onClick={() => navigate('/billing')}>See plans</button>
+                {planLimitNotice({
+                  reason: canCreate.data.reason ?? 'Subscribe to open more.',
+                  isAdmin,
+                  continuation: 'You can still look around here, but this one cannot be created until then.',
+                  onSeePlans: () => navigate('/billing'),
+                })}
               </Callout>
             )}
             </>)}

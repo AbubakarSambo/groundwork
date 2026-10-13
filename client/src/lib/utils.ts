@@ -68,43 +68,45 @@ function theirName(p: APerson | null | undefined): string | null {
 }
 
 /**
- * THE LEAD'S OWN VIEW, WHERE AN ADDRESS IS A LEGITIMATE LAST RESORT. W-UX-4.
+ * DECISION 115: A NAME FOR EVERY PERSON, NEVER ONE GUESSED OUT OF THEIR ADDRESS. B-058.
  *
- * `participantLabel` must never reach for the email, because a party's address can be hidden from
- * the other parties and we identify people by name to each other regardless. But the LEAD invited
- * these people by typing their addresses, so on the lead's pages the address is not a leak - and
- * before this, half a dozen places put it in the NAME position instead of as a last resort. The
- * audit's line: "Some people show as email addresses, others as names, in the same column."
+ * The same placeholder sentence the People page already serves for somebody who has not given a
+ * name (`GET /users`'s `displayName`): "Someone who has not given a name yet". `GET /grounds/:id`
+ * does not yet send that field on each participant (request 201 asks the engine to), so this is the
+ * client-side equivalent - and it replaces the old W-UX-4 rule below, which this file used to
+ * follow for the lead's own pages.
+ *
+ * THE OLD RULE, KEPT HERE SO THE HISTORY IS NOT LOST: "the LEAD invited these people by typing
+ * their addresses, so on the lead's pages the address is not a leak", and a real name was guessed
+ * out of the local part of the address ("qx7@riverbank.test" became "Qx7"). E1 on Riverbank
+ * Trading's old data (docs/existing-users-check.md) found this read as a person's actual name on
+ * the Context tab, the Report tab and My work's "Every session" lines - "Qx7 said...", a card headed
+ * "Fo4" - while the very same person was "Someone who has not given a name yet" on People. One
+ * person, two different accounts of who they are, the audit's own complaint ("Some people show as
+ * email addresses, others as names, in the same column.") repeated at a different address-handling
+ * step. Decision 115 settled this: a name slot takes the real name or the placeholder sentence,
+ * never a guess and never the plain address either.
  */
 function theNameOrAddress(p: APerson | null | undefined): string | null {
   const name = theirName(p)
   if (name) return name
-  /*
-   * THE NAME IN THE ADDRESS, NOT THE ADDRESS.
-   *
-   * Read live on 22 September 2026: a Context page whose person rows read "david@harvestline.test"
-   * and whose target groups read "SARAH@HARVESTLINE.TEST". Somebody invited by email has no name on
-   * record until they accept, and their address usually holds it - the same read the server does
-   * when it matches a name in a paste to a person. Where the local part is a desk rather than a
-   * person, the address stands, because guessing a name out of "accounts@" would be worse.
-   */
   const email = p?.email?.trim()
   if (email && !email.endsWith('@unclaimed.invalid')) {
     /*
-     * DIGITS STAY. Stripping them read every address in a hundred-person load test - person1@,
-     * person2@, person3@ - as the same person called "Person", and the targets table collapsed a
-     * hundred people's numbers into one group. A digit in somebody's address is part of who they
-     * are here, and an odd-looking name beats a hundred people sharing one.
+     * A DESK, NOT A PERSON, STILL READS AS ITS ADDRESS. "accounts@harvestline.test" is not somebody
+     * waiting on a name; it is a shared inbox, and the placeholder sentence would be a worse answer
+     * than the address it stands for.
      */
     const local = (email.split('@')[0] ?? '').replace(/[._-]+/g, ' ').trim()
     const NOT_A_PERSON = new Set(['info', 'hello', 'admin', 'sales', 'support', 'contact', 'team', 'office', 'accounts', 'finance', 'hr', 'billing', 'help', 'enquiries', 'inquiries', 'noreply', 'mail', 'post'])
-    if (local.length >= 2 && !NOT_A_PERSON.has(local.toLowerCase())) {
-      return local.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
-    }
-    return email
+    if (NOT_A_PERSON.has(local.toLowerCase())) return email
+    return SOMEONE_WITH_NO_NAME
   }
   return null
 }
+
+/** Decision 115's placeholder sentence, word for word as `GET /users` serves it. */
+export const SOMEONE_WITH_NO_NAME = 'Someone who has not given a name yet'
 
 /** The lead's own pages: name, else address, else "a colleague" or "the lead". */
 export function personLabel(p: APerson | null | undefined): string {
@@ -156,7 +158,9 @@ export function peopleLabels(
 /** A first name for a short slot, or the plain words whole: never "a" out of "a colleague". */
 export function firstNameOrLabel(p: APerson | null | undefined, forTheLead = true): string {
   const named = forTheLead ? theNameOrAddress(p) : theirName(p)
-  return named ? named.split(' ')[0] : oneWithNoName(p)
+  if (!named) return oneWithNoName(p)
+  /* The placeholder sentence is read whole, never split to its first word ("Someone"). */
+  return named === SOMEONE_WITH_NO_NAME ? named : named.split(' ')[0]
 }
 
 /**

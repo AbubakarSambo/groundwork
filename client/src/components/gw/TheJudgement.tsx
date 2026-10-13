@@ -1,4 +1,5 @@
-import { SubHeading, Panel, RowList, Row, Note, Callout, Stack } from './ui'
+import { useState } from 'react'
+import { SubHeading, Panel, RowList, Row, Note, Callout, Stack, Text } from './ui'
 
 /**
  * THE JUDGEMENT, ON THE BOARD, WHERE SOMEBODY DECIDES SOMETHING.
@@ -24,6 +25,8 @@ export interface TheJudgementRead {
   whatToDo?: { move: string; because: string; startWith?: string }[]
   whatThisCannotTellYou?: { about: string; why?: string; toKnow?: string }[]
   whatWeFailedToAsk?: { about: string; howManyMissedIt?: number }[]
+  /** Decision 141 (2): plain sentences, every number counted by code from the record. */
+  theCountsBehindThis?: { says: string[] } | null
 }
 
 /**
@@ -34,7 +37,8 @@ export interface TheJudgementRead {
  * as a table row. The engine writes `about` and `why` as full sentences, so each goes on its own
  * line, and the count is a sentence of its own under what it counts.
  *
- * The table ("See the counts behind this") is gone: the server no longer sends it to anybody.
+ * The engine's table is gone: the server no longer sends it to anybody. "See the counts behind this"
+ * came back under decision 141 (2) as plain sentences the server counts from the record by code.
  */
 export function howManyNeverReachedIt(n: number): string {
   if (n === 1) return 'One conversation never reached this.'
@@ -51,6 +55,34 @@ export function startWith(who: string): string {
   const w = who.trim().replace(/^start with\s+/i, '').replace(/^(The|A|An|Each|Every|All|Any)\b/, (d) => d.toLowerCase())
   if (/^you$/i.test(w)) return 'Start with yourself.'
   return `Start with ${w}${/[.!?]$/.test(w) ? '' : '.'}`
+}
+
+/** "See the counts behind this": folded under the judgement, opened by the reader. */
+function TheCountsBehindThis({ says }: { says: string[] }) {
+  const [open, setOpen] = useState(false)
+  if (!says.length) return null
+  return (
+    <div>
+      {/* The shared link part: navy, underlined, with a 40px box a finger can hit. */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="gwui-plain-link"
+      >
+        {open ? 'Hide the counts' : 'See the counts behind this'}
+      </button>
+      {open && (
+        <div aria-label="The counts behind this">
+          <Text size="15" ink="text" lineHeight={1.6}>
+            <Stack gap={4}>
+              {says.map((s, i) => <div key={i}>{s}</div>)}
+            </Stack>
+          </Text>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function TheJudgement({ it, hideWhatThisCannotTellYou }: {
@@ -153,13 +185,15 @@ export function TheJudgement({ it, hideWhatThisCannotTellYou }: {
               {it.whatWeFailedToAsk.map((w, i) => (
                 <div key={i}>
                   <div className="gwui-ink-text">{w.about}</div>
-                  {typeof w.howManyMissedIt === 'number' && <div className="gwui-fs-13-5 gwui-ink-sub">{howManyNeverReachedIt(w.howManyMissedIt)}</div>}
+                  {typeof w.howManyMissedIt === 'number' && <div className="gwui-note">{howManyNeverReachedIt(w.howManyMissedIt)}</div>}
                 </div>
               ))}
             </Stack>
           </div>
         </>
       )}
+
+      {!!it.theCountsBehindThis?.says?.length && <TheCountsBehindThis says={it.theCountsBehindThis.says} />}
 
     </div>
   )

@@ -10,10 +10,12 @@ import { whatThisStatusMeans } from '@/components/gw/what-a-status-means-to-the-
 import { BaselinePanel } from '@/components/gw/BaselinePanel'
 import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
 import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
+import { AnchorDayPicker, DAY_NAMES, ordinal } from '@/components/gw/AnchorDayPicker'
 import type { GroundCadence } from '@/api/grounds'
 import { SELECTABLE_CADENCES, sessionsFor, cadenceLabel } from '@/lib/cadence'
-import { SCENARIO_LABELS } from '@/lib/scenario-catalog'
-import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import { scenarioLabel } from '@/lib/scenario-catalog'
+import { whenItWas, theLastDay } from '@/lib/a-date-reads-the-same-everywhere'
+import { whenTheCheckInsLand, type Cadence } from '@/components/gw/when-the-check-ins-land'
 
 /**
  * "PEOPLE AND SETUP" (the lead's check-in tab), rebuilt from `components/gw/ui`.
@@ -90,9 +92,40 @@ function chasingSentence(days: number[]): string {
  * this used to read "1 of 12 done" beside its own label, a number with no sentence around it. Reads
  * the way "Your status" beside it already does.
  */
+/**
+ * REQUEST 194: THE DAY CHECK-INS LAND ON, IN WORDS, BESIDE "HOW OFTEN". Empty for a cadence with no
+ * day to land on (daily, one-time or as-you-decide), or when no day has been chosen.
+ */
+export function anchorDaySentence(cadence: GroundCadence, anchorDay: number | null | undefined): string {
+  if (anchorDay == null) return ''
+  if (cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY') return ` Lands on ${DAY_NAMES[anchorDay]}s.`
+  if (cadence === 'MONTHLY') return ` Lands on the ${ordinal(anchorDay)} of the month.`
+  return ''
+}
+
+/**
+ * HOW MANY OF THEIR OWN SESSIONS A PERSON HAS DONE (screens item c, 8 October). The set-up conversation is a check-in row with
+ * `isSetup: true`; it is not a session, so it is never counted ("1 of 4 sessions are done" on day one). Distinct session numbers, so a
+ * session answered and then corrected counts once.
+ */
+export function sessionsDoneBy(
+  checkIns: { status?: string; isSetup?: boolean; participantId?: string; sessionNumber?: number | null }[],
+  participants: { id: string; userId?: string | null }[],
+  userId: string | null | undefined,
+): number {
+  return new Set(
+    checkIns
+      .filter((c) => c.status === 'COMPLETED' && !c.isSetup && participants.some((p) => p.id === c.participantId && p.userId === userId))
+      .map((c) => c.sessionNumber ?? 0),
+  ).size
+}
+
 export function yourSessionsSentence(done: number, planned: number | null): string {
   if (planned == null) return `${done} session${done === 1 ? '' : 's'} done so far.`
-  return `${done} of ${planned} session${planned === 1 ? ' is' : 's are'} done.`
+  /* B-012: "9 of 6 sessions are done" is not a possible count. However it is counted, how many are
+     done can never be more than how many are planned. */
+  const clamped = Math.min(done, planned)
+  return `${clamped} of ${planned} session${planned === 1 ? ' is' : 's are'} done.`
 }
 
 export function settingsChangeSentence(c: { changedAt: string; by: 'you' | 'lead' | 'admin'; weeks: { from: number | null; to: number } | null; cadence: { from: GroundCadence | null; to: GroundCadence } | null }): string {
@@ -120,22 +153,33 @@ export function settingsChangeSentence(c: { changedAt: string; by: 'you' | 'lead
  * in this check-in, including your manager, can see what you say in it." - true for a participant,
  * who reads it on a check-in somebody else runs. But the lead reads this same sentence about her
  * own check-in: she is not being told about a manager of hers here, so the clause is dropped for
- * her. A participant never reaches this admin page, so their wording is unchanged.
+ * her.
+ *
+ * FAULT 5, 6 Oct 2026: AN ADMIN WHO IS NOT IN THE CHECK-IN IS NOT "YOU" EITHER. The comment above
+ * used to say "a participant never reaches this admin page", which stopped being true once an
+ * admin could read People and setup without being in the check-in herself (decision 5) - she saw
+ * "...can see what YOU say in it" about a check-in she says nothing in. `viewerIsInIt` is the lead
+ * or a participant; anybody else reads a third-person sentence that is true of her too.
  */
 export function peersVisibilitySentence(args: {
   peersVisible: boolean
   peersVisibleToEachOther: boolean | null
   peersDefaultHidden: boolean
   isInitiator: boolean
+  viewerIsInIt: boolean
 }): string {
-  const who = args.isInitiator
-    ? 'The people in this check-in can see what you say in it'
-    : 'The people in this check-in, including your manager, can see what you say in it'
-  if (args.peersVisible) return `${who}, once the team's report is shared. You are named to each other.`
+  const who = !args.viewerIsInIt
+    ? 'The people in this check-in can see what each other say in it'
+    : args.isInitiator
+      ? 'The people in this check-in can see what you say in it'
+      : 'The people in this check-in, including your manager, can see what you say in it'
+  const named = args.viewerIsInIt ? 'You are named to each other.' : 'They are named to each other.'
+  const notNamed = args.viewerIsInIt ? 'You are not named to each other.' : 'They are not named to each other.'
+  if (args.peersVisible) return `${who}, once the team's report is shared. ${named}`
   if (args.peersVisibleToEachOther == null) {
-    return `Not set, so this check-in uses the default for its kind: ${args.peersDefaultHidden ? 'hidden' : 'shown'}. ${who}, once the team's report is shared. ${args.peersDefaultHidden ? 'You are not named to each other.' : 'You are named to each other.'}`
+    return `Not set, so this check-in uses the default for its kind: ${args.peersDefaultHidden ? 'hidden' : 'shown'}. ${who}, once the team's report is shared. ${args.peersDefaultHidden ? notNamed : named}`
   }
-  return `${who}, once the team's report is shared. You are not named to each other.`
+  return `${who}, once the team's report is shared. ${notNamed}`
 }
 
 export function CheckInPeopleAndSetup(props: {
@@ -148,7 +192,7 @@ export function CheckInPeopleAndSetup(props: {
   viewerIsAParty: boolean
   mySessionsDone: number
   plannedSessions: number | null
-  colleagues?: { id: string; name: string }[]
+  colleagues?: { id: string; name: string; role?: string; team?: string | null }[]
   addingMany: boolean
   addManyParticipants: (picked: { id: string; name: string }[]) => void
   newParticipantEmail: string; setNewParticipantEmail: (v: string) => void
@@ -182,6 +226,9 @@ export function CheckInPeopleAndSetup(props: {
   timelineDaysDraft: number; setTimelineDaysDraft: (n: number) => void
   cadenceDraft: GroundCadence; setCadenceDraft: (c: GroundCadence) => void
   workingDaysDraft: number[]; setWorkingDaysDraft: (d: number[]) => void
+  /** Request 194: the day check-ins land on. 0-6 (Sunday-Saturday) for a weekly or fortnightly
+      rhythm, 1-31 for a monthly one, `null` for none set. */
+  anchorDayDraft: number | null; setAnchorDayDraft: (d: number | null) => void
   theTimeframeChanged: boolean
   saveSetup: { mutate: (v: any) => void; isPending: boolean }
   groundLabel: string; setGroundLabel: (v: string) => void
@@ -191,6 +238,7 @@ export function CheckInPeopleAndSetup(props: {
   numbersShared: boolean; setWhoSeesTargets: { mutate: (v: boolean) => void; isPending: boolean }
   whatsAppIsOn: boolean
   setOverWhatsApp: { mutate: (v: boolean | null) => void; isPending: boolean }
+  setSimplerWords: { mutate: (v: boolean) => void; isPending: boolean }
   expectsUnblocking: boolean; setExpectThemToUnblock: { mutate: (v: boolean) => void; isPending: boolean }
   setWorkTogether: { mutate: (v: boolean) => void; isPending: boolean }
   setChasing: { mutate: (v: { days?: number[]; stopped?: boolean; tellTheLead?: boolean }) => void; isPending: boolean }
@@ -201,12 +249,42 @@ export function CheckInPeopleAndSetup(props: {
   const {
     ground, user, navigate, isInitiator, isOrgAdmin, viewerIsAParty, mySessionsDone, plannedSessions,
   } = props
-  const canEditRunOrAdmin = isInitiator || isOrgAdmin // aSettingOnlyTheLeadMayChange / updateTimeline / peer-visibility / people-work-together
+  /*
+   * B-080: A LEAD WHO ONLY MANAGES NEVER CHECKS IN, SO SHE IS NOT GIVEN A SESSION COUNT OF HER OWN.
+   * Grace runs "Shops reorder in two days" and does not check in; `sessionsDoneBy` already leaves
+   * her set-up row out of the count (it is never a session), which left her reading "0 of 4
+   * sessions are done." for the whole month and a note that appears "once you finish your first
+   * check-in" she will never have. She reads what she actually does instead, in the prototype's
+   * own voice.
+   */
+  const viewerParticipant = (ground?.participants ?? []).find((p: any) => p.userId === user?.id)
+  const viewerManagingOnly = !!viewerParticipant?.managingOnly
+  /**
+   * FAULT 5: GATED ON WHAT THE SERVER SAYS, NOT ON ROLE.
+   *
+   * This used to be `isInitiator || isOrgAdmin`, so any org admin saw "Change" on Name, How
+   * often, Use simpler words and the other setup fields - and pressing it opened the field -
+   * even though the 1 October decision gives setup changes to the lead alone, and the server
+   * already refuses an admin's write. Naomi, an admin reading Tendai's check-in, saw and could
+   * open every one of these.
+   *
+   * `mayChangeSetup` (request 104, `GET /grounds/:id`) is the server's own answer to exactly this
+   * question - `ContextPage.tsx`'s `mayRewriteTheBrief` already reads it the same way. The
+   * `isInitiator || isOrgAdmin` fallback stays only for a payload that has not sent the field yet
+   * (older fixtures, mid-rollout), never as a second opinion once the server has spoken.
+   */
+  const canEditRunOrAdmin = typeof (ground as any)?.mayChangeSetup === 'boolean'
+    ? (ground as any).mayChangeSetup === true
+    : (isInitiator || isOrgAdmin) // aSettingOnlyTheLeadMayChange / updateTimeline / peer-visibility / people-work-together
   const canEditLeadOnly = isInitiator // setExternalVisibility / setChasing
+  /* FAULT 5: who "The people in this check-in ... say in it" is about - the lead or a participant,
+     never an admin merely reading. See `peersVisibilitySentence`. */
+  const viewerIsInIt = isInitiator || viewerIsAParty
 
   const [editingWhen, setEditingWhen] = useState(!!props.forceOpenTimeframe)
   const [editingReminders, setEditingReminders] = useState(false)
   const [editingWhere, setEditingWhere] = useState(false)
+  const [editingSimplerWords, setEditingSimplerWords] = useState(false)
   const [remindDaysText, setRemindDaysText] = useState(((ground as any)?.chaseAfterDays ?? [1]).join(', '))
   const [showAddPeople, setShowAddPeople] = useState(false)
   const [showInviteLink, setShowInviteLink] = useState(false)
@@ -280,7 +358,7 @@ export function CheckInPeopleAndSetup(props: {
               row until the server can take it - see docs/requests-to-engine.md. */}
           <FieldRow
             label="Situation"
-            value={SCENARIO_LABELS[ground.scenario as keyof typeof SCENARIO_LABELS] ?? ground.scenario}
+            value={ground.scenario ? scenarioLabel(ground.scenario, ground.brief) : ''}
           />
           {viewerIsAParty && (() => {
             const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === user?.id)
@@ -311,7 +389,7 @@ export function CheckInPeopleAndSetup(props: {
         <FieldRows>
           <FieldRow
             label="How often"
-            value={`${cadenceLabel(ground.cadence)}. ${sessionsFor(ground.timelineDays, ground.cadence) ?? '?'} session${(sessionsFor(ground.timelineDays, ground.cadence) ?? 0) === 1 ? '' : 's'} in total.`}
+            value={`${cadenceLabel(ground.cadence)}. ${sessionsFor(ground.timelineDays, ground.cadence) ?? '?'} session${(sessionsFor(ground.timelineDays, ground.cadence) ?? 0) === 1 ? '' : 's'} in total.${anchorDaySentence(ground.cadence, (ground as any).cadenceAnchorDay)}`}
             action={canEditRunOrAdmin ? <Button kind="quiet" size="small" onClick={() => setEditingWhen((v) => !v)}>Change</Button> : undefined}
           />
           <FieldRow
@@ -329,14 +407,36 @@ export function CheckInPeopleAndSetup(props: {
               if (!end) return `Started ${startText}. Runs for ${ground.timelineDays ?? '?'} days.`
               const daysLeft = (ground as any).daysLeft
               const left = daysLeft != null ? ` ${daysLeft} day${daysLeft === 1 ? '' : 's'} left.` : ''
-              return `${startText} to ${whenItWas(end, 'dayAndMonthLong')}.${left}`
+              return `${startText} to ${theLastDay(end, start)}.${left}`
             })()}
+            /*
+             * B-018: THE PROTOTYPE'S OWN "GIVE IT MORE TIME" BUTTON (check-in-people-and-setup.txt:
+             * "How long … Give it more time"), MISSING HERE. The only way in was the warning that
+             * appears in the last week of a check-in - so extending it early, before that warning
+             * ever shows, had no button anywhere. Opens the same timeframe editor "How often"'s own
+             * "Change" button does (it holds the "Ends on" field this actually extends).
+             */
+            action={canEditRunOrAdmin ? <Button kind="quiet" size="small" onClick={() => setEditingWhen(true)}>Give it more time</Button> : undefined}
           />
           {props.whatsAppIsOn && (ground as any)?.orgHasWhatsApp && (
             <FieldRow
               label="Where people answer"
               value={(ground as any).overWhatsApp === true ? 'On WhatsApp' : (ground as any).overWhatsApp === false ? 'In Groundwork' : 'Whatever this organisation does'}
               action={canEditRunOrAdmin ? <Button kind="quiet" size="small" onClick={() => setEditingWhere((v) => !v)}>Change</Button> : undefined}
+            />
+          )}
+          {/*
+           * "USE SIMPLER WORDS" (6 October answer). Read and changed only by the lead of this
+           * check-in, or an admin in this organisation - the same reach as every other row here,
+           * since a plain participant never opens this page at all (GroundPage.tsx sends them to
+           * GroundParticipantPage instead). Gated again here, defensively, so the row cannot appear
+           * if that ever changes.
+           */}
+          {canEditRunOrAdmin && (
+            <FieldRow
+              label="Use simpler words"
+              value={(ground as any).simplerWords ? 'On' : 'Off'}
+              action={<Button kind="quiet" size="small" onClick={() => setEditingSimplerWords((v) => !v)}>Change</Button>}
             />
           )}
           <FieldRow
@@ -350,7 +450,10 @@ export function CheckInPeopleAndSetup(props: {
           {viewerIsAParty && (
             <>
               <FieldRow label="Your status" value={statusSentence(whatThisStatusMeans(ground.status))} />
-              <FieldRow label="Your sessions" value={yourSessionsSentence(mySessionsDone, plannedSessions)} />
+              <FieldRow
+                label="Your sessions"
+                value={viewerManagingOnly ? 'You check in when you choose. Use Check in yourself any time.' : yourSessionsSentence(mySessionsDone, plannedSessions)}
+              />
             </>
           )}
         </FieldRows>
@@ -379,33 +482,56 @@ export function CheckInPeopleAndSetup(props: {
             <TextField
               id="ends-on"
               type="date"
-              value={(() => {
-                const from = props.startsAtOnRecord ? new Date(props.startsAtOnRecord) : props.createdAtOnRecord ? new Date(props.createdAtOnRecord) : new Date()
-                const end = new Date(from.getTime() + props.timelineDaysDraft * 86_400_000)
-                return Number.isFinite(end.getTime()) ? end.toISOString().slice(0, 10) : ''
-              })()}
+              value={theEndOnTheField(props.startsAtOnRecord, props.createdAtOnRecord, props.timelineDaysDraft)}
               onChange={(e) => {
                 const from = props.startsAtOnRecord ? new Date(props.startsAtOnRecord) : props.createdAtOnRecord ? new Date(props.createdAtOnRecord) : new Date()
                 const days = Math.round((new Date(e.target.value).getTime() - from.getTime()) / 86_400_000)
                 if (Number.isFinite(days) && days >= 1) props.setTimelineDaysDraft(days)
               }}
             />
-            <Select value={props.cadenceDraft} onChange={(e) => props.setCadenceDraft(e.target.value as GroundCadence)} aria-label="Session cadence">
+            <Select
+              value={props.cadenceDraft}
+              onChange={(e) => {
+                const c = e.target.value as GroundCadence
+                props.setCadenceDraft(c)
+                /* A day picked for one rhythm means something different, or nothing, in another -
+                   the same rule TheSetup.tsx's own picker follows (request 194). */
+                if (c !== props.cadenceDraft) props.setAnchorDayDraft(null)
+              }}
+              aria-label="Session cadence"
+            >
               {SELECTABLE_CADENCES.map((c) => <option key={c.cadence} value={c.cadence}>{c.label}</option>)}
             </Select>
+            {/*
+              REQUEST 194 (8 October 2026): THE SAME DAY PICKER SETUP ALREADY OFFERS, NOW HERE TOO,
+              so a lead can change the day check-ins land on after the check-in has started, not only
+              while it is being created. Applies from the next session that is made; a session
+              already made keeps its date (docs/answers-from-engine.md, "Request 194, answered").
+            */}
+            {(props.cadenceDraft === 'WEEKLY' || props.cadenceDraft === 'FORTNIGHTLY' || props.cadenceDraft === 'MONTHLY') && (
+              <AnchorDayPicker cadence={props.cadenceDraft} anchorDay={props.anchorDayDraft} onAnchorDay={props.setAnchorDayDraft} idPrefix="people-and-setup" />
+            )}
             {props.cadenceDraft !== 'ONE_TIME' && (
               <WhichDaysTheyWork value={props.workingDaysDraft} onChange={props.setWorkingDaysDraft} />
             )}
             <Note>
-              {props.timelineDaysDraft} days, {sessionsFor(props.timelineDaysDraft, props.cadenceDraft) ?? 1} session{(sessionsFor(props.timelineDaysDraft, props.cadenceDraft) ?? 1) === 1 ? '' : 's'}.
+              {(() => {
+                /* Counted the way setup and the server count it (journey test, 12 October 2026): the sessions that open up to the end. */
+                const n = sessionsUpToTheEnd(props) ?? sessionsFor(props.timelineDaysDraft, props.cadenceDraft) ?? 1
+                return `${props.timelineDaysDraft} days, ${n} session${n === 1 ? '' : 's'}.`
+              })()}
               {' '}Sessions already completed are never removed. On the last one, everybody is asked
               how this should close, and it ends on the answer you agree.
+              {/* Request 194, answered: a session already made keeps its own date. */}
+              {(props.cadenceDraft === 'WEEKLY' || props.cadenceDraft === 'FORTNIGHTLY' || props.cadenceDraft === 'MONTHLY') && (
+                <> The day you choose applies from the next check-in on. A session already made keeps its own date.</>
+              )}
             </Note>
             <Button
               kind="secondary"
               size="small"
               disabled={!props.theTimeframeChanged || props.saveSetup.isPending}
-              onClick={() => props.saveSetup.mutate({ timelineDays: props.timelineDaysDraft, cadence: props.cadenceDraft, workingDays: props.workingDaysDraft })}
+              onClick={() => props.saveSetup.mutate(theTimeframeToSave(props))}
             >
               Save timeframe
             </Button>
@@ -424,6 +550,18 @@ export function CheckInPeopleAndSetup(props: {
                 { key: 'on', label: 'On WhatsApp', description: 'The check-in, the reminders and the report go to their phone. They reply to the message and that reply is their answer.' },
                 { key: 'in', label: 'In Groundwork', description: 'This one stays here even though your organisation has a number. For a conversation you would rather was not on somebody’s phone.' },
               ]}
+            />
+          </Panel>
+        )}
+
+        {editingSimplerWords && canEditRunOrAdmin && (
+          <Panel>
+            <SwitchRow
+              title="Use simpler words"
+              detail="Everybody in this check-in is spoken to in short sentences and everyday words, and what is sent to them afterwards is written the same way."
+              on={!!(ground as any).simplerWords}
+              onChange={(on) => props.setSimplerWords.mutate(on)}
+              disabled={props.setSimplerWords.isPending}
             />
           </Panel>
         )}
@@ -469,7 +607,12 @@ export function CheckInPeopleAndSetup(props: {
       {/* NOT IN THE PROTOTYPE HERE - kept, one section each (each already carries its own single
           heading - "What doing well looks like", "Where this stood at the start" - so this does not
           wrap them in a second, redundant heading). List for Hafsah. */}
-      <BaselinePanel groundId={props.id} canState={isInitiator} />
+      {/* B-141: version 1's "Stated at the start" date is the check-in's own start, the same
+          fallback (`startsAt`, else `createdAt`) the server uses to measure the timeline - never
+          whatever day the version-1 row happened to be written. */}
+      {/* `startsAtOnRecord` is '' (not null) when nothing is set - `||`, not `??`, so an empty
+          string falls through to `createdAtOnRecord` the same as a missing one would. */}
+      <BaselinePanel groundId={props.id} canState={isInitiator} groundStartedAt={props.startsAtOnRecord || props.createdAtOnRecord} />
       <StartingPointPanel groundId={props.id} canRecord={isInitiator} />
 
       <Section heading="Who sees what">
@@ -500,6 +643,7 @@ export function CheckInPeopleAndSetup(props: {
             peersVisibleToEachOther: (ground as any)?.peersVisibleToEachOther ?? null,
             peersDefaultHidden: props.peersDefaultHidden,
             isInitiator,
+            viewerIsInIt,
           })}
           on={props.peersVisible}
           onChange={(on) => props.setPeerVisibility.mutate(on)}
@@ -536,10 +680,22 @@ export function CheckInPeopleAndSetup(props: {
         />
         {/* THE TEAM'S REPORT SHARING IS NOT A SETTING HERE. Release happens from the report itself
             (Board/Context), so this row says the true, current state rather than offering a control
-            this tab does not have. */}
+            this tab does not have.
+
+            FAULT 4 (LIVE RE-WALK): "NOT SHARED YET... WHEN IT IS READY" READ AS IF IT WERE NOT
+            READY, FOR A GROUND THAT WAS. This said so for every unreleased report, including a
+            `REPORT_READY` one - while the header (GroundAdminPage.tsx's own `reportState`) read
+            "The report is ready to read." about the very same ground. Distinguished now: once the
+            report is actually ready, this says so, in the same words the header uses. */}
         <FieldRow
           label="The team's report"
-          value={ground.report?.releasedAt ? `Shared on ${whenItWas(ground.report.releasedAt, 'dayAndMonthLong')}.` : 'Not shared yet. Share it from the report when it is ready.'}
+          value={
+            ground.report?.releasedAt
+              ? `Shared on ${whenItWas(ground.report.releasedAt, 'dayAndMonthLong')}.`
+              : ground.status === 'REPORT_READY'
+                ? 'The report is ready. It has not been shared yet.'
+                : 'Not shared yet. Share it from the report when it is ready.'
+          }
         />
         </FieldRows>
         {props.settingsChangeCount > 0 && (
@@ -574,35 +730,62 @@ export function CheckInPeopleAndSetup(props: {
         />
       </Section>
 
-      {/* "ENDING IT": THE PROTOTYPE'S OWN SENTENCE WOULD BE FALSE. No route ends a check-in - see
-          grounds.controller.ts. The product's true state is kept instead: archiving is done by hand
-          for now, and the real "delete it if it was only a test" control, which is not in the
-          prototype and is not dropped for that reason. */}
+      {/*
+        FAULT 7, 6 Oct 2026: THIS STILL SAID "YOU CANNOT END A CHECK-IN YOURSELF YET" AFTER
+        `/grounds/:id/end` (EndingPage.tsx) STARTED LETTING THE LEAD DO EXACTLY THAT - "Save the
+        outcome and end it". The comment above this section was itself the old, now-stale reason:
+        true when it was written (no route ended a check-in), false since the ending page shipped.
+        `ResolutionPanel.tsx`'s own `canChoose` is the server's answer to who may actually decide
+        there (`viewerIsLead || (!leadDecides && viewerIsParty)`); on this page, reached only by
+        the lead or an admin, that is `isInitiator` alone - an admin reading here still only reads
+        the ending page, same as the rest of this tab's "the lead decides setup" rule. She keeps
+        the old sentence and the mail fallback; the lead is pointed at the page that now exists.
+        A plain `<a href>`, not `Button to`, because `Button`'s `to` always renders a react-router
+        `Link` - this page is also mounted outside a Router in its own tests - and `kind="secondary"`
+        to stay within this page's one-primary-button budget (the-rebuilt-pages-use-only-the-new-
+        parts.spec.ts), matching the "Ask us to end this check-in" button beside it.
+      */}
       <Section heading="Ending it">
         <Callout>
           When it ends, nobody can add to it and everything stays as it is. Each person keeps their
           own history. This can't be undone.
         </Callout>
-        <Note>
-          You cannot end a check-in yourself yet. Ask us and we will end it for you, usually the same
-          day.
-          {isOrgAdmin && !isInitiator && (props.whoIsInThisLeadName
-            ? ` ${props.whoIsInThisLeadName} runs it, so ending it ends something they are running.`
-            : ' Somebody else runs it, so ending it ends something they are running.')}
-        </Note>
-        <a
-          className="gwui-btn gwui-btn-secondary gwui-btn-red-text"
-          href={`mailto:hello@myground.work?subject=Archive check-in: ${encodeURIComponent(ground.label)}`}
-        >
-          Ask us to end this check-in
-        </a>
+        {isInitiator ? (
+          <>
+            <Note>You can end this check-in when it has done its job.</Note>
+            <a className="gwui-btn gwui-btn-secondary" href={`/grounds/${props.id}/end`}>Decide how it ends</a>
+          </>
+        ) : (
+          <>
+            <Note>
+              You cannot end a check-in yourself yet. Ask us and we will end it for you, usually the same
+              day.
+              {isOrgAdmin && (props.whoIsInThisLeadName
+                ? ` ${props.whoIsInThisLeadName} runs it, so ending it ends something they are running.`
+                : ' Somebody else runs it, so ending it ends something they are running.')}
+            </Note>
+            <a
+              className="gwui-btn gwui-btn-secondary gwui-btn-red-text"
+              href={`mailto:hello@myground.work?subject=Archive check-in: ${encodeURIComponent(ground.label)}`}
+            >
+              Ask us to end this check-in
+            </a>
+          </>
+        )}
 
-        {isInitiator && (
+        {/*
+          B-152: "DELETE THIS CHECK-IN" WAS STILL OFFERED ONCE IT COULD NOT WORK. Once somebody
+          else has answered, deleting is a record, not a test, and the server refuses it - but the
+          button stayed on screen, next to a sentence that then sent people to "Ask us to end it
+          instead", which does not exist (the lead already has "Decide how it ends", just above).
+          `whoIsInThisParties` is the same roster this tab already reads elsewhere for who has
+          answered; once anyone but the initiator has, this panel has nothing left to offer.
+        */}
+        {isInitiator && !(props.whoIsInThisParties ?? []).some((p) => p.done && !p.isSelf) && (
           <Panel>
             <Note>
               If this was only a test, you can delete it. Everything goes, including the conversation,
-              the sessions and anything uploaded. If somebody else has already answered, it cannot be
-              deleted, because it is now a record. Ask us to end it instead.
+              the sessions and anything uploaded.
             </Note>
             {props.deleteError && <Note tone="error">{props.deleteError}</Note>}
             {props.confirmDelete ? (
@@ -625,4 +808,32 @@ export function CheckInPeopleAndSetup(props: {
           check-in's board and reports, which is the product's true, current state. */}
     </div>
   )
+}
+
+/** The date "Ends on" shows: the start (or the day it was made) plus the length in days. */
+export function theEndOnTheField(startsAtOnRecord: string | null | undefined, createdAtOnRecord: string | null | undefined, days: number): string {
+  const from = startsAtOnRecord ? new Date(startsAtOnRecord) : createdAtOnRecord ? new Date(createdAtOnRecord) : new Date()
+  const end = new Date(from.getTime() + days * 86_400_000)
+  return Number.isFinite(end.getTime()) ? end.toISOString().slice(0, 10) : ''
+}
+
+/**
+ * WHAT "SAVE TIMEFRAME" SENDS (journey test, 12 October 2026). The end date shown in "Ends on" goes too, so the server counts the
+ * sessions up to it the way setup does and stores the end, rather than dividing calendar days by the rhythm's gap.
+ */
+export function theTimeframeToSave(p: { startsAtOnRecord?: string | null; createdAtOnRecord?: string | null; timelineDaysDraft: number; cadenceDraft: string; workingDaysDraft: number[]; anchorDayDraft: number | null }) {
+  const endsOn = theEndOnTheField(p.startsAtOnRecord, p.createdAtOnRecord, p.timelineDaysDraft)
+  return { timelineDays: p.timelineDaysDraft, cadence: p.cadenceDraft, workingDays: p.workingDaysDraft, cadenceAnchorDay: p.anchorDayDraft, ...(endsOn ? { endsOn } : {}) }
+}
+
+/** How many sessions open from the start (or the day it was made, "Now") up to the end on the field: setup's own count. */
+export function sessionsUpToTheEnd(p: { startsAtOnRecord?: string | null; createdAtOnRecord?: string | null; timelineDaysDraft: number; cadenceDraft: string; workingDaysDraft: number[]; anchorDayDraft: number | null }): number | null {
+  if (!['DAILY', 'WEEKLY', 'FORTNIGHTLY', 'MONTHLY'].includes(p.cadenceDraft)) return null
+  const endsOn = theEndOnTheField(p.startsAtOnRecord, p.createdAtOnRecord, p.timelineDaysDraft)
+  if (!endsOn) return null
+  const startsAt = p.startsAtOnRecord ? new Date(p.startsAtOnRecord) : null
+  const today = p.createdAtOnRecord ? new Date(p.createdAtOnRecord) : new Date()
+  const all = whenTheCheckInsLand({ cadence: p.cadenceDraft as Cadence, anchorDay: p.anchorDayDraft, startsAt, workingDays: p.workingDaysDraft, today, howMany: 2000 })
+  const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return Math.max(1, all.filter((d) => iso(d) <= endsOn).length)
 }

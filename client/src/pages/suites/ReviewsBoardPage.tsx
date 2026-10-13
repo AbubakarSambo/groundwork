@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { reviewsApi, type NextReview, type YourReview } from '@/api/suites'
+import { reviewsApi, type NextReview, type YourReview, type AppealToDecide, type AppealWaitingForAnotherAdmin } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
+import { useSuitesOnForYou } from '@/hooks/useSuitesOnForYou'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { Page, PageTitle, Section, Panel, Button, Note, Empty, Tag, RowList, Row } from '@/components/gw/ui'
 import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
@@ -38,13 +39,22 @@ const monthOf = (day: string) => `${whenItWas(at(day), 'month', 'UTC')} ${day.sl
 /**
  * "IT" HAD NOTHING BEFORE IT (group 2's review, fault E): while the suite was off, or before the
  * organisation's own answer had loaded, the subtitle read "It is built from..." alone - "it" naming
- * nothing. The product's own cadence for this suite (the-ten-suites.ts's own "A review every 6
- * months...") is the true default when the organisation has not answered differently; when it has,
- * its own answer is used instead, so an organisation reviewing every 12 months still reads a true
- * sentence.
+ * nothing. That was first fixed by filling in a made-up default ("every 6 months") whenever the
+ * organisation had not set its own. But Msingi Foods has not set how often, and that made-up
+ * default is not true of it - Imani Hassan read "A review happens every 6 months." as if it were
+ * the organisation's own answer (engine workspace, 9 October night, test bed copy a).
+ *
+ * So now: when the organisation has set `every`, its own sentence opens the subtitle, by name, as
+ * before. When it has not (or the answer has not loaded yet), that first sentence is left out
+ * entirely, and the rest reads as its own sentence, starting with "A review" rather than the
+ * dangling "It" the original fault was about.
  */
-const DEFAULT_EVERY = 'every 6 months'
-const everySays = (raw: string | null | undefined) => raw?.replace(/^Every /, 'every ') || DEFAULT_EVERY
+/** Exported for B-140: the suites switchboard (`SuitesPage.tsx`) uses the same rule for the
+    reviews suite's own card, so it never shows a made-up cadence either. */
+export const everySays = (raw: string | null | undefined) => {
+  const every = raw?.replace(/^Every /, 'every ').trim()
+  return every || null
+}
 
 export function ReviewsBoardPage() {
   const user = useAuthStore(s => s.user)
@@ -56,16 +66,32 @@ export function ReviewsBoardPage() {
   })
   const refused = (error as { response?: { status?: number; data?: { message?: string } } } | null)?.response
   /* The reviews about the reader themselves, whoever they are, once somebody has started them. */
-  const mine = useQuery({ queryKey: ['suite-reviews-mine'], queryFn: reviewsApi.mine, enabled: !!user, retry: false })
+  const suitesOn = useSuitesOnForYou()
+  const mine = useQuery({ queryKey: ['suite-reviews-mine'], queryFn: reviewsApi.mine, enabled: !!user && suitesOn.reviews, retry: false })
   const yours = mine.data ?? []
   const months = [...new Set((data?.next ?? []).map(n => n.dueOn.slice(0, 7)))]
+  /*
+   * AN ADMIN'S OWN APPEALS (decision 113, engine workspace, 9 October: "the review appeal is
+   * drawn" - "Not drawn yet: the admin's list of appeals ... on Today and the reviews board").
+   * `GET /suites/reviews/appeals` is admin only, so this is never asked for anybody else.
+   */
+  const appeals = useQuery({
+    queryKey: ['suite-review-appeals'],
+    queryFn: reviewsApi.appealsToDecide,
+    enabled: !!user && user.role === 'ADMIN',
+    retry: false,
+  })
+  const appealRows = appeals.data?.appeals ?? []
+  const waitingForAnotherAdmin = appeals.data?.waitingForAnotherAdmin ?? []
 
   return (
     <Page>
       <PageTitle
         crumbs={[{ label: 'Suites', to: maySeeSuites(user?.role) ? '/settings/suites' : undefined }, { label: 'Performance reviews' }]}
         title="Performance reviews"
-        subtitle={`A review happens ${everySays(data?.every)}. It is built from what each person did and proved in their check-ins, with their own view beside it. There are no scores.`}
+        subtitle={everySays(data?.every)
+          ? `A review happens ${everySays(data?.every)}. It is built from what each person did and proved in their check-ins, with their own view beside it. There are no scores.`
+          : 'A review is built from what each person did and proved in their check-ins, with their own view beside it. There are no scores.'}
       />
 
       <Panel>
@@ -78,6 +104,14 @@ export function ReviewsBoardPage() {
         <Section heading="Your reviews">
           <RowList label="Your reviews">
             {yours.map(y => <YourOwn key={y.id} y={y} />)}
+          </RowList>
+        </Section>
+      )}
+      {(appealRows.length > 0 || waitingForAnotherAdmin.length > 0) && (
+        <Section heading="Appeals waiting for you">
+          <RowList label="Appeals waiting for you">
+            {appealRows.map(a => <AnAppealRow key={a.id} a={a} />)}
+            {waitingForAnotherAdmin.map(a => <AnAppealWaitingRow key={a.id} a={a} />)}
           </RowList>
         </Section>
       )}
@@ -132,8 +166,8 @@ function AReviewRow({ n }: { n: NextReview }) {
     <tr>
       <th scope="row"><span className="gwui-record-table-label" aria-hidden="true">Person</span>{n.name}</th>
       <td>
-        {n.writtenWith && <span className="gwui-record-table-label" aria-hidden="true">Written with</span>}
-        {n.writtenWith ?? ''}
+        {(n.writtenWithSays ?? n.writtenWith) && <span className="gwui-record-table-label" aria-hidden="true">Written with</span>}
+        {n.writtenWithSays ?? n.writtenWith ?? ''}
       </td>
       <td>
         {n.standsSays}
@@ -148,6 +182,40 @@ function AReviewRow({ n }: { n: NextReview }) {
             : n.mayStart && <Button kind="secondary" size="small" onClick={() => start.mutate()} disabled={start.isPending} aria-label={`Start ${n.name}’s review`}>Start it</Button>}
       </td>
     </tr>
+  )
+}
+
+/**
+ * ONE ROW PER APPEAL AN ADMIN MAY DECIDE. The heading and sentence here are plain ones, not the
+ * prototype's own words (it has none for this yet) - the engine workspace's own note says so, and
+ * to change them once the prototype does. Every fact in the sentence (who, by when, who reviewed
+ * them) is the server's.
+ */
+function AnAppealRow({ a }: { a: AppealToDecide }) {
+  const month = whenItWas(at(a.dueOn), 'month', 'UTC')
+  const by = a.reviewerFirstName ? ` ${a.reviewerFirstName} decided it on ${a.appealedOn}.` : ` It was decided on ${a.appealedOn}.`
+  return (
+    <Row columns="minmax(0, 1fr) auto">
+      <div>
+        <b>{`${a.firstName}’s review, ${month}`}</b>
+        <p className="gwui-panel-text">{`${a.name} has appealed the decision.${by}`}</p>
+      </div>
+      <Link className="gwui-plain-link" to={`/suite/reviews/${a.id}`} aria-label={`Open ${a.name}’s appeal`}>Open it</Link>
+    </Row>
+  )
+}
+
+/** An appeal the reader decided the review of, now waiting on a second admin who is not them. */
+function AnAppealWaitingRow({ a }: { a: AppealWaitingForAnotherAdmin }) {
+  const month = whenItWas(at(a.dueOn), 'month', 'UTC')
+  return (
+    <Row columns="minmax(0, 1fr) auto">
+      <div>
+        <b>{`${a.firstName}’s review, ${month}`}</b>
+        <p className="gwui-panel-text">{a.says}</p>
+      </div>
+      <Link className="gwui-plain-link" to={`/suite/reviews/${a.id}`} aria-label={`Open ${a.name}’s appeal`}>Open it</Link>
+    </Row>
   )
 }
 

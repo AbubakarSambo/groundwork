@@ -1,9 +1,41 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { suitesApi, type AdminSuite, type Answers, type Question, type SuitesForAnAdmin, type SuitesForALead, type SuitesForADutyHolder } from '@/api/suites'
+import { suitesApi, reviewsApi, yourRequestsApi, type AdminSuite, type Answers, type Question, type SuitesForAnAdmin, type SuitesForALead, type SuitesForADutyHolder } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
-import { Page, PageTitle, Section, Panel, Button, Tag, Toggle, Note, Empty, RowList, Row, FieldLabel, TextField, TextArea, Select } from '@/components/gw/ui'
+import { useSuitesOnForYou } from '@/hooks/useSuitesOnForYou'
+import { Page, PageTitle, Section, Panel, Button, Tag, Toggle, Note, Empty, RowList, Row, FieldLabel, TextField, TextArea, Select, Modal } from '@/components/gw/ui'
+import { QueueLink } from './QueuePage'
+import { everySays } from './ReviewsBoardPage'
+
+/**
+ * B-140: THE SAME MADE-UP CADENCE B-119 ALREADY FIXED ON THE REVIEWS BOARD, STILL HERE. The
+ * catalog's own line for the reviews suite (`the-ten-suites.ts`, `key: 'reviews'`) is one sentence
+ * for every organisation, "A review every 6 months, built from...", which reads as a real setting
+ * even for an organisation like Kijani Foods that has never set how often (`every: null`). `GET
+ * /suites` does not carry each organisation's own cadence, only `GET /suites/reviews/board` does
+ * (the same call the reviews board itself reads it from), so this suite's card alone asks that too,
+ * once it is on, and swaps the made-up clause out exactly as `everySays` already does on the board.
+ */
+function reviewsLineFor(line: string, every: string | null | undefined): string {
+  const said = everySays(every)
+  return said ? line : 'A review is built from what each person did and proved, with their own view beside it.'
+}
+
+/** A suite's own description, with B-140's fix applied to the reviews suite alone. */
+function SuiteLine({ s }: { s: { key: string; line: string; on?: boolean } }) {
+  /* The lead's own list (`SuitesForALead`) carries only the suites that are already on, with no
+     `on` field of its own - so a lead's card is "reviews" and on whenever its key says so. */
+  const isReviews = s.key === 'reviews' && s.on !== false
+  const { data } = useQuery({
+    queryKey: ['suite-reviews-board-for-switchboard'],
+    queryFn: reviewsApi.board,
+    enabled: isReviews,
+    retry: false,
+  })
+  const line = isReviews ? reviewsLineFor(s.line, data?.every) : s.line
+  return <p className="gwui-panel-text">{line}</p>
+}
 
 /**
  * THE SUITES PAGE (E, #/settings/suites, group 2 piece 4). The wording is copied from
@@ -68,6 +100,18 @@ export function SuitesPage() {
   })
   const refused = (error as { response?: { status?: number; data?: { message?: string } } } | null)?.response
   const orgName = user?.organization?.name?.trim() || user?.organizationName || ''
+  /* "Your own leave and spending requests" only where a suite is on for this person: with both
+     off, the link opened a page that only says the suite is off (fault 2, live re-walk). The same
+     queries and query keys Today already uses, so this costs nothing more than Today already pays,
+     and the two pages agree on when the link shows.
+     FAULT 1 OF THE LIVE WALK (6 October): hours gates it the same way, and the link's own words
+     change with it - "Your own requests" once hours are part of what it opens. */
+  const suitesOn = useSuitesOnForYou()
+  const yourLeave = useQuery({ queryKey: ['your-leave'], queryFn: yourRequestsApi.leave, enabled: !!user && suitesOn.leave, retry: false, staleTime: 60_000 })
+  const yourSpending = useQuery({ queryKey: ['your-spending'], queryFn: yourRequestsApi.spending, enabled: !!user && suitesOn.spending, retry: false, staleTime: 60_000 })
+  const yourHours = useQuery({ queryKey: ['your-hours'], queryFn: yourRequestsApi.hours, enabled: !!user && suitesOn.hours, retry: false, staleTime: 60_000 })
+  const aSuiteIsOnForYou = yourLeave.isSuccess || yourSpending.isSuccess || yourHours.isSuccess
+  const requestsLinkLabel = yourHours.isSuccess ? 'Your own requests' : 'Your own leave and spending requests'
 
   return (
     <Page>
@@ -100,8 +144,13 @@ export function SuitesPage() {
       {data?.reader === 'lead' && <ForALead page={data} />}
       {data?.reader === 'duty' && <ForADutyHolder page={data} />}
 
-      {/* Every reader has requests of their own, including a member, whom this page otherwise refuses. */}
-      <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/mine">Your own leave and spending requests</Link></p>
+      {/* Every reader has requests of their own, including a member, whom this page otherwise
+          refuses - but only once a suite is actually on for them (fault 2, live re-walk): with
+          both leave and spending off, this opened a page that only says the suite is off. */}
+      {aSuiteIsOnForYou && (
+        <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/mine">{requestsLinkLabel}</Link></p>
+      )}
+      <QueueLink userId={user?.id} />
     </Page>
   )
 }
@@ -116,7 +165,7 @@ function ForALead({ page }: { page: SuitesForALead }) {
           {page.suites.map(s => (
             <Panel as="section" key={s.key} aria-label={s.name}>
               <h3 className="gwui-panel-heading">{s.name}</h3>
-              <p className="gwui-panel-text">{s.line}</p>
+              <SuiteLine s={s} />
               {BOARDS[s.key] && <Link className="gwui-plain-link" to={BOARDS[s.key].to}>Open its board</Link>}
             </Panel>
           ))}
@@ -173,30 +222,74 @@ function ForAnAdmin({ page }: { page: SuitesForAnAdmin }) {
 function ASuite({ s, people, forYou }: { s: AdminSuite; people: SuitesForAnAdmin['people']; forYou?: boolean }) {
   const qc = useQueryClient()
   const [asking, setAsking] = useState(false)
-  const [answers, setAnswers] = useState<Record<string, string>>(() => startFrom(s))
+  const [answers, setAnswers] = useState<Record<string, string>>(() => startFrom(s, people))
   const [problem, setProblem] = useState<string | null>(null)
   const flip = useMutation({
     mutationFn: ({ on, given }: { on: boolean; given?: Answers }) => suitesApi.switch(s.key, on, given),
-    onSuccess: (page) => { setProblem(null); setAsking(false); qc.setQueryData(['suites'], page) },
+    onSuccess: (page) => { setProblem(null); setAsking(false); qc.setQueryData(['suites'], page); qc.invalidateQueries({ queryKey: ['suites-on-for-you'] }) },
     onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
   })
 
+  /*
+   * FAULT 7D OF THE LIVE WALK (6 October): switching a suite off was one click, with no warning
+   * even while requests or hours were waiting in it. `switch(reader, key, { on: false })`
+   * (suites.service.ts) only sets `isOn: false` and keeps the suite's stored answers - it deletes
+   * nothing, and a request already filed stays exactly as it is, refused only from being added to
+   * (a-suite-that-is-off-says-what-to-do.ts) until it is switched on again, so what the confirmation
+   * below says is true.
+   */
+  const [confirmingOff, setConfirmingOff] = useState(false)
   function pressed() {
     setProblem(null)
-    if (s.on) return flip.mutate({ on: false })
+    if (s.on) { setConfirmingOff(true); return }
     if (s.questions.length === 0) return flip.mutate({ on: true })
-    setAnswers(startFrom(s))
+    setAnswers(startFrom(s, people))
+    setAsking(true)
+  }
+  /*
+   * "SEE OR CHANGE ITS SETTINGS" (screen fault 6). A suite already on, with questions of its own,
+   * used to offer no way back into them - only the switch, which turns the suite off rather than
+   * opening them. `GET /suites` already serves every suite's own stored answers (`s.answers`,
+   * read by `startFrom` below), and `PUT /suites/:key` already accepts `{ on: true, answers }` to
+   * save them without touching the switch, so this opens the same form, filled in, and saves
+   * through the same call `pressed` already uses to switch on - it just never sends `on: false`.
+   */
+  function openSettings() {
+    setProblem(null)
+    setAnswers(startFrom(s, people))
     setAsking(true)
   }
   const allAnswered = s.questions.every(q => (answers[q.id] ?? '').trim() !== '')
+  /*
+   * B-124 FOR AN EXISTING ORGANISATION (coordinator follow-up, 9 October). "These settings were set
+   * up another way, so they cannot be changed here yet." used to refuse the form outright for a
+   * suite like Kijani Foods' leave, stored before this page existed (`daysAYear` and a person's id
+   * where today's questions ask `days` and a choice of "Their manager"/"An admin") - the real bug
+   * B-124 names: an existing admin with nothing to lose by looking could not even open the door, and
+   * could not change a single thing the server already lets an admin change.
+   *
+   * `startFrom` now reads every current question under its own id first, falls back to the one
+   * legacy rename this product actually made (`days` from the even older `daysAYear`), and leaves
+   * anything else blank rather than guess - a stored value of the wrong shape for its question (a
+   * person's id where a choice is asked) is exactly as unsafe to prefill as one under the wrong
+   * name, so it is treated the same way: blank, not guessed at. The form always opens now; a plain
+   * note below says when something could not be read, and `allAnswered` still keeps "Save" disabled
+   * until every blank is deliberately filled in - so nothing already on record is ever replaced
+   * except by the admin's own, explicit save, never just by opening the form to look.
+   */
+  const hadAnswersBefore = !!s.answers && Object.keys(s.answers).length > 0
+  const someUnreadable = hadAnswersBefore && s.questions.some(q => (answers[q.id] ?? '') === '')
 
   return (
     <Panel as="section" aria-label={s.name}>
       <div className="gwui-suite-head">
         <div>
           <h3 className="gwui-panel-heading">{s.name}</h3>
-          <p className="gwui-panel-text">{s.line}</p>
+          <SuiteLine s={s} />
           {s.on && BOARDS[s.key] && <Link className="gwui-plain-link" to={forYou && s.key === 'spend' ? '/suite/spend/finance' : BOARDS[s.key].to}>{forYou && s.key === 'spend' ? 'Open the requests for finance' : 'Open its board'}</Link>}
+          {s.on && s.questions.length > 0 && !asking && (
+            <Button kind="quiet" size="small" onClick={openSettings}>See or change its settings</Button>
+          )}
         </div>
         <div className="gwui-suite-switch">
           <Tag>{s.on ? 'On' : 'Off'}</Tag>
@@ -209,18 +302,35 @@ function ASuite({ s, people, forYou }: { s: AdminSuite; people: SuitesForAnAdmin
           className="gwui-suite-ask"
           onSubmit={e => { e.preventDefault(); if (allAnswered) flip.mutate({ on: true, given: answers }) }}
         >
-          <p className="gwui-panel-text">Answer these first, and it switches on.</p>
+          <p className="gwui-panel-text">{s.on ? 'Change your answers below, then save them.' : 'Answer these first, and it switches on.'}</p>
+          {someUnreadable && (
+            <Note tone="muted">Some of these were set up before this page existed, so they show blank below. Choose them now, and saving sets them from what you choose.</Note>
+          )}
           {s.questions.map(q => (
             <AQuestion key={q.id} suite={s.key} q={q} value={answers[q.id] ?? ''} people={people}
               onChange={v => setAnswers(a => ({ ...a, [q.id]: v }))} />
           ))}
           <div className="gwui-edge-acts">
-            <Button kind="primary" size="small" type="submit" disabled={!allAnswered || flip.isPending}>Switch it on</Button>
+            <Button kind="primary" size="small" type="submit" disabled={!allAnswered || flip.isPending}>{s.on ? 'Save' : 'Switch it on'}</Button>
             <Button kind="quiet" size="small" onClick={() => { setAsking(false); setProblem(null) }}>Cancel</Button>
           </div>
         </form>
       )}
       {problem && <Note tone="error">{problem}</Note>}
+
+      {confirmingOff && (
+        <Modal title={`Switch ${s.name} off?`} onClose={() => setConfirmingOff(false)}>
+          <p className="gwui-panel-text">Anything waiting in it stays as it is, and nobody can add to it until it is switched on again.</p>
+          <div className="gwui-edge-acts">
+            {/* ONE NAVY BUTTON PER PAGE: "Switch it on"/"Save" already carries that role on this
+                page (in the form above, when a suite is being switched on or its answers changed),
+                so this confirmation's own button stays secondary, the same way every other
+                row-level action here does (Approve, Mark done, Change). */}
+            <Button kind="secondary" size="small" disabled={flip.isPending} onClick={() => { setConfirmingOff(false); flip.mutate({ on: false }) }}>Switch it off</Button>
+            <Button kind="quiet" size="small" onClick={() => setConfirmingOff(false)}>Cancel</Button>
+          </div>
+        </Modal>
+      )}
     </Panel>
   )
 }
@@ -254,12 +364,48 @@ function AQuestion({ suite, q, value, people, onChange }: {
   )
 }
 
-/** What the admin answered last time, so switching on again starts from it. */
-function startFrom(s: AdminSuite): Record<string, string> {
+/**
+ * THE ONE LEGACY RENAME THIS PRODUCT ACTUALLY MADE (B-124 for an existing organisation). Before the
+ * suite's first questions were written as they are now, the leave suite stored the days a year
+ * under `daysAYear`; today's question asks for the same thing under `days`. Both names mean exactly
+ * the same number, so it is safe to read one under the other. Nothing else is renamed here: a
+ * person's id stored where a choice is asked, say, is not "the same thing under another name" - it
+ * is a different shape the current question cannot use at all, and is left blank rather than guessed.
+ */
+const LEGACY_RENAMES: Record<string, Record<string, string>> = {
+  leave: { days: 'daysAYear' },
+}
+
+/** Whether a stored value is safe to show for this particular question, never just present. */
+function readableFor(q: Question, v: unknown, people: SuitesForAnAdmin['people']): string | null {
+  if (v == null) return null
+  if (q.kind === 'person') return typeof v === 'string' && people.some(p => p.id === v) ? v : null
+  if (q.kind === 'choice') return typeof v === 'string' && q.options.includes(v) ? v : null
+  if (q.kind === 'number') {
+    const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN
+    return Number.isFinite(n) ? String(n) : null
+  }
+  /* lines */
+  if (Array.isArray(v)) return v.map(String).join('\n')
+  return typeof v === 'string' && v.trim() !== '' ? v : null
+}
+
+/**
+ * WHAT THE ADMIN ANSWERED LAST TIME, SO THE FORM STARTS FROM IT - for a suite set up on this page,
+ * and, where the meaning carries over safely, for one set up before it existed too. A field this
+ * cannot read starts blank, never guessed at: `allAnswered` then keeps "Save" disabled until the
+ * admin has deliberately chosen it, so nothing already on record can be replaced except by their own,
+ * explicit save.
+ */
+function startFrom(s: AdminSuite, people: SuitesForAnAdmin['people']): Record<string, string> {
+  const stored = (s.answers ?? {}) as Record<string, unknown>
+  const renames = LEGACY_RENAMES[s.key] ?? {}
   const out: Record<string, string> = {}
   for (const q of s.questions) {
-    const v = s.answers?.[q.id]
-    out[q.id] = Array.isArray(v) ? v.join('\n') : v == null ? '' : String(v)
+    const own = readableFor(q, stored[q.id], people)
+    const legacyKey = renames[q.id]
+    const legacy = own == null && legacyKey ? readableFor(q, stored[legacyKey], people) : null
+    out[q.id] = own ?? legacy ?? ''
   }
   return out
 }

@@ -38,15 +38,19 @@ import type { TheEndCard as EngineEndCard } from '@/api/conversation'
  */
 export function TheEndCard({
   engine,
+  beingWritten,
   leadName,
   nextOpens,
   othersCanSeeWhatYouSay,
+  whoReadsIt,
   finishing,
   whileFinishing,
   onFinish,
   onChange,
 }: {
   engine: EngineEndCard | null | undefined
+  /** True while the card is still being written, so the empty space is said to be that and not a card with nothing in it. */
+  beingWritten?: boolean
   /** The lead's first name, when the lead also answers this check-in. See whoElseAnswers. */
   leadName: string | null
   /** "Your next check-in opens tomorrow at 4pm.", when it is known. */
@@ -57,6 +61,12 @@ export function TheEndCard({
    * not loaded yet, in which case neither sentence is shown rather than guessing.
    */
   othersCanSeeWhatYouSay?: boolean
+  /**
+   * The first name of the person who runs this check-in, when that is not the reader (release check, 8 October 2026).
+   * Where nobody else answers, the reader is still not alone: the lead reads what they said, word for word. On the
+   * anchor, where the lead never answers, Juma was told "what you said today stays yours alone" while Amina read it.
+   */
+  whoReadsIt?: string | null
   finishing: boolean
   /** What to show while finishing, which takes about half a minute. */
   whileFinishing?: React.ReactNode
@@ -76,6 +86,15 @@ export function TheEndCard({
 
   return (
     <section aria-label="What I wrote down" className="gwui-ci-endcard">
+      {record.length === 0 && (
+        <p className="gwui-ci-endcard-body">
+          {beingWritten
+            ? 'I am still writing down what you said. It takes a few seconds.'
+            : engine
+              ? 'I did not find anything in your answers to write down yet. If something is missing, choose “Change something” and tell me.'
+              : 'I could not show you what I wrote down just now. It is written from your answers when you finish.'}
+        </p>
+      )}
       {record.length > 0 && (
         <div className="gwui-ci-endcard-box">
           <h2 className="gwui-ci-endcard-heading">{part()}. What is now in your record</h2>
@@ -113,7 +132,9 @@ export function TheEndCard({
         <p className="gwui-ci-endcard-body">
           {othersCanSeeWhatYouSay
             ? 'Your team will see what you said today, and a short summary of what moved.'
-            : 'Nobody else answers this check-in, so what you said today stays yours alone.'}
+            : whoReadsIt
+              ? `Nobody else answers this check-in, but ${whoReadsIt} runs it and reads what you said today.`
+              : 'Nobody else answers this check-in, so what you said today stays yours alone.'}
         </p>
       )}
 

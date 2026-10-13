@@ -68,8 +68,11 @@ export function isForTheLead(s: ASuggestionOnACheckIn): s is SuggestionForTheLea
 }
 
 export const suggestionsApi = {
+  /** B-201: read alongside EndingPage's `groundsApi.get` and `resolutionApi.get` for the same
+      check-in - a stranger who cannot reach it gets the same refusal (403, not theirs; 404, made
+      up) on each of the three, so none of them may raise its own toast naming which one it was. */
   onCheckIn: (groundId: string): Promise<{ suggestions: ASuggestionOnACheckIn[] }> =>
-    apiClient.get(`/grounds/${groundId}/suggestions`).then(r => r.data),
+    apiClient.get(`/grounds/${groundId}/suggestions`, { skipForbiddenToast: true, skipNotFoundToast: true } as any).then(r => r.data),
   appealsToDecide: (): Promise<{ appeals: AppealForAnAdmin[] }> =>
     apiClient.get('/suggestions/appeals').then(r => r.data),
   decide: (id: string, body: { decision: string; reasons: string }) =>

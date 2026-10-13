@@ -91,7 +91,7 @@ export interface OrgRosterEntry {
   memberCount: number
   members: { email: string; partyType: 'INITIATOR' | 'PARTICIPANT'; roleAsDescribed: string | null; accepted: boolean }[]
   contributedParties: number
-  report: { agreements: string[]; divergences: unknown[]; releasedAt: string | null } | null
+  report: { agreementsCount: number; differencesCount: number; releasedAt: string | null } | null
   lastActivity: string | null
 }
 
@@ -109,6 +109,9 @@ export interface MoreTimeStanding {
 }
 
 export const groundsApi = {
+  /** "Check in yourself" (decision 133): opens, or reuses, the lead's own check-in, any time it is running. */
+  checkInYourself: (id: string) =>
+    apiClient.post<{ checkInId: string; sessionNumber: number; opened: boolean }>(`/grounds/${id}/check-in-yourself`).then(r => r.data),
   /** "Ask Wairimu for more time" (U.3). */
   moreTime: (id: string) =>
     apiClient.get<MoreTimeStanding>(`/grounds/${id}/more-time`).then(r => r.data),
@@ -137,6 +140,15 @@ export const groundsApi = {
     apiClient.get<Ground>(`/grounds/${id}`, { skipNotFoundToast: true, skipForbiddenToast: true } as any).then(r => r.data),
 
   /**
+   * The one finding the shared picture names as still open, in a whole sentence, as this reader is served it (request 198). `finding` is null
+   * until the picture is released to this reader, and the call is refused for somebody with no right to the check-in.
+   */
+  finding: (id: string) =>
+    apiClient.get<{ groundId: string; label: string; sessionNumber: number | null; finding: string | null; moreStillOpen: number; conversationWorthHaving: string | null }>(
+      `/grounds/${id}/report/finding`, { skipNotFoundToast: true, skipForbiddenToast: true } as any,
+    ).then(r => r.data),
+
+  /**
    * Whether the parties can see each other at all - who else is here, and how each is doing.
    * Separate from hiding email addresses. W14-4.
    *
@@ -163,6 +175,16 @@ export const groundsApi = {
   setOverWhatsApp: (id: string, over: boolean | null) =>
     apiClient
       .patch<{ id: string; overWhatsApp: boolean | null }>(`/grounds/${id}/over-whatsapp`, { over })
+      .then(r => r.data),
+
+  /**
+   * "USE SIMPLER WORDS" (6 October answer). `false` for every check-in that exists and for a new
+   * one. Only the lead of the check-in, or an admin who runs it, may change it - the server refuses
+   * anybody else.
+   */
+  setSimplerWords: (id: string, on: boolean) =>
+    apiClient
+      .patch<{ id: string; simplerWords: boolean }>(`/grounds/${id}/simpler-words`, { on })
       .then(r => r.data),
 
   /**
@@ -301,7 +323,9 @@ export const groundsApi = {
    */
   /** `startsAt` is an ISO date; the server refuses it once anybody has answered. */
   /** `brief` blank clears it; the server refuses both to anybody but the lead or an org admin. */
-  update: (groundId: string, body: { label?: string; timelineDays?: number; cadence?: GroundCadence; workingDays?: number[]; contextNote?: string; startsAt?: string; brief?: string }, opts?: { quiet?: boolean }) =>
+  /** `cadenceAnchorDay`: 0-6 (Sunday-Saturday) for a weekly or fortnightly rhythm, 1-31 for a
+      monthly one, `null` to clear it (request 194). Applies from the next session that is made. */
+  update: (groundId: string, body: { label?: string; timelineDays?: number; cadence?: GroundCadence; workingDays?: number[]; cadenceAnchorDay?: number | null; contextNote?: string; startsAt?: string; brief?: string; endsOn?: string }, opts?: { quiet?: boolean }) =>
     apiClient.patch<Ground>(`/grounds/${groundId}`, body, opts?.quiet
       ? ({ skipForbiddenToast: true, skipServerErrorToast: true } as any)
       : undefined).then(r => r.data),

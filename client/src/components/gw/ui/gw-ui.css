@@ -146,6 +146,10 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
    on /start (EntryChatPage.tsx), now that that screen draws no sidebar of its own (start.jpg
    draws none either). A plain flex row; nothing here is specific to /start. */
 .gwui-mark-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 0; }
+/* FAULT 5 (6 October 2026): at the entry chat's signed-out door the row sits straight inside
+   `.gwui-ec-frame`, which has no side padding (unlike `Page`), so it takes the body's own 20px
+   gutter there - the same as `.gwui-ec-messages` beside it. Inside `Page` it is unchanged. */
+.gwui-ec-frame > .gwui-mark-row { padding-left: 20px; padding-right: 20px; }
 
 /* ── CALLOUT (prototype: a tinted line injected above the invitation's H1, s44.js:
    `background:var(--chat);border-radius:10px;padding:10px 14px`, class `t-small`) ─────────── */
@@ -226,6 +230,18 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
    active tab changes, but nothing is drawn under a tab that is not chosen. */
 .gwui-tabs {
   display: flex; gap: 4px; border-bottom: 1px solid var(--gw-border); overflow-x: auto;
+  /*
+   * B-203: ON A PHONE, THE TAB BEFORE THE CHOSEN ONE READ AS A HALF WORD ("eck-in").
+   *
+   * `Tabs.tsx` scrolls the chosen tab into view with `inline: 'nearest'` - the smallest scroll
+   * that makes it fully visible - which stops the row wherever that happens to land, often mid-word
+   * through whichever tab sits just off the edge. How far that is depends on each tab's own label
+   * length, so a fixed scroll distance would only fix "Check-in" and break the next label that is a
+   * different width. A fade at both edges reads as "more to scroll" however far the row has moved,
+   * and never leaves a half a word looking like a typo.
+   */
+  -webkit-mask-image: linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent);
+  mask-image: linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent);
 }
 .gwui-tab {
   min-height: 46px; padding: 0 14px; display: inline-flex; align-items: center;
@@ -237,7 +253,9 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 
 /* ── SECTION (prototype: section.sec, .sec-h, .note) ─────────────────────
    Headings are never navy (design-audit.md item 5). */
-.gwui-section { display: flex; flex-direction: column; }
+/* B-221: a direct link to a section (`#your-data`) must not land under the app's own sticky
+   header - the same offset `.cg-group` already uses in index.css, for the same reason. */
+.gwui-section { display: flex; flex-direction: column; scroll-margin-top: calc(var(--gw-hdr-h) + 12px); }
 .gwui-section-h {
   display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap;
 }
@@ -322,9 +340,12 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
    .orgmenu/.usermenu a:hover{background:var(--paper)}), which is var(--gw-page) here. */
 a.gwui-person-row:hover { background: var(--gw-page); }
 .gwui-person-cell { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.gwui-person-name { font-size: 16px; font-weight: 700; color: var(--gw-text); }
+/* B-039: an 80-character name (no spaces long enough to wrap on their own, e.g. "AAAA...A
+   BBBB...B") overflowed its column and clipped over the row's other text instead of wrapping,
+   the same overflow `.gwui-person-email` already guards against below. */
+.gwui-person-name { font-size: 16px; font-weight: 700; color: var(--gw-text); overflow-wrap: anywhere; }
 .gwui-person-level { font-size: 13px; color: var(--gw-sub); margin-top: 2px; }
-.gwui-person-email { font-size: 14.5px; color: var(--gw-sub); margin-top: 2px; }
+.gwui-person-email { font-size: 14.5px; color: var(--gw-sub); margin-top: 2px; overflow-wrap: anywhere; }
 .gwui-person-help {
   grid-column: 1 / -1; margin-top: 12px; padding: 12px 16px; border-radius: 10px;
   display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
@@ -390,12 +411,18 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 }
 .gwui-folded-summary::-webkit-details-marker { display: none; }
 /* The prototype's small ▶ before the title, since this opens - a picture check found the marker
-   simply hidden with nothing put in its place. It points right closed, down once open. */
-.gwui-folded-summary::before {
+   simply hidden with nothing put in its place. It points right closed, down once open.
+
+   B-235: this used to sit on `.gwui-folded-summary` itself, which made the arrow its own flex item
+   alongside the bold title and the note - at 390px, with the summary's own flex-wrap, the arrow
+   could wrap onto its own line above the title instead of sitting beside it. Moved onto the bold
+   title text instead, so the arrow is part of the same inline box as the words it marks and always
+   wraps onto the title's own line, never a line of its own. */
+.gwui-folded-summary b::before {
   content: '▶'; display: inline-block; font-size: 13px; color: var(--gw-sub);
-  transition: transform .15s ease; flex: none;
+  transition: transform .15s ease; margin-right: 10px;
 }
-.gwui-folded[open] .gwui-folded-summary::before { transform: rotate(90deg); }
+.gwui-folded[open] .gwui-folded-summary b::before { transform: rotate(90deg); }
 .gwui-folded-summary b { font-size: 16px; color: var(--gw-text); }
 .gwui-folded-note { font-size: 14.5px; color: var(--gw-sub); }
 .gwui-folded[open] .gwui-folded-summary { border-bottom: 1px solid var(--gw-border); }
@@ -436,6 +463,14 @@ a.gwui-person-row:hover { background: var(--gw-page); }
   padding: 0; cursor: pointer; font-family: inherit; text-decoration: none;
 }
 .gwui-open-link:hover { text-decoration: underline; }
+/*
+ * SCREEN FAULT 10: People's "Open" links were 34x22 on a phone - under the 40px floor every other
+ * tappable row control already has. Same technique as `.gwui-tap-40`/`.gwui-plain-link` just
+ * above, on this class's own name since every caller already uses it unchanged.
+ */
+@media (max-width: 640px) {
+  .gwui-open-link { min-height: 40px; display: inline-flex; align-items: center; }
+}
 /* A plain text link that still does something (not a navigation), for a control that must not
    compete with the page's one real primary button (Hafsah, 30 September, item 2). Same look as
    .gwui-open-link, under its own name for anywhere that isn't a list row. */
@@ -483,6 +518,15 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 }
 @media (max-width: 640px) {
   .gwui-icon-btn { width: 40px; height: 40px; }
+}
+/*
+ * SCREEN FAULT 5: THE HELP MODAL'S OWN CLOSE BUTTON WAS A FIXED 28px CIRCLE AT EVERY WIDTH.
+ * Same floor as `.gwui-icon-btn` just above, on its own name because HelpModal.tsx sets this
+ * button's other styles (position, background, colour) inline rather than through that class.
+ */
+.gwui-help-close { width: 28px; height: 28px; }
+@media (max-width: 640px) {
+  .gwui-help-close { width: 40px; height: 40px; }
 }
 .gwui-invite-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
 /* A FIELD BESIDE ITS BUTTON, EVEN ON A PHONE (group 1 review, "Add it, switched off"): `.gwui-input`
@@ -650,6 +694,16 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-input:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 2px; }
 /*
+ * B-225 (REVIEW 5): THE SAME FOCUS RING, FOR A FIELD BUILT WITH ITS OWN INLINE STYLES. The
+ * Feedback panel's fields (AppShell.tsx's `FeedbackWidget`) set `outline: 'none'` inline with no
+ * replacement, so Tab moved through them with nothing on screen to show where keyboard focus was.
+ * They are not built from `.gwui-input` (a different box model, chosen for that panel's own
+ * compact look), so this repeats only the one rule that matters - the focus ring every other field
+ * already gets - rather than taking on `.gwui-input`'s unrelated padding, radius and border too.
+ * See docs/the-parts-against-the-prototype.md.
+ */
+.gwui-fb-field:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 2px; }
+/*
  * PHONE CHECK, ITEM 4: ANY TEXT BOX UNDER 16px MAKES iOS SAFARI ZOOM IN ON TAP. The board's own
  * smaller boxes (the Ask bar, "Add a target", "how many", the availability poll question, and
  * other fields built the same way across the product) size themselves with the `.gwui-fs-13` /
@@ -692,7 +746,18 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-btn-secondary.gwui-btn-red-text { color: var(--gw-red-t); }
 .gwui-btn-big { min-height: 54px; font-size: 17px; padding: 0 22px; }
 .gwui-btn-small { min-height: 36px; font-size: 14.5px; padding: 0 12px; }
-.gwui-btn-wide { width: 100%; }
+/*
+ * FAULT D1 (reviewer, third round): THE FORK BUTTON'S TEXT WAS CLIPPED ON THE LEFT AT 1024px
+ * ("heck in once…"). `.gwui-btn`'s own `white-space: nowrap` already had a mobile-only exception
+ * (`@media (max-width: 640px)`, below) for exactly this - a long sentence on a button narrower
+ * than its own one-line width - but a wide button's fork sits in a column only 346px wide even on
+ * a 1024px screen (it is 82% of the messages column, not of the viewport), so the same overflow
+ * happened above 640px with nothing to catch it. `wide` already means "a full sentence is likely
+ * long enough to need its own line or three", at any width, so it gets this directly rather than
+ * only below the phone breakpoint; a short wide button (most of them) still reads as one line,
+ * since nothing here forces a break where the text does not already need one.
+ */
+.gwui-btn-wide { width: 100%; white-space: normal; }
 @media (max-width: 640px) {
   .gwui-btn { white-space: normal; }
   .gwui-btn-small { min-height: 40px; }
@@ -1462,6 +1527,11 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   .gwui-suite-switch { justify-self: start; }
 }
 .gwui-suite-ask { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--gw-border); display: flex; flex-direction: column; gap: 12px; }
+/* The same form, with nothing above it in its panel to divide from (screen fault 6e: the
+   leave and payment request forms reached from the check-in's own button are the only thing
+   their panel holds, so the ordinary top rule drew as an empty line with nothing on either
+   side). Same shape, no line. */
+.gwui-suite-ask-alone { display: flex; flex-direction: column; gap: 12px; }
 .gwui-suite-q { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 /* A record table (time sheets, equipment, spending, customers, the role map): the product's own
    shape, no dedicated prototype class - the prototype draws each of these by hand per screen. */
@@ -1630,6 +1700,15 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 @keyframes gwDotBounce { 0%, 80%, 100% { transform: translateY(0); opacity: .4; } 40% { transform: translateY(-5px); opacity: 1; } }
 .gwui-ci-dot-note { font-size: 13px; color: var(--gw-sub); }
 .gwui-ci-caret { display: inline-block; width: 2px; height: 1em; background: var(--gw-navy); margin-left: 2px; vertical-align: text-bottom; animation: blink .7s step-end infinite; }
+
+/* GroundworkIsWriting.tsx: "<name> is writing…", shown from the moment a reply is asked for until
+   it is drawn, in every chat. The dots fade gently and stop under prefers-reduced-motion. */
+.gwui-writing { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--gw-sub); }
+.gwui-writing-dots { display: inline-flex; align-items: center; gap: 4px; }
+.gwui-writing-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--gw-sub); animation: gwDotBounce 1.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .gwui-writing-dot { animation: none; }
+}
 
 /* "Finish my check-in now", once enough has been said. */
 .gwui-ci-finish-link { font-size: 13px; color: var(--gw-navy); background: none; border: none; cursor: pointer; text-decoration: underline; font-family: inherit; min-height: 32px; }
@@ -1832,19 +1911,69 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ec-onboarding { flex: 1; display: flex; min-height: 0; }
 .gwui-ec-onboarding-col { flex: 1; display: flex; flex-direction: column; min-height: 0; min-width: 0; }
 
-.gwui-ec-session-header { padding: 10px 20px; border-bottom: 1px solid var(--gw-border); flex-shrink: 0; background: white; display: flex; align-items: center; gap: 8px; }
+/*
+ * FAULT 1 (live review, phone and 1440 walk): THE FLOATING FEEDBACK BUTTON SAT OVER THE RIGHT END
+ * OF "HOW MANY SESSIONS" AND ITS HELP LINE. AppShell gives this one page's trigger a fixed
+ * `top: 64, right: 16` so it clears the header's single-line rest state - but opening the sessions
+ * editor grows the header to two lines (the number box, then "This is your plan…"), and that taller
+ * header reaches down into the same `top: 64` the button already occupies.
+ *
+ * Moving the button lower would only chase the next thing it then covers (the comment on
+ * `the-feedback-button-never-covers-a-control.spec.ts` is the whole history of that chase). Instead
+ * the header's own right edge is given room: this much padding is never narrower than the button's
+ * own rest position plus its gap, so nothing this header ever draws can reach under it, however
+ * tall the open editor gets.
+ */
+.gwui-ec-session-header { padding: 10px 20px; border-bottom: 1px solid var(--gw-border); flex-shrink: 0; background: white; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; position: relative; }
+/* The feedback trigger only floats over this header's own top-right corner at this width and
+   wider (below it, `.gw-fb-trigger-chat-mobile-safe` moves the button below the header instead),
+   so the reserved space is added here too, not baked into the base rule where a narrow screen
+   would pay for clearance it does not need. */
+@media (min-width: 641px) {
+  .gwui-ec-session-header { padding-right: 136px; }
+}
 .gwui-ec-session-back { flex-shrink: 0; }
-.gwui-ec-session-name-row { flex: 1; min-width: 0; }
+.gwui-ec-session-name-row { flex: 1 1 200px; min-width: 0; }
 .gwui-ec-session-name { font-size: 14px; font-weight: 700; color: var(--gw-text); }
 .gwui-ec-session-status { font-size: 13px; color: var(--gw-sub); display: flex; align-items: center; gap: 6px; margin-top: 2px; }
 .gwui-ec-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gw-green-live); display: inline-block; flex-shrink: 0; }
 .gwui-ec-sessions-count { flex-shrink: 0; text-align: right; }
+/*
+ * FAULT C1 (reviewer, third round): THE HELP LINE RAN TO x=483 AND WAS CLIPPED BY `.gwui-ec-frame`.
+ * `.gwui-ec-sessions-count`'s own `flex-shrink: 0` is right for its one-line rest state (a short
+ * button that must never be crushed), but the open control adds a full sentence of help text
+ * ("This is your plan for how many check-ins to run…") inside the same box - `flex-shrink: 0` kept
+ * that at its one-line width (463px) regardless of the 375px it had to fit in, so the frame's own
+ * `overflow: hidden` cut the sentence off rather than letting it wrap. Below 640px (where the
+ * header already wraps this box onto its own line, `.gwui-ec-session-header`'s own `flex-wrap`),
+ * it takes the full row and its text wraps inside that width instead of past it.
+ */
+@media (max-width: 640px) {
+  .gwui-ec-sessions-count { flex: 1 1 100%; min-width: 0; }
+}
+/*
+ * FAULT 2 (live review, 390px walk): THE OPEN CONTROL MADE A 463px-WIDE NUMBER BOX. `TextField`'s
+ * shared `.gwui-input` is `width: 100%`, right for a name or an email, wrong for a count of
+ * sessions - inside this header it stretched to fill whatever space the name row had given up, and
+ * the header's own text crushed to "Give / this / a" around it. A plain number box is only ever a
+ * few digits wide.
+ */
+.gwui-ec-sessions-input { width: 64px; flex: 0 0 64px; text-align: center; }
 
 .gwui-ec-bar { padding: 6px 20px; border-bottom: 1px solid var(--gw-border); background: white; display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; flex-shrink: 0; }
 .gwui-ec-bar-onboarding { padding: 12px 20px; justify-content: space-between; }
 .gwui-ec-confirm-clear { font-size: 13px; color: var(--gw-sub); display: flex; align-items: center; gap: 10px; }
 .gwui-ec-picked-row { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.gwui-ec-which-row { display: flex; align-items: center; gap: 14px; }
+/*
+ * FAULT C4 (reviewer, third round): "START OVER" WRAPPED ONTO TWO LINES AT 390px - or, once this
+ * row holds "It's something else" beside it too (the "sounds like X" fork, rather than the plain
+ * heading bar), ran 5px past the frame's own edge and was clipped instead, each link having been
+ * squeezed to less than its own single-line width by ordinary flex-shrink. `nowrap` keeps each
+ * link's own text on one line; `flex-wrap` lets the second link drop to a line of its own, intact,
+ * the moment both no longer fit side by side, rather than shrinking either below what its words
+ * need or running past the frame.
+ */
+.gwui-ec-which-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; white-space: nowrap; }
 .gwui-ec-onboarding-title { font-family: var(--gw-font-name); font-size: 22px; font-weight: 500; color: var(--gw-text); margin: 0; }
 
 .gwui-ec-messages {
@@ -1877,11 +2006,61 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 }
 .gwui-ec-thinking { margin-right: 6px; font-style: normal; color: var(--gw-muted); font-size: 13px; }
 .gwui-ec-fork { display: flex; flex-direction: column; gap: 8px; max-width: 82%; align-self: flex-start; margin-top: 4px; }
+/*
+ * FAULT 7 (live review, 390px walk), THEN FAULT C3 (reviewer, third round): THE FLOATING
+ * FEEDBACK TRIGGER STILL COVERED THE END OF "I CHECK IN ONCE TO SET THE CONTEXT, THEN ONLY THEY
+ * CHECK IN" AFTER 64px. Measured live at 375px: the trigger
+ * (`.gw-fb-trigger-chat-mobile-safe`, `bottom: 148px`) sits with its own top edge at about 633px
+ * down an 812px viewport, but the fork's second button - a real conversation's worth of messages
+ * above it, scrolled to the foot - still bottomed out at 670px, 38px into the trigger. 64px was
+ * measured against a shorter, hand-typed conversation; this page's messages can run longer than
+ * that. The trigger's own reserved zone is 148px (the nav's 60, the composer's 60, a gap) - the
+ * same number this container now reserves, so the fork can never end inside it, however long the
+ * conversation above it runs.
+ */
+@media (max-width: 640px) {
+  .gwui-ec-fork { padding-bottom: 148px; }
+}
 .gwui-ec-fork-note { font-weight: 700; margin-top: 8px; }
 .gwui-ec-sofar-heading { font-size: 13px; font-weight: 700; letter-spacing: .3px; color: var(--gw-sub); margin-bottom: 5px; }
 .gwui-ec-sofar-row { display: flex; gap: 7px; font-size: 13px; line-height: 1.5; margin-bottom: 3px; }
-.gwui-ec-sofar-label { color: var(--gw-sub); font-weight: 700; flex: 0 0 56px; }
-.gwui-ec-sofar-value { color: var(--gw-text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+/*
+ * FAULT 6 (live review): A 56px LABEL COLUMN WRAPPED "What you are aiming for" ONE WORD AT A TIME
+ * ("What / you are / aiming / for"), AND THE CLAMP ON ITS VALUE THEN CUT THE ANSWER OFF ON A PHONE
+ * ("Understan…"). The full plain labels this card moved to (fault 3, `shortLabel`) are sentences,
+ * not single words, so the column is wide enough for the longest of them on one line, stacks above
+ * its value instead of beside it once the screen is too narrow to keep that width, and the clamp is
+ * gone - the point of the card is to show what is on the record, not to hide part of it.
+ */
+.gwui-ec-sofar-label { color: var(--gw-sub); font-weight: 700; flex: 0 0 160px; }
+/*
+ * FAULT D2 (reviewer, third round): THE VALUE COLUMN HELD ONLY 2 OR 3 WORDS A LINE AT 1024px.
+ * The card sits in a chat bubble with no width of its own (`Bubble.tsx`'s `maxWidth: '82%'`, no
+ * `width`) - right for an ordinary message, which just wraps at that width, but a flex row with a
+ * fixed 160px label column has no such width to shrink-to-fit against, so the browser sized the
+ * whole row (and the bubble around it) down near its narrowest possible content width, wrapping
+ * "New project launching with Daniel and Grace" into several lines of two or three words each
+ * where more than four times the width was sitting unused beside it. A flex-basis gives the value
+ * column a real preferred width to claim from that remaining space, the same way the label column
+ * already claims its own 160px, rather than leaving it to guess.
+ */
+.gwui-ec-sofar-value { color: var(--gw-text); flex: 1 1 320px; min-width: 0; }
+/*
+ * AND THE CARD ITSELF: a flex-basis on the value column alone could not widen it, because the
+ * bubble around this card (`Bubble.tsx`) has no width of its own - only `max-width: 82%` - so
+ * every box in the chain (the bubble, the card, the row) was sized to the narrowest width its
+ * content could still occupy, each 82% of an already-shrunk parent, compounding down to the
+ * 84px actually measured live. A `min-width` on the card itself is a floor the shrink-to-fit
+ * calculation has to honour going back up that chain - still capped by the bubble's own 82% and
+ * the viewport beneath it, so it never forces the card wider than the screen actually allows.
+ */
+@media (min-width: 900px) {
+  .gwui-ec-sofar { min-width: 480px; }
+}
+@media (max-width: 480px) {
+  .gwui-ec-sofar-row { flex-direction: column; gap: 1px; }
+  .gwui-ec-sofar-label { flex-basis: auto; }
+}
 .gwui-ec-sofar-missing { font-size: 13px; line-height: 1.55; margin-top: 6px; color: var(--gw-amber-t); }
 .gwui-ec-doc-panel-spacer { flex: 1; }
 
@@ -1895,6 +2074,18 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ec-quick-action:disabled { opacity: .5; cursor: default; }
 .gwui-ec-quick-action-attach { display: inline-flex; align-items: center; }
 .gwui-ec-quick-actions-end { margin-left: auto; }
+/*
+ * FAULT C2 (reviewer, third round): "END SESSION" SAT FULLY UNDER THE FEEDBACK BUTTON. Pushed
+ * flush right by `margin-left: auto`, this chip wraps to a line of its own at 390px and lands at
+ * almost the exact rectangle the floating trigger already rests in (`.gw-fb-trigger-chat-mobile-safe`,
+ * bottom-right) - measured live, the two rectangles were within a few pixels of each other on every
+ * side. The trigger's own corner is reserved for it everywhere else on this page (the fork, the
+ * sessions help line); the plain fix here is to stop this one chip claiming the same corner; at
+ * this width it reads fine first in the row's own left-to-right order, same as every other chip.
+ */
+@media (max-width: 640px) {
+  .gwui-ec-quick-actions-end { margin-left: 0; }
+}
 .gwui-ec-quick-action-navy { color: var(--gw-navy); font-weight: 600; }
 .gwui-ec-doc-pill { padding: 6px 16px; background: var(--gw-blue-bg); border-top: 1px solid var(--gw-blue-b); display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .gwui-ec-doc-pill-name { font-size: 13px; color: var(--gw-navy); flex: 1; }
@@ -1923,7 +2114,11 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ec-savecard-add-row { display: flex; gap: 6px; margin-top: 6px; }
 .gwui-ec-savecard-add-error { font-size: 13px; color: var(--gw-red-t); margin-top: 4px; }
 .gwui-ec-savecard-whatnext { background: #F0F4FA; border-radius: 10px; padding: 14px 16px; margin-bottom: 18px; }
-.gwui-ec-savecard-whatnext-title { font-size: 13px; font-weight: 600; color: var(--gw-navy); margin-bottom: 8px; text-transform: uppercase; letter-spacing: .06em; }
+/* SCREEN FAULT 10 (FINAL WALK): "WHAT HAPPENS NEXT" IN CAPITALS. The prototype's own end-card
+   (check-in-end-card.txt) writes this heading in sentence case, not as a small label - so the
+   uppercase transform is dropped; the rest of the heading's own styling (size, weight, colour,
+   spacing) is unchanged. */
+.gwui-ec-savecard-whatnext-title { font-size: 13px; font-weight: 600; color: var(--gw-navy); margin-bottom: 8px; letter-spacing: .06em; }
 .gwui-ec-savecard-whatnext-list { display: flex; flex-direction: column; gap: 8px; }
 .gwui-ec-savecard-whatnext-row { display: flex; gap: 10px; align-items: flex-start; }
 .gwui-ec-savecard-whatnext-num { width: 22px; height: 22px; border-radius: 50%; background: var(--gw-navy); color: white; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
@@ -2144,4 +2339,26 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   .gwui-sr .gwui-tile     { padding: 12px 16px; }
   .gwui-sr .gwui-tile-n   { border-left: none; border-top: 1px solid var(--gw-border); }
   .gwui-sr .gwui-tile-txt { font-size: 13.5px; }
+}
+
+/* ── ASK'S "ABOUT" PICKER, AT 390 (B-231) ─────────────────
+   "About" and the select shared one row, the select shrinking (item 6's own `flex: 1, minWidth:
+   0`, AskGroundwork.tsx) to whatever was left after "About" - which at 390 was too little for its
+   longest option ("The whole organisation and your work"), read cut off ("...and your wor"),
+   because a plain <select> clips rather than wraps. The row itself already wraps (`flexWrap:
+   'wrap'`); this gives the select the full row to itself there, instead of a squeezed remainder
+   beside "About". Written up in docs/the-parts-against-the-prototype.md. */
+@media (max-width: 420px) {
+  .gwui-ask-about-select { flex-basis: 100% !important; }
+}
+
+/* ── A CHECK-IN'S OWN HEADER, WHEN IT IS NEVER THE LAST THING ON THE SCREEN (B-231) ──
+   .gwui-page-main's own bottom padding (140px on a phone) is right for a page that ends there,
+   which GroundParticipantPage.tsx's header never does - the conversation, or a failure/opening
+   note, always follows it. Left alone, that padding stacked with whatever followed and left a
+   roughly 150px empty gap above a check-in's own failure note before a single word of it (Dov's
+   own account, review6/shots/b226-dov-mywork-390.png). Zeroed at narrow widths, where the gap was
+   measured; written up in docs/the-parts-against-the-prototype.md. */
+@media (max-width: 640px) {
+  .gwui-ground-header-wrap .gwui-page-main { padding-bottom: 0; }
 }

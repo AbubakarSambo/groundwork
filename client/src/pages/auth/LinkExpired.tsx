@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { authApi } from '@/api/auth'
+import { useAuthStore } from '@/stores/auth'
 import { Button, Stack } from '@/components/gw/ui'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 import { whatIsWrongWithTheAddress } from './the-address-typed'
@@ -58,6 +60,8 @@ export function LinkDidNotWork({ kind }: { kind: 'sign-in' | 'reset' }) {
 
 function AskForAFreshLink({ kind, title, sub, button }: { kind: 'sign-in' | 'reset'; title: string; sub: string; button: string }) {
   const trap = useTheTrap()
+  const navigate = useNavigate()
+  const signedIn = useAuthStore(s => !!s.isAuthenticated)
   const [email, setEmail] = useState('')
   const [error, setError] = useState('')
   const [sent, setSent] = useState(false)
@@ -66,6 +70,8 @@ function AskForAFreshLink({ kind, title, sub, button }: { kind: 'sign-in' | 'res
     ? authApi.forgotPassword(email.trim().toLowerCase())
     : authApi.entrySave(email.trim().toLowerCase(), undefined, trap.filled)
 
+  // ALWAYS CALLED, EVEN WHEN SIGNED IN (rules of hooks): the signed-in branch below returns its
+  // own card before this mutation is ever used, but the hook itself has to run on every render.
   const send = useMutation({
     mutationFn: sendOne,
     onSuccess: () => setSent(true),
@@ -77,6 +83,30 @@ function AskForAFreshLink({ kind, title, sub, button }: { kind: 'sign-in' | 'res
       setSent(true)
     },
   })
+
+  /*
+   * B-208: A SIGNED-IN PERSON IS NOT OFFERED A WAY TO SIGN IN. This card's two buttons - ask for a
+   * fresh link, or sign in - are both for somebody who is signed out. Opening a dead sign-in or
+   * reset link while already signed in (the email client followed an old link, or a tab had two
+   * links open) used to offer both anyway, neither of which has anything to do with where they
+   * already are: Today, where they belong.
+   *
+   * B-208 (review round 2): AND THE SENTENCE UNDER THE TITLE STOPPED OFFERING THINGS THIS SCREEN NO
+   * LONGER HAS. `sub` is written for the signed-out form below it ("ask for a fresh one", "open it
+   * again from the email, or ask for a new one") - repeated under a lone "Go to Today" button, it
+   * told a signed-in person to do things the screen does not offer them any more. Nothing here
+   * needs explaining beyond the title once "Go to Today" is the one thing to press, so the signed-in
+   * card carries no subtitle at all.
+   */
+  if (signedIn) {
+    return (
+      <AuthCard title={title}>
+        <Stack gap={10}>
+          <Button wide onClick={() => navigate('/today')}>Go to Today</Button>
+        </Stack>
+      </AuthCard>
+    )
+  }
 
   if (sent) {
     return <LinkSentPanel email={email.trim()} forReset={kind === 'reset'} resend={sendOne} onUseDifferent={() => setSent(false)} />
@@ -92,8 +122,56 @@ function AskForAFreshLink({ kind, title, sub, button }: { kind: 'sign-in' | 'res
           <Button type="submit" wide disabled={send.isPending}>
             {send.isPending ? 'Sending…' : button}
           </Button>
+          {/* B-130: this page was a dead end for anyone who already has a password and just wants to
+              sign in rather than wait for a new link. The invite and join pages already offer this
+              way out (LinkProblem's "Sign in instead"); this one did not. */}
+          <Button kind="quiet" wide type="button" onClick={() => navigate('/auth')}>Sign in instead</Button>
         </Stack>
       </form>
+    </AuthCard>
+  )
+}
+
+/**
+ * B-208: A SIGN-IN LINK ALREADY USED, WHOSE ADDRESS THIS ALREADY CONFIRMED.
+ *
+ * Opening /verify-email a second time used to land on the generic "That link didn't work" card,
+ * with its own fixed sentence and a form to ask for a new link - even though the server had already
+ * answered plainly: "This link has already been used, so your address is confirmed. Sign in from
+ * the sign-in page." There is nothing left to ask for here, and nothing wrong with the address -
+ * the one thing to do is sign in, so this shows the server's own sentence and that one way through.
+ *
+ * B-208 (review round 2): ZAWADI, SIGNED IN BY THAT VERY LINK, AND GRACE BOTH READ THE SAME
+ * SIGNED-OUT SCREEN. "Your email is already confirmed... Sign in from the sign-in page." [Sign in]
+ * is wrong twice over for anybody already signed in: it asks them to sign in again, on the account
+ * they are already using, and "Your email" names an address that is not necessarily theirs at all -
+ * Grace, reading it on a link that was never hers, has no email confirmed by it. Signed in, this
+ * reads "This address is already confirmed." (true of the address either way, naming nobody) and
+ * offers "Go to Today" - not the server's own sentence, which still ends by telling them to sign in.
+ *
+ * B-208 (review round 3): "THIS ADDRESS IS ALREADY CONFIRMED" ANSWERS A QUESTION NOBODY SIGNED IN
+ * IS ASKING. A used sign-in link opened while already signed in is not about confirming an address
+ * at all - that is what a SET-PASSWORD or RESET link's "used" state means, not a sign-in link's.
+ * What is actually true for this reader is that the link itself has already been used, and that
+ * being signed in already means there is nothing left to do but carry on.
+ */
+export function LinkAlreadyUsedConfirmed({ sentence }: { sentence: string }) {
+  const navigate = useNavigate()
+  const signedIn = useAuthStore(s => !!s.isAuthenticated)
+  if (signedIn) {
+    return (
+      <AuthCard title="This link has already been used" sub="You're signed in, so you can carry on.">
+        <Stack gap={10}>
+          <Button wide onClick={() => navigate('/today')}>Go to Today</Button>
+        </Stack>
+      </AuthCard>
+    )
+  }
+  return (
+    <AuthCard title="Your email is already confirmed" sub={sentence}>
+      <Stack gap={10}>
+        <Button wide to="/auth">Sign in</Button>
+      </Stack>
     </AuthCard>
   )
 }

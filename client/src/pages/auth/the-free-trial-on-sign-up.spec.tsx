@@ -14,11 +14,11 @@ vi.mock('@/api/auth', () => ({ authApi: { entrySave: vi.fn(), login: vi.fn(), fo
 vi.mock('@/api/billing', () => ({ billingApi: { getPricing: vi.fn(), whatIsWaitingFor: vi.fn().mockRejectedValue(new Error('none')) } }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ setAuth: vi.fn() }) }))
 
-function renderSignUp() {
+function renderSignUp(initialEntry = '/auth?mode=signup') {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={['/auth?mode=signup']}>
+      <MemoryRouter initialEntries={[initialEntry]}>
         <Routes><Route path="/auth" element={<AuthPage />} /></Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -55,5 +55,18 @@ describe('the free trial on sign-up', () => {
     renderSignUp()
     expect(await screen.findByText('We send you a link to confirm your email. Your account is made when you open it.')).toBeTruthy()
     expect(screen.queryByText(/months free/)).toBeNull()
+  })
+
+  /*
+   * B-206: signing up from an organisation's own invite link (JoinByLinkPage sends people to
+   * `/auth?mode=signup&next=/j/<code>`) is always joining an organisation that already exists, so
+   * the trial line - which is about starting your own - has nothing to do with it and is left out,
+   * even while the trial is switched on.
+   */
+  it('leaves the trial line out when signing up from an organisation\'s own join link', async () => {
+    ;(billingApi.getPricing as any).mockResolvedValue(pricing({ on: true, teamsUnder: 20, months: 1 }))
+    renderSignUp('/auth?mode=signup&next=%2Fj%2Fmsingi-7k2p')
+    expect(await screen.findByText('We send you a link to confirm your email. Your account is made when you open it.')).toBeTruthy()
+    expect(screen.queryByText(/months free|No card/)).toBeNull()
   })
 })

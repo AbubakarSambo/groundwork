@@ -64,7 +64,7 @@ describe('Grace, an admin, reads time sheets', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Time sheets' })).toBeInTheDocument()
     expect(screen.getByText('Hours spent on each client or project, ready for billing. People tell Groundwork their hours in their check-in or in chat. There is no grid to fill in.')).toBeInTheDocument()
     expect(screen.getByText('Hours are for billing only.')).toBeInTheDocument()
-    expect(screen.getByText('They never appear in anyone’s check-in report, their signals or a review. Being busy is not the same as making progress.')).toBeInTheDocument()
+    expect(screen.getByText('They are never used in a report or a review.')).toBeInTheDocument()
   })
 
   it('reads the week as the prototype’s table, with Approve or Approved', async () => {
@@ -73,9 +73,34 @@ describe('Grace, an admin, reads time sheets', () => {
     expect(within(region).getByText('Week of 21 September')).toBeInTheDocument()
     const trs = [...region.querySelectorAll('tr')]
     expect(cells(trs[0])).toEqual(['Person', 'Naivas', 'Lakeside', 'Green Mart', 'Total', 'Approval'])
-    expect(cells(trs[1])).toEqual(['Aisha Otieno', '14 h', '6 h', '2 h', '22 h', 'Approve'])
-    expect(cells(trs[2])).toEqual(['Brian Mwangi', '9 h', '12 h', '0 h', '21 h', 'Approve'])
-    expect(cells(trs[3])).toEqual(['Miriam Wanjiku', '18 h', '0 h', '4 h', '22 h', 'Approved'])
+    /*
+     * FAULT 3 OF THE LIVE WALK (6 October): each stacked cell now carries its own visible label
+     * (NaivasLakesideGreen MartTotal prefixed, as ReviewsBoardPage's table already does), so a row
+     * read with no client names beside its hours is fixed the same way. The labels are read here
+     * too, since `cells` reads each cell's whole text content.
+     */
+    expect(cells(trs[1])).toEqual(['Aisha Otieno', 'Naivas14 h', 'Lakeside6 h', 'Green Mart2 h', 'Total22 h', 'Approve'])
+    expect(cells(trs[2])).toEqual(['Brian Mwangi', 'Naivas9 h', 'Lakeside12 h', 'Green Mart0 h', 'Total21 h', 'Approve'])
+    expect(cells(trs[3])).toEqual(['Miriam Wanjiku', 'Naivas18 h', 'Lakeside0 h', 'Green Mart4 h', 'Total22 h', 'Approved'])
+  })
+
+  it('each stacked value carries its own visible label, marked aria-hidden since a screen reader already has the real column headers (fault 3 of the live walk)', async () => {
+    open(GRACE, GRACES)
+    const region = await screen.findByRole('region', { name: 'This week’s hours, waiting for approval' })
+    const labels = [...region.querySelectorAll('.gwui-record-table-label')]
+    expect(labels.map(l => l.textContent)).toEqual(['Naivas', 'Lakeside', 'Green Mart', 'Total', 'Naivas', 'Lakeside', 'Green Mart', 'Total', 'Naivas', 'Lakeside', 'Green Mart', 'Total'])
+    expect(labels.every(l => l.getAttribute('aria-hidden') === 'true')).toBe(true)
+  })
+
+  /*
+   * FAULT 2 OF THE LIVE WALK (6 October): a reader who reads this row but neither approves it
+   * themselves nor already sees it marked Approved used to read a blank last cell - the server's
+   * own sentence for where it stands was served (`where`) but never drawn.
+   */
+  it('reads the server’s own sentence in the last cell when this reader neither approves it nor sees it approved', async () => {
+    open(WAIRIMU, { ...WAIRIMUS, weeks: [{ ...THIS_WEEK, people: [{ ...THIS_WEEK.people[0], mayApprove: false, where: 'They are waiting for Daniel.' }] }] })
+    expect(await screen.findByText('They are waiting for Daniel.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Approve Aisha Otieno’s hours' })).toBeNull()
   })
 
   it('reads the hours against what each client agreed, and what to do about one that is over', async () => {
@@ -135,5 +160,43 @@ describe('Miriam, a colleague, opens the address', () => {
   it('while the suite is off, everybody reads that', async () => {
     open(GRACE, refusal(404, 'The time sheets suite is not switched on.'))
     expect(await screen.findByRole('alert')).toHaveTextContent('The time sheets suite is not switched on.')
+  })
+
+  /**
+   * B-214 (REVIEW 4): THIS PAGE DID NOT USE `SuiteOffMessage` AT ALL - it read the server's
+   * refusal as plain text, so an admin, the one reader who can act on it, never got "Suites"
+   * turned into a working link or "An admin switches it on" reworded to "You can switch it on"
+   * the way every other suite board already does.
+   */
+  it('an admin reading the off-suite sentence gets a working link to Suites, in the first person', async () => {
+    open(GRACE, refusal(404, 'The time sheets suite is not switched on. An admin switches it on under Suites.'))
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('The time sheets suite is not switched on. You can switch it on under Suites.')
+    expect(within(alert).getByRole('link', { name: 'Suites' })).toHaveAttribute('href', '/settings/suites')
+  })
+
+  it('a lead reading the same sentence gets the server\'s own words, with no link', async () => {
+    open(WAIRIMU, refusal(404, 'The time sheets suite is not switched on. An admin switches it on under Suites.'))
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('The time sheets suite is not switched on. An admin switches it on under Suites.')
+    expect(within(alert).queryByRole('link', { name: 'Suites' })).toBeNull()
+  })
+
+  /**
+   * B-228 (REVIEW 5): THE "Suites" BREADCRUMB WAS A LINK FOR A MEMBER HERE TOO, UNLIKE SPENDING
+   * AND PERFORMANCE REVIEWS - a member followed it and landed on "Only an admin or a lead can
+   * open the suites." (server-side, tested there). This page's own breadcrumb now gates on
+   * `maySeeSuites`, matching the other two suite pages.
+   */
+  it('the "Suites" breadcrumb links for Grace, an admin, and for Wairimu, a lead', async () => {
+    open(GRACE, GRACES)
+    expect(await screen.findByRole('link', { name: 'Suites' })).toHaveAttribute('href', '/settings/suites')
+  })
+
+  it('but not for Miriam, a member - plain text, not a link to a refusal', async () => {
+    open(MIRIAM, refusal(403, 'Only an admin or a lead can open this board.'))
+    await screen.findByRole('alert')
+    expect(screen.queryByRole('link', { name: 'Suites' })).toBeNull()
+    expect(screen.getByText('Suites')).toBeTruthy()
   })
 })

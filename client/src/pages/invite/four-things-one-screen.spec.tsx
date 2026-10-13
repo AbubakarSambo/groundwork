@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { InvitePage, theInvitation, whereAndUntil } from './InvitePage'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 /**
  * THE INVITATION, AS THE PROTOTYPE HAS IT (A3, join-invite.txt, U.3).
@@ -62,14 +63,14 @@ describe('the invitation a participant reads', () => {
     expect(await screen.findByRole('heading', { name: 'Wairimu invited you to “Sales team, Q3”' })).toBeTruthy()
     const text = document.body.textContent ?? ''
     const order = [
-      'Baridi Appliances, until 30 September.',
+      'This runs at Baridi Appliances until 30 September.',
       'The people in this check-in, including your manager, can see what you say in it.',
       'What it asks',
       'A short check-in each weekday.',
       'Who sees your answers',
       'You see your own report straight away. Wairimu shares a team report',
       'Answer today’s check-in now',
-      'About two minutes. You make your account afterwards.',
+      'About two minutes. You choose how you sign in afterwards.',
       'What happens to what you write',
     ].map(t => text.replace(/\s+/g, ' ').indexOf(t))
     expect(order.every(i => i > -1)).toBe(true)
@@ -116,14 +117,20 @@ describe('who can read this, built from the check-in\'s own scenario (item 11, c
   it('says admins can read an ordinary check-in', async () => {
     open({ ...PREVIEW, scenario: 'NEW_PROJECT' })
     await screen.findByText('Who sees your answers')
-    expect(screen.getByText(/Admins in your organisation can read every check-in\./)).toBeTruthy()
+    /*
+     * B-205: NAMED, NOT CLAIMED AS "YOURS". The preview is read before anyone signs in, so the
+     * server cannot yet tell a colleague of Baridi Appliances from an outsider added as a guest to
+     * one of its check-ins - "Admins in your organisation can read every check-in." was read, and
+     * believed, by exactly such an outsider. Naming the organisation is true either way.
+     */
+    expect(screen.getByText(/Admins at Baridi Appliances can read every check-in\./)).toBeTruthy()
   })
 
   it.each(['PIP', 'RECOGNITION', 'CONTRACT_RENEWAL'])('leaves out the admins line on %s', async (scenario) => {
     open({ ...PREVIEW, scenario })
     await screen.findByText('Who sees your answers')
     const text = document.body.textContent ?? ''
-    expect(text).not.toMatch(/Admins in your organisation can read every check-in\./)
+    expect(text).not.toMatch(/Admins at Baridi Appliances can read every check-in\./)
     expect(screen.getByText('The people in this check-in, including your manager, can see what you say in it. Your own report and your questions to Ask Baridi Appliances stay private.')).toBeTruthy()
   })
 
@@ -131,7 +138,16 @@ describe('who can read this, built from the check-in\'s own scenario (item 11, c
     open({ ...PREVIEW, scenario: undefined })
     await screen.findByText('Who sees your answers')
     const text = document.body.textContent ?? ''
-    expect(text).not.toMatch(/Admins in your organisation can read every check-in\./)
+    expect(text).not.toMatch(/Admins at Baridi Appliances can read every check-in\./)
+  })
+
+  /* B-205: with no organisation name to name, the line has nothing true left to say, so it is left
+     out rather than falling back to the old, unnamed "your organisation" claim. */
+  it('leaves the admins line out when there is no organisation to name', async () => {
+    open({ ...PREVIEW, scenario: 'NEW_PROJECT', organisationName: null })
+    await screen.findByText('Who sees your answers')
+    const text = document.body.textContent ?? ''
+    expect(text).not.toMatch(/Admins .* can read every check-in\./)
   })
 })
 
@@ -141,12 +157,27 @@ describe('the two lines built from the record', () => {
     expect(theInvitation({ ...PREVIEW, leadFirstName: null })).toBe('Wairimu Kamau invited you to “Sales team, Q3”')
   })
 
+  /*
+   * B-088: "Baridi Appliances, until 30 September." joined two pieces with a comma, which is not a
+   * sentence - changed to "This runs at Baridi Appliances until 30 September." The same fix forces
+   * nothing about which timezone the date reads in any more (it used to force UTC here alone),
+   * which is the other half of B-088: a check-in's own page and this invitation disagreed about
+   * its end date because this was the one place that chose its own timezone instead of reading the
+   * same way everything else on the product already does.
+   */
   it('says the organisation and the end date, or whichever there is', () => {
-    expect(whereAndUntil(PREVIEW)).toBe('Baridi Appliances, until 30 September.')
+    expect(whereAndUntil(PREVIEW)).toBe('This runs at Baridi Appliances until 30 September.')
     /* U.3 review: each alone is a full sentence. These read "Baridi Appliances." and "Until 30
        September." before, which are not sentences. */
     expect(whereAndUntil({ organisationName: 'Baridi Appliances', endsAt: null })).toBe('A check-in at Baridi Appliances.')
     expect(whereAndUntil({ organisationName: null, endsAt: '2026-09-30T00:00:00.000Z' })).toBe('It runs until 30 September.')
+  })
+
+  it('B-088: reads the same end date as whenItWas renders everywhere else, with nothing of its own imposed', () => {
+    const endsAt = '2026-11-08T00:00:00.000Z'
+    expect(whereAndUntil({ organisationName: 'Msingi Foods', endsAt })).toBe(
+      `This runs at Msingi Foods until ${whenItWas(endsAt, 'dayAndMonthLong')}.`,
+    )
   })
 })
 
@@ -203,29 +234,29 @@ describe('what the lead wrote about the person is not on their invitation (U.6 r
 
 
 describe('a check-in that opens later (U.6 review)', () => {
-  /* Read live: "Answer today’s check-in now / About two minutes. You make your account afterwards."
+  /* Read live: "Answer today’s check-in now / About two minutes. You choose how you sign in afterwards."
      on an invitation to a check-in that opens on 5 October. */
   it('says when the first check-in opens, and offers nothing to answer now', async () => {
     open({ ...PREVIEW, opensOn: '2099-10-05T00:00:00.000Z' })
     expect(await screen.findByText('Your first check-in opens on Monday 5 October.')).toBeTruthy()
     const text = document.body.textContent ?? ''
     expect(text).not.toContain('Answer today’s check-in now')
-    expect(text).not.toContain('You make your account afterwards')
+    expect(text).not.toContain('You choose how you sign in afterwards')
   })
 
   it('and one that is open offers to answer now, as before', async () => {
     open({ ...PREVIEW, opensOn: null })
     expect(await screen.findByText('Answer today’s check-in now')).toBeTruthy()
-    expect(document.body.textContent).toContain('About two minutes. You make your account afterwards.')
+    expect(document.body.textContent).toContain('About two minutes. You choose how you sign in afterwards.')
   })
 })
 
-describe('"You make your account afterwards" (U.6 review)', () => {
+describe('"You choose how you sign in afterwards" (U.6 review)', () => {
   it('is not said to someone already signed in', async () => {
     authState.isAuthenticated = true
     open({ ...PREVIEW, opensOn: null })
     expect(await screen.findByText('About two minutes.')).toBeTruthy()
-    expect(document.body.textContent).not.toContain('You make your account afterwards')
+    expect(document.body.textContent).not.toContain('You choose how you sign in afterwards')
     authState.isAuthenticated = false
   })
 })

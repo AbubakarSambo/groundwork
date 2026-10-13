@@ -13,6 +13,12 @@ import { groundsApi } from '@/api/grounds'
  * `?tab=report` used to land this reader on Context instead, where neither word in that sentence
  * is true of anything on screen. `?tab=report` is this reader's own request for the reports, so it
  * now sends them to the one place among their three tabs that actually has them: the Board page.
+ *
+ * HAFSAH, 10 OCTOBER (B-143): `?tab=checkins` now goes to the Board page too, not Context. The
+ * second deep page audit found that a read-only admin opening a check-in landed on Context and
+ * resources, though the board is what they are there to read; Hafsah's answer was to land this
+ * reader on the Board whenever they are not sent somewhere more specific, so every one of their
+ * redirected cases - the default landing, `report`, `checkins` and `myrecord` - now goes there.
  */
 vi.mock('@/stores/auth', () => ({
   useAuthStore: (sel: any) => sel({ user: { id: 'u-admin', role: 'ADMIN', email: 'admin@x.test' }, isAuthenticated: true }),
@@ -64,8 +70,8 @@ describe('a read-only admin arriving on ?tab=report', () => {
     expect(await screen.findByText('the board page itself')).toBeTruthy()
   })
 
-  it('still lands on Context for ?tab=checkins, which is not a tab this reader has', async () => {
+  it('now lands on the Board page for ?tab=checkins too (Hafsah, 10 October, B-143)', async () => {
     renderPage('/grounds/g1?tab=checkins')
-    expect(await screen.findByText('What this check-in is for')).toBeTruthy()
+    expect(await screen.findByText('the board page itself')).toBeTruthy()
   })
 })

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
 import { documentsApi } from '@/api/documents'
+import { askApi } from '@/api/ask'
 import { toast } from 'sonner'
 import { personLabel, peopleLabels, firstNameOrLabel, atTheStart } from '@/lib/utils'
 import { Section, Panel, Button, TextArea, Tag, Note, Callout, Choices, SubHeading } from '@/components/gw/ui'
@@ -18,6 +19,9 @@ import { DeliveredPanel } from '@/components/gw/DeliveredPanel'
 import { WHAT_YOU_CAN_UPLOAD, UPLOAD_ACCEPT_ATTR } from '@/lib/what-you-can-upload'
 import { whatIsOutstanding } from './where-a-promise-stands'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import { useAskStore } from '@/stores/ask'
+import { useAuthStore } from '@/stores/auth'
+import { askNameFor } from '@/lib/ask-name'
 
 /**
  * THE CONTEXT PAGE. ONE OF THEM, FOR EVERYBODY.
@@ -103,7 +107,32 @@ export function ContextPage({
    * lead is offered it, the more careful side of the rule.
    */
   const mayRewriteTheBrief = typeof (ground as any)?.mayChangeSetup === 'boolean' ? (ground as any).mayChangeSetup === true : isTheLead
+
+  /**
+   * "ADD CONTEXT WITH ASK <ORGANISATION NAME>" (decision 65, request 169). Opens the Ask
+   * Groundwork panel already on this check-in's setup, instead of needing the lead to type
+   * "context" first. Shown only while the engine serves `addsContext: true` on `GET /ask` - the
+   * switch is off everywhere until then, so this stays hidden rather than promising a conversation
+   * the engine has not turned on - and only to whoever may confirm setup here (the same rule as
+   * rewriting the brief above).
+   */
+  const askPage = useQuery({ queryKey: ['ask'], queryFn: askApi.mine })
+  const orgName = useAuthStore((s) => s.user?.organizationName)
+  const showForCheckInSetup = useAskStore((s) => s.showForCheckInSetup)
+  const showWith = useAskStore((s) => s.showWith)
+  const canAddContextWithAsk = mayRewriteTheBrief && askPage.data?.addsContext === true
   const contextEnabled = (ground as any)?.contextEnabled === true
+  /* The old context chat is drawn only while the server says it is open; while Ask's answer is still loading it is not drawn, so it never flashes and goes. */
+  const oldChatIsOpen = !askPage.isLoading && askPage.data?.oldContextChatIsOpen !== false
+  /*
+   * B-082: WHILE THE OLD CHAT IS OFF, NOTHING POINTS AT IT. Every control that used to fill the old
+   * chat's box now opens Ask with the question already asked, naming this check-in so Ask knows
+   * which one; every line that told somebody to use "the conversation below" or "on this page"
+   * names Ask instead. `askName` is the same name `GET /ask` serves (askNameFor), read here before
+   * Ask's own panel has ever opened.
+   */
+  const askName = askNameFor(orgName)
+  const groundLabel: string = (ground as any).label || 'this check-in'
   const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === viewerUserId)
 
   /*
@@ -310,9 +339,15 @@ export function ContextPage({
    * Scrolling as well as filling, because the chat is at the top and a filled box nobody can see is
    * the same as no box at all.
    */
-  const changeThisInTheChat = (said: string) => {
-    window.dispatchEvent(new CustomEvent('gw:context-chat:say', { detail: said }))
-    scrollToId('gw-context-chat')
+  const changeThisInTheChat = (said: string, askSaid: string) => {
+    if (oldChatIsOpen) {
+      window.dispatchEvent(new CustomEvent('gw:context-chat:say', { detail: said }))
+      scrollToId('gw-context-chat')
+    } else {
+      /* B-082: no chat is drawn to fill, so this asks Ask the whole question instead of filling a
+         box nobody can see. */
+      showWith(askSaid)
+    }
   }
 
   /*
@@ -421,13 +456,18 @@ export function ContextPage({
 
             {/* The prototype's order: "From a plan", the conversation, then "Waiting for you to confirm". The lead's only. */}
             {isTheLead && <FromAPlan groundId={id!} />}
+            {canAddContextWithAsk && (
+              <Button kind="quiet" size="small" onClick={() => showForCheckInSetup(id!)}>
+                {`Add context with ${askNameFor(orgName)}`}
+              </Button>
+            )}
             <div id="gw-context-chat">
               {/* The lead's own conversation about their own check-in. An admin reads the page. */}
-              {contextEnabled && isTheLead && <ContextChat groundId={id!} />}
+              {contextEnabled && isTheLead && oldChatIsOpen && <ContextChat groundId={id!} />}
               {/* THIS IS SETUP, NOT THE CHECK-IN. Hafsah, 21 Sep 2026: she finished the context conversation on
                   her own ground and waited for the first report. Nothing here writes a report; check-ins do,
                   and hers was still "Not started" on the Sessions tab. Said once, under the conversation. */}
-              {contextEnabled && isTheLead && (
+              {contextEnabled && isTheLead && oldChatIsOpen && (
                 <Note>
                   {/* GROUP 3'S REVIEW, BATCH A FAULT 6: "IT IS NOT YOUR CHECK-IN: THE REPORT..." JOINED TWO SENTENCES WITH A COLON. */}
                   This conversation sets the context. It is not your check-in. The report is written from check-ins, and yours is on the{' '}
@@ -513,9 +553,13 @@ export function ContextPage({
             {!whatEveryoneReads && briefDraft === null && (
               <Panel className="gwui-rule-dashed">
                 <p className="gwui-panel-text-muted">
-                  Nobody has said what this check-in is for yet. The lead can write a few lines
-                  about what it is for and what they want from it. Everyone in this check-in
-                  reads it before they answer.
+                  {/* B-151: THE LEAD READ ABOUT HERSELF IN THE THIRD PERSON. "The lead can write a
+                      few lines" said to the one person who IS the lead reads as though somebody
+                      else is being spoken about; everyone else still needs the third person,
+                      since it names who they should expect this from. */}
+                  {isTheLead
+                    ? 'You have not said what this check-in is for yet. Write a few lines, and everyone reads them before they answer.'
+                    : 'Nobody has said what this check-in is for yet. The lead can write a few lines about what it is for and what they want from it. Everyone in this check-in reads it before they answer.'}
                 </p>
                 {mayRewriteTheBrief && (
                   <div className="gwui-mt-8">
@@ -574,13 +618,30 @@ export function ContextPage({
                   viewerUserId={viewerUserId}
                   isTheLead={isTheLead}
                   numbersShared={(ground as any).whoSeesTargets === 'EVERYBODY'}
-                  onChangeTarget={isTheLead && contextEnabled ? (o) => changeThisInTheChat(`Change the target "${o.name}" to `) : undefined}
+                  onChangeTarget={isTheLead && contextEnabled ? (o) => changeThisInTheChat(`Change the target "${o.name}" to `, `I want to change the target "${o.name}" on ${groundLabel}.`) : undefined}
                 />
               </>
             ) : (
               !theBrief && (
                 <Callout>
-                  Nothing yet. Say what this is counted by in the conversation below and it lands here.
+                  {/*
+                    "IN THE CONVERSATION BELOW" ONLY WHEN THERE IS ONE (real-user walk, Kijani
+                    Foods, fault 5). The chat underneath this page only ever renders for the lead
+                    who may change setup, gated the same way as everywhere else on this page
+                    (`contextEnabled && isTheLead`, line 448) - Esther, a member, and Naomi, an
+                    admin without that right, both read an instruction to use a conversation that
+                    is not on their screen at all. Everybody else reads the same plain fact with
+                    nothing to act on.
+                  */}
+                  {mayRewriteTheBrief && contextEnabled
+                    ? (oldChatIsOpen
+                      /* B-151: the conversation this points at (ContextChat, above the Targets
+                         band) is ABOVE this sentence on the page, not below it - the same mistake
+                         already caught and fixed on the nearby "What people are down as doing"
+                         panel further down this file. */
+                      ? 'Nothing yet. Say what this is counted by in the conversation above and it lands here.'
+                      : `Nothing yet. Tell ${askName} what this is counted by and it lands here.`)
+                    : 'Nothing yet.'}
                 </Callout>
               )
             )}
@@ -642,6 +703,9 @@ export function ContextPage({
               isLead={isLead}
               isTheLead={isTheLead}
               leadFirstName={theLeadMidSentence}
+              groundLabel={groundLabel}
+              oldChatIsOpen={oldChatIsOpen}
+              askName={askName}
               onChangeInChat={isTheLead && contextEnabled ? changeThisInTheChat : undefined}
               /*
                 ATTACHING AGAINST THE THING THEY PROMISED, not into a general pile. The line they
@@ -1141,12 +1205,13 @@ export function ContextPage({
                 {isTheLead && contextEnabled && commitments.length === 0 && (
                   <Panel>
                     <p className="gwui-panel-text-muted">
-                      Nothing yet. Anything somebody says they will do in a check-in lands here on its
-                      own. Something agreed on a call goes in by saying it in the conversation above.
+                      {oldChatIsOpen
+                        ? 'Nothing yet. Anything somebody says they will do in a check-in lands here on its own. Something agreed on a call goes in by saying it in the conversation above.'
+                        : `Nothing yet. Anything somebody says they will do in a check-in lands here on its own. Something agreed on a call goes in by telling ${askName}.`}
                     </p>
                     <div className="gwui-mt-8">
                       {/* A quiet text link: the prototype's Context screen has no button here. */}
-                      <button type="button" className="gwui-plain-link" onClick={() => changeThisInTheChat('On the call today, ')}>
+                      <button type="button" className="gwui-plain-link" onClick={() => changeThisInTheChat('On the call today, ', `Something was agreed on a call today for ${groundLabel}. I want to add it to this check-in.`)}>
                         Something agreed on a call
                       </button>
                     </div>
@@ -1282,10 +1347,17 @@ export function ContextPage({
                           */}
                           {contextEnabled && (
                             <button
-                              onClick={() => { changeThisInTheChat(lineDraft.trim() || (THE_WAY_IN[typingInto] ?? '')); setTypingInto(null); setLineDraft('') }}
+                              onClick={() => {
+                                const typed = lineDraft.trim()
+                                changeThisInTheChat(
+                                  typed || (THE_WAY_IN[typingInto] ?? ''),
+                                  typed ? `For ${groundLabel}: ${typed}` : `I want to add something to ${groundLabel}.`,
+                                )
+                                setTypingInto(null); setLineDraft('')
+                              }}
                               className="gwui-plain-link"
                             >
-                              Say it in the conversation instead
+                              {oldChatIsOpen ? 'Say it in the conversation instead' : `Tell ${askName} instead`}
                             </button>
                           )}
                         </div>
@@ -1323,7 +1395,7 @@ export function ContextPage({
                                 {l.audience === 'EVERYONE' ? 'Make it yours only' : 'Share with the team'}
                               </Button>
                               {contextEnabled && (
-                                <Button kind="quiet" size="small" onClick={() => changeThisInTheChat(`Change the line "${l.text}" to `)}>
+                                <Button kind="quiet" size="small" onClick={() => changeThisInTheChat(`Change the line "${l.text}" to `, `I want to change the line "${l.text}" on ${groundLabel}.`)}>
                                   Change this
                                 </Button>
                               )}

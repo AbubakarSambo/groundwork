@@ -57,6 +57,8 @@ export interface CoverageFacts {
   corroborated?: { checked: number; total: number } | null
   /** How much of the record has a document behind it. */
   documentBackedPct?: number | null
+  /** How many files, photos and pins the reader has attached to this check-in (WhatsApp ones included). */
+  filesAttached?: number | null
   /** Finished rounds, for whether there is anything to compare over time. */
   roundsFinished: number
 }
@@ -138,13 +140,16 @@ export function whatItCanSay(f: CoverageFacts): { rows: Row[]; headline: string 
       can: (f.documentBackedPct ?? 0) > 0,
       short: 'backed up',
       says: 'Which parts have a document behind them',
-      because: 'Nothing attached yet',
+      /* Night quality run 1: Amina sent a photo and a pin on WhatsApp and read "Nothing attached yet". Said truly now. */
+      because: (f.filesAttached ?? 0) > 0
+        ? `You have attached ${f.filesAttached === 1 ? 'one file' : `${f.filesAttached} files`}, but nothing you said is linked to ${f.filesAttached === 1 ? 'it' : 'one'} yet`
+        : 'Nothing attached yet',
     },
     {
       can: f.roundsFinished >= 2,
       short: "what's changed",
       says: 'How this has changed since last time',
-      because: 'Needs a second round',
+      because: 'Needs a second session',
     },
   ]
 

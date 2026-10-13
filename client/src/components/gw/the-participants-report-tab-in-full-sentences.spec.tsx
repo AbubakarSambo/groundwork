@@ -29,6 +29,7 @@ function renderReportTab(props: Partial<React.ComponentProps<typeof SharedReport
             participants: [{ id: 'p2', userId: 'u-miriam' }],
           }}
           onOpenBoard={() => {}}
+          onOpenWeek={() => {}}
           /*
            * U.9 THIRD REVIEW, ITEM 6: A LEVEL STRING, NOT A RAW SCORE. `specificityBySession` used
            * to carry a continuous 0-1 figure from a different field than the one the session's own

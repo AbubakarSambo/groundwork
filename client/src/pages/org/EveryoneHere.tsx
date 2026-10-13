@@ -10,7 +10,7 @@ import {
   type TagTone,
 } from '@/components/gw/ui'
 import {
-  type OrgMember, fetchMembers, nameOf, firstNameOf, initialsOf, roleWord, statusWord, needsSomething, whereTheySitLine, checkInsPartsApart,
+  type OrgMember, fetchMembers, nameOf, firstNameOf, initialsOf, isNamePlaceholder, roleWord, statusWord, needsSomething, whereTheySitLine, checkInsPartsApart,
 } from './people-here'
 
 /**
@@ -30,11 +30,11 @@ import {
  * plan" red, the rest plain (item 9); and "Open" is a 14.5px regular navy link, not a bold button
  * (item 8).
  */
-type RoleFilter = 'Everyone' | 'Owner' | 'Admins' | 'Can open check-ins' | 'Take part' | 'Guests' | 'Needs something'
-const ROLE_FILTERS: RoleFilter[] = ['Everyone', 'Owner', 'Admins', 'Can open check-ins', 'Take part', 'Guests', 'Needs something']
+type RoleFilter = 'Everyone' | 'Owner' | 'Admins' | 'Can open check-ins' | 'Takes part' | 'Guests' | 'Needs something'
+const ROLE_FILTERS: RoleFilter[] = ['Everyone', 'Owner', 'Admins', 'Can open check-ins', 'Takes part', 'Guests', 'Needs something']
 
 /** Team, Role, Status, Check-ins, Open - the name column is PersonRow's own (PEOPLE_NAME_COLUMN). */
-const EXTRA_COLUMNS = '140px 170px 170px minmax(200px, 1fr) 60px'
+const EXTRA_COLUMNS = '120px 170px 230px minmax(150px, 1fr) 40px'
 
 function matches(filter: RoleFilter, m: OrgMember, ownerId: string | null): boolean {
   const role = roleWord(m, ownerId)
@@ -43,7 +43,7 @@ function matches(filter: RoleFilter, m: OrgMember, ownerId: string | null): bool
     case 'Owner': return role === 'Owner'
     case 'Admins': return role === 'Admin' || role === 'Owner'
     case 'Can open check-ins': return role === 'Can open check-ins'
-    case 'Take part': return role === 'Takes part'
+    case 'Takes part': return role === 'Takes part'
     case 'Guests': return role === 'Guest'
     case 'Needs something': return needsSomething(m)
   }
@@ -67,14 +67,28 @@ function namesAnd(names: string[]): string {
 export function howManyHere(
   count: number, plan: string | null | undefined, cap: number | null | undefined,
   waitingToBeLetIn: string[] = [], heldForASeat: string[] = [], notLetIn: string[] = [],
+  /* Release check, 9 October: people waiting for a seat who are on no check-in (the plan is full, or a paste's invitation is kept)
+     read "Omondi is on a check-in with no seat for them", which was not true. They are said apart, and the server's own sentence
+     about the plan being full (request 197) is said when it is served. */
+  waitingWithNoCheckIn: string[] = [], overThePlanSays: string | null = null,
 ): string {
-  const people = count === 1 ? '1 person' : `${count} people`
+  const peopleCount = (n: number) => (n === 1 ? '1 person' : `${n} people`)
+  const people = peopleCount(count)
   const first = cap == null ? `${people}.` : (() => {
     const name = plan ? `the ${PLAN_LABELS[plan as SubscriptionPlan] ?? plan} plan` : 'the free plan'
     return `${people}, on ${name}, which is for up to ${cap}.`
   })()
+  /*
+   * B-212: "SOMEONE AND SOMEONE ARE WAITING TO BE LET IN." `names` here are already first names
+   * (firstNameOf), and for a person with no name that is the placeholder sentence's own first word
+   * - "Someone" or "Somebody" - which read exactly like a real name once joined by `namesAnd`. When
+   * ANY of them has no name, the whole group falls back to a plain count instead, same as a group
+   * too long to name individually; a mix of named and unnamed people is still a mix nobody can read
+   * apart from the sentence alone, so the number is the only thing that stays true either way.
+   */
   const sentence = (names: string[], few: string, many: string): string | null => {
     if (names.length === 0) return null
+    if (names.some(isNamePlaceholder)) return `${peopleCount(names.length)} ${names.length === 1 ? 'is' : 'are'} ${few}.`
     if (names.length <= 3) return `${namesAnd(names)} ${names.length === 1 ? 'is' : 'are'} ${few}.`
     return `${names.length} ${many}.`
   }
@@ -86,13 +100,15 @@ export function howManyHere(
    */
   const wasNotSentence = (names: string[]): string | null => {
     if (names.length === 0) return null
+    if (names.some(isNamePlaceholder)) return `${peopleCount(names.length)} ${names.length === 1 ? 'was' : 'were'} not let in.`
     if (names.length <= 3) return `${namesAnd(names)} ${names.length === 1 ? 'was' : 'were'} not let in.`
     return `${names.length} were not let in.`
   }
   const extra = [
     sentence(waitingToBeLetIn, 'waiting to be let in', 'more are waiting to be let in'),
     wasNotSentence(notLetIn),
-    sentence(heldForASeat, 'on a check-in with no seat for them', 'more are on a check-in with no seat for them'),
+    sentence(heldForASeat, 'on a check-in with no seat for them', 'people are on a check-in with no seat for them'),
+    overThePlanSays?.trim() || sentence(waitingWithNoCheckIn, 'waiting for a seat on your plan', 'people are waiting for a seat on your plan'),
   ].filter((s): s is string => !!s)
   return [first, ...extra].join(' ')
 }
@@ -125,16 +141,25 @@ function CheckInsCell({ m, startOf }: { m: OrgMember; startOf: Map<string, { sta
   if (parts.length === 0) return <span>None</span>
   /* Commas between the names, as the prototype writes them, unless a name has a comma of its own
      ("the Nairobi route, round 1"): then a comma cannot tell one check-in from the next, so each
-     goes on its own line. */
+     goes on its own line.
+
+     "AND" FOR THE PLAIN CASE, NOT A BARE COMMA LIST (real-user walk, Kijani Foods, fault 8d).
+     Naomi's three check-ins, none of them sharing a name, used to read as a run-on list joined by
+     commas ("Weekly sales push, Nairobi, Operations drop-in, Finance close"), which reads as one
+     long check-in name rather than three. `namesAnd`, already used above for this same page's own
+     people lists, reads the same three as a plain sentence instead. */
   const oneALine = parts.some(p => p.includes(','))
-  const list = (some: string[]) => oneALine
+  /* `full`: whether `some` is every check-in rather than the first few ahead of a "that many more"
+     button - `namesAnd` reads as a plain sentence only for the complete list; cut short ahead of
+     its own "and N more", "A, B and C and 2 more" reads as two sentences arguing over one "and". */
+  const list = (some: string[], full: boolean) => oneALine
     ? <>{some.map((p, i) => <div key={i}>{p}</div>)}</>
-    : <>{some.join(', ')}</>
-  if (parts.length <= CAP) return <span>{list(parts)}</span>
+    : full ? <>{namesAnd(some)}</> : <>{some.join(', ')}</>
+  if (parts.length <= CAP) return <span>{list(parts, true)}</span>
   if (expanded) {
     return (
       <span>
-        {list(parts)}{' '}
+        {list(parts, true)}{' '}
         <button type="button" className="gwui-plain-link" onClick={() => setExpanded(false)}>
           Show fewer
         </button>
@@ -143,7 +168,7 @@ function CheckInsCell({ m, startOf }: { m: OrgMember; startOf: Map<string, { sta
   }
   return (
     <span>
-      {list(parts.slice(0, CAP))}{' '}
+      {list(parts.slice(0, CAP), false)}{' '}
       <button type="button" className="gwui-plain-link" onClick={() => setExpanded(true)}>
         {`and ${parts.length - CAP} more`}
       </button>
@@ -214,14 +239,17 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
   /* Who the head count leaves out, and why (U.4 people-group review, item 1): named, so "N people"
      and the number of rows below it never quietly disagree. */
   const waitingToBeLetIn = everybody.filter((m) => m.awaitingOrgApproval && !m.notLetIn).map(firstNameOf)
-  const heldForASeat = everybody.filter((m) => m.heldForASeat).map(firstNameOf)
+  const heldForASeat = everybody.filter((m) => m.heldForASeat && (m.checkInsOn ?? 0) > 0).map(firstNameOf)
+  const waitingWithNoCheckIn = everybody.filter((m) => m.heldForASeat && (m.checkInsOn ?? 0) === 0).map(firstNameOf)
   const notLetIn = everybody.filter((m) => m.notLetIn).map(firstNameOf)
 
   return (
     <>
       <Folded
         summary="Who reports to whom"
-        note="Level and reporting lines describe the organisation; what someone can do still comes from their role"
+        /* FAULT 13 (live review): one sentence joined to another with a semicolon reads as a
+           single clipped clause, not plain writing. Two full sentences instead. */
+        note="Level and reporting lines describe the organisation. What someone can do still comes from their role."
       >
         <TheTree people={everybody.filter((m) => m.role !== 'GUEST' && !m.noAccountYet)} />
       </Folded>
@@ -235,6 +263,8 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
           waitingToBeLetIn,
           heldForASeat,
           notLetIn,
+          waitingWithNoCheckIn,
+          data?.overThePlanSays ?? null,
         )}
       >
         <Stack gap={18}>

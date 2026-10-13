@@ -17,6 +17,7 @@ const people = [
   { id: 'grace', email: 'grace@baridi.co.ke', firstName: 'Grace', lastName: 'Achieng', role: 'ADMIN', isEmailVerified: true, state: 'checked in', checkInsOn: 0, checkInsAnswered: 0, level: null, team: null, reportsTo: null, checkIns: [] },
   { id: 'amani', email: 'amani@baridi.co.ke', firstName: 'Amani', lastName: 'Njoroge', role: 'ADMIN', isEmailVerified: true, state: 'checked in', checkInsOn: 1, checkInsAnswered: 1, level: 'Chief executive', team: 'Leadership', reportsTo: null, checkIns: [] },
   { id: 'wairimu', email: 'wairimu@baridi.co.ke', firstName: 'Wairimu', lastName: 'Kamau', role: 'LEAD', isEmailVerified: true, state: 'checked in', checkInsOn: 1, checkInsAnswered: 1, level: 'Sales lead', team: 'Sales', reportsTo: { id: 'amani', name: 'Amani Njoroge' }, checkIns: [] },
+  { id: 'neema', email: 'neema@lakeview.test', firstName: 'Neema', lastName: 'Kamau', role: 'MEMBER', isEmailVerified: true, state: 'checked in', checkInsOn: 1, checkInsAnswered: 1, level: null, team: null, reportsTo: null, checkIns: [], alsoIn: ['Lakeview Clinic'] },
   { id: 'miriam', email: 'miriam@baridi.co.ke', firstName: 'Miriam', lastName: 'Wanjiku', role: 'MEMBER', isEmailVerified: true, state: 'checked in', checkInsOn: 1, checkInsAnswered: 1, level: 'Sales rep', team: 'Sales', reportsTo: { id: 'wairimu', name: 'Wairimu Kamau' }, phoneNumber: '+254722118440', checkIns: [{ id: 'sales', label: 'Sales team, Q3', runsIt: false }] },
 ]
 
@@ -74,8 +75,12 @@ describe('what Grace reads about Miriam', () => {
     expect(screen.getByText('Sales team, Q3')).toBeTruthy()
     expect(screen.getByText('Checks in')).toBeTruthy()
     /* U.4 review, item 3 (30 Sept): nobody can end a check-in themselves yet - only ask us to. The
-       old sentence claimed a control that does not exist. */
-    expect(screen.getByText('As an admin you can read every check-in at Baridi Appliances, change its setup, and ask us to end it. You don’t see anyone’s private notes.')).toBeTruthy()
+       old sentence claimed a control that does not exist.
+       FAULT 5, 6 Oct 2026: "change its setup" was never true either - only the lead changes
+       setup (the 1 October decision; `mayChangeSetup`). Replaced with the real limit on an
+       admin's reach: decision 5 closes a performance plan, a promotion, a renewal or somebody's
+       first 90 days unless she is given access. */
+    expect(screen.getByText('As an admin you can read every check-in at Baridi Appliances, and ask us to end it. A performance plan, a promotion, a renewal or somebody\'s first 90 days stays closed to you unless you are given access to it. You don’t see anyone’s private notes.')).toBeTruthy()
     /* WhatsApp is off, so her number is not offered. And no label, no dash. */
     expect(screen.queryByLabelText('WhatsApp number for Miriam')).toBeNull()
     expect(container.textContent).not.toMatch(/ - |\bscore\b|at risk/i)
@@ -148,6 +153,32 @@ describe('what Grace can change', () => {
     fireEvent.click(await screen.findByRole('radio', { name: /^Guest/ }))
     await waitFor(() => expect(patch).toHaveBeenCalledWith('/users/miriam', { role: 'GUEST' }))
   })
+
+  /*
+   * B-169. A single press on "Admin" changed a real role on this computer's database during the
+   * deep page audit's own click test, with no "are you sure" - every other role change applies
+   * straight away, which is right for them, but making somebody an admin is the one choice here
+   * that cannot be undone by picking something else: it hands them everyone's data and the power
+   * to change anyone else's role in turn.
+   */
+  it('making somebody an admin asks first, and does nothing on Cancel', async () => {
+    const patch = vi.spyOn(apiClient, 'patch').mockResolvedValue({ data: {} } as any)
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    open()
+    fireEvent.click(await screen.findByRole('radio', { name: /^Admin/ }))
+    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('Make Miriam Wanjiku an admin'))
+    expect(patch).not.toHaveBeenCalled()
+    confirmSpy.mockRestore()
+  })
+
+  it('making somebody an admin, confirmed, applies the change', async () => {
+    const patch = vi.spyOn(apiClient, 'patch').mockResolvedValue({ data: {} } as any)
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    open()
+    fireEvent.click(await screen.findByRole('radio', { name: /^Admin/ }))
+    await waitFor(() => expect(patch).toHaveBeenCalledWith('/users/miriam', { role: 'ADMIN' }))
+    confirmSpy.mockRestore()
+  })
 })
 
 describe('removing somebody from the organisation', () => {
@@ -160,6 +191,24 @@ describe('removing somebody from the organisation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }))
     await waitFor(() => expect(del).toHaveBeenCalledWith('/users/miriam'))
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Miriam Wanjiku no longer has access to Baridi Appliances.'))
+  })
+
+  it('says plainly that somebody in another organisation keeps their place there (Hafsah, 11 October 2026)', async () => {
+    const del = vi.spyOn(apiClient, 'delete').mockResolvedValue({ data: {} } as any)
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    open('neema')
+    expect(await screen.findByRole('heading', { name: 'Remove from Baridi Appliances' })).toBeTruthy()
+    expect(screen.getByText('They lose access to Baridi Appliances and their seat here is freed. Their sign-in and everything in Lakeview Clinic stay as they are. What they shared stays in the check-ins they were part of here.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }))
+    expect(confirm).toHaveBeenCalledWith('Remove Neema Kamau from Baridi Appliances? They keep their place in Lakeview Clinic.\n\nThey lose access to Baridi Appliances and their seat here is freed. Their sign-in and everything in Lakeview Clinic stay as they are. What they shared stays in the check-ins they were part of here.')
+    await waitFor(() => expect(del).toHaveBeenCalledWith('/users/neema'))
+  })
+
+  it('names no other organisation for somebody who has only this one', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove' }))
+    expect(confirm).toHaveBeenCalledWith('Remove Miriam Wanjiku from Baridi Appliances?\n\nThey lose access and their seat is freed. What they shared stays in the check-ins they were part of.')
   })
 
   it('does nothing without confirming first', async () => {

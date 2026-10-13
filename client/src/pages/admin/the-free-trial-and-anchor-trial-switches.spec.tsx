@@ -82,7 +82,7 @@ describe('the anchor trial row', () => {
   it('reads the served state, off, with its fixed sentence', async () => {
     ;(adminApi.getAnchorTrial as any).mockResolvedValue({ on: false, months: 1, people: 20 })
     renderWith(<AnchorTrialRow />)
-    expect(await screen.findByText('A check-in started from the anchor link gives the organisation 1 month on the plan for up to 20 people, the lead included.')).toBeTruthy()
+    expect(await screen.findByText('A check-in started from the anchor link gives the organisation 1 month on the plan for up to 20 people besides the lead.')).toBeTruthy()
     expect(screen.getByText('Off')).toBeTruthy()
   })
 

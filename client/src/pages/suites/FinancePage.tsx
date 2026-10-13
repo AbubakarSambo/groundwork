@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { financeApi, type FinanceRequest, type FinanceView } from '@/api/suites'
+import { financeApi, type ATotal, type FinanceRequest, type FinanceView, type TheMonthsTotals } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
-import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row, FieldLabel, TextField } from '@/components/gw/ui'
+import { Page, PageTitle, Section, Panel, Button, Note, Empty, RowList, Row, FieldLabel, TextField, Select } from '@/components/gw/ui'
 import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
+import { midSentence } from '@/lib/a-colleague'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 /**
  * THE REQUESTS FOR FINANCE (#/suite/spend/finance). Decision 85, item 2: "Finance verifies, codes,
@@ -30,6 +32,22 @@ const withCurrency = (currency: string | null, n: number) => {
   return currency ? `${currency} ${money}` : money
 }
 
+/** "2026-10", this month. */
+const thisMonth = () => new Date().toISOString().slice(0, 7)
+/**
+ * This month and the eleven before it, oldest last, as the month choice for the totals (item 5:
+ * "a month choice (this month and the previous ones)"). Only navigation, never a served number.
+ */
+function monthChoices(): { value: string; label: string }[] {
+  const now = new Date()
+  const out: { value: string; label: string }[] = []
+  for (let i = 0; i < 12; i += 1) {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1))
+    out.push({ value: d.toISOString().slice(0, 7), label: `${whenItWas(d, 'month', 'UTC')} ${d.getUTCFullYear()}` })
+  }
+  return out
+}
+
 export function FinancePage() {
   const user = useAuthStore(s => s.user)
   const qc = useQueryClient()
@@ -41,6 +59,19 @@ export function FinancePage() {
   })
   const refused = (error as { response?: { status?: number; data?: { message?: string } } } | null)?.response
   const [problem, setProblem] = useState<string | null>(null)
+  const [month, setMonth] = useState(thisMonth())
+  /* Only read once the main view above has already let this reader in (finance or an admin): no
+     separate guard is needed, since this query is never reached by anybody the page itself refused. */
+  const totals = useQuery({
+    queryKey: ['suite-finance-totals', month],
+    queryFn: () => financeApi.totals(month),
+    enabled: !!data,
+    retry: false,
+  })
+  /* The month the heading follows: the server's own words for it once they arrive (`monthSays`,
+     "October 2026"), the month choice's own label while they are still loading, so the heading never
+     lags a tick behind the month this reader just picked. */
+  const headingMonth = (totals.data?.month === month ? totals.data?.monthSays : null) ?? monthChoices().find(m => m.value === month)?.label ?? null
   const download = useMutation({
     mutationFn: async (format: 'csv' | 'xlsx') => {
       const { blob, fileName } = await financeApi.file(format)
@@ -77,6 +108,22 @@ export function FinancePage() {
 
       {data && (
         <>
+          {/*
+           * THE SUMMARY FIRST (live walk at a hundred people, fault 3): the totals used to sit under
+           * the whole list of payment cards, so finance scrolled past every one of them to find the
+           * month's own numbers. The heading now follows the month that is actually chosen, instead
+           * of reading "This month's spending" after a different month had been picked.
+           */}
+          <Section
+            heading={headingMonth ? `Spending in ${headingMonth}` : 'Spending'}
+            action={<Select aria-label="Month" value={month} onChange={e => setMonth(e.target.value)}>
+              {monthChoices().map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+            </Select>}
+          >
+            {totals.isLoading && <Note>Loading…</Note>}
+            {totals.data && <TheTotals t={totals.data} />}
+          </Section>
+
           <Section
             heading="Waiting to be paid"
             action={(data.toPay ?? []).length > 0 ? (
@@ -119,7 +166,32 @@ export function FinancePage() {
   )
 }
 
-const title = (r: FinanceRequest, currency: string | null) => `${r.name}: ${withCurrency(currency, r.amount)} for ${r.what}`
+/**
+ * THE MONTH'S SPENDING, ADDED UP FOR FINANCE (item 5, GET /suites/spend/finance/totals). Every
+ * number and word is the server's own `says` (the-spending-for-finance.service.ts), by team and by
+ * category, in the organisation's own currency - never a price, a limit or a count built here.
+ */
+function TheTotals({ t }: { t: TheMonthsTotals }) {
+  return (
+    <>
+      <p className="gwui-panel-text">{t.says}</p>
+      <Panel as="section" heading="By team" aria-label="By team">
+        <RowList label="By team">
+          {t.byTeam.map((x: ATotal) => <Row key={x.name} columns="minmax(0, 1fr)"><span>{x.says}</span></Row>)}
+        </RowList>
+      </Panel>
+      <Panel as="section" heading="By category" aria-label="By category">
+        <RowList label="By category">
+          {t.byCategory.map((x: ATotal) => <Row key={x.name} columns="minmax(0, 1fr)"><span>{x.says}</span></Row>)}
+        </RowList>
+      </Panel>
+    </>
+  )
+}
+
+/* `r.what` can open with a capitalised article ("The Mwangi agency") where the same string also
+   stands as a title elsewhere; mid-sentence here, only that leading word is wrong (fault 1). */
+const title = (r: FinanceRequest, currency: string | null) => `${r.name}: ${withCurrency(currency, r.amount)} for ${midSentence(r.what)}`
 
 function Said({ r }: { r: FinanceRequest }) {
   return <>{r.said.map((line, i) => <p key={i} className="gwui-panel-text">{line}</p>)}</>

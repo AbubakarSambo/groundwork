@@ -1,4 +1,6 @@
 import { AnAdminDecidesWhetherItStarts } from './an-admin-decides-whether-it-starts'
+import { TheLeadsNote } from '@/components/gw/TheLeadsNote'
+import { howManyCheckedInSentence } from '@/lib/how-many-checked-in'
 import { howItEnded, hasStalled, itRanOutOfTime } from '@/lib/a-ground-that-has-ended'
 import { scrollToId } from '@/lib/scroll-to'
 import { whenItRunsOut, sayHowLongIsLeft } from '@/lib/when-it-runs-out'
@@ -11,6 +13,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ContextPage } from '@/components/gw/ContextPage'
 import { YourWork } from '@/components/gw/checkin/YourWork'
 import { Note, Callout, Button, Panel, Stack, Avatar, Tag, TextField, SubHeading, Empty, Folded, Modal } from '@/components/gw/ui'
+import { TheLeadsOwnWayIn, YOU_CHECK_IN_WHEN_YOU_CHOOSE } from '@/components/gw/TheLeadsOwnWayIn'
+import { theClosingAfterYourFirstCheckIn, takeTheFirstCheckInClosing } from '@/lib/the-closing-after-your-first-check-in'
 import { initialsOf } from '@/pages/org/people-here'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useAuthStore } from '@/stores/auth'
@@ -29,7 +33,7 @@ import type { ParticipantRequest } from '@/api/participantRequests'
 import { toast } from 'sonner'
 import { CodeShareCard } from '@/components/CodeShareCard'
 import { PostSessionPanel } from '@/components/PostSessionPanel'
-import { theLeadsNote, waitsForItsStart } from '@/lib/the-leads-note'
+import { waitsForItsStart } from '@/lib/the-leads-note'
 import { useOpenSession } from '@/hooks/useOpenSession'
 import { SessionPaywallModal } from '@/components/gw/checkin/SessionPaywallModal'
 import { BetweenCheckIns } from '@/components/gw/BetweenCheckIns'
@@ -39,13 +43,14 @@ import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { CheckInHeader } from '@/components/gw/ui/CheckInHeader'
 import { Page } from '@/components/gw/ui/Page'
 import { billingApi } from '@/api/billing'
-import { CheckInPeopleAndSetup } from './CheckInPeopleAndSetup'
+import { CheckInPeopleAndSetup, sessionsDoneBy } from './CheckInPeopleAndSetup'
 import { whoIsInRound } from '@/lib/who-is-in-this-round'
 import { whoWasNotInvited, rememberWhoWasNotInvited, thatIsDealtWith, whatToSayAboutThem, type NotInvited } from './who-was-not-invited'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 import { copy } from '@/components/gw/copying-can-fail'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { SendTheReportToEveryone } from '@/components/gw/SendTheReportToEveryone'
+import { howManyHaveNotAnsweredYet, numberUpToTenInWords, andWhoIsNotCountedYet } from '@/lib/a-number-up-to-ten-in-words'
 
 /**
  * THE THIRD COPY OF THE SITUATION NAMES, DELETED.
@@ -98,6 +103,18 @@ type Tab = 'chat' | 'overview' | 'checkins' | 'myrecord' | 'docs' | 'report' | '
  */
 const FROM_TAB_KEY: Record<string, Tab> = {
   chat: 'chat', report: 'report', sessions: 'checkins', context: 'docs', settings: 'settings',
+  /**
+   * B-223: `?tab=mywork` AND `?tab=people` ARE THE OUTER TAB ROW'S OWN KEYS (see `outerTabOf`
+   * and the tab row's definition below), not in this map before now - so a link carrying either
+   * one fell all the way through to the hardcoded fallback, which did not recognise them either,
+   * and landed on `chat`: the Check-in tab, which silently opens the reader's own session the
+   * moment it mounts. Arriving on My work or People and setup must never open a session - only
+   * going to the Check-in tab itself, or pressing to start, does that. `people` has exactly one
+   * tab behind it, `settings`; `mywork` has several (Check-ins, My record, Report), so it needs a
+   * single landing tab too - `checkins` is in that group for every reader (`outerTabOf` returns
+   * `'mywork'` for it) and is never the Check-in tab, so it can never trigger the auto-open.
+   */
+  mywork: 'checkins', people: 'settings',
   /**
    * `record` MEANS ONE THING NOW, AND IT IS SOMEBODY'S OWN.
    *
@@ -159,7 +176,7 @@ export function GroundAdminPage() {
    * useOpenSession.ts), called from here instead, so the lead never leaves this page for her own
    * session.
    */
-  const { open: openMySession, paywall } = useOpenSession(id)
+  const { open: openMySession, openFailed: myOpenSessionFailed, openError: myOpenSessionError, retryOpen: retryMyOpenSession, paywall } = useOpenSession(id)
   /**
    * CHECK-INS FIRST, because that is what a ground is for.
    *
@@ -190,6 +207,15 @@ export function GroundAdminPage() {
     const asked = searchParams.get('tab') ?? ''
     return FROM_TAB_KEY[asked] ?? (['chat', 'checkins', 'docs', 'report', 'settings'].includes(asked) ? (asked as Tab) : 'chat')
   })
+  /*
+   * THE CURRENT TAB, READABLE FROM INSIDE AN ALREADY-IN-FLIGHT REQUEST. `tab` itself is fine for
+   * anything that renders, but the auto-open effect below fires a request the moment the page
+   * mounts on the Check-in tab, and that request can still be pending once the reader has clicked
+   * away to another tab - `tab` as a plain closed-over value would answer with whatever it was
+   * when the effect ran, not what it is now. See the effect, and useOpenSession's `shouldNavigate`.
+   */
+  const tabRef = useRef(tab)
+  useEffect(() => { tabRef.current = tab }, [tab])
   /** So a tab can be linked to and come back to. Replace, not push: tabs are not history. */
   const goTab = (t: Tab) => {
     setTab(t)
@@ -212,6 +238,14 @@ export function GroundAdminPage() {
      day - see WhichDaysTheyWork. This is the only place the rhythm can be changed after creation,
      and it carried no way to say "not at the weekend". */
   const [workingDaysDraft, setWorkingDaysDraft] = useState<number[]>([])
+  /*
+   * REQUEST 194 (8 October 2026): THE DAY CHECK-INS LAND ON, EDITABLE FROM "PEOPLE AND SETUP". The
+   * same `cadenceAnchorDay` setup already offers while a check-in is being created
+   * (TheSetup.tsx) - 0 to 6 for a weekly or fortnightly rhythm, 1 to 31 for a monthly one, `null` to
+   * clear it - now editable afterwards too, through `PATCH /grounds/:id`, by whoever `mayChangeSetup`
+   * says may change this check-in's setup.
+   */
+  const [anchorDayDraft, setAnchorDayDraft] = useState<number | null>(null)
   const [groundScenario, setGroundScenario] = useState('')
   const [showReleaseConfirm, setShowReleaseConfirm] = useState(false)
   const [newParticipantEmail, setNewParticipantEmail] = useState('')
@@ -267,11 +301,15 @@ export function GroundAdminPage() {
   })
 
   /*
-   * A check-in that is genuinely gone answers 404. Anything else - a dropped connection, a token
-   * being refreshed, a cold server - is a failure to load, and telling somebody their check-in does
-   * not exist because their wifi blinked is the wrong sentence at the worst moment.
+   * A check-in that is genuinely gone answers 404 - OR 403: B-110 (GW-PRI-04). The two have to
+   * read the same, because the only other true sentence for a 403 here ("you are not part of
+   * this check-in") tells a stranger holding a stale link that something real sits behind it,
+   * which is exactly what the 404 wording is written not to say. Anything else - a dropped
+   * connection, a token being refreshed, a cold server - is a failure to load, and telling
+   * somebody their check-in does not exist because their wifi blinked is the wrong sentence at
+   * the worst moment.
    */
-  const definitelyGone = isError && (error as any)?.response?.status === 404
+  const definitelyGone = isError && [404, 403].includes((error as any)?.response?.status)
 
   /* THE CHECK-IN'S LIVE REPORT QUERY WENT WITH THE BODY THAT RENDERED IT. Each session's report
      is fetched by the page that shows it, from `/report/session/:n`, which is the only call that
@@ -289,11 +327,30 @@ export function GroundAdminPage() {
    * Yours only. Somebody else's session is theirs until the shared report releases, which is the
    * same wall the session grid keeps - and the reason this reads `userId === user?.id` rather than
    * "everybody on the check-in".
+   *
+   * B-100: A SET-UP ROW IS NOT A SESSION, HERE EITHER. `sessionsDoneBy`, `mySessionDots` and the
+   * session grid (`!c.isSetup`) all already leave the set-up conversation out, but this list fed
+   * "Your reports" straight from the raw check-ins, so a lead who only manages read "Session 1,
+   * your own" with a report to read even though "Your check-ins" on the very same page said
+   * "Nothing on record yet" and the stat tile above it said she does not check in herself. One
+   * rule, here too.
    */
   const mySessions = ((ground as any)?.checkIns ?? [])
-    .filter((c: any) => c.status === 'COMPLETED')
+    .filter((c: any) => c.status === 'COMPLETED' && !c.isSetup)
     .filter((c: any) => ((ground as any)?.participants ?? []).some((p: any) => p.id === c.participantId && p.userId === user?.id))
     .sort((a: any, b: any) => (b.sessionNumber ?? 0) - (a.sessionNumber ?? 0))
+
+  /**
+   * EVERYONE WHO ACTUALLY CHECKS IN ON THIS GROUND.
+   *
+   * B-100: A LEAD WHO ONLY MANAGES IS NOT SOMEONE WHO CHECKS IN, AND THE CHECK-IN TAB'S OWN
+   * ROSTER AND "ONCE EVERYBODY IS IN" LINE STILL COUNTED HER. "Your sessions" (B-080) already
+   * leaves her out, but the People list on the Check-ins tab still listed her own row with "Not
+   * started" and "Copy check-in link", and the total it counted against ("once all three people
+   * are in") still carried her, when only the two who answer were ever going to. The same
+   * `managingOnly` exclusion `rail-attention.ts`/`WhosInItRoster.tsx` already apply, here too.
+   */
+  const participantsWhoCheckIn = ((ground as any)?.participants ?? []).filter((p: any) => !p.managingOnly)
 
   /*
    * EVERYBODY ON THIS PAGE, NAMED ONCE (request 36). Their name, else the address the lead typed,
@@ -456,6 +513,16 @@ export function GroundAdminPage() {
    * further down for the roster; named here because the tab row asks it too.
    */
   const viewerIsAParty = (ground?.participants ?? []).some((p: any) => p.userId === user?.id)
+  /**
+   * AND WHETHER SHE ANSWERS IT HERSELF, WHICH IS A THIRD QUESTION.
+   *
+   * A lead who only manages (`managingOnly`) IS a party (she is on `ground.participants`, same as
+   * anybody else), but never gives her own account of a round - the same fact "Your sessions" and
+   * every count on the Check-ins tab already leave her out for (`participantsWhoCheckIn` above).
+   * The "Your check-in" tab and header button are a door to a check-in she does not do; this is
+   * the same `managingOnly` rule, named for where a party who checks in is asked for.
+   */
+  const viewerChecksIn = viewerIsAParty && !(myParticipant as any)?.managingOnly
 
   /**
    * ROUND 4, ITEM A STEP 3: THE CHECK-IN TAB IS THE FOCUSED CONVERSATION, FOR A PARTY.
@@ -474,49 +541,107 @@ export function GroundAdminPage() {
    * effect in this file (below) uses, and placed here - before every early return - so the hook
    * count cannot change between renders (rules of hooks), the same reason `showAsk` moved up top.
    */
+  /*
+   * DECISION 133 (walk fault 2): AFTER HER FIRST CHECK-IN THE LEAD CHECKS IN WHEN SHE CHOOSES. Opening
+   * the Check-in tab (or any tab) never starts or opens a session for her; only "Check in yourself"
+   * does. The same rule B-223 set for My work and People, for the lead on every tab.
+   */
+  /* Walk fault 3: the closing of the lead's first check-in, said once where she lands. */
+  const [theFirstClosing] = useState(() => takeTheFirstCheckInClosing(id))
+  const theLeadChecksInWhenSheChooses = isInitiator && ((ground?.checkIns ?? []) as any[])
+    .some((c) => c.participantId === myParticipantId && c.status === 'COMPLETED' && !c.isSetup)
   const myOpenSessionAutoOpenFired = useRef(false)
   useEffect(() => {
-    if (tab !== 'chat' || !viewerIsAParty) return
+    /* A lead who only manages has no session of her own to auto-open - `viewerChecksIn`, not
+       `viewerIsAParty`, the same distinction the tab and header button below now make. */
+    if (tab !== 'chat' || !viewerChecksIn) return
+    if (theLeadChecksInWhenSheChooses) return
     if (myOpenSessionAutoOpenFired.current) return
     if (!myOpenCheckIn || myOpenOpensLater) return
+    /*
+     * B-009: NOTHING CAN OPEN WHILE AN ADMIN HAS NOT YET ACCEPTED THIS CHECK-IN.
+     *
+     * The "Waiting for an admin to accept this check-in" callout above already says "You can keep
+     * editing it, and nobody can be invited until it is accepted" - but this effect tried to open
+     * the lead's own session anyway, the server refused with its own "This check-in is closed.
+     * Nothing further can be added." (the sentence written for a check-in that has actually ended),
+     * and that refusal banner then sat directly under the waiting callout, flatly contradicting it.
+     * Nothing here can open until it is accepted, so this waits until then.
+     */
+    if ((ground as any)?.status === 'AWAITING_APPROVAL') return
+    /*
+     * B-019: THE SAME FALSE "CLOSED" REFUSAL, FOR A GROUND THAT HAS ALREADY ENDED.
+     *
+     * A ground ended early (the lead stopped it) can still have a row here that is not COMPLETED,
+     * so this still tried to open it even though the tab now reads "This check-in has ended" -
+     * the server's own "This check-in is closed." toasted on top of that message. Nothing can
+     * open once the ground itself has ended.
+     */
+    if (howItEnded(ground as any)) return
+    /*
+     * SCREEN FAULT 4: THE ANCHOR'S LEAD NEVER GETS AN ORDINARY FIRST CHECK-IN HERE.
+     *
+     * In `HELP_TEAM_UNDERSTAND` the lead's own account of the situation is the entry conversation
+     * she already had and committed - there is no second, ordinary check-in for her to answer, and
+     * auto-opening one sent her straight into a conversation the anchor was never meant to ask of
+     * her (request 168 asks the engine to stop creating that check-in at all; until it does, the
+     * screen must not walk her into it). She lands on the board instead, same as anyone arriving
+     * at a ground with nothing of their own left to open.
+     */
+    if ((ground as any)?.scenario === 'HELP_TEAM_UNDERSTAND') {
+      myOpenSessionAutoOpenFired.current = true
+      navigate(`/grounds/${id}/board`, { replace: true })
+      return
+    }
     myOpenSessionAutoOpenFired.current = true
+    /*
+     * SCREEN FAULT (engine workspace, 9 October night, test bed copy a): this fires the moment the
+     * page lands on the Check-in tab, silently, before the reader has read anything - and the
+     * probe it starts can still be pending once she has clicked over to another tab and started
+     * something there (Wairimu Njoroge, sending her first message in Context and resources). Its
+     * own navigate, landing later, took her back to `/checkin/...` regardless, and her message's
+     * reply was lost. `shouldNavigate` is checked right before that navigate fires, against the
+     * tab she is actually on then, not the tab she was on when this effect ran - so a silent
+     * auto-open from the Check-in tab never pulls her away once she has moved on.
+     */
     openMySession(myOpenCheckIn, {
       isFreeGround: (ground as any)?.isFreeGround,
       groundLabel: (ground as any)?.label,
       isInitiator,
+      shouldNavigate: () => tabRef.current === 'chat',
     })
-  }, [tab, viewerIsAParty, myOpenCheckIn, myOpenOpensLater, openMySession, ground, isInitiator])
+  }, [tab, viewerChecksIn, myOpenCheckIn, myOpenOpensLater, openMySession, ground, isInitiator])
 
   /**
-   * REVIEW ROUND 3, ITEM 3: AN ADMIN WHO NEITHER RUNS THIS CHECK-IN NOR TAKES PART IN IT LANDS ON
-   * A TAB THE READ-ONLY ROW STILL SHOWS. The tab bar itself already drops Check-in and My work for
-   * this reader (see the header below); this catches the default landing tab (`chat`) and a link
-   * carrying `?tab=checkins`/`report`/`record`, and sends them to Context instead - one of the
-   * three tabs they do have.
+   * HAFSAH, 10 OCTOBER: AN ADMIN WHO ONLY READS A CHECK-IN LANDS ON THE BOARD, NOT ON CONTEXT.
+   * The tab bar itself already drops Check-in and My work for this reader (see the header
+   * below); this catches the default landing tab (`chat`) and a link carrying
+   * `?tab=checkins`/`report`/`record`, and sends them to the Board page instead - the page an
+   * admin who does not run this check-in is here to read (decision 16, comparison first). This
+   * replaces the earlier choice (REVIEW ROUND 3, ITEM 3) to land this reader on Context, which
+   * B-143's second deep page audit found confusing: the board, not Context, is what a read-only
+   * admin is there for. Context is still reachable, from its own tab.
    *
    * BUG FOUND ON RE-REVIEW: this ran the moment the page mounted, before the check-in had
    * loaded. While `ground` is still undefined, `isInitiator` and `viewerIsAParty` are both
    * their unloaded default of false - indistinguishable from a real read-only admin - so
-   * every reader, including the lead and a party arriving on `?tab=chat`, was sent to
-   * Context for an instant. Waiting for the check-in to load before asking who the reader
-   * is fixes that: by the time this can fire, the two flags are the server's real answer.
+   * every reader, including the lead and a party arriving on `?tab=chat`, was sent away for
+   * an instant. Waiting for the check-in to load before asking who the reader is fixes that:
+   * by the time this can fire, the two flags are the server's real answer.
    *
    * GROUP 3'S REVIEW, CONTRADICTION 1: "?tab=report" LANDED SOMEWHERE WITH NO REPORT IN IT.
    * The note under the tabs tells a read-only admin "You can read this check-in's board and
    * reports", which is true - the reports live on the Board page (`/grounds/:id/board`), opened
-   * from the Board tab, where each session is listed with an "Open" link to its report - but a
-   * link carrying `?tab=report` used to land this reader on Context, one tab away from either
-   * "reports" word in that sentence. `?tab=report` now takes this reader to the Board page
-   * itself, the one of their three tabs that actually gets them there; `checkins` and `myrecord`
-   * still go to Context, since neither name is a promise this reader was given.
+   * from the Board tab, where each session is listed with an "Open" link to its report. All four
+   * of this reader's redirected cases (the default landing, `report`, `checkins` and `myrecord`)
+   * now go to the same place: the Board page.
    */
   useEffect(() => {
     if (isLoading || !ground) return
     if (isInitiator || viewerIsAParty) return
-    if (tab === 'report') { navigate(`/grounds/${id}/board`, { replace: true }); return }
     const inMyWorkGroup = (['checkins', 'myrecord'] as Tab[]).includes(tab)
-    if (tab !== 'chat' && !inMyWorkGroup) return
-    goTab('docs')
+    if (tab !== 'report' && tab !== 'chat' && !inMyWorkGroup) return
+    navigate(`/grounds/${id}/board`, { replace: true })
   }, [isLoading, ground, isInitiator, viewerIsAParty, tab, id, navigate])
 
   /**
@@ -748,6 +873,11 @@ export function GroundAdminPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['ground', id] }),
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not change.'),
   })
+  const setSimplerWords = useMutation({
+    mutationFn: (on: boolean) => groundsApi.setSimplerWords(id!, on),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['ground', id] }),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not change.'),
+  })
   const setWhoSeesTargets = useMutation({
     mutationFn: (everybody: boolean) => groundsApi.setWhoSeesTargets(id!, everybody),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['ground', id] }); toast.success('Saved.') },
@@ -974,6 +1104,7 @@ export function GroundAdminPage() {
     /* Seeded like the rest: an empty picker on a check-in that already skips weekends would offer
        to put it back on Sundays by pressing save. */
     if (Array.isArray(ground?.workingDays)) setWorkingDaysDraft(ground.workingDays as number[])
+    setAnchorDayDraft(((ground as any)?.cadenceAnchorDay ?? null) as number | null)
     if (ground?.scenario) setGroundScenario(prev => prev || ground.scenario)
     /* Seeded from the record for the same reason as the two above: an empty date control on a
        check-in that HAS a start date would offer to clear it by pressing save. */
@@ -993,6 +1124,7 @@ export function GroundAdminPage() {
     timelineDaysDraft !== ground.timelineDays
     || cadenceDraft !== ground.cadence
     || !sameDays(workingDaysDraft, (ground as { workingDays?: number[] }).workingDays)
+    || anchorDayDraft !== (((ground as any)?.cadenceAnchorDay ?? null) as number | null)
   )
 
   // Was the bare words "Ground not found." with nothing to press. W8-65.
@@ -1083,8 +1215,19 @@ export function GroundAdminPage() {
    * have left two copies of one rule on one screen - which is how the roster and the counter came
    * to disagree in the first place.
    */
+  /*
+   * REQUEST 174, ITEM 2 (report tab, fault d): "Session 1 of 12" STUCK WHILE SESSION 2 WAS BEING
+   * ANSWERED. This fed every row of `ground.participants` into the rule unfiltered, including
+   * somebody held at the organisation's door (`notLetInYet`) - decision 77, the same rule
+   * `whoIsInRound` already applies for the roster and the counter just below. Someone not let in
+   * yet never has a completed session and never will, so their row is permanently empty, which
+   * permanently caps "the lowest number anybody has finished" at zero and the header at "Session
+   * 1" - whatever everybody actually let in has done. Left out here the same way they are left out
+   * of `roundDone`/`total`, so the header reads the same served state the rest of this page does.
+   */
   const openRoundFromRule = whichSessionIsThisCheckInOn(
-    (ground.participants ?? []).map((p: any) =>
+    /* And nobody invited who has not joined yet (decision 8 redone): their empty row is not the team's place. */
+    (ground.participants ?? []).filter((p: any) => !p.notLetInYet && !p.notJoinedYet).map((p: any) =>
       ((ground.checkIns ?? []) as any[])
         .filter((c) => c.participantId === p.id && c.status === 'COMPLETED')
         .map((c) => c.sessionNumber ?? 0),
@@ -1107,13 +1250,19 @@ export function GroundAdminPage() {
   /* Counted once, and out here, so the row's own label does not have to reach into the record. */
   const settingsChangeCount = ((ground as any)?.settingsChanges?.length ?? 0) as number
 
-  const mySessionsDone = ((ground?.checkIns ?? []) as any[]).filter(
-    (c) => c.status === 'COMPLETED' && (ground?.participants ?? []).some((p: any) => p.id === c.participantId && p.userId === user?.id),
-  ).length
+  /*
+   * B-012: counting rows, not sessions, read "9 of 6 sessions are done" - a self-correction adds a
+   * second COMPLETED row for the same session number (the dots below already know this; `done` and
+   * `corrected` are both a completed row for one session), so a session answered once and then
+   * corrected was being counted twice. Counting the distinct session numbers fixes it, and
+   * `yourSessionsSentence` also clamps to the planned total so this can never again read more done
+   * than the check-in has.
+   */
+  const mySessionsDone = sessionsDoneBy((ground?.checkIns ?? []) as any[], (ground?.participants ?? []) as any[], user?.id)
   /* One dot per session of mine. The same read the party's page makes - the two views of a check-in
      have to move together, which is what the-two-views-are-a-pair protects. */
   const mySessionDots = ((ground?.checkIns ?? []) as any[])
-    .filter((c) => (ground?.participants ?? []).some((p: any) => p.id === c.participantId && p.userId === user?.id))
+    .filter((c) => !c.isSetup && (ground?.participants ?? []).some((p: any) => p.id === c.participantId && p.userId === user?.id))
     .sort((a, b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0))
     .map((c) => ({
       sessionNumber: c.sessionNumber ?? 0,
@@ -1135,6 +1284,30 @@ export function GroundAdminPage() {
     (c: any) => c.sessionNumber === openRound && c.status === 'COMPLETED',
   ).length
   /**
+   * B-053: ONE SESSION, NAMED ONCE. `ground.sessionClock` (when the server sends it) already names
+   * the round its own sentences are about - `says` read "Session 1 of 12." the moment the server's
+   * own count disagreed with this page's `openRound` (a lead who does not check in herself holds
+   * `openRound` at 1 after finishing session 1, because she is excluded from who-checks-in, while
+   * the clock's own round is the one `says` is about). Counting "who has checked in" against this
+   * page's own `openRound` then read a different session than the one just named - "Session 1 of
+   * 12. ... Nobody has checked in yet. Waiting for the first check-in." over a finished session 1.
+   * Whenever the server sends a clock, its own round is the one every count after `says` is about;
+   * `openRound` is kept only as the fallback for a ground the server has not given one.
+   */
+  const clockRound = ground.sessionClock?.currentSession ?? openRound
+  /*
+   * COUNTED AMONG THE PEOPLE IN THE SESSION, THE SAME PEOPLE THE TOTAL COUNTS (release check, 8 October 2026). The anchor's
+   * lead does not check in (her row is managing only), but her set-up conversation is stored as a finished check-in for
+   * session 1. Counted here, her first screen read "One of the zero people has checked in for session 1." A finished
+   * check-in counts only when its person is one of `whoIsInRound`; one with no person on it is counted as before.
+   */
+  const inClockRound = new Set(
+    whoIsInRound((ground.participants ?? []) as any[], clockRound, (ground as any).scenario, (ground.checkIns ?? []) as any[]).map((p: any) => p.id),
+  )
+  const clockRoundDone = (ground.checkIns ?? []).filter(
+    (c: any) => c.sessionNumber === clockRound && c.status === 'COMPLETED' && (c.participantId == null || inClockRound.has(c.participantId)),
+  ).length
+  /**
    * WHY THE SESSION NUMBER JUST WENT DOWN.
    *
    * Walked twice on a real check-in. Header read "Session 2 of 3, 0 of 1 checked in for session 2".
@@ -1150,10 +1323,41 @@ export function GroundAdminPage() {
    * a fact about arithmetic that nobody can be expected to reconstruct, and it takes one sentence to
    * say. Shown only when it has actually happened: somebody here has finished more sessions than the
    * open round, which cannot be true unless the round moved back under them.
+   *
+   * B-064: THE ARITHMETIC ALONE IS NOT EVIDENCE SOMEBODY WAS ADDED. E1 on Riverbank Trading's old
+   * data (docs/existing-users-check.md) found "It went back to session 2, because somebody new was
+   * added." on check-ins where nobody had been added - the old data simply carried one person much
+   * further than another (session 20 against session 2), because it was put in with each person's
+   * own stray session numbers rather than everybody starting together. The arithmetic condition
+   * above is still necessary (it is what "went back" even means), but it is not sufficient: it is
+   * also true of two people who have always been in the check-in and have simply answered a very
+   * different number of times. The server does not send a "this person was added after the round
+   * opened" flag (request 201 asks for one), so this reads the nearest honest signal already on the
+   * page: `createdAt`, when every non-managing participant has one. Only when somebody who is BEHIND
+   * joined the check-in later than somebody who is AHEAD could they plausibly be the newcomer the
+   * sentence is about; when the data gives no such evidence (old imports often give everybody the
+   * same `createdAt`, or none at all), the sentence is dropped rather than guessed.
    */
-  const roundWentBack = (ground.participants ?? []).some((p: any) =>
-    (ground.checkIns ?? []).filter((c: any) => c.participantId === p.id && c.status === 'COMPLETED').length >= openRound,
-  )
+  const roundWentBack = (() => {
+    const parties = (ground.participants ?? []).filter((p: any) => !p.managingOnly)
+    const doneCountOf = (p: any) =>
+      (ground.checkIns ?? []).filter((c: any) => c.participantId === p.id && c.status === 'COMPLETED').length
+    const joinedAt = (p: any): number | null => {
+      const t = p?.createdAt ? new Date(p.createdAt).getTime() : NaN
+      return Number.isFinite(t) ? t : null
+    }
+    const ahead = parties.filter((p: any) => doneCountOf(p) > openRound)
+    if (!ahead.length) return false
+    const behind = parties.filter((p: any) => doneCountOf(p) <= openRound)
+    return ahead.some((a: any) => {
+      const whenAheadJoined = joinedAt(a)
+      if (whenAheadJoined == null) return false
+      return behind.some((b: any) => {
+        const whenBehindJoined = joinedAt(b)
+        return whenBehindJoined != null && whenBehindJoined > whenAheadJoined
+      })
+    })
+  })()
   /**
    * The report has three states worth telling apart, and only the last is good
    * news. "Waiting" is not a failure and does not get a warning colour - it is
@@ -1188,19 +1392,45 @@ export function GroundAdminPage() {
    * open round is among them. `roundDone` stays, because "1 of 4 checked in" is a count worth
    * printing and is not the same claim as "the round has closed".
    */
-  const everyoneIn = ((ground as any).roundCompletions ?? []).some((r: any) => r.sessionNumber === openRound)
+  /* B-053: named against `clockRound`, the same session `ground.sessionClock.says` (when sent) is about -
+     see the comment beside `clockRound`'s own declaration. */
+  const everyoneIn = ((ground as any).roundCompletions ?? []).some((r: any) => r.sessionNumber === clockRound)
   /*
    * NOTHING IS BEING WRITTEN UNTIL SOMEBODY HAS CHECKED IN. Hafsah, 21 Sep 2026, on her own ground: "0 of
    * 1 checked in for session 1 · report being written", after the setup conversation and before any
    * check-in - and she read it as a report on its way. A report row exists from setup; a report is
    * written from check-ins. With none in this session, the header says whose turn it is.
    */
+  /**
+   * FAULT 6, 6 Oct 2026: THE HEADER HAS TO READ THE SAME STATE AS PEOPLE AND SETUP AND THE SIDEBAR.
+   *
+   * Both of those read `ground.status` straight (`whatThisStatusMeans` in
+   * what-a-status-means-to-the-person-in-it.ts, and `GroundStatusBadge` in AppShell.tsx), so a
+   * `REPORT_READY` ground says "The report is ready to read." on People and setup and "Report
+   * ready" in the sidebar - while this header worked out its own answer from `ground.report` and
+   * the round, with no branch for that status at all, and said "Report being written." instead.
+   * Same check-in, three surfaces, two different claims about whether the report is ready.
+   *
+   * Checked first, ahead of the round-based guesses below: when the server has actually marked
+   * the ground `REPORT_READY`, the header says so in the same words, rather than re-deriving a
+   * possibly-stale answer from `report`/`everyoneIn`/`roundDone`.
+   *
+   * FAULT 4 (LIVE RE-WALK): "READY TO READ" IS NOT THE SAME CLAIM AS "SHARED". This read "The
+   * report is ready to read." for a `REPORT_READY` ground whatever `releasedAt` said, while People
+   * and setup's own "The team's report" row (CheckInPeopleAndSetup.tsx) read "Not shared yet.
+   * Share it from the report when it is ready." for that same ground - true, but written as if the
+   * report were NOT ready, when it is. Both now distinguish ready-but-not-shared from ready-and-
+   * shared, in the same words: "ready to read" only once it is actually released (the one claim
+   * both "ready" and "shared" together support); ready but unreleased says so plainly instead.
+   */
   const reportState: string =
     (ground as any).report?.releasedAt
       ? 'report sent to everyone'
-      : (ground as any).report
-        ? (everyoneIn ? 'everyone is in, report on its way' : roundDone > 0 ? 'report being written' : 'waiting for the first check-in')
-        : 'no report yet'
+      : (ground as any).status === 'REPORT_READY'
+        ? 'the report is ready. It has not been shared yet'
+        : (ground as any).report
+          ? (everyoneIn ? 'everyone is in, report on its way' : clockRoundDone > 0 ? 'report being written' : 'waiting for the first session')
+          : 'no report yet'
   // contact-visibility toggle state (default: hidden). true = peers cannot see each other's email.
   /**
    * THE PEER RULE COMES FROM THE SERVER, NOT FROM A COPY OF IT HERE. W14-4.
@@ -1236,7 +1466,28 @@ export function GroundAdminPage() {
    *   Setup              -> People and setup (unchanged content, new label)
    */
   const inMyWork = (['report', 'checkins', 'myrecord'] as Tab[]).includes(tab)
-  const myWorkDefault: Tab = viewerIsAParty ? 'myrecord' : 'report'
+  /**
+   * FAULT 3: "MY WORK" HAS TO LAND IN THE SAME PLACE, HOWEVER IT WAS REACHED.
+   *
+   * This used to default on `viewerIsAParty`, so a lead who is also a party in her own check-in
+   * (the ordinary case) landed on `myrecord` - her own account - when she clicked "My work" from
+   * inside the check-in page. But the board's own tab row, and `ground-tabs.ts`'s
+   * `checkInHeaderTabs` (used by SessionReportPage.tsx and RoundReportPage.tsx), send the same
+   * "My work" label to `?tab=sessions`, which this page reads as `checkins` - the roster the
+   * prototype's own lead view shows (sessions.txt: the lead's "My work" opens "Every session").
+   * Same page, same label, two different destinations depending only on which tab row was clicked.
+   *
+   * The prototype draws the line the same way everywhere: whoever RUNS the check-in sees the
+   * roster; whoever is only a party to it sees their own record. `isInitiator` is that line here,
+   * matching `canRunThisCheckIn`/`viewerRunsThisCheckIn` elsewhere - not `viewerIsAParty`, which a
+   * lead who also takes part in her own check-in satisfies too.
+   *
+   * An admin who runs this check-in but is NOT a party to it still defaults to `report`, unchanged:
+   * `YourWork` never mounts for her, so she has no roster-and-record quick-link row either, and
+   * `report` is where that row's own two links (see `!viewerIsAParty` below) already expect to send
+   * her back from.
+   */
+  const myWorkDefault: Tab = isInitiator ? (viewerIsAParty ? 'checkins' : 'report') : 'myrecord'
   const outerTabOf = (t: Tab): string => {
     if (t === 'chat') return 'checkin'
     if (t === 'docs') return 'context'
@@ -1294,6 +1545,7 @@ export function GroundAdminPage() {
            .spec.ts's check that "Invite pending" is decided before this field is - that rule is
            about the roster row below, not this one. */
         waitingToBeLetIn: !!p?.user?.awaitingOrgApproval,
+        notJoinedYet: !!(p as any)?.notJoinedYet,
       }
     })
 
@@ -1331,8 +1583,21 @@ export function GroundAdminPage() {
                 tabs - only "Add people" is navy on that screen. Without this, the People and setup
                 tab carried two navy buttons at once ("Your check-in" here, "Add people" further
                 down); the prototype's own screen has exactly one.
+
+                COORDINATOR FOLLOW-UP: NOT FOR A LEAD WHO ONLY MANAGES EITHER. She is a party
+                (`viewerIsAParty`), but never answers a round of her own - `viewerChecksIn` is the
+                same distinction `participantsWhoCheckIn` already draws for every count on the
+                Check-ins tab. Offering this button promised a check-in she does not do.
+
+                B-234: NOT WHILE STALLED, EITHER. With no `myOpenCheckInId` (nothing can open while
+                the check-in has stalled), pressing this just called `goTab('chat')` while already
+                on the Check-in tab - no request, nothing a reader could see change. Dov's own
+                "Start my check-in" is withheld the same way once a check-in has stalled
+                (GroundParticipantPage.tsx, B-215 review 6); Mira's own Check-in tab already shows
+                the amber "Out of time" box with "Give it more time" beside it, so this button has
+                nothing left to do.
               */}
-              {viewerIsAParty && outerTabOf(tab) !== 'people' && (
+              {viewerChecksIn && outerTabOf(tab) !== 'people' && !hasStalled(ground.status) && (
                 /*
                  * RE-REVIEW: THIS LINKED TO THE BARE GROUND PAGE, NOT TO A CHECK-IN.
                  * `/grounds/:id` is this very page - clicking it while already here did
@@ -1371,6 +1636,12 @@ export function GroundAdminPage() {
              * Filtered from ONE list (not two literal arrays) so "/board`" - which
              * one-door-per-place.spec.ts pins at an exact count - still appears once here, not
              * once per branch.
+             *
+             * COORDINATOR FOLLOW-UP: "CHECK-IN" IS ALSO NOT FOR A LEAD WHO ONLY MANAGES. She is
+             * `isInitiator`, so the general condition below never dropped it for her - but she has
+             * no check-in of her own to answer, same as the admin the comment above already
+             * excludes it for. This one tab reads `viewerChecksIn` on its own; every other tab
+             * keeps the existing rule.
              */
             [
               { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
@@ -1378,7 +1649,9 @@ export function GroundAdminPage() {
               { key: 'context', label: contextEnabled ? 'Context and resources' : 'Documents' },
               { key: 'mywork', label: 'My work' },
               { key: 'people', label: 'People and setup' },
-            ].filter(t => (isInitiator || viewerIsAParty) || (t.key === 'board' || t.key === 'context' || t.key === 'people'))
+            ].filter(t => t.key === 'checkin'
+              ? viewerChecksIn
+              : (isInitiator || viewerIsAParty) || (t.key === 'board' || t.key === 'context' || t.key === 'people'))
           }
           onSelectTab={(k) => {
             if (k === 'checkin') goTab('chat')
@@ -1435,8 +1708,10 @@ export function GroundAdminPage() {
           const say: { t: string; tone?: 'amber' | 'navy' } | null =
             a.kind === 'overdue' ? { t: a.daysLate === 1 ? 'Your turn. It is 1 day late.' : `Your turn. It is ${a.daysLate} days late.`, tone: 'amber' }
             : a.kind === 'yours' ? { t: 'Your turn.', tone: 'navy' }
-            /* U.9 re-review, item B: a sentence, not a label and a fraction. */
-            : a.kind === 'waiting' ? { t: `${a.total - a.done} of the ${a.total} have not answered yet.` }
+            /* U.9 re-review, item B: a sentence, not a label and a fraction. Screen fault 4
+               (final walk): "1 of the 3 have not answered yet." is now said in words, with the
+               right verb for one person left over - "One of the three has not answered yet." */
+            : a.kind === 'waiting' ? { t: howManyHaveNotAnsweredYet(a.total - a.done, a.total) + andWhoIsNotCountedYet(a.notLetIn) }
             : null
           return say ? <Note tone={say.tone}>{say.t}</Note> : null
         })()}
@@ -1514,7 +1789,12 @@ export function GroundAdminPage() {
             NON-RUNNING ADMIN EITHER - same rule as the attention line above. */}
         {isInitiator && (() => {
           const parts: string[] = []
-          if (ended) {
+          /* B-215 (review 5): when the check-in has stalled, the "Out of time" box just above this
+             line already says so in full. Pushing the same bare "Out of time" onto this line too
+             left the session line ending with it a second time, with no sentence of its own. */
+          if (ended && hasStalled(ground.status)) {
+            // said by the Callout above; nothing more to add here.
+          } else if (ended) {
             parts.push(ended)
           } else if (allSessionsDone) {
             parts.push('Every session is done.')
@@ -1522,10 +1802,43 @@ export function GroundAdminPage() {
             /* PROGRESS IS COUNTED IN SESSIONS, NOT DAYS. A ground eight sessions into twelve read
                "90 days remaining", which is arithmetically true and useless, because the work is
                measured in check-ins, not the calendar. */
-            if (plannedSessions != null) parts.push(`Session ${Math.min(sessionsDone + 1, plannedSessions)} of ${plannedSessions}.`)
+            /*
+             * DRAWN FROM THE SERVER'S OWN CLOCK (8 October, night note item 5, B-112). `GET
+             * /grounds/:id` now serves `sessionClock`, the board's own count (request 101 f) -
+             * `says` ("Session 2 of 12.") is read first, so the report tab and this header can no
+             * longer disagree about which session is open. `whileOpen` ("Session 3 has started
+             * for some people, while session 2 is still open.") is a second, true sentence this
+             * page could not say at all before: a later session can start for some people while an
+             * earlier one is still open for others, and both facts matter. The old client-side
+             * count stays only as the fallback for a server that does not send it yet.
+             */
+            if (ground.sessionClock?.says) parts.push(ground.sessionClock.says)
+            else if (plannedSessions != null) parts.push(`Session ${Math.min(sessionsDone + 1, plannedSessions)} of ${plannedSessions}.`)
+            if (ground.sessionClock?.whileOpen) parts.push(ground.sessionClock.whileOpen)
             /* THE DAY IT ENDS, ON EVERY CHECK-IN THAT HAS ONE, unless the days-left sentence is about to say the same thing more urgently. */
             if (ground.endsOn && !(ground.daysLeft != null && ground.daysLeft <= 3)) parts.push(`It ends on ${whenItWas(ground.endsOn, 'full')}.`)
-            if (ground.daysLeft != null && ground.daysLeft <= 3) parts.push(ground.daysLeft === 0 ? 'It is due today.' : `${ground.daysLeft} day${ground.daysLeft === 1 ? '' : 's'} remain.`)
+            /*
+             * B-215: "IT IS DUE TODAY." CONTRADICTED THE ATTENTION LINE ABOVE IT. `daysLeft` counts
+             * down the TIME GIVEN TO THE WHOLE CHECK-IN (`ground.endsOn`) - a different clock from
+             * the session a late turn is measured against. Mira read "Your turn. It is 84 days
+             * late." immediately above "Session 2 of 12. It is due today.", which read as the same
+             * "due" said twice, disagreeing by 84 days. Named for what it actually is: the time
+             * given to THIS CHECK-IN, not the open session.
+             *
+             * B-215 (REVIEW 4): AND NOT SAID A SECOND TIME WHEN THE "TIME IS UP" BOX ALREADY SAYS
+             * IT. `daysLeft === 0` is exactly the case `whenItRunsOut` reads as `'out'` (see the
+             * warning box above, "Time is up") - its own sentence already is "The time given to
+             * this check-in is up. ... Nobody can add to it after tonight unless you give it more
+             * time.", so the session line pushing the same fact again ("The time given to this
+             * check-in ends today.") was Mira reading it twice, once each box. Nothing is pushed
+             * here for that case; the box above already carries it. "N days remain." was also its
+             * own clipped fragment rather than a sentence - reworded to name what it is the time
+             * given to, the same as the "ends today" wording it replaced.
+             */
+            {
+              const daysLeft = ground.daysLeft
+              if (daysLeft != null && daysLeft > 0 && daysLeft <= 3) parts.push(`The time given to this check-in ends in ${daysLeft} day${daysLeft === 1 ? '' : 's'}.`)
+            }
             /*
               THE ROUND IS NAMED, BECAUSE THE TWO NUMBERS ON THIS SCREEN COUNT DIFFERENT THINGS.
               This counts the OPEN round; the report panel counts the one that just closed. Naming
@@ -1533,8 +1846,34 @@ export function GroundAdminPage() {
               "session" appears in 159 visible strings and "round" in 25.
             */
             if ((ground.participants ?? []).length > 0) {
-              const total = whoIsInRound((ground.participants ?? []) as any[], openRound, (ground as any).scenario).length
-              parts.push(`${roundDone} of ${total} people have checked in for session ${openRound}.`)
+              /*
+               * B-053: COUNTED AGAINST `clockRound`, NOT `openRound` - the same session
+               * `ground.sessionClock.says` just named. Counting this page's own open round instead
+               * read "Session 1 of 12. ... Nobody has checked in yet. Waiting for the first
+               * check-in." over a session everybody had already finished, because `says` and this
+               * count were two different sessions' worth of true. See `clockRound`'s own comment.
+               */
+              const total = whoIsInRound((ground.participants ?? []) as any[], clockRound, (ground as any).scenario, (ground.checkIns ?? []) as any[]).length
+              /*
+               * REQUEST 174, ITEM 2 (report tab, fault b): "0 of 1 people have checked in" is not a
+               * sentence anybody writes - nobody says "zero people" where "nobody" is the plain
+               * word, and "1 people" is simply wrong. Zero says so plainly; one person is a person,
+               * not a one-member "people".
+               *
+               * B-148: NOT SAID TWICE. When the lead takes part herself, has already answered, and
+               * is only waiting on others, the attention Note just above already says exactly this
+               * ("One of the three has not answered yet."), from `railAttention`'s own count.
+               * Saying it again here, in different words, read as the product repeating itself -
+               * the audit's own complaint. Left out only in that one case: `viewerChecksIn` keeps
+               * this sentence for a lead who only manages (an anchor check-in), whose own "waiting"
+               * state has no Note above it to duplicate, and for the lead's own turn or anybody
+               * who is not the initiator, none of which this guard touches.
+               */
+              if (!(isInitiator && viewerChecksIn && attention.kind === 'waiting')) {
+                parts.push(
+                  howManyCheckedInSentence(clockRoundDone, total, clockRound),
+                )
+              }
             }
             if (roundWentBack) parts.push(`It went back to session ${openRound}, because somebody new was added. Nothing anybody wrote is lost.`)
           }
@@ -1542,7 +1881,9 @@ export function GroundAdminPage() {
           if (reportState !== 'report sent to everyone' && reportState !== 'no report yet') {
             parts.push(`${reportState.charAt(0).toUpperCase()}${reportState.slice(1)}.`)
           }
-          if (!parts.length && sessionsDone !== 0) return null
+          /* B-215 (review 5): a stalled check-in with nothing else to say here (the "Out of time"
+             box above already said it) must not render an empty line in its place. */
+          if (!parts.length && (sessionsDone !== 0 || (ended && hasStalled(ground.status)))) return null
           const tone: 'amber' | 'green' | undefined = ended && hasStalled(ground.status) ? 'amber' : ended ? 'green' : undefined
           return (
             <>
@@ -1650,23 +1991,83 @@ export function GroundAdminPage() {
           * read-only history used to stand in for that; it is retired now that the history it drew
           * lives on My work and the roster it drew lives on People and setup, so this says plainly
           * that this reader does not answer the check-in, and links to the board instead.
+          *
+          * COORDINATOR FOLLOW-UP: THE SAME IS TRUE OF A LEAD WHO ONLY MANAGES. She is a party
+          * (`viewerIsAParty`), but has no check-in of her own either - reading `viewerChecksIn`
+          * here means she gets this same plain sentence and link, rather than "No check-in open
+          * right now" for a check-in she was never going to have.
           */}
         {tab === 'chat' && (
           <div>
-            {viewerIsAParty ? (
-              myOpenCheckIn && !myOpenOpensLater ? (
-                <Note>Opening your check-in…</Note>
+            {viewerChecksIn ? (
+              /*
+               * B-19: AN ENDED CHECK-IN STILL PROMISED A NEXT ONE, here on the lead's own Check-in
+               * tab too ("Bring this to your next check-in" never applied once it had ended). The
+               * board is where the full ending (who decided, when, and why) is read.
+               *
+               * B-215 (REVIEW 6): "Out of time / Go to the board to read how it ended and why" IS
+               * NOT TRUE OF A STALLED CHECK-IN. `howItEnded` reads "Out of time" for STALLED too
+               * (its own note: "it is the one state somebody can still do something about"), but
+               * this box's own "ended" and "why" are both wrong for it - nobody decided anything,
+               * and Mira can still give it more time (the amber box above the tabs already says
+               * "Out of time" in full, with "Give it more time" beside it). Repeating that title
+               * here would say it a second time with nothing new; this reads only what is actually
+               * true for a stalled check-in - there is something to read on the board, not an
+               * ending to read why about.
+               */
+              hasStalled(ground.status) ? (
+                <Callout tone="info">
+                  You can read what happened so far on the <Link className="gwui-plain-link" to={`/grounds/${id}/board`}>board</Link>.
+                </Callout>
+              ) : howItEnded(ground as any) ? (
+                <Callout tone="info" title={howItEnded(ground as any)!}>
+                  <Link className="gwui-plain-link" to={`/grounds/${id}/board`}>Go to the board</Link> to read how it ended and why.
+                </Callout>
+              ) : myOpenCheckIn && !myOpenOpensLater && !theLeadChecksInWhenSheChooses ? (
+                /* A FAILED OPEN SAYS SO, WITH A WAY BACK IN - the probe above
+                   (myOpenSessionAutoOpenFired) only ever fires once per mount, so
+                   without this a failed attempt left this note standing with nothing
+                   to read and nothing to press. See request 174, item 2. */
+                myOpenSessionFailed ? (
+                  <Note>
+                    {myOpenSessionError}{' '}
+                    <Button kind="quiet" size="small" onClick={() => { retryMyOpenSession(); openMySession(myOpenCheckIn, { isFreeGround: (ground as any)?.isFreeGround, groundLabel: (ground as any)?.label, isInitiator }) }}>
+                      Try again
+                    </Button>
+                  </Note>
+                ) : (
+                  <Note>Opening your check-in…</Note>
+                )
               ) : (
                 /* REVIEW ROUND 3, ITEM 2: NOTHING OPEN RIGHT NOW - the prototype's own between-check-ins
                    card, shown here directly rather than by sending her to the participant page for it. */
-                <BetweenCheckIns
-                  groundLabel={(ground as any)?.label}
-                  nextOpensSaying={whenTheNextOneOpens(((myParticipant as any)?.checkIns ?? []) as any[], null)}
-                  groundId={id!}
-                  canChangeTheRhythm={isInitiator}
-                  onGoToSetup={() => goTab('settings')}
-                />
+                <>
+                  <BetweenCheckIns
+                    groundLabel={(ground as any)?.label}
+                    nextOpensSaying={whenTheNextOneOpens(((myParticipant as any)?.checkIns ?? []) as any[], null)}
+                    groundId={id!}
+                    canChangeTheRhythm={isInitiator}
+                    onGoToSetup={() => goTab('settings')}
+                  />
+                  {isInitiator && theFirstClosing && (() => {
+                    const c = theClosingAfterYourFirstCheckIn(ground as any)
+                    return (
+                      <p data-testid="the-leads-first-closing" className="gwui-panel-text">
+                        {c.before}
+                        <button type="button" className="gwui-plain-link" onClick={() => goTab('settings')}>{c.link}</button>
+                        {c.after}
+                      </p>
+                    )
+                  })()}
+                  {/* Decision 133: the lead checks in when they choose, any time. */}
+                  {isInitiator && <TheLeadsOwnWayIn groundId={id!} />}
+                </>
               )
+            ) : isInitiator && !hasStalled(ground.status) && !howItEnded(ground as any) ? (
+              /* Decision 133 (change 6): a lead who chose "only the team" before gets the same way back in. */
+              <Panel>
+                <TheLeadsOwnWayIn groundId={id!} saying={YOU_CHECK_IN_WHEN_YOU_CHOOSE} />
+              </Panel>
             ) : (
               <Panel>
                 <Stack gap={10}>
@@ -1717,13 +2118,24 @@ export function GroundAdminPage() {
           `YourWork` never mounts for her (it is gated on `viewerIsAParty` below, unchanged from
           before this round), so the two quiet links inside it - "Every session", "Who has
           answered" - never render either. She still runs this check-in (My work's own default
-          for her is already `report`, above), so both stay reachable directly rather than
-          disappearing with the sub-tab row that used to offer them unconditionally.
+          for her is already `report` when she is not a party - see `myWorkDefault` above), so
+          both stay reachable directly rather than disappearing with the sub-tab row that used to
+          offer them unconditionally.
         */}
-        {inMyWork && !viewerIsAParty && (
+        {/*
+          FAULT 3 FOLLOW-ON: A LEAD WHO IS ALSO A PARTY NOW DEFAULTS STRAIGHT TO `checkins`
+          (the roster - see `myWorkDefault` above, which matches the board's own "My work" link).
+          She used to land on `myrecord` instead, where `YourWork` carries its own "Every session"
+          and "Who has answered" links. Landing on the roster first must not leave her without a
+          way back to her own record, so this row now also offers "What I shared" whenever she is
+          a party - hidden only on `myrecord` itself, where `YourWork`'s own links already cover
+          the other two and a second copy would be a duplicate.
+        */}
+        {inMyWork && tab !== 'myrecord' && (
           <div className="gwui-button-row">
-            {tab !== 'report' && <button type="button" className="gwui-plain-link" onClick={() => goTab('report')}>Every session</button>}
-            {tab !== 'checkins' && <button type="button" className="gwui-plain-link" onClick={() => goTab('checkins')}>Who has answered</button>}
+            {isInitiator && tab !== 'report' && <button type="button" className="gwui-plain-link" onClick={() => goTab('report')}>Every session</button>}
+            {isInitiator && tab !== 'checkins' && <button type="button" className="gwui-plain-link" onClick={() => goTab('checkins')}>Who has answered</button>}
+            {viewerIsAParty && <button type="button" className="gwui-plain-link" onClick={() => goTab('myrecord')}>Your own record</button>}
           </div>
         )}
 
@@ -1791,7 +2203,7 @@ export function GroundAdminPage() {
               })()}
               <SubHeading>People</SubHeading>
               <Stack gap={10}>
-                {ground.participants.map((p: any) => {
+                {participantsWhoCheckIn.map((p: any) => {
                   const myCheckIn = ground.checkIns?.find(c => c.participantId === p.id)
                   /**
                    * EVERY SESSION THIS PERSON HAS, NOT THE FIRST ONE FOUND.
@@ -1801,8 +2213,12 @@ export function GroundAdminPage() {
                    * it was about. That is why the tab needed a separate flat list of cards underneath
                    * repeating the same information a different way.
                    */
+                  /* B-080: a set-up row (`isSetup`) is not a session, the same rule `sessionsDoneBy`
+                     already applies to "Your sessions" - without it, a lead who only manages and
+                     never checks in read "Some sessions done, some still open" from her one
+                     completed set-up row alone. */
                   const theirSessions = [...(ground.checkIns ?? [])]
-                    .filter((c: any) => c.participantId === p.id)
+                    .filter((c: any) => c.participantId === p.id && !c.isSetup)
                     .sort((a: any, b: any) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0))
                   const status = myCheckIn?.status ?? 'NOT_STARTED'
                   /**
@@ -1813,7 +2229,25 @@ export function GroundAdminPage() {
                    * had been wrong on its own for as long as anybody had two sessions; it
                    * only became visible once something true stood next to it.
                    */
-                  const allDone = theirSessions.length > 0 && theirSessions.every((c: any) => c.status === 'COMPLETED')
+                  /**
+                   * "EVERY SESSION DONE" MEANS NO SESSION IS STILL TO COME, NOT "EVERY ROW THAT
+                   * EXISTS SO FAR IS COMPLETE". FAULT 2.
+                   *
+                   * `theirSessions.every(...COMPLETED)` is true for somebody who has finished
+                   * session 1 of 6 and has no session-2 row yet, because a row that does not exist
+                   * cannot fail the check. Esther and Kwesi read "Every session done" in session 1
+                   * of 6 for exactly this reason, with a red "Begin the last check-in" sitting right
+                   * below. A person is done only when their completed count reaches the planned
+                   * total (`plannedSessions`, from the cadence and timeline - see sessionCount.ts),
+                   * or the check-in has already ended, in which case there is nothing left to plan
+                   * for anybody.
+                   */
+                  const theirCompletedSessionNumbers = new Set(
+                    theirSessions.filter((c: any) => c.status === 'COMPLETED').map((c: any) => c.sessionNumber),
+                  )
+                  const allDone = theirSessions.length > 0
+                    && theirSessions.every((c: any) => c.status === 'COMPLETED')
+                    && (!!ended || (plannedSessions != null && theirCompletedSessionNumbers.size >= plannedSessions))
                   const anyGoing = theirSessions.some((c: any) => c.status === 'IN_PROGRESS')
                   const statusDotClass = allDone ? 'ga-status-dot-done' : anyGoing ? 'ga-status-dot-going' : 'ga-status-dot-waiting'
                   const statusLabel = allDone
@@ -1885,11 +2319,16 @@ export function GroundAdminPage() {
                       pending", which is a lie in the direction that matters: the lead waits for a
                       reply to a mail that was never sent, and chases the person instead of the
                       admin.
+
+                      PHONE WALK, SCREEN FAULT 1: SAID PLAINLY, WITH THEIR NAME - the same sentence
+                      WhosInItRoster.tsx (People and setup's own roster) now says about the same
+                      state, so the two cannot disagree. No Resend is offered here either (the
+                      Resend button below is already gated on `!p.awaitingSeat`).
                     */
                     help = {
                       tone: 'look',
                       action: <Button kind="quiet" size="small" onClick={() => navigate('/org/members')}>Go to People</Button>,
-                      text: 'Your plan has no seat for them yet. An admin has to make room before their invitation goes out.',
+                      text: `${name} is waiting for a seat on your plan. They will get their invitation as soon as there is one.`,
                     }
                   } else if (!p.userId) {
                     statusTag = <Tag tone="plain">{p.inviteDeliveryStatus === 'DELIVERED' ? 'Invite delivered' : 'Invite pending'}</Tag>
@@ -1961,7 +2400,7 @@ export function GroundAdminPage() {
                           ) : (
                             <div className="gwui-button-row">
                               {/* "Your note" to the lead who wrote it, never to an admin (U.7 review). */}
-                              {isInitiator && p.roleAsDescribed && <span data-leads-note className="gwui-note">{theLeadsNote(p.roleAsDescribed)}</span>}
+                              {isInitiator && p.roleAsDescribed && <TheLeadsNote role={p.roleAsDescribed} className="gwui-note" />}
                               {/* What someone is answerable for is the lead's to set, or their own.
                                   Every party could edit every other party's remit, on a ground
                                   that may be deciding whether they keep their job.
@@ -2178,7 +2617,9 @@ export function GroundAdminPage() {
               What is left is the one thing this spot can usefully do: get to the report.
             */}
             {(() => {
-              const pending = ground.participants.filter((p: any) => {
+              /* B-100: a lead who only manages is never going to answer, so she is not "pending"
+                 one either - the same `participantsWhoCheckIn` the roster above now uses. */
+              const pending = participantsWhoCheckIn.filter((p: any) => {
                 const ci = ground.checkIns?.find((c: any) => c.participantId === p.id)
                 return !ci || ci.status !== 'COMPLETED'
               })
@@ -2192,6 +2633,19 @@ export function GroundAdminPage() {
                * clauses is also gone, in favour of a full sentence.
                */
               const releasedAt = (ground as any).report?.releasedAt as string | null | undefined
+              /*
+               * B-056: "ONCE ALL 1 ARE IN" IS NOT ENGLISH. With one person on the check-in, this
+               * read "once all 1 are in", a bare digit standing in for a number that was never
+               * plural in the first place. With one person it now says it plainly - "once you have
+               * checked in" when the reader is that one person, "once they are in" when she is not
+               * (the lead can view a check-in that is not her own) - and with more than one, the
+               * count is said in words, the way every other small number on this page already is.
+               */
+              const total = participantsWhoCheckIn.length
+              const theOnlyParticipant = total === 1 ? participantsWhoCheckIn[0] : null
+              const onceEverybodyIsIn = total === 1
+                ? (theOnlyParticipant?.userId === user?.id ? 'you have checked in' : 'they are in')
+                : `all ${numberUpToTenInWords(total)} people are in`
               return (
                 <Callout tone="info">
                   <span className="gwui-switch-row">
@@ -2199,7 +2653,7 @@ export function GroundAdminPage() {
                       {releasedAt
                         ? `This report was already shared, on ${whenItWas(releasedAt, 'day')}, before everybody had checked in.`
                         : <>The picture builds as each person answers, and you can read what it has so far.
-                            It is only released to everybody once all {ground.participants.length} are in.</>}
+                            It is only released to everybody once {onceEverybodyIsIn}.</>}
                     </span>
                     <Button kind="quiet" size="small" onClick={() => setTab('report')}>
                       {releasedAt ? 'Read it' : 'Read it so far'}
@@ -2285,27 +2739,39 @@ export function GroundAdminPage() {
               The seat notice went with them. It is a fact about adding somebody, and it belongs
               where somebody is added - which is also where it can be said BEFORE an address is
               typed rather than after the button is pressed.
+
+              RESTORED (8 October, nothing-removed audit S1): live showed this at any time while
+              the check-in ran, including a check-in with no planned number of sessions, gating only
+              on status. Gating on `nearTheEnd` (fault 4, live re-walk) hid the button for five
+              sessions out of six and removed it entirely from an open-ended check-in - live had
+              neither restriction, and nothing else calls `beginClosingSession`, so there was no
+              other way to close early. No decision of Hafsah's covers taking that away, so it is
+              shown again in every case live did: gated on status alone.
             */}
             {isInitiator && !['RESOLVED', 'CLOSED', 'STALLED', 'AWAITING_LEAD'].includes(ground.status) && (
               confirmClosing ? (
                 <Stack gap={10}>
                   {/* GROUP 3'S REVIEW, BATCH A FAULT 6: "SESSION" IS INTERNAL JARGON HERE; THE
                       PRODUCT CALLS THE THING A PERSON ANSWERS A "CHECK-IN" EVERYWHERE ELSE. */}
-                  <Callout tone="warning" title="Begin the last check-in?">
-                    Everyone's next check-in becomes their final one. It is the same conversation,
-                    marked as closing. The final report reads the whole record, then you and the
-                    others agree the end state.
+                  {/* B-136: this ends the check-in early, at any session, not only near the planned
+                      last one - the old wording ("Begin the last check-in?") read like the normal,
+                      on-schedule final session, and at session 1 of 6 that read as plain wrong. The
+                      control itself is kept (restored on purpose, see the file above this one). */}
+                  <Callout tone="warning" title="End early with a last check-in?">
+                    Everyone's next check-in becomes their final one, ending this check-in earlier
+                    than planned. It is the same conversation, marked as closing. The final report
+                    reads the whole record, then you and the others agree the end state.
                   </Callout>
                   <div className="gwui-button-row">
                     <Button kind="secondary" redText onClick={() => closingSession.mutate()} disabled={closingSession.isPending}>
-                      Begin the last check-in
+                      End early with a last check-in
                     </Button>
                     <Button kind="quiet" onClick={() => setConfirmClosing(false)}>Cancel</Button>
                   </div>
                 </Stack>
               ) : (
                 <Button kind="secondary" redText wide onClick={() => setConfirmClosing(true)}>
-                  Begin the last check-in
+                  End early with a last check-in
                 </Button>
               )
             )}
@@ -2431,6 +2897,7 @@ export function GroundAdminPage() {
               boardRenders={!!(ground as any).boardRenders}
               onOpenBoard={() => navigate(`/grounds/${ground.id}/board`)}
               onOpenSession={(n: number) => navigate(`/grounds/${ground.id}/session/${n}`)}
+              onOpenWeek={() => navigate(`/grounds/${ground.id}/report/week`)}
             />
 
             {/*
@@ -2453,21 +2920,24 @@ export function GroundAdminPage() {
               "Not sure what release report is for." Fair - in the normal path nobody presses it.
               It fires by itself the moment the last person finishes: everybody is emailed, the
               report is stamped released, and each person's follow-up guide is written. The button
-              exists only to cut a round short and publish what there is, so it says that, and it
-              only appears while a round is genuinely open.
+              exists only to cut a session short and publish what there is, so it says that, and it
+              only appears while a session is genuinely open.
+
+              "SESSION", NOT "ROUND" (real-user walk, Kijani Foods, fault 2), and two full sentences
+              in place of the one joined with a semicolon.
             */}
             {/* Folded, under the board and the session list: it is the exception, not the page. */}
             {isInitiator && (ground as any).report && !(ground as any).report.releasedAt && (
-              <Folded summary="Closing a round early">
+              <Folded summary="Closing a session early">
                 <Note>
                   When the last person answers, the report goes out to everybody on its own - you do
-                  not have to do anything. If you need to stop waiting, you can close this round now
-                  and publish what there is; it will be missing whoever has not answered.
+                  not have to do anything. If you need to stop waiting, you can close this session
+                  now and publish what there is. It will be missing whoever has not answered.
                 </Note>
                 {!showReleaseConfirm ? (
                   <Stack gap={10}>
                     <Button kind="quiet" size="small" onClick={() => setShowReleaseConfirm(true)}>
-                      Close this round now and publish what there is
+                      Close this session now and publish what there is
                     </Button>
                   </Stack>
                 ) : (
@@ -2478,7 +2948,7 @@ export function GroundAdminPage() {
                           can read it, and the lead does not. A false reassurance in the
                           confirmation for something that cannot be undone. */}
                       Everybody is emailed. This cannot be undone, and
-                      anybody who has not answered loses their turn on this round.
+                      anybody who has not answered loses their turn on this session.
                     </Callout>
                     <div className="gwui-button-row">
                       <Button kind="secondary" redText size="small" disabled={releaseReport.isPending} onClick={() => releaseReport.mutate()}>
@@ -2537,6 +3007,7 @@ export function GroundAdminPage() {
             timelineDaysDraft={timelineDaysDraft} setTimelineDaysDraft={setTimelineDaysDraft}
             cadenceDraft={cadenceDraft} setCadenceDraft={setCadenceDraft}
             workingDaysDraft={workingDaysDraft} setWorkingDaysDraft={setWorkingDaysDraft}
+            anchorDayDraft={anchorDayDraft} setAnchorDayDraft={setAnchorDayDraft}
             theTimeframeChanged={theTimeframeChanged}
             saveSetup={saveSetup}
             groundLabel={groundLabel} setGroundLabel={setGroundLabel}
@@ -2546,6 +3017,7 @@ export function GroundAdminPage() {
             numbersShared={numbersShared} setWhoSeesTargets={setWhoSeesTargets}
             whatsAppIsOn={whatsAppIsOn}
             setOverWhatsApp={setOverWhatsApp}
+            setSimplerWords={setSimplerWords}
             expectsUnblocking={expectsUnblocking} setExpectThemToUnblock={setExpectThemToUnblock}
             setWorkTogether={setWorkTogether}
             setChasing={setChasing}
@@ -2575,7 +3047,7 @@ export function GroundAdminPage() {
         </Modal>
       )}
       {/* REVIEW ROUND 3, ITEM 2: THE PAYWALL FOR THE LEAD'S OWN SESSION, OPENED FROM THIS PAGE NOW. */}
-      <SessionPaywallModal paywall={paywall} canPayHere={canPayForMySession} />
+      <SessionPaywallModal paywall={paywall} canPayHere={canPayForMySession} groundId={id} />
     </div>
   )
 }

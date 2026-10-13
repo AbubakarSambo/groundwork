@@ -1014,10 +1014,16 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
 /* ── FEEDBACK TRIGGER MOBILE OFFSET ───────────────────────
    The bottom nav bar is a fixed 60px strip on mobile; without this the
    trigger's inline `bottom: 20px` sits inside that strip and overlaps the
-   nav labels underneath it. */
+   nav labels underneath it.
+
+   84px, NOT 76px (real-user walk, Kijani Foods, fault 8b). AppShell gives a grounds board its own
+   larger inline clearance (`bottom: 84`), to stay clear of what a board itself keeps near its own
+   foot - but this rule's `!important` always won at phone width, silently cutting that back down
+   to 76px exactly where a narrow screen needs the room most. 84px is never less than any page
+   already asks for, and reserving the extra 8px on a page that did not need it costs nothing. */
 @media (max-width: 640px) {
   .gw-fb-trigger-mobile-safe {
-    bottom: 76px !important;
+    bottom: 84px !important;
   }
 }
 
@@ -1702,14 +1708,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
 .gw-org-rows-foot { text-align: center; margin: 20px 0 0; }
 .gw-rl-menu-join { color: var(--gw-navy); font-weight: 700; }
 
-/* The invitation's page (A3, join-invite.jpg; U.3 review): the cream page, the small mark, one narrow
-   column, a serif heading and a beige note. Built by Arrival's `plain`. */
-.gw-arrival-plain { min-height: 100vh; background: var(--gw-page); padding: 56px 16px 48px; }
-.gw-arrival-plain-col { max-width: 360px; margin: 0 auto; }
-.gw-arrival-plain-col .gw-ttl { font-family: var(--gw-font-name); font-size: 28px; line-height: 1.25; font-weight: 500; letter-spacing: 0; margin: 22px 0 8px; }
-.gw-arrival-plain-col .gw-sub-t { font-size: 16px; line-height: 1.5; margin-bottom: 8px; }
 .gw-invite-note { background: #F6EFE4; color: var(--gw-text); border-radius: 8px; padding: 12px 14px; font-size: 14.5px; line-height: 1.5; margin: 0 0 18px; }
-@media (max-width: 640px) { .gw-arrival-plain { padding-top: 28px; } }
 
 /* The invitation's facts (A3, join-invite.txt): "What it asks", "Who sees your answers". */
 .gw-invite-facts { background: #fff; border: 1px solid var(--gw-border); border-radius: 10px; padding: 16px 20px; margin-bottom: 16px; display: grid; gap: 14px; }
@@ -2134,3 +2133,8 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
   border-bottom: 2px solid transparent; cursor: pointer; font-family: inherit;
 }
 .gwui-ci-tab-on { font-weight: 700; color: var(--gw-text); border-bottom-color: var(--gw-navy); }
+/* SCREEN FAULT 10: 32px tall on a phone, below the 40px floor every other tappable row control
+   already has - same technique as `.gwui-plain-link`/`.gwui-open-link`, on this class's own name. */
+@media (max-width: 640px) {
+  .gwui-ci-tab { min-height: 40px; display: inline-flex; align-items: center; }
+}

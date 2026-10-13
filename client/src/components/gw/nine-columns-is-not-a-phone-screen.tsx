@@ -1,5 +1,5 @@
 import { Tag, type TagTone } from './ui'
-import { theLeadsNote } from '@/lib/the-leads-note'
+import { TheLeadsNote } from '@/components/gw/TheLeadsNote'
 
 /**
  * WHO CHECKED IN, WHEN THE SCREEN IS TOO NARROW FOR A GRID.
@@ -17,7 +17,7 @@ import { theLeadsNote } from '@/lib/the-leads-note'
  * exactly one place here - the sentence, or the list after it. A read that quietly dropped the
  * sessions it could not fit would be worse than the scrollbar.
  */
-export type Cell = 'done' | 'in-progress' | 'declined' | 'not-started' | 'na'
+export type Cell = 'done' | 'in-progress' | 'declined' | 'missed' | 'not-started' | 'na'
 
 export interface PersonRow {
   participantId: string
@@ -36,16 +36,17 @@ export const WHAT_A_CELL_MEANS: Record<Cell, string> = {
   'done': 'Checked in',
   'in-progress': 'In progress',
   'declined': 'Declined',
+  'missed': 'Did not check in',
   'not-started': 'Not started',
   'na': 'Not on this one',
 }
 
 const TONE: Record<Cell, TagTone> = {
-  'done': 'proven', 'in-progress': 'action', 'declined': 'concern', 'not-started': 'plain', 'na': 'plain',
+  'done': 'proven', 'in-progress': 'action', 'declined': 'concern', 'missed': 'concern', 'not-started': 'plain', 'na': 'plain',
 }
 
 const asCell = (v: string | undefined): Cell =>
-  v === 'done' || v === 'in-progress' || v === 'declined' || v === 'not-started' ? v : 'na'
+  v === 'done' || v === 'in-progress' || v === 'declined' || v === 'missed' || v === 'not-started' ? v : 'na'
 
 /**
  * The state this person is in most of the time, and every session that is not it.
@@ -105,6 +106,7 @@ const VERB_FOR: Record<Cell, string> = {
   'done': 'has checked in for',
   'in-progress': 'is partway through',
   'declined': 'has declined',
+  'missed': 'did not check in for',
   'not-started': 'has not started',
   'na': 'was not on',
 }
@@ -114,6 +116,7 @@ const SELF_VERB_FOR: Record<Cell, string> = {
   'done': 'have checked in for',
   'in-progress': 'are partway through',
   'declined': 'have declined',
+  'missed': 'did not check in for',
   'not-started': 'have not started',
   'na': 'were not on',
 }
@@ -197,9 +200,8 @@ export function NineColumnsIsNotAPhoneScreen({ rows, sessions, openSessions, myP
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
               <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 15 }}>{displayName}</span>
               {r.role && r.role !== r.name && (
-                <span data-leads-note style={{ fontSize: 13, color: 'var(--gw-sub)' }}>{theLeadsNote(r.role)}</span>
+                <TheLeadsNote role={r.role} style={{ fontSize: 13, color: 'var(--gw-sub)' }} />
               )}
-              {!r.role && r.managingOnly && <span style={{ fontSize: 13, color: 'var(--gw-sub)' }}>Managing only</span>}
             </div>
 
             {sentence && (

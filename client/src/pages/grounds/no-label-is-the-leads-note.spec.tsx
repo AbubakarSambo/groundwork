@@ -77,7 +77,8 @@ function renderAt(path: string, route: string, el: ReactElement) {
 function noNoteAsAName(reader: string) {
   const { elsewhere, asTheirNote } = whereTheNoteIs()
   expect({ reader, elsewhere }).toEqual({ reader, elsewhere: [] })
-  for (const n of asTheirNote) expect(n).toContain('Your note: PRIVATE-DESCRIPTION-9k2 is not meeting targets.')
+  for (const n of asTheirNote) expect(n).toContain('Your note on Daniel9k2')
+  for (const n of asTheirNote) expect(n).toContain('PRIVATE-DESCRIPTION-9k2 is not meeting targets.')
   expect(document.body.textContent).not.toMatch(/teammate/i)
   return asTheirNote
 }
@@ -108,9 +109,12 @@ describe('the check-in’s page never names somebody with the lead’s note', ()
 
     /* REVIEW ROUND 3, "YOUR WORK" REBUILD: Report and Sessions are quiet links inside "My work"
        now ("Every session" / "Who has answered"), not sub-tabs - open "My work" first, then the
-       link. */
+       link.
+       FAULT 3 FIX, 6 Oct 2026: Grace runs this check-in and is also a party to it, so "My work"
+       now lands her straight on the roster (matching the board's own "My work" link - see
+       `myWorkDefault` in GroundAdminPage.tsx), with no second click through "Who has answered"
+       needed. */
     expect(openTab(/^My work$/)).toBe(true)
-    expect(openTab(/^Who has answered$/)).toBe(true)
     await waitFor(() => expect(screen.getAllByText('One colleague').length).toBeGreaterThan(0))
     expect(screen.getAllByText('Another colleague').length).toBeGreaterThan(0)
     expect(screen.getAllByText('A third colleague').length).toBeGreaterThan(0)
@@ -127,7 +131,9 @@ describe('the check-in’s page never names somebody with the lead’s note', ()
     expect(openTab(/^My work$/)).toBe(true)
     expect(openTab(/^Every session$/)).toBe(true)
     await waitFor(() => expect(document.body.textContent).toMatch(/not checked in yet\./))
-    expect(document.body.textContent).toContain('You, one colleague and a third colleague have not checked in yet.')
+    /* The lead checks in when they choose (change 5, decision 133), so the lead is never listed as not checked in. */
+    expect(document.body.textContent).toContain('One colleague and a third colleague have not checked in yet.')
+    expect(document.body.textContent).not.toContain('You, one colleague')
     noNoteAsAName('lead, report')
   })
 

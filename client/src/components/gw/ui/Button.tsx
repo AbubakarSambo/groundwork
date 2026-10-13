@@ -36,6 +36,8 @@ export const Button = React.forwardRef<HTMLButtonElement | HTMLAnchorElement, {
   disabled?: boolean
   children: React.ReactNode
   'aria-label'?: string
+  /** For a choice among a small fixed set (e.g. "Right" / "Wrong" / "Not sure"): whether this is the one currently chosen. */
+  'aria-pressed'?: boolean
 }>(function Button({ kind = 'primary', size, wide, redText, to, onClick, type = 'button', disabled, children, ...rest }, ref) {
   const className = [
     'gwui-btn',
@@ -49,7 +51,15 @@ export const Button = React.forwardRef<HTMLButtonElement | HTMLAnchorElement, {
     return <Link ref={ref as React.Ref<HTMLAnchorElement>} to={to} className={className} onClick={onClick} aria-label={rest['aria-label']}>{children}</Link>
   }
   return (
-    <button ref={ref as React.Ref<HTMLButtonElement>} type={type} className={className} onClick={onClick} disabled={disabled} aria-label={rest['aria-label']}>
+    <button
+      ref={ref as React.Ref<HTMLButtonElement>}
+      type={type}
+      className={className}
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={rest['aria-label']}
+      aria-pressed={rest['aria-pressed']}
+    >
       {children}
     </button>
   )

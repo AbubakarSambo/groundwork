@@ -1,5 +1,66 @@
 import { describe, it, expect } from 'vitest'
-import { buildSessionRows } from './session-rows'
+import { buildSessionRows, isSessionShared } from './session-rows'
+
+/**
+ * SCREEN FAULT 1 (FINAL WALK): `shared` IS READ FROM THE REPORT'S OWN RELEASE, NEVER FROM
+ * `roundCompletions`. A round can close (everyone answered) without the lead ever releasing it, and
+ * a lead can release a session before the round closes - the two facts must be able to disagree.
+ */
+describe('isSessionShared', () => {
+  it('is false with no report, or a report never released', () => {
+    expect(isSessionShared(null, 1)).toBe(false)
+    expect(isSessionShared({ releasedAt: null }, 1)).toBe(false)
+  })
+
+  it('is true for every session once released, when the report carries no per-session list', () => {
+    expect(isSessionShared({ releasedAt: '2026-09-21T10:00:00.000Z' }, 1)).toBe(true)
+    expect(isSessionShared({ releasedAt: '2026-09-21T10:00:00.000Z' }, 7)).toBe(true)
+  })
+
+  it('is true only for the sessions actually in `releasedSessions`', () => {
+    const report = { releasedAt: '2026-09-21T10:00:00.000Z', releasedSessions: [1] }
+    expect(isSessionShared(report, 1)).toBe(true)
+    expect(isSessionShared(report, 2)).toBe(false)
+  })
+})
+
+describe('buildSessionRows: `shared` disagrees with `closed` when it must', () => {
+  const labelInASentence = (p: any) => p.name ?? 'a colleague'
+
+  it('reads shared: true for a released session even though the round never closed', () => {
+    const ground = {
+      report: { releasedAt: '2026-09-21T10:00:00.000Z', releasedSessions: [1] },
+      participants: [
+        { id: 'p1', userId: 'u1', name: 'Rukia Otieno', managingOnly: false },
+        { id: 'p2', userId: 'u2', name: 'Omar Haji', managingOnly: false },
+      ],
+      checkIns: [
+        { id: 'c1', participantId: 'p1', sessionNumber: 1, status: 'COMPLETED', isSetup: false, completedAt: '2026-09-20T09:00:00.000Z' },
+      ],
+      /* Omar never answered - the round is not closed - but the lead released it anyway. */
+      roundCompletions: [],
+    }
+    const rows = buildSessionRows(ground, 'u1', labelInASentence)
+    const session1 = rows.find((r) => r.sessionNumber === 1)
+    expect(session1?.closed).toBe(false)
+    expect(session1?.shared).toBe(true)
+  })
+
+  it('reads shared: false for a fully-answered, closed round the lead has not released', () => {
+    const ground = {
+      report: null,
+      participants: [{ id: 'p1', userId: 'u1', name: 'Rukia Otieno', managingOnly: false }],
+      checkIns: [
+        { id: 'c1', participantId: 'p1', sessionNumber: 1, status: 'COMPLETED', isSetup: false, completedAt: '2026-09-20T09:00:00.000Z' },
+      ],
+      roundCompletions: [{ sessionNumber: 1, completedAt: '2026-09-20T09:01:00.000Z' }],
+    }
+    const rows = buildSessionRows(ground, 'u1', labelInASentence)
+    const session1 = rows.find((r) => r.sessionNumber === 1)
+    expect(session1?.closed).toBe(true)
+    expect(session1?.shared).toBe(false)
+  })
+})
 
 /**
  * BOARD REVIEW, 1 OCTOBER, ITEM 3: THE REPORTS LIST SHOWED A DATE IN THE FUTURE.
@@ -141,5 +202,53 @@ describe('buildSessionRows: a restricted roster, given the full one from the boa
     expect(session1?.total).toBe(1)
     expect(session2?.answered).toBe(1)
     expect(session2?.total).toBe(1)
+  })
+})
+
+/**
+ * SCREEN FAULT 9, PART 2: THE BOARD CALLED TENDAI BOTH "NOT ON ANY OF THESE SESSIONS" AND "NOT
+ * YET CHECKED IN", FOR THE SAME SESSION.
+ *
+ * Tendai joined the check-in after session 1 had already run. The server's own grid
+ * (checkInGrid.rows[].cells) correctly says he is not on session 1 ("na"); `whoIsInRound` alone,
+ * with no notion of when somebody joined, still counted him as somebody session 1's own round was
+ * waiting on. `onSessionFromGrid`, built from that same grid, is what tells `buildSessionRows` the
+ * true answer.
+ */
+describe('buildSessionRows: agrees with the board’s own grid about who joined when', () => {
+  const labelInASentence = (p: any) => p.name ?? 'a colleague'
+  const ground = {
+    participants: [
+      { id: 'p-amani', userId: 'u-amani', name: 'Amani Njoroge', managingOnly: false },
+      { id: 'p-tendai', userId: 'u-tendai', name: 'Tendai Moyo', managingOnly: false },
+    ],
+    checkIns: [
+      { id: 'c1', participantId: 'p-amani', sessionNumber: 1, status: 'COMPLETED', isSetup: false, completedAt: '2026-09-20T09:00:00.000Z' },
+      /* Tendai was added after session 1 closed: no row for him at session 1 at all. */
+      { id: 'c2', participantId: 'p-amani', sessionNumber: 2, status: 'COMPLETED', isSetup: false, completedAt: '2026-09-27T09:00:00.000Z' },
+      { id: 'c3', participantId: 'p-tendai', sessionNumber: 2, status: 'NOT_STARTED', isSetup: false, completedAt: null },
+    ],
+    roundCompletions: [],
+  }
+  /* The server's own grid: Tendai is "na" on session 1 (never on it), and waiting on session 2. */
+  const onSessionFromGrid = new Map<string, Set<number>>([
+    ['p-amani', new Set([1, 2])],
+    ['p-tendai', new Set([2])],
+  ])
+
+  it('without the grid, wrongly names Tendai as waited-on for a session he was never on', () => {
+    const rows = buildSessionRows(ground, 'u-amani', labelInASentence)
+    const session1 = rows.find((r) => r.sessionNumber === 1)
+    expect(session1?.waitingOn).toContain('Tendai Moyo')
+  })
+
+  it('with the grid, never names Tendai for a session he was not on, and still waits on him for session 2', () => {
+    const rows = buildSessionRows(ground, 'u-amani', labelInASentence, null, onSessionFromGrid)
+    const session1 = rows.find((r) => r.sessionNumber === 1)
+    const session2 = rows.find((r) => r.sessionNumber === 2)
+    expect(session1?.waitingOn).not.toContain('Tendai Moyo')
+    expect(session1?.total).toBe(1)
+    expect(session2?.waitingOn).toContain('Tendai Moyo')
+    expect(session2?.total).toBe(2)
   })
 })

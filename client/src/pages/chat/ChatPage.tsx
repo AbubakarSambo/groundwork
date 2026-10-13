@@ -2,9 +2,11 @@ import { useState, useEffect, useRef } from 'react'
 import { nothingInternalReachesTheBubble } from '@/lib/nothing-internal-reaches-the-bubble'
 import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom'
 import { justTheQuestion } from '@/pages/invite/the-link-opens-on-the-question'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
 import { conversationApi, streamMessage, type CheckInBrief, type TheEndCard as TheEndCardData } from '@/api/conversation'
+import { closingMessageText } from '@/lib/a-closing-message-claims-nothing-it-does-not-keep'
+import type { ConnectWhatsApp } from '@/types'
 import { documentsApi, type DocumentAssessment } from '@/api/documents'
 import { useAuthStore } from '@/stores/auth'
 import { asTheirWords, isTheEnginesOwnNote } from '@/lib/as-their-words'
@@ -15,7 +17,9 @@ import { WhoIsStillOut } from '@/components/gw/WhoIsStillOut'
 import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { useAfterAWhile, GETTING_YOUR_FIRST_QUESTION_READY } from '@/lib/opening-is-slow'
 import { TheCheckInHeader } from '@/components/gw/checkin/TheCheckInHeader'
+import { GroundGone } from '@/components/gw/GroundGone'
 import { Bubble } from '@/components/gw/ui/Bubble'
+import { GroundworkIsWriting, WritingDots } from '@/components/gw/ui/GroundworkIsWriting'
 import { ConversationCard } from '@/components/gw/ui/ConversationCard'
 import { Composer } from '@/components/gw/ui/Composer'
 import { Modal } from '@/components/gw/ui/Modal'
@@ -27,10 +31,13 @@ import { IdeaOffer } from '@/components/gw/checkin/IdeaOffer'
 import { RequestOffer, OpenTheRequest } from '@/components/gw/checkin/RequestOffer'
 import type { TheIdeaOfferInTheCheckIn, TheRequestOfferInTheCheckIn, TheRequestToOpen } from '@/api/anchorShapes'
 import { TheEndCard } from '@/components/gw/checkin/TheEndCard'
+import { Note } from '@/components/gw/ui/NoteEmpty'
 import { TheDonePage, type WhatChanged } from '@/components/gw/checkin/TheDonePage'
-import { whenTheNextOneOpens, whoElseAnswers } from '@/lib/what-the-end-of-a-check-in-can-say'
+import { whenTheNextOneOpens, whoElseAnswers, whoRunsThis } from '@/lib/what-the-end-of-a-check-in-can-say'
 import { firstWordOfAName } from '@/lib/the-first-word-of-a-name'
 import { toast } from 'sonner'
+import { useCheckInFocusStore } from '@/stores/check-in-focus'
+import { answersTheServerKept } from '@/lib/answers-the-server-kept'
 import '@/components/gw/ui/gw-ui.css'
 
 /** ONE LIST. The OS dialog offered 23 extensions, the label's title a third list of 9, and the validator refused everything outside these 10 - so the dialog invited a refusal the product then issued. */
@@ -131,11 +138,19 @@ const RECORD_ENTRY_LABELS: Record<string, string> = {
   TENSION: 'Tension',
 }
 
+/**
+ * How long an open request that is still working is waited for before the screen says it could not
+ * open. See the watchdog in ChatPage: the first open of a new check-in was measured at 65 and 88
+ * seconds against the real model.
+ */
+const AN_OPEN_MAY_TAKE = 150_000
+
 export function ChatPage() {
   const { checkInId } = useParams<{ checkInId: string }>()
   const navigate = useNavigate()
   const location = useLocation()
   const user = useAuthStore(s => s.user)
+  const qc = useQueryClient()
 
   const [searchParams] = useSearchParams()
   /* Opened from a team update's link: one card, no band, nothing but the question. */
@@ -168,6 +183,12 @@ export function ChatPage() {
   })
   const checkInName: string = groundLabel || (ground.data as any)?.label || ''
   const [brief, setBrief] = useState<CheckInBrief | null>(null)
+  /**
+   * "CONNECT WHATSAPP" (decision 106, 5 October, night): served on the person's own transcript
+   * read, or null. An optional convenience - never required to answer - so it is drawn as one
+   * quiet line, nowhere near the composer.
+   */
+  const [connectWhatsApp, setConnectWhatsApp] = useState<ConnectWhatsApp | null>(null)
   /*
    * WHEN THE SCREEN MAY OFFER TO FINISH. The server holds a check-in to a turn floor - five answers
    * for a full check-in, three for a team update, one for a correction - and this page used to keep
@@ -250,17 +271,61 @@ export function ChatPage() {
    * rather than a button in the toolbar, where it would be one mis-tap from irreversible.
    */
   const [declined, setDeclined]       = useState(false)
+  /**
+   * SCREEN FAULT 2: THE DONE PAGE HAD NO BOTTOM BAR AND NO WAY BACK TO TODAY.
+   *
+   * AppShell hides the phone's bottom bar for the whole `/checkin/:id` route, because a live
+   * session is a full-screen card with its own way out (Pause) and the bar used to sit under the
+   * composer fighting it (review round 3, item 7). But `/checkin/:id` is also where this page's
+   * own Done state renders, once `completed` or `declined` - no Pause left to fight, and no other
+   * way back to Today. `useCheckInFocusStore` tells AppShell which of the two this route is
+   * showing right now: "in focus" (hide the bar) while there is still a live session to leave, and
+   * not once it has settled. Reset to "in focus" on the way out, so the next session visited here
+   * starts hidden-until-known rather than carrying this one's settled state along.
+   */
+  const setCheckInFocused = useCheckInFocusStore(s => s.setFocused)
+  useEffect(() => {
+    setCheckInFocused(!(completed || declined))
+    return () => setCheckInFocused(true)
+  }, [completed, declined, setCheckInFocused])
   const [confirmingDecline, setConfirmingDecline] = useState(false)
   const [openFailed, setOpenFailed]   = useState(false)
-  const openedRef = useRef(false)
+  /** The served sentence for why opening failed, read once and shown where the person can keep
+      reading it (the banner below), not only in a toast that fades. Falls back to a plain one of
+      ours when the server sent nothing usable. */
+  const [openFailedMessage, setOpenFailedMessage] = useState('Could not open your session. This is usually a temporary issue.')
+  /** B-201: the HTTP status the open request failed with, read once, so a stranger's two different
+      reasons for not reaching this check-in (it was never theirs; the id is made up) can be told
+      apart from everything else that can go wrong, without the server's own two different
+      sentences ever reaching the screen - see the GroundGone render below. */
+  const [openFailedStatus, setOpenFailedStatus] = useState<number | null>(null)
+  /**
+   * A RE-ENTRY GUARD KEYED BY SESSION ID, NOT A BARE FLAG RESET ON EVERY CLEANUP.
+   *
+   * This held a boolean that the effect's own cleanup reset to false on every run - including
+   * React StrictMode's synchronous mount/cleanup/mount, and any ordinary re-render that happens to
+   * re-run the effect. Resetting it there meant the ONE thing this guard exists to prevent - a
+   * second `open()` for the same session - was only ever accidentally avoided (by the cancelled
+   * timeout racing the reset), not actually guarded against. Storing the checkInId it was last
+   * attempted for, and never clearing it except through the explicit "Try again" retry below,
+   * means a page load opens a given session at most once, however many times its own effect runs.
+   */
+  const openedRef = useRef<string | null>(null)
   /**
    * Mirrors the `opened` STATE for the watchdog below.
    *
    * openedRef is a different thing - a re-entry guard that says "an open attempt
-   * is scheduled", and it is deliberately reset in cleanup. This one answers the
-   * question the watchdog actually needs to ask: did a session ever open?
+   * is scheduled". This one answers the question the watchdog actually needs to ask: did a
+   * session ever open?
    */
   const hasOpenedRef = useRef(false)
+  /**
+   * WHEN THE OPEN REQUEST NOW IN FLIGHT WAS SENT, so the watchdog below can tell a request that is
+   * still working from one that never went. Null when no open request is in flight. Each request
+   * carries its own number, so an older one landing late never clears a newer one's time.
+   */
+  const openInFlightRef = useRef<{ n: number; at: number } | null>(null)
+  const openCountRef = useRef(0)
 
   // Doc context
   const [pendingDoc, setPendingDoc]   = useState<File | null>(null)
@@ -336,7 +401,13 @@ export function ChatPage() {
   }, [loading])
 
   const openSession = useMutation({
-    mutationFn: () => conversationApi.open(checkInId!),
+    mutationFn: () => {
+      const n = ++openCountRef.current
+      openInFlightRef.current = { n, at: Date.now() }
+      return conversationApi.open(checkInId!).finally(() => {
+        if (openInFlightRef.current?.n === n) openInFlightRef.current = null
+      })
+    },
     onSuccess: res => {
       setMsgs([{ id: 'ai-open', role: 'AI', content: res.reply, suggestedAnswers: res.suggestedAnswers, ideaOffer: res.ideaOffer, requestOffer: res.requestOffer, openTheRequest: res.openTheRequest }])
       if (res.groundId && !groundId) setGroundId(res.groundId)
@@ -345,8 +416,64 @@ export function ChatPage() {
       setOpened(true)
       setOpenFailed(false)
     },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.message ?? 'Could not open session.')
+    /*
+     * A 400 HERE DOES NOT MEAN THERE IS NOTHING TO SHOW.
+     *
+     * `open()` is idempotent server-side once a session has turns - a second caller gets the same
+     * reply back, not a 400 - but the door it stands behind (on hold, closed, already complete, not
+     * yet theirs to open) still answers 400, and so does a genuine race lost to a concurrent open
+     * from another tab or a retried request. Before this read that as "could not open your
+     * session" and left the person looking at a dead banner, it is worth asking once more whether
+     * the session actually did open in the meantime: if the transcript now has turns, show the
+     * conversation instead of a failure that no longer describes what happened. Otherwise, the
+     * server's own sentence is shown - permanently, in the banner below, not a toast that fades -
+     * so "this check-in is on hold" or "not yet theirs" is read, not guessed at.
+     */
+    onError: async (err: any) => {
+      const message: string = err?.response?.data?.message ?? ''
+      setOpenFailedStatus(err?.response?.status ?? null)
+      if (checkInId) {
+        try {
+          const t = await conversationApi.transcript(checkInId)
+          const turnsSoFar = t.turns ?? []
+          if (turnsSoFar.length > 0) {
+            setMsgs(turnsSoFar.map(turn => ({ id: turn.id, role: turn.role, content: turn.content, suggestedAnswers: turn.suggestedAnswers, ideaOffer: turn.ideaOffer, requestOffer: turn.requestOffer, openTheRequest: turn.openTheRequest })))
+            if (t.brief) setBrief(t.brief)
+            if (t.mayCompleteAfter) setMayCompleteAfter(t.mayCompleteAfter)
+            if (t.checkIn?.groundId && !groundId) setGroundId(t.checkIn.groundId)
+            setOpened(true)
+            setOpenFailed(false)
+            return
+          }
+          /* B-129: the same "a completed check-in has no turns of its own on this endpoint
+             unless this page opened it" case as the mount effect above, reached here when that
+             effect's own transcript read raced the open request. A 400 "already finished" or
+             "already complete" over a check-in the server itself calls COMPLETED is the settled
+             state, not a failure to retry. */
+          if (t.checkIn?.groundId && !groundId) setGroundId(t.checkIn.groundId)
+          if (t.brief) setBrief(t.brief)
+          if (t.mayCompleteAfter) setMayCompleteAfter(t.mayCompleteAfter)
+          if (t.checkIn?.status === 'COMPLETED') {
+            setDone(true); setCompleted(true); setJustFinished(true)
+            setOpened(true); setOpenFailed(false)
+            return
+          }
+          if (t.checkIn?.status === 'DECLINED') {
+            setDone(true); setDeclined(true)
+            setOpened(true); setOpenFailed(false)
+            return
+          }
+        } catch { /* no transcript either; fall through to the failure banner below */ }
+      }
+      /*
+       * B-194: NO TOAST HERE. A toast duplicated the banner's own sentence - the same long
+       * message once in the fading red toast and again, permanently, in the banner below with
+       * "Try again" - and at 390px the toast sat over the tab row. The comment just above this
+       * block already says why the banner, not a toast, is the right place: the state is
+       * persistent ("this check-in is on hold", "not yet theirs") until "Try again" is pressed,
+       * not a blip that fades on its own. One sentence, said once, is enough.
+       */
+      setOpenFailedMessage(message || 'Could not open your session. This is usually a temporary issue.')
       setOpenFailed(true)
     },
   })
@@ -358,7 +485,12 @@ export function ChatPage() {
    * silence long enough to read as a hang unless it explains itself. Four seconds, same threshold
    * as the reply wait above, is where somebody starts wondering if anything is happening.
    */
-  const openingNow = openSession.isPending || (!opened && msgs.length === 0 && !completed && !declined)
+  /* B-208 follow-up: `!openFailed` too - once the open has come back as a failure, the page shows
+     its own permanent banner with a "Try again" (below), and "Opening your session…" must not go
+     on claiming the session is still opening underneath it. Without this, a failed open on the bed
+     (no model reachable) showed the toast, the banner's own 503 sentence, AND this status line, all
+     three at once, for the one thing that happened. */
+  const openingNow = !openFailed && (openSession.isPending || (!opened && msgs.length === 0 && !completed && !declined))
   const openingIsSlow = useAfterAWhile(openingNow)
 
 
@@ -374,6 +506,18 @@ export function ChatPage() {
   /* The end card's parts that only the engine can write, sent with the reply that closes the
      conversation (request 7). Null until it does; the card shows what is there. */
   const [endCard, setEndCard] = useState<TheEndCardData | null>(null)
+  /* Whether the card is still being written. It takes ten to forty seconds after the goodbye, so the screen waits for it instead of showing a card with nothing in it (user journeys, F-10). */
+  const [cardIsBeingWritten, setCardIsBeingWritten] = useState(false)
+  useEffect(() => {
+    if (!done || completed || declined || endCard || !checkInId) return
+    let stillHere = true
+    setCardIsBeingWritten(true)
+    Promise.resolve(conversationApi.endCard?.(checkInId))
+      .then((c) => { if (stillHere && c) setEndCard(c) })
+      .catch(() => { /* No card stands: finishing reads the record, as it always did. */ })
+      .finally(() => { if (stillHere) setCardIsBeingWritten(false) })
+    return () => { stillHere = false }
+  }, [done, completed, declined, endCard, checkInId])
   /*
    * THE DONE PAGE (done.txt) replaces the conversation the moment somebody finishes here. A check-in
    * finished earlier and opened again still shows its conversation and its report, as before.
@@ -403,6 +547,20 @@ export function ChatPage() {
       setJustFinished(true)
       if (res?.whatChanged) setWhatChanged(res.whatChanged as WhatChanged)
       if (res?.whatYouGave) setWhatYouGave(res.whatYouGave as WhatYouGave)
+      /*
+       * SCREEN FAULT 3 (FINAL WALK): "YOUR TURN" AND "NOBODY HAS CHECKED IN YET" RIGHT AFTER
+       * FINISHING. Finishing a session marks this person's own check-in COMPLETED on the server,
+       * but nothing here told the query cache - so the check-in's own page (`['ground', id]`,
+       * `railAttention` off its stale `checkIns`), the sidebar's "what needs you" list
+       * (`['grounds']`) and the board's "who checked in" (`['board', id]`) kept reading the
+       * answer this person had just finished as still outstanding. Invalidated here, the moment
+       * the server has actually recorded it.
+       */
+      if (groundId) {
+        qc.invalidateQueries({ queryKey: ['ground', groundId] })
+        qc.invalidateQueries({ queryKey: ['board', groundId] })
+      }
+      qc.invalidateQueries({ queryKey: ['grounds'] })
       if (bareFrame && groundId) navigate(`/grounds/${groundId}/board?done=1`, { replace: true })
     },
     /**
@@ -425,7 +583,18 @@ export function ChatPage() {
      */
     onError: (err: any) => {
       const message: string = err?.response?.data?.message ?? ''
-      if (/already complete/i.test(message)) { setCompleted(true); setJustFinished(true); return }
+      if (/already complete/i.test(message)) {
+        setCompleted(true)
+        setJustFinished(true)
+        /* Screen fault 3: the engine closed this session itself, on the last answer - the same
+           stale-cache problem as the success path above, so the same refresh. */
+        if (groundId) {
+          qc.invalidateQueries({ queryKey: ['ground', groundId] })
+          qc.invalidateQueries({ queryKey: ['board', groundId] })
+        }
+        qc.invalidateQueries({ queryKey: ['grounds'] })
+        return
+      }
       /**
        * A REFUSAL THAT ASKS FOR MORE HAS TO LET THEM GIVE IT.
        *
@@ -532,11 +701,16 @@ export function ChatPage() {
   // there are already turns, render them; only call open() for a fresh session
   // that has none yet.
   useEffect(() => {
-    if (checkInId && !opened && !openedRef.current) {
-      openedRef.current = true
+    if (checkInId && !opened && openedRef.current !== checkInId) {
       let cancelled = false
       const jitter = Math.random() * 2000
       const t = setTimeout(async () => {
+        /* The guard is taken when the open really starts, not when it is scheduled: React's
+           development mode runs this effect twice, and a guard taken at scheduling let the first
+           run's cancelled timer block the second run, so the page sat on "Opening your session…"
+           for good (browser button test, 7 October). */
+        if (cancelled || openedRef.current === checkInId) return
+        openedRef.current = checkInId
         try {
           const t = await conversationApi.transcript(checkInId)
           if (cancelled) return
@@ -582,7 +756,20 @@ export function ChatPage() {
             session with no turns yet still has a subject, and that is the load where it matters most.
           */
           if (t.brief) setBrief(t.brief)
-          if (t.endCard) setEndCard(t.endCard)
+          if (t.connectWhatsApp) setConnectWhatsApp(t.connectWhatsApp)
+          /*
+            SCREEN FAULT 3: THE END CARD WAS GONE AFTER A RELOAD, AND THE HEADER READ "ABOUT TWO
+            MINUTES" AGAIN. The engine had already closed this conversation - that is exactly what
+            `t.endCard` being served means, before the person has pressed "That's right, finish" -
+            but only `completed` (set from `t.checkIn.status === 'COMPLETED'` below, which this
+            session has not reached yet) ever set `done`, so a reload left `done` false: the end
+            card (gated on `done`) did not render, the header fell back to its "About two minutes"
+            default, and the only way forward was the manual "Finish my check-in now" fallback
+            further down. The served state is the one source of truth for whether this
+            conversation has closed, so it is read from here too, not only from the live reply
+            that first closed it.
+          */
+          if (t.endCard) { setEndCard(t.endCard); setDone(true) }
           if (t.mayCompleteAfter) setMayCompleteAfter(t.mayCompleteAfter)
           /*
             AND WHICH SESSION THIS IS, FOR THE SAME REASON AS THE BAND ABOVE.
@@ -599,24 +786,46 @@ export function ChatPage() {
           if (typeof t.checkIn?.sessionNumber === 'number') setSessionNumber(t.checkIn.sessionNumber)
           if (t.checkIn?.groundId && !groundId) setGroundId(t.checkIn.groundId)
           if (t.turns && t.turns.length > 0) {
-            setMsgs(t.turns.map(turn => ({ id: turn.id, role: turn.role, content: turn.content, suggestedAnswers: turn.suggestedAnswers, ideaOffer: turn.ideaOffer, requestOffer: turn.requestOffer, openTheRequest: turn.openTheRequest })))
-            /**
-              * ROUND 6, ITEM 4: A SESSION THAT WAS ALREADY FINISHED GETS THE SAME DONE PAGE AS
-              * ONE JUST FINISHED NOW.
-              *
-              * Loading `/checkin/:id` for a session completed earlier used to set `completed`
-              * alone - `justFinished` was only ever set by the two live-finish paths below (the
-              * normal finish, and the "already complete" refusal caught while sending) - so the
-              * early return to `TheDonePage` never fired here, and the OLD inline "already
-              * complete" block further down rendered instead: its own report blocks, a dash-joined
-              * sentence, "Open the team board →", and a "Back to check-ins" link cut off at the
-              * bottom - none of it the prototype's Done page. `justFinished` is what that early
-              * return actually keys on, so this sets it too - the prototype shows the same Done
-              * page whether you just finished or are opening a finished check-in fresh.
-              */
-            if (t.checkIn?.status === 'COMPLETED') { setDone(true); setCompleted(true); setJustFinished(true) }
-            /** Reopening a session already declined must show the settled state, not the composer. */
-            if (t.checkIn?.status === 'DECLINED') { setDone(true); setDeclined(true) }
+            const lastTurnId = t.turns[t.turns.length - 1]?.id
+            setMsgs(t.turns.map(turn => ({
+              id: turn.id,
+              role: turn.role,
+              /* Screen fault 2: a reload replays the closing turn's own stored text, which can
+                 still claim a record the end card does not have (see
+                 a-closing-message-claims-nothing-it-does-not-keep.ts). */
+              content: turn.id === lastTurnId ? closingMessageText(turn.content, t.endCard) : turn.content,
+              suggestedAnswers: turn.suggestedAnswers, ideaOffer: turn.ideaOffer, requestOffer: turn.requestOffer, openTheRequest: turn.openTheRequest,
+            })))
+          }
+          /**
+            * ROUND 6, ITEM 4: A SESSION THAT WAS ALREADY FINISHED GETS THE SAME DONE PAGE AS
+            * ONE JUST FINISHED NOW.
+            *
+            * Loading `/checkin/:id` for a session completed earlier used to set `completed`
+            * alone - `justFinished` was only ever set by the two live-finish paths below (the
+            * normal finish, and the "already complete" refusal caught while sending) - so the
+            * early return to `TheDonePage` never fired here, and the OLD inline "already
+            * complete" block further down rendered instead: its own report blocks, a dash-joined
+            * sentence, "Open the team board →", and a "Back to check-ins" link cut off at the
+            * bottom - none of it the prototype's Done page. `justFinished` is what that early
+            * return actually keys on, so this sets it too - the prototype shows the same Done
+            * page whether you just finished or are opening a finished check-in fresh.
+            *
+            * B-129: NOT NESTED INSIDE THE TURNS CHECK ANY MORE. A session this page has never
+            * opened keeps no turns of its own on this endpoint - only a session that was actually
+            * opened here has any - so `t.turns` is empty for a check-in completed without ever
+            * going through this page's own composer, and this whole branch was unreachable for
+            * it. That left a real, server-confirmed "you have already finished this check-in"
+            * falling through to `openSession.mutate()`, whose 400 then painted the generic
+            * failure banner - "Try again" (which can never work), a message box, and "Opening
+            * your session…" stuck forever - over what is, in truth, a finished session like any
+            * other. `status` is read from the check-in itself, same as `sessionNumber` and
+            * `groundId` just above, never from whether turns happened to come back.
+            */
+          if (t.checkIn?.status === 'COMPLETED') { setDone(true); setCompleted(true); setJustFinished(true) }
+          /** Reopening a session already declined must show the settled state, not the composer. */
+          if (t.checkIn?.status === 'DECLINED') { setDone(true); setDeclined(true) }
+          if ((t.turns && t.turns.length > 0) || t.checkIn?.status === 'COMPLETED' || t.checkIn?.status === 'DECLINED') {
             setOpened(true)
             setOpenFailed(false)
             setKnowWhatIsHere(true)
@@ -645,9 +854,21 @@ export function ChatPage() {
        * Forty-five seconds is deliberately generous - the opening question is a
        * real model call and twenty seconds is normal - but past that, saying so
        * and offering the retry beats waiting in silence.
+       *
+       * EXCEPT WHILE THE OPEN REQUEST IS STILL WORKING (release check, 8 October). The first person
+       * to open a new check-in waits while the brief is read three times before the first question
+       * is written: measured on the test bed against the real model at 65 and 88 seconds. At 45 the
+       * screen said "Could not open your session" over a request that was about to succeed, and
+       * "Try again" sent a second open beside it, so the person was asked two different first
+       * questions. A request in flight is now given until AN_OPEN_MAY_TAKE before the banner; one
+       * that never went (the transcript fetch ahead of it hung) still gets the banner at 45.
        */
-      const watchdog = setTimeout(() => {
+      let watchdog: ReturnType<typeof setTimeout>
+      const fire = () => {
         if (cancelled || hasOpenedRef.current) return
+        const inFlight = openInFlightRef.current
+        const left = inFlight ? AN_OPEN_MAY_TAKE - (Date.now() - inFlight.at) : 0
+        if (left > 0) { watchdog = setTimeout(fire, left); return }
         setOpenFailed(true)
         /**
          * Reset the mutation too, or the retry is offered and unusable.
@@ -663,9 +884,15 @@ export function ChatPage() {
          * onSuccess still opens the session, which is the outcome they wanted.
          */
         openSession.reset()
-      }, 45_000)
+      }
+      watchdog = setTimeout(fire, 45_000)
 
-      return () => { cancelled = true; clearTimeout(t); clearTimeout(watchdog); openedRef.current = false }
+      /* The pending timeout and watchdog are always cancelled on cleanup - a genuine unmount must
+         not leave either one running against a component that is gone. `openedRef` itself is not
+         reset here: the guard it keeps is "has this session already been attempted", which stays
+         true until the person presses "Try again" below, whether this cleanup ran because the
+         page really unmounted or because the effect merely re-ran. */
+      return () => { cancelled = true; clearTimeout(t); clearTimeout(watchdog) }
     }
   }, [checkInId, opened])
 
@@ -685,7 +912,24 @@ export function ChatPage() {
      * fallback below.
      */
     const localId = `local-${Date.now()}`
-    setMsgs(v => [...v, { id: localId, role: 'PERSON', content: message }, { id: aiId, role: 'AI', content: '…' }])
+    const optimisticTurn: Msg[] = [{ id: localId, role: 'PERSON', content: message }, { id: aiId, role: 'AI', content: '…' }]
+    setMsgs(v => [...v, ...optimisticTurn])
+    /**
+     * `displayedMsgs` is synced here too, not left to the typewriter effect below.
+     *
+     * That effect only resyncs `displayedMsgs` from `msgs` while `streamingRef.current`
+     * is false, and `streamingRef.current` is set true a line below, synchronously, in
+     * the same tick as this echo - before React can ever flush a render with it still
+     * false. A stream whose mock (or a very fast real one) calls `onDelta`/`onDone` with
+     * no genuine async yield then has `onDelta`/`onDone` below run their own `v.map`
+     * updates against a `displayedMsgs` that never got these two messages added to it, so
+     * the map finds nothing to update and both bubbles never appear - though `msgs` is
+     * correct the whole time. Setting it explicitly here means the person's echoed
+     * message and the waiting AI bubble are already in `displayedMsgs` before anything
+     * else runs, so the `onDelta`/`onDone` maps below always have something to find,
+     * whatever the timing of the stream.
+     */
+    setDisplayedMsgs(v => [...v, ...optimisticTurn])
     /**
      * Promote the echo once the server has actually answered.
      *
@@ -708,8 +952,11 @@ export function ChatPage() {
         },
         onDone: (r) => {
           acknowledge()
-          setMsgs(v => v.map(m => m.id === aiId ? { ...m, content: r.reply, suggestedAnswers: r.suggestedAnswers, ideaOffer: r.ideaOffer, requestOffer: r.requestOffer, openTheRequest: r.openTheRequest } : m))
-          setDisplayedMsgs(v => v.map(m => m.id === aiId ? { ...m, content: r.reply, suggestedAnswers: r.suggestedAnswers, ideaOffer: r.ideaOffer, requestOffer: r.requestOffer, openTheRequest: r.openTheRequest } : m))
+          /* Screen fault 2: do not repeat "Below is what I wrote down from your answers." when
+             this close sent no record lines - see a-closing-message-claims-nothing-it-does-not-keep.ts. */
+          const replyText = closingMessageText(r.reply, r.endCard)
+          setMsgs(v => v.map(m => m.id === aiId ? { ...m, content: replyText, suggestedAnswers: r.suggestedAnswers, ideaOffer: r.ideaOffer, requestOffer: r.requestOffer, openTheRequest: r.openTheRequest } : m))
+          setDisplayedMsgs(v => v.map(m => m.id === aiId ? { ...m, content: replyText, suggestedAnswers: r.suggestedAnswers, ideaOffer: r.ideaOffer, requestOffer: r.requestOffer, openTheRequest: r.openTheRequest } : m))
           if (r.sessionComplete) setDone(true)
           if (r.endCard) setEndCard(r.endCard)
         },
@@ -722,10 +969,11 @@ export function ChatPage() {
       // If nothing streamed yet, fall back cleanly to the non-streaming path.
       if (!started) {
         setMsgs(v => v.filter(m => m.id !== aiId)) // drop the empty AI bubble; keep the person's message
+        setDisplayedMsgs(v => v.filter(m => m.id !== aiId))
         try {
           const res = await conversationApi.send(checkInId, message)
           acknowledge()
-          setMsgs(v => v.concat({ id: `ai-${Date.now()}`, role: 'AI', content: res.reply, suggestedAnswers: res.suggestedAnswers, ideaOffer: res.ideaOffer, requestOffer: res.requestOffer, openTheRequest: res.openTheRequest }))
+          setMsgs(v => v.concat({ id: `ai-${Date.now()}`, role: 'AI', content: closingMessageText(res.reply, res.endCard), suggestedAnswers: res.suggestedAnswers, ideaOffer: res.ideaOffer, requestOffer: res.requestOffer, openTheRequest: res.openTheRequest }))
           if (res.sessionComplete) setDone(true)
           if (res.endCard) setEndCard(res.endCard)
         } catch {
@@ -741,6 +989,7 @@ export function ChatPage() {
            * is false here, which is what tells us the server took nothing.
            */
           setMsgs(v => v.filter(m => m.id !== localId))
+          setDisplayedMsgs(v => v.filter(m => m.id !== localId))
           setInput(message)
           toast.error('That did not send. Your message is back in the box, try again.')
         }
@@ -905,6 +1154,26 @@ export function ChatPage() {
    * the admin's guide - which is where a promise belongs. Not in front of every session.
    */
 
+  /**
+   * B-129 / B-201: A CHECK-IN A STRANGER CANNOT REACH IS A REFUSAL, NOT A LOAD FAILURE - AND THE
+   * SAME REFUSAL FOR EVERY REASON (GW-PRI-04).
+   *
+   * An admin who opened a colleague's check-in by its conversation link (rather than its own
+   * page) used to be shown the generic failure banner - "That check-in is not yours to open, so
+   * go back to your own check-ins." over a live "Try again" (which can only ever fail the same
+   * way again), a message box, and a composer, none of which this reader can use.
+   *
+   * B-201 found the other half of the same mistake: a made-up id (404, "That check-in could not
+   * be found…") still fell through to that same stuck banner rather than to this screen, and the
+   * server's two sentences - "not yours" against "could not be found" - told a stranger holding a
+   * link whether something real sat behind it. Both answer the same way a check-in's own page
+   * already does (GroundParticipantPage, GroundAdminPage): one shared screen, the same wording,
+   * whichever of the two the server said.
+   */
+  if (openFailed && (openFailedStatus === 403 || openFailedStatus === 404) && !bareFrame) {
+    return <GroundGone />
+  }
+
   if (justFinished && groundId && checkInId && !bareFrame) {
     return (
       <div className="gwui-ci-done-wrap">
@@ -1004,9 +1273,9 @@ export function ChatPage() {
                 {/* Session open failure - shown at top of chat area so it's always visible */}
                 {openFailed && (
                   <div className="gwui-ci-banner-warn">
-                    <span className="gwui-ci-banner-warn-text">Could not open your session. This is usually a temporary issue.</span>
+                    <span className="gwui-ci-banner-warn-text">{openFailedMessage}</span>
                     <button
-                      onClick={() => { setOpenFailed(false); openedRef.current = false; openSession.mutate() }}
+                      onClick={() => { setOpenFailed(false); openedRef.current = null; openSession.mutate() }}
                       disabled={openSession.isPending}
                       className="gwui-ci-banner-warn-btn"
                     >
@@ -1161,6 +1430,25 @@ export function ChatPage() {
                         </button>.
                       </div>
                     )}
+                    {/*
+                     * "CONNECT WHATSAPP" (decision 106): an optional convenience, drawn only when
+                     * served - one quiet line near the composer, never in its way. Groundwork
+                     * already writes to the person's saved number; this is only for saying hello
+                     * back, so it never reads as something the person must do to answer.
+                     */}
+                    {connectWhatsApp && (
+                      <Note>
+                        You can also answer this on WhatsApp.{' '}
+                        <a
+                          className="gwui-btn gwui-btn-quiet gwui-btn-small"
+                          href={connectWhatsApp.link}
+                          target="_blank"
+                          rel="noopener"
+                        >
+                          {connectWhatsApp.says}
+                        </a>
+                      </Note>
+                    )}
                   </div>
         )}
       >
@@ -1168,15 +1456,26 @@ export function ChatPage() {
               two seconds, and openSession.isPending cannot be true until after it, so every arrival opened on
               a blank screen. The jitter stays; the sentence starts earlier. */}
           {openingNow && (
-            <div role="status" className="gwui-panel-text-muted">
-              Opening your session…
-              {/* Said only once the wait is long enough to need explaining (U.8 review): opening a
-                  session runs several model calls and can take up to a minute with nothing else on
-                  screen, which read as a hang. */}
-              {openingIsSlow && (
-                <div>{GETTING_YOUR_FIRST_QUESTION_READY}</div>
-              )}
-            </div>
+            /*
+             * THE SAME "GROUNDWORK IS WRITING…" EVERY OTHER CHAT SHOWS (journey test, 12 October 2026).
+             * "Check in yourself" opened this page at once, but the opener took 94 seconds to be
+             * written, under "Opening your session…", which read as a page that had not opened. The
+             * page is open; Groundwork is writing its first message. Same bubble, sentence and dots
+             * as GroundworkIsWriting, kept as one status element so the slow-wait line below sits
+             * inside it (the-page-says-what-it-is-doing.spec.ts).
+             */
+            <Bubble mine={false}>
+              <div role="status" aria-live="polite" className="gwui-writing">
+                Groundwork is writing…
+                <WritingDots />
+                {/* Said only once the wait is long enough to need explaining (U.8 review): opening a
+                    session runs several model calls and can take up to a minute with nothing else on
+                    screen, which read as a hang. */}
+                {openingIsSlow && (
+                  <div className="gwui-panel-text-muted">{GETTING_YOUR_FIRST_QUESTION_READY}</div>
+                )}
+              </div>
+            </Bubble>
           )}
 
           {/*
@@ -1316,24 +1615,22 @@ export function ChatPage() {
             >
               {isWaiting(m) ? (
                 /*
-                 * THE DOTS, AND AFTER A FEW SECONDS WHAT THEY MEAN.
+                 * "GROUNDWORK IS WRITING…", AND AFTER A FEW SECONDS WHAT THE WAIT MEANS.
                  *
-                 * Three bouncing dots say "something is happening" for about two seconds and
-                 * "has this frozen?" for every second after that. Ninety-nine of the hundred
-                 * audited journeys waited longer than four seconds for a reply, and the answer
-                 * to that doubt was people pressing send again — which used to put the same
-                 * sentence in the record twice.
+                 * Ninety-nine of the hundred audited journeys waited longer than four seconds for
+                 * a reply, and the answer to that doubt was people pressing send again — which
+                 * used to put the same sentence in the record twice. `wrap={false}`: this turn
+                 * already has its own enclosing `Bubble` (the one this content sits inside), so
+                 * the indicator draws only its sentence and dots, not a second bubble around them.
                  */
-                <span className="gwui-ci-dots">
-                  {[0, 1, 2].map(i => (
-                    <span key={i} className="gwui-ci-dot" style={{ animationDelay: `${i * 0.2}s` }} />
-                  ))}
+                <>
+                  <GroundworkIsWriting wrap={false} />
                   {waitedAWhile && (
                     <span role="status" className="gwui-ci-dot-note">
                       Still reading what you wrote. Nothing was lost, you do not need to send it again.
                     </span>
                   )}
-                </span>
+                </>
               ) : nothingInternalReachesTheBubble(m.content)}
               {streamingId === m.id && (
                 <span className="gwui-ci-caret" />
@@ -1381,12 +1678,20 @@ export function ChatPage() {
             the spec's sentence, and, while the suite is on, a button to the suite's own request
             form (Leave or Payment Requests), filled in from what was read in their own words.
             Nothing is sent for them; the button only opens the form.
+
+            STAYS ON THE DONE STATE (screen fault 5). The reply that closes the check-in can be the
+            very same reply that carries `openTheRequest` - the form is the person's only way to
+            reach the request, so hiding it once `done` stranded them with no way to ask for leave or
+            spending after the conversation that offered it. `RequestOffer` just above (the yes/no
+            question itself) is a different thing and stays hidden once done: answering it is a
+            question, not a path to a form, and the conversation that could hear "yes" or "no" has
+            already closed.
           */}
           {(() => {
             const last = displayedMsgs[displayedMsgs.length - 1]
             if (!last || last.role !== 'AI' || isWaiting(last) || streamingId !== null) return null
-            if (loading || done || completed || declined || !opened) return null
-            return <OpenTheRequest open={last.openTheRequest} />
+            if (loading || completed || declined || !opened) return null
+            return <OpenTheRequest open={last.openTheRequest} replyText={last.content} />
           })()}
           {/*
             THE END CARD (check-in-end-card.txt). Finishing never happens on its own: the engine
@@ -1397,9 +1702,11 @@ export function ChatPage() {
           {done && !completed && !declined && (
             <TheEndCard
               engine={endCard}
+              beingWritten={cardIsBeingWritten}
               leadName={whoElseAnswers(ground.data as any)}
               nextOpens={whenTheNextOneOpens(myStatus.data?.checkIns, checkInId)}
               othersCanSeeWhatYouSay={(ground.data as any)?.aTeamReportComes}
+              whoReadsIt={(ground.data as any)?.viewerIsInitiator ? null : whoRunsThis(ground.data as any)}
               finishing={complete.isPending}
               /*
                 HALF A MINUTE OF "SAVING…" READS AS A HANG. W8-16. Completing runs two model calls
@@ -1439,14 +1746,17 @@ export function ChatPage() {
               refusal below still hands the composer back in plain words on an early press either
               way - that part of the fourth review's fix stands - but the offer itself now waits
               for the one floor everybody reads. */}
-          {!done && !completed && !declined && opened && msgs.filter(m => m.role === 'PERSON' && !m.id.startsWith('local-')).length >= mayCompleteAfter && (
+          {!done && !completed && !declined && opened && answersTheServerKept(msgs) >= mayCompleteAfter && (
             <div className="gwui-ci-finish-wrap">
-              <button
-                onClick={() => setDone(true)}
-                className="gwui-ci-finish-link"
-              >
+              {/*
+                SCREEN FAULT 3: A 32px TEXT LINK WAS THE ONLY WAY FORWARD HERE, BELOW THE 40px
+                FLOOR EVERY TAPPABLE CONTROL ON A PHONE NEEDS. `Button` (components/gw/ui) is
+                44px tall at every width, the same shared part every other action on this page
+                already uses, so this one no longer needs its own undersized class.
+              */}
+              <Button kind="secondary" onClick={() => setDone(true)}>
                 Finish my check-in now
-              </button>
+              </Button>
             </div>
           )}
           {declined && (

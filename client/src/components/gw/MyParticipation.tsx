@@ -15,7 +15,7 @@
  * facts about their own participation, rather than sending them to a second page for them.
  */
 import { whatThisStatusMeans } from './what-a-status-means-to-the-person-in-it'
-import { SCENARIO_LABELS } from '@/lib/scenario-catalog'
+import { scenarioLabel } from '@/lib/scenario-catalog'
 
 /**
  * STILL RENDERED THROUGH `whatThisStatusMeans` (a-status-is-a-sentence.spec.ts pins that - the
@@ -85,8 +85,7 @@ export function MyParticipation({
             <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
               <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Situation</div>
               <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>
-                {SCENARIO_LABELS[ground.scenario as keyof typeof SCENARIO_LABELS]
-                  ?? ground.scenario?.replace(/_/g, ' ').toLowerCase().replace(/^\w/, (c: string) => c.toUpperCase())}
+                {ground.scenario ? scenarioLabel(ground.scenario, ground.brief) : ''}
               </div>
             </div>
             {/*

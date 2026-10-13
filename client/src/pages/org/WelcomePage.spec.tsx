@@ -71,11 +71,15 @@ describe('where do you work', () => {
     expect(await screen.findByText('The invitation')).toBeTruthy()
   })
 
-  it('with nothing to join, only "Create a new organisation"', async () => {
+  it('with nothing to join, only "Create a new organisation", and the sentence promises only that (B-049)', async () => {
     ;(authApi.whereCanIJoin as any).mockResolvedValue({ byDomain: [], asAGuest: [] })
     open()
     await waitFor(() => expect(authApi.whereCanIJoin).toHaveBeenCalled())
     expect(screen.getByRole('link', { name: 'Create' })).toHaveAttribute('href', '/org-new')
     expect(screen.queryByRole('button', { name: /^Join/ })).toBeNull()
+    /* B-049: the page used to say "Join an organisation you belong to, or create a new one"
+       here too, though nothing on the page let anyone join. */
+    expect(await screen.findByText('Create a new organisation for your team. If somebody invited you to join theirs, use the link they sent you.')).toBeTruthy()
+    expect(screen.queryByText('Join an organisation you belong to, or create a new one. You can be in more than one and switch between them.')).toBeNull()
   })
 })

@@ -43,45 +43,58 @@ export interface Glance {
 const spellOne = (n: number) => (n === 1 ? 'One' : String(n))
 
 /**
- * ONE OF THE 12 ROUNDS IS DONE, NOT "1 OF 12 ROUNDS ARE DONE" (board review, 30 September, item 6).
- * The subject is however many rounds are done, so the verb agrees with THAT number, not with the
- * total: one round takes "is", more than one takes "are" - whether or not a total is still named.
+ * ONE OF THE 12 SESSIONS IS DONE, NOT "1 OF 12 SESSIONS ARE DONE" (board review, 30 September, item
+ * 6). The subject is however many sessions are done, so the verb agrees with THAT number, not with
+ * the total: one session takes "is", more than one takes "are" - whether or not a total is still
+ * named.
+ *
+ * "SESSION", NOT "ROUND" (real-user walk, Kijani Foods, fault 2): the wording rule says "session"
+ * everywhere a person reads about one of these; "round" was the old, jargon word.
  */
 function roundsSentence(progress: Glance['progress']): string {
-  const { roundsDone, roundsPlanned } = progress
+  const { roundsPlanned } = progress
+  /*
+   * B-057: A COUNT THAT CAN NEVER PASS THE PLANNED NUMBER. E1 on Riverbank Trading's old data
+   * (docs/existing-users-check.md) found this board reading "9 sessions are done." on a check-in
+   * planned for 8 - the old data gave one person far more completed sessions than the check-in was
+   * ever planned to run, because it was put in with that person's own stray session numbers.
+   * `roundsDone` is clamped to the planned total here, the one place this sentence is built, so a
+   * check-in can never be reported as further along than its own plan allows.
+   */
+  const roundsDone = roundsPlanned ? Math.min(progress.roundsDone, roundsPlanned) : progress.roundsDone
   const verb = roundsDone === 1 ? 'is' : 'are'
-  /* None done yet reads as a sentence, not "0 of the 12 rounds are done." */
-  if (roundsDone === 0) return roundsPlanned ? `None of the ${roundsPlanned} rounds is done yet.` : 'No round is done yet.'
+  /* None done yet reads as a sentence, not "0 of the 12 sessions are done." */
+  if (roundsDone === 0) return roundsPlanned ? `None of the ${roundsPlanned} sessions is done yet.` : 'No session is done yet.'
   if (roundsPlanned && roundsDone < roundsPlanned) {
-    return `${spellOne(roundsDone)} of the ${roundsPlanned} rounds ${verb} done.`
+    return `${spellOne(roundsDone)} of the ${roundsPlanned} sessions ${verb} done.`
   }
-  return `${spellOne(roundsDone)} ${roundsDone === 1 ? 'round is' : 'rounds are'} done.`
+  return `${spellOne(roundsDone)} ${roundsDone === 1 ? 'session is' : 'sessions are'} done.`
 }
 
 /**
- * "ANSWERED THIS ROUND", READ NATURALLY (board review, 30 September, second pass). "1 of 1 people
+ * "ANSWERED THIS SESSION", READ NATURALLY (board review, 30 September, second pass). "1 of 1 people
  * have answered" was wrong twice over - "people" for one person, and "have" for a single "1" - and
  * simply making the numbers agree with each other still left "1 of 6 people has answered", which
  * nobody would actually say. Five shapes, the way a person reading the board would say each one:
- *  - nobody yet:            "Nobody has answered this round yet."
- *  - the only person, done: "The one person in this round has answered."
- *  - one of several, done:  "1 of 6 people has answered this round." ("has": the subject is "1")
- *  - several of several:    "4 of 6 people have answered this round."
- *  - everybody, more than one: "Everybody has answered this round."
+ *  - nobody yet:            "Nobody has answered this session yet."
+ *  - the only person, done: "The one person in this session has answered."
+ *  - one of several, done:  "1 of 6 people has answered this session." ("has": the subject is "1")
+ *  - several of several:    "4 of 6 people have answered this session."
+ *  - everybody, more than one: "Everybody has answered this session."
  */
 function answeredSentence(progress: Glance['progress'], readerIsTheOnlyPerson?: boolean): string {
   const { answeredThisRound: a, ofPeople: n } = progress
-  if (a === 0) return 'Nobody has answered this round yet.'
+  if (a === 0) return 'Nobody has answered this session yet.'
   /*
    * THE FOUNDER'S OWN CHECK-IN BOARD, AND ANY OTHER ONE-PERSON CHECK-IN READ BY THAT PERSON
-   * (founder.txt): "The one person in this round has answered." talks about the reader in the
-   * third person, on their own board - "You have answered this round." says the same true thing,
+   * (founder.txt): "The one person in this session has answered." talks about the reader in the
+   * third person, on their own board - "You have answered this session." says the same true thing,
    * the way the rest of the board already speaks to "you". A reader who is NOT that person (a
    * read-only admin, say) still reads the third-person sentence, unchanged.
    */
-  if (n === 1) return readerIsTheOnlyPerson ? 'You have answered this round.' : 'The one person in this round has answered.'
-  if (a === n) return 'Everybody has answered this round.'
-  return `${a} of ${n} people ${a === 1 ? 'has' : 'have'} answered this round.`
+  if (n === 1) return readerIsTheOnlyPerson ? 'You have answered this session.' : 'The one person in this session has answered.'
+  if (a === n) return 'Everybody has answered this session.'
+  return `${a} of ${n} people ${a === 1 ? 'has' : 'have'} answered this session.`
 }
 
 /**

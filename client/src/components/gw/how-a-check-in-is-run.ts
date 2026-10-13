@@ -45,6 +45,6 @@ export const HOW_TO_STEPS = [
   },
   {
     title: 'Use the report as the basis for the conversation, not the conversation itself',
-    body: 'The report puts what everybody said in one place, and everybody in it reads the same one. The gap is what needs talking about. The product never decides; you decide, with something real in front of you.',
+    body: 'The report puts what everybody said in one place, and everybody in it reads the same one. The gap is what needs talking about. Groundwork never decides; you decide, with something real in front of you.',
   },
 ]

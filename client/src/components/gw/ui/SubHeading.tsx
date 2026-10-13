@@ -18,8 +18,8 @@ import './gw-ui.css'
  * read that is not itself a panel - "Settle these before deciding anything", "What people said
  * they would do" on the lead's across-every-session read (`WhatTheRecordShows.tsx`). 13.5px, the
  * prototype's own `.note` size, `--gw-sub` rather than `--gw-text`, 18px above and 7px below -
- * values that component's own local `Head` already drew, named here instead of left as one-off
- * `gwui-fs-13-5 gwui-ink-sub gwui-mt-18 gwui-mb-7` classes.
+ * values that component's own local `Head` already drew, named here instead of left as a one-off
+ * size, colour and spacing combination.
  */
 export function SubHeading({ tone, as, children }: {
   tone?: 'dark' | 'kicker'

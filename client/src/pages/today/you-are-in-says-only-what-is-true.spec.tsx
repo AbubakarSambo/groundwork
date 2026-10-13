@@ -11,7 +11,7 @@ import { useAuthStore } from '@/stores/auth'
  *
  * It said "Open one to start contributing." to somebody with no check-in to open.
  */
-vi.mock('@/api/today', () => ({ todayApi: { get: vi.fn(), everywhere: vi.fn() } }))
+vi.mock('@/api/today', () => ({ todayApi: { get: vi.fn(), everywhere: vi.fn(), outstanding: vi.fn().mockResolvedValue(null) } }))
 vi.mock('@/api/grounds', () => ({ groundsApi: { list: vi.fn() } }))
 import { todayApi } from '@/api/today'
 import { groundsApi } from '@/api/grounds'

@@ -34,7 +34,25 @@ export function WaitingForAnAdminPage() {
   const qc = useQueryClient()
   const [problem, setProblem] = useState('')
   const [reminded, setReminded] = useState(false)
-  const { data, isLoading, isError } = useQuery({ queryKey: ['my-waiting'], queryFn: authApi.myWaiting, retry: false })
+  /**
+   * B-202 (review round 2): ASKS AGAIN ON ITS OWN, SO BEING LET IN TURNS THIS SCREEN INTO "YOU'RE
+   * IN" WITHOUT NEEDING TO BE REFRESHED.
+   *
+   * Nothing here used to ask the server a second time: once "Almost in" had loaded, it stayed on
+   * screen - unchanged - for as long as the tab was open, even after an admin let them in. A plain
+   * reload would have picked up the change, but this page is the one place in the product that
+   * explicitly asks somebody to wait, and a screen that asks somebody to wait has to notice the
+   * wait ending by itself. Every 30 seconds, and again the moment the tab is shown after being
+   * hidden (switching back from another app, or back to this tab), rather than only while it is
+   * being looked at the whole time.
+   */
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['my-waiting'],
+    queryFn: authApi.myWaiting,
+    retry: false,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+  })
   /* Whether this page has seen them waiting, so being let in later is told, and never waiting is not. */
   const sawWaiting = useRef(false)
 
@@ -81,6 +99,9 @@ export function WaitingForAnAdminPage() {
           <Step>{`${who ?? 'An admin'} lets you in`}</Step>
         </Steps>
         <p className="gwui-pt-sub gwui-pt-sub-ink">
+          {/* B-147 follow-up: the prototype's own exact sentence (A3-organisations-and-joining/
+              join-waiting.txt) says "check-in" here, not "session" - left as the prototype has
+              it rather than swept into the session rename. */}
           {`We’ll email you the moment ${who ?? 'they do'}${who ? ' does' : ''}, and your first check-in will be waiting.`}
         </p>
       </Stack>
@@ -120,7 +141,10 @@ export function WaitingForAnAdminPage() {
  * seat right now, so an admin there has to make room before you can start. We've asked Grace
  * Achieng."
  */
-export function youAreFromOutside(w: Pick<Extract<MyWaiting, { waiting: true }>, 'organisationName' | 'admin' | 'heldForASeat'>): string {
+export function youAreFromOutside(w: Pick<Extract<MyWaiting, { waiting: true }>, 'organisationName' | 'admin' | 'heldForASeat' | 'says'>): string {
+  /* The server's own sentence when it sends one (B-096; journey test, 12 October): Pia, on Brightloom's own
+     address, was told "You're from outside Brightloom" because this page always built the outsider sentence. */
+  if (w.says?.trim()) return w.says
   const asked = w.admin?.name ? ` We’ve asked ${w.admin.name}.` : ' We’ve asked the admins there.'
   if (w.heldForASeat) {
     return `${w.organisationName} has no free seat right now, so an admin there has to make room before you can start.${asked}`

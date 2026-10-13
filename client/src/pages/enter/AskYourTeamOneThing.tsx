@@ -68,8 +68,8 @@ export default function AskYourTeamOneThing({ onBack }: { onBack?: () => void })
       cadence: howOften,
       cadenceChosen: true,
       checkInBy: howOften === 'ONE_TIME' ? by.trim() || undefined : undefined,
-      /* The lead asks; the team answers. They can add themselves on Setup in one click. */
-      managingOnly: true,
+      /* DECISION 133: no `managingOnly`. The lead asks and the team answers; the lead can check in
+         themselves whenever they choose, and is never counted as missing a session. */
       /*
        * THE TRIAL LINE TRAVELS ON THE PERSON, NOT ON THE GROUND. A top-level inviteNote is not a
        * field the commit accepts, so the sentence went nowhere: the note each contributor carries

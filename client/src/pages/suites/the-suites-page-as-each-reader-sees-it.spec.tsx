@@ -12,8 +12,26 @@ import type { SuitesForAnAdmin, SuitesForALead, SuitesForADutyHolder, AdminSuite
  * what each person reads, in the prototype's words (suites-admin.txt, suites-lead.txt), and what the
  * page never offers: a door to a board that is not built, or a switch to anybody but an admin.
  */
-vi.mock('@/api/suites', () => ({ suitesApi: { get: vi.fn(), switch: vi.fn() } }))
-import { suitesApi } from '@/api/suites'
+/* `yourRequestsApi` defaults to "off" (a 404-shaped rejection, the same as a suite that is not
+   switched on): the fault 2 tests below set it explicitly, and every other test here never reads
+   "Your own leave and spending requests" at all, so its absence by default changes nothing they
+   check. */
+/* B-140: SuitesPage now asks GET /suites/reviews/board for the reviews suite's own card
+   (reviewsLineFor), the same call ReviewsBoardPage already reads `every` from - mocked here so
+   every existing test keeps its default (no override) unless a test sets it. */
+const reviewsBoard: any = vi.fn(() => Promise.resolve({ every: null as string | null, next: [] as any[] }))
+vi.mock('@/api/suites', () => ({
+  suitesApi: { get: vi.fn(), switch: vi.fn(), mine: vi.fn(async () => ({ leave: true, spend: true, time: true, reviews: true, any: true, says: '' })) },
+  reviewsApi: { board: () => reviewsBoard() },
+  yourRequestsApi: {
+    leave: vi.fn(() => Promise.reject(Object.assign(new Error('off'), { response: { status: 404 } }))),
+    spending: vi.fn(() => Promise.reject(Object.assign(new Error('off'), { response: { status: 404 } }))),
+    hours: vi.fn(() => Promise.reject(Object.assign(new Error('off'), { response: { status: 404 } }))),
+  },
+}))
+import { suitesApi, yourRequestsApi } from '@/api/suites'
+
+const suiteOff = () => Promise.reject(Object.assign(new Error('off'), { response: { status: 404 } }))
 
 const suite = (key: string, name: string, line: string, over: Partial<AdminSuite> = {}): AdminSuite =>
   ({ key, name, line, on: false, questions: [], answers: {}, ...over })
@@ -42,7 +60,7 @@ const GRACES: SuitesForAnAdmin = {
     { name: 'Work', suites: [
       suite('todos', 'To-dos', 'Everything people said they will do, from every check-in and chat, in one list for each person.'),
       suite('customers', 'Customers and deals', 'One list of customers and deals for the whole company, kept up to date by the sales check-ins.'),
-      suite('equipment', 'Equipment', 'See who has each laptop, phone and demo freezer, and what needs fixing.', {
+      suite('equipment', 'Equipment', 'See who has each laptop, phone and other piece of equipment, and what needs fixing.', {
         questions: [{ id: 'keeper', kind: 'person', ask: 'Who looks after equipment and repairs?' }],
       }),
     ] },
@@ -136,6 +154,92 @@ describe('Grace, an admin, reads the Suites page', () => {
     expect(screen.queryByRole('link', { name: 'Open its board' })).toBeNull()
   })
 
+  /*
+   * SCREEN FAULT 6: a suite that was switched on, with questions of its own, offered no way back
+   * into them - only the switch, which would turn it off. "See or change its settings" opens the
+   * same form, filled in with what is already on record (`GET /suites`' own `answers`), and saves
+   * through the same PUT /suites/:key the switch itself uses, with `on` left exactly as it is.
+   */
+  it('a suite that is on, with questions, offers "See or change its settings"', async () => {
+    open(GRACE, withOn('leave', { days: 21, approver: 'Their manager' }))
+    await screen.findByRole('heading', { level: 2, name: 'People' })
+    const c = card('Leave requests')
+    expect(within(c).getByRole('button', { name: 'See or change its settings' })).toBeInTheDocument()
+  })
+
+  it('a suite that is on, with no questions, offers no such door - there is nothing to see', async () => {
+    open(GRACE, withOn('todos'))
+    await screen.findByRole('heading', { level: 2, name: 'People' })
+    expect(within(card('To-dos')).queryByRole('button', { name: 'See or change its settings' })).toBeNull()
+  })
+
+  it('a suite that is off offers no such door either', async () => {
+    open(GRACE, GRACES)
+    await screen.findByRole('heading', { level: 2, name: 'People' })
+    expect(within(card('Leave requests')).queryByRole('button', { name: 'See or change its settings' })).toBeNull()
+  })
+
+  it('opens the same form, filled in with what is on record, and saves it with the switch left on', async () => {
+    open(GRACE, withOn('leave', { days: 21, approver: 'Their manager' }))
+    await screen.findByRole('heading', { level: 2, name: 'People' })
+    const c = card('Leave requests')
+    fireEvent.click(within(c).getByRole('button', { name: 'See or change its settings' }))
+    expect(within(c).getByText('Change your answers below, then save them.')).toBeInTheDocument()
+    expect(within(c).getByLabelText('How many days of leave does each person have in a year?')).toHaveValue(21)
+    expect(within(c).getByLabelText('Who approves a request for time off?')).toHaveValue('Their manager')
+    fireEvent.change(within(c).getByLabelText('How many days of leave does each person have in a year?'), { target: { value: '25' } })
+    ;(suitesApi.switch as any).mockResolvedValue(withOn('leave', { days: 25, approver: 'Their manager' }))
+    fireEvent.click(within(c).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(suitesApi.switch).toHaveBeenCalledWith('leave', true, { days: '25', approver: 'Their manager' }))
+    /* Still on throughout - this never sent `on: false`. */
+    await waitFor(() => expect(within(card('Leave requests')).getByRole('switch')).toHaveAttribute('aria-checked', 'true'))
+  })
+
+  /*
+   * B-124 FOR AN EXISTING ORGANISATION (coordinator follow-up, 9 October). Kijani Foods' leave
+   * suite was switched on before this page existed: its days a year are stored under the older name
+   * `daysAYear`, and its `approver` is a person's id, not one of today's two choices. "These
+   * settings were set up another way, so they cannot be changed here yet." used to refuse the whole
+   * form over this - even the days a year, which reads perfectly well under its old name. The form
+   * now always opens: `days` is read from `daysAYear` (the one rename this product actually made),
+   * `approver` shows blank with a plain note (its stored value is a person's id, not a valid choice,
+   * so it is not guessed at), and "Save" stays disabled until the admin picks one - nothing on
+   * record is touched until they do.
+   */
+  it('opens the form even over settings stored before this page existed, reads what carries over, and leaves the rest for the admin to choose', async () => {
+    open(GRACE, withOn('leave', { daysAYear: 21, approver: 'u-g', workflow: 'manager' } as any))
+    await screen.findByRole('heading', { level: 2, name: 'People' })
+    const c = card('Leave requests')
+    fireEvent.click(within(c).getByRole('button', { name: 'See or change its settings' }))
+    expect(within(c).getByText('Some of these were set up before this page existed, so they show blank below. Choose them now, and saving sets them from what you choose.')).toBeInTheDocument()
+    expect(within(c).getByLabelText('How many days of leave does each person have in a year?')).toHaveValue(21)
+    expect(within(c).getByLabelText('Who approves a request for time off?')).toHaveValue('')
+    expect(within(c).getByRole('button', { name: 'Save' })).toBeDisabled()
+    expect(suitesApi.switch).not.toHaveBeenCalled()
+  })
+
+  it('once the admin fills in what could not be read, saves everything - the carried-over value and the new choice together', async () => {
+    open(GRACE, withOn('leave', { daysAYear: 21, approver: 'u-g', workflow: 'manager' } as any))
+    await screen.findByRole('heading', { level: 2, name: 'People' })
+    const c = card('Leave requests')
+    fireEvent.click(within(c).getByRole('button', { name: 'See or change its settings' }))
+    fireEvent.change(within(c).getByLabelText('Who approves a request for time off?'), { target: { value: 'An admin' } })
+    ;(suitesApi.switch as any).mockResolvedValue(withOn('leave', { days: 21, approver: 'An admin' }))
+    fireEvent.click(within(c).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(suitesApi.switch).toHaveBeenCalledWith('leave', true, { days: '21', approver: 'An admin' }))
+  })
+
+  it('"Cancel" leaves its answers exactly as they were, and sends nothing', async () => {
+    open(GRACE, withOn('leave', { days: 21, approver: 'Their manager' }))
+    await screen.findByRole('heading', { level: 2, name: 'People' })
+    const c = card('Leave requests')
+    fireEvent.click(within(c).getByRole('button', { name: 'See or change its settings' }))
+    fireEvent.change(within(c).getByLabelText('How many days of leave does each person have in a year?'), { target: { value: '25' } })
+    fireEvent.click(within(c).getByRole('button', { name: 'Cancel' }))
+    expect(within(c).queryByText('Change your answers below, then save them.')).toBeNull()
+    expect(suitesApi.switch).not.toHaveBeenCalled()
+  })
+
   it('reads "Already part of Groundwork", each with a link to where it lives', async () => {
     open(GRACE, GRACES)
     const region = await screen.findByRole('region', { name: 'Already part of Groundwork' })
@@ -193,11 +297,37 @@ describe('Grace, an admin, reads the Suites page', () => {
     expect(suitesApi.switch).not.toHaveBeenCalled()
   })
 
-  it('switching off is one press', async () => {
+  /*
+   * FAULT 7D OF THE LIVE WALK (6 October): switching a suite off used to be one press, with no
+   * warning even while requests or hours waited in it. A press now asks first, in the shared Modal,
+   * with what switching off actually does (switch(), suites.service.ts: the suite's answers and
+   * anything already in it are kept; it is only refused from being added to until it is on again).
+   */
+  it('switching off asks first, and nothing is sent until the press is confirmed', async () => {
+    open(GRACE, withOn('todos'))
+    fireEvent.click(await screen.findByRole('switch', { name: 'To-dos' }))
+    expect(await screen.findByRole('dialog', { name: 'Switch To-dos off?' })).toBeInTheDocument()
+    expect(screen.getByText('Anything waiting in it stays as it is, and nobody can add to it until it is switched on again.')).toBeInTheDocument()
+    expect(suitesApi.switch).not.toHaveBeenCalled()
+  })
+
+  it('confirming switches it off', async () => {
     open(GRACE, withOn('todos'))
     ;(suitesApi.switch as any).mockResolvedValue(GRACES)
     fireEvent.click(await screen.findByRole('switch', { name: 'To-dos' }))
+    await screen.findByRole('dialog', { name: 'Switch To-dos off?' })
+    fireEvent.click(screen.getByRole('button', { name: 'Switch it off' }))
     await waitFor(() => expect(suitesApi.switch).toHaveBeenCalledWith('todos', false, undefined))
+  })
+
+  it('"Cancel" on the confirmation leaves it on, and nothing is sent', async () => {
+    open(GRACE, withOn('todos'))
+    fireEvent.click(await screen.findByRole('switch', { name: 'To-dos' }))
+    await screen.findByRole('dialog', { name: 'Switch To-dos off?' })
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(suitesApi.switch).not.toHaveBeenCalled()
+    expect(within(card('To-dos')).getByRole('switch')).toHaveAttribute('aria-checked', 'true')
   })
 
   it('a switch that does not go through says so, in the server’s words or the product’s own', async () => {
@@ -205,6 +335,29 @@ describe('Grace, an admin, reads the Suites page', () => {
     ;(suitesApi.switch as any).mockRejectedValue(new Error('network'))
     fireEvent.click(await screen.findByRole('switch', { name: 'To-dos' }))
     expect(await within(card('To-dos')).findByRole('alert')).toHaveTextContent('That did not go through, and nothing has changed. Try again.')
+  })
+})
+
+/**
+ * B-140: Kijani Foods has switched performance reviews on but never set how often, and the
+ * switchboard still said "A review every 6 months..." as if it had - the same made-up cadence
+ * B-119 already fixed on the reviews board itself. This asks the one extra call the reviews board
+ * already makes (`GET /suites/reviews/board`) and swaps the sentence the same way.
+ */
+describe('B-140: the reviews card never states a cadence nobody has set', () => {
+  it('drops the made-up "every 6 months" once the reviews suite is on and nothing was set', async () => {
+    reviewsBoard.mockResolvedValue({ every: null, next: [] })
+    open(GRACE, withOn('reviews'))
+    const reviews = await screen.findByRole('region', { name: 'Performance reviews' })
+    await waitFor(() => expect(within(reviews).queryByText(/A review every 6 months/)).toBeNull())
+    expect(within(reviews).getByText('A review is built from what each person did and proved, with their own view beside it.')).toBeTruthy()
+  })
+
+  it('keeps the organisation’s own cadence once one has been set', async () => {
+    reviewsBoard.mockResolvedValue({ every: 'Every 6 months', next: [] })
+    open(GRACE, withOn('reviews'))
+    const reviews = await screen.findByRole('region', { name: 'Performance reviews' })
+    expect(await within(reviews).findByText('A review every 6 months, built from what each person did and proved, with their own view beside it.')).toBeTruthy()
   })
 })
 
@@ -298,6 +451,53 @@ describe('Omar, a member who looks after finance, reads the Suites page', () => 
     expect(screen.getAllByRole('heading', { level: 3 }).map(h => h.textContent)).toEqual(['Spending and budgets', 'Time sheets'])
     const door = within(card('Spending and budgets')).getByRole('link', { name: 'Open the requests for finance' })
     expect(door).toHaveAttribute('href', '/suite/spend/finance')
+  })
+})
+
+describe('"Your own leave and spending requests", gated the same way as Today (fault 2, live re-walk)', () => {
+  it('is not offered to an admin when both suites are off for them', async () => {
+    (yourRequestsApi.leave as any).mockImplementation(suiteOff)
+    ;(yourRequestsApi.spending as any).mockImplementation(suiteOff)
+    open(GRACE, GRACES)
+    await screen.findByRole('heading', { level: 2, name: 'People' })
+    await new Promise(r => setTimeout(r, 10))
+    expect(screen.queryByRole('link', { name: 'Your own leave and spending requests' })).toBeNull()
+  })
+
+  it('is offered to an admin once a suite answers for them', async () => {
+    (yourRequestsApi.leave as any).mockResolvedValue({ daysLeftSaid: '12 days left', requests: [] })
+    ;(yourRequestsApi.spending as any).mockImplementation(suiteOff)
+    open(GRACE, GRACES)
+    expect(await screen.findByRole('link', { name: 'Your own leave and spending requests' })).toHaveAttribute('href', '/suite/mine')
+  })
+
+  it('is not offered to a member the suites page otherwise refuses, while both are off', async () => {
+    (yourRequestsApi.leave as any).mockImplementation(suiteOff)
+    ;(yourRequestsApi.spending as any).mockImplementation(suiteOff)
+    open(MIRIAM, Object.assign(new Error('403'), { response: { status: 403, data: { message: 'Only an admin or a lead can open the suites.' } } }))
+    await screen.findByRole('alert')
+    expect(screen.queryByRole('link', { name: 'Your own leave and spending requests' })).toBeNull()
+  })
+
+  it('is offered to that same member once a suite is on for them', async () => {
+    (yourRequestsApi.leave as any).mockImplementation(suiteOff)
+    ;(yourRequestsApi.spending as any).mockResolvedValue({ requests: [] })
+    open(MIRIAM, Object.assign(new Error('403'), { response: { status: 403, data: { message: 'Only an admin or a lead can open the suites.' } } }))
+    expect(await screen.findByRole('link', { name: 'Your own leave and spending requests' })).toHaveAttribute('href', '/suite/mine')
+  })
+
+  /*
+   * FAULT 1 OF THE LIVE WALK (6 October): hours is gated the same way as leave and spending, and
+   * the link is renamed "Your own requests" once hours answer, so "leave and spending" does not
+   * leave hours unsaid.
+   */
+  it('is offered, and renamed "Your own requests", when only hours answers for a member', async () => {
+    (yourRequestsApi.leave as any).mockImplementation(suiteOff)
+    ;(yourRequestsApi.spending as any).mockImplementation(suiteOff)
+    ;(yourRequestsApi.hours as any).mockResolvedValue({ weeks: [], standing: null })
+    open(MIRIAM, Object.assign(new Error('403'), { response: { status: 403, data: { message: 'Only an admin or a lead can open the suites.' } } }))
+    expect(await screen.findByRole('link', { name: 'Your own requests' })).toHaveAttribute('href', '/suite/mine')
+    expect(screen.queryByRole('link', { name: 'Your own leave and spending requests' })).toBeNull()
   })
 })
 

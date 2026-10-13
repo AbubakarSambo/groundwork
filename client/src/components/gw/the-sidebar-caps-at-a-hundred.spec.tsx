@@ -42,6 +42,10 @@ function aHundredGrounds(waiting: number[] = [2, 5]) {
 function mount(grounds: any[]) {
   useAuthStore.setState({ user: LEAD, token: 't', isAuthenticated: true } as any)
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } })
+  /* B-202 (review round 3): AppShell now waits for the same ['my-waiting'] read RequireOrgSetup
+  already makes before it mounts the sidebar at all - without this cached answer the real
+  authApi.myWaiting (not mocked in this file) would be asked for real. */
+  qc.setQueryData(['my-waiting'], { waiting: false })
   qc.setQueryData(['grounds'], grounds)
   qc.setQueryData(['my-organizations'], [])
   const out = render(

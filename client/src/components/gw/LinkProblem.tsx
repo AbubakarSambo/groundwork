@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { MARKETING_URL } from '@/lib/marketing'
 import { PageTitle, Note, Button, Stack } from '@/components/gw/ui'
+import { useAuthStore } from '@/stores/auth'
 
 /**
  * A LINK FROM AN EMAIL THAT DOES NOT WORK. W8-62.
@@ -34,23 +35,55 @@ import { PageTitle, Note, Button, Stack } from '@/components/gw/ui'
  */
 export function LinkProblem({ kind, detail }: { kind: 'invite' | 'join' | 'sign-in'; detail?: string }) {
   const navigate = useNavigate()
+  const signedIn = useAuthStore(s => !!s.isAuthenticated)
 
   const what = kind === 'sign-in' ? 'sign-in link' : `${kind} link`
 
+  /*
+   * B-209: A CHECK-IN'S OWN JOIN LINK (/join?t=) IS NOT SINGLE USE AND DOES NOT EXPIRE.
+   * "Join links are single use and they expire." was said of every kind here, including this one -
+   * but a join link is shared with a whole cohort and used by everybody in it, and
+   * grounds.service.ts's getJoinPreview says plainly "the token has no expiry of its own"; it only
+   * stops working once the check-in it belongs to has ended or is on hold. Said only for that,
+   * which is what is actually true.
+   *
+   * B-209 (review round 2): "NO LONGER OPENS" SAYS "USED TO" ABOUT A LINK THAT MAY NEVER HAVE
+   * WORKED AT ALL - a cut-off copy, a typo in the address, or one sent for a check-in that was
+   * never this person's to begin with reads exactly the same as one that has simply ended, and "no
+   * longer" claims the first thing happened when only the second is known for certain. "Does not
+   * open" is true of all of them.
+   */
+  const defaultDetail = kind === 'join'
+    ? 'This link does not open a check-in. Ask whoever runs it for the current one.'
+    : `${what[0].toUpperCase()}${what.slice(1)}s are single use and they expire.${kind === 'sign-in'
+      ? ' Ask for a new one below.'
+      : ' Ask the person who invited you to send a new one. They can do that from the check-in.'}`
+
+  /*
+   * B-207 / B-209 (review round 2): SOMEBODY ALREADY SIGNED IN IS NOT OFFERED "SIGN IN". Every one
+   * of the three kinds here used to send a signed-in reader to `/auth` anyway - "Sign in instead"
+   * for `invite`/`join`, "Get a new link" for `sign-in` - as if nothing about them being signed in
+   * mattered. Today is where they already belong; `/auth` would only have signed them back into the
+   * account they are already using.
+   */
   return (
     <div style={{ textAlign: 'center' }}>
       <Stack gap={12}>
-        <PageTitle title={`This ${what} did not work`} />
+        {/* B-158: one heading for every link that does not work, the same words wherever this
+            happens - the deep page audit found five different headings for the same one state
+            across /invite, /join, /j/:code, /answer and /verify-email. "That link didn't work"
+            is the prototype's own wording (F4-small-states/badlink.txt), already used on
+            /verify-email, /set-password and /reset-password (LinkExpired.tsx's LinkDidNotWork) -
+            not the audit's own suggested rewrite, which did not match it. */}
+        <PageTitle title="That link didn’t work" />
         <Note>
           {/* A sentence of the page's or the server's own already says what to do. Adding the general
               one after it said the same thing twice ("ask whoever added you to send a new invite. Ask
               whoever invited you to send a new one"), found in the running app in U.3. */}
-          {detail ?? `${what[0].toUpperCase()}${what.slice(1)}s are single use and they expire.${kind === 'sign-in'
-            ? ' Ask for a new one below.'
-            : ' Ask the person who invited you to send a new one. They can do that from the check-in.'}`}
+          {detail ?? defaultDetail}
         </Note>
-        <Button size="big" wide onClick={() => navigate('/auth')}>
-          {kind === 'sign-in' ? 'Get a new link' : 'Sign in instead'}
+        <Button size="big" wide onClick={() => navigate(signedIn ? '/today' : '/auth')}>
+          {signedIn ? 'Go to Today' : kind === 'sign-in' ? 'Get a new link' : 'Sign in instead'}
         </Button>
         <p className="gwui-fine"><a href={MARKETING_URL}>What is Groundwork?</a></p>
       </Stack>

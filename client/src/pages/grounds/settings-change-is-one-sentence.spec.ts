@@ -69,4 +69,8 @@ describe('"your sessions", as one sentence', () => {
     expect(yourSessionsSentence(3, null)).toBe('3 sessions done so far.')
     expect(yourSessionsSentence(1, null)).toBe('1 session done so far.')
   })
+
+  it('B-012: never says more are done than are planned', () => {
+    expect(yourSessionsSentence(9, 6)).toBe('6 of 6 sessions are done.')
+  })
 })

@@ -164,6 +164,51 @@ describe('the board, as each reader reads it', () => {
     expect(screen.queryByText('Your check-in')).toBeNull()
   })
 
+  /**
+   * FAULT 6 (live walk, 6 October 2026): NEVER "START MY CHECK-IN" ON AN ENDED CHECK-IN.
+   *
+   * Amani, a member on a check-in that had already ended, still read "Start my check-in" in the
+   * header - pressing it opened "No check-in open right now", because there was none. The header
+   * read `groundEnded` (`hasEnded`, `lib/a-ground-that-has-ended.ts`) for the clock under the
+   * title already; it just never gated this button on it.
+   */
+  it('Miriam gets no "Start my check-in" once the check-in has ended, even though she is a member', async () => {
+    me = { id: 'u-miriam', firstName: 'Miriam', role: 'MEMBER' }
+    renderBoard({ ...AS_MIRIAM, groundStatus: 'CLOSED' })
+    await screen.findByRole('tab', { name: 'Check-in' })
+    expect(screen.queryByText('Start my check-in')).toBeNull()
+  })
+
+  /**
+   * SCREEN FAULT 6(d) (live walk, 6 October 2026), EVERY SITUATION: NO "START MY CHECK-IN" ONCE
+   * SHE HAS FINISHED HER OWN OPEN SESSION.
+   *
+   * `base` carries no phase spine (a sales-board-shaped ground, which never sends one), so the
+   * header fell back to asking only whether Miriam's NEXT check-in is still in the future
+   * (`myOpenOrNextOpensLater`) - true only when one exists. With nothing non-completed left for
+   * her at all (she has answered everything there is so far), that read was never true either way,
+   * so the button stayed up with nothing behind it. `groundsApi.get`'s own `checkIns` is the real
+   * per-reader source: her one check-in here is COMPLETED, so there is nothing of hers left open.
+   */
+  it('Miriam gets no "Start my check-in" once she has finished the one check-in open for her', async () => {
+    me = { id: 'u-miriam', firstName: 'Miriam', role: 'MEMBER' }
+    ;(groundsApi.get as any).mockResolvedValue({
+      initiatorId: 'u-wairimu',
+      participants: [{ id: 'p-miriam2', userId: 'u-miriam' }],
+      checkIns: [{ participantId: 'p-miriam2', status: 'COMPLETED', sessionNumber: 1 }],
+    })
+    renderBoard(AS_MIRIAM)
+    await screen.findByRole('tab', { name: 'Check-in' })
+    expect(screen.queryByText('Start my check-in')).toBeNull()
+  })
+
+  it('Wairimu, who runs an ended check-in, still gets "Your check-in"', async () => {
+    me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
+    renderBoard({ ...AS_THE_LEAD, groundStatus: 'CLOSED' })
+    await screen.findByRole('tab', { name: 'Check-in' })
+    expect(screen.getByText('Your check-in')).toBeTruthy()
+  })
+
   it('with no time on record yet, it still says the board only changes when something new comes in', async () => {
     me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
     renderBoard({ ...AS_THE_LEAD, lastChangedAt: null })
@@ -391,7 +436,24 @@ describe('what keeps coming up', () => {
     })
     await screen.findByText('The team today')
     const card = cardAfter('The team today')
-    expect(within(card).getByText(miriamsPattern.heading)).toBeTruthy()
+    /* Decision 2 (Hafsah, 12 October): the pattern's name never sits beside her name in this list; what happened does. Her pattern
+       has no "what happened" sentence served, so the line says that something keeps coming up and where it is. Changed from
+       expecting the heading here, which the decision rules out. */
+    expect(within(card).queryByText(miriamsPattern.heading)).toBeNull()
+    expect(within(card).getByText('Something keeps coming up in these check-ins. It is shown below, with what happened.')).toBeTruthy()
+  })
+
+  it('with a sentence of what happened served, that sentence is the line beside her name', async () => {
+    me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
+    const said = 'In three of the last five check-ins, a deal Miriam called qualified had no buying date.'
+    renderBoard({
+      ...AS_THE_LEAD, sections: ['objectives', 'patterns'], patterns: [{ ...miriamsPattern, whatHappened: said }],
+      eachPersonToday: [{ participantId: 'p-miriam', who: 'Miriam Wanjiku', line: 'Deals moving', keepsComingUp: null }],
+    })
+    await screen.findByText('The team today')
+    const card = cardAfter('The team today')
+    expect(within(card).queryByText(miriamsPattern.heading)).toBeNull()
+    expect(within(card).getByText(said)).toBeTruthy()
   })
 })
 

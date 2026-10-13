@@ -1,4 +1,5 @@
 import { toast } from 'sonner'
+import { rememberTheFirstCheckInClosing } from '@/lib/the-closing-after-your-first-check-in'
 import { useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { authApi } from '@/api/auth'
@@ -87,6 +88,7 @@ export function GoogleCallbackPage() {
              * after sign-in was deleted by the code meant to be saving it. W14-11.
              */
             clearEntryHandover()
+            rememberTheFirstCheckInClosing(res.groundId)
             navigate(`/grounds/${res.groundId}`, { replace: true })
             return
           } catch {

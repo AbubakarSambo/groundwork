@@ -6,6 +6,8 @@ import { AppShell } from './AppShell'
 import { useAuthStore } from '@/stores/auth'
 import { groundsApi } from '@/api/grounds'
 import { todayApi } from '@/api/today'
+import { queueApi, yourRequestsApi, reviewsApi } from '@/api/suites'
+import { authApi } from '@/api/auth'
 
 /**
  * THE SIDEBAR DOES NOT SAY "NOTHING IN PROGRESS YET" BEFORE IT KNOWS.
@@ -18,6 +20,10 @@ const USER = { id: 'u1', email: 'kavon@coamana.test', firstName: 'Kavon', lastNa
 function mount() {
   useAuthStore.setState({ user: USER, token: 't', isAuthenticated: true } as any)
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  /* B-202 (review round 3): AppShell now waits for the same ['my-waiting'] read RequireOrgSetup
+  already makes before it mounts the sidebar at all - without this cached answer the real
+  authApi.myWaiting (not mocked in this file) would be asked for real. */
+  qc.setQueryData(['my-waiting'], { waiting: false })
   qc.setQueryData(['my-organizations'], [])
   return render(
     <QueryClientProvider client={qc}><MemoryRouter initialEntries={['/grounds']}><AppShell><div /></AppShell></MemoryRouter></QueryClientProvider>,
@@ -40,8 +46,32 @@ function mount() {
  *
  * Mocked here now, the same way `groundsApi.list` already is, so nothing this file does reaches the
  * real network.
+ *
+ * Live walk at a hundred people, fault 1: `AppShell` now also reads `['suite-queue-count']`
+ * (`queueApi.get`) for a MEMBER, the same quiet count `QueueLink` already uses, to decide whether
+ * "Suites" belongs in their sidebar too. `USER` here is a MEMBER, so the same real-network risk
+ * applies to it as it did to `today` - mocked here for the same reason.
+ *
+ * B-123 (coordinator follow-up, 9 October): `AppShell` now also reads `your-leave`/`your-spending`/
+ * `your-hours` (`yourRequestsApi`) and `your-reviews` (`reviewsApi.mineQuietly`) for a MEMBER, to
+ * decide whether their OWN "Suites" nav item belongs in their rail (`memberSuiteOnly`, nav-items.tsx)
+ * - the same real-network risk as `today` and the queue, mocked here for the same reason.
  */
-beforeEach(() => { vi.spyOn(todayApi, 'get').mockResolvedValue({ needs: [], count: 0, line: null, comingUp: [] } as any) })
+beforeEach(() => {
+  /* B-202 (review round 3): AppShell's own `['my-waiting']` read (see `mount` above) is the same
+     real-network risk this file already guards `today`/the queue/the suites against: `qc.setQueryData`
+     seeds the cache, but with no `staleTime` set here the query is stale the instant it is seeded and
+     still fires a real background fetch for the fake token 't' - the exact 401-then-logout race this
+     file's own comment above describes, which is what made 'if the list cannot be loaded...' flake.
+     Mocked here too, for the same reason as the rest. */
+  vi.spyOn(authApi, 'myWaiting').mockResolvedValue({ waiting: false } as any)
+  vi.spyOn(todayApi, 'get').mockResolvedValue({ needs: [], count: 0, line: null, comingUp: [] } as any)
+  vi.spyOn(queueApi, 'get').mockResolvedValue({ counts: { all: 0, leave: 0, spend: 0, pastTheDeadline: 0 }, page: 1, pageSize: 1, pages: 1, items: [], says: '' } as any)
+  vi.spyOn(yourRequestsApi, 'leave').mockRejectedValue(Object.assign(new Error('off'), { response: { status: 404 } }))
+  vi.spyOn(yourRequestsApi, 'spending').mockRejectedValue(Object.assign(new Error('off'), { response: { status: 404 } }))
+  vi.spyOn(yourRequestsApi, 'hours').mockRejectedValue(Object.assign(new Error('off'), { response: { status: 404 } }))
+  vi.spyOn(reviewsApi, 'mineQuietly').mockResolvedValue([])
+})
 afterEach(() => vi.restoreAllMocks())
 
 describe('the sidebar waits for the list', () => {

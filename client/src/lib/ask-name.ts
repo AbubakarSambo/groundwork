@@ -9,7 +9,24 @@
  * Groundwork" flash before the real name arrives, and never sees two different names for the same
  * assistant on the same screen.
  */
+/**
+ * THE NAME GROUNDWORK MAKES UP WHEN NOBODY GIVES ONE ("Wanjiru Otieno's workspace", "My workspace"), the engine's own rule
+ * (`isAMadeUpWorkspaceName` in api/src/modules/assistant/ask-name.ts). It is a placeholder, not the organisation's name, so no sentence
+ * says it as one: Ask is "Ask Groundwork" until a real name is given (release check, 9 October: the admin card read "You never see
+ * anyone's questions to Ask Wanjiru Otieno's workspace").
+ */
+export function isAMadeUpWorkspaceName(name?: string | null): boolean {
+  const n = (name ?? '').replace(/\s+/g, ' ').trim()
+  return /^my workspace$/i.test(n) || /^.+['\u2019]s workspace$/i.test(n)
+}
+
+/** The organisation's real name, or null for no name or a made-up one. */
+export function aRealOrganisationName(name?: string | null): string | null {
+  const n = (name ?? '').replace(/\s+/g, ' ').trim()
+  return n && !isAMadeUpWorkspaceName(n) ? n : null
+}
+
 export function askNameFor(organisationName?: string | null): string {
-  const name = (organisationName ?? '').replace(/\s+/g, ' ').trim()
+  const name = aRealOrganisationName(organisationName)
   return name ? `Ask ${name}` : 'Ask Groundwork'
 }

@@ -40,6 +40,12 @@ export const CLOSE_SHEET = `
 .gw-close { --pad: 20px; --gap: 15px; --lead: 1.6; }
 .gw-close .gw-blk  { padding: var(--gap) var(--pad); border-top: 1px solid var(--gw-border); }
 .gw-close .gw-head { padding: var(--gap) var(--pad) 13px; }
+/* FAULT 6 (live re-walk): a quiet link's default ink (var(--gw-navy)) is unreadable where the
+   opening summary draws on its own dark ground (TheReportYouSawAtTheEnd.tsx's .gw-head,
+   background var(--gw-dark)) - the one place among every close this chrome serves that a link
+   sits on dark rather than on the card's own white. Scoped to .gw-head only, so every other
+   .gwui-plain-link this product has keeps its ordinary navy. */
+.gw-close .gw-head .gwui-plain-link { color: rgba(255,255,255,.85); }
 .gw-close .gw-foot { padding: 13px var(--pad); border-top: 1px solid var(--gw-border); display: grid; gap: 9px; }
 
 .gw-close .gw-title { font-size: 15px; font-weight: 800; color: var(--gw-text); line-height: 1.3; }

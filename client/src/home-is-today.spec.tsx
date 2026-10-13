@@ -15,7 +15,15 @@ vi.mock('@/components/gw/your-organisations', async (orig) => ({
 }))
 vi.mock('@/api/auth', async (orig) => {
   const real = await orig<any>()
-  return { ...real, authApi: { ...real.authApi, whereCanIJoin: vi.fn(async () => ({ byDomain: [] })) } }
+  return {
+    ...real,
+    authApi: {
+      ...real.authApi,
+      whereCanIJoin: vi.fn(async () => ({ byDomain: [] })),
+      /* B-202's own check, run at this same choke point: nobody here is waiting to be let in. */
+      myWaiting: vi.fn(async () => ({ waiting: false })),
+    },
+  }
 })
 import { HomeOrChooseAnOrganisation } from './App'
 import { justSignedIn } from '@/lib/choose-an-organisation'

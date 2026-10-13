@@ -1,5 +1,6 @@
 import { apiClient } from './client'
 import type { TheIdeaOfferInTheCheckIn, TheRequestOfferInTheCheckIn, TheRequestToOpen } from './anchorShapes'
+import type { ConnectWhatsApp } from '@/types'
 
 /**
  * What this check-in is about, so the person answering is not guessing.
@@ -48,7 +49,7 @@ export interface TheEndCard {
 export interface SendMessageResponse { reply: string; sessionComplete?: boolean; suggestedAnswers?: string[]; endCard?: TheEndCard | null; ideaOffer?: TheIdeaOfferInTheCheckIn | null; requestOffer?: TheRequestOfferInTheCheckIn | null; openTheRequest?: TheRequestToOpen | null }
 export interface TranscriptTurn { id: string; role: 'AI' | 'PERSON'; content: string; suggestedAnswers?: string[]; ideaOffer?: TheIdeaOfferInTheCheckIn | null; requestOffer?: TheRequestOfferInTheCheckIn | null; openTheRequest?: TheRequestToOpen | null }
 export interface PriorRecordEntrySession { sessionNumber: number; entries: { type: string; text: string }[] }
-export interface TranscriptResponse { checkIn: { status: string; sessionNumber: number; groundId?: string }; turns: TranscriptTurn[]; priorTurns?: TranscriptTurn[]; priorSessionNumber?: number | null; priorRecordEntries?: PriorRecordEntrySession[]; /** What the check-in is about. On every load, not only the one that opens it. */ brief?: CheckInBrief | null; mayCompleteAfter?: number; /** The end card's parts, once the conversation has closed. See TheEndCard. */ endCard?: TheEndCard | null }
+export interface TranscriptResponse { checkIn: { status: string; sessionNumber: number; groundId?: string }; turns: TranscriptTurn[]; priorTurns?: TranscriptTurn[]; priorSessionNumber?: number | null; priorRecordEntries?: PriorRecordEntrySession[]; /** What the check-in is about. On every load, not only the one that opens it. */ brief?: CheckInBrief | null; mayCompleteAfter?: number; /** The end card's parts, once the conversation has closed. See TheEndCard. */ endCard?: TheEndCard | null; /** "Connect WhatsApp" for the person reading their own check-in, or null (decision 106). Owner-only read. */ connectWhatsApp?: ConnectWhatsApp | null }
 
 const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api/v1` : '/api/v1'
 
@@ -95,8 +96,24 @@ export async function streamMessage(
 }
 
 export const conversationApi = {
+  /**
+   * B-201: A STRANGER HOLDING A LINK TO SOMEBODY ELSE'S CHECK-IN MUST NOT BE ABLE TO TELL A REAL
+   * ONE (403, not theirs) FROM A MADE-UP ONE (404) FROM THE TOASTS ALONE.
+   *
+   * ChatPage already renders the same GroundGone screen for both (see its own B-201 comment), but
+   * this call still raised the client's two generic toasts on top of it - "That one is not yours
+   * to open" for the 403, "That is not here any more" for the 404 - each one naming which of the
+   * two it was. `skipForbiddenToast`/`skipNotFoundToast` stop the global handler, leaving only the
+   * one screen underneath, the same for either reason.
+   */
+  /*
+   * `skipServerErrorToast` too, for the same reason as the two above: a 503 when the conversation
+   * cannot be reached (the model down, or not configured) is shown by ChatPage's own permanent
+   * banner with the server's own sentence and a "Try again" button - the client's generic "That
+   * did not go through" toast on top of that was a second, contradicting message for one failure.
+   */
   open: (checkInId: string) =>
-    apiClient.post<OpenCheckInResponse>(`/check-ins/${checkInId}/open`).then(r => r.data),
+    apiClient.post<OpenCheckInResponse>(`/check-ins/${checkInId}/open`, undefined, { skipForbiddenToast: true, skipNotFoundToast: true, skipServerErrorToast: true } as any).then(r => r.data),
 
   send: (checkInId: string, message: string) =>
     apiClient.post<SendMessageResponse>(`/check-ins/${checkInId}/messages`, { message }).then(r => r.data),
@@ -107,8 +124,14 @@ export const conversationApi = {
   decline: (checkInId: string) =>
     apiClient.post(`/check-ins/${checkInId}/decline`).then(r => r.data),
 
+  /** B-201: same reason as `open`, above - a stranger's transcript read for a real check-in that is
+      not theirs (403) must read exactly like one for a made-up id (404), with neither of the two
+      toasts the global handler would otherwise raise on top of the shared GroundGone screen. */
   transcript: (checkInId: string) =>
-    apiClient.get<TranscriptResponse>(`/check-ins/${checkInId}/transcript`).then(r => r.data),
+    apiClient.get<TranscriptResponse>(`/check-ins/${checkInId}/transcript`, { skipForbiddenToast: true, skipNotFoundToast: true } as any).then(r => r.data),
+  /** The end card, waited for on the server for as long as it is being built (up to about a minute). Null when no card stands. */
+  endCard: (checkInId: string) =>
+    apiClient.get<{ endCard: TheEndCard | null }>(`/check-ins/${checkInId}/end-card`, { timeout: 70_000 }).then(r => r.data?.endCard ?? null),
 
   artifact: (checkInId: string) =>
     apiClient.get(`/check-ins/${checkInId}/artifact`, { skipNotFoundToast: true }).then(r => r.data),

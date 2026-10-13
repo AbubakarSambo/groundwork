@@ -44,7 +44,7 @@ describe('opening a session that is taking a while', () => {
   })
   afterEach(() => { vi.useRealTimers() })
 
-  it('says nothing extra at first, only "Opening your session…"', async () => {
+  it('says nothing extra at first, only "Groundwork is writing…"', async () => {
     ;(conversationApi.transcript as any).mockResolvedValue({
       checkIn: { status: 'NOT_STARTED', sessionNumber: 1, groundId: 'g1' },
       turns: [],
@@ -52,8 +52,21 @@ describe('opening a session that is taking a while', () => {
     ;(conversationApi.open as any).mockImplementation(neverSettles)
 
     renderChat()
-    expect(await screen.findByText('Opening your session…')).toBeTruthy()
+    expect(await screen.findByText('Groundwork is writing…')).toBeTruthy()
     expect(screen.queryByText(/can take a minute or two/i)).toBeNull()
+  })
+
+  it('shows the same animated dots every other wait shows, in Groundwork\'s own bubble shape (Hafsah, 9 October)', async () => {
+    ;(conversationApi.transcript as any).mockResolvedValue({
+      checkIn: { status: 'NOT_STARTED', sessionNumber: 1, groundId: 'g1' },
+      turns: [],
+    })
+    ;(conversationApi.open as any).mockImplementation(neverSettles)
+
+    renderChat()
+    const status = await screen.findByText('Groundwork is writing…')
+    const region = status.closest('[role="status"]')
+    expect(region?.querySelector('.gwui-writing-dots')).toBeTruthy()
   })
 
   it('says the wait can take a minute or two once it has gone on a few seconds', async () => {
@@ -64,7 +77,7 @@ describe('opening a session that is taking a while', () => {
     ;(conversationApi.open as any).mockImplementation(neverSettles)
 
     renderChat()
-    await screen.findByText('Opening your session…')
+    await screen.findByText('Groundwork is writing…')
     await vi.advanceTimersByTimeAsync(5_000)
 
     expect(await screen.findByText('Getting your first question ready. This can take a minute or two.')).toBeTruthy()
@@ -82,5 +95,28 @@ describe('opening a session that is taking a while', () => {
 
     expect(await screen.findByText(/How has the week gone\?/i)).toBeTruthy()
     expect(screen.queryByText(/can take a minute or two/i)).toBeNull()
+  })
+})
+
+/**
+ * "CHECK IN YOURSELF" (journey test, 12 October 2026). The lead's own session 2 opened at once, then
+ * waited 94 seconds for its first message under "Opening your session…", and read as a page that never
+ * opened. While the opener is written the page says what is happening, the way every other chat does,
+ * in Groundwork's bubble, and never the old line.
+ */
+describe('the lead\'s own check-in while its first message is written', () => {
+  beforeEach(() => { vi.clearAllMocks() })
+  it('shows "Groundwork is writing…" with the dots at once, and not "Opening your session…"', async () => {
+    ;(conversationApi.transcript as any).mockResolvedValue({
+      checkIn: { status: 'NOT_STARTED', sessionNumber: 2, groundId: 'g1', optional: true },
+      turns: [],
+    })
+    ;(conversationApi.open as any).mockImplementation(neverSettles)
+
+    renderChat()
+    const status = await screen.findByText('Groundwork is writing…')
+    const region = status.closest('[role="status"]')
+    expect(region?.querySelector('.gwui-writing-dots')).toBeTruthy()
+    expect(screen.queryByText(/Opening your session/)).toBeNull()
   })
 })

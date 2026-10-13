@@ -59,3 +59,11 @@ describe('whoIsInRound: somebody not let in yet is left out', () => {
     )).toEqual([])
   })
 })
+
+describe("the anchor's lead, whose set-up is not a check-in", () => {
+  it('is not counted in round one, the same as the server', () => {
+    expect(countsInRound({ managingOnly: true }, 1, 'HELP_TEAM_UNDERSTAND')).toBe(false)
+    expect(countsInRound({ managingOnly: false }, 1, 'HELP_TEAM_UNDERSTAND')).toBe(true)
+    expect(countsInRound({ managingOnly: true }, 1, 'GOAL_ALIGNMENT')).toBe(true)
+  })
+})

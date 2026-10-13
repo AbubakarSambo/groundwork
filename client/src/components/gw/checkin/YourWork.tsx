@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { groundsApi } from '@/api/grounds'
+import { documentsApi } from '@/api/documents'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { PageTitle } from '@/components/gw/ui/PageTitle'
 import { Section } from '@/components/gw/ui/Section'
@@ -171,6 +172,14 @@ export function YourWork({
   otherParties, postReportGuide, aTeamReportComes, onSeeEverySession, onReadTeamReport, onSeeRoster,
 }: YourWorkProps) {
   const myCommitments = ((ground?.commitments ?? []) as any[]).filter((c) => c.participantId === myParticipant?.id)
+  /* Their own files, the WhatsApp photos and pins included, from the same list and cache the Context tab reads. */
+  const { data: docsOnTheCheckIn } = useQuery({
+    queryKey: ['docs', groundId],
+    queryFn: () => documentsApi.list(groundId),
+    enabled: !!myParticipant?.id,
+    retry: false,
+  })
+  const myFiles = ((docsOnTheCheckIn ?? []) as any[]).filter((d) => d.participantId === myParticipant?.id || d.mine === true)
 
   /* "Promises kept this month": of the commitments settled this calendar month, how many were
      DONE. Undefined (not zero) while nothing has settled yet this month, so the tile does not
@@ -287,16 +296,28 @@ export function YourWork({
         <div>
           {/* THE NUMBER TILES THE SERVED DATA SUPPORTS. my-record.jpg shows a row of three; this
               check-in's own scenario decides how many of them mean anything here. */}
-          {(totalSessions != null || keptThisMonth) && (
+          {/*
+            B-080: A LEAD WHO ONLY MANAGES IS NOT GIVEN A SESSION COUNT OF HER OWN (the same rule as
+            "Your sessions" on People and setup, and DeliveredPanel just below). Grace runs this
+            check-in and never checks in, so "0 of 4 check-ins so far" was never going to change -
+            she reads what she does instead.
+          */}
+          {myParticipant?.managingOnly && (
+            <Panel>
+              <div className="gwui-panel-text-muted">You check in when you choose. Use Check in yourself any time.</div>
+            </Panel>
+          )}
+          {!myParticipant?.managingOnly && (totalSessions != null || keptThisMonth) && (
             <Panel>
               <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
                 {totalSessions != null && (
                   <div>
                     <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-text)' }}>{completedCount} of {totalSessions}</div>
                     {/* RE-REVIEW: "check-ins of 12" repeated the number already above it and read as
-                        a clipped fragment rather than a caption. "Check-ins so far" says what the
-                        number is without saying it twice. */}
-                    <div className="gwui-panel-text-muted">check-ins so far</div>
+                        a clipped fragment rather than a caption. "Sessions so far" says what the
+                        number is without saying it twice. "Session" is the one word for a single
+                        occurrence of a check-in (B-147); "check-ins" would mean separate check-ins. */}
+                    <div className="gwui-panel-text-muted">sessions so far</div>
                   </div>
                 )}
                 {keptThisMonth && (
@@ -314,12 +335,16 @@ export function YourWork({
         {sideColumn}
       </div>
 
-      <WhatYouAreCarryingForward
-        groundId={groundId}
-        mySoloReport={mySoloReport}
-        refetchSoloReport={refetchSoloReport}
-        otherParties={otherParties}
-      />
+      {/* B-080: she never checks in, so there is no record of her own to carry forward, and "This
+          appears once you finish your first check-in." would never stop being true. */}
+      {!myParticipant?.managingOnly && (
+        <WhatYouAreCarryingForward
+          groundId={groundId}
+          mySoloReport={mySoloReport}
+          refetchSoloReport={refetchSoloReport}
+          otherParties={otherParties}
+        />
+      )}
 
       <WhatYourRecordCanSupport
         strength={(myRecord as any)?.insightsLocked ? null : (myRecord as any)?.confidence}
@@ -333,6 +358,7 @@ export function YourWork({
           waitingOn: [],
           corroborated: (report as any)?.engagement?.whatCouldBeChecked ?? null,
           documentBackedPct: (report as any)?.engagement?.documentBackedPct ?? null,
+          filesAttached: myFiles.length,
           roundsFinished: completedCount,
         }}
         alsoNoticed={[]}

@@ -26,11 +26,11 @@ type Said = { who?: string[]; howMany?: number }
  * `CARD` a plain white panel; `LEAD` a row's own bold title (16px, navy); `BODY` its line (15px);
  * `QUIET` a note under it (13.5px).
  */
-const H = 'gwui-fs-13-5 gwui-ink-sub gwui-mt-18 gwui-mb-8'
+const H = 'gwui-note gwui-mt-18 gwui-mb-8'
 const CARD = 'gwui-rule gwui-pt-11 gwui-pr-13 gwui-pb-11 gwui-pl-13 gwui-mb-8'
 const LEAD = 'gwui-fs-16 gwui-ink-navy'
 const BODY = 'gwui-fs-15 gwui-ink-text gwui-mt-3'
-const QUIET = 'gwui-fs-13-5 gwui-ink-sub gwui-mt-3'
+const QUIET = 'gwui-note gwui-mt-3'
 
 /** How many accounts stand behind a line. The count is the claim's evidence, so it is never hidden. */
 function HowMany({ said }: { said?: Said }) {
