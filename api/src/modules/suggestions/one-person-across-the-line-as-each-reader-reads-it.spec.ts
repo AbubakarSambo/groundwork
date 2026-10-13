@@ -184,7 +184,8 @@ function aWorld(opts: { leave?: { startsOn: Date; endsOn: Date }[]; thresholdRow
     });
     events.emit(GroundworkEvents.CHECK_IN_COMPLETED, { checkInId: id, groundId: G, participantId: 'p-tobi', sessionNumber: session });
     await settled();
-    settle.outcomes = happened.map((h, i) => ({ item: i + 1, happened: h }));
+    /* A DONE carries the person's own words that say it happened, since a promise is stored as done only then (change 3, 11 October). */
+    settle.outcomes = happened.map((h, i) => ({ item: i + 1, happened: h, ...(h === 'DONE' ? { words: 'Some of it got done' } : {}) }));
     await conversation.settleWhatTheySaidTheyWouldDo(id);
     await settled();
   }

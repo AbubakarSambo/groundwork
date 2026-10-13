@@ -28,7 +28,8 @@ function commitmentRows(kept: number, notDone: number, recentAt: Date) {
 function setup(opts: { thresholdRow?: any; kept?: number; notDone?: number }) {
   const suggestions: any[] = [];
   let n = 0;
-  const recentAt = new Date(2026, 8, 15);
+  /* Three days before the run, so it stays inside the last four weeks whatever day the spec runs (it was a fixed 15 September). */
+  const recentAt = new Date(Date.now() - 3 * 24 * 3_600_000);
   const matches = (row: any, where: any): boolean =>
     Object.entries(where ?? {}).every(([k, v]: [string, any]) => (row[k] ?? null) === (v ?? null));
   const prisma: any = {

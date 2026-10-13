@@ -114,6 +114,8 @@ describe('a sales check-in: deals and their stages', () => {
       rows: [
         {
           id: 'w-1', kind: 'deal', name: 'Nyama Choma Palace', stage: 'Won', owner: 'Rukia Mwangi', ownerParticipantId: 'p-rukia',
+          /* Since 12 October a deal said to be won with nothing behind it says so beside its stage (baefa3f50). */
+          stageSays: 'Said to be won, not shown yet',
           due: null, fields: { Value: 'KES 90K' }, from: 'said', said: 'Nyama Choma Palace paid KES 90K on 22 September, so that one is won.',
           saidBy: 'Rukia', saidByParticipantId: 'p-rukia', saidByLine: "In Rukia's words,",
           known: 'said', knownSays: 'Someone said it.', mark: 'memory', next: null, nextKnown: null, nextSays: 'Nobody has said what happens next.',

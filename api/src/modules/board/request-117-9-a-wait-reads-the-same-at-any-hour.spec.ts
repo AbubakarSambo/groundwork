@@ -77,6 +77,7 @@ describe('request 117 (9): the coaching and the probes say the day, at any hour'
     expect(c.yours.beforeNextTime[0]).toBe('Baraka Mwangi and Amani Wekesa are waiting on you for the discount and the price list. The first of these waits began on 24 September. Either do them, or give a date you can do them by.');
     const g: any = await svc().coachingForTheBoard('g1', 'u-grace');
     expect(g.eachPerson.find((p: any) => p.who === 'Amani Wekesa').probe[0])
-      .toBe('Amani Wekesa has been waiting on Rukia Otieno for the price list since 29 September, and nothing on record says it was raised higher. It is early, so ask Amani Wekesa what is being held up and whether help raising it would be useful.');
+      /* Since 12 October a wait on a colleague is said as Amani's own account, with the note beside it (248e81b38). The day stays. */
+      .toBe('Amani Wekesa says the work has been waiting on Rukia Otieno for the price list since 29 September, and nothing on record says it was raised higher. Not backed: no attempt to unblock mentioned. Amani Wekesa could have messaged Rukia Otieno or asked again. It is early, so ask Amani Wekesa what is being held up and whether help raising it would be useful.');
   });
 });

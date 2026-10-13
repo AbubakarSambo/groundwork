@@ -15,12 +15,14 @@ const name = async (reader: readonly [string, string]) => ((await boardAs({ obje
 
 describe('an aim said with a small word before its verb, as each reader reads it', () => {
   it('Amina, who runs it, reads it with the verb mended and no "myself"', async () => {
-    expect(await name(AMINA)).toBe('Rukia Mwangi still does about 30 of those a week. Rukia Mwangi set this aim.');
+    /* Since 12 October a person's own aim is quoted whole in their words, with the short label beside it (52f9d4241, 59a945e03, e93258d96). */
+    expect(await name(AMINA)).toBe('Rukia Mwangi set this aim. Rukia Mwangi said, "I still do about 30 of those a week myself".');
   });
   it('Rukia, whose aim it is, reads it as hers', async () => {
     const n = await name(RUKIA);
-    expect(n).toMatch(/^You still do about 30 of those a week\./);
-    expect(n).not.toMatch(/stills|myself/);
+    /* Her own words are quoted as she said them, "myself" included; nothing of ours is glued to her verb. */
+    expect(n).toBe('You set this aim. You said, "I still do about 30 of those a week myself".');
+    expect(n).not.toMatch(/stills/);
   });
   it('Juma, an admin, reads what Amina reads', async () => {
     expect(await name(JUMA)).toBe(await name(AMINA));

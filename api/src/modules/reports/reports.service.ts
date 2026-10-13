@@ -611,9 +611,33 @@ export function aCatchAllQuestion(q: string): boolean {
   return CATCH_ALL_QUESTIONS.some((c) => bare === c || bare === `so ${c}` || bare === `and ${c}`);
 }
 
+/*
+ * THE ENGINE'S OWN LINES, BEFORE THE WORDING PASS, FOR THE FINAL CHECK AT THE READ. Keyed by the coaching note or probe list served,
+ * so nothing here outlives it. See holdTheEnginesOwnLines.
+ */
+const theEnginesOwnLines = new WeakMap<object, string[]>();
+
 @Injectable()
 export class ReportsService {
   private readonly logger = new Logger(ReportsService.name);
+  /*
+   * THE ENGINE'S OWN LINES, BEFORE THE WORDING PASS, FOR THE FINAL CHECK AT THE READ. The coaching note and the probe list are
+   * built by the code from the record ("This is session 1 of 12 of this work.", "... since 24 September"), and then reworded. A
+   * count, date or name the code worked out is the record's value (the-final-check), so it is held when they are served; only
+   * what the rewording added can be cut. Keyed by the value served, so nothing here outlives it.
+   */
+  private holdTheEnginesOwnLines<T>(served: T, draft: unknown): T {
+    const lines: string[] = [];
+    const walk = (v: unknown) => {
+      if (typeof v === 'string') lines.push(v);
+      else if (typeof v === 'number' && Number.isFinite(v)) lines.push(String(v));
+      else if (Array.isArray(v)) v.forEach(walk);
+      else if (v && typeof v === 'object' && !(v instanceof Date)) Object.values(v as Record<string, unknown>).forEach(walk);
+    };
+    walk(draft);
+    if (served && typeof served === 'object') theEnginesOwnLines.set(served as any, lines);
+    return served;
+  }
 
   constructor(
     private prisma: PrismaService,
@@ -5520,12 +5544,12 @@ happened, and what is in the way.`;
      */
     /*
      * THROUGH THE FINAL CHECK, which runs that check first and then removes a number, status, date, name or credit the record does not
-     * hold (Hafsah, 12 October): coaching and probes as they are served. Held: the record's lines and each person's own words.
+     * hold (Hafsah, 12 October): coaching and probes as they are served. Held: the record's lines, each person's own words, and the engine's own lines before the wording pass (theEnginesOwnLines).
      */
     if (blame) {
       const held: WhatTheRecordHolds = {
         blame,
-        texts: [...record, ...(blame.theirOwnWords ?? []).map((w) => w.text)],
+        texts: [...record, ...(blame.theirOwnWords ?? []).map((w) => w.text), ...(theEnginesOwnLines.get(value as any) ?? [])],
         people: blame.people,
         theirOwnWords: blame.theirOwnWords,
         reader: blame.speaker?.isTheReader ? blame.speaker.name : null,
@@ -6502,7 +6526,7 @@ happened, and what is in the way.`;
         mustKeep: rows.filter((r) => t.includes(r)),
       })),
     ]);
-    return {
+    return this.holdTheEnginesOwnLines({
       ...note,
       whyItMatters: said.whyItMatters ?? note.whyItMatters,
       role: note.role ? {
@@ -6511,7 +6535,7 @@ happened, and what is in the way.`;
         protectAgainst: said.protectAgainst ?? note.role.protectAgainst,
       } : null,
       beforeNextTime: note.beforeNextTime.map((t, n) => said[`a${n}`] ?? t),
-    };
+    }, note);
   }
 
   /**
@@ -6734,12 +6758,12 @@ happened, and what is in the way.`;
       drafts.push({ key: `u${i}`, text: r.triedToUnblock });
     });
     const said = await this.phrase('the probe list', drafts);
-    return reads.map((r: any, i: number) => ({
+    return this.holdTheEnginesOwnLines(reads.map((r: any, i: number) => ({
       ...r,
       probe: r.probe.map((t: string, n: number) => said[`p${i}.${n}`] ?? t),
       encourage: r.encourage.map((t: string, n: number) => said[`e${i}.${n}`] ?? t),
       triedToUnblock: said[`u${i}`] ?? r.triedToUnblock,
-    }));
+    })), drafts.map((d) => d.text));
   }
 
   private async whatItRestsOn(

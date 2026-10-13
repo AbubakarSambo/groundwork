@@ -92,7 +92,9 @@ function theFaultPatterns(names: string[]): { re: RegExp; kind: 'a wait' | 'name
     { kind: 'a wait', re: new RegExp(`\\b${SUBJ}\\s+(?<verb>has\\s+(?:now\\s+)?been|have\\s+(?:now\\s+)?been|had\\s+been|is\\s+still|are\\s+still|is|are|was|were)\\s+waiting(?<gap>(?:\\s+\\w+){0,4}?)\\s+on\\s+${WHO}\\b`) },
     /* "Amina Otieno sent the wrong mix", "Amina sent it late", "Amina has not sent the stock". */
     { kind: 'named', re: new RegExp(`\\b${WHO}\\s+(?:has\\s+|had\\s+)?(?:sent|delivered|dispatched|gave|packed|shipped|sends|delivers)\\s+(?:\\w+\\s+){0,4}?(?:wrong|incorrect|short|late|too\\s+few|too\\s+little|incomplete|not\\s+enough)\\b`) },
-    { kind: 'named', re: new RegExp(`\\b${WHO}\\s+(?:has|have|had|did|does|do)\\s*(?:not|n't|never)\\s+(?:yet\\s+)?(?:sent|send|delivered|deliver|dispatched|dispatch|given|give|shipped|ship|replied|reply|answered|answer|signed|sign|approved|approve|paid|pay)\\b`) },
+    /* Not "Faraji Odhiambo has not answered this session": that is Groundwork's own count of who has checked in, which the record
+       holds, never one colleague's fault (request 117, part 3). */
+    { kind: 'named', re: new RegExp(`\\b${WHO}\\s+(?:has|have|had|did|does|do)\\s*(?:not|n't|never)\\s+(?:yet\\s+)?(?:sent|send|delivered|deliver|dispatched|dispatch|given|give|shipped|ship|replied|reply|answered(?!\\s+(?:yet\\s+)?(?:this|the|their|his|her|any|a)\\s+(?:session|check-in|round)\\b)|answer(?!\\s+(?:yet\\s+)?(?:this|the|their|his|her|any|a)\\s+(?:session|check-in|round)\\b)|signed|sign|approved|approve|paid|pay)\\b`) },
     { kind: 'named', re: new RegExp(`\\b${WHO}\\s+(?:was|is|has\\s+been|had\\s+been)\\s+(?:late|slow|the\\s+hold-?up|the\\s+blocker|holding\\s+(?:it|things|this|them|the\\s+\\w+)\\s+up)\\b`) },
     { kind: 'named', re: new RegExp(`\\b(?:late|delayed|held\\s+up|wrong|short|stuck|blocked)\\s+(?:\\w+\\s+){0,3}?because\\s+(?:of\\s+)?${WHO}\\b`) },
     { kind: 'named', re: new RegExp(`\\bbecause\\s+${WHO}\\s+(?:sends?|sent|did|was|is|has|had|never|keeps)\\b`) },

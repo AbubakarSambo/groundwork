@@ -22,6 +22,9 @@ function aCheckIn(over: { said?: string[]; triedSaid?: (string | null)[]; ledger
   };
   const s: any = new ConversationService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, { get: () => '' } as any);
   jest.spyOn(s.logger, 'warn').mockImplementation(() => undefined);
+  /* What a real turn sets before it is saved: the people's names, as buildSystemPrompt does. Since the final check (12 October) a
+     name the check-in does not hold is cut, and Brian is one of Wairimu's people. */
+  s.knownForThisTurn.set('ci-wairimu', ['Brian', 'Kiprop', 'Wairimu', 'Kamau']);
   return s;
 }
 const member = (id: string) => ({ id, groundId: 'g1', participantId: `p-${id}`, participant: { partyType: PartyType.PARTICIPANT } });

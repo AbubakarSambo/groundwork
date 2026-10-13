@@ -2131,7 +2131,7 @@ export class ConversationService {
       /* The first name that is not a title: "Dr" is nobody's first name. See a-title-is-not-a-first-name. */
       const readerName = theFirstNameFrom((checkIn as any).participant?.user?.firstName, (checkIn as any).participant?.user?.lastName);
       const known = personWords.concat(this.knownForThisTurn.get(checkIn.id) ?? []);
-      this.knownForThisTurn.delete(checkIn.id);
+      /* Kept until the reply is saved: the final check where every turn is saved reads it too (theTurnAsItIsSaved). */
       const conversationSoFar = turns.map((t) => t.content ?? '');
       let screened = screen(stripped.text, known, readerName, conversationSoFar);
       /*
@@ -2884,7 +2884,6 @@ export class ConversationService {
       const unsupported = withoutTheClaimsTheNumbersDoNotSupport(screened.text, {
         theirWords: [...theirWords, ...(this.theirEarlierWordsForThisTurn.get(checkIn.id) ?? [])],
       });
-      this.theirEarlierWordsForThisTurn.delete(checkIn.id);
       if (unsupported.cut.length) {
         for (const c of unsupported.cut) this.logger.warn(`Check-in ${checkIn.id}: cut a number claim: ${c.why}: ${JSON.stringify(c.sentence)}`);
         /* An untrue number never goes back in; a fragment on the closing turn becomes the plain close. */
@@ -2986,6 +2985,13 @@ export class ConversationService {
       }
       hadCloseMarker = stripped.hadMarker;
       reply = await this.theTurnAsItIsSaved(checkIn as any, reply);
+      /*
+       * ONLY NOW ARE THIS TURN'S KNOWN LINES LET GO. They were let go before the save, so the final check there held none of them: the
+       * names of the people in it, the targets, and the sentence the product wrote for the model to say were cut from the lead's reply
+       * as things the record does not hold ("from 6 a day to 10", decision 139, item 1).
+       */
+      this.knownForThisTurn.delete(checkIn.id);
+      this.theirEarlierWordsForThisTurn.delete(checkIn.id);
       aiTurn = await this.prisma.conversationTurn.create({
         data: {
           checkInId: checkIn.id, role: TurnRole.AI, content: reply,
@@ -5638,6 +5644,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * set for them, by the lead's name, against their own words. To the lead: the product's read of
      * a person's account against what the lead set. Not on the opener; once per session.
      */
+    let theDisagreementSentence: string | null = null;
     const disagreementBlock = how?.forTheOpener ? '' : await (async () => {
       const isLead = checkIn.participant.partyType === PartyType.INITIATOR;
       const setForThem = (objectivesOnRecord as any[]).filter((o) => o.ownerParticipantId && o.setByParticipantId && o.setByParticipantId !== o.ownerParticipantId && o.name?.trim());
@@ -5669,6 +5676,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         if (!gap) return '';
         /* The finding is stored in labels: named for the lead here, never handed over as it was kept (decision 139, item 1). */
         const sentence = theSentenceToTheLead({ leadName: '', target: { name: gap.o.name, target: gap.o.target }, theirOwn: [], personName: nameOfParticipant(gap.o.ownerParticipantId), personHeadline: noStandInLabelIn(String(gap.f.headline).replace(/^[^:]*:\s*/, ''), calledHere) });
+        theDisagreementSentence = sentence;
         return sayTheDisagreementOnce(sentence, aiTurnsSoFar);
       }
       if ((ground as any).participantsHearTheLeadsExpectation === false) return '';
@@ -5685,8 +5693,14 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       const lead = (ground.participants ?? []).find((x: any) => x.partyType === PartyType.INITIATOR) as any;
       const leadName = (lead?.user?.firstName ?? '').trim() || 'The lead';
       const sentence = theSentenceToThePerson({ leadName, target: { name: mine.name, target: mine.target }, theirOwn });
+      theDisagreementSentence = sentence;
       return sayTheDisagreementOnce(sentence, aiTurnsSoFar);
     })().catch(() => '');
+    /*
+     * AND THE SENTENCE THE PRODUCT WROTE FROM THE RECORD IS ALREADY SAID FOR THE FINAL CHECK. The model is told to say it word for word;
+     * its numbers ("from 6 a day to 10") are the stored report's and the target's, so the check where every turn is saved holds them.
+     */
+    if (theDisagreementSentence) this.knownForThisTurn.set(checkIn.id, [...(this.knownForThisTurn.get(checkIn.id) ?? []), theDisagreementSentence]);
 
     const thisTurn = {
       hasASituationPack: !!(packForThisSituation && packForThisSituation.trim().length > 200),

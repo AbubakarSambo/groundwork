@@ -26,7 +26,8 @@ describe('your share, as each reader reads it', () => {
     expect(b.yourShare).toEqual([{
       objectiveId: 'o-rukia',
       /* Her own aim is said as hers (decision 75, item 37); it read "You are aiming for", as if set for her. */
-      says: 'Your own aim is 3 shops in Kilimani. You have 1 of the 3 so far.',
+      /* Since 12 October a person's own aim is quoted whole in their words, with the short label beside it (52f9d4241, 59a945e03, e93258d96). */
+      says: 'Your own aim is 3 shops in Kilimani. You said, "I am aiming for 3 shops in Kilimani". You have 1 of the 3 so far.',
       whoSees: 'Only you and Amina Wanjiru see your share.',
     }]);
     expect(JSON.stringify(b.yourShare)).not.toMatch(/Baraka|visits/);
@@ -34,7 +35,7 @@ describe('your share, as each reader reads it', () => {
 
   it('Baraka reads his, and never Rukia\'s', async () => {
     const b = await boardAs({ objectives: TARGETS }, ...BARAKA);
-    expect(b.yourShare.map((s: any) => s.says)).toEqual(['Your own aim is 5 visits a week. You have 2 of the 5 so far.']);
+    expect(b.yourShare.map((s: any) => s.says)).toEqual(['Your own aim is 5 visits a week. You said, "I want 5 visits a week". You have 2 of the 5 so far.']);
   });
 
   it('where the lead chose that everybody sees every number, it says so', async () => {

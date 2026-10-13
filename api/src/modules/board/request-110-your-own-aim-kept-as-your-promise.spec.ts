@@ -31,10 +31,11 @@ const names = (b: any) => (b.objectives ?? []).map((o: any) => o.name);
 describe('request 110: an aim a person set for themselves, kept only as their promise, is on the board as theirs', () => {
   it('Femi reads his own aim, and his share, in his own words', async () => {
     const b = await boardAs(ONLY_AS_PROMISES, ...FEMI);
-    expect(names(b)).toEqual(['You are aiming for the full 12 approved facilities. You expect to hit that by the end of the quarter. You set this aim.']);
+    /* Since 12 October a person's own aim is quoted whole in their words, with the short label beside it (52f9d4241, 59a945e03, e93258d96). */
+    expect(names(b)).toEqual(['Your own aim is 12 approved. You said, "I\'m aiming for the full 12 approved facilities. I expect to hit that by the end of the quarter".']);
     expect(b.yourShare).toEqual([{
       objectiveId: 'their-own-aim-po-femi',
-      says: 'You are aiming for the full 12 approved facilities. You expect to hit that by the end of the quarter. You set this aim. Nothing has been counted against it yet.',
+      says: 'Your own aim is 12 approved. You said, "I\'m aiming for the full 12 approved facilities. I expect to hit that by the end of the quarter". Nothing has been counted against it yet.',
       whoSees: 'Only you and Bisi Adeyemi see your share.',
     }]);
     expect(b.yourShareSays).toBeUndefined();
@@ -44,15 +45,15 @@ describe('request 110: an aim a person set for themselves, kept only as their pr
   it('Bisi, who runs it, reads each person\'s aim by name, and is sent no share', async () => {
     const b = await boardAs(ONLY_AS_PROMISES, ...BISI);
     expect(names(b)).toEqual([
-      'Femi Okonkwo is aiming for the full 12 approved facilities. Femi Okonkwo expects to hit that by the end of the quarter. Femi Okonkwo set this aim.',
-      'Ngozi Eze is targeting 14 approved facilities. Ngozi Eze set this aim.',
+      'Femi Okonkwo\'s own aim is 12 approved. Femi Okonkwo said, "I\'m aiming for the full 12 approved facilities. I expect to hit that by the end of the quarter".',
+      'Ngozi Eze\'s own aim is 14 approved. Ngozi Eze said, "I\'m targeting 14 approved facilities".',
     ]);
     expect(b.yourShare).toBeUndefined();
   });
 
   it('Ngozi reads only her own, where each person sees only their own numbers', async () => {
     const b = await boardAs(ONLY_AS_PROMISES, ...NGOZI);
-    expect(b.yourShare.map((s: any) => s.says)).toEqual(['You are targeting 14 approved facilities. You set this aim. Nothing has been counted against it yet.']);
+    expect(b.yourShare.map((s: any) => s.says)).toEqual(['Your own aim is 14 approved. You said, "I\'m targeting 14 approved facilities". Nothing has been counted against it yet.']);
     expect(JSON.stringify(b)).not.toMatch(/12 approved facilities|Femi Okonkwo set/);
   });
 
@@ -64,7 +65,7 @@ describe('request 110: an aim a person set for themselves, kept only as their pr
 
   it('where the lead chose that everybody sees every number, her share says so, and her own board still holds only her own aim (request 105, part 3)', async () => {
     const b = await boardAs({ ...ONLY_AS_PROMISES, whoSeesTargets: 'EVERYBODY' }, ...NGOZI);
-    expect(names(b)).toEqual(['You are targeting 14 approved facilities. You set this aim.']);
+    expect(names(b)).toEqual(['Your own aim is 14 approved. You said, "I\'m targeting 14 approved facilities".']);
     expect(b.yourShare[0].whoSees).toBe('Everybody in this check-in sees your share.');
   });
 

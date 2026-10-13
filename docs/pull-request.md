@@ -91,9 +91,13 @@ Hafsah stopped quality testing on 11 October until after the release, so the las
 
 Hafsah's rule (11 October): tests already on the base that only read source text, mirror the prototype or belong to our testing machinery, and that fail against this release's code even with the CI's own settings (`JWT_SECRET`, `RESEND_API_KEY`, `NODE_ENV=development`, an empty database with every migration applied), are removed here rather than kept failing. Tests that still pass are left untouched. Behaviour tests that failed were brought up to date, never removed. The existing-users check (`api/journey/existing-clients-carry-on.spec.ts`) is kept and updated to today's migrations.
 
-The API's 64 removed tests, each reading source text only:
+The API's 68 removed tests, each reading source text only:
 
 - `api/src/a-guard-that-a-comment-satisfies-is-not-a-guard.spec.ts`
+- `api/src/modules/conversation/a-dash-is-not-a-comma.spec.ts`
+- `api/src/one-word-for-the-thing-on-the-server-too.spec.ts`
+- `api/src/modules/board/the-marker-is-a-column-not-a-prefix.spec.ts`
+- `api/src/modules/reports/a-private-file-is-not-named-in-the-report.spec.ts`
 - `api/src/common/guards/a-public-route-still-knows-who-is-signed-in.spec.ts`
 - `api/src/modules/a-check-that-can-never-be-true.spec.ts`
 - `api/src/modules/assistant/nothing-leaves-without-a-yes.spec.ts`

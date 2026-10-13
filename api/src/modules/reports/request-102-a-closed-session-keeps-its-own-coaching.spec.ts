@@ -66,7 +66,8 @@ describe('session 1, closed, as each reader is sent it', () => {
   it('Grace, the admin who set it up, reads the probe list and inferences of session 1, and no note of her own', async () => {
     const { r } = await sessionAs('u-grace', 1);
     expect(r).not.toHaveProperty('coaching');
-    expect(r.probes.find((p: any) => p.who === 'Baraka Mwangi').probe[0]).toMatch(/^Baraka Mwangi has been waiting on Rukia Otieno for SESSION-ONE-WAIT a decision on the discount since 24 September/);
+    /* Since 12 October a wait on a colleague is said as Baraka's own account, with the note beside it (248e81b38). */
+    expect(r.probes.find((p: any) => p.who === 'Baraka Mwangi').probe[0]).toMatch(/^Baraka Mwangi says the work has been waiting on Rukia Otieno for SESSION-ONE-WAIT a decision on the discount since 24 September/);
     expect(r.inferences.map((i: any) => i.text)).toEqual(['SESSION-ONE-INFERENCE Nobody has priced the cookers yet.']);
     expect(everyString({ p: r.probes, i: r.inferences }).filter((s) => LATER.test(s))).toEqual([]);
   });
