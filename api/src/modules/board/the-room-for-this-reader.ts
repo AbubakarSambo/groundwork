@@ -1,4 +1,5 @@
 import { theRoomAsThisReaderReadsIt, type TheRoomServed } from './the-room-as-each-reader-reads-it';
+import { theRoomWithNames, theRoomsLabelFor } from './the-room-is-stored-with-labels';
 import { theRoomWithoutOneOfTheOthers } from './the-room-without-one-of-the-others';
 import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames } from '../reports/party-labels';
 
@@ -30,11 +31,13 @@ export interface TheReaderOfTheRoom {
 
 const fullNameOf = (p: any): string | null => [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim() || (p?.nameGiven ?? '').trim() || null;
 
-export function theRoomForThisReader<T extends TheRoomServed | null | undefined>(room: T, c: TheReaderOfTheRoom): T {
-  if (!room) return room;
+export function theRoomForThisReader<T extends TheRoomServed | null | undefined>(stored: T, c: TheReaderOfTheRoom): T {
+  if (!stored) return stored;
   const { participants: people, me } = c;
   const leadRow = people.find((p) => !!c.initiatorId && p.userId === c.initiatorId) ?? null;
   const roomLabels = labelsForParties(people as any);
+  /* Stored with labels (decision 110, P9): the names go in here, at the read, and every wall below works on them as it always did. */
+  const room = theRoomWithNames(stored, new Map(people.flatMap((p) => { const n = fullNameOf(p); return p.id && n ? [[theRoomsLabelFor(p.id), n] as [string, string]] : []; }))) as T;
   const readerLabel = me?.id ? roomLabels.get(me.id) ?? null : null;
   const visibleNames = namesVisibleTo(
     readsWithNamesOf({ viewerIsLead: c.viewerRunsIt, viewerParticipantId: me?.id ?? null, parties: people as any[] }),

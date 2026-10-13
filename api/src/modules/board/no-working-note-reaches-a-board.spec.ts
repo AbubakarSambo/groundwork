@@ -48,7 +48,7 @@ describe('no working note reaches a board, for any reader', () => {
         /* A reader refused the board altogether (an admin without access to a performance plan) is
            served nothing, so nothing can leak to them. */
         const board = await boardAs({ scenario, gaps }, userId, role).catch((e: any) => {
-          if (/not a participant|not found/i.test(String(e?.message))) return null;
+          if (/not a participant|not found|could not be found|not one of the people/i.test(String(e?.message))) return null;
           throw e;
         });
         const served = everyString(board).join(' \n ');

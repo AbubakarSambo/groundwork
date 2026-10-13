@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { hasStalled } from './a-ground-that-has-ended';
+import { fullNameToCall } from '../engagement/a-name-to-call-them';
 
 /**
  * "ASK WAIRIMU FOR MORE TIME" (A3, #/join/outoftime, U.3).
@@ -29,12 +30,12 @@ export class AskingForMoreTimeService {
       where: { groundId, userId, partyType: 'PARTICIPANT' },
       select: { id: true, email: true, moreTimeAskedAt: true, nameGiven: true },
     });
-    if (!party) throw new NotFoundException('Check-in not found');
+    if (!party) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: { id: true, label: true, status: true, endsAt: true, initiator: { select: { firstName: true, email: true } } },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     return { party, ground };
   }
 
@@ -72,7 +73,7 @@ export class AskingForMoreTimeService {
     }
     await this.prisma.groundParticipant.update({ where: { id: party.id }, data: { moreTimeAskedAt: now } });
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { firstName: true, lastName: true, email: true } });
-    const who = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim() || (party.nameGiven ?? '').trim() || party.email;
+    const who = fullNameToCall({ user, nameGiven: party.nameGiven });
     if (ground.initiator?.email) {
       await this.email
         .sendMoreTimeAsked(ground.initiator.email, ground.initiator.firstName ?? null, who, ground.label, ground.id)

@@ -95,7 +95,7 @@ describe('a count that moved is said in plain sentences, with numbers a person c
     expect(r.sinceLast).toEqual({
       says: "The team's approved facilities went from 0 to 11. The team is aiming for 120 million naira disbursed. The team's total went from 0 to 31 million naira.",
       /* Ngozi set this goal herself, so it is said as hers (decision 75, item 37). */
-      also: 'Your own aim is 14 approved facilities this quarter. Your count went from 0 to 6.',
+      also: 'Your own aim is 14 approved facilities this quarter. You said, "My goal is 14 approved facilities this quarter". Your count went from 0 to 6.',
     });
     expect(JSON.stringify(r.sinceLast)).not.toMatch(/against the aim/);
     expect(JSON.stringify(r.sinceLast)).not.toMatch(NO_RAW_NUMBER);
@@ -103,7 +103,7 @@ describe('a count that moved is said in plain sentences, with numbers a person c
 
   it('Bisi reads Ngozi’s own goal by her name, never "my"', async () => {
     const r = await reportFor('u-bisi', [NGOZIS_OWN]);
-    expect(r.sinceLast).toEqual({ says: 'Ngozi\'s own aim is 14 approved facilities this quarter. Ngozi\'s count went from 0 to 6.' });
+    expect(r.sinceLast).toEqual({ says: 'Ngozi\'s own aim is 14 approved facilities this quarter. Ngozi said, "My goal is 14 approved facilities this quarter". Ngozi\'s count went from 0 to 6.' });
   });
 
   it('Grace, an admin who only reads, reads what moved for the team, with no number aimed for', async () => {

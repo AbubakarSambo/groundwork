@@ -75,8 +75,8 @@ export interface FreeTrial { on: boolean; teamsUnder: number; months: number; on
 export const DEFAULT_FREE_TRIAL: FreeTrial = { on: false, teamsUnder: 20, months: 1 };
 
 /**
- * THE ANCHOR'S OWN TRIAL (anchor piece 34; decision 96 item 3). "One-month free trial, up to 20 people", where 20
- * includes the lead, so the plan that covers it after the month is the one that holds 20 seats (Small Team). Its own
+ * THE ANCHOR'S OWN TRIAL (anchor piece 34; decision 96 item 3). "One-month free trial, up to 20 people", where the 20
+ * do not include the lead (decision 121, item 4), so the plan that covers it holds 21 seats. Its own
  * setting, so `pricing.freeTrial` and the paid client are untouched. Off unless the row says `{ "on": true }`.
  */
 export const ANCHOR_TRIAL_KEY = 'pricing.anchorTrial';
@@ -208,7 +208,7 @@ export class PricingService {
 
   /**
    * SWITCH THE ANCHOR TRIAL ON OR OFF, from Admin → System → Pricing, as the free trial is (anchor piece 34). Only `on`
-   * is set: the anchor trial is one month for up to 20 people, the lead included (decision 96 item 3; every free run is
+   * is set: the anchor trial is one month for up to 20 people besides the lead (decision 121 item 4; every free run is
    * one month, 5 October 2026), so its months and its size are not settings anybody can change here.
    */
   async setAnchorTrial(input: { on?: unknown }, adminUserId: string): Promise<AnchorTrial> {
@@ -226,7 +226,7 @@ export class PricingService {
   /** The seat cap for a plan, or null for unlimited. Throws for a plan with no row. */
   async memberCapFor(plan: SubscriptionPlan): Promise<number | null> {
     const row = await this.prisma.pricingPlan.findUnique({ where: { plan }, select: { memberCap: true } });
-    if (!row) throw new NotFoundException(`No plan configured for ${plan}`);
+    if (!row) throw new NotFoundException(`There is no ${String(plan).toLowerCase()} plan set up, so choose another plan.`);
     return row.memberCap;
   }
 
@@ -279,7 +279,7 @@ export class PricingService {
    */
   async getOrCreateWhatsAppAddOnPrice(plan: SubscriptionPlan): Promise<string> {
     const row = await this.prisma.pricingPlan.findUnique({ where: { plan } });
-    if (!row) throw new NotFoundException(`No price configured for plan ${plan}`);
+    if (!row) throw new NotFoundException(`There is no price set for the ${String(plan).toLowerCase()} plan yet, so choose another plan.`);
     if (row.whatsappAddOnStripePriceId) return row.whatsappAddOnStripePriceId;
     if (row.whatsappAddOnCents === null || row.whatsappAddOnCents === undefined) {
       throw new BadRequestException(`WhatsApp is not sold by itself on ${PLAN_LABELS[plan]}. This plan is arranged by contacting us.`);
@@ -299,7 +299,7 @@ export class PricingService {
   /** Returns a live Stripe Price id for the plan, creating one lazily if the DB amount changed. */
   async getOrCreateStripePrice(plan: SubscriptionPlan): Promise<string> {
     const row = await this.prisma.pricingPlan.findUnique({ where: { plan } });
-    if (!row) throw new NotFoundException(`No price configured for plan ${plan}`);
+    if (!row) throw new NotFoundException(`There is no price set for the ${String(plan).toLowerCase()} plan yet, so choose another plan.`);
     if (row.stripePriceId) return row.stripePriceId;
     /**
      * A contact-sales plan has no amount, and `unit_amount: null` would have created a Stripe

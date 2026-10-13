@@ -20,7 +20,7 @@ const SAID_IT_WAS_DONE = new RegExp(
   '',
 );
 /** A wish, a plan, a condition or a promise is not something done. */
-const NOT_DONE_YET = /\b(expect|will|going to|would|should|could|want|plan|hope|means|if|when|once|until|need to|have to|committing|not|n't|never|no)\b/i;
+export const NOT_DONE_YET = /\b(expect|will|going to|would|should|could|want|plan|hope|means|if|when|once|until|need to|have to|committing|not|n't|never|no)\b/i;
 /** They already said what shows it, or that nothing can. */
 const THEY_NAMED_PROOF = /\b(photo|picture|screenshot|receipt|invoice|statement|document|attached|email|message|whatsapp|record|system shows|in the system|signed copy|contract number|reference)\b/i;
 /** The same words the checker counts as asking for proof. */
@@ -48,4 +48,25 @@ export function askForProofKindly(claim: string | null): string {
   return `AND ONE THING THEY SAID IS DONE, WITH NOTHING THAT SHOWS IT YET:
 "${claim}"
 Ask kindly for the smallest thing that would show it, and say what it is for. Ask once in this check-in, in this turn or the next. For example: "A photo of the signed order is enough. Then it counts as proven." Or: "If you can forward the approval email, it goes on the record as confirmed." Never sound as if you doubt them. If they cannot, that is an answer: take it and do not ask again.`;
+}
+
+/** A number said as where things stand now or what was reached: "we have 30 clients", "we reached 200", "sales are at 4 million". */
+const A_NUMBER_SAID_AS_FACT = /\b(?:have|has|had|got|reached|hit|made|did|are at|is at|stands at|now)\b[^.!?]*\d|\d[^.!?]*\b(?:so far|this (?:week|month|quarter)|last (?:week|month|quarter)|already|now)\b/i;
+
+/**
+ * A CLAIM THAT MATTERS, IN THE ANSWER THEY JUST GAVE (decision 132). Something said as done or delivered, or a number said as where
+ * things stand, in their latest answer, while nothing in this session shows it yet and proof has not been asked for. Null otherwise.
+ * Used to put asking for proof ahead of any other question in this turn, never to write the question.
+ */
+export function aClaimThatMattersInTheirLastAnswer(turnsThisSession: readonly ATurn[]): string | null {
+  const turns = turnsThisSession ?? [];
+  const last = [...turns].reverse().find((t) => t.role === 'PERSON')?.content ?? '';
+  if (!last.trim()) return null;
+  const done = aClaimNothingShowsYet(turns);
+  if (done && last.includes(done)) return done;
+  if (turns.some((t) => t.role === 'AI' && ASKS_FOR_PROOF.test(t.content ?? ''))) return null;
+  if (turns.some((t) => t.role === 'PERSON' && THEY_NAMED_PROOF.test(t.content ?? ''))) return null;
+  const sentences = last.split(/(?<=[.!?])\s+/).reverse();
+  const number = sentences.find((s) => A_NUMBER_SAID_AS_FACT.test(s) && !NOT_DONE_YET.test(s));
+  return number ? number.trim() : null;
 }

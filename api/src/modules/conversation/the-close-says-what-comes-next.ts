@@ -32,6 +32,26 @@ export const THE_CLOSE_ON: Record<Door, string> = {
 };
 
 /**
+ * THE SAME THREE CLOSES IN THE PLAINER FORM, FOR A CHECK-IN SET TO "USE SIMPLER WORDS".
+ *
+ * Short sentences, no contractions, no curly apostrophe, and the same next step on each door. Picked
+ * only when the lead has switched the setting on; every check-in that has not switched it reads the
+ * sentences above, unchanged.
+ */
+export const THE_CLOSE_ON_IN_SIMPLER_WORDS: Record<Door, string> = {
+  web: 'That is all for today. Below is what I wrote down from what you said. Is anything wrong?',
+  whatsapp: 'That is all for today. Write "finish" to end this check-in. Your report will come to this chat.',
+  api: 'That is all for today. Thank you for your answers. When this check-in is closed, your answers go into the report.',
+};
+
+/** The close for this door, in the plainer form when the check-in is set to use simpler words. */
+export function theCloseFor(door: Door, simplerWords?: boolean | null): string {
+  return (simplerWords ? THE_CLOSE_ON_IN_SIMPLER_WORDS : THE_CLOSE_ON)[door] ?? THE_CLOSE;
+}
+
+const EVERY_CLOSE = [...Object.values(THE_CLOSE_ON), ...Object.values(THE_CLOSE_ON_IN_SIMPLER_WORDS)];
+
+/**
  * EVERY QUESTION SENTENCE THE MODEL ASKED, TAKEN OUT BEFORE THE CLOSE IS ADDED.
  *
  * Caught on run 20 (24-scenario run, 30 September 2026): the model's own closing reply sometimes still
@@ -63,11 +83,13 @@ const NOT_BEFORE_THE_CARD = [
 ];
 
 /** The closing turn, ending on the prototype's sentences. Said once, however often it is run. */
-export function endingOnTheClose(text: string, door: Door = 'web'): string {
-  const close = THE_CLOSE_ON[door] ?? THE_CLOSE;
+export function endingOnTheClose(text: string, door: Door = 'web', simplerWords?: boolean | null): string {
+  const close = theCloseFor(door, simplerWords);
   let out = String(text ?? '');
-  for (const c of Object.values(THE_CLOSE_ON)) if (out.includes(c)) out = out.split(c).join(' ');
+  for (const c of EVERY_CLOSE) if (out.includes(c)) out = out.split(c).join(' ');
   for (const rx of NOT_BEFORE_THE_CARD) out = out.replace(rx, ' ');
+  /* The plainer close says "That is all for today." in full, so the model's own, said in full, is taken out too. Only then, so the usual close is exactly as it was. */
+  if (simplerWords) out = out.replace(/\bthat is all for today\b[.!]?/gi, ' ');
   out = withoutQuestionSentences(out);
   out = out
     .replace(/[ \t]{2,}/g, ' ')
@@ -82,5 +104,5 @@ export function endingOnTheClose(text: string, door: Door = 'web'): string {
 /** Whether a stored turn is the one that closed: it ends on the close of any door. */
 export function endsOnTheClose(text: string): boolean {
   const t = String(text ?? '').trim();
-  return Object.values(THE_CLOSE_ON).some((c) => t.endsWith(c));
+  return EVERY_CLOSE.some((c) => t.endsWith(c));
 }

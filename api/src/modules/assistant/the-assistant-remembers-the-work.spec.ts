@@ -79,7 +79,9 @@ describe('the assistant remembers the work', () => {
 
     /* Only the four shared fields. The rest of a report is per-person - see own-reads-only.ts. */
     const fields = Object.keys(queries[0].select.ground.select.report.select);
-    expect(fields.sort()).toEqual(['agreements', 'centralQuestion', 'divergences', 'releasedAt']);
+    /* CHANGED 11 October 2026 (decision 139, item 1): `sharedAs` is read too, a flag saying whether the copy was shared
+       without names, so the recall can go through the report's naming door the way the report page does. It holds no words. */
+    expect(fields.sort()).toEqual(['agreements', 'centralQuestion', 'divergences', 'releasedAt', 'sharedAs']);
     for (const forbidden of ['engagement', 'finalSynthesis', 'arcSignals', 'inferences', 'sharedPicture']) {
       expect(fields).not.toContain(forbidden);
     }

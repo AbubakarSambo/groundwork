@@ -76,6 +76,11 @@ reason people disagree, and leaving it out produces an opening that does not mak
 saying the target was five, that they have done six, and that somebody says they are behind, is a
 picture with the explanation cut out of it. Say the other number, and say plainly that it was never
 written down or given to them. Open with this sentence, exactly as it is: "${howManyAnsweredInWords(a.peopleAnswered, a.peopleExpected)}"
+AFTER THAT SENTENCE, WRITE ONLY ABOUT THE PEOPLE WHO HAVE ANSWERED. Never describe everybody on the
+check-in as if all of them had answered, and never give a count of people larger than the number who
+have answered. "One of the six people has answered so far. Five people report that the main piece of
+work is on track" was read by a lead (B-111): one person had answered, so only one person reports
+anything.
 ${a.differenceTopics.length
     ? `People disagree on ${a.differenceTopics.length}: ${a.differenceTopics.join('; ')}.`
     : 'Nothing in the record yet shows one account disagreeing with another, so say that plainly.'}
@@ -108,6 +113,15 @@ whole finding.
 
 AND KEEP BOTH FIGURES. Where a person gave two different figures for the same work, keep both in
 their paragraph, because the difference is often the finding.
+
+A DIFFERENCE IS ONLY EVER WITHIN ONE WEEK. Two statements disagree only when they are about the same
+thing (the same kits, the same order, the same deal) and were said in the same week; then say which
+week: "In the week of 19 October, Hassan says he sent the order on Monday, and Amina says it came on
+Wednesday." Statements from different weeks never contradict each other: say them as a change over
+time, each week named, earlier week first: "In the week of 12 October, Collins said four or five. In
+the week of 19 October, he said nine or ten." Never write "first said ... and later said", "but also
+says" or "not the ... mentioned" across two weeks, and never merge two weeks into one sentence of
+disagreement.
 
 Use the label you are given for each person, exactly. The product turns it into a name, or into
 "you" for whoever is reading, when the report is served.
@@ -162,9 +176,11 @@ export function factsAsLines(f: PersonFacts, nameFor: (label: string) => string)
   const who = nameFor(f.label);
   const lines: string[] = [`PERSON id=${f.participantId} name=${who}${f.isLead ? ' (runs this check-in)' : ''}`];
   if (f.whatTheySaidItWasFor) lines.push(`  they said this was for, in their words: "${f.whatTheySaidItWasFor}"`);
-  if (f.whereTheySayTheyAre) lines.push(`  the latest thing they reported, in their words: "${f.whereTheySayTheyAre}"`);
-  /* The figure they gave before, where it differs. Kwame's 22 handled and three approved. */
-  if (f.anEarlierFigureTheyGave) lines.push(`  earlier they reported, in their words: "${f.anEarlierFigureTheyGave}"`);
+  const inTheWeekOf = (w: string | null | undefined) => (w ? ` in the week of ${w}` : '');
+  if (f.whereTheySayTheyAre) lines.push(`  the latest thing they reported${inTheWeekOf(f.weekOfWhereTheyAre)}, in their words: "${f.whereTheySayTheyAre}"`);
+  /* The figure they gave before, where it differs. Kwame's 22 handled and three approved. And the week
+     it was said in: two weeks' figures are a change over time, never a contradiction (Hafsah, 12 October). */
+  if (f.anEarlierFigureTheyGave) lines.push(`  earlier they reported${inTheWeekOf(f.weekOfTheEarlierFigure)}, in their words: "${f.anEarlierFigureTheyGave}"`);
   if (f.whatTheySayIsInTheWay) lines.push(`  what they named as being in the way, in their words: "${f.whatTheySayIsInTheWay}"`);
   /* Why they are on this work rather than something else. See whyTheySayTheyAreOnIt: an INTENT
      line, read by nothing until 26 September, and on the realign scenario it is the whole answer. */

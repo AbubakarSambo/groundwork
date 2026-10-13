@@ -3,6 +3,7 @@ import {
   theNumbersPeopleCanRead,
   onlySaysWhatIsCounted,
   anAimAsASentence,
+  theirOwnSentence,
   type WhoAnAimIsAbout,
 } from '../board/an-aim-is-a-sentence-about-somebody';
 
@@ -100,7 +101,8 @@ export function aCountThatMovedSaid(o: ACountThatMoved, who: WhoseCountItIs): st
   };
   const moved = `went from ${n(o.prevCount)} to ${n(o.count)}`;
 
-  const counted = onlySaysWhatIsCounted(readable);
+  /* Their own sentence ("my plan is five kits ...") is never "Hassan's my plan is ...": it is quoted, below. */
+  const counted = onlySaysWhatIsCounted(readable) && !theirOwnSentence(name);
   /* A date to meet is done or not; its count of 0 or 1 is never said (decision 75, item 17). */
   if (o.direction === 'DEADLINE') {
     const done = o.count >= (typeof o.target === 'number' && o.target > 0 ? o.target : 1);

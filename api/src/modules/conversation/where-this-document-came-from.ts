@@ -1,3 +1,5 @@
+import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
+
 /**
  * WHOSE DOCUMENT THIS IS, AND WHO ELSE CAN SEE IT.
  *
@@ -59,6 +61,82 @@ export function whereThisCameFrom(p: WhoProvidedIt): string {
 }
 
 /**
+ * A COLLEAGUE'S PROOF, AS THE RECORD HOLDS IT (night quality run 1, problem 1).
+ *
+ * Amina sent a location pin from a shop in Rangwe with her own check-in. It was shared with everyone
+ * in the check-in, which is right (Hafsah, 12 October 2026), so it reached Collins's session too. The
+ * session then told him "Amina shared a location pin on Monday for a Rangwe stockist shop, and
+ * Rangwe said Rangwe asked you to check it out." Nobody asked anybody anything. Seeing the pin is
+ * allowed; the story is not.
+ *
+ * So a photo or a pin somebody else sent reaches another person's session as the facts the record
+ * holds and nothing more: who sent it, when, the pin's own name and address, and whatever words the
+ * sender wrote with it. A photo's machine reading is not one of those facts; it stays in the sender's
+ * own session and on the page. The line above it says what may not be said about it.
+ */
+export interface AColleaguesFile {
+  fileName: string;
+  content: string;
+  uploaderNote?: string | null;
+  mimeType?: string | null;
+  createdAt?: Date | string | null;
+}
+
+/** A pin kept from WhatsApp is named this way by a-location-pin.ts. */
+const isAPin = (f: AColleaguesFile) => /^Location pin shared at /.test(f.fileName ?? '');
+const isAPhoto = (f: AColleaguesFile) => /^image\//i.test(f.mimeType ?? '');
+
+/** True for the proof a colleague sent: a photo or a location pin. A brief or a spreadsheet is not this. */
+export function isAColleaguesProof(f: AColleaguesFile): boolean {
+  return isAPin(f) || isAPhoto(f);
+}
+
+/**
+ * A COLLEAGUE'S PROOF IS NEVER HANDED TO ANOTHER PERSON'S SESSION (Hafsah, 12 October, step 3: "A colleague's proof is never put to
+ * another person in their session; proof goes into the person's own check-in").
+ *
+ * Commit 1fc4e4183 handed Amina's pin to Collins's session as the record holds it, with a rule against a story. Run 2 still put it to
+ * him: "Amina shared a location pin on Monday for a Rangwe stockist shop. Do you know about that one?" A rule in the prompt is not a
+ * guard, so the pin and the photo no longer reach his session at all. They stay exactly where they are on the shared pages, for
+ * everybody who sees them today: this decides only what one session is handed. The lead's documents and every brief are untouched, and
+ * the person's own proof always goes in.
+ */
+export function withoutAColleaguesProof<T extends AColleaguesFile & { origin?: string | null; participant?: { userId?: string | null } | null }>(
+  docs: readonly T[],
+  reader: { userId: string | null | undefined; leadUserId: string | null | undefined },
+): T[] {
+  return docs.filter((d) => {
+    const from = d.participant?.userId ?? null;
+    if (from && from === reader.userId) return true;
+    if (from && from === reader.leadUserId) return true;
+    return !(isAColleaguesProof(d) || d.origin === 'photo');
+  });
+}
+
+/** The line above a colleague's photo or pin, in place of the ordinary one. */
+export function whatMayBeSaidAboutAColleaguesProof(who: string | null | undefined): string {
+  const name = who?.trim() || 'Somebody else in this check-in';
+  return `${name} sent this with their own check-in, and it is shared with everyone here. `
+    + `The record holds only who sent it, when, the pin's name and address if it has them, and any words ${name} wrote with it. `
+    + `Never say who asked anybody to go there, why it was sent, or what it shows, unless ${name} said so in those words. `
+    + `Never put it to the person you are talking to as something they did, were asked to do, or know about. `
+    + `If it bears on what they say, say only that ${name} sent it and when, and ask what they know.`;
+}
+
+/** The colleague's photo or pin as the session reads it: the record's facts, the sender's own words. */
+export function aColleaguesProofAsTheRecordHoldsIt(f: AColleaguesFile, who: string | null | undefined, zone?: string): { fileName: string; content: string; uploaderNote: null } {
+  const name = who?.trim() || 'Somebody else in this check-in';
+  const theirWords = f.uploaderNote?.trim() ? ` ${name} wrote with it: "${f.uploaderNote.trim()}"` : '';
+  if (isAPin(f)) return { fileName: f.fileName, content: `${f.content.trim()}${theirWords}`, uploaderNote: null };
+  const when = f.createdAt ? whenItWas(f.createdAt, 'weekdayAndDay', zone) : '';
+  return {
+    fileName: f.fileName,
+    content: `A photo ${name} sent with their own check-in${when ? ` on ${when}` : ''}.${theirWords}`,
+    uploaderNote: null,
+  };
+}
+
+/**
  * WHAT THE SESSION MAY DO WITH A SHARED DOCUMENT, which is the whole point of knowing where it came
  * from. Three uses, and one hard limit.
  *
@@ -96,6 +174,10 @@ THE LIMIT. A document marked private is private to the person you are talking to
 refer to it, or hint at it as though anybody else has seen it - to them it is theirs, and to anybody
 else it does not exist. Only a document that says it is shared with everyone may be spoken about as
 common ground.
+
+A COLLEAGUE'S PHOTO OR PIN. It holds only who sent it, when, and the pin's name. Never tell a story
+about it: not who asked whom, not why it was sent, not what it shows, unless the person who sent it
+said so in words. Never put it to somebody else as something they did or were asked to do.
 
 AND NEVER TREAT A DOCUMENT AS THE TRUTH ABOUT WHAT HAPPENED. It is what somebody wrote down. Their
 account is what you are here for, and where the two differ, that difference is the finding.`;

@@ -32,9 +32,10 @@ describe('a wait on oneself is not a wait', () => {
 
   it('Baraka\'s own wait on Amina is still there, for Amina and for Baraka', async () => {
     const amina = JSON.stringify(await boardAs({ dependencies: WAITS }, ...AMINA));
-    expect(amina).toContain('Baraka Otieno is waiting on you for the discount decision.');
+    /* Change 4: Amina has not promised the discount decision herself, so the wait is Baraka's account, with the note. */
+    expect(amina).toContain('Baraka Otieno says the work is waiting on you for the discount decision. Not backed: no attempt to unblock mentioned.');
     const baraka = JSON.stringify(await boardAs({ dependencies: WAITS }, ...BARAKA));
-    expect(baraka).toContain('You are waiting on Amina Wanjiru for the discount decision.');
+    expect(baraka).toContain('You say the work is waiting on Amina Wanjiru for the discount decision. Not backed: no attempt to unblock mentioned.');
   });
 
   it('the rule', () => {

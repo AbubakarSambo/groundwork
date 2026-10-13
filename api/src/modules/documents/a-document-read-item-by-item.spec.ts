@@ -74,7 +74,8 @@ describe('a document read item by item, with the page each item came from', () =
     const [doc] = await servedTo(s, [row], 'lead');
     expect(doc.read.pages).toBe(4);
     expect(doc.read.took).toEqual([
-      { kind: 'a number for everyone', sentence: 'For everyone in this check-in, lowest price for the 600L must stay at or under 76,000.', what: 'lowest price for the 600L', detail: 'At most 76,000', page: 1 },
+      { kind: 'a number for everyone', /* Changed (B-014): the document wrote "KES 76,000", and a number keeps the currency it was written with. */
+      sentence: 'Lowest price for the 600L must stay at or under KES 76,000 for everyone in this check-in.', what: 'lowest price for the 600L', detail: 'At most KES 76,000', page: 1 },
       { kind: 'a number for one person', sentence: "Otieno Ouma's target for Q3 sales is 45,000,000.", what: 'Q3 sales', detail: '45,000,000', who: 'Otieno Ouma', page: 2 },
       { kind: 'a date', sentence: 'The date it sets for delivery is by 9 October.', what: 'delivery', detail: 'by 9 October', page: 2 },
     ]);
@@ -105,8 +106,10 @@ describe('a document read item by item, with the page each item came from', () =
   it("a colleague's number in a participant's own file is left out, and said to be the lead's to set, not missing from the check-in", async () => {
     const { s, row } = await aRowReadAs('amina', 'OWN');
     const [doc] = await servedTo(s, [row], 'amina');
-    expect(doc.read.took.map((t: any) => t.kind)).toEqual(['a number for everyone', 'a date']);
+    /* B-102: a participant's file offers no number for everyone either; it stays her own evidence. */
+    expect(doc.read.took.map((t: any) => t.kind)).toEqual(['a date']);
     expect(doc.read.leftOut).toContainEqual({ what: 'The numbers for Otieno', why: 'Only the lead can set a number for someone else.' });
+    expect(doc.read.leftOut).toContainEqual({ what: 'Targets for everyone in this check-in', why: 'Only the lead sets a target for everyone. The numbers stay in your file as your own evidence, in your words.' });
     expect(doc.theContextWeHave).not.toContain('is not on this check-in');
   });
 

@@ -46,6 +46,8 @@ function aDatabaseWithTheHook(opts: { pending: any; linkOrg?: boolean; domainOrg
     pendingSignup: { findUnique: jest.fn(async () => opts.pending), update: jest.fn(async () => ({})) },
     user: { findUnique: jest.fn(async () => null) },
     person: { findMany: jest.fn(async () => []) },
+    /* Nobody here is on a check-in, so the invited-person door (12 October) does not open. */
+    groundParticipant: { findFirst: jest.fn(async () => null) },
     organization: {
       findUnique: jest.fn(async ({ where }: any) => (opts.linkOrg && where.inviteLinkCode === 'coamana-6rr7' ? COAMANA : null)),
       findMany: jest.fn(async () => opts.domainOrgs ?? []),

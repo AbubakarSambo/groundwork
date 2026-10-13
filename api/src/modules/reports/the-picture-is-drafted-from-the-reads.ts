@@ -327,6 +327,13 @@ export interface QuestionInput {
   blockers: { what: string; kind: Kind | null }[];
   /** What the round found people describing differently, and what the report says would settle it. */
   differences?: ADifferenceOnRecord[];
+  /**
+   * WHETHER THE READER RUNS THIS CHECK-IN (B-103). A role map's probe is a question for the lead to
+   * ask ("What is the real risk to delivery here, not the task list?"); a participant read it in her
+   * own report on WhatsApp as if it were put to her. Only the lead is given one. Left out, it is the
+   * lead's surface, as every caller was before.
+   */
+  forTheLead?: boolean;
 }
 
 export function draftTheQuestion(i: QuestionInput): Drafted | null {
@@ -381,6 +388,7 @@ export function draftTheQuestion(i: QuestionInput): Drafted | null {
    * this period that only you could have done?" under "What to settle together": a question asked of one
    * person, put to everybody. Only a probe that is not addressed to "you" is something to settle together.
    */
+  if (i.forTheLead === false) return null;
   const probe = map?.neutralProbes?.find((q) => !/\b(you|your|yours|yourself)\b/i.test(q));
   if (!probe) return null;
   return { key: 'question', text: probe, mustKeep: [probe] };

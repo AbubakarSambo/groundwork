@@ -1,3 +1,4 @@
+import { answerFirst } from '../whatsapp/answer-the-webhook-then-do-the-work';
 import { Body, Controller, Delete, Get, HttpCode, Logger, Param, Post, Put, Query, Req, Res, BadRequestException, UseGuards } from '@nestjs/common';
 import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { MachineTokenGuard, RequiresScope, type MachineCaller } from './machine-token.guard';
@@ -9,6 +10,7 @@ import { ApiExcludeEndpoint, ApiOperation, ApiProperty, ApiPropertyOptional, Api
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import type { RawBodyRequest } from '@nestjs/common';
+import { theirKey } from '../whatsapp/an-organisations-own-keys';
 import { Public, CurrentUser, Roles, Role } from '../../common';
 import { PrismaService } from '../prisma/prisma.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
@@ -271,6 +273,12 @@ export class WhatsAppForAnOrganisationController {
    * THE REPLY IS RETURNED, NEVER SENT. We hold no credential for their number in this arrangement
    * and must not: the only thing that ever speaks to their customers is them.
    */
+  /*
+   * @Public() TAKES THE SESSION GUARD OFF; MachineTokenGuard IS WHAT REPLACES IT (see public-api.controller.ts). Without it the global
+   * session guard met the machine token first and refused it ("User not found or inactive"), so a customer's own system could never
+   * hand us a message: the relay had never once worked with the credential it is meant to be called with.
+   */
+  @Public()
   @Post('integrations/whatsapp/relay')
   @UseGuards(MachineTokenGuard)
   @RequiresScope('checkins:write')
@@ -312,13 +320,12 @@ export class WhatsAppForAnOrganisationController {
       return { received: true };
     }
     const raw = req.rawBody ?? Buffer.from(JSON.stringify(req.body ?? {}));
-    this.whatsapp.verifySignatureWith(own.appSecret, req.headers as Record<string, string | string[] | undefined>, raw);
+    this.whatsapp.verifySignatureWith(theirKey(own, 'appSecret'), req.headers as Record<string, string | string[] | undefined>, raw);
     if (!own.enabled) return { received: true };
-    try {
-      await this.inbound.handle(organizationId, req.body);
-    } catch (err: any) {
-      this.logger.error(`WhatsApp inbound for org ${organizationId} failed: ${err?.message}`);
-    }
+    await answerFirst(
+      () => this.inbound.handle(organizationId, req.body),
+      (err: any) => this.logger.error(`WhatsApp inbound for org ${organizationId} failed: ${err?.message}`),
+    );
     return { received: true };
   }
 }

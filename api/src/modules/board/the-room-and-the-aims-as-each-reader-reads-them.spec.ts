@@ -60,15 +60,17 @@ describe('what the room is about, on the sales board', () => {
 });
 
 describe('the aims on the board', () => {
-  it('Bisi reads Kwame\'s own aim as a whole sentence about Kwame, with none of his own words glued on', async () => {
+  it('Bisi reads Kwame\'s own aim as a whole sentence about Kwame, with his own words quoted whole beside it, never glued on', async () => {
     const names = (await board(BISI)).objectives.map((o: any) => o.name);
-    expect(names).toContain("Kwame Mensah's own aim is 42 million naira.");
-    expect(names.join(' ')).not.toMatch(/I'm aiming|I’m aiming/);
+    /* Since 12 October a person's own aim is quoted whole in their words, with the short label beside it (52f9d4241, 59a945e03, e93258d96). */
+    expect(names).toContain("Kwame Mensah's own aim is 42 million naira. Kwame Mensah said, \"My personal disbursement goal is 42 million naira, and I'm aiming to achieve that by the end of the quarter\".");
+    /* His words appear only inside the quote, never joined to a sentence of ours. */
+    expect(names.join(' ').replace(/"[^"]*"/g, '')).not.toMatch(/I'm aiming|I’m aiming/);
   });
 
   it('Kwame reads it as his own', async () => {
     const names = (await board(KWAME)).objectives.map((o: any) => o.name);
-    expect(names).toContain('Your own aim is 42 million naira.');
+    expect(names).toContain('Your own aim is 42 million naira. You said, "My personal disbursement goal is 42 million naira, and I\'m aiming to achieve that by the end of the quarter".');
   });
 
   it('nobody reads Femi\'s promise to follow up as an aim; it stays his commitment', async () => {
@@ -77,7 +79,7 @@ describe('the aims on the board', () => {
       expect(JSON.stringify(b.objectives)).not.toMatch(/follow up with/);
       expect(JSON.stringify(b.yourShare ?? [])).not.toMatch(/follow up with/);
     }
-    expect((await board(FEMI)).objectives.map((o: any) => o.name)).toContain('Your own aim is twelve approved facilities this quarter.');
+    expect((await board(FEMI)).objectives.map((o: any) => o.name)).toContain('Your own aim is twelve approved facilities this quarter. You said, "My primary goal is to get twelve approved facilities this quarter".');
   });
 });
 
@@ -134,8 +136,9 @@ describe('an aim said as work under way (run-25)', () => {
   it('Bisi reads Femi\'s own aim with his name once, and Femi reads it as his own', async () => {
     const setup: Setup = { ...RUN, objectives: [target('o-femi-12', "I'm working on getting twelve approved facilities this quarter.", 12, 'p-femi', 'p-femi')] };
     const bisi = (await boardAs(setup, ...BISI)).objectives.map((o: any) => o.name);
-    expect(bisi).toEqual(["Femi Okonkwo's own aim is twelve approved facilities this quarter."]);
+    /* Since 12 October a person's own aim is quoted whole in their words, with the short label beside it (52f9d4241, 59a945e03, e93258d96). */
+    expect(bisi).toEqual(["Femi Okonkwo's own aim is twelve approved facilities this quarter. Femi Okonkwo said, \"I'm working on getting twelve approved facilities this quarter\"."]);
     const femi = (await boardAs(setup, ...FEMI)).objectives.map((o: any) => o.name);
-    expect(femi).toEqual(['Your own aim is twelve approved facilities this quarter.']);
+    expect(femi).toEqual(['Your own aim is twelve approved facilities this quarter. You said, "I\'m working on getting twelve approved facilities this quarter".']);
   });
 });

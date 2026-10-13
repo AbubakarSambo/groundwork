@@ -103,7 +103,7 @@ describe('the others who read it', () => {
   });
 
   it('Grace, who runs Finance and cannot open Sales, is not served the Sales check-in\'s trace', async () => {
-    await expect(readAs('u-grace', 'MEMBER')).rejects.toThrow('Check-in not found');
+    await expect(readAs('u-grace', 'MEMBER')).rejects.toThrow('That check-in could not be found, so go back to your check-ins and open it from the list.');
   });
 
   it('on a performance plan in Sales, the person reviewed reads nothing of a chain that ends on the lead\'s step', async () => {

@@ -33,7 +33,8 @@ function makeService(canInviteResult: { allowed: boolean; reason?: string }, exi
     })),
     emailVerificationToken: { updateMany: jest.fn(async () => ({})), create: jest.fn(async () => ({})) },
   };
-  const emailService: any = { sendUserInvite: jest.fn(async () => undefined), sendMagicLinkEmail: jest.fn(async () => undefined) };
+  /* sendAddedToAnotherOrganisation: somebody from elsewhere, added here, is now told so by name (Hafsah, 12 October). */
+  const emailService: any = { sendUserInvite: jest.fn(async () => undefined), sendMagicLinkEmail: jest.fn(async () => undefined), sendAddedToAnotherOrganisation: jest.fn(async () => undefined) };
   const billing: any = { canInviteMember: jest.fn(async () => canInviteResult) };
   const service = new AuthService(prisma, {} as any, {} as any, emailService, {} as any, billing, { emit: () => undefined } as any);
   return { service, billing, prisma, emailService };

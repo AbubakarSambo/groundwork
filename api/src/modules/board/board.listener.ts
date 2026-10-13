@@ -5,6 +5,7 @@ import { cleanText } from '../reports/what-the-record-actually-holds';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { GroundworkEvents, type RoundCompletedEvent, type CheckInCompletedEvent } from '../../common/events';
 import { oneOfTheKinds, theRecordsPrompt, THE_RECORDS_SCHEMA, onlyRecordsTheLinesSay, theSameName, type AnOfferedRecord, type APersonALineMayName , KINDS_THAT_ARE_NOT_WORK } from './the-kind-of-work';
+import { theRoomsLabelFor } from './the-room-is-stored-with-labels';
 import { withAClaim } from './a-claim-on-a-record-is-checked-first';
 import {
   WHAT_THE_RECORD_SAYS_PROMPT,
@@ -14,6 +15,9 @@ import {
   oneNumberLandsOnce,
   type AReadNumber,
   whatToDoWithTheRead,
+  theNumberItProves,
+  theLineWasSaid,
+  howMuchIsProven,
 } from './what-the-record-says-a-number-is';
 import {
   WHAT_THE_ROOM_IS_ABOUT_PROMPT,
@@ -154,7 +158,7 @@ export class BoardListener {
              only where a line reports the value - is what keeps a worry with no figure out. */
           type: { in: ['PROGRESS', 'COMMITMENT', 'SUCCESS_DEFINITION', 'WORRY', 'TENSION'] as any },
         },
-        select: { text: true, type: true, participantId: true, participant: { select: { partyType: true } } },
+        select: { text: true, type: true, participantId: true, participant: { select: { partyType: true } }, recallBased: true, anchoredDocumentId: true, anchoredOrigin: true, anchoredPassage: true },
       });
       if (!said.length) return;
 
@@ -169,7 +173,7 @@ export class BoardListener {
        * text column. `cleanText` is the one that knows how to take it off.
        */
       /* With the kind of line, so a line saying what success looks like is never read as where things stand (request 109 a). */
-      const lines = said.map((s: any) => ({ text: cleanText(s.text), who: s.participantId ?? null, saidByTheLead: s.participant?.partyType === 'INITIATOR', kind: s.type ?? null }));
+      const lines = said.map((s: any) => ({ text: cleanText(s.text), who: s.participantId ?? null, saidByTheLead: s.participant?.partyType === 'INITIATOR', kind: s.type ?? null, proven: howMuchIsProven(s) }));
       const answer = await this.anthropic.extract<{ numbers: AReadNumber[] }>(
         WHAT_THE_RECORD_SAYS_PROMPT,
         [{ role: 'user', content: theQuestion(targets, lines) }],
@@ -182,6 +186,9 @@ export class BoardListener {
         const target = targets.find((t) => t.id === n.objectiveId)!;
         if (whatToDoWithTheRead(n, target, lines) === 'land') {
           landed += 1;
+          /* A count proof backs lands as the number the proof holds (three codes, three sales). */
+          const proves = theNumberItProves(n, theLineWasSaid(n.said, lines));
+          if (proves !== null) n.count = proves;
           await this.prisma.groundObjective.update({
             where: { id: n.objectiveId },
             data: { count: n.count, suggestedCount: null, suggestedSaid: cleanText(n.said), suggestedAtSession: e.sessionNumber },
@@ -232,18 +239,16 @@ export class BoardListener {
         },
         select: {
           text: true,
-          participant: { select: { nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
+          participant: { select: { id: true } },
         },
       });
       const lines = said
         .map((s: any) => ({
           text: cleanText(s.text),
-          /* THE SAME NAME THE BOARD PRINTS. A model answer keyed on anything else cannot be matched
-             back to a person, and `onlyWhatHolds` drops every row it cannot match. A name only, never
-             the lead's description of them (request 36): somebody with no name is left out here, as
-             the board has no name to match them by either. */
-          who: [s.participant?.user?.firstName, s.participant?.user?.lastName].filter(Boolean).join(' ').trim()
-            || (s.participant?.nameGiven ?? '').trim() || '',
+          /* A LABEL, NEVER THEIR NAME AND NEVER THE LEAD'S DESCRIPTION OF THEM (decision 110, P9; request 36): an opaque one made from the person's
+             row id, so it does not move when somebody's role or name is changed. A model answer keyed on anything else cannot be matched back,
+             and `onlyWhatHolds` drops every row it cannot match. */
+          who: s.participant?.id ? theRoomsLabelFor(s.participant.id) : '',
         }))
         .filter((s: { text: string; who: string }) => s.text && s.who);
       if (lines.length < 2) return;

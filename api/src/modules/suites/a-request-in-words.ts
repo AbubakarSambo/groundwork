@@ -1,4 +1,5 @@
 import { saidAsADay } from './who-is-away';
+import { aReasonInASentence } from './spend-said-in-chat';
 
 /**
  * A LEAVE, HOURS OR SPENDING REQUEST, IN THE WORDS EVERY READER READS (decision 82, item 1).
@@ -22,9 +23,22 @@ export function hoursInWords(minutes: number): string {
 
 const listed = (names: string[]) => (names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
 
+/**
+ * WHAT THE MONEY IS FOR, AS IT READS INSIDE A SENTENCE (request 162, item 3). People write it as its own line, with a capital
+ * ("Two tablets for the field team"); after "for" or "on" it is a lower-case word. It is the rule Ask's spending say-back already uses
+ * (aReasonInASentence, spend-said-in-chat.ts): the capital stays on an "I", an acronym, a word with a capital inside it, a name the
+ * organisation knows (a person, a team, a customer: `knownNames`), and a word the person wrote with a capital again later in the text.
+ * A first word with a digit in it ("Q4 fuel", "A4 paper") keeps its capital too.
+ */
+export function whatTheMoneyIsFor(what: string, knownNames: string[] = []): string {
+  const w = (what ?? '').trim();
+  if (/^\S*\d/.test(w)) return w;
+  return aReasonInASentence(w, knownNames);
+}
+
 /** "KES 12,000 for fuel". */
-export function spendInWords(amount: number, currency: string | null, what: string): string {
-  return `${currency ? `${currency} ` : ''}${amount.toLocaleString('en-US')} for ${what.trim()}`;
+export function spendInWords(amount: number, currency: string | null, what: string, knownNames: string[] = []): string {
+  return `${currency ? `${currency} ` : ''}${amount.toLocaleString('en-US')} for ${whatTheMoneyIsFor(what, knownNames)}`;
 }
 
 /** "Amina's", "James'". */
@@ -159,14 +173,22 @@ export function onlyTheDecision(message: string): boolean {
 
 const NUMBERS = ['no', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
 
+/** The most requests named in one message. WhatsApp refuses a text over 4,096 characters, and 229 names never fit (B-144). */
+export const MOST_NAMED_AT_ONCE = 5;
+
 /** More than one waiting, and the reply did not say which. */
 export function whichDecision(rs: AWaitingRequest[]): string {
   const count = rs.length <= 10 ? NUMBERS[rs.length] : String(rs.length);
+  const example = `${whose(rs[0].firstName)} ${rs[0].kind === 'spend' ? 'spending' : rs[0].kind}`;
+  if (rs.length > MOST_NAMED_AT_ONCE) {
+    const first = rs.slice(0, MOST_NAMED_AT_ONCE).map((r) => r.thing);
+    const more = rs.length - MOST_NAMED_AT_ONCE;
+    return `${count} requests are waiting for you. The first ${NUMBERS[MOST_NAMED_AT_ONCE].toLowerCase()} are ${first.slice(0, -1).join(', ')} and ${first[first.length - 1]}, and ${more} more ${more === 1 ? 'is' : 'are'} waiting in Groundwork. Which one do you mean? You can write, for example, "approve ${example}", or open Groundwork to see them all.`;
+  }
   const things = rs.map((r) => r.thing);
   const them = rs.length === 2
     ? `One is ${things[0]}, and the other is ${things[1]}.`
     : `They are ${things.slice(0, -1).join(', ')} and ${things[things.length - 1]}.`;
-  const example = `${whose(rs[0].firstName)} ${rs[0].kind === 'spend' ? 'spending' : rs[0].kind}`;
   return `${count} requests are waiting for you. ${them} Which one do you mean? You can write, for example, "approve ${example}".`;
 }
 

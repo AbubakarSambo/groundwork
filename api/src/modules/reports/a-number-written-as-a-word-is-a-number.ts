@@ -25,7 +25,9 @@ const A_NUMBER_WORD = new RegExp(`\\b(?:${Object.keys(WORD_VALUES).join('|')})\\
 export function carriesANumber(text: string | null | undefined): boolean {
   const t = text ?? '';
   A_NUMBER_WORD.lastIndex = 0;
-  return /\d/.test(t) || A_NUMBER_WORD.test(t);
+  const has = /\d/.test(t) || A_NUMBER_WORD.test(t);
+  A_NUMBER_WORD.lastIndex = 0;
+  return has;
 }
 
 /**
@@ -37,6 +39,9 @@ export function theNumbersIn(text: string | null | undefined): number[] {
   const t = text ?? '';
   const out: number[] = [];
   for (const m of t.matchAll(/\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?/g)) out.push(Number(m[0].replace(/,/g, '')));
+  /* matchAll starts where the shared pattern's lastIndex was left, and carriesANumber's .test() leaves
+     it past its match: a line read after it lost every number word before that point. */
+  A_NUMBER_WORD.lastIndex = 0;
   for (const m of t.matchAll(A_NUMBER_WORD)) out.push(WORD_VALUES[m[0].toLowerCase()]);
   return out.filter((n) => Number.isFinite(n));
 }

@@ -11,6 +11,8 @@
  * the proposal says so, and the lead can say which one they meant.
  */
 
+import { nameToCall, SOMEONE } from '../engagement/a-name-to-call-them';
+
 export interface Party {
   id: string;
   email: string;
@@ -30,8 +32,17 @@ export interface Matched {
   firstName: string;
 }
 
-function labelFor(p: Party): string {
-  return p.name?.trim() || p.email;
+/*
+ * What the lead reads back. Never the address (Hafsah, 6 October). Somebody with no name is called back by the word the lead used for them, which is the
+ * lead's own ("Amina"), and "this person" when the lead typed the address: "what you expect of Someone" read as a name nobody has (review of 1678157c).
+ */
+function labelFor(p: Party, said = ''): string {
+  const n = nameToCall({ nameGiven: p.name });
+  if (n !== SOMEONE) return n;
+  const theirWord = said.trim();
+  return theirWord && !theirWord.includes('@') && theirWord.split(/\s+/).length <= 3
+    ? theirWord.split(/\s+/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+    : 'this person';
 }
 
 /** Their first name, which is what a lead types nine times out of ten. */
@@ -42,10 +53,11 @@ function firstNameOf(p: Party): string {
 }
 
 /** Their first name, capitalised for a sentence a person reads - see `Matched.firstName`. */
-function firstNameLabelFor(p: Party): string {
-  const n = p.name?.trim();
-  const raw = n ? n.split(/\s+/)[0] : p.email.split('@')[0].split(/[._-]/)[0];
-  return raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : labelFor(p);
+function firstNameLabelFor(p: Party, said = ''): string {
+  const n = labelFor(p, said);
+  if (n === 'this person') return n;
+  const raw = n.split(/\s+/)[0];
+  return raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : n;
 }
 
 export function whoTheyMeant(said: string, parties: Party[]): Matched | null {
@@ -54,17 +66,17 @@ export function whoTheyMeant(said: string, parties: Party[]): Matched | null {
 
   /* An email is unambiguous, so it is tried first and exactly. */
   const byEmail = parties.filter((p) => p.email.toLowerCase() === raw);
-  if (byEmail.length === 1) return { id: byEmail[0].id, label: labelFor(byEmail[0]), firstName: firstNameLabelFor(byEmail[0]) };
+  if (byEmail.length === 1) return { id: byEmail[0].id, label: labelFor(byEmail[0], said), firstName: firstNameLabelFor(byEmail[0], said) };
 
   const byFullName = parties.filter((p) => (p.name ?? '').trim().toLowerCase() === raw);
-  if (byFullName.length === 1) return { id: byFullName[0].id, label: labelFor(byFullName[0]), firstName: firstNameLabelFor(byFullName[0]) };
+  if (byFullName.length === 1) return { id: byFullName[0].id, label: labelFor(byFullName[0], said), firstName: firstNameLabelFor(byFullName[0], said) };
 
   /*
    * FIRST NAME, AND ONLY WHEN ONE PERSON HAS IT. Two people called Sam is the exact case where
    * guessing does the damage - so two matches is no match, and the lead is asked which.
    */
   const byFirst = parties.filter((p) => firstNameOf(p) === raw);
-  if (byFirst.length === 1) return { id: byFirst[0].id, label: labelFor(byFirst[0]), firstName: firstNameLabelFor(byFirst[0]) };
+  if (byFirst.length === 1) return { id: byFirst[0].id, label: labelFor(byFirst[0], said), firstName: firstNameLabelFor(byFirst[0], said) };
 
   return null;
 }

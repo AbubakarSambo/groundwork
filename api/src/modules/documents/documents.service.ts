@@ -1,4 +1,5 @@
 import { theNumberAsWritten, theSameWords } from '../grounds/a-dump-is-many-things';
+import { theFigureAsWritten } from './a-number-keeps-its-unit';
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger, Inject, forwardRef } from '@nestjs/common';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { PDFParse } = require('pdf-parse') as { PDFParse: new (opts: { data: Buffer }) => { getText: () => Promise<{ text: string }>; destroy: () => Promise<void> } };
@@ -10,12 +11,13 @@ const JSZip = require('jszip') as typeof import('jszip');
 import { ConfigService } from '@nestjs/config';
 import { documentWhereFor, whoCanSeeItInWords } from './who-can-see-a-document';
 import { defaultVisibilityForUpload } from './a-document-is-context';
+import { ALocationPin, aLocationPinOnTheRecord, aLocationPinsName } from './a-location-pin';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { ConversationService } from '../conversation/conversation.service';
 import { originFromTheFile, looksGeneratedByAModel, type DocumentOrigin } from './what-kind-of-thing-a-document-is';
 import { DOCUMENT_ORIGIN_PROMPT, DOCUMENT_ORIGIN_SCHEMA, DESCRIPTION_CHECK_PROMPT, DESCRIPTION_CHECK_SCHEMA } from '../conversation/prompt-library';
-import { RecordEntryType } from '@prisma/client';
+import { DocumentVisibility, RecordEntryType } from '@prisma/client';
 import { slidesInOrder, textFromOneSlide, deckToText } from './slides-are-mostly-headings';
 import { looksLikeAConversation, THE_ASSUMPTION_WHEN_UPLOADING } from './a-conversation-belongs-to-the-people-in-it';
 import { aReceiptOrAnInvoice } from './a-receipt-is-not-a-conversation';
@@ -115,7 +117,7 @@ const ASSESSMENT_TOOL = {
 
 
 
-function toDocShape(
+export function toDocShape(
   doc: { id: string; fileName: string; mimeType: string; createdAt: Date; assessment?: any; visibility?: any; participantId?: string | null; holds?: any; uploaderNote?: string | null },
   viewerParticipantId?: string,
   contextEnabled?: boolean,
@@ -146,6 +148,15 @@ function toDocShape(
      * Same rule as `visibility`: omitted rather than guessed when the column was not selected.
      */
     ...(doc.participantId !== undefined ? { mine: doc.participantId === viewerParticipantId } : {}),
+    /*
+     * AND WHOSE IT IS, for the person's own files and for files shared with everyone in the check-in, so the Context
+     * tab can list each under the person who sent it (night quality run 1: Amina's WhatsApp photo and pin were on the
+     * check-in and her files still read "Nothing attached yet", because no row said whose it was). A file shared with
+     * everyone is read by everyone here with who sent it (Hafsah, 12 October 2026); a private one names nobody else.
+     */
+    ...(doc.participantId !== undefined && (doc.participantId === viewerParticipantId || doc.visibility === 'OPEN')
+      ? { participantId: doc.participantId }
+      : {}),
     /*
      * WHAT THE UPLOADER SAID IT IS FOR, TO THE UPLOADER ONLY.
      *
@@ -348,9 +359,15 @@ export class DocumentsService {
     consentConfirmed = false,
     /* What they want looked for in it, in their words. Kept exactly - see the schema note. */
     uploaderNote?: string,
+    /*
+     * SENT IN REPLY DURING A WHATSAPP CHECK-IN (Hafsah, 11 October 2026): sending it there is the person
+     * choosing to share it, so it is kept already opened to the check-in, the same state an app upload
+     * reaches when its uploader opens it. Never set by the app's upload, which keeps the private default.
+     */
+    opts: { sharedWithTheCheckIn?: boolean } = {},
   ) {
-    if (!file) throw new BadRequestException('No file provided');
-    if (file.size > MAX_BYTES) throw new BadRequestException('File must be under 10 MB');
+    if (!file) throw new BadRequestException('No file came through, so choose a file and try again.');
+    if (file.size > MAX_BYTES) throw new BadRequestException('That file is larger than 10 MB, so choose a smaller one.');
     const browserWasNoHelp = UNHELPFUL_MIMES.includes(file.mimetype ?? '');
     const readableByName = browserWasNoHelp && looksLikeTextFromItsName(file.originalname);
     if (!ALLOWED_MIME.includes(file.mimetype) && !isPlainTextMime(file.mimetype) && !readableByName) {
@@ -425,7 +442,7 @@ export class DocumentsService {
         ...(isConversation ? { consentConfirmedAt: new Date(), consentConfirmedById: userId } : {}),
         // G24 rule 3: private unless somebody says otherwise. See
         // a-document-is-context.ts for why the lead is not an exception.
-        visibility: defaultVisibilityForUpload(),
+        visibility: this.visibilityWhenKept(opts.sharedWithTheCheckIn),
         fileName: file.originalname,
         mimeType: file.mimetype,
         uploaderNote: uploaderNote?.trim() || null,
@@ -497,6 +514,8 @@ export class DocumentsService {
        */
       askingAboutIt: held ? theContextWeHave(held, { asking: true, willNoteIt: { visibility: (doc as any).visibility } }) : null,
       numbersWaiting: (held as any)?.waiting?.length ?? 0,
+      /* Kept, but nothing in it could be read: the person is asked to say what it shows. */
+      couldNotRead: weCouldNotReadIt(content),
     };
   }
 
@@ -607,19 +626,26 @@ export class DocumentsService {
       if (held.has(`${who.id}::${name.toLowerCase()}`)) continue;
       held.add(`${who.id}::${name.toLowerCase()}`);
       toWrite.push({ groundId, name, target: Math.round(r.target), ownerParticipantId: who.id, setByParticipantId: participantId, sortOrder: sortOrder++ });
-      forOnePerson.push({ who: nameOf(who as any), what: name, target: Math.round(r.target), by: r.by?.trim() || null, ownerParticipantId: who.id });
+      forOnePerson.push({ who: nameOf(who as any), what: name, target: Math.round(r.target), by: r.by?.trim() || null, ownerParticipantId: who.id, asWritten: theFigureAsWritten(Math.round(r.target), content, name) });
     }
 
-    /* The group's own numbers. A participant may add one: a total in a plan is not a claim about anybody. */
+    /*
+     * THE GROUP'S OWN NUMBERS ARE SET BY THE LEAD (B-102, Hafsah 11 October 2026). A member's
+     * pipeline sheet listing "Acme 40000 won" was offered back to her as "For everyone in this
+     * check-in, the target for Acme is 40,000. Is that right?". A file a member sends is her own
+     * evidence, kept in her words; it is never turned into a target for everyone. So the read keeps
+     * the document as it is and says what it left out, and nothing waits on a yes.
+     */
     const forEverybody: WhatLanded['forEverybody'] = [];
-    for (const t of (read.forEverybody ?? []).filter((t) => t?.what?.trim()).map((t) => ({ ...t, target: theNumberAsWritten(t.target, content) as number })).filter((t) => t.target != null)) {
+    const notAMembersToSet = !isLead && (read.forEverybody ?? []).some((t) => t?.what?.trim());
+    for (const t of (isLead ? (read.forEverybody ?? []) : []).filter((t) => t?.what?.trim()).map((t) => ({ ...t, target: theNumberAsWritten(t.target, content) as number })).filter((t) => t.target != null)) {
       const name = t.what.trim().slice(0, 120);
       /* Found on a quarterly plan (4 October 2026): each priority's number was waiting for its owner AND for everyone. */
       if (givenToSomebody.some((g) => g.target === t.target && theSameWords(g.what, t.what))) continue;
       if (held.has(`team::${name.toLowerCase()}`)) continue;
       held.add(`team::${name.toLowerCase()}`);
       toWrite.push({ groundId, name, target: Math.round(t.target), ownerParticipantId: null, setByParticipantId: participantId, sortOrder: sortOrder++ });
-      forEverybody.push({ what: name, target: Math.round(t.target), kind: t.kind ?? null, by: t.by?.trim() || null });
+      forEverybody.push({ what: name, target: Math.round(t.target), kind: t.kind ?? null, by: t.by?.trim() || null, asWritten: theFigureAsWritten(Math.round(t.target), content, name) });
     }
 
     /*
@@ -639,6 +665,7 @@ export class DocumentsService {
       /* Bank details the file held go under what it left out, never under what it took (request 40). */
       ...(Object.values(HIDDEN).some((h) => content.includes(h)) ? [{ ...BANK_DETAILS_LEFT_OUT }] : []),
       ...notTheirsToSet.map((name) => ({ what: `The numbers for ${name}`, why: 'Only the lead can set a number for someone else.' })),
+      ...(notAMembersToSet ? [{ what: 'Targets for everyone in this check-in', why: 'Only the lead sets a target for everyone. The numbers stay in your file as your own evidence, in your words.' }] : []),
       ...(content.length > MOST_OF_A_DOCUMENT_WE_READ
         ? [{ what: 'The rest of the document', why: 'It is too long to read in full, so only the first part was read.' }]
         : []),
@@ -662,11 +689,50 @@ export class DocumentsService {
     return landed;
   }
 
+  /**
+   * A LOCATION PIN SENT ON WHATSAPP, KEPT WITH THE CHECK-IN AS PROOF (see a-location-pin.ts).
+   *
+   * Kept the way an upload is: on the ground, against the person who sent it, with the same default
+   * visibility, so whoever sees their other proof sees this and nobody else does. The coordinates,
+   * and the name and address WhatsApp sent with it, are its content; nothing is read into it.
+   */
+  /**
+   * Private to the person who kept it, unless they shared it with the check-in as they sent it. Shared
+   * means OPEN, exactly what setVisibility writes when an uploader opens a file to the check-in, and
+   * only while adding documents is switched on: with it off every document is the uploader's own, so
+   * nothing is stored as shared that the read path would not honour.
+   */
+  private visibilityWhenKept(sharedWithTheCheckIn?: boolean): DocumentVisibility {
+    return sharedWithTheCheckIn && this.config.get<boolean>('app.contextEnabled') === true ? DocumentVisibility.OPEN : defaultVisibilityForUpload();
+  }
+
+  async keepALocationPin(groundId: string, userId: string, pin: ALocationPin, sentAt: Date, zone?: string, opts: { sharedWithTheCheckIn?: boolean } = {}) {
+    const participant: any = await this.assertParticipant(groundId, userId);
+    const user = await (this.prisma as any).user?.findUnique?.({ where: { id: userId }, select: { firstName: true } }).catch(() => null);
+    const who = (user?.firstName ?? '').trim() || (participant?.nameGiven ?? '').trim().split(/\s+/)[0] || 'Somebody';
+    const doc = await this.prisma.groundDocument.create({
+      data: {
+        groundId,
+        participantId: participant.id,
+        isConversation: false,
+        visibility: this.visibilityWhenKept(opts.sharedWithTheCheckIn),
+        fileName: aLocationPinsName(sentAt, zone),
+        mimeType: 'text/plain',
+        content: aLocationPinOnTheRecord(who, pin, sentAt, zone),
+        origin: null,
+        createdAt: sentAt,
+      } as any,
+      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, uploaderNote: true, visibility: true, participantId: true, holds: true },
+    });
+    this.anchorAfterUpload(participant.id, groundId);
+    return toDocShape(doc, doc.participantId ?? undefined, this.config.get<boolean>('app.contextEnabled') === true);
+  }
+
   /** Update a document's assessment (user-corrected version). */
   async correctAssessment(groundId: string, docId: string, userId: string, assessment: { suggests: string[]; willDo: string[] }) {
     const participant = await this.assertParticipant(groundId, userId);
     const doc = await this.prisma.groundDocument.findFirst({ where: { id: docId, groundId, participantId: participant.id } });
-    if (!doc) throw new NotFoundException('Document not found');
+    if (!doc) throw new NotFoundException('That document could not be found, so refresh the page to see what is there now.');
     const updated = await this.prisma.groundDocument.update({
       where: { id: docId },
       data: { assessment: assessment as any },
@@ -831,8 +897,8 @@ export class DocumentsService {
 
   /** Upload a document from a pre-auth participant identified by invite token. */
   async uploadByInviteToken(token: string, file: Express.Multer.File) {
-    if (!file) throw new BadRequestException('No file provided');
-    if (file.size > MAX_BYTES) throw new BadRequestException('File must be under 10 MB');
+    if (!file) throw new BadRequestException('No file came through, so choose a file and try again.');
+    if (file.size > MAX_BYTES) throw new BadRequestException('That file is larger than 10 MB, so choose a smaller one.');
     if (!ALLOWED_MIME.includes(file.mimetype) && !isPlainTextMime(file.mimetype)) {
       throw new BadRequestException('Unsupported file type. Accepted: PDF, TXT, CSV, HTML, code/text, DOCX, XLSX, JPEG, PNG, HEIC.');
     }
@@ -925,7 +991,7 @@ export class DocumentsService {
     visibility: 'OPEN' | 'OWN' | 'CLOSED',
   ) {
     if (this.config.get<boolean>('app.contextEnabled') !== true) {
-      throw new ForbiddenException('Context is not enabled on this deployment');
+      throw new ForbiddenException('Adding documents is switched off here, so ask your Groundwork contact to switch it on.');
     }
     /*
      * The body is a plain type, not a validated DTO, so the string arrives unchecked. That was
@@ -933,7 +999,7 @@ export class DocumentsService {
      * file, an unrecognised value is refused here rather than handed to Prisma to reject.
      */
     if (visibility !== 'OPEN' && visibility !== 'OWN' && visibility !== 'CLOSED') {
-      throw new BadRequestException('Unknown visibility');
+      throw new BadRequestException('Choose who may see the document, either everyone in the check-in or only you.');
     }
     const participant = await this.assertParticipant(groundId, userId);
 
@@ -947,7 +1013,7 @@ export class DocumentsService {
         select: { initiatorId: true },
       });
       if (ground?.initiatorId !== userId) {
-        throw new ForbiddenException('Only the person running this check-in can keep a document to themselves');
+        throw new ForbiddenException('Only the person who runs this check-in can keep a document to themselves, so share it with the check-in instead.');
       }
     }
 
@@ -956,7 +1022,7 @@ export class DocumentsService {
     });
     // Deliberately the same message whether it does not exist or is not theirs:
     // "not yours" tells somebody a document exists, which is itself a leak.
-    if (!doc) throw new NotFoundException('Document not found');
+    if (!doc) throw new NotFoundException('That document could not be found, so refresh the page to see what is there now.');
 
     const updated = await this.prisma.groundDocument.update({
       where: { id: docId },
@@ -981,7 +1047,7 @@ export class DocumentsService {
       where: { id: docId, groundId, participantId: participant.id },
       select: { id: true },
     });
-    if (!doc) throw new NotFoundException('Document not found');
+    if (!doc) throw new NotFoundException('That document could not be found, so refresh the page to see what is there now.');
     const said = (note ?? '').toString().trim().slice(0, 500) || null;
     const updated = await this.prisma.groundDocument.update({
       where: { id: docId },
@@ -1005,16 +1071,16 @@ export class DocumentsService {
     const doc = await this.prisma.groundDocument.findFirst({
       where: { id: docId, groundId, participantId: participant.id },
     });
-    if (!doc) throw new NotFoundException('Document not found');
+    if (!doc) throw new NotFoundException('That document could not be found, so refresh the page to see what is there now.');
     await this.prisma.groundDocument.delete({ where: { id: docId } });
     return { deleted: true };
   }
 
   private async assertParticipant(groundId: string, userId: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const participant = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId } });
-    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!participant) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
     return participant;
   }
 }

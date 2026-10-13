@@ -330,6 +330,6 @@ describe('a goal from an objective is written to its reader, as one from a targe
     /* `authoredBy: 'self'` is the person's own sentence and is served exactly as they wrote it
        (Hafsah, 26 September). Everything else is written to the reader. */
     expect(src).toContain("const theirOwnWords = o.authoredBy === 'self'");
-    expect(src).toContain('theirOwnWords ? text : asTheReader(text)');
+    expect(src).toContain('theirOwnWords ? text : aboutTheReaderAsYou(asTheReader(text), myFirstNames)');
   });
 });

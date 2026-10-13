@@ -116,6 +116,6 @@ describe('request 108 (d): who else reads it', () => {
       expect(JSON.stringify(b)).not.toMatch(/Separation agreed|Performance concern resolved/);
     }
     /* Juma, an admin given no access to the plan, is not let in to the board at all (decision 5), so reads nothing of it. */
-    await expect(boardAs(pip, ...JUMA)).rejects.toThrow(/Check-in not found/);
+    await expect(boardAs(pip, ...JUMA)).rejects.toThrow(/could not be found/);
   });
 });

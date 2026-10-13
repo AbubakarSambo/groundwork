@@ -32,13 +32,13 @@ describe('what a person reads, word for word as Hafsah wrote it', () => {
     expect(itIsOverdue(MIRIAM).text).toBe("Hi Miriam, your check-in for the sales team is overdue. It's still open, so you can answer here now.");
   });
   it('checkin_team_almost_in, with the counts in the blanks Hafsah numbered', () => {
-    expect(theTeamIsAlmostIn(MIRIAM, 3, 5).text).toBe("Hi Miriam, 3 of 5 people have checked in for the sales team, and the team's picture is coming together without your part. Add yours and it's included.");
+    expect(theTeamIsAlmostIn(MIRIAM, 3, 5).text).toBe('Hi Miriam, 3 of 5 people have checked in for the sales team. Your check-in is still open, and you can answer here.');
   });
   it("checkin_your_view_matters, with the lead's first name", () => {
     expect(yourViewMatters(MIRIAM, 'Wairimu').text).toBe("Hi Miriam, your check-in for the sales team is still waiting. Your answers help Wairimu understand what's in your way, and where they can help. It takes about five minutes, and you can answer here.");
   });
   it('lead_daily_summary and checkin_closes_soon are registered word for word', () => {
-    expect(TEMPLATES['lead-summary'].body).toBe("Good morning {{1}}. Here's today's summary of your check-ins: {{2}} Open the board for the full picture: {{3}}");
+    expect(TEMPLATES['lead-summary'].body).toBe("Good morning {{1}}. Here is today's summary of your check-ins. {{2}} You can open your board for the full picture here {{3}} If you would rather not hear from us here again today, reply \"not now\".");
     expect(TEMPLATES['closes-soon'].body).toBe('Hi {{1}}, your check-in for {{2}} closes in an hour, at {{3}}. Five minutes now means your view is part of this round.');
   });
   it('a person whose first name nobody knows is still greeted', () => {
@@ -46,7 +46,7 @@ describe('what a person reads, word for word as Hafsah wrote it', () => {
   });
   it("outside the 24 hours the same words go as the template, with the product's words as its parameters", () => {
     const n = theTeamIsAlmostIn(MIRIAM, 3, 5);
-    expect(n.params).toEqual(['Miriam', 'the sales team', '3', '5']);
+    expect(n.params).toEqual(['Miriam', '3', '5', 'the sales team']);
     expect(fill(TEMPLATES[n.kind].body, n.params)).toBe(n.text);
     expect(TEMPLATES[n.kind].components(n.text, n.params)[0].parameters.map((p) => p.text)).toEqual(n.params);
   });
@@ -171,6 +171,12 @@ describe('the morning sweep', () => {
     await cron.sendWhatsAppRemindersInner();
     expect(sendFor).toHaveBeenCalledWith('org-1', '+254712345678', yourViewMatters(MIRIAM, 'Wairimu').text, expect.objectContaining({ checkInId: 'ci-1', kind: 'your-view-matters' }));
   });
+  it('a lead who is also answering is told her answers help her, and her own name is not said in the third person (B-023)', async () => {
+    const lead = aRow({ ground: { ...aRow().ground, initiatorId: 'u-1', initiator: { firstName: 'Miriam' } } });
+    const { cron, sendFor } = aCron([lead], { session: [{ status: 'NOT_STARTED' }, { status: 'COMPLETED' }, { status: 'NOT_STARTED' }, { status: 'NOT_STARTED' }] });
+    await cron.sendWhatsAppRemindersInner();
+    expect(sendFor.mock.calls[0][2]).toBe("Hi Miriam, your check-in for the sales team is still waiting. Your answers help you understand what's in your way, and where they can help. It takes about five minutes, and you can answer here.");
+  });
   it('with half or more in, the person reads the count, which leaves out anybody not yet let in', async () => {
     const { cron, sendFor } = aCron([aRow()], { session: [{ status: 'NOT_STARTED' }, { status: 'COMPLETED' }, { status: 'COMPLETED' }, { status: 'NOT_STARTED' }, { status: 'NOT_STARTED', awaiting: true }] });
     await cron.sendWhatsAppRemindersInner();
@@ -211,7 +217,9 @@ describe('the morning sweep', () => {
     const opensAt = new Date(Date.now() + 50 * 60_000);
     const { cron, sendFor } = aCron([aRow({ availableFrom: opensAt })]);
     await cron.sendWhatsAppOpensSoonInner();
-    expect(sendFor.mock.calls[0][2]).toBe(itOpensSoon(MIRIAM, opensAt).text);
+    /* The hour is the person's own, with the zone named (B-140): Miriam's number is Kenyan, so it is East Africa Time. */
+    expect(sendFor.mock.calls[0][2]).toBe(itOpensSoon(MIRIAM, opensAt, undefined, 'Africa/Nairobi').text);
+    expect(sendFor.mock.calls[0][2]).toContain('East Africa Time');
   });
 });
 

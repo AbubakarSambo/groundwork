@@ -42,14 +42,14 @@ describe('The blocker check, as each person reads it', () => {
   it('Baraka, where people do not see each other, reads only the waits he is in, and a colleague is "a colleague"', async () => {
     const b = await boardAs({ ...RECORD, peersVisibleToEachOther: false }, ...BARAKA);
     expect(b.blockerCheck.map((x: any) => x.id).sort()).toEqual(['d-2', 'd-3']);
-    expect(check(b, 'd-2').says).toBe('You are waiting on a colleague for the depot keys.');
+    expect(check(b, 'd-2').says).toBe('You say the work is waiting on a colleague for the depot keys. Not backed: no attempt to unblock mentioned. You could have messaged a colleague, asked again, or raised it with Amina Wanjiru.');
     expect(check(b, 'd-2').checks[0]).toBe('A colleague holds it.');
     expect(JSON.stringify(b.blockerCheck)).not.toContain('Rukia');
   });
 
   it('Rukia reads the wait on her, as "you"', async () => {
     const b = await boardAs({ ...RECORD, peersVisibleToEachOther: false }, ...RUKIA);
-    expect(check(b, 'd-2').says).toBe('A colleague is waiting on you for the depot keys.');
+    expect(check(b, 'd-2').says).toBe('A colleague says the work is waiting on you for the depot keys. Not backed: no attempt to unblock mentioned. A colleague could have messaged you, asked again, or raised it with Amina Wanjiru.');
     expect(check(b, 'd-1').checks[1]).toBe('About what has been tried, you said, "I emailed twice."');
   });
 

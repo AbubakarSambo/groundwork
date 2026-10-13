@@ -57,6 +57,8 @@ import { CareFeeStatus, GroundStatus, BillingEventType, BillingEventStatus, User
 import { UsageService } from '../usage/usage.service';
 import * as crypto from 'crypto';
 import { seatsIn } from '../../common/seats';
+import { theEngagementMoment } from '../engagement/the-engagement-release-moment';
+import { theOverThePlan, theOverThePlanSentence, howManyAreOverThePlan } from '../../common/over-the-plan';
 import { isSubscribed, isCovered, whatCoversThem, ACTIVE, type SubscriptionStatus } from '../../common/subscription';
 
 /**
@@ -333,6 +335,21 @@ export class BillingService {
     return this.prisma.user.count({ where: seatsIn(organizationId) });
   }
 
+  /**
+   * WHO IS WAITING FOR A SEAT (request 197): the people added after the release when the plan is full, and how many. Everyone who had an account at release keeps it.
+   * The same answer for the People list, Plan and billing and the refusal of new participation (common/over-the-plan.ts).
+   */
+  async whoIsOverThePlan(organizationId: string): Promise<{ over: number; held: Set<string>; saying: string | null }> {
+    const cap = await this.seatsIncludedFor(organizationId);
+    if (cap === null || cap === undefined) return { over: 0, held: new Set(), saying: null };
+    const taken = await this.seatsTaken(organizationId);
+    if (!howManyAreOverThePlan(taken, cap)) return { over: 0, held: new Set(), saying: null };
+    /* Unreadable moment means nobody is held, never a guess: existing people are never held. */
+    const since = await theEngagementMoment(this.prisma).catch(() => null);
+    const { over, held } = await theOverThePlan(this.prisma, organizationId, seatsIn(organizationId), cap, since);
+    return { over, held, saying: theOverThePlanSentence(over) };
+  }
+
   async seatsLeft(organizationId: string): Promise<number | null> {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
@@ -407,7 +424,7 @@ export class BillingService {
       return { allowed: true };
     }
 
-    const cap = await this.pricing.memberCapFor(org.subscriptionPlan!);
+    const cap = await this.pricing.memberCapFor((covered.plan ?? org.subscriptionPlan) as any);
     if (cap === null) return { allowed: true };
     if (count >= cap) {
       /**
@@ -451,16 +468,16 @@ export class BillingService {
        one free extension could be spent onto any ground in the database. Resolved inside the caller's
        organisation first, exactly as purchaseSession does two methods up. */
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId }, select: { id: true, isFreeGround: true } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /* A free check-in has unlimited sessions - the same guard purchaseSession carries. Without it the
        organisation's one extension was spent on a check-in that never needed it, the person was told
        "Free session added", and the flag never resets. */
-    if (ground.isFreeGround) throw new ForbiddenException('This check-in has unlimited free sessions - nothing to extend.');
+    if (ground.isFreeGround) throw new ForbiddenException('This check-in already has unlimited free sessions, so there is nothing to extend.');
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
       select: { freeExtensionUsed: true, createdAt: true },
     });
-    if (!org) throw new NotFoundException('Organization not found');
+    if (!org) throw new NotFoundException('We could not find that organisation, so sign in again and try once more.');
     /* The free extension is part of the free plan: none for an organisation it no longer applies to. */
     if (!(await this.theFreePlanAppliesTo(org))) throw new ForbiddenException(NO_PLAN_TO_OPEN);
     if (org.freeExtensionUsed) throw new ForbiddenException('Your organisation has already used its one free extension. This does not reset; subscribing is the way to keep going.');
@@ -520,7 +537,7 @@ export class BillingService {
   async creditSession(groundId: string, reason: string, byUserId: string): Promise<{ groundId: string; sessionsBalance: number }> {
     if (!reason?.trim()) throw new BadRequestException('Say why the session is being credited; it goes on the ledger.');
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { id: true, organizationId: true } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const now = new Date();
     const [credited] = await this.prisma.$transaction([
       this.prisma.ground.update({ where: { id: groundId }, data: { sessionsBalance: { increment: 1 } }, select: { sessionsBalance: true } }),
@@ -584,10 +601,10 @@ export class BillingService {
       throw new ForbiddenException('Enterprise plans require contacting the support team.');
     }
     const org = await this.prisma.organization.findUnique({ where: { id: organizationId } });
-    if (!org) throw new NotFoundException('Organization not found');
+    if (!org) throw new NotFoundException('We could not find that organisation, so sign in again and try once more.');
 
     if (isSubscribed(org)) {
-      throw new ForbiddenException('Organization already has an active subscription - use the plan-change endpoint to switch plans.');
+      throw new ForbiddenException('This organisation already has a plan, so change the plan instead of buying a new one.');
     }
 
     const customerId = await this.stripe.ensureCustomer(org.id, org.email ?? undefined, org.stripeCustomerId);
@@ -641,9 +658,9 @@ export class BillingService {
       throw new ForbiddenException('Enterprise plans require contacting the support team.');
     }
     const org = await this.prisma.organization.findUnique({ where: { id: organizationId } });
-    if (!org) throw new NotFoundException('Organization not found');
+    if (!org) throw new NotFoundException('We could not find that organisation, so sign in again and try once more.');
     if (!org.subscriptionStripeId || org.subscriptionStatus !== ACTIVE) {
-      throw new ForbiddenException('No active subscription to change - subscribe first.');
+      throw new ForbiddenException('This organisation has no plan to change yet, so choose a plan first.');
     }
     if (org.subscriptionPlan === newPlan) {
       throw new ForbiddenException(`Already on the ${newPlan} plan.`);
@@ -912,6 +929,8 @@ export class BillingService {
       freeExtensionUsed: boolean;
     };
     people: { count: number; cap: number | null };
+    /** Request 197: the one sentence People says too, when more people have accounts than the plan covers; null otherwise. */
+    overThePlanSays: string | null;
     /**
      * True when nothing covers the organisation and the free plan applies to it. False when it has no
      * plan and the free plan has stopped for it (the free trial's switch is on and it is new).
@@ -955,7 +974,7 @@ export class BillingService {
         teamSizeLine: true,
       },
     });
-    if (!org) throw new NotFoundException('Organization not found');
+    if (!org) throw new NotFoundException('We could not find that organisation, so sign in again and try once more.');
 
     const peopleCount = await this.seatsTaken(organizationId);
     /**
@@ -1031,6 +1050,7 @@ export class BillingService {
        * and showing no ceiling to the only people who have one is how person six got added.
        */
       people: { count: peopleCount, cap: peopleCap },
+      overThePlanSays: (await this.whoIsOverThePlan(organizationId).catch(() => null))?.saying ?? null,
       onTheFreePlan,
       /* Said plainly, with the day it ends, because a free run nobody can see ends as a surprise. */
       onTheHouse: covers.covers === 'on the house' && covers.until && org.freePlan
@@ -1099,7 +1119,7 @@ export class BillingService {
       where: { id: organizationId },
       select: { careFeeSubscriptionId: true, email: true, name: true },
     });
-    if (!org) throw new NotFoundException('Organization not found');
+    if (!org) throw new NotFoundException('We could not find that organisation, so sign in again and try once more.');
 
     if (org.careFeeSubscriptionId) {
       await this.stripe.stripe.subscriptions.cancel(org.careFeeSubscriptionId).catch(() => null);
@@ -1118,7 +1138,7 @@ export class BillingService {
     /* /settings is where "what we hold about you" and its download live. /users/me/export was the API
        path, which the client has no route for, so the widest broadcast in the product opened the
        not-found page. */
-    const downloadUrl = `${this.config.get<string>('resend.frontendUrl') ?? ''}/settings`;
+    const downloadUrl = `${this.config.get<string>('resend.frontendUrl') ?? ''}/settings#your-data`;
     const orgUsers = await this.prisma.user.findMany({
       where: { organizationId, deletedAt: null },
       select: { id: true, email: true, firstName: true },
@@ -1142,7 +1162,7 @@ export class BillingService {
    */
   async createBillingPortalSession(organizationId: string): Promise<{ portalUrl: string }> {
     const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { stripeCustomerId: true } });
-    if (!org?.stripeCustomerId) throw new NotFoundException('No billing account set up for this organization');
+    if (!org?.stripeCustomerId) throw new NotFoundException('This organisation has no billing set up yet, so choose a plan first.');
     const base = this.config.get<string>('stripe.callbackUrl') || 'http://localhost:5173/billing/callback';
     const portalUrl = await this.stripe.createBillingPortalSession(org.stripeCustomerId, base);
     return { portalUrl };
@@ -1512,7 +1532,7 @@ export class BillingService {
    */
   async disableCode(codeId: string, callerOrgId: string): Promise<{ ok: boolean }> {
     const code = await this.prisma.contributorCode.findUnique({ where: { id: codeId } });
-    if (!code) throw new NotFoundException('Code not found');
+    if (!code) throw new NotFoundException('That code could not be found, so check it and try again.');
     if (code.organizationId !== callerOrgId) throw new ForbiddenException('Not authorised to disable this code.');
     await this.prisma.contributorCode.update({ where: { id: codeId }, data: { isActive: false } });
     this.logger.log(`Contributor code ${codeId} disabled by org ${callerOrgId}`);
@@ -1524,7 +1544,7 @@ export class BillingService {
    */
   async getPlatformAdminStats(callerUserId: string) {
     const caller = await this.prisma.user.findUnique({ where: { id: callerUserId }, select: { isPlatformAdmin: true } });
-    if (!caller?.isPlatformAdmin) throw new ForbiddenException('Platform admin access required.');
+    if (!caller?.isPlatformAdmin) throw new ForbiddenException('This part is for Groundwork staff.');
 
     const codes = await this.prisma.contributorCode.findMany({
       orderBy: { createdAt: 'desc' },

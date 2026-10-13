@@ -27,7 +27,7 @@ describe('Risks, as each person reads them', () => {
     const b = await boardAs(RECORD, ...AMINA);
     expect(says(b)).toEqual([
       'Rukia Mwangi cannot move on the credit terms until it comes from Finance.',
-      'Baraka Otieno is waiting on Rukia Mwangi for the depot keys.',
+      'Baraka Otieno says the work is waiting on Rukia Mwangi for the depot keys. Not backed: no attempt to unblock mentioned. Baraka Otieno could have messaged Rukia Mwangi, asked again, or raised it with you.',
       'Rukia Mwangi committed to send the Westgate quote, and no time was given for it, so nobody can tell when it would be late.',
       'Rukia Mwangi committed to finish the stock count, and it has come up 3 times now without anybody saying it happened.',
     ]);
@@ -40,7 +40,7 @@ describe('Risks, as each person reads them', () => {
     const b = await boardAs({ ...RECORD, peersVisibleToEachOther: false }, ...RUKIA);
     expect(says(b)).toEqual([
       'You cannot move on the credit terms until it comes from Finance.',
-      'A colleague is waiting on you for the depot keys.',
+      'A colleague says the work is waiting on you for the depot keys. Not backed: no attempt to unblock mentioned. A colleague could have messaged you, asked again, or raised it with Amina Wanjiru.',
       'You committed to send the Westgate quote, and no time was given for it, so nobody can tell when it would be late.',
       'You committed to finish the stock count, and it has come up 3 times now without anybody saying it happened.',
     ]);
@@ -48,7 +48,7 @@ describe('Risks, as each person reads them', () => {
 
   it('Baraka, where people do not see each other, reads only the wait he is in, and never a colleague\'s commitments or name', async () => {
     const b = await boardAs({ ...RECORD, peersVisibleToEachOther: false }, ...BARAKA);
-    expect(says(b)).toEqual(['You are waiting on a colleague for the depot keys.']);
+    expect(says(b)).toEqual(['You say the work is waiting on a colleague for the depot keys. Not backed: no attempt to unblock mentioned. You could have messaged a colleague, asked again, or raised it with Amina Wanjiru.']);
     expect(JSON.stringify(b.risks)).not.toContain('Rukia');
     expect(JSON.stringify(b.risks)).not.toContain('Westgate');
   });

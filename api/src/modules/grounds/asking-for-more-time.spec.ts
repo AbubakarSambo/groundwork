@@ -66,8 +66,8 @@ describe('asking for more time', () => {
 
   it('somebody not taking part in it cannot ask, and learns nothing about it', async () => {
     const { s, sent } = make({ notInIt: true });
-    await expect(s.ask('g1', 'u9')).rejects.toThrow('Check-in not found');
-    await expect(s.whereItStands('g1', 'u9')).rejects.toThrow('Check-in not found');
+    await expect(s.ask('g1', 'u9')).rejects.toThrow('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    await expect(s.whereItStands('g1', 'u9')).rejects.toThrow('That check-in could not be found, so go back to your check-ins and open it from the list.');
     expect(sent).toHaveLength(0);
   });
 });

@@ -30,7 +30,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   handleRequest(err: any, user: any, info: any, context: ExecutionContext) {
     if (err || !user) {
       if (context && this.flag(IS_PUBLIC_KEY, context) && this.flag(IS_OPTIONAL_AUTH_KEY, context)) return null;
-      throw err || new UnauthorizedException('Invalid or expired token');
+      throw err || new UnauthorizedException('Your sign-in has run out, so sign in again.');
     }
     return user;
   }

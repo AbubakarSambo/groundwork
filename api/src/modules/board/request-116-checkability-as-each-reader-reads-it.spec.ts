@@ -87,14 +87,14 @@ describe('request 116 (c): nobody gets a read on answers they never gave', () =>
     expect(everyString(board).filter(aReadOnFaraji)).toEqual([]);
     const row = board.eachPerson.find((r: any) => r.participantId === 'p-faraji');
     expect(row.reason).toBe('has not answered');
-    expect(row.says).toBe('Faraji Odhiambo has not checked in for this round yet.');
+    expect(row.says).toBe('Faraji Odhiambo has not checked in for this session yet.');
     expect(row.ask).toBe('Ask Faraji Odhiambo to check in.');
   });
 
   it('Juma, an admin who only reads, reads that Faraji has not checked in, and no read on what he said', async () => {
     const board = await boardAs(setup as any, ...JUMA);
     expect(everyString(board).filter(aReadOnFaraji)).toEqual([]);
-    expect(board.eachPerson.find((r: any) => r.participantId === 'p-faraji').says).toBe('Faraji Odhiambo has not checked in for this round yet.');
+    expect(board.eachPerson.find((r: any) => r.participantId === 'p-faraji').says).toBe('Faraji Odhiambo has not checked in for this session yet.');
   });
 
   it('Faraji reads "You have not checked in yet." on his own row, and nothing about anybody else', async () => {
@@ -114,7 +114,7 @@ describe('request 116 (c): nobody gets a read on answers they never gave', () =>
 
   it('on an evaluation check-in, the manager reads that the person reviewed has not checked in yet', async () => {
     const board = await boardAs({ ...setup, scenario: 'PIP' as any } as any, ...AMINA);
-    expect(board.eachPerson.find((r: any) => r.participantId === 'p-faraji').says).toBe('Faraji Odhiambo has not checked in for this round yet.');
+    expect(board.eachPerson.find((r: any) => r.participantId === 'p-faraji').says).toBe('Faraji Odhiambo has not checked in for this session yet.');
     expect(everyString(board).filter(aReadOnFaraji)).toEqual([]);
   });
 });

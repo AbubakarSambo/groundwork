@@ -41,9 +41,12 @@ describe('the shape of finishing', () => {
     const writes = [...CODE.matchAll(/status:\s*CheckInStatus\.COMPLETED/g)].filter((m) =>
       /\bdata:\s*\{/.test(CODE.slice(Math.max(0, m.index! - 200), m.index!)),
     );
-    expect(writes).toHaveLength(1);
-    const around = CODE.slice(writes[0].index! - 200, writes[0].index!);
-    expect(around).toMatch(/updateMany\(\{\s*where: \{ id: checkIn\.id, status: \{ not: CheckInStatus\.COMPLETED \} \}/);
+    /* Two since missed check-ins were redone (0d9dd8ad2): finishing, and closeAsMissed for a session nobody opened. Both are claims
+       guarded in their where, so neither can complete a session twice. */
+    expect(writes).toHaveLength(2);
+    const around = writes.map((w) => CODE.slice(w.index! - 200, w.index!));
+    expect(around.some((a) => /updateMany\(\{\s*where: \{ id: checkIn\.id, status: \{ not: CheckInStatus\.COMPLETED \} \}/.test(a))).toBe(true);
+    expect(around.some((a) => /updateMany\(\{\s*where: \{ id: checkInId, status: CheckInStatus\.NOT_STARTED, turns: \{ none: \{ role: TurnRole\.PERSON \} \} \}/.test(a))).toBe(true);
   });
 
   it('ISSUE 6 stands: the record is extracted before the write, and the event is emitted after it', () => {

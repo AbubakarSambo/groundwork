@@ -1,16 +1,22 @@
 import { Injectable, Logger, Optional, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { readsAsAnAdmin, WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS } from '../grounds/who-may-read-this-check-in';
+import { refuseSomeoneHeldForASeat, refuseSomeoneAwaitingTheOrganisation } from '../participants/held-for-a-seat';
+import { CANNOT_CHECK_IN_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { PrismaService } from '../prisma/prisma.service';
 import { IntelligenceService } from '../intelligence';
 import { ReportsService } from '../reports';
 import { EmailService } from '../email/email.service';
+/** What the lead reads when they choose "not settled yet" at the ending. */
+export const NOT_SETTLED_KEEPS_IT_RUNNING = 'Nothing has ended. This check-in keeps running. If it needs more time, choose "Give it more time".';
 import { endStatesFor, isValidEndState, closingNeedsEveryone } from './end-states';
 import { GroundStatus, PartyType } from '@prisma/client';
 import { SuggestionsService } from '../suggestions/suggestions.service';
 import { ReviewsProposedService } from '../suites/the-reviews-proposed.service';
 import { theEndingPageFor } from './what-the-ending-page-reads';
 import { whoTheEndingIsAbout } from './who-the-ending-is-about';
+import { peersAreNamedOn } from '../reports/peers-are-named';
+import { whatEachLabelIsCalled } from '../reports/no-internal-label-reaches-anyone';
 import { labelsForParties, namesVisibleTo, displayName, plainWordsByPerson, atTheStart } from '../reports/party-labels';
 
 /**
@@ -51,7 +57,12 @@ export class ResolutionService {
       where: { id: groundId },
       select: { id: true, organizationId: true, initiatorId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    /* Nobody held for a seat or waiting for the organisation reads how everybody else means to end it (privacy row 5). */
+    if (ground.initiatorId !== userId) {
+      await refuseSomeoneHeldForASeat(this.prisma as any, groundId, userId);
+      await refuseSomeoneAwaitingTheOrganisation(this.prisma as any, userId, CANNOT_CHECK_IN_YET);
+    }
     const isParty = !!(await this.prisma.groundParticipant.findFirst({ where: { groundId, userId }, select: { id: true } }));
     if (!isParty) {
       const admin = await this.prisma.user.findFirst({
@@ -76,10 +87,10 @@ export class ResolutionService {
     const { ground, participant } = await this.assertParty(groundId, userId);
 
     if (ground.status === GroundStatus.CLOSED || ground.status === GroundStatus.RESOLVED) {
-      throw new BadRequestException('This check-in is already resolved');
+      throw new BadRequestException('This check-in has already ended, so there is nothing more to do here.');
     }
     if (!isValidEndState(ground.scenario, endState)) {
-      throw new BadRequestException(`"${endState}" is not a valid end state for this scenario`);
+      throw new BadRequestException('That is not a way this kind of check-in can end, so choose one from the list.');
     }
 
     /**
@@ -99,7 +110,7 @@ export class ResolutionService {
      */
     if (!closingNeedsEveryone(ground.scenario) && participant.partyType !== PartyType.INITIATOR) {
       throw new ForbiddenException(
-        'In this check-in, the lead decides how it ends. Your account and your corrections stand on the record beside theirs.',
+        'In this check-in, the lead decides how it ends. What you said and your corrections stand on the record beside theirs.',
       );
     }
 
@@ -116,6 +127,16 @@ export class ResolutionService {
       throw new BadRequestException(
         'Say why, in a sentence or two. The people in this check-in read it with the outcome.',
       );
+    }
+
+    /*
+     * "NOT SETTLED YET" DOES NOT END THE CHECK-IN (B-149, 10 October 2026). One of the outcomes read "It is not settled yet, and more sessions are needed.", and
+     * choosing it closed the check-in it says needs more sessions. It keeps the check-in running and records nothing as the ending. A proper way to extend
+     * from here is on the roadmap; "Give it more time" exists meanwhile.
+     */
+    if (endState === 'NOT_YET') {
+      this.logger.log(`Ground ${groundId}: "not settled yet" was chosen at the ending, so the check-in keeps running and nothing was closed.`);
+      return { ...(await this.buildState(groundId, userId)), keptRunning: true, saying: NOT_SETTLED_KEEPS_IT_RUNNING };
     }
 
     // GW-16: detect a proposal change BEFORE upserting so we can clear stale
@@ -206,7 +227,7 @@ export class ResolutionService {
     const { ground, participant } = await this.assertParty(groundId, userId);
 
     if (ground.status === GroundStatus.CLOSED || ground.status === GroundStatus.RESOLVED) {
-      throw new BadRequestException('This check-in is already resolved');
+      throw new BadRequestException('This check-in has already ended, so there is nothing more to do here.');
     }
     /** Authorisation first: a party with no say here should not be told which end states are valid. */
     /**
@@ -226,12 +247,12 @@ export class ResolutionService {
      */
     if (!closingNeedsEveryone(ground.scenario) && participant.partyType !== PartyType.INITIATOR) {
       throw new ForbiddenException(
-        'In this check-in, the lead decides how it ends. Your account and your corrections stand on the record beside theirs.',
+        'In this check-in, the lead decides how it ends. What you said and your corrections stand on the record beside theirs.',
       );
     }
 
     if (!isValidEndState(ground.scenario, proposedEndState)) {
-      throw new BadRequestException(`"${proposedEndState}" is not a valid end state for this scenario`);
+      throw new BadRequestException('That is not a way this kind of check-in can end, so choose one from the list.');
     }
 
     // Replace the current leading proposal and clear all existing confirmations
@@ -361,7 +382,7 @@ export class ResolutionService {
    */
   private async buildState(groundId: string, viewerUserId?: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     const resolution = await this.prisma.resolution.findUnique({
       where: { groundId },
@@ -376,6 +397,8 @@ export class ResolutionService {
         userId: true,
         partyType: true,
         createdAt: true,
+        nameGiven: true,
+        roleAsDescribed: true,
         /** For `labelsForParties`, which reads the name before anything else. */
         user: { select: { firstName: true, lastName: true, email: true } },
       },
@@ -407,13 +430,24 @@ export class ResolutionService {
      * name still gets their role here, and nobody ever gets an email address.
      */
     const viewer = viewerUserId ? active.find((p) => p.userId === viewerUserId) : undefined;
-    const names = namesVisibleTo(viewer?.id ?? null, active as any);
+    /* An admin who is not in it reads the ending as a person who is not the lead does, as the options below already say it. */
+    const viewerIsLead = viewer?.partyType === PartyType.INITIATOR;
+    /* The check-in's own setting for whether colleagues see each other's names (decision 115), as every report read takes it. */
+    const peersAreNamed = peersAreNamedOn(ground as any, { participantId: viewer?.id ?? null });
+    const names = namesVisibleTo(viewer?.id ?? null, active as any, viewerIsLead || peersAreNamed);
+    const called = whatEachLabelIsCalled(active as any, {
+      viewerParticipantId: viewer?.id ?? null,
+      viewerIsLead,
+      peersAreNamed,
+      readerIsYou: true,
+    });
     const choiceByParticipant = new Map((resolution?.confirmations ?? []).map((c) => [c.participantId, c.endState]));
     const confirmations = active.map((p) => {
       const label = labels.get(p.id) ?? 'A party';
       return {
       participantId: p.id,
-      label: names.get(label) ?? label,
+      /* The reader is "You"; a colleague is a name where this reader may see it, otherwise "a colleague". Never a label. */
+      label: atTheStart(called.get(label.toLowerCase()) ?? 'a colleague'),
       partyType: p.partyType,
       endState: choiceByParticipant.get(p.id) ?? null,
       confirmed: choiceByParticipant.has(p.id),
@@ -463,7 +497,7 @@ export class ResolutionService {
 
   private async assertParty(groundId: string, userId: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /**
      * `user` is included so callers can NAME this person. `displayName` reads `user.firstName`, and
      * without the relation it silently returns null - so a label built from it would have fallen
@@ -473,7 +507,7 @@ export class ResolutionService {
       where: { groundId, userId },
       include: { user: { select: { firstName: true, lastName: true, email: true } } },
     });
-    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!participant) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
     return { ground, participant };
   }
 }

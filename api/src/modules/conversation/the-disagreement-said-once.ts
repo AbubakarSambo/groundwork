@@ -58,7 +58,17 @@ export function theSentenceToTheLead(g: AGapToSay): string | null {
   if (/set by the lead, not yet said by them/.test(g.personHeadline)) {
     return `${g.personName} has not said the ${g.target.target != null ? fmt(g.target.target) : 'figure'} you set for them, in anything on this record so far. That is the gap this report will show.`;
   }
-  return `${g.personName}'s own account reads: ${clean(g.personHeadline)}. You set ${clean(g.target.name)}${number} for them. That is the gap this report will show.`;
+  /*
+   * A HEADLINE THAT ALREADY NAMES THEM IS THEIR ACCOUNT ON ITS OWN (decision 139, item 1, left from change 1). Named for the
+   * lead, "Participant A's own account of calls has risen" became "Samuel's own account reads: Samuel Owino's own account of
+   * calls has risen". Where the read already opens with their name, it is said once, as it is.
+   */
+  const headline = clean(g.personHeadline);
+  const first = g.personName.trim().split(/\s+/)[0];
+  if (first && new RegExp(`^${first.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(headline)) {
+    return `${headline}. You set ${clean(g.target.name)}${number} for them. That is the gap this report will show.`;
+  }
+  return `${g.personName}'s own account reads: ${headline}. You set ${clean(g.target.name)}${number} for them. That is the gap this report will show.`;
 }
 
 /** Has an earlier turn already carried it? The target's number, or the target's first three words, is the mark. */

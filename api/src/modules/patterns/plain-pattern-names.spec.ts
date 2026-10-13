@@ -75,7 +75,8 @@ describe('the plain names of the patterns', () => {
         else if (p.endsWith('.ts') && !p.endsWith('.spec.ts') && !p.endsWith('plain-pattern-names.ts')) {
           /* Comments stripped first, so a comment that mentions it cannot satisfy or fail this. */
           const code = fs.readFileSync(p, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
-          if (code.includes('NEVER_NAMED_TO_A_PERSON')) offenders.push(path.relative(root, p));
+          /* The final check imports them only to take them out of a sentence about a person (b6d5c4702); it serves none. */
+          if (code.includes('NEVER_NAMED_TO_A_PERSON') && !p.endsWith(path.join('conversation', 'the-final-check.ts'))) offenders.push(path.relative(root, p));
         }
       }
     };

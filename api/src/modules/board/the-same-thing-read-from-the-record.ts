@@ -64,7 +64,7 @@ export async function theSameThingFromTheRows(prisma: any, r: TheRowsItReads): P
         status: d.status,
         firstSaidIn: firsts.length ? Math.min(...firsts) : null,
         lastSaidIn: lasts.length ? Math.max(...lasts) : null,
-        tried: (d.escalatedAt ? 'escalated' : whatTheyTried(d.triedSaid ?? '')) as any,
+        tried: whatTheyTried(d.triedSaid ?? '') as any,
         onTheReader: !!myParticipantId && d.onParticipantId === myParticipantId,
       };
     });

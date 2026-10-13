@@ -53,7 +53,7 @@ describe('the dry run says what today\'s rules would change, and writes nothing'
     expect(said).toEqual([
       '1 check-in was read. 9 things would change.',
       'Sales team, Q3: Rukia Otieno\'s own thing to do, "to approve a discount for Baraka Mwangi and to send a price list to Amani Wekesa", is stored as a wait on "themselves". It would be taken off, because nobody waits on themselves.',
-      'Sales team, Q3: the target "They want us to sign 12 shops by 20 December" is stored at 12, read from a line that only said the aim: "Twelve signed supply contracts with shops is what success looks like, and I want us to sign 12 shops by 20 December". It would go back to 0.',
+      'Sales team, Q3: the target "They want us to sign 12 shops by 20 December" is stored at 12, read from a line that only said the aim: "Success means twelve signed supply contracts with shops, and I want us to sign 12 shops by 20 December". It would go back to 0.',
       'Sales team, Q3: the team\'s aim "Sign 12 shops for kitchen appliances in Nairobi" has no number, though its own name holds 12. It would hold 12.',
       'Sales team, Q3: the target "They want us to sign 12 shops by 20 December" is the team\'s aim "Sign 12 shops for kitchen appliances in Nairobi" said again. It would be taken off.',
       'Sales team, Q3: the team\'s aim "Sign 12 shops for kitchen appliances in Nairobi" would keep the day it was said to be due by, 20 December.',

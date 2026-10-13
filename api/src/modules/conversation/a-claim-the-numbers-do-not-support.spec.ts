@@ -79,3 +79,14 @@ describe('a shortfall the model inferred is cut; one they said, or their figures
     expect(claims('You missed the 40 farmers goal.', said('We missed it. Not 40 this time.'))).toEqual([]);
   });
 });
+
+describe('B-016: a number they never gave is not put in their mouth as a cost', () => {
+  const said = { theirWords: ['I want to sign 15 new shops a week on the coast. So far I have about 9 a week', 'Kilifi is slow because the stock arrives late from the depot.'] };
+  it('Amani: "six shops" is cut, the question stays', () => {
+    const r = withoutTheClaimsTheNumbersDoNotSupport('That stock is stopping six shops from happening. What is stopping you from going back to Baraka with the specific shops you would have signed?', said);
+    expect(r.text).toBe('What is stopping you from going back to Baraka with the specific shops you would have signed?');
+  });
+  it('a number she did say stands', () => {
+    expect(withoutTheClaimsTheNumbersDoNotSupport('The late stock is keeping you at 9 a week. What would change that?', said).cut).toEqual([]);
+  });
+});

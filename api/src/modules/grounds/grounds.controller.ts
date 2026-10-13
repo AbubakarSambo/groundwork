@@ -131,6 +131,28 @@ class UpdateTimelineDto {
   @Max(6, { each: true })
   workingDays?: number[];
 
+  /**
+   * THE DAY THE CHECK-INS LAND ON (request 194): a weekday for a weekly or fortnightly check-in (0 is Sunday), a day of the month for a monthly one.
+   * Live let a lead say "every Monday" at setup and nowhere afterwards. `null` clears it, so the check-in lands wherever the rhythm puts it. It
+   * applies from the next session that is made; a session already made keeps its date.
+   */
+  @ApiPropertyOptional({ nullable: true, minimum: 0, maximum: 31, description: 'Weekly or fortnightly: 0 = Sunday to 6 = Saturday. Monthly: 1 to 31. Null clears it.' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(31)
+  cadenceAnchorDay?: number | null;
+
+  /**
+   * THE LAST DAY, AS THE LEAD CHOSE IT ("Give it more time", journey test 12 October 2026). The sessions up to it are counted the
+   * way setup counts them (timelineDaysForAChosenEnd), and the end is stored, so People and setup, the invitation and the count agree.
+   */
+  @ApiPropertyOptional({ description: 'The last day, YYYY-MM-DD. Sets how long it runs, counted the way setup counts it.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  endsOn?: string;
+
   @ApiPropertyOptional({ description: 'Append a context note to this ground' })
   @IsOptional()
   contextNote?: string;
@@ -282,8 +304,8 @@ export class GroundsController {
   /** ONE stored proposal, checked again against its own quote, written into the table it belongs in, once. */
   @Post(':id/plan/proposals/:pid/confirm')
   @ApiOperation({ summary: 'Lead only: confirm one proposal from a plan, which writes exactly one thing. For a goal with a number, send direction "AIM", "LIMIT", "RATE", "DEADLINE" or "ZERO" as the lead answered the card\'s whichWay question; without it, no kind is set.' })
-  async confirmPlanProposal(@Param('id') id: string, @Param('pid') pid: string, @CurrentUser('id') userId: string, @Body() dto?: { direction?: 'AIM' | 'LIMIT' | 'RATE' | 'DEADLINE' | 'ZERO' | null }) {
-    return this.plans.confirm(id, userId, pid, { direction: dto?.direction });
+  async confirmPlanProposal(@Param('id') id: string, @Param('pid') pid: string, @CurrentUser('id') userId: string, @Body() dto?: { email?: string; direction?: 'AIM' | 'LIMIT' | 'RATE' | 'DEADLINE' | 'ZERO' | null }) {
+    return this.plans.confirm(id, userId, pid, { direction: dto?.direction, email: dto?.email });
   }
 
   @Post(':id/plan/proposals/:pid/not-now')
@@ -468,6 +490,17 @@ export class GroundsController {
     return this.grounds.setChasing(id, userId, dto ?? {});
   }
 
+  /** Decision 133: "Check in yourself". Opens (or reuses) the lead's own check-in, any time it is running. */
+  @Post(':id/check-in-yourself')
+  @ApiOperation({ summary: "Open the lead's own check-in on demand (the lead only)" })
+  async checkInYourself(
+    @Param('id') id: string,
+    @CurrentUser('organizationId') organizationId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.grounds.openTheLeadsCheckIn(id, organizationId, userId);
+  }
+
   @Post(':id/closing-session')
   @ApiOperation({ summary: "Begin the closing session: flag every participant's next session as final (initiator only)" })
   async beginClosingSession(
@@ -532,9 +565,9 @@ export class GroundsController {
   async resendParticipantInvite(
     @Param('id') id: string,
     @Param('participantId') participantId: string,
-    @CurrentUser('organizationId') organizationId: string,
+    @CurrentUser() user: CurrentUserData,
   ) {
-    return this.grounds.resendParticipantInvite(id, participantId, organizationId);
+    return this.grounds.resendParticipantInvite(id, participantId, user.organizationId, user.id, user.role);
   }
 
   @Get(':id/mediator-brief')
@@ -617,7 +650,8 @@ export class GroundsController {
 
   @Post(':id/context-chat')
   @ApiOperation({ summary: "The lead's setup conversation: what context is missing, and the material that would settle it" })
-  async contextChat(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: ContextChatDto) {
+  async contextChat(@Param('id') id: string, @CurrentUser('id') userId: string, @CurrentUser('organizationId') organizationId: string, @Body() dto: ContextChatDto) {
+    await this.grounds.theOldContextChatMustBeOpen(organizationId);
     return this.grounds.contextChat(id, userId, dto.history ?? []);
   }
 
@@ -631,10 +665,12 @@ export class GroundsController {
   async confirmContextProposal(
     @Param('id') id: string,
     @CurrentUser('id') userId: string,
+    @CurrentUser('organizationId') organizationId: string,
     /* `history` is how a pronoun resolves. The change is still derived on this side from the words
        themselves - there is no field here that names a person or carries a value. */
     @Body() dto: { said: string; history?: { role: 'user' | 'assistant'; content: string }[]; offerId?: string; leave?: boolean },
   ) {
+    await this.grounds.theOldContextChatMustBeOpen(organizationId);
     return this.grounds.applyContextProposal(id, userId, dto);
   }
 
@@ -644,8 +680,10 @@ export class GroundsController {
   async declineContextProposal(
     @Param('id') id: string,
     @CurrentUser('id') userId: string,
+    @CurrentUser('organizationId') organizationId: string,
     @Body() dto: { offerId?: string },
   ) {
+    await this.grounds.theOldContextChatMustBeOpen(organizationId);
     return this.grounds.declineContextOffer(id, userId, dto?.offerId ?? '');
   }
 
@@ -838,6 +876,22 @@ export class GroundsController {
     @Body() body: { everybody: boolean },
   ) {
     return this.grounds.setWhoSeesTargets(id, userId, !!body.everybody);
+  }
+
+  @Get(':id/simpler-words')
+  @ApiOperation({ summary: 'Whether this check-in uses simpler words for everybody in it' })
+  async getSimplerWords(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.grounds.getSimplerWords(id, userId);
+  }
+
+  @Patch(':id/simpler-words')
+  @ApiOperation({ summary: 'Switch "Use simpler words" on or off for this check-in' })
+  async setSimplerWords(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() body: { on: boolean },
+  ) {
+    return this.grounds.setSimplerWords(id, userId, body?.on);
   }
 
   @Patch(':id/over-whatsapp')

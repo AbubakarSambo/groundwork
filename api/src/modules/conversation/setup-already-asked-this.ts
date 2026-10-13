@@ -18,6 +18,7 @@
  * says "you told me" and never quotes a card as a person's words.
  */
 import { GroundScenario } from '@prisma/client';
+import { aNameAPersonGave } from '../../common/no-internal-name-reaches-a-person';
 
 export interface SetupFacts {
   scenario: GroundScenario | null;
@@ -68,6 +69,7 @@ export function situationInWords(scenario: GroundScenario | null): string | null
     case GroundScenario.CONTRACT_REVIEW: return 'an agreement before it is signed';
     case GroundScenario.IMPLEMENTATION_TRACKING: return 'an agreement that is running';
     case GroundScenario.NEW_PROJECT: return 'a new project starting';
+    case GroundScenario.HELP_TEAM_UNDERSTAND: return 'a lead who wants the team to see the bigger picture';
     case GroundScenario.NEW_COFOUNDER: return 'a new co-founder or partner joining';
     case GroundScenario.NEW_MANAGER: return 'a new manager taking over';
     case GroundScenario.NEW_ADVISOR: return 'a new advisor or board member joining';
@@ -99,7 +101,8 @@ export function alreadyEstablished(facts: SetupFacts): string {
   const situation = situationInWords(facts.scenario);
   if (situation) known.push(`This check-in was opened about ${situation}.`);
 
-  const label = facts.groundLabel?.trim();
+  /* A key or a made-up name is not a name (Naomi read "this new project, NEW_PROJECT,"): see no-internal-name-reaches-a-person. */
+  const label = aNameAPersonGave(facts.groundLabel);
   /* Only when it says something the situation line does not - an unrenamed check-in carries the
      card's own label, and repeating it back adds nothing but length. */
   if (label && situation && label.toLowerCase() !== situation.toLowerCase() && !label.toLowerCase().startsWith('a ')) {

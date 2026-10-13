@@ -119,6 +119,9 @@ describe('every surface that hands out whose number it is', () => {
     /* Anchor pieces 26 and 27: a request offered in the check-in waits as a work item of its own; it holds no target and no number. */
     'modules/conversation/a-request-offered-in-the-check-in.ts': 'keeps which request was offered to whom (a work item), never a target or a number',
     /* Request 117: the sales board as the fifth review read it; the board asks targetsFor over these rows. */
+    /* Decision 120: the lead's daily nudge names a team target that is behind. It selects only targets with nobody's name on them (ownerParticipantId null, never a decision about a person), so it
+       serves no owner and no one person's number, and it goes to the lead who runs the check-in, whom targetsFor shows every target. */
+    'modules/engagement/the-leads-daily-nudge.ts': 'reads only team targets with nobody\'s name on them, for the lead who runs the check-in; never an owner and never one person\'s number',
     'modules/board/__fixtures__/sales-board-review-5.ts': 'test rows for the request 117 specs; the board asks targetsFor',
   };
 

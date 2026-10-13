@@ -261,7 +261,6 @@ async function releaseNight(): Promise<Outcome> {
         ['07:00 invites about to lapse', () => cron.tellThemBeforeAnInviteLapses()],
         ['08:00 the scheduled nudges', () => remind.sendScheduledNudges()],
         ['08:30 the WhatsApp reminders', () => cron.sendWhatsAppReminders()],
-        ['07:00 Lagos the lead summaries', () => cron.sendTheLeadsDailySummaries()],
         ['09:00 the reminders', () => cron.sendReminders()],
         ['10:00 the feedback requests', () => cron.sendFeedbackRequests()],
         ['every 15 minutes: session ready', () => cron.sendSessionReadyNotifications()],
@@ -269,6 +268,16 @@ async function releaseNight(): Promise<Outcome> {
         ['every 15 minutes: closing warnings', () => cron.fireSessionClosingWarnings()],
         ['every 30 minutes: stale check-ins', () => cron.autoCloseStaleCheckIns()],
         ['every night again, to see a second night changes nothing: the warning', () => cron.warnBeforeTimeRunsOut()],
+        /* The engagement messages (decision 109), each as its own job runs. Existing check-ins may be told one thing, once ("here is what is new"); everything else
+           is gated by the release moment, by the check-in's state or by something having happened this week, and says nothing about check-ins like A to F. */
+        ['06:30 Lagos "here is what is new"', () => cron.sendHeresWhatIsNewInner()],
+        ['10:30 Lagos invited and nobody started', () => cron.sendWhatGroundworkIsDoingInner()],
+        ['Tuesday: a test check-in moves on', () => cron.sendTheTestCheckInMessagesInner()],
+        ['11:00 Lagos the follow-up after a report', () => cron.sendTheReportFollowUpsInner()],
+        ['Wednesday: who has gone quiet', () => cron.sendWhoHasGoneQuietInner()],
+        ['Friday: the lead\'s weekly letter', () => cron.sendTheLeadsWeeklyLettersInner()],
+        /* The lead's daily nudge (decision 120), at nine in Lagos, after the insights above and before the reminders; it replaced the WhatsApp daily summary at seven. */
+        ['09:00 Lagos the lead\'s daily nudge', () => cron.sendTheLeadsDailyNudgesInner()],
       ];
       for (const [name, run] of jobs) {
         try { await run(); } catch (e: any) { errors.push(`${name}: ${e?.message ?? e}`); }
@@ -313,8 +322,22 @@ describe('release night, for a check-in that already exists', () => {
   it('runs every migration since the live main line, and the data changes are the ones in docs/deploy.md', needsTheDatabase((o) => {
     const names = theNewMigrations();
     /* 82 since 4 October: the anchor scenario's empty started_from column (docs/deploy.md row 82).
-       83 since 5 October: every free run is one month, a column default only (docs/deploy.md row 83). */
-    expect(names).toHaveLength(83);
+       83 since 5 October: every free run is one month, a column default only (docs/deploy.md row 83).
+       84 since 6 October: a WhatsApp send keeps the id Meta gave it, a nullable column and its index (docs/deploy.md row 84).
+       85 since 6 October: the anchor's situation is an allowed value, so the check-in keeps it (docs/deploy.md row 85).
+       86: "Use simpler words" adds one column, grounds.simpler_words, false for every check-in (row 86).
+       87 since 6 October: the strategy keeps its versions, one new empty table, strategy_versions (row 87).
+       88 since 6 October: an address can always stop the mail, one new empty table, email_address_preferences (row 88).
+       89 since 7 October: Hafsah's address stays a platform admin, one flag set true on one row, never off (row 89).
+       90 since 8 October: a decided review can be appealed, nine empty columns on performance_reviews and nothing else (docs/deploy.md row 90).
+       91 since 9 October: an organisation can have its own time zone, one empty column, organizations.time_zone (docs/deploy.md row 91).
+       92 since 10 October: a pattern records which version of the detector's prompt read it (decision 128), one empty column, pattern_detections.prompt_version_id (docs/deploy.md row 92).
+       93 since 10 October: the role learned in a first check-in (decision 129), six empty columns on role_interview_answers and one index, no data change (docs/deploy.md row 93).
+       94 since 11 October: the lead checks in when they choose (decision 133), check_ins.optional set true on every lead's check-in, and one new empty table, report_reads.
+       95 since 11 October: why they missed their check-ins (decision 136), two empty columns on check_ins, no data change.
+       96 since 13 October: when somebody accepted their invitation (Hafsah, 13 October), one column on ground_participants,
+          filled for the people already on a check-in who came in, so everybody who has joined stays counted. */
+    expect(names).toHaveLength(96);
     // The six statements deploy.md lists, plus the WhatsApp prices (five updates and one insert).
     expect(o.dataChangesRun).toBeGreaterThanOrEqual(8);
   }));
@@ -326,7 +349,20 @@ describe('release night, for a check-in that already exists', () => {
       participants: snap.participants.filter((r: any) => ids.includes(r.groundId)),
       checkIns: snap.checkIns.filter((r: any) => ids.includes(r.groundId)),
     });
-    expect(thatMoved(pick(o.before), pick(o.after))).toEqual([]);
+    /* CHANGED 11 OCTOBER: 20261011100000_the_lead_checks_in_when_they_choose marks every lead's
+       check-in optional (decision 133). That, on a lead's row, is the one change allowed; nothing else moves. */
+    const after = pick(o.after);
+    const theLeads = new Set(after.participants.filter((p: any) => p.partyType === 'INITIATOR').map((p: any) => p.id));
+    const leadRows = new Set(after.checkIns.filter((c: any) => theLeads.has(c.participantId)).map((c: any) => c.id));
+    const moved = thatMoved(pick(o.before), after);
+    /* CHANGED 13 OCTOBER: 20261013090000_accepted_the_invitation records that the people already on a check-in who came
+       in accepted their invitation, so they stay in every count (joined now means accepted). A participant's acceptedAt
+       going from null to a date, on a row that has a sign-in, is allowed; no date, status or stamp of a check-in moves. */
+    const signedIn = new Set(after.participants.filter((p: any) => p.partyType !== 'INITIATOR' && !!p.userId).map((p: any) => p.id));
+    const allowed = moved.filter((m) => (/^checkIns (\S+): optional went from false to true$/.test(m) && leadRows.has(m.split(' ')[1].replace(/:$/, '')))
+      || (/^participants (\S+): acceptedAt went from null to "/.test(m) && signedIn.has(m.split(' ')[1].replace(/:$/, ''))));
+    expect(allowed.length).toBeGreaterThan(0);
+    expect(moved.filter((m) => !allowed.includes(m))).toEqual([]);
   }));
 
   it('does not reopen, restart or stall any of them: the same statuses, no stall dates, no warning stamp (A to E)', needsTheDatabase((o) => {
@@ -346,10 +382,40 @@ describe('release night, for a check-in that already exists', () => {
     }
   }));
 
-  it('emails nobody, messages nobody and announces nothing for a check-in that is open, late, near its end or past its end (A to E)', needsTheDatabase((o) => {
+  it('emails nobody, messages nobody and announces nothing for a check-in that is open, late, near its end or past its end (A to E), except the one "here is what is new" (decision 109 item 2)', needsTheDatabase((o) => {
     const said = ['A', 'B', 'C', 'D', 'E'].flatMap((k) => aboutIt(o, o.seeded[k]).map((c) => `${k}: ${c.method}`));
-    // Phones: see the finding about WhatsApp. Everything else must be silent.
-    expect(said.filter((s) => !s.includes('whatsapp.'))).toEqual([]);
+    // Phones: see the finding about WhatsApp. Everything else must be silent, but for the one email decision 109 gives an existing client's lead.
+    expect(said.filter((s) => !s.includes('whatsapp.') && !s.endsWith('email.sendHeresWhatIsNew'))).toEqual([]);
+  }));
+
+  it('sends no engagement message about a check-in made before the release, beyond that one "what is new" email, and never about the stalled one (A to F)', needsTheDatabase((o) => {
+    const engagement = ['sendTheLeadsDailyNudge', 'sendTheLeadsWeeklyLetter', 'sendWhoHasGoneQuiet', 'sendTheReportFollowUp', 'sendTestCheckInMovesOn', 'sendWaitingOnThePeople', 'sendLeadFirstCheckIn', 'sendYourWeek'];
+    const said = ['A', 'B', 'C', 'D', 'E', 'F'].flatMap((k) => aboutIt(o, o.seeded[k]).filter((c) => engagement.some((m) => c.method === `email.${m}`)).map((c) => `${k}: ${c.method}`));
+    expect(said).toEqual([]);
+    /* And the one "what is new" does not mention the stalled check-in (F). It was sent, so the engagement jobs did run: this is not a silence from jobs that never started. */
+    const news = o.calls.filter((c) => c.method === 'email.sendHeresWhatIsNew');
+    expect(news.length).toBeGreaterThan(0);
+    expect(news.filter((c) => c.text.includes(o.seeded.F.label))).toEqual([]);
+  }));
+
+  it('the lead\'s daily nudge (decision 120): each lead is told once, on one channel, in whole sentences, and never about the stalled check-in or by an address', needsTheDatabase((o) => {
+    const byEmail = o.calls.filter((c) => c.method === 'email.sendTheLeadsDailyNudge').map((c) => JSON.parse(c.text) as [string, string, { needsYou: string[]; overdueOnYourTeam: string[]; risks: string[] }, string | null, string, string]);
+    const onPhone = o.calls.filter((c) => c.method === 'whatsapp.sendFor').map((c) => JSON.parse(c.text) as [string, string, string, { kind: string; params: string[] }]).filter((a) => a[3]?.kind === 'lead-summary');
+    /* It ran on release morning, so this is not a silence from a job that never started. */
+    expect(byEmail.length + onPhone.length).toBeGreaterThan(0);
+    expect(new Set(byEmail.map((a) => a[0].toLowerCase())).size).toBe(byEmail.length);
+    expect(new Set(onPhone.map((a) => a[1])).size).toBe(onPhone.length);
+    for (const [, subject, parts] of byEmail) {
+      const all = [subject, ...parts.needsYou, ...parts.overdueOnYourTeam, ...parts.risks];
+      expect(all.join(' ')).not.toMatch(/@\w|undefined|null|\[object|NaN/);
+      expect(all.join(' ')).not.toContain(o.seeded.F.label);
+      for (const line of [...parts.needsYou, ...parts.overdueOnYourTeam, ...parts.risks]) expect(line).toMatch(/[.]$/);
+      for (const part of [parts.needsYou, parts.overdueOnYourTeam, parts.risks]) expect(part.length).toBeLessThanOrEqual(3);
+    }
+    for (const [, , , ctx] of onPhone) {
+      expect(ctx.params[1]).not.toMatch(/[\r\n\t]|undefined|null|\[object|NaN/);
+      expect(ctx.params[1]).not.toContain(o.seeded.F.label);
+    }
   }));
 
   it('does not email the lead that time is running out, for a check-in already in its last week or past its end (D and E)', needsTheDatabase((o) => {

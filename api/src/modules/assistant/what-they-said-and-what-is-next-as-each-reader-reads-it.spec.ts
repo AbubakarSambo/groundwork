@@ -52,7 +52,7 @@ const FEMI_LINES = ['Shipped the price list to Harbor Foods.', 'Still waiting on
 const MIRIAM_LINES = ['Called Westgate Deli and they want January.'];
 const PIP_LINES = ['PIP-FEMI-LINE: I missed the July target.'];
 const YEMI_LINES = ['YEMI-OPEN-LINE: the Kilimani shop is not ready.'];
-const WALL = 'This person has answered, and what they said opens to you when the report is released.';
+const WALL = 'This person has answered, and what they said opens to you when the team\'s report is shared.';
 
 /** Who each reader is called for, so a test can say the report was only ever read AS the asker. */
 const readsMadeFor: { groundId: string; sessionNumber: number; userId: string }[] = [];
@@ -65,7 +65,7 @@ const report = {
     const inIt = ground.participants.some((p) => p.userId === userId);
     const runsIt = ground.initiatorId === userId;
     const isAdmin = userId === 'u-grace' || userId === 'u-lola';
-    if (!inIt && !runsIt && !isAdmin) throw new Error('Check-in not found');
+    if (!inIt && !runsIt && !isAdmin) throw new Error('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const released = groundId !== 'g-open';
     const rows: Record<string, { name: string; lines: string[] }[]> = {
       'g-sales': [{ name: 'Femi', lines: FEMI_LINES }, { name: 'Miriam', lines: MIRIAM_LINES }],
@@ -107,6 +107,11 @@ function harness(as: Who, opts: { commitments?: any[]; toDos?: any[]; waiting?: 
     assistantProposal: { findFirst: jest.fn(async () => null) },
     assistantTurn: { createMany: jest.fn(async ({ data }: any) => { turns.push(...data); return { count: data.length }; }) },
     commitment: { findMany: jest.fn(async ({ where }: any) => (where.personExternalId === me.externalId ? opts.commitments ?? [] : [{ text: 'SOMEBODY-ELSES-COMMITMENT', state: 'OPEN', dueAt: null, dueSaid: null, statedAt: new Date(0), lastFollowedUpAt: null }])) },
+    /* Added (request 180 item 2): "what did I say I would do" also reads the asker's own promises written down in a check-in, found only through the asker's own sign-in. */
+    groundCommitment: { findMany: jest.fn(async ({ where }: any) => (where.participant?.userId === me.linkedUserId ? [] : [{ text: 'SOMEBODY-ELSES-PROMISE', whenSaid: null, ground: { label: 'x' } }])) },
+    /* Added (F-5 of the user journeys): the asker's own to-dos written down while setting up or answering, the same rows the You page lists. Found only through the asker's own place in a check-in; anybody else's are in the fake so a leak would show. */
+    groundParticipant: { findMany: jest.fn(async ({ where }: any) => (where.userId === me.linkedUserId ? [] : [{ id: 'SOMEBODY-ELSES-PLACE', ground: { label: 'x' } }])) },
+    personObjective: { findMany: jest.fn(async () => [{ text: 'SOMEBODY-ELSES-OBJECTIVE', dueSaid: null, participantId: 'SOMEBODY-ELSES-PLACE' }]) },
     todo: { findMany: jest.fn(async ({ where }: any) => (where.personExternalId === me.externalId ? opts.toDos ?? [] : [{ text: 'SOMEBODY-ELSES-TODO', dueAt: null, dueSaid: null, createdAt: new Date(0) }])) },
   }, {
     get(target: any, name: string) {
@@ -201,9 +206,15 @@ describe('as a participant asking about a colleague (Miriam)', () => {
     const { ask } = harness('miriam');
     const r = await ask('What did Yemi say?');
     expect(bodyOf(r)).not.toContain('YEMI-OPEN-LINE');
-    expect(bodyOf(r)).toContain(WALL);
-    expect(bodyOf(r)).toContain("I cannot show you Yemi's words from their check-in of 30 September on Kilimani launch.");
+    /* Said once, by first name, as the thing it is: the words open when the team's report is shared (user journeys, F-12). Never "nothing specific enough to record", and never the check-in named twice. */
+    expect(bodyOf(r)).toContain("Yemi's words open to you when the team's report is shared.");
+    expect(bodyOf(r)).not.toContain('nothing specific enough to record');
+    expect(bodyOf(r).split("words open to you").length - 1).toBe(1);
+    expect(bodyOf(r).split('Kilimani launch').length - 1).toBe(1);
     expect(sourceOf(r).href).toBe('/grounds/g-open/session/1');
+    /* B-168: no "This is from" under words that were not shown. */
+    expect(bodyOf(r)).toMatch(/This is about .*Kilimani launch\./);
+    expect(bodyOf(r)).not.toMatch(/This is from/);
   });
 
   it('is told "I cannot show you that" about somebody she shares no check-in with', async () => {
@@ -385,6 +396,12 @@ describe('the wording may change, but the record may not', () => {
     expect(r.composedBy).toBe('model');
     expect(bodyOf(r)).toBe(reworded);
     expect(sourceOf(r)).toBeDefined();
+  });
+  it('never rewords a refusal: nothing was said about the subject, and a model that turns it into another claim is not heard (B-125)', async () => {
+    const claim = 'You did not mention holiday cover from Femi in your check-ins.';
+    const r = await harness('miriam', { model: claim }).ask('What did Femi say about holiday cover?');
+    expect(r.composedBy).toBe('rules');
+    expect(bodyOf(r)).toBe('I cannot show you that. I have nothing from Femi about holiday cover in the check-ins you can read.');
   });
   it('ships the record\'s own words when a model has changed a quote', async () => {
     const changed = 'Femi said:\n- "Shipped the pricing sheet to Harbor Foods."\n- "Still waiting on finance for the Green Mart terms."\nThis is from Femi\'s check-in of 24 September on Sales team, Q3.';

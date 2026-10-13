@@ -1,3 +1,4 @@
+import { theActivationFunnel } from '../engagement/the-activation-funnel';
 import { Injectable, NotFoundException, BadRequestException, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnthropicService, ChatTurn } from '../conversation/anthropic.service';
@@ -88,7 +89,7 @@ export class PromptsService implements OnModuleInit {
       where: { key, isActive: true },
       orderBy: { version: 'desc' },
     });
-    if (!prompt) throw new NotFoundException(`No active prompt for key "${key}"`);
+    if (!prompt) throw new NotFoundException('That prompt has no version in use yet, so choose a version to use.');
     return prompt;
   }
 
@@ -156,6 +157,7 @@ export class PromptsService implements OnModuleInit {
       stalledCheckIns,
       session5Count,
       avgDaysRaw,
+      activation,
     ] = await Promise.all([
       // 1. Completed sessions per session number (1-7)
       Promise.all(
@@ -213,6 +215,10 @@ export class PromptsService implements OnModuleInit {
         JOIN check_ins ci ON ci.ground_id = g.id
         WHERE ci.session_number = 1 AND ci.started_at IS NOT NULL AND ci.is_setup = false AND o.is_internal = false ${sinceSql}
       `,
+
+      // 11. How far each check-in got towards being useful, and what became of the mail sent to bring people back (engagement spec sections 2, 34 and 35)
+      /* An extra read: if it cannot be made, the rest of the tab still is. */
+      theActivationFunnel(this.prisma, since, now).catch(() => null),
     ]);
 
     // Build funnel with drop-off rates, each carrying the count it is a rate of
@@ -261,6 +267,7 @@ export class PromptsService implements OnModuleInit {
       stalledCheckIns,
       session5Count,
       avgDaysToFirstCheckin,
+      activation,
     };
   }
 
@@ -434,7 +441,7 @@ export class PromptsService implements OnModuleInit {
    */
   async activate(id: string, activatedBy: string = ACTIVATED_BY_HAND) {
     const target = await this.prisma.promptVersion.findUnique({ where: { id } });
-    if (!target) throw new NotFoundException('Prompt version not found');
+    if (!target) throw new NotFoundException('That version of the prompt could not be found, so refresh the page.');
 
     await this.prisma.$transaction([
       this.prisma.promptVersion.updateMany({ where: { key: target.key }, data: { isActive: false } }),
@@ -463,7 +470,7 @@ export class PromptsService implements OnModuleInit {
       where: { id: organizationId },
       select: { id: true, name: true, slug: true },
     });
-    if (!org) throw new NotFoundException('Organisation not found');
+    if (!org) throw new NotFoundException('We could not find that organisation, so sign in again and try once more.');
 
     const users = await this.prisma.user.findMany({
       where: { organizationId },
@@ -602,7 +609,7 @@ export class PromptsService implements OnModuleInit {
 
   /** Sandbox: send one message turn using a custom system prompt. Never persisted. */
   async testChat(systemPrompt: string, messages: ChatTurn[]): Promise<{ reply: string }> {
-    if (!messages || messages.length === 0) throw new BadRequestException('messages required');
+    if (!messages || messages.length === 0) throw new BadRequestException('There was nothing to send, so write a message and try again.');
     const reply = await this.anthropic.respond(systemPrompt, messages);
     return { reply };
   }

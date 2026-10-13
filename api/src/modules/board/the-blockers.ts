@@ -5,7 +5,7 @@ import { howOftenItWasRaised } from './how-often-it-was-raised';
 import { aDayPeopleRead, asDate } from './one-count-for-the-sessions';
 import {
   type ACommitment, type AHandoff, type WhoIsReading,
-  whoIs, whoIsWaitedOn, thatWaitsOn, theTimeGivenSaid,
+  whoIs, whoIsWaitedOn, thatWaitsOn, aClaimOnlyTheSpeakerMakes, theirAccountOfTheWait, theTimeGivenSaid,
 } from './the-switchboards-own-sections';
 import { aPartyOutside } from './a-thing-is-not-somebody';
 
@@ -149,10 +149,17 @@ const namesAThing = (t: string): boolean => {
   return /(?:ing|tion|sion)$/.test(first) && !NOT_A_THING_ENDING.test(first);
 };
 
-export function whatItIsHoldingUp(then: string, theirWords: string | null, who: string): string {
+/**
+ * NEVER A PROMISE THEY DID NOT MAKE (B-093). "I assumed the drivers or sales would call them" was kept as "call them", and the board said "Once it is
+ * cleared, Halima Yusuf will call them". A line with no subject of its own is given the person as its subject only when what they typed shows they said
+ * they would do it (`theyPromisedIt`, worked out in the-handoff-words-the-person-typed); otherwise there is no line, because a gap nobody owns is
+ * already said by the blocker itself. Where nothing they typed could be read, the line is said as it was.
+ */
+export function whatItIsHoldingUp(then: string, theirWords: string | null, who: string, theyPromisedIt = true): string | null {
   const t = then.trim().replace(/[.!?]+$/, '');
   const subject = who === 'You' ? 'you' : mid(who);
   if (!FIRST_PERSON.test(t)) {
+    if (!theyPromisedIt && startsWithAVerb(t) && !(/^[a-z]/.test(t) && namesAThing(t) && !HAS_ITS_OWN_VERB.test(t)) && !HAS_ITS_OWN_VERB.test(t)) return null;
     if (/^[a-z]/.test(t) && namesAThing(t) && !HAS_ITS_OWN_VERB.test(t)) return `Once it is cleared, ${inASentence(t)} can go ahead.`;
     if (HAS_ITS_OWN_VERB.test(t)) return `Once it is cleared, ${inASentence(t)}.`;
     return startsWithAVerb(t) ? `Once it is cleared, ${subject} will ${t}.` : `Once it is cleared, ${inASentence(t)}.`;
@@ -183,7 +190,8 @@ export function theBlockers(
     const who = whoIs(r, d.fromParticipantId);
     const on = whoIsWaitedOn(r, d);
     const what = inASentence(on ? aThingWithoutItsHolder(d.what, d.onLabel) : d.what);
-    const says = `${theWaitSaid(who, isAre(who), on, what)}${thatWaitsOn(d)}`;
+    /* A claim only the speaker makes is their account, with the note beside it (decision 137; change 4). */
+    const says = on && aClaimOnlyTheSpeakerMakes(d) ? theirAccountOfTheWait(who, on, what, d, r) : `${theWaitSaid(who, isAre(who), on, what)}${thatWaitsOn(d)}`;
 
     /* Every time it was raised: the days, and the sessions where the record says which. */
     const raisedRows = d.raisedAt?.length ? d.raisedAt : [{ at: d.createdAt ?? null, checkInId: d.sourceCheckInId ?? null }];
@@ -256,7 +264,7 @@ export function theBlockers(
       timeGiven,
       wouldClearIt,
       wouldClearItSays,
-      holdingUp: then ? whatItIsHoldingUp(then, (d as any).thenTheirWords ?? null, who) : null,
+      holdingUp: then ? whatItIsHoldingUp(then, (d as any).thenTheirWords ?? null, who, (d as any).thenIsTheirPromise !== false) : null,
       order: new Date(d.createdAt).getTime(),
     });
   }

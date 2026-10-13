@@ -58,6 +58,12 @@ const WITH_AN_AIM: Setup = {
     /* Femi said this himself, so it is not help nobody mentioned. */
     { id: 'm-3', groundId: 'g-1', sourceParticipantId: 'p-ngozi', aboutParticipantId: 'p-femi', kind: 'CREDIT', text: 'Femi took the applications from businesses', sessionNumber: 2 },
   ],
+  /* What Ngozi and Femi said: a credit stands only where the colleague's own words hold it (the final check, 12 October). */
+  turns: [
+    ...(SALES_RUN.turns ?? []),
+    { checkInId: 'c2-p-ngozi', content: 'Kwame helped me. He showed me how to fill the credit forms.' },
+    { checkInId: 'c2-p-femi', content: 'Kwame helped by checking my bank statements before I sent them.' },
+  ],
 };
 const THE_GAP = 'To close the gap by 30 September, 2 of these 3 open deals would need to close. Each open deal is counted as one toward the aim of 40.';
 

@@ -243,7 +243,8 @@ export function inOurVoice(what: string | null | undefined, aboutThem?: 'you' | 
   const frame = continuing ? null : FIRST_PERSON_FRAME.exec(trimmed) ?? /^going to\s+/i.exec(trimmed);
   const rest = (continuing ? `continue ${trimmed.slice(continuing[0].length)}` : frame ? trimmed.slice(frame[0].length) : trimmed).trim().replace(/[.!?]+$/, '');
   if (!rest) return null;
-  let said = rest;
+  /* "ask Zawadi myself whether..." said about them became "ask Zawadi themselves whether...", which reads as though Zawadi does it (anchor walk, 8 October). The "myself" there only stresses who asks; without it the sentence says the same thing. */
+  let said = rest.replace(/\b((?:ask|tell|call|email|message|text|remind|speak to|talk to|check with)\s+[A-Za-z'’-]+)\s+myself\b/gi, '$1');
   if (FIRST_PERSON_WORD.test(said)) {
     if (!aboutThem) return null;
     const turned = said.replace(OBJECT_FIRST_PERSON, (w) => {
@@ -447,9 +448,8 @@ export function dependenciesOverTime(
        * the one person told nobody had chased. See what-they-said-they-did-about-it.
        */
       const tried = whatWasTried(d);
-      const since = d.escalatedAt
-        ? 'somebody went back about it after that'
-        : tried === 'went-around' ? 'another way through has been tried'
+      /* Never from `escalatedAt`, the product's own stamp: "somebody went back about it" was said when nobody had (decision 139, must-fix 3). */
+      const since = tried === 'went-around' ? 'another way through has been tried'
           : itWasTakenFurther(d) ? 'it has been taken above the person it was with'
             : tried === 'escalated' || tried === 'asked-again' ? 'it has been chased more than once since'
               : tried === 'asked-once' ? 'it has been asked about once since'

@@ -77,7 +77,8 @@ describe('confirmLead: managing-only choice', () => {
     const { service, checkInCreate, groundParticipantUpdate } = makeService();
     const res = await service.confirmLead('g1', 'lead1', {});
     expect(checkInCreate).toHaveBeenCalledWith({
-      data: { groundId: 'g1', participantId: 'p-lead', sessionNumber: 1, status: 'NOT_STARTED', availableFrom: null },
+      /* CHANGED 11 OCTOBER (decision 133): the lead's session carries optional: true, so no count reads it as missed. */
+      data: { groundId: 'g1', participantId: 'p-lead', sessionNumber: 1, status: 'NOT_STARTED', availableFrom: null, optional: true },
     });
     expect(groundParticipantUpdate).not.toHaveBeenCalled();
     expect(res.checkInId).toBe('ci-lead');
@@ -88,9 +89,9 @@ describe('isSessionReadyForReport: a managing-only lead must not block release',
   function prismaForReadiness(includeManagingOnlyLead: boolean) {
     const all = [
       // the managing-only lead: userId set, NO completed check-in, ever
-      ...(includeManagingOnlyLead ? [{ id: 'p-lead', userId: 'lead1', managingOnly: true }] : []),
-      { id: 'p-a', userId: 'userA', managingOnly: false },
-      { id: 'p-b', userId: 'userB', managingOnly: false },
+      ...(includeManagingOnlyLead ? [{ id: 'p-lead', userId: 'lead1', managingOnly: true, partyType: 'INITIATOR' }] : []),
+      { id: 'p-a', userId: 'userA', managingOnly: false, partyType: 'PARTICIPANT' },
+      { id: 'p-b', userId: 'userB', managingOnly: false, partyType: 'PARTICIPANT' },
     ];
     const completedCheckIns = new Set(['p-a', 'p-b']); // both real participants completed; the lead never will
 
@@ -105,6 +106,11 @@ describe('isSessionReadyForReport: a managing-only lead must not block release',
           const w = args.where;
           return all.filter((p) => {
             if (w.managingOnly !== undefined && p.managingOnly !== w.managingOnly) return false;
+            /* whoASessionCounts (decision 133): owes the session, or answered it. */
+            for (const and of w.AND ?? []) {
+              const ok = (and.OR ?? []).some((c: any) => (c.partyType ? p.partyType === c.partyType && p.managingOnly === c.managingOnly : completedCheckIns.has(p.id)));
+              if (!ok) return false;
+            }
             const orMatches = (w.OR ?? []).some((clause: any) => {
               if (clause.userId) return p.userId != null;
               if (clause.checkIns) return completedCheckIns.has(p.id);
@@ -120,13 +126,15 @@ describe('isSessionReadyForReport: a managing-only lead must not block release',
     };
   }
 
-  it('everyone does a first check-in: session 1 waits for the managing-only lead; session 2 does not', async () => {
+  /* CHANGED 11 OCTOBER (decision 133): session 1 used to wait for the managing-only lead. Every lead
+     now checks in when they choose and is never waited on, in session 1 or any other. */
+  it('the lead checks in when they choose: neither session 1 nor session 2 waits for them', async () => {
     const prisma: any = prismaForReadiness(true);
     const service = new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any,
       // 7th dep: the model, for the context chat (G37/G23). Unused here.
       { respond: async () => '' } as any,
     );
-    expect(await service.isSessionReadyForReport('g1', 1)).toBe(false);
+    expect(await service.isSessionReadyForReport('g1', 1)).toBe(true);
     expect(await service.isSessionReadyForReport('g1', 2)).toBe(true);
   });
 

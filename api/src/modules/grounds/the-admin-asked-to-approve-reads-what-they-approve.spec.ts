@@ -142,7 +142,7 @@ describe.each(SCENARIOS)('%s waiting for an admin to accept it', (_l, scenario) 
 
   it('the admin asked to approve it cannot change its setup', async () => {
     await expect(groundsService(scenario, st).setPeerVisibility('g1', APPROVER, true))
-      .rejects.toThrow('Only the lead of this check-in, or an admin in this organisation, can change this.');
+      .rejects.toThrow('Only the person who runs this check-in can change how it is set up. An admin can only do that once that person has left the organisation. Nothing was changed.');
   });
 });
 
@@ -163,8 +163,8 @@ describe.each(SCENARIOS)('%s after the admin accepted it', (_l, scenario) => {
   });
 
   it('an admin who only reads is refused the page, the board and the outcome; the admin who accepted it is served them', async () => {
-    await expect(groundsService(scenario, st).get('g1', 'org1', OTHER_ADMIN)).rejects.toThrow('Check-in not found');
-    await expect(boardService(scenario, st).get('g1', OTHER_ADMIN)).rejects.toThrow('Check-in not found');
+    await expect(groundsService(scenario, st).get('g1', 'org1', OTHER_ADMIN)).rejects.toThrow('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    await expect(boardService(scenario, st).get('g1', OTHER_ADMIN)).rejects.toThrow('That check-in could not be found, so go back to your check-ins and open it from the list.');
     await expect(resolutionService(scenario, st).get('g1', OTHER_ADMIN)).rejects.toThrow('You are not part of this check-in.');
     await expect(groundsService(scenario, st).get('g1', 'org1', APPROVER)).resolves.toMatchObject({ id: 'g1' });
     await expect(boardService(scenario, st).get('g1', APPROVER)).resolves.toBeTruthy();
@@ -176,7 +176,10 @@ describe.each(SCENARIOS)('%s after the admin accepted it', (_l, scenario) => {
     expect(where.OR).toContainEqual({ approvedById: APPROVER });
     expect(where.OR).toContainEqual({ status: 'AWAITING_APPROVAL' });
     const member: any = groundsAViewerMayList(SUBJECT, { role: 'MEMBER', organizationId: 'org1' }, 'org1');
-    expect(JSON.stringify(member)).not.toContain('AWAITING_APPROVAL');
+    /* A member is never given a waiting check-in: nothing in their list lets one in, and since B-126 their
+       roster line says so outright by leaving waiting ones out. */
+    expect(member.OR).not.toContainEqual({ status: 'AWAITING_APPROVAL' });
+    expect(JSON.stringify(member)).toContain('{"not":"AWAITING_APPROVAL"}');
     expect(JSON.stringify(member)).not.toContain('approvedById');
   });
 });

@@ -14,7 +14,7 @@ import { join } from 'path';
 const GROUND = 'g-anchor';
 const LEAD = 'u-wairimu';
 
-function aWorld(opts: { switchOn?: boolean; startedFrom?: string | null } = {}) {
+function aWorld(opts: { switchOn?: boolean; startedFrom?: string | null; scenario?: string } = {}) {
   const switchOn = opts.switchOn ?? true;
   const person = (id: string, userId: string | null, first: string | null, email: string) => ({ id, userId, nameGiven: null, managingOnly: false, email, user: first ? { firstName: first, lastName: null } : null });
   const participants = [
@@ -24,9 +24,9 @@ function aWorld(opts: { switchOn?: boolean; startedFrom?: string | null } = {}) 
   const rows: any[] = [];
   const created: string[] = [];
   const prisma: any = {
-    platformSetting: { findUnique: jest.fn(async () => (switchOn ? { value: { on: true } } : null)) },
+    platformSetting: { findUnique: jest.fn(async () => (switchOn ? { value: { on: true } } : { value: { on: false } })) },
     ground: {
-      findUnique: jest.fn(async () => ({ id: GROUND, organizationId: 'org-1', initiatorId: LEAD, startedFrom: opts.startedFrom === undefined ? 'anchor' : opts.startedFrom })),
+      findUnique: jest.fn(async () => ({ id: GROUND, organizationId: 'org-1', initiatorId: LEAD, startedFrom: opts.startedFrom === undefined ? 'anchor' : opts.startedFrom, scenario: opts.scenario ?? 'NEW_PROJECT' })),
       create: jest.fn(async () => { created.push('ground'); }),
     },
     groundParticipant: {
@@ -54,6 +54,18 @@ function aWorld(opts: { switchOn?: boolean; startedFrom?: string | null } = {}) 
   prisma.recommendation.findFirst = jest.fn(async (args: any) => (args.where.id ? rows.find((r) => r.id === args.where.id && r.state === args.where.state && r.subjectExternalId === args.where.subjectExternalId) ?? null : looked(args)));
   return { prisma, rows, created, service: new RecommendedCheckInsService(prisma) };
 }
+
+describe('recommended check-ins, for a check-in with the anchor\'s scenario (decision 114)', () => {
+  it('are found and offered when startedFrom is empty but the scenario is the anchor\'s, and not for another scenario', async () => {
+    const byScenario = aWorld({ startedFrom: null, scenario: 'HELP_TEAM_UNDERSTAND' });
+    await byScenario.service.onCheckInCompleted({ groundId: GROUND });
+    expect((await byScenario.service.forTheLead(GROUND, LEAD)).offers).toHaveLength(3);
+    const plain = aWorld({ startedFrom: null, scenario: 'OKR_ALIGNMENT' });
+    await plain.service.onCheckInCompleted({ groundId: GROUND });
+    expect((await plain.service.forTheLead(GROUND, LEAD)).offers).toEqual([]);
+    expect(plain.rows).toEqual([]);
+  });
+});
 
 describe('recommended check-ins, as the lead reads them', () => {
   it('offers the three kinds, in the scenario\'s words, from this check-in\'s own record', async () => {
@@ -144,6 +156,15 @@ describe('what is offered, in other shapes of the same record', () => {
   it('one handoff is not a pattern, and a pair nobody can name is not offered', () => {
     expect(theOffers({ people: [p('l', null, true), p('a', 'Kennedy')], handoffs: [{ fromId: 'l', onId: 'a' }], aims: [], openCommitmentsBy: [] })).toEqual([]);
     expect(theOffers({ people: [p('l', null, true), p('a', null)], handoffs: [{ fromId: 'l', onId: 'a' }, { fromId: 'a', onId: 'l' }], aims: [], openCommitmentsBy: [] })).toEqual([]);
+  });
+  it('an aim the lead set is said to her as her aim, not as a sentence about her by name (anchor walk, 8 October)', () => {
+    const people = [p('l', 'Wairimu', true), p('a', 'Amani'), p('b', 'Chidi'), p('c', 'Zawadi')];
+    const say = (aim: string) => theOffers({ people, handoffs: [], aims: [{ id: 'o', name: aim, ownerId: null }], openCommitmentsBy: ['a', 'b', 'c'] })[0].says;
+    expect(say('Wairimu is aiming for the team to understand that one late truck at 5am becomes a hotel breakfast with no tomatoes.'))
+      .toBe('Nobody has been named as the owner of your aim for the team to understand that one late truck at 5am becomes a hotel breakfast with no tomatoes, and three people are each carrying something open. Their responsibilities may not be completely clear.');
+    expect(say('Wairimu is trying to stop Msingi losing a third of its income.')).toContain('owner of your aim to stop Msingi losing a third of its income, and');
+    /* Any other sentence is quoted as it stands. */
+    expect(say('Win the Nairobi tender')).toContain('owner of "Win the Nairobi tender", and');
   });
   it('an aim somebody owns is not offered', () => {
     expect(theOffers({ people: [p('a', 'A'), p('b', 'B'), p('c', 'C')], handoffs: [], aims: [{ id: 'o', name: 'X', ownerId: 'a' }], openCommitmentsBy: ['a', 'b', 'c'] })).toEqual([]);

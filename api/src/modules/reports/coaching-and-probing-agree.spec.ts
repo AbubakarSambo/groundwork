@@ -174,6 +174,6 @@ describe('the box never renders empty', () => {
   });
 
   it('and the lead section says plainly when nothing is blocked', () => {
-    expect(whatToProbe(leadBase).triedToUnblock).toContain('Nothing recorded as blocked');
+    expect(whatToProbe(leadBase).triedToUnblock).toContain('Nothing is recorded as holding up');
   });
 });

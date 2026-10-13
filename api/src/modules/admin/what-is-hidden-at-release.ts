@@ -7,9 +7,10 @@
  * OFFERED to something new.
  *
  *  - `release.boardKindsOffered`        { "kinds": [ ... ] }  the kinds of work a NEW check-in may be given
- *  - `release.contextInAskGroundwork`   { "on": false }       the setup and context lanes in Ask Groundwork
+ *  - `release.contextInAskGroundwork`   { "on": false }       the setup and context lanes in Ask Groundwork (ON when the row is missing, from the pull request that moved Context into Ask)
+ *  - `release.oldContextChat`           { "on": true }        the old context chat on the check-in page (OFF when the row is missing; off sends people to Ask)
  *  - `release.planAndBillingNewParts`   { "on": false }       the WhatsApp add-on's price, use and limit
- *  - `release.anchorScenario`           { "on": false }       whether a new anchor check-in can be started (docs/anchor-scenario-plan.md, section 3)
+ *  - `release.anchorScenario`           { "on": true }        whether a new anchor check-in can be started (on when the row is missing)
  *
  * A bad or unreadable row reads as the default, never as "everything on".
  */
@@ -17,13 +18,15 @@ import { KINDS_OF_WORK, type KindOfWork } from '../board/the-kind-of-work';
 
 export const BOARD_KINDS_OFFERED_KEY = 'release.boardKindsOffered';
 export const CONTEXT_IN_ASK_GROUNDWORK_KEY = 'release.contextInAskGroundwork';
+export const OLD_CONTEXT_CHAT_KEY = 'release.oldContextChat';
 export const PLAN_AND_BILLING_NEW_PARTS_KEY = 'release.planAndBillingNewParts';
 export const ANCHOR_SCENARIO_KEY = 'release.anchorScenario';
 export const REQUEST_OFFER_IN_THE_CHECK_IN_KEY = 'release.requestOfferInTheCheckIn';
 /**
  * The three WhatsApp messages for somebody who stops a check-in halfway (decision 107): the reminder to
- * carry on, the half-hour warning on the phone, and the clock's close. Off at release, { "on": false }:
- * the end-to-end run of 5 October did not prove the reminder and the warning reliable for every kind.
+ * carry on, the half-hour warning on the phone, and the clock's close. ON when the row is missing and
+ * { "on": false } switches them off; a row that cannot be read reads as off (it fails closed). They were
+ * proved on 6 October by a run that drives the real close, reminder and warning sweeps (docs/run-log.md, run 8).
  */
 export const WHATSAPP_HALFWAY_MESSAGES_KEY = 'release.whatsappHalfwayMessages';
 
@@ -46,6 +49,15 @@ async function theRow(prisma: Reader, key: string): Promise<unknown> {
     return row?.value ?? null;
   } catch {
     return null;
+  }
+}
+
+/** The row as stored, or that it could not be read: a switch that is on by default must tell "no row" from "no answer". */
+async function theRowOrAFault(prisma: Reader, key: string): Promise<{ fault: boolean; row: { value: unknown } | null }> {
+  try {
+    return { fault: false, row: (await prisma.platformSetting.findUnique({ where: { key } })) ?? null };
+  } catch {
+    return { fault: true, row: null };
   }
 }
 
@@ -77,24 +89,80 @@ async function aSwitch(prisma: Reader, key: string): Promise<boolean> {
   return v?.on === true;
 }
 
-/** Off unless Hafsah has written `{ "on": true }`. */
-export const contextIsInAskGroundwork = (prisma: Reader) => aSwitch(prisma, CONTEXT_IN_ASK_GROUNDWORK_KEY);
+/**
+ * CONTEXT AND RESOURCES ARE DONE THROUGH ASK (decision 50, request 169, the pull request that moved them there).
+ * ON when the row is missing. `{ "on": false }` switches it off. A row that cannot be read, or holds something that is neither a
+ * true-or-false nor `{ on: true or false }`, reads as OFF: it fails closed, so a broken row never opens a door by guesswork.
+ * (This was OFF unless the row said `{ "on": true }` until Context moved into Ask.)
+ */
+export const contextIsInAskGroundwork = async (prisma: Reader): Promise<boolean> => {
+  const read = await theRowOrAFault(prisma, CONTEXT_IN_ASK_GROUNDWORK_KEY);
+  if (read.fault) return false;
+  if (read.row == null) return true;
+  const v = read.row.value as { on?: unknown } | boolean | null | undefined;
+  if (typeof v === 'boolean') return v;
+  if (v && typeof v === 'object' && typeof (v as { on?: unknown }).on === 'boolean') return (v as { on: boolean }).on;
+  return false;
+};
+
+/**
+ * THE OLD CONTEXT CHAT ON THE CHECK-IN PAGE (`POST /grounds/:id/context-chat` and its confirm and decline).
+ * OFF by default (decision 50, finished on `wip/next`): Ask Groundwork now adds a document, files a typed fact and reads what a check-in already has
+ * (screens bugs B-083 to B-085), proved live with the real model beside the old chat (docs/run-log.md). A missing row reads OFF, and so does a row that
+ * cannot be read or holds anything other than an explicit on. `{ "on": true }` (or `true`) keeps the chat for a deployment that wants it: the three
+ * routes then answer as before. Off, they answer with one sentence that sends the person to Ask, and the screens stop drawing the chat when `GET /ask`
+ * serves `oldContextChatIsOpen: false`. Ask's own setup lane calls the same two methods in the engine and is not touched by this switch.
+ * (It was ON unless the row said off until this change; decision 124 had kept it on for the round before.)
+ */
+export const theOldContextChatIsOpen = async (prisma: Reader): Promise<boolean> => {
+  const read = await theRowOrAFault(prisma, OLD_CONTEXT_CHAT_KEY);
+  if (read.fault || read.row == null) return false;
+  const v = read.row.value as { on?: unknown } | boolean | null | undefined;
+  if (typeof v === 'boolean') return v;
+  return !!(v && typeof v === 'object' && (v as { on?: unknown }).on === true);
+};
 export const theNewBillingPartsAreShown = (prisma: Reader) => aSwitch(prisma, PLAN_AND_BILLING_NEW_PARTS_KEY);
 
 /**
- * THE OFFER TO ASK FOR LEAVE OR SPENDING FROM INSIDE A CHECK-IN (anchor pieces 26 and 27), HIDDEN AT RELEASE. Its yes
- * opens the request's form, and the routes that form needs (request 165: `POST /suites/leave/requests` and
- * `POST /suites/spend/requests` for the signed-in person) are not built yet, so the offer would lead to a form that
- * cannot send. Off unless the row says `{ "on": true }`. Leave and spending through Ask Groundwork and WhatsApp are
- * unchanged.
+ * THE OFFER TO ASK FOR LEAVE OR SPENDING FROM INSIDE A CHECK-IN (anchor pieces 26 and 27). It was hidden at release because its yes opens the
+ * request's own form, and the form's routes did not exist. They do now (request 165: `POST /suites/leave/requests` and `POST /suites/spend/requests`
+ * for the signed-in person, and the forms' choices), walked end to end on 6 October with real conversations: the offer, the yes, the form filled in
+ * from what the person said, and the request on its approver's board. So it is ON unless the row says `{ "on": false }`. It is only ever made in a
+ * check-in started from the anchor link, with the anchor switch on, so nothing outside the anchor changes. Leave and spending through Ask Groundwork
+ * and WhatsApp are unchanged either way.
  */
-export const theRequestOfferIsShown = (prisma: Reader) => aSwitch(prisma, REQUEST_OFFER_IN_THE_CHECK_IN_KEY);
+export const theRequestOfferIsShown = async (prisma: Reader) => {
+  const v = (await theRow(prisma, REQUEST_OFFER_IN_THE_CHECK_IN_KEY)) as { on?: unknown } | boolean | null;
+  if (typeof v === 'boolean') return v;
+  return v?.on !== false;
+};
 
 /**
- * Whether a NEW anchor check-in can be started (docs/anchor-scenario-plan.md, section 3). Off unless
- * the row says `{ "on": true }`; a missing or broken row reads as off. Every later anchor piece calls
- * this one function and nothing else. A check-in already started as an anchor one keeps behaving as
- * one when this is turned off, so the caller asks this only for something new.
+ * Whether a NEW anchor check-in can be started (docs/anchor-scenario-plan.md, section 3). ON (Hafsah, next
+ * pull request, piece 2): the anchor now uses the normal entry chat, board and reports (decision 114), and the
+ * screens draw its sections through the normal pages. A missing row reads as on; `{ "on": false }` (or `false`)
+ * switches it off; a row that cannot be read reads as off, so a database fault never starts one. A check-in
+ * already started as an anchor one keeps behaving as one when this is turned off.
  */
-export const theAnchorScenarioIsOn = (prisma: Reader) => aSwitch(prisma, ANCHOR_SCENARIO_KEY);
-export const theHalfwayMessagesAreOn = (prisma: Reader) => aSwitch(prisma, WHATSAPP_HALFWAY_MESSAGES_KEY);
+export const theAnchorScenarioIsOn = async (prisma: Reader): Promise<boolean> => {
+  const read = await theRowOrAFault(prisma, ANCHOR_SCENARIO_KEY);
+  if (read.fault) return false;
+  if (read.row == null) return true;
+  const v = read.row.value as { on?: unknown } | boolean | null | undefined;
+  if (typeof v === 'boolean') return v;
+  return v?.on !== false;
+};
+export const theHalfwayMessagesAreOn = async (prisma: Reader): Promise<boolean> => {
+  /* A row that is missing reads as on; a row that cannot be READ reads as off, so a database fault never sends a message. */
+  let row: { value: unknown } | null;
+  try {
+    const key = WHATSAPP_HALFWAY_MESSAGES_KEY;
+    row = await prisma.platformSetting.findUnique({ where: { key } });
+  } catch {
+    return false;
+  }
+  const v = row?.value as { on?: unknown } | boolean | null | undefined;
+  if (row == null) return true;
+  if (typeof v === 'boolean') return v;
+  return v?.on !== false;
+};

@@ -37,6 +37,7 @@ import { WhatICanSeeController } from '../assistant/what-i-can-see.controller';
 import { DraftsService } from '../drafts/drafts.service';
 import { ApiAccessService } from './api-access.service';
 import { ApiWatchCron } from './api-watch.cron';
+import { HeldRequestsCron } from './a-held-request-does-not-outlive-its-ten-minutes.cron';
 import { ApprovedOrMachineGuard } from './approved-or-machine.guard';
 import { WhatIsTrueService } from '../assistant/what-is-true.service';
 import { ReadItIfWeCanService } from '../documents/read-it-if-we-can.service';
@@ -96,7 +97,7 @@ import { AskService } from '../ask/ask.service';
     }),
   ],
   controllers: [PublicApiController, ConnectionsAtAGlanceController, WhatsAppForAnOrganisationController, WhatsAppController, CredentialsController, ImportsController, EmbedSetupController, EmbedAssetsController, RetentionController, KnowledgeController, DetectorsController, CheckinsController, DraftsController, WhatICanSeeController, AskController],
-  providers: [CredentialsService, ConnectionsAtAGlanceService, IdempotencyService, IdempotencyInterceptor, MachineTokenGuard, SubjectsService, ScimService, BulkImportService, ImportsBootstrap, EmbedService, EmbedSessionGuard, AssistantService, HandoverService, DepartureService, GroundsByApiService, WhatHappenedWithACustomerService, OnboardingService, ScenariosService, AnthropicService, KnowledgeService, DetectorsService, RolesService, DraftsService, ACheckInACustomerCanRunService, CommitmentsByApiService, TodosByApiService, WhatsAppForAnOrganisationService, ApiAccessService, ApiWatchCron, ApprovedOrMachineGuard, WhatIsTrueService, ReadItIfWeCanService, ReportsForMyPeopleService, ReviewsComingUpService, ReviewsComingUpCron, AskService],
+  providers: [CredentialsService, ConnectionsAtAGlanceService, IdempotencyService, IdempotencyInterceptor, MachineTokenGuard, SubjectsService, ScimService, BulkImportService, ImportsBootstrap, EmbedService, EmbedSessionGuard, AssistantService, HandoverService, DepartureService, GroundsByApiService, WhatHappenedWithACustomerService, OnboardingService, ScenariosService, AnthropicService, KnowledgeService, DetectorsService, RolesService, DraftsService, ACheckInACustomerCanRunService, CommitmentsByApiService, TodosByApiService, WhatsAppForAnOrganisationService, ApiAccessService, ApiWatchCron, HeldRequestsCron, ApprovedOrMachineGuard, WhatIsTrueService, ReadItIfWeCanService, ReportsForMyPeopleService, ReviewsComingUpService, ReviewsComingUpCron, AskService],
   exports: [CredentialsService],
 })
 export class PublicApiModule {}

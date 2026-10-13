@@ -137,7 +137,10 @@ export const aQuestionOnToday = (asker: string, leave: string) => `${capital(ask
 
 /** "decline Aisha's leave because Sales is two short that week": the reason, or null. */
 export function aReasonIn(message: string): string | null {
-  const m = /\bbecause\s+(.+)$/i.exec((message ?? '').trim());
+  const said = (message ?? '').trim();
+  /* "because ...", "since ...", "due to ...", then, failing those, the clause after a comma, a dash or a colon that is plainly a sentence of its own: "decline Zawadi's request to spend KES 200,000, we cannot afford the van this quarter" (B-022). A comma inside a number is not a break. */
+  const m = /\b(?:because|since|due to|given that)\s+(.+)$/i.exec(said)
+    ?? /[,:\u2013\u2014-]\s+((?:we|i|it|they|there|this|that|our|not|no|too|nobody|nothing|the)\b.{8,})$/i.exec(said);
   const r = m?.[1]?.trim().replace(/[.!]+$/, '').trim();
   return r ? r.slice(0, LONGEST) : null;
 }

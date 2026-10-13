@@ -124,7 +124,12 @@ describe('commit falls back to the server-side draft (the vanish fix)', () => {
      * arrived empty, and the assertions above and below prove that from the label, the org name and
      * the contributor. The transcript still travels - it is what the targets are read from.
      */
-    expect(prisma.conversationTurn.createMany).not.toHaveBeenCalled();
+    /* CHANGED 11 OCTOBER (decision 133): the transcript is the check-in that followed setup, which is
+       the lead's first check-in, so it is written onto session 1. Setup itself is never in it. */
+    expect(prisma.conversationTurn.createMany).toHaveBeenCalledWith({ data: [
+      { checkInId: 'ci1', content: 'my side of it', role: 'PERSON' },
+      { checkInId: 'ci1', content: 'noted', role: 'AI' },
+    ] });
     expect(grounds.addParticipant).toHaveBeenCalledTimes(1); // contributor from the DRAFT
     expect(res.groundId).toBe('g-new');
   });
@@ -268,7 +273,7 @@ describe('patchDraft is token-gated', () => {
    */
   it('refuses a missing token, and writes nothing for an unknown or used one', async () => {
     const { service, prisma } = makeService(); // findUnique -> null
-    await expect(service.patchDraft('', { orgName: 'X' })).rejects.toThrow('draftToken required');
+    await expect(service.patchDraft('', { orgName: 'X' })).rejects.toThrow('This draft has lost its place, so start the draft again.');
     await expect(service.patchDraft('bad-token', { orgName: 'X' })).resolves.toEqual({ ok: true });
     expect(prisma.entryDraft.update).not.toHaveBeenCalled();
     expect(prisma.pendingSignup.update).not.toHaveBeenCalled();

@@ -166,7 +166,8 @@ describe('and in the report', () => {
     const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'reports', 'reports.service.ts'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(src).toMatch(/const served = await this\.getAsBuilt\(groundId, requestingUserId, requestingUserOrgId\);\s*return this\.whatTheLeadHasNotShared\(/);
-    expect(src).toMatch(/const served = await this\.sessionReportAsBuilt\(groundId, sessionNumber, requestingUserId, requestingUserOrgId\);\s*return this\.whatTheLeadHasNotShared\(/);
+    /* Changed on 8 October: the read takes asIfReleased, for the one mail sent at the moment of release (engagement spec section 7); the wrapper still follows it. */
+    expect(src).toMatch(/const served = await this\.sessionReportAsBuilt\(groundId, sessionNumber, requestingUserId, requestingUserOrgId, asIfReleased\);\s*return this\.whatTheLeadHasNotShared\(/);
   });
 });
 

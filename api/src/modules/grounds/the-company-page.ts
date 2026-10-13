@@ -80,6 +80,12 @@ export interface CompanyLevel {
 export interface CompanyPage {
   name: string;
   line: string | null;
+  /**
+   * "Strategy v2, since 1 September." and how the priorities changed, newest first. Null until the organisation's priorities have changed
+   * once after this was built, so a page that never had a history reads as it always did. Titles of priorities only, which everybody
+   * who reads the priorities reads. See the-strategy-over-time.ts.
+   */
+  strategy: { says: string; number: number; history: { number: number; says: string; priorities: string[]; whatChanged: string | null }[] } | null;
   priorities: CompanyPriority[];
   /** Whether this reader is served what success looks like for each priority. */
   readsTargets: boolean;
@@ -149,7 +155,8 @@ export function countsLine(counts: { teams: number; people: number; checkInsThis
   if (counts.checkInsThisWeek !== null) {
     const checkIns = plural(counts.checkInsThisWeek, 'check-in', 'check-ins');
     const was = counts.checkInsThisWeek === 1 ? 'was' : 'were';
-    parts.push(`there ${was} ${checkIns} this week`);
+    /* "there were no check-ins this week", not "there were 0 check-ins" (request 161, item 4). */
+    parts.push(counts.checkInsThisWeek === 0 ? 'there were no check-ins this week' : `there ${was} ${checkIns} this week`);
   }
   if (!parts.length) return null;
   const s = parts.join(', and ');
@@ -272,6 +279,7 @@ export function companyPage(input: {
   return {
     name: input.name,
     line: countsLine(input.counts),
+    strategy: null,
     priorities,
     readsTargets: input.readsEverything,
     notReaching: theRowsAsTheyShouldRead(share?.notReaching ?? [], aboutThing).map((n) => ({ id: n.id, observation: n.observation, question: n.question, forWhom: forWhom(n.forWhom) })),

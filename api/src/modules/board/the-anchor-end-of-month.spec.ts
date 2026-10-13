@@ -35,7 +35,7 @@ function anchor(opts: { on?: boolean; startedFrom?: string | null; completedOn?:
   return {
     people: PEOPLE, checkIns, commitments, dependencies, groundRow: { startedFrom, startsAt: OPENED, ...(status ? { status } : {}) },
     prismaExtras: {
-      platformSetting: { findUnique: jest.fn(async () => (on ? { value: { on: true } } : null)) },
+      platformSetting: { findUnique: jest.fn(async () => (on ? { value: { on: true } } : { value: { on: false } })) },
       groundDependency: { findMany: jest.fn(async () => dependencies) },
       recommendation: { findMany: jest.fn(async () => []) },
       conversationTurn: { findMany: jest.fn(async (a: any) => (a?.where?.role === 'PERSON' && a?.where?.checkIn?.groundId && words ? [{ content: words }] : [])) },
@@ -70,10 +70,9 @@ describe('the end of the month, as the lead reads it', () => {
     expect(e.whatShouldHappenNext).toEqual(['One of the things people said they would do is still open.']);
     expect(e.reveal).toEqual({ projectsThatCouldHaveTheirOwnGround: 0, sharedObjectivesWorthTracking: 0, workingRelationshipsNeedingAlignment: 0, activeCommitments: 1, teamGeneratedIdeas: 0, suitesRelevantToWorkAlreadyBeingDone: 0 });
     expect(e.continueOptions).toEqual([
-      { key: 'keepThisGroundRunning', label: 'Keep this Ground running' },
-      { key: 'startRecommendedGrounds', label: 'Start recommended Grounds' },
-      { key: 'turnOnRelevantSuites', label: 'Turn on relevant suites' },
-      { key: 'continueGroundworkForTheTeam', label: 'Continue Groundwork for the team' },
+      { key: 'keepThisGroundRunning', label: 'Keep this check-in running' },
+      { key: 'startRecommendedGrounds', label: 'Start the recommended check-ins' },
+            { key: 'continueGroundworkForTheTeam', label: 'Continue Groundwork for the team' },
     ]);
   });
 
@@ -131,9 +130,96 @@ describe('her own words, where she said them first', () => {
     expect(await herOwnWords(stub([], [HER_WORDS], null), 'g-1', 'u-amina')).toBe(HER_WORDS);
   });
 
+  it('reads the first message she typed in the ordinary set-up chat when she has no turn of her own (decision 114), and not another person\'s', async () => {
+    const world: any = { ...stub([], [], 'The brief.'), leadSetUpWords: undefined };
+    world.leadSetupWords = { findUnique: jest.fn(async () => ({ authorUserId: 'u-amina', text: 'Everyone says their own bit is fine.\n\nNobody owns the time between packing and the van.' })) };
+    expect(await herOwnWords(world, 'g-1', 'u-amina')).toBe('Everyone says their own bit is fine.');
+    expect(world.leadSetupWords.findUnique).toHaveBeenCalledWith({ where: { groundId: 'g-1' } });
+    world.leadSetupWords = { findUnique: jest.fn(async () => ({ authorUserId: 'u-somebody-else', text: 'Not hers.' })) };
+    expect(await herOwnWords(world, 'g-1', 'u-amina')).toBe('The brief.');
+  });
+
   it('still reads her first typed words before the record, and the brief only when neither has anything', async () => {
     expect(await herOwnWords(stub(['I want the team to stop waiting on each other.'], [HER_WORDS], 'The brief.'), 'g-1', 'u-amina')).toBe('I want the team to stop waiting on each other.');
     expect(await herOwnWords(stub([], [], 'The brief.'), 'g-1', 'u-amina')).toBe('The brief.');
     expect(await herOwnWords(stub([], [], null), 'g-1', 'u-amina')).toBeNull();
+  });
+});
+
+describe('the end of the month reads in plain sentences, and an ended check-in does not say it is still week four (6 October)', () => {
+  const everyString = (v: unknown): string[] => (typeof v === 'string' ? [v] : Array.isArray(v) ? v.flatMap(everyString) : v && typeof v === 'object' ? Object.values(v).flatMap(everyString) : []);
+
+  it('says what it found under "This started as one check-in.", with no "Ground" and no bare "0"', async () => {
+    const e = (await boardAs(anchor(), ...AMINA)).theEndOfMonthRead;
+    expect(e.revealSaid.heading).toBe('This started as one check-in.');
+    expect(e.revealSaid.intro).toBe('During the month, Groundwork also found this.');
+    expect(e.revealSaid.closing).toBe('Your team has already started building its Groundwork.');
+    expect(e.revealSaid.lines).toEqual([
+      'Groundwork did not find a project that could have a check-in of its own.',
+      'Groundwork did not find a shared objective worth tracking.',
+      'Groundwork did not find a working relationship that needs aligning.',
+      'One thing somebody said they would do is still open.',
+      'No idea from your team was captured.',
+    ]);
+    const read = everyString(e);
+    expect(read.filter((s) => /\bGrounds?\b/.test(s))).toEqual([]);
+    expect(read.filter((s) => /(^|\s)0(\s|\.|$)/.test(s))).toEqual([]);
+  });
+
+  it('says counts of more than nothing as sentences, in words up to ten', async () => {
+    const { theRevealSaid } = await import('./the-anchor-reveal-said');
+    const said = theRevealSaid({ projectsThatCouldHaveTheirOwnGround: 3, sharedObjectivesWorthTracking: 2, workingRelationshipsNeedingAlignment: 4, activeCommitments: 17, teamGeneratedIdeas: 7, suitesRelevantToWorkAlreadyBeingDone: 1 });
+    expect(said.lines).toEqual([
+      'Groundwork found three projects that could have a check-in of their own.',
+      'Groundwork found two shared objectives worth tracking.',
+      'Groundwork found four working relationships that need aligning.',
+      '17 things people said they would do are still open.',
+      'Seven ideas from your team were captured.',
+    ]);
+    const one = theRevealSaid({ projectsThatCouldHaveTheirOwnGround: 1, sharedObjectivesWorthTracking: 1, workingRelationshipsNeedingAlignment: 1, activeCommitments: 1, teamGeneratedIdeas: 1, suitesRelevantToWorkAlreadyBeingDone: 0 });
+    expect(one.lines.slice(0, 5)).toEqual([
+      'Groundwork found one project that could have a check-in of its own.',
+      'Groundwork found one shared objective worth tracking.',
+      'Groundwork found one working relationship that needs aligning.',
+      'One thing somebody said they would do is still open.',
+      'One idea from your team was captured.',
+    ]);
+  });
+
+  it('names the four ways on without the word "Ground"', async () => {
+    const e = (await boardAs(anchor(), ...AMINA)).theEndOfMonthRead;
+    expect(e.continueOptions.map((o: any) => o.label)).toEqual(['Keep this check-in running', 'Start the recommended check-ins', 'Continue Groundwork for the team']);
+  });
+
+  it('while the check-in is still running, the board says which week of the month it is', async () => {
+    const b = (await boardAs(anchor(), ...AMINA)).theMonthBoard;
+    expect(b.weekSaid).toBe('Week 4 of the month');
+    expect(b.whatGroundworkIsWorkingOnNext.join(' ')).toContain('Groundwork is checking in with');
+  });
+
+  it('once the check-in has ended, the board says it has ended and nobody is being chased', async () => {
+    const b = (await boardAs(anchor({ status: 'RESOLVED' }), ...AMINA)).theMonthBoard;
+    expect(b.weekSaid).toBe('This check-in has ended.');
+    expect(b.whatGroundworkIsWorkingOnNext).toEqual(['Groundwork is not asking anyone for more.']);
+    expect(everyString(b).join(' ')).not.toMatch(/Week 4 of the month|checking in with the/);
+  });
+});
+
+describe('an ended check-in has no line about who is active', () => {
+  it('serves the active line while it runs, and not once it has ended', async () => {
+    expect((await boardAs(anchor(), ...AMINA)).activeLine?.line).toMatch(/have checked in this week/);
+    expect((await boardAs(anchor({ status: 'RESOLVED' }), ...AMINA)).activeLine).toBeUndefined();
+  });
+});
+
+describe('the suites are not claimed until they are counted (6 October)', () => {
+  it('leaves the suites line out and does not offer to turn suites on while the count is nothing', async () => {
+    const e = (await boardAs(anchor(), ...AMINA)).theEndOfMonthRead;
+    expect(e.revealSaid.lines.join(' ')).not.toMatch(/suite/);
+    expect(e.continueOptions.map((o: any) => o.key)).not.toContain('turnOnRelevantSuites');
+  });
+  it('says wording with no "account" on the month board', async () => {
+    const b = (await boardAs(anchor(), ...AMINA)).theMonthBoard;
+    expect(JSON.stringify(b)).not.toMatch(/\baccounts?\b/i);
   });
 });

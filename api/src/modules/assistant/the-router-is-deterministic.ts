@@ -30,6 +30,8 @@ export type Lane =
   | 'how_am_i_doing'
   /** A lead asking how their team is doing: the board and the latest report of the check-ins they run, read to them alone. */
   | 'how_is_the_team'
+  /** A lead asking who has not checked in yet, on a check-in they run: the people, by name (B-134). */
+  | 'who_has_not_checked_in'
   | 'where_am_i_needed'
   | 'what_is_stuck'
   | 'where_am_i_up_to'
@@ -69,6 +71,14 @@ export type Lane =
   | 'who_is_away'
   /** "What can you help me with?": what this reader can do here, from what the router offers them. */
   | 'what_can_you_do'
+  /** "When is my next check-in?": when each check-in of yours opens, read from your own. */
+  | 'when_is_my_next_check_in'
+  /** "What is my check-in for, and who reads it?": what each of your running check-ins is for, and who reads its report. */
+  | 'what_my_check_in_is_for'
+  /** "What are the company's priorities right now?": the Company page's priorities, as you may read them. */
+  | 'company_priorities'
+  /** "Is the strategy moving?": how the priorities are moving, as the Company page says it to you. */
+  | 'is_the_strategy_moving'
   | 'unplaced';
 
 export interface Routed {
@@ -245,6 +255,26 @@ const RULES = [
   rule('who_approves', WHO_APPROVES_PATTERNS),
   rule('your_requests', YOUR_REQUESTS_PATTERNS),
   rule('what_is_due', WHAT_IS_DUE_PATTERNS),
+  /*
+   * THE QUESTIONS ASK SUGGESTS (requests 179 and 180). Four of its own starters had no lane and were answered with a shrug. Each is narrow:
+   * it needs the check-in, the company or the strategy named beside the question.
+   */
+  rule('when_is_my_next_check_in', [
+    /\bwhen\s+(?:is|does|will)\s+my\s+next\s+check-?in\b/i,
+    /\bwhen\s+(?:do|can|will)\s+i\s+(?:next\s+)?(?:have\s+to\s+)?check[\s-]?in\b/i,
+  ]),
+  rule('what_my_check_in_is_for', [
+    /\bwhat\s+(?:is|are)\s+(?:my|this|the)\s+check-?ins?\s+for\b/i,
+    /\bwho\s+(?:reads|sees|gets)\s+(?:my|this|the)\s+(?:check-?in|report)\b/i,
+  ]),
+  rule('company_priorities', [
+    /\b(?:company|organisation|organization)(?:'s|s')?\s+(?:top\s+)?priorities\b/i,
+    /\bwhat\s+(?:are|is)\s+(?:the\s+|our\s+)?(?:top\s+)?priorit(?:y|ies)\b/i,
+  ]),
+  rule('is_the_strategy_moving', [
+    /\bis\s+(?:the|our)\s+strategy\s+(?:moving|working|on\s+track|going\s+anywhere)\b/i,
+    /\bhow\s+is\s+(?:the|our)\s+strategy\s+(?:doing|going|moving)\b/i,
+  ]),
   rule('what_next', [
     /*
      * "WHAT SHOULD I DO NEXT" (week 17): one thing, from the reader's own commitments, to-dos and
@@ -269,6 +299,12 @@ const RULES = [
     /\bwhere\s+am\s+i\s+up\s+to\b/i,
     /\bmy\s+onboarding\b/i,
     /\bwhat\s+is\s+my\s+role\b/i,
+    /*
+     * THE CHECK-IN TAB OFFERS "What am I missing?" (B-168), and it was answered "I cannot answer that one yet." What is still missing for a person
+     * is what is still left for them, so it is the same lane.
+     */
+    /^\s*what\s+am\s+i\s+missing\s*\??\s*$/i,
+    /\bwhat\s+is\s+missing\s+from\s+my\s+record\b/i,
   ]),
   rule('what_came_of_it', [
     /*
@@ -292,7 +328,7 @@ const RULES = [
      * "how am I doing" stays with the coaching lane. Above `what_should_we_talk_about`, whose "how am I doing" is the
      * first person.
      */
-    /\bhow(?:'s|\s+is|\s+are)\s+(?:the|my|our)\s+team(?:\s+(?:doing|going|getting\s+on|looking))?\b/i,
+    /\bhow(?:'s|\s+is|\s+are)\s+(?:the|my|our)\s+(?:([\w'-]+(?:\s+[\w'-]+)?)\s+)?team(?:\s+(?:doing|going|getting\s+on|looking))?\b/i,
     /\bhow(?:'s|\s+is|\s+are)\s+(?:everyone|everybody)\s+(?:doing|going|getting\s+on)\b/i,
     /\bhow\s+are\s+(?:the\s+|my\s+|our\s+)?people\s+(?:doing|going)\b/i,
     /\bwhere\s+(?:are|do)\s+we\s+(?:stand\s+)?on\s+the\s+quarter\b/i,
@@ -308,7 +344,7 @@ const RULES = [
      * Narrow on purpose. It owns the shapes that ask what is waiting to be decided, and nothing
      * that merely mentions a conversation - "how do I run a check-in" is a handbook question.
      */
-    /\bwhat\s+(?:should|do)\s+we\s+(?:talk|speak)\s+about\b/i,
+    /\bwhat\s+(?:should|do)\s+(?:we|i)\s+(?:talk|speak)\s+about\b/i,
     /\b(?:any|my|what)\s+suggestions?\b/i,
     /\bwhat\s+(?:conversations?|check-?ins?)\s+(?:should|do)\s+i\b/i,
     /\bwhat\s+(?:is|are)\s+(?:waiting|pending)\s+(?:for|on)\s+(?:my\s+)?(?:decision|answer|me\s+to\s+decide)\b/i,
@@ -336,6 +372,16 @@ const RULES = [
     /\bwhere\s+(?:do\s+i|should\s+i)\s+(?:start|spend\s+my\s+time)\b/i,
     /\bmy\s+week\b/i,
   ]),
+  rule('who_has_not_checked_in', [
+    /*
+     * "WHO HAS NOT CHECKED IN" (B-134). Above `what_is_stuck` and `who_is`, which read "who is waiting" and "who is ..." as other questions. The
+     * check-in is named after "on", "in" or "for", and group one carries it. It needs "checked in", "answered" or "started" beside "not", so a
+     * question about a handoff or a person stays with its lane.
+     */
+    /\bwho\s+(?:has|have)(?:\s+not|n'?t)\s+(?:yet\s+)?(?:checked[\s-]*in|answered|replied|responded|started)(?:\s+yet)?(?:\s+(?:on|in|for|to)\s+(.+?))?\s*[?.!]*\s*$/i,
+    /\bwho\s+(?:is|are)\s+(?:yet\s+|still\s+)?(?:to|waiting\s+to|due\s+to)\s+check[\s-]*in(?:\s+(?:on|in|for)\s+(.+?))?\s*[?.!]*\s*$/i,
+    /\bwho\s+(?:still\s+)?needs\s+to\s+check[\s-]*in(?:\s+(?:on|in|for)\s+(.+?))?\s*[?.!]*\s*$/i,
+  ]),
   rule('what_is_stuck', [
     /*
      * ABOVE BOTH `who_is` AND THE COACHING LANE, and driving it is how that was found. "Who is
@@ -351,6 +397,8 @@ const RULES = [
     /\bwho\s+is\s+waiting\s+on\s+me\b/i,
     /\bwhat'?s?\s+(?:blocked|stuck|held\s+up)\b/i,
     /\bwhat\s+is\s+(?:blocked|stuck)\b/i,
+    /* "Who is blocked right now?" is about handoffs, not a person called "blocked right now" (B-135). */
+    /\bwho(?:'s|\s+is|\s+are)\s+(?:blocked|stuck|held\s+up|waiting)\b/i,
   ]),
   rule('who_is', [
     /\bwho(?:'s| is)\s+(.+?)\s*\??$/i,
@@ -407,6 +455,8 @@ const RULES = [
     /\bwhat\s+am\s+i\s+(?:on|working on|assigned)\b/i,
     /\bwhat(?:'s| is)\s+(?:on\s+)?my\s+(?:plate|work|objectives?)\b/i,
     /\bmy\s+objectives?\b/i,
+    /* "Review my goals", offered by the Check-in tab (B-168): the goals a person holds are what they are on. */
+    /\breview\s+(?:my|the)\s+goals\b/i,
     /\bwhat\s+do\s+i\s+owe\b/i,
   ]),
   rule('what_you_can_see', [
@@ -414,6 +464,8 @@ const RULES = [
        data do you have" as readily as "what can you see". */
     /\bwhat\s+(?:data|information|records)\s+(?:do\s+you\s+)?(?:have|hold|see)\b/i,
     /\bwhat\s+(?:can\s+you|do\s+you)\s+see\b/i,
+    /* The label of the option the shrug itself offers: choosing it must not bring the same shrug back (request 179). */
+    /\btell\s+me\s+what\s+you\s+can\s+see\b/i,
     /\bwhat(?:'s| is)\s+connected\b/i,
     /\bhow\s+current\b/i,
     /\bwhat\s+would\s+you\s+connect\b/i,
@@ -531,6 +583,10 @@ export function route(input: string): Routed {
   const text = (input ?? '').trim();
   if (!text) return { lane: 'unplaced' };
 
+  /* An option sends its key: the key of an option the shrug offered is the lane it names. */
+  const asAKey = OPTIONS_THE_SHRUG_OFFERS.find((o) => o.key === text);
+  if (asAKey) return { lane: asAKey.key };
+
   for (const r of RULES) {
     for (const p of r.patterns) {
       const m = p.exec(text);
@@ -553,18 +609,25 @@ export function route(input: string): Routed {
  *
  * Deliberately not an apology. The person did nothing wrong; the tool is young.
  */
+/** What the shrug offers. Every one is a lane that answers, and its label routes to the same lane as its key does. */
+export const OPTIONS_THE_SHRUG_OFFERS: { key: Lane; label: string }[] = [
+  { key: 'what_you_can_see', label: 'Tell me what you can see' },
+  { key: 'what_am_i_on', label: 'What am I on?' },
+  { key: 'my_to_dos', label: 'What is on my list?' },
+  { key: 'what_can_you_do', label: 'What can you help me with?' },
+];
+
 export function whatICanDoWith(input: string): { line: string; options: { key: string; label: string }[] } {
   const trimmed = (input ?? '').trim();
+  /* A greeting is not a failed question (B-106). */
+  if (/^\s*((hi|hello|hey|hiya|yo)(\s+there)?|good\s+(morning|afternoon|evening))\s*[.!]*\s*$/i.test(trimmed)) {
+    return { line: 'Hello. Ask me something, or pick one of these.', options: OPTIONS_THE_SHRUG_OFFERS.map((o) => ({ key: o.key as string, label: o.label })) };
+  }
   const short = trimmed.length <= 60 ? trimmed : `${trimmed.slice(0, 57)}…`;
   return {
     line: trimmed
       ? `I cannot answer that one yet. Here is what I can do with ${quotedThenEnding(short)}`
       : 'Ask me something, or pick one of these.',
-    options: [
-      { key: 'what_you_can_see', label: 'Tell me what you can see' },
-      { key: 'what_am_i_on', label: 'What am I on?' },
-      { key: 'my_to_dos', label: 'What is on my list?' },
-      { key: 'hold_it', label: 'Hold this against my next check-in' },
-    ],
+    options: OPTIONS_THE_SHRUG_OFFERS.map((o) => ({ key: o.key as string, label: o.label })),
   };
 }

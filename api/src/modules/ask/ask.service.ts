@@ -1,8 +1,10 @@
-import { askName, askNameOf, askFirstWelcome, ASK_CAPTION, ASK_ADD_LINE, askStarters } from '../assistant/ask-name';
+import { askName, askNameOf, askFirstWelcome, ASK_CAPTION, ASK_ADD_LINE, askStarters, askStartersFor } from '../assistant/ask-name';
+import { contextIsInAskGroundwork, theOldContextChatIsOpen } from '../admin/what-is-hidden-at-release';
 import { whatWasSaid } from '../assistant/what-was-said-is-what-is-kept';
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AssistantService } from '../assistant/assistant.service';
+import { theCheckInsHeldForASeat } from '../participants/held-for-a-seat';
 import { A_GROUND_IS_OVER } from '../grounds/a-ground-that-has-ended';
 import { ReportsService } from '../reports/reports.service';
 import { GroundsService } from '../grounds/grounds.service';
@@ -221,18 +223,45 @@ export class AskService {
     }
   }
 
-  /** The check-ins Ask Groundwork may be about for this person: ones they run or take part in. */
-  private async whatItMayBeAbout(asker: Asker): Promise<{ id: string; label: string }[]> {
-    const grounds = await this.prisma.ground.findMany({
+  /**
+   * The check-ins Ask Groundwork may be about for this person: ones they run or take part in, that have not ended, and that they are not held for a seat on
+   * (a check-in somebody is held for is refused to them everywhere, so Ask does not offer it either). Each carries whether they run it and whether they
+   * take part in it as a person, which the suggested questions need.
+   */
+  private async theirCheckIns(asker: Asker): Promise<{ id: string; label: string; runsIt: boolean; takesPart: boolean }[]> {
+    const grounds: any[] = await this.prisma.ground.findMany({
       where: {
         organizationId: asker.organizationId,
         status: { notIn: A_GROUND_IS_OVER },
         OR: [{ initiatorId: asker.userId }, { participants: { some: { userId: asker.userId } } }],
       },
-      select: { id: true, label: true },
+      select: { id: true, label: true, initiatorId: true, createdByUserId: true },
       orderBy: { createdAt: 'asc' },
     });
-    return grounds.map((g) => ({ id: g.id, label: g.label }));
+    const held = await theCheckInsHeldForASeat(this.prisma as any, grounds.map((g) => g.id), asker.userId).catch(() => new Set<string>());
+    /* Where they take part as a person, and not only manage: their own rows. */
+    const parts: any[] = grounds.length
+      ? await (async () => this.prisma.groundParticipant.findMany({ where: { groundId: { in: grounds.map((g) => g.id) }, userId: asker.userId }, select: { groundId: true, managingOnly: true } }))().catch(() => [])
+      : [];
+    const takesPartIn = new Set((Array.isArray(parts) ? parts : []).filter((p) => p.managingOnly !== true).map((p) => p.groundId));
+    return grounds.filter((g) => !held.has(g.id)).map((g) => ({
+      id: g.id,
+      label: g.label,
+      runsIt: g.initiatorId === asker.userId || (!!g.createdByUserId && g.createdByUserId === asker.userId),
+      takesPart: takesPartIn.has(g.id),
+    }));
+  }
+
+  private async whatItMayBeAbout(asker: Asker): Promise<{ id: string; label: string }[]> {
+    return (await this.theirCheckIns(asker)).map((g) => ({ id: g.id, label: g.label }));
+  }
+
+  /** The suites this organisation has switched on, among the two Ask can file a request for. */
+  private async suitesThatAreOn(organizationId: string): Promise<Set<string>> {
+    try {
+      const rows: any[] = await (async () => this.prisma.organizationSuite.findMany({ where: { organizationId, suite: { in: ['leave', 'spend'] }, isOn: true }, select: { suite: true } }))();
+      return new Set(rows.map((r) => r.suite as string));
+    } catch { return new Set(); }
   }
 
   private refuseAnybodyElse(asker: Asker, askedFor: string | null) {
@@ -250,8 +279,60 @@ export class AskService {
     let organisationName: string | null = null;
     try { organisationName = (await this.prisma.organization.findUnique({ where: { id: asker.organizationId }, select: { name: true } }))?.name ?? null; } catch { organisationName = null; }
     const name = askName(organisationName);
-    const welcome = shown.canAsk && shown.turns.length === 0 ? askFirstWelcome(organisationName) : null;
-    return { ...shown, askName: name, caption: ASK_CAPTION, addLine: ASK_ADD_LINE, welcome, starters: askStarters((shown.about ?? []).length > 0) };
+    const contextIsHere = await contextIsInAskGroundwork(this.prisma);
+    /* WHAT IS OFFERED IS WHAT THIS READER CAN BE ANSWERED (decision 36 for a guest; the suites that are on; the check-ins they can use). */
+    const mine = await this.theirCheckIns(asker);
+    const standing = await this.standingOf(asker);
+    const suitesOn = await this.suitesThatAreOn(asker.organizationId);
+    /* WHETHER "ADD CONTEXT WITH ASK" IS ONE OF THE THINGS THIS READER CAN DO (request 169). True only while Context is in Ask and the
+       reader may confirm setup on at least one check-in: their own, or, for an admin, one whose lead has left. The screens draw the button from this.
+       Ask's own promise to take context or a document (the line under its caption, the welcome) is made to the same people and nobody else: it is
+       true now (B-083 to B-085, proved live), and is not made to somebody who could not do it. */
+    const addsContext = shown.canAsk && contextIsHere ? await this.theyMayAddContext(asker) : false;
+    const welcome = shown.canAsk && shown.turns.length === 0
+      ? askFirstWelcome(organisationName, addsContext, { leaveIsOn: suitesOn.has('leave'), spendingIsOn: suitesOn.has('spend'), isAGuest: standing.is === 'guest' })
+      : null;
+    const starters = shown.canAsk
+      ? askStartersFor({
+          isAGuest: standing.is === 'guest',
+          takesPartInOne: mine.some((g) => g.takesPart),
+          hasOneToUse: mine.length > 0,
+          runsOne: mine.some((g) => g.runsIt),
+          leaveIsOn: suitesOn.has('leave'),
+          spendingIsOn: suitesOn.has('spend'),
+          contextIsHere,
+        })
+      : [];
+    /* Whether the old context chat on the check-in page still answers (release.oldContextChat). The screens stop drawing it when this is false. */
+    const oldContextChatIsOpen = await theOldContextChatIsOpen(this.prisma);
+    return { ...shown, askName: name, caption: ASK_CAPTION, addLine: addsContext ? ASK_ADD_LINE : null, addsContext, oldContextChatIsOpen, welcome, starters };
+  }
+
+  /**
+   * MAY THIS READER SET UP AT LEAST ONE CHECK-IN? The same rule every setup writer asks (decisions 63 and 72): the person who runs a
+   * check-in that has not ended, or an admin of the organisation once the lead of one has left. Never a guess: a read that fails says no.
+   */
+  private async theyMayAddContext(asker: Asker): Promise<boolean> {
+    try {
+      const own = await this.prisma.ground.findFirst({
+        where: { organizationId: asker.organizationId, initiatorId: asker.userId, status: { notIn: A_GROUND_IS_OVER } },
+        select: { id: true },
+      });
+      if (own) return true;
+      const viewer = await this.prisma.user.findUnique({ where: { id: asker.userId }, select: { role: true, organizationId: true } });
+      if (viewer?.role !== 'ADMIN' || viewer.organizationId !== asker.organizationId) return false;
+      const left = await this.prisma.ground.findMany({
+        where: { organizationId: asker.organizationId, status: { notIn: A_GROUND_IS_OVER }, initiator: { isActive: false } },
+        select: { id: true },
+        take: 20,
+      });
+      for (const g of left) {
+        if (await this.grounds.mayOpenSetupChatFor(g.id, asker.userId, asker.organizationId).catch(() => false)) return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
   }
 
   private async forReaderBare(asker: Asker, askedFor: string | null) {

@@ -30,6 +30,15 @@ function saidItThemselves(mention: string, theirLines: string[], names: string[]
   });
 }
 
+const A_HELP_WORD = /\b(?:help|helped|helping|helps|thanks|thank|supported|support|covered|showed|stepped\s+in|sorted|backed)\b/i;
+/** Whether a colleague's own words name the person and say they helped. */
+export function aTranscriptHoldsTheCredit(name: string, theirWords: readonly string[]): boolean {
+  const first = (name ?? '').trim().split(/\s+/)[0] ?? '';
+  if (!first) return false;
+  const named = new RegExp(`\\b${first.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+  return theirWords.some((t) => named.test(t) && A_HELP_WORD.test(t));
+}
+
 export function helpNobodyMentioned(
   mentions: { sourceParticipantId: string; aboutParticipantId: string; kind: string; text: string }[],
   lines: { participantId: string; text: string }[],
@@ -37,6 +46,12 @@ export function helpNobodyMentioned(
   nameOf: (participantId: string) => string | null,
   /* Who is reading: their own line says "you" (item 21: Ada read "Ada Nwosu did not mention it in their own check-ins."). */
   readerParticipantId: string | null = null,
+  /*
+   * WHAT EACH COLLEAGUE SAID, IN THEIR OWN CHECK-INS (the final check, Hafsah, 12 October). "2 colleagues said you helped them." went to
+   * the lead in both quality runs with nothing behind it in any transcript: the credit was the model's reading, not anybody's words. Given,
+   * a credit counts only where the colleague's own words name the person and say they helped. Not given, nothing is checked.
+   */
+  theirOwnWordsBy?: ReadonlyMap<string, readonly string[]>,
 ): { lines: string[]; why: string } | null {
   const out: string[] = [];
   for (const p of people) {
@@ -45,7 +60,8 @@ export function helpNobodyMentioned(
     if (!name) continue;
     const theirs = lines.filter((l) => l.participantId === p.id).map((l) => l.text);
     const credits = mentions.filter((m) => m.kind === 'CREDIT' && m.aboutParticipantId === p.id && m.sourceParticipantId !== p.id
-      && !saidItThemselves(m.text, theirs, [name]));
+      && !saidItThemselves(m.text, theirs, [name])
+      && (!theirOwnWordsBy || aTranscriptHoldsTheCredit(name, theirOwnWordsBy.get(m.sourceParticipantId) ?? [])));
     const colleagues = new Set(credits.map((m) => m.sourceParticipantId)).size;
     if (!colleagues) continue;
     const who = colleagues === 1 ? 'A colleague' : `${colleagues} colleagues`;

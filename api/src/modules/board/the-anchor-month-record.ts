@@ -1,6 +1,8 @@
 import { CheckInStatus } from '@prisma/client';
+import { owesThisSession } from '../grounds/the-lead-checks-in-when-they-choose';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
+import { theSameWaitInOtherWords } from './reads';
 import { inOurVoice } from '../reports/what-the-record-shows-over-time';
 
 /**
@@ -48,26 +50,31 @@ const THE_ANCHOR_OFFERS = { anchor_pair_check_in: 'pair', anchor_project_check_i
 
 export async function readTheMonthRecord(prisma: any, groundId: string, openRound: number): Promise<TheMonthRecord> {
   const [people, finished, commitments, handoffs, offers, ground] = await Promise.all([
-    prisma.groundParticipant.findMany({ where: { groundId }, select: { id: true, userId: true, managingOnly: true, nameGiven: true, createdAt: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } }),
+    prisma.groundParticipant.findMany({ where: { groundId }, select: { id: true, userId: true, managingOnly: true, partyType: true, nameGiven: true, createdAt: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } }),
     prisma.checkIn.findMany({ where: { groundId, status: CheckInStatus.COMPLETED }, select: { participantId: true, sessionNumber: true, isSetup: true, status: true } }),
     prisma.groundCommitment.findMany({ where: { groundId }, select: { participantId: true, status: true, text: true, source: true, explicit: true, settledAt: true, settledBy: true, updatedAt: true, statedInSession: true } }),
     prisma.groundDependency.findMany({ where: { groundId }, select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, status: true } }),
     prisma.recommendation.findMany({ where: { subjectExternalId: `check-in:${groundId}`, kind: { in: Object.keys(THE_ANCHOR_OFFERS) }, state: { in: ['PROPOSED', 'ACCEPTED'] } }, select: { kind: true } }),
-    prisma.ground.findUnique({ where: { id: groundId }, select: { startsAt: true, createdAt: true } }),
+    prisma.ground.findUnique({ where: { id: groundId }, select: { startsAt: true, createdAt: true, initiatorId: true } }),
   ]);
   /* Ideas, only after the yes: kind `idea`, never `idea-offered` (piece 19, ideas-from-the-team). */
   const ideaRows = ((await prisma.workItem?.findMany?.({ where: { groundId, kind: 'idea' }, orderBy: { createdAt: 'asc' }, select: { id: true, name: true, ownerParticipantId: true, kind: true } })?.catch?.(() => [])) ?? []) as any[];
-  const counted = (people as any[]).filter((p) => !p.managingOnly && !isNotLetInYet(p));
+  /* Decision 133: the lead counts only when they checked in. */
+  const answeredAtAll = new Set((finished as any[]).filter((c) => c.status === CheckInStatus.COMPLETED && !c.isSetup).map((c) => c.participantId));
+  const counted = (people as any[]).filter((p) => !p.managingOnly && (owesThisSession(p) || answeredAtAll.has(p.id)) && !isNotLetInYet(p));
   const ids = new Set(counted.map((p) => p.id));
   const real = (finished as any[]).filter((c) => c.status === CheckInStatus.COMPLETED && !c.isSetup && ids.has(c.participantId));
   const checkedInIds = new Set(real.map((c) => c.participantId));
   const answeredNow = new Set(real.filter((c) => c.sessionNumber === openRound).map((c) => c.participantId));
+  const theLeadsRow: string | null = (ground as any)?.initiatorId ? ((people as any[]).find((p) => p.userId && p.userId === (ground as any).initiatorId)?.id ?? null) : null;
   const firstName = (id: string | null) => {
     const p = (people as any[]).find((x) => x.id === id);
     return p ? theFirstNameOfAParticipant(p) ?? null : null;
   };
   const mine = (commitments as any[]).filter((c) => c.participantId && ids.has(c.participantId));
-  const open = (handoffs as any[]).filter((d) => d.status !== 'CLEARED');
+  /* The same wait said twice in different words is listed once (found on "What's still stuck"). */
+  const stillOpen = (handoffs as any[]).filter((d) => d.status !== 'CLEARED');
+  const open: any[] = stillOpen.reduce((kept: any[], d: any) => (kept.some((k) => theSameWaitInOtherWords(k, d)) ? kept : [...kept, d]), []);
   const startedOn = (ground?.startsAt ?? ground?.createdAt ?? (people as any[]).map((p) => p.createdAt).filter(Boolean).sort((a: Date, b: Date) => a.getTime() - b.getTime())[0] ?? null) as Date | null;
   const byKind = { pair: 0, project: 0, aim: 0 };
   for (const o of offers as any[]) byKind[THE_ANCHOR_OFFERS[o.kind as keyof typeof THE_ANCHOR_OFFERS]]++;
@@ -80,8 +87,10 @@ export async function readTheMonthRecord(prisma: any, groundId: string, openRoun
     saidWhatTheyWillDoThisRound: new Set(mine.filter((c) => c.statedInSession === openRound).map((c) => c.participantId)).size,
     commitmentsDone: mine.filter((c) => c.status === 'DONE').length,
     commitmentsOpen: mine.filter((c) => c.status === 'UNKNOWN').length,
-    waiting: open.map((d) => ({ from: firstName(d.fromParticipantId) ?? 'Someone', on: d.onParticipantId ? firstName(d.onParticipantId) : (d.onLabel ?? null), what: d.what ?? null })),
-    handoffsCleared: (handoffs as any[]).length - open.length,
+    /* The month record is read by the lead alone (the month board, the end of the month, the weekly insight), so a wait on her is
+       a wait on "you", never on her own name (release check, 9 October: "Lerato is waiting on Baraka for labels" said to Baraka). */
+    waiting: open.map((d) => ({ from: firstName(d.fromParticipantId) ?? 'Someone', on: d.onParticipantId ? (theLeadsRow && d.onParticipantId === theLeadsRow ? 'you' : firstName(d.onParticipantId)) : (d.onLabel ?? null), what: d.what ?? null })),
+    handoffsCleared: (handoffs as any[]).length - stillOpen.length,
     offers: byKind,
     startedOn,
     ideas: ideaRows.filter((i) => i.kind === 'idea').map((i) => ({ id: i.id, name: i.name, ownerParticipantId: i.ownerParticipantId ?? null, raisedBy: firstName(i.ownerParticipantId ?? null) })),

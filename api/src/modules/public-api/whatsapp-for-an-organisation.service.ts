@@ -1,3 +1,6 @@
+import { thePhonesOwnZone } from '../whatsapp/the-persons-own-time-zone';
+import { aLocationPinSaidBack } from '../documents/a-location-pin';
+import { createHash } from 'crypto';
 import { askNameOf } from '../assistant/ask-name';
 import { endsOnTheClose } from '../conversation/the-close-says-what-comes-next';
 import { Injectable, Logger } from '@nestjs/common';
@@ -21,11 +24,13 @@ import { aDecisionIn } from '../suites/a-request-in-words';
 import { aQuestionAskedAboutARequest } from '../suites/an-approver-asks-by-saying-so';
 import { BACK_TO_THE_CHECK_IN, YES_OR_NO_TO_AN_ANSWER, isThisYourAnswer, type AQuestionWaiting } from '../suites/a-question-about-a-request';
 import { plainlyEnglish } from './plainly-english';
+import { namesTheyCanTellApart } from '../../common/check-ins-you-can-tell-apart';
 import { closingSoonestFirst, oneAtATime, theNextOne } from './several-check-ins-open';
 import { whenItIsDue } from '../whatsapp/what-goes-to-a-phone';
 import { formsOfTheSameNumber } from '../whatsapp/a-number-whatsapp-can-reach';
-import { AnOpenCheckIn, whatTheFileIsCalled, sessionHeader, whichOneRows, whichOneAsText, pickedOne, pickedFromText, whatArrived, reportAsText, reportAsTemplateBlanks, LANGUAGES_WE_CONVERSE_IN, A_FINISH_WORD, A_GREETING_ALONE, A_NOT_NOW, NOT_NOW_SAYING,
-  NOT_ENOUGH_YET_TO_FINISH, isAnAskWord, A_BACK_WORD, A_SWITCH_WORD, A_YES, A_NO, THE_WORDS, NOW_ASKING, ASKING_NEEDS_A_ROSTER_ENTRY, ASK_READS_WORDS,
+import { theCheckInIsCompleteSaying, enoughToCloseSaying } from '../grounds/what-is-sent-in-simpler-words';
+import { AnOpenCheckIn, whatTheFileIsCalled, sessionHeader, whichOneRows, whichOneAsText, pickedOne, pickedFromText, whatArrived, reportAsText, nothingToReadYet, THANKS_YOUR_ANSWER_IS_IN, reportAsTemplateBlanks, LANGUAGES_WE_CONVERSE_IN, A_FINISH_WORD, A_GREETING_ALONE, A_NOT_NOW, NOT_NOW_SAYING,
+  NOT_ENOUGH_YET_TO_FINISH, isAnAskWord, A_BACK_WORD, A_WISH_TO_CARRY_ON_THE_CHECK_IN, isAGreetingOrARequestToStart, A_SWITCH_WORD, A_YES, A_NO, THE_WORDS, NOW_ASKING, ASKING_NEEDS_A_ROSTER_ENTRY, ASK_READS_WORDS,
   ONLY_ONE_OPEN, NONE_OPEN, BACK_IN, BACK_TO_NOTHING, ASKING, isAsking, wasIn, namedCheckIn, looksLikeARequest, shallITreatThisAs, YES_OR_NO, HELD_WORDS_PUT_IN, heldWordsNotPut, type ARequest,
 } from './a-whatsapp-message-is-routed';
 import { A_STOP_WORD, A_START_WORD, STOPPED_SAYING, RESUMED_SAYING, UNKNOWN_NUMBER_SAYING } from '../whatsapp/a-message-outside-the-window';
@@ -46,6 +51,29 @@ import {
  * language is read from their first message and the conversation happens in it; the record stays in
  * English.
  */
+/** What a person reads when a file they sent could not be read (B-104): a sentence of ours, never the library's ("Invalid PDF structure."). */
+export const THAT_FILE_COULD_NOT_BE_READ = 'I could not read that file. It may be damaged, or not the kind of file its name says. Send it again, or upload it in Groundwork. A PDF, an image or a text document works.';
+/** What a person reads when a file they sent is kept but nothing in it could be opened: we never say we read or saw it. */
+export const I_COULD_NOT_OPEN_THAT_FILE = 'I could not open that file. Could you tell me what it shows?';
+/**
+ * SAID ONCE, THE FIRST TIME A PERSON EVER SENDS A PHOTO, A DOCUMENT OR A LOCATION PIN DURING A WHATSAPP
+ * CHECK-IN (Hafsah, 11 October 2026, her words, the same sentence for all three): sending it in reply
+ * is choosing to share it, so it is added to the check-in where whoever sees their other proof sees it.
+ */
+export const PHOTOS_YOU_SEND_HERE_ARE_PROOF = 'Photos you send here are added to your check-in as proof, so your lead can see them.';
+/** The note that it was said, kept on the number so it is never said again. */
+export const TOLD_PROOF_IS_SHARED = 'told:proof-is-shared';
+export function aFileProblemInWords(err: any): string {
+  const said = typeof err?.message === 'string' ? err.message.trim() : '';
+  /* One of our own refusals is already a sentence a person can use: a capital, a full stop, several words, and no library words. */
+  const ours = !!err?.getStatus && /^[A-Z][^]{25,}[.!?]$/.test(said) && !/\b(pdf structure|invalid|parse|unexpected|stack|undefined|null|ENOENT)\b/i.test(said);
+  return ours ? said : THAT_FILE_COULD_NOT_BE_READ;
+}
+
+export function isHeldByTheAddOn(error?: string | null): boolean {
+  return /this check-in stays in the app/i.test(error ?? '');
+}
+
 @Injectable()
 export class WhatsAppForAnOrganisationService {
   private readonly logger = new Logger(WhatsAppForAnOrganisationService.name);
@@ -73,6 +101,8 @@ export class WhatsAppForAnOrganisationService {
     /* A redelivery is not a second answer. The id is claimed before anything else happens, with the
        number it came in on, which is how the last number this person wrote to is known. */
     if (message.id && !(await this.firstTimeWeSeeThis(organizationId, anInboundKey(via, WhatsAppService.normalize(from), String(message.id))))) return;
+    /* The same words twice within a few seconds, under two message ids (a double tap, a phone that sent it again), are one answer and get one reply (B-105). */
+    if (message.type === 'text' && typeof message.text?.body === 'string' && !(await this.notTheSameWordsJustNow(organizationId, WhatsAppService.normalize(from), message.text.body))) return;
     if (via === 'theirs') await this.prisma.whatsAppConnection.update({ where: { organizationId }, data: { lastInboundAt: new Date() } }).catch(() => undefined);
     await this.route(organizationId, from, whatArrived(message), {
       /* A reply quoting one of our messages, or a template's button, carries that message's id (decision 106 item 1). */
@@ -150,7 +180,7 @@ export class WhatsAppForAnOrganisationService {
       await out.say(t);
     };
 
-    if (arrived.kind === 'other') { await say('I can read text, photos and documents here. Say it in words, or send the file.'); return; }
+    if (arrived.kind === 'other') { await say('I can read text, photos, documents and location pins here. Say it in words, or send the file.'); return; }
     /* The same checks as every other door, on the one field this door plucks off a raw request. */
     if (arrived.kind === 'text') {
       const checked = validateSync(plainToInstance(AMessageIntoACheckInDto, { message: arrived.text }));
@@ -257,12 +287,14 @@ export class WhatsAppForAnOrganisationService {
     }
     if (isAsking(thread?.checkInId) && who.personId) {
       const named = arrived.kind === 'pick' ? pickedOne(arrived.id, open) : arrived.kind === 'text' ? namedCheckIn(said, open) : null;
-      if (named || (arrived.kind === 'text' && A_BACK_WORD.test(said))) {
+      if (named || (arrived.kind === 'text' && (A_BACK_WORD.test(said) || A_WISH_TO_CARRY_ON_THE_CHECK_IN.test(said)))) {
         const target = named ?? open.find((c) => c.id === wasIn(thread?.checkInId)) ?? (open.length === 1 ? open[0] : null);
         if (target) {
           await this.remember(organizationId, from, target.id);
           const opened = await this.openIfWaiting(target, userId!);
-          await say(opened ? `${sessionHeader(target)} ${THE_WORDS(ask)}\n\n${opened}` : BACK_IN(target));
+          /* Back in a check-in already begun: the question that was waiting is asked again (B-146), not left for her to remember. */
+          const waiting = opened ? null : await this.theQuestionStillWaiting(target.id, userId!);
+          await say(opened ? `${sessionHeader(target)} ${THE_WORDS(ask)}\n\n${opened}` : waiting ? `${BACK_IN(target)}\n\n${waiting}` : BACK_IN(target));
           return;
         }
         if (open.length > 1) {
@@ -301,7 +333,7 @@ export class WhatsAppForAnOrganisationService {
       if (arrived.kind === 'text' && A_BACK_WORD.test(said)) { await say(BACK_TO_NOTHING(ask)); return; }
       const waiting = await this.invitationWaitingFor(organizationId, who.personId);
       if (waiting) { await say(`You are invited to "${waiting}" and the invitation has not been accepted yet. Open the email, accept it, then reply here and your answers go straight in.`); return; }
-      if (arrived.kind === 'media') { await say('There is no check-in open to put that on. I will message you here when the next one opens; send it again then.'); return; }
+      if (arrived.kind === 'media' || arrived.kind === 'location') { await say('There is no check-in open to put that on. I will message you here when the next one opens; send it again then.'); return; }
       if (who.personId && arrived.kind === 'text') { await say(asATextMessage(await this.assistant.respondOnWhatsApp(organizationId, who.personId, arrived.text)) || 'Noted.'); return; }
       await say('You have no check-in open right now. I will message you here when the next one is ready.');
       return;
@@ -354,10 +386,27 @@ export class WhatsAppForAnOrganisationService {
       if (!fetched) { await say('I could not fetch that file from WhatsApp. Send it again, or upload it in Groundwork.'); return; }
       const ground = await this.prisma.checkIn.findUnique({ where: { id: current.id }, select: { groundId: true } });
       try {
-        const doc: any = await this.documents.upload(ground!.groundId, userId!, { originalname: arrived.fileName, mimetype: fetched.mimeType, buffer: fetched.buffer, size: fetched.buffer.length } as any, false, arrived.caption || undefined);
-        await say(`${whatTheFileIsCalled(arrived)} is on your check-in${arrived.caption ? ` with your note: ${arrived.caption}` : ''}. ${doc?.whoCanSeeIt ?? 'Only you can see it until you say otherwise.'} Anything it backs up is read against what you said.`);
+        /* Sent in reply during a check-in, so shared with it (Hafsah, 11 October 2026). */
+        const doc: any = await this.documents.upload(ground!.groundId, userId!, { originalname: arrived.fileName, mimetype: fetched.mimeType, buffer: fetched.buffer, size: fetched.buffer.length } as any, false, arrived.caption || undefined, { sharedWithTheCheckIn: true });
+        const once = await this.sayOnceThatProofIsShared(doc, organizationId, from);
+        if (doc?.couldNotRead) { await say(`${I_COULD_NOT_OPEN_THAT_FILE}${once}`); return; }
+        await say(`${whatTheFileIsCalled(arrived)} is on your check-in${arrived.caption ? ` with your note: ${arrived.caption}` : ''}.${doc?.visibility === 'OPEN' ? '' : ` ${doc?.whoCanSeeIt ?? 'Only you can see it until you say otherwise.'}`} Anything it backs up is read against what you said.${once}`);
       } catch (err: any) {
-        await say(err?.message ?? 'That file could not be read. A PDF, an image, or a text document works.');
+        await say(aFileProblemInWords(err));
+      }
+      return;
+    }
+
+    /* A location pin, kept with the check-in as proof of where they were when they sent it. */
+    if (arrived.kind === 'location') {
+      const ground = await this.prisma.checkIn.findUnique({ where: { id: current.id }, select: { groundId: true } });
+      const sentAt = arrived.sentAt ?? new Date();
+      const zone = thePhonesOwnZone(from) ?? undefined;
+      try {
+        const doc: any = await this.documents.keepALocationPin(ground!.groundId, userId!, arrived, sentAt, zone, { sharedWithTheCheckIn: true });
+        await say(`${aLocationPinSaidBack(arrived, sentAt, zone)}${await this.sayOnceThatProofIsShared(doc, organizationId, from)}`);
+      } catch (err: any) {
+        await say(aFileProblemInWords(err));
       }
       return;
     }
@@ -430,7 +479,7 @@ export class WhatsAppForAnOrganisationService {
        * Whoever decides it asked them, and their reply here would have gone into the check-in. Asked
        * once for each question, never for a greeting, "finish" or the first word that starts a check-in.
        */
-      if (!beginning && !A_FINISH_WORD.test(text) && !A_GREETING_ALONE.test(text)) {
+      if (!beginning && !A_FINISH_WORD.test(text) && !isAGreetingOrARequestToStart(text)) {
         const q = await this.aQuestionWaitsFor(organizationId, who.personId);
         if (q && thread?.questionAskedAbout !== q.id) {
           await this.askAboutTheAnswer(organizationId, from, text, q.id);
@@ -460,7 +509,7 @@ export class WhatsAppForAnOrganisationService {
         /* The report comes from the completion listener below, off this request: four polls at four
            seconds each and a translation held Meta's webhook past its patience, and the redelivery
            was another answer. Acknowledge, and let the listener send. */
-        await say(`Your check-in is complete and on record. Your report follows in a moment.${next ? `\n\n${theNextOne(next)}` : ''}`);
+        await say(`${theCheckInIsCompleteSaying(current.simplerWords)}${next ? `\n\n${theNextOne(next)}` : ''}`);
       } catch (e: any) {
         /* "Not enough yet" asks for something the person can give, so it is said in the words of this door ("finish"), not the app's ("complete", "the record is still thin"). */
         await say(e?.response?.canContinue ? NOT_ENOUGH_YET_TO_FINISH : (e?.response?.message ?? e?.message ?? 'That could not be completed yet.'));
@@ -475,6 +524,8 @@ export class WhatsAppForAnOrganisationService {
      * them went to the controller's log-only catch. The person got silence, which on a phone reads as
      * the product being dead. One try, and say() the sentence. The highest-harm line in the slice.
      */
+    /* This message went to THIS check-in over WhatsApp. It is what "doing this session on WhatsApp" means for the halfway messages (whatsapp/a-check-in-left-halfway.ts): a note, never a message sent. */
+    await (this.prisma as any).whatsAppSend?.create?.({ data: { organizationId, phone: from, kind: 'answered-here', checkInId: current.id, sentAt: null, failedAt: null, status: null, error: null } })?.catch?.(() => undefined);
     if (beginning && current.status !== 'NOT_STARTED') { await say(`${sessionHeader(current)} Carry on where you left off.`); return; }
     try {
       let reply = '';
@@ -485,12 +536,12 @@ export class WhatsAppForAnOrganisationService {
         /* A short first answer is still an answer. "Not much yet", "It's blocked", "Behind again" are
            twelve characters or fewer and were thrown away. Only a greeting and nothing else is not
            handed in - matched by a list, not by a length. */
-        if (A_GREETING_ALONE.test(text) || beginning) { await say(reply); return; }
+        if (isAGreetingOrARequestToStart(text) || beginning) { await say(reply); return; }
       }
       const r = await this.conversation.sendMessage(current.id, userId!, text, { door: 'whatsapp' });
       reply = reply ? `${reply}\n\n${r.reply}` : r.reply;
       /* The close already says to reply "finish" (the-close-says-what-comes-next); said once. */
-      if (r.sessionComplete && !endsOnTheClose(r.reply)) reply += '\n\nThat is enough to close this check-in. Reply "finish" to complete it, or keep going.';
+      if (r.sessionComplete && !endsOnTheClose(r.reply)) reply += `\n\n${enoughToCloseSaying(current.simplerWords)}`;
       await say(reply);
     } catch (e: any) {
       const said = e?.response?.message ?? e?.message ?? 'That could not be answered just now. Try again in a moment.';
@@ -525,7 +576,7 @@ export class WhatsAppForAnOrganisationService {
     try {
       const c = await this.prisma.checkIn.findUnique({
         where: { id: e.checkInId },
-        select: { id: true, sessionNumber: true, status: true, ground: { select: { id: true, organizationId: true, label: true, overWhatsApp: true } }, participant: { select: { userId: true, email: true } } },
+        select: { id: true, sessionNumber: true, status: true, ground: { select: { id: true, organizationId: true, label: true, overWhatsApp: true, simplerWords: true } }, participant: { select: { userId: true, email: true } } },
       });
       if (!c?.participant.userId) return;
       /* Kept in the app by the lead: the report stays in the app too (survey item 5). */
@@ -536,7 +587,7 @@ export class WhatsAppForAnOrganisationService {
       if (!person?.phone) return;
       const alreadySent = await this.prisma.whatsAppSend.findFirst({ where: { checkInId: c.id, kind: { in: ['report', 'report:template'] }, sentAt: { not: null } }, select: { id: true } }).catch(() => null);
       if (alreadySent) return;
-      void this.sendTheReport(c.ground.organizationId, { id: c.id, status: c.status, sessionNumber: c.sessionNumber, label: c.ground.label }, c.participant.userId, person.phone)
+      void this.sendTheReport(c.ground.organizationId, { id: c.id, status: c.status, sessionNumber: c.sessionNumber, label: c.ground.label, simplerWords: c.ground.simplerWords }, c.participant.userId, person.phone)
         .catch((err: any) => this.logger.warn(`WhatsApp report after completion failed for ${e.checkInId}: ${err?.message}`));
     } catch (err: any) {
       this.logger.warn(`WhatsApp report after completion failed for ${e.checkInId}: ${err?.message}`);
@@ -544,6 +595,25 @@ export class WhatsAppForAnOrganisationService {
   }
 
   /** Claims the message id. False on a redelivery, which is then not handled a second time. */
+  /**
+   * WHETHER THESE WORDS FROM THIS NUMBER HAVE NOT JUST COME. Claimed the way a message id is, in five-second steps, and the step before
+   * is looked at too, so two copies on either side of a step edge are still one. Words sent again a moment later than that are a new answer.
+   */
+  private async notTheSameWordsJustNow(organizationId: string, phone: string, words: string): Promise<boolean> {
+    const said = createHash('sha1').update(words.trim().replace(/\s+/g, ' ').toLowerCase()).digest('hex').slice(0, 20);
+    const step = Math.floor(Date.now() / 5000);
+    const key = (n: number) => `same:${phone}:${said}:${n}`;
+    try {
+      if (await this.prisma.whatsAppInboundMessage.findFirst({ where: { organizationId, messageId: key(step - 1) }, select: { messageId: true } })) return false;
+      await this.prisma.whatsAppInboundMessage.create({ data: { organizationId, messageId: key(step) } });
+      return true;
+    } catch (err: any) {
+      if (err?.code === 'P2002') return false;
+      /* Not being able to tell must never make a person's words vanish. */
+      return true;
+    }
+  }
+
   private async firstTimeWeSeeThis(organizationId: string, messageId: string): Promise<boolean> {
     try {
       await this.prisma.whatsAppInboundMessage.create({ data: { organizationId, messageId } });
@@ -565,7 +635,7 @@ export class WhatsAppForAnOrganisationService {
       report = await this.reports.sessionReport(row.groundId, c.sessionNumber, userId, organizationId).catch(() => null);
       if (!report?.whereThingsStand) { report = null; await new Promise((r) => setTimeout(r, 4000)); }
     }
-    let text = report ? reportAsText(report, c.label) : `Your check-in on ${c.label} is on record. The report is being written and is in Groundwork under Report.`;
+    let text = nothingToReadYet(report) ? THANKS_YOUR_ANSWER_IS_IN(c.label) : report ? reportAsText(report, c.label, c.simplerWords) : `Your check-in on ${c.label} is on record. The report is being written and is in Groundwork under Report.`;
     text = await this.inTheirLanguage(text, row.participant.language);
     /* Outside the 24 hours it goes as groundwork_report_ready: the name and one short line, never a line break. */
     const params = reportAsTemplateBlanks(report, c.label);
@@ -574,6 +644,8 @@ export class WhatsAppForAnOrganisationService {
     /* On the number the person last wrote to, so the report arrives in the same conversation (survey item 8). */
     const via = (await this.whatsapp.lastWroteTo(organizationId, phone).catch(() => null)) ?? 'theirs';
     const first = await this.whatsapp.sendOn(via, organizationId, phone, text, { checkInId: c.id, kind: 'report', params });
+    /* A message the organisation's own WhatsApp settings hold back is not a failure to log twice and retry (B-119): the report is in the app. */
+    if (!first.sent && isHeldByTheAddOn(first.error)) return;
     if (!first.sent) {
       await new Promise((r) => setTimeout(r, 3000));
       const second = await this.whatsapp.sendOn(via, organizationId, phone, text, { checkInId: c.id, kind: 'report-retry', params });
@@ -620,11 +692,13 @@ export class WhatsAppForAnOrganisationService {
         OR: [{ availableFrom: null }, { availableFrom: { lte: new Date() } }],
       },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, status: true, sessionNumber: true, availableFrom: true, createdAt: true, ground: { select: { label: true, overWhatsApp: true, cadence: true } } },
+      select: { id: true, status: true, sessionNumber: true, availableFrom: true, createdAt: true, ground: { select: { label: true, createdAt: true, initiator: { select: { firstName: true } }, overWhatsApp: true, cadence: true, simplerWords: true } } },
     });
+    /* Two of the same name are told apart by when each started (or who runs it), so "You have two check-ins open" can be answered. */
+    const said = namesTheyCanTellApart(rows.map((r) => ({ id: r.id, label: r.ground.label, startedAt: r.ground.createdAt, leadName: r.ground.initiator?.firstName })));
     /* The one closing soonest first (decision 106 item 1), by the same due date the reminders use. */
     return closingSoonestFirst(rows.map((r) => ({
-      id: r.id, status: r.status, sessionNumber: r.sessionNumber, label: r.ground.label, keptOffThePhone: keptOffThePhone(r.ground),
+      id: r.id, status: r.status, sessionNumber: r.sessionNumber, label: said.get(r.id) ?? r.ground.label, simplerWords: r.ground.simplerWords, keptOffThePhone: keptOffThePhone(r.ground),
       dueAt: whenItIsDue(r.availableFrom ?? r.createdAt, r.ground.cadence),
     })));
   }
@@ -651,11 +725,28 @@ export class WhatsAppForAnOrganisationService {
   /** The open check-in the last opening notice to this number was about, when it came after where the person was. */
   private async theLastOpeningNoticeTo(from: string, open: AnOpenCheckIn[], sinceTheyWereIn: Date | null): Promise<AnOpenCheckIn | null> {
     const last = await (this.prisma.whatsAppSend as any).findFirst?.({
-      where: { phone: { in: formsOfTheSameNumber(from) }, kind: { startsWith: 'checkin-open' }, sentAt: { not: null }, checkInId: { in: open.map((c) => c.id) }, ...(sinceTheyWereIn ? { createdAt: { gt: sinceTheyWereIn } } : {}) },
+      where: { phone: { in: formsOfTheSameNumber(from) }, OR: [{ kind: { startsWith: 'checkin-open' } }, { kind: { startsWith: 'checkin-catch-up' } }], sentAt: { not: null }, checkInId: { in: open.map((c) => c.id) }, ...(sinceTheyWereIn ? { createdAt: { gt: sinceTheyWereIn } } : {}) },
       orderBy: { createdAt: 'desc' },
       select: { checkInId: true },
     })?.catch?.(() => null);
     return last?.checkInId ? open.find((c) => c.id === last.checkInId) ?? null : null;
+  }
+
+  /**
+   * The sentence that sending proof here shares it, with a leading space, the first time this number
+   * ever sends something that was kept shared; '' every other time. Said only when it is true: a file
+   * kept private (adding documents switched off) is not announced as seen by the lead. The note that it
+   * was said is written before it is said, so a second message arriving at once does not repeat it.
+   */
+  private async sayOnceThatProofIsShared(doc: any, organizationId: string, from: string): Promise<string> {
+    if (doc?.visibility !== 'OPEN') return '';
+    const phone = WhatsAppService.normalize(from);
+    try {
+      const told = await this.prisma.whatsAppSend.findFirst({ where: { phone, kind: { startsWith: TOLD_PROOF_IS_SHARED } }, select: { id: true } });
+      if (told) return '';
+      await this.prisma.whatsAppSend.create({ data: { organizationId, phone, kind: TOLD_PROOF_IS_SHARED, checkInId: null, sentAt: null, failedAt: null, status: null, error: null } });
+    } catch { return ''; }
+    return ` ${PHOTOS_YOU_SEND_HERE_ARE_PROOF}`;
   }
 
   private async remember(organizationId: string, from: string, checkInId: string) {
@@ -712,6 +803,45 @@ export class WhatsAppForAnOrganisationService {
     if (this.aHoldHasExpired(thread)) return null;
     return { text: thread.requestWords, kind: thread.requestKind as ARequest | 'answer', questionId: thread.questionAskedAbout ?? null };
   }
+  /**
+   * NOTHING STAYS HELD PAST ITS TEN MINUTES, EVEN WHEN NOBODY WRITES (decision 110, P12).
+   *
+   * The words wait for a yes or a no for ten minutes and were cleared by the answer or by the person's next message, never by a clock, so a person
+   * who did not write again left their words in the database. Each hold that has outlived its ten minutes is cleared now, and the words go where
+   * the person's next message would have put them: into the check-in they were held from, as a no does, so they are never lost. Claimed first,
+   * so a person writing at that moment, or a second copy of the API, puts them in once. A person who has since gone to Ask Groundwork has their
+   * words put in the check-in they came from. Where there is no open check-in to put them in, they are cleared and logged without them.
+   */
+  async putAwayWordsHeldTooLong(now: Date = new Date()): Promise<{ putIn: number; cleared: number }> {
+    const cutoff = new Date(now.getTime() - WhatsAppForAnOrganisationService.A_REQUEST_WAITS_MS);
+    const rows = await this.prisma.whatsAppThread.findMany({
+      where: { requestAskedAt: { lt: cutoff }, requestKind: { not: null } },
+      select: { id: true, organizationId: true, phone: true, checkInId: true, requestWords: true, requestAskedAt: true },
+      take: 500,
+    });
+    let putIn = 0; let cleared = 0;
+    for (const r of rows as any[]) {
+      /* Claimed on the very moment it was asked, so only one copy, or the person's own reply, gets it. */
+      const claimed = await this.prisma.whatsAppThread.updateMany({ where: { id: r.id, requestAskedAt: r.requestAskedAt }, data: WhatsAppForAnOrganisationService.NO_REQUEST });
+      if (!claimed?.count) continue;
+      cleared += 1;
+      const words: string | null = r.requestWords ?? null;
+      const heldFrom = isAsking(r.checkInId) ? wasIn(r.checkInId) : r.checkInId;
+      if (!words || !heldFrom) continue;
+      try {
+        const who = await this.whatsapp.whoIsWritingTo(r.organizationId, r.phone);
+        const ci: any = await this.prisma.checkIn.findUnique({ where: { id: heldFrom }, select: { id: true, status: true } });
+        if (!who.userId || !ci || !['NOT_STARTED', 'IN_PROGRESS'].includes(ci.status)) { this.logger.warn(`Held words for ${heldFrom} could not be put in the check-in, and were cleared.`); continue; }
+        if (ci.status === 'NOT_STARTED') await this.conversation.open(ci.id, who.userId);
+        await this.conversation.sendMessage(ci.id, who.userId, words, { door: 'whatsapp' });
+        putIn += 1;
+      } catch (err: any) {
+        this.logger.warn(`Held words for ${heldFrom} could not be put in the check-in, and were cleared: ${err?.message}`);
+      }
+    }
+    return { putIn, cleared };
+  }
+
   /** Words were held for a yes or a no, and the ten minutes passed with no answer. */
   private aHoldHasExpired(thread: { requestKind?: string | null; requestWords?: string | null; requestAskedAt?: Date | string | null } | null): boolean {
     if (!thread?.requestAskedAt || !thread.requestKind || thread.requestWords == null) return false;
@@ -763,6 +893,18 @@ export class WhatsAppForAnOrganisationService {
       create: { organizationId, phone, pickPendingAt: new Date() },
       update: { pickPendingAt: new Date() },
     }).catch(() => undefined);
+  }
+
+  /** The last thing asked in this check-in, when it is still waiting for an answer; null otherwise. Her own check-in, read as her. */
+  private async theQuestionStillWaiting(checkInId: string, userId: string): Promise<string | null> {
+    try {
+      const t: any = await this.conversation.getTranscript?.(checkInId, userId);
+      const turns: { role: string; content: string }[] = Array.isArray(t?.turns) ? t.turns : [];
+      const last = turns[turns.length - 1];
+      return last && last.role === 'AI' && last.content?.trim() ? last.content.trim() : null;
+    } catch {
+      return null;
+    }
   }
 
   private async openIfWaiting(c: AnOpenCheckIn, userId: string): Promise<string | null> {

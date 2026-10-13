@@ -79,10 +79,32 @@ export function theirWordsItCameFrom(stored: string | null | undefined, said: st
   return found.length > 3 ? null : found.length ? found : null;
 }
 
+const THEY_WILL = /(?<![\p{L}'’])(?:I|we)(?:\s+will|['’]ll|\s+am\s+going\s+to|['’]m\s+going\s+to|\s+plan\s+to|\s+can|['’]d|\s+would)(?![\p{L}])/iu;
+/**
+ * WHETHER THEY SAID THEY THEMSELVES WOULD DO WHAT A STORED "WHAT HAPPENS ONCE IT CLEARS" SAYS (B-093): a sentence of theirs that it was drawn from, and
+ * that has them saying "I will", "I'll", "I am going to" or "I can". "I assumed the drivers or sales would call them" is not that.
+ */
+export function saidTheyWouldDoIt(then: string, said: string[]): boolean {
+  const mine = new Set(contentWords(then));
+  const plain = (t: string) => t.toLowerCase().normalize('NFC').replace(/[\u2018\u2019']/g, '').replace(/[.!?]+$/, '').trim();
+  const phrase = plain(then);
+  /* Every sentence of theirs that holds the stored words whole, or all of their content words (at least two, or the one there is). */
+  const candidates: string[] = [];
+  for (const turn of said) {
+    for (const sentence of sentencesOf(turn ?? '')) {
+      const words = new Set(contentWords(sentence));
+      const holdsThem = !!phrase && plain(sentence).includes(phrase) || (mine.size > 0 && [...mine].every((w) => words.has(w)));
+      if (holdsThem) candidates.push(sentence);
+    }
+  }
+  /* A line that cannot be traced to a sentence of theirs is left as it was; one that can, and has no promise in it, is not a promise. */
+  return !candidates.length || candidates.some((sentence) => THEY_WILL.test(sentence));
+}
+
 export function withTheirWordsChecked<T extends { fromParticipantId: string; sourceCheckInId?: string | null; triedSaid?: string | null; dueSaid?: string | null; then?: string | null }>(
   handoffs: T[],
   typed: Map<string, string[]>,
-): (T & { triedSaidTheirWords: string[] | null; dueSaidTheirWords: string[] | null; thenTheirWords: string | null })[] {
+): (T & { triedSaidTheirWords: string[] | null; dueSaidTheirWords: string[] | null; thenTheirWords: string | null; thenIsTheirPromise: boolean })[] {
   return handoffs.map((d) => {
     const said = d.sourceCheckInId ? typed.get(d.sourceCheckInId) : undefined;
     /* What happens once it is cleared, only where it is word for word what they typed (request 115 e). */
@@ -92,6 +114,8 @@ export function withTheirWordsChecked<T extends { fromParticipantId: string; sou
       triedSaidTheirWords: theirWordsItCameFrom(d.triedSaid, said),
       dueSaidTheirWords: theirWordsItCameFrom(d.dueSaid, said),
       thenTheirWords: then && said?.length ? theRecordsWordsFor(then, said) : null,
+      /* Whether they said they would do it themselves (B-093). True where their words could not be read, so nothing already shown goes missing. */
+      thenIsTheirPromise: !then || !said?.length ? true : saidTheyWouldDoIt(then, said),
     };
   });
 }

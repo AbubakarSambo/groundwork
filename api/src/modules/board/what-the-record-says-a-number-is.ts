@@ -1,3 +1,5 @@
+import { COUNTS_AS_A_SOURCE } from '../documents/what-kind-of-thing-a-document-is';
+import { theReferencesIn } from '../conversation/a-typed-reference-backs-its-line';
 /**
  * WHAT THE RECORD SAYS A TARGET IS AT, READ BY THE THING THAT CAN READ.
  *
@@ -56,6 +58,30 @@ export interface ALineOnRecord {
   saidByTheLead: boolean;
   /** What kind of line it is, where the caller knows ("SUCCESS_DEFINITION", "PROGRESS"...). */
   kind?: string | null;
+  /**
+   * HOW MUCH OF IT IS PROVEN (Hafsah, 12 October: proof given counts). Null or absent where nothing backs
+   * the line; the number of references typed for it (M-Pesa codes, delivery notes) where those back it;
+   * Infinity where a document of their own backs it.
+   */
+  proven?: number | null;
+}
+
+/** How much a stored record line proves: see `ALineOnRecord.proven`. */
+export function howMuchIsProven(row: { recallBased?: boolean | null; anchoredDocumentId?: string | null; anchoredOrigin?: string | null; anchoredPassage?: string | null }): number | null {
+  if (row.recallBased !== false) return null;
+  if (row.anchoredOrigin != null && !COUNTS_AS_A_SOURCE.has(row.anchoredOrigin)) return null;
+  if (row.anchoredDocumentId) return Infinity;
+  const refs = theReferencesIn(row.anchoredPassage);
+  return refs.length || null;
+}
+
+/**
+ * THE NUMBER A BACKED LINE PROVES, or null where it proves none. Hassan's "I sold three this week."
+ * with three M-Pesa codes proves 3; the same line with one code proves 1, never the 3 he said.
+ */
+export function theNumberItProves(r: { count: number }, line: ALineOnRecord | null): number | null {
+  if (!line || !line.proven || line.proven <= 0) return null;
+  return Math.min(r.count, line.proven);
 }
 
 const plain = (t: string) => (t ?? '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
@@ -283,5 +309,7 @@ export function whatToDoWithTheRead(r: AReadNumber, target: ATarget, lines: ALin
    * that is the mark that nobody typed this count by hand, so the lead's next number lands too.
    */
   const landedFromTheLead = (target as any).suggestedCount == null && !!(target as any).suggestedSaid && target.count > 0;
+  /* A count proof backs is the count, whoever said it: proof given counts (Hafsah, 12 October). */
+  if (theNumberItProves(r, line) !== null) return 'land';
   return line?.saidByTheLead && (neverCounted || landedFromTheLead) ? 'land' : 'offer';
 }

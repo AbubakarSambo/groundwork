@@ -61,7 +61,7 @@ describe('finishing waits for the card, writes its lines, and returns it', () =>
     await service.waitForTheCardBeingBuilt('ci1');
     const card = await service.writeTheRecordAtTheEnd({ id: 'ci1', participantId: 'p1' });
     expect(card).toEqual(CARD);
-    expect(prisma.recordEntry.createMany).toHaveBeenCalledWith({ data: [{ ...ROWS[0], checkInId: 'ci1', participantId: 'p1' }] });
+    expect(prisma.recordEntry.createMany).toHaveBeenCalledWith({ data: [{ ...ROWS[0], checkInId: 'ci1', participantId: 'p1', createdAt: expect.any(Date) }] });
     expect(service.extractRecordEntries).not.toHaveBeenCalled();
   });
 
@@ -81,5 +81,42 @@ describe('finishing waits for the card, writes its lines, and returns it', () =>
     const at = Date.now();
     await service.waitForTheCardBeingBuilt('ci1');
     expect(Date.now() - at).toBeLessThan(1000);
+  });
+});
+
+describe('"Finish my check-in now" before the conversation closed (journey 3, round 4)', () => {
+  /* Pia at session 1: she answered, Groundwork asked "What else should I know?", and she pressed the
+     button to finish. No card had been built, so she read "I could not show you what I wrote down just now". */
+  it('builds the card from her answers then, on the last thing Groundwork said, and shows it', async () => {
+    let stored: any = null;
+    const prisma: any = {
+      conversationTurn: {
+        update: jest.fn(async ({ data }: any) => { stored = data.endCard; return {}; }),
+        findMany: jest.fn(async () => [
+          { id: 'turn-1', role: TurnRole.AI, endCard: null },
+          { id: 'turn-2', role: TurnRole.PERSON, endCard: null },
+          { id: 'turn-3', role: TurnRole.AI, endCard: stored },
+        ]),
+      },
+    };
+    const service = aService(prisma);
+    service.loadOwnedCheckIn = jest.fn(async () => ({ id: 'ci1', participantId: 'p1', groundId: 'g1', status: 'IN_PROGRESS' }));
+    service.theEndCardFor = jest.fn(async (_c: any, turnId: string) => { await prisma.conversationTurn.update({ where: { id: turnId }, data: { endCard: CARD, recordDraft: ROWS } }); return CARD; });
+    expect(await service.theEndCardWhenReady('ci1', 'u1')).toEqual({ endCard: CARD });
+    expect(service.theEndCardFor).toHaveBeenCalledWith(expect.objectContaining({ id: 'ci1' }), 'turn-3');
+  });
+
+  it('builds nothing for somebody who has not answered, or a check-in already finished', async () => {
+    for (const [status, turns] of [
+      ['IN_PROGRESS', [{ id: 't1', role: TurnRole.AI, endCard: null }]],
+      ['COMPLETED', [{ id: 't1', role: TurnRole.AI, endCard: null }, { id: 't2', role: TurnRole.PERSON, endCard: null }, { id: 't3', role: TurnRole.AI, endCard: null }]],
+    ] as const) {
+      const prisma: any = { conversationTurn: { findMany: jest.fn(async () => turns) } };
+      const service = aService(prisma);
+      service.loadOwnedCheckIn = jest.fn(async () => ({ id: 'ci1', participantId: 'p1', groundId: 'g1', status }));
+      service.theEndCardFor = jest.fn();
+      expect(await service.theEndCardWhenReady('ci1', 'u1')).toEqual({ endCard: null });
+      expect(service.theEndCardFor).not.toHaveBeenCalled();
+    }
   });
 });

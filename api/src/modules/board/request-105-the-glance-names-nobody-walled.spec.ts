@@ -37,8 +37,10 @@ describe('where people see only themselves', () => {
   });
   it('nobody walled is told who else has not answered; the counts stay', async () => {
     const kwameHasNot: Setup = { ...HIDDEN, checkIns: [answered('p-femi', 1), answered('p-ngozi', 1), { ...answered('p-kwame', 1), status: 'NOT_STARTED', completedAt: null }] };
-    expect((await boardAs(kwameHasNot, ...BISI)).howItIsGoing.glance.progress).toMatchObject({ answeredThisRound: 2, ofPeople: 4, waitingOn: ['Bisi Adeyemi', 'Kwame Mensah'] });
-    expect((await boardAs(kwameHasNot, ...NGOZI)).howItIsGoing.glance.progress).toMatchObject({ answeredThisRound: 2, ofPeople: 4, waitingOn: [] });
+    /* CHANGED 11 OCTOBER (decision 133): Bisi is the lead, who checks in when she chooses and did not
+       check in this round, so she is not one of the people counted or waited on: three, not four. */
+    expect((await boardAs(kwameHasNot, ...BISI)).howItIsGoing.glance.progress).toMatchObject({ answeredThisRound: 2, ofPeople: 3, waitingOn: ['Kwame Mensah'] });
+    expect((await boardAs(kwameHasNot, ...NGOZI)).howItIsGoing.glance.progress).toMatchObject({ answeredThisRound: 2, ofPeople: 3, waitingOn: [] });
   });
 });
 

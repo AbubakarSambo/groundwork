@@ -1,7 +1,11 @@
 import { theDayInWords } from '../board/the-day-in-words';
+import { namesTheyCanTellApart } from '../../common/check-ins-you-can-tell-apart';
 import { theAwayLine } from '../suites/who-is-away';
 import { isNotLetInYet } from './who-an-admin-did-not-let-in';
+import { theNotJoinedYetLine } from './invited-not-joined-yet';
 import { theCheckIn, yourCheckIn } from './which-check-in-it-is';
+import { wasAQuietClose } from './an-answer-includes-a-refusal';
+import { checksInOnlyWhenTheyChoose } from './the-lead-checks-in-when-they-choose';
 import { isShut } from './a-ground-that-has-ended';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
 
@@ -41,6 +45,11 @@ export interface Need {
    * The board page draws Today's items for its check-in, so it leaves these out rather than say each one twice.
    */
   onTheBoardToo?: true;
+  /**
+   * MISSED CHECK-INS, told to the person first (decision 136). Only on the person's own item about their own missed check-ins: the check-in where
+   * the reason they give is kept, and the reason they already gave. Never on anybody else's Today.
+   */
+  missedReason?: { checkInId: string; given: string | null };
   /** The check-in this item belongs to, in its own words (request 152, 2), so a reader in several can see which one. Empty where the item is not about one check-in. */
   checkInLabel?: string;
 }
@@ -50,6 +59,15 @@ export interface ComingUp {
   at: string;
   what: string;
   to: string;
+  /** The check-in it is about, and the day that check-in started, so two close names can be told apart by the thing and not by a clause in the sentence (request 193). */
+  groundId?: string;
+  checkInStartedOn?: string;
+}
+
+/** The check-in a "coming up" row is about, by id, with the day it started when that is known. */
+function aboutTheCheckIn(g: { id: string; createdAt?: string | Date | null }): { groundId: string; checkInStartedOn?: string } {
+  const started = g.createdAt ? new Date(g.createdAt) : null;
+  return { groundId: g.id, ...(started && !Number.isNaN(started.getTime()) ? { checkInStartedOn: started.toISOString() } : {}) };
 }
 
 export interface WhatNeedsYou {
@@ -58,6 +76,8 @@ export interface WhatNeedsYou {
   /** One sentence under the date: who has checked in, or that your check-in is open. */
   line: string | null;
   comingUp: ComingUp[];
+  /** For an admin whose organisation is on its free trial: "Your free trial has started. It ends on 12 November 2026." */
+  freeTrial?: string | null;
 }
 
 /** The parts of a check-ins list row this reads. Everything else on the row is ignored. */
@@ -67,6 +87,9 @@ export interface ListedCheckIn {
   status?: string | null;
   organizationId: string;
   initiatorId?: string | null;
+  /* For telling two check-ins of the same name apart: when it started, and who runs it. */
+  createdAt?: string | Date | null;
+  initiator?: { firstName?: string | null } | null;
   closedAt?: string | Date | null;
   resolvedAt?: string | Date | null;
   endsAt?: string | Date | null;
@@ -168,16 +191,33 @@ function whoHasNotYet(missing: { name: string | null; isMe: boolean }[]): string
   return missing.length === 1 ? '1 person has not checked in yet.' : `${missing.length} people have not checked in yet.`;
 }
 
+/** "Omar did not check in before it closed.", for a session the clock closed with nothing said. */
+function whoDidNotCheckIn(missed: { name: string | null; isMe: boolean }[]): string {
+  if (!missed.length) return '';
+  const said = missed.map((m) => (m.isMe ? 'you' : m.name));
+  if (missed.length <= 2 && said.every(Boolean)) {
+    const [a, b] = said as string[];
+    const who = b ? `${a} and ${b}` : a;
+    return `${who[0].toUpperCase()}${who.slice(1)} did not check in before it closed.`;
+  }
+  return missed.length === 1 ? '1 person did not check in before it closed.' : `${missed.length} people did not check in before it closed.`;
+}
+
 const theSession = theCheckIn;
 
 export function whatNeedsYou(
-  list: ListedCheckIn[],
+  listAsGiven: ListedCheckIn[],
   reader: Reader,
   waiting: WaitingForApproval[] = [],
   now: Date = new Date(),
   /** What is waiting for this reader to approve, already said (waiting-for-you-to-approve.ts). Only ever the approver's. */
   toApprove: Need[] = [],
 ): WhatNeedsYou {
+  /* Two check-ins of the same name read as two: "Sales team, Q4, started 2 September". A unique name reads as it is. */
+  const toldApart = namesTheyCanTellApart(listAsGiven
+    .filter((g) => (g.status ?? '') !== 'AWAITING_APPROVAL' && (g.status ?? '') !== 'DECLINED')
+    .map((g) => ({ id: g.id, label: g.label ?? '', startedAt: g.createdAt, leadName: g.initiator?.firstName })));
+  const list = listAsGiven.map((g) => (toldApart.has(g.id) ? { ...g, label: toldApart.get(g.id)! } : g));
   const at = now.getTime();
   const isAdmin = reader.role === 'ADMIN';
   const firstTurns: Need[] = [];
@@ -195,7 +235,8 @@ export function whatNeedsYou(
     const over = isOver(g);
     const me = (g.participants ?? []).find((p) => p.userId && p.userId === reader.userId) ?? null;
     const iRunIt = !!g.initiatorId && g.initiatorId === reader.userId;
-    const mayName = iRunIt || (isAdmin && g.organizationId === reader.organizationId);
+    /* An admin who takes part in it reads it as a person in it does (decision 121, item 7). */
+    const mayName = iRunIt || (isAdmin && g.organizationId === reader.organizationId && !me);
     const sessions = sessionsOf(g);
     const base = { groundId: g.id, organizationId: g.organizationId, ...(g.label?.trim() ? { checkInLabel: g.label.trim() } : {}) };
     /* THE TEAM'S ROUND, from the one clock the board and the list read (request 97a). Only where the row
@@ -299,7 +340,7 @@ export function whatNeedsYou(
     /* Your own report from a check-in you finished in the last day. Only you are given it. */
     if (me && !heldFromMyOwn) {
       const last = sessions
-        .filter((c) => c.participantId === me.id && c.status === 'COMPLETED' && (time(c.completedAt) ?? 0) > at - DAY)
+        .filter((c) => c.participantId === me.id && c.status === 'COMPLETED' && !wasAQuietClose(c as any) && (time(c.completedAt) ?? 0) > at - DAY)
         .sort((a, b) => (time(b.completedAt) ?? 0) - (time(a.completedAt) ?? 0))[0];
       if (last) {
         ownReports.push({
@@ -338,17 +379,32 @@ export function whatNeedsYou(
        * Today says nothing about this round, rather than "4 of 5 have checked in." with nobody missing. This
        * threw "Cannot read properties of undefined" and Rukia's Today was a 500.
        */
-      if (n > 0 && total > 1 && answered < total && waitingIds.length > 0 && (!line || total > line.people)) {
-        const byId = new Map((g.participants ?? []).map((p) => [p.id, p]));
-        const missing = waitingIds.map((id) => {
+      /*
+       * A MISS STAYS IN THE COUNT (night quality run 1, problem 4: Jared Okoth). A session the clock closed with nothing said is not
+       * waited on any more, so it was in neither list and Today said nothing about the round. It is a miss, said as one. Never the
+       * lead's own row, or an optional one: they check in when they choose (decision 133).
+       */
+      const byId = new Map((g.participants ?? []).map((p) => [p.id, p]));
+      const missedIds = [...new Set(rows
+        .filter((c: any) => !c.optional && wasAQuietClose(c) && !waitingIds.includes(c.participantId))
+        .filter((c) => !checksInOnlyWhenTheyChoose(byId.get(c.participantId) as any))
+        .filter((c) => !rows.some((o: any) => o.participantId === c.participantId && o.status === 'COMPLETED' && !wasAQuietClose(o)))
+        .map((c) => c.participantId))];
+      if (n > 0 && total > 1 && answered < total && (waitingIds.length > 0 || missedIds.length > 0) && (!line || total > line.people)) {
+        const who = (id: string) => {
           const p = byId.get(id);
           return { name: p?.user?.firstName?.trim() || null, isMe: !!p?.userId && p.userId === reader.userId };
-        });
+        };
+        const missing = waitingIds.map(who);
+        const missed = missedIds.map(who);
+        /* Invited, not joined yet: named apart, never as missed and never in the count (decision 8 redone). */
+        const notJoined = theNotJoinedYetLine((g.participants ?? []).filter((p: any) => p.notJoinedYet && !p.notLetIn && !p.managingOnly).map((p: any) => p?.user?.firstName?.trim() || null));
+        const said = [whoHasNotYet(missing), whoDidNotCheckIn(missed), notJoined].filter(Boolean).join(' ');
         line = {
           people: total,
           text: answered === 0
-            ? `In ${g.label}, nobody has checked in for ${theSession(n)} yet.`
-            : `In ${g.label}, ${answered} of ${total} have checked in for ${theSession(n)}. ${whoHasNotYet(missing)}`,
+            ? `In ${g.label}, nobody has checked in for ${theSession(n)}${missing.length ? ' yet' : ''}.${missed.length ? ` ${whoDidNotCheckIn(missed)}` : ''}${notJoined ? ` ${notJoined}` : ''}`
+            : `In ${g.label}, ${answered} of ${total} have checked in for ${theSession(n)}. ${said}`,
         };
       }
     }
@@ -360,7 +416,7 @@ export function whatNeedsYou(
      * check-in can be a round ahead of the team's.
      */
     if (!over) {
-      let future: { sessionNumber: number; at: number } | undefined;
+      let future: { sessionNumber: number; at: number; theirNext?: boolean } | undefined;
       if (mayName) {
         /*
          * THE TEAM'S NEXT CHECK-IN IS THE BOARD'S (request 122, part 2): the first session after the open round that has
@@ -387,18 +443,27 @@ export function whatNeedsYou(
             return t !== null && t > at && t <= at + AHEAD && c.status !== 'IN_PROGRESS' && c.status !== 'COMPLETED';
           })
           .sort((a, b) => (time(a.availableFrom) ?? 0) - (time(b.availableFrom) ?? 0))[0];
-        if (mineNext) future = { sessionNumber: mineNext.sessionNumber, at: time(mineNext.availableFrom)! };
+        /*
+         * "YOUR FIFTH CHECK-IN" ONLY WHEN THEY HAVE ANSWERED FOUR (night quality run 2). Jared read "Your fifth check-in ... opens." with
+         * two answered: two of his four closed by the clock with nothing said. The number is the record's count of check-ins they answered.
+         */
+        if (mineNext) {
+          const answered = sessions.filter((c: any) => c.participantId === me.id && !c.isSetup && c.status === 'COMPLETED' && !wasAQuietClose(c)).length;
+          future = { sessionNumber: mineNext.sessionNumber, at: time(mineNext.availableFrom)!, ...(answered + 1 !== mineNext.sessionNumber ? { theirNext: true } : {}) };
+        }
       }
       if (future) {
         comingUp.push({
           at: new Date(future.at).toISOString(),
-          what: mayName ? `${cap(theCheckIn(future.sessionNumber))} for ${g.label} opens.` : `${yourCheckIn(future.sessionNumber)} for ${g.label} opens.`,
+          /* The name is in quotation marks, so a name with a comma in it ("Wanjiru, first 90 days") is not read as two pieces (B-167). */
+          what: mayName ? `${cap(theCheckIn(future.sessionNumber))} for “${g.label}” opens.` : `${future.theirNext ? 'Your next check-in' : yourCheckIn(future.sessionNumber)} for “${g.label}” opens.`,
           to: `/grounds/${g.id}`,
+          ...aboutTheCheckIn(g),
         });
       }
       const ends = time(g.endsAt);
       if ((iRunIt || me) && ends !== null && ends > at && ends <= at + AHEAD) {
-        comingUp.push({ at: new Date(ends).toISOString(), what: `${g.label} ends.`, to: `/grounds/${g.id}` });
+        comingUp.push({ at: new Date(ends).toISOString(), what: `${g.label} ends.`, to: `/grounds/${g.id}`, ...aboutTheCheckIn(g) });
       }
     }
   }

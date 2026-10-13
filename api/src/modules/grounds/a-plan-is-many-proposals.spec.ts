@@ -36,13 +36,14 @@ describe('reading a plan into proposals (pure)', () => {
   const out = proposalsFromAPlan(PLAN, READ, PEOPLE, { from: 'Q4 plan.pdf' });
 
   it('gives one proposal per thing, each with a card sentence the lead reads', () => {
-    expect(out.map((p) => p.kind)).toEqual(['goal', 'role', 'commitment', 'commitment', 'rule']);
+    expect(out.map((p) => p.kind)).toEqual(['goal', 'role', 'commitment', 'commitment', 'rule', 'person']);
     expect(out.map((p) => p.heading)).toEqual([
       'A goal, from Q4 plan.pdf. It would go in targets.',
       'A role, from Q4 plan.pdf. It would go in people and roles.',
       'A commitment, from Q4 plan.pdf. It would go in commitments.',
       'A commitment, from Q4 plan.pdf. It would go in commitments.',
       'A rule, from Q4 plan.pdf. It would go in how we work.',
+      'A person, from Q4 plan.pdf. They would be added to this check-in and invited.',
     ]);
     expect(out[0].says).toBe('The team is to make 25 freezer sales by 31 December.');
     expect(out[4].says).toBe('Drop a lead after three calls with no reply.');
@@ -122,10 +123,10 @@ describe('the plan routes', () => {
   it('keep each proposal as waiting, serve it with its stored id, and write nothing else', async () => {
     const { svc, writes, stored } = aService();
     const got = await svc.read('g1', 'u-lead', { text: PLAN });
-    expect(got.proposals).toHaveLength(5);
-    expect(got.says).toBe("That's 5 things to confirm. Nothing goes into Context until you do.");
-    expect(got.proposals.map((p) => p.id)).toEqual(['pp-1', 'pp-2', 'pp-3', 'pp-4', 'pp-5']);
-    expect(stored.map((r) => [r.kind, r.status])).toEqual([['GOAL', 'PENDING'], ['ROLE', 'PENDING'], ['COMMITMENT', 'PENDING'], ['COMMITMENT', 'PENDING'], ['RULE', 'PENDING']]);
+    expect(got.proposals).toHaveLength(6);
+    expect(got.says).toBe("That's 6 things to confirm. Nothing goes into Context until you do.");
+    expect(got.proposals.map((p) => p.id)).toEqual(['pp-1', 'pp-2', 'pp-3', 'pp-4', 'pp-5', 'pp-6']);
+    expect(stored.map((r) => [r.kind, r.status])).toEqual([['GOAL', 'PENDING'], ['ROLE', 'PENDING'], ['COMMITMENT', 'PENDING'], ['COMMITMENT', 'PENDING'], ['RULE', 'PENDING'], ['PERSON', 'PENDING']]);
     expect(got.proposals[0].from).toBe('the plan you pasted');
     expect(stored[0].fromDocument).toBeNull();
     expect(writes).toEqual([]);
@@ -143,7 +144,7 @@ describe('the plan routes', () => {
     const { svc } = aService();
     await svc.read('g1', 'u-lead', { documentId: 'd1' });
     const { proposals } = await svc.waiting('g1', 'u-lead');
-    expect(proposals).toHaveLength(5);
+    expect(proposals).toHaveLength(6);
     expect(proposals[4]).toMatchObject({
       id: 'pp-5', kind: 'rule', status: 'PENDING',
       heading: 'A rule, from Q4 plan.pdf. It would go in how we work.',
@@ -214,7 +215,7 @@ describe('the plan routes', () => {
     const got = await svc.notNow('g1', 'u-lead', 'pp-2');
     expect(got.status).toBe('NOT_NOW');
     expect(stored[1]).toMatchObject({ status: 'NOT_NOW', decidedByUserId: 'u-lead' });
-    expect((await svc.waiting('g1', 'u-lead')).proposals.map((p) => p.id)).toEqual(['pp-1', 'pp-3', 'pp-4', 'pp-5']);
+    expect((await svc.waiting('g1', 'u-lead')).proposals.map((p) => p.id)).toEqual(['pp-1', 'pp-3', 'pp-4', 'pp-5', 'pp-6']);
     await expect(svc.confirm('g1', 'u-lead', 'pp-2')).rejects.toBeInstanceOf(BadRequestException);
     expect(writes).toEqual([]);
   });
@@ -297,7 +298,7 @@ Who should we ask about pricing?`;
   const out = proposalsFromAPlan(PLAN2, READ2, PEOPLE, { from: 'Q4 notes.pdf' });
 
   it('says each one back as the lead reads it, with where it would go', () => {
-    expect(out.map((p) => p.kind)).toEqual(['date', 'question', 'decision', 'question']);
+    expect(out.map((p) => p.kind)).toEqual(['date', 'question', 'decision', 'question', 'person']);
     expect(out[0].says).toBe('The quarter ends on 31 December.');
     expect(out[0].heading).toBe('A date, from Q4 notes.pdf. It would go in notes.');
     expect(out[1].says).toBe('Groundwork will ask Aisha: "Which accounts actually have a buying process?"');
@@ -328,8 +329,8 @@ Who should we ask about pricing?`;
     it('are kept as waiting, written nowhere, and written once, on a yes, in the right place', async () => {
       const { svc, writes, stored, prisma } = aService({ read: READ2 });
       const got = await svc.read('g1', 'u-lead', { text: PLAN2 });
-      expect(got.proposals).toHaveLength(4);
-      expect(stored.map((r) => r.kind)).toEqual(['DATE', 'QUESTION', 'DECISION', 'QUESTION']);
+      expect(got.proposals).toHaveLength(5);
+      expect(stored.map((r) => r.kind)).toEqual(['DATE', 'QUESTION', 'DECISION', 'QUESTION', 'PERSON']);
       expect(writes).toEqual([]);
       await svc.confirm('g1', 'u-lead', 'pp-2');
       await svc.confirm('g1', 'u-lead', 'pp-3');
@@ -366,8 +367,110 @@ describe('a private document is turned into shared notes only by the person who 
     const { svc, prisma } = aService();
     prisma.ground.findUnique = jest.fn(async () => ({ id: 'g1', initiatorId: 'u-lead', status: 'OPEN', endState: null, participants: [...ROSTER, { id: 'p-lead', email: 'l@x.test', nameGiven: 'Wairimu', managingOnly: false, userId: 'u-lead', leftAt: null, user: { firstName: 'Wairimu', lastName: 'K' } }] }));
     prisma.groundDocument.findFirst = jest.fn(async () => ({ content: PLAN, fileName: 'Q4 plan.pdf', participantId: 'p-lead', visibility: 'CLOSED' }));
-    expect((await svc.read('g1', 'u-lead', { documentId: 'd1' })).proposals).toHaveLength(5);
+    expect((await svc.read('g1', 'u-lead', { documentId: 'd1' })).proposals).toHaveLength(6);
     prisma.groundDocument.findFirst = jest.fn(async () => ({ content: PLAN, fileName: 'Q4 plan.pdf', participantId: 'p-aisha', visibility: 'OPEN' }));
-    expect((await svc.read('g1', 'u-lead', { documentId: 'd1' })).proposals).toHaveLength(5);
+    expect((await svc.read('g1', 'u-lead', { documentId: 'd1' })).proposals).toHaveLength(6);
+  });
+});
+
+
+/*
+ * PEOPLE A PLAN NAMES WHO ARE NOT ON THE CHECK-IN (piece 5, F). Each is one card in the plan's own words ("Add Musa Bello to this check-in?"),
+ * and they are added and invited only on the lead's yes, through the ordinary way a person is added (which keeps the plan's limits).
+ * Until then nothing is written and nobody is emailed.
+ */
+describe('a person the plan names who is not on the check-in', () => {
+  const people = [{ id: 'p-aisha', name: 'Aisha Bello' }, { id: 'p-samuel', name: 'Samuel Okoro' }];
+
+  it('is offered once, with the plan\'s own words, and what it needs said plainly', () => {
+    const out = proposalsFromAPlan(PLAN, READ, people, { from: 'Q4 plan.pdf' });
+    const cards = out.filter((p) => p.kind === 'person');
+    expect(cards).toHaveLength(1);
+    expect(cards[0].says).toBe('Add Musa Bello to this check-in?');
+    expect(cards[0].saidAs).toBe('Musa Bello will open the Abuja list by end of October.');
+    expect(cards[0].note).toBe('The plan gives no email address for Musa Bello, so you will be asked for one. Nobody is invited until you say yes.');
+  });
+
+  it('uses an address only when the plan itself wrote exactly one beside the name', () => {
+    const plan = 'Musa Bello (musa@abuja.example) will open the Abuja list by end of October.';
+    const [, card] = proposalsFromAPlan(plan, [{ kind: 'commitment', says: 'Musa Bello will open the Abuja list.', fromThePlan: plan, personName: 'Musa Bello', what: 'open the Abuja list', date: 'end of October' }], people);
+    expect(card.fields.email).toBe('musa@abuja.example');
+    expect(card.note).toBe('Musa Bello will be added to this check-in and invited at musa@abuja.example, but only when you say yes.');
+  });
+
+  it('is not offered for somebody who is on the check-in, or when the name is not in the plan', () => {
+    expect(proposalsFromAPlan(PLAN, READ, [...people, { id: 'p-musa', name: 'Musa Bello' }]).filter((p) => p.kind === 'person')).toEqual([]);
+    expect(proposalsFromAPlan(PLAN, [{ ...READ[3], personName: 'Zainab' }], people)).toEqual([]);
+  });
+
+  it('the model can never make one itself', () => {
+    expect(proposalsFromAPlan(PLAN, [{ kind: 'person', says: 'Add Zainab to this check-in?', fromThePlan: 'Musa Bello will open the Abuja list', what: 'Zainab', personName: 'Zainab' }], people)).toEqual([]);
+  });
+});
+
+describe('the lead\'s yes to a person', () => {
+  function world(opts: { leadIsOn?: boolean } = {}) {
+    const rows: any[] = [];
+    const added: any[] = [];
+    const roster = [...ROSTER];
+    const prisma: any = {
+      ground: { findUnique: jest.fn(async () => ({ id: 'g1', organizationId: 'org-a', initiatorId: 'u-lead', status: 'ACTIVE', endState: null, scenario: 'NEW_PROJECT', participants: roster })) },
+      planProposal: {
+        create: jest.fn(async ({ data }: any) => { const r = { id: `pp-${rows.length + 1}`, status: 'PENDING', createdAt: new Date(), editedAt: null, ...data }; rows.push(r); return r; }),
+        findMany: jest.fn(async ({ where }: any) => rows.filter((r) => (!where.status || r.status === where.status))),
+        findFirst: jest.fn(async ({ where }: any) => rows.find((r) => r.id === where.id) ?? null),
+        update: jest.fn(async ({ where, data }: any) => Object.assign(rows.find((r) => r.id === where.id), data)),
+        updateMany: jest.fn(async ({ where, data }: any) => { const r = rows.find((x) => x.id === where.id && x.status === where.status); if (!r) return { count: 0 }; Object.assign(r, data); return { count: 1 }; }),
+      },
+      groundParticipant: { findFirst: jest.fn(async ({ where }: any) => added.find((a) => a.email === where.email) ?? null) },
+    };
+    const grounds: any = { addParticipant: jest.fn(async (_g: string, _o: string, _u: string, dto: any) => { added.push({ id: 'p-new', email: dto.email }); roster.push({ id: 'p-new', email: dto.email, nameGiven: dto.displayName, managingOnly: false, userId: null, leftAt: null, user: null } as any); if (opts.leadIsOn === false) throw new BadRequestException('Your plan allows 5 people in a check-in.'); }) };
+    const moduleRef: any = { get: (cls: any) => (cls?.name === 'GroundsService' ? grounds : { createObjective: jest.fn() }) };
+    const anthropic: any = { extract: jest.fn(async () => ({ proposals: READ })) };
+    const svc = new APlanIsManyProposalsService(prisma, anthropic, { get: () => true } as any, moduleRef);
+    return { svc, prisma, grounds, rows, added };
+  }
+
+  it('asks for an address when the plan gave none, and writes and sends nothing until there is one', async () => {
+    const { svc, grounds } = world();
+    const { proposals } = await svc.read('g1', 'u-lead', { text: PLAN });
+    const card = proposals.find((p: any) => p.kind === 'person')!;
+    await expect(svc.confirm('g1', 'u-lead', card.id)).rejects.toThrow("Type Musa Bello's email address, so Groundwork can invite them. Nobody is invited until you say yes.");
+    await expect(svc.confirm('g1', 'u-lead', card.id, { email: 'not an address' })).rejects.toBeInstanceOf(BadRequestException);
+    expect(grounds.addParticipant).not.toHaveBeenCalled();
+  });
+
+  it('adds and invites them only on the yes, through the ordinary way a person is added, once', async () => {
+    const { svc, grounds, rows } = world();
+    const { proposals } = await svc.read('g1', 'u-lead', { text: PLAN });
+    const card = proposals.find((p: any) => p.kind === 'person')!;
+    expect(grounds.addParticipant).not.toHaveBeenCalled();
+    const done = await svc.confirm('g1', 'u-lead', card.id, { email: 'musa@abuja.example' });
+    expect(done.wrote.table).toBe('GroundParticipant');
+    expect(grounds.addParticipant).toHaveBeenCalledTimes(1);
+    expect(grounds.addParticipant).toHaveBeenCalledWith('g1', 'org-a', 'u-lead', { email: 'musa@abuja.example', displayName: 'Musa Bello' });
+    await expect(svc.confirm('g1', 'u-lead', card.id, { email: 'musa@abuja.example' })).rejects.toThrow('That one is already confirmed.');
+    expect(grounds.addParticipant).toHaveBeenCalledTimes(1);
+    expect(rows.find((r) => r.id === card.id).status).toBe('CONFIRMED');
+    /* The card is gone from the waiting list, and the commitment that named him can now be confirmed. */
+    const waiting = (await svc.waiting('g1', 'u-lead')).proposals;
+    expect(waiting.some((p: any) => p.kind === 'person')).toBe(false);
+  });
+
+  it('when the plan\'s limit says no, the person is not added, the card stays waiting, and the lead reads why', async () => {
+    const { svc, rows } = world({ leadIsOn: false });
+    const { proposals } = await svc.read('g1', 'u-lead', { text: PLAN });
+    const card = proposals.find((p: any) => p.kind === 'person')!;
+    await expect(svc.confirm('g1', 'u-lead', card.id, { email: 'musa@abuja.example' })).rejects.toThrow('Your plan allows 5 people in a check-in.');
+    expect(rows.find((r) => r.id === card.id).status).toBe('PENDING');
+  });
+
+  it('only the lead may', async () => {
+    const { svc } = world();
+    const { proposals } = await svc.read('g1', 'u-lead', { text: PLAN });
+    const card = proposals.find((p: any) => p.kind === 'person')!;
+    for (const who of ['u-samuel', 'u-aisha', 'u-admin']) {
+      await expect(svc.confirm('g1', who, card.id, { email: 'musa@abuja.example' })).rejects.toBeInstanceOf(ForbiddenException);
+    }
   });
 });

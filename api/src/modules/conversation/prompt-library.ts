@@ -1,6 +1,8 @@
 import { BLOCKER_TRACE_PROMPT, BLOCKER_TRACE_PROMPT_KEY } from './where-the-blocker-started';
 import { ANCHOR_LEAD_PROMPT, ANCHOR_LEAD_PROMPT_KEY } from './the-anchor-lead-conversation';
 import { ANCHOR_PARTICIPANT_PROMPT, ANCHOR_PARTICIPANT_PROMPT_KEY } from './the-anchor-weekly-check-in';
+import { ANCHOR_BASELINE_PROMPT, ANCHOR_BASELINE_PROMPT_KEY } from './the-anchor-baseline';
+import { IDEA_SPOTTING_KEY, THE_IDEA_SPOTTING_PROMPT } from './ideas-from-the-team';
 import { THE_BRIEF_IS_CONTEXT_ONLY } from './the-leads-brief-is-never-quoted-to-them';
 import { COMPANY_PICTURE_PROMPT, COMPANY_PICTURE_PROMPT_KEY } from '../grounds/the-company-picture';
 import { CUSTOMER_STANDING_PROMPT, CUSTOMER_STANDING_PROMPT_KEY } from '../suites/the-customer-standing';
@@ -9,8 +11,10 @@ import { alreadyEstablished } from './setup-already-asked-this';
 import { whatThisCheckInIsFor, whichStage, THE_SCENARIO_TABLE, type Stage } from './the-scenario-table';
 import { NOTHING_HERE_IS_PLEASED_WITH_YOU } from './nothing-here-is-pleased-with-you';
 import { GroundScenario, PartyType, GroundMoment } from '@prisma/client';
-import { ALIGNMENT_FEED_ONLY_CODES } from '../patterns/pattern-library';
+import { FIRST_CHECK_IN_ROLE_KEY, FIRST_CHECK_IN_ROLE_PROMPT, ROLE_READING_KEY, ROLE_READING_PROMPT } from './their-role-in-the-first-check-in';
+import { ALIGNMENT_FEED_ONLY_CODES, PATTERN_DETECTION_PROMPT, PATTERN_DETECTION_PROMPT_KEY } from '../patterns/pattern-library';
 import { whereInTheRun } from './where-in-the-run';
+import { THE_JUDGEMENT_ROOM_KEY, theRoomJudgementTemplate } from '../reports/the-judgement-over-the-answers';
 /*
  * THE ONE WORDING RULEBOOK, IMPORTED AND NEVER RETYPED. See plain-words.ts for why there is only
  * one: three surfaces with their own copy is how three surfaces come to disagree about whether a
@@ -135,17 +139,27 @@ export const OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE = [
   '  the question itself, with nothing in front of it',
   '',
   'FOUR TURNS, EACH OPENING ON ONE OF THOSE:',
-  '  They: "Sahar takes 25 shops and Amina takes 15. I have not told them yet."',
+  '  They: "Sahar takes 25 shops and Nadia takes 15. I have not told them yet."',
   '  You:  "Telling them is the part that makes those real. What is stopping you from sending it today?"',
   '',
   '  They: "Kano is slow because the distributor only restocks monthly."',
-  '  You:  "Monthly restocking caps you at twelve refills a year across forty shops. Is that enough to hit the number?"',
+  '  You:  "How many shops ran out before the last restock came?"',
   '',
   '  They: "The distributor sends us a list, but it is not always right."',
   '  You:  "What makes it wrong when it is wrong? It helps to know whether the list is late or just inaccurate."',
   '',
   '  They: "Honestly I do not know."',
   '  You:  "Who would know?"',
+  '',
+  /*
+   * NIGHT QUALITY RUN 1, PROBLEM 6. The turn above once read "Monthly restocking caps you at twelve
+   * refills a year across forty shops." Hassan was told exactly that, word for word, and said "I do
+   * not know about twelve refills, nobody told me that." An example with a figure in it is a figure
+   * the model will say as fact. So the example asks, and the rule below says where a figure may come from.
+   */
+  'THESE ARE SHAPES, NOT LINES TO SAY. Never say an example\'s words to anybody. A number, a count, a',
+  'limit or a rate is said only when it is in the record or in their own words. Never work one out,',
+  'multiply one, or make one up to make a point. Where you need a number they have not given, ask for it.',
   '',
   /*
    * THE PRODUCT NARRATING ITSELF, WHICH THE STRIPPER DOWNSTREAM DOES NOT CATCH EITHER.
@@ -678,8 +692,9 @@ IF THEY NAME AN OUTCOME RATHER THAN AN ACTION - "she needs to change it", "the t
 that is what they want, not what they will do. Ask once more for their own part: "That is the
 outcome. What is the first thing you do towards it, and when?"
 
-IF THEY GENUINELY HAVE NOTHING, record that plainly and close anyway. "Nothing until the review" is
-a real answer and a useful one; pressing a third time turns a record into a demand. Never invent a
+IF THEY GENUINELY HAVE NOTHING, record that plainly and close anyway. Having nothing to do until a
+later meeting is a real answer and a useful one. Acknowledge what they wrote in their words, and never
+answer it with a line they did not write; pressing a third time turns a record into a demand. Never invent a
 date they did not say, and never turn a vague intention into a deadline: "soon" stays "soon".
 Reading a date OUT OF A DOCUMENT they can open is not inventing one - see the exception in the
 TIMEFRAME RULE. Quoting "the plan your lead shared says 19 September" is showing them what is
@@ -1509,6 +1524,15 @@ Name them as facts, not as claims. "Both described the role as owning product an
 
 If there is very little shared picture - say so. An absence of shared ground is itself significant information.
 
+A NUMBER, OR WHO AGREED TO WHAT, IS SAID ONLY AS SOMEBODY SAID IT. This holds in every section and every finding.
+- A count is reported as the person said it, of the thing they said it about, for the round they said it in. Use the
+  number they gave for this round, never an earlier round's.
+- Two counts of different things are never set against each other. Where somebody gives one number for what they sold
+  and another for the places they visited, both stand, each with its own thing; neither is ever "only" the other.
+- "We did not agree X", said about one matter, is never read as a refusal of another matter. Whether people agreed to
+  something is said only from what they said about that thing; where nobody said, say nothing about agreement.
+- Never say what a group thinks or has agreed from one person's words.
+
 WHERE YOU ARE GIVEN A LINE BEGINNING "THE NUMBERS:", IT IS ARITHMETIC AND IT LEADS.
 
 The product worked it out, not you: how much the objective is, what the individual numbers on
@@ -1973,7 +1997,7 @@ The first line, THE PERSON SPEAKING, gives the name of the person who said all o
 
    - name: the aim as one plain, full sentence about whoever holds it, by name. It is read on its own beside the other aims, by the speaker and by everybody else on the check-in, so somebody who reads only this sentence should know who is aiming at what. "Bisi is aiming for 40 approved facilities this quarter", "The team is aiming for 500 trucks sold by the end of the year". Not "Sales objective", not "Sell 500 trucks" and not "approved facilities".
 
-     Never "I", "we", "my", "the person" or "the speaker": the speaker is called by their first name, from THE PERSON SPEAKING. "I stop being invited to every single call" is "Amina stops being invited to every single call". Where the aim is the whole team's, say "The team".
+     Never "I", "we", "my", "the person" or "the speaker": the speaker is called by their first name, from THE PERSON SPEAKING. "I stop being invited to every single call" is "Nadia stops being invited to every single call". Where the aim is the whole team's, say "The team".
 
      Write every number the way a person reads it: "120 million naira", not "N120m" or "120000000"; "254,000", not "254k".
 
@@ -2842,7 +2866,7 @@ const CRISIS_PACK_COMBINED = [
 ].join('\n\n');
 
 /** The scenarios whose packs carry role-specific questions for the person the check-in is about. */
-export const STARTING_SCENARIOS = new Set(['NEW_HIRE', 'NEW_COFOUNDER', 'NEW_ADVISOR', 'NEW_PROJECT', 'NEW_MANAGER', 'CONTRACT_RENEWAL', 'ROLE_HANDOVER']);
+export const STARTING_SCENARIOS = new Set(['NEW_HIRE', 'NEW_COFOUNDER', 'NEW_ADVISOR', 'NEW_PROJECT', 'HELP_TEAM_UNDERSTAND', 'NEW_MANAGER', 'CONTRACT_RENEWAL', 'ROLE_HANDOVER']);
 
 /**
  * THE PRODUCT'S OWN FIRST QUESTION TO A NON-LEAD IN A STARTING SCENARIO. See ConversationService.open.
@@ -2854,6 +2878,9 @@ export const WHO_ARE_YOU_IN_THIS =
 /** For the participant who is NOT the person the check-in is about. Their side of the shared work. */
 const SOMEBODY_ELSE_IN_THIS =
   '"From where you sit, what has this work looked like so far? What have you needed from them, or they from you, and did it arrive? Then separately: what would you point to in three months to say this had gone well from your side?"';
+
+/** The anchor's role questions are a project's, as they were before it had a situation of its own. */
+const startingRoleQuestionsFor = (scenario: string) => STARTING_ROLE_QUESTIONS[(scenario === 'HELP_TEAM_UNDERSTAND' ? 'NEW_PROJECT' : scenario) as keyof typeof STARTING_ROLE_QUESTIONS];
 
 function composeStartingPack(scenario: keyof typeof STARTING_ROLE_QUESTIONS): string {
   const role = STARTING_ROLE_QUESTIONS[scenario];
@@ -2939,7 +2966,7 @@ THE NUMBER, AND THIS IS THE ONE THAT MATTERS: for each goal, ask what the number
 
 WHO CARRIES IT: ask who each goal belongs to, and where a total splits across people, what each person's share is. "150 each" said about three people is three numbers, not one.
 
-HAVE THEY BEEN TOLD, AND THIS IS NOT OPTIONAL: the moment a number has somebody's name on it, ask whether that person has been told. Ask it plainly - "does Amina know that is her number yet?" - and ask it once per person, not once per goal.
+HAVE THEY BEEN TOLD, AND THIS IS NOT OPTIONAL: the moment a number has somebody's name on it, ask whether that person has been told. Ask it plainly - "does Nadia know that is her number yet?" - and ask it once per person, not once per goal.
 
 Somebody is about to be measured against a figure. If they have never seen it, every session after this reads their work against a standard nobody showed them, which is the one thing this product exists not to do. It also tends to be the most useful thing in the session: read live, a lead set two numbers, had told neither person, and said so the moment she was asked.
 
@@ -3500,6 +3527,7 @@ export const SCENARIO_PACKS: Record<GroundScenario, string> = {
   NEW_COFOUNDER: composeStartingPack('NEW_COFOUNDER'),
   NEW_ADVISOR: composeStartingPack('NEW_ADVISOR'),
   NEW_PROJECT: composeStartingPack('NEW_PROJECT'),
+  HELP_TEAM_UNDERSTAND: composeStartingPack('NEW_PROJECT'),
   NEW_MANAGER: composeStartingPack('NEW_MANAGER'),
   CONTRACT_RENEWAL: composeStartingPack('CONTRACT_RENEWAL'),
   CONTRACT_REVIEW: CONTRACT_REVIEW_PACK,
@@ -3565,6 +3593,7 @@ function theScenariosOwnPack(
     case GroundScenario.NEW_COFOUNDER:
     case GroundScenario.NEW_ADVISOR:
     case GroundScenario.NEW_PROJECT:
+    case GroundScenario.HELP_TEAM_UNDERSTAND:
     case GroundScenario.NEW_MANAGER:
     case GroundScenario.CONTRACT_RENEWAL:
     /*
@@ -3581,7 +3610,7 @@ function theScenariosOwnPack(
      * cases is at the bottom of this change - see every-scenario-is-reachable.spec.ts.
      */
     case GroundScenario.ROLE_HANDOVER: {
-      const role = STARTING_ROLE_QUESTIONS[scenario as keyof typeof STARTING_ROLE_QUESTIONS];
+      const role = startingRoleQuestionsFor(scenario);
       /*
        * SEVEN CARDS, SEVEN PROMISES, AND ONE LINE THAT ANSWERED NONE OF THEM.
        *
@@ -3968,6 +3997,7 @@ function situationTypeFromScenario(scenario: GroundScenario): string {
     case GroundScenario.NEW_COFOUNDER:
     case GroundScenario.NEW_ADVISOR:
     case GroundScenario.NEW_PROJECT:
+    case GroundScenario.HELP_TEAM_UNDERSTAND:
     case GroundScenario.NEW_MANAGER:
     case GroundScenario.CONTRACT_RENEWAL:
       return 'Starting';
@@ -4004,6 +4034,7 @@ function resolveRelationshipHistory(
     case GroundScenario.NEW_COFOUNDER:
     case GroundScenario.NEW_ADVISOR:
     case GroundScenario.NEW_PROJECT:
+    case GroundScenario.HELP_TEAM_UNDERSTAND:
     case GroundScenario.NEW_MANAGER:
       return 'new';
     case GroundScenario.DRIFT:
@@ -4033,7 +4064,8 @@ function relationshipTypeFromScenario(scenario: GroundScenario): string {
     case GroundScenario.NEW_HIRE: return 'new_hire';
     case GroundScenario.NEW_COFOUNDER: return 'cofounder';
     case GroundScenario.NEW_ADVISOR: return 'advisor';
-    case GroundScenario.NEW_PROJECT: return 'project_member';
+    case GroundScenario.NEW_PROJECT:
+    case GroundScenario.HELP_TEAM_UNDERSTAND: return 'project_member';
     case GroundScenario.NEW_MANAGER: return 'manager_contractor';
     case GroundScenario.CONTRACT_RENEWAL: return 'contract_renewal';
     case GroundScenario.DRIFT: return 'drifted_relationship';
@@ -4072,6 +4104,7 @@ function selectPathwayNumber(
     case GroundScenario.NEW_ADVISOR:
       return isInitiator ? 14 : 5;
     case GroundScenario.NEW_PROJECT:
+    case GroundScenario.HELP_TEAM_UNDERSTAND:
       return isInitiator ? 14 : 8;
     case GroundScenario.NEW_MANAGER:
       return isInitiator ? 14 : 7;
@@ -5106,6 +5139,16 @@ export const SEED_PROMPTS: { key: string; content: string }[] = [
   { key: ANCHOR_LEAD_PROMPT_KEY, content: ANCHOR_LEAD_PROMPT },
   /* The weekly check-in of somebody on the anchor lead's team (anchor piece 15): the version stored here is the one that runs. */
   { key: ANCHOR_PARTICIPANT_PROMPT_KEY, content: ANCHOR_PARTICIPANT_PROMPT },
+  /* The first conversation of somebody on the lead's team (anchor piece 14), and the reading that spots an idea (anchor piece 19): seeded so that a clean install stores them, and the version stored is the one that runs. */
+  { key: ANCHOR_BASELINE_PROMPT_KEY, content: ANCHOR_BASELINE_PROMPT },
+  { key: IDEA_SPOTTING_KEY, content: THE_IDEA_SPOTTING_PROMPT },
+  /* What reads a check-in for patterns (decision 128): the version stored here is the one that runs, and each pattern records which one read it. */
+  { key: PATTERN_DETECTION_PROMPT_KEY, content: PATTERN_DETECTION_PROMPT },
+  /* A person's first check-in also learns their job (decision 129): what the conversation is told, and what reads their words afterwards. The version stored is the one that runs. */
+  { key: FIRST_CHECK_IN_ROLE_KEY, content: FIRST_CHECK_IN_ROLE_PROMPT },
+  { key: ROLE_READING_KEY, content: ROLE_READING_PROMPT },
+  /* The judgement over a check-in's people (change 4): seeded, so the version stored is the one that runs and the judgement's promptVersionId names it. Filled with fillTheJudgement, as the code text is. */
+  { key: THE_JUDGEMENT_ROOM_KEY, content: theRoomJudgementTemplate() },
   ...buildPartySeeds(),
 ];
 

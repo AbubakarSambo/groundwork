@@ -179,11 +179,16 @@ export function aWorkflowSaid(suite: StepSuite, steps: Step[], stepsAbove: Step[
  * The person a request now waits for, as somebody else reads it: "Wairimu", "Omar in finance", "Grace,
  * the chief executive", "Joseph, who heads Sales", "an admin". "you" for the reader themselves.
  */
-export async function whoInWords(prisma: PrismaService, who: WhoDecides, team: string | null, readerUserId?: string): Promise<string> {
+export async function whoInWords(prisma: PrismaService, who: WhoDecides, team: string | null, readerUserId?: string, cache?: Map<string, string>): Promise<string> {
   if (who.kind === 'admin') return 'an admin';
   if (readerUserId && who.userId === readerUserId) return 'you';
-  const first = who.kind === 'manager' && who.firstName ? who.firstName : await firstNameOf(prisma, who.userId);
+  const first = who.kind === 'manager' && who.firstName ? who.firstName : (await firstNamesOf(prisma, [who.userId], undefined, cache))[0] ?? '';
   if (!first) return who.rule === 'finance' ? 'whoever looks after finance' : 'the person who approves it';
+  /* Standing in while the person the rule names is on leave: "Daniel, who is standing in for Wairimu". */
+  if (who.kind === 'person' && who.standingInFor) {
+    const away = (await firstNamesOf(prisma, [who.standingInFor], readerUserId, cache))[0];
+    return away ? `${first}, who is standing in for ${away}` : first;
+  }
   switch (who.rule) {
     case 'finance': return `${first} in finance`;
     case 'hr': return `${first} in HR`;
@@ -195,12 +200,18 @@ export async function whoInWords(prisma: PrismaService, who: WhoDecides, team: s
 }
 
 /** First names of sign-ins, in the order given, "you" for the reader. Never an address. */
-export async function firstNamesOf(prisma: PrismaService, ids: string[], readerUserId?: string): Promise<string[]> {
+export async function firstNamesOf(prisma: PrismaService, ids: string[], readerUserId?: string, cache?: Map<string, string>): Promise<string[]> {
   const unique = [...new Set(ids.filter(Boolean))];
   if (!unique.length) return [];
-  let us: unknown = [];
-  try { us = (await (prisma as any).user?.findMany?.({ where: { id: { in: unique } }, select: { id: true, firstName: true } })) ?? []; } catch { us = []; }
-  const byId = new Map<string, string>((us as { id: string; firstName: string | null }[]).map((u) => [u.id, u.firstName?.trim() || '']));
+  /* A board asks for the same few approvers' names once for every request on it: a cache held for the one read asks the database once for each. */
+  const wanted = cache ? unique.filter((id) => !cache.has(id)) : unique;
+  const byId = cache ?? new Map<string, string>();
+  if (wanted.length) {
+    let us: unknown = [];
+    try { us = (await (prisma as any).user?.findMany?.({ where: { id: { in: wanted } }, select: { id: true, firstName: true } })) ?? []; } catch { us = []; }
+    for (const u of us as { id: string; firstName: string | null }[]) byId.set(u.id, u.firstName?.trim() || '');
+    for (const id of wanted) if (!byId.has(id)) byId.set(id, '');
+  }
   return unique.map((id) => (readerUserId && id === readerUserId ? 'you' : byId.get(id) || '')).filter(Boolean);
 }
 

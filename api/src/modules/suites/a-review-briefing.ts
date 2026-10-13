@@ -159,6 +159,14 @@ export function whoDecidesTheReview(readerWrites: boolean, first: string, writer
   return `There are no scores. Groundwork gives the evidence and the patterns, and ${writerFirst?.trim() || 'the person who writes this review'} decides. ${first} sees the reasons.`;
 }
 
+/**
+ * WHO DECIDES, SAID THE WAY THE RIGHTS ARE (request 162, item 1). The name is the person the organisation's rule lets write
+ * the review, or an admin when any admin may; never somebody who started it and can no longer write it.
+ */
+export function theOneWhoDecidesSaid(writerFirst: string | null, anyAdminMay: boolean): string | null {
+  return writerFirst?.trim() || (anyAdminMay ? 'an admin' : null);
+}
+
 export function theBriefingsHeading(readerWrites: boolean, first: string): string {
   return readerWrites ? `Your briefing for ${first}’s review` : `The briefing for ${first}’s review`;
 }

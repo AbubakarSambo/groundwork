@@ -137,8 +137,8 @@ export interface WhatLanded {
   fileName: string;
   whatItIs?: string | null;
   /** Per-person rows that reached the record, with the person named as this reader may see them. */
-  forOnePerson: { who: string; what: string; target: number; by?: string | null; page?: number; ownerParticipantId?: string | null }[];
-  forEverybody: { what: string; target: number; kind?: string | null; by?: string | null; page?: number }[];
+  forOnePerson: { who: string; what: string; target: number; by?: string | null; page?: number; ownerParticipantId?: string | null; asWritten?: string | null }[];
+  forEverybody: { what: string; target: number; kind?: string | null; by?: string | null; page?: number; asWritten?: string | null }[];
   dates: { what: string; when: string; page?: number }[];
   /** How many pages the file has, when its text carries them (a PDF with a text layer). */
   pages?: number;
@@ -197,17 +197,17 @@ export function theContextWeHave(held: WhatLanded, opts: { asking?: boolean; wil
     lines.push('');
     for (const t of held.forEverybody) {
       lines.push(t.kind === 'not to exceed'
-        ? `For everyone in this check-in, ${t.what} must stay at or under ${fmt(t.target)}${byWhen(t.by)}.`
-        : `For everyone in this check-in, the target for ${t.what} is ${fmt(t.target)}${byWhen(t.by)}.`);
+        ? `${atTheStart(t.what)} must stay at or under ${t.asWritten || fmt(t.target)}${byWhen(t.by)} for everyone in this check-in.`
+        : `For everyone in this check-in, the target for ${t.what} is ${t.asWritten || fmt(t.target)}${byWhen(t.by)}.`);
     }
   }
   if (held.forOnePerson.length) {
     lines.push('');
-    for (const t of held.forOnePerson) lines.push(`${isTheReader(t, opts.reader) ? 'Your' : `${t.who}'s`} target for ${t.what} is ${fmt(t.target)}${byWhen(t.by)}.`);
+    for (const t of held.forOnePerson) lines.push(`${isTheReader(t, opts.reader) ? 'Your' : `${t.who}'s`} target for ${t.what} is ${t.asWritten || fmt(t.target)}${byWhen(t.by)}.`);
   }
   if (held.dates.length) {
     lines.push('');
-    for (const d of held.dates) lines.push(`The date it sets for ${d.what} is ${d.when.trim().replace(/\.$/, '')}.`);
+    for (const d of held.dates) lines.push(`The date it sets for ${inTheMiddle(d.what)} is ${d.when.trim().replace(/\.$/, '')}.`);
   }
   if (held.unmatched.length) {
     lines.push(
@@ -228,10 +228,29 @@ export function theContextWeHave(held: WhatLanded, opts: { asking?: boolean; wil
   return lines.join('\n');
 }
 
+/** A name that starts a sentence in the document reads in the middle of ours with a small first letter, unless it is a name or an acronym: "for the new stock system", "for Kilifi". */
+/**
+ * A LIMIT'S NAME STARTS ITS SENTENCE (B-014). "For everyone in this check-in, Discount ceiling must stay at
+ * or under 5." kept the document's capital mid-sentence, and a capital cannot be safely lowered (it may be a
+ * name). So the limit's own words open the sentence, where a capital is right: "Discount ceiling must stay at
+ * or under 5 for everyone in this check-in."
+ */
+export function atTheStart(what: string): string {
+  const w = (what ?? '').trim();
+  return w ? `${w.charAt(0).toUpperCase()}${w.slice(1)}` : w;
+}
+
+export function inTheMiddle(what: string): string {
+  const w = (what ?? '').trim();
+  return /^(The|A|An)\s/.test(w) ? `${w.charAt(0).toLowerCase()}${w.slice(1)}` : w;
+}
+
 /** " by 9 October", said once, whether or not the document wrote its own "by". */
 export function byWhen(by?: string | null): string {
   const when = (by ?? '').trim().replace(/\.$/, '').replace(/^by\s+/i, '');
-  return when ? ` by ${when}` : '';
+  if (!when) return '';
+  /* "each week", "every Friday", "per month" say how often, not by when: "15 each week", never "15 by each week" (B-014). */
+  return /^(each|every|per|a|once|twice|weekly|daily|monthly|yearly|annually)\b/i.test(when) ? ` ${when}` : ` by ${when}`;
 }
 
 /**
@@ -259,8 +278,12 @@ const HAS_A_VERB =
 export const aSentence = (t: string | null | undefined): string | null => {
   const s = (t ?? '').trim().replace(/[.;:,\s]+$/, '').trim();
   if (!s) return null;
-  if (HAS_A_VERB.test(s)) return `${s}.`;
-  const lower = `${s.charAt(0).toLowerCase()}${s.slice(1)}`;
+  /* A sentence in the first person ("I will keep this on record ...") is already one, and its "I" is never made small (B-014). */
+  if (HAS_A_VERB.test(s) || /^I(\s|'|\u2019)/.test(s) || /\b(will|shall|can|should|must)\b/i.test(s)) return `${s}.`;
+  /* The first letter is made small only where the first word is an ordinary one: not an "I", not an acronym such as OKR or KPI. */
+  const first = s.split(/\s+/)[0];
+  const keepsItsCapital = first === 'I' || /^[A-Z]{2,}\b/.test(first) || /^[A-Z][a-z]*[A-Z]/.test(first);
+  const lower = keepsItsCapital ? s : `${s.charAt(0).toLowerCase()}${s.slice(1)}`;
   return `It looks like ${lower}.`;
 };
 

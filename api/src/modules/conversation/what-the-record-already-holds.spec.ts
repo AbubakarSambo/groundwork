@@ -50,7 +50,8 @@ describe('what the record already holds', () => {
       NOW,
     );
     expect(line).toContain('21 days old');
-    expect(line).toContain('nobody has escalated it');
+    /* Changed 11 October (decision 139, must-fix 3): said as their own word, never as a fact the record holds about escalation. */
+    expect(line).toContain('they have not said they took it any higher');
   });
 
   it('names a blocker with nobody on it as exactly that', () => {

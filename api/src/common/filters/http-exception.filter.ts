@@ -9,6 +9,23 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { whatToSayAboutADatabaseError } from './a-database-error-is-not-a-message';
+import { aPlainRefusal } from './a-refusal-is-plain';
+
+/** What a person is told when the payment provider refuses, whatever it said. No key, no provider vocabulary, and the truth about the money. */
+export const PAYMENTS_ARE_NOT_AVAILABLE = 'Payments are not available right now. Nothing has been charged. Please try again later.';
+
+/** A request the body-parser could not read: not JSON, too large, or cut short. A 4xx from the sender's side, not a crash. */
+export function theRequestCouldNotBeRead(e: unknown): boolean {
+  const type = (e as { type?: unknown })?.type;
+  const status = (e as { status?: unknown; statusCode?: unknown })?.status ?? (e as { statusCode?: unknown })?.statusCode;
+  return typeof type === 'string' && /^(entity\.|request\.aborted|encoding\.unsupported|charset\.unsupported|stream\.)/.test(type) && typeof status === 'number' && status >= 400 && status < 500;
+}
+
+/** An error thrown by Stripe's library (its classes are all called Stripe...Error and carry a `type` of the same kind). */
+export function isAStripeError(e: unknown): boolean {
+  const t = (e as any)?.type;
+  return e instanceof Error && ((typeof t === 'string' && /^Stripe/.test(t)) || /^Stripe/.test(e.constructor?.name ?? ''));
+}
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -36,6 +53,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
      * boolean only, the same way `code` is: never the whole exception, never a class name or a stack.
      */
     let canContinue: boolean | null = null;
+    /* How it failed, so the screens' own routes can be made plain (a-refusal-is-plain.ts). */
+    let fromTheValidationList = false;
+    let fromOurOwnCrash = false;
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
@@ -53,6 +73,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         if (Array.isArray(responseObj.message)) {
           errors = responseObj.message;
           message = summariseValidation(responseObj.message);
+          fromTheValidationList = !writtenForAPerson(responseObj.message);
         } else {
           message = responseObj.message || message;
           errors = responseObj.errors || null;
@@ -60,6 +81,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         code = typeof responseObj.code === 'string' ? responseObj.code : null;
         canContinue = typeof responseObj.canContinue === 'boolean' ? responseObj.canContinue : null;
       }
+    } else if (exception instanceof Error && theRequestCouldNotBeRead(exception)) {
+      /* The body-parser's own errors (a body that is not JSON, or is too big) carry the right status on the error itself. They are the sender's, not a fault of ours. */
+      status = (exception as { status?: number; statusCode?: number }).status ?? (exception as { statusCode?: number }).statusCode ?? HttpStatus.BAD_REQUEST;
+      message = status === HttpStatus.PAYLOAD_TOO_LARGE ? 'Payload too large' : 'Bad Request';
     } else if (exception instanceof Error) {
       /**
        * A PRISMA ERROR IS NOT A MESSAGE, AND IT IS NOT SAFE EITHER.
@@ -76,18 +101,26 @@ export class GlobalExceptionFilter implements ExceptionFilter {
        * information. The detail goes to the log, where it is useful; the caller
        * gets a sentence and a status that matches what actually went wrong.
        */
-      const database = whatToSayAboutADatabaseError(exception);
-      if (database) {
-        status = database.status;
-        message = database.message;
+      const database = whatToSayAboutADatabaseError(exception, isPublished(request.url));
+      if (isAStripeError(exception)) {
+        /* Stripe's own words can carry the start of our key ("Invalid API Key provided: sk_test_..."). The detail goes to the log, trimmed of any key. */
+        status = HttpStatus.SERVICE_UNAVAILABLE;
+        message = PAYMENTS_ARE_NOT_AVAILABLE;
+        this.logger.warn(`Stripe refused a request: ${exception.message.replace(/\b(sk|rk|pk)_(test|live)_\w*/g, '[a key]')}`);
       } else {
-        message = exception.message;
-      }
+        if (database) {
+          status = database.status;
+          message = database.message;
+        } else {
+          message = exception.message;
+          fromOurOwnCrash = true;
+        }
 
-      this.logger.error(
-        `Unhandled exception: ${exception.message}`,
-        exception.stack,
-      );
+        this.logger.error(
+          `Unhandled exception: ${exception.message}`,
+          exception.stack,
+        );
+      }
     }
 
     /**
@@ -116,6 +149,11 @@ export class GlobalExceptionFilter implements ExceptionFilter {
      * API's parser learns `{ error: { code, message, details } }` once. Same list the success
      * interceptor reads. (F14)
      */
+    /* The screens' own routes read in plain sentences; a developer's code on the published API keeps the field names it sent. */
+    if (!isPublished(request.url)) {
+      message = aPlainRefusal(status, typeof message === 'string' ? message : String(message ?? ''), { fromTheValidationList, fromOurOwnCrash });
+    }
+
     if (isPublished(request.url)) {
       response.status(status).json({
         error: { code: code ?? codeFor(status), message, details: errors },
@@ -137,6 +175,12 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 }
 
 /** One sentence for a pipe failure; the sentences themselves travel as `errors` / `details`. */
+/** Every message is a sentence somebody wrote to be read (a capital letter first, a full stop last). */
+function writtenForAPerson(sentences: string[]): boolean {
+  const written = sentences.map((s) => String(s).trim());
+  return written.length > 0 && written.every((s) => /^[A-Z].*[.!?]$/.test(s));
+}
+
 export function summariseValidation(sentences: string[]): string {
   /*
    * A MESSAGE ALREADY WRITTEN FOR A PERSON IS PASSED ON AS IT IS. U.2 re-review.

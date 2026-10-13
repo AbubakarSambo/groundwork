@@ -1,4 +1,5 @@
 import { createHash } from 'crypto';
+import { situationInWords } from './setup-already-asked-this';
 
 /**
  * WHAT AN ACCOUNT SHOWS, NOT WHAT THEY SAID.
@@ -37,7 +38,7 @@ export function theInstruction(asks: WhatItAsks, partyType: string, roleAsDescri
     ? asks.objectives.map((o, i) => `  ${i + 1}. ${o.name}${o.target != null && o.target !== '' ? ` - ${o.target}` : ''}`).join('\n')
     : '  (none stated)';
   return [
-    `You are reading ONE person's account from a check-in called "${asks.label}"${asks.scenario ? ` (situation: ${asks.scenario})` : ''}.`,
+    `You are reading ONE person's account from a check-in called "${asks.label}"${situationInWords((asks.scenario ?? null) as any) ? ` (about ${situationInWords((asks.scenario ?? null) as any)})` : ''}.`,
     `The person is ${partyType === 'INITIATOR' ? 'the lead' : 'a participant'}${roleAsDescribed ? `, described as: ${roleAsDescribed}` : ''}.`,
     '',
     'WHAT THE CHECK-IN IS MEANT TO FIND OUT:',

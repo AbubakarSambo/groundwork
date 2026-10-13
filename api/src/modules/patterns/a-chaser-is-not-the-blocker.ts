@@ -36,14 +36,32 @@
  * here, still gets read the same as before.
  */
 
+/*
+ * ONLY A WAIT THE COLLEAGUE CONFIRMS HOLDS A CODE BACK (decision 137; decision 139, must-fix 4).
+ *
+ * Evaluation profile 5, October 2026. Kevin blamed a colleague in every one of his four sessions:
+ * Fatuma for the final prices (she had sent them the same morning), Imani for photos (she had sent
+ * them and asked him which were missing), Juma for shops (nobody had asked him). Each sentence was
+ * kept as a `GroundDependency` row naming the colleague, uncleared, and this rule read those rows
+ * and held B5, B11 and K3 back from him every week, as "a chaser". Blame Shifting could never be
+ * written about the person shifting the blame, because the blame itself was the excuse the gate
+ * accepted. So the rule now counts a wait only where the colleague it names has said, in their own
+ * promise in this check-in, that the thing is theirs to give. The consultant who promised the same
+ * meeting for three months is still a confirmed wait, and his client is still not read as all talk.
+ */
+import { theWaitIsConfirmed, TheirOwnPromise } from '../grounds/a-wait-is-the-speakers-account';
+
 /** The codes whose whole signal is "you keep talking and it has not moved". */
 export const NOT_ABOUT_THE_ONE_WAITING = new Set(['B5', 'B11', 'K3']);
 
 export interface ADependencyOnSomebodyHere {
   /** The participant this person is waiting on. Only rows naming somebody IN this check-in count. */
   onParticipantId: string | null;
+  groundId?: string | null;
   status: string;
   what: string;
+  /** What they said they did to unblock it: an attempt on record confirms the wait. */
+  triedSaid?: string | null;
 }
 
 /**
@@ -52,8 +70,8 @@ export interface ADependencyOnSomebodyHere {
  * CLEARED is the only status that ends it. WAITING and BLOCKING are both still in the way, and the
  * difference between them is how hard, not whether.
  */
-export function waitingOnSomebodyHere(rows: ADependencyOnSomebodyHere[]): ADependencyOnSomebodyHere[] {
-  return (rows ?? []).filter((d) => !!d.onParticipantId && String(d.status).toUpperCase() !== 'CLEARED');
+export function waitingOnSomebodyHere(rows: ADependencyOnSomebodyHere[], theirOwnPromises: TheirOwnPromise[] = []): ADependencyOnSomebodyHere[] {
+  return (rows ?? []).filter((d) => !!d.onParticipantId && String(d.status).toUpperCase() !== 'CLEARED' && theWaitIsConfirmed(d, theirOwnPromises));
 }
 
 export interface WhetherToWriteIt {
@@ -65,13 +83,15 @@ export interface WhetherToWriteIt {
 export function shouldThisCodeBeAboutThem(
   code: string,
   theirDependencies: ADependencyOnSomebodyHere[],
+  /** The promises of the colleagues they wait on, in their own check-ins. Only these confirm a wait. */
+  theColleaguesOwnPromises: TheirOwnPromise[] = [],
 ): WhetherToWriteIt {
   if (!NOT_ABOUT_THE_ONE_WAITING.has(code)) return { keep: true };
-  const waiting = waitingOnSomebodyHere(theirDependencies);
+  const waiting = waitingOnSomebodyHere(theirDependencies, theColleaguesOwnPromises);
   if (!waiting.length) return { keep: true };
   const names = waiting.slice(0, 3).map((d) => d.what).filter(Boolean).join(', ');
   return {
     keep: false,
-    because: `they are waiting on another person here${names ? ` for ${names}` : ''}, and ${code} is a read about carrying your own work`,
+    because: `they are waiting on another person here${names ? ` for ${names}` : ''}, that person has said it is theirs to give, and ${code} is a read about carrying your own work`,
   };
 }

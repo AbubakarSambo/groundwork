@@ -105,7 +105,7 @@ describe('GW-DECLINE-02: a declined session cannot be written to', () => {
   it('the loader that refuses a settled session exists and names both settled states', () => {
     expect(SRC).toMatch(/private async loadOwnedOpenCheckIn\(/);
     expect(SRC).toMatch(/CheckInStatus\.DECLINED[\s\S]{0,200}?You declined this session/);
-    expect(SRC).toMatch(/CheckInStatus\.COMPLETED[\s\S]{0,160}?already complete/);
+    expect(SRC).toMatch(/CheckInStatus\.COMPLETED[\s\S]{0,160}?already finished/);
   });
 
   /**
@@ -121,7 +121,9 @@ describe('GW-DECLINE-02: a declined session cannot be written to', () => {
   });
 
   it.each([
-    ['open', /openTheDoor\(/],
+    /* `open` hands two opens at once the same first question (ce35bc25); its work, door first, is `openOnce`. */
+    ['open', /openOnce\(/],
+    ['openOnce', /openTheDoor\(/],
     ['sendMessage', /aSessionUnderway\(/],
     ['sendMessageStream', /aSessionUnderway\(/],
     ['complete', /openTheDoor\(/],
@@ -168,8 +170,11 @@ describe('GW-DECLINE-03: the shared report names people one way', () => {
      * report already does.
      */
     expect(SRC).toContain('labelsForParties(active as any)');
-    expect(SRC).toContain('namesVisibleTo(viewer?.id ?? null, active as any)');
-    expect(SRC).toContain('label: names.get(label) ?? label');
+    /* Changed with decision 115: the names now take the check-in's own setting for whether colleagues see each other,
+       and the label itself is never shown (see the-ending-panel-says-names-never-labels.spec.ts). */
+    expect(SRC).toContain('namesVisibleTo(viewer?.id ?? null, active as any, viewerIsLead || peersAreNamed)');
+    expect(SRC).toContain('whatEachLabelIsCalled(active as any');
+    expect(SRC).not.toContain('label: names.get(label) ?? label');
   });
 
   it('and no longer falls back to a raw address', () => {

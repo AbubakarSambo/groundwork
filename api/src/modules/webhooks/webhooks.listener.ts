@@ -89,7 +89,7 @@ export class WebhooksListener {
   @OnEvent(GroundworkEvents.CHECK_IN_OPENED)
   async onCheckInOpened(e: CheckInOpenedEvent) {
     try {
-      const ground = await this.prisma.ground.findUnique({ where: { id: e.groundId }, select: { organizationId: true, label: true, overWhatsApp: true } });
+      const ground = await this.prisma.ground.findUnique({ where: { id: e.groundId }, select: { organizationId: true, label: true, overWhatsApp: true, simplerWords: true } });
       if (!ground) return;
       /*
        * AND ON WHATSAPP, EVERY SESSION, ON WHICHEVER NUMBER THE ORGANISATION USES (survey item 7).
@@ -130,7 +130,7 @@ export class WebhooksListener {
    */
   private async announceOnWhatsApp(
     e: CheckInOpenedEvent,
-    ground: { organizationId: string; label: string; overWhatsApp: boolean | null },
+    ground: { organizationId: string; label: string; overWhatsApp: boolean | null; simplerWords?: boolean | null },
   ): Promise<void> {
     if (ground.overWhatsApp === false) return;
     const participant = await this.prisma.groundParticipant.findUnique({
@@ -147,7 +147,7 @@ export class WebhooksListener {
     if (!phone) return;
     const leave = await leaveOfThePeopleOn(this.prisma, [e.groundId]);
     if (awayUntilOn(leave.get(participant.id))) return;
-    const said = theCheckInIsOpen({ firstName: participant.user?.firstName, label: ground.label });
+    const said = theCheckInIsOpen({ firstName: participant.user?.firstName, label: ground.label }, ground.simplerWords);
     /* Business-initiated: goes as free text inside the window, as a template outside it, or not at all. */
     await this.whatsapp.sendFor(ground.organizationId, phone, said.text, { checkInId: e.checkInId, kind: said.kind, params: said.params });
   }

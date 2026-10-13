@@ -1,3 +1,4 @@
+import { theRewordingHoldsNothingNew } from '../conversation/the-final-check';
 import { PLAIN_WORDS } from '../conversation/plain-words';
 import type { Compose } from './the-engine-drafts-it-the-model-words-it';
 import type { AServedPattern } from '../patterns/who-reads-a-pattern';
@@ -68,6 +69,8 @@ function evidenceIsSafeToUse(draft: string, composed: string | null | undefined,
   const inText = new Set(text.match(/\d+/g) ?? []);
   for (const n of inText) if (!inDraft.has(n)) return false;
   for (const n of inDraft) if (!inText.has(n)) return false;
+  /* Nothing the detector's sentence does not hold: no status, count, date, name or credit of the model's own (the final check). */
+  if (!theRewordingHoldsNothingNew(draft, text, extraKnownWords)) return false;
 
   const draftWords = new Set([
     ...(draft.toLowerCase().match(/[a-z][a-z'-]*/g) ?? []),

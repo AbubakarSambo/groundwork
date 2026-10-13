@@ -154,7 +154,7 @@ describe.each([[true, 'people see each other'], [false, 'people see only themsel
 describe('contribution and coverage on a performance plan, for an admin who was not given access to it', () => {
   it('Grace, an admin with no access to a plan, is not let in, so reads none of it', async () => {
     const plan = { ...GROUND, scenario: GroundScenario.PIP, peersVisibleToEachOther: true, peopleWorkTogether: true };
-    await expect(boardFor('u-grace', 'ADMIN', {}, plan).board).rejects.toThrow(/Check-in not found/i);
+    await expect(boardFor('u-grace', 'ADMIN', {}, plan).board).rejects.toThrow(/could not be found/i);
   });
 });
 

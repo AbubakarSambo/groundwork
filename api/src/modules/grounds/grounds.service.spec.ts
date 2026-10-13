@@ -126,7 +126,7 @@ describe('GroundsService.resendParticipantInvite - GW-24', () => {
       // 7th dep: the model, for the context chat (G37/G23). Unused here.
       { respond: async () => '' } as any,
     );
-    const result = await service.resendParticipantInvite('g1', 'p1', 'org1');
+    const result = await service.resendParticipantInvite('g1', 'p1', 'org1', 'u1', 'MEMBER');
 
     expect(result.message).toBe('Invite resent');
     expect(updated[0].inviteToken).toBeTruthy();
@@ -148,7 +148,7 @@ describe('GroundsService.resendParticipantInvite - GW-24', () => {
     const service = new GroundsService(prisma, email, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any,
       { respond: async () => '' } as any,
     );
-    await service.resendParticipantInvite('g1', 'p1', 'org1');
+    await service.resendParticipantInvite('g1', 'p1', 'org1', 'u1', 'MEMBER');
 
     expect(updated[0].inviteToken).toBe('the-original-token');
     expect(email.sendTheInviteThisGroundSends.mock.calls[0][3]).toBe('the-original-token');
@@ -164,7 +164,7 @@ describe('GroundsService.resendParticipantInvite - GW-24', () => {
       { respond: async () => '' } as any,
     );
 
-    await expect(service.resendParticipantInvite('g1', 'p1', 'org1')).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.resendParticipantInvite('g1', 'p1', 'org1', 'u1', 'MEMBER')).rejects.toBeInstanceOf(BadRequestException);
   });
 });
 

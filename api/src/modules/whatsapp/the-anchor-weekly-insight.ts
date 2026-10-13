@@ -1,14 +1,15 @@
 import { GroundStatus } from '@prisma/client';
+import { owesThisSession } from '../grounds/the-lead-checks-in-when-they-choose';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { WhatsAppService } from './whatsapp.service';
 import { TEMPLATES, fill } from './a-message-outside-the-window';
 import { keptOffThePhone } from './a-check-in-kept-off-the-phone';
 import { organisationsThatTurnedWhatsAppOn } from './only-where-whatsapp-is-turned-on';
-import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
+import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
 import { theirApprovedLeave, fallsInLeave } from '../suites/who-is-away';
 import { theirRosterEntry } from '../suites/a-roster-entry-and-its-sign-in';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
-import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
+import { WHERE_A_GROUND_IS_THE_ANCHORS, aGroundIsTheAnchors } from '../conversation/the-anchor-weekly-check-in';
 import { readTheMonthRecord, type TheMonthRecord } from '../board/the-anchor-month-record';
 import { aContributionSaid, aWaitInAWords, aNumber, capital } from '../board/the-anchor-month-board';
 import { whichRoundIsOpen } from '../board/which-round-is-open';
@@ -55,7 +56,7 @@ export function theWeeklyInsight(firstName: string | null | undefined, paragraph
   return { kind: THE_INSIGHT_KIND, text: fill(TEMPLATES[THE_INSIGHT_KIND].body, params), params };
 }
 
-const TERMINAL: GroundStatus[] = [...A_GROUND_THE_JOBS_LEAVE_ALONE, ...A_GROUND_IS_HELD];
+const TERMINAL: GroundStatus[] = A_GROUND_NO_MESSAGE_IS_ABOUT;
 
 /**
  * The round that is open, by the board's own rule (whichRoundIsOpen), over the people who give a check-in: never
@@ -63,10 +64,11 @@ const TERMINAL: GroundStatus[] = [...A_GROUND_THE_JOBS_LEAVE_ALONE, ...A_GROUND_
  */
 export async function theOpenRoundOf(prisma: any, groundId: string): Promise<number> {
   const [people, rows] = await Promise.all([
-    prisma.groundParticipant.findMany({ where: { groundId }, select: { id: true, managingOnly: true, userId: true, user: { select: { awaitingOrgApproval: true } } } }),
+    prisma.groundParticipant.findMany({ where: { groundId }, select: { id: true, managingOnly: true, partyType: true, userId: true, user: { select: { awaitingOrgApproval: true } } } }),
     prisma.checkIn.findMany({ where: { groundId, isSetup: false }, select: { participantId: true, sessionNumber: true, status: true } }),
   ]);
-  const givers = new Set((people as any[]).filter((p) => !p.managingOnly && !isNotLetInYet(p)).map((p) => p.id));
+  /* Decision 133: the clock is the team's; the lead checks in when they choose. */
+  const givers = new Set((people as any[]).filter((p) => owesThisSession(p) && !isNotLetInYet(p)).map((p) => p.id));
   const mine = (rows as any[]).filter((c) => givers.has(c.participantId));
   return mine.length ? whichRoundIsOpen(mine as any) : Math.max(1, ...(rows as any[]).map((c) => c.sessionNumber ?? 1));
 }
@@ -79,10 +81,10 @@ export async function sendTheAnchorWeeklyInsights(
   const { prisma } = deps;
   if (!(await theAnchorScenarioIsOn(prisma))) return { tried: 0 };
   const grounds: any[] = await (prisma as any).ground.findMany({
-    where: { startedFrom: STARTED_FROM_THE_ANCHOR, status: { notIn: TERMINAL } },
-    select: { id: true, organizationId: true, overWhatsApp: true, initiatorId: true, startedFrom: true },
+    where: { ...WHERE_A_GROUND_IS_THE_ANCHORS, status: { notIn: TERMINAL } },
+    select: { id: true, organizationId: true, overWhatsApp: true, initiatorId: true, startedFrom: true, scenario: true },
   });
-  const anchor = grounds.filter((g) => g.startedFrom === STARTED_FROM_THE_ANCHOR && !keptOffThePhone(g));
+  const anchor = grounds.filter((g) => aGroundIsTheAnchors(g) && !keptOffThePhone(g));
   const turnedOn = await organisationsThatTurnedWhatsAppOn(prisma, deps.whatsapp, anchor.map((g) => g.organizationId));
   const base = (deps.frontendUrl || '').replace(/\/$/, '');
   let tried = 0;

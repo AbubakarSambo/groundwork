@@ -1,12 +1,17 @@
+import { NOT_A_QUIET_CLOSE, wasAQuietClose } from '../grounds/an-answer-includes-a-refusal';
+import { theConfirmedWaits, theNoteBesideTheClaim } from '../grounds/a-wait-is-the-speakers-account';
+import { aGroundIsTheAnchors } from '../conversation/the-anchor-weekly-check-in';
 import { anAimTheHolderSet } from '../board/an-aim-is-a-sentence-about-somebody';
 import { refuseSomeoneHeldForASeat, refuseSomeoneAwaitingTheOrganisation } from '../participants/held-for-a-seat';
 import { CANNOT_READ_THE_REPORT_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { whoIsNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
+import { whoHasNotJoinedYet, WHAT_SAYS_SOMEBODY_JOINED } from '../grounds/invited-not-joined-yet';
 import { asADirection } from '../board/an-aim-or-a-limit';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { CheckInStatus, PartyType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { recordThatTheLeadReadTheWeek } from './a-lead-read-this-report';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { whatTheyMayRead, type Viewer } from '../grounds/who-may-read-this-check-in';
 import { labelsForParties, namesVisibleTo, viewerLabelOf, withNames } from './party-labels';
@@ -25,7 +30,7 @@ import { periodOf } from '../patterns/period-of';
 import { PATTERN_ROW_SELECT, servedPatterns, runsItForAPattern } from '../patterns/who-reads-a-pattern';
 import {
   theFactsIn, theSentencesIn, theWeeksHeading, whatThisReportIs, theCheckInsMade, theThingsWithProof, aTargetThisWeek,
-  movedThisWeek, whatCameUpAcrossTheTeam, whatWasSaidAndWhatTheProofShows, aCommitmentThatSettled, aHandoffThatCleared,
+  movedThisWeek, whatCameUpAcrossTheTeam, whatWasSaidAndWhatTheProofShows, aCommitmentThatSettled, aHandoffThatCleared, theirSideOfIt,
   forTheLeadToDo, yourOwnToDo, whereItComesFrom, NOTHING_MOVED, NOTHING_DROPPED, NO_RESULT,
   type TheWeeksFacts, type AWeeksCount, type AWeeksCommitment, type AFigure, type AThingToDo, type WhatChanged,
 } from './the-weekly-report';
@@ -120,7 +125,7 @@ export class TheWeeklyReportService {
       where: { id: groundId },
       select: {
         initiatorId: true, cadence: true,
-        participants: { select: { id: true, userId: true, partyType: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, roleAsDescribed: true, user: { select: { firstName: true, lastName: true, email: true } } } },
+        participants: { select: { id: true, userId: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, roleAsDescribed: true, ...WHAT_SAYS_SOMEBODY_JOINED, user: { select: { firstName: true, lastName: true, email: true } } } },
         objectives: { select: { id: true, name: true, target: true, count: true, direction: true, ownerParticipantId: true, setByParticipantId: true, isADecisionAboutAPerson: true } },
       } as any,
     });
@@ -129,7 +134,8 @@ export class TheWeeklyReportService {
     const labels = labelsForParties(parties as any);
     const namesOff = namesOffFor(parties, labels);
     const done: any[] = await this.prisma.checkIn.findMany({
-      where: { groundId, status: CheckInStatus.COMPLETED, completedAt: { gte: start } },
+      /* A session the clock closed with nothing said is not a check-in made (night quality run 1, problem 4). */
+      where: { groundId, status: CheckInStatus.COMPLETED, completedAt: { gte: start }, AND: [NOT_A_QUIET_CLOSE] },
       select: { participantId: true, sessionNumber: true, completedAt: true, isSetup: true },
     } as any);
     const checkedIn = new Set(done.map((c) => c.participantId));
@@ -151,6 +157,8 @@ export class TheWeeklyReportService {
 
     /* Somebody an admin has not let in yet cannot check in, so is neither due nor written up as absent (decision 77). */
     const notLetIn = await whoIsNotLetInYet(this.prisma, parties);
+    /* Nor somebody invited who has not joined yet: not due, not absent, never missed (decision 8 redone, night run 3). */
+    for (const id of await whoHasNotJoinedYet(this.prisma, parties).catch(() => new Set<string>())) if (!notLetIn.has(id)) notLetIn.set(id, { declined: false, decidedByUserId: null, decidedAt: null });
 
     /* THE SENTENCE ABOUT EACH PERSON. */
     const eachPerson: { participantId: string; says: string }[] = [];
@@ -171,17 +179,25 @@ export class TheWeeklyReportService {
     /* THE CHECK-INS DUE AND MADE: every check-in opened this week, and every one made this week. */
     const all: any[] = ((await (this.prisma.checkIn.findMany({
       where: { groundId },
-      select: { participantId: true, sessionNumber: true, status: true, completedAt: true, availableFrom: true, createdAt: true, isSetup: true, isClarification: true, isSelfCorrection: true },
+      select: { participantId: true, sessionNumber: true, status: true, completedAt: true, availableFrom: true, createdAt: true, isSetup: true, isClarification: true, isSelfCorrection: true, optional: true, closedReason: true, turns: { where: { role: 'PERSON' }, take: 1, select: { id: true } } },
     } as any) as Promise<any[]>).catch(() => [])) ?? []) as any[];
     const inTheWeek = (d: any) => !!d && new Date(d).getTime() >= start.getTime() && new Date(d).getTime() <= at.getTime();
+    /*
+     * A CHECK-IN STILL WAITING THAT OPENED ON THE NIGHT BEFORE THE WEEK BEGAN IS DUE THIS WEEK (night quality run 2). Amina's fourth
+     * check-in opened at midnight on Sunday in Nairobi, two hours before Monday began in Lagos, so it was not counted as due, and Esther
+     * read "All 3 check-ins due this week were made." and "100%" while Amina was being reminded. A day of slack covers any time zone.
+     */
+    const openedForThisWeek = (d: any) => !!d && new Date(d).getTime() >= start.getTime() - 86_400_000 && new Date(d).getTime() <= at.getTime();
     const due = all.filter((c) => c && !c.isSetup && !c.isClarification && !c.isSelfCorrection && c.status !== undefined)
-      .filter((c) => (c.status === CheckInStatus.COMPLETED && inTheWeek(c.completedAt)) || (c.status !== CheckInStatus.COMPLETED && inTheWeek(c.availableFrom ?? c.createdAt)))
+      .filter((c) => (c.status === CheckInStatus.COMPLETED && inTheWeek(c.completedAt)) || (c.status !== CheckInStatus.COMPLETED && openedForThisWeek(c.availableFrom ?? c.createdAt)))
       /* Not one that opened while its person was away, nor one that waits for somebody away now. */
       .filter((c) => c.status === CheckInStatus.COMPLETED
         || !(fallsInLeave(new Date(c.availableFrom ?? c.createdAt), leave.get(c.participantId) ?? []) || awayUntilOn(leave.get(c.participantId), at)))
       /* Nor one that waits for somebody an admin has not let in yet, who cannot make it (decision 77). */
-      .filter((c) => c.status === CheckInStatus.COMPLETED || !notLetIn.has(c.participantId));
-    const made = due.filter((c) => c.status === CheckInStatus.COMPLETED).length;
+      .filter((c) => c.status === CheckInStatus.COMPLETED || !notLetIn.has(c.participantId))
+      /* The lead's own optional row is due only when they answered it (decision 133). */
+      .filter((c) => !c.optional || (c.status === CheckInStatus.COMPLETED && !wasAQuietClose(c)));
+    const made = due.filter((c) => c.status === CheckInStatus.COMPLETED && !wasAQuietClose(c)).length;
 
     /* WHAT WAS SAID, AND HOW MUCH OF IT HAS SOMETHING BEHIND IT. Never the rating of an answer. */
     const said = rows.filter((r) => String(r.type) !== 'SUCCESS_DEFINITION');
@@ -221,21 +237,47 @@ export class TheWeeklyReportService {
 
     /* COMMITMENTS SETTLED THIS WEEK, AND THE ONES SAID THIS WEEK THAT ARE STILL OPEN. */
     const commitments: any[] = ((await ((this.prisma as any).groundCommitment?.findMany?.({
-      where: { groundId }, select: { participantId: true, text: true, status: true, whenSaid: true, settledAt: true, createdAt: true },
+      where: { groundId }, select: { participantId: true, text: true, status: true, whenSaid: true, settledAt: true, settledBy: true, createdAt: true },
     }) ?? Promise.resolve([])).catch(() => [])) ?? []) as any[];
     const asKept = (c: any): AWeeksCommitment => {
       const clause = inOurVoice(c.text);
-      return { participantId: c.participantId ?? null, clause: clause ? namesOff(clause) : null, status: String(c.status ?? 'UNKNOWN').toUpperCase() as any, whenSaid: c.whenSaid ? namesOff(c.whenSaid) : null };
+      return { participantId: c.participantId ?? null, clause: clause ? namesOff(clause) : null, status: String(c.status ?? 'UNKNOWN').toUpperCase() as any, whenSaid: c.whenSaid ? namesOff(c.whenSaid) : null, settledBy: c.settledBy ?? null };
     };
     const settled = commitments.filter((c) => ['DONE', 'NOT_DONE', 'DROPPED'].includes(String(c.status).toUpperCase()) && inTheWeek(c.settledAt)).map(asKept);
     const open = commitments.filter((c) => String(c.status ?? 'UNKNOWN').toUpperCase() === 'UNKNOWN' && c.participantId && inTheWeek(c.createdAt)).map(asKept);
 
     /* WHAT STOPPED BEING IN SOMEBODY'S WAY THIS WEEK. */
     const deps: any[] = ((await ((this.prisma as any).groundDependency?.findMany?.({
-      where: { groundId, status: 'CLEARED' }, select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, clearedAt: true },
+      where: { groundId, status: 'CLEARED' }, select: { id: true, fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, triedSaid: true, clearedAt: true },
     }) ?? Promise.resolve([])).catch(() => [])) ?? []) as any[];
-    const cleared = deps.filter((d) => inTheWeek(d.clearedAt) && (d.what ?? '').trim())
-      .map((d) => ({ fromParticipantId: d.fromParticipantId, onParticipantId: d.onParticipantId ?? null, onLabel: d.onLabel ? namesOff(d.onLabel) : null, what: namesOff(d.what) }));
+    const clearedThisWeek = deps.filter((d) => inTheWeek(d.clearedAt) && (d.what ?? '').trim()).map((d, i) => ({ ...d, id: d.id ?? `w-${i}`, groundId }));
+    /* Change 4 (decision 137): a wait on a colleague is the speaker's account until the colleague's own promise confirms it. */
+    const confirmedWaits = await theConfirmedWaits(this.prisma, clearedThisWeek).catch(() => new Set<string>());
+    const onSomebody = [...new Set(clearedThisWeek.filter((d) => d.onParticipantId && !confirmedWaits.has(d.id)).map((d) => d.onParticipantId as string))];
+    const theirLines: any[] = onSomebody.length ? ((await ((this.prisma as any).recordEntry?.findMany?.({
+      where: { participantId: { in: onSomebody }, type: 'PROGRESS', disputedAt: null, createdAt: { lte: at } },
+      select: { participantId: true, type: true, text: true, createdAt: true },
+    }) ?? Promise.resolve([])).catch(() => [])) ?? []) as any[] : [];
+    const namesOfParty = (pid: string) => {
+      const p = parties.find((x) => x.id === pid);
+      return [p?.user?.firstName, String(p?.nameGiven ?? '').split(/\s+/)[0], fullNameOf(p ?? {})].filter(Boolean) as string[];
+    };
+    /* Who the note names, by name: stored without names (namesOff), the names swapped in when served, as every other line. */
+    const nameOfParty = (pid: string | null | undefined) => {
+      const p = pid ? parties.find((x) => x.id === pid) : null;
+      return p ? fullNameOf(p) || String(p.nameGiven ?? '').trim() || null : null;
+    };
+    const theLeadsRow = parties.find((x) => x.partyType === 'INITIATOR');
+    const theNamesOf = (d: any) => ({ by: nameOfParty(d.fromParticipantId), on: nameOfParty(d.onParticipantId), lead: nameOfParty(theLeadsRow?.id) });
+    const cleared = clearedThisWeek.map((d) => {
+      const confirmed = !d.onParticipantId || confirmedWaits.has(d.id);
+      const theirSide = confirmed ? null : theirSideOfIt(namesOfParty(d.fromParticipantId), (Array.isArray(theirLines) ? theirLines : []).filter((l) => l.participantId === d.onParticipantId));
+      return {
+        fromParticipantId: d.fromParticipantId, onParticipantId: d.onParticipantId ?? null, onLabel: d.onLabel ? namesOff(d.onLabel) : null, what: namesOff(d.what),
+        confirmed,
+        ...(confirmed ? {} : { note: namesOff(theNoteBesideTheClaim(d, theNamesOf(d))), ...(theirSide ? { theirSide: namesOff(theirSide) } : {}) }),
+      };
+    });
 
     /* WHAT ONLY THE LEAD CAN SETTLE, as Today reads it for the lead, kept by label. */
     const forTheLead = ground.initiatorId
@@ -274,6 +316,11 @@ export class TheWeeklyReportService {
    * was kept. Each week is its own row; a later week never overwrites an earlier one. Omitted, the
    * latest week is read.
    */
+  /** Change 6: when the lead opens a stored weekly report, the time is recorded (a-lead-read-this-report.ts). It never fails the read. */
+  async noteTheLeadRead(groundId: string, weekStart: string | null, userId: string): Promise<void> {
+    await recordThatTheLeadReadTheWeek(this.prisma, groundId, weekStart, userId).catch((err: any) => console.warn(`A weekly report read was not recorded: ${err?.message}`));
+  }
+
   async read(groundId: string, who: { userId: string; role?: string | null; organizationId?: string | null }, now: Date = new Date(), week?: string | null): Promise<TheWeeklySentences> {
     if (week != null && !/^\d{4}-\d{2}-\d{2}$/.test(week)) throw new BadRequestException('Pick a week by the date of its Monday, for example 2026-09-21.');
     /* Nobody held for a seat reads the weekly report either (privacy sweep finding 3). */
@@ -283,17 +330,17 @@ export class TheWeeklyReportService {
     const ground: any = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
-        organizationId: true, initiatorId: true, createdByUserId: true, scenario: true, peersVisibleToEachOther: true, whoSeesTargets: true, cadence: true,
+        organizationId: true, initiatorId: true, createdByUserId: true, scenario: true, startedFrom: true, peersVisibleToEachOther: true, whoSeesTargets: true, cadence: true,
         /* Decision 75, item 2: the admin asked to approve an evaluation check-in reads it. */
         status: true, approvedById: true,
-        participants: { select: { id: true, userId: true, partyType: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, roleAsDescribed: true, user: { select: { firstName: true, lastName: true, email: true } } } },
+        participants: { select: { id: true, userId: true, partyType: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, roleAsDescribed: true, cameThroughTheLink: true, user: { select: { firstName: true, lastName: true, email: true } } } },
       } as any,
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const viewer: Viewer = { userId: who.userId, role: who.role, organizationId: who.organizationId };
     const level = whatTheyMayRead(who.userId, viewer, ground);
     /* Somebody with no reach, and an admin who was not given access to an evaluation check-in, read nothing. */
-    if (!level) throw new NotFoundException('Check-in not found');
+    if (!level) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     const latest: any = week
       ? await this.prisma.weeklyReport.findUnique({ where: { groundId_weekStart: { groundId, weekStart: week } } })
@@ -360,8 +407,12 @@ export class TheWeeklyReportService {
       /* Every share, to whoever reads the whole check-in, admins included (decision 86). */
       { isLead: runsIt, seesEveryShare: viewerIsLead },
     ).shown as any[];
+    /* IN AN ANCHOR CHECK-IN THE LEAD'S AIMS ARE THE LEAD'S ALONE (decision 96, item 8): what she said she is carrying and wants the team to understand
+       reaches a person in it only once she says so. The check-in page and the board are walled that way; the week in numbers read her aims aloud to
+       every person in the team ("wairimu is aiming for the team to understand that..."), found in the anchor walk. Whoever runs the check-in reads them. */
+    const theLeadsAimsAreHers = !runsTheCheckIn && aGroundIsTheAnchors(ground as any);
     const shownUntold = withoutWhatTheLeadHasNotToldThemAbout(
-      shownTargets.map((t: any) => ({ ...t, setByParticipantId: t.setByTheHolder ? t.ownerParticipantId ?? null : null })), notTold, parties, runsTheCheckIn,
+      (theLeadsAimsAreHers ? [] : shownTargets).map((t: any) => ({ ...t, setByParticipantId: t.setByTheHolder ? t.ownerParticipantId ?? null : null })), notTold, parties, runsTheCheckIn,
     ).kept as any[];
     const whoseIs = (t: any) => (!t.ownerParticipantId ? 'team' as const : t.ownerParticipantId === me?.id ? 'you' as const : { label: labels.get(t.ownerParticipantId) ?? 'A colleague' });
     /* Aims and limits (Hafsah, 1 October, decision 73): whoever runs the check-in reads them; a person

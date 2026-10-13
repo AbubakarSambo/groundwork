@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnApplicationBootstrap, ServiceUnavailableException } from '@nestjs/common';
+import { THE_ENGINE_COULD_NOT_BE_REACHED } from './a-failed-open-says-the-right-thing-to-each-reader';
 import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenAI } from '@google/genai';
@@ -81,9 +82,7 @@ export async function tryAgainIfItIsJustBusy<T>(
 }
 
 export function engineUnavailable(err: any): ServiceUnavailableException {
-  return new ServiceUnavailableException(
-    'The conversation could not be reached just now, so this session cannot continue this minute. Nothing you have already said has been lost. Please try again shortly, and if it keeps happening tell the person who set this ground up - it is a problem on our side, not anything you did.',
-  );
+  return new ServiceUnavailableException(THE_ENGINE_COULD_NOT_BE_REACHED);
 }
 
 export interface ChatTurn {

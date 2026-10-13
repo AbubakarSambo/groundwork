@@ -29,6 +29,8 @@ function service(opts: { pending?: any; existing?: any; listedAs?: any[]; tokenR
     pendingSignup: { findUnique: jest.fn(async () => opts.pending ?? null), delete: jest.fn(async () => ({})) },
     user: { findUnique: jest.fn(async () => opts.existing ?? null) },
     person: { findMany: jest.fn(async () => opts.listedAs ?? []) },
+    /* Nobody here is on a check-in, so the invited-person door (12 October) does not open. */
+    groundParticipant: { findFirst: jest.fn(async () => null) },
     /* No organisation lets this domain join, and no invite link: the lookup added in the U.3 review. */
     organization: { findUnique: jest.fn(async () => null), findMany: jest.fn(async () => []) },
     organizationMembership: { count: jest.fn(async () => 0) },

@@ -22,7 +22,7 @@
  * is found on none, it has no page. Nothing is guessed.
  */
 import type { WhatLanded } from './what-a-document-holds';
-import { byWhen, BANK_DETAILS_LEFT_OUT } from './what-a-document-holds';
+import { byWhen, inTheMiddle, atTheStart, BANK_DETAILS_LEFT_OUT } from './what-a-document-holds';
 import { HIDDEN } from './bank-details-are-never-kept';
 
 /** pdf-parse's own marker after each page: "-- 3 of 4 --". */
@@ -129,14 +129,14 @@ export const PAGES_NOT_KNOWN =
 const fmtNumber = (n: number): string => n.toLocaleString('en-GB');
 
 /** The sentences each item is said in: theContextWeHave's, with the number written in full as the prototype does. */
-export const forEveryoneSentence = (t: { what: string; target: number; kind?: string | null; by?: string | null }, fmt: (n: number) => string) =>
+export const forEveryoneSentence = (t: { what: string; target: number; kind?: string | null; by?: string | null; asWritten?: string | null }, fmt0: (n: number) => string, fmt = (n: number) => t.asWritten || fmt0(n)) =>
   t.kind === 'not to exceed'
-    ? `For everyone in this check-in, ${t.what} must stay at or under ${fmt(t.target)}${byWhen(t.by)}.`
+    ? `${atTheStart(t.what)} must stay at or under ${fmt(t.target)}${byWhen(t.by)} for everyone in this check-in.`
     : `For everyone in this check-in, the target for ${t.what} is ${fmt(t.target)}${byWhen(t.by)}.`;
-export const forOnePersonSentence = (t: { who: string; what: string; target: number; by?: string | null }, fmt: (n: number) => string) =>
+export const forOnePersonSentence = (t: { who: string; what: string; target: number; by?: string | null; asWritten?: string | null }, fmt0: (n: number) => string, fmt = (n: number) => t.asWritten || fmt0(n)) =>
   `${t.who}'s target for ${t.what} is ${fmt(t.target)}${byWhen(t.by)}.`;
 export const dateSentence = (d: { what: string; when: string }) =>
-  `The date it sets for ${d.what} is ${d.when.trim().replace(/\.$/, '')}.`;
+  `The date it sets for ${inTheMiddle(d.what)} is ${d.when.trim().replace(/\.$/, '')}.`;
 
 /**
  * WHAT A PERSON READS UNDER "WHAT IT TOOK" AND "WHAT IT LEFT OUT". Built from `holds` when it is
@@ -150,14 +150,14 @@ export function aDocumentReadItemByItem(held: (WhatLanded & { pages?: number; pa
       kind: 'a number for everyone' as const,
       sentence: forEveryoneSentence(t, fmtNumber),
       what: t.what,
-      detail: `${t.kind === 'not to exceed' ? 'At most ' : ''}${fmtNumber(t.target)}${byWhen(t.by)}`,
+      detail: `${t.kind === 'not to exceed' ? 'At most ' : ''}${(t as any).asWritten || fmtNumber(t.target)}${byWhen(t.by)}`,
       ...page(t as any),
     })),
     ...(held.forOnePerson ?? []).map((t) => ({
       kind: 'a number for one person' as const,
       sentence: forOnePersonSentence(t, fmtNumber),
       what: t.what,
-      detail: `${fmtNumber(t.target)}${byWhen(t.by)}`,
+      detail: `${(t as any).asWritten || fmtNumber(t.target)}${byWhen(t.by)}`,
       who: t.who,
       ...page(t as any),
     })),

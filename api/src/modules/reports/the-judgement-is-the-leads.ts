@@ -91,10 +91,26 @@ export function onlyTheirOwnFinding(findings: unknown, viewerParticipantId: stri
  * A lead gets the whole thing back untouched - this is not the place the lead's own reads are
  * decided, and adding a second opinion about that here is how two files come to disagree.
  */
+/**
+ * AND WHAT AN ADMIN WHO ONLY READS MAY NOT HAVE (decision 58; decision 139, item 1).
+ *
+ * An admin of the organisation who neither runs the check-in nor set it up for its lead reads it with
+ * the lead's eyes (decision 5), apart from this: the lead's own judgement of the room. Read in the final
+ * evaluation (11 October 2026): Grace, the managing director, was served `theJudgement.theGap`, "Wairimu
+ * Njoroge believes the catalogue is finished ...", on three check-ins she never ran. The admin who set
+ * the check-in up keeps it, the same access decision 58 gives her for a pattern.
+ */
+export const NOT_AN_ADMIN_WHO_ONLY_READS = ['theJudgement'] as const;
+
 export function whatAParticipantMayRead<T extends Record<string, any>>(
   report: T,
-  viewer: { isLead: boolean; participantId: string | null },
+  viewer: { isLead: boolean; participantId: string | null; anAdminWhoOnlyReads?: boolean },
 ): T {
+  if (viewer.isLead && viewer.anAdminWhoOnlyReads && report && typeof report === 'object') {
+    const out: Record<string, any> = { ...report };
+    for (const key of NOT_AN_ADMIN_WHO_ONLY_READS) delete out[key];
+    return out as T;
+  }
   if (viewer.isLead) return report;
   if (!report || typeof report !== 'object') return report;
 

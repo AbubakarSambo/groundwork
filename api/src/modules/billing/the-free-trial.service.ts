@@ -1,9 +1,10 @@
+import { WHERE_A_GROUND_IS_THE_ANCHORS } from '../conversation/the-anchor-weekly-check-in';
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { SubscriptionPlan } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PricingService } from './pricing.service';
-import { GroundworkEvents, type OrgSizeSaidEvent, type AnchorCheckInStartedEvent } from '../../common/events';
+import { GroundworkEvents, type OrgSizeSaidEvent, type OrgSignedUpEvent, type AnchorCheckInStartedEvent } from '../../common/events';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { aFreeRunEndsOn, whatCoversThem } from '../../common/subscription';
 import { seatsIn } from '../../common/seats';
@@ -44,11 +45,50 @@ export class TheFreeTrialService {
    * THE ANCHOR'S ONE-MONTH TRIAL (anchor piece 34). Given when a check-in is started from the anchor link, only while
    * both the anchor switch and `pricing.anchorTrial` are on, once per organisation, never on top of a free run we
    * already gave it and never to one that is paying, exactly as the free trial is. It covers the plan that holds 20
-   * people, the lead included. Nothing touches Stripe.
+   * people and the lead. Nothing touches Stripe.
    */
   @OnEvent(GroundworkEvents.ANCHOR_CHECK_IN_STARTED)
   async whenAnAnchorCheckInStarts(event: AnchorCheckInStartedEvent): Promise<void> {
-    await this.grantTheAnchorTrial(event.organizationId);
+    const got = await this.grantTheAnchorTrial(event.organizationId);
+    if (!got.granted) await this.coverTheAnchorsTeam(event.organizationId);
+  }
+
+  /**
+   * AN ANCHOR TEAM IS UP TO 20 PEOPLE BESIDES THE LEAD, WHICHEVER TRIAL COVERS IT (decision 121, item 4). With the anchor trial off, the team is on
+   * the ordinary trial, whose plan holds 20 seats in all, so the 21st person was refused a seat. When an anchor check-in starts in an organisation
+   * that is already on a free run, the free run moves to the plan that holds the lead and 20. Its end day is left alone, nothing is given to an
+   * organisation that is not already on a free run, and no plan's caps change for anyone.
+   */
+  private async coverTheAnchorsTeam(organizationId: string, now: Date = new Date()): Promise<void> {
+    try {
+      const org = await this.prisma.organization.findUnique({
+        where: { id: organizationId },
+        select: { subscriptionPlan: true, subscriptionStatus: true, freeUntil: true, freePlan: true },
+      });
+      if (!org || whatCoversThem(org, now).covers !== 'on the house') return;
+      const plans = await this.pricing.listPlans();
+      const needed = (await this.pricing.getAnchorTrial()).people + 1;
+      const holds = (plan: unknown) => {
+        const row = plans.find((p) => p.plan === plan);
+        return !!row && (row.memberCap === null || row.memberCap >= needed);
+      };
+      if (holds(org.freePlan)) return;
+      const plan = await this.thePlanItCovers(needed + 1);
+      if (!plan) return;
+      await this.prisma.organization.updateMany({
+        where: { id: organizationId, freeUntil: org.freeUntil, freePlan: org.freePlan as any },
+        data: { freePlan: plan },
+      });
+      this.logger.log(`The free run of ${organizationId} now covers ${plan}, which holds an anchor team of ${needed - 1} people and the lead.`);
+    } catch (err: any) {
+      this.logger.error(`The anchor team of ${organizationId} could not be covered: ${err?.message}`);
+    }
+  }
+
+  /** Whether any check-in in this organisation came in by the anchor. */
+  private async isAnAnchorTeam(organizationId: string): Promise<boolean> {
+    const found = await (this.prisma as any).ground?.findFirst?.({ where: { organizationId, ...WHERE_A_GROUND_IS_THE_ANCHORS }, select: { id: true } })?.catch?.(() => null);
+    return !!found;
   }
 
   async grantTheAnchorTrial(
@@ -67,8 +107,8 @@ export class TheFreeTrialService {
       if (org.freeTrialStartedAt) return { granted: false, why: 'it has had a trial already' };
       if (whatCoversThem(org, now).covers === 'paid') return { granted: false, why: 'it is paying' };
       if (org.freeUntil) return { granted: false, why: 'it has a free run of its own' };
-      /* Twenty people, the lead included: a plan whose seat limit is at least 20. */
-      const plan = await this.thePlanItCovers(trial.people + 1);
+      /* Twenty people and the lead: a plan whose seat limit is at least 21 (decision 121, item 4). */
+      const plan = await this.thePlanItCovers(trial.people + 2);
       if (!plan) return { granted: false, why: 'no plan holds a team of that size' };
       /*
        * NEVER SHORTER THAN THE REGULAR TRIAL (review of piece 34). Where the organisation would also be given the regular
@@ -98,6 +138,26 @@ export class TheFreeTrialService {
   @OnEvent(GroundworkEvents.ORG_SIZE_SAID)
   async whenTheySayTheirSize(event: OrgSizeSaidEvent): Promise<void> {
     await this.grantIfItApplies(event.organizationId, event.said);
+  }
+
+  /**
+   * AN ORGANISATION NAMED ON THE SIGN-UP FORM IS NEVER ASKED ITS SIZE (clean-install run, 6 October). Once billing is
+   * on, that left it with no plan and no trial, and unable to open a check-in. So the server applies the rule itself:
+   * the sign-up form promises the month to "teams of fewer than 20 people", and `grantIfItApplies` checks that against
+   * who is really in the organisation. One that says its size later, on `/org-new?naming=1`, is handled as before.
+   * The event is sent from inside the transaction that creates the organisation, so it is looked for again for a moment.
+   */
+  @OnEvent(GroundworkEvents.ORG_SIGNED_UP)
+  async whenAnOrganisationIsNamedOnTheForm(event: OrgSignedUpEvent): Promise<void> {
+    if (!event.namedOnTheForm) return;
+    /* With the trial off a sign-up costs nothing: no lookups at all. */
+    if (!(await this.pricing.getFreeTrial().catch(() => null))?.on) return;
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const found = await this.prisma.organization.findUnique({ where: { id: event.organizationId }, select: { id: true } }).catch(() => null);
+      if (found) break;
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    await this.grantIfItApplies(event.organizationId, 'fewer');
   }
 
   /**
@@ -141,6 +201,11 @@ export class TheFreeTrialService {
         return { granted: false, why: 'no plan holds a team of that size' };
       }
 
+      /* An anchor team is up to 20 people besides the lead, so the ordinary trial covers the plan that holds all 21 (decision 121, item 4). */
+      const planGiven = anchorMonth || (await this.isAnAnchorTeam(organizationId))
+        ? ((await this.thePlanItCovers((await this.pricing.getAnchorTrial()).people + 2)) ?? plan)
+        : plan;
+
       /*
        * INSIDE AN ANCHOR MONTH, THE REGULAR TRIAL RUNS FROM THE DAY THAT MONTH STARTED, so the two together are never more
        * than the regular trial's length. The conservative choice; whether it should run from today is Hafsah's (morning
@@ -151,11 +216,11 @@ export class TheFreeTrialService {
       /* Only if still untouched, so two answers at once cannot give it twice or overwrite a free run. */
       const written = await this.prisma.organization.updateMany({
         where: { id: organizationId, freeTrialStartedAt: null, freeUntil: anchorMonth ? org.freeUntil : null },
-        data: { freeTrialStartedAt: now, freeUntil: until, freePlan: plan },
+        data: { freeTrialStartedAt: now, freeUntil: until, freePlan: planGiven },
       });
       if (!written.count) return { granted: false, why: 'it changed while we looked' };
-      this.logger.log(`Free trial given to ${organizationId}: ${trial.months} months on ${plan}, ending ${until.toISOString().slice(0, 10)}.`);
-      return { granted: true, plan, until };
+      this.logger.log(`Free trial given to ${organizationId}: ${trial.months} months on ${planGiven}, ending ${until.toISOString().slice(0, 10)}.`);
+      return { granted: true, plan: planGiven, until };
     } catch (err: any) {
       this.logger.error(`The free trial could not be given to ${organizationId}: ${err?.message}`);
       return { granted: false, why: 'something failed' };
@@ -173,9 +238,9 @@ export class TheFreeTrialService {
     if (ends.getTime() <= now.getTime()) return null;
     const anchor = this.pricing.getAnchorTrial ? await this.pricing.getAnchorTrial().catch(() => null) : null;
     if (!anchor) return null;
-    const plan = await this.thePlanItCovers(anchor.people + 1);
+    const plan = await this.thePlanItCovers(anchor.people + 2);
     if (!plan || org.freePlan !== plan) return null;
-    const starts = ((await (this.prisma as any).ground?.findMany?.({ where: { organizationId, startedFrom: 'anchor' }, select: { createdAt: true } })?.catch?.(() => [])) ?? []) as { createdAt: Date }[];
+    const starts = ((await (this.prisma as any).ground?.findMany?.({ where: { organizationId, ...WHERE_A_GROUND_IS_THE_ANCHORS }, select: { createdAt: true } })?.catch?.(() => [])) ?? []) as { createdAt: Date }[];
     const A_DAY = 24 * 60 * 60 * 1000;
     const match = starts.find((g) => Math.abs(aFreeRunEndsOn(new Date(g.createdAt), anchor.months).getTime() - ends.getTime()) <= A_DAY);
     return match ? { startedOn: new Date(match.createdAt) } : null;

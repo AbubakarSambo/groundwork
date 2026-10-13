@@ -28,7 +28,7 @@ export class EmbedSessionGuard implements CanActivate {
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
     const req = ctx.switchToHttp().getRequest();
     const [kind, token] = (req.headers?.authorization ?? '').split(' ');
-    if (kind !== 'Bearer' || !token) throw new UnauthorizedException('A panel session token is required.');
+    if (kind !== 'Bearer' || !token) throw new UnauthorizedException('This panel has no session, so close it and open it again.');
 
     let claims: any;
     try {

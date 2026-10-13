@@ -12,8 +12,9 @@ import { whatAParticipantIsToldAboutThis } from '../grounds/what-a-participant-i
  * Rukia said in her own check-in "I am aiming for 3 shops in Kilimani." It went on the board as her
  * target, and read exactly like a number Amina, who runs the check-in, set for her: "You are aiming for
  * 3 shops in Kilimani." to Rukia, "Rukia Mwangi is aiming for 3 shops in Kilimani." to Amina. Now:
- *   Rukia:   "Your own aim is 3 shops in Kilimani."
- *   others:  "Rukia Mwangi's own aim is 3 shops in Kilimani." (no guessed pronoun)
+ *   Rukia:   "Your own aim is 3 shops in Kilimani. You said, "I am aiming for 3 shops in Kilimani"."
+ *   others:  "Rukia Mwangi's own aim is 3 shops in Kilimani. Rukia Mwangi said, "I am aiming for 3 shops in Kilimani"."
+ *   Her sentence is always shown beside the label, never replaced by it (Hafsah, 12 October).
  * A number Amina set for Baraka still reads "Baraka Otieno is aiming for 5 visits a week.".
  */
 const target = (id: string, name: string, n: number, owner: string | null, setBy: string | null) => ({
@@ -30,14 +31,14 @@ describe('on the board, as each reader reads it', () => {
   it('Rukia reads her own aim as one she set herself', async () => {
     expect(await names({ objectives: ALL }, RUKIA)).toEqual([
       'The team is aiming for 20 shops onboarded.',
-      'Your own aim is 3 shops in Kilimani.',
+      'Your own aim is 3 shops in Kilimani. You said, "I am aiming for 3 shops in Kilimani".',
     ]);
   });
 
   it('Amina, who runs it, reads Rukia\'s aim as Rukia\'s own, and Baraka\'s number as one she set', async () => {
     expect(await names({ objectives: ALL }, AMINA)).toEqual([
       'The team is aiming for 20 shops onboarded.',
-      'Rukia Mwangi\'s own aim is 3 shops in Kilimani.',
+      'Rukia Mwangi\'s own aim is 3 shops in Kilimani. Rukia Mwangi said, "I am aiming for 3 shops in Kilimani".',
       'Baraka Otieno is aiming for 5 visits a week.',
     ]);
   });
@@ -46,7 +47,7 @@ describe('on the board, as each reader reads it', () => {
     /* A person's board is their own (request 105, part 3). An admin sees the figures (decision 86). */
     expect(await names({ objectives: ALL, createdByUserId: 'u-setup' }, SETUP_ADMIN)).toEqual([
       'The team is aiming for 20 shops onboarded.',
-      'Rukia Mwangi\'s own aim is 3 shops in Kilimani.',
+      'Rukia Mwangi\'s own aim is 3 shops in Kilimani. Rukia Mwangi said, "I am aiming for 3 shops in Kilimani".',
       'Baraka Otieno is aiming for 5 visits a week.',
     ]);
     expect(await names({ objectives: ALL, whoSeesTargets: 'EVERYBODY' }, BARAKA)).toEqual(['The team is aiming for 20 shops onboarded.', 'You are aiming for 5 visits a week.']);
@@ -61,19 +62,19 @@ describe('on the board, as each reader reads it', () => {
   it('Juma, an admin who only reads, reads every aim, as Amina does', async () => {
     expect(await names({ objectives: ALL }, JUMA)).toEqual([
       'The team is aiming for 20 shops onboarded.',
-      'Rukia Mwangi\'s own aim is 3 shops in Kilimani.',
+      'Rukia Mwangi\'s own aim is 3 shops in Kilimani. Rukia Mwangi said, "I am aiming for 3 shops in Kilimani".',
       'Baraka Otieno is aiming for 5 visits a week.',
     ]);
   });
 
   it('the person reviewed on a performance plan reads their own aim as theirs', async () => {
     const got = await names({ scenario: GroundScenario.PIP, objectives: [RUKIAS_OWN] }, RUKIA);
-    expect(got).toEqual(['Your own aim is 3 shops in Kilimani.']);
+    expect(got).toEqual(['Your own aim is 3 shops in Kilimani. You said, "I am aiming for 3 shops in Kilimani".']);
   });
 
   it('Rukia\'s own share says the same', async () => {
     const b = await boardAs({ objectives: ALL }, ...RUKIA);
-    expect(b.yourShare[0].says).toBe('Your own aim is 3 shops in Kilimani. You have 1 of the 3 so far.');
+    expect(b.yourShare[0].says).toBe('Your own aim is 3 shops in Kilimani. You said, "I am aiming for 3 shops in Kilimani". You have 1 of the 3 so far.');
   });
 
   it('an aim the lead set for herself is never read as a participant\'s own', async () => {
@@ -89,16 +90,17 @@ describe('the sentence, wherever an aim is said', () => {
     expect(theAimItself('shops in Kilimani', 3)).toBe('3 shops in Kilimani');
     expect(theAimItself('I want to see my own customers more.', 4)).toBeNull();
     expect(anAimAsASentence('I want to see my own customers more.', { speaker: 'Rukia Mwangi', holder: 'Rukia Mwangi', target: 4, setByTheHolder: true }))
-      .toBe('Rukia Mwangi wants to see the own customers more. Rukia Mwangi set this aim.'.replace('the own', 'Rukia Mwangi\'s own'));
+      /* Her own words, quoted as she said them, never rewritten into "Rukia Mwangi's own customers" (Hafsah, 12 October). */
+      .toBe('Rukia Mwangi set this aim. Rukia Mwangi said, "I want to see my own customers more".');
     expect(yourOwnAimIsYours('You want to see your own customers more. You set this aim for their own work.'))
       .toBe('You want to see your own customers more. You set yourself this aim.');
   });
 
   it('in Rukia\'s own check-in, the target she is given is hers', () => {
     const who = { readerId: 'p-rukia', readerFirstName: 'Rukia', leadId: 'p-amina', firstNameOf: (id: string) => ({ 'p-amina': 'Amina', 'p-rukia': 'Rukia', 'p-baraka': 'Baraka' } as any)[id] ?? null };
-    expect(theTargetAsASentence(RUKIAS_OWN, who)).toBe('Your own aim is 3 shops in Kilimani.');
+    expect(theTargetAsASentence(RUKIAS_OWN, who)).toBe('Your own aim is 3 shops in Kilimani. You said, "I am aiming for 3 shops in Kilimani".');
     /* And in Baraka's, where he may read it. */
-    expect(theTargetAsASentence(RUKIAS_OWN, { ...who, readerId: 'p-baraka', readerFirstName: 'Baraka' })).toBe('Rukia\'s own aim is 3 shops in Kilimani.');
+    expect(theTargetAsASentence(RUKIAS_OWN, { ...who, readerId: 'p-baraka', readerFirstName: 'Baraka' })).toBe('Rukia\'s own aim is 3 shops in Kilimani. Rukia said, "I am aiming for 3 shops in Kilimani".');
   });
 });
 
@@ -107,14 +109,14 @@ describe('the weekly report, Today and "since the last round"', () => {
   it('Rukia reads her own aim as one she set herself; it read "I am aiming for 3 shops in Kilimani, your own number"', () => {
     expect(aTargetThisWeek(week, 'you', false)).toEqual({
       figure: '1',
-      of: '3 shops in Kilimani, your own aim',
+      of: '3 shops in Kilimani, your own aim. You said, "I am aiming for 3 shops in Kilimani".',
       says: 'Your own aim is 3 shops in Kilimani. Your count went from 0 to 1 this week.',
     });
   });
   it('Amina reads it as Rukia\'s own (in labels until it is served)', () => {
     expect(aTargetThisWeek(week, { label: 'Participant A' }, true)).toEqual({
       figure: '1',
-      of: '3 shops in Kilimani, Participant A\'s own aim',
+      of: '3 shops in Kilimani, Participant A\'s own aim. Participant A said, "I am aiming for 3 shops in Kilimani".',
       says: 'Participant A\'s own aim is 3 shops in Kilimani. Participant A\'s count went from 0 to 1 this week.',
     });
   });
@@ -135,11 +137,11 @@ describe('"About this check-in", in each person\'s own check-in', () => {
   const RUKIAS: any = { name: 'I am aiming for 3 shops in Kilimani.', target: 3, ownerParticipantId: 'p-rukia', setByParticipantId: 'p-rukia' };
   const about = (reader: string, nameOf: (id: string) => string | null) => whatAParticipantIsToldAboutThis(null, [RUKIAS], { readerParticipantId: reader, leadParticipantId: 'p-amina', nameOf });
   it('Rukia is told her own aim as hers', () => {
-    expect(about('p-rukia', () => 'Rukia')).toBe('Your own aim is 3 shops in Kilimani.');
+    expect(about('p-rukia', () => 'Rukia')).toBe('Your own aim is 3 shops in Kilimani. You said, "I am aiming for 3 shops in Kilimani".');
   });
   it('Baraka, where he may read it, is told it is Rukia\'s own, never "Your lead is aiming for"', () => {
-    expect(about('p-baraka', () => 'Rukia')).toBe('Rukia\'s own aim is 3 shops in Kilimani.');
-    expect(about('p-baraka', () => null)).toBe('A colleague\'s own aim is 3 shops in Kilimani.');
+    expect(about('p-baraka', () => 'Rukia')).toBe('Rukia\'s own aim is 3 shops in Kilimani. Rukia said, "I am aiming for 3 shops in Kilimani".');
+    expect(about('p-baraka', () => null)).toBe('A colleague\'s own aim is 3 shops in Kilimani. A colleague said, "I am aiming for 3 shops in Kilimani".');
   });
   it('a number the lead set for Baraka is still told as a goal', () => {
     expect(whatAParticipantIsToldAboutThis(null, [{ name: 'visits a week', target: 5, ownerParticipantId: 'p-baraka', setByParticipantId: 'p-amina' } as any], { readerParticipantId: 'p-baraka', leadParticipantId: 'p-amina' }))

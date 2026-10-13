@@ -13,7 +13,7 @@ import { GroundsService } from './grounds.service';
  * a deletion would at least have been honest.
  */
 describe('GW-RENAME: renaming a check-in', () => {
-  function makeService(ground: any = {}, viewer: any = { role: 'MEMBER', organizationId: 'org1' }) {
+  function makeService(ground: any = {}, viewer: any = { role: 'MEMBER', organizationId: 'org1' }, leadHasLeft = false) {
     const g = {
       id: 'g1', organizationId: 'org1', scenario: 'NEW_PROJECT', initiatorId: 'u-lead', label: 'The old name',
       timelineDays: 90, timelineWeeks: 13, cadence: 'FORTNIGHTLY', mode: 'SHARED',
@@ -23,7 +23,7 @@ describe('GW-RENAME: renaming a check-in', () => {
     const prisma: any = {
       ground: { findUnique: jest.fn(async () => g), update: updated },
       groundParticipant: { findFirst: jest.fn(async () => ({ id: 'p1' })) },
-      user: { findUnique: jest.fn(async () => viewer) },
+      user: { findUnique: jest.fn(async (a: any) => (a?.where?.id === g.initiatorId ? { role: 'MEMBER', organizationId: 'org1', isActive: !leadHasLeft, firstName: 'Wanjiru', lastName: 'Mwangi' } : viewer)) },
       checkIn: { findFirst: jest.fn(async () => null) },
     };
     const service = new GroundsService(
@@ -64,8 +64,14 @@ describe('GW-RENAME: renaming a check-in', () => {
       .rejects.toBeInstanceOf(ForbiddenException);
   });
 
-  it('but an admin in the same organisation can, as they can with the schedule', async () => {
+  it('an admin in the same organisation cannot while the lead is there (decision 119, H10)', async () => {
     const { service, updated } = makeService({}, { role: 'ADMIN', organizationId: 'org1' });
+    await expect(service.updateTimeline('g1', 'u-someone-else', { label: 'Renamed by admin' })).rejects.toBeInstanceOf(ForbiddenException);
+    expect(updated).not.toHaveBeenCalled();
+  });
+
+  it('but can once the lead has left, as with the schedule', async () => {
+    const { service, updated } = makeService({}, { role: 'ADMIN', organizationId: 'org1' }, true);
     await service.updateTimeline('g1', 'u-someone-else', { label: 'Renamed by admin' });
     expect(updated.mock.calls[0][0].data.label).toBe('Renamed by admin');
   });

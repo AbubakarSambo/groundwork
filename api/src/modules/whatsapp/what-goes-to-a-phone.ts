@@ -1,6 +1,8 @@
 import { TEMPLATES, fill } from './a-message-outside-the-window';
+import { theReminderBody } from '../grounds/what-is-sent-in-simpler-words';
 import { whatToDoToday, type ChasingPolicy } from '../conversation/chasing-belongs-to-the-lead';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
+import { anHourInTheirZone } from './the-persons-own-time-zone';
 
 /**
  * THE MESSAGES GROUNDWORK STARTS ON WHATSAPP, IN THE WORDS A PERSON READS (survey item 7,
@@ -20,18 +22,22 @@ export interface WhoAndWhat {
 }
 
 const first = (w: WhoAndWhat) => w.firstName?.trim() || 'there';
-const notice = (kind: string, params: string[]): ANotice => ({ kind, text: fill(TEMPLATES[kind].body, params), params });
+/* A check-in set to use simpler words reads the plainer body as free text; the template that goes outside the 24 hours is the approved one, from the same params. */
+const notice = (kind: string, params: string[], simplerWords?: boolean | null): ANotice => ({ kind, text: fill(theReminderBody(kind, TEMPLATES[kind].body, simplerWords), params), params });
 
 /** checkin_open: a session has opened, the first or a later one. */
-export const theCheckInIsOpen = (w: WhoAndWhat) => notice('checkin-open', [first(w), w.label]);
+export const theCheckInIsOpen = (w: WhoAndWhat, simplerWords?: boolean | null) => notice('checkin-open', [first(w), w.label], simplerWords);
+/** checkin_open again, to somebody the opening notice never reached: the same words, as its own kind so it is the day's routine message and not a second opening. */
+export const theCheckInIsStillOpen = (w: WhoAndWhat, simplerWords?: boolean | null) => notice('checkin-catch-up', [first(w), w.label], simplerWords);
 /** checkin_due_tomorrow, with the day it is due ("Thursday 8 October"). */
-export const itIsDueTomorrow = (w: WhoAndWhat, dueAt: Date) => notice('due-tomorrow', [first(w), w.label, whenItWas(dueAt, 'weekdayAndDay')]);
+export const itIsDueTomorrow = (w: WhoAndWhat, dueAt: Date, simplerWords?: boolean | null) => notice('due-tomorrow', [first(w), w.label, whenItWas(dueAt, 'weekdayAndDay')], simplerWords);
 /** checkin_opens_soon, with the time it opens ("10:00 am"). */
-export const itOpensSoon = (w: WhoAndWhat, opensAt: Date) => notice('opens-soon', [first(w), w.label, whenItWas(opensAt, 'hourOfDay')]);
+/* `zone` is the person's own (the-persons-own-time-zone.ts): the hour is then theirs, with the zone named. Left out, the platform's, as before. */
+export const itOpensSoon = (w: WhoAndWhat, opensAt: Date, simplerWords?: boolean | null, zone?: string) => notice('opens-soon', [first(w), w.label, zone ? anHourInTheirZone(opensAt, zone) : whenItWas(opensAt, 'hourOfDay')], simplerWords);
 /** checkin_overdue: only while it is still open (whatToSendThisMorning decides). */
-export const itIsOverdue = (w: WhoAndWhat) => notice('overdue', [first(w), w.label]);
-/** checkin_team_almost_in: {{3}} of {{4}} people, never anything they said. */
-export const theTeamIsAlmostIn = (w: WhoAndWhat, answered: number, ofHowMany: number) => notice('team-almost-in', [first(w), w.label, String(answered), String(ofHowMany)]);
+export const itIsOverdue = (w: WhoAndWhat, simplerWords?: boolean | null) => notice('overdue', [first(w), w.label], simplerWords);
+/** checkin_team_almost_in: {{2}} of {{3}} people, for {{4}}, never anything they said. */
+export const theTeamIsAlmostIn = (w: WhoAndWhat, answered: number, ofHowMany: number, simplerWords?: boolean | null) => notice('team-almost-in', [first(w), String(answered), String(ofHowMany), w.label], simplerWords);
 /**
  * THE ANCHOR'S NUDGE ON WHATSAPP (piece 30; decision 105 item 3): the person's own last open promise, to them only.
  * The promise is made safe for a template blank: no new line, no tab, no run of more than four spaces, and cut at a
@@ -44,10 +50,10 @@ export function aPromiseForABlank(promise: string): string {
   const cut = flat.slice(0, 119);
   return `${cut.slice(0, Math.max(cut.lastIndexOf(' '), 60)).replace(/[,;:\s]+$/, '')}…`;
 }
-export const itFollowsUpTheirPromise = (w: WhoAndWhat, theirOwnPromise: string) => notice('anchor-follow-up', [first(w), aPromiseForABlank(theirOwnPromise), w.label]);
+export const itFollowsUpTheirPromise = (w: WhoAndWhat, theirOwnPromise: string, simplerWords?: boolean | null) => notice('anchor-follow-up', [first(w), aPromiseForABlank(theirOwnPromise), w.label], simplerWords);
 
 /** checkin_your_view_matters, with the lead's first name. */
-export const yourViewMatters = (w: WhoAndWhat, leadFirstName: string | null | undefined) => notice('your-view-matters', [first(w), w.label, leadFirstName?.trim() || 'your lead']);
+export const yourViewMatters = (w: WhoAndWhat, leadFirstName: string | null | undefined, simplerWords?: boolean | null) => notice('your-view-matters', [first(w), w.label, leadFirstName?.trim() || 'your lead'], simplerWords);
 
 /**
  * WHEN A SESSION IS DUE. A session never shuts at a set hour: it stays open and takes answers until
@@ -123,3 +129,4 @@ export const aReviewWasStarted = (personFirstName: string | null | undefined, wr
   notice('review-started', [personFirstName?.trim() || 'there', writerFirstName?.trim() || 'The person who writes it with you']);
 export const aReviewWasDecided = (personFirstName: string | null | undefined, writerFirstName: string | null | undefined) =>
   notice('review-decided', [personFirstName?.trim() || 'there', writerFirstName?.trim() || 'The person who writes it with you']);
+

@@ -38,6 +38,14 @@ export interface CoverageAsServed {
   shown: boolean;
   /** Only on the reader's own row: what the read rests on, in words. */
   basis?: string;
+  /**
+   * DECISION 141 (3), 12 October 2026: "The coverage bar as a percentage beside a person's name: bring it
+   * back for the lead, as the prototype shows. Never sort or rank people by it." The share of the work in
+   * this person's role that other people described doing as theirs, 0 to 100. Only to the lead, only on a
+   * read that is shown and has a role to measure against. Not named `pct`, so the net under the board
+   * (withNoRatingNumber) still takes every other `pct` off; the rows keep the engine's own order.
+   */
+  landingPercent?: number;
 }
 
 /**
@@ -50,6 +58,8 @@ export interface CoverageAsServed {
 export function coverageAsThisReaderMayRead<T extends { scope?: string; reads?: any[] }>(
   coverage: T | undefined,
   meParticipantId: string | null,
+  /** The reader runs this check-in: the lead reads each person's percentage (decision 141 (3)). */
+  opts: { theLead?: boolean } = {},
 ): T | undefined {
   if (!coverage || !Array.isArray(coverage.reads)) return coverage;
   const reads: CoverageAsServed[] = coverage.reads.map((r: any) => {
@@ -72,6 +82,8 @@ export function coverageAsThisReaderMayRead<T extends { scope?: string; reads?: 
       remitDefined: !!r.remitDefined,
       shown: true,
       ...(own && typeof r.basis === 'string' ? { basis: r.basis } : {}),
+      ...(opts.theLead && r.remitDefined && typeof r.pct === 'number' && Number.isFinite(r.pct)
+        ? { landingPercent: Math.max(0, Math.min(100, Math.round(r.pct))) } : {}),
     };
   });
   return { ...coverage, reads } as T;

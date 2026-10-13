@@ -1,4 +1,5 @@
 import { withoutWhatTheLeadHasNotToldThemAbout } from '../board/an-untold-goal-is-not-a-board-objective';
+import { withoutTheLeadsSetUpForAMember } from '../grounds/the-leads-set-up-is-the-leads-in-the-anchor';
 import { targetsFor } from '../board/whose-number-is-whose-business';
 import { aWaitOnOneself } from '../board/a-thing-is-not-somebody';
 import { labelsForParties, namesVisibleTo } from './party-labels';
@@ -59,7 +60,20 @@ export function theFirstSentenceThatFits(s: string | null | undefined, max = A_T
   if (!t) return null;
   /* The end of a sentence, with a closing quotation mark or bracket that belongs to it. */
   const m = t.match(/^(.+?[.!?]+["'”’)\]]*)(?:\s|$)/);
-  const first = (m ? m[1] : t).trim();
+  let first = (m ? m[1] : t).trim();
+  /*
+   * A SENTENCE IS NOT CUT INSIDE A QUOTATION. 'You said, "Two shops owe us. I never ask."' was cut at the full stop inside the quote, which left
+   * 'You said, "Two shops owe us.' with its quotation mark open and the next sentence running on from it (final check of the anchor, 8 October).
+   * When the cut leaves a quotation open, the sentence runs on to the mark that closes it.
+   */
+  const marks = (x: string) => (x.match(/"/g) ?? []).length;
+  if (m && marks(first) % 2 === 1) {
+    const close = t.indexOf('"', first.length);
+    if (close !== -1) {
+      const after = t.slice(close + 1).match(/^[.!?]*/)?.[0] ?? '';
+      first = t.slice(0, close + 1 + after.length).trim();
+    }
+  }
   return first.length <= max ? first : null;
 }
 
@@ -130,7 +144,7 @@ export interface WhatThisSessionHolds {
   whyNoWorryIsShown: WhyNoWorryIsShown;
   /**
    * WAITS RAISED IN AN EARLIER SESSION AND STILL OPEN (item 21, the founder's board). The tile said
-   * "There is 1 more worry on record, and nobody is waiting on anybody." to Ada, while Tunde was
+   * "There is 1 more worry on record, and no wait has been recorded against a named person." to Ada, while Tunde was
    * waiting on her for three things raised two sessions before. This session raised no wait, but
    * the earlier ones had not gone away; the tile now says so instead of saying nobody waits.
    */
@@ -223,7 +237,7 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
     (prisma as any).ground?.findUnique?.({
       where: { id: groundId },
       select: {
-        whoSeesTargets: true, peersVisibleToEachOther: true,
+        whoSeesTargets: true, peersVisibleToEachOther: true, startedFrom: true, scenario: true,
         participants: { select: { id: true, userId: true, partyType: true, email: true, createdAt: true, roleAsDescribed: true, nameGiven: true, organisationGiven: true, user: { select: { firstName: true, lastName: true } } } },
       },
     })?.catch?.(() => null) ?? null,
@@ -265,7 +279,9 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
     where: { groundId, awareness: 'NOT_TOLD' },
     select: { participantId: true, text: true, awareness: true, authoredBy: true, createdAt: true },
   })?.catch?.(() => []) ?? Promise.resolve([]));
-  const objectives = withoutWhatTheLeadHasNotToldThemAbout(shownTargets, (untoldRows ?? []) as any[], ((theGround as any)?.participants ?? []) as any[], !!(reader.runsIt ?? reader.isLead)).kept as unknown as { id: string; count: number; target?: number | null }[];
+  const notToldOut = withoutWhatTheLeadHasNotToldThemAbout(shownTargets, (untoldRows ?? []) as any[], ((theGround as any)?.participants ?? []) as any[], !!(reader.runsIt ?? reader.isLead)).kept as unknown as { id: string; count: number; target?: number | null }[];
+  /* And in an anchor check-in the lead's own aims are hers alone: the ground read serves a member none (decision 96, item 8), so the tile counts none either (final check, 9 October: "2 targets are set" over a page listing no target). */
+  const objectives = withoutTheLeadsSetUpForAMember({ objectives: notToldOut }, { startedFrom: (theGround as any)?.startedFrom ?? null, scenario: (theGround as any)?.scenario ?? null, runsIt: !!(reader.runsIt ?? reader.isLead) }).objectives;
   /*
    * THE FIRST WORRY WHOSE LINE STANDS WHOLE: a first sentence that fits a tile, and whose quotes,
    * if it has any, are the record's words, so the quote rule at the read leaves it as it is (see
@@ -311,7 +327,8 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
   const real = theseMayBeRead(deps);
   const waitsFromEarlier = theseMayBeRead(earlierDeps).length;
   const blocked = real.filter((d) => d.status === 'BLOCKING').length;
-  const waiting = real.filter((d) => d.status === 'WAITING').length;
+  /* PEOPLE, NOT ROWS (B-103): the tile is read as "N people are waiting on somebody else", and Halima, the only one who had answered, had two waits, so it said "Two people". */
+  const waiting = new Set(real.filter((d) => d.status === 'WAITING').map((d) => d.fromParticipantId)).size;
   /* The hard one first, because that is the one a lead acts on. */
   const first = real.find((d) => d.status === 'BLOCKING') ?? real[0] ?? null;
   /* The person it sits with, unless the line already says it: "legal to look at the contract, on
@@ -376,6 +393,13 @@ export function atAGlanceTiles(a: {
   targetsMoved?: number;
   backedPct: number | null; numberWasSaid: boolean;
   /**
+   * FILES, PHOTOS AND LOCATION PINS SENT WITH THIS SESSION'S CHECK-INS THAT THIS READER MAY SEE (B-103).
+   * Her report said "Nothing said this session has a document behind it." after she sent a PDF and
+   * two photos on WhatsApp: the tile counted only lines a document had been matched to, and never
+   * the files themselves. Where a caller does not pass it, nothing is said about files.
+   */
+  filesSent?: number;
+  /**
    * WHETHER ANYBODY IS STILL TO ANSWER, because the Differences tile was guessing.
    *
    * With nothing agreed and nothing open it said "one side has answered so far", on a card whose
@@ -427,7 +451,7 @@ export function atAGlanceTiles(a: {
   /* Nobody waits, said only where it is true; otherwise how many waits from earlier sessions are still open. */
   const andTheWaits = earlier > 0
     ? `. Nobody named a new wait this session, and ${earlier === 1 ? '1 wait from an earlier session is' : `${earlier} waits from earlier sessions are`} still open.`
-    : ', and nobody is waiting on anybody.';
+    : ', and no wait has been recorded against a named person.';
   const theRestOfTheWorries = (n: number): string => (n <= 0
     ? `It is the only worry on record${andTheWaits}`
     : `There ${n === 1 ? 'is 1 more worry' : `are ${n} more worries`} on record${andTheWaits}`);
@@ -506,7 +530,7 @@ export function atAGlanceTiles(a: {
               ? `${theWorry} ${theRestOfTheWorries(worries - 1)}`
               /*
                * A COUNT IS NEVER LEFT WITH NOTHING BEHIND IT (request 127 item 7). "13 worries are on record,
-               * and nobody is waiting on anybody." was read where no worry is shown anywhere. A worry is only
+               * and no wait has been recorded against a named person." was read where no worry is shown anywhere. A worry is only
                * shown in the words it was said, and only to somebody who may read them, so where none is, the
                * tile says the true reason: other people's words walled from this reader, or none kept word
                * for word (true for the lead as well, so "cannot be shown to you" was not said to everyone).
@@ -519,7 +543,7 @@ export function atAGlanceTiles(a: {
                     ? (worries === 1 ? '1 worry is on record. It cannot be quoted here whole, so it is not shown.' : `${worries} worries are on record. None can be quoted here whole, so none is shown.`)
                     : (worries === 1 ? '1 worry is on record. It was not kept in the words it was said, so it is not quoted here.' : `${worries} worries are on record. None was kept in the words it was said, so none is quoted here.`)} ${earlier > 0
                 ? `Nobody named a new wait this session, and ${earlier === 1 ? '1 wait from an earlier session is' : `${earlier} waits from earlier sessions are`} still open.`
-                : 'Nobody is waiting on anybody.'}`)
+                : 'No wait has been recorded against a named person.'}`)
             : earlier > 0
               ? `Nobody named anything new holding work up this session, and ${earlier === 1 ? '1 wait from an earlier session is' : `${earlier} waits from earlier sessions are`} still open.`
               : 'Nobody named anything holding work up.',
@@ -531,15 +555,17 @@ export function atAGlanceTiles(a: {
       label: 'How much was said',
       value: a.backedPct == null
         ? 'Nothing on record yet'
-        : a.backedPct > 0 ? `${a.backedPct}% documented` : 'All from memory',
+        : a.backedPct > 0 ? `${a.backedPct}% documented` : (a.filesSent ?? 0) > 0 ? (a.filesSent === 1 ? '1 file sent' : `${a.filesSent} files sent`) : 'All from memory',
       /* One whole sentence, never a fragment that only reads once joined to the figure by eye
          (request 67). The value stays the short figure the screens compose from. */
       sub: a.backedPct == null
         ? 'There are no answers to read yet.'
         : a.backedPct > 0
           ? `${a.backedPct} of every 100 things people said ${a.backedPct === 1 ? 'has' : 'have'} a document behind ${a.backedPct === 1 ? 'it' : 'them'}.`
-          : 'Nothing said this session has a document behind it.',
-      tone: a.backedPct == null ? 'flat' : a.backedPct > 0 ? 'good' : 'warn',
+          : (a.filesSent ?? 0) > 0
+            ? `${a.filesSent === 1 ? 'One file was' : `${a.filesSent} files were`} sent with this session's check-ins. Nothing said has been matched to ${a.filesSent === 1 ? 'it' : 'one of them'} yet.`
+            : 'Nothing said this session has a document behind it.',
+      tone: a.backedPct == null ? 'flat' : a.backedPct > 0 ? 'good' : (a.filesSent ?? 0) > 0 ? 'flat' : 'warn',
     },
   ];
 }

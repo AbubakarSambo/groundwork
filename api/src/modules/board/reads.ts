@@ -189,6 +189,33 @@ export function confidenceOf(args: {
 const stamp = (d?: Date | number) => (d instanceof Date ? d.getTime() : (d ?? 0));
 
 /**
+ * THE SAME WAIT, SAID IN DIFFERENT WORDS (found on the anchor's "What's still stuck": "Juma is waiting on Wanjiru for permission to call dispatch" and
+ * "Juma is waiting on Wanjiru for confirmation that it's fine to call dispatch" were both listed). Two waits are one when the same person waits on the
+ * same other person and the thing they wait for is the same once the words that only ask for it are taken away (permission, confirmation, approval,
+ * "fine to"): what is left of the shorter one, at least two words, is all in the longer. Done in code, so no model decides it.
+ */
+const WORDS_THAT_ONLY_ASK = new Set([
+  'the', 'a', 'an', 'my', 'our', 'his', 'her', 'their', 'this', 'that', 'these', 'those', 'some', 'any', 'more', 'for', 'to', 'of', 'on', 'in', 'from', 'with', 'and', 'or', 'about', 'if', 'whether', 'is', 'are', 'be', 'it', 'its', 'they', 'them', 'fine', 'ok', 'okay', 'alright', 'allowed', 'can', 'could', 'may', 'should', 'will', 'would', 'go', 'ahead', 'permission', 'confirmation', 'confirm', 'confirmed', 'approval', 'approve', 'approved', 'authorisation', 'authorization', 'clearance', 'agreement', 'word', 'say', 'so', 'yes', 'nod',
+]);
+const coreOfAWait = (what: string | null | undefined): Set<string> =>
+  new Set(
+    String(what ?? '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !WORDS_THAT_ONLY_ASK.has(w)),
+  );
+export function theSameWaitInOtherWords(
+  a: { fromParticipantId?: string | null; onParticipantId?: string | null; onLabel?: string | null; what?: string | null },
+  b: { fromParticipantId?: string | null; onParticipantId?: string | null; onLabel?: string | null; what?: string | null },
+): boolean {
+  if (!a.fromParticipantId || a.fromParticipantId !== b.fromParticipantId) return false;
+  const label = (x: { onLabel?: string | null }) => String(x.onLabel ?? '').trim().toLowerCase();
+  const sameHolder = a.onParticipantId || b.onParticipantId ? a.onParticipantId === b.onParticipantId : !!label(a) && label(a) === label(b);
+  if (!sameHolder) return false;
+  const x = coreOfAWait(a.what);
+  const y = coreOfAWait(b.what);
+  const [small, big] = x.size <= y.size ? [x, y] : [y, x];
+  return small.size >= 2 && [...small].every((w) => big.has(w));
+}
+
+/**
  * Collapse handoffs that are really the same one.
  *
  * Extraction dedupes on write, but every ground created before that fix has the
@@ -213,7 +240,7 @@ export function dedupeDependencies<T extends ReadDependency>(deps: T[], alsoKeep
     const hit = out.find(
       (e) =>
         e.fromParticipantId === d.fromParticipantId &&
-        (norm(e.what) === key || norm(e.what).includes(key) || key.includes(norm(e.what))),
+        (norm(e.what) === key || norm(e.what).includes(key) || key.includes(norm(e.what)) || theSameWaitInOtherWords(e, d)),
     );
     if (hit) {
       (hit as any).status = d.status;

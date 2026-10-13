@@ -134,7 +134,8 @@ describe('decision 77 on Today, as Rukia', () => {
     const g = listed(false, true);
     g.participants = g.participants.map((p: any) => (p.id === 'p-faraji' ? { ...p, user: { ...p.user, awaitingOrgApproval: true } } : p));
     const prisma: any = {
-      user: { findUnique: async () => ({ awaitingOrgApproval: false }), findMany: async () => [{ id: 'u-faraji', awaitingOrgApproval: true }] },
+      /* Everybody here has come in (decision 8 redone reads that from their sign-in): only Faraji is held at the door. */
+      user: { findUnique: async () => ({ awaitingOrgApproval: false }), findMany: async (a: any) => (a?.where?.awaitingOrgApproval ? [{ id: 'u-faraji', awaitingOrgApproval: true }] : (a?.where?.id?.in ?? []).map((id: string) => ({ id, passwordHash: 'set' }))) },
       membershipRequest: { findMany: async () => [] },
     };
     const svc = new WhatNeedsYouService(prisma, { list: async () => [g], listAwaitingApproval: async () => [] } as any);

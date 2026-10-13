@@ -49,7 +49,11 @@ export function withoutTheirWords(line: string): string {
 
 export function whatIsNotPlainIn(line: string, opts: { readerIsLead?: boolean; whole?: boolean } = {}): ANotPlain[] {
   if (!line || typeof line !== 'string') return [];
-  const mine = withoutTheirWords(line).replace(/\s+/g, ' ').trim();
+  /*
+   * The note beside a claim about a colleague, "Not backed: no attempt to unblock mentioned." or "Tried: ...", is Hafsah's own
+   * wording (change 4, 11 October 2026), so its colon is let through. Only those two openings of a sentence are; any other colon is still caught.
+   */
+  const mine = withoutTheirWords(line).replace(/\s+/g, ' ').trim().replace(/(^|[.?!] )(Not backed|Tried): /g, '$1$2 ');
   const found: ANotPlain[] = [];
   for (const { rule, pattern } of RULES) {
     const p = new RegExp(pattern.source, pattern.flags.includes('g') || pattern.source.startsWith('^') ? pattern.flags : `${pattern.flags}g`);

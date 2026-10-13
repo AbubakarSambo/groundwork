@@ -92,7 +92,7 @@ describe('point 1: the say-back sentences are full sentences, never clipped or c
     const { service, proposals } = svc();
     const r = await service.respond('org-a', 'p1', 'decision: we will drop the pilot', 'g1');
     const said = (r.blocks[0] as any).body as string;
-    expect(said).toBe('Shall I add "we will drop the pilot" to this check-in\'s context as a decision?');
+    expect(said).toBe('Shall I add "we will drop the pilot" to this check-in\'s context as a decision? Everybody in this check-in will read it.');
     expect(said).not.toContain(':');
     expect(proposals[0].summary).toBe(said);
   });
@@ -109,7 +109,7 @@ describe('point 1: the say-back sentences are full sentences, never clipped or c
     const { service } = svc();
     const r = await service.respond('org-a', 'p1', 'confirm the question for Ben', 'g1');
     const said = (r.blocks[0] as any).body as string;
-    expect(said).toBe('Groundwork will ask Ben, word for word, "How is the Lagos pitch going?" in Ben\'s next check-in. Shall I send it?');
+    expect(said).toBe('Groundwork will ask Ben, word for word, "How is the Lagos pitch going?" in Ben\'s next check-in. Shall I keep it for then?');
   });
 
   it('leaving a question out', async () => {
@@ -234,7 +234,7 @@ describe('point 3: confirming a question with the lead\'s own changed wording (d
   it('says the new sentence back, not the old one, before anything is sent', async () => {
     const { service, proposals, confirmQuestionForPerson } = svc();
     const r = await service.respond('org-a', 'p1', 'ask Ben "How are the Lagos numbers looking?" instead', 'g1');
-    expect((r.blocks[0] as any).body).toBe('Groundwork will ask Ben, word for word, "How are the Lagos numbers looking?" in Ben\'s next check-in. Shall I send it?');
+    expect((r.blocks[0] as any).body).toBe('Groundwork will ask Ben, word for word, "How are the Lagos numbers looking?" in Ben\'s next check-in. Shall I keep it for then?');
     expect(proposals[0]).toMatchObject({
       kind: 'question_for_person',
       payload: { groundId: 'g1', itemId: 'q1', action: 'confirm', exactQuestion: 'How are the Lagos numbers looking?' },

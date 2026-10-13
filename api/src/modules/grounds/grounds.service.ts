@@ -1,6 +1,11 @@
+import { fullNameToCall } from '../engagement/a-name-to-call-them';
+import { theAddressAndNameIn, theDomainOf } from '../../common/an-email-domain';
+import { theInvitedRowAsServed } from './the-invited-row-as-served';
+import { withoutTheLeadsSetUpForAMember } from './the-leads-set-up-is-the-leads-in-the-anchor';
+import { aShortQuestionForAPerson, askedBackToTheLead, theQuestionTheyWereShown } from './a-short-question-for-a-person-in-the-old-chat';
 import { aFindingThatReadsRight } from './a-finding-reads-right';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
-import { refuseSomeoneHeldForASeat, refuseSomeoneAwaitingTheOrganisation, theCheckInsHeldForASeat } from '../participants/held-for-a-seat';
+import { refuseSomeoneAwaitingTheOrganisation, refuseSomeoneHeldForASeat, theCheckInsHeldForASeat, theHeldPersonWhoHasAnswered, whatSomeoneHeldForASeatReads } from '../participants/held-for-a-seat';
 import { CANNOT_CHECK_IN_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { theRoomForThisReader } from '../board/the-room-for-this-reader';
 import { goalsThisReaderMaySee, notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead, aWeekHasPassedSinceNotTold, whatThePersonReadsAfterAWeek } from './a-goal-not-told-stays-with-the-lead';
@@ -10,18 +15,23 @@ import { thePrivateSummaryAsRead } from '../conversation/the-private-summary-ope
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
 import { theirHome } from '../participants/where-somebody-is-from';
 import { aGuestHereIfTheyAreFromElsewhere } from '../participants/a-guest-is-a-guest-from-the-moment-they-are-added';
-import { theColleaguePickedById, NOT_SOMEONE_HERE } from '../../common/colleagues';
+import { theColleaguePickedById, NOT_SOMEONE_HERE, theMemberWithThisAddress, withTheirNamesFromTheOrganisation } from '../../common/colleagues';
 import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
 import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, runsItForAPattern, type APatternReader, type AServedPattern } from '../patterns/who-reads-a-pattern';
 import { askTheReportsDoor } from '../reports/one-persons-circumstances-stay-their-own';
+import { whatThisReaderCallsEachLabel, noStandInLabelAnywhereIn } from '../reports/a-stand-in-label-never-reaches-a-reader';
 import { rememberedCompose } from '../reports/a-line-worded-once-is-kept';
 import { wordPatternEvidence } from '../reports/pattern-evidence-in-plain-words';
 import { withoutBankDetails, withoutBankDetailsInEachTurn } from '../documents/bank-details-are-never-kept';
-import { hasEnded, hasStalled, isHeld, isShut, mayChangeOnItsOwn, whyItRefuses, WHILE_IT_IS_HELD, IT_RAN_OUT_OF_TIME } from './a-ground-that-has-ended';
-import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT } from './an-answer-includes-a-refusal';
+import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD, hasEnded, hasStalled, isHeld, isShut, mayChangeOnItsOwn, whyItRefuses, whyAJoinLinkRefuses, WHILE_IT_IS_HELD, IT_RAN_OUT_OF_TIME } from './a-ground-that-has-ended';
+import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT, wasAQuietClose } from './an-answer-includes-a-refusal';
 import { isNotLetInYet, whoIsNotLetInYet, theWaitingToBeLetInLine } from './who-an-admin-did-not-let-in';
+import { whoHasNotJoinedYet, theNotJoinedYetLine } from './invited-not-joined-yet';
+import { aNameTypedInLowerCase } from '../../common/a-name-typed-in-lower-case';
+import { whoASessionCounts } from './the-lead-checks-in-when-they-choose';
+import { openTheLeadsCheckIn } from './check-in-yourself';
 import { waitsOnAManagingOnlyLead } from './the-lead-who-only-asks';
-import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException, Optional } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException, Optional, GoneException } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import { seatsIn } from '../../common/seats';
 import { whetherThereIsRoomForOneMore, type SeatAnswer } from './added-but-waiting-for-a-seat';
@@ -31,7 +41,8 @@ import { daysRemaining, deadlineOf, clockStartsAt } from './when-the-clock-start
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
-import { aKindMayBeGiven, theBoardKindsOffered } from '../admin/what-is-hidden-at-release';
+import { aKindMayBeGiven, theBoardKindsOffered, theOldContextChatIsOpen } from '../admin/what-is-hidden-at-release';
+import { askNameOf } from '../assistant/ask-name';
 import { KINDS_OF_WORK, THE_KIND_OF_WORK_PROMPT, THE_KIND_OF_WORK_SCHEMA, oneOfTheKinds, theSetupWords } from '../board/the-kind-of-work';
 import { PrismaService } from '../prisma/prisma.service';
 import { theNextDayTheyWork, workingDaysOf } from './which-days-this-team-works';
@@ -80,9 +91,10 @@ import { truncationsOfTheirWords } from '../conversation/the-record-holds-what-w
 import { screen, ASK_AGAIN } from '../conversation/nothing-invented-reaches-them';
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from './who-may-open-a-check-in';
 import { notTheWordParty } from '../reports/not-the-word-party';
-import { theSituationIn, theTellingHolds, THE_TELLING_PROMPT, withoutTheSetupAnswers } from './what-a-participant-is-told-about-this';
+import { theSituationIn, theTellingHolds, THE_TELLING_PROMPT, withoutTheSetupAnswers, theBriefAsTheLeadReadsIt, theirOwnFirstNameAsYour } from './what-a-participant-is-told-about-this';
 import { whatSomeoneWhoDoesNotRunItReads } from './what-someone-who-does-not-run-it-reads';
 import { ABOUT_SOMEBODY, mayBeShared, theLinesFor, WHY_A_LINE_ABOUT_SOMEBODY_STAYS_YOURS } from './what-this-check-in-knows';
+import { alreadyHowItIs, theLengthWasChosen } from './nothing-is-offered-that-changes-nothing';
 import { saidUntilIEndIt, nothingToTakeFrom, traceableToWhatTheySaid, aLengthTheyCouldHaveMeant, whatTheModelsReplyShows, withoutTheWordGround, aLengthAndNothingElse } from './nothing-proposed-that-nobody-said';
 import { whatTheyStillOweAShow } from './what-they-said-they-would-show';
 import { whatIsNotSettledAbout } from './a-target-nobody-has-defined';
@@ -118,6 +130,8 @@ export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
   NEW_COFOUNDER: 90,
   NEW_ADVISOR: 365,
   NEW_PROJECT: 90,
+  /** One month, and nothing longer: the anchor is a month of weekly check-ins (requests 167 and 168, known issue B11). */
+  HELP_TEAM_UNDERSTAND: 30,
   NEW_MANAGER: 90,
   CONTRACT_RENEWAL: 60,
   /** Short, and it has an end: it finishes when the contract is signed. A review that runs for a
@@ -219,6 +233,7 @@ export const RECOMMENDED_MOMENT: Record<GroundScenario, GroundMoment> = {
   NEW_HIRE: GroundMoment.STARTING,
   ROLE_HANDOVER: GroundMoment.STARTING,
   NEW_PROJECT: GroundMoment.STARTING,
+  HELP_TEAM_UNDERSTAND: GroundMoment.STARTING,
   NEW_COFOUNDER: GroundMoment.STARTING,
   NEW_MANAGER: GroundMoment.STARTING,
   NEW_ADVISOR: GroundMoment.STARTING,
@@ -264,6 +279,8 @@ export const RECOMMENDED_CADENCE: Record<GroundScenario, Cadence> = {
   /** Weekly, because the window is 30 days and the leaver is walking out of it. */
   ROLE_HANDOVER: Cadence.WEEKLY,
   NEW_PROJECT: Cadence.FORTNIGHTLY,
+  /** Weekly, for the one month the anchor lasts (anchor plan, section 20). */
+  HELP_TEAM_UNDERSTAND: Cadence.WEEKLY,
   NEW_COFOUNDER: Cadence.FORTNIGHTLY,
   NEW_MANAGER: Cadence.FORTNIGHTLY,
   /** Monthly, not fortnightly: 26 check-ins a year is a job, not an advisory relationship. */
@@ -449,9 +466,26 @@ export class GroundsService {
         : Promise.resolve(null),
       this.prisma.user.findUnique({ where: { id: requestingUserId }, select: { role: true, organizationId: true, firstName: true, lastName: true } }),
     ]);
-    const decision = whoMayConfirmSetup(requestingUserId, checkIn, { lead, confirmer, organizationId: confirmer?.organizationId });
+    /* A lead whose account says nothing either way counts as present: nobody is let in on a guess. */
+    const decision = whoMayConfirmSetup(requestingUserId, checkIn, {
+      lead: lead ? { ...lead, isActive: (lead as any).isActive !== false } : null,
+      confirmer,
+      organizationId: confirmer?.organizationId,
+    });
     if (!decision.allowed) throw new ForbiddenException(onlyTheLeadConfirmsSetup([lead?.firstName, lead?.lastName].filter(Boolean).join(' ')));
     return decision;
+  }
+
+  /**
+   * THE OLD CONTEXT CHAT, WHEN IT IS SWITCHED OFF (`release.oldContextChat`, decision 50). Context and resources are done in Ask now, so while the
+   * switch says off, the three routes of the old chat on the check-in page answer with one sentence that sends the person there, naming Ask for
+   * their organisation. Only the controller calls this: Ask's own setup lane calls `contextChat` and `applyContextProposal` directly and is never
+   * stopped by it. OFF when the row is missing or cannot be read; `{ "on": true }` keeps it.
+   */
+  async theOldContextChatMustBeOpen(organizationId: string): Promise<void> {
+    if (await theOldContextChatIsOpen(this.prisma)) return;
+    const ask = await askNameOf(this.prisma as any, organizationId);
+    throw new GoneException(`Setting up a check-in now happens in ${ask}, so open ${ask} from this check-in's Context and resources page and say what you want to add.`);
   }
 
   /**
@@ -519,6 +553,38 @@ export class GroundsService {
   }
 
   /**
+   * THE REPORT'S AGREEMENTS AND DIFFERENCES, THROUGH THE SAME DOOR AS ITS TEXT (decision 139, item 1). Stored with
+   * labels, like every other part of a report. FAILS CLOSED like `reportTextAsItWasShared`: where the door cannot be
+   * reached, an empty list rather than the stored labels.
+   */
+  private reportListsAsItWasShared(
+    ground: { scenario?: any; peersVisibleToEachOther?: boolean | null; initiatorId?: string | null; participants?: any[] },
+    lists: { agreements: unknown; divergences: unknown },
+    sharedAs: string | null | undefined,
+    viewerParticipantId: string | null,
+    viewerRunsIt: boolean,
+  ): { agreements: unknown; divergences: unknown } {
+    const nothing = { agreements: [], divergences: [] };
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { ReportsService } = require('../reports/reports.service');
+      const reports = this.moduleRef?.get(ReportsService, { strict: false });
+      if (!reports?.theReportAsItWasShared) return nothing;
+      const shared = askTheReportsDoor(
+        reports,
+        { scenario: ground.scenario, peersVisibleToEachOther: ground.peersVisibleToEachOther, initiatorId: ground.initiatorId ?? null, participants: ground.participants ?? [], report: { ...lists, sharedAs: sharedAs ?? null } },
+        viewerParticipantId,
+        viewerRunsIt,
+      );
+      if (!shared) return nothing;
+      return { agreements: shared.agreements ?? [], divergences: shared.divergences ?? [] };
+    } catch (e) {
+      this.logger.warn(`Report lists withheld: the naming door could not be reached (${(e as Error)?.message})`);
+      return nothing;
+    }
+  }
+
+  /**
    * A TARGET THE LEAD HAS NOT SHARED STAYS WITH ITS OWNER, ON THIS PAGE AND THE LIST TOO (29 September
    * 2026). The report and the board took out every sentence giving a colleague's hidden target; this
    * page and the list served the same report words, and the brief, without it. So a colleague on a
@@ -557,7 +623,15 @@ export class GroundsService {
    * Awaited with a ceiling, so a slow model costs a few seconds at setup and never a hang; a failure or
    * an empty rewrite leaves the column null and the read falls back to the filtered brief.
    */
-  async tellParticipantsAboutThis(groundId: string, brief: string | null | undefined): Promise<void> {
+  async tellParticipantsAboutThis(groundId: string, brief: string | null | undefined, scenario?: string | null): Promise<void> {
+    /* The anchor lead's conversation is hers alone, so nothing is written from it for the team to read (decision 96, item 8). */
+    /* At create the row has no mark yet, so the situation says it; on a later edit of the brief the row's own mark does. */
+    const marked = scenario === GroundScenario.HELP_TEAM_UNDERSTAND
+      || (await Promise.resolve((this.prisma.ground as any)?.findUnique?.({ where: { id: groundId }, select: { startedFrom: true } })).catch(() => null))?.startedFrom === 'anchor';
+    if (marked) {
+      this.logger.log(`Ground ${groundId}: the anchor's team is told nothing from the lead's own conversation.`);
+      return;
+    }
     try {
       const told = await this.composeWhatParticipantsAreTold(groundId, brief);
       await this.prisma.ground.update({ where: { id: groundId }, data: { toldToParticipants: told } as any });
@@ -641,7 +715,7 @@ export class GroundsService {
 
     const ground = await this.prisma.$transaction(async (tx) => {
       const initiator = await tx.user.findUnique({ where: { id: initiatorId } });
-      if (!initiator) throw new NotFoundException('The lead of this check-in could not be found');
+      if (!initiator) throw new NotFoundException('The person who runs this check-in could not be found, so check who is named and try again.');
 
       // Determine free-ground fields from the billing gate result.
       const isFreeGround = canCreate.freeReason !== undefined;
@@ -781,13 +855,15 @@ export class GroundsService {
           /* Everyone does a first check-in, managing-only or not. What managingOnly changes is that no later
              session is created for them (see createNextIfAbsent). */
           isSetup: false,
+          /* Decision 133: the lead's check-ins are optional, and the data says so. */
+          optional: true,
           availableFrom: this.theFirstDayTheyWork(dto.startsAt ? new Date(dto.startsAt) : null, dto.workingDays),
         },
       });
 
       return ground;
     });
-    await this.tellParticipantsAboutThis(ground.id, dto.brief);
+    await this.tellParticipantsAboutThis(ground.id, dto.brief, (dto as { scenario?: string }).scenario);
     /* The kind of work, read from what the lead said at setup (request 76). Not awaited: setup is saved either way. */
     void this.readTheKindOfWork(ground.id);
 
@@ -989,7 +1065,7 @@ export class GroundsService {
     );
 
     this.usage.emit(UsageEventType.GROUND_CREATED, { organizationId, groundId: ground.id, userId: leadUser.id }).catch(() => undefined);
-    await this.tellParticipantsAboutThis(ground.id, dto.brief);
+    await this.tellParticipantsAboutThis(ground.id, dto.brief, (dto as { scenario?: string }).scenario);
     /* The kind of work, read from what the lead said at setup (request 76). Not awaited: setup is saved either way. */
     void this.readTheKindOfWork(ground.id);
 
@@ -1017,14 +1093,14 @@ export class GroundsService {
    */
   async confirmLead(groundId: string, requestingUserId: string, edits?: { brief?: string; managingOnly?: boolean; remit?: string }) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
-    if (!ground) throw new NotFoundException('Check-in not found');
-    if (ground.initiatorId !== requestingUserId) throw new ForbiddenException('Only the named lead can confirm this check-in');
-    if (ground.status !== GroundStatus.AWAITING_LEAD) throw new BadRequestException('This check-in has already been confirmed');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    if (ground.initiatorId !== requestingUserId) throw new ForbiddenException('Only the person named to run this check-in can confirm it, so ask them to.');
+    if (ground.status !== GroundStatus.AWAITING_LEAD) throw new BadRequestException('This check-in is already confirmed, so there is nothing more to do.');
 
     const participant = await this.prisma.groundParticipant.findFirst({
       where: { groundId, userId: requestingUserId, partyType: PartyType.INITIATOR },
     });
-    if (!participant) throw new NotFoundException('Lead participant record not found');
+    if (!participant) throw new NotFoundException('The person who runs this check-in has no place in it yet, so contact us and we will put it right.');
 
     const managingOnly = edits?.managingOnly === true;
 
@@ -1077,6 +1153,7 @@ export class GroundsService {
             sessionNumber: 1,
             status: CheckInStatus.NOT_STARTED,
             isSetup: false,
+            optional: true,
           },
         }),
       ]);
@@ -1091,7 +1168,7 @@ export class GroundsService {
         // like the self-serve create() path gates the initiator's - it was
         // previously collected on the client and silently dropped for this
         // path (CreateGroundForLeadDto had no startsAt/endsAt fields at all).
-        data: { groundId, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED, availableFrom: ground.startsAt ?? null },
+        data: { groundId, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED, availableFrom: ground.startsAt ?? null, optional: true },
       }),
     ]);
 
@@ -1162,7 +1239,8 @@ export class GroundsService {
 
     /* `anna+chidi@gmail.com` was becoming "Anna+chidi" on the roster and in every sentence the
        check-in wrote about them. Sign-up already got this right; this door did not. */
-    const firstName = name ?? aNameOutOfAnAddress(email);
+    /* Typed by the lead for somebody else: capitalised where it was typed in lower case (Hafsah, 12 October). */
+    const firstName = name ? aNameTypedInLowerCase(name) : aNameOutOfAnAddress(email);
     const created = await db.user.create({
       data: { organizationId, email, firstName, lastName: '', role: 'MEMBER', isEmailVerified: true, passwordHash: null },
     });
@@ -1189,18 +1267,20 @@ export class GroundsService {
 
   /** Public: resolve a ground-level join token → name + scenario for the join page. */
   async getJoinPreview(joinToken: string) {
+    /* No code, or not a text (a wrong parameter name, or a list), is a link that was not found, not a fault in the database call (B-150). */
+    if (typeof joinToken !== 'string' || !joinToken.trim()) throw new NotFoundException('That join link does not work any more, so ask whoever runs the check-in for a new one.');
     const ground = await this.prisma.ground.findUnique({
       where: { joinToken },
       include: { initiator: { select: { firstName: true } } },
     });
-    if (!ground) throw new NotFoundException('Join link not found');
+    if (!ground) throw new NotFoundException('That join link does not work any more, so ask whoever runs the check-in for a new one.');
     /**
      * A JOIN LINK INTO A FINISHED CHECK-IN IS A DOOR INTO AN EMPTY ROOM. The token has no expiry of
      * its own, so it outlived the check-in: a link shared in week one still signed people up in
      * month four, onto a ground that was CLOSED, and gave them a session on it. The reason it
      * refuses is the real one - ended, or held - not an expiry the link never had.
      */
-    const refused = whyItRefuses(ground.status, ground.endState, 'anybody else', ground.scenario);
+    const refused = whyAJoinLinkRefuses(ground.status, ground.endState, ground.scenario);
     if (refused) throw new BadRequestException(refused);
     return {
       groundId: ground.id,
@@ -1280,7 +1360,13 @@ export class GroundsService {
         }),
         contributedParties,
         report: g.report
-          ? { agreements: g.report.agreements, divergences: g.report.divergences, releasedAt: g.report.releasedAt }
+          /* Counts and the release only. The stored sentences carry report labels ("Participant A", "the initiator"),
+             no screen reads them and the developer API does not serve this route (decision 115: names, never labels). */
+          ? {
+              agreementsCount: Array.isArray(g.report.agreements) ? g.report.agreements.length : 0,
+              differencesCount: Array.isArray(g.report.divergences) ? g.report.divergences.length : 0,
+              releasedAt: g.report.releasedAt,
+            }
           : null,
         lastActivity,
       };
@@ -1316,7 +1402,7 @@ export class GroundsService {
          */
         /* `awaitingOrgApproval`: whether an admin has let them in yet, which every count reads (decision 77). The
            same yes or no the check-in's own read serves (SAFE_PARTICIPANT_SELECT). */
-        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } },
+        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, managingOnly: true, nameGiven: true, cameThroughTheLink: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } },
         checkIns: {
           /** `isSetup` so a setup conversation can be kept out of every session count. GW-EXP-6. */
           /**
@@ -1330,7 +1416,7 @@ export class GroundsService {
            * The detail endpoint has always returned it. That is why one check-in could say "your turn"
            * in the rail and say nothing at all on its own page - two surfaces, one rule, different data.
            */
-          select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true, isSetup: true, availableFrom: true },
+          select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true, isSetup: true, availableFrom: true, closedReason: true, optional: true, turns: { where: { role: 'PERSON' as any }, take: 1, select: { id: true } } },
         },
         // A released report that nobody is told about is a report nobody reads.
         // Ten grounds released theirs and not one person ever activated.
@@ -1341,7 +1427,7 @@ export class GroundsService {
          */
         reportRounds: { select: { sessionNumber: true, finding: true, sharedPicture: true }, orderBy: { sessionNumber: 'desc' }, take: 1 },
         /* Whose target is whose, so no sentence gives a colleague's hidden one (see withoutTheTargetsHiddenFrom). */
-        objectives: { select: { ownerParticipantId: true, target: true } },
+        objectives: { select: { id: true, ownerParticipantId: true, target: true, isADecisionAboutAPerson: true } },
         /* For the at-a-glance read. Counted the way the board counts it - see the module. */
         dependencies: { select: { what: true, status: true, createdAt: true, fromParticipantId: true, onParticipantId: true, onLabel: true } },
         reportActivations: { select: { participantId: true, status: true } },
@@ -1357,15 +1443,18 @@ export class GroundsService {
       if (userEmail) {
         await this.prisma.groundParticipant.updateMany({
           /* Never a row held for a seat: it is not offered until its invitation goes (U.4 re-review). */
-          where: { email: userEmail.toLowerCase(), userId: null, awaitingSeat: false },
+          /* Nor a row on a check-in still waiting for an admin to accept it: that person is invited by the approval, and is not on the check-in before it (known issue B5). */
+          where: { email: userEmail.toLowerCase(), userId: null, awaitingSeat: false, ground: { status: { not: GroundStatus.AWAITING_APPROVAL } } },
           data: { userId },
         });
       }
 
-      const links = await this.prisma.groundParticipant.findMany({
-        where: { userId, ground: { organizationId: { not: organizationId } } },
-        select: { groundId: true },
-      });
+      /*
+       * ONLY THE ORGANISATION CHOSEN (B-197, 10 October 2026). This used to add the check-ins of every OTHER organisation the person takes part in, from the days
+       * before the switcher. Somebody in two organisations (Neema, in Msingi Foods and Lakeview Clinic) read each one's check-ins under the other's name, on Today, You, the
+       * switcher and Ask's picker. The list is the chosen organisation's alone; to read the other's, she switches to it.
+       */
+      const links: { groundId: string }[] = [];
       if (links.length) {
         participantGrounds = await this.prisma.ground.findMany({
           where: { id: { in: links.map(l => l.groundId) } },
@@ -1397,17 +1486,17 @@ export class GroundsService {
          */
         /* `awaitingOrgApproval`: whether an admin has let them in yet, which every count reads (decision 77). The
            same yes or no the check-in's own read serves (SAFE_PARTICIPANT_SELECT). */
-        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } },
+        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, managingOnly: true, nameGiven: true, cameThroughTheLink: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } },
             checkIns: {
               /** Must match the sibling query above: both feed the same list. GW-EXP-6. */
-              select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true, isSetup: true, availableFrom: true },
+              select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true, isSetup: true, availableFrom: true, closedReason: true, optional: true, turns: { where: { role: 'PERSON' as any }, take: 1, select: { id: true } } },
             },
             report: { select: { releasedAt: true, releasedSessions: true, agreements: true, divergences: true, sharedAs: true } },
             /* Must match the sibling query above: both feed the same list, and a card fed by this
                one would fall back to the brief for ever while its twin showed the finding. */
             reportRounds: { select: { sessionNumber: true, finding: true, sharedPicture: true }, orderBy: { sessionNumber: 'desc' }, take: 1 },
             /* Same as the sibling query. */
-            objectives: { select: { ownerParticipantId: true, target: true } },
+            objectives: { select: { id: true, ownerParticipantId: true, target: true, isADecisionAboutAPerson: true } },
             /* Same as the sibling query: both feed the same card. */
             dependencies: { select: { what: true, status: true, createdAt: true, fromParticipantId: true, onParticipantId: true, onLabel: true } },
             reportActivations: { select: { participantId: true, status: true } },
@@ -1424,8 +1513,40 @@ export class GroundsService {
       if (!(g.participants ?? []).some(isNotLetInYet)) continue;
       notLetInOnTheList.set(g.id, await whoIsNotLetInYet(this.prisma, g.participants ?? [], g.organizationId).catch(() => new Map()));
     }
+    /* INVITED, NOT JOINED YET (decision 8 redone, night run 3): marked on the row, so every count on the list, Today and
+       You leaves them out (isNotLetInYet), and named apart from "N of M" for whoever runs it. Never missed. */
+    const notJoinedOnTheList = new Map<string, Set<string>>();
+    for (const g of [...orgGrounds, ...participantGrounds] as any[]) {
+      const notJoined = await whoHasNotJoinedYet(this.prisma, g.participants ?? []).catch(() => new Set<string>());
+      if (!notJoined.size) continue;
+      notJoinedOnTheList.set(g.id, notJoined);
+      g.participants = (g.participants ?? []).map((p: any) => (notJoined.has(p.id) ? { ...p, notJoinedYet: true } : p));
+    }
     /* NOBODY HELD FOR A SEAT READS ANYTHING OF THE CHECK-IN, AND THIS LIST FEEDS TODAY AND YOU (second review, new leak A; row 5). */
     const heldForASeat = await theCheckInsHeldForASeat(this.prisma as any, [...orgGrounds, ...participantGrounds].map((g: any) => g.id), userId);
+    /* WHETHER EACH LEAD HAS LEFT, FOR AN ADMIN WHO DOES NOT RUN THE CHECK-IN (request 206, decision 119 H10). Worked out as get() does it:
+       the lead's account is read only for a reader who is an admin of that organisation and not the lead, and a lead whose account says
+       nothing either way is counted as present. One read for the whole list. */
+    const adminLeadIds = new Set<string>();
+    const mayAdminHere = (g: any) => !!userId && g.initiatorId !== userId && adminsThisOrg({ role: userRole, organizationId, userId } as any, g);
+    for (const g of [...orgGrounds, ...participantGrounds] as any[]) {
+      if (g.initiatorId && g.organizationId === organizationId && mayAdminHere(g)) adminLeadIds.add(g.initiatorId);
+    }
+    const leadAccounts = new Map<string, any>();
+    if (adminLeadIds.size) {
+      const found = await Promise.resolve((this.prisma as any).user?.findMany?.({ where: { id: { in: [...adminLeadIds] } }, select: { id: true, isActive: true, firstName: true, lastName: true } })).catch(() => []);
+      for (const l of found ?? []) leadAccounts.set(l.id, l);
+    }
+    const setupFor = (g: any) => {
+      if (userId && g.initiatorId === userId) return { leadHasLeft: false, mayChangeSetup: true };
+      const lead = g.initiatorId && g.organizationId === organizationId && mayAdminHere(g) ? leadAccounts.get(g.initiatorId) : null;
+      if (!lead) return { leadHasLeft: false, mayChangeSetup: false };
+      const leadState = { ...lead, isActive: lead.isActive !== false };
+      return {
+        leadHasLeft: !leadState.isActive,
+        mayChangeSetup: whoMayConfirmSetup(userId, g, { lead: leadState, confirmer: { role: userRole, organizationId } as any, organizationId: g.organizationId ?? null }).allowed,
+      };
+    };
     return [...orgGrounds, ...participantGrounds]
       .filter((g: any) => !heldForASeat.has(g.id))
       .map(g => {
@@ -1556,7 +1677,7 @@ export class GroundsService {
           checkIns: allCheckIns, dependencies: allDependencies, reportRounds: _rounds, ...safe
         } = rest;
         /* Whoever runs it: the lead, or an admin of the organisation it belongs to. Same test as get(). */
-        const runsIt = isInitiator || (userRole === 'ADMIN' && g.organizationId === organizationId);
+        const runsIt = isInitiator || (userRole === 'ADMIN' && g.organizationId === organizationId && !((g as any).participants ?? []).some((p: any) => p.userId === userId));
         const hideContact = !!(rest as any).restrictExternalVisibility;
         /*
          * AND THE PEER RULE, THE SAME ONE get() APPLIES (U.5 review). Where people are not named to
@@ -1604,9 +1725,25 @@ export class GroundsService {
         const latestRound = ((rest as any).reportRounds?.[0]?.sessionNumber as number | undefined) ?? null;
         const mayReadTheReport = runsIt || (!!fullReport?.releasedAt && peersVisibleEffective
           && latestRound !== null && isThisSessionReleased(fullReport as any, latestRound));
-        /* And no sentence with a colleague's hidden target, in the brief or the report's words (as get()). */
-        return this.withoutTheTargetsHiddenFrom(g as any, userId, {
+        /* And no sentence with a colleague's hidden target, in the brief or the report's words (as get()). The row is then narrowed
+           again for anyone who does not run it: nothing built from the lead's private set-up (B-013, B-091), and in an anchor
+           check-in not the lead's aims either (decision 96, item 8), exactly as the check-in's own read does. */
+        /* WHICH TARGETS THIS READER MAY SEE, BY THE FUNCTION THE CHECK-IN'S OWN READ USES (request 209, B-114). The list sent every person's
+           {ownerParticipantId, target} to a member where people see only their own, so a colleague's number was readable here. Now the lead and
+           whoever runs it read every share, and everybody else reads what targetsFor gives them, which is the same rule as get(). */
+        const readerViewer = { role: userRole, organizationId, userId } as any;
+        const readsEveryShare = isInitiator || (!!userId && (g as any).createdByUserId === userId)
+          || adminsThisOrg(readerViewer, g as any) || askedToApproveIt(readerViewer, g as any);
+        const myParticipantHere = ((allParticipants ?? []) as any[]).find((p: any) => !!userId && p.userId === userId);
+        const targetsThisReaderMaySee = targetsFor(
+          (((g as any).objectives ?? []) as any[]),
+          myParticipantHere?.id ?? null,
+          ((g as any).whoSeesTargets ?? 'THEIR_OWN') === 'EVERYBODY' ? 'everybody' : 'their own',
+          { isLead: isInitiator, seesEveryShare: readsEveryShare },
+        ).shown.map(({ id: _id, isADecisionAboutAPerson: _d, ...kept }: any) => kept);
+        return this.withoutTheLeadsSetUpForAReader(g as any, runsIt, this.withoutTheTargetsHiddenFrom(g as any, userId, {
           ...safe,
+          objectives: targetsThisReaderMaySee,
           /* Until the lead ends it: no length to show. The flag says so (request 37). */
           timelineDays: (safe as any).runsUntilEnded ? null : (safe as any).timelineDays,
           /*
@@ -1616,6 +1753,23 @@ export class GroundsService {
            */
           brief: runsIt ? ((safe as any).brief ?? null) : whatSomeoneWhoDoesNotRunItReads(safe as any),
           participants,
+          /*
+           * WHAT THE ROOM IS ABOUT, AS THIS READER MAY READ IT (decision 121, item 5). It went out raw in `safe`, every place and thing
+           * with the id of the person who named it, so a member where people do not see each other read where a colleague works. The
+           * check-in's own read applies this wall (board/the-room-for-this-reader); the list now applies the same one.
+           */
+          ...((safe as any).whatTheRoomIsAbout
+            ? {
+                whatTheRoomIsAbout: theRoomForThisReader((safe as any).whatTheRoomIsAbout, {
+                  participants: (allParticipants ?? []) as any[],
+                  me: myRowHere ?? null,
+                  initiatorId: (rest as any).initiatorId ?? g.initiatorId ?? null,
+                  viewerRunsIt: runsIt,
+                  wallOffTheOthers: hidePeers,
+                  evaluation: isEvaluationCheckIn((rest as any).scenario),
+                }),
+              }
+            : {}),
           checkIns: checkInsShown,
           dependencies: dependenciesShown,
           peersVisibleEffective,
@@ -1624,6 +1778,7 @@ export class GroundsService {
           ...(runsIt ? { joinToken } : {}),
           report: fullReport ? { releasedAt: fullReport.releasedAt ?? null, releasedSessions: releasedSessionsOf(fullReport as any) ?? [] } : null,
           alignment, overdue, checkInsToday, roundsDone, lastActivity, reportWaitingForMe, otherOrgName,
+          ...setupFor(g),
           /*
            * WHO IS WAITING TO BE LET IN, APART FROM "N OF M" (decision 77). Only whoever runs it, or an admin
            * here, reads it; never a person who checks in.
@@ -1636,7 +1791,14 @@ export class GroundsService {
               })
               .filter((w) => !!w.p && !w.p.managingOnly && (runsIt || (!w.declined && !!myRowHere && w.p.id !== myRowHere.id && !readerIsOutsideTheOrg)))
               .map(({ name, declined }) => ({ name: runsIt || peersVisibleEffective ? name : null, declined })),
-          ),
+          ) ?? null,
+          /* Whoever runs it, or an admin here, reads who was invited and has not joined yet; nobody who checks in does. */
+          notJoinedYet: runsIt
+            ? theNotJoinedYetLine([...(notJoinedOnTheList.get(g.id) ?? new Set<string>())]
+              .map((pid) => ((allParticipants ?? []) as any[]).find((x) => x.id === pid))
+              .filter((p) => !!p && !p.managingOnly)
+              .map((p) => [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim() || (p?.nameGiven ?? '').trim() || null))
+            : null,
           /* Through the report's own door, for every reader, so no label is ever served (U.5 re-review). */
           ...(() => {
             if (!mayReadTheReport || (!latestFinding && !latestSummary)) return { latestFinding: null, latestSummary: null };
@@ -1705,9 +1867,14 @@ export class GroundsService {
             const named = [lead.user?.firstName, lead.user?.lastName].filter(Boolean).join(' ').trim() || (lead.nameGiven ?? '').trim();
             return named || null;
           })(),
-        }, runsIt);
+        }, runsIt));
       })
       .sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime());
+  }
+
+  /** The one place a row's lead-only set-up is taken off before it is served to someone who does not run the check-in. */
+  private withoutTheLeadsSetUpForAReader<P extends Record<string, any>>(g: Record<string, any>, runsIt: boolean, row: P): P {
+    return withoutTheLeadsSetUpForAMember(row, { startedFrom: g.startedFrom ?? null, scenario: g.scenario ?? null, runsIt });
   }
 
   async get(id: string, organizationId: string, requestingUserId?: string) {
@@ -1719,12 +1886,18 @@ export class GroundsService {
      * list, asked here too; and the same answer as assertMaySeeGround gives every other read.
      */
     /* Nobody held for a seat reads the check-in page: the invitation page's own refusal, asked first (privacy sweep finding 3). */
-    await refuseSomeoneHeldForASeat(this.prisma as any, id, requestingUserId);
+    /* Unless they already answered: then the page is theirs, narrowed to their own answers (decision 110, B3). */
+    const heldButAnswered = await theHeldPersonWhoHasAnswered(this.prisma as any, id, requestingUserId);
     /* Nor anyone waiting for the organisation's approval (row 5). */
     await refuseSomeoneAwaitingTheOrganisation(this.prisma as any, requestingUserId, CANNOT_CHECK_IN_YET);
     const mayRead = requestingUserId ? await this.assertMaySeeGround(id, requestingUserId) : null;
     // Primary lookup by org - works for org members and the initiator.
-    const CHECKIN_SELECT = { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, availableFrom: true, startedAt: true, isFinal: true, specificityLevel: true, specificityDimensions: true } as const;
+    /* `isSetup` is served so that a set-up conversation (the anchor lead's, which is not a check-in) is left out of every count of sessions. The page's own
+       filters (`!c.isSetup`, here and on the screens) read it, and read nothing while it was not selected: "1 of 4 sessions are done" on the first day. */
+    /* `closedReason` and one person turn (an id only): a session the clock closed with nothing said is not an answer, so no count of
+       who checked in may count it (night quality run 1, problem 4: "5 of 5 checked in" with Jared missing). `optional`: the lead's
+       own row, which never dates a round the team ran later. */
+    const CHECKIN_SELECT = { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, availableFrom: true, startedAt: true, isFinal: true, isSetup: true, specificityLevel: true, specificityDimensions: true, closedReason: true, optional: true, turns: { where: { role: 'PERSON' as any }, take: 1, select: { id: true } } } as const;
 
     let ground = await this.prisma.ground.findFirst({
       where: { id, organizationId },
@@ -1824,7 +1997,9 @@ export class GroundsService {
       }
     }
 
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    /* Somebody already here, added by their address, is named by their membership (user journeys, F-7). */
+    await withTheirNamesFromTheOrganisation(this.prisma as any, (ground as any).organizationId, (ground.participants ?? []) as any);
 
     /* How checkable each check-in was is a read of that person's answers, so each reader keeps
        their own and nobody else's. See how-checkable-is-yours-alone. */
@@ -1892,7 +2067,7 @@ export class GroundsService {
      * check-in, after three periods, in plain words, built by patterns/who-reads-a-pattern. Nothing
      * at all while patterns are not served, and then not even the reader lookup is made.
      */
-    const signals = PATTERNS_ARE_SERVED
+    const signals = PATTERNS_ARE_SERVED && !heldButAnswered
       ? await (async () => {
           const namesForPatterns = whoIsWhoIn(ground.participants as any, ground.initiatorId, (ground as any).cadence);
           const served = servedPatterns(
@@ -2068,7 +2243,7 @@ export class GroundsService {
      * so the peer rule went without. One read, up here, and both use it.
      */
     const viewer = requestingUserId
-      ? await this.prisma.user.findUnique({ where: { id: requestingUserId }, select: { role: true, organizationId: true } })
+      ? await this.prisma.user.findUnique({ where: { id: requestingUserId }, select: { role: true, organizationId: true, email: true } })
       : null;
     /* An admin of a DIFFERENT organisation is a stranger, and this is not the rule to hand them. */
     const viewerAdminsThisOrg = adminsThisOrg({ ...viewer, userId: requestingUserId }, ground as any);
@@ -2299,6 +2474,8 @@ export class GroundsService {
       }
     }
 
+    /* Invited, not joined yet (decision 8 redone, night run 3): out of "N of M", and said as that on the check-in page. */
+    const notJoinedHere = await whoHasNotJoinedYet(this.prisma, (ground.participants ?? []) as any[]).catch(() => new Set<string>());
     const participantsWithCheckIns = (ground.participants ?? [])
       .filter((p: any) => !hidePeers || (!!requestingUserId && p.userId === requestingUserId))
       .map((p: any) => {
@@ -2312,6 +2489,7 @@ export class GroundsService {
         notLetIn: !!notLetInInfo,
         /* Not let in yet, still waiting or declined: not counted in "N of M" nor waited on (decision 77). */
         notLetInYet: isNotLetInYet(p),
+        notJoinedYet: notJoinedHere.has(p.id),
         notLetInBy: notLetInInfo && canReadWhoDecided ? (decidersById.get(notLetInInfo.decidedByUserId ?? '') ?? null) : null,
         notLetInAt: notLetInInfo && canReadWhoDecided ? (notLetInInfo.decidedAt ?? null) : null,
         email: hideContact && !isSelf && !viewerIsInitiator ? null : p.email,
@@ -2339,7 +2517,7 @@ export class GroundsService {
             /** 'none' | 'proposed' | 'accepted' | 'their own'. */
             state: objectiveState(shaped),
             /** The one string anything showing this should print, so the caveat cannot be dropped. */
-            described: describeObjective(shaped),
+            described: describeObjective(shaped, { isThePerson: isSelf, theirName: theFirstNameOfAParticipant(p) || null, theLeadsName: leadFirstName || null }),
             /** False on a proposal and on an absence, and nothing downstream may read against it. */
             mayBeReadAgainst: mayBeReadAgainst(shaped),
             /**
@@ -2350,7 +2528,8 @@ export class GroundsService {
              * session, and the gap being visible is the point rather than a side effect.
              */
             awareness: (row as any)?.awareness ?? null,
-            awarenessDetail: (row as any)?.awarenessDetail ?? null,
+            /* The lead's own note on whether it was told: hers alone, and so only to whoever runs the check-in (it was served to the person and, on a check-in where everybody reads everybody's goals, to colleagues). */
+            awarenessDetail: viewerRunsIt ? ((row as any)?.awarenessDetail ?? null) : null,
             /**
              * DECISION 56, ITEM 1. The prototype's own flag ("Not told yet", Context page): true only
              * for a goal the lead wrote and has not told this person about. Served here whatever the
@@ -2402,7 +2581,7 @@ export class GroundsService {
               dueSaid: (o as any).dueSaid ?? null,
               owedToParticipantId: (o as any).owedToParticipantId ?? null,
               awareness: (o as any).awareness ?? null,
-              awarenessDetail: (o as any).awarenessDetail ?? null,
+              awarenessDetail: viewerRunsIt ? ((o as any).awarenessDetail ?? null) : null,
               alignment: (o as any).alignment ?? null,
               alignmentNote: (o as any).alignmentNote ?? null,
               objection: (o as any).objection ?? null,
@@ -2459,6 +2638,8 @@ export class GroundsService {
      * rule rather than a cruder count.
      */
     const roundSessionNumber = sessionProgress?.sessionNumber ?? 1;
+    /* Who is ON the check-in, for the rule that a shared report needs two: the lead stays one of the
+       people in it even in a round they chose not to check in (decision 133), as isSessionReadyForReport reads it. */
     const atLeastTwoInThisRound = (ground.participants ?? []).filter((p: any) =>
       !p.managingOnly || waitsOnAManagingOnlyLead((ground as any).scenario, roundSessionNumber),
     ).length > 1;
@@ -2651,6 +2832,8 @@ export class GroundsService {
       ).shown.filter((o: any) => !objectivesNotToldHere.has(o.id)).map((o: any) => ({
         ...o,
         notSettled: whatIsNotSettledAbout({ name: o.name, target: o.target }, notSettledSaid),
+        /* Whoever runs the check-in is told which targets are kept from the people until the lead tells them, so the page does not say "seen by everyone" of one. Absent for everybody else. */
+        ...(viewerRunsIt && !withoutWhatTheLeadHasNotToldThemAbout([o], objectiveRowsAsStored as any[], (ground.participants ?? []) as any[], false).kept.length ? { notToldYet: true } : {}),
       })),
       /*
        * THE REPORT RIDES ALONG IN `rest`, AND IT IS REPORT TEXT WHEREVER IT IS READ.
@@ -2683,17 +2866,31 @@ export class GroundsService {
             const text = mayRead
               ? this.reportTextAsItWasShared(ground as any, { sharedPicture: r.sharedPicture, theOpening: r.theOpening }, r.sharedAs, me?.id ?? null, viewerRunsThisGround)
               : null;
+            /*
+             * AND THE STAND-IN LABELS NEVER, WHICHEVER FIELD THEY RIDE IN (decision 139, item 1). The text went through the
+             * door, but whoever runs the check-in was handed the stored agreements and differences beside it, as they were
+             * kept: "The price list has been sent by Participant B." on the lead's and the admin's check-in page, five weeks
+             * running (final evaluation, profiles 4 and 5). They go through the same door now, and the whole report is
+             * walked last, so a label nothing named is said the way this reader may call that person.
+             */
+            const called = whatThisReaderCallsEachLabel((ground.participants ?? []) as any[], {
+              participantId: me?.id ?? null,
+              isLead: viewerRunsThisGround,
+              peersAreNamed: peersAreNamedOn(ground as any, { participantId: me?.id ?? null }),
+              sharedWithoutNames: r.sharedAs === 'ANONYMOUS',
+            });
             if (viewerRunsThisGround) {
               const { sharedAs: _as, ...whole } = r;
-              return { ...whole, sharedPicture: text?.sharedPicture ?? null, theOpening: text?.theOpening ?? null };
+              const lists = this.reportListsAsItWasShared(ground as any, { agreements: r.agreements, divergences: r.divergences }, r.sharedAs, me?.id ?? null, true);
+              return noStandInLabelAnywhereIn({ ...whole, ...lists, sharedPicture: text?.sharedPicture ?? null, theOpening: text?.theOpening ?? null }, called);
             }
-            return {
+            return noStandInLabelAnywhereIn({
               id: r.id,
               releasedAt: r.releasedAt ?? null,
               releasedSessions: releasedSessionsOf(r) ?? [],
               createdAt: r.createdAt,
               ...(mayRead ? { sharedPicture: text?.sharedPicture ?? null, theOpening: text?.theOpening ?? null } : {}),
-            };
+            }, called);
           })()
         : (rest as any).report,
       joinToken: mayShareJoinLink ? (rest as any).joinToken ?? null : null,
@@ -2793,7 +2990,7 @@ export class GroundsService {
       /* The lead and the organisation's admins read the brief they wrote. A participant reads the
          situation and nothing that tells the product how to interview them. See
          what-a-participant-is-told-about-this. Goals are on the payload already, under objectives. */
-      brief: viewerRunsThisGround ? brief : briefAsEveryoneReadsIt,
+      brief: viewerRunsThisGround ? theBriefAsTheLeadReadsIt(brief) : briefAsEveryoneReadsIt,
       /*
        * AND WHAT THE PEOPLE IN IT READ, TO WHOEVER RUNS IT (U.7 review). The Context page told the
        * lead "Your words, from setup. Everyone reads this before they answer." over her own words,
@@ -2897,8 +3094,17 @@ export class GroundsService {
         .filter((t) => !objectiveRowsAsStored.some((o: any) => aWeekHasPassedSinceNotTold(o) && (o.text ?? '') === t)),
     ]);
     /* A goal whose whole sentence carried a number this reader may not read is not left as a goal with no words (it is not served, and what the person's own row says is said plainly). */
-    if (!Array.isArray((thePage as any).participants)) return thePage;
-    return {
+    /* In an anchor check-in the lead's own set-up (her aim, what it will cover, what a complete answer holds) is hers alone (decision 96, item 8). */
+    /* The reader's own first name, as a possessive, is "your": "Zawadi's first weeks" is "Your first weeks" to Zawadi (privacy sweep, 7 October). */
+    const myFirstName = ((ground.participants ?? []) as any[]).find((p: any) => !!requestingUserId && p.userId === requestingUserId)?.user?.firstName ?? null;
+    const asAMemberReadsIt = <P extends Record<string, any>>(page: P): P => {
+      const out: any = withoutTheLeadsSetUpForAMember(page, { startedFrom: (ground as any).startedFrom ?? null, scenario: (ground as any).scenario ?? null, runsIt: viewerRunsThisGround });
+      if (viewerRunsThisGround || !myFirstName) return out;
+      return { ...out, label: theirOwnFirstNameAsYour(out.label, myFirstName), brief: theirOwnFirstNameAsYour(out.brief, myFirstName), ...(out.briefAsEveryoneReadsIt !== undefined ? { briefAsEveryoneReadsIt: theirOwnFirstNameAsYour(out.briefAsEveryoneReadsIt, myFirstName) } : {}) };
+    };
+    if (heldButAnswered && requestingUserId) return whatSomeoneHeldForASeatReads(asAMemberReadsIt(thePage), requestingUserId) as any;
+    if (!Array.isArray((thePage as any).participants)) return asAMemberReadsIt(thePage);
+    return asAMemberReadsIt({
       ...thePage,
       participants: ((thePage as any).participants as any[]).map((p: any) => {
         const o = p?.objective;
@@ -2907,7 +3113,7 @@ export class GroundsService {
         const blank = typeof o.text === 'string' && !o.text.trim();
         return { ...p, objective: { ...o, all, ...(blank ? { text: null, described: 'What this person is aiming for is set, and it carries a number you are not given on this page.' } : {}) } };
       }),
-    } as typeof thePage;
+    } as typeof thePage);
   }
 
   /**
@@ -2943,13 +3149,13 @@ export class GroundsService {
       where: { id: groundId },
       select: {
         id: true, label: true, scenario: true, initiatorId: true, timelineDays: true, runsUntilEnded: true,
-        cadence: true, brief: true, timelineStated: true, cadenceStated: true,
+        cadence: true, brief: true, timelineStated: true, cadenceStated: true, endsAt: true,
         organizationId: true, createdByUserId: true,
         participants: { select: { id: true, managingOnly: true, userId: true } },
         objectives: { select: { id: true } },
       },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /* Who is reading what this says back: a line about them says "you". */
     const reader = { participantId: ground.participants.find((p: any) => p.userId === requestingUserId)?.id ?? null };
     /*
@@ -2978,6 +3184,24 @@ export class GroundsService {
           done: false,
           proposal: said.ok ? { gap: 'leave_request', say: said.say } : null,
         };
+      }
+    }
+
+    /*
+     * A SHORT SENTENCE THAT ASKS A NAMED PERSON SOMETHING is a question for that person, said back as the exact sentence and kept
+     * only on a yes, as Ask Groundwork does it (a-short-question-for-a-person-in-the-old-chat.ts). It was read as a goal.
+     */
+    {
+      const lastLeadTurn = [...history].reverse().find((h) => h.role === 'user')?.content?.trim() ?? '';
+      const asked = aShortQuestionForAPerson(lastLeadTurn);
+      if (asked) {
+        try {
+          const q = await this.theQuestionForAPerson(groundId, requestingUserId, asked);
+          return { reply: '', gaps: [] as string[], openQuestion: null, done: false, proposal: { gap: 'question_for_person', say: askedBackToTheLead(q.who, q.exactQuestion) } };
+        } catch (err: any) {
+          if (err instanceof BadRequestException) return { reply: err.message, gaps: [] as string[], openQuestion: null, done: false, proposal: null };
+          throw err;
+        }
       }
     }
 
@@ -3040,8 +3264,10 @@ export class GroundsService {
        * empty. Passing the raw value made the duration question unaskable, which is the one thing
        * this conversation was built to ask.
        */
-      timelineDays: ground.timelineStated ? ground.timelineDays : null,
+      timelineDays: theLengthWasChosen(ground as any) ? ground.timelineDays : null,
       runsUntilEnded: !!(ground as any).runsUntilEnded,
+      /* A check-in somebody already has a session in is never asked how long it runs (night quality run 1). */
+      alreadySetUp: (await (this.prisma.checkIn?.count?.({ where: { groundId, isSetup: false } }) ?? Promise.resolve(0)).catch(() => 0)) > 0,
       cadence: ground.cadenceStated ? ground.cadence : null,
       /* The success gap reads the baseline, not the brief - they are two different things and
          sharing one column broke both. See `ContextGaps.successLooksLike`. */
@@ -3082,7 +3308,7 @@ export class GroundsService {
      * The first model call is made on the lead's first message.
      */
     if (history.length === 0) {
-      const opened = openingLine(ground.timelineStated ? ground.timelineDays : null, ground.cadenceStated ? ground.cadence : null, !!(ground as any).runsUntilEnded);
+      const opened = openingLine(theLengthWasChosen(ground as any) ? ground.timelineDays : null, ground.cadenceStated ? ground.cadence : null, !!(ground as any).runsUntilEnded);
       const ask = (gaps[0] as { ask?: string } | undefined)?.ask ?? null;
       return {
         reply: forHumans([opened, ask].filter(Boolean).join(' ')),
@@ -3324,6 +3550,12 @@ export class GroundsService {
     if (justALength) proposal = proposalFrom('timeline', { timelineDays: justALength } as any, [], lastFromLead);
     /* And "until I end it" is an answer to how long it runs, whatever question was open (request 37). */
     else if (lastFromLead && saidUntilIEndIt(lastFromLead, openGap === 'timeline')) proposal = proposalFrom('timeline', { runsUntilEnded: true }, [], lastFromLead);
+    /* B-085: what the lead said is what the check-in already has, so nothing is offered, and they are told it is so. */
+    const alreadyThere = alreadyHowItIs(ground as any, proposal as any);
+    if (alreadyThere) {
+      changeSay = alreadyThere;
+      proposal = { kind: 'none', why: alreadyThere } as any;
+    }
     if (proposal.kind !== 'none' && lastFromLead) {
       const untraceable =
         (proposal.kind === 'success' && !traceableToWhatTheySaid((proposal as any).text, lastFromLead))
@@ -3404,7 +3636,7 @@ export class GroundsService {
      * asked away a second time.
      */
     const isOpeningTurn = !history.some((h) => h.role === 'assistant');
-    const openedOn = isOpeningTurn ? openingLine(ground.timelineStated ? ground.timelineDays : null, ground.cadenceStated ? ground.cadence : null, !!(ground as any).runsUntilEnded) : null;
+    const openedOn = isOpeningTurn ? openingLine(theLengthWasChosen(ground as any) ? ground.timelineDays : null, ground.cadenceStated ? ground.cadence : null, !!(ground as any).runsUntilEnded) : null;
     /*
      * FIX 4: NOTHING SAYS IT WILL BE RECORDED UNLESS SOMETHING IS ACTUALLY BEING PROPOSED THIS TURN.
      * "I will record this as your read of Ben" was once said with no `lead_read` or `expectation`
@@ -3447,7 +3679,8 @@ export class GroundsService {
     const sayBack = proposal.kind === 'none'
       ? null
       : (proposal.kind as string) === 'everything' ? (proposal.say as string) : forHumans(proposal.say);
-    let replyText = forHumans(openedOn ? `${openedOn} ${spokenReply}`.trim() : spokenReply);
+    /* Told that it already is so, the lead is not also told the same thing as an opening line. */
+    let replyText = forHumans(openedOn && !alreadyThere ? `${openedOn} ${spokenReply}`.trim() : spokenReply);
     if (sayBack && (replyText === sayBack || replyText.includes(sayBack))) {
       replyText = openedOn ? forHumans(openedOn) : '';
     }
@@ -4052,12 +4285,13 @@ export class GroundsService {
   private async partiesForMatching(groundId: string) {
     const rows = await this.prisma.groundParticipant.findMany({
       where: { groundId },
-      select: { id: true, email: true, user: { select: { firstName: true, lastName: true } } },
+      select: { id: true, email: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } },
     }).catch(() => [] as any[]);
+    /* The name they were given when invited counts too, so a person invited as "Amina" is matched and said back as Amina (review of 1678157c). */
     return rows.map((p: any) => ({
       id: p.id,
       email: p.email,
-      name: [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || null,
+      name: [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || (p.nameGiven ?? '').trim() || null,
     }));
   }
 
@@ -4069,7 +4303,7 @@ export class GroundsService {
   /** A no to keeping something for the organisation: the offer is deleted and nothing is kept. */
   async declineContextOffer(groundId: string, requestingUserId: string, offerId: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true, initiatorId: true } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /* The same door as the conversation that made the offer (decisions 63 and 72). */
     await this.mayConfirmSetupOn(ground, requestingUserId);
     await dropWhatWasOffered(this.prisma, { organizationId: ground.organizationId, offerId, userId: requestingUserId });
@@ -4094,12 +4328,12 @@ export class GroundsService {
       where: { id: groundId },
       select: {
         id: true, initiatorId: true, timelineDays: true, runsUntilEnded: true, cadence: true, brief: true, scenario: true,
-        timelineStated: true, cadenceStated: true, organizationId: true,
+        timelineStated: true, cadenceStated: true, endsAt: true, organizationId: true,
         participants: { select: { id: true, managingOnly: true, userId: true } },
         objectives: { select: { id: true } },
       },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /*
      * DECISION 63: THE LEAD CONFIRMS, OR - ONLY ONCE THE LEAD HAS LEFT THE ORGANISATION - AN ADMIN
      * OF IT CAN, IN THEIR PLACE. Before this the lead was the only door here, with no way through at
@@ -4117,6 +4351,14 @@ export class GroundsService {
     if (dto.offerId) {
       const kept = await keepWhatWasOffered(this.prisma, { organizationId: ground.organizationId, groundId, offerId: dto.offerId, userId: requestingUserId });
       return { changed: kept.kept ? 'organisation memory' : 'nothing new', say: kept.say };
+    }
+    /* And a yes to a short question for a named person keeps that question, in the words the lead was shown. */
+    const askedOfOne = dto.leave ? null : aShortQuestionForAPerson(dto.said);
+    if (askedOfOne) {
+      const q = await this.theQuestionForAPerson(groundId, requestingUserId, askedOfOne);
+      const shown = theQuestionTheyWereShown(dto.history, q.who);
+      const kept = await this.keepAQuestionForAPerson(groundId, requestingUserId, { participantId: q.participantId, leadWords: askedOfOne.leadWords, exactQuestion: shown ?? q.exactQuestion });
+      return { changed: `a question for ${q.who}`, say: (kept as any).say };
     }
     /* And a yes to a leave request is sent through the leave suite, from the days in the lead's own words. */
     if (dto.leave) {
@@ -4145,8 +4387,10 @@ export class GroundsService {
        * empty. Passing the raw value made the duration question unaskable, which is the one thing
        * this conversation was built to ask.
        */
-      timelineDays: ground.timelineStated ? ground.timelineDays : null,
+      timelineDays: theLengthWasChosen(ground as any) ? ground.timelineDays : null,
       runsUntilEnded: !!(ground as any).runsUntilEnded,
+      /* A check-in somebody already has a session in is never asked how long it runs (night quality run 1). */
+      alreadySetUp: (await (this.prisma.checkIn?.count?.({ where: { groundId, isSetup: false } }) ?? Promise.resolve(0)).catch(() => 0)) > 0,
       cadence: ground.cadenceStated ? ground.cadence : null,
       /* The success gap reads the baseline, not the brief - they are two different things and
          sharing one column broke both. See `ContextGaps.successLooksLike`. */
@@ -4243,7 +4487,7 @@ export class GroundsService {
      */
     const lastAsked = [...(dto.history ?? [])].reverse().find((h) => h.role === 'assistant')?.content ?? '';
     if (/Which one\?\s*$/.test(lastAsked.trim()) && /^(yes|yep|yeah|ok|okay|sure|do it)\b[\s\S]{0,20}$/i.test((dto.said ?? '').trim())) {
-      throw new BadRequestException('Say which one - the number, or enough of the line to tell them apart - and I will change it.');
+      throw new BadRequestException('Say which one, by its number or by enough of the line to tell them apart, and I will change it.');
     }
 
     /*
@@ -4393,6 +4637,9 @@ export class GroundsService {
      * a running ground's length and already appends to the audit log every party can now read. A
      * second path to the same column would be a second set of rules.
      */
+    /* B-085: a yes that would change nothing writes nothing, and no line goes into the history. */
+    const alreadyThere = alreadyHowItIs(ground as any, proposal as any);
+    if (alreadyThere) return { changed: 'nothing new', say: alreadyThere };
     if (proposal.kind === 'timeline') {
       // Days straight through. This used to round to whole weeks, so a proposal of 45 days
       // was applied as 42 - a silent change to a number somebody had agreed.
@@ -4737,16 +4984,16 @@ export class GroundsService {
    */
   async shareLeadContext(groundId: string, requestingUserId: string, noteId: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, organizationId: true } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /* Decision 63: the lead, or - only once the lead has left the organisation - an admin standing
        in for them. Was any admin of the organisation, at any time; narrowed here. */
     const confirm = await this.mayConfirmSetupOn(ground, requestingUserId);
     const confirmedByAdminNote = confirm.as === 'admin' ? confirmedByAnAdminSentence(confirm.confirmedByName, confirm.leadName) : null;
     const note = await this.prisma.leadContextNote.findFirst({ where: { id: noteId, groundId }, select: { id: true, participantId: true, audience: true } });
-    if (!note) throw new NotFoundException('That note is not on this check-in');
+    if (!note) throw new NotFoundException('That note is no longer on this check-in, so refresh the page.');
     if (note.participantId) {
       throw new BadRequestException(
-        'A note everyone reads is about the whole check-in, not about one person. To say what you expect of somebody, say it in your own check-in - it is published with your name on it.',
+        'A note everyone reads is about the whole check-in and not about one person. To say what you expect of somebody, say it in your own check-in, where it is published with your name on it.',
       );
     }
     if (note.audience === ContextNoteAudience.EVERYONE) return { id: note.id, audience: note.audience, alreadyShared: true };
@@ -4779,7 +5026,7 @@ export class GroundsService {
       where: { id: itemId, groundId },
       select: { id: true, participantId: true, text: true },
     });
-    if (!row) throw new NotFoundException('That is not on this check-in');
+    if (!row) throw new NotFoundException('That is no longer part of this check-in, so refresh the page.');
     if (!row.participantId) {
       throw new BadRequestException('Nobody owns this one yet. Say whose it is in the conversation and they can move it.');
     }
@@ -4840,7 +5087,7 @@ export class GroundsService {
       where: { id: groundId },
       select: { initiatorId: true, organizationId: true, status: true, endState: true, scenario: true },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /* Decision 63: the lead, or - only once the lead has left the organisation - an admin standing
        in for them. Was any admin of the organisation, at any time; narrowed here. */
     const confirm = await this.mayConfirmSetupOn(ground, requestingUserId);
@@ -4883,13 +5130,13 @@ export class GroundsService {
   ) {
     if (typeof change?.text === 'string') change = { ...change, text: withoutBankDetails(change.text) };
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, organizationId: true } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /* Decision 63: the lead, or - only once the lead has left the organisation - an admin standing
        in for them. Was any admin of the organisation, at any time; narrowed here. */
     const confirm = await this.mayConfirmSetupOn(ground, requestingUserId);
     const confirmedByAdminNote = confirm.as === 'admin' ? confirmedByAnAdminSentence(confirm.confirmedByName, confirm.leadName) : null;
     const line = await this.prisma.groundContextItem.findFirst({ where: { id: itemId, groundId }, select: { id: true, kind: true } });
-    if (!line) throw new NotFoundException('That line is not on this check-in');
+    if (!line) throw new NotFoundException('That line is no longer part of this check-in, so refresh the page.');
     const aQuestion = line.kind === ContextItemKind.QUESTION_FOR_PERSON;
     /* A line about a person can never be shared, whoever asks - see what-this-check-in-knows. */
     if (change.audience === 'EVERYONE' && !mayBeShared(line.kind)) {
@@ -4943,7 +5190,7 @@ export class GroundsService {
   /** The lead's own questions, read by the lead or an admin in their organisation. */
   async questionsForPeople(groundId: string, requestingUserId: string): Promise<AQuestionForAPerson[]> {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const viewer = await this.prisma.user.findUnique({
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
@@ -4966,7 +5213,7 @@ export class GroundsService {
     said: { name: string; leadWords: string },
   ): Promise<{ participantId: string; who: string; exactQuestion: string }> {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /* Decisions 63 and 72: the lead, or an admin only once the lead has left, as at the yes that keeps it
        (keepAQuestionForAPerson). Was any admin of the organisation, at any time. */
     await this.mayConfirmSetupOn(ground, requestingUserId);
@@ -4996,7 +5243,7 @@ export class GroundsService {
     dto: { participantId: string; leadWords: string; exactQuestion: string },
   ) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, status: true, endState: true, scenario: true } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const confirm = await this.mayConfirmSetupOn(ground, requestingUserId);
     const refused = whyItRefuses(ground.status, ground.endState, confirm.as === 'lead' ? 'the lead' : 'anybody else', ground.scenario);
     if (refused) throw new BadRequestException(refused);
@@ -5036,7 +5283,7 @@ export class GroundsService {
     dto: { exactQuestion?: string | null } = {},
   ): Promise<AQuestionForAPerson & { say: string }> {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, status: true, endState: true, scenario: true } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /* Decision 63: the lead, or - only once the lead has left the organisation - an admin standing
        in for them. See mayConfirmSetupOn and who-may-confirm-setup.ts. */
     const confirm = await this.mayConfirmSetupOn(ground, requestingUserId);
@@ -5075,7 +5322,7 @@ export class GroundsService {
   /** Not now: the question is left out, and is asked of nobody. Kept rather than deleted, like every line. */
   async declineQuestionForPerson(groundId: string, requestingUserId: string, itemId: string): Promise<{ id: string; status: 'left out'; say: string }> {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /* Decision 63: the lead, or - only once the lead has left the organisation - an admin standing
        in for them. */
     const confirm = await this.mayConfirmSetupOn(ground, requestingUserId);
@@ -5099,7 +5346,7 @@ export class GroundsService {
       where: { id: groundId },
       select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /**
      * DECISION 63, 30 September 2026, NARROWS THIS: only the lead confirms setup changes, unless the
      * lead has left the organisation, in which case an admin can, in their place. This used to let
@@ -5114,10 +5361,10 @@ export class GroundsService {
     const confirm = await this.mayConfirmSetupOn(ground, requestingUserId);
     const confirmedByAdminNote = confirm.as === 'admin' ? confirmedByAnAdminSentence(confirm.confirmedByName, confirm.leadName) : null;
     const text = (dto.text ?? '').trim();
-    if (!text) throw new BadRequestException('Context note text is required');
+    if (!text) throw new BadRequestException('Write the note first, then add it.');
     if (dto.participantId) {
       const target = await this.prisma.groundParticipant.findFirst({ where: { id: dto.participantId, groundId } });
-      if (!target) throw new BadRequestException('That participant is not on this check-in');
+      if (!target) throw new BadRequestException('That person is not in this check-in, so choose someone who is.');
     }
 
     const audience = dto.audience === 'EVERYONE' ? ContextNoteAudience.EVERYONE : ContextNoteAudience.LEAD_ONLY;
@@ -5131,7 +5378,7 @@ export class GroundsService {
      */
     if (audience === ContextNoteAudience.EVERYONE && dto.participantId) {
       throw new BadRequestException(
-        'A note everyone reads is about the whole check-in, not about one person. To say what you expect of somebody, say it in your own check-in - it is published with your name on it. To note something only you should see, leave this note private.',
+        'A note everyone reads is about the whole check-in and not about one person. To say what you expect of somebody, say it in your own check-in, where it is published with your name on it. To note something only you should see, keep this note private.',
       );
     }
 
@@ -5149,9 +5396,9 @@ export class GroundsService {
    */
   async setExternalVisibility(groundId: string, requestingUserId: string, restrict: boolean) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     if (ground.initiatorId !== requestingUserId) {
-      throw new ForbiddenException('Only the lead of this check-in can change this setting');
+      throw new ForbiddenException('Only the person who runs this check-in can change this, so ask them to.');
     }
     return this.prisma.ground.update({
       where: { id: groundId },
@@ -5190,19 +5437,24 @@ export class GroundsService {
    *
    * Same permission as its neighbours: the lead of this check-in, or an admin in this organisation.
    */
-  private async aSettingOnlyTheLeadMayChange(groundId: string, requestingUserId: string) {
+  private async aSettingOnlyTheLeadMayChange(groundId: string, requestingUserId: string, verb: 'change' | 'read' = 'change') {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const viewer = await this.prisma.user.findUnique({
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
     });
+    if (verb === 'change') {
+      /* Decision 119, H10: changing it is the lead's, and an admin's only once the lead has left. */
+      await this.mayConfirmSetupOn(ground, requestingUserId);
+      return;
+    }
     if (ground.initiatorId !== requestingUserId && !adminsThisOrg({ ...viewer, userId: requestingUserId }, ground)) {
       throw new ForbiddenException(
-        'Only the lead of this check-in, or an admin in this organisation, can change this.',
+        `Only the lead of this check-in, or an admin in this organisation, can ${verb} this.`,
       );
     }
   }
@@ -5290,6 +5542,26 @@ export class GroundsService {
   }
 
   /**
+   * USE SIMPLER WORDS. Off for every check-in that existed before. When it is on, everybody in the
+   * check-in is spoken to in short sentences and everyday words, and everything sent afterwards uses
+   * the plainer form of its fixed sentences. Same permission as its neighbours.
+   */
+  async getSimplerWords(groundId: string, requestingUserId: string) {
+    await this.aSettingOnlyTheLeadMayChange(groundId, requestingUserId, 'read');
+    return this.prisma.ground.findUnique({ where: { id: groundId }, select: { id: true, simplerWords: true } });
+  }
+
+  async setSimplerWords(groundId: string, requestingUserId: string, on: unknown) {
+    await this.aSettingOnlyTheLeadMayChange(groundId, requestingUserId);
+    if (typeof on !== 'boolean') throw new BadRequestException('Say whether to use simpler words, with true or false.');
+    return this.prisma.ground.update({
+      where: { id: groundId },
+      data: { simplerWords: on },
+      select: { id: true, simplerWords: true },
+    });
+  }
+
+  /**
    * WHETHER THIS CHECK-IN IS ANSWERED ON WHATSAPP.
    *
    * Only answerable where the organisation has a number of its own, because otherwise there is
@@ -5335,18 +5607,10 @@ export class GroundsService {
       where: { id: groundId },
       select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
-    const viewer = await this.prisma.user.findUnique({
-      where: { id: requestingUserId },
-      select: { role: true, organizationId: true },
-    });
-    const isOrgAdmin = adminsThisOrg({ ...viewer, userId: requestingUserId }, ground);
-    if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
-      throw new ForbiddenException(
-        'Only the lead of this check-in, or an admin in this organisation, can change this.',
-      );
-    }
+    /* Decision 119, H10: the lead, or an admin once the lead has left. */
+    await this.mayConfirmSetupOn(ground, requestingUserId);
 
     return this.prisma.ground.update({
       where: { id: groundId },
@@ -5379,18 +5643,10 @@ export class GroundsService {
       where: { id: groundId },
       select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
-    const viewer = await this.prisma.user.findUnique({
-      where: { id: requestingUserId },
-      select: { role: true, organizationId: true },
-    });
-    const isOrgAdmin = adminsThisOrg({ ...viewer, userId: requestingUserId }, ground);
-    if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
-      throw new ForbiddenException(
-        'Only the lead of this check-in, or an admin in this organisation, can change this.',
-      );
-    }
+    /* Decision 119, H10: the lead, or an admin once the lead has left. */
+    await this.mayConfirmSetupOn(ground, requestingUserId);
 
     return this.prisma.ground.update({
       where: { id: groundId },
@@ -5545,6 +5801,21 @@ export class GroundsService {
       dto = { ...dto, email: found.email };
       colleagueName = found.name;
     }
+    /*
+     * "PIA ALPHA <pia@brightloom.test>" IS PIA'S ADDRESS AND HER NAME, NOT ONE ADDRESS (journey test, 12 October).
+     * Every door that adds a person comes through here (the entry chat's commit calls this too, with no
+     * request check in between), so the address is taken out of such a line here, once, and the name
+     * goes beside it. Something that is still not an address is refused with the setup screen's sentence.
+     */
+    if (dto.email) {
+      const { email: address, name } = theAddressAndNameIn(dto.email);
+      if (!theDomainOf(address)) throw new BadRequestException('That does not look like an email address. Check it and try again.');
+      dto = { ...dto, email: address, ...(name && !dto.displayName?.trim() ? { displayName: name } : {}) };
+    }
+    /* Added by address, but already working here: their own name from their membership, not the address (user journeys, F-7). */
+    if (!colleagueName && !dto.displayName?.trim() && dto.email) {
+      colleagueName = (await theMemberWithThisAddress(this.prisma as any, organizationId, dto.email))?.name ?? null;
+    }
     /**
      * A start date in the future means the work has not begun. Today or the past means it has, so the
      * invite goes now exactly as it always did.
@@ -5565,18 +5836,23 @@ export class GroundsService {
      * already gone out cannot be recalled by declining afterwards - the person has
      * read it.
      */
+    /*
+     * THE PERSON IS NAMED NOW AND INVITED WHEN AN ADMIN ACCEPTS (known issue B5; screens request 174 item 3).
+     *
+     * This used to refuse, and a lead who is not an admin lost everybody she had named when she saved, with a note that stayed after
+     * approval. The point of the gate is that no invitation goes out before the approval, because an email cannot be recalled by
+     * declining afterwards. That still holds: the row is written with `invitedAt` null and no email goes, exactly as for a start date
+     * that is ahead or no seat, and `approve` sends it, once, when an admin accepts. The status is not moved on either, so naming
+     * somebody cannot take the check-in past the approval.
+     */
     const pending = await this.prisma.ground.findFirst({
       where: { id: groundId, organizationId, status: GroundStatus.AWAITING_APPROVAL },
       select: { id: true },
     });
-    if (pending) {
-      throw new BadRequestException(
-        'This check-in is waiting for an admin in your organisation to accept it. Nobody can be invited until then.',
-      );
-    }
+    const heldForApproval = !!pending;
 
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     /**
      * NOBODY IS ADDED TO A GROUND THAT HAS ENDED, OR ONE THAT IS HELD.
@@ -5624,7 +5900,7 @@ export class GroundsService {
     const isInitiator = ground.initiatorId === initiatorId;
     const isSetupAdmin = !!ground.createdByUserId && ground.createdByUserId === initiatorId;
     if (!isInitiator && !isSetupAdmin) {
-      throw new ForbiddenException('Only the lead or the admin who set this check-in up can add a participant');
+      throw new ForbiddenException('Only the person who runs this check-in, or the admin who set it up, can add someone, so ask one of them.');
     }
 
     const initiator = await this.prisma.user.findUnique({ where: { id: initiatorId } });
@@ -5633,7 +5909,8 @@ export class GroundsService {
     // create/link a user, set userId, and enter their private check-in.
     // If the entry flow pre-generated a token (so the share link could be shown
     // immediately before auth), honour it here - no separate lookup needed.
-    const token = dto.inviteToken ?? crypto.randomBytes(32).toString('hex');
+    /* Tokens are made here and nowhere else: one a caller supplies is ignored (reviewer's audit, 7 October). */
+    const token = crypto.randomBytes(32).toString('hex');
     const inviteTokenExpiresAt = inviteExpiryFrom();
 
     // Prevent duplicate participant - surface a clean 400 instead of a Prisma constraint error.
@@ -5643,7 +5920,7 @@ export class GroundsService {
       where: { groundId, email: dto.email.toLowerCase() },
     });
     if (existing) {
-      if (existing.userId !== null) throw new BadRequestException('This email is already a participant on this check-in');
+      if (existing.userId !== null) throw new BadRequestException('That person is already in this check-in, so there is no need to add them again.');
       /* Somebody from another organisation is a guest here from now, not only once they click (U.4 review). */
       await aGuestHereIfTheyAreFromElsewhere(this.prisma as any, ground.organizationId, dto.email);
       /**
@@ -5658,6 +5935,15 @@ export class GroundsService {
        */
       const freshToken = existing.inviteToken ?? crypto.randomBytes(32).toString('hex');
       const freshExpiry = inviteExpiryFrom();
+      /* While the check-in waits for an admin, nobody is written to, whether this is the first time or the second (the approval sends it, once). */
+      if (heldForApproval) {
+        return {
+          ...theInvitedRowAsServed(existing),
+          alreadyInvited: false,
+          notInvitedBecause: 'waiting_for_approval' as const,
+          saying: `The invitation to ${dto.email.toLowerCase()} will go as soon as an admin accepts this check-in.`,
+        };
+      }
       await this.prisma.groundParticipant.update({
         where: { id: existing.id },
         data: { inviteToken: freshToken, inviteTokenExpiresAt: freshExpiry, notifiedAt: null },
@@ -5676,10 +5962,12 @@ export class GroundsService {
        * organiser typed an address they had already invited, got a 201 identical to a first
        * invitation, and had no way to tell the two apart — so nothing stopped them doing it a
        * third time, and each one really did send another email.
+       *
+       * AN EXPLICIT SHAPE, NOT THE ROW (reviewer's audit, 7 October): the row carries the stop-reminders token, the invitation's expiry,
+       * how specific their answers were, what function they were detected in, and their private summary, none of which the lead is told.
        */
       return {
-        ...existing,
-        inviteToken: undefined,
+        ...theInvitedRowAsServed(existing),
         devUrl: emailResult?.devUrl,
         alreadyInvited: true,
         saying: `${dto.email.toLowerCase()} was already invited and has not opened it yet. We have sent the invitation again - it uses the same link.`,
@@ -5766,7 +6054,16 @@ export class GroundsService {
     // Locked far in the future rather than null so it reads as "not yet open,"
     // not "no schedule" - the SEQUENTIAL branch of ensureNextSession() opens it
     // for real (sets it to now) once the lead completes session 1.
-    let session1AvailableFrom: Date | null = null;
+    /*
+     * THE TEAM'S FIRST SESSION OPENS AT THE START THE LEAD CHOSE (item 5, 11 October 2026). The
+     * choice ("Now", "Tomorrow" or a date) only held the invitation back; the session itself had no
+     * gate, so anybody holding the link could answer session 1 before the check-in started. A start
+     * still to come now opens session 1 on that day. "Now", or a start already passed, stays null.
+     */
+    const theStartChosen = [startsAt, (ground as any).startsAt ? new Date((ground as any).startsAt) : null]
+      .filter((d): d is Date => !!d && d.getTime() > Date.now())
+      .sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
+    let session1AvailableFrom: Date | null = theStartChosen;
     if (ground.cadence === Cadence.SEQUENTIAL) {
       const leadCompletedSession1 = await this.prisma.checkIn.findFirst({
         where: {
@@ -5806,6 +6103,8 @@ export class GroundsService {
              typed in cold. Every reader already prefers this to a guess from the address the
              moment `user.firstName` itself is not yet available (see theirName, party-labels.ts). */
           ...(colleagueName ? { nameGiven: colleagueName } : {}),
+          /* What the lead calls this person, typed beside the address ("Name + email"), when they were not picked from the colleague list. */
+          ...(!colleagueName && dto.displayName?.trim() ? { nameGiven: aNameTypedInLowerCase(dto.displayName.trim()).slice(0, 120) } : {}),
           /* What they are accountable for, in the lead's words. It used to be emailed and then lost. */
           remitAsGiven: dto.note?.trim() || null,
           department: dto.department?.trim() || null,
@@ -5827,7 +6126,7 @@ export class GroundsService {
              was sent is the worst of the three outcomes: the lead believes they can still change
              their mind about somebody who has in fact never heard from us - and here, the reverse,
              believes somebody has been written to when they have not. */
-          invitedAt: startsInFuture || !waitingForASeat.room ? null : new Date(),
+          invitedAt: startsInFuture || heldForApproval || !waitingForASeat.room ? null : new Date(),
           startsAt: startsAt ?? null,
           inviteToken: token,
           inviteTokenExpiresAt,
@@ -5862,7 +6161,7 @@ export class GroundsService {
        * A ground still waiting on its lead stays waiting. The participant is
        * added and invited either way.
        */
-      if (ground.status !== GroundStatus.AWAITING_LEAD) {
+      if (ground.status !== GroundStatus.AWAITING_LEAD && !heldForApproval) {
         await tx.ground.update({ where: { id: groundId }, data: { status: GroundStatus.AWAITING_PARTIES } });
         movedTheGroundOn = true; /* Kept for the log line below; nothing is reverted. */
       }
@@ -5885,7 +6184,7 @@ export class GroundsService {
      */
     /* `waitingForASeat` holds the mail for the same reason `startsInFuture` does, and the row says
        so the same way: `invitedAt` stays null, so nothing believes they have been written to. */
-    if (!startsInFuture && waitingForASeat.room) {
+    if (!startsInFuture && !heldForApproval && waitingForASeat.room) {
     try {
       emailResult = await this.email.sendTheInviteThisGroundSends(
         ground,
@@ -5938,7 +6237,7 @@ export class GroundsService {
        * been added - Rule 3, nobody added silently - so stamping it for a deferred invite would claim
        * something that has not happened, and the cron would have nothing to look for.
        */
-      data: { notifiedAt: startsInFuture || !waitingForASeat.room ? null : new Date() },
+      data: { notifiedAt: startsInFuture || heldForApproval || !waitingForASeat.room ? null : new Date() },
     });
 
     this.usage.emit(UsageEventType.PARTICIPANT_INVITED, { organizationId, groundId, participantId: participant.id }).catch(() => undefined);
@@ -5977,15 +6276,19 @@ export class GroundsService {
      * mail did not send - and the screen read them all as one null and told the lead "invited on the
      * start date", false in two of the three. The row carries the facts; this names them.
      */
-    const notInvitedBecause: 'starts_later' | 'no_seat' | 'mail_failed' | null = emailFailed
+    const notInvitedBecause: 'starts_later' | 'no_seat' | 'mail_failed' | 'waiting_for_approval' | null = emailFailed
       ? 'mail_failed'
       : !waitingForASeat.room
         ? 'no_seat'
-        : invitedAt
-          ? null
-          : 'starts_later';
+        : heldForApproval
+          ? 'waiting_for_approval'
+          : invitedAt
+            ? null
+            : 'starts_later';
     return {
       id, email, partyType, userId, roleAsDescribed, invitedAt: emailFailed ? null : invitedAt, notifiedAt, soloArtifactAt, createdAt,
+      /* The name the lead typed, as she typed it, so the row she is shown is never "Somebody invited by email" (journey test, 12 October). */
+      nameGiven: colleagueName ?? (dto.displayName?.trim() ? aNameTypedInLowerCase(dto.displayName.trim()).slice(0, 120) : null),
       notInvitedBecause,
       devUrl: emailResult?.devUrl,
       emailFailed,
@@ -5993,6 +6296,10 @@ export class GroundsService {
          see added-but-waiting-for-a-seat.ts for why this is a sentence and not a refusal. */
       awaitingSeat: !waitingForASeat.room,
       ...(waitingForASeat.room ? {} : { saying: waitingForASeat.saying }),
+      /* Named, and invited the moment an admin accepts this check-in; said as a sentence, never starting with an address. */
+      ...(heldForApproval && waitingForASeat.room
+        ? { saying: dto.displayName?.trim() || colleagueName ? `${(dto.displayName?.trim() || colleagueName)!.split(/\s+/)[0]} will be invited as soon as an admin accepts this check-in.` : `The invitation to ${email} will go as soon as an admin accepts this check-in.` }
+        : {}),
       /* Named, because "somebody from another organisation" is not something a lead can act on and
          a company name is. Never the person's other colleagues, only where they belong. */
       ...(fromAnotherOrg
@@ -6015,19 +6322,37 @@ export class GroundsService {
    * anything. Reusing the token means every email ever sent to this address
    * points at the same, still-live link.
    */
-  async resendParticipantInvite(groundId: string, participantId: string, organizationId: string): Promise<{ message: string }> {
+  async resendParticipantInvite(groundId: string, participantId: string, organizationId: string, userId: string, role: string): Promise<{ message: string }> {
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    /*
+     * ONLY WHOEVER RUNS THE CHECK-IN, OR AN ORGANISATION ADMIN (request 178). This checked the organisation and nothing else, so any member of it, a person in
+     * the check-in, or a guest could make Groundwork send an invitation in the lead's name. The same two people may add a participant (the lead, or the
+     * admin who set it up), and an organisation admin may too.
+     */
+    const runsIt = ground.initiatorId === userId || (!!ground.createdByUserId && ground.createdByUserId === userId);
+    if (!runsIt && role !== 'ADMIN') {
+      throw new ForbiddenException('Only the person who runs this check-in, or an administrator of the organisation, can send an invitation again.');
+    }
 
-    const participant = await this.prisma.groundParticipant.findFirst({ where: { id: participantId, groundId } });
-    if (!participant) throw new NotFoundException('Participant not found');
-    if (participant.userId) throw new BadRequestException('This participant has already accepted their invite');
+    const participant = await this.prisma.groundParticipant.findFirst({ where: { id: participantId, groundId }, include: { user: { select: { firstName: true } } } });
+    if (!participant) throw new NotFoundException('That person is not in this check-in, so check the name and try again.');
+    const theirName = ((participant as any).user?.firstName ?? (participant as any).nameGiven ?? '').toString().trim() || 'This person';
+    /*
+     * SOMEBODY WAITING FOR A SEAT GETS NO INVITATION (request 180 item 5). Their link leads to "This check-in cannot start for you yet",
+     * with no way forward, so nothing is sent and the lead is told why. Asked before "already joined": a person held for a seat may have
+     * an account already, and the invitation would still lead nowhere.
+     */
+    if ((participant as any).awaitingSeat === true) {
+      throw new BadRequestException(`${theirName} is waiting for a seat on the plan, so an invitation would not let them in yet. They will get their invitation as soon as there is a seat for them.`);
+    }
+    if (participant.userId) throw new BadRequestException(`${theirName} has already joined this check-in, so there is no invitation to send again.`);
 
     // Block resend if the participant has already completed a check-in via the invite flow.
     const completedCheckIn = await this.prisma.checkIn.findFirst({
       where: { participantId, status: CheckInStatus.COMPLETED },
     });
-    if (completedCheckIn) throw new BadRequestException('This participant has already completed their check-in');
+    if (completedCheckIn) throw new BadRequestException('That person has already finished their check-in, so there is nothing more to send.');
 
     const token = participant.inviteToken ?? crypto.randomBytes(32).toString('hex');
     const inviteTokenExpiresAt = inviteExpiryFrom();
@@ -6064,15 +6389,15 @@ export class GroundsService {
    */
   async getParticipantInviteUrl(groundId: string, participantId: string, initiatorId: string): Promise<{ inviteUrl: string }> {
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, initiatorId } });
-    if (!ground) throw new ForbiddenException('You are not the lead of this check-in');
+    if (!ground) throw new ForbiddenException('Only the person who runs this check-in can do that, so ask them to.');
 
     const participant = await this.prisma.groundParticipant.findFirst({
       where: { id: participantId, groundId },
-      select: { inviteToken: true, userId: true },
+      select: { inviteToken: true, userId: true, nameGiven: true, user: { select: { firstName: true } } },
     });
-    if (!participant) throw new NotFoundException('Participant not found');
-    if (participant.userId) throw new BadRequestException('This participant has already accepted their invite');
-    if (!participant.inviteToken) throw new BadRequestException('No active invite token');
+    if (!participant) throw new NotFoundException('That person is not in this check-in, so check the name and try again.');
+    if (participant.userId) throw new BadRequestException(`${participant.user?.firstName?.trim() || participant.nameGiven?.trim() || 'This person'} has already joined this check-in, so there is no invitation link to share.`);
+    if (!participant.inviteToken) throw new BadRequestException('That invitation is no longer open, so ask whoever runs the check-in to send a new one.');
 
     return { inviteUrl: this.email.buildInviteUrl(participant.inviteToken) };
   }
@@ -6102,13 +6427,13 @@ export class GroundsService {
     initiatorId: string,
   ): Promise<{ checkInUrl: string }> {
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, initiatorId } });
-    if (!ground) throw new ForbiddenException('You are not the lead of this check-in');
+    if (!ground) throw new ForbiddenException('Only the person who runs this check-in can do that, so ask them to.');
 
     const participant = await this.prisma.groundParticipant.findFirst({
       where: { id: participantId, groundId },
       select: { id: true, userId: true },
     });
-    if (!participant) throw new NotFoundException('Participant not found');
+    if (!participant) throw new NotFoundException('That person is not in this check-in, so check the name and try again.');
     if (!participant.userId) {
       throw new BadRequestException(
         'They have not accepted their invite yet. Copy the invite link instead.',
@@ -6148,9 +6473,9 @@ export class GroundsService {
       where: { id: groundId, organizationId },
       include: { participants: true },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
-    if (ground.initiatorId !== userId) throw new ForbiddenException('Only the lead of this check-in can begin the closing session');
-    if (hasEnded(ground.status)) throw new BadRequestException('This check-in has already ended');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    if (ground.initiatorId !== userId) throw new ForbiddenException('Only the person who runs this check-in can begin the last check-in, so ask them to.');
+    if (hasEnded(ground.status)) throw new BadRequestException('This check-in has already ended, so there is nothing more to change.');
 
     /**
      * WHO GETS A CLOSING SESSION: THE PEOPLE WHO TOOK PART.
@@ -6193,7 +6518,7 @@ export class GroundsService {
             select: { sessionNumber: true },
           });
           await tx.checkIn.create({
-            data: { groundId, participantId: p.id, sessionNumber: (last?.sessionNumber ?? 0) + 1, status: CheckInStatus.NOT_STARTED, isFinal: true },
+            data: { groundId, participantId: p.id, sessionNumber: (last?.sessionNumber ?? 0) + 1, status: CheckInStatus.NOT_STARTED, isFinal: true, ...(p.partyType === PartyType.INITIATOR ? { optional: true } : {}) },
           });
         }
         flagged += 1;
@@ -6204,7 +6529,7 @@ export class GroundsService {
 
   async activate(groundId: string, organizationId: string) {
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId }, include: { report: true } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /* Activating is not resuming, and it is not reopening. An ended ground stays ended; a held one is lifted by resumeGround, which knows what to go back to. */
     if (!mayChangeOnItsOwn(ground.status)) {
       throw new BadRequestException(
@@ -6236,21 +6561,34 @@ export class GroundsService {
   async getMediatorBrief(groundId: string, requestingUserId: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      include: { report: { select: { centralQuestion: true } } },
+      include: { report: { select: { centralQuestion: true, releasedAt: true } } },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     const requesterLink = await this.prisma.groundParticipant.findFirst({
       where: { groundId, userId: requestingUserId },
     });
     const isInitiator = ground.initiatorId === requestingUserId;
     if (!isInitiator && !requesterLink) {
-      throw new ForbiddenException('Only the lead, or somebody taking part in this check-in, can request a mediator brief');
+      throw new ForbiddenException('Only the person who runs this check-in, or somebody in it, can ask for this, so ask one of them.');
+    }
+    /* Nobody held for a seat or waiting for the organisation reads anything of the check-in (privacy row 5). */
+    if (!isInitiator) {
+      await refuseSomeoneHeldForASeat(this.prisma as any, groundId, requestingUserId);
+      await refuseSomeoneAwaitingTheOrganisation(this.prisma as any, requestingUserId, CANNOT_CHECK_IN_YET);
     }
 
     const daysOpen = Math.floor((Date.now() - ground.createdAt.getTime()) / (1000 * 60 * 60 * 24));
     const endStateOptions = endStatesFor(ground.scenario).map((s) => s.label);
-    const gapSummary = ground.report?.centralQuestion ?? 'Not yet synthesised';
+    /*
+     * THE REPORT'S QUESTION IS THE TEAM'S PICTURE, AND IT WAITS FOR THE RELEASE (decision 76, item 4). The report withholds its central
+     * question from everybody but the lead until the lead releases it; this brief served it to every participant the moment the report was
+     * written. Only the lead reads it before then.
+     */
+    const released = !!ground.report?.releasedAt;
+    const gapSummary = ground.report?.centralQuestion && (isInitiator || released)
+      ? ground.report.centralQuestion
+      : 'The team\u2019s picture is not shared yet.';
 
     return {
       groundLabel: ground.label,
@@ -6308,15 +6646,15 @@ export class GroundsService {
   private async assertMaySeeGround(groundId: string, userId: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { organizationId: true, initiatorId: true, scenario: true, createdByUserId: true, status: true, approvedById: true, participants: { select: { userId: true } } },
+      select: { organizationId: true, initiatorId: true, scenario: true, createdByUserId: true, status: true, approvedById: true, participants: { select: { userId: true, email: true } } },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const user = await this.prisma.user.findUnique({
-      where: { id: userId }, select: { role: true, organizationId: true },
+      where: { id: userId }, select: { role: true, organizationId: true, email: true },
     });
     const viewer = { ...user, department: user?.role === 'LEAD' ? await this.departmentOf(userId, ground.organizationId) : null };
     const leadDepartment = user?.role === 'LEAD' && ground.initiatorId ? await this.departmentOf(ground.initiatorId, ground.organizationId) : null;
-    if (!maySee(userId, { ...viewer, userId }, { ...ground, leadDepartment })) throw new NotFoundException('Check-in not found');
+    if (!maySee(userId, { ...viewer, userId }, { ...ground, leadDepartment })) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     return { ...ground, viewerRole: user?.role ?? null };
   }
 
@@ -6415,7 +6753,9 @@ export class GroundsService {
    */
   async releaseAnyoneWaitingForASeat(organizationId: string): Promise<{ sent: number; stillWaiting: number }> {
     const waiting = await this.prisma.groundParticipant.findMany({
-      where: { awaitingSeat: true, ground: { organizationId } },
+      /* Not into a check-in that is over, stopped or paused, nor one still waiting for an admin to accept it, nor one an admin declined (that is closed):
+         the seat is not the only reason nobody has been written to (known issue B5). */
+      where: { awaitingSeat: true, ground: { organizationId, status: { notIn: [...A_GROUND_THE_JOBS_LEAVE_ALONE, ...A_GROUND_IS_HELD, GroundStatus.AWAITING_APPROVAL] } } },
       orderBy: { createdAt: 'asc' },
       select: {
         id: true, email: true, inviteToken: true, groundId: true,
@@ -6471,10 +6811,10 @@ export class GroundsService {
       },
     });
     /* NotFound rather than Forbidden for a stranger, as everywhere else here. */
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     if (ground.initiatorId !== requestingUserId) {
       const mine = ground.participants.some((p) => p.userId === requestingUserId);
-      if (!mine) throw new NotFoundException('Check-in not found');
+      if (!mine) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
       throw new ForbiddenException(
         'Only the person running this check-in can delete it. Your own account of it is yours, and deleting the whole thing would take everybody else\'s with it.',
       );
@@ -6496,7 +6836,7 @@ export class GroundsService {
           return named || (p as any)?.nameGiven?.trim() || 'a colleague';
         });
       throw new BadRequestException(
-        `${who.join(' and ')} ${who.length === 1 ? 'has' : 'have'} already given an account here, so this is not a test any more - deleting it would destroy what they wrote, and they cannot get it back. Close the check-in instead: everybody keeps their record.`,
+        `${who.join(' and ')} ${who.length === 1 ? 'has' : 'have'} already answered here, so this is not a test any more, and deleting it would destroy what they wrote with no way to get it back. Close the check-in instead, and everybody keeps their record.`,
       );
     }
 
@@ -6509,10 +6849,10 @@ export class GroundsService {
   async updateTimeline(
     groundId: string,
     requestingUserId: string,
-    dto: { label?: string; timelineDays?: number; timelineWeeks?: number; runsUntilEnded?: boolean; cadence?: string; contextNote?: string; startsAt?: string; brief?: string; workingDays?: number[] },
+    dto: { label?: string; timelineDays?: number; timelineWeeks?: number; runsUntilEnded?: boolean; cadence?: string; contextNote?: string; startsAt?: string; brief?: string; workingDays?: number[]; cadenceAnchorDay?: number | null; endsOn?: string },
   ) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     const link = await this.prisma.groundParticipant.findFirst({
       where: { groundId, userId: requestingUserId },
@@ -6529,7 +6869,7 @@ export class GroundsService {
     });
     const isOrgAdmin = adminsThisOrg({ ...viewer, userId: requestingUserId }, { ...ground, participants: link ? [{ userId: requestingUserId }] : [] });
     if (!link && ground.initiatorId !== requestingUserId && !isOrgAdmin) {
-      throw new ForbiddenException('You are not a participant in this check-in');
+      throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
     }
 
     // HOW LONG THE GROUND RUNS IS THE LEAD'S CALL, NOT EVERY PARTY'S.
@@ -6549,7 +6889,24 @@ export class GroundsService {
     /* "Until I end it" (request 37) is stored as no planned length: zero days and the flag. A finite
        length sent later turns the flag off again. */
     const goesOnUntilEnded = dto.runsUntilEnded === true;
-    const requestedDays = goesOnUntilEnded ? 0 : dto.timelineDays ?? (dto.timelineWeeks !== undefined ? dto.timelineWeeks * 7 : undefined);
+    /*
+     * "GIVE IT MORE TIME" TO A CHOSEN END (journey test, 12 October 2026). The page turned the date into calendar days, and the count
+     * was those days over the rhythm's gap, so a weekly check-in moved to an end could say a different number of sessions from the one
+     * setup lists for the same end, and the stored end never moved. The end now sets the length the same way setup's does: the
+     * schedule's own rounds from the real start (or the day it was made, with the "Now" rule) up to it, and the end is stored.
+     */
+    const theEndChosen = !goesOnUntilEnded && dto.endsOn && !Number.isNaN(new Date(dto.endsOn).getTime()) ? new Date(dto.endsOn) : null;
+    const cadenceNow = (dto.cadence as Cadence | undefined) ?? ground.cadence;
+    const requestedDays = goesOnUntilEnded ? 0 : theEndChosen
+      ? timelineDaysForAChosenEnd({
+        startsAt: dto.startsAt ? new Date(dto.startsAt) : ground.startsAt,
+        endsAt: theEndChosen,
+        cadence: cadenceNow,
+        workingDays: dto.workingDays ?? (ground as any).workingDays ?? null,
+        anchorDay: dto.cadenceAnchorDay !== undefined ? dto.cadenceAnchorDay : (ground as any).cadenceAnchorDay ?? null,
+        now: ground.createdAt,
+      })
+      : dto.timelineDays ?? (dto.timelineWeeks !== undefined ? dto.timelineWeeks * 7 : undefined);
     /*
      * AND WHICH DAYS THE TEAM WORKS, WHICH COULD ONLY EVER BE SAID AT CREATION.
      *
@@ -6561,11 +6918,10 @@ export class GroundsService {
      *
      * It changes the schedule, so it is the lead's call like the rhythm itself.
      */
-    const changesTheSchedule = requestedDays !== undefined || dto.cadence !== undefined || dto.workingDays !== undefined;
-    if (changesTheSchedule && ground.initiatorId !== requestingUserId && !isOrgAdmin) {
-      throw new ForbiddenException(
-        'Only the lead of this check-in, or an admin in your organisation, can change how long it runs or how often people check in. Ask them if it needs to change.',
-      );
+    const changesTheSchedule = requestedDays !== undefined || dto.cadence !== undefined || dto.workingDays !== undefined || dto.cadenceAnchorDay !== undefined;
+    if (changesTheSchedule && ground.initiatorId !== requestingUserId) {
+      /* Decision 119, H10: an admin only once the lead has left. */
+      await this.mayConfirmSetupOn(ground, requestingUserId);
     }
 
     /**
@@ -6586,11 +6942,7 @@ export class GroundsService {
            every list it appears in, and silently keeping the old one teaches nothing. */
         throw new BadRequestException('A check-in needs a name. Type one, or leave the name as it is.');
       }
-      if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
-        throw new ForbiddenException(
-          'Only the lead of this check-in, or an admin in your organisation, can rename it',
-        );
-      }
+      if (ground.initiatorId !== requestingUserId) await this.mayConfirmSetupOn(ground, requestingUserId);
     }
 
     // MODE IS IMMUTABLE. If a ground could flip from private to shared, someone
@@ -6633,11 +6985,7 @@ export class GroundsService {
      * schedule.
      */
     if (dto.startsAt !== undefined) {
-      if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
-        throw new ForbiddenException(
-          'Only the lead of this check-in, or an admin in your organisation, can change when it starts.',
-        );
-      }
+      if (ground.initiatorId !== requestingUserId) await this.mayConfirmSetupOn(ground, requestingUserId);
       const answered = await this.prisma.checkIn.count({
         where: { groundId, status: CheckInStatus.COMPLETED },
       });
@@ -6656,7 +7004,7 @@ export class GroundsService {
     if (dto.cadence) {
       (dto as any).cadence = (dto.cadence as string).toUpperCase();
       if (!Object.values(Cadence).includes(dto.cadence as Cadence)) {
-        throw new BadRequestException(`Invalid cadence. Must be one of: ${Object.values(Cadence).join(', ')}`);
+        throw new BadRequestException(`That is not a rhythm Groundwork offers, so choose one of ${Object.values(Cadence).map((c) => c.toLowerCase().replace('_', ' ')).join(', ')}.`);
       }
 
       // ONE_TIME's whole guarantee is "a single check-in, full stop" - decided
@@ -6679,6 +7027,22 @@ export class GroundsService {
             'Cadence cannot be changed to or from "One time" after the first check-in has completed.',
           );
         }
+      }
+    }
+
+    /*
+     * THE DAY IT LANDS ON (request 194): a weekday (0 to 6) for weekly and fortnightly, a day of the month (1 to 31) for monthly, or null to clear it.
+     * Refused with a sentence where the number means nothing for the rhythm, rather than stored and ignored: a control that agrees with you and changes nothing.
+     */
+    const theRhythm = (dto.cadence as Cadence | undefined) ?? ground.cadence;
+    if (dto.cadenceAnchorDay !== undefined && dto.cadenceAnchorDay !== null) {
+      const day = dto.cadenceAnchorDay;
+      if (theRhythm === Cadence.WEEKLY || theRhythm === Cadence.FORTNIGHTLY) {
+        if (!Number.isInteger(day) || day < 0 || day > 6) throw new BadRequestException('Choose a day of the week for the check-ins to land on, from Sunday to Saturday.');
+      } else if (theRhythm === Cadence.MONTHLY) {
+        if (!Number.isInteger(day) || day < 1 || day > 31) throw new BadRequestException('Choose a day of the month for the check-ins to land on, from the 1st to the 31st.');
+      } else {
+        throw new BadRequestException('A check-in that happens every day, once, or when you decide has no day to land on, so choose a weekly, fortnightly or monthly rhythm first.');
       }
     }
 
@@ -6711,19 +7075,23 @@ export class GroundsService {
       };
     }
 
-    if (requestedDays !== undefined || dto.cadence !== undefined || dto.workingDays !== undefined) {
-      auditData.timeline.push({
-        changedAt: new Date().toISOString(),
-        changedBy: requestingUserId,
-        changes: {
-          ...(requestedDays !== undefined && { timelineDays: { from: (ground as any).runsUntilEnded ? null : ground.timelineDays, to: goesOnUntilEnded ? null : requestedDays } }),
-          ...(requestedDays !== undefined && ((ground as any).runsUntilEnded === true) !== goesOnUntilEnded && { runsUntilEnded: { from: !!(ground as any).runsUntilEnded, to: goesOnUntilEnded } }),
-          ...(dto.cadence !== undefined && { cadence: { from: ground.cadence, to: dto.cadence } }),
-          ...(dto.workingDays !== undefined && {
-            workingDays: { from: (ground as any).workingDays ?? [], to: workingDaysOf(dto.workingDays) },
-          }),
-        },
-      });
+    if (requestedDays !== undefined || dto.cadence !== undefined || dto.workingDays !== undefined || dto.cadenceAnchorDay !== undefined) {
+      const changes: Record<string, { from: unknown; to: unknown }> = {
+        ...(requestedDays !== undefined && { timelineDays: { from: (ground as any).runsUntilEnded ? null : ground.timelineDays, to: goesOnUntilEnded ? null : requestedDays } }),
+        ...(requestedDays !== undefined && ((ground as any).runsUntilEnded === true) !== goesOnUntilEnded && { runsUntilEnded: { from: !!(ground as any).runsUntilEnded, to: goesOnUntilEnded } }),
+        ...(dto.cadence !== undefined && { cadence: { from: ground.cadence, to: dto.cadence } }),
+        ...(dto.workingDays !== undefined && {
+          workingDays: { from: (ground as any).workingDays ?? [], to: workingDaysOf(dto.workingDays) },
+        }),
+        ...(dto.cadenceAnchorDay !== undefined && { cadenceAnchorDay: { from: (ground as any).cadenceAnchorDay ?? null, to: dto.cadenceAnchorDay } }),
+      };
+      /* B-085: only what actually changed is written to the history. "From FORTNIGHTLY to FORTNIGHTLY" is not a change, and a line saying so is not kept. */
+      for (const k of Object.keys(changes)) {
+        if (JSON.stringify(changes[k].from) === JSON.stringify(changes[k].to)) delete changes[k];
+      }
+      if (Object.keys(changes).length) {
+        auditData.timeline.push({ changedAt: new Date().toISOString(), changedBy: requestingUserId, changes });
+      }
     }
 
     if (requestedLabel && requestedLabel !== ground.label) {
@@ -6799,12 +7167,12 @@ export class GroundsService {
       ? goesOnUntilEnded
         /* No end to be past: it opens again, and only the lead ending it closes it. */
         ? new Date(Date.now() + 86_400_000)
-        : deadlineOf({ createdAt: ground.createdAt, startsAt: dto.startsAt ? new Date(dto.startsAt) : ground.startsAt, timelineDays: requestedDays })
+        : deadlineOf({ createdAt: ground.createdAt, startsAt: dto.startsAt ? new Date(dto.startsAt) : ground.startsAt, timelineDays: requestedDays, ...(theEndChosen ? { endsAt: theEndChosen } : {}) })
       : null;
     const opensAgain = !!reopening && reopening.getTime() > Date.now();
     if (hasStalled(ground.status) && requestedDays !== undefined && !opensAgain) {
       throw new BadRequestException(
-        'That is not enough time to reopen this check-in - the new end date has already passed. Give it a date in the future and it opens again.',
+        'That is not enough time to reopen this check-in, because the new end date has already passed. Give it a date in the future and it opens again.',
       );
     }
 
@@ -6833,11 +7201,15 @@ export class GroundsService {
           runsUntilEnded: goesOnUntilEnded,
           timelineStated: true,
           ...(goesOnUntilEnded && { endsAt: null }),
+          ...(theEndChosen && { endsAt: theEndChosen }),
         }),
         ...(dto.cadence !== undefined && { cadence: dto.cadence as Cadence, cadenceStated: true }),
         /* Normalised on the way in: seven days listed is the same instruction as saying nothing,
            and junk from an old client must not make a check-in unschedulable. */
         ...(dto.workingDays !== undefined && { workingDays: workingDaysOf(dto.workingDays) }),
+        ...(dto.cadenceAnchorDay !== undefined && { cadenceAnchorDay: dto.cadenceAnchorDay }),
+        /* Moving between a weekly kind of rhythm and a monthly one with no new day said would leave a Monday (1) to be read as the 1st of the month. It is cleared. */
+        ...(dto.cadence !== undefined && dto.cadenceAnchorDay === undefined && (ground as any).cadenceAnchorDay != null && theKindOfDayItLandsOn(dto.cadence as Cadence) !== theKindOfDayItLandsOn(ground.cadence) && { cadenceAnchorDay: null }),
         ...(requestedLabel !== undefined && { label: requestedLabel }),
         ...(dto.brief !== undefined && { brief: dto.brief.trim() || null }),
         /*
@@ -6849,9 +7221,9 @@ export class GroundsService {
          */
         ...(dto.startsAt !== undefined && {
           startsAt: dto.startsAt ? new Date(dto.startsAt) : null,
-          endsAt: dto.startsAt && !(goesOnUntilEnded || (requestedDays === undefined && (ground as any).runsUntilEnded))
+          endsAt: theEndChosen ?? (dto.startsAt && !(goesOnUntilEnded || (requestedDays === undefined && (ground as any).runsUntilEnded))
             ? new Date(new Date(dto.startsAt).getTime() + (requestedDays ?? ground.timelineDays ?? 90) * 24 * 60 * 60 * 1000)
-            : null,
+            : null),
         }),
         groundAuditLog: auditData,
       },
@@ -6920,7 +7292,7 @@ export class GroundsService {
       where: { id: groundId, organizationId },
       select: { id: true, status: true, label: true, initiatorId: true },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     if (ground.status !== GroundStatus.AWAITING_APPROVAL) {
       // Already accepted, or never needed accepting. Either way there is nothing to do.
       return { id: ground.id, status: ground.status, alreadyDecided: true };
@@ -6931,6 +7303,8 @@ export class GroundsService {
       data: { status: GroundStatus.OPEN, approvedById: adminUserId, approvedAt: new Date() },
       select: { id: true, status: true },
     });
+    /* The people the lead named while it waited are invited now, once each (known issue B5). */
+    const invitedNow = await this.sendTheInvitationsHeldForApproval(groundId, organizationId).catch((err: any) => { this.logger.error(`Held invitations for ground ${groundId} failed: ${err?.message}`); return 0; });
 
     // The person who set it up is waiting on this, and nothing else would tell them.
     const creator = await this.prisma.user.findUnique({
@@ -6940,10 +7314,50 @@ export class GroundsService {
     const url = `${this.config.get<string>('resend.frontendUrl') ?? ''}/grounds/${ground.id}`;
     if (creator?.email) {
       await this.email
-        .sendGroundApproved(creator.email, creator.firstName ?? 'there', ground.label, url)
+        .sendGroundApproved(creator.email, creator.firstName ?? 'there', ground.label, url, invitedNow)
         .catch((err: any) => this.logger.error(`Approval email failed for ground ${ground.id}: ${err.message}`));
     }
     return { ...updated, alreadyDecided: false };
+  }
+
+  /**
+   * THE INVITATIONS THAT WAITED FOR THE APPROVAL, SENT ONCE (known issue B5).
+   *
+   * Everybody the lead named while the check-in waited is on it with `invitedAt` and `notifiedAt` empty. Those two empty fields are the
+   * whole of "held", and writing them is what makes this send each invitation once: a second run, or a second admin's click, finds
+   * nothing to send. Left alone: anybody waiting for a seat (they have none to be invited into), anybody whose start date is ahead
+   * (the cron sends on the day), and anybody who has left. When at least one went, the check-in moves on to waiting for its parties,
+   * as it would have the moment they were added.
+   */
+  private async sendTheInvitationsHeldForApproval(groundId: string, organizationId: string): Promise<number> {
+    const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId } });
+    if (!ground) return 0;
+    const held = await this.prisma.groundParticipant.findMany({
+      /* Not filtered on `userId`: a colleague who already has an account is a person who has opened Groundwork, not one already invited, and is invited like anybody else. */
+      where: { groundId, partyType: PartyType.PARTICIPANT, invitedAt: null, notifiedAt: null, awaitingSeat: false, leftAt: null },
+      select: { id: true, email: true, inviteToken: true, remitAsGiven: true, startsAt: true },
+    });
+    const due = held.filter((p) => !p.startsAt || p.startsAt.getTime() <= Date.now());
+    if (!due.length) return 0;
+    const initiator = await this.prisma.user.findUnique({ where: { id: ground.initiatorId }, select: { firstName: true } });
+    let sent = 0;
+    for (const p of due) {
+      /* Claimed first, so two approvals at once send once. */
+      const claimed = await this.prisma.groundParticipant.updateMany({ where: { id: p.id, invitedAt: null, notifiedAt: null }, data: { invitedAt: new Date(), notifiedAt: new Date() } });
+      if (!claimed?.count) continue;
+      try {
+        await this.email.sendTheInviteThisGroundSends(ground as any, p.email, `${initiator?.firstName ?? 'A founder'}`, p.inviteToken ?? '', p.remitAsGiven ?? undefined, { kind: 'PARTICIPANT_INVITE', participantId: p.id, groundId });
+        sent += 1;
+      } catch (err: any) {
+        /* The row says nothing went, so the lead can resend it from the check-in. */
+        await this.prisma.groundParticipant.update({ where: { id: p.id }, data: { invitedAt: null, notifiedAt: null } }).catch(() => undefined);
+        this.logger.error(`The held invitation to ${p.email} on ground ${groundId} did not send: ${err?.message}`);
+      }
+    }
+    if (sent > 0 && ground.status !== GroundStatus.AWAITING_LEAD) {
+      await this.prisma.ground.update({ where: { id: groundId }, data: { status: GroundStatus.AWAITING_PARTIES } }).catch(() => undefined);
+    }
+    return sent;
   }
 
   /**
@@ -6956,7 +7370,7 @@ export class GroundsService {
       where: { id: groundId, organizationId },
       select: { id: true, status: true, label: true, initiatorId: true },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     if (ground.status !== GroundStatus.AWAITING_APPROVAL) {
       return { id: ground.id, status: ground.status, alreadyDecided: true };
     }
@@ -6999,7 +7413,7 @@ export class GroundsService {
       where: { id: groundId, ...(this.whatAnAdminMayList(organizationId, adminUserId) as any) },
       select: { id: true },
     });
-    if (!found) throw new NotFoundException('Check-in not found');
+    if (!found) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
   }
 
   /** What is waiting on an admin. Oldest first: the longest wait is the worst one. */
@@ -7022,7 +7436,7 @@ export class GroundsService {
       /* Whether a person chose these or the product suggested them, so the card can say which (B13, P6-002). */
       cadenceStated: g.cadenceStated,
       timelineStated: g.timelineStated,
-      createdBy: [g.initiator.firstName, g.initiator.lastName].filter(Boolean).join(' ') || g.initiator.email,
+      createdBy: fullNameToCall({ user: g.initiator }),
     }));
   }
 
@@ -7034,7 +7448,7 @@ export class GroundsService {
       where: { groundId, userId },
       select: { id: true },
     });
-    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!participant) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
     const note = await this.prisma.participantNote.create({
       data: { groundId, participantId: participant.id, text: trimmed },
       select: { id: true, text: true, createdAt: true, carriedIntoCheckInId: true },
@@ -7048,7 +7462,7 @@ export class GroundsService {
       where: { groundId, userId },
       select: { id: true },
     });
-    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!participant) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
     return this.prisma.participantNote.findMany({
       where: { participantId: participant.id },
       orderBy: { createdAt: 'asc' },
@@ -7062,13 +7476,13 @@ export class GroundsService {
       where: { groundId, userId },
       select: { id: true },
     });
-    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!participant) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
     // Scoped by participantId as well as id, so one person cannot delete another's
     // by guessing an id.
     const { count } = await this.prisma.participantNote.deleteMany({
       where: { id: noteId, participantId: participant.id },
     });
-    if (count === 0) throw new NotFoundException('Note not found');
+    if (count === 0) throw new NotFoundException('That note could not be found, so refresh the page.');
     return { deleted: true };
   }
 
@@ -7170,20 +7584,20 @@ export class GroundsService {
       where: { id: groundId },
       select: { initiatorId: true },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const me = await this.prisma.groundParticipant.findFirst({
       where: { groundId, userId: requestingUserId },
       select: { id: true },
     });
     if (!me && ground.initiatorId !== requestingUserId) {
-      throw new ForbiddenException('You are not a participant in this check-in');
+      throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
     }
 
     const { count } = await this.prisma.personObjective.updateMany({
       where: { id: objectiveId, groundId },
       data: { lastSeenState: state, lastSeenAt: new Date() },
     });
-    if (count === 0) throw new NotFoundException('Expectation not found');
+    if (count === 0) throw new NotFoundException('That expectation could not be found, so refresh the page.');
     return { ok: true as const };
   }
 
@@ -7217,7 +7631,7 @@ export class GroundsService {
       where: { groundId, userId },
       select: { id: true },
     });
-    if (!me) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!me) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
 
     // An expectation id is only accepted where it is one of THIS person's own on THIS check-in.
     // Otherwise a delivery could be filed against somebody else's target.
@@ -7243,7 +7657,7 @@ export class GroundsService {
       where: { groundId, userId },
       select: { id: true },
     });
-    if (!me) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!me) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
     return this.prisma.delivery.findMany({
       where: { groundId, participantId: me.id },
       orderBy: { createdAt: 'desc' },
@@ -7256,7 +7670,7 @@ export class GroundsService {
       where: { groundId, userId },
       select: { id: true },
     });
-    if (!me) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!me) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
     const { count } = await this.prisma.delivery.deleteMany({
       where: { id: deliveryId, participantId: me.id, carriedIntoCheckInId: null },
     });
@@ -7271,7 +7685,7 @@ export class GroundsService {
       where: { id: groundId },
       select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const asker = await this.prisma.user.findUnique({
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
@@ -7324,7 +7738,7 @@ export class GroundsService {
       where: { id: groundId },
       select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const asker = await this.prisma.user.findUnique({
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
@@ -7362,7 +7776,7 @@ export class GroundsService {
       where: { id: groundId },
       select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const asker = await this.prisma.user.findUnique({
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
@@ -7370,7 +7784,12 @@ export class GroundsService {
     /* Reading only, so the admin asked to approve it reads it too (decision 75, item 2). */
     const isOrgAdmin = readsAsAnAdmin({ ...asker, userId: requestingUserId }, ground);
     if (!link && ground.initiatorId !== requestingUserId && !isOrgAdmin) {
-      throw new ForbiddenException('You are not a participant in this check-in');
+      throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
+    }
+    /* Nobody held for a seat or waiting for the organisation reads the check-in's starting point (privacy row 5). */
+    if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
+      await refuseSomeoneHeldForASeat(this.prisma as any, groundId, requestingUserId);
+      await refuseSomeoneAwaitingTheOrganisation(this.prisma as any, requestingUserId, CANNOT_CHECK_IN_YET);
     }
     const [entries, done] = await Promise.all([
       this.prisma.groundBaselineEntry.findMany({
@@ -7432,7 +7851,7 @@ export class GroundsService {
       where: { id: groundId },
       select: { id: true, initiatorId: true, organizationId: true },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /**
      * DECISION 63: the lead's, or - only once the lead has left the organisation - an admin of the
      * same organisation, standing in for them. What doing well looks like is the lead's to state - a
@@ -7490,7 +7909,7 @@ export class GroundsService {
       where: { id: groundId },
       select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const asker = await this.prisma.user.findUnique({
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
@@ -7498,7 +7917,12 @@ export class GroundsService {
     /* Reading only, so the admin asked to approve it reads it too (decision 75, item 2). */
     const isOrgAdmin = readsAsAnAdmin({ ...asker, userId: requestingUserId }, ground);
     if (!link && ground.initiatorId !== requestingUserId && !isOrgAdmin) {
-      throw new ForbiddenException('You are not a participant in this check-in');
+      throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
+    }
+    /* Nobody held for a seat or waiting for the organisation reads the check-in's starting point (privacy row 5). */
+    if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
+      await refuseSomeoneHeldForASeat(this.prisma as any, groundId, requestingUserId);
+      await refuseSomeoneAwaitingTheOrganisation(this.prisma as any, requestingUserId, CANNOT_CHECK_IN_YET);
     }
     const rows = await this.prisma.groundBaseline.findMany({
       where: { groundId },
@@ -7531,7 +7955,7 @@ export class GroundsService {
       where: { groundId, userId },
       select: { id: true, specificityHistory: true },
     });
-    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!participant) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
     const raw: number[] = (participant.specificityHistory as number[]) ?? [];
     const scores = raw.filter(n => typeof n === 'number' && isFinite(n));
     const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
@@ -7594,14 +8018,15 @@ export class GroundsService {
 
   async getMyCheckinStatus(groundId: string, userId: string) {
     const participant = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId } });
-    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!participant) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
 
     const checkIns = await this.prisma.checkIn.findMany({
       where: { participantId: participant.id },
       orderBy: { sessionNumber: 'asc' },
       /* availableFrom: the day the next one opens, which the finished screen tells the person. */
-      select: { id: true, sessionNumber: true, status: true, completedAt: true, availableFrom: true },
-    });
+      /* closedReason and the first word the person said: a session the clock closed with nothing said is not one they finished (wasAQuietClose). */
+      select: { id: true, sessionNumber: true, status: true, completedAt: true, availableFrom: true, closedReason: true, turns: { where: { role: 'PERSON' as any }, select: { id: true }, take: 1 } },
+    }).then((rows: any[]) => (rows ?? []).map(({ turns, ...c }) => ({ ...c, personTurns: Array.isArray(turns) ? turns.length : undefined })));
 
     const latest = checkIns[checkIns.length - 1];
     return {
@@ -7629,7 +8054,7 @@ export class GroundsService {
    */
   async pauseGround(groundId: string, adminUserId: string, reason: string): Promise<void> {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     const PAUSABLE_STATUSES: GroundStatus[] = [
       GroundStatus.OPEN,
@@ -7638,14 +8063,14 @@ export class GroundsService {
       GroundStatus.ACTIVE,
     ];
     if (!PAUSABLE_STATUSES.includes(ground.status)) {
-      throw new BadRequestException(`Check-in in status "${ground.status}" cannot be paused`);
+      throw new BadRequestException('This check-in cannot be paused in the state it is in now, so there is nothing to do.');
     }
 
     // Verify the requesting user belongs to this ground's org or is the initiator.
     const initiatorOrAdmin = await this.prisma.user.findFirst({
       where: { id: adminUserId, organizationId: ground.organizationId },
     });
-    if (!initiatorOrAdmin) throw new ForbiddenException('Only an org member may pause a check-in');
+    if (!initiatorOrAdmin) throw new ForbiddenException('Only a member of the organisation can pause a check-in, so ask one to do it.');
 
     await this.prisma.ground.update({
       where: { id: groundId },
@@ -7663,15 +8088,15 @@ export class GroundsService {
    */
   async resumeGround(groundId: string, adminUserId: string, reason: string): Promise<void> {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     if (!isHeld(ground.status)) {
-      throw new BadRequestException(`Check-in in status "${ground.status}" is not on hold`);
+      throw new BadRequestException('This check-in is not on hold, so there is nothing to resume.');
     }
 
     const member = await this.prisma.user.findFirst({
       where: { id: adminUserId, organizationId: ground.organizationId },
     });
-    if (!member) throw new ForbiddenException('Only an org member may resume a check-in');
+    if (!member) throw new ForbiddenException('Only a member of the organisation can resume a check-in, so ask one to do it.');
 
     const backTo = ground.pausedFromStatus ?? GroundStatus.ACTIVE;
     if (!ground.pausedFromStatus) {
@@ -7697,6 +8122,11 @@ export class GroundsService {
    * Works for two-party and multi-party grounds, and the difference between the
    * two is where this went wrong before - see the comment on the query.
    */
+  /** Decision 133: "Check in yourself" - see check-in-yourself.ts. */
+  async openTheLeadsCheckIn(groundId: string, organizationId: string, userId: string) {
+    return openTheLeadsCheckIn(this.prisma, groundId, organizationId, userId);
+  }
+
   async isSessionReadyForReport(groundId: string, sessionNumber: number): Promise<boolean> {
     // A participant is "active" if they accepted the invite (userId set) OR if
     // they already completed a check-in for this session (participant-chat flow
@@ -7740,11 +8170,12 @@ export class GroundsService {
     /* EVERYONE DOES A FIRST CHECK-IN. A managing-only lead gives session 1 like everybody else and is
        a party to that round; from session 2 they have no check-in and are not waited on. */
     /* And in a situation where the lead only asks, they are not a party to any round of it. */
-    const itsSituation = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { scenario: true } });
+    /* Decision 133: the lead checks in when they choose, so a round never waits on them and counts
+       them only when they answered it (the-lead-checks-in-when-they-choose.ts). */
     const active = await this.prisma.groundParticipant.findMany({
       where: {
         groundId,
-        ...(waitsOnAManagingOnlyLead(itsSituation?.scenario, sessionNumber) ? {} : { managingOnly: false }),
+        AND: [whoASessionCounts(sessionNumber, AN_ANSWER)],
         OR: [
           { userId: { not: null } },
           { checkIns: { some: { sessionNumber, status: CheckInStatus.COMPLETED } } },
@@ -7768,7 +8199,12 @@ export class GroundsService {
       }).catch(() => [])) ?? []).map((c: any) => c.participantId));
       return rows.filter((p) => !notLetIn.has(p.id) || spoke.has(p.id));
     });
-    if (active.length < 2) return false;
+    /* The lead is still one of the people in it, for the rule that a shared report needs two, even in
+       a round they chose not to check in (decision 133): a lead and one colleague still get a report. */
+    const theLeadSatThisOneOut = await (this.prisma.groundParticipant.count?.({
+      where: { groundId, partyType: PartyType.INITIATOR, NOT: { checkIns: { some: { sessionNumber, status: { in: AN_ANSWER } } } } },
+    }) ?? Promise.resolve(0)).catch(() => 0);
+    if (active.length + (theLeadSatThisOneOut > 0 ? 1 : 0) < 2) return false;
 
     /*
      * A GROUND ANSWERED ON A LINK IS READY ON ANSWERS, NOT ON ATTENDANCE.
@@ -7797,11 +8233,12 @@ export class GroundsService {
     for (const p of active) {
       const ci = await this.prisma.checkIn.findFirst({
         where: { participantId: p.id, sessionNumber, status: { in: AN_ANSWER } },
-        select: { status: true },
+        select: { status: true, closedReason: true, turns: { where: { role: 'PERSON' as any }, take: 1, select: { id: true } } },
       });
       if (!ci && away.has(p.id)) continue;
       if (!ci) return false;
-      if (ci.status === CheckInStatus.COMPLETED) completed += 1;
+      /* A session the clock closed with nothing said ends the wait on that person, but is not an account. */
+      if (ci.status === CheckInStatus.COMPLETED && !wasAQuietClose(ci as any)) completed += 1;
     }
     /* A round of refusals has answered and has nothing to report: no shared report from zero accounts. */
     return completed >= AT_LEAST_ONE_ACCOUNT;
@@ -7913,7 +8350,7 @@ export class GroundsService {
         },
       },
     });
-    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!participant) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
 
     const sessions = (participant.checkIns ?? []).map(ci => ({
       sessionNumber: ci.sessionNumber,
@@ -7978,7 +8415,7 @@ export class GroundsService {
       where: { groundId, userId },
       select: { soloArtifact: true, soloArtifactShared: true },
     });
-    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!participant) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
     const report = thePrivateSummaryAsRead(participant.soloArtifact);
     return { report, shared: participant.soloArtifactShared };
   }
@@ -8000,7 +8437,7 @@ export class GroundsService {
       where: { id: groundId },
       select: { initiatorId: true, chaseAfterDays: true, chasingStopped: true, tellTheLead: true },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     if (ground.initiatorId !== userId) {
       throw new ForbiddenException('Only whoever set this check-in up can change how it reminds people.');
     }
@@ -8038,7 +8475,7 @@ export class GroundsService {
       where: { groundId, userId },
       select: { id: true },
     });
-    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!participant) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
     await this.prisma.groundParticipant.update({
       where: { id: participant.id },
       data: { soloArtifactShared: shared },
@@ -8061,7 +8498,12 @@ export class GroundsService {
  * HOW LONG A NEW CHECK-IN RUNS (U.6 review): what they said, else the end they chose, else the
  * situation's usual length. See timelineDaysForAChosenEnd.
  */
-function howLongItRuns(dto: { runsUntilEnded?: boolean; timelineDays?: number; endsAt?: string | Date | null; startsAt?: string | Date | null; cadence?: any; scenario: any; workingDays?: number[] | null }): number {
+/** Whether a rhythm lands on a weekday, on a day of the month, or on no chosen day at all. */
+function theKindOfDayItLandsOn(c: Cadence): 'weekday' | 'month' | 'none' {
+  return c === Cadence.MONTHLY ? 'month' : c === Cadence.WEEKLY || c === Cadence.FORTNIGHTLY ? 'weekday' : 'none';
+}
+
+function howLongItRuns(dto: { runsUntilEnded?: boolean; timelineDays?: number; endsAt?: string | Date | null; startsAt?: string | Date | null; cadence?: any; scenario: any; workingDays?: number[] | null; cadenceAnchorDay?: number | null }): number {
   /* No planned length. Zero is what every reader of the length already reads as "no end". */
   if (dto.runsUntilEnded === true) return 0;
   if (dto.timelineDays != null) return dto.timelineDays;
@@ -8071,6 +8513,7 @@ function howLongItRuns(dto: { runsUntilEnded?: boolean; timelineDays?: number; e
       endsAt: new Date(dto.endsAt),
       cadence: dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario as keyof typeof RECOMMENDED_CADENCE],
       workingDays: dto.workingDays ?? null,
+      anchorDay: dto.cadenceAnchorDay ?? null,
     });
   }
   return DEFAULT_TIMELINE_DAYS[dto.scenario as keyof typeof DEFAULT_TIMELINE_DAYS];

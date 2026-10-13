@@ -1,3 +1,8 @@
+import { withoutTheLeadsSetUpForAMember } from '../grounds/the-leads-set-up-is-the-leads-in-the-anchor';
+import { owesThisSession } from '../grounds/the-lead-checks-in-when-they-choose';
+import { whoHasMissedCheckIns, whatTheLeadReads, theNextStepSuggested, TOLD_THE_LEAD, whoMissedTheCheckInsJustBefore } from '../grounds/missed-check-ins';
+import { SOMEONE as SOMEONE_NAMED } from '../engagement/a-name-to-call-them';
+import { theConfirmedWaits } from '../grounds/a-wait-is-the-speakers-account';
 import { wholeDaysTo, theDayItBegan, theRecordsClock } from './a-wait-is-dated-not-counted';
 import { aFindingThatDoesNotSayTheWaitAgain } from './where-each-person-is-against-their-number';
 import { eachRepeatedSentenceSaidOnce } from './each-repeated-sentence-said-once';
@@ -17,6 +22,7 @@ import { howARecordIsKnown, theRecordsMark, whatHappensNext } from './what-happe
 import { whereThisTargetStands, theHeadlineQuestion, theDirectionToReadIn, type ATeamAim } from './the-headline-and-where-each-target-stands';
 import { whereThisIsHeading } from './where-this-is-heading';
 import { whoTheEndingIsAbout } from '../resolution/who-the-ending-is-about';
+import { theMonthEndedOn } from './the-anchor-month-end-event';
 import { deadlineOf } from '../grounds/when-the-clock-starts';
 import { theWorkByArea, reportedAgainstTheRules } from './the-work-by-area-and-by-stage';
 import { toCloseTheGap } from './to-close-the-gap';
@@ -24,7 +30,7 @@ import { theValueOf, theContactHistory, theirReadInTheirWords, NO_VALUE_SAID, WH
 import { helpNobodyMentioned } from './help-nobody-mentioned';
 
 /** Said where the prototype has "Open issues" (request 115 c): what the record would need to hold. */
-export const NO_OPEN_ISSUES_ON_RECORD = 'Nothing on record follows an issue from unclear, to decided, to done and checked, so open issues cannot be shown yet. Where people see something differently, and the questions written down to decide on the Context page, are under what needs you.';
+export const NO_OPEN_ISSUES_ON_RECORD = 'Groundwork does not follow an issue from the day it is raised to the day it is decided and done, so there is no list of open issues here. Where people see something differently, and the questions written down to decide on the Context page, are under what needs you.';
 import { theShareSays, YOU_HAVE_NO_SHARE_YET } from './your-share';
 import { theirOwnAimsKeptOnlyAsPromises, AN_AIM_FROM_THEIR_PROMISE } from './an-aim-kept-only-as-their-promise';
 import { eachDealInItsGroup } from './each-deal-in-its-group';
@@ -39,6 +45,7 @@ import { areaOfGoalOrFallback } from '../grounds/the-area-of-a-goal-is-worded-on
 import { withoutWhatTheLeadHasNotToldThemAbout, theWordsOfWhatTheLeadHasNotToldThemAbout, whatThePersonReadsOfTheirOwnUntoldGoals, theyRunThisCheckIn } from './an-untold-goal-is-not-a-board-objective';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-internal-label-reaches-anyone';
 import { contributionAsThisReaderMayRead } from './a-rating-goes-only-to-the-person';
+import { contributionWithoutTheLeadsAdvice, coverageWithoutTheLeadsAdvice } from './the-leads-advice-stays-with-the-lead';
 import { coverageAsThisReaderMayRead, withNoRatingNumber } from './no-rating-is-served';
 import { theBoardKindsOffered, theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { theAnchorBoardParts } from './the-anchor-board-parts';
@@ -78,7 +85,6 @@ import {
 } from './board-families';
 import { totalSessionsFor } from '../grounds/session-count';
 import { labelsForParties, namesVisibleTo, readsWithNamesOf, eachSideGetsSomebody, plainWordsByPerson, atTheStart, withNames } from '../reports/party-labels';
-import { theNameInAnAddress } from '../reports/the-name-in-an-address';
 import { anAimAsASentence, yourOwnWhereYouAreTheSubject, anAimTheHolderSet, aPromiseNotAnAim } from './an-aim-is-a-sentence-about-somebody';
 import {
   CoverageKind,
@@ -131,6 +137,7 @@ import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFir
 import { overTimeAsServed, meetingsOnRecordFor, inOurVoice, looksLikeATimeOrADate } from '../reports/what-the-record-shows-over-time';
 import { everyStoredSentenceReadsRight } from '../reports/a-stored-sentence-reads-right';
 import { aBoardWithNoEmptyLine } from './a-board-has-no-empty-line';
+import { withTheEarlierRead } from '../patterns/stored-pattern-lines-through-the-wall';
 import { patternQuestionsToSettleFirst } from './pattern-questions-to-settle-first';
 import { everyDivergenceReadable } from '../reports/a-field-name-is-not-a-heading';
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
@@ -142,13 +149,18 @@ import { askTheReportsDoor, theLeadsNamesOf, theLeadsLineAsAParticipantMayRead, 
 import { whatThisSessionHolds, atAGlanceTiles, theBlockersTileNamesThis } from '../reports/what-this-session-holds';
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-quote-built-at-the-read';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
+import { whoHasNotJoinedYet, theNotJoinedYetLine } from '../grounds/invited-not-joined-yet';
+import { wasAQuietClose } from '../grounds/an-answer-includes-a-refusal';
+/** The person's first turn on a check-in, if any: with `closedReason`, enough to tell a session the clock closed with nothing said (wasAQuietClose). */
+const SAID = { where: { role: 'PERSON' as any }, take: 1, select: { id: true } };
 import { isFromOutside, leaveOfThePeopleOn, theAwayLinesFor } from '../suites/who-is-away';
 import { adminsThisOrg, askedToApproveIt } from '../grounds/who-may-read-this-check-in';
 import { refuseSomeoneHeldForASeat } from '../participants/held-for-a-seat';
+import { withTheirNamesFromTheOrganisation } from '../../common/colleagues';
 import { CANNOT_OPEN_THE_BOARD_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { theLeadsWordsAbout, withoutTheLeadsDescriptionOfAnyone, theShareableTextFor } from '../grounds/the-leads-words-about-someone';
 import { whereEachPersonIs, hasANumberADateOrADocument, notNothingWhereThePageSaysSomething } from './where-each-person-is-against-their-number';
-import { theQuickReadAgreesWithTheReport, theDisagreementTheReportOpensWith } from './the-quick-read-agrees-with-the-report';
+import { theQuickReadAgreesWithTheReport, theDisagreementTheReportOpensWith, theDifferencesReadAgreesWithTheQuestion } from './the-quick-read-agrees-with-the-report';
 import { theNinetyDaysInThreeSteps } from './the-ninety-days-in-three-steps';
 import { theQuickReadCountsTheWaitsTheBoardCounts } from './the-quick-read-counts-the-waits-the-board-counts';
 import { oneCountPerThing } from './one-count-per-thing';
@@ -156,11 +168,12 @@ import { type ToLookAt } from './the-same-thing-for-three-check-ins';
 import { theSameThingFromTheRows } from './the-same-thing-read-from-the-record';
 import { whenTheBoardLastChanged, whatAReaderWhoOnlyReadsIsTold } from './when-the-board-last-changed';
 import { whatTheLeadShouldKnow, targetsFor } from './whose-number-is-whose-business';
-import { whichRoundIsOpen } from './which-round-is-open';
+import { whichRoundIsOpen, theTeamsOpenRound } from './which-round-is-open';
 import { splitTheTotal, sayingWhatTheSplitDoes } from '../alignment/a-total-splits-by-what-people-did';
 import { peopleFrom } from '../alignment/a-file-of-people-becomes-people';
 import { whatTheyTried } from '../conversation/a-blocker-is-not-a-blocker-until-you-have-tried';
 import { theBoardsJudgementFor } from '../reports/the-judgement-is-the-leads';
+import { withTheCountsBehindIt } from './the-counts-behind-this';
 import { isEvaluationCheckIn, theSubjectOfAnEvaluationCheckIn, viewerIsTheSubjectOfAnEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { whatEachHandoffPersonTyped, withTheirWordsChecked } from './the-handoff-words-the-person-typed';
 import { whatWasAgreedAtTheStart, theGoalsSetForAnyone } from './what-was-agreed-at-the-start';
@@ -357,12 +370,15 @@ export class BoardService {
         /* For the header's "how it is going": the rounds, and the newest round's shared picture. */
         /* participantId too: the glance counts who has answered this round by it, and without it the board read
            "0 of 2 answered this round" to a woman who had just answered (Hafsah, 21 Sep 2026). */
-        checkIns: { select: { sessionNumber: true, status: true, isSetup: true, completedAt: true, participantId: true, availableFrom: true } },
-        reportRounds: { select: { sharedPicture: true }, orderBy: { sessionNumber: 'desc' }, take: 1 },
+        /* With the close reason and the person's first turn, so the glance does not count a session the clock closed with nothing said as answered. */
+        checkIns: { select: { sessionNumber: true, status: true, isSetup: true, completedAt: true, participantId: true, availableFrom: true, closedReason: true, turns: SAID } },
+        reportRounds: { select: { sharedPicture: true, sessionNumber: true }, orderBy: { sessionNumber: 'desc' }, take: 1 },
         poll: { include: { options: { orderBy: { sortOrder: 'asc' } } } },
       },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    /* Somebody already here, added by their address, is named by their membership (user journeys, F-7). */
+    await withTheirNamesFromTheOrganisation(this.prisma as any, (ground as any).organizationId, (ground.participants ?? []) as any);
     /* A wait on oneself is not a wait, a wait on "the lead" is a wait on the lead, and one wait said four ways is one (request 111 e, request 123 items 4 and 5). */
     (ground as any).dependencies = theWaitsAsABoardReadsThem((ground as any).dependencies ?? [], ground.participants.find((p) => !!ground.initiatorId && p.userId === ground.initiatorId)?.id);
 
@@ -440,7 +456,7 @@ export class BoardService {
     const viewer = requestingUserId
       ? await this.prisma.user.findUnique({
         where: { id: requestingUserId },
-        select: { role: true, organizationId: true, awaitingOrgApproval: true },
+        select: { role: true, organizationId: true, awaitingOrgApproval: true, email: true },
       })
       : null;
     /* Whoever runs it, set it up or administers it reads a goal not told (decisions 5 and 86); the person it is about, and a colleague, do not. */
@@ -452,7 +468,7 @@ export class BoardService {
     const adminHere = adminsThisOrg({ ...viewer, userId: requestingUserId }, ground as any) || askedToApproveIt({ ...viewer, userId: requestingUserId }, ground as any);
     if (!me && !isInitiator && !isSetupAdmin && !adminHere) {
       /* NotFound, not Forbidden: a 403 tells a stranger, or an admin without access to a review, that the check-in is real (GW-PRI-04). */
-      throw new NotFoundException('Check-in not found');
+      throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     }
 
     /*
@@ -591,6 +607,11 @@ export class BoardService {
         completedAt: true, specificityLevel: true, specificityDimensions: true,
         /* When each session opened, for the session lines (request 107 e). */
         availableFrom: true, startedAt: true,
+        /* Whether it was a set-up conversation, which the timeline leaves out: the anchor lead's set-up is saved done, and read as "the first answers for
+           session 1 came in" before anybody had answered (review of fd583ba5). */
+        isSetup: true,
+        /* Whether the clock closed it with nothing said, which is not an answer (the grid's "answered"). */
+        closedReason: true, turns: { where: { role: 'PERSON' as any }, take: 1, select: { id: true } },
       },
       orderBy: { sessionNumber: 'asc' },
     });
@@ -604,7 +625,8 @@ export class BoardService {
        unfinished session, which is next week's row written ahead of time, so every tile counted a
        round with nothing in it. The rule now lives in one function and both callers ask it. */
     /* Nobody an admin has not let in yet holds the round open (decision 77). */
-    const givers = new Set(ground.participants.filter((p: any) => !p.managingOnly && !isNotLetInYet(p)).map((p: any) => p.id));
+    /* Decision 133: the round's clock is the team's; the lead checks in when they choose. */
+    const givers = new Set(ground.participants.filter((p: any) => owesThisSession(p) && !isNotLetInYet(p)).map((p: any) => p.id));
     const mine = checkIns.filter((c) => givers.has(c.participantId));
     const openRound = mine.length ? whichRoundIsOpen(mine as any) : maxSession;
     /* THE BOARD IS EVERY SESSION. The session report runs its engines over one session's rows; the
@@ -685,7 +707,7 @@ export class BoardService {
       const p = ground.participants.find((x) => x.id === pid);
       if (!p) return null;
       if (hiddenFromThisReader(pid)) return aColleague(pid);
-      const n = [p.user?.firstName, aSurnameOrNothing(p.user?.lastName)].filter(Boolean).join(' ').trim() || ((p as any).nameGiven ?? '').trim() || (theNameInAnAddress((p as any).email) ?? '');
+      const n = [p.user?.firstName, aSurnameOrNothing(p.user?.lastName)].filter(Boolean).join(' ').trim() || ((p as any).nameGiven ?? '').trim();
       /*
        * AND WHO THEY ANSWERED FOR, THE SAME WAY THE REPORT DOES IT.
        *
@@ -803,6 +825,8 @@ export class BoardService {
         timelineDays: (ground as any).runsUntilEnded ? null : (ground as any).timelineDays ?? null,
         cadence: (ground as any).cadence ?? null,
         scenario: (ground as any).scenario ?? null,
+        /* Whoever runs it reads the story's count as the record has it now, the same as the active line beside it (the count is the product's own arithmetic). */
+        storyRound: isInitiator || isSetupAdmin || adminHere ? ((ground as any).reportRounds?.[0]?.sessionNumber ?? null) : null,
         /*
          * NEVER A RUN OF THE LEAD'S PRIVATE DESCRIPTION OF ANYONE, FOR A READER WHO IS NOT THE LEAD
          * (decision 30). The read-side net: see withoutTheLeadsDescriptionOfAnyone and the same
@@ -884,12 +908,12 @@ export class BoardService {
        * SHARED picture is not permission to hand round the reading of it.
        * See reports/the-judgement-is-the-leads.
        */
-      ...theBoardsJudgementFor((ground as any).report, {
+      ...(await withTheCountsBehindIt(this.prisma, groundId, theBoardsJudgementFor((ground as any).report, {
         isLead: isInitiator,
         /* A check-in of one (request 136 item 7): the same reading the report uses, people who answer, not people managing. */
         theReaderIsTheOnlyPerson: ((ground.participants as any[]) ?? []).filter((x) => !x.managingOnly).length === 1
           && ((ground.participants as any[]) ?? []).filter((x) => !x.managingOnly)[0]?.userId === (ground as any).initiatorId,
-      }),
+      }))),
       /*
        * AND WHAT THE RECORD SHOWS ACROSS EVERY SESSION - commitments, dependencies, patterns, gaps,
        * what is still open. The lead's own surface, because it is the lead who has to decide
@@ -901,7 +925,7 @@ export class BoardService {
          same number of sessions in both (item 18). */
       overTime: isInitiator ? await (async () => {
         const served = overTimeAsServed((ground as any).report?.overTime ?? null, {
-          sessionsSoFar: Math.max(0, ...checkIns.filter((c: any) => !c.isSetup && c.status === CheckInStatus.COMPLETED).map((c: any) => c.sessionNumber ?? 0)),
+          sessionsSoFar: Math.max(0, ...checkIns.filter((c: any) => !c.isSetup && c.status === CheckInStatus.COMPLETED && !wasAQuietClose(c)).map((c: any) => c.sessionNumber ?? 0)),
           meetingsOnRecord: await meetingsOnRecordFor(this.prisma, groundId),
         });
         return served && patternQuestions.length ? { ...served, toSettleFirst: [...(served.toSettleFirst ?? []), ...patternQuestions] } : served;
@@ -935,12 +959,14 @@ export class BoardService {
           select: { createdAt: true },
         })?.catch?.(() => []) ?? [],
         decidedAt: (ground as any).closedAt ?? null,
+        monthEndedAt: theMonthEndedOn((ground as any).groundAuditLog),
       }),
       participants: ground.participants.map((p) => ({
         id: p.id,
         name: nameOf(p.id),
         /* U.6 review: the lead's words about a person are for whoever runs the check-in only. */
-        role: theLeadsWordsAbout(p, isInitiator) ?? (p.managingOnly ? 'Managing only' : null),
+        /* Managing only is an internal flag, never said as a role: the real role is the lead's own words, or nothing. */
+        role: theLeadsWordsAbout(p, isInitiator) ?? null,
         managingOnly: p.managingOnly,
         signedOffAt: p.signedOffAt,
         /*
@@ -1239,7 +1265,7 @@ export class BoardService {
             participantId: p.id,
             name: nameOf(p.id),
             asked: checkIns.some(
-              (c) => c.participantId === p.id && c.sessionNumber >= (o.addedAtSession as number) && c.status === CheckInStatus.COMPLETED,
+              (c) => c.participantId === p.id && c.sessionNumber >= (o.addedAtSession as number) && c.status === CheckInStatus.COMPLETED && !wasAQuietClose(c as any),
             ),
           })),
       }));
@@ -1391,7 +1417,7 @@ export class BoardService {
            question is only for a report that has none yet. */
         centralQuestion: (typeof reportSafe.centralQuestion === 'string' && reportSafe.centralQuestion.trim() ? reportSafe.centralQuestion : null) ?? sessionShape?.theConversationWorthHaving ?? null,
         settled: sessionShape?.whereThingsStand?.settled ?? [],
-        stillOpen: sessionShape?.whereThingsStand?.open ?? [],
+        stillOpen: sessionShape?.whereThingsStand?.differences ?? sessionShape?.whereThingsStand?.open ?? [],
         ...(sessionShape?.whereThingsStand?.settledMarks ? { settledMarks: sessionShape.whereThingsStand.settledMarks } : {}),
         ...(sessionShape?.whereThingsStand?.openMarks ? { stillOpenMarks: sessionShape.whereThingsStand.openMarks } : {}),
       };
@@ -1474,7 +1500,8 @@ export class BoardService {
       /* Not held back by somebody an admin has not let in yet (decision 77): the same givers as the header. */
       const heldAtTheDoor = new Set(ground.participants.filter((p: any) => isNotLetInYet(p)).map((p: any) => p.id));
       const roundRows = checkIns.filter((c) => !heldAtTheDoor.has(c.participantId) || c.status === CheckInStatus.COMPLETED || c.status === CheckInStatus.DECLINED);
-      const openRound = whichRoundIsOpen((roundRows.length ? roundRows : checkIns) as any);
+      /* And never set by the lead's own extra check-in (journey test, 12 October): theTeamsOpenRound. */
+      const openRound = theTeamsOpenRound((roundRows.length ? roundRows : checkIns) as any, ground.participants as any);
       /*
        * WHAT THIS ROUND PUT ON THE RECORD, so the board can say whether it holds anything to count.
        * The record, not the rating: the lead may read what was written down, and never how anybody's
@@ -1528,6 +1555,8 @@ export class BoardService {
       }
       /* Everybody not let in yet, declined or still waiting: the same givers as the header's count (decision 77, request 121 part 4). */
       const heldBack = await whoIsNotLetInYet(this.prisma, ground.participants as any[], (ground as any).organizationId);
+      /* Who missed the check-ins just before their latest one, so a row never reads "nothing here needs you" after two missed (night quality run 1). */
+      const missedJustBefore = await whoMissedTheCheckInsJustBefore(this.prisma, groundId).catch(() => new Map<string, number[]>());
       out.eachPerson = whereEachPersonIs(
         /*
          * AND THE MANAGER IS NOT IN THEIR OWN LIST.
@@ -1569,8 +1598,9 @@ export class BoardService {
               : (heldBack.has(p.id) ? { by: null, at: null, declined: false } : undefined),
             target: theirs?.target ?? null,
             count: theirs?.count ?? 0,
-            answeredThisRound: thisRound?.status === CheckInStatus.COMPLETED,
+            answeredThisRound: thisRound?.status === CheckInStatus.COMPLETED && !wasAQuietClose(thisRound as any),
             roundsSoFar: new Set(mine.map((c) => c.sessionNumber)).size,
+            missedJustBefore: missedJustBefore.get(p.id)?.length ?? 0,
             inTheWay: (ground.dependencies ?? [])
               .filter((d: any) => d.fromParticipantId === p.id && d.status !== 'CLEARED')
               .map((d: any) => ({
@@ -1583,7 +1613,7 @@ export class BoardService {
                 days: wholeDaysTo(d.createdAt, recordsClock),
                 since: d.createdAt ? theDayItBegan(d.createdAt, recordsClock) : null,
                 /* Read off their own words. Nobody has said is 'nothing', which is the truth. */
-                tried: d.escalatedAt ? 'escalated' : whatTheyTried(d.triedSaid ?? ''),
+                tried: whatTheyTried(d.triedSaid ?? ''),
               })),
             /* The check-in's own read where there is one; the record of it where it has not been read yet. */
             saidAnythingCheckable: !!thisRound && checkableRead(thisRound, somethingToCount.has(thisRound.id)),
@@ -1675,10 +1705,12 @@ export class BoardService {
     if (has('checkInGrid')) {
       out.checkInGrid = {
         sessions: Array.from(new Set(checkIns.map((c) => c.sessionNumber))).sort((a, b) => a - b),
-        rows: ground.participants.map((p) => ({
+        /* A lead who only manages does not check in, so she has no row in "Who checked in" (B-079): an empty square beside her name read as a missed session. */
+        rows: ground.participants.filter((p) => !p.managingOnly).map((p) => ({
           participantId: p.id,
           name: nameOf(p.id),
-          role: theLeadsWordsAbout(p, isInitiator) ?? (p.managingOnly ? 'Managing only' : null),
+          /* Managing only is an internal flag, never said as a role: the real role is the lead's own words, or nothing. */
+        role: theLeadsWordsAbout(p, isInitiator) ?? null,
           // A managing-only lead has no account of their own and is not counted
           // in readiness, so their row is dashes, not "overdue".
           managingOnly: p.managingOnly,
@@ -1687,6 +1719,8 @@ export class BoardService {
               if (p.managingOnly) return [n, 'na'];
               const ci = checkIns.find((c) => c.participantId === p.id && c.sessionNumber === n);
               if (!ci) return [n, 'na'];
+              /* Closed by the clock with nothing said: missed, never "Checked in" (decision 8, night run 3). */
+              if (ci.status === CheckInStatus.COMPLETED && wasAQuietClose(ci as any)) return [n, 'missed'];
               return [n, ci.status === CheckInStatus.COMPLETED ? 'done'
                 : ci.status === CheckInStatus.IN_PROGRESS ? 'in-progress'
                 : ci.status === CheckInStatus.DECLINED ? 'declined'
@@ -1894,7 +1928,7 @@ export class BoardService {
          * tile counted the live report's divergences; the section under it renders the round's. They
          * are two readings of one round and the tile takes whichever has found something.
          */
-        const openHere = Array.isArray(sessionShape?.whereThingsStand?.open) ? sessionShape!.whereThingsStand!.open.length : 0;
+        const openHere = Array.isArray(sessionShape?.whereThingsStand?.differences ?? sessionShape?.whereThingsStand?.open) ? (sessionShape!.whereThingsStand!.differences ?? sessionShape!.whereThingsStand!.open).length : 0;
         const divCount = Math.max(openHere, Array.isArray(reportSafe?.divergences) ? (reportSafe!.divergences as any[]).length : 0);
         const agreedCount = Array.isArray(reportSafe?.agreements) ? (reportSafe!.agreements as any[]).length : 0;
         const eng = (reportSafe?.engagement ?? {}) as Record<string, any>;
@@ -1932,6 +1966,7 @@ export class BoardService {
       out.quickRead = theQuickReadCountsTheWaitsTheBoardCounts(out.quickRead as any, out.howItIsGoing?.glance?.inTheWay?.count) as any;
       /* And never "no disagreement" over a report that opens with one. See the-quick-read-agrees-with-the-report. */
       out.quickRead = theQuickReadAgreesWithTheReport(out.quickRead as any, ((ground as any).report?.sharedPicture as string | null) ?? null) as any;
+      out.quickRead = theDifferencesReadAgreesWithTheQuestion(out.quickRead as any, ((ground as any).report?.centralQuestion as string | null) ?? null) as any;
     }
 
     // Loaded once and shared. It was fetched twice, running every one of these
@@ -1955,8 +1990,16 @@ export class BoardService {
         /* Somebody still waiting for the organisation to let them in is not "has not checked in yet": they
            cannot, and the lead is not to be asked to chase them (request 85). Their row says nothing. */
         const waitingAtTheDoor = new Set(ground.participants.filter((p: any) => p.user?.awaitingOrgApproval).map((p: any) => p.id));
+        /* Invited and not joined yet (Hafsah, 13 October): never "has not checked in yet"; said for what it is. */
+        const notJoinedOnTheBoard = await whoHasNotJoinedYet(this.prisma, ground.participants as any[]).catch(() => new Set<string>());
         out.contribution = contributionAsThisReaderMayRead(buildContribution(readInput, nameOf), me?.id ?? null)!
-          .map((r) => ({ ...r, ...(r.notCheckedInYet && waitingAtTheDoor.has(r.participantId) ? { reason: null } : {}), remit: theLeadsWordsAbout({ roleAsDescribed: r.remit }, isInitiator) }));
+          .map((r) => ({
+            ...r,
+            ...(r.notCheckedInYet && waitingAtTheDoor.has(r.participantId) ? { reason: null } : {}),
+            ...(r.notCheckedInYet && !waitingAtTheDoor.has(r.participantId) && notJoinedOnTheBoard.has(r.participantId)
+              ? { reason: theNotJoinedYetLine([r.name ?? null]), notJoinedYet: true } : {}),
+            remit: theLeadsWordsAbout({ roleAsDescribed: r.remit }, isInitiator),
+          }));
       }
       /*
        * HELP NOBODY MENTIONED (request 115 c): a colleague named somebody as the reason something moved,
@@ -1964,18 +2007,33 @@ export class BoardService {
        * (decision 93, row 10); who said it is never served. See help-nobody-mentioned.
        */
       if (runsItForAPattern(ground as any, requestingUserId) || adminHere) {
+        /* What each colleague said in their own check-ins: a credit stands only where those words hold it (the final check). Read
+           only to check, never served. A lookup that fails checks nothing. */
+        const whoseCheckIn = new Map((checkIns as any[]).map((c) => [c.id, c.participantId as string]));
+        const theirOwnWordsBy = await (this.prisma as any).conversationTurn?.findMany?.({
+          where: { checkInId: { in: [...whoseCheckIn.keys()] }, role: 'PERSON' },
+          select: { checkInId: true, content: true },
+        }).then((rows: any[]) => {
+          const by = new Map<string, string[]>();
+          for (const r of rows ?? []) {
+            const pid = whoseCheckIn.get(r?.checkInId);
+            if (pid) by.set(pid, [...(by.get(pid) ?? []), String(r?.content ?? '')]);
+          }
+          return by;
+        }).catch(() => undefined);
         const help = helpNobodyMentioned(
           (readInput as any).mentions ?? [],
           ((readInput as any).entries ?? []).map((e: any) => ({ participantId: e.participantId, text: cleanText(e.text ?? '') })),
           ground.participants as any[],
           (pid) => nameOf(pid),
           me?.id ?? null,
+          theirOwnWordsBy,
         );
         if (help) out.helpNobodyMentioned = help;
       }
       /* Built from what may be served, never the read passed through whole: no confidence, no percentage,
          no count of evidence, and nothing of a read too thin to show (request 111 a, no-rating-is-served). */
-      if (has('coverage')) out.coverage = coverageAsThisReaderMayRead(buildCoverage(readInput, nameOf), me?.id ?? null);
+      if (has('coverage')) out.coverage = coverageAsThisReaderMayRead(buildCoverage(readInput, nameOf), me?.id ?? null, { theLead: isInitiator });
       /*
        * THE REASON LINES, WORDED. Seventeen interpolated sentences in reads.ts read identically on
        * every board in the product. The engine's claims are unchanged: `safeToUse` holds every number
@@ -2067,7 +2125,7 @@ export class BoardService {
       // buildManagerAlignment for why the board needs one at all.
       /* The count of periods is made true here too, for a report stored before it was made true at the source
          (request 79 a): never more than the sessions that were answered, as decision 57 counts them. */
-      const answeredHere = ((ground as any).checkIns ?? []).filter((c: any) => c.status === CheckInStatus.COMPLETED && !c.isSetup);
+      const answeredHere = ((ground as any).checkIns ?? []).filter((c: any) => c.status === CheckInStatus.COMPLETED && !c.isSetup && !wasAQuietClose(c));
       const periodsHeld = periodsTheRecordHolds(answeredHere.map((c: any) => ({ sessionNumber: c.sessionNumber, when: c.completedAt })), ground as any);
       const reportWithTrueCounts = Array.isArray((reportSafe as any)?.leadershipGaps)
         ? { ...(reportSafe as any), leadershipGaps: (reportSafe as any).leadershipGaps.map((g: any) => ({ ...g, periods: aTruePeriodCount(g?.periods, periodsHeld) })) }
@@ -2126,7 +2184,7 @@ export class BoardService {
          rest of the board. See patterns/who-reads-a-pattern, runsItForAPattern. */
       const patternReader = { participantId: me?.id ?? null, runsIt: runsItForAPattern(ground as any, requestingUserId) };
       const namesForPatterns = whoIsWhoIn(ground.participants as any, ground.initiatorId, (ground as any).cadence);
-      const served = servedPatterns(detections as any, patternReader, namesForPatterns);
+      const served = withTheEarlierRead(servedPatterns(detections as any, patternReader, { ...namesForPatterns, now }), detections as any, (ground as any).report?.overTime?.patterns, patternReader);
       out.patterns = await wordPatternEvidence(
         served,
         namesForPatterns.firstNameOf ?? (() => null),
@@ -2411,8 +2469,8 @@ export class BoardService {
      */
     if (!runsItForAPattern(ground as any, requestingUserId) && !adminHere) {
       const onlyMine = (rows: any) => (Array.isArray(rows) ? rows.filter((r: any) => !!r.participantId && r.participantId === (me?.id ?? null)) : []);
-      if (out.contribution) out.contribution = onlyMine(out.contribution);
-      if (out.coverage) out.coverage = { ...(out.coverage as any), reads: onlyMine((out.coverage as any).reads) };
+      if (out.contribution) out.contribution = contributionWithoutTheLeadsAdvice(onlyMine(out.contribution));
+      if (out.coverage) out.coverage = coverageWithoutTheLeadsAdvice({ ...(out.coverage as any), reads: onlyMine((out.coverage as any).reads) });
     }
     if (whoMaySee.peersHidden) {
       /*
@@ -2544,13 +2602,18 @@ export class BoardService {
         aColleague: (pid) => aColleague(pid),
       };
       const mine = await this.theRecordTheSwitchboardsSectionsRead(groundId, checkIns as any[]);
-      const sessions = (checkIns as any[]).map((c) => ({ id: c.id, participantId: c.participantId, sessionNumber: c.sessionNumber, status: c.status, completedAt: c.completedAt ?? null, isSetup: !!c.isSetup }));
+      const sessions = (checkIns as any[]).map((c) => ({ id: c.id, participantId: c.participantId, sessionNumber: c.sessionNumber, status: c.status, completedAt: c.completedAt ?? null, isSetup: !!c.isSetup, closedReason: c.closedReason ?? null, turns: c.turns }));
       const people = (ground.participants as any[]).map((p) => ({ id: p.id, managingOnly: !!p.managingOnly }));
       /* A quotation mark goes only round words found character for character in what that person typed. */
       const handoffs = withTheirWordsChecked(
         (ground.dependencies ?? []) as any[],
         await whatEachHandoffPersonTyped(this.prisma, (ground.dependencies ?? []) as any[], checkIns as any[]),
       ) as any[];
+      /* Which waits on a colleague that colleague has confirmed (decision 137; change 4). */
+      {
+        const confirmedWaits = await theConfirmedWaits(this.prisma, handoffs.map((h: any) => ({ ...h, groundId: h.groundId ?? groundId })));
+        for (const h of handoffs) if (h.onParticipantId) h.confirmed = confirmedWaits.has(h.id);
+      }
       const risks = theRisks(mine.commitments, handoffs, sessions, typeof (out as any).targetsNobodyOwns === 'string' ? (out as any).targetsNobodyOwns : null, reader);
       if (risks.length) out.risks = risks;
       const workPlan = theWorkPlan(mine.commitments, sessions, reader);
@@ -2580,6 +2643,17 @@ export class BoardService {
             return { ...a, action: whatToDoAboutALeadAction(a, groundId, wait?.fromParticipantId ? nameOf(wait.fromParticipantId) : null) };
           })
           : leadActions;
+      }
+      /*
+       * MISSED CHECK-INS (decision 136), to the lead of this check-in alone: three of the last four missed, said as facts and what they do, with the reason
+       * the person gave beside it and, if it goes on, the next step as a suggestion. Never a label. Never the lead's own sessions, never a session in approved
+       * leave. Not to an admin, a colleague or the person themselves (they read their own on Today).
+       */
+      if (isInitiator) {
+        const missed = (await whoHasMissedCheckIns(this.prisma, [groundId]).catch(() => [] as Awaited<ReturnType<typeof whoHasMissedCheckIns>>))
+          .filter((m) => m.stand.stage >= TOLD_THE_LEAD && m.name !== SOMEONE_NAMED)
+          .map((m) => ({ participantId: m.participantId, name: m.name, text: whatTheLeadReads(m.name, m.stand), reason: m.stand.reason, suggestion: theNextStepSuggested(m.name, m.stand.stage) }));
+        if (missed.length) (out as any).missedCheckIns = missed;
       }
       const obligations = theObligations(people, mine.commitments, handoffs, sessions, reader);
       if (obligations.length) out.obligations = obligations;
@@ -2625,7 +2699,7 @@ export class BoardService {
           ...out.howItIsGoing,
           glance: {
             ...out.howItIsGoing.glance,
-            inTheWay: { ...out.howItIsGoing.glance.inTheWay, says: theGlanceInASentence(blockers as any[], (iso) => theDayItBegan(iso, recordsClock)) },
+            inTheWay: { ...out.howItIsGoing.glance.inTheWay, says: theGlanceInASentence(blockers as any[], (iso) => theDayItBegan(iso, recordsClock), Number(/^(\d+) worr/.exec(String((out.quickRead as any[] | undefined)?.find?.((t: any) => t?.label === 'Blockers')?.value ?? ''))?.[1] ?? 0)) },
           },
         };
       }
@@ -2874,7 +2948,7 @@ export class BoardService {
         /* Only for whoever runs the check-in: a person who checks in reads their own board (part 3), and the person
            reviewed on an evaluation check-in is never told how many others answered or are waiting (decision 17). */
         if (kind && readerRunsIt) {
-          const answeredBy = new Set((checkIns as any[]).filter((c) => String(c.status).toUpperCase() === 'COMPLETED').map((c) => c.participantId));
+          const answeredBy = new Set((checkIns as any[]).filter((c) => String(c.status).toUpperCase() === 'COMPLETED' && !wasAQuietClose(c)).map((c) => c.participantId));
           /* Somebody an admin has not let in yet is not one of the cohort's count (decision 77). */
           const people = (ground.participants as any[]).filter((p) => !isNotLetInYet(p) || answeredBy.has(p.id)).map((p) => ({
             id: p.id,
@@ -2923,7 +2997,7 @@ export class BoardService {
           meId: me.id,
           /* Each session's team picture is released on its own (decision 76, item 4): shared only once the session the report holds now is. */
           released: teamPictureShared,
-          hasOwnReport: (checkIns as any[]).some((c) => c.participantId === me.id && String(c.status).toUpperCase() === 'COMPLETED'),
+          hasOwnReport: (checkIns as any[]).some((c) => c.participantId === me.id && String(c.status).toUpperCase() === 'COMPLETED' && !wasAQuietClose(c)),
         });
       }
       /*
@@ -2961,7 +3035,8 @@ export class BoardService {
       const asServed = everyActionHasALabel(aBoardWithNoEmptyLine(everyStoredSentenceReadsRight(withNoRatingNumber(yourOwnRowsSayYou(eachRepeatedSentenceSaidOnce(walled), me?.id ?? null)), (ground.participants ?? []).map((p: any) => nameOf(p.id)).filter((n: any): n is string => typeof n === 'string' && n.length > 1))));
       /* The anchor scenario's own parts (request 149), added after every wall above: only whoever runs an anchor check-in, only with the switch on. */
       const roundOpensAt = (checkIns as any[]).filter((c) => c.sessionNumber === openRound).map((c) => c.availableFrom ?? c.startedAt).filter(Boolean).sort((a: Date, b: Date) => a.getTime() - b.getTime())[0] ?? null;
-      return { ...asServed, ...(await theAnchorBoardParts({ prisma: this.prisma, ground: ground as any, readerRunsIt: runsThisGround, openRound, roundOpenedAt: roundOpensAt, readerIsTheLead: isInitiator, clock: recordsClock, served: asServed as any, patterns: patternQuestions, readerParticipantId: me?.id ?? null })) };
+      /* In an anchor check-in the lead's own aim is hers alone: a member reads no objectives on the board either (decision 96, item 8; known issue P13). */
+      return withoutTheLeadsSetUpForAMember({ ...asServed, ...(await theAnchorBoardParts({ prisma: this.prisma, ground: ground as any, readerRunsIt: runsThisGround, openRound, roundOpenedAt: roundOpensAt, readerIsTheLead: isInitiator, clock: recordsClock, monthEnded: !!theMonthEndedOn((ground as any).groundAuditLog), served: asServed as any, patterns: patternQuestions, readerParticipantId: me?.id ?? null })) }, { startedFrom: (ground as any).startedFrom ?? null, scenario: (ground as any).scenario ?? null, runsIt: runsThisGround });
     }
   }
 
@@ -3075,8 +3150,8 @@ export class BoardService {
               ? `${who} ${is} waiting on ${holder} for ${inASentence(d.what)}.`
               : `${who} ${is} waiting for ${inASentence(d.what)}, and nobody has been named to provide it.`,
           why: aDecision
-            ? (who === 'You' ? 'You cannot move until this is decided.' : `${who} cannot move until this is decided.`)
-            : `${who} cannot move until it comes.`,
+            ? (who === 'You' ? 'You cannot move until this is decided.' : 'They cannot move until this is decided.')
+            : (who === 'You' ? 'You cannot move until it comes.' : 'They cannot move until it comes.'),
           owner: !aDecision && owner === NOBODY_NAMED_TO_DECIDE ? 'Nobody has been named to provide it.' : owner,
           source: 'blocker' as const,
           /* For what the lead can do about it (request 112 b); taken off before the board is served. */
@@ -3343,7 +3418,7 @@ export class BoardService {
       where: { id: groundId },
       select: { id: true, scenario: true, mode: true, initiatorId: true },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /**
      * GATED ON THE SECTION, NOT ON THE BOARD EXISTING.
      *
@@ -3354,10 +3429,10 @@ export class BoardService {
      * write a target onto a board that will never show it.
      */
     if (!boardHasSection(ground.scenario, 'objectives')) {
-      throw new ForbiddenException('This check-in does not track targets');
+      throw new ForbiddenException('This check-in does not keep targets, so there is nothing to change here.');
     }
     if (ground.initiatorId !== requestingUserId) {
-      throw new ForbiddenException('Only the person who set this check-in up can change what it is aiming for');
+      throw new ForbiddenException('Only the person who set this check-in up can change what it is aiming for, so ask them to.');
     }
     return ground;
   }
@@ -3373,7 +3448,7 @@ export class BoardService {
       where: { id: groundId },
       select: { id: true, initiatorId: true, kindOfWork: true, workStages: true, participants: { select: { id: true } } } as any,
     }) as any;
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     if (ground.initiatorId !== requestingUserId) throw new ForbiddenException('Only the lead of this check-in can change its records.');
     const kind = oneOfTheKinds(ground.kindOfWork);
     if (!kind) throw new BadRequestException('Choose what kind of work this check-in is about first, then add its records.');
@@ -3477,7 +3552,7 @@ export class BoardService {
    */
   async answerADecision(groundId: string, itemId: string, requestingUserId: string, yes: boolean) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { id: true, initiatorId: true } as any }) as any;
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     if (ground.initiatorId !== requestingUserId) throw new ForbiddenException('Only the lead of this check-in can answer this.');
     const line = await (this.prisma as any).groundContextItem.findFirst({ where: { id: itemId, groundId, kind: 'DECISION', closedAt: null } });
     if (!line) throw new NotFoundException('This is not waiting for an answer any more.');
@@ -3609,7 +3684,7 @@ export class BoardService {
     /* A person's own aim read from their promise (request 110): the lead's change puts it on the record first, as theirs. */
     if (objectiveId.startsWith(AN_AIM_FROM_THEIR_PROMISE)) objectiveId = await this.putTheirOwnAimOnTheRecord(groundId, objectiveId);
     const existing = await this.prisma.groundObjective.findUnique({ where: { id: objectiveId } });
-    if (!existing || existing.groundId !== groundId) throw new NotFoundException('Objective not found');
+    if (!existing || existing.groundId !== groundId) throw new NotFoundException('That aim could not be found, so go back to the check-in and open it from there.');
     /*
      * ACCEPTING A NUMBER READ OFF A CLOSED ROUND PUTS IT WHERE THAT ROUND CLOSED (review of 1 October
      * 2026). The listener writes a number it lands into that round's snapshot, so the Movement tile and
@@ -3675,7 +3750,7 @@ export class BoardService {
       throw new ForbiddenException('This aim is one the person set for themselves in their own check-in, so only they can drop it. You can change its number or what is counted against it.');
     }
     const existing = await this.prisma.groundObjective.findUnique({ where: { id: objectiveId } });
-    if (!existing || existing.groundId !== groundId) throw new NotFoundException('Objective not found');
+    if (!existing || existing.groundId !== groundId) throw new NotFoundException('That aim could not be found, so go back to the check-in and open it from there.');
     await this.prisma.groundObjective.delete({ where: { id: objectiveId } });
     return { deleted: true };
   }
@@ -3688,7 +3763,7 @@ export class BoardService {
   ) {
     await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
     const labels = dto.options.map((o) => o.trim()).filter(Boolean);
-    if (labels.length === 0) throw new ForbiddenException('A poll needs at least one time to choose between');
+    if (labels.length === 0) throw new ForbiddenException('Add at least one time for people to choose between, then send the poll.');
 
     const existing = await this.prisma.groundPoll.findUnique({ where: { groundId } });
     if (existing) {
@@ -3717,9 +3792,9 @@ export class BoardService {
       where: { id: groundId },
       select: { id: true, scenario: true, mode: true, initiatorId: true, participants: { select: { id: true, userId: true } } },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     if (!boardRendersFor(ground.scenario)) {
-      throw new ForbiddenException('This check-in does not have a board');
+      throw new ForbiddenException('This check-in has no board, so there is nothing to open here.');
     }
     /**
      * AND THE POLL SECTION SPECIFICALLY, which the board check above no longer implies.
@@ -3731,16 +3806,16 @@ export class BoardService {
      * Same shape as the objectives gate above: write to the SECTION, not to the board.
      */
     if (!boardHasSection(ground.scenario, 'poll')) {
-      throw new ForbiddenException('This check-in does not schedule its own sessions');
+      throw new ForbiddenException('This check-in does not set its own dates, so there is nothing to choose between.');
     }
     const me = ground.participants.find((p) => p.userId === requestingUserId);
-    if (!me) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!me) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
 
     const option = await this.prisma.groundPollOption.findUnique({
       where: { id: optionId },
       include: { poll: { select: { groundId: true } } },
     });
-    if (!option || option.poll.groundId !== groundId) throw new NotFoundException('Poll option not found');
+    if (!option || option.poll.groundId !== groundId) throw new NotFoundException('That time is no longer in the poll, so refresh the page and choose again.');
 
     const has = option.whoIds.includes(me.id);
     const whoIds = has ? option.whoIds.filter((x) => x !== me.id) : [...option.whoIds, me.id];
@@ -4021,7 +4096,7 @@ export class BoardService {
    * ground's rows instead of one session's. Names go through the same labels the board already uses.
    */
   private async everySessionThroughTheReportEngines(groundId: string, ground: any, checkIns: any[], openRound: number, reader: { participantId: string | null; isLead: boolean; runsIt?: boolean; colleaguesWordsWalled?: boolean }) {
-    const completed = checkIns.filter((c) => c.status === CheckInStatus.COMPLETED);
+    const completed = checkIns.filter((c) => c.status === CheckInStatus.COMPLETED && !wasAQuietClose(c as any));
     const [entries, docs, baseline, deps] = await Promise.all([
       this.prisma.recordEntry.findMany({
         where: { disputedAt: null, checkInId: { in: completed.map((c) => c.id) } },

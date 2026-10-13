@@ -1,3 +1,4 @@
+import { withoutComparisonsAnywhere } from '../reports/no-comparison-between-people';
 import { Controller, Get, Post, Patch, Delete, Param, Query, Body, BadRequestException } from '@nestjs/common';
 import { IsString, IsInt, IsOptional, IsArray, IsBoolean, IsIn, MaxLength, Min, ArrayMaxSize, ValidateNested, Matches } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -111,7 +112,8 @@ export class BoardController {
     @Query('coverage') coverage?: string,
   ) {
     const variant: CoverageVariant = coverage === 'bar' ? 'bar' : coverage === 'text' ? 'text' : DEFAULT_COVERAGE_VARIANT;
-    return this.board.get(id, userId, variant);
+    /* No sentence that ranks a person against others reaches any reader (reports/no-comparison-between-people.ts). */
+    return withoutComparisonsAnywhere(await this.board.get(id, userId, variant));
   }
 
   /**

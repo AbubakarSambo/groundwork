@@ -24,7 +24,7 @@ import {
  * conversation, the scenario's guidance; in every other case, the same bytes as before.
  */
 function world(switchOn: boolean, stored?: { id: string; content: string }) {
-  const prisma: any = { platformSetting: { findUnique: jest.fn(async () => (switchOn ? { value: { on: true } } : null)) } };
+  const prisma: any = { platformSetting: { findUnique: jest.fn(async () => (switchOn ? { value: { on: true } } : { value: { on: false } })) } };
   const prompts: any = { getActive: jest.fn(async () => { if (!stored) throw new Error('none'); return stored; }) };
   const service = new EntryService({} as any, prisma, {} as any, {} as any, {} as any, {} as any, {} as any, prompts);
   const seen: string[] = [];
@@ -240,10 +240,11 @@ describe('with the switch off, nothing changes anywhere', () => {
   const every: (GroundScenario | undefined)[] = [undefined, ...Object.values(GroundScenario)];
 
   it.each(every.map((s) => [s ?? 'no situation', s]))('the prompt for %s is exactly what it was, with the switch off or on', async (_n, s) => {
-    for (const on of [false, true]) {
+    /* The anchor's own situation is the one that is allowed to read differently, and only while the switch is on: it has its own tests above. With it off it is a project, as it was before it was a situation. */
+    for (const on of s === GroundScenario.HELP_TEAM_UNDERSTAND ? [false] : [false, true]) {
       const { service, seen } = world(on, { id: 'pv-7', content: 'STORED ANCHOR WORDS' });
       const out = await service.chat(said, s as string | undefined, 'A label');
-      const expected = oldWay((s as GroundScenario | undefined) ?? GroundScenario.NEW_PROJECT, 'A label');
+      const expected = oldWay(s === GroundScenario.HELP_TEAM_UNDERSTAND || !s ? GroundScenario.NEW_PROJECT : (s as GroundScenario), 'A label');
       expect(seen[0]).toBe(expected);
       expect(out.promptVersionId).toBeUndefined();
     }
@@ -252,7 +253,43 @@ describe('with the switch off, nothing changes anywhere', () => {
   it('the anchor conversation itself reads exactly the old prompt while the switch is off', async () => {
     const { service, seen } = world(false, { id: 'pv-7', content: 'STORED ANCHOR WORDS' });
     const out = await service.chat(said, ANCHOR_ENTRY_SCENARIO);
-    expect(seen[0]).toBe(oldWay(GroundScenario.NEW_PROJECT, ANCHOR_ENTRY_SCENARIO));
+    /* No longer the key as the name: the entry chat sent "GROUND: HELP_TEAM_UNDERSTAND" (night quality run 2). */
+    expect(seen[0]).toBe(oldWay(GroundScenario.NEW_PROJECT, ''));
+    expect(seen[0]).not.toContain('HELP_TEAM_UNDERSTAND');
     expect(out.promptVersionId).toBeUndefined();
+  });
+});
+
+describe('anchor piece 8 and the guarded lead: what the model is given', () => {
+  it('lists the six kinds of lead as things to listen for, with what better looks like, and never to be named to the lead', () => {
+    for (const heard of ['A chief executive or founder', 'A sales lead', 'A project lead', 'A delivery lead', 'A product lead', 'A finance lead']) {
+      expect(ANCHOR_LEAD_PROMPT).toContain(heard);
+    }
+    expect(ANCHOR_LEAD_PROMPT).toContain('everyone treats collecting what is owed as finance\'s problem');
+    expect(ANCHOR_LEAD_PROMPT).toContain('You must never name one of them to the lead, never read them out, and never choose one for the lead.');
+  });
+
+  it('tells the model what to do with a guarded lead, including one who says revenue is somebody else\'s job', () => {
+    expect(ANCHOR_LEAD_PROMPT).toContain('Never argue, never defend Groundwork, and never treat the lead as difficult.');
+    expect(ANCHOR_LEAD_PROMPT).toContain('"revenue is sales\' job"');
+    expect(ANCHOR_LEAD_PROMPT).toContain('do not correct them and do not agree');
+    expect(ANCHOR_LEAD_PROMPT).toContain('never remark on how short or long an answer is');
+  });
+
+  it('says what Groundwork does in one honest sentence when asked, and never judges the lead\'s team or agrees with the lead about it', () => {
+    expect(ANCHOR_LEAD_PROMPT).toContain('Groundwork will check in with each person you add, one to one, about their work and how it connects to the bigger picture');
+    expect(ANCHOR_LEAD_PROMPT).toContain('Never say that it keeps a record of what everyone is doing.');
+    expect(ANCHOR_LEAD_PROMPT).toContain('Never tell the lead they are right or wrong about their team');
+    expect(ANCHOR_LEAD_PROMPT).toContain('(never "that second part is its own problem")');
+  });
+
+  it('asks one thing at a time, and no filler', () => {
+    expect(ANCHOR_LEAD_PROMPT).toContain('One question means one thing asked');
+    expect(ANCHOR_LEAD_PROMPT).toContain('do not add filler such as "to be clear"');
+  });
+
+  it('is what is stored when the app starts, so the version that runs is this one', () => {
+    const seeded = SEED_PROMPTS.find((p) => p.key === ANCHOR_LEAD_PROMPT_KEY);
+    expect(seeded?.content).toBe(ANCHOR_LEAD_PROMPT);
   });
 });

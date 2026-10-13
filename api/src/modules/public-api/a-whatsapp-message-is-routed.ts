@@ -7,6 +7,7 @@
  */
 
 import { askName } from '../assistant/ask-name';
+import { theConversationWorthHavingSaying } from '../grounds/what-is-sent-in-simpler-words';
 
 export interface AnOpenCheckIn {
   id: string;
@@ -15,6 +16,8 @@ export interface AnOpenCheckIn {
   label: string;
   /** The lead keeps this check-in in the app (`overWhatsApp = false`). It is never answered from the phone. */
   keptOffThePhone?: boolean;
+  /** The lead set this check-in to use simpler words: what is sent about it afterwards has its plainer form. */
+  simplerWords?: boolean;
   /** When it is due, for "the one closing soonest first" (decision 106 item 1). */
   dueAt?: Date | null;
 }
@@ -64,7 +67,7 @@ export function whatTheFileIsCalled(arrived: { fileName: string; named?: boolean
 }
 
 /** The kind of thing that arrived, from Meta's message shape. */
-export function whatArrived(message: any): { kind: 'text'; text: string } | { kind: 'pick'; id: string } | { kind: 'media'; mediaId: string; mimeType: string; fileName: string; caption: string; /** The sender gave the file a name. A photo has none, and is named here only so it can be stored. */ named?: boolean; /** What it is, for a sentence: photo, document, recording or video. */ what?: 'photo' | 'document' | 'recording' | 'video' } | { kind: 'other' } {
+export function whatArrived(message: any): { kind: 'text'; text: string } | { kind: 'pick'; id: string } | { kind: 'media'; mediaId: string; mimeType: string; fileName: string; caption: string; /** The sender gave the file a name. A photo has none, and is named here only so it can be stored. */ named?: boolean; /** What it is, for a sentence: photo, document, recording or video. */ what?: 'photo' | 'document' | 'recording' | 'video' } | { kind: 'location'; latitude: number; longitude: number; name: string | null; address: string | null; sentAt: Date | null } | { kind: 'other' } {
   if (!message) return { kind: 'other' };
   if (message.type === 'text') return { kind: 'text', text: (message.text?.body ?? '').trim() };
   /* A template's quick-reply button ("Start", "Not now") arrives as its own type, with the words on it. */
@@ -72,6 +75,17 @@ export function whatArrived(message: any): { kind: 'text'; text: string } | { ki
   if (message.type === 'interactive') {
     const id = message.interactive?.list_reply?.id ?? message.interactive?.button_reply?.id;
     return id ? { kind: 'pick', id } : { kind: 'other' };
+  }
+  /* A location pin: the coordinates, and the name and address only where WhatsApp sent them with it. */
+  if (message.type === 'location' && Number.isFinite(Number(message.location?.latitude)) && Number.isFinite(Number(message.location?.longitude))) {
+    const l = message.location;
+    const sent = Number(message.timestamp);
+    return {
+      kind: 'location', latitude: Number(l.latitude), longitude: Number(l.longitude),
+      name: typeof l.name === 'string' && l.name.trim() ? l.name.trim() : null,
+      address: typeof l.address === 'string' && l.address.trim() ? l.address.trim() : null,
+      sentAt: Number.isFinite(sent) && sent > 0 ? new Date(sent * 1000) : null,
+    };
   }
   for (const t of ['image', 'document', 'audio', 'video'] as const) {
     if (message.type === t && message[t]?.id) {
@@ -88,7 +102,19 @@ export function whatArrived(message: any): { kind: 'text'; text: string } | { ki
  * A SESSION REPORT AS ONE MESSAGE. Where things stand, the reads at a glance, the conversation worth
  * having. The same card the panel shows at the end, said rather than drawn.
  */
-export function reportAsText(report: any, label: string): string {
+/**
+ * A REPORT THAT HAS NOTHING TO READ YET IS NOT ANNOUNCED AS READY (B-021). While the round is open and nothing is agreed or open between
+ * people, "Your report is ready. Not everyone has answered yet, so there is nothing to agree or differ with." was sent to the person who had
+ * just answered. They are thanked, and told when they will hear.
+ */
+export function nothingToReadYet(report: any): boolean {
+  return !!report && report.state === 'forming' && (report.whereThingsStand?.agreed ?? 0) === 0 && (report.whereThingsStand?.stillOpen ?? 0) === 0;
+}
+
+export const THANKS_YOUR_ANSWER_IS_IN = (label: string) =>
+  `Thank you, your answer for ${label} is in. The shared picture is made once everyone has answered, and you will be told as soon as there is something to read.`;
+
+export function reportAsText(report: any, label: string, simplerWords?: boolean | null): string {
   const lines: string[] = [`Your report for ${label} is ready.`];
   if (report?.whereThingsStand?.saying) lines.push(report.whereThingsStand.saying);
   const glance = (report?.atAGlance ?? []) as { label: string; value: string; sub?: string }[];
@@ -97,7 +123,7 @@ export function reportAsText(report: any, label: string): string {
   const lower = (t: string) => `${t.charAt(0).toLowerCase()}${t.slice(1)}`;
   const reads = glance.map((g) => (g.sub?.trim() ? sentence(g.sub) : g.value?.trim() ? sentence(`${g.label} is ${lower(g.value.trim())}`) : '')).filter(Boolean);
   if (reads.length) lines.push(reads.join(' '));
-  if (report?.theConversationWorthHaving) lines.push(`Here is a conversation worth having. ${report.theConversationWorthHaving}`);
+  if (report?.theConversationWorthHaving) lines.push(`${theConversationWorthHavingSaying(simplerWords)} ${report.theConversationWorthHaving}`);
   const whole = lines.join('\n\n');
   /* Where the whole report would not fit in one WhatsApp message, one short line, and the app for the rest. */
   return whole.length <= A_TEXT_MESSAGE_LIMIT ? whole : `${reportAsOneLine(report, label)} Open Groundwork to read it.`;
@@ -193,9 +219,23 @@ export const isAnAskWord = (text: string, ask: string): boolean =>
   AN_ASK_WORD.test(text) || text.trim().replace(/[.!]$/, '').replace(/\s+/g, ' ').toLowerCase() === ask.toLowerCase();
 /** "back": from Ask Groundwork to the check-in. */
 export const A_BACK_WORD = /^\s*(back|go\s+back|back\s+to\s+(my\s+)?check-?in)\s*[.!]?\s*$/i;
+/**
+ * SOMEBODY WHO IS IN ASK AND WRITES AS IF TO THEIR CHECK-IN (B-143). After she approved a request on WhatsApp, Wairimu's thread stayed in
+ * Ask, her reminders said "you can answer here now", and "Hi", "I want to do my check-in" and "START" were each answered "I cannot answer
+ * that one yet". Those words are a return to the check-in, as "back" is. A question ("when is my next check-in?") stays with Ask.
+ */
+export const A_WISH_TO_CARRY_ON_THE_CHECK_IN = /^\s*(?:(?:hi|hello|hey)[\s,!.]*|(?:start|begin|continue|resume)\s*[.!]?\s*|(?!(?:when|what|how|who|why|is|are|can|could|do|does|where)\b)[^?]*\b(?:(?:do|start|begin|continue|resume|finish|answer)\b[^?]*\bcheck-?in|check-?in\b[^?]*\b(?:now|please))[^?]*)$/i;
+/**
+ * WORDS THAT ONLY ASK TO BEGIN ARE NOT THE FIRST ANSWER (B-108). "Hi, I want to do my check-in" was handed to the check-in as what the person said,
+ * and the reply quoted it back ("You mentioned last time that you wanted to do your check-in"), after the opener had already asked its question, so the
+ * message carried two openers (B-101). A greeting alone, or a short message that only asks to start, opens the check-in and is not put in it. A long
+ * message that happens to mention a check-in is an answer.
+ */
+export const isAGreetingOrARequestToStart = (text: string): boolean =>
+  A_GREETING_ALONE.test(text) || ((text ?? '').trim().length <= 60 && A_WISH_TO_CARRY_ON_THE_CHECK_IN.test(text));
 /** "switch": the list of check-ins again, or, on Groundwork's number, the list of organisations. */
 export const A_SWITCH_WORD = /^\s*switch\s*[.!]?\s*$/i;
-export const A_YES = /^\s*(yes|yeah|yep|y|ok|okay|sure|please do)\s*[.!]?\s*$/i;
+export const A_YES = /^\s*(?:(?:yes|yeah|yep|ok|okay|sure)(?:\s+(?:please|thanks|thank\s+you|do))?|y|please\s+do|go\s+ahead|yes,?\s+please)\s*[.!]?\s*$/i;
 export const A_NO = /^\s*(no|nope|n|no thanks|keep it|keep it in the check-?in)\s*[.!]?\s*$/i;
 
 /** The one sentence that says the words, said when a check-in starts on WhatsApp. */

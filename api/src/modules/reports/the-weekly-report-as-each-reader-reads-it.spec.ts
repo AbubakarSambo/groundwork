@@ -186,8 +186,10 @@ describe('the lead reads the whole week', () => {
   it('reads what changed', async () => {
     const { r } = await served(LEAD);
     expect(r.whatChanged!.moved).toEqual([
-      'Aisha committed to call Mama Fresh by Thursday, and it is now done.',
-      'Baraka is no longer waiting on you for the price list.',
+      /* Settled on her word alone, so it is her claim (night quality run 1, problem 3). */
+      'Aisha committed to call Mama Fresh by Thursday, and says it is done. Nothing has been shown to back it yet.',
+      /* Change 4: Baraka's wait on the lead is his account; the lead never promised the price list (night quality run 1, problem 2). */
+      'Baraka said the work was waiting on you for the price list, and it is no longer waiting. Not backed: no attempt to unblock mentioned. Baraka could have messaged you or asked again.',
     ]);
     expect(r.whatChanged!.dropped).toEqual(['Baraka committed to visit Kwik Stores, and it has been dropped.']);
     expect(r.whatChanged!.result).toEqual([
@@ -218,6 +220,22 @@ describe('the lead reads the whole week', () => {
   });
 });
 
+describe('a check-in still waiting is counted as due, from the record (night quality run 2)', () => {
+  /* Amina's fourth check-in opened at midnight on Sunday in Nairobi (21:00 UTC), before Monday began in Lagos. */
+  it('the lead and a member read that one of the three was not made, never "All 3 ... were made" or "100%"', async () => {
+    const chidi = CHECK_INS.find((c) => c.id === 'c-c5')!;
+    const was = chidi.availableFrom;
+    chidi.availableFrom = new Date('2026-09-20T21:00:00Z');
+    try {
+      for (const reader of [LEAD, BARAKA]) {
+        const { r } = await served(reader);
+        expect(r.inNumbers![0]).toEqual({ figure: '67%', of: 'of check-ins made this week', says: '2 of the 3 check-ins due this week were made.' });
+        expect(JSON.stringify(r)).not.toMatch(/100%|Both check-ins due this week were made|All \d+ check-ins due this week were made/);
+      }
+    } finally { chidi.availableFrom = was; }
+  });
+});
+
 describe('a person reads only what is about them, and the team\'s own counts', () => {
   it('Baraka reads his own sentence, his own patterns first, and nothing of Aisha\'s', async () => {
     const { r } = await served(BARAKA);
@@ -237,7 +255,7 @@ describe('a person reads only what is about them, and the team\'s own counts', (
       'This week, you said 2 things in your check-ins. None of them has a photo or document behind it yet. 1 number was given as an estimate, and 1 number was given from memory with nothing attached, so they cannot be checked yet. It is worth confirming them before acting on them.',
     );
     expect(r.whatChanged).toEqual({
-      moved: ['You are no longer waiting on Wairimu for the price list.'],
+      moved: ['You said the work was waiting on Wairimu for the price list, and it is no longer waiting. Not backed: no attempt to unblock mentioned. You could have messaged Wairimu or asked again.'],
       dropped: ['You committed to visit Kwik Stores, and it has been dropped.'],
       result: [
         "The team's freezers sold went from 12 to 17 this week.",
@@ -257,7 +275,7 @@ describe('a person reads only what is about them, and the team\'s own counts', (
     const { r } = await served(AISHA);
     expect(r.inNumbers!.find((f) => f.of.startsWith('visits made'))).toEqual({ figure: '9', of: 'visits made, your own number', says: 'It stayed at 9 this week.' });
     expect(r.threeInARow).toEqual([]);
-    expect(r.whatChanged!.moved).toEqual(['You committed to call Mama Fresh by Thursday, and it is now done.']);
+    expect(r.whatChanged!.moved).toEqual(['You committed to call Mama Fresh by Thursday, and you say it is done. Nothing has been shown to back it yet.']);
     expect(r.whatChanged!.dropped).toEqual(['Nothing was dropped this week.']);
     expect(r.forNextWeek).toEqual([
       { do: 'Send the quote on Friday.', why: 'You said this week that you would do this, and it is still open.', comesFrom: 'This comes from what you said you would do.' },
@@ -497,7 +515,8 @@ describe('with no setting at all, the lead reads Baraka’s pattern in the week 
 describe('somebody an admin has not let in yet, as the lead reads the week', () => {
   async function servedWithChidiHeld(held: boolean) {
     const c = aCheckIn();
-    c.prisma.user = { findMany: jest.fn(async () => (held ? [{ id: 'u-chidi', awaitingOrgApproval: true }] : [])) };
+    /* Everybody here has signed in once (decision 8 redone reads "joined" from that); only the hold differs. */
+    c.prisma.user = { findMany: jest.fn(async (a: any) => (a?.where?.awaitingOrgApproval ? (held ? [{ id: 'u-chidi', awaitingOrgApproval: true }] : []) : ((a?.where?.id?.in ?? []) as string[]).map((id) => ({ id, passwordHash: 'set' })))) };
     await c.svc.build('g1', AT);
     return c.svc.read('g1', LEAD, AT);
   }
@@ -508,9 +527,69 @@ describe('somebody an admin has not let in yet, as the lead reads the week', () 
     expect(JSON.stringify(r)).not.toMatch(/Chidi has not checked in/);
   });
 
+  /* Night quality run 3 (decision 8 redone): invited and never joined is the same as not let in for the count, never "due" and never absent. */
+  it('invited and never joined (never accepted, nothing opened): not due, and nothing about him not checking in', async () => {
+    const c = aCheckIn();
+    /* Joined means accepted the invitation (13 October): the week page reads that from its own read of the people, as the database returns it. A sign-in is not joining. */
+    const ground = await c.prisma.ground.findUnique();
+    c.prisma.ground.findUnique = jest.fn(async () => ({ ...ground, participants: PARTIES.map((p) => (p.id === 'p-chidi' ? { ...p, cameThroughTheLink: false, acceptedAt: null, checkIns: [] } : { ...p, cameThroughTheLink: false, acceptedAt: new Date('2026-09-01T09:00:00Z'), checkIns: [] })) }));
+    c.prisma.user = { findMany: jest.fn(async (a: any) => (a?.where?.awaitingOrgApproval ? [] : ((a?.where?.id?.in ?? []) as string[]).filter((id) => id !== 'u-chidi').map((id) => ({ id, passwordHash: 'set' })))) };
+    c.prisma.emailVerificationToken = { findMany: jest.fn(async () => []) };
+    await c.svc.build('g1', AT);
+    const r = await c.svc.read('g1', LEAD, AT);
+    expect(r.inNumbers?.[0]?.says).toBe('Both check-ins due this week were made.');
+    expect(JSON.stringify(r)).not.toMatch(/Chidi has not checked in/);
+  });
+
   it('once he is let in, his check-in is due again: "2 of the 3 check-ins due this week were made."', async () => {
     const r = await servedWithChidiHeld(false);
     expect(r.inNumbers?.[0]?.says).toBe('2 of the 3 check-ins due this week were made.');
     expect(r.eachPerson.find((e) => e.who === 'Chidi')?.says).toBe('Chidi has not checked in this week, so there is nothing here yet about what Chidi is working on.');
+  });
+});
+
+/* Found in the anchor walk (8 October): the week in numbers read the lead's own aims aloud to every person in the team, in an anchor check-in, where they are hers alone (decision 96, item 8). */
+describe('in an anchor check-in the lead\'s aims are not in a team member\'s week', () => {
+  const aims = (r: any) => (r.inNumbers ?? []).filter((f: any) => !/check-ins made|photo or document/.test(f.of));
+  it('Aisha reads the check-ins made and what has proof behind it, and no aim of the lead\'s', async () => {
+    const { r } = await served(AISHA, 'HELP_TEAM_UNDERSTAND');
+    expect(r.inNumbers!.length).toBeGreaterThan(0);
+    expect(aims(r)).toEqual([]);
+    expect(JSON.stringify(r)).not.toMatch(/Freezers sold|Spending this quarter/);
+  });
+  it('the lead still reads them whole, and another kind of check-in is unchanged for Aisha', async () => {
+    expect(aims((await served(LEAD, 'HELP_TEAM_UNDERSTAND')).r).length).toBeGreaterThan(0);
+    expect(aims((await served(AISHA, 'SALES_TEAM_CHECK')).r).length).toBeGreaterThan(0);
+  });
+});
+
+/*
+ * NIGHT QUALITY RUN 1, PROBLEM 4, ON THE WEEK PAGE. Jared Okoth's check-in was closed by the clock with nothing said, and every count
+ * took it as made. Here Chidi is in Jared's place, and Wairimu, who runs it, has her own optional row she has not answered: his miss
+ * stays in "due", her row is never due.
+ */
+describe('a check-in the clock closed with nothing said is due and not made, as the lead reads the week', () => {
+  const { CLOSED_BY_THE_CLOCK } = jest.requireActual('../../common/closed-by-the-clock');
+  async function servedWithChidiClosedByTheClock() {
+    const c = aCheckIn();
+    const rows = [
+      ...CHECK_INS.filter((x) => x.id !== 'c-c5').map((x) => ({ ...x, closedReason: null, optional: false, turns: x.status === 'COMPLETED' ? [{ id: 't' }] : [] })),
+      { id: 'c-c5', participantId: 'p-chidi', sessionNumber: 5, status: 'COMPLETED', completedAt: new Date('2026-09-22T23:00:00Z'), availableFrom: new Date('2026-09-21T06:00:00Z'), createdAt: new Date('2026-09-20T06:00:00Z'), isSetup: false, optional: false, closedReason: CLOSED_BY_THE_CLOCK, turns: [] },
+      { id: 'c-l5', participantId: 'p-lead', sessionNumber: 5, status: 'NOT_STARTED', completedAt: null, availableFrom: new Date('2026-09-21T06:00:00Z'), createdAt: new Date('2026-09-20T06:00:00Z'), isSetup: false, optional: true, closedReason: null, turns: [] },
+    ];
+    const quiet = (x: any) => x.closedReason === CLOSED_BY_THE_CLOCK && !x.turns.length;
+    c.prisma.checkIn.findMany = jest.fn(async ({ where }: any) =>
+      where?.status === 'COMPLETED' && where?.completedAt
+        ? rows.filter((x) => x.status === 'COMPLETED' && x.completedAt! >= where.completedAt.gte && !(where.AND && quiet(x)))
+        : rows);
+    await c.svc.build('g1', AT);
+    return c.svc.read('g1', LEAD, AT);
+  }
+
+  it('reads "2 of the 3 check-ins due this week were made." and that Chidi has not checked in, and never counts the lead\'s own row', async () => {
+    const r = await servedWithChidiClosedByTheClock();
+    expect(r.inNumbers?.[0]?.says).toBe('2 of the 3 check-ins due this week were made.');
+    expect(r.eachPerson.find((e) => e.who === 'Chidi')?.says).toBe('Chidi has not checked in this week, so there is nothing here yet about what Chidi is working on.');
+    expect(JSON.stringify(r)).not.toMatch(/All 3 check-ins|Wairimu has not checked in|You have not checked in/);
   });
 });

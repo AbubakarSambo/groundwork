@@ -33,6 +33,8 @@ function world() {
       update: jest.fn(async ({ data }: any) => { db.pending = { ...db.pending, ...data }; return db.pending; }),
     },
     person: { findMany: jest.fn(async () => []) },
+    /* Nobody here is on a check-in, so the invited-person door (12 October) does not open. */
+    groundParticipant: { findFirst: jest.fn(async () => null) },
     organization: { findUnique: jest.fn(async () => null), findMany: jest.fn(async () => []) },
     organizationMembership: { count: jest.fn(async () => 0) },
     emailVerificationToken: {

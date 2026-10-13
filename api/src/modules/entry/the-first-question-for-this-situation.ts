@@ -57,6 +57,11 @@ export const THE_FIRST_QUESTION: Record<GroundScenario, TheFirstQuestion> = {
     ask: 'Who is coming on, and what are they being brought in for?',
     until: 'who they are, what they are expected to contribute, and what they are being paid or given',
   },
+  /* The anchor's first question, from docs/anchor-scenario.md section 6. The anchor's door, its opening text and its conversation all read it from here (decision 114). */
+  HELP_TEAM_UNDERSTAND: {
+    ask: "What's happening right now that makes you wish your team saw more of what you see?",
+    until: 'what the lead is carrying and what they are seeing today',
+  },
   NEW_PROJECT: {
     ask: 'What is the project, and who is on it?',
     until: 'what is being built or delivered, who is working on it, and by when',

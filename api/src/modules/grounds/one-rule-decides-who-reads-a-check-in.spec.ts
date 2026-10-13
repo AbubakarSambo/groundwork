@@ -37,7 +37,7 @@ describe('the rule', () => {
     expect(adminList.OR[0]).toEqual({ scenario: { notIn: expect.arrayContaining(['CONTRACT_RENEWAL', 'RECOGNITION', 'PIP']) } });
     expect(groundsAViewerMayList(undefined, null, 'org')).toEqual({ organizationId: 'org' });
     const mine = groundsAViewerMayList('m', { role: 'MEMBER', organizationId: 'org' }, 'org') as any;
-    expect(mine.OR).toEqual([{ initiatorId: 'm' }, { createdByUserId: 'm' }, { participants: { some: { userId: 'm' } } }]);
+    expect(mine.OR).toEqual([{ initiatorId: 'm' }, { createdByUserId: 'm' }, { participants: { some: { userId: 'm' } }, status: { not: 'AWAITING_APPROVAL' } }]);
   });
 });
 

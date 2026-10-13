@@ -1,3 +1,4 @@
+import { theNoteBesideTheClaim } from '../grounds/a-wait-is-the-speakers-account';
 /**
  * THE REST OF THE WEEKLY REPORT (week 12b, screens request 9 part d, decision 43).
  *
@@ -27,7 +28,7 @@
  * proportion of a person shown to somebody else. How anybody's answers were rated is never read.
  */
 
-import { aNumberPeopleCanRead, theNumbersPeopleCanRead, theAimItself, yourOwnAimIsYours, THE_NAME_TO_DO } from '../board/an-aim-is-a-sentence-about-somebody';
+import { aNumberPeopleCanRead, theNumbersPeopleCanRead, theAimItself, anAimIsAThing, theirOwnSentence, theirWordsWhenTheySetIt, inTheirWords, yourOwnAimIsYours, THE_NAME_TO_DO } from '../board/an-aim-is-a-sentence-about-somebody';
 import { asADirection, whatTheWordsSuggest } from '../board/an-aim-or-a-limit';
 import { aDeadlineIsDone } from '../board/a-measure-that-goes-down-is-still-going-well';
 import { aCountThatMovedSaid, theMoneyItCountsIn } from './a-count-that-moved-is-one-sentence';
@@ -58,6 +59,8 @@ export interface AWeeksCommitment {
   clause: string | null;
   status: 'DONE' | 'NOT_DONE' | 'DROPPED' | 'UNKNOWN';
   whenSaid: string | null;
+  /** How a DONE was settled: SAID on their word, PROVEN by their own document, CONFIRMED by the colleague. Absent on weeks kept before: their word. */
+  settledBy?: string | null;
 }
 
 export interface AWeeksHandoff {
@@ -65,6 +68,15 @@ export interface AWeeksHandoff {
   onParticipantId: string | null;
   onLabel: string | null;
   what: string;
+  /**
+   * Change 4 (decision 137): whether the colleague's own promise in the check-in confirms the wait. A wait on a colleague
+   * that is not confirmed is the speaker's account. Weeks kept before this field read as not confirmed.
+   */
+  confirmed?: boolean;
+  /** The note beside the claim, read from the speaker's own words: "Tried: ..." or "Not backed: ...". */
+  note?: string | null;
+  /** The colleague's own words about the speaker, where the record holds them, by label. Set beside the claim. */
+  theirSide?: string | null;
 }
 
 export interface AWeeksCount {
@@ -195,7 +207,11 @@ export function theThingsWithProof(said: number, documented: number, yours: bool
 /** Whose a target is, for this reader: the team's, the reader's own, or somebody's by report label. */
 export type Whose = 'team' | 'you' | { label: string };
 
-const lowerFirst = (s: string) => (/^\p{Lu}\p{Ll}/u.test(s) && !/^\p{Lu}\p{Ll}+\s+\p{Lu}/u.test(s) ? s.charAt(0).toLowerCase() + s.slice(1) : s);
+/* A name at the start stays a name: "Esther is aiming for ..." read "esther is aiming for ..." (night quality run 1, problem 8).
+   A capital word followed by "is", "has", "will" and the like is somebody, unless it is an ordinary word such as "The". */
+const AN_ORDINARY_FIRST_WORD = /^(?:The|A|An|This|That|These|Those|My|Our|Your|Their|His|Her|Its|Next|Every|Each|All|Some|No|Any|It|There)\b/;
+const SOMEBODY_FIRST = /^\p{Lu}\p{Ll}+(?:['’]s)?\s+(?:is|are|was|has|had|will|would|wants|aims|plans|hopes|needs|said|says|set)\b/u;
+const lowerFirst = (s: string) => (/^\p{Lu}\p{Ll}/u.test(s) && !/^\p{Lu}\p{Ll}+\s+\p{Lu}/u.test(s) && (AN_ORDINARY_FIRST_WORD.test(s) || !SOMEBODY_FIRST.test(s)) ? s.charAt(0).toLowerCase() + s.slice(1) : s);
 
 /**
  * ONE TARGET, AS THE WEEK MOVED IT. The aim or limit itself, and whether it has been reached or gone
@@ -218,8 +234,19 @@ export function aTargetThisWeek(t: AWeeksTarget, whose: Whose, againstTheAim: bo
       : whose === 'you' ? ', your own number' : `, ${whose.label}'s number`;
   /* "Tobi to close 8 renewals per quarter" is what is counted, "close 8 renewals per quarter", with whose it is after it. */
   const whatIsDone = THE_NAME_TO_DO.exec(readable)?.[2];
-  const of = `${(t.setByTheHolder && whose !== 'team' ? theAimItself(name, null) : null) ?? lowerFirst(whatIsDone ?? readable)}${whoseWords}`;
+  /* Their own sentence is shown as their words, with the label beside it, never the label alone (Hafsah, 12 October):
+     "8 kits, Hassan Mwenda's own aim. Hassan Mwenda said, "my plan is five kits to the shops and three to households."" */
+  const theirs = whose === 'team' ? null : t.setByTheHolder ? theirWordsWhenTheySetIt(name) : theirOwnSentence(name);
+  const label = (t.setByTheHolder && whose !== 'team') || theirs ? theAimItself(name, anAimIsAThing(name) !== name.trim() ? t.target ?? null : null) : null;
+  const saidBy = whose === 'you' ? 'You' : typeof whose === 'object' ? whose.label : '';
+  const of = theirs
+    ? `${label ? `${label}${whoseWords}. ` : ''}${inTheirWords(saidBy, theirs)}`
+    : `${label ?? lowerFirst(whatIsDone ?? readable)}${whoseWords}`;
 
+  /* An aim with no number that nothing has counted is not a "0": the run's five team aims read "0 ... It stayed at 0 this week." */
+  if (t.target == null && !t.count && !t.from && direction !== 'ZERO' && direction !== 'DEADLINE') {
+    return { figure: 'Not counted yet', of, says: 'Nothing on record counts this yet.' };
+  }
   let says: string;
   if (t.from != null && t.from !== t.count) {
     says = aCountThatMovedSaid(
@@ -243,6 +270,8 @@ export function aTargetThisWeek(t: AWeeksTarget, whose: Whose, againstTheAim: bo
   } else {
     says = `It is at ${n(t.count)}, and there is no earlier count this week to compare it with.`;
   }
+  /* Their words are said once, in the line above the count, not again in it. */
+  if (theirs && saidBy) says = says.replace(` ${inTheirWords(saidBy, theirs)}`, '');
   /* Each of the other kinds says what it is, to whoever reads the figure (decision 75, item 17). */
   if (direction === 'ZERO' && t.count > 0) says += /should stay at zero/.test(says) ? ' Any at all is a breach.' : ' This should stay at zero, so any at all is a breach.';
   if (direction === 'DEADLINE') {
@@ -327,6 +356,17 @@ export const NO_RESULT = 'No number was recorded as moving this week.';
 export function aCommitmentThatSettled(c: AWeeksCommitment, who: string): string | null {
   const isYou = who === 'You';
   if (c.status === 'DONE') {
+    /*
+     * DONE ON THEIR WORD IS THEIR CLAIM (decision 12; decision 138 point 1; night quality run 1, problem 3). The letter said
+     * "Collins Odhiambo committed to do ten kits, and it is now done." on his "I did eleven", with no code, before he said
+     * "maybe four or five". Only proof or the colleague who received it makes it done in our voice.
+     */
+    if (c.settledBy !== 'PROVEN' && c.settledBy !== 'CONFIRMED') {
+      const theySay = isYou ? 'you say' : 'says';
+      return c.clause
+        ? `${who} committed to ${c.clause}, and ${theySay} it is done. Nothing has been shown to back it yet.`
+        : `${isYou ? 'You say one of your commitments' : `${who} says one of their commitments`} is done. Nothing has been shown to back it yet.`;
+    }
     return c.clause ? `${who} committed to ${c.clause}, and it is now done.` : `${isYou ? 'One of your commitments' : `One of ${who}'s commitments`} is now done.`;
   }
   if (c.status === 'DROPPED') {
@@ -343,11 +383,43 @@ const inASentence = (phrase: string): string => {
   return /^(The|A|An|Whether|What|How|Who|When|Where|Which|Why|If|This|That|Our|Their|His|Her|Its)\b/.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t;
 };
 
-/** "Participant A is no longer waiting on Participant B for the price list." */
+/**
+ * "Participant A is no longer waiting on Participant B for the price list." where the wait was on a thing outside the
+ * check-in or is confirmed by the colleague's own promise.
+ *
+ * A WAIT ON A COLLEAGUE ONLY THE SPEAKER CLAIMS (decision 137, change 4; night quality run 1, problem 2). The letter said
+ * "Hassan Mwenda is no longer waiting on Amina Otieno for the stock from Kisumu.", his word as a fact about Amina, while her
+ * own record said she sent what he ordered. It now reads as his account, with the note beside it, and her own words set
+ * beside his where the record holds them.
+ */
 export function aHandoffThatCleared(d: AWeeksHandoff, who: string, onWhom: string | null): string {
   const what = inASentence(d.what);
   const forWhat = /^(whether|how|what|which|who|when|where|if)\b/i.test(what) ? `for a decision on ${what}` : `for ${what}`;
+  if (d.onParticipantId && d.confirmed !== true) {
+    const on = onWhom ?? 'a colleague';
+    const note = d.note || theNoteBesideTheClaim({ what: d.what }, { by: who, on });
+    const theirs = (d.theirSide ?? '').trim().replace(/[.\s]+$/, '');
+    const theySaid = theirs ? ` ${on.charAt(0).toUpperCase()}${on.slice(1)} said, "${theirs}."` : '';
+    return `${who} said the work was waiting on ${on} ${forWhat}, and it is no longer waiting. ${note}${theySaid}`;
+  }
   return `${who} ${who === 'You' ? 'are' : 'is'} no longer waiting${onWhom ? ` on ${onWhom}` : ''} ${forWhat}.`;
+}
+
+/**
+ * THE COLLEAGUE'S SIDE OF A WAIT, from their own record: the latest thing they said they did that names the speaker
+ * ("I sent Hassan exactly what he ordered on Monday ..."). Their words as kept, without the extraction's own notes. Null
+ * when none names the speaker: a line about something else is never set beside the claim.
+ */
+export function theirSideOfIt(speakerNames: string[], lines: { text: string; type: string; createdAt?: Date | string | null }[]): string | null {
+  const names = speakerNames.map((n) => (n ?? '').trim()).filter((n) => n.length >= 2);
+  if (!names.length) return null;
+  const naming = new RegExp(`\\b(${names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`, 'i');
+  const theirs = (lines ?? [])
+    .filter((l) => String(l.type) === 'PROGRESS')
+    .map((l) => ({ ...l, text: String(l.text ?? '').replace(/\s*\[[^\]]*\]\s*/g, ' ').replace(/\s+/g, ' ').trim() }))
+    .filter((l) => l.text && naming.test(l.text))
+    .sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime());
+  return theirs[0]?.text ?? null;
 }
 
 /* ------------------------------------------------------------------------------------------------

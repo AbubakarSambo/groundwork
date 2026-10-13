@@ -1,3 +1,4 @@
+import { theFloorFor } from './how-short-a-check-in-may-be';
 /**
  * Whether a session has enough in it to be closed.
  *
@@ -144,4 +145,20 @@ export function closeReadiness(
     ready: false,
     reason: 'nothing checkable yet and no statement that there is nothing - worth one more question',
   };
+}
+
+
+/**
+ * A BARE "FINISH" TYPED IN THE APP BEFORE THERE IS ENOUGH TO FINISH WITH (user journeys, F-10). On WhatsApp the word is a command, and too early it
+ * is answered with one plain sentence. In the app it was read as an answer, and the person was asked a question about "finished". It is the same
+ * command in the app now, with the same sentence, and it is not kept as an answer.
+ */
+export const NOT_ENOUGH_YET_TO_FINISH_HERE = 'I need a little more from you before this check-in can close. Please answer one or two more questions, then write "finish" again.';
+export function isTheWordFinish(message: string): boolean {
+  return /^\s*["“”']?\s*finish(?:ed)?\s*["“”']?\s*[.!]*\s*$/i.test(message ?? '');
+}
+
+/** Whether this many answers is short of the floor for this kind of check-in: the one floor, read where it is read everywhere else. */
+export function tooFewAnswersToFinish(answers: number, isSelfCorrection: boolean, scenario: string | null): boolean {
+  return answers < theFloorFor(isSelfCorrection, scenario as any);
 }

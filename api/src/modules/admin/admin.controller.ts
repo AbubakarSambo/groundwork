@@ -21,7 +21,7 @@ const MAX_PLAN_MEMBER_CAP = 100000;
 /** The most WhatsApp messages a plan may allow in a month, against a typed extra zero. */
 const MAX_WHATSAPP_MONTHLY_LIMIT = 10_000_000;
 import { SubscriptionPlan, ApiAccessStatus } from '@prisma/client';
-
+import { whatTheStripeKeyIs } from '../billing/what-kind-of-stripe-key';
 // ---------------------------------------------------------------------------
 // OTP guard - reads X-Admin-OTP header and verifies it against the requesting
 // user's stored OTP before allowing destructive operations.
@@ -41,12 +41,12 @@ export class OtpGuard implements CanActivate {
     const req = context.switchToHttp().getRequest();
     const otp: string | undefined = req.headers['x-admin-otp'];
     if (!otp) {
-      throw new ForbiddenException('X-Admin-OTP header is required for this operation');
+      throw new ForbiddenException('Enter the code that was sent to you, then try again.');
     }
 
     const userId: string | undefined = req.user?.id;
     if (!userId) {
-      throw new ForbiddenException('Authenticated user not found');
+      throw new ForbiddenException('Your sign-in has run out, so sign in again.');
     }
 
     // verifyOtpForAdmin throws if invalid - let it bubble as 400/403
@@ -132,7 +132,7 @@ export class AdminController {
   }
 
   @Get('pricing/anchor-trial')
-  @ApiOperation({ summary: 'The anchor trial: whether it is on. One month, up to 20 people with the lead.' })
+  @ApiOperation({ summary: 'The anchor trial: whether it is on. One month, up to 20 people besides the lead.' })
   async getAnchorTrial() {
     return this.pricing.getAnchorTrial();
   }
@@ -163,7 +163,7 @@ export class AdminController {
     @Body() body: { amountCents?: number; memberCap?: number | null; whatsappAddOnCents?: number | null; whatsappMonthlyLimit?: number | null },
   ) {
     if (!Object.values(SubscriptionPlan).includes(plan as SubscriptionPlan)) {
-      throw new BadRequestException(`Unknown plan: ${plan}`);
+      throw new BadRequestException('That plan does not exist, so choose one from the list.');
     }
 
     /**
@@ -179,7 +179,7 @@ export class AdminController {
     if (body?.memberCap !== undefined) {
       const cap = body.memberCap;
       if (cap !== null && (!Number.isInteger(cap) || cap < 1 || cap > MAX_PLAN_MEMBER_CAP)) {
-        throw new BadRequestException(`memberCap must be null for unlimited, or a whole number between 1 and ${MAX_PLAN_MEMBER_CAP}.`);
+        throw new BadRequestException(`The most people a plan allows must be left empty for no limit, or be a whole number between 1 and ${MAX_PLAN_MEMBER_CAP}.`);
       }
       await this.pricing.setMemberCap(plan as SubscriptionPlan, cap);
     }
@@ -216,7 +216,7 @@ export class AdminController {
       throw new BadRequestException('Enterprise is contact-sales only and has no self-serve price.');
     }
     if (!Number.isInteger(body?.amountCents) || body.amountCents <= 0) {
-      throw new BadRequestException('amountCents must be a positive integer');
+      throw new BadRequestException('The price must be a whole number of cents and more than nothing.');
     }
     /**
      * AND BOUNDED, BECAUSE THIS FIELD BILLS REAL CARDS.
@@ -229,7 +229,7 @@ export class AdminController {
      */
     if (body.amountCents < MIN_PLAN_AMOUNT_CENTS || body.amountCents > MAX_PLAN_AMOUNT_CENTS) {
       throw new BadRequestException(
-        `amountCents must be between ${MIN_PLAN_AMOUNT_CENTS} and ${MAX_PLAN_AMOUNT_CENTS} - Stripe refuses anything smaller, and anything larger is almost certainly a typo.`,
+        `The price must be between ${MIN_PLAN_AMOUNT_CENTS} and ${MAX_PLAN_AMOUNT_CENTS} cents, because Stripe refuses anything smaller and anything larger is almost certainly a typo.`,
       );
     }
     await this.pricing.setAmountCents(plan as SubscriptionPlan, body.amountCents);
@@ -252,12 +252,9 @@ export class AdminController {
   @Get('stripe')
   @ApiOperation({ summary: 'Whether a Stripe key is configured on this deployment. Never the key.' })
   stripeStatus() {
-    return {
-      isConfigured: this.stripe.isConfigured,
-      says: this.stripe.isConfigured
-        ? 'A Stripe key is set. Checkout and subscriptions will reach Stripe.'
-        : 'No Stripe key is set here, so nothing can be charged. Prices below can still be edited; they will apply when a key is set.',
-    };
+    const kind = this.stripe.keyKind ?? (this.stripe.isConfigured ? 'unknown' : 'none');
+    /* A placeholder is not a key that works, so it is not "configured" for anything that needs to charge. */
+    return { isConfigured: this.stripe.isConfigured && kind !== 'placeholder', keyKind: kind, ...whatTheStripeKeyIs(kind) };
   }
 
   @Get('whatsapp')
@@ -457,7 +454,7 @@ export class AdminController {
   @ApiOperation({ summary: 'Set isPlatformAdmin=true for a user by email' })
   @ApiHeader({ name: 'X-Admin-OTP', description: 'Valid 6-digit OTP obtained from POST /admin/otp/request', required: true })
   addPlatformAdmin(@Body() body: { email: string }) {
-    if (!body?.email) throw new BadRequestException('email is required');
+    if (!body?.email) throw new BadRequestException('Add an email address and try again.');
     return this.adminService.addPlatformAdmin(body.email);
   }
 

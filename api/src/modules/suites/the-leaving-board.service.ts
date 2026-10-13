@@ -6,6 +6,8 @@ import { PrismaService } from '../prisma/prisma.service';
 export const LEAVING_REFUSED = {
   notOn: thisSuiteIsOff('The suite for when someone leaves'),
   onlyAnAdmin: 'Only an admin can open this board.',
+  /** Said to somebody who may not add to or change the list. Reading and changing are different sentences (request 181 item 5). */
+  onlyAnAdminChanges: 'Only an admin can change this list.',
   notFound: 'That list was not found.',
   noSuchPerson: 'Choose somebody in your organisation.',
   badDay: 'Give their last day.',
@@ -123,7 +125,7 @@ export class LeavingBoardService {
 
   /** An admin starts the list for somebody's last day. Each step gets the owner the admin named when switching the suite on. */
   async start(reader: Reader, input: { personId?: string; lastDay?: string }, today = new Date()) {
-    const answers = await this.admitAdmin(reader);
+    const answers = await this.admitAdmin(reader, true);
     const org = reader.organizationId;
     const directory = await this.directory(org);
     const p = input.personId ? directory.get(input.personId) : undefined;
@@ -155,7 +157,7 @@ export class LeavingBoardService {
 
   /** An admin names a step's owner, or marks it done or not done. */
   async step(reader: Reader, id: string, step: string, input: { ownerUserId?: string | null; done?: boolean }, today = new Date()) {
-    await this.admitAdmin(reader);
+    await this.admitAdmin(reader, true);
     const list = await this.prisma.leavingChecklist.findUnique({ where: { id }, select: { id: true, organizationId: true, personExternalId: true } });
     if (!list || list.organizationId !== reader.organizationId) throw new NotFoundException(LEAVING_REFUSED.notFound);
     if (!(STEPS as readonly string[]).includes(step)) throw new BadRequestException(LEAVING_REFUSED.noSuchStep);
@@ -198,7 +200,7 @@ export class LeavingBoardService {
     return next?.handoverReadyAt && to ? { to: this.nameOf(to), on: dayOf(next.handoverReadyAt) } : null;
   }
 
-  private async admitAdmin(reader: Reader): Promise<{ access: string | null; pay: string | null }> {
+  private async admitAdmin(reader: Reader, toChange = false): Promise<{ access: string | null; pay: string | null }> {
     const suite = await this.prisma.organizationSuite.findUnique({
       where: { organizationId_suite: { organizationId: reader.organizationId, suite: 'leaving' } },
       select: { isOn: true, answers: true },
@@ -208,7 +210,7 @@ export class LeavingBoardService {
       where: { userId_organizationId: { userId: reader.userId, organizationId: reader.organizationId } },
       select: { role: true },
     });
-    if (m?.role !== 'ADMIN') throw new ForbiddenException(LEAVING_REFUSED.onlyAnAdmin);
+    if (m?.role !== 'ADMIN') throw new ForbiddenException(toChange ? LEAVING_REFUSED.onlyAnAdminChanges : LEAVING_REFUSED.onlyAnAdmin);
     const a = (suite.answers ?? {}) as Record<string, unknown>;
     return { access: typeof a.access === 'string' ? a.access : null, pay: typeof a.pay === 'string' ? a.pay : null };
   }

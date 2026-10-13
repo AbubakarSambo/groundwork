@@ -28,7 +28,7 @@ describe('the free extension', () => {
   it('is refused on a free check-in, with purchaseSession’s reason, before anything is spent', async () => {
     const { s } = service({ id: 'g', isFreeGround: true });
     await expect(s.claimFreeExtension('org', 'g')).rejects.toBeInstanceOf(ForbiddenException);
-    await expect(s.claimFreeExtension('org', 'g')).rejects.toThrow(/unlimited free sessions - nothing to extend/);
+    await expect(s.claimFreeExtension('org', 'g')).rejects.toThrow(/already has unlimited free sessions, so there is nothing to extend/);
     expect(s.prisma.$transaction).not.toHaveBeenCalled();
   });
 

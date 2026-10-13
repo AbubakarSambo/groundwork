@@ -84,4 +84,16 @@ describe('the first message to a number', () => {
     expect(r.sent).toBe(false);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
+
+  /* User journeys, F-19: two check-ins opened for one person in the same moment sent two introductions, each ending 'Not you? Reply STOP.' */
+  it('two check-ins opening at once: only the very first message carries the introduction', async () => {
+    const { wa } = aSender({});
+    const other = ['Amani', 'Renewals'];
+    await Promise.all([
+      wa.sendFor('org-1', '+254700000001', OPEN_TEXT, { kind: 'checkin-open', params: OPEN }),
+      wa.sendFor('org-1', '+254700000001', fill(TEMPLATES['checkin-open'].body, other), { kind: 'checkin-open', params: other }),
+    ]);
+    const names = fetchSpy.mock.calls.map((c: any) => JSON.parse(c[1].body).template.name).sort();
+    expect(names).toEqual(['checkin_open', 'groundwork_first_contact']);
+  });
 });

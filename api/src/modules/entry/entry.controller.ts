@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Patch, Body, Query, UnauthorizedException, Res, Req, Logger } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Query, UnauthorizedException, BadRequestException, Res, Req, Logger } from '@nestjs/common';
 import type { Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { Public, OptionalAuth, CurrentUser, CurrentUserData } from '../../common';
@@ -133,6 +133,12 @@ class EntryOpenerDto {
   @IsString()
   @MaxLength(120)
   scenario?: string;
+
+  /** Where the link that brought the visitor was shared (the `?source=` on it). A short word; anything else is dropped. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  source?: string;
 }
 
 /** classify-intent took an inline type, which the validation pipe cannot see, so `description` was unbounded. */
@@ -212,6 +218,11 @@ class EntryReportDto {
   @IsArray()
   @IsString({ each: true })
   peopleNamed?: string[];
+
+  /* The anchor conversation only: what the lead's first conversation heard, under the seven keys it served, so the reveal says what she said. */
+  @IsOptional()
+  @IsObject()
+  anchorItems?: Record<string, unknown>;
 }
 
 class ContributorDto {
@@ -219,6 +230,8 @@ class ContributorDto {
   @ValidateIf((o: ContributorDto) => !o.colleagueId) @IsString() email: string;
   @IsOptional() @IsString() @MaxLength(64) colleagueId?: string;
   @IsOptional() @IsString() context?: string;
+  /* "Name + email" (anchor section 13): what the lead calls this person, kept beside the address. */
+  @IsOptional() @IsString() @MaxLength(120) displayName?: string;
   @IsOptional() @IsString() inviteToken?: string;
   @IsOptional() @IsString() note?: string;
 }
@@ -573,8 +586,8 @@ export class EntryController {
   @Public()
   @Post('opener')
   @Throttle({ global: { limit: 30, ttl: 60000 } })
-  opener(@Body() dto: EntryOpenerDto) {
-    return { reply: this.service.opener(dto.scenario) };
+  async opener(@Body() dto: EntryOpenerDto) {
+    return this.service.openerWithItsRules(dto.scenario, dto.source);
   }
 
   @Public()
@@ -612,7 +625,7 @@ export class EntryController {
   @Post('report')
   @Throttle({ global: { limit: 20, ttl: 60000 } })
   async report(@Body() dto: EntryReportDto) {
-    const report = await this.service.report(dto.messages, dto.scenario, dto.groundLabel, dto.peopleNamed);
+    const report = await this.service.report(dto.messages, dto.scenario, dto.groundLabel, dto.anchorItems, dto.peopleNamed);
     return { report };
   }
 }
@@ -664,10 +677,21 @@ export class EntryCommitController {
     private readonly openLink: TheOpenLinkService,
   ) {}
 
+  /**
+   * `?ifThereIsOne=1` is sent by the sign-in link's page for somebody with nothing saved in this
+   * browser (a new admin from the sign-up form, an invited person). It still saves a draft the server
+   * holds from another browser; with nothing to save anywhere it answers `{ nothing: true }` instead of
+   * a 400, so a new admin's first page logs no error (journey of 12 October). Without it, as before.
+   */
   @Post('commit')
-  async commit(@CurrentUser() user: CurrentUserData, @Body() dto: EntryCommitDto) {
-    if (!user?.organizationId) throw new UnauthorizedException('Account not linked to an organisation');
-    return this.service.commit(user.organizationId, user.id, dto);
+  async commit(@CurrentUser() user: CurrentUserData, @Body() dto: EntryCommitDto, @Query('ifThereIsOne') ifThereIsOne?: string) {
+    if (!user?.organizationId) throw new UnauthorizedException('Your sign-in is not connected to an organisation yet, so ask the person who invited you to add you.');
+    try {
+      return await this.service.commit(user.organizationId, user.id, dto);
+    } catch (err) {
+      if (ifThereIsOne && err instanceof BadRequestException && (err.getResponse() as { code?: string })?.code === 'NO_ENTRY_SESSION') return { nothing: true as const };
+      throw err;
+    }
   }
 
   /**
@@ -678,7 +702,7 @@ export class EntryCommitController {
   @Post('draft-from-set-up')
   @Throttle({ global: { limit: 20, ttl: 60_000 } })
   async draftFromSetUp(@CurrentUser() user: CurrentUserData, @Body() dto: EntryDraftFromSetUpDto) {
-    if (!user?.organizationId) throw new UnauthorizedException('Account not linked to an organisation');
+    if (!user?.organizationId) throw new UnauthorizedException('Your sign-in is not connected to an organisation yet, so ask the person who invited you to add you.');
     return this.service.draftFromSetUp(user.organizationId, user.id, dto.setUp as any);
   }
 

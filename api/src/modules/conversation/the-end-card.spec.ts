@@ -264,13 +264,30 @@ describe('when they finish', () => {
     const service = aService(prisma);
     service.extractRecordEntries = jest.fn();
     await service.writeTheRecordAtTheEnd({ id: 'ci1', participantId: 'p1' });
-    expect(prisma.recordEntry.createMany).toHaveBeenCalledWith({ data: ROWS });
+    expect(prisma.recordEntry.createMany).toHaveBeenCalledWith({ data: ROWS.map((r) => ({ ...r, createdAt: expect.any(Date) })) });
     expect(service.extractRecordEntries).not.toHaveBeenCalled();
     expect(prisma.conversationTurn.count.mock.calls[0][0].where).toMatchObject({ checkInId: 'ci1', role: TurnRole.PERSON });
   });
 
   /* Changed with the reviewer's read (task 2.7): the second read is now the same read and write that
      extractRecordEntries did, done here so the card can be replaced with what was written. */
+  /* Night quality run 2: every deal read "On 12 October", the day the rows were written, for sessions held from 19 October. */
+  it('dates every line it writes as the session it was said in, not the moment it is written', async () => {
+    const finished = new Date('2026-10-19T15:00:00Z');
+    for (const saidMore of [0, 1]) {
+      const prisma: any = {
+        conversationTurn: { findFirst: jest.fn(async () => closing), count: jest.fn(async () => saidMore), update: jest.fn(async () => ({})) },
+        checkIn: { findUnique: jest.fn(async () => ({ completedAt: finished })) },
+        recordEntry: { createMany: jest.fn(async () => ({ count: 2 })) },
+      };
+      const service = aService(prisma);
+      service.readTheRecord = jest.fn(async () => ROWS.map((r) => ({ ...r })));
+      await service.writeTheRecordAtTheEnd({ id: 'ci1', participantId: 'p1' });
+      const written = prisma.recordEntry.createMany.mock.calls[0][0].data;
+      expect(written.map((r: any) => r.createdAt.toISOString())).toEqual([finished.toISOString(), finished.toISOString()]);
+    }
+  });
+
   it('reads the record again when they said more after the card, and the card then says what was written', async () => {
     const prisma: any = {
       conversationTurn: { findFirst: jest.fn(async () => closing), count: jest.fn(async () => 1), update: jest.fn(async () => ({})) },
@@ -281,7 +298,7 @@ describe('when they finish', () => {
     service.readTheRecord = jest.fn(async () => reread);
     const card = await service.writeTheRecordAtTheEnd({ id: 'ci1', participantId: 'p1' });
     expect(service.readTheRecord).toHaveBeenCalledWith('ci1', 'p1');
-    expect(prisma.recordEntry.createMany).toHaveBeenCalledWith({ data: reread });
+    expect(prisma.recordEntry.createMany).toHaveBeenCalledWith({ data: reread.map((r) => ({ ...r, createdAt: expect.any(Date) })) });
     const replaced = prisma.conversationTurn.update.mock.calls[0][0];
     expect(replaced.where).toEqual({ id: 'turn-9' });
     expect(replaced.data.endCard.inYourRecord.map((l: any) => l.says)).toEqual(["I'll visit Westgate Deli on Friday."]);
@@ -333,7 +350,7 @@ describe('the read and the write are the same as before', () => {
     service.readTheRecord = jest.fn(async () => ROWS);
     await service.extractRecordEntries('ci1', 'p1');
     expect(prisma.recordEntry.createMany).toHaveBeenCalledTimes(1);
-    expect(prisma.recordEntry.createMany).toHaveBeenCalledWith({ data: ROWS });
+    expect(prisma.recordEntry.createMany).toHaveBeenCalledWith({ data: ROWS.map((r) => ({ ...r, createdAt: expect.any(Date) })) });
   });
   it('and writes nothing when the read finds nothing', async () => {
     const prisma: any = { recordEntry: { createMany: jest.fn() } };

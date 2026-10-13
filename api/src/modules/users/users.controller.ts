@@ -83,14 +83,18 @@ export class UsersController {
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'People on a check-in whose invitation is waiting for a seat' })
   async waitingForASeat(@CurrentUser('organizationId') organizationId: string) {
-    return this.door.waitingForASeat(organizationId);
+    /* People added to a check-in with no seat, and people invited by a paste with no seat (B-129). */
+    return [...(await this.door.waitingForASeat(organizationId)), ...(await this.usersService.theInvitationsWaitingForASeat(organizationId))];
   }
 
   @Post('waiting/seats/release')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Send the invitations that were waiting for a seat, as far as there is room' })
   async releaseSeats(@CurrentUser('organizationId') organizationId: string) {
-    return this.grounds.releaseAnyoneWaitingForASeat(organizationId);
+    const onCheckIns = await this.grounds.releaseAnyoneWaitingForASeat(organizationId);
+    /* And then the people invited by a paste, with whatever room is left (B-129). */
+    const invited = await this.usersService.releaseTheInvitationsWaiting(organizationId, await this.usersService.organisationName(organizationId));
+    return { sent: onCheckIns.sent + invited.sent, stillWaiting: onCheckIns.stillWaiting + invited.stillWaiting };
   }
 
   /**
@@ -182,6 +186,21 @@ export class UsersController {
     return this.usersService.changeJoinDomain(organizationId, userId);
   }
 
+  /** THE ORGANISATION'S OWN TIME ZONE (B-094): the day every board, report and Today sentence is written in. */
+  @Get('organization/time-zone')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'The time zone this organisation reads its days in' })
+  async theTimeZone(@CurrentUser('organizationId') organizationId: string) {
+    return this.usersService.theTimeZone(organizationId);
+  }
+
+  @Patch('organization/time-zone')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Name the time zone this organisation reads its days in, or clear it' })
+  async setTheTimeZone(@CurrentUser('organizationId') organizationId: string, @Body() body: { timeZone?: string | null }) {
+    return this.usersService.setTheTimeZone(organizationId, body?.timeZone ?? null);
+  }
+
   @Get('organization/check-ins')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Who may open a check-in here, and whether one waits for approval' })
@@ -270,8 +289,8 @@ export class UsersController {
   @Get()
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'List users in the organization' })
-  async findAll(@CurrentUser('organizationId') organizationId: string, @Query() pagination: PaginationDto) {
-    return this.usersService.findAll(organizationId, pagination);
+  async findAll(@CurrentUser('organizationId') organizationId: string, @Query() pagination: PaginationDto, @CurrentUser('id') readerId: string) {
+    return this.usersService.findAll(organizationId, pagination, readerId);
   }
 
   /**
@@ -329,6 +348,18 @@ export class UsersController {
    * offer to change. The write is owner-only, enforced in the service rather than by a decorator:
    * `@Roles` knows about roles and this is not one.
    */
+  /**
+   * AN ADMIN'S NAME, FOR A PERSON REFUSED A PAGE ONLY AN ADMIN CAN OPEN (request 225, item c). The People
+   * and Plan and billing doors said "An admin can change it." with nobody named, because the owner lookup
+   * below is for admins only. This serves any signed-in person one admin's name and nothing else: no
+   * address, no id, no role, no count. Names only, the same as a check-in already shows.
+   */
+  @Get('an-admin')
+  @ApiOperation({ summary: 'One admin of your organisation, by name only' })
+  async anAdmin(@CurrentUser('organizationId') organizationId: string) {
+    return this.usersService.anAdminByName(organizationId);
+  }
+
   @Get('organization/owner')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Who set this organisation up' })

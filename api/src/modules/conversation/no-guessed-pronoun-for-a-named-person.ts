@@ -18,10 +18,25 @@ const A_GENDERED_PRONOUN = /\b(he|she|him|his|hers|her|himself|herself)\b/gi;
 const NOT_A_NAME = new Set(['The', 'What', 'When', 'Where', 'Who', 'Why', 'How', 'That', 'This', 'These', 'Those', 'You', 'Your', 'Yes', 'Okay', 'Less', 'More', 'Let', 'And', 'But', 'Then', 'Now', 'One', 'Two', 'Not', 'Before', 'After', 'Once', 'Since', 'Which', 'Something', 'Nothing', 'Everyone', 'Nobody', 'Somebody', 'Success', 'Session', 'Groundwork', 'They', 'There', 'Here', 'If', 'It', 'So', 'As', 'In', 'On', 'At', 'For', 'To', 'Is', 'Are', 'Do', 'Does', 'Did', 'Can', 'Could', 'Would', 'Will', 'Thanks', 'Thank', 'Good', 'Great', 'Sure', 'Next', 'First', 'Also', 'Tell', 'Say', 'Please', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']);
 const THEIR_PRONOUNS_STATED = /\bpronouns?\b|\b(?:she|he|they)\s*\/\s*(?:her|him|them)\b/i;
 /* After "her", these mean it is the object ("ask her to"), not the owner ("her target"). */
-const AN_OBJECT_COMES_AFTER = /^(?:$|[.,;:?!)"”']|(?:to|on|for|about|with|and|or|if|at|that|so|by|in|when|before|after|from|because|but|as|than|what|who|how|whether|again|too|now|today|then|there|here|directly)\b)/i;
+const AN_OBJECT_COMES_AFTER = /^(?:$|[.,;:?!)"”']|(?:once|twice|\w+\s+times)\b|(?:to|on|for|about|with|and|or|if|at|that|so|by|in|when|before|after|from|because|but|as|than|what|who|how|whether|again|too|now|today|then|there|here|directly)\b)/i;
 
+/*
+ * A PLACE OR A PRODUCT IS NOT A PERSON (night quality run 1). "M-Pesa codes for all his sales" came out "for all Pesa's
+ * sales", and "what do you expect of him" came out "of Bay", because the last capital word said was the end of
+ * "M-Pesa" or "Kendu Bay". A capital word straight after a hyphen is part of a word, and a run of capital words ending
+ * in a place word ("Kendu Bay", "Rangwe Market") is a place: no word of either is ever taken for a person.
+ */
+const A_PLACE_WORD = /^(?:Bay|County|Market|Road|Street|Town|City|Hill|Hills|Lake|River|Island|Estate|Centre|Center|Mall|Station|Junction|Village|Ward|District|Region|Province|State|Port|Beach|Park)$/;
 function namesIn(text: string): string[] {
-  return (text.match(/\b[A-Z][a-z]{2,}\b/g) ?? []).filter((w) => !NOT_A_NAME.has(w));
+  const out: string[] = [];
+  /* Each run of capital words, with what is just before it, so a hyphenated part and a place are seen whole. */
+  for (const m of text.matchAll(/(-?)\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/g)) {
+    if (m[1] === '-') continue;
+    const words = m[2].split(/\s+/);
+    if (words.some((w) => A_PLACE_WORD.test(w))) continue;
+    for (const w of words) if (w.length >= 3 && !NOT_A_NAME.has(w)) out.push(w);
+  }
+  return out;
 }
 
 /** The names Groundwork may rewrite a pronoun into: people on the roster, which is in what was said. */
@@ -62,8 +77,18 @@ export function withoutAGuessedPronoun(sentence: string, turnBefore: string, onT
       if (!name || theirPronounsAreOnRecord(name, onTheRoster)) { result += m[0]; continue; }
       const w = m[0].toLowerCase();
       let rewritten: string;
-      if (w === 'he' || w === 'she') rewritten = name;
-      else if (w === 'him' || w === 'himself' || w === 'herself') rewritten = w === 'him' ? name : name;
+      if (w === 'he' || w === 'she') {
+        rewritten = name;
+        /* "he'll" is "Baraka will", never "Baraka'll" (release check, 9 October): a contraction on the pronoun is said in full after the name. */
+        const short = /^['’](ll|d|s)\b/i.exec(part.slice(cursor));
+        if (short) {
+          const next = part.slice(cursor + short[0].length).trimStart();
+          const done = /^(been|had|got|gone|done|said|made|taken|told|asked|seen|left|finished|started|already)\b/i.test(next);
+          const s = short[1].toLowerCase();
+          rewritten = `${name} ${s === 'll' ? 'will' : s === 'd' ? (done ? 'had' : 'would') : done ? 'has' : 'is'}`;
+          cursor += short[0].length;
+        }
+      } else if (w === 'him' || w === 'himself' || w === 'herself') rewritten = w === 'him' ? name : name;
       else if (w === 'his' || w === 'hers') rewritten = `${name}'s`;
       else rewritten = AN_OBJECT_COMES_AFTER.test(part.slice(cursor).trimStart()) ? name : `${name}'s`;
       /* A name starting a sentence is already capital; mid-sentence it stays as the name. */

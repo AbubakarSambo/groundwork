@@ -149,7 +149,7 @@ function aWeek(o: { answer: string; turns: { role: string; content: string }[]; 
   const created: any[] = [];
   const seed: Record<string, any> = {
     ground: { findUnique: jest.fn(async () => ground), findFirst: jest.fn(async () => ground) },
-    platformSetting: { findUnique: jest.fn(async () => (o.switchOn === false ? null : { value: { on: true } })) },
+    platformSetting: { findUnique: jest.fn(async () => (o.switchOn === false ? { value: { on: false } } : { value: { on: true } })) },
     checkIn: { findUnique: jest.fn(async () => checkIn), findMany: jest.fn(async () => []), findFirst: jest.fn(async () => null), count: jest.fn(async () => 0), update: jest.fn(async () => ({})) },
     groundCommitment: {
       findMany: jest.fn(async () => []),

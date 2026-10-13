@@ -97,7 +97,7 @@ export const SUITES: readonly Suite[] = [
   },
   {
     key: 'todos', group: 'Work', name: 'To-dos', forLeads: true,
-    line: 'Everything people said they will do, from every check-in and chat, in one list for each person.',
+    line: 'Everything people said they will do, in each check-in.',
     questions: [],
   },
   {

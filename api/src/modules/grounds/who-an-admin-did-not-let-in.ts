@@ -41,9 +41,18 @@ export async function whoAnAdminDidNotLetIn(
  * already carry the hold, and `whoIsNotLetInYet` where only ids are in hand.
  */
 
-/** A row that carries the hold itself: `notLetIn`, or the user's `awaitingOrgApproval`. */
-export function isNotLetInYet(p: any): boolean {
+/** Held at the organisation's door: `notLetIn`, or the user's `awaitingOrgApproval`. */
+export function isHeldAtTheDoor(p: any): boolean {
   return p?.notLetIn === true || p?.user?.awaitingOrgApproval === true;
+}
+
+/**
+ * NOT IN YET, SO NOT COUNTED: held at the door, or invited and not joined yet (`notJoinedYet`, marked by a
+ * reader that asked invited-not-joined-yet.ts; decision 8 redone, night run 3). Every count that leaves out
+ * somebody not let in leaves them out too, so "N of M checked in" never counts somebody who never came in.
+ */
+export function isNotLetInYet(p: any): boolean {
+  return isHeldAtTheDoor(p) || p?.notJoinedYet === true;
 }
 
 export interface NotLetInYet {
@@ -65,7 +74,7 @@ export async function whoIsNotLetInYet(
   const out = new Map<string, NotLetInYet>();
   const rows = (participants ?? []).filter((p) => !!p?.id);
   const userIds = [...new Set(rows.map((p) => p.userId).filter((x): x is string => !!x))];
-  const held = new Set<string>(rows.filter(isNotLetInYet).map((p) => p.userId ?? `#${p.id}`));
+  const held = new Set<string>(rows.filter(isHeldAtTheDoor).map((p) => p.userId ?? `#${p.id}`));
   if (userIds.length) {
     const found: any[] = await Promise.resolve(
       prisma?.user?.findMany?.({ where: { id: { in: userIds }, awaitingOrgApproval: true }, select: { id: true, awaitingOrgApproval: true } }),

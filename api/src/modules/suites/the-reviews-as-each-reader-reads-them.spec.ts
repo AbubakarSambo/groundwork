@@ -159,7 +159,7 @@ describe('one review, as each reader reads it', () => {
     await svc.decide(as('u-wairimu'), 'r-aisha', { decision: 'Aisha leads the supermarket accounts from April.', reasons: 'She closed 9 sales, all paid, and helped two others.' });
     const r = await svc.one(as('u-aisha'), 'r-aisha');
     expect(r).toEqual({
-      reader: 'person', id: 'r-aisha', firstName: 'Aisha', writtenWithFirstName: 'Wairimu', dueOn: '2027-03-01',
+      reader: 'person', id: 'r-aisha', firstName: 'Aisha', writtenWithFirstName: 'Wairimu', writerFirstName: 'Wairimu', dueOn: '2027-03-01',
       noticed: [
         { says: 'Closed 9 sales since March. Paystack shows all 9 payments.', mark: 'proven' },
         { says: 'Kept 41 of 44 things she said she would do.', mark: 'proven' },
@@ -169,6 +169,8 @@ describe('one review, as each reader reads it', () => {
       record: null,
       theirView: 'I want to lead the supermarket accounts, but I need faster stock.',
       managersWords: 'Aisha is our strongest closer with butcheries. I want her to lead supermarkets next.',
+      /* Added by request 162, item 6: who wrote the words. This review's words were set without an author, so none is named. */
+      managersWordsById: null,
       managersWordsHeading: 'What Wairimu writes',
       whereYouDiffer: {
         says: 'Wairimu and you have each written your own view of your work. Here they are side by side, so you can see where they differ before you meet.',
@@ -176,6 +178,10 @@ describe('one review, as each reader reads it', () => {
         yourView: 'I want to lead the supermarket accounts, but I need faster stock.',
       },
       decision: { says: 'Aisha leads the supermarket accounts from April.', reasons: 'She closed 9 sales, all paid, and helped two others.' },
+      /* Added by decision 113: once decided, the person may appeal it, and is told to whom it goes. */
+      mayAppeal: true,
+      mayAppealSays: 'If you disagree with this decision, you can appeal it. An admin other than Wairimu reads the review, your side and your reasons, and decides.',
+      appeal: null,
     });
     expect(JSON.stringify(r)).not.toMatch(/pv-1|promptVersion/);
   });

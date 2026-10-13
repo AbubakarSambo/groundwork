@@ -73,30 +73,30 @@ describe('signature verification fails closed (and passes valid requests)', () =
 
   it('rejects when no secret is configured (fail closed)', () => {
     const { service } = makeService({ secret: null });
-    expect(() => service.verifySignature(sign(BODY), BODY)).toThrow('webhook secret not configured');
+    expect(() => service.verifySignature(sign(BODY), BODY)).toThrow('The email delivery notices cannot be checked here yet, so none was accepted.');
   });
 
   it('rejects missing svix headers', () => {
     const { service } = makeService();
-    expect(() => service.verifySignature({}, BODY)).toThrow('missing svix headers');
+    expect(() => service.verifySignature({}, BODY)).toThrow('That delivery notice could not be checked, so it was not accepted.');
   });
 
   it('rejects a stale timestamp', () => {
     const { service } = makeService();
     const stale = sign(BODY, { ts: Math.floor(Date.now() / 1000) - 3600 });
-    expect(() => service.verifySignature(stale, BODY)).toThrow('timestamp outside tolerance');
+    expect(() => service.verifySignature(stale, BODY)).toThrow('That delivery notice was too old to be checked, so it was not accepted.');
   });
 
   it('rejects a wrong signature (different secret)', () => {
     const { service } = makeService();
     const forged = sign(BODY, { secretBytes: crypto.randomBytes(24) });
-    expect(() => service.verifySignature(forged, BODY)).toThrow('signature mismatch');
+    expect(() => service.verifySignature(forged, BODY)).toThrow('That delivery notice could not be checked, so it was not accepted.');
   });
 
   it('rejects a tampered body', () => {
     const { service } = makeService();
     const headers = sign(BODY);
-    expect(() => service.verifySignature(headers, BODY + 'x')).toThrow('signature mismatch');
+    expect(() => service.verifySignature(headers, BODY + 'x')).toThrow('That delivery notice could not be checked, so it was not accepted.');
   });
 });
 

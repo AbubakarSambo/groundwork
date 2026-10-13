@@ -326,7 +326,8 @@ describe('a person\'s own check-in is not given a colleague\'s hidden target, in
 
   it('the prompt is built from it', () => {
     const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'conversation', 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-    expect(src).toContain('adminBrief: this.theBriefThisPersonMayBeGiven(ground as any, checkIn as any),');
+    /* Changed 8 October (anchor walk): the brief is also withheld, in code, from a team member's model on an anchor check-in (the lead's words are hers alone); the hidden-target rule still runs for every other case. */
+    expect(src).toContain('adminBrief: this.theLeadsOwnWordsStayHers(ground, checkIn) ? null : this.theBriefThisPersonMayBeGiven(ground as any, checkIn as any),');
     expect(src).not.toContain('adminBrief: (ground as any).brief ?? null,');
     expect(src).toContain('sharedNote: this.theSharedNoteThisPersonMayBeGiven(ground as any, checkIn as any),');
     expect(src).toContain("...(ground.leadContextNotes ?? []).map((n) => this.theLeadsWordsThisPersonMayBeGiven(ground as any, checkIn as any, n.text) ?? ''),");

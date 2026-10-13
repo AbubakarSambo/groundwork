@@ -182,13 +182,34 @@ export class YourBoardService {
     const running = new Set(mine.filter((g) => !isShut(g.status) && !['AWAITING_APPROVAL', 'DECLINED'].includes(g.status) && !g.closedAt && !g.resolvedAt).map((g) => g.id));
     const asked = askedOfYou(onYou as any, reader, { groundIds: running, participantIds: new Set(participantIds) }, theDayIn('Africa/Lagos', new Date()));
     const patterns = await this.servedPatternsAcrossGrounds(patternRows as any[]);
+    /*
+     * THE REPORT OF A CHECK-IN YOU ARE HELD FOR A SEAT ON, WHEN YOU ALREADY ANSWERED IT (decision 110, B3). Nothing else of that check-in reaches
+     * this page: no goal, no card, no colleague, no shared report (the lines above leave it out whole). Only your own report, the one that was
+     * written from your own answers, and only through the link that reads it, which is yours alone.
+     */
+    const ownReportsHeld = await this.theOwnReportsOfCheckInsHeldForASeat(reader);
+    const withHeld = ownReportsHeld.length
+      ? { ...board, ownReports: [...board.ownReports, ...ownReportsHeld.filter((h) => !board.ownReports.some((r) => r.to === h.to))].sort((a, b) => (b.at ?? '').localeCompare(a.at ?? '')) }
+      : board;
     return {
-      ...board,
+      ...withHeld,
       ...(heldForTheOrganisation ? { waitingToBeLetIn: WAITING_TO_BE_LET_IN } : {}),
       ...(aboutYou.length ? { suggestionsAboutYou: aboutYou } : {}),
       ...(asked ? { askedOfYou: asked } : {}),
       ...(patterns.length ? { patterns } : {}),
     };
+  }
+
+  /** Your own latest finished session on each check-in you are held for a seat on: its name, when it finished, and where your own report is. Nobody else's, nothing more. */
+  private async theOwnReportsOfCheckInsHeldForASeat(reader: { userId: string; organizationId: string }): Promise<{ checkIn: string; at: string | null; to: string }[]> {
+    const rows: any[] = await Promise.resolve((this.prisma as any).checkIn?.findMany?.({
+      where: { status: 'COMPLETED', isSetup: false, participant: { userId: reader.userId, awaitingSeat: true }, ground: { organizationId: reader.organizationId } },
+      select: { id: true, groundId: true, completedAt: true, ground: { select: { label: true } } },
+      orderBy: { completedAt: 'desc' },
+    })).catch(() => []);
+    const latest = new Map<string, any>();
+    for (const r of Array.isArray(rows) ? rows : []) if (!latest.has(r.groundId)) latest.set(r.groundId, r);
+    return [...latest.values()].map((r) => ({ checkIn: r.ground?.label ?? '', at: r.completedAt ? new Date(r.completedAt).toISOString() : null, to: `/checkin/${r.id}/report` }));
   }
 
   /**

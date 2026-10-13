@@ -1,4 +1,4 @@
-import { STYLE, STYLE_VERSION, safeToUse } from '../assistant/the-model-words-it-and-nothing-more';
+import { STYLE, STYLE_VERSION, safeToUse, timesItSaysTheReaderSaidIt } from '../assistant/the-model-words-it-and-nothing-more';
 import { PLAIN_WORDS, SPOKEN_TO_THE_READER } from '../conversation/plain-words';
 
 /**
@@ -149,7 +149,10 @@ export async function wordedByTheModel(
       /* Sentences AND the clauses after a colon: the map writes "What on track looks like: X", and X
          lifted whole is the quotation, whether or not the label came with it. */
       const quoted = d.context!.split(/(?<=[.!?])\s+|:\s+/).some((piece) => piece.trim().length > 24 && text.includes(piece.trim()));
-      if (text && !quoted && safeToUse(`${d.text}\n${d.context}`, text, d.mustKeep ?? [])) contextual.set(d.key, text);
+      /* The context is what is known about the work, never what the reader said: a "you said" or "you confirmed" counts against the draft alone.
+         Night quality run 1: the role context "This is about what you said work" let "You said that a short account is not a weak one" through to Esther. */
+      const putInTheirMouth = timesItSaysTheReaderSaidIt(text) > timesItSaysTheReaderSaidIt(d.text);
+      if (text && !quoted && !putInTheirMouth && safeToUse(`${d.text}\n${d.context}`, text, d.mustKeep ?? [])) contextual.set(d.key, text);
       else onRefusal?.(`${d.key}: the contextual line ${quoted ? 'quoted the context' : 'did not survive the guard'}`);
     } catch (err: any) {
       onRefusal?.(`${d.key}: the model call failed: ${err?.message}`);

@@ -157,8 +157,8 @@ describe('seniorhire: the Blockers tile, as Amina and as Tobi read it', () => {
   /* The worry is Amina's, said as hers: "You said, ..." to her (review of 1 October 2026). Changed with decision
      75, item 25: seniorhire is a new hire's first 90 days, an evaluation check-in now, so Tobi, the person it is
      about, reads no one else's exact words, and his tile quotes his own worry instead of Amina's. */
-  const AMINAS = `You said, "I'm just not sure the brief was clear enough on that one point." There are 3 more worries on record, and nobody is waiting on anybody.`;
-  const TOBIS = `You said, "If client satisfaction declines, or if issues arise that I cannot resolve, that would indicate things are off track." There are 3 more worries on record, and nobody is waiting on anybody.`;
+  const AMINAS = `You said, "I'm just not sure the brief was clear enough on that one point." There are 3 more worries on record, and no wait has been recorded against a named person.`;
+  const TOBIS = `You said, "If client satisfaction declines, or if issues arise that I cannot resolve, that would indicate things are off track." There are 3 more worries on record, and no wait has been recorded against a named person.`;
   for (const [who, userId, expected] of [['Amina, who runs it', 'u-amina', AMINAS], ['Tobi', 'u-tobi', TOBIS]] as const) {
     it(`${who} reads no quote that is not the record's words, and the tile is still there`, async () => {
       const b = await boardFor(userId).board;
@@ -207,8 +207,9 @@ describe('every part built at the read goes through the quote rule, by the code 
   const board = code('../board/board.service.ts');
 
   it('the report: the probe list, the coaching note, the guide, what they could try, their soft spots', () => {
-    expect(reports).toMatch(/probes: this\.readAsItWillBeRead\(probes, groundId, '[^']+', quotable\)/);
-    expect(reports).toMatch(/coaching: this\.readAsItWillBeRead\(coaching, groundId, '[^']+', quotable\)/);
+    /* The served parts also pass what the record holds for blame and the final check (a fifth argument), after the quote rule. */
+    expect(reports).toMatch(/probes: this\.readAsItWillBeRead\(probes, groundId, '[^']+', quotable(?:, [^)]*)?\)/);
+    expect(reports).toMatch(/coaching: this\.readAsItWillBeRead\(coaching, groundId, '[^']+', quotable(?:, [^)]*)?\)/);
     expect(reports).toMatch(/postReportGuide: quotesChecked\(postReportGuide,/);
     /* Four: the forming, released and withheld reads, and the read of a session not shared yet (decision 76, item 4). */
     expect(reports.match(/couldTry: quotesChecked\(await this\.whatTheyCouldTryNext\(/g) ?? []).toHaveLength(4);

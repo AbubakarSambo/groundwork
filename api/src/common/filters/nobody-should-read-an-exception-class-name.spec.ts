@@ -52,7 +52,7 @@ describe('any other exception class name that leaks', () => {
     // Same fault, different exception, and there will be others - so the rule is
     // about the shape rather than about this one throttle.
     expect(respond(new HttpException('PayloadTooLargeError: File too large', 413)).message)
-      .toBe('File too large');
+      .toBe('File too large.');
   });
 
   it('leaves an ordinary message exactly alone', () => {
@@ -60,7 +60,7 @@ describe('any other exception class name that leaks', () => {
     // most of them start with a capital.
     for (const msg of [
       'Incorrect email or password.',
-      'Report not found',
+      'Report not found.',
       'Session turn limit reached. Please complete your session.',
       'Ground: this person has already joined.',
     ]) {

@@ -107,14 +107,21 @@ describe('an admin who does not run the check-in reads theJudgement without the 
     expect(JSON.stringify(result.theJudgement)).toContain(THE_PRIVATE_PHRASE);
   });
 
-  it('an org admin who is not a party keeps theJudgement, but never the six-word run of the description', async () => {
+  /*
+   * CHANGED 11 October 2026 (decision 139, item 1, building on decision 58). This said an admin who is not a party
+   * keeps theJudgement without the private words. Hafsah has since ruled that an admin who only reads is never served
+   * the lead's judgement at all: the final evaluation found Grace, the managing director, reading it on check-ins she
+   * never ran. Stricter than before, so the private description is still never served to her. The admin who set the
+   * check-in up keeps it (decision-139-an-admin-who-only-reads-gets-no-judgement-and-no-pattern.spec.ts).
+   */
+  it('an org admin who is not a party is served no judgement at all, so never the private description either', async () => {
     const service = makeService(makeGround(), 'ADMIN');
     const result: any = await service.get('g1', 'user-admin', 'org-1');
-    expect(result.theJudgement).toBeDefined();
-    expect(JSON.stringify(result.theJudgement)).not.toContain(THE_PRIVATE_PHRASE);
-    /* The rest of the judgement survives: the admin still reads what the report is for. */
-    expect(result.theJudgement.theGap).toBe('Tobi has not closed two open actions.');
-    expect(JSON.stringify(result.theJudgement)).toContain('Confirm the renewal date with the client.');
+    expect(result.theJudgement).toBeUndefined();
+    expect(JSON.stringify(result)).not.toContain(THE_PRIVATE_PHRASE);
+    expect(JSON.stringify(result)).not.toContain('Tobi has not closed two open actions.');
+    /* What decision 5 gives her stays: the shared picture of the check-in. */
+    expect(result.sharedPicture).toBe('Both accounts described the same goal.');
   });
 
   it('a participant never receives theJudgement at all, as before', async () => {

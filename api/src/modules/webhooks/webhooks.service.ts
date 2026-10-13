@@ -55,7 +55,7 @@ export class WebhooksService {
   // ---------------------------------------------------------------- endpoints
 
   async register(organizationId: string, url: string, events: string[]) {
-    if (!url?.trim()) throw new BadRequestException('A url is required.');
+    if (!url?.trim()) throw new BadRequestException('Add the web address to send to, then save.');
     let parsed: URL;
     try {
       parsed = new URL(url.trim());
@@ -76,7 +76,7 @@ export class WebhooksService {
      */
     const loopback = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname === '[::1]';
     if (parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && loopback)) {
-      throw new BadRequestException('Webhook urls must be https - the payload names your organisation and its people.');
+      throw new BadRequestException('A webhook address must start with https, because what is sent names your organisation and its people.');
     }
     const check = validateEvents(events);
     if (!check.ok) throw new BadRequestException(check.message);

@@ -98,7 +98,7 @@ const labelOf = (g: OpenableCheckIn) => (g.label ?? '').trim();
 
 /** Whoever runs a check-in, or an admin of the organisation, is never walled from its people. */
 function wallFor(g: OpenableCheckIn, reader: LinkReader): boolean {
-  const runs = (!!g.initiatorId && g.initiatorId === reader.userId) || reader.role === 'ADMIN';
+  const runs = (!!g.initiatorId && g.initiatorId === reader.userId) || (reader.role === 'ADMIN' && !((g as any).participants ?? []).some((p: any) => p.userId === reader.userId));
   return !runs && !peersAreNamedOn(g as any, theReaderBySignIn(g as any, reader.userId));
 }
 
