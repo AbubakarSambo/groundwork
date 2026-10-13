@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { SubHeading, Panel, RowList, Row, Note, Callout, Stack } from './ui'
+import { SubHeading, Panel, RowList, Row, Note, Callout, Stack, Text } from './ui'
 
 /**
  * THE JUDGEMENT, ON THE BOARD, WHERE SOMEBODY DECIDES SOMETHING.
@@ -62,21 +62,23 @@ function TheCountsBehindThis({ says }: { says: string[] }) {
   const [open, setOpen] = useState(false)
   if (!says.length) return null
   return (
-    <div className="gwui-mt-14">
+    <div>
+      {/* The shared link part: navy, underlined, with a 40px box a finger can hit. */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="gwui-fs-14"
-        style={{ background: 'none', border: 'none', padding: 0, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+        className="gwui-plain-link"
       >
         {open ? 'Hide the counts' : 'See the counts behind this'}
       </button>
       {open && (
-        <div className="gwui-fs-15 gwui-ink-text gwui-mt-8" style={{ lineHeight: 1.6 }} aria-label="The counts behind this">
-          <Stack gap={4}>
-            {says.map((s, i) => <div key={i}>{s}</div>)}
-          </Stack>
+        <div aria-label="The counts behind this">
+          <Text size="15" ink="text" lineHeight={1.6}>
+            <Stack gap={4}>
+              {says.map((s, i) => <div key={i}>{s}</div>)}
+            </Stack>
+          </Text>
         </div>
       )}
     </div>

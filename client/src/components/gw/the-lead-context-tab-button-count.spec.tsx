@@ -74,7 +74,8 @@ it('has room under the prototype\'s sixteen, and every action is still on the pa
   }
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(<QueryClientProvider client={qc}><ContextPage ground={ground as any} role="lead" viewerUserId="u-lead" /></QueryClientProvider>)
-  await screen.findByText('Q3 price list.pdf')
+  // The documents list draws the name in <strong>; the lead's own folded card lists it again under "Your files" (2ce613cf3).
+  await screen.findByText('Q3 price list.pdf', { selector: 'strong' })
   await new Promise((r) => setTimeout(r, 200))
   const labels = countedButtons()
   expect(labels.length, labels.join(' | ')).toBeLessThanOrEqual(14)

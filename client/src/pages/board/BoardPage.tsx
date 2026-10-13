@@ -4579,7 +4579,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     {/* Board review, 30 September, item 7: "at role level" is a fragment, not
                         something a person reads as a sentence. */}
                     {percent !== undefined && (
-                      <span className="gwui-ink-dark gwui-fs-14" data-testid="coverage-percent" style={{fontWeight: 700}}>{`${percent}%`}</span>
+                      <span data-testid="coverage-percent"><Text size="14" ink="dark" weight={700} as="span">{`${percent}%`}</Text></span>
                     )}
                     <Text size="13" ink="muted" as="span">{`This is measured at the ${String(r.scope).toLowerCase()} level.`}</Text>
                     <span className="gwui-ml-auto">
@@ -4597,16 +4597,18 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     now draws exactly as the text-only variant does - nothing invented in its place.
                   */}
                   {percent !== undefined && r.remitDefined && (
-                    <>
-                      {b.coverageVariant === 'bar' && (
-                        <div className="gwui-mt-9" style={{height: 7, borderRadius: 6, background: 'var(--gw-bar-track)', overflow: 'hidden'}}>
-                          <div data-testid="coverage-bar-fill" style={{height: '100%', width: `${percent}%`, borderRadius: 6, background: r.kind === 'LEAKING' ? 'var(--gw-amber-b)' : r.kind === 'ABSORBING' ? 'var(--gw-navy)' : 'var(--gw-muted)'}} />
+                    <div className="gwui-mt-9">
+                      <Stack gap={6}>
+                        {b.coverageVariant === 'bar' && (
+                          <div style={{height: 7, borderRadius: 6, background: 'var(--gw-bar-track)', overflow: 'hidden'}}>
+                            <div data-testid="coverage-bar-fill" style={{height: '100%', width: `${percent}%`, borderRadius: 6, background: r.kind === 'LEAKING' ? 'var(--gw-amber-b)' : r.kind === 'ABSORBING' ? 'var(--gw-navy)' : 'var(--gw-muted)'}} />
+                          </div>
+                        )}
+                        <div data-testid="coverage-percent-says">
+                          <Text size="14" ink="sub">{`${percent}% of ${whose} work is landing in what other people describe as theirs.`}</Text>
                         </div>
-                      )}
-                      <div className="gwui-mt-5 gwui-fs-14 gwui-ink-sub" data-testid="coverage-percent-says">
-                        {`${percent}% of ${whose} work is landing in what other people describe as theirs.`}
-                      </div>
-                    </>
+                      </Stack>
+                    </div>
                   )}
 
                   {/*
