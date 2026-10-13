@@ -14,6 +14,8 @@ function days() {
   const sent: string[] = [];
   let answers: any[] = [];
   let refuse = false;
+  /* The morning being run. A send is stamped with it, not the real clock: stamped with the real clock, every answer in these days read as older than the last summary once the calendar passed them (13 October 2026). */
+  let clock = new Date(0);
   const prisma: any = {
     ground: { findMany: jest.fn(async () => [{ id: 'g1', label: 'J97 Implementation', organizationId: 'org-1', overWhatsApp: null, initiatorId: 'u-w' }]) },
     organization: { findMany: jest.fn(async () => [{ id: 'org-1' }]) },
@@ -31,11 +33,11 @@ function days() {
   };
   const whatsapp: any = {
     isEnabled: jest.fn(async () => true),
-    sendFor: jest.fn(async (_o: string, _t: string, text: string, ctx: any) => { if (refuse) return { sent: false, error: 'Not today' }; sent.push(text); sends.push({ kind: `${ctx.kind}:template`, sentAt: new Date() }); return { sent: true }; }),
+    sendFor: jest.fn(async (_o: string, _t: string, text: string, ctx: any) => { if (refuse) return { sent: false, error: 'Not today' }; sent.push(text); sends.push({ kind: `${ctx.kind}:template`, sentAt: clock }); return { sent: true }; }),
   };
   /* A leave request that has waited for her all week, and is still waiting. */
   const boards: any = { leave: { board: jest.fn(async () => ({ waiting: [{ id: 'l-1', name: 'Amina Yusuf', startsOn: '2026-10-05', endsOn: '2026-10-09', mayDecide: true }] })) } };
-  const morning = (n: number) => sendTheLeadsDailySummaries({ prisma, whatsapp, boards, frontendUrl: 'https://myground.work' }, new Date(Date.UTC(2026, 9, 5 + n, 6, 0, 0)));
+  const morning = (n: number) => { clock = new Date(Date.UTC(2026, 9, 5 + n, 6, 0, 0)); return sendTheLeadsDailySummaries({ prisma, whatsapp, boards, frontendUrl: 'https://myground.work' }, clock); };
   const nobodyIn = [{ status: 'NOT_STARTED', sessionNumber: 1, participant: { userId: 'u-x', managingOnly: false, nameGiven: null, user: { firstName: 'Omar', awaitingOrgApproval: false } } }];
   const bisi = { status: 'NOT_STARTED', sessionNumber: 1, participant: { userId: 'u-b', managingOnly: false, nameGiven: null, user: { firstName: 'Bisi', awaitingOrgApproval: false } } };
   const omarIn = [bisi, { status: 'COMPLETED', completedAt: new Date(Date.UTC(2026, 9, 9, 12)), sessionNumber: 1, participant: { userId: 'u-x', managingOnly: false, nameGiven: null, user: { firstName: 'Omar', awaitingOrgApproval: false } } }];
