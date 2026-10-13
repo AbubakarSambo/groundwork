@@ -528,8 +528,11 @@ describe('somebody an admin has not let in yet, as the lead reads the week', () 
   });
 
   /* Night quality run 3 (decision 8 redone): invited and never joined is the same as not let in for the count, never "due" and never absent. */
-  it('invited and never joined (no sign-in, nothing opened): not due, and nothing about him not checking in', async () => {
+  it('invited and never joined (never accepted, nothing opened): not due, and nothing about him not checking in', async () => {
     const c = aCheckIn();
+    /* Joined means accepted the invitation (13 October): the week page reads that from its own read of the people, as the database returns it. A sign-in is not joining. */
+    const ground = await c.prisma.ground.findUnique();
+    c.prisma.ground.findUnique = jest.fn(async () => ({ ...ground, participants: PARTIES.map((p) => (p.id === 'p-chidi' ? { ...p, cameThroughTheLink: false, acceptedAt: null, checkIns: [] } : { ...p, cameThroughTheLink: false, acceptedAt: new Date('2026-09-01T09:00:00Z'), checkIns: [] })) }));
     c.prisma.user = { findMany: jest.fn(async (a: any) => (a?.where?.awaitingOrgApproval ? [] : ((a?.where?.id?.in ?? []) as string[]).filter((id) => id !== 'u-chidi').map((id) => ({ id, passwordHash: 'set' })))) };
     c.prisma.emailVerificationToken = { findMany: jest.fn(async () => []) };
     await c.svc.build('g1', AT);

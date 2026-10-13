@@ -8,9 +8,11 @@ import { theOpenSession } from '../engagement/heres-what-is-new';
  * answered. Amina is in no count and never "not yet"; Jared's silent close is not an answer.
  */
 const person = (id: string, first: string, last: string, extra: any = {}) => ({ id, userId: `u-${id}`, email: `${id}@lakeshore.test`, managingOnly: false, partyType: 'PARTICIPANT', cameThroughTheLink: false, nameGiven: null, lastNudgedAt: null, user: { firstName: first, lastName: last, awaitingOrgApproval: false }, ...extra });
+/* Joined means accepted the invitation (13 October): everybody but Amina accepted. Each row is as the database returns it for the one joined rule's select. */
+const accepted = { acceptedAt: new Date('2026-11-01T09:00:00Z'), checkIns: [] };
 const people = [
-  person('esther', 'Esther', 'Achieng', { partyType: 'INITIATOR' }),
-  person('collins', 'Collins', 'Odhiambo'), person('hassan', 'Hassan', 'Mwenda'), person('amina', 'Amina', 'Otieno'), person('jared', 'Jared', 'Okoth'),
+  person('esther', 'Esther', 'Achieng', { partyType: 'INITIATOR', ...accepted }),
+  person('collins', 'Collins', 'Odhiambo', accepted), person('hassan', 'Hassan', 'Mwenda', accepted), person('amina', 'Amina', 'Otieno', { acceptedAt: null, checkIns: [] }), person('jared', 'Jared', 'Okoth', accepted),
 ];
 const at = new Date('2026-11-27T09:00:00Z');
 const row = (participantId: string, said: boolean) => ({ participantId, sessionNumber: 7, status: 'COMPLETED', completedAt: new Date('2026-11-24T18:00:00Z'), closedReason: said ? null : CLOSED_BY_THE_CLOCK, turns: said ? [{ id: 't' }] : [] });
@@ -21,7 +23,9 @@ const users = { findMany: async (a: any) => (a.where.id.in as string[]).filter((
 describe('run 3: only people who joined are counted, and a silent close is not an answer', () => {
   it("the weekly letter: three people, Jared named as not yet, Amina nowhere", async () => {
     const prisma: any = {
-      user: users, emailVerificationToken: { findMany: async () => [] }, groundParticipant: { findMany: async () => people },
+      user: users, emailVerificationToken: { findMany: async () => [] },
+      /* The people of the check-in, and nothing for a second look: the letter decides who joined from its own read. */
+      groundParticipant: { findMany: async (a: any) => (a?.where?.groundId ? people : []) },
       checkIn: { findMany: async ({ where }: any) => (where?.participant ? [] : sessions.filter((s) => !(where.AND && s.closedReason === CLOSED_BY_THE_CLOCK))) },
       groundCommitment: { findMany: async () => [], count: async () => 0 },
       groundDependency: { findMany: async () => [], count: async () => 0 },

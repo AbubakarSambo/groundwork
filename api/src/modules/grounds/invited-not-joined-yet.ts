@@ -37,6 +37,20 @@ export interface SomebodyInvited {
   acceptedAt?: Date | string | null;
 }
 
+/**
+ * What a participant read must carry for the one joined rule to answer from the row itself: spread it into the
+ * participant select of any reader that counts people (the weekly letter, "what is new", the week page), so every
+ * reader decides with the same facts and none falls back to "joined" for want of a second read.
+ */
+export const WHAT_SAYS_SOMEBODY_JOINED = {
+  partyType: true, cameThroughTheLink: true, acceptedAt: true,
+  checkIns: {
+    where: { OR: [{ startedAt: { not: null } }, { status: { in: ['IN_PROGRESS', 'DECLINED'] } }, { turns: { some: { role: 'PERSON' } } }] },
+    select: { id: true, startedAt: true, status: true, closedReason: true, turns: { where: { role: 'PERSON' }, take: 1, select: { id: true } } },
+    take: 1,
+  },
+} as const;
+
 /* The row's own sessions, where it carries them: a word said, a session opened or declined, or answered. */
 const cameInByTheirRows = (p: any) => Array.isArray(p?.checkIns) && p.checkIns.some((c: any) =>
   (Array.isArray(c?.turns) && c.turns.length > 0) || !!c?.startedAt || c?.status === 'IN_PROGRESS' || c?.status === 'DECLINED'
@@ -47,6 +61,8 @@ function joinedByTheRow(p: any): boolean | undefined {
   if (p.partyType === PartyType.INITIATOR || p.cameThroughTheLink === true || !!p.acceptedAt || cameInByTheirRows(p)) return true;
   /* No sign-in on the row at all: accepting writes one, so they have not accepted. */
   if (p.userId === null && p.cameThroughTheLink === false) return false;
+  /* The row was read with WHAT_SAYS_SOMEBODY_JOINED: it carries the acceptance and the sessions, so it can say no on its own. */
+  if (p.acceptedAt !== undefined && Array.isArray(p.checkIns) && p.cameThroughTheLink !== undefined && p.partyType !== undefined) return false;
   return undefined;
 }
 
@@ -65,14 +81,7 @@ export async function whoHasNotJoinedYet(prisma: any, people: SomebodyInvited[])
   if (typeof prisma?.groundParticipant?.findMany !== 'function') return out;
   const rows: any[] = (await Promise.resolve(prisma.groundParticipant.findMany({
     where: { id: { in: unsure.map((p) => p.id) } },
-    select: {
-      id: true, partyType: true, cameThroughTheLink: true, acceptedAt: true,
-      checkIns: {
-        where: { OR: [{ startedAt: { not: null } }, { status: { in: ['IN_PROGRESS', 'DECLINED'] } }, { turns: { some: { role: 'PERSON' } } }] },
-        select: { id: true, startedAt: true, status: true, closedReason: true, turns: { where: { role: 'PERSON' }, take: 1, select: { id: true } } },
-        take: 1,
-      },
-    },
+    select: { id: true, ...WHAT_SAYS_SOMEBODY_JOINED },
   })).catch(() => null)) ?? [];
   const byId = new Map(rows.filter((r) => r && unsure.some((p) => p.id === r.id)).map((r) => [r.id, r]));
   for (const p of unsure) {

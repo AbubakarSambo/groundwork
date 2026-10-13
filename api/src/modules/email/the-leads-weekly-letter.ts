@@ -5,7 +5,7 @@ import { theConfirmedWaits, theNoteBesideTheClaim } from '../grounds/a-wait-is-t
 import { nameToCall, aNameToList } from '../engagement/a-name-to-call-them';
 import { withoutRepeats, saysTheSame } from '../engagement/a-sentence-said-twice';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
-import { whoHasNotJoinedYet } from '../grounds/invited-not-joined-yet';
+import { whoHasNotJoinedYet, WHAT_SAYS_SOMEBODY_JOINED } from '../grounds/invited-not-joined-yet';
 import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 import { whoWasReallyRemindedToCheckIn } from './a-reminder-really-sent';
@@ -242,7 +242,7 @@ const WEEK = 7 * 86_400_000;
 export async function theWeekOf(prisma: any, g: { id: string; label: string; initiatorId: string }, now: Date): Promise<AWeekInOneCheckIn> {
   const since = new Date(now.getTime() - WEEK);
   const [people, finished, saidNext, done, waiting, doneRows, waitingRows] = await Promise.all([
-    prisma.groundParticipant.findMany({ where: { groundId: g.id }, select: { id: true, userId: true, email: true, managingOnly: true, partyType: true, nameGiven: true, lastNudgedAt: true, cameThroughTheLink: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } }),
+    prisma.groundParticipant.findMany({ where: { groundId: g.id }, select: { id: true, userId: true, email: true, managingOnly: true, nameGiven: true, lastNudgedAt: true, ...WHAT_SAYS_SOMEBODY_JOINED, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } }),
     /* A session the clock closed with nothing said is not a check-in made (night quality run 1: "all four people checked in" with Jared missing). */
     prisma.checkIn.findMany({ where: { groundId: g.id, status: CheckInStatus.COMPLETED, completedAt: { gte: since, lte: now }, AND: [NOT_A_QUIET_CLOSE] }, select: { participantId: true } }),
     prisma.groundCommitment.findMany({ where: { groundId: g.id, participantId: { not: null }, createdAt: { gte: since, lte: now } }, select: { participantId: true } }),

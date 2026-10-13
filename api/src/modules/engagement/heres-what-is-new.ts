@@ -1,4 +1,4 @@
-import { whoHasNotJoinedYet } from '../grounds/invited-not-joined-yet';
+import { whoHasNotJoinedYet, WHAT_SAYS_SOMEBODY_JOINED } from '../grounds/invited-not-joined-yet';
 import { wasAQuietClose } from '../grounds/an-answer-includes-a-refusal';
 import { CheckInStatus, GroundStatus } from '@prisma/client';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
@@ -95,7 +95,7 @@ export function theWhatIsNewWords(firstName: string | null | undefined, checkIns
 export async function theOpenSession(prisma: any, groundId: string, leadUserId: string): Promise<AnExistingCheckIn | null> {
   const rows: any[] = await prisma.checkIn.findMany({
     where: { groundId },
-    select: { status: true, sessionNumber: true, closedReason: true, turns: { where: { role: 'PERSON' }, take: 1, select: { id: true } }, participant: { select: { id: true, partyType: true, cameThroughTheLink: true, userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } } },
+    select: { status: true, sessionNumber: true, closedReason: true, turns: { where: { role: 'PERSON' }, take: 1, select: { id: true } }, participant: { select: { id: true, ...WHAT_SAYS_SOMEBODY_JOINED, userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } } },
   });
   if (!rows.length) return null;
   /* Invited, not joined yet: left out of the count like somebody not let in (decision 8 redone, night run 3). */
