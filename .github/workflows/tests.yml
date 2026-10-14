@@ -32,7 +32,7 @@ jobs:
   api:
     name: API - types, guards, schema
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
     permissions:
       contents: read
 
@@ -58,6 +58,8 @@ jobs:
       NODE_ENV: development
       JWT_SECRET: ci-test-secret-not-for-production
       RESEND_API_KEY: re_test
+      # The type check of the whole API needs more than Node's default 2 GB heap on the runner.
+      NODE_OPTIONS: --max-old-space-size=6144
 
     steps:
       - uses: actions/checkout@v4
@@ -103,9 +105,12 @@ jobs:
   client:
     name: Client - types and guards
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
     permissions:
       contents: read
+
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
 
     steps:
       - uses: actions/checkout@v4
