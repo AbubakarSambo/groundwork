@@ -351,6 +351,10 @@ export function BillingPage() {
               )}
             </Stack>
           </Panel>
+          {/* Nothing lost (docs/light-rebuild/pricing.md): who counts, and that a guest with no account does not. */}
+          <FieldRows>
+            <FieldRow label="Everyone counts" value={whoCounts(orgName)} />
+          </FieldRows>
           {usage && (
             <FieldRows>
               <FieldRow
