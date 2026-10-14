@@ -330,6 +330,16 @@ model PricingPlan {
   /// How many WhatsApp messages an organisation on this plan may send in a calendar month. Null
   /// means no limit. At the limit, check-ins carry on in the app until the next month.
   whatsappMonthlyLimit       Int?    @map("whatsapp_monthly_limit")
+  /// EXTRA SEATS (fix list item 6, 15 October 2026): what one seat past `memberCap` costs a month on this plan, $5 when
+  /// it was added. Null means the plan cannot add seats by itself (Enterprise). Its Stripe Price is cached and cleared
+  /// whenever the amount changes, exactly as `stripePriceId` is.
+  extraSeatCents               Int?    @map("extra_seat_cents")
+  extraSeatStripePriceId       String? @map("extra_seat_stripe_price_id")
+  /// WHATSAPP PER PERSON (fix list item 6): what WhatsApp costs a month for each person who used it that month, $4 when
+  /// it was added, never more than the seats. Replaces `whatsappAddOnCents` for everybody but the organisations that
+  /// keep their flat line (`Organization.whatsappFlatAddOnKept`). Its Stripe Price is metered.
+  whatsappPersonCents          Int?    @map("whatsapp_person_cents")
+  whatsappPersonStripePriceId  String? @map("whatsapp_person_stripe_price_id")
   updatedAt       DateTime         @updatedAt @map("updated_at")
 
   @@map("pricing_plans")
@@ -562,6 +572,12 @@ model Organization {
   whatsappAddOnChangedAt DateTime? @map("whatsapp_add_on_changed_at")
   /// The Stripe subscription item that charges the add-on, while it is charged.
   whatsappAddOnItemId    String?   @map("whatsapp_add_on_item_id")
+  /// The Stripe subscription items for the extra seats (a quantity) and for WhatsApp per person (metered), while charged.
+  extraSeatsItemId       String?   @map("extra_seats_item_id")
+  whatsappPeopleItemId   String?   @map("whatsapp_people_item_id")
+  /// An organisation that was paying the old flat WhatsApp line when the new pricing came in keeps exactly that line until
+  /// it adds a seat, switches WhatsApp off and on, or changes plan (fix list item 6). Then it moves to WhatsApp per person.
+  whatsappFlatAddOnKept  Boolean   @default(false) @map("whatsapp_flat_add_on_kept")
   whatsappMonthlyUse     WhatsAppMonthlyUse[]
 
   companyStage CompanyStage? @map("company_stage")

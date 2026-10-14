@@ -3,18 +3,22 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { SubscriptionPlan, UserRole } from '@prisma/client';
 import { theNewBillingPartsAreShown } from '../admin/what-is-hidden-at-release';
 import { PrismaService } from '../prisma/prisma.service';
-import { onceAcrossCopies, theDay } from '../prisma/once-across-copies';
+import { onceAcrossCopies, theDay, theHour } from '../prisma/once-across-copies';
 import { EmailService } from '../email/email.service';
-import { PricingService, PLAN_LABELS, freePlanApplies, WHATSAPP_ADD_ON_KIND } from './pricing.service';
+import { PricingService, PLAN_LABELS, freePlanApplies, WHATSAPP_ADD_ON_KIND, WHATSAPP_PERSON_KIND } from './pricing.service';
+import { whatsappPeopleCharged } from './what-a-month-costs';
+import { seatsIn } from '../../common/seats';
 import { StripeService } from './stripe.service';
-import { whatCoversThem } from '../../common/subscription';
+import { whatCoversThem, isSubscribed } from '../../common/subscription';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 
 /**
  * WHATSAPP IS A PAID ADD-ON (decision 78, 2 October 2026).
  *
- * WHAT IT COSTS. About 80% of the organisation's plan price, a month, read from `pricing_plans`
- * (`whatsappAddOnCents`), edited by a platform admin at Admin, System, Pricing. Never in code.
+ * WHAT IT COSTS (fix list item 6, 15 October 2026). $4 a month for each person who used it that month, on any plan, never
+ * more than the seats, read from `pricing_plans.whatsappPersonCents` and edited at Admin, System, Pricing. Never in code.
+ * The old flat price (`whatsappAddOnCents`, about 80% of the plan) is kept only by an organisation that was paying it when
+ * the new pricing came in (`whatsappFlatAddOnKept`), until it adds a seat, switches WhatsApp off and on, or moves plan.
  *
  * WHO TURNS IT ON. An admin of the organisation, on Plan and billing (PATCH /billing/whatsapp).
  *
@@ -103,15 +107,46 @@ export interface WhatsAppStanding {
   sent: number;
   /** Whether the add-on should be a line on the organisation's Stripe subscription now. */
   charged: boolean;
+  /**
+   * FIX LIST ITEM 6: WhatsApp per person. `flatKept` is an organisation still on the old flat line (it keeps it until it adds
+   * a seat, switches WhatsApp off and on, or changes plan). Otherwise WhatsApp costs `personCents` for each person who used
+   * it this month (`peopleUsedIt`, counted from `since`), never more than the seats (`peopleCharged`).
+   */
+  flatKept: boolean;
+  personCents: number | null;
+  peopleUsedIt: number;
+  peopleCharged: number;
+  seats: number;
+  since: Date;
   /** Whether a WhatsApp message for this organisation may go now. */
   sending: boolean;
   heldBecause: WhyHeld | null;
 }
 
 const ORG_FIELDS = {
-  id: true, createdAt: true, subscriptionPlan: true, subscriptionStatus: true, subscriptionStripeId: true,
+  id: true, createdAt: true, subscriptionPlan: true, subscriptionStatus: true, subscriptionStripeId: true, subscriptionPeriodEnd: true,
   freeUntil: true, freePlan: true, freeTrialStartedAt: true, whatsappAddOnOn: true, whatsappAddOnItemId: true, whatsappFreeUntil: true,
+  whatsappPeopleItemId: true, whatsappFlatAddOnKept: true,
 } as const;
+
+/**
+ * WHEN THIS MONTH STARTED, FOR WHATSAPP PER PERSON. A paying organisation's month is its billing month, from one month before
+ * its next payment, so the people counted are the people its next bill charges for. Anybody else's is the calendar month (UTC).
+ */
+export function theMonthStarted(org: { subscriptionPlan?: unknown; subscriptionStatus?: string | null; subscriptionPeriodEnd?: Date | string | null }, now: Date = new Date()): Date {
+  const calendar = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  if (!isSubscribed({ subscriptionPlan: org.subscriptionPlan, subscriptionStatus: org.subscriptionStatus }) || !org.subscriptionPeriodEnd) return calendar;
+  const end = new Date(org.subscriptionPeriodEnd);
+  if (Number.isNaN(end.getTime()) || end.getTime() <= now.getTime()) return calendar;
+  const start = new Date(end);
+  start.setUTCMonth(start.getUTCMonth() - 1);
+  return start.getTime() <= now.getTime() ? start : calendar;
+}
+
+/** A number written the several ways a phone can be ("+254 700…", "254700…") counts as one person. */
+export function onePersonsNumber(phone: string): string {
+  return String(phone ?? '').replace(/\D/g, '');
+}
 
 /** Whether this organisation is in its free WhatsApp month (Hafsah, 13 October 2026, evening). */
 export function inItsFreeWhatsAppMonth(org: { whatsappFreeUntil?: Date | string | null } | null | undefined, now: Date = new Date()): boolean {
@@ -158,11 +193,16 @@ export class WhatsAppAddOnService {
     const addOnCents = row?.whatsappAddOnCents ?? null;
     const limit = row?.whatsappMonthlyLimit ?? null;
     const sent = use?.sent ?? 0;
+    const since = theMonthStarted(org, now);
+    const [peopleUsedIt, seats] = await Promise.all([this.peopleWhoUsedIt(organizationId, since), this.seatsHere(organizationId)]);
+    const flatKept = !!org.whatsappFlatAddOnKept;
+    const personCents = row?.whatsappPersonCents ?? null;
 
     /* The free WhatsApp month: on for everybody, nothing charged, whether or not it was added to the subscription. A
      * paying organisation that adds it during the month is charged from the night the month ends (the nightly sweep). */
     const freeMonth = inItsFreeWhatsAppMonth(org, now);
-    const charged = switchOn && org.whatsappAddOnOn && cover.covers === 'paid' && !!org.subscriptionStripeId && !inAFreeRun && !freeMonth && addOnCents !== null;
+    const charged = switchOn && org.whatsappAddOnOn && cover.covers === 'paid' && !!org.subscriptionStripeId && !inAFreeRun && !freeMonth
+      && (flatKept ? addOnCents !== null : personCents !== null);
     let heldBecause: WhyHeld | null = null;
     if (switchOn && !inAFreeRun && !onTheFreePlan && !freeMonth) {
       if (!org.whatsappAddOnOn) heldBecause = 'not turned on';
@@ -184,9 +224,43 @@ export class WhatsAppAddOnService {
       month: monthOf(now),
       sent,
       charged,
+      flatKept,
+      personCents,
+      peopleUsedIt,
+      peopleCharged: whatsappPeopleCharged(peopleUsedIt, seats),
+      seats,
+      since,
       sending: heldBecause === null,
       heldBecause,
     };
+  }
+
+  /**
+   * HOW MANY PEOPLE USED WHATSAPP THIS MONTH (fix list item 6: "anyone who checked in or got messages on WhatsApp"). Read
+   * from the record of every message that went (`whatsapp_sends`): each different number sent to since the month started,
+   * the free "WhatsApp is held" notice left out. A check-in on WhatsApp is always answered on WhatsApp, so checking in
+   * counts too. Never throws: an unreadable record counts nobody.
+   */
+  async peopleWhoUsedIt(organizationId: string, since: Date): Promise<number> {
+    try {
+      const rows: Array<{ phone: string }> = await (this.prisma.whatsAppSend as any).findMany({
+        where: { organizationId, sentAt: { gte: since }, OR: [{ kind: null }, { kind: { not: 'held-told' } }] },
+        select: { phone: true },
+        distinct: ['phone'],
+      });
+      return new Set((rows ?? []).map((r) => onePersonsNumber(r.phone)).filter(Boolean)).size;
+    } catch (err: any) {
+      this.logger.warn(`Could not count the people on WhatsApp for ${organizationId}: ${err?.message}`);
+      return 0;
+    }
+  }
+
+  private async seatsHere(organizationId: string): Promise<number> {
+    try {
+      return await this.prisma.user.count({ where: seatsIn(organizationId) });
+    } catch {
+      return 0;
+    }
   }
 
   /**
@@ -257,10 +331,11 @@ export class WhatsAppAddOnService {
   async turn(organizationId: string, on: boolean, now: Date = new Date()): Promise<WhatsAppStanding> {
     if (typeof on !== 'boolean') throw new BadRequestException('Say whether WhatsApp should be on or off.');
     const before = await this.standing(organizationId, now);
-    if (on && before.plan && before.addOnCents === null) {
+    if (on && before.plan && before.personCents === null && before.addOnCents === null) {
       throw new BadRequestException(`WhatsApp is not sold by itself on ${PLAN_LABELS[before.plan]}. Contact us to arrange it.`);
     }
-    await this.prisma.organization.update({ where: { id: organizationId }, data: { whatsappAddOnOn: on, whatsappAddOnChangedAt: now } });
+    /* Fix list item 6: switching WhatsApp on (or off) ends the old flat price; from now it is per person. */
+    await this.prisma.organization.update({ where: { id: organizationId }, data: { whatsappAddOnOn: on, whatsappAddOnChangedAt: now, ...(on !== before.addOnOn ? { whatsappFlatAddOnKept: false } : {}) } });
     await this.syncTheStripeLine(organizationId, now);
     return this.standing(organizationId, now);
   }
@@ -275,37 +350,103 @@ export class WhatsAppAddOnService {
     const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: ORG_FIELDS });
     if (!org) return 'unchanged';
     const s = await this.standing(organizationId, now);
-    const itemId = org.whatsappAddOnItemId;
+    const flatId = org.whatsappAddOnItemId;
+    const peopleId = org.whatsappPeopleItemId;
+    let outcome: 'added' | 'moved' | 'removed' | 'unchanged' = 'unchanged';
 
-    if (s.charged && s.plan && org.subscriptionStripeId) {
+    /* THE OLD FLAT LINE, only for an organisation that keeps it. */
+    if (s.charged && s.flatKept && s.plan && org.subscriptionStripeId) {
       const priceId = await this.pricing.getOrCreateWhatsAppAddOnPrice(s.plan);
-      if (itemId) {
-        const item = await this.stripe.stripe.subscriptionItems.retrieve(itemId);
-        if (item.price?.id === priceId) return 'unchanged';
-        await this.stripe.stripe.subscriptionItems.update(itemId, { price: priceId, proration_behavior: 'create_prorations' });
-        this.logger.log(`WhatsApp add-on for ${organizationId} moved to the ${s.plan} price.`);
-        return 'moved';
+      if (flatId) {
+        const item = await this.stripe.stripe.subscriptionItems.retrieve(flatId);
+        if (item.price?.id !== priceId) {
+          await this.stripe.stripe.subscriptionItems.update(flatId, { price: priceId, proration_behavior: 'create_prorations' });
+          this.logger.log(`WhatsApp add-on for ${organizationId} moved to the ${s.plan} price.`);
+          outcome = 'moved';
+        }
+      } else {
+        const item = await this.stripe.stripe.subscriptionItems.create(
+          { subscription: org.subscriptionStripeId, price: priceId, quantity: 1, proration_behavior: 'create_prorations', metadata: { organizationId, kind: WHATSAPP_ADD_ON_KIND } },
+          { idempotencyKey: `wa_${organizationId}_${org.subscriptionStripeId}_${priceId}` },
+        );
+        await this.prisma.organization.update({ where: { id: organizationId }, data: { whatsappAddOnItemId: item.id } });
+        this.logger.log(`WhatsApp add-on added to ${organizationId}'s subscription.`);
+        outcome = 'added';
       }
-      const item = await this.stripe.stripe.subscriptionItems.create(
-        { subscription: org.subscriptionStripeId, price: priceId, quantity: 1, proration_behavior: 'create_prorations', metadata: { organizationId, kind: WHATSAPP_ADD_ON_KIND } },
-        { idempotencyKey: `wa_${organizationId}_${org.subscriptionStripeId}_${priceId}` },
-      );
-      await this.prisma.organization.update({ where: { id: organizationId }, data: { whatsappAddOnItemId: item.id } });
-      this.logger.log(`WhatsApp add-on added to ${organizationId}'s subscription.`);
-      return 'added';
-    }
-    if (itemId) {
+    } else if (flatId) {
       if (org.subscriptionStripeId) {
-        await this.stripe.stripe.subscriptionItems.del(itemId, { proration_behavior: 'create_prorations' }).catch((err: any) => {
+        await this.stripe.stripe.subscriptionItems.del(flatId, { proration_behavior: 'create_prorations' }).catch((err: any) => {
           /* Already gone on Stripe's side is the same as removed. Anything else is thrown. */
           if (err?.code !== 'resource_missing') throw err;
         });
       }
       await this.prisma.organization.update({ where: { id: organizationId }, data: { whatsappAddOnItemId: null } });
       this.logger.log(`WhatsApp add-on removed from ${organizationId}'s subscription.`);
+      outcome = 'removed';
+    }
+
+    /* WHATSAPP PER PERSON (fix list item 6): a metered line, told the number of people who used it this month, never more than the seats. */
+    if (s.charged && !s.flatKept && s.plan && org.subscriptionStripeId) {
+      const priceId = await this.pricing.getOrCreateWhatsAppPersonPrice(s.plan);
+      let itemId = peopleId;
+      if (itemId) {
+        const item = await this.stripe.stripe.subscriptionItems.retrieve(itemId).catch(() => null);
+        if (!item) itemId = null;
+        else if (item.price?.id !== priceId) {
+          /* A metered line cannot change its price with usage on it, so the old one goes and a new one comes. */
+          await this.stripe.stripe.subscriptionItems.del(itemId, { proration_behavior: 'none', clear_usage: true } as any).catch((err: any) => {
+            if (err?.code !== 'resource_missing') throw err;
+          });
+          itemId = null;
+        }
+      }
+      if (!itemId) {
+        const item = await this.stripe.stripe.subscriptionItems.create(
+          { subscription: org.subscriptionStripeId, price: priceId, metadata: { organizationId, kind: WHATSAPP_PERSON_KIND } } as any,
+          { idempotencyKey: `wap_${organizationId}_${org.subscriptionStripeId}_${priceId}` },
+        );
+        itemId = item.id;
+        await this.prisma.organization.update({ where: { id: organizationId }, data: { whatsappPeopleItemId: itemId } });
+        this.logger.log(`WhatsApp per person added to ${organizationId}'s subscription.`);
+        if (outcome === 'unchanged') outcome = 'added';
+      }
+      await this.reportThePeople(itemId as string, s.peopleCharged, now);
+      return outcome;
+    }
+    if (peopleId) {
+      if (org.subscriptionStripeId) {
+        /* Switched off: this month's WhatsApp people are not charged, as Plan and billing says ("switched off, $0"). */
+        await this.stripe.stripe.subscriptionItems.del(peopleId, { proration_behavior: 'none', clear_usage: true } as any).catch((err: any) => {
+          if (err?.code !== 'resource_missing') throw err;
+        });
+      }
+      await this.prisma.organization.update({ where: { id: organizationId }, data: { whatsappPeopleItemId: null } });
+      this.logger.log(`WhatsApp per person removed from ${organizationId}'s subscription.`);
       return 'removed';
     }
-    return 'unchanged';
+    return outcome;
+  }
+
+  /** Tells Stripe this month's count of people, replacing the last count (`last_during_period`). */
+  private async reportThePeople(itemId: string, people: number, now: Date): Promise<void> {
+    await (this.stripe.stripe.subscriptionItems as any).createUsageRecord(
+      itemId,
+      { quantity: people, timestamp: Math.floor(now.getTime() / 1000), action: 'set' },
+    );
+  }
+
+  /**
+   * EVERY HOUR, THE NUMBER OF PEOPLE ON WHATSAPP REACHES STRIPE, so a bill at the end of a month counts everybody who used it.
+   * Once across every copy of the API.
+   */
+  @Cron('0 40 * * * *', { timeZone: 'UTC' })
+  async hourly(): Promise<void> {
+    await onceAcrossCopies(this.prisma, 'whatsapp-people-count', theHour(), async () => {
+      const orgs = await this.prisma.organization.findMany({ where: { whatsappPeopleItemId: { not: null } }, select: { id: true } });
+      for (const o of orgs) {
+        await this.syncTheStripeLine(o.id).catch((err: any) => this.logger.error(`WhatsApp people for ${o.id} did not reach Stripe: ${err?.message}`));
+      }
+    });
   }
 
   /**
@@ -319,7 +460,7 @@ export class WhatsAppAddOnService {
 
   async syncEveryLine(now: Date = new Date()): Promise<void> {
     const orgs = await this.prisma.organization.findMany({
-      where: { OR: [{ whatsappAddOnOn: true, subscriptionStripeId: { not: null } }, { whatsappAddOnItemId: { not: null } }] },
+      where: { OR: [{ whatsappAddOnOn: true, subscriptionStripeId: { not: null } }, { whatsappAddOnItemId: { not: null } }, { whatsappPeopleItemId: { not: null } }] },
       select: { id: true },
     });
     for (const o of orgs) {
@@ -369,11 +510,21 @@ export class WhatsAppAddOnService {
         : null,
       /* An organisation on the free plan has no plan to name: the plan its size fits only sets its monthly limit
          (release blocker, 5 October: the page read "on your Starter plan" to a free organisation). */
+      /* Fix list item 6: the light prototype's own words, "$4 per person who uses it, per month, on any plan". The old flat
+         price is said only to an organisation that keeps it. */
       price: s.onTheFreePlan
         ? null
-        : s.plan && s.addOnCents !== null
-          ? `WhatsApp costs ${dollars(s.addOnCents)} a month on your ${label} plan.`
-          : s.plan ? `WhatsApp is not sold by itself on your ${label} plan. Contact us to arrange it.` : null,
+        : s.flatKept && s.plan && s.addOnCents !== null
+          ? `WhatsApp costs ${dollars(s.addOnCents)} a month on your ${label} plan, the price you have paid until now. It moves to ${s.personCents != null ? dollars(s.personCents) : 'a price'} per person who uses it if you add a seat, switch WhatsApp off and on, or move plan.`
+          : s.plan && s.personCents != null
+            ? `${dollars(s.personCents)} per person who uses it, per month, on any plan.`
+            : s.plan ? `WhatsApp is not sold by itself on your ${label} plan. Contact us to arrange it.` : null,
+      /* s73's WhatsApp card, word for word. */
+      whoIsCharged: s.flatKept ? null : 'Charged only for people who use it',
+      whoIsChargedMore: s.flatKept ? null : 'Anyone who checks in or gets messages on WhatsApp in a month. Never more than your number of people. Free during your free month.',
+      people: s.addOnOn || s.inTheFreeWhatsAppMonth
+        ? `${aNumber(s.peopleUsedIt)} ${s.peopleUsedIt === 1 ? 'person has' : 'people have'} used WhatsApp this month.`
+        : null,
       charge: !s.switchOn
         ? 'Nothing is charged for WhatsApp at the moment.'
         : s.onTheFreePlan
@@ -386,10 +537,10 @@ export class WhatsAppAddOnService {
               : s.inTheFreeWhatsAppMonth && s.whatsappFreeUntil
                 ? `Nothing is charged for WhatsApp until its free month ends on ${aDay(s.whatsappFreeUntil)}.`
               : s.charged
-                ? 'WhatsApp is added to your monthly bill as a second line.'
+                ? (s.flatKept ? 'WhatsApp is added to your monthly bill as a second line.' : 'You pay only for people who use it, never more than your seats.')
                 : s.addOnOn
                   ? 'WhatsApp is charged each month once you are on a paid plan.'
-                  : 'If you turn WhatsApp on, it is added to your monthly bill as a second line.',
+                  : 'If you switch WhatsApp on, you pay only for people who use it, never more than your seats.',
       use: s.limit !== null
         ? `Your organisation has sent ${aNumber(s.sent)} of its ${aNumber(s.limit)} WhatsApp messages this month.`
         : `Your organisation has sent ${aNumber(s.sent)} WhatsApp messages this month.`,
@@ -403,7 +554,9 @@ export class WhatsAppAddOnService {
       on: s.addOnOn,
       /* Never a plan's name or price for an organisation on the free plan; its limit is in `use`. */
       plan: s.onTheFreePlan ? null : s.plan,
-      price: s.onTheFreePlan || s.addOnCents === null ? null : { amountCents: s.addOnCents, currency: 'USD' },
+      price: s.onTheFreePlan ? null : s.flatKept ? (s.addOnCents === null ? null : { amountCents: s.addOnCents, currency: 'USD' }) : (s.personCents == null ? null : { amountCents: s.personCents, currency: 'USD', perPerson: true }),
+      people: { usedIt: s.peopleUsedIt, charged: s.peopleCharged, seats: s.seats },
+      flatKept: s.flatKept,
       charged: s.charged,
       freeTrial: s.freeTrial,
       freeUntil: s.inTheFreeWhatsAppMonth ? s.whatsappFreeUntil : null,

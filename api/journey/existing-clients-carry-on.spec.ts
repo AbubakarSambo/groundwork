@@ -341,7 +341,9 @@ describe('release night, for a check-in that already exists', () => {
        filled with a month from today for every organisation already here.
        98 since 14 October: a free month for every organisation already here (Hafsah, 14 October), one marker column on
        organizations, and for every one that does not pay and has no free run going, one month on the plan that holds it. */
-    expect(names).toHaveLength(98);
+    /* 99 since 15 October: extra seats and WhatsApp per person (fix list item 6), four columns on pricing_plans with the $5 and
+       $4 prices on the five plans, three on organizations, and the flat WhatsApp line marked as kept where one is paid now. */
+    expect(names).toHaveLength(99);
     // The six statements deploy.md lists, plus the WhatsApp prices (five updates and one insert).
     expect(o.dataChangesRun).toBeGreaterThanOrEqual(8);
   }));

@@ -19,8 +19,8 @@ const RELEASE = '2026-10-06T00:00:00Z';
 const MADE = new Date('2026-08-01T09:00:00Z');
 
 const PLAN_ROWS = () => [
-  { plan: 'STARTER', amountCents: 2500, memberCap: 5, whatsappAddOnCents: 2000, whatsappMonthlyLimit: 500, whatsappAddOnStripePriceId: null as string | null },
-  { plan: 'SMALL_TEAM', amountCents: 9000, memberCap: 20, whatsappAddOnCents: 7200, whatsappMonthlyLimit: 2000, whatsappAddOnStripePriceId: null as string | null },
+  { plan: 'STARTER', amountCents: 2500, memberCap: 5, whatsappAddOnCents: 2000, whatsappMonthlyLimit: 500, whatsappAddOnStripePriceId: null as string | null, whatsappPersonCents: 400 },
+  { plan: 'SMALL_TEAM', amountCents: 9000, memberCap: 20, whatsappAddOnCents: 7200, whatsappMonthlyLimit: 2000, whatsappAddOnStripePriceId: null as string | null, whatsappPersonCents: 400 },
   { plan: 'ENTERPRISE', amountCents: null, memberCap: null, whatsappAddOnCents: null, whatsappMonthlyLimit: null, whatsappAddOnStripePriceId: null as string | null },
 ];
 
@@ -73,6 +73,7 @@ function world(org: any, trial: any = { on: true, teamsUnder: 20, months: 1, onS
         retrieve: jest.fn(async () => ({ price: { id: 'price_test_wa_SMALL_TEAM' } })),
         update: jest.fn(async (id: string, a: any) => { stripeCalls.push(['items.update', id, a]); return {}; }),
         del: jest.fn(async (id: string) => { stripeCalls.push(['items.del', id]); return {}; }),
+        createUsageRecord: jest.fn(async (id: string, a: any) => { stripeCalls.push(['usage', id, a]); return {}; }),
       },
     },
   };

@@ -6056,11 +6056,17 @@ export class GroundsService {
     });
     let waitingForASeat: SeatAnswer = { room: true };
     if (!alreadyHereWithASeat) {
-      const [seatsTaken, seatsIncluded] = await Promise.all([
-        this.prisma.user.count({ where: seatsIn(organizationId) }),
-        this.billing.seatsIncludedFor(organizationId),
-      ]);
-      waitingForASeat = whetherThereIsRoomForOneMore({ seatsTaken, seatsIncluded });
+      /* Fix list item 6: on a plan that can add seats there is no limit (`seatsLeft` is null); the person is an extra seat. */
+      const noLimit = typeof (this.billing as any).seatsMayHaveChanged === 'function'
+        && (await this.billing.seatsLeft(organizationId).catch(() => 0)) === null;
+      if (noLimit) this.billing.seatsMayHaveChanged(organizationId);
+      else {
+        const [seatsTaken, seatsIncluded] = await Promise.all([
+          this.prisma.user.count({ where: seatsIn(organizationId) }),
+          this.billing.seatsIncludedFor(organizationId),
+        ]);
+        waitingForASeat = whetherThereIsRoomForOneMore({ seatsTaken, seatsIncluded });
+      }
     }
 
     // SEQUENTIAL cadence: the lead's own session 1 must complete before a newly
