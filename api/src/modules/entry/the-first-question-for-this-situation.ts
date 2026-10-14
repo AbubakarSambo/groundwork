@@ -128,8 +128,9 @@ export const THE_FIRST_QUESTION: Record<GroundScenario, TheFirstQuestion> = {
     ask: 'Who do you need to realign with, and what do you think you see differently?',
     until: 'who the other person is and what the disagreement is actually about',
   },
+  /* The prototype's own words for this situation's first question (B1, start-chat.txt, "Help someone get back on track"), used exactly (fix list, item 7). */
   PIP: {
-    ask: 'Who is this about, and what is not happening that should be?',
+    ask: 'Who is it, and what were they meant to be delivering?',
     until: 'the person, what is slipping specifically, and how long this has been going on',
   },
   BOARD_STRATEGY: {
