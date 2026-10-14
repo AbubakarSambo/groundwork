@@ -120,6 +120,8 @@ describe('Grace, on Small Team with 27 people', () => {
     expect(text()).toContain('Teams of fewer than 20 people get 1 month free, WhatsApp included, with no card. Existing organisations that never had one get it from the day it starts, WhatsApp included. Baridi Appliances started with 27, so it began on a plan.')
     expect(screen.getByRole('heading', { name: 'Free month' })).toBeTruthy()
     expect(screen.getAllByText('Move to this')).toHaveLength(4)
+    /* Nothing lost from the page before (docs/light-rebuild/pricing.md). */
+    expect(text()).toContain('Everyone with a Groundwork account at Baridi Appliances counts. Guests without an account do not.')
     expect(text()).not.toMatch(/3 months|undefined|NaN/)
   })
 
