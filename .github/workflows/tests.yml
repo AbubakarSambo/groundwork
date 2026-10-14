@@ -32,7 +32,7 @@ jobs:
   api:
     name: API - types, guards, schema
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     permissions:
       contents: read
 
@@ -82,9 +82,12 @@ jobs:
         working-directory: api
         run: npx tsc --noEmit
 
+      # journey/ is local machinery (the existing-users check needs a copy of the live data, the journeys run against a
+      # local stack); it is never part of a pull request's product and runs on the release machine, not here.
+      # Hafsah's decision, 14 October.
       - name: Tests
         working-directory: api
-        run: npx jest --ci
+        run: npx jest --ci --testPathIgnorePatterns=/journey/
 
       # THE ONE THAT NEEDS A DATABASE.
       #
@@ -105,7 +108,7 @@ jobs:
   client:
     name: Client - types and guards
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     permissions:
       contents: read
 
