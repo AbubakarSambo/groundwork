@@ -5,7 +5,8 @@ import { documentsApi } from '@/api/documents'
 import { askApi } from '@/api/ask'
 import { toast } from 'sonner'
 import { personLabel, peopleLabels, firstNameOrLabel, atTheStart } from '@/lib/utils'
-import { Section, Panel, Button, TextArea, Tag, Note, Callout, Choices, SubHeading } from '@/components/gw/ui'
+import { Section, Panel, Button, TextArea, Tag, Note, Callout, Choices, SubHeading, FoldedLine, SmallMenu } from '@/components/gw/ui'
+import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
 import { scrollToId } from '@/lib/scroll-to'
 import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
 import { EachPerson } from '@/components/gw/EachPerson'
@@ -434,33 +435,51 @@ export function ContextPage({
   const objectives: any[] = (ground as any).objectives ?? []
 
 
-  return (
-    <div>
-            {/*
-              THE CONTEXT PAGE IS BANDS, IN ONE ORDER, AND THE ORDER IS THE ARGUMENT.
-              
-              It used to be a stack of boxes: an expectations panel, a strength card, an upload box,
-              three textareas and a chat somewhere in the middle. Everything was present and nothing
-              said how the parts related, so the page read as a form rather than as a record.
-              
-              The order answers questions in the order a person asks them:
-                1  what is this check-in for            - you cannot judge the rest without it
-                2  what is expected of each person      - the thing anybody is actually read against
-                3  the material it all rests on         - files and references
-                4  what only the lead sees              - steers the questions, never quoted
-                5  the chat                             - where you go to change any of the above
-              
-              A band with nothing in it still renders its heading and says what would go there, because
-              "nothing yet" is a fact about this check-in and a blank space is not.
-            */}
+  /*
+   * THE LIGHT CONTEXT PAGE, for a sales check-in (docs/light-rebuild/sales-first.md, section 4). The
+   * one-line fact on each folded part is counted from what the server sent this reader (the ground
+   * read, the documents read), never read off the screen, and says only what those hold.
+   */
+  const light = (ground as any).kindOfWork === 'sales org'
+  const onAPhone = useIsAPhone()
+  const thePageAtAGlance = (() => {
+    const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
+    const shared = (ground as any).whoSeesTargets === 'EVERYBODY'
+    const NOUN: Record<string, [string, string]> = {
+      STRATEGY: ['line of strategy', 'lines of strategy'],
+      WAY_OF_WORKING: ['rule', 'rules'],
+      DECISION: ['thing still to decide', 'things still to decide'],
+      UNSETTLED: ['thing not settled', 'things not settled'],
+      NOTE: ['note', 'notes'],
+    }
+    const howWeWork = theBuckets.filter((b) => b.lines.length > 0).map((b) => plural(b.lines.length, NOUN[b.kind]?.[0] ?? 'line', NOUN[b.kind]?.[1])).join(', ')
+    const onlyYou = docs.filter((d: any) => d.visibility !== 'OPEN').length
+    const people = ((ground.participants ?? []) as any[]).length
+    return {
+      targets: objectives.length ? `${plural(objectives.length, 'target')}, ${shared ? 'everyone sees every share' : 'each person sees their own share'}` : null,
+      howWeWork: howWeWork || 'Nothing written down yet',
+      documents: docs.length ? `${plural(docs.length, 'document')}${onlyYou ? `, ${onlyYou} only you can read` : ''}` : 'None yet',
+      people: people ? plural(people, 'person', 'people') : null,
+      downAsDoing: commitments.length ? `${plural(commitments.length, 'thing')} people said they would do` : 'Nothing yet',
+    }
+  })()
 
-            {/* The prototype's order: "From a plan", the conversation, then "Waiting for you to confirm". The lead's only. */}
+  const partA1 = (
+    <>
             {isTheLead && <FromAPlan groundId={id!} />}
+    </>
+  )
+  const partA2 = (
+    <>
             {canAddContextWithAsk && (
               <Button kind="quiet" size="small" onClick={() => showForCheckInSetup(id!)}>
                 {`Add context with ${askNameFor(orgName)}`}
               </Button>
             )}
+    </>
+  )
+  const partA3 = (
+    <>
             <div id="gw-context-chat">
               {/* The lead's own conversation about their own check-in. An admin reads the page. */}
               {contextEnabled && isTheLead && oldChatIsOpen && <ContextChat groundId={id!} />}
@@ -475,9 +494,15 @@ export function ContextPage({
                 </Note>
               )}
             </div>
-
+    </>
+  )
+  const partB = (
+    <>
             {isTheLead && <WaitingForYouToConfirm groundId={id!} />}
-
+    </>
+  )
+  const partC = (
+    <>
             {/* 1 - WHAT THIS CHECK-IN IS FOR */}
             {/*
               THE BRIEF IS THE ANSWER TO THIS BAND'S OWN QUESTION, AND IT WAS NOT ON THE PAGE.
@@ -597,6 +622,10 @@ export function ContextPage({
                 </div>
               </Panel>
             )}
+    </>
+  )
+  const partD = (
+    <>
             {/*
               TARGETS, IN THE PROTOTYPE'S TABLE (U.7): what it is, the number, whose it is, and who
               sees it, with what each target assumes under it. Its own file, TargetsBand.tsx.
@@ -646,12 +675,20 @@ export function ContextPage({
               )
             )}
 
+    </>
+  )
+  const partE = (
+    <>
             {/*
               THE LEAD'S FRAMING, under what this is for and above the people. It is the sentence that
               tells everybody what the situation is, in the lead's own words, and it is never quotable.
             */}
             <SharedNote text={(ground.leadContextNotes ?? []).find((n: any) => n.audience === 'EVERYONE' && !n.participantId)?.text} leadName={personLabel(ground.participants?.find((p: any) => p.partyType === 'INITIATOR'))} isViewerTheLead={isTheLead} />
 
+    </>
+  )
+  const partF = (
+    <>
             {/* 2 - PERSON BY PERSON */}
             {/*
               THE DESIGN NAMES THIS BAND DIFFERENTLY FOR EACH READER, and the difference is the
@@ -765,6 +802,10 @@ export function ContextPage({
               />
             )}
 
+    </>
+  )
+  const partG = (
+    <>
             {/* WHAT THIS GROUND WILL AND WILL NOT BE ABLE TO TELL YOU. (G25)
                 Above the upload, because it is the reason to bother with any of
                 it. Not a score and not a completeness bar: a statement about the
@@ -1158,36 +1199,10 @@ export function ContextPage({
             </Panel>
             </div>
             )}
-
-
-
-
-            {/*
-              "ONLY YOU SEE THIS" IS GONE AS A SECTION, AND ITS CONTENT DID NOT GO WITH IT.
-              
-              Hafsah, 22 September 2026: "the 'only you see this bit' shouldnt exist... the content
-              needs to be parsed and paraphrased in sections." It was a band of raw blobs at the
-              bottom of the page, drawn in red, which made the steers that shape every question in
-              this check-in look like something to be ashamed of - and made them the hardest thing
-              on the page to read.
-              
-              What the lead wrote is now lines in named buckets below, and a line about a person sits
-              under that person in the band above, marked as theirs to see and nobody else's. Nothing
-              is hidden from the lead and nothing about a person reaches anybody else.
-            */}
-            {/*
-              THE THREE WRITE BOXES ARE GONE: the running log, the note everyone reads, and the
-              private steer.
-              
-              Hafsah, 22 September 2026: "that section needs to go since you can all do everything
-              from the context chat." They were three textareas and about nine hundred pixels of
-              form, competing with the record for the page, and each one did something the
-              conversation above already does better - it asks, it proposes, and it writes on a yes.
-              A form that duplicates the conversation teaches people the conversation is optional.
-              
-              Nothing that was written through them is lost: every note already on a check-in is read
-              back into the buckets below.
-            */}
+    </>
+  )
+  const partH = (
+    <>
             {/*
               WHAT PEOPLE ARE DOWN AS DOING, WITH NOBODY MARKED AS HAVING DONE IT.
               
@@ -1238,6 +1253,10 @@ export function ContextPage({
               </>
             )}
 
+    </>
+  )
+  const partI = (
+    <>
             {/*
               WHAT WE KNOW, IN NAMED BUCKETS, ONE LINE EACH.
               
@@ -1413,6 +1432,118 @@ export function ContextPage({
                 </div>
               </>
             )}
+    </>
+  )
+
+  return (
+    <div>
+            {/*
+              THE CONTEXT PAGE IS BANDS, IN ONE ORDER, AND THE ORDER IS THE ARGUMENT.
+              
+              It used to be a stack of boxes: an expectations panel, a strength card, an upload box,
+              three textareas and a chat somewhere in the middle. Everything was present and nothing
+              said how the parts related, so the page read as a form rather than as a record.
+              
+              The order answers questions in the order a person asks them:
+                1  what is this check-in for            - you cannot judge the rest without it
+                2  what is expected of each person      - the thing anybody is actually read against
+                3  the material it all rests on         - files and references
+                4  what only the lead sees              - steers the questions, never quoted
+                5  the chat                             - where you go to change any of the above
+              
+              A band with nothing in it still renders its heading and says what would go there, because
+              "nothing yet" is a fact about this check-in and a blank space is not.
+            */}
+
+            {/* The prototype's order: "From a plan", the conversation, then "Waiting for you to confirm". The lead's only. */}
+            {!light && (
+              <>
+                {partA1}
+                {partA2}
+                {partA3}
+                {partB}
+                {partC}
+                {partD}
+                {partE}
+                {partF}
+                {partG}
+                {partH}
+                {partI}
+              </>
+            )}
+            {/*
+              THE LIGHT CONTEXT PAGE (docs/light-rebuild/sales-first.md, section 4; the light prototype's
+              s56, s63 and the phone menu in s72), for a sales check-in: one page. What needs the lead first,
+              then what this check-in is for, then (for a team member) her own part; everything else folds to
+              one line with a fact from the record; then "Add context", which opens Ask. Every part is the same
+              one drawn above, by the same code, with the same words and controls; only its place changes.
+            */}
+            {light && (
+              <div className="gwui-ctx-light">
+                {isTheLead && <WaitingForYouToConfirm groundId={id!} heading="Needs you" />}
+                {partC}
+                {partE}
+                {!isLead && partF}
+                <div>
+                <Section heading="Everything else" note="Tap any line to see more" />
+                <div className="gwui-folds">
+                  {objectives.length > 0 && (
+                    <FoldedLine name="Targets" fact={thePageAtAGlance.targets}>
+                      <div className="gwui-ctx-same">{partD}</div>
+                    </FoldedLine>
+                  )}
+                  {(isTheLead || theBuckets.some((b) => b.lines.length > 0)) && (
+                    <FoldedLine name="How we work" fact={thePageAtAGlance.howWeWork}>{partI}</FoldedLine>
+                  )}
+                  <FoldedLine name="Documents" fact={thePageAtAGlance.documents}>{partG}</FoldedLine>
+                  {isLead && <FoldedLine name="Each person’s card" fact={thePageAtAGlance.people}>{partF}</FoldedLine>}
+                  {(isTheLead || commitments.length > 0) && (
+                    <FoldedLine name="What people are down as doing" fact={thePageAtAGlance.downAsDoing}>{partH}</FoldedLine>
+                  )}
+                </div>
+                </div>
+                <div className="gwui-ctx-actions">
+                  {canAddContextWithAsk && (
+                    <Button kind="secondary" onClick={() => showForCheckInSetup(id!)}>Add context</Button>
+                  )}
+                  {/* On a phone, the other ways to add sit behind one button (s72: "More ways to add"). */}
+                  {isTheLead && (onAPhone
+                    ? <SmallMenu label="More ways to add" align="left"><FromAPlan groundId={id!} /></SmallMenu>
+                    : <FromAPlan groundId={id!} />)}
+                </div>
+                {partA3}
+              </div>
+            )}
+
+
+
+
+            {/*
+              "ONLY YOU SEE THIS" IS GONE AS A SECTION, AND ITS CONTENT DID NOT GO WITH IT.
+              
+              Hafsah, 22 September 2026: "the 'only you see this bit' shouldnt exist... the content
+              needs to be parsed and paraphrased in sections." It was a band of raw blobs at the
+              bottom of the page, drawn in red, which made the steers that shape every question in
+              this check-in look like something to be ashamed of - and made them the hardest thing
+              on the page to read.
+              
+              What the lead wrote is now lines in named buckets below, and a line about a person sits
+              under that person in the band above, marked as theirs to see and nobody else's. Nothing
+              is hidden from the lead and nothing about a person reaches anybody else.
+            */}
+            {/*
+              THE THREE WRITE BOXES ARE GONE: the running log, the note everyone reads, and the
+              private steer.
+              
+              Hafsah, 22 September 2026: "that section needs to go since you can all do everything
+              from the context chat." They were three textareas and about nine hundred pixels of
+              form, competing with the record for the page, and each one did something the
+              conversation above already does better - it asks, it proposes, and it writes on a yes.
+              A form that duplicates the conversation teaches people the conversation is optional.
+              
+              Nothing that was written through them is lost: every note already on a check-in is read
+              back into the buckets below.
+            */}
 
             {/*
               THE CONTEXT CHAT, AT THE FOOT OF THE PAGE.

@@ -76,12 +76,13 @@ export function FromAPlan({ groundId }: { groundId: string }) {
   )
 }
 
-export function WaitingForYouToConfirm({ groundId }: { groundId: string }) {
+/** `heading`: the light Context page says "Needs you" (approved rename of "Waiting for you to confirm"). */
+export function WaitingForYouToConfirm({ groundId, heading = 'Waiting for you to confirm' }: { groundId: string; heading?: string }) {
   const q = useQuery({ queryKey: KEY(groundId), queryFn: () => groundsApi.planCardsWaiting(groundId), retry: false })
   const cards = q.data?.proposals ?? []
   if (!cards.length) return null
   return (
-    <Section heading="Waiting for you to confirm" note="Nothing changes until you confirm it">
+    <Section heading={heading} note="Nothing changes until you confirm it">
       {cards.map((c) => <Card key={c.id} groundId={groundId} card={c} />)}
     </Section>
   )

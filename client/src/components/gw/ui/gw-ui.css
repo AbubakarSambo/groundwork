@@ -2560,3 +2560,10 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 /* "Where each target stands" on the sales goals board: each target's figure on the right (sales-first.md, section 3) */
 .gwui-target-figure { margin-left: auto; text-align: right; }
 
+/* ===== THE LIGHT CONTEXT PAGE (docs/light-rebuild/sales-first.md, section 4; s56, s63, s72) ===== */
+.gwui-ctx-same > .gwui-section:first-child > .gwui-section-h > .gwui-section-title { display: none; }
+.gwui-ctx-light { display: flex; flex-direction: column; gap: 28px; margin-top: 8px; }
+.gwui-ctx-light .gwui-section + .gwui-folds { margin-top: 14px; }
+.gwui-ctx-actions { display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
+.gwui-ctx-actions > .gwui-menu .gwui-menu-pop { min-width: min(320px, calc(100vw - 32px)); }
+
