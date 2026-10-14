@@ -15,7 +15,8 @@
 const squash = (s: string) => (s ?? '').toLowerCase().replace(/[‘’“”'"]/g, '').replace(/[^a-z0-9\s-]/g, ' ').replace(/\s+/g, ' ').trim();
 
 /* Words that say how a deal was paid or counted, never who the customer is. */
-const NOT_THE_CUSTOMER = /^(?:\d[\d,.]*|m-?pesa|mpesa|payment|paid|order|orders|deal|units?|pcs|invoice|receipt|ksh|kes|deposit)$/;
+const NOT_THE_CUSTOMER = /^(?:\d[\d,.]*|m-?pesa|mpesa|payment|paid|order|orders|deal|units?|pcs|invoice|receipt|ksh|kes|deposit|ltd|limited|plc|inc|co|company|llc)$/;
+/* "KILELE HOTEL LTD", as an M-Pesa message names the payer, is Kilele Hotel (pilots after fixes, A3). */
 
 /** The customer a deal's name names: its words, without a leading article and without amounts or payment words at the end. */
 export function theCustomerIn(name: string | null | undefined): string[] {
@@ -52,6 +53,12 @@ export function aLineNamesTheCustomer(line: string, dealName: string): boolean {
 }
 
 /** Whether any line this reader may read, naming the customer, is backed by the speaker's own document. */
-export function proofNamesTheDeal(dealName: string, lines: { text: string; mark: string }[]): boolean {
-  return lines.some((l) => l.mark === 'proven' && aLineNamesTheCustomer(l.text, dealName));
+export function proofNamesTheDeal(dealName: string, lines: { text: string; mark: string; documentBy?: string | null }[], dealOwnerId?: string | null): boolean {
+  /*
+   * And a line backed by the deal owner's own document, whoever said it (pilots after fixes, A3): Kevin's M-Pesa photo
+   * ("Ksh496,000.00 received from KILELE HOTEL LTD") was put under Grace's "Kevin sold Kilele 40 units, paid", so no line
+   * was "the speaker's own document" and Kilele stayed "Said to be won, not shown yet" for five days. Proof given counts
+   * (Hafsah, 12 October).
+   */
+  return lines.some((l) => (l.mark === 'proven' || (!!dealOwnerId && l.documentBy === dealOwnerId)) && aLineNamesTheCustomer(l.text, dealName));
 }

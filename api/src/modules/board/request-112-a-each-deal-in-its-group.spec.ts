@@ -84,7 +84,8 @@ describe('request 112 (a): each deal in its group', () => {
     ]);
     expect(grid(b).groupsNote).toEqual([
       'Nothing on record says what a deal must show at each stage, so no group here says whether a criterion is met.',
-      'No deal is put under Cold, because nothing on record counts how many times a customer was followed up without a reply, so the stall rule cannot be applied.',
+      /* The stall rule is applied now, from the record (pilots after fixes, A4). */
+        'A deal is stalled when a check-in says the customer has not answered and 3 working days have passed, with nothing said since that they answered.',
     ]);
     expect(JSON.stringify(grid(b).groups)).not.toMatch(/criterion proven|criteria met|Cold/);
   });

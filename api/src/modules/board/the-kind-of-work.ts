@@ -176,6 +176,8 @@ export interface AServedRecord {
   mark?: 'proven' | 'confirmed' | 'said' | 'memory' | 'none';
   /** True where the proof is on another line that names this deal's customer, read by this reader (pilots, problem 2). */
   proofOnAnotherLine?: boolean;
+  /** The day the customer stopped answering, as a check-in said it (YYYY-MM-DD), or null (pilots after fixes, A4). */
+  notAnsweringSince?: string | null;
   /**
    * Somebody says this record, which has nobody's name on it, is theirs (decision 76, item 3). Served to the lead
    * alone, with the question in a plain sentence ("Amani Wekesa says the Westgate Deli deal is theirs. Is it?").
@@ -424,6 +426,9 @@ export function onlyRecordsTheLinesSay(
     const name = (r.name ?? '').trim();
     if (!line || !r.kind || !allowed.has(r.kind) || !name || name.length > 120 || !aNameThatNamesSomething(name)) continue;
     if (!squash(line.text).includes(squash(name))) continue;
+    /* A person in the check-in is never a customer, a deal or any other record (pilots after fixes, 14 October): Joseph's
+       "She wants 12,000 for 10 units" became a deal called "Mercy". */
+    if (isOneOfThePeople(name, people)) continue;
     const section = RECORDS_FOR_EACH_KIND[kind].find((s) => s.itemKinds.includes(r.kind!))!;
     const stages = stagesFor(section, leadsStages) ?? [];
     const stage = stages.find((s) => s.toLowerCase() === (r.stage ?? '').trim().toLowerCase()) ?? null;
@@ -435,4 +440,16 @@ export function onlyRecordsTheLinesSay(
     out.push({ kind: r.kind, name, stage, dueAt: due && !isNaN(due.getTime()) ? due : null, fields, sourceEntryId: line.id, ownerParticipantId: theOwnerTheLineNames(r.owner, line, people) });
   }
   return out;
+}
+
+/** Whether a record's name is only a person in the check-in: their first name, their full name, or the name given for them. */
+export function isOneOfThePeople(name: string, people: readonly APersonALineMayName[]): boolean {
+  const n = squash(name.replace(/['’]s$/i, ''));
+  if (!n) return false;
+  return people.some((p) => {
+    const first = squash(p.firstName ?? '');
+    const full = squash([p.firstName, p.lastName].filter(Boolean).join(' '));
+    const given = squash(p.nameGiven ?? '');
+    return (!!first && n === first) || (!!full && n === full) || (!!given && n === given);
+  });
 }

@@ -1,3 +1,4 @@
+import { theyAreConnectedOnWhatsApp } from '../whatsapp/connect-whatsapp';
 import { theCheckInIsOpen } from '../whatsapp/what-goes-to-a-phone';
 import { Injectable, Logger, OnApplicationBootstrap, Optional } from '@nestjs/common';
 import { owesThisSession } from './the-lead-checks-in-when-they-choose';
@@ -796,7 +797,7 @@ export class GroundsCron implements OnApplicationBootstrap {
             id: true,
             email: true,
             userId: true,
-            ground: { select: { label: true, simplerWords: true } },
+            ground: { select: { label: true, simplerWords: true, organizationId: true } },
             /* No recordEntries here, structurally (NL-007): this sweep used to put the person's last
                private record line into the mail and the WhatsApp body as "Last time: ...". The product's
                central promise is that nothing they wrote reaches a mailbox; the reminder never needed it. */
@@ -825,6 +826,15 @@ export class GroundsCron implements OnApplicationBootstrap {
          */
         /* Decision 136's notice, folded into the opening so it is one message that day (reviewer, 14 October). */
         const missed = await theMissedNoticeToFold(this.prisma, p.userId, p.id, now).catch(() => null);
+        /*
+         * ONE CHANNEL FOR AN OPENING (Hafsah, 14 October). Somebody who has joined on WhatsApp is told there, and not by
+         * email too. The one exception is the day decision 136's missed-check-ins notice is due: it goes by email, inside
+         * this opening, so it is never lost.
+         */
+        if (!missed && (await theyAreConnectedOnWhatsApp(this.prisma, { organizationId: (p.ground as any).organizationId, userId: p.userId, email: p.email }))) {
+          await this.prisma.checkIn.update({ where: { id: ci.id }, data: { sessionReadyNotifiedAt: now } });
+          continue;
+        }
         const went = await this.email.sendSessionReady(p.email, await nameFor({ userId: p.userId, email: p.email }, ci.groundId, p.ground.label), checkInUrl, p.ground.simplerWords, missed?.lines ?? null);
         if (missed && went !== 'suppressed') await rememberTheMissedNoticeTold(this.prisma, missed.key, (went ?? 'sent') as any, { sender: 'sendSessionReady', to: p.email });
 

@@ -34,7 +34,8 @@ describe('duration: ask in conversation, never assume, confirm at end', () => {
   it('ENGINE_RULES requires a single combined end-of-session confirmation of the timeframe', () => {
     expect(ENGINE_RULES).toMatch(/At the end of the session, before the record closes, confirm the timeframe/i);
     expect(ENGINE_RULES).toMatch(/one combined closing confirmation, never two stacked prompts/i);
-    expect(ENGINE_RULES).toMatch(/is that still the period you want this measured against/i);
+    /* Hafsah's approved wording, 14 October (E8): it was "is that still the period you want this measured against". */
+    expect(ENGINE_RULES).toMatch(/Is that still the right time span for this/i);
     // if the person never gave one, ask at the end rather than closing without it
     expect(ENGINE_RULES).toMatch(/If they never gave a timeframe, ask for it then/i);
   });

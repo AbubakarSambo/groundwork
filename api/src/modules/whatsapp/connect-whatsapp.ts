@@ -53,6 +53,22 @@ export async function connectWhatsAppFor(
   }
 }
 
+/**
+ * CONNECTED ON WHATSAPP (Hafsah, 14 October: "each opening message goes on one channel only"): WhatsApp is on for the
+ * organisation and the person has written to Groundwork from their number (they have joined there). Then a session's
+ * opening goes on WhatsApp alone; otherwise by email alone.
+ */
+export async function theyAreConnectedOnWhatsApp(prisma: any, who: { organizationId: string | null | undefined; userId?: string | null; email?: string | null }): Promise<boolean> {
+  try {
+    if (!who.organizationId) return false;
+    const org = await prisma.organization?.findUnique?.({ where: { id: who.organizationId }, select: { whatsappAddOnOn: true, whatsappFreeUntil: true } });
+    if (!whatsAppIsOnFor(org)) return false;
+    return await theyHaveWrittenFromTheirNumber(prisma, who);
+  } catch {
+    return false;
+  }
+}
+
 /** Their saved number (roster first, then their sign-in), and whether anything has ever come from it. */
 async function theyHaveWrittenFromTheirNumber(prisma: any, who: { organizationId?: string | null; userId?: string | null; email?: string | null }): Promise<boolean> {
   const person = await prisma.person?.findFirst?.({

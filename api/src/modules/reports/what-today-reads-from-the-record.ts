@@ -3,7 +3,7 @@ import { theSameThing } from '../board/a-thing-is-not-somebody';
 import { plainWordsByPerson, atTheStart, labelsForParties, namesVisibleTo, withNames, eachSideGetsSomebody } from './party-labels';
 import { targetsFor } from '../board/whose-number-is-whose-business';
 import { withoutWhatTheLeadHasNotToldThemAbout, theyRunThisCheckIn } from '../board/an-untold-goal-is-not-a-board-objective';
-import { notToldYet, theLeadIsNudgedToTell, aWeekHasPassedSinceNotTold } from '../grounds/a-goal-not-told-stays-with-the-lead';
+import { notToldYet, theLeadIsNudgedToTell, aWeekHasPassedSinceNotTold, aGoalTheLeadSetAndHasNotTold } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { areaOfGoalOrFallback } from '../grounds/the-area-of-a-goal-is-worded-once';
 import { aCountThatMovedSaid } from './a-count-that-moved-is-one-sentence';
 import { whatMovedInTheRound } from './what-this-session-holds';
@@ -106,7 +106,7 @@ async function load(prisma: any, groundId: string) {
       dependencies: { orderBy: { createdAt: 'asc' } },
       objectives: { select: { id: true, name: true, target: true, count: true, prevCount: true, ownerParticipantId: true, setByParticipantId: true, direction: true, sortOrder: true, isADecisionAboutAPerson: true } },
       /* Decision 56, item 1 - a goal the lead has not told its person about, so Today can nudge them. */
-      personObjectives: { select: { id: true, participantId: true, text: true, authoredBy: true, awareness: true } },
+      personObjectives: { select: { id: true, participantId: true, text: true, authoredBy: true, awareness: true, kind: true } },
     },
   })?.catch?.(() => null);
   if (!ground) return null;
@@ -331,7 +331,8 @@ export async function forTheLeadFrom(prisma: any, groundId: string, l: Loaded, r
    * Ordered with the other things only the lead can settle - first, since telling somebody a goal
    * exists is rarely something to leave for later.
    */
-  const untold = ((ground.personObjectives ?? []) as any[]).filter(notToldYet);
+  /* Only goals the lead actually set, from the record: never a promise or a to-do (pilots after fixes, A2). */
+  const untold = ((ground.personObjectives ?? []) as any[]).filter(aGoalTheLeadSetAndHasNotTold);
   for (const o of untold) {
     const name = nameOf(o.participantId);
     const area = await areaOfGoalOrFallback(prisma, o.text ?? '');

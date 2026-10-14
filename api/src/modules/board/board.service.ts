@@ -34,12 +34,14 @@ export const NO_OPEN_ISSUES_ON_RECORD = 'Groundwork does not follow an issue fro
 import { theShareSays, YOU_HAVE_NO_SHARE_YET } from './your-share';
 import { theirOwnAimsKeptOnlyAsPromises, AN_AIM_FROM_THEIR_PROMISE } from './an-aim-kept-only-as-their-promise';
 import { eachDealInItsGroup } from './each-deal-in-its-group';
+import { notAnsweringSince } from './a-deal-that-has-stalled';
+import { aRoundCanBeChecked } from './a-round-backed-by-a-document-can-be-checked';
 import { proofNamesTheDeal } from './one-deal-per-customer';
 import { isTheTeamPictureNowShared } from '../reports/each-sessions-picture-is-released-on-its-own';
 import { withoutItsOwnSpeaker } from './a-view-does-not-start-with-its-speaker';
 import { everyActionHasALabel, whatToDoAboutALeadAction, whatToDoAboutADecision, isAYesOrNoQuestion, theAnswerAsALine } from './what-needs-you-and-what-to-do';
 import { theOwedThingAskedPlainly } from '../conversation/each-owed-thing-asked-plainly';
-import { howManyGoalsAreNotTold, notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead } from '../grounds/a-goal-not-told-stays-with-the-lead';
+import { howManyGoalsAreNotTold, notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead, aGoalTheLeadSetAndHasNotTold } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { whoAnAdminDidNotLetIn, isNotLetInYet, whoIsNotLetInYet, theWaitingToBeLetInLine } from '../grounds/who-an-admin-did-not-let-in';
 import { theSharedReadWithoutTheLeadsJudgement } from './what-the-room-says-is-not-a-reading-of-the-lead';
 import { areaOfGoalOrFallback } from '../grounds/the-area-of-a-goal-is-worded-once';
@@ -1521,11 +1523,13 @@ export class BoardService {
        * their "fine"s (adversarial run, 20 Sep 2026), so `checkable` answers first. A check-in not
        * read yet is never marked for want of a read: the record of it answers instead.
        */
-      const checkableRead = (c: any, recordHasSomething: boolean): boolean => {
-        if ((c?.specificityDimensions as any)?.checkable === 'specific') return true;
-        if (c?.specificityLevel) return !['vague', 'managed'].includes(String(c.specificityLevel).toLowerCase());
-        return recordHasSomething;
-      };
+      /*
+       * A DOCUMENT OR A PHOTO ON THE RECORD THAT BACKS A LINE MAKES IT CHECKABLE, whatever the conversation's own read said
+       * (pilots after fixes, A5). Brian sent his draft as a PDF and a photo, and Aisha her registry receipt, and the board
+       * still read "Nothing ... can be checked yet ... Ask ... for a photo", because the model had read the session as vague.
+       */
+      const backedByADocument = new Set(thisRoundsLines.filter((e: any) => !!e.anchoredDocumentId).map((e: any) => e.checkInId));
+      const checkableRead = (c: any, recordHasSomething: boolean): boolean => aRoundCanBeChecked(c, recordHasSomething, backedByADocument.has(c?.id));
       const somethingToCount = new Set(
         thisRoundsLines
           .filter((e) => hasANumberADateOrADocument({ text: cleanText(e.text ?? ''), anchoredDocumentId: e.anchoredDocumentId, documentSays: e.documentSays }))
@@ -2382,7 +2386,7 @@ export class BoardService {
         const readableRows = everyLine.filter((l) => !l.disputedAt && mayReadTheWordsOf(l.participantId));
         const whoAddedEach = await whoAddedEachBackingDocument(this.prisma, readableRows).catch(() => new Map<string, string | null>());
         const readable = readableRows
-          .map((l) => ({ id: l.id, participantId: l.participantId, text: cleanText(l.text ?? ''), createdAt: l.createdAt, mark: theRecordsMark(theMarkOf({ ...l, text: cleanText(l.text ?? '') }, whoAddedEach)) as string }));
+          .map((l) => ({ id: l.id, participantId: l.participantId, text: cleanText(l.text ?? ''), createdAt: l.createdAt, mark: theRecordsMark(theMarkOf({ ...l, text: cleanText(l.text ?? '') }, whoAddedEach)) as string, documentBy: l.anchoredDocumentId ? (whoAddedEach.get(l.anchoredDocumentId) ?? null) : null }));
         const owners = [...new Set(rows.filter((r) => r.kind === 'deal' && mayReadTheWordsOf(r.ownerParticipantId)).map((r) => r.ownerParticipantId as string))];
         const ownersCheckIns = (checkIns as any[]).filter((c) => owners.includes(c.participantId)).map((c) => c.id);
         const turns = ownersCheckIns.length
@@ -2399,7 +2403,7 @@ export class BoardService {
           r.value = value;
           /* Proof on any line naming the customer shows the deal (problem 2): the M-Pesa line, not only the line the deal was written from. */
           /* Only a deal said in a check-in on somebody's word: a colleague's confirmation and the lead's own entry keep saying how they are known. */
-          if (r.from === 'said' && r.mark !== 'proven' && r.mark !== 'confirmed' && proofNamesTheDeal(r.name, readable)) {
+          if (r.from === 'said' && r.mark !== 'proven' && r.mark !== 'confirmed' && proofNamesTheDeal(r.name, readable, r.ownerParticipantId ?? null)) {
             r.proofOnAnotherLine = true;
             /* The row reads as the proof shows it: a line naming this customer is backed by the speaker's own document. */
             r.mark = 'proven';
@@ -2408,6 +2412,9 @@ export class BoardService {
           }
           r.valueSays = value ? null : NO_VALUE_SAID;
           r.contactHistory = theContactHistory(r.name, readable, now);
+          /* When the customer stopped answering, from the lines this reader may read (A4). */
+          const silent = notAnsweringSince(r.name, readable as any);
+          r.notAnsweringSince = silent ? silent.toISOString().slice(0, 10) : null;
           r.contactHistorySays = WHAT_CONTACT_HISTORY_IS;
           /*
            * ONE ANSWER TO "WHEN WAS IT LAST SPOKEN ABOUT" (request 117, part 4). A deal added on the board has no line
@@ -3298,9 +3305,10 @@ export class BoardService {
   private async goalsNotToldYetByParticipant(groundId: string): Promise<{ participantId: string; text: string }[]> {
     const rows = await ((this.prisma as any).personObjective?.findMany?.({
       where: { groundId, awareness: 'NOT_TOLD' },
-      select: { participantId: true, text: true, awareness: true, authoredBy: true },
+      select: { participantId: true, text: true, awareness: true, authoredBy: true, kind: true },
     }) ?? Promise.resolve([])).catch(() => []);
-    return (rows as any[]).filter(notToldYet).map((r) => ({ participantId: r.participantId as string, text: String(r.text ?? '') })).filter((r) => r.text);
+    /* Only goals the lead set: a promise or a to-do is never "a goal you have not told them about" (pilots after fixes, A2). */
+    return (rows as any[]).filter(aGoalTheLeadSetAndHasNotTold).map((r) => ({ participantId: r.participantId as string, text: String(r.text ?? '') })).filter((r) => r.text);
   }
 
   private buildManagerAlignment(

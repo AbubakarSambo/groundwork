@@ -144,6 +144,19 @@ export function notToldYet(o: { awareness?: string | null; authoredBy?: string |
   return !!o && String(o.awareness ?? '').toUpperCase() === 'NOT_TOLD' && o.authoredBy !== 'self';
 }
 
+/**
+ * A GOAL THE LEAD SET, NOT A PROMISE OR A TO-DO (pilots after fixes, 14 October). Njeri and Grace read "Tell David about the
+ * goal you set for Documentation for Aisha Hassan" and "the goal you set for Product sampling" about a promise ("Provide
+ * samples to Mercy", "I will ask Joseph tomorrow") and a to-do. They had set no goal. Only a row the record holds as a goal,
+ * a target, what doing well looks like or a role expectation is "a goal you set"; an old row with no kind keeps being read as one.
+ */
+const WHAT_A_LEAD_SETS = new Set(['GOAL', 'TARGET', 'SUCCESS_DEFINITION', 'ROLE_EXPECTATION']);
+export function aGoalTheLeadSetAndHasNotTold(o: { awareness?: string | null; authoredBy?: string | null; kind?: string | null } | null | undefined): boolean {
+  if (!notToldYet(o)) return false;
+  const kind = (o?.kind ?? '').toUpperCase();
+  return !kind || WHAT_A_LEAD_SETS.has(kind);
+}
+
 /** The goals this reader may read: all of them for the lead, and none not told yet for anybody else. */
 export function goalsThisReaderMaySee<T extends { awareness?: string | null; authoredBy?: string | null }>(rows: readonly T[], isTheLead: boolean): T[] {
   return isTheLead ? [...rows] : rows.filter((o) => !notToldYet(o));

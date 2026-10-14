@@ -1,3 +1,4 @@
+import { theOrganisationsZone } from '../../common/the-organisations-own-day';
 import { whatHappensWhenThisPersonJoins } from '../participants/named-when-an-admin-approved';
 import { theEndingSaid, theOutcomeIsThat, TheEndingIsAbout } from '../resolution/end-states';
 import { aPersonNeverReadsAnInternalName } from '../../common/no-internal-name-reaches-a-person';
@@ -478,8 +479,10 @@ export class EmailService implements OnModuleInit {
         select: { quietBeforeHour: true, quietAfterHour: true },
       });
       const now = new Date();
-      if (!inQuietHours(now, person.timezone, prefs)) return false;
-      const notBefore = nextAllowedMoment(now, person.timezone, prefs);
+      /* Their own zone, else the organisation's (Hafsah, 14 October): mail held overnight went at 8 in UTC, which is 11 in Nairobi. */
+      const zone = person.timezone ?? (await theOrganisationsZone(this.prisma as any, person.organizationId).catch(() => null));
+      if (!inQuietHours(now, zone, prefs)) return false;
+      const notBefore = nextAllowedMoment(now, zone, prefs);
       await this.prisma.scheduledEmail.create({
         data: { toAddress: options.to, subject: options.subject, html: options.html, sender, context: (context ?? null) as any, notBefore },
       });

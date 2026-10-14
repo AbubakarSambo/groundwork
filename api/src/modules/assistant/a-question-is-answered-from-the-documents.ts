@@ -35,7 +35,8 @@ Rules:
 - Where the answer needs a sum the document does not state, show it from the document's own figures, for example "40 units are in the 30 to 99 band, at KES 12,400 a unit, so 40 units cost KES 496,000."
 - Say which document the answer comes from, by its file name.
 - Write plain, full sentences that a person with basic English understands. Speak to the person as "you". No lists, no headings, no colons joining pieces.
-- At most three sentences.`;
+- At most three sentences.
+- A short question names things loosely. "The Kamau defence" is the defence in "Kamau v. Apex Ltd"; "Kilele" is "Kilele Hotel". Match a short name to the fuller one in the documents, and answer when one thing clearly fits.`;
 
 const ANSWER_SCHEMA = {
   name: 'answer_from_the_documents',
@@ -106,7 +107,8 @@ export async function answerFromTheDocuments(
   if (!documents.length) return NO_DOCUMENTS_TO_READ;
   let room = MOST_WE_READ_IN_ALL;
   const given: ADocumentToAnswerFrom[] = [];
-  for (const d of documents) {
+  /* The documents that share the question's words go first, so a short question is not answered from whatever was added last (A6). */
+  for (const d of theMostLikelyFirst(documents, input.question)) {
     if (room <= 0) break;
     given.push({ fileName: d.fileName, content: d.content.slice(0, room) });
     room -= d.content.length;
@@ -139,4 +141,23 @@ export function everyFigureIsInTheDocumentsOrSums(answer: string, documents: { c
     if (v < 10) return true;
     return heldOrAsked.some((a) => heldOrAsked.some((b) => Math.abs(a * b - v) < 0.5 || Math.abs(a + b - v) < 0.5));
   });
+}
+
+/*
+ * A SHORT QUESTION IS SEARCHED FOR TOO (pilots after fixes, A6). "When is the Kamau defence due?" read "I could not find the
+ * answer" while "What date is the Kamau v. Apex defence due, according to the matter list?" was answered: the documents were
+ * read newest first up to the limit, so the matter list could fall outside what was read. Each document is ranked by how many
+ * of the question's own words it holds (names and nouns, not small words), and read in that order.
+ */
+const SMALL_WORDS = new Set(['the', 'a', 'an', 'is', 'are', 'was', 'when', 'what', 'who', 'where', 'which', 'how', 'due', 'date', 'for', 'of', 'to', 'in', 'on', 'my', 'our', 'do', 'does', 'did', 'it', 'this', 'that', 'and', 'according', 'by']);
+const wordsOfTheQuestion = (q: string): string[] => [...new Set((q ?? '').toLowerCase().match(/[a-z0-9]+/g) ?? [])].filter((w) => w.length > 2 && !SMALL_WORDS.has(w));
+
+export function theMostLikelyFirst<T extends { content: string; fileName: string }>(documents: T[], question: string): T[] {
+  const words = wordsOfTheQuestion(question);
+  if (!words.length) return documents;
+  const score = (d: T) => {
+    const text = `${d.fileName} ${d.content}`.toLowerCase();
+    return words.filter((w) => text.includes(w)).length;
+  };
+  return documents.map((d, i) => ({ d, i, s: score(d) })).sort((a, b) => b.s - a.s || a.i - b.i).map((x) => x.d);
 }

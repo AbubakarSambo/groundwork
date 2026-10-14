@@ -93,7 +93,7 @@ describe('when a morning message is due', () => {
 
 /* ---------- the opening notice, sent ---------- */
 
-function aListener(opts: { overWhatsApp?: boolean | null; personPhone?: string | null; settingsPhone?: string | null; onLeave?: boolean } = {}) {
+function aListener(opts: { overWhatsApp?: boolean | null; personPhone?: string | null; settingsPhone?: string | null; onLeave?: boolean; joined?: boolean } = {}) {
   const sendFor = jest.fn(async (..._a: any[]) => ({ sent: true }));
   const prisma: any = {
     ground: { findUnique: jest.fn(async () => ({ organizationId: 'org-1', label: 'the sales team', overWhatsApp: opts.overWhatsApp ?? null })) },
@@ -102,7 +102,12 @@ function aListener(opts: { overWhatsApp?: boolean | null; personPhone?: string |
       findMany: jest.fn(async () => [{ id: 'gp-1', userId: 'u-1', ground: { organizationId: 'org-1' } }]),
     },
     leaveRequest: { findMany: jest.fn(async () => (opts.onLeave ? [{ userId: 'u-1', organizationId: 'org-1', startsOn: new Date(Date.now() - 86_400_000), endsOn: new Date(Date.now() + 86_400_000) }] : [])) },
-    person: { findFirst: jest.fn(async () => (opts.personPhone === undefined ? { phone: '+254712345678' } : opts.personPhone ? { phone: opts.personPhone } : null)) },
+    /* Joined on WhatsApp (they have written from their number) unless a test says not: one channel for an opening (14 October). */
+    person: { findFirst: jest.fn(async () => {
+      const joined = opts.joined === false ? null : new Date('2026-10-10T09:00:00Z');
+      return opts.personPhone === undefined ? { phone: '+254712345678', whatsappLastInboundAt: joined } : opts.personPhone ? { phone: opts.personPhone, whatsappLastInboundAt: joined } : { phone: null, whatsappLastInboundAt: joined };
+    }) },
+    organization: { findUnique: jest.fn(async () => ({ whatsappAddOnOn: false, whatsappFreeUntil: new Date(Date.now() + 20 * 86_400_000) })) },
   };
   const webhooks: any = { emit: jest.fn(async () => undefined) };
   const listener = new WebhooksListener(prisma, webhooks, { get: () => undefined } as any, {} as any, { sendFor } as any);
@@ -125,6 +130,12 @@ describe("the opening notice, on Groundwork's own number", () => {
     const { listener, sendFor } = aListener({ personPhone: null, settingsPhone: '+254700000002' });
     await listener.onCheckInOpened(OPENED(1));
     expect(sendFor.mock.calls[0][1]).toBe('+254700000002');
+  });
+  /* Hafsah, 14 October: each opening goes on one channel only. Somebody who has not joined on WhatsApp is told by email alone. */
+  it('never to somebody who has not joined on WhatsApp: the email carries their opening', async () => {
+    const { listener, sendFor } = aListener({ joined: false });
+    await listener.onCheckInOpened(OPENED(3));
+    expect(sendFor).not.toHaveBeenCalled();
   });
   it('never for a check-in kept in the app, nor for somebody on approved leave; the webhook still fires', async () => {
     const kept = aListener({ overWhatsApp: false });

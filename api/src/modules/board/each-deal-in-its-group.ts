@@ -1,5 +1,6 @@
 import type { AServedRecord, AServedSection, KindOfWork } from './the-kind-of-work';
 import { theDayInWords } from './the-day-in-words';
+import { STALLED_AFTER_WORKING_DAYS, hasStalled, workingDaysSince } from './a-deal-that-has-stalled';
 
 /**
  * EACH DEAL IN ITS GROUP (screens request 112 a; the prototype's B5, board-as-lead.txt).
@@ -46,11 +47,17 @@ interface Facts {
   recent: boolean;
   next: boolean;
   won: boolean;
+  /** The customer has not answered for STALLED_AFTER_WORKING_DAYS working days, from the record (pilots after fixes, A4). */
+  stalled: boolean;
+  silentSince: Date | null;
 }
 
-function theFacts(r: AServedRecord & { lastSaidOn?: string | null; proofOnAnotherLine?: boolean }, lastStage: string | null, now: Date): Facts {
+function theFacts(r: AServedRecord & { lastSaidOn?: string | null; proofOnAnotherLine?: boolean; notAnsweringSince?: string | null }, lastStage: string | null, now: Date): Facts {
   const lastSaid = aDay(r.lastSaidOn ?? null);
+  const silentSince = r.notAnsweringSince ? new Date(r.notAnsweringSince) : null;
   return {
+    stalled: hasStalled(silentSince, now),
+    silentSince,
     /* Proof on the line the deal came from, or on another line this reader may read that names the customer (problem 2). */
     shown: r.mark === 'proven' || !!r.proofOnAnotherLine,
     confirmed: r.mark === 'confirmed',
@@ -70,6 +77,7 @@ export function whyThisDealIsHere(f: Facts, now: Date): string {
   out.push(f.due ? `The date given for it is ${theDayInWords(f.due, now)}.` : 'No date has been given for it.');
   out.push(f.lastSaid ? `It was last spoken about on ${theDayInWords(f.lastSaid, now)}.` : 'Nobody has spoken about it in a check-in yet.');
   out.push(f.next ? 'Somebody has said what happens next.' : 'Nobody has said what happens next.');
+  if (f.stalled && f.silentSince) out.push(`The customer has not answered since ${theDayInWords(f.silentSince, now)}, which is ${workingDaysSince(f.silentSince, now)} working days.`);
   return out.join(' ');
 }
 
@@ -81,6 +89,8 @@ function theGroup(f: Facts, endKey: string | null): ADealGroup {
    * A deal the lead put at the last stage on the board is the lead's own entry, and stays under Won.
    */
   if (f.won) return f.shown || f.confirmed || f.addedOnTheBoard ? 'won' : 'said-won';
+  /* Not answering for three working days or more, said in a check-in: stalled, whatever else is said about it (A4). */
+  if (f.stalled) return 'cold';
   if (endKey && f.due && dayKey(f.due) > endKey) return 'next-quarter';
   if (f.lastSaid && !f.recent && !f.next) return 'cooling';
   if (endKey && (f.shown || f.confirmed) && f.due && dayKey(f.due) <= endKey && f.recent) return 'likely';
@@ -107,7 +117,7 @@ function headingAndReason(g: ADealGroup, end: Date | null, now: Date, lastStage:
     case 'cooling':
       return { heading: 'Cooling', reason: 'Nobody has spoken about these in the last week, and nobody has said what happens next.' };
     case 'cold':
-      return { heading: 'Cold', reason: '' };
+      return { heading: 'Stalled', reason: `The customer has not answered for ${STALLED_AFTER_WORKING_DAYS} working days or more, as said in a check-in, and nobody has said since that they answered.` };
     case 'said-won':
     {
       const at = lastStage ?? 'won';
@@ -135,6 +145,8 @@ function headingAndReason(g: ADealGroup, end: Date | null, now: Date, lastStage:
 /** Said under the grid, so nobody reads a group as more than it is. */
 export const NO_CRITERIA_ARE_CHECKED = 'Nothing on record says what a deal must show at each stage, so no group here says whether a criterion is met.';
 export const NO_DEAL_IS_COLD = 'No deal is put under Cold, because nothing on record counts how many times a customer was followed up without a reply, so the stall rule cannot be applied.';
+/** The stall rule, said under the grid (A4). */
+export const THE_STALL_RULE = `A deal is stalled when a check-in says the customer has not answered and ${STALLED_AFTER_WORKING_DAYS} working days have passed, with nothing said since that they answered.`;
 export const NO_END_DATE = 'This check-in has no end date, so no deal can be said to be likely by the end, or to fall after it.';
 
 /**
@@ -180,7 +192,7 @@ export function eachDealInItsGroup(kind: KindOfWork | null, sections: AServedSec
         const how: HowTheyGotThere = onBoard.every(Boolean) ? 'on the board' : onBoard.some(Boolean) ? 'both' : 'said';
         return { group: x.g, ...headingAndReason(x.g, end, now, lastStage, how), rowIds: x.ids };
       });
-    const groupsNote = [NO_CRITERIA_ARE_CHECKED, NO_DEAL_IS_COLD, ...(endKey ? [] : [NO_END_DATE])];
+    const groupsNote = [NO_CRITERIA_ARE_CHECKED, THE_STALL_RULE, ...(endKey ? [] : [NO_END_DATE])];
     return { ...sec, rows, groups, groupsNote };
   });
 }

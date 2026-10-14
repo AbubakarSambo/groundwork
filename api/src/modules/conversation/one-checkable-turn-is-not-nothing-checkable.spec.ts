@@ -38,8 +38,12 @@ describe('the session level and the board', () => {
        Hafsah: the rating of how checkable the answers are is needed, and the prototype shows
        "Nothing checkable" on the lead's board. So the board reads it again, `checkable` first, as it
        did before, and the record answers only for a check-in not read yet. */
-    expect(board).toContain("if ((c?.specificityDimensions as any)?.checkable === 'specific') return true;");
-    expect(board).toContain("if (c?.specificityLevel) return !['vague', 'managed'].includes(String(c.specificityLevel).toLowerCase());");
-    expect(board).toContain('return recordHasSomething;');
+    /* Moved 14 October into a-round-backed-by-a-document-can-be-checked.ts (pilots after fixes, A5), with a backing
+       document read first; the order after it is the same. */
+    const rule = strip(readFileSync(join(__dirname, '..', 'board', 'a-round-backed-by-a-document-can-be-checked.ts'), 'utf8'));
+    expect(board).toContain('aRoundCanBeChecked(c, recordHasSomething, backedByADocument.has(c?.id))');
+    expect(rule).toContain("if ((checkIn?.specificityDimensions as any)?.checkable === 'specific') return true;");
+    expect(rule).toContain("if (checkIn?.specificityLevel) return !['vague', 'managed'].includes(String(checkIn.specificityLevel).toLowerCase());");
+    expect(rule).toContain('return recordHasSomething;');
   });
 });

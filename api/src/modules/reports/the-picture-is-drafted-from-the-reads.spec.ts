@@ -107,7 +107,9 @@ describe('the conversation worth having', () => {
 
   it('else from the role map of the round\'s clearest function, in the map\'s own words', () => {
     const q = draftTheQuestion({ functions: [{ fn: 'OPS', confidence: 0.72 }, { fn: 'SALES', confidence: 0.3 }], blockers: [] });
-    expect(q?.text).toBe(ROLE_MAPS[RoleFunction.OPS].neutralProbes[0]);
+    /* The first probe that is not put to "you": since Hafsah's E8 wording (14 October) the OPS map's first probe is
+       "What did you keep running since last time that nobody else saw?", asked of one person, so the room takes the next. */
+    expect(q?.text).toBe(ROLE_MAPS[RoleFunction.OPS].neutralProbes.find((p) => !/\b(you|your|yours|yourself)\b/i.test(p)));
   });
 
   it('and not from a function detected below the coaching threshold', () => {

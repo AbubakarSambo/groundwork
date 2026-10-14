@@ -338,8 +338,10 @@ describe('release night, for a check-in that already exists', () => {
        96 since 13 October: when somebody accepted their invitation (Hafsah, 13 October), one column on ground_participants,
           filled for the people already on a check-in who came in, so everybody who has joined stays counted. */
     /* 97 since 14 October: WhatsApp's free month (Hafsah's decision D1, 13 October, evening), one column on organizations,
-       filled with a month from today for every organisation already here. */
-    expect(names).toHaveLength(97);
+       filled with a month from today for every organisation already here.
+       98 since 14 October: a free month for every organisation already here (Hafsah, 14 October), one marker column on
+       organizations, and for every one that does not pay and has no free run going, one month on the plan that holds it. */
+    expect(names).toHaveLength(98);
     // The six statements deploy.md lists, plus the WhatsApp prices (five updates and one insert).
     expect(o.dataChangesRun).toBeGreaterThanOrEqual(8);
   }));

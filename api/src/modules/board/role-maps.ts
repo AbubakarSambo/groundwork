@@ -256,7 +256,7 @@ export const ROLE_MAPS: Record<RoleFunction, RoleMap> = {
     onTrackMeans: 'Handoffs held and owned, the hard conversation had on time, preventive work visible.',
     goingWrongLooksLike: '"No issues" that turns out to be suppression; handoffs dropped and owned by nobody.',
     neutralProbes: [
-      'What held or ran this period that nobody would have noticed?',
+      'What did you keep running since last time that nobody else saw?',
       'What did you prevent?',
       'Which conversation is still waiting to be had?',
       'Who owns that handoff?',

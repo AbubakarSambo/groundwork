@@ -43,11 +43,17 @@ describe('GW-WA-01: a phone number does not switch email off', () => {
     expect(BLOCK).not.toMatch(/\}\s*else\s*\{\s*await this\.email\.sendSessionReady/);
   });
 
-  it('the email is sent whatever number the person has, and before the stamp', () => {
+  /*
+   * Changed 14 October, by Hafsah's decision that day ("each opening message goes on one channel only"): the email is
+   * left out only for somebody who has joined on WhatsApp (written from their number, with WhatsApp on), never because a
+   * number is saved; and on the day the missed-check-ins notice is due, the email still goes and carries it.
+   */
+  it('the email is sent whatever number the person has, unless they have joined on WhatsApp, and before the stamp', () => {
     const emailAt = BLOCK.indexOf('this.email.sendSessionReady');
     expect(emailAt).toBeGreaterThan(-1);
     expect(BLOCK.slice(0, emailAt)).not.toMatch(/phoneNumber &&/);
-    expect(BLOCK.indexOf('data: { sessionReadyNotifiedAt: now }')).toBeGreaterThan(emailAt);
+    expect(BLOCK.slice(0, emailAt)).toMatch(/if \(!missed && \(await theyAreConnectedOnWhatsApp\(this\.prisma, /);
+    expect(BLOCK.indexOf('data: { sessionReadyNotifiedAt: now }', emailAt)).toBeGreaterThan(emailAt);
   });
 
   it('and WhatsApp is still sent for the same session, once, by the opening notice', () => {
