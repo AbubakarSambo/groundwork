@@ -42,6 +42,26 @@ describe('every organisation has WhatsApp on for a free month', () => {
     expect(whatsAppIsOnFor({ whatsappAddOnOn: false, whatsappFreeUntil: new Date('2026-11-13T00:00:00Z') }, NOW)).toBe(true);
   });
 
+  it('nothing is charged for WhatsApp during the free month, even when a paying organisation adds it to its subscription', async () => {
+    /* Paying, past its trial, the switch on: the line goes on the bill only once the free month has ended (Hafsah, fix list item 2). */
+    const stripe: any = { isConfigured: true, stripe: { subscriptionItems: { create: jest.fn(), update: jest.fn(), retrieve: jest.fn(), del: jest.fn() } } };
+    const org = { ...PAYING, whatsappAddOnOn: true, whatsappFreeUntil: new Date('2026-11-13T00:00:00Z') };
+    const addOn = new WhatsAppAddOnService((addOnFor(org) as any).prisma, (addOnFor(org) as any).pricing, stripe);
+    const s = await addOn.standing('org-baridi', NOW);
+    expect(s.sending).toBe(true);
+    expect(s.charged).toBe(false);
+    await addOn.syncTheStripeLine('org-baridi', NOW);
+    expect(stripe.stripe.subscriptionItems.create).not.toHaveBeenCalled();
+    expect(stripe.stripe.subscriptionItems.update).not.toHaveBeenCalled();
+    const read: any = await addOn.whatTheyRead('org-baridi', true, NOW);
+    expect(read.says.charge).toBe('Nothing is charged for WhatsApp until its free month ends on 13 November 2026.');
+    expect(read.says.freeMonth).toBe('WhatsApp is free until 13 November 2026. After that it is paid as part of your subscription.');
+
+    /* The day after the month ends, it is charged as a second line. */
+    const after = new Date('2026-11-14T10:00:00Z');
+    expect((await addOn.standing('org-baridi', after)).charged).toBe(true);
+  });
+
   it('the admin reads the WhatsApp part, with the free month and how to keep it', async () => {
     const addOn = addOnFor({ ...PAYING, whatsappFreeUntil: new Date('2026-11-13T00:00:00Z') });
     const read: any = await addOn.whatTheyRead('org-baridi', true, NOW);
