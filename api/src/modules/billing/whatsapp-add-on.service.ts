@@ -159,10 +159,10 @@ export class WhatsAppAddOnService {
     const limit = row?.whatsappMonthlyLimit ?? null;
     const sent = use?.sent ?? 0;
 
-    const charged = switchOn && org.whatsappAddOnOn && cover.covers === 'paid' && !!org.subscriptionStripeId && !inAFreeRun && addOnCents !== null;
-
-    /* The free WhatsApp month: on for everybody, nothing charged, whether or not it was added to the subscription. */
+    /* The free WhatsApp month: on for everybody, nothing charged, whether or not it was added to the subscription. A
+     * paying organisation that adds it during the month is charged from the night the month ends (the nightly sweep). */
     const freeMonth = inItsFreeWhatsAppMonth(org, now);
+    const charged = switchOn && org.whatsappAddOnOn && cover.covers === 'paid' && !!org.subscriptionStripeId && !inAFreeRun && !freeMonth && addOnCents !== null;
     let heldBecause: WhyHeld | null = null;
     if (switchOn && !inAFreeRun && !onTheFreePlan && !freeMonth) {
       if (!org.whatsappAddOnOn) heldBecause = 'not turned on';
@@ -383,6 +383,8 @@ export class WhatsAppAddOnService {
             ? `Your free trial lasts ${s.freeTrial.months} ${s.freeTrial.months === 1 ? 'month' : 'months'}. Nothing is charged for WhatsApp until it ends.`
             : s.inAFreeRun
               ? 'Nothing is charged for WhatsApp while your free months last.'
+              : s.inTheFreeWhatsAppMonth && s.whatsappFreeUntil
+                ? `Nothing is charged for WhatsApp until its free month ends on ${aDay(s.whatsappFreeUntil)}.`
               : s.charged
                 ? 'WhatsApp is added to your monthly bill as a second line.'
                 : s.addOnOn
