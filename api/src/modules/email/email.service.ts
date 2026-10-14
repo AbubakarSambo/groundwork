@@ -1789,15 +1789,23 @@ export class EmailService implements OnModuleInit {
   }
 
   /** Sent when an org cancels their subscription. */
-  async sendSubscriptionCancelled(email: string, plan: string): Promise<void> {
+  async sendSubscriptionCancelled(email: string, plan: string, freePlan: { checkIns: number; people: number } | null = null): Promise<void> {
     const planLabel = plan.replace('_', ' ').toLowerCase();
+    /*
+     * FIX LIST ITEM 6: this said "Your team keeps ten free check-ins" and "buy sessions" to everybody. Sessions are not sold,
+     * and the free plan is only for an organisation that had it before the free month began. So it says what is true for
+     * this one: the free plan with its own numbers, or the light prototype's "Check-ins pause until you subscribe again."
+     */
+    const after = freePlan
+      ? `Your team is back on the free plan, which covers up to ${freePlan.checkIns} check-ins and ${freePlan.people} people. Nothing is deleted, and every record stays readable.`
+      : 'Check-ins pause until you subscribe again. Nothing is deleted, and every record stays readable.';
     await this.sendEmail({
       to: email,
       subject: 'Your Groundwork subscription has been cancelled',
       html: this.layout(
         `<p>Your <strong>${planLabel}</strong> subscription has been cancelled.</p>
-         <p>Your team keeps ten free check-ins, each with unlimited sessions and reports. Every record and report you already have stays accessible.</p>
-         <p>If you want to continue as a team, you can resubscribe or buy sessions at any time.</p>
+         <p>${after}</p>
+         <p>If you want to carry on as a team, you can subscribe again at any time.</p>
          <p><a href="${this.frontendUrl}/billing">Go to billing</a></p>`,
       ),
     }, undefined, 'sendSubscriptionCancelled');
@@ -1819,15 +1827,18 @@ export class EmailService implements OnModuleInit {
   }
 
   /** Sent when a subscription renews successfully. */
-  async sendSubscriptionRenewal(email: string, plan: string, amountCents: number, nextRenewal: Date | null): Promise<void> {
+  async sendSubscriptionRenewal(email: string, plan: string, amountCents: number, nextRenewal: Date | null, lines: string[] = []): Promise<void> {
     const planLabel = plan.replace('_', ' ').toLowerCase();
     const amount = inDollars(amountCents);
     const next = nextRenewal ? onTheDay(nextRenewal) : 'your next billing date';
+    /* Fix list item 6: what the payment was for, one sentence a line, from the invoice ("3 extra seats, 15.00 USD."). */
+    const what = lines.length ? `<p>This payment was for:</p><ul>${lines.map((l) => `<li>${escapeHtml(l)}</li>`).join('')}</ul>` : '';
     await this.sendEmail({
       to: email,
       subject: `Groundwork subscription renewed: ${amount}`,
       html: this.layout(
         `<p>Your <strong>${planLabel}</strong> subscription has renewed. ${amount} has been charged to the card on file.</p>
+         ${what}
          <p>Your next renewal is ${next}. You can pause or cancel at any time from your billing page.</p>
          <p><a href="${this.frontendUrl}/billing">View billing</a></p>`,
       ),
@@ -2009,6 +2020,20 @@ function onTheDay(d: Date): string {
 }
 
 /** Money says its currency. Every amount here is USD cents. */
+/**
+ * WHAT ONE LINE OF A PAID INVOICE WAS FOR, IN A SENTENCE (fix list item 6): the plan, the extra seats as a count, WhatsApp as
+ * the number of people who used it. Read from the Stripe Price's own `kind`, set when the price was made.
+ */
+export function aReceiptLine(line: { amount?: number | null; quantity?: number | null; price?: { metadata?: Record<string, string> | null } | null }, planLabel: string): string {
+  const kind = line.price?.metadata?.kind;
+  const q = line.quantity ?? 0;
+  const amount = inDollars(line.amount ?? 0);
+  if (kind === 'extra-seat') return `${q} extra ${q === 1 ? 'seat' : 'seats'}, ${amount}.`;
+  if (kind === 'whatsapp-per-person') return `WhatsApp for ${q} ${q === 1 ? 'person' : 'people'}, ${amount}.`;
+  if (kind === 'whatsapp-add-on') return `WhatsApp, ${amount}.`;
+  return `The ${planLabel} plan, ${amount}.`;
+}
+
 function inDollars(cents: number): string {
   return `${(cents / 100).toFixed(2)} USD`;
 }
