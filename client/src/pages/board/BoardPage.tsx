@@ -142,13 +142,14 @@ export function decisionDuplicatesALeadAction(
 import { WhereEachPersonIs } from '@/components/gw/where-each-person-is'
 import { SplitOneTotalAcrossPeople } from '@/components/gw/split-one-total-across-people'
 import { WhatTheTargetAssumes } from '@/components/gw/TargetsBand'
-import { whenTheBoardLastChanged, whenItRanOutOfTime } from './when-the-board-last-changed'
+import { whenTheBoardLastChanged, whenTheBoardLastChangedInShort, whenItRanOutOfTime } from './when-the-board-last-changed'
+import { TheLightSalesBoard, TheLightNeedsYou, TheLightBesideTheHeadline, TheLightBoxes, TheLightSummaryFirst } from './TheLightSalesBoard'
 import { SuggestionsForTheLead } from '@/components/gw/Suggestions'
 import { buildSessionRows } from '@/lib/session-rows'
 import { peopleLabels, personLabel } from '@/lib/utils'
 import { EVERY_SESSION, checkedIn } from '@/components/gw/TheReportIsAListOfSessions'
 import { useAskStore } from '@/stores/ask'
-import { Page, CheckInHeader, Section, Panel, RowList, Row, Tag, type TagTone, Button as UIButton, PeopleTable, PersonRow, EdgeRow, EdgeList, Folded, Callout, Stack, SubHeading, Note, FlexRow, Text } from '@/components/gw/ui'
+import { Page, CheckInHeader, Section, Placed, UpdatedLine, Panel, RowList, Row, Tag, type TagTone, Button as UIButton, PeopleTable, PersonRow, EdgeRow, EdgeList, Folded, Callout, Stack, SubHeading, Note, FlexRow, Text } from '@/components/gw/ui'
 import { initialsOf } from '@/pages/org/people-here'
 import { cadenceLabel } from '@/lib/cadence'
 import { phaseSpineSentence } from '@/lib/phase-spine-sentence'
@@ -1587,6 +1588,17 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    */
   const participantFoldsWhole = isParticipantView && isSalesOrg
   /*
+   * THE LIGHT SALES BOARD (docs/light-rebuild/sales-first.md, section 1). The server sends
+   * `atAGlance` on a sales board to every reader but a participant; with it, the lead reads "What
+   * needs you" first, the headline and the gap, then everything else in five boxes of folded lines,
+   * and an admin reads the summary first with the full board one tap away. See TheLightSalesBoard.
+   * A team member on a sales board keeps her own view, with the short "Updated" line and the deal
+   * key behind ⓘ.
+   */
+  const light = !!b.atAGlance && !isParticipantView
+  const lightLead = light && viewerRunsThisCheckIn
+  const shortUpdatedLine = light || participantFoldsWhole
+  /*
    * ITEM 6 (ONBOARDING BOARD FIX 2): "GROUNDWORK DOES NOT KNOW WHAT KIND OF WORK..." IS NOT THE
    * PROTOTYPE'S OWN SECTION. For a kind of work the engine has not been told yet, every one of
    * these sections comes back with `state: 'not-known'` and the same stock sentence - six headings
@@ -2161,9 +2173,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
       */}
       {kindOfWorkKey === 'asset loans' && <SupportGivenSection data={(b as any).supportGiven} />}
 
-      {shown.coaching && b.coaching?.yours && <WhatToWorkOnNext note={b.coaching.yours} />}
+      {shown.coaching && b.coaching?.yours && <Placed as="What to work on next"><WhatToWorkOnNext note={b.coaching.yours} /></Placed>}
       {shown.coaching && viewerRunsThisCheckIn && b.coaching?.eachPerson && (
-        <WhatToProbeThemOn reads={b.coaching.eachPerson} />
+        <Placed as="What to ask each person"><WhatToProbeThemOn reads={b.coaching.eachPerson} /></Placed>
       )}
     </>
   )
@@ -2426,6 +2438,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
   return (
     <Page>
+      <MaybeTheLightSalesBoard glance={light ? b.atAGlance ?? null : null} readerRunsIt={lightLead}>
         {/*
           U.10 (c1): THE SHARED PAGE RHYTHM APPLIES NOW (Page's own `.gwui-page-wrap > * + *`, 30px
           between direct children), the way every other rebuilt page gets its section spacing - not
@@ -2539,7 +2552,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           )}
           active="board"
           tabs={headerTabs}
-          trailing={!groundId ? <TheOtherBoardsYouAreIn groundId={id!} /> : undefined}
+          trailing={!groundId ? <TheOtherBoardsYouAreIn groundId={id!} label={light ? 'Views' : undefined} /> : undefined}
         />
         )}
 
@@ -2548,9 +2561,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           reader, from the server's `lastChangedAt`. Then, for an admin who only reads, who runs it.
           The prototype has this small-grey line directly under the tab bar.
         */}
-        <p className="gwui-fs-15 gwui-ink-sub gwui-mt-14" style={{lineHeight: 1.55}}>
-          {whenTheBoardLastChanged(b.lastChangedAt)}
-        </p>
+        {/* The light sales board: "Updated Wed 23 Sep, 6pm ⓘ", the full sentence behind the ⓘ (approved rename). */}
+        {shortUpdatedLine ? (
+          <UpdatedLine short={whenTheBoardLastChangedInShort(b.lastChangedAt)} full={whenTheBoardLastChanged(b.lastChangedAt)} />
+        ) : (
+          <p className="gwui-fs-15 gwui-ink-sub gwui-mt-14" style={{lineHeight: 1.55}}>
+            {whenTheBoardLastChanged(b.lastChangedAt)}
+          </p>
+        )}
         {/*
           OUT OF TIME, RIGHT UNDER "LAST UPDATED" (join-outoftime.txt). This is where a reader looks
           to find out why nothing on the board is moving, so this is where the reason sits - in the
@@ -2727,6 +2745,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           sentence repeated just below it - so it is passed in here, and the separate block below
           is left out in exactly that case (no answer, a glance to show).
         */}
+        {/* The light sales board: what needs the lead comes first (s57). */}
+        {lightLead && <TheLightNeedsYou />}
         {(b as any).headline && (
           <Stack gap={12}>
             <HeadlineSection headline={(b as any).headline} objectives={b.objectives} glance={(b as any).howItIsGoing?.glance ?? null} waitingToBeLetIn={b.waitingToBeLetIn ?? null} targetsFromObjectivesWhenNoBars={layoutFor(kindOfWorkKey)?.targetsBesideHeadlineFromObjectives} readerIsTheOnlyPerson={viewerRunsThisCheckIn && onlyOnePersonHere && viewerChecksIn} />
@@ -2786,9 +2806,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           own place for the one thing a board asks the lead to settle (B5-the-board).
         */}
         {b.divergence?.centralQuestion && (
-          <Panel>
-            <WhatToSettleTogether question={b.divergence.centralQuestion} />
-          </Panel>
+          <Placed as="What to settle together">
+            <Panel>
+              <WhatToSettleTogether question={b.divergence.centralQuestion} />
+            </Panel>
+          </Placed>
         )}
 
         {/*
@@ -2978,6 +3000,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             </Stack>
           </Panel>
         )}
+        {light && <TheLightBesideTheHeadline />}
 
         {/*
           WHAT THE TARGET ASSUMES (board-as-lead.txt), right after the headline - the lead's own
@@ -3002,13 +3025,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           return (
             <Stack gap={12}>
               {toShow.map((o) => (
-                <WhatTheTargetAssumes
-                  key={o.id}
-                  figure={o.target != null ? o.target.toLocaleString('en-GB') : null}
-                  name={o.name}
-                  assumes={o.assumes ?? []}
-                  assumesSays={(o as any).assumesSays ?? null}
-                />
+                <Placed key={o.id} as={o.target != null ? `What the target of ${o.target.toLocaleString('en-GB')} assumes` : 'What this target assumes'} factKey={o.id}>
+                  <WhatTheTargetAssumes
+                    figure={o.target != null ? o.target.toLocaleString('en-GB') : null}
+                    name={o.name}
+                    assumes={o.assumes ?? []}
+                    assumesSays={(o as any).assumesSays ?? null}
+                  />
+                </Placed>
               ))}
             </Stack>
           )
@@ -3038,6 +3062,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           section near the top - it is drawn after this kind's own three sections instead (see
           above, straight after "What changed this week").
         */}
+        {/* The light sales board: everything else in five boxes for the lead; the summary first for an admin (s58, s59). */}
+        {light && (lightLead ? <TheLightBoxes /> : <TheLightSummaryFirst />)}
         {!layoutFor(kindOfWorkKey)?.whereItStandsAtTop && kindOfWorkKey !== 'a law firm matter' && whatNeedsYouSection()}
         {!layoutFor(kindOfWorkKey)?.whereItStandsAtTop && kindOfWorkKey !== 'a law firm matter' && groundworkRecommendsSection()}
 
@@ -3332,7 +3358,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           and not in this check-in, the availability poll, the alignment feed, and the methodology
           legend.
         */}
-        <FoldEverythingElseUnless alreadyFolded={participantFoldsWhole}>
+        <FoldEverythingElseUnless alreadyFolded={participantFoldsWhole || light}>
         {/*
           REQUEST 132: THE RECORDS TABLE, "THE TEAM TODAY", BLOCKERS, "WHO CHECKED IN", "OVER TIME"
           AND "REPORTS", FOLDED HERE ON A GOVERNMENT PROGRAMME BOARD (`teamAndRecordsInFold`) - see
@@ -3415,6 +3441,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           large "story" type the summary sentence used to sit in, now plain text like the rest of
           this fold (item 2 (b)).
         */}
+        <Placed as="How to read this board">
         <KindOfWorkBanner
           groundId={id!}
           kindOfWork={(b as any).kindOfWork ?? null}
@@ -3423,7 +3450,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           kindsOffered={(b as any).kindsOffered}
           readerIsTheFounder={viewerRunsThisCheckIn && kindOfWorkKey === "founder's own check-in"}
         />
+        </Placed>
 
+        <Placed as="The sessions so far">
         {has('phaseSpine') && b.phaseSpine && (
           <div className="gwui-mt-10">
             <FlexRow gap={10} wrap>
@@ -3463,6 +3492,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             </FlexRow>
           </div>
         )}
+        </Placed>
 
         {/*
           THE SUMMARY SENTENCE ITSELF (item 2 (b)): the last round's shared picture, in plain text
@@ -3474,9 +3504,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           NOT HERE FOR THE "MARKETVIEW, WHERE NEXT" BOARD EITHER - its own "In short", out of the
           fold, straight after the glance, already carries this same sentence (see above).
         */}
+        <Placed as="How to read this board">
         {!layoutFor(kindOfWorkKey)?.whereItStandsAtTop && kindOfWorkKey !== 'MarketView where next' && (b as any).howItIsGoing?.latestSummary && (
           <p className="gwui-panel-text gwui-mt-10">{(b as any).howItIsGoing.latestSummary}</p>
         )}
+        </Placed>
 
         {/*
           THE INSTRUCTIONS WERE BIGGER THAN THE THING THEY EXPLAINED. W-UX-7.
@@ -3493,6 +3525,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           choice is remembered. A returning person gets the board they came for and the reminder
           within one click.
         */}
+        <Placed as="How to read this board">
         <div className="gwui-mt-12">
           <p className="gwui-fs-15 gwui-ink-sub gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0" style={{lineHeight: 1.55}}>
             {/*
@@ -3531,6 +3564,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             {howToRead ? 'Show less' : 'How to read this board'}
           </button>
         </div>
+        </Placed>
 
         {/*
           BOARD REVIEW, SALES PIECE C, ITEMS 4 AND 5: A SALES GROUND'S OWN "FORECAST", AND "BY
@@ -4977,6 +5011,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           produced. It is for the person who wants to know where a line came from, and that person
           goes looking after they have read it, not before.
         */}
+        <Placed as="How this board is put together">
         <details className="gw-legend gwui-mt-28">
           <summary className="gwui-fs-13-5 gwui-ink-sub" style={{cursor: 'pointer'}}>How this board is put together</summary>
           <div className="gwui-mt-10">
@@ -4994,6 +5029,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             </Stack>
           </div>
         </details>
+        </Placed>
         </FoldEverythingElseUnless>
 
 
@@ -5028,8 +5064,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           example asked for.
         */}
         <AskTheBoard firstBlocker={b.dependencies?.[0] ?? null} myParticipantId={b.myParticipantId} />
+      </MaybeTheLightSalesBoard>
     </Page>
   )
+}
+
+/** The light sales board's placing of sections, where the server sent `atAGlance`; otherwise the board as it always was. */
+function MaybeTheLightSalesBoard({ glance, readerRunsIt, children }: { glance: NonNullable<BoardPresent['atAGlance']> | null; readerRunsIt: boolean; children: ReactNode }) {
+  if (!glance) return <>{children}</>
+  return <TheLightSalesBoard glance={glance} readerRunsIt={readerRunsIt}>{children}</TheLightSalesBoard>
 }
 
 /**

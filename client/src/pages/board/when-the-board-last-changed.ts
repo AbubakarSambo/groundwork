@@ -16,6 +16,19 @@ function atTime(d: Date | string): string {
   return whenItWas(d, 'hourOfDay').replace(':00', '').replace(/\s+/g, '').toLowerCase()
 }
 
+/**
+ * "Wed 23 Sep, 6pm" (the light prototype, s71: "Updated Wed 23 Sep, 6pm ⓘ"), from the same
+ * `lastChangedAt` as the full sentence, which stays one tap away behind the ⓘ. Null where the
+ * record holds no time, so the full sentence is said as it is.
+ */
+export function whenTheBoardLastChangedInShort(at: string | null | undefined): string | null {
+  if (!at) return null
+  /* Built from its parts, so it reads "Sep" everywhere: some systems shorten September to "Sept". */
+  const weekday = whenItWas(at, 'shortWeekday').replace(/[.,]/g, '').slice(0, 3)
+  const month = whenItWas(at, 'month').slice(0, 3)
+  return `${weekday} ${whenItWas(at, 'dayOfMonth')} ${month}, ${atTime(at)}`
+}
+
 export function whenTheBoardLastChanged(at: string | null | undefined): string {
   if (!at) return THE_BOARD_ONLY_CHANGES
   return `Last updated on ${whenItWas(at, 'weekdayAndDay')} at ${atTime(at)}. ${THE_BOARD_ONLY_CHANGES}`

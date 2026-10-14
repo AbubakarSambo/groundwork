@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { createContext, useContext, useState } from 'react'
+import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { boardApi, KIND_OF_WORK_OPTIONS, type AServedWorkSection, type AServedWorkRow, type KindOfWork, type WorkItemInput } from '@/api/board'
@@ -152,15 +153,23 @@ const DEAL_GRID_NOTE: Partial<Record<KindOfWork, string>> = {
  * nothing said, drew both lines of a key for marks nobody has. When neither mark is on any row,
  * there is nothing to explain, so no key is drawn at all.
  */
-function DealGridKey({ rows }: { rows: AServedWorkRow[] }) {
+function DealGridKey({ rows, behindInfo }: { rows: AServedWorkRow[]; behindInfo?: boolean }) {
   const hasProven = rows.some((r) => r.mark === 'proven')
   const hasSaid = rows.some((r) => r.mark === 'said')
   if (!hasProven && !hasSaid) return null
-  return (
+  const key = (
     <div className="gwui-gap-16" style={{ display: 'flex', flexWrap: 'wrap' }}>
       {hasProven && <Note tone="muted"><ProofMark mark="proven" /> Contact with proof: a photo, a quote, a payment</Note>}
       {hasSaid && <Note tone="muted"><ProofMark mark="said" /> Contact in their words</Note>}
     </div>
+  )
+  /* The light sales board, for a team member (sales-first.md, section 1): the same key, one tap away behind ⓘ. */
+  if (!behindInfo) return key
+  return (
+    <details className="gwui-key-info">
+      <summary aria-label="What the marks mean">ⓘ</summary>
+      <div className="gwui-key-info-body">{key}</div>
+    </details>
   )
 }
 const THEMES_HEADING: Partial<Record<KindOfWork, string>> = {
@@ -708,6 +717,9 @@ function DealDetail({ row, groundId }: { row: AServedWorkRow; groundId: string }
   )
 }
 
+/** Set by the light sales board: on a phone, each deal is one short line that opens with a tap. */
+export const DealRowsAreShortOnAPhone = createContext(false)
+
 function SalesDealGridRow({ row, groundId, leadFirstName, readerIsLead, canEdit, onEdit, onClaim, claimPending }: {
   row: AServedWorkRow
   groundId: string
@@ -720,6 +732,8 @@ function SalesDealGridRow({ row, groundId, leadFirstName, readerIsLead, canEdit,
   onClaim?: (yes: boolean) => void
   claimPending?: boolean
 }) {
+  const onAPhone = useIsAPhone()
+  const shortOnAPhone = useContext(DealRowsAreShortOnAPhone)
   /*
    * REQUEST 115 (b): THE DEAL'S OWN VALUE, where somebody said it (board-as-lead.txt: "Aisha, KES
    * 110,000"). `row.value` is the engine's own field for this now; a field typed into `fields`
@@ -737,6 +751,42 @@ function SalesDealGridRow({ row, groundId, leadFirstName, readerIsLead, canEdit,
      from the record ("On 22 September, somebody spoke about it, and proof backs what they said."),
      never a date computed here. */
   const lastContact = row.contactHistory?.[0]?.says ?? null
+  const short = shortOnAPhone && onAPhone
+  /*
+   * THE LIGHT SALES BOARD ON A PHONE (sales-first.md, section 1): "deals show as a short list (name,
+   * stage, last contact, next step)". The rest of the row (who and how much, the due date, their
+   * words, why it is here, Change) opens with a tap on the deal, never taken away.
+   */
+  if (short) {
+    return (
+      <details className="gwui-deal-short" role="row" aria-label={row.name}>
+        <summary className="gwui-deal-short-sum">
+          <span className="gwui-deal-short-top">
+            <DealMarkAndName row={row} />
+            <StageCell stage={row.stageSays ?? row.stage} />
+          </span>
+          {lastContact && <SmallSubLine text={lastContact} />}
+          <span aria-label="Next step"><NextStepCell row={row} /></span>
+        </summary>
+        <div className="gwui-deal-short-body">
+          <SmallSubLine text={repLine} />
+          {readerIsLead && row.ownerClaim && (
+            <Stack gap={4}>
+              <Note tone="muted">{row.ownerClaim.says}</Note>
+              <div className="gwui-edge-acts">
+                <Button kind="secondary" size="small" disabled={claimPending} onClick={() => onClaim?.(true)}>Yes</Button>
+                <Button kind="secondary" size="small" disabled={claimPending} onClick={() => onClaim?.(false)}>No</Button>
+              </div>
+            </Stack>
+          )}
+          <DueLine due={row.due} />
+          <WhatShowsItBlock row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} />
+          <DealDetail row={row} groundId={groundId} />
+          {canEdit && <div><Button kind="quiet" size="small" onClick={onEdit}>Change</Button></div>}
+        </div>
+      </details>
+    )
+  }
   return (
     <div
       className={WORK_ROW_CLASS}
@@ -1274,7 +1324,7 @@ export function YourOwnRecordsSections({ groundId, kindOfWork, sections, myParti
         <Note tone="muted">{`You have no ${itemNoun}s on record yet.`}</Note>
       ) : (
         <Stack gap={12}>
-          {isSalesDeals && <DealGridKey rows={mine} />}
+          {isSalesDeals && <DealGridKey rows={mine} behindInfo />}
           <Panel pad={false}>
             <RowList label={heading}>
               {mine.map((row) => (

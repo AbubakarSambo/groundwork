@@ -129,8 +129,32 @@ export interface NinetyDays {
   }[]
 }
 
+/**
+ * THE BOARD AT A GLANCE (the light prototype; docs/light-rebuild/sales-first.md, rules 3 and 4):
+ * one fact for each folded line, two for each box, and what is waiting on the lead, built by the
+ * server from the board this reader is served (api/src/modules/board/the-board-at-a-glance.ts).
+ * Sent on a sales board to every reader but a participant, who reads their own view. A fact the
+ * record cannot say is left out, never made up.
+ */
+export type GlanceLine =
+  | 'deals' | 'targetAssumes' | 'reported' | 'targetsOverTime' | 'whereHeading' | 'forecast' | 'likelyEnd' | 'byArea' | 'sitsUnder' | 'landing'
+  | 'whatToAsk' | 'teamToday' | 'patterns' | 'whoCheckedIn' | 'helpNobodyMentioned'
+  | 'yourNextStep' | 'commitments' | 'workPlan'
+  | 'blockers' | 'risks' | 'waitingOnOtherTeams' | 'openIssues'
+  | 'reports'
+export type GlanceBox = 'work' | 'team' | 'plan' | 'risk' | 'rest'
+export type TheBoardAtAGlance = {
+  lines: Partial<Record<GlanceLine, string>>
+  boxes: Record<GlanceBox, string[]>
+  /** For an admin or the chief executive: what is waiting on the lead, in one line. */
+  needsTheLead: string | null
+  /** One fact for each "What the target of 25 assumes" line, by the target's id. */
+  assumesEach: Record<string, string>
+}
+
 export type BoardPresent = {
   groundId: string
+  atAGlance?: TheBoardAtAGlance | null
   renders: true
   withheldUntilYouCheckIn?: false
   mode: 'SHARED'
