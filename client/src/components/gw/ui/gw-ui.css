@@ -2557,4 +2557,6 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-menu-item:disabled { color: var(--gw-sub); cursor: default; }
 .gwui-light-report-do { font-weight: 700; }
 .gwui-light-report-from { font-size: 13px; color: var(--gw-sub); margin: 2px 0 0; }
+/* "Where each target stands" on the sales goals board: each target's figure on the right (sales-first.md, section 3) */
+.gwui-target-figure { margin-left: auto; text-align: right; }
 

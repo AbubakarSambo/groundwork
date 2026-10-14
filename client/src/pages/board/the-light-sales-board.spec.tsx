@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, within, fireEvent } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BoardPage } from './BoardPage'
@@ -206,3 +206,30 @@ describe('a board that is not a sales board', () => {
     expect(screen.queryByText(/^Updated /)).toBeNull()
   })
 })
+
+describe('the sales goals board (sales-first.md, section 3), as Wairimu', () => {
+  it('names the first box "Work and targets" when no deal is on record, and lists every target she is served under "Where each target stands", three first', async () => {
+    me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'LEAD' }
+    const objectives = [
+      { id: 'o1', name: 'The team is aiming for 25 freezers sold.', target: 25, count: 21, ownerParticipantId: null, assumes: [] },
+      { id: 'o2', name: 'The team is aiming to keep quotes followed up within 48 hours at 90% or more.', target: 90, count: 84, ownerParticipantId: null, assumes: [], stands: { word: 'Close', says: 'It is 84%, close to the aim of 90% or more.' }, journey: { now: 84 } },
+      { id: 'o3', name: 'Miriam Wanjiru is aiming for 5 freezers sold.', target: 5, count: 4, ownerParticipantId: 'p-miriam', assumes: [], journey: { now: 4 } },
+      { id: 'o4', name: 'Brian Ochieng is aiming for 5 freezers sold.', target: 5, count: 2, ownerParticipantId: 'p-brian', assumes: [], journey: { now: 2 } },
+      { id: 'o5', name: 'Aisha Mohamed is aiming for 5 freezers sold.', target: 5, count: 5, ownerParticipantId: 'p-aisha', assumes: [], journey: { now: 5 } },
+    ]
+    renderBoard(board({
+      title: 'Sales org, Q3', workRecords: [], objectives,
+      headline: { question: 'Will we reach 25 freezers sold by 30 October?', answer: 'So far it is 21 of the 25 freezers sold.', bars: [{ objectiveId: 'o1', kind: 'aim', now: 21, target: 25, filled: 84, word: null }] },
+      atAGlance: { ...AT_A_GLANCE, lines: { targetsOverTime: '21 of 25' }, boxes: { ...AT_A_GLANCE.boxes, work: ['21 of 25'] } },
+    }))
+    await screen.findByRole('heading', { name: 'Everything else' })
+    await vi.waitFor(() => expect(boxNamed('Work and targets')).toBeTruthy())
+    expect(screen.getByText('It is 84%, close to the aim of 90% or more.')).toBeTruthy()
+    expect(screen.getByText('Miriam Wanjiru is aiming for 5 freezers sold.')).toBeTruthy()
+    // The first three after the headline's own, then the rest one tap away.
+    expect(screen.queryByText('Aisha Mohamed is aiming for 5 freezers sold.')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Show all 4' }))
+    expect(screen.getByText('Aisha Mohamed is aiming for 5 freezers sold.')).toBeTruthy()
+  })
+})
+

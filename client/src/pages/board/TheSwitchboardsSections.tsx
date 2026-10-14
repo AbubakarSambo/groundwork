@@ -1,4 +1,4 @@
-import { Section, Panel, Tag, Note, Stack, Callout, SubHeading } from '@/components/gw/ui'
+import { Section, Panel, Tag, Note, Stack, Callout, SubHeading, ShowAll } from '@/components/gw/ui'
 import type { BoardPresent } from '@/api/board'
 import { HowItIsGoing, type Glance } from '@/components/gw/how-it-is-going'
 
@@ -343,7 +343,15 @@ export function standsTone(word: string): import('@/components/gw/ui').TagTone {
  * box, not a heading - while "Where each target stands" beside it, which answers a different
  * question, still draws exactly as before.
  */
-export function HeadlineSection({ headline, objectives, glance, waitingToBeLetIn, targetsFromObjectivesWhenNoBars, readerIsTheOnlyPerson }: { headline: BoardPresent['headline']; objectives: BoardPresent['objectives']; glance?: Glance | null; waitingToBeLetIn?: string | null; targetsFromObjectivesWhenNoBars?: boolean; readerIsTheOnlyPerson?: boolean }) {
+/**
+ * `everyTarget` (the light sales board, sales-first.md, section 3: "Where each target stands: each
+ * target, its owner, where it is against the goal, and how sure the record is"): after the headline's
+ * own targets, every other target this reader is served, each as its own sentence (which names whose
+ * it is), where it is against its aim, and what the record says of how it stands. Only what the server
+ * sent: a team member is never sent another person's target, so it is never listed for her. The first
+ * three show, then "Show all".
+ */
+export function HeadlineSection({ headline, objectives, glance, waitingToBeLetIn, targetsFromObjectivesWhenNoBars, readerIsTheOnlyPerson, everyTarget }: { headline: BoardPresent['headline']; objectives: BoardPresent['objectives']; glance?: Glance | null; waitingToBeLetIn?: string | null; targetsFromObjectivesWhenNoBars?: boolean; readerIsTheOnlyPerson?: boolean; everyTarget?: boolean }) {
   if (!headline) return null
   const names = new Map((objectives ?? []).map((o) => [o.id, o.name]))
   const noAnswer = !headline.answer
@@ -403,6 +411,25 @@ export function HeadlineSection({ headline, objectives, glance, waitingToBeLetIn
                   <Note tone="muted">{o.journey?.say ?? ''}</Note>
                 </Stack>
               ))}
+              {everyTarget && headline.bars.length > 0 && (() => {
+                const inTheHeadline = new Set(headline.bars.map((bar) => bar.objectiveId))
+                const others = (objectives ?? []).filter((o) => !inTheHeadline.has(o.id) && typeof o.target === 'number')
+                return (
+                  <ShowAll
+                    items={others}
+                    render={(o) => (
+                      <div key={o.id} className="gwui-gap-12" style={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                        <Stack gap={2}>
+                          <p className="gwui-panel-text-muted">{o.name}</p>
+                          {(o as any).stands?.says && <Note tone="muted">{(o as any).stands.says}</Note>}
+                        </Stack>
+                        <p className="gwui-panel-text-muted gwui-target-figure">{(o as any).journey?.now ?? (o as any).count ?? 0} of {o.target}</p>
+                        {(o as any).stands?.word && <Tag tone={standsTone((o as any).stands.word)}>{(o as any).stands.word}</Tag>}
+                      </div>
+                    )}
+                  />
+                )
+              })()}
             </Stack>
           </Stack>
         </Panel>
