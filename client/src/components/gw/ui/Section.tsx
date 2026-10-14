@@ -1,4 +1,4 @@
-import React, { useId } from 'react'
+import React, { createContext, useContext, useId } from 'react'
 import './gw-ui.css'
 
 /**
@@ -41,7 +41,10 @@ export function Section({ heading, note, action, foot, children, id, headingRef 
   headingRef?: React.Ref<HTMLHeadingElement>
 }) {
   const headingId = useId()
-  return (
+  const place = useContext(SectionPlacement)
+  const nested = useContext(InsideASection)
+  const section = (
+    <InsideASection.Provider value={true}>
     <section id={id} className="gwui-section" aria-labelledby={headingId}>
       <div className="gwui-section-h">
         <h2 id={headingId} ref={headingRef} tabIndex={headingRef ? -1 : undefined} className="gwui-section-title">{heading}</h2>
@@ -51,5 +54,30 @@ export function Section({ heading, note, action, foot, children, id, headingRef 
       {children !== undefined && <div className="gwui-section-body">{children}</div>}
       {foot && <p className="gwui-section-foot">{foot}</p>}
     </section>
+    </InsideASection.Provider>
   )
+  return place && !nested ? <>{place(heading, section, { note: note ?? null })}</> : section
+}
+
+/**
+ * WHERE A SECTION GOES (light prototype, s57 and s58). A page that lays its sections out in boxes
+ * of folded lines (the sales board) provides this; every top-level `Section` inside it is then
+ * handed to the page, by its heading, to be placed in the right box. The section itself, its
+ * words and its buttons, are unchanged: only where it sits changes. A section inside another
+ * section stays where it is. With no provider, nothing changes anywhere.
+ */
+export type PlaceASection = (heading: string, section: React.ReactElement, extra: { note: string | null; key?: string }) => React.ReactNode
+export const SectionPlacement = createContext<null | PlaceASection>(null)
+const InsideASection = createContext(false)
+
+/**
+ * The same placement, for a block that is not drawn as a `Section` (a panel of its own, such as
+ * "What to work on next"). `as` is the name it is placed under; `factKey` names the record it is
+ * about (a target's id), so the page can find that one's own fact. With no provider, it draws in place.
+ */
+export function Placed({ as, factKey, children }: { as: string; factKey?: string; children: React.ReactNode }) {
+  const place = useContext(SectionPlacement)
+  const nested = useContext(InsideASection)
+  if (!place || nested) return <>{children}</>
+  return <>{place(as, <InsideASection.Provider value={true}>{children}</InsideASection.Provider>, { note: null, key: factKey })}</>
 }

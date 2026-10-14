@@ -25,6 +25,7 @@ import { whoTheEndingIsAbout } from '../resolution/who-the-ending-is-about';
 import { theMonthEndedOn } from './the-anchor-month-end-event';
 import { deadlineOf } from '../grounds/when-the-clock-starts';
 import { theWorkByArea, reportedAgainstTheRules } from './the-work-by-area-and-by-stage';
+import { theBoardAtAGlance } from './the-board-at-a-glance';
 import { toCloseTheGap } from './to-close-the-gap';
 import { theValueOf, theContactHistory, theirReadInTheirWords, NO_VALUE_SAID, WHAT_CONTACT_HISTORY_IS } from './a-deal-row-from-its-record';
 import { helpNobodyMentioned } from './help-nobody-mentioned';
@@ -3055,6 +3056,19 @@ export class BoardService {
       /* A line typed as an intention that intends nothing is sent with no kind (requests 127 item 4, 129 item 5), after every board that reads the kind. */
       if (Array.isArray((walled as any).whoOwnsWhat)) (walled as any).whoOwnsWhat = eachLineWithTheKindThatFits((walled as any).whoOwnsWhat);
       const asServed = everyActionHasALabel(aBoardWithNoEmptyLine(everyStoredSentenceReadsRight(withNoRatingNumber(yourOwnRowsSayYou(eachRepeatedSentenceSaidOnce(walled), me?.id ?? null)), (ground.participants ?? []).map((p: any) => nameOf(p.id)).filter((n: any): n is string => typeof n === 'string' && n.length > 1))));
+      /*
+       * THE BOARD AT A GLANCE (the light prototype; docs/light-rebuild/sales-first.md, rule 3): one fact for each
+       * folded line and two for each box, built from this board as served, after every wall, so a fact never says
+       * more than the sections it sums up. For the sales board, and not to a participant, who reads their own view.
+       */
+      if (oneOfTheKinds((ground as any).kindOfWork) === 'sales org' && !aParticipantOnly) {
+        (asServed as any).atAGlance = theBoardAtAGlance(asServed, {
+          readerCheckedInThisRound: me?.id
+            ? (checkIns as any[]).some((c) => c.participantId === me.id && c.sessionNumber === openRound && String(c.status).toUpperCase() === 'COMPLETED')
+            : null,
+          readerIsTheLead: isInitiator,
+        });
+      }
       /* The anchor scenario's own parts (request 149), added after every wall above: only whoever runs an anchor check-in, only with the switch on. */
       const roundOpensAt = (checkIns as any[]).filter((c) => c.sessionNumber === openRound).map((c) => c.availableFrom ?? c.startedAt).filter(Boolean).sort((a: Date, b: Date) => a.getTime() - b.getTime())[0] ?? null;
       /* In an anchor check-in the lead's own aim is hers alone: a member reads no objectives on the board either (decision 96, item 8; known issue P13). */

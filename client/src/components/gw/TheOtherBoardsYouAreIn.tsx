@@ -35,7 +35,12 @@ import './ui/gw-ui.css'
  * 13px floor. Everything here is one fixed, light-ground look (no dark/light toggle like the
  * board's own header), so it needs no `--gwui-*` custom property, only plain classes.
  */
-export function TheOtherBoardsYouAreIn({ groundId }: { groundId: string }) {
+/**
+ * `label`: the light sales board names this menu "Views" (docs/light-rebuild/sales-first.md, the
+ * mapping table: "The team-board switcher" goes to "The Views menu"). Without it, the button names
+ * the board you are on, as before.
+ */
+export function TheOtherBoardsYouAreIn({ groundId, label }: { groundId: string; label?: string }) {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
 
@@ -61,7 +66,7 @@ export function TheOtherBoardsYouAreIn({ groundId }: { groundId: string }) {
         className="gwui-boards-trigger"
       >
         <span className="gwui-boards-trigger-label">
-          {here?.label ?? 'This board'}
+          {label ?? here?.label ?? 'This board'}
         </span>
         <span aria-hidden className="gwui-boards-trigger-caret">{open ? '▴' : '▾'}</span>
       </button>

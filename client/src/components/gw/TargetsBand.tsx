@@ -237,7 +237,7 @@ export function WhatTheTargetAssumes({ figure, assumes, assumesSays }: {
   return (
     <div className="gwui-mt-8 gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14" style={{ background: 'var(--gw-bg)', borderRadius: 8, maxWidth: 560 }}>
       {/* Picture-check round 6, item H: named directly as the prototype's own card-title example - 18px/700/near-black, not 12.5px. */}
-      <div className="gwui-fs-18 gwui-ink-text gwui-mb-6" style={{ fontWeight: 700 }}>
+      <div className="gwui-fs-18 gwui-ink-text gwui-mb-6 gwui-assumes-title" style={{ fontWeight: 700 }}>
         {figure ? `What the target of ${figure} assumes` : 'What this target assumes'}
       </div>
       {assumes.length ? (

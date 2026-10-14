@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { whenItRanOutOfTime } from './when-the-board-last-changed'
+import { whenItRanOutOfTime, whenTheBoardLastChangedInShort } from './when-the-board-last-changed'
 
 /**
  * THE STALLED SENTENCE CARRIES THE REAL END DATE WHEN THE RECORD HAS ONE (join-outoftime.txt:
@@ -26,5 +26,15 @@ describe('whenItRanOutOfTime', () => {
   it('falls back to the generic phrase when even the lead’s name is not on record', () => {
     expect(whenItRanOutOfTime({ endsOn: null, leadFirstName: null, isLeadViewer: false }))
       .toBe('This check-in reached its end date. Nothing new can be added until the person running this check-in gives it more time.')
+  })
+})
+
+/** "Updated Wed 23 Sep, 6pm ⓘ" (the light prototype, s71): the short form, the same everywhere. */
+describe('whenTheBoardLastChangedInShort', () => {
+  it('reads "Wed 23 Sep" and the hour, never "Sept"', () => {
+    expect(whenTheBoardLastChangedInShort('2026-09-23T15:00:00.000Z')).toMatch(/^Wed 23 Sep, \d{1,2}(am|pm)$/)
+  })
+  it('says nothing short where the record holds no time, so the full sentence is said instead', () => {
+    expect(whenTheBoardLastChangedInShort(null)).toBeNull()
   })
 })

@@ -2406,3 +2406,141 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 @media (max-width: 640px) {
   .gwui-ground-header-wrap .gwui-page-main { padding-bottom: 0; }
 }
+
+/* ===== THE LIGHT PARTS (light prototype, 13 October 2026; docs/light-rebuild/sales-first.md,
+   "Shared pieces"). Each is written up in docs/the-parts-against-the-prototype.md. ===== */
+/* "Updated Wed 23 Sep, 6pm ⓘ", the full sentence one tap away */
+.gwui-upd { display: inline-block; margin-top: 12px; font-size: 14px; color: var(--gw-sub); }
+.gwui-upd > summary { cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 4px; min-height: 32px; }
+.gwui-upd > summary::-webkit-details-marker { display: none; }
+.gwui-upd > summary:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 2px; }
+.gwui-upd-full { display: block; margin-top: 4px; line-height: 1.5; max-width: 70ch; }
+.gwui-upd-plain { font-size: 14px; color: var(--gw-sub); margin-top: 12px; line-height: 1.5; }
+/* The folded line: name, one-line fact, chevron */
+.gwui-folds { border: 1px solid var(--gw-border); border-radius: 12px; overflow: hidden; background: var(--gw-card); display: flex; flex-direction: column; }
+.gwui-fold + .gwui-fold { border-top: 1px solid var(--gw-border); }
+.gwui-fold > summary.gwui-fold-sum { list-style: none; display: grid; grid-template-columns: minmax(150px, 240px) minmax(0, 1fr) 20px; gap: 12px; align-items: center; padding: 14px 18px; cursor: pointer; min-height: 48px; box-sizing: border-box; }
+.gwui-fold > summary::-webkit-details-marker { display: none; }
+.gwui-fold > summary:hover { background: var(--gw-paper-2); }
+.gwui-fold > summary:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: -2px; }
+.gwui-fold-name { font-weight: 700; font-size: 16px; color: var(--gw-text); }
+.gwui-fold-fact { font-size: 14px; color: var(--gw-sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gwui-fold-chev { justify-self: end; font-size: 18px; color: var(--gw-sub); transition: transform .15s; }
+.gwui-fold[open] > summary .gwui-fold-chev, .gwui-box[open] > summary .gwui-fold-chev { transform: rotate(90deg); }
+.gwui-fold-body { padding: 4px 18px 18px; display: flex; flex-direction: column; gap: 12px; overflow-x: auto; }
+.gwui-fold-body > .gwui-section { margin-top: 0; }
+.gwui-fold-body .gwui-section-h { margin-bottom: 8px; }
+/* Inside a folded line, a card is not a card again (light-layer.css: ".ctx-inner .panel"). */
+.gwui-fold-body .gwui-panel { border: 0; background: none; }
+.gwui-fold-body .gwui-panel-pad { padding-left: 0; padding-right: 0; }
+/* The box: a group of folded lines with its two most useful facts */
+.gwui-boxes { display: flex; flex-direction: column; gap: 10px; }
+.gwui-box { border: 1px solid var(--gw-border); border-radius: 12px; background: var(--gw-card); overflow: hidden; }
+.gwui-box > summary.gwui-box-sum { list-style: none; display: grid; grid-template-columns: minmax(170px, 240px) minmax(0, 1fr) 20px; gap: 12px; align-items: center; padding: 16px 18px; cursor: pointer; min-height: 52px; box-sizing: border-box; }
+.gwui-box > summary::-webkit-details-marker { display: none; }
+.gwui-box > summary:hover { background: var(--gw-paper-2); }
+.gwui-box > summary:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: -2px; }
+.gwui-box[open] > summary { border-bottom: 1px solid var(--gw-border); }
+.gwui-box-name { font-weight: 700; font-size: 17px; color: var(--gw-text); }
+.gwui-box-facts { font-size: 14px; color: var(--gw-sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gwui-box-body { display: flex; flex-direction: column; }
+.gwui-box-body > .gwui-fold > summary.gwui-fold-sum { padding-left: 30px; }
+.gwui-box-body > .gwui-fold > .gwui-fold-body { padding-left: 30px; }
+.gwui-box-body > .gwui-fold:first-child { border-top: 0; }
+/* "What needs you" rows */
+.gwui-needs { border: 1px solid var(--gw-border); border-radius: 12px; background: var(--gw-card); overflow: hidden; }
+.gwui-need { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; align-items: start; padding: 14px 18px; }
+.gwui-need + .gwui-need { border-top: 1px solid var(--gw-border); }
+.gwui-need-what { font-weight: 700; font-size: 16px; line-height: 1.35; color: var(--gw-text); }
+.gwui-need-from { font-size: 14px; color: var(--gw-sub); margin-top: 3px; line-height: 1.45; }
+.gwui-need-why { margin-top: 6px; }
+.gwui-need-why > summary { cursor: pointer; font-size: 14px; color: var(--gw-navy); list-style: none; font-weight: 700; }
+.gwui-need-why > summary::-webkit-details-marker { display: none; }
+.gwui-need-why > summary::before { content: "› "; }
+.gwui-need-quote { font-size: 15px; margin-top: 4px; color: var(--gw-text); line-height: 1.5; }
+.gwui-need-btns { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.gwui-need-btn-main, .gwui-need-btn-quiet { display: inline-flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+/* "Show all" after three */
+.gwui-show-all { background: none; border: 0; color: var(--gw-navy); font: inherit; font-weight: 700; font-size: 14px; padding: 8px 0; cursor: pointer; align-self: flex-start; min-height: 40px; }
+.gwui-show-all:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 2px; }
+/* Number tiles that swipe on a phone */
+.gwui-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.gwui-tile { border: 1px solid var(--gw-border); border-radius: 10px; padding: 12px 14px; background: var(--gw-card); }
+.gwui-tile-label { font-size: 13px; color: var(--gw-sub); }
+.gwui-tile-value { font-size: 20px; margin-top: 4px; color: var(--gw-text); font-weight: 700; }
+.gwui-tile-sub { font-size: 13px; color: var(--gw-sub); margin-top: 2px; }
+/* A small menu button for grouped actions */
+.gwui-menu { position: relative; display: inline-block; }
+.gwui-menu > summary { list-style: none; cursor: pointer; }
+.gwui-menu > summary::-webkit-details-marker { display: none; }
+.gwui-menu-btn { display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border: 1px solid var(--gw-rule-2); border-radius: 8px; background: var(--gw-card); color: var(--gw-text); font-weight: 700; font-size: 14px; box-sizing: border-box; }
+.gwui-menu-btn::after { content: " ▾"; white-space: pre; }
+.gwui-menu-btn-main { background: var(--gw-navy); border-color: var(--gw-navy); color: #fff; }
+.gwui-menu-btn:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 2px; }
+.gwui-menu-pop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; background: var(--gw-card); border: 1px solid var(--gw-border); border-radius: 10px; padding: 8px; display: flex; flex-direction: column; gap: 4px; min-width: 220px; box-shadow: 0 8px 24px rgba(0, 0, 0, .12); }
+.gwui-menu-pop-left { left: 0; right: auto; }
+/* One page header on a phone: no breadcrumb, the main action small beside the title */
+@media (max-width: 640px) {
+  .gwui-cih .gwui-pt-crumb { display: none; }
+  .gwui-cih .gwui-pt-row { flex-wrap: nowrap; align-items: flex-start; gap: 10px; }
+  .gwui-cih .gwui-pt-sub { font-size: 13px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .gwui-fold > summary.gwui-fold-sum, .gwui-box > summary.gwui-box-sum { grid-template-columns: minmax(0, 44%) minmax(0, 1fr) 16px; gap: 8px; padding: 12px 14px; }
+  .gwui-box-body > .gwui-fold > summary.gwui-fold-sum, .gwui-box-body > .gwui-fold > .gwui-fold-body { padding-left: 22px; }
+  .gwui-fold-name, .gwui-box-name { font-size: 15px; }
+  .gwui-fold-fact, .gwui-box-facts { font-size: 13px; }
+  .gwui-fold-body { padding: 2px 14px 14px; }
+  .gwui-need { grid-template-columns: 1fr; }
+  .gwui-need-btns { justify-content: flex-start; }
+  .gwui-tiles { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 4px; }
+  .gwui-tiles > .gwui-tile { flex: 0 0 150px; scroll-snap-align: start; }
+}
+
+/* ===== THE LIGHT SALES BOARD (docs/light-rebuild/sales-first.md, section 1; s57, s58, s59, s64).
+   The board's own sections, placed: under "What needs you", beside the headline, or in a box as a
+   folded line. See client/src/pages/board/TheLightSalesBoard.tsx. ===== */
+.gwui-light-slot:empty, .gwui-light-folds:empty { display: none; }
+.gwui-light-needs { display: flex; flex-direction: column; gap: 16px; margin-top: 22px; }
+.gwui-light-needs:not(:has(.gwui-light-slot > *)) { display: none; }
+.gwui-light-needs > .gwui-light-slot > .gwui-section .gwui-section-title { font-size: 22px; }
+.gwui-light-else { margin-top: 28px; }
+/* A line, a box or a summary with nothing in it for this reader is not drawn: nothing says more than what is inside. */
+.gwui-fold:has(> .gwui-fold-body > .gwui-light-part):not(:has(.gwui-light-part > *)) { display: none; }
+.gwui-box:not(:has(.gwui-light-part > *, .gwui-light-folds > *)) { display: none; }
+/* The main section's heading is the line's own name, so it is not said twice; nor its note, when the note is the line's fact. */
+.gwui-light-part[data-main] > .gwui-light-sec > .gwui-section > .gwui-section-h > .gwui-section-title { display: none; }
+.gwui-light-sec[data-note-is-fact] > .gwui-section > .gwui-section-h > .gwui-section-note { display: none; }
+.gwui-light-part[data-main] .gwui-assumes-title { display: none; }
+.gwui-light-part + .gwui-light-part:not(:empty) { margin-top: 18px; }
+.gwui-light-folds { display: flex; flex-direction: column; }
+.gwui-light-folds > .gwui-fold, .gwui-light-folds + .gwui-fold { border-top: 1px solid var(--gw-border); }
+.gwui-box-body > .gwui-light-folds:first-child > .gwui-fold:first-child { border-top: 0; }
+.gwui-box-body > .gwui-light-folds > .gwui-fold > summary.gwui-fold-sum, .gwui-box-body > .gwui-light-folds > .gwui-fold > .gwui-fold-body { padding-left: 30px; }
+/* For an admin or the chief executive: "At a glance", then "Open the full board" (s59) */
+.gwui-light-glance { margin-top: 28px; }
+.gwui-light-glance-rows { border: 1px solid var(--gw-border); border-radius: 12px; background: var(--gw-card); display: flex; flex-direction: column; }
+.gwui-light-glance-row { display: grid; grid-template-columns: minmax(170px, 240px) minmax(0, 1fr); gap: 12px; padding: 12px 18px; align-items: baseline; }
+.gwui-light-glance-row + .gwui-light-glance-row { border-top: 1px solid var(--gw-border); }
+.gwui-light-glance-name { font-weight: 700; font-size: 16px; color: var(--gw-text); }
+.gwui-light-glance-fact { font-size: 14px; color: var(--gw-sub); line-height: 1.45; }
+.gwui-light-full { margin-top: 18px; }
+.gwui-light-full > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; min-height: 40px; padding: 0 16px; border: 1px solid var(--gw-rule-2); border-radius: 8px; background: var(--gw-card); color: var(--gw-text); font-weight: 700; font-size: 14px; box-sizing: border-box; }
+.gwui-light-full > summary::-webkit-details-marker { display: none; }
+.gwui-light-full > summary:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 2px; }
+.gwui-light-full-body { margin-top: 4px; }
+/* The deal key, behind ⓘ for a team member (sales-first.md, section 1) */
+.gwui-key-info { display: inline-block; }
+.gwui-key-info > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px; font-size: 16px; color: var(--gw-sub); }
+.gwui-key-info > summary::-webkit-details-marker { display: none; }
+.gwui-key-info > summary:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 2px; }
+.gwui-key-info[open] > .gwui-key-info-body { margin-top: 4px; }
+@media (max-width: 640px) {
+  .gwui-light-glance-row { grid-template-columns: 1fr; gap: 2px; }
+  .gwui-box-body > .gwui-light-folds > .gwui-fold > summary.gwui-fold-sum, .gwui-box-body > .gwui-light-folds > .gwui-fold > .gwui-fold-body { padding-left: 22px; }
+}
+/* A deal as one short line on a phone (the light sales board): name and stage, last contact, next step; the rest opens with a tap */
+.gwui-deal-short { border-top: 1px solid var(--gw-border); }
+.gwui-deal-short > summary.gwui-deal-short-sum { list-style: none; cursor: pointer; display: flex; flex-direction: column; gap: 4px; padding: 12px 16px; min-height: 44px; }
+.gwui-deal-short > summary::-webkit-details-marker { display: none; }
+.gwui-deal-short > summary:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: -2px; }
+.gwui-deal-short-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.gwui-deal-short-body { padding: 0 16px 14px; display: flex; flex-direction: column; gap: 6px; }

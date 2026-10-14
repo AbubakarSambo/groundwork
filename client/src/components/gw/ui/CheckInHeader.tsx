@@ -48,7 +48,7 @@ export function CheckInHeader({ crumbs, title, subtitle, action, active, tabHref
 }) {
   const items = tabs ?? CHECK_IN_TABS.map(t => ({ key: t.key, label: t.label, to: tabHref ? tabHref(t.key) : undefined }))
   return (
-    <div>
+    <div className="gwui-cih">
       <PageTitle crumbs={crumbs} title={title} subtitle={subtitle} action={action} />
       <div className={trailing ? 'gwui-cih-tabs gwui-cih-tabs-row' : 'gwui-cih-tabs'}>
         <Tabs active={active} items={items} onChange={onSelectTab} />
