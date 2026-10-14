@@ -8,7 +8,7 @@ import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-na
 import { refuseSomeoneAwaitingTheOrganisation, refuseSomeoneHeldForASeat, theCheckInsHeldForASeat, theHeldPersonWhoHasAnswered, whatSomeoneHeldForASeatReads } from '../participants/held-for-a-seat';
 import { CANNOT_CHECK_IN_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { theRoomForThisReader } from '../board/the-room-for-this-reader';
-import { goalsThisReaderMaySee, notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead, aWeekHasPassedSinceNotTold, whatThePersonReadsAfterAWeek } from './a-goal-not-told-stays-with-the-lead';
+import { aGoalTheLeadSetAndHasNotTold, goalsThisReaderMaySee, notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead, aWeekHasPassedSinceNotTold, whatThePersonReadsAfterAWeek } from './a-goal-not-told-stays-with-the-lead';
 import { areaOfGoalOrFallback } from './the-area-of-a-goal-is-worded-once';
 import { namesNotEverybodyMayOpen, withoutPrivateFileNames } from '../documents/a-private-file-is-not-named';
 import { thePrivateSummaryAsRead } from '../conversation/the-private-summary-opens-with-a-sentence';
@@ -2547,7 +2547,7 @@ export class GroundsService {
              * nothing is read into it before they have talked it through. The person's own name,
              * never a pronoun.
              */
-            conversationPoint: notToldYet(row as any) ? theConversationPointForTheLead(theFirstNameOfAParticipant(p) || 'This person') : null,
+            conversationPoint: aGoalTheLeadSetAndHasNotTold(row as any) ? theConversationPointForTheLead(theFirstNameOfAParticipant(p) || 'This person') : null,
             /**
              * GW-EXP-3. Null means they have not said what doing well looks like to them yet, which the
              * surface reports as "not yet said". An absent view is never a matching one.

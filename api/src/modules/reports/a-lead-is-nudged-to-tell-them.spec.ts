@@ -88,3 +88,25 @@ describe('the lead is nudged to tell them (decision 56)', () => {
     expect(out).toBeNull();
   });
 });
+
+/*
+ * PILOTS AFTER FIXES, 14 OCTOBER (A2): Grace read "Tell Joseph about the goal you set for Product sampling" about "Provide
+ * samples to Mercy", a promise, and Njeri read "the goal you set for Documentation for Aisha Hassan" about a to-do. Neither
+ * set a goal. Only a goal the record holds as one is nudged.
+ */
+describe('only a goal the lead set is "a goal you set"', () => {
+  const nudgesFor = async (kind: string | null) => {
+    const ground = groundWith({ id: 'o-1', participantId: 'p-tobi', text: 'Provide samples to Mercy', authoredBy: 'lead', awareness: 'NOT_TOLD', kind, createdAt: new Date(Date.now() - 86_400_000) });
+    const out = await forTheLeadFrom(prisma, 'g1', { ground, participants: ground.participants, checkIns: [], nameOf: (pid: string) => (pid === 'p-tobi' ? 'Tobi' : 'Wanjiru') } as any, reader);
+    return (out ?? []).filter((x) => x.id === 'not-told-o-1');
+  };
+  it('a promise or a to-do is never nudged as a goal', async () => {
+    expect(await nudgesFor('COMMITMENT')).toEqual([]);
+    expect(await nudgesFor('TODO')).toEqual([]);
+  });
+  it('a goal, a target, and an old row with no kind still are', async () => {
+    expect(await nudgesFor('GOAL')).toHaveLength(1);
+    expect(await nudgesFor('TARGET')).toHaveLength(1);
+    expect(await nudgesFor(null)).toHaveLength(1);
+  });
+});

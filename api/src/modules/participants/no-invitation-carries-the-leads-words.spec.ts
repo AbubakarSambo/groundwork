@@ -43,8 +43,10 @@ function prismaStub() {
     },
     ground: { findUnique: jest.fn(async () => ground) },
     checkIn: { count: jest.fn(async () => 0), findFirst: jest.fn(async () => ({ sessionReport: leadsReport })) },
-    person: { findFirst: jest.fn(async () => ({ phone: '+254700000000' })) },
+    /* Joined on WhatsApp, so the opening goes there (one channel for an opening, 14 October). */
+    person: { findFirst: jest.fn(async () => ({ phone: '+254700000000', whatsappLastInboundAt: new Date('2026-10-10T09:00:00Z') })) },
     whatsAppConnection: { findUnique: jest.fn(async () => ({ enabled: true })) },
+    organization: { findUnique: jest.fn(async () => ({ whatsappAddOnOn: true, whatsappFreeUntil: null })) },
   } as any;
 }
 

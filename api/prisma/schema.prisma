@@ -547,6 +547,9 @@ model Organization {
   /// trial once. The months themselves are `freeUntil` and `freePlan`, like any free run. Empty
   /// while the trial setting (`pricing.freeTrial`) is off, which it is by default.
   freeTrialStartedAt DateTime? @map("free_trial_started_at")
+  /// A FREE MONTH FOR EVERY ORGANISATION ALREADY HERE (Hafsah, 14 October 2026; migration 98): when it was given, so it
+  /// is given once. Empty for an organisation that was paying or covered then, and for every organisation made after it.
+  freeMonthOfReleaseAt DateTime? @map("free_month_of_release_at")
   /// WHATSAPP, A PAID ADD-ON (decision 78). Turned on by an admin of the organisation on Plan and
   /// billing. Nothing is charged during the free trial or on the free plan; once the trial has ended
   /// and the organisation pays for a plan, it is a second monthly line on its Stripe subscription.

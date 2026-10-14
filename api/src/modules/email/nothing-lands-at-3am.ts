@@ -11,7 +11,8 @@
  */
 
 /** The hours nobody wants to hear about work in, when they have not said otherwise. */
-export const DEFAULT_QUIET_BEFORE = 8;
+/* Mail may go from 7 in the morning where the person is (Hafsah, 14 October 2026). It was 8, and read in UTC where no zone was known. */
+export const DEFAULT_QUIET_BEFORE = 7;
 export const DEFAULT_QUIET_AFTER = 20;
 
 export type Prefs = {
