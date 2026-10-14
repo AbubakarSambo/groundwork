@@ -1,3 +1,4 @@
+import { MyCheckInSessions } from '@/components/gw/MyCheckInSessions'
 import { howItEnded, hasStalled } from '@/lib/a-ground-that-has-ended'
 import { theRhythmInFull } from '@/lib/the-closing-after-your-first-check-in'
 import { OutOfTime } from './OutOfTime'
@@ -12,7 +13,7 @@ import { useAuthStore } from '@/stores/auth'
 import { reportsApi } from '@/api/reports'
 import { CheckInHeader } from '@/components/gw/ui/CheckInHeader'
 import { Page } from '@/components/gw/ui/Page'
-import { Note, Empty, Button, Stack, SubHeading, Callout } from '@/components/gw/ui'
+import { Note, Empty, Button, Stack, SubHeading, Callout, Section } from '@/components/gw/ui'
 import { cadenceLabel } from '@/lib/cadence'
 import { peopleLabels, atTheStart } from '@/lib/utils'
 import { whoRunsThis, whenTheNextOneOpens } from '@/lib/what-the-end-of-a-check-in-can-say'
@@ -878,6 +879,18 @@ export function GroundParticipantPage() {
               canChangeTheRhythm={isInitiator}
               onGoToSetup={() => goTab('settings')}
             />
+          )}
+          {/*
+           * YOUR PAST CHECK-INS, ON THE CHECK-IN TAB AGAIN (fix list, item 1, 14 October). Production shows a person their
+           * own past conversations on this tab; our build had moved them to My work only, so a finished check-in's Check-in
+           * tab showed none. Only their own words: `myTranscript` is the caller's own turns, enforced on the server.
+           */}
+          {!dueNow && (
+            <div className="gwui-page-narrow" data-testid="your-past-check-ins">
+              <Section heading="Your check-ins">
+                <MyCheckInSessions groundId={id!} />
+              </Section>
+            </div>
           )}
         </>
       )}
