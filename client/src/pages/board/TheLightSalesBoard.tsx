@@ -48,6 +48,15 @@ export const BOX_NAMES: Record<GlanceBox, string> = {
 const BOX_ORDER: GlanceBox[] = ['work', 'team', 'plan', 'risk', 'rest']
 
 /**
+ * "Deals and targets" where there are deals on record; on a sales organisation's goals board, with no
+ * deal named, "Work and targets" (the prototype's s58 names the first box the same way).
+ */
+export function boxName(box: GlanceBox, glance: TheBoardAtAGlance): string {
+  if (box === 'work' && !glance.lines?.deals) return 'Work and targets'
+  return BOX_NAMES[box]
+}
+
+/**
  * WHERE EVERY SECTION GOES (sales-first.md, section 1, "Where every build-only piece goes", and the
  * prototype's own five groups in s58). Names in the right-hand column of the mapping table replace
  * the build's own heading on the folded line; every other line keeps the build's heading.
@@ -212,7 +221,7 @@ export function TheLightBoxes() {
       <div className="gwui-section-body">
         <div className="gwui-boxes">
           {BOX_ORDER.map((box) => (
-            <Box key={box} name={BOX_NAMES[box]} facts={s.glance.boxes?.[box] ?? []} defaultOpen={box === 'work' && s.onALaptop}>
+            <Box key={box} name={boxName(box, s.glance)} facts={s.glance.boxes?.[box] ?? []} defaultOpen={box === 'work' && s.onALaptop}>
               {FOLDS.filter((f) => f.box === box).map((f) => (
                 f.onePerBlock
                   ? <div key={f.key} ref={s.slot(`fold:${f.key}`)} className="gwui-light-folds" />
@@ -257,7 +266,7 @@ export function TheLightSummaryFirst() {
           <div className="gwui-light-glance-rows">
             {BOX_ORDER.map((box) => (
               <div key={box} className="gwui-light-glance-row">
-                <span className="gwui-light-glance-name">{BOX_NAMES[box]}</span>
+                <span className="gwui-light-glance-name">{boxName(box, s.glance)}</span>
                 <span className="gwui-light-glance-fact">{(s.glance.boxes?.[box] ?? []).slice(0, 2).join(' · ')}</span>
               </div>
             ))}
