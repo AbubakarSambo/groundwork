@@ -219,7 +219,7 @@ function aSourceInPlainWords(sys: string, _stale: boolean): string {
   return aSourceIsGroundworks(sys) ? 'What you have told Groundwork' : sys;
 }
 
-import { isAQuestion, answerFromTheDocuments } from './a-question-is-answered-from-the-documents';
+import { isAQuestion, answerFromTheDocuments, NO_DOCUMENTS_TO_READ } from './a-question-is-answered-from-the-documents';
 import { openTheLeadsCheckIn } from '../grounds/check-in-yourself';
 /** "I want to do my own check-in", "check in myself", "my check-in now". */
 const A_WISH_TO_CHECK_IN_MYSELF = /\b(?:(?:do|start|begin|answer)\s+my\s+(?:own\s+)?check[\s-]?in|check[\s-]?in\s+(?:myself|for\s+myself)|my\s+own\s+check[\s-]?in)\b/i;
@@ -4803,6 +4803,15 @@ export class AssistantService {
     priorHistory?: { role: 'user' | 'assistant'; content: string }[],
   ): Promise<Reply> {
     const said = await answerFromTheDocuments({ prisma: this.prisma, engine: this.engine as any }, { organizationId, userId, groundId, question });
+    /*
+     * NO DOCUMENT TO OPEN, BUT THE HANDBOOK SAYS (fix list, item 3). Found live: Grace added the staff handbook through
+     * Ask, asked "What is our travel policy?", and read "There are no documents here that you can open yet ... Add one
+     * with Choose a file". What the handbook says about it is answered instead, as it is written.
+     */
+    if (said === NO_DOCUMENTS_TO_READ && who) {
+      const { cards } = await this.knowledge.retrieve(organizationId, who, question).catch(() => ({ cards: [] as unknown[] }));
+      if (cards.length) return this.howWeWork(organizationId, who, question);
+    }
     if (who && groundId && priorHistory?.length) {
       await this.prisma.assistantProposal.create({
         data: { organizationId, personExternalId: who, kind: 'context_turn', summary: priorHistory[priorHistory.length - 1]?.content ?? '', payload: { groundId, history: priorHistory } as never },

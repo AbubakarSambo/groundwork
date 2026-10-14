@@ -173,3 +173,19 @@ describe('what Grace reads, from asking to the yes', () => {
     expect(ingested).toEqual([]);
   });
 });
+
+describe('after the yes, a question the handbook answers', () => {
+  it('is answered from the handbook, not told there are no documents to open', async () => {
+    const docs = require('../assistant/a-question-is-answered-from-the-documents');
+    const spy = jest.spyOn(docs, 'answerFromTheDocuments').mockResolvedValue(docs.NO_DOCUMENTS_TO_READ);
+    const { s } = assistantWorld();
+    s.knowledge.retrieve = jest.fn(async () => ({ cards: [{ title: 'Staff handbook - Travel', body: 'Use the travel form five working days before you travel.' }], truncated: false }));
+    s.keptThatMatches = jest.fn(async () => []);
+    const reply = await s.aQuestionAnsweredFromTheDocuments(ORG, 'grace-ext', 'u-grace', null, 'What is our travel policy?');
+    expect(textOf(reply)).toBe('Staff handbook - Travel\nUse the travel form five working days before you travel.');
+    s.knowledge.retrieve = jest.fn(async () => ({ cards: [], truncated: false }));
+    const none = await s.aQuestionAnsweredFromTheDocuments(ORG, 'grace-ext', 'u-grace', null, 'What is our travel policy?');
+    expect(textOf(none)).toBe(docs.NO_DOCUMENTS_TO_READ);
+    spy.mockRestore();
+  });
+});
