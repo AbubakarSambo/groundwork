@@ -1,4 +1,6 @@
-import { sendTheMissedCheckInsToThePeople, theMissedNoticeToFold, rememberTheMissedNoticeTold } from './missed-check-ins-told-first';
+import { sendTheMissedCheckInsToThePeople, theMissedNoticeToFold, rememberTheMissedNoticeTold, theMissedNoticeOnWhatsApp } from './missed-check-ins-told-first';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { whatThePersonIsToldAboutMissing, keepTheirReason } from '../grounds/missed-check-ins';
 import { WhatNeedsYouService } from '../grounds/what-needs-you.service';
 
@@ -136,5 +138,40 @@ describe('missed check-ins, told to the person first (decision 136)', () => {
     expect(await keepTheirReason(prisma, 'u-brian', 'p-brian-c1', 'An answered one', NOW)).toBe(false);
     expect(await keepTheirReason(prisma, 'u-brian', 'p-brian-c3', 'I was on the road to Kisumu with no signal.', NOW)).toBe(true);
     expect(checkIns.find((c) => c.id === 'p-brian-c3').missedReason).toBe('I was on the road to Kisumu with no signal.');
+  });
+});
+
+
+/*
+ * HAFSAH, 14 OCTOBER (LATER): "keep one channel. For someone on WhatsApp, put the notice in their WhatsApp opening instead of
+ * sending an email." Brian has joined on WhatsApp: no email ever carries the notice; it is said in his WhatsApp check-in.
+ */
+describe('the missed notice for somebody on WhatsApp', () => {
+  const onWhatsApp = (prisma: any) => {
+    prisma.organization = { findUnique: jest.fn(async () => ({ whatsappAddOnOn: true, whatsappFreeUntil: null })) };
+    prisma.person = { findFirst: jest.fn(async () => ({ phone: '+254700000002', whatsappLastInboundAt: new Date('2026-09-20T09:00:00Z') })), findMany: jest.fn(async () => []) };
+    return prisma;
+  };
+  it('is never sent by email', async () => {
+    const { prisma } = world();
+    onWhatsApp(prisma);
+    const email = { sendMissedCheckIns: jest.fn().mockResolvedValue('sent') };
+    await sendTheMissedCheckInsToThePeople({ prisma, email, frontendUrl: 'https://app.test' }, NOW);
+    expect(email.sendMissedCheckIns).not.toHaveBeenCalled();
+  });
+  it('is said in full sentences for his WhatsApp check-in, with the way to give a reason, and only once', async () => {
+    const { prisma } = world();
+    const said = await theMissedNoticeOnWhatsApp(prisma, 'u-brian', 'p-brian', NOW);
+    expect(said?.text.startsWith("You've missed your last two check-ins.")).toBe(true);
+    expect(said?.text).toContain('If something is in the way, you can tell Amani why on your Today page.');
+    await rememberTheMissedNoticeTold(prisma, said!.key, 'sent');
+    expect(await theMissedNoticeOnWhatsApp(prisma, 'u-brian', 'p-brian', NOW)).toBeNull();
+  });
+  it('comes first in the first WhatsApp message after they reply, before the first question, and the email opening is left out', () => {
+    const strip = (x: string) => x.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const wa = strip(readFileSync(join(__dirname, '..', 'public-api', 'whatsapp-for-an-organisation.service.ts'), 'utf8'));
+    expect(wa).toMatch(/reply = `\$\{sessionHeader\(current\)\} \$\{THE_WORDS\(ask\)\}\\n\\n\$\{missed \? `\$\{missed\.text\}\\n\\n` : ''\}\$\{first\.reply\}`;/);
+    const cron = strip(readFileSync(join(__dirname, '..', 'grounds', 'grounds.cron.ts'), 'utf8'));
+    expect(cron).toMatch(/if \(await theyAreConnectedOnWhatsApp\(this\.prisma, \{ organizationId: \(p\.ground as any\)\.organizationId, userId: p\.userId, email: p\.email \}\)\) \{/);
   });
 });

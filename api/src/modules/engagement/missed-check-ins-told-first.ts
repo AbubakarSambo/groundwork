@@ -3,6 +3,7 @@ import { whoHasMissedCheckIns, whatThePersonIsToldAboutMissing } from '../ground
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 import { hasBeenToldOnce, nowToldOnce, isAlreadyHeld } from './a-message-sent-once';
 import { whoTheyAre } from './one-routine-message-a-day';
+import { theyAreConnectedOnWhatsApp } from '../whatsapp/connect-whatsapp';
 
 /**
  * MISSED CHECK-INS, TOLD TO THE PERSON FIRST, BY EMAIL (decision 136, change 8).
@@ -41,6 +42,8 @@ export async function sendTheMissedCheckInsToThePeople(deps: TheMissedDoors, now
         if (await isAlreadyHeld(prisma, MISSED_SENDER, user.email)) continue;
         /* An opening already went to them today: the notice rides with the next opening, or goes another day, never as a second message today. */
         if (await anOpeningWentToThemToday(prisma, user.email, now)) continue;
+        /* Somebody on WhatsApp is never emailed this: it is said in their WhatsApp check-in, and stays on Today (Hafsah, 14 October). */
+        if (await theyAreConnectedOnWhatsApp(prisma, { organizationId: t.organizationId, userId, email: user.email })) continue;
         const link = t.openCheckInId ? `${base}/checkin/${t.openCheckInId}` : `${base}/today`;
         const [first, ...rest] = t.text.split(/(?<=\.)\s+/);
         const went = await deps.email.sendMissedCheckIns(user.email, `${first.replace(/\.$/, '')} on "${t.label}"`, [first, rest.join(' '), `If something is in the way, you can tell ${t.leadName ?? 'your manager'} why on your Today page.`], t.openCheckInId ? 'Check in now' : 'Open Today', link);
@@ -93,3 +96,14 @@ export async function theMissedNoticeToFold(prisma: any, userId: string | null |
 }
 
 export { nowToldOnce as rememberTheMissedNoticeTold };
+
+/**
+ * THE MISSED NOTICE, ON WHATSAPP (Hafsah, 14 October, later: "keep one channel. For someone on WhatsApp, put the notice in their
+ * WhatsApp opening instead of sending an email."). The eight approved templates do not change, so the opening template goes as
+ * usual, and once they reply (inside WhatsApp's 24 hours) the notice's own words are the first thing in the first message, before
+ * the first question. Remembered as told once said; until then it stays on Today and waits for the next opening.
+ */
+export async function theMissedNoticeOnWhatsApp(prisma: any, userId: string | null | undefined, participantId: string, now: Date = new Date()): Promise<{ key: string; text: string } | null> {
+  const n = await theMissedNoticeToFold(prisma, userId, participantId, now);
+  return n ? { key: n.key, text: n.lines.join(' ') } : null;
+}
