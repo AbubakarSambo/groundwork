@@ -311,6 +311,9 @@ export const groundsApi = {
     apiClient.post(`/grounds/${groundId}/participants/${participantId}/resend-invite`).then(r => r.data),
 
   /** D1 and D2 (13 October, evening): whoever runs the check-in adds somebody's WhatsApp number. */
+  /** Each person's WhatsApp number and where they are on it (whoever runs the check-in, or an admin). */
+  whereEachPersonIsOnWhatsApp: (groundId: string) =>
+    apiClient.get<{ participantId: string; phone: string | null; whatsapp: 'no-number' | 'not-connected' | 'waiting' | 'connected'; says: string }[]>(`/grounds/${groundId}/participants/whatsapp`).then(r => (r.data as any)?.data ?? r.data),
   addTheirWhatsAppNumber: (groundId: string, participantId: string, phone: string) =>
     apiClient.patch<{ said: string }>(`/grounds/${groundId}/participants/${participantId}/whatsapp-number`, { phone }).then(r => r.data),
 

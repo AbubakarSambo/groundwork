@@ -875,7 +875,9 @@ export class ConversationService {
     const g = await (this.prisma as any).ground?.findUnique?.({ where: { id: groundId }, select: { organizationId: true, overWhatsApp: true } })?.catch?.(() => null);
     if (!g) return null;
     const me = await (this.prisma as any).user?.findUnique?.({ where: { id: userId }, select: { email: true } })?.catch?.(() => null);
-    return connectWhatsAppFor(this.prisma, this.config, { organizationId: g.organizationId, userId, email: me?.email ?? null, keptInTheApp: keptOffThePhone(g) });
+    /* Offered wherever WhatsApp is on for this person, connected or not (pilots on WhatsApp, 14 October): a session started
+       here carries on there, so the way across stays on the page. forTheInvitation leaves out only the "has written" test. */
+    return connectWhatsAppFor(this.prisma, this.config, { organizationId: g.organizationId, userId, email: me?.email ?? null, keptInTheApp: keptOffThePhone(g), forTheInvitation: true });
   }
 
   /**

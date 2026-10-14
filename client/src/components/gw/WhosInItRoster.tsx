@@ -1,6 +1,7 @@
+import { useQuery as useWhatsAppQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { useState } from 'react'
-import { PeopleTable, PersonRow, Tag, Button, TextField, Select, type TagTone } from '@/components/gw/ui'
+import { PeopleTable, PersonRow, Tag, Button, TextField, Stack, type TagTone } from '@/components/gw/ui'
 import { groundsApi } from '@/api/grounds'
 import { aPersonsSentenceForAServerError } from '@/lib/a-persons-sentence-for-a-server-error'
 import { PeoplePicker } from '@/components/gw/PeoplePicker'
@@ -431,31 +432,64 @@ export function WhosInItRoster({
  * by email, and their reply from it joins them. A number somebody already has is theirs, and the server says so.
  */
 export function TheirWhatsAppNumber({ groundId, people }: { groundId: string; people: { id: string; name: string }[] }) {
+  /* Read only when opened, so the roster above it asks nothing until the lead wants the numbers. */
   const [open, setOpen] = useState(false)
-  const [who, setWho] = useState(people[0]?.id ?? '')
-  const [phone, setPhone] = useState('')
-  const [said, setSaid] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
   if (!open) {
     return (
       <p className="gwui-note">
-        <button type="button" className="gwui-plain-link" onClick={() => setOpen(true)}>Add somebody’s WhatsApp number</button>
+        <button type="button" className="gwui-plain-link" onClick={() => setOpen(true)}>WhatsApp numbers</button>
       </p>
     )
   }
+  return <TheirWhatsAppNumbersOpen groundId={groundId} people={people} />
+}
+
+function TheirWhatsAppNumbersOpen({ groundId, people }: { groundId: string; people: { id: string; name: string }[] }) {
+  /*
+   * PILOTS ON WHATSAPP, 14 OCTOBER: each person's number and where they are on WhatsApp, read from the record, with a way to
+   * add, change or remove it. Typed any common way ("0722 000 202" is read in the organisation's own country); an empty
+   * number removes it. Only whoever runs the check-in and an admin are served this, and the server checks it again.
+   */
+  const qc = useQueryClient()
+  const { data } = useWhatsAppQuery({ queryKey: ['whatsapp-roster', groundId], queryFn: () => groundsApi.whereEachPersonIsOnWhatsApp(groundId), retry: false })
+  const [editing, setEditing] = useState<string | null>(null)
+  const [phone, setPhone] = useState('')
+  const [said, setSaid] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const rows = people.map((p) => ({ ...p, on: ((data ?? []) as any[]).find((r: any) => r.participantId === p.id) }))
+  const save = async (participantId: string, value: string) => {
+    setSaving(true)
+    try {
+      setSaid((await groundsApi.addTheirWhatsAppNumber(groundId, participantId, value)).said)
+      setEditing(null); setPhone('')
+      await qc.invalidateQueries({ queryKey: ['whatsapp-roster', groundId] })
+    } catch (e: any) {
+      setSaid(aPersonsSentenceForAServerError(e?.response?.data?.message, 'The number was not kept. Try again.'))
+    } finally { setSaving(false) }
+  }
   return (
-    <div className="gwui-note" role="group" aria-label="Add somebody’s WhatsApp number">
-      <p className="gwui-panel-text">Groundwork will write to them on WhatsApp as well as by email, and they can answer there.</p>
-      <Select aria-label="Who" value={who} onChange={(e: any) => setWho(e.target.value)}>
-        {people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-      </Select>
-      <TextField aria-label="Their WhatsApp number" placeholder="+254 712 345 678" value={phone} onChange={(e: any) => setPhone(e.target.value)} />
-      <Button size="small" kind="secondary" disabled={saving || !phone.trim() || !who} onClick={async () => {
-        setSaving(true)
-        try { setSaid((await groundsApi.addTheirWhatsAppNumber(groundId, who, phone)).said); setPhone('') }
-        catch (e: any) { setSaid(aPersonsSentenceForAServerError(e?.response?.data?.message, 'The number was not kept. Try again.')) }
-        finally { setSaving(false) }
-      }}>{saving ? 'Saving…' : 'Keep the number'}</Button>
+    <div className="gwui-note" role="group" aria-label="WhatsApp numbers" data-testid="whatsapp-roster">
+      <p className="gwui-panel-text">Groundwork writes to each person on WhatsApp once their number is here, and they can answer there.</p>
+      {rows.map((r) => (
+        <div key={r.id} data-testid={`whatsapp-row-${r.id}`}>
+          <p className="gwui-panel-text">
+            {r.on?.phone ? `${r.name}'s WhatsApp number is ${r.on.phone}. ` : `${r.name} has no WhatsApp number yet. `}
+            {r.on?.phone ? r.on.says : ''}
+          </p>
+          {editing === r.id ? (
+            <Stack gap={6}>
+              <TextField aria-label={`WhatsApp number for ${r.name}`} placeholder="0712 345 678" value={phone} onChange={(e: any) => setPhone(e.target.value)} />
+              <Button size="small" kind="secondary" disabled={saving || !phone.trim()} onClick={() => save(r.id, phone)}>{saving ? 'Saving…' : 'Keep the number'}</Button>
+              <Button size="small" kind="quiet" onClick={() => { setEditing(null); setPhone('') }}>Cancel</Button>
+            </Stack>
+          ) : (
+            <span>
+              <button type="button" className="gwui-plain-link" onClick={() => { setEditing(r.id); setPhone(r.on?.phone ?? '') }}>{r.on?.phone ? 'Change' : 'Add a number'}</button>
+              {r.on?.phone && <>{' '}<button type="button" className="gwui-plain-link" disabled={saving} onClick={() => save(r.id, '')}>Remove</button></>}
+            </span>
+          )}
+        </div>
+      ))}
       {said && <p className="gwui-panel-text">{said}</p>}
     </div>
   )

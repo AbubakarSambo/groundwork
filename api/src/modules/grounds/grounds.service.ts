@@ -1,3 +1,5 @@
+import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { organisationsThatTurnedWhatsAppOn } from '../whatsapp/only-where-whatsapp-is-turned-on';
 import { fullNameToCall } from '../engagement/a-name-to-call-them';
 import { theAddressAndNameIn, theDomainOf } from '../../common/an-email-domain';
 import { theInvitedRowAsServed } from './the-invited-row-as-served';
@@ -30,7 +32,7 @@ import { whoHasNotJoinedYet, theNotJoinedYetLine } from './invited-not-joined-ye
 import { aNameTypedInLowerCase } from '../../common/a-name-typed-in-lower-case';
 import { whoASessionCounts } from './the-lead-checks-in-when-they-choose';
 import { openTheLeadsCheckIn } from './check-in-yourself';
-import { theLeadAddsAWhatsAppNumber } from './the-lead-adds-a-whatsapp-number';
+import { theLeadAddsAWhatsAppNumber, whereEachPersonIsOnWhatsApp, theOpeningGoesToTheNumberJustAdded } from './the-lead-adds-a-whatsapp-number';
 import { waitsOnAManagingOnlyLead } from './the-lead-who-only-asks';
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException, Optional, GoneException } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
@@ -8136,8 +8138,25 @@ export class GroundsService {
    * two is where this went wrong before - see the comment on the query.
    */
   /** D1 and D2 (13 October 2026, evening): see the-lead-adds-a-whatsapp-number.ts. */
+  async whereEachPersonIsOnWhatsApp(input: { groundId: string; organizationId: string; userId: string; role: string }) {
+    return whereEachPersonIsOnWhatsApp(this.prisma as any, input);
+  }
+
   async addTheirWhatsAppNumber(input: { groundId: string; participantId: string; organizationId: string; userId: string; role: string; phone: string }) {
-    return theLeadAddsAWhatsAppNumber(this.prisma, input);
+    const kept = await theLeadAddsAWhatsAppNumber(this.prisma, input);
+    /* The number is their first contact on WhatsApp: the open session's opening goes there now (pilots on WhatsApp, 14 October). */
+    if (kept.phone) {
+      try {
+        const whatsapp = this.moduleRef?.get(WhatsAppService, { strict: false });
+        if (whatsapp) {
+          const on = (await organisationsThatTurnedWhatsAppOn(this.prisma, whatsapp as any, [input.organizationId])).has(input.organizationId);
+          await theOpeningGoesToTheNumberJustAdded(this.prisma, whatsapp as any, { groundId: input.groundId, participantId: input.participantId, organizationId: input.organizationId, phone: kept.phone }, on);
+        }
+      } catch (err: any) {
+        this.logger.warn(`The WhatsApp opening for a number just added could not go: ${err?.message}`);
+      }
+    }
+    return { said: kept.said };
   }
 
   /** Decision 133: "Check in yourself" - see check-in-yourself.ts. */

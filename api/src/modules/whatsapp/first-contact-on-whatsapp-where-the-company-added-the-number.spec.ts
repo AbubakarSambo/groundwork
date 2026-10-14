@@ -1,5 +1,5 @@
 import { anInboundHarness } from './a-whatsapp-inbound-harness';
-import { theLeadAddsAWhatsAppNumber, A_NUMBER_IS_THEIRS, THE_NUMBER_IS_KEPT } from '../grounds/the-lead-adds-a-whatsapp-number';
+import { theLeadAddsAWhatsAppNumber, THE_NUMBER_IS_KEPT, THE_NUMBER_IS_REMOVED, NOT_A_NUMBER } from '../grounds/the-lead-adds-a-whatsapp-number';
 import { GroundsCron } from '../grounds/grounds.cron';
 
 /**
@@ -11,18 +11,20 @@ import { GroundsCron } from '../grounds/grounds.cron';
  * sent the opening twice.
  */
 describe('the lead adds a WhatsApp number', () => {
-  function world(entry: any = null, userPhone: string | null = null) {
+  function world(entry: any = null, userPhone: string | null = null, taken = false) {
     const made: any[] = [];
     const updated: any[] = [];
     const prisma: any = {
       ground: { findFirst: jest.fn(async () => ({ id: 'g-lit', initiatorId: 'u-njeri', createdByUserId: 'u-njeri' })) },
       groundParticipant: { findFirst: jest.fn(async () => ({ id: 'p-brian', email: 'brian@muchemi.test', userId: null, nameGiven: 'Brian Kiptoo', user: userPhone ? { firstName: 'Brian', lastName: 'Kiptoo', phoneNumber: userPhone } : null })) },
       person: {
+        /* The organisation's other numbers are Kenyan, so a number typed without a code is read as Kenyan. */
+        findMany: jest.fn(async () => [{ phone: '+254722000201' }]),
         findFirst: jest.fn(async () => entry),
         create: jest.fn(async (a: any) => { made.push(a.data); return { id: 'person-brian' }; }),
         update: jest.fn(async (a: any) => { updated.push(a); return {}; }),
       },
-      user: { update: jest.fn() },
+      user: { update: jest.fn(async () => ({})), findMany: jest.fn(async () => []), findFirst: jest.fn(async () => (taken ? { id: 'u-someone', firstName: 'Kevin' } : null)), findUnique: jest.fn(async () => null) },
     };
     return { prisma, made, updated };
   }
@@ -34,13 +36,31 @@ describe('the lead adds a WhatsApp number', () => {
     expect(made[0]).toMatchObject({ organizationId: 'org-1', email: 'brian@muchemi.test', phone: '+254712345678', active: true });
   });
 
-  it('a number somebody already has is never replaced from here', async () => {
-    const { prisma } = world({ id: 'person-brian', phone: '+254700000000' });
-    await expect(theLeadAddsAWhatsAppNumber(prisma, { groundId: 'g-lit', participantId: 'p-brian', organizationId: 'org-1', userId: 'u-njeri', role: 'LEAD', phone: '+254712345678' }))
-      .rejects.toMatchObject({ message: A_NUMBER_IS_THEIRS('Brian Kiptoo') });
+  /* Changed 14 October (pilots on WhatsApp): the lead who runs the check-in and an admin may change or remove a number, not only add one. */
+  it('the lead may change a number, typed any common way, and it is kept in one format', async () => {
+    for (const typed of ['0722 000 202', '+254722000202', '254 722-000-202']) {
+      const { prisma, updated } = world({ id: 'person-brian', phone: '+254700000000' });
+      const r = await theLeadAddsAWhatsAppNumber(prisma, { groundId: 'g-lit', participantId: 'p-brian', organizationId: 'org-1', userId: 'u-njeri', role: 'LEAD', phone: typed });
+      expect(r.said).toBe(THE_NUMBER_IS_KEPT('Brian Kiptoo'));
+      expect(updated[0]).toMatchObject({ where: { id: 'person-brian' }, data: { phone: '+254722000202' } });
+    }
   });
 
-  it('somebody who does not run the check-in, and is not an admin, cannot add one', async () => {
+  it('an admin may remove it', async () => {
+    const { prisma, updated } = world({ id: 'person-brian', phone: '+254722000202' });
+    const r = await theLeadAddsAWhatsAppNumber(prisma, { groundId: 'g-lit', participantId: 'p-brian', organizationId: 'org-1', userId: 'u-grace', role: 'ADMIN', phone: '' });
+    expect(r.said).toBe(THE_NUMBER_IS_REMOVED('Brian Kiptoo'));
+    expect(updated[0]).toMatchObject({ data: { phone: null } });
+  });
+
+  it('something that is not a number, and a number already on somebody else\'s sign-in, are refused', async () => {
+    const { prisma } = world();
+    await expect(theLeadAddsAWhatsAppNumber(prisma, { groundId: 'g-lit', participantId: 'p-brian', organizationId: 'org-1', userId: 'u-njeri', role: 'LEAD', phone: 'call me' })).rejects.toMatchObject({ message: NOT_A_NUMBER });
+    const taken = world(null, null, true);
+    await expect(theLeadAddsAWhatsAppNumber(taken.prisma, { groundId: 'g-lit', participantId: 'p-brian', organizationId: 'org-1', userId: 'u-njeri', role: 'LEAD', phone: '+254722000203' })).rejects.toBeTruthy();
+  });
+
+  it('somebody who does not run the check-in, and is not an admin, cannot add, change or remove one', async () => {
     const { prisma } = world();
     await expect(theLeadAddsAWhatsAppNumber(prisma, { groundId: 'g-lit', participantId: 'p-brian', organizationId: 'org-1', userId: 'u-aisha', role: 'MEMBER', phone: '+254712345678' }))
       .rejects.toMatchObject({ status: 403 });

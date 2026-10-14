@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactElement } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { apiClient } from '@/api/client'
+import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { PLAN_LABELS, type SubscriptionPlan } from '@/api/billing'
 import { groundsApi } from '@/api/grounds'
 import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
@@ -200,6 +201,7 @@ function TheTree({ people }: { people: OrgMember[] }) {
 }
 
 export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: string | null }) {
+  const whatsappOn = useWhatsAppIsOn()
   const { data, isLoading, isError } = useQuery({ queryKey: ['org-members'], queryFn: fetchMembers })
   /* Same query the sidebar already makes (AppShell.tsx), read here only for when each check-in
      started, so a person's own check-ins cell can tell two of the same label apart. */
@@ -324,7 +326,15 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
                           as a bare word with nothing to attach to (U.4 review, item 12). */}
                       <span>{m.team?.trim() || 'No team'}</span>
                       <Tag tone={roleTagTone(role)}>{role}</Tag>
-                      <Tag tone={statusTagTone(st)}>{st}</Tag>
+                      <span>
+                        <Tag tone={statusTagTone(st)}>{st}</Tag>
+                        {/* Their WhatsApp number and where they are on it, where WhatsApp is on (pilots on WhatsApp, 14 October). */}
+                        {whatsappOn && (
+                          <span className="gwui-note" data-testid="their-whatsapp">
+                            {' '}{m.phoneNumber ? `Their WhatsApp number is ${m.phoneNumber}. ` : ''}{m.whatsappSays ?? ''}
+                          </span>
+                        )}
+                      </span>
                       <CheckInsCell m={m} startOf={startOf} />
                       {/* Nothing has been written for them yet, so there is no page to open (U.4
                           people-group review, item 2: Zawadi's row, held for a seat). */}
