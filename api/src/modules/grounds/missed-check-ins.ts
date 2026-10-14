@@ -267,7 +267,7 @@ export function whatThePersonReads(stand: Pick<WhereTheyStand, 'inARow'>, o: { l
     'When you miss them, your team works without your view.',
     `${listed(what)}.`,
     `${lead ?? 'Your manager'} will see this.`,
-    'Five minutes now puts your view back in the picture.',
+    'About ten minutes now puts your view back in the picture.',
   ].join(' ');
 }
 

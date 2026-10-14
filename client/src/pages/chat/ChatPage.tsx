@@ -1263,7 +1263,7 @@ export function ChatPage() {
                         ? `Correcting session ${correctingSession}`
                         : isFinalSession
                           ? `Closing session ${sessionNumber}. This is your final account.`
-                          : 'About two minutes'
+                          : 'About ten minutes'
                   }
                   mayPause={opened && !completed && !declined}
                   /* Not in the bare frame: the only control on that screen should not lead out of the thing

@@ -112,7 +112,7 @@ describe('ONE-PATH: invite accept lands in the real engine', () => {
     expect(screen.getAllByText(/Admins at Acme Inc can read every check-in\./).length).toBe(2)
     expect(screen.queryByText(/Nobody else reads your answers/i)).toBeNull()
     expect(screen.queryByText(/reads the report, not your words/i)).toBeNull()
-    expect(screen.getByText('About two minutes. You choose how you sign in afterwards.')).toBeTruthy()
+    expect(screen.getByText('About ten minutes. You choose how you sign in afterwards.')).toBeTruthy()
   })
 
   it('the inline entry-pipeline chat is gone (no onboarding cards, no chat input)', async () => {

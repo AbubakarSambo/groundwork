@@ -295,7 +295,7 @@ export function AnswerFirstPage() {
                 made in the second before somebody types is the worst place in the product to be
                 wrong. Hafsah, 23 September 2026.
               */}
-              Answer in your own words. It takes about five minutes. The answers help everybody get a
+              Answer in your own words. It takes about ten minutes. The answers help everybody get a
               shared picture, and you will receive the consolidated report at the end.
             </p>
             <button onClick={begin} disabled={busy}

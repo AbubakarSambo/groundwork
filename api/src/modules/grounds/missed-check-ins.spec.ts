@@ -67,7 +67,7 @@ describe('what each reader reads', () => {
   it('the person, with somebody waiting on them and the lead named', () => {
     const text = whatThePersonReads({ inARow: 2 }, { leadName: 'Amani', somebodyWaitsOnThem: true });
     console.log(`THE PERSON READS:\n${text}`);
-    expect(text).toBe("You've missed your last two check-ins. When you miss them, your team works without your view. Things you know about surface late, people waiting on you go unseen, and Amani has to chase instead of help. Amani will see this. Five minutes now puts your view back in the picture.");
+    expect(text).toBe("You've missed your last two check-ins. When you miss them, your team works without your view. Things you know about surface late, people waiting on you go unseen, and Amani has to chase instead of help. Amani will see this. About ten minutes now puts your view back in the picture.");
   });
 
   it('the person, with nobody waiting on them: no word about people waiting', () => {

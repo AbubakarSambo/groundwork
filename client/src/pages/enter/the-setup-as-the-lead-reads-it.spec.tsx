@@ -49,7 +49,7 @@ describe('the setup, as the lead reads it', () => {
     /* With no people block handed in, the invitations sentence stays where it always was. */
     expect(within(starts).getByText('Adding someone sends their invitation when it starts.')).toBeTruthy()
     const often = screen.getByRole('region', { name: 'How often' })
-    expect(within(often).getByText('Each check-in takes about two minutes after the first.')).toBeTruthy()
+    expect(within(often).getByText('Each check-in takes about ten minutes.')).toBeTruthy()
     expect(choices(often)).toEqual(['Once', 'Every day', 'Every week', 'Every 2 weeks', 'Every month', 'When I choose'])
     expect(within(often).getByText('Not set yet. This will run every 2 weeks unless you pick one.')).toBeTruthy()
     /* "On which days" belongs to a daily rhythm only now (setup page review): see "every day asks on which days" below. */

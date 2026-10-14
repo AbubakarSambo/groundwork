@@ -77,9 +77,9 @@ describe('Today, as the lead who runs the sales team', () => {
       'Your next check-in for Leadership, Q3',
     ]);
     expect(r.needs.map((n) => [n.detail, n.action.label, n.action.to])).toEqual([
-      ['About two minutes. Everyone else’s answers are read against yours.', 'Start it', '/checkin/f1'],
+      ['About ten minutes. Everyone else’s answers are read against yours.', 'Start it', '/checkin/f1'],
       ['The last session is done.', 'Decide', '/grounds/g-kwame'],
-      ['About two minutes.', 'Start it', '/checkin/l2'],
+      ['About ten minutes.', 'Start it', '/checkin/l2'],
     ]);
     expect(r.count).toBe(3);
   });
@@ -121,7 +121,7 @@ describe('Today, as Miriam, who takes part in the sales team', () => {
     open.checkIns = open.checkIns.filter((c) => c.id !== 'c4');
     const mine = whatNeedsYou([open], { userId: MIRIAM, role: 'MEMBER', organizationId: 'org' }, [], NOW);
     expect(mine.line).toBe('Your check-in for Sales team, Q3 is open.');
-    expect(mine.needs[0]).toMatchObject({ title: 'Your next check-in for Sales team, Q3', detail: 'About two minutes. It opened on 14 September.' });
+    expect(mine.needs[0]).toMatchObject({ title: 'Your next check-in for Sales team, Q3', detail: 'About ten minutes. It opened on 14 September.' });
   });
 });
 
@@ -144,10 +144,10 @@ describe('Today, as an admin of the organisation', () => {
 });
 
 describe('the second line on a turn of your own (U.5 review, today-lead.txt)', () => {
-  it('a participant\'s first check-in is "About two minutes." only, since nobody is read against theirs', () => {
+  it('a participant\'s first check-in is "About ten minutes." only, since nobody is read against theirs', () => {
     const first = { ...sales, checkIns: [{ id: 'm1', participantId: 'p-m', sessionNumber: 1, status: 'NOT_STARTED', availableFrom: ago(1) }] };
     const r = whatNeedsYou([first], { userId: MIRIAM, role: 'MEMBER', organizationId: 'org' }, [], NOW);
-    expect(r.needs[0]).toMatchObject({ title: 'Your first check-in for Sales team, Q3', detail: 'About two minutes.' });
+    expect(r.needs[0]).toMatchObject({ title: 'Your first check-in for Sales team, Q3', detail: 'About ten minutes.' });
   });
 });
 
@@ -215,7 +215,7 @@ describe('Today, for a session that was started before its own date', () => {
 
 /*
  * BEING AWAY (week 23). Found live, 1 October 2026 (item 6, journey/memory-requests-and-being-away-live.ts):
- * Amani, on approved leave until Friday 2 October, read "About two minutes." under her check-in on
+ * Amani, on approved leave until Friday 2 October, read "About ten minutes." under her check-in on
  * Today, exactly as somebody the round waits for, while the check-in page told her the round did not.
  */
 describe('a turn of your own while you are on leave', () => {
@@ -232,6 +232,6 @@ describe('a turn of your own while you are on leave', () => {
 
   it('reads as before for somebody who is not away', () => {
     const notAway = whatNeedsYou([first], { userId: MIRIAM, role: 'MEMBER', organizationId: 'org' }, [], NOW);
-    expect(notAway.needs[0].detail).toBe('About two minutes. It opened on 15 September.');
+    expect(notAway.needs[0].detail).toBe('About ten minutes. It opened on 15 September.');
   });
 });
