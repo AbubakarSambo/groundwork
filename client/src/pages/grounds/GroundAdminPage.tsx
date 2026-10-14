@@ -1,3 +1,5 @@
+import { MyCheckInSessions } from '@/components/gw/MyCheckInSessions'
+import { TheSessionsSoFar, theSessionsSoFar } from '@/components/gw/TheSessionsSoFar'
 import { AnAdminDecidesWhetherItStarts } from './an-admin-decides-whether-it-starts'
 import { TheLeadsNote } from '@/components/gw/TheLeadsNote'
 import { howManyCheckedInSentence } from '@/lib/how-many-checked-in'
@@ -12,7 +14,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ContextPage } from '@/components/gw/ContextPage'
 import { YourWork } from '@/components/gw/checkin/YourWork'
-import { Note, Callout, Button, Panel, Stack, Avatar, Tag, TextField, SubHeading, Empty, Folded, Modal } from '@/components/gw/ui'
+import { Note, Callout, Button, Panel, Stack, Avatar, Tag, TextField, SubHeading, Empty, Folded, Modal, Section } from '@/components/gw/ui'
 import { TheLeadsOwnWayIn, YOU_CHECK_IN_WHEN_YOU_CHOOSE } from '@/components/gw/TheLeadsOwnWayIn'
 import { theClosingAfterYourFirstCheckIn, takeTheFirstCheckInClosing, theRhythmInFull } from '@/lib/the-closing-after-your-first-check-in'
 import { initialsOf } from '@/pages/org/people-here'
@@ -1999,6 +2001,11 @@ export function GroundAdminPage() {
           */}
         {tab === 'chat' && (
           <div>
+            {/*
+             * PAST CHECK-INS ON THE CHECK-IN TAB, AS PRODUCTION HAS THEM (fix list, item 1, 14 October): a party reads their
+             * own past conversations here (only their own words, enforced on the server); a lead or an admin who does not
+             * answer reads the sessions so far, with who checked in and never anybody's words.
+             */}
             {viewerChecksIn ? (
               /*
                * B-19: AN ENDED CHECK-IN STILL PROMISED A NEXT ONE, here on the lead's own Check-in
@@ -2082,6 +2089,16 @@ export function GroundAdminPage() {
                   </Link>
                 </Stack>
               </Panel>
+            )}
+            {viewerChecksIn && !(myOpenCheckIn && !myOpenOpensLater && !theLeadChecksInWhenSheChooses && !hasStalled(ground.status) && !howItEnded(ground as any)) && (
+              <div data-testid="your-past-check-ins">
+                <Section heading="Your check-ins">
+                  <MyCheckInSessions groundId={id!} />
+                </Section>
+              </div>
+            )}
+            {!viewerChecksIn && (
+              <TheSessionsSoFar rows={theSessionsSoFar((ground.checkIns ?? []) as any[], nameOfParticipant)} />
             )}
           </div>
         )}
