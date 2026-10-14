@@ -19,7 +19,7 @@ export const onceKeyForThePerson = (participantId: string, streakFrom: number | 
 
 export interface TheMissedDoors {
   prisma: any;
-  email: { sendMissedCheckIns: (to: string, subject: string, lines: string[], linkLabel: string, linkUrl: string) => Promise<'sent' | 'held' | 'suppressed' | unknown> };
+  email: { sendMissedCheckIns: (to: string, subject: string, lines: string[], linkLabel: string, linkUrl: string, groundId?: string) => Promise<'sent' | 'held' | 'suppressed' | unknown> };
   frontendUrl: string;
 }
 
@@ -46,7 +46,7 @@ export async function sendTheMissedCheckInsToThePeople(deps: TheMissedDoors, now
         if (await theyAreConnectedOnWhatsApp(prisma, { organizationId: t.organizationId, userId, email: user.email })) continue;
         const link = t.openCheckInId ? `${base}/checkin/${t.openCheckInId}` : `${base}/today`;
         const [first, ...rest] = t.text.split(/(?<=\.)\s+/);
-        const went = await deps.email.sendMissedCheckIns(user.email, `${first.replace(/\.$/, '')} on "${t.label}"`, [first, rest.join(' '), `If something is in the way, you can tell ${t.leadName ?? 'your manager'} why on your Today page.`], t.openCheckInId ? 'Check in now' : 'Open Today', link);
+        const went = await deps.email.sendMissedCheckIns(user.email, `${first.replace(/\.$/, '')} on "${t.label}"`, [first, rest.join(' '), `If something is in the way, you can tell ${t.leadName ?? 'your manager'} why on your Today page.`], t.openCheckInId ? 'Check in now' : 'Open Today', link, t.groundId);
         await nowToldOnce(prisma, key, went as any, { sender: MISSED_SENDER, to: user.email });
         if (went !== 'suppressed') tried++;
       }

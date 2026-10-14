@@ -62,16 +62,28 @@ export class EmailService implements OnModuleInit {
    * WhatsApp with Hi typed (decision 106 item 4). Only while WhatsApp is on for this check-in's organisation,
    * the check-in is not kept in the app, and Groundwork's number has a display number saved. Otherwise nothing.
    */
-  async theWhatsAppLine(email: string, context?: DeliveryContext): Promise<string> {
+  async theWhatsAppLine(email: string, context?: DeliveryContext, forTheInvitation = true): Promise<string> {
     try {
       if (!context?.groundId) return '';
       const checkIn = await theCheckInForAnEmail(this.prisma, context.groundId, { organizationId: true, overWhatsApp: true });
       if (!checkIn) return '';
-      const connect = await connectWhatsAppFor(this.prisma, this.configService, { organizationId: checkIn.organizationId, email, keptInTheApp: keptOffThePhone(checkIn), forTheInvitation: true });
+      /* A reminder (fix list, item 5) leaves it out for somebody who already writes from their number: they are reminded there. */
+      const connect = await connectWhatsAppFor(this.prisma, this.configService, { organizationId: checkIn.organizationId, email, keptInTheApp: keptOffThePhone(checkIn), forTheInvitation });
       if (!connect) return '';
       return `<p>${escapeHtml(youCanAlsoAnswerOnWhatsApp(connect.number))}</p>
          <p><a href="${connect.link}" style="display:inline-block;background:#25D366;color:#0A1628;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:bold;">${connect.says}</a></p>`;
     } catch {
+      return '';
+    }
+  }
+
+  /** The same line on a reminder, for the check-in this person's place is on (fix list, item 5). */
+  private async theWhatsAppLineForAParticipant(email: string, participantId: string): Promise<string> {
+    try {
+      const groundId = (await (this.prisma as any).groundParticipant.findUnique({ where: { id: participantId }, select: { groundId: true } }))?.groundId;
+      return groundId ? await this.theWhatsAppLine(email, { kind: 'REMINDER', groundId }, false) : '';
+    } catch {
+      /* A reminder never fails for want of this line. */
       return '';
     }
   }
@@ -1317,7 +1329,7 @@ export class EmailService implements OnModuleInit {
    * the context, so it has to be there.
    */
   async sendNudge(email: string, groundLabel: string, checkInUrl: string, scenario: string | undefined, otherPartyCompleted: boolean | undefined, theAnchorLine: string | null | undefined, participantId: string, simplerWords?: boolean | null): Promise<'sent' | 'held' | 'suppressed'> {
-    const mail = await this.theNudge(groundLabel, `<a href="${checkInUrl}">Check in</a>`, scenario, otherPartyCompleted, theAnchorLine, participantId, simplerWords);
+    const mail = await this.theNudge(groundLabel, `<a href="${checkInUrl}">Check in</a>`, scenario, otherPartyCompleted, theAnchorLine, participantId, simplerWords, email);
     const context: DeliveryContext = { kind: 'REMINDER', participantId };
     await this.sendEmail({ to: email, ...mail }, context, 'sendNudge');
     return context.outcome ?? 'sent';
@@ -1328,12 +1340,12 @@ export class EmailService implements OnModuleInit {
    * one routine message of the day and never held back for it. It is still a reminder, so the person's own opt-out still stops it, as it always did.
    */
   async sendNudgeFromAPress(email: string, groundLabel: string, checkInUrl: string, scenario: string | undefined, otherPartyCompleted: boolean | undefined, theAnchorLine: string | null | undefined, participantId: string, simplerWords?: boolean | null): Promise<void> {
-    const mail = await this.theNudge(groundLabel, `<a href="${checkInUrl}">Check in</a>`, scenario, otherPartyCompleted, theAnchorLine, participantId, simplerWords);
+    const mail = await this.theNudge(groundLabel, `<a href="${checkInUrl}">Check in</a>`, scenario, otherPartyCompleted, theAnchorLine, participantId, simplerWords, email);
     await this.sendEmail({ to: email, ...mail }, { kind: 'REMINDER', participantId }, 'sendNudgeFromAPress');
   }
 
   /** The reminder's subject and words, the same whichever way it came. */
-  private async theNudge(groundLabel: string, link: string, scenario: string | undefined, otherPartyCompleted: boolean | undefined, theAnchorLine: string | null | undefined, participantId: string, simplerWords?: boolean | null): Promise<{ subject: string; html: string }> {
+  private async theNudge(groundLabel: string, link: string, scenario: string | undefined, otherPartyCompleted: boolean | undefined, theAnchorLine: string | null | undefined, participantId: string, simplerWords?: boolean | null, email?: string): Promise<{ subject: string; html: string }> {
     const words = THE_EMAILS.nudge(simplerWords);
     const subjectMap: Record<string, string> = {
       NEW_HIRE: 'Your 90-day check-in is waiting',
@@ -1357,7 +1369,7 @@ export class EmailService implements OnModuleInit {
       subject,
       /* A reminder with no way to stop it is the whole defect. This is the second mail it goes on. */
       /* On an anchor check-in, the anchor's own line (piece 30): their own open promise said back to them, or what has changed. */
-      html: this.layout(`<p>Your check-in for <strong>${escapeHtml(groundLabel)}</strong> ${words.stillOpen}</p>${theAnchorLine ? `<p>${escapeHtml(theAnchorLine)}</p>` : ''}${otherPartyNote}<p>${link}</p>${(await this.theWayToStopBeingChased(participantId)) ?? ''}`),
+      html: this.layout(`<p>Your check-in for <strong>${escapeHtml(groundLabel)}</strong> ${words.stillOpen}</p>${theAnchorLine ? `<p>${escapeHtml(theAnchorLine)}</p>` : ''}${otherPartyNote}<p>${link}</p>${(await this.theWayToStopBeingChased(participantId)) ?? ''}${email ? await this.theWhatsAppLineForAParticipant(email, participantId) : ''}`),
     };
   }
 
@@ -1429,12 +1441,13 @@ export class EmailService implements OnModuleInit {
   }
 
   /** MISSED CHECK-INS, told to the person first (decision 136). Says what became of it. Words: grounds/missed-check-ins.ts. */
-  async sendMissedCheckIns(email: string, subject: string, lines: string[], linkLabel: string, linkUrl: string): Promise<'sent' | 'held' | 'suppressed'> {
+  async sendMissedCheckIns(email: string, subject: string, lines: string[], linkLabel: string, linkUrl: string, groundId?: string): Promise<'sent' | 'held' | 'suppressed'> {
     const context: DeliveryContext = { kind: 'OTHER' };
+    const whatsApp = groundId ? await this.theWhatsAppLine(email, { kind: 'REMINDER', groundId }, false) : '';
     await this.sendEmail({
       to: email,
       subject,
-      html: this.layout(lines.filter(Boolean).map((l) => `<p>${escapeHtml(l)}</p>`).join('') + `<p><a href="${linkUrl}">${escapeHtml(linkLabel)}</a></p>`),
+      html: this.layout(lines.filter(Boolean).map((l) => `<p>${escapeHtml(l)}</p>`).join('') + `<p><a href="${linkUrl}">${escapeHtml(linkLabel)}</a></p>` + whatsApp),
     }, context, 'sendMissedCheckIns');
     return context.outcome ?? 'sent';
   }
@@ -1445,7 +1458,7 @@ export class EmailService implements OnModuleInit {
    * moment a new session becomes available, carrying context from the last
    * check-in so the person doesn't have to remember where they left off.
    */
-  async sendSessionReady(email: string, groundLabel: string, checkInUrl: string, simplerWords?: boolean | null, missed?: string[] | null): Promise<string | undefined> {
+  async sendSessionReady(email: string, groundLabel: string, checkInUrl: string, simplerWords?: boolean | null, missed?: string[] | null, groundId?: string): Promise<string | undefined> {
     const words = THE_EMAILS.nextCheckInOpen(simplerWords);
     /* No "Last time: ..." line (NL-007). It quoted the person's own last record entry into a mailbox
        their administrators can read, forward and export - the one thing the product promises not to do. */
@@ -1454,7 +1467,7 @@ export class EmailService implements OnModuleInit {
     return this.sendEmail({
       to: email,
       subject: `Your next check-in is open: ${groundLabel}`,
-      html: this.layout(`<p>${words.before} <strong>${escapeHtml(groundLabel)}</strong>${words.after}</p>${theMissed}<p><a href="${checkInUrl}">Check in</a></p>`),
+      html: this.layout(`<p>${words.before} <strong>${escapeHtml(groundLabel)}</strong>${words.after}</p>${theMissed}<p><a href="${checkInUrl}">Check in</a></p>${groundId ? await this.theWhatsAppLine(email, { kind: 'REMINDER', groundId }, false) : ''}`),
     }, undefined, 'sendSessionReady');
   }
 

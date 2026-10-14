@@ -1,3 +1,4 @@
+import { theReminderBody } from '../grounds/what-is-sent-in-simpler-words';
 import { TEMPLATES, fill } from './a-message-outside-the-window';
 
 /**
@@ -25,7 +26,8 @@ export const ITS_OWN_WORDS_AT_MOST = 800;
 /** What the message was going to say, on one line, for the template's second blank. */
 export function theFirstContactLine(kind: string | null | undefined, params: string[] | undefined, text: string): string {
   const t = kind ? TEMPLATES[kind] : null;
-  const words = t ? fill(t.body, params?.length ? params : [text]) : text;
+  /* The blank is our own words, so it says about ten minutes where the template it quotes says five (Hafsah, 14 October); the template itself is unchanged. */
+  const words = t ? fill(kind ? theReminderBody(kind, t.body) : t.body, params?.length ? params : [text]) : text;
   const line = String(words ?? '').replace(/\s+/g, ' ').trim();
   return line.length <= ITS_OWN_WORDS_AT_MOST ? line : `${line.slice(0, ITS_OWN_WORDS_AT_MOST - 1).replace(/\s+\S*$/, '')}…`;
 }

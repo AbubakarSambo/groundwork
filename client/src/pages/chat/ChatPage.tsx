@@ -1,4 +1,5 @@
 import { ANSWER_ON_WHATSAPP_INSTEAD } from '@/lib/answer-on-whatsapp-instead'
+import { CheckInOnWhatsApp } from '@/components/gw/CheckInOnWhatsApp'
 import { useState, useEffect, useRef } from 'react'
 import { nothingInternalReachesTheBubble } from '@/lib/nothing-internal-reaches-the-bubble'
 import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom'
@@ -32,7 +33,6 @@ import { IdeaOffer } from '@/components/gw/checkin/IdeaOffer'
 import { RequestOffer, OpenTheRequest } from '@/components/gw/checkin/RequestOffer'
 import type { TheIdeaOfferInTheCheckIn, TheRequestOfferInTheCheckIn, TheRequestToOpen } from '@/api/anchorShapes'
 import { TheEndCard } from '@/components/gw/checkin/TheEndCard'
-import { Note } from '@/components/gw/ui/NoteEmpty'
 import { TheDonePage, type WhatChanged } from '@/components/gw/checkin/TheDonePage'
 import { whenTheNextOneOpens, whoElseAnswers, whoRunsThis } from '@/lib/what-the-end-of-a-check-in-can-say'
 import { firstWordOfAName } from '@/lib/the-first-word-of-a-name'
@@ -1449,18 +1449,9 @@ export function ChatPage() {
                      */}
                     {/* The prototype's own words for it (B3, the check-in): "Answer on WhatsApp instead", a quiet button.
                         The session started here carries on there: the next message on WhatsApp continues this one. */}
+                    {/* With the line Hafsah asked for (fix list, item 5): "You can also check in on WhatsApp." */}
                     {connectWhatsApp && (
-                      <Note>
-                        <a
-                          className="gwui-btn gwui-btn-quiet gwui-btn-small"
-                          href={connectWhatsApp.link}
-                          target="_blank"
-                          rel="noopener"
-                          data-testid="answer-on-whatsapp"
-                        >
-                          {ANSWER_ON_WHATSAPP_INSTEAD}
-                        </a>
-                      </Note>
+                      <CheckInOnWhatsApp link={connectWhatsApp.link} label={ANSWER_ON_WHATSAPP_INSTEAD} testId="answer-on-whatsapp" />
                     )}
                   </div>
         )}
@@ -1730,6 +1721,10 @@ export function ChatPage() {
               onFinish={() => complete.mutate()}
               onChange={() => { setDone(false); taRef.current?.focus() }}
             />
+          )}
+          {/* THE END OF A SESSION (fix list, item 5): the next one can be answered on WhatsApp. Only where the server serves the way to connect. */}
+          {(done || completed) && !declined && connectWhatsApp && (
+            <CheckInOnWhatsApp link={connectWhatsApp.link} label={connectWhatsApp.says} testId="check-in-on-whatsapp-next-time" />
           )}
           {/* Manual fallback: "done" flips on the AI's close marker, or when the
               person asked to finish and the reply asked nothing (closesInOtherWords

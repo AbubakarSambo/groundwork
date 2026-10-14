@@ -837,7 +837,7 @@ export class GroundsCron implements OnApplicationBootstrap {
           await this.prisma.checkIn.update({ where: { id: ci.id }, data: { sessionReadyNotifiedAt: now } });
           continue;
         }
-        const went = await this.email.sendSessionReady(p.email, await nameFor({ userId: p.userId, email: p.email }, ci.groundId, p.ground.label), checkInUrl, p.ground.simplerWords, missed?.lines ?? null);
+        const went = await this.email.sendSessionReady(p.email, await nameFor({ userId: p.userId, email: p.email }, ci.groundId, p.ground.label), checkInUrl, p.ground.simplerWords, missed?.lines ?? null, ci.groundId);
         if (missed && went !== 'suppressed') await rememberTheMissedNoticeTold(this.prisma, missed.key, (went ?? 'sent') as any, { sender: 'sendSessionReady', to: p.email });
 
         await this.prisma.checkIn.update({ where: { id: ci.id }, data: { sessionReadyNotifiedAt: now } });

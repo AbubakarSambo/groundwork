@@ -62,7 +62,7 @@ describe('the invitation email', () => {
   it('says she can answer on WhatsApp, with the Connect WhatsApp link', async () => {
     const html = await email({}).theWhatsAppLine('amani@kito.test', { kind: 'PARTICIPANT_INVITE', groundId: 'g-1' });
     expect(html).toContain(`<p>${youCanAlsoAnswerOnWhatsApp(DISPLAY)}</p>`);
-    expect(youCanAlsoAnswerOnWhatsApp(DISPLAY)).toBe('You can also answer on WhatsApp: send Hi to +44 7700 900123.');
+    expect(youCanAlsoAnswerOnWhatsApp(DISPLAY)).toBe('You can also check in on WhatsApp. Send Hi to +44 7700 900123.');
     expect(html).toContain('href="https://wa.me/447700900123?text=Hi"');
     expect(html).toContain('>Connect WhatsApp</a>');
   });
@@ -75,9 +75,18 @@ describe('the invitation email', () => {
 describe('nobody else\'s read carries it', () => {
   const SRC = join(__dirname, '..', '..');
   const every = (dir: string): string[] => readdirSync(dir).flatMap((n) => { const p = join(dir, n); return statSync(p).isDirectory() ? every(p) : p.endsWith('.ts') && !p.endsWith('.spec.ts') ? [p] : []; });
-  it('only the person\'s own profile, their own check-in read and the invitation compute it', () => {
+  /* Today joined the list with fix list item 5 ("You can also check in on WhatsApp" on Today): it is the signed-in person's own read, pinned below. */
+  it('only the person\'s own profile, their own check-in read, their own Today and the emails to them compute it', () => {
     const users = every(SRC).filter((p) => /connectWhatsAppFor\(/.test(withoutComments(readFileSync(p, 'utf8')))).map((p) => p.replace(SRC + '/', '')).sort();
-    expect(users).toEqual(['modules/auth/auth.service.ts', 'modules/conversation/conversation.service.ts', 'modules/email/email.service.ts', 'modules/whatsapp/connect-whatsapp.ts']);
+    expect(users).toEqual(['modules/auth/auth.service.ts', 'modules/conversation/conversation.service.ts', 'modules/email/email.service.ts', 'modules/grounds/what-needs-you.service.ts', 'modules/whatsapp/connect-whatsapp.ts']);
+  });
+  it('Today computes it for the signed-in reader only', () => {
+    const ctrl = withoutComments(readFileSync(join(SRC, 'modules/grounds/today.controller.ts'), 'utf8'));
+    expect(ctrl).toMatch(/async today\(@CurrentUser\(\) user: CurrentUserData\) \{\s*return this\.needs\.today\(user\.id, user\.email, user\.organizationId, user\.role\);/);
+    const svc = withoutComments(readFileSync(join(SRC, 'modules/grounds/what-needs-you.service.ts'), 'utf8'));
+    expect(svc.match(/this\.checkInOnWhatsAppFor\(/g)).toHaveLength(1);
+    expect(svc).toContain('await this.checkInOnWhatsAppFor(userId, email, organizationId, told.needs)');
+    expect(svc).toContain('connectWhatsAppFor(this.prisma, this.config, { organizationId, userId, email })');
   });
   it('the check-in read is the owner-only one, and the profile is /auth/me, which is the signed-in person', () => {
     const conv = withoutComments(readFileSync(join(SRC, 'modules/conversation/conversation.service.ts'), 'utf8'));

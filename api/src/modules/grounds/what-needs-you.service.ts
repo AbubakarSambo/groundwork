@@ -1,6 +1,9 @@
 import { Injectable, Optional } from '@nestjs/common';
 import { theCheckInsHeldForASeat } from '../participants/held-for-a-seat';
 import { ModuleRef } from '@nestjs/core';
+import { ConfigService } from '@nestjs/config';
+import { connectWhatsAppFor, YOU_CAN_ALSO_CHECK_IN_ON_WHATSAPP } from '../whatsapp/connect-whatsapp';
+import { keptOffThePhone } from '../whatsapp/a-check-in-kept-off-the-phone';
 import { BoardService } from '../board/board.service';
 import { whatTheBoardAsksOfTheLead } from './what-the-board-asks-of-the-lead';
 import { isShut } from './a-ground-that-has-ended';
@@ -46,7 +49,27 @@ export class WhatNeedsYouService {
     @Optional() private reviews?: ReviewsService,
     @Optional() private finance?: SpendingForFinanceService,
     @Optional() private readonly moduleRef?: ModuleRef,
+    @Optional() private readonly config?: ConfigService,
   ) {}
+
+  /**
+   * "YOU CAN ALSO CHECK IN ON WHATSAPP" ON TODAY (fix list, item 5): served only when one of the reader's own check-ins is
+   * there to answer, one of those is not kept in the app, and WhatsApp is on for their organisation with Groundwork's
+   * number to write to. Not for somebody who already writes from their number. Null otherwise.
+   */
+  async checkInOnWhatsAppFor(userId: string, email: string, organizationId: string, needs: Need[]): Promise<{ says: string; link: string; label: string } | null> {
+    try {
+      if (!this.config) return null;
+      const toAnswer = needs.filter((n) => /^\/checkin\/[^/]+$/.test(n.action?.to ?? '') && n.groundId).map((n) => n.groundId as string);
+      if (!toAnswer.length) return null;
+      const grounds: { overWhatsApp?: boolean | null }[] = await (this.prisma as any).ground.findMany({ where: { id: { in: [...new Set(toAnswer)] }, organizationId }, select: { overWhatsApp: true } });
+      if (!grounds.some((g) => !keptOffThePhone(g))) return null;
+      const connect = await connectWhatsAppFor(this.prisma, this.config, { organizationId, userId, email });
+      return connect ? { says: YOU_CAN_ALSO_CHECK_IN_ON_WHATSAPP, link: connect.link, label: connect.says } : null;
+    } catch {
+      return null;
+    }
+  }
 
   /**
    * WHAT THE BOARD ASKS OF THIS READER, for each check-in they run (request 122): the board's own `leadActions` and
@@ -292,6 +315,8 @@ export class WhatNeedsYouService {
     /* Their own missed check-ins, told to them first (decision 136). Read only for this reader, about their own rows. */
     const missed = await this.missedCheckInsOf(userId, organizationId).catch(() => [] as Need[]);
     if (missed.length) { told.needs = [...missed, ...told.needs]; told.count = told.needs.length; }
+    const onWhatsApp = await this.checkInOnWhatsAppFor(userId, email, organizationId, told.needs);
+    if (onWhatsApp) (told as any).checkInOnWhatsApp = onWhatsApp;
     /* An admin whose organisation is on its free trial reads one line about it (Hafsah, 12 October). */
     if (role === 'ADMIN') {
       const trial = await theFreeTrialLine(this.prisma as any, organizationId).catch(() => null);
