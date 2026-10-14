@@ -11,6 +11,9 @@ import { whatTellsItApart, type HasLabelAndStart } from '@/lib/tell-apart-the-sa
 export interface OrgMember {
   id: string
   email: string
+  /** Where they are on WhatsApp, from the record (pilots on WhatsApp, 14 October), and that said as a sentence. */
+  whatsapp?: 'no-number' | 'not-connected' | 'waiting' | 'connected'
+  whatsappSays?: string
   firstName: string | null
   lastName: string | null
   /**

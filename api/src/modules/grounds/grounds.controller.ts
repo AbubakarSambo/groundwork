@@ -582,6 +582,13 @@ export class GroundsController {
     return this.grounds.addTheirWhatsAppNumber({ groundId: id, participantId, organizationId: user.organizationId, userId: user.id, role: user.role, phone: body?.phone });
   }
 
+  /** Each person on this check-in on WhatsApp: number and where they are (whoever runs it, or an admin). */
+  @Get(':id/participants/whatsapp')
+  @ApiOperation({ summary: "Each person's WhatsApp number and status on this check-in (whoever runs the check-in, or an admin)" })
+  async whereEachPersonIsOnWhatsApp(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
+    return this.grounds.whereEachPersonIsOnWhatsApp({ groundId: id, organizationId: user.organizationId, userId: user.id, role: user.role });
+  }
+
   @Get(':id/mediator-brief')
   @ApiOperation({ summary: 'Get a structural brief for use with a facilitator (initiator or a party on this ground - no separate org-admin access exists)' })
   async mediatorBrief(@Param('id') id: string, @CurrentUser('id') userId: string) {

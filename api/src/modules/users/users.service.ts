@@ -1,3 +1,6 @@
+import { organisationsThatTurnedWhatsAppOn } from '../whatsapp/only-where-whatsapp-is-turned-on';
+import { theOpeningGoesToTheNumberJustAdded } from '../grounds/the-lead-adds-a-whatsapp-number';
+import { whereTheyAreOnWhatsApp, WHERE_ON_WHATSAPP_SAYS, type WhereOnWhatsApp } from '../whatsapp/where-they-are-on-whatsapp';
 import { aNameTypedInLowerCase } from '../../common/a-name-typed-in-lower-case';
 import { theOrganisationsZone, isAZone, forgetTheOrganisationsZone } from '../../common/the-organisations-own-day';
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
@@ -738,9 +741,16 @@ export class UsersService {
       }
     }
 
+    /* Where each person is on WhatsApp, from the record (pilots on WhatsApp, 14 October): their number, and whether it is
+       connected, waiting for their first message, or not connected yet. Read by an admin of this organisation only. */
+    const onWhatsApp = new Map<string, WhereOnWhatsApp>();
+    await Promise.all(users.map(async (u) => onWhatsApp.set(u.id, await whereTheyAreOnWhatsApp(this.prisma, u.phoneNumber).catch(() => (u.phoneNumber ? 'not-connected' : 'no-number') as WhereOnWhatsApp))));
+
     return {
       data: [...users.map((u) => ({
         ...u,
+        whatsapp: onWhatsApp.get(u.id) ?? 'no-number',
+        whatsappSays: WHERE_ON_WHATSAPP_SAYS[onWhatsApp.get(u.id) ?? 'no-number'],
         /* The name to put in the list (B-030): theirs, else a plain stand-in, so no screen has to put the address where a name goes (decision 115). */
         displayName: [u.firstName, u.lastName].filter(Boolean).join(' ').trim() || A_COLLEAGUE_WITH_NO_NAME,
         /*
@@ -972,6 +982,14 @@ export class UsersService {
     });
     /* The roster entry follows the sign-in (decision 106 item 3). */
     if (phoneNumber !== undefined) await aSignInsNumberChanged(this.prisma, id, phoneNumber);
+    /* A number an admin adds on People is their first contact on WhatsApp: each open session's opening goes there now (D2; pilots on WhatsApp, 14 October). */
+    if (phoneNumber && this.whatsapp) {
+      try {
+        const on = (await organisationsThatTurnedWhatsAppOn(this.prisma, this.whatsapp as any, [organizationId])).has(organizationId);
+        const theirs: any[] = await this.prisma.groundParticipant.findMany({ where: { userId: id, leftAt: null, ground: { organizationId } }, select: { id: true, groundId: true } });
+        for (const p of theirs) await theOpeningGoesToTheNumberJustAdded(this.prisma, this.whatsapp as any, { groundId: p.groundId, participantId: p.id, organizationId, phone: phoneNumber }, on);
+      } catch { /* The number is kept whether or not the opening could go. */ }
+    }
     /* A new admin may be the one an appeal of a review waits for (decision 113); the reviews suite tells them. */
     if (dto.role === 'ADMIN') this.events?.emit?.(GroundworkEvents.ADMIN_MADE, { organizationId, userId: id } satisfies AdminMadeEvent);
     return done;

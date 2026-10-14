@@ -1,32 +1,59 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { TheirWhatsAppNumber } from './WhosInItRoster'
 import { groundsApi } from '@/api/grounds'
 
-vi.mock('@/api/grounds', () => ({ groundsApi: { addTheirWhatsAppNumber: vi.fn() } }))
+vi.mock('@/api/grounds', () => ({ groundsApi: { addTheirWhatsAppNumber: vi.fn(), whereEachPersonIsOnWhatsApp: vi.fn() } }))
 
 /**
- * D1 AND D2 (Hafsah, 13 October 2026, evening): "add your phone number, or your lead can." Njeri adds Brian's number on
- * her check-in's people, and reads back what was kept, or why not, in the server's own words.
+ * D1 AND D2 (Hafsah, 13 October 2026, evening): "add your phone number, or your lead can." Changed 14 October (pilots on
+ * WhatsApp): the control lists each person's number and where they are on WhatsApp, read from the record, and the lead can
+ * add, change or remove a number. It used to be one "Add somebody's WhatsApp number" form that could only add.
  */
-describe('the lead adds somebody’s WhatsApp number', () => {
-  it('Njeri opens it, picks Brian, keeps his number, and reads it was kept', async () => {
-    ;(groundsApi.addTheirWhatsAppNumber as any).mockResolvedValue({ said: "Brian Kiptoo's WhatsApp number is kept. Groundwork will write to them there as well as by email." })
-    render(<TheirWhatsAppNumber groundId="g-lit" people={[{ id: 'p-brian', name: 'Brian Kiptoo' }, { id: 'p-aisha', name: 'Aisha Hassan' }]} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Add somebody’s WhatsApp number' }))
-    expect(screen.getByText('Groundwork will write to them on WhatsApp as well as by email, and they can answer there.')).toBeTruthy()
-    fireEvent.change(screen.getByLabelText('Their WhatsApp number'), { target: { value: '+254 712 345 678' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Keep the number' }))
-    await waitFor(() => expect(screen.getByText("Brian Kiptoo's WhatsApp number is kept. Groundwork will write to them there as well as by email.")).toBeTruthy())
-    expect(groundsApi.addTheirWhatsAppNumber).toHaveBeenCalledWith('g-lit', 'p-brian', '+254 712 345 678')
+const PEOPLE = [{ id: 'p-brian', name: 'Brian Kiptoo' }, { id: 'p-aisha', name: 'Aisha Hassan' }]
+const draw = () => {
+  cleanup()
+  const r = render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <TheirWhatsAppNumber groundId="g-lit" people={PEOPLE} />
+    </QueryClientProvider>,
+  )
+  fireEvent.click(within(r.container).getByRole('button', { name: 'WhatsApp numbers' }))
+  return r
+}
+
+describe('the lead sees and sets each person’s WhatsApp number', () => {
+  beforeEach(() => {
+    ;(groundsApi.whereEachPersonIsOnWhatsApp as any).mockResolvedValue([
+      { participantId: 'p-brian', phone: '+254722000202', whatsapp: 'waiting', says: 'Waiting for their first message on WhatsApp.' },
+      { participantId: 'p-aisha', phone: null, whatsapp: 'no-number', says: 'No WhatsApp number yet.' },
+    ])
   })
 
-  it('a refusal is said in the server’s words', async () => {
-    ;(groundsApi.addTheirWhatsAppNumber as any).mockRejectedValue({ response: { data: { message: 'Brian Kiptoo already has a WhatsApp number. Only they, in Settings, or an administrator, on People, can change it.' } } })
-    render(<TheirWhatsAppNumber groundId="g-lit" people={[{ id: 'p-brian', name: 'Brian Kiptoo' }]} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Add somebody’s WhatsApp number' }))
-    fireEvent.change(screen.getByLabelText('Their WhatsApp number'), { target: { value: '+254 712 345 678' } })
+  it('reads each person’s number and where they are, in full sentences', async () => {
+    draw()
+    await waitFor(() => expect(screen.getByText(/Brian Kiptoo's WhatsApp number is \+254722000202\. Waiting for their first message on WhatsApp\./)).toBeTruthy())
+    expect(screen.getByText(/Aisha Hassan has no WhatsApp number yet\./)).toBeTruthy()
+  })
+
+  it('Njeri adds Aisha’s number typed the local way, and reads it was kept', async () => {
+    ;(groundsApi.addTheirWhatsAppNumber as any).mockResolvedValue({ said: "Aisha Hassan's WhatsApp number is kept. Groundwork will write to them there as well as by email." })
+    draw()
+    await waitFor(() => screen.getByText(/Brian Kiptoo's WhatsApp number is/))
+    fireEvent.click(screen.getByRole('button', { name: 'Add a number' }))
+    fireEvent.change(screen.getByLabelText('WhatsApp number for Aisha Hassan'), { target: { value: '0722 000 203' } })
     fireEvent.click(screen.getByRole('button', { name: 'Keep the number' }))
-    await waitFor(() => expect(screen.getByText('Brian Kiptoo already has a WhatsApp number. Only they, in Settings, or an administrator, on People, can change it.')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText("Aisha Hassan's WhatsApp number is kept. Groundwork will write to them there as well as by email.")).toBeTruthy())
+    expect(groundsApi.addTheirWhatsAppNumber).toHaveBeenCalledWith('g-lit', 'p-aisha', '0722 000 203')
+  })
+
+  it('she can remove Brian’s, and a refusal is said in the server’s words', async () => {
+    ;(groundsApi.addTheirWhatsAppNumber as any).mockRejectedValue({ response: { data: { message: 'That number is already on somebody else’s sign-in.' } } })
+    draw()
+    await waitFor(() => screen.getByText(/Brian Kiptoo's WhatsApp number is/))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }))
+    await waitFor(() => expect(screen.getByText('That number is already on somebody else’s sign-in.')).toBeTruthy())
+    expect(groundsApi.addTheirWhatsAppNumber).toHaveBeenCalledWith('g-lit', 'p-brian', '')
   })
 })

@@ -1,3 +1,4 @@
+import { ANSWER_ON_WHATSAPP_INSTEAD } from '@/lib/answer-on-whatsapp-instead'
 import { useState, useEffect, useRef } from 'react'
 import { nothingInternalReachesTheBubble } from '@/lib/nothing-internal-reaches-the-bubble'
 import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom'
@@ -1446,16 +1447,18 @@ export function ChatPage() {
                      * already writes to the person's saved number; this is only for saying hello
                      * back, so it never reads as something the person must do to answer.
                      */}
+                    {/* The prototype's own words for it (B3, the check-in): "Answer on WhatsApp instead", a quiet button.
+                        The session started here carries on there: the next message on WhatsApp continues this one. */}
                     {connectWhatsApp && (
                       <Note>
-                        You can also answer this on WhatsApp.{' '}
                         <a
                           className="gwui-btn gwui-btn-quiet gwui-btn-small"
                           href={connectWhatsApp.link}
                           target="_blank"
                           rel="noopener"
+                          data-testid="answer-on-whatsapp"
                         >
-                          {connectWhatsApp.says}
+                          {ANSWER_ON_WHATSAPP_INSTEAD}
                         </a>
                       </Note>
                     )}

@@ -263,6 +263,8 @@ export function OnePersonPage() {
               onSave={(v) => phone.mutate(v)}
             />
           )}
+          {/* Where they are on WhatsApp, from the record (pilots on WhatsApp, 14 October). Saving an empty number removes it. */}
+          {whatsappOn && m.whatsappSays && <FieldRow label="On WhatsApp" value={m.whatsappSays} />}
         </FieldRows>
         {/* WHO DECIDED, AND WHEN (U.4 review, item 2). "Not let in" on its own says what happened but
             not why the reader cannot just let them in from here - this says who decided, and when. */}
