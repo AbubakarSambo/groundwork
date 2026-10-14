@@ -369,7 +369,7 @@ describe('FieldRow', () => {
 describe('Folded', () => {
   it('opens with no script, starting closed', () => {
     const { container } = render(
-      <Folded summary="Who reports to whom" note="Level and reporting lines describe the organisation; what someone can do still comes from their role">
+      <Folded summary="Who reports to whom" note="Level and reporting lines describe the organisation. What someone can do still comes from their role.">
         <p>Amani Njoroge</p>
       </Folded>,
     )

@@ -87,7 +87,10 @@ describe('a glyph carries a name', () => {
        unchanged. Was `{plannedNow}</span><span>{' '}{...}</span>` across two spans (group 3, piece
        4d-1 moved this onto the shared `Button`, which renders plain text); a literal space between
        two expressions on the same JSX line is still real text, not a CSS gap. */
-    expect(read('pages/enter/EntryChatPage.tsx')).toMatch(/\{plannedNow\} \{plannedNow === 1 \? 'session planned' : 'sessions planned'\}/)
+    /* Setup page review, 13 October: the chip's words are built by thePlanInTheHeader (it says the
+       rhythm instead of a count when there is no end); the space is still in the string. */
+    expect(read('pages/enter/EntryChatPage.tsx')).toMatch(/\{thePlanInTheHeader\(\{ planned: plannedNow,/)
+    expect(read('pages/enter/TheSetup.tsx')).toContain("return `${a.planned} ${a.planned === 1 ? 'check-in planned' : 'check-ins planned'}`")
   })
   it('TextAction lives in the kit and AuthPage does not keep its own', () => {
     expect(read('components/gw/kit.tsx')).toMatch(/export function TextAction\(/)

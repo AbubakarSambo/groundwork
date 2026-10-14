@@ -28,7 +28,8 @@ import AskYourTeamOneThing from './AskYourTeamOneThing'
 import { TheDoor } from './TheDoor'
 import { rememberTheFirstCheckInClosing } from '@/lib/the-closing-after-your-first-check-in'
 import { theDayTheyNamed } from '@/lib/the-day-they-named'
-import { TheSetup, theDay, ANCHOR_PEOPLE_STEP_RULES, THE_ANCHOR_FIRST_QUESTION, takeTheServedFirstQuestion, rememberTheServedFirstQuestion, theAnchorStartSucceededForThisTab, rememberTheAnchorStartSucceeded } from './TheSetup'
+import { theScheduleTheySaid } from '@/lib/the-schedule-they-said'
+import { TheSetup, theDay, ANCHOR_PEOPLE_STEP_RULES, THE_ANCHOR_FIRST_QUESTION, takeTheServedFirstQuestion, rememberTheServedFirstQuestion, theAnchorStartSucceededForThisTab, rememberTheAnchorStartSucceeded, thePlanInTheHeader } from './TheSetup'
 import type { ThePeopleStepRules } from '@/api/anchorShapes'
 import { TheLeadsReveal } from '@/components/gw/TheLeadsReveal'
 import { FillsInAsYouTalk, type WhatTheAnchorConversationKnows } from './FillsInAsYouTalk'
@@ -45,7 +46,7 @@ import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-t
 import { copy } from '@/components/gw/copying-can-fail'
 import { whatIsSetAndWhatIsNot, whenTheCheckInsLand } from '@/components/gw/when-the-check-ins-land'
 import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
-import { Button, Callout, Note, TextField, TextArea, Bubble, Composer, PhaseSteps, Modal, Mark, GroundworkIsWriting } from '@/components/gw/ui'
+import { Button, Callout, Note, Section, TextField, TextArea, Bubble, Composer, PhaseSteps, Modal, Mark, GroundworkIsWriting } from '@/components/gw/ui'
 
 /*
  * A COLLEAGUE ON THE INVITE LIST, BY ID (U.4). The list of colleagues carries no addresses, so a
@@ -506,7 +507,7 @@ export function shortLabel(label: string): string {
     case 'People you mentioned': return 'Who is in it'
     case 'Why now': return 'Why now'
     case 'What you want from it': return 'What you are aiming for'
-    case 'Sessions': return 'How many sessions'
+    case 'Sessions': return 'How many check-ins'
     default: return label
   }
 }
@@ -1217,7 +1218,10 @@ export function anEntryAsASentence(entry: string, shownAs: (head: string) => str
   if (!rest.length) return `${address}.`
   const [name, ...note] = rest.length > 1 ? rest : ['', ...rest]
   const said = note.join(' - ').trim()
-  return `${address}${name ? ` (${name.trim()})` : ''}.${said ? ` You wrote “${said.replace(/[.?!]+$/, '')}”.` : ''}`
+  /* The note is the suggestion Groundwork wrote, not the lead's own words, so it is said as Groundwork's (pilots, 13 October 2026, problem 10). */
+  /* "Kevin Omondi (Kevin Omondi)." once the address is shown as the name: the name is said once (reviewer, 14 October). */
+  const sameName = !!name && address.trim().toLowerCase() === name.trim().toLowerCase()
+  return `${address}${name && !sameName ? ` (${name.trim()})` : ''}.${said ? ` Groundwork noted “${said.replace(/[.?!]+$/, '')}”.` : ''}`
 }
 
 /* "daniel@x.test is waiting to be invited." or "a@x.test and b@x.test are waiting to be invited." */
@@ -1800,6 +1804,17 @@ export function EntryChatPage() {
   const skippedCheckin = flowPath === 'lead'
   const [checkInBy, setCheckInBy] = useState('')
   const [lastCheckInBy, setLastCheckInBy] = useState('')
+  /*
+   * "WHEN I END IT" (setup page, piece 3a). The engine has kept `runsUntilEnded` since request 37 and
+   * reads it from the conversation (`extracted.runsUntilEnded`), but this page never held it, so the
+   * summary could not offer it and the save never sent it. While true, no last date is sent.
+   */
+  const [runsUntilEnded, setRunsUntilEnded] = useState(false)
+  /* Set the moment the lead changes the days or the end on the summary herself: from then on, what
+     she said in the conversation no longer fills them in over her choice. */
+  const daysChangedOnTheSummary = useRef(false)
+  const endChangedOnTheSummary = useRef(false)
+  const cadenceChangedOnTheSummary = useRef(false)
   const [cadence, setCadence] = useState<'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ONE_TIME' | 'SEQUENTIAL'>('FORTNIGHTLY')
   /* Where the planned session count came from, so the chip can say so instead of presenting it as fact. */
   const [plannedFrom, setPlannedFrom] = useState<{ timelineDays: number; cadence: string } | null>(null)
@@ -1943,6 +1958,30 @@ export function EntryChatPage() {
   }, [theSituationSaved, cadenceChosen, cadence, endChosen, checkInBy, plannedFrom?.timelineDays, onboardingSelections.classifiedScenario, scenario, pickedSituation])
 
   /*
+   * THE SUMMARY IS FILLED IN FROM WHAT THE LEAD SAID (setup page, piece 3a). Walked on 13 October:
+   * "Daily, weekdays only, until 30 December" reached the summary as "Any day" and an end in January.
+   * The days and the end she named in her own words go into the summary, where she can change them;
+   * once she changes one there, her choice stands.
+   *
+   * AFTER the effect above, on purpose: both run in the same commit when her words arrive, and the
+   * one above still sees `endChosen` false and sets the situation's usual end. Running second, the
+   * end she said is the one that stays.
+   */
+  useEffect(() => {
+    const said = theScheduleTheySaid(theirOwnSetupWords(onboardingHistory))
+    /* The card and the summary read the same state, so what she said ticks both at once (setup page
+       review: the card stayed "0 of 4 set" after "Weekly, on Thursdays, with no end. Call it New
+       accounts.", when the engine's own extraction missed it). Her change on the summary stands. */
+    if (said.cadence && !cadenceChangedOnTheSummary.current) { setCadence(said.cadence); setCadenceChosen(true) }
+    if (said.name && (!useEntryStore.getState().groundName.trim() || useEntryStore.getState().groundName === 'Entry session')) setGroundName(said.name)
+    if (said.workingDays && !daysChangedOnTheSummary.current) { setWorkingDays(said.workingDays); keepTheSchedule({ workingDays: said.workingDays }) }
+    if (!endChangedOnTheSummary.current) {
+      if (said.endsOn) { setRunsUntilEnded(false); setLastCheckInBy(said.endsOn); setEndChosen(true); keepTheSchedule({ runsUntilEnded: false, lastCheckInBy: said.endsOn, endChosen: true }) }
+      else if (said.runsUntilEnded) { setRunsUntilEnded(true); setEndChosen(true); keepTheSchedule({ runsUntilEnded: true, endChosen: true }) }
+    }
+  }, [onboardingHistory])
+
+  /*
    * PUTS BACK THE SETUP THIS DEVICE KEPT.
    *
    * It used to live only inside the mount effect below, so the one other way in - "Carry on with
@@ -1962,6 +2001,19 @@ export function EntryChatPage() {
       if (saved.cadence) { setCadence(saved.cadence as typeof cadence); setCadenceChosen(!!saved.cadenceChosen) }
       if (saved.groundName) setGroundName(saved.groundName)
       if (saved.plannedFrom) setPlannedFrom(saved.plannedFrom)
+      {
+        const sch = (saved as any).schedule
+        if (sch && typeof sch === 'object') {
+          if (typeof sch.checkInBy === 'string') setCheckInBy(sch.checkInBy)
+          if (typeof sch.lastCheckInBy === 'string') setLastCheckInBy(sch.lastCheckInBy)
+          if (typeof sch.runsUntilEnded === 'boolean') setRunsUntilEnded(sch.runsUntilEnded)
+          if (Array.isArray(sch.workingDays)) setWorkingDays(sch.workingDays.filter((d: unknown) => Number.isInteger(d) && (d as number) >= 0 && (d as number) <= 6))
+          if (typeof sch.cadenceAnchorDay === 'number') setCadenceAnchorDay(sch.cadenceAnchorDay)
+          if (sch.endChosen === true) setEndChosen(true)
+          if (sch.daysChanged === true) daysChangedOnTheSummary.current = true
+          if (sch.endChanged === true) endChangedOnTheSummary.current = true
+        }
+      }
       if (saved.onboardingSelections) {
         setOnboardingSelections(saved.onboardingSelections)
       }
@@ -2074,8 +2126,38 @@ export function EntryChatPage() {
   /* WHOLE STATE OR NONE. The conversation, the situation and the step survived a reload; the session count,
      the cadence and the name lived in a plain zustand store and did not, so "12 sessions planned" came back
      as "1 session planned" - the number the person agreed to, replaced. */
+  /*
+   * THE SUMMARY'S SCHEDULE SURVIVES A RELOAD TOO (setup page, piece 3a). The start, the days, the day
+   * it lands on and the end lived only in this page's memory, so a reload between the conversation and
+   * the save put back "Any day" and the situation's usual end over what the lead had said or chosen.
+   */
+  /* Read through a ref, so a save made from an older render's closure (a reply that arrives later,
+     the report) still keeps the schedule as it is now, not as it was when that closure was made. */
+  const theScheduleNow = useRef({ checkInBy, lastCheckInBy, runsUntilEnded, workingDays, cadenceAnchorDay, endChosen })
+  theScheduleNow.current = { checkInBy, lastCheckInBy, runsUntilEnded, workingDays, cadenceAnchorDay, endChosen }
+  function theScheduleSoFar() {
+    return { ...theScheduleNow.current, daysChanged: daysChangedOnTheSummary.current, endChanged: endChangedOnTheSummary.current }
+  }
+
+  /*
+   * And a change to the schedule is kept at once, into the session already saved, with the values just
+   * chosen. Called from the places that change it (the summary's own controls, and what she said),
+   * never from an effect: an effect also runs while the page still holds its empty defaults (on the
+   * first render, twice in development, or while it asks "You have a check-in in progress"), and
+   * writing those wiped the schedule of the very session it was about to restore.
+   */
+  function keepTheSchedule(patch: Record<string, unknown>) {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (!raw) return
+      const kept = JSON.parse(raw)
+      kept.schedule = { ...(kept.schedule ?? theScheduleSoFar()), ...patch, daysChanged: daysChangedOnTheSummary.current, endChanged: endChangedOnTheSummary.current }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(kept))
+    } catch { /* best effort, like every other save on this page */ }
+  }
+
   function persistOnboarding(h: Turn[], sels: OnboardingSelections, step: number, obHistory?: Turn[], obReady?: boolean) {
-    saveSession({ scenario, history: h, closed: false, onboardingStep: step, onboardingSelections: sels, sessions, cadence, cadenceChosen, groundName, plannedFrom, thePeopleStep: thePeopleStepRules, anchorGroundLabel, ...(obHistory !== undefined ? { onboardingHistory: obHistory, onboardingReady: obReady ?? false } : {}) } as any)
+    saveSession({ scenario, history: h, closed: false, onboardingStep: step, onboardingSelections: sels, sessions, cadence, cadenceChosen, groundName, plannedFrom, thePeopleStep: thePeopleStepRules, anchorGroundLabel, schedule: theScheduleSoFar(), ...(obHistory !== undefined ? { onboardingHistory: obHistory, onboardingReady: obReady ?? false } : {}) } as any)
   }
 
   /*
@@ -2087,7 +2169,7 @@ export function EntryChatPage() {
    * came back as "1 session planned" after a reload, with the conversation intact above it.
    */
   function persistCheckin(h: Turn[], cl = false, rep = '') {
-    saveSession({ scenario, history: h, closed: cl, report: rep, onboardingStep: ONBOARDING_STEPS, onboardingSelections, sessions, cadence, cadenceChosen, groundName, plannedFrom, thePeopleStep: thePeopleStepRules, anchorGroundLabel } as any)
+    saveSession({ scenario, history: h, closed: cl, report: rep, onboardingStep: ONBOARDING_STEPS, onboardingSelections, sessions, cadence, cadenceChosen, groundName, plannedFrom, thePeopleStep: thePeopleStepRules, anchorGroundLabel, schedule: theScheduleSoFar() } as any)
   }
 
   /*
@@ -2499,6 +2581,8 @@ export function EntryChatPage() {
         /* The name they gave in so many words ("Call it ..."), unless they have already typed one in the header (user journeys, F-3). */
         if (res.extracted.name && (!groundName.trim() || groundName === 'Entry session')) setGroundName(res.extracted.name)
         if (res.extracted.cadence) { setCadence(res.extracted.cadence); setCadenceChosen(true) }
+        /* "When I end it", as the engine heard it (piece 3a), unless she already set an end on the summary. */
+        if (res.extracted.runsUntilEnded === true && !endChangedOnTheSummary.current) { setRunsUntilEnded(true); setEndChosen(true); keepTheSchedule({ runsUntilEnded: true, endChosen: true }) }
         /* Walk fault 5: the day she named for the check-ins ("every Monday"), unless she already chose
            one on the day picker. Without it the day came from the start date, which was a Sunday. */
         {
@@ -2872,7 +2956,9 @@ export function EntryChatPage() {
         cadenceAnchorDay: (cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY' || cadence === 'MONTHLY') && cadenceAnchorDay != null ? cadenceAnchorDay : undefined,
         workingDays: workingDays.length ? workingDays : undefined,
         checkInBy: checkInBy.trim() || undefined,
-        lastCheckInBy: lastCheckInBy.trim() || undefined,
+        /* "When I end it": no last date, and the engine keeps no length (piece 3a). */
+        runsUntilEnded: runsUntilEnded || undefined,
+        lastCheckInBy: runsUntilEnded ? undefined : (lastCheckInBy.trim() || undefined),
         /* The WHOLE report they read, not two fields of it: what is sent here is what CheckIn.sessionReport keeps. */
         reportSummary: sessionReport ?? undefined,
         // The setter's own part in this, as the interview extracted it. Lands on their participant row.
@@ -3167,7 +3253,9 @@ export function EntryChatPage() {
         cadenceAnchorDay: (cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY' || cadence === 'MONTHLY') && cadenceAnchorDay != null ? cadenceAnchorDay : undefined,
         workingDays: workingDays.length ? workingDays : undefined,
         checkInBy: checkInBy.trim() || undefined,
-        lastCheckInBy: lastCheckInBy.trim() || undefined,
+        /* "When I end it": no last date, and the engine keeps no length (piece 3a). */
+        runsUntilEnded: runsUntilEnded || undefined,
+        lastCheckInBy: runsUntilEnded ? undefined : (lastCheckInBy.trim() || undefined),
         inviteNote: inviteNote.trim() || undefined,
         contributors: everyoneNamedSoFar().map(e => asSomeoneToInvite(e, displayNames)),
       }
@@ -3187,12 +3275,14 @@ export function EntryChatPage() {
           if (patch.workingDays !== undefined) payload.workingDays = patch.workingDays
           if (patch.checkInBy !== undefined) payload.checkInBy = patch.checkInBy
           if (patch.lastCheckInBy !== undefined) payload.lastCheckInBy = patch.lastCheckInBy
+          payload.runsUntilEnded = patch.runsUntilEnded
+          if (patch.runsUntilEnded) delete payload.lastCheckInBy
           localStorage.setItem('gw_commit_payload', JSON.stringify(payload))
         }
       } catch { /* */ }
     }, 800)
     return () => clearTimeout(t)
-  }, [emailSent, draftToken, groundName, orgName, cadence, cadenceAnchorDay, workingDays, checkInBy, lastCheckInBy, inviteNote, inviteAdded, inviteContextFor, bulkQueue, displayNames])
+  }, [emailSent, draftToken, groundName, orgName, cadence, cadenceAnchorDay, workingDays, checkInBy, lastCheckInBy, runsUntilEnded, inviteNote, inviteAdded, inviteContextFor, bulkQueue, displayNames])
 
   async function copyInviteLink() {
     const link = `${window.location.origin}/invite?token=${inviteToken}`
@@ -3375,10 +3465,12 @@ export function EntryChatPage() {
    */
   const setFillsInPanelShowing = useEntryFillsInPanelStore(s => s.setShowing)
   useEffect(() => {
-    setFillsInPanelShowing(phase === 'onboarding' && !atTheDoor)
+    /* And while the setup card is open (setup page review, 13 October): at 375px the floating
+       Feedback button sat on "We save this for you". "Send feedback" stays on her own menu. */
+    setFillsInPanelShowing((phase === 'onboarding' && !atTheDoor) || showSave)
     return () => setFillsInPanelShowing(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, atTheDoor])
+  }, [phase, atTheDoor, showSave])
   /** Words typed at the door, or on the list, open the conversation as describing it yourself. */
   function describeItInYourOwnWords(text: string) {
     setSeeingEverySituation(false)
@@ -3458,7 +3550,44 @@ export function EntryChatPage() {
    * before the email" - and its content is identical either way: nothing about WHAT it draws
    * changes, only WHERE.
    */
-  function renderPeopleStep() {
+  /*
+   * WHERE THE NAME AND THE PEOPLE ARE ASKED (setup page, piece 3a). For a signed-in lead they are
+   * blocks of the setup itself, before the button that saves it; for an anonymous visitor they still
+   * come after her email, below the card's confirmation, exactly as before.
+   */
+  const theSetupHoldsTheNameAndPeople = !!user && !emailSent
+
+  /** The check-in's name, with what is set and what is not under it. */
+  function renderTheName(withLabel = true, withHint = true) {
+    return (
+            <div className="gwui-ec-savecard-name-block">
+              {withLabel && <div className="gwui-ec-savecard-name-label">Name this situation</div>}
+              <TextField
+                type="text" aria-label="Name this situation" placeholder="e.g. Kwame, first 90 days" value={groundName}
+                onChange={e => setGroundName(e.target.value)}
+                className="gwui-ec-savecard-field"
+              />
+              {/* Asked one step earlier now, where both the email and Google paths pass. */}
+
+              {/* U.6: the schedule is set before saving now, in TheSetup. What is still missing stays said here. */}
+              {withHint && (
+              <div className="gwui-ec-savecard-name-hint">
+                {whatIsSetAndWhatIsNot({
+                  name: groundName,
+                  cadenceChosen,
+                  /* "Now" is a start: today. Only a start nobody could have chosen is missing, and
+                     the setup always has one. */
+                  startsAt: checkInBy ? new Date(`${checkInBy}T00:00:00`) : new Date(),
+                  workingDays,
+                  peopleAdded: inviteAdded.length,
+                })}
+              </div>
+              )}
+            </div>
+    )
+  }
+
+  function renderPeopleStep(insideTheSetup = false) {
     const s = onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario || pickedSituation || ''
     // Matches scenario keys AND card labels (pickedSituation stores the
     // label). New reframed labels first; the old labels stay so a
@@ -3497,12 +3626,16 @@ export function EntryChatPage() {
       : 'Each person gives their own version of the shared work, including their own part in it. When everyone has answered, the report shows where people agree, where they differ, and what the gap means for the work.'
     return (
     <div className="gwui-ec-savecard-invite-block">
-      <FieldLabel>{inviteHeading}</FieldLabel>
+      {/* Inside the setup the block's own heading, "Who’s in it", already says this (piece 3a). */}
+      {!(insideTheSetup && !isAnchor) && <FieldLabel>{inviteHeading}</FieldLabel>}
       <div className="gwui-ec-savecard-invite-subtext">
         {inviteSubtext}
       </div>
       <div className="gwui-ec-savecard-invite-banner">
-        Add them here now. Anyone you added from the report above is already on this list. Nobody is invited before you save this check-in and confirm your email.
+        {/* Piece 3a: a signed-in lead has no email to confirm, so she is not told to confirm one. */}
+        {user
+          ? 'Add them here now. Anyone you added from the report above is already on this list. Nobody is invited before you save this check-in.'
+          : 'Add them here now. Anyone you added from the report above is already on this list. Nobody is invited before you save this check-in and confirm your email.'}
         {!isAnchor && (
           <>
             {' '}
@@ -3708,7 +3841,7 @@ export function EntryChatPage() {
               {copiedLink ? 'Copied!' : 'Copy link'}
             </Button>
           </div>
-          <TextField type="text" placeholder="Add a note to send with your link (optional)" value={inviteNote} onChange={e => setInviteNote(e.target.value)}
+          <TextField type="text" placeholder="Add a note to the link" value={inviteNote} onChange={e => setInviteNote(e.target.value)}
             className="gwui-ec-savecard-field"
           />
         </>
@@ -3816,7 +3949,7 @@ export function EntryChatPage() {
                 field on this page already uses.
               */}
               <span className="gwui-invite-link-row">
-                <label htmlFor="gwui-ec-sessions-input" className="gwui-fine">How many sessions</label>
+                <label htmlFor="gwui-ec-sessions-input" className="gwui-fine">How many check-ins</label>
                 <TextField
                   id="gwui-ec-sessions-input"
                   className="gwui-ec-sessions-input"
@@ -3858,6 +3991,9 @@ export function EntryChatPage() {
                       if (last) {
                         setLastCheckInBy(`${last.getFullYear()}-${String(last.getMonth() + 1).padStart(2, '0')}-${String(last.getDate()).padStart(2, '0')}`)
                         setEndChosen(true)
+                        endChangedOnTheSummary.current = true
+                        setRunsUntilEnded(false)
+                        keepTheSchedule({ lastCheckInBy: `${last.getFullYear()}-${String(last.getMonth() + 1).padStart(2, '0')}-${String(last.getDate()).padStart(2, '0')}`, endChosen: true, runsUntilEnded: false })
                       }
                     }
                   }}
@@ -3875,7 +4011,7 @@ export function EntryChatPage() {
               kind="secondary"
               size="small"
               onClick={() => { setSessionsInput(String(sessions)); setEditingSessions(true) }}
-              aria-label={plannedFrom ? `${sessions} ${sessions === 1 ? 'session' : 'sessions'}, planned from ${plannedFrom.timelineDays} days, ${plannedFrom.cadence.toLowerCase()}. Click to change.` : 'Edit number of sessions'}
+              aria-label={plannedFrom ? `Change how many check-ins. ${sessions} ${sessions === 1 ? 'check-in is' : 'check-ins are'} planned from ${plannedFrom.timelineDays} days, ${plannedFrom.cadence.toLowerCase()}.` : 'Change how many check-ins'}
             >
               {/*
                 This read "1/{sessions}" - so during setup, before anyone has
@@ -3891,7 +4027,7 @@ export function EntryChatPage() {
                 timeline and cadence the engine extracted (see onboard, above)
                 and traceable to them in the button's title.
               */}
-              {plannedNow} {plannedNow === 1 ? 'session planned' : 'sessions planned'}
+              {thePlanInTheHeader({ planned: plannedNow, cadence, runsUntilEnded, anchorDay: cadenceAnchorDay, workingDays, startsOn: checkInBy })}
             </Button>
           )}
         </div>
@@ -4345,6 +4481,8 @@ export function EntryChatPage() {
                 workingDays={workingDays}
                 startsOn={checkInBy}
                 endsOn={lastCheckInBy}
+                endSaid={endChosen}
+                runsUntilEnded={runsUntilEnded}
                 mentioned={onboardingSelections.peopleNamed ?? []}
                 added={inviteAdded.map((e) => shownAs(e.split(' - ')[0]))}
                 /*
@@ -4664,6 +4802,7 @@ export function EntryChatPage() {
 
             {/* Structured report */}
             {sessionReport && (
+              <div className="gwui-ec-savecard-section">
               <TheReportYouSawAtTheEnd
                 report={sessionReport}
                 correctedNote={reportWasCorrected && !generatingReport}
@@ -4805,6 +4944,7 @@ export function EntryChatPage() {
                   </>
                 }
               />
+              </div>
             )}
 
             {/* What happens next - shown after report is ready, before signup */}
@@ -4843,34 +4983,47 @@ export function EntryChatPage() {
               */}
               <TheLeadsReveal reveal={sessionReport?.leadsReveal} />
 
-              {/* U.6: the prototype's setup (setup.txt). The start date is still what the invitations wait for. */}
-              <TheSetup
-                cadence={cadence}
-                cadenceChosen={cadenceChosen}
-                onCadence={(c) => { setCadence(c); setCadenceChosen(true) }}
-                anchorDay={cadenceAnchorDay}
-                onAnchorDay={setCadenceAnchorDay}
-                workingDays={workingDays}
-                daysPicker={<WhichDaysTheyWork value={workingDays} onChange={setWorkingDays} />}
-                startsOn={checkInBy}
-                onStartsOn={setCheckInBy}
-                endsOn={lastCheckInBy}
-                onEndsOn={(d) => { setEndChosen(true); setLastCheckInBy(d) }}
-              />
-
               {/*
-                * FAULT 3: THE PEOPLE STEP, BEFORE THE EMAIL, FOR AN ANCHOR DRAFT ONLY.
+                * THE SETUP, AS THE PROTOTYPE LAYS IT OUT (setup page, piece 3a; setup.txt).
                 *
-                * Every other situation still asks for people AFTER the confirmation email is sent
-                * (unchanged, see the later `!isAnchorDraft() && renderPeopleStep()` call). For an
-                * anchor draft, the plan's own order is "people before the email" - this is the exact
-                * same block (`renderPeopleStep`), only moved earlier for this one situation. The
-                * email form's own button already reads `thePeopleStepRules.button`
-                * ("Start my Groundwork.") for an anchor draft, and already sends whatever is in
-                * `inviteAdded` by the time it is pressed (`buildCommitPayload`'s `contributors`), so
-                * no new button or new save path is needed - only where this renders changes.
+                * One editable summary at the end, filled in from what the lead said: a name, when it
+                * starts, how often, the days, when it ends, and who is in it, each a block of its own
+                * (`TheSetup`), with the button that saves it after the last one. The start date is
+                * still what the invitations wait for.
+                *
+                * The name and the people used to sit under the save button, after it, for a signed-in
+                * lead, so the page asked her to save before it showed her who would be invited. They
+                * are drawn here now, in the prototype's order, wherever this card already showed them
+                * (`theSetupHoldsTheNameAndPeople`). An anonymous visitor still gives her email first,
+                * as before, and names it and adds people after.
+                *
+                * FAULT 3 (unchanged): for an anchor draft the people step comes before the email, so it
+                * is drawn here for her too. The email form's button already reads
+                * `thePeopleStepRules.button` and sends whatever is in `inviteAdded`.
                 */}
-              {isAnchorDraft() && renderPeopleStep()}
+              <div className="gwui-ec-savecard-divider" />
+              <Section heading="Set up a check-in">
+                <Note>Set up from your conversation. Change anything before it starts; after, changes apply from the next check-in.</Note>
+                <TheSetup
+                  cadence={cadence}
+                  cadenceChosen={cadenceChosen}
+                  onCadence={(c) => { cadenceChangedOnTheSummary.current = true; setCadence(c); setCadenceChosen(true) }}
+                  anchorDay={cadenceAnchorDay}
+                  onAnchorDay={(d) => { setCadenceAnchorDay(d); keepTheSchedule({ cadenceAnchorDay: d }) }}
+                  workingDays={workingDays}
+                  daysPicker={<WhichDaysTheyWork value={workingDays} onChange={(d) => { daysChangedOnTheSummary.current = true; setWorkingDays(d); keepTheSchedule({ workingDays: d }) }} />}
+                  startsOn={checkInBy}
+                  onStartsOn={(d) => { setCheckInBy(d); keepTheSchedule({ checkInBy: d }) }}
+                  endsOn={lastCheckInBy}
+                  onEndsOn={(d) => { endChangedOnTheSummary.current = true; setEndChosen(true); setRunsUntilEnded(false); setLastCheckInBy(d); keepTheSchedule({ lastCheckInBy: d, runsUntilEnded: false, endChosen: true }) }}
+                  runsUntilEnded={runsUntilEnded}
+                  onRunsUntilEnded={(until) => { endChangedOnTheSummary.current = true; setEndChosen(true); setRunsUntilEnded(until); keepTheSchedule({ runsUntilEnded: until, endChosen: true }) }}
+                  nameField={theSetupHoldsTheNameAndPeople && !isAnchorDraft() ? renderTheName(false, false) : undefined}
+                  /* Setup page review: "You have not added anybody else yet" is about the people, so it is said there. */
+                  peopleNote={theSetupHoldsTheNameAndPeople && !isAnchorDraft() && inviteAdded.length === 0 ? 'You have not added anybody else yet. A check-in with one person still works, and it stays a note to yourself until somebody joins it.' : undefined}
+                  people={isAnchorDraft() || theSetupHoldsTheNameAndPeople ? renderPeopleStep(true) : undefined}
+                />
+              </Section>
 
               <div className="gwui-ec-savecard-whatnext">
                 <div className="gwui-ec-savecard-whatnext-title">What happens next</div>
@@ -5078,7 +5231,7 @@ export function EntryChatPage() {
               * now whenever either path has reached this point: the email is sent, or she is
               * already signed in.
               */}
-            {(emailSent || !!user) && (
+            {(emailSent || !!user) && !theSetupHoldsTheNameAndPeople && (
             <div>
             <div className="gwui-ec-savecard-divider" />
 
@@ -5091,37 +5244,8 @@ export function EntryChatPage() {
               * still missing when it never was. Both describe the ordinary path, where the lead
               * picks her own name and rhythm; the anchor picks neither.
               */}
-            {!isAnchorDraft() && (
-            <div className="gwui-ec-savecard-name-block">
-              <div className="gwui-ec-savecard-name-label">Name this situation</div>
-              <TextField
-                type="text" placeholder="e.g. Kwame, first 90 days" value={groundName}
-                onChange={e => setGroundName(e.target.value)}
-                className="gwui-ec-savecard-field"
-              />
-              {/* Asked one step earlier now, where both the email and Google paths pass. */}
+            {!isAnchorDraft() && renderTheName()}
 
-              {/* U.6: the schedule is set before saving now, in TheSetup. What is still missing stays said here. */}
-              <div className="gwui-ec-savecard-name-hint">
-                {whatIsSetAndWhatIsNot({
-                  name: groundName,
-                  cadenceChosen,
-                  /* "Now" is a start: today. Only a start nobody could have chosen is missing, and
-                     the setup always has one. */
-                  startsAt: checkInBy ? new Date(`${checkInBy}T00:00:00`) : new Date(),
-                  workingDays,
-                  peopleAdded: inviteAdded.length,
-                })}
-              </div>
-            </div>
-            )}
-
-            {/*
-              * FAULT 3: FOR AN ANCHOR DRAFT, THE PEOPLE STEP RENDERS EARLIER (see the call to
-              * `renderPeopleStep()` placed above the email form, before the "What happens next"
-              * section), so it is skipped here - rendering it twice would show it after email too.
-              * Every other situation keeps rendering it in exactly this place, exactly as before.
-              */}
             {!isAnchorDraft() && renderPeopleStep()}
 
             </div>

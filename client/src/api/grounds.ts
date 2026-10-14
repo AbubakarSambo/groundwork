@@ -310,6 +310,10 @@ export const groundsApi = {
   resendParticipantInvite: (groundId: string, participantId: string) =>
     apiClient.post(`/grounds/${groundId}/participants/${participantId}/resend-invite`).then(r => r.data),
 
+  /** D1 and D2 (13 October, evening): whoever runs the check-in adds somebody's WhatsApp number. */
+  addTheirWhatsAppNumber: (groundId: string, participantId: string, phone: string) =>
+    apiClient.patch<{ said: string }>(`/grounds/${groundId}/participants/${participantId}/whatsapp-number`, { phone }).then(r => r.data),
+
   getMediatorBrief: (groundId: string) =>
     apiClient.get(`/grounds/${groundId}/mediator-brief`).then(r => r.data),
 

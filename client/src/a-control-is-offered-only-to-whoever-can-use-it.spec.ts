@@ -77,11 +77,24 @@ describe('a control is offered only to whoever can use it', () => {
   })
 
   it('and the server refuses the same people, so the two cannot drift apart', () => {
+    /*
+     * UPDATED FOR DECISION 119, H10 (8 October 2026, engine commit f0061182). This used to pin
+     * the OLD server rule - "can rename it" and `ground.initiatorId !== requestingUserId &&
+     * !isOrgAdmin` - which let any admin of the organisation rename a check-in at any time,
+     * whoever ran it. That is the rule H10 ends: an admin who does not run a check-in may change
+     * its name only once the lead has left. Renaming now goes through `updateTimeline`, which
+     * asks `mayConfirmSetupOn` (built on the one shared `whoMayConfirmSetup` rule, decision 63)
+     * rather than repeating `initiatorId`/`isOrgAdmin` inline - the same rule the client's own
+     * `mayRenameACheckIn` now has to agree with, hiding the pencil from a non-lead admin until
+     * the check-in row says the lead has left (see who-may-rename-a-check-in.ts and
+     * docs/requests-to-engine.md).
+     */
     const service = readFileSync(
       join(__dirname, '../../api/src/modules/grounds/grounds.service.ts'),
       'utf8',
     )
-    expect(service).toMatch(/can rename it/)
-    expect(service).toMatch(/ground\.initiatorId !== requestingUserId && !isOrgAdmin/)
+    expect(service).toMatch(/async updateTimeline\(/)
+    expect(service).toMatch(/await this\.mayConfirmSetupOn\(/)
+    expect(service).not.toMatch(/can rename it/)
   })
 })

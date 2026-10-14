@@ -369,6 +369,20 @@ describe('the end card, once Groundwork has closed the conversation', () => {
     expect(screen.getByText(SHORTENED)).toBeTruthy()
   })
 
+  /*
+   * PILOTS, 13 OCTOBER 2026, PROBLEM 13: the close is sent before its card is written (ten to forty seconds later), and the
+   * screen dropped "Below is what I wrote down from your answers." straight away, so a card that then listed four of
+   * Aisha's answers sat under "That’s all for today. Is anything wrong?". The sentence now waits for the card.
+   */
+  it('keeps "Below is what I wrote down from your answers." when the card written after the close lists their answers', async () => {
+    closesOnTheNextAnswer()
+    ;(conversationApi as any).endCard = vi.fn().mockResolvedValue({ inYourRecord: [{ says: 'The Otieno probate filing is done.', how: 'You said this.', mark: 'said' }] })
+    await answerTheLastQuestion(CLOSING)
+    expect(screen.getByText(CLOSING)).toBeTruthy()
+    expect(screen.queryByText(SHORTENED)).toBeNull()
+    delete (conversationApi as any).endCard
+  })
+
   it('Miriam reads the header change, why answering matters, what happens next, and the two buttons', async () => {
     closesOnTheNextAnswer()
     await answerTheLastQuestion()

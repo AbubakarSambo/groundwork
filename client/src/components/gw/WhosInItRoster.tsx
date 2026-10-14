@@ -1,5 +1,8 @@
 import { Link } from 'react-router-dom'
-import { PeopleTable, PersonRow, Tag, Button, type TagTone } from '@/components/gw/ui'
+import { useState } from 'react'
+import { PeopleTable, PersonRow, Tag, Button, TextField, Select, type TagTone } from '@/components/gw/ui'
+import { groundsApi } from '@/api/grounds'
+import { aPersonsSentenceForAServerError } from '@/lib/a-persons-sentence-for-a-server-error'
 import { PeoplePicker } from '@/components/gw/PeoplePicker'
 import { ShareSection } from '@/pages/grounds/ShareSection'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
@@ -415,6 +418,45 @@ export function WhosInItRoster({
           )
         })}
       </PeopleTable>
+      {(isInitiator || isOrgAdmin) && counted.length > 0 && (
+        <TheirWhatsAppNumber groundId={ground.id} people={counted.map((p: any) => ({ id: p.id, name: nameWithoutGuessing(p).name || p.email }))} />
+      )}
+    </div>
+  )
+}
+
+/**
+ * THE LEAD ADDS SOMEBODY'S WHATSAPP NUMBER (Hafsah, 13 October 2026, evening: "add your phone number, or your lead can").
+ * The number is kept on the organisation's roster against that person; Groundwork then writes to them there as well as
+ * by email, and their reply from it joins them. A number somebody already has is theirs, and the server says so.
+ */
+export function TheirWhatsAppNumber({ groundId, people }: { groundId: string; people: { id: string; name: string }[] }) {
+  const [open, setOpen] = useState(false)
+  const [who, setWho] = useState(people[0]?.id ?? '')
+  const [phone, setPhone] = useState('')
+  const [said, setSaid] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  if (!open) {
+    return (
+      <p className="gwui-note">
+        <button type="button" className="gwui-plain-link" onClick={() => setOpen(true)}>Add somebody’s WhatsApp number</button>
+      </p>
+    )
+  }
+  return (
+    <div className="gwui-note" role="group" aria-label="Add somebody’s WhatsApp number">
+      <p className="gwui-panel-text">Groundwork will write to them on WhatsApp as well as by email, and they can answer there.</p>
+      <Select aria-label="Who" value={who} onChange={(e: any) => setWho(e.target.value)}>
+        {people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+      </Select>
+      <TextField aria-label="Their WhatsApp number" placeholder="+254 712 345 678" value={phone} onChange={(e: any) => setPhone(e.target.value)} />
+      <Button size="small" kind="secondary" disabled={saving || !phone.trim() || !who} onClick={async () => {
+        setSaving(true)
+        try { setSaid((await groundsApi.addTheirWhatsAppNumber(groundId, who, phone)).said); setPhone('') }
+        catch (e: any) { setSaid(aPersonsSentenceForAServerError(e?.response?.data?.message, 'The number was not kept. Try again.')) }
+        finally { setSaving(false) }
+      }}>{saving ? 'Saving…' : 'Keep the number'}</Button>
+      {said && <p className="gwui-panel-text">{said}</p>}
     </div>
   )
 }

@@ -23,6 +23,9 @@ import { SCENARIO_FACTS, SCENARIO_KEYS, CADENCE_VALUE, RECOMMENDED_MOMENT, recom
  */
 const ENGINE = resolve(__dirname, '../../../api/src/modules/grounds/grounds.service.ts')
 
+/** Engine situations that are never offered as a card. */
+const NOT_A_CARD = ['HELP_TEAM_UNDERSTAND']
+
 describe('the rhythm the card promises', () => {
   it('reads the engine from where this expects it', () => {
     expect(existsSync(ENGINE), `${ENGINE} is gone - move this check with it, do not delete it`).toBe(true)
@@ -37,11 +40,17 @@ describe('the rhythm the card promises', () => {
     const body = src.slice(start, src.indexOf('};', start))
     const out: Record<string, string> = {}
     for (const m of body.matchAll(pattern)) out[m[1]] = m[2]
+    /* The anchor's situation is not a card: nobody picks it, it is reached only from /start/team
+       behind its own switch, so the card catalogue rightly does not hold it. Every card is still
+       compared below. */
+    for (const k of NOT_A_CARD) delete out[k]
     return out
   }
 
   const cadences = engineMap('RECOMMENDED_CADENCE', /^\s*([A-Z_]+):\s*Cadence\.([A-Z_]+),/gm)
   const timelines = engineMap('DEFAULT_TIMELINE_DAYS', /^\s*([A-Z_]+):\s*(\d+),/gm)
+  /* The anchor's own situation has no card to pick (its door is the shared link), so there is no card for the engine's row to disagree with. */
+  for (const m of [cadences, timelines]) delete m.HELP_TEAM_UNDERSTAND
 
   it('found both maps in the engine, or this test proves nothing', () => {
     // A silent empty parse would make every assertion below pass vacuously, which is the one
@@ -74,6 +83,7 @@ describe('the rhythm the card promises', () => {
      * maps that must not disagree, so they are compared rather than trusted.
      */
     const moments = engineMap('RECOMMENDED_MOMENT', /^\s*([A-Z_]+):\s*GroundMoment\.([A-Z_]+),/gm)
+    delete moments.HELP_TEAM_UNDERSTAND /* no card to pick for the anchor's own situation */
     expect(Object.keys(moments).length).toBe(SCENARIO_KEYS.length)
     const disagree = SCENARIO_KEYS
       .filter((k) => moments[k] !== RECOMMENDED_MOMENT[k])

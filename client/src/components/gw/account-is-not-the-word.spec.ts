@@ -52,6 +52,9 @@ const WHAT_A_PARTICIPANT_READS = [
   '../../pages/chat/ChatPage.tsx',
   '../../pages/board/BoardPage.tsx',
   'HelpModal.tsx',
+  /* User journeys F-16: the check-in's settings and the shared picture a participant reads. */
+  'BaselinePanel.tsx',
+  'the-shared-picture-a-party-reads.tsx',
   'ExpectationsPanel.tsx',
   'TheReportYouSawAtTheEnd.tsx',
   '../../pages/invite/InvitePage.tsx',
@@ -64,6 +67,9 @@ const WHAT_A_PARTICIPANT_READS = [
   '../../pages/grounds/GroundsListPage.tsx',
   '../../pages/report/ReportPage.tsx',
   '../../pages/auth/MagicVerifyPage.tsx',
+  /* B-081: the lead's own ending panel, which missed this when request 194/item 4 fixed every
+     other reader of it. */
+  'ResolutionPanel.tsx',
 ]
 
 /**
@@ -86,6 +92,10 @@ const THE_WRONG_SENSE = [
    * one that carries the wrong sense and no wider.
    */
   'account is on record',
+  /* Screens item d (8 October): sign-in and keeping what was said, said without the word. */
+  'Your account is kept',
+  'You make your account',
+  'For your account at',
   'On record: your account',
   "everybody's accounts",
   'their own account',
@@ -94,6 +104,7 @@ const THE_WRONG_SENSE = [
   'the accounts agree',
   'accounts agree',
   'accounts differed',
+  'where accounts differ',
   'built from the accounts',
   'across the accounts',
   'across their accounts',
@@ -126,6 +137,10 @@ const THE_WRONG_SENSE = [
   'accounts of it',
   'independent accounts',
   'account for?',
+  /* B-081: "can still correct their own account." / "can still correct their account." - the lead's
+     own ending panel, said about the person she is ending the check-in with. */
+  'correct their own account',
+  'correct their account',
 ]
 
 describe('the word account, in the sense of what somebody said', () => {

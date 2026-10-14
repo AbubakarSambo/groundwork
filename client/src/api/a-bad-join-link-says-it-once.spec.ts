@@ -21,4 +21,17 @@ describe('a bad /join link says it once, not twice', () => {
     const call = entry.slice(at, entry.indexOf('/entry/join-preview', at) + 400)
     expect(call).toMatch(/skipNotFoundToast:\s*true/)
   })
+
+  /**
+   * B-213: THE SAME DOUBLE MESSAGE, ON /join/confirm. `joinApi.confirm` (`/entry/join-confirm`) is
+   * the call `JoinConfirmPage.tsx` makes the moment it loads - a bad or missing token raised the
+   * generic 404 toast on top of that page's own `LinkProblem`, the same fault as `joinApi.preview`
+   * above, just missed on the sibling call.
+   */
+  it('joinApi.confirm skips the global 404 toast too', () => {
+    const at = entry.indexOf('confirm: (token: string) =>')
+    expect(at).toBeGreaterThan(-1)
+    const call = entry.slice(at, entry.indexOf('/entry/join-confirm', at) + 400)
+    expect(call).toMatch(/skipNotFoundToast:\s*true/)
+  })
 })

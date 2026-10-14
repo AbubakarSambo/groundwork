@@ -161,3 +161,16 @@ describe('what a target with no number assumes', () => {
     expect(screen.getByText('What the target of 25 assumes')).toBeTruthy()
   })
 })
+
+describe('a target the lead has not told the team about', () => {
+  it('is not called seen by everyone, for the lead', () => {
+    const untold: Target = { id: 't9', name: 'Take over the renewals', target: 8, ownerParticipantId: 'p-aisha', assumes: [], notToldYet: true }
+    const untoldTeam: Target = { id: 't8', name: 'Cut returns by a fifth', target: null, ownerParticipantId: null, assumes: [], notToldYet: true }
+    draw({ targets: [team, untold, untoldTeam], viewerUserId: 'u-lead', isTheLead: true })
+    expect(rowText('t9')).toContain('Only the lead and the admins see this until the lead tells the team')
+    expect(rowText('t9')).not.toContain('Seen by')
+    expect(rowText('t8')).toContain('Only the lead and the admins see this until the lead tells the team')
+    expect(rowText('t8')).not.toContain('Seen by everyone')
+    expect(rowText('t1')).toContain('Seen by everyone')
+  })
+})

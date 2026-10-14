@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { roleWord } from './your-organisations'
+import { Button } from './ui'
 
 /**
  * ADDING PEOPLE THE WAY A GROUP CHAT DOES IT.
@@ -88,7 +89,7 @@ export function PeoplePicker({
       <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--gw-border)', display: 'flex', gap: 8, alignItems: 'center' }}>
         <input
           aria-label="Find a colleague"
-          placeholder={`Find someone in your organisation (${candidates.length})`}
+          placeholder={`Find a colleague (${candidates.length})`}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
@@ -135,8 +136,11 @@ export function PeoplePicker({
         <span style={{ flex: 1, fontSize: 12, color: 'var(--gw-sub)' }}>
           {chosen.size === 0 ? 'Tick the people who should answer for this.' : `${chosen.size} selected`}
         </span>
-        <button
-          type="button"
+        {/* The shared Button (setup page review, 13 October): its own inline style drew white text on
+            the pale border colour while nothing was ticked, which nobody could read. */}
+        <Button
+          kind="primary"
+          size="small"
           disabled={chosen.size === 0 || adding}
           onClick={() => {
             const picked = candidates.filter((p) => chosen.has(p.id))
@@ -144,10 +148,9 @@ export function PeoplePicker({
             setQuery('')
             onAdd(picked)
           }}
-          style={{ padding: '8px 14px', borderRadius: 7, background: chosen.size === 0 || adding ? 'var(--gw-border)' : 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: chosen.size === 0 || adding ? 'default' : 'pointer', fontFamily: 'inherit' }}
         >
           {adding ? 'Adding…' : chosen.size <= 1 ? 'Add' : `Add ${chosen.size} people`}
-        </button>
+        </Button>
       </div>
     </div>
   )

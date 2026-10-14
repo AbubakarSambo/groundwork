@@ -54,6 +54,7 @@ describe('a check-in with one person on it', () => {
 
   it('which matches the rule the server releases by', () => {
     const grounds = strip(readFileSync(join(__dirname, '..', '..', '..', '..', 'api', 'src', 'modules', 'grounds', 'grounds.service.ts'), 'utf8'))
-    expect(grounds).toContain('if (active.length < 2) return false;')
+    /* CHANGED 11 OCTOBER (decision 133): the lead stays one of the two even in a round they sat out. */
+    expect(grounds).toContain('if (active.length + (theLeadSatThisOneOut > 0 ? 1 : 0) < 2) return false;')
   })
 })

@@ -71,7 +71,8 @@ describe("the anchor's schedule default is one month, weekly", () => {
      * to its own FORTNIGHTLY default). Now the anchor's weekly rhythm is sent as a real choice, so
      * the screen shows it the same way: "Every week" selected, no "not set yet" warning.
      */
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Every week' })).toHaveAttribute('aria-pressed', 'true'))
+    /* Setup page, piece 3a: "How often" is the shared `Choices` now, so the chosen rhythm is a checked radio. */
+    await waitFor(() => expect(screen.getByRole('radio', { name: 'Every week' })).toHaveAttribute('aria-checked', 'true'))
     expect(screen.queryByText(/not set yet/i)).toBeNull()
   })
 

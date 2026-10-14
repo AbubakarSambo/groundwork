@@ -169,6 +169,8 @@ export interface OnboardResult {
       // not say - never guessed. GW-017.
       cadence?: 'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ONE_TIME';
       timelineDays?: number;
+      /** True when they said it runs until they end it themselves ("when I end it"). The engine then sends no length. */
+      runsUntilEnded?: boolean;
       /**
        * THE ANCHOR'S SEVEN ITEMS (fault 2; docs/answers-from-engine.md, "Request 144 (2) and (3)").
        * Not served yet - every key is optional and absent today. Mirrors
@@ -297,6 +299,12 @@ export const entryApi = {
        ask-your-team-one-thing. Every other caller still lets the conversation settle them. */
     cadence?: 'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ONE_TIME' | 'SEQUENTIAL'
     checkInBy?: string
+    /** The last day, YYYY-MM-DD. Left out when it runs until the lead ends it. */
+    lastCheckInBy?: string
+    /** "When I end it": no planned length and no planned last session. */
+    runsUntilEnded?: boolean
+    /** Which days people work, 0 = Sunday. Left out when nobody said. */
+    workingDays?: number[]
     inviteNote?: string
     cadenceChosen?: boolean
     /** RESTORED (nothing-removed-screens.md item 2): the day check-ins land on - a weekday (0 =

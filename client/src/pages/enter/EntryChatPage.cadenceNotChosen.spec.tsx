@@ -90,7 +90,7 @@ describe('the cadence nobody picked', () => {
     await saveTheGround()
     await waitFor(() => expect(screen.getByText(/Not set yet/i)).toBeTruthy())
 
-    fireEvent.click(screen.getByRole('button', { name: /^Every week$/i }))
+    fireEvent.click(screen.getByRole('radio', { name: /^Every week$/i }))
 
     await waitFor(() => expect(screen.queryByText(/Not set yet/i)).toBeNull())
   })
@@ -101,9 +101,10 @@ describe('the cadence nobody picked', () => {
     seedSaved()
     renderPage()
     await saveTheGround()
-    await waitFor(() => expect(screen.getByRole('button', { name: /^Every week$/i })).toBeTruthy())
+    await waitFor(() => expect(screen.getByRole('radio', { name: /^Every week$/i })).toBeTruthy())
     for (const label of ['Once', 'Every day', 'Every week', 'Every 2 weeks', 'Every month', 'When I choose']) {
-      expect(screen.getByRole('button', { name: new RegExp(`^${label}$`, 'i') })).toBeTruthy()
+      /* Setup page, piece 3a: the rhythms are the shared `Choices` now (the prototype's `.seg`), one radio each. */
+      expect(screen.getByRole('radio', { name: new RegExp(`^${label}$`, 'i') })).toBeTruthy()
     }
   })
 })

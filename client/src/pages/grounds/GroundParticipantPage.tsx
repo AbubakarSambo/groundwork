@@ -1,4 +1,5 @@
 import { howItEnded, hasStalled } from '@/lib/a-ground-that-has-ended'
+import { theRhythmInFull } from '@/lib/the-closing-after-your-first-check-in'
 import { OutOfTime } from './OutOfTime'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useEffect, useRef, useState } from 'react'
@@ -579,7 +580,7 @@ export function GroundParticipantPage() {
         <CheckInHeader
           crumbs={[{ label: 'Check-ins', to: '/grounds' }, { label: ground.label }]}
           title={ground.label}
-          subtitle={(ground as any).cadence ? `${cadenceLabel((ground as any).cadence)}.` : undefined}
+          subtitle={(ground as any).cadence ? (theRhythmInFull(ground as any, { untilEnded: !!(ground as any).runsUntilEnded }) ?? `${cadenceLabel((ground as any).cadence)}.`) : undefined}
           action={(
             <div className="gwui-button-row">
               {/*
