@@ -831,7 +831,9 @@ export class GroundsCron implements OnApplicationBootstrap {
          * email too. The one exception is the day decision 136's missed-check-ins notice is due: it goes by email, inside
          * this opening, so it is never lost.
          */
-        if (!missed && (await theyAreConnectedOnWhatsApp(this.prisma, { organizationId: (p.ground as any).organizationId, userId: p.userId, email: p.email }))) {
+        /* Hafsah, 14 October (later): for somebody on WhatsApp, the missed-check-ins notice goes in their WhatsApp check-in too,
+           never by email. It stays on Today, and is said before the first question once they reply (whatsapp-for-an-organisation). */
+        if (await theyAreConnectedOnWhatsApp(this.prisma, { organizationId: (p.ground as any).organizationId, userId: p.userId, email: p.email })) {
           await this.prisma.checkIn.update({ where: { id: ci.id }, data: { sessionReadyNotifiedAt: now } });
           continue;
         }

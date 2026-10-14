@@ -52,7 +52,8 @@ describe('GW-WA-01: a phone number does not switch email off', () => {
     const emailAt = BLOCK.indexOf('this.email.sendSessionReady');
     expect(emailAt).toBeGreaterThan(-1);
     expect(BLOCK.slice(0, emailAt)).not.toMatch(/phoneNumber &&/);
-    expect(BLOCK.slice(0, emailAt)).toMatch(/if \(!missed && \(await theyAreConnectedOnWhatsApp\(this\.prisma, /);
+    /* And, since Hafsah's later word of 14 October, the missed notice too goes in the WhatsApp check-in, never by email. */
+    expect(BLOCK.slice(0, emailAt)).toMatch(/if \(await theyAreConnectedOnWhatsApp\(this\.prisma, /);
     expect(BLOCK.indexOf('data: { sessionReadyNotifiedAt: now }', emailAt)).toBeGreaterThan(emailAt);
   });
 

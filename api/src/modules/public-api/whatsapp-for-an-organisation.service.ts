@@ -1,3 +1,4 @@
+import { theMissedNoticeOnWhatsApp, rememberTheMissedNoticeTold } from '../engagement/missed-check-ins-told-first';
 import { openTheLeadsCheckIn } from '../grounds/check-in-yourself';
 import { ParticipantsService } from '../participants/participants.service';
 import { theirOwnRosterEntry } from '../ask/their-own-roster-entry';
@@ -596,8 +597,11 @@ export class WhatsAppForAnOrganisationService {
       let reply = '';
       if (current.status === 'NOT_STARTED') {
         const first = await this.conversation.open(current.id, userId!);
+        /* The missed-check-ins notice, first, before the first question, for somebody on WhatsApp (Hafsah, 14 October). */
+        const missed = await this.theMissedNoticeFor(current.id, userId!);
         /* The words that switch, said once, when the check-in starts on WhatsApp. */
-        reply = `${sessionHeader(current)} ${THE_WORDS(ask)}\n\n${first.reply}`;
+        reply = `${sessionHeader(current)} ${THE_WORDS(ask)}\n\n${missed ? `${missed.text}\n\n` : ''}${first.reply}`;
+        if (missed) await rememberTheMissedNoticeTold(this.prisma, missed.key, 'sent').catch(() => undefined);
         /* A short first answer is still an answer. "Not much yet", "It's blocked", "Behind again" are
            twelve characters or fewer and were thrown away. Only a greeting and nothing else is not
            handed in - matched by a list, not by a length. */
@@ -1033,6 +1037,11 @@ export class WhatsAppForAnOrganisationService {
     } catch {
       return null;
     }
+  }
+
+  private async theMissedNoticeFor(checkInId: string, userId: string): Promise<{ key: string; text: string } | null> {
+    const row = await (this.prisma as any).checkIn?.findUnique?.({ where: { id: checkInId }, select: { participantId: true } })?.catch?.(() => null);
+    return row?.participantId ? theMissedNoticeOnWhatsApp(this.prisma, userId, row.participantId).catch(() => null) : null;
   }
 
   private async openIfWaiting(c: AnOpenCheckIn, userId: string): Promise<string | null> {
