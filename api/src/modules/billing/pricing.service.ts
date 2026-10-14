@@ -2,6 +2,8 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { PrismaService } from '../prisma/prisma.service';
 import { StripeService } from './stripe.service';
 import { SubscriptionPlan } from '@prisma/client';
+import { theKindOfStripeKey } from './what-kind-of-stripe-key';
+import type { APlansPrices } from './what-a-month-costs';
 
 /**
  * The plan NAMES, and only the names.
@@ -67,6 +69,19 @@ export const MAX_FREE_MEMBER_LIMIT = 1000;
 export const FREE_TRIAL_KEY = 'pricing.freeTrial';
 /** What the WhatsApp add-on's Stripe Prices are marked with, so its subscription line is never mistaken for the plan's. */
 export const WHATSAPP_ADD_ON_KIND = 'whatsapp-add-on';
+/** What the extra-seat and WhatsApp-per-person Stripe Prices are marked with (fix list item 6), so neither line is ever mistaken for the plan's. */
+export const EXTRA_SEAT_KIND = 'extra-seat';
+export const WHATSAPP_PERSON_KIND = 'whatsapp-per-person';
+
+/**
+ * TEST MODE ONLY OUTSIDE PRODUCTION (fix list item 6: "Test everything in Stripe test mode only, never live keys"). The
+ * new Stripe Prices are refused with a live key anywhere but production, so a test bed or staging that was given a live key
+ * by mistake cannot create a real charge for a seat or a WhatsApp person.
+ */
+export function aLiveKeyIsRefusedHere(key: string | null | undefined, nodeEnv: string | undefined = process.env.NODE_ENV): boolean {
+  return theKindOfStripeKey(key) === 'live' && nodeEnv !== 'production';
+}
+export const NO_LIVE_KEY_HERE = 'A live Stripe key is set here, and this is not production, so nothing is charged. Use a Stripe test key.';
 /**
  * `onSince` is when the setting was last switched on. Kept on the server only (never on the public
  * read): it is what tells an organisation that was already on the free plan from a new one.
@@ -127,7 +142,22 @@ export class PricingService {
       whatsappAddOnCents: r.whatsappAddOnCents ?? null,
       /** How many WhatsApp messages an organisation on this plan may send in a calendar month. Null means no limit. */
       whatsappMonthlyLimit: r.whatsappMonthlyLimit ?? null,
+      /** Fix list item 6: what each seat past `memberCap` costs a month, and WhatsApp a month for each person who used it. Null where it is not sold by itself. */
+      extraSeatCents: r.extraSeatCents ?? null,
+      whatsappPersonCents: r.whatsappPersonCents ?? null,
       updatedAt: r.updatedAt,
+    }));
+  }
+
+  /** Every plan's prices, for the arithmetic in what-a-month-costs.ts. Enterprise is left in; it has no price, so it is never chosen. */
+  async plansPrices(): Promise<APlansPrices[]> {
+    const rows = await this.prisma.pricingPlan.findMany({ orderBy: { plan: 'asc' } });
+    return rows.map((r) => ({
+      plan: r.plan,
+      amountCents: r.amountCents,
+      memberCap: r.memberCap,
+      extraSeatCents: r.extraSeatCents ?? null,
+      whatsappPersonCents: r.whatsappPersonCents ?? null,
     }));
   }
 
@@ -264,6 +294,68 @@ export class PricingService {
   async setWhatsAppAddOnCents(plan: SubscriptionPlan, cents: number | null): Promise<void> {
     await this.prisma.pricingPlan.update({ where: { plan }, data: { whatsappAddOnCents: cents, whatsappAddOnStripePriceId: null } });
     this.logger.log(`WhatsApp add-on for ${plan} set to ${cents === null ? 'not sold' : `${cents} cents`} (cached Stripe price cleared)`);
+  }
+
+  /** Admin update for the extra-seat price on a plan (fix list item 6). A new amount clears the cached Stripe Price. Null takes extra seats off sale on this plan. */
+  async setExtraSeatCents(plan: SubscriptionPlan, cents: number | null): Promise<void> {
+    await this.prisma.pricingPlan.update({ where: { plan }, data: { extraSeatCents: cents, extraSeatStripePriceId: null } });
+    this.logger.log(`Extra seat on ${plan} set to ${cents === null ? 'not sold' : `${cents} cents`} (cached Stripe price cleared)`);
+  }
+
+  /** Admin update for WhatsApp's price per person on a plan (fix list item 6). A new amount clears the cached Stripe Price. */
+  async setWhatsAppPersonCents(plan: SubscriptionPlan, cents: number | null): Promise<void> {
+    await this.prisma.pricingPlan.update({ where: { plan }, data: { whatsappPersonCents: cents, whatsappPersonStripePriceId: null } });
+    this.logger.log(`WhatsApp per person on ${plan} set to ${cents === null ? 'not sold' : `${cents} cents`} (cached Stripe price cleared)`);
+  }
+
+  private refuseALiveKeyHere(): void {
+    if (aLiveKeyIsRefusedHere(process.env.STRIPE_SECRET_KEY)) throw new BadRequestException(NO_LIVE_KEY_HERE);
+  }
+
+  /** The Stripe Price for one extra seat on a plan: per unit, a month; the subscription line's quantity is the number of extra seats. */
+  async getOrCreateExtraSeatPrice(plan: SubscriptionPlan): Promise<string> {
+    const row = await this.prisma.pricingPlan.findUnique({ where: { plan } });
+    if (!row) throw new NotFoundException(`There is no price set for the ${String(plan).toLowerCase()} plan yet, so choose another plan.`);
+    if (row.extraSeatStripePriceId) return row.extraSeatStripePriceId;
+    if (row.extraSeatCents === null || row.extraSeatCents === undefined) {
+      throw new BadRequestException(`${PLAN_LABELS[plan]} cannot add seats by itself. This plan is arranged by contacting us.`);
+    }
+    this.refuseALiveKeyHere();
+    const price = await this.stripe.stripe.prices.create({
+      unit_amount: row.extraSeatCents,
+      currency: 'usd',
+      recurring: { interval: 'month', usage_type: 'licensed' },
+      product_data: { name: `Groundwork extra seat on ${PLAN_LABELS[plan]}`, metadata: { plan, kind: EXTRA_SEAT_KIND } },
+      metadata: { plan, kind: EXTRA_SEAT_KIND },
+    });
+    await this.prisma.pricingPlan.update({ where: { plan }, data: { extraSeatStripePriceId: price.id } });
+    this.logger.log(`Created Stripe price ${price.id} for an extra seat on ${plan} (${row.extraSeatCents} cents)`);
+    return price.id;
+  }
+
+  /**
+   * The Stripe Price for WhatsApp per person on a plan: metered, a month, charged on the last count reported in the period
+   * (the number of people who used it, never more than the seats). Stripe API version 2024-12-18.acacia still takes usage
+   * records; when the version moves on, this becomes a Stripe meter.
+   */
+  async getOrCreateWhatsAppPersonPrice(plan: SubscriptionPlan): Promise<string> {
+    const row = await this.prisma.pricingPlan.findUnique({ where: { plan } });
+    if (!row) throw new NotFoundException(`There is no price set for the ${String(plan).toLowerCase()} plan yet, so choose another plan.`);
+    if (row.whatsappPersonStripePriceId) return row.whatsappPersonStripePriceId;
+    if (row.whatsappPersonCents === null || row.whatsappPersonCents === undefined) {
+      throw new BadRequestException(`WhatsApp is not sold by itself on ${PLAN_LABELS[plan]}. This plan is arranged by contacting us.`);
+    }
+    this.refuseALiveKeyHere();
+    const price = await this.stripe.stripe.prices.create({
+      unit_amount: row.whatsappPersonCents,
+      currency: 'usd',
+      recurring: { interval: 'month', usage_type: 'metered', aggregate_usage: 'last_during_period' } as any,
+      product_data: { name: `Groundwork WhatsApp per person on ${PLAN_LABELS[plan]}`, metadata: { plan, kind: WHATSAPP_PERSON_KIND } },
+      metadata: { plan, kind: WHATSAPP_PERSON_KIND },
+    });
+    await this.prisma.pricingPlan.update({ where: { plan }, data: { whatsappPersonStripePriceId: price.id } });
+    this.logger.log(`Created Stripe price ${price.id} for WhatsApp per person on ${plan} (${row.whatsappPersonCents} cents)`);
+    return price.id;
   }
 
   /** Admin update for the plan's monthly WhatsApp limit. Null means no limit. Not part of any Stripe price. */

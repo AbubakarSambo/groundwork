@@ -108,6 +108,20 @@ export class BillingController {
   }
 
   /**
+   * WHAT THE NEXT INVITATION ADDS TO THE BILL (fix list item 6). Every invite point reads this before it sends, so the person
+   * inviting sees "This adds a seat: +$5 a month" when it does. Anybody in the organisation who can invite reads it; a guest
+   * cannot invite and is refused. Only the price and whether it applies, never anything about the organisation's bill.
+   */
+  @Get('next-seat')
+  @ApiBearerAuth()
+  @Roles(Role.ADMIN, Role.LEAD, Role.MEMBER)
+  @ApiOperation({ summary: 'Whether the next invitation adds a paid seat, and the sentence that says so' })
+  async nextSeat(@CurrentUser('organizationId') organizationId: string) {
+    const n = await this.billing.theNextSeat(organizationId);
+    return { addsASeat: n.addsASeat, says: n.says };
+  }
+
+  /**
    * "REMIND THEM" (upgrade.txt, "Anyone else, once it has paused"). Anybody in the organisation whose check-in is
    * paused until the team subscribes; at most once a day for each person. A guest is from outside and is refused.
    */

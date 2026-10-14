@@ -160,7 +160,7 @@ export class AdminController {
   @ApiOperation({ summary: 'Update the monthly price (in cents) for a subscription plan' })
   async setPricing(
     @Param('plan') plan: string,
-    @Body() body: { amountCents?: number; memberCap?: number | null; whatsappAddOnCents?: number | null; whatsappMonthlyLimit?: number | null },
+    @Body() body: { amountCents?: number; memberCap?: number | null; whatsappAddOnCents?: number | null; whatsappMonthlyLimit?: number | null; extraSeatCents?: number | null; whatsappPersonCents?: number | null },
   ) {
     if (!Object.values(SubscriptionPlan).includes(plan as SubscriptionPlan)) {
       throw new BadRequestException('That plan does not exist, so choose one from the list.');
@@ -197,6 +197,21 @@ export class AdminController {
       }
       await this.pricing.setWhatsAppAddOnCents(plan as SubscriptionPlan, c);
     }
+    /*
+     * THE EXTRA SEAT AND WHATSAPP PER PERSON (fix list item 6): edited here like the plan price, so neither lives in code.
+     * A whole number of cents from 50 (Stripe refuses less) to $1,000; empty takes it off sale on this plan.
+     */
+    for (const [field, what, set] of [
+      ['extraSeatCents', 'An extra seat', (c: number | null) => this.pricing.setExtraSeatCents(plan as SubscriptionPlan, c)],
+      ['whatsappPersonCents', 'WhatsApp for each person', (c: number | null) => this.pricing.setWhatsAppPersonCents(plan as SubscriptionPlan, c)],
+    ] as const) {
+      const c = (body as any)?.[field];
+      if (c === undefined) continue;
+      if (c !== null && (!Number.isInteger(c) || c < MIN_PLAN_AMOUNT_CENTS || c > 100_000)) {
+        throw new BadRequestException(`${what} must be empty, or a whole number of cents between ${MIN_PLAN_AMOUNT_CENTS} and 100000.`);
+      }
+      await set(c);
+    }
     if (body?.whatsappMonthlyLimit !== undefined) {
       const l = body.whatsappMonthlyLimit;
       if (l !== null && (!Number.isInteger(l) || l < 0 || l > MAX_WHATSAPP_MONTHLY_LIMIT)) {
@@ -207,8 +222,8 @@ export class AdminController {
 
     /** Enterprise has no self-serve price, but it does have a cap, so it reaches this method. */
     if (body?.amountCents === undefined) {
-      if (body?.memberCap === undefined && body?.whatsappAddOnCents === undefined && body?.whatsappMonthlyLimit === undefined) {
-        throw new BadRequestException('Nothing to change. Send amountCents, memberCap, whatsappAddOnCents or whatsappMonthlyLimit.');
+      if (body?.memberCap === undefined && body?.whatsappAddOnCents === undefined && body?.whatsappMonthlyLimit === undefined && body?.extraSeatCents === undefined && body?.whatsappPersonCents === undefined) {
+        throw new BadRequestException('Nothing to change. Send amountCents, memberCap, extraSeatCents, whatsappPersonCents, whatsappAddOnCents or whatsappMonthlyLimit.');
       }
       return this.pricing.listPlans();
     }

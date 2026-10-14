@@ -4,7 +4,7 @@ import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
-import { PricingService, WHATSAPP_ADD_ON_KIND } from './pricing.service';
+import { PricingService, WHATSAPP_ADD_ON_KIND, WHATSAPP_PERSON_KIND } from './pricing.service';
 import { WhatsAppAddOnService, WHATSAPP_NOT_TURNED_ON } from './whatsapp-add-on.service';
 import { BillingController } from './billing.controller';
 import { BillingService } from './billing.service';
@@ -26,12 +26,12 @@ const NOW = new Date('2026-10-15T10:00:00Z');
 const SWITCHED_ON = '2026-09-01T00:00:00Z';
 
 const PLAN_ROWS = () => [
-  { plan: 'STARTER', amountCents: 2500, memberCap: 5, whatsappAddOnCents: 2000, whatsappMonthlyLimit: 500, whatsappAddOnStripePriceId: null as string | null },
-  { plan: 'SMALL_TEAM', amountCents: 9000, memberCap: 20, whatsappAddOnCents: 7200, whatsappMonthlyLimit: 2000, whatsappAddOnStripePriceId: null as string | null },
-  { plan: 'GROWTH', amountCents: 40000, memberCap: 100, whatsappAddOnCents: 32000, whatsappMonthlyLimit: 10000, whatsappAddOnStripePriceId: null as string | null },
-  { plan: 'BUSINESS', amountCents: 90000, memberCap: 250, whatsappAddOnCents: 72000, whatsappMonthlyLimit: 25000, whatsappAddOnStripePriceId: null as string | null },
-  { plan: 'SCALE', amountCents: 165000, memberCap: 500, whatsappAddOnCents: 132000, whatsappMonthlyLimit: 50000, whatsappAddOnStripePriceId: null as string | null },
-  { plan: 'ENTERPRISE', amountCents: null, memberCap: null, whatsappAddOnCents: null, whatsappMonthlyLimit: null, whatsappAddOnStripePriceId: null as string | null },
+  { plan: 'STARTER', amountCents: 2500, memberCap: 5, whatsappAddOnCents: 2000, whatsappMonthlyLimit: 500, whatsappAddOnStripePriceId: null as string | null, whatsappPersonCents: 400 as number | null, whatsappPersonStripePriceId: null as string | null },
+  { plan: 'SMALL_TEAM', amountCents: 9000, memberCap: 20, whatsappAddOnCents: 7200, whatsappMonthlyLimit: 2000, whatsappAddOnStripePriceId: null as string | null, whatsappPersonCents: 400 as number | null, whatsappPersonStripePriceId: null as string | null },
+  { plan: 'GROWTH', amountCents: 40000, memberCap: 100, whatsappAddOnCents: 32000, whatsappMonthlyLimit: 10000, whatsappAddOnStripePriceId: null as string | null, whatsappPersonCents: 400 as number | null, whatsappPersonStripePriceId: null as string | null },
+  { plan: 'BUSINESS', amountCents: 90000, memberCap: 250, whatsappAddOnCents: 72000, whatsappMonthlyLimit: 25000, whatsappAddOnStripePriceId: null as string | null, whatsappPersonCents: 400 as number | null, whatsappPersonStripePriceId: null as string | null },
+  { plan: 'SCALE', amountCents: 165000, memberCap: 500, whatsappAddOnCents: 132000, whatsappMonthlyLimit: 50000, whatsappAddOnStripePriceId: null as string | null, whatsappPersonCents: 400 as number | null, whatsappPersonStripePriceId: null as string | null },
+  { plan: 'ENTERPRISE', amountCents: null, memberCap: null, whatsappAddOnCents: null, whatsappMonthlyLimit: null, whatsappAddOnStripePriceId: null as string | null, whatsappPersonCents: null as number | null, whatsappPersonStripePriceId: null as string | null },
 ];
 
 const IN_ITS_TRIAL = {
@@ -86,7 +86,9 @@ function world(opts: { trial?: any; org?: any; sent?: number; stripeConfigured?:
         return { count: 0 };
       }),
     },
-    user: { findMany: jest.fn(async () => [{ email: 'grace@baridi.test', firstName: 'Grace' }]) },
+    user: { findMany: jest.fn(async () => [{ email: 'grace@baridi.test', firstName: 'Grace' }]), count: jest.fn(async () => 12) },
+    /* Fix list item 6: the people who used WhatsApp this month are read from the record of what was sent. */
+    whatsAppSend: { findMany: jest.fn(async () => [{ phone: '+254700000001' }, { phone: '254700000001' }, { phone: '+254700000002' }]) },
   };
   const stripeCalls: any[] = [];
   const stripe: any = {
@@ -98,6 +100,7 @@ function world(opts: { trial?: any; org?: any; sent?: number; stripeConfigured?:
         retrieve: jest.fn(async () => ({ price: { id: 'price_test_wa_SMALL_TEAM' } })),
         update: jest.fn(async (id: string, a: any) => { stripeCalls.push(['items.update', id, a]); return {}; }),
         del: jest.fn(async (id: string) => { stripeCalls.push(['items.del', id]); return {}; }),
+        createUsageRecord: jest.fn(async (id: string, a: any) => { stripeCalls.push(['usage', id, a]); return {}; }),
       },
     },
   };
@@ -212,7 +215,11 @@ describe('Baridi in its free trial', () => {
     expect(read.says).toEqual({
       freeMonth: null,
       onOrOff: 'WhatsApp is on for your organisation.',
-      price: 'WhatsApp costs $72 a month on your Small Team plan.',
+      /* Fix list item 6: $4 for each person who used it, the light prototype's words (s73). */
+      price: '$4 per person who uses it, per month, on any plan.',
+      whoIsCharged: 'Charged only for people who use it',
+      whoIsChargedMore: 'Anyone who checks in or gets messages on WhatsApp in a month. Never more than your number of people. Free during your free month.',
+      people: '2 people have used WhatsApp this month.',
       charge: 'Your free trial lasts 1 month. Nothing is charged for WhatsApp until it ends.',
       /* One date on the page: the sentence names no day, so it cannot disagree with the plan line (clean-install run, 6 October). */
       use: 'Your organisation has sent 0 of its 2,000 WhatsApp messages this month.',
@@ -243,9 +250,10 @@ describe('Baridi after its trial, paying for Small Team, without the add-on', ()
     const { addOn } = world();
     const read: any = await addOn.whatTheyRead('org-baridi', true, NOW);
     expect(read.on).toBe(false);
-    expect(read.price).toEqual({ amountCents: 7200, currency: 'USD' });
+    /* Fix list item 6: $4 a person who used it, not the old flat $72. */
+    expect(read.price).toEqual({ amountCents: 400, currency: 'USD', perPerson: true });
     expect(read.says.onOrOff).toBe('WhatsApp is off for your organisation, so check-ins stay in the app.');
-    expect(read.says.charge).toBe('If you turn WhatsApp on, it is added to your monthly bill as a second line.');
+    expect(read.says.charge).toBe('If you switch WhatsApp on, you pay only for people who use it, never more than your seats.');
     /* B-007: the page is about the organisation, so it says what the other readers of the page say, not "this check-in". */
     expect(read.says.held).toBe('Your organisation has not turned on WhatsApp, so Groundwork does not send you reminders or summaries on WhatsApp.');
   });
@@ -272,10 +280,42 @@ describe('Baridi after its trial, paying for Small Team, without the add-on', ()
   });
 });
 
-describe('Grace turns the add-on on, after the trial, on a paid plan', () => {
-  it('the add-on becomes a second monthly line on the Stripe subscription, at its own price, created once', async () => {
-    const { addOn, org, stripeCalls, plans } = world();
+describe('Grace turns WhatsApp on, after the trial, on a paid plan (fix list item 6: $4 for each person who used it)', () => {
+  it('WhatsApp becomes a metered line, told the number of people who used it this month, created once', async () => {
+    const { addOn, org, stripeCalls, plans, stripe } = world();
     await addOn.turn('org-baridi', true, NOW);
+    const read: any = await addOn.whatTheyRead('org-baridi', true, NOW);
+    expect(stripeCalls.map((c) => c[0])).toEqual(['prices.create', 'items.create', 'usage']);
+    expect(stripeCalls[0][1]).toMatchObject({ unit_amount: 400, currency: 'usd', recurring: { interval: 'month', usage_type: 'metered', aggregate_usage: 'last_during_period' }, metadata: { plan: 'SMALL_TEAM', kind: WHATSAPP_PERSON_KIND } });
+    expect(stripeCalls[1][1]).toMatchObject({ subscription: 'sub_test_baridi', price: 'price_test_wa_SMALL_TEAM' });
+    expect(stripeCalls[1][1].quantity).toBeUndefined();
+    /* Two numbers, one of them written two ways: two people. */
+    expect(stripeCalls[2][2]).toMatchObject({ quantity: 2, action: 'set' });
+    expect(plans.find((p) => p.plan === 'SMALL_TEAM')!.whatsappPersonStripePriceId).toBe('price_test_wa_SMALL_TEAM');
+    expect(org.whatsappPeopleItemId).toBe('si_test_wa');
+    expect(org.whatsappAddOnItemId).toBeNull();
+    expect(read.charged).toBe(true);
+    expect(read.says.charge).toBe('You pay only for people who use it, never more than your seats.');
+
+    /* Again: the price is cached and the line is there, so only the count is told again. */
+    stripeCalls.length = 0;
+    stripe.stripe.subscriptionItems.retrieve.mockImplementation(async () => ({ price: { id: 'price_test_wa_SMALL_TEAM' } }));
+    expect(await addOn.syncTheStripeLine('org-baridi', NOW)).toBe('unchanged');
+    expect(stripeCalls.map((c) => c[0])).toEqual(['usage']);
+  });
+
+  it('never more people than seats', async () => {
+    const { addOn, prisma, stripeCalls } = world({ org: { ...PAYING, whatsappAddOnOn: true } });
+    prisma.user.count.mockImplementation(async () => 1);
+    await addOn.syncTheStripeLine('org-baridi', NOW);
+    expect(stripeCalls.find((c) => c[0] === 'usage')![2]).toMatchObject({ quantity: 1 });
+  });
+});
+
+describe('an organisation that was paying the old flat WhatsApp line keeps exactly that (fix list item 6)', () => {
+  it('the flat line stays at its own price until something changes', async () => {
+    const { addOn, org, stripeCalls, plans } = world({ org: { ...PAYING, whatsappAddOnOn: true, whatsappFlatAddOnKept: true } });
+    await addOn.syncTheStripeLine('org-baridi', NOW);
     const read: any = await addOn.whatTheyRead('org-baridi', true, NOW);
     expect(stripeCalls.map((c) => c[0])).toEqual(['prices.create', 'items.create']);
     expect(stripeCalls[0][1]).toMatchObject({ unit_amount: 7200, currency: 'usd', recurring: { interval: 'month' }, metadata: { plan: 'SMALL_TEAM', kind: WHATSAPP_ADD_ON_KIND } });
@@ -296,6 +336,16 @@ describe('Grace turns the add-on on, after the trial, on a paid plan', () => {
     await addOn.turn('org-baridi', false, NOW);
     expect(stripeCalls).toEqual([['items.del', 'si_test_wa']]);
     expect(org.whatsappAddOnItemId).toBeNull();
+  });
+
+  it('switched off and on again, the flat price ends and WhatsApp is per person from then (fix list item 6)', async () => {
+    const { addOn, org, stripeCalls } = world({ org: { ...PAYING, whatsappAddOnOn: true, whatsappAddOnItemId: 'si_test_flat', whatsappFlatAddOnKept: true } });
+    await addOn.turn('org-baridi', false, NOW);
+    await addOn.turn('org-baridi', true, NOW);
+    expect(org.whatsappFlatAddOnKept).toBe(false);
+    expect(org.whatsappAddOnItemId).toBeNull();
+    expect(stripeCalls.map((c) => c[0])).toEqual(['items.del', 'prices.create', 'items.create', 'usage']);
+    expect(stripeCalls[1][1]).toMatchObject({ unit_amount: 400, metadata: { kind: WHATSAPP_PERSON_KIND } });
   });
 
   it('with no Stripe key, nothing reaches Stripe', async () => {

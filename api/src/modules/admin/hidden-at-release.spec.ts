@@ -155,7 +155,7 @@ describe('plan and billing\'s new parts', () => {
     (svc as any).standing = async () => ({
       /* An organisation that pays for Starter: a free one is never told a plan's price (release blocker, 5 October). */
       sending: true, heldBecause: null, addOnOn: false, plan: 'STARTER', addOnCents: 2000, switchOn: false, onTheFreePlan: false,
-      inAFreeRun: false, freeTrial: null, charged: false, limit: 100, sent: 3, month: '2026-10',
+      inAFreeRun: false, freeTrial: null, charged: false, limit: 100, sent: 3, month: '2026-10', personCents: 400, flatKept: false, peopleUsedIt: 0,
     });
     return svc.whatTheyRead('org1', isAdmin);
   }
@@ -167,7 +167,8 @@ describe('plan and billing\'s new parts', () => {
   it('shows an admin the WhatsApp part with the price, the use and the limit, whatever the release setting says', async () => {
     for (const setting of [false, true]) {
       const admin: any = await read(setting, true);
-      expect(admin.says.price).toContain('WhatsApp costs');
+      /* Changed 15 October (fix list item 6): WhatsApp is $4 for each person who used it, in the light prototype's words. */
+      expect(admin.says.price).toContain('$4 per person who uses it');
       expect(admin.says.use).toContain('3 of its 100 WhatsApp messages this month');
       expect(admin.says.atTheLimit).toContain('all 100 messages in a month');
       expect('on' in admin).toBe(true);

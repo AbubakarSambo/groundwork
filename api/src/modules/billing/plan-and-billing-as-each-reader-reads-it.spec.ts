@@ -29,7 +29,8 @@ const ANYBODY_SIGNED_IN = ['status', 'canCreateGround', 'whatsapp'];
 /* Before there is an account, or from Stripe itself (checked by Stripe's own signature). */
 const PUBLIC = ['onTheHouse', 'getPricing', 'webhook'];
 /* Anybody in the organisation, never a guest from outside: "Remind them" on a paused check-in (upgrade.txt). */
-const IN_THE_ORGANISATION = ['remindTheAdmins'];
+/* And "This adds a seat: +$5 a month" before an invitation (fix list item 6). */
+const IN_THE_ORGANISATION = ['remindTheAdmins', 'nextSeat'];
 
 function contextFor(handler: string, role: string) {
   return {

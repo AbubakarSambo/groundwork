@@ -16,7 +16,7 @@ const withoutComments = (t: string): string => t.replace(/\/\*[\s\S]*?\*\//g, ''
  * after it. Nothing here is charged; Stripe is not reached.
  */
 const NOW = new Date('2026-10-15T10:00:00Z');
-const PLANS = [{ plan: 'SMALL_TEAM', amountCents: 9000, memberCap: 20, whatsappAddOnCents: 7200, whatsappMonthlyLimit: 2000, whatsappAddOnStripePriceId: null }];
+const PLANS = [{ plan: 'SMALL_TEAM', amountCents: 9000, memberCap: 20, whatsappAddOnCents: 7200, whatsappMonthlyLimit: 2000, whatsappAddOnStripePriceId: null, whatsappPersonCents: 400 }];
 const PAYING = {
   id: 'org-baridi', createdAt: new Date('2026-09-01T09:00:00Z'), subscriptionPlan: 'SMALL_TEAM', subscriptionStatus: 'active', subscriptionStripeId: 'sub_test_baridi',
   freeUntil: new Date('2026-10-01T09:00:00Z'), freePlan: 'SMALL_TEAM', freeTrialStartedAt: new Date('2026-09-01T09:00:00Z'),
@@ -57,7 +57,7 @@ describe('every organisation has WhatsApp on for a free month', () => {
     expect(read.says.charge).toBe('Nothing is charged for WhatsApp until its free month ends on 13 November 2026.');
     expect(read.says.freeMonth).toBe('WhatsApp is free until 13 November 2026. After that it is paid as part of your subscription.');
 
-    /* The day after the month ends, it is charged as a second line. */
+    /* The day after the month ends, it is charged: $4 for each person who used it (fix list item 6). */
     const after = new Date('2026-11-14T10:00:00Z');
     expect((await addOn.standing('org-baridi', after)).charged).toBe(true);
   });

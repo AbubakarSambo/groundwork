@@ -4,9 +4,32 @@ import { Cron } from '@nestjs/schedule';
 import type Stripe from 'stripe';
 import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { StripeService } from './stripe.service';
-import { PricingService, PLAN_LABELS, DEFAULT_FREE_GROUND_LIMIT, freePlanApplies, WHATSAPP_ADD_ON_KIND } from './pricing.service';
+import { PricingService, PLAN_LABELS, DEFAULT_FREE_GROUND_LIMIT, freePlanApplies, WHATSAPP_ADD_ON_KIND, EXTRA_SEAT_KIND, WHATSAPP_PERSON_KIND } from './pricing.service';
+import { extraSeatsOn, thisAddsASeat, thisMonth, aCheaperPlan, seatsCost, dollarsOf } from './what-a-month-costs';
+import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
+
+function whenItWasForBilling(d: Date): string {
+  return whenItWas(d, 'full', 'UTC');
+}
+
+export interface WhatAMonthSays {
+  people: number;
+  plan: SubscriptionPlan | null;
+  included: string | null;
+  peopleSays: string;
+  lines: Array<{ says: string; amount: string }> | null;
+  total: { says: string; amount: string } | null;
+  free: string | null;
+  priceChanges: string;
+  cheaper: { plan: SubscriptionPlan; says: string; button: string } | null;
+  plansNote: string | null;
+  whatsappRate: string | null;
+  plans: Array<{ plan: SubscriptionPlan; name: string; price: string; includes: string; extraSeats: string | null; whatsapp: string | null; forYou: string | null; yours: boolean }>;
+  forHowMany: string;
+  numbers: { whatsappOn: boolean; whatsappUsedIt: number; whatsappFree: boolean; whatsappFlatCents: number | null };
+}
 import { WhatsAppAddOnService } from './whatsapp-add-on.service';
-import { claimTheSlot, theDay } from '../prisma/once-across-copies';
+import { claimTheSlot, theDay, onceAcrossCopies, theHour } from '../prisma/once-across-copies';
 
 /**
  * WHAT SOMEBODY READS WHEN THEY RUN OUT OF SEATS.
@@ -113,6 +136,120 @@ export class BillingService {
   /** The seat limit of somebody with no cover: the free plan's, or only the person who created it. */
   private async theUncoveredSeatLimit(org: { createdAt?: Date | null } | null | undefined): Promise<number> {
     return (await this.theFreePlanAppliesTo(org)) ? this.pricing.getFreeMemberLimit() : 1;
+  }
+
+  /**
+   * EXTRA SEATS (fix list item 6): whether this organisation may go past its plan's included seats, at the plan's
+   * extra-seat price. Yes for an organisation on a plan or in its free month, on a plan that sells extra seats, once the
+   * new pricing's switch is on (the free trial's, `pricing.freeTrial`, release step 13a). While it is off, the plan's seats
+   * are a limit, exactly as before. The free plan always keeps its limit. Null means no extra seats here.
+   */
+  private async extraSeatsFor(org: { subscriptionPlan: unknown; subscriptionStatus: string | null; freeUntil?: Date | null; freePlan?: unknown }): Promise<{ plan: SubscriptionPlan; cap: number; extraSeatCents: number } | null> {
+    const covered = whatCoversThem(org as any);
+    if (!covered.plan) return null;
+    const trial = typeof (this.pricing as any)?.getFreeTrial === 'function' ? await this.pricing.getFreeTrial().catch(() => null) : null;
+    if (!trial?.on) return null;
+    const row = await (this.prisma.pricingPlan as any)?.findUnique?.({ where: { plan: covered.plan }, select: { memberCap: true, extraSeatCents: true } }).catch(() => null);
+    if (!row || row.memberCap === null || row.memberCap === undefined || row.extraSeatCents === null || row.extraSeatCents === undefined) return null;
+    return { plan: covered.plan as SubscriptionPlan, cap: row.memberCap, extraSeatCents: row.extraSeatCents };
+  }
+
+  /**
+   * WHAT THE NEXT INVITATION DOES TO THE BILL, for every place somebody is invited (fix list item 6): "This adds a seat:
+   * +$5 a month" when the next person goes past the plan's included seats. Read by the screen before it sends, so every
+   * invite point says the same thing the bill does. Null `says` when it adds nothing to the bill.
+   */
+  async theNextSeat(organizationId: string): Promise<{ addsASeat: boolean; extraSeatCents: number | null; says: string | null; included: number | null; taken: number }> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { subscriptionPlan: true, subscriptionStatus: true, freeUntil: true, freePlan: true, createdAt: true },
+    });
+    const taken = await this.seatsTaken(organizationId);
+    if (!org) return { addsASeat: false, extraSeatCents: null, says: null, included: null, taken };
+    const extra = await this.extraSeatsFor(org);
+    if (!extra) return { addsASeat: false, extraSeatCents: null, says: null, included: await this.seatsIncludedFor(organizationId), taken };
+    const adds = taken >= extra.cap;
+    return { addsASeat: adds, extraSeatCents: extra.extraSeatCents, says: adds ? thisAddsASeat(extra.extraSeatCents) : null, included: extra.cap, taken };
+  }
+
+  /**
+   * THE EXTRA SEATS' STRIPE LINE FOLLOWS THE PEOPLE. A second line on the subscription, its quantity the number of seats past
+   * the plan's included ones; removed at zero. Only for a paying organisation, while the new pricing's switch is on. An
+   * organisation that keeps the old flat WhatsApp line moves to WhatsApp per person the moment it adds a seat.
+   */
+  async syncTheSeatLine(organizationId: string): Promise<'added' | 'changed' | 'removed' | 'unchanged' | 'no key'> {
+    if (!this.stripe.isConfigured) return 'no key';
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { subscriptionPlan: true, subscriptionStatus: true, subscriptionStripeId: true, freeUntil: true, freePlan: true, extraSeatsItemId: true, whatsappFlatAddOnKept: true },
+    });
+    if (!org) return 'unchanged';
+    const paid = isSubscribed(org as any) && !!org.subscriptionStripeId;
+    const extra = paid ? await this.extraSeatsFor(org) : null;
+    const seats = extra ? extraSeatsOn({ memberCap: extra.cap }, await this.seatsTaken(organizationId)) : 0;
+    if (extra && seats > 0) {
+      const priceId = await this.pricing.getOrCreateExtraSeatPrice(extra.plan);
+      if (org.whatsappFlatAddOnKept) {
+        await this.prisma.organization.update({ where: { id: organizationId }, data: { whatsappFlatAddOnKept: false } });
+        await this.whatsappAddOn?.syncTheStripeLine(organizationId).catch((err: any) => this.logger.error(`WhatsApp line for ${organizationId} did not move to per person: ${err?.message}`));
+      }
+      /* A line made at checkout is on the subscription already; it is adopted rather than added twice. */
+      let itemId = org.extraSeatsItemId;
+      if (!itemId) {
+        const sub = await this.stripe.stripe.subscriptions.retrieve(org.subscriptionStripeId as string).catch(() => null);
+        itemId = (sub?.items?.data ?? []).find((i: any) => i.price?.metadata?.kind === EXTRA_SEAT_KIND)?.id ?? null;
+        if (itemId) await this.prisma.organization.update({ where: { id: organizationId }, data: { extraSeatsItemId: itemId } });
+      }
+      if (itemId) {
+        const item = await this.stripe.stripe.subscriptionItems.retrieve(itemId).catch(() => null);
+        if (item) {
+          if (item.price?.id === priceId && item.quantity === seats) return 'unchanged';
+          await this.stripe.stripe.subscriptionItems.update(itemId, { price: priceId, quantity: seats, proration_behavior: 'create_prorations' });
+          this.logger.log(`Extra seats for ${organizationId} set to ${seats}.`);
+          return 'changed';
+        }
+      }
+      const item = await this.stripe.stripe.subscriptionItems.create(
+        { subscription: org.subscriptionStripeId as string, price: priceId, quantity: seats, proration_behavior: 'create_prorations', metadata: { organizationId, kind: EXTRA_SEAT_KIND } },
+        { idempotencyKey: `seats_${organizationId}_${org.subscriptionStripeId}_${priceId}_${seats}` },
+      );
+      await this.prisma.organization.update({ where: { id: organizationId }, data: { extraSeatsItemId: item.id } });
+      this.logger.log(`Extra seats line added to ${organizationId}'s subscription, ${seats}.`);
+      return 'added';
+    }
+    if (org.extraSeatsItemId) {
+      if (org.subscriptionStripeId) {
+        await this.stripe.stripe.subscriptionItems.del(org.extraSeatsItemId, { proration_behavior: 'create_prorations' }).catch((err: any) => {
+          if (err?.code !== 'resource_missing') throw err;
+        });
+      }
+      await this.prisma.organization.update({ where: { id: organizationId }, data: { extraSeatsItemId: null } });
+      this.logger.log(`Extra seats line removed from ${organizationId}'s subscription.`);
+      return 'removed';
+    }
+    return 'unchanged';
+  }
+
+  /** Somebody may have just taken a seat: the line is brought up to date half a minute later, once their account exists. Never throws. */
+  seatsMayHaveChanged(organizationId: string): void {
+    const t = setTimeout(() => {
+      this.syncTheSeatLine(organizationId).catch((err: any) => this.logger.error(`Extra seats line for ${organizationId} could not be brought up to date: ${err?.message}`));
+    }, 30_000);
+    (t as any)?.unref?.();
+  }
+
+  /** EVERY HOUR, every paying organisation's seat line, so a seat added or freed anywhere reaches the bill. Once across every copy. */
+  @Cron('0 15 * * * *', { timeZone: 'UTC' })
+  async hourlySeatLines(): Promise<void> {
+    await onceAcrossCopies(this.prisma, 'extra-seat-lines', theHour(), async () => {
+      const orgs = await this.prisma.organization.findMany({
+        where: { OR: [{ subscriptionStripeId: { not: null }, subscriptionStatus: 'active' }, { extraSeatsItemId: { not: null } }] },
+        select: { id: true },
+      });
+      for (const o of orgs) {
+        await this.syncTheSeatLine(o.id).catch((err: any) => this.logger.error(`Extra seats line for ${o.id} could not be brought up to date: ${err?.message}`));
+      }
+    });
   }
 
   /**
@@ -342,6 +479,9 @@ export class BillingService {
   async whoIsOverThePlan(organizationId: string): Promise<{ over: number; held: Set<string>; saying: string | null }> {
     const cap = await this.seatsIncludedFor(organizationId);
     if (cap === null || cap === undefined) return { over: 0, held: new Set(), saying: null };
+    /* Fix list item 6: on a plan that can add seats, a person past the included seats is an extra seat, not somebody waiting. */
+    const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { subscriptionPlan: true, subscriptionStatus: true, freeUntil: true, freePlan: true } }).catch(() => null);
+    if (org && (await this.extraSeatsFor(org))) return { over: 0, held: new Set(), saying: null };
     const taken = await this.seatsTaken(organizationId);
     if (!howManyAreOverThePlan(taken, cap)) return { over: 0, held: new Set(), saying: null };
     /* Unreadable moment means nobody is held, never a guess: existing people are never held. */
@@ -358,6 +498,8 @@ export class BillingService {
       },
     });
     if (!org) return null;
+    /* Fix list item 6: a plan that can add seats has no limit; each person past it is an extra seat. */
+    if (await this.extraSeatsFor(org)) return null;
     /* Whichever covers them today decides the cap: their own plan, the one we gave them, or free. */
     const covered = whatCoversThem(org);
     const cap = covered.plan
@@ -388,7 +530,7 @@ export class BillingService {
     return cap ?? null;
   }
 
-  async canInviteMember(organizationId: string): Promise<{ allowed: boolean; reason?: string }> {
+  async canInviteMember(organizationId: string): Promise<{ allowed: boolean; reason?: string; addsASeat?: boolean; says?: string }> {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
       select: {
@@ -426,6 +568,17 @@ export class BillingService {
 
     const cap = await this.pricing.memberCapFor((covered.plan ?? org.subscriptionPlan) as any);
     if (cap === null) return { allowed: true };
+    /*
+     * EXTRA SEATS (fix list item 6): past the included seats, the person is an extra seat at the plan's price, not refused.
+     * The screen has already said "This adds a seat: +$5 a month" (`theNextSeat`); the Stripe line follows the people.
+     */
+    if (count >= cap) {
+      const extra = await this.extraSeatsFor(org);
+      if (extra) {
+        this.seatsMayHaveChanged(organizationId);
+        return { allowed: true, addsASeat: true, says: thisAddsASeat(extra.extraSeatCents) };
+      }
+    }
     if (count >= cap) {
       /**
        * THE WARNING FIRES WHERE THE CAP IS ACTUALLY HIT, not on a schedule.
@@ -616,6 +769,18 @@ export class BillingService {
     // in code: this looks up (or lazily creates) the matching Stripe Price
     // rather than building one ad hoc on every checkout.
     const priceId = await this.pricing.getOrCreateStripePrice(plan);
+    /*
+     * EXTRA SEATS AT CHECKOUT (fix list item 6): a team with more people than the plan includes sees the whole price on
+     * Stripe's page, the plan and its extra seats as a quantity, rather than a second charge after it. Only once the new
+     * pricing's switch is on; otherwise the plan's seats are a limit, as before.
+     */
+    const lineItems: Array<{ price: string; quantity: number }> = [{ price: priceId, quantity: 1 }];
+    const trialSwitch = typeof (this.pricing as any)?.getFreeTrial === 'function' ? await this.pricing.getFreeTrial().catch(() => null) : null;
+    if (trialSwitch?.on) {
+      const row = await (this.prisma.pricingPlan as any)?.findUnique?.({ where: { plan }, select: { memberCap: true, extraSeatCents: true } }).catch(() => null);
+      const extra = row && row.extraSeatCents != null ? extraSeatsOn(row, await this.seatsTaken(organizationId)) : 0;
+      if (extra > 0) lineItems.push({ price: await this.pricing.getOrCreateExtraSeatPrice(plan), quantity: extra });
+    }
     const base = this.config.get<string>('stripe.callbackUrl') || 'http://localhost:5173/billing/callback';
     const session = await this.stripe.stripe.checkout.sessions.create(
       {
@@ -629,7 +794,7 @@ export class BillingService {
        * billing page's number reads as "what we are charged" to anyone who does not know this;
        * confirmed as the intended model in the fix plan (B12, P3-022) pending the owner's word.
        */
-      line_items: [{ price: priceId, quantity: 1 }],
+      line_items: lineItems,
       // subscription_data.metadata (not just the session-level metadata below)
       // so the resulting Subscription object itself carries organizationId/plan -
       // customer.subscription.updated/deleted webhooks fire on the subscription,
@@ -641,7 +806,7 @@ export class BillingService {
       },
       /* Two tabs, one payment. Stripe replays the same session for the same key within a day, so a
          second press cannot create a second subscription that overwrites the first and orphans it. */
-      { idempotencyKey: `sub_${organizationId}_${plan}` },
+      { idempotencyKey: `sub_${organizationId}_${plan}_${lineItems.map((l) => l.quantity).join('-')}` },
     );
 
     return { checkoutUrl: session.url! };
@@ -670,7 +835,8 @@ export class BillingService {
     const sub = await this.stripe.stripe.subscriptions.retrieve(org.subscriptionStripeId);
     /* The plan's own line, never the WhatsApp add-on's, which is a second line on the same subscription. */
     const itemId = sub.items.data.find(
-      (i: any) => i.id !== org.whatsappAddOnItemId && i.price?.metadata?.kind !== WHATSAPP_ADD_ON_KIND,
+      (i: any) => i.id !== org.whatsappAddOnItemId && i.id !== (org as any).extraSeatsItemId && i.id !== (org as any).whatsappPeopleItemId
+        && ![WHATSAPP_ADD_ON_KIND, EXTRA_SEAT_KIND, WHATSAPP_PERSON_KIND].includes(i.price?.metadata?.kind),
     )?.id;
     if (!itemId) throw new NotFoundException('Subscription has no billable item.');
 
@@ -683,10 +849,13 @@ export class BillingService {
     const periodEnd = updated.current_period_end ? new Date(updated.current_period_end * 1000) : null;
     await this.prisma.organization.update({
       where: { id: organizationId },
-      data: { subscriptionPlan: newPlan, subscriptionPeriodEnd: periodEnd },
+      /* Fix list item 6: a change of plan ends the old flat WhatsApp price; WhatsApp is per person from now. */
+      data: { subscriptionPlan: newPlan, subscriptionPeriodEnd: periodEnd, whatsappFlatAddOnKept: false },
     });
 
-    /* The WhatsApp add-on's line moves to the new plan's add-on price. */
+    /* The extra seats follow the new plan's included seats and price. */
+    await this.syncTheSeatLine(organizationId).catch((err: any) => this.logger.error(`Extra seats line for ${organizationId} did not follow the plan change: ${err?.message}`));
+    /* The WhatsApp line moves to the new plan's price per person. */
     await this.whatsappAddOn?.syncTheStripeLine(organizationId).catch((err: any) => this.logger.error(`WhatsApp add-on line for ${organizationId} did not follow the plan change: ${err?.message}`));
     await this.tellThemBillingChanged(organizationId, `Your plan changed to ${PLAN_LABELS[newPlan]}.`).catch(() => undefined);
     this.logger.log(`Org ${organizationId} subscription changed to plan ${newPlan}`);
@@ -905,6 +1074,93 @@ export class BillingService {
   }
 
   /**
+   * PLAN AND BILLING'S MONTH (fix list item 6; the light prototype's s73, word for word). Every sentence is made here, from
+   * the plan rows and the record, so the screen draws them as they come.
+   */
+  private async whatAMonthSays(
+    organizationId: string,
+    people: number,
+    covers: { covers: string; plan: unknown; until: Date | null },
+    orgName: string | null | undefined,
+  ): Promise<WhatAMonthSays> {
+    const plans = await this.pricing.plansPrices();
+    const selling = plans.filter((p) => p.amountCents !== null);
+    const wa = this.whatsappAddOn ? await this.whatsappAddOn.standing(organizationId).catch(() => null) : null;
+    const plan = (covers.plan as SubscriptionPlan | null) ?? null;
+    const row = plan ? plans.find((p) => p.plan === plan) : undefined;
+    const name = orgName?.trim() || 'your organisation';
+
+    const whatsappOn = !!wa && (wa.addOnOn || wa.inTheFreeWhatsAppMonth);
+    const usedIt = wa?.peopleUsedIt ?? 0;
+    const free = whatsappOn && !wa?.charged;
+    const month = row ? thisMonth(row, people, { on: whatsappOn, usedIt, free, flatCents: wa?.flatKept ? wa.addOnCents : null }) : null;
+
+    let lines: Array<{ says: string; amount: string }> | null = null;
+    let total: { says: string; amount: string } | null = null;
+    let included: string | null = null;
+    if (month && row) {
+      const label = PLAN_LABELS[month.plan];
+      included = month.included === null
+        ? label
+        : `${label}, ${month.included} seats included${month.extraSeats ? `, plus ${month.extraSeats} extra at +${dollarsOf(month.extraSeatCents)} each` : ''}`;
+      lines = [{ says: label, amount: dollarsOf(month.planCents) }];
+      if (month.extraSeats) {
+        lines.push({ says: `${month.extraSeats} extra ${month.extraSeats === 1 ? 'seat' : 'seats'} × ${dollarsOf(month.extraSeatCents)}`, amount: dollarsOf(month.extraSeatsCents) });
+      }
+      const who = `${month.whatsappPeople} ${month.whatsappPeople === 1 ? 'person' : 'people'} used it`;
+      const waSays = !whatsappOn
+        ? 'WhatsApp: switched off'
+        : month.whatsappFlatCents !== null
+          ? 'WhatsApp, at the price you have paid until now'
+          : free
+            ? (wa?.inTheFreeWhatsAppMonth || wa?.inAFreeRun || covers.covers === 'on the house'
+              ? `WhatsApp: ${who}, free during your free month`
+              : `WhatsApp: ${who}, not charged at the moment`)
+            : `WhatsApp: ${who} × ${dollarsOf(month.whatsappPersonCents)}`;
+      lines.push({ says: waSays, amount: dollarsOf(month.whatsappCents) });
+      total = { says: 'This month', amount: dollarsOf(covers.covers === 'on the house' ? 0 : month.totalCents) };
+    }
+
+    const cheaper = plan && covers.covers === 'paid' ? aCheaperPlan(selling, plan, people) : null;
+    const personCents = selling.find((p) => p.whatsappPersonCents !== null)?.whatsappPersonCents ?? null;
+    const seatCents = selling.find((p) => p.extraSeatCents !== null)?.extraSeatCents ?? null;
+    return {
+      people,
+      plan,
+      included,
+      peopleSays: `Everyone with a Groundwork account at ${name}. Your plan includes a set number of seats; each extra seat is +${dollarsOf(seatCents ?? 0)} a month. You see the price before an invitation goes.`,
+      lines,
+      total,
+      free: covers.covers === 'on the house' && covers.until ? `Nothing is charged until your free month ends on ${whenItWasForBilling(covers.until)}.` : null,
+      priceChanges: 'Your price only changes when you add people, switch WhatsApp on, or move plan.',
+      cheaper: cheaper
+        ? {
+          plan: cheaper.plan,
+          says: `Cheaper for ${people} people: ${PLAN_LABELS[cheaper.plan]}${cheaper.extraSeats ? ` with ${cheaper.extraSeats} extra ${cheaper.extraSeats === 1 ? 'seat' : 'seats'}` : ''}, ${dollarsOf(cheaper.cents)} a month instead of ${dollarsOf(cheaper.insteadOf)}.`,
+          button: `Switch to ${PLAN_LABELS[cheaper.plan]}`,
+        }
+        : null,
+      plansNote: seatCents !== null ? `Any plan: +${dollarsOf(seatCents)} per extra seat` : null,
+      whatsappRate: personCents !== null ? `${dollarsOf(personCents)} per person who uses it, per month, on any plan` : null,
+      plans: selling.map((p) => {
+        const c = seatsCost(p, people);
+        return {
+          plan: p.plan,
+          name: PLAN_LABELS[p.plan],
+          price: `${dollarsOf(p.amountCents as number)}/mo`,
+          includes: p.memberCap === null ? 'Unlimited people' : `${p.memberCap} people`,
+          extraSeats: p.extraSeatCents !== null ? `+${dollarsOf(p.extraSeatCents)} each` : null,
+          whatsapp: p.whatsappPersonCents !== null ? `+${dollarsOf(p.whatsappPersonCents)} a person` : null,
+          forYou: c === null ? null : dollarsOf(c),
+          yours: covers.covers === 'paid' && p.plan === plan,
+        };
+      }),
+      forHowMany: `For ${people}`,
+      numbers: { whatsappOn, whatsappUsedIt: usedIt, whatsappFree: free, whatsappFlatCents: wa?.flatKept ? wa.addOnCents ?? null : null },
+    };
+  }
+
+  /**
    * Billing status: active grounds with session balances and saved card details.
    */
   async getStatus(organizationId: string, includeUsage = true): Promise<{
@@ -954,6 +1210,8 @@ export class BillingService {
      * Null when nobody was asked.
      */
     startedWith?: { said: 'fewer' | 'more'; line: number; says: string } | null;
+    /** Admin only (fix list item 6): this month, line by line, each plan's cost for this many people, and a cheaper plan when there is one. */
+    month?: WhatAMonthSays | null;
   }> {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
@@ -1087,6 +1345,7 @@ export class BillingService {
         ? (invoices ?? []).map((i: any) => ({ paidOn: i.periodStart, amountCents: i.amountCents, currency: i.currency }))
         : undefined,
       startedWith: includeUsage ? theSizeItStartedWith(org as any) : undefined,
+      month: includeUsage ? await this.whatAMonthSays(organizationId, peopleCount, covers, org.name).catch((err: any) => { this.logger.warn(`Could not work out this month for ${organizationId}: ${err?.message}`); return null; }) : undefined,
     };
   }
 
@@ -1302,6 +1561,7 @@ export class BillingService {
             this.logger.log(`Org subscription activated: org ${orgId} plan ${plan}`);
             /* An organisation that turned WhatsApp on gets its add-on line now, if its trial is over. */
             await this.whatsappAddOn?.syncTheStripeLine(orgId).catch((err: any) => this.logger.error(`WhatsApp add-on line for ${orgId} was not added after checkout: ${err?.message}`));
+            await this.syncTheSeatLine(orgId).catch((err: any) => this.logger.error(`Extra seats line for ${orgId} was not brought up to date after checkout: ${err?.message}`));
           }
           break;
         }
@@ -1361,7 +1621,7 @@ export class BillingService {
           await this.prisma.organization.update({
             where: { id: orgId },
             /* The add-on's line ended with the subscription it was on. */
-            data: { subscriptionPlan: null, subscriptionStatus: 'cancelled' satisfies SubscriptionStatus, subscriptionStripeId: null, subscriptionPeriodEnd: null, subscriptionEndsAt: null, whatsappAddOnItemId: null },
+            data: { subscriptionPlan: null, subscriptionStatus: 'cancelled' satisfies SubscriptionStatus, subscriptionStripeId: null, subscriptionPeriodEnd: null, subscriptionEndsAt: null, whatsappAddOnItemId: null, extraSeatsItemId: null, whatsappPeopleItemId: null, whatsappFlatAddOnKept: false },
           });
           if (orgData?.email && orgData.subscriptionPlan) {
             await this.email.sendSubscriptionCancelled(orgData.email, orgData.subscriptionPlan).catch(() => undefined);
