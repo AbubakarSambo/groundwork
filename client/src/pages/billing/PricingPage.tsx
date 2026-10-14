@@ -72,8 +72,17 @@ export function PricingPage() {
 
   /** No fallback: an absent seat count is honest, a stale one is the bug being removed. */
   function capLabel(plan: SubscriptionPlan): string {
-    return formatMemberCap(livePricing?.plans?.find(p => p.plan === plan)?.memberCap)
+    const cap = livePricing?.plans?.find(p => p.plan === plan)?.memberCap
+    /* "5 seats included" (fix list item 6, the light prototype's s74), once a plan can add seats. */
+    if (cap != null && seatCents != null) return `${cap.toLocaleString('en-US')} seats included`
+    return formatMemberCap(cap)
   }
+  /* The extra seat and WhatsApp per person, from the plan rows (Admin, System, Pricing). Said only when served. */
+  /* Only once the new pricing is switched on, with the free trial (release step 13a); until then the plans are as before. */
+  const newPricing = !!livePricing?.trial?.on
+  const seatCents = newPricing ? livePricing?.plans?.find(p => p.extraSeatCents != null)?.extraSeatCents ?? null : null
+  const personCents = newPricing ? livePricing?.plans?.find(p => p.whatsappPersonCents != null)?.whatsappPersonCents ?? null : null
+  const oneMonth = livePricing?.trial?.months === 1
 
   const subscribeMut = useMutation({
     mutationFn: (plan: SubscriptionPlan) => billingApi.createSubscription(plan),
@@ -141,7 +150,11 @@ export function PricingPage() {
               <div style={{ flex: 1, minWidth: 220 }}>
                 <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-navy)', margin: '0 0 4px' }}>{trialLength} free</h2>
                 <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 10 }}>{`Teams of fewer than ${livePricing.trial.teamsUnder} people`}</div>
-                <p style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, margin: 0 }}>{trialSentence} {`After ${trialLength}, subscribe to keep going.`}</p>
+                <p style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, margin: 0 }}>
+                  {oneMonth
+                    ? `Everything on every plan, WhatsApp included, free for your first month. No card required. Unlimited check-ins, sessions and reports. After your free month, subscribe to keep going. Teams of ${livePricing.trial.teamsUnder} or more start on a plan.`
+                    : `${trialSentence} After ${trialLength}, subscribe to keep going.`}
+                </p>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--gw-navy)' }}>{`$0 for ${trialLength}`}</div>
@@ -151,7 +164,7 @@ export function PricingPage() {
                     onClick={() => navigate('/auth?next=/pricing')}
                     style={{ marginTop: 12, fontSize: 13, fontWeight: 600, background: 'var(--gw-navy)', color: '#fff', border: 'none', borderRadius: 9, padding: '10px 16px', cursor: 'pointer' }}
                   >
-                    {`Start your free ${trialLength}`}
+                    {oneMonth ? 'Start your free month' : `Start your free ${trialLength}`}
                   </button>
                 )}
               </div>
@@ -217,7 +230,9 @@ export function PricingPage() {
           Subscribe as your team grows
         </h2>
         <p style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 28, lineHeight: 1.6 }}>
-          Every person with a Groundwork account in your organisation counts toward your plan. One flat monthly rate, unlimited everything.
+          {seatCents != null
+            ? `Every person with a Groundwork account counts as a seat. Each plan includes a number of seats; add more any time for +${formatDollars(seatCents)} a seat a month. Unlimited check-ins, sessions and reports.`
+            : 'Every person with a Groundwork account in your organisation counts toward your plan. One flat monthly rate, unlimited everything.'}
         </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 48 }}>
@@ -225,7 +240,11 @@ export function PricingPage() {
             <div key={plan} style={{ background: 'var(--gw-card)', border: '1.5px solid var(--gw-border)', borderRadius: 14, padding: '24px 20px', display: 'flex', flexDirection: 'column' }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>{PLAN_LABELS[plan]}</div>
               <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-navy)', marginBottom: 4 }}>{priceLabel(plan)}</div>
-              <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 12, minHeight: 15 }}>{capLabel(plan)}</div>
+              <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 12, minHeight: 15 }}>
+                {capLabel(plan)}
+                {seatCents != null && <><br /><b>{`+${formatDollars(seatCents)} per extra seat`}</b></>}
+                {personCents != null && <><br />{`WhatsApp: +${formatDollars(personCents)} a month per person who uses it`}</>}
+              </div>
               <p style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 16, flexGrow: 1 }}>
                 {PLAN_DESCRIPTIONS[plan]}
               </p>
@@ -239,6 +258,16 @@ export function PricingPage() {
             </div>
           ))}
         </div>
+
+        {/* WhatsApp, explained once (fix list item 6, the light prototype's s74, word for word). */}
+        {personCents != null && (
+          <div style={{ background: 'var(--gw-card)', border: '1.5px solid var(--gw-border)', borderRadius: 14, padding: '20px 24px', marginBottom: 32 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>WhatsApp check-ins, on any plan</div>
+            <p style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, margin: 0 }}>
+              {`Your team can check in on WhatsApp instead of the app. You pay only for people who use it: ${formatDollars(personCents)} a person a month, on any plan, never more than your seats.${trialSentence ? ' It’s included in your free month.' : ''}`}
+            </p>
+          </div>
+        )}
 
         {/* Enterprise: the prototype's in-product plans page paints this panel with its --chat
             cream (docs/prototype/source/s16.js), which is our --gw-bg (#F7F1E5). #FAF5EA (--band) is

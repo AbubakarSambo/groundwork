@@ -166,7 +166,8 @@ export function TodayPage() {
           />
 
           {/* The free trial, one line, for an admin while it runs (Hafsah, 12 October). The server decides who reads it. */}
-          {data?.freeTrial && <Note>{data.freeTrial}</Note>}
+          {/* With the way to Plan and billing beside it (fix list item 6). Only an admin is served the line. */}
+          {data?.freeTrial && <Note>{data.freeTrial}{' '}<Link to="/settings/billing">Plan and billing</Link></Note>}
 
           {/* Appeals to decide (C3, U.13): an admin's only. The server refuses anybody else. */}
           {user?.role === 'ADMIN' && <AppealsToDecide />}

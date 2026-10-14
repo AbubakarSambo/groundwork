@@ -148,7 +148,7 @@ describe('the switch is off (how it ships): nothing about WhatsApp shows, even t
   it('the section is absent', async () => {
     renderIt()
     await waitFor(() => expect(text()).toContain('Growth, $400 a month.'))
-    expect(screen.queryByRole('heading', { name: 'WhatsApp' })).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'WhatsApp check-ins' })).toBeNull()
     expect(text()).not.toMatch(/WhatsApp/)
   })
 })
@@ -158,7 +158,7 @@ describe('Grace, an admin, once the switch is on', () => {
 
   it('reads the price, the charge and this month’s use exactly as served', async () => {
     renderIt()
-    const section = await screen.findByRole('heading', { name: 'WhatsApp' })
+    const section = await screen.findByRole('heading', { name: 'WhatsApp check-ins' })
     const region = section.closest('section') ?? section.parentElement!
     expect(region.textContent).toContain('WhatsApp is on for your organisation.')
     expect(region.textContent).toContain('WhatsApp costs $720 a month on your Growth plan.')
@@ -171,7 +171,7 @@ describe('Grace, an admin, once the switch is on', () => {
   it('turning the switch sends PATCH /billing/whatsapp with the opposite state', async () => {
     m.setWhatsApp.mockResolvedValue({ ...WHATSAPP_ON, on: false, says: { ...WHATSAPP_ON.says, onOrOff: 'WhatsApp is off for your organisation, so check-ins stay in the app.' } })
     renderIt()
-    await screen.findByRole('heading', { name: 'WhatsApp' })
+    await screen.findByRole('heading', { name: 'WhatsApp check-ins' })
     fireEvent.click(screen.getByRole('switch', { name: 'WhatsApp is on for your organisation.' }))
     await waitFor(() => expect(m.setWhatsApp).toHaveBeenCalledWith(false))
   })
@@ -179,7 +179,7 @@ describe('Grace, an admin, once the switch is on', () => {
   it('at the limit, "Reached" replaces "At the limit", in the served words', async () => {
     m.whatsapp = WHATSAPP_AT_LIMIT
     renderIt()
-    const section = await screen.findByRole('heading', { name: 'WhatsApp' })
+    const section = await screen.findByRole('heading', { name: 'WhatsApp check-ins' })
     const region = section.closest('section') ?? section.parentElement!
     expect(region.textContent).toContain('Your organisation has used all 2,000 of its WhatsApp messages for October. Nothing more is sent by WhatsApp until 1 November 2026. Check-ins carry on in the app, so nobody misses one.')
     expect(region.textContent).not.toContain('If your organisation sends all 2,000 messages in a month')
@@ -191,7 +191,7 @@ describe('the add-on itself is off, though the release switch is on (known issue
 
   it('shows the price and the switch, but hides the allowance that means nothing while it is off', async () => {
     renderIt()
-    const section = await screen.findByRole('heading', { name: 'WhatsApp' })
+    const section = await screen.findByRole('heading', { name: 'WhatsApp check-ins' })
     const region = section.closest('section') ?? section.parentElement!
     expect(region.textContent).toContain('WhatsApp is off for your organisation, so check-ins stay in the app.')
     expect(region.textContent).toContain('WhatsApp costs $720 a month on your Growth plan.')
@@ -203,7 +203,7 @@ describe('the add-on itself is off, though the release switch is on (known issue
   it('turning it on shows the allowance again, exactly as served', async () => {
     m.setWhatsApp.mockResolvedValue(WHATSAPP_ON)
     renderIt()
-    await screen.findByRole('heading', { name: 'WhatsApp' })
+    await screen.findByRole('heading', { name: 'WhatsApp check-ins' })
     fireEvent.click(screen.getByRole('switch', { name: 'WhatsApp is off for your organisation, so check-ins stay in the app.' }))
     await waitFor(() => expect(m.setWhatsApp).toHaveBeenCalledWith(true))
     expect(await screen.findByText('Your organisation has sent 412 of its 2,000 WhatsApp messages this month.')).toBeTruthy()
@@ -216,7 +216,7 @@ describe('the platform switch is off (U.6, screen fault 2): nothing about WhatsA
   it('Kilima, an admin, reads nothing about WhatsApp at all', async () => {
     renderIt()
     await waitFor(() => expect(text()).toContain('Growth, $400 a month.'))
-    expect(screen.queryByRole('heading', { name: 'WhatsApp' })).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'WhatsApp check-ins' })).toBeNull()
     expect(text()).not.toMatch(/WhatsApp/)
   })
 
@@ -235,14 +235,15 @@ describe('somebody who is not an admin', () => {
   it('reads only that an admin can open this, nothing about WhatsApp', async () => {
     renderIt()
     await waitFor(() => expect(screen.getByText('Only an admin can open Plan and billing.')).toBeTruthy())
-    expect(screen.queryByRole('heading', { name: 'WhatsApp' })).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'WhatsApp check-ins' })).toBeNull()
     expect(text()).not.toMatch(/WhatsApp/)
   })
 })
 
 describe('no price, limit or number of months is written into the screen', () => {
   const PAGE = readFileSync(join(__dirname, 'BillingPage.tsx'), 'utf8')
-  const start = PAGE.indexOf('heading="WhatsApp"')
+  /* Renamed 15 October (fix list item 6): "WhatsApp check-ins", the light prototype's heading (s73). */
+  const start = PAGE.indexOf('heading="WhatsApp check-ins"')
   const end = PAGE.indexOf('</Section>', start) + '</Section>'.length
   const section = PAGE.slice(PAGE.lastIndexOf('{isWhatsAppBillingAdmin', start), end)
 

@@ -76,7 +76,7 @@ export interface WhatNeedsYou {
   /** One sentence under the date: who has checked in, or that your check-in is open. */
   line: string | null;
   comingUp: ComingUp[];
-  /** For an admin whose organisation is on its free trial: "Your free trial has started. It ends on 12 November 2026." */
+  /** For an admin whose organisation is on its free trial: "Your free month has started, WhatsApp included. It ends on 12 November 2026." */
   freeTrial?: string | null;
   /** "You can also check in on WhatsApp.", with "Connect WhatsApp", when one of the reader's own check-ins is there to answer (fix list, item 5). */
   checkInOnWhatsApp?: { says: string; link: string; label: string } | null;

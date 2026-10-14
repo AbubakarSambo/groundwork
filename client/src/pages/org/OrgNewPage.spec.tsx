@@ -75,7 +75,7 @@ describe('what the person reads', () => {
     open()
     const size = await screen.findByLabelText('How many people will use it?')
     expect([...(size as HTMLSelectElement).options].map(o => o.textContent)).toEqual(['Fewer than 20', '20 or more'])
-    expect(screen.getByText('Teams of fewer than 20 people get 1 month free. No card needed.')).toBeTruthy()
+    expect(screen.getByText('Teams of fewer than 20 people get 1 month free, WhatsApp included, no card required.')).toBeTruthy()
   })
 })
 

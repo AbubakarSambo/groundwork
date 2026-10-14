@@ -88,10 +88,26 @@ describe('a visitor who is not signed in', () => {
   it('reads the one shared sentence and the trial’s card once it is switched on', async () => {
     m.pricing = { ...m.pricing, trial: { on: true, teamsUnder: 20, months: 1 } }
     renderIt()
-    await waitFor(() => expect(text()).toContain('Teams of fewer than 20 people get 1 month free. No card needed. Subscribe as your team grows.'))
+    await waitFor(() => expect(text()).toContain('Teams of fewer than 20 people get 1 month free, WhatsApp included, no card required. Subscribe as your team grows.'))
     expect(text()).toContain('1 month free')
     expect(text()).toContain('$0 for 1 month')
-    expect(text()).toContain('Start your free 1 month')
+    /* Changed 15 October (fix list item 6): the light prototype's own button, "Start your free month". */
+    expect(text()).toContain('Start your free month')
+    expect(text()).toContain('Everything on every plan, WhatsApp included, free for your first month. No card required.')
+  })
+
+  it('reads the seats each plan includes, +$5 an extra seat and WhatsApp at $4 a person, in the light prototype\'s words (fix list item 6)', async () => {
+    m.pricing = {
+      ...m.pricing,
+      trial: { on: true, teamsUnder: 20, months: 1 },
+      plans: m.pricing.plans.map((p: any) => (p.amountCents == null ? p : { ...p, extraSeatCents: 500, whatsappPersonCents: 400 })),
+    }
+    renderIt()
+    await waitFor(() => expect(text()).toContain('20 seats included'))
+    expect(text()).toContain('+$5 per extra seat')
+    expect(text()).toContain('WhatsApp: +$4 a month per person who uses it')
+    expect(text()).toContain('Every person with a Groundwork account counts as a seat. Each plan includes a number of seats; add more any time for +$5 a seat a month. Unlimited check-ins, sessions and reports.')
+    expect(text()).toContain('Your team can check in on WhatsApp instead of the app. You pay only for people who use it: $4 a person a month, on any plan, never more than your seats. It’s included in your free month.')
   })
 })
 

@@ -1,5 +1,6 @@
 import { hasEnded, howItEnded, hasStalled } from '@/lib/a-ground-that-has-ended'
 import { TheLeadsNote } from '@/components/gw/TheLeadsNote'
+import { ThisAddsASeat } from '@/components/gw/this-adds-a-seat'
 import { useState, type ReactNode } from 'react'
 import { WhatSuccessLooksLikeFor } from '@/components/gw/WhatSuccessLooksLike'
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
@@ -416,6 +417,7 @@ function HiddenContributorRow({ groundId, label, evidence, isInitiator }: {
               />
             )}
             {emailError && <Text size="13" ink="red">{emailError}</Text>}
+            {isInitiator && <ThisAddsASeat />}
             <FlexRow gap={6}>
               <UIButton
                 kind="secondary"

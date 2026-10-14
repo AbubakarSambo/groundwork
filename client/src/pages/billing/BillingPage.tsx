@@ -3,7 +3,8 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { billingApi, PLAN_LABELS, PLAN_PRICES, formatMemberCap, formatMonthlyPrice, formatDollars, isWhatsAppBillingAdmin, type SubscriptionPlan, FALLBACK_FREE_LIMITS } from '@/api/billing'
 import { theFreeTrialSentence } from '@/lib/the-free-trial'
-import { whatCoversThem, thePlanLine, theNextPaymentLine, whoCounts, theTrialNotices } from './what-plan-and-billing-says'
+import { whatCoversThem, thePlanLine, theNextPaymentLine, theNextPaymentSentence, whoCounts, theTrialNotices } from './what-plan-and-billing-says'
+import { theMonthFor } from './what-a-month-costs'
 import { groundsApi } from '@/api/grounds'
 import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
@@ -127,6 +128,8 @@ export function BillingPage() {
   const isAdmin = user?.role === 'ADMIN'
 
   const [genSessions, setGenSessions] = useState(1)
+  /* The people counter (s73): starts at the real number; moving it shows what more or fewer people would cost. */
+  const [counted, setCounted] = useState<number | null>(null)
   const [genNote, setGenNote] = useState('')
   const [newCode, setNewCode] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
@@ -259,6 +262,13 @@ export function BillingPage() {
      plan's own member cap (the pricing table) and the organisation's own people count (the status
      the admin already reads as "27 of 100 people"). */
   const peopleCount = billingStatus?.people?.count ?? null
+  const month = billingStatus?.month ?? null
+  const people = counted ?? month?.people ?? peopleCount ?? 0
+  const monthNow = month ? theMonthFor(month, livePricing, people, covers === 'on the house') : null
+  /* Request 197's sentence, only where somebody is really waiting for a seat (never on a plan that adds them). */
+  const overThePlan = billingStatus?.overThePlanSays?.trim() || null
+  /* "Next payment 1 October, by card ending 4417." (s73): the day and the card; the amount is the month above. */
+  const nextPaymentWords = theNextPaymentSentence(billingStatus, livePricing)
   function tooSmallFor(plan: SubscriptionPlan): string | null {
     const cap = livePricing?.plans.find(p => p.plan === plan)?.memberCap ?? null
     if (cap == null || peopleCount == null || peopleCount <= cap) return null
@@ -297,44 +307,99 @@ export function BillingPage() {
         </Panel>
       )}
 
-      <Section heading="Your plan">
-        <FieldRows>
-          <FieldRow
-            label="Plan"
-            value={`${thePlanLine(billingStatus, livePricing, freeGrounds)}${peopleOverCap ? ` ${billingStatus?.overThePlanSays?.trim() || 'More people have accounts here than this plan covers.'}` : ''}`}
-            /*
-             * SCREEN FAULT 11 (FINAL WALK): "MORE PEOPLE HAVE ACCOUNTS HERE THAN THIS PLAN COVERS."
-             * NAMED A PROBLEM WITH NO NEXT STEP BESIDE IT. The row's own action was the same plain
-             * "Change" every other plan row carries, which says nothing about why somebody in this
-             * situation specifically would press it. Named for what it actually does here instead.
-             */
-            action={<Button kind="quiet" size="small" onClick={scrollToPlans}>{peopleOverCap ? "Choose a plan for your team's size" : 'Change'}</Button>}
-          />
-          {/*
-           * "WHEN BARIDI APPLIANCES WAS SET UP, IT HAD 20 OR MORE PEOPLE, SO IT BEGAN ON A PLAN."
-           * `startedWith` is served to an admin only (5 October, evening) - one plain sentence, read
-           * exactly as it comes, never a number this page works out for itself.
-           */}
-          {billingStatus?.startedWith && (
-            <FieldRow label="How it began" value={billingStatus.startedWith.says} />
-          )}
-          <FieldRow
-            label="Next payment"
-            value={theNextPaymentLine(billingStatus, livePricing)}
-            action={(isSubscribed || isPaused) ? (
-              <Button kind="quiet" size="small" disabled={portalMut.isPending} onClick={() => portalMut.mutate()}>{portalMut.isPending ? 'Opening…' : 'Change card'}</Button>
-            ) : undefined}
-          />
-          <FieldRow label="Everyone counts" value={whoCounts(orgName)} />
-          {trialSentence && <FieldRow label="Free trial" value={trialSentence} />}
+      {month && monthNow ? (
+        /*
+         * YOUR PLAN, AS THE LIGHT PROTOTYPE HAS IT (fix list item 6; s73): the people, this month line by line, a cheaper
+         * plan when there is one, and the next payment. Every sentence is the server's (`status.month`); the counter only
+         * shows what more or fewer people would cost, and changes nothing.
+         */
+        <Section heading="Your plan" note={monthNow.included ?? undefined}>
+          <Panel>
+            <Stack gap={12}>
+              <div className="gwui-sentence-row">
+                <div>
+                  <p className="gwui-panel-text"><b>People</b></p>
+                  <p className="gwui-panel-text-muted">{month.peopleSays}</p>
+                </div>
+                <div className="gwui-invite-actions" role="group" aria-label="People">
+                  <Button kind="quiet" size="small" aria-label="One fewer" onClick={() => setCounted(Math.max(1, people - 1))}>−</Button>
+                  <b aria-live="polite">{people}</b>
+                  <Button kind="quiet" size="small" aria-label="One more" onClick={() => setCounted(people + 1)}>+</Button>
+                </div>
+              </div>
+              {monthNow.lines && (
+                <FieldRows>
+                  {monthNow.lines.map((l) => <FieldRow key={l.says} label={l.says} value={l.amount} />)}
+                  {monthNow.total && <FieldRow label={<b>{monthNow.total.says}</b>} value={<b>{monthNow.total.amount}</b>} />}
+                </FieldRows>
+              )}
+              {month.free && <p className="gwui-panel-text-muted">{month.free}</p>}
+              {monthNow.cheaper && (
+                <Note>
+                  <span className="gwui-sentence-row">
+                    <span>{monthNow.cheaper.says}</span>
+                    {isSubscribed && (
+                      <Button kind="secondary" size="small" disabled={busy} onClick={() => changePlanMut.mutate(monthNow.cheaper!.plan)}>{monthNow.cheaper.button}</Button>
+                    )}
+                  </span>
+                </Note>
+              )}
+              <p className="gwui-panel-text-muted">{`${nextPaymentWords ? `${nextPaymentWords} ` : ''}${month.priceChanges}`}</p>
+              {overThePlan && <p className="gwui-panel-text-muted">{overThePlan}</p>}
+              {(isSubscribed || isPaused) && (
+                <div><Button kind="quiet" size="small" disabled={portalMut.isPending} onClick={() => portalMut.mutate()}>{portalMut.isPending ? 'Opening…' : 'Change card'}</Button></div>
+              )}
+            </Stack>
+          </Panel>
           {usage && (
-            <FieldRow
-              label="So far"
-              value={`So far there have been ${usage.checkIns} ${usage.checkIns === 1 ? 'check-in' : 'check-ins'} and ${usage.reportsReleased} shared ${usage.reportsReleased === 1 ? 'report' : 'reports'}, with ${usage.peopleTakingPart} ${usage.peopleTakingPart === 1 ? 'person' : 'people'} taking part.`}
-            />
+            <FieldRows>
+              <FieldRow
+                label="So far"
+                value={`So far there have been ${usage.checkIns} ${usage.checkIns === 1 ? 'check-in' : 'check-ins'} and ${usage.reportsReleased} shared ${usage.reportsReleased === 1 ? 'report' : 'reports'}, with ${usage.peopleTakingPart} ${usage.peopleTakingPart === 1 ? 'person' : 'people'} taking part.`}
+              />
+            </FieldRows>
           )}
-        </FieldRows>
-      </Section>
+        </Section>
+      ) : (
+      <Section heading="Your plan">
+          <FieldRows>
+            <FieldRow
+              label="Plan"
+              value={`${thePlanLine(billingStatus, livePricing, freeGrounds)}${peopleOverCap ? ` ${billingStatus?.overThePlanSays?.trim() || 'More people have accounts here than this plan covers.'}` : ''}`}
+              /*
+               * SCREEN FAULT 11 (FINAL WALK): "MORE PEOPLE HAVE ACCOUNTS HERE THAN THIS PLAN COVERS."
+               * NAMED A PROBLEM WITH NO NEXT STEP BESIDE IT. The row's own action was the same plain
+               * "Change" every other plan row carries, which says nothing about why somebody in this
+               * situation specifically would press it. Named for what it actually does here instead.
+               */
+              action={<Button kind="quiet" size="small" onClick={scrollToPlans}>{peopleOverCap ? "Choose a plan for your team's size" : 'Change'}</Button>}
+            />
+            {/*
+             * "WHEN BARIDI APPLIANCES WAS SET UP, IT HAD 20 OR MORE PEOPLE, SO IT BEGAN ON A PLAN."
+             * `startedWith` is served to an admin only (5 October, evening) - one plain sentence, read
+             * exactly as it comes, never a number this page works out for itself.
+             */}
+            {billingStatus?.startedWith && (
+              <FieldRow label="How it began" value={billingStatus.startedWith.says} />
+            )}
+            <FieldRow
+              label="Next payment"
+              value={theNextPaymentLine(billingStatus, livePricing)}
+              action={(isSubscribed || isPaused) ? (
+                <Button kind="quiet" size="small" disabled={portalMut.isPending} onClick={() => portalMut.mutate()}>{portalMut.isPending ? 'Opening…' : 'Change card'}</Button>
+              ) : undefined}
+            />
+            <FieldRow label="Everyone counts" value={whoCounts(orgName)} />
+            {trialSentence && <FieldRow label="Free trial" value={trialSentence} />}
+            {usage && (
+              <FieldRow
+                label="So far"
+                value={`So far there have been ${usage.checkIns} ${usage.checkIns === 1 ? 'check-in' : 'check-ins'} and ${usage.reportsReleased} shared ${usage.reportsReleased === 1 ? 'report' : 'reports'}, with ${usage.peopleTakingPart} ${usage.peopleTakingPart === 1 ? 'person' : 'people'} taking part.`}
+              />
+            )}
+          </FieldRows>
+        </Section>
+      )}
 
       {/*
        * WHATSAPP, THE PAID ADD-ON (decision 78, 2 October; U.6, platform gate added as screen
@@ -355,19 +420,23 @@ export function BillingPage() {
        * is drawing on. These three rows show only once the switch itself reads on.
        */}
       {isWhatsAppBillingAdmin(whatsapp) && (
-        <Section heading="WhatsApp" id="billing-whatsapp">
+        /* "WhatsApp check-ins", with the rate the server says beside it (fix list item 6, s73). */
+        <Section heading="WhatsApp check-ins" id="billing-whatsapp" note={month?.whatsappRate ?? undefined}>
           <Panel>
             <Stack gap={12}>
               <SwitchRow
-                title={whatsapp.says.onOrOff}
+                title={whatsapp.says.whoIsCharged ?? whatsapp.says.onOrOff}
+                detail={whatsapp.says.whoIsChargedMore ?? undefined}
                 /* The switch says whether it is on the subscription; during the free month it is on either way (13 October, evening). */
                 on={whatsapp.on}
                 onChange={(on) => setWhatsAppMut.mutate(on)}
                 disabled={setWhatsAppMut.isPending}
               />
               <FieldRows>
+                {whatsapp.says.whoIsCharged && <FieldRow label="Now" value={whatsapp.says.onOrOff} />}
                 {whatsapp.says.freeMonth && <FieldRow label="Free month" value={whatsapp.says.freeMonth} />}
-                {whatsapp.says.price && <FieldRow label="Price" value={whatsapp.says.price} />}
+                {whatsapp.says.price && (!whatsapp.says.whoIsCharged || !month?.whatsappRate) && <FieldRow label="Price" value={whatsapp.says.price} />}
+                {whatsapp.says.people && <FieldRow label="People" value={whatsapp.says.people} />}
                 <FieldRow label="What is charged" value={whatsapp.says.charge} />
                 {whatsapp.on && <FieldRow label="This month" value={whatsapp.says.use} />}
                 {whatsapp.on && (whatsapp.says.reachedTheLimit ? (
@@ -392,42 +461,93 @@ export function BillingPage() {
         </Panel>
       )}
 
+      {month ? (
+        /*
+         * PLANS, AS A TABLE (fix list item 6; s73): each plan's price, the seats it includes, an extra seat, WhatsApp, and what
+         * it costs for the number on the counter. "Move to this" is the admin's choice; nothing moves on its own.
+         */
+        <div id="billing-plans">
+          <Section heading="Plans" note={month.plansNote ?? undefined}>
+            <div className="gwui-plan-table-wrap">
+              <table className="gwui-plan-table">
+                <thead>
+                  <tr><th>Plan</th><th>Price</th><th>Includes</th><th>Extra seats</th><th>WhatsApp</th><th>{monthNow?.forHowMany ?? month.forHowMany}</th><th><span className="gwui-sr-only">Choose</span></th></tr>
+                </thead>
+                <tbody>
+                  {month.plans.map((p) => {
+                    const mine = (isSubscribed || isPaused) && orgSub?.plan === p.plan
+                    const pending = (createSubscriptionMut.isPending && createSubscriptionMut.variables === p.plan) || (changePlanMut.isPending && changePlanMut.variables === p.plan)
+                    return (
+                      <tr key={p.plan} className={mine ? 'gwui-plan-table-mine' : undefined}>
+                        <td><b>{p.name}</b></td>
+                        <td>{p.price}</td>
+                        <td>{p.includes}</td>
+                        <td>{p.extraSeats ?? ''}</td>
+                        <td>{p.whatsapp ?? ''}</td>
+                        <td>{monthNow?.forYou[p.plan] ?? p.forYou ?? ''}</td>
+                        <td>{mine ? <Tag tone="action">Your plan</Tag> : (
+                          <Button kind="quiet" size="small" disabled={busy || isPaused} onClick={() => choosePlan(p.plan)}>{pending ? 'Opening…' : 'Move to this'}</Button>
+                        )}</td>
+                      </tr>
+                    )
+                  })}
+                  <tr className="gwui-plan-table-enterprise">
+                    <td><b>Enterprise</b></td>
+                    <td colSpan={5}>Custom needs, volume pricing or dedicated support.</td>
+                    <td><Button kind="quiet" size="small" onClick={() => { window.location.href = 'mailto:hello@myground.work?subject=Enterprise plan enquiry' }}>Contact us</Button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </Section>
+        </div>
+      ) : (
       <div id="billing-plans">
-        <Section heading="Plans" note="Each plan is one monthly price, with as many check-ins and reports as you need.">
-          <div className="gwui-plan-grid">
-            {PLANS.filter(p => p !== 'ENTERPRISE').map(plan => {
-              const mine = (isSubscribed || isPaused) && orgSub?.plan === plan
-              const pending = (createSubscriptionMut.isPending && createSubscriptionMut.variables === plan) || (changePlanMut.isPending && changePlanMut.variables === plan)
-              /* THE PRICE'S OWN "/mo" (Hafsah, 30 September): `priceLabel` returns the whole string,
-                 e.g. "$25/mo", already carrying its own "/mo" (the one formatter every other price
-                 on this page uses, `formatMonthlyPrice`). The prototype's plan card splits it into
-                 the big figure and a small muted "/mo" beside it (s20.js/s21.js's `PLANS.map`) - so
-                 this splits the same string instead of appending a second "/mo" after it, which is
-                 what read "$25/mo/mo" before. */
-              const price = priceLabel(plan) ?? ''
-              const showsPerMonth = price.endsWith('/mo')
-              const priceFigure = showsPerMonth ? price.slice(0, -3) : price
-              return (
-                <Panel key={plan} className={mine ? 'gwui-plan-card gwui-plan-card-mine' : 'gwui-plan-card'}>
-                  <p className="gwui-plan-name">{PLAN_LABELS[plan]}</p>
-                  <p className="gwui-plan-price">{priceFigure}{showsPerMonth && <span>/mo</span>}</p>
-                  <p className="gwui-plan-cap">{capLabel(plan)}</p>
-                  {tooSmallFor(plan) && <Note tone="amber">{tooSmallFor(plan)}</Note>}
-                  {/* tag("act","Your plan") in the prototype (s20.js/s21.js): the navy tag, not green. */}
-                  {mine ? <Tag tone="action">Your plan</Tag> : (
-                    <Button kind="secondary" size="small" wide disabled={busy || isPaused} onClick={() => choosePlan(plan)}>{pending ? 'Opening…' : 'Move to this'}</Button>
-                  )}
-                </Panel>
-              )
-            })}
-            <Panel className="gwui-plan-card gwui-plan-card-enterprise">
-              <p className="gwui-plan-name">Enterprise</p>
-              <p className="gwui-plan-cap">For special needs, a lower price per person, or your own support person.</p>
-              <Button kind="secondary" size="small" wide onClick={() => { window.location.href = 'mailto:hello@myground.work?subject=Enterprise plan enquiry' }}>Contact us</Button>
-            </Panel>
-          </div>
+          <Section heading="Plans" note="Each plan is one monthly price, with as many check-ins and reports as you need.">
+            <div className="gwui-plan-grid">
+              {PLANS.filter(p => p !== 'ENTERPRISE').map(plan => {
+                const mine = (isSubscribed || isPaused) && orgSub?.plan === plan
+                const pending = (createSubscriptionMut.isPending && createSubscriptionMut.variables === plan) || (changePlanMut.isPending && changePlanMut.variables === plan)
+                /* THE PRICE'S OWN "/mo" (Hafsah, 30 September): `priceLabel` returns the whole string,
+                   e.g. "$25/mo", already carrying its own "/mo" (the one formatter every other price
+                   on this page uses, `formatMonthlyPrice`). The prototype's plan card splits it into
+                   the big figure and a small muted "/mo" beside it (s20.js/s21.js's `PLANS.map`) - so
+                   this splits the same string instead of appending a second "/mo" after it, which is
+                   what read "$25/mo/mo" before. */
+                const price = priceLabel(plan) ?? ''
+                const showsPerMonth = price.endsWith('/mo')
+                const priceFigure = showsPerMonth ? price.slice(0, -3) : price
+                return (
+                  <Panel key={plan} className={mine ? 'gwui-plan-card gwui-plan-card-mine' : 'gwui-plan-card'}>
+                    <p className="gwui-plan-name">{PLAN_LABELS[plan]}</p>
+                    <p className="gwui-plan-price">{priceFigure}{showsPerMonth && <span>/mo</span>}</p>
+                    <p className="gwui-plan-cap">{capLabel(plan)}</p>
+                    {tooSmallFor(plan) && <Note tone="amber">{tooSmallFor(plan)}</Note>}
+                    {/* tag("act","Your plan") in the prototype (s20.js/s21.js): the navy tag, not green. */}
+                    {mine ? <Tag tone="action">Your plan</Tag> : (
+                      <Button kind="secondary" size="small" wide disabled={busy || isPaused} onClick={() => choosePlan(plan)}>{pending ? 'Opening…' : 'Move to this'}</Button>
+                    )}
+                  </Panel>
+                )
+              })}
+              <Panel className="gwui-plan-card gwui-plan-card-enterprise">
+                <p className="gwui-plan-name">Enterprise</p>
+                <p className="gwui-plan-cap">For special needs, a lower price per person, or your own support person.</p>
+                <Button kind="secondary" size="small" wide onClick={() => { window.location.href = 'mailto:hello@myground.work?subject=Enterprise plan enquiry' }}>Contact us</Button>
+              </Panel>
+            </div>
+          </Section>
+        </div>
+      )}
+
+      {month && trialSentence && (
+        /* "Free month" (s73), in the prototype's words, with how this organisation began when it was asked. */
+        <Section heading="Free month">
+          <Panel>
+            <p className="gwui-panel-text-muted">{`${trialSentence.replace(/, no card required\.$/, ', with no card.')} Existing organisations that never had one get it from the day it starts, WhatsApp included.${billingStatus?.startedWith?.says ? ` ${billingStatus.startedWith.says}` : ''}`}</p>
+          </Panel>
         </Section>
-      </div>
+      )}
 
       {invoices.length > 0 && (
         <Section heading="Invoices">

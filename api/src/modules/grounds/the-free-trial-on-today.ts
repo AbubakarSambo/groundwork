@@ -13,5 +13,6 @@ export async function theFreeTrialLine(prisma: any, organizationId: string, now:
   if (Number.isNaN(until.getTime()) || until.getTime() <= now.getTime()) return null;
   const zone = (await theOrganisationsZone(prisma, organizationId).catch(() => null)) ?? 'Africa/Lagos';
   const day = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: zone }).format(until);
-  return `Your free trial has started. It ends on ${day}.`;
+  /* Fix list item 6: one free month, WhatsApp included (the light prototype's s74). */
+  return `Your free month has started, WhatsApp included. It ends on ${day}.`;
 }

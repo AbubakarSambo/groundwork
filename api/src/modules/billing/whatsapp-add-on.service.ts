@@ -195,7 +195,8 @@ export class WhatsAppAddOnService {
     const sent = use?.sent ?? 0;
     const since = theMonthStarted(org, now);
     const [peopleUsedIt, seats] = await Promise.all([this.peopleWhoUsedIt(organizationId, since), this.seatsHere(organizationId)]);
-    const flatKept = !!org.whatsappFlatAddOnKept;
+    /* The old flat price holds only while no seat is added past the plan (fix list item 6); a seat added ends it. */
+    const flatKept = !!org.whatsappFlatAddOnKept && (row?.memberCap == null || seats <= row.memberCap);
     const personCents = row?.whatsappPersonCents ?? null;
 
     /* The free WhatsApp month: on for everybody, nothing charged, whether or not it was added to the subscription. A

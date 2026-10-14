@@ -7,7 +7,7 @@ import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 import { coachApi, type CoachRequestRow } from '@/api/coach'
 import { feedbackApi } from '@/api/feedback'
-import { formatMonthlyPrice, type SubscriptionPlan } from '@/api/billing'
+import { formatMonthlyPrice, formatDollars, type SubscriptionPlan } from '@/api/billing'
 import { SectionFailed } from './a-section-that-failed-says-so'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
@@ -270,6 +270,57 @@ function centsForEditing(cents: number): string {
   return (cents / 100).toFixed(2).replace(/\.00$/, '')
 }
 
+/**
+ * AN EXTRA SEAT AND WHATSAPP PER PERSON, EDITED BESIDE THE PRICE (fix list item 6: "the plan prices, included seats,
+ * extra-seat price and WhatsApp price can be changed without code"). Dollars a month; empty takes it off sale on this plan.
+ */
+function PlanCentsField({ row, field, what }: { row: PricingPlanRow; field: 'extraSeatCents' | 'whatsappPersonCents'; what: string }) {
+  const qc = useQueryClient()
+  const cents = row[field] ?? null
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState(cents === null ? '' : centsForEditing(cents))
+  const save = useMutation({
+    mutationFn: (next: number | null) => adminApi.setPlanLimits(row.plan, { [field]: next }),
+    onSuccess: rows => {
+      qc.setQueryData(['admin-pricing'], rows)
+      qc.invalidateQueries({ queryKey: ['public-pricing'] })
+      setEditing(false)
+      toast.success(value.trim() === '' ? `${what} is no longer sold on ${row.label}.` : `${what} on ${row.label} is now $${value.trim()} a month.`)
+    },
+    onError: () => toast.error(`${what} did not change. Try again.`),
+  })
+  function submit() {
+    const raw = value.trim()
+    if (raw === '') { save.mutate(null); return }
+    const dollars = parseFloat(raw)
+    if (!Number.isFinite(dollars) || dollars < 0.5) { toast.error('Enter an amount of at least $0.50, or leave it empty.'); return }
+    save.mutate(Math.round(dollars * 100))
+  }
+  if (row.amountCents === null) return null
+  return (
+    <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 6 }}>
+      {editing ? (
+        <>
+          <span>{what} $</span>
+          <input autoFocus aria-label={`${what} on ${row.label}, dollars a month`} value={value} placeholder="not sold" onChange={e => setValue(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') setEditing(false) }}
+            style={{ width: 60, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--gw-border)', fontSize: 11, fontFamily: 'inherit' }} />
+          <button onClick={submit} disabled={save.isPending} style={{ padding: '3px 8px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 11, fontWeight: 700, border: 'none', cursor: save.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}>Save</button>
+          <button onClick={() => setEditing(false)} style={{ padding: '3px 8px', borderRadius: 6, background: 'none', color: 'var(--gw-muted)', fontSize: 11, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+        </>
+      ) : (
+        <>
+          <span>{cents === null ? `${what} is not sold on this plan.` : `${what}: ${formatDollars(cents)} a month.`}</span>
+          <button onClick={() => { setValue(cents === null ? '' : centsForEditing(cents)); setEditing(true) }}
+            style={{ padding: '2px 7px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-navy)', fontSize: 11, fontWeight: 700, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}>
+            Edit
+          </button>
+        </>
+      )}
+    </div>
+  )
+}
+
 function PricingRow({ row }: { row: PricingPlanRow }) {
   const qc = useQueryClient()
   const [editing, setEditing] = useState(false)
@@ -365,6 +416,8 @@ function PricingRow({ row }: { row: PricingPlanRow }) {
             </>
           )}
         </div>
+        <PlanCentsField row={row} field="extraSeatCents" what="An extra seat" />
+        <PlanCentsField row={row} field="whatsappPersonCents" what="WhatsApp for each person who uses it" />
       </div>
       {editing && row.amountCents !== null ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>

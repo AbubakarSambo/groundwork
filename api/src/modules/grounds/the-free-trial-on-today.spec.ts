@@ -8,7 +8,8 @@ describe('the free trial on Today', () => {
   it('says it has started and the day it ends, in one sentence', async () => {
     const line = await theFreeTrialLine(org({ freeTrialStartedAt: NOW, freeUntil: new Date('2026-11-12T09:00:00Z'), timeZone: 'Africa/Nairobi' }) as any, 'org-new', NOW);
     console.log(`THE NEW ADMIN READS: ${line}`);
-    expect(line).toBe('Your free trial has started. It ends on 12 November 2026.');
+    /* Changed 15 October (fix list item 6): the free month, WhatsApp included, in the light prototype's words. */
+    expect(line).toBe('Your free month has started, WhatsApp included. It ends on 12 November 2026.');
   });
 
   it('says nothing with no trial, or once it has ended', async () => {

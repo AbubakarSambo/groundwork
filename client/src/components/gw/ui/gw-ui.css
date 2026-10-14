@@ -1191,6 +1191,17 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-plan-price { font-family: var(--gw-font-name); font-size: 24px; color: var(--gw-text); margin: 0; }
 .gwui-plan-price span { font-size: 14.5px; color: var(--gw-sub); font-family: var(--gw-font-ui); }
 .gwui-plan-cap { font-size: 14.5px; color: var(--gw-sub); margin: 0; }
+/* The plans as a table (fix list item 6; the light prototype's s73 .pb-table): each plan's price, seats, extra seat, WhatsApp and
+   what it costs for your people. Scrolls sideways inside its own box on a phone, never the page. */
+.gwui-plan-table-wrap { overflow-x: auto; background: var(--gw-card); border: 1px solid var(--gw-border); border-radius: 12px; }
+.gwui-plan-table { width: 100%; min-width: 640px; border-collapse: collapse; }
+.gwui-plan-table th { text-align: left; font-size: 13px; font-weight: 400; color: var(--gw-sub); padding: 12px 14px; border-bottom: 1px solid var(--gw-border); }
+.gwui-plan-table td { padding: 12px 14px; font-size: 14.5px; line-height: 1.45; color: var(--gw-text); border-top: 1px solid var(--gw-border); vertical-align: middle; }
+.gwui-plan-table tbody tr:first-child td { border-top: none; }
+.gwui-plan-table-mine td { background: var(--gw-bg); }
+.gwui-plan-table-mine td:first-child { box-shadow: inset 3px 0 0 var(--gw-navy); }
+.gwui-plan-table-enterprise td { background: var(--gw-bg); color: var(--gw-sub); }
+.gwui-plan-table-enterprise td:first-child { color: var(--gw-text); }
 
 /* A block of example code, in the developer pages. */
 .gwui-code-block {

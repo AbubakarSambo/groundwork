@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'fs'
 import { join } from 'path'
 import { describe, it, expect } from 'vitest'
 import { PLAN_LABELS, type SubscriptionPlan } from './billing'
-import { seededAmountLabel, seededCapLabel } from './pricing-seed.testonly'
+import { seededAmountLabel, seededSeatsIncludedLabel } from './pricing-seed.testonly'
 
 /**
  * THE PRICE IS WRITTEN TWICE. IT MUST NOT BE ABLE TO DISAGREE. W13-10.
@@ -56,7 +56,8 @@ describe('the public pricing page and the in-app one', () => {
     it(`${PLAN_LABELS[plan]} holds the same number of people on both`, () => {
       // The seat cap is the other number a buyer decides on, and it is written out in prose
       // on the marketing page: "Up to 20 people".
-      const cap = seededCapLabel(plan)
+      /* Changed 15 October (fix list item 6): the pages say "20 seats included" now that any plan can add seats. */
+      const cap = seededSeatsIncludedLabel(plan)
       expect(
         html.includes(cap),
         `the database seeds ${PLAN_LABELS[plan]} at "${cap}" and the marketing page does not say that anywhere`,
@@ -64,7 +65,9 @@ describe('the public pricing page and the in-app one', () => {
     })
   }
 
-  it('and the free tier says ten check-ins in both places', () => {
+  /* Changed 15 October (fix list item 6): the free tier's ten check-ins gave way to one free month, WhatsApp included, on the
+     public page, as the light prototype (s74) says. The in-app page says the same from the trial setting. */
+  it('and the free month says one month, WhatsApp included', () => {
     /**
      * The free tier is the one somebody actually signs up on, and its claim has been wrong
      * before: reviewing this product I read a stale note, concluded "unlimited sessions"
@@ -76,7 +79,8 @@ describe('the public pricing page and the in-app one', () => {
      * pages must state the same free-tier claim. Worth noting the unit did NOT change - the meter
      * counts containers, and a container is what a check-in now means, so ten is still ten.
      */
-    expect(html).toMatch(/10 check-ins/)
+    expect(html).toMatch(/1 month free, WhatsApp included, no card required/)
     expect(html).toMatch(/[Uu]nlimited sessions/)
+    expect(html).not.toMatch(/3 months/)
   })
 })

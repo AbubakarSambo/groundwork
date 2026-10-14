@@ -1,5 +1,6 @@
 import { useQuery as useWhatsAppQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
+import { ThisAddsASeat, useTheNextSeat } from '@/components/gw/this-adds-a-seat'
 import { useState } from 'react'
 import { PeopleTable, PersonRow, Tag, Button, TextField, Stack, type TagTone } from '@/components/gw/ui'
 import { groundsApi } from '@/api/grounds'
@@ -97,7 +98,9 @@ export function WhosInItRoster({
   const needSomething = counted.length - checkingIn
 
   const seats = billingStatus?.people
-  const seatsFull = seats?.cap != null && seats?.count != null && seats.count >= seats.cap
+  /* Fix list item 6: on a plan that adds seats, a full plan is an extra seat, said before it sends, not a refusal. */
+  const nextSeat = useTheNextSeat()
+  const seatsFull = !nextSeat.data?.addsASeat && seats?.cap != null && seats?.count != null && seats.count >= seats.cap
 
   return (
     <div>
@@ -133,6 +136,7 @@ export function WhosInItRoster({
       {isInitiator && showAdd && (
         <div className="gwui-panel gwui-panel-pad">
           <p className="gwui-switch-row-title">Add a person to this check-in</p>
+          <ThisAddsASeat />
           {seatsFull && (
             <div className="gwui-note gwui-note-error" role="alert">
               Your plan covers {seats.cap} people, including you, and all {seats.cap} are taken. Move to a
