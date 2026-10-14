@@ -76,7 +76,8 @@ export class RoundDigestService {
       const facts: DigestFacts = {
         groundLabel: ground.label,
         sessionNumber: e.sessionNumber,
-        participantCount: e.participantCount,
+        participantCount: e.waitedOn ?? e.participantCount,
+        accountsGiven: e.accountsGiven,
         needsAttention,
         permalink: `${this.appUrl().replace(/\/$/, '')}/grounds/${e.groundId}`,
       };

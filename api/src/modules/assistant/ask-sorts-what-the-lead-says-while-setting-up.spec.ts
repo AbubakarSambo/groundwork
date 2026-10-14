@@ -74,13 +74,15 @@ describe('B-083: a fact typed while a set-up question is open', () => {
     expect(proposals[0].payload.carried.openQuestion).toBe('How long should this run?');
   });
 
-  it('a yes writes the line through the Context page\'s own writer, and the question that was open is asked again', async () => {
+  /* Pilots, 13 October 2026, E3: the open question is no longer said again under the yes; it waits, and the next message still answers it. Changed from "is asked again". */
+  it('a yes writes the line through the Context page\'s own writer, and the question that was open waits without being asked again', async () => {
     const parked = { id: 'pr1', kind: 'context_line', state: 'PARKED', payload: { groundId: 'g1', kind: 'NOTE', text: FACT, carried: { history: [{ role: 'assistant', content: 'How long should this run?' }], openQuestion: 'How long should this run?' } } };
     const { service, addContextLine, proposals } = svc(() => ({ kind: 'answer' }), { parked });
     const r: any = await service.respond('org-a', 'p1', 'yes', 'g1', true);
     expect(addContextLine).toHaveBeenCalledWith('g1', 'lead-1', { kind: 'NOTE', text: FACT });
-    expect(said(r)).toBe('I have added the line to this check-in. Everybody in it can read it now.\n\nHow long should this run?');
-    expect(proposals.some((p) => p.kind === 'context_turn')).toBe(true);
+    expect(said(r)).toBe('I have added the line to this check-in. Everybody in it can read it now.');
+    const waiting = proposals.find((p) => p.kind === 'context_turn');
+    expect(waiting.payload.history[waiting.payload.history.length - 1]).toEqual({ role: 'assistant', content: 'How long should this run?' });
   });
 
   it('a private note about a person is kept for the lead alone, not as a line everyone reads', async () => {

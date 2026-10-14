@@ -8,6 +8,11 @@ Nothing here has been done. Nothing was pushed, deployed or changed on any hoste
 
 ---
 
+## The update of 14 October
+
+1. **Migration 97 writes one value into every existing organisation:** one free month of WhatsApp from the day it runs. Please confirm this is wanted on the live data. Hafsah decided it on 13 October.
+2. **When the free month ends,** WhatsApp stops for an organisation that has not added it to its subscription. Nothing is charged automatically. The admin reads "WhatsApp is free until …" on Plan and billing.
+
 ## Part 1. Questions for the person who deploys
 
 ### 1. What state are the hosted databases in, against these migrations?

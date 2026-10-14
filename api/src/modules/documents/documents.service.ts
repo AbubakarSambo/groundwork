@@ -182,6 +182,9 @@ export function toDocShape(
   };
 }
 
+/** Said when a file called a PDF cannot be opened as one (pilots, problem 12). */
+export const A_PDF_WE_CANNOT_OPEN = 'This PDF could not be opened, so nothing in it was read and nothing was kept. It may be damaged, or it may not really be a PDF. Save it again as a PDF and add it once more.';
+
 @Injectable()
 export class DocumentsService {
   private readonly logger = new Logger(DocumentsService.name);
@@ -259,8 +262,17 @@ export class DocumentsService {
       return file.buffer.toString('utf8');
     }
     if (file.mimetype === 'application/pdf') {
-      const parser = new PDFParse({ data: file.buffer });
-      const text = await parser.getText().then((r) => r.text?.trim() ?? '').finally(() => parser.destroy());
+      /*
+       * A BROKEN PDF IS SAID IN PLAIN WORDS, NEVER A SERVER ERROR (pilots, 13 October 2026, problem 12). A .pdf whose body
+       * was not a PDF threw "Invalid PDF structure" out of the parser, and the person read "Something went wrong on our side".
+       */
+      let text: string;
+      try {
+        const parser = new PDFParse({ data: file.buffer });
+        text = await parser.getText().then((r) => r.text?.trim() ?? '').finally(() => parser.destroy());
+      } catch {
+        throw new BadRequestException(A_PDF_WE_CANNOT_OPEN);
+      }
       /* A scanned PDF has a text layer of page markers and nothing else ("-- 1 of 1 --"), which is
          "text" to the parser. Driven with a scanned memo: it came back as that marker in 46ms and the
          vision fallback never ran. Substance, not presence, decides. */

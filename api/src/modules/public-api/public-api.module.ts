@@ -63,6 +63,7 @@ import { WhatHappenedWithACustomerService } from './what-happened-with-a-custome
 /* Ask Groundwork inside the product (D1). Here because the assistant it reaches is provided here. */
 import { AskController } from '../ask/ask.controller';
 import { AskService } from '../ask/ask.service';
+import { ParticipantsModule } from '../participants/participants.module';
 
 @Module({
   imports: [
@@ -81,6 +82,8 @@ import { AskService } from '../ask/ask.service';
     EmailModule,
     DocumentsModule,
     UsersModule,
+    /* Accepting an invitation from the number the organisation added (D2, 13 October 2026, evening). Imported, never re-provided. */
+    ParticipantsModule,
     /* The leave suite, for leave dates said to Ask Groundwork (week 20). */
     SuitesModule,
     /*

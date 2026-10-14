@@ -766,9 +766,11 @@ export class WhatsAppService implements OnModuleInit {
 
   /** Whether the organisation turned WhatsApp on (the add-on), or already had a number of its own. True when that cannot be read. */
   private async hasTurnedItOn(organizationId: string): Promise<boolean> {
-    const org = await (this.prisma as any).organization?.findUnique?.({ where: { id: organizationId }, select: { whatsappAddOnOn: true } })?.catch?.(() => null);
+    const org = await (this.prisma as any).organization?.findUnique?.({ where: { id: organizationId }, select: { whatsappAddOnOn: true, whatsappFreeUntil: true } })?.catch?.(() => null);
     if (!org) return true;
     if (org.whatsappAddOnOn) return true;
+    /* Every organisation's free WhatsApp month (Hafsah, 13 October 2026, evening): on without anybody turning it on. */
+    if (org.whatsappFreeUntil && new Date(org.whatsappFreeUntil).getTime() > Date.now()) return true;
     const own = await this.prisma.whatsAppConnection?.findUnique?.({ where: { organizationId }, select: { enabled: true } })?.catch?.(() => null);
     return !!own?.enabled;
   }

@@ -110,7 +110,8 @@ describe('the model closed and the product did not', () => {
     .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
   it('is caught after the close machinery has ruled', () => {
-    const at = SRC.indexOf('if (!sessionComplete && isADeadEnd(aiTurn.content ?? \'\', false))');
+    /* "&& !leavingEarly" since the reviewer's 14 October pass: a person leaving early is never asked "What else should I know?". */
+    const at = SRC.indexOf('if (!sessionComplete && !leavingEarlyHandled && isADeadEnd(aiTurn.content ?? \'\', false))');
     expect(at).toBeGreaterThan(-1);
     /* After the product's own decision, not before it. */
     expect(at).toBeGreaterThan(SRC.indexOf('const sessionComplete = close.ready'));
@@ -119,7 +120,8 @@ describe('the model closed and the product did not', () => {
 
   /* And `false` is passed deliberately: the question is whether the PRODUCT closed, and it did not. */
   it('and asks the product, not the marker', () => {
-    const at = SRC.indexOf('if (!sessionComplete && isADeadEnd(aiTurn.content ?? \'\', false))');
+    /* "&& !leavingEarly" since the reviewer's 14 October pass: a person leaving early is never asked "What else should I know?". */
+    const at = SRC.indexOf('if (!sessionComplete && !leavingEarlyHandled && isADeadEnd(aiTurn.content ?? \'\', false))');
     expect(SRC.slice(at, at + 400)).not.toContain('closingNow');
   });
 

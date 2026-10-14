@@ -42,11 +42,20 @@ const JUST_ADDED = /\bi(?:'ve| have)?\s+(?:just\s+)?(?:added|uploaded|attached|p
 const WANTS_TO_ADD =
   /\b(?:i\s+(?:want|would\s+like|need|wish)\s+to|i'd\s+like\s+to|let\s+me|can\s+i|could\s+i|how\s+do\s+i|please)\s+(?:add|upload|attach|share|give\s+you|send\s+you)\s+(?:a|an|the|my|our|this|some)?\s*(?:new\s+)?(?:file|document|doc|pdf|spreadsheet|sheet|deck|handbook|policy|contract|plan|brief)s?\b/i;
 
+/*
+ * "I WANT TO ADD OUR MATTER LIST AND A FEE NOTE" (pilots, 13 October 2026, problem 1 and E4). The words above wanted the
+ * word "document" or "file"; people name the thing instead, so the request was read as a line and offered back, or
+ * described the files already there. Upload and attach always mean a file; add, share and send mean one when what
+ * follows, within a few words, names a kind of document.
+ */
+const WANTS_TO_UPLOAD_SOMETHING_NAMED =
+  /\b(?:i\s+(?:want|would\s+like|need|wish)\s+to|i'd\s+like\s+to|let\s+me|can\s+i|could\s+i|how\s+do\s+i|please)\s+(?:(?:upload|attach)\b|(?:add|share|send(?:\s+you)?)\s+(?:\S+\s+){0,5}?(?:list|sheet|note|report|letter|invoice|receipt|statement|minutes|agreement|proposal|deck|pdf|file|document|doc|spreadsheet|policy|contract|plan|brief|handbook|photo|picture|screenshot|scan)s?\b)/i;
+
 export function asksToAddADocument(message: string): 'wants' | 'did' | null {
   const said = (message ?? '').trim();
   if (!said || said.length > 300) return null;
   if (JUST_ADDED.test(said) && /\b(?:file|document|doc|pdf|spreadsheet|sheet|deck|it|that)\b/i.test(said)) return 'did';
-  if (route(said).lane === 'add_a_document' || WANTS_TO_ADD.test(said)) return 'wants';
+  if (route(said).lane === 'add_a_document' || WANTS_TO_ADD.test(said) || WANTS_TO_UPLOAD_SOMETHING_NAMED.test(said)) return 'wants';
   return null;
 }
 

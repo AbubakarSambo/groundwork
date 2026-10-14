@@ -1,4 +1,4 @@
-import { theyWaitForAnAdmin, whatHappensWhenYouJoin } from '../participants/named-when-an-admin-approved';
+import { whatHappensWhenThisPersonJoins } from '../participants/named-when-an-admin-approved';
 import { theEndingSaid, theOutcomeIsThat, TheEndingIsAbout } from '../resolution/end-states';
 import { aPersonNeverReadsAnInternalName } from '../../common/no-internal-name-reaches-a-person';
 import { reportReadyReminderSubject } from './the-report-is-ready-reminder';
@@ -760,13 +760,8 @@ export class EmailService implements OnModuleInit {
   private async whatHappensWhenTheyJoin(context?: DeliveryContext): Promise<string> {
     try {
       if (!context?.participantId) return '';
-      const row: any = await this.prisma.groundParticipant.findUnique({
-        where: { id: context.participantId },
-        select: { email: true, createdAt: true, addedByUserId: true, ground: { select: { organizationId: true, initiatorId: true, approvedById: true, approvedAt: true, organization: { select: { name: true } } } } },
-      });
-      if (!row?.ground) return '';
-      const waits = await theyWaitForAnAdmin(this.prisma, row.ground, row);
-      return `<p>${escapeHtml(whatHappensWhenYouJoin(waits, row.ground.organization?.name ?? null))}</p>`;
+      const said = await whatHappensWhenThisPersonJoins(this.prisma, context.participantId);
+      return said ? `<p>${escapeHtml(said)}</p>` : '';
     } catch {
       return '';
     }
@@ -1447,14 +1442,16 @@ export class EmailService implements OnModuleInit {
    * moment a new session becomes available, carrying context from the last
    * check-in so the person doesn't have to remember where they left off.
    */
-  async sendSessionReady(email: string, groundLabel: string, checkInUrl: string, simplerWords?: boolean | null): Promise<void> {
+  async sendSessionReady(email: string, groundLabel: string, checkInUrl: string, simplerWords?: boolean | null, missed?: string[] | null): Promise<string | undefined> {
     const words = THE_EMAILS.nextCheckInOpen(simplerWords);
     /* No "Last time: ..." line (NL-007). It quoted the person's own last record entry into a mailbox
        their administrators can read, forward and export - the one thing the product promises not to do. */
-    await this.sendEmail({
+    /* The missed-check-ins notice (decision 136) rides in the opening rather than as a second email the same day (reviewer, 14 October). */
+    const theMissed = (missed ?? []).filter((l) => l.trim()).map((l) => `<p>${escapeHtml(l)}</p>`).join('');
+    return this.sendEmail({
       to: email,
       subject: `Your next check-in is open: ${groundLabel}`,
-      html: this.layout(`<p>${words.before} <strong>${escapeHtml(groundLabel)}</strong>${words.after}</p><p><a href="${checkInUrl}">Check in</a></p>`),
+      html: this.layout(`<p>${words.before} <strong>${escapeHtml(groundLabel)}</strong>${words.after}</p>${theMissed}<p><a href="${checkInUrl}">Check in</a></p>`),
     }, undefined, 'sendSessionReady');
   }
 
@@ -2028,7 +2025,7 @@ export function plainTextOf(html: string): string {
 }
 
 function decodeEntities(t: string): string {
-  const named: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“', mdash: '—', ndash: '–', hellip: '…', rarr: '→', middot: '·' };
+  const named: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“', mdash: '\u2014', ndash: '\u2013', hellip: '…', rarr: '→', middot: '·' };
   return t
     .replace(/&#(\d+);/g, (_m, n) => String.fromCodePoint(Number(n)))
     .replace(/&#x([0-9a-f]+);/gi, (_m, n) => String.fromCodePoint(parseInt(n, 16)))

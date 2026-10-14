@@ -83,7 +83,14 @@ export function whatTheyAskedFor(theirMessages: readonly string[]): WhatTheyAske
     THE_QUARTER.lastIndex = 0;
     for (const m of text.matchAll(NAME)) {
       /* "Call it New starter onboarding and start it now" is the name and then an instruction. */
-      const name = m[1].replace(/\s+(?:and|then)\s+(?:start|begin|run|set|check|invite|add|make|send)\b.*$/i, '').replace(/[,;:\s]+$/, '').trim();
+      const name = m[1].replace(/\s+(?:and|then)\s+(?:start|begin|run|set|check|invite|add|make|send)\b.*$/i, '')
+        /*
+         * And the schedule said after a comma is not part of the name (reviewer, 14 October): "Call it Litigation daily,
+         * start now, every day, no end" was saved as that whole sentence. A comma followed by when it starts, how often
+         * or how long ends the name; "Sales team, Q4" keeps its comma.
+         */
+        .replace(/\s*[,;:\u2013\u2014-]\s*(?:and\s+)?(?:start|starting|begin|beginning|run|running|open|opens|from|today|now|tomorrow|tonight|next|this\s+(?:week|month|monday|tuesday|wednesday|thursday|friday)|every|each|daily|weekly|monthly|fortnightly|once|twice|until|till|for\s+(?:\w+\s+)?(?:days?|weeks?|months?)|no\s+end|never\s+ends?|with\s+no\s+end|on\s+(?:mondays?|tuesdays?|wednesdays?|thursdays?|fridays?|saturdays?|sundays?|weekdays))\b.*$/i, '')
+        .replace(/[,;:\s]+$/, '').trim();
       if (name.length >= 2) out.name = name;
     }
   }

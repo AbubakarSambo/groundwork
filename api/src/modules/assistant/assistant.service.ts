@@ -60,7 +60,9 @@ import { theirSignIn } from '../suites/a-roster-entry-and-its-sign-in';
 import { withoutCommitmentsFromGoalsNotToldYet } from '../grounds/a-commitment-from-a-goal-not-told-is-not-read-by-its-person';
 import { theOpenSession as theOpenSessionOfACheckIn, whereOneStands } from '../engagement/heres-what-is-new';
 import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
-import { onWhatsApp, keptInTheApp, mayBeRead, notFromAKeptCheckIn, notAKeptCheckIn } from './a-check-in-kept-in-the-app-is-not-read-on-whatsapp';
+import { onWhatsApp, askedOnWhatsApp, keptInTheApp, mayBeRead, notFromAKeptCheckIn, notAKeptCheckIn } from './a-check-in-kept-in-the-app-is-not-read-on-whatsapp';
+/** The parked kinds that belong to the app's setup conversation (Add context), never to a message on WhatsApp. */
+const THE_APPS_OWN_SETUP_KINDS = new Set(['context', 'context_turn', 'context_line', 'lead_note', 'which_context_check_in']);
 import { aDecisionIn, onlyTheDecision, aDecisionSaidBack, aDecisionDone, aDecisionNotMade, whichDecision, NOTHING_TO_DECIDE, HOURS_ARE_NOT_DECLINED, type AWaitingRequest } from '../suites/a-request-in-words';
 import { whatWaitsForYouToDecide } from '../suites/what-waits-for-you-to-decide';
 import { whoApprovesFor } from '../suites/who-approves';
@@ -75,7 +77,7 @@ import { billableSaidBack, billableSaidIn, type TimeRules } from '../suites/the-
 import { DRAFT_CHANGE_NOT_READ, DRAFT_NOT_SENT, HOURS_WEEK_DRAFT_KIND, aLineRemoved, asksToDraftMyWeek, theClientNamedIn, theDraftChanged, theDraftSaidBack, theDraftSent, type ADraftEntry } from '../suites/a-week-drafted-from-the-record';
 import { aReasonInASentence, SPEND_PURPOSE_KIND, SPEND_MISSING_KIND, SPEND_NOT_SENT, SPEND_NOTHING_WAITING, SPEND_SUITE_OFF, readSpending, soundsLikeSpending, spendingSaidBack, spendingSent, type SpendSaid } from '../suites/spend-said-in-chat';
 import { theCategoryCalled, theCategoryIn, whichCategory, whichCategoryAgain, type SpendRules } from '../suites/the-spending-rules';
-import { NOT_KEPT } from '../knowledge/what-the-organisation-keeps';
+import { NOT_KEPT, NOT_KEPT_ANYWHERE, theRuleIsTheAnswerRefused } from '../knowledge/what-the-organisation-keeps';
 import { howLongAgo, splitBySession } from './what-you-told-me-before';
 import { ScenariosService } from '../detectors/scenarios.service';
 import { DraftsService } from '../drafts/drafts.service';
@@ -213,6 +215,10 @@ function aSourceInPlainWords(sys: string, _stale: boolean): string {
   return aSourceIsGroundworks(sys) ? 'What you have told Groundwork' : sys;
 }
 
+import { isAQuestion, answerFromTheDocuments } from './a-question-is-answered-from-the-documents';
+import { openTheLeadsCheckIn } from '../grounds/check-in-yourself';
+/** "I want to do my own check-in", "check in myself", "my check-in now". */
+const A_WISH_TO_CHECK_IN_MYSELF = /\b(?:(?:do|start|begin|answer)\s+my\s+(?:own\s+)?check[\s-]?in|check[\s-]?in\s+(?:myself|for\s+myself)|my\s+own\s+check[\s-]?in)\b/i;
 @Injectable()
 export class AssistantService {
   private readonly logger = new Logger(AssistantService.name);
@@ -379,6 +385,17 @@ export class AssistantService {
       const pg = (parked?.payload as any)?.groundId as string | undefined;
       if (parked && groundId && pg && pg !== groundId
         && (parked.kind === 'context_turn' || (parked.kind === 'context' && looksLikeADump(message)))) {
+        await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } }).catch(() => undefined);
+        parked = null;
+      }
+      /*
+       * THE APP'S SETUP CONVERSATION DOES NOT WAIT ON THE PHONE (pilots, 13 October 2026, problem 6). Njeri and Grace each
+       * used Add context in the app; two days later their "Hi" on WhatsApp was read as the No to a line waiting there, and
+       * they read "I have not added the line. Nothing was changed. What does doing well look like here?". A setup turn left
+       * waiting in the app is let go when the next message comes in on WhatsApp, and that message is answered as itself.
+       */
+      /* Only one left waiting for more than an hour: a yes or a no said on WhatsApp to something asked on WhatsApp comes within minutes. */
+      if (parked && askedOnWhatsApp() && THE_APPS_OWN_SETUP_KINDS.has(parked.kind) && Date.now() - new Date(parked.createdAt ?? 0).getTime() > 60 * 60 * 1000) {
         await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } }).catch(() => undefined);
         parked = null;
       }
@@ -648,6 +665,8 @@ export class AssistantService {
          * question and no lane owns it. Offering to write it down is a better answer than a list of
          * things it cannot do.
          */
+        /* A question nothing else answers is answered from the documents this person may open, privately (pilots, problem 1). */
+        if (userId && isAQuestion(message)) return this.aQuestionAnsweredFromTheDocuments(organizationId, who, userId, groundId ?? null, message);
         if (who) {
           const proposal = await this.maybePropose(organizationId, who, message);
           if (proposal) return proposal;
@@ -3311,6 +3330,17 @@ export class AssistantService {
     if (parseChangeContextLine(message) || parseContextLine(message)) return this.addContextLineByChat(organizationId, who, userId, groundId, message);
     if (parseLeadNote(message) || /\bshare\s+(?:the|my|this)\s+note\b/i.test(message)) return this.addLeadNoteByChat(organizationId, who, userId, groundId, message);
     if (parseAskAPerson(message)) return this.questionsForPeopleByChat(organizationId, who, userId, groundId, message);
+    /*
+     * "I WANT TO DO MY OWN CHECK-IN", SAID IN THE SETUP CONVERSATION (pilots, 13 October 2026, problem 6). It was read as
+     * an answer to the setup question and asked about the rhythm. It opens her own check-in on this one, through the
+     * same door as Check in yourself, and says where it is.
+     */
+    if (A_WISH_TO_CHECK_IN_MYSELF.test(message)) {
+      const opened = await openTheLeadsCheckIn(this.prisma, groundId, organizationId, userId).catch(() => null);
+      if (opened) return rules('start_a_check_in', text('Your own check-in is open. Open it to answer.'), { type: 'next_step', label: 'Open my check-in', href: `/checkin/${opened.checkInId}`, kind: 'open_a_check_in', id: opened.checkInId });
+    }
+    /* A question is answered, from the documents, to the asker alone; it is never offered as a line (pilots, problem 1). */
+    if (isAQuestion(message) && !looksLikeADump(message)) return this.aQuestionAnsweredFromTheDocuments(organizationId, who, userId, groundId, message, priorHistory);
     if (looksLikeADump(message)) return this.runContextChat(organizationId, who, userId, groundId, message, priorHistory);
 
     /* What is open, so the model can tell an answer to it from something else, and so it is asked again afterwards. */
@@ -3518,15 +3548,30 @@ export class AssistantService {
         const asker = await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { linkedUserId: true } });
         if (asker?.linkedUserId) await this.grounds.declineContextOffer(declined.groundId, asker.linkedUserId, declined.offerId).catch(() => undefined);
       }
-      const left = declined?.offerId ? NOT_KEPT : declined?.leave ? LEAVE_NOT_SENT : 'I have left it as it was. Nothing was changed.';
-      /* The company rule said with the answer is still offered, once, after the no (decision 75, item 29). */
+      /* After a no to the answer itself, the rule was never kept on this check-in either, so "It stays only on this check-in" would be untrue (reviewer, 14 October). */
+      const left = declined?.offerId ? ((declined as any).answerDeclined ? NOT_KEPT_ANYWHERE : NOT_KEPT) : declined?.leave ? LEAVE_NOT_SENT : 'I have left it as it was. Nothing was changed.';
+      /*
+       * The company rule said with the answer is still offered, once, after the no (decision 75, item 29) - but
+       * never when the rule IS the answer just refused (reviewer, 14 October): Grace said no to recording "Every
+       * rep closes at least one deal a week with proof" and was asked at once whether to keep those same words
+       * for the whole organisation. A no to the words is a no to the rule too, so the offer is put away.
+       */
       if (declined?.thenOffer?.offerId && declined.groundId) {
-        const before = [...(declined.history ?? [])];
-        if (before.length && before[before.length - 1].role === 'assistant') before.pop();
-        return this.offerTheRuleNext(organizationId, who, declined.groundId, left, declined.thenOffer, before, declined.openQuestion ?? null);
+        if (theRuleIsTheAnswerRefused(declined.thenOffer.say, (declined as any).said ?? parked.summary ?? '')) {
+          const asker = await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { linkedUserId: true } });
+          if (asker?.linkedUserId) await this.grounds.declineContextOffer(declined.groundId, asker.linkedUserId, declined.thenOffer.offerId).catch(() => undefined);
+        } else {
+          const before = [...(declined.history ?? [])];
+          if (before.length && before[before.length - 1].role === 'assistant') before.pop();
+          return this.offerTheRuleNext(organizationId, who, declined.groundId, left, declined.thenOffer, before, declined.openQuestion ?? null, true);
+        }
       }
+      /*
+       * AFTER A NO, STOP (reviewer, 14 October; the same rule as `carryOn`). The no is said, and nothing else: the
+       * open question is not asked again underneath it. Grace's second no brought the doing-well question back
+       * word for word. The conversation keeps that question as what is still open, so her next message answers it.
+       */
       const still = (declined?.openQuestion ?? '').trim();
-      const spoken = still ? `${left}\n\n${still}` : left;
       if (declined?.groundId) {
         const before = [...(declined.history ?? [])];
         if (before.length && before[before.length - 1].role === 'assistant') before.pop();
@@ -3535,12 +3580,13 @@ export class AssistantService {
             organizationId,
             personExternalId: who,
             kind: 'context_turn',
-            summary: spoken,
-            payload: { groundId: declined.groundId, history: [...before, { role: 'assistant' as const, content: spoken }] } as never,
+            summary: still || left,
+            /* What the conversation carries still holds the question, so the model reads the next message as its answer; only the screen leaves it out. */
+            payload: { groundId: declined.groundId, history: [...before, { role: 'assistant' as const, content: still ? `${left}\n\n${still}` : left }] } as never,
           },
         });
       }
-      return rules('add_context', text(spoken));
+      return rules('add_context', text(left));
     }
 
     const payload = parked.payload as {
@@ -3624,6 +3670,7 @@ export class AssistantService {
     offer: { say: string; offerId: string },
     history: { role: 'user' | 'assistant'; content: string }[],
     openQuestion: string | null,
+    answerDeclined = false,
   ): Promise<Reply> {
     const row = await this.prisma.assistantProposal.create({
       data: {
@@ -3631,7 +3678,7 @@ export class AssistantService {
         personExternalId: who,
         kind: 'context',
         summary: offer.say,
-        payload: { groundId, said: '', history: [...history, { role: 'assistant' as const, content: offer.say }], openQuestion, offerId: offer.offerId } as never,
+        payload: { groundId, said: '', history: [...history, { role: 'assistant' as const, content: offer.say }], openQuestion, offerId: offer.offerId, ...(answerDeclined ? { answerDeclined: true } : {}) } as never,
       },
       select: { id: true },
     });
@@ -4647,6 +4694,28 @@ export class AssistantService {
     }
   }
 
+  /**
+   * A QUESTION, ANSWERED FROM THE DOCUMENTS THE ASKER MAY OPEN, AND TO THEM ALONE (pilots, problem 1). Where it was
+   * asked in the middle of setting a check-in up, the setup conversation is kept waiting where it was, so the next
+   * answer carries on with it, and its question is not asked again here.
+   */
+  private async aQuestionAnsweredFromTheDocuments(
+    organizationId: string,
+    who: string | null,
+    userId: string,
+    groundId: string | null,
+    question: string,
+    priorHistory?: { role: 'user' | 'assistant'; content: string }[],
+  ): Promise<Reply> {
+    const said = await answerFromTheDocuments({ prisma: this.prisma, engine: this.engine as any }, { organizationId, userId, groundId, question });
+    if (who && groundId && priorHistory?.length) {
+      await this.prisma.assistantProposal.create({
+        data: { organizationId, personExternalId: who, kind: 'context_turn', summary: priorHistory[priorHistory.length - 1]?.content ?? '', payload: { groundId, history: priorHistory } as never },
+      }).catch(() => undefined);
+    }
+    return rules('answer_from_documents', text(said));
+  }
+
   private async proposeContextLine(
     organizationId: string,
     who: string,
@@ -4685,17 +4754,23 @@ export class AssistantService {
   ): Promise<Reply> {
     const still = (carried?.openQuestion ?? '').trim();
     if (!carried || !still) return rules('add_context', text(said));
-    const spoken = `${said}\n\n${still}`;
+    /*
+     * THE OPEN QUESTION WAITS, AND IS NOT ASKED AGAIN HERE (pilots, 13 October 2026, problem 1 and E3). This said the
+     * yes or the no and then the open question underneath it, and kept both as the last thing Groundwork said, so the
+     * next No read "I have not added the line. Nothing was changed." followed by "I have added the line to this
+     * check-in." and the doing-well question again. Now the person is told only what happened. The conversation stays
+     * where it was, with its own question as the last thing asked, so their next message still answers it.
+     */
     await this.prisma.assistantProposal.create({
       data: {
         organizationId,
         personExternalId: who,
         kind: 'context_turn',
-        summary: spoken,
-        payload: { groundId, history: [...carried.history.slice(0, -1), { role: 'assistant' as const, content: spoken }] } as never,
+        summary: still,
+        payload: { groundId, history: carried.history } as never,
       },
     });
-    return rules('add_context', text(spoken));
+    return rules('add_context', text(said));
   }
 
   private async resolveParkedContextLine(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {

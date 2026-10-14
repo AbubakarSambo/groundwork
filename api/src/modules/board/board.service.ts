@@ -34,6 +34,7 @@ export const NO_OPEN_ISSUES_ON_RECORD = 'Groundwork does not follow an issue fro
 import { theShareSays, YOU_HAVE_NO_SHARE_YET } from './your-share';
 import { theirOwnAimsKeptOnlyAsPromises, AN_AIM_FROM_THEIR_PROMISE } from './an-aim-kept-only-as-their-promise';
 import { eachDealInItsGroup } from './each-deal-in-its-group';
+import { proofNamesTheDeal } from './one-deal-per-customer';
 import { isTheTeamPictureNowShared } from '../reports/each-sessions-picture-is-released-on-its-own';
 import { withoutItsOwnSpeaker } from './a-view-does-not-start-with-its-speaker';
 import { everyActionHasALabel, whatToDoAboutALeadAction, whatToDoAboutADecision, isAYesOrNoQuestion, theAnswerAsALine } from './what-needs-you-and-what-to-do';
@@ -1565,7 +1566,12 @@ export class BoardService {
          * among the people she manages she came out top, "has not answered", about a round she is
          * not running. This read is what to do about other people.
          */
-        ground.participants.filter((p) => !p.managingOnly && p.id !== me?.id).map((p) => {
+        /*
+         * AND NOBODY ELSE'S LIST EITHER (pilots, 13 October 2026, problem 11). Read by the admin, Wanjiru's board said "Njeri
+         * Kamau has not checked in for this session yet. Ask Njeri Kamau to check in." about the lead. The lead answers her
+         * own check-in when she chooses, so she is never chased or marked as not answered, whoever is reading.
+         */
+        ground.participants.filter((p) => !p.managingOnly && p.id !== me?.id && (p as any).partyType !== 'INITIATOR').map((p) => {
           /* Their share, to whoever may read it: the same rule as the targets above (U.7 review). An
              admin standing in reads each person's number too (decision 86). */
           const theirs = sharesStayWithTheirOwner
@@ -2391,6 +2397,15 @@ export class BoardService {
           if (r.kind !== 'deal') continue;
           const value = theValueOf(r.fields);
           r.value = value;
+          /* Proof on any line naming the customer shows the deal (problem 2): the M-Pesa line, not only the line the deal was written from. */
+          /* Only a deal said in a check-in on somebody's word: a colleague's confirmation and the lead's own entry keep saying how they are known. */
+          if (r.from === 'said' && r.mark !== 'proven' && r.mark !== 'confirmed' && proofNamesTheDeal(r.name, readable)) {
+            r.proofOnAnotherLine = true;
+            /* The row reads as the proof shows it: a line naming this customer is backed by the speaker's own document. */
+            r.mark = 'proven';
+            r.known = 'proof';
+            r.knownSays = 'Proof shows it.';
+          }
           r.valueSays = value ? null : NO_VALUE_SAID;
           r.contactHistory = theContactHistory(r.name, readable, now);
           r.contactHistorySays = WHAT_CONTACT_HISTORY_IS;

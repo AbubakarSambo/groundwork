@@ -567,7 +567,41 @@ describe('a company rule said while a setup question was waiting (decision 75, i
     const no = svc({ parked: ruleParked });
     const r = await no.service.respond('org-a', 'p1', 'no');
     expect(no.groundsService.declineContextOffer).toHaveBeenCalledWith('g1', 'lead-1', 'o1');
-    expect(r.blocks[0]).toMatchObject({ type: 'text', body: 'I have not kept that for the organisation. It stays only on this check-in.\n\nWho takes part in this check-in?' });
+    /* Reviewer, 14 October: after a no, stop. The open question is not asked again under it; it stays what is waiting. */
+    expect(r.blocks).toEqual([expect.objectContaining({ type: 'text', body: 'I have not kept that for the organisation. It stays only on this check-in.' })]);
+    expect(no.proposals.find((p: any) => p.kind === 'context_turn')?.summary).toBe('Who takes part in this check-in?');
+  });
+
+  /*
+   * REVIEWER, 14 OCTOBER: GRACE'S NO. She said no to recording "Every rep closes at least one deal a week with proof" as what
+   * doing well looks like, read "I have left it as it was. Nothing was changed." and then at once "Shall I keep "Every rep closes
+   * at least one deal a week with proof" as a rule for the whole organisation?". Her second no brought "It stays only on this
+   * check-in." and the doing-well question again. After a no, it stops.
+   */
+  it('a no to the answer is a no to the same words as a rule: nothing more is offered or asked', async () => {
+    const GRACE = 'Every rep closes at least one deal a week with proof.';
+    const OFFER = 'Shall I keep "Every rep closes at least one deal a week with proof" as a rule for the whole organisation, so later check-ins and Ask Kilima Water (test) can use it?';
+    const DOING_WELL = 'What does doing well look like here?';
+    const parked = { id: 'pr-g', kind: 'context', payload: { groundId: 'g1', said: GRACE, history: [{ role: 'assistant', content: DOING_WELL }, { role: 'user', content: GRACE }, { role: 'assistant', content: `Shall I record "${GRACE.replace(/\.$/, '')}" as what doing well looks like?` }], openQuestion: DOING_WELL, thenOffer: { say: OFFER, offerId: 'o-g' } } };
+    const { service, proposals, groundsService } = svc({ parked });
+    const r = await service.respond('org-a', 'p1', 'no');
+    expect(r.blocks).toEqual([expect.objectContaining({ type: 'text', body: 'I have left it as it was. Nothing was changed.' })]);
+    expect(JSON.stringify(r)).not.toMatch(/whole organisation|doing well/);
+    expect(groundsService.declineContextOffer).toHaveBeenCalledWith('g1', 'lead-1', 'o-g');
+    expect(proposals.find((p: any) => p.kind === 'context' && p.payload?.offerId === 'o-g')).toBeUndefined();
+  });
+
+  it('a no to a different rule after a no to the answer never says it stays on this check-in', async () => {
+    const ruleParked = { id: 'pr-rule', kind: 'context', payload: { groundId: 'g1', said: '', history: [], openQuestion: 'Who takes part in this check-in?', offerId: 'o1', answerDeclined: true } };
+    const { service } = svc({ parked: ruleParked });
+    const r = await service.respond('org-a', 'p1', 'no');
+    expect(r.blocks).toEqual([expect.objectContaining({ type: 'text', body: 'I have not kept that for the organisation either. Nothing was changed.' })]);
+  });
+
+  it('the rule offered after a no to the answer remembers that the answer was refused', async () => {
+    const { service, proposals } = svc({ parked: answerParked });
+    await service.respond('org-a', 'p1', 'no');
+    expect(proposals.find((p: any) => p.kind === 'context' && p.payload?.offerId === 'o1')?.payload.answerDeclined).toBe(true);
   });
 });
 

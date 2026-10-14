@@ -24,8 +24,36 @@ export function theFigureAsWritten(n: number, content: string, what?: string | n
       found.push({ text: whole.trim(), line });
     }
   }
-  if (!found.length) return null;
+  if (!found.length) return theFigureUnderAColumnsCurrency(n, content, what);
   const words = wordsOf(what ?? '');
   const near = found.find((f) => words.some((w) => f.line.toLowerCase().includes(w)));
   return (near ?? found[0]).text;
+}
+
+/**
+ * A TABLE THAT GIVES ITS CURRENCY ONCE, IN THE COLUMN'S HEADING (pilots, 13 October 2026, problem 3).
+ *
+ * A fee note read "Item  Amount (KES)" above "Total due  466,450.00", and the read said the total back
+ * as "466,450", with its currency dropped. Where the figure has no unit on its own line, and a line above
+ * it names a currency in brackets, the figure is said with that currency, and its digits as written.
+ */
+const A_COLUMNS_CURRENCY = /\((KES|KSh|Ksh|USD|NGN|GHS|UGX|TZS|ZAR|EUR|GBP|Rs|[$£€₦])\)/;
+function theFigureUnderAColumnsCurrency(n: number, content: string, what?: string | null): string | null {
+  const lines = content.split(/\n/);
+  const words = wordsOf(what ?? '');
+  let currency: string | null = null;
+  let first: string | null = null;
+  for (const line of lines) {
+    const heading = A_COLUMNS_CURRENCY.exec(line);
+    if (heading && !/\d[\d,]*(?:\.\d+)?\s*$/.test(line.replace(A_COLUMNS_CURRENCY, ''))) { currency = heading[1]; continue; }
+    if (!currency) continue;
+    for (const m of line.matchAll(/(?<![\d.,])(\d[\d,]*(?:\.\d+)?)(?![\d%])/g)) {
+      const value = parseFloat(m[1].replace(/,/g, ''));
+      if (Math.abs(value - n) > 1e-6 && Math.round(value) !== n) continue;
+      const said = `${currency} ${m[1]}`;
+      if (words.some((w) => line.toLowerCase().includes(w))) return said;
+      first = first ?? said;
+    }
+  }
+  return first;
 }

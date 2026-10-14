@@ -23,8 +23,15 @@ describe('one floor, read in both places', () => {
     expect(SRC).not.toMatch(/minTurns\s*=\s*[^;]*\?\s*\d+\s*:\s*\d+/);
   });
 
+  /*
+   * PILOTS, 13 OCTOBER 2026, PROBLEM 4: TWO FLOORS NOW, EACH IN ONE PLACE. Groundwork closing on its own reads
+   * theFloorFor (five); a person's own finish, and the screen's offer of it, read theFloorForAPersonsFinish (three),
+   * because "finish" after four answers was refused three times in a row. Changed from one count of five.
+   */
   it('every place reads it from the one module: the engine, the server, and the three replies that tell the screen', () => {
-    expect([...SRC.matchAll(/theFloorFor\(/g)]).toHaveLength(5);
+    expect([...SRC.matchAll(/theFloorFor\(/g)]).toHaveLength(1);
+    /* Five since the reviewer's 14 October pass: "finish" too soon says how many more answers, read from the same floor. */
+    expect([...SRC.matchAll(/theFloorForAPersonsFinish\(/g)]).toHaveLength(5);
   });
 
   it('a check-in does not close on three answers any more', () => {
@@ -52,7 +59,7 @@ describe('one floor, read in both places', () => {
   it('the server reads the scenario into the floor at both ends', () => {
     /* Both calls pass a scenario; a call with one argument would be the full floor on an update. */
     /* The call's argument list, read to its closing paren with the nested parens of `!!(checkIn as any)` inside it. */
-    for (const m of SRC.matchAll(/theFloorFor\(((?:[^()]|\([^()]*\))*)\)/g)) expect(m[1]).toMatch(/,\s*(scenarioOfThis|\(row as any\)|\(ground as any\))/);
+    for (const m of SRC.matchAll(/theFloorFor(?:ForAPersonsFinish)?\(((?:[^()]|\([^()]*\))*)\)/g)) expect(m[1]).toMatch(/,\s*(scenarioOfThis|\(row as any\)|\(ground as any\))/);
   });
 
   /*
@@ -62,9 +69,10 @@ describe('one floor, read in both places', () => {
    * offers at that count. This fails if either half stops.
    */
   it('and tells the screen, which never inlines a number of its own', () => {
-    expect(SRC.match(/mayCompleteAfter: theFloorFor\(/g)).toHaveLength(3);
+    expect(SRC.match(/mayCompleteAfter: theFloorForAPersonsFinish\(/g)).toHaveLength(3);
     const page = strip(readFileSync(join(__dirname, '..', '..', '..', '..', 'client', 'src', 'pages', 'chat', 'ChatPage.tsx'), 'utf8'));
-    expect(page).toMatch(/\.length >= mayCompleteAfter && \(/);
+    /* The count is the answers the server kept (60835ba84, release check): still the server's own floor, never a number of the screen's. */
+    expect(page).toMatch(/answersTheServerKept\(msgs\) >= mayCompleteAfter && \(/);
     expect(page).not.toMatch(/\.length >= \d+ && \(/);
     expect(page).toContain('setMayCompleteAfter(res.mayCompleteAfter)');
     expect(page).toContain('setMayCompleteAfter(t.mayCompleteAfter)');

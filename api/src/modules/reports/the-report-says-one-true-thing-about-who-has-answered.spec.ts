@@ -22,7 +22,7 @@ describe('B-118: who has answered, said once', () => {
   });
   it('a round still open where everybody has answered says that everybody has, in both places', () => {
     const out = theSessionReport({ ...base, closed: false, peopleInAll: 2, answeredThisSession: said(2) });
-    expect(out.whereThingsStand.saying).toBe('Everybody has answered and this has not yet named anything they agree or differ on.');
+    expect(out.whereThingsStand.saying).toBe('Everybody has answered. The report has not yet found anything they agree or differ on.');
     expect(theDifferencesRead(out)).toBe('Everybody has answered, and the written report names no agreement and no gap yet.');
   });
   it('with no count of people, whether the round closed decides, as before', () => {

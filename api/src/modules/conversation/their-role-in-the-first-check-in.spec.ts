@@ -26,7 +26,8 @@ function world(opts: { setup?: boolean; clarification?: boolean; correction?: bo
       create: jest.fn(async ({ data }: any) => { created.push(data); return { id: 'row-1', ...data }; }),
       findFirst: jest.fn(async () => opts.row ?? null),
     },
-    conversationTurn: { findMany: jest.fn(async () => (opts.turns ?? []).flatMap((content) => [{ role: 'AI', content: 'A question.' }, { role: 'PERSON', content }])) },
+    /* Only this check-in has turns: a read of their other check-ins (E6, the job question once per person) finds none. */
+    conversationTurn: { findMany: jest.fn(async (q: any) => (q?.where?.checkInId?.not ? [] : (opts.turns ?? []).flatMap((content) => [{ role: 'AI', content: 'A question.' }, { role: 'PERSON', content }]))) },
     assistantProposal: { create: jest.fn(async ({ data }: any) => { proposalsList.push(data); return data; }) },
   };
   const anthropic = { extract: jest.fn(async () => opts.read ?? {}) };

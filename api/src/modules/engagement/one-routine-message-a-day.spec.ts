@@ -201,3 +201,34 @@ describe('the invitation about to lapse says what became of it', () => {
     expect(await (w.email as any).sendInviteAboutToLapse('vera@x.test', 'Sales team, Q4', 'https://app.test/invite?token=t', 'p1')).toBe('sent');
   });
 });
+
+/**
+ * REVIEWER, 14 OCTOBER: MERCY'S 17 OCTOBER. She got the WhatsApp opening, the "Your next check-in is open" email and the "You've missed
+ * your last two check-ins" email. The two openings are the exception (WhatsApp is in addition to email, never instead of it); the missed
+ * notice is routine (decision 136 tells the person first, once by email) and was her one routine message that day. Anything routine after
+ * it, by either door, is held.
+ */
+describe('Mercy\'s day: the openings on both doors, and one routine message', () => {
+  it('the openings never use up her one, the missed notice does, and the next routine one by either door is held', async () => {
+    const w = world();
+    w.wentOn('+254700000001', 'checkin-open:template');
+    await w.emailed('vera@x.test', 'sendSessionReady');
+    await w.emailed('vera@x.test', 'sendMissedCheckIns');
+    await w.emailed('vera@x.test', 'sendYourWeek');
+    expect(w.notifications.map((n) => [n.sender, n.outcome])).toEqual([['sendSessionReady', 'sent'], ['sendMissedCheckIns', 'sent'], ['sendYourWeek', 'suppressed']]);
+    expect(await w.ask('+254700000001', 'overdue')).toBe(NOT_TODAY);
+  });
+});
+
+describe('the missed notice rides inside the opening email (reviewer, 14 October)', () => {
+  it('one email: "Your next check-in is open" with the missed lines in it, and no routine message used', async () => {
+    const w = world();
+    let html = '';
+    w.email.deliverNow = jest.fn(async (o: any, _c: any, sender: string) => { html = o.html; await w.email.writeItDown(o, sender, 'sent', null); return 'sent'; });
+    await w.email.sendSessionReady('vera@x.test', 'Sales daily', 'https://app.test/checkin/c1', false, ["You've missed your last two check-ins.", 'If something is in the way, you can tell Grace why on your Today page.']);
+    expect(html).toContain("<p>You've missed your last two check-ins.</p>");
+    expect(html).toContain('If something is in the way, you can tell Grace why on your Today page.');
+    await w.emailed('vera@x.test', 'sendNudge');
+    expect(w.notifications.map((n) => [n.sender, n.outcome])).toEqual([['sendSessionReady', 'sent'], ['sendNudge', 'sent']]);
+  });
+});

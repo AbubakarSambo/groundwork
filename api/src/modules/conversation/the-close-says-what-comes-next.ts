@@ -106,3 +106,10 @@ export function endsOnTheClose(text: string): boolean {
   const t = String(text ?? '').trim();
   return EVERY_CLOSE.some((c) => t.endsWith(c));
 }
+
+/** The closing turn without the line that tells them to write "finish": for when their own words already closed it (WhatsApp). */
+export function endingWithoutTheFinishLine(text: string): string {
+  let out = String(text ?? '');
+  for (const c of [THE_CLOSE_ON.whatsapp, THE_CLOSE_ON_IN_SIMPLER_WORDS.whatsapp]) out = out.split(c).join('');
+  return out.trim();
+}

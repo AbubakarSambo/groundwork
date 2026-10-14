@@ -1,4 +1,4 @@
-import { sendTheMissedCheckInsToThePeople } from './missed-check-ins-told-first';
+import { sendTheMissedCheckInsToThePeople, theMissedNoticeToFold, rememberTheMissedNoticeTold } from './missed-check-ins-told-first';
 import { whatThePersonIsToldAboutMissing, keepTheirReason } from '../grounds/missed-check-ins';
 import { WhatNeedsYouService } from '../grounds/what-needs-you.service';
 
@@ -100,6 +100,34 @@ describe('missed check-ins, told to the person first (decision 136)', () => {
     expect(to).toBe('brian@x.test');
     expect(subject).toBe("You've missed your last two check-ins on \"Sales weekly\"");
     expect(lines[2]).toBe('If something is in the way, you can tell Amani why on your Today page.');
+  });
+
+  /*
+   * REVIEWER, 14 OCTOBER: MERCY'S 17 OCTOBER. The WhatsApp opening, the "Your next check-in is open" email and a separate
+   * "You've missed your last two check-ins" email on one day. The notice now rides inside the opening email, and on a day an
+   * opening already went any other way it is not sent separately.
+   */
+  it('on a day the WhatsApp opening went to Brian, no separate missed email goes', async () => {
+    const { prisma } = world();
+    prisma.person = { findMany: jest.fn().mockResolvedValue([{ email: 'brian@x.test', phone: '+254700000002' }]) };
+    prisma.whatsAppSend = { findFirst: jest.fn().mockImplementation(({ where }: any) => Promise.resolve(where.phone.in.includes('+254700000002') && where.kind.startsWith === 'checkin-open' ? { id: 's1' } : null)) };
+    const email = { sendMissedCheckIns: jest.fn().mockResolvedValue('sent') };
+    await sendTheMissedCheckInsToThePeople({ prisma, email, frontendUrl: 'https://app.test' }, NOW);
+    expect(email.sendMissedCheckIns).not.toHaveBeenCalled();
+  });
+
+  it('the opening email carries the notice, once, and the separate email is then never sent', async () => {
+    const { prisma } = world();
+    const folded = await theMissedNoticeToFold(prisma, 'u-brian', 'p-brian', NOW);
+    console.log(`BRIAN'S OPENING EMAIL CARRIES:\n${folded?.lines.join('\n')}`);
+    expect(folded?.lines[0]).toBe("You've missed your last two check-ins.");
+    expect(folded?.lines[2]).toBe('If something is in the way, you can tell Amani why on your Today page.');
+    expect(await theMissedNoticeToFold(prisma, 'u-neema', 'p-neema', NOW)).toBeNull();
+    await rememberTheMissedNoticeTold(prisma, folded!.key, 'sent');
+    const email = { sendMissedCheckIns: jest.fn().mockResolvedValue('sent') };
+    await sendTheMissedCheckInsToThePeople({ prisma, email, frontendUrl: 'https://app.test' }, NOW);
+    expect(email.sendMissedCheckIns).not.toHaveBeenCalled();
+    expect(await theMissedNoticeToFold(prisma, 'u-brian', 'p-brian', NOW)).toBeNull();
   });
 
   it('only Brian can give a reason, and only on his own missed check-in', async () => {

@@ -168,7 +168,8 @@ describe('the opening line, written by the product from what the check-in alread
   });
 
   it('says only the rhythm when there is no chosen length yet', () => {
-    expect(openingLine(null, 'FORTNIGHTLY')).toBe('This check-in people check in every two weeks.');
+    /* Was 'This check-in people check in every two weeks.', which is not a sentence (setup page review). */
+    expect(openingLine(null, 'FORTNIGHTLY')).toBe('In this check-in, people check in every two weeks.');
   });
 
   it('says nothing at all when neither is set - there is nothing yet to open on', () => {

@@ -37,6 +37,7 @@ export function inTheOrganisationsDay<T>(zone: string | null | undefined, work: 
 type Reader = {
   organization: { findUnique: (a: any) => Promise<any> };
   user?: { findMany: (a: any) => Promise<any[]> };
+  person?: { findMany: (a: any) => Promise<any[]> };
 };
 
 const remembered = new Map<string, { zone: string; until: number }>();
@@ -52,10 +53,15 @@ export async function theOrganisationsZone(prisma: Reader, organizationId: strin
     if (isAZone(org?.timeZone)) zone = org.timeZone;
     else if (prisma.user) {
       const people = await prisma.user.findMany({ where: { organizationId, phoneNumber: { not: null } }, select: { phoneNumber: true }, take: 200 });
+      /* And the numbers on the organisation's roster (reviewer, 14 October): a company that added its people's numbers on
+         People, with none yet on a sign-in, is still where those numbers are. */
+      const roster: any[] = prisma.person?.findMany
+        ? await prisma.person.findMany({ where: { organizationId, phone: { not: null } }, select: { phone: true }, take: 200 }).catch(() => [])
+        : [];
       const tally = new Map<string, number>();
-      for (const p of people) {
+      for (const n of [...people.map((p: any) => p.phoneNumber), ...roster.map((p: any) => p.phone)]) {
         /* A number from nowhere we know is not a vote for anything. */
-        const z = thePhonesOwnZone(p.phoneNumber);
+        const z = thePhonesOwnZone(n);
         if (z) tally.set(z, (tally.get(z) ?? 0) + 1);
       }
       zone = [...tally.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
@@ -64,7 +70,12 @@ export async function theOrganisationsZone(prisma: Reader, organizationId: strin
     zone = null;
   }
   const out = zone ?? THE_PRODUCTS_OWN_ZONE;
-  remembered.set(organizationId, { zone: out, until: now + FOR_TEN_MINUTES });
+  /*
+   * ONLY A ZONE THAT WAS FOUND IS REMEMBERED (reviewer, 14 October; D4). The product's own zone, used because nothing was
+   * known yet, was kept for ten minutes: a team whose numbers went in a minute later had David's and Kevin's second
+   * sessions open at 8 in Lagos (10am in Nairobi) and Mercy's, a minute after it lapsed, at 8 in Nairobi.
+   */
+  if (zone) remembered.set(organizationId, { zone: out, until: now + FOR_TEN_MINUTES });
   return out;
 }
 

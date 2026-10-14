@@ -97,6 +97,14 @@ export interface RoundCompletedEvent {
   sessionNumber: number;
   /** Who the round was waiting on, as it stood when it closed. */
   participantCount: number;
+  /**
+   * From the record, for what a person reads (reviewer, 14 October): how many the session waited on
+   * once leave was taken off, and how many of them actually gave an account (a refusal or a session
+   * the clock closed with nothing said is not one). The digest said "Everyone has checked in... 3
+   * people took part" when only the lead had.
+   */
+  waitedOn?: number;
+  accountsGiven?: number;
 }
 
 export interface GroundActivatedEvent {

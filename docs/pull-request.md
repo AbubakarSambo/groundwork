@@ -5,6 +5,38 @@ This replaces pull requests #324 and `groundwork-next-release`. It is made from 
 1. **The engine** (`api/`): the server, its migrations, its tests, the one-off scripts the release night runs, and these notes.
 2. **The screens** (`client/` and `marketing/`): the screens, their tests and the browser tests. They call the engine's new routes, so merge the engine first.
 
+## This update, 14 October (after #326 and #327)
+
+This update is made from staging as it is now (`a767ec6c3`). Like the release before it, it comes as two pull requests, the engine first and then the screens.
+
+**Before you merge, in addition to the list below:**
+- [ ] **Take a backup of the database first.**
+- [ ] **There is one new migration, number 97,** `20261014090000_whatsapp_is_free_for_a_month`. It adds `organizations.whatsapp_free_until` and gives every organisation already here one free month of WhatsApp from the day it runs. Nothing is charged. It is described in `docs/deploy.md`, section 2.
+- [ ] **There are no new one-off scripts.** The four from the release before have already run.
+- [ ] **There is one new default.** WhatsApp is on for every organisation for its free month. After that, an organisation keeps it only by adding it to its subscription. Nothing needs writing for this.
+- [ ] **There are no new templates** (decision 124).
+
+**What it brings:**
+- Hafsah's decisions of 13 October:
+  - WhatsApp is free for a month;
+  - a lead or the company can add somebody's WhatsApp number, and the first contact can then be on WhatsApp;
+  - targets are read from documents;
+  - daily check-ins open at 8 in the morning in the organisation's own time zone;
+  - a lead's own late promises are under "Needs you".
+- The pilots' problems and the reviewers' rounds:
+  - proof moves a deal to won, and one customer is one deal;
+  - a private document keeps its audience;
+  - a person's "finish" and "I have to go" are honoured;
+  - Ask answers from the documents the asker may open;
+  - counts come from the record ("Everybody who has joined has answered. Two people have not joined yet.");
+  - one routine message a day, with the missed-check-ins notice inside the opening email;
+  - the lead's words about a person never reach that person's turn;
+  - "tomorrow" is read on the day it was said;
+  - case names such as "Kamau v. Apex Ltd" are never cut at their full stop.
+- `schema.prisma` names the leaving checklist's unique index as its migration created it. This adds no migration and changes no database, and "Migrations match the schema" passes on a fresh database.
+
+**Tests.** The release before removed 120 test files that failed with the CI's settings. This update brings back 49 of them, the ones that check how the product behaves, together with the new behaviour tests, and all of them pass with the CI's own settings. One of them is the privacy test `api/src/modules/reports/a-private-file-is-not-named-in-the-report.spec.ts`. Tests that only read source text, or that compare the code with our working documents, stay out (39 in the API and 44 in the client), as Hafsah's rule says. The existing-users check (`api/journey/existing-clients-carry-on.spec.ts`) is kept and updated for migration 97. The screens remove one test already on staging, `client/src/components/gw/ui/no-new-class-without-a-shared-part.spec.ts`. It reads a working document (`docs/the-parts-against-the-prototype.md`) that is not part of a pull request, so it cannot pass here.
+
 ## Before you merge
 
 Tick each one before merging. The full steps are in `docs/deploy.md`, "The release night, in order".

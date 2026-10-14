@@ -250,6 +250,8 @@ export interface SessionReportInputs {
   answeredThisSession: { who: string; isYou: boolean }[];
   /** How many people the session counts in all, answered or not, for the confidence read. */
   peopleInAll?: number;
+  /** How many were invited and have not joined yet (decision 136: not counted, not waited on). */
+  notJoinedYet?: number;
   /** Commitments this session that carry both somebody's name and a date. */
   commitmentsWithOwnerAndDate?: number;
 }
@@ -365,7 +367,8 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
   const standing =
     agreed === 0 && stillOpen === 0
       ? everyoneHasAnswered
-        ? 'Everybody has answered and this has not yet named anything they agree or differ on.'
+        /* Never "everybody" while somebody invited has not joined (reviewer, 14 October): the team had not been contacted yet. */
+        ? (input.notJoinedYet ? `Everybody who has joined has answered. ${notJoinedSaid(input.notJoinedYet)}` : 'Everybody has answered. The report has not yet found anything they agree or differ on.')
         : 'Not everyone has answered yet, so there is nothing to agree or differ with.'
       : `${agreed} settled, ${stillOpen} still open.`;
 
@@ -565,6 +568,7 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     filesSent: input.filesSentThisSession ?? 0,
     /* So the Differences tile stops saying somebody has not answered when everybody has. */
     stillToAnswer: Math.max(0, (input.peopleInAll ?? input.answeredThisSession.length) - input.answeredThisSession.length),
+    notJoinedYet: input.notJoinedYet ?? 0,
     /* And so the two that have something to name, name it rather than repeating their own label. */
     theDifference: openWithReasons[0]?.topic ?? null,
     theBlocker: input.theFirstBlocker ?? null,
@@ -816,4 +820,11 @@ export function hasOwnerAndDate(text: string): boolean {
     /\b(today|tomorrow|next week|this week|next month|by then|within \d+ (day|week|month))/.test(t) ||
     /\bq[1-4]\b/.test(t);
   return aPerson && aTime;
+}
+
+/** "One person has not joined yet." / "Two people have not joined yet." */
+export function notJoinedSaid(n: number): string {
+  const words = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
+  const how = n <= 10 ? words[n] : String(n);
+  return n === 1 ? 'One person has not joined yet.' : `${how} people have not joined yet.`;
 }

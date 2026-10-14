@@ -1,3 +1,10 @@
+import { withoutTheirWordsHandedBack, withoutAnAnswerToItsOwnQuestion } from '../conversation/a-reply-neither-hands-back-their-words-nor-answers-itself';
+import { asksAboutTheirJobAgain, withoutTheJobQuestion } from '../conversation/their-role-in-the-first-check-in';
+import { askedToFinish, isTheWordFinish } from '../conversation/close-readiness';
+import { aFinishTooSoon } from '../conversation/a-finish-too-soon-is-said-plainly';
+import { endingOnTheClose } from '../conversation/the-close-says-what-comes-next';
+import { withAQuestion as withAQuestionForTheFirstCheckIn } from '../conversation/nobody-is-left-looking-at-a-paragraph';
+import { stripCloseMarker } from '../conversation/prompt-library';
 import { waitNoLongerThan, HOW_LONG_THE_SAVE_WAITS_FOR_THE_READING_MS } from './a-slow-reading-does-not-hold-the-save';
 import { withoutTheUserLabel } from './the-lead-is-never-the-user';
 import { tooManyPeopleFor } from './how-many-people-one-check-in-holds';
@@ -53,7 +60,7 @@ import { PLAIN_WORDS } from '../conversation/plain-words';
 import { forHumans, hadCloseMarker, whatIsNewSince } from '../presentation/outbound';
 import { isADeadEnd, ASK_SOMETHING_OR_CLOSE } from '../conversation/a-reply-that-asks-nothing-is-a-dead-end';
 import {
-  opensByRepeatingThem, theyPushedBackOnTheQuestions, asksTheSameThingAgain, alreadyAskedTwice,
+  opensByRepeatingThem, theyPushedBackOnTheQuestions, asksTheSameThingAgain, alreadyAskedTwice, repeatsTheLastAskWordForWord, asksItAgainAfterTheAnswer, withoutTheQuestionAskedAgain,
   THEY_ALREADY_SAID_NO, ASKED_IT_TWICE_ALREADY, doNotSayItBack,
 } from '../conversation/asked-twice-and-told-no-twice';
 import { isAVerdictAboutSomebodyElse, HERS_TO_DRAW } from '../conversation/a-verdict-is-not-a-question';
@@ -1737,9 +1744,33 @@ from finishing at all.`;
      * spent a model call of latency on the turn somebody was waiting for. The detection stays,
      * because the count is what decides whether any of it earns its place.
      */
-    const best = restored;
-    const wrong = whatIsWrong(best);
+    const wrong = whatIsWrong(restored);
     if (wrong) this.logger.warn(`entry chat: ${wrong.fault}.`);
+
+    /*
+     * WHAT THE CHECK-IN DOES IN CODE, THE FIRST CHECK-IN INSIDE SET-UP DOES TOO (reviewer, 14 October 2026). Grace's first
+     * check-in, which follows set-up in the same conversation, ignored "finish", answered "I have to go" with "You have to go.
+     * Before you do...", handed "The owner of Kilele Hotel paid for 40 units today." back to her, asked about her job twice and
+     * asked the same question twice in a row. These are shapes, fixed in code, with no second model call:
+     *   - saying they are done closes it, and nothing more is asked;
+     *   - their own sentence is not said back, and a question it answered for them comes out;
+     *   - the job question, and a question just answered or just asked, are not asked again.
+     */
+    let best = withoutAnAnswerToItsOwnQuestion(withoutTheirWordsHandedBack(restored, personSaid));
+    const lastAsk = asksBefore[asksBefore.length - 1] ?? '';
+    const askedAgain = asksAboutTheirJobAgain(best, asksBefore)
+      || (!!lastAsk && (repeatsTheLastAskWordForWord(best, lastAsk) || asksItAgainAfterTheAnswer(lastAsk, best)));
+    if (askedAgain) {
+      const without = withoutTheJobQuestion(withoutTheQuestionAskedAgain(best, lastAsk ? [lastAsk] : []));
+      best = without && without !== best ? withAQuestionForTheFirstCheckIn(without, { closing: false, asked: asksBefore }) : best;
+    }
+    if (theirLast && (askedToFinish([theirLast]) || isTheWordFinish(theirLast)) && personSaid.length >= 2) {
+      this.logger.log('entry chat: they said they are done; the conversation closes.');
+      const kept = withoutTheGoodbyeOrTheirLeaving(best, theirLast);
+      return { reply: endingOnTheClose(forHumans(kept), 'web'), closed: true };
+    }
+    /* "finish" too soon is said plainly, never read as an answer (reviewer, 14 October). */
+    if (theirLast && isTheWordFinish(theirLast)) best = aFinishTooSoon(best, 2 - personSaid.length);
 
     return { reply: forHumans(best), closed: hadCloseMarker(best) };
   }
@@ -2578,8 +2609,20 @@ from finishing at all.`;
     const theirCheckIn = (dto.history ?? []).filter((t: any) => t && typeof t.content === 'string' && t.content.trim());
     const theyAnswered = theirCheckIn.some((t: any) => t.role === 'user');
     if (!theAnchorIsOn && theyAnswered) {
+      /*
+       * IN THE ORDER IT HAPPENED (pilots, 13 October 2026, E5). Every turn was written with one and the same time, so
+       * Njeri's session 1 came back in whatever order the database chose: her closing turn mid-transcript, two of
+       * Groundwork's turns together and her answers after them. Each turn now has its own moment, a millisecond apart,
+       * in the order she had the conversation. And the close marker's brackets never reach the record.
+       */
+      const startedAt = Date.now() - theirCheckIn.length;
       await this.prisma.conversationTurn.createMany({
-        data: theirCheckIn.map((t: any) => ({ checkInId: checkIn.id, role: t.role === 'user' ? TurnRole.PERSON : TurnRole.AI, content: t.content })),
+        data: theirCheckIn.map((t: any, i: number) => ({
+          checkInId: checkIn.id,
+          role: t.role === 'user' ? TurnRole.PERSON : TurnRole.AI,
+          content: t.role === 'user' ? t.content : stripCloseMarker(t.content).text,
+          createdAt: new Date(startedAt + i),
+        })),
       });
       await this.prisma.checkIn.update({
         where: { id: checkIn.id },
@@ -3185,4 +3228,15 @@ from finishing at all.`;
       ...(queuedForApproval ? { saying: WAITING_TO_BE_LET_IN } : {}),
     };
   }
+}
+
+/** A close after "I have to go": the sentences that say their leaving back to them, or start "Before you do", come out (reviewer, 14 October). */
+function withoutTheGoodbyeOrTheirLeaving(reply: string, theirLast: string): string {
+  const theirs = theirLast.toLowerCase().replace(/[^a-z ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return String(reply ?? '').split(/(?<=[.!?])\s+/).filter((x) => {
+    const t = x.toLowerCase().replace(/[^a-z ]+/g, ' ').replace(/\s+/g, ' ').trim();
+    if (/^before you (?:do|go)\b/.test(t)) return false;
+    if (/^you (?:have|need|got) to go\b/.test(t)) return false;
+    return !(t && theirs && (t === theirs || t === theirs.replace(/\bi\b/g, 'you')));
+  }).join(' ').trim();
 }

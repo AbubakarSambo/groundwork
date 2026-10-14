@@ -570,6 +570,18 @@ export class GroundsController {
     return this.grounds.resendParticipantInvite(id, participantId, user.organizationId, user.id, user.role);
   }
 
+  /** D1 and D2 (13 October 2026, evening): whoever runs the check-in adds somebody's WhatsApp number. */
+  @Patch(':id/participants/:participantId/whatsapp-number')
+  @ApiOperation({ summary: "Add a person's WhatsApp number, kept on the organisation's roster (whoever runs the check-in, or an admin)" })
+  async addTheirWhatsAppNumber(
+    @Param('id') id: string,
+    @Param('participantId') participantId: string,
+    @Body() body: { phone: string },
+    @CurrentUser() user: CurrentUserData,
+  ) {
+    return this.grounds.addTheirWhatsAppNumber({ groundId: id, participantId, organizationId: user.organizationId, userId: user.id, role: user.role, phone: body?.phone });
+  }
+
   @Get(':id/mediator-brief')
   @ApiOperation({ summary: 'Get a structural brief for use with a facilitator (initiator or a party on this ground - no separate org-admin access exists)' })
   async mediatorBrief(@Param('id') id: string, @CurrentUser('id') userId: string) {

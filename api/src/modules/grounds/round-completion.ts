@@ -128,6 +128,8 @@ export async function recordRoundCompletion(
     groundId,
     sessionNumber: roundNumber,
     participantCount: participants.length,
+    waitedOn: participants.length - notWaitedOn,
+    accountsGiven: completed,
   } satisfies RoundCompletedEvent);
   return true;
 }

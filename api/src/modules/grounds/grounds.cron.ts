@@ -1,3 +1,4 @@
+import { theCheckInIsOpen } from '../whatsapp/what-goes-to-a-phone';
 import { Injectable, Logger, OnApplicationBootstrap, Optional } from '@nestjs/common';
 import { owesThisSession } from './the-lead-checks-in-when-they-choose';
 import { THE_MOST_REPORT_READY_REMINDERS, howManyReportReadyRemindersWereSent } from '../email/the-report-is-ready-reminder';
@@ -7,7 +8,7 @@ import { TimeSheetsService } from '../suites/the-time-sheets.service';
 import { SpendingService } from '../suites/the-spending.service';
 import { organisationsThatTurnedWhatsAppOn } from '../whatsapp/only-where-whatsapp-is-turned-on';
 import { sendTheLeadsDailyNudges } from '../engagement/the-leads-daily-nudge';
-import { sendTheMissedCheckInsToThePeople } from '../engagement/missed-check-ins-told-first';
+import { sendTheMissedCheckInsToThePeople, theMissedNoticeToFold, rememberTheMissedNoticeTold } from '../engagement/missed-check-ins-told-first';
 import { sendTheAnchorWeeklyInsights } from '../whatsapp/the-anchor-weekly-insight';
 import { sendTheLeadsWeeklyLetters } from '../email/the-leads-weekly-letter';
 import { theAnchorScenarioIsOn, theHalfwayMessagesAreOn } from '../admin/what-is-hidden-at-release';
@@ -776,6 +777,7 @@ export class GroundsCron implements OnApplicationBootstrap {
     const now = new Date();
     const nameFor = theNamesOfReadersCheckIns(this.prisma);
     await this.announceOpenedSessions(now);
+    await this.openTheCheckInOnWhatsAppForTheInvited(now).catch((err) => this.logger.warn(`WhatsApp opening for invited people failed: ${err?.message}`));
     const frontend = this.config.get<string>('resend.frontendUrl') || '';
 
     const newlyOpen = await this.prisma.checkIn.findMany({
@@ -821,7 +823,10 @@ export class GroundsCron implements OnApplicationBootstrap {
          * every session on whichever number the organisation uses. This sweep used to send its own
          * WhatsApp message as well, so a person got two for one session (survey items 7 and 8).
          */
-        await this.email.sendSessionReady(p.email, await nameFor({ userId: p.userId, email: p.email }, ci.groundId, p.ground.label), checkInUrl, p.ground.simplerWords);
+        /* Decision 136's notice, folded into the opening so it is one message that day (reviewer, 14 October). */
+        const missed = await theMissedNoticeToFold(this.prisma, p.userId, p.id, now).catch(() => null);
+        const went = await this.email.sendSessionReady(p.email, await nameFor({ userId: p.userId, email: p.email }, ci.groundId, p.ground.label), checkInUrl, p.ground.simplerWords, missed?.lines ?? null);
+        if (missed && went !== 'suppressed') await rememberTheMissedNoticeTold(this.prisma, missed.key, (went ?? 'sent') as any, { sender: 'sendSessionReady', to: p.email });
 
         await this.prisma.checkIn.update({ where: { id: ci.id }, data: { sessionReadyNotifiedAt: now } });
       } catch (err: any) {
@@ -1200,7 +1205,7 @@ export class GroundsCron implements OnApplicationBootstrap {
       },
       select: {
         id: true, groundId: true, availableFrom: true, participantId: true,
-        ground: { select: { label: true, organizationId: true, overWhatsApp: true, simplerWords: true } },
+        ground: { select: { label: true, organizationId: true, overWhatsApp: true, simplerWords: true, cadence: true } },
         participant: { select: { id: true, email: true, userId: true, user: { select: { firstName: true, email: true, phoneNumber: true, isActive: true, deletedAt: true } } } },
       },
       ...page,
@@ -1211,6 +1216,12 @@ export class GroundsCron implements OnApplicationBootstrap {
     for (const ci of soon) {
       try {
         if (keptOffThePhone(ci.ground)) continue;
+        /*
+         * ONE ROUTINE MESSAGE A DAY (pilots, 13 October 2026, problem 14). A daily check-in is told it is open every
+         * morning; "opens in an hour" an hour before it was a second message about the same thing, every day. The
+         * opening notice is the one, so a daily check-in is not told it opens soon.
+         */
+        if (ci.ground.cadence === 'DAILY') continue;
         if (!turnedOn.has(ci.ground.organizationId)) continue;
         if (awayUntilOn(leave.get(ci.participantId), new Date(ci.availableFrom))) continue;
         const user = ci.participant.user;
@@ -1242,6 +1253,53 @@ export class GroundsCron implements OnApplicationBootstrap {
    * session the moment it is open to an accepted person: the round is what they need to tell that
    * person about in their own channel. Stamped so it fires once whatever else fails around it.
    */
+  /**
+   * FIRST CONTACT ON WHATSAPP, WHERE THE COMPANY ADDED THE NUMBER (Hafsah, 13 October 2026, evening, D2: "First contact can
+   * be on WhatsApp if your company adds your number; it can be on both at the same time.").
+   *
+   * None of Grace's reps got a WhatsApp opening message: everything waited for them to open the email first. Somebody
+   * invited and not joined yet, whose number is on the organisation's roster, is sent the one opening message on WhatsApp
+   * (the submitted `checkin_open` template, unchanged), once for their check-in, beside the email. Their reply joins them
+   * (whatsapp-for-an-organisation, joinFromTheNumberTheCompanyAdded). Never where the check-in is kept in the app, where
+   * WhatsApp is not on, or to somebody waiting for a seat.
+   */
+  async openTheCheckInOnWhatsAppForTheInvited(now: Date = new Date()): Promise<{ sent: number }> {
+    const waiting: any[] = await this.prisma.checkIn.findMany({
+      where: {
+        status: CheckInStatus.NOT_STARTED,
+        OR: [{ availableFrom: null }, { availableFrom: { lte: now } }],
+        participant: { userId: null, acceptedAt: null, invitedAt: { not: null }, inviteToken: { not: null }, awaitingSeat: false, leftAt: null, ground: { status: { notIn: [...TERMINAL, ...HELD] } } },
+      },
+      select: { id: true, groundId: true, participant: { select: { email: true, ground: { select: { label: true, organizationId: true, overWhatsApp: true, simplerWords: true } } } } },
+      take: 200,
+    }).catch(() => []);
+    if (!waiting.length) return { sent: 0 };
+    const turnedOn = await organisationsThatTurnedWhatsAppOn(this.prisma, this.whatsapp, waiting.map((c) => c.participant.ground.organizationId));
+    let sent = 0;
+    for (const ci of waiting) {
+      try {
+        const g = ci.participant.ground;
+        if (keptOffThePhone(g) || !turnedOn.has(g.organizationId) || !ci.participant.email) continue;
+        const before = await this.prisma.whatsAppSend.findFirst({ where: { checkInId: ci.id, kind: { startsWith: 'checkin-open' } }, select: { id: true } });
+        if (before) continue;
+        /* One number for a person: the roster's, or else the one on their sign-in (an admin saving it on People writes there). */
+        const person = await this.prisma.person.findFirst({
+          where: { organizationId: g.organizationId, email: { equals: ci.participant.email, mode: 'insensitive' }, active: true },
+          select: { phone: true, givenName: true },
+        });
+        const signIn = person?.phone ? null : await this.prisma.user.findFirst({ where: { email: { equals: ci.participant.email, mode: 'insensitive' }, deletedAt: null }, select: { phoneNumber: true, firstName: true } });
+        const phone = person?.phone ?? signIn?.phoneNumber ?? null;
+        if (!phone) continue;
+        const said = theCheckInIsOpen({ firstName: person?.givenName ?? signIn?.firstName ?? null, label: g.label }, g.simplerWords);
+        await this.whatsapp.sendFor(g.organizationId, phone, said.text, { checkInId: ci.id, kind: said.kind, params: said.params });
+        sent++;
+      } catch (err: any) {
+        this.logger.warn(`WhatsApp opening for invited check-in ${ci.id} failed: ${err?.message}`);
+      }
+    }
+    return { sent };
+  }
+
   private async announceOpenedSessions(now: Date) {
     const opened = await this.prisma.checkIn.findMany({
       where: {

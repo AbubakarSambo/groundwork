@@ -65,8 +65,9 @@ export async function readTheCompanyPage(prisma: PrismaService, grounds: Grounds
       where: { organizationId: org, subjectExternalId: { not: null } },
       select: { id: true, subjectExternalId: true },
     }),
+    /* Only people still here: somebody removed keeps a membership row, and "2 teams and 7 people work here" counted one (pilots, problem 10). */
     prisma.organizationMembership.findMany({
-      where: { organizationId: org, role: { not: 'GUEST' } },
+      where: { organizationId: org, role: { not: 'GUEST' }, user: { deletedAt: null, isActive: true } },
       select: { team: true },
     }),
     /* Only READ. The picture is written when the record changes (the-company-picture.service.ts), never here. */

@@ -41,7 +41,9 @@ describe('the generator names the topic, never the person', () => {
     /** The strongest form of the guarantee: it cannot name somebody it was never given. */
     /* U.6 review: the second argument is where it runs (the organisation), not the lead's words,
        which an invitation never carries (Hafsah, 27 September). Still no participant argument. */
-    expect(GENERATOR).toMatch(/export function fallbackGroundName\(situation\?: string, where\?: string\)/);
+    /* 2724c9964 added a third argument, what the lead described so far, from which only a few fixed words are chosen
+       (KINDS_OF_WORK), never her sentence: still no participant argument. */
+    expect(GENERATOR).toMatch(/export function fallbackGroundName\(situation\?: string, where\?: string(?:, saidSoFar\?: string)?\)/);
     expect(GENERATOR).not.toMatch(/fallbackGroundName\([^)]*participants\[0\]/);
     expect(GENERATOR).not.toMatch(/fallbackGroundName\([^)]*peopleNamed/);
   });

@@ -93,6 +93,9 @@ export interface WhatsAppStanding {
   freeTrial: { months: number; endsOn: Date } | null;
   /** True while the organisation is on the free plan. */
   onTheFreePlan: boolean;
+  /** WhatsApp's own free month, which every organisation gets, and when it ends. */
+  whatsappFreeUntil: Date | null;
+  inTheFreeWhatsAppMonth: boolean;
   addOnOn: boolean;
   addOnCents: number | null;
   limit: number | null;
@@ -107,8 +110,13 @@ export interface WhatsAppStanding {
 
 const ORG_FIELDS = {
   id: true, createdAt: true, subscriptionPlan: true, subscriptionStatus: true, subscriptionStripeId: true,
-  freeUntil: true, freePlan: true, freeTrialStartedAt: true, whatsappAddOnOn: true, whatsappAddOnItemId: true,
+  freeUntil: true, freePlan: true, freeTrialStartedAt: true, whatsappAddOnOn: true, whatsappAddOnItemId: true, whatsappFreeUntil: true,
 } as const;
+
+/** Whether this organisation is in its free WhatsApp month (Hafsah, 13 October 2026, evening). */
+export function inItsFreeWhatsAppMonth(org: { whatsappFreeUntil?: Date | string | null } | null | undefined, now: Date = new Date()): boolean {
+  return !!org?.whatsappFreeUntil && new Date(org.whatsappFreeUntil).getTime() > now.getTime();
+}
 
 @Injectable()
 export class WhatsAppAddOnService {
@@ -153,8 +161,10 @@ export class WhatsAppAddOnService {
 
     const charged = switchOn && org.whatsappAddOnOn && cover.covers === 'paid' && !!org.subscriptionStripeId && !inAFreeRun && addOnCents !== null;
 
+    /* The free WhatsApp month: on for everybody, nothing charged, whether or not it was added to the subscription. */
+    const freeMonth = inItsFreeWhatsAppMonth(org, now);
     let heldBecause: WhyHeld | null = null;
-    if (switchOn && !inAFreeRun && !onTheFreePlan) {
+    if (switchOn && !inAFreeRun && !onTheFreePlan && !freeMonth) {
       if (!org.whatsappAddOnOn) heldBecause = 'not turned on';
       else if (cover.covers !== 'paid') heldBecause = 'not on a paid plan';
     }
@@ -166,6 +176,8 @@ export class WhatsAppAddOnService {
       inAFreeRun,
       freeTrial: inAFreeRun && org.freeTrialStartedAt ? { months: trial.months, endsOn: new Date(org.freeUntil as Date) } : null,
       onTheFreePlan,
+      whatsappFreeUntil: org.whatsappFreeUntil ? new Date(org.whatsappFreeUntil) : null,
+      inTheFreeWhatsAppMonth: freeMonth,
       addOnOn: org.whatsappAddOnOn,
       addOnCents,
       limit,
@@ -333,14 +345,28 @@ export class WhatsAppAddOnService {
      * morning reminder, the reminder before a session and the lead's daily summary) go only where WhatsApp is turned on.
      * So they read that, plainly, and whether it is on.
      */
-    const offSays = !s.addOnOn ? WHATSAPP_REMINDERS_ARE_OFF : null;
-    if (!isAdmin || !(await theNewBillingPartsAreShown(this.prisma))) /* Exactly what a member reads, with no `on`: the screen takes an answer that has `on` for the admin's full one, so an
-       admin with the switch off would read an empty part (clean-install run, 6 October). */
-      return { sending: s.sending, says: personSays ?? offSays };
+    const offSays = !s.addOnOn && !s.inTheFreeWhatsAppMonth ? WHATSAPP_REMINDERS_ARE_OFF : null;
+    /*
+     * THE WHATSAPP PART IS SHOWN TO AN ADMIN (Hafsah, 13 October 2026, evening: "This screen is meant to be there."). It
+     * was hidden with the other new billing parts at release, and nobody could turn WhatsApp on from any screen. The
+     * rest of those parts stay as the release setting says.
+     */
+    if (!isAdmin) return { sending: s.sending, says: personSays ?? offSays };
+    void theNewBillingPartsAreShown;
 
     const label = s.plan ? PLAN_LABELS[s.plan] : null;
     const says: Record<string, string | null> = {
-      onOrOff: s.addOnOn ? 'WhatsApp is on for your organisation.' : 'WhatsApp is off for your organisation, so check-ins stay in the app.',
+      onOrOff: s.addOnOn
+        ? 'WhatsApp is on for your organisation.'
+        : s.inTheFreeWhatsAppMonth
+          ? 'WhatsApp is on for your organisation during its free month.'
+          : 'WhatsApp is off for your organisation, so check-ins stay in the app.',
+      /* The free month, in a sentence, with what keeps WhatsApp on after it. */
+      freeMonth: s.inTheFreeWhatsAppMonth && s.whatsappFreeUntil
+        ? (s.addOnOn
+          ? `WhatsApp is free until ${aDay(s.whatsappFreeUntil)}. After that it is paid as part of your subscription.`
+          : `WhatsApp is free until ${aDay(s.whatsappFreeUntil)}. To keep it after that, add it to your subscription with the switch above.`)
+        : null,
       /* An organisation on the free plan has no plan to name: the plan its size fits only sets its monthly limit
          (release blocker, 5 October: the page read "on your Starter plan" to a free organisation). */
       price: s.onTheFreePlan
@@ -378,6 +404,7 @@ export class WhatsAppAddOnService {
       price: s.onTheFreePlan || s.addOnCents === null ? null : { amountCents: s.addOnCents, currency: 'USD' },
       charged: s.charged,
       freeTrial: s.freeTrial,
+      freeUntil: s.inTheFreeWhatsAppMonth ? s.whatsappFreeUntil : null,
       onTheFreePlan: s.onTheFreePlan,
       use: { month: s.month, sent: s.sent, limit: s.limit, startsAgainOn: theNextMonthStarts(now) },
       sending: s.sending,

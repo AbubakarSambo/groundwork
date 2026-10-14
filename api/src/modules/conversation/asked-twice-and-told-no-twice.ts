@@ -255,10 +255,25 @@ export function repeatsTheLastAskWordForWord(reply: string, lastAsk: string | nu
   if (!lastAsk?.trim()) return false;
   /* The question sentences only, flattened: a reworded second ask is allowed (see the spec next
      door); a copy is the same sentence with the same words in the same order. */
-  const questionsIn = (t: string): string[] =>
-    (t ?? '').split(/(?<=[.!?])\s+/).filter((x) => /\?\s*$/.test(x)).map((x) => x.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim()).filter((x) => x.split(' ').length >= 5);
-  const earlier = new Set(questionsIn(lastAsk));
-  return questionsIn(reply).some((q) => earlier.has(q));
+  const earlier = theQuestionsIn(lastAsk);
+  /* Or one inside the other: "You said delivery ... Did that happen?" is "Last time you said delivery ... Did that happen?" again (pilots, problem 4). */
+  return theQuestionsIn(reply).some((q) => earlier.includes(q) || earlier.some((e) => Math.min(e.split(' ').length, q.split(' ').length) >= 8 && (e.includes(q) || q.includes(e))));
+}
+
+/*
+ * A SHORT QUESTION IS ASKED WITH THE SENTENCE BEFORE IT (pilots, 13 October 2026, problem 4). "Last time you said
+ * delivery for Kilele Hotel was happening on Wednesday. Did that happen?" was asked four times after Kevin said
+ * "Delivered Kilele today". The question sentence on its own, "Did that happen?", is three words and was never
+ * compared; what it asks is in the sentence before it. So a question of fewer than five words is read together
+ * with that sentence.
+ */
+const flat = (x: string) => x.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+const sentencesOfAReply = (t: string): string[] => (t ?? '').split(/(?<=[.!?])\s+/).filter((x) => x.trim());
+function theQuestionsIn(t: string): string[] {
+  const all = sentencesOfAReply(t);
+  return all
+    .map((x, i) => (/\?\s*$/.test(x) ? (flat(x).split(' ').length < 5 && i > 0 ? flat(`${all[i - 1]} ${x}`) : flat(x)) : ''))
+    .filter((x) => x && x.split(' ').length >= 5);
 }
 
 export function alreadyAskedTwice(reply: string, earlierAsks: string[]): boolean {
@@ -456,9 +471,57 @@ export function withoutTheSentenceThatSaysItBack(theySaid: string, reply: string
  * is to treat the silence as that answer rather than to keep asking for one.
  */
 export function withoutTheQuestionAskedAgain(reply: string, earlierAsks: string[]): string {
-  const kept = (reply.match(/[^.!?\n]+[.!?]*/g) ?? []).filter((sentence) => {
-    if (!sentence.includes('?')) return true;
-    return !earlierAsks.some((asked) => asksTheSameThingAgain(asked, sentence));
+  const sentences = reply.match(/[^.!?\n]+[.!?]*/g) ?? [];
+  const drop = new Set<number>();
+  sentences.forEach((sentence, i) => {
+    if (!sentence.includes('?')) return;
+    if (earlierAsks.some((asked) => asksTheSameThingAgain(asked, sentence))) { drop.add(i); return; }
+    /* A short question goes with the sentence that says what it asks, and both come out together (problem 4). */
+    if (i > 0 && flat(sentence).split(' ').length < 5 && earlierAsks.some((asked) => repeatsTheLastAskWordForWord(`${sentences[i - 1].trim()} ${sentence.trim()}`, asked))) {
+      drop.add(i);
+      drop.add(i - 1);
+    }
   });
+  const kept = sentences.filter((_, i) => !drop.has(i));
   return kept.join('').replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
 }
+
+/**
+ * THEY CORRECTED US (Hafsah, 13 October 2026: "AI is always going to make mistakes; what matters is people can go in their
+ * chat and clarify"). David wrote "I told you, the title search came back yesterday. It is not blocked." and was asked
+ * "What is the date you will have an answer by?" about the same title search. A correction is read in code: "I told you",
+ * "I said", "as I said", "that is wrong", "it was David, not Otieno", "it is not blocked". What they say is the record from
+ * here (the newest account is what the record keeps when the check-in closes), and the thing they corrected is not asked
+ * about again in this check-in.
+ */
+const A_CORRECTION = /\b(?:i (?:already )?(?:told|said to) you|i (?:already )?said (?:that|it|so)|i said it already|as i (?:said|told you)|like i said|that(?:'s| is) (?:wrong|not right|not true|not what i said)|you(?:'ve| have)? got (?:it|that) wrong|it(?:'s| is) not blocked|(?:it|that) was \w+,? not \w+|not \w+,? (?:it was|but) \w+)\b/i;
+export const theyCorrectedUs = (said: string): boolean => A_CORRECTION.test(said ?? '');
+
+/** The subject a correction is about, so a reply asking about it again can be told from one that moved on. */
+export function asksAboutWhatTheyCorrected(correction: string, reply: string, lastAsk?: string | null): boolean {
+  const theirs = subjectWords(correction);
+  const asked = (reply ?? '').split(/(?<=[.!?])\s+/).filter((x) => /\?\s*$/.test(x)).join(' ');
+  if (!asked) return false;
+  /*
+   * THEY POINTED AT PROOF ALREADY SENT (reviewer, 14 October): "I told you, Kevin already sent the M-Pesa screenshot." was answered
+   * with a request to describe the screenshot. Proof they say was sent is not asked for again, nor described back to us.
+   */
+  if (/\b(?:screenshot|photo|picture|receipt|document|invoice|m-?pesa|file|attached|sent (?:it|them|the))\b/i.test(correction)
+    && /\b(?:screenshot|photo|picture|receipt|document|invoice|proof|describe|show(?:s|ing)?|send|attach|share|upload)\b/i.test(asked)) return true;
+  /* They said it is not in the way any more, so no question about what is in the way: "What specifically is the hold-up with Kasarani?" */
+  if (/\bnot (?:blocked|stuck|held up|waiting)\b|\bcame back\b|\b(?:has |have )?arrived\b|\b(?:is|was|it's) (?:done|sorted|cleared|in)\b/i.test(correction)
+    && /\b(?:hold-?ups?|blocked|blocking|stuck|waiting|delay(?:ed|s)?|unblock|in the way|slowing)\b/i.test(asked)) return true;
+  /* A follow-up on the thing the last question was about, once they corrected it: "What is the date you will have an answer by?" */
+  if (lastAsk) {
+    const before = subjectWords(lastAsk);
+    let onIt = 0;
+    for (const w of before) if (theirs.has(w)) onIt += 1;
+    if (onIt >= 2 && /\b(?:by when|what date|the date|a date|unblock|answer by|still waiting|chase|when will|how long)\b/i.test(asked)) return true;
+  }
+  const words = subjectWords(asked);
+  let shared = 0;
+  for (const w of words) if (theirs.has(w)) shared += 1;
+  return shared >= 2 || (shared >= 1 && words.size <= 3);
+}
+
+export const THEY_CORRECTED_YOU = 'THEY HAVE JUST CORRECTED YOU. What they said is the record now. In one short sentence, say back what they told you, in their words, without arguing and without "I understand". Do not ask about that thing again in any wording, and do not ask how they will unblock or finish something they say is done or not blocked. Then ask about something else from their work, or close if they said they are done.';

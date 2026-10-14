@@ -3564,6 +3564,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
          confidence read is about how much basis there is, and somebody who has not answered is the
          largest gap there is. */
       peopleInAll: whoAnswered.expected,
+      /* Invited and not joined yet: not waited on, and never read as "everybody has answered" (reviewer, 14 October). */
+      notJoinedYet: (whoAnswered.notJoinedIds ?? []).length,
       /*
        * A COMMITMENT WITH A NAME AND A DATE ON IT IS A DIFFERENT OBJECT FROM ONE WITHOUT.
        *

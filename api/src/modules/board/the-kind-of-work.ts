@@ -174,6 +174,8 @@ export interface AServedRecord {
    * from the line it came from, and `none` for a record added on the board. Never upgraded.
    */
   mark?: 'proven' | 'confirmed' | 'said' | 'memory' | 'none';
+  /** True where the proof is on another line that names this deal's customer, read by this reader (pilots, problem 2). */
+  proofOnAnotherLine?: boolean;
   /**
    * Somebody says this record, which has nobody's name on it, is theirs (decision 76, item 3). Served to the lead
    * alone, with the question in a plain sentence ("Amani Wekesa says the Westgate Deli deal is theirs. Is it?").

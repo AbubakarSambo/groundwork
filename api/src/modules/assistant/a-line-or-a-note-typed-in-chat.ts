@@ -30,6 +30,8 @@ export function labelForContextKind(kind: string): string {
  */
 export function parseContextLine(message: string): { kind: TypedContextKind; text: string } | null {
   const raw = (message ?? '').trim();
+  const asked = aLineAskedForInPlainWords(raw);
+  if (asked) return { kind: 'NOTE', text: asked };
   for (const { pattern, kind } of KIND_WORDS) {
     const m = pattern.exec(raw);
     if (m) {
@@ -129,4 +131,26 @@ export function parseAskAPerson(message: string): { name: string; leadWords: str
   const rest = m[2].trim();
   if (!name || !rest) return null;
   return { name, leadWords: `Ask ${name}${INDIRECT.test(raw) ? ' ' : ': '}${rest}` };
+}
+
+/**
+ * A LINE ASKED FOR IN PLAIN WORDS (reviewer, 14 October). Grace typed "Kilele Hotel wants installation
+ * next week. Please add that to my check-in." and read "I cannot answer that one yet. Here is what I can
+ * do with "Kilele Hotel wants installation next week. Please add tha..."". A request to add a line is a
+ * statement to add: the statement before "add that to my check-in", or after "add this to my check-in:",
+ * is the line. It is said back and waits for a yes like every other line.
+ */
+const ADD_IT_TO_THE_CHECK_IN = /(?:please\s+)?(?:can\s+you\s+|could\s+you\s+)?(?:add|put|note)\s+(?:that|this|it)\s+(?:to|on|in|into)\s+(?:my|the|this|our)\s+check[-\s]?in(?:\s+please)?\s*[.!]?\s*$/i;
+const ADD_A_LINE_THEN_IT = /^\s*(?:please\s+)?(?:add|put)\s+(?:a\s+line|this|the\s+following)\s+(?:to|on|in|into)\s+(?:my|the|this|our)\s+check[-\s]?in(?:\s+please)?\s*[:\-]\s*(.{2,400})$/i;
+
+export function aLineAskedForInPlainWords(message: string): string | null {
+  const raw = (message ?? '').trim();
+  const after = ADD_A_LINE_THEN_IT.exec(raw);
+  if (after) return after[1].trim().replace(/[\s.]+$/, '') || null;
+  const m = ADD_IT_TO_THE_CHECK_IN.exec(raw);
+  if (!m) return null;
+  const before = raw.slice(0, m.index).trim().replace(/[\s,;:\-]+$/, '');
+  /* Said back inside quotes, so no closing full stop: "Shall I add "Kilele Hotel wants installation next week" to ...". */
+  const line = before.replace(/[\s.]+$/, '');
+  return line.length >= 2 ? line : null;
 }

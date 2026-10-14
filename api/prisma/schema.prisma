@@ -551,6 +551,11 @@ model Organization {
   /// billing. Nothing is charged during the free trial or on the free plan; once the trial has ended
   /// and the organisation pays for a plan, it is a second monthly line on its Stripe subscription.
   whatsappAddOnOn        Boolean   @default(false) @map("whatsapp_add_on_on")
+  /// WHATSAPP IS ON FOR A FREE MONTH (Hafsah, 13 October 2026, evening): "This is turned on automatically but also for
+  /// only a one month trial like your other trials; you pay for it when you add it on your subscription." Every new
+  /// organisation gets a month from when it is made; every organisation already here got a month from the day this came
+  /// in. After it, WhatsApp goes only where it was added to the subscription (`whatsappAddOnOn`).
+  whatsappFreeUntil      DateTime? @default(dbgenerated("(now() + '1 mon'::interval)")) @map("whatsapp_free_until")
   whatsappAddOnChangedAt DateTime? @map("whatsapp_add_on_changed_at")
   /// The Stripe subscription item that charges the add-on, while it is charged.
   whatsappAddOnItemId    String?   @map("whatsapp_add_on_item_id")
@@ -2545,7 +2550,8 @@ model LeavingChecklist {
   organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   steps        LeavingStep[]
 
-  @@unique([organizationId, personExternalId, lastDay])
+  /// The name the 27 September migration actually created: Postgres cuts identifiers at 63 characters.
+  @@unique([organizationId, personExternalId, lastDay], map: "leaving_checklists_organization_id_person_external_id_last_day_")
   @@map("leaving_checklists")
 }
 

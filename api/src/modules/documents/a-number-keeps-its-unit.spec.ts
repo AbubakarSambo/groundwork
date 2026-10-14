@@ -34,3 +34,22 @@ describe('a number keeps the unit and symbol the document gave it', () => {
     expect(texts).toContain('At most 5%');
   });
 });
+
+/** Pilots, 13 October 2026, problem 3: the fee note gave its currency once, in the column's heading. */
+const FEE_NOTE = 'FEE NOTE No. MC/2026/118\nItem \tAmount (KES)\nInstruction fee, defence \t350,000.00\nSubtotal \t403,250.00\nTotal due \t466,450.00\nPayment within 30 days. A 2.5% late payment charge per month applies after 30 days.';
+
+describe('a figure under a column that names its currency keeps that currency', () => {
+  it('reads the total due with its currency, as written', () => {
+    expect(theFigureAsWritten(466450, FEE_NOTE, 'Total due')).toBe('KES 466,450.00');
+    expect(theFigureAsWritten(2.5, FEE_NOTE, 'late payment charge per month')).toBe('2.5%');
+  });
+
+  it('and the say-back carries it', () => {
+    const said = theContextWeHave({
+      fileName: 'fee-note-MC-2026-118.pdf',
+      forEverybody: [{ what: 'Total due', target: 466450, kind: 'to reach', by: 'within 30 days', asWritten: theFigureAsWritten(466450, FEE_NOTE, 'Total due') }],
+      forOnePerson: [], dates: [], unmatched: [],
+    } as any)!;
+    expect(said).toContain('For everyone in this check-in, the target for Total due is KES 466,450.00 within 30 days.');
+  });
+});

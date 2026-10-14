@@ -77,3 +77,23 @@ export function sayWhichDays(raw: number[] | null | undefined): string | null {
     ? `Check-ins only open on ${names.join(', ')} or ${last}.`
     : `Check-ins only open on a ${last}.`;
 }
+
+/**
+ * HOW OFTEN A DAILY RHYTHM REALLY RUNS, GIVEN THE DAYS (setup page review, 13 October). A check-in
+ * saved for weekdays only was said back as "every day". The same words as the screens
+ * (client/src/lib/the-days-in-words.ts): "every day", "every weekday, Monday to Friday", "every day
+ * from Monday to Saturday", "every Monday, Wednesday and Friday".
+ */
+const WEEK_FROM_MONDAY: Weekday[] = [1, 2, 3, 4, 5, 6, 0];
+export function everyDayThatTheyWork(raw: number[] | null | undefined): string {
+  const days = workingDaysOf(raw);
+  if (!days.length) return 'every day';
+  if (days.length === 5 && MONDAY_TO_FRIDAY.every((d) => days.includes(d))) return 'every weekday, Monday to Friday';
+  const ordered = WEEK_FROM_MONDAY.filter((d) => days.includes(d));
+  const at = ordered.map((d) => WEEK_FROM_MONDAY.indexOf(d));
+  if (ordered.length >= 3 && at.every((p, i) => i === 0 || p === at[i - 1] + 1)) {
+    return `every day from ${DAY_NAMES[ordered[0]]} to ${DAY_NAMES[ordered[ordered.length - 1]]}`;
+  }
+  const names = ordered.map((d) => DAY_NAMES[d]);
+  return `every ${names.length <= 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`}`;
+}
