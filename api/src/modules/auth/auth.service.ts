@@ -1370,6 +1370,9 @@ export class AuthService {
     const belongsElsewhere = await this.belongsElsewhere(user.id, user.organizationId);
     return {
       ...this.theUserShape(user as unknown as UserWithOrg, belongsElsewhere), orgCode: user.organization.slug, emailNotifications: user.emailNotifications,
+      /* Their own WhatsApp number, on their own read only (reviewer, 14 October): Settings read "WhatsApp Not set" with
+         Kevin's number saved, because this route never sent it. The sign-in's number, else the one on their roster entry. */
+      phoneNumber: (user as any).phoneNumber ?? await this.theirRosterNumber(user.organizationId, user.id, user.email),
       /* True when they used the link in one of our emails. Settings says so, in the words of THE_SETTINGS_LABEL, and the switch turns it back on (decision 109). */
       emailsStoppedFromAMail: await new TheWaysToStopMail(this.prisma).stoppedFromAMail(user.email).catch(() => false),
       /* "Connect WhatsApp" for the person's own Settings, or null (decision 106 item 4). Only on their own read. */
@@ -1391,6 +1394,14 @@ export class AuthService {
    * Rather than teach every other door to remember the same fetch-and-cast dance `getProfile` does,
    * this is that dance, exposed once.
    */
+  private async theirRosterNumber(organizationId: string, userId: string, email: string): Promise<string | null> {
+    const row = await (this.prisma as any).person?.findFirst?.({
+      where: { organizationId, phone: { not: null }, OR: [{ linkedUserId: userId }, { email: { equals: email, mode: 'insensitive' } }] },
+      select: { phone: true },
+    })?.catch?.(() => null);
+    return row?.phone ?? null;
+  }
+
   async userShapeFor(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { organization: true } });
     if (!user) throw new BadRequestException('We could not find that sign-in, so sign in again and try once more.');

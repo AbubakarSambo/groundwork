@@ -36,7 +36,7 @@ export const theRoleMapQuestion = (roleName: string, owns: string): string =>
 /** How each thing is asked in a conversation. Only these words count as having asked it, so a turn about something else is never taken for one of these. */
 const ASKED_AS: Record<string, RegExp> = {
   /* One question, about their job and what doing well is in it, however it is worded. What they depend on and what gets in their way are read from the answers the check-in already asks for. */
-  'role-owns': /\b(?:what did you understand your (?:role|part)|understand(?:ing)? (?:of )?your role in this|what is your (?:job|role)(?: title)?(?: called)?|what do you do (?:here|for work|at \w+)|your job title|what do you call your (?:job|role)|what (?:would|do) you call (?:your|the) (?:job|role)|responsible for|you own|in charge of|accountable for|what does your (?:job|role) (?:cover|involve|include)|what (?:is|are) (?:your|the) main (?:responsibilit|part)|what is your job (?:made of|about)|your day[- ]to[- ]day|doing (?:it |this |the job |your job |your role )?well|good looks like|what does (?:a )?good|success (?:in|for) your (?:job|role))/i,
+  'role-owns': /\b(?:what did you understand your (?:role|part)|understand(?:ing)? (?:of )?your role in this|what is your (?:job|role)(?: title)?(?: called)?|what do you do (?:here|for work|at \w+)|your job title|what do you call your (?:job|role)|what (?:would|do) you call (?:your|the) (?:job|role)|responsible for|you own|in charge of|accountable for|what does your (?:job|role) (?:cover|involve|include)|what (?:is|are) (?:your|the) main (?:responsibilit|part)|what is your job (?:made of|about)|your day[- ]to[- ]day|doing (?:it |this |the job |your job |your role )?well|good looks like|what does (?:a )?good|success (?:in|for) your (?:job|role)|(?:what|how) about your (?:job|role))/i,
 };
 
 /** The one thing asked in the first check-in. The rest of the job (who they depend on, what gets in their way) is taken from the answers the check-in already asks for. */
@@ -166,6 +166,13 @@ export async function isTheirFirstCheckIn(deps: Deps, checkIn: { id: string; par
     where: { id: { not: checkIn.id }, status: CheckInStatus.COMPLETED, isSetup: false, participant: { userId } },
   }), 0);
   if (finishedBefore) return null;
+  /* Asked already in an earlier check-in of theirs, answered or not: once per person (E6). */
+  const earlier = await attempt(() => deps.prisma.conversationTurn?.findMany?.({
+    where: { role: TurnRole.AI, checkInId: { not: checkIn.id }, checkIn: { participant: { userId } } },
+    select: { content: true },
+    take: 200,
+  }), [] as { content: string | null }[]);
+  if ((earlier ?? []).some((t: any) => THE_JOB_QUESTION_ITSELF.test(t?.content ?? ''))) return null;
   const person = await attempt(() => deps.prisma.person?.findFirst?.({ where: { organizationId, linkedUserId: userId }, select: { externalId: true } }), null);
   /* A person who has never used Ask has no roster entry yet. Ask makes theirs with their account id as its key, so what is kept before that is kept under the same key. */
   const kept = await attempt(() => deps.prisma.roleInterviewAnswer?.count?.({ where: { organizationId, personExternalId: { in: [person?.externalId, userId].filter(Boolean) } } }), 0);
@@ -389,3 +396,38 @@ export async function theirJobAsTheyToldUs(deps: Deps, checkIn: { id: string; pa
     ...told.map(([k, v]) => `- ${k}: "${String(v).replace(/\s+/g, ' ').trim().slice(0, 400)}"`),
   ].join('\n');
 }
+
+/**
+ * THE QUESTION ABOUT THEIR JOB, ONCE PER PERSON (decision 129; pilots, 13 October 2026, E6). Aisha was asked "What about your
+ * job?" three times; Kevin "What are you responsible for in your job?" straight after he reported a sale; David "What does
+ * doing well in your role look like" in the middle of a delay, in a later check-in. The question itself stays, asked once in
+ * the person's first check-in. A reply that would ask it again, in this check-in or a later one, is the fault.
+ */
+/*
+ * THE JOB QUESTION ITSELF, ABOUT THE PERSON'S OWN JOB (tester's note, 14 October). The coverage words above include "responsible for"
+ * and "in charge of", which also start an ordinary probe about the work ("Who is responsible for sending the Lakeview documents?").
+ * Only a question about their own job or role counts here.
+ */
+const THE_JOB_QUESTION_ITSELF = /\b(?:(?:what|how) about your (?:job|role)|what (?:is|'s) your (?:job|role)|what (?:are|were) you responsible for|what do you own\b|what (?:does|would) (?:doing (?:it |your job |your role )?well|good|success) (?:look like )?(?:in|for) your (?:job|role)|doing well in your (?:job|role)|your (?:job|role) (?:title|cover|involve|include)|what do you do (?:here|for work)|in your (?:job|role)\b[^.?!]*\?|(?:most|much|all) of your (?:work|job|role) is\b[^.?!]*[.,]?\s*(?:is that (?:right|so|true)|right)\?)/i;
+
+export function asksAboutTheirJobAgain(reply: string, earlierAiTurns: string[]): boolean {
+  const re = THE_JOB_QUESTION_ITSELF;
+  if (!re.test(reply ?? '')) return false;
+  return (earlierAiTurns ?? []).some((t) => re.test(t ?? ''));
+}
+
+/** The question sentences of a reply that ask about their job, taken out; every other sentence stays as written. */
+export function withoutTheJobQuestion(reply: string): string {
+  const re = THE_JOB_QUESTION_ITSELF;
+  const pieces = String(reply ?? '').split(/(?<=[.!?])\s+/);
+  const drop = new Set<number>();
+  pieces.forEach((x, i) => {
+    if (!/\?\s*$/.test(x)) return;
+    if (re.test(x)) { drop.add(i); return; }
+    /* "Most of your work is sales. Is that right?": a short question goes out with the sentence it asks about. */
+    if (i > 0 && x.split(/\s+/).length < 5 && re.test(`${pieces[i - 1]} ${x}`)) { drop.add(i); drop.add(i - 1); }
+  });
+  return pieces.filter((_, i) => !drop.has(i)).join(' ').trim();
+}
+
+export const THEIR_JOB_WAS_ASKED_ALREADY = 'THEIR JOB HAS BEEN ASKED ABOUT ALREADY. Write the reply again without any question about their job, their role, what they are responsible for, or what doing well looks like in it. Ask about the work they just described instead.';

@@ -482,6 +482,9 @@ const RULES = [
     /^\s*decision\s*[:\-]\s*.{2,400}$/i,
     /^\s*unsettled\s*[:\-]\s*.{2,400}$/i,
     /^\s*context\s+note\s*[:\-]\s*.{2,400}$/i,
+    /* A statement and then "please add that to my check-in", or "add a line to my check-in: ..." (reviewer, 14 October). */
+    /\S.{1,400}?[.!?,;:\-]\s+(?:please\s+)?(?:can\s+you\s+|could\s+you\s+)?(?:add|put|note)\s+(?:that|this|it)\s+(?:to|on|in|into)\s+(?:my|the|this|our)\s+check[-\s]?in(?:\s+please)?\s*[.!]?\s*$/i,
+    /^\s*(?:please\s+)?(?:add|put)\s+(?:a\s+line|this|the\s+following)\s+(?:to|on|in|into)\s+(?:my|the|this|our)\s+check[-\s]?in(?:\s+please)?\s*[:\-]\s*.{2,400}$/i,
     /*
      * CHANGING A LINE ALREADY ON THE RECORD (decision 50, piece 3, item 2: `changeContextLine`).
      * "the line" keeps this apart from changing an objective, a commitment or a to-do, each of which

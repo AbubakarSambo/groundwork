@@ -314,7 +314,10 @@ function anAimTheySetThemselves(sentence: string, name: string, who: WhoAnAimIsA
  */
 export function theDayKeptApart(name: string, day: (said: string) => Date | null): { name: string; dueOn: Date | null } {
   const t = (name ?? '').trim();
-  const m = /^(.*\S)\s+by\s+((?:the\s+)?[^,;]+?)[.!]?$/i.exec(t);
+  const m = /^(.*\S)\s+by\s+((?:the\s+)?[^,;]+?)[.!]?$/i.exec(t)
+    /* And a day said with no "by" at the end ("I will visit two shops in Westlands tomorrow."), kept as the day so a
+       board reads it as due, and later as past due, never as "tomorrow" for ever (reviewer, 14 October). */
+    ?? /^(.*\S)\s+((?:today|tonight|tomorrow|(?:on\s+|this\s+|next\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)))[.!]?$/i.exec(t);
   if (!m) return { name: t, dueOn: null };
   const when = day(m[2]);
   return when ? { name: m[1].replace(/[,;]+$/, '').trim(), dueOn: when } : { name: t, dueOn: null };

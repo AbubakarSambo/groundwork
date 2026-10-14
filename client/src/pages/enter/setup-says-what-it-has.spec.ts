@@ -109,7 +109,7 @@ describe('the summary card\'s labels are plain words in full, not one-word label
     expect(shortLabel('People you mentioned')).toBe('Who is in it')
     expect(shortLabel('Why now')).toBe('Why now')
     expect(shortLabel('What you want from it')).toBe('What you are aiming for')
-    expect(shortLabel('Sessions')).toBe('How many sessions')
+    expect(shortLabel('Sessions')).toBe('How many check-ins')
   })
 })
 

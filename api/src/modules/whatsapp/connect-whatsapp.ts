@@ -1,3 +1,4 @@
+import { whatsAppIsOnFor } from './only-where-whatsapp-is-turned-on';
 import type { ConfigService } from '@nestjs/config';
 import { GroundworksOwnNumber } from './groundworks-own-number';
 import { formsOfTheSameNumber } from './a-number-whatsapp-can-reach';
@@ -41,8 +42,8 @@ export async function connectWhatsAppFor(
     if (!ours.enabled || !number || !/\d{7,}/.test(number.replace(/\D/g, ''))) return null;
     const switchedOn = await prisma.platformSetting?.findUnique?.({ where: { key: 'whatsapp_enabled' } });
     if (switchedOn?.value !== true) return null;
-    const org = await prisma.organization?.findUnique?.({ where: { id: who.organizationId }, select: { whatsappAddOnOn: true } });
-    if (!org?.whatsappAddOnOn) return null;
+    const org = await prisma.organization?.findUnique?.({ where: { id: who.organizationId }, select: { whatsappAddOnOn: true, whatsappFreeUntil: true } });
+    if (!whatsAppIsOnFor(org)) return null;
     const own = await prisma.whatsAppConnection?.findUnique?.({ where: { organizationId: who.organizationId }, select: { enabled: true } })?.catch?.(() => null);
     if (own?.enabled) return null;
     if (!who.forTheInvitation && (await theyHaveWrittenFromTheirNumber(prisma, who))) return null;

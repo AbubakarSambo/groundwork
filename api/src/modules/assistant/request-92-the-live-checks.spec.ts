@@ -198,7 +198,8 @@ describe('point 10: after a No, the setup conversation carries on with the same 
       parked: { id: 'pr1', kind: 'context', state: 'PARKED', summary: 's', payload: { groundId: 'g1', said: 'Good means every shop pays.', history, openQuestion: open } },
     });
     const reply = await service.respond('org-a', 'p1', 'no', 'g1');
-    expect(textOf(reply)).toBe(`I have left it as it was. Nothing was changed.\n\n${open}`);
+    /* Reviewer, 14 October: after a no, stop. The open question is kept as what is waiting, not asked again under the no. */
+    expect(textOf(reply)).toBe('I have left it as it was. Nothing was changed.');
     const carried = created.find((c: any) => c.kind === 'context_turn');
     expect(carried.payload.groundId).toBe('g1');
     /* The say-back that was declined is not carried forward, and the question that was asked is. */
@@ -206,6 +207,7 @@ describe('point 10: after a No, the setup conversation carries on with the same 
       { role: 'user', content: 'Good means every shop pays.' },
       { role: 'assistant', content: `I have left it as it was. Nothing was changed.\n\n${open}` },
     ]);
+    expect(carried.summary).toBe(open);
   });
 
   it('and the next message is read as the answer to that question, by the same conversation', async () => {

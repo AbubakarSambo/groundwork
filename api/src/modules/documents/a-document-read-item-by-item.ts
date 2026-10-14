@@ -1,3 +1,4 @@
+import { theTargetForEveryone, theirTarget } from './a-target-named-target';
 /**
  * A DOCUMENT READ ITEM BY ITEM, WITH THE PAGE EACH ITEM CAME FROM (week 14, screens request 6c).
  *
@@ -22,7 +23,7 @@
  * is found on none, it has no page. Nothing is guessed.
  */
 import type { WhatLanded } from './what-a-document-holds';
-import { byWhen, inTheMiddle, atTheStart, BANK_DETAILS_LEFT_OUT } from './what-a-document-holds';
+import { byWhen, inTheMiddle, atTheStart, BANK_DETAILS_LEFT_OUT, dateSentence } from './what-a-document-holds';
 import { HIDDEN } from './bank-details-are-never-kept';
 
 /** pdf-parse's own marker after each page: "-- 3 of 4 --". */
@@ -132,11 +133,10 @@ const fmtNumber = (n: number): string => n.toLocaleString('en-GB');
 export const forEveryoneSentence = (t: { what: string; target: number; kind?: string | null; by?: string | null; asWritten?: string | null }, fmt0: (n: number) => string, fmt = (n: number) => t.asWritten || fmt0(n)) =>
   t.kind === 'not to exceed'
     ? `${atTheStart(t.what)} must stay at or under ${fmt(t.target)}${byWhen(t.by)} for everyone in this check-in.`
-    : `For everyone in this check-in, the target for ${t.what} is ${fmt(t.target)}${byWhen(t.by)}.`;
+    : `For everyone in this check-in, ${theTargetForEveryone(t.what, fmt(t.target))}${byWhen(t.by)}.`;
 export const forOnePersonSentence = (t: { who: string; what: string; target: number; by?: string | null; asWritten?: string | null }, fmt0: (n: number) => string, fmt = (n: number) => t.asWritten || fmt0(n)) =>
-  `${t.who}'s target for ${t.what} is ${fmt(t.target)}${byWhen(t.by)}.`;
-export const dateSentence = (d: { what: string; when: string }) =>
-  `The date it sets for ${inTheMiddle(d.what)} is ${d.when.trim().replace(/\.$/, '')}.`;
+  `${theirTarget(`${t.who}'s`, t.what, fmt(t.target))}${byWhen(t.by)}.`;
+export { dateSentence };
 
 /**
  * WHAT A PERSON READS UNDER "WHAT IT TOOK" AND "WHAT IT LEFT OUT". Built from `holds` when it is

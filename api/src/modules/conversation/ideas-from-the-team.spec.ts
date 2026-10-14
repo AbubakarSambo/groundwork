@@ -1,0 +1,189 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { PartyType } from '@prisma/client';
+import { withoutAskingWhatToCapture, anIdeaReadBackAsAPromise, afterTheirTurn, theirOwnIdea, THE_IDEA_QUESTION, IT_IS_CAPTURED, IDEA_SPOTTING_KEY, THE_IDEA_SPOTTING_PROMPT } from './ideas-from-the-team';
+import { person, answered, boardAs, AMINA, RUKIA, BARAKA, JUMA, type Setup } from '../board/the-switchboards-sections-harness';
+import { whatIsWrongForThisReader } from '../board/the-anchor-readers';
+
+/**
+ * ANCHOR PIECE 19: AN IDEA IS SAID BACK IN THE SPEC'S WORDS, AND ONLY THE PERSON'S YES CAPTURES IT
+ * (section 18; decisions 96 item 10 and 105 item 5).
+ */
+const MESSAGE = 'Honestly we could send the price list to every shop on Monday so they can reorder without calling me.';
+function world(opts: { on?: boolean; startedFrom?: string | null; model?: any; items?: any[] } = {}) {
+  const items: any[] = opts.items ?? [];
+  const prisma: any = {
+    platformSetting: { findUnique: jest.fn(async () => (opts.on === false ? { value: { on: false } } : { value: { on: true } })) },
+    workItem: {
+      findMany: jest.fn(async (a: any) => items.filter((i) => i.kind === a.where.kind && i.ownerParticipantId === a.where.ownerParticipantId)),
+      create: jest.fn(async ({ data }: any) => { const row = { id: `w${items.length + 1}`, ...data }; items.push(row); return row; }),
+      update: jest.fn(async ({ where, data }: any) => Object.assign(items.find((i) => i.id === where.id), data)),
+      delete: jest.fn(async ({ where }: any) => { items.splice(items.findIndex((i) => i.id === where.id), 1); }),
+    },
+  };
+  const anthropic: any = { extract: jest.fn(async () => opts.model ?? { isAConcreteIdea: true, idea: 'send the price list to every shop on Monday so they can reorder without calling me' }) };
+  const prompts: any = { getActive: jest.fn(async () => ({ id: 'pv-idea-1', content: THE_IDEA_SPOTTING_PROMPT })) };
+  const turn = (message: string) => afterTheirTurn({ prisma, anthropic, prompts }, { groundId: 'g-1', startedFrom: opts.startedFrom === undefined ? 'anchor' : opts.startedFrom, participantId: 'p-rukia', message });
+  return { turn, items, anthropic, prompts };
+}
+
+const withoutComments = (t: string): string => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+describe('the offer, in the person\'s own check-in', () => {
+  it('says the idea back in their own words, with the spec\'s question, and keeps nothing yet', async () => {
+    const { turn, items, prompts } = world();
+    const got = await turn(MESSAGE);
+    expect(got.ideaOffer).toEqual({
+      idea: 'send the price list to every shop on Monday so they can reorder without calling me',
+      question: THE_IDEA_QUESTION,
+      whoWillSeeIt: 'If you say yes, everyone in this check-in will see it, with your name.',
+      yes: 'Yes, capture it', no: 'Not now',
+    });
+    expect(THE_IDEA_QUESTION).toBe('That sounds like a concrete idea. Want me to capture it for the team?');
+    expect(items.map((i) => i.kind)).toEqual(['idea-offered']);
+    expect(prompts.getActive).toHaveBeenCalledWith(IDEA_SPOTTING_KEY);
+    expect(got.promptVersionId).toBe('pv-idea-1');
+  });
+  it('the yes captures it, and the reply says so first', async () => {
+    const { turn, items } = world();
+    await turn(MESSAGE);
+    const got = await turn('Yes, capture it');
+    expect(got.sayFirst).toBe(IT_IS_CAPTURED);
+    expect(items.map((i) => i.kind)).toEqual(['idea']);
+  });
+  it('a free-text yes about something else keeps nothing: only the button\'s own answer captures', async () => {
+    const { turn: t3, items: i3, anthropic } = world();
+    await t3(MESSAGE);
+    anthropic.extract.mockResolvedValueOnce({ isAConcreteIdea: false });
+    expect((await t3('Yes, I sent the deck to Naivas')).sayFirst).toBeUndefined();
+    expect(i3).toEqual([]);
+  });
+  it('"Not now", or carrying on, leaves nothing behind', async () => {
+    const a = world(); await a.turn(MESSAGE); await a.turn('Not now');
+    expect(a.items).toEqual([]);
+    const b = world({ model: { isAConcreteIdea: false } }); await b.turn(MESSAGE.replace('Honestly', 'Also')); 
+    const c = world(); await c.turn(MESSAGE);
+    c.anthropic.extract.mockResolvedValueOnce({ isAConcreteIdea: false });
+    await c.turn('The van broke down again on Tuesday.');
+    expect(c.items).toEqual([]);
+  });
+  it('an idea the model rewrote is not offered: only the person\'s own words', async () => {
+    const { turn, items } = world({ model: { isAConcreteIdea: true, idea: 'Distribute pricing documentation weekly to retail partners' } });
+    expect((await turn(MESSAGE)).ideaOffer).toBeUndefined();
+    expect(items).toEqual([]);
+    expect(theirOwnIdea(MESSAGE, 'the price list')).toBeNull();
+    expect(theirOwnIdea(MESSAGE, 'send the price list to the shops')).toBeNull();
+  });
+  it('nothing, and no model call, with the switch off or on any other check-in', async () => {
+    for (const w of [world({ on: false }), world({ startedFrom: null })]) {
+      expect(await w.turn(MESSAGE)).toEqual({});
+      expect(w.anthropic.extract).not.toHaveBeenCalled();
+    }
+  });
+  it('the check-in\'s reply carries the offer and says the capture first', () => {
+    const src = withoutComments(readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8'));
+    expect(src).toContain('...(idea.ideaOffer ? { ideaOffer: idea.ideaOffer } : {}),');
+    expect(src).toContain('answer.reply = [idea.sayFirst, notAsked.text].filter(Boolean)');
+  });
+});
+
+describe('"Ideas from your team" on the board, as each reader reads it', () => {
+  const lead = { ...person('p-amina', 'u-amina', 'Amina', 'Wanjiru', PartyType.INITIATOR), managingOnly: false };
+  const PEOPLE = [lead, person('p-rukia', 'u-rukia', 'Rukia', 'Mwangi'), person('p-baraka', 'u-baraka', 'Baraka', 'Otieno')];
+  const anchor = (on = true, startedFrom: string | null = 'anchor'): Setup => ({
+    people: PEOPLE, checkIns: [answered('p-amina', 1), answered('p-rukia', 1), answered('p-baraka', 1)], commitments: [], dependencies: [],
+    groundRow: { startedFrom, startsAt: new Date('2026-09-08') },
+    prismaExtras: {
+      platformSetting: { findUnique: jest.fn(async () => (on ? { value: { on: true } } : { value: { on: false } })) },
+      recommendation: { findMany: jest.fn(async () => []) },
+      groundParticipant: {
+        findMany: jest.fn(async (a: any) => (a?.where?.id?.in ? PEOPLE.filter((p) => a.where.id.in.includes(p.id)).map((p) => ({ id: p.id, lastNudgedAt: null })) : PEOPLE.map((p) => ({ ...p, checkIns: [{ status: 'COMPLETED' }] })))),
+        findUnique: jest.fn(async () => null), findFirst: jest.fn(async () => null), count: jest.fn(async () => 0), aggregate: jest.fn(async () => ({})),
+      },
+      workItem: { findMany: jest.fn(async (a: any) => [
+        { id: 'i1', kind: 'idea', name: 'send the price list to every shop on Monday', ownerParticipantId: 'p-rukia' },
+        { id: 'i2', kind: 'idea-offered', name: 'a thing not yet said yes to', ownerParticipantId: 'p-baraka' },
+      ].filter((r) => !a?.where?.kind || r.kind === a.where.kind)) },
+    },
+  });
+  it('the lead reads it with who raised it, and the month board counts it', async () => {
+    const b = await boardAs(anchor(), ...AMINA);
+    expect(b.ideasFromYourTeam.ideas).toEqual([{ id: 'i1', title: 'Send the price list to every shop on Monday', raisedBy: 'Raised by Rukia.', similarNeedsSentence: null }]);
+    expect(b.theMonthBoard.whatTheTeamIsContributing).toEqual(['One idea from your team has been captured.']);
+  });
+  it('Rukia reads her own as "Raised by you.", and Baraka reads it with her name', async () => {
+    expect((await boardAs(anchor(), ...RUKIA)).ideasFromYourTeam.ideas[0].raisedBy).toBe('Raised by you.');
+    const asBaraka = await boardAs(anchor(), ...BARAKA);
+    expect(asBaraka.ideasFromYourTeam.ideas[0].raisedBy).toBe('Raised by Rukia.');
+    expect(JSON.stringify(asBaraka)).not.toContain('a thing not yet said yes to');
+  });
+  it('an admin who only reads is served no ideas', async () => {
+    const b = await boardAs(anchor(), ...JUMA);
+    expect('ideasFromYourTeam' in b).toBe(false);
+    expect(whatIsWrongForThisReader('an admin who only reads', b)).toEqual([]);
+  });
+  it('with the switch off, nobody is served them', async () => {
+    expect('ideasFromYourTeam' in (await boardAs(anchor(false), ...RUKIA))).toBe(false);
+  });
+});
+
+describe('an idea is never read back as a promise (review of piece 19)', () => {
+  const IDEA = 'we could send the updated price list to every shop on Monday morning';
+  const SAID = 'I think we could send the updated price list to every shop on Monday morning, so they stop ordering at the old prices.';
+
+  it('cuts "You said you will send the updated price list to every shop on Monday morning." after "Yes, capture it"', () => {
+    const reply = 'You said you will send the updated price list to every shop on Monday morning. What else got in your way this week?';
+    expect(anIdeaReadBackAsAPromise(reply, [IDEA], [SAID, 'Yes, capture it'])).toEqual(['You said you will send the updated price list to every shop on Monday morning.']);
+  });
+
+  it('keeps it where she also said, apart from the idea, that she will do it', () => {
+    const reply = 'You said you will send the updated price list to every shop on Monday morning.';
+    expect(anIdeaReadBackAsAPromise(reply, [IDEA], [SAID, 'I will send the price list myself on Monday.'])).toEqual([]);
+  });
+
+  it('leaves alone a read-back of something else, and a reply with no read-back', () => {
+    expect(anIdeaReadBackAsAPromise('You said you will call Naivas on Friday about the late payment.', [IDEA], [SAID, 'I will call Naivas on Friday.'])).toEqual([]);
+    expect(anIdeaReadBackAsAPromise('I have captured it for the team. What else got in your way this week?', [IDEA], [SAID])).toEqual([]);
+    expect(anIdeaReadBackAsAPromise('You said you will send the updated price list to every shop on Monday morning.', [], [SAID])).toEqual([]);
+  });
+});
+
+describe('once it is captured, nothing asks what to capture (release walk)', () => {
+  it('takes off "Capture what, specifically?" and keeps the rest of the turn', () => {
+    expect(withoutAskingWhatToCapture('Capture what, specifically? What else got in your way this week?')).toEqual({
+      text: 'What else got in your way this week?', cut: ['Capture what, specifically?'],
+    });
+  });
+  it('leaves a turn with nothing about capturing alone', () => {
+    const t = 'What else got in your way this week?';
+    expect(withoutAskingWhatToCapture(t)).toEqual({ text: t, cut: [] });
+  });
+});
+
+describe('after a capture Groundwork does not say how it feels (6 October)', () => {
+  it('takes off "I\'m glad you found this helpful"', () => {
+    const out = withoutAskingWhatToCapture("I have captured it for the team.\n\nI'm glad you found this helpful, Grace.\n\nWhat else would you like to say?");
+    expect(out.text).not.toMatch(/glad/);
+    expect(out.text).toContain('What else would you like to say?');
+  });
+});
+
+describe('only a sentence that is nothing but the feeling is cut', () => {
+  it('keeps a sentence that asks something, and one that answers what they said', () => {
+    expect(withoutAskingWhatToCapture("I'm glad you raised it, so what would help the team most now?").text).toBe("I'm glad you raised it, so what would help the team most now?");
+    expect(withoutAskingWhatToCapture('I am happy to hear the van came on time.').cut).toEqual([]);
+  });
+  it('cuts the bare feeling', () => {
+    expect(withoutAskingWhatToCapture("I'm glad you found this helpful, Grace.\n\nWhat else?").text).toBe('What else?');
+  });
+});
+
+describe('what marks a turn as the answer to a showing offer', () => {
+  it('is a stamp on the turn, and the words are the same words whether or not it is stamped', () => {
+    const { ANSWERED_THE_IDEA_OFFER, anAnswerToTheIdeaOffer } = require('./ideas-from-the-team');
+    expect(ANSWERED_THE_IDEA_OFFER).toBe('answered-the-idea-offer');
+    /* The words alone cannot tell the button from a typed answer: that is why the stamp, and not the words, decides what is left out. */
+    expect(anAnswerToTheIdeaOffer('Not now.')).toBe(true);
+    expect(anAnswerToTheIdeaOffer('Yes, I sent the deck to Naivas')).toBe(false);
+  });
+});

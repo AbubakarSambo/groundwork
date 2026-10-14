@@ -1,3 +1,4 @@
+import { notJoinedSaid } from './the-session-report';
 import { withoutWhatTheLeadHasNotToldThemAbout } from '../board/an-untold-goal-is-not-a-board-objective';
 import { withoutTheLeadsSetUpForAMember } from '../grounds/the-leads-set-up-is-the-leads-in-the-anchor';
 import { targetsFor } from '../board/whose-number-is-whose-business';
@@ -412,6 +413,7 @@ export function atAGlanceTiles(a: {
    * not about who turned up. The tile could not tell them apart because it was never told.
    */
   stillToAnswer?: number;
+  notJoinedYet?: number;
   /**
    * AND THE THING ITSELF, WHERE THERE IS ONE. Hafsah, 19 September 2026: "the quick read is too
    * generic." Four tiles read "Differences 1 - still open, as the written report reads it" and
@@ -472,7 +474,7 @@ export function atAGlanceTiles(a: {
           /* With more than one, how many (item 21): "2" over "The written report reads this as still open." left "this" pointing at nothing. */
           : a.stillOpen > 1 ? `The written report reads ${a.stillOpen} differences as still open.` : 'The written report reads this as still open.')
         : a.agreed ? 'The written report finds no disagreement.'
-          : a.stillToAnswer === 0 ? 'Everybody has answered, and the written report names no agreement and no gap yet.'
+          : a.stillToAnswer === 0 ? (a.notJoinedYet ? `Everybody who has joined has answered. ${notJoinedSaid(a.notJoinedYet)}` : 'Everybody has answered, and the written report names no agreement and no gap yet.')
             /* And where nobody passed a count, say what is true of the report rather than guess at the
                roster: "not everybody has answered yet" went out on boards where everybody had. */
             : a.stillToAnswer == null ? 'The written report names no agreement and no gap yet.'

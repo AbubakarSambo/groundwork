@@ -52,7 +52,8 @@ describe('one session, as each reader reads its top', () => {
     }) as any)
     renderIt()
     expect(await screen.findByText('Session 37 of 65. 2 of 3 people checked in.')).toBeTruthy()
-    expect(screen.getByText('Shared with the team.')).toBeTruthy()
+    /* E10: it says how it was shared. */
+    expect(screen.getByText('Shared with the team when this session closed.')).toBeTruthy()
     expect(screen.getByText('Aisha has checked in.')).toBeTruthy()
     expect(screen.getByText('Omar has not checked in yet.')).toBeTruthy()
     const text = document.body.textContent ?? ''
@@ -71,7 +72,7 @@ describe('one session, as each reader reads its top', () => {
     expect(await screen.findByText('Session 37 of 65. 1 of 2 people checked in.')).toBeTruthy()
     expect(screen.getByText('You have checked in.')).toBeTruthy()
     expect(screen.getByText('a colleague has not checked in yet.')).toBeTruthy()
-    expect(document.body.textContent).not.toContain('Shared with the team.')
+    expect(document.body.textContent).not.toContain('Shared with the team')
     expect(document.body.textContent).not.toContain('(you)')
     expect(await screen.findByText('Last updated on Wednesday 23 September at 6pm. It only changes when something new comes in, such as a check-in, a document or a number from another system.')).toBeTruthy()
   })
@@ -79,7 +80,7 @@ describe('one session, as each reader reads its top', () => {
   it('a report that is out, and so no longer changes, does not ask when it last changed', async () => {
     vi.mocked(reportsApi.sessionReport).mockResolvedValue(aSession({ counting: [] }) as any)
     renderIt()
-    await screen.findByText('Shared with the team.')
+    await screen.findByText('Shared with the team when this session closed.')
     expect(reportsApi.get).not.toHaveBeenCalled()
     expect(document.body.textContent).not.toContain('Last updated')
   })

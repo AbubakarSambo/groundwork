@@ -75,11 +75,15 @@ const rows = {
     { organizationId: ORG, role: 'MEMBER', team: null },
     { organizationId: ORG, role: 'LEAD', team: 'Operations' },
     { organizationId: ORG, role: 'GUEST', team: null },
+    /* Pilots, 13 October 2026, problem 10: somebody removed keeps a membership row, and is not counted. */
+    { organizationId: ORG, role: 'MEMBER', team: 'Operations', user: { deletedAt: new Date('2026-10-10T00:00:00Z'), isActive: false } },
   ],
 };
 
 function matches(row: any, where: any): boolean {
   return Object.entries(where ?? {}).every(([k, v]: [string, any]) => {
+    /* A filter on the person behind the row: a row with no person given is somebody still here. */
+    if (k === 'user' && v && typeof v === 'object' && !('in' in v) && !('not' in v)) return matches(row.user ?? { deletedAt: null, isActive: true }, v);
     if (v && typeof v === 'object' && 'in' in v) return v.in.includes(row[k]);
     if (v && typeof v === 'object' && 'not' in v) return row[k] !== v.not && !(v.not === null && row[k] == null);
     return row[k] === v;

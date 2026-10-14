@@ -373,6 +373,14 @@ export class ParticipantsService {
       } else {
         // Pre-existing account - let the client know so it can surface a message.
         existingAccount = true;
+        /*
+         * THE LINK WAS SENT TO THIS ADDRESS, SO OPENING IT CONFIRMS IT (pilots, 13 October 2026, problem 8). Brian was added on
+         * People, which makes his sign-in unconfirmed, and then joined from the check-in invitation sent to that same
+         * address. Ask still told him "Confirm your email address first", about a sign-up he never did.
+         */
+        if (!user.isEmailVerified && user.email.toLowerCase() === email.toLowerCase()) {
+          await tx.user.update({ where: { id: user.id }, data: { isEmailVerified: true } });
+        }
       }
       /*
        * Cross-org participation: user keeps their home org. The JWT carries their real orgId so

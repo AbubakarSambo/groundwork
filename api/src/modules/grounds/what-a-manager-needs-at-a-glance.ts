@@ -43,6 +43,9 @@ export interface AtAGlance {
     notLetIn?: number;
     /** That as a sentence, or null: "Three more people are not counted yet, because an admin has not let them in." */
     notCountedSays?: string | null;
+    /** Invited and not joined yet, as a count and a sentence of its own, so the board never says "everybody" over them (reviewer, 14 October). */
+    notJoinedYet?: number;
+    notJoinedSays?: string | null;
     /** The team's round, from the board's own clock (whichRoundIsOpen). Every screen says which check-in it is from this. */
     openRound?: number;
     /** That round as a sentence for the list to show as it is: "It is on the second check-in of 12." Null before any. */
@@ -120,7 +123,7 @@ export function atAGlance(i: GlanceInput, now: Date = new Date()): AtAGlance {
       answeredThisRound: shown.answered,
       ofPeople: shown.ofPeople,
       waitingOn: counted.waitingOn,
-      ...(notLetIn || notJoined ? { notLetIn, notJoinedYet: notJoined, notCountedSays } : {}),
+      ...(notLetIn || notJoined ? { notLetIn, notJoinedYet: notJoined, notCountedSays, notJoinedSays: whoHasNotJoinedYetCount(notJoined) } : {}),
       ...(i.forTheList ? {
         openRound: session,
         whereItIs: whereTheTeamIs(i.sessionNumber ? session : 0, i.roundsPlanned, i.roundsDone),

@@ -252,3 +252,27 @@ describe('no price, limit or number of months is written into the screen', () =>
     expect(section).not.toMatch(/\d+\s*months?\b/i)
   })
 })
+
+/*
+ * HAFSAH'S DECISION D1, 13 OCTOBER 2026, EVENING: WhatsApp is on for every organisation for a free month, and this part
+ * of the page "is meant to be there". The admin reads the free month and how to keep it after.
+ */
+describe('the free WhatsApp month, as the admin reads it', () => {
+  it('says it is on during the free month, until when, and how to keep it', async () => {
+    m.whatsapp = {
+      ...WHATSAPP_OFF_ADMIN,
+      sending: true,
+      heldBecause: null,
+      freeUntil: '2026-11-13T00:00:00.000Z',
+      says: {
+        ...WHATSAPP_OFF_ADMIN.says,
+        onOrOff: 'WhatsApp is on for your organisation during its free month.',
+        freeMonth: 'WhatsApp is free until 13 November 2026. To keep it after that, add it to your subscription with the switch above.',
+      },
+    }
+    renderIt()
+    await waitFor(() => expect(text()).toContain('WhatsApp is on for your organisation during its free month.'))
+    expect(text()).toContain('Free month')
+    expect(text()).toContain('WhatsApp is free until 13 November 2026. To keep it after that, add it to your subscription with the switch above.')
+  })
+})

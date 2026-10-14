@@ -55,3 +55,39 @@ export function Choices({ options, value, onChange, stacked, label, quiet }: {
     </div>
   )
 }
+
+/**
+ * TOGGLE CHOICES (prototype: .seg with more than one button `on`, the setup's "On which days"). The
+ * same look as `Choices`, but each button is switched on and off on its own (`aria-pressed`), so a
+ * group can hold several at once - the days of the week - or none. `ariaLabel` names a button whose
+ * own text is short ("Mon" read as "Monday").
+ */
+export type ToggleChoice = { key: string; label: string; ariaLabel?: string; title?: string }
+
+export function ToggleChoices({ options, values, onToggle, label }: {
+  options: ToggleChoice[]
+  values: string[]
+  onToggle: (key: string) => void
+  label: string
+}) {
+  return (
+    <div className="gwui-choices" role="group" aria-label={label}>
+      {options.map(o => {
+        const on = values.includes(o.key)
+        return (
+          <button
+            key={o.key}
+            type="button"
+            aria-pressed={on}
+            aria-label={o.ariaLabel}
+            title={o.title}
+            className={['gwui-choice', on && 'gwui-choice-on'].filter(Boolean).join(' ')}
+            onClick={() => onToggle(o.key)}
+          >
+            {o.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}

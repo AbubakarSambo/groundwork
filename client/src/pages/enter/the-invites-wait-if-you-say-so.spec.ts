@@ -40,7 +40,9 @@ describe('the invites wait if you say so', () => {
   it('wires the start to the start date, which is what actually delays the mail', () => {
     const choice = page.slice(page.indexOf('<TheSetup'))
     expect(choice).toMatch(/startsOn=\{checkInBy\}/)
-    expect(choice).toMatch(/onStartsOn=\{setCheckInBy\}/)
+    /* Setup page, piece 3a: the start is also kept in the saved session now, so a reload keeps it;
+       it still sets the same start date. */
+    expect(choice).toMatch(/onStartsOn=\{\(d\) => \{ setCheckInBy\(d\)/)
   })
 
   /* U.6 review: "Your invites go out straight away." was not always true (no seat, an admin to

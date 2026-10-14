@@ -269,8 +269,18 @@ export const SESSION_CLOSE_MARKER = '[[SESSION_COMPLETE]]';
  */
 const ANY_BRACKETING_OF_THE_MARKER = /[[<({|]{1,2}\s*SESSION_COMPLETE\s*[\]>)}|]{1,2}/gi;
 
+/*
+ * AND THE BRACKETS LEFT WHEN THE NAME INSIDE THEM WAS TAKEN OUT (pilots, 13 October 2026, problem 13). Njeri's first
+ * check-in ended "Your report is ready now. Speak soon. [[]]": the name went and its brackets reached her screen. Empty
+ * brackets of the kinds the marker is written in never mean anything to a person, so they go too.
+ */
+const EMPTY_MARKER_BRACKETS = /\s*(?:\[\[\s*\]\]|<<\s*>>|\{\{\s*\}\}|\(\(\s*\)\))/g;
+
 export function stripCloseMarker(reply: string): { text: string; hadMarker: boolean } {
-  if (!ANY_BRACKETING_OF_THE_MARKER.test(reply)) return { text: reply, hadMarker: false };
+  if (!ANY_BRACKETING_OF_THE_MARKER.test(reply)) {
+    ANY_BRACKETING_OF_THE_MARKER.lastIndex = 0;
+    return { text: EMPTY_MARKER_BRACKETS.test(reply ?? '') ? (reply ?? '').replace(EMPTY_MARKER_BRACKETS, '').trim() : reply, hadMarker: false };
+  }
   ANY_BRACKETING_OF_THE_MARKER.lastIndex = 0;
   const text = reply.replace(ANY_BRACKETING_OF_THE_MARKER, '').replace(/\n{3,}/g, '\n\n').trim();
   ANY_BRACKETING_OF_THE_MARKER.lastIndex = 0;

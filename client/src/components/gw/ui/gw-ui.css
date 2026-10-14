@@ -652,6 +652,25 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 .gwui-choice-stacked .gwui-choice-desc { font-size: 14.5px; color: var(--gw-sub); }
 .gwui-choice-stacked.gwui-choice-on .gwui-choice-desc { color: rgba(255,255,255,.8); }
 
+/* ── SETUP BLOCK (prototype: `blk` on the setup screen, B1-starting-a-check-in/setup.jpg:
+   `display:grid;grid-template-columns:minmax(0,260px) minmax(0,1fr);gap:28px;padding:24px 0;
+   border-top:1px solid var(--rule)`, the heading `t-h3`, the sentence under it `t-small mut` 4px
+   below, the controls a 12px stack). In a narrow space the heading sits above the controls. ──── */
+.gwui-setup-block {
+  display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 28px;
+  padding: 24px 0; border-top: 1px solid var(--gw-border);
+}
+.gwui-setup-block-title { font-family: var(--gw-font-ui); font-size: 18px; line-height: 1.3; font-weight: 700; color: var(--gw-text); margin: 0; }
+.gwui-setup-block-help { font-size: 14.5px; line-height: 1.45; color: var(--gw-sub); margin: 4px 0 0; }
+.gwui-setup-block-body { display: flex; flex-direction: column; gap: 12px; min-width: 0; font-size: 14.5px; line-height: 1.45; color: var(--gw-text); }
+/* The blocks follow the width they are given, not the screen's: the same setup sits on a wide page
+   and inside the 640px card at the end of the lead's first check-in. Under 720px of room the heading
+   sits above its controls, the prototype's own phone layout. */
+.gwui-setup-blocks { container-type: inline-size; }
+@container (max-width: 720px) {
+  .gwui-setup-block { grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 20px 0; }
+}
+
 /* ── CHOICE CARDS (prototype: white rows, chosen = 2px ink outline) ──────── */
 .gwui-choice-cards { display: flex; flex-direction: column; gap: 8px; }
 .gwui-choice-card {
@@ -729,7 +748,15 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   cursor: pointer; white-space: nowrap; text-decoration: none; text-align: center;
 }
 .gwui-btn:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 2px; }
-.gwui-btn:disabled, .gwui-btn[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
+/* A button that cannot be pressed yet stays readable (setup page review, 13 October: a pale "Add"
+   on beige). It was the same button at 55% opacity, which put white on a washed-out navy and pale
+   text on beige. Now it reads as an outlined button in the secondary ink, dark on white. */
+.gwui-btn:disabled, .gwui-btn[aria-disabled="true"] { cursor: not-allowed; }
+.gwui-btn-primary:disabled, .gwui-btn-primary[aria-disabled="true"],
+.gwui-btn-secondary:disabled, .gwui-btn-secondary[aria-disabled="true"] {
+  background: var(--gw-card); color: var(--gw-sub); box-shadow: inset 0 0 0 1.5px var(--gw-rule-2);
+}
+.gwui-btn-quiet:disabled, .gwui-btn-quiet[aria-disabled="true"] { color: var(--gw-sub); }
 .gwui-btn-primary { background: var(--gw-navy); color: #fff; }
 .gwui-btn-primary:hover:not(:disabled) { background: var(--gw-navy-d); }
 .gwui-btn-secondary { background: var(--gw-card); color: var(--gw-text); box-shadow: inset 0 0 0 1.5px var(--gw-rule-2); }
@@ -1341,6 +1368,12 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-side { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 44px; align-items: start; }
 @media (max-width: 1100px) {
   .gwui-side { grid-template-columns: minmax(0, 1fr); }
+}
+/* WITH ASK OPEN, THE PAGE HAS 400px LESS (pilots, 13 October 2026, E1). At 1280 the main column kept its 340px side
+   column beside it and had about 190px left, so names wrapped letter by letter ("Ais / ha / Ha / ss / an"). The side
+   column goes under the main one whenever the room left, with Ask open, is what 1100px gives without it. */
+@media (max-width: 1500px) {
+  body.gwui-ask-open .gwui-side { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* ── COMING UP (prototype: Today's own sidebar list, app.css) ───────────────────────────────── */

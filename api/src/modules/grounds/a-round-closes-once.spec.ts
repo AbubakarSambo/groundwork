@@ -54,6 +54,9 @@ describe('a round closes once', () => {
       groundId: 'g1',
       sessionNumber: 2,
       participantCount: 4,
+      /* What the digest reads (reviewer, 14 October): who it waited on, and how many gave an account. */
+      waitedOn: 4,
+      accountsGiven: 4,
     });
   });
 

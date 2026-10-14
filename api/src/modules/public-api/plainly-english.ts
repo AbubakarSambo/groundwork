@@ -23,3 +23,13 @@ export function plainlyEnglish(text: string): boolean {
   const common = words.filter((w) => COMMON_ENGLISH.has(w)).length;
   return common / words.length >= 0.25;
 }
+
+/**
+ * THE LANGUAGE A PERSON IS ANSWERED IN FOLLOWS THEIR OWN MESSAGES (reviewer, 14 October). What they wrote in this
+ * check-in, taken together, that is plainly English is English, whatever one early read stored.
+ */
+export function theLanguageOfTheirOwnWords(theirWords: string[], stored: string | null | undefined): string | null {
+  const all = theirWords.map((w) => (w ?? '').trim()).filter(Boolean).join(' ');
+  if (all && plainlyEnglish(all)) return 'en';
+  return stored ?? null;
+}

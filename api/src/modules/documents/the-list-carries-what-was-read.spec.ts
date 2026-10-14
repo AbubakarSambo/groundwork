@@ -17,7 +17,7 @@ const SRC = readFileSync(join(__dirname, 'documents.service.ts'), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 describe('every document read that feeds a card fetches its assessment', () => {
-  const selects = SRC.match(/select: \{[^}]*fileName: true[^}]*\}/g) ?? [];
+  const selects: string[] = SRC.match(/select: \{[^}]*fileName: true[^}]*\}/g) ?? [];
 
   it('found the selects, so an empty match cannot pass', () => {
     expect(selects.length).toBeGreaterThanOrEqual(3);

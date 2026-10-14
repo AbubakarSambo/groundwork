@@ -337,7 +337,9 @@ describe('release night, for a check-in that already exists', () => {
        95 since 11 October: why they missed their check-ins (decision 136), two empty columns on check_ins, no data change.
        96 since 13 October: when somebody accepted their invitation (Hafsah, 13 October), one column on ground_participants,
           filled for the people already on a check-in who came in, so everybody who has joined stays counted. */
-    expect(names).toHaveLength(96);
+    /* 97 since 14 October: WhatsApp's free month (Hafsah's decision D1, 13 October, evening), one column on organizations,
+       filled with a month from today for every organisation already here. */
+    expect(names).toHaveLength(97);
     // The six statements deploy.md lists, plus the WhatsApp prices (five updates and one insert).
     expect(o.dataChangesRun).toBeGreaterThanOrEqual(8);
   }));
@@ -454,8 +456,22 @@ describe('release night, for a check-in that already exists', () => {
    * sender then holds a message that is outside the 24-hour window until Meta approves the
    * templates, so most are recorded as not sent. Anything inside the window goes.)
    */
-  it('FINDING 2: tries no WhatsApp message about a check-in that exists, on the first morning (A to E)', aFindingNeedsTheDatabase((o) => {
-    const said = ['A', 'B', 'C', 'D', 'E'].flatMap((k) => aboutIt(o, o.seeded[k]).filter((c) => c.method.startsWith('whatsapp.')).map((c) => `${k}: ${c.method}`));
-    expect(said).toEqual([]);
+  /*
+   * CHANGED 14 OCTOBER, BY HAFSAH'S DECISION D1 (13 October, evening): "This is turned on automatically ... Existing
+   * organisations: they get the trial too." WhatsApp is now on for every existing organisation for a free month, so on the
+   * first morning the one check-in that is overdue (C) is reminded on WhatsApp, once per person, under the sender's own
+   * rules; nothing goes about the check-ins that are on time, not open yet or past their end (A, B, D, E). Recorded for
+   * Hafsah in the morning report, because it is the first WhatsApp message these people get.
+   */
+  it('FINDING 2: on the first morning, WhatsApp goes only about the check-in that is overdue (C), once per person', aFindingNeedsTheDatabase((o) => {
+    /* A message is a send; asking whether a number said STOP is not one. */
+    const sends = (k: string) => aboutIt(o, o.seeded[k]).filter((c) => /^whatsapp\.send/.test(c.method));
+    /* Nothing about the seeded check-ins that are on time, not open yet, past their end or stalled. */
+    expect(['A', 'B', 'D', 'E', 'F'].flatMap((k) => sends(k).map((c) => `${k}: ${c.method}`))).toEqual([]);
+    const aboutC = sends('C');
+    /* Each of C's three people, exactly once. */
+    const to = aboutC.map((c) => String(JSON.parse(c.text)[1]));
+    expect(to.length).toBe(o.seeded.C.participantIds.length);
+    expect(new Set(to).size).toBe(o.seeded.C.participantIds.length);
   }));
 });

@@ -19,6 +19,15 @@ export async function organisationsThatTurnedWhatsAppOn(
   const ids = [...new Set(organizationIds.filter(Boolean))];
   if (!ids.length) return new Set();
   if (!(await whatsapp.isEnabled().catch(() => false))) return new Set();
-  const rows: { id: string }[] = await prisma.organization.findMany({ where: { id: { in: ids }, whatsappAddOnOn: true }, select: { id: true } });
+  /* Added to the subscription, or in the free WhatsApp month every organisation gets (Hafsah, 13 October 2026, evening). */
+  const rows: { id: string }[] = await prisma.organization.findMany({ where: { id: { in: ids }, ...WHATSAPP_IS_ON_FOR_THEM() }, select: { id: true } });
   return new Set(rows.map((r) => r.id));
+}
+
+/** The organisations WhatsApp is on for now: added to the subscription, or still in their free WhatsApp month. */
+export const WHATSAPP_IS_ON_FOR_THEM = (now: Date = new Date()) => ({ OR: [{ whatsappAddOnOn: true }, { whatsappFreeUntil: { gt: now } }] });
+
+/** The same, for one organisation already read. */
+export function whatsAppIsOnFor(org: { whatsappAddOnOn?: boolean | null; whatsappFreeUntil?: Date | string | null } | null | undefined, now: Date = new Date()): boolean {
+  return !!org && (!!org.whatsappAddOnOn || (!!org.whatsappFreeUntil && new Date(org.whatsappFreeUntil).getTime() > now.getTime()));
 }

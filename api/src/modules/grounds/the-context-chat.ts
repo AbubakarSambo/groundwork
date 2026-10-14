@@ -1,6 +1,7 @@
 import { PLAIN_WORDS, SPOKEN_TO_THE_READER } from '../conversation/plain-words';
 import { stillNeedsSomethingInWriting } from './what-the-documents-say';
 import { CADENCE_WORDS, CADENCES, type Cadence } from './what-the-context-chat-heard';
+import { everyDayThatTheyWork } from './which-days-this-team-works';
 /**
  * THE CONTEXT CHAT. G37 and G23, the last of the seven and the largest.
  *
@@ -359,7 +360,7 @@ export function contextChatPrompt(
  * already hold does not need a model call to say correctly, and a sentence written here cannot drift
  * from what a re-run of the model would have said.
  */
-export function openingLine(timelineDays: number | null, cadence: string | null, runsUntilEnded = false): string | null {
+export function openingLine(timelineDays: number | null, cadence: string | null, runsUntilEnded = false, workingDays: number[] | null = null): string | null {
   const parts: string[] = [];
   if (runsUntilEnded) {
     parts.push('runs until you end it');
@@ -369,9 +370,14 @@ export function openingLine(timelineDays: number | null, cadence: string | null,
   }
   const c = (cadence ?? '').toUpperCase().trim();
   if (CADENCES.includes(c as Cadence)) {
-    parts.push(`people check in ${CADENCE_WORDS[c as Cadence]}`);
+    /* A daily rhythm on weekdays only is said as such, never "every day" (setup page review). */
+    parts.push(`people check in ${c === 'DAILY' ? everyDayThatTheyWork(workingDays) : CADENCE_WORDS[c as Cadence]}`);
   }
-  return parts.length ? `This check-in ${parts.join(' and ')}.` : null;
+  if (!parts.length) return null;
+  /* "This check-in people check in every two weeks." was not a sentence: with no length to say,
+     the rhythm is said on its own (setup page review, 13 October). */
+  if (parts.length === 1 && parts[0].startsWith('people ')) return `In this check-in, ${parts[0]}.`;
+  return `This check-in ${parts.join(' and ')}.`;
 }
 
 /**
@@ -405,4 +411,47 @@ export function withoutTheOpeningGreeting(reply: string): string {
     out = stripped;
   }
   return out;
+}
+
+/**
+ * A SETUP QUESTION IS ASKED ONCE, AND NO SENTENCE IS SAID TWICE IN ONE REPLY (pilots, 13 October 2026, E3).
+ *
+ * Every Ask reply ended on "What does doing well look like here? I do not mean a target for one person. What would make
+ * you say, at the end, that this went the way it should have?", after a No and after answers about something else,
+ * and one reply carried "I have not added the line. Nothing was changed." twice. A setup question already asked in
+ * this conversation is taken out of the reply, sentence by sentence, and a sentence already said in the same reply is
+ * said once. The rest of the reply stands as written. Where taking it out would leave nothing, the reply is kept.
+ */
+export function askedOnceAndNeverTwiceInOneReply(
+  reply: string,
+  history: { role: string; content: string }[],
+  gaps: { ask?: string }[],
+): string {
+  const flat = (x: string) => x.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  /* A sentence ends at a stop followed by a space, so "matter-list-october-2026.pdf" stays one word. */
+  const sentencesOf = (t: string) => String(t ?? '').split(/(?<=[.!?])\s+/).map((x) => x.trim()).filter(Boolean);
+  const earlier = history.filter((h) => h.role === 'assistant').map((h) => flat(h.content ?? ''));
+  const askedBefore = new Set<string>();
+  for (const g of gaps) {
+    const ask = sentencesOf(g.ask ?? '');
+    if (ask.length && earlier.some((e) => e.includes(flat(ask[0])))) for (const x of ask) askedBefore.add(flat(x));
+  }
+  const seen = new Set<string>();
+  const kept: string[] = [];
+  for (const piece of String(reply ?? '').split(/(\n+)/)) {
+    if (/^\n+$/.test(piece)) { kept.push(piece); continue; }
+    const out = sentencesOf(piece).filter((x) => {
+      const k = flat(x);
+      if (!k) return true;
+      if (askedBefore.has(k) || seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+    kept.push(out.join(' '));
+  }
+  const text = kept.join('').replace(/\n{3,}/g, '\n\n').trim();
+  if (text || !String(reply ?? '').trim()) return text;
+  /* Nothing left but the question already asked: the next question not yet asked goes instead, and only where there is none is the reply kept. */
+  const next = gaps.find((g) => g.ask && !earlier.some((e) => e.includes(flat(sentencesOf(g.ask as string)[0] ?? ''))));
+  return next?.ask ?? String(reply ?? '').trim();
 }

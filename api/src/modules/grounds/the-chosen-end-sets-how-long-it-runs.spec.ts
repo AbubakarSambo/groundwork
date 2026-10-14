@@ -47,3 +47,25 @@ describe('the chosen end', () => {
     expect(src.match(/timelineStated: dto\.runsUntilEnded === true \|\| dto\.timelineDays != null \|\| !!dto\.endsAt,/g)).toHaveLength(2);
   });
 });
+
+/**
+ * SETUP, THE SAVED COUNT AND THE INVITATION AGREE (journey test, 12 October 2026). One check-in read
+ * 12, then 65, then 261 sessions. The saved count now walks the schedule's own rounds, so these are the
+ * numbers setup lists for the same choices (client: the-session-count-is-one-rule.spec.ts holds the
+ * same three cases).
+ */
+describe('the saved count is the rounds that will open', () => {
+  const sundayNow = new Date(2026, 9, 11, 15, 0);
+  const count = (cadence: Cadence, anchorDay: number, endsAt: Date) =>
+    totalSessionsFor(timelineDaysForAChosenEnd({ startsAt: null, endsAt, cadence, anchorDay, now: sundayNow }), cadence);
+
+  it('weekly on Mondays, "Now" on Sunday 11 October, until Sunday 29 November: 11 Oct, then Mondays 19 Oct to 23 Nov', () => {
+    expect(count(Cadence.WEEKLY, 1, new Date(2026, 10, 29))).toBe(7);
+  });
+  it('fortnightly on Mondays, until Monday 30 November: 11 Oct, 19 Oct, 2 Nov, 16 Nov, 30 Nov', () => {
+    expect(count(Cadence.FORTNIGHTLY, 1, new Date(2026, 10, 30))).toBe(5);
+  });
+  it('monthly on the 20th, until 15 January: 11 Oct, 20 Nov, 20 Dec', () => {
+    expect(count(Cadence.MONTHLY, 20, new Date(2027, 0, 15))).toBe(3);
+  });
+});

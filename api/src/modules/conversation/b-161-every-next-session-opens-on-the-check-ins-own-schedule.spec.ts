@@ -162,10 +162,11 @@ describe('B-161: the other rhythms', () => {
     expect(await late.finishes('p', 1, at('2026-11-02T09:00:00Z'))).toEqual(at('2026-11-04T21:00:00Z'));
   });
 
-  it('daily on weekdays: Friday opens Monday at the start of the day', async () => {
+  /* Hafsah's decision D4 (13 October 2026, evening): a daily check-in opens at 8am in the organisation's zone, no longer at the start of the day. */
+  it('daily on weekdays: Friday opens Monday at 8 in the morning', async () => {
     const c = aCheckIn({ cadence: Cadence.DAILY, startsAt: at('2026-10-12T06:00:00Z'), createdAt: at('2026-10-09T09:00:00Z'), workingDays: [1, 2, 3, 4, 5], timeZone: 'Africa/Nairobi' });
     c.opened('p', 5, at('2026-10-15T21:00:00Z')); // Friday 16 October
-    expect(await c.finishes('p', 5, at('2026-10-16T15:00:00Z'))).toEqual(at('2026-10-18T21:00:00Z'));
+    expect(await c.finishes('p', 5, at('2026-10-16T15:00:00Z'))).toEqual(at('2026-10-19T05:00:00Z'));
   });
 
   it('with no set day, the day comes from when the check-in started', async () => {

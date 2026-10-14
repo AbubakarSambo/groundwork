@@ -239,12 +239,16 @@ export interface WhatsAppBillingAdmin {
   price: { amountCents: number; currency: 'USD' } | null
   charged: boolean
   freeTrial: { months: number; endsOn: string } | null
+  /** The end of the free WhatsApp month every organisation gets, while it lasts (13 October, evening). */
+  freeUntil?: string | null
   onTheFreePlan: boolean
   use: { month: string; sent: number; limit: number | null; startsAgainOn: string }
   sending: boolean
   heldBecause: 'not turned on' | 'not on a paid plan' | 'at the limit' | null
   says: {
     onOrOff: string
+    /** "WhatsApp is free until 13 November 2026. To keep it after that, add it to your subscription with the switch above." */
+    freeMonth?: string | null
     price: string | null
     charge: string
     use: string

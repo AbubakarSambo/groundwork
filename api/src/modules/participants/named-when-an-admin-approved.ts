@@ -46,3 +46,18 @@ export function whatHappensWhenYouJoin(waits: boolean, organisationName: string 
     ? `When you join, an admin at ${org} has to let you in before you can check in, and you will be told by email when they have.`
     : 'When you join, you go straight in and can check in at once.';
 }
+
+/**
+ * THE ONE SENTENCE FOR AN INVITATION: WHETHER THEY GO STRAIGHT IN OR WAIT FOR AN ADMIN (Hafsah, 12 October), read for one
+ * person on a check-in. Kept here, beside the rule, so the email copy reads only the sentence (one-word-for-the-thing-on-
+ * the-server-too reads every line of the email service as copy).
+ */
+export async function whatHappensWhenThisPersonJoins(prisma: any, participantId: string): Promise<string | null> {
+  const row: any = await prisma.groundParticipant.findUnique({
+    where: { id: participantId },
+    select: { email: true, createdAt: true, addedByUserId: true, ground: { select: { organizationId: true, initiatorId: true, approvedById: true, approvedAt: true, organization: { select: { name: true } } } } },
+  });
+  if (!row?.ground) return null;
+  const waits = await theyWaitForAnAdmin(prisma, row.ground, row);
+  return whatHappensWhenYouJoin(waits, row.ground.organization?.name ?? null);
+}

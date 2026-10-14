@@ -389,7 +389,7 @@ export function CheckInPeopleAndSetup(props: {
         <FieldRows>
           <FieldRow
             label="How often"
-            value={`${cadenceLabel(ground.cadence)}. ${sessionsFor(ground.timelineDays, ground.cadence) ?? '?'} session${(sessionsFor(ground.timelineDays, ground.cadence) ?? 0) === 1 ? '' : 's'} in total.${anchorDaySentence(ground.cadence, (ground as any).cadenceAnchorDay)}`}
+            value={theRhythmLine(ground)}
             action={canEditRunOrAdmin ? <Button kind="quiet" size="small" onClick={() => setEditingWhen((v) => !v)}>Change</Button> : undefined}
           />
           <FieldRow
@@ -401,10 +401,12 @@ export function CheckInPeopleAndSetup(props: {
                  Session 1 having already happened is proof the clock started even where `startsAt`
                  was never set. */
               const start = (ground as any).startsAt ?? ground.createdAt
-              if (!start) return `Runs for ${ground.timelineDays ?? '?'} days once it starts.`
+              /* No end, and no "?": a check-in nobody gave an end runs until it is ended, as the setup said (reviewer, 14 October). */
+              const noEnd = !!(ground as any).runsUntilItIsEnded || !ground.timelineDays
+              if (!start) return noEnd ? 'It runs until you end it.' : `Runs for ${ground.timelineDays} days once it starts.`
               const startText = whenItWas(start, 'dayAndMonthLong')
               const end = (ground as any).endsOn
-              if (!end) return `Started ${startText}. Runs for ${ground.timelineDays ?? '?'} days.`
+              if (!end) return noEnd ? `Started ${startText}. It runs until you end it.` : `Started ${startText}. Runs for ${ground.timelineDays} days.`
               const daysLeft = (ground as any).daysLeft
               const left = daysLeft != null ? ` ${daysLeft} day${daysLeft === 1 ? '' : 's'} left.` : ''
               return `${startText} to ${theLastDay(end, start)}.${left}`
@@ -836,4 +838,12 @@ export function sessionsUpToTheEnd(p: { startsAtOnRecord?: string | null; create
   const all = whenTheCheckInsLand({ cadence: p.cadenceDraft as Cadence, anchorDay: p.anchorDayDraft, startsAt, workingDays: p.workingDaysDraft, today, howMany: 2000 })
   const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   return Math.max(1, all.filter((d) => iso(d) <= endsOn).length)
+}
+
+/** "Every day, until you end it." for a check-in with no end; otherwise how often and how many sessions, as before. */
+export function theRhythmLine(ground: { cadence?: any; timelineDays?: number | null; runsUntilItIsEnded?: boolean; cadenceAnchorDay?: number | null } & Record<string, any>): string {
+  const anchor = anchorDaySentence(ground.cadence, (ground as any).cadenceAnchorDay)
+  const n = ground.timelineDays ? sessionsFor(ground.timelineDays, ground.cadence) : null
+  if ((ground as any).runsUntilItIsEnded || n == null) return `${cadenceLabel(ground.cadence)}, until you end it.${anchor}`
+  return `${cadenceLabel(ground.cadence)}. ${n} session${n === 1 ? '' : 's'} in total.${anchor}`
 }

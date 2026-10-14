@@ -263,10 +263,10 @@ describe('the save card, already signed in', () => {
       onboardingSelections: { mode: 'new', initial: 'x', classifiedScenario: 'PIP' },
     }))
     renderPage()
-    await screen.findByText(/sessions? planned/)
-    const sessionsButton = screen.getAllByRole('button', { name: /session,? planned from/i })[0]
+    await screen.findByText(/check-ins? planned/)
+    const sessionsButton = screen.getAllByRole('button', { name: /Change how many check-ins/i })[0]
     fireEvent.click(sessionsButton)
-    const input = screen.getAllByLabelText('How many sessions')[0]
+    const input = screen.getAllByLabelText('How many check-ins')[0]
     fireEvent.change(input, { target: { value: '3' } })
     fireEvent.blur(input)
     /* FAULT 4, then FAULT (b) (coordinator, second round): this first read "Save your session
@@ -296,10 +296,10 @@ describe('the save card, already signed in', () => {
       onboardingSelections: { mode: 'new', initial: 'x', classifiedScenario: 'PIP' },
     }))
     renderPage()
-    await screen.findByText(/sessions? planned/)
-    const sessionsButton = screen.getAllByRole('button', { name: /session,? planned from/i })[0]
+    await screen.findByText(/check-ins? planned/)
+    const sessionsButton = screen.getAllByRole('button', { name: /Change how many check-ins/i })[0]
     fireEvent.click(sessionsButton)
-    const input = screen.getAllByLabelText('How many sessions')[0]
+    const input = screen.getAllByLabelText('How many check-ins')[0]
     fireEvent.change(input, { target: { value: '3' } })
     fireEvent.blur(input)
     await screen.findByText(/means signing in/)
@@ -320,7 +320,8 @@ describe('which day it lands on, end to end (nothing-removed-screens.md item 2)'
     seedClosedSession({ cadence: 'WEEKLY', cadenceChosen: true })
     renderPage()
     fireEvent.click(await screen.findByText(/Invite and finish/))
-    const mon = await screen.findByRole('button', { name: 'Mon' })
+    /* Setup page review: "On which day" is the shared Choices now, one radio per day. */
+    const mon = await screen.findByRole('radio', { name: 'Mon' })
     fireEvent.click(mon)
     fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalled())
@@ -370,11 +371,11 @@ describe('changing how many sessions a check-in runs (fault 2, live walk, 6 Octo
       onboardingSelections: { mode: 'new', initial: 'x', classifiedScenario: 'PIP' },
     }))
     renderPage()
-    await screen.findByText(/sessions? planned/)
-    const sessionsButton = screen.getAllByRole('button', { name: /session,? planned from/i })[0]
+    await screen.findByText(/check-ins? planned/)
+    const sessionsButton = screen.getAllByRole('button', { name: /Change how many check-ins/i })[0]
     fireEvent.click(sessionsButton)
-    expect(screen.getAllByLabelText('How many sessions')[0]).toBeTruthy()
-    expect(screen.getAllByText('How many sessions').length).toBeGreaterThan(0)
+    expect(screen.getAllByLabelText('How many check-ins')[0]).toBeTruthy()
+    expect(screen.getAllByText('How many check-ins').length).toBeGreaterThan(0)
     expect(screen.getAllByText('This is your plan for how many check-ins to run. You can change it at any time.').length).toBeGreaterThan(0)
     expect(document.body.textContent).not.toContain('sessions:')
   })
@@ -403,15 +404,15 @@ describe('changing how many sessions a check-in runs (fault 2, live walk, 6 Octo
     renderPage()
     /* Confirms the fixture actually derives more than 5 (around 12, 90 days weekly) before the
        fix is even exercised - otherwise this test would pass by accident. */
-    await screen.findByText(/^(?!5 session)\d+ sessions? planned/)
+    await screen.findByText(/^(?!5 check-in)\d+ check-ins? planned/)
 
-    const sessionsButton = screen.getAllByText(/\d+ sessions? planned/)[0]
+    const sessionsButton = screen.getAllByText(/\d+ check-ins? planned/)[0]
     fireEvent.click(sessionsButton)
-    const input = screen.getAllByLabelText('How many sessions')[0]
+    const input = screen.getAllByLabelText('How many check-ins')[0]
     fireEvent.change(input, { target: { value: '5' } })
     fireEvent.blur(input)
 
-    await screen.findByText('5 sessions planned')
+    await screen.findByText('5 check-ins planned')
 
     fireEvent.click(screen.getByRole('button', { name: 'Save and set up' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Save this' }))
@@ -440,9 +441,9 @@ describe('changing how many sessions a check-in runs (fault 2, live walk, 6 Octo
       onboardingSelections: { mode: 'new', initial: 'x', classifiedScenario: 'PIP' },
     }))
     renderPage()
-    const sessionsButton = (await screen.findAllByRole('button', { name: /Edit number of sessions/ }))[0]
+    const sessionsButton = (await screen.findAllByRole('button', { name: /Change how many check-ins/ }))[0]
     fireEvent.click(sessionsButton)
-    const input = screen.getAllByLabelText('How many sessions')[0]
+    const input = screen.getAllByLabelText('How many check-ins')[0]
     fireEvent.change(input, { target: { value: '2' } })
     fireEvent.blur(input)
     fireEvent.click(await screen.findByRole('button', { name: 'Save and set up' }))

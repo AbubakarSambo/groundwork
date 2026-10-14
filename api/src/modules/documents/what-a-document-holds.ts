@@ -1,3 +1,4 @@
+import { theTargetForEveryone, theirTarget } from './a-target-named-target';
 import { aboutTheNoteBeforeTheYes } from './the-note-about-where-numbers-came-from';
 /**
  * WHAT A DOCUMENT HOLDS, READ ONCE, AND SAID BACK IN THE PRODUCT'S OWN WORDS.
@@ -198,16 +199,17 @@ export function theContextWeHave(held: WhatLanded, opts: { asking?: boolean; wil
     for (const t of held.forEverybody) {
       lines.push(t.kind === 'not to exceed'
         ? `${atTheStart(t.what)} must stay at or under ${t.asWritten || fmt(t.target)}${byWhen(t.by)} for everyone in this check-in.`
-        : `For everyone in this check-in, the target for ${t.what} is ${t.asWritten || fmt(t.target)}${byWhen(t.by)}.`);
+        : `For everyone in this check-in, ${theTargetForEveryone(t.what, t.asWritten || fmt(t.target))}${byWhen(t.by)}.`);
     }
   }
   if (held.forOnePerson.length) {
     lines.push('');
-    for (const t of held.forOnePerson) lines.push(`${isTheReader(t, opts.reader) ? 'Your' : `${t.who}'s`} target for ${t.what} is ${t.asWritten || fmt(t.target)}${byWhen(t.by)}.`);
+    for (const t of held.forOnePerson) lines.push(`${atTheStartOf(theirTarget(isTheReader(t, opts.reader) ? 'Your' : `${t.who}'s`, t.what, t.asWritten || fmt(t.target)))}${byWhen(t.by)}.`);
   }
   if (held.dates.length) {
     lines.push('');
-    for (const d of held.dates) lines.push(`The date it sets for ${inTheMiddle(d.what)} is ${d.when.trim().replace(/\.$/, '')}.`);
+    /* "The date it sets for Date of draft is 22 October 2026." (pilots, problem 13): a name that is itself a date says it plainly. */
+    for (const d of held.dates) lines.push(dateSentence(d));
   }
   if (held.unmatched.length) {
     lines.push(
@@ -250,7 +252,8 @@ export function byWhen(by?: string | null): string {
   const when = (by ?? '').trim().replace(/\.$/, '').replace(/^by\s+/i, '');
   if (!when) return '';
   /* "each week", "every Friday", "per month" say how often, not by when: "15 each week", never "15 by each week" (B-014). */
-  return /^(each|every|per|a|once|twice|weekly|daily|monthly|yearly|annually)\b/i.test(when) ? ` ${when}` : ` by ${when}`;
+  /* "within 30 days", "before the hearing", "on 21 October" already say when: never "by within 30 days" (pilots, 13 October). */
+  return /^(each|every|per|a|once|twice|weekly|daily|monthly|yearly|annually|within|in|before|after|on|until|till|no later than|at)\b/i.test(when) ? ` ${when}` : ` by ${when}`;
 }
 
 /**
@@ -360,3 +363,12 @@ const NOT_A_PERSON = new Set([
   'info', 'hello', 'admin', 'sales', 'support', 'contact', 'team', 'office', 'accounts', 'finance',
   'hr', 'billing', 'help', 'enquiries', 'inquiries', 'noreply', 'no reply', 'mail', 'post',
 ]);
+
+/* "The date it sets for Date of draft is 22 October 2026." (pilots, problem 13): a name that is itself a date says it plainly. */
+export function dateSentence(d: { what: string; when: string }): string {
+  const what = d.what.trim();
+  const when = d.when.trim().replace(/\.$/, '');
+  return /^date\b/i.test(what) ? `It gives the ${what.charAt(0).toLowerCase()}${what.slice(1)} as ${when}.` : `The date it sets for ${inTheMiddle(what)} is ${when}.`;
+}
+
+const atTheStartOf = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);

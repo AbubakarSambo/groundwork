@@ -108,6 +108,20 @@ export function iHaveKept(k: { kind: string; text: string }, ask: string = 'Ask 
 
 /** After the no. Nothing was kept, and it is said. */
 export const NOT_KEPT = 'I have not kept that for the organisation. It stays only on this check-in.';
+/** After a no to the answer as well: it is on this check-in no more than it is on the organisation. */
+export const NOT_KEPT_ANYWHERE = 'I have not kept that for the organisation either. Nothing was changed.';
+
+/**
+ * Whether the rule offered for the whole organisation is the same words as the answer just refused
+ * (reviewer, 14 October). The rule is the first quoted part of the offer; the answer is what was said.
+ */
+export function theRuleIsTheAnswerRefused(offerSay: string, refused: string): boolean {
+  const quoted = /["“]([^"”]{3,})["”]/.exec(offerSay ?? '')?.[1];
+  const said = /["“]([^"”]{3,})["”]/.exec(refused ?? '')?.[1] ?? refused ?? '';
+  const plain = (x: string) => x.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!quoted || !plain(said)) return false;
+  return plain(said) === plain(quoted) || plain(said).includes(plain(quoted)) && plain(quoted).length >= plain(said).length * 0.6;
+}
 
 /** When the yes arrives and there is nothing waiting for it any more. */
 export const NOTHING_WAITING = 'There is nothing waiting to be kept for the organisation. Say it again and I will ask.';

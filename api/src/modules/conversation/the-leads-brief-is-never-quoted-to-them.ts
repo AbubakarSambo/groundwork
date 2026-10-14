@@ -22,6 +22,13 @@ import { aQuestionNotYetAsked, WHAT_ELSE } from './nobody-is-left-looking-at-a-p
 import { A_COPIED_RUN } from './our-instructions-never-reach-them';
 
 const wordsOf = (s: string): string[] => (s ?? '').toLowerCase().replace(/[’‘]/g, "'").match(/[a-z0-9']+/g) ?? [];
+/*
+ * WHO SAID IT DOES NOT MAKE IT A DIFFERENT SENTENCE (reviewer, 14 October). Njeri's setup said "Deadlines keep slipping
+ * because we wait on each other."; David's close read "Njeri mentioned that deadlines keep slipping because you wait on
+ * each other." The "we" turned "you" broke every six-word run. Runs are compared with the people words made one word.
+ */
+const PEOPLE_WORDS = new Set(['i', 'we', 'you', 'they', 'he', 'she', 'me', 'us', 'them', 'him', 'her', 'my', 'our', 'your', 'their', 'his', "we're", "you're", "they're", "i'm"]);
+const comparable = (words: string[]): string[] => words.map((w) => (PEOPLE_WORDS.has(w) ? '·' : w));
 
 function runsOf(words: string[], n: number): string[] {
   const out: string[] = [];
@@ -48,16 +55,25 @@ const THE_LEADS_WISH = (lead: string) =>
  * stream can ask it of each sentence.
  */
 export function aSentenceThatQuotesTheBrief(brief: string | null | undefined, sayable: string[] = [], leadFirstName?: string | null): (sentence: string) => boolean {
-  const runs = new Set(runsOf(wordsOf(brief ?? ''), A_COPIED_RUN));
+  const runs = new Set(runsOf(comparable(wordsOf(brief ?? '')), A_COPIED_RUN));
   if (!runs.size) return () => false;
-  const theirs = new Set(sayable.flatMap((s) => runsOf(wordsOf(s), A_COPIED_RUN)));
+  const theirs = new Set(sayable.flatMap((s) => runsOf(comparable(wordsOf(s)), A_COPIED_RUN)));
+  /* And the lead named as having said it ("Njeri mentioned that ..."), which is attributing the lead's setup words whatever follows. */
+  const lead = leadFirstName?.trim() ? leadFirstName.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : null;
+  const saidByTheLead = lead ? new RegExp(`\\b${lead}(?:\\s+[A-Z][\\w'’-]+)?\\s+(?:also\\s+|has\\s+|had\\s+)?(?:mentioned|said|says|told|noted|shared|explained|wrote|pointed out|flagged|raised|feels|thinks|believes|described)\\b`, 'i') : null;
+  const theySaidTheLeadSaid = lead ? sayable.some((t) => saidByTheLead!.test(t ?? '')) : false;
+  const fours = new Set(runsOf(comparable(wordsOf(brief ?? '')), 3));
   const wish = leadFirstName?.trim() ? THE_LEADS_WISH(leadFirstName.trim()) : null;
   /* Somebody whose own work has a brief in it (a client's brief, a design brief) may be asked about it. */
   const theySayBrief = sayable.some((t) => /\bbrief\b/i.test(t ?? ''));
   return (sentence: string) =>
     (!theySayBrief && NAMES_THE_BRIEF.test(sentence))
     || (!!wish && wish.test(sentence))
-    || runsOf(wordsOf(sentence), A_COPIED_RUN).some((r) => runs.has(r) && !theirs.has(r));
+    /* Attributed to the lead AND carrying the setup's words (three in a row, people words made one): "Njeri mentioned that
+       deadlines keep slipping because you wait on each other." A sentence naming the lead about anything else is left to
+       the rules that own it (nothing-said-yet-cannot-be-quoted says "Bisi says your target is ..." on purpose). */
+    || (!!saidByTheLead && !theySaidTheLeadSaid && saidByTheLead.test(sentence) && runsOf(comparable(wordsOf(sentence)), 3).some((r) => fours.has(r)))
+    || runsOf(comparable(wordsOf(sentence)), A_COPIED_RUN).some((r) => runs.has(r) && !theirs.has(r));
 }
 
 export type BriefCut = { text: string; cut: string[] };
@@ -77,7 +93,12 @@ export function withoutTheLeadsBrief(
   const kept: string[] = [];
   for (const s of sentences) (quotes(s) ? cut : kept).push(quotes(s) ? s.trim() : s);
   if (!cut.length) return { text: reply, cut: [] };
-  const text = kept.join('').replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+  /* What is left must not point back at the sentence that went: "Has that moved since then?" with nothing before it (fresh bed, 14 October). */
+  const firstWent = quotes(sentences[0] ?? '');
+  const pointsBack = (x: string) => /^\W*(?:\w+\s+){0,3}(?:that|this|it|those|these)\b|\b(?:with|about|on|of|for)\s+(?:that|this|it|those|these)\s*[?.!]?\s*$|\bsince then\b/i.test(x.trim());
+  let leftOver = kept;
+  if (firstWent) while (leftOver.length && pointsBack(leftOver[0])) leftOver = leftOver.slice(1);
+  const text = leftOver.join('').replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
   return { text: text || (aQuestionNotYetAsked(WHAT_ELSE, alreadyAsked) ?? WHAT_ELSE), cut };
 }
 

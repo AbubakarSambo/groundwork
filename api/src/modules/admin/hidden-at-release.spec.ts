@@ -159,16 +159,27 @@ describe('plan and billing\'s new parts', () => {
     });
     return svc.whatTheyRead('org1', isAdmin);
   }
-  it('shows an admin the price, the use and the limit only when turned on', async () => {
-    const hidden = await read(false, true);
-    /* Whether WhatsApp is on, and why no reminder comes while it is off, is everybody's to read (screens gap, 5 October). */
-    expect(hidden).toEqual({ sending: true, says: 'Your organisation has not turned on WhatsApp, so Groundwork does not send you reminders or summaries on WhatsApp.' });
-    expect(JSON.stringify(hidden)).not.toContain('costs');
-    /* Nothing the screen can mistake for the admin's full answer (clean-install run, 6 October): the admin reads what a member reads. */
-    expect(hidden).toEqual(await read(false, false));
-    expect('on' in (hidden as object)).toBe(false);
-    const shown = await read(true, true);
-    expect((shown as any).says?.price).toContain('WhatsApp costs');
+  /*
+   * CHANGED 14 OCTOBER, BY HAFSAH'S DECISION D1 (13 October, evening): "This screen is meant to be there." The WhatsApp part of
+   * Plan and billing is no longer hidden by the release setting: an admin reads it, with the free month, the price, the use and
+   * the limit, whether the setting is on or off. A member still never reads a price or a charge.
+   */
+  it('shows an admin the WhatsApp part with the price, the use and the limit, whatever the release setting says', async () => {
+    for (const setting of [false, true]) {
+      const admin: any = await read(setting, true);
+      expect(admin.says.price).toContain('WhatsApp costs');
+      expect(admin.says.use).toContain('3 of its 100 WhatsApp messages this month');
+      expect(admin.says.atTheLimit).toContain('all 100 messages in a month');
+      expect('on' in admin).toBe(true);
+    }
+  });
+  it('a member never reads a price or a charge, whatever the release setting says', async () => {
+    for (const setting of [false, true]) {
+      const member: any = await read(setting, false);
+      expect(member).toEqual({ sending: true, says: 'Your organisation has not turned on WhatsApp, so Groundwork does not send you reminders or summaries on WhatsApp.' });
+      expect(JSON.stringify(member)).not.toMatch(/costs|charged|\$/);
+      expect('on' in member).toBe(false);
+    }
   });
   it('reads the same to everybody else, hidden or not', async () => {
     expect(await read(false, false)).toEqual(await read(true, false));

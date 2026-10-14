@@ -9,6 +9,7 @@ import { aNumberPeopleCanRead, theNumbersPeopleCanRead } from '../board/an-aim-i
 import { theMoneyItCountsIn } from '../reports/a-count-that-moved-is-one-sentence';
 import { asTheReader } from './what-a-participant-is-told-about-this';
 import { aCommitmentKey } from '../conversation/what-happened-to-what-they-said';
+import { whenItWasFor } from './a-day-said-is-read-on-the-day-it-was-said';
 
 /**
  * THE YOU BOARD (C2, U.12): WHAT IS YOURS, ACROSS YOUR CHECK-INS, FOR YOUR EYES ONLY.
@@ -490,7 +491,7 @@ export function yourBoard(
     if (!state || !rawText) continue;
     const checkIn = labelOf.get(c.groundId)!;
     const by = state !== 'open' && c.settledBy ? SETTLED_BY[c.settledBy] : undefined;
-    addSaid({ id: c.id, text: asAnAction(rawText), when: whenInOneForm(c.whenSaid), checkIn, state, stateSays: STATE_SAYS[state], ...(by ? { settledBy: by } : {}), t: time(c.createdAt), open: state === 'open', groundId: c.groundId }, rawText, c.whenSaid);
+    addSaid({ id: c.id, text: asAnAction(rawText), when: state === 'open' ? whenItWasFor(c.whenSaid, c.createdAt, now) : whenInOneForm(c.whenSaid), checkIn, state, stateSays: STATE_SAYS[state], ...(by ? { settledBy: by } : {}), t: time(c.createdAt), open: state === 'open', groundId: c.groundId }, rawText, c.whenSaid);
   }
   for (const o of rows.objectives) {
     if (!isMine(o.groundId, o.participantId)) continue;

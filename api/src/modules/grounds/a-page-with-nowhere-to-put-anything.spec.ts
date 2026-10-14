@@ -84,6 +84,9 @@ describe('and the page offers it to whoever runs the check-in', () => {
   it('and the conversation is still offered from inside it', () => {
     expect(PAGE).toContain('Say it in the conversation instead');
     const at = PAGE.indexOf('Say it in the conversation instead');
-    expect(PAGE.slice(Math.max(0, at - 700), at)).toContain('changeThisInTheChat(lineDraft.trim()');
+    /* The screens' latest hands the typed words over, or a way in when nothing is typed (B-113 era): the half-written line is still taken from the box. */
+    const before = PAGE.slice(Math.max(0, at - 1200), at);
+    expect(before).toContain('lineDraft.trim()');
+    expect(before).toContain('changeThisInTheChat(');
   });
 });

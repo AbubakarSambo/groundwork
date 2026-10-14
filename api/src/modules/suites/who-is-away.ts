@@ -1,4 +1,7 @@
 import { PrismaService } from '../prisma/prisma.service';
+import { theOrganisationsZone } from '../../common/the-organisations-own-day';
+import { theStartOfTheDayIn } from '../grounds/the-check-ins-own-schedule';
+import { theDayIn } from '../grounds/when-a-handoff-is-due';
 
 /**
  * WHO IS AWAY ON A DAY, FROM APPROVED LEAVE, BY DATES ONLY (week 23, decision 31).
@@ -27,7 +30,9 @@ export async function whoIsAwayOn(
   const away = new Map<string, LeaveDay>();
   const ids = [...new Set(userIds.filter(Boolean))];
   if (!ids.length || !(prisma as any).leaveRequest?.findMany) return away;
-  const today = new Date(`${dayOf(on)}T00:00:00.000Z`);
+  /* The day in the organisation's own zone, not in UTC: at 1am in Nairobi it is already the first day of leave (pilots, problem 14). */
+  const zone = organizationId ? await theOrganisationsZone(prisma as any, organizationId).catch(() => null) : null;
+  const today = zone ? theDayIn(zone, on) : new Date(`${dayOf(on)}T00:00:00.000Z`);
   const rows = await prisma.leaveRequest
     .findMany({
       where: {
@@ -48,7 +53,7 @@ export async function whoIsAwayOn(
 }
 
 /** A stretch of approved leave: the whole of the first day to the end of the last. */
-export interface Stretch { from: Date; to: Date }
+export interface Stretch { from: Date; to: Date; /** The last day as the leave gives it, so a zone behind UTC still says the right day. */ lastDay?: LeaveDay }
 
 /**
  * Each person's approved leave, for the people on these check-ins, by participant id. One read for
@@ -72,10 +77,25 @@ export async function leaveOfThePeopleOn(
       select: { userId: true, organizationId: true, startsOn: true, endsOn: true },
     })
     .catch(() => [] as { userId: string; organizationId: string; startsOn: Date; endsOn: Date }[]);
+  /*
+   * A DAY OF LEAVE IS A DAY WHERE THE PERSON IS (pilots, 13 October 2026, problem 14). The stretch ran from midnight to
+   * midnight in UTC, so Brian's Friday off in Nairobi began at 3am his time: the "opens in an hour" at 11pm on Thursday
+   * and the "is open" for Friday's session, both stamped before 3am, reached him on his approved day off. Each day now
+   * starts and ends in the organisation's own zone.
+   */
+  const zones = new Map<string, string>();
+  for (const orgId of [...new Set(rows.map((r) => r.organizationId).filter(Boolean))]) {
+    const z = await theOrganisationsZone(prisma as any, orgId).catch(() => null);
+    if (z) zones.set(orgId, z);
+  }
+  const startOf = (orgId: string, d: Date) => {
+    const z = zones.get(orgId);
+    return z ? theStartOfTheDayIn(z, Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())) : new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  };
   for (const p of real) {
     const mine = rows
       .filter((r) => r.userId === p.userId && (!p.ground?.organizationId || r.organizationId === p.ground.organizationId))
-      .map((r) => ({ from: r.startsOn, to: new Date(r.endsOn.getTime() + 86_400_000 - 1) }));
+      .map((r) => ({ from: startOf(r.organizationId, r.startsOn), to: new Date(startOf(r.organizationId, new Date(r.endsOn.getTime() + 86_400_000)).getTime() - 1), lastDay: dayOf(r.endsOn) }));
     if (mine.length) out.set(p.id, mine);
   }
   return out;
@@ -85,7 +105,8 @@ export async function leaveOfThePeopleOn(
 export function awayUntilOn(stretches: Stretch[] | undefined, on: Date = new Date()): LeaveDay | null {
   const covering = (stretches ?? []).filter((s) => on >= s.from && on <= s.to);
   if (!covering.length) return null;
-  return covering.map((s) => dayOf(s.to)).sort().pop() as LeaveDay;
+  /* The last day, as a day: the end of a stretch is a millisecond before the next day starts where the person is. */
+  return covering.map((s) => s.lastDay ?? dayOf(s.to)).sort().pop() as LeaveDay;
 }
 
 /** The same, for the people on one check-in who are away today, by participant id. */

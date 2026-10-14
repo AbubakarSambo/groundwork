@@ -30,6 +30,7 @@ import { whoHasNotJoinedYet, theNotJoinedYetLine } from './invited-not-joined-ye
 import { aNameTypedInLowerCase } from '../../common/a-name-typed-in-lower-case';
 import { whoASessionCounts } from './the-lead-checks-in-when-they-choose';
 import { openTheLeadsCheckIn } from './check-in-yourself';
+import { theLeadAddsAWhatsAppNumber } from './the-lead-adds-a-whatsapp-number';
 import { waitsOnAManagingOnlyLead } from './the-lead-who-only-asks';
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException, Optional, GoneException } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
@@ -49,7 +50,7 @@ import { theNextDayTheyWork, workingDaysOf } from './which-days-this-team-works'
 import { targetsFor } from '../board/whose-number-is-whose-business';
 import { withoutWhatTheLeadHasNotToldThemAbout, theWordsOfWhatTheLeadHasNotToldThemAbout, theyRunThisCheckIn } from '../board/an-untold-goal-is-not-a-board-objective';
 import { namesOnTheRoster, targetsHiddenFrom, withoutHiddenTargetsIn } from '../board/a-hidden-target-stays-hidden';
-import { contextGaps, contextChatPrompt, openingLine, withoutTheOpeningGreeting } from './the-context-chat';
+import { contextGaps, contextChatPrompt, openingLine, withoutTheOpeningGreeting, askedOnceAndNeverTwiceInOneReply } from './the-context-chat';
 import { LeaveBoardService } from '../suites/the-leave-board.service';
 import { leaveOfThePeopleOn, theAwayLinesFor, awayUntilAsServed, isFromOutside, whoOnACheckInIsAway } from '../suites/who-is-away';
 import { LEAVE_NOTHING_WAITING, readLeaveDates, sayBackLeave, sendLeave, soundsLikeLeave } from '../suites/leave-said-in-chat';
@@ -2018,7 +2019,9 @@ export class GroundsService {
     /* AND THE DAY IT ENDS, AS A DATE. Hafsah, 22 Sep 2026: the check-in set up from the entry chat "still
        doesn't have an end date" - it had one, as a count of days from a start nobody could see, and the
        header only spoke up in the last three of them. The same clock, read as a date, for every check-in. */
-    const endsOn = deadlineOf(ground as any);
+    /* A daily check-in nobody gave an end runs until the lead ends it: no end date and no count are shown (E2). */
+    const noEnd = aDailyCheckInWithNoEndSaid(ground as any);
+    const endsOn = noEnd ? null : deadlineOf(ground as any);
     /*
      * ONE COUNT FOR THE SESSIONS, THE BOARD'S OWN (request 101 f). Read from every check-in row before any
      * reader's wall, because it names and counts nobody: the open round among the people who check in,
@@ -2028,7 +2031,7 @@ export class GroundsService {
       (((ground as any).checkIns ?? []) as any[]).filter((c) => !c.isSetup),
       /* Nobody an admin has not let in yet holds the clock back (decision 77). */
       new Set((((ground as any).participants ?? []) as any[]).filter((p) => !p.managingOnly && !isNotLetInYet(p)).map((p) => p.id)),
-      totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null,
+      noEnd ? null : totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null,
     );
 
     /*
@@ -2959,6 +2962,8 @@ export class GroundsService {
       alignment,
       daysLeft,
       endsOn,
+      /* A check-in with no end reads like the setup on People and setup: "Every day, until you end it." (reviewer, 14 October). */
+      runsUntilItIsEnded: noEnd,
       /* The header's count, from the board's own clock: "Session 1 of 12.", and the line for a later session
          somebody has started. Every reader gets the same sentences (request 101 f). */
       sessionClock,
@@ -3149,7 +3154,7 @@ export class GroundsService {
       where: { id: groundId },
       select: {
         id: true, label: true, scenario: true, initiatorId: true, timelineDays: true, runsUntilEnded: true,
-        cadence: true, brief: true, timelineStated: true, cadenceStated: true, endsAt: true,
+        cadence: true, brief: true, timelineStated: true, cadenceStated: true, endsAt: true, workingDays: true,
         organizationId: true, createdByUserId: true,
         participants: { select: { id: true, managingOnly: true, userId: true } },
         objectives: { select: { id: true } },
@@ -3308,7 +3313,7 @@ export class GroundsService {
      * The first model call is made on the lead's first message.
      */
     if (history.length === 0) {
-      const opened = openingLine(theLengthWasChosen(ground as any) ? ground.timelineDays : null, ground.cadenceStated ? ground.cadence : null, !!(ground as any).runsUntilEnded);
+      const opened = openingLine(theLengthWasChosen(ground as any) ? ground.timelineDays : null, ground.cadenceStated ? ground.cadence : null, !!(ground as any).runsUntilEnded, (ground as any).workingDays ?? null);
       const ask = (gaps[0] as { ask?: string } | undefined)?.ask ?? null;
       return {
         reply: forHumans([opened, ask].filter(Boolean).join(' ')),
@@ -3636,7 +3641,15 @@ export class GroundsService {
      * asked away a second time.
      */
     const isOpeningTurn = !history.some((h) => h.role === 'assistant');
-    const openedOn = isOpeningTurn ? openingLine(theLengthWasChosen(ground as any) ? ground.timelineDays : null, ground.cadenceStated ? ground.cadence : null, !!(ground as any).runsUntilEnded) : null;
+    /*
+     * SAID ONCE, WHEN THE CONVERSATION IS OPENED, NEVER IN FRONT OF AN ANSWER (pilots, 13 October 2026, E3). Every Ask reply
+     * began "This check-in runs for 365 days..." because each typed message that started a new Ask exchange counted as an
+     * opening turn. The length and the rhythm open the conversation when it is opened with nothing typed; a reply to
+     * something the lead typed answers that.
+     */
+    const openedWithNothingTyped = !history.some((h) => h.role === 'user' && (h.content ?? '').trim());
+    const noEndSaid = aDailyCheckInWithNoEndSaid(ground as any);
+    const openedOn = isOpeningTurn && openedWithNothingTyped ? openingLine(theLengthWasChosen(ground as any) && !noEndSaid ? ground.timelineDays : null, ground.cadenceStated ? ground.cadence : null, !!(ground as any).runsUntilEnded || noEndSaid, (ground as any).workingDays ?? null) : null;
     /*
      * FIX 4: NOTHING SAYS IT WILL BE RECORDED UNLESS SOMETHING IS ACTUALLY BEING PROPOSED THIS TURN.
      * "I will record this as your read of Ben" was once said with no `lead_read` or `expectation`
@@ -3659,7 +3672,7 @@ export class GroundsService {
      */
     const yesOrNoOnly = opts?.yesOrNo === true && proposal.kind !== 'none';
     const withoutFalsePromises = changeSay ?? (yesOrNoOnly ? '' : whatTheModelsReplyShows(withoutTheWordGround(reply), proposal.kind !== 'none'));
-    const spokenReply = isOpeningTurn ? withoutTheOpeningGreeting(withoutFalsePromises) : withoutFalsePromises;
+    const spokenReply = askedOnceAndNeverTwiceInOneReply(isOpeningTurn ? withoutTheOpeningGreeting(withoutFalsePromises) : withoutFalsePromises, history, gaps as { ask?: string }[]);
     /*
      * WHAT THE LEAD IS SHOWN, NOT SHOWN TWICE. Item 16, found live, the four live checks, 30
      * September 2026: `changeSay` is threaded into BOTH the reply and `proposal.say` (it IS
@@ -8122,6 +8135,11 @@ export class GroundsService {
    * Works for two-party and multi-party grounds, and the difference between the
    * two is where this went wrong before - see the comment on the query.
    */
+  /** D1 and D2 (13 October 2026, evening): see the-lead-adds-a-whatsapp-number.ts. */
+  async addTheirWhatsAppNumber(input: { groundId: string; participantId: string; organizationId: string; userId: string; role: string; phone: string }) {
+    return theLeadAddsAWhatsAppNumber(this.prisma, input);
+  }
+
   /** Decision 133: "Check in yourself" - see check-in-yourself.ts. */
   async openTheLeadsCheckIn(groundId: string, organizationId: string, userId: string) {
     return openTheLeadsCheckIn(this.prisma, groundId, organizationId, userId);
@@ -8501,6 +8519,20 @@ export class GroundsService {
 /** Whether a rhythm lands on a weekday, on a day of the month, or on no chosen day at all. */
 function theKindOfDayItLandsOn(c: Cadence): 'weekday' | 'month' | 'none' {
   return c === Cadence.MONTHLY ? 'month' : c === Cadence.WEEKLY || c === Cadence.FORTNIGHTLY ? 'weekday' : 'none';
+}
+
+/**
+ * A DAILY CHECK-IN NOBODY GAVE AN END (pilots, 13 October 2026, E2). A daily check-in set up with no end was stored with
+ * its situation's default year and shown as "Session 3 of 365. It ends on 25 October 2027." and "This check-in runs for
+ * 365 days". The setup page's rule holds here too: no end said means it runs until the lead ends it, with no count. A
+ * daily check-in with no end date whose length is its situation's own default is one nobody gave an end. Only what is
+ * shown follows this; the length kept on the row, and everything that reads it, is unchanged.
+ */
+export function aDailyCheckInWithNoEndSaid(g: { cadence?: string | null; runsUntilEnded?: boolean | null; endsAt?: Date | string | null; timelineDays?: number | null; scenario?: string | null }): boolean {
+  if (g.runsUntilEnded) return true;
+  if (g.cadence !== 'DAILY' || g.endsAt) return false;
+  const theDefault = DEFAULT_TIMELINE_DAYS[g.scenario as keyof typeof DEFAULT_TIMELINE_DAYS];
+  return !g.timelineDays || (theDefault != null && g.timelineDays === theDefault);
 }
 
 function howLongItRuns(dto: { runsUntilEnded?: boolean; timelineDays?: number; endsAt?: string | Date | null; startsAt?: string | Date | null; cadence?: any; scenario: any; workingDays?: number[] | null; cadenceAnchorDay?: number | null }): number {

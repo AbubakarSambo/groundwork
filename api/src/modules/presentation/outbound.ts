@@ -440,6 +440,7 @@ export function saysWhatTheySaid(text: string): string {
 export function forHumans(text: string | null | undefined): string {
   if (!text) return '';
   let out = stripCloseMarker(text).text;
+  out = noFullStopInsideAName(out);
   for (const m of CONTROL_MARKERS) out = out.replace(m, '');
   out = withoutMarkdown(out);
   /**
@@ -492,6 +493,7 @@ export function forHumans(text: string | null | undefined): string {
    * nothing in it is worse than a turn that reads oddly.
    */
   out = withoutAFragmentAtTheFront(out);
+  out = oneQuoteMarkAtATime(out);
   /** Collapse whatever the removals left behind, without touching paragraph breaks. */
   return out.replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').replace(/[ \t]+\n/g, '\n').trim();
 }
@@ -556,4 +558,31 @@ export function withoutQuotedQuestions(text: string): string {
 export function whatIsNewSince(shownSoFar: string, cleanedNow: string): string {
   if (cleanedNow.startsWith(shownSoFar)) return cleanedNow.slice(shownSoFar.length);
   return '';
+}
+
+/**
+ * ONE QUOTATION MARK, NOT THREE (pilots, 13 October 2026, problem 13). Aisha read "You defined success as
+ * ’’’Getting filings in on time.’’’": her words arrived already quoted and were quoted again on the way out. A run of
+ * quotation marks opening or closing a quotation is one mark.
+ */
+export function oneQuoteMarkAtATime(text: string): string {
+  return String(text ?? '')
+    .replace(/(^|[\s(])[‘’'"“”]{2,}(?=[^\s‘’'"“”])/g, '$1“')
+    .replace(/([^\s‘’'"“”])[‘’'"“”]{2,}(?=$|[\s.,;:!?)])/g, '$1”');
+}
+
+/**
+ * NO FULL STOP INSIDE A NAME (reviewer, 14 October 2026). Every guard after this reads a reply sentence by sentence, at a full
+ * stop and a space, so "Kamau v. Apex Ltd. defence" was two sentences, and a guard that took one out left David reading an
+ * opener that began "Apex Ltd." and a close that ended "Kamau v.". In Groundwork's own words (never inside quotation marks,
+ * which hold people's words as they said them), a case name is written "Kamau v Apex", a company "Apex Ltd" mid-sentence, a
+ * number "No 118" and an initial "J Otieno", the way law reports and registries write them.
+ */
+export function noFullStopInsideAName(text: string): string {
+  return String(text ?? '').split(/("[^"\n]*"|“[^”\n]*”)/).map((piece, i) => (i % 2 === 1 ? piece : piece
+    .replace(/\b(v|vs)\.\s+(?=[A-Z0-9])/g, '$1 ')
+    .replace(/\b(Ltd|Co|Inc|Corp|Bros|St|Mr|Mrs|Ms|Dr|Prof)\.\s+(?=[a-z0-9(])/g, '$1 ')
+    .replace(/\b(Mr|Mrs|Ms|Dr|Prof)\.\s+(?=[A-Z])/g, '$1 ')
+    .replace(/\bNo\.\s+(?=[0-9]|[A-Z]{2,}\/)/g, 'No ')
+    .replace(/\b(of|for|to|and|by|with|from|Estate of)\s([A-Z])\.\s+(?=[A-Z][a-z])/g, '$1 $2 '))).join('');
 }

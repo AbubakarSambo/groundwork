@@ -147,6 +147,9 @@ export class WebhooksListener {
     if (!phone) return;
     const leave = await leaveOfThePeopleOn(this.prisma, [e.groundId]);
     if (awayUntilOn(leave.get(participant.id))) return;
+    /* Told once: somebody invited by their number was already sent this opening before they joined (D2). */
+    const already = await Promise.resolve((this.prisma as any).whatsAppSend?.findFirst?.({ where: { checkInId: e.checkInId, kind: { startsWith: 'checkin-open' } }, select: { id: true } })).catch(() => null);
+    if (already) return;
     const said = theCheckInIsOpen({ firstName: participant.user?.firstName, label: ground.label }, ground.simplerWords);
     /* Business-initiated: goes as free text inside the window, as a template outside it, or not at all. */
     await this.whatsapp.sendFor(ground.organizationId, phone, said.text, { checkInId: e.checkInId, kind: said.kind, params: said.params });

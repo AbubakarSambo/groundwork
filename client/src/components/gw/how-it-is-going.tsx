@@ -28,7 +28,11 @@ import './ui/gw-ui.css'
 import { BOARD_MUTED_INK, BOARD_BODY_INK } from './the-board-reads-on-a-dark-ground'
 
 export interface Glance {
-  progress: { roundsDone: number; roundsPlanned: number | null; answeredThisRound: number; ofPeople: number }
+  progress: {
+    roundsDone: number; roundsPlanned: number | null; answeredThisRound: number; ofPeople: number
+    /** Invited and not joined yet: not in the count, and said beside it (reviewer, 14 October). */
+    notJoinedYet?: number; notJoinedSays?: string | null
+  }
   inTheWay: {
     count: number; oldest: string | null; daysWaiting: number | null
     /** Engine merge, 2 October (request 117, part 9): "since 27 September", drawn from the
@@ -93,7 +97,9 @@ function answeredSentence(progress: Glance['progress'], readerIsTheOnlyPerson?: 
    * read-only admin, say) still reads the third-person sentence, unchanged.
    */
   if (n === 1) return readerIsTheOnlyPerson ? 'You have answered this session.' : 'The one person in this session has answered.'
-  if (a === n) return 'Everybody has answered this session.'
+  /* Reviewer, 14 October: "Everybody has answered" went out before the reps had even been contacted.
+     Everybody is only everybody when nobody invited is still to join. */
+  if (a === n) return (progress.notJoinedYet ?? 0) > 0 ? 'Everybody who has joined has answered this session.' : 'Everybody has answered this session.'
   return `${a} of ${n} people ${a === 1 ? 'has' : 'have'} answered this session.`
 }
 
@@ -162,6 +168,8 @@ export function HowItIsGoing({ summary, brief, glance, tone = 'light', waitingTo
           {/* Decision 77: beside the count, never inside it - a fact about the organisation's own
               door, not about how far through this round is. */}
           {waitingToBeLetIn && <div className="gwui-how-people">{waitingToBeLetIn}</div>}
+          {/* Who the count leaves out because they have not joined yet, said beside it (reviewer, 14 October). */}
+          {glance.progress.notJoinedSays && <div className="gwui-how-people">{glance.progress.notJoinedSays}</div>}
           <div>
             {late
               ? (

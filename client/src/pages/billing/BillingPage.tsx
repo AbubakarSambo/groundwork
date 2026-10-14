@@ -360,11 +360,13 @@ export function BillingPage() {
             <Stack gap={12}>
               <SwitchRow
                 title={whatsapp.says.onOrOff}
+                /* The switch says whether it is on the subscription; during the free month it is on either way (13 October, evening). */
                 on={whatsapp.on}
                 onChange={(on) => setWhatsAppMut.mutate(on)}
                 disabled={setWhatsAppMut.isPending}
               />
               <FieldRows>
+                {whatsapp.says.freeMonth && <FieldRow label="Free month" value={whatsapp.says.freeMonth} />}
                 {whatsapp.says.price && <FieldRow label="Price" value={whatsapp.says.price} />}
                 <FieldRow label="What is charged" value={whatsapp.says.charge} />
                 {whatsapp.on && <FieldRow label="This month" value={whatsapp.says.use} />}

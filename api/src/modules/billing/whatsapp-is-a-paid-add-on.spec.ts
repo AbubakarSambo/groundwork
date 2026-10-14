@@ -208,7 +208,9 @@ describe('Baridi in its free trial', () => {
     expect(stripeCalls).toEqual([]);
     const read: any = await addOn.whatTheyRead('org-baridi', true, NOW);
     expect(read.freeTrial).toEqual({ months: 1, endsOn: new Date('2026-11-01T09:00:00Z') });
+    /* freeMonth (13 October, evening): null here, because this organisation has no free WhatsApp month on record. */
     expect(read.says).toEqual({
+      freeMonth: null,
       onOrOff: 'WhatsApp is on for your organisation.',
       price: 'WhatsApp costs $72 a month on your Small Team plan.',
       charge: 'Your free trial lasts 1 month. Nothing is charged for WhatsApp until it ends.',

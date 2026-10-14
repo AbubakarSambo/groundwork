@@ -7,6 +7,7 @@
  * "in setup" is a link to People and setup, where the day and how often are actually changed.
  */
 import { whenTheCheckInsLand, type Cadence } from '../components/gw/when-the-check-ins-land'
+import { everyDayThatTheyWork } from './the-days-in-words'
 
 export type TheSchedule = {
   cadence?: string | null
@@ -41,7 +42,8 @@ function theWeekday(s: TheSchedule): string | null {
 /** "every Monday", "every other Monday", "every day", "on the 5th of each month", or null when it cannot be said truly. */
 export function howOftenTheTeamChecksIn(s: TheSchedule): string | null {
   const c = (s.cadence ?? '').toUpperCase()
-  if (c === 'DAILY') return 'every day'
+  /* The days she set count (setup page review): weekdays only is "every weekday, Monday to Friday", never "every day". */
+  if (c === 'DAILY') return everyDayThatTheyWork(s.workingDays)
   if (c === 'WEEKLY') { const d = theWeekday(s); return d ? `every ${d}` : 'every week' }
   if (c === 'FORTNIGHTLY') { const d = theWeekday(s); return d ? `every other ${d}` : 'every two weeks' }
   if (c === 'MONTHLY') {
@@ -50,6 +52,19 @@ export function howOftenTheTeamChecksIn(s: TheSchedule): string | null {
   }
   if (c === 'ONE_TIME') return 'once'
   return null
+}
+
+/**
+ * THE RHYTHM AS A SENTENCE OF ITS OWN, for a check-in's subtitle and the setup's header: "Every
+ * weekday, Monday to Friday.", "Every Thursday.", "When the lead chooses." With `untilEnded`, a check-in
+ * with no last date says so instead of a count: "Every Thursday, until you end it."
+ */
+export function theRhythmInFull(s: TheSchedule & { runsUntilEnded?: boolean | null }, opts: { untilEnded?: boolean; stop?: boolean } = {}): string | null {
+  const c = (s.cadence ?? '').toUpperCase()
+  const often = c === 'SEQUENTIAL' ? 'when the lead chooses' : howOftenTheTeamChecksIn(s)
+  if (!often) return null
+  const words = `${often[0].toUpperCase()}${often.slice(1)}${opts.untilEnded && c !== 'ONE_TIME' ? ', until you end it' : ''}`
+  return opts.stop === false ? words : `${words}.`
 }
 
 export type TheClosing = { before: string; link: string; after: string }

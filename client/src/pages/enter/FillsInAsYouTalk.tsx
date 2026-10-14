@@ -89,6 +89,10 @@ export type WhatSetupKnows = {
   workingDays: number[]
   startsOn: string
   endsOn: string
+  /** True when the end is one the lead said or chose, not the situation's usual one (piece 3a). */
+  endSaid?: boolean
+  /** True when she said it runs until she ends it (piece 3a). */
+  runsUntilEnded?: boolean
   /** Everyone the conversation heard named. */
   mentioned: string[]
   /** Everyone actually added, as they are shown. */
@@ -104,6 +108,8 @@ export type WhatSetupKnows = {
 export function notYetAdded(k: Pick<WhatSetupKnows, 'mentioned' | 'added'>): string[] {
   const added = k.added.map((a) => a.toLowerCase())
   return k.mentioned.filter((m) => {
+    /* The lead is never somebody still to add: "Just David and me" read "You mentioned David Mutua and You." (reviewer, 14 October). */
+    if (/^(?:you|me|i|myself|yourself)$/i.test(m.trim())) return false
     const first = m.toLowerCase().trim().split(/\s+/)[0]
     return !!first && !added.some((a) => a.includes(first))
   })
@@ -113,7 +119,13 @@ export function theRows(k: WhatSetupKnows): { label: string; set: boolean; value
   const days = workingDaysOf(k.workingDays)
   const weekdays = days.length === 5 && WEEKDAYS.every((d) => days.includes(d))
   const often = k.cadenceChosen ? (HOW_OFTEN.find(([c]) => c === k.cadence)?.[1] ?? null) : null
-  const when = k.startsOn && k.endsOn ? `${theDate(k.startsOn)} to ${theDate(k.endsOn)}` : k.startsOn ? `From ${theDate(k.startsOn)}` : null
+  /* Setup page, piece 3a: an end she said ("until 30 December") or "when I end it" fills this row
+     too, with no start date said; a start said with no end still reads "From". */
+  const when = k.runsUntilEnded
+    ? (k.startsOn ? `From ${theDate(k.startsOn)}, until you end it` : 'Until you end it')
+    : k.startsOn && k.endsOn ? `${theDate(k.startsOn)} to ${theDate(k.endsOn)}`
+    : k.endSaid && k.endsOn ? `Until ${theDate(k.endsOn)}`
+    : k.startsOn ? `From ${theDate(k.startsOn)}` : null
   const notYet = notYetAdded(k)
   const total = k.added.length + notYet.length
   const who = k.added.length

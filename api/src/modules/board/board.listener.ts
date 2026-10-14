@@ -7,6 +7,7 @@ import { GroundworkEvents, type RoundCompletedEvent, type CheckInCompletedEvent 
 import { oneOfTheKinds, theRecordsPrompt, THE_RECORDS_SCHEMA, onlyRecordsTheLinesSay, theSameName, type AnOfferedRecord, type APersonALineMayName , KINDS_THAT_ARE_NOT_WORK } from './the-kind-of-work';
 import { theRoomsLabelFor } from './the-room-is-stored-with-labels';
 import { withAClaim } from './a-claim-on-a-record-is-checked-first';
+import { theSameCustomer } from './one-deal-per-customer';
 import {
   WHAT_THE_RECORD_SAYS_PROMPT,
   WHAT_THE_RECORD_SAYS_SCHEMA,
@@ -101,8 +102,16 @@ export class BoardListener {
       for (const r of kept) {
         /* "a four-hour acknowledgement" and "the four-hour acknowledgement" are one record (item 21). */
         const same = (already as any[]).find((a) => a.kind === r.kind && (a.name.trim().toLowerCase() === r.name.trim().toLowerCase()
-          || (theSameName(a.name) === theSameName(r.name) && (a.ownerParticipantId ?? null) === (r.ownerParticipantId ?? null))));
+          || (theSameName(a.name) === theSameName(r.name) && (a.ownerParticipantId ?? null) === (r.ownerParticipantId ?? null))))
+          /* One deal per customer, whoever says it and however it is said: "Kilele 40" and "Kilele M-Pesa" are the Kilele Hotel deal (problem 2). */
+          ?? (r.kind === 'deal' ? (already as any[]).find((a) => a.kind === 'deal' && theSameCustomer(a.name, r.name)) : undefined);
         if (same) {
+          /*
+           * THE DEAL STAYS WITH WHOEVER IT IS. A record is shown as owned by the person who said the line it was
+           * written from, so a lead's "Kevin also sold 10 units to Bahari Cafe" moved Kevin's deal under Grace's
+           * name. A line by somebody else moves its stage and details on, and the owner's own line stays its source.
+           */
+          const fromSomebodyElse = !!same.ownerParticipantId && speakerOf.get(r.sourceEntryId) !== same.ownerParticipantId;
           await (this.prisma as any).workItem.update({
             where: { id: same.id },
             data: {
@@ -118,7 +127,7 @@ export class BoardListener {
               fields: !same.ownerParticipantId && r.ownerParticipantId && r.ownerParticipantId === speakerOf.get(r.sourceEntryId)
                 ? withAClaim({ ...((same.fields as any) ?? {}), ...r.fields }, r.ownerParticipantId, r.sourceEntryId ?? null, new Date())
                 : { ...((same.fields as any) ?? {}), ...r.fields },
-              sourceEntryId: r.sourceEntryId,
+              ...(fromSomebodyElse ? {} : { sourceEntryId: r.sourceEntryId }),
             },
           });
         } else {

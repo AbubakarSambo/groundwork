@@ -55,7 +55,7 @@ const rows = {
     { id: 't-b', groundId: 'g-sales', ownerParticipantId: 'p-brian', name: 'BRIAN-TARGET', target: 4, count: 1, sortOrder: 1, createdAt: ago(20) },
   ],
   groundCommitment: [
-    { id: 'k-m1', groundId: 'g-sales', participantId: 'p-miriam', text: 'Visit Westgate Deli', whenSaid: 'Friday', status: 'UNKNOWN', createdAt: ago(3) },
+    { id: 'k-m1', groundId: 'g-sales', participantId: 'p-miriam', text: 'Visit Westgate Deli', whenSaid: 'Friday', status: 'UNKNOWN', createdAt: ago(0) },
     { id: 'k-m2', groundId: 'g-sales', participantId: 'p-miriam', text: 'Send Green Mart the quote, with a photo', whenSaid: null, status: 'DONE', createdAt: ago(6) },
     { id: 'k-m3', groundId: 'g-sales', participantId: 'p-miriam', text: 'Something she dropped', whenSaid: null, status: 'DROPPED', createdAt: ago(6) },
     { id: 'k-b1', groundId: 'g-sales', participantId: 'p-brian', text: 'BRIAN-SAID: Hand over the records', whenSaid: null, status: 'UNKNOWN', createdAt: ago(3) },

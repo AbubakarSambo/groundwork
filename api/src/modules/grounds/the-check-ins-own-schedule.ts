@@ -164,7 +164,18 @@ export function whenTheNextSessionOpens(s: TheSchedule, lastOpenedAt: Date, now:
   /* A whole round late: the round running now, open straight away. Not that round's first day, which has
      gone, so reminders count from when it really opened for them. */
   if (after <= today) return now;
-  return theStartOfTheDayIn(zone, after);
+  return theHourItOpens(s, zone, after);
+}
+
+/**
+ * A DAILY CHECK-IN OPENS AT 8 IN THE MORNING, IN THE ORGANISATION'S OWN ZONE (Hafsah, 13 October 2026, evening). It
+ * opened at midnight, so every person on WhatsApp was written to at 11pm ("opens in an hour") and again after midnight
+ * ("is open"). Every other rhythm still opens at the start of its day. A check-in already running changes from its next
+ * session: the one open now closes when the next one opens, at 8, so there are never two at once.
+ */
+export const A_DAILY_CHECK_IN_OPENS_AT_HOUR = 8;
+function theHourItOpens(s: Pick<TheSchedule, 'cadence'>, zone: string, day: Day): Date {
+  return s.cadence === Cadence.DAILY ? theStartOfTheDayIn(zone, day + A_DAILY_CHECK_IN_OPENS_AT_HOUR * 3_600_000) : theStartOfTheDayIn(zone, day);
 }
 
 /** The day the round after the one a session opened in begins, or null when the schedule has none. */
@@ -189,5 +200,5 @@ function theRoundAfter(s: TheSchedule, zone: string, lastOpenedAt: Date): Day | 
 export function whenTheRoundCloses(s: TheSchedule, openedAt: Date): Date | null {
   const zone = isAZone(s.zone) ? s.zone : THE_PRODUCTS_OWN_ZONE;
   const after = theRoundAfter(s, zone, openedAt);
-  return after == null ? null : theStartOfTheDayIn(zone, after);
+  return after == null ? null : theHourItOpens(s, zone, after);
 }

@@ -48,10 +48,11 @@ interface Facts {
   won: boolean;
 }
 
-function theFacts(r: AServedRecord & { lastSaidOn?: string | null }, lastStage: string | null, now: Date): Facts {
+function theFacts(r: AServedRecord & { lastSaidOn?: string | null; proofOnAnotherLine?: boolean }, lastStage: string | null, now: Date): Facts {
   const lastSaid = aDay(r.lastSaidOn ?? null);
   return {
-    shown: r.mark === 'proven',
+    /* Proof on the line the deal came from, or on another line this reader may read that names the customer (problem 2). */
+    shown: r.mark === 'proven' || !!r.proofOnAnotherLine,
     confirmed: r.mark === 'confirmed',
     addedOnTheBoard: r.mark === 'none' || r.from === 'lead',
     due: aDay(r.due),

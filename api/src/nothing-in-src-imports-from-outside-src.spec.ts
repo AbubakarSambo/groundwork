@@ -22,11 +22,13 @@ function everyFile(dir: string, out: string[] = []): string[] {
   return out;
 }
 
+const withoutComments = (t: string): string => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
 describe('nothing under src imports from outside src', () => {
   it('every relative import stays inside src', () => {
     const outside: string[] = [];
     for (const file of everyFile(SRC)) {
-      const text = readFileSync(file, 'utf8');
+      const text = withoutComments(readFileSync(file, 'utf8'));
       for (const m of text.matchAll(IMPORT)) {
         const target = resolve(dirname(file), m[1]);
         if (target !== SRC && !target.startsWith(SRC + sep)) outside.push(`${relative(SRC, file)} imports ${m[1]}`);

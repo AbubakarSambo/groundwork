@@ -83,9 +83,29 @@ export function namesOffFor(parties: any[], labels: Map<string, string>): (text:
     }
   }
   pairs.sort((a, b) => b[0].length - a[0].length);
+  /*
+   * A SURNAME IN A CASE NAME IS THE CASE, NOT THE PERSON (pilots, 13 October 2026, problem 13). Njeri Kamau read "The
+   * submission date of you v." on Today: "Kamau v. Apex" lost "Kamau" to her label here, and her label became "you"
+   * when it was served. A surname on its own is not taken where it names a case or a matter: beside "v." or "vs", or
+   * followed by a word like "defence", "matter" or "estate".
+   */
+  const surnames = new Set(parties.map((p) => (p.user?.lastName ?? '').trim()).filter(Boolean));
+  const A_CASE_AFTER = /^\s*(?:v\.?|vs\.?|versus)\s/i;
+  const A_CASE_BEFORE = /(?:\bv\.?|\bvs\.?|\bversus|\bestate of|\bin re)\s*$/i;
+  const A_MATTER_AFTER = /^\s*(?:defence|defense|matter|case|estate|probate|file|claim|suit|appeal|petition|brief|hearing)\b/i;
   return (text: string) => {
     let t = String(text ?? '');
-    for (const [n, label] of pairs) t = t.replace(new RegExp(`(?<![\\p{L}\\p{N}])${escape(n)}(?![\\p{L}\\p{N}])`, 'gu'), label);
+    for (const [n, label] of pairs) {
+      const surnameAlone = surnames.has(n) && !n.includes(' ');
+      t = t.replace(new RegExp(`(?<![\\p{L}\\p{N}])${escape(n)}(?![\\p{L}\\p{N}])`, 'gu'), (m: string, offset: number, whole: string) => {
+        if (surnameAlone) {
+          const after = whole.slice(offset + m.length);
+          const before = whole.slice(Math.max(0, offset - 12), offset);
+          if (A_CASE_AFTER.test(after) || A_CASE_BEFORE.test(before) || A_MATTER_AFTER.test(after)) return m;
+        }
+        return label;
+      });
+    }
     return t;
   };
 }
