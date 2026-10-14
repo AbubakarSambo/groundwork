@@ -140,12 +140,13 @@ describe('the team baseline says nothing of the lead\'s own conversation, and do
   it('opens a person on the lead\'s team on a question about their work, never "are you the person this check-in is about"', async () => {
     const out = await opened({ startedFrom: 'anchor', switchOn: true });
     expect(out.reply).toBe('Thank you. What is taking most of your attention now?');
-    expect(out.reply).not.toMatch(/person this check-in is about/);
+    expect(out.reply).not.toMatch(/is this check-in about you/);
   });
 
   it('still asks that of a first session that is not the anchor\'s, exactly as before', async () => {
     const out = await opened({ startedFrom: null, switchOn: true });
-    expect(out.reply).toMatch(/are you the person this check-in is about/);
+    /* In the plainer words Hafsah approved, 14 October (docs/question-wording.md). */
+    expect(out.reply).toMatch(/is this check-in about you, or do you work alongside the person it is about\?/);
   });
 
   it('tells a person on the team only what the product was told to say, and none of the aims the lead\'s words made', async () => {
