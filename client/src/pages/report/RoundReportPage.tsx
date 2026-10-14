@@ -94,6 +94,7 @@ export default function RoundReportPage() {
           <TheSessionsReport
             groundId={id}
             sessionNumber={n}
+            light={(ground as any)?.kindOfWork === 'sales org'}
             totalInThisRound={ground ? whoIsInRound(((ground as any).participants ?? []), n, (ground as any).scenario, (ground as any).checkIns ?? []).length : null}
           />
         )}

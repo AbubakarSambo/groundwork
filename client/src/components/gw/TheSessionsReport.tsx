@@ -1,13 +1,17 @@
-import { useState } from 'react'
+import { createContext, useContext, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { Folded } from './two-accounts-side-by-side'
 import { useQuery } from '@tanstack/react-query'
-import { reportsApi } from '@/api/reports'
+import { reportsApi, type SessionShapedReport } from '@/api/reports'
 import { WhatSuccessLooksLike } from './WhatSuccessLooksLike'
 import { HowMuchThereIsToGoOn } from './HowMuchThereIsToGoOn'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { WhereToFocus } from './where-to-focus'
 import { atTheStart } from '@/lib/a-colleague'
-import { Panel, SubHeading, Note, Callout, EdgeList, EdgeRow } from '@/components/gw/ui'
+import { Panel, SubHeading, Note, Callout, EdgeList, EdgeRow, FoldedLine, SmallMenu, UpdatedLine } from '@/components/gw/ui'
+import { whenTheBoardLastChangedInShort } from '@/pages/board/when-the-board-last-changed'
 import { splitAtFieldNames, readableWithoutFieldNames } from '@/lib/no-field-names-on-the-page'
 
 /**
@@ -199,6 +203,9 @@ function Quotes({ items, yourName }: { items: { text: string; who?: string | nul
  * build by hand, and the row itself with the local `.gwui-sr-row` class in place of the five
  * one-off top-rule and padding utilities it used to carry.
  */
+/** Inside the light report a part's own label is the folded line's name, so it is not said twice. */
+const RowLabelsHidden = createContext(false)
+
 function Row({ label, children, style }: {
   /** Kept on the interface so call sites (and the-order-comes-from-one-place test) are unchanged;
       no longer drawn - see the note below. */
@@ -207,6 +214,7 @@ function Row({ label, children, style }: {
   children: React.ReactNode
   style?: React.CSSProperties
 }) {
+  const labelsHidden = useContext(RowLabelsHidden)
   return (
     <div className="gwui-sr-row" style={style}>
       {/*
@@ -219,7 +227,7 @@ function Row({ label, children, style }: {
         needs a person to count blocks to read it, and each label below now says everything it
         needs to in one line.
       */}
-      {label && <SubHeading>{label}</SubHeading>}
+      {label && !labelsHidden && <SubHeading>{label}</SubHeading>}
       {children}
     </div>
   )
@@ -544,7 +552,7 @@ export function tileSentence(r: { label: string; value: string; sub: string }): 
   }
 }
 
-export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }: {
+export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound, light = false }: {
   groundId: string
   sessionNumber: number
   /**
@@ -558,6 +566,14 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
    * whenever the two disagree, so a reader is never shown two different totals for one check-in.
    */
   totalInThisRound?: number | null
+  /**
+   * THE LIGHT TEAM REPORT (docs/light-rebuild/sales-first.md, section 2; the light prototype's s60
+   * and the share menu in s71), for a sales check-in. Every part is drawn by the same code as below;
+   * the lead's one Share button comes first, then "In short" (the finding, the four sentences and
+   * where things stand), "One question to answer" (the conversation worth having now), and "More in
+   * this report", where every other part folds to one line with the server's fact (`inThisReport`).
+   */
+  light?: boolean
 }) {
   const [byPerson, setByPerson] = useState(false)
   const { data, isLoading, isError } = useQuery({
@@ -654,43 +670,10 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
      as pieces missing rather than as a report with four blocks. */
   let step = 0
   const next = () => (step += 1)
+  const glance: NonNullable<SessionShapedReport['inThisReport']> = d.inThisReport ?? {}
 
-  return (
-    <Panel pad={false} className="gwui-sr">
-      {/*
-        ── The masthead: where you are in it. No title of its own here any more - every page that
-        draws this card already carries its own "Session N" heading above it (SessionReportPage,
-        RoundReportPage), so a second one here, falling back to the same words when nobody had set
-        an objective, read three times on one screen: the page's own heading, this one, then
-        "Session N" again inside the count sentence below. One heading, said once, above the card.
-      */}
-      <div className="gwui-sr-head">
-        <div className="gwui-sr-head-title">
-          {sessionAndWhoCheckedIn(d.sessionNumber, d.plannedSessions ?? null, answered, ofPeople)}
-        </div>
-        {final && (
-          <div className="gwui-sr-head-shared">{SHARED_WITH_THE_TEAM}</div>
-        )}
-      </div>
-
-      {/*
-        WHO IS COUNTED, AND WHICH OF THEM IS YOU.
-
-        Part of the masthead rather than a numbered block: the header says how many people, and
-        this says whose. It names people rather than printing a number, says which one the reader
-        is, and never counts somebody who was never going to answer - all three are the rule this
-        row exists for, and I dropped the whole row in the rebuild before a spec caught it.
-      */}
-      {(d.counting ?? []).length > 0 && (
-        <div className="gwui-sr-counted">
-          {d.counting.map((c: any, i: number) => (
-            <span key={i} className={`gwui-sr-counted-item${c.answered ? '' : ' gwui-sr-muted'}`}>
-              {hasCheckedIn(c)}
-            </span>
-          ))}
-        </div>
-      )}
-
+  const findingJSX = (
+    <>
       {/* ── The finding, first and alone. One sentence the engines stand behind. */}
       {finding && (
         <div className="gwui-sr-finding">
@@ -709,6 +692,10 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
         </div>
       )}
 
+    </>
+  )
+  const directionJSX = (
+    <>
       {/* ── Where the room points, on a one-time session: the lists, most-named first, under the finding. */}
       {direction && (
         <Row n={next()} label="What the room named, most-named first">
@@ -716,6 +703,10 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
         </Row>
       )}
 
+    </>
+  )
+  const tilesJSX = (
+    <>
       {/*
         ── At a glance. Four states in a row, each said as one or two full sentences.
         U.9 THIRD REVIEW, ITEM 2: EACH TILE WAS STILL A LABEL, A FIGURE AND A FRAGMENT, STACKED.
@@ -739,6 +730,10 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
         </div>
       )}
 
+    </>
+  )
+  const cascadeJSX = (
+    <>
       {/*
         ── 01 · what this sits under, where anything does. It qualifies the objective, so it leads.
 
@@ -768,6 +763,10 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
         </Row>
       )}
 
+    </>
+  )
+  const successJSX = (
+    <>
       {/*
         ── What this is for. The full band: the stated objective and each person's own version.
         U.9 END-OF-MODULE API SUITE: THE LABEL IS THE ONE `the-four-reports.ts` DECLARES.
@@ -796,6 +795,10 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
         </Row>
       )}
 
+    </>
+  )
+  const standJSX = (
+    <>
       {/* ── Where things stand. Still open leads: it is the half somebody can act on. */}
       {(settled.length > 0 || open.length > 0) && (
         <Row n={next()} label="Where things stand">
@@ -876,6 +879,10 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
         </Row>
       )}
 
+    </>
+  )
+  const saidJSX = (
+    <>
       {/* ── What each person said they did. Folded: long, and their own work only. */}
       {themed.length > 0 && (
         <Row n={next()} label="What people said this session">
@@ -934,6 +941,10 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
         </Row>
       )}
 
+    </>
+  )
+  const pictureJSX = (
+    <>
       {/* ── The picture from everybody. The long read of the finding, after the sharp part. */}
       {rest.length > 0 && (
         <Row n={next()} label="The picture from everybody">
@@ -943,6 +954,10 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
         </Row>
       )}
 
+    </>
+  )
+  const quietJSX = (
+    <>
       {/*
         ── What went quiet. Somebody was waiting on it and nobody has said it is resolved.
         U.9 END-OF-MODULE API SUITE: THE PLAIN HEADING `notRaisedAgain` DECLARES ("Not raised
@@ -955,6 +970,10 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
         </Row>
       )}
 
+    </>
+  )
+  const conversationJSX = (
+    <>
       {/* ── The one conversation worth having. Boxed, because it is the thing to do next. */}
       {d.theConversationWorthHaving ? (
         <div className="gwui-sr-row">
@@ -972,6 +991,10 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
         </Row>
       ) : null}
 
+    </>
+  )
+  const builtJSX = (
+    <>
       {/* ── What this rests on. The method, last and folded: a caveat above what it qualifies is
              read as a verdict on it. */}
       <Row n={next()} label="What this is built from">
@@ -989,9 +1012,122 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
         </Folded>
       </Row>
 
+    </>
+  )
+
+  return (
+    <Panel pad={false} className="gwui-sr">
+      {/*
+        ── The masthead: where you are in it. No title of its own here any more - every page that
+        draws this card already carries its own "Session N" heading above it (SessionReportPage,
+        RoundReportPage), so a second one here, falling back to the same words when nobody had set
+        an objective, read three times on one screen: the page's own heading, this one, then
+        "Session N" again inside the count sentence below. One heading, said once, above the card.
+      */}
+      <div className="gwui-sr-head">
+        <div className="gwui-sr-head-title">
+          {sessionAndWhoCheckedIn(d.sessionNumber, d.plannedSessions ?? null, answered, ofPeople)}
+        </div>
+        {final && (
+          <div className="gwui-sr-head-shared">{SHARED_WITH_THE_TEAM}</div>
+        )}
+      </div>
+
+      {/*
+        WHO IS COUNTED, AND WHICH OF THEM IS YOU.
+
+        Part of the masthead rather than a numbered block: the header says how many people, and
+        this says whose. It names people rather than printing a number, says which one the reader
+        is, and never counts somebody who was never going to answer - all three are the rule this
+        row exists for, and I dropped the whole row in the rebuild before a spec caught it.
+      */}
+      {(d.counting ?? []).length > 0 && (
+        <div className="gwui-sr-counted">
+          {d.counting.map((c: any, i: number) => (
+            <span key={i} className={`gwui-sr-counted-item${c.answered ? '' : ' gwui-sr-muted'}`}>
+              {hasCheckedIn(c)}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {!light && findingJSX}
+      {!light && directionJSX}
+      {!light && tilesJSX}
+      {!light && cascadeJSX}
+      {!light && successJSX}
+      {!light && standJSX}
+      {!light && saidJSX}
+      {!light && pictureJSX}
+      {!light && quietJSX}
+      {!light && conversationJSX}
+      {!light && builtJSX}
+      {light && (
+        <>
+          {/* "Updated Wed 23 Sep, 6pm ⓘ" (s71, approved rename), the full sentence behind the ⓘ, in place of the line at the foot. */}
+          {!final && lastChangedLine && lastChanged && (
+            <div className="gwui-sr-row"><UpdatedLine short={whenTheBoardLastChangedInShort(lastChanged)} full={lastChangedLine} /></div>
+          )}
+          {d.releaseThisSession && <ShareThisReport groundId={groundId} saying={d.releaseThisSession.saying ?? null} />}
+          {directionJSX}
+          {/* In short (s60): the finding, the four sentences at a glance, and where things stand (the mapping table: "Where things stand" goes to "In short"). */}
+          <section className="gwui-sr-row gwui-light-report-part" aria-labelledby="gwui-sr-in-short">
+            <h2 id="gwui-sr-in-short" className="gwui-light-report-h">In short</h2>
+            <RowLabelsHidden.Provider value={true}>
+              {findingJSX}
+              {tilesJSX}
+              {standJSX}
+            </RowLabelsHidden.Provider>
+          </section>
+          {/* One question to answer (s60): the conversation worth having now, said as the question it is. */}
+          {(d.theConversationWorthHaving || d.whyNoQuestion) && (
+            <section className="gwui-sr-row gwui-light-report-part" aria-labelledby="gwui-sr-one-question">
+              <h2 id="gwui-sr-one-question" className="gwui-light-report-h">One question to answer</h2>
+              <p className={d.theConversationWorthHaving ? 'gwui-sr-statement' : 'gwui-sr-muted-prose'}>
+                {d.theConversationWorthHaving ? readableWithoutFieldNames(d.theConversationWorthHaving) : d.whyNoQuestion}
+              </p>
+            </section>
+          )}
+          {/* More in this report (s60): every other part folds to one line, its fact from the server. */}
+          <section className="gwui-sr-row gwui-light-report-part" aria-labelledby="gwui-sr-more">
+            <div className="gwui-light-report-more-h">
+              <h2 id="gwui-sr-more" className="gwui-light-report-h">More in this report</h2>
+              <span className="gwui-light-report-note">Tap any line to see more</span>
+            </div>
+            <RowLabelsHidden.Provider value={true}>
+              <div className="gwui-folds">
+                <FoldedLine name="How much this report can rely on" fact={glance.reliesOn ?? null}>
+                  <div className="gwui-sr-built-from">
+                    {d.confidence && <HowMuchThereIsToGoOn read={d.confidence} />}
+                    {restsOn.map((sec: any) => (
+                      <div key={sec.title} className="gwui-sr-rests-on-item">
+                        {sec.items.length > 0
+                          ? <Quotes items={sec.items.map((it: any) => ({ ...it, text: asFileIsKindSentence(it.text) }))} yourName={yourName} />
+                          : <div className="gwui-sr-muted-prose">{sec.saying}</div>}
+                      </div>
+                    ))}
+                  </div>
+                </FoldedLine>
+                {themed.length > 0 && <FoldedLine name="What each person did" fact={glance.eachPersonDid ?? null}>{saidJSX}</FoldedLine>}
+                {rest.length > 0 && <FoldedLine name="The picture from everybody" fact={glance.picture ?? null}>{pictureJSX}</FoldedLine>}
+                {d.whatWentQuiet && <FoldedLine name="Not raised again" fact={glance.notRaisedAgain ?? null}>{quietJSX}</FoldedLine>}
+                {d.againstSuccess && (
+                  <FoldedLine name="What everybody said good looks like" fact={glance.goodLooksLike ?? null}>
+                    {successJSX}
+                    {/* The mapping table: what everybody said good looks like lives on Context, with the targets. */}
+                    <Link to={`/grounds/${groundId}?tab=context`} className="gwui-plain-link">Open the Context page</Link>
+                  </FoldedLine>
+                )}
+                {/* Its label is a sentence of its own ("Nobody has said what bigger goal this is part of."), so it is kept inside. */}
+                {d.cascade && <FoldedLine name="What this sits under" fact={glance.sitsUnder ?? null}><RowLabelsHidden.Provider value={false}>{cascadeJSX}</RowLabelsHidden.Provider></FoldedLine>}
+              </div>
+            </RowLabelsHidden.Provider>
+          </section>
+        </>
+      )}
       {/* ── The promise, and what state this is in. */}
       <div className="gwui-sr-row gwui-sr-footer">
-        {!final && lastChangedLine && (
+        {!final && lastChangedLine && !light && (
           <span className="gwui-sr-footer-line">{lastChangedLine}</span>
         )}
         {!final
@@ -1006,3 +1142,37 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
     </Panel>
   )
 }
+
+/**
+ * ONE SHARE BUTTON (the light prototype's s71: "Share", with "Share with the team" and "Share without
+ * names" inside). Only for whoever runs the check-in, and only while this session's report is the one
+ * waiting to be shared (`releaseThisSession`, which the server sends to the lead alone). Both go through
+ * the same call the Report tab's "Send to" uses (`send-to-everyone`), which releases the report and
+ * sends each person who answered a link, named or with the names taken out, so anonymous sharing still
+ * goes through the one wrapper that does it. The server refuses anybody but the lead.
+ */
+export function ShareThisReport({ groundId, saying }: { groundId: string; saying: string | null }) {
+  const qc = useQueryClient()
+  const send = useMutation({
+    mutationFn: (as: 'NAMED' | 'ANONYMOUS') => reportsApi.sendToEveryone(groundId, as),
+    onSuccess: (r) => {
+      toast.success(r.sent === 0 && r.alreadyTold > 0
+        ? 'Everybody who asked for it already has it.'
+        : `Shared. ${r.sent} ${r.sent === 1 ? 'person was' : 'people were'} sent a link${r.sharedAs === 'ANONYMOUS' ? ', with the names taken out' : ''}.`)
+      qc.invalidateQueries({ queryKey: ['ground', groundId] })
+      qc.invalidateQueries({ queryKey: ['report', groundId] })
+      qc.invalidateQueries({ queryKey: ['session-shaped-report', groundId] })
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not share. Nothing has been sent, so try again.'),
+  })
+  return (
+    <div className="gwui-sr-row gwui-light-report-share">
+      {saying && <p className="gwui-sr-muted-prose">{saying}</p>}
+      <SmallMenu label="Share" main align="left">
+        <button type="button" className="gwui-menu-item" disabled={send.isPending} onClick={() => send.mutate('NAMED')}>Share with the team</button>
+        <button type="button" className="gwui-menu-item" disabled={send.isPending} onClick={() => send.mutate('ANONYMOUS')}>Share without names</button>
+      </SmallMenu>
+    </div>
+  )
+}
+

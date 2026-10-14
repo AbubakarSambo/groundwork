@@ -10,6 +10,7 @@ function whatWasReleased(report: { releasedSessions?: number[] | null } | null) 
   return { releasedSessions, sessionNumber, saying: sessionNumber ? whatReleasingThisSessionDoes(sessionNumber) : null };
 }
 import { CurrentUser, Roles, Role } from '../../common';
+import { theSessionReportAtAGlance, withItsFacts } from './a-report-at-a-glance';
 
 @ApiTags('Reports')
 @ApiBearerAuth()
@@ -78,7 +79,8 @@ export class ReportsController {
     const report = await this.reports.sessionReport(groundId, sessionNumber, userId, organizationId);
     /* Decision 133: the lead's reading is recorded, once per open, after the read was allowed. Never a rebuild. */
     await this.reports.noteTheLeadRead(groundId, sessionNumber, userId);
-    return report;
+    /* The light report's one fact for each folded line (sales-first.md, section 2, rule 3), from the report as this reader is served it, after every wall. */
+    return withItsFacts(report, theSessionReportAtAGlance);
   }
 
   /**

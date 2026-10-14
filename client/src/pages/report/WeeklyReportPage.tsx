@@ -3,7 +3,7 @@ import { TheLeadsOwnWayIn } from '@/components/gw/TheLeadsOwnWayIn'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { groundsApi } from '@/api/grounds'
 import { reportsApi } from '@/api/reports'
-import { Page, PageTitle, Section, Note, Button } from '@/components/gw/ui'
+import { Page, PageTitle, Section, Note, Button, FoldedLine, NumberTiles } from '@/components/gw/ui'
 import { whatWentWrong, whyYouCannotSeeThis } from './why-you-cannot-see-this'
 
 /**
@@ -69,6 +69,81 @@ export default function WeeklyReportPage() {
      reads only `saying`, exactly as the lead-less daily report already does elsewhere. */
   const title = data.heading ?? 'This week'
 
+  /*
+   * THE LIGHT WEEKLY REPORT (docs/light-rebuild/sales-first.md, section 2; the light prototype's s60),
+   * for a sales check-in: what this week shows, the week in numbers and what to do next week first;
+   * every other part folds to one line with the server's fact (`inThisReport`). Every part is the same
+   * one drawn below, from the same fields; nothing is left out. Built from this check-in's own record.
+   */
+  if ((ground as any)?.kindOfWork === 'sales org') {
+    const glance = data.inThisReport ?? {}
+    return (
+      <Page>
+        <PageTitle crumbs={crumbs} title={title} subtitle={data.whatThisIs} />
+        {data.saying && <Note>{data.saying}</Note>}
+        {(data.eachPerson.length > 0 || (data.acrossTheTeam && data.acrossTheTeam.length > 0)) && (
+          <Section heading="What this week shows">
+            <div className="gwui-light-report-part">
+              {data.eachPerson.map((p, i) => <p key={i} className="gwui-panel-text">{p.says}</p>)}
+              {(data.acrossTheTeam ?? []).map((s, i) => <p key={`att-${i}`} className="gwui-panel-text">{s}</p>)}
+            </div>
+          </Section>
+        )}
+        {data.inNumbers && data.inNumbers.length > 0 && (
+          <Section heading="The week in numbers">
+            <NumberTiles label="The week in numbers" tiles={data.inNumbers.map((row, i) => ({ key: String(i), label: row.of, value: String(row.figure), sub: row.says }))} />
+          </Section>
+        )}
+        {data.forNextWeek && data.forNextWeek.length > 0 && (
+          <Section heading="For you to do next week">
+            <div className="gwui-light-report-part">
+              {data.forNextWeek.map((row, i) => (
+                <div key={i}>
+                  <p className="gwui-panel-text gwui-light-report-do">{row.do}</p>
+                  <p className="gwui-panel-text-muted">{row.why}</p>
+                  <p className="gwui-light-report-from">{row.comesFrom}</p>
+                </div>
+              ))}
+            </div>
+          </Section>
+        )}
+        {((data.threeInARow?.length ?? 0) > 0 || !!data.saidAndProof || !!data.whatChanged) && (
+          <Section heading="More in this report" note="Tap any line to see more">
+            <div className="gwui-folds">
+              {data.threeInARow && data.threeInARow.length > 0 && (
+                <FoldedLine name="Things that happened in three check-ins in a row" fact={glance.threeInARow ?? null}>
+                  {data.threeInARow.map((row, i) => (
+                    <div key={i}>
+                      <p className="gwui-panel-text gwui-light-report-do">{row.isYou ? 'You' : row.who}</p>
+                      <p className="gwui-panel-text-muted">{row.says}</p>
+                    </div>
+                  ))}
+                </FoldedLine>
+              )}
+              {data.saidAndProof && (
+                <FoldedLine name="What people said, and what the proof shows" fact={glance.saidAndProof ?? null}>
+                  <p className="gwui-panel-text">{data.saidAndProof}</p>
+                </FoldedLine>
+              )}
+              {data.whatChanged && (
+                <FoldedLine name="What changed" fact={glance.whatChanged ?? null}>
+                  {(['moved', 'dropped', 'result'] as const).map((key) => (
+                    <div key={key}>
+                      <p className="gwui-panel-text gwui-light-report-do">{key === 'moved' ? 'Moved' : key === 'dropped' ? 'Dropped' : 'Result'}</p>
+                      {data.whatChanged![key].map((line, i) => <p key={i} className="gwui-panel-text-muted">{line}</p>)}
+                    </div>
+                  ))}
+                </FoldedLine>
+              )}
+            </div>
+          </Section>
+        )}
+        {(ground as any)?.viewerIsInitiator && !['CLOSED', 'RESOLVED', 'STALLED', 'PAUSED'].includes((ground as any)?.status) && (
+          <TheLeadsOwnWayIn groundId={id!} />
+        )}
+      </Page>
+    )
+  }
   return (
     <Page>
       <PageTitle crumbs={crumbs} title={title} subtitle={data.whatThisIs} />
