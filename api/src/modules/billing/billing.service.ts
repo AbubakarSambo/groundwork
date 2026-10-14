@@ -7,6 +7,7 @@ import { StripeService } from './stripe.service';
 import { PricingService, PLAN_LABELS, DEFAULT_FREE_GROUND_LIMIT, freePlanApplies, WHATSAPP_ADD_ON_KIND, EXTRA_SEAT_KIND, WHATSAPP_PERSON_KIND } from './pricing.service';
 import { extraSeatsOn, thisAddsASeat, thisMonth, aCheaperPlan, seatsCost, dollarsOf } from './what-a-month-costs';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
+import { aReceiptLine } from '../email/email.service';
 
 function whenItWasForBilling(d: Date): string {
   return whenItWas(d, 'full', 'UTC');
@@ -1627,7 +1628,14 @@ export class BillingService {
             data: { subscriptionPlan: null, subscriptionStatus: 'cancelled' satisfies SubscriptionStatus, subscriptionStripeId: null, subscriptionPeriodEnd: null, subscriptionEndsAt: null, whatsappAddOnItemId: null, extraSeatsItemId: null, whatsappPeopleItemId: null, whatsappFlatAddOnKept: false },
           });
           if (orgData?.email && orgData.subscriptionPlan) {
-            await this.email.sendSubscriptionCancelled(orgData.email, orgData.subscriptionPlan).catch(() => undefined);
+            /* The free plan, with its numbers, only for an organisation it still applies to (fix list item 6). */
+            /* Never in the way of the webhook: anything unreadable says the plain sentence instead. */
+            const free = await (async () => {
+              const created = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { createdAt: true } });
+              if (!(await this.theFreePlanAppliesTo(created))) return null;
+              return { checkIns: await this.pricing.getFreeGroundLimit(), people: await this.pricing.getFreeMemberLimit() };
+            })().catch(() => null);
+            await this.email.sendSubscriptionCancelled(orgData.email, orgData.subscriptionPlan, free).catch(() => undefined);
           }
         } else {
           await this.prisma.organization.update({
@@ -1668,7 +1676,9 @@ export class BillingService {
         }
         if (paidOrg?.email && paidOrg.subscriptionPlan) {
           const amountCents = invoice.amount_paid ?? 0;
-          await this.email.sendSubscriptionRenewal(paidOrg.email, paidOrg.subscriptionPlan, amountCents, paidOrg.subscriptionPeriodEnd).catch(() => undefined);
+          const label = PLAN_LABELS[paidOrg.subscriptionPlan as SubscriptionPlan] ?? String(paidOrg.subscriptionPlan);
+          const lines = ((invoice as any).lines?.data ?? []).filter((l: any) => (l.amount ?? 0) !== 0).map((l: any) => aReceiptLine(l, label));
+          await this.email.sendSubscriptionRenewal(paidOrg.email, paidOrg.subscriptionPlan, amountCents, paidOrg.subscriptionPeriodEnd, lines).catch(() => undefined);
         }
 
         /**
