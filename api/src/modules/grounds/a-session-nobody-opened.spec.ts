@@ -164,7 +164,7 @@ describe('C answers once, then never opens another session, while the clock move
     expect(found.map((f) => [f.name, f.stand.stage, f.stand.inARow])).toEqual([['Chiamaka', TOLD_THE_PERSON, 2]]);
     const told = await whatThePersonIsToldAboutMissing(t.prisma, 'u-c', null, new Date('2026-10-26T09:00:00+01:00'));
     expect(told.map((x) => x.text)).toEqual([
-      "You've missed your last two check-ins. When you miss them, your team works without your view. Things you know about surface late and Amina has to chase instead of help. Amina will see this. Five minutes now puts your view back in the picture.",
+      "You've missed your last two check-ins. When you miss them, your team works without your view. Things you know about surface late and Amina has to chase instead of help. Amina will see this. About ten minutes now puts your view back in the picture.",
     ]);
     expect(told[0].openCheckInId).toBe(c[3].id);
 
@@ -262,7 +262,7 @@ describe('A FIRST SESSION NOBODY OPENED (night quality run 4): Jared joined and 
     expect(found.map((f) => [f.name, f.stand.stage, f.stand.inARow])).toEqual([['Jared', TOLD_THE_PERSON, 2]]);
     const told = await whatThePersonIsToldAboutMissing(t.prisma, 'u-j', null, new Date('2026-10-19T09:00:00+01:00'));
     expect(told.map((x) => x.text)).toEqual([
-      "You've missed your last two check-ins. When you miss them, your team works without your view. Things you know about surface late and Amina has to chase instead of help. Amina will see this. Five minutes now puts your view back in the picture.",
+      "You've missed your last two check-ins. When you miss them, your team works without your view. Things you know about surface late and Amina has to chase instead of help. Amina will see this. About ten minutes now puts your view back in the picture.",
     ]);
     expect(told[0].openCheckInId).toBe(j[2].id);
 

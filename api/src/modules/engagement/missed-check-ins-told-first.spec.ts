@@ -70,7 +70,7 @@ describe('missed check-ins, told to the person first (decision 136)', () => {
     console.log(`BRIAN READS ON TODAY:\n${needs[0].title}\n${needs[0].detail}\n[${needs[0].action.label}]`);
     expect(needs).toHaveLength(1);
     expect(needs[0].title).toBe("You've missed your last two check-ins.");
-    expect(needs[0].detail).toBe('When you miss them, your team works without your view. Things you know about surface late and Amani has to chase instead of help. Amani will see this. Five minutes now puts your view back in the picture.');
+    expect(needs[0].detail).toBe('When you miss them, your team works without your view. Things you know about surface late and Amani has to chase instead of help. Amani will see this. About ten minutes now puts your view back in the picture.');
     expect(needs[0].action).toEqual({ label: 'Check in now', to: '/checkin/p-brian-c4' });
     expect(needs[0].missedReason).toEqual({ checkInId: 'p-brian-c3', given: null });
   });

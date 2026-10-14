@@ -35,7 +35,9 @@ describe('what the page promises before somebody types', () => {
   /* Two minutes was never true of a conversation that asks four or five questions. */
   it('and does not undersell how long it takes', () => {
     expect(CODE).not.toMatch(/about two minutes/)
-    expect(CODE).toMatch(/about five minutes/)
+    /* About ten minutes wherever a check-in's length is said (Hafsah's fix list, item 4, 14 October). */
+    expect(CODE).not.toMatch(/about five minutes/)
+    expect(CODE).toMatch(/about ten minutes/)
   })
 })
 

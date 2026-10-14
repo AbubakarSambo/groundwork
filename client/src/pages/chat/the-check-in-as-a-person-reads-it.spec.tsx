@@ -106,7 +106,7 @@ afterEach(() => {
 describe('the header', () => {
   /**
    * ROUND 6, ITEM 1: THE CHECK-IN'S OWN NAME, THE PROTOTYPE'S SHAPE (check-in-start.txt:
-   * "Sales team check-in", bold, "About two minutes" under it, Pause on the right). "Your
+   * "Sales team check-in", bold, "About ten minutes" under it, Pause on the right). "Your
    * check-in" named no check-in at all.
    *
    * REVIEW ROUND 3, ITEM 7: NO " check-in" APPENDED. "Sales team, Q3 check-in" reads worse than
@@ -134,7 +134,7 @@ describe('the header', () => {
   it('says about how long the conversation takes', async () => {
     renderChat()
     await findByText(OPENING, {}, { timeout: 5000 })
-    expect(screen.getByText('About two minutes')).toBeTruthy()
+    expect(screen.getByText('About ten minutes')).toBeTruthy()
   })
 
   it('Pause offers to stop for now, which leaves with everything saved', async () => {

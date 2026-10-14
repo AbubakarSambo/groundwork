@@ -285,7 +285,7 @@ export function whatNeedsYou(
              */
             ? `${theAwayLine('the person', null, reader.awayUntil)} You can still answer it if you want to.`
             : [
-              next.sessionNumber === 1 && iRunIt ? 'About two minutes. Everyone else’s answers are read against yours.' : 'About two minutes.',
+              next.sessionNumber === 1 && iRunIt ? 'About ten minutes. Everyone else’s answers are read against yours.' : 'About ten minutes.',
               /* The day it opened, never a count of days from the reading (request 117, part 9). */
               days > A_WHILE && opened ? `It opened on ${theDayInWords(new Date(opened), new Date(at))}.` : null,
             ].filter(Boolean).join(' '),

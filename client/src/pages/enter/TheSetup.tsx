@@ -133,7 +133,7 @@ export const THE_SETUP = {
   moreTimeLater: 'You can give it more time later.',
   /* Setup page, piece 3a: the rest of the prototype's own words (setup.txt, new.txt). */
   aName: 'A name',
-  twoMinutes: 'Each check-in takes about two minutes after the first.',
+  twoMinutes: 'Each check-in takes about ten minutes.',
   whenIEndIt: 'When I end it',
   untilYouEndIt: 'It keeps going until you end it. There is no last date.',
   whosInIt: 'Who’s in it',

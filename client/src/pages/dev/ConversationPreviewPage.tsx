@@ -178,7 +178,7 @@ export default function ConversationPreviewPage() {
         </h2>
         <ConversationFrame
           title="Sales team check-in"
-          underTitle="About two minutes"
+          underTitle="About ten minutes"
           turns={[{ role: 'AI', content: OPENING_QUESTION }]}
           suggestions={OPENING_SUGGESTIONS}
         />
@@ -190,7 +190,7 @@ export default function ConversationPreviewPage() {
         </h2>
         <ConversationFrame
           title="Sales team check-in"
-          underTitle="About two minutes"
+          underTitle="About ten minutes"
           turns={[{ role: 'AI', content: OPENING_QUESTION }]}
           suggestions={OPENING_SUGGESTIONS}
           maxWidth={375}

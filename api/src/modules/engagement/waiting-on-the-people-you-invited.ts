@@ -56,7 +56,7 @@ export function theWaitingWords(firstName: string | null | undefined, w: WhoWasI
         ? `Groundwork has already sent a reminder to ${listed(reminded)}.`
         : 'Groundwork sent each of them the invitation, and is about to remind them.',
       again,
-      `You do not need to chase anyone yourself. If you would like to say a word to them as well, you could write, "I would value your view on ${w.label}. It takes about five minutes."`,
+      `You do not need to chase anyone yourself. If you would like to say a word to them as well, you could write, "I would value your view on ${w.label}. It takes about ten minutes."`,
     ],
     linkLabel: 'See who has started',
   };

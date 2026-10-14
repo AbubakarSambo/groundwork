@@ -26,12 +26,12 @@ describe('the reminders on WhatsApp', () => {
   it('with it on, Amani reads the plainer form, with the same blanks, so the template outside the window is unchanged', () => {
     const on = all(true), off = all(false);
     expect(on.map((n) => n.text)).toEqual([
-      'Hi Amani, your check-in for Sales team, Q4 is open. It takes about five minutes. You can answer here. Write START to begin.',
+      'Hi Amani, your check-in for Sales team, Q4 is open. It takes about ten minutes. You can answer here. Write START to begin.',
       `Hi Amani, your check-in for Sales team, Q4 is due tomorrow, ${off[1].params[2]}. You can answer here at any time before then.`,
       `Hi Amani, your check-in for Sales team, Q4 opens in one hour, at ${off[2].params[2]}. Write here when it opens, and we will start.`,
       'Hi Amani, your check-in for Sales team, Q4 is late. It is still open. You can answer here now.',
       'Hi Amani, 3 of 5 people have answered the check-in for Sales team, Q4. You have not answered yet. When you answer, your answers go into the report.',
-      'Hi Amani, your check-in for Sales team, Q4 is still waiting. Your answers help Wairimu see what is in your way and where they can help. It takes about five minutes. You can answer here.',
+      'Hi Amani, your check-in for Sales team, Q4 is still waiting. Your answers help Wairimu see what is in your way and where they can help. It takes about ten minutes. You can answer here.',
       'Hi Amani, last time you said you would call the Quickmart buyer. How did it go? Your check-in for Sales team, Q4 is open. You can answer here.',
     ]);
     on.forEach((n, i) => { expect(n.params).toEqual(off[i].params); expect(n.kind).toBe(off[i].kind); });
@@ -79,13 +79,13 @@ describe('the emails', () => {
   }
   it('the reminder: off is the old sentence, on is the plainer one', async () => {
     const nudge = (s?: boolean) => (e: any) => e.sendNudge('a@k.test', 'Sales team, Q4', 'https://x/y', undefined, true, null, 'p1', s);
-    expect(await render(nudge())).toBe('Your check-in for Sales team, Q4 is still open. Five minutes now puts your view into the shared picture, and you read it too. They have already shared their side. Yours is the last one we are waiting for. Check in');
-    expect(await render(nudge(true))).toBe('Your check-in for Sales team, Q4 is still open. It takes about five minutes. Your answers go into the report. The other person has already answered. Yours is the last answer we need. Check in');
+    expect(await render(nudge())).toBe('Your check-in for Sales team, Q4 is still open. About ten minutes now puts your view into the shared picture, and you read it too. They have already shared their side. Yours is the last one we are waiting for. Check in');
+    expect(await render(nudge(true))).toBe('Your check-in for Sales team, Q4 is still open. It takes about ten minutes. Your answers go into the report. The other person has already answered. Yours is the last answer we need. Check in');
   });
   it('the next check-in: off is the old sentence, on is the plainer one', async () => {
     const ready = (s?: boolean) => (e: any) => e.sendSessionReady('a@k.test', 'Sales team, Q4', 'https://x/y', s);
     expect(await render(ready())).toBe('A new check-in is ready for Sales team, Q4. Answering keeps the picture you and your team read up to date. Check in');
-    expect(await render(ready(true))).toBe('Your next check-in for Sales team, Q4 is open. It takes about five minutes. Your answers go into the report. Check in');
+    expect(await render(ready(true))).toBe('Your next check-in for Sales team, Q4 is open. It takes about ten minutes. Your answers go into the report. Check in');
   });
 });
 
