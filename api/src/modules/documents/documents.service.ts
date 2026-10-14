@@ -358,26 +358,18 @@ export class DocumentsService {
     }
   }
 
-  async upload(
-    groundId: string,
-    userId: string,
-    file: Express.Multer.File,
-    /*
-     * WHETHER THEY CONFIRMED THE PEOPLE IN IT KNOW.
-     *
-     * Only ever read for something that looks like a record of a conversation. For a workplan or a
-     * job description it is not asked and not stored, because there is nobody else in those.
-     */
-    consentConfirmed = false,
-    /* What they want looked for in it, in their words. Kept exactly - see the schema note. */
-    uploaderNote?: string,
-    /*
-     * SENT IN REPLY DURING A WHATSAPP CHECK-IN (Hafsah, 11 October 2026): sending it there is the person
-     * choosing to share it, so it is kept already opened to the check-in, the same state an app upload
-     * reaches when its uploader opens it. Never set by the app's upload, which keeps the private default.
-     */
-    opts: { sharedWithTheCheckIn?: boolean } = {},
-  ) {
+  /**
+   * THE TEXT OF A FILE, AND NOTHING KEPT (fix list, item 3). For an admin's document for the whole organisation, read
+   * through Ask: the same checks and the same reading as an upload to a check-in, with no row written. What happens to
+   * the words is the caller's, and is said back before anything is kept.
+   */
+  async textOutOf(file: Express.Multer.File): Promise<string> {
+    this.refuseWhatCannotBeRead(file);
+    return (await this.extractContent(file)) ?? '';
+  }
+
+  /** What every upload refuses before reading: no file, too large, or a kind of file nothing here can open. */
+  private refuseWhatCannotBeRead(file: Express.Multer.File): void {
     if (!file) throw new BadRequestException('No file came through, so choose a file and try again.');
     if (file.size > MAX_BYTES) throw new BadRequestException('That file is larger than 10 MB, so choose a smaller one.');
     const browserWasNoHelp = UNHELPFUL_MIMES.includes(file.mimetype ?? '');
@@ -400,6 +392,29 @@ export class DocumentsService {
           : 'That file type cannot be read. Accepted: PDF, Word, Excel, PowerPoint, Markdown, plain text, CSV, HTML, code files, and images.',
       );
     }
+  }
+
+  async upload(
+    groundId: string,
+    userId: string,
+    file: Express.Multer.File,
+    /*
+     * WHETHER THEY CONFIRMED THE PEOPLE IN IT KNOW.
+     *
+     * Only ever read for something that looks like a record of a conversation. For a workplan or a
+     * job description it is not asked and not stored, because there is nobody else in those.
+     */
+    consentConfirmed = false,
+    /* What they want looked for in it, in their words. Kept exactly - see the schema note. */
+    uploaderNote?: string,
+    /*
+     * SENT IN REPLY DURING A WHATSAPP CHECK-IN (Hafsah, 11 October 2026): sending it there is the person
+     * choosing to share it, so it is kept already opened to the check-in, the same state an app upload
+     * reaches when its uploader opens it. Never set by the app's upload, which keeps the private default.
+     */
+    opts: { sharedWithTheCheckIn?: boolean } = {},
+  ) {
+    this.refuseWhatCannotBeRead(file);
 
     const uploadStartedAt = Date.now();
     const participant = await this.assertParticipant(groundId, userId);

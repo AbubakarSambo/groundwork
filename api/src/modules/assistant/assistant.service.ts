@@ -41,6 +41,10 @@ import {
   Load, Waiting, theOneMove, theMirror, goingCold, bankedWins, sayTheMoves,
 } from '../coaching/the-four-converting-moves';
 import { KnowledgeService, STOPWORDS } from '../knowledge/knowledge.service';
+import {
+  ADDED_TO_THE_HANDBOOK, FOR_THE_ORGANISATION, NOT_ADDED, NO_WORDS_IN_IT, OFFER_FOR_THE_ORGANISATION, ONLY_AN_ADMIN_ADDS_ONE,
+  ORGANISATION_DOCUMENT_KIND, SAYS_IT_IS_FOR_THE_ORGANISATION, itsParts, whatTheDocumentSays,
+} from './a-document-for-the-whole-organisation';
 import { keptForTheOrganisation, keptThatTouches, mayReadWhatIsKept } from '../knowledge/organisation-memory';
 import { LeaveBoardService } from '../suites/the-leave-board.service';
 import { LEAVE_NOT_SENT, LEAVE_NOTHING_WAITING, LEAVE_WHICH_DAYS, plainlyAsksForLeave, readLeaveDates, sayBackLeave, sendLeave, soundsLikeLeave } from '../suites/leave-said-in-chat';
@@ -215,7 +219,7 @@ function aSourceInPlainWords(sys: string, _stale: boolean): string {
   return aSourceIsGroundworks(sys) ? 'What you have told Groundwork' : sys;
 }
 
-import { isAQuestion, answerFromTheDocuments } from './a-question-is-answered-from-the-documents';
+import { isAQuestion, answerFromTheDocuments, NO_DOCUMENTS_TO_READ } from './a-question-is-answered-from-the-documents';
 import { openTheLeadsCheckIn } from '../grounds/check-in-yourself';
 /** "I want to do my own check-in", "check in myself", "my check-in now". */
 const A_WISH_TO_CHECK_IN_MYSELF = /\b(?:(?:do|start|begin|answer)\s+my\s+(?:own\s+)?check[\s-]?in|check[\s-]?in\s+(?:myself|for\s+myself)|my\s+own\s+check[\s-]?in)\b/i;
@@ -1628,6 +1632,88 @@ export class AssistantService {
     };
   }
 
+  /** The organisation's own name, for the sentences about its handbook. */
+  private async organisationNameOf(organizationId: string): Promise<string | null> {
+    return (await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true } }).catch(() => null))?.name ?? null;
+  }
+
+  /** The file picker, for a document for the whole organisation. Only ever offered to an admin of it. */
+  private async offerADocumentForTheOrganisation(organizationId: string): Promise<Reply> {
+    return rules(
+      'add_a_document',
+      text(OFFER_FOR_THE_ORGANISATION(await this.organisationNameOf(organizationId))),
+      {
+        type: 'next_step',
+        label: 'Choose a file',
+        href: '/company',
+        kind: 'upload_a_document',
+        id: FOR_THE_ORGANISATION,
+        context: { forTheOrganisation: 'yes' },
+      },
+    );
+  }
+
+  /**
+   * THE FILE AN ADMIN CHOSE FOR THE WHOLE ORGANISATION, READ AND SAID BACK (fix list, item 3). Nothing is added here:
+   * the words wait on a yes, on the asker's own waiting row, and are kept in the handbook only by that yes. The caller
+   * (ask.service.ts) has already checked the asker is an admin of the organisation; the yes checks again.
+   */
+  async sayBackADocumentForTheOrganisation(organizationId: string, personId: string, fileName: string, title: string, words: string): Promise<Reply> {
+    const me = await this.prisma.person.findFirst({ where: { id: personId, organizationId }, select: { externalId: true } });
+    const who = me?.externalId && !isAGuestsKey(me.externalId) ? me.externalId : null;
+    const name = await this.organisationNameOf(organizationId);
+    const said = `Here is ${fileName}.`;
+    const clean = (withoutBankDetails(words ?? '') as string).trim();
+    let reply: Reply;
+    if (!who) {
+      reply = rules('add_a_document', text('I cannot see you in your organisation records, so I cannot add it.'));
+    } else if (!clean) {
+      reply = rules('add_a_document', text(NO_WORDS_IN_IT(title)));
+    } else {
+      /* Only one waits at a time: an older one still waiting is let go, with its words. */
+      await this.prisma.assistantProposal.updateMany({
+        where: { organizationId, personExternalId: who, kind: ORGANISATION_DOCUMENT_KIND, state: 'PARKED' },
+        data: { state: 'DROPPED', resolvedAt: new Date(), payload: {} as never },
+      });
+      const { body, summary } = whatTheDocumentSays(title, clean, name);
+      const proposal = await this.prisma.assistantProposal.create({
+        data: { organizationId, personExternalId: who, kind: ORGANISATION_DOCUMENT_KIND, state: 'PARKED', summary, payload: { title, fileName, words: clean } as never },
+      });
+      reply = rules('add_a_document', text(body), { type: 'proposal', proposalId: proposal.id, summary });
+    }
+    if (who) await this.remember(organizationId, who, said, reply).catch(() => undefined);
+    return reply;
+  }
+
+  /** The yes adds it to the handbook, if they are still an admin there. The no, or anything else, keeps nothing. */
+  private async resolveParkedOrganisationDocument(organizationId: string, personId: string, who: string, parked: any, message: string, where?: { groundId?: string; userId?: string | null; forceAddContext?: boolean }): Promise<Reply> {
+    const p = (parked.payload ?? {}) as { title?: string; fileName?: string; words?: string };
+    const title = p.title ?? 'The document';
+    const decision = resolveConfirmation(message);
+    const letGo = (state: 'DECLINED' | 'DROPPED' | 'ACCEPTED') =>
+      this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state, resolvedAt: new Date(), payload: { title, fileName: p.fileName ?? null } as never } });
+    if (decision === 'drop') {
+      await letGo('DROPPED');
+      return this.answer(organizationId, personId, who, message, true, where?.groundId, where?.userId, where?.forceAddContext);
+    }
+    if (decision === 'decline') {
+      await letGo('DECLINED');
+      return rules('add_a_document', text(NOT_ADDED(title)));
+    }
+    const name = await this.organisationNameOf(organizationId);
+    const me = await this.prisma.person.findFirst({ where: { organizationId, externalId: who, active: true }, select: { linkedUserId: true, email: true } });
+    const userId = me ? await theirSignIn(this.prisma, organizationId, me).catch(() => me.linkedUserId ?? null) : null;
+    if (!userId || !(await this.isAnAdminHere(organizationId, userId))) {
+      await letGo('DROPPED');
+      return rules('add_a_document', text(`${ONLY_AN_ADMIN_ADDS_ONE(name)} ${NOT_ADDED(title)}`));
+    }
+    const words = String(p.words ?? '');
+    const key = `ask-handbook:${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || parked.id}`;
+    await this.knowledge.ingestDocument(organizationId, { key, title, text: words, kind: 'handbook', sourceRef: p.fileName ?? null, sourceSystem: 'ask' });
+    await letGo('ACCEPTED');
+    return rules('add_a_document', text(ADDED_TO_THE_HANDBOOK(title, itsParts(title, words).count, name)));
+  }
+
   /**
    * PUTTING A DOCUMENT IN.
    *
@@ -1653,6 +1739,10 @@ export class AssistantService {
     if (!truth) {
       return rules('add_a_document', text('I cannot see you in your organisation records, so I do not know where to put it.'));
     }
+
+    /* AN ADMIN'S DOCUMENT FOR THE WHOLE ORGANISATION (fix list, item 3): when they say it is for everybody, or when there is no check-in of theirs to put it on. */
+    const anAdmin = !!userId && (await this.isAnAdminHere(organizationId, userId).catch(() => false));
+    if (anAdmin && !groundId && SAYS_IT_IS_FOR_THE_ORGANISATION.test(message)) return this.offerADocumentForTheOrganisation(organizationId);
 
     const open = truth.sessions.value.filter((s) => s.standing === 'open to you');
 
@@ -1698,6 +1788,7 @@ export class AssistantService {
       const runs = hers.find((g) => runsIt(userId, viewer, g as any));
       if (runs) chosen = { groundId: runs.id, label: runs.label };
     }
+    if (!chosen && anAdmin && !open.length) return this.offerADocumentForTheOrganisation(organizationId);
     if (!chosen) {
       const nowhere = whyThereIsNowhereToPutIt(open.length);
       if (nowhere) return rules('add_a_document', text(nowhere));
@@ -2432,6 +2523,10 @@ export class AssistantService {
      */
     if (parked.kind === 'document') {
       return this.resolveParkedDocument(organizationId, who, parked, message);
+    }
+    /* A document for the whole organisation: a yes adds it, anything else keeps nothing (fix list, item 3). */
+    if (parked.kind === ORGANISATION_DOCUMENT_KIND) {
+      return this.resolveParkedOrganisationDocument(organizationId, personId, who, parked, message, where);
     }
 
     /*
@@ -4708,6 +4803,15 @@ export class AssistantService {
     priorHistory?: { role: 'user' | 'assistant'; content: string }[],
   ): Promise<Reply> {
     const said = await answerFromTheDocuments({ prisma: this.prisma, engine: this.engine as any }, { organizationId, userId, groundId, question });
+    /*
+     * NO DOCUMENT TO OPEN, BUT THE HANDBOOK SAYS (fix list, item 3). Found live: Grace added the staff handbook through
+     * Ask, asked "What is our travel policy?", and read "There are no documents here that you can open yet ... Add one
+     * with Choose a file". What the handbook says about it is answered instead, as it is written.
+     */
+    if (said === NO_DOCUMENTS_TO_READ && who) {
+      const { cards } = await this.knowledge.retrieve(organizationId, who, question).catch(() => ({ cards: [] as unknown[] }));
+      if (cards.length) return this.howWeWork(organizationId, who, question);
+    }
     if (who && groundId && priorHistory?.length) {
       await this.prisma.assistantProposal.create({
         data: { organizationId, personExternalId: who, kind: 'context_turn', summary: priorHistory[priorHistory.length - 1]?.content ?? '', payload: { groundId, history: priorHistory } as never },

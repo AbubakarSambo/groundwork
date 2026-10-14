@@ -131,8 +131,9 @@ describe('and every other way in goes through the same function', () => {
     expect(DOCS).toMatch(/private async extractContent\(file: Express\.Multer\.File\): Promise<string> \{\s*return withoutBankDetails\(await this\.readTheText\(file\)\);/);
     /* readTheText is called from extractContent and nowhere else. */
     expect(DOCS.match(/this\.readTheText\(/g)).toHaveLength(1);
-    /* Both uploads, the invite link's included, read the file only that way. */
-    expect(DOCS.match(/await this\.extractContent\(file\)/g)).toHaveLength(2);
+    /* Both uploads, the invite link's included, and an admin's document for the whole organisation read through Ask (fix list, item 3), read the file only that way. */
+    expect(DOCS.match(/await this\.extractContent\(file\)/g)).toHaveLength(3);
+    expect(DOCS).toMatch(/async textOutOf\(file: Express\.Multer\.File\): Promise<string> \{\s*this\.refuseWhatCannotBeRead\(file\);\s*return \(await this\.extractContent\(file\)\) \?\? '';/);
     expect(DOCS).not.toMatch(/content:\s*file\.buffer/);
   });
 
