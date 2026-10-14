@@ -164,5 +164,5 @@ export function saidBothNumbers(reply: string, gap: WhatDoesNotMeet): boolean {
 
 /** The question the product asks when the model will not. Same decision as the date. */
 export function theQuestionAboutTheNumbers(gap: WhatDoesNotMeet): string {
-  return `This check-in is aiming at ${gap.objective.toLocaleString('en-US')}. You have said ${gap.theirs.toLocaleString('en-US')} - is that your own part of it, or is the ${gap.objective.toLocaleString('en-US')} something else?`;
+  return `This check-in is aiming at ${gap.objective.toLocaleString('en-US')}. You said ${gap.theirs.toLocaleString('en-US')}. Is that your own part of it, or is the ${gap.objective.toLocaleString('en-US')} something else?`;
 }

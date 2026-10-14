@@ -79,7 +79,7 @@ export const THE_FIRST_QUESTION: Record<GroundScenario, TheFirstQuestion> = {
     until: 'both names or roles, what the role covers, and the last day of the handover',
   },
   CONTRACT_REVIEW: {
-    ask: 'What are you about to sign, and who with?',
+    ask: 'What are you about to sign, and who is it with?',
     until: 'what the agreement is for, who the other side is, and when it is due to be signed',
   },
   IMPLEMENTATION_TRACKING: {
@@ -108,7 +108,7 @@ export const THE_FIRST_QUESTION: Record<GroundScenario, TheFirstQuestion> = {
     until: 'what the goals are, who is involved, and the period they run over',
   },
   WORKPLAN_BUDGET: {
-    ask: 'What is the plan for, and what resources do you actually have?',
+    ask: 'What is the plan for, and what money and people do you actually have for it?',
     until: 'the period, who owns which part, and the money or people available',
   },
   PULSE_CHECK: {
@@ -121,11 +121,11 @@ export const THE_FIRST_QUESTION: Record<GroundScenario, TheFirstQuestion> = {
    * this is the shortest `until` in the file on purpose.
    */
   TEAM_UPDATES: {
-    ask: 'What is the one thing you want to ask them? Your words - they will answer exactly this.',
+    ask: 'What is the one thing you want to ask them? They will answer exactly what you write.',
     until: 'the one line they are answering, who is answering it, and how often you want it',
   },
   REALIGN_TEAM: {
-    ask: 'Who do you need to realign with, and what do you think you see differently?',
+    ask: 'Who do you need to get on the same page with, and what do you think you each see differently?',
     until: 'who the other person is and what the disagreement is actually about',
   },
   /* The prototype's own words for this situation's first question (B1, start-chat.txt, "Help someone get back on track"), used exactly (fix list, item 7). */
@@ -134,7 +134,7 @@ export const THE_FIRST_QUESTION: Record<GroundScenario, TheFirstQuestion> = {
     until: 'the person, what is slipping specifically, and how long this has been going on',
   },
   BOARD_STRATEGY: {
-    ask: 'Who is on the leadership team, and what is the strategic question in front of you?',
+    ask: 'Who is on the leadership team, and what is the big question you have to decide?',
     until: 'who is in the room, what has to be decided, and when',
   },
   COHORT_CHECK: {
@@ -155,7 +155,7 @@ export const THE_FIRST_QUESTION: Record<GroundScenario, TheFirstQuestion> = {
      * nothing has been classified yet. So it asks the open question honestly rather than pretending
      * to know - and `classifyIntent` runs on their answer, after which the specific pack takes over.
      */
-    ask: 'What is going on? Tell me in your own words - a couple of sentences is plenty.',
+    ask: 'What is going on? Tell me in your own words. A couple of sentences is enough.',
     until: 'enough of the situation to know what it is, who is in it, and why it matters now',
   },
   DISCOVERY: {
@@ -186,7 +186,7 @@ export function theSetupPackFor(
    */
   const ask =
     scenario === GroundScenario.COHORT_CHECK && moment === GroundMoment.STARTING
-      ? 'Who are you onboarding, and what are they all starting?'
+      ? 'Who is starting, and what are they each starting on?'
       : q.ask;
 
   /**

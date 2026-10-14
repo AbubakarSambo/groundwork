@@ -466,19 +466,7 @@ export interface EntryReport {
   leadsReveal?: TheLeadsReveal | null;
 }
 
-const SCENARIO_OPENERS: Record<string, string> = {
-  'New hire':         'You are setting up a new hire situation. Good moment to use Groundwork. This is exactly when getting aligned early pays off, before anyone interprets things differently. It takes about ten minutes.\n\nTell me a little about it. Who is the new hire, and what do you want to get right from the start?',
-  'New project':      'You are setting up a new project. Good moment to use Groundwork. Getting everyone on the same page at the start prevents a lot of friction later. It takes about ten minutes.\n\nTell me a little about it. Who is involved, and what do you want to be clear about before you begin?',
-  'New board member': 'You are setting up a new board member situation. Good moment to use Groundwork. Getting expectations explicit early makes the relationship work better for everyone. It takes about ten minutes.\n\nTell me a little about it. Who is coming on, and what do you most want to get right?',
-  'New partner':      'You are setting up a new partner relationship. Good moment to use Groundwork. Getting both sides of the picture now prevents misalignment later. It takes about ten minutes.\n\nTell me a little about it. Who is the partner, and what matters most to get right from the start?',
-  'Contract renewal': 'You are looking at a contract renewal. Good moment to use Groundwork. Hearing from both people before anyone negotiates keeps things grounded in what actually happened. It takes about ten minutes.\n\nTell me a little about it. What is the relationship, and what do you want this to show?',
-  'New direction':                    'You are navigating a new direction. Good moment to use Groundwork. Getting everyone aligned on what the direction means prevents different people walking away with different interpretations. It takes about ten minutes.\n\nTell me a little about it. What is changing, and who needs to be on the same page?',
-  'Align OKRs across teams':          'You are aligning OKRs across teams. Good moment to use Groundwork. Getting each person\'s objectives and key results down independently surfaces the gaps and overlaps before the planning cycle locks in. It takes about ten minutes.\n\nTell me a little about it. What period are you planning for, and which teams are involved?',
-  'Build aligned workplan & budgets': 'You are building aligned workplans and budgets. Good moment to use Groundwork. Getting each person\'s plan down independently shows where the work is coherent and where it is not before anyone starts executing. It takes about ten minutes.\n\nTell me a little about it. What period are you planning for, and who needs to submit a plan?',
-  'Alignment pulse check':            'You are running an alignment pulse check. Good moment to use Groundwork. A quick independent read from each person shows where things are moving and where they are stuck, without a meeting. It takes about ten minutes.\n\nLet\'s start. What is going well right now?',
-  'Realign team':                     'You are realigning a team. Good moment to use Groundwork. Getting each person\'s current read on where things stand, independently and before the group talks, is the fastest way to find out what the real gap is. It takes about ten minutes.\n\nTell me a little about it. What shifted, and what does the team need to agree on?',
-  'PIP':                              'You are opening a performance improvement ground. Good moment to use Groundwork. Hearing from both people independently, the concern and the person\'s understanding of it, gives the process a fair foundation. It takes about ten minutes.\n\nTell me a little about it. What is the concern, and what does success look like at the end of this period?',
-};
+/* The eleven openers named by a card's label were never reached (only the anchor asks for an opener), and were removed with Hafsah's yes (fix list, item 7, docs/question-wording.md). Any other situation is opened by DEFAULT_OPENER. */
 
 const DEFAULT_OPENER = "Welcome to Groundwork. This is a space to build a clear, shared record of a working relationship or situation, one that captures each person's account independently and then shows you where you agree, where you differ, and what the gap is. It takes about ten minutes.\n\nThe best way to see how it works is to try it on something real. Tell me what is on your mind. Who is involved, and what are you trying to get right?";
 
@@ -691,7 +679,6 @@ export class EntryService {
   async opener(scenario?: string): Promise<string> {
     /* The anchor's opening is its scenario's content, served here like any scenario's, and only while its switch is on (decision 114). */
     if (isTheAnchorScenario(scenario) && (await theAnchorScenarioIsOn(this.prisma))) return THE_ANCHOR_OPENING_TEXT;
-    if (scenario && SCENARIO_OPENERS[scenario]) return SCENARIO_OPENERS[scenario];
     return DEFAULT_OPENER;
   }
 
@@ -1003,7 +990,7 @@ Your job is to gather these things through natural conversation:
    ASK IT SO A TEAM OR A DEPARTMENT IS A VALID ANSWER, NOT ONLY A LIST OF NAMES. "Who else is
    making that happen?" reads as a demand for individuals, and somebody whose honest answer is
    "the ops team" or "finance, mostly" then feels they have answered wrongly. Ask it as
-   "Who else is part of this - a person, a team, another department?" and take whichever they give.
+   "Who else is part of this? It can be a person, a team or another department." and take whichever they give.
    ORGANISATIONS ARE NOT PEOPLE, AND THAT IS ABOUT WHO CHECKS IN, NOT ABOUT WHOSE NAME THEY MAY
    SAY FIRST. "The ops team" is a complete answer to who else is part of this. What it is not is
    somebody who can answer a check-in, so the follow-up is about that and is asked once.

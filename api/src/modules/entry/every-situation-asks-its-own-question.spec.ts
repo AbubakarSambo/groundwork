@@ -93,8 +93,8 @@ describe('the block that reaches the prompt', () => {
   it('asks a group being onboarded a different question from a group being read', () => {
     const onboarding = theSetupPackFor(GroundScenario.COHORT_CHECK, GroundMoment.STARTING);
     const ongoing = theSetupPackFor(GroundScenario.COHORT_CHECK, null);
-    expect(onboarding).toContain('Who are you onboarding');
-    expect(ongoing).not.toContain('Who are you onboarding');
+    expect(onboarding).toContain('Who is starting, and what are they each starting on?');
+    expect(ongoing).not.toContain('Who is starting, and what are they each starting on?');
   });
 });
 

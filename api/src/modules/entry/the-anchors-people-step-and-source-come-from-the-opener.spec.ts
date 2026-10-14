@@ -31,6 +31,6 @@ describe('what the opener carries beside its words', () => {
     expect(off.reply).toBe(await entry(false).opener(undefined));
     const other = await entry(true).openerWithItsRules('New hire');
     expect('thePeopleStep' in other).toBe(false);
-    expect(other.reply).toMatch(/^You are setting up a new hire situation/);
+    expect(other.reply).toMatch(/^Welcome to Groundwork\./); /* The label openers were never reached and were removed (Hafsah, 14 October): any other situation opens on the ordinary opener. */
   });
 });

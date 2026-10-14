@@ -36,7 +36,7 @@ describe('the entry chat\'s opening text', () => {
   it('is the ordinary opener with the switch off, and other scenarios are unchanged', async () => {
     const plain = await entry(false).opener(undefined);
     expect(await entry(false).opener('Help my team understand')).toBe(plain);
-    expect(await entry(true).opener('New hire')).toMatch(/^You are setting up a new hire situation/);
+    expect(await entry(true).opener('New hire')).toMatch(/^Welcome to Groundwork\./); /* The label openers were never reached and were removed (Hafsah, 14 October): any other situation opens on the ordinary opener. */
   });
 });
 
