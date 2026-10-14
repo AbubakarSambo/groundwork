@@ -115,7 +115,7 @@ describe('and it reaches the prompt the model is actually given', () => {
   it('takes the label the picker sends as well as the enum value', () => {
     /* Both doors send a key today, but the entry chat has historically sent a card label through
        SCENARIO_MAP, and a silently unmatched value would put the generic question back. */
-    expect(buildSetupPrompt(base, 'PIP')).toContain('Who is this about');
+    expect(buildSetupPrompt(base, 'PIP')).toContain('Who is it, and what were they meant to be delivering?');
   });
 
   it('leaves the prompt alone for a situation nobody has picked', () => {
