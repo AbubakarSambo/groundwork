@@ -65,6 +65,9 @@ export interface PricingPlanRow {
   /** Null means unlimited. Editable here, because a cap only reachable by SQL is a cap that drifts. */
   memberCap: number | null
   hasStripePrice: boolean
+  /** Fix list item 6: an extra seat a month, and WhatsApp a month for each person who used it. Null where not sold by itself. */
+  extraSeatCents?: number | null
+  whatsappPersonCents?: number | null
   updatedAt: string
 }
 
@@ -187,7 +190,7 @@ export const adminApi = {
     apiClient.patch<AdminAnchorTrial>('/admin/pricing/anchor-trial', { on }).then(r => r.data),
 
   /** Either field alone, or both. `memberCap: null` means unlimited, which is a value not an absence. */
-  setPlanLimits: (plan: SubscriptionPlan, body: { amountCents?: number; memberCap?: number | null }) =>
+  setPlanLimits: (plan: SubscriptionPlan, body: { amountCents?: number; memberCap?: number | null; extraSeatCents?: number | null; whatsappPersonCents?: number | null }) =>
     apiClient.patch<PricingPlanRow[]>(`/admin/pricing/${plan}`, body).then(r => (Array.isArray(r.data) ? r.data : [])),
 
   /**

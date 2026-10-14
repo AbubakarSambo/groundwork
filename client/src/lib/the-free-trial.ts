@@ -15,5 +15,5 @@ export function theFreeTrialSentence(trial: FreeTrial | null | undefined): strin
   if (!trial?.on) return null
   if (!Number.isInteger(trial.teamsUnder) || !Number.isInteger(trial.months) || trial.teamsUnder < 2 || trial.months < 1) return null
   const length = trial.months === 1 ? '1 month' : `${trial.months} months`
-  return `Teams of fewer than ${trial.teamsUnder} people get ${length} free. No card needed.`
+  return `Teams of fewer than ${trial.teamsUnder} people get ${length} free, WhatsApp included, no card required.`
 }

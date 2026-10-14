@@ -1093,7 +1093,9 @@ export class BillingService {
     const whatsappOn = !!wa && (wa.addOnOn || wa.inTheFreeWhatsAppMonth);
     const usedIt = wa?.peopleUsedIt ?? 0;
     const free = whatsappOn && !wa?.charged;
-    const month = row ? thisMonth(row, people, { on: whatsappOn, usedIt, free, flatCents: wa?.flatKept ? wa.addOnCents : null }) : null;
+    /* The old flat WhatsApp price holds only while no seat is added past the plan (fix list item 6). */
+    const flatHolds = !!wa?.flatKept && !!row && extraSeatsOn(row, people) === 0;
+    const month = row ? thisMonth(row, people, { on: whatsappOn, usedIt, free, flatCents: flatHolds ? wa!.addOnCents : null }) : null;
 
     let lines: Array<{ says: string; amount: string }> | null = null;
     let total: { says: string; amount: string } | null = null;
@@ -1156,7 +1158,7 @@ export class BillingService {
         };
       }),
       forHowMany: `For ${people}`,
-      numbers: { whatsappOn, whatsappUsedIt: usedIt, whatsappFree: free, whatsappFlatCents: wa?.flatKept ? wa.addOnCents ?? null : null },
+      numbers: { whatsappOn, whatsappUsedIt: usedIt, whatsappFree: free, whatsappFlatCents: flatHolds ? wa!.addOnCents ?? null : null },
     };
   }
 
@@ -1345,7 +1347,8 @@ export class BillingService {
         ? (invoices ?? []).map((i: any) => ({ paidOn: i.periodStart, amountCents: i.amountCents, currency: i.currency }))
         : undefined,
       startedWith: includeUsage ? theSizeItStartedWith(org as any) : undefined,
-      month: includeUsage ? await this.whatAMonthSays(organizationId, peopleCount, covers, org.name).catch((err: any) => { this.logger.warn(`Could not work out this month for ${organizationId}: ${err?.message}`); return null; }) : undefined,
+      /* Only once the new pricing is switched on (the free trial's switch, release step 13a); until then the page is as before. */
+      month: includeUsage && (await this.pricing.getFreeTrial?.().catch(() => null))?.on ? await this.whatAMonthSays(organizationId, peopleCount, covers, org.name).catch((err: any) => { this.logger.warn(`Could not work out this month for ${organizationId}: ${err?.message}`); return null; }) : undefined,
     };
   }
 

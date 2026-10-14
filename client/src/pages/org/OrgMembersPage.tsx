@@ -1,5 +1,6 @@
 import { WhoCanJoin } from './WhoCanJoin'
 import { Link, useNavigate } from 'react-router-dom'
+import { useTheNextSeat } from '@/components/gw/this-adds-a-seat'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/api/client'
 import { authApi } from '@/api/auth'
@@ -112,6 +113,7 @@ export function OrgMembersPage() {
     retry: false,
   })
   const people = seatCount.data?.people
+  const nextSeat = useTheNextSeat()
   /* Unknown until it answers: then the card says what it always said, never "there is room". */
   const seatsFree: number | null = !people ? 0 : people.cap == null ? null : Math.max(0, people.cap - people.count)
   const seatQueue = useQuery({
@@ -148,7 +150,12 @@ export function OrgMembersPage() {
   /* One row per person waiting, a red edge, "<email> is on <check-in> but has no seat" and how many
      seats are taken, filled from what the server sends. No buttons on the rows: the warning's one
      action is the quiet text link under them (Hafsah, 30 September). */
-  const seatsTakenSaying = people?.cap != null ? `${people.count} of ${people.cap} seats are taken.` : null
+  /* Fix list item 6: past the plan's seats, the rest are extra seats, said as such rather than "27 of 20". */
+  const seatsTakenSaying = people?.cap == null
+    ? null
+    : people.count > people.cap && !!nextSeat.data?.addsASeat
+      ? `${people.count} seats are taken. Your plan includes ${people.cap}, and ${people.count - people.cap} ${people.count - people.cap === 1 ? 'is an extra seat' : 'are extra seats'}.`
+      : `${people.count} of ${people.cap} seats are taken.`
 
   return (
     <Page>

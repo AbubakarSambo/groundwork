@@ -48,6 +48,8 @@ export interface BillingStatus {
    * "When Baridi Appliances was set up, it had 20 or more people, so it began on a plan."
    */
   startedWith?: { said: 'fewer' | 'more'; line: number; says: string } | null
+  /** Admin only (fix list item 6): this month, line by line, each plan for your people, and a cheaper plan. Every sentence is the server's. */
+  month?: WhatAMonthSays | null
 }
 
 export interface ContributorCode {
@@ -176,7 +178,27 @@ export interface LivePricingRow {
   /** Null means unlimited. Undefined means it has not loaded yet. */
   memberCap: number | null
   hasStripePrice: boolean
+  /** Fix list item 6: each seat past `memberCap`, a month ($5), and WhatsApp a month for each person who used it ($4). Null where not sold by itself. */
+  extraSeatCents?: number | null
+  whatsappPersonCents?: number | null
   updatedAt: string
+}
+
+export interface WhatAMonthSays {
+  people: number
+  plan: SubscriptionPlan | null
+  included: string | null
+  peopleSays: string
+  lines: { says: string; amount: string }[] | null
+  total: { says: string; amount: string } | null
+  free: string | null
+  priceChanges: string
+  cheaper: { plan: SubscriptionPlan; says: string; button: string } | null
+  plansNote: string | null
+  whatsappRate: string | null
+  plans: { plan: SubscriptionPlan; name: string; price: string; includes: string; extraSeats: string | null; whatsapp: string | null; forYou: string | null; yours: boolean }[]
+  forHowMany: string
+  numbers: { whatsappOn: boolean; whatsappUsedIt: number; whatsappFree: boolean; whatsappFlatCents: number | null }
 }
 
 export interface LivePricing {
@@ -250,6 +272,10 @@ export interface WhatsAppBillingAdmin {
     /** "WhatsApp is free until 13 November 2026. To keep it after that, add it to your subscription with the switch above." */
     freeMonth?: string | null
     price: string | null
+    /** Fix list item 6, s73's WhatsApp card. */
+    whoIsCharged?: string | null
+    whoIsChargedMore?: string | null
+    people?: string | null
     charge: string
     use: string
     atTheLimit: string | null
@@ -346,6 +372,10 @@ export const billingApi = {
     apiClient.get<CodeShareCard>(`/billing/contributor-codes/${codeId}/share-card`).then(r => r.data),
 
   /** WhatsApp, the paid add-on (decision 78). The server decides the shape; see `WhatsAppBilling` above. */
+  /** Fix list item 6: whether the next invitation adds a paid seat, and "This adds a seat: +$5 a month" when it does. */
+  nextSeat: () =>
+    apiClient.get<{ addsASeat: boolean; says: string | null }>('/billing/next-seat', { skipServerErrorToast: true } as any).then(r => r.data),
+
   getWhatsApp: () =>
     apiClient.get<WhatsAppBilling>('/billing/whatsapp').then(r => r.data),
 

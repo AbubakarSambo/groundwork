@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { useTheNextSeat } from '@/components/gw/this-adds-a-seat'
 import { authApi } from '@/api/auth'
 import { apiClient } from '@/api/client'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
@@ -30,7 +31,7 @@ function whenAsked(at: string | undefined, now = new Date()): string {
 }
 
 /** "Wairimu invited them to Sales team, Q3, yesterday. Letting them in takes a seat, and you have 73 free." */
-export function whoAskedForThem(p: Waiting, seatsFree: number | null, now = new Date()): string {
+export function whoAskedForThem(p: Waiting, seatsFree: number | null, now = new Date(), addsASeat: string | null = null): string {
   const by = p.addedBy ? p.addedBy.split(' ')[0] : 'Someone who is no longer here'
   const to = p.forCheckIn ? ` to ${p.forCheckIn}` : ''
   const when = whenAsked(p.waitingSince, now)
@@ -39,7 +40,10 @@ export function whoAskedForThem(p: Waiting, seatsFree: number | null, now = new 
    * seat; you have N free." joined two facts with a semicolon as if they were the same clause, when
    * the second is the reason letting them in matters.
    */
-  const seat = seatsFree === null
+  /* Fix list item 6: past the plan's seats, letting them in adds a paid seat, and the price is said first. */
+  const seat = addsASeat
+    ? `Letting them in takes a seat. ${addsASeat}.`
+    : seatsFree === null
     ? 'Letting them in takes a seat.'
     : `Letting them in takes a seat, and you have ${seatsFree === 0 ? 'none' : seatsFree} free.`
   return `${by} invited them${to}${when ? `, ${when}` : ''}. ${seat}`
@@ -48,6 +52,7 @@ export function whoAskedForThem(p: Waiting, seatsFree: number | null, now = new 
 export function WaitingToBeLetIn({ orgName }: { orgName: string }) {
   const qc = useQueryClient()
   const waiting = useQuery({ queryKey: ['who-is-waiting'], queryFn: authApi.whoIsWaiting })
+  const nextSeat = useTheNextSeat()
   const status = useQuery({
     queryKey: ['billing-status-people'],
     queryFn: () => apiClient.get('/billing/status').then((r: any) => (r.data.data ?? r.data) as { people?: { count: number; cap: number | null }; subscription?: { plan: string | null } }),
@@ -97,7 +102,7 @@ export function WaitingToBeLetIn({ orgName }: { orgName: string }) {
               key={p.id}
               kind="look"
               title={p.name ? `${p.name}, ${p.email}` : p.email}
-              detail={whoAskedForThem(p, seatsFree)}
+              detail={whoAskedForThem(p, seatsFree, new Date(), nextSeat.data?.addsASeat ? nextSeat.data.says : null)}
               /*
                 HAFSAH, 30 SEPTEMBER: NOT A SECOND PRIMARY. The prototype draws "Let him in" navy
                 (people.jpg), but on this rebuilt page the People screen's one primary is "Send

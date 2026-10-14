@@ -202,7 +202,7 @@ describe('Grace, on the free plan', () => {
   it('reads the one shared trial sentence once the trial is switched on', async () => {
     m.pricing = { ...m.pricing, trial: TRIAL_ON }
     renderIt()
-    await waitFor(() => expect(text()).toContain('Teams of fewer than 20 people get 3 months free. No card needed.'))
+    await waitFor(() => expect(text()).toContain('Teams of fewer than 20 people get 3 months free, WhatsApp included, no card required.'))
   })
 })
 

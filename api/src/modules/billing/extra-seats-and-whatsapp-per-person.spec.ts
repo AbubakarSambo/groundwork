@@ -261,6 +261,11 @@ describe('Plan and billing, as Grace reads it', () => {
     expect(m.lines).toEqual([{ says: 'Growth', amount: '$400' }, { says: 'WhatsApp: switched off', amount: '$0' }]);
   });
 
+  it('while the new pricing is switched off, the page is as before: no month is served', async () => {
+    const w = world({ seats: 27, trial: OFF });
+    expect((await w.billing.getStatus('org-baridi', true)).month).toBeUndefined();
+  });
+
   it('a lead or a member is never served the month', async () => {
     const w = world({ seats: 27 });
     const status = await w.billing.getStatus('org-baridi', false);

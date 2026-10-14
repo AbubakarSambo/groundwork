@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { ThisAddsASeat } from '@/components/gw/this-adds-a-seat'
 import { toast } from 'sonner'
 import { apiClient } from '@/api/client'
 import { Section, Panel, Stack, TextArea, Select, Button, Note, Tag } from '@/components/gw/ui'
@@ -135,6 +136,7 @@ export function InvitePeople() {
             />
           </div>
           <Note>They’ll get an email with a link to set themselves up.</Note>
+          <ThisAddsASeat />
         </Stack>
       </Panel>
 
