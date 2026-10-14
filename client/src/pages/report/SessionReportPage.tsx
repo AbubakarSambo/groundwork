@@ -395,7 +395,22 @@ export default function SessionReportPage() {
             completed. Never the cross reference, which is what the half below is for.
           */}
           {/* A heading and a promise above an empty tinted box read as the product having lost the answers. Say the true thing. */}
-          {!isLoading && !isError && !data?.report && !(groundReport as any)?.soloArtifact && (
+          {/*
+            THE LEAD'S OWN REPORT, WHEN THERE ISN'T ONE (sales-first.md, section 2; the light prototype's s62).
+            "Your report is still being written. Your answers are saved" was not true for a lead who has not
+            checked in: there are no answers to save. The prototype's own words instead, with the two ways on.
+          */}
+          {!isLoading && !isError && !data?.report && !(groundReport as any)?.soloArtifact && amTheInitiator && !data?.finishedAt && data?.groundId && (
+            <Panel>
+              <Stack gap={10}>
+                <SubHeading>Own reports are private</SubHeading>
+                <Note>Each person’s own report is theirs alone. Yours appears here after your own check-in.</Note>
+                {!['CLOSED', 'RESOLVED', 'STALLED', 'PAUSED'].includes((ground as any)?.status) && <TheLeadsOwnWayIn groundId={data.groundId as string} />}
+                <Note>Your check-ins here are optional. Check in when you want your own view in the picture.</Note>
+              </Stack>
+            </Panel>
+          )}
+          {!isLoading && !isError && !data?.report && !(groundReport as any)?.soloArtifact && !(amTheInitiator && !data?.finishedAt) && (
             <Panel>
               <Note role="status">Your report is still being written. Your answers are saved; this fills in as soon as it is ready.</Note>
             </Panel>
@@ -653,6 +668,7 @@ export default function SessionReportPage() {
           <TheSessionsReport
             groundId={data.groundId}
             sessionNumber={data.sessionNumber}
+            light={(ground as any)?.kindOfWork === 'sales org'}
             totalInThisRound={ground ? whoIsInRound(((ground as any).participants ?? []), data.sessionNumber, (ground as any).scenario, (ground as any).checkIns ?? []).length : null}
           />
           {/* A self-correction shows up as a flagged, dated entry rather than being blended in
@@ -737,7 +753,7 @@ export default function SessionReportPage() {
         nothing here is drawn on a page that has refused the reader.
       */}
       {/* Decision 133: each report the lead reads ends with "Check in yourself" and "Add context". */}
-      {!isLoading && !isError && amTheInitiator && data?.groundId && !['CLOSED', 'RESOLVED', 'STALLED', 'PAUSED'].includes((ground as any)?.status) && (
+      {!isLoading && !isError && amTheInitiator && data?.groundId && !['CLOSED', 'RESOLVED', 'STALLED', 'PAUSED'].includes((ground as any)?.status) && !(!data?.report && !(groundReport as any)?.soloArtifact && !data?.finishedAt) && (
         <div className="gw-print-none">
           <TheLeadsOwnWayIn groundId={data.groundId as string} />
         </div>

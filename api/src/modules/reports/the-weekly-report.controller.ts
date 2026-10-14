@@ -2,6 +2,7 @@ import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { TheWeeklyReportService } from './the-weekly-report.service';
 import { CurrentUser } from '../../common';
+import { theWeeklyReportAtAGlance, withItsFacts } from './a-report-at-a-glance';
 
 @ApiTags('Reports')
 @ApiBearerAuth()
@@ -27,6 +28,7 @@ export class TheWeeklyReportController {
     const served = await this.weekly.read(groundId, { userId, role, organizationId }, new Date(), week ?? null);
     /* Change 6 (decision 133): the lead's reading of the week served is recorded, after the read was allowed. Never a rebuild. */
     await this.weekly.noteTheLeadRead(groundId, served?.weekStart ?? null, userId);
-    return served;
+    /* The light report's one fact for each folded line (sales-first.md, section 2, rule 3), from the week as this reader is served it. */
+    return withItsFacts(served, theWeeklyReportAtAGlance);
   }
 }

@@ -96,6 +96,8 @@ export const reportsApi = {
 
 /** `GET /grounds/:groundId/report/week`. See reportsApi.week above for how it is drawn. */
 export interface WeeklyReport {
+  /** The light report's one fact for each folded part, from the week as this reader is served it (api/src/modules/reports/a-report-at-a-glance.ts). */
+  inThisReport?: { threeInARow?: string; saidAndProof?: string; whatChanged?: string }
   weekStart: string | null
   builtAt: string | null
   saying?: string
@@ -126,6 +128,8 @@ export interface WithheldSessionReport {
 
 /** The promised per-session shape. See api/src/modules/reports/the-session-report.ts. */
 export interface SessionShapedReport {
+  /** The light report's one fact for each folded part, from the report as this reader is served it (api/src/modules/reports/a-report-at-a-glance.ts). */
+  inThisReport?: { reliesOn?: string; eachPersonDid?: string; picture?: string; notRaisedAgain?: string; goodLooksLike?: string; sitsUnder?: string }
   sessionNumber: number
   state: 'forming' | 'final'
   whereThingsStand: { agreed: number; stillOpen: number; saying: string; settled: string[]; open: string[] }
