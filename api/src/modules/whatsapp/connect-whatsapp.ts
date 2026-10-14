@@ -27,8 +27,16 @@ export function aConnectLink(displayNumber: string): string {
   return `https://wa.me/${displayNumber.replace(/\D/g, '')}?text=Hi`;
 }
 
-/** The sentence the invitation email carries, with the number. */
-export const youCanAlsoAnswerOnWhatsApp = (number: string) => `You can also answer on WhatsApp: send Hi to ${number}.`;
+/**
+ * "YOU CAN ALSO CHECK IN ON WHATSAPP" (Hafsah's fix list, item 5, 14 October 2026: "People can't easily tell they can check
+ * in on WhatsApp. Make it clearly visible wherever someone is about to check in or is reminded to ... One short line and
+ * a clear way to connect"). The same line on the invitation, the reminders, the check-in page, the end of a session and
+ * Today, always with "Connect WhatsApp", and only where it is offered (connectWhatsAppFor).
+ */
+export const YOU_CAN_ALSO_CHECK_IN_ON_WHATSAPP = 'You can also check in on WhatsApp.';
+
+/** The sentence an email carries, with the number: two full sentences, never joined with a colon. */
+export const youCanAlsoAnswerOnWhatsApp = (number: string) => `${YOU_CAN_ALSO_CHECK_IN_ON_WHATSAPP} Send Hi to ${number}.`;
 
 export async function connectWhatsAppFor(
   prisma: any,

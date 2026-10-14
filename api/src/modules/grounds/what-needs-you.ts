@@ -78,6 +78,8 @@ export interface WhatNeedsYou {
   comingUp: ComingUp[];
   /** For an admin whose organisation is on its free trial: "Your free trial has started. It ends on 12 November 2026." */
   freeTrial?: string | null;
+  /** "You can also check in on WhatsApp.", with "Connect WhatsApp", when one of the reader's own check-ins is there to answer (fix list, item 5). */
+  checkInOnWhatsApp?: { says: string; link: string; label: string } | null;
 }
 
 /** The parts of a check-ins list row this reads. Everything else on the row is ignored. */

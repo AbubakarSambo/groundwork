@@ -1,3 +1,4 @@
+import { CheckInOnWhatsApp } from '@/components/gw/CheckInOnWhatsApp'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
 import { todayApi, type Need } from '@/api/today'
@@ -197,6 +198,10 @@ export function TodayPage() {
                   />
                 ))}
               </EdgeList>
+            )}
+            {/* Under what needs you, when one of those is a check-in to answer (fix list, item 5). The server decides. */}
+            {data?.checkInOnWhatsApp && (
+              <CheckInOnWhatsApp link={data.checkInOnWhatsApp.link} label={data.checkInOnWhatsApp.label} says={data.checkInOnWhatsApp.says} testId="today-check-in-on-whatsapp" />
             )}
             {aSuiteIsOnForYou && <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/mine">{requestsLinkLabel}</Link></p>}
             <QueueLink userId={user?.id} />

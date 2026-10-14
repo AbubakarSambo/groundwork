@@ -1,8 +1,7 @@
 import { reportAsText } from '../public-api/a-whatsapp-message-is-routed';
 import { TEMPLATES, fill } from '../whatsapp/a-message-outside-the-window';
 import {
-  theCheckInIsCompleteSaying, enoughToCloseSaying, theReminderBody, THE_REMINDERS_IN_SIMPLER_WORDS, THE_EMAILS, THE_REPORT_IN_SIMPLER_WORDS,
-} from './what-is-sent-in-simpler-words';
+  theCheckInIsCompleteSaying, enoughToCloseSaying, theReminderBody, THE_REMINDERS_IN_SIMPLER_WORDS, THE_EMAILS, THE_REPORT_IN_SIMPLER_WORDS, THE_REMINDERS_IN_OUR_OWN_WORDS } from './what-is-sent-in-simpler-words';
 
 /**
  * WHAT A PERSON IS SENT AFTER THE CHECK-IN, WITH THE SWITCH OFF AND ON.
@@ -39,10 +38,12 @@ describe('the report on the phone', () => {
 });
 
 describe('a reminder, as the person reads it', () => {
-  it('is the approved body with the switch off', () => {
+  /* Changed with Hafsah's standing rule (14 October): the three templates that say five minutes are left as approved, and the normal message inside the 24 hours uses our own ten-minute words. */
+  it('is the approved body with the switch off, or our own ten-minute words where the template says five', () => {
     for (const kind of Object.keys(THE_REMINDERS_IN_SIMPLER_WORDS)) {
-      expect(theReminderBody(kind, TEMPLATES[kind].body, false)).toBe(TEMPLATES[kind].body);
+      expect(theReminderBody(kind, TEMPLATES[kind].body, false)).toBe(THE_REMINDERS_IN_OUR_OWN_WORDS[kind] ?? TEMPLATES[kind].body);
     }
+    expect(Object.keys(THE_REMINDERS_IN_OUR_OWN_WORDS).sort()).toEqual(['checkin-catch-up', 'checkin-open', 'closes-soon', 'your-view-matters']);
   });
   it('has the same blanks, in the same places, in the plainer form', () => {
     for (const kind of Object.keys(THE_REMINDERS_IN_SIMPLER_WORDS)) {

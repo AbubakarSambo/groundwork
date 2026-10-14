@@ -56,9 +56,26 @@ export const THE_REMINDERS_IN_SIMPLER_WORDS: Record<string, string> = {
   'anchor-follow-up': 'Hi {{1}}, last time you said you would {{2}}. How did it go? Your check-in for {{3}} is open. You can answer here.',
 };
 
-/** The body to send for a kind of reminder: the plainer one when the switch is on and there is one, otherwise the usual body. */
+/**
+ * OUR OWN WORDS INSIDE THE 24 HOURS (Hafsah, 14 October 2026: "Never change, rename or add to the WhatsApp templates that
+ * Meta has approved, not even their wording. Anything that needs different words goes in normal messages, sent within 24
+ * hours of the person writing, or by email."). Three approved templates say five minutes. Inside the 24 hours the message
+ * is a normal one, so it says about ten minutes here, with the same blanks in the same order; outside them, the approved
+ * template goes exactly as approved (a-message-outside-the-window.ts).
+ */
+export const THE_REMINDERS_IN_OUR_OWN_WORDS: Record<string, string> = {
+  'checkin-open': 'Hi {{1}}, your check-in for {{2}} is open. It takes about ten minutes, and you can answer right here. Reply START to begin.',
+  'checkin-catch-up': 'Hi {{1}}, your check-in for {{2}} is open. It takes about ten minutes, and you can answer right here. Reply START to begin.',
+  'closes-soon': 'Hi {{1}}, your check-in for {{2}} closes in an hour, at {{3}}. About ten minutes now means your view is part of this round.',
+  'your-view-matters': "Hi {{1}}, your check-in for {{2}} is still waiting. Your answers help {{3}} understand what's in your way, and where they can help. It takes about ten minutes, and you can answer here.",
+};
+
+/**
+ * The body sent as a normal message inside the 24 hours: the plainer one when the switch is on and there is one, otherwise
+ * our own words where a template's say something else, otherwise the usual body.
+ */
 export function theReminderBody(kind: string, usualBody: string, simplerWords?: boolean | null): string {
-  return (simplerWords && THE_REMINDERS_IN_SIMPLER_WORDS[kind]) || usualBody;
+  return (simplerWords && THE_REMINDERS_IN_SIMPLER_WORDS[kind]) || THE_REMINDERS_IN_OUR_OWN_WORDS[kind] || usualBody;
 }
 
 /**

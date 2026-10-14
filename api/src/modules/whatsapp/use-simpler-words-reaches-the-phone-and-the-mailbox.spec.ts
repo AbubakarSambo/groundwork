@@ -1,3 +1,4 @@
+import { THE_REMINDERS_IN_OUR_OWN_WORDS } from '../grounds/what-is-sent-in-simpler-words';
 import { EmailService } from '../email/email.service';
 import { TEMPLATES, fill } from './a-message-outside-the-window';
 import { theCheckInIsOpen, itIsDueTomorrow, itOpensSoon, itIsOverdue, theTeamIsAlmostIn, yourViewMatters, itFollowsUpTheirPromise } from './what-goes-to-a-phone';
@@ -17,9 +18,10 @@ describe('the reminders on WhatsApp', () => {
     theTeamIsAlmostIn(who, 3, 5, s), yourViewMatters(who, 'Wairimu', s), itFollowsUpTheirPromise(who, 'call the Quickmart buyer', s),
   ];
 
-  it('with the switch off or missing, every one is the approved body, word for word', () => {
+  /* Changed with Hafsah's standing rule (14 October): where an approved template says five minutes, the normal message inside the 24 hours says about ten minutes, in our own words with the same blanks. */
+  it('with the switch off or missing, every one is the approved body, word for word, or our own ten-minute words where the template says five', () => {
     for (const off of [undefined, null, false]) {
-      for (const n of all(off)) expect(n.text).toBe(fill(TEMPLATES[n.kind].body, n.params));
+      for (const n of all(off)) expect(n.text).toBe(fill(THE_REMINDERS_IN_OUR_OWN_WORDS[n.kind] ?? TEMPLATES[n.kind].body, n.params));
     }
   });
 

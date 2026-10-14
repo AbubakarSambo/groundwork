@@ -65,6 +65,8 @@ export interface WhatNeedsYou {
   comingUp: ComingUp[]
   /** For an admin while the organisation's free trial runs: one sentence with the day it ends. */
   freeTrial?: string | null
+  /** "You can also check in on WhatsApp.", with "Connect WhatsApp", when one of your own check-ins is there to answer and WhatsApp is on (fix list, item 5). */
+  checkInOnWhatsApp?: { says: string; link: string; label: string } | null
   /** Absent for everybody but a lead with something here to add (request 198 (b)). */
   forTheLead?: ForTheLead
 }
