@@ -141,7 +141,7 @@ describe('what Grace reads, from asking to the yes', () => {
     expect(reply.blocks.find((b: any) => b.type === 'proposal')).toMatchObject({ summary: "Add Staff handbook to Msingi Foods' handbook?" });
     expect(rows[0]).toMatchObject({ kind: 'organisation_document', state: 'PARKED' });
     expect(ingested).toEqual([]);
-    expect(remembered[0].said).toBe('I have added Staff handbook.pdf.');
+    expect(remembered[0].said).toBe('Here is Staff handbook.pdf.');
   });
 
   it('her yes adds it to the handbook', async () => {

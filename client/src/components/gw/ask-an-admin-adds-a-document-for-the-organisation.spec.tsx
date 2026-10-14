@@ -76,7 +76,7 @@ describe('Grace adds the staff handbook through Ask', () => {
 
     await waitFor(() => expect(askApi.addADocumentForTheOrganisation).toHaveBeenCalledWith(file))
     expect(documentsApi.upload).not.toHaveBeenCalled()
-    expect(await screen.findByText('I have added Staff handbook.pdf.')).toBeInTheDocument()
+    expect(await screen.findByText('Here is Staff handbook.pdf.')).toBeInTheDocument()
     expect(await screen.findByText(/I have read Staff handbook\. It has 3 parts\. They cover Leave, Expenses and Travel\./)).toBeInTheDocument()
     expect(screen.getByText(/Nothing is added yet\./)).toBeInTheDocument()
 

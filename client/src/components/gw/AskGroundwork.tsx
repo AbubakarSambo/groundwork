@@ -386,7 +386,7 @@ export function AskGroundwork({
       setReading(true)
       try {
         const reply = await askApi.addADocumentForTheOrganisation(file)
-        setSaid((s) => [...s, { from: 'you' as const, says: `I have added ${file.name}.` }, { from: 'groundwork' as const, reply }])
+        setSaid((s) => [...s, { from: 'you' as const, says: `Here is ${file.name}.` }, { from: 'groundwork' as const, reply }])
       } catch (err: unknown) {
         const msg = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message
         setProblem(typeof msg === 'string' ? msg : 'That did not upload. Try again.')

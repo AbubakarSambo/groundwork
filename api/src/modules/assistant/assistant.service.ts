@@ -1662,7 +1662,7 @@ export class AssistantService {
     const me = await this.prisma.person.findFirst({ where: { id: personId, organizationId }, select: { externalId: true } });
     const who = me?.externalId && !isAGuestsKey(me.externalId) ? me.externalId : null;
     const name = await this.organisationNameOf(organizationId);
-    const said = `I have added ${fileName}.`;
+    const said = `Here is ${fileName}.`;
     const clean = (withoutBankDetails(words ?? '') as string).trim();
     let reply: Reply;
     if (!who) {
