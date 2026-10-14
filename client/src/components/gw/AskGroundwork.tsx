@@ -20,6 +20,8 @@ const STILL_READING = 'Reading it now.'
 /** Recognised by Ask Groundwork whichever of the two upload routes sent it (docs/answers-from-engine.md,
     30 September, "a document's numbers, said back through Ask Groundwork"). */
 const SAID_AFTER_UPLOAD = "I've uploaded it."
+/** The picker's target when the document is for the whole organisation, not a check-in (the server's FOR_THE_ORGANISATION). */
+const FOR_THE_ORGANISATION = 'organisation'
 
 /**
  * THE NAME AND CAPTION, BEFORE `GET /ask` HAS ANSWERED (screen fault 5d). Loading, or held up by
@@ -379,6 +381,20 @@ export function AskGroundwork({
     uploadTarget.current = null
     if (!file || !groundId) return
     setProblem(null)
+    /* AN ADMIN'S DOCUMENT FOR THE WHOLE ORGANISATION (fix list, item 3): read and said back by the server in one step. */
+    if (groundId === FOR_THE_ORGANISATION) {
+      setReading(true)
+      try {
+        const reply = await askApi.addADocumentForTheOrganisation(file)
+        setSaid((s) => [...s, { from: 'you' as const, says: `I have added ${file.name}.` }, { from: 'groundwork' as const, reply }])
+      } catch (err: unknown) {
+        const msg = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message
+        setProblem(typeof msg === 'string' ? msg : 'That did not upload. Try again.')
+      } finally {
+        setReading(false)
+      }
+      return
+    }
     setReading(true)
     try {
       const uploaded = await documentsApi.upload(groundId, file)

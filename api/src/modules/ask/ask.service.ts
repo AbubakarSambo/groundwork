@@ -1,7 +1,9 @@
-import { askName, askNameOf, askFirstWelcome, ASK_CAPTION, ASK_ADD_LINE, askStarters, askStartersFor } from '../assistant/ask-name';
+import { askName, askNameOf, askFirstWelcome, ASK_CAPTION, ASK_ADD_LINE, ASK_ADMIN_ADD_LINE, askStarters, askStartersFor } from '../assistant/ask-name';
 import { contextIsInAskGroundwork, theOldContextChatIsOpen } from '../admin/what-is-hidden-at-release';
 import { whatWasSaid } from '../assistant/what-was-said-is-what-is-kept';
-import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { DocumentsService } from '../documents/documents.service';
+import { ONLY_AN_ADMIN_ADDS_ONE, aTitleFor } from '../assistant/a-document-for-the-whole-organisation';
 import { PrismaService } from '../prisma/prisma.service';
 import { AssistantService } from '../assistant/assistant.service';
 import { theCheckInsHeldForASeat } from '../participants/held-for-a-seat';
@@ -90,6 +92,8 @@ export class AskService {
     /* Only a guest's answers read these, and only as that guest: see answerTheGuest. */
     private readonly reports: ReportsService,
     private readonly grounds: GroundsService,
+    /* Only an admin's document for the whole organisation reads a file here (fix list, item 3). */
+    @Optional() private readonly documents?: DocumentsService,
   ) {}
 
   /**
@@ -292,8 +296,10 @@ export class AskService {
     const welcome = shown.canAsk && shown.turns.length === 0
       ? askFirstWelcome(organisationName, addsContext, { leaveIsOn: suitesOn.has('leave'), spendingIsOn: suitesOn.has('spend'), isAGuest: standing.is === 'guest' })
       : null;
+    const anAdmin = shown.canAsk && standing.is !== 'guest' ? await this.isAnAdminHere(asker) : false;
     const starters = shown.canAsk
       ? askStartersFor({
+          isAnAdmin: anAdmin,
           isAGuest: standing.is === 'guest',
           takesPartInOne: mine.some((g) => g.takesPart),
           hasOneToUse: mine.length > 0,
@@ -305,7 +311,7 @@ export class AskService {
       : [];
     /* Whether the old context chat on the check-in page still answers (release.oldContextChat). The screens stop drawing it when this is false. */
     const oldContextChatIsOpen = await theOldContextChatIsOpen(this.prisma);
-    return { ...shown, askName: name, caption: ASK_CAPTION, addLine: addsContext ? ASK_ADD_LINE : null, addsContext, oldContextChatIsOpen, welcome, starters };
+    return { ...shown, askName: name, caption: ASK_CAPTION, addLine: addsContext ? ASK_ADD_LINE : anAdmin && contextIsHere ? ASK_ADMIN_ADD_LINE : null, addsContext, oldContextChatIsOpen, welcome, starters };
   }
 
   /**
@@ -636,6 +642,29 @@ export class AskService {
     }
     /* `groundId` is read only by the `add_context` lane - see AssistantService.respond. */
     return this.assistant.respond(asker.organizationId, me.id, input.message, input.groundId);
+  }
+
+  /** Whether the asker is an admin of the organisation they are asking in. Read from the server, never from the screen. */
+  private async isAnAdminHere(asker: Asker): Promise<boolean> {
+    const m = await this.prisma.organizationMembership.findUnique({
+      where: { userId_organizationId: { userId: asker.userId, organizationId: asker.organizationId } },
+      select: { role: true },
+    }).catch(() => null);
+    return m?.role === 'ADMIN';
+  }
+
+  /**
+   * AN ADMIN'S DOCUMENT FOR THE WHOLE ORGANISATION (fix list, item 3). The file is read and what it holds is said back
+   * with a yes and a no; nothing is added until the yes. Refused to anybody who is not an admin here, a guest included.
+   */
+  async addADocumentForTheOrganisation(asker: Asker, file: Express.Multer.File) {
+    const name = (await this.prisma.organization.findUnique({ where: { id: asker.organizationId }, select: { name: true } }).catch(() => null))?.name ?? null;
+    if ((await this.isAGuest(asker)) || !(await this.isAnAdminHere(asker))) throw new ForbiddenException(ONLY_AN_ADMIN_ADDS_ONE(name));
+    if (!this.documents) throw new ConflictException('Documents cannot be read here at the moment, so try again in a little while.');
+    const me = await this.whoIsAsking(asker);
+    const words = await this.documents.textOutOf(file);
+    const fileName = (file?.originalname ?? 'the document').trim();
+    return this.assistant.sayBackADocumentForTheOrganisation(asker.organizationId, me.id, fileName, aTitleFor(fileName), words);
   }
 
   /**

@@ -25,6 +25,8 @@ export function askName(organisationName?: string | null): string {
 export const ASK_CAPTION = 'Ask about the company, your work or your check-ins.';
 /** The one line under the caption. */
 export const ASK_ADD_LINE = 'You can also add context or documents to your check-ins here.';
+/** The same line for an admin who runs no check-in: their documents are for the whole organisation (fix list, item 3). */
+export const ASK_ADMIN_ADD_LINE = 'You can also add a document for the whole organisation here.';
 
 /**
  * What the first time somebody opens Ask says (docs/ask-definition.md, "The first time you open it").
@@ -127,6 +129,8 @@ export interface WhoIsAsking {
   hasOneToUse: boolean;
   /** They run one, and so may add context or a document to it. */
   runsOne: boolean;
+  /** An admin of the organisation, who may add a document for the whole of it (fix list, item 3). Absent reads as no. */
+  isAnAdmin?: boolean;
   leaveIsOn: boolean;
   spendingIsOn: boolean;
   contextIsHere: boolean;
@@ -139,6 +143,7 @@ export function askStartersFor(o: WhoIsAsking): string[] {
   if (o.takesPartInOne) out.push('When is my next check-in?');
   if (!o.isAGuest) out.push("What are the company's priorities right now?");
   if (!o.isAGuest && o.runsOne && o.contextIsHere) out.push('Add a document or some context to my check-in.');
+  else if (!o.isAGuest && o.isAnAdmin && o.contextIsHere) out.push('Add a document for the whole organisation.');
   if (!o.isAGuest && (o.leaveIsOn || o.spendingIsOn)) {
     out.push(o.leaveIsOn && o.spendingIsOn ? 'Ask for leave, or to spend money.' : o.leaveIsOn ? 'Ask for leave.' : 'Ask to spend money.');
   }

@@ -77,6 +77,15 @@ export const askApi = {
     apiClient
       .post<AskReply>('/ask', { message, ...(groundId ? { groundId } : {}), ...(openedFrom ? { openedFrom } : {}) })
       .then(r => r.data),
+  /**
+   * AN ADMIN'S DOCUMENT FOR THE WHOLE ORGANISATION (fix list, item 3). The server reads it and says back what is in it,
+   * with a yes and a no; nothing is added until the yes. Refused on the server to anybody who is not an admin.
+   */
+  addADocumentForTheOrganisation: (file: File): Promise<AskReply> => {
+    const form = new FormData()
+    form.append('file', file)
+    return apiClient.post<AskReply>('/ask/document', form, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data)
+  },
   /** Yes or no to the one request Ask Groundwork said back. Nothing is done without a yes. */
   answer: (proposalId: string, answer: 'yes' | 'no'): Promise<AskReply> =>
     apiClient.post<AskReply>('/ask/answer', { proposalId, answer }).then(r => r.data),
