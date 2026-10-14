@@ -131,6 +131,14 @@ export function SettingsPage() {
   const navigate = useNavigate()
   const user = useAuthStore(s => s.user)
   const updateUser = useAuthStore(s => s.updateUser)
+  /*
+   * THE NUMBER AS IT IS NOW, NOT AS IT WAS AT SIGN-IN (reviewer, 14 October). An admin added Kevin's number on People after he
+   * signed in, and his Settings still read "WhatsApp Not set". The sign-in is read again when this page opens.
+   */
+  const { data: freshMe } = useQuery({ queryKey: ['auth-me-for-settings'], queryFn: authApi.me, staleTime: 0 })
+  useEffect(() => {
+    if (freshMe && (freshMe.phoneNumber ?? null) !== (user?.phoneNumber ?? null)) updateUser({ phoneNumber: freshMe.phoneNumber ?? null, ...((freshMe as any).connectWhatsApp !== undefined ? { connectWhatsApp: (freshMe as any).connectWhatsApp } : {}) } as any)
+  }, [freshMe]) // eslint-disable-line react-hooks/exhaustive-deps
   const logout = useAuthStore(s => s.logout)
   const orgName = user?.organizationName ?? ''
   const isAdmin = user?.role === 'ADMIN'

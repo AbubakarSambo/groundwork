@@ -11,10 +11,14 @@ import { FieldLabel, TextArea } from '@/components/gw/ui/FormFields'
 export function TheReasonYouMissed({ checkInId, given }: { checkInId: string; given: string | null }) {
   const [reason, setReason] = useState('')
   const [open, setOpen] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
   const qc = useQueryClient()
   const send = useMutation({
     mutationFn: () => todayApi.giveMissedReason(checkInId, reason.trim()),
+    onMutate: () => setProblem(null),
     onSuccess: () => { setOpen(false); setReason(''); qc.invalidateQueries({ queryKey: ['today'] }) },
+    /* What they wrote stays in the box, and they are told it was not saved (a-failure-is-never-a-success). */
+    onError: () => setProblem('Your reason was not saved. Please try again.'),
   })
   const id = `missed-reason-${checkInId}`
   if (!open) {
@@ -29,7 +33,7 @@ export function TheReasonYouMissed({ checkInId, given }: { checkInId: string; gi
     <Stack gap={8}>
       <FieldLabel htmlFor={id}>Why have you missed them? The person who runs this check-in will read what you write here.</FieldLabel>
       <TextArea id={id} value={reason} onChange={(e) => setReason(e.target.value)} rows={3} maxLength={1000} />
-      {send.isError && <p className="gwui-panel-text">Your reason was not saved. Please try again.</p>}
+      {problem && <p className="gwui-panel-text" role="alert">{problem}</p>}
       <Button kind="primary" size="small" onClick={() => send.mutate()} disabled={!reason.trim() || send.isPending}>Send your reason</Button>
     </Stack>
   )

@@ -1,4 +1,6 @@
 import { workingDaysOf } from './when-the-check-ins-land'
+import { Stack, Text, ToggleChoices } from './ui'
+import { theDaysInASentence } from '@/lib/the-days-in-words'
 
 /**
  * WHICH DAYS THIS TEAM WORKS - ONE PICKER, USED WHEREVER THE RHYTHM IS SET.
@@ -23,36 +25,18 @@ export const WEEKDAYS = [1, 2, 3, 4, 5]
 
 const isWeekdaysOnly = (days: number[]) => days.length === 5 && WEEKDAYS.every((d) => days.includes(d))
 
-/** What the picker currently means, in the words somebody would use about their own week. */
+/** What the picker currently means, as one full sentence (setup page review, 13 October). */
 export function whatTheDaysMean(days: number[] | null | undefined): string {
-  const on = workingDaysOf(days)
-  if (!on.length) return 'Any day. A check-in can open on a Saturday or a Sunday.'
-  if (isWeekdaysOnly(on)) return 'Weekdays only. A check-in never opens at the weekend.'
-  return `Only ${on.map((d) => DAYS[d]).join(', ')}. A check-in never opens on the other days.`
+  return theDaysInASentence(days)
 }
 
 /* U.6: drawn as the prototype's setup draws it (setup.txt): "On which days", the week from Monday,
    then "Weekdays only" and "Any day is fine" as two choices. Still the one picker: the entry setup
-   and the check-in's own Setup both use this, with the same look and the same choices. */
+   and the check-in's own Setup both use this, with the same look and the same choices.
+   Setup page, piece 3a: built from the shared parts now (`ToggleChoices`, the prototype's `.seg`
+   with several days on at once; `Stack`; `Text`), in place of its own inline-styled buttons. */
 const WEEK_FROM_MONDAY = [1, 2, 3, 4, 5, 6, 0]
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-
-function Choice({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={on}
-      onClick={onClick}
-      style={{
-        padding: '7px 13px', borderRadius: 999, fontSize: 13, fontFamily: 'inherit', cursor: 'pointer', fontWeight: 600,
-        border: `1px solid ${on ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
-        background: on ? 'var(--gw-navy)' : 'white', color: on ? 'white' : 'var(--gw-text)',
-      }}
-    >
-      {children}
-    </button>
-  )
-}
 
 export function WhichDaysTheyWork({
   value,
@@ -65,39 +49,33 @@ export function WhichDaysTheyWork({
 }) {
   const days = workingDaysOf(value)
   const weekdaysOnly = isWeekdaysOnly(days)
+  /* Nobody said means every day, so every day shows as on (setup page review: "Any day is fine"
+     showed all seven off). Turning one off leaves the other six; the last one on cannot go. */
+  const shown = days.length ? days : [0, 1, 2, 3, 4, 5, 6]
   return (
-    <section aria-label={label} style={{ marginBottom: 16 }}>
-      <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', margin: '0 0 8px' }}>{label}</h3>
-      <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
-        {WEEK_FROM_MONDAY.map((i) => {
-          const on = days.includes(i)
-          return (
-            <button
-              key={i}
-              type="button"
-              aria-pressed={on}
-              aria-label={DAY_NAMES[i]}
-              onClick={() => onChange(on ? days.filter((x) => x !== i) : [...days, i].sort((a, b) => a - b))}
-              style={{
-                flex: 1, padding: '6px 0', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                border: `1px solid ${on ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
-                background: on ? 'var(--gw-blue-bg)' : 'white',
-                color: on ? 'var(--gw-navy)' : 'var(--gw-muted)',
-              }}
-            >
-              {DAYS[i]}
-            </button>
-          )
-        })}
-      </div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        <Choice on={weekdaysOnly} onClick={() => onChange([...WEEKDAYS])}>Weekdays only</Choice>
-        <Choice on={days.length === 0} onClick={() => onChange([])}>Any day is fine</Choice>
-      </div>
-      {/* Said in plain words, because seven small buttons do not tell anybody what will happen. */}
-      <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 6, lineHeight: 1.5 }}>
-        {whatTheDaysMean(value)}
-      </div>
+    <section aria-label={label}>
+      <Stack gap={8}>
+        <Text size="14-5" weight={700} as="p">{label}</Text>
+        <ToggleChoices
+          label={label}
+          options={WEEK_FROM_MONDAY.map((i) => ({ key: String(i), label: DAYS[i], ariaLabel: DAY_NAMES[i] }))}
+          values={shown.map(String)}
+          onToggle={(key) => {
+            const i = Number(key)
+            const next = shown.includes(i) ? shown.filter((x) => x !== i) : [...shown, i]
+            if (!next.length) return
+            onChange(workingDaysOf(next).sort((a, b) => a - b))
+          }}
+        />
+        <ToggleChoices
+          label="Weekdays or any day"
+          options={[{ key: 'weekdays', label: 'Weekdays only' }, { key: 'any', label: 'Any day is fine' }]}
+          values={[weekdaysOnly ? 'weekdays' : '', days.length === 0 ? 'any' : ''].filter(Boolean)}
+          onToggle={(key) => onChange(key === 'weekdays' ? [...WEEKDAYS] : [])}
+        />
+        {/* Said in plain words, because seven small buttons do not tell anybody what will happen. */}
+        <Text size="14-5" ink="sub" as="p">{whatTheDaysMean(value)}</Text>
+      </Stack>
     </section>
   )
 }

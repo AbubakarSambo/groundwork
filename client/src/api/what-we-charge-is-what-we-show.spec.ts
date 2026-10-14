@@ -178,7 +178,7 @@ describe('an amount cannot be edited into something Stripe will refuse', () => {
   })
 
   it('an unknown plan name is refused rather than silently ignored', () => {
-    expect(ADMIN_CONTROLLER).toMatch(/Unknown plan/)
+    expect(ADMIN_CONTROLLER).toMatch(/That plan does not exist/)
   })
 })
 

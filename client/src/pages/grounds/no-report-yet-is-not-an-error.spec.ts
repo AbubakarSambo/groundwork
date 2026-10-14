@@ -88,7 +88,7 @@ describe('no report yet is not an error', () => {
        the same sentence the board gives a stranger, "Check-in not found", so a report and a board
        answer someone with no access alike, and on every other read of a check-in they have no part
        in. It is still a 404 with no detail, which is what this test guards. */
-    expect(branch).toMatch(/if \(!mine\) throw new NotFoundException\('Check-in not found'\)/)
+    expect(branch).toMatch(/if \(!mine\) throw new NotFoundException\('That check-in could not be found, so go back to your check-ins and open it from the list.'\)/)
     /* And the reason a party gets is still a 404, never a 200 with an empty body. */
     expect(branch).toMatch(/throw new NotFoundException\(\s*whyThereIsNoReportYet/)
     expect(branch).not.toMatch(/return \{ report: null/)

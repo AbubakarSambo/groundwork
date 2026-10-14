@@ -71,6 +71,15 @@ describe('HowItIsGoing: "answered this session", read naturally', () => {
     render(<HowItIsGoing glance={glance({ answeredThisRound: 6, ofPeople: 6 })} />)
     expect(screen.getByText(/Everybody has answered this session\.$/)).toBeTruthy()
   })
+
+  /* Reviewer, 14 October: Grace read "Everybody has answered" before her reps had been contacted. */
+  it('never says "Everybody" while somebody invited has not joined, and says how many beside it', () => {
+    const { container } = render(<HowItIsGoing glance={glance({ answeredThisRound: 2, ofPeople: 2, notJoinedYet: 2,
+      notJoinedSays: 'Two more people are not counted yet, because they were invited and have not joined yet.' })} />)
+    expect(container.textContent).toContain('Everybody who has joined has answered this session.')
+    expect(container.textContent).toContain('Two more people are not counted yet, because they were invited and have not joined yet.')
+    expect(container.textContent).not.toMatch(/Everybody has answered/)
+  })
 })
 
 /**

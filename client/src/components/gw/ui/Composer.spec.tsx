@@ -60,6 +60,18 @@ describe('Composer', () => {
     expect(screen.getByPlaceholderText('Type, or hold to speak')).toBeDisabled()
   })
 
+  /**
+   * FAULT 7 (live walk, 6 October 2026): A TALLER FIELD FOR A LONGER PLACEHOLDER, ONLY WHEN ASKED.
+   * `rows` defaults to 1 (every existing caller is unaffected); the setup composer passes 2 so its
+   * own longer placeholder has somewhere to wrap instead of being cut off at a narrow width.
+   */
+  it('keeps rows=1 by default, and takes a caller\'s own rows when given', () => {
+    const { rerender } = render(<Composer value="" onChange={() => {}} onSend={() => {}} />)
+    expect(screen.getByPlaceholderText('Type, or hold to speak').getAttribute('rows')).toBe('1')
+    rerender(<Composer value="" onChange={() => {}} onSend={() => {}} rows={2} />)
+    expect(screen.getByPlaceholderText('Type, or hold to speak').getAttribute('rows')).toBe('2')
+  })
+
   it('the attach menu is the caller\'s own content, shown above the "+" only while open', async () => {
     const onPlus = vi.fn()
     const { rerender } = render(

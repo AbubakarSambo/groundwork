@@ -70,6 +70,29 @@ describe('between check-ins', () => {
     expect(await screen.findByText(/Two things, from Tuesday.s check-in/)).toBeTruthy()
   })
 
+  it('shows "Groundwork is writing…" while a reply is pending, and clears it once the reply arrives (Hafsah, 9 October: nothing showed here before)', async () => {
+    let resolveAsk!: (v: unknown) => void
+    ;(askApi.ask as any).mockReturnValue(new Promise((resolve) => { resolveAsk = resolve }))
+    mount()
+    await userEvent.click(screen.getByRole('button', { name: 'What did I say I’d do?' }))
+    expect(await screen.findByText('Groundwork is writing…')).toBeTruthy()
+    resolveAsk({ blocks: [{ type: 'text', body: 'Here is what you said.' }], composedBy: 'model', lane: 'test' })
+    expect(await screen.findByText('Here is what you said.')).toBeTruthy()
+    expect(screen.queryByText('Groundwork is writing…')).toBeNull()
+  })
+
+  it('clears "Groundwork is writing…" when the question fails', async () => {
+    let rejectAsk!: (e: unknown) => void
+    ;(askApi.ask as any).mockReturnValue(new Promise((_resolve, reject) => { rejectAsk = reject }))
+    mount()
+    await userEvent.click(screen.getByRole('button', { name: 'What did I say I’d do?' }))
+    expect(await screen.findByText('Groundwork is writing…')).toBeTruthy()
+    rejectAsk(new Error('network'))
+    await waitFor(() => expect(screen.queryByText('Groundwork is writing…')).toBeNull())
+    /* The card is still there, still usable - no thrown error reaches the screen. */
+    expect(screen.getByText('No check-in open right now')).toBeTruthy()
+  })
+
   it('"Add a note for next time" opens the private note box, not a question', async () => {
     mount()
     expect(screen.queryByPlaceholderText('Note something for your next check-in…')).toBeNull()
@@ -141,6 +164,29 @@ describe('between check-ins', () => {
     expect(await screen.findByText('Sure - here is what I have.')).toBeTruthy()
   })
 
+  /*
+   * B-036: Grace's leave dates came back as two identical bubbles, one directly under the other -
+   * the reply's own `text` block and a `claim` block repeating the same sentence. The same guard
+   * AskGroundwork.tsx's `drawBlocks` already uses for this (`!texts.has(b.summary)`) now applies
+   * here too, in `linesOf`.
+   */
+  it('does not print the same sentence twice when a claim or proposal repeats the reply\'s own text block', async () => {
+    ;(askApi.ask as any).mockResolvedValue({
+      blocks: [
+        { type: 'text', body: 'That is 5 working days, Monday 12 to Friday 16 October.' },
+        { type: 'claim', says: 'That is 5 working days, Monday 12 to Friday 16 October.', mark: 'proven' },
+        { type: 'text', body: 'Shall I send it to Daniel to approve?' },
+      ],
+      composedBy: 'model', lane: 'test',
+    })
+    mount()
+    const field = screen.getByPlaceholderText('Ask, or add a note')
+    await userEvent.type(field, 'I need leave from Monday to Friday next week.')
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }))
+    await screen.findByText('Shall I send it to Daniel to approve?')
+    expect(screen.getAllByText('That is 5 working days, Monday 12 to Friday 16 October.')).toHaveLength(1)
+  })
+
   it('a failed question does not lose what was typed nor crash the card', async () => {
     ;(askApi.ask as any).mockRejectedValue(new Error('network'))
     mount()
@@ -148,5 +194,57 @@ describe('between check-ins', () => {
     await waitFor(() => expect(askApi.ask).toHaveBeenCalled())
     /* The card is still there, still usable - no thrown error reaches the screen. */
     expect(screen.getByText('No check-in open right now')).toBeTruthy()
+  })
+
+  /*
+   * RESTORED (nothing-removed-screens.md, item 1): live's GroundChat.tsx listed every note waiting
+   * for the person's next check-in, under "Waiting for your next check-in", and let them delete
+   * one. This card only ever added a note before - it never showed or removed one.
+   */
+  describe('the notes waiting for your next check-in', () => {
+    it('lists the viewer\'s own waiting notes, and does not list one already carried into a check-in', async () => {
+      const { groundsApi } = await import('@/api/grounds')
+      ;(groundsApi.myNotes as any).mockResolvedValue([
+        { id: 'n1', text: 'Ask about the Westgate visit', createdAt: '2026-10-01', carriedIntoCheckInId: null },
+        { id: 'n2', text: 'Already asked about this', createdAt: '2026-09-01', carriedIntoCheckInId: 'session-1' },
+      ])
+      mount()
+      expect(await screen.findByText('Waiting for your next check-in')).toBeTruthy()
+      expect(screen.getByText('Ask about the Westgate visit')).toBeTruthy()
+      expect(screen.queryByText('Already asked about this')).toBeNull()
+    })
+
+    it('shows nothing when there are no waiting notes', () => {
+      mount()
+      expect(screen.queryByText('Waiting for your next check-in')).toBeNull()
+    })
+
+    it('deleting a note asks first, and only deletes once confirmed', async () => {
+      const { groundsApi } = await import('@/api/grounds')
+      ;(groundsApi.myNotes as any).mockResolvedValue([
+        { id: 'n1', text: 'Ask about the Westgate visit', createdAt: '2026-10-01', carriedIntoCheckInId: null },
+      ])
+      ;(groundsApi.deleteMyNote as any).mockResolvedValue({ deleted: true })
+      mount()
+      await screen.findByText('Ask about the Westgate visit')
+      await userEvent.click(screen.getByRole('button', { name: 'Delete this note' }))
+      expect(groundsApi.deleteMyNote).not.toHaveBeenCalled()
+      expect(await screen.findByText('Delete this note?')).toBeTruthy()
+      await userEvent.click(screen.getByRole('button', { name: 'Yes, delete it' }))
+      expect(groundsApi.deleteMyNote).toHaveBeenCalledWith('g1', 'n1')
+    })
+
+    it('"Keep it" cancels the delete without calling the server', async () => {
+      const { groundsApi } = await import('@/api/grounds')
+      ;(groundsApi.myNotes as any).mockResolvedValue([
+        { id: 'n1', text: 'Ask about the Westgate visit', createdAt: '2026-10-01', carriedIntoCheckInId: null },
+      ])
+      mount()
+      await screen.findByText('Ask about the Westgate visit')
+      await userEvent.click(screen.getByRole('button', { name: 'Delete this note' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Keep it' }))
+      expect(groundsApi.deleteMyNote).not.toHaveBeenCalled()
+      expect(screen.getByText('Ask about the Westgate visit')).toBeTruthy()
+    })
   })
 })

@@ -45,6 +45,8 @@ import '@/components/gw/ui/gw-ui.css'
 const ACCEPTED_UPLOADS = ['.pdf', '.doc', '.docx', '.txt', '.csv', '.xlsx', '.png', '.jpg', '.jpeg', '.webp', '.heic', '.md']
 
 interface Msg {
+  /** The turn that closed the check-in, whose middle sentence waits for the end card (pilots, problem 13). */
+  closesTheCheckIn?: boolean
   id: string
   role: 'AI' | 'PERSON'
   content: string
@@ -513,7 +515,14 @@ export function ChatPage() {
     let stillHere = true
     setCardIsBeingWritten(true)
     Promise.resolve(conversationApi.endCard?.(checkInId))
-      .then((c) => { if (stillHere && c) setEndCard(c) })
+      .then((c) => {
+        if (!stillHere) return
+        if (c) setEndCard(c)
+        /* Only now is it known whether the card lists their answers, so only now may the closing line's middle sentence go (pilots, problem 13). */
+        const settle = (v: typeof msgs) => v.map((m) => (m.closesTheCheckIn ? { ...m, content: closingMessageText(m.content, c ?? null) } : m))
+        setMsgs(settle)
+        setDisplayedMsgs(settle)
+      })
       .catch(() => { /* No card stands: finishing reads the record, as it always did. */ })
       .finally(() => { if (stillHere) setCardIsBeingWritten(false) })
     return () => { stillHere = false }
@@ -954,9 +963,10 @@ export function ChatPage() {
           acknowledge()
           /* Screen fault 2: do not repeat "Below is what I wrote down from your answers." when
              this close sent no record lines - see a-closing-message-claims-nothing-it-does-not-keep.ts. */
-          const replyText = closingMessageText(r.reply, r.endCard)
-          setMsgs(v => v.map(m => m.id === aiId ? { ...m, content: replyText, suggestedAnswers: r.suggestedAnswers, ideaOffer: r.ideaOffer, requestOffer: r.requestOffer, openTheRequest: r.openTheRequest } : m))
-          setDisplayedMsgs(v => v.map(m => m.id === aiId ? { ...m, content: replyText, suggestedAnswers: r.suggestedAnswers, ideaOffer: r.ideaOffer, requestOffer: r.requestOffer, openTheRequest: r.openTheRequest } : m))
+          /* Decided only once the card is known: it is written ten to forty seconds after the goodbye (pilots, problem 13). */
+          const replyText = r.endCard ? closingMessageText(r.reply, r.endCard) : r.reply
+          setMsgs(v => v.map(m => m.id === aiId ? { ...m, content: replyText, closesTheCheckIn: !!r.sessionComplete && !r.endCard, suggestedAnswers: r.suggestedAnswers, ideaOffer: r.ideaOffer, requestOffer: r.requestOffer, openTheRequest: r.openTheRequest } : m))
+          setDisplayedMsgs(v => v.map(m => m.id === aiId ? { ...m, content: replyText, closesTheCheckIn: !!r.sessionComplete && !r.endCard, suggestedAnswers: r.suggestedAnswers, ideaOffer: r.ideaOffer, requestOffer: r.requestOffer, openTheRequest: r.openTheRequest } : m))
           if (r.sessionComplete) setDone(true)
           if (r.endCard) setEndCard(r.endCard)
         },
@@ -973,7 +983,7 @@ export function ChatPage() {
         try {
           const res = await conversationApi.send(checkInId, message)
           acknowledge()
-          setMsgs(v => v.concat({ id: `ai-${Date.now()}`, role: 'AI', content: closingMessageText(res.reply, res.endCard), suggestedAnswers: res.suggestedAnswers, ideaOffer: res.ideaOffer, requestOffer: res.requestOffer, openTheRequest: res.openTheRequest }))
+          setMsgs(v => v.concat({ id: `ai-${Date.now()}`, role: 'AI', content: res.endCard ? closingMessageText(res.reply, res.endCard) : res.reply, closesTheCheckIn: !!res.sessionComplete && !res.endCard, suggestedAnswers: res.suggestedAnswers, ideaOffer: res.ideaOffer, requestOffer: res.requestOffer, openTheRequest: res.openTheRequest }))
           if (res.sessionComplete) setDone(true)
           if (res.endCard) setEndCard(res.endCard)
         } catch {

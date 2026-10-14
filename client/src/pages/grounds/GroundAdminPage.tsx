@@ -14,7 +14,7 @@ import { ContextPage } from '@/components/gw/ContextPage'
 import { YourWork } from '@/components/gw/checkin/YourWork'
 import { Note, Callout, Button, Panel, Stack, Avatar, Tag, TextField, SubHeading, Empty, Folded, Modal } from '@/components/gw/ui'
 import { TheLeadsOwnWayIn, YOU_CHECK_IN_WHEN_YOU_CHOOSE } from '@/components/gw/TheLeadsOwnWayIn'
-import { theClosingAfterYourFirstCheckIn, takeTheFirstCheckInClosing } from '@/lib/the-closing-after-your-first-check-in'
+import { theClosingAfterYourFirstCheckIn, takeTheFirstCheckInClosing, theRhythmInFull } from '@/lib/the-closing-after-your-first-check-in'
 import { initialsOf } from '@/pages/org/people-here'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useAuthStore } from '@/stores/auth'
@@ -1567,7 +1567,7 @@ export function GroundAdminPage() {
         <CheckInHeader
           crumbs={[{ label: 'Check-ins', to: '/grounds' }, { label: ground.label }]}
           title={ground.label}
-          subtitle={(ground as any).cadence ? `${cadenceLabel((ground as any).cadence)}.` : undefined}
+          subtitle={(ground as any).cadence ? (theRhythmInFull(ground as any, { untilEnded: !!(ground as any).runsUntilEnded }) ?? `${cadenceLabel((ground as any).cadence)}.`) : undefined}
           action={(
             <div>
               {/*

@@ -251,7 +251,12 @@ function Row({ label, children, style }: {
  * 37. 6 of 6 people checked in." and, once it is out, "Shared with the team". Each person is now a
  * sentence: "You have checked in.", "Aisha has checked in.", "Omar has not checked in yet."
  */
-export const SHARED_WITH_THE_TEAM = 'Shared with the team.'
+/*
+ * HOW IT WAS SHARED, TRULY (pilots, 13 October 2026, E10). Grace read "Shared with the team." on a report she never shared:
+ * a session's report reaches the people in it by itself, when the session closes. The sentence says so, the way the
+ * prototype says when ("Shared with the team that evening").
+ */
+export const SHARED_WITH_THE_TEAM = 'Shared with the team when this session closed.'
 
 export function sessionAndWhoCheckedIn(n: number, planned: number | null, answered: number, of: number): string {
   const session = planned ? `Session ${n} of ${planned}.` : `Session ${n}.`

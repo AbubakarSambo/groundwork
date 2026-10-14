@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { Choices, FieldLabel, Panel, Select, SetupBlock, SetupBlocks, Stack, Text, TextField } from '@/components/gw/ui'
+import { ordinal } from '@/components/gw/AnchorDayPicker'
 import { whenTheCheckInsLand, type Cadence } from '@/components/gw/when-the-check-ins-land'
-import { AnchorDayPicker } from '@/components/gw/AnchorDayPicker'
 import { cadenceLabel } from '@/lib/cadence'
+import { theRhythmInFull } from '@/lib/the-closing-after-your-first-check-in'
 import type { ThePeopleStepRules } from '@/api/anchorShapes'
 
 /*
@@ -129,6 +131,15 @@ export const THE_SETUP = {
   notChosen: (howOften: string) => `Not set yet. This will run ${howOften.toLowerCase()} unless you pick one.`,
   whenItEnds: 'When it ends',
   moreTimeLater: 'You can give it more time later.',
+  /* Setup page, piece 3a: the rest of the prototype's own words (setup.txt, new.txt). */
+  aName: 'A name',
+  twoMinutes: 'Each check-in takes about two minutes after the first.',
+  whenIEndIt: 'When I end it',
+  untilYouEndIt: 'It keeps going until you end it. There is no last date.',
+  whosInIt: 'Who’s in it',
+  onWhichDay: 'On which day',
+  onWhichDayOfTheMonth: 'On which day of the month',
+  theDayItStarts: 'The day of the month it starts',
 } as const
 
 /* The product's one set of names for how often (lib/cadence.ts), in the prototype's order. */
@@ -177,41 +188,53 @@ export function whenTheyOpen(a: { cadence: Cadence; anchorDay: number | null; st
    * AND NEVER SAID WHAT WAS BEING COUNTED. "12" on its own, after a colon, reads as a label and a
    * number rather than a sentence - said now as "until 23 December, 12 sessions in all.".
    */
-  const sessionsInAll = `${inRange.length} session${inRange.length === 1 ? '' : 's'} in all`
+  /* Setup page review, 13 October: the prototype's own word, "check-ins", not "sessions". */
+  const sessionsInAll = `${inRange.length} check-in${inRange.length === 1 ? '' : 's'} in all`
   if (inRange.length <= 5) return `Check-ins open on ${list}, ${sessionsInAll}.`
   return `Check-ins open on ${words.join(', ')} and on from there, until ${end.getDate()} ${MONTHS[end.getMonth()]}${end.getFullYear() !== (startsAt ?? a.today ?? new Date()).getFullYear() ? ` ${end.getFullYear()}` : ''}, ${sessionsInAll}.`
 }
 
-function Choice({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={on}
-      onClick={onClick}
-      style={{
-        padding: '7px 13px', borderRadius: 999, fontSize: 13, fontFamily: 'inherit', cursor: 'pointer', fontWeight: 600,
-        border: `1px solid ${on ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
-        background: on ? 'var(--gw-navy)' : 'white', color: on ? 'white' : 'var(--gw-text)',
-      }}
-    >
-      {children}
-    </button>
-  )
+/*
+ * SETUP PAGE, PIECE 3A: REBUILT FROM THE PROTOTYPE'S OWN STRUCTURE (setup.txt, setup.jpg).
+ *
+ * Each question is a `SetupBlock` - the heading and its one sentence on the left, the controls on the
+ * right, a rule between blocks - and the choices are the shared `Choices` (the prototype's `.seg`).
+ * It used to be one grey box with every control stacked under small headings. The order is the
+ * prototype's: a name, when it starts, how often (with the days and the sentence saying when they
+ * open), when it ends, and who is in it. The name and the people are handed in by the page, because
+ * the page owns them; when it hands in no people, the sentence about invitations stays under "When it
+ * starts", where it always was.
+ *
+ * Every scheduling choice the product keeps is here: the start (now, tomorrow or a date), how often
+ * (once, every day, every week, every 2 weeks, every month, when I choose), the day it lands on, the
+ * days people work (weekdays only, any day, or any set of days), and the end (a date, or when I end
+ * it). "When I end it" is back: the engine has kept `runsUntilEnded` since request 37 and reads it from
+ * the conversation, and the save sends it.
+ */
+const WEEK_FROM_MONDAY = [1, 2, 3, 4, 5, 6, 0]
+
+/**
+ * WHAT THE HEADER SAYS IS PLANNED (setup page review, 13 October). Tendai said "weekly, on Thursdays,
+ * with no end"; the summary said there is no last date while the header said "10 sessions planned".
+ * With no end there is no count, so the header says the rhythm instead: "Every Thursday, until you
+ * end it". Otherwise the count, as before.
+ */
+export function thePlanInTheHeader(a: { planned: number; cadence: Cadence; runsUntilEnded: boolean; anchorDay: number | null; workingDays: number[]; startsOn: string; today?: Date }): string {
+  if (a.runsUntilEnded && a.cadence !== 'ONE_TIME') {
+    const today = a.today ?? new Date()
+    const startsOn = a.startsOn || iso(today)
+    const rhythm = theRhythmInFull({ cadence: a.cadence, cadenceAnchorDay: a.anchorDay, workingDays: a.workingDays, startsAt: startsOn }, { untilEnded: true, stop: false })
+    if (rhythm) return rhythm
+  }
+  /* "check-ins", the summary's own word (setup page review, second round). */
+  return `${a.planned} ${a.planned === 1 ? 'check-in planned' : 'check-ins planned'}`
 }
 
-function Section({ title, help, children }: { title: string; help?: string; children: React.ReactNode }) {
-  return (
-    <section aria-label={title} style={{ marginBottom: 16 }}>
-      <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', margin: '0 0 3px' }}>{title}</h3>
-      {help && <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '0 0 8px', lineHeight: 1.5 }}>{help}</p>}
-      {children}
-    </section>
-  )
+/** The weekday a weekly rhythm really lands on while no day is picked: its second landing's day. */
+export function theDayItLandsOn(cadence: Cadence, startsOn: string, workingDays: number[], today: Date): number {
+  const [first, second] = whenTheCheckInsLand({ cadence, anchorDay: null, startsAt: startsOn ? fromIso(startsOn) : null, workingDays, today, howMany: 2 })
+  return (second ?? first ?? today).getDay()
 }
-
-const row = { display: 'flex', gap: 6, flexWrap: 'wrap' as const }
-const note = { fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.5, margin: '8px 0 0' }
-const dateInput = { padding: '7px 10px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', outline: 'none' }
 
 export function TheSetup(p: {
   cadence: Cadence
@@ -226,76 +249,137 @@ export function TheSetup(p: {
   onStartsOn: (s: string) => void
   endsOn: string
   onEndsOn: (s: string) => void
+  /** True when it runs until the lead ends it (the prototype's "When I end it"). */
+  runsUntilEnded?: boolean
+  /** Offered only where the page can send it; without it, "When it ends" is a date alone. */
+  onRunsUntilEnded?: (until: boolean) => void
   /** The shared day picker: <WhichDaysTheyWork value={workingDays} onChange={setWorkingDays} />. */
   daysPicker: React.ReactNode
+  /** The check-in's name, as a field, drawn as the first block ("A name", new.txt). */
+  nameField?: React.ReactNode
+  /** Who is in it: the page's own people step, drawn as the last block. */
+  people?: React.ReactNode
+  /** One sentence above the people step, such as that nobody is added yet. */
+  peopleNote?: string
   today?: Date
 }) {
   const today = p.today ?? new Date()
   const tomorrow = tomorrowOf(today)
   const [pickingADate, setPickingADate] = useState(!!p.startsOn && p.startsOn !== tomorrow)
   const startMode = !p.startsOn ? 'now' : p.startsOn === tomorrow && !pickingADate ? 'tomorrow' : 'date'
-  const opens = whenTheyOpen({ cadence: p.cadence, anchorDay: p.anchorDay, startsOn: p.startsOn, endsOn: p.endsOn, workingDays: p.workingDays, today })
+  const untilEnded = !!p.runsUntilEnded && !!p.onRunsUntilEnded
+  /* The weekday and the day of the month she chose, each kept across a change of rhythm (setup page
+     review: monthly and back to weekly dropped her Thursday). A weekday means nothing to a monthly
+     rhythm and a day of the month nothing to a weekly one, so each comes back with its own rhythm. */
+  const isWeekly = (c: Cadence) => c === 'WEEKLY' || c === 'FORTNIGHTLY'
+  const chosenWeekday = useRef<number | null>(isWeekly(p.cadence) ? p.anchorDay : null)
+  const chosenMonthDay = useRef<number | null>(p.cadence === 'MONTHLY' ? p.anchorDay : null)
+  const opens = whenTheyOpen({ cadence: p.cadence, anchorDay: p.anchorDay, startsOn: p.startsOn, endsOn: untilEnded ? '' : p.endsOn, workingDays: p.workingDays, today })
 
   return (
-    <div style={{ background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 12 }}>
-      <Section title={THE_SETUP.whenItStarts} help={THE_SETUP.opensAtTheStart}>
-        <div style={row}>
-          <Choice on={startMode === 'now'} onClick={() => { setPickingADate(false); p.onStartsOn('') }}>{THE_SETUP.now}</Choice>
-          <Choice on={startMode === 'tomorrow'} onClick={() => { setPickingADate(false); p.onStartsOn(tomorrow) }}>{THE_SETUP.tomorrow}</Choice>
-          <Choice on={startMode === 'date'} onClick={() => { setPickingADate(true); if (!p.startsOn) p.onStartsOn(tomorrow) }}>{THE_SETUP.onADate}</Choice>
-        </div>
+    <SetupBlocks>
+      {p.nameField && (
+        <SetupBlock heading={THE_SETUP.aName}>{p.nameField}</SetupBlock>
+      )}
+
+      <SetupBlock heading={THE_SETUP.whenItStarts} help={THE_SETUP.opensAtTheStart}>
+        <Choices
+          label={THE_SETUP.whenItStarts}
+          options={[{ key: 'now', label: THE_SETUP.now }, { key: 'tomorrow', label: THE_SETUP.tomorrow }, { key: 'date', label: THE_SETUP.onADate }]}
+          value={startMode}
+          onChange={(k) => {
+            if (k === 'now') { setPickingADate(false); p.onStartsOn('') }
+            if (k === 'tomorrow') { setPickingADate(false); p.onStartsOn(tomorrow) }
+            if (k === 'date') { setPickingADate(true); if (!p.startsOn) p.onStartsOn(tomorrow) }
+          }}
+        />
         {startMode === 'date' && (
-          <input type="date" aria-label={THE_SETUP.onADate} value={p.startsOn} min={iso(today)} onChange={(e) => p.onStartsOn(e.target.value)} style={{ ...dateInput, marginTop: 8 }} />
+          <TextField type="date" aria-label={THE_SETUP.onADate} value={p.startsOn} min={iso(today)} onChange={(e) => p.onStartsOn(e.target.value)} className="gwui-narrow-field" />
         )}
-        {startMode === 'tomorrow' && <p style={note}>{`Tomorrow, ${theDay(fromIso(tomorrow))}.`}</p>}
-        {startMode === 'date' && p.startsOn && <p style={note}>{`${theDay(fromIso(p.startsOn))}.`}</p>}
-        <p style={note}>{THE_SETUP.invitationsWhenItStarts}</p>
-      </Section>
+        {startMode === 'tomorrow' && <Text size="14-5" as="p">{`Tomorrow, ${theDay(fromIso(tomorrow))}.`}</Text>}
+        {startMode === 'date' && p.startsOn && <Text size="14-5" as="p">{`${theDay(fromIso(p.startsOn))}.`}</Text>}
+        {!p.people && <Text size="14-5" ink="sub" as="p">{THE_SETUP.invitationsWhenItStarts}</Text>}
+      </SetupBlock>
 
-      <Section title={THE_SETUP.howOften}>
-        {!p.cadenceChosen && <p style={{ ...note, margin: '0 0 8px', color: 'var(--gw-amber-t)' }}>{THE_SETUP.notChosen(cadenceLabel(p.cadence as never))}</p>}
-        <div style={row}>
-          {HOW_OFTEN.map(([c, label]) => (
-            <Choice key={c} on={p.cadenceChosen && p.cadence === c} onClick={() => {
-              p.onCadence(c)
-              /* A day picked for one rhythm means something different, or nothing, in another - a
-                 day of the month chosen for "Monthly" is meaningless once the choice moves to
-                 "Weekly". Cleared here, centrally, whenever the rhythm actually changes. */
-              if (p.onAnchorDay && c !== p.cadence) p.onAnchorDay(null)
-            }}>{label}</Choice>
-          ))}
-        </div>
+      <SetupBlock heading={THE_SETUP.howOften} help={THE_SETUP.twoMinutes}>
+        {!p.cadenceChosen && <Text size="14-5" ink="amber" as="p">{THE_SETUP.notChosen(cadenceLabel(p.cadence as never))}</Text>}
+        <Choices
+          label={THE_SETUP.howOften}
+          options={HOW_OFTEN.map(([c, label]) => ({ key: c, label }))}
+          value={p.cadenceChosen ? p.cadence : ''}
+          onChange={(k) => {
+            const c = k as Cadence
+            p.onCadence(c)
+            /* A day picked for one rhythm means something different, or nothing, in another - a
+               day of the month chosen for "Monthly" is meaningless once the choice moves to
+               "Weekly". Cleared here, centrally, whenever the rhythm actually changes. */
+            if (p.onAnchorDay && c !== p.cadence) {
+              p.onAnchorDay(isWeekly(c) ? chosenWeekday.current : c === 'MONTHLY' ? chosenMonthDay.current : null)
+            }
+          }}
+        />
         {/*
-          RESTORED (nothing-removed-screens.md item 2): live offered "On which day?" for a weekly or
-          fortnightly rhythm and "On which day of the month?" for a monthly one
-          (EntryChatPage.tsx lines 4017 and 4050 on live), sent as `cadenceAnchorDay`. It was removed
-          here (U.6 review, "one day picker") because a second, disconnected picker could say Saturday
-          while "On which days" said weekdays only - but `whenTheCheckInsLand` already folds an anchor
-          day and the working days together correctly (it lands on the anchor day, then moves forward
-          to the next working day), so the two pickers do not disagree; the preview below says exactly
-          what will happen either way. Optional, and the server keeps whatever a check-in already has
-          when nothing is picked. */}
-        {p.cadenceChosen && (p.cadence === 'WEEKLY' || p.cadence === 'FORTNIGHTLY' || p.cadence === 'MONTHLY') && p.onAnchorDay && (
-          <AnchorDayPicker cadence={p.cadence} anchorDay={p.anchorDay} onAnchorDay={p.onAnchorDay} idPrefix="setup" />
+          ONE DAY PICKER, FOR THE RHYTHM CHOSEN (setup page review, 13 October). Every week and every
+          month showed "Which day of the week should check-ins open? (optional)" and "On which days"
+          together, and a click on Thursday in the second turned Thursday off in a Thursday check-in.
+          Now a daily rhythm asks on which days, a weekly or two-weekly one asks on which day (the day
+          it lands on, `cadenceAnchorDay`, showing the day it really lands on until she picks one), and
+          a monthly one asks on which day of the month. The days she said she works still move a date
+          that falls on a day off, and the sentence below says exactly where each one lands.
+        */}
+        {p.cadenceChosen && (p.cadence === 'WEEKLY' || p.cadence === 'FORTNIGHTLY') && p.onAnchorDay && (
+          <Stack gap={8}>
+            <Text size="14-5" weight={700} as="p">{THE_SETUP.onWhichDay}</Text>
+            <Choices
+              label={THE_SETUP.onWhichDay}
+              options={WEEK_FROM_MONDAY.map((d) => ({ key: String(d), label: DAY_SHORT[d] }))}
+              value={String(p.anchorDay ?? theDayItLandsOn(p.cadence, p.startsOn, p.workingDays, today))}
+              onChange={(k) => { chosenWeekday.current = Number(k); p.onAnchorDay!(Number(k)) }}
+            />
+          </Stack>
         )}
-      </Section>
-
-      {/* The days are the product's one day picker, WhichDaysTheyWork, handed in by the page, so the
-          check-in's own Setup and this screen can never offer two different sets of choices. */}
-      {p.cadence !== 'ONE_TIME' && p.cadence !== 'SEQUENTIAL' && p.daysPicker}
-
-      {opens && <p style={{ ...note, margin: '0 0 16px', color: 'var(--gw-text)' }}>{opens}</p>}
+        {p.cadenceChosen && p.cadence === 'MONTHLY' && p.onAnchorDay && (
+          <Stack gap={8}>
+            <FieldLabel htmlFor="setup-day-of-the-month">{THE_SETUP.onWhichDayOfTheMonth}</FieldLabel>
+            <Select id="setup-day-of-the-month" value={p.anchorDay ?? ''} onChange={(e) => { const d = e.target.value ? Number(e.target.value) : null; chosenMonthDay.current = d; p.onAnchorDay!(d) }} className="gwui-narrow-field">
+              <option value="">{THE_SETUP.theDayItStarts}</option>
+              {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => <option key={day} value={day}>{`The ${ordinal(day)}`}</option>)}
+            </Select>
+          </Stack>
+        )}
+        {/* The days are the product's one day picker, WhichDaysTheyWork, handed in by the page, so the
+            check-in's own Setup and this screen can never offer two different sets of choices. */}
+        {p.cadence === 'DAILY' && p.daysPicker}
+        {opens && <Panel><p className="gwui-panel-text">{opens}</p></Panel>}
+      </SetupBlock>
 
       {/*
-        U.6 review: one choice, a date, set to when it will really end. The prototype's "When I end it"
-        is left out: every check-in ends (it keeps a length), so a check-in with no end would have been
-        saved as ending on the situation's usual day while the screen said it did not end.
+        "When I end it" is offered again (piece 3a, Hafsah: every scheduling choice the product has).
+        It was left out in the U.6 review because every check-in then kept a length; the engine has
+        since kept `runsUntilEnded` (no length and no planned last session), so the choice is real.
       */}
       {p.cadence !== 'ONE_TIME' && (
-        <Section title={THE_SETUP.whenItEnds} help={THE_SETUP.moreTimeLater}>
-          <input type="date" aria-label={THE_SETUP.whenItEnds} value={p.endsOn} min={p.startsOn || iso(today)} onChange={(e) => p.onEndsOn(e.target.value)} style={dateInput} />
-        </Section>
+        <SetupBlock heading={THE_SETUP.whenItEnds} help={THE_SETUP.moreTimeLater}>
+          {p.onRunsUntilEnded && (
+            <Choices
+              label={THE_SETUP.whenItEnds}
+              options={[{ key: 'date', label: THE_SETUP.onADate }, { key: 'until', label: THE_SETUP.whenIEndIt }]}
+              value={untilEnded ? 'until' : 'date'}
+              onChange={(k) => p.onRunsUntilEnded!(k === 'until')}
+            />
+          )}
+          {untilEnded
+            ? <Text size="14-5" ink="sub" as="p">{THE_SETUP.untilYouEndIt}</Text>
+            : <TextField type="date" aria-label={THE_SETUP.whenItEnds} value={p.endsOn} min={p.startsOn || iso(today)} onChange={(e) => p.onEndsOn(e.target.value)} className="gwui-narrow-field" />}
+        </SetupBlock>
       )}
-    </div>
+
+      {p.people && (
+        <SetupBlock heading={THE_SETUP.whosInIt} help={THE_SETUP.invitationsWhenItStarts}>
+          {p.peopleNote && <Text size="14-5" as="p">{p.peopleNote}</Text>}
+          {p.people}
+        </SetupBlock>
+      )}
+    </SetupBlocks>
   )
 }

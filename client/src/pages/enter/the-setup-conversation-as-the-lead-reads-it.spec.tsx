@@ -107,9 +107,9 @@ describe('the setup conversation', () => {
       sessions: 1, cadence: 'WEEKLY', cadenceChosen: true, plannedFrom: { timelineDays: 42, cadence: 'WEEKLY' },
       onboardingSelections: { mode: 'new', initial: 'x', classifiedScenario: 'PIP' },
     })
-    await waitFor(() => expect(document.body.textContent).toContain('sessions planned'))
-    expect(document.body.textContent).toContain('6 sessions planned')
-    expect(document.body.textContent).not.toContain('1 session planned')
+    await waitFor(() => expect(document.body.textContent).toContain('check-ins planned'))
+    expect(document.body.textContent).toContain('6 check-ins planned')
+    expect(document.body.textContent).not.toContain('1 check-in planned')
   })
 })
 
@@ -127,7 +127,7 @@ describe('the setup shows what will be saved (U.6 review)', () => {
     expect(await screen.findByText('Not set yet. This will run every week unless you pick one.')).toBeTruthy()
     /* 90 days, weekly: 12 check-ins, as the server keeps them, and the end date goes with the save.
        Screen fault 10 (final walk): a comma, not a colon, and "sessions" said plainly. */
-    await waitFor(() => expect(document.body.textContent).toMatch(/, 12 sessions in all\./))
+    await waitFor(() => expect(document.body.textContent).toMatch(/, 12 check-ins in all\./))
     expect(document.body.textContent).not.toContain('every 2 weeks unless')
   })
 })

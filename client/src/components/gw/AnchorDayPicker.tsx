@@ -1,3 +1,4 @@
+import { FieldLabel, Select, Stack, Text, ToggleChoices } from './ui'
 /**
  * THE ONE DAY PICKER FOR WHEN CHECK-INS LAND (request 194, 8 October 2026).
  *
@@ -23,10 +24,8 @@ export function ordinal(day: number): string {
   return `${day}th`
 }
 
-function AnchorLabel({ htmlFor, children }: { htmlFor?: string; children: React.ReactNode }) {
-  return <label htmlFor={htmlFor} style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)' }}>{children}</label>
-}
-
+/* Setup page, piece 3a: built from the shared parts (`FieldLabel`, `ToggleChoices`, `Select`,
+   `Stack`), the same look as "How often" and "On which days" beside it, in place of inline styles. */
 export function AnchorDayPicker({
   cadence, anchorDay, onAnchorDay, idPrefix,
 }: {
@@ -37,46 +36,35 @@ export function AnchorDayPicker({
   idPrefix?: string
 }) {
   if (cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY') {
+    const label = 'Which day of the week should check-ins open? (optional)'
     return (
-      <div style={{ marginTop: 10 }}>
-        <AnchorLabel>Which day of the week should check-ins open? (optional)</AnchorLabel>
-        <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
-          {DAY_SHORT.map((d, i) => (
-            <button
-              key={d}
-              type="button"
-              aria-pressed={anchorDay === i}
-              title={DAY_NAMES[i]}
-              onClick={() => onAnchorDay(anchorDay === i ? null : i)}
-              style={{
-                flex: 1, padding: '6px 0', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                border: `1px solid ${anchorDay === i ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
-                background: anchorDay === i ? 'var(--gw-blue-bg)' : 'white',
-                color: anchorDay === i ? 'var(--gw-navy)' : 'var(--gw-muted)',
-              }}
-            >{d}</button>
-          ))}
-        </div>
-      </div>
+      <Stack gap={8}>
+        <Text size="14-5" weight={700} as="p">{label}</Text>
+        <ToggleChoices
+          label={label}
+          options={DAY_SHORT.map((d, i) => ({ key: String(i), label: d, title: DAY_NAMES[i] }))}
+          values={anchorDay != null ? [String(anchorDay)] : []}
+          onToggle={(key) => onAnchorDay(anchorDay === Number(key) ? null : Number(key))}
+        />
+      </Stack>
     )
   }
   if (cadence === 'MONTHLY') {
     const selectId = idPrefix ? `${idPrefix}-cadence-anchor-day-of-month` : 'cadence-anchor-day-of-month'
     return (
-      <div style={{ marginTop: 10 }}>
-        <AnchorLabel htmlFor={selectId}>Which day of the month should check-ins open? (optional)</AnchorLabel>
-        <select
+      <Stack gap={8}>
+        <FieldLabel htmlFor={selectId}>Which day of the month should check-ins open? (optional)</FieldLabel>
+        <Select
           id={selectId}
           value={anchorDay ?? ''}
           onChange={(e) => onAnchorDay(e.target.value ? Number(e.target.value) : null)}
-          style={{ width: '100%', marginTop: 6, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', color: anchorDay != null ? 'var(--gw-text)' : 'var(--gw-muted)' }}
         >
           <option value="">No fixed day</option>
           {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
             <option key={day} value={day}>{ordinal(day)} of the month</option>
           ))}
-        </select>
-      </div>
+        </Select>
+      </Stack>
     )
   }
   return null

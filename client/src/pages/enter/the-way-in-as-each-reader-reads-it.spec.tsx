@@ -279,8 +279,9 @@ describe('who is on the list, in sentences (U.6 review)', () => {
   it('says each person added without dashes', async () => {
     const { anEntryAsASentence } = await import('./EntryChatPage')
     expect(anEntryAsASentence('u6f-daniel@example.test - Daniel - He is the subject of this check-in'))
-      .toBe('u6f-daniel@example.test (Daniel). You wrote “He is the subject of this check-in”.')
-    expect(anEntryAsASentence('a@x.test - Runs the pipeline.')).toBe('a@x.test. You wrote “Runs the pipeline”.')
+      .toBe('u6f-daniel@example.test (Daniel). Groundwork noted “He is the subject of this check-in”.')
+    /* Pilots, 13 October 2026, problem 10: the note is Groundwork's suggestion, so it is no longer said as "You wrote". */
+    expect(anEntryAsASentence('a@x.test - Runs the pipeline.')).toBe('a@x.test. Groundwork noted “Runs the pipeline”.')
     expect(anEntryAsASentence('a@x.test')).toBe('a@x.test.')
   })
 })
