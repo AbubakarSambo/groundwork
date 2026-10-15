@@ -115,7 +115,7 @@ import {
 import {
   detectFunction, detectUniversalModes, needsRoleConfirmation, roleConfirmationQuestion,
   ROLE_CONFIRM_ASKED, ROLE_CONFIRM_COOLDOWN_PERIODS, ROLE_CONFIRMATION_READ_PROMPT, ROLE_CONFIRMATION_READ_SCHEMA,
-  theRoleConfirmationVerdict, LOW_CONFIDENCE_CONFIRM_THRESHOLD,
+  theRoleConfirmationVerdict, LOW_CONFIDENCE_CONFIRM_THRESHOLD, aFunctionThatMayBeUsed, theStatedRole,
 } from '../board/function-detection';
 import { RoleFunction } from '../board/role-maps';
 import { whoOpenedThis } from './who-opened-this';
@@ -6457,7 +6457,7 @@ ${told}` : '';
     const participant = await this.prisma.groundParticipant.findUnique({
       where: { id: participantId },
       select: {
-        detectedFunction: true, detectedFunctionConfidence: true,
+        detectedFunction: true, detectedFunctionConfidence: true, detectedFunctionConfirmedAt: true,
         joinedAt: true, leftAt: true, leavePeriods: true,
       },
     });
@@ -6493,7 +6493,12 @@ ${told}` : '';
     }
 
     const map = roleMapFor(participant?.detectedFunction);
-    const confident = (participant?.detectedFunctionConfidence ?? 0) >= MIN_COACHING_CONFIDENCE;
+    /* Confident, or confirmed by the person or their lead (decision 57, item 5): a confirmed role is
+       not a guess, so its own behaviours are read. See aFunctionThatMayBeUsed. */
+    const confident = aFunctionThatMayBeUsed(
+      { fn: participant?.detectedFunction as any, confidence: participant?.detectedFunctionConfidence ?? 0 },
+      (participant as any)?.detectedFunctionConfirmedAt ?? null,
+    );
     /**
      * A ROLE NOBODY MAPPED IS STILL A PERSON.
      *
@@ -6513,7 +6518,7 @@ ${told}` : '';
     const whyTheFloor = readFromTheAccount
       ? (!map?.failureSignals?.length
         ? `no role map for function ${participant?.detectedFunction ?? 'none'}`
-        : `function ${participant?.detectedFunction} at confidence ${participant?.detectedFunctionConfidence ?? 0}, below ${MIN_COACHING_CONFIDENCE}`)
+        : `function ${participant?.detectedFunction} at confidence ${participant?.detectedFunctionConfidence ?? 0}, below ${MIN_COACHING_CONFIDENCE} and not confirmed`)
       : null;
 
     const turns = await this.prisma.conversationTurn.findMany({
@@ -7259,13 +7264,13 @@ ${told}` : '';
     );
 
     /* What they said about their job in a first check-in is taken out first (decision 129), so the function read below can use it. */
-    Promise.resolve()
+    const theFunctionRead = Promise.resolve()
       .then(() => keepWhatTheySaidAboutTheirJob({ prisma: this.prisma as any, anthropic: this.anthropic as any, prompts: this.prompts as any }, { id: checkIn.id, participantId: checkIn.participantId }, this.logger))
       .catch((err) => this.logger.warn(`Reading what they said about their job failed for check-in ${checkIn.id}: ${err?.message}`))
       .then(() => this.reviseDetectedFunction(checkIn.participantId))
       .catch((err) => this.logger.warn(`Function detection failed for participant ${checkIn.participantId}: ${err.message}`));
 
-    this.extractRoleConfirmation({ id: checkIn.id, participantId: checkIn.participantId }).catch((err) =>
+    const theRoleConfirmation = this.extractRoleConfirmation({ id: checkIn.id, participantId: checkIn.participantId }).catch((err) =>
       this.logger.warn(`Role-confirmation read failed for check-in ${checkIn.id}: ${err.message}`),
     );
 
@@ -7277,9 +7282,17 @@ ${told}` : '';
      * Best-effort and last, like the others: nothing about coaching may delay or
      * block a session completing.
      */
-    this.observeForCoaching(checkIn.id, checkIn.participantId, checkIn.sessionNumber).catch((err) =>
-      this.logger.warn(`Coaching observation failed for check-in ${checkIn.id}: ${err.message}`),
-    );
+    /*
+     * AFTER THE ROLE IS READ AND ANY CONFIRMATION IS STAMPED, never beside them (production check-in,
+     * 15 October 2026). The three ran at once, so which behaviours the coach read this session against
+     * depended on which finished first: a person who confirmed "yes, my work is sales" in this very
+     * check-in could still be read against the floor because the stamp landed a moment later. Both
+     * already swallow their own failures, so waiting on them can never stop the coach running, and
+     * none of this delays the session completing.
+     */
+    Promise.allSettled([theFunctionRead, theRoleConfirmation])
+      .then(() => this.observeForCoaching(checkIn.id, checkIn.participantId, checkIn.sessionNumber))
+      .catch((err) => this.logger.warn(`Coaching observation failed for check-in ${checkIn.id}: ${err.message}`));
 
     const won = await this.prisma.checkIn.updateMany({
       where: { id: checkIn.id, status: { not: CheckInStatus.COMPLETED } },
@@ -9270,7 +9283,7 @@ ${told}` : '';
     detectedFunctionConfidence: number | null;
   }) {
     if (participant.detectedFunction) return;
-    const read = detectFunction(participant.roleAsDescribed, [], null);
+    const read = detectFunction(theStatedRole(participant.roleAsDescribed, await this.theirOwnJobTitle(participant.id)), [], null);
     if (!read.fn) return;
     await this.prisma.groundParticipant.update({
       where: { id: participant.id },
@@ -9296,7 +9309,7 @@ ${told}` : '';
    * that cannot be seen from outside. The texts are read once now and used for both.
    */
   private async roleReadForThisTurn(
-    checkIn: { id: string; participant: { roleAsDescribed: string | null; detectedFunction: string | null; detectedFunctionConfidence: number | null } },
+    checkIn: { id: string; participantId?: string; participant: { id?: string; roleAsDescribed: string | null; detectedFunction: string | null; detectedFunctionConfidence: number | null } },
     latestMessage?: string,
   ): Promise<{ fn: string | null; confidence: number | null; modes: UniversalMode[] }> {
     const stored = { fn: checkIn.participant.detectedFunction, confidence: checkIn.participant.detectedFunctionConfidence };
@@ -9307,11 +9320,23 @@ ${told}` : '';
     if (!texts.length) return { ...stored, modes: [] };
     const modes = detectUniversalModes(texts);
     if ((stored.confidence ?? 0) >= MIN_COACHING_CONFIDENCE) return { ...stored, modes };
-    const read = detectFunction(checkIn.participant.roleAsDescribed, texts, stored);
+    const read = detectFunction(
+      theStatedRole(checkIn.participant.roleAsDescribed, await this.theirOwnJobTitle(checkIn.participantId ?? checkIn.participant.id ?? null)),
+      texts,
+      stored,
+    );
     if (read.fn && read.fn !== stored.fn) {
       this.logger.log(`In-session function read on ${checkIn.id}: ${stored.fn ?? 'none'} -> ${read.fn} (${read.confidence}). ${read.basis}`);
     }
     return read.fn ? { fn: read.fn, confidence: read.confidence, modes } : { ...stored, modes };
+  }
+
+  /** The person's own job title, which every read of their function starts from beside the lead's words. See theStatedRole. */
+  private async theirOwnJobTitle(participantId: string | null | undefined): Promise<string | null> {
+    if (!participantId) return null;
+    const row = await (this.prisma.groundParticipant?.findUnique?.({ where: { id: participantId }, select: { user: { select: { jobTitle: true } } } as any })
+      ?? Promise.resolve(null)).catch(() => null);
+    return (row as any)?.user?.jobTitle ?? null;
   }
 
   /**
@@ -9527,7 +9552,7 @@ ${told}` : '';
   async reviseDetectedFunction(participantId: string) {
     const p = await this.prisma.groundParticipant.findUnique({
       where: { id: participantId },
-      select: { roleAsDescribed: true, detectedFunction: true, detectedFunctionConfidence: true, userId: true, ground: { select: { organizationId: true } } },
+      select: { roleAsDescribed: true, detectedFunction: true, detectedFunctionConfidence: true, detectedFunctionConfirmedAt: true, userId: true, ground: { select: { organizationId: true } } },
     });
     if (!p) return;
     /* The person's own words about their job (their title, and what they said they are responsible for) help the read, beside the lead's. */
@@ -9556,7 +9581,7 @@ ${told}` : '';
     });
 
     let result = detectFunction(
-      [p.roleAsDescribed, own.title].filter(Boolean).join('. ') || null,
+      theStatedRole(p.roleAsDescribed, own.title),
       [...entries.map((e) => e.text), ...(own.owns ? [own.owns] : [])],
       { fn: p.detectedFunction, confidence: p.detectedFunctionConfidence },
     );
@@ -9625,9 +9650,9 @@ ${told}` : '';
      * nine, which is a product decision rather than a bug - and it is now a
      * decision somebody can see.
      */
-    if (!result.fn || result.confidence < MIN_COACHING_CONFIDENCE) {
+    if (!aFunctionThatMayBeUsed(result, (p as any).detectedFunctionConfirmedAt ?? null)) {
       this.logger.log(
-        `No function is confident enough for participant ${participantId} (${result.fn ?? 'none'} at ${result.confidence}). ` +
+        `No function is confident enough for participant ${participantId} (${result.fn ?? 'none'} at ${result.confidence}, not confirmed). ` +
           `Role-tuned probes and coaching are OFF for them, which is correct and not a failure: ${result.basis} ` +
           `If this holds for a whole ground, either the work is not covered by the nine role maps or nobody described the role at setup.`,
       );

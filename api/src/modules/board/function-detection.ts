@@ -290,6 +290,39 @@ export function needsRoleConfirmation(
 }
 
 /**
+ * ONCE CONFIRMED, IT STANDS (decision 57, item 5). The other half of needsRoleConfirmation.
+ *
+ * A guess below the threshold is asked about before it is used. A guess the person or their lead has
+ * confirmed (or corrected) is no longer a guess, so the coach may read their work against that
+ * function's own behaviours. Without this the confirmation was asked, stamped and then ignored: a
+ * sales executive who said "yes, my work is sales" stayed at 0.4 and was read against the floor for
+ * every session after, so the sales coaching never fired for the person it was written for
+ * (production check-in, 15 October 2026: a sale given up on before the approved discount was offered).
+ */
+export function aFunctionThatMayBeUsed(
+  detection: Pick<DetectionResult, 'fn' | 'confidence'>,
+  confirmedAt: Date | null | undefined,
+): boolean {
+  if (!detection.fn) return false;
+  return (detection.confidence ?? 0) >= MIN_COACHING_CONFIDENCE || !!confirmedAt;
+}
+
+/**
+ * THE STATED ROLE, THE SAME FOR EVERY READ (production check-in, 15 October 2026).
+ *
+ * The read after a check-in used the lead's description AND the person's own job title. The read
+ * at the first open and on every turn used the lead's description only. Most people's role lives in
+ * their own job title (a person's own statement of their role is written there, never to the lead's
+ * description - see ParticipantsService.updateRole and extractRoleConfirmation), so
+ * for them the turn-by-turn read had no role at all: no role-tuned question and no role confirmation
+ * in their first check-in, however plainly their title said what they do. One way of putting the two
+ * together, used by all three reads.
+ */
+export function theStatedRole(roleAsDescribed: string | null | undefined, jobTitle: string | null | undefined): string | null {
+  return [roleAsDescribed, jobTitle].map((s) => (s ?? '').trim()).filter(Boolean).join('. ') || null;
+}
+
+/**
  * The plain-words question a person is asked, once, in their own check-in, to confirm a low-
  * confidence read of their function - decision 57's own example: "It sounds like most of your work
  * is sales. Is that right, or would you describe it differently?" The lead may instead confirm it
