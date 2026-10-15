@@ -1152,6 +1152,27 @@ export class EmailService implements OnModuleInit {
   }
 
   /**
+   * THE FREE MONTH'S TWO EMAILS, TO AN ADMIN (15 October): three days before it ends, and once it has ended. The words are
+   * built in billing/the-free-month-emails.ts; here they are escaped, wrapped and posted, with one link to Plan and billing.
+   * Each is the day's one routine message (ROUTINE_EMAILS), so what became of it is returned for the once-only record.
+   */
+  async sendFreeMonthEndsSoon(email: string, subject: string, lines: string[], linkLabel: string): Promise<'sent' | 'held' | 'suppressed'> {
+    const context: DeliveryContext = { kind: 'OTHER' };
+    await this.sendEmail({ to: email, subject, html: this.theFreeMonthsHtml(lines, linkLabel) }, context, 'sendFreeMonthEndsSoon');
+    return context.outcome ?? 'sent';
+  }
+
+  async sendFreeMonthEnded(email: string, subject: string, lines: string[], linkLabel: string): Promise<'sent' | 'held' | 'suppressed'> {
+    const context: DeliveryContext = { kind: 'OTHER' };
+    await this.sendEmail({ to: email, subject, html: this.theFreeMonthsHtml(lines, linkLabel) }, context, 'sendFreeMonthEnded');
+    return context.outcome ?? 'sent';
+  }
+
+  private theFreeMonthsHtml(lines: string[], linkLabel: string): string {
+    return this.layout(lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('') + `<p><a href="${this.frontendUrl}/billing">${escapeHtml(linkLabel)}</a></p>`);
+  }
+
+  /**
    * "GET UPDATES FROM YOUR TEAM" HAS TWO EMAILS AND THEY ARE THE WHOLE PRODUCT FOR THAT CARD.
    *
    * A two-minute setup is only worth anybody's time because of what arrives in the same week, so

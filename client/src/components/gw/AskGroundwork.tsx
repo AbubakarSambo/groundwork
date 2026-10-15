@@ -22,6 +22,11 @@ const STILL_READING = 'Reading it now.'
 const SAID_AFTER_UPLOAD = "I've uploaded it."
 /** The picker's target when the document is for the whole organisation, not a check-in (the server's FOR_THE_ORGANISATION). */
 const FOR_THE_ORGANISATION = 'organisation'
+/** The picker's target when the "+" beside the message box opened it: the file is chosen first, and Ask decides where it goes. */
+const CHOSEN_FIRST = 'chosen-first'
+/** What the "+" says to Ask once a file is chosen: the same words a person could type (Hafsah, 15 October). */
+export const ADDING_A_FILE = 'I want to add a document.'
+export const ADDING_A_FILE_FOR_EVERYONE = 'I want to add a document for the whole organisation.'
 
 /**
  * THE NAME AND CAPTION, BEFORE `GET /ask` HAS ANSWERED (screen fault 5d). Loading, or held up by
@@ -79,7 +84,8 @@ export function checkInOnThisPage(pathname: string): string | null {
   return m ? m[1] : null
 }
 
-type Said = { from: 'you'; says: string } | { from: 'groundwork'; reply: AskReply }
+/* `fileTaken`: this reply's "Choose a file" was already answered by the file chosen with the "+", so it is not drawn again. */
+type Said = { from: 'you'; says: string } | { from: 'groundwork'; reply: AskReply; fileTaken?: boolean }
 
 const isText = (b: AskBlock): b is TextBlock => b.type === 'text' && typeof b.body === 'string'
 const isClaim = (b: AskBlock): b is ClaimBlock => b.type === 'claim' && typeof b.says === 'string'
@@ -192,6 +198,7 @@ export function AskGroundwork({
 }) {
   const location = useLocation()
   const user = useAuthStore(s => s.user)
+  const isAnAdmin = user?.role === 'ADMIN'
   const orgName = (user as any)?.organization?.name?.trim() || user?.organizationName || ''
   const page = useQuery({ queryKey: ['ask'], queryFn: askApi.mine })
   /*
@@ -214,6 +221,8 @@ export function AskGroundwork({
    * failed to open here, only an extra that has not arrived yet. `canRetry` is still worth
    * keeping: a 401 (signed out) is the one case retrying this alone cannot fix.
    */
+  /* Who sees the "+": a lead who may add context (served as `addsContext`), or an admin of the organisation. */
+  const mayAddAFile = askOk && (!!page.data?.addsContext || isAnAdmin)
   const askWhy = page.isError ? whyYouCannotSeeThis(whatWentWrong(page.error)) : null
   /* The check-in the page is about, from its address, so the panel opens on it. Or, for the Ask
      page itself (`/chat?about=`), the id its caller confirmed the reader may see (B-210). */
@@ -380,6 +389,38 @@ export function AskGroundwork({
     const groundId = uploadTarget.current
     uploadTarget.current = null
     if (!file || !groundId) return
+    if (groundId === CHOSEN_FIRST) { await addAFileChosenFirst(file); return }
+    await uploadTo(file, groundId)
+  }
+
+  /**
+   * THE "+" BESIDE THE MESSAGE BOX (Hafsah, 15 October): the file is chosen first, as in the check-in chat. Ask is then
+   * told what the person could have typed, "I want to add a document." (or, for an admin with no check-in chosen, "for the
+   * whole organisation"), and the server decides, exactly as for the typed way, whether they may and where it goes. Its
+   * "Choose a file" step is answered with the file already chosen; anything else it says (it cannot go anywhere, say
+   * which check-in) is shown as it comes, and the file is not sent. Nothing is kept until the said-back yes, as before.
+   */
+  const addAFileChosenFirst = async (file: File) => {
+    const gid = openedFromGroundId ?? (aboutId || null)
+    const message = isAnAdmin && !gid ? ADDING_A_FILE_FOR_EVERYONE : ADDING_A_FILE
+    setSending(true)
+    setProblem(null)
+    let reply: AskReply
+    try {
+      reply = await (openedFromGroundId ? askApi.ask(message, openedFromGroundId, 'check_in_setup') : askApi.ask(message, gid ?? undefined))
+    } catch (e: unknown) {
+      const said = (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message
+      setProblem(typeof said === 'string' ? said : 'That did not send. Choose the file again to try once more.')
+      setSending(false)
+      return
+    }
+    setSending(false)
+    const step = reply.blocks.find((b): b is NextStepBlock & { id: string } => isNextStep(b) && isUploadStep(b))
+    setSaid((s) => [...s, { from: 'you' as const, says: message }, { from: 'groundwork' as const, reply, fileTaken: !!step }])
+    if (step) await uploadTo(file, uploadGroundId(step))
+  }
+
+  const uploadTo = async (file: File, groundId: string) => {
     setProblem(null)
     /* AN ADMIN'S DOCUMENT FOR THE WHOLE ORGANISATION (fix list, item 3): read and said back by the server in one step. */
     if (groundId === FOR_THE_ORGANISATION) {
@@ -437,7 +478,7 @@ export function AskGroundwork({
     void send(yes ? 'Yes' : 'No', () => askApi.answer(proposalId, yes ? 'yes' : 'no'), false)
   }
 
-  function drawBlocks(reply: AskReply, key: number, isLatest: boolean) {
+  function drawBlocks(reply: AskReply, key: number, isLatest: boolean, fileTaken = false) {
     const texts = new Set(reply.blocks.filter(isText).map((b) => b.body))
     return reply.blocks.map((b: AskBlock, i) => {
       const k = `${key}-${i}`
@@ -472,6 +513,7 @@ export function AskGroundwork({
         /* The one next step drawn as an action here rather than a link to another page - see
            isUploadStep. Everything else still goes to its own page in the product. */
         if (isUploadStep(b)) {
+          if (fileTaken) return null
           return (
             <button key={k} type="button" style={chip} disabled={sending || reading}
               onClick={() => startUpload(uploadGroundId(b))}>
@@ -570,7 +612,7 @@ export function AskGroundwork({
         ))}
         {said.map((s, i) => s.from === 'you'
           ? <p key={`s-${i}`} style={bubble(true)}>{s.says}</p>
-          : <div key={`s-${i}`} style={{ display: 'contents' }}>{drawBlocks(s.reply, i, i === latestGroundworkIndex)}</div>)}
+          : <div key={`s-${i}`} style={{ display: 'contents' }}>{drawBlocks(s.reply, i, i === latestGroundworkIndex, s.fileTaken)}</div>)}
         {reading && <p style={bubble(false)}>{STILL_READING}</p>}
         {sending && (
           /*
@@ -594,8 +636,7 @@ export function AskGroundwork({
         <div ref={end} />
       </div>
 
-      {/* Hidden: the "Choose a file" block above opens this. Not the composer's job - a file has
-          nowhere to go in a text box. */}
+      {/* Hidden: the "Choose a file" block above, and the "+" beside the message box, open this. */}
       <input ref={fileInput} type="file" style={{ display: 'none' }} accept={UPLOAD_ACCEPT_ATTR} onChange={onFileChosen} />
 
       {(askOk || !askSettled) && (
@@ -641,6 +682,12 @@ export function AskGroundwork({
             placeholder={page.data?.caption ?? 'Ask a question'}
             ariaLabel={page.data?.caption ?? 'Ask a question'}
             maxLength={8000}
+            /* THE "+" (Hafsah, 15 October): for whoever may add a document here, a lead for the check-ins they run
+               (`addsContext`, served) or an admin for the whole organisation. It opens the file picker at once.
+               The server still decides, on the file's way in, whether they may and where it goes. */
+            onPlus={mayAddAFile ? () => { if (sending || reading) return; uploadTarget.current = CHOSEN_FIRST; fileInput.current?.click() } : undefined}
+            plusDisabled={sending || reading || !askSettled}
+            plusLabel="Add a photo or a document"
           />
         </div>
       )}

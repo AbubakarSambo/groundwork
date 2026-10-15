@@ -1431,7 +1431,9 @@ export function GroundAdminPage() {
       : (ground as any).status === 'REPORT_READY'
         ? 'the report is ready. It has not been shared yet'
         : (ground as any).report
-          ? (everyoneIn ? 'everyone is in, report on its way' : clockRoundDone > 0 ? 'report being written' : 'waiting for the first session')
+          /* A report row is a report written from whoever has answered (staging test, 15 October): "report being written"
+             stayed on for good while the others had not checked in. It is ready to read so far, and fills in as they do. */
+          ? (everyoneIn ? 'everyone is in, report on its way' : clockRoundDone > 0 ? 'the report so far is ready to read, and it fills in as the others check in' : 'waiting for the first session')
           : 'no report yet'
   // contact-visibility toggle state (default: hidden). true = peers cannot see each other's email.
   /**

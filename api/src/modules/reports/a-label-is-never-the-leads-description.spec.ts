@@ -381,7 +381,7 @@ describe('the person\'s own coaching note does not say the lead\'s words back to
   });
 
   it('and the report passes only the person\'s own words to be said', () => {
-    expect(withoutComments('reports/reports.service.ts')).toContain('roleToSay: aRoleInTheirOwnWords(participant as any),');
+    expect(withoutComments('reports/reports.service.ts')).toContain('roleToSay: aRoleOrNothing(aRoleInTheirOwnWords(participant as any)),');
   });
 });
 

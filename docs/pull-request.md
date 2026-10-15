@@ -3,7 +3,7 @@
 
 > **Update, 15 October, 04:00 UTC.** Brought up to date with staging after #351 (the marketing build's apostrophe, one shared row, two stale pins). Five tooling tests that read working documents (tools/score_run.py, docs/pattern-names.md, docs/modules.md, a journey dump) are left out of this release, as docs/what-goes-in-a-pull-request.md requires; they stay on the working branch. Product paths equal staging's exactly.
 >
-> **Questions before the merge:** (1) Hafsah decides whether the free-trial switch (`pricing.freeTrial`) goes on at release; the new pricing and the one-month trial for new teams show only once it is on. (2) Main's migration `20260923200000_reopen_every_check_in…` is `SELECT 1` on staging; if production already ran main's version, those check-ins were already reopened and nothing runs twice. Please confirm. (3) The API needs Node 24.
+> **Questions before the merge:** (1) Main's migration `20260923200000_reopen_every_check_in…` is `SELECT 1` on staging; if production already ran main's version, those check-ins were already reopened and nothing runs twice. Please confirm. (2) The API needs Node 24.
 This branch, `release-production-1015`, is made from `main` as it is today (`824b7e3b4`, 28 September). Its product files are exactly staging's as of `600849756` (15 October, after #350): `api/src`, `api/prisma`, `client/src`, `client/public`, `marketing/src`, `marketing/public`, the package and build files, the CI workflow `tests.yml`, the four one-off scripts the release runs, the existing-users check, and three notes. Nothing else changes. Merge it into `main` only after the backup below.
 
 ## Before you merge
@@ -137,11 +137,16 @@ Run them from `api/`, in this order, each one **dry run first**, read what it pr
 3. [ ] `DATABASE_URL=<production> npx ts-node -T journey/give-each-check-in-its-kind-of-work.ts --hosted-database`, then `--hosted-database --write`. It calls the model, and gives each existing check-in its kind of work. It must run before script 4.
 4. [ ] `DATABASE_URL=<production> npx ts-node -T journey/bring-a-check-in-up-to-date.ts --hosted-database`, then `--hosted-database --write`. It prints each change in a sentence first; read them before writing.
 
+### (f) Switch the free trial on, last
+
+Hafsah's decision, 15 October. After the migrations, the start checks and the four one-off scripts: Admin → System → Pricing → The free trial → On. This turns on, for every organisation: the one-month free trial for new teams (WhatsApp included, no card), the new pricing on every screen (extra seats at $5 a month, WhatsApp at $4 a month per person who used it), its billing in Stripe, and the two free-month emails to admins (three days before the free month ends, and when it has ended; each counts as that admin's one routine message that day). Organisations already paying keep exactly what they pay until they add a seat, switch WhatsApp on, or change plan.
+
 ### (e) The rollback rule
 
 - [ ] If anything goes wrong, **restore the backup from (a) and the old code (`824b7e3b4`) together. Never roll back the code alone.** The old code cannot read the new database, and the new migrations change existing values that only the backup holds.
 
 ## What is in it, by area
+- **Since 15 October, 04:00 UTC (brought up to staging again):** the free month's two emails to admins and the anchor's people question in one sentence (#353); Ask's ＋ attach button (#354); the lead's role is a role or nothing (#355); a difference is a real one (#356); "Report being written" clears (#357).
 
 - **The engine** (`api/src`): plain reports and boards, written in full sentences with people's names; the role interview in a person's first check-in; the lead's own check-in, taken when the lead chooses; missed check-ins told to the person first; claims about a colleague kept in the speaker's words until the colleague confirms; pattern steadiness; the lead's daily nudge; one routine message a day for each person.
 - **Ask Groundwork**: context and resources set up by talking to Ask, each written only after a yes. The old context chat is off.

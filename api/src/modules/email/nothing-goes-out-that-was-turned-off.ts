@@ -254,6 +254,10 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendParticipantBlockedNudge: 'we decided to send it',
   /* About a code whose time is running out: billing, so the opt-out never stops it (decision 109 item 5). */
   sendCodeExpiryReminder: 'asked for',
+  /* The free month ending, and ended (15 October): billing, so the opt-out never stops them (decision 109 item 5), but each is
+     still the admin's one routine message that day, and the sweep sends them only in the organisation's working day. */
+  sendFreeMonthEndsSoon: 'asked for',
+  sendFreeMonthEnded: 'asked for',
   sendRoundDigest: 'we decided to send it',
   /* The lead's weekly letter on the anchor check-ins. Nobody asked this morning, so the stop link stops it. */
   sendTheLeadsWeeklyLetter: 'we decided to send it',
