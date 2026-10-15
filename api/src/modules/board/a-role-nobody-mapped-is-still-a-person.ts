@@ -83,7 +83,7 @@ const SIGNALS: Record<string, Omit<UniversalSignal, 'probe'>> = {
     lookingLike: 'After each thing you did, say what somebody else can do now that they could not before.',
   },
   [UniversalMode.INVISIBILITY]: {
-    noticed: 'What went well, and the trouble you stopped, are missing from your own account. The only record of them is somebody else mentioning it.',
+    noticed: 'What went well, and the trouble you stopped, are missing from what you said. The only record of them is somebody else mentioning it.',
     lookingLike: 'Say what worked and what you stopped, in your own words, instead of waiting for somebody to notice.',
   },
   [UniversalMode.UNDER_PERSISTENCE]: {
@@ -122,4 +122,4 @@ export function universalSignalRead(index: number, reason: string): (UniversalSi
  * wrong or unknown, saying what it is makes everything else better.
  */
 export const READ_FROM_THE_ACCOUNT_NOT_THE_ROLE =
-  'This comes from what you wrote, not from your job, because nobody has settled yet what kind of work this is. It is about how your account reads, not about the work.';
+  'This comes from what you wrote, not from your job, because nobody has settled yet what kind of work this is. It is about how what you said reads, not about the work.';

@@ -38,7 +38,7 @@ describe('#probing A summary is not yet an answer (precision, not suspicion)', (
 
   it('adds the dependencies probe, own-blockers-only, non-leading', () => {
     expect(ENGINE_RULES).toMatch(/DEPENDENCIES - the one new thing to ask about, non-leading/);
-    expect(ENGINE_RULES).toMatch(/Is there anything you need that's blocked on someone else right now\?/);
+    expect(ENGINE_RULES).toMatch(/Is anything you need waiting on someone else right now\?/);
     expect(ENGINE_RULES).toMatch(/never suggest who might be blocking them, never name a role or person as a guess/i);
   });
 });

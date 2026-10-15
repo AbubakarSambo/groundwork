@@ -1,10 +1,31 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { restsOnARecordNobodyHolds, whatTheRecordRuleTookOut, aLineForWhatTheRecordRuleTookOut } from './a-pattern-does-not-rest-on-a-record-nobody-holds';
+import { Injectable, Optional, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { theirApprovedLeave } from '../suites/who-is-away';
+import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { PrismaService } from '../prisma/prisma.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { LEARNING_SIGNAL } from '../learning/learning-signal';
 import { shouldThisCodeBeAboutThem } from './a-chaser-is-not-the-blocker';
-import { whatWasSeenLastPeriod, lastPeriodBlockFor, HOW_FAR_BACK } from './the-detector-has-no-memory-of-last-period';
+import { theirOwnEarlierRecord, earlierRecordQuery } from './the-detector-reads-their-own-earlier-record';
+import {
+  theReadsWereSplit,
+  couldChangeWhatIsShown,
+  whatCountsThisPeriod,
+  MORE_READS_WHEN_SPLIT,
+  votesOf,
+  whatTheSettlingLetGo,
+  aLineForWhatTheSettlingLetGo,
+} from './a-period-at-the-line-is-settled-on-all-the-evidence';
+import { whatWasSeenLastPeriod, lastPeriodBlockFor, evidenceBorrowedFromAnotherCode, HOW_FAR_BACK } from './the-detector-has-no-memory-of-last-period';
 import { AnthropicService } from '../conversation';
+import { PromptsService } from '../prompts/prompts.service';
 import { runIntake } from '../conversation/intake';
 import { plainVoice } from './plain-voice';
+import { PERIODS_BEFORE_A_PATTERN_IS_SHOWN, PATTERN_ROW_SELECT, patternRowsThisReaderMayRead, servedPatterns, periodsSeen, type AServedPattern, type ALeadPatternMark } from './who-reads-a-pattern';
+import { periodOf } from './period-of';
+import { PATTERNS_ARE_SERVED } from './patterns-are-served';
+import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
+import { theFirstNameFrom } from '../reports/a-title-is-not-a-first-name';
 import { isAgainstAGoalTheyStated, whatTheySaidThisWasFor } from './against-the-goal-they-stated';
 import { saysSomethingCheckable } from '../board/reads';
 import { PatternStatus, TurnRole, GroundStatus, CheckInStatus, Prisma } from '@prisma/client';
@@ -12,6 +33,7 @@ import { mirrorDetection } from '../detectors/mirror-a-detection';
 import { isBackedByADocument } from '../reports/backed-by-a-document';
 import {
   PATTERN_DETECTION_PROMPT,
+  PATTERN_DETECTION_PROMPT_KEY,
   PATTERN_DETECTION_SCHEMA,
   BAD_FAITH_CODES,
   isBadFaithCode,
@@ -20,6 +42,10 @@ import {
   detectR3,
   checkF1Conditions,
   DetectionInput,
+  PATTERN_DETECTORS,
+  detectPattern,
+  mergedEvidenceSource,
+  AnEvidenceSource,
   collusionRuleGate,
   COLLUSION_COMPLETION_WORDS,
   COLLUSION_CONFIRM_PROMPT,
@@ -27,6 +53,30 @@ import {
 
 /** Lookup map from code -> description for the AI confirmation prompt. */
 const CODE_DESCRIPTIONS = new Map(BAD_FAITH_CODES.map((c) => [c.code, `${c.name}: ${c.signal}`]));
+
+/**
+ * THE STEADIEST SETTING THE MODEL HAS, FOR THE TWO DETECTOR CALLS.
+ *
+ * Measured live against run-20 of journey/all-24 (30 September 2026, step 2 - see
+ * api/journey/the-detector-read-twice.ts and docs/morning-report.md, "Step 2, the fix"). Kept
+ * here, not applied anywhere by default, until that measurement says which of the extraction call,
+ * the confirming call, or neither should use it.
+ */
+export const PATTERN_DETECTION_STEADY_OPTIONS = { temperature: 0, seed: 20260930 } as const;
+
+/**
+ * READ FIVE TIMES, KEEP WHAT THREE AGREE ON.
+ *
+ * Measured live against run-20 of journey/all-24 (50 check-ins, 30 September 2026 - see
+ * api/journey/how-steady-each-way-is.py and -2.py, and docs/morning-report.md). One ordinary read
+ * gives the same (person, pattern) pairs across a scenario only 36% of the time. One read at the
+ * steady setting above (temperature 0, a fixed seed) gives 57%. Five steady reads, keeping a
+ * pattern only when at least three of the five keep it, gives 80%, while still finding at least as
+ * many real patterns as today's single read (71% of the patterns most reads agree on, measured
+ * independently). The smallest thinking budget was ruled out separately - it finds almost nothing.
+ */
+export const READS_PER_CHECK_IN = 5;
+export const READS_THAT_MUST_AGREE = 3;
 
 const THREE_PERIOD_RULE = 3;
 
@@ -51,7 +101,21 @@ export class PatternsService {
   constructor(
     private prisma: PrismaService,
     private anthropic: AnthropicService,
+    /* Optional so that a service built by hand (most specs) still works; tells the learning counts a new signal came in. */
+    @Optional() private events?: EventEmitter2,
+    /* Optional so that a service built by hand still works: the stored detector prompt is read through it, the code's text is the fallback. */
+    @Optional() private prompts?: PromptsService,
   ) {}
+
+  /** The detector's prompt that runs: the version stored under `pattern_detection`, else the text in the code. */
+  private async theDetectorPrompt(): Promise<{ content: string; id: string | null }> {
+    const stored = await this.prompts?.getActive(PATTERN_DETECTION_PROMPT_KEY).catch(() => null);
+    return stored ? { content: stored.content, id: stored.id } : { content: PATTERN_DETECTION_PROMPT, id: null };
+  }
+
+  private learnFrom(detectionId: string): void {
+    try { this.events?.emit(LEARNING_SIGNAL, { detectionId }); } catch { /* counting must never break a mark */ }
+  }
 
   /**
    * Analyse one completed check-in (one period for one party). Extracts pattern
@@ -64,13 +128,24 @@ export class PatternsService {
       select: {
         id: true, groundId: true, participantId: true, sessionNumber: true,
         patternsAnalyzedAt: true, specificityDimensions: true,
+        completedAt: true, startedAt: true, createdAt: true,
+        ground: { select: { cadence: true } },
       },
     });
     if (!checkIn || checkIn.patternsAnalyzedAt) return;
 
+    /* The period this check-in belongs to, honestly (decision 57, item 1). A session on a weekly-or-
+       slower ground is its own period; a session on a daily ground belongs to the calendar week it
+       fell in, so several sessions in one week are the one period the three-period rule means. */
+    const period = periodOf(
+      { sessionNumber: checkIn.sessionNumber, when: checkIn.completedAt ?? checkIn.startedAt ?? checkIn.createdAt },
+      checkIn.ground,
+    );
+
     const [turns, records, statedGoalRows] = await Promise.all([
       this.prisma.conversationTurn.findMany({ where: { checkInId }, orderBy: { createdAt: 'asc' } }),
-      this.prisma.recordEntry.findMany({ where: { checkInId } }),
+      /* In the order they were written, so two readings of one check-in are given the same text (9 Oct 2026). */
+      this.prisma.recordEntry.findMany({ where: { checkInId }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] }),
       /* What they said this was for, in earlier periods. See against-the-goal-they-stated. */
       this.prisma.recordEntry.findMany({
         where: { participantId: checkIn.participantId, disputedAt: null, type: 'SUCCESS_DEFINITION' as any, checkIn: { sessionNumber: { lt: checkIn.sessionNumber } } },
@@ -80,26 +155,38 @@ export class PatternsService {
       }).catch(() => [] as { text: string }[]),
     ]);
     const statedGoals = statedGoalRows.map((r) => r.text);
+    /* Their own earlier record, for the codes that only show over time. Built once; all five reads get this same text. */
+    const earlierLines = await this.prisma.recordEntry
+      .findMany(earlierRecordQuery(checkIn.participantId, checkIn.sessionNumber) as any)
+      .catch(() => [] as any[]);
 
     if (turns.length === 0 && records.length === 0) {
       await this.markAnalyzed(checkInId);
       return;
     }
 
+    /* What the PERSON said, and the lines taken from it, and their own earlier lines: never Groundwork's side. */
+    const whatThePersonSaid = [
+      ...turns.filter((t) => t.role !== TurnRole.AI).map((t) => t.content ?? ''),
+      ...records.map((r) => r.text),
+      ...(earlierLines as any[]).map((r) => r?.text ?? ''),
+    ];
     const transcript = turns.map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n');
     const recordText = records.map((r) => `(${r.type}) ${r.text}`).join('\n');
-    const content = `PERIOD ${checkIn.sessionNumber}\n\nTRANSCRIPT:\n${transcript}\n\nEXTRACTED RECORD:\n${recordText}${whatTheySaidThisWasFor(statedGoals)}`;
+    const content = `PERIOD ${period}\n\nTRANSCRIPT:\n${transcript}\n\nEXTRACTED RECORD:\n${recordText}${whatTheySaidThisWasFor(statedGoals)}${theirOwnEarlierRecord(earlierLines as any, period)}`;
 
     // --- R3 positive signal (rule-based, no AI extraction needed) ---
     const allPriorText = records.map((r) => r.text);
     const r3Input: DetectionInput = { submissions: allPriorText };
     if (detectR3(r3Input)) {
+      // R3 is never read by the model at all - a rule-only finding, not a lesser one.
       await this.observePositive(
         checkIn.groundId,
         checkIn.participantId,
         'R3',
         'The record names another person positively with specific evidence of their contribution.',
-        checkIn.sessionNumber,
+        period,
+        'rule',
       );
     }
 
@@ -120,12 +207,13 @@ export class PatternsService {
       .findMany({
         where: {
           participantId: checkIn.participantId,
-          lastPeriodNumber: { gte: checkIn.sessionNumber - HOW_FAR_BACK, lte: checkIn.sessionNumber - 1 },
+          lastPeriodNumber: { gte: period - HOW_FAR_BACK, lte: period - 1 },
         },
+        orderBy: [{ lastPeriodNumber: 'asc' }, { code: 'asc' }],
         select: { code: true, observationText: true, lastPeriodNumber: true },
       })
       .catch(() => [] as { code: string; observationText: string | null; lastPeriodNumber: number | null }[]);
-    const recogniseBlock = lastPeriodBlockFor(whatWasSeenLastPeriod(lastPeriod, checkIn.sessionNumber), checkIn.sessionNumber);
+    const recogniseBlock = lastPeriodBlockFor(whatWasSeenLastPeriod(lastPeriod, period), period);
 
     /*
      * WHO THIS PERSON IS WAITING ON, BY NAME, INSIDE THIS CHECK-IN.
@@ -135,102 +223,127 @@ export class PatternsService {
      */
     const theirDependencies = await (this.prisma.groundDependency?.findMany?.({
       where: { groundId: checkIn.groundId, fromParticipantId: checkIn.participantId },
-      select: { onParticipantId: true, status: true, what: true },
+      select: { onParticipantId: true, status: true, what: true, groundId: true, triedSaid: true },
     }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
+    /* And what those colleagues promised in their own check-ins: only a colleague's own word confirms a wait (decision 137). */
+    const theirColleaguesIds = [...new Set((theirDependencies as any[]).map((d) => d?.onParticipantId).filter(Boolean))] as string[];
+    const theColleaguesOwnPromises: any[] = theirColleaguesIds.length
+      ? await Promise.resolve(this.prisma.groundCommitment?.findMany?.({
+          where: { groundId: checkIn.groundId, participantId: { in: theirColleaguesIds } },
+          select: { groundId: true, participantId: true, text: true },
+        }) ?? []).catch(() => [] as any[])
+      : [];
 
-    try {
-      const result = await this.anthropic.extract<{ detections: { code: string; observation: string }[] }>(
-        PATTERN_DETECTION_PROMPT + recogniseBlock,
-        [{ role: 'user', content }],
-        PATTERN_DETECTION_SCHEMA,
+    /*
+     * THE NUMBER-BASED RULES ARE A SECOND SOURCE OF EVIDENCE (decision 57, item 4), wherever one
+     * exists for the code the model found. Built once, lazily, from this person's own per-PERIOD
+     * scores (never sessions - see period-of.ts), and only when a code with a rule actually comes
+     * up, so a check-in with nothing to cross-check never pays for the extra query. The model's
+     * reading stays the one thing that can surface a bad-faith code at all: this never runs before
+     * the model has already spoken and, for bad faith, been confirmed - it only says, afterwards,
+     * whether a second, independent read agrees.
+     */
+    let detectionInputCache: DetectionInput | null = null;
+    const getDetectionInput = async (): Promise<DetectionInput> => {
+      if (!detectionInputCache) detectionInputCache = await this.buildDetectionInputForParticipant(checkIn.participantId);
+      return detectionInputCache;
+    };
+    const evidenceSourceFor = async (code: string): Promise<AnEvidenceSource | undefined> => {
+      if (!PATTERN_DETECTORS[code]) return undefined;
+      const ruleAgrees = detectPattern(code, await getDetectionInput());
+      this.logger.log(
+        ruleAgrees
+          ? `Check-in ${checkInId}: ${code} backed by two separate reads of the record - the model's reading and the number-based rule.`
+          : `Check-in ${checkInId}: ${code} backed by the model's reading only; the number-based rule did not confirm it on this person's per-period scores.`,
       );
+      return ruleAgrees ? 'both' : 'model';
+    };
 
-      for (const d of result?.detections ?? []) {
-        if (!d.observation?.trim()) continue;
+    /*
+     * READ FIVE TIMES, KEEP WHAT THREE AGREE ON (measured 30 September 2026 - see
+     * PATTERN_DETECTION_STEADY_OPTIONS's neighbour, READS_PER_CHECK_IN, above). Each read goes
+     * through exactly the same steps as before this change - whatOneReadKeeps runs the extraction
+     * call and every filter in the same order, and only decides what a single read would keep,
+     * without writing anything. The five run in parallel, at the steadiest setting the model has.
+     */
+    /* What each read left out because it rested on a record nobody holds, for one line at the end. */
+    const leftOutForARecord: { code: string; observation: string }[][] = [];
+    const detector = await this.theDetectorPrompt();
+    const attempts = await Promise.allSettled(
+      Array.from({ length: READS_PER_CHECK_IN }, () => {
+        const leftOut: { code: string; observation: string }[] = [];
+        leftOutForARecord.push(leftOut);
+        return this.whatOneReadKeeps(checkInId, content, recogniseBlock, lastPeriod, statedGoals, theirDependencies, theColleaguesOwnPromises, getDetectionInput, whatThePersonSaid, leftOut, detector.content);
+      }),
+    );
 
-        /*
-         * THE GOOD ONES TAKE THE SHORT ROAD, WHICH IS THE PRODUCT'S OWN RULE.
-         *
-         * "Positive patterns do not require three periods. Surface them immediately when seen" -
-         * the conversation prompt has said that for the product's whole life, and observePositive
-         * has existed to do it. Nothing reached it but R3, because the line below dropped every
-         * code that was not bad faith, so the seven good ones were extracted and thrown away.
-         *
-         * No confirmation pass either. That gate exists because a false positive on a bad-faith
-         * code is an accusation, and asking a second model to confirm is worth the call. A false
-         * positive here is a compliment somebody did not quite earn, on a board that says where it
-         * came from. The costs are not the same and the gate should not be either.
-         */
-        if (isPositiveCode(d.code)) {
-          /* M1 is about the goal they stated. An output about something else, or with no goal on record, is not it. */
-          if (d.code === 'M1' && !isAgainstAGoalTheyStated(d.observation, statedGoals)) {
-            this.logger.log(`Check-in ${checkInId}: M1 dropped; ${statedGoals.length ? 'the observation speaks to none of the goals this person stated' : 'no goal is on record yet to have delivered against'}.`);
-            continue;
-          }
-          /* And a good pattern needs something somebody could check. "Actively manages what their work
-             needs" with no number, date, name or document in it is a compliment, not an observation
-             (run 3, 20 Sep 2026, credited to a director whose pipeline was two drafts). */
-          if (!saysSomethingCheckable(d.observation)) {
-            this.logger.log(`Check-in ${checkInId}: ${d.code} dropped; the observation carries nothing anybody could check.`);
-            continue;
-          }
-          await this.observePositive(
-            checkIn.groundId, checkIn.participantId, d.code, d.observation.trim(), checkIn.sessionNumber,
-          );
-          continue;
-        }
-        /*
-         * CARRYING TAKES THE LONG ROAD AND SKIPS THE GATE.
-         *
-         * Longitudinal like the bad-faith codes, so it goes through observe() and the three-period
-         * rule: one hard week is not somebody holding the place together. But no confirmation
-         * call - that gate is there to slow an accusation down, and saying somebody is carrying
-         * too much is not an accusation of them.
-         */
-        if (isCarryingCode(d.code)) {
-          await this.observe(
-            checkIn.groundId, checkIn.participantId, d.code, d.observation.trim(), checkIn.sessionNumber,
-          );
-          continue;
-        }
-        if (!isBadFaithCode(d.code)) continue;
-        /*
-         * AND NOT ABOUT THE PERSON WAITING. B5, B11 and K3 read one transcript for "a lot of talking
-         * and it has not moved", which is exactly the shape a lead produces when the person they
-         * hired is not delivering - it surfaced on the client, not the consultant, and her coaching
-         * then told her to communicate better. See a-chaser-is-not-the-blocker.
-         */
-        const mine = shouldThisCodeBeAboutThem(d.code, theirDependencies as any[]);
-        if (!mine.keep) {
-          this.logger.log(`Check-in ${checkInId}: ${d.code} not written about this person; ${mine.because}.`);
-          continue;
-        }
-        // AI confirmation gate: each candidate pattern is confirmed by a
-        // second AI call before being written to the record. This prevents
-        // false positives from the batch extraction step.
-        const confirmed = await this.confirmDetection(d.code, d.observation.trim()).catch((err) => {
-          this.logger.warn(`Pattern confirmation skipped for ${d.code}: ${err.message}`);
-          return false;
-        });
-        if (!confirmed) continue;
-
-        // Gap #30 - F1 composite gate: F1 (Insight Without Operation) requires
-        // ALL four conditions (high thinking-language, low output-language,
-        // pattern sustained 3 periods, no change after prior surfacing). The AI
-        // extraction pass can flag F1 too early; we enforce the composite rule
-        // here using per-participant historical scores before accepting the signal.
-        if (d.code === 'F1') {
-          const f1Input = await this.buildF1Input(checkIn.participantId);
-          if (!checkF1Conditions(f1Input)) {
-            this.logger.debug(`F1 gate: composite conditions not met for participant ${checkIn.participantId} - skipping`);
-            continue;
-          }
-        }
-
-        await this.observe(checkIn.groundId, checkIn.participantId, d.code, d.observation.trim(), checkIn.sessionNumber);
+    const succeeded: { code: string; observation: string }[][] = [];
+    attempts.forEach((attempt, i) => {
+      if (attempt.status === 'fulfilled') {
+        succeeded.push(attempt.value);
+      } else {
+        this.logger.error(`Pattern extraction failed for check-in ${checkInId}, read ${i + 1} of ${READS_PER_CHECK_IN}: ${attempt.reason?.message}`);
       }
-    } catch (err: any) {
-      this.logger.error(`Pattern extraction failed for check-in ${checkInId}: ${err.message}`);
+    });
+
+    if (succeeded.length < READS_THAT_MUST_AGREE) {
+      /* Fewer than three reads to agree on anything. Nothing is written, and the check-in is left
+         unmarked so the nightly sweep (patterns.cron.ts) retries it rather than treating a run of
+         bad luck against the model as "nothing here". */
+      this.logger.error(`Pattern extraction: only ${succeeded.length} of ${READS_PER_CHECK_IN} reads succeeded for check-in ${checkInId}; leaving it unanalysed for the nightly sweep to retry.`);
+      return;
+    }
+
+    /* Count how many of the successful reads kept each code (one vote per read), keeping the
+       observation from the first of the five, in order, that kept it. */
+    const firstVotes = votesOf(succeeded);
+
+    /*
+     * A PERIOD THE READS WERE SPLIT ON IS SETTLED ONCE, ON MORE OF THE SAME EVIDENCE. Where two or
+     * three of the five kept a code on a pattern not yet shown, the check-in is read five more times,
+     * the same way, and that code is decided on all ten by majority, a tie going the way the first
+     * five went. See
+     * a-period-at-the-line-is-settled-on-all-the-evidence.
+     */
+    const countedSoFar = new Map<string, number[]>();
+    if ([...firstVotes.values()].some(({ count }) => theReadsWereSplit(count, READS_THAT_MUST_AGREE))) {
+      const rows = await this.prisma.patternDetection
+        .findMany({ where: { participantId: checkIn.participantId }, select: { code: true, seenInSessions: true } })
+        .catch(() => [] as { code: string; seenInSessions: number[] }[]);
+      for (const r of rows ?? []) countedSoFar.set(r.code, r.seenInSessions ?? []);
+    }
+    const toSettle = (code: string, count: number) =>
+      theReadsWereSplit(count, READS_THAT_MUST_AGREE) && couldChangeWhatIsShown(countedSoFar.get(code) ?? [], period, PERIODS_BEFORE_A_PATTERN_IS_SHOWN);
+    const more: { code: string; observation: string }[][] = [];
+    if ([...firstVotes].some(([code, { count }]) => toSettle(code, count))) {
+      const moreAttempts = await Promise.allSettled(
+        Array.from({ length: MORE_READS_WHEN_SPLIT }, () => {
+          const leftOut: { code: string; observation: string }[] = [];
+          leftOutForARecord.push(leftOut);
+          return this.whatOneReadKeeps(checkInId, content, recogniseBlock, lastPeriod, statedGoals, theirDependencies, theColleaguesOwnPromises, getDetectionInput, whatThePersonSaid, leftOut, detector.content);
+        }),
+      );
+      moreAttempts.forEach((attempt, i) => {
+        if (attempt.status === 'fulfilled') more.push(attempt.value);
+        else this.logger.warn(`Pattern extraction failed for check-in ${checkInId}, extra read ${i + 1} of ${MORE_READS_WHEN_SPLIT}: ${attempt.reason?.message}`);
+      });
+    }
+
+    const countsThisPeriod = whatCountsThisPeriod(succeeded, more, toSettle, READS_THAT_MUST_AGREE);
+    /* One line for each code either rule kept from counting, so a run shows what each one drops (2 October 2026). */
+    for (const letGo of whatTheSettlingLetGo(succeeded, more, toSettle, READS_THAT_MUST_AGREE)) {
+      this.logger.log(aLineForWhatTheSettlingLetGo(checkInId, period, letGo, succeeded.length));
+    }
+    for (const took of whatTheRecordRuleTookOut(leftOutForARecord, countsThisPeriod.keys())) {
+      this.logger.log(aLineForWhatTheRecordRuleTookOut(checkInId, period, took, succeeded.length + more.length));
+    }
+    for (const [code, { observation, votes, reads, settled }] of countsThisPeriod) {
+      if (settled) this.logger.log(`Check-in ${checkInId}: ${code} was kept by ${votes} of ${reads} reads after the first five were split, so it counts for period ${period}.`);
+      if (isPositiveCode(code)) {
+        await this.observePositive(checkIn.groundId, checkIn.participantId, code, observation, period, await evidenceSourceFor(code), detector.id);
+      } else {
+        await this.observe(checkIn.groundId, checkIn.participantId, code, observation, period, await evidenceSourceFor(code), detector.id);
+      }
     }
 
     // LOW_SPEC_MULTI_DIM: alignment-feed-only flag when 3+ dimensions were vague/managed.
@@ -252,6 +365,138 @@ export class PatternsService {
   }
 
   /**
+   * WHAT ONE READ OF THIS CHECK-IN WOULD KEEP, without writing anything.
+   *
+   * One extraction call at the steady setting, then the same filters in the same order this method
+   * always ran, when it ran once: the borrowed-evidence check, the positive-code short road (M1
+   * against a stated goal, then "does this say something checkable"), carrying codes (no
+   * confirmation), the chaser guard, the confirming call (also at the steady setting), and the F1
+   * composite gate. Five calls to this, run in parallel, are how analyzeCheckIn reads a check-in
+   * five times; a code is only written once at least three of the five keep it.
+   */
+  private async whatOneReadKeeps(
+    checkInId: string,
+    content: string,
+    recogniseBlock: string,
+    lastPeriod: { code: string; observationText: string | null; lastPeriodNumber: number | null }[],
+    statedGoals: string[],
+    theirDependencies: any[],
+    theColleaguesOwnPromises: any[],
+    getDetectionInput: () => Promise<DetectionInput>,
+    whatThePersonSaid: string[] = [],
+    leftOutForARecord: { code: string; observation: string }[] = [],
+    detectorPrompt: string = PATTERN_DETECTION_PROMPT,
+  ): Promise<{ code: string; observation: string }[]> {
+    const kept: { code: string; observation: string }[] = [];
+
+    const result = await this.anthropic.extract<{ detections: { code: string; observation: string }[] }>(
+      detectorPrompt + recogniseBlock,
+      [{ role: 'user', content }],
+      PATTERN_DETECTION_SCHEMA,
+      PATTERN_DETECTION_STEADY_OPTIONS,
+    );
+
+    for (const d of result?.detections ?? []) {
+      if (!d.observation?.trim()) continue;
+
+      /* The transcript the detector reads has Groundwork's own lines in it, and a record the conversation
+         invented ("the record shows no payments") became a finding that somebody was not honest. A
+         pattern rests only on what the record holds. See a-pattern-does-not-rest-on-a-record-nobody-holds. */
+      if (restsOnARecordNobodyHolds(d.observation, whatThePersonSaid)) {
+        this.logger.log(`Check-in ${checkInId}: ${d.code} dropped; it rests on a record this person's record does not hold.`);
+        leftOutForARecord.push({ code: d.code, observation: d.observation.trim() });
+        continue;
+      }
+
+      /* The steer recognised something and wrote it up under the wrong code. See
+         the-detector-has-no-memory-of-last-period.evidenceBorrowedFromAnotherCode. */
+      const borrowedFrom = evidenceBorrowedFromAnotherCode(d.observation, d.code, lastPeriod);
+      if (borrowedFrom) {
+        this.logger.log(`Check-in ${checkInId}: ${d.code} dropped; its evidence is ${borrowedFrom}'s own words from a recent period, not a fresh reading of this one.`);
+        continue;
+      }
+
+      /*
+       * THE GOOD ONES TAKE THE SHORT ROAD, WHICH IS THE PRODUCT'S OWN RULE.
+       *
+       * "Positive patterns do not require three periods. Surface them immediately when seen" -
+       * the conversation prompt has said that for the product's whole life, and observePositive
+       * has existed to do it.
+       *
+       * No confirmation pass either. That gate exists because a false positive on a bad-faith
+       * code is an accusation, and asking a second model to confirm is worth the call. A false
+       * positive here is a compliment somebody did not quite earn, on a board that says where it
+       * came from. The costs are not the same and the gate should not be either.
+       */
+      if (isPositiveCode(d.code)) {
+        /* M1 is about the goal they stated. An output about something else, or with no goal on record, is not it. */
+        if (d.code === 'M1' && !isAgainstAGoalTheyStated(d.observation, statedGoals)) {
+          this.logger.log(`Check-in ${checkInId}: M1 dropped; ${statedGoals.length ? 'the observation speaks to none of the goals this person stated' : 'no goal is on record yet to have delivered against'}.`);
+          continue;
+        }
+        /* And a good pattern needs something somebody could check. "Actively manages what their work
+           needs" with no number, date, name or document in it is a compliment, not an observation
+           (run 3, 20 Sep 2026, credited to a director whose pipeline was two drafts). */
+        if (!saysSomethingCheckable(d.observation)) {
+          this.logger.log(`Check-in ${checkInId}: ${d.code} dropped; the observation carries nothing anybody could check.`);
+          continue;
+        }
+        kept.push({ code: d.code, observation: d.observation.trim() });
+        continue;
+      }
+      /*
+       * CARRYING TAKES THE LONG ROAD AND SKIPS THE GATE.
+       *
+       * Longitudinal like the bad-faith codes, so it goes through observe() and the three-period
+       * rule: one hard week is not somebody holding the place together. But no confirmation
+       * call - that gate is there to slow an accusation down, and saying somebody is carrying
+       * too much is not an accusation of them.
+       */
+      if (isCarryingCode(d.code)) {
+        kept.push({ code: d.code, observation: d.observation.trim() });
+        continue;
+      }
+      if (!isBadFaithCode(d.code)) continue;
+      /*
+       * AND NOT ABOUT THE PERSON WAITING. B5, B11 and K3 read one transcript for "a lot of talking
+       * and it has not moved", which is exactly the shape a lead produces when the person they
+       * hired is not delivering - it surfaced on the client, not the consultant, and her coaching
+       * then told her to communicate better. See a-chaser-is-not-the-blocker.
+       */
+      const mine = shouldThisCodeBeAboutThem(d.code, theirDependencies as any[], theColleaguesOwnPromises as any[]);
+      if (!mine.keep) {
+        this.logger.log(`Check-in ${checkInId}: ${d.code} not written about this person; ${mine.because}.`);
+        continue;
+      }
+      // AI confirmation gate: each candidate pattern is confirmed by a
+      // second AI call before being written to the record. This prevents
+      // false positives from the batch extraction step.
+      const confirmed = await this.confirmDetection(d.code, d.observation.trim(), PATTERN_DETECTION_STEADY_OPTIONS).catch((err) => {
+        this.logger.warn(`Pattern confirmation skipped for ${d.code}: ${err.message}`);
+        return false;
+      });
+      if (!confirmed) continue;
+
+      // Gap #30 - F1 composite gate: F1 (Insight Without Operation) requires
+      // ALL four conditions (high thinking-language, low output-language,
+      // pattern sustained 3 periods, no change after prior surfacing). The AI
+      // extraction pass can flag F1 too early; we enforce the composite rule
+      // here using per-participant historical scores before accepting the signal.
+      if (d.code === 'F1') {
+        const f1Input = await getDetectionInput();
+        if (!checkF1Conditions(f1Input)) {
+          this.logger.debug(`F1 gate: composite conditions not met for participant - skipping`);
+          continue;
+        }
+      }
+
+      kept.push({ code: d.code, observation: d.observation.trim() });
+    }
+
+    return kept;
+  }
+
+  /**
    * Record an observed signal for a participant in a given period.
    *
    * THREE PERIODS IS STILL THE FLOOR. What changed on 24 September 2026 is how they are counted.
@@ -265,7 +510,15 @@ export class PatternsService {
    * periods is not one data point that might be nothing, which is the only thing the rule was ever
    * protecting against. Two periods still surfaces nothing, consecutive or not.
    */
-  async observe(groundId: string, participantId: string, code: string, rawObservation: string, periodNumber: number) {
+  async observe(
+    groundId: string,
+    participantId: string,
+    code: string,
+    rawObservation: string,
+    periodNumber: number,
+    evidenceSource?: AnEvidenceSource,
+    promptVersionId?: string | null,
+  ) {
     /**
      * Strip the courtroom opener before it is stored, not on the way out.
      *
@@ -288,6 +541,8 @@ export class PatternsService {
         lastPeriodNumber: periodNumber,
         seenInSessions: [periodNumber],
         status: PatternStatus.CANDIDATE,
+        evidenceSource: evidenceSource ?? null,
+        ...(promptVersionId ? { promptVersionId } : {}),
       });
     }
 
@@ -315,6 +570,10 @@ export class PatternsService {
         lastSeenAt: new Date(),
         observationText,
         status: enough || existing.status === PatternStatus.SURFACED ? PatternStatus.SURFACED : PatternStatus.CANDIDATE,
+        evidenceSource: mergedEvidenceSource(existing.evidenceSource as AnEvidenceSource | null, evidenceSource),
+        ...(promptVersionId ? { promptVersionId } : {}),
+        /* The moment the person it is about may first read it. Set once, never moved. See who-reads-a-pattern. */
+        ...(!existing.readyAt && seenInSessions.length >= PERIODS_BEFORE_A_PATTERN_IS_SHOWN ? { readyAt: new Date() } : {}),
       },
     });
   }
@@ -329,6 +588,8 @@ export class PatternsService {
     code: string,
     observationText: string,
     periodNumber: number,
+    evidenceSource?: AnEvidenceSource,
+    promptVersionId?: string | null,
   ) {
     const existing = await this.prisma.patternDetection.findUnique({
       where: { participantId_code: { participantId, code } },
@@ -343,22 +604,36 @@ export class PatternsService {
           observationText,
           periodsObserved: 1,
           lastPeriodNumber: periodNumber,
+          seenInSessions: [periodNumber],
           // Positive signals surface immediately.
           status: PatternStatus.SURFACED,
+          evidenceSource: evidenceSource ?? null,
+        ...(promptVersionId ? { promptVersionId } : {}),
         },
       });
     }
 
     if (periodNumber <= (existing.lastPeriodNumber ?? 0)) return existing;
 
+    /*
+     * Every period it was seen in, as the bad ones keep it. Good news surfaces at once in the
+     * detector, but a person reads it only after three periods like any other pattern (decision 8),
+     * and that is counted from this list. See who-reads-a-pattern.
+     */
+    const seenInSessions = [...new Set([...(existing.seenInSessions ?? []), periodNumber])].sort((a, b) => a - b);
+    const periodsObserved = existing.periodsObserved + 1;
     return this.prisma.patternDetection.update({
       where: { id: existing.id },
       data: {
-        periodsObserved: existing.periodsObserved + 1,
+        periodsObserved,
+        seenInSessions,
         lastPeriodNumber: periodNumber,
         lastSeenAt: new Date(),
         observationText,
         status: PatternStatus.SURFACED,
+        evidenceSource: mergedEvidenceSource(existing.evidenceSource as AnEvidenceSource | null, evidenceSource),
+        ...(promptVersionId ? { promptVersionId } : {}),
+        ...(!existing.readyAt && Math.max(seenInSessions.length, periodsObserved) >= PERIODS_BEFORE_A_PATTERN_IS_SHOWN ? { readyAt: new Date() } : {}),
       },
     });
   }
@@ -404,9 +679,11 @@ export class PatternsService {
     const latest = await this.prisma.checkIn.findFirst({
       where: { groundId },
       orderBy: { sessionNumber: 'desc' },
-      select: { sessionNumber: true },
+      select: { sessionNumber: true, completedAt: true, startedAt: true, createdAt: true, ground: { select: { cadence: true } } },
     });
-    const currentPeriod = latest?.sessionNumber ?? 0;
+    const currentPeriod = latest
+      ? periodOf({ sessionNumber: latest.sessionNumber, when: latest.completedAt ?? latest.startedAt ?? latest.createdAt }, latest.ground)
+      : 0;
 
     // 1. Tag CANDIDATE detections with their period number if not yet tagged.
     const candidates = await this.prisma.patternDetection.findMany({
@@ -429,7 +706,9 @@ export class PatternsService {
       //    is broken - reset the consecutive counter back to 0 so the next
       //    observation restarts the streak properly.
       const lastP = det.lastPeriodNumber ?? 0;
-      if (lastP < currentPeriod) {
+      /* A period spent on approved leave is not a period they went quiet in: the streak is paused,
+         not broken (week 23). */
+      if (lastP < currentPeriod && !(await this.wasAwayThisPeriod(det.participantId, latest?.createdAt ?? null))) {
         await this.prisma.patternDetection.update({
           where: { id: det.id },
           data: { periodsObserved: 0 },
@@ -441,6 +720,18 @@ export class PatternsService {
     await this.surfacePatterns(groundId);
 
     this.logger.log(`startNewPeriod: ground ${groundId}, period boundary at session ${currentPeriod}`);
+  }
+
+  /** Whether this person had approved leave at any time since the period began (week 23). */
+  private async wasAwayThisPeriod(participantId: string | null, since: Date | null): Promise<boolean> {
+    if (!participantId) return false;
+    const p = await this.prisma.groundParticipant
+      .findUnique({ where: { id: participantId }, select: { userId: true, ground: { select: { organizationId: true } } } })
+      .catch(() => null);
+    if (!p?.userId) return false;
+    const now = new Date();
+    const start = since ?? new Date(now.getTime() - 7 * 86_400_000);
+    return (await theirApprovedLeave(this.prisma as any, p.userId, p.ground?.organizationId ?? null)).some((l) => l.from <= now && l.to >= start);
   }
 
   /**
@@ -639,7 +930,8 @@ export class PatternsService {
         const observationText =
           `Two accounts corroborate the same claims across periods with no independent evidence - ` +
           `each is supported only by the other. Worth an admin look. Pair (participants): ${anchorId} & ${partnerId}.`;
-        await this.observe(groundId, anchorId, 'COLLUSION_RISK', observationText, period);
+        // The cheap rule gate and the model's own confirmation both had to agree to reach here.
+        await this.observe(groundId, anchorId, 'COLLUSION_RISK', observationText, period, 'both');
         this.logger.warn(`COLLUSION_RISK candidate flagged for review on ground ${groundId} (pair ${anchorId} & ${partnerId})`);
       }
     }
@@ -705,36 +997,77 @@ export class PatternsService {
    * the CheckIn model). Includes prior surfaced codes so condition 4 can be
    * evaluated (no change despite prior F1 surfacing).
    */
-  private async buildF1Input(participantId: string): Promise<DetectionInput> {
-    const checkIns = await this.prisma.checkIn.findMany({
-      where: { participantId, status: CheckInStatus.COMPLETED },
-      orderBy: { sessionNumber: 'asc' },
-      select: {
-        id: true,
-        recordEntries: { select: { text: true } },
-      },
-    });
+  /**
+   * A PARTICIPANT'S OWN RECORD, AS A `DetectionInput` OF PER-PERIOD SCORES (decision 57, item 4).
+   *
+   * Was `buildF1Input`, one code's private helper, keyed by session. Every detector that reads a
+   * score series (`D`-`K` bad-faith codes, `M1`/`R3`'s siblings, `F1`-`F5`) needs the same shape, so
+   * this builds it once for whichever code asks. Grouped by PERIOD, never by session (`period-of.ts`,
+   * decision 57 item 1): a daily ground's several sessions inside one calendar week are the one
+   * period the three-period rule means, so their scores are averaged into it rather than counted as
+   * three separate weeks of evidence.
+   */
+  private async buildDetectionInputForParticipant(participantId: string): Promise<DetectionInput> {
+    const [participant, checkIns] = await Promise.all([
+      this.prisma.groundParticipant.findUnique({
+        where: { id: participantId },
+        select: { roleAsDescribed: true, ground: { select: { cadence: true } } },
+      }),
+      this.prisma.checkIn.findMany({
+        where: { participantId, status: CheckInStatus.COMPLETED },
+        orderBy: { sessionNumber: 'asc' },
+        select: {
+          sessionNumber: true, completedAt: true, startedAt: true, createdAt: true,
+          recordEntries: { select: { text: true } },
+        },
+      }),
+    ]);
 
+    const byPeriod = new Map<number, { texts: string[]; thinking: number[]; output: number[]; meeting: number[]; specificity: number[] }>();
+    for (const ci of checkIns) {
+      const period = periodOf(
+        { sessionNumber: ci.sessionNumber, when: ci.completedAt ?? ci.startedAt ?? ci.createdAt },
+        participant?.ground,
+      );
+      const periodText = ci.recordEntries.map((r) => r.text).join(' ');
+      const intake = runIntake(periodText);
+      const bucket = byPeriod.get(period) ?? { texts: [], thinking: [], output: [], meeting: [], specificity: [] };
+      bucket.texts.push(periodText);
+      bucket.thinking.push(intake.thinkingScore);
+      bucket.output.push(intake.outputScore);
+      bucket.meeting.push(intake.meetingScore);
+      bucket.specificity.push(intake.specificity);
+      byPeriod.set(period, bucket);
+    }
+
+    const avg = (nums: number[]) => (nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : 0);
+    const orderedPeriods = [...byPeriod.keys()].sort((a, b) => a - b);
     const submissions: string[] = [];
     const thinkingScore: number[] = [];
     const outputScore: number[] = [];
-
-    for (const ci of checkIns) {
-      const periodText = ci.recordEntries.map((r) => r.text).join(' ');
-      const intake = runIntake(periodText);
-      submissions.push(periodText);
-      thinkingScore.push(intake.thinkingScore);
-      outputScore.push(intake.outputScore);
+    const meetingScore: number[] = [];
+    const specificityScores: number[] = [];
+    for (const p of orderedPeriods) {
+      const bucket = byPeriod.get(p)!;
+      submissions.push(bucket.texts.join(' '));
+      thinkingScore.push(avg(bucket.thinking));
+      outputScore.push(avg(bucket.output));
+      meetingScore.push(avg(bucket.meeting));
+      specificityScores.push(avg(bucket.specificity));
     }
 
-    // Collect codes already surfaced for this participant (condition 4).
+    // Collect codes already surfaced for this participant (F1's condition 4).
     const surfaced = await this.prisma.patternDetection.findMany({
       where: { participantId, status: PatternStatus.SURFACED },
       select: { code: true },
     });
     const priorSurfacedCodes = surfaced.map((s) => s.code);
 
-    return { submissions, thinkingScore, outputScore, priorSurfacedCodes };
+    return {
+      submissions, thinkingScore, outputScore, meetingScore, specificityScores,
+      role: participant?.roleAsDescribed ?? undefined,
+      priorSurfacedCodes,
+    };
   }
 
   /**
@@ -745,18 +1078,133 @@ export class PatternsService {
    * The excerpt is the observation text produced by the batch extraction step -
    * a plain-language description of what the record shows, never a verdict.
    */
-  private async confirmDetection(code: string, excerpt: string): Promise<boolean> {
+  private async confirmDetection(code: string, excerpt: string, options: { temperature?: number; seed?: number } = {}): Promise<boolean> {
     const description = CODE_DESCRIPTIONS.get(code) ?? code;
     const systemPrompt =
       'You are a pattern-detection verifier. Answer only YES or NO. No explanation. No preamble.';
     const question = `Does this text exhibit pattern ${code} (${description})?\nText: ${excerpt}\nAnswer YES or NO.`;
 
-    const reply = await this.anthropic.respond(systemPrompt, [{ role: 'user', content: question }]);
+    const reply = await this.anthropic.respond(systemPrompt, [{ role: 'user', content: question }], options);
     return reply.trim().toUpperCase().startsWith('YES');
   }
 
   private markAnalyzed(checkInId: string) {
     return this.prisma.checkIn.update({ where: { id: checkInId }, data: { patternsAnalyzedAt: new Date() } });
+  }
+
+  /**
+   * "SAY WHAT'S BEHIND IT." The person a pattern is about answers it, in their own words.
+   *
+   * Only that person, and only a pattern they may already read (three periods, a plain name, the
+   * switch on): anything else is "not found", so nobody can learn from this route that a pattern
+   * exists about somebody else. The answer is kept beside the pattern and read by the person and by
+   * whoever runs the check-in, never by a colleague; answering is also what lets the lead read it
+   * at once rather than after three days. They can change it later. Bank and card numbers are
+   * hidden before it is stored, as in a check-in message (decision 35).
+   */
+  async answerAsThePerson(detectionId: string, userId: string, text: string): Promise<AServedPattern> {
+    const nothingHere = () => new NotFoundException('There is nothing here for you to answer.');
+    if (!PATTERNS_ARE_SERVED) throw nothingHere();
+    const row = await this.prisma.patternDetection.findUnique({
+      where: { id: detectionId },
+      select: {
+        ...PATTERN_ROW_SELECT,
+        participant: {
+          select: {
+            userId: true,
+            ground: { select: { initiatorId: true, participants: { select: { id: true, userId: true, user: { select: { firstName: true, lastName: true } } } } } },
+          },
+        },
+      },
+    });
+    if (!row || !row.participant?.userId || row.participant.userId !== userId) throw nothingHere();
+    const reader = { participantId: row.participantId, runsIt: false };
+    if (!patternRowsThisReaderMayRead([row], reader).length) throw nothingHere();
+
+    const words = withoutBankDetails(String(text ?? '').trim());
+    if (!words) throw new BadRequestException('Write what is behind it in a sentence or two.');
+    if (words.length > 2000) throw new BadRequestException('That is longer than 2,000 characters. Say what is behind it in a few sentences.');
+
+    const now = new Date();
+    const saved = await this.prisma.patternDetection.update({
+      where: { id: row.id },
+      data: { personAnswer: words, personAnsweredAt: now, ...(row.shownToPersonAt ? {} : { shownToPersonAt: now }) },
+      select: PATTERN_ROW_SELECT,
+    });
+    const ground = row.participant.ground;
+    const lead = ground?.participants?.find((p) => p.userId === ground.initiatorId);
+    return servedPatterns([saved], reader, { now, leadName: theFirstNameFrom(lead?.user?.firstName, lead?.user?.lastName), leadParticipantId: lead?.id ?? null })[0];
+  }
+
+  /**
+   * The row plus the lead's identity, loaded the same way for both routes below: `markAsTheLead`
+   * and `markTalkedAbout`. "The person who runs the check-in" is the ground's own lead
+   * (`initiatorId`), the same identity `forTheLeadFrom` gates its nudge on - not the wider `runsIt`
+   * class (which also lets an org admin read a pattern) and never the person it is about or a
+   * colleague. Both routes answer 403 for anybody else, so nobody outside that one identity can even
+   * learn whether the pattern exists.
+   */
+  private async loadForTheLeadToMark(detectionId: string, userId: string) {
+    const forbidden = () => new ForbiddenException('Only the person who runs this check-in can do that.');
+    if (!PATTERNS_ARE_SERVED) throw forbidden();
+    const row = await this.prisma.patternDetection.findUnique({
+      where: { id: detectionId },
+      select: {
+        ...PATTERN_ROW_SELECT,
+        participant: {
+          select: {
+            ground: { select: { initiatorId: true, participants: { select: { id: true, userId: true } } } },
+          },
+        },
+      },
+    });
+    if (!row) throw forbidden();
+    const ground = row.participant.ground;
+    if (ground.initiatorId !== userId) throw forbidden();
+    const lead = ground.participants.find((p) => p.userId === userId);
+    const reader = { participantId: lead?.id ?? null, runsIt: true };
+    /* Decision 39's timing: allowed only once the lead may already read the pattern. */
+    if (!patternRowsThisReaderMayRead([row], reader).length) throw forbidden();
+    return { row, reader };
+  }
+
+  /**
+   * "AFTER TALKING A PATTERN THROUGH, THE LEAD MARKS IT RIGHT, WRONG OR NOT SURE" (decision 57, item
+   * 2). Only the person who runs the check-in, and only once they may already read the pattern
+   * (decision 39's timing). The mark is stored beside `personAnswer`, the person's own answer, which
+   * already counts as evidence; it is never served back to the person or to a colleague - see
+   * `servedPatterns`, which nulls it out for anybody but this reader.
+   */
+  async markAsTheLead(detectionId: string, userId: string, mark: ALeadPatternMark): Promise<AServedPattern> {
+    const { row, reader } = await this.loadForTheLeadToMark(detectionId, userId);
+    const now = new Date();
+    const saved = await this.prisma.patternDetection.update({
+      where: { id: row.id },
+      data: { leadMark: mark, leadMarkedAt: now, leadMarkedBy: userId },
+      select: PATTERN_ROW_SELECT,
+    });
+    this.learnFrom(row.id);
+    return servedPatterns([saved], reader, { now })[0];
+  }
+
+  /**
+   * "AND CAN MARK 'WE TALKED ABOUT IT'" (decision 57, item 3). Same identity, same timing as the mark
+   * above. Sets `talkedAboutAt` once - a second call is a no-op, not an error, since the nudge that
+   * leads here goes away the moment this is set and there is nothing left for a repeat call to change.
+   * `talkedAboutAtPeriod` is the anchor `seenAgainAfterTalk` derives "did it come up again" from.
+   */
+  async markTalkedAbout(detectionId: string, userId: string): Promise<AServedPattern> {
+    const { row, reader } = await this.loadForTheLeadToMark(detectionId, userId);
+    const now = new Date();
+    const saved = row.talkedAboutAt
+      ? row
+      : await this.prisma.patternDetection.update({
+          where: { id: row.id },
+          data: { talkedAboutAt: now, talkedAboutBy: userId, talkedAboutAtPeriod: periodsSeen(row) },
+          select: PATTERN_ROW_SELECT,
+        });
+    if (!row.talkedAboutAt) this.learnFrom(row.id);
+    return servedPatterns([saved], reader, { now })[0];
   }
 
   /**
@@ -814,9 +1262,10 @@ export class PatternsService {
 
     const participant = await this.prisma.groundParticipant.findUnique({
       where: { id: created.participantId },
-      select: { email: true, ground: { select: { organizationId: true } } },
+      select: { email: true, userId: true, ground: { select: { organizationId: true } } },
     });
-    const roster = participant?.email
+    /* A guest's detection is theirs, never an entry's on the host's list. See a-guest-is-never-somebody-on-the-hosts-list. */
+    const roster = participant?.email && !(await isAGuestIn(this.prisma, participant.ground.organizationId, participant))
       ? await this.prisma.person.findFirst({
           where: { organizationId: participant.ground.organizationId, email: participant.email.toLowerCase() },
           select: { externalId: true },

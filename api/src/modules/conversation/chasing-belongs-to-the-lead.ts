@@ -1,3 +1,5 @@
+import { namesWithTheRestCounted } from '../engagement/a-name-to-call-them';
+import { aNumberInWords } from '../engagement/a-number-in-words';
 /**
  * THE CHASING BELONGS TO WHOEVER SET THE WORK UP.
  *
@@ -112,36 +114,100 @@ export interface TheLeadsEmail {
   text: string;
 }
 
+/** One check-in's part of what the lead is told. */
+export interface WhoHasNotStartedOn {
+  groundLabel: string;
+  whoHasNotStarted: string[];
+  chasedOn: number[];
+  /** The people Groundwork really did send a reminder to, and the day of the last one, from the record of what was sent. When absent, the schedule is said instead. */
+  remindedNames?: string[];
+  lastRemindedOn?: string | null;
+  /** The lead's own check-in is still open too: said as her own line, and she is never in the list of others. */
+  leadIsOpenToo?: boolean;
+}
+
+const listOf = (names: string[]) => (names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
+const upFirst = (t: string) => `${t.charAt(0).toUpperCase()}${t.slice(1)}`;
+/** A count or "Someone" is not a name, so after "Hi Mira," it is not given a capital. A name keeps its own. */
+const afterAComma = (listed: string) => (/^(Someone|\w+ people)$/.test(listed) ? `${listed.charAt(0).toLowerCase()}${listed.slice(1)}` : listed);
+
+/** What is said of one check-in: who has not started it, what Groundwork did, and that the reminders have stopped. Said once, never twice. */
+function whatIsSaidOf(g: WhoHasNotStartedOn, inFull: boolean): { who: string; did: string; ownLine: string; have: string } {
+  const names = namesWithTheRestCounted(g.whoHasNotStarted, aNumberInWords);
+  const listed = listOf(names);
+  const one = g.whoHasNotStarted.length === 1;
+  const have = one && names[0] !== 'you' ? 'has' : 'have';
+  const reminded = namesWithTheRestCounted(g.remindedNames ?? g.whoHasNotStarted, aNumberInWords);
+  const all = (g.remindedNames ?? g.whoHasNotStarted).length === g.whoHasNotStarted.length;
+  const nobodyNamed = names.length === 1 && (names[0] === 'Someone' || / people$/.test(names[0]));
+  /* "Them" for several, the name for one named person, "that person" for one with no name. */
+  const them = one ? (nobodyNamed ? 'that person' : names[0]) : 'them';
+  const theLast = g.lastRemindedOn ? `, the last time on ${g.lastRemindedOn}` : g.chasedOn.length ? `, on day ${g.chasedOn.join(', day ')}` : '';
+  const did = reminded.length === 0
+    ? `Groundwork has stopped sending ${them} reminders.`
+    : `Groundwork reminded ${all ? them : listOf(reminded)}${theLast}, and has now stopped reminding ${all ? them : (g.remindedNames ?? []).length === 1 ? 'that person' : 'those people'}.`;
+  return {
+    who: listed,
+    did,
+    have,
+    ownLine: g.leadIsOpenToo ? ` Your own check-in${inFull ? ` on "${g.groundLabel}"` : ''} is still open too.` : '',
+  };
+}
+
 /**
  * NEVER A COUNT.
  *
  * "3 people have not started" is a number somebody can do nothing with: they have
  * to go and find out who, and the finding out is the work the email was supposed
  * to save. Names, and what each of them is sitting on.
+ *
+ * ONE MAIL A LEAD A DAY, HOWEVER MANY CHECK-INS SHE HAS (8 October). A lead with four check-ins that all ran out of reminders on the same morning was sent four
+ * mails; this is one, with a part for each check-in. It is a message Groundwork decided to send, so it counts as the day's one routine message.
  */
-export function theEmailForTheLead(input: {
-  leadName: string | null;
-  groundLabel: string;
-  whoHasNotStarted: string[];
-  chasedOn: number[];
-  link: string;
-}): TheLeadsEmail | null {
-  if (input.whoHasNotStarted.length === 0) return null;
+export function theOneEmailForTheLead(input: { leadName: string | null; grounds: WhoHasNotStartedOn[]; link: string }): TheLeadsEmail | null {
+  const grounds = input.grounds.filter((g) => g.whoHasNotStarted.length > 0);
+  if (grounds.length === 0) return null;
+  const hi = input.leadName?.trim() && !input.leadName.includes('@') ? `Hi ${input.leadName.trim()},` : 'Hi,';
 
-  const days = input.chasedOn.join(', ');
-  const lines = [
-    input.leadName ? `${input.leadName},` : 'Hello,',
-    '',
-    `On "${input.groundLabel}", these people have not started their check-in:`,
-    ...input.whoHasNotStarted.map((n) => `- ${n}`),
-    '',
-    `They were reminded on ${days === '' ? 'no days' : `day ${days}`} and the reminders have stopped, so this is yours now rather than the system's.`,
-    '',
-    input.link,
-  ];
+  if (grounds.length === 1) {
+    const g = grounds[0];
+    const s = whatIsSaidOf(g, false);
+    return {
+      subject: `${upFirst(s.who)} ${s.have} not started "${g.groundLabel}"${(g.remindedNames ?? g.whoHasNotStarted).length ? ', and Groundwork has reminded them' : ''}`,
+      text: [
+        `${hi} ${afterAComma(s.who)} ${s.have} not started the check-in on "${g.groundLabel}".${s.ownLine}`,
+        '',
+        s.did,
+        '',
+        'If you still want their view, a short note from you is the next step. You can send a fresh link from the check-in page with Resend invite.',
+        '',
+        `You could write, "I would value your view on ${g.groundLabel}. It takes about ten minutes, and I will send you a fresh link if you reply."`,
+        '',
+        input.link,
+      ].join('\n'),
+    };
+  }
 
+  const parts = grounds.flatMap((g) => {
+    const s = whatIsSaidOf(g, true);
+    return [`On "${g.groundLabel}", ${afterAComma(s.who)} ${s.have} not started.${s.ownLine} ${s.did}`, ''];
+  });
   return {
-    subject: `Not started on "${input.groundLabel}"`,
-    text: lines.join('\n'),
+    subject: 'Some of the people you invited have not started their check-ins',
+    text: [
+      `${hi} some of the people you invited have not started. Here is who, check-in by check-in.`,
+      '',
+      ...parts,
+      'If you still want their view, a short note from you is the next step. You can send a fresh link from each check-in page with Resend invite.',
+      '',
+      'You could write, "I would value your view. It takes about ten minutes, and I will send you a fresh link if you reply."',
+      '',
+      input.link,
+    ].join('\n'),
   };
+}
+
+/** One check-in's mail to the lead (the same words as the one mail, for a single check-in). */
+export function theEmailForTheLead(input: { leadName: string | null } & WhoHasNotStartedOn & { link: string }): TheLeadsEmail | null {
+  return theOneEmailForTheLead({ leadName: input.leadName, grounds: [input], link: input.link });
 }

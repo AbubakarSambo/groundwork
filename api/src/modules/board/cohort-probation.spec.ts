@@ -118,7 +118,7 @@ describe('the quiet, competent one is not misrepresented either', () => {
 
   it('tells the lead why no second account exists, rather than leaving them to assume one agreed', () => {
     for (const key of ['adam', 'abubakar', 'nate', 'kavon']) {
-      expect(find(contribution(), key).reason).toMatch(/no second account to check any of this against/);
+      expect(find(contribution(), key).reason).toMatch(/nobody else has said anything to check this against/);
     }
   });
 });

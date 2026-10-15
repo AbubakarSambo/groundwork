@@ -42,7 +42,7 @@ export class AssertionsService {
     const leaks = theQuestionLeaks(a.claim, a.about);
     if (leaks.length > 2) {
       throw new BadRequestException(
-        `What this is about is too close to what was said - it repeats ${leaks.slice(0, 3).map((w) => `“${w}”`).join(', ')}. `
+        `What this is about is too close to what was said, because it repeats ${leaks.slice(0, 3).map((w) => `“${w}”`).join(', ')}. `
         + 'The other side has to be asked something they could answer without having heard the claim.',
       );
     }
@@ -79,7 +79,7 @@ export class AssertionsService {
     const leaks = theQuestionLeaks(a.claim, question, a.about);
     if (leaks.length) {
       throw new BadRequestException(
-        `That question gives the claim away - it uses ${leaks.slice(0, 3).map((w) => `“${w}”`).join(', ')}. `
+        `That question gives the claim away, because it uses ${leaks.slice(0, 3).map((w) => `“${w}”`).join(', ')}. `
         + 'Ask about the subject and let them answer freely; an answer to a leading question is worth nothing to either side.',
       );
     }

@@ -58,8 +58,19 @@ describe('nothing that describes the mechanism assumes two parties', () => {
 
   it('the check-in page too', () => {
     const code = strip(readFileSync(join(__dirname, '../../pages/chat/ChatPage.tsx'), 'utf8'))
-    /* 10 Sep 2026: the privacy line went altogether; the strip names the session and nothing else. */
-    expect(code).toMatch(/`Session \$\{sessionNumber\}`/)
+    /*
+     * 10 Sep 2026: the privacy line went altogether; the strip named the session and nothing else.
+     *
+     * U.8 REVIEW: for an ordinary session the strip now names nothing at all - the prototype never
+     * prints a lone session number there either (docs/prototype/screens/B3-the-check-in/*.txt), so
+     * `privacyLabel` is `null` and the spot is empty rather than "Session 3". Nothing here says
+     * "both" or assumes two people either way, which is the rule this file guards; for the two
+     * cases that DO still say something about the session (closing one, correcting one), each
+     * names only the session number, never a party count.
+     */
+    expect(code).not.toMatch(/`Session \$\{sessionNumber\}`/)
+    expect(code).toMatch(/[Cc]losing session \$\{sessionNumber\}/)
+    expect(code).toMatch(/[Cc]orrecting session \$\{correctingSession\}/)
     expect(code).not.toMatch(/Private until/)
   })
 

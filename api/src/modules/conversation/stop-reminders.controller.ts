@@ -5,20 +5,19 @@ import { PrismaService } from '../prisma/prisma.service';
 import {
   ALREADY_STOPPED,
   NOT_A_LINK_WE_KNOW,
-  WHAT_WE_SAY_WHEN_THEY_ASK,
 } from './ignoring-it-should-be-enough';
 
+const STILL_ON_UNTIL_YOU_PRESS =
+  'Your reminders are still on. Open the link in your browser and press "Stop the reminders" to stop them.';
+
 /**
- * THE LINK ON THE INVITATION AND ON EVERY REMINDER.
+ * THE LINK ON THE INVITATION AND ON EVERY REMINDER, AS A GET.
  *
- * No session and no confirmation step, for the same reason the unsubscribe link has none:
- * somebody who has had enough of our mail must not have to make an account to say so, and a
- * link that fails at that moment becomes a spam complaint rather than a support ticket.
- *
- * GET, and safe to be GET. A mail-security scanner that follows it stops some reminders and
- * costs nobody anything - their invitation still works and nothing is recorded about whether
- * they are taking part. That is exactly why this route may not also decline for them: a scanner
- * that could would put a false answer in front of their lead.
+ * A GET CHANGES NOTHING (11 October). It used to stop the reminders on the spot, on the reasoning that
+ * a scanner doing it "costs nobody anything". It does: a mail-security scanner opens every link in a
+ * message, so somebody who never asked lost their reminders before they had read the mail. Stopping
+ * is now a POST that only the page's button sends (email/the-reminder-link.controller.ts). This route
+ * stays for mail already sent and any client that still calls it, and only says where things stand.
  */
 @Controller()
 export class StopRemindersController {
@@ -35,16 +34,9 @@ export class StopRemindersController {
       where: { stopRemindersToken: token },
       select: { id: true, remindersStoppedAt: true },
     });
-    /* An unknown token is not an error to the person holding it. Saying "invalid" to somebody who
-       just wants the mail to stop reads as a refusal, and the true state is almost always that it
-       has already stopped. */
-    if (!party) return { stopped: true, says: NOT_A_LINK_WE_KNOW };
+    /* An unknown token is not an error to the person holding it. */
+    if (!party) return { stopped: false, says: NOT_A_LINK_WE_KNOW };
     if (party.remindersStoppedAt) return { stopped: true, says: ALREADY_STOPPED };
-
-    await this.prisma.groundParticipant.update({
-      where: { id: party.id },
-      data: { remindersStoppedAt: new Date() },
-    });
-    return { stopped: true, says: WHAT_WE_SAY_WHEN_THEY_ASK };
+    return { stopped: false, says: STILL_ON_UNTIL_YOU_PRESS };
   }
 }

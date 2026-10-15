@@ -21,15 +21,28 @@ import { GroundGone } from './GroundGone'
 describe('the check-in-not-open state', () => {
   const show = () => render(<MemoryRouter><GroundGone /></MemoryRouter>)
 
-  it('has a way out', () => {
+  /*
+   * U.20: REPLACES THE OLDER ASSERTIONS BELOW WITH THE PROTOTYPE'S OWN WORDS
+   * (F4-small-states/c-gone-board.txt) - one heading, two ways out ("Open my work", to the
+   * reader's own board; "Go to Check-ins", to the list), not the page's own single "Go to my
+   * check-ins". The org-switch sentence is now one cause among a set this screen names
+   * without ever saying which one applies - see GroundGone.tsx's own comment on GW-PRI-04.
+   */
+  it('has the prototype’s heading and both ways out', () => {
     show()
-    expect(screen.getByRole('button', { name: /Go to my check-ins/ })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'This check-in isn’t available any more' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Open my work' })).toHaveAttribute('href', '/you')
+    expect(screen.getByRole('link', { name: 'Go to Check-ins' })).toHaveAttribute('href', '/grounds')
   })
 
-  it('names the org switch, because that is how people get here', () => {
+  it('names the org switch among the ordinary reasons, because that is how people get here', () => {
     show()
-    expect(screen.getByText(/just switched organisation/)).toBeTruthy()
-    expect(screen.getByText(/switch back and it/)).toBeTruthy()
+    expect(screen.getByText(/switched away from/)).toBeTruthy()
+  })
+
+  it('says what was written is not lost, in the prototype\u2019s words', () => {
+    show()
+    expect(screen.getByText(/Whoever ran it ended it or removed it\. What you wrote is kept in your own history\./)).toBeTruthy()
   })
 
   it('and does not say "not found", which reads as the product losing it', () => {

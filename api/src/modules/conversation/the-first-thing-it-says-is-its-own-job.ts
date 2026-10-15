@@ -32,7 +32,9 @@ THEN ONE QUESTION. One thing to answer. If what you are asking for is abstract, 
 
 THREE SENTENCES AT MOST, AND TWO IS BETTER.
 
-DO NOT TELL THEM WHAT THEIR ANSWER MEANS BEFORE THEY GIVE IT. "Fine is often code for something not being fine" and "fine is where the real picture hides" both went out live. You have not heard from them yet.`;
+DO NOT TELL THEM WHAT THEIR ANSWER MEANS BEFORE THEY GIVE IT. "Fine is often code for something not being fine" and "fine is where the real picture hides" both went out live. You have not heard from them yet.
+
+WHAT THEY SAID LAST TIME IS THEIRS. Where you put back something from an earlier session, it is their own answer, so say "Last time you said ...". Never say the person who set this up said it, never put a name in front of their own words, and never write "says" about something said before. "Last time Wairimu Njoroge says the one thing slowing you down was waiting on a decision" went to Juma about his own answer (B-133).`;
 
 /**
  * AND THE ONE THAT LOOKED LIKE A FAULT AND IS NOT.
@@ -46,6 +48,10 @@ DO NOT TELL THEM WHAT THEIR ANSWER MEANS BEFORE THEY GIVE IT. "Fine is often cod
  * WHAT IS WORTH FIXING IS THE CASE WHERE THE ROSTER DOES SAY. When somebody was added with a role
  * described - "the new hire", "her manager" - the answer is already on their row, and spending the
  * first message on a question already answered is the same fault as every other re-ask.
+ *
+ * ONLY THEIR OWN WORDS COUNT, 27 September 2026 (request 36). For somebody the lead invited, the role
+ * on the row is the lead's sentence about them, which the model is no longer handed. So the caller
+ * passes `aRoleInTheirOwnWords` here, and an invited person is asked, as somebody with no role is.
  */
 export function theRosterAlreadySaysWhoTheyAre(roleAsDescribed?: string | null): boolean {
   return !!roleAsDescribed && roleAsDescribed.trim().length > 2;

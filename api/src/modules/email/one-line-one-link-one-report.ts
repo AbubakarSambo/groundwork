@@ -62,7 +62,7 @@ export function whatTheTeamGets(opts: {
        * "should we tell people it takes 5mins and not 2?" And the reason to spend them is what
        * arrives at the end, which this never mentioned.
        */
-      by ? `Takes about five minutes. Reply by ${by}.` : 'Takes about five minutes.',
+      by ? `It takes about ten minutes. Reply by ${by}.` : 'It takes about ten minutes.',
       'You will get the consolidated report at the end.',
       ...(trial ? [trial] : []),
     ],

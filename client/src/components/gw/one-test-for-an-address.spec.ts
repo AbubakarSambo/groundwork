@@ -49,8 +49,10 @@ describe('the sweep', () => {
     const save = strip(readFileSync(path.join(SRC, 'pages/home/SaveCard.tsx'), 'utf8'))
     expect(save).toMatch(/if \(!looksLikeAnAddress\(trimmed\)\) \{ setParticipantError\(NOT_AN_ADDRESS\); return \}/)
     expect(save).toMatch(/if \(!session\) \{ setParticipantError\(/)
-    const report = strip(readFileSync(path.join(SRC, 'pages/report/ReportPage.tsx'), 'utf8'))
-    expect(report).toMatch(/if \(!looksLikeAnAddress\(email\)\) \{ setEmailError\(NOT_AN_ADDRESS\); return \}/)
+    /* Moved from the dead ReportBody (ReportPage.tsx)'s HiddenContributorsSection to
+       HiddenContributorRow on the board - see the comment at the top of ReportPage.tsx. */
+    const board = strip(readFileSync(path.join(SRC, 'pages/board/BoardPage.tsx'), 'utf8'))
+    expect(board).toMatch(/if \(!looksLikeAnAddress\(email\)\) \{ setEmailError\(NOT_AN_ADDRESS\); return \}/)
     const integrations = strip(readFileSync(path.join(SRC, 'pages/org/IntegrationsPage.tsx'), 'utf8'))
     expect(integrations).toContain("whatFor.trim().length < 20")
   })

@@ -20,7 +20,12 @@ describe('the lead who only asks', () => {
   });
 
   it('and the list of those situations is short and named', () => {
-    /* Both of the situations where the lead asks a room a question rather than answering one. */
-    expect(THE_LEAD_ONLY_ASKS).toEqual(['TEAM_UPDATES', 'DISCOVERY']);
+    /* The situations where the lead asks a room a question, or sets up, rather than answering one. */
+    expect(THE_LEAD_ONLY_ASKS).toEqual(['TEAM_UPDATES', 'DISCOVERY', 'HELP_TEAM_UNDERSTAND']);
+  });
+
+  it("and the anchor's lead is never waited on, even in round one, because her set-up is not an answer", () => {
+    expect(waitsOnAManagingOnlyLead('HELP_TEAM_UNDERSTAND', 1)).toBe(false);
+    expect(waitsOnAManagingOnlyLead('HELP_TEAM_UNDERSTAND', 2)).toBe(false);
   });
 });

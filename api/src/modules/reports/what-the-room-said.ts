@@ -46,6 +46,8 @@ export type TheDirection = {
   outOf: number;
 };
 
+import { PLAIN_WORDS } from '../conversation/plain-words';
+
 export const THE_LISTS: (keyof Omit<TheDirection, 'outOf'>)[] = [
   'regions', 'markets', 'valueChains', 'actors', 'dataGaps', 'networks', 'pilots', 'nextTwelveMonths',
 ];
@@ -68,8 +70,12 @@ RULES, AND THEY MATTER MORE THAN COVERAGE:
 - One thing per item. If two people named the same thing in different words, that is ONE item with both labels.
 - namedBy is the list of participant labels that named it, written exactly as they are given to you, in full: "Participant P", not "P". Never invent a label, never include one that did not say it. Somebody's label appears in an item only if their own account contains it.
 - Leave a list empty rather than filling it. An empty list is a finding: nobody named a pilot.
-- asSaid is one short phrase from one of those accounts, under 15 words, in their words.
+- asSaid is one short passage from one of those accounts, under 15 words, in their own words exactly as they wrote them. It is a quotation, so never tidy it up and never reword it.
 - Never name a person, an organisation somebody works for, or anything that would identify who said what beyond the label.
+
+${PLAIN_WORDS}
+
+The rules above are about the sentences you write. A name taken from the room and the asSaid quotation are the room's own words, so they keep the room's wording exactly.
 
 Answer by calling the_direction with the eight lists. Nothing else.`;
 
@@ -150,12 +156,12 @@ export function isItADirection(d: TheDirection): { enough: boolean; saying: stri
   if (!shared) {
     return {
       enough: false,
-      saying: `Everybody named something different. ${anything} things were named across ${d.outOf} accounts and no two of them agreed, which is itself the finding: there is no shared priority here yet.`,
+      saying: `Everybody named something different. ${d.outOf} people named ${anything} things between them, and no two of them named the same thing, which is itself the finding: there is no shared priority here yet.`,
     };
   }
   return {
     enough: true,
-    saying: `${shared} of the ${anything} things named were named by more than one person, out of ${d.outOf} accounts.`,
+    saying: `${shared} of the ${anything} things named were named by more than one person, out of ${d.outOf} people who answered.`,
   };
 }
 
@@ -171,10 +177,10 @@ export function whatYouNamed(d: TheDirection, yourLabel: string): { line: string
     .filter((x) => x.namedBy.some((l) => theSameLabel(l) === theSameLabel(yourLabel)))
     .map((x) => ({ name: x.name, alsoNamedBy: x.namedBy.length - 1 }))
     .sort((a, b) => b.alsoNamedBy - a.alsoNamedBy);
-  if (!yours.length) return { line: 'Nothing you named has come back in anybody else\'s account yet.', yours: [] };
+  if (!yours.length) return { line: 'Nobody else has named any of the things you named yet.', yours: [] };
   const shared = yours.filter((y) => y.alsoNamedBy > 0);
   const line = shared.length
-    ? `${shared.length} of the ${yours.length} things you named came up in other accounts too, out of ${d.outOf}.`
+    ? `${shared.length} of the ${yours.length} things you named were named by somebody else too, out of ${d.outOf} people who answered.`
     : `You named ${yours.length} things, and so far nobody else has named any of them. That is worth knowing on its own.`;
   return { line, yours };
 }

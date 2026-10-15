@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { summariseSetup } from './EntryChatPage'
+import { summariseSetup, shortLabel, ONBOARD_READY_CLOSER } from './EntryChatPage'
 
 /**
  * SETUP SAYS WHAT IT HAS, NOT WHAT IT WISHES IT HAD.
@@ -26,7 +26,10 @@ describe('setup says what it has', () => {
     /* "People you mentioned", not "Who is in it": nobody is on the check-in until they are added
        on the report, one at a time. Labelled as membership, this contradicted the assistant's own
        confirmation on a real setup - the lead had just said two of the three were not in it. */
-    expect(have.find((h) => h.label === 'People you mentioned')?.value).toBe('Priya, Tom, Dede')
+    /* FAULT 5 (live review): three or more names read as a list with no joiner ("Priya, Tom,
+       Dede"), which does not read as a sentence. Joined with "and" before the last name instead,
+       the way the rest of the summary card already joins several things. */
+    expect(have.find((h) => h.label === 'People you mentioned')?.value).toBe('Priya, Tom and Dede')
     expect(have.find((h) => h.label === 'Sessions')?.value).toBe('One')
   })
 
@@ -67,6 +70,57 @@ describe('setup says what it has', () => {
   it('still shows a coordinator whatever they did happen to give', () => {
     const { have } = summariseSetup({ initial: 'The launch' }, 'setting_up_for_others', 1, false)
     expect(have.find((h) => h.label === 'What this is about')?.value).toBe('The launch')
+  })
+
+  /*
+   * FAULT 3 (live walk, 6 October 2026): SEVERAL AIMS JOINED WITH A SEMICOLON READ AS CLIPPED
+   * FRAGMENTS, NOT A SENTENCE ("Learn our bread recipes; Run the morning bake…"). The wording rule
+   * says no pieces joined by a colon, dash or semicolon - joined with "and" instead, the way
+   * anyone would say it.
+   */
+  it('joins several things wanted with "and", never a semicolon', () => {
+    const { have } = summariseSetup(
+      { goals: ['learn our bread recipes', 'run the morning bake'] }, 'a_party', 1, false,
+    )
+    /* FAULT 5 (live review): the second aim kept its capital ("... and Run the morning bake"),
+       which reads as two sentences stitched together rather than one. The second item of a joined
+       list is lower-cased now, unless it is a proper noun or "I". */
+    expect(have.find((h) => h.label === 'What you want from it')?.value)
+      .toBe('Learn our bread recipes and run the morning bake')
+    expect(have.find((h) => h.label === 'What you want from it')?.value).not.toContain(';')
+  })
+
+  it('says a single aim plainly, with no trailing joiner', () => {
+    const { have } = summariseSetup({ goals: ['take the on-call escalations off me'] }, 'a_party', 1, false)
+    expect(have.find((h) => h.label === 'What you want from it')?.value).toBe('Take the on-call escalations off me')
+  })
+})
+
+/**
+ * FAULT 3 (live walk, 6 October 2026): PLAIN WORDS IN FULL ON THE SUMMARY CARD, NOT ONE-WORD
+ * LABELS. The card read "About / People / Why / Aim / Sessions" - a single, often ambiguous word
+ * each, asking the reader to supply the rest of the sentence themselves. `FillsInAsYouTalk.tsx`'s
+ * own panel, right beside this card, already says the same facts in full ("A name", "How often"),
+ * so this card's labels now match that shape.
+ */
+describe('the summary card\'s labels are plain words in full, not one-word labels', () => {
+  it('reads the full-record labels the way a person would say them', () => {
+    expect(shortLabel('What this is about')).toBe('What it is about')
+    expect(shortLabel('People you mentioned')).toBe('Who is in it')
+    expect(shortLabel('Why now')).toBe('Why now')
+    expect(shortLabel('What you want from it')).toBe('What you are aiming for')
+    expect(shortLabel('Sessions')).toBe('How many check-ins')
+  })
+})
+
+/**
+ * FAULT 3 (live walk, 6 October 2026): ONE VOICE. The closer used to say "told us so far" while
+ * the card under it spoke of "I" - two different voices for the one product in the same breath.
+ */
+describe('the closer speaks of Groundwork and the reader, never "I" mixed with "us"', () => {
+  it('says "you" and "Groundwork", not "I" or "us"', () => {
+    expect(ONBOARD_READY_CLOSER).not.toMatch(/\bI\b|\bus\b/)
+    expect(ONBOARD_READY_CLOSER).toMatch(/Groundwork/)
   })
 })
 

@@ -4,15 +4,32 @@ import { ALIGNMENT_FEED_ONLY_CODES, PATTERN_PROBE_BY_CODE } from '../patterns/pa
 const anyProbeCode = [...PATTERN_PROBE_BY_CODE.keys()][0];
 const anotherProbeCode = [...PATTERN_PROBE_BY_CODE.keys()][1];
 
+/*
+ * Decision 57, item 8 (30 September 2026): the floor here is the same three-period rule as
+ * everywhere else (decision 8), not the weaker "seen twice" this file used to check. `status:
+ * SURFACED` alone is not safe to trust for it - a good-news code reaches SURFACED after ONE period
+ * (patterns.service's `observePositive`) - so `theOneWorthAsking` now reads the honest count itself.
+ */
 describe('a pattern is asked about, never named', () => {
   it('says nothing when a thing has been seen once', () => {
     expect(theOneWorthAsking([{ code: anyProbeCode, periodsObserved: 1 }])).toBeNull();
   });
 
-  it('asks once it has survived a second period', () => {
-    const one = theOneWorthAsking([{ code: anyProbeCode, periodsObserved: 2 }]);
+  it('says nothing when a thing has been seen twice - two periods is not three', () => {
+    expect(theOneWorthAsking([{ code: anyProbeCode, periodsObserved: 2 }])).toBeNull();
+  });
+
+  it('asks once it has reached three periods', () => {
+    const one = theOneWorthAsking([{ code: anyProbeCode, periodsObserved: 3 }]);
     expect(one?.code).toBe(anyProbeCode);
     expect(one?.probe).toBeTruthy();
+  });
+
+  it('asks from three periods seen, gaps included, even if the consecutive run is shorter', () => {
+    /* seenInSessions is the honest count (decision 57, item 1): three periods whether or not they
+       are in a row. A lower periodsObserved (a broken streak) still asks once seenInSessions is 3. */
+    const one = theOneWorthAsking([{ code: anyProbeCode, periodsObserved: 1, seenInSessions: [1, 3, 6] }]);
+    expect(one?.code).toBe(anyProbeCode);
   });
 
   it('never asks about a read somebody has already said was wrong', () => {
@@ -22,8 +39,8 @@ describe('a pattern is asked about, never named', () => {
   });
 
   it('still asks about one nobody has rated, which is the ordinary case', () => {
-    expect(theOneWorthAsking([{ code: anyProbeCode, periodsObserved: 2, accuracyRating: null }])?.code).toBe(anyProbeCode);
-    expect(theOneWorthAsking([{ code: anyProbeCode, periodsObserved: 2, accuracyRating: true }])?.code).toBe(anyProbeCode);
+    expect(theOneWorthAsking([{ code: anyProbeCode, periodsObserved: 3, accuracyRating: null }])?.code).toBe(anyProbeCode);
+    expect(theOneWorthAsking([{ code: anyProbeCode, periodsObserved: 3, accuracyRating: true }])?.code).toBe(anyProbeCode);
   });
 
   it('never asks about a code that exists for the alignment feed only', () => {
@@ -38,7 +55,7 @@ describe('a pattern is asked about, never named', () => {
 
   it('asks about one thing, not two', () => {
     const one = theOneWorthAsking([
-      { code: anyProbeCode, periodsObserved: 2 },
+      { code: anyProbeCode, periodsObserved: 3 },
       { code: anotherProbeCode, periodsObserved: 4 },
     ]);
     expect(one?.code).toBe(anotherProbeCode);

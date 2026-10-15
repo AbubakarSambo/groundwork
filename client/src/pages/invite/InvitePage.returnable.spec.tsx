@@ -64,21 +64,50 @@ describe('coming back to an invite link you have already used', () => {
     })
   })
 
+  /*
+   * B-205 (review round 2): THE BUTTON'S WORDS CHANGED, THE REASON IS IN InvitePage.tsx's OWN
+   * COMMENT ABOVE THE `alreadyAccepted` RETURN.
+   *
+   * "Pick up where I left off" promised a continuation that, signed out, never happened - this
+   * browser holds no session for the server to pick up, so every one of these tests (all signed
+   * out, per the `@/stores/auth` mock above) was clicking a button whose own words were not true of
+   * what it was about to do. What the button reliably does from here is ask for a way in, which the
+   * server emails - true whether the server's own answer turns out to be `resumed`, `emailed`, or a
+   * first-time join, none of which this screen can know in advance of pressing it. Each test below
+   * is otherwise UNCHANGED: same mocked server answers, same assertions about where they land.
+   */
+  /* Found in the browser journeys: Chrome gave the button no name, because its words sat inside a status element, so a person using a screen reader (and any test that looks for the button by its words) could not find it. */
+  it('puts the button\'s words in the button itself, not in a status element inside it', async () => {
+    renderInvite()
+    const button = await screen.findByRole('button', { name: /Email me a sign-in link/i })
+    expect(button.querySelector('[role="status"]')).toBeNull()
+    expect(button.textContent).toBe('Email me a sign-in link')
+  })
+
   it('carries straight on when this is the browser they joined on', async () => {
     ;(participantsApi.accept as any).mockResolvedValue({ resumed: true, groundId: 'g1', checkInId: 'ci9' })
     renderInvite()
 
-    fireEvent.click(await screen.findByRole('button', { name: /Pick up where I left off/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /Email me a sign-in link/i }))
 
     // THE POINT: click, get distracted, come back - and land back in the session.
     await waitFor(() => expect(navigated).toContain('/checkin/ci9'))
+  })
+
+  /* U.3: somebody still waiting for an admin, coming back on the same browser. */
+  it('lands on "Almost in" when they are still waiting to be let in, never on the check-in', async () => {
+    ;(participantsApi.accept as any).mockResolvedValue({ resumed: true, groundId: 'g1', checkInId: null, queuedForApproval: true })
+    renderInvite()
+    fireEvent.click(await screen.findByRole('button', { name: /Email me a sign-in link/i }))
+    await waitFor(() => expect(navigated).toContain('/join/waiting'))
+    expect(navigated.some(to => to.startsWith('/checkin/') || to.startsWith('/grounds/'))).toBe(false)
   })
 
   it('emails a way in rather than signing in a different browser', async () => {
     ;(participantsApi.accept as any).mockResolvedValue({ emailed: true, email: 'abubakar@x.test' })
     renderInvite()
 
-    fireEvent.click(await screen.findByRole('button', { name: /Pick up where I left off/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /Email me a sign-in link/i }))
 
     expect(await screen.findByText(/Check your email/i)).toBeTruthy()
     expect(screen.getByText(/abubakar@x.test/)).toBeTruthy()
@@ -89,7 +118,7 @@ describe('coming back to an invite link you have already used', () => {
   it('never tells someone their own link is invalid', async () => {
     ;(participantsApi.accept as any).mockResolvedValue({ emailed: true, email: 'abubakar@x.test' })
     renderInvite()
-    fireEvent.click(await screen.findByRole('button', { name: /Pick up where I left off/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /Email me a sign-in link/i }))
     await screen.findByText(/Check your email/i)
 
     // THE REGRESSION: "This invite link is invalid or has already been used."
@@ -106,7 +135,7 @@ describe('coming back to an invite link you have already used', () => {
     })
     renderInvite()
 
-    fireEvent.click(await screen.findByRole('button', { name: /Add my version/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /Answer today’s check-in now/i }))
 
     await waitFor(() => expect(navigated).toContain('/checkin/ci1'))
   })

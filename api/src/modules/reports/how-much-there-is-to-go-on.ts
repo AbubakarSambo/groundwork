@@ -1,3 +1,4 @@
+import { someOfThemHave } from './some-of-them-has-or-have';
 /**
  * CONFIDENCE IN THIS REPORT, WHICH IS NOT THE SAME QUESTION AS SPECIFICITY.
  *
@@ -78,7 +79,7 @@ export function howMuchThereIsToGoOn(input: WhatItRestsOn): Confidence {
   if (r.ofPeople > 0 && r.answered < r.ofPeople) {
     const missing = r.ofPeople - r.answered;
     reasons.push(
-      `${missing} of ${r.ofPeople} people ${missing === 1 ? 'has' : 'have'} not answered yet. Their side ${missing === 1 ? 'is' : 'are'} not in this.`,
+      `${someOfThemHave(missing, r.ofPeople, 'not answered yet.')} Their side ${missing === 1 ? 'is' : 'are'} not in this.`,
     );
   }
 

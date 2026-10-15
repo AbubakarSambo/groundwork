@@ -85,41 +85,77 @@ describe('finishing a check-in the engine already closed', () => {
     ;(conversationApi.complete as any).mockRejectedValue(alreadyCompleteError())
     renderChat()
 
-    fireEvent.click(await screen.findByText(/Complete session/i, {}, { timeout: 4000 }))
-    fireEvent.click(await screen.findByRole('button', { name: /Finish session/i }))
+    fireEvent.click(await screen.findByText(/Finish my check-in now/i, {}, { timeout: 4000 }))
+    fireEvent.click(await screen.findByRole('button', { name: /That’s right, finish/i }))
 
     // THE REGRESSION. The button lived on forever, and pressing it again only
     // produced the same refusal.
     await waitFor(() => {
-      expect(screen.queryByRole('button', { name: /Finish session/i })).toBeNull()
+      expect(screen.queryByRole('button', { name: /That’s right, finish/i })).toBeNull()
     })
   }, 15_000)
 
-  it('does not swallow a genuine failure', async () => {
+  /**
+   * ANY 400 OTHER THAN "ALREADY COMPLETE" IS "NOT YET" (U.8 third review).
+   *
+   * This test used to mock a 400 with no `status` field and no `canContinue`, and expected the
+   * confirm button to stay up so the person could press it again - written on the assumption that
+   * some OTHER kind of genuine 400 failure could come back from `/complete`. It cannot: the
+   * completion gate in `conversation.service.ts` has exactly two throw branches besides "already
+   * complete", and both are the same "answer a little more" refusal. So there is no real 400 this
+   * endpoint sends that is not one of those two - keeping the confirm button up for one was
+   * stranding somebody exactly the same way the original bug did.
+   *
+   * The fix no longer keys off `canContinue` at all - a shared filter between the exception and
+   * the client can drop arbitrary fields (it did, and that was the third-review bug), so the
+   * client now treats it by HTTP status: any 400 from this endpoint that is not "already complete"
+   * re-opens the composer with the plain, permanent explanation, exactly like the case that does
+   * carry `canContinue`.
+   */
+  it('treats a 400 with no canContinue field the same way as one that has it', async () => {
     ;(conversationApi.complete as any).mockRejectedValue({
-      response: { data: { message: 'Not enough on record to close this session yet' } },
+      response: { status: 400, data: { message: 'Not enough on record to close this session yet' } },
     })
     renderChat()
 
-    fireEvent.click(await screen.findByText(/Complete session/i, {}, { timeout: 4000 }))
-    const finish = await screen.findByRole('button', { name: /Finish session/i })
+    fireEvent.click(await screen.findByText(/Finish my check-in now/i, {}, { timeout: 4000 }))
+    const finish = await screen.findByRole('button', { name: /That’s right, finish/i })
     fireEvent.click(finish)
 
-    // A real refusal must keep the way forward open - the person has something
-    // left to do, and hiding the button would strand them.
     await waitFor(() => expect((conversationApi.complete as any)).toHaveBeenCalled())
-    expect(await screen.findByRole('button', { name: /Finish session/i })).toBeTruthy()
+    // The card comes down, the server's own sentence is never shown, and the plain explanation
+    // and a live composer take its place.
+    expect(await screen.findByText(/I need a little more from you before this check-in can close/i)).toBeTruthy()
+    expect(screen.queryByText(/Not enough on record to close this session yet/i)).toBeNull()
+    expect(screen.queryByRole('button', { name: /That’s right, finish/i })).toBeNull()
+    expect((screen.getByPlaceholderText('Type, or hold to speak') as HTMLTextAreaElement).disabled).toBe(false)
+  }, 15_000)
+
+  it('a failure that is not a 400 (network down, a server error) keeps the confirm button up', async () => {
+    ;(conversationApi.complete as any).mockRejectedValue({
+      response: { status: 500, data: { message: 'Internal server error' } },
+    })
+    renderChat()
+
+    fireEvent.click(await screen.findByText(/Finish my check-in now/i, {}, { timeout: 4000 }))
+    const finish = await screen.findByRole('button', { name: /That’s right, finish/i })
+    fireEvent.click(finish)
+
+    // A failure that is not the gate refusing a thin record must keep the way forward open - the
+    // person has nothing new to add, and hiding the button would strand them.
+    await waitFor(() => expect((conversationApi.complete as any)).toHaveBeenCalled())
+    expect(await screen.findByRole('button', { name: /That’s right, finish/i })).toBeTruthy()
   }, 15_000)
 
   it('still finishes normally when the server accepts the completion', async () => {
     ;(conversationApi.complete as any).mockResolvedValue({ status: 'completed' })
     renderChat()
 
-    fireEvent.click(await screen.findByText(/Complete session/i, {}, { timeout: 4000 }))
-    fireEvent.click(await screen.findByRole('button', { name: /Finish session/i }))
+    fireEvent.click(await screen.findByText(/Finish my check-in now/i, {}, { timeout: 4000 }))
+    fireEvent.click(await screen.findByRole('button', { name: /That’s right, finish/i }))
 
     await waitFor(() => {
-      expect(screen.queryByRole('button', { name: /Finish session/i })).toBeNull()
+      expect(screen.queryByRole('button', { name: /That’s right, finish/i })).toBeNull()
     })
   }, 15_000)
 })

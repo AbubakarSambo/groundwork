@@ -92,4 +92,22 @@ export class AuthResponseDto {
    */
   @ApiProperty({ required: false, description: 'Short-lived token for the set-password step, present only when needsPassword is true.' })
   passwordSetupToken?: string;
+
+  /**
+   * TRUE ONLY WHEN OPENING THIS LINK HAS JUST CREATED THE ACCOUNT. U.2.
+   *
+   * `verifyEmail` turns a waiting sign-up into an account, and nothing before that moment exists
+   * (GW-001). When this link was that moment, the client shows "Your email is confirmed" before
+   * going on. It is absent for everybody else: an account that already existed, a sign-in link, any
+   * other door. The address shown is `user.email`, which this response already carries.
+   */
+  @ApiProperty({ required: false, description: 'True only when this verification link has just created the account from a waiting sign-up.' })
+  justCreated?: true;
+
+  /**
+   * WHERE THEY WERE GOING WHEN THEY ASKED FOR THIS LINK (U.3 review), such as an organisation's
+   * invite link. Only ever a path inside this app. Absent when there was none.
+   */
+  @ApiProperty({ required: false, description: 'A path inside this app to carry on to, kept from when the link was asked for.' })
+  next?: string;
 }

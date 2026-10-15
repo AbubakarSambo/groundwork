@@ -150,7 +150,8 @@ describe('the question asked again comes out', () => {
       .readFileSync(require('path').join(__dirname, 'conversation.service.ts'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(src).toMatch(/withoutTheQuestionAskedAgain\(screened\.text, earlierAsks\)/);
-    expect(src).toMatch(/if \(withoutIt\.trim\(\) && withoutIt !== screened\.text\)/);
+    /* The same condition, and since fix7-2 a cut that leaves a fragment counts as nothing else in it. */
+    expect(src).toMatch(/if \(withoutIt\.trim\(\) && withoutIt !== screened\.text && !aCutThatLeavesAFragment\(screened\.text, withoutIt\)\)/);
   });
 });
 
@@ -199,5 +200,46 @@ describe('the same question again is read on the question, not the preamble', ()
       'That simplifies the credit sales and arrears part of the target for your contribution. What is your sales target for Q3?',
       '"You just sell" is a clear way to put it, and it tells me where you are. The record needs a number for your Q3 sales, even if it is your current run rate. What is the specific number you are working towards for Q3?',
     )).toBe(true);
+  });
+});
+
+describe('the same question back after an answer further up, not only the last one', () => {
+  const { anAnsweredQuestionAskedAgain } = require('./asked-twice-and-told-no-twice');
+  const { theyDeclined } = require('./what-this-session-has-covered');
+  const aRealAnswer = (t: string) => !theyDeclined(t) && t.trim().length >= 3;
+  const G = (content: string) => ({ role: 'AI' as const, content });
+  const P = (content: string) => ({ role: 'PERSON' as const, content });
+
+  /* Hana, shock scenario, run 9 (27 Sep 2026), her exact turns and Groundwork's. */
+  const HANA = [
+    G('Meridian gave notice on Friday. What just happened with Meridian, as you understand it?'),
+    P('Meridian gave notice. I understand this means they are cancelling their contract with us.'),
+    G('Understood. When did you first learn about Meridian giving notice, and from whom?'),
+    P('I learned about Meridian giving notice this morning, from this check-in.'),
+  ];
+
+  it('catches the opening question sent again two turns after Hana answered it', () => {
+    const got = anAnsweredQuestionAskedAgain(HANA, 'That means nobody told you directly before this. What just happened with Meridian, as you understand it?', aRealAnswer);
+    expect(got?.answer).toBe('Meridian gave notice. I understand this means they are cancelling their contract with us.');
+  });
+
+  it('lets a real follow-up on an earlier subject through (recognition, run 8)', () => {
+    const turns = [
+      G('This session is about what you have been responsible for with the new onboarding flow that shipped last week. What part of the new onboarding flow did you work on?'),
+      P('I built the front end.'),
+      G('What did that let users do?'),
+      P('Go through the new onboarding without help.'),
+    ];
+    expect(anAnsweredQuestionAskedAgain(turns, 'It is not always obvious what gets communicated where. Who else saw your work on the new onboarding flow closely enough to speak to it?', aRealAnswer)).toBeNull();
+  });
+
+  it('still catches the reworded ask straight after the answer, as before (Halima, run 11)', () => {
+    const turns = [G('stay healthy is certainly key. What specific thing are you doing to keep them healthy right now?'), P('Vaccinating them.')];
+    expect(anAnsweredQuestionAskedAgain(turns, 'That is the kind of specific target that helps. What specific thing are you doing to keep your 260 hens healthy right now?', aRealAnswer)).not.toBeNull();
+  });
+
+  it('does not count a question they declined as answered', () => {
+    const turns = [G('What just happened with Meridian, as you understand it?'), P('I would rather not say.'), G('Who told you?'), P('Ingrid did, this morning.')];
+    expect(anAnsweredQuestionAskedAgain(turns, 'What just happened with Meridian, as you understand it?', aRealAnswer)).toBeNull();
   });
 });

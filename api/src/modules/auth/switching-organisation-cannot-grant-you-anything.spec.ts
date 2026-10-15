@@ -22,13 +22,26 @@ import { AuthService } from './auth.service';
 describe('switchOrganization', () => {
   function make(membership: any) {
     const prisma: any = {
-      organizationMembership: { findUnique: jest.fn(async () => membership) },
+      organizationMembership: { findUnique: jest.fn(async () => membership), count: jest.fn(async () => 0) },
       user: {
         update: jest.fn(async (args: any) => ({
           id: 'u1', email: 'her@x.test', firstName: 'Her', lastName: 'Name',
           isPlatformAdmin: false, ...args.data,
         })),
-        findUnique: jest.fn(async () => ({ organizationId: 'org-own', role: 'ADMIN' })),
+        /*
+         * `userShapeFor` (U.8 re-review) reads the user back with its organisation included, after
+         * the switch has been written - so this returns the SWITCHED-TO organisation, the same one
+         * `membership.organization` names, filled out with the extra fields `theUserShape` reads.
+         */
+        findUnique: jest.fn(async () => ({
+          id: 'u1', email: 'her@x.test', firstName: 'Her', lastName: 'Name', role: membership?.role ?? 'ADMIN',
+          organizationId: membership?.organization?.id ?? 'org-own', isPlatformAdmin: false,
+          organization: {
+            id: 'org-own', name: 'Her Own Co', slug: 'her-own-co', careFeeStatus: null, email: null,
+            companyStage: null, subscriptionPlan: null, whoMayOpenCheckIns: 'EVERYONE', checkInsNeedApproval: false,
+            ...membership?.organization,
+          },
+        })),
       },
       organization: { findUnique: jest.fn(async () => null) },
       organizationMembershipMany: undefined,
@@ -107,6 +120,8 @@ describe('myOrganizations', () => {
       user: { findUnique: jest.fn(async () => ({ organizationId: 'org-own', role: 'ADMIN' })) },
       organizationMembership: { findMany: jest.fn(async () => []) },
       organization: { findUnique: jest.fn(async () => ({ id: 'org-own', name: 'Mine', slug: 'mine' })) },
+      /* U.3 review: myOrganizations also reads whether their staff record is linked, for the reason. */
+      person: { findMany: jest.fn(async () => []) },
     };
     const service = new AuthService(
       prisma, { sign: () => 't' } as any, { get: () => undefined } as any, {} as any, {} as any, {} as any, { emit: () => undefined } as any,
@@ -126,6 +141,7 @@ describe('myOrganizations', () => {
         ]),
       },
       organization: { findUnique: jest.fn(async () => null) },
+      person: { findMany: jest.fn(async () => []) },
     };
     const service = new AuthService(
       prisma, { sign: () => 't' } as any, { get: () => undefined } as any, {} as any, {} as any, {} as any, { emit: () => undefined } as any,

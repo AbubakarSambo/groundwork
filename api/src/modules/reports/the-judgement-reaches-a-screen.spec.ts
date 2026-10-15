@@ -90,14 +90,37 @@ describe('the judgement, written at synthesis', () => {
 });
 
 describe('and it reaches the board', () => {
-  it('to whoever runs the check-in, and to everybody once the report is out', () => {
-    expect(BOARD).toMatch(/theJudgement: \(isInitiator \|\| \(ground as any\)\.report\?\.releasedAt\)/);
-    /* The working is the lead's; the finding is everybody's. */
-    expect(BOARD).toMatch(/theTable: isInitiator \?/);
+  /*
+   * CHANGED 25 SEPTEMBER 2026, AND WHAT IT USED TO SAY IS THE REASON.
+   *
+   * This read: "to whoever runs the check-in, and to everybody once the report is out", and it
+   * pinned `theJudgement: (isInitiator || report?.releasedAt)`. The live run of all twenty-four
+   * scenarios showed what that sentence means in practice - on the performance-plan scenario the
+   * person the plan was about could read "The initiator is about to put Nathan on a formal plan",
+   * on his own board, the moment the round closed.
+   *
+   * The premise was that a released SHARED picture makes the reading of it shared too. It does not.
+   * The picture is everybody's; the verdict on the room is the lead's. So the test now pins the
+   * opposite, and the old assertion is kept here in words so nobody restores it by accident
+   * thinking they are fixing a regression.
+   */
+  /* The call may carry more than `isLead` (a check-in of one, request 136 item 7), so this pins what matters — the
+     judgement goes through the wrapper, and `isLead` is `isInitiator` — not the line's formatting. The same change the
+     screens workspace asked for in request 138, for the same reason: a test on exact source text fails on a line break. */
+  it('to whoever runs the check-in, and to nobody else, released or not', () => {
+    const call = /theBoardsJudgementFor\(\(ground as any\)\.report, \{[\s\S]{0,400}?\}\)/.exec(BOARD)?.[0] ?? '';
+    expect(call).not.toBe('');
+    expect(call).toMatch(/isLead: isInitiator\b/);
+    expect(BOARD).not.toMatch(/theJudgement: \(isInitiator \|\| \(ground as any\)\.report\?\.releasedAt\)/);
   });
 
   it('and renders above what people said, not instead of it', () => {
-    expect(PAGE).toMatch(/<TheJudgement it=\{\(b as any\)\.theJudgement\} table=\{\(b as any\)\.theTable\} \/>/);
+    /* No table prop since the screens workspace dropped it (requests-to-engine.md, request 10): the
+       judgement is shown without the table it was built from. */
+    /* The screen may pass the judgement more props (the where-next board hides one of its parts), so this
+       checks that the judgement is what is drawn, not the exact line. */
+    expect(PAGE).toMatch(/<TheJudgement it=\{\(b as any\)\.theJudgement\}/);
+    expect(PAGE.indexOf('<WhatTheNetworkSaid')).toBeGreaterThan(-1);
     expect(PAGE.indexOf('<TheJudgement')).toBeLessThan(PAGE.indexOf('<WhatTheNetworkSaid'));
   });
 

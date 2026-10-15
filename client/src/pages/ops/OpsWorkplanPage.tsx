@@ -27,7 +27,7 @@ export function OpsWorkplanPage() {
         </div>
       )}
 
-      {plan.data?.phases.map((p) => (
+      {(plan.data?.phases ?? []).map((p) => (
         <div
           key={p.key}
           style={{
@@ -74,7 +74,7 @@ export function OpsWorkplanPage() {
         </div>
       ))}
 
-      {plan.data && plan.data.phases.length === 0 && (
+      {plan.data && (plan.data.phases ?? []).length === 0 && (
         <div style={CARD}>No phases are recorded yet.</div>
       )}
     </section>

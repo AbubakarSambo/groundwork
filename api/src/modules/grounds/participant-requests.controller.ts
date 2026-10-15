@@ -28,17 +28,17 @@ export class ParticipantRequestsController {
       where: { id: groundId },
       select: { initiatorId: true, participants: { select: { userId: true } } },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const isParty = ground.initiatorId === userId || ground.participants.some((p) => p.userId === userId);
-    if (!isParty) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!isParty) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
     return ground;
   }
 
   /** Confirms the requesting user is the initiator (only the initiator manages requests). */
   private async assertIsInitiator(groundId: string, userId: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, organizationId: true } });
-    if (!ground) throw new NotFoundException('Check-in not found');
-    if (ground.initiatorId !== userId) throw new ForbiddenException('Only the lead of this check-in can manage requests to join it');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    if (ground.initiatorId !== userId) throw new ForbiddenException('Only the person who runs this check-in can answer requests to join it, so ask them.');
     return ground;
   }
 
@@ -82,7 +82,7 @@ export class ParticipantRequestsController {
     const ground = await this.assertIsInitiator(groundId, req.user.id);
 
     const request = await this.prisma.participantRequest.findUnique({ where: { id: reqId } });
-    if (!request || request.groundId !== groundId) throw new NotFoundException('Participant request not found on this check-in');
+    if (!request || request.groundId !== groundId) throw new NotFoundException('That request to join could not be found, so refresh the page.');
 
     const updated = await this.prisma.participantRequest.update({
       where: { id: reqId },

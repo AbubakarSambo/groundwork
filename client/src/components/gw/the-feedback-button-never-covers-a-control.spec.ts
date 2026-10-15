@@ -30,8 +30,12 @@ describe('the feedback button never covers a control', () => {
   })
 
   it('the composer keeps its own stacking context, so a float can never take its click', () => {
+    /* Was an inline `style={{ position: 'relative', zIndex: 101 }}` (group 3, piece 4d-1 moved it
+       into a named class, gwui-ec-composer-inner, in gw-ui.css - same two properties, same values). */
     const entry = readFileSync(join(__dirname, '..', '..', 'pages', 'enter', 'EntryChatPage.tsx'), 'utf8')
-    expect(entry).toMatch(/position: 'relative', zIndex: 101/)
+    expect(entry).toContain('className="gwui-ec-composer-inner"')
+    const css = readFileSync(join(__dirname, 'ui', 'gw-ui.css'), 'utf8')
+    expect(css).toMatch(/\.gwui-ec-composer-inner\s*\{[^}]*position:\s*relative;[^}]*z-index:\s*101/)
   })
 
   it('and the float it has to beat is the one below it', () => {

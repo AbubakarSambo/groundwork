@@ -18,21 +18,23 @@ export interface WhereEverybodyIs {
 
 export function whyThereIsNoReportYet(where: WhereEverybodyIs): string {
   const { parties } = where;
-  if (!parties.length) return 'Report not found';
+  if (!parties.length) return 'That report could not be found, so go back to the check-in and open it from there.';
 
   const done = parties.filter((p) => p.completed).length;
   const waiting = parties.length - done;
 
   if (done === 0) {
-    return 'There is no report yet: nobody has completed their check-in.';
+    return 'There is no report yet. Nobody has completed their check-in.';
   }
   if (waiting > 0) {
-    const who = waiting === 1 ? 'one person has' : `${waiting} people have`;
-    return `The report is written once everybody has answered. ${who} not finished yet - you will be emailed when it is ready.`;
+    const words = ['Nobody', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
+    const how = waiting <= 10 ? words[waiting] : String(waiting);
+    const who = waiting === 1 ? 'One person has' : `${how} people have`;
+    return `The report is written once everybody has answered. ${who} not finished yet. You will be emailed when it is ready.`;
   }
   /*
    * Everybody is done and there is still no row: the report is being written. This is the one
    * people met most often, pressing straight through from the end of their own session.
    */
-  return 'Everybody has answered and the report is being written. This takes up to a minute - you will be emailed when it is ready.';
+  return 'Everybody has answered, and the report is being written. This takes up to a minute. You will be emailed when it is ready.';
 }

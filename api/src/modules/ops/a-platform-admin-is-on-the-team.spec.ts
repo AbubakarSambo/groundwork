@@ -41,8 +41,8 @@ describe('what to call them', () => {
     );
   });
 
-  it('and the address when it does not, rather than a blank on every board', () => {
-    expect(nameForAccount({ email: 'a@b.test' })).toBe('a@b.test');
+  it('and "Someone" when it does not, never the address (Hafsah, 6 October), rather than a blank on every board', () => {
+    expect(nameForAccount({ email: 'a@b.test' })).toBe('Someone');
   });
 });
 

@@ -54,28 +54,43 @@ describe('no span or div is a control', () => {
 
 describe('a glyph carries a name', () => {
   it('every send arrow is labelled', () => {
-    for (const rel of ['pages/enter/EntryChatPage.tsx', 'pages/chat/ChatPage.tsx']) {
-      const src = read(rel)
-      /* A tag can hold `=>` inside a style object, so the tag is walked back from the glyph rather than matched with [^>]*. */
-      let at = src.indexOf('↑'); let seen = 0
-      while (at !== -1) {
-        const open = src.lastIndexOf('<button', at)
-        expect(src.slice(open, at)).toContain('aria-label="Send message"')
-        seen++
-        at = src.indexOf('↑', at + 1)
-      }
-      expect(seen).toBeGreaterThan(0)
-    }
+    /**
+     * ROUND 5, ITEM B: ChatPage.tsx's send arrow moved into components/gw/ui/Composer.tsx, whose
+     * own `aria-label` comes from a `sendLabel` prop rather than a literal string - so the
+     * guarantee splits in two: Composer's own button really does carry whatever name it is given
+     * (checked once, in general, here), and every caller really does give it a real one.
+     *
+     * 4D-4: EntryChatPage.tsx's own check-in composer (it used to write its own `<button>↑</button>
+     * aria-label="Send message">` by hand) moved onto this same shared Composer, so it joins
+     * ChatPage.tsx on this side of the check rather than being read for a literal arrow of its
+     * own - there is no longer a bare `<button>` with "↑" in that file at all.
+     */
+    const composer = read('components/gw/ui/Composer.tsx')
+    const at = composer.indexOf('↑')
+    const open = composer.lastIndexOf('<button', at)
+    expect(composer.slice(open, at)).toContain('aria-label={sendLabel}')
+    expect(read('pages/chat/ChatPage.tsx')).toMatch(/sendLabel="Send message"/)
+    expect(read('pages/enter/EntryChatPage.tsx')).toMatch(/sendLabel="Send message"/)
+    expect(read('pages/enter/EntryChatPage.tsx')).not.toContain('↑')
   })
   it('the board counts and the download buttons are named for their target', () => {
     const board = read('pages/board/BoardPage.tsx')
     expect(board).toContain('aria-label={`One fewer: ${o.name}`}')
     expect(board).toContain('aria-label={`One more: ${o.name}`}')
-    expect(read('pages/report/ReportPage.tsx')).toContain('aria-label={`Download your session ${c.sessionNumber} record`}')
+    /* Moved from the dead ReportBody (ReportPage.tsx) to SessionReportPage.tsx, which is already
+       the one session the download is for - see the comment at the top of ReportPage.tsx. */
+    expect(read('pages/report/SessionReportPage.tsx')).toContain('aria-label={`Download your session ${data.sessionNumber} record`}')
     expect(read('pages/grounds/GroundAdminPage.tsx')).toMatch(/aria-label=\{`Session \$\{ci\.sessionNumber\}:/)
   })
   it('the session chip has a space in the string, not in the CSS', () => {
-    expect(read('pages/enter/EntryChatPage.tsx')).toMatch(/\{' '\}\{sessions === 1 \? 'session planned' : 'sessions planned'\}/)
+    /* U.6 review: the number is plannedNow (it follows how often it runs); the space rule is
+       unchanged. Was `{plannedNow}</span><span>{' '}{...}</span>` across two spans (group 3, piece
+       4d-1 moved this onto the shared `Button`, which renders plain text); a literal space between
+       two expressions on the same JSX line is still real text, not a CSS gap. */
+    /* Setup page review, 13 October: the chip's words are built by thePlanInTheHeader (it says the
+       rhythm instead of a count when there is no end); the space is still in the string. */
+    expect(read('pages/enter/EntryChatPage.tsx')).toMatch(/\{thePlanInTheHeader\(\{ planned: plannedNow,/)
+    expect(read('pages/enter/TheSetup.tsx')).toContain("return `${a.planned} ${a.planned === 1 ? 'check-in planned' : 'check-ins planned'}`")
   })
   it('TextAction lives in the kit and AuthPage does not keep its own', () => {
     expect(read('components/gw/kit.tsx')).toMatch(/export function TextAction\(/)

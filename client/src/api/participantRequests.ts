@@ -19,7 +19,7 @@ export const participantRequestsApi = {
     apiClient.post<ParticipantRequest>(`/grounds/${groundId}/participant-requests`, data).then(r => r.data),
 
   list: (groundId: string) =>
-    apiClient.get<ParticipantRequest[]>(`/grounds/${groundId}/participant-requests`).then(r => r.data),
+    apiClient.get<ParticipantRequest[]>(`/grounds/${groundId}/participant-requests`).then(r => (Array.isArray(r.data) ? r.data : [])),
 
   update: (groundId: string, reqId: string, status: 'APPROVED' | 'DISMISSED') =>
     apiClient.patch<ParticipantRequest>(`/grounds/${groundId}/participant-requests/${reqId}`, { status }).then(r => r.data),

@@ -4,11 +4,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { aFreeRunEndsOn } from '../../common/subscription';
 
 /**
- * THREE MONTHS ON THE HOUSE.
+ * A FREE RUN ON THE HOUSE, NOW ONE MONTH.
  *
  * Hafsah, 19 September 2026: "us to give free 3 month usage for orgs tied to some accounts. So we
  * put in someone's email and their org gets free use for three months, when they sign-up, they see
- * it."
+ * it." Her answer of 5 October 2026 (decision 78, and decisions-merged 192): every free run is one
+ * month, not three. So a promise made here is one month unless staff type another length. The file
+ * and the class keep the name "three months", because other code and the admin route use it, and a
+ * rename would break them for no gain to anybody reading the screen.
  *
  * Three things follow from that sentence and each one shaped this file.
  *
@@ -17,7 +20,7 @@ import { aFreeRunEndsOn } from '../../common/subscription';
  * waits, and the organisation it ends up on is whatever they create when they sign up.
  *
  * THE CLOCK STARTS WHEN THEY TAKE IT UP. A promise made in September and taken up in November is
- * still three whole months. Starting the clock at the grant would mean the ones we forget to chase
+ * still its whole month. Starting the clock at the grant would mean the ones we forget to chase
  * are the ones that expire unused, which is exactly backwards.
  *
  * THEY SEE IT WHEN THEY SIGN UP. Which means something must be able to answer "is there one for
@@ -40,7 +43,8 @@ export class ThreeMonthsOnTheHouseService {
   /** Make the promise. Re-granting the same address refreshes it rather than failing. */
   async grant(input: { email: string; months?: number; plan?: SubscriptionPlan; note?: string; byUserId?: string }) {
     const email = this.normalise(input.email);
-    const months = Math.min(24, Math.max(1, Math.round(input.months ?? 3)));
+    /* One month unless staff say another length (Hafsah, 5 October 2026: every free run is one month). */
+    const months = Math.min(24, Math.max(1, Math.round(input.months ?? 1)));
     const existing = await this.prisma.freeRun.findUnique({ where: { email } });
     if (existing?.claimedAt) {
       throw new BadRequestException(`${email} has already taken up a free run, so there is nothing waiting to change.`);

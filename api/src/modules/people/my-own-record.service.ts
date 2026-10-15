@@ -1,3 +1,4 @@
+import { withoutCommitmentsFromGoalsNotToldYet } from '../grounds/a-commitment-from-a-goal-not-told-is-not-read-by-its-person';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { forTheirOwnEyes, whyWithheld } from './what-i-can-see-about-myself';
@@ -44,7 +45,7 @@ export class MyOwnRecordService {
     if (!externalId) {
       return {
         externalId: null,
-        note: 'Your account is not linked to a directory record here, so none of the organisation-wide '
+        note: 'Your sign-in is not linked to a directory record here, so none of the organisation-wide '
           + 'material applies to you. What is in your check-ins is covered by the other export.',
         commitments: [], contributions: [], findings: [], handoffs: [],
         onboarding: [], suggestedConversations: [], emailPreferences: null,
@@ -55,9 +56,9 @@ export class MyOwnRecordService {
     const [commitments, contributions, findings, onboarding, suggestions, prefs] = await Promise.all([
       this.prisma.commitment.findMany({
         where: { organizationId, personExternalId: externalId },
-        select: { text: true, state: true, dueSaid: true, dueAt: true, statedAt: true, resolvedAt: true },
+        select: { text: true, state: true, dueSaid: true, dueAt: true, statedAt: true, resolvedAt: true, sourcePersonObjectiveId: true },
         orderBy: { statedAt: 'asc' },
-      }),
+      }).then(async (rows) => (await withoutCommitmentsFromGoalsNotToldYet(this.prisma, rows)).map(({ sourcePersonObjectiveId: _source, ...shown }) => shown)),
       this.prisma.contribution.findMany({
         where: { organizationId, personExternalId: externalId },
         /*

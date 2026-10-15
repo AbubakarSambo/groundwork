@@ -57,7 +57,6 @@ const ACCEPTED_OVERCLAIMS: { page: string; sentence: RegExp; leavesOpen: string 
   { page: 'how-it-works.astro', sentence: /the rest of the Ground is measured against/, leavesOpen: 'P6B-005: "Ground" as a noun, which the product no longer uses (fix plan F10)' },
   { page: 'how-it-works.astro', sentence: /the complete history of the Ground/, leavesOpen: 'P6B-005, the same noun' },
   { page: 'how-it-works.astro', sentence: /The closed Ground stays on record/, leavesOpen: 'P6B-005, the same noun' },
-  { page: 'pricing.astro', sentence: /run Grounds on the free plan/, leavesOpen: 'P6B-005, the same noun on the pricing page' },
 ];
 
 /** "Ground" as a noun, not the product's name. The product says check-in. */

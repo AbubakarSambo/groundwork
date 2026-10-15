@@ -1,3 +1,6 @@
+import { useState } from 'react'
+import { SubHeading, Panel, RowList, Row, Note, Callout, Stack, Text } from './ui'
+
 /**
  * THE JUDGEMENT, ON THE BOARD, WHERE SOMEBODY DECIDES SOMETHING.
  *
@@ -16,94 +19,156 @@
  * finding that does not carry one before this ever sees it. That is what makes this a judgement
  * rather than an impression, and the last report was thrown out for being an impression.
  */
-import { useState } from 'react'
-
 export interface TheJudgementRead {
   theGap?: string
   whatTheNumbersSay?: { fieldId?: string; says: string; soWhat?: string }[]
   whatToDo?: { move: string; because: string; startWith?: string }[]
   whatThisCannotTellYou?: { about: string; why?: string; toKnow?: string }[]
   whatWeFailedToAsk?: { about: string; howManyMissedIt?: number }[]
+  /** Decision 141 (2): plain sentences, every number counted by code from the record. */
+  theCountsBehindThis?: { says: string[] } | null
 }
 
-const Head = ({ children }: { children: React.ReactNode }) => (
-  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.4px', textTransform: 'uppercase', color: 'var(--gw-sub)', margin: '18px 0 7px' }}>
-    {children}
-  </div>
-)
+/**
+ * TWO PIECES ARE TWO LINES, NEVER ONE LINE WITH A COLON (U.9).
+ *
+ * "What this cannot tell you" drew "**The renewals target**: nobody said who set it." and "What the
+ * check-ins did not get to" drew "How they vet people: 2 conversations never reached it". Both read
+ * as a table row. The engine writes `about` and `why` as full sentences, so each goes on its own
+ * line, and the count is a sentence of its own under what it counts.
+ *
+ * The engine's table is gone: the server no longer sends it to anybody. "See the counts behind this"
+ * came back under decision 141 (2) as plain sentences the server counts from the record by code.
+ */
+export function howManyNeverReachedIt(n: number): string {
+  if (n === 1) return 'One conversation never reached this.'
+  return `${n} conversations never reached this.`
+}
 
-export function TheJudgement({ it, table }: { it: TheJudgementRead | null | undefined; table?: string | null }) {
-  const [showTable, setShowTable] = useState(false)
+/**
+ * "Start with: Aisha" was a label and a colon. `startWith` is who to begin with, so it becomes one
+ * sentence. And "Start with You." is nobody's own sentence about themselves - a reader is "you" to
+ * the product, not a name it hands back to them, so when the answer is the reader, it reads "Start
+ * with yourself."
+ */
+export function startWith(who: string): string {
+  const w = who.trim().replace(/^start with\s+/i, '').replace(/^(The|A|An|Each|Every|All|Any)\b/, (d) => d.toLowerCase())
+  if (/^you$/i.test(w)) return 'Start with yourself.'
+  return `Start with ${w}${/[.!?]$/.test(w) ? '' : '.'}`
+}
+
+/** "See the counts behind this": folded under the judgement, opened by the reader. */
+function TheCountsBehindThis({ says }: { says: string[] }) {
+  const [open, setOpen] = useState(false)
+  if (!says.length) return null
+  return (
+    <div>
+      {/* The shared link part: navy, underlined, with a 40px box a finger can hit. */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="gwui-plain-link"
+      >
+        {open ? 'Hide the counts' : 'See the counts behind this'}
+      </button>
+      {open && (
+        <div aria-label="The counts behind this">
+          <Text size="15" ink="text" lineHeight={1.6}>
+            <Stack gap={4}>
+              {says.map((s, i) => <div key={i}>{s}</div>)}
+            </Stack>
+          </Text>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function TheJudgement({ it, hideWhatThisCannotTellYou }: {
+  it: TheJudgementRead | null | undefined
+  /** THE "MARKETVIEW, WHERE NEXT" BOARD'S OWN PLACE FOR THIS LIST IS ELSEWHERE ON THE PAGE, OUT OF
+      THE FOLD (mvnext.txt) - true for that kind alone, so its own copy, further up the board, is
+      never read twice here inside the folded "What the answers say". Every other kind draws it
+      here exactly as before. */
+  hideWhatThisCannotTellYou?: boolean
+}) {
   if (!it?.theGap && !it?.whatToDo?.length) return null
   return (
-    <div style={{ maxWidth: 760 }}>
+    // U.10: full width, like the rest of the prototype's board - not capped at 760px.
+    <div>
       {/* The gap, in the largest type on the board, because it is the one thing they will remember. */}
       {it.theGap && (
-        <div style={{
-          background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10,
-          padding: '14px 16px', marginBottom: 4,
-        }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.4px', color: 'var(--gw-navy)', marginBottom: 5 }}>THE GAP</div>
-          <div style={{ fontSize: 15.5, color: 'var(--gw-text)', lineHeight: 1.55, fontWeight: 600 }}>{it.theGap}</div>
-        </div>
+        <Callout tone="emphasis" title="The gap">{it.theGap}</Callout>
       )}
 
       {!!it.whatTheNumbersSay?.length && (
         <>
-          <Head>What the numbers say</Head>
-          <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>
-            {it.whatTheNumbersSay.map((l, i) => (
-              <div key={i} style={{ padding: '11px 14px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-line)' }}>
-                <div style={{ fontSize: 13.5, color: 'var(--gw-text)', lineHeight: 1.55 }}>{l.says}</div>
-                {l.soWhat && (
-                  <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.5, marginTop: 3 }}>{l.soWhat}</div>
-                )}
-              </div>
-            ))}
-          </div>
+          <SubHeading tone="kicker">What the numbers say</SubHeading>
+          <Panel pad={false}>
+            <RowList label="What the numbers say">
+              {it.whatTheNumbersSay.map((l, i) => (
+                <Row key={i} columns="1fr" inset="kicker">
+                  <div className="gwui-pt-11 gwui-pb-11">
+                    <div className="gwui-fs-15 gwui-ink-text" style={{ lineHeight: 1.55 }}>{l.says}</div>
+                    {l.soWhat && <div className="gwui-mt-3"><Note>{l.soWhat}</Note></div>}
+                  </div>
+                </Row>
+              ))}
+            </RowList>
+          </Panel>
         </>
       )}
 
       {/* Ranked, and each one carries what justifies it - a move with no count behind it is a hunch. */}
       {!!it.whatToDo?.length && (
         <>
-          <Head>What to do</Head>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {it.whatToDo.map((m, i) => (
-              <div key={i} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px' }}>
-                <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
-                  <span style={{
-                    flexShrink: 0, width: 18, height: 18, borderRadius: 9, background: 'var(--gw-navy)', color: 'white',
-                    fontSize: 11, fontWeight: 800, textAlign: 'center', lineHeight: '18px',
-                  }}>{i + 1}</span>
-                  <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-dark)', lineHeight: 1.5 }}>{m.move}</span>
-                </div>
-                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 5, paddingLeft: 28 }}>
-                  {m.because}
-                </div>
-                {m.startWith && (
-                  <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.55, marginTop: 3, paddingLeft: 28 }}>
-                    <span style={{ color: 'var(--gw-sub)' }}>Start with: </span>{m.startWith}
+          <SubHeading tone="kicker">What to do</SubHeading>
+          <Panel pad={false}>
+            <RowList label="What to do">
+              {it.whatToDo.map((m, i) => (
+                <Row key={i} columns="1fr" inset="kicker">
+                  <div className="gwui-pt-12 gwui-pb-12">
+                    <div className="gwui-gap-10" style={{ display: 'flex', alignItems: 'baseline' }}>
+                      <span className="gwui-fs-13 gwui-ink-white" style={{
+                        flexShrink: 0, width: 18, height: 18, borderRadius: 9, background: 'var(--gw-navy)',
+                        fontWeight: 800, textAlign: 'center', lineHeight: '18px',
+                      }}>{i + 1}</span>
+                      <span className="gwui-fs-16 gwui-ink-dark" style={{ fontWeight: 700, lineHeight: 1.5 }}>{m.move}</span>
+                    </div>
+                    <div className="gwui-fs-15 gwui-ink-sub gwui-mt-5 gwui-pl-28" style={{ lineHeight: 1.55 }}>
+                      {m.because}
+                    </div>
+                    {m.startWith && (
+                      <div className="gwui-fs-15 gwui-ink-text gwui-mt-3 gwui-pl-28" style={{ lineHeight: 1.55 }}>
+                        {startWith(m.startWith)}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
+                </Row>
+              ))}
+            </RowList>
+          </Panel>
         </>
       )}
 
       {/* The edge of the data, named. Without it a reader has no way to tell where to stop trusting. */}
-      {!!it.whatThisCannotTellYou?.length && (
+      {!hideWhatThisCannotTellYou && !!it.whatThisCannotTellYou?.length && (
         <>
-          <Head>What this cannot tell you</Head>
-          <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '4px 0' }}>
-            {it.whatThisCannotTellYou.map((w, i) => (
-              <div key={i} style={{ padding: '9px 14px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-line)', fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.55 }}>
-                <b style={{ fontWeight: 600 }}>{w.about}</b>{w.why ? `: ${w.why}` : ''}
-                {w.toKnow && <div style={{ color: 'var(--gw-sub)', marginTop: 2 }}>{w.toKnow}</div>}
-              </div>
-            ))}
-          </div>
+          <SubHeading tone="kicker">What this cannot tell you</SubHeading>
+          <Panel pad={false}>
+            <RowList label="What this cannot tell you">
+              {it.whatThisCannotTellYou.map((w, i) => (
+                <Row key={i} columns="1fr" inset="kicker">
+                  <div className="gwui-pt-9 gwui-pb-9 gwui-fs-15 gwui-ink-text" style={{ lineHeight: 1.55 }}>
+                    <div style={{ fontWeight: 600 }}>{w.about}</div>
+                    {w.why && <div className="gwui-mt-2">{w.why}</div>}
+                    {w.toKnow && <div className="gwui-ink-sub gwui-mt-2">{w.toKnow}</div>}
+                  </div>
+                </Row>
+              ))}
+            </RowList>
+          </Panel>
         </>
       )}
 
@@ -114,36 +179,22 @@ export function TheJudgement({ it, table }: { it: TheJudgementRead | null | unde
       */}
       {!!it.whatWeFailedToAsk?.length && (
         <>
-          <Head>What the check-ins did not get to</Head>
-          <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.7 }}>
-            {it.whatWeFailedToAsk.map((w, i) => (
-              <div key={i}>
-                {w.about}
-                {typeof w.howManyMissedIt === 'number' && `: ${w.howManyMissedIt} conversation${w.howManyMissedIt === 1 ? '' : 's'} never reached it`}
-              </div>
-            ))}
+          <SubHeading tone="kicker">What the check-ins did not get to</SubHeading>
+          <div className="gwui-fs-15 gwui-ink-sub" style={{ lineHeight: 1.6 }}>
+            <Stack gap={6}>
+              {it.whatWeFailedToAsk.map((w, i) => (
+                <div key={i}>
+                  <div className="gwui-ink-text">{w.about}</div>
+                  {typeof w.howManyMissedIt === 'number' && <div className="gwui-note">{howManyNeverReachedIt(w.howManyMissedIt)}</div>}
+                </div>
+              ))}
+            </Stack>
           </div>
         </>
       )}
 
-      {/* The counts themselves, for whoever wants to check a sentence against them. */}
-      {table && (
-        <>
-          <button
-            onClick={() => setShowTable((v) => !v)}
-            style={{ marginTop: 14, background: 'none', border: 'none', padding: 0, fontSize: 12, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-          >
-            {showTable ? 'Hide the counts' : 'See the counts behind this'}
-          </button>
-          {showTable && (
-            <pre style={{
-              marginTop: 8, padding: '12px 14px', background: 'var(--gw-bg)', border: '1px solid var(--gw-border)',
-              borderRadius: 8, fontSize: 11.5, lineHeight: 1.6, overflowX: 'auto', whiteSpace: 'pre',
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', color: 'var(--gw-text)',
-            }}>{table}</pre>
-          )}
-        </>
-      )}
+      {!!it.theCountsBehindThis?.says?.length && <TheCountsBehindThis says={it.theCountsBehindThis.says} />}
+
     </div>
   )
 }

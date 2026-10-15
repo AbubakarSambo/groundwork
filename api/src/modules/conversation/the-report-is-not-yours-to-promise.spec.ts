@@ -1,3 +1,4 @@
+import { theStreamedRouteRunsThePlainRoute } from './__fixtures__/the-streamed-route-is-the-plain-route';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { theReportIsNotTheirsYet, withoutPromisingTheReport, WHAT_ACTUALLY_HAPPENS_NEXT } from './the-report-is-not-yours-to-promise';
@@ -81,8 +82,9 @@ describe('and it is read rather than asked for', () => {
 
   /* And the streamed path too, where the correction rides on the final reply the page keeps. */
   it('and on the streaming path, against the same scenario', () => {
-    expect(SRC).toMatch(/if \(theReportIsNotTheirsYet\(scenarioHere\)\)/);
-    expect(SRC).toMatch(/withoutPromisingTheReport\(reply\)/);
+    /* Changed 28 Sep 2026: the streamed route now runs sendMessage itself (the-streamed-route-is-the-plain-route), so a rule held on both paths is in sendMessage once, and the stream runs it. */
+    expect(SRC).toMatch(/if \(theReportIsNotTheirsYet\(thisGroundsScenario\)\)/);
+    expect(theStreamedRouteRunsThePlainRoute(SRC)).toBe(true);
   });
 
   it('and it says so in the log, so nobody has to read a transcript to find out', () => {

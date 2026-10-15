@@ -42,7 +42,7 @@ describe('a Prisma failure reaching the filter', () => {
   });
 
   it('says which field was missing', () => {
-    expect(body.message).toBe('itemType is required and was not sent.');
+    expect(body.message).toBe('Part of what is needed was left out, so check what you filled in and try again.');
   });
 
   it('and the body carries no path, no id and no table name', () => {
@@ -54,9 +54,9 @@ describe('a Prisma failure reaching the filter', () => {
 });
 
 describe('an ordinary failure reaching the filter', () => {
-  it('is untouched, so nothing else about the filter changed', () => {
+  it('is a server error, and the person reads one plain sentence, never the crash\'s own words', () => {
     const { status, body } = throwAtTheFilter(new Error('something ordinary broke'));
     expect(status).toBe(500);
-    expect(body.message).toBe('something ordinary broke');
+    expect(body.message).toBe('Something went wrong on our side. Please try again in a minute, and if it happens again, tell us.');
   });
 });

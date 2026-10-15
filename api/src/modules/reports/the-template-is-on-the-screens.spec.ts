@@ -54,9 +54,23 @@ describe('the reference surface holds the template', () => {
 
   it('four states, and each one says what it means', () => {
     expect(THE_TEMPLATE.fourStatesInARow).toHaveLength(4);
-    /* `sub` is the clause saying what the number is OF. A tile that is a label and a figure is a
-       scoreboard, and the clause is what stops it being one. */
-    expect(SHARED_HALF).toContain('{r.sub}');
+    /*
+     * `sub` is the clause saying what the number is OF. A tile that is a label and a figure alone
+     * is a scoreboard, and the clause is what stops it being one.
+     *
+     * U.9 END-OF-MODULE API SUITE: THIS NO LONGER CHECKS FOR A BARE `{r.sub}` ON THE PAGE, BECAUSE
+     * THE TILE IS NO LONGER TWO PIECES STACKED ON TOP OF EACH OTHER. The U.9 third review found
+     * "Differences / 1. / still open, as the written report reads it" reading as a label, a figure
+     * and a fragment rather than one thing - `{r.value}` and `{r.sub}` used to be drawn as two
+     * separate lines. Each tile is now `tileSentence(r)`'s single full sentence ("People see one
+     * thing differently. The main obstacle to signing new shops is seen differently."), which
+     * still says what the number is of - the clause is folded INTO the sentence rather than left
+     * beside it. So the same intent is checked against the new shape: the tile is drawn with
+     * `tileSentence(r)`, and `tileSentence` itself reads `r.sub` when it composes that sentence.
+     */
+    expect(SHARED_HALF).toContain('tileSentence(r)');
+    const tileSentence = SHARED_HALF.slice(SHARED_HALF.indexOf('function tileSentence'));
+    expect(tileSentence).toContain('r.sub');
   });
 });
 

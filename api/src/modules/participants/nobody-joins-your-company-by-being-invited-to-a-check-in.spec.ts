@@ -55,3 +55,47 @@ describe('who never waits', () => {
     }
   });
 });
+
+/*
+ * U.4: FOUR PEOPLE AN ADMIN ADDED WERE ALL HELD FOR HER OWN APPROVAL. Sahar, an admin, set a check-in
+ * up for a lead through /grounds/for-lead and added four people. The rule asked the person who RUNS
+ * the check-in (the lead, not an admin), so every one of them waited. The question is now asked of
+ * whoever added the person, which is recorded on their row.
+ */
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { isAnAdminOf, whoToAsk } from './nobody-joins-your-company-by-being-invited-to-a-check-in';
+
+describe('who added them decides, not who runs the check-in', () => {
+  it('asks whoever added this person, and only falls back to the lead on rows that do not say', () => {
+    expect(whoToAsk('sahar-the-admin', 'the-lead')).toBe('sahar-the-admin');
+    expect(whoToAsk(null, 'the-lead')).toBe('the-lead');
+    expect(whoToAsk(undefined, 'the-lead')).toBe('the-lead');
+  });
+
+  it('an admin of this organisation who added them is the approval; an admin somewhere else is not', () => {
+    expect(isAnAdminOf('acme', { role: 'ADMIN', organizationId: 'acme' })).toBe(true);
+    expect(isAnAdminOf('acme', { role: 'ADMIN', organizationId: 'other-co' })).toBe(false);
+    expect(isAnAdminOf('acme', { role: 'LEAD', organizationId: 'acme' })).toBe(false);
+    expect(isAnAdminOf('acme', null)).toBe(false);
+  });
+
+  it('so a brand-new person an admin added to a lead\'s check-in walks straight in', () => {
+    const adder = { role: 'ADMIN', organizationId: 'acme' };
+    expect(needsApproval(arriving({ theirHomeOrganizationId: null, addedByAnAdminOfThisOrg: isAnAdminOf('acme', adder) }))).toBe(false);
+    /* And somebody a lead added still waits, as before. */
+    const lead = { role: 'LEAD', organizationId: 'acme' };
+    expect(needsApproval(arriving({ theirHomeOrganizationId: null, addedByAnAdminOfThisOrg: isAnAdminOf('acme', lead) }))).toBe(true);
+  });
+
+  const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  it('accept() asks the recorded adder, and both doors that add a person record who did', () => {
+    const service = strip(readFileSync(join(__dirname, 'participants.service.ts'), 'utf8'));
+    expect(service).toMatch(/where: \{ id: whoToAsk\(participant\.addedByUserId, ground\.initiatorId\) \}/);
+    expect(service).toMatch(/addedByAnAdminOfThisOrg: isAnAdminOf\(ground\.organizationId, inviter\)/);
+    const grounds = strip(readFileSync(join(__dirname, '..', 'grounds', 'grounds.service.ts'), 'utf8'));
+    /* createForLead: the admin setting it up. addParticipant: the lead, or the admin who set it up. */
+    expect(grounds).toMatch(/addedByUserId: adminUserId,/);
+    expect(grounds).toMatch(/addedByUserId: initiatorId,/);
+  });
+});

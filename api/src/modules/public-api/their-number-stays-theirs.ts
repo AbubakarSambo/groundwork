@@ -54,6 +54,7 @@ export const NOT_ONE_OF_YOURS: WhatCameBack = { mine: false };
  */
 export const ONLY_ON_OUR_OWN_NUMBER = [
   /not on your organisation's roster/i,
+  /does not know this number yet/i,
   /not connected to a Groundwork sign-in/i,
 ];
 

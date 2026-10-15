@@ -15,6 +15,9 @@ export interface PatternCode {
   probe?: string;
 }
 
+import { WHAT_COUNTS_BY_CODE } from './what-counts-for-each-pattern';
+export { WHAT_COUNTS_BY_CODE };
+
 // Positive patterns. R3 is a positive signal - surfaced separately, never mixed
 // with bad-faith codes and never subject to the three-period rule.
 export const POSITIVE_CODES: PatternCode[] = [
@@ -345,6 +348,9 @@ export const PATTERN_PROBE_BY_CODE = new Map<string, string>(
 );
 
 // The prompt that drives detection over one party's period (transcript + record).
+/** The key the detector's prompt is stored under (PromptVersion, served by /prompts). The version stored is the one that runs; this text is the fallback and what a start seeds. */
+export const PATTERN_DETECTION_PROMPT_KEY = 'pattern_detection';
+
 export const PATTERN_DETECTION_PROMPT = `You analyse ONE party's check-in for a single period and identify whether any behavioural pattern signals are present in the record. You are looking at the record, not judging the person. Some of these signals are good news and some are not, and both matter equally.
 
 Hard rules:
@@ -357,16 +363,20 @@ Hard rules:
   Not:   "The record shows work was marked finished without downstream confirmation."
   The observation is already about the record; saying so adds nothing but distance.
 - Do not infer intent. A pattern is a reason to have a specific conversation, not a conclusion.
+- Some lines below say what counts and what does not. Follow them. Where a line speaks of the earlier record, use the section headed "WHAT THIS PERSON THEMSELVES RECORDED IN THE LAST TWO PERIODS" if there is one, to tell a repeat from a first time. Their own words in this check-in about something being raised before count too.
+- DECIDE EVERY CODE THE SAME WAY, EVERY TIME. Go through the codes below one at a time, in the order they are listed, and for each one ask a single question: is there a sentence said by the PERSON in the transcript, or a line of the extracted record, that does what this code's signal says? If you can point to one, emit the code once and copy that sentence, exactly as it is written, into "quote". If you cannot, do not emit the code. Do not stop after the first one or two you find. Do not hold a code back because others are already emitted, and do not emit one to balance the others. The same words must give the same codes whenever they are read.
+- A hint is not a sentence that does what the signal says. One vague phrase, a mood, something only implied, a signal that was true of an earlier period, or a thing only GROUNDWORK said or suggested and the person did not say, does not count. A clear sentence counts, even when it is the only one: do not hold back a code that is plainly there.
+- When one sentence could fit two codes, emit each code whose "counts" line (where there is one) is met by that sentence, and do not emit a code whose line it does not meet.
 - One data point is not a pattern. You are emitting a per-period observation; the system applies the three-period rule across periods. Do not claim a pattern is established.
 
 The pattern codes and their signals:
-${BAD_FAITH_CODES.map((c) => `- ${c.code} (${c.name}): ${c.signal}`).join('\n')}
+${BAD_FAITH_CODES.map((c) => `- ${c.code} (${c.name}): ${c.signal}${WHAT_COUNTS_BY_CODE[c.code] ? ` ${WHAT_COUNTS_BY_CODE[c.code]}` : ''}`).join('\n')}
 
 AND THE ONES THAT ARE GOOD NEWS. Look for these with the same care, and emit them on the same
 terms: only where the signal is genuinely present in this period's evidence. These are not
 consolation prizes for a period with nothing wrong in it, and a person who did steady ordinary
 work gets no code at all, which is a perfectly good period.
-${POSITIVE_CODES.map((c) => `- ${c.code} (${c.name}): ${c.signal}`).join('\n')}
+${POSITIVE_CODES.map((c) => `- ${c.code} (${c.name}): ${c.signal}${WHAT_COUNTS_BY_CODE[c.code] ? ` ${WHAT_COUNTS_BY_CODE[c.code]}` : ''}`).join('\n')}
 
 M4 is the one most often missed, because nothing visibly breaks while somebody is doing it. Work
 that is only noticed when it stops is still work.
@@ -374,7 +384,7 @@ that is only noticed when it stops is still work.
 AND THE ONES THAT ARE NEITHER. These say somebody is holding something together that should not
 have needed holding. They are never a fault in the person - they are usually a fault around them -
 so write the observation about the situation and never about their choices.
-${CARRYING_CODES.map((c) => `- ${c.code} (${c.name}): ${c.signal}`).join('\n')}
+${CARRYING_CODES.map((c) => `- ${c.code} (${c.name}): ${c.signal}${WHAT_COUNTS_BY_CODE[c.code] ? ` ${WHAT_COUNTS_BY_CODE[c.code]}` : ''}`).join('\n')}
 
 Return the codes whose signal is present this period, each with a one-sentence plain-language
 observation. Say what happened, plainly, without prefacing it. A good one is written the same way
@@ -410,6 +420,8 @@ export const PATTERN_DETECTION_SCHEMA = {
               enum: [...BAD_FAITH_CODES, ...POSITIVE_CODES, ...CARRYING_CODES].map((c) => c.code),
               description: 'The pattern code. M, C and R3 are good news; A codes say somebody is carrying something; the rest are not.',
             },
+            /* The sentence that shows it, copied exactly from what the person said or from the record. The prompt says a code with no sentence to point to is not emitted; asking for the sentence first each time is what makes the same words give the same codes. Optional in the schema, so the earlier version of the prompt, which does not ask for it, still works. Not used downstream: the observation is what is kept. */
+            quote: { type: 'string', description: 'The one sentence, copied exactly from what the person said or from the record, that does what this code\'s signal says.' },
             observation: { type: 'string', description: 'Plain-language, pattern-level description of what happened. Do NOT open with "The record shows/describes/contains" - say the thing directly. Never names the person; never a verdict.' },
           },
           required: ['code', 'observation'],
@@ -925,4 +937,26 @@ export const PATTERN_DETECTORS: Record<string, (input: DetectionInput) => boolea
 export function detectPattern(code: string, input: DetectionInput): boolean {
   const fn = PATTERN_DETECTORS[code];
   return fn ? fn(input) : false;
+}
+
+/**
+ * WHAT BACKED A DETECTION (decision 57, item 4): the model's own reading, the matching number-based
+ * rule, or both. 'rule' is for the handful of codes that are never read by the model at all (R3,
+ * COLLUSION_RISK) - a rule-only finding, not a lesser one. Read by the lead only; never shown to the
+ * person or a colleague, and a rule never surfaces a bad-faith code by itself (see patterns.service.ts).
+ */
+export type AnEvidenceSource = 'model' | 'rule' | 'both';
+
+/**
+ * Combines what a detection was already backed by with what this period adds. Once two separate
+ * reads have agreed even once, that stays true forever - a later period where the rule happens not
+ * to fire does not erase that earlier agreement, any more than a pattern once SURFACED becomes
+ * unsurfaced. Anything else simply takes the newest read, falling back to what was already stored.
+ */
+export function mergedEvidenceSource(
+  existing: AnEvidenceSource | null | undefined,
+  incoming: AnEvidenceSource | null | undefined,
+): AnEvidenceSource | null {
+  if (existing === 'both' || incoming === 'both') return 'both';
+  return incoming ?? existing ?? null;
 }

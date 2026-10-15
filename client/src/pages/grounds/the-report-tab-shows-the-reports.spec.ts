@@ -40,10 +40,18 @@ const TAB = (() => {
 
 const LIST = readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'TheReportIsAListOfSessions.tsx'), 'utf8')
 const SESSION_VIEW = readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'TheSessionsReport.tsx'), 'utf8')
+/**
+ * U.10: THE COUNTING MOVED, SO THIS DOES TOO.
+ * `sessionRows` used to be computed inline in GroundAdminPage.tsx; it is now `buildSessionRows` in
+ * lib/session-rows.ts, so the board's "Reports" table can use the exact same rows rather than a
+ * second copy of the same counting. The newest-first sort this test protects moved with it.
+ */
+const SESSION_ROWS = readFileSync(join(__dirname, '..', '..', 'lib', 'session-rows.ts'), 'utf8')
 
 describe('the report tab is a list of sessions', () => {
   it('opens with the team board', () => {
-    const board = LIST.indexOf('Open the team board')
+    /* U.9: the prototype's words, "The board" and "Everything so far" (sessions.txt). */
+    const board = LIST.indexOf('{EVERY_SESSION.board}')
     expect(board).toBeGreaterThan(-1)
     /* Before the rows, which is the whole of "first item on the page". */
     expect(board).toBeLessThan(LIST.indexOf('Session {r.sessionNumber}'))
@@ -59,16 +67,18 @@ describe('the report tab is a list of sessions', () => {
     expect(TAB).toContain('rows={sessionRows}')
     expect(LIST).toContain('Session {r.sessionNumber}')
     expect(LIST).toMatch(/navigate\(`\/checkin\/\$\{r\.myCheckInId\}\/report`\)/)
-    expect(PAGE).toMatch(/\(a, b\) => b - a/)
+    expect(SESSION_ROWS).toMatch(/\(a, b\) => b - a/)
   })
 
   it('and every row says who it is counting, before you click', () => {
-    expect(LIST).toContain('{r.answered} of {r.total} answered')
-    expect(LIST).toContain('waiting on')
+    /* U.9: "6 of 6 checked in", and who it waits for as a sentence ("Omar has not checked in yet."). */
+    expect(LIST).toContain('checkedIn(r.answered, r.total)')
+    expect(LIST).toContain('stillToCheckIn(r.waitingOn)')
   })
 
   it('the forming picture is still shown, on the session it is forming for', () => {
-    expect(SESSION_VIEW).toContain('still forming')
+    /* U.9: the masthead says "Session 3. 2 of 4 people checked in." in place of "still forming · 2 of 4 answered". */
+    expect(SESSION_VIEW).toContain('checked in.`')
     expect(SESSION_VIEW).toContain('Where things stand')
   })
 

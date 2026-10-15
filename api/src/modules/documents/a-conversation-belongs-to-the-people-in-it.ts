@@ -19,6 +19,8 @@
  * which is a different and smaller claim, and pretending otherwise would be worse than not saying.
  */
 
+import { aReceiptOrAnInvoice, A_FIELD_OF_A_RECEIPT } from './a-receipt-is-not-a-conversation';
+
 /** The words shown beside the upload. Kept here so the page and the response cannot drift. */
 export const WHAT_THEY_ARE_CONFIRMING =
   'This is a record of a conversation other people were part of. Uploading it means they know '
@@ -47,8 +49,13 @@ const SOUNDS_LIKE_ONE = [
   'meet recording', 'interview',
 ];
 
+/* Words in a file name that say it is a record of people talking, whatever else the name says. */
+const SAYS_PEOPLE_TALKED = /transcript|conversation|chat log|call log|call notes|meeting|minutes|interview|voice note|recording/;
+
 export function looksLikeAConversation(fileName: string, content: string): boolean {
   const name = (fileName ?? '').toLowerCase();
+  /* A receipt or an invoice is not a conversation (week 15). A name that also says people talked still is. */
+  if (aReceiptOrAnInvoice(fileName, content) && !SAYS_PEOPLE_TALKED.test(name)) return false;
   if (SOUNDS_LIKE_ONE.some((w) => name.includes(w))) return true;
 
   /*
@@ -57,6 +64,7 @@ export function looksLikeAConversation(fileName: string, content: string): boole
    */
   const opening = (content ?? '').slice(0, 2_000).split('\n').filter((l) => l.trim());
   if (opening.length < 6) return false;
-  const speakerLines = opening.filter((l) => /^\s*[A-Z][\w .'-]{1,30}\s*:/.test(l)).length;
+  /* "Total:" and "VAT:" are the fields of a receipt, not people speaking. */
+  const speakerLines = opening.filter((l) => /^\s*[A-Z][\w .'-]{1,30}\s*:/.test(l) && !A_FIELD_OF_A_RECEIPT.test(l)).length;
   return speakerLines / opening.length >= 0.5;
 }

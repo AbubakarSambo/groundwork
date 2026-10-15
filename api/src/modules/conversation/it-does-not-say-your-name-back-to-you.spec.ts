@@ -1,3 +1,4 @@
+import { theStreamedRouteRunsThePlainRoute } from './__fixtures__/the-streamed-route-is-the-plain-route';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { screen, SentenceGate } from './nothing-invented-reaches-them';
@@ -84,7 +85,9 @@ describe('and the streamed reply is held to the same rule', () => {
 describe('and the check-in knows who is reading', () => {
   it('passes the reader to both paths', () => {
     expect(SERVICE).toContain('screen(stripped.text, known, readerName, conversationSoFar)');
-    expect(SERVICE).toMatch(/new SentenceGate\(\s*streamKnown,\s*streamReaderName,\s*turns\.map/);
+    /* Changed 28 Sep 2026: the streamed route now runs sendMessage itself (the-streamed-route-is-the-plain-route), so a rule held on both paths is in sendMessage once, and the stream runs it. */
+    expect(SERVICE).toMatch(/new SentenceGate\(\s*known,\s*readerName,\s*turns\.map/);
+    expect(theStreamedRouteRunsThePlainRoute(SERVICE)).toBe(true);
   });
 
   it('from the row it already loads, not a second query', () => {

@@ -26,8 +26,16 @@ describe('who can reach it', () => {
     expect(body.indexOf('return null')).toBeLessThan(body.indexOf('whatTheRecordHoldsFor'));
   });
 
-  it('and the caller passes lead-or-admin rather than a flag of its own', () => {
-    expect(SERVICE).toMatch(/whatToProbeOn\(\s*groundId,\s*ground as any,\s*isInitiator \|\| isOrgAdmin/);
+  /*
+   * Decision 58 (screens request 84, 30 September 2026): `isInitiator || isOrgAdmin` let every
+   * admin of the organisation read the probe list - exactly the leak this file exists to guard
+   * against, for a reader who does not even run the check-in. The caller now passes
+   * `patternRunsIt`, built from `runsItForAPattern` (patterns/who-reads-a-pattern.ts): the lead, or
+   * the admin who set this particular check-in up for them, never every admin of the organisation.
+   */
+  it('and the caller passes the pattern access rule rather than a flag of its own', () => {
+    expect(SERVICE).toMatch(/whatToProbeOn\(\s*groundId,\s*ground as any,\s*patternRunsIt/);
+    expect(SERVICE).toMatch(/const patternRunsIt = runsItForAPattern\(/);
   });
 });
 

@@ -78,7 +78,7 @@ describe('the service adds them rather than refusing', () => {
   });
 
   it('and holds the mail, so nothing reaches somebody who could not open it', () => {
-    expect(SRC).toMatch(/if \(!startsInFuture && waitingForASeat\.room\) \{/);
+    expect(SRC).toMatch(/if \(!startsInFuture && !heldForApproval && waitingForASeat\.room\) \{/);
   });
 
   /**
@@ -87,8 +87,8 @@ describe('the service adds them rather than refusing', () => {
    * been written to who has never heard from us.
    */
   it('and does not claim they were invited or notified', () => {
-    expect(SRC).toMatch(/invitedAt: startsInFuture \|\| !waitingForASeat\.room \? null : new Date\(\)/);
-    expect(SRC).toMatch(/notifiedAt: startsInFuture \|\| !waitingForASeat\.room \? null : new Date\(\)/);
+    expect(SRC).toMatch(/invitedAt: startsInFuture \|\| heldForApproval \|\| !waitingForASeat\.room \? null : new Date\(\)/);
+    expect(SRC).toMatch(/notifiedAt: startsInFuture \|\| heldForApproval \|\| !waitingForASeat\.room \? null : new Date\(\)/);
   });
 
   it('and hands the lead the sentence rather than an error', () => {
@@ -101,7 +101,8 @@ describe('and the invitations go out when an admin makes room', () => {
     .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
   it('oldest first, because a queue answered out of order is not a queue', () => {
-    expect(SRC).toMatch(/where: \{ awaitingSeat: true, ground: \{ organizationId \} \},\s*\n\s*orderBy: \{ createdAt: 'asc' \}/);
+    /* Changed 7 October 2026 (known issue B5): not into a check-in that is over, stopped, paused, waiting for an admin or declined. */
+    expect(SRC).toMatch(/where: \{ awaitingSeat: true, ground: \{ organizationId, status: \{ notIn: \[\.\.\.A_GROUND_THE_JOBS_LEAVE_ALONE, \.\.\.A_GROUND_IS_HELD, GroundStatus\.AWAITING_APPROVAL\] \} \} \},\s*\n\s*orderBy: \{ createdAt: 'asc' \}/);
   });
 
   /** Releasing six into four seats would put the account straight back over its cap. */

@@ -25,7 +25,7 @@ export function whyNothingIsCrossReferenced(a: {
 }): string {
   const expected = a.peopleExpected ?? 0;
   if (expected > 0 && expected < 2) {
-    return 'Nothing to cross-reference: this compares accounts, and there is one person on this check-in.';
+    return 'There is nothing to compare yet. This compares what different people said, and there is only one person on this check-in.';
   }
   const waiting = a.stillToAnswer ?? null;
   if (waiting == null) {

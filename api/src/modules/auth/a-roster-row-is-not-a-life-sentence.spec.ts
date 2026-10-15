@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { whatTheirWorkspaceIsCalled, whyNotAnotherWorkspace } from './a-roster-row-is-not-a-life-sentence';
+import { whatTheirWorkspaceIsCalled } from './a-roster-row-is-not-a-life-sentence';
 
 /**
  * "SOMEONE IS MY ACCOUNT AND CREATED THEIR OWN ACCOUNT AND KEEP SHOWING UP TO MY ACCOUNT. AND THEY
@@ -28,16 +28,9 @@ describe('what their own workspace is called', () => {
   });
 });
 
-describe('and only one of them', () => {
-  it('somebody with no workspace of their own may start one', () => {
-    expect(whyNotAnotherWorkspace({ alreadyOwnsOne: false })).toBeNull();
-  });
-
-  /* A person with nine empty workspaces has a switcher worse than the trap was. */
-  it('and somebody who already has one is told where it is', () => {
-    expect(whyNotAnotherWorkspace({ alreadyOwnsOne: true })).toContain('already have your own workspace');
-  });
-});
+/* "AND ONLY ONE OF THEM" IS GONE (U.3). Hafsah decided on 26 September that a person can create more
+   than one organisation, each with its own plan, as the prototype's "Create an organisation" allows.
+   creating-an-organisation.spec.ts checks a second one is now made. */
 
 describe('what the door does and does not do', () => {
   const SRC = readFileSync(join(__dirname, 'auth.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');

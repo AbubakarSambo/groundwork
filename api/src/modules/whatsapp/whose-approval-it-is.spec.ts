@@ -1,4 +1,4 @@
-import { templateFor, TEMPLATES } from './a-message-outside-the-window';
+import { templateFor, TEMPLATES, THE_NAMES_TO_SUBMIT } from './a-message-outside-the-window';
 
 /**
  * APPROVAL BELONGS TO WHOEVER OWNS THE META APP, AND FOR A CUSTOMER THAT IS NOT US.
@@ -15,22 +15,23 @@ import { templateFor, TEMPLATES } from './a-message-outside-the-window';
  * cannot be made without one.
  */
 describe('whose approval it is', () => {
-  const ALL = [TEMPLATES['session-ready'].name, TEMPLATES.opening.name, TEMPLATES.report.name];
+  /* Changed 2 October: Hafsah's messages (decision 83) replaced the first three names. */
+  const ALL = THE_NAMES_TO_SUBMIT;
 
   it('an empty list means nothing the product starts may go out', () => {
-    for (const kind of ['session-ready', 'opening', 'report', 'report-retry']) {
+    for (const kind of ['checkin-open', 'overdue', 'your-view-matters', 'report', 'report-retry']) {
       expect(templateFor(kind, [])).toBeNull();
     }
   });
 
   it("an organisation's own approvals are enough on their own, with ours empty", () => {
     /* The point of the fix: this list is theirs, and it decides. */
-    expect(templateFor('opening', ALL)).not.toBeNull();
+    expect(templateFor('checkin-open', ALL)).not.toBeNull();
     expect(templateFor('report', ALL)).not.toBeNull();
   });
 
   it('and a name nobody approved is still refused, whoever the list belongs to', () => {
-    expect(templateFor('opening', [TEMPLATES.report.name])).toBeNull();
+    expect(templateFor('checkin-open', [TEMPLATES.report.name])).toBeNull();
   });
 
   it('the names are the ones the page tells an admin to submit, and there is one definition of them', () => {
@@ -40,7 +41,10 @@ describe('whose approval it is', () => {
      * rather than here. So the page is served these from TEMPLATES, and this is the check that they
      * are all of them.
      */
-    expect(new Set(ALL).size).toBe(3);
-    for (const name of ALL) expect(name.startsWith('groundwork_')).toBe(true);
+    expect(new Set(ALL).size).toBe(ALL.length);
+    /* One name for each different template: 'report-retry' and 'checkin-catch-up' are the same template as 'report' and 'checkin-open', so they are not submitted twice. */
+    expect(ALL.length).toBe(new Set(Object.values(TEMPLATES).map((t) => t.name)).size);
+    /* Meta's rule for a name: lower-case letters, digits and underscores. */
+    for (const name of ALL) expect(name).toMatch(/^[a-z0-9_]+$/);
   });
 });

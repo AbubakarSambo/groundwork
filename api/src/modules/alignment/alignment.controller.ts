@@ -8,6 +8,7 @@ import { AgreementsService } from './agreements.service';
 import { AssertionsService } from './assertions.service';
 import { PartiesService } from './parties.service';
 import { ObligationsService } from './obligations.service';
+import { OnlySomebodyInTheCheckInReadsIt } from './only-somebody-in-the-check-in-reads-it.guard';
 import { Side } from './a-party-is-an-organisation';
 import { WhatFor } from './a-term-is-not-true-because-a-model-read-it';
 
@@ -18,7 +19,8 @@ import { WhatFor } from './a-term-is-not-true-because-a-model-read-it';
  */
 @ApiTags('Alignment')
 @Controller('grounds/:groundId/alignment')
-@UseGuards(JwtAuthGuard)
+/* Every route, reads and writes alike, asks who is asking before it does anything (B-149; the writes were found by the privacy review). */
+@UseGuards(JwtAuthGuard, OnlySomebodyInTheCheckInReadsIt)
 export class AlignmentController {
   constructor(
     private readonly alignment: AlignmentService,

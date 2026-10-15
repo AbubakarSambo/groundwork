@@ -1,9 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { nameToCall } from '../engagement/a-name-to-call-them';
+import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
+import { whoIsLeftToCheckIn } from '../email/who-has-not-checked-in-yet';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService } from '../grounds';
 import { ReportsService } from './reports.service';
+import { TheWeeklyReportService } from './the-weekly-report.service';
 import { EmailService } from '../email/email.service';
 import { GroundworkEvents, CheckInCompletedEvent, GroundActivatedEvent } from '../../common';
 import { GroundStatus, PartyType, ReportActivationStatus, CheckInStatus } from '@prisma/client';
@@ -22,6 +26,7 @@ import { hasEnded, isHeld, hasStalled, isShut } from '../grounds/a-ground-that-h
 @Injectable()
 export class ReportsListener {
   private readonly logger = new Logger(ReportsListener.name);
+  private readonly findingsKeptFrom = new WeakSet<object>();
 
   constructor(
     private prisma: PrismaService,
@@ -29,7 +34,24 @@ export class ReportsListener {
     private reports: ReportsService,
     private email: EmailService,
     private config: ConfigService,
+    @Optional() private weekly?: TheWeeklyReportService,
   ) {}
+
+  /**
+   * FOUND IN THE ANCHOR WALK (8 October). A lead who set the anchor up in the entry chat has her set-up saved as finished, and her words are hers
+   * alone, so nothing of them is on the record. The finish still announced a session, the report was written from no account at all, and the
+   * model made one up: two "differences" about bank statements and a credit committee, with a person called "Participant", which reached the
+   * lead's board until the first real answers came in. A set-up with nothing on the record yet has nothing to write a report from, so none is written.
+   */
+  private async thereIsNothingToWriteAReportFrom(event: CheckInCompletedEvent): Promise<boolean> {
+    try {
+      const row = await this.prisma.checkIn.findUnique({ where: { id: event.checkInId }, select: { isSetup: true } });
+      if (!row?.isSetup) return false;
+      return (await this.prisma.recordEntry.count({ where: { participant: { groundId: event.groundId } } })) === 0;
+    } catch {
+      return false;
+    }
+  }
 
   @OnEvent(GroundworkEvents.CHECK_IN_COMPLETED)
   async onCheckInCompleted(event: CheckInCompletedEvent) {
@@ -46,6 +68,9 @@ export class ReportsListener {
       this.logger.warn(`Late-correction notification failed for ground ${event.groundId}: ${err.message}`),
     );
 
+    /* A set-up conversation alone is no account: with nothing on the record from anyone, a report would be written from nothing. */
+    if (await this.thereIsNothingToWriteAReportFrom(event)) return;
+
     try {
       const sessionNumber = event.sessionNumber;
 
@@ -56,14 +81,25 @@ export class ReportsListener {
       // agreement that isn't there - it just shows what's known so far.
       await this.reports.synthesize(event.groundId);
 
+      /* THE WEEKLY REPORT AGAIN, NOW THAT THE SESSION'S REPORT IS IN, so what it keeps (what only the lead
+         can settle, where people said different things) reads the newest report. Never on opening. */
+      await this.weekly?.build(event.groundId).catch((err: any) =>
+        this.logger.warn(`The weekly report for ${event.groundId} could not be built after the report: ${err?.message}`),
+      );
+
       /*
        * WORD THE READS NOW, NOT WHEN SOMEBODY OPENS THE PAGE. The session report and the shared
        * report hand their drafts to the model for wording, and the worded lines are kept by their
        * hash. Reading them here, for everybody who will read them, means the first open after a
        * check-in costs a lookup rather than ten seconds. Best effort and off the critical path: a
        * warm-up that fails leaves the page exactly as slow as it was, never broken.
+       *
+       * AFTER THE RELEASE, NOT BEFORE IT (decision 44). Warming here and then releasing warmed the
+       * same report twice, once as it stood and once released, both asking the model at once. Now
+       * it is asked for once the release has happened or been ruled out, and a release's own
+       * warm-up and this one are the same run (ReportsService.wordTheReadsFor).
        */
-      this.warmTheReads(event.groundId, sessionNumber).catch((err: any) =>
+      const warm = () => this.warmTheReads(event.groundId, sessionNumber).catch((err: any) =>
         this.logger.warn(`Warming the reads for ${event.groundId} failed: ${err?.message}`),
       );
 
@@ -74,6 +110,7 @@ export class ReportsListener {
        * The report they were promised exists, so it goes to them now. See tellThemTheReportIsReady.
        */
       if (!allDone) {
+        warm();
         const rep = await this.prisma.report.findUnique({ where: { groundId: event.groundId }, select: { releasedAt: true } });
         if (rep?.releasedAt && event.participantId) {
           await this.reports.tellThemTheReportIsReady(event.groundId, sessionNumber, event.participantId).catch((err: any) =>
@@ -89,7 +126,8 @@ export class ReportsListener {
       const g = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { organizationId: true, status: true } });
       if (g) {
         await this.reports.release(event.groundId, g.organizationId);
-        /* release() returns early once releasedAt is stamped, so a later round's mails go from here. Once per person per round. */
+        /* release() now releases this session's picture on its own and tells people itself (decision 76, item 4);
+           this stays as the backstop for anybody it missed. Once per person per round, so nobody is told twice. */
         await this.reports.tellThemTheReportIsReady(event.groundId, sessionNumber).catch((err: any) =>
           this.logger.warn(`Telling the round on ${event.groundId} failed: ${err?.message}`),
         );
@@ -113,23 +151,21 @@ export class ReportsListener {
           await this.prisma.ground.update({ where: { id: event.groundId }, data: { status: GroundStatus.ACTIVE } });
         }
       }
+      warm();
     } catch (err: any) {
       this.logger.error(`Report handling on checkin.completed failed for ground ${event.groundId}: ${err.message}`);
     }
   }
 
   private async warmTheReads(groundId: string, sessionNumber: number) {
-    const ground = await this.prisma.ground.findUnique({
-      where: { id: groundId },
-      select: { organizationId: true, initiatorId: true, participants: { select: { userId: true } } },
-    });
-    if (!ground) return;
-    const readers = [...new Set([ground.initiatorId, ...ground.participants.map((p) => p.userId)].filter(Boolean))] as string[];
+    /* Every reader's report and session report, worded now with the model allowed. Opening them
+       later asks no model (decision 7): see ReportsService.wordTheReadsFor. */
+    const read = await this.reports.wordTheReadsFor(groundId, sessionNumber);
+    /* Several triggers share one warm-up and are handed the same result: its finding is kept once. */
+    if (this.findingsKeptFrom.has(read)) return;
+    this.findingsKeptFrom.add(read);
     let kept = false;
-    for (const userId of readers) {
-      const said = await this.reports.sessionReport(groundId, sessionNumber, userId, ground.organizationId).catch(() => undefined);
-      await this.reports.get(groundId, userId, ground.organizationId).catch(() => undefined);
-
+    for (const { sessionReport: said } of read) {
       /*
        * AND THE ROUND KEEPS WHAT IT FOUND, once, while it is in hand.
        *
@@ -149,7 +185,6 @@ export class ReportsListener {
         }).catch((err: any) => this.logger.warn(`Keeping the finding for ${groundId} failed: ${err?.message}`));
       }
     }
-    this.logger.log(`Reads warmed for ${groundId}, session ${sessionNumber}, ${readers.length} reader(s).`);
   }
 
   @OnEvent(GroundworkEvents.GROUND_ACTIVATED)
@@ -191,24 +226,34 @@ export class ReportsListener {
         initiator: { select: { email: true } },
         participants: {
           select: {
-            id: true, managingOnly: true,
-            user: { select: { email: true, firstName: true, lastName: true } },
-            checkIns: { where: { sessionNumber: event.sessionNumber, status: CheckInStatus.COMPLETED }, select: { id: true } },
+            id: true, managingOnly: true, partyType: true,
+            user: { select: { email: true, firstName: true, lastName: true, isActive: true, deletedAt: true, awaitingOrgApproval: true } },
+            /* Somebody the clock closed, who never said anything, has not checked in (B-132). */
+            checkIns: { where: { sessionNumber: event.sessionNumber, status: CheckInStatus.COMPLETED, turns: { some: { role: 'PERSON' as any } } }, select: { id: true } },
           },
         },
       },
     });
     if (!ground?.initiator?.email) return;
+    if (!ground.participants.find((p) => p.id === event.participantId)?.checkIns.length) return;
 
     const who = ground.participants.find((p) => p.id === event.participantId);
     const participantEmail = who?.user?.email;
     if (!participantEmail || participantEmail === ground.initiator.email) return;
-    const participantName = [who?.user?.firstName, who?.user?.lastName].filter((x) => x?.trim()).join(' ').trim() || participantEmail;
-    const stillPending = ground.participants.filter((p) => !p.managingOnly && p.checkIns.length === 0).length;
+    /* Never the address in place of a name (Hafsah, 6 October). */
+    const participantName = [who?.user?.firstName, who?.user?.lastName].filter((x) => x?.trim() && !x.includes('@')).join(' ').trim() || nameToCall({ user: who?.user as any });
+    /* Counted now, and without the person who just checked in, the lead reading this, and anybody not expected (who-has-not-checked-in-yet.ts). */
+    const stillPending = whoIsLeftToCheckIn(ground.participants as any, { justCheckedIn: event.participantId, readerEmail: ground.initiator.email });
 
     const frontendUrl = this.config.get<string>('resend.frontendUrl') || 'http://localhost:5173';
     const groundUrl = `${frontendUrl}/grounds/${event.groundId}`;
-    await this.email.sendParticipantCheckedIn(ground.initiator.email, participantName, ground.label, groundUrl, stillPending);
+    /* WHO IS IN, for the lead's honest read of a partial picture (decision 109, journey 4): first names of the people who can answer and have, and how many can. */
+    const counted = ground.participants.filter((p) => !p.managingOnly && !isNotLetInYet(p as any) && p.user?.isActive !== false && !p.user?.deletedAt);
+    /* The lead is "you", first, as she is everywhere she reads herself. */
+    const nameOf = (p: (typeof counted)[number]) => (p.user?.email === ground.initiator.email ? 'you' : nameToCall({ user: p.user as any }));
+    const answered = counted.filter((p) => p.checkIns.length > 0).map(nameOf).filter((x) => !!x).sort((a, b) => (a === 'you' ? -1 : b === 'you' ? 1 : 0));
+    const youAreStillToAnswer = counted.some((p) => nameOf(p) === 'you') && !answered.includes('you');
+    await this.email.sendParticipantCheckedIn(ground.initiator.email, participantName, ground.label, groundUrl, stillPending, { answered, ofHowMany: counted.length, youAreStillToAnswer });
   }
 
   /**

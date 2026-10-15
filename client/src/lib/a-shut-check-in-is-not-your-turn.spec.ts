@@ -51,7 +51,8 @@ describe('what the screens call it', () => {
     expect(hasEnded('STALLED')).toBe(false)
     expect(isShut('STALLED')).toBe(true)
     expect(howItEnded({ status: 'STALLED' })).toBe('Out of time')
-    expect(howItEnded({ status: 'CLOSED', endState: 'KEEP' })).toBe('Ended · keep the hire')
+    /* B-020: a full sentence, not "Ended · keep the hire" - see a-ground-that-has-ended.spec.ts. */
+    expect(howItEnded({ status: 'CLOSED', endState: 'KEEP' })).toBe('This check-in has ended. The person stays in the role.')
   })
 
   it('and tells whoever is reading what lifts it', () => {

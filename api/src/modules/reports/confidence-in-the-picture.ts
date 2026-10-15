@@ -106,15 +106,15 @@ export function provenanceLine(p: Provenance): string {
   const where = p.firstSeenSession ? ` (session ${p.firstSeenSession})` : '';
 
   if (p.contradicted) {
-    return `Described differently by more than one person${where}. This is a difference between accounts, not a settled fact.`;
+    return `Described differently by more than one person${where}. People said different things about it, so it is not settled.`;
   }
   if (p.accounts >= 2) {
     return `Described independently by ${p.accounts} people${where}.`;
   }
   if (p.supported) {
-    return `One account${where}, with something else in the record supporting it.`;
+    return `One person said this${where}, and something else in the record supports it.`;
   }
-  return `One account${where}, and nothing else in the record touches it. Nobody has disagreed, and nobody has confirmed it either.`;
+  return `One person said this${where}, and nothing else in the record touches it. Nobody has disagreed, and nobody has confirmed it either.`;
 }
 
 /**
@@ -160,3 +160,16 @@ export function selfContradictionLine(c: SelfContradiction): string {
  */
 export const CURRENT_BEST_READING =
   'This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.';
+
+/**
+ * THE FIVE READINGS A SESSION IS SCORED ON, AND ONLY THOSE (review of 1 October 2026).
+ *
+ * The scorer stores a sixth key, `checkable`, in the same column: a yes-or-no summary the board uses,
+ * not a reading of its own. It was printed as "In session 1, what was said about checkable was
+ * specific." under a confidence line that said "What is here is general rather than checkable",
+ * about the same reader, on the same page. A note under the confidence line is one of the five.
+ */
+export const THE_FIVE_READINGS: readonly string[] = ['coverage', 'delivery', 'evidence', 'commitment', 'enablement'];
+export function theFiveReadings(dims: Record<string, string> | null | undefined): [string, string][] {
+  return Object.entries(dims ?? {}).filter(([dim]) => THE_FIVE_READINGS.includes(dim));
+}

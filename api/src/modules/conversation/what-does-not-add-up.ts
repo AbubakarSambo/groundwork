@@ -28,6 +28,8 @@ export interface AThingOnRecord {
   text: string;
   type: string;
   session: number;
+  /** The week it was said in ("19 October", the Monday), where the caller knows it. */
+  week?: string;
 }
 
 export interface ATargetTheyHold {

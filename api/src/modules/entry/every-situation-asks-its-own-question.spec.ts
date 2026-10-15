@@ -93,8 +93,8 @@ describe('the block that reaches the prompt', () => {
   it('asks a group being onboarded a different question from a group being read', () => {
     const onboarding = theSetupPackFor(GroundScenario.COHORT_CHECK, GroundMoment.STARTING);
     const ongoing = theSetupPackFor(GroundScenario.COHORT_CHECK, null);
-    expect(onboarding).toContain('Who are you onboarding');
-    expect(ongoing).not.toContain('Who are you onboarding');
+    expect(onboarding).toContain('Who is starting, and what are they each starting on?');
+    expect(ongoing).not.toContain('Who is starting, and what are they each starting on?');
   });
 });
 
@@ -115,7 +115,7 @@ describe('and it reaches the prompt the model is actually given', () => {
   it('takes the label the picker sends as well as the enum value', () => {
     /* Both doors send a key today, but the entry chat has historically sent a card label through
        SCENARIO_MAP, and a silently unmatched value would put the generic question back. */
-    expect(buildSetupPrompt(base, 'PIP')).toContain('Who is this about');
+    expect(buildSetupPrompt(base, 'PIP')).toContain('Who is this about, and what is not happening that should be?');
   });
 
   it('leaves the prompt alone for a situation nobody has picked', () => {

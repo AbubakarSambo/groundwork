@@ -37,8 +37,18 @@ export default function AskYourTeamOneThing({ onBack }: { onBack?: () => void })
   const signedIn = useAuthStore(s => s.isAuthenticated)
   const me = useAuthStore(s => s.user)
   const trap = useTheTrap()
-  /* Somebody signed in has answered this already; asking again is a fifth field for nothing. */
-  const [yourEmail, setYourEmail] = useState(me?.email ?? '')
+  /*
+   * SOMEBODY SIGNED IN HAS ANSWERED THIS ALREADY (U.6 review).
+   *
+   * It was a box filled from their account at first paint, holding its own copy of the address. The
+   * box and the copy could disagree - the browser filled the box with an address the form never
+   * held, "Send" stayed greyed with "Add your own email", and typing it again made it two addresses
+   * in one box. Signed in, the report goes to their account whatever the box said, so there is no
+   * box: the page says where it goes, and the account's address is the one the form counts.
+   */
+  const theirAccountEmail = signedIn ? (me?.email ?? '').trim() : ''
+  const [typedEmail, setYourEmail] = useState('')
+  const yourEmail = theirAccountEmail || typedEmail
 
   const emails = theEmailsIn(pasted)
   const notEmails = whatIsNotAnEmail(pasted)
@@ -58,8 +68,8 @@ export default function AskYourTeamOneThing({ onBack }: { onBack?: () => void })
       cadence: howOften,
       cadenceChosen: true,
       checkInBy: howOften === 'ONE_TIME' ? by.trim() || undefined : undefined,
-      /* The lead asks; the team answers. They can add themselves on Setup in one click. */
-      managingOnly: true,
+      /* DECISION 133: no `managingOnly`. The lead asks and the team answers; the lead can check in
+         themselves whenever they choose, and is never counted as missing a session. */
       /*
        * THE TRIAL LINE TRAVELS ON THE PERSON, NOT ON THE GROUND. A top-level inviteNote is not a
        * field the commit accepts, so the sentence went nowhere: the note each contributor carries
@@ -179,8 +189,9 @@ export default function AskYourTeamOneThing({ onBack }: { onBack?: () => void })
           <span>
             Say we are trying this out
             <span style={{ ...hint, marginTop: 2, display: 'block' }}>
-              Adds one line to the invite: we are trying this out to see if this new tool can help
-              us be aligned, and your answers go into one summary that gives us a shared picture.
+              {/* Two sentences, where it joined them with a colon (U.6 review). Her sentence is the
+                  one the invite carries, word for word, so it cannot drift from it. */}
+              This adds one sentence to the invite. It reads “{THE_TRIAL_LINE}”
             </span>
           </span>
         </label>
@@ -192,15 +203,21 @@ export default function AskYourTeamOneThing({ onBack }: { onBack?: () => void })
         */}
         <div>
           <div style={legend}>Your email</div>
-          <input
-            id="your-email" type="email" value={yourEmail} onChange={e => setYourEmail(e.target.value)}
-            placeholder="you@work.com" autoComplete="email" style={field}
-          />
-          <div style={hint}>
-            {signedIn
-              ? 'Where the report goes.'
-              : 'Where the report goes. You do not have to sign in first: we will email you your way in.'}
-          </div>
+          {theirAccountEmail ? (
+            <div id="your-email" style={{ fontSize: 15 }}>The report goes to you at <strong>{theirAccountEmail}</strong>.</div>
+          ) : (
+            <>
+              <input
+                id="your-email" type="email" value={typedEmail} onChange={e => setYourEmail(e.target.value)}
+                placeholder="you@work.com" autoComplete="email" style={field}
+              />
+              <div style={hint}>
+                {signedIn
+                  ? 'Where the report goes.'
+                  : 'Where the report goes. You do not have to sign in first. We will email you your way in.'}
+              </div>
+            </>
+          )}
         </div>
         {trap.field}
 
@@ -223,7 +240,7 @@ export default function AskYourTeamOneThing({ onBack }: { onBack?: () => void })
         </div>
 
         <p style={{ ...hint, marginTop: 2 }}>
-          They each get their own link and answer privately. You get one email the moment everybody
+          They each get their own link and answer Groundwork one to one. You get one email the moment everybody
           has answered, with one report: what each person said, where they line up, where they do
           not, and what nobody is holding.
         </p>

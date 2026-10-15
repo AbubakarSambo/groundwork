@@ -1,6 +1,9 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { targetsFor, UNLESS_SOMEBODY_SAYS } from './whose-number-is-whose-business';
+import { ReportsService } from '../reports/reports.service';
+import { BoardService } from './board.service';
+import { prismaFor } from './__fixtures__/a-page-that-contradicts-itself';
 
 /**
  * THE RULE WAS RIGHT, WRITTEN ONCE, AND USED ONCE.
@@ -65,8 +68,18 @@ describe('every surface that hands out whose number it is', () => {
    */
   const NOT_HANDING_IT_TO_A_READER: Record<string, string> = {
     'modules/board/board.listener.ts': 'writes owners onto targets read out of a sheet',
+    /* Request 76: the owner of a deal, a release or a deadline (WorkItem), never of a target. The board serves those rows behind its own walls. */
+    'modules/board/the-kind-of-work.ts': 'the owner of a record of the kind of work, such as a deal or a deadline, not of a target',
     'modules/documents/documents.service.ts': 'writes owners when a document of targets is read',
     'modules/documents/what-a-document-holds.ts': 'the shape a document is read into, before anybody reads it',
+    /* 30 September (58960b6d): the one write, on a yes, of the owners a document's read already resolved. */
+    'modules/documents/write-a-documents-numbers.ts': 'writes the owners a document read resolved, once somebody says yes',
+    /* Week 13: the one place it names an owner is the goal it writes when the lead confirms a
+       proposal from their own plan. Every proposal route is the lead's alone (403 for everyone else). */
+    /* Ask Groundwork's recall (f25e97d9) selects each target's owner only to hand it to
+       targetsHiddenFrom, which asks targetsFor itself; it never serves an owner or a number. */
+    'modules/assistant/assistant.service.ts': 'reads owners only to hand them to targetsHiddenFrom, which asks the one rule; serves neither',
+    'modules/grounds/a-plan-is-many-proposals.service.ts': 'writes an owner onto a goal the lead confirmed from their own plan; only the lead reads proposals',
     /*
      * Arithmetic, not a field: the report selects the column to add per-person figures up for the
      * synthesis. What the report RENDERS goes through its own reader wall - own-reads-only and
@@ -75,6 +88,41 @@ describe('every surface that hands out whose number it is', () => {
      * peer's target is a question of its own and is not answered here.
      */
     'modules/reports/reports.service.ts': 'adds per-person figures up for the synthesis; its own reader wall decides what renders',
+    /* Week 16: rows a test hands the report and the board, which then go through targetsFor there. */
+    'modules/reports/__fixtures__/today-sales-team.ts': 'test rows for the week 16 specs; what-today-reads-from-the-record asks targetsFor',
+    /* 1 October (ece6f8cd): joins rows that are one thing. It reads the owner only to keep two people's
+       numbers apart, and it is handed `out.objectives` after the board has asked targetsFor, so it
+       only ever sees what this reader may read. Proved below on the real board, as each reader. */
+    'modules/board/one-count-per-thing.ts': 'joins rows the board already passed through targetsFor; it reads the owner only to keep two people apart',
+    /* Week 12b (d45afaca): the shape of one target in a week, and the sentence for it. It is handed only
+       the rows the-weekly-report.service.ts has already passed through targetsFor for this reader. */
+    'modules/reports/the-weekly-report.ts': 'the shape and sentence of a target in a week; its service asks targetsFor before handing rows in',
+    /* Hafsah, 4 October (decision 89): the four suites files are excused. None shows anybody a number
+       they could not already read. */
+    'modules/suites/__fixtures__/aisha-review.ts': 'test rows a review spec hands in, like the other fixtures here',
+    'modules/suites/a-week-drafted-from-the-record.ts': "reads only the person's own work records to draft their own week; never a target",
+    'modules/suites/what-they-own-while-away.ts': "reads only a target's name and due date, never its number, for a reader who may read that board",
+    'modules/suites/the-record-read-for-a-review.ts': "the person's own goals, served only to them and whoever runs that check-in, no wider than targetsFor",
+    /* Request 70: the forecast reads the owner only to leave out a target that is one person's. It is handed
+       `out.objectives` after the board has asked targetsFor, so it only ever sees what this reader may read. */
+    'modules/board/the-switchboards-own-sections.ts': 'the forecast reads the owner only to leave one person\'s number out; it is handed rows the board passed through targetsFor',
+    /* Request 110: a person's own aim kept only as their promise is put among the rows the board then passes through targetsFor, before any reader is served. */
+    'modules/board/an-aim-kept-only-as-their-promise.ts': 'builds rows the board adds to ground.objectives before it asks targetsFor; serves nobody itself',
+    'modules/board/__fixtures__/a-page-that-contradicts-itself.ts': 'test rows for a-board-that-does-not-contradict-itself; the board asks targetsFor',
+    /* Anchor piece 24: it reads the owner of an aim only to see whether an aim has no owner. It reads no
+       number and no target, and what it writes is offered to the lead alone (the 'recommended check-ins'). */
+    'modules/detectors/the-anchor-recommendations.ts': 'reads only whether an aim has an owner, never a number; the offer it writes is the lead\'s alone',
+    /* Anchor piece 19: ideas are work items of kind 'idea'. These read who raised an idea, never a target or a number,
+       and an idea is served only to the people in that check-in (decision 96 item 10). */
+    'modules/conversation/ideas-from-the-team.ts': 'reads who raised an idea (a work item), never a target or a number',
+    'modules/board/the-anchor-month-record.ts': 'reads who raised each captured idea, never a target or a number; served to the lead and to the people in that check-in',
+    /* Anchor pieces 26 and 27: a request offered in the check-in waits as a work item of its own; it holds no target and no number. */
+    'modules/conversation/a-request-offered-in-the-check-in.ts': 'keeps which request was offered to whom (a work item), never a target or a number',
+    /* Request 117: the sales board as the fifth review read it; the board asks targetsFor over these rows. */
+    /* Decision 120: the lead's daily nudge names a team target that is behind. It selects only targets with nobody's name on them (ownerParticipantId null, never a decision about a person), so it
+       serves no owner and no one person's number, and it goes to the lead who runs the check-in, whom targetsFor shows every target. */
+    'modules/engagement/the-leads-daily-nudge.ts': 'reads only team targets with nobody\'s name on them, for the lead who runs the check-in; never an owner and never one person\'s number',
+    'modules/board/__fixtures__/sales-board-review-5.ts': 'test rows for the request 117 specs; the board asks targetsFor',
   };
 
   it('goes through the one rule, or says why it is not a reader', () => {
@@ -118,9 +166,42 @@ describe('every surface that hands out whose number it is', () => {
    */
   it('and the ground read asks one question about who is reading', () => {
     const src = readFileSync(join(API, 'modules/grounds/grounds.service.ts'), 'utf8');
-    expect(src).toMatch(/const peersKeepTheirNumbers =\s*\n?\s*!viewerIsInitiator/);
+    /* Each person's goals are held back from anyone who does not run the check-in (the lead, and the admins who read it: decisions 5, 56 and
+       86, privacy sweep finding 4). The table of target numbers below shows every share to the lead and to an admin who reads the check-in
+       (decision 86 item 3, decision 93), and keeps a decision about a person for the lead alone. */
+    expect(src).toMatch(/const peersKeepTheirNumbers =\s*\n?\s*!viewerRunsIt/);
     const at = src.indexOf('objectives: targetsFor(');
     expect(at).toBeGreaterThan(-1);
-    expect(src.slice(at, at + 420)).toMatch(/\{ isLead: viewerIsInitiator \}/);
+    expect(src.slice(at, at + 420)).toMatch(/\{ isLead: viewerIsInitiator, seesEveryShare: viewerRunsThisGround \}/);
+  });
+});
+
+/*
+ * AND THE STEP THAT JOINS ONE THING'S ROWS ONLY EVER SEES WHAT THE READER MAY READ (1 October 2026).
+ * `oneCountPerThing` runs after `targetsFor` on the board, so nobody reads a colleague's number
+ * through a row it joined. Read on the sales board of api/journey/all-24/re-a, where Ngozi and Kwame
+ * each hold 14 approved facilities and the lead holds the team's 40.
+ */
+describe('one count per thing, as each reader reads it', () => {
+  async function boardFor(userId: string, role = 'MEMBER') {
+    const { prisma } = prismaFor('sales', role);
+    const reports = Object.create(ReportsService.prototype) as ReportsService;
+    const svc = new BoardService(prisma, { respond: jest.fn(async () => null) } as any, { getSessionProgress: async () => null } as any, reports);
+    return (await svc.get('g-credit', userId)) as any;
+  }
+  const owners = (b: any) => (b.objectives as any[]).filter((o) => o.target === 14).map((o) => o.ownerParticipantId).sort();
+
+  it('the lead, Bisi, reads both people\'s 14', async () => {
+    expect(owners(await boardFor('u-bisi'))).toEqual(['p-kwame', 'p-ngozi']);
+  });
+  it('Kwame reads his own 14 and not Ngozi\'s', async () => {
+    expect(owners(await boardFor('u-kwame'))).toEqual(['p-kwame']);
+  });
+  it('Femi, who holds no 14, reads neither', async () => {
+    expect(owners(await boardFor('u-femi'))).toEqual([]);
+  });
+  /* Decision 86 reverses decision 73 for admins: this used to pin that an admin read neither. */
+  it('an admin not in the check-in reads both, as the lead does', async () => {
+    expect(owners(await boardFor('u-admin', 'ADMIN'))).toEqual(['p-kwame', 'p-ngozi']);
   });
 });

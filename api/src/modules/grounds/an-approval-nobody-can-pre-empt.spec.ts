@@ -148,49 +148,15 @@ describe('a ground created by somebody who is not an admin', () => {
   });
 });
 
-describe('while a ground is waiting to be accepted', () => {
-  function serviceWithPending(pending: any) {
-    const prisma: any = {
-      ground: {
-        findFirst: jest.fn(async (args: any) =>
-          args?.where?.status === GroundStatus.AWAITING_APPROVAL ? pending : { id: 'g1', isFreeGround: false },
-        ),
-      },
-      groundParticipant: { findFirst: jest.fn(async () => null), count: jest.fn(async () => 0) },
-    };
-    const email: any = { sendParticipantInvite: jest.fn(async () => ({})) };
-    const service = new GroundsService(
-      prisma, email, { canCreateGround: jest.fn() } as any,
-      { emit: () => undefined } as any, { emit: async () => undefined } as any, { get: () => '' } as any,
-    
-      // 7th dep: the model, for the context chat (G37/G23). Unused here.
-      { respond: async () => '' } as any,
-    );
-    return { service, email };
-  }
-
-  it('nobody can be added to it', async () => {
-    const { service } = serviceWithPending({ id: 'g1' });
-    await expect(
-      service.addParticipant('g1', 'org1', 'u1', { email: 'her@x.test' } as any),
-    ).rejects.toBeInstanceOf(BadRequestException);
-  });
-
-  it('and no invite is sent - which is the whole point', async () => {
-    // The status alone would be cosmetic. An invite cannot be unsent, so declining
-    // after one has gone out is not a decision, it is an apology.
-    const { service, email } = serviceWithPending({ id: 'g1' });
-    await service.addParticipant('g1', 'org1', 'u1', { email: 'her@x.test' } as any).catch(() => undefined);
-    expect(email.sendParticipantInvite).not.toHaveBeenCalled();
-  });
-
-  it('the refusal says who has to act, and that nobody has been contacted', async () => {
-    const { service } = serviceWithPending({ id: 'g1' });
-    await expect(
-      service.addParticipant('g1', 'org1', 'u1', { email: 'her@x.test' } as any),
-    ).rejects.toThrow(/admin in your organisation to accept it/i);
-  });
-});
+/*
+ * WHILE A GROUND WAITS TO BE ACCEPTED (changed 6 October 2026, known issue B5).
+ *
+ * Three cases stood here: "nobody can be added to it", "and no invite is sent - which is the whole point", and "the refusal says who
+ * has to act". The second is the point of the gate and is kept, in an-invitation-waits-for-the-approval.spec.ts, which also holds the
+ * rest. The first and third no longer hold: adding somebody while the check-in waits used to be refused, so a lead who is not an admin
+ * lost everybody she had named when she saved. The person is now named and held, with no invitation sent, and invited when an admin
+ * accepts. What a lead reads is said there too.
+ */
 
 /**
  * THE ENTRY FLOW MUST NOT BE HELD BY ITS OWN GATE.

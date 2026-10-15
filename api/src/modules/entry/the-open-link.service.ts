@@ -1,5 +1,5 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
-import { theSituationIn } from '../grounds/what-a-participant-is-told-about-this';
+import { whenItAsks } from '../participants/when-it-asks';
 import { CheckInStatus, PartyType } from '@prisma/client';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -37,7 +37,7 @@ export class TheOpenLinkService {
   async whatThisIs(joinToken: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { joinToken },
-      select: { id: true, label: true, brief: true, toldToParticipants: true, scenario: true, status: true, initiator: { select: { firstName: true } } },
+      select: { id: true, label: true, brief: true, scenario: true, status: true, cadence: true, cadenceAnchorDay: true, workingDays: true, endsAt: true, initiator: { select: { firstName: true } } },
     });
     if (!ground) throw new NotFoundException('That link does not open anything.');
     if (['CLOSED', 'RESOLVED', 'STALLED', 'PAUSED'].includes(ground.status)) {
@@ -57,7 +57,19 @@ export class TheOpenLinkService {
        * first few sentences of the brief that are about the situation rather than about how to run
        * the interview. See what-a-participant-is-told-about-this.
        */
-      theQuestion: ((ground as any).toldToParticipants?.trim() || theSituationIn(ground.brief) || ground.brief) ?? null,
+      /*
+       * NOTHING OF THE LEAD'S DESCRIPTION (U.6 review, privacy). This served the engine's reworded
+       * brief ("This check-in is about Grace, the new operations lead, starting her role with...") to
+       * anyone holding the link. An open link works as an invitation, and an invitation carries none
+       * of the lead's words, not even reworded. So the question is served only where the lead wrote it
+       * AS the question to be sent (Get updates from your team: the one line her team is asked, which
+       * its invitation email already carries). Otherwise there is none, and the page shows the
+       * check-in's name.
+       */
+      theQuestion: ground.scenario === 'TEAM_UPDATES' ? (ground.brief?.trim() || null) : null,
+      /* And when it runs, as the invitation says it. */
+      schedule: whenItAsks({ cadence: ground.cadence, cadenceAnchorDay: ground.cadenceAnchorDay, workingDays: ground.workingDays, leadFirstName: ground.initiator?.firstName ?? null }),
+      endsAt: ground.endsAt ? ground.endsAt.toISOString() : null,
       askedBy: ground.initiator?.firstName ?? null,
       scenario: ground.scenario,
     };

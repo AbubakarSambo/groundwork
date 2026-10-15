@@ -32,8 +32,30 @@ describe('the lead guide', () => {
 
   it('is linked from the check-in screen before the first session, not only from the admin roster', () => {
     expect(MEMBERS).toContain("navigate('/org/guide')")
-    expect(ADMIN).toContain("navigate('/org/guide')")
-    /* The link is for the moment before the first session; after that the page is a reference, not a briefing. */
-    expect(ADMIN).toMatch(/sessionsDone === 0 && <TextAction onClick=\{\(\) => navigate\('\/org\/guide'\)\}/)
+    /*
+     * HAFSAH, 30 SEPTEMBER: "HOW TO RUN ONE" ONLY GOES TO ANOTHER PAGE, SO IT IS A LINK NOW, NOT A
+     * BUTTON WITH A navigate() CALL STANDING IN FOR ONE - checked here directly, since there is no
+     * `navigate(...)` call left on this control to search for. The People page's own "Send the
+     * guide" (MEMBERS, above) is unchanged: it is a real button there, matching the prototype's own
+     * people.txt.
+     */
+    expect(ADMIN).toContain("to=\"/org/guide\"")
+    /*
+     * The link is for the moment before the first session; after that the page is a reference, not
+     * a briefing. U.10 PICTURE-CHECK ROUND 7, ITEM 3: the header's "pieces side by side" became one
+     * plain-sentence paragraph, and the "How to run one" link now sits inside a fragment after that
+     * sentence rather than directly after the `sessionsDone === 0` gate - the gate itself, and the
+     * `!ended` addition (no guide link once the check-in has finished), are unchanged in spirit.
+     */
+    expect(ADMIN).toMatch(/sessionsDone === 0 && !ended && \(/)
+    /*
+     * UPDATED (group 3, piece 5, the header rebuild): `TextAction` was `kit.tsx`'s own old quiet
+     * link, drawn with inline styles; this control is now a plain `react-router-dom` `Link` with
+     * the shared part's own class for a quiet text link, `.gwui-plain-link` (CLAUDE.md: "a quiet
+     * text link is .gwui-plain-link") - still a real `<Link>` to the same address, which is the
+     * fact this test protects, and no `kit.tsx` import left on this control.
+     */
+    expect(ADMIN).toMatch(/<Link className="gwui-plain-link" to="\/org\/guide"/)
+    expect(ADMIN).not.toMatch(/<TextAction to="\/org\/guide"/)
   })
 })

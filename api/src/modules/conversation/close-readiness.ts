@@ -1,3 +1,4 @@
+import { theFloorForAPersonsFinish } from './how-short-a-check-in-may-be';
 /**
  * Whether a session has enough in it to be closed.
  *
@@ -44,7 +45,7 @@ const SAYS_NOTHING_TO_ADD =
  * Hafsah: "it also doesnt end naturally." She asked three times.
  */
 export const WANTS_OUT =
-  /\b(that'?s (it|me|all)|that is (it|all|everything)|(that'?s|that is) (everything|all)( from (me|my side))?|i'?m done|i am done|we'?(re| are) done|i have nothing (else|more)( to add)?|i'?ve nothing (else|more)|done for now|need to go|got to go|have to go|can we (stop|finish)|later|another time|skip this|end (the|this) (session|check-?in|conversation)|(session|check-?in|conversation) end|finish (the|this) (session|check-?in)|wrap (this |it )?up|stop (the|this) (session|check-?in)|no more questions)/i;
+  /\b(that'?s (it|me|all)|that is (it|all|everything)|(that'?s|that is) (everything|all)( from (me|my side))?|i'?m done|i am done|we'?(re| are) done|i have nothing (else|more)( to add)?|i'?ve nothing (else|more)|done for (?:now|today|the day)|need to go|got to go|have to go|can we (stop|finish)|later|another time|skip this|end (the|this) (session|check-?in|conversation)|(session|check-?in|conversation) end|(?:please )?(?:finish|end|stop|close) (?:the|this|my) (?:session|check-?in|conversation)|^\s*(?:please\s+)?(?:finish|end it|stop|close it)(?:\s+(?:it|this|now|please))*\s*[.!]*\s*$|wrap (this |it )?up|stop (the|this) (session|check-?in)|no more questions)/i;
 
 export interface CloseReadiness {
   ready: boolean;
@@ -144,4 +145,20 @@ export function closeReadiness(
     ready: false,
     reason: 'nothing checkable yet and no statement that there is nothing - worth one more question',
   };
+}
+
+
+/**
+ * A BARE "FINISH" TYPED IN THE APP BEFORE THERE IS ENOUGH TO FINISH WITH (user journeys, F-10). On WhatsApp the word is a command, and too early it
+ * is answered with one plain sentence. In the app it was read as an answer, and the person was asked a question about "finished". It is the same
+ * command in the app now, with the same sentence, and it is not kept as an answer.
+ */
+export const NOT_ENOUGH_YET_TO_FINISH_HERE = 'I need a little more from you before this check-in can close. Please answer one or two more questions, then write "finish" again.';
+export function isTheWordFinish(message: string): boolean {
+  return /^\s*["“”']?\s*finish(?:ed)?\s*["“”']?\s*[.!]*\s*$/i.test(message ?? '');
+}
+
+/** Whether this many answers is short of the floor for this kind of check-in: the one floor, read where it is read everywhere else. */
+export function tooFewAnswersToFinish(answers: number, isSelfCorrection: boolean, scenario: string | null): boolean {
+  return answers < theFloorForAPersonsFinish(isSelfCorrection, scenario as any);
 }

@@ -67,7 +67,8 @@ describe('whether the roster already says who they are', () => {
   });
 
   it('and the opener only asks when the roster is silent', () => {
-    expect(SRC).toContain('const theRosterIsSilent = !theRosterAlreadySaysWhoTheyAre(checkIn.participant.roleAsDescribed)');
+    /* Request 36: only the person's own words count, never the lead's description of them. */
+    expect(SRC).toContain('const theRosterIsSilent = !theRosterAlreadySaysWhoTheyAre(aRoleInTheirOwnWords(checkIn.participant as any))');
     expect(SRC).toMatch(/startsSomething && notTheLead && firstSession && theRosterIsSilent/);
   });
 });

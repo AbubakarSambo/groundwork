@@ -18,8 +18,14 @@ const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\{\/\*
 describe('each promise says where it stands', () => {
   const code = strip(PANEL)
 
+  /*
+   * WORDING UPDATED (group 3's review, request batch A, fault 2): `whereItStands` now takes an
+   * optional third argument, `whoSaid`, so the one no-structured-date sentence it writes can say
+   * "You said..." on the reader's own row rather than "They said..." on everyone's, and so it never
+   * calls a date someone said in words "no date agreed". The rule is still read from the one place.
+   */
   it('reads the one rule, rather than working it out on the page', () => {
-    expect(code).toContain('whereItStands(o, new Date())')
+    expect(code).toContain("whereItStands(o, new Date(), { isMine, name: labels.get(p.id) ?? 'a colleague' })")
   })
 
   it('and carries the fields that rule needs', () => {
@@ -30,7 +36,7 @@ describe('each promise says where it stands', () => {
   })
 
   it('marks a passed date without shouting about it', () => {
-    const near = code.slice(code.indexOf('whereItStands(o, new Date())'))
+    const near = code.slice(code.indexOf("whereItStands(o, new Date(), { isMine, name: labels.get(p.id) ?? 'a colleague' })"))
     expect(near).toContain("stand.tone === 'late' ? 'var(--gw-amber-t)'")
     /* Amber, not red. It is a fact about a calendar, not a verdict on a person. */
     expect(near).not.toContain('var(--gw-red')

@@ -24,11 +24,15 @@ describe('adding one line of what a check-in knows', () => {
     expect(SERVICE).toMatch(/async addContextLine\(/);
   });
 
-  /* The same permission as changing one: the lead, or an admin standing in for them. */
+  /**
+   * The same permission as changing one: the lead, or - decision 63, 30 September 2026, only once
+   * the lead has left the organisation - an admin standing in for them. Was any admin of the
+   * organisation, at any time; narrowed to the one shared gate every setup writer now calls.
+   */
   it('and belongs to whoever runs the check-in', () => {
     const fn = SERVICE.slice(SERVICE.indexOf('async addContextLine('), SERVICE.indexOf('async changeContextLine('));
-    expect(fn).toMatch(/ground\.initiatorId !== requestingUserId && !adminsThisOrg\(viewer, ground\)/);
-    expect(fn).toMatch(/can add what it knows/);
+    expect(fn).toContain('this.mayConfirmSetupOn(ground, requestingUserId)');
+    expect(fn).not.toContain('adminsThisOrg(viewer, ground)');
   });
 
   /*
@@ -80,6 +84,9 @@ describe('and the page offers it to whoever runs the check-in', () => {
   it('and the conversation is still offered from inside it', () => {
     expect(PAGE).toContain('Say it in the conversation instead');
     const at = PAGE.indexOf('Say it in the conversation instead');
-    expect(PAGE.slice(Math.max(0, at - 700), at)).toContain('changeThisInTheChat(lineDraft.trim()');
+    /* The screens' latest hands the typed words over, or a way in when nothing is typed (B-113 era): the half-written line is still taken from the box. */
+    const before = PAGE.slice(Math.max(0, at - 1200), at);
+    expect(before).toContain('lineDraft.trim()');
+    expect(before).toContain('changeThisInTheChat(');
   });
 });

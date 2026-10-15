@@ -51,7 +51,8 @@ describe('the open round is one somebody has touched', () => {
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/^\s*\/\/.*$/gm, '');
     for (const assign of src.match(/const openRound =[^\n]*/g) ?? []) {
-      expect(assign).toContain('whichRoundIsOpen');
+      /* Or theTeamsOpenRound, which reads the team's rows and then asks whichRoundIsOpen itself (6e16c3df3). */
+      expect(assign).toMatch(/whichRoundIsOpen|theTeamsOpenRound/);
     }
   });
 });

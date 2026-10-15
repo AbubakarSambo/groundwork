@@ -7,7 +7,7 @@ import { join } from 'path';
  * consulted in two places, neither a read; a lead could not see their own team's check-ins unless
  * they happened to have started them. Blank departments never match: no department is no scope.
  */
-const checkIn = { organizationId: 'org', initiatorId: 'other-lead', participants: [], leadDepartment: 'Finance' };
+const checkIn = { organizationId: 'org', scenario: 'NEW_PROJECT' as const, initiatorId: 'other-lead', participants: [], leadDepartment: 'Finance' };
 
 describe('a lead', () => {
   it('reads at lead on what they run, whatever their department', () => {
@@ -27,7 +27,8 @@ describe('a lead', () => {
   });
   it('and the list carries the department\'s leads for a LEAD only', () => {
     const asLead = groundsAViewerMayList('me', { role: 'LEAD', organizationId: 'org' }, 'org', ['l1', 'l2']) as any;
-    expect(asLead.OR).toContainEqual({ initiatorId: { in: ['l1', 'l2'] } });
+    /* Updated in the privacy sweep: the department's leads, except for the evaluation check-ins they run (decision 75, item 25). */
+    expect(asLead.OR).toContainEqual({ initiatorId: { in: ['l1', 'l2'] }, scenario: { notIn: expect.arrayContaining(['PIP', 'NEW_HIRE']) } });
     const asMember = groundsAViewerMayList('me', { role: 'MEMBER', organizationId: 'org' }, 'org', ['l1']) as any;
     expect(JSON.stringify(asMember)).not.toContain('l1');
   });

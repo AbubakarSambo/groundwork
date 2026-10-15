@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { SCENARIO_FACTS, recommendedSessions } from '@/lib/scenario-catalog'
+import '@/components/gw/ui/gw-ui.css'
 
 /**
  * ONE SITUATION CARD, DRAWN ONCE, FOR BOTH PICKERS.
@@ -24,6 +25,16 @@ import { SCENARIO_FACTS, recommendedSessions } from '@/lib/scenario-catalog'
  * can recognise yourself in, and what the run actually does - the two things somebody picking needs
  * and the entry chat's version did not carry. What the entry chat had that was better - showing this
  * to a person with no account - it keeps, because that is where it is used, not what it looks like.
+ *
+ * REBUILT FROM THE SHARED PARTS (group 3, piece 4, B1-starting-a-check-in): the old `cg-sit-card`,
+ * `cg-sit-check`, `cg-moment`, `cg-arc`, `cg-meta` and `cg-more` classes (index.css) had no shared
+ * equivalent for a selectable card with an expandable detail list, so this piece adds one -
+ * `gwui-situation-card` and its parts, in gw-ui.css, at the old values (there is no prototype class
+ * to read them from: this card is the product's own, the prototype's own B1 screens show the
+ * conversational picker instead - see the comment on `CreateGroundPage`). Every attribute the
+ * accessibility guard (`every-situation-card-has-a-name.spec.ts`) checks for - the `role="radio"`,
+ * `aria-checked`, `aria-label` built from `label`, the `<div>{label}</div>`, the keyboard handler,
+ * `aria-expanded`, and the `stopPropagation` on the disclosure button - is unchanged.
  */
 export type SituationCardData = {
   cardKey: string
@@ -78,7 +89,7 @@ export function SituationCard({
           onPick()
         }
       }}
-      className={`cg-sit-card${selected ? ' selected' : ''}`}
+      className={`gwui-situation-card${selected ? ' gwui-situation-card-selected' : ''}`}
       onClick={onPick}
     >
       {/*
@@ -87,11 +98,11 @@ export function SituationCard({
         repeated down the page, and the first thing the eye hit on each card was the one thing on it
         that carried no information.
       */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-        <div className="cg-sit-check" />
+      <div className="gwui-situation-check-row">
+        <div className="gwui-situation-check" />
       </div>
-      <div style={{ fontSize: 14.5, fontWeight: 700, lineHeight: 1.3 }}>{label}</div>
-      <p className="cg-moment">{card.moment}</p>
+      <div className="gwui-situation-title">{label}</div>
+      <p className="gwui-situation-moment">{card.moment}</p>
 
       {extra}
 
@@ -105,14 +116,14 @@ export function SituationCard({
         */}
       <button
         type="button"
-        className="cg-more"
+        className="gwui-situation-more"
         aria-expanded={expanded}
         onClick={(e) => { e.stopPropagation(); onToggleExpanded() }}
       >
         {expanded ? 'How it runs ‹' : 'How it runs ›'}
       </button>
       {expanded && (<>
-        <dl className="cg-arc">
+        <dl className="gwui-situation-arc">
           <div>
             <dt>Agreed at the start</dt>
             <dd>{card.agreed}</dd>
@@ -122,7 +133,7 @@ export function SituationCard({
             <dd>{card.tests}</dd>
           </div>
           {facts?.notThisOneIf && (
-            <div className="warn">
+            <div className="gwui-situation-arc-warn">
               <dt>Not this one if</dt>
               <dd>{facts.notThisOneIf}</dd>
             </div>
@@ -141,7 +152,7 @@ export function SituationCard({
           sixty-nine facts on one screen before anybody had chosen anything - under a disclosure
           called How it runs, while the running was already showing.
         */}
-        <dl className="cg-meta">
+        <dl className="gwui-situation-meta">
           <div><dt>Recommended cadence</dt><dd>{facts?.cadence}</dd></div>
           {/* "USUALLY", BECAUSE THE LEAD SETS THE TIMEFRAME AND THIS CARD DOES NOT.
               The entry chat's own card hedged every one of these - "typically 90 days" - and a

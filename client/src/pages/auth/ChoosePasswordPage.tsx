@@ -1,9 +1,15 @@
 import { useState } from 'react'
-import { MARKETING_URL } from '@/lib/marketing'
+import { aRealOrganisationName } from '@/lib/ask-name'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
+import { Button, Stack } from '@/components/gw/ui'
+import { AuthCard, AuthError, PasswordField, PasswordRules, PasswordStrength } from './auth-kit'
+import { whatTheLinkDid } from './a-link-that-has-expired'
+import { LinkExpired, LinkDidNotWork } from './LinkExpired'
+import { meetsTodaysPasswordRules } from './password-rules'
+import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 
 /**
  * CHOOSING A PASSWORD FROM A LINK IN AN EMAIL. W8-49.
@@ -37,6 +43,28 @@ export function ChoosePasswordPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const setAuth = useAuthStore(s => s.setAuth)
+  /*
+   * WHOSE ADDRESS "NOT YOUR EMAIL ADDRESS" IS CHECKED AGAINST. Only on the set-up page, where opening
+   * the email link has just signed this person in, so the signed-in account is theirs. The reset page
+   * may be opened in a browser where somebody else is signed in, so it does not use it.
+   */
+  const signedInEmail = useAuthStore(s => s.user?.email ?? null)
+  const signedIn = useAuthStore(s => !!s.isAuthenticated)
+  /*
+   * SCREEN FAULT 5 (FINAL WALK): "CHOOSE A PASSWORD", WITH NO ORGANISATION NAMED.
+   *
+   * Reached signed in - from MagicVerifyPage, after `/auth/verify-email` has already signed this
+   * person in and handed them a `passwordSetupToken` to finish setting up - this page already has
+   * the organisation on `useAuthStore`'s own `user`, the same one every other signed-in screen
+   * reads it from. Nothing new fetched, and nothing invented for the other path (opening a team
+   * invite's own emailed link straight into this page, with no session yet): `GET
+   * /auth/validate-token` deliberately answers only `valid`/`expired` for a set-password token (A10:
+   * "nothing here ever names the account", a privacy decision, not an oversight) - there is
+   * genuinely nothing server-side to read the organisation from before a password exists, so that
+   * path keeps its plain, unnamed title.
+   */
+  /* A made-up workspace name is not said as the organisation (release check, 9 October). */
+  const signedInOrgName = aRealOrganisationName(useAuthStore(s => s.user?.organizationName ?? null))
 
   /**
    * Which of the two links they opened. The endpoints are genuinely different -
@@ -44,11 +72,40 @@ export function ChoosePasswordPage() {
    * existing one - so the token is only valid at its own.
    */
   const kind: Kind = useLocation().pathname === '/reset-password' ? 'reset' : 'set'
+  const theirEmail = kind === 'set' ? signedInEmail : null
 
   const token = params.get('token') ?? ''
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
+  /* Set when the server says the link has run out: the page becomes "That link has expired". */
+  const [expired, setExpired] = useState(false)
+  /* Set when the server says the link was used, is unknown, or is the wrong kind. */
+  const [didNotWork, setDidNotWork] = useState(false)
+
+  /**
+   * WHOSE PASSWORD THIS IS, WHEN THE SERVER SAYS.
+   *
+   * The prototype's reset page reads "For wairimu@baridi.co.ke." The address comes from the link, so
+   * only the server can say it, and today `validate-token` answers only whether the link works. When
+   * the answer carries `email` the page shows it; when it does not, the sentence simply starts at
+   * "Once it's saved". A failed check changes nothing: the form still works, and the server still
+   * decides when the password is saved.
+   */
+  const { data: linkCheck } = useQuery({
+    queryKey: ['validate-token', kind, token],
+    queryFn: () => authApi.validateToken(token, kind === 'reset' ? 'PASSWORD_RESET' : 'PASSWORD_SETUP'),
+    enabled: !!token,
+    retry: false,
+    staleTime: Infinity,
+  })
+  /* A link that has run out opens straight on "That link has expired", rather than after a password
+     has been typed twice. The server says `expired` only for a real, unused link of this kind. */
+  const expiredOnOpen = linkCheck?.expired === true
+  /* And one the server does not hold as working (used, replaced by a newer one, unknown) opens on
+     "That link didn’t work", rather than after a password has been typed (U.2 re-review). */
+  const didNotWorkOnOpen = linkCheck?.valid === false && linkCheck?.expired !== true
+  const forAddress = typeof linkCheck?.email === 'string' && looksLikeAnAddress(linkCheck.email) ? linkCheck.email : null
 
   /**
    * `next` IS A DESTINATION INSIDE THIS APP, AND ONLY THAT.
@@ -75,7 +132,10 @@ export function ChoosePasswordPage() {
     },
     onError: (err: any) => {
       const msg = err?.response?.data?.message
-      setError(Array.isArray(msg) ? msg[0] : (msg ?? 'Invalid or expired link. Ask for a new one.'))
+      const what = whatTheLinkDid(msg)
+      if (what === 'expired') { setExpired(true); return }
+      if (what === 'did-not-work') { setDidNotWork(true); return }
+      setError(Array.isArray(msg) ? msg[0] : (msg ?? 'That did not save, because something went wrong on our side. Please try again.'))
     },
   })
 
@@ -84,21 +144,17 @@ export function ChoosePasswordPage() {
        second call came back "invalid or expired" over the success of the first. */
     if (save.isPending) return
     setError('')
-    if (!token) { setError('Invalid link - no token.'); return }
-    if (password.length < 8) { setError('Password must be at least 8 characters.'); return }
-    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password)) { setError('Password must contain at least 1 uppercase and 1 lowercase letter.'); return }
-    if (password !== confirm) { setError('Passwords do not match.'); return }
+    if (!token) { setDidNotWork(true); return }
+    /* The same rules the list under the fields shows, and the server checks. Choosing a first
+       password has one box, as in the prototype, with Show to check what was typed. */
+    if (!meetsTodaysPasswordRules(password, kind === 'reset' ? confirm : undefined, theirEmail)) {
+      setError(password !== confirm && meetsTodaysPasswordRules(password, undefined, theirEmail)
+        ? 'The two passwords are not the same. Type the same password in both boxes.'
+        : 'Your password does not meet every rule in the list yet.')
+      return
+    }
     save.mutate()
   }
-
-  const shell = (children: React.ReactNode) => (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
-      <div className="gw-hdr">
-        <a href={MARKETING_URL} className="gw-logo" style={{ textDecoration: 'none', color: 'inherit' }}>Groundwork</a>
-      </div>
-      <div className="gw-bd" style={{ maxWidth: 420, margin: '0 auto', width: '100%', paddingTop: 32 }}>{children}</div>
-    </div>
-  )
 
   /**
    * NO TOKEN, NO FORM.
@@ -109,100 +165,104 @@ export function ChoosePasswordPage() {
    * password and pressing it. `/reset-password` did the same. `/invite` already
    * handled this properly, so the product held both behaviours for one problem.
    */
-  if (!token) {
-    return shell(
-      <>
-        <h1 className="gw-ttl">This link is missing its token.</h1>
-        <div className="gw-sub-t" style={{ marginBottom: 20 }}>
-          Password links are single use and expire. Open the most recent one from your inbox, or
-          ask for a new one below.
-        </div>
-        <button className="gw-btn" onClick={() => navigate('/auth?mode=member')}>Get a new link</button>
-      </>,
-    )
-  }
+  if (expired || expiredOnOpen) return <LinkExpired kind={kind === 'reset' ? 'reset' : 'sign-in'} />
+  if (didNotWork || didNotWorkOnOpen) return <LinkDidNotWork kind={kind === 'reset' ? 'reset' : 'sign-in'} />
 
-  return shell(
-    <>
-      <h1 className="gw-ttl">{kind === 'set' ? 'One last step' : 'Reset your password'}</h1>
-      <div className="gw-sub-t" style={{ marginBottom: kind === 'set' ? 6 : 0 }}>
-        {kind === 'set'
-          ? 'Set a password so you can sign back in to see the record and receive the report when it is ready.'
-          : 'Choose a new password for your account.'}
-      </div>
+  /* A link with no token cannot work: the same card as any link that did not, with the way to ask
+     for a new one on it (U.2 review). */
+  if (!token) return <LinkDidNotWork kind={kind === 'reset' ? 'reset' : 'sign-in'} />
 
+  /*
+   * CHOOSING A FIRST PASSWORD (A2, #/password), in the prototype's words. Choosing one is optional
+   * (Hafsah's decision of 26 September), so the prototype's "Keep using email links instead" is
+   * offered. "You can keep using links too" is true either way: an account with a password can still
+   * ask for a sign-in link.
+   */
+  const title = kind === 'set' ? 'Choose a password' : 'Choose a new password'
+  const sub = kind === 'set'
+    /* Screen fault 5: name the organisation when the signed-in session already carries one,
+       rather than a page that never says whose account this is or what it is for. */
+    ? signedInOrgName
+      ? `For signing in at ${signedInOrgName}. You can keep using email links too.`
+      : 'For signing in without an email link. You can keep using links too.'
+    /* True: saving a new password raises the account's token epoch, which ends every other session. */
+    : forAddress
+      ? <>For <strong>{forAddress}</strong>. Once it’s saved, you’re signed out everywhere else.</>
+      : 'Once it’s saved, you’re signed out everywhere else.'
+
+  return (
+    <AuthCard title={title} sub={sub}>
       {/*
-        This used to say "Your account and check-in are already saved."
-        It is reached by two different people. One has just finished a session in the
-        anonymous entry flow, and for them it was true. The other has been invited by
-        an admin - as a lead or a participant - and has not answered a single question
-        yet. Telling that person their check-in is saved is simply untrue, and it makes
-        them wonder what was recorded in their name before they had said anything.
-        GW-014. This page cannot tell the two apart from the token alone, so the copy
-        claims only what is true for both.
+        "Your account and check-in are already saved" was said here once, to people who had not yet
+        answered anything. GW-014. This page cannot tell them apart from the token, so it claims only
+        what is true for everybody who reaches it.
       */}
+      {/* A form, so Enter submits from the first field too, and the password manager is told what these are. */}
+      <form noValidate onSubmit={e => { e.preventDefault(); submit() }}>
+        <Stack gap={10}>
+          <PasswordField
+            id="new-password"
+            label={kind === 'set' ? 'Password' : 'New password'}
+            autoComplete="new-password"
+            value={password}
+            onChange={setPassword}
+            autoFocus
+          />
+          {kind === 'reset' ? (
+            <>
+              <PasswordField
+                id="confirm-password"
+                label="Type it again"
+                spokenAs="password you typed again"
+                autoComplete="new-password"
+                value={confirm}
+                onChange={setConfirm}
+              />
+              <PasswordRules password={password} confirm={confirm} />
+            </>
+          ) : (
+            <>
+              <PasswordStrength password={password} email={theirEmail} />
+              <p className="gwui-fine">
+                Use one you don’t use anywhere else. A few unrelated words are easier to remember than symbols.
+              </p>
+            </>
+          )}
+          {error && <AuthError>{error}</AuthError>}
+          <Button type="submit" wide disabled={save.isPending}>
+            {save.isPending ? 'Saving…' : 'Save password'}
+          </Button>
+        </Stack>
+      </form>
       {kind === 'set' && (
-        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 20, padding: '10px 12px', background: 'var(--gw-blue-bg)', borderRadius: 8, border: '1px solid var(--gw-blue-b)' }}>
-          Your account is ready. This password secures your access to Groundwork going forward. Anything you have already written is saved.
+        <div className="gwui-auth-links">
+          {/*
+            NO PASSWORD, AND THAT IS FINE. Opening the email link has signed this person in, so
+            skipping goes on to where they were going. Somebody here without a session (a set-up
+            link from an invitation) is sent to ask for a sign-in link instead, which is what
+            "email links" means for them. The unused set-up link simply runs out.
+
+            SCREEN FAULT 5 (FINAL WALK): "KEEP USING EMAIL LINKS INSTEAD" READ AS IF ONE ALREADY
+            EXISTED, THEN ASKED FOR A SECOND EMAIL ANYWAY. For somebody with no session yet (the
+            team invite's own link, opened straight into this page - checked `/auth/validate-token`
+            for a way to sign them in from the token already in hand, and it deliberately answers
+            only `valid`/`expired`, never enough to start a session without a password), the button
+            still said "Keep using" a method they had never used, then sent them to type their
+            address in again regardless. Said plainly instead, for exactly that case: a fresh link
+            is what actually happens. The signed-in case is unchanged - skipping there costs
+            nothing, so it keeps the prototype's own words (password.txt).
+          */}
+          <Button
+            kind="quiet"
+            onClick={() => {
+              try { sessionStorage.removeItem('gw_next') } catch { /* */ }
+              navigate(signedIn ? next : '/auth?mode=member', { replace: true })
+            }}
+          >
+            {signedIn ? 'Keep using email links instead' : 'Email me a sign-in link instead'}
+          </Button>
         </div>
       )}
-
-      {/* A form, so Enter submits from the first field too - which has autoFocus, so it is where everybody
-          starts - and the password manager is told what these are. */}
-      <form noValidate onSubmit={e => { e.preventDefault(); submit() }}>
-      <div className="gw-fld">
-        <label className="gw-label" htmlFor="new-password">{kind === 'set' ? 'Password' : 'New password'}</label>
-        <input
-          id="new-password"
-          className="gw-input"
-          type="password"
-          autoComplete="new-password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          placeholder="At least 8 characters"
-          autoFocus
-        />
-      </div>
-      <div className="gw-fld">
-        <label className="gw-label" htmlFor="confirm-password">Confirm password</label>
-        <input
-          id="confirm-password"
-          className="gw-input"
-          type="password"
-          autoComplete="new-password"
-          value={confirm}
-          onChange={e => setConfirm(e.target.value)}
-          placeholder="Same as above"
-        />
-      </div>
-
-      <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 12, lineHeight: 1.6 }}>
-        Must be 8+ characters with at least one uppercase and one lowercase letter.
-      </div>
-
-      {error && <div className="gw-er" role="alert" style={{ marginBottom: 10 }}>{error}</div>}
-
-      <button className="gw-btn" type="submit" disabled={save.isPending}>
-        {save.isPending ? 'Saving…' : kind === 'set' ? 'Set password and open Groundwork →' : 'Reset password →'}
-      </button>
-      </form>
-
-      {/*
-        THE LINK SAID "BACK TO SIGN IN" AND WENT SOMEWHERE ELSE. W8-42.
-
-        `/enter` is the org-code page, left over from an onboarding model the product
-        no longer uses. Somebody who had just reset their password and wanted to use it
-        was handed a page asking for a code they do not have. Sign in is `/auth`.
-      */}
-      <div style={{ textAlign: 'center', marginTop: 14 }}>
-        <button
-          type="button"
-          onClick={() => navigate('/auth?mode=member')}
-          style={{ fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer', background: 'none', border: 'none', font: 'inherit' }}
-        >
-          Back to sign in
-        </button>
-      </div>
-    </>,
+    </AuthCard>
   )
 }

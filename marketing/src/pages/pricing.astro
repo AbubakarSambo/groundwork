@@ -4,7 +4,7 @@ import Layout from '../layouts/Layout.astro';
 import { SERVICES } from '../site.mjs';
 const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
 ---
-<Layout title="Pricing · Groundwork" description="Start free with 10 check-ins for teams of 5 or fewer, no card required. Subscribe as your team grows. Unlimited sessions and reports on every plan." canonicalPath="/pricing">
+<Layout title="Pricing · Groundwork" description="Teams of fewer than 20 people get 1 month free, WhatsApp included, no card required. Subscribe as your team grows. Unlimited sessions and reports on every plan." canonicalPath="/pricing">
   <style>
     *,*::before,*::after{box-sizing:border-box}
     body{margin:0;overflow-x:hidden}
@@ -53,75 +53,79 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
       <!-- Header -->
       <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--gw-navy);font-weight:700;margin-bottom:12px;">Pricing</p>
       <h1 style="font-size:34px;font-weight:800;color:var(--gw-text);line-height:1.2;margin-bottom:16px;">Pricing</h1>
-      <p style="font-size:16px;color:var(--gw-sub);line-height:1.7;margin-bottom:44px;max-width:520px;">Start free with 10 check-ins for teams of 5 or fewer, no card required. Subscribe as your team grows. Unlimited sessions and reports on every plan.</p>
+      <p style="font-size:16px;color:var(--gw-sub);line-height:1.7;margin-bottom:44px;max-width:520px;">Teams of fewer than 20 people get 1 month free, WhatsApp included, no card required. Subscribe as your team grows. Unlimited sessions and reports on every plan.</p>
 
-      <!-- Free tier -->
-      <!-- NOT DRAWN. The free plan carried the drawn frame for a few hours and her read was that
-           it looked awkward: this card is a table of what you get and a price, and a wobbly line
-           around a price list reads as the number being unserious. The hand stays on the pages
-           that are somebody talking. -->
-      <div style="background:var(--gw-paper);border:1px solid var(--gw-border);border-radius:12px;padding:24px 26px;margin-bottom:40px;display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;">
+      <!-- The free month (fix list item 6; the light prototype's s74, word for word): one month, WhatsApp included, no card. -->
+      <div style="background:var(--gw-paper);border:2px solid var(--gw-navy);border-radius:12px;padding:24px 26px;margin-bottom:40px;display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;">
         <div style="flex:1;min-width:220px;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-            <span style="font-size:15px;font-weight:700;color:var(--gw-text);">Free</span>
-            <span style="font-size:11px;background:#E7F6EF;color:var(--gw-green-t);border:1px solid #BFE6D4;border-radius:6px;padding:2px 8px;font-weight:700;">Always</span>
+          <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px;flex-wrap:wrap;">
+            <span style="font-size:15px;font-weight:700;color:var(--gw-text);">1 month free</span>
+            <span style="font-size:12px;color:var(--gw-muted);">Teams of fewer than 20 people</span>
           </div>
-          <p style="font-size:13.5px;color:var(--gw-sub);line-height:1.65;margin:0 0 12px;">Create up to 10 check-ins for free, for teams of 5 or fewer including you. No card required. Unlimited sessions and reports on every check-in.</p>
-          <ul style="font-size:12.5px;color:var(--gw-sub);padding-left:18px;margin:0;line-height:1.9;">
-            <li>10 check-ins</li>
-            <li>Teams of 5 or fewer</li>
+          <p style="font-size:13.5px;color:var(--gw-sub);line-height:1.65;margin:0 0 12px;">Everything on every plan, WhatsApp included, free for your first month. No card required. Unlimited check-ins, sessions and reports.</p>
+          <ul style="font-size:12.5px;color:var(--gw-sub);padding-left:18px;margin:0 0 12px;line-height:1.9;">
+            <li>1 month</li>
+            <li>WhatsApp included</li>
+            <li>Fewer than 20 people</li>
+            <li>Unlimited check-ins</li>
             <li>Unlimited sessions</li>
             <li>Unlimited reports</li>
-            <li>Admin dashboard</li>
           </ul>
+          <p style="font-size:12.5px;color:var(--gw-muted);margin:0;">After your free month, subscribe to keep going. Teams of 20 or more start on a plan.</p>
         </div>
         <div style="text-align:right;flex-shrink:0;">
           <div style="font-size:30px;font-weight:800;color:var(--gw-text);">$0</div>
-          <div style="font-size:12px;color:var(--gw-muted);">forever</div>
-          <a class="gw-tap" href={`${APP_URL}/auth?mode=signup`} style="display:inline-block;margin-top:12px;font-size:12px;font-weight:600;color:var(--gw-navy);border:1px solid var(--gw-blue-b);border-radius:7px;padding:6px 14px;text-decoration:none;">Get started free</a>
+          <div style="font-size:12px;color:var(--gw-muted);">for 1 month</div>
+          <a class="gw-tap" href={`${APP_URL}/auth?mode=signup`} style="display:inline-block;margin-top:12px;font-size:12px;font-weight:600;color:#fff;background:var(--gw-navy);border-radius:7px;padding:6px 14px;text-decoration:none;">Start your free month</a>
         </div>
       </div>
 
       <!-- Org subscriptions -->
       <h2 style="font-size:20px;font-weight:800;color:var(--gw-text);margin-bottom:8px;">Subscribe as your team grows</h2>
-      <p style="font-size:14px;color:var(--gw-sub);line-height:1.65;margin-bottom:24px;">Every person with a Groundwork account in your organization counts toward your plan. One flat monthly rate, unlimited everything.</p>
+      <p style="font-size:14px;color:var(--gw-sub);line-height:1.65;margin-bottom:24px;">Every person with a Groundwork account counts as a seat. Each plan includes a number of seats; add more any time for +$5 a seat a month. Unlimited check-ins, sessions and reports.</p>
 
       <div class="plan-grid">
         <div class="plan-card">
           <div style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:4px;">Starter</div>
           <div style="font-size:26px;font-weight:800;color:var(--gw-navy);margin-bottom:2px;">$25<span style="font-size:13px;font-weight:500;color:var(--gw-muted);">/mo</span></div>
-          <div style="font-size:12px;color:var(--gw-muted);margin-bottom:12px;">Up to 5 people</div>
+          <div style="font-size:12px;color:var(--gw-muted);margin-bottom:12px;">5 seats included<br /><b>+$5 per extra seat</b><br />WhatsApp: +$4 a month per person who uses it</div>
           <p style="font-size:12px;color:var(--gw-sub);line-height:1.6;flex-grow:1;margin-bottom:16px;">For small teams getting each person's own account on the record.</p>
           <a class="gw-tap" href={`${APP_URL}/billing`} style="display:block;text-align:center;font-size:13px;font-weight:700;color:#fff;background:var(--gw-navy);border-radius:8px;padding:9px;text-decoration:none;">Subscribe</a>
         </div>
         <div class="plan-card">
           <div style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:4px;">Small Team</div>
           <div style="font-size:26px;font-weight:800;color:var(--gw-navy);margin-bottom:2px;">$90<span style="font-size:13px;font-weight:500;color:var(--gw-muted);">/mo</span></div>
-          <div style="font-size:12px;color:var(--gw-muted);margin-bottom:12px;">Up to 20 people</div>
+          <div style="font-size:12px;color:var(--gw-muted);margin-bottom:12px;">20 seats included<br /><b>+$5 per extra seat</b><br />WhatsApp: +$4 a month per person who uses it</div>
           <p style="font-size:12px;color:var(--gw-sub);line-height:1.6;flex-grow:1;margin-bottom:16px;">For growing teams running multiple check-ins at once.</p>
           <a class="gw-tap" href={`${APP_URL}/billing`} style="display:block;text-align:center;font-size:13px;font-weight:700;color:#fff;background:var(--gw-navy);border-radius:8px;padding:9px;text-decoration:none;">Subscribe</a>
         </div>
         <div class="plan-card">
           <div style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:4px;">Growth</div>
           <div style="font-size:26px;font-weight:800;color:var(--gw-navy);margin-bottom:2px;">$400<span style="font-size:13px;font-weight:500;color:var(--gw-muted);">/mo</span></div>
-          <div style="font-size:12px;color:var(--gw-muted);margin-bottom:12px;">Up to 100 people</div>
+          <div style="font-size:12px;color:var(--gw-muted);margin-bottom:12px;">100 seats included<br /><b>+$5 per extra seat</b><br />WhatsApp: +$4 a month per person who uses it</div>
           <p style="font-size:12px;color:var(--gw-sub);line-height:1.6;flex-grow:1;margin-bottom:16px;">For organizations running Groundwork across departments or client groups.</p>
           <a class="gw-tap" href={`${APP_URL}/billing`} style="display:block;text-align:center;font-size:13px;font-weight:700;color:#fff;background:var(--gw-navy);border-radius:8px;padding:9px;text-decoration:none;">Subscribe</a>
         </div>
         <div class="plan-card">
           <div style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:4px;">Business</div>
           <div style="font-size:26px;font-weight:800;color:var(--gw-navy);margin-bottom:2px;">$900<span style="font-size:13px;font-weight:500;color:var(--gw-muted);">/mo</span></div>
-          <div style="font-size:12px;color:var(--gw-muted);margin-bottom:12px;">Up to 250 people</div>
+          <div style="font-size:12px;color:var(--gw-muted);margin-bottom:12px;">250 seats included<br /><b>+$5 per extra seat</b><br />WhatsApp: +$4 a month per person who uses it</div>
           <p style="font-size:12px;color:var(--gw-sub);line-height:1.6;flex-grow:1;margin-bottom:16px;">For larger organizations with multiple teams and check-ins in flight.</p>
           <a class="gw-tap" href={`${APP_URL}/billing`} style="display:block;text-align:center;font-size:13px;font-weight:700;color:#fff;background:var(--gw-navy);border-radius:8px;padding:9px;text-decoration:none;">Subscribe</a>
         </div>
         <div class="plan-card">
           <div style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:4px;">Scale</div>
           <div style="font-size:26px;font-weight:800;color:var(--gw-navy);margin-bottom:2px;">$1,650<span style="font-size:13px;font-weight:500;color:var(--gw-muted);">/mo</span></div>
-          <div style="font-size:12px;color:var(--gw-muted);margin-bottom:12px;">Up to 500 people</div>
+          <div style="font-size:12px;color:var(--gw-muted);margin-bottom:12px;">500 seats included<br /><b>+$5 per extra seat</b><br />WhatsApp: +$4 a month per person who uses it</div>
           <p style="font-size:12px;color:var(--gw-sub);line-height:1.6;flex-grow:1;margin-bottom:16px;">For organizations running Groundwork across many teams at once.</p>
           <a class="gw-tap" href={`${APP_URL}/billing`} style="display:block;text-align:center;font-size:13px;font-weight:700;color:#fff;background:var(--gw-navy);border-radius:8px;padding:9px;text-decoration:none;">Subscribe</a>
         </div>
+      </div>
+
+      <!-- WhatsApp, explained once (the light prototype's s74, word for word). -->
+      <div style="background:var(--gw-paper);border:1px solid var(--gw-border);border-radius:12px;padding:20px 24px;margin-bottom:24px;">
+        <div style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">WhatsApp check-ins, on any plan</div>
+        <p style="font-size:13px;color:var(--gw-sub);line-height:1.65;margin:0;">Your team can check in on WhatsApp instead of the app. You pay only for people who use it: $4 a person a month, on any plan, never more than your seats. It is included in your free month.</p>
       </div>
 
       <!-- Enterprise -->
@@ -200,7 +204,7 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
         </div>
         <div class="faq-item">
           <div style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Do I need a card to start?</div>
-          <p style="font-size:13px;color:var(--gw-sub);line-height:1.65;margin:0;">No. Your first 10 check-ins are free, for teams of 5 or fewer including you, and require no payment details. You add a card only when you want more check-ins or more people.</p>
+          <p style="font-size:13px;color:var(--gw-sub);line-height:1.65;margin:0;">No. Teams of fewer than 20 people get their first month free, with no payment details. You add a card when you subscribe, before the free month ends, or straight away if your team is 20 or more.</p>
         </div>
         <div class="faq-item">
           <div style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Can I cancel a subscription at any time?</div>
@@ -208,11 +212,11 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
         </div>
         <div class="faq-item">
           <div style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">What happens to my check-ins and reports if I cancel?</div>
-          <p style="font-size:13px;color:var(--gw-sub);line-height:1.65;margin:0;">Nothing is deleted. Your reports and history stay on your account. You can read everything that happened. You can still run Grounds on the free plan (up to 10 total).</p>
+          <p style="font-size:13px;color:var(--gw-sub);line-height:1.65;margin:0;">Nothing is deleted. Your reports and history stay on your account. You can read everything that happened. Check-ins pause until you subscribe again.</p>
         </div>
         <div class="faq-item">
           <div style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Does every participant need to pay?</div>
-          <p style="font-size:13px;color:var(--gw-sub);line-height:1.65;margin:0;">No. Billing is at the organization level, based on your team size. Participants who have a Groundwork account count toward your plan. External participants without an account do not.</p>
+          <p style="font-size:13px;color:var(--gw-sub);line-height:1.65;margin:0;">No. Billing is at the organization level, based on your team size. Participants who have a Groundwork account count as a seat. External participants without an account do not.</p>
         </div>
       </div>
 

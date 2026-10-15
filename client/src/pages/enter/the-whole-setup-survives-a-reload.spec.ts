@@ -27,8 +27,14 @@ describe('the persisted session', () => {
     expect(auth).toMatch(/const clearNotices = \(\) => \{ setError\(''\); setPasswordlessNotice\(''\) \}/)
     expect(auth).not.toMatch(/onChange=\{e => \{ set\w+\(e\.target\.value\); setError\(''\) \}\}/)
   })
-  it('"You are in." is above the admin/member split, so the admin who just set a password sees it', () => {
+  it('"You are in." is above the empty-state split, so the admin who just set a password sees it', () => {
+    /*
+     * U.20: the empty state's two readings are now keyed on `mayOpenCheckIns` (F4-small-states,
+     * "No check-ins yet, a lead" / "anyone else"), not `isAdmin` - see GroundsListPage.tsx's own
+     * comment on why. The thing this test guards, "You are in." rendering above that split so an
+     * admin who just set a password still sees it, is unchanged.
+     */
     const list = strip(readFileSync(path.join(__dirname, '..', 'grounds', 'GroundsListPage.tsx'), 'utf8'))
-    expect(list.indexOf('{justSetUp && (')).toBeLessThan(list.indexOf('{isAdmin ? ('))
+    expect(list.indexOf('{justSetUp && (')).toBeLessThan(list.indexOf('mayOpenCheckIns !== false ? ('))
   })
 })

@@ -58,7 +58,7 @@ export interface AScenarioRow {
 
 export const THE_SCENARIO_TABLE: Partial<Record<GroundScenario, AScenarioRow>> = {
   [GroundScenario.NEW_HIRE]: {
-    name: 'Help a New Hire Get Started',
+    name: 'Help a new hire get started',
     description: 'Help a new team member settle in, understand their role, and surface what they need.',
     lead: {
       first: 'Set expectations and understand how the person is starting out.',
@@ -72,7 +72,7 @@ export const THE_SCENARIO_TABLE: Partial<Record<GroundScenario, AScenarioRow>> =
     },
   },
   [GroundScenario.ROLE_HANDOVER]: {
-    name: 'Hand Over a Role Smoothly',
+    name: 'Hand over a role smoothly',
     description: 'Help someone take over a role without losing important context or work.',
     lead: {
       first: 'Understand the handover and what the new person needs to know.',
@@ -86,7 +86,7 @@ export const THE_SCENARIO_TABLE: Partial<Record<GroundScenario, AScenarioRow>> =
     },
   },
   [GroundScenario.NEW_PROJECT]: {
-    name: 'Get a New Project Off to a Good Start',
+    name: 'Get a new project off to a good start',
     description: 'Get everyone clear on the work, their role, and what needs to happen.',
     lead: {
       first: 'Set the project context and expectations.',
@@ -99,8 +99,23 @@ export const THE_SCENARIO_TABLE: Partial<Record<GroundScenario, AScenarioRow>> =
       last: 'Reflect on what worked and what should happen next.',
     },
   },
+  /* The anchor's lead and team read as a project's did before it had a situation of its own; only its name is its own. */
+  [GroundScenario.HELP_TEAM_UNDERSTAND]: {
+    name: 'Help your team understand and move with you',
+    description: 'Help the people you work with see the bigger picture, and understand what you are carrying.',
+    lead: {
+      first: 'Set the project context and expectations.',
+      second: 'See whether the work is moving as expected.',
+      last: 'See what was achieved and what remains.',
+    },
+    participant: {
+      first: 'Understand their role and what they are meant to deliver.',
+      second: 'Share progress, blockers, and changes.',
+      last: 'Reflect on what worked and what should happen next.',
+    },
+  },
   [GroundScenario.NEW_COFOUNDER]: {
-    name: 'Start a New Partnership Well',
+    name: 'Start a new partnership well',
     description: 'Build a shared understanding of a new co-founder or partner relationship.',
     lead: {
       first: 'Set expectations and understand how each person sees the relationship.',
@@ -114,7 +129,7 @@ export const THE_SCENARIO_TABLE: Partial<Record<GroundScenario, AScenarioRow>> =
     },
   },
   [GroundScenario.NEW_MANAGER]: {
-    name: 'Help a New Manager Take Over',
+    name: 'Help a new manager take over',
     description: 'Help a new manager understand the team and how the work is going.',
     lead: {
       first: "Give the manager context and understand the team's starting point.",
@@ -128,7 +143,7 @@ export const THE_SCENARIO_TABLE: Partial<Record<GroundScenario, AScenarioRow>> =
     },
   },
   [GroundScenario.NEW_ADVISOR]: {
-    name: 'Start a New Advisor or Board Relationship',
+    name: 'Start an advisor or board relationship',
     description: 'Build a shared understanding of the role, expectations, and contribution.',
     lead: {
       first: 'Set the context and understand what they expect to contribute.',
@@ -142,7 +157,7 @@ export const THE_SCENARIO_TABLE: Partial<Record<GroundScenario, AScenarioRow>> =
     },
   },
   [GroundScenario.OKR_ALIGNMENT]: {
-    name: 'Set Goals and Keep the Team on Track',
+    name: 'Set goals and keep the team on track',
     description: 'Set goals, targets or OKRs and keep track of how the work is going.',
     lead: {
       first: 'Set goals and understand what each person is working towards.',
@@ -156,7 +171,7 @@ export const THE_SCENARIO_TABLE: Partial<Record<GroundScenario, AScenarioRow>> =
     },
   },
   [GroundScenario.WORKPLAN_BUDGET]: {
-    name: 'Build a Workplan and Budget That Makes Sense',
+    name: 'Build a workplan and budget',
     description: "Bring people's plans together so the work and budget line up.",
     lead: {
       first: 'Understand what each person plans to do and what they need.',
@@ -170,7 +185,7 @@ export const THE_SCENARIO_TABLE: Partial<Record<GroundScenario, AScenarioRow>> =
     },
   },
   [GroundScenario.BOARD_STRATEGY]: {
-    name: 'Align on Strategy',
+    name: 'Align on strategy',
     description: 'Understand how leaders see the direction and where their views differ.',
     lead: {
       first: 'Understand how each person sees the strategy and priorities.',
@@ -184,7 +199,7 @@ export const THE_SCENARIO_TABLE: Partial<Record<GroundScenario, AScenarioRow>> =
     },
   },
   [GroundScenario.CRISIS_ALIGNMENT]: {
-    name: 'Work Through a Big Decision',
+    name: 'Work through a big decision',
     description: 'Bring different views together around an important decision.',
     lead: {
       first: "Understand each person's view and what they are weighing up.",
@@ -198,7 +213,7 @@ export const THE_SCENARIO_TABLE: Partial<Record<GroundScenario, AScenarioRow>> =
     },
   },
   [GroundScenario.PULSE_CHECK]: {
-    name: 'Keep a Read on Live Work',
+    name: 'Keep a read on live work',
     description: 'Regularly understand how work is going while it is happening.',
     lead: {
       first: 'Get a starting picture of the work.',
@@ -212,7 +227,7 @@ export const THE_SCENARIO_TABLE: Partial<Record<GroundScenario, AScenarioRow>> =
     },
   },
   [GroundScenario.COHORT_CHECK]: {
-    name: 'Check How the Same Role Is Going Across People',
+    name: 'Check how the same role is going',
     description: 'Understand how people doing similar work are experiencing it.',
     lead: {
       first: "Understand each person's experience of the role.",
@@ -226,7 +241,7 @@ export const THE_SCENARIO_TABLE: Partial<Record<GroundScenario, AScenarioRow>> =
     },
   },
   [GroundScenario.CONTRACT_RENEWAL]: {
-    name: 'Check In Before a Contract or Renewal',
+    name: 'Check in before a contract ends or renews',
     description: 'Understand how a working relationship is going before deciding what happens next.',
     lead: {
       first: 'Understand how the relationship is working.',
@@ -240,7 +255,7 @@ export const THE_SCENARIO_TABLE: Partial<Record<GroundScenario, AScenarioRow>> =
     },
   },
   [GroundScenario.CONTRACT_REVIEW]: {
-    name: 'Check an Agreement Before Signing',
+    name: 'Check an agreement before signing',
     description: 'Make sure the people involved understand and are comfortable with an agreement.',
     lead: {
       first: 'Understand how each person sees the agreement.',
@@ -254,7 +269,7 @@ export const THE_SCENARIO_TABLE: Partial<Record<GroundScenario, AScenarioRow>> =
     },
   },
   [GroundScenario.IMPLEMENTATION_TRACKING]: {
-    name: 'Check How an Agreement Is Going',
+    name: 'Check how an agreement is going',
     description: 'Understand how an agreement is working in practice.',
     lead: {
       first: 'Understand what each side expects and is responsible for.',
@@ -268,7 +283,7 @@ export const THE_SCENARIO_TABLE: Partial<Record<GroundScenario, AScenarioRow>> =
     },
   },
   [GroundScenario.RECOGNITION]: {
-    name: 'Support a Raise, Promotion, or Recognition',
+    name: 'Support a raise, promotion or recognition',
     description: "Understand someone's contribution and experience before making a recognition decision.",
     lead: {
       first: 'Understand their role, contribution, and progress.',
@@ -282,7 +297,7 @@ export const THE_SCENARIO_TABLE: Partial<Record<GroundScenario, AScenarioRow>> =
     },
   },
   [GroundScenario.PIP]: {
-    name: 'Help Someone Get Back on Track',
+    name: 'Help someone get back on track',
     description: "Understand what is getting in the way when someone's work is off track.",
     lead: {
       first: 'Understand what is happening without jumping to conclusions.',
@@ -296,7 +311,7 @@ export const THE_SCENARIO_TABLE: Partial<Record<GroundScenario, AScenarioRow>> =
     },
   },
   [GroundScenario.DRIFT]: {
-    name: 'Get a Project Back on Track',
+    name: 'Get a project back on track',
     description: 'Understand why a project is off track and what needs to change.',
     lead: {
       first: 'Understand what each person sees as the problem.',
@@ -310,7 +325,7 @@ export const THE_SCENARIO_TABLE: Partial<Record<GroundScenario, AScenarioRow>> =
     },
   },
   [GroundScenario.REALIGN_TEAM]: {
-    name: 'Understand Where People See Things Differently',
+    name: 'See where people see things differently',
     description: "Understand different views when people don't see a situation the same way.",
     lead: {
       first: "Understand each person's view without asking them to agree.",
@@ -324,7 +339,7 @@ export const THE_SCENARIO_TABLE: Partial<Record<GroundScenario, AScenarioRow>> =
     },
   },
   [GroundScenario.ACUTE_SHOCK]: {
-    name: 'Make Sense of Something Serious That Happened',
+    name: 'Make sense of something serious',
     description: 'Give people a private way to explain what happened and what needs attention.',
     lead: {
       first: 'Understand what happened from each person’s perspective.',
@@ -343,7 +358,7 @@ export const THE_SCENARIO_TABLE: Partial<Record<GroundScenario, AScenarioRow>> =
    * which is why none of them says "understand" or "set".
    */
   [GroundScenario.TEAM_UPDATES]: {
-    name: 'Get Updates from Your Team',
+    name: 'Get updates from your team',
     description: 'Ask one question, everyone answers on their own link, you get one report.',
     lead: {
       first: 'Ask your one question and see what comes back.',
@@ -362,7 +377,7 @@ export const THE_SCENARIO_TABLE: Partial<Record<GroundScenario, AScenarioRow>> =
    * direction. There is no second column that matters, because there is no second session.
    */
   [GroundScenario.DISCOVERY]: {
-    name: 'Work Out Where to Focus',
+    name: 'Work out where to focus',
     description: 'Ask a group what they know, once, and turn the answers into a direction.',
     lead: {
       first: 'See where the room says the opportunity and the gaps are.',
@@ -376,7 +391,7 @@ export const THE_SCENARIO_TABLE: Partial<Record<GroundScenario, AScenarioRow>> =
     },
   },
   [GroundScenario.SNAPSHOT]: {
-    name: 'Take the Pulse of the Team',
+    name: 'Take the pulse of the team',
     description: 'Get a quick picture of how people are experiencing the work right now.',
     lead: {
       first: 'Get a starting picture of how things feel and what matters.',
@@ -390,7 +405,7 @@ export const THE_SCENARIO_TABLE: Partial<Record<GroundScenario, AScenarioRow>> =
     },
   },
   [GroundScenario.OPEN_READ]: {
-    name: 'Work Through Something Else',
+    name: 'Work through something else',
     description: "Give people a starting point when the situation doesn't fit a predefined scenario.",
     lead: {
       first: 'Understand what is happening and what matters to the person.',

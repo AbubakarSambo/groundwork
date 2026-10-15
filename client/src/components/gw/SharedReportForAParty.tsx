@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TheSharedPictureAPartyReads } from './the-shared-picture-a-party-reads'
 import { howCheckable } from './how-checkable-was-that-session'
@@ -34,20 +35,51 @@ export interface SharedReportForAPartyProps {
   ground: any
   /** Open the team board. A prop, because the route is the page's business and not this view's. */
   onOpenBoard: () => void
-  /** Per-session specificity, so a row can say how checkable that account was. */
-  specificityBySession?: Record<number, number>
+  /** Open the weekly report (B4, "This week"), same reasoning as `onOpenBoard`. */
+  onOpenWeek: () => void
+  /**
+   * Per-session specificity, so a row can say how checkable that account was.
+   *
+   * U.9 THIRD REVIEW, ITEM 6: THE SAME `specificityLevel` THE SESSION'S OWN METER READS, NOT A
+   * DIFFERENT NUMBER. Was a raw 0-1 score, banded with its own thresholds in `howCheckable`; that
+   * could - and did - disagree with the categorical level `HowSpecificThisSessionWas` reads for
+   * the very same session. Now a level string, so both surfaces read one fact.
+   */
+  specificityBySession?: Record<number, string | null>
   /** Who is reading, so their own finished sessions can be listed and nobody else's. */
   viewerUserId?: string | null
+  /**
+   * B-203: "VIEW YOUR REPORT" OPENS WITH THE REPORT SHOWING, NOT FOLDED AWAY.
+   *
+   * The report email's own link lands here with the report already released, on a check-in whose
+   * board renders - which is exactly the case this tab folds the report under "▸ The shared
+   * picture", open one click away, below the board button, the weekly-report button and "Your
+   * sessions". Somebody who followed a link whose whole point is the report had to find and open
+   * that fold themselves. True when the page was reached by a direct link to the report (this
+   * tab's own `?tab=report`, which the email link and the old `/grounds/:id/report` address both
+   * resolve to) rather than by clicking "My work" and then this tab from inside the page.
+   */
+  openReportByDefault?: boolean
 }
 
 export function SharedReportForAParty({
   report,
   ground,
   onOpenBoard,
+  onOpenWeek,
   specificityBySession,
   viewerUserId,
+  openReportByDefault,
 }: SharedReportForAPartyProps) {
   const navigate = useNavigate()
+  const boardRenders = !!(ground as any)?.boardRenders
+  const sharedPictureRef = useRef<HTMLDetailsElement>(null)
+
+  /* Opens already unfolded (the `open` attribute below), so this only has to bring it into view. */
+  useEffect(() => {
+    if (!openReportByDefault || !boardRenders || !report?.releasedAt) return
+    sharedPictureRef.current?.scrollIntoView({ block: 'start' })
+  }, [openReportByDefault, boardRenders, report?.releasedAt])
 
   /**
    * THE SESSIONS OF YOUR OWN THAT ARE FINISHED, newest first.
@@ -98,9 +130,13 @@ export function SharedReportForAParty({
             * board is a fact about the check-in, and it does not become more or less true because
             * somebody else has not answered yet. The board's own page handles being early.
             */}
-          {!!(ground as any).boardRenders && (
+          {boardRenders && (
+            /* B-203: this card's own visible text never reached its accessible name - a button whose
+               only content is nested `display: block` spans is read with no name at all by assistive
+               technology, the arrow included. `aria-label` says plainly what pressing it opens. */
             <button
               onClick={() => onOpenBoard()}
+              aria-label="Open the team board"
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
                 background: 'var(--gw-dark)', color: 'white', border: 'none',
@@ -113,9 +149,26 @@ export function SharedReportForAParty({
                   The same picture for everyone, built from what each person said. Never a verdict.
                 </span>
               </span>
-              <span style={{ fontSize: 13 }}>&rarr;</span>
+              <span aria-hidden style={{ fontSize: 13 }}>&rarr;</span>
             </button>
           )}
+          {/* THE WEEKLY REPORT (B4, "This week"), the same door the lead's Report tab offers.
+              B-203: same missing-accessible-name shape as "Open the team board" above - said in full here too. */}
+          <button
+            onClick={() => onOpenWeek()}
+            aria-label="Open this week's report"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+              background: 'white', color: 'var(--gw-text)', border: '1px solid var(--gw-border)',
+              borderRadius: 10, padding: '14px 16px', marginBottom: 12, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+            }}
+          >
+            <span>
+              <span style={{ display: 'block', fontSize: 15, fontWeight: 700 }}>This week</span>
+              <span style={{ display: 'block', fontSize: 13, color: 'var(--gw-sub)', marginTop: 2 }}>What kept happening for three check-ins in a row or more</span>
+            </span>
+            <span aria-hidden style={{ fontSize: 14, color: 'var(--gw-navy)' }}>&rarr;</span>
+          </button>
           {/*
             AND THE SESSIONS ARE BACK HERE, WHICH REVERSES WHAT I DID AN HOUR AGO.
 
@@ -132,33 +185,58 @@ export function SharedReportForAParty({
               board is the page; each session's report is one click behind a summary. See
               TheReportIsAListOfSessions for the lead's side of the same rule. */}
           {mySessions.length > 0 && (
-            <details open={!(ground as any).boardRenders} style={{ marginBottom: 12 }}>
-              <summary className="gw-fold-summary" style={{ cursor: 'pointer', fontSize: 12.5, color: 'var(--gw-sub)', padding: '6px 2px', display: 'flex', justifyContent: 'space-between' }}>
-                <span>Your sessions · {mySessions.length}</span>
-                <span style={{ fontSize: 11.5 }}>each one has its own report</span>
+            <details open={!boardRenders} style={{ marginBottom: 12 }}>
+              {/*
+                U.9 REVIEW FIX 13: FULL SENTENCES, FOLLOWING THE LEAD'S "EVERY SESSION" PATTERN.
+                "Your sessions · 1" and "each one has its own report" were a count and a fragment
+                stitched together with a dot. Below, each row read "Session 1" then "Finished 27
+                Sept 2026 · specific in places" - a date and a rating of what was said, joined the
+                same way. Each is now its own sentence.
+              */}
+              {/*
+                SCREEN FAULT 4: THE TWO HALVES OF THIS ROW READ AS ONE RUN-ON WORD ON A PHONE
+                ("Your sessionsYou have one finished session…"). `justify-content: space-between`
+                alone puts no floor under the gap when both halves together are wider than the
+                row - on a narrow screen they can end up side by side with nothing between them.
+                An explicit `gap`, and letting the row wrap rather than force both halves onto one
+                line, keeps them apart whatever the width.
+              */}
+              <summary className="gw-fold-summary" style={{ cursor: 'pointer', fontSize: 12.5, color: 'var(--gw-sub)', padding: '6px 2px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '4px 12px' }}>
+                <span>Your sessions</span>
+                <span style={{ fontSize: 11.5 }}>
+                  {mySessions.length === 1 ? 'You have one finished session, with its own report.' : `You have ${mySessions.length} finished sessions, each with its own report.`}
+                </span>
               </summary>
               <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden', marginTop: 6 }}>
-                {mySessions.map((ci: any, i: number) => (
-                  <button
-                    key={ci.id}
-                    onClick={() => navigate(`/checkin/${ci.id}/report`)}
-                    style={{
-                      display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between',
-                      gap: 10, padding: '11px 13px', background: 'white', border: 'none',
-                      borderTop: i > 0 ? '1px solid var(--gw-border)' : undefined,
-                      cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-                    }}
-                  >
-                    <span>
-                      <span style={{ fontSize: 13, fontWeight: 700, display: 'block' }}>Session {ci.sessionNumber}</span>
-                      <span style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>
-                        {ci.completedAt ? `Finished ${whenItWas(ci.completedAt, 'day')}` : 'Finished'}
-                        {howCheckable(specificityBySession?.[ci.sessionNumber])}
+                {mySessions.map((ci: any, i: number) => {
+                  const checkable = howCheckable(specificityBySession?.[ci.sessionNumber])
+                  return (
+                    <button
+                      key={ci.id}
+                      onClick={() => navigate(`/checkin/${ci.id}/report`)}
+                      /* B-203: same missing-accessible-name shape as the two buttons above this fold -
+                         said here per row, since each one opens a different session's own report. */
+                      aria-label={`Open your report for session ${ci.sessionNumber}`}
+                      style={{
+                        display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between',
+                        gap: 10, padding: '11px 13px', background: 'white', border: 'none',
+                        borderTop: i > 0 ? '1px solid var(--gw-border)' : undefined,
+                        cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                      }}
+                    >
+                      <span>
+                        <span style={{ fontSize: 13, fontWeight: 700, display: 'block' }}>Session {ci.sessionNumber}</span>
+                        <span style={{ fontSize: 11.5, color: 'var(--gw-sub)', display: 'block' }}>
+                          {ci.completedAt ? `You checked in on ${whenItWas(ci.completedAt, 'day')}.` : 'You checked in.'}
+                        </span>
+                        {checkable && (
+                          <span style={{ fontSize: 11.5, color: 'var(--gw-sub)', display: 'block' }}>{checkable}</span>
+                        )}
                       </span>
-                    </span>
-                    <span style={{ fontSize: 13, color: 'var(--gw-navy)' }}>&rarr;</span>
-                  </button>
-                ))}
+                      <span aria-hidden style={{ fontSize: 13, color: 'var(--gw-navy)' }}>&rarr;</span>
+                    </button>
+                  )
+                })}
               </div>
             </details>
           )}
@@ -172,12 +250,12 @@ export function SharedReportForAParty({
             <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: 24, textAlign: 'center' }}>
               <div style={{ fontSize: 13, color: 'var(--gw-muted)', marginBottom: 4 }}>
                 {ground?.sessionProgress
-                  ? `Report pending - ${ground.sessionProgress.completed} of ${ground.sessionProgress.total} checked in`
+                  ? `Report pending. ${ground.sessionProgress.completed} of ${ground.sessionProgress.total} checked in.`
                   : 'No report yet.'}
               </div>
               <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>
                 {ground?.sessionProgress?.requestingUserIsMissing
-                  ? "You haven't completed this session yet - that's part of what's holding the report."
+                  ? "You haven't completed this session yet. That's part of what's holding the report."
                   : 'The report generates once all parties have checked in.'}
               </div>
             </div>
@@ -251,11 +329,11 @@ export function SharedReportForAParty({
             */
             /* FOLDED WHERE A BOARD RENDERS. Hafsah, 21 Sep 2026: the board is the page and the rest is minimised;
                the picture stays one click away, and open where there is no board to stand in for it. */
-            (ground as any).boardRenders ? (
-              <details style={{ marginTop: 4 }}>
+            boardRenders ? (
+              <details ref={sharedPictureRef} open={openReportByDefault || undefined} style={{ marginTop: 4 }}>
                 <summary className="gw-fold-summary" style={{ cursor: 'pointer', fontSize: 12.5, color: 'var(--gw-sub)', padding: '6px 2px', display: 'flex', justifyContent: 'space-between' }}>
                   <span>The shared picture</span>
-                  <span style={{ fontSize: 11.5 }}>the written report, everyone's</span>
+                  <span style={{ fontSize: 11.5 }}>The written report, shared with everyone.</span>
                 </summary>
                 <div style={{ marginTop: 6 }}><TheSharedPictureAPartyReads report={report} /></div>
               </details>

@@ -18,6 +18,7 @@
  * says "you told me" and never quotes a card as a person's words.
  */
 import { GroundScenario } from '@prisma/client';
+import { aNameAPersonGave } from '../../common/no-internal-name-reaches-a-person';
 
 export interface SetupFacts {
   scenario: GroundScenario | null;
@@ -42,6 +43,16 @@ export interface SetupFacts {
    * travels rather than being left for the model to work out from context that does not contain it.
    */
   readerSetItUp?: boolean;
+  /**
+   * THE FIRST NAME OF WHOEVER SET IT UP, FOR EVERYBODY ELSE'S BLOCK.
+   *
+   * The block said "The person who set this up wrote this about the situation", and the model said
+   * it back: "Mei, the person who set this up wants to understand what it's actually like to work
+   * here" was the first line a person read (openread, run 10). A label read aloud is still a label.
+   * With a name, the block says the name; without one, "your lead", which is what a person calls
+   * whoever asked them to check in.
+   */
+  setUpBy?: string | null;
 }
 
 /**
@@ -58,6 +69,7 @@ export function situationInWords(scenario: GroundScenario | null): string | null
     case GroundScenario.CONTRACT_REVIEW: return 'an agreement before it is signed';
     case GroundScenario.IMPLEMENTATION_TRACKING: return 'an agreement that is running';
     case GroundScenario.NEW_PROJECT: return 'a new project starting';
+    case GroundScenario.HELP_TEAM_UNDERSTAND: return 'a lead who wants the team to see the bigger picture';
     case GroundScenario.NEW_COFOUNDER: return 'a new co-founder or partner joining';
     case GroundScenario.NEW_MANAGER: return 'a new manager taking over';
     case GroundScenario.NEW_ADVISOR: return 'a new advisor or board member joining';
@@ -89,7 +101,8 @@ export function alreadyEstablished(facts: SetupFacts): string {
   const situation = situationInWords(facts.scenario);
   if (situation) known.push(`This check-in was opened about ${situation}.`);
 
-  const label = facts.groundLabel?.trim();
+  /* A key or a made-up name is not a name (Naomi read "this new project, NEW_PROJECT,"): see no-internal-name-reaches-a-person. */
+  const label = aNameAPersonGave(facts.groundLabel);
   /* Only when it says something the situation line does not - an unrenamed check-in carries the
      card's own label, and repeating it back adds nothing but length. */
   if (label && situation && label.toLowerCase() !== situation.toLowerCase() && !label.toLowerCase().startsWith('a ')) {
@@ -103,13 +116,14 @@ export function alreadyEstablished(facts: SetupFacts): string {
      person who set this up wrote X" about their own sentence, the model treats X as somebody
      else's account and starts asking them to respond to it. */
   const theirs = facts.readerSetItUp;
-  const whoWrote = theirs ? 'You' : 'The person who set this up';
+  const setUpBy = facts.setUpBy?.trim() || null;
+  const whoWrote = theirs ? 'You' : (setUpBy ?? 'Their lead');
 
   const role = facts.roleAsDescribed?.trim();
   if (role) {
     known.push(theirs
       ? `You described your own part in it as: ${role}.`
-      : `The person who set this up described this person's part in it as: ${role}.`);
+      : `${setUpBy ?? 'Their lead'} described this person's part in it as: ${role}.`);
   }
 
   const brief = facts.adminBrief?.trim();
@@ -141,5 +155,10 @@ export function alreadyEstablished(facts: SetupFacts): string {
     '  somebody typed a brief - that is not this person saying it, and it may not even be their view.',
     '  Never say "you told me", never quote it back as their words, and never treat it as evidence.',
     '  Use it to know where to begin, then ask for their version of what matters.',
+    ...(theirs ? [] : [
+      '',
+      `  WHO SET IT UP HAS A NAME. When you mention them, say ${setUpBy ? `"${setUpBy}"` : '"your lead"'}. Never say`,
+      '  "the person who set this up", "the initiator" or "the lead": those are labels, not people.',
+    ]),
   ].join('\n');
 }

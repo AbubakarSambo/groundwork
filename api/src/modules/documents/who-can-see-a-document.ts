@@ -142,6 +142,6 @@ export function whoCanSeeItInWords(visibility: DocumentVisibility, contextEnable
       return 'Only whoever leads this check-in can see this.';
     case DocumentVisibility.OWN:
     default:
-      return 'Only you can see this. It supports your own account and nobody else can open it.';
+      return 'Only you can see this, and nobody else can open it.';
   }
 }

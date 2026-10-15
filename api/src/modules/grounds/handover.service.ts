@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CommitmentState, DependencyStatus } from '@prisma/client';
+import { withoutCommitmentsFromGoalsNotToldYet } from './a-commitment-from-a-goal-not-told-is-not-read-by-its-person';
 import { PrismaService } from '../prisma/prisma.service';
 import { BoardService } from '../board/board.service';
 import { DepartureService } from '../people/departure.service';
@@ -108,10 +109,11 @@ export class HandoverService {
     });
     const key = person?.email?.toLowerCase() ?? null;
 
-    const commitments = await this.prisma.commitment.findMany({
+    /* A copy of a goal the lead never told the leaver about is not handed to the successor either (decisions 48 and 56). */
+    const commitments = (await withoutCommitmentsFromGoalsNotToldYet(this.prisma, await this.prisma.commitment.findMany({
       where: { organizationId, personExternalId, state: { in: [CommitmentState.OPEN, CommitmentState.SLIPPED] } },
-      select: { text: true, state: true, dueAt: true, statedAt: true },
-    });
+      select: { text: true, state: true, dueAt: true, statedAt: true, sourcePersonObjectiveId: true },
+    }))).map(({ sourcePersonObjectiveId: _source, ...shown }) => shown);
 
     const { waiting } = await this.board.waitingAcrossTheOrg(organizationId);
     const mine = (side: 'from' | 'on') => waiting

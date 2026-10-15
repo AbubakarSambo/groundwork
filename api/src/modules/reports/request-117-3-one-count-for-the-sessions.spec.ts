@@ -1,0 +1,85 @@
+import { serviceFor, everyString } from './__fixtures__/sales-team-q3-two-sessions';
+import { boardAs } from '../board/the-switchboards-sections-harness';
+import { review5, RUKIA_RUNS_IT, AMANI, BARAKA_M, NEEMA, JUMA_READS, GRACE_SET_IT_UP } from '../board/__fixtures__/sales-board-review-5';
+
+/**
+ * SCREENS REQUEST 117 (3): SESSIONS COUNTED TWO WAYS.
+ *
+ * On "Sales team, Q3" session 1 was still open on the board's clock (Faraji Odhiambo, let in, had not checked in)
+ * while Rukia and Amani had done session 2. The header said "Session 1 of 12", the coaching note "This is session
+ * 2", and the lead's questions said Baraka "has not answered this session" while "The team today" said he had
+ * checked in, because the questions counted the highest row anybody had. All of them now count the board's own
+ * clock: the open round among the people who check in, capped at the last planned session.
+ */
+function heldOpenByFaraji() {
+  const { svc, w } = serviceFor('sales');
+  (svc as any).anthropic = { respond: jest.fn(async () => null) };
+  const ground: any = w.ground;
+  /* Faraji is let in, and has not started session 1. */
+  const faraji = ground.participants.find((p: any) => p.id === 'p-faraji');
+  faraji.user.awaitingOrgApproval = false;
+  const prisma: any = (svc as any).prisma;
+  const users = prisma.user.findMany;
+  prisma.user.findMany = async (args: any) => (await users(args)).filter((u: any) => u.id !== 'u-faraji');
+  /* Baraka and Neema have done session 1 only; session 2 is written ahead for them, untouched. */
+  const rows = w.checkIns as any[];
+  for (const c of rows) if (['p-baraka', 'p-neema'].includes(c.participantId) && c.sessionNumber === 2) { c.status = 'NOT_STARTED'; c.completedAt = null; }
+  rows.push({ id: 'c-p-faraji-1', groundId: 'g1', participantId: 'p-faraji', sessionNumber: 1, status: 'NOT_STARTED', isSetup: false, isFinal: false, completedAt: null });
+  return svc;
+}
+
+describe('request 117 (3): one count for the sessions', () => {
+  it('Rukia\'s coaching note says the session the header says', async () => {
+    const svc = heldOpenByFaraji();
+    const c: any = await svc.coachingForTheBoard('g1', 'u-rukia');
+    expect(c.yours.whyItMatters).toMatch(/^This is session 1 of 12 of this work\./);
+    expect(everyString(c.yours).join(' ')).not.toMatch(/session 2/);
+  });
+
+  it('Amani, who has done session 2, reads the same session in her own note', async () => {
+    const svc = heldOpenByFaraji();
+    const c: any = await svc.coachingForTheBoard('g1', 'u-amani');
+    expect(c.yours.whyItMatters).toMatch(/^This is session 1 of 12 of this work\./);
+  });
+
+  it.each([['Rukia', 'u-rukia'], ['Grace, who set it up', 'u-grace']])('%s is told only Faraji has not answered this session, never Baraka or Neema', async (_who, userId) => {
+    const svc = heldOpenByFaraji();
+    const c: any = await svc.coachingForTheBoard('g1', userId);
+    const notAnswered = (c.eachPerson as any[]).filter((p) => p.probe.some((l: string) => /has not answered this session/.test(l))).map((p) => p.who);
+    expect(notAnswered).toEqual(['Faraji Odhiambo']);
+  });
+
+  it('Juma, an admin who only reads, and Baraka are sent no probe list at all', async () => {
+    const svc = heldOpenByFaraji();
+    expect((await svc.coachingForTheBoard('g1', 'u-juma'))).toBeNull();
+    const baraka: any = await svc.coachingForTheBoard('g1', 'u-baraka');
+    expect(baraka.eachPerson).toBeNull();
+  });
+});
+
+describe('request 117 (3): the board says the same session to every reader', () => {
+  it.each([
+    ['Rukia, who runs it', RUKIA_RUNS_IT],
+    ['Amani, who checks in', AMANI],
+    ['Baraka, who checks in', BARAKA_M],
+    ['Neema, who checks in', NEEMA],
+    ['Juma, an admin who only reads', JUMA_READS],
+    ['Grace, the admin who set it up', GRACE_SET_IT_UP],
+  ])('%s: session 1 of 12, with session 2 started for some people', async (_who, reader) => {
+    const board = await boardAs(review5(), reader[0], reader[1]);
+    expect(board.phaseSpine.currentSession).toBe(1);
+    expect(board.phaseSpine.plannedSessions).toBe(12);
+    expect(board.phaseSpine.sessions.map((s: any) => s.says)).toEqual([
+      'Session 1 opened on 22 September, and it is still open.',
+      'Session 2 has started for some people, while session 1 is still open.',
+    ]);
+  });
+
+  it('the lead reads Baraka and Neema as having checked in for this round, and Faraji as not', async () => {
+    const board = await boardAs(review5(), ...RUKIA_RUNS_IT);
+    const says = Object.fromEntries((board.eachPerson as any[]).map((r) => [r.who, r.says]));
+    expect(says['Faraji Odhiambo']).toBe('Faraji Odhiambo has not checked in for this session yet.');
+    expect(says['Baraka Mwangi']).toMatch(/^Baraka Mwangi has checked in/);
+    expect(says['Neema Achieng']).toMatch(/^Neema Achieng has checked in/);
+  });
+});

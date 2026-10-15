@@ -1,6 +1,8 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { hasSlipped } from '../assistant/what-somebody-said-they-would-do';
+import { addACommitment, markACommitmentDone } from '../assistant/a-commitment-has-one-writer';
+import { withoutCommitmentsFromGoalsNotToldYet } from '../grounds/a-commitment-from-a-goal-not-told-is-not-read-by-its-person';
 import { Fence, mayTouch, OUTSIDE_THE_FENCE } from './a-fence-around-a-credential';
 
 /**
@@ -57,11 +59,12 @@ export class CommitmentsByApiService {
 
   private async listFor(organizationId: string, personExternalId: string) {
     const now = new Date();
-    const rows = await this.prisma.commitment.findMany({
+    /* A copy of a goal the lead has not told this person about is not listed, including rows copied before that rule (decisions 48 and 56). */
+    const rows = await withoutCommitmentsFromGoalsNotToldYet(this.prisma, await this.prisma.commitment.findMany({
       where: { organizationId, personExternalId },
       orderBy: [{ state: 'asc' }, { dueAt: 'asc' }, { statedAt: 'desc' }],
       take: 100,
-    });
+    }));
     const open = rows.filter((r) => r.state === 'OPEN');
     return {
       open: open.map((c) => this.shape(c, now)),
@@ -85,17 +88,14 @@ export class CommitmentsByApiService {
       });
       if (!subject) throw new NotFoundException(`No subject with externalId "${dto.subjectExternalId}".`);
     }
-    const created = await this.prisma.commitment.create({
-      data: {
-        organizationId,
-        personExternalId: who,
-        subjectExternalId: dto.subjectExternalId?.trim() || null,
-        text,
-        dueSaid: dto.dueSaid?.trim() || (dueAt ? dueAt.toISOString().slice(0, 10) : null),
-        dueAt,
-        state: 'OPEN',
-        source: 'api',
-      },
+    const created = await addACommitment(this.prisma, {
+      organizationId,
+      personExternalId: who,
+      subjectExternalId: dto.subjectExternalId?.trim() || null,
+      text,
+      dueSaid: dto.dueSaid?.trim() || (dueAt ? dueAt.toISOString().slice(0, 10) : null),
+      dueAt,
+      source: 'api',
     });
     return { ...this.shape(created, new Date()), says: `Noted: ${text}. It will come back to you in your next check-in.` };
   }
@@ -106,7 +106,7 @@ export class CommitmentsByApiService {
     /* The same answer whether it is not there or not theirs. */
     if (!row) throw new NotFoundException('No such commitment of yours.');
     if (row.state !== 'OPEN') return { ...this.shape(row, new Date()), says: 'That one was already closed.' };
-    const updated = await this.prisma.commitment.update({ where: { id }, data: { state: 'KEPT', resolvedAt: new Date() } });
+    const updated = await markACommitmentDone(this.prisma, id);
     return { ...this.shape(updated, new Date()), says: `Done: ${row.text}.` };
   }
 }

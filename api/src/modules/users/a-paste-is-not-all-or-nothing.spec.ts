@@ -64,20 +64,29 @@ describe('seats, which is the whole reason there is a preview', () => {
   });
 });
 
+/*
+ * U.4: the line is now full sentences, as every line a person reads must be. It read "1 to invite,
+ * 1 already here, 1 repeated, 1 not an address, 1 with no seat on your plan", pieces joined with
+ * commas, so these cases check the sentences instead. The order they protect is the same.
+ */
 describe('the line an admin reads before emailing their company', () => {
-  it('leads with what will be sent and ends with what is blocked', () => {
+  it('leads with what will be sent and ends with what is blocked, in full sentences', () => {
     const rows = planFor('a@x.com, b@x.com, c@x.com, a@x.com, oops', (e) => e === 'b@x.com', 1);
-    const said = summarise(rows);
-    expect(said).toContain('1 to invite');
-    expect(said).toContain('1 already here');
-    expect(said).toContain('1 repeated');
-    expect(said).toContain('1 not an address');
-    /* Last, because it is the one that needs a decision from them. */
-    expect(said.endsWith('1 with no seat on your plan')).toBe(true);
+    expect(summarise(rows)).toBe(
+      '1 person will be invited. 1 person is already here. 1 address was listed twice, so it is left out. '
+      + '1 line is not an email address. 1 person has no seat on your plan, so the invitation will be kept until there is room.',
+    );
+  });
+
+  it('says the plural right, and changes tense once the invitations have gone', () => {
+    const rows = planFor('a@x.com, b@x.com, a@x.com, b@x.com, oops, nope', () => false, null);
+    expect(summarise(rows)).toBe('2 people will be invited. 2 addresses were listed twice, so they are left out. 2 lines are not email addresses.');
+    expect(summarise(planFor('a@x.com', () => false, null), true)).toBe('1 person was invited.');
+    expect(summarise(planFor('a@x.com, b@x.com', () => false, null), true)).toBe('2 people were invited.');
   });
 
   it('says so plainly when there is nothing to do', () => {
-    expect(summarise([])).toBe('Nothing to send');
+    expect(summarise([])).toBe('There is nobody new to invite.');
   });
 });
 

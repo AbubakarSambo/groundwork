@@ -50,9 +50,25 @@ export class BackOfficeDoorGuard implements CanActivate {
       now: new Date(),
     });
     if (decision.open) return true;
+    /* Somebody who is not staff can never be sent a code, so they are not told to look for one (B-008): the same words as when they ask for it at the door. */
+    if (await this.isNotStaff(user.id)) throw new ForbiddenException('This part is for Groundwork staff.');
     throw new ForbiddenException({
       code: CODE_REQUIRED,
       message: 'The back office needs a code sent to your email. It holds for a week.',
     });
+  }
+
+  /** The same three ways of being staff as the door service reads (back-office-door.service.ts). An unreadable answer is "staff", so the old refusal stands. */
+  private async isNotStaff(userId: string): Promise<boolean> {
+    try {
+      const [user, person, account] = await Promise.all([
+        this.prisma.user.findUnique({ where: { id: userId }, select: { isPlatformAdmin: true } }),
+        this.prisma.opsPerson.findFirst({ where: { userId, active: true }, select: { id: true } }),
+        this.prisma.opsPersonAccount.findFirst({ where: { userId, person: { active: true } }, select: { id: true } }),
+      ]);
+      return !user?.isPlatformAdmin && !person && !account;
+    } catch {
+      return false;
+    }
   }
 }

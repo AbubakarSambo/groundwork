@@ -1,3 +1,6 @@
+import { withoutComparisonsBetweenPeople } from './no-comparison-between-people';
+import { onlyWhoIsActuallyOutside } from '../board/somebody-carrying-work-with-no-account';
+import { WHERE_IT_BELONGS } from './the-four-reports';
 /**
  * A READ OF HOW SOMEBODY IS DOING BELONGS TO THAT PERSON, NOT TO THEIR COLLEAGUES.
  *
@@ -21,10 +24,9 @@
  * accounts, so a leak here does not just embarrass one person, it quietly
  * degrades every record that follows it.
  *
- * THE RULE, which is the one names already follow:
- *   a participant sees the read of their OWN record and nobody else's;
- *   the lead sees everyone, because leading is what the board is for and they
- *   see these reads there already.
+ * THE RULE, since 28 September 2026: a reader is sent the read of their OWN
+ *   answers and nobody else's, the lead and an org admin included. Hafsah's
+ *   decision; see below.
  *
  * Structural, at the read, for the reason two prompt-only guardrails on this
  * product leaked in a single day: a rule that lives in wording holds until the
@@ -36,8 +38,10 @@ export interface OwnReadsInput {
   viewerLabel: string | null;
   /** The reader's participant id, for the fields keyed that way. */
   viewerParticipantId: string | null;
-  /** Leads see everything here; they carry the ground. */
+  /** A lead or org admin. They keep leadershipGaps; like everyone, only their own rating, and no concernFlags. */
   viewerIsLead: boolean;
+  /** Everybody on the check-in, by name. Lets the lead's list of people outside the room be cut the way the board cuts it. */
+  partyNames?: string[];
 }
 
 /** Anything shaped `{ label, ... }`, which is how the per-party reads are stored. */
@@ -61,7 +65,7 @@ const keepOwnById = (map: any, viewerParticipantId: string | null): any => {
 };
 
 /**
- * Strip other people's reads out of a report before it reaches a participant.
+ * Strip other people's ratings out of a report before it reaches any reader, the lead included.
  *
  * What deliberately STAYS for everybody:
  *   parties[] keeps sessions and whether each person contributed. That is
@@ -69,17 +73,22 @@ const keepOwnById = (map: any, viewerParticipantId: string | null): any => {
  *   something the others are entitled to know - it is why their own account has
  *   nothing to be compared against yet.
  *
- * What goes, for everyone but the reader themselves:
- *   specificityNotes, specificitySignal, recallNotes, the per-party
- *   specificityLabel, and the closing tiers.
+ * What goes, for every reader but the person it is about, the lead and an org admin included:
+ *   specificityNotes, specificitySignal, pictureConfidence, specificityCauses,
+ *   recallNotes, the per-party specificityLabel, and the closing tiers.
  *
  * What goes entirely for a participant:
  *   concernFlags, which is a list of concerns about named parties and has no
  *   business in anybody's hands but the lead's.
  */
-export function withoutOtherPeoplesReads<T extends Record<string, any>>(
+export function withoutOtherPeoplesReads<T extends Record<string, any>>(report: T, input: OwnReadsInput): T {
+  /* And no sentence that ranks a person against others, for any reader (no-comparison-between-people.ts). */
+  return withoutComparisonsBetweenPeople(withoutOtherPeoplesRatings(report, input));
+}
+
+function withoutOtherPeoplesRatings<T extends Record<string, any>>(
   report: T,
-  { viewerLabel, viewerParticipantId, viewerIsLead }: OwnReadsInput,
+  { viewerLabel, viewerParticipantId, viewerIsLead, partyNames }: OwnReadsInput,
 ): T {
   /**
    * WHAT A PERSON WAS PRIVATELY ADVISED TO SAY IS NOBODY ELSE'S, INCLUDING THE LEAD'S.
@@ -113,27 +122,33 @@ export function withoutOtherPeoplesReads<T extends Record<string, any>>(
     return { ...report, engagement: eng };
   })();
 
-  if (viewerIsLead) return withoutGuides;
-
+  /*
+   * NO READER IS SENT ANYONE'S RATING. Hafsah's decision, 28 September 2026: "leads and admins are
+   * never sent how anyone's answers were rated. Ratings may be used inside the engine to build
+   * reports, but are never served to any reader." Until then the lead returned here with every
+   * person's reads, on the rule this file used to state ("the lead sees everyone"), which
+   * contradicted CLAUDE.md. So other people's ratings come off for every reader, the lead and an
+   * org admin included, and before the lead's early return. Nothing on any report screen reads them.
+   *
+   * A reader keeps the read of their OWN answers, which is the decision of 1 September 2026 (see
+   * specificity-is-yours-to-see.spec.ts) and the Done page's "Only you see it". A lead who gave an
+   * account keeps theirs; an org admin with no account of their own keeps none.
+   */
   const engagement = withoutGuides.engagement && typeof withoutGuides.engagement === 'object'
     ? { ...(withoutGuides.engagement as Record<string, any>) }
     : null;
 
   if (engagement) {
-    if ('specificityNotes' in engagement) engagement.specificityNotes = keepOwnByLabel(engagement.specificityNotes, viewerLabel);
-    if ('recallNotes' in engagement) engagement.recallNotes = keepOwnByLabel(engagement.recallNotes, viewerLabel);
-    if ('specificitySignal' in engagement) engagement.specificitySignal = keepOwnByKey(engagement.specificitySignal, viewerLabel);
-    /* Keyed by label the same way, and missed the same way: a per-person confidence band. */
-    if ('pictureConfidence' in engagement) engagement.pictureConfidence = keepOwnByKey(engagement.pictureConfidence, viewerLabel);
-    if ('specificityCauses' in engagement) engagement.specificityCauses = keepOwnByLabel(engagement.specificityCauses, viewerLabel);
-    // Concerns about people. Not a participant's to read about anyone, including
-    // themselves - a concern is raised with a person, never delivered to them in
-    // a document alongside their colleagues' names.
-    delete engagement.concernFlags;
-    // Per-party quality label lives on parties[] too. Participation stays.
+    for (const k of ['specificityNotes', 'recallNotes', 'specificityCauses']) {
+      if (k in engagement) engagement[k] = keepOwnByLabel(engagement[k], viewerLabel);
+    }
+    for (const k of ['specificitySignal', 'pictureConfidence']) {
+      if (k in engagement) engagement[k] = keepOwnByKey(engagement[k], viewerLabel);
+    }
+    /* The per-party label goes too. Participation (sessions, whether they contributed) stays. */
     if (Array.isArray(engagement.parties)) {
       engagement.parties = engagement.parties.map((p: any) =>
-        p?.label === viewerLabel ? p : { ...p, specificityLabel: undefined },
+        p?.label && p.label === viewerLabel ? p : { ...p, specificityLabel: undefined, confidence: undefined },
       );
     }
   }
@@ -144,6 +159,40 @@ export function withoutOtherPeoplesReads<T extends Record<string, any>>(
   if (finalSynthesis && 'tiers' in finalSynthesis) {
     finalSynthesis.tiers = keepOwnById(finalSynthesis.tiers, viewerParticipantId);
   }
+
+  /*
+   * B-110: `concernFlags` says, per named person, how thin or generic their answers were ("significantly
+   * fewer and less specific entries than others on the same ground"). That is a rating of how a person's
+   * answers were rated, so it goes for every reader, the lead and an org admin included (CLAUDE.md, and
+   * the Hafsah decision that a lead reads only the plain forms). The engine still builds it and may use it inside.
+   */
+  if (engagement) delete engagement.concernFlags;
+
+  const withoutRatings: Record<string, any> = {
+    ...withoutGuides,
+    ...(engagement ? { engagement } : {}),
+    ...(finalSynthesis ? { finalSynthesis } : {}),
+  };
+
+  if (viewerIsLead) {
+    /* The lead keeps the people carrying work outside the room, cut the way the board cuts it. */
+    if (engagement && Array.isArray(engagement.hiddenContributors)) {
+      engagement.hiddenContributors = onlyWhoIsActuallyOutside(engagement.hiddenContributors, partyNames ?? []).keep;
+    }
+    return withoutRatings as T;
+  }
+
+  /* Every field the map marks lead-only is the lead's alone. Stripped here, on the server, for
+     everybody else, so a member's API call never carries it (the-four-reports, leadOnly). */
+  if (engagement) {
+    for (const [field, placed] of Object.entries(WHERE_IT_BELONGS)) if (placed.leadOnly) delete engagement[field];
+  }
+
+  /* Concerns about people. Not a participant's to read about anyone, including themselves - a
+     concern is raised with a person, never delivered to them in a document alongside their
+     colleagues' names. */
+  /* `engagement` is this call's own copy, and the lead has already returned with it. */
+  if (engagement) delete engagement.concernFlags;
 
   /**
    * LEADERSHIP GAPS ARE ABOUT HOW ONE PERSON IS LEADING, AND THEY WERE GOING TO
@@ -161,11 +210,8 @@ export function withoutOtherPeoplesReads<T extends Record<string, any>>(
    * should see a read of the person leading them. Silently shipping it to
    * everyone is not that answer.
    */
-  const out: Record<string, any> = {
-    ...withoutGuides,
-    ...(engagement ? { engagement } : {}),
-    ...(finalSynthesis ? { finalSynthesis } : {}),
-  };
+  const out: Record<string, any> = { ...withoutRatings };
   delete out.leadershipGaps;
+  for (const [field, placed] of Object.entries(WHERE_IT_BELONGS)) if (placed.leadOnly) delete out[field];
   return out as T;
 }

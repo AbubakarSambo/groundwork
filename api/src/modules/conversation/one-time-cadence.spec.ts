@@ -19,7 +19,8 @@ function makeService(groundRow: any) {
       create: jest.fn(async (args: any) => { checkInCreateCalls.push(args); return { id: 'new-ci', ...args.data }; }),
       findFirst: jest.fn(async () => null),
     },
-    groundParticipant: { findUnique: jest.fn(async () => ({ partyType: PartyType.INITIATOR })), findMany: jest.fn(async () => []) },
+    /* CHANGED 11 OCTOBER (decision 133): the row was the lead's; the lead now gets no scheduled session, so the control uses a participant. */
+    groundParticipant: { findUnique: jest.fn(async () => ({ partyType: PartyType.PARTICIPANT })), findMany: jest.fn(async () => []) },
   };
   const service = new ConversationService(
     prisma, {} as any, {} as any, {} as any, { emit: () => undefined } as any, {} as any, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any,

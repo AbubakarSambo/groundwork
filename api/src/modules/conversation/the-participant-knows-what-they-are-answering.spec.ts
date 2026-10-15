@@ -33,7 +33,9 @@ describe('opening a check-in returns what it is about', () => {
     expect(OPEN).toMatch(/\.\.\.WHAT_THE_BRIEF_IS_READ_FROM/);
     const shape = CODE.split('const WHAT_THE_BRIEF_IS_READ_FROM = {')[1]?.split('} as const;')[0] ?? '';
     expect(shape).toMatch(/label: true/);
-    expect(shape).toMatch(/objectives: \{ select: \{ name: true, target: true, ownerParticipantId: true \}/);
+    /* Gained isADecisionAboutAPerson (decision 46, 29 September 2026) alongside the rest. */
+    /* And who set each target and which way it goes (decision 69, 1 October 2026). */
+    expect(shape).toMatch(/objectives: \{ select: \{ name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true, setByParticipantId: true, direction: true \}/);
   });
 
   it('BOTH return paths carry the brief, not just a first open', () => {
@@ -52,7 +54,10 @@ describe('opening a check-in returns what it is about', () => {
     expect(CODE).toMatch(/subject: ground\.label \?\? null/);
     /* The objectives the reader may see, which is all of them unless a target has somebody's name
        on it. See whose-number-is-whose-business. */
-    expect(CODE).toMatch(/objectives: maySee\.shown/);
+    /* Since 1 October 2026 as sentences about whoever set each one, with only the fields a reader is
+       shown, and without a goal the lead has not told them about (decisions 69 and 56). */
+    expect(CODE).toMatch(/objectives: this\.theTargetsAsSentences\(maySee\.shown as any\[\], ground as any, reader\?\.participantId \?\? null\)/);
+    expect(CODE).toMatch(/shown: withoutWhatTheLeadHasNotToldThemAbout\(allowed\.shown/);
   });
 });
 

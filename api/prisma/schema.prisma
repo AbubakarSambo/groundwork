@@ -98,6 +98,13 @@ enum GroundScenario {
   /// this enum is an objective agreed at the start and a run of check-ins testing work against it.
   SNAPSHOT
 
+  /// THE ANCHOR SCENARIO: a lead who arrived from the shared link and brings up to 20 people for a month.
+  ///
+  /// It behaves exactly like NEW_PROJECT everywhere a situation decides something (every table that is keyed
+  /// by this enum copies NEW_PROJECT's row), and differs only in its own name. It is saved so that the check-in
+  /// keeps the situation it was started as, rather than being recorded as a project. Existing rows are untouched.
+  HELP_TEAM_UNDERSTAND
+
   /// ONE LINE, SOME EMAIL ADDRESSES, AND A RHYTHM. THE LIGHTEST THING IN THIS ENUM.
   ///
   /// Hafsah, 18 September 2026: "You write one line about what you want to know, drop in their
@@ -313,6 +320,26 @@ model PricingPlan {
   memberCap       Int?             @map("member_cap")
   stripeProductId String?          @map("stripe_product_id")
   stripePriceId   String?          @map("stripe_price_id")
+  /// WHATSAPP, A PAID ADD-ON (decision 78). What WhatsApp costs a month on this plan, about 80% of
+  /// the plan's price, edited at Admin, System, Pricing the way the plan price is. Null means the
+  /// add-on cannot be bought on this plan by itself (Enterprise is arranged by contacting us).
+  whatsappAddOnCents         Int?    @map("whatsapp_add_on_cents")
+  /// The Stripe Price for the add-on, created only when the amount has none cached, and cleared
+  /// whenever the amount changes, exactly as `stripePriceId` is.
+  whatsappAddOnStripePriceId String? @map("whatsapp_add_on_stripe_price_id")
+  /// How many WhatsApp messages an organisation on this plan may send in a calendar month. Null
+  /// means no limit. At the limit, check-ins carry on in the app until the next month.
+  whatsappMonthlyLimit       Int?    @map("whatsapp_monthly_limit")
+  /// EXTRA SEATS (fix list item 6, 15 October 2026): what one seat past `memberCap` costs a month on this plan, $5 when
+  /// it was added. Null means the plan cannot add seats by itself (Enterprise). Its Stripe Price is cached and cleared
+  /// whenever the amount changes, exactly as `stripePriceId` is.
+  extraSeatCents               Int?    @map("extra_seat_cents")
+  extraSeatStripePriceId       String? @map("extra_seat_stripe_price_id")
+  /// WHATSAPP PER PERSON (fix list item 6): what WhatsApp costs a month for each person who used it that month, $4 when
+  /// it was added, never more than the seats. Replaces `whatsappAddOnCents` for everybody but the organisations that
+  /// keep their flat line (`Organization.whatsappFlatAddOnKept`). Its Stripe Price is metered.
+  whatsappPersonCents          Int?    @map("whatsapp_person_cents")
+  whatsappPersonStripePriceId  String? @map("whatsapp_person_stripe_price_id")
   updatedAt       DateTime         @updatedAt @map("updated_at")
 
   @@map("pricing_plans")
@@ -453,6 +480,35 @@ enum WorkspaceKind {
 
 model Organization {
   membershipRequests MembershipRequest[]
+  /// Which suites an admin has switched on, with their answers (E, U.17).
+  suites             OrganizationSuite[]
+  /// Requests for time off, for the leave suite (E2, U.17).
+  leaveRequests      LeaveRequest[]
+  /// What a lead confirmed is true of the whole company (week 20), kept next to the knowledge cards.
+  memories           OrganizationMemory[]
+  /// Hours for billing, for the time sheets suite (E3, U.17). Never evidence about anybody's work.
+  timeEntries        TimeEntry[]
+  timeWeeks          TimeWeek[]
+  timeAgreements     TimeAgreement[]
+  /// Performance reviews, for the reviews suite (E4, U.17).
+  performanceReviews PerformanceReview[]
+  /// When someone leaves: the checklist, and signs a team is under strain (E5, U.17).
+  leavingChecklists  LeavingChecklist[]
+  teamStrainSigns    TeamStrainSign[]
+  /// The role map: the role interview's answers, and why a job nobody owns matters (E6, U.17).
+  roleInterviews     RoleInterviewAnswer[]
+  roleGapNotes       RoleGapNote[]
+  /// Spending and budgets: requests to spend, and each team's budget for a month (E7, U.17).
+  spendRequests      SpendRequest[]
+  teamBudgets        TeamBudget[]
+  /// Customers and deals: where each customer stands, as the engine writes it (E9, U.17).
+  customerStandings  CustomerStanding[]
+  /// Equipment: who has which laptop, phone or demo freezer, and how it is (E10, U.17).
+  equipmentItems     EquipmentItem[]
+  /// One record of who did what on a suite's request, and each change of a suite's rules (decision 85, build step 5).
+  suiteEvents        SuiteEvent[]
+  suiteQuestions     SuiteQuestion[]
+  suiteRuleChanges   SuiteRuleChange[]
   evaluationsDue     EvaluationDue[]
   apiAccessRequest   ApiAccessRequest?
   whatWorked         WhatWorked[]
@@ -496,8 +552,59 @@ model Organization {
   /// of the three - paid, on the house, or the free tier - applies today. It expires by arithmetic.
   freeUntil DateTime?         @map("free_until")
   freePlan  SubscriptionPlan? @map("free_plan")
+  /// THE FREE TRIAL (U.19, Hafsah's decision of 26 September): when this organisation was given its
+  /// free months for being a team under the trial's size. Set once, so an organisation gets the
+  /// trial once. The months themselves are `freeUntil` and `freePlan`, like any free run. Empty
+  /// while the trial setting (`pricing.freeTrial`) is off, which it is by default.
+  freeTrialStartedAt DateTime? @map("free_trial_started_at")
+  /// A FREE MONTH FOR EVERY ORGANISATION ALREADY HERE (Hafsah, 14 October 2026; migration 98): when it was given, so it
+  /// is given once. Empty for an organisation that was paying or covered then, and for every organisation made after it.
+  freeMonthOfReleaseAt DateTime? @map("free_month_of_release_at")
+  /// WHATSAPP, A PAID ADD-ON (decision 78). Turned on by an admin of the organisation on Plan and
+  /// billing. Nothing is charged during the free trial or on the free plan; once the trial has ended
+  /// and the organisation pays for a plan, it is a second monthly line on its Stripe subscription.
+  whatsappAddOnOn        Boolean   @default(false) @map("whatsapp_add_on_on")
+  /// WHATSAPP IS ON FOR A FREE MONTH (Hafsah, 13 October 2026, evening): "This is turned on automatically but also for
+  /// only a one month trial like your other trials; you pay for it when you add it on your subscription." Every new
+  /// organisation gets a month from when it is made; every organisation already here got a month from the day this came
+  /// in. After it, WhatsApp goes only where it was added to the subscription (`whatsappAddOnOn`).
+  whatsappFreeUntil      DateTime? @default(dbgenerated("(now() + '1 mon'::interval)")) @map("whatsapp_free_until")
+  whatsappAddOnChangedAt DateTime? @map("whatsapp_add_on_changed_at")
+  /// The Stripe subscription item that charges the add-on, while it is charged.
+  whatsappAddOnItemId    String?   @map("whatsapp_add_on_item_id")
+  /// The Stripe subscription items for the extra seats (a quantity) and for WhatsApp per person (metered), while charged.
+  extraSeatsItemId       String?   @map("extra_seats_item_id")
+  whatsappPeopleItemId   String?   @map("whatsapp_people_item_id")
+  /// An organisation that was paying the old flat WhatsApp line when the new pricing came in keeps exactly that line until
+  /// it adds a seat, switches WhatsApp off and on, or changes plan (fix list item 6). Then it moves to WhatsApp per person.
+  whatsappFlatAddOnKept  Boolean   @default(false) @map("whatsapp_flat_add_on_kept")
+  whatsappMonthlyUse     WhatsAppMonthlyUse[]
 
   companyStage CompanyStage? @map("company_stage")
+
+  /// JOINING BY EMAIL DOMAIN (U.3, Hafsah, 26 September): "Anyone with an @baridi.co.ke email can
+  /// join", as "Takes part". Set only while an admin has it switched on, and only to that admin's own
+  /// confirmed domain, never a public mail provider (common/an-email-domain.ts). Unique, so one domain
+  /// belongs to one organisation. Null means nobody joins by domain.
+  joinDomain String? @unique @map("join_domain")
+
+  /// THE ORGANISATION'S OWN TIME ZONE (B-094, 9 October 2026), a zone name such as "Africa/Nairobi". Every day a board, a report or Today writes in a
+  /// sentence ("raised on 9 October", "Session 2 opens on 16 October") is the day in this zone, not the day in UTC. Null means nobody has said: the day is
+  /// then worked out from where the people's phone numbers are, and failing that the product's own (common/the-organisations-own-day.ts).
+  timeZone String? @map("time_zone")
+
+  /// THE ORGANISATION'S OWN INVITE LINK (U.3): /j/<code>, where the code is the organisation's name
+  /// with a random part, such as "baridi-7k2p". Joining through it gives "Takes part". Null while an
+  /// admin has it off; turning it on again makes a new code, so an old link stops working.
+  inviteLinkCode     String? @unique @map("invite_link_code")
+  /// The admin who turned it on, named on the link's page as the prototype does.
+  inviteLinkByUserId String? @map("invite_link_by_user_id")
+
+  /// WHAT THE PERSON WHO CREATED IT SAID ABOUT ITS SIZE, on "Create an organisation" (U.3): "fewer"
+  /// or "more" than `teamSizeLine` people, the free trial's team size they were shown. Only asked
+  /// while the trial is on. Nothing grants a trial from it yet (U.19); it is kept so billing can.
+  teamSizeSaid String? @map("team_size_said")
+  teamSizeLine Int?    @map("team_size_line")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -606,6 +713,9 @@ model User {
   tokenEpoch          Int      @default(0) @map("token_epoch")
   googleId            String?  @unique @map("google_id")
   emailNotifications  Boolean  @default(true) @map("email_notifications")
+  /// When this person pressed "Got it" on the new admin's welcome card (U.3), so it does not come back
+  /// on another device. Null means they have not.
+  welcomeCardSeenAt   DateTime? @map("welcome_card_seen_at")
   // E.164 format (e.g. "+2348012345678"). Global uniqueness - one Groundwork
   // WhatsApp number serves everyone, so a phone number identifies exactly one
   // account, not one per org. Set by the user in Settings, or by an
@@ -708,6 +818,12 @@ model PendingSignup {
   /// Set when somebody signed up with a password. Held here rather than on a
   /// User, because a User is what must not exist before the address is proved.
   passwordHash String?  @map("password_hash")
+  /// THE BROWSER THAT CHOSE THE PASSWORD (U.3 review, a security fix). The hash of a random key handed
+  /// only to the browser that signed up. The password above is put on the account only when the
+  /// confirmation is opened with that key; opened anywhere else, the password is thrown away and the
+  /// person chooses one afterwards, as after a link-only sign-up. So somebody who signs up with another
+  /// person's address cannot choose that person's password.
+  passwordKeyHash String? @map("password_key_hash")
   // The anonymous session, carried verbatim so the ground can be built after
   // verification from any browser - not only the one that started it.
   payload      Json?
@@ -715,6 +831,13 @@ model PendingSignup {
   // The draft token the entry page keeps, so post-email edits (the org name
   // arrives this way) can still reach this record before there is a user.
   draftToken   String?  @unique @map("draft_token")
+  /// Where in the app the person was going when they signed up, such as an organisation's invite
+  /// link ("/j/baridi-7k2p"). Only a path inside this app is ever stored (common/a-path-in-this-app),
+  /// and the confirmation carries them back to it (U.3).
+  next         String?  @map("next_path")
+  /// Set when Google proved the address and the person still has to choose where they work (U.3
+  /// review): the account made from this waiting sign-up signs in with Google, and needs no password.
+  googleId     String?  @map("google_id")
   expiresAt    DateTime @map("expires_at")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
@@ -839,6 +962,9 @@ model EmailVerificationToken {
   type      TokenType
   expiresAt DateTime  @map("expires_at")
   usedAt    DateTime? @map("used_at")
+  /// For a sign-in link: where in the app the person was going when they asked for it. Only a path
+  /// inside this app (common/a-path-in-this-app). Null for every other kind of link (U.3).
+  next      String?   @map("next_path")
   createdAt DateTime  @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -875,6 +1001,15 @@ model Ground {
   /// which is the case that had no way to be said at all: it was all of them or none of them.
   overWhatsApp Boolean? @map("over_whatsapp")
 
+  /// USE SIMPLER WORDS: THE LEAD (OR AN ADMIN WHO RUNS IT) SWITCHES THIS ON FOR EVERYBODY IN THE CHECK-IN.
+  ///
+  /// False is every check-in that existed before, and it changes nothing: the conversation and
+  /// everything sent afterwards read exactly as they did. True gives the model the same plain-words
+  /// rule a person's own style profile can give it, for every person in the check-in, and sends the
+  /// plainer form of every fixed sentence (the closing, the end card, the report message, reminders).
+  /// A boolean with a default of false is safe here: nobody has been decided for.
+  simplerWords Boolean @default(false) @map("simpler_words")
+
   /// WHAT THE ROOM IS ABOUT: THE AIMS, THE PLACES AND THE THINGS, READ ONCE WHEN A ROUND CLOSES.
   ///
   /// Forty people each said what they were trying to achieve, where, and about what crop. All of it
@@ -888,6 +1023,13 @@ model Ground {
   whatTheRoomIsAboutSession Int?  @map("what_the_room_is_about_session")
 
   timelineDays     Int     @map("timeline_days")
+  /// A CHECK-IN THAT RUNS UNTIL THE LEAD ENDS IT ("When I end it", request 37).
+  ///
+  /// True means there is no planned length and no planned last session. `timelineDays` is then 0, which
+  /// every reader of the length already treats as "no end" (no deadline, no planned session count), so
+  /// nothing can measure how far through it is or call it out of time. Only the lead ending it closes
+  /// it. False is every check-in that existed before, unchanged.
+  runsUntilEnded   Boolean @default(false) @map("runs_until_ended")
   /// DID THE LEAD CHOOSE THIS, OR DID WE.
   ///
   /// `timelineDays` is not nullable and `cadence` has a default, so both are set on every ground from
@@ -942,6 +1084,24 @@ model Ground {
   /// brief changes; guarded in code so no instruction to the product and none of the lead's first
   /// person reaches them. Null falls back to the declarative sentences of the brief.
   toldToParticipants String? @map("told_to_participants")
+  /// THE KIND OF WORK THIS CHECK-IN IS ABOUT (request 76, Hafsah's ruling of 29 September 2026).
+  /// One of the eleven kinds the prototype's example boards show ("sales org", "engineering
+  /// release", "a law firm matter" and so on; the list is in board/the-kind-of-work.ts), or null
+  /// when nobody can tell. Read from the lead's own words and the brief when setup is saved, checked
+  /// in code against the eleven, and the lead can change it. The kind decides which records the
+  /// board holds (deals and their stages, releases, tickets), never which sections a situation has.
+  kindOfWork        String?   @map("kind_of_work")
+  /// Who set it: "read" when Groundwork read it from setup, "lead" when the lead chose it. A lead's
+  /// choice is never overwritten by a later read.
+  kindOfWorkSetBy   String?   @map("kind_of_work_set_by")
+  /// WHERE THIS CHECK-IN WAS STARTED FROM, when it was started from the anchor link (docs/anchor-scenario-plan.md, piece 15). "anchor" or
+  /// null. Written once, when the lead saves what they said in the anchor conversation and the anchor switch is on. A check-in that holds it
+  /// keeps behaving as an anchor check-in even if the switch is later turned off. Null on every check-in that exists.
+  startedFrom       String?   @map("started_from")
+  /// The organisation's own stage names for this kind of work, in order, when the lead has given
+  /// them. Null means the kind's defaults, which are the prototype's (for sales: Contacted, Need
+  /// established, Pitched, Qualified, Quoted, Won).
+  workStages        Json?     @map("work_stages")
   groundAuditLog  Json?     @map("ground_audit_log") // append-only JSON log of timeline/cadence changes
   createdByUserId String?   @map("created_by_user_id") // the admin who set this up for a lead; null for self-serve grounds
 
@@ -1077,8 +1237,11 @@ model Ground {
   reportRounds      ReportRound[]
   reportNotices     ReportNotice[]
   report            Report?
+  weeklyReports     WeeklyReport[]
   patternDetections PatternDetection[]
   resolution        Resolution?
+  /// Groundwork's suggestions from a verdict, about someone in this check-in (C3, U.13).
+  suggestions       Suggestion[]
   outcome           Outcome?
   outcomeFeedback   OutcomeFeedback[]
   billingEvents     BillingEvent[]
@@ -1087,8 +1250,10 @@ model Ground {
   baselineEntries   GroundBaselineEntry[]
   setupSignOffs     GroundSetupSignOff[]
   leadContextNotes  LeadContextNote[]
+  leadSetupWords    LeadSetupWords?
   commitments       GroundCommitment[]
   contextItems      GroundContextItem[]
+  planProposals     PlanProposal[]
   pastesTaken       GroundPaste[]
   reportActivations ReportActivation[]
   roundCompletions  RoundCompletion[]
@@ -1112,6 +1277,7 @@ model Ground {
   expectThemToUnblock        Boolean                     @default(true) @map("expect_them_to_unblock")
   dependencies               GroundDependency[]
   workMentions               WorkMention[]
+  workItems                  WorkItem[]
   poll                       GroundPoll?
   participantRequests        ParticipantRequest[]
   contributorCodeRedemptions ContributorCodeRedemption[]
@@ -1181,6 +1347,9 @@ model GroundBaseline {
   conditions       Json?
   // Why it changed, if they said. Never inferred, never invented.
   changeReason     String? @map("change_reason")
+  /// DECISION 63, 30 September 2026: set only when stating this version was done by an admin
+  /// standing in because the lead had left the organisation. See who-may-confirm-setup.ts.
+  confirmedByAdminNote String? @map("confirmed_by_admin_note") @db.Text
 
   // When this version took effect. Everything before it belongs to the last one.
   effectiveFrom DateTime @default(now()) @map("effective_from")
@@ -1248,6 +1417,14 @@ model GroundParticipant {
   /// own words. It used to go into the invite email and nowhere else, so the one statement of what
   /// somebody was taken on to do was not on the record the reports read.
   remitAsGiven               String?           @map("remit_as_given") @db.Text
+  /// WHO PUT THIS PERSON ON THE CHECK-IN: the lead, or the admin who set it up for them (U.4).
+  /// Read by the door rule (participants/nobody-joins-your-company-by-being-invited-to-a-check-in.ts):
+  /// somebody an admin of this organisation added does not wait for an admin. The rule used to ask the
+  /// person who RUNS the check-in, so four people an admin added to a check-in she set up for a lead
+  /// were all held for approval. Null on older rows and on doors with no adder (an open link), where
+  /// the rule falls back to the person who runs it, as before. An id, not a relation: the adder may
+  /// leave, and the row must not.
+  addedByUserId              String?           @map("added_by_user_id")
   /// Whether they came in through the open link rather than being put on a roster. Recorded rather
   /// than inferred: `invitedAt` is set on a link respondent immediately, the `@unclaimed.invalid`
   /// address is replaced when they finish, and a null `userId` is also true of somebody invited who
@@ -1276,6 +1453,11 @@ model GroundParticipant {
   /// nothing on the roster said. The conversation happens in it; the record stays in English.
   language                   String?           @db.VarChar(8)
   invitedAt                  DateTime?         @map("invited_at")
+  /// WHEN THEY ACCEPTED THE INVITATION (Hafsah, 13 October 2026: "count someone as missed only if they joined
+  /// the check-in (accepted the invitation) and then never opened a session"). Written when they press Join on
+  /// their invitation or come in through the check-in's own join link. Being able to sign in, or having seen the
+  /// welcome, is not accepting: a sign-in can exist before anybody accepts. See grounds/invited-not-joined-yet.ts.
+  acceptedAt                 DateTime?         @map("accepted_at")
   notifiedAt                 DateTime?         @map("notified_at") // never added silently
   // Mirror of the LATEST invite-kind EmailDelivery status for this participant
   // (SENT | DELIVERED | BOUNCED | COMPLAINED) - written by the Resend webhook.
@@ -1286,6 +1468,9 @@ model GroundParticipant {
   /// The two stamps of the invite-expiry sweep (grounds.cron.ts), so each mail goes once.
   inviteExpiryWarnedAt       DateTime?         @map("invite_expiry_warned_at")
   inviteLapsedToldAt         DateTime?         @map("invite_lapsed_told_at")
+  /// When this person last asked the lead for more time on a check-in that ran out (U.3, "Ask Wairimu
+  /// for more time"). Once a day, so a lead is not flooded by one person pressing again.
+  moreTimeAskedAt            DateTime?         @map("more_time_asked_at")
   // Rolling specificity scores (Agent 1) used for trust calibration / tone.
   specificityHistory         Float[]           @default([]) @map("specificity_history")
   lastNudgedAt               DateTime?         @map("last_nudged_at") // throttles reminder emails (B1)
@@ -1368,6 +1553,14 @@ model GroundParticipant {
   detectedFunction           String?           @map("detected_function")
   detectedFunctionConfidence Float?            @map("detected_function_confidence")
   detectedFunctionAt         DateTime?         @map("detected_function_at")
+  /// A role guessed with low confidence is confirmed before it is used (decision 57, item 5). Set
+  /// once the person confirms or corrects it in their own check-in, or the lead confirms or changes
+  /// it on the Context page — by a userId, so it is always plain who. Until this is set, a read
+  /// below LOW_CONFIDENCE_CONFIRM_THRESHOLD is never used for a role-tuned probe or coaching
+  /// strategy (see function-detection.ts, needsRoleConfirmation); only the role-agnostic universal
+  /// floor applies.
+  detectedFunctionConfirmedAt DateTime?        @map("detected_function_confirmed_at")
+  detectedFunctionConfirmedBy String?          @map("detected_function_confirmed_by")
   // THE COFOUNDER INTAKE IS GONE. Twelve free-text columns lived here -
   // founding/role/personal/exit intent, compensation/autonomy/recognition/
   // growth/relationship asks, financial floor, stress and relational tolerance -
@@ -1399,6 +1592,8 @@ model GroundParticipant {
   commitments       GroundCommitment[]
   contextItems      GroundContextItem[]
   resolutionConfirmations ResolutionConfirmation[]
+  /// Groundwork's suggestions about this person (C3, U.13). See Suggestion.
+  suggestionsAboutThem    Suggestion[]             @relation("SuggestionAbout")
   reportActivations       ReportActivation[]
   dependenciesFrom        GroundDependency[]       @relation("DependencyFrom")
   dependenciesOn          GroundDependency[]       @relation("DependencyOn")
@@ -1477,6 +1672,11 @@ model CheckIn {
   /// the database and ordered in one place (conversation/how-checkable-a-session-was.ts). The map that
   /// ranked "managed" above "directional" is gone.
   specificityLevel            String?       @map("specificity_level")
+  /// Where the questions this session was given to work from came from, as plain keys such as
+  /// "situation:PERFORMANCE", "role:ENGINEERING" or "pattern:D1". Written when the plan is made, and
+  /// read only by the learning counts (week 8b), which set it beside how specific the answers were.
+  /// Keys of the product's own questions, never anybody's words.
+  probeSources                String[]      @default([]) @map("probe_sources")
   /// When scoring was TRIED. Set with a null level means the scorer failed; null means not scored yet.
   /// The two used to be one silence, and the report said "nobody was asked" about a fault of ours.
   specificityScoredAt         DateTime?     @map("specificity_scored_at")
@@ -1513,6 +1713,14 @@ model CheckIn {
   // Closing-round marker: same conversation, flagged final - the person is
   // told to document thoroughly and the final report reads the whole arc.
   isFinal                     Boolean       @default(false) @map("is_final")
+  /// THE LEAD'S CHECK-IN IS OPTIONAL (decision 133). True on every check-in of the lead (the INITIATOR row):
+  /// after their first check-in the lead checks in only when they choose, and a session they skip is never
+  /// counted as missed. Counts such as the missed check-ins pattern leave an optional row out unless it was answered.
+  optional                    Boolean       @default(false)
+  /// WHY THEY MISSED (decision 136). The reason a person gave, in their own words, for missing their check-ins, kept on the
+  /// latest missed session. Served only to the person and to the lead of this check-in, beside the lead's line.
+  missedReason                String?       @map("missed_reason") @db.Text
+  missedReasonAt              DateTime?     @map("missed_reason_at")
   createdAt                   DateTime      @default(now()) @map("created_at")
 
   ground        Ground             @relation(fields: [groundId], references: [id], onDelete: Cascade)
@@ -1547,6 +1755,18 @@ model ConversationTurn {
   /// session, and the guard on check-in-scoped turn loads is right to refuse it. A count is not
   /// content; this makes the count available without the content.
   askedFor  String?  @map("asked_for")
+  /// TWO TO FOUR SHORT ANSWERS THE PERSON MIGHT GIVE TO THIS TURN'S QUESTION (task 2.6, screens
+  /// request 7a). Built from the question and their own last answer only. Stored so they survive a
+  /// reload. Null for a turn that asks nothing. See conversation/suggested-answers.ts.
+  suggestedAnswers Json? @map("suggested_answers")
+  /// THE END CARD, ON THE TURN THAT CLOSED THE CONVERSATION (task 2.7, screens request 7b): what is
+  /// now in the person's record and how each line is known. Served to that person only, on the
+  /// transcript. See conversation/the-end-card.ts.
+  endCard     Json? @map("end_card")
+  /// THE RECORD LINES THE CARD WAS BUILT FROM, NOT YET WRITTEN. Nothing reaches record_entries until
+  /// the person finishes; then exactly these are written, unless they said more after the card.
+  /// Never served to anybody.
+  recordDraft Json? @map("record_draft")
   createdAt DateTime @default(now()) @map("created_at")
 
   checkIn CheckIn @relation(fields: [checkInId], references: [id], onDelete: Cascade)
@@ -1612,6 +1832,17 @@ model RecordEntry {
   /// Set by the person this row is about when they say it is not what they said. A disputed row stays
   /// on the record and stops counting toward every read. See the-wall-between-said-and-extracted.
   disputedAt           DateTime?      @map("disputed_at")
+  /// True only when this line is the person's own words: its text appears, as one unbroken passage,
+  /// in what they typed in this check-in (forgiving only capitals, spacing, end punctuation and curly
+  /// or straight marks). A line the record reader tidied, joined or bracketed stays false. A report
+  /// may only quote a line that is true. See reports/a-quote-is-what-they-said.
+  saidWordForWord      Boolean        @default(false) @map("said_word_for_word")
+  /// CONFIRMED BY THE PERSON WHO RECEIVED IT (week 6, the prototype's mark in B4 one-session.txt and
+  /// team-report.txt). Set when the colleague who was waiting on this work says, in their own check-in,
+  /// that it is no longer in their way, and this is the line that says it was delivered. Never set by
+  /// the person themselves, and never by a departure. See conversation/confirmed-by-who-received-it.ts.
+  confirmedAt              DateTime? @map("confirmed_at")
+  confirmedByParticipantId String?   @map("confirmed_by_participant_id")
 
   participant GroundParticipant @relation(fields: [participantId], references: [id], onDelete: Restrict)
   checkIn     CheckIn?          @relation(fields: [checkInId], references: [id], onDelete: SetNull)
@@ -1730,6 +1961,18 @@ model CheckInGap {
   @@map("check_in_gaps")
 }
 
+/// Which way is good for a target (decision 69), as one of the prototype's five kinds (decision 75, item 17).
+/// AIM is "Up" (an aim to reach), LIMIT is "Lower is better" (a limit not to go over), RATE is a share or
+/// ratio over a period to keep at or above its number, DEADLINE is a date to meet (`dueOn`), and ZERO is a
+/// count to keep at zero, where any at all is a breach.
+enum TargetDirection {
+  AIM
+  LIMIT
+  RATE
+  DEADLINE
+  ZERO
+}
+
 model GroundObjective {
   id       String @id @default(uuid())
   groundId String @map("ground_id")
@@ -1747,11 +1990,43 @@ model GroundObjective {
   /// Null keeps the original meaning and is still the common case: a target for the whole thing,
   /// belonging to nobody in particular.
   ownerParticipantId String? @map("owner_participant_id")
+  /// THE LEAD SAYS PLAINLY WHEN THIS TARGET IS A DECISION ABOUT A PERSON (decision 46, 29 September
+  /// 2026), never guessed from its wording.
+  ///
+  /// `whose-number-is-whose-business.ts` used to test the target's `name` against a pair of regular
+  /// expressions ("decide", "confirm", "probation") to keep a decision like "Decide whether to
+  /// confirm Aisha in her role" off everybody's board but the lead's - a guess, and every guess here
+  /// is either a false positive that hides an ordinary team target from people who should see it, or
+  /// a false negative that puts a decision about somebody's place on their own check-in. Hafsah: this
+  /// is a field the lead sets when the target is made, set by the lead alone, never inferred.
+  ///
+  /// False on every row that existed before this column - existing targets are not guessed at either;
+  /// they stay false until a lead marks one. `targetsFor` (whose-number-is-whose-business.ts) reads
+  /// this instead of the old wording guess: a target with it set is shown to the check-in's lead and
+  /// nobody else, whoever else is reading and whatever `whoSeesTargets` says.
+  isADecisionAboutAPerson Boolean @default(false) @map("is_a_decision_about_a_person")
+  /// AN AIM TO REACH, OR A LIMIT NOT TO GO OVER, SAID BY THE LEAD (decision 69, 1 October 2026).
+  ///
+  /// The board used to guess this from the words in the name ("budget", "within", "no more than"), and
+  /// a guess read "Pumps sold under the new scheme" as a ceiling. Hafsah: each target carries a
+  /// direction, set when the target is made. The words in the name can suggest it, and the lead
+  /// confirms it. Null means not set: nobody has confirmed it yet, and the board keeps today's
+  /// word-based guess (a-measure-that-goes-down-is-still-going-well.ts) until the lead sets one.
+  /// The suggestion is never stored here; only what the lead confirmed is.
+  direction TargetDirection?
+  /// THE DATE TO MEET, for a target whose kind is DEADLINE (decision 75, item 17). Set by the lead, never
+  /// read from the name. Null on every other kind, and on a deadline nobody has given a date for yet.
+  dueOn     DateTime? @map("due_on") @db.Date
   /// Who SAID this target, when it came out of a check-in rather than the setup form. A target the
   /// lead set for a person is put to that person as the lead's expectation; one they set themselves
   /// is theirs. Without this the two read the same and a rep was asked about "the N4m gap that the
   /// opener set as your objective" (adversarial run, 20 Sep 2026). Null: set on the form at setup.
   setByParticipantId String? @map("set_by_participant_id")
+
+  /// WHAT THE TARGET ASSUMES, ONE THING PER LINE: "6 reps each close about 4 sales." A target that
+  /// does not say what it rests on cannot be given a second look when one of those things stops
+  /// being true. Written by the lead; empty until somebody says. Read by whoever may read the target.
+  assumes String[] @default([])
 
   /// WHAT THE RECORD SAYS THIS NUMBER IS, WHERE SOMEBODY REPORTED IT.
   ///
@@ -1901,6 +2176,22 @@ model GroundDependency {
   triedSaid       String?          @map("tried_said") @db.Text
   escalatedAt     DateTime?        @map("escalated_at")
   sourceCheckInId String?          @map("source_check_in_id")
+  /// THE OTHER CHECK-IN THIS HANDOFF WAITS ON (D3, U.16), when it waits on another team's check-in.
+  ///
+  /// Written by the engine, which is the one that can tell that "Finance" in Miriam's check-in is
+  /// the Finance check-in (docs/requests-to-engine.md, request 18). Null is the ordinary state: most
+  /// handoffs wait on somebody in the same check-in, or on something outside the organisation.
+  ///
+  /// Read by `CheckInLinksService` only, which shows each reader a link only from a check-in they
+  /// may already open. A plain id, not a relation: a second relation to Ground would rename the
+  /// existing one, and a check-in that is gone simply stops being one anybody may open.
+  waitingOnGroundId String?        @map("waiting_on_ground_id")
+  /// WHEN, IN THE PERSON'S OWN WORDS ("by Friday", "next week"), word for word and never rewritten.
+  /// Kept only when those exact words are in what they said. Null when they gave no time.
+  dueSaid           String?        @map("due_said") @db.Text
+  /// The calendar day those words meant, read in code from `dueSaid` and the day it was said. Null
+  /// when the words do not name a day ("soon", "after the audit"): a date is never guessed.
+  dueOn             DateTime?      @map("due_on") @db.Date
   clearedAt       DateTime?        @map("cleared_at")
   createdAt       DateTime         @default(now()) @map("created_at")
   updatedAt       DateTime         @updatedAt @map("updated_at")
@@ -1914,6 +2205,8 @@ model GroundDependency {
   /// well as created in SQL - an index Prisma does not know about is one the next generated
   /// migration drops.
   @@index([status, escalatedAt, createdAt])
+  /// "Asked of this check-in by other teams" reads by the check-in being waited on.
+  @@index([waitingOnGroundId])
   @@map("ground_dependencies")
 }
 
@@ -2043,6 +2336,15 @@ model Report {
   id              String    @id @default(uuid())
   groundId        String    @unique @map("ground_id")
   sharedPicture   String    @map("shared_picture") @db.Text
+  /// THE OPENING, ON ITS OWN, BECAUSE THE BOARD USED TO TAKE THE FIRST THREE SENTENCES.
+  ///
+  /// `how-a-check-in-is-going` built the board's summary by slicing `sharedPicture` - so every
+  /// board in the twenty-four-scenario run led with the report's glued opening, which is problem 12
+  /// of twelve. The opening is now written once, as plain sentences, and kept here so the board can
+  /// read the sentence rather than guess at where it ends.
+  ///
+  /// Null on every report written before this column, and on any whose wording call fell back.
+  theOpening      String?   @map("the_opening") @db.Text
   agreements      Json // where both accounts agree
   divergences     Json // the gap — never framed as one side being right
   centralQuestion String    @map("central_question") @db.Text
@@ -2094,6 +2396,12 @@ model Report {
   findings        Json?
   arcSignals      Json?     @map("arc_signals") // deterministic F1-F5 features per party (advisory surface reads this)
   releasedAt      DateTime? @map("released_at") // set once, atomically, for both
+  /// EACH SESSION'S TEAM PICTURE IS RELEASED ON ITS OWN (decision 76, item 4). `releasedAt` says when
+  /// the report was first shared, and it is set once. This says which sessions' pictures have been
+  /// shared since, so a participant reads the team's picture only of a session that has been
+  /// released, never a later one as the report grows into it. Empty until anything is released.
+  /// See reports/each-sessions-picture-is-released-on-its-own.ts.
+  releasedSessions Int[]    @default([]) @map("released_sessions")
   createdAt       DateTime  @default(now()) @map("created_at")
   /// WHEN THIS WAS LAST WRITTEN, WHICH IS NOT WHEN THE ROW WAS MADE.
   ///
@@ -2158,6 +2466,44 @@ model PatternDetection {
   accuracyRating   Boolean?      @map("accuracy_rating") // true = accurate, false = inaccurate, null = not yet rated
   ratedAt          DateTime?     @map("rated_at")
   ratedBy          String?       @map("rated_by") // userId of rater
+  /// When it had been seen in three periods, which is when the person it is about may first read it.
+  /// Set once by the detector and never moved, so the clock for the lead cannot be pushed back by
+  /// a fourth sighting. See patterns/who-reads-a-pattern.
+  readyAt          DateTime?     @map("ready_at")
+  /// When the person it is about was first served it on their own page. The lead reads it only
+  /// after this (and their answer, or three days), or a week after readyAt if they never open it.
+  shownToPersonAt  DateTime?     @map("shown_to_person_at")
+  /// What the person said is behind it, in their own words ("Say what's behind it"). Read by the
+  /// person and, beside the pattern, by whoever runs the check-in. Never by a colleague.
+  personAnswer     String?       @map("person_answer") @db.Text
+  personAnsweredAt DateTime?     @map("person_answered_at")
+  /// After talking a pattern through, the lead marks it right, wrong or not sure (decision 57, item
+  /// 2). The person's own answer above counts as evidence too. Never shown to the person as a rating
+  /// of them, and never to a colleague — only whoever runs the check-in reads it. The existing
+  /// `accuracyRating` (platform admin) stays; this is separate.
+  leadMark         LeadPatternMark? @map("lead_mark")
+  leadMarkedAt     DateTime?        @map("lead_marked_at")
+  leadMarkedBy     String?          @map("lead_marked_by") // userId of the lead who marked it
+  /// The lead is nudged once to talk a pattern through, and can mark that they did (decision 57, item
+  /// 3). The nudge goes away once this is set. The person may see that their lead has talked it
+  /// through as a plain fact, never a verdict on them.
+  talkedAboutAt       DateTime? @map("talked_about_at")
+  talkedAboutBy       String?   @map("talked_about_by") // userId of the lead who marked it
+  /// How many periods had been seen (seenInSessions/periodsObserved) at the moment `talkedAboutAt`
+  /// was set — the anchor later check-ins derive "seen again after the talk" from, rather than
+  /// storing that count itself and having it drift out of step with the honest history.
+  talkedAboutAtPeriod Int?      @map("talked_about_at_period")
+  /// What backed this detection, decision 57 item 4: the model's own reading, the matching
+  /// number-based rule (PATTERN_DETECTORS), or both. 'model' | 'rule' | 'both'. Set when first
+  /// observed and kept current as later periods are added — a rule that later agrees moves it from
+  /// 'model' to 'both'. Read by the lead only, never the person or a colleague: when it is 'both',
+  /// the lead is told "Two separate reads of the record found this." beside the pattern; the rule is
+  /// evidence, never shown as an accusation or a score.
+  evidenceSource   String?       @map("evidence_source")
+  /// Which stored version of the detector's prompt (`pattern_detection`) read the check-in that last
+  /// kept this pattern. Empty on rows written before the prompt was stored; those stay valid.
+  promptVersionId  String?       @map("prompt_version_id")
+  promptVersion    PromptVersion? @relation(fields: [promptVersionId], references: [id])
   firstSeenAt      DateTime      @default(now()) @map("first_seen_at")
   lastSeenAt       DateTime      @default(now()) @map("last_seen_at")
   createdAt        DateTime      @default(now()) @map("created_at")
@@ -2171,6 +2517,14 @@ model PatternDetection {
   @@map("pattern_detections")
 }
 
+/// The lead's own read of a pattern, after talking it through with the person (decision 57, item 2).
+/// Never a rating served to the person or a colleague.
+enum LeadPatternMark {
+  RIGHT
+  WRONG
+  NOT_SURE
+}
+
 // ---------------------------------------------------------------------------
 // Resolution — a ground closes only when BOTH parties confirm an end state.
 // ---------------------------------------------------------------------------
@@ -2180,6 +2534,9 @@ model Resolution {
   groundId       String    @unique @map("ground_id")
   endState       String    @map("end_state") // latest leading proposal; the agreed end state once closed
   decisionRights Json?     @map("decision_rights")
+  /// Why the lead chose this outcome, in their own words (rule 6: a person decides, giving a reason).
+  /// Read with the outcome by the people in the check-in and by an admin. Never by anyone else.
+  reason         String?   @db.Text
   closedAt       DateTime? @map("closed_at")
   createdAt      DateTime  @default(now()) @map("created_at")
 
@@ -2187,6 +2544,589 @@ model Resolution {
   confirmations ResolutionConfirmation[]
 
   @@map("resolutions")
+}
+
+/// A SUGGESTION FROM A VERDICT, TOLD LIKE A SIGNAL (C3, U.13; decisions rule 6).
+///
+/// The engine may reach a verdict about one person in a check-in. Nobody ever reads it as a label.
+/// The lead reads a suggestion ("Groundwork suggests ..."), with why, what would change it and the
+/// person's own answer, and decides, giving a reason. The person reads the facts about their work
+/// and the decision with its reasons, and can add their side or appeal. An admin decides an appeal.
+///
+/// WHAT HAS TO HAPPEN WHEN SOMEBODY LEAVES (E5, the "when someone leaves" suite, U.17): one list for
+/// one person's last day, started by an admin, with its four steps in `LeavingStep`. It adds to the
+/// product's handover and departures and changes neither: the handover brief is never read here, and
+/// what the person said never travels. Admins only (suites/the-leaving-board.service.ts). Nothing
+/// here reaches a check-in or its report.
+model LeavingChecklist {
+  id               String   @id @default(uuid())
+  organizationId   String   @map("organization_id")
+  personExternalId String   @map("person_external_id")
+  lastDay          DateTime @map("last_day") @db.Date
+  startedById      String   @map("started_by_id")
+  startedAt        DateTime @default(now()) @map("started_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  steps        LeavingStep[]
+
+  /// The name the 27 September migration actually created: Postgres cuts identifiers at 63 characters.
+  @@unique([organizationId, personExternalId, lastDay], map: "leaving_checklists_organization_id_person_external_id_last_day_")
+  @@map("leaving_checklists")
+}
+
+/// One step of a leaving list: handover, equipment, access or pay. Who owns it, and when it was done
+/// and by whom. Undone again clears both.
+model LeavingStep {
+  id          String    @id @default(uuid())
+  checklistId String    @map("checklist_id")
+  step        String    @db.VarChar(16)
+  ownerUserId String?   @map("owner_user_id")
+  doneAt      DateTime? @map("done_at")
+  doneById    String?   @map("done_by_id")
+
+  checklist LeavingChecklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+
+  @@unique([checklistId, step])
+  @@map("leaving_steps")
+}
+
+/// A SIGN THAT A TEAM IS UNDER STRAIN (E5, U.17), written by the engine (docs/requests-to-engine.md,
+/// request 24) for a team, never for a named person, with the prompt version that ran. Admins only.
+/// A sign that names anybody is never served.
+model TeamStrainSign {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  team            String   @db.VarChar(120)
+  says            String   @db.Text
+  promptVersionId String?  @map("prompt_version_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@map("team_strain_signs")
+}
+
+/// ONE PERSON'S ANSWERS TO THE ROLE INTERVIEW (E6, the role map, U.17), written by the engine
+/// (docs/requests-to-engine.md, request 25) with the prompt version that ran: what they own, what they
+/// decide, who they depend on and who depends on them, for the role they hold. Empty until then. The
+/// role map reads only `owns`, for admins only (suites/the-role-map.service.ts). Never a rating.
+model RoleInterviewAnswer {
+  id               String   @id @default(uuid())
+  organizationId   String   @map("organization_id")
+  personExternalId String   @map("person_external_id")
+  roleName         String   @map("role_name") @db.VarChar(200)
+  owns             String?  @db.Text
+  decides          String?  @db.Text
+  dependsOn        String?  @map("depends_on") @db.Text
+  dependedOnBy     String?  @map("depended_on_by") @db.Text
+  /// What the person said they know doing well looks like in their job, and what usually gets in their way.
+  /// Written only by the reading of a first check-in or by the person's own correction, and read by the person
+  /// themselves and by their own conversations. The role map never shows these two.
+  doingWell        String?  @map("doing_well") @db.Text
+  inTheWay         String?  @map("in_the_way") @db.Text
+  /// 'interview' (an admin sent it and the person said yes), 'first_check_in' (read from the person's first
+  /// check-in) or 'correction' (the person corrected it, in Ask or by the route).
+  source           String   @default("interview") @db.VarChar(40)
+  /// When the person said yes to the role map showing what they own. Null until then. Rows from 'interview'
+  /// were agreed to when written. The role map reads only rows that were agreed to.
+  sharedAt         DateTime? @map("shared_at")
+  /// The first check-in a 'first_check_in' row was read from.
+  checkInId        String?  @map("check_in_id")
+  /// The stored version of the prompt that read the person's words (role_reading).
+  promptVersionId  String?  @map("prompt_version_id")
+  /// The stored version of the prompt that told the conversation to learn the role (first_check_in_role).
+  askedWithPromptVersionId String? @map("asked_with_prompt_version_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, roleName])
+  @@index([organizationId, personExternalId])
+  @@map("role_interview_answers")
+}
+
+/// WHY A JOB NOBODY OWNS MATTERS (E6, the role map, U.17), in one plain sentence the engine writes
+/// from what happened (request 25), with the prompt version that ran. Empty until then. Admins only.
+model RoleGapNote {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  roleName        String   @map("role_name") @db.VarChar(200)
+  /// Stored with the check-in's own label for the person ("participant A"), never a name. The name is
+  /// swapped in only when an admin who may open that check-in reads it (the-role-map.service.ts).
+  says            String   @db.Text
+  promptVersionId String?  @map("prompt_version_id")
+  /// The check-in this rests on, so the reader's right to open it can be asked. Null for a note nobody
+  /// derived from a check-in.
+  groundId        String?  @map("ground_id")
+  /// What the notes were built from, so the same record again writes nothing.
+  inputKey        String?  @map("input_key")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, roleName])
+  @@map("role_gap_notes")
+}
+
+/// A REQUEST TO SPEND (E7, the spending and budgets suite, U.17): who asks, how much, for what, and
+/// the team it counts against (the person's department when they asked). Waiting until the one who
+/// approves it says yes or no; kept with who decided and when. People ask by telling Groundwork, which
+/// is the engine's part (docs/requests-to-engine.md, request 26). Who reads and decides it is decided
+/// in suites/the-spending.service.ts. Nothing here reaches a check-in or its report.
+model SpendRequest {
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  userId         String    @map("user_id")
+  amount         Decimal   @db.Decimal(14, 2)
+  what           String    @db.VarChar(300)
+  team           String?   @db.VarChar(120)
+  status         String    @default("waiting") @db.VarChar(16)
+  decidedById    String?   @map("decided_by_id")
+  decidedAt      DateTime? @map("decided_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  /// The approval step it is on, from 0 (decision 85, build step 4). Today's answers have one step.
+  step           Int       @default(0)
+  /// How far down that step's list of rules it has been passed on, from 0.
+  escalatedTo    Int       @default(0) @map("escalated_to")
+  /// When it started waiting at this step, or for the person it was passed to. Null: since it was asked.
+  stepSince      DateTime? @map("step_since")
+  /// Who approved each step so far, in order, by sign-in.
+  approvedByIds  String[]  @default([]) @map("approved_by_ids")
+  /// The category the admin named that it is for ("Fuel", a project), when the spending rules have
+  /// categories (decision 85, build step 9). Empty with none set, and on every request kept before.
+  category       String?   @db.VarChar(40)
+  /// The evidence the rules asked for when it was asked: "receipt", "quote", or both. Only that it is
+  /// needed; no file is kept. Empty when none was needed.
+  evidenceNeeded String[]  @default([]) @map("evidence_needed")
+  /// The reason the person who declined it gave, in their words, told to the person who asked
+  /// (decision 85, build step 9, as leave has). Empty when none was given, and on every request before.
+  declineReason  String?   @map("decline_reason") @db.Text
+  /// FINANCE'S PART, after the last approval (decision 85, build step 10). Whoever looks after finance
+  /// checks it (verified), records the budget line it is paid from (code), and marks it paid with the
+  /// day it was paid. Each step is also in `suite_events`, with who and when. All empty on every request
+  /// kept before, and on any request finance has not touched.
+  verifiedById   String?   @map("verified_by_id")
+  verifiedAt     DateTime? @map("verified_at")
+  /// The budget line or category finance records it under, in finance's own words.
+  code           String?   @db.VarChar(80)
+  /// The day it was paid, as finance says it.
+  paidOn         DateTime? @map("paid_on") @db.Date
+  paidById       String?   @map("paid_by_id")
+  /// The evidence finance has had: "receipt", "quote". Only that it was given; no file is kept.
+  evidenceGiven  String[]  @default([]) @map("evidence_given")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@index([organizationId, createdAt])
+  @@map("spend_requests")
+}
+
+/// ONE TEAM'S BUDGET FOR ONE MONTH (E7, U.17), set by an admin. `month` is the first day of it.
+model TeamBudget {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  team           String   @db.VarChar(120)
+  month          DateTime @db.Date
+  amount         Decimal  @db.Decimal(14, 2)
+  setById        String   @map("set_by_id")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, team, month])
+  @@map("team_budgets")
+}
+
+/// WHERE ONE CUSTOMER STANDS (E9, the customers and deals suite, U.17), in a few plain words, such as
+/// "Quote sent. Buys in January", written by the engine from the sales check-ins
+/// (docs/requests-to-engine.md, request 28) with the prompt version that ran. Empty until then. One row
+/// for each change, and the board shows the latest. The customer itself stays a `Subject` of type
+/// COUNTERPARTY, a name and an id, and is never edited here. Facts about the customer only, never about
+/// how anybody works. Who reads it is decided in suites/the-customers.service.ts.
+model CustomerStanding {
+  id                     String   @id @default(uuid())
+  organizationId         String   @map("organization_id")
+  counterpartyExternalId String   @map("counterparty_external_id")
+  says                   String   @db.VarChar(300)
+  promptVersionId        String?  @map("prompt_version_id")
+  createdAt              DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, counterpartyExternalId, createdAt])
+  @@map("customer_standings")
+}
+
+/// ONE PIECE OF EQUIPMENT (E10, the equipment suite, U.17): its name, such as "Laptop 07", who has it
+/// (a person in the staff directory, or nobody), and how it is, in their own words, such as "Broken
+/// screen." An admin adds and changes it; people will also update it by telling Groundwork, said back
+/// and confirmed first (docs/requests-to-engine.md, request 29). Admins only
+/// (suites/the-equipment.service.ts). Never evidence about how anybody works.
+model EquipmentItem {
+  id               String   @id @default(uuid())
+  organizationId   String   @map("organization_id")
+  name             String   @db.VarChar(120)
+  holderExternalId String?  @map("holder_external_id")
+  condition        String?  @db.VarChar(300)
+  updatedById      String   @map("updated_by_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, name])
+  @@map("equipment_items")
+}
+
+/// ONE PERFORMANCE REVIEW (E4, the reviews suite, U.17), started for a review that falls due
+/// (`EvaluationDue`, which the daily reminder already reads). Holds what people write: the manager's
+/// own words, the person's own view, and the manager's decision with its reasons. `noticed` is the
+/// engine's "What Groundwork noticed", each line with how it is known, written by the engine with the
+/// prompt version that ran (docs/requests-to-engine.md, request 23); empty until then. There is no
+/// score and no verdict here. Hours and leave never feed it (decisions rule 10). Who reads which part
+/// is decided in suites/the-reviews.service.ts, never on the screen.
+model PerformanceReview {
+  id                     String    @id @default(uuid())
+  organizationId         String    @map("organization_id")
+  evaluationDueId        String    @unique @map("evaluation_due_id")
+  personExternalId       String    @map("person_external_id")
+  startedById            String    @map("started_by_id")
+  startedAt              DateTime  @default(now()) @map("started_at")
+  managersWords          String?   @map("managers_words") @db.Text
+  managersWordsById      String?   @map("managers_words_by_id")
+  managersWordsAt        DateTime? @map("managers_words_at")
+  theirView              String?   @map("their_view") @db.Text
+  theirViewAt            DateTime? @map("their_view_at")
+  noticed                Json?
+  noticedPromptVersionId String?   @map("noticed_prompt_version_id")
+  decision               String?   @db.Text
+  decisionReasons        String?   @map("decision_reasons") @db.Text
+  decidedById            String?   @map("decided_by_id")
+  decidedAt              DateTime? @map("decided_at")
+  /// THE RECORD, INTERPRETED (decision 85, item 4; build step 12). What Groundwork understands from the
+  /// record about the person's work in the review's period: the check-ins they took part in, the goals
+  /// and work-plan items they own, what they committed to and how each was settled, and what they said
+  /// was holding them up. Written once, from rows and without a model, when the review starts, so it
+  /// reads the same whenever it is opened. Stored as facts with ids, never as sentences with names:
+  /// each reader is served the sentences in their own words (suites/the-record-read-for-a-review.ts),
+  /// and only the lines from check-ins they are in. Never hours, never leave.
+  recordRead             Json?     @map("record_read")
+  /// The first day of the period the record was read for. The last day is `startedAt`.
+  recordFrom             DateTime? @map("record_from")
+  /// THE APPEAL (decision 113, bug B-024). The person appeals a decided review, saying why; they may add to it
+  /// until it is decided. It goes to an admin who is not whoever decided the review (and not the person).
+  /// With no such admin it is saved and stays open, and `appealAskedForAdminAt` says the reviewer was asked to
+  /// add one. Read by the person, the admin who decides it, and (once decided) the reviewer; nobody else.
+  appeal                 String?   @map("appeal") @db.Text
+  appealAdditions        Json?     @map("appeal_additions")
+  appealedAt             DateTime? @map("appealed_at")
+  appealAskedForAdminAt  DateTime? @map("appeal_asked_for_admin_at")
+  appealOutcome          String?   @map("appeal_outcome")
+  appealReasons          String?   @map("appeal_reasons") @db.Text
+  appealDecidedById      String?   @map("appeal_decided_by_id")
+  appealDecidedAt        DateTime? @map("appeal_decided_at")
+  /// The decision and reasons as they stood before an appeal changed them, so nothing is lost.
+  appealDecisionWas      Json?     @map("appeal_decision_was")
+
+  organization Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  corrections  PerformanceReviewCorrection[]
+
+  @@index([organizationId, personExternalId])
+  @@map("performance_reviews")
+}
+
+/// THE PERSON'S CORRECTION OF ONE LINE OF THEIR REVIEW (build step 12). The person marks a line of
+/// "the record, interpreted" as wrong and says what is true. It is kept beside the line and never
+/// changes the line or the record it came from. A second correction of the same line is a new row, so
+/// nothing the person said is lost; the latest is the one served. Who reads it is decided in
+/// suites/the-reviews.service.ts: the person, and whoever may read that line.
+model PerformanceReviewCorrection {
+  id         String   @id @default(uuid())
+  reviewId   String   @map("review_id")
+  /// The line's key in `PerformanceReview.recordRead`.
+  lineKey    String   @map("line_key") @db.VarChar(120)
+  /// What the person says is true, in their own words.
+  whatIsTrue String   @map("what_is_true") @db.Text
+  byUserId   String   @map("by_user_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  review PerformanceReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId, lineKey, createdAt])
+  @@map("performance_review_corrections")
+}
+
+/// HOURS SPENT ON ONE CLIENT OR PROJECT ON ONE DAY (E3, the time sheets suite, U.17). FOR BILLING
+/// ONLY (decisions rule 10): nothing here is evidence about how well anybody works, and nothing outside
+/// the suites reads it, so it never reaches a check-in, its record or its report. Who reads which row is
+/// decided in suites/the-time-sheets.service.ts. `client` is one of the names the admin listed when
+/// switching the suite on.
+model TimeEntry {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  userId         String   @map("user_id")
+  client         String   @db.VarChar(120)
+  onDay          DateTime @map("on_day") @db.Date
+  minutes        Int
+  /// Billable or not, as the person said of this one entry ("3 hours on Internal, not billable").
+  /// Null: it follows the time sheet rules for its client or project (the-time-sheet-rules.ts), and
+  /// with no rules set every hour is billable. For billing only (decision 10).
+  billable       Boolean?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, onDay])
+  @@index([organizationId, userId, onDay])
+  @@map("time_entries")
+}
+
+/// ONE PERSON'S WEEK OF HOURS, APPROVED (E3, U.17): who approved it, when, and the total they saw.
+/// Hours added after that make the week wait again, because the total no longer matches.
+model TimeWeek {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  userId          String   @map("user_id")
+  /// The Monday the week starts on.
+  weekOf          DateTime @map("week_of") @db.Date
+  /// The total the last step approved. Null until the last step approves (decision 85, build step 4).
+  approvedMinutes Int?      @map("approved_minutes")
+  approvedById    String?   @map("approved_by_id")
+  approvedAt      DateTime? @default(now()) @map("approved_at")
+  /// The total the steps so far approved. When the hours change, the week starts again at the first step.
+  seenMinutes     Int?      @map("seen_minutes")
+  step            Int       @default(0)
+  escalatedTo     Int       @default(0) @map("escalated_to")
+  stepSince       DateTime? @map("step_since")
+  approvedByIds   String[]  @default([]) @map("approved_by_ids")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId, weekOf])
+  @@map("time_weeks")
+}
+
+/// WHAT A CLIENT AGREED TO PAY FOR (E3, U.17): "Naivas Ngong Road: installing 12 freezers (whole job)",
+/// 40 hours. `span` is "whole" (the whole job) or "month" (each month). Set by an admin.
+model TimeAgreement {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  client         String   @db.VarChar(120)
+  work           String   @db.VarChar(200)
+  hours          Int
+  span           String   @db.VarChar(8)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("time_agreements")
+}
+
+/// A REQUEST FOR TIME OFF (E2, the leave suite, U.17). Who is off, from which day to which day, who
+/// stands in for them, and the decision: approved or declined, by whom, and when. There is no reason
+/// field, because the prototype never asks for one, and nothing here ever reaches a check-in or its
+/// report. Who reads which row is decided in suites/the-leave-board.service.ts, never on the screen.
+/// Days are whole dates, with no time of day.
+model LeaveRequest {
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  userId         String    @map("user_id")
+  startsOn       DateTime  @map("starts_on") @db.Date
+  endsOn         DateTime  @map("ends_on") @db.Date
+  /// Only annual leave for now: the only kind the prototype shows.
+  kind           String    @default("annual") @db.VarChar(16)
+  standInUserId  String?   @map("stand_in_user_id")
+  /// waiting, approved or declined.
+  status         String    @default("waiting") @db.VarChar(12)
+  decidedById    String?   @map("decided_by_id")
+  decidedAt      DateTime? @map("decided_at")
+  askedAt        DateTime  @default(now()) @map("asked_at")
+  /// The approval step it is on, from 0 (decision 85, build step 4). Today's answers have one step.
+  step           Int       @default(0)
+  /// How far down that step's list of rules it has been passed on, from 0.
+  escalatedTo    Int       @default(0) @map("escalated_to")
+  /// When it started waiting at this step, or for the person it was passed to. Null: since it was asked.
+  stepSince      DateTime? @map("step_since")
+  /// Who approved each step so far, in order, by sign-in.
+  approvedByIds  String[]  @default([]) @map("approved_by_ids")
+  /// The reason the person who declined it gave, in their words, told to the person who asked
+  /// (decision 85, build step 7). Empty when none was given, and on every request decided before.
+  declineReason  String?   @map("decline_reason") @db.Text
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@index([organizationId, userId])
+  @@map("leave_requests")
+}
+
+/// THE SUITES AN ORGANISATION HAS SWITCHED ON (E, U.17). One row per suite an admin has ever switched,
+/// with the answers they gave to its first questions. No row means off. Only an admin switches one,
+/// and a lead is told only which are on (suites.service.ts). `answers` is keyed by question id; a
+/// "person" answer holds a user id, never a name. Nothing here is about how well anybody works.
+model OrganizationSuite {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  suite          String   @db.VarChar(24)
+  isOn           Boolean  @default(false) @map("is_on")
+  answers        Json     @default("{}")
+  changedById    String?  @map("changed_by_id")
+  changedAt      DateTime @default(now()) @updatedAt @map("changed_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, suite])
+  @@map("organization_suites")
+}
+
+/// ONE RECORD OF WHO DID WHAT ON A SUITE'S REQUEST (decision 85, build step 5): asked (after the
+/// say-back and the yes), told, approved at a step, declined, passed on, started, decided. On what
+/// information is kept as references to rows only, never a copy of anybody's words.
+model SuiteEvent {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  /// leave, spend, time or reviews.
+  suite          String   @db.VarChar(16)
+  /// The request: a leave or spending request's id, a review's id, or for hours the person's sign-in and the week's Monday joined by "|".
+  ref            String   @db.VarChar(200)
+  /// asked, told, approved, declined, escalated, started, decided, questioned, answered, and for
+  /// spending finance's verified, coded, evidence, exported and paid.
+  kind           String   @db.VarChar(16)
+  /// Who did it, by sign-in. Empty when Groundwork did it (telling, passing on).
+  byUserId       String?  @map("by_user_id")
+  /// Who it went to: who was told, or who it was passed to. Empty for any admin.
+  toUserId       String?  @map("to_user_id")
+  /// The approval step it happened at, from 0.
+  step           Int?
+  /// On what information, as references to rows only.
+  basis          Json?
+  at             DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, suite, ref, at])
+  @@map("suite_events")
+}
+
+/// A QUESTION ABOUT A REQUEST, AND THE ANSWER (decision 85, build step 7). The person who decides a
+/// request asks the person who made it, and the request keeps waiting. Both are in the words each of
+/// them wrote, read only by the people who may read the request (the-leave-board.service.ts); the
+/// record of who did what (`SuiteEvent`) keeps only that a question was asked and answered, with this
+/// row's id.
+model SuiteQuestion {
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  /// leave or spend.
+  suite          String    @db.VarChar(16)
+  /// The request's id.
+  ref            String    @db.VarChar(200)
+  /// Who asked: the person who decides it.
+  askedById      String    @map("asked_by_id")
+  /// Who was asked: the person who made the request.
+  toUserId       String    @map("to_user_id")
+  question       String    @db.Text
+  answer         String?   @db.Text
+  askedAt        DateTime  @default(now()) @map("asked_at")
+  answeredAt     DateTime? @map("answered_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, suite, ref])
+  @@index([organizationId, toUserId, answeredAt])
+  @@map("suite_questions")
+}
+
+/// EACH CHANGE OF A SUITE'S RULES (decision 85, build step 5): a suite switched on or off with its
+/// answers, who holds each duty, or the approval steps. `OrganizationSuite` keeps only the last.
+model SuiteRuleChange {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  /// The suite's key, or "duties", or "workflows".
+  suite          String   @db.VarChar(24)
+  changedById    String?  @map("changed_by_id")
+  changedAt      DateTime @default(now()) @map("changed_at")
+  /// What it was: { isOn, answers }, or nothing when it had never been set.
+  before         Json?
+  /// What it became: { isOn, answers }.
+  after          Json
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, changedAt])
+  @@map("suite_rule_changes")
+}
+
+/// The engine's text is written by the engine (docs/requests-to-engine.md, request 15), stored in
+/// labels like a report, and named for each reader only when served. Who reads which column is
+/// decided in suggestions.service.ts, never on the screen. `verdict` is served to nobody.
+model Suggestion {
+  id                 String @id @default(uuid())
+  organizationId     String @map("organization_id")
+  groundId           String @map("ground_id")
+  /// The person the suggestion is about.
+  aboutParticipantId String @map("about_participant_id")
+
+  /// keep | reward | support | plan | exit. For the engine only; never served to anybody.
+  verdict String @db.VarChar(16)
+
+  /// For the lead: "Groundwork suggests a performance plan for Daniel".
+  headline          String   @db.Text
+  /// For the lead: why, from the facts.
+  why               String   @db.Text
+  whatWouldChangeIt String?  @map("what_would_change_it") @db.Text
+  /// The person's own words from a check-in, which the people in that check-in may read.
+  theirOwnAnswer    String?  @map("their_own_answer") @db.Text
+  /// What the lead's decision would say if they agree, for them to change before saving.
+  ifYouAgree        String?  @map("if_you_agree") @db.Text
+  /// Other decisions the lead might choose instead.
+  otherChoices      String[] @map("other_choices")
+  /// Set when the suggestion is about how the check-in ends: the end state suggested.
+  forTheEnding      String?  @map("for_the_ending") @db.VarChar(40)
+
+  /// For the person it is about: the facts about their work, never the verdict.
+  factsForThem             String  @map("facts_for_them") @db.Text
+  whatWouldChangeItForThem String? @map("what_would_change_it_for_them") @db.Text
+
+  /// Which version of the engine's instructions wrote it.
+  promptVersionId String? @map("prompt_version_id")
+
+  /// THE LEAD'S DECISION, with their reasons. The person reads both.
+  decision       String?   @db.Text
+  decisionReason String?   @map("decision_reason") @db.Text
+  decidedById    String?   @map("decided_by_id")
+  decidedAt      DateTime? @map("decided_at")
+
+  /// WHEN THE PERSON CAUGHT UP (decision 75, item 24). Set when, before anyone decided, they are back at or
+  /// above the threshold that reached this suggestion; cleared if they fall below it again before a decision.
+  /// The original facts are never rewritten. Frozen once decided.
+  caughtUpAt DateTime? @map("caught_up_at")
+
+  /// THE PERSON'S SIDE, in their own words. The lead reads it beside the facts.
+  theirSide   String?   @map("their_side") @db.Text
+  theirSideAt DateTime? @map("their_side_at")
+
+  /// THE PERSON'S APPEAL, and an admin's decision on it with the admin's reasons.
+  appeal            String?   @db.Text
+  appealedAt        DateTime? @map("appealed_at")
+  /// stands | changed
+  appealOutcome     String?   @map("appeal_outcome") @db.VarChar(16)
+  appealReason      String?   @map("appeal_reason") @db.Text
+  appealDecidedById String?   @map("appeal_decided_by_id")
+  appealDecidedAt   DateTime? @map("appeal_decided_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  ground Ground            @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  about  GroundParticipant @relation("SuggestionAbout", fields: [aboutParticipantId], references: [id], onDelete: Cascade)
+
+  @@index([groundId])
+  @@index([aboutParticipantId])
+  @@index([organizationId, appealedAt])
+  @@map("suggestions")
 }
 
 // Per-party end-state confirmation. A ground closes only when every ACTIVE party
@@ -2231,6 +3171,7 @@ model PromptVersion {
 
   grounds Ground[]
   reports Report[]
+  patternDetections PatternDetection[]
 
   @@unique([key, version])
   @@map("prompt_versions")
@@ -2377,6 +3318,10 @@ model WhatsAppConnection {
   connectedAt    DateTime  @default(now()) @map("connected_at")
   lastInboundAt  DateTime? @map("last_inbound_at")
   lastOutboundAt DateTime? @map("last_outbound_at")
+  /// WHEN META LAST CHECKED THE CALLBACK ADDRESS AND IT ANSWERED (U.18, #/settings/whatsapp, step 3).
+  /// Set by the subscribe handshake when the verify token matches. Null until then, and the setup
+  /// page says "Not proven yet" rather than guessing.
+  webhookVerifiedAt DateTime? @map("webhook_verified_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -2435,11 +3380,33 @@ model WhatsAppSend {
   failedAt       DateTime? @map("failed_at")
   status         Int?
   error          String?   @db.Text
+  /// The id Meta gave the message (decision 106 item 1). A reply to it carries this id, so it reaches the check-in it was about.
+  providerMessageId String? @map("provider_message_id")
   createdAt      DateTime  @default(now()) @map("created_at")
 
   @@index([organizationId, createdAt])
   @@index([failedAt])
+  @@index([providerMessageId])
   @@map("whatsapp_sends")
+}
+
+/// HOW MANY WHATSAPP MESSAGES AN ORGANISATION SENT IN ONE CALENDAR MONTH (decision 78), counted as
+/// they go, so the plan's monthly limit can be held. `month` is the calendar month in UTC, as
+/// "2026-10". `held` counts messages that were not sent because of the add-on or the limit.
+/// `adminToldAt` is when the organisation's admins were told the limit was reached, so they are told once.
+model WhatsAppMonthlyUse {
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  month          String
+  sent           Int       @default(0)
+  held           Int       @default(0)
+  adminToldAt    DateTime? @map("admin_told_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, month])
+  @@map("whatsapp_monthly_use")
 }
 
 model WhatsAppThread {
@@ -2450,9 +3417,24 @@ model WhatsAppThread {
   checkInId      String?   @map("check_in_id")
   /// When the "which one?" list was sent. A typed number is a pick only while this is fresh (a-whatsapp-message-is-routed.ts).
   pickPendingAt  DateTime? @map("pick_pending_at")
+  /// A leave, hours or spending request asked about during a check-in ("Shall I treat this as a leave
+  /// request?"), waiting for the person's yes or no (decision 82, item 2). Kept here, not in one copy
+  /// of the API's memory, so the answer finds it after a restart or on another copy. The kind
+  /// (`leave`, `hours`, `spending`), the words (the yes hands them to Ask Groundwork, the no puts them
+  /// in the check-in), and when it was asked. All three are cleared on the answer. After ten minutes with no answer, the next message puts the words in the check-in.
+  /// The kind `answer` is a reply that may be the person's answer to a question about their own request.
+  requestKind    String?   @map("request_kind")
+  requestWords   String?   @map("request_words")
+  requestAskedAt DateTime? @map("request_asked_at")
+  /// The question about the person's own request (a `SuiteQuestion` id) they were already asked about
+  /// here, "Is this your answer to Wairimu's question about your leave?" (decision 85, build step 7).
+  /// While `requestKind` is `answer`, it is the question the held words would answer. It stays after
+  /// a no, so the same question is asked about once only.
+  questionAskedAbout String? @map("question_asked_about")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
   @@unique([organizationId, phone])
+  @@index([requestAskedAt])
   @@map("whatsapp_threads")
 }
 
@@ -4540,6 +5522,9 @@ model LeadContextNote {
   /// See ContextNoteAudience. EVERYONE is always about the whole check-in - a shared note about one
   /// named person would be a public judgement of them, which is the one thing this product refuses.
   audience      ContextNoteAudience @default(LEAD_ONLY)
+  /// DECISION 63, 30 September 2026: set only when adding or sharing this note was done by an admin
+  /// standing in because the lead had left the organisation. See who-may-confirm-setup.ts.
+  confirmedByAdminNote String? @map("confirmed_by_admin_note") @db.Text
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -4612,6 +5597,18 @@ model GroundContextItem {
   authorUserId  String?         @map("author_user_id")
   /// When it stopped being live - a decision made, a rule dropped. Kept rather than deleted.
   closedAt      DateTime?       @map("closed_at")
+  /// QUESTION_FOR_PERSON only. The question exactly as Groundwork will ask it, word for word: a
+  /// draft until the lead confirms it, and the lead's own wording where they changed it. Decision
+  /// 34, 28 September 2026: the lead sees the exact question before it goes, and confirms it.
+  exactQuestion String?         @map("exact_question") @db.Text
+  /// When the lead confirmed `exactQuestion`. Null means it is not asked - never, by anybody - and
+  /// the lead is shown it as waiting for them. Every line written before 28 September starts here.
+  questionConfirmedAt DateTime? @map("question_confirmed_at")
+  /// DECISION 63, 30 September 2026: set only when this line, or this question's confirming or
+  /// declining, was done by an admin standing in because the lead had left the organisation - never
+  /// by the lead themselves. The plain sentence people on the check-in read, for example "Ngozi
+  /// Bello confirmed this because Tunde Ade has left the organisation." See who-may-confirm-setup.ts.
+  confirmedByAdminNote String? @map("confirmed_by_admin_note") @db.Text
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -4622,6 +5619,41 @@ model GroundContextItem {
   @@index([groundId])
   @@index([aboutParticipantId])
   @@map("ground_context_items")
+}
+
+/// A PLAN, READ INTO PROPOSALS, WAITING FOR THE LEAD (week 13, screens request 6a).
+///
+/// The lead pastes a plan or picks a document, and each goal, role, commitment and rule in it is
+/// kept here as one proposal. Nothing reaches the targets, roles, commitments or rules until the
+/// lead confirms that one proposal (decision 12): then exactly one row is written, and its id is
+/// kept here. Only the person who runs the check-in reads these; a participant never does.
+model PlanProposal {
+  id              String    @id @default(uuid())
+  groundId        String    @map("ground_id")
+  createdByUserId String    @map("created_by_user_id")
+  /// GOAL, ROLE, COMMITMENT or RULE.
+  kind            String
+  /// The one plain sentence the lead reads.
+  says            String    @db.Text
+  /// The structured values: the person, the number, the date exactly as written, and so on.
+  fields          Json
+  /// The plan's own words it came from, exactly.
+  fromThePlan     String    @map("from_the_plan") @db.Text
+  /// Where the plan came from: the file's name, or null for pasted text.
+  fromDocument    String?   @map("from_document")
+  /// PENDING, CONFIRMED or NOT_NOW. An edit keeps it PENDING and sets `editedAt`.
+  status          String    @default("PENDING")
+  editedAt        DateTime? @map("edited_at")
+  decidedAt       DateTime? @map("decided_at")
+  decidedByUserId String?   @map("decided_by_user_id")
+  /// The row it became when confirmed, in the table its kind lands in.
+  becameId        String?   @map("became_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@index([groundId, status])
+  @@map("plan_proposals")
 }
 
 /// A PASTE IS TAKEN ONCE.
@@ -4669,9 +5701,26 @@ model GroundCommitment {
   carriedIntoCheckInId String? @map("carried_into_check_in_id")
   /// The session they first said it in. Null on a PASTE, which has no session.
   statedInSession Int? @map("stated_in_session")
+  /// True only when `text` is the person's own words: an unbroken passage of what they typed in the
+  /// session they said it in. A paste, a lead's edit or a tidied action stays false, and a report may
+  /// only put the text in quotation marks when it is true. See reports/a-quote-is-what-they-said.
+  saidWordForWord Boolean @default(false) @map("said_word_for_word")
+  /// The same, for `whenSaid`: their own words for when.
+  whenSaidWordForWord Boolean @default(false) @map("when_said_word_for_word")
   /// The sessions they said it again in, unresolved. Saying it again is not a second commitment -
   /// it is the same one, still open, and this is what makes that countable.
   saidAgainIn Int[] @default([]) @map("said_again_in")
+  /// WHEN IT WAS SETTLED, DONE OR NOT DONE, so "kept in the last four weeks" counts by when it was
+  /// settled, not when it was promised (week 9). Null while it is open, and on rows settled before
+  /// this column existed.
+  settledAt           DateTime? @map("settled_at")
+  /// The check-in whose own words settled it. Null when a person settled it by hand.
+  settledInCheckInId  String?   @map("settled_in_check_in_id")
+  /// HOW IT WAS SETTLED, so a screen can show the mark (week 9, decision 12): SAID on the person's own
+  /// word (in a check-in or by hand), PROVEN by a document they added themselves, CONFIRMED by the
+  /// colleague who received it. Proof never settles NOT_DONE. Null while it is open. See
+  /// conversation/settled-by-proof.ts.
+  settledBy           String?   @map("settled_by")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -5066,6 +6115,13 @@ model MembershipRequest {
   /// Why it was declined, in the admin's words.
   reason          String?                 @db.Text
 
+  /// TRUE WHEN THE PERSON ACCEPTED A REAL INVITATION to a check-in, rather than a link shared with
+  /// many people. Only then does their "Almost in" page name the admin who was asked (Hafsah, 26
+  /// September). False for every request made before this and for the join link.
+  viaInvitation   Boolean                 @default(false) @map("via_invitation")
+  /// When the person last pressed "Remind". Once a day, counted from this or from when they asked.
+  lastRemindedAt  DateTime?               @map("last_reminded_at")
+
   createdAt DateTime @default(now()) @map("created_at")
 
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -5089,13 +6145,14 @@ enum MembershipRequestStatus {
 /// person has no account and no organisation, and the whole point is that it is waiting for them.
 ///
 /// It is keyed by email, claimed once, and the clock starts at the claim rather than at the grant -
-/// so a promise made in September and taken up in November is still three whole months.
+/// so a promise made in September and taken up in November is still its whole length. One month by
+/// default: every free run is one month (Hafsah, 5 October 2026).
 model FreeRun {
   id              String           @id @default(uuid())
   /// Lowercased at the write, because an address is not case sensitive and a grant that misses is
   /// worse than no grant: the person signs up, sees nothing, and pays or leaves.
   email           String           @unique
-  months          Int              @default(3)
+  months          Int              @default(1)
   /// What the free run covers. Not a separate "unlimited" idea: it is one of the plans we sell, so
   /// the caps, the wording and the upgrade path are the ones that already exist.
   plan            SubscriptionPlan @default(GROWTH)
@@ -5119,6 +6176,26 @@ model OrganizationMembership {
   userId         String   @map("user_id")
   organizationId String   @map("organization_id")
   role           UserRole @default(MEMBER)
+  /// WHERE THEY SIT IN THIS ORGANISATION (U.4, the prototype's "Where they sit" and "Team"). Set by an
+  /// admin on the People page. They describe the organisation and grant nothing: what somebody can do
+  /// still comes only from `role` and their access to each check-in (decisions.md, rule 3). On the
+  /// membership, not the account, because the same person sits differently in each organisation.
+  /// Separate from the imported staff record's `Person.department`, which the read rule for leads
+  /// uses; this field is read by no access rule.
+  level           String?  @db.VarChar(120)
+  team            String?  @db.VarChar(120)
+  /// Who they report to here: another person's user id in this organisation. An id rather than a
+  /// relation, so a person leaving never deletes the line above them; unresolved reads as nobody.
+  reportsToUserId String?  @map("reports_to_user_id")
+  /// HELD FOR A SEAT (U.4 re-review). A guest from another organisation, added to a check-in here
+  /// when the plan had no seat for them. They are on the People page ("No seat on your plan") and
+  /// on the no-seat card, hold no seat (common/seats.ts), and are not offered the check-in until a
+  /// seat is freed and their invitation is sent, which clears this.
+  heldForASeat    Boolean  @default(false) @map("held_for_a_seat")
+  /// HOW THEY CAME TO BE HERE (U.3 review), so the sidebar can say why they are in it: "domain" (their
+  /// email domain may join), "link" (the organisation's invite link). Null where nothing recorded it,
+  /// and then no reason is given. "On its list of people" is read from the staff record instead.
+  joinedHow       String?  @map("joined_how") @db.VarChar(20)
   createdAt      DateTime @default(now()) @map("created_at")
 
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -7353,4 +8430,250 @@ model GroundSetupSignOff {
   @@unique([groundId, userId, step])
   @@index([groundId, userId])
   @@map("ground_setup_sign_offs")
+}
+
+/// WHAT THE LEAD TYPED IN SETUP, IN THEIR OWN WORDS (U.7 re-check). The brief is put together from
+/// the answers setup drew out of the conversation, so the Context page could not honestly call it
+/// "What you wrote". These are the person's own messages from the setup conversation, kept so the
+/// page can show them to that person. A table of its own, rather than a column on grounds, so no
+/// read of a check-in hands it on by spreading the row: it is served only where it is asked for,
+/// and only to the person who wrote it while they lead the check-in.
+model LeadSetupWords {
+  id           String   @id @default(uuid())
+  groundId     String   @unique @map("ground_id")
+  authorUserId String   @map("author_user_id")
+  text         String   @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@map("lead_setup_words")
+}
+
+/// THE RECORDS EACH KIND OF WORK'S BOARD NEEDS (request 76): a deal and its stage for sales, a
+/// release or task for engineering, a ticket for support, a county and its project for a programme,
+/// a party or a deadline for a law firm matter, a loan and its repayments, and so on.
+///
+/// One table rather than eleven, because every kind's records have the same bones: a name, where it
+/// has got to, whose it is, when it is due, and what else was said about it. `kind` says which of
+/// the board's records this is ("deal", "release", "ticket", "deadline", "party"...).
+///
+/// NEVER INVENTED. Every row comes either from a line somebody said in a check-in (`sourceEntryId`,
+/// and the name must be in that line's words) or from the lead typing it (`addedByUserId`). A row
+/// with neither is not written.
+model WorkItem {
+  id                 String    @id @default(uuid())
+  groundId           String    @map("ground_id")
+  kind               String
+  name               String
+  stage              String?
+  ownerParticipantId String?   @map("owner_participant_id")
+  dueAt              DateTime? @map("due_at")
+  fields             Json?
+  sourceEntryId      String?   @map("source_entry_id")
+  addedByUserId      String?   @map("added_by_user_id")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@index([groundId, kind])
+  @@map("work_items")
+}
+
+/// WHERE A BLOCKER STARTED (D3, trace.txt): the steps a blocker went through across check-ins.
+///
+/// STORED WITHOUT NAMES, like a report. Each step holds the check-in it came from and the id of the
+/// person who owns it, never a name; the sentences name nobody. Names are swapped in only when it is
+/// served, for each step's own check-in, through the same wrapper every report goes through, and only
+/// for the steps the reader may open. Built once when the record changes (`inputKey` says what it was
+/// built from, so nothing new means nothing rebuilt), never on opening. `promptVersionId` is the
+/// instructions that wrote it.
+model BlockerTrace {
+  id                 String   @id @default(uuid())
+  organizationId     String   @map("organization_id")
+  /// The handoff the chain was followed from. One trace each.
+  anchorDependencyId String   @unique @map("anchor_dependency_id")
+  /// The check-in the blocker ends in (where the anchor handoff was said) and where it started.
+  endGroundId        String   @map("end_ground_id")
+  startGroundId      String   @map("start_ground_id")
+  /// [{ kind, groundId, personId | null, text, sourceId }], in order. No names.
+  steps              Json
+  /// "Where it started: ..." and the decision needed, written without any name.
+  whereItStarted     String   @map("where_it_started") @db.Text
+  decisionNeeded     String?  @map("decision_needed") @db.Text
+  decisionOwnerParticipantId String? @map("decision_owner_participant_id")
+  inputKey           String   @map("input_key")
+  promptVersionId    String?  @map("prompt_version_id")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@index([endGroundId])
+  @@index([organizationId])
+  @@map("blocker_traces")
+}
+
+/// WHAT A LEAD CONFIRMED IS TRUE OF THE WHOLE COMPANY (week 20, request 17 e): a rule, a definition, a
+/// principle, an owner, something about a client. It sits next to the knowledge cards ("how we do it
+/// here") and is read the same way, but it is kept apart from them on purpose: a card is what the
+/// company wrote down, and a person's account is measured against it; this is what a lead said in
+/// setup, and it is only ever context. A row exists as OFFERED while the lead is being asked, and
+/// counts only once it is KEPT, on the lead's yes. A no deletes it. `text` is the lead's own words
+/// from the setup conversation: never a participant's words, never a private note (those are not
+/// offered at all). `sourceLine` is what the screen reads under it ("Picked up from your check-in on
+/// 22 September").
+model OrganizationMemory {
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  /// The check-in whose setup conversation heard it. A pointer only; the words are copied here.
+  groundId       String?   @map("ground_id")
+  /// rule | definition | principle | owner | client.
+  kind           String    @db.VarChar(16)
+  text           String    @db.Text
+  /// OFFERED | KEPT.
+  status         String    @default("OFFERED") @db.VarChar(8)
+  offeredById    String    @map("offered_by_id")
+  sourceLine     String    @map("source_line") @db.Text
+  offeredAt      DateTime  @default(now()) @map("offered_at")
+  keptById       String?   @map("kept_by_id")
+  keptAt         DateTime? @map("kept_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@map("organization_memories")
+}
+
+/// THE COMPANY PAGE'S COMPANY-WIDE PICTURE (request 17, D2): how each priority is moving, where the
+/// strategy is not reaching the work, what more than one team named, and what leadership says next
+/// to what the check-ins show. Written once when the record changes, never when the page opens.
+/// One row per organisation. Every item keeps `restsOn`, the ids of the check-ins it was built
+/// from, and a reader is served an item only if they may open every one of them. No names are
+/// stored here: people appear as counts, and an owner is held as the customer's own id.
+model CompanyPicture {
+  id              String   @id @default(uuid())
+  organizationId  String   @unique @map("organization_id")
+  /// [{ priorityId, number, tag, says, restsOn: [groundId] }]
+  readings        Json
+  /// [{ id, observation, question, forWhom: { kind: 'leadership' | 'owner', externalId? }, restsOn }]
+  notReaching     Json     @map("not_reaching")
+  /// [{ id, title, touches, teams: [{ team, says }], restsOn }]
+  namedByTeams    Json     @map("named_by_teams")
+  /// [{ id, area, youSaid, checkInsShow, restsOn }]
+  saidAndShown    Json     @map("said_and_shown")
+  /// What it was built from. The same record again means no second model call.
+  inputKey        String   @map("input_key")
+  promptVersionId String?  @map("prompt_version_id")
+  builtAt         DateTime @default(now()) @map("built_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("company_pictures")
+}
+
+/// THE STRATEGY'S VERSIONS (decision 80, item 68): each time the organisation's priorities change, a
+/// new version begins, with the day it began and the priorities it held. Written when a priority is
+/// brought in, agreed or removed, never when the Company page opens. A check-in ran under the
+/// version that was newest on the day it started, which is found from the dates, so no check-in row
+/// carries a version. Holds the priorities' titles (which everybody in the organisation reads) and
+/// the customer's own ids, never a person.
+model StrategyVersion {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  number         Int
+  startedAt      DateTime @map("started_at")
+  /// [{ sourceSystem, externalId, title }], in the order the priorities were set.
+  priorities     Json
+  prioritiesKey  String   @map("priorities_key")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@unique([organizationId, number])
+  @@map("strategy_versions")
+}
+
+// ---------------------------------------------------------------------------
+// Self-learning counts (week 8b, decisions 55 and 57 point 9). COUNTS ONLY.
+// ---------------------------------------------------------------------------
+
+/// How each pattern, coaching step and probe source has fared, counted from records that already
+/// exist. One row per scope (an organisation's id, or "ALL" for the total) and per thing. It holds
+/// no person id, no name and no words: signals are counted, and nobody reads another person's
+/// answers through them (decision 55). `suggestedWeight` is stored and, while the switch in
+/// learning/a-suggested-weight.ts is off, read by nothing that detects, chooses or orders.
+model LearningSignalCount {
+  id              String   @id @default(uuid())
+  /// An organisation's id, or "ALL" for the total across organisations.
+  scope           String
+  /// PATTERN (by code), COACHING_STEP (by the step's own sentence from the role map), or PROBE (by its source).
+  kind            String
+  key             String
+  /// How many times there is an answer to "was it right" for this.
+  judged          Int      @default(0)
+  goodCount       Int      @default(0) @map("good_count")
+  badCount        Int      @default(0) @map("bad_count")
+  unsureCount     Int      @default(0) @map("unsure_count")
+  /// For a pattern, how many the person also answered. Zero for the other kinds.
+  answeredCount   Int      @default(0) @map("answered_count")
+  /// Did the conversation happen: how many were due one, and how many had it.
+  talkDue         Int      @default(0) @map("talk_due")
+  talkHappened    Int      @default(0) @map("talk_happened")
+  /// Did things change: how many show a later period, and in how many it did not come back or was done.
+  changeJudged    Int      @default(0) @map("change_judged")
+  changedCount    Int      @default(0) @map("changed_count")
+  suggestedWeight Float    @default(1) @map("suggested_weight")
+  /// False while there are too few signals for the weight to move from neutral.
+  weightMoved     Boolean  @default(false) @map("weight_moved")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@unique([scope, kind, key])
+  @@index([kind, key])
+  @@map("learning_signal_counts")
+}
+
+/// THE WEEKLY REPORT'S SENTENCE ABOUT EACH PERSON (week 12b, decision 43). One row per check-in per week,
+/// built when a check-in comes in and never when somebody opens the page (decision 7). `eachPerson` holds
+/// `{ participantId, says }` with `says` written by report label ("Participant A named ..."), never a
+/// name: names are swapped in when it is served. It is written from what people named, never from how
+/// their answers were rated.
+model WeeklyReport {
+  id         String   @id @default(uuid())
+  groundId   String   @map("ground_id")
+  /// The Monday the week starts on, in Lagos, as a date: "2026-09-21".
+  weekStart  String   @map("week_start") @db.VarChar(10)
+  eachPerson Json     @map("each_person")
+  builtAt    DateTime @default(now()) @map("built_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@unique([groundId, weekStart])
+  @@map("weekly_reports")
+}
+
+/// THE WAY OUT FOR AN ADDRESS WITH NO ROW ON ANY ROSTER (decision 109). The footer link used to exist only
+/// for people on a roster; somebody invited by address, or who has only an account, had no way to stop
+/// the mail. Keyed by the address alone, lower case. Read with `EmailPreference` by the one door every
+/// mail goes through, so either one stops what we decided to send.
+model EmailAddressPreference {
+  id               String    @id @default(uuid())
+  email            String    @unique
+  unsubscribeToken String    @unique @map("unsubscribe_token")
+  unsubscribedAt   DateTime? @map("unsubscribed_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@map("email_address_preferences")
+}
+
+/// WHEN A LEAD READ A REPORT (decision 133). One row per lead per report (the check-in and its session),
+/// written the first time they open it and kept with the latest time; opening it never rebuilds the report.
+model ReportRead {
+  id            String   @id @default(uuid())
+  groundId      String   @map("ground_id")
+  sessionNumber Int      @map("session_number")
+  userId        String   @map("user_id")
+  firstReadAt   DateTime @default(now()) @map("first_read_at")
+  lastReadAt    DateTime @default(now()) @map("last_read_at")
+
+  @@unique([groundId, sessionNumber, userId])
+  @@index([userId])
+  @@map("report_reads")
 }

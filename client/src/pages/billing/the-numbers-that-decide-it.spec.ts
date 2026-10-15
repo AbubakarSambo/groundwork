@@ -13,19 +13,24 @@ const PAGE = readFileSync(join(__dirname, 'BillingPage.tsx'), 'utf8')
 const code = PAGE.replace(/\/\*[\s\S]*?\*\//g, ' ')
 
 describe('the numbers show before somebody pays, not after', () => {
-  it('the row is not gated on already having a subscription', () => {
-    const row = code.slice(code.indexOf("label=\"Plan\"") - 600, code.indexOf("label=\"Plan\""))
-    /* The gate moved onto the plan tile itself, which is the only one that needs a plan. */
-    expect(row).not.toMatch(/\{\(isSubscribed \|\| isPaused\) && \(\s*<div style=\{\{ display: 'flex', gap: 10/)
-  })
-
-  it('shows people against the cap, which a free account has too', () => {
-    expect(code).toContain('billingStatus.people.count} of ${billingStatus.people.cap')
+  /*
+   * U.19: the stat row became the prototype's "Your plan" rows (settings-billing.txt): "Plan" says
+   * the plan and the people against the cap in one sentence, for every organisation, and "So far"
+   * says what the account has done. The sentences themselves are checked as each reader reads them
+   * in plan-and-billing-as-each-reader-sees-it.spec.tsx; this keeps the two things the old checks
+   * were for.
+   */
+  /* UPDATED, GROUP 1 REBUILD: each row is the shared `FieldRow` now (components/gw/ui), whose
+     label is `label="Plan"` / `label="So far"` rather than kit.tsx's `<b>Plan</b>`. */
+  it('the plan line, with people against the cap, is not gated on already having a subscription', () => {
+    const row = code.slice(code.indexOf('label="Plan"') - 200, code.indexOf('label="Plan"') + 400)
+    expect(row).toContain('thePlanLine(billingStatus, livePricing, freeGrounds)')
+    expect(code.slice(code.indexOf('label="Plan"') - 300, code.indexOf('label="Plan"'))).not.toMatch(/isSubscribed \|\| isPaused\) &&/)
   })
 
   it('shows what the account has actually done, not only what it costs', () => {
     /* An admin asked to pay for a year has to be able to say what was got for it. */
-    const usage = code.slice(code.indexOf("label=\"Check-ins\""), code.indexOf("label=\"Check-ins\"") + 700)
+    const usage = code.slice(code.indexOf('label="So far"'), code.indexOf('label="So far"') + 700)
     expect(usage).toContain('usage.checkIns')
     expect(usage).toContain('reportsReleased')
     expect(usage).toContain('peopleTakingPart')

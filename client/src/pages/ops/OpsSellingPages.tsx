@@ -43,11 +43,11 @@ function WhatGroundworkHasSentUs() {
       <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginBottom: 8, lineHeight: 1.5 }}>
         We are a Groundwork customer too. This is what it has sent us, with each signature checked.
       </div>
-      {arrived.data.events.length === 0 ? (
+      {(arrived.data.events ?? []).length === 0 ? (
         <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>{arrived.data.says}</div>
       ) : (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {arrived.data.events.slice(0, 8).map((e, i) => (
+          {(arrived.data.events ?? []).slice(0, 8).map((e, i) => (
             <li key={i} style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>
               {/* A delivery that did not verify is the one worth seeing, so it is said first and in
                   the product's own words rather than shown as a red dot. */}

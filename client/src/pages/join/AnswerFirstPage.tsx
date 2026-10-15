@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { openLinkApi } from '@/api/entry'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 import { WhatYouGaveUs, type WhatYouGave } from '@/components/gw/WhatYouGaveUs'
+import { Mark } from '@/components/gw/ui'
+import { MARKETING_URL } from '@/lib/marketing'
+import { useAuthStore } from '@/stores/auth'
 
 /**
  * ANSWER FIRST, SAY WHO YOU ARE AT THE END.
@@ -21,10 +24,22 @@ import { WhatYouGaveUs, type WhatYouGave } from '@/components/gw/WhatYouGaveUs'
  */
 type Turn = { who: 'them' | 'it'; text: string }
 
+/**
+ * WHAT "DONE" WAITS FOR, SAID (U.6 review). The button stayed greyed out until the name, the
+ * organisation and the email were all there, and nothing said so. What is required is unchanged.
+ */
+export function whatIsStillNeeded(name: string, org: string, email: string): string {
+  const missing = [!name.trim() && 'your name', !org.trim() && 'your organisation', !email.trim() && 'your email'].filter(Boolean) as string[]
+  const list = missing.length <= 1 ? missing.join('') : `${missing.slice(0, -1).join(', ')} and ${missing[missing.length - 1]}`
+  return `Add ${list} to finish.`
+}
+
 export function AnswerFirstPage() {
   const [params] = useSearchParams()
+  const navigate = useNavigate()
+  const signedIn = useAuthStore(s => !!s.isAuthenticated)
   const token = params.get('t') ?? ''
-  const [what, setWhat] = useState<{ groundLabel: string; theQuestion: string | null; askedBy: string | null } | null>(null)
+  const [what, setWhat] = useState<{ groundLabel: string; theQuestion: string | null; askedBy: string | null; schedule?: string | null } | null>(null)
   const [problem, setProblem] = useState('')
   /*
    * THE KEY OUTLIVES THE TAB, BECAUSE THE ANSWER DOES.
@@ -181,11 +196,52 @@ export function AnswerFirstPage() {
     border: '1px solid var(--gw-border)', fontFamily: 'inherit', outline: 'none', background: 'white',
   }
 
-  if (problem && !what) return <div style={{ ...card, justifyContent: 'center', textAlign: 'center' }}><p style={{ color: 'var(--gw-sub)' }}>{problem}</p></div>
+  /*
+   * WALKTHROUGH PASS 2, ITEM 4: A DEAD END WITH NO MARK AND NO WAY ON. A link that does not open
+   * (no code at all, or the server refuses it) left a bare sentence on a blank page - nowhere to
+   * go and nothing to say where this even was, unlike every other small-state screen in the
+   * product (docs/prototype/screens/F4-small-states/). Same shape here: the mark, the sentence,
+   * and a way through - sign in, for somebody who already has an account, or the Groundwork home
+   * page for anybody else.
+   */
+  /*
+   * B-207 (review round 2): SOMEBODY ALREADY SIGNED IN IS NOT OFFERED "SIGN IN, OR GO TO THE
+   * GROUNDWORK HOME PAGE". Both of those are for somebody signed out; signed in, Today is where
+   * they already belong, and sending them to /auth or the marketing page both lead away from the
+   * product they are already using.
+   */
+  if (problem && !what) return (
+    <div style={{ ...card, justifyContent: 'center', textAlign: 'center' }}>
+      <Mark />
+      {/* B-158: this state had no heading at all, one of five different readings the deep page
+          audit found for the same "a link does not work" state. "That link didn't work" is the
+          prototype's own heading for it (F4-small-states/badlink.txt), used wherever else a link
+          fails; `problem` is the detail sentence underneath it, as LinkProblem.tsx already does. */}
+      <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--gw-text)', marginTop: 18 }}>That link didn’t work</h1>
+      <p style={{ color: 'var(--gw-sub)', marginTop: 8, lineHeight: 1.5 }}>{problem}</p>
+      {signedIn ? (
+        <p style={{ marginTop: 18, fontSize: 14.5 }}>
+          <button
+            type="button"
+            onClick={() => navigate('/today')}
+            style={{ color: 'var(--gw-navy)', fontWeight: 600, background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer' }}
+          >
+            Go to Today
+          </button>
+        </p>
+      ) : (
+        <p style={{ marginTop: 18, fontSize: 14.5 }}>
+          <a href="/auth" style={{ color: 'var(--gw-navy)', fontWeight: 600 }}>Sign in</a>
+          {', or '}
+          <a href={MARKETING_URL} style={{ color: 'var(--gw-navy)', fontWeight: 600 }}>go to the Groundwork home page</a>.
+        </p>
+      )}
+    </div>
+  )
   if (!what) return <div style={{ ...card, justifyContent: 'center', textAlign: 'center' }}><p style={{ color: 'var(--gw-muted)' }}>One moment.</p></div>
 
   return (
-    <div style={{ background: 'var(--gw-bg)', minHeight: '100dvh' }}>
+    <div style={{ background: 'var(--gw-page)', minHeight: '100dvh' }}>
       <div style={card}>
         {/*
           THE BRIEF STOPS EATING A THIRD OF THE PHONE.
@@ -200,15 +256,28 @@ export function AnswerFirstPage() {
         */}
         {phase === 'reading' ? (
           <div style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 11.5, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--gw-muted)' }}>
-              {what.askedBy ? `${what.askedBy} asked` : 'You have been asked'}
-            </div>
-            <h1 style={{ fontSize: 20, margin: '6px 0 0', lineHeight: 1.3 }}>{what.theQuestion || what.groundLabel}</h1>
+            {/* U.6 review: the question only where the lead wrote it to be asked; otherwise the
+                check-in's name, as the invitation says it, and when it runs. Never her description. */}
+            {what.theQuestion ? (
+              <>
+                {/* A sentence, and their name as they gave it (U.6 review). It was a label in capitals,
+                    "U6G ASKED", over the question. */}
+                <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', margin: 0 }}>
+                  {what.askedBy ? `${what.askedBy} asked you this.` : 'You have been asked this.'}
+                </p>
+                <h1 style={{ fontSize: 20, margin: '6px 0 0', lineHeight: 1.3 }}>{what.theQuestion}</h1>
+              </>
+            ) : (
+              <h1 style={{ fontSize: 20, margin: 0, lineHeight: 1.3 }}>
+                {what.askedBy ? `${what.askedBy} invited you to “${what.groundLabel}”` : `You were invited to “${what.groundLabel}”`}
+              </h1>
+            )}
+            {what.schedule && <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', margin: '6px 0 0' }}>{what.schedule}</p>}
           </div>
         ) : (
           <details style={{ marginBottom: 14 }}>
             <summary style={{ fontSize: 12.5, color: 'var(--gw-sub)', cursor: 'pointer', listStyle: 'none' }}>
-              {what.askedBy ? `What ${what.askedBy} asked` : 'What you were asked'} &middot; tap to read it again
+              {what.theQuestion ? (what.askedBy ? `What ${what.askedBy} asked. Tap to read it again.` : 'What you were asked. Tap to read it again.') : `This is “${what.groundLabel}”. Tap to read it again.`}
             </summary>
             <p style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--gw-text)', margin: '8px 0 0' }}>
               {what.theQuestion || what.groundLabel}
@@ -226,7 +295,7 @@ export function AnswerFirstPage() {
                 made in the second before somebody types is the worst place in the product to be
                 wrong. Hafsah, 23 September 2026.
               */}
-              Answer in your own words. It takes about five minutes. The answers help everybody get a
+              Answer in your own words. It takes about ten minutes. The answers help everybody get a
               shared picture, and you will receive the consolidated report at the end.
             </p>
             <button onClick={begin} disabled={busy}
@@ -280,7 +349,7 @@ export function AnswerFirstPage() {
           <div style={{
             position: 'sticky', bottom: 0, marginTop: 14,
             paddingTop: 10, paddingBottom: `calc(10px + env(safe-area-inset-bottom, 0px))`,
-            background: 'var(--gw-bg)', borderTop: '1px solid var(--gw-border)',
+            background: 'var(--gw-page)', borderTop: '1px solid var(--gw-border)',
           }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
               <textarea
@@ -351,6 +420,10 @@ export function AnswerFirstPage() {
                 placeholder="you@work.com" style={field} />
             </div>
             {problem && <div role="alert" style={{ color: 'var(--gw-red-t)', fontSize: 13, marginTop: 8 }}>{problem}</div>}
+            {/* U.6 review: "Done" waits for all three, and now it says so. The same three are needed. */}
+            {(!email.trim() || !name.trim() || !org.trim()) && (
+              <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 10 }}>{whatIsStillNeeded(name, org, email)}</div>
+            )}
             <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
               <button onClick={() => finish(true)} disabled={busy || !email.trim() || !name.trim() || !org.trim()}
                 style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: 'var(--gw-navy)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: busy || !email.trim() || !name.trim() || !org.trim() ? .5 : 1 }}>

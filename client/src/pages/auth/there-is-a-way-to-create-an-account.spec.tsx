@@ -84,6 +84,23 @@ describe('the create-account door', () => {
     await waitFor(() => expect(screen.getByText('Create your account')).toBeTruthy())
   })
 
+  /*
+   * WALKTHROUGH PASS 2, ITEM 4: TWO NAVY BUTTONS AT ONCE. "How would you like to sign in?" drew its
+   * chosen option ("With a link we email you", the default) navy, the same colour as "Create
+   * account" below it - two navy controls on one page, which CLAUDE.md's "at most one navy button
+   * per page" rules out and which the prototype's own sign-up screen never has (signup.txt has only
+   * "Create account"). `Choices` now takes a `quiet` prop for exactly this case.
+   */
+  it('has exactly one navy control: "Create account", never the chosen sign-in method too', async () => {
+    renderAuth('?mode=signup')
+    await waitFor(() => expect(screen.getByText('Create your account')).toBeTruthy())
+    const chosen = screen.getByRole('radio', { name: 'With a link we email you', checked: true })
+    expect(chosen.className).not.toContain('gwui-choice-on ')
+    expect(chosen.className.trim()).not.toBe('gwui-choice gwui-choice-on')
+    expect(chosen.className).toContain('gwui-choice-on-quiet')
+    expect(screen.getByRole('button', { name: /^Create account$/ }).className).toContain('gwui-btn-primary')
+  })
+
   it('asks for the name and the organisation', async () => {
     /**
      * Both were guessed before, and not harmlessly: `entrySave` derives the first name
@@ -101,24 +118,28 @@ describe('the create-account door', () => {
     fireEvent.change(screen.getByLabelText(/Your name/i), { target: { value: 'Sam Taylor' } })
     fireEvent.change(screen.getByLabelText(/^Email$/i), { target: { value: 'sam@acme.test' } })
     fireEvent.change(screen.getByLabelText(/Your organisation/i), { target: { value: 'Acme Ltd' } })
-    fireEvent.click(screen.getByRole('button', { name: /Create my account/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Create account$/ }))
     await waitFor(() => expect(authApi.entrySave).toHaveBeenCalledWith(
       'sam@acme.test',
       { payload: { firstName: 'Sam Taylor', orgName: 'Acme Ltd' } },
       /* The honeypot, empty: a person never meets the field. */
       '',
+      /* No password: the email link is the default way to sign in (U.2). */
+      undefined,
     ))
   })
 
+  /* A Gmail address, because a company address now suggests its organisation's name (U.2, Hafsah's
+     decision of 26 September); a public mail address suggests nothing, so the box stays empty. */
   it('the organisation is optional, because a naming decision should not block signing up', async () => {
     renderAuth('?mode=signup')
     await waitFor(() => screen.getByLabelText(/Your name/i))
     fireEvent.change(screen.getByLabelText(/Your name/i), { target: { value: 'Sam' } })
-    fireEvent.change(screen.getByLabelText(/^Email$/i), { target: { value: 'sam@acme.test' } })
-    fireEvent.click(screen.getByRole('button', { name: /Create my account/ }))
+    fireEvent.change(screen.getByLabelText(/^Email$/i), { target: { value: 'sam@gmail.com' } })
+    fireEvent.click(screen.getByRole('button', { name: /^Create account$/ }))
     /* The third argument is the honeypot — empty for a person who never sees the field. See
        components/gw/a-field-nobody-can-see.tsx. */
-    await waitFor(() => expect(authApi.entrySave).toHaveBeenCalledWith('sam@acme.test', { payload: { firstName: 'Sam' } }, ''))
+    await waitFor(() => expect(authApi.entrySave).toHaveBeenCalledWith('sam@gmail.com', { payload: { firstName: 'Sam' } }, '', undefined))
   })
 })
 
@@ -133,7 +154,7 @@ describe('a failure is not a success', () => {
     renderAuth('?mode=signup')
     await waitFor(() => screen.getByLabelText(/^Email$/i))
     fireEvent.change(screen.getByLabelText(/^Email$/i), { target: { value: 'sam@acme.test' } })
-    fireEvent.click(screen.getByRole('button', { name: /Create my account/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Create account$/ }))
     await waitFor(() => expect(screen.getByText(/did not send/i)).toBeTruthy())
     expect(screen.queryByText(/Check your email/)).toBeNull()
   })
@@ -144,19 +165,23 @@ describe('a failure is not a success', () => {
     renderAuth('?mode=signup')
     await waitFor(() => screen.getByLabelText(/^Email$/i))
     fireEvent.change(screen.getByLabelText(/^Email$/i), { target: { value: 'sam@acme.test' } })
-    fireEvent.click(screen.getByRole('button', { name: /Create my account/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Create account$/ }))
     await waitFor(() => expect(screen.getByText(/did not send/i)).toBeTruthy())
   })
 
-  it('but an address that already has an account is told plainly', async () => {
-    // Safe here and only here: they just said they are new, so it is the useful answer
-    // rather than an enumeration oracle.
+  it('and never says an address already has an account', async () => {
+    /*
+     * Changed by Hafsah's rule of 26 September: sign-up never reveals whether an address has an
+     * account. This test used to require "already has an account" on a 409. entry-save answers an
+     * existing address exactly as a new one now, so a 409 is only a refusal like any other.
+     */
     ;(authApi.entrySave as any).mockRejectedValue({ response: { status: 409 } })
     renderAuth('?mode=signup')
     await waitFor(() => screen.getByLabelText(/^Email$/i))
     fireEvent.change(screen.getByLabelText(/^Email$/i), { target: { value: 'sam@acme.test' } })
-    fireEvent.click(screen.getByRole('button', { name: /Create my account/ }))
-    await waitFor(() => expect(screen.getByText(/already has an account/i)).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: /^Create account$/ }))
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy())
+    expect(screen.queryByText(/already has an account/i)).toBeNull()
   })
 })
 

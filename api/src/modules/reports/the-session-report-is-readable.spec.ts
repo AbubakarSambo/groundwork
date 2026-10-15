@@ -89,7 +89,7 @@ describe('the four reads', () => {
        standing for the first is read as the second, and that is a false finding. */
     expect(read(theSessionReport(base), 'Movement').value).toBe('No target set');
     expect(read(theSessionReport({ ...base, movedOnTargets: 0 }), 'Movement').value).toBe('None');
-    expect(read(theSessionReport({ ...base, movedOnTargets: 14 }), 'Movement').value).toBe('+14');
+    expect(read(theSessionReport({ ...base, movedOnTargets: 14, targetsMoved: 1 }), 'Movement').value).toBe('1 target');
   });
 
   it('and does not call one person\'s side "no differences"', () => {
@@ -145,7 +145,17 @@ describe('what each person said they did', () => {
       closed: false,
       answeredThisSession: [{ who: 'Ellie', isYou: false }],
     });
-    expect(out.whatEachPersonSaid[0].saying).toContain('opens to you when the report releases');
+    expect(out.whatEachPersonSaid[0].saying).toContain('opens to you when the team\'s report is shared');
+  });
+
+  it('and so it is once the round has closed, for as long as the team\'s report is not shared with this reader (F-12)', () => {
+    const out = theSessionReport({ ...base, closed: true, othersWordsAreNotYetOpen: true, answeredThisSession: [{ who: 'Ellie', isYou: false }] });
+    expect(out.whatEachPersonSaid[0].saying).toBe('This person has answered, and what they said opens to you when the team\'s report is shared.');
+  });
+
+  it('after it is shared, a person with nothing specific on record is told that, and only then', () => {
+    const out = theSessionReport({ ...base, closed: true, othersWordsAreNotYetOpen: false, answeredThisSession: [{ who: 'Ellie', isYou: false }] });
+    expect(out.whatEachPersonSaid[0].saying).toBe('This person has answered, and nothing specific enough to record came out of it.');
   });
 });
 

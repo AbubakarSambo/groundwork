@@ -4,13 +4,23 @@ import { Injectable, Logger, NotFoundException, BadRequestException } from '@nes
 import { isASecondOrganisation, GUEST_ROLE } from './joining-a-second-organisation';
 import { JwtService } from '@nestjs/jwt';
 import * as crypto from 'crypto';
-import { needsApproval, WAITING_TO_BE_LET_IN } from './nobody-joins-your-company-by-being-invited-to-a-check-in';
+import { needsApproval, isAnAdminOf, whoToAsk, WAITING_TO_BE_LET_IN } from './nobody-joins-your-company-by-being-invited-to-a-check-in';
+
+import { HELD_FOR_A_SEAT } from './held-for-a-seat';
+import { namedWhenAnAdminApproved, theyWaitForAnAdmin, whatHappensWhenYouJoin } from './named-when-an-admin-approved';
+import { canSignIn } from '../grounds/can-sign-in';
+export { HELD_FOR_A_SEAT };
 import { tellTheAdminsSomebodyIsWaiting } from './somebody-is-waiting-at-the-door';
-import { assertInviteLinkStillOpens } from './an-invite-link-still-opens';
+import { assertInviteLinkStillOpens, hasExpired } from './an-invite-link-still-opens';
+import { whenItAsks } from './when-it-asks';
 import { inviteExpiryFrom } from './how-long-an-invite-lasts';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
+import { AuthService } from '../auth/auth.service';
 import { CheckInStatus, TokenType, Cadence, PartyType, GroundScenario } from '@prisma/client';
+import { targetsFor } from '../board/whose-number-is-whose-business';
+import { withoutWhatTheLeadHasNotToldThemAbout } from '../board/an-untold-goal-is-not-a-board-objective';
+import { theFirstNameFrom } from '../reports/a-title-is-not-a-first-name';
 
 /**
  * Participant magic-link entry. A participant is added to a ground by email and
@@ -18,6 +28,15 @@ import { CheckInStatus, TokenType, Cadence, PartyType, GroundScenario } from '@p
  * create or link a User for that email so they can own their private record.
  * The other party's account is never visible to them.
  */
+/** The one reply "Send me a fresh link" ever gives. */
+export const FRESH_LINK_REPLY =
+  'If that is the address the invitation went to, a fresh link is on its way. Open it from your email.';
+
+import { theAnchorInvitation } from '../entry/the-anchor-people-step';
+import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
+import { THE_ANCHOR_SCENARIO_KEY, theInvitationWordsFor } from '../entry/the-anchor-scenario-content';
+import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
+
 @Injectable()
 export class ParticipantsService {
   private readonly logger = new Logger(ParticipantsService.name);
@@ -26,29 +45,116 @@ export class ParticipantsService {
     private prisma: PrismaService,
     private jwt: JwtService,
     private email: EmailService,
+    private auth: AuthService,
   ) {}
 
   /** Preview an invite from its token - shown before the participant accepts. */
   async preview(token: string) {
+    /*
+     * AN EXPIRED INVITATION IS ANSWERED, NOT THROWN (U.3). The page it opens is "This link has
+     * expired", which asks for the address and sends a fresh link. It needs the lead's FIRST name for
+     * "If this isn't the address Wairimu invited, ask her to add the right one." and nothing else:
+     * not the check-in, not the organisation, not the address it went to.
+     */
+    const row = await this.prisma.groundParticipant.findUnique({ where: { inviteToken: token } });
+    if (row && hasExpired(row)) {
+      const g = await this.prisma.ground.findUnique({ where: { id: row.groundId }, select: { initiator: { select: { firstName: true, lastName: true } } } });
+      /* A title is never a first name: "Dr Amina Bello" is Amina (a-title-is-not-a-first-name.ts). */
+      return { expired: true as const, leadFirstName: theFirstNameFrom(g?.initiator?.firstName, g?.initiator?.lastName) };
+    }
+    /*
+     * HELD FOR A SEAT (U.4 third review): the page opens straight on the refusal, carrying nothing
+     * else - not who invited them, not their part, not the check-in - because the admin's card says
+     * "They have not been told any of this", and a button that is refused after it is pressed is not
+     * an answer.
+     */
+    if (row?.awaitingSeat) return { heldForASeat: true as const, saying: HELD_FOR_A_SEAT };
     const participant = await this.loadByToken(token);
     const ground = await this.prisma.ground.findUnique({
       where: { id: participant.groundId },
-      include: { initiator: { select: { firstName: true, lastName: true } } },
+      include: {
+        initiator: { select: { firstName: true, lastName: true } },
+        organization: { select: { name: true } },
+        objectives: { select: { id: true, name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true } },
+      },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    /* The person this link is for has not been told a goal the lead has set and not said: it is not a share of theirs to speak of (decisions 48 and 56). */
+    const goalsNotToldYet: any[] = await ((this.prisma as any).personObjective?.findMany?.({
+      where: { groundId: participant.groundId, participantId: participant.id, awareness: 'NOT_TOLD' },
+      select: { id: true, participantId: true, text: true, awareness: true, authoredBy: true, createdAt: true },
+    }) ?? Promise.resolve([])).catch(() => []);
+    const leadFirst = theFirstNameFrom(ground.initiator.firstName, ground.initiator.lastName);
+
+    /*
+     * "YOUR NUMBER" (join-invite.txt: "Only you and Wairimu see your share of the target."), THROUGH
+     * THE RULE THAT OWNS WHO SEES A SHARE (whose-number-is-whose-business.ts, board.service.ts's own
+     * caller - the fix for ten people each seeing all ten targets). Nothing new is decided here about
+     * visibility: `targetsFor` is asked for exactly what this one participant, not yet the lead, may
+     * see, the same as the board asks it.
+     *
+     * THE VALUE NEVER LEAVES THIS FUNCTION (Hafsah's last check). This preview is read with the
+     * link's token, before any sign-in - the one person who must not be handed a number here is the
+     * one this token is for, over a channel that proves nothing about who is holding it yet. So this
+     * sends only WHO would see it, never the number itself: `'you-and-lead'`, `'everybody'` (the
+     * check-in's own `whoSeesTargets` setting), or `null` (no share of their own to speak of, or the
+     * settled case - they have already joined, and the page does not show this block to them again).
+     */
+    const alreadyAccepted = !!participant.userId;
+    const whoSeesTargets: 'their own' | 'everybody' = (ground as any).whoSeesTargets === 'EVERYBODY' ? 'everybody' : 'their own';
+    const ownsAShare = !!withoutWhatTheLeadHasNotToldThemAbout(targetsFor(
+      (ground as any).objectives ?? [],
+      participant.id,
+      whoSeesTargets,
+      { isLead: false },
+    ).shown as any[], goalsNotToldYet, [participant as any, { id: 'lead', user: ground.initiator } as any], false).kept.find((o: any) => o.ownerParticipantId === participant.id && o.target != null);
+    const yourNumberIsSeenBy: 'you-and-lead' | 'everybody' | null =
+      alreadyAccepted || !ownsAShare ? null : (whoSeesTargets === 'everybody' ? 'everybody' : 'you-and-lead');
 
     return {
+      /* For "Wairimu invited you to the sales team's check-in" and "Baridi Appliances, until 30 September." */
+      organisationName: (ground as any).organization?.name ?? null,
+      leadFirstName: leadFirst,
+      endsAt: ground.endsAt ? ground.endsAt.toISOString() : null,
+      /* U.6 review: when their first check-in opens, if that is later than now, so the page does not
+         offer "Answer today's check-in now" for a check-in that opens on 5 October. */
+      opensOn: (() => {
+        const at = (participant as any).startsAt ?? (ground as any).startsAt ?? null;
+        return at && new Date(at).getTime() > Date.now() ? new Date(at).toISOString() : null;
+      })(),
+      /* "What it asks": the rhythm, in one sentence (when-it-asks.ts). */
+      schedule: whenItAsks({
+        cadence: ground.cadence,
+        cadenceAnchorDay: ground.cadenceAnchorDay,
+        workingDays: ground.workingDays,
+        leadFirstName: leadFirst,
+      }),
       groundLabel: ground.label,
       scenario: ground.scenario,
       initiatorName: `${ground.initiator.firstName} ${ground.initiator.lastName}`.trim(),
-      roleAsDescribed: participant.roleAsDescribed,
+      /* U.6 review: no "Your part in this". What is stored there is the lead's sentence about this
+         person (the-leads-words-about-someone.ts), and this page is read by that person. */
       email: participant.email,
-      alreadyAccepted: !!participant.userId,
+      alreadyAccepted,
       /* Somebody who answered through an open link has no sign-in yet, and has already done the thing
          the arrival screen describes. A link that brings them to their report should not read "wants
          to hear your version" - see InvitePage, which goes straight through on this. */
       hasAnswered: await this.prisma.checkIn.count({ where: { participantId: participant.id, status: CheckInStatus.COMPLETED } }).then((n) => n > 0).catch(() => false),
       nameGiven: (participant as any).nameGiven ?? null,
+      /* Whether they go straight in or wait for an admin, in one plain sentence (Hafsah, 12 October). Not for somebody already in. */
+      whatHappensWhenYouJoin: alreadyAccepted ? null : whatHappensWhenYouJoin(
+        await theyWaitForAnAdmin(this.prisma, ground as any, participant as any).catch(() => false),
+        (ground as any).organization?.name ?? null,
+      ),
+      yourNumberIsSeenBy,
+      /* The anchor scenario's own invitation, only for a check-in started from the anchor link and only while the switch is on (request 149). Nothing else about this answer changes. */
+      ...(((ground as any).startedFrom === STARTED_FROM_THE_ANCHOR || (ground as any).scenario === THE_ANCHOR_SCENARIO_KEY) && (await theAnchorScenarioIsOn(this.prisma))
+        ? { anchorInvitation: theAnchorInvitation(leadFirst) }
+        : {}),
+      /* The same words, as the ordinary invitation read of a scenario that has its own (decision 114): drawn like any scenario's, no anchor branch. Absent for the rest. */
+      ...((ground as any).scenario === THE_ANCHOR_SCENARIO_KEY && (await theAnchorScenarioIsOn(this.prisma))
+        ? { invitationWords: theInvitationWordsFor((ground as any).scenario, leadFirst) }
+        : {}),
     };
   }
 
@@ -57,10 +163,38 @@ export class ParticipantsService {
    * participant, clear the token, and return an auth token + the check-in to
    * enter. Idempotent if already accepted (re-issues a token + the check-in).
    */
+  /** See accept(): the name a person gives for themselves when they join, kept as typed. */
+  private async theNameTheyGaveThemselves(participant: { id: string; userId: string | null }, names?: { firstName?: string; lastName?: string }) {
+    const first = names?.firstName?.trim() ?? '';
+    const last = names?.lastName?.trim() ?? '';
+    if (!first && !last) return;
+    if (participant.userId) {
+      const u = await this.prisma.user.findUnique({ where: { id: participant.userId }, select: { passwordHash: true, googleId: true, welcomeCardSeenAt: true } });
+      if (!u || canSignIn(u) || u.welcomeCardSeenAt) return;
+      await this.prisma.user.update({ where: { id: participant.userId }, data: { ...(first ? { firstName: first.slice(0, 120) } : {}), ...(first || last ? { lastName: last.slice(0, 120) } : {}) } });
+    }
+    await this.prisma.groundParticipant.update({ where: { id: participant.id }, data: { nameGiven: [first, last].filter(Boolean).join(' ').slice(0, 120) } });
+  }
+
   async accept(token: string, names?: { firstName?: string; lastName?: string }, returningUserId?: string | null) {
     const participant = await this.loadByToken(token);
     const ground = await this.prisma.ground.findUnique({ where: { id: participant.groundId } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    /*
+     * HELD FOR A SEAT (U.4 re-review): not offered the check-in until a seat is freed and the
+     * invitation is sent, even with the link in hand (the lead can copy it). Nothing is created.
+     */
+    if (participant.awaitingSeat) throw new BadRequestException(HELD_FOR_A_SEAT);
+
+    /*
+     * THEIR OWN NAME, CORRECTED WHEN THEY JOIN (Hafsah, 12 October 2026: "people can correct their own name
+     * when they join"). The invite page fills the name their lead typed and lets them change it. That reached
+     * nobody when their sign-in had been made for them at setup: accept() went straight to "already joined"
+     * and dropped it. So the name they give is kept, exactly as they typed it, on their sign-in and on this row,
+     * while they have not come in yet. Once somebody has signed in, their name is changed in Settings, not here.
+     */
+    await this.theNameTheyGaveThemselves(participant as any, names).catch((err: any) =>
+      this.logger.warn(`Could not keep the name given on joining for ${participant.id}: ${err?.message ?? err}`));
 
     // AN INVITE LINK IS SINGLE USE FOR SIGNING IN.
     //
@@ -103,11 +237,22 @@ export class ParticipantsService {
      * from when they joined - not a new cookie layer. Presenting it is the proof.
      */
     if (participant.userId) {
+      /* Pressing Join on their own invitation is accepting it, whoever made their sign-in (Hafsah, 13 October). */
+      if (!(participant as any).acceptedAt) {
+        await Promise.resolve((this.prisma.groundParticipant as any).updateMany?.({ where: { id: participant.id, acceptedAt: null }, data: { acceptedAt: new Date() } }))
+          .catch((err: any) => this.logger.warn(`Could not record that ${participant.id} accepted: ${err?.message ?? err}`));
+      }
       if (returningUserId && returningUserId === participant.userId) {
         const checkIn = await this.prisma.checkIn.findFirst({
           where: { participantId: participant.id, status: { not: CheckInStatus.COMPLETED } },
           orderBy: { sessionNumber: 'asc' },
         });
+        /* STILL WAITING TO BE LET IN (U.3): coming back on the same browser must land on "Almost in",
+           never on a check-in that will refuse them. */
+        const waitingStill = await this.prisma.user.findUnique({ where: { id: participant.userId }, select: { awaitingOrgApproval: true } });
+        if (waitingStill?.awaitingOrgApproval) {
+          return { resumed: true as const, groundId: participant.groundId, checkInId: null, queuedForApproval: true, saying: WAITING_TO_BE_LET_IN };
+        }
         return { resumed: true as const, groundId: participant.groundId, checkInId: checkIn?.id ?? null };
       }
 
@@ -193,8 +338,9 @@ export class ParticipantsService {
             select: { id: true },
           })) !== null
         : false;
+      /* Whoever added THIS person - the lead, or the admin who set the check-in up for them (U.4). */
       const inviter = await tx.user.findUnique({
-        where: { id: ground.initiatorId },
+        where: { id: whoToAsk(participant.addedByUserId, ground.initiatorId) },
         select: { role: true, organizationId: true },
       });
       const wait = needsApproval({
@@ -203,8 +349,11 @@ export class ParticipantsService {
         alreadyAMemberHere,
         /* An admin of this organisation adding somebody IS the approval - asking them to approve
            their own action is a queue with one item in it that they put there. */
-        addedByAnAdminOfThisOrg:
-          inviter?.role === 'ADMIN' && inviter?.organizationId === ground.organizationId,
+        addedByAnAdminOfThisOrg: isAnAdminOf(ground.organizationId, inviter)
+          /* Named on the check-in when an admin approved it: let in by that approval (Hafsah, 12 October). */
+          || namedWhenAnAdminApproved(ground as any, participant as any, (ground as any).approvedById
+            ? await tx.user.findUnique({ where: { id: (ground as any).approvedById }, select: { role: true, organizationId: true } })
+            : null),
       });
 
       if (!user) {
@@ -224,6 +373,14 @@ export class ParticipantsService {
       } else {
         // Pre-existing account - let the client know so it can surface a message.
         existingAccount = true;
+        /*
+         * THE LINK WAS SENT TO THIS ADDRESS, SO OPENING IT CONFIRMS IT (pilots, 13 October 2026, problem 8). Brian was added on
+         * People, which makes his sign-in unconfirmed, and then joined from the check-in invitation sent to that same
+         * address. Ask still told him "Confirm your email address first", about a sign-up he never did.
+         */
+        if (!user.isEmailVerified && user.email.toLowerCase() === email.toLowerCase()) {
+          await tx.user.update({ where: { id: user.id }, data: { isEmailVerified: true } });
+        }
       }
       /*
        * Cross-org participation: user keeps their home org. The JWT carries their real orgId so
@@ -267,6 +424,8 @@ export class ParticipantsService {
             email,
             requestedByUserId: ground.initiatorId,
             groundId: ground.id,
+            /* A real invitation, so their "Almost in" page may name the admin asked (U.3). */
+            viaInvitation: true,
           },
           /* A request already decided is not reopened by another invitation, and a pending one is
              left exactly as it is - the admin is looking at a list, not a moving target. */
@@ -282,7 +441,8 @@ export class ParticipantsService {
          * browser (see the branch above) - and keeping it is what lets their own
          * link go on working instead of dying the moment they first use it.
          */
-        data: { userId: user.id },
+        /* Accepting is on record from now: they are in every count, and missed is said of them (Hafsah, 13 October). */
+        data: { userId: user.id, acceptedAt: new Date() },
       });
 
       return user;
@@ -380,14 +540,13 @@ export class ParticipantsService {
 
     return {
       accessToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role,
-        organizationId: user.organizationId,
-      },
+      /**
+       * THE SAME SHAPE EVERY OTHER SIGN-IN DOOR SENDS (U.8 re-review), including `organizationName` -
+       * this used to be a hand-built subset (id, email, name, role, organizationId only), so the
+       * organisation switcher had nothing to show until the app-wide `/auth/me` safety net's request
+       * landed. `userShapeFor` is the one builder `/auth/me` itself uses.
+       */
+      user: await this.auth.userShapeFor(user.id),
       groundId: ground.id,
       checkInId: checkIn?.id ?? null,
       existingAccount,
@@ -399,23 +558,90 @@ export class ParticipantsService {
   }
 
 
-  /** Update a participant's roleAsDescribed. Only the participant themselves or the ground initiator may call this. */
+  /**
+   * Update a participant's role. Only the participant themselves or the ground initiator (the lead)
+   * may call this.
+   *
+   * NEVER THE PERSON'S OWN WORDS INTO roleAsDescribed (decision 30; `aRoleInTheirOwnWords`;
+   * tightened 30 September 2026). That column is the LEAD's private description of somebody, read
+   * only by the lead and never by the person it is about or a colleague (`theLeadsWordsAbout`,
+   * `a75b13ac`, `7586775d`). The one exception is a lead's own INITIATOR row, which is already their
+   * own words about themselves (the remit they gave when creating the ground -
+   * `grounds.service.ts`'s `leadRemit`), and `aRoleInTheirOwnWords` already trusts exactly that row.
+   * Anywhere else, a caller editing their OWN row is not the lead describing them - it is the person
+   * giving their own statement of their role, and that goes where the person's own role is kept:
+   * their account's `jobTitle` (`User.jobTitle`), the same field Setup already reads to greet a
+   * returning lead by "what they do" and the field only ever written through the person's own
+   * profile (`PATCH /auth/profile`) - never by anybody else. A lead editing somebody ELSE's row is
+   * unchanged: that write is exactly what `roleAsDescribed` is for.
+   *
+   * DECISION 57, ITEM 5: giving a role, in either of their own words, is itself how a person or their
+   * lead confirms or corrects the guessed function - so this also stamps
+   * detectedFunctionConfirmedAt/By, the same as the plain confirm-as-is route below. Once stamped, a
+   * guess below the confirmation threshold may be used (see function-detection.ts,
+   * needsRoleConfirmation); until then only the role-agnostic universal floor applies.
+   */
   async updateRole(participantId: string, userId: string, roleAsDescribed: string) {
     const participant = await this.prisma.groundParticipant.findUnique({
       where: { id: participantId },
       include: { ground: { include: { participants: { where: { partyType: 'INITIATOR' } } } } },
     });
-    if (!participant) throw new NotFoundException('Participant not found');
+    if (!participant) throw new NotFoundException('That person is not in this check-in, so check the name and try again.');
 
     const isOwner = participant.userId === userId;
     const isInitiator = participant.ground.participants.some((p) => p.userId === userId);
-    if (!isOwner && !isInitiator) throw new NotFoundException('Participant not found');
+    if (!isOwner && !isInitiator) throw new NotFoundException('That person is not in this check-in, so check the name and try again.');
+
+    const now = new Date();
+
+    /* The person, giving their own statement of their own role - never the lead's private
+       description, whether or not they also happen to lead some other check-in. */
+    if (isOwner && participant.partyType !== 'INITIATOR') {
+      await Promise.all([
+        this.prisma.user.update({ where: { id: userId }, data: { jobTitle: roleAsDescribed } }),
+        this.prisma.groundParticipant.update({
+          where: { id: participantId },
+          data: { detectedFunctionConfirmedAt: now, detectedFunctionConfirmedBy: userId },
+        }),
+      ]);
+      return { id: participantId, ownRoleAsGiven: roleAsDescribed };
+    }
+
+    /* The lead: describing somebody else (roleAsDescribed, private to the lead), or their own
+       INITIATOR row, which `aRoleInTheirOwnWords` already reads as their own words about themselves. */
+    const updated = await this.prisma.groundParticipant.update({
+      where: { id: participantId },
+      data: { roleAsDescribed, detectedFunctionConfirmedAt: now, detectedFunctionConfirmedBy: userId },
+    });
+    return { id: updated.id, roleAsDescribed: updated.roleAsDescribed };
+  }
+
+  /**
+   * "IS THAT RIGHT?" ANSWERED "YES" (decision 57, item 5): confirms the guessed function as it
+   * stands, with no change to roleAsDescribed - the plain-words companion to updateRole above, for
+   * when nothing needs correcting. Same permission: the participant themselves, or the ground
+   * initiator (the lead), confirming for them from the Context page.
+   */
+  async confirmDetectedFunction(participantId: string, userId: string) {
+    const participant = await this.prisma.groundParticipant.findUnique({
+      where: { id: participantId },
+      include: { ground: { include: { participants: { where: { partyType: 'INITIATOR' } } } } },
+    });
+    if (!participant) throw new NotFoundException('That person is not in this check-in, so check the name and try again.');
+
+    const isOwner = participant.userId === userId;
+    const isInitiator = participant.ground.participants.some((p) => p.userId === userId);
+    if (!isOwner && !isInitiator) throw new NotFoundException('That person is not in this check-in, so check the name and try again.');
 
     const updated = await this.prisma.groundParticipant.update({
       where: { id: participantId },
-      data: { roleAsDescribed },
+      data: { detectedFunctionConfirmedAt: new Date(), detectedFunctionConfirmedBy: userId },
     });
-    return { id: updated.id, roleAsDescribed: updated.roleAsDescribed };
+    return {
+      id: updated.id,
+      detectedFunction: updated.detectedFunction,
+      detectedFunctionConfirmedAt: updated.detectedFunctionConfirmedAt,
+    };
   }
 
   /** Fix a bounced/wrong address and resend the invite - initiator only, and
@@ -458,12 +684,12 @@ export class ParticipantsService {
       where: { id: participantId },
       include: { ground: { include: { participants: { where: { partyType: 'INITIATOR' } } } } },
     });
-    if (!participant) throw new NotFoundException('Participant not found');
+    if (!participant) throw new NotFoundException('That person is not in this check-in, so check the name and try again.');
 
     const isInitiator = participant.ground.participants.some((p) => p.userId === actingUserId);
-    if (!isInitiator) throw new NotFoundException('Participant not found');
+    if (!isInitiator) throw new NotFoundException('That person is not in this check-in, so check the name and try again.');
     if (participant.userId) {
-      throw new BadRequestException('This person has already joined - their email cannot be changed. Remove and re-invite them instead.');
+      throw new BadRequestException('This person has already joined, so their email address cannot be changed. Remove them and invite them again instead.');
     }
 
     const email = newEmail.trim().toLowerCase();
@@ -496,6 +722,46 @@ export class ParticipantsService {
   // --- helpers ---
 
   /** The rule lives in an-invite-link-still-opens.ts, because attaching a document before the account exists presents the same token. */
+  /**
+   * "SEND ME A FRESH LINK" (U.3, #/join/expired).
+   *
+   * The same reply whatever happened, so the form cannot be used to learn whether an address was
+   * invited, or to whom: "We don't show who invited an address we don't recognise." A link goes out
+   * only when the token is a real invitation nobody has accepted and the address typed is the one it
+   * was sent to. The token is kept (every email already sent keeps working) and only its expiry is
+   * renewed, exactly as the lead's own "send it again" does.
+   */
+  async sendAFreshLink(token: string, typedEmail: string): Promise<{ says: string }> {
+    const says = FRESH_LINK_REPLY;
+    const email = (typedEmail ?? '').trim().toLowerCase();
+    if (!token || !email) return { says };
+    const participant = await this.prisma.groundParticipant.findUnique({ where: { inviteToken: token } });
+    if (!participant || participant.userId || (participant.email ?? '').toLowerCase() !== email) return { says };
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: participant.groundId },
+      include: { initiator: { select: { firstName: true } } },
+    });
+    if (!ground) return { says };
+    await this.prisma.groundParticipant.update({
+      where: { id: participant.id },
+      data: { inviteTokenExpiresAt: inviteExpiryFrom(), inviteExpiryWarnedAt: null, inviteLapsedToldAt: null },
+    });
+    try {
+      await this.email.sendTheInviteThisGroundSends(
+        ground,
+        participant.email,
+        `${ground.initiator?.firstName ?? 'A founder'}`,
+        token,
+        undefined,
+        { kind: 'PARTICIPANT_INVITE', participantId: participant.id, groundId: ground.id },
+      );
+    } catch (err: any) {
+      /* Still the same reply: a slow mail provider must not turn this into a way of telling addresses apart. */
+      this.logger.warn(`Fresh invitation link to ${participant.email} did not send: ${err?.message}`);
+    }
+    return { says };
+  }
+
   private async loadByToken(token: string) {
     const participant = await this.prisma.groundParticipant.findUnique({ where: { inviteToken: token } });
     return assertInviteLinkStillOpens(participant);
@@ -503,8 +769,10 @@ export class ParticipantsService {
 
   // Never fabricate a name from the email address. firstName is a required
   // column, but an empty string is the correct "no name given" value -
-  // participantLabel() (and every other name-display surface) already treats
-  // an empty name as absent and falls back to roleAsDescribed / "a teammate".
+  // every name-display surface already treats an empty name as absent and
+  // falls back to "a colleague". Never to roleAsDescribed: that is the lead's
+  // own description of the person, and it can hold the lead's private words
+  // (request 36, 27 September 2026).
   // A capitalized email local-part ("Hjumare") is not a name; it just looks
   // like one, which is worse than showing nothing.
   /** Every admin of the organisation, because one of them has to decide and any of them may. */

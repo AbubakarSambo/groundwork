@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { Page, Empty, Button } from '@/components/gw/ui'
 
 /**
  * A GROUND YOU CANNOT SEE. W8-65.
@@ -7,29 +7,37 @@ import { useNavigate } from 'react-router-dom'
  * left of an empty page, no heading, no control, plus a red toast that fades. Same family
  * as the invite and join dead ends in W8-62, found the same way: by hitting it.
  *
- * WHAT ACTUALLY CAUSES IT, and why the copy says so. The most likely reason by far is the
- * org switcher: switch organisation while looking at a ground and the ground belongs to
- * the one you just left, so the page you are on stops resolving. That is not an error and
- * it is not "not found" in any sense the person recognises - they can see the ground
- * exists, they were reading it a second ago. Naming the switch is the difference between
- * "the product lost my ground" and "ah, I am in the other organisation".
+ * WHY THE WORDS NEVER SAY WHICH REASON IT WAS (GW-PRI-04). The likeliest cause by far is
+ * the org switcher - switch organisation while looking at a ground and the ground belongs
+ * to the one you just left. The next likeliest is that it was closed, or removed, or the
+ * reader is no longer part of it. But a board (or this page) that answers "not available"
+ * has to read exactly the same whether the check-in never existed, or exists and simply
+ * is not this reader's - telling the two apart on screen would tell a stranger holding a
+ * stale link whether something real sits behind it. So this names the ordinary reasons as
+ * a set, never which one applies, and never asserts a history ("it was ended", "you wrote
+ * something here before") that would not be true of every one of them.
  *
- * The other reasons - removed from the ground, ground deleted, a stale link from someone
- * else's organisation - all lead to the same move, so they are not enumerated. Listing
- * which one it was would also tell whoever holds the link whether a ground exists at that
- * id, which is not something a stranger should be able to ask.
+ * WORDING, FROM THE PROTOTYPE (F4-small-states/c-gone-board.txt): the title, the body's two
+ * sentences, and its two ways out, word for word. The same words show for every cause, so they
+ * never tell a stranger whether something real sits behind the link (GW-PRI-04 holds: nothing
+ * on this screen changes with the reason). One sentence is kept from the page before (W8-65):
+ * switching organisation is how most people get here, and naming it tells them where it went.
  */
 export function GroundGone() {
-  const navigate = useNavigate()
-
   return (
-    <div style={{ maxWidth: 380, margin: '0 auto', padding: '56px 20px', textAlign: 'center' }}>
-      <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>This check-in is not open to you</div>
-      <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.7, marginBottom: 20 }}>
-        If you just switched organisation, this check-in belongs to the other one - switch back and it
-        will be there. Otherwise it may have been closed, or you are no longer part of it.
-      </div>
-      <button className="gw-btn" onClick={() => navigate('/')}>Go to my check-ins</button>
-    </div>
+    <Page narrow>
+      <Empty
+        title="This check-in isn’t available any more"
+        action={
+          <div className="gwui-button-row">
+            <Button kind="secondary" to="/you">Open my work</Button>
+            <Button kind="quiet" to="/grounds">Go to Check-ins</Button>
+          </div>
+        }
+      >
+        Whoever ran it ended it or removed it. What you wrote is kept in your own history. If you
+        have just switched organisation, it may belong to the one you switched away from.
+      </Empty>
+    </Page>
   )
 }

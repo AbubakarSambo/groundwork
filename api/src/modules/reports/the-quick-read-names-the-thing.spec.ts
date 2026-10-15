@@ -19,33 +19,34 @@ describe('the quick read names the thing', () => {
   it('names the difference rather than repeating the label', () => {
     const t = tile(atAGlanceTiles({ ...base, stillOpen: 1, blocked: 0, theDifference: "The team's primary focus" }), 'Differences');
     expect(t.value).toBe('1');
-    expect(t.sub).toBe("The team's primary focus");
+    expect(t.sub).toBe("People said different things about the team's primary focus.");
   });
 
   it('and says how many more there are when there are more', () => {
     const t = tile(atAGlanceTiles({ ...base, stillOpen: 3, blocked: 0, theDifference: 'Who owns renewals' }), 'Differences');
-    expect(t.sub).toBe('Who owns renewals, and 2 more');
+    expect(t.sub).toBe('People said different things about who owns renewals. 2 more differences are still open.');
   });
 
   it('names the blocker in the words it was raised in', () => {
     const t = tile(atAGlanceTiles({ ...base, stillOpen: 0, blocked: 1, theBlocker: 'Legal to review the contract, on Tunde' }), 'Blockers');
     expect(t.value).toBe('1');
-    expect(t.sub).toBe('Legal to review the contract, on Tunde');
+    expect(t.sub).toBe('Work is held up by Legal to review the contract, on Tunde.');
   });
 
-  /* A tile is glanced at. A blocker somebody typed three sentences into is cut, not wrapped. */
-  it('and cuts a long one rather than filling the tile with it', () => {
-    const long = 'Marketing stopped sending leads in August and nobody has picked it up since then, which means the whole pipeline is running on old names';
+  /* A tile is glanced at. A blocker somebody typed three sentences into shows its first sentence,
+     whole, and never a piece of one: see what-this-session-holds (a tile shows a whole sentence). */
+  it('and shows the first sentence of a long one rather than filling the tile with it', () => {
+    const long = 'Marketing stopped sending leads in August. Nobody has picked it up since then, which means the whole pipeline is running on old names.';
     const t = tile(atAGlanceTiles({ ...base, stillOpen: 0, blocked: 1, theBlocker: long }), 'Blockers');
-    expect(t.sub.length).toBeLessThanOrEqual(72);
-    expect(t.sub.endsWith('...')).toBe(true);
+    expect(t.sub).toBe('Marketing stopped sending leads in August.');
+    expect(t.sub).not.toContain('...');
   });
 
   /* And where there is nothing to name, every word it said before is still what it says. */
   it('falls back to what it always said when nothing is named', () => {
     const tiles = atAGlanceTiles({ ...base, stillOpen: 1, blocked: 1 });
-    expect(tile(tiles, 'Differences').sub).toBe('still open, as the written report reads it');
-    expect(tile(tiles, 'Blockers').sub).toBe('named as holding work up');
+    expect(tile(tiles, 'Differences').sub).toBe('The written report reads this as still open.');
+    expect(tile(tiles, 'Blockers').sub).toBe('Something is named as holding work up.');
   });
 
   it('and nothing blocked is still good news, named or not', () => {
@@ -60,6 +61,6 @@ describe('the quick read names the thing', () => {
 describe('who it sits with', () => {
   it('is added where the line does not already say it', () => {
     const t = atAGlanceTiles({ ...base, stillOpen: 0, blocked: 1, theBlocker: 'The price list, on Finance' }).find((x) => x.label === 'Blockers')!;
-    expect(t.sub).toBe('The price list, on Finance');
+    expect(t.sub).toBe('Work is held up by the price list, on Finance.');
   });
 });

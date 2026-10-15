@@ -49,13 +49,33 @@ describe('the conversation tab', () => {
     for (const t of [...leadTabs, ...partyTabs]) expect(t.label).not.toBe('Chat')
   })
 
+  /**
+   * UPDATED FOR THE CHECK-IN REBUILD (docs/tasks-ui.md): the outer row is the prototype's fixed
+   * five now, drawn by `components/gw/ui/CheckInHeader.tsx` - neither page types its own copy of
+   * that list any more, so there is nothing left for the two to disagree about at that level.
+   *
+   * REVIEW ROUND 3, "YOUR WORK" REBUILD: Report, Sessions and What I shared are no longer a
+   * visible sub-tab row under "My work" at all - the prototype's my-record.txt has no sub-tabs,
+   * so "My work" is one flat page (`YourWork`) now, with "Report" ("Every session") and
+   * "Sessions" ("Who has answered") reached from quiet links inside it instead. There is nothing
+   * left to disagree about at that level either: both pages call the one shared `YourWork`
+   * component, rather than each keeping its own private layout.
+   */
   it('and neither page keeps its own list to disagree with', () => {
-    // The original bug was two lists. This is the check that there is one.
     for (const page of [strip(ADMIN), strip(PARTICIPANT)]) {
-      expect(page).toMatch(/groundTabs\(\{/)
+      expect(page).toMatch(/<CheckInHeader/)
+      expect(page).toMatch(/<YourWork/)
     }
     expect(strip(ADMIN)).not.toMatch(/chat: 'Check-in'/)
-    expect(strip(PARTICIPANT)).not.toMatch(/key: 'checkin', label: 'Check-in'/)
+    /*
+     * `key: 'checkin', label: 'Check-in'` USED TO BE THE BUG THIS GUARDED AGAINST - a page
+     * writing its own copy of the label rather than reading `groundTabs()`'s. It is now the
+     * prototype's own fixed outer tab (docs/prototype/screens/B3-the-check-in), the same pair on
+     * both pages because `CheckInHeader.tsx` draws the same five everywhere - not a private
+     * redefinition either page could drift from. Both must contain it; that they AGREE is the rule.
+     */
+    expect(strip(ADMIN)).toMatch(/key: 'checkin', label: 'Check-in'/)
+    expect(strip(PARTICIPANT)).toMatch(/key: 'checkin', label: 'Check-in'/)
   })
 })
 

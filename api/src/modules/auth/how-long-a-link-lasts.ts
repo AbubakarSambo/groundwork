@@ -23,7 +23,8 @@ export type Purpose =
   | 'set a password on the screen you are already on'
   | 'reset a password'
   | 'sign in from a team invitation'
-  | 'join a check-in';
+  | 'join a check-in'
+  | 'choose where you work after Google';
 
 export const HOW_LONG: Record<Purpose, number> = {
   'verify an address': 24 * HOUR,
@@ -36,6 +37,8 @@ export const HOW_LONG: Record<Purpose, number> = {
   /* A magic sign-in link riding a team invitation, so it keeps the invitation's own week. */
   'sign in from a team invitation': 7 * 24 * HOUR,
   'join a check-in': 14 * 24 * HOUR,
+  /* Short on purpose: handed straight back to the browser that has just come from Google (U.3 review). */
+  'choose where you work after Google': 1 * HOUR,
 };
 
 export const WHICH_TYPE: Record<Purpose, TokenType> = {
@@ -46,6 +49,7 @@ export const WHICH_TYPE: Record<Purpose, TokenType> = {
   'reset a password': TokenType.PASSWORD_RESET,
   'sign in from a team invitation': TokenType.EMAIL_VERIFICATION,
   'join a check-in': TokenType.PARTICIPANT_INVITE,
+  'choose where you work after Google': TokenType.EMAIL_VERIFICATION,
 };
 
 export function expiresAtFor(purpose: Purpose, now: Date = new Date()): Date {
@@ -79,7 +83,7 @@ export function whatToSayAboutADeadLink(input: {
   const { type, used, expired } = input;
 
   if (used && type === TokenType.PASSWORD_SETUP) {
-    return 'This link has already been used, so your password is set. Sign in with it - or use "Forgot your password?" if you cannot remember it.';
+    return 'This link has already been used, so your password is set. Sign in with it, or use "Forgot password?" if you cannot remember it.';
   }
   if (used && type === TokenType.PASSWORD_RESET) {
     return 'This link has already been used and your password was changed. Sign in with the new one, or ask for another reset.';
@@ -91,7 +95,7 @@ export function whatToSayAboutADeadLink(input: {
     return 'This link has already been used. Sign in from the sign-in page, or ask for a new link.';
   }
   if (expired) {
-    return 'This link has expired. Ask for a new one from the sign-in page - the new one arrives in a moment and nothing you have done is lost.';
+    return 'This link has expired. Ask for a new one from the sign-in page. The new one arrives in a moment, and nothing you have done is lost.';
   }
-  return 'This link did not work. Links are single use and they expire - open the most recent one from your inbox, or ask for a new one from the sign-in page.';
+  return 'This link did not work. Each link works only once, and only for a short while. Open the newest one in your inbox, or ask for a new one from the sign-in page.';
 }

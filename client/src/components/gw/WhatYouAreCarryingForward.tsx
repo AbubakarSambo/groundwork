@@ -56,14 +56,27 @@ export function WhatYouAreCarryingForward({
             the others - a sentence, deliberately, because sharing your whole account with the
             people you are being compared against is a different act.
           */}
-          <Sec title="What you are carrying forward" src="the line the next session opens from" />
+          {/* RE-REVIEW: "the line the next session opens from" was a clipped fragment, not a
+              sentence, sitting beside the heading. The line under it already says what this is
+              ("From your own check-in only..."), so the fragment is dropped rather than forced
+              into a sentence that would only repeat that line. */}
+          <Sec title="What you are carrying forward" />
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 4 }}>
             From your own check-in only. Only you can see it unless you choose to share it.
           </div>
           {mySoloReport?.report ? (
-            <div style={{ background: 'var(--gw-dark)', color: 'white', borderRadius: 10, padding: '16px 18px', marginBottom: 6 }}>
-              <SoloReportBody report={mySoloReport.report as Record<string, unknown>} />
-              <div style={{ borderTop: '1px solid rgba(255,255,255,.1)', paddingTop: 12, marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+            /*
+              REVIEW ROUND 3, ITEM 5: THE DARK NAVY CARD IS GONE. Every other card on My work
+              (and the prototype's own my-record.jpg) sits on white with a thin border; this one
+              alone was a dark, high-contrast box that read as a different kind of thing - a
+              warning or an alert - rather than a person's own report, the least alarming thing on
+              the page. `SoloReportBody`'s `on="light"` draws its labels for a light background
+              instead (still `on="dark"` by default, unchanged, where the lead's roster shows a
+              shared solo report nested in its own dark row).
+            */
+            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', marginBottom: 6 }}>
+              <SoloReportBody report={mySoloReport.report as Record<string, unknown>} on="light" />
+              <div style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 12, marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                 {/*
                   SAID ONCE. The band above this card already says "From your own check-in only.
                   Only you can see it unless you choose to share it", so the private state was the
@@ -71,13 +84,14 @@ export function WhatYouAreCarryingForward({
                   SHARED state is not a repeat of anything and stays: it is a change of state, and
                   a person needs to see that it took effect.
                 */}
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,.4)' }}>
+                <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>
                   {mySoloReport.shared ? 'Shared with everyone in this check-in' : ''}
                 </div>
                 <button
                   onClick={() => mySoloReport.shared ? setSoloSharedMut.mutate(false) : setShowShareConfirm(true)}
                   disabled={setSoloSharedMut.isPending}
-                  style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: '1px solid rgba(255,255,255,.2)', background: 'rgba(255,255,255,.08)', color: 'white', cursor: 'pointer', fontFamily: 'inherit' }}
+                  className="gwui-tap-40"
+                  style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: '1px solid var(--gw-border)', background: 'var(--gw-paper-2)', color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit' }}
                 >
                   {mySoloReport.shared ? 'Stop sharing' : 'Share with everyone'}
                 </button>
@@ -99,10 +113,14 @@ export function WhatYouAreCarryingForward({
               Your private report will become visible to everyone else in this check-in:
             </div>
             <ul style={{ margin: '0 0 14px', paddingLeft: 18 }}>
+              {/*
+                U.9 REVIEW FIX 13: JUST THE NAME. "Amani Wekesa · amani.u8@example.test" put an
+                email address on a screen for its own sake, joined to the name with a dot. The name
+                is who is about to see the report; the address adds nothing she needs to read here.
+              */}
               {otherParties.map((p) => (
                 <li key={p.id} style={{ fontSize: 13, color: 'var(--gw-text)', marginBottom: 2 }}>
                   {p.name}
-                  {p.email ? <span style={{ color: 'var(--gw-muted)' }}> · {p.email}</span> : null}
                 </li>
               ))}
             </ul>

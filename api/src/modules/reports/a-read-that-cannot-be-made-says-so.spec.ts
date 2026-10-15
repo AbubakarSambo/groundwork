@@ -97,7 +97,7 @@ describe('the Movement read when a number has been said but nothing tracks it', 
     const g = glance([{ type: RecordEntryType.SUCCESS_DEFINITION, text: 'Each of them at eight closed deals.', who: 'Tunde', recallBased: true, threadKey: null }]);
     /* The tile's value answers the tile's label, and the label is Movement. See the-session-report. */
     expect(g.value).toBe('Not tracked');
-    expect(g.sub).toBe('somebody named a number and nothing is tracking it');
+    expect(g.sub).toBe('Somebody named a number, and nothing is tracking it.');
   });
 
   it('and reads digits as readily as words, because people say both', () => {
@@ -118,8 +118,8 @@ describe('the Movement read when a number has been said but nothing tracks it', 
 
   /** Where a target genuinely exists, the tile reports movement as it always did. */
   it('and steps aside once there is a real target', () => {
-    const g = theSessionReport(base({ movedOnTargets: 2, entries: [] })).atAGlance.find((x) => x.label === 'Movement')!;
-    expect(g.value).toBe('+2');
+    const g = theSessionReport(base({ movedOnTargets: 2, targetsMoved: 1, entries: [] })).atAGlance.find((x) => x.label === 'Movement')!;
+    expect(g.value).toBe('1 target');
   });
 });
 

@@ -41,16 +41,23 @@ const entry = (ground: any) => {
   return { svc, prisma, email };
 };
 
-const closed = { id: 'g', organizationId: 'org', label: 'L', scenario: 'S', status: GroundStatus.CLOSED, endState: 'KEEP', initiator: { firstName: 'A' }, initiatorId: 'lead', isFreeGround: false, freeParticipantCap: 5 };
+const closed = { id: 'g', organizationId: 'org', label: 'L', scenario: 'NEW_HIRE', status: GroundStatus.CLOSED, endState: 'KEEP', initiator: { firstName: 'A' }, initiatorId: 'lead', isFreeGround: false, freeParticipantCap: 5 };
 const held = { ...closed, status: GroundStatus.PAUSED, endState: null };
 const live = { ...closed, status: GroundStatus.ACTIVE, endState: null };
+/* Reviewed on the server, 7 October: a check-in waiting for an admin to accept it took joins through its link. */
+const waiting = { ...closed, status: GroundStatus.AWAITING_APPROVAL, endState: null };
 
 describe('the preview', () => {
   it('refuses a closed ground in the words of the decision that closed it', async () => {
-    await expect(grounds(closed).getJoinPreview('jt')).rejects.toThrow('This check-in ended: keep.');
+    /* It used to read "This check-in ended: keep.", the stored value after a colon. The ending is now
+       its own sentence (decision 75, item 48). */
+    await expect(grounds(closed).getJoinPreview('jt')).rejects.toThrow('This check-in has ended. The person stays in the role.'); /* Changed 5 Oct 2026: the KEEP ending's neutral form. */
   });
   it('refuses a held ground as on hold', async () => {
     await expect(grounds(held).getJoinPreview('jt')).rejects.toThrow(/on hold/);
+  });
+  it('refuses one waiting for an admin, and says so', async () => {
+    await expect(grounds(waiting).getJoinPreview('jt')).rejects.toThrow('This check-in is waiting for an admin to accept it. The link will work as soon as they do.');
   });
   it('still previews a live one', async () => {
     await expect(grounds(live).getJoinPreview('jt')).resolves.toMatchObject({ groundId: 'g', groundLabel: 'L' });
@@ -58,7 +65,7 @@ describe('the preview', () => {
 });
 
 describe('the ask', () => {
-  it.each([['closed', closed, /ended/], ['held', held, /on hold/]])('a %s ground mails nobody a way in', async (_n, g, says) => {
+  it.each([['closed', closed, /ended/], ['held', held, /on hold/], ['waiting', waiting, /waiting for an admin/]])('a %s ground mails nobody a way in', async (_n, g, says) => {
     const { svc, prisma, email } = entry(g);
     await expect(svc.askToJoin({ joinToken: 'jt', email: 'a@b.c' })).rejects.toThrow(says);
     expect(prisma.pendingJoin.create).not.toHaveBeenCalled();
@@ -67,7 +74,7 @@ describe('the ask', () => {
 });
 
 describe('the confirm', () => {
-  it.each([['closed', closed], ['held', held]])('a %s ground makes no account, no participant and no session', async (_n, g) => {
+  it.each([['closed', closed], ['held', held], ['waiting', waiting]])('a %s ground makes no account, no participant and no session', async (_n, g) => {
     const { svc, prisma } = entry(g);
     await expect(svc.joinConfirm('t')).rejects.toBeInstanceOf(BadRequestException);
     expect(prisma.user.create).not.toHaveBeenCalled();

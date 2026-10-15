@@ -27,7 +27,8 @@ describe('a ground that has ended', () => {
   });
 
   it('says how it ended in the words of the decision', () => {
-    expect(howItEnded(GroundStatus.CLOSED, 'Keep the hire')).toBe('This check-in ended: keep the hire.');
+    /* The ending is its own sentence (decision 75, item 48), never a piece after a colon. */
+    expect(howItEnded(GroundStatus.CLOSED, 'The new person stays in the role.')).toBe('This check-in has ended. The new person stays in the role.');
     expect(howItEnded(GroundStatus.CLOSED, null)).toBe('This check-in has ended.');
     /* Running out of time is not an ending and no longer speaks in this voice - it has its own
        sentence, which says what lifts it. See whyItRefuses. */
@@ -56,7 +57,14 @@ describe('a ground that is held', () => {
 
   it('refuses with the hold sentence while held, the ending sentence once ended, and nothing while live', () => {
     expect(whyItRefuses(GroundStatus.PAUSED, 'Keep the hire')).toBe(WHILE_IT_IS_HELD);
-    expect(whyItRefuses(GroundStatus.CLOSED, 'Keep the hire')).toBe('This check-in ended: keep the hire.');
+    expect(whyItRefuses(GroundStatus.CLOSED, 'The new person stays in the role.')).toBe('This check-in has ended. The new person stays in the role.');
+    /* What every door passes is the stored value with the check-in's kind. A person used to read
+       "This check-in ended: keep." Now they read the ending's own sentence, and never the raw value. */
+    /* Changed 5 Oct 2026: the KEEP ending names the person where the reader is known, and a door names nobody. */
+    expect(whyItRefuses(GroundStatus.CLOSED, 'KEEP', 'anybody else', 'NEW_HIRE')).toBe('This check-in has ended. The person stays in the role.');
+    expect(whyItRefuses(GroundStatus.CLOSED, 'KEEP', 'the lead', 'NEW_HIRE')).toBe('This check-in has ended. The person stays in the role.');
+    expect(whyItRefuses(GroundStatus.CLOSED, 'ALIGNED', 'anybody else', 'OKR_ALIGNMENT')).toBe('This check-in has ended. The team is on course.');
+    expect(whyItRefuses(GroundStatus.CLOSED, 'NOT_A_REAL_ENDING', 'anybody else', 'NEW_HIRE')).toBe('This check-in has ended.');
     expect(whyItRefuses(GroundStatus.ACTIVE)).toBeNull();
   });
 });

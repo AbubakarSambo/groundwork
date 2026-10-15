@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
-import { Sec, Card } from '@/components/gw/kit'
+import { Section, Panel } from '@/components/gw/ui'
 import { toast } from 'sonner'
 
 /**
@@ -65,8 +65,8 @@ export function StartingPointPanel({ groundId, canRecord }: { groundId: string; 
 
   return (
     <div style={{ marginTop: 14 }}>
-      <Sec title="Where this stood at the start" />
-      <Card pad="block">
+      <Section heading="Where this stood at the start">
+      <Panel>
         {entries.length > 0 ? (
           <>
             <ul style={{ margin: 0, paddingLeft: 17, display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -103,7 +103,8 @@ export function StartingPointPanel({ groundId, canRecord }: { groundId: string; 
             moved since the beginning.
           </div>
         )}
-      </Card>
+      </Panel>
+      </Section>
 
       {canRecord && !picking && (
         <button
@@ -116,7 +117,7 @@ export function StartingPointPanel({ groundId, canRecord }: { groundId: string; 
 
       {canRecord && picking && (
         <div style={{ marginTop: 10 }}>
-          <Card pad="block">
+          <Panel>
             <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>
               From your first session, in your own words
             </div>
@@ -169,7 +170,7 @@ export function StartingPointPanel({ groundId, canRecord }: { groundId: string; 
                 Cancel
               </button>
             </div>
-          </Card>
+          </Panel>
         </div>
       )}
     </div>

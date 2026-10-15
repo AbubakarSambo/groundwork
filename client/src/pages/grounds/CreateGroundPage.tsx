@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { keep, whatWasKept, forget, howLongAgo } from '@/lib/what-you-typed-survives-a-reload'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { type GroundScenario, type GroundMoment } from '@/api/grounds'
 import { SituationCard } from '@/components/gw/SituationCard'
@@ -10,12 +10,16 @@ import { entryApi } from '@/api/entry'
 import { SCENARIO_LABELS, GROUPS_YOU_PICK_FROM, SCENARIO_FACTS, RECOMMENDED_MOMENT, COACH_CARD, type ScenarioGroupKey } from '@/lib/scenario-catalog'
 import { coachApi, MIN_INTENTION_LENGTH, COACHING_PRICE } from '@/api/coach'
 import { useAuthStore } from '@/stores/auth'
+import { planLimitNotice } from '@/lib/the-plan-limit-notice-fits-the-reader'
 import { STAGE, stepsThisPersonSees, stepAfter, stepBefore } from './the-steps-this-person-sees'
 import { theWordsForPickingASituation } from './whose-situation-is-it'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import {
+  Page, PageTitle, Button, Callout, Note, Panel, Section, Stack, FieldLabel, TextField, TextArea, Select, Tag,
+} from '@/components/gw/ui'
 
-interface ScenarioCard {
+export interface ScenarioCard {
   // Unique per CARD, not per scenario: two cards can map to the same scenario
   // key (the realignment card and the describe-your-own card both use
   // REALIGN_TEAM's pack), so selection tracks the card, while what is SENT to
@@ -227,7 +231,7 @@ export const SCENARIOS: ScenarioCard[] = [
       'A plan that looks fine on paper but you suspect the budget behind it was assumed, not approved.',
     ] },
   { cardKey: 'PULSE_CHECK', scenario: 'PULSE_CHECK', label: SCENARIO_LABELS.PULSE_CHECK,
-    desc: "A short recurring check-in, with no setup and no target. About five minutes each on one thing going well, one thing stuck, and what has changed since last time. Use it for a temperature read, not a record. If there is a specific thing you need people held to, pick one of the others.",
+    desc: "A short recurring check-in, with no setup and no target. About ten minutes each on one thing going well, one thing stuck, and what has changed since last time. Use it for a temperature read, not a record. If there is a specific thing you need people held to, pick one of the others.",
     moment: 'Regularly understand how work is going while it is happening.',
     agreed: 'Agree what the team is working on and what each person owns.',
     tests: 'Each check-in asks what that person did since last time. Work drifting off what was agreed shows up week by week, not at the end.',
@@ -358,7 +362,7 @@ export const SCENARIOS: ScenarioCard[] = [
       'What is the one thing you need from me before Friday?',
     ] },
   { cardKey: 'SNAPSHOT', scenario: 'SNAPSHOT', label: SCENARIO_LABELS.SNAPSHOT,
-    desc: 'One honest read from everyone, once. No setup and no target: about five minutes each on what is going well, what is stuck and what has changed. If there is a specific thing you need people held to, pick that situation instead.',
+    desc: 'One honest read from everyone, once. No setup and no target: about ten minutes each on what is going well, what is stuck and what has changed. If there is a specific thing you need people held to, pick that situation instead.',
     moment: 'Get a quick picture of how people are experiencing the work right now.',
     agreed: 'Nothing. No setup and no target to measure against, which is the point.',
     tests: 'Nothing over time either. One check-in, and one honest read from each person on what is going well, what is stuck, and what has changed. A temperature read, not a record. If there is a specific thing you need people held to, pick one of the others.',
@@ -608,22 +612,24 @@ const SCENARIO_VALUES = new Set<string>(Object.values(SCENARIO_FROM_LABEL))
 
 
 /**
- * What each step is asking, in the words already on that step's own heading.
+ * WHAT EACH STEP IS ABOUT, AS A FRAGMENT A SENTENCE CAN FINISH WITH ("This is step 2 of 3, about a
+ * coach."). Taken from the same ordering as the step headings, so the page's progress sentence and
+ * the step itself cannot say two different things. Step 5 is the one that no longer renders - see
+ * the note on the end-state step - and is skipped rather than renumbered, because renumbering would
+ * break every link and saved position that already exists.
  *
- * Taken from the headings rather than invented, so the header and the page cannot say two
- * different things about the same screen. Step 5 is the one that no longer renders - see the note
- * on the end-state step - and is skipped rather than renumbered, because renumbering would break
- * every link and saved position that already exists.
+ * Was a title-case label shown after a middle dot ("Step 3 of 4 · The situation") - two pieces
+ * joined by punctuation rather than a sentence (group 3, piece 4 wording pass).
  */
-const STEP_NAMES: Record<number, string> = {
-  [STAGE.who]: 'Who checks in',
-  [STAGE.situation]: 'The situation',
-  [STAGE.coach]: 'A coach',
-  [STAGE.describe]: 'Describe it',
-  [STAGE.plan]: 'Your plan',
-  [STAGE.timeline]: 'How long it runs',
-  [STAGE.people]: 'Who is in it',
-  [STAGE.brief]: 'The brief',
+const STEP_ABOUT: Record<number, string> = {
+  [STAGE.who]: 'who checks in',
+  [STAGE.situation]: 'the situation',
+  [STAGE.coach]: 'a coach',
+  [STAGE.describe]: 'describing it',
+  [STAGE.plan]: 'your plan',
+  [STAGE.timeline]: 'how long it runs',
+  [STAGE.people]: 'who is in it',
+  [STAGE.brief]: 'the brief',
 }
 
 /**
@@ -645,7 +651,7 @@ export function CreateGroundPage() {
     queryFn: billingApi.getPricing,
     staleTime: 60 * 1000,
   })
-  const freeLimit = livePricing?.free.groundLimit ?? FALLBACK_FREE_LIMITS.groundLimit
+  const freeLimit = livePricing?.free?.groundLimit ?? FALLBACK_FREE_LIMITS.groundLimit
 
   const canCreate = useQuery({
     queryKey: ['can-create-ground'],
@@ -689,6 +695,8 @@ export function CreateGroundPage() {
   const [step, setStep] = useState(1)
   /* Coaching is a paid feature, the same as the integration API. Null means nobody has ever paid. */
   const onAPaidPlan = !!useAuthStore(s => s.user?.organization?.subscriptionPlan)
+  /* B-127: only an admin can open Plan and billing, so only an admin is offered "See plans". */
+  const isAdmin = useAuthStore(s => s.user?.role === 'ADMIN')
 
   const [scenario, setScenario] = useState<GroundScenario | null>(
     () => scenarioFromParam(searchParams.get('scenario'))
@@ -743,6 +751,8 @@ export function CreateGroundPage() {
    * already happened. Empty is a real answer and stays one; a coach comes back to agree a time.
    */
   const [coachWhen, setCoachWhen] = useState('')
+  /** An hour from when this screen opened, computed once rather than on every render. */
+  const [coachMinWhen] = useState(() => new Date(Date.now() + 3600_000).toISOString().slice(0, 16))
   const [participants, setParticipants] = useState<Participant[]>([])
   /**
    * WHEN THIS PERSON STARTS, IF THEY HAVE NOT YET.
@@ -844,6 +854,8 @@ export function CreateGroundPage() {
   /* True when the check itself failed, which is neither allowed nor refused. */
   const [billingUnknown, setBillingUnknown] = useState(false)
   const [groundsUsed, setGroundsUsed] = useState<number | null>(null)
+  /* U.19: the server's refusal when the organisation has no plan and the free plan has stopped for it. */
+  const [noPlan, setNoPlan] = useState<string | null>(null)
   const [showCodeInput, setShowCodeInput] = useState(false)
   const [codeInput, setCodeInput] = useState('')
   const [codeApplied, setCodeApplied] = useState(false)
@@ -889,6 +901,7 @@ export function CreateGroundPage() {
         setBillingChecked(true)
         setBillingLoading(false)
         if (res.groundsUsed != null) setGroundsUsed(res.groundsUsed)
+        setNoPlan(res.noPlan ? (res.reason ?? null) : null)
         if (res.allowed) {
           setBillingFree(true)
         } else {
@@ -1040,7 +1053,7 @@ export function CreateGroundPage() {
                                * this screen only: the entry chat has no next screen to promise.
                                */
                               card.scenario === 'OPEN_READ' && isSel ? (
-                                <div style={{ fontSize: 11.5, color: 'var(--gw-navy)', fontWeight: 600, marginTop: 2 }}>
+                                <div className="gwui-situation-extra-note">
                                   You write it on the next screen, in your own words.
                                 </div>
                               ) : undefined
@@ -1049,39 +1062,31 @@ export function CreateGroundPage() {
                         )
   }
 
+  /**
+   * REBUILT FROM THE SHARED PARTS (group 3, piece 4, B1-starting-a-check-in): the page frame is
+   * `Page`, the header is `PageTitle` (crumbs "Check-ins / New check-in", the back control as a
+   * quiet `Button` in its action slot), the restored-draft notice is a `Callout`, and every
+   * tinted box below - the free-limit notice, the paid-plan gate, the billing states - is a
+   * `Callout` or a `Panel`. No prototype screen matches this one exactly (the prototype's own B1
+   * replaces this wizard with a conversation - see the note on `SituationCard`), so the values
+   * carried over are the product's own, now behind named classes instead of inline styles. No API
+   * call, no state, and no step's own logic changed.
+   *
+   * THE PROGRESS LINE WAS TWO PIECES JOINED BY A MIDDLE DOT ("Step 3 of 4 · The situation"), and
+   * the banner below it joined two clauses with a dash ("…left off just now - on this device.").
+   * Both are one plain sentence now (`STEP_ABOUT` above).
+   */
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
-      {/*
-        * SAID, RATHER THAN QUIETLY DONE.
-        *
-        * A form that fills itself in without saying so is a form somebody does not trust: they
-        * cannot tell what is theirs and what the product invented. And there has to be a way to
-        * say no — coming back to start a different check-in and finding the last one's brief in
-        * the box is worse than an empty form.
-        */}
+    <Page>
       {restored && (
-        <div
-          role="status"
-          style={{
-            background: 'var(--gw-blue-bg)',
-            borderBottom: '1px solid var(--gw-border)',
-            padding: '9px 20px',
-            fontSize: 13,
-            display: 'flex',
-            gap: 12,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <span>Picked up where you left off {howLongAgo(restored)} - on this device.</span>
+        <Callout role="status">
+          Picked up where you left off {howLongAgo(restored)}, on this device.{' '}
           {/* "Start fresh" was `gw-btn-ghost`, which no stylesheet defines - so it rendered as a
               raw browser button inside a styled banner. Same silent failure as the seven `gw-in`
-              fields; found by the guard written for those. `gw-btn-sm` is the small muted control
-              this actually is. */}
+              fields; found by the guard written for those. */}
           <button
             type="button"
-            className="gw-btn-sm"
-            style={{ margin: 0 }}
+            className="gwui-plain-link"
             onClick={() => {
               forget(DRAFT_KEY)
               window.location.reload()
@@ -1089,25 +1094,13 @@ export function CreateGroundPage() {
           >
             Start fresh
           </button>
-        </div>
+        </Callout>
       )}
-      <div className="gw-hdr">
-        {/* The rail already says Groundwork two inches to the left. This said it again, so
-              the page's own name is here instead - which is the thing a second line of
-              chrome could usefully carry. W13-11. */}
-              {/*
-                * THE HEADER NAMES THE PAGE AND WHERE YOU ARE IN IT.
-                *
-                * It said "What's going on?" on all six steps - the name of the first question, on
-                * screens that were asking five other things. A person halfway through had no way to
-                * tell how far in they were except by counting six grey dots.
-                */}
-              <h1 className="gw-logo gw-page-h1">Set up a check-in</h1>
-              <span style={{ fontSize: 13, color: 'var(--gw-sub)', marginLeft: 10 }}>
-                Step {displayStep} of {totalStepsForThisPerson} · {STEP_NAMES[step] ?? ''}
-              </span>
-        <button className="gw-back" onClick={back}>← Back</button>
-      </div>
+      <PageTitle
+        title="Set up a check-in"
+        subtitle={`This is step ${displayStep} of ${totalStepsForThisPerson}, about ${STEP_ABOUT[step] ?? 'this'}.`}
+        action={<Button kind="quiet" onClick={back}>← Back</Button>}
+      />
 
       {/*
         * THE PICKER GETS THE WHOLE WIDTH. EVERY OTHER STEP STAYS NARROW.
@@ -1120,25 +1113,12 @@ export function CreateGroundPage() {
         * Only the picker. The others are a form - a timeline, a list of people, a brief - and a
         * form read across 1160px is worse, not better: the eye has to travel the width of the
         * screen between a label and its field. 1160 is four 275px cards and their gaps.
-        *
-        * IT SAID `step === 1`, AND THE PICKER IS STEP 2.
-        *
-        * The steps were renumbered - the same edit that left "Step 6 (was 5)" further down - and
-        * this condition kept the old number. So the widening above was written, explained at
-        * length, and then quietly stopped applying to anything: step 1 is the three-option "who is
-        * this for?" question, which wants the narrow column, and the twenty-one cards went back to
-        * being squeezed into 540px on a 1280px screen.
-        *
-        * Worse than a plain regression, because the card grid asks for its column count from the
-        * VIEWPORT, not from its container. At 1280px wide the grid asked for four columns and got
-        * a 508px box to put them in, so the cards came out about 119px across - narrower than they
-        * had ever been in a single column.
         */}
-      <div className="gw-bd" style={{ maxWidth: step === STAGE.situation ? 1160 : 540, margin: '0 auto', width: '100%' }}>
+      <div className={`gwui-cg-body${step === STAGE.situation ? ' gwui-cg-body-wide' : ''}`}>
         {/* Step dots */}
-        <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>
+        <div className="gwui-wizard-dots">
           {Array.from({ length: totalStepsForThisPerson }, (_, i) => i + 1).map(n => (
-            <div key={n} className={`cg-step-dot${displayStep === n ? ' active' : displayStep > n ? ' done' : ''}`} />
+            <div key={n} className={`gwui-wizard-dot${displayStep === n ? ' gwui-wizard-dot-active' : displayStep > n ? ' gwui-wizard-dot-done' : ''}`} />
           ))}
         </div>
 
@@ -1181,21 +1161,17 @@ export function CreateGroundPage() {
                 the timeline and the people, and only then was told she could
                 not. The block was right; the timing made it feel like a trick. */}
             {canCreate.data && !canCreate.data.allowed && (
-              <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-bd)', borderRadius: 8, padding: '12px 14px', marginBottom: 14 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>
-                  You have used all {freeLimit} of your free check-ins
-                </div>
-                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
-                  {canCreate.data.reason ?? 'Subscribe to open more.'} You can still look
-                  around here, but this one cannot be created until then.
-                </div>
-                <button
-                  onClick={() => navigate('/billing')}
-                  style={{ padding: '8px 16px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-                >
-                  See plans
-                </button>
-              </div>
+              <Callout tone="warning" title={
+                /* U.19: once the free trial's switch is on, a new organisation has no free check-ins at all. */
+                canCreate.data.noPlan ? 'No plan yet' : `You have used all ${freeLimit} of your free check-ins`
+              }>
+                {planLimitNotice({
+                  reason: canCreate.data.reason ?? 'Subscribe to open more.',
+                  isAdmin,
+                  continuation: 'You can still look around here, but this one cannot be created until then.',
+                  onSeePlans: () => navigate('/billing'),
+                })}
+              </Callout>
             )}
             </>)}
 
@@ -1223,51 +1199,52 @@ export function CreateGroundPage() {
               * length was the problem the jump bar was managing. One group at a time has no length
               * to manage.
               */}
-            <div className="gw-sub-t" style={{ marginBottom: 14 }}>
-              {/* Whose situation this is decides the pronouns - see whose-situation-is-it.ts.
-                  NAMED situations, because the describe-your-own card is no longer one of the
-                  things being counted: it is the pick above them. */}
-              {namedCardCount} {theWords.intro}
-            </div>
+            <Stack gap={18}>
+              <p className="gwui-panel-text-muted">
+                {/* Whose situation this is decides the pronouns - see whose-situation-is-it.ts.
+                    NAMED situations, because the describe-your-own card is no longer one of the
+                    things being counted: it is the pick above them. */}
+                {namedCardCount} {theWords.intro}
+              </p>
 
-            {/* THE FIRST PICK. Same card, same renderer, same selection behaviour as any other -
-                duplicating the JSX for it is how it would start behaving differently. */}
-            {openCard && (
-              <div role="radiogroup" aria-label={theWords.describeOwnLabel} className="cg-group-grid one" style={{ marginBottom: 20 }}>
-                {renderSituation(openCard)}
+              {/* THE FIRST PICK. Same card, same renderer, same selection behaviour as any other -
+                  duplicating the JSX for it is how it would start behaving differently. */}
+              {openCard && (
+                <div role="radiogroup" aria-label={theWords.describeOwnLabel} className="gwui-situation-grid gwui-situation-grid-one">
+                  {renderSituation(openCard)}
+                </div>
+              )}
+
+              {/* The same second route, said the same way. See OR_PICK_ONE_THAT_FITS. */}
+              <div>
+                <FieldLabel htmlFor="cg-group">{OR_PICK_ONE_THAT_FITS}</FieldLabel>
+                <Select
+                  id="cg-group"
+                  value={situationGroup}
+                  onChange={(e) => setSituationGroup(e.target.value as ScenarioGroupKey)}
+                >
+                  {GROUPS_YOU_PICK_FROM.map(g => (
+                    <option key={g.key} value={g.key}>
+                      {g.heading} ({cardsInGroup(g.key as ScenarioGroupKey).length})
+                    </option>
+                  ))}
+                </Select>
+                {/* The group's own question, which is what its heading is short for. */}
+                <p className="gwui-situation-group-q">{groupNow?.question}</p>
               </div>
-            )}
 
-            {/* The same second route, said the same way. See OR_PICK_ONE_THAT_FITS. */}
-            <label className="gw-label" htmlFor="cg-group">{OR_PICK_ONE_THAT_FITS}</label>
-            <select
-              id="cg-group"
-              className="gw-select"
-              value={situationGroup}
-              onChange={(e) => setSituationGroup(e.target.value as ScenarioGroupKey)}
-              style={{ marginBottom: 12 }}
-            >
-              {GROUPS_YOU_PICK_FROM.map(g => (
-                <option key={g.key} value={g.key}>
-                  {g.heading} ({cardsInGroup(g.key as ScenarioGroupKey).length})
-                </option>
-              ))}
-            </select>
-
-            {/* The group's own question, which is what its heading is short for. */}
-            <p className="cg-group-q">{groupNow?.question}</p>
-
-            {/* Real radios in one radiogroup over what is actually on screen. It used to span every
-                group at once because every group was on screen at once. */}
-            {/* `id` is here as a stable anchor for the-picker-gets-the-whole-width.spec.ts, which
-                used to find this block by its aria-label. That label now names the chosen group,
-                which is better for a screen reader and useless as a marker - a guard cannot anchor
-                on a string that varies. */}
-            <div id="cg-situations" role="radiogroup" aria-label={groupNow?.heading ?? 'Situations'} style={{ marginBottom: 24 }}>
-              <div className={`cg-group-grid${cardsInGroup(situationGroup).length === 1 ? ' one' : ''}`}>
-                {cardsInGroup(situationGroup).map(renderSituation)}
+              {/* Real radios in one radiogroup over what is actually on screen. It used to span every
+                  group at once because every group was on screen at once. */}
+              {/* `id` is here as a stable anchor for the-picker-gets-the-whole-width.spec.ts, which
+                  used to find this block by its aria-label. That label now names the chosen group,
+                  which is better for a screen reader and useless as a marker - a guard cannot anchor
+                  on a string that varies. */}
+              <div id="cg-situations" role="radiogroup" aria-label={groupNow?.heading ?? 'Situations'}>
+                <div className={`gwui-situation-grid${cardsInGroup(situationGroup).length === 1 ? ' gwui-situation-grid-one' : ''}`}>
+                  {cardsInGroup(situationGroup).map(renderSituation)}
+                </div>
               </div>
-            </div>
+            </Stack>
 
             </>)}
 
@@ -1288,33 +1265,15 @@ export function CreateGroundPage() {
               * and offers the two real answers - go and pay, or carry on without one.
               */}
             {!onAPaidPlan && (
-              <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-bd)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 5 }}>
-                  Working with a coach is part of a paid plan
-                </div>
-                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
-                  You can carry on and set this check-in up without one - most teams do. If you want a
-                  person alongside it, the plans are one click away and you will come back to this step.
-                </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    onClick={() => navigate('/pricing')}
-                    style={{ fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', padding: '7px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none' }}
-                  >
-                    See the plans
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setStep(stepAfter(visibleSteps, step))}
-                    style={{ fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', padding: '7px 14px', borderRadius: 7, background: 'white', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)' }}
-                  >
-                    Skip this
-                  </button>
-                </div>
-              </div>
+              <Callout tone="warning" title="Working with a coach is part of a paid plan">
+                You can carry on and set this check-in up without one - most teams do. If you want a
+                person alongside it, the plans are one click away and you will come back to this step.{' '}
+                <button type="button" className="gwui-plain-link" onClick={() => navigate('/pricing')}>See the plans</button>
+                {' '}
+                <button type="button" className="gwui-plain-link" onClick={() => setStep(stepAfter(visibleSteps, step))}>Skip this</button>
+              </Callout>
             )}
-            <div style={{ opacity: onAPaidPlan ? 1 : 0.55, pointerEvents: onAPaidPlan ? 'auto' : 'none' }}>
+            <div className={onAPaidPlan ? undefined : 'gwui-cg-dimmed'}>
             {/* THE COACH CARD. Outside the radiogroup on purpose: it is not a situation, it
                 creates nothing, and it must not be selectable as one.
 
@@ -1325,123 +1284,124 @@ export function CreateGroundPage() {
                 what they are dealing with and wants a person alongside while they run it. The words
                 say that now, and it stays at the end because it is the one card that creates
                 nothing, not because it ranks last. */}
-            <section className="cg-group" id="cg-coach">
-              <div className="cg-group-head"><h3>{COACH_CARD.heading}</h3></div>
-              <p className="cg-group-q">{COACH_CARD.question}</p>
-              <div className="cg-group-grid one">
-                <div className="cg-sit-card" style={{ cursor: 'default' }}>
-                  <span style={{ alignSelf: 'flex-start', fontSize: 10.5, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 5, background: 'var(--gw-clay-bg)', color: 'var(--gw-clay)' }}>A coach</span>
-                  <div style={{ fontSize: 14.5, fontWeight: 700, lineHeight: 1.3 }}>{COACH_CARD.label}</div>
-                  <p className="cg-moment">{COACH_CARD.moment}</p>
-                  <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, margin: 0 }}>{COACH_CARD.whatHappens}</p>
-                  {/* The cost is here, before the button, not after a reply has been chased. */}
-                  <p style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.55, margin: 0, padding: '9px 11px', background: 'var(--gw-paper-2)', borderRadius: 6 }}>{COACH_CARD.cost}</p>
+            <section className="gwui-situation-group" id="cg-coach">
+              <div className="gwui-situation-group-head"><h3>{COACH_CARD.heading}</h3></div>
+              <p className="gwui-situation-group-q">{COACH_CARD.question}</p>
+              <div className="gwui-situation-grid gwui-situation-grid-one">
+                <Panel>
+                  <Stack gap={10}>
+                    <Tag>A coach</Tag>
+                    <div className="gwui-situation-title">{COACH_CARD.label}</div>
+                    <p className="gwui-situation-moment">{COACH_CARD.moment}</p>
+                    <p className="gwui-panel-text-muted">{COACH_CARD.whatHappens}</p>
+                    {/* The cost is here, before the button, not after a reply has been chased. */}
+                    <Callout>{COACH_CARD.cost}</Callout>
 
-                  {coachSent ? (
-                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-green-t)', margin: 0 }}>
-                      Thanks. We have your request and have emailed you. Nothing has been created here and nobody on your team was contacted.
-                    </p>
-                  ) : !coachOpen ? (
-                    <button type="button" className="cg-more" onClick={() => setCoachOpen(true)}>Ask a coach &#8250;</button>
-                  ) : (
-                    <div style={{ display: 'grid', gap: 8 }}>
-                      {([
-                        { k: 'name', label: 'Your name', ph: '' },
-                        { k: 'orgName', label: 'Organisation', ph: '' },
-                        { k: 'email', label: 'Work email', ph: 'you@company.com' },
-                        { k: 'teamSize', label: 'Roughly how many people', ph: 'e.g. 12' },
-                      ] as const).map(f => (
-                        <label key={f.k} style={{ fontSize: 12, fontWeight: 600, color: 'var(--gw-sub)', display: 'grid', gap: 3 }}>
-                          {f.label}
-                          <input
-                            className="gw-select"
-                            value={(coach as any)[f.k]}
-                            placeholder={f.ph}
-                            onChange={e => setCoach({ ...coach, [f.k]: e.target.value })}
+                    {coachSent ? (
+                      <Callout tone="success">
+                        Thanks. We have your request and have emailed you. Nothing has been created here and nobody on your team was contacted.
+                      </Callout>
+                    ) : !coachOpen ? (
+                      <button type="button" className="gwui-plain-link" onClick={() => setCoachOpen(true)}>Ask a coach &#8250;</button>
+                    ) : (
+                      <Stack gap={10}>
+                        {([
+                          { k: 'name', label: 'Your name', ph: '' },
+                          { k: 'orgName', label: 'Organisation', ph: '' },
+                          { k: 'email', label: 'Work email', ph: 'you@company.com' },
+                          { k: 'teamSize', label: 'Roughly how many people', ph: 'e.g. 12' },
+                        ] as const).map(f => (
+                          <div key={f.k}>
+                            <FieldLabel htmlFor={`coach-${f.k}`}>{f.label}</FieldLabel>
+                            <TextField
+                              id={`coach-${f.k}`}
+                              value={(coach as any)[f.k]}
+                              placeholder={f.ph}
+                              onChange={e => setCoach({ ...coach, [f.k]: e.target.value })}
+                            />
+                          </div>
+                        ))}
+                        <div>
+                          <FieldLabel htmlFor="coach-intention">What do you want help with?</FieldLabel>
+                          <TextArea
+                            id="coach-intention"
+                            rows={3}
+                            value={coach.intention}
+                            placeholder="A line or two is enough. It is what the first reply is written from."
+                            onChange={e => setCoach({ ...coach, intention: e.target.value })}
                           />
+                          <Note tone={coach.intention.trim().length >= MIN_INTENTION_LENGTH ? undefined : 'error'}>
+                            {coach.intention.trim().length >= MIN_INTENTION_LENGTH
+                              ? 'Thanks, that is enough to reply to.'
+                              : `A little more, please. ${MIN_INTENTION_LENGTH - coach.intention.trim().length} characters to go.`}
+                          </Note>
+                        </div>
+                        <label className="gwui-cg-checkbox-row">
+                          <input type="checkbox" checked={coach.triedAlready} onChange={e => setCoach({ ...coach, triedAlready: e.target.checked })} />
+                          <span>I have already tried opening a check-in</span>
                         </label>
-                      ))}
-                      <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--gw-sub)', display: 'grid', gap: 3 }}>
-                        What do you want help with?
-                        <textarea
-                          className="gw-select"
-                          rows={3}
-                          value={coach.intention}
-                          placeholder="A line or two is enough. It is what the first reply is written from."
-                          onChange={e => setCoach({ ...coach, intention: e.target.value })}
-                        />
-                        <span style={{ fontSize: 11, color: coach.intention.trim().length >= MIN_INTENTION_LENGTH ? 'var(--gw-muted)' : 'var(--gw-amber-t)' }}>
-                          {coach.intention.trim().length >= MIN_INTENTION_LENGTH
-                            ? 'Thanks, that is enough to reply to.'
-                            : `A little more, please. ${MIN_INTENTION_LENGTH - coach.intention.trim().length} characters to go.`}
-                        </span>
-                      </label>
-                      <label style={{ fontSize: 12, color: 'var(--gw-sub)', display: 'flex', gap: 7, alignItems: 'flex-start' }}>
-                        <input type="checkbox" checked={coach.triedAlready} onChange={e => setCoach({ ...coach, triedAlready: e.target.checked })} />
-                        <span>I have already tried opening a check-in</span>
-                      </label>
-                      <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--gw-sub)', display: 'grid', gap: 3 }}>
-                        When would you like the first conversation?
-                        <input
-                          className="gw-input"
-                          type="datetime-local"
-                          value={coachWhen}
-                          min={new Date(Date.now() + 3600_000).toISOString().slice(0, 16)}
-                          onChange={e => setCoachWhen(e.target.value)}
-                          style={{ maxWidth: 260 }}
-                        />
+                        <div>
+                          <FieldLabel htmlFor="coach-when">When would you like the first conversation?</FieldLabel>
+                          <TextField
+                            id="coach-when"
+                            type="datetime-local"
+                            value={coachWhen}
+                            min={coachMinWhen}
+                            onChange={e => setCoachWhen(e.target.value)}
+                          />
+                          {/*
+                            * A REQUEST, NOT A BOOKING, and it has to keep saying so. Nothing here
+                            * holds a slot in anybody's calendar - a coach confirms - and somebody
+                            * leaving this page believing they have an appointment would be worse off
+                            * than if it had never asked.
+                            */}
+                          <p className="gwui-fine">
+                            This is optional, and it is a request rather than a booking, because a coach confirms.
+                            Leave it empty and we will come back to you to agree a time.
+                          </p>
+                        </div>
                         {/*
-                          * A REQUEST, NOT A BOOKING, and it has to keep saying so. Nothing here
-                          * holds a slot in anybody's calendar - a coach confirms - and somebody
-                          * leaving this page believing they have an appointment would be worse off
-                          * than if it had never asked.
+                          * WHAT IT COSTS, BEFORE THE SEND BUTTON.
+                          *
+                          * `COACHING_PRICE` says in its own comment that the price is "shown before
+                          * the send button rather than after a reply is chased", and only `.note` was
+                          * ever rendered - so the two figures were exported, kept in step with the
+                          * pricing page, and read by nobody. Somebody asking to speak to a coach
+                          * learned the number in the reply.
                           */}
-                        <span style={{ fontSize: 11, color: 'var(--gw-muted)', fontWeight: 400, lineHeight: 1.5 }}>
-                          Optional, and it is a request rather than a booking - a coach confirms. Leave it
-                          empty and we will come back to you to agree a time.
-                        </span>
-                      </label>
-                      {/*
-                        * WHAT IT COSTS, BEFORE THE SEND BUTTON.
-                        *
-                        * `COACHING_PRICE` says in its own comment that the price is "shown before
-                        * the send button rather than after a reply is chased", and only `.note` was
-                        * ever rendered - so the two figures were exported, kept in step with the
-                        * pricing page, and read by nobody. Somebody asking to speak to a coach
-                        * learned the number in the reply.
-                        */}
-                      <p style={{ fontSize: 11.5, color: 'var(--gw-muted)', margin: 0, lineHeight: 1.5 }}>
-                        {COACHING_PRICE.hourly}, or {COACHING_PRICE.retained}. {COACHING_PRICE.note}
-                      </p>
-                      {coachErr && <p style={{ fontSize: 12, color: 'var(--gw-red-t)', margin: 0 }}>{coachErr}</p>}
-                      <button
-                        type="button"
-                        className="gw-btn"
-                        style={{ margin: 0 }}
-                        disabled={coachBusy || !coach.name.trim() || !coach.orgName.trim() || !looksLikeAnAddress(coach.email) || !coach.teamSize.trim() || coach.intention.trim().length < MIN_INTENTION_LENGTH}
-                        onClick={async () => {
-                          setCoachBusy(true); setCoachErr(null)
-                          try {
-                            await coachApi.request({
-                              ...coach,
-                              intention: coach.intention.trim(),
-                              /* Sent as an instant, because a wall-clock string means a different
-                                 moment to the person asking and the coach reading it. */
-                              ...(coachWhen ? { preferredAt: new Date(coachWhen).toISOString() } : {}),
-                            })
-                            setCoachSent(true)
-                          } catch (e: any) {
-                            setCoachErr(e?.response?.data?.message ?? 'That did not send. Try again in a moment.')
-                          } finally {
-                            setCoachBusy(false)
-                          }
-                        }}
-                      >
-                        {coachBusy ? 'Sending...' : 'Send request'}
-                      </button>
-                    </div>
-                  )}
-                </div>
+                        <p className="gwui-fine">
+                          {COACHING_PRICE.hourly}, or {COACHING_PRICE.retained}. {COACHING_PRICE.note}
+                        </p>
+                        {coachErr && <Note tone="error">{coachErr}</Note>}
+                        {/* Secondary, not primary: the fixed "Continue" bar below is this screen's
+                            one navy button, and a lead can have this form open at the same time. */}
+                        <Button
+                          kind="secondary"
+                          disabled={coachBusy || !coach.name.trim() || !coach.orgName.trim() || !looksLikeAnAddress(coach.email) || !coach.teamSize.trim() || coach.intention.trim().length < MIN_INTENTION_LENGTH}
+                          onClick={async () => {
+                            setCoachBusy(true); setCoachErr(null)
+                            try {
+                              await coachApi.request({
+                                ...coach,
+                                intention: coach.intention.trim(),
+                                /* Sent as an instant, because a wall-clock string means a different
+                                   moment to the person asking and the coach reading it. */
+                                ...(coachWhen ? { preferredAt: new Date(coachWhen).toISOString() } : {}),
+                              })
+                              setCoachSent(true)
+                            } catch (e: any) {
+                              setCoachErr(e?.response?.data?.message ?? 'That did not send. Try again in a moment.')
+                            } finally {
+                              setCoachBusy(false)
+                            }
+                          }}
+                        >
+                          {coachBusy ? 'Sending...' : 'Send request'}
+                        </Button>
+                      </Stack>
+                    )}
+                  </Stack>
+                </Panel>
               </div>
             </section>
 
@@ -1451,80 +1411,87 @@ export function CreateGroundPage() {
             {/* ---- THEN: describe it in your own words ---- */}
             {step === STAGE.describe && (<>
             {selectedCard === 'DESCRIBE_OWN' && (
-              <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 18, background: 'white' }}>
-                {/*
-                  THE SAME QUESTION THE ENTRY CHAT ASKS. The two doors asked for this in their own
-                  words - one said "Describe your own situation / tell it in your own words", this
-                  one said "Describe it in your own words" and then explained the routing - so the
-                  same act had two names depending on how somebody arrived.
-                  What the sentence under it must keep saying is the routing, because it is true
-                  here and it is the thing a person needs to know before typing.
-                */}
-                <label className="gw-label" htmlFor="own-situation">{theWords.describeOwnQuestion}</label>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 8, lineHeight: 1.5 }}>
-                  {theWords.describeOwnHelp} We will suggest the closest situation and you can change
-                  it - what gets picked decides the questions people are asked.
-                </div>
-                <textarea id="own-situation" className="gw-ta" rows={4} value={ownDescription}
-                  onChange={(e) => { setOwnDescription(e.target.value); setRoutedTo(null); setRouteFailed(false) }}
-                  placeholder="e.g. Four new clinic managers on a three month probation. They run separate clinics and never work together, but they all report to me." />
-                {/*
-                  A BUTTON THAT REFUSES AND WILL NOT SAY WHY. W-UX-7.
-                  
-                  Twenty characters, enforced in two places on this line and stated in neither. A
-                  person who typed "new manager" got a greyed-out button, no message, and no way to
-                  find out what was wrong - the only remaining move is to guess or to leave.
-                  
-                  The coach form three hundred lines up already does this properly, counting down the
-                  characters it still wants. Same treatment, same reason.
-                */}
-                {ownDescription.trim().length > 0 && ownDescription.trim().length < MIN_OWN_DESCRIPTION && (
-                  <div style={{ fontSize: 11, color: 'var(--gw-amber-t)', marginTop: 6 }}>
-                    A little more, please. {MIN_OWN_DESCRIPTION - ownDescription.trim().length} characters to go.
-                  </div>
-                )}
-                <button
-                  disabled={ownDescription.trim().length < MIN_OWN_DESCRIPTION || routing}
-                  onClick={() => {
-                    setRouting(true); setRouteFailed(false)
-                    entryApi.classifyIntent(ownDescription.trim())
-                      .then((r: any) => {
-                        const picked = r?.scenario as GroundScenario | undefined
-                        if (picked && SCENARIOS.some(c => c.scenario === picked)) { setRoutedTo(picked); setScenario(picked) }
-                        else setRouteFailed(true)
-                      })
-                      .catch(() => setRouteFailed(true))
-                      .finally(() => setRouting(false))
-                  }}
-                  style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: 'white', background: 'var(--gw-navy)', border: 'none', borderRadius: 7, padding: '8px 14px', cursor: 'pointer', fontFamily: 'inherit', opacity: ownDescription.trim().length < MIN_OWN_DESCRIPTION || routing ? 0.45 : 1 }}>
-                  {routing ? 'Reading it…' : 'Find the closest situation'}
-                </button>
-
-                {routedTo && (
-                  <div style={{ marginTop: 10, fontSize: 12.5, lineHeight: 1.55, background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 8, padding: '10px 12px' }}>
-                    From what you wrote, this looks like <b>{SCENARIOS.find(c => c.scenario === routedTo)?.label}</b>.
-                    That is what we will set up. If it is not right, pick a card above instead - your description is
-                    kept either way.
-                  </div>
-                )}
-                {routeFailed && (
-                  <div style={{ marginTop: 10, fontSize: 12.5, lineHeight: 1.55, background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 8, padding: '10px 12px' }}>
-                    {/* Saying so beats picking one quietly. The shape decides the
-                        board, the mode and the questions - too much to guess at. */}
+              <Panel>
+                <Stack gap={10}>
+                  {/*
+                    THE SAME QUESTION THE ENTRY CHAT ASKS. The two doors asked for this in their own
+                    words - one said "Describe your own situation / tell it in your own words", this
+                    one said "Describe it in your own words" and then explained the routing - so the
+                    same act had two names depending on how somebody arrived.
+                    What the sentence under it must keep saying is the routing, because it is true
+                    here and it is the thing a person needs to know before typing.
+                  */}
+                  <div>
+                    <FieldLabel htmlFor="own-situation">{theWords.describeOwnQuestion}</FieldLabel>
+                    <p className="gwui-panel-text-muted">
+                      {theWords.describeOwnHelp} We will suggest the closest situation and you can change
+                      it, because what gets picked decides the questions people are asked.
+                    </p>
+                    <TextArea id="own-situation" rows={4} value={ownDescription}
+                      onChange={(e) => { setOwnDescription(e.target.value); setRoutedTo(null); setRouteFailed(false) }}
+                      placeholder="e.g. Four new clinic managers on a three month probation. They run separate clinics and never work together, but they all report to me." />
                     {/*
-                      * ITEM 1: SAY WHAT THEY ARE ACTUALLY GETTING.
-                      *
-                      * This used to promise "a general ground" while handing over a REALIGN_TEAM one.
-                      * Now the general ground genuinely exists, so the sentence is true - and it names
-                      * the trade rather than glossing it.
+                      A BUTTON THAT REFUSES AND WILL NOT SAY WHY. W-UX-7.
+
+                      Twenty characters, enforced in two places on this line and stated in neither. A
+                      person who typed "new manager" got a greyed-out button, no message, and no way to
+                      find out what was wrong - the only remaining move is to guess or to leave.
+
+                      The coach form above already does this properly, counting down the characters it
+                      still wants. Same treatment, same reason.
                     */}
-                    We could not tell which of the situations above this is closest to, so we will open an
-                    <b> open read</b>: each person answers privately and the report shows where
-                    they differ. That works when the shape is genuinely unclear. If one of the cards above does
-                    fit, pick it instead - a named situation asks sharper questions than this one can.
+                    {ownDescription.trim().length > 0 && ownDescription.trim().length < MIN_OWN_DESCRIPTION && (
+                      <Note tone="error">
+                        A little more, please. {MIN_OWN_DESCRIPTION - ownDescription.trim().length} characters to go.
+                      </Note>
+                    )}
                   </div>
-                )}
-              </div>
+                  {/* Secondary, not primary: the fixed "Continue" bar below is this screen's one
+                      navy button. */}
+                  <Button
+                    kind="secondary"
+                    disabled={ownDescription.trim().length < MIN_OWN_DESCRIPTION || routing}
+                    onClick={() => {
+                      setRouting(true); setRouteFailed(false)
+                      entryApi.classifyIntent(ownDescription.trim())
+                        .then((r: any) => {
+                          const picked = r?.scenario as GroundScenario | undefined
+                          if (picked && SCENARIOS.some(c => c.scenario === picked)) { setRoutedTo(picked); setScenario(picked) }
+                          else setRouteFailed(true)
+                        })
+                        .catch(() => setRouteFailed(true))
+                        .finally(() => setRouting(false))
+                    }}>
+                    {routing ? 'Reading it…' : 'Find the closest situation'}
+                  </Button>
+
+                  {routedTo && (
+                    <Callout tone="info">
+                      From what you wrote, this looks like <b>{SCENARIOS.find(c => c.scenario === routedTo)?.label}</b>.
+                      That is what we will set up. If it is not right, pick a card above instead, because
+                      your description is kept either way.
+                    </Callout>
+                  )}
+                  {routeFailed && (
+                    <Callout tone="warning">
+                      {/* Saying so beats picking one quietly. The shape decides the
+                          board, the mode and the questions - too much to guess at. */}
+                      {/*
+                        * ITEM 1: SAY WHAT THEY ARE ACTUALLY GETTING.
+                        *
+                        * This used to promise "a general ground" while handing over a REALIGN_TEAM one.
+                        * Now the general ground genuinely exists, so the sentence is true - and it names
+                        * the trade rather than glossing it.
+                      */}
+                      We could not tell which of the situations above this is closest to, so we will open an
+                      <b> open read</b>: each person answers privately and the report shows where
+                      they differ. That works when the shape is genuinely unclear. If one of the cards above
+                      does fit, pick it instead, because a named situation asks sharper questions than this
+                      one can.
+                    </Callout>
+                  )}
+                </Stack>
+              </Panel>
             )}
 
             </>)}
@@ -1534,9 +1501,9 @@ export function CreateGroundPage() {
                 overflow ancestor (which is not what actually scrolls here),
                 so the bar is FIXED to the real viewport instead. Suite L
                 enforces its visibility at 1366x768 and 1280x720. */}
-            <div style={{ height: 76 }} />
-            <div className="cg-fixed-bar" style={{ background: 'var(--gw-bg)', borderTop: '1px solid var(--gw-border)', padding: '10px 20px', zIndex: 20 }}>
-              <div style={{ width: 'min(560px, 100%)' }}>
+            <div className="gwui-cg-fixed-spacer" />
+            <div className="gwui-cg-fixed-bar">
+              <div className="gwui-cg-fixed-bar-inner">
                 {/* On the free-text path, the description has to have been read
                     before we move on - otherwise the ground silently becomes
                     whatever the card happens to default to, which is the whole
@@ -1605,16 +1572,14 @@ export function CreateGroundPage() {
                         * ground is created when the conversation is saved, by the same commit the
                         * entry chat has always used.
                         */}
-                      <button
-                        className="gw-btn"
+                      <Button
                         disabled={blocked}
                         onClick={() => (next === step ? handOverToTheConversation() : setStep(next))}
-                        style={{ margin: 0 }}
                       >
                         {next === step ? 'Continue →' : 'Continue'}
-                      </button>
+                      </Button>
                       {blocked ? (
-                        <div style={{ fontSize: 11, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 5 }}>{why}</div>
+                        <p className="gwui-fine" style={{ textAlign: 'center' }}>{why}</p>
                       ) : null}
                     </>
                   )
@@ -1626,122 +1591,97 @@ export function CreateGroundPage() {
 
         {/* Step 2 (1.5): Billing check */}
         {step === STAGE.plan && (
-          <div>
-            <h1 className="gw-ttl">Before you continue</h1>
+          <Section heading="Before you continue">
+            <Stack gap={18}>
+              {billingLoading && (
+                <div className="gwui-spinner">
+                  <div className="gwui-spinner-dot" aria-hidden />
+                  Checking…
+                </div>
+              )}
 
-            {billingLoading && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '32px 0', color: 'var(--gw-sub)', fontSize: 14 }}>
-                <div style={{ width: 18, height: 18, border: '2px solid var(--gw-border)', borderTopColor: 'var(--gw-navy)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
-                Checking…
-              </div>
-            )}
-
-            {!billingLoading && billingChecked && billingFree && (
-              <div>
-                <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b)', borderRadius: 10, padding: '20px 18px', marginBottom: 20 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 6 }}>No payment needed</div>
-                  {/* One statement about what they have, not two that disagree.
-                      This said "unlimited Grounds" directly above "0 of 10
-                      Grounds used" - the first thing a new admin reads about
-                      money, contradicting itself. A paid plan really is
-                      unlimited; the free tier is not, and should say so once. */}
-                  <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+              {!billingLoading && billingChecked && billingFree && (
+                <Stack gap={12}>
+                  <Callout tone="success" title="No payment needed">
+                    {/* One statement about what they have, not two that disagree.
+                        This said "unlimited Grounds" directly above "0 of 10
+                        Grounds used" - the first thing a new admin reads about
+                        money, contradicting itself. A paid plan really is
+                        unlimited; the free tier is not, and should say so once. */}
                     {groundsUsed != null && !appliedAccessCode
                       ? <>Your free plan includes {freeLimit} check-ins, with unlimited sessions and reports in each. You have used <b>{groundsUsed}</b>.</>
                       : <>This one is covered. Unlimited sessions and reports.</>}
-                  </div>
-                </div>
-                {/* The warning stays, but only when they are actually near the
-                    wall. Repeating the count when they have eight left is noise. */}
-                {groundsUsed != null && !appliedAccessCode && groundsUsed >= freeLimit - 2 && (
-                  <div style={{ fontSize: 12.5, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 8, padding: '10px 12px', marginBottom: 16, lineHeight: 1.5 }}>
-                    Only {freeLimit - groundsUsed} {freeLimit - groundsUsed === 1 ? 'check-in' : 'check-ins'} left on the free plan. After that you will need a subscription to open another.
-                  </div>
-                )}
-                <button className="gw-btn" onClick={() => setStep(stepAfter(visibleSteps, step))} style={{ margin: '12px 0 0' }}>Continue →</button>
-              </div>
-            )}
+                  </Callout>
+                  {/* The warning stays, but only when they are actually near the
+                      wall. Repeating the count when they have eight left is noise. */}
+                  {groundsUsed != null && !appliedAccessCode && groundsUsed >= freeLimit - 2 && (
+                    <Callout tone="warning">
+                      Only {freeLimit - groundsUsed} {freeLimit - groundsUsed === 1 ? 'check-in' : 'check-ins'} left on the free plan. After that you will need a subscription to open another.
+                    </Callout>
+                  )}
+                  <Button onClick={() => setStep(stepAfter(visibleSteps, step))}>Continue →</Button>
+                </Stack>
+              )}
 
-            {!billingLoading && billingChecked && billingUnknown && (
-              <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 10, padding: '16px 18px', marginBottom: 20 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>We could not check your plan just then</div>
-                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>
-                  This is our side, not yours - nothing about your plan has changed. Try again, and if it
-                  keeps failing you can carry on setting this up and create it in a moment.
-                </div>
-                <button
-                  onClick={() => setBillingChecked(false)}
-                  style={{ padding: '8px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-                >
-                  Try again
-                </button>
-              </div>
-            )}
+              {!billingLoading && billingChecked && billingUnknown && (
+                <Callout tone="warning" title="We could not check your plan just then">
+                  This is our side, not yours, and nothing about your plan has changed. Try again, and if it
+                  keeps failing you can carry on setting this up and create it in a moment.{' '}
+                  <button type="button" className="gwui-plain-link" onClick={() => setBillingChecked(false)}>Try again</button>
+                </Callout>
+              )}
 
-            {!billingLoading && billingChecked && !billingFree && !billingUnknown && (
-              <div>
-                <div style={{ background: 'var(--gw-card)', border: '1.5px solid var(--gw-border)', borderRadius: 10, padding: '20px 18px', marginBottom: 20 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 6 }}>Subscribe to create more</div>
-                  <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 16 }}>
-                    Your free plan includes {freeLimit} check-ins. Subscribe for unlimited check-ins, sessions, and reports.
-                  </div>
-                  <a
-                    href="/pricing"
-                    style={{ display: 'inline-block', fontSize: 13, fontWeight: 600, background: 'var(--gw-navy)', color: 'white', border: 'none', borderRadius: 8, padding: '10px 20px', textDecoration: 'none' }}
-                  >
-                    View plans →
-                  </a>
-                </div>
+              {!billingLoading && billingChecked && !billingFree && !billingUnknown && (
+                <Stack gap={18}>
+                  <Panel>
+                    <Stack gap={10}>
+                      <h3 className="gwui-panel-heading">{noPlan ? 'No plan yet' : 'Subscribe to create more'}</h3>
+                      <p className="gwui-panel-text-muted">
+                        {noPlan ?? `Your free plan includes ${freeLimit} check-ins. Subscribe for unlimited check-ins, sessions, and reports.`}
+                      </p>
+                      {/* A LINK, NOT A BUTTON: it only goes to the pricing page, and this step's one
+                          primary action is "Continue →" once a code is applied below. */}
+                      <Link to="/pricing" className="gwui-plain-link">View plans →</Link>
+                    </Stack>
+                  </Panel>
 
-                {!showCodeInput && (
-                  <div style={{ textAlign: 'center' }}>
-                    <button
-                      onClick={() => setShowCodeInput(true)}
-                      style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}
-                    >
-                      I have an access code
-                    </button>
-                  </div>
-                )}
+                  {!showCodeInput && (
+                    <p style={{ textAlign: 'center' }}>
+                      <button type="button" className="gwui-plain-link" onClick={() => setShowCodeInput(true)}>I have an access code</button>
+                    </p>
+                  )}
 
-                {showCodeInput && (
-                  <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: 14, marginTop: 8 }}>
-                    <label className="gw-label">Access code</label>
-                    <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-                      <input
-                        className="gw-input"
-                        value={codeInput}
-                        onChange={e => { setCodeInput(e.target.value); setCodeError(null) }}
-                        placeholder="Enter your code"
-                        style={{ flex: 1 }}
-                        onKeyDown={e => e.key === 'Enter' && applyCode()}
-                      />
-                      <button
-                        onClick={applyCode}
-                        disabled={codeChecking || !codeInput.trim()}
-                        style={{ padding: '0 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: codeChecking || !codeInput.trim() ? 0.6 : 1 }}
-                      >
-                        {codeChecking ? 'Checking…' : 'Apply code'}
-                      </button>
-                    </div>
-                    {codeError && (
-                      <div style={{ fontSize: 12, color: 'var(--gw-red-t)', marginTop: 8 }}>{codeError}</div>
-                    )}
-                  </div>
-                )}
+                  {showCodeInput && (
+                    <Panel>
+                      <FieldLabel htmlFor="cg-access-code">Access code</FieldLabel>
+                      <div className="gwui-invite-link-row">
+                        <TextField
+                          id="cg-access-code"
+                          value={codeInput}
+                          onChange={e => { setCodeInput(e.target.value); setCodeError(null) }}
+                          placeholder="Enter your code"
+                          onKeyDown={e => e.key === 'Enter' && applyCode()}
+                        />
+                        <Button kind="secondary" size="small" onClick={applyCode} disabled={codeChecking || !codeInput.trim()}>
+                          {codeChecking ? 'Checking…' : 'Apply code'}
+                        </Button>
+                      </div>
+                      {codeError && <Note tone="error">{codeError}</Note>}
+                    </Panel>
+                  )}
 
-                {codeApplied && (
-                  <div style={{ marginTop: 16 }}>
-                    <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b)', borderRadius: 10, padding: '16px 18px', marginBottom: 12 }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 4 }}>Code applied</div>
-                      <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>Your access code has been validated and will be used when the check-in is created.</div>
-                    </div>
-                    <button className="gw-btn" onClick={() => setStep(stepAfter(visibleSteps, step))}>Continue →</button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+                  {codeApplied && (
+                    <Stack gap={12}>
+                      <Callout tone="success" title="Code applied">
+                        Your access code has been validated and will be used when the check-in is created.
+                      </Callout>
+                      <Button onClick={() => setStep(stepAfter(visibleSteps, step))}>Continue →</Button>
+                    </Stack>
+                  )}
+                </Stack>
+              )}
+            </Stack>
+          </Section>
         )}
 
         {/* Step 3 (was 2): Timeframe + cadence */}
@@ -1772,6 +1712,6 @@ export function CreateGroundPage() {
 
         {/* Step 6 (was 5): Opening brief + ground name */}
       </div>
-    </div>
+    </Page>
   )
 }

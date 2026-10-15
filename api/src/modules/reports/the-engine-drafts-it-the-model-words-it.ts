@@ -1,4 +1,5 @@
-import { STYLE, STYLE_VERSION, safeToUse, composePrompt } from '../assistant/the-model-words-it-and-nothing-more';
+import { STYLE, STYLE_VERSION, safeToUse, timesItSaysTheReaderSaidIt } from '../assistant/the-model-words-it-and-nothing-more';
+import { PLAIN_WORDS, SPOKEN_TO_THE_READER } from '../conversation/plain-words';
 
 /**
  * THE REPORT'S PHRASING LAYER, WHICH IS THE ASSISTANT'S, REACHED FROM HERE.
@@ -58,6 +59,38 @@ export type Drafted = {
   context?: string;
 };
 
+/**
+ * AND THE MODEL IS TOLD HOW MANY LINES TO SEND BACK, WHICH IT WAS NOT BEFORE.
+ *
+ * The rules this composer runs under end with the plain-words rulebook, and that rulebook says
+ * "write one plain, full sentence in every field". It is right about a field. This is not a field:
+ * it is a block of separate claims, and the model read the rule the only way it could and sent one
+ * sentence back for the whole block.
+ *
+ * Measured on the run of 26 September against the run before the rulebook reached here: the
+ * refusals used to be near misses, nine lines out and eight back, ten out and nine back. Afterwards
+ * they were collapses - eight out and one back, thirteen out and one back, fourteen out and one
+ * back. Every one of those throws the whole rewrite away and ships the engine's own words, so the
+ * change made to remove jargon was quietly putting it back.
+ *
+ * Nothing here weakens the guard. The line count is still held exactly and every line is still
+ * checked on its own; the model is simply told what shape the answer has to be, which is the one
+ * thing the prompt never said.
+ */
+export function oneLineBackForEachLineIn(lines: string[]): string {
+  return [
+    `Below are ${lines.length} separate lines. Each one is its own claim about its own thing, and each`,
+    'one is read on its own by a person, in its own place on the page.',
+    '',
+    `Send back exactly ${lines.length} lines, in the same order, one line for each line given. Say each`,
+    'one better, as one plain, full sentence. Never merge two lines into one, never split one line',
+    'into two, never add a line, and never drop a line - not even a line that holds no number and no',
+    'name. Do not number them and do not add anything around them.',
+    '',
+    `<draft>\n${lines.join('\n')}\n</draft>`,
+  ].join('\n');
+}
+
 /** The style for a line that has context: write from it, do not quote it. */
 export const STYLE_WITH_CONTEXT = `You are Groundwork, writing one short paragraph to somebody about their own work.
 You will be given a DRAFT, which is what must be said, and CONTEXT, which is what is known about this kind of work.
@@ -67,7 +100,11 @@ Rules:
 - Speak to the person: "you", plainly. No praise, no scripted warmth, no "I'd be happy to".
 - Never guess anybody's pronoun from their name; where the draft does not say, write they and their.
 - British spelling. No em dashes. Straight quotes.
-- Two to four sentences. Reply with the paragraph only.`;
+- Two to four sentences. Reply with the paragraph only.
+
+${PLAIN_WORDS}
+
+${SPOKEN_TO_THE_READER}`;
 
 export function composeWithContext(draft: string, context: string): string {
   return `<draft>\n${draft}\n</draft>\n<context>\n${context}\n</context>`;
@@ -112,7 +149,10 @@ export async function wordedByTheModel(
       /* Sentences AND the clauses after a colon: the map writes "What on track looks like: X", and X
          lifted whole is the quotation, whether or not the label came with it. */
       const quoted = d.context!.split(/(?<=[.!?])\s+|:\s+/).some((piece) => piece.trim().length > 24 && text.includes(piece.trim()));
-      if (text && !quoted && safeToUse(`${d.text}\n${d.context}`, text, d.mustKeep ?? [])) contextual.set(d.key, text);
+      /* The context is what is known about the work, never what the reader said: a "you said" or "you confirmed" counts against the draft alone.
+         Night quality run 1: the role context "This is about what you said work" let "You said that a short account is not a weak one" through to Esther. */
+      const putInTheirMouth = timesItSaysTheReaderSaidIt(text) > timesItSaysTheReaderSaidIt(d.text);
+      if (text && !quoted && !putInTheirMouth && safeToUse(`${d.text}\n${d.context}`, text, d.mustKeep ?? [])) contextual.set(d.key, text);
       else onRefusal?.(`${d.key}: the contextual line ${quoted ? 'quoted the context' : 'did not survive the guard'}`);
     } catch (err: any) {
       onRefusal?.(`${d.key}: the model call failed: ${err?.message}`);
@@ -127,7 +167,7 @@ export async function wordedByTheModel(
   const block = lines.join('\n');
   let composed: string | null = null;
   try {
-    composed = await compose(STYLE, composePrompt(block));
+    composed = await compose(STYLE, oneLineBackForEachLineIn(lines));
   } catch (err: any) {
     onRefusal?.(`the model call failed: ${err?.message}`);
     return drafts.map((d) => (d.context?.trim() && contextual.has(d.key) ? { ...d, text: contextual.get(d.key)! } : d));

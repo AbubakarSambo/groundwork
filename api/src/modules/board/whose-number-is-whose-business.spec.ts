@@ -97,11 +97,35 @@ describe('and the lead is told where the setting is doing nothing', () => {
     expect(out.alsoSay).toContain('numbers of their own');
   });
 
-  it('but keeps it once every number has a name on it', () => {
+  /* CHANGED 7 October 2026 (decision 110, P3). This case kept the total at two people, and with two the whole minus your own is your
+     colleague's number. The total now needs three or more people with a number. */
+  it('but keeps it once every number has a name on it, and three or more people have one', () => {
     const allNamed = [
       { name: 'Musa', target: 35, ownerParticipantId: 'musa' },
       { name: 'Amina', target: 21, ownerParticipantId: 'amina' },
+      { name: 'Kofi', target: 40, ownerParticipantId: 'kofi' },
     ];
-    expect(targetsFor(allNamed, 'musa', 'their own').alsoSay).toContain('across 2 people');
+    expect(targetsFor(allNamed, 'musa', 'their own').alsoSay).toContain('across 3 people');
+  });
+
+  it('and gives no total when only two people have a number, because the whole minus your own is your colleague\'s', () => {
+    const two = [
+      { name: 'Musa', target: 35, ownerParticipantId: 'musa' },
+      { name: 'Amina', target: 21, ownerParticipantId: 'amina' },
+    ];
+    const read = targetsFor(two, 'musa', 'their own');
+    expect(read.alsoSay).toBe('Other people on this check-in have numbers of their own, and those are theirs.');
+    expect(JSON.stringify(read)).not.toContain('56');
+    expect(JSON.stringify(read)).not.toContain('21');
+  });
+
+  it('read as the lead, an admin, and with everybody seeing everybody, the total is not needed and nothing is withheld', () => {
+    const two = [
+      { name: 'Musa', target: 35, ownerParticipantId: 'musa' },
+      { name: 'Amina', target: 21, ownerParticipantId: 'amina' },
+    ];
+    expect(targetsFor(two, 'musa', 'their own', { isLead: true }).shown).toHaveLength(2);
+    expect(targetsFor(two, 'musa', 'their own', { seesEveryShare: true }).shown).toHaveLength(2);
+    expect(targetsFor(two, 'musa', 'everybody').shown).toHaveLength(2);
   });
 });

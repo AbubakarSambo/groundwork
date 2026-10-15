@@ -9,6 +9,12 @@ class ProposeResolutionDto {
   @IsNotEmpty()
   @MaxLength(40)
   endState: string;
+
+  /** Why, in a sentence or two. The people in the check-in read it with the outcome. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  reason?: string;
 }
 
 class CounterProposeResolutionDto {
@@ -38,7 +44,7 @@ export class ResolutionController {
   @Post()
   @ApiOperation({ summary: 'Propose or confirm an end state (closes when both parties confirm)' })
   async propose(@Param('groundId') groundId: string, @CurrentUser('id') userId: string, @Body() dto: ProposeResolutionDto) {
-    return this.resolution.propose(groundId, userId, dto.endState);
+    return this.resolution.propose(groundId, userId, dto.endState, dto.reason);
   }
 
   @Post('counter')

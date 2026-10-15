@@ -34,10 +34,18 @@ import { describe, it, expect } from 'vitest'
  * Both files are read and joined, so what is asserted is that the guide reaches its person - not
  * which file happens to hold the markup.
  */
+/*
+ * REVIEW ROUND 3, "YOUR WORK" REBUILD: `<WhatToWalkInWith` MOVED AGAIN, from the two calling
+ * pages into the shared `YourWork` (components/gw/checkin/YourWork.tsx) both of them now render
+ * for My work/My record. Added to the join rather than swapped in, so this still reads the
+ * guide's own file, the carry-forward panel (unrelated but harmless to keep), the page and the
+ * shared component together.
+ */
 const SRC = [
   readFileSync(join(__dirname, '../../components/gw/WhatToWalkInWith.tsx'), 'utf8'),
   readFileSync(join(__dirname, '../../components/gw/WhatYouAreCarryingForward.tsx'), 'utf8'),
   readFileSync(join(__dirname, '../grounds/GroundParticipantPage.tsx'), 'utf8'),
+  readFileSync(join(__dirname, '../../components/gw/checkin/YourWork.tsx'), 'utf8'),
 ].join('\n')
 const CODE = SRC.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
@@ -73,7 +81,13 @@ describe('the guide reaches the person it was written for', () => {
   })
 
   it('it uses the kit\'s heading rather than a tenth copy', () => {
-    expect(CODE).toMatch(/<Sec title="Before you talk to them" \/>/)
+    /*
+     * GROUP 3, PIECE 2: `Sec` (kit.tsx, the old kit) moved to `Section` (components/gw/ui), the
+     * same heading component's newer name - a rename forced by ReportPage.tsx joining
+     * REBUILT_PAGES, whose guard refuses any old kit part one import deep. Still one shared
+     * heading, not a tenth copy.
+     */
+    expect(CODE).toMatch(/<Section heading="Before you talk to them" \/>/)
   })
 })
 

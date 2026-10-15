@@ -45,6 +45,6 @@ describe('end-state mirror: client === server, verbatim', () => {
 
   it('sanity: the parse found the real file, not an empty match', () => {
     expect(Object.keys(server).length).toBeGreaterThanOrEqual(16)
-    expect(server.NEW_HIRE?.map(o => o.label)).toContain('Keep the hire')
+    expect(server.NEW_HIRE?.map(o => o.label)).toContain('The person stays in the role.')
   })
 })

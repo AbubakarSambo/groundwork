@@ -55,8 +55,8 @@ describe('changing how long a ground runs', () => {
   it('tells them who to ask, rather than just saying no', async () => {
     const svc = makeService(GROUND);
     await svc.updateTimeline('g1', 'participant', { timelineWeeks: 4 }).catch((e: any) => {
-      expect(e.message).toMatch(/lead of this check-in/i);
-      expect(e.message).toMatch(/ask them/i);
+      /* Decision 119, H10: the one plain refusal every set-up change gives. */
+      expect(e.message).toBe('Only the person who runs this check-in can change how it is set up. An admin can only do that once that person has left the organisation. Nothing was changed.');
     });
   });
 

@@ -136,7 +136,7 @@ export class ACheckInACustomerCanRunService {
 
     const grounds = await this.prisma.ground.findMany({
       where: { organizationId, initiatorId: userId, status: 'AWAITING_LEAD' },
-      select: { id: true, label: true, scenario: true, brief: true, timelineDays: true },
+      select: { id: true, label: true, scenario: true, brief: true, timelineDays: true, runsUntilEnded: true },
     });
 
     return grounds.map((g) => ({
@@ -146,7 +146,8 @@ export class ACheckInACustomerCanRunService {
       /* What somebody else wrote for them to read. It is the thing being
          confirmed, so it is returned rather than summarised. */
       brief: g.brief,
-      timelineDays: g.timelineDays,
+      timelineDays: g.runsUntilEnded ? null : g.timelineDays,
+      runsUntilEnded: g.runsUntilEnded,
       says: 'This was set up for you and has not started. Read what it says, change it if it is wrong, and confirm it - nothing is asked of anybody until you do.',
     }));
   }
@@ -253,7 +254,8 @@ export class ACheckInACustomerCanRunService {
   }
 
   async say(organizationId: string, personId: string, checkInId: string, content: string) {
-    return this.conversation.sendMessage(checkInId, await this.actingAs(organizationId, personId), content);
+    /* The API shows no end card, so the close says what comes next there (the-close-says-what-comes-next). */
+    return this.conversation.sendMessage(checkInId, await this.actingAs(organizationId, personId), content, { door: 'api' });
   }
 
   async complete(organizationId: string, personId: string, checkInId: string) {
@@ -298,6 +300,8 @@ export class ACheckInACustomerCanRunService {
       scenario?: string;
       moment?: string;
       timelineDays?: number;
+      /** True when it runs until the lead ends it: no length, no planned last session. */
+      runsUntilEnded?: boolean;
       cadence?: string;
       participants?: { personExternalId: string; roleAsDescribed?: string }[];
       startsAt?: string;
@@ -320,6 +324,7 @@ export class ACheckInACustomerCanRunService {
          own refusal named the three, which is what that error message is for. */
       moment: dto?.moment ?? 'STARTING',
       timelineDays: dto?.timelineDays,
+      runsUntilEnded: dto?.runsUntilEnded,
       cadence: dto?.cadence,
       participants: dto?.participants,
       startsAt: dto?.startsAt,

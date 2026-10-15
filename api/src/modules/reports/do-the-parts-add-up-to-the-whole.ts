@@ -1,3 +1,4 @@
+import { someOfThemHave } from './some-of-them-has-or-have';
 /**
  * "ALL OF US ARE LISTING GOALS TOO LOW TO MEET THE OBJECTIVE."
  *
@@ -27,6 +28,30 @@ export interface ATarget {
   name: string;
   target: number | null;
   ownerParticipantId?: string | null;
+  /** AIM or LIMIT where the lead said which way the number is read. */
+  direction?: string | null;
+}
+
+/**
+ * WHICH NUMBER IS THE OBJECTIVE (after-piece check, 8 October). The whole was "the first number nobody owns", in whatever order the rows came back. On a check-in
+ * set up from a plan, one of those rows was the lead's promise "Wairimu will settle the 21 day credit rule with finance", with 21 read out of its words, and the
+ * report was told "the objective is 21" while the team's sales target was 18 million. A promise is not a measure, so it is never the whole. Of the measures, the
+ * one the people's own numbers are counted in comes first (the same name, then the same thing counted), then one the lead said is an aim.
+ */
+export function anActionNotAMeasure(name: string): boolean {
+  return /\b(will|should|must|needs? to|has to|have to|going to)\b/i.test(name ?? '');
+}
+
+export function theWholeAmong(candidates: ATarget[], parts: ATarget[]): ATarget | null {
+  const measures = candidates.filter((t) => !anActionNotAMeasure(t.name));
+  if (!measures.length) return null;
+  const partNames = new Set(parts.map((p) => (p.name ?? '').trim().toLowerCase()));
+  const partUnits = new Set(parts.map((p) => whatIsBeingCounted(p.name)));
+  const score = (t: ATarget) =>
+    (partNames.has((t.name ?? '').trim().toLowerCase()) ? 4 : 0)
+    + (partUnits.has(whatIsBeingCounted(t.name)) ? 2 : 0)
+    + (t.direction === 'AIM' ? 1 : 0);
+  return [...measures].sort((a, b) => score(b) - score(a))[0];
 }
 
 /** The last noun in a target's name: "10,000 units of tea" -> "tea", "Carry 150 contracts" -> "contracts". */
@@ -38,13 +63,24 @@ const NOT_A_UNIT = new Set([
   'more', 'least', 'about', 'around', 'up', 'down', 'over', 'under', 'target', 'goal', 'objective', 'period', 'q1', 'q2', 'q3', 'q4',
 ]);
 
-function whatIsBeingCounted(name: string): string | null {
+/* A DIFFERENCE MUST BE A REAL ONE (staging test, 15 October). "40 paid sales by 31 December" was read as counted in
+   "december", and the report's headline told Hafsah her numbers were "in different terms (december, deal)". What comes
+   after "by", "before", "until", "in" or "on" says when or where, never what is counted, and a month is never a
+   unit. A deal and a sale are the same thing counted on a sales check-in. */
+const WHEN_OR_WHERE = /\s+(?:by|before|until|till|from|on|in|at|during|within|end\s+of|the\s+end\s+of)\s+.*$/i;
+const A_MONTH_OR_DAY = /^(?:jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|sept|september|oct|october|nov|november|dec|december|monday|tuesday|wednesday|thursday|friday|saturday|sunday)$/;
+const THE_SAME_THING: Record<string, string> = { deal: 'sale' };
+
+export function whatIsBeingCounted(name: string): string | null {
   const words = (name ?? '')
+    .replace(WHEN_OR_WHERE, '')
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, ' ')
     .split(/\s+/)
-    .filter((w) => w && !/^\d+[km]?$/.test(w) && !/^n\d/.test(w) && !NOT_A_UNIT.has(w) && !/ing$/.test(w));
-  return words.length ? words[words.length - 1].replace(/s$/, '') : null;
+    .filter((w) => w && !/^\d+[km]?$/.test(w) && !/^n\d/.test(w) && !NOT_A_UNIT.has(w) && !/ing$/.test(w) && !A_MONTH_OR_DAY.test(w));
+  if (!words.length) return null;
+  const one = words[words.length - 1].replace(/s$/, '');
+  return THE_SAME_THING[one] ?? one;
 }
 
 export interface HowTheNumbersSit {
@@ -62,10 +98,23 @@ export interface HowTheNumbersSit {
  * @param targets every objective on the check-in, owned and unowned
  * @param peopleInTheCheckIn how many people are being asked (not counting anybody managing only)
  */
+/**
+ * THE OBJECTIVE, SAID WITHOUT ITS NUMBER TWICE (requests 127, 129, 135, 136). The line below is what the report writer
+ * is given, and it echoed it: "The objective is 100 All 100 tasks for the release are deployed to production." The
+ * number was put in front of a name that already held it. Where the name holds the number, the name is quoted as it is.
+ */
+export function theObjectiveSaid(target: number, name: string): string {
+  const n = target.toLocaleString('en-US');
+  const said = String(name ?? '').trim().replace(/\s+/g, ' ');
+  const holdsIt = new RegExp(`(?<![\\d.,])${String(target)}(?![\\d])|(?<![\\d.,])${n.replace(/[,.]/g, '\\$&')}(?![\\d])`).test(said);
+  return holdsIt ? `the objective, in the lead's own words, is "${said.replace(/[.!?]+$/, '')}"` : `the objective is ${n} ${said.replace(/^\d[\d,]*\s*/, '')}`;
+}
+
 export function howTheNumbersSit(targets: ATarget[], peopleInTheCheckIn: number): HowTheNumbersSit {
   const withNumbers = (targets ?? []).filter((t) => typeof t.target === 'number' && t.target! > 0);
-  const whole = withNumbers.filter((t) => !t.ownerParticipantId);
   const parts = withNumbers.filter((t) => !!t.ownerParticipantId);
+  const whole = withNumbers.filter((t) => !t.ownerParticipantId);
+  const theWhole_ = theWholeAmong(whole, parts);
   const peopleWithATarget = new Set(parts.map((p) => p.ownerParticipantId)).size;
 
   const nothing: HowTheNumbersSit = {
@@ -78,17 +127,17 @@ export function howTheNumbersSit(targets: ATarget[], peopleInTheCheckIn: number)
    * objective belongs to everybody and to nobody cannot tell anybody whether they are behind.
    */
   if (parts.length === 0) {
-    if (whole.length === 0) return nothing;
-    const theWhole = whole[0];
+    if (!theWhole_) return nothing;
+    const theWhole = theWhole_;
     return {
       ...nothing,
       whole: theWhole.target!,
-      says: `THE NUMBERS: the objective is ${theWhole.target!.toLocaleString('en-US')} ${theWhole.name.replace(/^\d[\d,]*\s*/, '')}, and nobody in this check-in has a number of their own against it. Nothing here can tell any one person whether they are on track, because no part of the objective has been given to anybody. Say so, and say that agreeing who carries how much is the thing to do next.`,
+      says: `THE NUMBERS: ${theObjectiveSaid(theWhole.target!, theWhole.name)}, and nobody in this check-in has a number of their own against it. Nothing here can tell any one person whether they are on track, because no part of the objective has been given to anybody. Say so, and say that agreeing who carries how much is the thing to do next.`,
     };
   }
 
-  if (whole.length === 0) return nothing;
-  const theWhole = whole[0];
+  if (!theWhole_) return nothing;
+  const theWhole = theWhole_;
 
   /*
    * THE UNITS HAVE TO MATCH BEFORE ANYTHING IS ADDED UP. Two thousand units, a hundred and fifty
@@ -123,7 +172,7 @@ export function howTheNumbersSit(targets: ATarget[], peopleInTheCheckIn: number)
       says: `${head} - ${short.toLocaleString('en-US')} short. ${
         everybodyHasOne
           ? 'Everybody has a number and together they do not reach it.'
-          : `${peopleWithATarget} of ${peopleInTheCheckIn} people have a number of their own, so part of the gap may simply be nobody carrying it yet.`
+          : someOfThemHave(peopleWithATarget, peopleInTheCheckIn, 'a number of their own, so part of the gap may simply be nobody carrying it yet.')
       } Lead with this: it is arithmetic, it is not a judgement about anybody, and the thing to do next is to agree who carries the ${short.toLocaleString('en-US')} that nobody is carrying.`,
       whole: theWhole.target!, partsTotal, peopleWithATarget, peopleInTheCheckIn, comparable: true,
     };

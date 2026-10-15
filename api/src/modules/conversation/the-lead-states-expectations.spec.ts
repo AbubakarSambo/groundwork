@@ -1,4 +1,5 @@
 import { readFileSync } from 'fs';
+import { whatToCallThem } from './a-colleague-in-an-interview-has-a-name';
 import { join } from 'path';
 import { PartyType, GroundScenario, GroundMoment } from '@prisma/client';
 import { buildScenarioPackForParty, buildIntakeBlock } from './prompt-library';
@@ -53,9 +54,27 @@ describe('GW-EXP-1: the interview knows who is in the room', () => {
     expect(block).not.toContain('OTHER_PARTIES');
   });
 
+  /*
+   * THE SECOND LINE OF THIS USED TO BE A REGEXP FOR `displayName(p as any) ??`, which checked the
+   * expression rather than the promise in the test's own name. The roster now goes through
+   * `whatToCallThem`, which answers a second question the old expression could not: whether this
+   * check-in names people to each other at all. So the address rule is exercised instead of read.
+   */
   it('the service loads the roster and never names anybody by their address', () => {
     expect(SERVICE).toMatch(/otherParties: \(ground\.participants \?\? \[\]\)/);
-    expect(SERVICE).toMatch(/displayName\(p as any\) \?\?/);
+    expect(SERVICE).toMatch(/label: whatToCallThem\(\{ person: p as any, peersMayBeNamed, plainWords/);
+    /* Somebody invited by address and nothing else is never called by that address in a prompt. */
+    const invitedOnly = {
+      id: 'p9', partyType: PartyType.PARTICIPANT, email: 'chidinma@example.com',
+      roleAsDescribed: null, nameGiven: null, user: null,
+    } as any;
+    expect(whatToCallThem({ person: invitedOnly, peersMayBeNamed: true, fallback: 'a colleague' }))
+      .toBe('a colleague');
+    /* And a name, where there is one and the check-in names people to each other. */
+    expect(whatToCallThem({
+      person: { ...invitedOnly, user: { firstName: 'Abubakar', lastName: 'Sambo' } },
+      peersMayBeNamed: true,
+    })).toBe('Abubakar Sambo');
     /** A managing-only lead gives no account, so nobody is asked what is expected of them. */
     expect(SERVICE).toMatch(/p\.id !== checkIn\.participantId && !p\.managingOnly/);
   });

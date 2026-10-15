@@ -1,0 +1,624 @@
+{
+ "sales_s1_Femi": [
+  [
+   "AI",
+   "We're here to talk about what you're trying to achieve this quarter. What are you working towards?"
+  ],
+  [
+   "PERSON",
+   "I'm working to get 12 approved facilities this quarter. That's my target."
+  ],
+  [
+   "AI",
+   "Understood. And what would tell you that those 12 approved facilities were met?"
+  ],
+  [
+   "PERSON",
+   "It would mean 12 businesses got their loans approved. That's the main thing."
+  ],
+  [
+   "AI",
+   "What is the total value of credit you have had disbursed this quarter from those approvals?"
+  ],
+  [
+   "PERSON",
+   "For the two approved, it's 4 million naira."
+  ],
+  [
+   "AI",
+   "How many facilities are currently in your pipeline waiting for approval?"
+  ],
+  [
+   "PERSON",
+   "I have 31 applications that I'm working on."
+  ],
+  [
+   "AI",
+   "What is the main thing stopping those from converting to approved facilities right now?"
+  ],
+  [
+   "PERSON",
+   "The main thing is getting the customers to submit their bank statements. They are slow with that."
+  ],
+  [
+   "AI",
+   "They are slow with that. What have you tried so far to get the bank statements from them?"
+  ],
+  [
+   "PERSON",
+   "I've been calling them and following up. I explain how important it is."
+  ],
+  [
+   "AI",
+   "You've been calling and following up, explaining the importance. That's a consistent effort. What specific actions could you take to make it easier for customers to submit those bank statements?"
+  ],
+  [
+   "PERSON",
+   "I could try sending reminders, maybe with clear instructions on what they need to provide."
+  ],
+  [
+   "AI",
+   "What else could make it easier for them to send those statements, something you haven't tried yet?"
+  ],
+  [
+   "PERSON",
+   "I haven't thought of anything else yet."
+  ],
+  [
+   "AI",
+   "What will you do about sending those reminders with clear instructions, and by when?"
+  ],
+  [
+   "PERSON",
+   "I will send them out this week. I can draft the message today."
+  ],
+  [
+   "AI",
+   "I have one more question before we finish. How is it actually going?"
+  ]
+ ],
+ "sales_s1_Kwame": [
+  [
+   "AI",
+   "This conversation is about what you are trying to achieve this period. What are you trying to achieve, in your own words?"
+  ],
+  [
+   "PERSON",
+   "I'm trying to get 14 approved facilities this quarter, and disburse a good amount too. I'm actually doing pretty well with that so far!"
+  ],
+  [
+   "AI",
+   "Fourteen approved facilities is a clear goal. And by when for both of those?"
+  ],
+  [
+   "PERSON",
+   "By the end of the quarter, which is September 30th. For both the facilities and the disbursement."
+  ],
+  [
+   "AI",
+   "For the disbursement, what is the specific amount you are working to disburse by September 30th?"
+  ],
+  [
+   "PERSON",
+   "I don't have a specific number for my own disbursement target, just the 14 approved facilities."
+  ],
+  [
+   "AI",
+   "That is worth having on the record: you have a specific number for facilities, but not yet for disbursement. What would exist at the end of September to show that the 14 facilities target was met? For instance, something like a signed approval document for each, or a system confirmation for all 14."
+  ],
+  [
+   "PERSON",
+   "It would be a system confirmation. Once it's approved in the system, that counts as met."
+  ],
+  [
+   "AI",
+   "What is the main thing holding up the agreements you are working on right now?"
+  ],
+  [
+   "PERSON",
+   "The main thing is usually just getting all the documents from the clients. Some of them can be a bit slow."
+  ],
+  [
+   "AI",
+   "What would it take to speed up that document collection from clients? For instance, something like a standardized checklist for clients, or a dedicated follow-up process."
+  ],
+  [
+   "PERSON",
+   "A dedicated follow-up process from my end would definitely help. I try to do it, but sometimes I get caught up with new applications."
+  ],
+  [
+   "AI",
+   "You just named something you will do. What will you do about setting up a dedicated follow-up process for client document collection, and by when?"
+  ],
+  [
+   "PERSON",
+   "I'll set aside an hour each morning to specifically follow up on outstanding documents. I can start that tomorrow."
+  ],
+  [
+   "AI",
+   "You will set aside an hour each morning to specifically follow up on outstanding documents, starting tomorrow.\n\nI have one more question before we finish. How is it actually going?"
+  ]
+ ],
+ "sales_s2_Bisi": [
+  [
+   "AI",
+   "Last time you told us that the market and the credit committee were the main things stopping the team. Today we are going to focus on what you've decided since then. What decision have you made about the credit committee, or about how the team works with it?"
+  ],
+  [
+   "PERSON",
+   "I've decided that we need to better prepare our applications for the credit committee. I'm going to work with the team on strengthening our proposals."
+  ],
+  [
+   "AI",
+   "Working with the team on strengthening proposals is a concrete step. What specifically changed in the proposals?"
+  ],
+  [
+   "PERSON",
+   "I haven't actually made the changes yet. I'm still deciding on the best approach for the team."
+  ],
+  [
+   "AI",
+   "You haven't made the changes yet because you're still deciding on the best approach for the team. What would have to be true for that decision to be made, and by when?"
+  ],
+  [
+   "PERSON",
+   "I need to see what's actually in the pipeline for each person. I should have a decision by the end of next week."
+  ],
+  [
+   "AI",
+   "You'll have a decision on the best approach once you see what's in each person's pipeline. To make that decision, what does \"in the pipeline for each person\" mean, specifically?"
+  ],
+  [
+   "PERSON",
+   "It means seeing the applications they're working on, where each one is in the process, and any roadblocks. I need to understand what's actually happening with each potential deal."
+  ],
+  [
+   "AI",
+   "What is the main thing stopping deals in your pipeline from converting?"
+  ],
+  [
+   "PERSON",
+   "The credit committee is still holding things up, and the market conditions are making it tough to find new quality leads."
+  ],
+  [
+   "AI",
+   "Which one stands now?"
+  ],
+  [
+   "PERSON",
+   "It's still both, really. They're intertwined."
+  ],
+  [
+   "AI",
+   "What was agreed between you that was never actually said out loud?"
+  ],
+  [
+   "PERSON",
+   "I don't understand the question. Nothing was agreed that was not said out loud."
+  ],
+  [
+   "AI",
+   "You said earlier that The team owns the target and The team is collectively responsible for both the approvals and the disbursements. Nothing has been reported since then that mentions that original target. Which one stands now?"
+  ],
+  [
+   "PERSON",
+   "The original target of 40 approved facilities and N120m disbursed still stands. We are collectively responsible for it."
+  ],
+  [
+   "AI",
+   "What will you do to get a clear picture of what's in the pipeline for each person by the end of next week?"
+  ],
+  [
+   "PERSON",
+   "I will be reviewing each team member's individual pipeline report. I'll also schedule one-on-one check-ins with them to discuss their progress and any issues."
+  ],
+  [
+   "AI",
+   "You will be reviewing each team member's individual pipeline report and scheduling one-on-one check-ins to discuss progress and issues.\n\nI have one more question before we finish. Who is responsible for which part of that plan?"
+  ]
+ ],
+ "sales_s2_Ngozi": [
+  [
+   "AI",
+   "Last time you said \"I've already submitted files for approval.\" Since then, everyone involved in this check-in has shared what they said. Today, we should look at what is happening with the approved facilities. What have you done about the credit committee approval for the facilities since you submitted the files?"
+  ],
+  [
+   "PERSON",
+   "I've chased the committee four times in writing since I submitted those files. I also escalated to the head of credit, who hasn't replied."
+  ],
+  [
+   "AI",
+   "That is four chases in writing and an escalation that hasn't landed yet. Given that, did you follow up with the committee again last week, as you said you would?"
+  ],
+  [
+   "PERSON",
+   "No, I did not. The escalation to the head of credit was the last thing I did."
+  ],
+  [
+   "AI",
+   "You followed up in writing four times, and then escalated to the head of credit, who has not yet replied. You said you would follow up last week, and you did not. What is the total value of credit you have had disbursed this quarter?"
+  ],
+  [
+   "PERSON",
+   "N19m."
+  ],
+  [
+   "AI",
+   "Ngozi, that N19m is against a target of N120m for the team this quarter. What is the total number of facilities that have been approved for you this quarter?"
+  ],
+  [
+   "PERSON",
+   "Six facilities have been approved."
+  ],
+  [
+   "AI",
+   "How many of those are fully disbursed?"
+  ],
+  [
+   "PERSON",
+   "All six are fully disbursed."
+  ],
+  [
+   "AI",
+   "Understood. When will you have an answer from the committee?"
+  ],
+  [
+   "PERSON",
+   "I don't know when I'll have an answer from them."
+  ],
+  [
+   "AI",
+   "You do not know when you will have an answer from the committee, even after escalating. What will you do to get a clear timeline or a decision, and by when?"
+  ],
+  [
+   "PERSON",
+   "I will re-escalate to the head of credit, asking for a timeline. I will do this today."
+  ],
+  [
+   "AI",
+   "You will re-escalate to the head of credit today, asking for a timeline.\n\nI have one more question before we finish. By when will you do that?"
+  ]
+ ],
+ "seniorhire_s1_Amina": [
+  [
+   "AI",
+   "This session is about Amina's role and what you've set up for her. Who have you just hired?"
+  ],
+  [
+   "PERSON",
+   "We hired an Engagement Director. That's the title."
+  ],
+  [
+   "AI",
+   "What did you bring Amina in to do, specifically?"
+  ],
+  [
+   "PERSON",
+   "He is here to own the relationships with our five largest clients. I also need him to take those conversations off my plate within ninety days."
+  ],
+  [
+   "AI",
+   "What does early success look like for you, not the job description, your version?"
+  ],
+  [
+   "PERSON",
+   "Early success means he understands the role as I described it. It means he's taking ownership, not just waiting for instructions. Most importantly, it means I can stop attending those client meetings by day ninety."
+  ],
+  [
+   "AI",
+   "You've named three things: that Amina understands the role, takes ownership, and that you are out of those client meetings by day ninety. That last part is a clear outcome. What about Amina's ownership?"
+  ],
+  [
+   "PERSON",
+   "I want to see if what he says he will do actually happens. Also, I need to know if any blockers he mentions are genuine."
+  ],
+  [
+   "AI",
+   "That Amina's commitments translate into action, and that any blockers he raises are real.\n\nWhat else should I know?"
+  ],
+  [
+   "PERSON",
+   "I also need to know if, by day ninety, the problem is with him, the brief I gave him, or how we've onboarded him."
+  ],
+  [
+   "AI",
+   "By day ninety, you want to know what the root cause is if things are not where they need to be, whether it's Amina's fit, the clarity of the brief, or the onboarding process itself. What is it you need from Amina that you have not explicitly agreed on yet?"
+  ],
+  [
+   "PERSON",
+   "I need him owning the commercial relationship. That means pricing conversations, renewals, and even the decision about which clients to keep."
+  ],
+  [
+   "AI",
+   "You need Amina to own the commercial relationships completely, including pricing, renewals, and client retention decisions. When did you tell him, and in what words?"
+  ],
+  [
+   "PERSON",
+   "I said \"own the relationships\" in the interview. I believed that was clear."
+  ],
+  [
+   "AI",
+   "Who arranged the conversations that will get you out of those client meetings by day ninety?"
+  ],
+  [
+   "PERSON",
+   "He has not suggested otherwise. I've been in every client meeting so far."
+  ],
+  [
+   "AI",
+   "That means the shift in ownership for those conversations has not happened yet. From everything you have said, what have you decided?"
+  ],
+  [
+   "PERSON",
+   "I haven't decided anything. I'm pleased with his work, but I'm vaguely uneasy about the pace."
+  ],
+  [
+   "AI",
+   "You have not made a decision yet, but you are uneasy about the pace despite being pleased with Amina's work.\n\nI have one more question before we finish. What did you understand you were meant to do?"
+  ]
+ ],
+ "seniorhire_s1_Tobi": [
+  [
+   "AI",
+   "Before anything else, so this asks you the right things: are you the person this check-in is about, or somebody working alongside them? One line is enough."
+  ],
+  [
+   "PERSON",
+   "I am the Engagement Director."
+  ],
+  [
+   "AI",
+   "Understood. Then this is for you, as the Engagement Director. What did you understand your role in this to be-in your own words, before anyone else's version?"
+  ],
+  [
+   "PERSON",
+   "My understanding is that I am to own the relationships with our five largest clients. This involves keeping them happy, reporting on their health, and escalating any problems."
+  ],
+  [
+   "AI",
+   "Escalating problems. That is what this role holds for you. What do you mean to do first?"
+  ],
+  [
+   "PERSON",
+   "I will continue to monitor the health of all five key client accounts. I will also resolve any issues that arise before they are raised by the client."
+  ],
+  [
+   "AI",
+   "What else do you need to understand or have access to before you can deliver on that, and by when do you need it?"
+  ],
+  [
+   "PERSON",
+   "I believe I have sufficient understanding and access to deliver on that already."
+  ],
+  [
+   "AI",
+   "That means you are ready to start delivering. What is the very first thing you will do to take ownership of these client relationships?"
+  ],
+  [
+   "PERSON",
+   "I have already produced a health report for all five clients. I have also prepared a QBR deck and resolved two issues proactively."
+  ],
+  [
+   "AI",
+   "What else does that allow you to do with these clients that you were not able to do before?"
+  ],
+  [
+   "PERSON",
+   "That allows me to provide a clear picture of their current status and to address concerns before they become significant problems."
+  ],
+  [
+   "AI",
+   "That means you are proactively managing client perception and problem resolution. That's movement in two critical areas. What is next on your list of priorities for these five clients?"
+  ],
+  [
+   "PERSON",
+   "My next priority is to continue attending all meetings with Amina to gain a deeper understanding of the accounts. I will also continue to monitor for any new issues that may arise."
+  ],
+  [
+   "AI",
+   "You will continue to attend meetings with Amina to understand the accounts. Who arranged those meetings?"
+  ],
+  [
+   "PERSON",
+   "Amina arranged those meetings."
+  ],
+  [
+   "AI",
+   "You've already produced a health report, prepared a QBR deck, and proactively resolved two issues. Your focus on understanding the accounts through Amina's meetings is clear.\n\nI have one more question before we finish. How do you see it - what is clear, and what is not?"
+  ]
+ ],
+ "seniorhire_s2_Tobi": [
+  [
+   "AI",
+   "Last time you said that you had produced a health report for all five clients and prepared a QBR deck. Amina has also submitted her check-in for this period. Today we are going to focus on what you've found harder than expected since joining. What was the most unexpected difficulty you encountered?"
+  ],
+  [
+   "PERSON",
+   "The most unexpected difficulty was understanding the full scope of my responsibilities regarding client financials."
+  ],
+  [
+   "AI",
+   "What does full scope of your responsibilities mean there - what part of it was not clear?"
+  ],
+  [
+   "PERSON",
+   "I understood my responsibility was to maintain client satisfaction and report on their health. The aspect of discussing pricing or renewals was not clear to me as part of my role."
+  ],
+  [
+   "AI",
+   "Was that clarity, that pricing and renewals were not part of your role, something you established?"
+  ],
+  [
+   "PERSON",
+   "Yes, that is something I established for myself. My focus has been on client relationship management and issue resolution."
+  ],
+  [
+   "AI",
+   "Your own words from your last check-in say that you will also resolve any issues that arise before they are raised by the client. Has anything you have resolved since been connected to pricing or renewals?"
+  ],
+  [
+   "PERSON",
+   "No, the issues I have resolved were not connected to pricing or renewals. They were operational matters."
+  ],
+  [
+   "AI",
+   "You named that the clarity around pricing and renewals was something you established for yourself. What steps have you taken to get clarification on other expectations for your role, particularly regarding financial discussions with clients?"
+  ],
+  [
+   "PERSON",
+   "I have not taken steps to get further clarification on other expectations regarding financial discussions with clients. My understanding is based on my previous experience in account management."
+  ],
+  [
+   "AI",
+   "Understood. What is the date you will have an answer by?"
+  ],
+  [
+   "PERSON",
+   "I do not have a date by which I will have an answer."
+  ],
+  [
+   "AI",
+   "You do not have a date by which you will have an answer. That stops being about you and becomes a structural problem if nobody has an answer. What would you consider to be a reasonable timeframe to get that clarity, given it is important for your role?"
+  ],
+  [
+   "PERSON",
+   "A reasonable timeframe to gain that clarity would be within the next two weeks. This would allow me to align expectations properly."
+  ],
+  [
+   "AI",
+   "I have one more question before we finish. By when will you do that?"
+  ]
+ ],
+ "seniorhire_s3_Tobi": [
+  [
+   "AI",
+   "Your role as Engagement Director involves owning relationships with our five largest clients and taking those conversations off Amina within ninety days. You also mentioned wanting to provide a clear picture of their current status in Session 1, but later reported resolving only operational matters. Which of those stands now?"
+  ],
+  [
+   "PERSON",
+   "I have been providing a clear picture of their current status. The health report for all five clients is complete. I have also resolved operational matters."
+  ],
+  [
+   "AI",
+   "You also noted in your first check-in that a key challenge was understanding the full scope of your responsibilities, particularly regarding client financials. What have you done to get clarity on those other expectations for your role since we last spoke?"
+  ],
+  [
+   "PERSON",
+   "I have not discussed client financials with anyone. I have continued to focus on maintaining client satisfaction and resolving any operational issues that arise."
+  ],
+  [
+   "AI",
+   "That still leaves the question of your role in client financials open. To get this clear, who is the specific person who can clarify your role's expectations on financial discussions with clients?"
+  ],
+  [
+   "PERSON",
+   "Amina would be the person to clarify expectations regarding financial discussions with clients."
+  ],
+  [
+   "AI",
+   "Understood. Amina would be the one to clarify. What date will you have an answer for your role expectations on financial discussions with Amina?"
+  ],
+  [
+   "PERSON",
+   "I will ask Amina to clarify my role expectations on financial discussions in our next meeting."
+  ],
+  [
+   "AI",
+   "Understood. You said this was for \"clear picture of their current status\" but reported resolving \"operational matters\"; which stands now?"
+  ],
+  [
+   "PERSON",
+   "Both stand. I have provided a clear picture of their current status through the health report and QBR deck, and I have resolved operational matters."
+  ],
+  [
+   "AI",
+   "What do you need to understand or access to deliver on your mandate?"
+  ],
+  [
+   "PERSON",
+   "I understand my mandate is to own the relationships and take conversations off Amina. I have the necessary access to deliver on this."
+  ],
+  [
+   "AI",
+   "You said your biggest difficulty was understanding the full scope of your responsibilities, especially client financials, yet you have not discussed that with anyone. What was agreed between you and Amina that was never actually said out loud about these financial conversations?"
+  ],
+  [
+   "PERSON",
+   "There was no agreement made about financial conversations, either spoken or unspoken. I have not had a conversation about client financials."
+  ],
+  [
+   "AI",
+   "You have named what you will do in your next meeting with Amina, and that clarifies an open question.\n\nI have one more question before we finish. By when will you do that?"
+  ]
+ ],
+ "seniorhire_s4_Tobi": [
+  [
+   "AI",
+   "The health report for all five clients is complete, and you've resolved operational matters. Your role here is about what you can make of it. What did you understand your role in this to be, in your own words, before anyone else's version?"
+  ],
+  [
+   "PERSON",
+   "My role was to ensure the health report was completed and accurate. I also needed to make sure the operational issues were resolved."
+  ],
+  [
+   "AI",
+   "What else did you understand your role to be, in your own words, beyond these specific tasks?"
+  ],
+  [
+   "PERSON",
+   "I understood my role was to keep the clients happy. And to report on their health and escalate problems when they arose."
+  ],
+  [
+   "AI",
+   "In our first session, you also said your goal was to 'provide a clear picture of their current status'. Both stand in your record. What has been most difficult about providing that clear picture for Amina?"
+  ],
+  [
+   "PERSON",
+   "There hasn't been anything difficult about it. The picture is clear."
+  ],
+  [
+   "AI",
+   "You're saying the picture is clear. Amina's objective from Amina's side was to take commercial conversations off Amina's plate within ninety days. If the picture is clear, what's stopping that from happening?"
+  ],
+  [
+   "PERSON",
+   "I don't know what's stopping that from happening. I can only speak to my understanding of my role."
+  ],
+  [
+   "AI",
+   "You have named what you understand your role to be. You also said Amina would be the person to clarify expectations regarding financial discussions with clients, and that you would ask Amina about this in your next meeting. Did that happen?"
+  ],
+  [
+   "PERSON",
+   "No, it did not happen. I have not asked Amina about this yet."
+  ],
+  [
+   "AI",
+   "You intended to bring up your role in client financials with Amina in your next meeting, but it hasn't happened. Who set that meeting up?"
+  ],
+  [
+   "PERSON",
+   "Amina sets up our meetings."
+  ],
+  [
+   "AI",
+   "Okay. When you hit the ambiguous parts of this role, and there always are, what did you do?"
+  ],
+  [
+   "PERSON",
+   "I kept doing what I understood I needed to do. I focused on client happiness and reporting."
+  ],
+  [
+   "AI",
+   "You focused on client happiness and reporting, even when parts of the role felt ambiguous. Before we close: what specific question about your role or these client relationships will you get an answer to, and by when?"
+  ],
+  [
+   "PERSON",
+   "I will ask Amina to clarify my role regarding commercial conversations. I will do this at our next scheduled meeting."
+  ],
+  [
+   "AI",
+   "Understood.\n\nI have one more question before we finish. By when will you do that?"
+  ]
+ ]
+}

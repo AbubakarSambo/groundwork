@@ -29,14 +29,23 @@ describe('the emails, as somebody actually pastes them', () => {
 
 describe('the name', () => {
   /* A fifth field is a fifth reason to abandon this. The question is the best name it could have. */
-  it('comes from the question rather than from a field nobody wanted to fill', () => {
+  it('is the whole question, never its first few words', () => {
+    expect(aNameFromTheQuestion('What moved this week, and what is stuck?'))
+      .toBe('What moved this week, and what is stuck?')
     expect(aNameFromTheQuestion('What are your three priorities this quarter, and what is blocking you?'))
-      .toBe('What are your three priorities this')
+      .toBe('What are your three priorities this quarter, and what is blocking you?')
+    expect(aNameFromTheQuestion('  What   is blocking you?  ')).toBe('What is blocking you?')
+  })
+
+  it('is the topic when the question is too long to be a name, and never a cut-off question', () => {
+    const long = 'What did you finish this week, what is still open, what is blocking you, and who could help you with it?'
+    expect(long.length).toBeGreaterThan(80)
+    expect(aNameFromTheQuestion(long)).toBe('Get updates from your team')
   })
 
   it('and is never empty, however little they typed', () => {
-    expect(aNameFromTheQuestion('')).toBe('Team update')
-    expect(aNameFromTheQuestion('   ')).toBe('Team update')
+    expect(aNameFromTheQuestion('')).toBe('Get updates from your team')
+    expect(aNameFromTheQuestion('   ')).toBe('Get updates from your team')
   })
 })
 

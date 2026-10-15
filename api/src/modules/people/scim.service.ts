@@ -1,6 +1,8 @@
 import { whoExistsTwice, howItReads } from './whose-roster-is-this';
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { tidyANumberFor } from '../whatsapp/the-organisations-country';
+import { aSignInsNumberChanged, aRosterNumberChanged, refuseANumberOnSomebodyElse, aSignInWithNoNumberTakesTheRosters, theSignInOf } from '../whatsapp/one-number-for-a-person';
 import { Prisma } from '@prisma/client';
 
 /** The SCIM 2.0 user shape, as much of it as we take in. */
@@ -116,7 +118,7 @@ export class ScimService {
       where: { organizationId, sourceSystem, externalId },
       /* `email` joins the others so the fill below needs no second query - and
          so five specs whose stubs know about one lookup keep working. */
-      select: { id: true, active: true, deactivatedAt: true, managerExternalId: true, email: true },
+      select: { id: true, active: true, deactivatedAt: true, managerExternalId: true, email: true, phone: true, linkedUserId: true },
     });
 
     const active = dto.active ?? true;
@@ -153,11 +155,31 @@ export class ScimService {
     const deactivatedAt = active ? null : (prior?.deactivatedAt ?? new Date());
 
     const data: any = { ...this.fields(dto), active, deactivatedAt, syncedAt: new Date() };
+    /*
+     * THE NUMBER IN THE ONE FORM WHATSAPP SENDS (decision 82, item 8). `fields` took out spaces and
+     * dashes only, so a local "0801 234 5678" was kept as "+08012345678" and never matched the
+     * number WhatsApp sends. The same function Settings and an admin's roster entry use: a local
+     * number takes the organisation's country, or the push is refused with a sentence saying what to send.
+     */
+    if (typeof data.phone === 'string' && data.phone) {
+      const raw = dto.phoneNumbers?.find((p) => p.primary)?.value ?? dto.phoneNumbers?.[0]?.value ?? data.phone;
+      data.phone = await tidyANumberFor(this.prisma as any, organizationId, raw);
+    }
 
     /* See the note on the push above. A fill, only into an empty field. */
     const haveNoEmail = data.email == null && prior?.email == null;
     if (haveNoEmail && this.looksLikeAnEmail(dto.userName)) {
       data.email = dto.userName!.trim().toLowerCase();
+    }
+
+    /*
+     * ONE NUMBER FOR ONE PERSON (decision 106 item 3). A number already on somebody else's sign-in is
+     * refused with a sentence before anything is written; otherwise the sign-in follows the roster below.
+     */
+    const phoneChanged = 'phone' in data && (data.phone ?? null) !== (prior?.phone ?? null);
+    if (phoneChanged && data.phone) {
+      const own = await theSignInOf(this.prisma, { organizationId, linkedUserId: prior?.linkedUserId ?? null, email: data.email ?? prior?.email ?? null });
+      await refuseANumberOnSomebodyElse(this.prisma, data.phone, own?.id ?? null);
     }
 
     const row = prior
@@ -166,6 +188,8 @@ export class ScimService {
           /* On create there is nothing to preserve, so an omitted field is genuinely absent. */
           data: { organizationId, sourceSystem, externalId, userName: dto.userName!.trim(), ...data },
         });
+
+    if (phoneChanged) await aRosterNumberChanged(this.prisma, row.id, row.phone ?? null);
 
     if (prior && 'managerExternalId' in data && prior.managerExternalId !== data.managerExternalId) {
       this.logger.log(`Person ${externalId} moved: manager ${prior.managerExternalId ?? 'none'} -> ${(data as any).managerExternalId ?? 'none'}`);

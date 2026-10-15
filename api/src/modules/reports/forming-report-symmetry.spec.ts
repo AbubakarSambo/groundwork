@@ -58,7 +58,7 @@ describe('forming report: the initiator gets the same pre-release content a part
     expect(res.nextStep).toBe('release');
   });
 
-  it('a participant who has ALREADY answered gets the same forming picture', async () => {
+  it('a participant who has ALREADY answered is told the picture is not shared yet, and is not shown it (decision 76, item 4)', async () => {
     /*
      * THE SYMMETRY THAT SURVIVES, AND THE ONE THAT DID NOT.
      *
@@ -80,10 +80,20 @@ describe('forming report: the initiator gets the same pre-release content a part
         })),
       },
     });
+    /*
+     * DECISION 76, ITEM 4 (2 October 2026): each session's team picture is released on its own, and
+     * somebody who reads only what is released reads a session's picture only once it is. Before,
+     * answering was enough to read the forming picture; that is the reading this decision ends. They
+     * are told plainly, and keep their own things.
+     */
     const res: any = await service.get('g1', 'part-user');
     expect(res.forming).toBe(true);
-    expect(res.sharedPicture).toBe(unreleasedReport.sharedPicture);
+    expect(res.sharedPicture).toBeUndefined();
+    expect(res.agreements).toBeUndefined();
     expect(res.withheldUntilYouAnswer).toBeUndefined();
+    expect(res.saying).toBe("The team's picture of session 1 is not shared yet.");
+    expect(res.teamPicture).toEqual({ shared: false, sessionNumber: 1, says: "The team's picture of session 1 is not shared yet." });
+    expect(res).toHaveProperty('soloArtifact');
   });
 
   it('and a participant who has not is told why, rather than shown it', async () => {
@@ -92,7 +102,7 @@ describe('forming report: the initiator gets the same pre-release content a part
     expect(res.withheldUntilYouAnswer).toBe(true);
     expect(res.sharedPicture).toBeUndefined();
     /* A fact about the method, not a refusal - and it says when it lifts. */
-    expect(res.saying).toContain('as soon as you have given yours');
+    expect(res.saying).toContain('as soon as you have answered');
     /* The copy pass turned "the whole point is that they are independent" into the plainer "the
        point is that they are separate". The claim is the reason they cannot read it yet, so that
        is what is asserted rather than the adjective. */

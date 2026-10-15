@@ -30,6 +30,17 @@
  * the only thing left to say is atmosphere. The fix is upstream of the writing, in the frame; this
  * is what becomes possible once the frame is there.
  */
+/*
+ * THE RULES, AND DELIBERATELY NEITHER OF THE TWO SURFACE HALVES.
+ *
+ * The judgement is stored in labels and name-swapped on the way out, which would normally mean
+ * WRITTEN_ONCE_FOR_SEVERAL_READERS. But the room judgement is handed the lead's real name and told
+ * to use it, and the population judgement is told to name who to start with, so that half would
+ * contradict two instructions further down that were each written to fix a live defect. The rules
+ * themselves - full sentences, plain words, no labels on people - hold either way, so those go in
+ * and the naming stays where it already is.
+ */
+import { PLAIN_WORDS, EVERY_VERB_KEEPS_ITS_SUBJECT } from '../conversation/plain-words';
 import type { AField } from '../conversation/what-a-complete-answer-holds';
 import type { AFittedAnswer } from './fitting-an-answer-into-the-frame';
 
@@ -329,9 +340,78 @@ export function theTable(reads: AFieldRead[], assessments: AnAssessment[], howMa
  * RECOMMEND - the only part a model writes, and it is handed nothing but the table
  * ---------------------------------------------------------------------------------------------- */
 
+/*
+ * A MOVE IS SOMETHING THE READER DOES. The lead read "Tell you what Blessing Okafor's record says
+ * about the handover time changing" and "Ask you to decide what Zainab Suleiman should work on now"
+ * (8 such moves in run-5, 4 in run-6). The judgement is written about labels, so the model wrote
+ * "Tell the initiator ..." as if the lead were somebody else, and serving turned the label into
+ * "you". Both WHAT TO DO items now say the move is an instruction to the reader. Nothing rewrites
+ * the text afterwards; the instruction is where it is fixed.
+ */
 export function theJudgementInstruction(whoIsReading: string, whatTheyAreDeciding: string): string {
+  return fillTheJudgement(theJudgementTemplate(), { whoIsReading, whatTheyAreDeciding, leadName: null });
+}
+
+/*
+ * THE JUDGEMENT'S INSTRUCTIONS ARE STORED VERSIONS TOO (plan for requests 123 item 7, 134 item 4, 135 item 3).
+ *
+ * The judgement was the one prompt with no `PromptVersion` key, so a report's `promptVersionId` said which synthesis
+ * prompt ran and nothing said which judgement prompt did. Each instruction is now a template with three places to
+ * fill: who is reading, what they are deciding, and the line about the person running it. The code text below is the
+ * fallback, and the stored version under these keys wins where one is active. The id of the one that ran is kept
+ * inside the stored judgement as `promptVersionId`.
+ */
+export const THE_JUDGEMENT_POPULATION_KEY = 'the_judgement_population';
+export const THE_JUDGEMENT_ROOM_KEY = 'the_judgement_room';
+
+export function theLeadLine(leadName: string | null): string {
+  return leadName
+    ? `THE PERSON RUNNING THIS IS ${leadName}. They are not one of the people being checked in on and must never be counted as one. Where the record shows something about how they are running it, say that - it is often the most useful thing here - but say it as their own finding.`
+    : 'One of these people runs the check-in and is not one of the people being checked in on. Never count them as one.';
+}
+
+export function fillTheJudgement(template: string, a: { whoIsReading: string; whatTheyAreDeciding: string; leadName: string | null }): string {
+  return template
+    .split('{{whoIsReading}}').join(a.whoIsReading)
+    .split('{{whatTheyAreDeciding}}').join(a.whatTheyAreDeciding)
+    .split('{{theLeadLine}}').join(theLeadLine(a.leadName));
+}
+
+/*
+ * THREE RULES FOR THE WRITER, WHICH NO CHECK AT THE READ CAN MAKE SAFELY (requests 123 item 7, 134 item 4, 135 item 3,
+ * and the run of 5 October). Repairs at the read for each were tried and taken out, because each could put a false
+ * sentence about the lead on the page ("you were late"). Who a pronoun means, which thing a number belongs to, and what
+ * was promised by when, are the writer's to say.
+ */
+export const NEVER_A_PRONOUN_FOR_A_PERSON = 'NEVER A PRONOUN FOR A PERSON. Do not write he, she, him, her, his, hers, they, them, their, theirs or themselves about a person. Say the person\'s label again every time, even twice in one sentence: "Participant A said Participant A would send the sheets", never "Participant A said they would send the sheets". The reader may be one of these people. Their label becomes "you" when they read it, and a pronoun left behind then reads as somebody else: "You are holding up the office move, and your account does not show that they know it."';
+
+export const A_PROMISE_IS_ASKED_ABOUT_BY_ITS_DAY = 'A PROMISE IS ASKED ABOUT AS WHAT WAS PROMISED, BY ITS DAY. A block lists what the person said they would do, and the time they gave where they gave one. A move about it asks whether it happened by that time: "Ask Participant A whether the bundle was filed by Thursday 1 October." Never quote a promise back as a fragment, such as "the open commitment to \'I will file the bundle\'", and never write a line that only lists promises.';
+
+export const A_NUMBER_IS_ONE_A_BLOCK_HOLDS = 'A NUMBER IS ONE A BLOCK HOLDS, ON THE THING THE BLOCK PUTS IT ON. Write only the numbers, times and counts a block says. Never add, multiply or combine them: two crops in two places is two crops and two places, never "four activities". And a number keeps the thing it belongs to. If one person saw alerts at 7 AM and the alert nobody answered fired at 02:14, the alert nobody answered is the 02:14 one, never "the 7 AM alerts". Where you are not sure which thing a number belongs to, leave the number out.';
+
+/*
+ * FOUR MORE FOR THE ROOM, FROM THE RUNS OF 5 OCTOBER (run-oct5b, run-oct5c). Each was a fault in what the lead read, and each
+ * is the writer's to say, because it is about what the blocks hold and which block holds it.
+ */
+export const EACH_THING_AS_STRONGLY_AS_THE_BLOCK_SAYS_IT = 'SAY EACH THING AS STRONGLY AS THE BLOCK SAYS IT, AND NO STRONGER. "Was not paged" is not "was not on call", and "has not finished" is not "has not started". Find the block\'s own words before you write what a person was or was not. If two lines you write would say different things about the same person, write only the part the blocks agree on, and say that the blocks differ on the rest.';
+
+export const AN_OUT_OF_DATE_THING_IS_THE_FINDING = 'AN OUT-OF-DATE THING IS THE FINDING. When a block says a list, a rota, a contact, a rule or an owner was out of date, or named somebody who had left, put that in the gap as what the record holds, and name the person who held that piece. Several people each assuming something different about it is one finding about that thing, and it matters more than which one of them missed something. Say it only where a block says it.';
+
+/**
+ * A WAIT ON A COLLEAGUE OR ON THE LEAD IS THE SPEAKER'S ACCOUNT (change 4, decision 137). Week 1 of the
+ * final evaluation told Baraka "Felix Ndungu is blocked by you" from Felix's own words alone, about
+ * Felix's own job. In the room judgement's stored prompt (`the_judgement_room`), so the version that runs
+ * says it and the judgement's `promptVersionId` shows it.
+ */
+export const A_WAIT_ON_A_COLLEAGUE_IS_THEIR_ACCOUNT = 'A WAIT ON A COLLEAGUE, OR ON THE PERSON RUNNING THIS, IS THE ACCOUNT OF THE PERSON WHO SAID IT, NEVER A FACT. When one block says that person is blocked by, held up by, or waiting on another person in this check-in, or on the person running it, write it as what they say: "Participant A says Participant A is waiting on Participant B for the Kenya Power contacts." Never write it as a fact about the other person, and never make the other person the cause of it in the gap, in what the record shows, or in a move. It is a fact only when the other person\'s own block confirms it: they said they owe that thing or promised it. Where the other person\'s block says nothing about it, say that too. A move about it asks the person who said it what was in their own hands, before anything is asked of anybody else.';
+
+export const SOMEBODY_CREDITED_WHO_IS_NOT_IN_THE_ROOM = 'SOMEBODY CREDITED WHO IS NOT IN THE ROOM. When a block names a person who has no block of their own, and says what that person did, name that person in the gap and say who said it. That person cannot speak in this check-in, and somebody one account thanks and no other account names is often the finding. Write what the block says they did, and nothing more.';
+
+export const EVERY_PIECE_NOT_THE_FIRST_ONE = 'EVERY PIECE, NOT THE FIRST ONE. When several people each hold a piece of one story, write every piece the blocks give, one short sentence each, with the person who held it, before you write who did not know. A story told with one piece when the blocks give three has left out the rest of what the reader asked for.';
+
+export function theJudgementTemplate(): string {
   return [
-    `You are writing the judgement over a check-in that ${whoIsReading} ran. They are deciding: ${whatTheyAreDeciding}`,
+    'You are writing the judgement over a check-in that {{whoIsReading}} ran. They are deciding: {{whatTheyAreDeciding}}',
     '',
     'You are given a TABLE of counts computed from the answers. It is everything you have and everything you may use.',
     '',
@@ -351,11 +431,17 @@ export function theJudgementInstruction(whoIsReading: string, whatTheyAreDecidin
     '',
     '2. WHAT THE NUMBERS SAY - one line per field that has a standing of SOLID, SPLIT or NOBODY_COULD_ANSWER. The count first, then what it means for the decision. Skip THIN and WE_NEVER_ASKED fields here; they belong in 4 and 5.',
     '',
-    '3. WHAT TO DO, ranked, most valuable first, three to five of them. Each one: the move, the count that justifies it, and who to start with by name or by kind of organisation. A move nobody could act on next week is not a move.',
+    '3. WHAT TO DO, ranked, most valuable first, three to five of them. Each one: the move, the count that justifies it, and who to start with by name or by kind of organisation. A move nobody could act on next week is not a move. Every move is something the reader does themselves, written as an instruction to them: "Speak with Ngozi Eze about the 11 applications." Never write a move that tells, asks or shows the reader something, such as "Tell the initiator..." or "Ask the initiator to...". Where the reader is the one who must act, write what they do.',
     '',
     '4. WHAT THIS CANNOT TELL YOU. Every field the table marks THIN or SPLIT, and what it would take to know. A reader who cannot see the edge of the data calls the whole thing abstract.',
     '',
     '5. WHAT WE FAILED TO ASK. Every field marked WE_NEVER_ASKED, with the number of conversations that missed it. This is our failure, said plainly, and it is the instruction for the next round.',
+    '',
+    NEVER_A_PRONOUN_FOR_A_PERSON,
+    '',
+    PLAIN_WORDS,
+    '',
+    EVERY_VERB_KEEPS_ITS_SUBJECT,
   ].join('\n');
 }
 
@@ -418,10 +504,14 @@ export interface SomebodyInTheRoom {
   role: string | null;
   /** The product's own paragraph about them: what they said it was for, where they stand, what is in the way. */
   finding: string | null;
-  /** Behaviours seen often enough to be a pattern, in the engine's words. Never a verdict. */
-  patterns: { code: string; name: string; observation: string; seenInSessions: number[] }[];
-  /** What they said they would do and nobody has closed. */
-  openCommitments: string[];
+  /**
+   * Behaviours seen often enough to be a pattern, under their PLAIN name and never the internal one
+   * or the code: the lead reads the judgement, and the model writes the names it is given into it.
+   * Only the ones the lead may already read. See patterns/who-reads-a-pattern. Never a verdict.
+   */
+  patterns: { name: string; observation: string; seenInSessions: number[] }[];
+  /** What they said they would do and nobody has closed: as an action with the time they gave, or their words where it cannot be said that way. */
+  openCommitments: (string | { clause: string; when: string | null })[];
 }
 
 /** The room, as the model is given it. One block per person, and the differences between them. */
@@ -429,6 +519,9 @@ export function theRoom(
   people: SomebodyInTheRoom[],
   differences: { topic: string; positions: { who: string; view: string }[] }[],
   sessions: number,
+  /* What more than one person's record names. Counted, not judged - see
+     what-more-than-one-person-named.ts. Omitted where nothing is shared. */
+  sharedNames = '',
 ): string {
   const lines: string[] = [
     `${people.length} people, ${sessions} ${sessions === 1 ? 'session' : 'sessions'}.`,
@@ -439,9 +532,13 @@ export function theRoom(
     if (p.role) lines.push(`    taken on for: ${p.role}`);
     if (p.finding) lines.push(`    what the record holds: ${p.finding}`);
     for (const x of p.patterns) {
-      lines.push(`    seen in sessions ${x.seenInSessions.join(', ')} [${x.code} ${x.name}]: ${x.observation}`);
+      lines.push(`    seen in sessions ${x.seenInSessions.join(', ')} (${x.name}): ${x.observation}`);
     }
-    for (const c of p.openCommitments.slice(0, 6)) lines.push(`    said they would, nobody has closed it: "${c}"`);
+    for (const c of p.openCommitments.slice(0, 6)) {
+      /* As what was promised, with the time they gave, so a move can ask whether it happened by then (request 134 item 4). */
+      if (typeof c === 'string') lines.push(`    said they would, nobody has closed it: "${c}"`);
+      else lines.push(`    said they would ${c.clause}${c.when ? `, and the time they gave was "${c.when}"` : ''}. Nobody has closed it.`);
+    }
     lines.push('');
   }
   if (differences.length) {
@@ -450,7 +547,10 @@ export function theRoom(
       lines.push(`  ${d.topic}`);
       for (const pos of d.positions) lines.push(`    ${pos.who}: ${pos.view}`);
     }
+    lines.push('');
   }
+  /* Last, because it is the thing nobody in the check-in can see from where they sit. */
+  if (sharedNames.trim()) lines.push(sharedNames.trim());
   return lines.join('\n');
 }
 
@@ -462,17 +562,35 @@ export function theRoom(
  * people in three different situations.
  */
 export function theJudgementOverARoom(whoIsReading: string, whatTheyAreDeciding: string, leadName: string | null): string {
+  return fillTheJudgement(theRoomJudgementTemplate(), { whoIsReading, whatTheyAreDeciding, leadName });
+}
+
+export function theRoomJudgementTemplate(): string {
   return [
-    `You are writing the judgement over a check-in that ${whoIsReading} ran. They are deciding: ${whatTheyAreDeciding}`,
+    'You are writing the judgement over a check-in that {{whoIsReading}} ran. They are deciding: {{whatTheyAreDeciding}}',
     '',
     'You are given a BLOCK PER PERSON: what they were taken on for, what the record holds about them, behaviours seen often enough to be a pattern, and what they said they would do that nobody has closed. Then the places the accounts differ. That is everything you have and everything you may use.',
     '',
     'THE ONE RULE: every sentence names a PERSON. Not "3 of 4", not "most of the team", not "several people". This is a room, not a survey - there are few enough people here to say which one you mean, and a proportion of four hides the only thing that matters, which is that they are in different situations.',
     '',
     'NEVER MERGE TWO PEOPLE WHOSE REASONS DIFFER. Somebody who has submitted nothing, somebody whose work is genuinely stuck with a third party, and somebody who has misunderstood what is being counted can all look like "behind" from a distance. They need three different conversations. If two blocks say different things, they are two findings.',
-    leadName
-      ? `THE PERSON RUNNING THIS IS ${leadName}. They are not one of the people being checked in on and must never be counted as one. Where the record shows something about how they are running it, say that - it is often the most useful thing here - but say it as their own finding.`
-      : 'One of these people runs the check-in and is not one of the people being checked in on. Never count them as one.',
+    '{{theLeadLine}}',
+    '',
+    'AND NOTHING IS ANYBODY\'S FAULT UNLESS AN ACCOUNT SAYS SO. This is the limit on the line above, and it was written because the line above was taken too far. State what the record holds. Never write that somebody caused a problem, failed to do something, or made the situation happen, unless one of the blocks actually says it. "Nobody wrote the target down" is what the record holds. "You created this problem" is a charge, and a charge nobody made is an invention, however reasonable it looks from the blocks. If you find yourself explaining why things are as they are, stop and write what is on the record instead.',
+    '',
+    'A REASON IS ONLY A REASON IF SOMEBODY SAID IT. Naming a person is not the same as being right about them. Two live reports: "Kwame Mensah is also blocked by the credit committee", when Kwame had said "I haven\'t actually checked in with Credit about those specific 19 applications yet" - he is not blocked, he has not understood what is being counted; and "Martin Vogel is waiting on a decision to hire more analysts", when hiring analysts was the CUSTOMER\'s problem that Martin reported, not anything Martin is waiting on. Where you write that somebody is blocked, waiting, or held up, one block must say so in their own words. Where their words say the opposite, their words win.',
+    '',
+    A_WAIT_ON_A_COLLEAGUE_IS_THEIR_ACCOUNT,
+    '',
+    'AND TWO FACTS SIDE BY SIDE ARE NOT A CAUSE. One block says a number rose; another says something ended. Writing that the first caused the second puts a claim in somebody\'s mouth that they did not make, and anything you tell the reader on top of it - that they are looking in the wrong place, that they have the reason wrong - is then built on your own invention. Where two things are both on the record and nobody has joined them, leave them unjoined and put them in order, as the rule on pieces of one story says.',
+    '',
+    'AND A MOVE IS ABOUT THIS CHECK-IN, NEVER ABOUT SOMEBODY ELSE\'S PROBLEM. "Make the decision about hiring more analysts" was put to a lead whose check-in is about what a customer said: the customer cannot hire analysts, and that became an instruction to the reader. Before you write a move, find the line in a block it comes from. If there is not one, it is not a move, however sensible it sounds.',
+    '',
+    'THE SAME THING IN TWO BLOCKS IS USUALLY THE FINDING, and it is the thing most often missed. Read across the blocks for one name, one number, one supplier, one piece of work appearing in two people\'s accounts who do not know about each other. Two people costing the same contractor into two different plans is the reason the budget does not add up, and neither of them can see it from where they sit. Nobody will tell you this in their own block; it only exists between them. Where you find one, it is almost always the gap.',
+    '',
+    'THE SAME CAUSE IN SEVERAL BLOCKS IS ONE FINDING. When several people give the same reason in their own words, say it once, as one cause, and name everyone it applies to. Keep anybody whose reason differs as a finding of their own. A cause that several people share is usually about how the thing is set up, not about the people, so say what in the arrangement would need to change, but only as far as the blocks support it.',
+    '',
+    'PIECES OF ONE STORY GO IN ORDER. When different people each hold one piece of what happened, put the pieces in the order they happened, with the dates the blocks give, and say that no one person had all of them. Each piece still names the person who held it, and putting the pieces in order is not saying whose fault it was.',
     '',
     'WRITE LIKE A PERSON TALKING TO ANOTHER PERSON. The reader runs a business. Say the thing.',
     '  No metaphors. No "landscape", "journey", "ecosystem", "lens", "unlock", "leverage", "navigate".',
@@ -487,11 +605,29 @@ export function theJudgementOverARoom(whoIsReading: string, whatTheyAreDeciding:
     '',
     '2. WHAT THE RECORD SHOWS - one line per person who has something worth a line. Name them, say what the record holds, and say what it means for the decision. Somebody the record shows doing the job well gets a line too; a judgement that only names problems is not a judgement.',
     '',
-    '3. WHAT TO DO, ranked, most valuable first, three to five. Each one: the move, the person it is about, and what in the record justifies it. A move nobody could make next week is not a move.',
+    '3. WHAT TO DO, ranked, most valuable first, three to five. Each one: the move, the person it is about, and what in the record justifies it. A move nobody could make next week is not a move. Every move is something the reader does themselves, written as an instruction to them: "Speak with Ngozi Eze about the 11 applications." Never write a move that tells, asks or shows the reader something, such as "Tell the initiator..." or "Ask the initiator to...". Where the reader is the one who must act, write what they do.',
     '',
     '4. WHAT THIS CANNOT TELL YOU. What is not on the record, and what it would take to know. Somebody who has said little is a gap in the record, not a finding about them.',
     '',
     '5. WHAT WE FAILED TO ASK. Anything the check-in should have asked and did not. Ours to own.',
+    '',
+    NEVER_A_PRONOUN_FOR_A_PERSON,
+    '',
+    A_PROMISE_IS_ASKED_ABOUT_BY_ITS_DAY,
+    '',
+    A_NUMBER_IS_ONE_A_BLOCK_HOLDS,
+    '',
+    EACH_THING_AS_STRONGLY_AS_THE_BLOCK_SAYS_IT,
+    '',
+    AN_OUT_OF_DATE_THING_IS_THE_FINDING,
+    '',
+    SOMEBODY_CREDITED_WHO_IS_NOT_IN_THE_ROOM,
+    '',
+    EVERY_PIECE_NOT_THE_FIRST_ONE,
+    '',
+    PLAIN_WORDS,
+    '',
+    EVERY_VERB_KEEPS_ITS_SUBJECT,
   ].filter(Boolean).join('\n');
 }
 

@@ -36,24 +36,35 @@ const PAGE = readFileSync(join(__dirname, 'CreateGroundPage.tsx'), 'utf8')
 
 describe('the setup flow asks one thing at a time', () => {
   it('has a step for each of the four questions', () => {
-    /* Asserted on the stage labels rather than on numbered comments in the source. The comments
-       said "STEP 1: who this check-in is for" and went stale the moment that step moved to the end;
-       these labels are what a person actually reads at the top of each screen. */
-    expect(PAGE).toContain("[STAGE.who]: 'Who checks in'")
-    expect(PAGE).toContain("[STAGE.situation]: 'The situation'")
-    expect(PAGE).toContain("[STAGE.coach]: 'A coach'")
-    expect(PAGE).toContain("[STAGE.describe]: 'Describe it'")
+    /*
+     * Was asserted on `STEP_NAMES`, a title-case label shown after a middle dot ("Step 3 of 4 ·
+     * The situation") - two pieces joined by punctuation rather than a sentence. Group 3, piece 4
+     * (the wording pass on this screen's own words) renamed it `STEP_ABOUT` and reworded each entry
+     * as a fragment a sentence can finish with ("step 2 of 3, about a coach."), read off the same
+     * stage labels as before.
+     */
+    expect(PAGE).toContain("[STAGE.who]: 'who checks in'")
+    expect(PAGE).toContain("[STAGE.situation]: 'the situation'")
+    expect(PAGE).toContain("[STAGE.coach]: 'a coach'")
+    expect(PAGE).toContain("[STAGE.describe]: 'describing it'")
   })
 
   it('gates the coach on a paid plan, and greys it rather than hiding it', () => {
     /*
      * Hiding it would be worse than the old placement: somebody who would pay for a coach would
      * never learn there is one. Dimmed and unclickable says what it is and what it would cost.
+     *
+     * Was two inline styles (`opacity: onAPaidPlan ? 1 : 0.55`, `pointerEvents: ... 'none'`), which
+     * group 3, piece 4 (rebuilding this screen from the shared parts) moved into one named class,
+     * `gwui-cg-dimmed` (gw-ui.css), applied only when the plan is not paid. The two properties and
+     * their values are unchanged; only where they are written moved.
      */
     expect(PAGE).toContain('const onAPaidPlan =')
     expect(PAGE).toContain('Working with a coach is part of a paid plan')
-    expect(PAGE).toMatch(/opacity: onAPaidPlan \? 1 : 0\.55/)
-    expect(PAGE).toMatch(/pointerEvents: onAPaidPlan \? 'auto' : 'none'/)
+    expect(PAGE).toMatch(/className=\{onAPaidPlan \? undefined : 'gwui-cg-dimmed'\}/)
+    const css = readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'ui', 'gw-ui.css'), 'utf8')
+    expect(css).toMatch(/\.gwui-cg-dimmed\s*\{[^}]*opacity:\s*0\.55/)
+    expect(css).toMatch(/\.gwui-cg-dimmed\s*\{[^}]*pointer-events:\s*none/)
   })
 
   it('offers pay or skip, because a wall with one exit is not a choice', () => {

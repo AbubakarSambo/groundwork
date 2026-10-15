@@ -36,7 +36,7 @@ describe('what applyNames returns', () => {
      * lead as "Participant A" to "Participant D" - see theNamesBesideTheLabels, which adds `who`
      * and does not touch `label`, because own-reads-only filters on the raw label.
      */
-    expect(CODE).toMatch(/engagement: theNamesBesideTheLabels\(walkTextOnly\(report\.engagement\), visible\)/);
+    expect(CODE).toMatch(/engagement: theNamesBesideTheLabels\(\s*walkTextOnly\(report\.engagement\),\s*visible/);
     expect(CODE).toMatch(/inferences: walkTextOnly\(report\.inferences\)/);
   });
 

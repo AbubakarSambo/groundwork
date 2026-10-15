@@ -11,35 +11,26 @@ import { join } from 'path'
  */
 const CARD = readFileSync(join(__dirname, 'an-admin-lands-on-a-check-in-list.tsx'), 'utf8')
 const LIST = readFileSync(join(__dirname, 'GroundsListPage.tsx'), 'utf8')
+/* U.5: the card and checklist moved onto Today, where the prototype has them. */
+const TODAY = readFileSync(join(__dirname, '..', 'today', 'TodayPage.tsx'), 'utf8')
 
 describe('it stays past the first check-in', () => {
-  it('is not mounted inside the empty-list branch any more', () => {
-    /* It used to hide the moment somebody opened a check-in, which is step two of five. */
-    const mount = LIST.slice(LIST.indexOf('<AdminFirstRun />') - 400, LIST.indexOf('<AdminFirstRun />'))
-    expect(mount).not.toContain('grounds.length === 0')
+  it('is mounted on Today, and not inside any empty branch', () => {
+    /* It used to hide the moment somebody opened a check-in, which is step two of five. On Today it
+       sits above the page, whatever the page holds, and decides for itself when it is finished. */
+    const i = TODAY.indexOf('<AdminFirstRun />')
+    expect(i).toBeGreaterThan(-1)
+    const mount = TODAY.slice(i - 400, i)
+    expect(mount).not.toMatch(/length === 0|isLoading|isError/)
+    expect(LIST.replace(/\/\*[\s\S]*?\*\//g, ' ')).not.toContain('<AdminFirstRun />')
   })
 
+  /* U.3: the card is now the prototype's "Get <organisation> going" (see
+     get-your-organisation-going.spec.tsx for what it reads). It still decides for itself when it is
+     finished. The old checks on its counter's wording, its optional card and its "next step" border
+     went with "Setting up <organisation>", which it replaces. */
   it('decides for itself when it is finished, and goes then', () => {
-    expect(CARD).toContain('if (!data || finished) return null')
-  })
-})
-
-describe('what it shows', () => {
-  it('counts the steps that count, and not the optional one', () => {
-    const counting = CARD.slice(CARD.indexOf('const counted'), CARD.indexOf('if (!data'))
-    expect(counting).toContain('steps.filter(s => !s.optional)')
-  })
-
-  it('does not introduce itself by quoting the card underneath it', () => {
-    /* It printed the next step's own body three centimetres above the card printing it. */
-    const intro = CARD.slice(CARD.indexOf('NOT THE NEXT STEP'), CARD.indexOf('<div style={{ display: \'grid\''))
-    expect(intro).not.toContain('{next.body}')
-    expect(intro).not.toContain('{next ? next.body')
-  })
-
-  it('marks the next thing to do rather than leaving five identical cards', () => {
-    expect(CARD).toContain('const next = steps.find(s => !s.done && !s.optional)')
-    expect(CARD).toContain("s === next ? 'var(--gw-navy)'")
+    expect(CARD).toContain('if (finished && !showWelcome) return null')
   })
 })
 
@@ -53,7 +44,13 @@ describe('one action, one button', () => {
      */
     const code = LIST.replace(/\/\*[\s\S]*?\*\//g, ' ')
     expect(code).not.toContain('Open your first check-in')
-    /* The words stay: they say what a check-in is for. */
-    expect(code).toContain('Open a check-in for a new hire')
+    /*
+     * U.20: the empty state's own words are now the prototype's exact sentence
+     * (F4-small-states/states.txt, "No check-ins yet, a lead"), in place of this page's earlier,
+     * unmatched one ("Open a check-in for a new hire, a cofounder conversation, or a team that
+     * needs alignment.") - the thing being checked (one explanation of what a check-in is for,
+     * not a third button) is unchanged.
+     */
+    expect(code).toContain('Describe what you want your team to check in about')
   })
 })

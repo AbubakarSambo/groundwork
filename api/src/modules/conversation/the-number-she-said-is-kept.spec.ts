@@ -59,7 +59,8 @@ describe('the number she said is kept', () => {
      * objectives, read off a participant's own screen. The same-name case it always handled is
      * still handled; `theAimsThatAreNew` owns both and has its own spec.
      */
-    expect(write).toMatch(/const fresh = theAimsThatAreNew\(aims, existing as any, \(n\) => numbersInTheirWords\.has\(n\)\)/);
+    /* Request 117 (2): the aims now carry the figure in their own name first (theNumberInTheNameIsKept); the match is the same. */
+    expect(write).toMatch(/const fresh = theAimsThatAreNew\(aimsWithTheirNumbers, existing as any, \(n\) => numbersInTheirWords\.has\(n\)\)/);
     expect(write).toMatch(/data: fresh\.map/);
   });
 
@@ -105,7 +106,9 @@ describe('a number said about one person is that person\'s', () => {
   });
 
   it('does not duplicate one they restate, and never overwrites a number already on the board', () => {
-    expect(owned).toMatch(/held\.has\(`\$\{t\.participantId\}::\$\{t\.name\.trim\(\)\.toLowerCase\(\)\}`\)/);
+    /* Matched by owner and by what the aim is about, not only its exact name (requests 109 b, 111 b): see
+       one-aim-said-three-times-is-one-target.spec.ts for what a person reads. */
+    expect(owned).toMatch(/theAimsThatAreNew\(\[aim\], theirOwn\)/);
     expect(owned).toMatch(/data: fresh\.map/);
   });
 

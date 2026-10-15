@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { onceAcrossCopies, theDay } from '../prisma/once-across-copies';
 import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
@@ -40,6 +41,11 @@ export class ReviewsComingUpCron {
      rather than arriving in the middle of something. */
   @Cron('0 7 * * *', { timeZone: 'UTC' })
   async tellManagersWhatIsComingUp() {
+    /* Once for its time across every copy of the API (decision 74, item 7). */
+    await onceAcrossCopies(this.prisma, 'tell-managers-what-is-coming-up', theDay(), () => this.tellManagersWhatIsComingUpHere());
+  }
+
+  private async tellManagersWhatIsComingUpHere() {
     const rows = await this.prisma.evaluationDue.findMany({
       where: { notifiedAt: null },
       select: {

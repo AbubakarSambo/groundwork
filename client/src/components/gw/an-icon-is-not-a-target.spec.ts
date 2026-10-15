@@ -40,16 +40,22 @@ describe('an icon is not a target', () => {
     expect(SHELL.length).toBeGreaterThan(5000)
   })
 
-  it('the pencil has a tappable area beyond its glyph', () => {
-    expect(CSS).toMatch(/\.gw-rename::after\s*\{[^}]*position:\s*absolute/)
-    expect(CSS).toMatch(/\.gw-rename::after\s*\{[^}]*inset:\s*-12px\s+-15px/)
+  it('the pencil is a target of its own, not a glyph stretched over its neighbours', () => {
+    /*
+     * CHANGED WITH THE LIGHT SIDEBAR (A1). The pencil was a 14x11 glyph widened by an ::after
+     * reaching 15px either side. Once the pin sat beside it, that reach covered the pin, and a tap on
+     * the pin opened the rename box (found by the reviewer with elementFromPoint). The button itself
+     * is now the target: 32 wide and the row's 36 tall, with no pseudo-element reaching past it.
+     */
+    expect(CSS).toMatch(/\.gw-rail-row \.gw-pin, \.gw-rail-row \.gw-rename \{[^}]*width: 32px; height: 36px;/)
+    expect(CSS).not.toMatch(/\.gw-rename::after\s*\{/)
   })
 
   it('and it is held to the row, not spilling into the check-ins above and below', () => {
-    /* 11px glyph + 12px each way = 35, which is the row. Going past it steals a neighbour's tap. */
-    const rule = CSS.slice(CSS.indexOf('.gw-rename::after'))
-    const inset = rule.match(/inset:\s*(-?\d+)px/)
-    expect(Number(inset![1])).toBeGreaterThanOrEqual(-12)
+    /* The row is 36 tall; the pencil is exactly that, so it cannot steal a neighbour's tap. */
+    const rule = CSS.match(/\.gw-rail-row \.gw-pin, \.gw-rail-row \.gw-rename \{([^}]*)\}/)![1]
+    expect(rule).toMatch(/height: 36px/)
+    expect(CSS).toMatch(/\.gw-ci-row \{[^}]*min-height: 36px/)
   })
 
   it('the pencil is visible on a device that cannot hover', () => {

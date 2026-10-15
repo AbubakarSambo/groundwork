@@ -12,23 +12,28 @@ import { join } from 'path'
  * true one.
  */
 const PAGE = readFileSync(join(__dirname, 'GroundParticipantPage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ')
+/**
+ * REVIEW ROUND 3, ITEM 2: THE OVERLAY ITSELF MOVED TO A SHARED COMPONENT, so GroundAdminPage.tsx
+ * can show the same one for the lead's own session. `canPayHere` (the gate) still lives on each
+ * page, computed the same way, and is passed in as a prop; what the overlay DOES with it - which
+ * buttons show, which sentence a blocked non-admin reads - is asserted here against the one
+ * shared copy rather than against each page's now-identical gate.
+ */
+const OVERLAY = readFileSync(join(__dirname, '../../components/gw/checkin/SessionPaywallModal.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ')
 
 describe('the paywall overlay', () => {
-  /* From the overlay to the end of the file: setShowPaywall(false) also appears earlier, in a handler. */
-  const overlay = PAGE.slice(PAGE.indexOf('{showPaywall && ('))
-
   it('gates the buttons on the server’s own rule: an initiator who is also an admin', () => {
     expect(PAGE).toMatch(/const canPayHere = isInitiator && user\?\.role === 'ADMIN'/)
-    expect(overlay).toMatch(/\{canPayHere \? \(/)
+    expect(OVERLAY).toMatch(/\{canPayHere \? \(/)
   })
 
   it('and the access-code field on the same rule, so nobody hunts for a code they were never issued', () => {
-    expect(overlay).toMatch(/\{canPayHere && \(\s*<div style=\{\{ borderTop/)
-    expect(overlay).not.toMatch(/myParticipant\?\.partyType === 'INITIATOR' &&/)
+    expect(OVERLAY).toMatch(/\{canPayHere && \(\s*<div style=\{\{ borderTop/)
+    expect(OVERLAY).not.toMatch(/myParticipant\?\.partyType === 'INITIATOR' &&/)
   })
 
   it('tells everybody else the true fact and nothing more', () => {
-    expect(overlay).toContain('Only an organisation admin can add sessions. We have told them you are waiting.')
-    expect(PAGE).not.toContain('Your initiator has been notified')
+    expect(OVERLAY).toContain('Only an organisation admin can add sessions. We have told them you are waiting.')
+    expect(OVERLAY).not.toContain('Your initiator has been notified')
   })
 })

@@ -22,19 +22,20 @@ const CODE = readFileSync(join(__dirname, 'GroundsListPage.tsx'), 'utf8')
   .replace(/^\s*\/\/.*$/gm, '')
 
 describe('one list, not three', () => {
-  it('the attention banner states a count and does not list names again', () => {
-    /**
-     * The tripwire is the `.map` specifically. A count is welcome here - it is the one thing the
-     * cards below cannot say. A second list of the same names is not.
-     */
-    expect(CODE).not.toMatch(/needsAttention\.map\(/)
-    expect(CODE).toMatch(/check-ins? need(s)? you/)
+  /* U.5: the banner went with the rebuild to the prototype's sections; the row's own "Needs you"
+     says why each one is there, once. The rules below still hold and are checked on the new page. */
+  it('nothing lists the check-ins a second time above the list', () => {
+    expect(CODE).not.toMatch(/needsAttention/)
+    expect(CODE.match(/<CheckInsTable /g)?.length).toBe(4)
   })
 
   it('but the signal itself is untouched, so nothing stops raising its hand', () => {
-    /** The filter is the value. Removing the duplicate must not remove the reason it existed. */
-    expect(CODE).toMatch(/reportWaitingForMe \|\| g\.status === 'REPORT_READY' \|\| \(g\.overdue \?\? 0\) > 0/)
-    expect(CODE).toMatch(/needsAttention\.length/)
+    const row = readFileSync(join(__dirname, 'how-a-row-reads.ts'), 'utf8')
+    /* Live walk, 6 October: the legacy status now reads "Your" only to somebody in the check-in, so
+       the two signals are separate lines; both still raise the row. */
+    expect(row).toMatch(/g\.reportWaitingForMe\) needs = /)
+    expect(row).toMatch(/g\.status === 'REPORT_READY'\) needs = /)
+    expect(row).toMatch(/a\.kind === 'yours' \|\| a\.kind === 'overdue'/)
   })
 })
 
@@ -52,9 +53,10 @@ describe('a count of nothing does not get a tile', () => {
    *
    * The signal is not lost: it comes back the moment there is a number to show.
    */
-  it('the stat strip drops every empty number, the zero included', () => {
-    expect(CODE).toMatch(/\.filter\(s => s\.val > 0\)/)
-    expect(CODE).not.toMatch(/s\.label === 'In progress' \|\| s\.val > 0/)
+  it('an empty section is not drawn, so no "0 open" ever shows', () => {
+    /* U.5: the stat strip went; each section with its count is drawn only when it has rows. */
+    expect(CODE).not.toMatch(/label: 'In progress'/)
+    for (const pile of ['youRun', 'youreIn', 'others', 'finished']) expect(CODE).toContain(`{${pile}.length > 0 && (`)
   })
 })
 
@@ -78,15 +80,13 @@ describe('two different things are not both called Admin', () => {
 })
 
 describe('one primary action per screen', () => {
-  it('inviting a colleague is an outline button, not a second navy one', () => {
-    const invite = CODE.slice(CODE.indexOf('Invite a team member') - 900, CODE.indexOf('Invite a team member'))
-    expect(invite).toContain("background: 'none'")
-    expect(invite).not.toContain("background: 'var(--gw-navy)', color: 'white'")
-  })
-
-  it('and the one action people actually came for is still the navy one', () => {
-    /* Renamed from "What's going on?", which was the primary action in three places and said
-       nothing about what pressing it does. The pin follows the button, not the old words. */
-    expect(CODE).toMatch(/background: 'var\(--gw-navy\)', color: 'white'[\s\S]{0,400}Start a check-in/)
+  /* U.5: "Invite a team member" left this page; inviting is on People (U.4) and in the new
+     organisation's checklist on Today. So the page has one full-size main button. */
+  it('there is one full-size main button, and it is the one people came for', () => {
+    expect(CODE.match(/>Start a check-in<\/Button>/g)).toHaveLength(1)
+    const i = CODE.indexOf('>Start a check-in</Button>')
+    const tag = CODE.slice(CODE.lastIndexOf('<Button', i), i)
+    expect(tag).not.toMatch(/size=|kind="(secondary|quiet)"/)
+    expect(CODE).not.toContain('Invite a team member')
   })
 })

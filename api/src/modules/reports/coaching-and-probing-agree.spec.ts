@@ -59,7 +59,7 @@ describe('neither surface passes a verdict', () => {
   });
 
   it('and silence in the record is reported as silence, never as not having tried', () => {
-    expect(lead.triedToUnblock).toContain('no escalation');
+    expect(lead.triedToUnblock).toContain('nothing on record shows it was taken any further');
     expect(lead.triedToUnblock).toContain('does not say whether anything happened outside');
   });
 });
@@ -112,8 +112,36 @@ describe('recurrence is what makes a pattern', () => {
   });
 
   it('and one seen across sessions is, with the count that makes it one', () => {
-    expect(twice.showingUp).toContain('3 of your sessions');
+    expect(twice.showingUp).toContain('3 of your check-ins');
+    expect(twice.showingUp).toContain('not just once');
     expect(twice.general).toBe(false);
+  });
+
+  /*
+   * Hafsah, 29 September 2026: CARRYING_CODES (A1, A2, A3) were left out of this file's own
+   * LIBRARY map, so a carrying pattern genuinely served to this reader on the board (which reads
+   * the plain-name check in patterns/who-reads-a-pattern.ts, and does cover them) found no
+   * `recurring` entry here - the note said "Nothing has recurred..." beside a pattern that had.
+   */
+  it('a carrying pattern is recognised as recurring too, not only a bad-faith or positive one', () => {
+    const carrying = whatToWorkOnNext({ ...memberBase, patterns: [{ code: 'A1', periodsObserved: 3 }] });
+    expect(carrying.showingUp).not.toBeNull();
+    expect(carrying.general).toBe(false);
+  });
+
+  it('when nothing has recurred, it says so plainly, with no "which is worth keeping that way"', () => {
+    const nothing = whatToWorkOnNext({ ...memberBase, patterns: [], sessionNumber: 4 });
+    expect(nothing.whyItMatters).toContain('Nothing has come up often enough yet to be called a pattern.');
+    expect(nothing.whyItMatters).not.toContain('recurred');
+    expect(nothing.whyItMatters).not.toContain('worth keeping that way');
+  });
+
+  /* Hafsah, 29 September 2026: a role map's label can hold an acronym ("Founder or CEO"), and
+     lowering the whole label turned it into "founder or ceo work" in the sentence. */
+  it('never lower-cases a role, even mid-sentence', () => {
+    const founder = whatToWorkOnNext({ ...memberBase, patterns: [], detectedFunction: 'CEO', functionConfidence: 0.9, sessionNumber: 4 });
+    expect(founder.whyItMatters).toContain('founder or CEO work');
+    expect(founder.whyItMatters).not.toContain('founder or ceo');
   });
 
   it('the lead sees the same threshold, and the history rather than a conclusion', () => {
@@ -130,11 +158,11 @@ describe('role and stage change what the same fact is worth raising as', () => {
   const later = whatToProbe({ ...leadBase, sessionNumber: 5, waitingOn: [waiting] });
 
   it('a new hire in session 2 who has not escalated is somebody to coach', () => {
-    expect(early.probe.join(' ')).toContain('worth showing them rather than asking about');
+    expect(early.probe.join(' ')).toContain('ask Zainab what is being held up');
   });
 
   it('and the same fact later is something to ask about', () => {
-    expect(later.probe.join(' ')).toContain('what has stopped them raising it');
+    expect(later.probe.join(' ')).toContain('what has stopped Zainab raising it');
   });
 });
 
@@ -146,6 +174,6 @@ describe('the box never renders empty', () => {
   });
 
   it('and the lead section says plainly when nothing is blocked', () => {
-    expect(whatToProbe(leadBase).triedToUnblock).toContain('Nothing recorded as blocked');
+    expect(whatToProbe(leadBase).triedToUnblock).toContain('Nothing is recorded as holding up');
   });
 });

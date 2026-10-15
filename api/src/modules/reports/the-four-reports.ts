@@ -340,28 +340,12 @@ export const THE_VARIANTS: { situation: string; change: string; state: 'already 
  */
 export const BEFORE_THE_DEAD_BODY_CAN_GO: { rule: string; spec: string }[] = [
   /*
-   * TWO LEFT, AND THE LIST STARTED AT EIGHT RATHER THAN TEN.
-   *
-   * The count came from grepping for specs that read `ReportPage.tsx`, and that matched
-   * `SessionReportPage.tsx` as a substring. Two of the ten - `the-report-you-saw-is-the-one-that-
-   * opens` and `nothing-was-lost-when-the-body-went` - never touched the dead body at all. They
-   * read the live session page, the board, a party's view and the walk-in-with card. Off the list
-   * as a correction to my own arithmetic rather than as progress.
-   *
-   * `one-report-not-two` is off for a real reason: its rule - no page carries a second report body
-   * - is a negative sweep over the lead and participant pages, both live. Three of its assertions
-   * describe the body itself (that it is a component, that the old route redirects) and those
-   * retire WITH the file rather than before it. That is expected, not a gap.
-   *
-   * Five more came off by pointing them at the copy people see. The two that remain are the ones
-   * where the rule genuinely has no live home, and both need a surface rather than a repoint.
+   * EMPTY, 1 October. The last two rules found live homes: what the server already knew renders,
+   * lead-only, in WhatToProbeThemOn with both of its explaining sentences; and the old-version
+   * notice is on the rebuilt session report (decision 71), read by a-panel-with-nothing-to-say-is-
+   * a-line. The resolution line was retired by decision 70, not moved. The screens workspace
+   * deleted ReportBody, and the test that held it in place went with it, as this list promised.
    */
-  /* The live `ResolutionPanel` returns null when the run is not near its end - so resolution is
-     ABSENT rather than one line, which is the opposite of what this rule asks for. Real work. */
-  { rule: 'A panel with nothing to say is a line, and staleness is never conditional on being settled', spec: 'a-panel-with-nothing-to-say-is-a-line' },
-  /* The weigh section and the soft spots render only inside the body. This is the same work as
-     giving the risk reads a surface, and it is the larger of the two. */
-  { rule: 'What the server already knew reaches the page, lead-only, worded about the record', spec: 'what-the-server-already-knew' },
 ];
 
 /**
@@ -377,7 +361,7 @@ export const BEFORE_THE_DEAD_BODY_CAN_GO: { rule: string; spec: string }[] = [
  */
 export const NOT_REPORT_CONTENT = [
   'id', 'groundId', 'checkInId', 'sessionNumber', 'title', 'state', 'activated', 'allActivated',
-  'released', 'releasedAt', 'takenAt', 'amendedAt', 'amendedNote', 'answered', 'stillToAnswer',
+  'released', 'releasedAt', 'releasedSessions', 'releaseThisSession', 'teamPicture', 'readingSession', 'notSharedYet', 'takenAt', 'amendedAt', 'amendedNote', 'answered', 'stillToAnswer',
   'sessionReport', 'sections', 'items', 'get', 'saying', 'about', 'whyNoQuestion',
   'createdAt', 'updatedAt', 'promptVersionId', 'docStatus', 'note',
   /* Containers rather than content: their own keys are placed individually above. */
@@ -466,7 +450,8 @@ export const WHAT_THE_BLOCK_IS_CALLED: Record<string, string> = {
   stillOpenForYou: 'What is still open for you',
   whatYouCarry: 'What you carry into the next one',
   /* The folded one says "this one" on the page, because it is about the sitting rather than the run. */
-  howMuchYouGaveIt: 'How much you gave this one',
+  /* The prototype's own words (B3 done.txt), Hafsah 28 Sep 2026: who sees which rating, and how it is worded, follows the prototype (screens request 62). */
+  howMuchYouGaveIt: 'How checkable today’s check-in was',
 
   /* B - everybody's half, one sitting. */
   /* Was "Against what good looks like", which is the product describing its own structure. The

@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { theContextWeHave, WHAT_A_DOCUMENT_HOLDS_PROMPT, MOST_OF_A_DOCUMENT_WE_READ } from './what-a-document-holds';
+import { theContextWeHave, WHAT_A_DOCUMENT_HOLDS_PROMPT, MOST_OF_A_DOCUMENT_WE_READ, aSentence } from './what-a-document-holds';
 
 const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
 const DOCS = strip(readFileSync(join(__dirname, 'documents.service.ts'), 'utf8'));
@@ -27,23 +27,55 @@ describe('what a document holds', () => {
     unmatched: ['Musa Bello'],
   };
 
-  it('says what we have, whose each number is, and which are the whole check-in’s', () => {
+  it('says what we have, whose each number is, and which are the whole check-in’s, each as a plain sentence', () => {
     const said = theContextWeHave(held)!;
-    expect(said.startsWith('Here is the context we have from Sales team Q3 2026.xlsx - A quarterly sales target sheet, by rep.')).toBe(true);
-    expect(said).toContain('For the whole check-in:');
-    expect(said).toContain('- Team sales: 153m');
-    expect(said).toContain('- Credit ceiling: 35, not to be passed');
-    expect(said).toContain('Against the person who holds it:');
-    expect(said).toContain('- Dayo Adebayo: Q3 sales, 45m');
-    expect(said).toContain('- Chika Nwosu: new dealers signed, 12, by end of Q3');
-    expect(said).toContain('Dates it sets:');
-    expect(said).toContain('- Quarter ends: 30 September');
-    expect(said).toContain('One name in it is not on this check-in: Musa Bello.');
+    /*
+     * UPDATED (30 Sep 2026, the fragment fault): `whatItIs` used to be appended as the model wrote it,
+     * so a bare noun phrase read as a second, clipped sentence straight after the first ("... A
+     * quarterly sales target sheet, by rep."). `aSentence` now turns a phrase with no verb of its own
+     * into a full sentence in the product's voice - see what-a-document-holds.ts.
+     */
+    expect(said.startsWith('Here is the context we have from Sales team Q3 2026.xlsx. It looks like a quarterly sales target sheet, by rep.')).toBe(true);
+    expect(said).toContain('For everyone in this check-in, the target for Team sales is 153m.');
+    /* Changed (B-014): the limit's name opens the sentence, so its capital is never mid-sentence. */
+    expect(said).toContain('Credit ceiling must stay at or under 35 for everyone in this check-in.');
+    expect(said).toContain("Dayo Adebayo's target for Q3 sales is 45m.");
+    expect(said).toContain("Chika Nwosu's target for new dealers signed is 12 by end of Q3.");
+    expect(said).toContain('The date it sets for Quarter ends is 30 September.');
+    expect(said).toContain('One name in it, Musa Bello, is not on this check-in. Add them, and their numbers will go on too.');
+  });
+
+  it('never a heading with a colon, a line that starts with a dash, or "by" said twice (request 40)', () => {
+    const said = theContextWeHave({ ...held, forOnePerson: [{ who: 'Amani Wekesa', what: 'cookers delivered', target: 3, by: 'by 9 October' }], unmatched: ['Musa Bello', 'Ada Obi'] })!;
+    expect(said).toContain("Amani Wekesa's target for cookers delivered is 3 by 9 October.");
+    expect(said).not.toMatch(/by by/);
+    expect(said).not.toMatch(/:\s*$|:\n|^- /m);
+    expect(said).toContain('2 names in it are not on this check-in. They are Musa Bello and Ada Obi.');
   });
 
   it('asks whether that is right in the chat, and states it on a page', () => {
     expect(theContextWeHave(held, { asking: true })!.trimEnd().endsWith('Is that right?')).toBe(true);
     expect(theContextWeHave(held)).not.toContain('Is that right?');
+  });
+
+  it('turns whatItIs into a full sentence, never the model\'s fragment on its own (the fragment fault, 30 Sep 2026)', () => {
+    /* A bare noun phrase gets a verb, in the product's voice. */
+    expect(aSentence('A Q4 sales target sheet')).toBe('It looks like a Q4 sales target sheet.');
+    expect(aSentence('A Q4 sales target sheet.')).toBe('It looks like a Q4 sales target sheet.');
+    expect(aSentence('Quarterly sales target sheet, by rep')).toBe('It looks like quarterly sales target sheet, by rep.');
+    /* A word that is a verb elsewhere but a noun here ("a price list") is not mistaken for one. */
+    expect(aSentence('A price list for the 600L cookers')).toBe('It looks like a price list for the 600L cookers.');
+    /* A phrase that already has a verb is kept exactly as it is, only with its full stop made certain. */
+    expect(aSentence('This sheet sets the Q4 targets for each dealer.')).toBe('This sheet sets the Q4 targets for each dealer.');
+    expect(aSentence('This sheet sets the Q4 targets for each dealer')).toBe('This sheet sets the Q4 targets for each dealer.');
+    /* Empty or missing stays empty: no sentence is better than an invented one. */
+    expect(aSentence('')).toBeNull();
+    expect(aSentence('   ')).toBeNull();
+    expect(aSentence(null)).toBeNull();
+    expect(aSentence(undefined)).toBeNull();
+    /* Trailing punctuation, however it arrives, ends up as one full stop. */
+    expect(aSentence('A price list for the 600L cookers...')).toBe('It looks like a price list for the 600L cookers.');
+    expect(aSentence('A price list for the 600L cookers;')).toBe('It looks like a price list for the 600L cookers.');
   });
 
   it('and says nothing about a document that holds nothing', () => {
@@ -71,7 +103,9 @@ describe('what a document holds', () => {
     /* Only the lead may set somebody else's number; a participant's file is read for their own rows and the group's. */
     expect(DOCS).toContain('(isLead || p.id === participantId)');
     /* A name that matches nobody is carried back, never guessed onto the nearest person. */
-    expect(DOCS).toContain('if (!who) { if (!unmatched.includes(r.personName.trim())) unmatched.push(r.personName.trim()); continue; }');
+    /* A colleague's name in a participant's own file is left out as the lead's to set (week 14); any other name is carried back. */
+    expect(DOCS).toContain('if (!isLead && whoThisNameIs(name, onTheCheckIn as any)) { if (!notTheirsToSet.includes(name)) notTheirsToSet.push(name); continue; }');
+    expect(DOCS).toContain('if (!unmatched.includes(name)) unmatched.push(name);');
     /* A number already on the board is never overwritten from here. */
     expect(DOCS).toContain("held.has(`${who.id}::${name.toLowerCase()}`)");
     expect(DOCS).toContain('await this.prisma.groundDocument.update({ where: { id: docId }, data: { holds: landed as any } })');
@@ -79,7 +113,8 @@ describe('what a document holds', () => {
 
   it('and every surface reads the same stored answer', () => {
     /* The card, so the Context tab says what the chat said. */
-    expect(DOCS).toContain('theContextWeHave: doc.holds ? theContextWeHave(doc.holds as any) : null');
+    /* Now with who is reading, so a person's own number reads "Your target" (request 92, point 7). */
+    expect(DOCS).toContain('theContextWeHave: doc.holds ? theContextWeHave(doc.holds as any, { reader: { participantId: viewerParticipantId } }) : null');
     expect(DOCS.match(/holds: true/g)!.length).toBeGreaterThanOrEqual(3);
     /* The chat, once: stamped as the words go out. */
     expect(CONVO).toContain('data: { holdsSaidAt: new Date() }');
@@ -114,6 +149,13 @@ describe('who a name in a document is', () => {
     expect(whoThisNameIs('Dayo Adebayo', twoDayos)?.id).toBe('p1');
   });
 
+  it('matches the first name of a person added by name who has not opened the invitation yet', () => {
+    const amani = { id: 'p5', email: 'amani.wekesa@x.test', nameGiven: 'Amani Wekesa', user: null };
+    expect(whoThisNameIs('Amani', [dayo, amani])?.id).toBe('p5');
+    /* and still not when two people share it */
+    expect(whoThisNameIs('Amani', [amani, { id: 'p6', email: 'a.k@x.test', nameGiven: 'Amani Kalu', user: null }])).toBeNull();
+  });
+
   it('names somebody back by their own name, the one they gave, else their address', () => {
     expect(theNameWeUseFor(dayo)).toBe('Dayo Adebayo');
     expect(theNameWeUseFor(openLink)).toBe('Sade Ogunleye');
@@ -131,5 +173,19 @@ describe('the numbers waiting for a name to arrive', () => {
     /* A name that lands comes off the list, so it is not offered twice. */
     expect(fn).toContain('data: { holds: { ...holds, unmatched: stillWaiting } as any }');
     expect(CONVO).toContain('const nowMatched = await this.whatTheNewPeopleClaim(');
+  });
+});
+
+describe('a first name finds somebody invited by address alone (found in the browser journeys)', () => {
+  const { whoThisNameIs } = require('./what-a-document-holds');
+  const invited = (email: string, id = email) => ({ id, email, nameGiven: null, user: null, roleAsDescribed: null, managingOnly: false } as any);
+  it('"Amani" is Amani Wekesa when her address is amani.wekesa@..., and only one Amani is on the check-in', () => {
+    const people = [invited('amani.wekesa@kito.test'), invited('baraka.mutua@kito.test')];
+    expect(whoThisNameIs('Amani', people)?.email).toBe('amani.wekesa@kito.test');
+    expect(whoThisNameIs('Baraka', people)?.email).toBe('baraka.mutua@kito.test');
+  });
+  it('two people sharing a first name match neither', () => {
+    const two = [invited('amani.wekesa@kito.test'), invited('amani.bello@kito.test')];
+    expect(whoThisNameIs('Amani', two)).toBeNull();
   });
 });

@@ -43,6 +43,16 @@ const WHAT_IS_LEFT = (name: string): string =>
      * programme", identical on both.
      */
     .replace(/\b(get|getting|secure|securing|obtain|obtaining|achieve|achieving|deliver|delivering|reach|reaching|complete|completing|finish|finishing|close|closing|win|winning|sign|signing|land|landing|bring|bringing|drive|driving|generate|generating|build|building|set up|setting up|make|making|move|moving|ensure|ensuring|establish|establishing)\b/g, ' ')
+    /*
+     * AND WHO WANTS IT, AND BY WHEN, ARE NOT WHAT IT IS ABOUT (screens requests 109 b and 111 b). One sales
+     * board listed one aim three times: "Sign 12 shops for kitchen appliances in Nairobi.", "I want us to sign
+     * 12 shops by 20 December." and "They want to get 12 shops onboarded.". Each said 12 shops; what kept
+     * them apart was "want", "December" and "onboarded", none of which says WHICH shops. Taken out, each is
+     * "shops", inside the first one's name, and the figure is the same: one aim.
+     */
+    .replace(/\b(i|we|us|you|they|he|she|it|me|my|our|your|their|his|her|want|wants|wanted|wanting|would|like|aim|aims|aiming|hope|hoping|plan|plans|planning|intend|need|needs|to|by|be|is|are|am|was|were|will|shall|should|must|have|has|had|end|start)\b/g, ' ')
+    .replace(/\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec|monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow|next)\b/g, ' ')
+    .replace(/\b(onboard|onboarded|onboarding|signed|closed|sold|won|got|done|achieved|reached|delivered|completed)\b/g, ' ')
     .replace(/[^a-z]+/g, ' ')
     .trim();
 
@@ -145,4 +155,41 @@ export function theAimsThatAreNew(fresh: AnAim[], existing: AnAim[], theySaid: (
     kept.push(withFigure);
   }
   return kept;
+}
+
+/**
+ * A NUMBER IN THE AIM'S OWN NAME IS ITS NUMBER, WHERE THEY SAID IT (screens request 117, part 2). "Sign 12 shops for
+ * kitchen appliances in Nairobi." was kept with `target: null`, so the board's headline had no answer and no bar. The
+ * setup chat reads the figure in the name (a740e362); an aim said in a check-in follows the same rule, and only with a
+ * figure that is in the person's own words. An aim that already has a number keeps it.
+ */
+export function theNumberInTheNameIsKept<T extends { name: string; target: number | null }>(aims: T[], saidByThem: (n: number) => boolean): T[] {
+  return aims.map((a) => {
+    if (a.target != null) return a;
+    const n = theCountTheNameAimsAt(a.name);
+    return n != null && saidByThem(n) ? { ...a, target: n } : a;
+  });
+}
+
+/**
+ * ONLY THE COUNT THE NAME AIMS AT, NEVER ANY FIGURE IN IT. "Sign 12 shops for kitchen appliances in Nairobi." aims at
+ * 12 shops: a doing word, then the figure, then what is counted. "A signed renewal before the end of March with no
+ * discount past 12 percent" holds 12 as well, and it is a limit on the discount, not the aim. Read over a whole test
+ * database, the looser rule would have given a hundred aims a number nobody meant. So the figure counts only where it
+ * comes straight after the doing word that starts the name, and is not a share or a sum of money.
+ */
+const AIMS_AT = /^(?:sign|reach|hit|close|sell|win|onboard|recruit|hire|train|deliver|open|visit|enrol|register|collect|approve|disburse|install|serve|get|bring|complete|finish|launch|publish|submit)\s+(\d{1,3}(?:,\d{3})+|\d+)\s+(?!%|percent\b|per cent\b|naira\b|dollars?\b|shillings?\b|kes\b|ngn\b|usd\b|million\b|thousand\b|billion\b|k\b|m\b)[a-z]/i;
+/*
+ * AND "GET TO 20 PAYING CUSTOMERS", which is the same sentence with "to" in it (screens request 136, item 1). The
+ * founder's own check-in read "Get to 20 paying customers by December." with no number, so her board had no answer and
+ * no bar. Only the three doing words that take "to" and still aim at a count, and the same guard after the figure, so
+ * "Get to 12 percent" and "Grow to 5 million in revenue" are still not aims at 12 or 5.
+ */
+const AIMS_AT_BY_GOING_TO = /^(?:get|grow|go)\s+(?:up\s+)?to\s+(\d{1,3}(?:,\d{3})+|\d+)\s+(?!%|percent\b|per cent\b|naira\b|dollars?\b|shillings?\b|kes\b|ngn\b|usd\b|million\b|thousand\b|billion\b|k\b|m\b)[a-z]/i;
+export function theCountTheNameAimsAt(name: string | null | undefined): number | null {
+  const said = (name ?? '').trim();
+  const m = AIMS_AT.exec(said) ?? AIMS_AT_BY_GOING_TO.exec(said);
+  if (!m) return null;
+  const n = Number(m[1].replace(/,/g, ''));
+  return Number.isFinite(n) && n > 0 ? n : null;
 }

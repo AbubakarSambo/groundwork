@@ -1,3 +1,5 @@
+import { whoASessionCounts } from './the-lead-checks-in-when-they-choose';
+import { AN_ANSWER } from './an-answer-includes-a-refusal';
 import { recordRoundCompletion } from './round-completion';
 import { GroundworkEvents } from '../../common/events';
 
@@ -52,6 +54,9 @@ describe('a round closes once', () => {
       groundId: 'g1',
       sessionNumber: 2,
       participantCount: 4,
+      /* What the digest reads (reviewer, 14 October): who it waited on, and how many gave an account. */
+      waitedOn: 4,
+      accountsGiven: 4,
     });
   });
 
@@ -68,7 +73,9 @@ describe('a round closes once', () => {
     const { prisma, events } = harness({ participants: 2, done: 2 });
     await recordRoundCompletion(prisma, events, 'g1', 1);
     expect(prisma.groundParticipant.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { groundId: 'g1', managingOnly: false } }),
+      /* CHANGED 11 OCTOBER (decision 133): was `{ managingOnly: false }`. The lead is now never who a
+         round waits on, and is counted only when they answered it. */
+      expect.objectContaining({ where: { groundId: 'g1', ...whoASessionCounts(1, AN_ANSWER) } }),
     );
   });
 

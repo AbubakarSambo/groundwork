@@ -67,6 +67,11 @@ export interface ASession {
   label: string;
   /** Which of the three states it is in. They need different things done about them. */
   standing: 'waiting on you to start' | 'open to you' | 'invitation not accepted';
+  /**
+   * A check-in about one person (a performance plan, a probation, a review): there is nobody else's
+   * answer to release theirs with, so nothing may say it is "released with everybody else's".
+   */
+  aboutOnePerson?: boolean;
 }
 
 export interface ADecision {

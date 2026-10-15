@@ -48,6 +48,6 @@ describe('who closes a check-in', () => {
   it('and the refusal tells them what they still have', () => {
     const service = require('fs').readFileSync(require('path').join(__dirname, 'resolution.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(service).toContain('the lead decides how it ends');
-    expect(service).toContain('Your account and your corrections stand on the record beside theirs');
+    expect(service).toContain('What you said and your corrections stand on the record beside theirs');
   });
 });

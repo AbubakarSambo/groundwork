@@ -14,7 +14,13 @@ describe('a refusal is an answer', () => {
     /* The acknowledgement is no longer about a record - see the-same-sentence-five-times. What this
        test is for is unchanged: a refusal is taken and the conversation moves to the next thing. */
     expect(recordAndMoveOn(null, { owed: 'what they need from other people' })).toBe('Understood. What do you need from other people?');
-    expect(recordAndMoveOn(null, {})).toBe('Understood.');
+    /* CHANGED 26 September 2026. This pinned the single word "Understood." as a whole turn, which
+       is what it was: three of them shipped on the run of that day, and "curt turns" was the only
+       count in the run that came out worse than the baseline. The rule is plain, full sentences,
+       and one word acknowledging a refusal tells the person nothing about what their refusal did.
+       The behaviour being checked - a refusal is acknowledged and not chased - is unchanged. */
+    expect(recordAndMoveOn(null, {})).toBe('Understood. This record shows nothing more on that.');
+    expect(recordAndMoveOn(null, {}).split(/\s+/).length).toBeGreaterThan(4);
     expect(NOTHING_HERE_HAS_A_NUMBER).toMatch(/how it will read/);
   });
 });

@@ -30,13 +30,15 @@ describe('a room is not a population', () => {
   /* The run this came from: four salespeople, three of them "blocked" for three different reasons. */
   it('gives the model one block per person, not a count', () => {
     const out = theRoom([
-      person('Femi', { role: 'Relationship officer, Lagos', finding: '31 applications, none submitted.', patterns: [{ code: 'K5', name: 'Activity Without Outcome Logic', observation: 'Calls, not documents.', seenInSessions: [1, 2, 3] }] }),
+      person('Femi', { role: 'Relationship officer, Lagos', finding: '31 applications, none submitted.', patterns: [{ name: 'Tasks are described without saying what they are for', observation: 'Calls, not documents.', seenInSessions: [1, 2, 3] }] }),
       person('Ngozi', { finding: 'Eleven files at credit committee, escalated once.' }),
     ], [], 3);
     expect(out).toContain('2 people, 3 sessions.');
     expect(out).toContain('--- Femi');
     expect(out).toContain('31 applications, none submitted.');
-    expect(out).toContain('seen in sessions 1, 2, 3 [K5 Activity Without Outcome Logic]');
+    /* The plain name, never the code or the internal name: the lead reads what the model writes from this. */
+    expect(out).toContain('seen in sessions 1, 2, 3 (Tasks are described without saying what they are for)');
+    expect(out).not.toMatch(/K5|Activity Without Outcome Logic/);
     expect(out).toContain('--- Ngozi');
   });
 
@@ -83,6 +85,37 @@ describe('a room is not a population', () => {
 
     it('asks for a line about somebody doing the job well, not only problems', () => {
       expect(it0).toContain('a judgement that only names problems is not a judgement');
+    });
+
+    /*
+     * Four people in one run each said, in their own words, that the same thing went wrong at the
+     * start, and the judgement named two of them and never said it was one cause in how the thing
+     * was set up. In another, three people each held one warning sign and nobody put them in order.
+     */
+    it('says a cause several people share once, names them all, and keeps a different reason apart', () => {
+      expect(it0).toContain('THE SAME CAUSE IN SEVERAL BLOCKS IS ONE FINDING');
+      expect(it0).toContain('say it once, as one cause, and name everyone it applies to');
+      expect(it0).toContain('Keep anybody whose reason differs as a finding of their own');
+      expect(it0).toContain('say what in the arrangement would need to change, but only as far as the blocks support it');
+    });
+
+    it('puts the pieces of one story in the order they happened', () => {
+      expect(it0).toContain('PIECES OF ONE STORY GO IN ORDER');
+      expect(it0).toContain('with the dates the blocks give');
+      expect(it0).toContain('no one person had all of them');
+      expect(it0).toContain('putting the pieces in order is not saying whose fault it was');
+    });
+
+    it('keeps both inside the limits that were already there', () => {
+      expect(it0).toContain('NOTHING IS ANYBODY\'S FAULT UNLESS AN ACCOUNT SAYS SO');
+      expect(it0).toContain('every sentence names a PERSON');
+    });
+
+    /* The rules are about any room, so the runs they came from must not leak into the words. */
+    it('carries no word from the runs these rules came from', () => {
+      for (const w of [/borrower/i, /repayment/i, /instalment/i, /grace period/i, /\bloan/i, /\bQBR/i, /quarterly review/i, /champion/i, /support ticket/i]) {
+        expect(it0).not.toMatch(w);
+      }
     });
   });
 

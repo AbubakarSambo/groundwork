@@ -43,8 +43,18 @@ const firstStatementOf = (name: string) => {
 };
 
 describe('every door into a session goes through the same door first', () => {
-  it.each(['open', 'complete'])('%s opens the door before anything else', (method) => {
+  /* Changed with the guard against two opens at once: `open` is now a wrapper that hands a second open the
+     first one's answer, and the work, with the door as its first act, is in `openOnce`. The wrapper is
+     keyed by who is asking, so waiting is never a way past the door. */
+  it.each(['openOnce', 'complete'])('%s opens the door before anything else', (method) => {
     expect(firstStatementOf(method)).toMatch(/const checkIn = await this\.openTheDoor\(checkInId, (requestingUserId|who)\);/);
+  });
+
+  it('open does its work only through openOnce, and is keyed by who is asking', () => {
+    const b = bodyOf('open', 900);
+    expect(b).toContain('this.openOnce(checkInId, requestingUserId, alreadyWritten)');
+    expect(b).toContain('requestingUserId');
+    expect(b).toMatch(/const key = `\$\{checkInId\}:/);
   });
 
   it.each(['sendMessage', 'sendMessageStream'])('%s requires a session already underway before anything else', (method) => {
@@ -150,7 +160,7 @@ describe('behaviourally: a paused ground refuses on the route people actually us
 
   it('a stranger is refused for not owning the check-in, before the ground is even read', async () => {
     const { svc, prisma } = service(GroundStatus.PAUSED, CheckInStatus.IN_PROGRESS);
-    await expect(svc.sendMessage('ci', 'somebody-else', 'hello')).rejects.toThrow(/does not belong to you/);
+    await expect(svc.sendMessage('ci', 'somebody-else', 'hello')).rejects.toThrow(/not yours to open/);
     expect(prisma.ground.findUnique).not.toHaveBeenCalled();
   });
 });

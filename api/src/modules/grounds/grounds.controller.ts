@@ -4,6 +4,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IsOptional, IsInt, Min, Max, IsEnum, IsIn, IsArray } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { GroundsService } from './grounds.service';
+import { APlanIsManyProposalsService } from './a-plan-is-many-proposals.service';
 import { ConversationService } from '../conversation/conversation.service';
 import { CreateGroundDto, AddParticipantDto, CreateGroundForLeadDto } from './dto';
 import { CurrentUser, CurrentUserData, Roles, Role } from '../../common';
@@ -70,6 +71,12 @@ class UpdateTimelineDto {
   @Min(1)
   timelineWeeks?: number;
 
+  /** True sets the check-in to run until the lead ends it (request 37). A length sent later turns it off. */
+  @ApiPropertyOptional({ description: 'Run until the lead ends it.' })
+  @IsOptional()
+  @IsBoolean()
+  runsUntilEnded?: boolean;
+
   /**
    * WHEN THE FIRST CHECK-IN OPENS, which could be set at creation and never afterwards.
    *
@@ -123,6 +130,28 @@ class UpdateTimelineDto {
   @Min(0, { each: true })
   @Max(6, { each: true })
   workingDays?: number[];
+
+  /**
+   * THE DAY THE CHECK-INS LAND ON (request 194): a weekday for a weekly or fortnightly check-in (0 is Sunday), a day of the month for a monthly one.
+   * Live let a lead say "every Monday" at setup and nowhere afterwards. `null` clears it, so the check-in lands wherever the rhythm puts it. It
+   * applies from the next session that is made; a session already made keeps its date.
+   */
+  @ApiPropertyOptional({ nullable: true, minimum: 0, maximum: 31, description: 'Weekly or fortnightly: 0 = Sunday to 6 = Saturday. Monthly: 1 to 31. Null clears it.' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(31)
+  cadenceAnchorDay?: number | null;
+
+  /**
+   * THE LAST DAY, AS THE LEAD CHOSE IT ("Give it more time", journey test 12 October 2026). The sessions up to it are counted the
+   * way setup counts them (timelineDaysForAChosenEnd), and the end is stored, so People and setup, the invitation and the count agree.
+   */
+  @ApiPropertyOptional({ description: 'The last day, YYYY-MM-DD. Sets how long it runs, counted the way setup counts it.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  endsOn?: string;
 
   @ApiPropertyOptional({ description: 'Append a context note to this ground' })
   @IsOptional()
@@ -252,7 +281,44 @@ export class GroundsController {
   constructor(
     private readonly grounds: GroundsService,
     private readonly conversation: ConversationService,
+    private readonly plans: APlanIsManyProposalsService,
   ) {}
+
+  /**
+   * A PLAN, READ INTO SEPARATE PROPOSALS, EACH KEPT AS WAITING, AND NOTHING ELSE WRITTEN. The lead only. See
+   * a-plan-is-many-proposals: each proposal quotes the plan, and one that does not is dropped.
+   */
+  @Post(':id/plan/proposals')
+  @ApiOperation({ summary: 'Lead only: read a pasted plan, or a document on this check-in, into separate goals, roles, commitments and rules, each kept as waiting for you to confirm. Nothing else is written.' })
+  async planProposals(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: { text?: string; documentId?: string }) {
+    return this.plans.read(id, userId, dto ?? {});
+  }
+
+  /** "Waiting for you to confirm": the lead's proposals still waiting. Lead only. */
+  @Get(':id/plan/proposals')
+  @ApiOperation({ summary: "Lead only: the proposals from a plan that are waiting for you to confirm" })
+  async waitingPlanProposals(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.plans.waiting(id, userId);
+  }
+
+  /** ONE stored proposal, checked again against its own quote, written into the table it belongs in, once. */
+  @Post(':id/plan/proposals/:pid/confirm')
+  @ApiOperation({ summary: 'Lead only: confirm one proposal from a plan, which writes exactly one thing. For a goal with a number, send direction "AIM", "LIMIT", "RATE", "DEADLINE" or "ZERO" as the lead answered the card\'s whichWay question; without it, no kind is set.' })
+  async confirmPlanProposal(@Param('id') id: string, @Param('pid') pid: string, @CurrentUser('id') userId: string, @Body() dto?: { email?: string; direction?: 'AIM' | 'LIMIT' | 'RATE' | 'DEADLINE' | 'ZERO' | null }) {
+    return this.plans.confirm(id, userId, pid, { direction: dto?.direction, email: dto?.email });
+  }
+
+  @Post(':id/plan/proposals/:pid/not-now')
+  @ApiOperation({ summary: 'Lead only: put one proposal from a plan off. Nothing is written.' })
+  async planProposalNotNow(@Param('id') id: string, @Param('pid') pid: string, @CurrentUser('id') userId: string) {
+    return this.plans.notNow(id, userId, pid);
+  }
+
+  @Patch(':id/plan/proposals/:pid')
+  @ApiOperation({ summary: "Lead only: change one proposal's sentence or values. Checked again against the plan's own words; it stays waiting." })
+  async editPlanProposal(@Param('id') id: string, @Param('pid') pid: string, @CurrentUser('id') userId: string, @Body() dto: { says?: string; fields?: any }) {
+    return this.plans.edit(id, userId, pid, dto ?? {});
+  }
 
   @Get()
   @ApiOperation({ summary: 'List grounds in the organization, including grounds as a participant' })
@@ -263,8 +329,8 @@ export class GroundsController {
   @Get('org-roster')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Org-wide list of every ground (team): lead, members, roles, and alignment status - for HR/admin/founder oversight' })
-  async getOrgRoster(@CurrentUser('organizationId') organizationId: string) {
-    return this.grounds.getOrgRoster(organizationId);
+  async getOrgRoster(@CurrentUser() user: CurrentUserData) {
+    return this.grounds.getOrgRoster(user.organizationId, user.id);
   }
 
   /**
@@ -286,8 +352,8 @@ export class GroundsController {
   @Get('awaiting-approval')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Grounds a member has set up that are waiting for an admin to accept them' })
-  async awaitingApproval(@CurrentUser('organizationId') organizationId: string) {
-    return this.grounds.listAwaitingApproval(organizationId);
+  async awaitingApproval(@CurrentUser() user: CurrentUserData) {
+    return this.grounds.listAwaitingApproval(user.organizationId, user.id);
   }
 
   @Get(':id')
@@ -382,6 +448,38 @@ export class GroundsController {
     return this.grounds.changeContextLine(id, userId, itemId, dto ?? {});
   }
 
+  /**
+   * THE LEAD'S QUESTIONS FOR PEOPLE, ONE AT A TIME. Decision 34: the lead sees the exact question as
+   * Groundwork will ask it, and confirms it, changes it, or leaves it out. Nothing is read into a
+   * person's check-in until it is confirmed here. See a-question-asked-word-for-word.
+   */
+  @Get(':id/questions-for-people')
+  @ApiOperation({ summary: "The lead's questions for people on this check-in, each with the exact sentence Groundwork will ask (lead or org admin)" })
+  async questionsForPeople(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.grounds.questionsForPeople(id, userId);
+  }
+
+  @Post(':id/questions-for-people/:itemId/confirm')
+  @ApiOperation({ summary: 'Lead only: confirm one question, as shown or in your own changed words, so it is asked word for word' })
+  async confirmQuestionForPerson(
+    @Param('id') id: string,
+    @Param('itemId') itemId: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: { exactQuestion?: string | null },
+  ) {
+    return this.grounds.confirmQuestionForPerson(id, userId, itemId, dto ?? {});
+  }
+
+  @Post(':id/questions-for-people/:itemId/decline')
+  @ApiOperation({ summary: 'Lead only: leave one question out, so it is asked of nobody' })
+  async declineQuestionForPerson(
+    @Param('id') id: string,
+    @Param('itemId') itemId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.grounds.declineQuestionForPerson(id, userId, itemId);
+  }
+
   @Patch(':id/chasing')
   @ApiOperation({ summary: 'Initiator-only: which days this check-in reminds people on, whether it reminds at all, and whether the lead hears who never started' })
   async setChasing(
@@ -390,6 +488,17 @@ export class GroundsController {
     @Body() dto: { days?: number[]; stopped?: boolean; tellTheLead?: boolean },
   ) {
     return this.grounds.setChasing(id, userId, dto ?? {});
+  }
+
+  /** Decision 133: "Check in yourself". Opens (or reuses) the lead's own check-in, any time it is running. */
+  @Post(':id/check-in-yourself')
+  @ApiOperation({ summary: "Open the lead's own check-in on demand (the lead only)" })
+  async checkInYourself(
+    @Param('id') id: string,
+    @CurrentUser('organizationId') organizationId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.grounds.openTheLeadsCheckIn(id, organizationId, userId);
   }
 
   @Post(':id/closing-session')
@@ -456,9 +565,28 @@ export class GroundsController {
   async resendParticipantInvite(
     @Param('id') id: string,
     @Param('participantId') participantId: string,
-    @CurrentUser('organizationId') organizationId: string,
+    @CurrentUser() user: CurrentUserData,
   ) {
-    return this.grounds.resendParticipantInvite(id, participantId, organizationId);
+    return this.grounds.resendParticipantInvite(id, participantId, user.organizationId, user.id, user.role);
+  }
+
+  /** D1 and D2 (13 October 2026, evening): whoever runs the check-in adds somebody's WhatsApp number. */
+  @Patch(':id/participants/:participantId/whatsapp-number')
+  @ApiOperation({ summary: "Add a person's WhatsApp number, kept on the organisation's roster (whoever runs the check-in, or an admin)" })
+  async addTheirWhatsAppNumber(
+    @Param('id') id: string,
+    @Param('participantId') participantId: string,
+    @Body() body: { phone: string },
+    @CurrentUser() user: CurrentUserData,
+  ) {
+    return this.grounds.addTheirWhatsAppNumber({ groundId: id, participantId, organizationId: user.organizationId, userId: user.id, role: user.role, phone: body?.phone });
+  }
+
+  /** Each person on this check-in on WhatsApp: number and where they are (whoever runs it, or an admin). */
+  @Get(':id/participants/whatsapp')
+  @ApiOperation({ summary: "Each person's WhatsApp number and status on this check-in (whoever runs the check-in, or an admin)" })
+  async whereEachPersonIsOnWhatsApp(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
+    return this.grounds.whereEachPersonIsOnWhatsApp({ groundId: id, organizationId: user.organizationId, userId: user.id, role: user.role });
   }
 
   @Get(':id/mediator-brief')
@@ -541,7 +669,8 @@ export class GroundsController {
 
   @Post(':id/context-chat')
   @ApiOperation({ summary: "The lead's setup conversation: what context is missing, and the material that would settle it" })
-  async contextChat(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: ContextChatDto) {
+  async contextChat(@Param('id') id: string, @CurrentUser('id') userId: string, @CurrentUser('organizationId') organizationId: string, @Body() dto: ContextChatDto) {
+    await this.grounds.theOldContextChatMustBeOpen(organizationId);
     return this.grounds.contextChat(id, userId, dto.history ?? []);
   }
 
@@ -555,11 +684,26 @@ export class GroundsController {
   async confirmContextProposal(
     @Param('id') id: string,
     @CurrentUser('id') userId: string,
+    @CurrentUser('organizationId') organizationId: string,
     /* `history` is how a pronoun resolves. The change is still derived on this side from the words
        themselves - there is no field here that names a person or carries a value. */
-    @Body() dto: { said: string; history?: { role: 'user' | 'assistant'; content: string }[] },
+    @Body() dto: { said: string; history?: { role: 'user' | 'assistant'; content: string }[]; offerId?: string; leave?: boolean },
   ) {
+    await this.grounds.theOldContextChatMustBeOpen(organizationId);
     return this.grounds.applyContextProposal(id, userId, dto);
+  }
+
+  /** A no to keeping something for the organisation. The offer is deleted and nothing is kept. */
+  @Post(':id/context-chat/decline')
+  @ApiOperation({ summary: 'Say no to keeping something for the organisation' })
+  async declineContextProposal(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('organizationId') organizationId: string,
+    @Body() dto: { offerId?: string },
+  ) {
+    await this.grounds.theOldContextChatMustBeOpen(organizationId);
+    return this.grounds.declineContextOffer(id, userId, dto?.offerId ?? '');
   }
 
   /**
@@ -733,6 +877,16 @@ export class GroundsController {
     return this.grounds.setPeopleWorkTogether(id, userId, !!body.together);
   }
 
+  @Patch(':id/kind-of-work')
+  @ApiOperation({ summary: 'The lead sets the kind of work this check-in is about (one of eleven, or none), and its own stage names' })
+  async setKindOfWork(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() body: { kind?: string | null; stages?: string[] | null },
+  ) {
+    return this.grounds.setKindOfWork(id, userId, body ?? {});
+  }
+
   @Patch(':id/who-sees-targets')
   @ApiOperation({ summary: "Whether people on this check-in see each other's numbers, or only their own" })
   async setWhoSeesTargets(
@@ -741,6 +895,22 @@ export class GroundsController {
     @Body() body: { everybody: boolean },
   ) {
     return this.grounds.setWhoSeesTargets(id, userId, !!body.everybody);
+  }
+
+  @Get(':id/simpler-words')
+  @ApiOperation({ summary: 'Whether this check-in uses simpler words for everybody in it' })
+  async getSimplerWords(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.grounds.getSimplerWords(id, userId);
+  }
+
+  @Patch(':id/simpler-words')
+  @ApiOperation({ summary: 'Switch "Use simpler words" on or off for this check-in' })
+  async setSimplerWords(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() body: { on: boolean },
+  ) {
+    return this.grounds.setSimplerWords(id, userId, body?.on);
   }
 
   @Patch(':id/over-whatsapp')

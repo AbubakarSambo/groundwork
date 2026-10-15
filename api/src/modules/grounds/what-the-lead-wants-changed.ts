@@ -228,6 +228,27 @@ export function whichOneDoYouMean(said: string, options: AThingOnRecord[]): stri
  * as Hassan.." - the wrong tense, somebody's question mark turned into a full stop, and two of them.
  * A confirmation says what happened.
  */
+/**
+ * WHETHER A CHANGE READING WINS THE TURN OVER A QUESTION THAT IS STILL OPEN.
+ *
+ * FIX 2, 30 September 2026, driven live: a lead was asked what they had seen of Ben, and answered
+ * "He has missed the last two pipeline updates. I spoke to him once. I want the update in by every
+ * Friday." - an answer to the open `objectives` question, naming an expectation. The change reader
+ * read "I want the update..." as an attempt to change something called "the update", found nothing
+ * that matches, and answered "I cannot find 'the update' on this check-in" - swallowing the whole
+ * turn before the open gap's own extraction ever ran.
+ *
+ * "Drop the 30-day rule" still has to win under an open gap - item 7's own rule, that a change is
+ * answered whatever question was underneath it - but that case is CONFIDENT: `apply` is set because
+ * exactly one thing on the record matched. What this refuses is only the AMBIGUOUS case - `apply` is
+ * null because nothing or more than one thing matched - while a gap is open that this message could
+ * still be answering instead. With nothing open, the ambiguous "which one do you mean" is still the
+ * right reply, because there is no competing question this message could be an answer to.
+ */
+export function changeAnswersThisTurn(wants: { apply: unknown } | null, openGap: string | null): boolean {
+  return !!wants && (!!wants.apply || !openGap);
+}
+
 export function whatChanged(change: { intent: WhatTheyWant; thing: AThingOnRecord; newText?: string | null; toPerson?: string | null }): string {
   const it = `"${change.thing.text.trim().replace(/[.]+$/, '')}"`;
   switch (change.intent) {

@@ -109,14 +109,14 @@ describe('what a claim rests on, said at the claim', () => {
 
   it('one account with support is, and reads differently from one without', () => {
     expect(isSettled(p({ supported: true }))).toBe(true);
-    expect(provenanceLine(p({ supported: true }))).toMatch(/with something else in the record supporting it/);
+    expect(provenanceLine(p({ supported: true }))).toMatch(/and something else in the record supports it/);
   });
 
   it('a contradicted claim is never settled, however many said it', () => {
     // The case where counting would give the wrong answer.
     expect(isSettled(p({ accounts: 5, contradicted: true }))).toBe(false);
     expect(provenanceLine(p({ accounts: 5, contradicted: true })))
-      .toMatch(/a difference between accounts, not a settled fact/);
+      .toMatch(/People said different things about it, so it is not settled/);
   });
 
   it('says where to go and look', () => {

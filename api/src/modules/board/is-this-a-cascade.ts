@@ -99,6 +99,9 @@ const NOT_A_TEAM_NAME = new Set([
   'whole', 'entire', 'same', 'other', 'another', 'one', 'each', 'every', 'no', 'any', 'some',
   'for', 'with', 'on', 'in', 'to', 'of', 'at', 'by', 'from', 'and', 'or', 'but',
   'both', 'all', 'is', 'was', 'been', 'being', 'doing', 'shadowing', 'joined', 'joining',
+  /* Request 65: `teamsNamed` served ["attached"], from "the attached team plan". A word that says
+     how a team stands, not what it is called, is not a department. */
+  'attached', 'assigned', 'new', 'wider', 'own', 'current', 'previous', 'old', 'whole', 'relevant', 'right',
 ]);
 
 /**
@@ -216,7 +219,7 @@ export function isThisACascade(input: CascadeInput): CascadeRead {
 function sayWhy(a: { declared: boolean; isCascade: boolean; parentNamed: string | null; teamsNamed: string[] }): string {
   if (!a.isCascade) {
     return a.declared
-      ? 'Nothing above this has been named yet. The objectives here are being held on their own, so there is nothing to check them against. If they are meant to serve something wider, saying what it is makes that checkable.'
+      ? 'Nothing above this has been named yet. These objectives stand on their own, and there is nothing to check them against. Say what they serve, if it is something wider, and they can be checked.'
       : 'Nothing here sits under a wider objective, and nothing suggests it should.';
   }
   const above = a.parentNamed

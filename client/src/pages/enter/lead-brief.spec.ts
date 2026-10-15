@@ -23,10 +23,11 @@ describe('composeLeadBrief', () => {
       brief: 'watch the deadline',
     })
     expect(brief).toContain('Q3 checkout rebuild')
-    expect(brief).toContain('Who is part of this: Priya (lead), Dana (engineer)')
-    expect(brief).toContain('Why now: ownership is unclear')
-    expect(brief).toContain('What it is aiming at: clear scope, one owner')
-    expect(brief).toContain('Focus: watch the deadline')
+    /* U.7 third review: each answer, as Groundwork understood it, after the question it answered, with nobody quoted. */
+    expect(brief).toContain('When asked who is part of this, the answer was taken to mean this. Priya (lead), Dana (engineer).')
+    expect(brief).toContain('When asked why this matters now, the answer was taken to mean this. Ownership is unclear.')
+    expect(brief).toContain('When asked what this is aiming at, the answer was taken to mean these 2 things. Clear scope. One owner.')
+    expect(brief).toContain('When asked what the questions should focus on, the answer was taken to mean this. Watch the deadline.')
   })
 
   it('omits missing fields without leaving separators behind', () => {

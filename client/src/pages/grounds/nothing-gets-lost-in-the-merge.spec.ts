@@ -64,8 +64,19 @@ const PAGES = [
   '../report/SessionReportPage.tsx',
   '../report/RoundReportPage.tsx',
   '../../components/gw/TheReportIsAListOfSessions.tsx',
+  /* "Did this feel fair" - moved here from the dead ReportBody, onto the board, where everyone
+     reads how a closed check-in ended. */
+  '../../components/gw/OutcomeFeedback.tsx',
   '../../components/gw/TheSessionsReport.tsx',
   '../../components/gw/WhoIsStillOut.tsx',
+  /*
+   * REVIEW ROUND 3, ITEM 2: THE PAYWALL AND ITS MUTATIONS (claimFreeExtension, createSubscription,
+   * redeemContributorCode) MOVED OUT OF GroundParticipantPage.tsx into a shared hook and a shared
+   * modal, so GroundAdminPage.tsx could open a session (and show the same paywall) without a trip
+   * through the other page. Same capabilities, same calls - now declared and invoked here instead.
+   */
+  '../../hooks/useOpenSession.ts',
+  '../../components/gw/checkin/SessionPaywallModal.tsx',
 ]
 
 /** Everything the four ground surfaces can do, by the call that does it. */
@@ -93,8 +104,18 @@ const OPERATIONS: Record<string, string[]> = {
      there-is-no-reveal.spec.ts - so requiring a caller for it would require the button back. */
   reports: ['reportsApi.get(', 'reportsApi.release(', 'reportsApi.sessionReport('],
   nudging: ['conversationApi.remind('],
-  'my record': ['getMyRecord(', 'getMySoloReport(', 'getMySpecificity(', 'setMySoloReportShared(', 'getMyCheckinStatus('],
+  'my record': ['getMyRecord(', 'getMySoloReport(', 'getMySpecificity(', 'setMySoloReportShared('],
   /*
+   * `getMyCheckinStatus(` CAME OFF THIS LIST 1 OCTOBER 2026, AND THE CAPABILITY DID NOT GO WITH IT.
+   * On these four pages it was called once, inside the dead `ReportBody` (`ReportPage.tsx`), to
+   * list a party's own completed sessions for the download button. The download button moved to
+   * `SessionReportPage.tsx` and now downloads the one session that page is already about, which
+   * needs no roster lookup - so the call has no remaining reason to exist on these four surfaces.
+   * The capability itself is alive and well outside this inventory's four pages
+   * (`YourNextCheckIn.tsx`, `TheDonePage.tsx`, `ChatPage.tsx` all still call it), which is why this
+   * is a removal rather than a loss: this list tracks what the FOUR MERGED PAGES can do, not every
+   * caller of every endpoint in the product.
+   *
    * `signOff(` is off this list because the control is gone, on her instruction. It was a
    * confirmation step at the foot of My record on a page nobody had been asked to confirm anything
    * on. The client method went with it rather than sitting declared and uncalled; the column and
@@ -150,9 +171,11 @@ describe('nothing the check-in pages can do gets lost in a merge', () => {
      */
     /* 43 until `signOff` was removed with the control that called it - a capability dropped on
        purpose, which is the one reason this number is allowed to go down. 42 until `activate`
-       went the same way with the reveal: see there-is-no-reveal.spec.ts. */
+       went the same way with the reveal: see there-is-no-reveal.spec.ts. 39 since
+       `getMyCheckinStatus` came off this list 1 October 2026 - a capability still alive outside
+       these four pages, see the note above, not a capability lost from the product. */
     const total = Object.values(OPERATIONS).reduce((n, c) => n + c.length, 0)
-    expect(total).toBe(40)
+    expect(total).toBe(39)
   })
 })
 
@@ -164,18 +187,59 @@ describe('nothing the check-in pages can do gets lost in a merge', () => {
  * last button wired to it was deleted - which reads as working code to every other
  * check we have.
  */
+/**
+ * REVIEW ROUND 3, ITEM 2: A HOOK CAN HAND A MUTATION TO ITS CALLER INSTEAD OF INVOKING IT ITSELF.
+ * `useOpenSession.ts` declares `redeemPaywallCode`/`claimFreeExtensionMut`/`createSubscriptionMut`
+ * and returns them (renamed, under `paywall.redeem`/`paywall.claimFreeExtension`/
+ * `paywall.createSubscription`) for `SessionPaywallModal.tsx` to call - the whole point of pulling
+ * the paywall out into a shared piece two pages use. "Declared here, invoked here" does not hold
+ * for a hook; "declared here, returned here, and something calls the thing that was returned"
+ * does. `CONSUMERS` names where each hook's exposed mutations get called when that call does not
+ * carry the declaring identifier's own name.
+ */
+const CONSUMERS: Record<string, string> = {
+  '../../hooks/useOpenSession.ts': '../../components/gw/checkin/SessionPaywallModal.tsx',
+  /*
+   * THE SAME SHAPE, FOR A COMPONENT RATHER THAN A HOOK. People and setup
+   * (CheckInPeopleAndSetup.tsx) was pulled out of GroundAdminPage.tsx's `tab === 'settings'`
+   * branch so it could be rebuilt from components/gw/ui; GroundAdminPage.tsx keeps every
+   * mutation it needs - the server-side access rule lives there, next to
+   * `isInitiator`/`isOrgAdmin` - and hands each one down as a prop (`removeGround={removeGround}`)
+   * rather than returning it from a hook. PROP_PATTERN below checks for that shape wherever the
+   * hook check above looks for `return { ... }`.
+   */
+  'GroundAdminPage.tsx': './CheckInPeopleAndSetup.tsx',
+}
+
 describe('no mutation is left with no way to call it', () => {
   for (const page of PAGES) {
     const src = readFileSync(join(__dirname, page), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+    const consumerPath = CONSUMERS[page]
+    const consumerSrc = consumerPath
+      ? readFileSync(join(__dirname, consumerPath), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+      : ''
     const declared = [...src.matchAll(/const (\w+) = useMutation\(/g)].map(m => m[1])
     for (const name of declared) {
       it(`${page.split('/').pop()}: ${name} is invoked`, () => {
-        const invoked = new RegExp(`\\b${name}\\.(mutate|mutateAsync)\\(`).test(src)
+        const invokedDirectly = new RegExp(`\\b${name}\\.(mutate|mutateAsync)\\(`).test(src)
+        /* Returned from the hook (as any property of the object literal it hands back) AND some
+           `.mutate(`/`.mutateAsync(` call exists in the file that consumes it - not proof THIS
+           exact mutation is the one called, but the paired manual check above (the paywall spec,
+           which reads real button text) is what actually pins each button to its mutation; this
+           guard only catches one still declared and returned to nobody. */
+        const returnedFromHook = consumerPath
+          ? new RegExp(`return \\{[\\s\\S]*\\b${name}\\b[\\s\\S]*?\\n  \\}`).test(src) && /\.(mutate|mutateAsync)\(/.test(consumerSrc)
+          : false
+        /* THE COMPONENT-AND-PROP VERSION OF THE SAME CHECK (see the CONSUMERS doc comment above):
+           `name={name}` handing a mutation down as a prop, in place of a hook's `return { name }`. */
+        const passedAsProp = consumerPath
+          ? new RegExp(`\\b${name}\\s*=\\{\\s*${name}\\s*\\}`).test(src) && /\.(mutate|mutateAsync)\(/.test(consumerSrc)
+          : false
         expect(
-          invoked,
-          `${name} is declared in ${page} and nothing calls it. Wire it to a control ` +
-            `or delete it - a declared mutation with no caller is how the paid session ` +
-            `path survived as code nobody could reach.`,
+          invokedDirectly || returnedFromHook || passedAsProp,
+          `${name} is declared in ${page} and nothing calls it (directly, or via ${consumerPath ?? 'a consumer'}). ` +
+            `Wire it to a control or delete it - a declared mutation with no caller is how the paid ` +
+            `session path survived as code nobody could reach.`,
         ).toBe(true)
       })
     }

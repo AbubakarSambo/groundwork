@@ -77,16 +77,18 @@ function makeService(groundRow: any, activationStatus: 'ACTIVATED' | 'PENDING' |
 // ---------------------------------------------------------------------------
 
 describe('GW-PRI-01: non-party user is denied the report', () => {
-  it('throws ForbiddenException when userId is not in participants and is not initiator', async () => {
+  /* The two tests below said ForbiddenException. A 403 tells a stranger the check-in is real (GW-PRI-04), so the report now answers
+     NotFoundException ("That check-in could not be found, so go back to your check-ins and open it from the list.") as every other route does (privacy sweep finding 7). The stranger is still denied. */
+  it('throws NotFoundException when userId is not in participants and is not initiator', async () => {
     const ground = makeGround({ report: makeReleasedReport() });
     const service = makeService(ground);
-    await expect(service.get('g1', 'user-stranger')).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(service.get('g1', 'user-stranger')).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it('throws ForbiddenException for a user from a different org who guesses the ground ID', async () => {
+  it('throws NotFoundException for a user from a different org who guesses the ground ID', async () => {
     const ground = makeGround({ report: makeReleasedReport(), initiatorId: 'user-1' });
     const service = makeService(ground);
-    await expect(service.get('g1', 'user-other-org')).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(service.get('g1', 'user-other-org')).rejects.toBeInstanceOf(NotFoundException);
   });
 });
 
@@ -95,16 +97,21 @@ describe('GW-PRI-01: non-party user is denied the report', () => {
 // ---------------------------------------------------------------------------
 
 describe('GW-PRI-02: report before release shows the forming picture, not the final one', () => {
-  it('returns the forming picture (not Forbidden) for a participant when releasedAt is null', async () => {
+  it('tells a participant the picture is not shared yet (not Forbidden), and sends none of it, when releasedAt is null', async () => {
     const unreleasedReport = { ...makeReleasedReport(), releasedAt: null };
     const ground = makeGround({ report: unreleasedReport });
     const service = makeService(ground);
-    // user-2 is a valid participant; report isn't released yet, but the
-    // picture forms progressively - they should see it marked as forming,
-    // not be blocked outright.
-    const result = await service.get('g1', 'user-2');
+    // user-2 is a valid participant; the report isn't released yet. They are
+    // not blocked outright: they are told plainly, and keep their own things.
+    // Decision 76, item 4 (2 October 2026): each session's team picture is
+    // released on its own, so before release they are sent none of it. This
+    // test expected the forming picture, which is the reading the decision ends.
+    const result: any = await service.get('g1', 'user-2');
     expect(result).toHaveProperty('forming', true);
-    expect(result).toHaveProperty('sharedPicture');
+    expect(result).not.toHaveProperty('sharedPicture');
+    expect(result).not.toHaveProperty('agreements');
+    expect(result).not.toHaveProperty('divergences');
+    expect(result.saying).toBe("The team's picture of session 1 is not shared yet.");
   });
 
   it('returns the SAME forming picture to the initiator before release (symmetric with the participant above)', async () => {

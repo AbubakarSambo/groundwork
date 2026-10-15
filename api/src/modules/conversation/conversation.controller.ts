@@ -44,6 +44,12 @@ export class ConversationController {
     return this.conversation.getTranscript(id, userId);
   }
 
+  @Get(':id/end-card')
+  @ApiOperation({ summary: 'The end card: ready now, or waited for while it is built (owner only)' })
+  async endCard(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.conversation.theEndCardWhenReady(id, userId);
+  }
+
   @Get(':id/download')
   @ApiOperation({ summary: 'Download the contribution record as plain text (owner only)' })
   async download(@Param('id') id: string, @CurrentUser('id') userId: string, @Res() res: Response) {

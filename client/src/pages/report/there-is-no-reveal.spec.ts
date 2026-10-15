@@ -33,7 +33,8 @@ const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\{\/\*
 const read = (...p: string[]) => strip(readFileSync(join(__dirname, ...p), 'utf8'))
 
 const SURFACES: [string, string][] = [
-  ['the report page', 'ReportPage.tsx'],
+  /* 'the report page' (ReportPage.tsx) came off this list when ReportBody - its only content -
+     was deleted: the file left behind is a redirect, not a surface that can carry a reveal. */
   ['the per-session report page', 'SessionReportPage.tsx'],
 ]
 const ELSEWHERE: [string, string][] = [

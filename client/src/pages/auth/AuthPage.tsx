@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { MARKETING_URL } from '@/lib/marketing'
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 import { authApi } from '@/api/auth'
 import { billingApi } from '@/api/billing'
 import { aFreeRunLine, worthAsking } from './what-is-waiting-for-this-address'
@@ -16,8 +16,12 @@ import { useAuthStore } from '@/stores/auth'
 import { LinkSentPanel } from './LinkSentPanel'
 import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
-import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
-import { TextAction } from '@/components/gw/kit'
+import { whatIsWrongWithTheAddress } from './the-address-typed'
+import { Button, Stack, Choices, Callout, Note } from '@/components/gw/ui'
+import { AuthCard, AuthError, AuthField, AuthNotice, AuthSplit, GoogleMark, PasswordField, PasswordRules } from './auth-kit'
+import { meetsTodaysPasswordRules } from './password-rules'
+import { theFreeTrialSentence } from '@/lib/the-free-trial'
+import { keepThePasswordKey } from './the-password-key'
 
 
 
@@ -27,6 +31,15 @@ import { TextAction } from '@/components/gw/kit'
  * create account", reachable from the fourth line of small print.
  */
 type View = 'password' | 'link' | 'create' | 'forgot'
+
+/**
+ * PRIMARY-BUTTONS-NEVER-TOGETHER: this component has five mutually exclusive `return`s - sign in
+ * (view === 'password'), "check your email" (linkSent), create an account (view === 'create'),
+ * get a sign-in link (view === 'link'), and forgot/reset your password - and only one of them is
+ * ever on screen at once. Each writes its own one primary (navy) button: "Sign in", "Create
+ * account", "Email me a sign-in link", and "Email me a reset link". None of the four can appear
+ * beside another.
+ */
 
 /**
  * The small text controls under a form ("Forgot your password?", "Create an
@@ -42,28 +55,6 @@ type View = 'password' | 'link' | 'create' | 'forgot'
  * Buttons, styled to look the same.
  */
 /* TextAction lives in components/gw/kit.tsx now, so the other screens with a <span onClick> could use it too. */
-
-/**
- * GOOGLE'S OWN MARK, WHICH THE BUTTON DID NOT HAVE.
- *
- * "Continue with Google" was plain text in a plain box, on the two screens where somebody decides
- * whether to trust this product with their Google account. The mark is the thing that makes a
- * sign-in button recognisable at a glance - people scan for it rather than reading the words.
- *
- * Drawn inline rather than fetched: it must render on the sign-in screen with no network round
- * trip, and it is one of the few images the app cannot afford to have arrive late or not at all.
- * The four colours are Google's published brand values.
- */
-function GoogleMark() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
-      <path fill="#4285F4" d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z" />
-      <path fill="#34A853" d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46z" />
-      <path fill="#FBBC05" d="M11.69 28.18C11.25 26.86 11 25.45 11 24s.25-2.86.69-4.18v-5.7H4.34C2.85 17.09 2 20.45 2 24s.85 6.91 2.34 9.88l7.35-5.7z" />
-      <path fill="#EA4335" d="M24 10.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 4.18 29.93 2 24 2 15.4 2 7.96 6.93 4.34 14.12l7.35 5.7c1.73-5.2 6.58-9.07 12.31-9.07z" />
-    </svg>
-  )
-}
 
 export function AuthPage() {
   const navigate = useNavigate()
@@ -120,6 +111,8 @@ export function AuthPage() {
     const raw = searchParams.get('next') ?? searchParams.get('from')
     if (!raw) return null
     if (!raw.startsWith('/') || raw.startsWith('//')) return null
+    /* Never back to "You're signed out": arriving there signs you out again. */
+    if (/^\/signout(?:[/?#]|$)/.test(raw)) return null
     return raw
   })()
   /*
@@ -164,6 +157,39 @@ export function AuthPage() {
   // workspace", derived from the address, and nobody was ever asked. W10-2.
   const [firstName, setFirstName] = useState('')
   const [orgName, setOrgName] = useState('')
+  /*
+   * AN EMAIL LINK, OR A PASSWORD, AT SIGN-UP (U.2, Hafsah's decision of 26 September). The link is
+   * the default, as it has always been; choosing a password shows the two boxes and the rules.
+   */
+  const [signInBy, setSignInBy] = useState<'link' | 'password'>('link')
+  /*
+   * THE ORGANISATION'S NAME, SUGGESTED FROM THE ADDRESS UNTIL THEY TYPE ONE (Hafsah, 26 September).
+   * hafsah@coamana.com suggests "Coamana"; a public mail address suggests nothing. Once the person
+   * types in the box, what they typed stays.
+   */
+  const [orgTouched, setOrgTouched] = useState(false)
+  /* Asked of the server, which holds the one list of public mail domains (U.3). Only once the box
+     holds an address, and a failed read suggests nothing, which is the safe direction. */
+  /*
+   * FROM AN ORGANISATION'S INVITE LINK, NO ORGANISATION IS ASKED FOR OR SUGGESTED (U.3 review). They
+   * are joining the one whose link they pressed; the server joins them to it on confirming, and makes
+   * none of their own.
+   */
+  const fromAnInviteLink = /^\/j\/[^/]+$/.test(nextPath ?? '')
+  const typedAddress = view === 'create' && !fromAnInviteLink && looksLikeAnAddress(email) ? email.trim().toLowerCase() : ''
+  const { data: suggestion } = useQuery({
+    queryKey: ['name-from-address', typedAddress],
+    queryFn: () => authApi.nameFromAddress(typedAddress),
+    enabled: !!typedAddress,
+    staleTime: Infinity,
+    retry: false,
+  })
+  const suggestedOrg = typedAddress ? (suggestion?.name ?? null) : null
+  useEffect(() => {
+    if (view === 'create' && !orgTouched) setOrgName(suggestedOrg ?? '')
+  }, [suggestedOrg, orgTouched, view])
+  const [newPassword, setNewPassword] = useState('')
+  const [newConfirm, setNewConfirm] = useState('')
   const [error, setError] = useState('')
   const [linkSent, setLinkSent] = useState(arrivedSent)
   const [resetSent, setResetSent] = useState(false)
@@ -188,6 +214,29 @@ export function AuthPage() {
     staleTime: 10 * 60 * 1000,
     retry: false,
   })
+
+  /*
+   * THE FREE TRIAL'S SENTENCE, FROM THE SERVER'S NUMBERS (Hafsah, 26 September). Shown on sign-up
+   * only while the trial is switched on, which waits until billing really grants it (U.19). A failed
+   * read shows nothing, which is the safe direction.
+   */
+  const { data: pricing } = useQuery({
+    queryKey: ['public-pricing'],
+    queryFn: billingApi.getPricing,
+    enabled: view === 'create',
+    staleTime: 10 * 60 * 1000,
+    retry: false,
+  })
+  /*
+   * B-206: THE TRIAL LINE IS ABOUT STARTING YOUR OWN ORGANISATION, NOT ABOUT JOINING SOMEONE
+   * ELSE'S. Signing up from an organisation's own invite link (/j/:code, JoinByLinkPage, which
+   * sends people here as `?mode=signup&next=/j/<code>`) is always joining an organisation that
+   * already exists - "Teams of fewer than 20 people get 3 months free" has nothing to do with it,
+   * and reading it here (j-baridi.txt has no such line) promises a trial that is not what is about
+   * to happen. Left out only on this one path; every other sign-up still reads it.
+   */
+  const openedFromAJoinLink = !!nextPath && nextPath.startsWith('/j/')
+  const trialSentence = openedFromAJoinLink ? null : theFreeTrialSentence(pricing?.trial)
 
   const signIn = useMutation({
     mutationFn: () => authApi.login(email.trim().toLowerCase(), password),
@@ -224,9 +273,42 @@ export function AuthPage() {
     },
   })
 
+  /*
+   * HOW THE LINK ON SCREEN WAS SENT, SO "SEND IT AGAIN" SENDS IT THE SAME WAY.
+   *
+   * A sign-in link, and `/auth/sent` (the marketing home's SaveCard sends one before it arrives
+   * here), go through `entrySave` with nothing but the address: for an account that exists that is a
+   * sign-in link, and for a sign-up still waiting it keeps everything already saved and only renews
+   * the link. A new account goes through `entrySave` again with the name and organisation typed, so
+   * the second link carries exactly what the first did.
+   */
+  const [sentBy, setSentBy] = useState<'link' | 'create'>('link')
+  /*
+   * B-037: "WITH A PASSWORD" STILL READ "CHECK YOUR EMAIL... WE SENT A SIGN-IN LINK", with no
+   * mention anywhere that the password just typed had been kept.
+   *
+   * The password IS saved and does work (entrySave sends it, and it signs the person in
+   * afterwards exactly like any other password) - confirming the email is still required either
+   * way, since nothing can let somebody claim an address they have not proved they own. What was
+   * missing was telling them that: this page read identically whichever door was chosen, so
+   * choosing a password looked ignored even though it was not. Set once, when a password is
+   * actually sent with the account.
+   */
+  const [createdWithPassword, setCreatedWithPassword] = useState(false)
+  /* `nextPath` rides with the link, so opening it from the mailbox comes back here (U.3 review). It is
+     only sent when there is one, so every other request is exactly what it was. */
+  const save = (draft: Parameters<typeof authApi.entrySave>[1], password?: string) => nextPath
+    ? authApi.entrySave(email.trim().toLowerCase(), draft, trap.filled, password, nextPath)
+    : password !== undefined
+      ? authApi.entrySave(email.trim().toLowerCase(), draft, trap.filled, password)
+      : authApi.entrySave(email.trim().toLowerCase(), draft, trap.filled)
+  const sendTheLinkAgain = () => sentBy === 'create'
+    ? save({ payload: whatTheyTyped() })
+    : save(undefined)
+
   const sendLink = useMutation({
-    mutationFn: () => authApi.entrySave(email.trim().toLowerCase(), undefined, trap.filled),
-    onSuccess: () => setLinkSent(true),
+    mutationFn: () => save(undefined),
+    onSuccess: () => { setSentBy('link'); setLinkSent(true) },
     /**
      * A FAILURE IS NOT A SUCCESS. W10-2.
      *
@@ -247,7 +329,7 @@ export function AuthPage() {
       // No response at all, or the server broke. Neither says anything about whether
       // this address has an account.
       if (!status || status >= 500) {
-        setError('That did not send - something went wrong on our side. Try again.')
+        setError('That did not send, because something went wrong on our side. Please try again.')
         return
       }
       if (status === 429) {
@@ -285,28 +367,44 @@ export function AuthPage() {
     return () => window.clearTimeout(at)
   }, [email, view])
 
+  function whatTheyTyped() {
+    return {
+      ...(firstName.trim() ? { firstName: firstName.trim() } : {}),
+      ...(orgName.trim() && !fromAnInviteLink ? { orgName: orgName.trim() } : {}),
+      /* Left as we suggested it from the address, not typed (U.3 re-review): "Create a new
+         organisation" after "Where do you work?" does not reuse a suggestion that names the
+         organisation they chose not to join. */
+      ...(orgName.trim() && !fromAnInviteLink && !orgTouched && suggestedOrg && orgName === suggestedOrg ? { orgNameSuggested: true } : {}),
+    }
+  }
   const createAccount = useMutation({
-    mutationFn: () => authApi.entrySave(email.trim().toLowerCase(), {
-      payload: {
-        ...(firstName.trim() ? { firstName: firstName.trim() } : {}),
-        ...(orgName.trim() ? { orgName: orgName.trim() } : {}),
-      },
-    }, trap.filled),
-    onSuccess: () => setLinkSent(true),
+    mutationFn: () => nextPath
+      ? save({ payload: whatTheyTyped() }, signInBy === 'password' ? newPassword : undefined)
+      : authApi.entrySave(email.trim().toLowerCase(), { payload: whatTheyTyped() }, trap.filled, signInBy === 'password' ? newPassword : undefined),
+    /* The key for a password chosen here stays in this browser (the-password-key.ts, U.3 review). */
+    onSuccess: (data: any) => { keepThePasswordKey(data?.passwordKey); setSentBy('create'); setCreatedWithPassword(signInBy === 'password'); setLinkSent(true) },
     onError: (err: any) => {
       const status = err?.response?.status
       if (!status || status >= 500) {
-        setError('That did not send - something went wrong on our side. Try again.')
+        setError('That did not send, because something went wrong on our side. Please try again.')
         return
       }
       if (status === 429) {
         setError('Too many attempts. Wait a minute and try again.')
         return
       }
-      // A 409 means the address already has an account, and saying so here is safe:
-      // they just told us they are new, so it is the useful answer rather than a leak.
-      if (status === 409) {
-        setError('That address already has an account. Sign in instead.')
+      /*
+       * NO "THAT ADDRESS ALREADY HAS AN ACCOUNT". Hafsah's rule (26 September): sign-up never says
+       * whether an address has an account. entry-save answers an existing address exactly as a new
+       * one (the person is sent a sign-in link), so there is no 409 to read here any more.
+       *
+       * A password the server refused comes back as its own sentence ("Your password needs a number
+       * or a symbol."), which is shown as it is.
+       */
+      const said = err?.response?.data?.message
+      const sentence = Array.isArray(said) ? said[0] : said
+      if (typeof sentence === 'string' && /password/i.test(sentence)) {
+        setError(sentence)
         return
       }
       /*
@@ -335,340 +433,258 @@ export function AuthPage() {
     e.preventDefault()
     setError('')
     const e2 = email.trim()
-    if (!looksLikeAnAddress(e2)) { setError(NOT_AN_ADDRESS); return }
+    { const wrong = whatIsWrongWithTheAddress(e2); if (wrong) { setError(wrong); return } }
     if (!password) { setError('Enter your password.'); return }
     signIn.mutate()
+  }
+
+  /** "Email me a sign-in link instead", from the sign-in screen: a link to the address typed above. */
+  function askForALink() {
+    setError('')
+    { const wrong = whatIsWrongWithTheAddress(email); if (wrong) { setError(wrong); return } }
+    sendLink.mutate()
   }
 
   function submitLink(e: React.FormEvent) {
     e.preventDefault()
     setError('')
     const e2 = email.trim()
-    if (!looksLikeAnAddress(e2)) { setError(NOT_AN_ADDRESS); return }
+    { const wrong = whatIsWrongWithTheAddress(e2); if (wrong) { setError(wrong); return } }
     sendLink.mutate()
   }
 
-  return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
+  /**
+   * GOOGLE, OFFERED ONLY WHEN THE SERVER CAN FINISH IT. A full page load, not a fetch: signing in with
+   * Google starts by handing the browser to Google.
+   */
+  const googleButton = (label: string) => methods?.google ? (
+    /* The place they were going rides to Google and back (U.3 review), such as the invite link. */
+    <Button kind="secondary" wide onClick={() => { window.location.href = `${API_ORIGIN}/api/v1/auth/google${nextPath ? `?next=${encodeURIComponent(nextPath)}` : ''}` }}>
+      <GoogleMark />
+      {label}
+    </Button>
+  ) : null
 
-      <div style={{ background: 'var(--gw-navy)', padding: '20px 20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-          <svg width="18" height="14" viewBox="0 0 22 17" fill="none">
-            <rect x="5" y="0" width="12" height="3" rx="1.5" fill="white" opacity="0.45" />
-            <rect x="2" y="6" width="18" height="3" rx="1.5" fill="white" opacity="0.72" />
-            <rect x="0" y="12" width="22" height="3" rx="1.5" fill="white" />
-          </svg>
-          <span style={{ fontSize: 15, fontWeight: 700, color: 'white', letterSpacing: '-.02em' }}>Groundwork</span>
-        </div>
-        <a href={MARKETING_URL} style={{ fontSize: 13, color: 'rgba(255,255,255,.55)', textDecoration: 'none' }}>Back</a>
-      </div>
+  /* The API still sends a failed Google sign-in to /auth?why=google-signin-failed. It has its own
+     page now, which says what happened and offers the two ways on (A2, #/google-failed). */
+  if (googleFailed) return <Navigate to="/google-failed" replace />
 
-      <div className="gw-bd" style={{ maxWidth: 480, margin: '0 auto', width: '100%', paddingTop: 28 }}>
-
-        {/* The link-sent panel carries its own heading, so "Sign in" above it read as
-            two screens stacked. W8-62. */}
-        {!linkSent && (
-          <h1 className="gw-ttl">
-            {view === 'create' ? 'Create your account' : view === 'link' ? 'Get a sign-in link' : 'Sign in'}
-          </h1>
+  /* THE SIGN-IN SCREEN (A2, #/signin). The prototype's two halves: the form, and the dark panel. */
+  if (view === 'password' && !linkSent) {
+    return (
+      <AuthSplit title="Sign in" sub="Use your password, or we’ll email you a link that signs you in.">
+        {passwordlessNotice && <AuthNotice title="Check your email">{passwordlessNotice}</AuthNotice>}
+        {sessionExpired && !error && (
+          <AuthNotice>
+            You were signed out because you had been away a while. Sign in and we will take you back to where you were. Nothing you wrote has been lost.
+          </AuthNotice>
         )}
 
-        {view === 'password' && !linkSent && passwordlessNotice && (
-          <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '13px 15px', marginBottom: 16 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>
-              Check your email
-            </div>
-            <div style={{ fontSize: 12.5, color: 'var(--gw-navy)', lineHeight: 1.6 }}>
-              {passwordlessNotice}
-            </div>
-          </div>
-        )}
-
-        {/* `!linkSent`: on /auth/sent this whole form rendered above the panel. W8-62. */}
-        {view === 'password' && !linkSent && (
-          <>
-            <form noValidate onSubmit={submitPassword}>
-              <div className="gw-fld">
-                <label className="gw-label" htmlFor="signin-email">Email</label>
-                <input
-                  id="signin-email"
-                  className="gw-input"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={e => { setEmail(e.target.value); clearNotices() }}
-                  autoFocus
-                />
-              </div>
-              <div className="gw-fld">
-                <label className="gw-label" htmlFor="signin-password">Password</label>
-                <input
-                  id="signin-password"
-                  className="gw-input"
-                  type="password"
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={e => { setPassword(e.target.value); clearNotices() }}
-                />
-              </div>
-
-              <button className="gw-btn" type="submit" disabled={signIn.isPending}>
-                {signIn.isPending ? 'Signing in…' : 'Sign in'}
-              </button>
-              {googleFailed && !error && (
-                <div role="alert" style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.5, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 8, padding: '8px 10px' }}>
-                  Google sent you back but we could not finish signing you in. Your email and password still work below. We have a note of what went wrong at our end.
-                </div>
-              )}
-              {sessionExpired && !error && (
-                <div role="status" style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.5, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 8, padding: '8px 10px' }}>
-                  You were signed out because you had been away a while. Sign in and we will take you back to where you were - nothing you wrote has been lost.
-                </div>
-              )}
-              {error && <div className="gw-er" role="alert" style={{ marginTop: 8 }}>{error}</div>}
-            </form>
-
-              {/* Rendered only when the server confirms it can complete the
-                  flow. A full page navigation, not fetch: OAuth begins with a
-                  redirect the browser has to follow. */}
-              {methods?.google && (
-                <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '16px 0 12px' }}>
-                    <span style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
-                    <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>or</span>
-                    <span style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => { window.location.href = `${API_ORIGIN}/api/v1/auth/google` }}
-                    style={{ width: '100%', padding: '10px 0', borderRadius: 7, background: 'white', color: 'var(--gw-text)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9 }}
-                  >
-                    {/*
-                      * ONE MARK. There were two, stacked, on the sign-up side only - the sign-in
-                      * button below has always had one. Added twice when the logo went in and
-                      * never seen, because the change was checked on the sign-in half.
-                      */}
-                    <GoogleMark />
-                    Continue with Google
-                  </button>
-                </>
-              )}
-
-
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 14, lineHeight: 2 }}>
-              <TextAction onClick={() => { clearNotices(); setView('forgot') }}>Forgot your password?</TextAction>
-              <br />
-              <TextAction strong onClick={() => { clearNotices(); setView('create') }}>New here? Sign up</TextAction>
-            </div>
-          </>
-        )}
-
-        {view === 'create' && !linkSent && (
-          <>
-            <div className="gw-sub-t" style={{ marginBottom: 20 }}>
-              No password to choose. We send you a link, and your account is made when you open it.
-            </div>
-
+        <form noValidate onSubmit={submitPassword}>
+          {trap.field}
+          <Stack gap={10}>
+            {/* "Email", not the prototype's "Your work email": which label to use is waiting for Hafsah. */}
+            <AuthField
+              id="signin-email"
+              label="Email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={v => { setEmail(v); clearNotices() }}
+              autoFocus
+            />
+            <PasswordField
+              id="signin-password"
+              label="Password"
+              autoComplete="current-password"
+              value={password}
+              onChange={v => { setPassword(v); clearNotices() }}
+            />
+            {error && <AuthError>{error}</AuthError>}
+            <Button type="submit" wide disabled={signIn.isPending}>
+              {signIn.isPending ? 'Signing you in…' : 'Sign in'}
+            </Button>
             {/*
-              WHAT IS WAITING FOR THIS ADDRESS. Somebody promised three months on the house should
-              read it here, while they are deciding, rather than find out on their first invoice.
-              See what-is-waiting-for-this-address.ts and the API's on-the-house route.
+              THE WAY IN FOR SOMEBODY WITH NO PASSWORD, ON THE SCREEN THEY START FROM.
+              It used to be reachable only from a link carrying ?mode=member, so a person who had
+              never set a password stood in front of a password box with no visible way past it.
+              It sends a link to the address typed above, through the same door as every sign-in
+              link, and gives the same answer whether or not the address has an account.
             */}
-            {freeRun && (
-              <div style={{ marginBottom: 18, padding: '11px 14px', borderRadius: 8,
-                            background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)', fontSize: 13.5 }}>
-                {freeRun}
-              </div>
-            )}
+            <Button kind="secondary" wide disabled={sendLink.isPending} onClick={askForALink}>
+              {sendLink.isPending ? 'Sending…' : 'Email me a sign-in link instead'}
+            </Button>
+            {googleButton('Sign in with Google')}
+          </Stack>
+        </form>
 
-            <form noValidate onSubmit={e => { e.preventDefault(); setError(''); if (!looksLikeAnAddress(email)) { setError(NOT_AN_ADDRESS); return } createAccount.mutate() }}>
-              {trap.field}
-              <div className="gw-fld">
-                <label className="gw-label" htmlFor="signup-name">Your name</label>
-                <input
-                  id="signup-name"
-                  className="gw-input"
-                  placeholder="Sam Taylor"
-                  value={firstName}
-                  onChange={e => { setFirstName(e.target.value); clearNotices() }}
-                  autoFocus
-                />
-              </div>
-              <div className="gw-fld">
-                {/*
-                  * "WORK EMAIL" WAS TURNING PEOPLE AWAY FOR NOTHING.
-                  *
-                  * Nothing in the code has ever required a company domain - not this form, not the
-                  * API, not the org creation. The label was the only thing saying otherwise, and a
-                  * label is enough: somebody who runs a real company off a Gmail address reads
-                  * "Work email" as "not for you" and closes the tab. The people most likely to be
-                  * turned away are exactly the small teams this is for.
-                  *
-                  * The placeholder said the same thing a second time, so it changes too.
-                */}
-                <label className="gw-label" htmlFor="signup-email">Email</label>
-                <input
-                  id="signup-email"
-                  className="gw-input"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={e => { setEmail(e.target.value); clearNotices() }}
-                />
-              </div>
-              <div className="gw-fld">
-                {/*
-                  ASKED, NOT GUESSED. Left empty this becomes "Sam's workspace" from
-                  the name - which is the current behaviour for everybody, because
-                  nothing ever asked. It is optional because a person signing up to
-                  try it should not be stopped by a naming decision.
-                */}
-                <label className="gw-label" htmlFor="signup-org">Your organisation <span style={{ color: 'var(--gw-muted)', fontWeight: 400 }}>(optional)</span></label>
-                <input
-                  id="signup-org"
-                  className="gw-input"
-                  placeholder="Acme Ltd"
-                  value={orgName}
-                  onChange={e => { setOrgName(e.target.value); clearNotices() }}
-                />
-                <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 5, lineHeight: 1.5 }}>
-                  What your organisation will be called. You can change it later.
-                </div>
-              </div>
-
-              {error && <div className="gw-er" role="alert" style={{ marginBottom: 10 }}>{error}</div>}
-
-              <button className="gw-btn" type="submit" disabled={createAccount.isPending}>
-                {createAccount.isPending ? 'Sending…' : 'Create my account →'}
-              </button>
-            </form>
-
-            {/* Same door as sign-in: an existing Google account signs in, a new one creates
-                a workspace automatically - findOrCreateGoogleUser decides which, not this button. */}
-            {methods?.google && (
-              <>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '16px 0 12px' }}>
-                  <span style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
-                  <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>or</span>
-                  <span style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => { window.location.href = `${API_ORIGIN}/api/v1/auth/google` }}
-                  style={{ width: '100%', padding: '10px 0', borderRadius: 7, background: 'white', color: 'var(--gw-text)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9 }}
-                >
-                  <GoogleMark />
-                  Continue with Google
-                </button>
-              </>
-            )}
-
-            <div style={{ textAlign: 'center', marginTop: 16 }}>
-              <TextAction onClick={() => { clearNotices(); setView('password') }}>Already have an account? Sign in</TextAction>
-            </div>
-          </>
-        )}
-
-        {view === 'link' && !linkSent && (
-          <>
-            <div className="gw-sub-t" style={{ marginBottom: 20 }}>
-              {isSignup
-                ? 'Enter your email. We will send you a link that creates your account. No password to choose.'
-                : 'Enter your email. We will send you a link. It signs you in, or creates an account if you do not have one.'}
-            </div>
-
-            <form noValidate onSubmit={submitLink}>
-              {trap.field}
-              <div className="gw-fld">
-                <label className="gw-label" htmlFor="link-email">Email</label>
-                <input
-                  id="link-email"
-                  className="gw-input"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={e => { setEmail(e.target.value); clearNotices() }}
-                  autoFocus
-                />
-              </div>
-
-              <button className="gw-btn" type="submit" disabled={sendLink.isPending}>
-                {sendLink.isPending ? 'Sending…' : 'Send link'}
-              </button>
-              {error && <div className="gw-er" role="alert" style={{ marginTop: 8 }}>{error}</div>}
-            </form>
-
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 14 }}>
-              <TextAction onClick={() => { clearNotices(); setView('password') }}>Sign in with password instead</TextAction>
-            </div>
-          </>
-        )}
-
-        {view === 'forgot' && !linkSent && !resetSent && (
-          <>
-            <div className="gw-sub-t" style={{ marginBottom: 20 }}>
-              Enter your email and we will send you a link to reset your password.
-            </div>
-
-            <form noValidate onSubmit={(e) => { e.preventDefault(); setError(''); if (!looksLikeAnAddress(email)) { setError(NOT_AN_ADDRESS); return } sendReset.mutate() }}>
-              <div className="gw-fld">
-                <label className="gw-label" htmlFor="forgot-email">Email</label>
-                <input
-                  id="forgot-email"
-                  className="gw-input"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={e => { setEmail(e.target.value); clearNotices() }}
-                  autoFocus
-                />
-              </div>
-
-              <button className="gw-btn" type="submit" disabled={sendReset.isPending}>
-                {sendReset.isPending ? 'Sending…' : 'Send reset link'}
-              </button>
-              {error && <div className="gw-er" role="alert" style={{ marginTop: 8 }}>{error}</div>}
-            </form>
-
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 14 }}>
-              <TextAction onClick={() => { clearNotices(); setView('password') }}>Back to sign in</TextAction>
-            </div>
-          </>
-        )}
-
-        {view === 'forgot' && resetSent && (
-          <div style={{ textAlign: 'center', paddingTop: 12 }}>
-            <div style={{ fontSize: 22, marginBottom: 8 }}>✓</div>
-            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>Check your email</div>
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-              If an account exists for <strong>{email}</strong>, a password reset link is on its way. It expires in 1 hour.
-            </div>
-            <div style={{ marginTop: 16 }}>
-              <TextAction size={13} onClick={() => { setResetSent(false); setView('password') }}
-              >
-                Back to sign in
-              </TextAction>
-            </div>
-          </div>
-        )}
-
-        {linkSent && (
-          <LinkSentPanel
-            email={email}
-            onUseDifferent={() => { setLinkSent(false); setView(defaultView === 'create' ? 'create' : 'link') }}
-          />
-        )}
-
-        <div style={{ fontSize: 11, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--gw-border)', lineHeight: 1.6 }}>
-          One check-in each. One report showing where the team agrees, where it differs, and what to do next.
+        <div className="gwui-button-row">
+          <Button kind="quiet" onClick={() => { clearNotices(); setView('forgot') }}>Forgot password?</Button>
+          <Button kind="quiet" onClick={() => { clearNotices(); setView('create') }}>New here? Sign up</Button>
         </div>
+      </AuthSplit>
+    )
+  }
 
+  /* "Check your email", after a link has gone. */
+  if (linkSent) {
+    return (
+      <LinkSentPanel
+        email={email}
+        resend={sendTheLinkAgain}
+        onUseDifferent={() => { setLinkSent(false); setView(defaultView === 'create' ? 'create' : 'link') }}
+        withPassword={sentBy === 'create' && createdWithPassword}
+      />
+    )
+  }
+
+  if (view === 'create') {
+    const submitCreate = (e: React.FormEvent) => {
+      e.preventDefault()
+      setError('')
+      const wrong = whatIsWrongWithTheAddress(email)
+      if (wrong) { setError(wrong); return }
+      if (signInBy === 'password' && !meetsTodaysPasswordRules(newPassword, newConfirm, email)) {
+        setError(newPassword !== newConfirm && meetsTodaysPasswordRules(newPassword, undefined, email)
+          ? 'The two passwords are not the same. Type the same password in both boxes.'
+          : 'Your password does not meet every rule in the list yet.')
+        return
+      }
+      createAccount.mutate()
+    }
+    const google = googleButton('Sign up with Google')
+    return (
+      <AuthCard title="Create your account" sub={trialSentence ?? 'We send you a link to confirm your email. Your account is made when you open it.'}>
+        {/*
+          WHAT IS WAITING FOR THIS ADDRESS. Somebody promised a month on the house should
+          read it here, while they are deciding, rather than find out on their first invoice.
+          See what-is-waiting-for-this-address.ts and the API's on-the-house route.
+        */}
+        {freeRun && <Callout tone="success" role="status">{freeRun}</Callout>}
+
+        {/* Google first, as the prototype draws it. Same door as sign-in: an existing Google account
+            signs in, a new one gets its own organisation. findOrCreateGoogleUser decides which. */}
+        {google && (
+          <>
+            <Stack gap={10}>{google}</Stack>
+            <Note center>or with your email</Note>
+          </>
+        )}
+
+        <form noValidate onSubmit={submitCreate}>
+          {trap.field}
+          <Stack gap={10}>
+            <AuthField id="signup-name" label="Your name" value={firstName} onChange={v => { setFirstName(v); clearNotices() }} autoFocus />
+            {/* "Email", not "Work email": Hafsah's decision of 26 September. Nothing requires a company address. */}
+            <AuthField id="signup-email" label="Email" type="email" autoComplete="email" value={email} onChange={v => { setEmail(v); clearNotices() }} />
+            {/*
+              ASKED, NOT GUESSED. Left empty this becomes "Sam's workspace" from the name. Optional,
+              because a person signing up to try it should not be stopped by a naming decision.
+            */}
+            {!fromAnInviteLink && (
+              <div>
+                <AuthField id="signup-org" label="Your organisation (optional)" value={orgName} onChange={v => { setOrgTouched(true); setOrgName(v); clearNotices() }} />
+                <p className="gwui-field-help">
+                  {!orgTouched && suggestedOrg && orgName === suggestedOrg
+                    ? 'We suggested this from your email address. You can change it now or later.'
+                    : 'What your organisation will be called. You can change it later.'}
+                </p>
+              </div>
+            )}
+
+            <div>
+              <p className="gwui-field-label">How would you like to sign in?</p>
+              {/* `quiet` (walkthrough pass 2, item 4): "Create account" below is this page's one
+                  navy button - the prototype's own sign-up screen has only the one (signup.txt). */}
+              <Choices
+                label="How would you like to sign in?"
+                value={signInBy}
+                onChange={k => { setSignInBy(k as 'link' | 'password'); clearNotices() }}
+                quiet
+                options={[
+                  { key: 'link', label: 'With a link we email you' },
+                  { key: 'password', label: 'With a password' },
+                ]}
+              />
+            </div>
+
+            {signInBy === 'password' && (
+              <Stack gap={10}>
+                <PasswordField id="signup-password" label="Password" autoComplete="new-password" value={newPassword} onChange={v => { setNewPassword(v); clearNotices() }} />
+                <PasswordField id="signup-confirm" label="Type it again"
+                spokenAs="password you typed again" autoComplete="new-password" value={newConfirm} onChange={v => { setNewConfirm(v); clearNotices() }} />
+                <PasswordRules password={newPassword} confirm={newConfirm} email={email.trim() || null} />
+              </Stack>
+            )}
+
+            {error && <AuthError>{error}</AuthError>}
+            <Button type="submit" wide disabled={createAccount.isPending}>
+              {createAccount.isPending ? 'Sending…' : 'Create account'}
+            </Button>
+          </Stack>
+        </form>
+
+        <p className="gwui-fine">
+          Already have an account?{' '}
+          <Button kind="quiet" onClick={() => { clearNotices(); setView('password') }}>Sign in</Button>
+        </p>
+      </AuthCard>
+    )
+  }
+
+  if (view === 'link') {
+    return (
+      <AuthCard
+        title="Get a sign-in link"
+        sub={isSignup
+          ? 'Enter your email. We will send you a link that creates your account.'
+          : 'Enter your email. We will send you a link. It signs you in, or creates an account if you do not have one.'}
+      >
+        <form noValidate onSubmit={submitLink}>
+          {trap.field}
+          <Stack gap={10}>
+            <AuthField id="link-email" label="Email" type="email" autoComplete="email" value={email} onChange={v => { setEmail(v); clearNotices() }} autoFocus />
+            {error && <AuthError>{error}</AuthError>}
+            <Button type="submit" wide disabled={sendLink.isPending}>
+              {sendLink.isPending ? 'Sending…' : 'Email me a sign-in link'}
+            </Button>
+          </Stack>
+        </form>
+        <div className="gwui-button-row">
+          <Button kind="quiet" onClick={() => { clearNotices(); setView('password') }}>Sign in with a password instead</Button>
+        </div>
+      </AuthCard>
+    )
+  }
+
+  /* FORGOT YOUR PASSWORD (A2, #/forgot), and "Check your email" once the reset link has gone. */
+  if (resetSent) {
+    return (
+      <LinkSentPanel
+        forReset
+        email={email}
+        /* The reset goes again through forgot-password, the door that sent it. */
+        resend={() => authApi.forgotPassword(email.trim().toLowerCase())}
+        onUseDifferent={() => setResetSent(false)}
+      />
+    )
+  }
+  return (
+    <AuthCard title="Forgot your password?" sub="We’ll email you a link to choose a new one. It works for an hour.">
+      <form noValidate onSubmit={(e) => { e.preventDefault(); setError(''); { const wrong = whatIsWrongWithTheAddress(email); if (wrong) { setError(wrong); return } } sendReset.mutate() }}>
+        <Stack gap={10}>
+          {/* "Email", not the prototype's "Work email": which label to use is waiting for Hafsah. */}
+          <AuthField id="forgot-email" label="Email" type="email" autoComplete="email" value={email} onChange={v => { setEmail(v); clearNotices() }} autoFocus />
+          {error && <AuthError>{error}</AuthError>}
+          <Button type="submit" wide disabled={sendReset.isPending}>
+            {sendReset.isPending ? 'Sending…' : 'Email me a reset link'}
+          </Button>
+        </Stack>
+      </form>
+      <div className="gwui-button-row">
+        <Button kind="quiet" onClick={() => { clearNotices(); setView('password') }}>Back to sign in</Button>
+        <Button kind="quiet" onClick={() => { clearNotices(); setView('create') }}>New here? Sign up</Button>
       </div>
-    </div>
+    </AuthCard>
   )
 }

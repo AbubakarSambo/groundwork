@@ -1,3 +1,4 @@
+import { theyAreConnectedOnWhatsApp } from '../whatsapp/connect-whatsapp';
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
@@ -7,6 +8,9 @@ import { GroundworkEvents, RoundCompletedEvent, CheckInCompletedEvent, CheckInOp
 import { roundCompletedPayload, checkInCompletedPayload, checkInOpenedPayload, blockerPayload, handoverReadyPayload, scenarioProposedPayload } from './what-a-webhook-may-carry';
 import { WorkspaceNotifierService } from '../workspace/workspace-notifier.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { theCheckInIsOpen } from '../whatsapp/what-goes-to-a-phone';
+import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
+import { leaveOfThePeopleOn, awayUntilOn } from '../suites/who-is-away';
 
 /**
  * WHERE `round.completed` FINALLY REACHES SOMEBODY.
@@ -86,37 +90,19 @@ export class WebhooksListener {
   @OnEvent(GroundworkEvents.CHECK_IN_OPENED)
   async onCheckInOpened(e: CheckInOpenedEvent) {
     try {
-      const ground = await this.prisma.ground.findUnique({ where: { id: e.groundId }, select: { organizationId: true, label: true, overWhatsApp: true } });
+      const ground = await this.prisma.ground.findUnique({ where: { id: e.groundId }, select: { organizationId: true, label: true, overWhatsApp: true, simplerWords: true } });
       if (!ground) return;
       /*
-       * AND ON WHATSAPP, WHEN THE ORGANISATION HAS ITS OWN NUMBER. The person replies to this message
-       * and the reply is their first answer. Best effort: a message that could not go is logged, and
-       * the webhook below still fires.
+       * AND ON WHATSAPP, EVERY SESSION, ON WHICHEVER NUMBER THE ORGANISATION USES (survey item 7).
+       *
+       * This went only to an organisation with its own number connected, so on Groundwork's number
+       * the first session was never announced on WhatsApp at all, and later ones went as a second,
+       * separate message from the session-ready sweep. Now this is the one notice for every session:
+       * `sendFor` sends from the organisation's own number when it has one, and from Groundwork's
+       * otherwise. The person replies to this message and the reply is their first answer. Best
+       * effort: a message that could not go is recorded and logged, and the webhook below still fires.
        */
-      if (e.personExternalId) {
-        const person = await this.prisma.person.findFirst({
-          where: { organizationId: ground.organizationId, externalId: e.personExternalId },
-          select: { phone: true },
-        });
-        const connected = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId: ground.organizationId }, select: { enabled: true } }).catch(() => null);
-        /*
-         * AND WHETHER THIS CHECK-IN IS ONE THAT GOES TO A PHONE.
-         *
-         * It was the organisation's connection and nothing else: connect a number and every
-         * check-in in the organisation went to WhatsApp, with no way to say that this one should
-         * stay in the app. A lead setting up a sensitive conversation had no way to keep it off
-         * people's phones, and nowhere to look for one.
-         *
-         * Null is "whatever the organisation does", which is exactly the behaviour above, so a
-         * ground that has never answered the question is unaffected.
-         */
-        if (person?.phone && connected?.enabled && ground.overWhatsApp !== false) {
-          const which = e.sessionNumber === 1 ? 'Your first check-in' : `Check-in ${e.sessionNumber}`;
-          /* Business-initiated: goes as free text inside the window, as a template outside it, or not at all. */
-          await this.whatsapp.sendFor(ground.organizationId, person.phone, `${which} on "${ground.label}" is open. Reply here to do it: about ten minutes, and what you say is released with everybody else's, not before.`, { checkInId: e.checkInId, kind: 'opening' })
-            .catch((err) => this.logger.warn(`WhatsApp opening notice failed for ${e.checkInId}: ${err?.message}`));
-        }
-      }
+      await this.announceOnWhatsApp(e, ground).catch((err) => this.logger.warn(`WhatsApp opening notice failed for ${e.checkInId}: ${err?.message}`));
       await this.webhooks.emit(
         ground.organizationId,
         'checkin.opened',
@@ -132,6 +118,44 @@ export class WebhooksListener {
     } catch (err: any) {
       this.logger.warn(`Could not queue checkin.opened for ${e.checkInId}: ${err.message}`);
     }
+  }
+
+  /**
+   * THE OPENING NOTICE, TO THE PERSON'S PHONE.
+   *
+   * Their number is the roster's, then the one they gave in Settings; a guest is never matched to an
+   * entry on the host's list (see a-guest-is-never-somebody-on-the-hosts-list). Nobody on approved
+   * leave today is told, as with the email. A check-in the lead keeps in the app never goes to a
+   * phone (`overWhatsApp = false`; null is "whatever the organisation does"). STOP and the 24-hour
+   * window are the sender's to keep.
+   */
+  private async announceOnWhatsApp(
+    e: CheckInOpenedEvent,
+    ground: { organizationId: string; label: string; overWhatsApp: boolean | null; simplerWords?: boolean | null },
+  ): Promise<void> {
+    if (ground.overWhatsApp === false) return;
+    const participant = await this.prisma.groundParticipant.findUnique({
+      where: { id: e.participantId },
+      select: { id: true, email: true, userId: true, user: { select: { firstName: true, email: true, phoneNumber: true } } },
+    });
+    if (!participant) return;
+    const guest = await isAGuestIn(this.prisma, ground.organizationId, { userId: participant.userId, email: participant.email, userEmail: participant.user?.email });
+    if (guest) return;
+    const person = e.personExternalId
+      ? await this.prisma.person.findFirst({ where: { organizationId: ground.organizationId, externalId: e.personExternalId }, select: { phone: true } })
+      : null;
+    const phone = person?.phone ?? participant.user?.phoneNumber ?? null;
+    if (!phone) return;
+    /* One channel for an opening (Hafsah, 14 October): WhatsApp only where they have joined there; otherwise the email carries it. */
+    if (!(await theyAreConnectedOnWhatsApp(this.prisma, { organizationId: ground.organizationId, userId: participant.userId, email: participant.user?.email ?? participant.email }))) return;
+    const leave = await leaveOfThePeopleOn(this.prisma, [e.groundId]);
+    if (awayUntilOn(leave.get(participant.id))) return;
+    /* Told once: somebody invited by their number was already sent this opening before they joined (D2). */
+    const already = await Promise.resolve((this.prisma as any).whatsAppSend?.findFirst?.({ where: { checkInId: e.checkInId, kind: { startsWith: 'checkin-open' } }, select: { id: true } })).catch(() => null);
+    if (already) return;
+    const said = theCheckInIsOpen({ firstName: participant.user?.firstName, label: ground.label }, ground.simplerWords);
+    /* Business-initiated: goes as free text inside the window, as a template outside it, or not at all. */
+    await this.whatsapp.sendFor(ground.organizationId, phone, said.text, { checkInId: e.checkInId, kind: said.kind, params: said.params });
   }
 
   @OnEvent(GroundworkEvents.CHECK_IN_COMPLETED)

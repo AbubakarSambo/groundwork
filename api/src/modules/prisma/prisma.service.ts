@@ -35,32 +35,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
    * failed sign-up is a person who cannot get in at all.
    */
   private membershipFollowsTheUser() {
-    this.$use(async (params, next) => {
-      if (params.model !== 'User' || params.action !== 'create') return next(params);
-
-      /**
-       * THE MEMBERSHIP IS ADDED TO THE CREATE, NOT WRITTEN AFTER IT.
-       *
-       * The first attempt did the obvious thing - let the user be created, then upsert the
-       * membership - and it failed on every sign-up, silently, into the log line below. Every one of
-       * the nine `user.create` calls runs inside a `$transaction`, so the user row does not exist yet
-       * on any other connection: the dependent write has nothing to point at.
-       *
-       * Nesting it into the same create means Prisma issues both inside whatever transaction the
-       * caller is already running. Found by making the fix, testing it against a real sign-up, and
-       * getting zero memberships again.
-       */
-      const data = params.args?.data;
-      const orgId = data?.organizationId ?? data?.organization?.connect?.id ?? null;
-      /** A caller that builds its own memberships is left alone rather than given two. */
-      if (data && orgId && !data.memberships) {
-        params.args.data = {
-          ...data,
-          memberships: { create: { organizationId: orgId, role: data.role ?? 'MEMBER' } },
-        };
-      }
-      return next(params);
-    });
+    this.$use(async (params, next) => next(theMembershipFollowsTheUser(params)));
   }
 
   async onModuleInit() {
@@ -84,22 +59,44 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
    * `key`. Across multiple API replicas, exactly one wins the lock and runs the
    * body; the others skip. This prevents crons from double-charging, double-
    * sending email, or double-sweeping when the app is scaled horizontally.
-   * (GW-60.) The lock is session-scoped and released in `finally`.
+   * (GW-60.) The lock is a transaction lock on one connection, released when the job ends.
    */
   async withAdvisoryLock(key: number, fn: () => Promise<void>): Promise<boolean> {
-    const rows = await this.$queryRaw<{ locked: boolean }[]>`SELECT pg_try_advisory_lock(${key}) AS locked`;
-    if (!rows[0]?.locked) {
-      this.logger.debug(`Advisory lock ${key} held elsewhere - skipping this run`);
-      return false;
-    }
-    try {
-      await fn();
-      return true;
-    } finally {
-      await this.$queryRaw`SELECT pg_advisory_unlock(${key})`;
-    }
+    /*
+     * THE LOCK IS HELD ON ONE CONNECTION FOR THE WHOLE JOB (6 October).
+     *
+     * This took `pg_try_advisory_lock` and `pg_advisory_unlock` as two separate queries, and each went
+     * through whichever pooled connection was free. When the unlock went through a different
+     * connection it released nothing, the lock stayed on the first connection for as long as that
+     * connection lived, and every later run that landed on another connection was told "held
+     * elsewhere" and skipped without a word. The WhatsApp builder saw the half-hour warning skip for
+     * exactly this reason, and reminders and the lead's daily summary run under the same helper.
+     *
+     * Now the lock is a transaction lock, taken inside one interactive transaction: one connection,
+     * held while the job runs, and released by Postgres itself when the transaction ends, whether the
+     * job finished or threw. Nothing is written inside the transaction; the job does its own work on
+     * the ordinary client, so a failing job rolls back nothing of its own.
+     */
+    let ran = false;
+    await this.$transaction(
+      async (tx) => {
+        const rows = await tx.$queryRaw<{ locked: boolean }[]>`SELECT pg_try_advisory_xact_lock(${key}) AS locked`;
+        if (!rows[0]?.locked) {
+          this.logger.debug(`Advisory lock ${key} held elsewhere - skipping this run`);
+          return;
+        }
+        await fn();
+        ran = true;
+      },
+      /* A job may make model calls and send mail for a while; the lock must outlast it. */
+      { maxWait: 10_000, timeout: A_JOB_MAY_HOLD_ITS_LOCK_FOR_MS },
+    );
+    return ran;
   }
 }
+
+/** How long one scheduled job may hold its lock before Postgres takes it back: one hour. */
+export const A_JOB_MAY_HOLD_ITS_LOCK_FOR_MS = 60 * 60 * 1000;
 
 /** Stable advisory-lock keys, one per scheduled job. Arbitrary but distinct. */
 export const CronLock = {
@@ -121,4 +118,41 @@ export const CronLock = {
   INVITE_EXPIRY: 920_011,
   /** The daily sweep of unredeemed Google sign-in codes. See auth/auth.cron.ts. */
   OAUTH_CODES: 920_012,
+  /** The reminder to carry on, for somebody who stopped halfway on WhatsApp. See grounds.cron.ts remindThoseWhoStoppedHalfway. */
+  HALFWAY_REMINDERS: 920_013,
+  /** The nightly clean-up of words held on WhatsApp for a yes or no past their ten minutes. See public-api/a-held-request-does-not-outlive-its-ten-minutes.cron.ts. */
+  HELD_REQUESTS: 920_014,
 } as const;
+
+/**
+ * THE HOOK'S OWN RULE, AS A PLAIN FUNCTION (U.3 review), so a test can put a real `user.create` through
+ * exactly what the database client does to it. `membershipFollowsTheUser` runs every create through
+ * this. A caller that wants a membership with more on it (a role or how they joined) nests its own
+ * `memberships`, and this leaves it alone, so there is one membership, never two.
+ */
+export function theMembershipFollowsTheUser<P extends { model?: string; action: string; args?: any }>(params: P): P {
+  if (params.model !== 'User' || params.action !== 'create') return params;
+
+  /**
+   * THE MEMBERSHIP IS ADDED TO THE CREATE, NOT WRITTEN AFTER IT.
+   *
+   * The first attempt did the obvious thing - let the user be created, then upsert the
+   * membership - and it failed on every sign-up, silently, into the log line below. Every one of
+   * the nine `user.create` calls runs inside a `$transaction`, so the user row does not exist yet
+   * on any other connection: the dependent write has nothing to point at.
+   *
+   * Nesting it into the same create means Prisma issues both inside whatever transaction the
+   * caller is already running. Found by making the fix, testing it against a real sign-up, and
+   * getting zero memberships again.
+   */
+  const data = params.args?.data;
+  const orgId = data?.organizationId ?? data?.organization?.connect?.id ?? null;
+  /** A caller that builds its own memberships is left alone rather than given two. */
+  if (data && orgId && !data.memberships) {
+    params.args.data = {
+      ...data,
+      memberships: { create: { organizationId: orgId, role: data.role ?? 'MEMBER' } },
+    };
+  }
+  return params;
+}

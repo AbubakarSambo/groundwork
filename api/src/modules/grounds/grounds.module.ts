@@ -2,11 +2,27 @@ import { Module } from '@nestjs/common';
 import { GroundsService } from './grounds.service';
 import { GroundsController } from './grounds.controller';
 import { GroundsCron } from './grounds.cron';
+import { AskingForMoreTimeService } from './asking-for-more-time.service';
+import { AskingForMoreTimeController } from './asking-for-more-time.controller';
 import { ParticipantRequestsController } from './participant-requests.controller';
+import { TodayController } from './today.controller';
+import { WhatNeedsYouService } from './what-needs-you.service';
+import { YouController } from './you.controller';
+import { YourBoardService } from './your-board.service';
+import { CheckInLinksController } from './check-in-links.controller';
+import { CheckInLinksService } from './check-in-links.service';
+import { CompanyController } from './company.controller';
+import { CompanyService } from './company.service';
+import { CompanyPictureService } from './the-company-picture.service';
+import { APlanIsManyProposalsService } from './a-plan-is-many-proposals.service';
+import { RecommendedCheckInsController } from './recommended-check-ins.controller';
+import { RecommendedCheckInsService } from './recommended-check-ins.service';
 import { BillingModule } from '../billing';
 import { PatternsModule } from '../patterns/patterns.module';
 import { UsageModule } from '../usage/usage.module';
 import { ConversationModule } from '../conversation/conversation.module';
+import { SuggestionsModule } from '../suggestions/suggestions.module';
+import { SuitesModule } from '../suites/suites.module';
 
 @Module({
   /**
@@ -18,9 +34,9 @@ import { ConversationModule } from '../conversation/conversation.module';
    * invisible to tsc and to unit tests that construct services by hand - only
    * starting the thing finds it.
    */
-  imports: [BillingModule, PatternsModule, UsageModule, ConversationModule],
-  controllers: [GroundsController, ParticipantRequestsController],
-  providers: [GroundsService, GroundsCron],
+  imports: [BillingModule, PatternsModule, UsageModule, ConversationModule, SuggestionsModule, SuitesModule],
+  controllers: [GroundsController, ParticipantRequestsController, AskingForMoreTimeController, TodayController, YouController, CompanyController, CheckInLinksController, RecommendedCheckInsController],
+  providers: [GroundsService, GroundsCron, AskingForMoreTimeService, WhatNeedsYouService, YourBoardService, CompanyService, CompanyPictureService, CheckInLinksService, APlanIsManyProposalsService, RecommendedCheckInsService],
   exports: [GroundsService],
 })
 export class GroundsModule {}

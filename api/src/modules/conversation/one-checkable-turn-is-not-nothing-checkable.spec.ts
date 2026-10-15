@@ -24,15 +24,26 @@ describe('a single turn', () => {
 });
 
 describe('the session level and the board', () => {
-  const service = strip(readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8'));
+  /* The read moved out of conversation.service.ts into the-specificity-read.ts, so a stored session is
+     brought up to date by the same rule (request 103). The same lines are pinned there. */
+  const service = strip(readFileSync(join(__dirname, 'the-specificity-read.ts'), 'utf8'));
   const board = strip(readFileSync(join(__dirname, '..', 'board', 'board.service.ts'), 'utf8'));
   it('read the level over substantive turns and keep whether any turn was checkable', () => {
-    expect(service).toContain("const substantive = all.filter((r, i) => r.checkable || (personTurns[i].content ?? '').trim().split(/\\s+/).length > 3);");
-    expect(service).toContain("checkable:  anyCheckable ? 'specific' : NOTHING_SAID,");
+    expect(service).toContain("const substantive = all.filter((r, i) => r.checkable || (turns[i] ?? '').trim().split(/\\s+/).length > 3);");
+    expect(service).toContain("checkable: anyCheckable ? 'specific' : NOTHING_SAID,");
     expect(service).toMatch(/level: anyCheckable && mapSpecificityLevel\(avgSpecificity\) === NOTHING_SAID \? 'vague'/);
   });
-  it('and the board asks that fact before falling back to the level', () => {
-    expect(board).toContain("saidAnythingCheckable: ((thisRound as any)?.specificityDimensions as any)?.checkable === 'specific'");
-    expect(board).toMatch(/completedAt: true, specificityLevel: true, specificityDimensions: true,/);
+  it('and the board asks whether any turn was checkable before it asks the level', () => {
+    /* 27 Sep 2026 (a1747927) the board stopped reading this and asked the record instead. 28 Sep 2026,
+       Hafsah: the rating of how checkable the answers are is needed, and the prototype shows
+       "Nothing checkable" on the lead's board. So the board reads it again, `checkable` first, as it
+       did before, and the record answers only for a check-in not read yet. */
+    /* Moved 14 October into a-round-backed-by-a-document-can-be-checked.ts (pilots after fixes, A5), with a backing
+       document read first; the order after it is the same. */
+    const rule = strip(readFileSync(join(__dirname, '..', 'board', 'a-round-backed-by-a-document-can-be-checked.ts'), 'utf8'));
+    expect(board).toContain('aRoundCanBeChecked(c, recordHasSomething, backedByADocument.has(c?.id))');
+    expect(rule).toContain("if ((checkIn?.specificityDimensions as any)?.checkable === 'specific') return true;");
+    expect(rule).toContain("if (checkIn?.specificityLevel) return !['vague', 'managed'].includes(String(checkIn.specificityLevel).toLowerCase());");
+    expect(rule).toContain('return recordHasSomething;');
   });
 });

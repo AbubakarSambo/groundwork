@@ -178,8 +178,8 @@ export function whichCard(scenario: string, brief: string | null | undefined): W
 
 /** What each card is called, which is what a person sees anywhere the check-in is named. */
 export const WHAT_THE_CARD_IS_CALLED: Record<Exclude<WhichCard, null>, string> = {
-  'keep-the-team-on-track': 'Set Goals and Keep the Team on Track',
-  'connect-goals-across': 'Connect Goals Across the Team',
+  'keep-the-team-on-track': 'Set goals and keep the team on track',
+  'connect-goals-across': 'Connect goals across teams',
 };
 
 export function owedFor(card: WhichCard): Owed[] | null {

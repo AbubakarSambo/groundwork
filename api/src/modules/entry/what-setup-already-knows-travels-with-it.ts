@@ -41,6 +41,8 @@ export interface WhatSetupHasSoFar {
   brief?: string;
   cadence?: string;
   timelineDays?: number;
+  /** They said it runs until they end it (request 37). */
+  runsUntilEnded?: boolean;
   yourRole?: string;
 }
 
@@ -54,6 +56,7 @@ const WHAT_EACH_ONE_IS: { key: keyof WhatSetupHasSoFar; said: string }[] = [
   { key: 'goals', said: 'What they want out of it' },
   { key: 'cadence', said: 'How often they check in' },
   { key: 'timelineDays', said: 'How long it runs, in days' },
+  { key: 'runsUntilEnded', said: 'It runs until they end it, with no set length' },
   { key: 'brief', said: 'What they want the questions to focus on' },
 ];
 

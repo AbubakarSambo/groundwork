@@ -199,11 +199,11 @@ export function OpsResourcesPage() {
         submitLabel="Enter it and check it"
       />
 
-      {register.data?.resources.map((r) => (
+      {(register.data?.resources ?? []).map((r) => (
         <Row key={r.id} resource={r} />
       ))}
 
-      {register.data && register.data.resources.length === 0 && (
+      {register.data && (register.data.resources ?? []).length === 0 && (
         <div style={CARD}>
           Nothing in the register yet. The deck, the site copy and the last campaign are the ones
           worth entering first - they are the ones already in front of people.

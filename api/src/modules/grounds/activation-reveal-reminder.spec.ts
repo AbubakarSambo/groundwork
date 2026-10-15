@@ -27,6 +27,8 @@ function makeService(pendingRevealRows: any[]) {
     ground: {
       findMany: jest.fn(async () => []), // legacy REPORT_READY activation-reminder query - none in this test
     },
+    /* Changed 8 October (decision 117, D14): the job counts the reminders already sent from the record of messages. None has been sent here. */
+    notification: { count: jest.fn(async () => 0) },
   };
   const email: any = {
     sendActivationRevealReminder: jest.fn(async (to: string) => { sentTo.push(to); }),
@@ -38,14 +40,17 @@ function makeService(pendingRevealRows: any[]) {
 }
 
 describe('#4 reveal reminder: nudges a participant sitting on PENDING activation', () => {
-  it('sends the reveal reminder and stamps lastNudgedAt for an eligible participant', async () => {
+  /*
+   * Changed 11 October (decision 139, must-fix 3): it no longer stamps `lastNudgedAt`. That column says a reminder to check in went,
+   * and the lead's letter said "I have already sent reminders to Brian this week" from this mail's stamp (final evaluation, profile 1).
+   */
+  it('sends the reveal reminder for an eligible participant, and never stamps the reminder-to-check-in column', async () => {
     const { service, updated, sentTo } = makeService([
       { id: 'p1', email: 'p1@test.com', ground: { id: 'g1', label: 'Test Ground' }, user: { emailNotifications: true } },
     ]);
     await service.sendReminders();
     expect(sentTo).toEqual(['p1@test.com']);
-    expect(updated).toHaveLength(1);
-    expect(updated[0].where.id).toBe('p1');
+    expect(updated.filter((u) => 'lastNudgedAt' in (u.data ?? {}))).toHaveLength(0);
   });
 
   it('does not send when the participant has opted out of email notifications', async () => {
@@ -55,5 +60,30 @@ describe('#4 reveal reminder: nudges a participant sitting on PENDING activation
     await service.sendReminders();
     expect(sentTo).toEqual([]);
     expect(updated).toHaveLength(0);
+  });
+
+  /*
+   * U.10 REVIEW: "Your report for 'Sales team, Q3' is ready to view" told Faraji this before he
+   * had checked in at all - the query only asked whether the ground's report had been released,
+   * never whether this participant had answered anything. A reveal reminder is about a party's
+   * OWN report being ready, and a party who has never checked in has no report of their own yet.
+   */
+  it('only queries participants who have completed at least one check-in', async () => {
+    const calls: any[] = [];
+    const prisma: any = {
+      withAdvisoryLock: async (_k: number, fn: () => Promise<void>) => { await fn(); return true; },
+      groundParticipant: {
+        findMany: jest.fn(async (args: any) => { calls.push(args); return []; }),
+        update: jest.fn(async () => ({})),
+      },
+      ground: { findMany: jest.fn(async () => []) },
+    };
+    const email: any = { sendActivationRevealReminder: jest.fn(async () => {}) };
+    const config: any = { get: () => 'http://localhost:5173' };
+    const events: any = { emit: jest.fn() };
+    const service = new GroundsCron(prisma, email, config, events, {} as any, {} as any, {} as any);
+    await service.sendReminders();
+    const revealCall = calls.find((c) => c.where.reportActivations);
+    expect(revealCall.where.checkIns).toEqual({ some: { status: 'COMPLETED' } });
   });
 });

@@ -89,3 +89,10 @@ export function seededCapLabel(plan: string): string {
   if (cap == null) return 'Unlimited'
   return `Up to ${cap.toLocaleString('en-US')} people`
 }
+
+/** "20 seats included", as the pricing pages say a plan's seats once any plan can add more (fix list item 6). */
+export function seededSeatsIncludedLabel(plan: string): string {
+  const cap = SEEDED_PLANS[plan]?.memberCap
+  if (cap == null) return 'Unlimited'
+  return `${cap.toLocaleString('en-US')} seats included`
+}

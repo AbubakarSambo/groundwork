@@ -123,10 +123,29 @@ describe('lead-context corpus separation (ReportsService.synthesize)', () => {
       report: { findUnique: jest.fn(async () => null), upsert: jest.fn(async () => ({ id: 'r1' })) },
     };
     const prompts: any = { getActive: jest.fn(async () => ({ id: 'pv1', content: 'synthesize this.' })) };
+    /*
+     * EVERY CORPUS, NOT THE LAST ONE.
+     *
+     * `synthesize` makes more than one model call now - the synthesis itself, and the one that
+     * writes the picture in plain sentences. This kept only the most recent corpus, so it started
+     * asserting against whichever call happened to run last.
+     *
+     * Keeping them all is the stronger test anyway, and it is why the second assertion below
+     * exists: the lead's private note must be in the synthesis corpus, under its own heading, and
+     * must not appear in ANY other corpus. A note that reached the wording call would be the same
+     * leak one surface further on.
+     */
+    const corpora: string[] = [];
     const anthropic: any = {
       extract: jest.fn(async (system: string, history: any[]) => {
-        capturedSystem = system;
-        capturedCorpus = history?.[0]?.content ?? '';
+        const corpus = history?.[0]?.content ?? '';
+        corpora.push(corpus);
+        /* The synthesis is the call that is handed the lead's context. Its system prompt and its
+           corpus are captured together, so neither can be read off a different call. */
+        if (/LEAD-SUPPLIED CONTEXT/.test(corpus)) {
+          capturedCorpus = corpus;
+          capturedSystem = system;
+        }
         return { sharedPicture: 's', agreements: [], divergences: [], centralQuestion: 'q' };
       }),
     };
@@ -138,6 +157,11 @@ describe('lead-context corpus separation (ReportsService.synthesize)', () => {
 
     // the note is present, under its own labelled section
     expect(capturedCorpus).toContain(NOTE);
+
+    /* AND IN NOTHING ELSE. The note is the lead's, and only the synthesis is entitled to it. */
+    for (const other of corpora.filter((c) => c !== capturedCorpus)) {
+      expect(other).not.toContain(NOTE);
+    }
     expect(lines.findIndex((l) => l.startsWith('LEAD-SUPPLIED CONTEXT'))).toBeGreaterThanOrEqual(0);
 
     // record-stream lines look like: [label] (TYPE) text  -- the note must NEVER be one

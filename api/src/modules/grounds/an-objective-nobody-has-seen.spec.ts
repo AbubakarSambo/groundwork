@@ -165,7 +165,8 @@ describe('the rules the three writes used to carry', () => {
 describe('and the state travels with the text', () => {
   it('the ground returns the description and the gate, not just the words', () => {
     expect(CODE).toMatch(/state: objectiveState\(shaped\)/);
-    expect(CODE).toMatch(/described: describeObjective\(shaped\)/);
+    /* Changed 8 October: the words are now told to the reader (the person it is for, or somebody else), so the call also carries who is reading. See an-objective-is-told-to-the-person-it-is-for.spec.ts. */
+    expect(CODE).toMatch(/described: describeObjective\(shaped, \{/);
     expect(CODE).toMatch(/mayBeReadAgainst: mayBeReadAgainst\(shaped\)/);
   });
 

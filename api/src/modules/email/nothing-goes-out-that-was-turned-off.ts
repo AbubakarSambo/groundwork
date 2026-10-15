@@ -66,13 +66,28 @@ export interface WhatTheyWant {
    * must not get the report; the nudges checked this and the broadcasts did not.
    */
   stillHere?: boolean | null;
+  /**
+   * The last day of approved leave that covers today, when they are away (week 23). Dates only: no
+   * reason or kind of leave is ever read. A reminder or a "you have missed" mail does not go to
+   * somebody who is away.
+   */
+  awayUntil?: string | null;
 }
 
 export type WhetherToSend = { send: true } | { send: false; because: string };
 
 /** The senders each per-kind switch governs. */
 export const GOVERNED_BY_THE_DIGEST_SWITCH: ReadonlySet<string> = new Set(['sendRoundDigest']);
-export const GOVERNED_BY_THE_NUDGE_SWITCH: ReadonlySet<string> = new Set(['sendNudge', 'sendAbsenceReminder']);
+/**
+ * THE MAILS THAT CHASE A PERSON TO ANSWER, WHICH DO NOT GO TO SOMEBODY ON APPROVED LEAVE (week 23).
+ * A mail that tells the lead something about the ground is not in this list; only the ones that ask
+ * the person themselves to do something, or tell them they have missed it.
+ */
+export const NOT_SENT_WHILE_AWAY: ReadonlySet<string> = new Set([
+  'sendNudge', 'sendAbsenceReminder', 'sendSessionReady', 'sendInviteAboutToLapse', 'sendFeedbackRequest',
+]);
+
+export const GOVERNED_BY_THE_NUDGE_SWITCH: ReadonlySet<string> = new Set(['sendNudge', 'sendAbsenceReminder', 'sendLeadFirstCheckIn']);
 
 /**
  * Whether this goes out. The whole decision, in one function, called from one place.
@@ -95,6 +110,10 @@ export function whetherToSend(kind: WhatKindOfMail, they: WhatTheyWant | null, s
   }
 
   if (kind !== 'we decided to send it') return { send: true };
+
+  if (they.awayUntil && sender && NOT_SENT_WHILE_AWAY.has(sender)) {
+    return { send: false, because: `they are on approved leave until ${they.awayUntil}, and a reminder does not go to somebody who is away` };
+  }
 
   if (they.unsubscribedAt) {
     return {
@@ -139,6 +158,8 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendPasswordResetEmail: 'the way back in',
   sendJoinConfirmation: 'the way back in',
   sendUserInvite: 'the way back in',
+  /* Added to another organisation, by an admin there (Hafsah, 12 October): an invitation, like sendUserInvite. */
+  sendAddedToAnotherOrganisation: 'the way back in',
   sendParticipantInvite: 'the way back in',
   /* It is one of the two invites, picked by the situation. Classified as the invite it delegates to. */
   sendTheInviteThisGroundSends: 'the way back in',
@@ -159,12 +180,19 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   /* The moment everybody has answered, which is the whole promise of that card. */
   sendTeamUpdateAllIn: 'asked for',
   sendGroundApproved: 'asked for',
+  /* The decision on a request the person made themselves (decision 106 item 7). */
+  sendRequestDecided: 'asked for',
+  /* What waits for the person to approve, said once. An approval is never stopped by the opt-out (decision 109 item 5); the request is also on Today. */
+  sendApprovalsSummary: 'asked for',
   sendGroundDeclined: 'asked for',
   /* Both are answers to something the person or their lead set in motion, so neither is a mail we
      decided to send - and the way-back-in class is for account recovery, which this is not. */
   sendYouAreInNow: 'asked for',
   sendTheyWereNotLetIn: 'asked for',
+  sendTheyAreInNow: 'asked for',
   sendSomebodyIsWaiting: 'asked for',
+  /* A person in the check-in asked the lead for it; the lead gets their request (U.3). */
+  sendMoreTimeAsked: 'asked for',
   sendGroundClosed: 'asked for',
   sendResolutionProposal: 'asked for',
   sendLateCorrectionNotice: 'asked for',
@@ -174,7 +202,8 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendBillingChangeNotification: 'asked for',
   sendPaymentRequestEmail: 'asked for',
   sendPaymentFailed: 'asked for',
-  sendWhoHasNotStarted: 'asked for',
+  /* A chase Groundwork decided to send, told to the lead at the end of the reminders: routine, so the one-a-day rule counts it and her own opt-out stops it (8 October). */
+  sendWhoHasNotStarted: 'we decided to send it',
   /* They sent the invitation; this is what became of it. */
   sendInviteBounced: 'asked for',
   sendInviteLapsed: 'asked for',
@@ -198,10 +227,14 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
 
   /* Nobody asked this morning. Every one of these stops when somebody says stop. */
   sendNudge: 'we decided to send it',
+  /* The lead pressed "Remind": still a reminder, so the person's own opt-out stops it, but never counted or held for the day's one. */
+  sendNudgeFromAPress: 'we decided to send it',
+  /* "Send me that" from the assistant: they asked for it. */
+  sendMeThat: 'asked for',
   sendInviteAboutToLapse: 'we decided to send it',
   /* Their integration has stopped receiving and only our logs knew. An admin decision to make,
      so it is ours to send — but it is about their system rather than about their team. */
-  sendWebhookEndpointDying: 'we decided to send it',
+  sendWebhookEndpointDying: 'asked for',
   sendAbsenceReminder: 'we decided to send it',
   sendSessionReady: 'we decided to send it',
   sendActivationReminder: 'we decided to send it',
@@ -219,8 +252,33 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendTimeRunningOut: 'we decided to send it',
   sendReopenedNotification: 'we decided to send it',
   sendParticipantBlockedNudge: 'we decided to send it',
-  sendCodeExpiryReminder: 'we decided to send it',
+  /* About a code whose time is running out: billing, so the opt-out never stops it (decision 109 item 5). */
+  sendCodeExpiryReminder: 'asked for',
+  /* The free month ending, and ended (15 October): billing, so the opt-out never stops them (decision 109 item 5), but each is
+     still the admin's one routine message that day, and the sweep sends them only in the organisation's working day. */
+  sendFreeMonthEndsSoon: 'asked for',
+  sendFreeMonthEnded: 'asked for',
   sendRoundDigest: 'we decided to send it',
+  /* The lead's weekly letter on the anchor check-ins. Nobody asked this morning, so the stop link stops it. */
+  sendTheLeadsWeeklyLetter: 'we decided to send it',
+  /* Nobody asked for it: a lead who has only tried her own check-in is shown one small real next step, once. */
+  sendTestCheckInMovesOn: 'we decided to send it',
+  /* The one email an existing client gets about what is new, from their own check-ins. */
+  sendHeresWhatIsNew: 'we decided to send it',
+  /* A person's own week, from their own board. Nobody asked for it this morning. */
+  sendYourWeek: 'we decided to send it',
+  /* The lead who set a check-in up and added nobody. */
+  sendLeadFirstCheckIn: 'we decided to send it',
+  /* A week after a report, if the lead has not opened a next session. */
+  sendTheReportFollowUp: 'we decided to send it',
+  /* Invited, and nobody has started: what Groundwork is doing, told to the lead once while it does it. */
+  sendWaitingOnThePeople: 'we decided to send it',
+  /* People have stopped answering: told to the lead once a week as an insight. */
+  sendWhoHasGoneQuiet: 'we decided to send it',
+  /* Decision 136's notice: unclassified it was already treated this way; now it says so. */
+  sendMissedCheckIns: 'we decided to send it',
+  /* What is outstanding for a lead, once each morning when something is (decision 120). */
+  sendTheLeadsDailyNudge: 'we decided to send it',
 };
 
 export function whatThisMailIs(sender: string): WhatKindOfMail {

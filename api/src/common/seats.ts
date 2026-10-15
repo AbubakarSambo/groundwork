@@ -33,3 +33,60 @@ export const SEAT_WHERE = { isActive: true, deletedAt: null, awaitingOrgApproval
 
 /** The same predicate as a filtered relation count, for queries that read many organisations. */
 export const SEAT_RELATION_COUNT = { users: { where: SEAT_WHERE } } as const;
+
+/**
+ * WHO HOLDS A SEAT IN ONE ORGANISATION (U.19). The People page and Plan and billing must say the same
+ * number, and it must be the number the invite gate refuses by.
+ *
+ * Seats were counted by `User.organizationId`, which is only the organisation a person last switched
+ * to. So somebody who belongs here but was looking at another company fell off this count, and a
+ * guest who had switched in to look was counted as one of this organisation's people. The People list
+ * already reads the memberships (U.4), and it lists guests, so the two numbers parted.
+ *
+ * A seat here is a person with a Groundwork account who can use the product (SEAT_WHERE) and
+ * belongs here, as an admin, a lead, somebody who takes part, or a guest. The prototype is the rule:
+ * "They take a seat; you have 73 free." of somebody from outside waiting to be let in (A4
+ * people.txt), and "Every person with a Groundwork account at Baridi Appliances. Guests with no
+ * account don't." (F2). So a guest with an account holds a seat (decided the prototype's way on
+ * 27 September; U.19 had counted guests out without a decision), and only somebody answering by
+ * link with no account holds none, because they have no row here at all.
+ *
+ * Except a guest HELD FOR A SEAT: added when there was no seat for them, so they hold none, are not
+ * offered the check-in, and read "No seat on your plan" until a seat is freed and their invitation
+ * goes (`heldForASeat`, cleared by grounds.service releaseAnyoneWaitingForASeat).
+ *
+ * One older shape is counted too: an account whose organisation is this one but which has no
+ * membership row here at all, which some roster imports left behind. Without it those people would
+ * drop out of the count and the gate would let an organisation past its plan.
+ */
+export function seatsIn(organizationId: string) {
+  return {
+    ...SEAT_WHERE,
+    OR: [
+      { memberships: { some: { organizationId, heldForASeat: false } } },
+      { organizationId, memberships: { none: { organizationId } } },
+    ],
+  };
+}
+
+/**
+ * HOW MANY SEATS EACH ORGANISATION HAS, BY THE SAME RULE AS `seatsIn`, FOR A LIST OF EVERY
+ * ORGANISATION (item 19). The platform console's organisation list counted people by
+ * `User.organizationId` (SEAT_RELATION_COUNT), so an admin who belongs to an organisation but was last
+ * looking at another one fell off its count, and the console read one person fewer than the
+ * organisation's own People page. Read once for every organisation, rather than once per organisation.
+ */
+export async function seatsByOrganisation(prisma: { user: { findMany: (args: any) => Promise<unknown> } }): Promise<Map<string, number>> {
+  const people = (await prisma.user.findMany({
+    where: SEAT_WHERE,
+    select: { organizationId: true, memberships: { select: { organizationId: true, heldForASeat: true } } },
+  })) as { organizationId: string | null; memberships: { organizationId: string; heldForASeat: boolean }[] }[];
+  const seats = new Map<string, number>();
+  for (const p of people) {
+    const here = new Set(p.memberships.filter((m) => !m.heldForASeat).map((m) => m.organizationId));
+    /* The older shape: their organisation, with no membership row there at all. */
+    if (p.organizationId && !p.memberships.some((m) => m.organizationId === p.organizationId)) here.add(p.organizationId);
+    for (const org of here) seats.set(org, (seats.get(org) ?? 0) + 1);
+  }
+  return seats;
+}

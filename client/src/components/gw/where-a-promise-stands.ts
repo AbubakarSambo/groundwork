@@ -35,8 +35,15 @@ function daysBetween(a: Date, b: Date): number {
  *
  * `now` is passed in rather than read, so a test can say what day it is and so two panels rendering
  * a second apart cannot disagree.
+ *
+ * `whoSaid` is only used for the one branch where what is quoted is somebody's own words
+ * (`o.dueSaid`, with no structured `dueDate` behind it) - group 3's review, batch A fault 2. Two
+ * faults in that one sentence: it always said "They said", even on the reader's own row, where the
+ * rest of the page already calls it "You"; and it added "- no date agreed" to a quote that can
+ * itself be a date ("9 October" is a date, said in words rather than picked from a calendar), which
+ * told the reader the opposite of what they had just read.
  */
-export function whereItStands(o: Standing, now: Date): Stand {
+export function whereItStands(o: Standing, now: Date, whoSaid?: { isMine: boolean; name: string }): Stand {
   const status = (o.status ?? 'OPEN').toUpperCase();
 
   /*
@@ -51,12 +58,12 @@ export function whereItStands(o: Standing, now: Date): Stand {
 
   if (!o.dueDate) {
     /*
-     * No date, which is most of them. It says the date is missing rather than treating the promise
-     * as open-ended, because "we never agreed when" is the thing worth noticing here.
+     * No date ON RECORD, which is most of them - but `dueSaid` can itself be a date, said in words
+     * rather than entered as one, so this never claims "no date agreed" over somebody's own words.
      */
-    return o.dueSaid
-      ? { tone: 'quiet', says: `They said "${o.dueSaid}" - no date agreed` }
-      : { tone: 'none', says: null };
+    if (!o.dueSaid) return { tone: 'none', says: null };
+    const who = whoSaid?.isMine ? 'You' : (whoSaid?.name ?? 'They');
+    return { tone: 'quiet', says: `${who} said "${o.dueSaid}"` };
   }
 
   const due = new Date(o.dueDate);

@@ -35,8 +35,16 @@ describe('a person can tell us their own name', () => {
     expect(SETTINGS).toContain('aria-label="Last name"')
   })
 
-  it('and it says why it matters, because that is the reason it exists', () => {
-    expect(SETTINGS).toMatch(/we can only show your\s+email address/)
+  /*
+   * UPDATED (group 1 review): the help text now copies the prototype's own words exactly
+   * ("This is what your team sees. A first name is enough.", own-settings.txt) rather than the
+   * product's own longer sentence explaining what happens without one ("... Without it we can
+   * only show your email address."). The fact this test protected - that a name is asked for
+   * because it replaces an email address on screen - is still true of the product; it is just no
+   * longer spelled out in this particular sentence, to match the prototype's own wording exactly.
+   */
+  it('says why a name is worth giving, in the prototype’s own words', () => {
+    expect(SETTINGS).toContain('This is what your team sees. A first name is enough.')
   })
 
   it('a last name is not demanded', () => {

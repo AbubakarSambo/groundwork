@@ -51,6 +51,7 @@ export const READ_WHAT_THEY_PROMISED = [
   '',
   'RULES:',
   '  - `action` is their words, trimmed to the action itself, at most twenty words. Never your paraphrase of what they ought to do.',
+  '  - Keep their punctuation and their quotation marks exactly as they typed them. Never add marks, never take theirs away, and never change double marks to single ones or single to double.',
   '  - `when` is the timing exactly as they said it: "next week", "by Friday", "before the end of the month". Leave it out if they gave none. NEVER convert it to a date.',
   '  - `outcome` only where they said what it is for. Leave it out otherwise.',
   '  - Two sentences about the same action are ONE item.',

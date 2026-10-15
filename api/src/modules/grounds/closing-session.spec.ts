@@ -63,7 +63,7 @@ describe('GW-CLOSING: beginClosingSession', () => {
 
   it('refuses anyone but the initiator', async () => {
     const { service } = makeService();
-    await expect(service.beginClosingSession('g1', 'org1', 'u-member')).rejects.toThrow('Only the lead of this check-in');
+    await expect(service.beginClosingSession('g1', 'org1', 'u-member')).rejects.toThrow('Only the person who runs this check-in');
   });
 
   it('refuses terminal grounds', async () => {

@@ -47,7 +47,7 @@ export class PartiesService {
     });
     /* Named from inside the check-in's own organisation. The other side naming
        itself into somebody's check-in is not a thing that should be possible. */
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     if (dto.side === 'the side that set it up' && dto.organizationId && dto.organizationId !== ground.organizationId) {
       throw new BadRequestException('The side that set this up is the organisation it lives in.');
@@ -114,14 +114,14 @@ export class PartiesService {
       where: { id: groundId },
       select: { organizationId: true, parties: true },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     /* Readable by either side — which is the point of parties — and by nobody
        else. A caller from a third organisation gets the same answer as a stranger. */
     const isASide =
       ground.organizationId === callerOrganizationId
       || ground.parties.some((p) => p.organizationId === callerOrganizationId);
-    if (!isASide) throw new NotFoundException('Check-in not found');
+    if (!isASide) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     const parties = ground.parties.map(this.asParty);
     return {
