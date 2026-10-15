@@ -1,4 +1,4 @@
-import { Section, Panel, Tag, Note, Stack, Callout, SubHeading, ShowAll } from '@/components/gw/ui'
+import { Section, Panel, Tag, Note, Stack, Callout, SubHeading, ShowAll, FlexRow } from '@/components/gw/ui'
 import type { BoardPresent } from '@/api/board'
 import { HowItIsGoing, type Glance } from '@/components/gw/how-it-is-going'
 
@@ -418,14 +418,14 @@ export function HeadlineSection({ headline, objectives, glance, waitingToBeLetIn
                   <ShowAll
                     items={others}
                     render={(o) => (
-                      <div key={o.id} className="gwui-gap-12" style={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                      <FlexRow key={o.id} gap={12} align="flex-start" wrap>
                         <Stack gap={2}>
                           <p className="gwui-panel-text-muted">{o.name}</p>
                           {(o as any).stands?.says && <Note tone="muted">{(o as any).stands.says}</Note>}
                         </Stack>
                         <p className="gwui-panel-text-muted gwui-target-figure">{(o as any).journey?.now ?? (o as any).count ?? 0} of {o.target}</p>
                         {(o as any).stands?.word && <Tag tone={standsTone((o as any).stands.word)}>{(o as any).stands.word}</Tag>}
-                      </div>
+                      </FlexRow>
                     )}
                   />
                 )
