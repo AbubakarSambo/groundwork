@@ -245,9 +245,9 @@ describe('the people step’s Name field, for an anchor draft', () => {
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Ada' } })
     fireEvent.change(screen.getByPlaceholderText('name@company.com'), { target: { value: 'ada@example.test' } })
     fireEvent.click(screen.getByText('Add'))
-    await screen.findByText('What do they do / why are they part of this?')
+    await screen.findByText('What do they do, and why are they part of this?')
     fireEvent.click(screen.getByText('Skip'))
-    await waitFor(() => expect(screen.queryByText('What do they do / why are they part of this?')).toBeNull())
+    await waitFor(() => expect(screen.queryByText('What do they do, and why are they part of this?')).toBeNull())
 
     fireEvent.change(screen.getByPlaceholderText('your@email.com'), { target: { value: 'lead@example.test' } })
     fireEvent.submit(screen.getByPlaceholderText('your@email.com').closest('form')!)
@@ -265,9 +265,9 @@ describe('the people step’s Name field, for an anchor draft', () => {
 
     fireEvent.change(screen.getByPlaceholderText('name@company.com'), { target: { value: 'bello@example.test' } })
     fireEvent.click(screen.getByText('Add'))
-    await screen.findByText('What do they do / why are they part of this?')
+    await screen.findByText('What do they do, and why are they part of this?')
     fireEvent.click(screen.getByText('Skip'))
-    await waitFor(() => expect(screen.queryByText('What do they do / why are they part of this?')).toBeNull())
+    await waitFor(() => expect(screen.queryByText('What do they do, and why are they part of this?')).toBeNull())
 
     fireEvent.change(screen.getByPlaceholderText('your@email.com'), { target: { value: 'lead@example.test' } })
     fireEvent.submit(screen.getByPlaceholderText('your@email.com').closest('form')!)

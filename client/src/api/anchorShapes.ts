@@ -57,7 +57,7 @@ export type OnePersonTheLeadAdds = {
   /** Required unless `colleagueId` is given. */
   email?: string
   colleagueId?: string
-  /** "What do they do / why are they part of this?" Optional. The lead's own note: never shown to the person. */
+  /** "What do they do, and why are they part of this?" Optional. The lead's own note: never shown to the person. */
   context?: string
   note?: string
   /** "Name + email" (section 13): what the lead calls this person, asked first, beside their email. Optional. */
