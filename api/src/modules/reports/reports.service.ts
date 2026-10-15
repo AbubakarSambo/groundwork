@@ -1,3 +1,4 @@
+import { HOW, whatProvedIt } from '../conversation/the-end-card';
 import { filesSentWith } from './files-sent-with-a-check-in';
 import { theOpenSession } from '../engagement/heres-what-is-new';
 import { recordThatTheLeadRead } from './a-lead-read-this-report';
@@ -6890,6 +6891,9 @@ happened, and what is in the way.`;
           documented: !r.recallBased, documentSays: r.documentSays ?? null,
           mark,
           markSays: WHAT_EACH_MARK_SAYS[mark],
+          /* Where the line comes from, in the end card's own words, so the own report and the card say it the same way
+             (sales-first.md, section 5): "From the photo you added." only where a photo backs it. */
+          how: howTheirLineIsKnown(r.type, mark, r.anchoredOrigin),
           /* What the line is called, filled in from the record, never from the kind the model gave it (night quality run 2). */
           ...(whatALineOfTheirsIsCalled({ type: r.type, text: cleanText(r.text), mark }) ? { typeSays: whatALineOfTheirsIsCalled({ type: r.type, text: cleanText(r.text), mark }) } : {}),
           checkInId: r.checkIn?.id ?? null, sessionNumber: r.checkIn?.sessionNumber ?? null,
@@ -8442,4 +8446,16 @@ export function theNamesBesideTheLabels(
       return name ? { ...p, who: name } : { ...p, who: label ?? null };
     }),
   };
+}
+
+/**
+ * WHERE ONE OF THEIR OWN LINES COMES FROM, IN THE END CARD'S WORDS (sales-first.md, section 5): their own
+ * report says how each line is known the way the card before they finished did, so a photo is only ever
+ * claimed where one backs the line.
+ */
+export function howTheirLineIsKnown(type: unknown, mark: string, anchoredOrigin: string | null | undefined): string {
+  if (mark === 'proven') return whatProvedIt({ anchoredOrigin: anchoredOrigin ?? null });
+  if (mark === 'confirmed') return HOW.confirmed;
+  if (mark === 'memory') return HOW.memory;
+  return String(type) === 'COMMITMENT' ? HOW.commitment : HOW.said;
 }

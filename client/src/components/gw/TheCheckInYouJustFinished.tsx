@@ -11,6 +11,8 @@ import { groundsApi } from '@/api/grounds'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { CLOSE_SHEET, Block } from './the-shape-every-close-is-drawn-in'
 import { KIND } from './WhatWasTakenFromWhatYouSaid'
+import { FoldedLine } from './ui/FoldedLine'
+import { ProofMark } from './ui/ProofMark'
 
 /**
  * THE END OF A SIGNED-IN CHECK-IN, REBUILT AS A · SESSION.
@@ -56,6 +58,9 @@ interface MyRow {
   documentSays?: string | null
   /** What this line is called, filled in by the server from the record: "This is something you got done." only when it holds. */
   typeSays?: string | null
+  /** How the line is known, by the one rule, and where it comes from in the end card's words (served by the reports). */
+  mark?: string | null
+  how?: string | null
   checkInId: string | null
   sessionNumber: number | null
 }
@@ -70,7 +75,7 @@ interface MyRow {
  * Taking one back never deletes it. It marks it, the mark is shown here, and every read that
  * COUNTS rows already filters marked ones out.
  */
-function Row({ row, onTakeBack, busy }: { row: MyRow; onTakeBack: () => void; busy: boolean }) {
+function Row({ row, onTakeBack, busy, light = false }: { row: MyRow; onTakeBack: () => void; busy: boolean; light?: boolean }) {
   const gone = !!row.disputedAt
   return (
     <div style={{ display: 'grid', gap: 4 }}>
@@ -91,6 +96,8 @@ function Row({ row, onTakeBack, busy }: { row: MyRow; onTakeBack: () => void; bu
         backs it." follows it as another, rather than a dot stitched onto the end.
       */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+        {/* The light own report marks each line, proven only where there is proof (sales-first.md, section 5). */}
+        {light && row.mark && <span className="gwui-own-mark"><ProofMark mark={row.mark} /></span>}
         <span className="gw-stamp" style={{ color: 'var(--gw-sub-d)' }}>
           {row.typeSays ?? KIND[row.type] ?? `This is ${row.type.replace(/_/g, ' ').toLowerCase()}.`}
           {row.documented ? ' A document backs it.' : ''}
@@ -149,10 +156,12 @@ const SAYS: Record<string, { word: string; dot: string }> = {
   unspoken: { word: 'not spoken to', dot: 'var(--gw-border)' },
 }
 
-export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }: {
+export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, light = false }: {
   checkInId: string
   groundId: string
   sessionNumber: number
+  /** The light own report, for a sales check-in (sales-first.md, sections 2 and 5). Other kinds read it as before. */
+  light?: boolean
 }) {
   const navigate = useNavigate()
   const qc = useQueryClient()
@@ -247,29 +256,36 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
   let step = 0
   const next = () => (step += 1)
 
-  return (
-    <div className="gw-close" style={{ margin: '16px 0 8px', background: 'var(--gw-card)', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
-      <style>{CLOSE_SHEET}</style>
-
-      {/*
-        ── The masthead. What it is, whose it is, and where in the run it sits.
-        U.9 RE-REVIEW, ITEM A: A SENTENCE, NOT CAPITALS JOINED WITH "·". "CHECK-IN 1 · 27 SEPT ·
-        YOURS · NOBODY ELSE READS THIS HALF" is now "Check-in 1, on 27 September. Only you read
-        this part."
-      */}
-      <div className="gw-head">
-        <div className="gw-title">
-          {closed ? 'Where this ended, in your own words' : 'What you said this time'}
-        </div>
-        <div className="gw-stamp" style={{ marginTop: 4, color: 'var(--gw-sub)' }}>
-          {`Session ${sessionNumber}${d?.plannedSessions ? ` of ${d.plannedSessions}` : ''}`}
-          {/* The date this sitting happened. A report with no date on it is a report somebody
-              cannot place against anything else that was going on that week. */}
-          {thisSitting?.completedAt ? `, on ${whenItWas(thisSitting.completedAt, 'dayAndMonth')}` : ''}
-          {'. Only you read this part.'}
-        </div>
+  /*
+   * THE LIGHT OWN REPORT (sales-first.md, sections 2 and 5; the light prototype's own report for Miriam,
+   * docs/prototype/screens/B4-reports-and-sharing/own-report.txt): What you did well, What you told us,
+   * One thing to think about, then the rest folded. What you did well is only their own lines from this
+   * session that are proven or confirmed, with where the proof came from as the server says it, so a
+   * photo is only ever claimed where one backs the line.
+   */
+  /* In the light own report every fold is the same one line that opens (FoldedLine); elsewhere the old fold stays. */
+  /* A plain call, not a component made here, so a fold that is open stays open when the page draws again. */
+  const theFold = (summary: string, children: React.ReactNode) =>
+    light ? <FoldedLine name={summary}>{children}</FoldedLine> : <Folded summary={summary}>{children}</Folded>
+  const didWell = said.filter(x => !x.disputedAt && (x.mark === 'proven' || x.mark === 'confirmed'))
+  const hasFor = !!(d?.againstSuccess?.stated || mySuccess)
+  const didWellJSX = light && didWell.length > 0 ? (
+    <Block n={next()} label="What you did well">
+      <div style={{ display: 'grid', gap: 8 }}>
+        {didWell.map(x => (
+          <div key={x.id} className="gw-row">
+            <span style={{ marginTop: 3 }}><ProofMark mark={x.mark} /></span>
+            <div>
+              <p className="gw-p" style={{ margin: 0, color: 'var(--gw-text)', maxWidth: '68ch' }}>{x.text}</p>
+              {x.how && <p className="gw-small" style={{ margin: '2px 0 0', color: 'var(--gw-sub)', maxWidth: '68ch' }}>{x.how}</p>}
+            </div>
+          </div>
+        ))}
       </div>
-
+    </Block>
+  ) : null
+  const forJSX = (
+    <>
       {/*
         ── What this is for. The objective leads, and this person's part of it comes second.
         U.9 END-OF-MODULE API SUITE: THE LABEL IS THE ONE `the-four-reports.ts` DECLARES.
@@ -280,7 +296,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
         body, not appended to the one string the two sides have to agree on byte for byte.
       */}
       {(d?.againstSuccess?.stated || mySuccess) && (
-        <Block n={next()} label="What this is for">
+        <Block n={next()} label="What this is for" hideLabel={light}>
           {/*
             WHEN NOBODY HAS SET A STANDARD, THIS BLOCK SHOWS WHAT *YOU* SAID, NOT A PROSE
             EXPLANATION OF WHY THERE ISN'T ONE.
@@ -323,7 +339,10 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
           )}
         </Block>
       )}
-
+    </>
+  )
+  const whereJSX = (
+    <>
       {/*
         ── 02 · Where you are against it. Your rows only - see the filter above.
         U.9 END-OF-MODULE API SUITE: THE PLAIN HEADING `whereYouAre` DECLARES ("Where you are
@@ -331,7 +350,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
         it is the note under "No score, and no on-track label" a few lines down.
       */}
       {yours.length > 0 && (
-        <Block n={next()} label="Where you are against it">
+        <Block n={next()} label="Where you are against it" hideLabel={light}>
           <div style={{ display: 'grid', gap: 8 }}>
             {yours.map((c: any, i: number) => {
               const says = SAYS[c.state as string] ?? SAYS.unspoken
@@ -355,7 +374,10 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
           </p>
         </Block>
       )}
-
+    </>
+  )
+  const saidJSX = (
+    <>
       {/*
         ── 03 · What you said. Extracted lines, disputable, and the press sits with them.
         U.9 END-OF-MODULE API SUITE: THE PLAIN HEADING `whatYouSaid` DECLARES ("What you said"),
@@ -363,7 +385,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
         the sentence right underneath ("If one is wrong, say so.") and the press on every row.
       */}
       {said.length > 0 && (
-        <Block n={next()} label="What you said">
+        <Block n={next()} label="What you said" shownAs={light ? 'What you told us' : undefined}>
           <p className="gw-small" style={{ margin: '0 0 10px', color: 'var(--gw-sub)', maxWidth: '68ch' }}>
             These were taken from what you wrote, not typed by you. If one is wrong, say so.
           </p>
@@ -373,13 +395,17 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
                 key={row.id}
                 row={row}
                 busy={tookBack === row.id}
+                light={light}
                 onTakeBack={() => { setTookBack(row.id); takeBack.mutate(row.id) }}
               />
             ))}
           </div>
         </Block>
       )}
-
+    </>
+  )
+  const openJSX = (
+    <>
       {/*
         ── 04 · What is still open for you. See the header for what this cannot say yet.
         U.9 END-OF-MODULE API SUITE: THE PLAIN HEADING `stillOpenForYou` DECLARES ("What is still
@@ -387,7 +413,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
         raised" is still true of the block's contents, drawn below.
       */}
       {(open.length > 0 || couldTry.length > 0) && (
-        <Block n={next()} label="What is still open for you">
+        <Block n={next()} label="What is still open for you" hideLabel={light}>
           <div style={{ display: 'grid', gap: 8 }}>
             {open.map(x => (
               <p key={x.id} className="gw-p" style={{ margin: 0, color: 'var(--gw-text)', maxWidth: '68ch' }}>{x.text}</p>
@@ -418,15 +444,19 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
           )}
         </Block>
       )}
-
+    </>
+  )
+  const carryJSX = (
+    <>
       {/*
         ── 05 · What you carry into the next one. One thing, and the private note INSIDE it.
         U.9 END-OF-MODULE API SUITE: THE PLAIN HEADING `whatYouCarry` DECLARES ("What you carry
         into the next one"), not this screen's "The one thing…" - which is still true, since only
         one sentence is ever drawn below it.
       */}
-      {(carry || note) && (
-        <Block n={next()} label="What you carry into the next one">
+      {/* Only when there is something to say: a coaching note with no text drew the heading over nothing. */}
+      {(carry || note?.showingUp) && (
+        <Block n={next()} label="What you carry into the next one" shownAs={light ? 'One thing to think about' : undefined}>
           {/* The session's own sentence, not a row echoed from block 3 - see the note on the
               type lists above. */}
           {carry && <p className="gw-big" style={{ margin: 0, color: 'var(--gw-text)', maxWidth: '68ch' }}>{carry}</p>}
@@ -458,7 +488,10 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
           )}
         </Block>
       )}
-
+    </>
+  )
+  const checkableJSX = (
+    <>
       {/*
         ── How much you gave it. Folded and last: a caveat above the thing it qualifies reads as a
         verdict on it.
@@ -474,7 +507,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
           {/* U.9 THIRD REVIEW, ITEM 4: THE PROTOTYPE'S OWN WORDS, NOT A PARAPHRASE OF THEM.
               docs/prototype/screens/B3-the-check-in/done.txt: "How checkable today's check-in
               was". */}
-          <Folded summary="How checkable today’s check-in was">
+          {theFold("How checkable today’s check-in was", <>
             {/* The bar says how much; these five say of WHAT, which is the difference between a
                 reading somebody can act on and a mark they cannot. Same read as the one on the
                 run-long page, scoped to this sitting rather than across every one. */}
@@ -487,8 +520,60 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
             <p className="gw-small" style={{ margin: 0, color: 'var(--gw-sub)', maxWidth: '68ch' }}>
               Yours alone. It is a read of how checkable this sitting is, not a mark on you.
             </p>
-          </Folded>
+          </>)}
         </div>
+      )}
+    </>
+  )
+
+  return (
+    <div className="gw-close" style={{ margin: '16px 0 8px', background: 'var(--gw-card)', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
+      <style>{CLOSE_SHEET}</style>
+
+      {/*
+        ── The masthead. What it is, whose it is, and where in the run it sits.
+        U.9 RE-REVIEW, ITEM A: A SENTENCE, NOT CAPITALS JOINED WITH "·". "CHECK-IN 1 · 27 SEPT ·
+        YOURS · NOBODY ELSE READS THIS HALF" is now "Check-in 1, on 27 September. Only you read
+        this part."
+      */}
+      <div className="gw-head">
+        <div className="gw-title">
+          {closed ? 'Where this ended, in your own words' : 'What you said this time'}
+        </div>
+        <div className="gw-stamp" style={{ marginTop: 4, color: 'var(--gw-sub)' }}>
+          {`Session ${sessionNumber}${d?.plannedSessions ? ` of ${d.plannedSessions}` : ''}`}
+          {/* The date this sitting happened. A report with no date on it is a report somebody
+              cannot place against anything else that was going on that week. */}
+          {thisSitting?.completedAt ? `, on ${whenItWas(thisSitting.completedAt, 'dayAndMonth')}` : ''}
+          {'. Only you read this part.'}
+        </div>
+      </div>
+
+      {light ? (
+        <>
+          {didWellJSX}
+          {saidJSX}
+          {carryJSX}
+          {/* The rest of their own report, each part one line that opens (the light prototype's s71: nothing is removed). */}
+          {(hasFor || yours.length > 0 || open.length > 0 || couldTry.length > 0) && (
+            <div className="gw-blk gwui-own-more">
+              <div className="gw-lbl">More in your report</div>
+              {hasFor && <FoldedLine name="What this is for">{forJSX}</FoldedLine>}
+              {yours.length > 0 && <FoldedLine name="Where you are against it" fact={`${yours.length} ${yours.length === 1 ? 'thing' : 'things'} you are answerable for`}>{whereJSX}</FoldedLine>}
+              {(open.length > 0 || couldTry.length > 0) && <FoldedLine name="What is still open for you" fact={`${open.length + couldTry.length} still open`}>{openJSX}</FoldedLine>}
+            </div>
+          )}
+          {checkableJSX}
+        </>
+      ) : (
+        <>
+          {forJSX}
+          {whereJSX}
+          {saidJSX}
+          {openJSX}
+          {carryJSX}
+          {checkableJSX}
+        </>
       )}
 
       {/* ── Nothing yet, said as what it is rather than as an empty card. */}

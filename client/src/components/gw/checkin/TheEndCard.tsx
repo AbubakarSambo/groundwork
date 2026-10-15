@@ -1,5 +1,6 @@
 import { Button } from '@/components/gw/ui/Button'
 import { ProofMark } from '@/components/gw/ui/ProofMark'
+import { FoldedLine } from '@/components/gw/ui/FoldedLine'
 import '@/components/gw/ui/gw-ui.css'
 import type { TheEndCard as EngineEndCard } from '@/api/conversation'
 
@@ -7,15 +8,16 @@ import type { TheEndCard as EngineEndCard } from '@/api/conversation'
  * THE END CARD (B3, docs/prototype/screens/B3-the-check-in/check-in-end-card.txt).
  *
  * Groundwork's last message ("That’s all for today. Below is what I wrote down from your answers. Is
- * anything wrong?") is the engine's and sits above this in the conversation. Under it, three parts:
+ * anything wrong?") is the engine's and sits above this in the conversation. Under it, as the light
+ * prototype draws it (s68, docs/light-rebuild/sales-first.md section 5):
  *
- *   1. What is now in your record   each line with its mark. Only the engine can write these, from
- *                                   the answers just given (request 7). Left out until it does.
- *   2. Why answering matters        the prototype's words, when the lead also answers this check-in
- *   3. What happens next            when the next one opens, what the engine says would prove a line,
- *                                   and "If you don’t want to talk about something yet, that’s fine."
- *
- * Numbered by what is drawn, so a card with two parts reads 1 and 2, not 2 and 3.
+ *   What goes in your record    one short list (the approved rename of "1. What is now in your
+ *                               record"), each line with its mark (proven, their word) and its
+ *                               one-line source, which says when it is something to do. Only the
+ *                               engine writes these.
+ *   Your next check-in opens …  one line, from the schedule
+ *   Why answering matters, and what happens next   folded behind one line: why answering matters,
+ *                               when the lead also answers, and what would change a line
  *
  * THE PROTOTYPE'S LINE, BUILT FROM THE CHECK-IN'S REAL SETTING (group 3's review, batch A fault 2).
  * "Your team will see what you said today, and a short summary of what moved." sat out for months
@@ -75,14 +77,11 @@ export function TheEndCard({
 }) {
   const record = (engine?.inYourRecord ?? []).filter(l => typeof l?.says === 'string' && l.says.trim())
   const fromTheEngine = (engine?.next ?? []).filter(l => typeof l === 'string' && l.trim())
+  /* When the next one opens is said once, as its own line above the fold (sales-first.md, section 5). */
   const next = [
-    ...(nextOpens ? [nextOpens] : []),
     ...fromTheEngine,
     'If you don’t want to talk about something yet, that’s fine. You can leave it for now.',
   ]
-
-  let n = 0
-  const part = () => (n += 1)
 
   return (
     <section aria-label="What I wrote down" className="gwui-ci-endcard">
@@ -97,12 +96,13 @@ export function TheEndCard({
       )}
       {record.length > 0 && (
         <div className="gwui-ci-endcard-box">
-          <h2 className="gwui-ci-endcard-heading">{part()}. What is now in your record</h2>
+          {/* The approved rename of "1. What is now in your record" (sales-first.md). One short list, each line marked, as the prototype draws it. */}
+          <h2 className="gwui-ci-endcard-heading">What goes in your record</h2>
           <ul className="gwui-ci-endcard-list">
             {record.map((l, i) => (
               <li key={i} className="gwui-ci-endcard-row">
                 <span className="gwui-ci-endcard-markcol"><ProofMark mark={l.mark} /></span>
-                <span>
+                <span className="gwui-ci-endcard-text">
                   <span className="gwui-ci-endcard-line">{l.says}</span>
                   {l.how && <span className="gwui-ci-endcard-how">{l.how}</span>}
                 </span>
@@ -112,21 +112,27 @@ export function TheEndCard({
         </div>
       )}
 
-      {leadName && (
-        <div className="gwui-ci-endcard-box">
-          <h2 className="gwui-ci-endcard-heading">{part()}. Why answering matters</h2>
-          <p className="gwui-ci-endcard-body">
-            {leadName} also answers a check-in. The report puts the answers side by side. It shows where you agree and where you see things differently. It does not decide who is right.
-          </p>
-        </div>
-      )}
+      {nextOpens && <p className="gwui-ci-endcard-body gwui-ci-endcard-nextopens">{nextOpens}</p>}
 
-      <div className="gwui-ci-endcard-box">
-        <h2 className="gwui-ci-endcard-heading">{part()}. What happens next</h2>
-        <ul className="gwui-ci-endcard-next">
-          {next.map((l, i) => <li key={i} className="gwui-ci-endcard-body">{l}</li>)}
-        </ul>
-      </div>
+      {/* Why answering matters and what happens next, folded behind one line (the light prototype's s68). */}
+      <FoldedLine name={leadName ? 'Why answering matters, and what happens next' : 'What happens next'}>
+        <div className="gwui-ci-endcard-more-body">
+          {leadName && (
+            <div>
+              <h3 className="gwui-ci-endcard-heading">Why answering matters</h3>
+              <p className="gwui-ci-endcard-body">
+                {leadName} also answers a check-in. The report puts the answers side by side. It shows where you agree and where you see things differently. It does not decide who is right.
+              </p>
+            </div>
+          )}
+          <div>
+            <h3 className="gwui-ci-endcard-heading">What happens next</h3>
+            <ul className="gwui-ci-endcard-next">
+              {next.map((l, i) => <li key={i} className="gwui-ci-endcard-body">{l}</li>)}
+            </ul>
+          </div>
+        </div>
+      </FoldedLine>
 
       {othersCanSeeWhatYouSay !== undefined && (
         <p className="gwui-ci-endcard-body">
@@ -150,3 +156,4 @@ export function TheEndCard({
     </section>
   )
 }
+

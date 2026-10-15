@@ -64,10 +64,12 @@ describe('the conversation preview page calls nothing', () => {
     expect(screen.getAllByText('Not yet').length).toBe(2)
     expect(screen.getAllByText('Sent it. They liked it but want to wait until after December.').length).toBeGreaterThan(0)
 
-    // The end card: its three parts and both buttons.
-    expect(screen.getByText('1. What is now in your record')).toBeTruthy()
-    expect(screen.getByText('2. Why answering matters')).toBeTruthy()
-    expect(screen.getByText('3. What happens next')).toBeTruthy()
+    // The end card: its parts and both buttons. The light prototype's s68 renames the first part "What goes in
+    // your record" and folds the other two behind one line, without their numbers (sales-first.md, section 5).
+    expect(screen.getByText('What goes in your record')).toBeTruthy()
+    expect(screen.getByText('Why answering matters, and what happens next')).toBeTruthy()
+    expect(screen.getByText('Why answering matters')).toBeTruthy()
+    expect(screen.getByText('What happens next')).toBeTruthy()
     expect(screen.getByText('That’s right, finish')).toBeTruthy()
     expect(screen.getByText('Change something')).toBeTruthy()
 

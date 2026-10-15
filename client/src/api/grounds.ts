@@ -400,6 +400,9 @@ export const groundsApi = {
         checkIns: { id: string; sessionNumber: number; status: string; completedAt: string | null; availableFrom?: string | null }[]
         latestStatus: string | null
         latestSessionNumber: number | null
+        /** The organisation's zone, and when the next one opens by the schedule before its row exists. */
+        zone?: string | null
+        nextOpensAt?: string | null
       }>(`/grounds/${groundId}/my-checkin-status`, {
         // A ground you can view but are not a party to returns 403 here. That is
         // a normal state for this call, not a failure worth interrupting anyone

@@ -117,3 +117,21 @@ describe('who runs this ("Rukia knows who is here")', () => {
     expect(whoRunsThis(null)).toBeNull()
   })
 })
+
+/*
+ * BEFORE THE NEXT ONE EXISTS (sales-first.md, section 5): the card before "That’s right, finish" says when the next
+ * check-in opens from the schedule the server serves, in the organisation's zone, so a daily check-in reads "8am"
+ * wherever the reader's own machine is.
+ */
+describe('when the next one opens, from the schedule, before its row exists', () => {
+  const now = new Date('2026-10-15T12:00:00.000Z')
+  const mid = [{ id: 'ci23', sessionNumber: 23, status: 'IN_PROGRESS', availableFrom: '2026-10-15T13:00:00.000Z' }]
+  it('says tomorrow at 8am in Lagos, from the schedule', () =>
+    expect(whenTheNextOneOpens(mid, 'ci23', now, { nextOpensAt: '2026-10-16T07:00:00.000Z', zone: 'Africa/Lagos' })).toBe('Your next check-in opens tomorrow at 8am.'))
+  it('reads the same instant in the organisation’s own zone, not the reader’s', () =>
+    expect(whenTheNextOneOpens(mid, 'ci23', now, { nextOpensAt: '2026-10-16T05:00:00.000Z', zone: 'Africa/Nairobi' })).toBe('Your next check-in opens tomorrow at 8am.'))
+  it('says nothing when the server has no time for it (a lead, or the last one)', () =>
+    expect(whenTheNextOneOpens(mid, 'ci23', now, { nextOpensAt: null, zone: 'Africa/Lagos' })).toBeNull())
+  it('a next row that exists wins over the schedule', () =>
+    expect(whenTheNextOneOpens([...mid, { id: 'ci24', sessionNumber: 24, status: 'NOT_STARTED', availableFrom: '2026-10-16T09:00:00.000Z' }], 'ci23', now, { nextOpensAt: '2026-10-16T07:00:00.000Z', zone: 'Africa/Lagos' })).toBe('Your next check-in opens tomorrow at 10am.'))
+})

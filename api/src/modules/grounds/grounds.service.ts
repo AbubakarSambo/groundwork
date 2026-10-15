@@ -25,6 +25,8 @@ import { whatThisReaderCallsEachLabel, noStandInLabelAnywhereIn } from '../repor
 import { rememberedCompose } from '../reports/a-line-worded-once-is-kept';
 import { wordPatternEvidence } from '../reports/pattern-evidence-in-plain-words';
 import { withoutBankDetails, withoutBankDetailsInEachTurn } from '../documents/bank-details-are-never-kept';
+import { whenTheirNextCheckInWouldOpen } from './when-their-next-check-in-opens';
+import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD, hasEnded, hasStalled, isHeld, isShut, mayChangeOnItsOwn, whyItRefuses, whyAJoinLinkRefuses, WHILE_IT_IS_HELD, IT_RAN_OUT_OF_TIME } from './a-ground-that-has-ended';
 import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT, wasAQuietClose } from './an-answer-includes-a-refusal';
 import { isNotLetInYet, whoIsNotLetInYet, theWaitingToBeLetInLine } from './who-an-admin-did-not-let-in';
@@ -8050,12 +8052,35 @@ export class GroundsService {
     }).then((rows: any[]) => (rows ?? []).map(({ turns, ...c }) => ({ ...c, personTurns: Array.isArray(turns) ? turns.length : undefined })));
 
     const latest = checkIns[checkIns.length - 1];
+    /*
+     * WHEN THE NEXT ONE OPENS, AND IN WHICH ZONE (sales-first.md, section 5). The card before "That's right,
+     * finish" says "Your next check-in opens tomorrow at 8am." before the next session's row exists, so the
+     * schedule's own time is served for the session after their latest one, read without writing anything.
+     * The zone is the organisation's, so the time reads as the schedule set it, wherever the reader is.
+     */
+    let zone: string = THE_PRODUCTS_OWN_ZONE;
+    let nextOpensAt: Date | null = null;
+    try {
+      const ground = await this.prisma.ground.findUnique({
+        where: { id: groundId },
+        select: { organizationId: true, status: true, cadence: true, cadenceAnchorDay: true, workingDays: true, startsAt: true, createdAt: true, endsAt: true, timelineDays: true },
+      });
+      zone = (ground?.organizationId ? await theOrganisationsZone(this.prisma as any, ground.organizationId) : null) ?? THE_PRODUCTS_OWN_ZONE;
+      if (latest && (latest.status === 'IN_PROGRESS' || latest.status === 'COMPLETED')) {
+        const isFinal = (await this.prisma.checkIn.findUnique({ where: { id: latest.id }, select: { isFinal: true } }))?.isFinal ?? false;
+        nextOpensAt = whenTheirNextCheckInWouldOpen(ground as any, participant as any, { sessionNumber: latest.sessionNumber, isFinal, availableFrom: latest.availableFrom ?? null }, zone);
+      }
+    } catch {
+      /* Nothing more is said than before: the screens then say nothing about when the next one opens. */
+    }
     return {
       participantId: participant.id,
       partyType: participant.partyType,
       checkIns,
       latestStatus: latest?.status ?? null,
       latestSessionNumber: latest?.sessionNumber ?? null,
+      zone,
+      nextOpensAt,
     };
   }
 

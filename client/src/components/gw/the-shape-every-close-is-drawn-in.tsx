@@ -99,16 +99,23 @@ export const CLOSE_SHEET = `
 `
 
 /** One block: one plain sentence as its heading, no number and no second line under it. */
-export function Block({ label, children }: {
+export function Block({ label, children, hideLabel = false, shownAs }: {
   /** Kept on the interface so call sites that still count what they draw are unchanged; not
       drawn - see the note above. */
   n?: number
   label: string
   children: ReactNode
+  /** Inside a folded line whose name is already the label, so it is not said twice (the light own report). */
+  hideLabel?: boolean
+  /**
+   * The name a reader sees when a surface names the same block differently: the light own report calls "What you
+   * said" "What you told us" (sales-first.md, section 2). `label` stays the block's declared name (the-four-reports.ts).
+   */
+  shownAs?: string
 }) {
   return (
     <div className="gw-blk">
-      <div className="gw-lbl">{label}</div>
+      {!hideLabel && <div className="gw-lbl">{shownAs ?? label}</div>}
       {children}
     </div>
   )

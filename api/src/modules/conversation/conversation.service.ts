@@ -74,7 +74,9 @@ import { onlyWhatWeCouldRead } from '../documents/a-document-we-could-not-read-i
 import { recordRoundCompletion } from '../grounds/round-completion';
 import { Prisma } from '@prisma/client';
 import { endingOnTheClose, endsOnTheClose, type Door } from './the-close-says-what-comes-next';
-import { theEndCard, theCardStillStanding, type EndCard, type ALineForTheCard } from './the-end-card';
+import { whatChangedOnTheirDeals } from './what-changed-on-their-deals';
+import { oneOfTheKinds } from '../board/the-kind-of-work';
+import { theEndCard, theCardStillStanding, whatTheyWereAskedToShow, type EndCard, type ALineForTheCard } from './the-end-card';
 import { aThingToCarry, openingWithASentence, thePrivateSummaryAsRead } from './the-private-summary-opens-with-a-sentence';
 import { READ_WHAT_HAPPENED, WHAT_HAPPENED_SCHEMA, theSettlements, thePrompt as theHappenedPrompt, aCommitmentKey, oneOfEach, type AnAnswer } from './what-happened-to-what-they-said';
 import { theProofSettlements, thePrompt as theProofPrompt, WHICH_COMMITMENT_A_LINE_KEEPS_PROMPT, WHICH_COMMITMENT_A_LINE_KEEPS_SCHEMA, whatThisLineProves, mayBeSettledByProof } from './settled-by-proof';
@@ -7401,8 +7403,40 @@ ${told}` : '';
     /* Only where there is something true to say. An empty block on the screen after somebody has
        just finished is worse than no block, and a session with nothing in its notes has nothing to
        tell anybody about their own answers. */
+    /* What changed on their own deals, read from the lines just written (sales-first.md, section 5). */
+    const whatChanged = await this.whatChangedOnTheirDealsToday(checkIn);
     /* The card, with exactly the lines just written, so the screen shows it even if it never saw it arrive. */
-    return { status: 'completed', groundId: checkIn.groundId, ...(endCard ? { endCard } : {}), ...(whatYouGave.saying ? { whatYouGave } : {}) };
+    return { status: 'completed', groundId: checkIn.groundId, ...(endCard ? { endCard } : {}), ...(whatYouGave.saying ? { whatYouGave } : {}), ...(whatChanged ? { whatChanged } : {}) };
+  }
+
+  /**
+   * WHAT CHANGED ON THEIR OWN DEALS TODAY, for the done page (what-changed-on-their-deals.ts). Their own
+   * records and their own lines from this check-in only. Null when nothing changed, or on any failure:
+   * the done page then leaves the part out, as it always has.
+   */
+  private async whatChangedOnTheirDealsToday(checkIn: { id: string; participantId: string; groundId: string }) {
+    try {
+      const ground = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { kindOfWork: true, workStages: true } as any });
+      const kind = oneOfTheKinds((ground as any)?.kindOfWork);
+      if (!kind) return null;
+      const [deals, lines] = await Promise.all([
+        this.prisma.workItem.findMany({ where: { groundId: checkIn.groundId, ownerParticipantId: checkIn.participantId }, select: { name: true, kind: true, stage: true } }),
+        this.prisma.recordEntry.findMany({
+          where: { participantId: checkIn.participantId, disputedAt: null },
+          select: { checkInId: true, type: true, text: true, recallBased: true, anchoredDocumentId: true, anchoredOrigin: true },
+        }),
+      ]);
+      /* Only their own documents prove their lines (how-a-line-is-known), as everywhere else. */
+      const whoAdded = await whoAddedEachBackingDocument(this.prisma, lines as any[]);
+      const all = lines.map((l) => ({
+        ...l, type: String(l.type),
+        ...(l.anchoredDocumentId && whoAdded.has(l.anchoredDocumentId) ? { documentIsTheirOwn: whoAdded.get(l.anchoredDocumentId) === checkIn.participantId } : {}),
+      }));
+      return whatChangedOnTheirDeals(kind, (ground as any)?.workStages, deals, all.filter((l) => l.checkInId === checkIn.id), all);
+    } catch (err: any) {
+      this.logger.warn(`Check-in ${checkIn.id}: what changed on their deals was left out (${err?.message ?? err}).`);
+      return null;
+    }
   }
 
   /**
@@ -8943,7 +8977,7 @@ ${told}` : '';
         backedByAPhoto: !!(r as any).anchoredDocumentId && draft.photos.has((r as any).anchoredDocumentId),
         ...((r as any).anchoredDocumentId ? { documentIsTheirOwn: draft.theirs.has((r as any).anchoredDocumentId) } : {}),
       }));
-      const card = theEndCard(lines, await this.usesSimplerWords(checkIn.groundId));
+      const card = theEndCard(lines, await this.usesSimplerWords(checkIn.groundId), await this.whatTheyWereAskedToShowAndDidNot(checkIn));
       await this.prisma.conversationTurn.update({
         where: { id: closingTurnId },
         data: { recordDraft: draft.rows as any, ...(card ? { endCard: card as any } : {}) },
@@ -8952,6 +8986,30 @@ ${told}` : '';
       return card;
     } catch (err: any) {
       this.logger.warn(`Check-in ${checkIn.id}: no end card (${err?.message ?? err}); the record is read when they finish.`);
+      return null;
+    }
+  }
+
+  /**
+   * WHAT GROUNDWORK ASKED THEM FOR A PHOTO OF IN THIS CHECK-IN, WHEN NOTHING WAS ADDED SINCE (sales-first.md,
+   * section 5). Read from this check-in's own questions only, never another person's. Null when they added
+   * a document after it was asked, or when anything here fails: the card then says what it always said.
+   */
+  private async whatTheyWereAskedToShowAndDidNot(checkIn: { id: string; participantId: string }): Promise<string | null> {
+    try {
+      const asked = await this.prisma.conversationTurn.findMany({
+        where: { checkInId: checkIn.id, role: TurnRole.AI },
+        orderBy: { createdAt: 'asc' },
+        select: { content: true, createdAt: true },
+      });
+      const thing = whatTheyWereAskedToShow(asked.map((t) => t.content));
+      if (!thing) return null;
+      const firstAsked = asked.find((t) => whatTheyWereAskedToShow([t.content]) === thing)?.createdAt ?? null;
+      const added = await (this.prisma as any).groundDocument?.count?.({
+        where: { participantId: checkIn.participantId, isConversation: false, ...(firstAsked ? { createdAt: { gte: firstAsked } } : {}) },
+      });
+      return added ? null : thing;
+    } catch {
       return null;
     }
   }
@@ -9001,7 +9059,7 @@ ${told}` : '';
         type: String(r.type), text: String(r.text ?? ''), recallBased: (r as any).recallBased ?? true, anchoredDocumentId: doc, anchoredOrigin: (r as any).anchoredOrigin ?? null,
         ...(doc && whoAdded.has(doc) ? { documentIsTheirOwn: whoAdded.get(doc) === checkIn.participantId } : {}),
       };
-    }), checkIn.groundId ? await this.usesSimplerWords(checkIn.groundId) : false);
+    }), checkIn.groundId ? await this.usesSimplerWords(checkIn.groundId) : false, await this.whatTheyWereAskedToShowAndDidNot(checkIn));
     if (closing?.id) {
       await this.prisma.conversationTurn.update({ where: { id: closing.id }, data: { endCard: (card ?? Prisma.DbNull) as any, recordDraft: rows as any } })
         .catch((err: any) => this.logger.warn(`Check-in ${checkIn.id}: could not replace the end card with what was written (${err?.message})`));

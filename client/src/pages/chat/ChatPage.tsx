@@ -1708,7 +1708,7 @@ export function ChatPage() {
               engine={endCard}
               beingWritten={cardIsBeingWritten}
               leadName={whoElseAnswers(ground.data as any)}
-              nextOpens={whenTheNextOneOpens(myStatus.data?.checkIns, checkInId)}
+              nextOpens={whenTheNextOneOpens(myStatus.data?.checkIns, checkInId, new Date(), myStatus.data)}
               othersCanSeeWhatYouSay={(ground.data as any)?.aTeamReportComes}
               whoReadsIt={(ground.data as any)?.viewerIsInitiator ? null : whoRunsThis(ground.data as any)}
               finishing={complete.isPending}

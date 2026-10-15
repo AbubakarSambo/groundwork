@@ -387,14 +387,17 @@ describe('the end card, once Groundwork has closed the conversation', () => {
     closesOnTheNextAnswer()
     await answerTheLastQuestion()
     expect(screen.getByText('That’s everything for today')).toBeTruthy()
-    expect(screen.getByRole('heading', { name: '1. Why answering matters' })).toBeTruthy()
+    /* The light prototype's s68 (sales-first.md, section 5): why answering matters and what happens next
+       fold behind one line, and lose their numbers. */
+    expect(screen.getByText('Why answering matters, and what happens next').closest('summary')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Why answering matters' }).closest('details')).toBeTruthy()
     expect(screen.getByText('Wairimu also answers a check-in. The report puts the answers side by side. It shows where you agree and where you see things differently. It does not decide who is right.')).toBeTruthy()
-    expect(screen.getByRole('heading', { name: '2. What happens next' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'What happens next' }).closest('details')).toBeTruthy()
     expect(screen.getByText('If you don’t want to talk about something yet, that’s fine. You can leave it for now.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'That’s right, finish' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Change something' })).toBeTruthy()
     // The engine sent no lines for the record, so none are made up.
-    expect(screen.queryByText(/What is now in your record/)).toBeNull()
+    expect(screen.queryByText(/What goes in your record|What is now in your record/)).toBeNull()
     /*
      * WORDING RESTORED (group 3's review, request batch A, fault 2): the question of who sees a
      * person's words was settled 29 September (Conflict A) - the people in a check-in, including
@@ -417,13 +420,35 @@ describe('the end card, once Groundwork has closed the conversation', () => {
     })
     // Record lines are sent, so the claim is true, and the full closing message stays.
     await answerTheLastQuestion(CLOSING)
-    expect(screen.getByRole('heading', { name: '1. What is now in your record' })).toBeTruthy()
+    /* The approved rename of "1. What is now in your record" (sales-first.md), with no number. */
+    expect(screen.getByRole('heading', { name: 'What goes in your record' })).toBeTruthy()
+    expect(screen.queryByText(/What is now in your record/)).toBeNull()
     expect(screen.getByText('Green Mart will buy in January')).toBeTruthy()
     expect(screen.getByText('You said this. It will count next quarter, from October.')).toBeTruthy()
     expect(screen.getByRole('img', { name: 'Only someone’s word' })).toBeTruthy()
-    expect(screen.getByRole('heading', { name: '2. Why answering matters' })).toBeTruthy()
-    expect(screen.getByRole('heading', { name: '3. What happens next' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Why answering matters' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'What happens next' })).toBeTruthy()
     expect(screen.getByText('If Green Mart sends a written order, add a photo of it. Then the sale counts as proven.')).toBeTruthy()
+  })
+
+  it('says when her next check-in opens as one line, from the schedule, in the organisation’s zone, before the fold', async () => {
+    /* sales-first.md, section 5: "Your next check-in opens tomorrow at …" as one line. The next session's row is
+       only written when she finishes, so the server serves the schedule's own time, 8am in the organisation's zone
+       for a daily check-in, and the zone. 07:00 UTC tomorrow is 8am in Lagos, whatever this machine's zone is. */
+    const tomorrowLagos = new Date(Date.now() + 86_400_000).toLocaleDateString('en-CA', { timeZone: 'Africa/Lagos' })
+    ;(groundsApi.getMyCheckinStatus as any).mockResolvedValue({
+      participantId: 'p-m', partyType: 'PARTICIPANT', latestStatus: 'IN_PROGRESS', latestSessionNumber: 38,
+      checkIns: [{ id: 'ci1', sessionNumber: 38, status: 'IN_PROGRESS', completedAt: null }],
+      zone: 'Africa/Lagos', nextOpensAt: `${tomorrowLagos}T07:00:00.000Z`,
+    })
+    closesOnTheNextAnswer({ inYourRecord: [{ says: 'Green Mart has a quote.', how: 'You said this. A photo of the quote would prove it.', mark: 'said' }] })
+    await answerTheLastQuestion(CLOSING)
+    const line = await findByText('Your next check-in opens tomorrow at 8am.', {}, { timeout: 5000 })
+    expect(line.closest('details')).toBeNull()
+    expect(screen.getAllByText('Your next check-in opens tomorrow at 8am.')).toHaveLength(1)
+    /* The photo she said "Later" to is not claimed: the line says what would prove it. */
+    expect(screen.getByText('You said this. A photo of the quote would prove it.')).toBeTruthy()
+    expect(screen.queryByText(/photo you added/)).toBeNull()
   })
 
   it('the lead answering their own check-in is not told that they also answer one', async () => {
@@ -432,7 +457,9 @@ describe('the end card, once Groundwork has closed the conversation', () => {
     closesOnTheNextAnswer()
     await answerTheLastQuestion()
     expect(screen.queryByText(/Why answering matters/)).toBeNull()
-    expect(screen.getByRole('heading', { name: '1. What happens next' })).toBeTruthy()
+    /* Her fold is named for the one thing in it. */
+    expect(screen.getByText('What happens next', { selector: 'summary *' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'What happens next' })).toBeTruthy()
   })
 
   it('a lead who only manages does not answer, so the sentence is not said', async () => {
@@ -528,35 +555,29 @@ describe('the Done page, after “That’s right, finish”', () => {
     expect(screen.queryByPlaceholderText('Type, or hold to speak')).toBeNull()
   })
 
-  it('she reads why answering matters and how checkable her own check-in was, which only she sees', async () => {
+  it('she reads For tomorrow first, then her reports, then how checkable her own check-in was as one line that opens', async () => {
     await finish()
-    expect(await findByRole('heading', { name: 'That’s saved' }, { timeout: 5000 })).toBeTruthy()
-    /**
-     * ROUND 5, ITEM E2: THIS BLOCK NOW DRAWS THROUGH components/gw/ui/Section, which puts the
-     * heading and the note on the right (when there is one) in their own row, above a separate
-     * body - not as DOM siblings of the paragraph below, the way the page's own ad-hoc markup
-     * used to. `Section` names its `<section>` after the heading (`aria-labelledby`), so the whole
-     * block - heading and body together - is found as one named region instead.
-     */
-    const saved = screen.getByRole('region', { name: 'That’s saved' })
     /*
-     * GROUP 3'S REVIEW, THE SCREEN'S OWN SENTENCES 11: "Why answering matters:" is a heading now,
-     * not a bolded word glued to the front of a sentence with a colon - the same fix TheEndCard.tsx
-     * already had, applied here. Updated to the heading-then-sentence shape; the words themselves
-     * are unchanged.
+     * THE LIGHT DONE PAGE (sales-first.md, section 5; the light prototype's s68). "For tomorrow" is the approved
+     * rename of "That’s saved" and comes first, before the two reports; why answering matters folds behind one
+     * line inside it. How checkable today's check-in was is one line that opens. Updated from the old order and
+     * headings, which this replaces on purpose.
      */
-    expect(saved.textContent).toBe('That’s savedWhy answering mattersWairimu also answers a check-in. The report puts the answers side by side. It does not decide who is right.')
-    const checkable = screen.getByRole('region', { name: 'How checkable today’s check-in was' })
+    expect(await findByRole('heading', { name: 'For tomorrow' }, { timeout: 5000 })).toBeTruthy()
+    expect(screen.queryByText('That’s saved')).toBeNull()
+    const tomorrow = screen.getByRole('region', { name: 'For tomorrow' })
+    expect(tomorrow.textContent).toBe('For tomorrowWhy answering matters›Wairimu also answers a check-in. The report puts the answers side by side. It does not decide who is right.')
+    expect(within(tomorrow).getByText('Why answering matters').closest('summary')).toBeTruthy()
+    const order = [...document.querySelectorAll('h2, summary')].map((e) => e.textContent ?? '')
+    expect(order.findIndex((t) => t === 'For tomorrow')).toBeLessThan(order.findIndex((t) => t === 'Two reports come from this'))
+    const checkable = screen.getByText('How checkable today’s check-in was').closest('details') as HTMLDetailsElement
+    expect(checkable).toBeTruthy()
+    expect(checkable.open).toBe(false)
     /**
      * "4 of 5" no longer shows (U.8 re-review, request 45 to the engine workspace): it is a score
      * built from a read of the session that is known to miss real content, so it stays off until
-     * that is answered.
-     *
-     * REVIEW ROUND 3, ITEM 8: THE PROTOTYPE'S SHORT ONE-LINE ITEMS, WITH THE TICK OR RING. The
-     * "Groundwork found this."/"Groundwork did not pick this up this time." trailing sentence -
-     * added so a sighted reader was not left to tell found from missing by the ring's colour
-     * alone - is a visually-hidden (sr-only) span now, not a second visible sentence on every
-     * line: a screen reader still gets it, a sighted reader gets the prototype's own short line.
+     * that is answered. The five short lines, with the sr-only sentence for a screen reader, are
+     * unchanged inside the fold.
      */
     expect(within(checkable).queryByText('4 of 5')).toBeNull()
     expect(within(checkable).getByText(
@@ -569,13 +590,15 @@ describe('the Done page, after “That’s right, finish”', () => {
     expect(within(checkable).getByText('This is about the check-in. Only you see it.')).toBeTruthy()
   })
 
-  it('one thing for next time is the sentence the session wrote, once it arrives', async () => {
+  it('the one thing to carry is the first thing under For tomorrow, once the session writes it', async () => {
     await finish({ carry: 'Get Green Mart’s January date in writing.' })
-    /* GROUP 3'S REVIEW, THE SCREEN'S OWN SENTENCES 11: "One thing for next time" is its own
-       heading now, with the sentence under it, not joined to it by a colon. Both are already in
-       the DOM together once the sentence arrives, so only the one wait is needed. */
-    expect(await findByText('Get Green Mart’s January date in writing.', {}, { timeout: 6000 })).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'One thing for next time' })).toBeTruthy()
+    /* The prototype has no label before it ("One thing for tomorrow: " is taken off in s68): the sentence
+       sits under For tomorrow, before the fold. Updated from the old "One thing for next time" heading. */
+    const carried = await findByText('Get Green Mart’s January date in writing.', {}, { timeout: 6000 })
+    const tomorrow = screen.getByRole('region', { name: 'For tomorrow' })
+    expect(tomorrow.contains(carried)).toBe(true)
+    expect(tomorrow.textContent?.startsWith('For tomorrowGet Green Mart’s January date in writing.')).toBe(true)
+    expect(screen.queryByRole('heading', { name: 'One thing for next time' })).toBeNull()
   })
 
   it('once everyone has answered, the team’s report is there to read', async () => {
@@ -610,10 +633,16 @@ describe('the Done page, after “That’s right, finish”', () => {
   })
 
   it('shows what changed on a deal, with its stages, when the engine sends it', async () => {
-    await finish({ whatChanged: { title: 'What changed on your deals', items: [{ name: 'Green Mart', says: 'Quote photo added', stages: [{ name: 'Contacted', mark: 'proven' }, { name: 'Need', mark: 'proven' }, { name: 'Pitched', mark: 'proven' }, { name: 'Qualified', mark: 'not_reached' }, { name: 'Quoted', mark: 'not_reached' }] }] } })
+    await finish({ whatChanged: { title: 'What changed on your deals', items: [{ name: 'Green Mart', says: 'From the photo you added.', stages: [{ name: 'Contacted', mark: 'proven' }, { name: 'Need', mark: 'proven' }, { name: 'Pitched', mark: 'proven' }, { name: 'Qualified', mark: 'not_reached' }, { name: 'Quoted', mark: 'not_reached' }] }] } })
     expect(await findByRole('heading', { name: 'What changed on your deals' }, { timeout: 5000 })).toBeTruthy()
     expect(screen.getByText('Green Mart')).toBeTruthy()
-    expect(screen.getByText('Quote photo added')).toBeTruthy()
+    expect(screen.getByText('From the photo you added.')).toBeTruthy()
     expect(screen.getByText('Qualified')).toBeTruthy()
+  })
+
+  it('when she said "Later" to the photo, her deal says so and claims no photo (sales-first.md, section 5)', async () => {
+    await finish({ whatChanged: { title: 'What changed on your deals', items: [{ name: 'Green Mart', says: 'You said this. A photo would prove it.', stages: [{ name: 'Contacted', mark: 'said' }, { name: 'Quoted', mark: 'said' }] }] } })
+    expect(await findByText('You said this. A photo would prove it.', {}, { timeout: 5000 })).toBeTruthy()
+    expect(screen.queryByText(/photo you added|Quote photo added/)).toBeNull()
   })
 })

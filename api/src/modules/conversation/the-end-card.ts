@@ -139,13 +139,51 @@ export function theLinesLeftOut(count: number, simplerWords = false): string | n
     : `There are ${count} more lines in your record. You can read them all in your record after you finish.`;
 }
 
-export function theEndCard(lines: readonly ALineForTheCard[], simplerWords = false): EndCard | null {
+/**
+ * WHAT THEY WERE ASKED TO SHOW, AND DID NOT (sales-first.md, section 5; the light prototype's s68).
+ *
+ * Miriam was asked "Can you add the quote? A photo of it is enough." and tapped "Later". Her card must
+ * not say a photo was added, and the prototype has the line say what would prove it: "You said this. A
+ * photo of the quote would prove it." This reads the thing Groundwork asked for a photo of from this
+ * check-in's own questions ("add the quote", "a photo of the quote"), one word, or null. Things that are
+ * themselves the proof ("the photo", "the document") are not an answer. Only this check-in's turns are
+ * ever passed in.
+ */
+const NOT_A_THING_TO_SHOW = new Set(['photo', 'picture', 'document', 'file', 'proof', 'screenshot', 'copy', 'one', 'same', 'other', 'rest', 'details', 'link']);
+export function whatTheyWereAskedToShow(questions: readonly (string | null | undefined)[]): string | null {
+  let found: string | null = null;
+  for (const q of questions ?? []) {
+    const said = String(q ?? '');
+    const m = said.match(/\b(?:photo|picture|copy|screenshot) of (?:the|your) ([a-z]+)\b/i)
+      ?? said.match(/\b(?:add|send|upload|share) (?:the|your) ([a-z]+)\b/i);
+    const thing = m?.[1]?.toLowerCase();
+    if (thing && !NOT_A_THING_TO_SHOW.has(thing)) found = thing;
+  }
+  return found;
+}
+
+/** The line about a thing they were asked to show and did not: what would prove it, in the prototype's words. */
+export function whatAPhotoWouldProve(thing: string): string {
+  return `You said this. A photo of the ${thing} would prove it.`;
+}
+
+/**
+ * `askedToShow` is what Groundwork asked them for a photo of in this check-in, when nothing was added
+ * since (whatTheyWereAskedToShow). A line about it that only rests on their word says so. Leave it out
+ * when a document was added, so nothing here can read as a photo missing that was in fact sent.
+ */
+export function theEndCard(lines: readonly ALineForTheCard[], simplerWords = false, askedToShow: string | null = null): EndCard | null {
   const all = (lines ?? []).filter((l) => !l.disputedAt && asTheyReadIt(l.text));
   /* Commitments first, then the rest in the order they were said. */
   const ordered = [...all.filter((l) => l.type === 'COMMITMENT'), ...all.filter((l) => l.type !== 'COMMITMENT')];
   const shown = ordered
     .slice(0, AT_MOST)
-    .map((l) => ({ says: asTheyReadIt(l.text), ...markFor(l, simplerWords), type: l.type }));
+    .map((l) => {
+      const known = markFor(l, simplerWords);
+      const aboutIt = askedToShow && known.mark === 'said' && l.type !== 'COMMITMENT'
+        && new RegExp(`\\b${askedToShow}s?\\b`, 'i').test(l.text);
+      return { says: asTheyReadIt(l.text), ...known, ...(aboutIt ? { how: whatAPhotoWouldProve(askedToShow!) } : {}), type: l.type };
+    });
   if (!shown.length) return null;
   const leftOut = theLinesLeftOut(ordered.length - shown.length, simplerWords);
   /* What would change a line: something written, for a line that is only their word or memory. A
