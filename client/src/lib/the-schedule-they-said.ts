@@ -50,10 +50,15 @@ export function theScheduleTheySaid(texts: (string | null | undefined)[], today:
     }
     /* The rhythm, said plainly (setup page review: the card stayed "0 of 4 set" after "Weekly, on
        Thursdays, with no end"). Two weeks is read before one week, so "every two weeks" is not weekly. */
-    if (/\bfortnightly\b|\bevery (?:two|2) weeks\b|\bevery other week\b/.test(t)) out.cadence = 'FORTNIGHTLY'
-    else if (/\bmonthly\b|\bevery month\b|\bonce a month\b/.test(t)) out.cadence = 'MONTHLY'
-    else if (/\bweekly\b|\bevery week\b|\bonce a week\b|\bevery (?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/.test(t)) out.cadence = 'WEEKLY'
-    else if (/\bdaily\b|\bevery day\b|\beach day\b/.test(t)) out.cadence = 'DAILY'
+    /* A RHYTHM WORD THAT NAMES SOMETHING ELSE IS NOT THE CHECK-IN'S (local test, 15 October): "I own my own 10 deals and
+       the weekly review." turned Drop Access's "daily check-in" into a weekly one on Thursdays. "Weekly", "daily" and the
+       rest count only on their own or before "check-in", "update" or "basis", never before another thing ("the weekly
+       review", "our daily standup", "the monthly target"). */
+    const r = t.replace(/\b(daily|weekly|fortnightly|monthly)\s+(?!check|update|basis|catch[- ]?up\b|session|report\b)([a-z]+)/g, ' $2')
+    if (/\bfortnightly\b|\bevery (?:two|2) weeks\b|\bevery other week\b/.test(r)) out.cadence = 'FORTNIGHTLY'
+    else if (/\bmonthly\b|\bevery month\b|\bonce a month\b/.test(r)) out.cadence = 'MONTHLY'
+    else if (/\bweekly\b|\bevery week\b|\bonce a week\b|\bevery (?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/.test(r)) out.cadence = 'WEEKLY'
+    else if (/\bdaily\b|\bevery day\b|\beach day\b/.test(r)) out.cadence = 'DAILY'
     const named = (raw ?? '').match(/\b(?:call it|call this|name it|name this)\s+["“']?([^"”\n.!?]+(?:\.\d+[^"”\n.!?]*)?)/i)
     if (named && named[1].trim()) out.name = named[1].trim().replace(/[,;:]$/, '')
     const re = new RegExp(`\\b(?:until|till|til|to|ends?|ending|end on|finish(?:es|ing)? on|through)\\s+(?:the\\s+)?(?:(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?${MONTH}|${MONTH}\\s+(\\d{1,2})(?:st|nd|rd|th)?)(?:,?\\s+(\\d{4}))?\\b`, 'g')
