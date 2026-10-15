@@ -364,7 +364,7 @@ export class BoardService {
             managingOnly: true, signedOffAt: true,
             /* What the population rule reads: still holding a live invitation counts as expected. */
             invitedAt: true, inviteTokenExpiresAt: true,
-            detectedFunction: true, detectedFunctionConfidence: true,
+            detectedFunction: true, detectedFunctionConfidence: true, detectedFunctionConfirmedAt: true,
             user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } },
           },
         },
@@ -3270,6 +3270,7 @@ export class BoardService {
         managingOnly: !!p.managingOnly,
         detectedFunction: p.detectedFunction ?? null,
         detectedFunctionConfidence: p.detectedFunctionConfidence ?? null,
+        detectedFunctionConfirmedAt: (p as any).detectedFunctionConfirmedAt ?? null,
       })),
       checkIns,
       entries: entries.map((e) => ({
