@@ -81,8 +81,11 @@ describe('the order on the page is the order that was declared', () => {
          * "Where things stand" in a list of theme names near the top of the file and reported three
          * blocks out of order that were in perfect order on the page. A guard that cries wolf is a
          * guard somebody deletes.
+         *
+         * A fold drawn through the page's own `theFold("...", ...)` (which picks `Folded summary=` or
+         * the light page's `FoldedLine name=`) is the label where it is drawn too, so it counts.
          */
-        const i = src.search(new RegExp(`(?:label|summary)=["']${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']`));
+        const i = src.search(new RegExp(`(?:(?:label|summary)=|theFold\\()["']${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']`));
         expect(`${s.cell} draws "${label}": ${i > -1}`).toContain('true');
         return { block, i };
       });

@@ -40,7 +40,13 @@ describe('a free run', () => {
  * keeps `isSubscribed` and everywhere else may not have it.
  */
 describe('every gate that stops somebody', () => {
-  const MAY_ASK_WHO_IS_PAYING = ['common/subscription.ts', 'modules/billing/billing.service.ts'];
+  /*
+   * The WhatsApp add-on's `theMonthStarted` is billing too, not a gate: it asks whether there is a paid
+   * Stripe billing month to count WhatsApp users from (`subscriptionPeriodEnd`). A free month has no
+   * billing month, so it counts from the calendar month, and whether WhatsApp may send at all is
+   * decided by `whatCoversThem` in the same file. Nobody is stopped by this read.
+   */
+  const MAY_ASK_WHO_IS_PAYING = ['common/subscription.ts', 'modules/billing/billing.service.ts', 'modules/billing/whatsapp-add-on.service.ts'];
 
   const walk = (at: string, out: string[] = []): string[] => {
     for (const e of readdirSync(at, { withFileTypes: true })) {
