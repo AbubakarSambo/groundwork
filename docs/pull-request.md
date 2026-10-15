@@ -1,5 +1,9 @@
 # The release to production, for Abubakar
 
+
+> **Update, 15 October, 04:00 UTC.** Brought up to date with staging after #351 (the marketing build's apostrophe, one shared row, two stale pins). Five tooling tests that read working documents (tools/score_run.py, docs/pattern-names.md, docs/modules.md, a journey dump) are left out of this release, as docs/what-goes-in-a-pull-request.md requires; they stay on the working branch. Product paths equal staging's exactly.
+>
+> **Questions before the merge:** (1) Hafsah decides whether the free-trial switch (`pricing.freeTrial`) goes on at release; the new pricing and the one-month trial for new teams show only once it is on. (2) Main's migration `20260923200000_reopen_every_check_in…` is `SELECT 1` on staging; if production already ran main's version, those check-ins were already reopened and nothing runs twice. Please confirm. (3) The API needs Node 24.
 This branch, `release-production-1015`, is made from `main` as it is today (`824b7e3b4`, 28 September). Its product files are exactly staging's as of `600849756` (15 October, after #350): `api/src`, `api/prisma`, `client/src`, `client/public`, `marketing/src`, `marketing/public`, the package and build files, the CI workflow `tests.yml`, the four one-off scripts the release runs, the existing-users check, and three notes. Nothing else changes. Merge it into `main` only after the backup below.
 
 ## Before you merge
