@@ -15,6 +15,17 @@
  * comes back.
  */
 
+/**
+ * A DAILY CHECK-IN IS MONDAY TO FRIDAY UNLESS THE LEAD SAYS OTHERWISE (Hafsah, 15 October 2026). This reverses the
+ * "never defaulted to weekdays" rule above for a daily rhythm only: "Every day" made 90 check-ins with every weekend in
+ * them. Days she gave are kept as she gave them, and every day listed (her "Any day is fine") still means any day.
+ * Any other rhythm is left exactly as before.
+ */
+export function theDaysItRunsOn(cadence: string | null | undefined, said: number[] | null | undefined): number[] | undefined {
+  if (said !== undefined && said !== null) return said;
+  return cadence === 'DAILY' ? [1, 2, 3, 4, 5] : undefined;
+}
+
 /** 0 = Sunday .. 6 = Saturday, the same numbering as `Date.getDay` and `cadenceAnchorDay`. */
 export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
