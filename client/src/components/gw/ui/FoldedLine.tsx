@@ -18,10 +18,11 @@ export function FoldedLine({ name, fact, defaultOpen, children, id }: {
   id?: string
 }) {
   return (
-    <details id={id} className="gwui-fold" open={defaultOpen || undefined}>
+    <details id={id} className={`gwui-fold${fact == null || fact === '' ? ' gwui-fold-nofact' : ''}`} open={defaultOpen || undefined}>
       <summary className="gwui-fold-sum">
         <span className="gwui-fold-name">{name}</span>
-        <span className="gwui-fold-fact">{fact ?? ''}</span>
+        {/* A line with no fact gives its name the whole line, so it stays one line on a phone. */}
+        {fact == null || fact === '' ? null : <span className="gwui-fold-fact">{fact}</span>}
         <span className="gwui-fold-chev" aria-hidden="true">›</span>
       </summary>
       <div className="gwui-fold-body">{children}</div>

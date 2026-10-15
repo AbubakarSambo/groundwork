@@ -58,8 +58,8 @@ describe('#4 END-CONFIRM: finishing a check-in requires explicit confirmation', 
     renderChat()
     const trigger = await screen.findByText(/Finish my check-in now/i, {}, { timeout: 4000 })
     fireEvent.click(trigger)
-    // a confirm step appears...
-    await screen.findByText(/What happens next/i)
+    // a confirm step appears... (its fold's name and its own heading both say "what happens next" now, s68)
+    await screen.findAllByText(/What happens next/i)
     // ...and nothing has been finalised yet
     expect((conversationApi.complete as any)).not.toHaveBeenCalled()
   })

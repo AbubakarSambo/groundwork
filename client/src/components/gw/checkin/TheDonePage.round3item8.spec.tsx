@@ -47,13 +47,15 @@ describe('the Done page', () => {
     expect(screen.queryByText('Not shared yet')).toBeNull()
   })
 
-  it('"That\'s saved" is a soft green panel with its own heading inside it', async () => {
+  it('"For tomorrow" (the approved rename of "That\'s saved") is a soft green panel with its own heading inside it', async () => {
     renderDonePage()
-    const heading = await screen.findByRole('heading', { name: 'That’s saved' })
-    /* Its own panel, not a Section heading sitting above a separate plain white Panel. */
+    const heading = await screen.findByRole('heading', { name: 'For tomorrow' })
+    /* Its own panel, not a Section heading sitting above a separate plain white Panel. The soft green is a class now. */
     const panel = heading.parentElement as HTMLElement
-    expect(panel.style.background).toBe('var(--gw-green-bg)')
+    expect(panel).toHaveClass('gwui-done-tomorrow')
     expect(panel.contains(screen.getByText(/also answers a check-in/))).toBe(true)
+    /* Why answering matters folds behind one line inside it (the light prototype's s68). */
+    expect(screen.getByText(/also answers a check-in/).closest('details')).toBeTruthy()
   })
 
   it('the five things read as one short line each, with just the tick or ring visible', async () => {

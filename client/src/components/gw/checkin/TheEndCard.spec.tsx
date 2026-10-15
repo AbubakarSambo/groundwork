@@ -22,10 +22,31 @@ describe('TheEndCard', () => {
         onChange={() => {}}
       />
     )
-    const item = screen.getByText('Your next check-in opens tomorrow at 4pm.')
+    const item = screen.getByText('A line of what happens next.')
     const list = item.closest('ul')
     expect(list).toBeTruthy()
     expect(list).toHaveClass('gwui-ci-endcard-next')
+  })
+
+  /* sales-first.md, section 5: when the next one opens is one line above the fold, said once, not a bullet inside it. */
+  it('says when the next check-in opens as one line, outside the fold, once', () => {
+    render(
+      <TheEndCard
+        engine={{ inYourRecord: [{ says: 'Green Mart has a quote.', how: 'You said this. A photo of the quote would prove it.', mark: 'said' }], next: [] }}
+        leadName="Wairimu"
+        nextOpens="Your next check-in opens tomorrow at 8am."
+        finishing={false}
+        onFinish={() => {}}
+        onChange={() => {}}
+      />
+    )
+    const line = screen.getByText('Your next check-in opens tomorrow at 8am.')
+    expect(line.closest('ul')).toBeNull()
+    expect(line.closest('details')).toBeNull()
+    expect(screen.getAllByText('Your next check-in opens tomorrow at 8am.')).toHaveLength(1)
+    expect(screen.getByText('Why answering matters, and what happens next').closest('summary')).toBeTruthy()
+    expect(screen.getByText(/Wairimu also answers a check-in/).closest('details')).toBeTruthy()
+    expect(screen.queryByText(/^\d\. /)).toBeNull()
   })
 })
 
@@ -40,7 +61,8 @@ describe('TheEndCard, what it says where her answers should be', () => {
   })
   it('with her answers, shows them as the first part and says nothing else about it', () => {
     draw({ engine: { inYourRecord: [{ says: 'You will chase the payment provider on Friday.', how: 'You said you will do this. I will ask you how it went.' }] } })
-    expect(screen.getByText('1. What is now in your record')).toBeTruthy()
+    /* The approved rename (sales-first.md), with no number. */
+    expect(screen.getByText('What goes in your record')).toBeTruthy()
     expect(screen.getByText('You will chase the payment provider on Friday.')).toBeTruthy()
     expect(screen.queryByText(/did not find anything|could not show you/)).toBeNull()
   })

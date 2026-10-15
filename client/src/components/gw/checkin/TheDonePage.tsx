@@ -10,6 +10,7 @@ import { Section } from '@/components/gw/ui/Section'
 import { Panel } from '@/components/gw/ui/Panel'
 import { Button } from '@/components/gw/ui/Button'
 import { Tag } from '@/components/gw/ui/Tag'
+import { FoldedLine } from '@/components/gw/ui/FoldedLine'
 import { conversationApi } from '@/api/conversation'
 import { groundsApi } from '@/api/grounds'
 import { reportsApi } from '@/api/reports'
@@ -22,10 +23,12 @@ import { whenTheNextOneOpens, theNextOpenCheckInId, whoElseAnswers } from '@/lib
  *
  *   Done. Thanks, Miriam.
  *   Your check-in is saved. (and when the next one opens)
+ *   For tomorrow                     first: the one thing to carry, and why answering matters folded
+ *                                    (the approved rename of "That’s saved"; the light prototype's s68)
  *   Two reports come from this       your own, "Only you", "Read yours"; the team's, and whether it is out
- *   What changed on your deals       the engine's stage ladders, when it sends them (request 7)
- *   That’s saved                     why answering matters, and one thing for next time
- *   How checkable today’s check-in was   the engine's five, "4 of 5", "Only you see it."
+ *   What changed on your deals       their own deals that today's lines name, from the record; a photo
+ *                                    is said only where one backs today's line (what-changed-on-their-deals.ts)
+ *   How checkable today’s check-in was   one line that opens: the engine's five, "Only you see it."
  *
  * Every part is said only when it is true for this check-in:
  * - The team's report opens once everyone in the round has answered (reports.listener releases it
@@ -170,7 +173,7 @@ export function TheDonePage({
 
   const g: any = ground.data
   const leadName = whoElseAnswers(g)
-  const next = whenTheNextOneOpens(mine.data?.checkIns, checkInId)
+  const next = whenTheNextOneOpens(mine.data?.checkIns, checkInId, new Date(), mine.data)
   /*
    * RE-REVIEW: "YOUR NEXT CHECK-IN IS OPEN NOW." NEEDS A DOOR TO WALK THROUGH.
    * This showed with no link at all - and, before `whenTheNextOneOpens` learned to treat an
@@ -234,6 +237,23 @@ export function TheDonePage({
         )
       })()}
 
+      {/*
+        FOR TOMORROW, FIRST (sales-first.md, section 5; the light prototype's s68). The approved rename of
+        "That’s saved". The one thing to carry comes first, as a plain sentence, and why answering matters
+        folds behind one line. The soft green panel stays (review round 3, item 8), with its heading inside.
+      */}
+      {(leadName || carry) && (
+        <section aria-labelledby={savedHeadingId} className="gwui-done-tomorrow">
+          <h2 id={savedHeadingId} className="gwui-done-tomorrow-heading">For tomorrow</h2>
+          {carry && <p className="gwui-panel-text">{carry}</p>}
+          {leadName && (
+            <FoldedLine name="Why answering matters">
+              <p className="gwui-panel-text">{leadName} also answers a check-in. The report puts the answers side by side. It does not decide who is right.</p>
+            </FoldedLine>
+          )}
+        </section>
+      )}
+
       {/**
         * THE HEADING IS THE TEAM'S NEWS, NOT A LABEL ON A LONE CARD.
         *
@@ -252,7 +272,7 @@ export function TheDonePage({
 
       {changed.length > 0 && (
         <Section heading={whatChanged?.title?.trim() || 'What changed'}>
-          <div style={{ display: 'grid', gap: 14 }}>
+          <div className="gwui-done-changed" style={{ display: 'grid', gap: 14 }}>
             {changed.map((c, i) => (
               <div key={c.name + i}>
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap' }}>
@@ -266,39 +286,9 @@ export function TheDonePage({
         </Section>
       )}
 
-      {/*
-        REVIEW ROUND 3, ITEM 8: "That's saved" IS A SOFT GREEN PANEL WITH ITS HEADING INSIDE -
-        not a plain white Panel under a separate Section heading above it (two different things
-        reading as unrelated). A real gap between its two paragraphs now too - they sat with no
-        space between them, reading as one run-on block.
-      */}
-      {(leadName || carry) && (
-        <section aria-labelledby={savedHeadingId} style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b)', borderRadius: 12, padding: '15px 17px', display: 'grid', gap: 10 }}>
-          <h2 id={savedHeadingId} style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--gw-green-t)' }}>That’s saved</h2>
-          {/*
-            GROUP 3'S REVIEW, THE SCREEN'S OWN SENTENCES 11: A LABEL AND A COLON IS NOT A HEADING.
-            "Why answering matters:" and "One thing for next time:" were bolded words glued to the
-            front of a sentence with a colon, which CLAUDE.md's wording rule rules out same as
-            anywhere else a person reads. Each is now its own heading, then a plain sentence under
-            it - the same shape "That's saved" itself already uses, one level down.
-          */}
-          {leadName && (
-            <div>
-              <h3 style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)' }}>Why answering matters</h3>
-              <p className="gwui-panel-text">{leadName} also answers a check-in. The report puts the answers side by side. It does not decide who is right.</p>
-            </div>
-          )}
-          {carry && (
-            <div>
-              <h3 style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)' }}>One thing for next time</h3>
-              <p className="gwui-panel-text">{carry}</p>
-            </div>
-          )}
-        </section>
-      )}
-
+      {/* How checkable today's check-in was, as one line that opens (the light prototype's s68). */}
       {five && (
-        <Section heading="How checkable today’s check-in was">
+        <FoldedLine name="How checkable today’s check-in was">
           {/*
             THE COUNT AND THE BAR ARE GONE, ON PURPOSE, NOT ONLY VISUALLY.
 
@@ -341,7 +331,7 @@ export function TheDonePage({
             ))}
           </ul>
           <p className="gwui-panel-text-muted" style={{ marginTop: 10 }}>This is about the check-in. Only you see it.</p>
-        </Section>
+        </FoldedLine>
       )}
 
       {/* For whoever runs it: who the round is still waiting on. Kept from the old finished screen. */}

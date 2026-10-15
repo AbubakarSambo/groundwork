@@ -2567,3 +2567,23 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ctx-actions { display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
 .gwui-ctx-actions > .gwui-menu .gwui-menu-pop { min-width: min(320px, calc(100vw - 32px)); }
 
+
+/* THE END CARD, LIGHT (sales-first.md, section 5): the next opening as one line, and the fold. */
+.gwui-ci-endcard-row { align-items: flex-start; }
+.gwui-ci-endcard-text { flex: 1; min-width: 0; }
+.gwui-ci-endcard-nextopens { font-weight: 600; }
+.gwui-ci-endcard-more-body { display: grid; gap: 12px; }
+/* THE DONE PAGE'S "FOR TOMORROW" (sales-first.md, section 5), the soft green panel it had as "That's saved". */
+.gwui-done-tomorrow { background: var(--gw-green-bg); border: 1px solid var(--gw-green-b); border-radius: 12px; padding: 15px 17px; display: grid; gap: 10px; }
+.gwui-done-tomorrow-heading { margin: 0; font-size: 15px; font-weight: 700; color: var(--gw-green-t); }
+/* THE LIGHT OWN REPORT (sales-first.md, sections 2 and 5): the mark on each of their lines. */
+.gwui-own-mark { display: inline-flex; align-items: center; align-self: center; }
+.gwui-own-more { display: grid; gap: 8px; }
+.gwui-own-more .gw-blk { border-top: 0; padding: 0; }
+/* A folded line with no fact: the name takes the whole line, on a laptop and on a phone. */
+.gwui-fold.gwui-fold-nofact > summary.gwui-fold-sum { grid-template-columns: minmax(0, 1fr) 20px; }
+/* What changed on your deals, on a phone: each stage's name stays whole (it broke as "Contacte d"). */
+@media (max-width: 480px) {
+  .gwui-done-changed .gw-ladder-stages { gap: 4px; letter-spacing: -0.01em; }
+  .gwui-done-changed .gw-ladder-stages li { overflow-wrap: normal; word-break: normal; }
+}

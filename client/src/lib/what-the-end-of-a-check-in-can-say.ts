@@ -10,10 +10,17 @@ import { firstWordOfAName } from './the-first-word-of-a-name'
  * check-in, and says nothing otherwise.
  */
 
-/** "4pm", "4:30pm": the prototype's way of writing a time. */
-function aTime(d: Date): string {
-  return whenItWas(d, 'hourOfDay').replace(/\s/g, '').replace(':00', '').toLowerCase()
+/** "4pm", "4:30pm": the prototype's way of writing a time. In the organisation's zone when the server gives one. */
+function aTime(d: Date, zone?: string): string {
+  return whenItWas(d, 'hourOfDay', zone).replace(/\s/g, '').replace(':00', '').toLowerCase()
 }
+
+/**
+ * WHAT THE SERVER SAYS ABOUT THE NEXT ONE (sales-first.md, section 5): when it would open by the schedule,
+ * before its row exists, and the organisation's zone, so "tomorrow at 8am" reads as the schedule set it
+ * wherever the reader is. Both from GET /grounds/:id/my-checkin-status.
+ */
+export interface WhatTheScheduleSays { nextOpensAt?: string | null; zone?: string | null }
 
 /**
  * When the next check-in opens, in one sentence: "Your next check-in opens tomorrow at 4pm."
@@ -23,12 +30,15 @@ export function whenTheNextOneOpens(
   checkIns: { id: string; sessionNumber: number; status: string; availableFrom?: string | null }[] | null | undefined,
   thisCheckInId: string | null | undefined,
   now: Date = new Date(),
+  schedule?: WhatTheScheduleSays | null,
 ): string | null {
   if (!checkIns) return null
+  const zone = schedule?.zone ?? undefined
   const later = checkIns
     .filter(c => c.id !== thisCheckInId && c.status !== 'COMPLETED' && c.status !== 'DECLINED')
     .sort((a, b) => a.sessionNumber - b.sessionNumber)
-  const next = later[0]
+  /* No row for the next one yet (it is written when this one finishes): the schedule's own time, when the server has one. */
+  const next = later[0] ?? (schedule?.nextOpensAt ? { status: 'NOT_STARTED', availableFrom: schedule.nextOpensAt } : null)
   if (!next) return null
   /*
    * A ROW WITH NO availableFrom IS NOT YET SCHEDULED, NOT ALREADY OPEN (U.8 review). The next
@@ -50,11 +60,11 @@ export function whenTheNextOneOpens(
   if (Number.isNaN(opens.getTime()) || opens.getTime() <= now.getTime()) {
     return 'Your next check-in is open now.'
   }
-  const day = (d: Date) => whenItWas(d, 'day')
+  const day = (d: Date) => whenItWas(d, 'day', zone)
   const tomorrow = new Date(now.getTime() + 86_400_000)
-  if (day(opens) === day(now)) return `Your next check-in opens today at ${aTime(opens)}.`
-  if (day(opens) === day(tomorrow)) return `Your next check-in opens tomorrow at ${aTime(opens)}.`
-  return `Your next check-in opens on ${whenItWas(opens, 'weekdayAndDay')} at ${aTime(opens)}.`
+  if (day(opens) === day(now)) return `Your next check-in opens today at ${aTime(opens, zone)}.`
+  if (day(opens) === day(tomorrow)) return `Your next check-in opens tomorrow at ${aTime(opens, zone)}.`
+  return `Your next check-in opens on ${whenItWas(opens, 'weekdayAndDay', zone)} at ${aTime(opens, zone)}.`
 }
 
 /**

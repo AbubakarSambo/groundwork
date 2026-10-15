@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { TheLeadsOwnWayIn } from '@/components/gw/TheLeadsOwnWayIn'
+import { isSessionShared } from '@/lib/session-rows'
 import { useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -463,8 +464,10 @@ export default function SessionReportPage() {
                 checkInId={checkInId!}
                 groundId={data!.groundId as string}
                 sessionNumber={data!.sessionNumber as number}
+                light={(ground as any)?.kindOfWork === 'sales org'}
               />
             )}
+
 
           {data?.report && (
             <>
@@ -635,7 +638,21 @@ export default function SessionReportPage() {
         <Panel as="section">
           <Stack gap={12}>
           {/* U.9: "The team’s report", the prototype's name for it (own-report.txt, team-report.txt). */}
-          <SubHeading>The team’s report</SubHeading>
+          {/*
+            AND WHETHER IT IS SHARED YET, BESIDE ITS NAME, on a sales check-in (sales-first.md, sections 2 and 5;
+            own-report.txt: "The team’s report / Not shared yet"). The done page's own rule and tags: this
+            session's own release, never another session's.
+          */}
+          {(ground as any)?.kindOfWork === 'sales org' ? (
+            <div className="gwui-sentence-row">
+              <SubHeading>The team’s report</SubHeading>
+              {isSessionShared((ground as any)?.report, data.sessionNumber as number)
+                ? <Tag tone="proven">Shared</Tag>
+                : <Tag tone="attention">Not shared yet</Tag>}
+            </div>
+          ) : (
+            <SubHeading>The team’s report</SubHeading>
+          )}
           {/*
             "IT NEVER QUOTES ANYONE" SAT DIRECTLY ABOVE VERBATIM SENTENCES FROM THREE PEOPLE.
             The section below is right and the line was wrong. What the product actually protects,
