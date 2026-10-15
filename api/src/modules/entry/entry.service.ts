@@ -1271,7 +1271,7 @@ Fields:
   the product inventing content and it teaches people the summary cannot be trusted.
 - goals: array of what they need from this
 - brief: anything specific to focus on or probe
-- cadence: how often they check in, IF they said. One of "DAILY", "WEEKLY", "FORTNIGHTLY", "MONTHLY", "ONE_TIME". Map their own words: "weekly" or "every week" -> WEEKLY; "every two weeks", "fortnightly", "every other week" -> FORTNIGHTLY; "monthly" or "once a month" -> MONTHLY; "just once", "a single check-in" -> ONE_TIME. Omit it entirely if they did not say.
+- cadence: how often they check in, IF they said. One of "DAILY", "WEEKLY", "FORTNIGHTLY", "MONTHLY", "ONE_TIME". Map their own words: "daily", "every day", "every working day" or "each day" -> DAILY; "weekly" or "every week" -> WEEKLY; "every two weeks", "fortnightly", "every other week" -> FORTNIGHTLY; "monthly" or "once a month" -> MONTHLY; "just once", "a single check-in" -> ONE_TIME. Only words about how often THIS CHECK-IN happens count: "I own the weekly review" or "our monthly target" names another meeting or a number, not the check-in's rhythm, and never changes a rhythm they already gave. Omit it entirely if they did not say.
 - runsUntilEnded: true ONLY if they said it runs until they end it themselves ("when I end it", "until I stop it", "no end date"). Then leave timelineDays out.
 - timelineDays: how long the whole period runs, in days, IF they said. "90 days" or "three months" -> 90; "60 days" -> 60; "a quarter" -> 90; "two weeks" -> 14; "three weeks" -> 21; "a month" -> 30. Omit if they did not say.
 

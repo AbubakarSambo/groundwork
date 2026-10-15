@@ -50,7 +50,7 @@ import { aKindMayBeGiven, theBoardKindsOffered, theOldContextChatIsOpen } from '
 import { askNameOf } from '../assistant/ask-name';
 import { KINDS_OF_WORK, THE_KIND_OF_WORK_PROMPT, THE_KIND_OF_WORK_SCHEMA, oneOfTheKinds, theSetupWords } from '../board/the-kind-of-work';
 import { PrismaService } from '../prisma/prisma.service';
-import { theNextDayTheyWork, workingDaysOf } from './which-days-this-team-works';
+import { theNextDayTheyWork, workingDaysOf, theDaysItRunsOn } from './which-days-this-team-works';
 import { targetsFor } from '../board/whose-number-is-whose-business';
 import { withoutWhatTheLeadHasNotToldThemAbout, theWordsOfWhatTheLeadHasNotToldThemAbout, theyRunThisCheckIn } from '../board/an-untold-goal-is-not-a-board-objective';
 import { namesOnTheRoster, targetsHiddenFrom, withoutHiddenTargetsIn } from '../board/a-hidden-target-stays-hidden';
@@ -672,6 +672,8 @@ export class GroundsService {
   }
 
   async create(organizationId: string, initiatorId: string, dto: CreateGroundDto, creatorRole?: string) {
+    /* A daily check-in nobody gave days for runs Monday to Friday (Hafsah, 15 October). */
+    dto = { ...dto, workingDays: theDaysItRunsOn(dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario], dto.workingDays) };
     /* What this organisation already calls its check-ins, so a new one is not the fourth thing in
        the rail with the same name. See four-check-ins-with-the-same-name. */
     const labelsAlreadyHere = await this.prisma.ground
@@ -920,6 +922,7 @@ export class GroundsService {
    * reject them.
    */
   async createForLead(organizationId: string, adminUserId: string, dto: CreateGroundForLeadDto) {
+    dto = { ...dto, workingDays: theDaysItRunsOn(dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario], dto.workingDays) };
     const canCreate = await this.billing.canCreateGround(organizationId);
     if (!canCreate.allowed) {
       throw new BadRequestException(canCreate.reason ?? 'You cannot open a check-in here.');

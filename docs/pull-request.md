@@ -146,7 +146,7 @@ Hafsah's decision, 15 October. After the migrations, the start checks and the fo
 - [ ] If anything goes wrong, **restore the backup from (a) and the old code (`824b7e3b4`) together. Never roll back the code alone.** The old code cannot read the new database, and the new migrations change existing values that only the backup holds.
 
 ## What is in it, by area
-- **Since 15 October, 04:00 UTC (brought up to staging again):** the free month's two emails to admins and the anchor's people question in one sentence (#353); Ask's ＋ attach button (#354); the lead's role is a role or nothing (#355); a difference is a real one (#356); "Report being written" clears (#357).
+- **Since 15 October, 04:00 UTC (brought up to staging again):** the free month's two emails to admins and the anchor's people question in one sentence (#353); Ask's ＋ attach button (#354); the lead's role is a role or nothing (#355); a difference is a real one (#356); "Report being written" clears (#357); a daily check-in runs on weekdays unless the lead says otherwise and reads "until the end of the year" (#358); a daily check-in stays daily (#359).
 
 - **The engine** (`api/src`): plain reports and boards, written in full sentences with people's names; the role interview in a person's first check-in; the lead's own check-in, taken when the lead chooses; missed check-ins told to the person first; claims about a colleague kept in the speaker's words until the colleague confirms; pattern steadiness; the lead's daily nudge; one routine message a day for each person.
 - **Ask Groundwork**: context and resources set up by talking to Ask, each written only after a yes. The old context chat is off.
