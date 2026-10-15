@@ -112,6 +112,10 @@ export class WhatsAppForAnOrganisationService {
     /* The same words twice within a few seconds, under two message ids (a double tap, a phone that sent it again), are one answer and get one reply (B-105). */
     if (message.type === 'text' && typeof message.text?.body === 'string' && !(await this.notTheSameWordsJustNow(organizationId, WhatsAppService.normalize(from), message.text.body))) return;
     if (via === 'theirs') await this.prisma.whatsAppConnection.update({ where: { organizationId }, data: { lastInboundAt: new Date() } }).catch(() => undefined);
+    /* Blue ticks and "typing…", on the number this arrived on. AFTER the two guards above, so a
+       redelivery or a double tap raises nothing, and before the model is asked, which is the wait
+       it exists to cover. Never throws; a receipt that did not go does not cost the reply. */
+    if (message.id) await this.whatsapp.weAreReadingThis(String(message.id), organizationId, via);
     await this.route(organizationId, from, whatArrived(message), {
       /* A reply quoting one of our messages, or a template's button, carries that message's id (decision 106 item 1). */
       repliesTo: typeof message.context?.id === 'string' ? message.context.id : null,

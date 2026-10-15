@@ -43,6 +43,12 @@ export type SendContext = {
  * own report - into the application log. The code and type are what a failure is diagnosed from;
  * the free-text half is Meta's prose about our request and is not needed to act on it.
  */
+/**
+ * How long the read receipt and typing indicator may take before it is abandoned. It is a courtesy
+ * on the way to the real answer, so it never waits longer than the answer would have taken anyway.
+ */
+export const READ_RECEIPT_DEADLINE_MS = 5_000;
+
 export function metaErrorCode(body: string): string {
   try {
     const e = (JSON.parse(body) ?? {}).error ?? {};
@@ -454,6 +460,58 @@ export class WhatsAppService implements OnModuleInit {
     } catch (err: any) {
       this.logger.error(`WhatsApp send failed for ${to}: ${err?.message}`);
       return { sent: false, error: String(err?.message ?? err).slice(0, 500) };
+    }
+  }
+
+  /**
+   * THE TICKS TURN BLUE AND "typing…" APPEARS, IN ONE CALL TO META.
+   *
+   * An opener is composed by the model and can take ten seconds or more. For that whole time the
+   * person who just wrote sees nothing: no ticks, no sign anybody is there. Long enough to write
+   * again, or to decide the thing is dead.
+   *
+   * Meta marks the message read and raises the indicator from the same request, and drops the
+   * indicator when the reply goes or after 25 seconds, whichever comes first. So this is called
+   * only where a reply is actually coming - after the redelivery and double-tap guards, never
+   * before them - which is Meta's own instruction too: do not show it if you will not answer.
+   *
+   * ON THE NUMBER THE MESSAGE ARRIVED ON, which is why `via` is passed rather than guessed. A
+   * receipt sent from Groundwork's number for a message somebody wrote to their organisation's own
+   * number is about a message that number never saw, and Meta refuses it.
+   *
+   * NEVER THROWS, AND NEVER COSTS THE REPLY. A receipt that did not go is worth a debug line and
+   * nothing more - it must not take a check-in down with it - and the request carries its own
+   * deadline so a slow Meta cannot hold up the answer the person is waiting for.
+   */
+  async weAreReadingThis(messageId: string, organizationId: string | null, via: WhichNumber = 'ours'): Promise<void> {
+    if (!messageId) return;
+    try {
+      let phoneNumberId: string | undefined;
+      let accessToken: string | undefined;
+      if (via === 'theirs' && organizationId) {
+        const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
+        if (!own?.enabled) return;
+        phoneNumberId = own.phoneNumberId;
+        /* Sealed on the row, so it goes through the same opener every send uses. */
+        accessToken = theirKey(own, 'accessToken');
+      } else {
+        const ours = await this.ours();
+        phoneNumberId = ours.phoneNumberId;
+        accessToken = ours.accessToken;
+      }
+      if (!phoneNumberId || !accessToken) return;
+      const res = await fetch(`${this.graphBase()}/${phoneNumberId}/messages`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messaging_product: 'whatsapp', status: 'read', message_id: messageId, typing_indicator: { type: 'text' } }),
+        signal: AbortSignal.timeout(READ_RECEIPT_DEADLINE_MS),
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        this.logger.debug(`Read receipt refused for ${messageId}: ${res.status} ${metaErrorCode(body)}`);
+      }
+    } catch (err: any) {
+      this.logger.debug(`Read receipt could not be sent for ${messageId}: ${err?.message}`);
     }
   }
 
