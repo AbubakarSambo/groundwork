@@ -1,5 +1,6 @@
 import { CheckInStatus, TurnRole } from '@prisma/client';
 import { NOT_NAMED_YET } from '../suites/correct-their-job';
+import { aRoleOrNothing } from '../../common/a-role-or-nothing';
 import { theyDeclined, type AThingToCover } from './what-this-session-has-covered';
 import { aClaimThatMattersInTheirLastAnswer } from './asking-for-proof-kindly';
 
@@ -106,7 +107,10 @@ export function onlyWhatTheySaid(read: WhatTheySaidAboutTheirJob | null | undefi
     if (!wanted || !turns.some((t) => t.includes(wanted))) continue;
     if (key === 'roleName') {
       if (v.split(/\s+/).length > 6 || v.length > 80) continue;
-      out.roleName = v.replace(/[.!?]+$/, '');
+      /* What they call their job, never a piece of an answer ("I sign it off"). */
+      const role = aRoleOrNothing(v);
+      if (!role) continue;
+      out.roleName = role;
       continue;
     }
     out[key] = v;

@@ -1,5 +1,6 @@
 import { HOW, whatProvedIt } from '../conversation/the-end-card';
 import { filesSentWith } from './files-sent-with-a-check-in';
+import { aRoleOrNothing } from '../../common/a-role-or-nothing';
 import { theOpenSession } from '../engagement/heres-what-is-new';
 import { recordThatTheLeadRead } from './a-lead-read-this-report';
 import { aNumberInWords } from '../engagement/a-number-in-words';
@@ -6382,7 +6383,8 @@ happened, and what is in the way.`;
        */
       role: aRoleInTheirOwnWords(participant as any),
       /* Said to this person only in their own words, never the lead's sentence about them (request 36). */
-      roleToSay: aRoleInTheirOwnWords(participant as any),
+      /* Said to her as "your work as …" only when it is a role, never a piece of an answer (staging test, 15 October). */
+      roleToSay: aRoleOrNothing(aRoleInTheirOwnWords(participant as any)),
       /*
        * THE COLUMN THAT SELECTS THE ROLE MAP, read here for the first time on this page. See
        * whichRoleMap: below MIN_COACHING_CONFIDENCE there is no map and the note says why, rather
