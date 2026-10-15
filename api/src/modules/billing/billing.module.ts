@@ -8,13 +8,14 @@ import { StripeService } from './stripe.service';
 import { PricingService } from './pricing.service';
 import { BillingController } from './billing.controller';
 import { CodeExpiryScheduler } from './code-expiry.scheduler';
+import { TheFreeMonthEmails } from './the-free-month-emails';
 import { UsageModule } from '../usage/usage.module';
 import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [UsageModule, EmailModule],
   controllers: [BillingController],
-  providers: [BillingService, StripeService, PricingService, CodeExpiryScheduler, ThreeMonthsOnTheHouseService, APromiseKeptAtSignUp, TheFreeTrialService, WhatsAppAddOnService],
+  providers: [BillingService, StripeService, PricingService, CodeExpiryScheduler, TheFreeMonthEmails, ThreeMonthsOnTheHouseService, APromiseKeptAtSignUp, TheFreeTrialService, WhatsAppAddOnService],
   exports: [BillingService, StripeService, PricingService, ThreeMonthsOnTheHouseService, WhatsAppAddOnService],
 })
 export class BillingModule {}

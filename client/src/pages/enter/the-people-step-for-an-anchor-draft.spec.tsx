@@ -156,9 +156,9 @@ describe('the people step, for an anchor draft', () => {
     for (let i = 0; i < 2; i++) {
       fireEvent.change(await screen.findByPlaceholderText('name@company.com'), { target: { value: `person${i}@example.test` } })
       fireEvent.click(screen.getByText('Add'))
-      await screen.findByText('What do they do / why are they part of this?')
+      await screen.findByText('What do they do, and why are they part of this?')
       fireEvent.click(screen.getByText('Skip'))
-      await waitFor(() => expect(screen.queryByText('What do they do / why are they part of this?')).toBeNull())
+      await waitFor(() => expect(screen.queryByText('What do they do, and why are they part of this?')).toBeNull())
     }
     expect(toast.error).not.toHaveBeenCalled()
     // A third other person reaches the same context prompt (asking what somebody does is not
@@ -166,7 +166,7 @@ describe('the people step, for an anchor draft', () => {
     // somebody is actually added, with the engine's own sentence.
     fireEvent.change(await screen.findByPlaceholderText('name@company.com'), { target: { value: 'person2@example.test' } })
     fireEvent.click(screen.getByText('Add'))
-    await screen.findByText('What do they do / why are they part of this?')
+    await screen.findByText('What do they do, and why are they part of this?')
     fireEvent.click(screen.getByText('Skip'))
     expect(toast.error).toHaveBeenCalledWith('This one-month Groundwork holds up to 20 people besides you.')
   })

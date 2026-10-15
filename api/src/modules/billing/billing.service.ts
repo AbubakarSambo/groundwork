@@ -5,7 +5,7 @@ import type Stripe from 'stripe';
 import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { StripeService } from './stripe.service';
 import { PricingService, PLAN_LABELS, DEFAULT_FREE_GROUND_LIMIT, freePlanApplies, WHATSAPP_ADD_ON_KIND, EXTRA_SEAT_KIND, WHATSAPP_PERSON_KIND } from './pricing.service';
-import { extraSeatsOn, thisAddsASeat, thisMonth, aCheaperPlan, seatsCost, dollarsOf } from './what-a-month-costs';
+import { extraSeatsOn, thisAddsASeat, thisMonth, aCheaperPlan, seatsCost, dollarsOf, type AMonth } from './what-a-month-costs';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { aReceiptLine } from '../email/email.service';
 
@@ -1075,6 +1075,38 @@ export class BillingService {
   }
 
   /**
+   * THE MONTH, LINE BY LINE, AS PLAN AND BILLING WORKS IT OUT: the plan, the seats past it, and WhatsApp for each person who
+   * used it. `paying` works the month out as it will be once nothing is free any more (the free-month emails), with the same
+   * plan, people and WhatsApp; otherwise WhatsApp is free while the standing says nothing is charged for it.
+   */
+  private async theMonthOf(organizationId: string, people: number, plan: SubscriptionPlan | null, opts: { paying?: boolean } = {}) {
+    const plans = await this.pricing.plansPrices();
+    const wa = this.whatsappAddOn ? await this.whatsappAddOn.standing(organizationId).catch(() => null) : null;
+    const row = plan ? plans.find((p) => p.plan === plan) : undefined;
+    const whatsappOn = !!wa && (wa.addOnOn || wa.inTheFreeWhatsAppMonth);
+    const usedIt = wa?.peopleUsedIt ?? 0;
+    const free = !opts.paying && whatsappOn && !wa?.charged;
+    /* The old flat WhatsApp price holds only while no seat is added past the plan (fix list item 6). */
+    const flatHolds = !!wa?.flatKept && !!row && extraSeatsOn(row, people) === 0;
+    const month = row ? thisMonth(row, people, { on: whatsappOn, usedIt, free, flatCents: flatHolds ? wa!.addOnCents : null }) : null;
+    return { plans, wa, row, whatsappOn, usedIt, free, flatHolds, month };
+  }
+
+  /**
+   * WHAT A MONTH WILL COST ONCE THE FREE MONTH ENDS (the free-month emails, 15 October): the free month's own plan, for the
+   * people here now, with WhatsApp charged for each person who used it. The same arithmetic as Plan and billing's month.
+   * Null when the organisation has no free month's plan, or that plan has no price (Enterprise).
+   */
+  async theMonthAfterTheFreeMonth(organizationId: string): Promise<{ month: AMonth; planLabel: string; people: number } | null> {
+    const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { freePlan: true } });
+    const plan = (org?.freePlan as SubscriptionPlan | null) ?? null;
+    if (!plan) return null;
+    const people = await this.seatsTaken(organizationId);
+    const { month } = await this.theMonthOf(organizationId, people, plan, { paying: true });
+    return month ? { month, planLabel: PLAN_LABELS[month.plan], people } : null;
+  }
+
+  /**
    * PLAN AND BILLING'S MONTH (fix list item 6; the light prototype's s73, word for word). Every sentence is made here, from
    * the plan rows and the record, so the screen draws them as they come.
    */
@@ -1084,19 +1116,10 @@ export class BillingService {
     covers: { covers: string; plan: unknown; until: Date | null },
     orgName: string | null | undefined,
   ): Promise<WhatAMonthSays> {
-    const plans = await this.pricing.plansPrices();
-    const selling = plans.filter((p) => p.amountCents !== null);
-    const wa = this.whatsappAddOn ? await this.whatsappAddOn.standing(organizationId).catch(() => null) : null;
     const plan = (covers.plan as SubscriptionPlan | null) ?? null;
-    const row = plan ? plans.find((p) => p.plan === plan) : undefined;
+    const { plans, wa, row, whatsappOn, usedIt, free, flatHolds, month } = await this.theMonthOf(organizationId, people, plan);
+    const selling = plans.filter((p) => p.amountCents !== null);
     const name = orgName?.trim() || 'your organisation';
-
-    const whatsappOn = !!wa && (wa.addOnOn || wa.inTheFreeWhatsAppMonth);
-    const usedIt = wa?.peopleUsedIt ?? 0;
-    const free = whatsappOn && !wa?.charged;
-    /* The old flat WhatsApp price holds only while no seat is added past the plan (fix list item 6). */
-    const flatHolds = !!wa?.flatKept && !!row && extraSeatsOn(row, people) === 0;
-    const month = row ? thisMonth(row, people, { on: whatsappOn, usedIt, free, flatCents: flatHolds ? wa!.addOnCents : null }) : null;
 
     let lines: Array<{ says: string; amount: string }> | null = null;
     let total: { says: string; amount: string } | null = null;

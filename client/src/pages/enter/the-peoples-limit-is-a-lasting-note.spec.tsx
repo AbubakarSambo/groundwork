@@ -54,9 +54,9 @@ function seedClosedAnchorSession() {
 async function addOnePerson(email: string) {
   fireEvent.change(await screen.findByPlaceholderText('name@company.com'), { target: { value: email } })
   fireEvent.click(screen.getByText('Add'))
-  await screen.findByText('What do they do / why are they part of this?')
+  await screen.findByText('What do they do, and why are they part of this?')
   fireEvent.click(screen.getByText('Skip'))
-  await waitFor(() => expect(screen.queryByText('What do they do / why are they part of this?')).toBeNull())
+  await waitFor(() => expect(screen.queryByText('What do they do, and why are they part of this?')).toBeNull())
 }
 
 const LIMIT_SENTENCE = 'This one-month Groundwork holds up to 20 people besides you.'
@@ -91,7 +91,7 @@ describe('the people step keeps the limit sentence on screen, and disables Add p
 
     fireEvent.change(await screen.findByPlaceholderText('name@company.com'), { target: { value: 'person2@example.test' } })
     fireEvent.click(screen.getByText('Add'))
-    await screen.findByText('What do they do / why are they part of this?')
+    await screen.findByText('What do they do, and why are they part of this?')
     expect(screen.getByText('Add person').closest('button')).toBeDisabled()
     expect(toast.error).not.toHaveBeenCalled()
   })
