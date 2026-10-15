@@ -30,9 +30,9 @@ describe('every template', () => {
 });
 
 describe('the report', () => {
-  it('as its template\'s blanks: the name and the first sentence of where things stand, one line each', () => {
-    expect(reportAsTemplateBlanks(REPORT, 'Sales team')).toEqual(['Sales team', 'Amina met two of the three goals.']);
-    expect(fill(TEMPLATES.report.body, reportAsTemplateBlanks(REPORT, 'Sales team'))).toBe('Your report for Sales team is ready. Amina met two of the three goals. Open Groundwork to read it.');
+  it('as its template\'s blanks: the name and where things stand, whole when it fits, on one line', () => {
+    expect(reportAsTemplateBlanks(REPORT, 'Sales team')).toEqual(['Sales team', 'Amina met two of the three goals. The third, the Kisumu visit, moved to next week.']);
+    expect(fill(TEMPLATES.report.body, reportAsTemplateBlanks(REPORT, 'Sales team'))).toBe('Your report for Sales team is ready. Amina met two of the three goals. The third, the Kisumu visit, moved to next week. Open Groundwork to read it.');
   });
 
   it('inside the 24 hours it goes whole, and where it would not fit one message it is one short line and the app', () => {
@@ -40,7 +40,7 @@ describe('the report', () => {
     const huge = { ...REPORT, theConversationWorthHaving: 'A long thought. '.repeat(400) };
     const text = reportAsText(huge, 'Sales team');
     expect(text.length).toBeLessThanOrEqual(A_TEXT_MESSAGE_LIMIT);
-    expect(text).toBe('Your report for Sales team is ready. Amina met two of the three goals. Open Groundwork to read it.');
+    expect(text).toBe('Your report for Sales team is ready. Amina met two of the three goals. The third, the Kisumu visit, moved to next week. Open Groundwork to read it.');
   });
 
   it('the report sent after a session closes carries its blanks', async () => {
@@ -48,7 +48,7 @@ describe('the report', () => {
     h.reports.sessionReport.mockResolvedValue(REPORT);
     await h.service.onCheckInCompleted({ checkInId: 'ci-1', groundId: 'g-1', sessionNumber: 2 } as any);
     for (let i = 0; i < 5 && !h.sent.length; i++) await new Promise((r) => setImmediate(r));
-    expect(h.sent[0].context).toMatchObject({ kind: 'report', params: ['Sales team', 'Amina met two of the three goals.'] });
+    expect(h.sent[0].context).toMatchObject({ kind: 'report', params: ['Sales team', 'Amina met two of the three goals. The third, the Kisumu visit, moved to next week.'] });
   });
 
   it('outside the 24 hours, with the template approved, Meta is sent the blanks, never the report with its line breaks', async () => {
@@ -71,7 +71,7 @@ describe('the report', () => {
     const body = JSON.parse((fetchSpy.mock.calls[0] as any[])[1].body);
     expect(body.type).toBe('template');
     expect(body.template.name).toBe('groundwork_report_ready');
-    expect(body.template.components[0].parameters.map((p: any) => p.text)).toEqual(['Sales team', 'Amina met two of the three goals.']);
+    expect(body.template.components[0].parameters.map((p: any) => p.text)).toEqual(['Sales team', 'Amina met two of the three goals. The third, the Kisumu visit, moved to next week.']);
     (global as any).fetch = realFetch;
   });
 

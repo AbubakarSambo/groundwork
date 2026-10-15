@@ -24,7 +24,8 @@ import {
   CoverageRead,
   classifyCoverageReason,
 } from './coverage';
-import { MIN_COACHING_CONFIDENCE, roleMapFor, priorFunctionFromRole } from './role-maps';
+import { roleMapFor, priorFunctionFromRole } from './role-maps';
+import { aFunctionThatMayBeUsed } from './function-detection';
 import { anArticleSaidMidSentence } from './a-holder-in-their-own-words';
 
 // ---------------------------------------------------------------------------
@@ -37,6 +38,8 @@ export type ReadParticipant = {
   managingOnly: boolean;
   detectedFunction: string | null;
   detectedFunctionConfidence: number | null;
+  /** When the person or their lead confirmed the read (decision 57, item 5). A confirmed role is used like a confident one. */
+  detectedFunctionConfirmedAt?: Date | string | null;
 };
 
 export type ReadCheckIn = {
@@ -570,7 +573,11 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
       }
 
       const map = roleMapFor(p.detectedFunction as any);
-      const fnConfident = (p.detectedFunctionConfidence ?? 0) >= MIN_COACHING_CONFIDENCE;
+      /* Confident, or confirmed by the person or their lead: the same rule the coach uses (aFunctionThatMayBeUsed). */
+      const fnConfident = aFunctionThatMayBeUsed(
+        { fn: p.detectedFunction as any, confidence: p.detectedFunctionConfidence ?? 0 },
+        p.detectedFunctionConfirmedAt ? new Date(p.detectedFunctionConfirmedAt) : null,
+      );
       const mine = input.checkIns.filter((c) => c.participantId === p.id);
       const completed = mine.filter((c) => c.status === CheckInStatus.COMPLETED).length;
 
