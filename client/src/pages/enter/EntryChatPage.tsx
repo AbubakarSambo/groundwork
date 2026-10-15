@@ -28,6 +28,7 @@ import AskYourTeamOneThing from './AskYourTeamOneThing'
 import { TheDoor } from './TheDoor'
 import { rememberTheFirstCheckInClosing } from '@/lib/the-closing-after-your-first-check-in'
 import { theDayTheyNamed } from '@/lib/the-day-they-named'
+import { theDaysADailyCheckInTakes, theDaysToSave } from '@/lib/a-daily-check-in-is-weekdays'
 import { theScheduleTheySaid } from '@/lib/the-schedule-they-said'
 import { TheSetup, theDay, ANCHOR_PEOPLE_STEP_RULES, THE_ANCHOR_FIRST_QUESTION, takeTheServedFirstQuestion, rememberTheServedFirstQuestion, theAnchorStartSucceededForThisTab, rememberTheAnchorStartSucceeded, thePlanInTheHeader } from './TheSetup'
 import type { ThePeopleStepRules } from '@/api/anchorShapes'
@@ -1857,10 +1858,11 @@ export function EntryChatPage() {
      "On which day of the month?"); this was fixed at null with no setter until `TheSetup`'s own
      picker was restored below. */
   const [cadenceAnchorDay, setCadenceAnchorDay] = useState<number | null>(null)
-  /* Which days this team works. Empty means nobody said, which is not the same as every day - and
-     it is never pre-set to Monday-Friday, because that is one region's office week rather than a
-     fact about anybody's. */
+  /* Which days this team works. Empty means any day. A daily check-in nobody gave days for is Monday to Friday
+     (Hafsah, 15 October): "Every day" made 90 check-ins with every weekend in them. See theDaysADailyCheckInTakes. */
   const [workingDays, setWorkingDays] = useState<number[]>([])
+  /* True while the days on the summary are that default and not anything she said or chose. */
+  const daysAreTheDailyDefault = useRef(false)
   const [bulkInviteMode, setBulkInviteMode] = useState(false)
   const [bulkInviteText, setBulkInviteText] = useState('')
   const [bulkQueue, setBulkQueue] = useState<string[]>([])
@@ -1974,12 +1976,24 @@ export function EntryChatPage() {
        accounts.", when the engine's own extraction missed it). Her change on the summary stands. */
     if (said.cadence && !cadenceChangedOnTheSummary.current) { setCadence(said.cadence); setCadenceChosen(true) }
     if (said.name && (!useEntryStore.getState().groundName.trim() || useEntryStore.getState().groundName === 'Entry session')) setGroundName(said.name)
-    if (said.workingDays && !daysChangedOnTheSummary.current) { setWorkingDays(said.workingDays); keepTheSchedule({ workingDays: said.workingDays }) }
+    if (said.workingDays && !daysChangedOnTheSummary.current) { daysAreTheDailyDefault.current = false; setWorkingDays(said.workingDays); keepTheSchedule({ workingDays: said.workingDays }) }
     if (!endChangedOnTheSummary.current) {
       if (said.endsOn) { setRunsUntilEnded(false); setLastCheckInBy(said.endsOn); setEndChosen(true); keepTheSchedule({ runsUntilEnded: false, lastCheckInBy: said.endsOn, endChosen: true }) }
       else if (said.runsUntilEnded) { setRunsUntilEnded(true); setEndChosen(true); keepTheSchedule({ runsUntilEnded: true, endChosen: true }) }
     }
   }, [onboardingHistory])
+
+  /* A DAILY CHECK-IN IS MONDAY TO FRIDAY UNLESS SHE SAYS OTHERWISE (Hafsah, 15 October). Set while nothing she said or
+     chose names the days, and taken back off if the rhythm stops being daily, so a weekly check-in on a Saturday stays
+     on Saturday. "Any day is fine" on the summary is her choice and stands. */
+  useEffect(() => {
+    const next = theDaysADailyCheckInTakes(cadence, workingDays, daysChangedOnTheSummary.current, daysAreTheDailyDefault.current)
+    if (next === null) return
+    daysAreTheDailyDefault.current = next.length > 0
+    setWorkingDays(next)
+    keepTheSchedule({ workingDays: next })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cadence, workingDays])
 
   /*
    * PUTS BACK THE SETUP THIS DEVICE KEPT.
@@ -2954,7 +2968,7 @@ export function EntryChatPage() {
         /* The page's default is not a choice; the server records only a confirmed pick as one. */
         cadenceChosen,
         cadenceAnchorDay: (cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY' || cadence === 'MONTHLY') && cadenceAnchorDay != null ? cadenceAnchorDay : undefined,
-        workingDays: workingDays.length ? workingDays : undefined,
+        workingDays: theDaysToSave(cadence, workingDays, daysChangedOnTheSummary.current),
         checkInBy: checkInBy.trim() || undefined,
         /* "When I end it": no last date, and the engine keeps no length (piece 3a). */
         runsUntilEnded: runsUntilEnded || undefined,
@@ -3251,7 +3265,7 @@ export function EntryChatPage() {
         /* The page's default is not a choice; the server records only a confirmed pick as one. */
         cadenceChosen,
         cadenceAnchorDay: (cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY' || cadence === 'MONTHLY') && cadenceAnchorDay != null ? cadenceAnchorDay : undefined,
-        workingDays: workingDays.length ? workingDays : undefined,
+        workingDays: theDaysToSave(cadence, workingDays, daysChangedOnTheSummary.current),
         checkInBy: checkInBy.trim() || undefined,
         /* "When I end it": no last date, and the engine keeps no length (piece 3a). */
         runsUntilEnded: runsUntilEnded || undefined,
@@ -5011,7 +5025,7 @@ export function EntryChatPage() {
                   anchorDay={cadenceAnchorDay}
                   onAnchorDay={(d) => { setCadenceAnchorDay(d); keepTheSchedule({ cadenceAnchorDay: d }) }}
                   workingDays={workingDays}
-                  daysPicker={<WhichDaysTheyWork value={workingDays} onChange={(d) => { daysChangedOnTheSummary.current = true; setWorkingDays(d); keepTheSchedule({ workingDays: d }) }} />}
+                  daysPicker={<WhichDaysTheyWork value={workingDays} onChange={(d) => { daysChangedOnTheSummary.current = true; daysAreTheDailyDefault.current = false; setWorkingDays(d); keepTheSchedule({ workingDays: d }) }} />}
                   startsOn={checkInBy}
                   onStartsOn={(d) => { setCheckInBy(d); keepTheSchedule({ checkInBy: d }) }}
                   endsOn={lastCheckInBy}

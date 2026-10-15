@@ -41,7 +41,7 @@ export function theScheduleTheySaid(texts: (string | null | undefined)[], today:
   const ends = new Set<string>()
   for (const raw of texts) {
     const t = (raw ?? '').toLowerCase().replace(/[’']/g, "'")
-    if (/\bweekdays?\b(\s+only)?|\bno weekends?\b|\bnot (?:at|on) (?:the )?weekends?\b|\bskip(?:ping)? (?:the )?weekends?\b|\bmonday to friday\b|\bmon(?:day)?\s*-\s*fri(?:day)?\b/.test(t)
+    if (/\bweekdays?\b(\s+only)?|\bno weekends?\b|\bnot (?:at|on) (?:the )?weekends?\b|\bskip(?:ping)? (?:the )?weekends?\b|\bmonday to friday\b|\bmon(?:day)?\s*-\s*fri(?:day)?\b|\b(?:every |each )?(?:working|work|business) days?\b/.test(t)
       && !/\b(?:and|or|including|also) (?:the )?weekends?\b|\bweekends? too\b|\bany day\b/.test(t)) {
       out.workingDays = [1, 2, 3, 4, 5]
     }
@@ -67,6 +67,17 @@ export function theScheduleTheySaid(texts: (string | null | undefined)[], today:
       const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate())
       if (!m[5] && d < startOfToday) { year += 1; d = new Date(year, month, day) }
       ends.add(iso(d))
+    }
+    /* "Until the end of the year", "to the end of December", "until month end" (local test, 15 October): Muchemi's
+       "every working day until the end of the year" ended on 26 December because no end was read at all. */
+    const yearEnd = /\b(?:until|till|til|to|through|by|ends?|ending)\s+(?:the\s+)?(?:end of (?:the |this )?year|year[- ]end)\b/.test(t)
+    const monthEnd = t.match(new RegExp(`\\b(?:until|till|til|to|through|by|ends?|ending)\\s+(?:the\\s+)?end of ${MONTH}\\b`))
+    if (yearEnd) ends.add(iso(new Date(today.getFullYear(), 11, 31)))
+    if (monthEnd) {
+      const month = monthIndex(monthEnd[1])
+      let d = new Date(today.getFullYear(), month + 1, 0)
+      if (d < new Date(today.getFullYear(), today.getMonth(), today.getDate())) d = new Date(today.getFullYear() + 1, month + 1, 0)
+      if (month >= 0) ends.add(iso(d))
     }
   }
   if (ends.size === 1) out.endsOn = [...ends][0]
