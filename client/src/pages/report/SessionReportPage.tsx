@@ -84,7 +84,8 @@ export default function SessionReportPage() {
      * same way the shared report below already polls while it is behind (`theTeamsReportIsBehind`),
      * makes the promise true and keeps every surface agreeing on the same served state.
      */
-    refetchInterval: (q: any) => (q?.state?.data && !q.state.data.report ? 5_000 : false),
+    /* And not for one the server says will never come ('not-kept'): asking every five seconds for ever changed nothing. */
+    refetchInterval: (q: any) => (q?.state?.data && !q.state.data.report && q.state.data.state !== 'not-kept' ? 5_000 : false),
   })
 
   /* The per-session shape, for the one fact the correction control needs: whether the window is
@@ -411,9 +412,16 @@ export default function SessionReportPage() {
               </Stack>
             </Panel>
           )}
+          {/*
+            "STILL BEING WRITTEN" ONLY WHILE IT IS (staging test, 15 October). A session run while signed in never gets a
+            report of its own, so a finished one said "Your report is still being written" for ever. The server says which
+            it is (`state`, `says`, where-a-sessions-report-stands.ts): a session that will get no separate report says so.
+          */}
           {!isLoading && !isError && !data?.report && !(groundReport as any)?.soloArtifact && !(amTheInitiator && !data?.finishedAt) && (
             <Panel>
-              <Note role="status">Your report is still being written. Your answers are saved; this fills in as soon as it is ready.</Note>
+              <Note role="status">{data?.state && data.state !== 'ready' && data.says
+                ? data.says
+                : 'Your report is still being written. Your answers are saved; this fills in as soon as it is ready.'}</Note>
             </Panel>
           )}
           {!isLoading && !isError && !data?.report && (groundReport as any)?.soloArtifact && (
