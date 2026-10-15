@@ -57,7 +57,8 @@ describe('the first conversation has the same guards', () => {
    * evidence rather than built on a hunch.
    */
   it('notes the fault rather than spending a second model call on it', () => {
-    expect(guarded).toMatch(/const wrong = whatIsWrong\(best\)/);
+    /* Reads the model's reply as restored (14 October: the shape fixes made in code come after it, with no second call). */
+    expect(guarded).toMatch(/const wrong = whatIsWrong\(restored\)/);
     expect(guarded).not.toMatch(/this\.anthropic\s*\.respond\(`\$\{system\}\\n\\n\$\{wrong\.instruction\}/);
   });
 

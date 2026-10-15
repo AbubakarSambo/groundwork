@@ -20,6 +20,8 @@
  * set already excludes, and the keys are lifted out of the text before any rule runs.
  */
 
+import { theQuotesKept } from './a-quote-is-what-they-said';
+
 /** The label keys. Never rewritten, anywhere, for any reason. */
 const KEYS = ['the other party', 'the initiator', 'the participant'];
 
@@ -56,7 +58,13 @@ function likeFor(original: string, replacement: string): string {
     : replacement;
 }
 
+/* Never inside a quotation: "the other party" in somebody's own words is what they said. See a-quote-is-what-they-said. */
 export function notTheWordParty(text: string): string {
+  if (!text) return text;
+  return theQuotesKept(text, partyOutsideTheQuotes);
+}
+
+function partyOutsideTheQuotes(text: string): string {
   if (!text) return text;
 
   /*
@@ -74,6 +82,9 @@ export function notTheWordParty(text: string): string {
     });
   }
 
+  /* "Sarah is not a party to this check-in" is "Sarah is not in this check-in" (run oct5c, crisis): "a person to this
+     check-in" is not English, and somebody outside a check-in is simply not in it. Before the word rules below. */
+  out = out.replace(/\b(is|was|are|were)( not)? a party to (this|the) check-in\b/gi, (_m, verb: string, not: string | undefined, which: string) => `${verb}${not ?? ''} in ${which} check-in`);
   for (const [pattern, word] of REPLACEMENTS) out = out.replace(pattern, (m) => likeFor(m, word));
 
   return out.replace(/\u0000(\d+)\u0000/g, (_m, i) => held[Number(i)]);

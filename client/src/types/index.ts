@@ -30,7 +30,27 @@ export interface User {
    */
   mayOpenCheckIns?: boolean
   emailNotifications?: boolean
+  /** True when they stopped these emails from the link in one of our mails. The switch turns it back on. */
+  emailsStoppedFromAMail?: boolean
   phoneNumber?: string | null
+  /**
+   * "Connect WhatsApp" (decision 106, 5 October, night): a one-tap link that opens WhatsApp with
+   * "Hi" already typed to Groundwork's number. An optional convenience, never something a person
+   * must do to get their check-ins - the engine serves it only while it would actually work, and
+   * null once there is nothing to offer. See `ConnectWhatsApp`.
+   */
+  connectWhatsApp?: ConnectWhatsApp | null
+}
+
+/**
+ * "Connect WhatsApp" (decision 106): `says` is the button's own label, `link` opens WhatsApp with
+ * "Hi" already typed to Groundwork's number, and `number` is there to show if wanted. Served on
+ * `GET /auth/me` and on the person's own `GET /check-ins/:id/transcript`, nowhere else.
+ */
+export interface ConnectWhatsApp {
+  link: string
+  number: string
+  says: string
 }
 
 export type GroundScenario =
@@ -166,6 +186,14 @@ export interface Ground {
   viewerIsInitiator?: boolean
   viewerRunsThisGround?: boolean
   label: string
+  /**
+   * WHEN THIS ONE STARTED, so two check-ins that share one label can be told apart (walkthrough
+   * pass 2, item 1: "Help a new hire get started, from 27 September" listed three times in the
+   * sidebar with nothing to tell them apart). The server has always sent both on every list row
+   * (Prisma's default scalar selection); only the client's own type left them out.
+   */
+  startsAt?: string | null
+  createdAt?: string
   scenario: GroundScenario
   moment: GroundMoment
   status: GroundStatus
@@ -196,20 +224,64 @@ export interface Ground {
   daysLeft?: number | null
   /** The day this ends, from the start on record and how long it runs; null where it has no fixed length. */
   endsOn?: string | null
+  /**
+   * REQUEST 206: whether this check-in's lead has left the organisation, and whether this viewer
+   * may change its setup - the same rule `GET /grounds/:id` already serves as `mayChangeSetup`,
+   * now on every row of the list too, worked out for the viewer who asked for it
+   * (`who-may-rename-a-check-in.ts`).
+   */
+  leadHasLeft?: boolean
+  mayChangeSetup?: boolean
   checkInsToday?: number
   overdue?: number
   contextNotes?: string[]
   participants: GroundParticipant[]
+  /**
+   * The lead's first name alone, sent to anyone in the check-in - even a participant on a check-in
+   * that hides everyone else. Her own row is filtered out of `participants` then, which used to
+   * mean the only three sentences naming her ("Rukia knows who is here", "Rukia also answers a
+   * check-in") fell back to "Your lead" (U.8 fourth review). Null when there is no lead account yet.
+   */
+  leadFirstName?: string | null
+  /** Whether the lead is a party who answers a check-in herself, not only someone who manages it. */
+  leadAnswersToo?: boolean
+  /**
+   * Whether more than one party answers this check-in - a plain yes/no, never a count, so a check-in
+   * that hides peers from each other does not learn its own size from this field (U.8 fifth review).
+   * Read from the raw participants, unaffected by that filter, unlike the old `howManyAnswer(ground) > 1`.
+   */
+  aTeamReportComes?: boolean
+  /**
+   * Whether this round already has two people counted in it - a plain yes/no, from the same raw
+   * participants as `aTeamReportComes`, unaffected by the peer-hiding filter (U.8 fifth review).
+   */
+  atLeastTwoInThisRound?: boolean
   leadContextNotes?: LeadContextNote[]
   /**
    * WHAT PEOPLE ARE DOWN AS DOING. `participantId` null means nobody owns it, which is most of what
    * comes out of a paste and is left as it is rather than put on the nearest person. `status` is
    * UNKNOWN until a person says otherwise - nothing here is the product's judgement.
    */
-  commitments?: { id: string; participantId: string | null; text: string; whenSaid: string | null; explicit: boolean; status: string }[]
+  /** `settledAt`: when the commitment was marked DONE/NOT_DONE/DROPPED - null while open. Review
+      round 3, item 5: added so "promises kept this month" can count by when it was settled. */
+  commitments?: { id: string; participantId: string | null; text: string; whenSaid: string | null; explicit: boolean; status: string; settledAt?: string | null }[]
   checkIns?: CheckInSummary[]
   signals?: GroundSignal[]
-  report?: { id: string; releasedAt: string | null; createdAt?: string } | null
+  /**
+   * THE CHECK-IN'S OWN CLOCK (B-112, night note item 5). The same count the board already uses
+   * (request 101 f): `currentSession`/`plannedSessions` are the open round, capped at the plan;
+   * `says` is the prototype's own header sentence ("Session 2 of 12."); `whileOpen` is a second,
+   * true sentence for when a later session has started for some people while an earlier one is
+   * still open for others ("Session 3 has started for some people, while session 2 is still
+   * open."), and null otherwise. Both are kept as two sentences on purpose - draw them together.
+   */
+  sessionClock?: {
+    currentSession: number
+    plannedSessions: number | null
+    says: string
+    whileOpen: string | null
+  }
+  report?: { id: string; releasedAt: string | null; releasedSessions?: number[] | null; createdAt?: string } | null
   sessionProgress?: {
     sessionNumber: number
     total: number

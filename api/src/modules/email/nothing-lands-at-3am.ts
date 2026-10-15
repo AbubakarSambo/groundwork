@@ -11,7 +11,8 @@
  */
 
 /** The hours nobody wants to hear about work in, when they have not said otherwise. */
-export const DEFAULT_QUIET_BEFORE = 8;
+/* Mail may go from 7 in the morning where the person is (Hafsah, 14 October 2026). It was 8, and read in UTC where no zone was known. */
+export const DEFAULT_QUIET_BEFORE = 7;
 export const DEFAULT_QUIET_AFTER = 20;
 
 export type Prefs = {
@@ -118,6 +119,8 @@ export type DigestFacts = {
   groundLabel: string;
   sessionNumber: number;
   participantCount: number;
+  /** Of those, how many gave an account, from the record. Absent where the caller did not count it. */
+  accountsGiven?: number;
   /** How many things need attention. A number, never the things. */
   needsAttention: number;
   permalink: string;
@@ -132,9 +135,17 @@ export function digestBody(f: DigestFacts, unsubscribeUrl: string): string {
     ? 'Nothing is flagged for attention.'
     : `${f.needsAttention} ${f.needsAttention === 1 ? 'thing needs' : 'things need'} attention.`;
 
+  /* Reviewer, 14 October: "Everyone has checked in... 3 people took part" when only the lead had.
+     "Everyone" only when everyone gave an account; otherwise how many of how many, from the record. */
+  const gave = f.accountsGiven ?? f.participantCount;
+  const of = f.participantCount;
+  const said = gave >= of
+    ? [`Everyone has checked in for session ${f.sessionNumber} of ${f.groundLabel}.`,
+      `${of} ${of === 1 ? 'person' : 'people'} took part. ${attention}`]
+    : [`Session ${f.sessionNumber} of ${f.groundLabel} has closed.`,
+      `${gave} of ${of} ${of === 1 ? 'person' : 'people'} checked in. ${attention}`];
   return [
-    `Everyone has checked in for session ${f.sessionNumber} of ${f.groundLabel}.`,
-    `${f.participantCount} ${f.participantCount === 1 ? 'person' : 'people'} took part. ${attention}`,
+    ...said,
     /* The link is the point of the mail. What was actually said stays behind it, under whatever
        permissions govern it, rather than travelling into a mailbox. */
     `Read it here: ${f.permalink}`,

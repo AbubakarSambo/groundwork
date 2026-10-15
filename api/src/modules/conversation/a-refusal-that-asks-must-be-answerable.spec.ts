@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { almostNothingHereYet } from './how-short-a-check-in-may-be';
 
 /**
  * A REFUSAL THAT ASKS FOR SOMETHING MUST LEAVE A WAY TO GIVE IT.
@@ -45,7 +46,7 @@ describe('a refusal that asks must be answerable', () => {
   });
 
   it('the thin-turn refusal is one of them', () => {
-    const i = COMPLETE.indexOf('the record is still thin');
+    const i = COMPLETE.indexOf('I need a little more from you before this check-in can close');
     expect(i).toBeGreaterThan(-1);
     expect(COMPLETE.slice(i, i + 400)).toContain('canContinue: true');
   });
@@ -67,8 +68,12 @@ describe('a refusal that asks must be answerable', () => {
 
   it('the substance gate itself is NOT relaxed - leaving nothing behind is still refused', () => {
     /* The whole point: this fixes the dead end, not the standard. */
-    expect(COMPLETE).toContain('substantiveTurns.length < MIN_REAL_TURNS');
-    expect(COMPLETE).toContain('totalPersonChars < MIN_CHARS');
+    /* The gate moved into one function the engine's close reads too (request 47); its numbers are unchanged. */
+    expect(COMPLETE).toContain('almostNothingHereYet(');
+    expect(almostNothingHereYet(['yes', 'ok', 'fine'], false)).toBe(true);
+    expect(almostNothingHereYet(['We signed two shops this week.', 'Kano is waiting on the price list.'], false)).toBe(false);
+    expect(almostNothingHereYet(['a'.repeat(49)], false)).toBe(true);
+    expect(almostNothingHereYet(['The deadline was March, not May.'], true)).toBe(false);
   });
 
   it('the chat re-opens the composer on that flag, and does not read the sentence', () => {

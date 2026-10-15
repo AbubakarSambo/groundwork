@@ -101,7 +101,8 @@ describe('work that makes the company operable', () => {
 
   it('and is refused outside it, without saying the work is not worth doing', () => {
     const said = whyThisIsNotOperabilityWork({ runningPhases: [sell], on: new Date('2026-12-01') })!;
-    expect(said).toContain('No phase running today');
+    /* Reworded on 5 October (request 141): the point first, then the reason. */
+    expect(said).toContain('because no phase running today allows it');
     expect(said).not.toMatch(/not worth|pointless|does not matter/i);
   });
 

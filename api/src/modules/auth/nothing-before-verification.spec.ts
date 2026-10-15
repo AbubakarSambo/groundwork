@@ -193,7 +193,10 @@ describe('the password that was parked with the signup', () => {
   const VERIFY = AUTH.slice(AUTH.indexOf('async verifyEmail'), AUTH.indexOf('async resendVerification'));
 
   it('is carried onto the user at creation', () => {
-    expect(VERIFY).toMatch(/passwordHash: pending\.passwordHash/);
+    /* U.3 review, a security fix: carried only when the browser that chose it presents its key.
+       The rule itself is tested with real calls in the-password-stays-with-the-browser.spec.ts. */
+    expect(VERIFY).toMatch(/const passwordHash = pending\.passwordHash && theKeyMatches\(dto\.passwordKey, pending\.passwordKeyHash\) \? pending\.passwordHash : null/);
+    expect(VERIFY).toMatch(/passwordHash,/);
   });
 
   it('and the name they typed comes with it, rather than an empty surname', () => {

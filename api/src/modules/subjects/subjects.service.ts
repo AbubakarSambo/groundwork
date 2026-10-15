@@ -1,3 +1,4 @@
+import { recordTheStrategy } from './the-strategy-over-time';
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma, SubjectType } from '@prisma/client';
@@ -80,7 +81,7 @@ export class SubjectsService {
     if (!dto.externalId?.trim() || !dto.sourceSystem?.trim()) {
       throw new BadRequestException('externalId and sourceSystem are required.');
     }
-    if (!dto.title?.trim()) throw new BadRequestException('title is required.');
+    if (!dto.title?.trim()) throw new BadRequestException('Add a title and try again.');
 
     const wording = {
       type,
@@ -104,7 +105,7 @@ export class SubjectsService {
       sourceDeletedAt: null,
     };
 
-    return this.prisma.subject.upsert({
+    const saved = await this.prisma.subject.upsert({
       where: {
         organizationId_sourceSystem_externalId: {
           organizationId,
@@ -120,6 +121,9 @@ export class SubjectsService {
       },
       update: wording as any,
     });
+    /* The organisation's priorities may have changed: keep a new version of the strategy if so (the-strategy-over-time.ts). */
+    if (type === 'OBJECTIVE') await recordTheStrategy(this.prisma, organizationId);
+    return saved;
   }
 
   /**
@@ -132,6 +136,7 @@ export class SubjectsService {
       where: { organizationId, sourceSystem, externalId, sourceDeletedAt: null },
       data: { sourceDeletedAt: new Date() },
     });
+    if (count > 0) await recordTheStrategy(this.prisma, organizationId);
     return { deleted: count > 0 };
   }
 

@@ -1,4 +1,4 @@
-import { contextGaps, contextChatPrompt } from './the-context-chat';
+import { contextGaps, contextChatPrompt, openingLine, withoutTheOpeningGreeting } from './the-context-chat';
 
 /**
  * THE CONTEXT CHAT. G37, G23.
@@ -148,5 +148,67 @@ describe('what the chat is told it must not do', () => {
   it('and a ground with nothing missing says so rather than inventing a question', () => {
     const done = contextChatPrompt('Partner delivery', 'NEW_PROJECT', []);
     expect(done).toMatch(/nothing is missing that this conversation can fix/);
+  });
+});
+
+/*
+ * FIX 3, 30 September 2026. Driven live, item 15: a check-in that already had its length and rhythm
+ * set opened with "Hello, I'm here to help you set up your Groundwork check-in. First, tell me, what
+ * does doing well look like..." - a greeting, and not a word about what it already holds. The
+ * prompt's own "OPEN ON THAT, NOT ON A GREETING" rule never covered duration or cadence at all
+ * (`whatThisCheckInAlreadyHolds` never counted them), so the fix is the product saying them itself.
+ */
+describe('the opening line, written by the product from what the check-in already holds', () => {
+  it('says the length and the rhythm together, exactly as an example the fix names', () => {
+    expect(openingLine(84, 'WEEKLY')).toBe('This check-in runs for 12 weeks and people check in once a week.');
+  });
+
+  it('says only the length when there is no chosen rhythm yet', () => {
+    expect(openingLine(84, null)).toBe('This check-in runs for 12 weeks.');
+  });
+
+  it('says only the rhythm when there is no chosen length yet', () => {
+    /* Was 'This check-in people check in every two weeks.', which is not a sentence (setup page review). */
+    expect(openingLine(null, 'FORTNIGHTLY')).toBe('In this check-in, people check in every two weeks.');
+  });
+
+  it('says nothing at all when neither is set - there is nothing yet to open on', () => {
+    expect(openingLine(null, null)).toBeNull();
+  });
+
+  it('a length that is not a whole number of weeks is said in days', () => {
+    expect(openingLine(10, null)).toBe('This check-in runs for 10 days.');
+  });
+});
+
+describe('the greeting a model still adds at the start of an opening turn is dropped', () => {
+  it('drops a self-introduction that opens the reply', () => {
+    expect(withoutTheOpeningGreeting(
+      "Hello, I'm here to help you set up your Groundwork check-in. What does doing well look like here?",
+    )).toBe('What does doing well look like here?');
+  });
+
+  it('drops a bare greeting word too', () => {
+    expect(withoutTheOpeningGreeting('Hi! What does doing well look like here?')).toBe('What does doing well look like here?');
+  });
+
+  it('leaves a reply alone when it does not open with a greeting', () => {
+    expect(withoutTheOpeningGreeting('What does doing well look like here?')).toBe('What does doing well look like here?');
+  });
+
+  it('does not touch a "hello" that shows up answering something the lead said, not at the start', () => {
+    expect(withoutTheOpeningGreeting('Got it. He said hello to the new starter on their first day.'))
+      .toBe('Got it. He said hello to the new starter on their first day.');
+  });
+
+  /*
+   * DRIVEN LIVE, 30 September 2026: the model wrote TWO greeting sentences in a row - a bare "Hello!"
+   * followed by a self-introduction - and a single strip only removed the first, leaving "I'm here to
+   * help you set up your check-in." as the first thing the lead actually read.
+   */
+  it('drops a run of more than one greeting sentence, not only the first', () => {
+    expect(withoutTheOpeningGreeting(
+      'Hello! I\'m here to help you set up your "old15 check-in" check-in. To start, what does success look like for this work?',
+    )).toBe('To start, what does success look like for this work?');
   });
 });

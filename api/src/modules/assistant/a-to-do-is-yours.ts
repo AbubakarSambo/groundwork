@@ -50,3 +50,22 @@ export function listToDos(open: { text: string; dueSaid: string | null }[]): str
   if (!open.length) return 'Nothing on your list. Say "add X to my to-do list" and it goes here. It is yours: nobody else reads it.';
   return [`${open.length} on your list:`, ...open.map((t) => `- ${t.text}${t.dueSaid ? ` (${t.dueSaid})` : ''}`)].join('\n');
 }
+
+/**
+ * WHAT IS SAID AFTER THE YES, IN THE PROTOTYPE'S WORDS (screens request 27, suite-todos.txt):
+ * "Added to your to-dos for Tuesday: call Lakeside’s buyer." The day is only given where one was
+ * said. "By Friday" is a deadline, not the day it is for, so it stays after the to-do as said.
+ * The to-do itself is their words, unchanged.
+ */
+export function addedToYourToDos(t: AToDo): string {
+  const when = (t.dueSaid ?? '').trim();
+  /* Said once: where the day is already at the end of the to-do, the reply does not say it twice.
+     What is kept on their list is untouched. */
+  const said = t.text.trim().replace(/[.!]+$/, '');
+  const what = when && said.toLowerCase().endsWith(when.toLowerCase()) && said.length > when.length
+    ? said.slice(0, said.length - when.length).trim().replace(/[,;]+$/, '')
+    : said;
+  if (!when) return `I have added "${what}" to your to-dos.`;
+  if (/^(?:by|before|end of)\b/i.test(when)) return `I have added "${what}" to your to-dos, ${when}.`;
+  return `I have added "${what}" to your to-dos for ${when.replace(/^(?:on)\s+(?:the\s+)?/i, '')}.`;
+}

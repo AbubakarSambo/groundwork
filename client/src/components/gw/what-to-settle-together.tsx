@@ -12,7 +12,15 @@
  *
  * So: one name, said once, with the line that makes it actionable. The question itself is the
  * model's, written from what these people said.
+ *
+ * BOARD REVIEW, 30 SEPTEMBER: rebuilt from the shared parts to join `REBUILT_PAGES` - every size
+ * was below the prototype's own 13px floor (a 10.5px label, a 12px note), and every colour was an
+ * inline `style`, which the size guard now refuses outright on a listed page. Colour still depends
+ * on the ground this sits on (the board's dark header, or the light report/board page), so each ink
+ * is a CSS custom property the caller sets on the wrapper, read back by a class that never changes -
+ * the same `--gwui-tone` pattern `WhatSuccessLooksLike` and `how-it-is-going.tsx` already use.
  */
+import './ui/gw-ui.css'
 import { BOARD_MUTED_INK, BOARD_BODY_INK } from './the-board-reads-on-a-dark-ground'
 
 export function WhatToSettleTogether({ question, tone = 'light' }: {
@@ -21,17 +29,26 @@ export function WhatToSettleTogether({ question, tone = 'light' }: {
   tone?: 'light' | 'dark'
 }) {
   if (!question?.trim()) return null
-  const ink = tone === 'dark'
-    ? { label: BOARD_MUTED_INK, body: BOARD_BODY_INK, note: BOARD_MUTED_INK }
-    : { label: 'var(--gw-muted)', body: 'var(--gw-text)', note: 'var(--gw-sub)' }
+  const vars = tone === 'dark'
+    ? {
+        ['--gwui-settle-label' as any]: BOARD_MUTED_INK,
+        ['--gwui-settle-body' as any]: BOARD_BODY_INK,
+        ['--gwui-settle-note' as any]: BOARD_MUTED_INK,
+      }
+    : {
+        ['--gwui-settle-label' as any]: 'var(--gw-muted)',
+        ['--gwui-settle-body' as any]: 'var(--gw-text)',
+        ['--gwui-settle-note' as any]: 'var(--gw-sub)',
+      }
   return (
-    <>
-      <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.3px', color: ink.label, fontWeight: 700, marginBottom: 3 }}>
-        What to settle together
-      </div>
-      <div style={{ fontSize: 13, color: ink.body, lineHeight: 1.6, maxWidth: '68ch' }}>{question}</div>
+    <div style={vars}>
+      {/* U.9 THIRD REVIEW, ITEM 4: A HEADING IS SAID, NOT SHOUTED. Capitals and letter-spacing
+          turned a plain heading into "WHAT TO SETTLE TOGETHER", the same pattern already fixed
+          elsewhere on the report and the session pages. */}
+      <div className="gwui-settle-label">What to settle together</div>
+      <div className="gwui-settle-body">{question}</div>
       {/* Where it goes. A question with nowhere to put it is a question somebody reads and drops. */}
-      <div style={{ fontSize: 12, color: ink.note, marginTop: 6 }}>Bring this to your next check-in.</div>
-    </>
+      <div className="gwui-settle-note">Bring this to your next check-in.</div>
+    </div>
   )
 }

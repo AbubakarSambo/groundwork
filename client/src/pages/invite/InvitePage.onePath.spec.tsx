@@ -29,9 +29,11 @@ vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ setAuth: vi.
 const PREVIEW = {
   groundLabel: 'Groundwork project',
   initiatorName: 'Sarah Okonkwo',
+  leadFirstName: 'Sarah',
   scenario: 'NEW_PROJECT',
   roleAsDescribed: null,
   alreadyAccepted: false,
+  organisationName: 'Acme Inc',
 }
 
 function renderInvite() {
@@ -60,8 +62,8 @@ describe('ONE-PATH: invite accept lands in the real engine', () => {
 
   it('accepting routes straight into /checkin/:id on the right ground (seamless handoff)', async () => {
     renderInvite()
-    await screen.findByText(/wants to hear your version/i)
-    fireEvent.click(screen.getByRole('button', { name: /Add my version/i }))
+    await screen.findByText('Sarah invited you to “Groundwork project”')
+    fireEvent.click(screen.getByRole('button', { name: /Answer today’s check-in now/i }))
     await waitFor(() => expect(mockedNavigate).toHaveBeenCalled())
     const [path, opts] = mockedNavigate.mock.calls[0]
     expect(path).toBe('/checkin/ci-1')
@@ -74,28 +76,48 @@ describe('ONE-PATH: invite accept lands in the real engine', () => {
       accessToken: 'jwt-1', user: { id: 'u-p', email: 'p@x.test' }, groundId: 'g-1', checkInId: null,
     })
     renderInvite()
-    await screen.findByText(/wants to hear your version/i)
-    fireEvent.click(screen.getByRole('button', { name: /Add my version/i }))
+    await screen.findByText('Sarah invited you to “Groundwork project”')
+    fireEvent.click(screen.getByRole('button', { name: /Answer today’s check-in now/i }))
     await waitFor(() => expect(mockedNavigate).toHaveBeenCalledWith('/grounds/g-1/p', { replace: true }))
   })
 
-  it('keeps the privacy assurance and frames sign-in as a benefit, not a toll', async () => {
+  /* U.3: the invitation now reads as the prototype's (join-invite.txt). The old
+     top box ("builds the shared report") and footer ("come back any time to add to") are replaced by
+     the prototype's box and "About two minutes. You choose how you sign in afterwards."
+     U.20 fifth review (Hafsah, pictured at 1440px): "What happens to what you write" no longer
+     prints in full on the page (it made the page twice the prototype's length, which has none of
+     it) - it is a plain link that opens the same four claims in the shared Modal, so this test now
+     opens it before checking the words are still there.
+
+     UPDATED 29 September, item 11 conflict A: the callout is now built from the check-in's own
+     scenario (`whoCanReadThis`), not a fixed sentence, and the two held sentences ("Nobody else
+     reads your answers.", "Wairimu reads the report, not your words.") are dropped for good, not
+     just held - they are not true once admins and the people in a check-in can read it (decision 1).
+     NEW_PROJECT is not a performance plan, a promotion or a renewal, so the admins sentence is
+     included. The old "Nobody you work with reads it" panel said the opposite of decision 1 and is
+     replaced by "Who can read what you write", carrying the same true sentence as the callout.
+
+     B-205: THE SENTENCE NAMES THE ORGANISATION RATHER THAN CALLING IT "YOURS". The preview is read
+     before anyone signs in, so the server cannot yet tell a colleague from an outsider added as a
+     guest (one read "Admins in your organisation can read every check-in." about an organisation
+     that was not theirs). Naming the organisation is true either way, so PREVIEW above now carries
+     `organisationName` and the assertions read the named form. */
+  it('keeps the privacy panel once, reachable from a link, and says what the prototype says', async () => {
     renderInvite()
-    await screen.findByText(/wants to hear your version/i)
-    /* See JoinPage.onePath: the promise was false and the true one is in
-       what-happens-to-what-you-write.ts. The two doors say the same thing. */
-    expect(screen.getByText(/builds the shared report/i)).toBeTruthy()
-    /* 10 Sep 2026: the box at the top says what the report gives them; the four claims stay
-       folded under "What happens to what you write" for whoever wants them. Once, not twice. */
-    expect(screen.getAllByText(/Anything you say about somebody else never does/i).length).toBe(1)
-    expect(screen.queryByText(/Nobody ever reads what you write/i)).toBeNull()
-    expect(screen.getByText(/come back any time to add to/i)).toBeTruthy()
-    expect(screen.getByText(/see the shared report once everyone has checked in/i)).toBeTruthy()
+    await screen.findByText('Sarah invited you to “Groundwork project”')
+    expect(screen.getByText(/The people in this check-in, including your manager, can see what you say in it\. Admins at Acme Inc can read every check-in\. Your own report and your questions to Ask\s+Acme Inc stay private\./)).toBeTruthy()
+    expect(screen.queryByText('Nobody you work with reads it')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'What happens to what you write' }))
+    expect(screen.getByText('Who can read what you write')).toBeTruthy()
+    expect(screen.getAllByText(/Admins at Acme Inc can read every check-in\./).length).toBe(2)
+    expect(screen.queryByText(/Nobody else reads your answers/i)).toBeNull()
+    expect(screen.queryByText(/reads the report, not your words/i)).toBeNull()
+    expect(screen.getByText('About ten minutes. You choose how you sign in afterwards.')).toBeTruthy()
   })
 
   it('the inline entry-pipeline chat is gone (no onboarding cards, no chat input)', async () => {
     renderInvite()
-    await screen.findByText(/wants to hear your version/i)
+    await screen.findByText('Sarah invited you to “Groundwork project”')
     expect(screen.queryByText(/Type anything to continue/i)).toBeNull()
     expect(screen.queryByPlaceholderText(/Type your/i)).toBeNull()
   })

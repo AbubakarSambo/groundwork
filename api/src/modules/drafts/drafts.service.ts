@@ -1,3 +1,4 @@
+import { recordTheStrategy } from '../subjects/the-strategy-over-time';
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { DraftParticipantState } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -42,7 +43,7 @@ export class DraftsService {
     proposedMeasure?: string | null;
     proposedTarget?: string | null;
   }) {
-    if (!dto?.workingTitle?.trim()) throw new BadRequestException('A working title is needed to start - it can change.');
+    if (!dto?.workingTitle?.trim()) throw new BadRequestException('Give the check-in a working title to start, and you can change it later.');
 
     /* Whatever the last cycle left behind about this area, so the draft opens informed. */
     const grounded = await this.prisma.detectorResult.findMany({
@@ -352,6 +353,8 @@ export class DraftsService {
       where: { id: draftId },
       data: { state: 'SEEDED', seededSubjectExternalId: subject.externalId },
     });
+    /* An agreed objective may be a new priority: keep a new version of the strategy if so (the-strategy-over-time.ts). */
+    await recordTheStrategy(this.prisma, organizationId);
     return { seeded: true, subjectExternalId: subject.externalId };
   }
 

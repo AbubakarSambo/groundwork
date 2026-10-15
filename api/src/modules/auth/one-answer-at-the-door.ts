@@ -27,8 +27,7 @@
  * password reads "check it"; somebody without reads "we have emailed you a way in".
  */
 export const THE_SAME_ANSWER_EITHER_WAY =
-  'If that address has an account here, we have emailed you a way in - check your inbox. ' +
-  'If you have a password and it did not work, check it and try again.';
+  'That address and password did not work. Check them and try again, or ask for a sign-in link or a password reset from this page.';
 
 /** Recorded for us, so a support question is still answerable. Never sent to the caller. */
 export type WhyTheyCouldNotSignIn =

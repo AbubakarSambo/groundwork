@@ -82,19 +82,37 @@ function makeService(overrides: {
   };
 
   const prompts: any = { getActive: jest.fn(async () => ({ id: 'pv-1', content: 'base synthesis prompt.' })) };
+  /*
+   * EVERY CALL IS KEPT NOW, NOT JUST THE LAST ONE. (26 September 2026.)
+   *
+   * These two fields were overwritten by each `extract`, which was harmless while synthesis was
+   * the only call this fixture ever made. Once the room judgement stopped returning early on a
+   * ground with no frame, a second call ran after synthesis and `capturedCorpus` held the
+   * JUDGEMENT's material - so a test whose name and header are both about the synthesis prompt was
+   * quietly asserting about a different prompt, and went red over a bad-faith code that synthesis
+   * is designed to receive.
+   *
+   * So: `getCorpus()` is the synthesis call, picked out rather than assumed, and `getEveryCorpus()`
+   * is all of them, for the one rule that really does apply everywhere.
+   */
+  const everyCall: { systemPrompt: string; corpus: string }[] = [];
   const anthropic: any = {
     extract: jest.fn(async (systemPrompt: string, messages: { role: string; content: string }[]) => {
       capturedSystemPrompt = systemPrompt;
       capturedCorpus = messages[0].content;
+      everyCall.push({ systemPrompt, corpus: messages[0].content });
       return overrides.extractResult;
     }),
   };
+  /* The judgement announces itself in its own first line; synthesis is everything else. */
+  const isTheJudgement = (p: string) => p.includes('You are writing the judgement over a check-in');
 
   const service = new ReportsService(prisma, prompts, anthropic, {} as any, {} as any, {} as any, {} as any, { tell: async () => [] } as any);
   return {
     service,
-    getCorpus: () => capturedCorpus,
-    getSystemPrompt: () => capturedSystemPrompt,
+    getCorpus: () => (everyCall.find((c) => !isTheJudgement(c.systemPrompt))?.corpus ?? capturedCorpus),
+    getEveryCorpus: () => everyCall.map((c) => c.corpus),
+    getSystemPrompt: () => (everyCall.find((c) => !isTheJudgement(c.systemPrompt))?.systemPrompt ?? capturedSystemPrompt),
     getUpsertedCreate: () => upsertedCreate,
   };
 }
@@ -153,11 +171,50 @@ describe('GW-PATTERN-WIRE-B: patterns do not reach the synthesis prompt at all',
     for (const r of rows) expect(corpus).not.toContain(r.observationText!);
   });
 
+  /*
+   * AND THE NEVER-NAME CODES REACH NO PROMPT AT ALL, WHICH IS A STRONGER CLAIM THAN THE ONE ABOVE
+   * AND THE ONE THAT WAS BEING BROKEN. (26 September 2026.)
+   *
+   * `ALIGNMENT_FEED_ONLY_CODES` - F5, E4, LOW_SPEC_MULTI_DIM, COLLUSION_RISK - are documented as
+   * never to be named to either person directly, and they were filtered out of the synthesis
+   * corpus, the board's alignment feed and the live conversation. The room judgement's material
+   * was the one route with no filter on it, and the lead reads the judgement: a cofounder ground
+   * handed it "[E4 Founder Burden Imbalance]: absorbs operational load relative to the other
+   * founder", about the other founder, to the founder.
+   *
+   * It was true of every ground that already had a frame. It only became visible when the room
+   * judgement stopped returning early on grounds without one, and this fixture is such a ground -
+   * which is why the assertion goes here, across every prompt, rather than on one of them.
+   */
+  it('and E4 and F5 reach no prompt of any kind, not only the synthesis one', async () => {
+    const { service, getEveryCorpus } = makeService({
+      ground: GROUND, parties: PARTIES, records: RECORDS, patternRows: rows, extractResult: EXTRACT,
+    });
+    await service.synthesize('g1');
+    const everything = getEveryCorpus();
+    expect(everything.length).toBeGreaterThan(1);
+    const neverName = rows.filter((r) => ['E4', 'F5', 'LOW_SPEC_MULTI_DIM', 'COLLUSION_RISK'].includes(r.code));
+    expect(neverName.length).toBeGreaterThan(0);
+    for (const corpus of everything) {
+      for (const r of neverName) {
+        expect(corpus).not.toContain(r.observationText!);
+        expect(corpus).not.toContain(`[${r.code} `);
+      }
+    }
+  });
+
   it('and the excluded codes reach nobody on the route that does exist', async () => {
     /* The section filters ALIGNMENT_FEED_ONLY_CODES before anything is named. Pinned on the source,
        because the mock above cannot reach sessionReport's own read. */
+    /* Through patterns/who-reads-a-pattern since 28 September 2026, where the filter now lives. */
     const src = require('fs').readFileSync(__dirname + '/reports.service.ts', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-    const at = src.indexOf('const patternsForPage = (await this.prisma.patternDetection.findMany(');
-    expect(src.slice(at, at + 1200)).toContain('ALIGNMENT_FEED_ONLY_CODES.has(r.code)');
+    const at = src.indexOf('const patternRowsForPage = PATTERNS_ARE_SERVED');
+    expect(at).toBeGreaterThan(-1);
+    /* 29 September 2026: wrapped in wordPatternEvidence, which reworks `whatHappened` for the
+       reader once (decision 7); the call to servedPatterns underneath is unchanged. */
+    expect(src.slice(at, at + 1200)).toContain('const patternsForPage = await wordPatternEvidence(');
+    expect(src.slice(at, at + 1200)).toContain('servedPatterns(');
+    const rules = require('fs').readFileSync(__dirname + '/../patterns/who-reads-a-pattern.ts', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(rules).toContain('ALIGNMENT_FEED_ONLY_CODES.has(row.code)');
   });
 });

@@ -40,7 +40,7 @@ export function asksSomething(text: string): boolean {
  * something that was fine, and a retry that fires on good output is worse than the fault.
  */
 const AN_ASK_WITHOUT_A_QUESTION_MARK =
-  /\b(?:tell me|say more|walk me through|talk me through|describe|give me a sense|let me know|help me understand)\b/i;
+  /\b(?:tell me|say more|walk me through|talk me through|describe|give me a sense|let me know|help me understand|please (?:answer|tell|share|describe|reply|write|say|add|send|type|give|explain|confirm|let)|go ahead|when you(?:'re| are) ready|take your time|(?:write|type|say) (?:[\u201c\u2018"']?finish)|reply (?:with|here))\b/i;
 
 /**
  * A dead end: it asked nothing, and the session is not ending.

@@ -20,10 +20,8 @@ import { boardApi } from '@/api/board'
  * wrong with a pasted file and the hardest to spot in a number, so the count of people it found
  * and anything it could not find sit above the table.
  */
-const box: React.CSSProperties = {
-  width: '100%', padding: '9px 11px', borderRadius: 8, border: '1px solid var(--gw-border)',
-  fontSize: 13, fontFamily: 'inherit', background: 'var(--gw-card)', color: 'var(--gw-text)',
-}
+const boxClass = 'gwui-rule gwui-fs-13 gwui-ink-text gwui-pt-9 gwui-pr-11 gwui-pb-9 gwui-pl-11'
+const boxStyle: React.CSSProperties = { width: '100%', borderRadius: 8, fontFamily: 'inherit', background: 'white' }
 
 /** A pasted CSV or a spreadsheet copy. Tabs and commas both, because both are what people paste. */
 export function rowsFromPaste(text: string): (string | number | null)[][] {
@@ -46,49 +44,48 @@ export function SplitOneTotalAcrossPeople({ groundId }: { groundId: string }) {
   const out = propose.data
 
   if (!open) {
+    /* Board review, 1 October, item 8: this only opens the form below (a fold) - "Nothing is
+       saved here" until its own Propose action is pressed - drawn with one-off classes instead
+       of the shared `gwui-plain-link` quiet-text-link class. */
     return (
-      <button
-        onClick={() => setOpen(true)}
-        style={{
-          background: 'none', border: 'none', padding: 0, fontSize: 12.5, color: 'var(--gw-navy)',
-          cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', marginBottom: 10,
-        }}
-      >
+      <button onClick={() => setOpen(true)} className="gwui-plain-link gwui-fs-13 gwui-mb-10">
         Split one total across people
       </button>
     )
   }
 
   return (
-    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 12, padding: 16, marginBottom: 10, background: 'var(--gw-card)' }}>
-      <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 4 }}>Split one total across people</div>
-      <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '0 0 12px', lineHeight: 1.55, maxWidth: '68ch' }}>
+    <div className="gwui-rule gwui-pt-16 gwui-pr-16 gwui-pb-16 gwui-pl-16 gwui-mb-10" style={{ borderRadius: 12, background: 'white' }}>
+      <div className="gwui-fs-13-5 gwui-ink-dark gwui-mb-4" style={{ fontWeight: 700 }}>Split one total across people</div>
+      <div className="gwui-fs-13 gwui-ink-sub gwui-mb-12" style={{ lineHeight: 1.55, maxWidth: '68ch' }}>
         Paste the export your CRM already gives you. First row the headings, then one row per
         person: their name, what they closed, and how long they have been doing the job. Nothing is
         saved here.
-      </p>
+      </div>
 
-      <div style={{ display: 'grid', gap: 9 }}>
-        <label style={{ display: 'grid', gap: 4, fontSize: 11.5, color: 'var(--gw-sub)' }}>
+      <div className="gwui-gap-9" style={{ display: 'grid' }}>
+        <label className="gwui-gap-4 gwui-fs-13 gwui-ink-sub" style={{ display: 'grid' }}>
           The number the whole team has to reach
-          <input value={total} onChange={(e) => setTotal(e.target.value)} inputMode="numeric" placeholder="270" style={{ ...box, width: 140 }} />
+          <input value={total} onChange={(e) => setTotal(e.target.value)} inputMode="numeric" placeholder="270" className={boxClass} style={{ ...boxStyle, width: 140 }} />
         </label>
-        <label style={{ display: 'grid', gap: 4, fontSize: 11.5, color: 'var(--gw-sub)' }}>
+        <label className="gwui-gap-4 gwui-fs-13 gwui-ink-sub" style={{ display: 'grid' }}>
           The export
           <textarea
             value={paste}
             onChange={(e) => setPaste(e.target.value)}
             rows={6}
             placeholder={'Sales Rep, Units Closed, Months With Us\nMusa, 31, 4 years\nAmina, 14, 11 months'}
-            style={{ ...box, resize: 'vertical' }}
+            className={boxClass}
+            style={{ ...boxStyle, resize: 'vertical' }}
           />
         </label>
         <button
           onClick={() => propose.mutate()}
           disabled={!total.trim() || !paste.trim() || propose.isPending}
+          className="gwui-fs-13 gwui-ink-white gwui-pt-8 gwui-pr-14 gwui-pb-8 gwui-pl-14 gwui-rule-none"
           style={{
-            justifySelf: 'start', padding: '8px 14px', borderRadius: 8, border: 'none',
-            background: 'var(--gw-navy)', color: 'white', fontSize: 12.5, fontWeight: 700,
+            justifySelf: 'start', borderRadius: 8,
+            background: 'var(--gw-navy)', fontWeight: 700,
             fontFamily: 'inherit', cursor: 'pointer',
             opacity: !total.trim() || !paste.trim() || propose.isPending ? 0.5 : 1,
           }}
@@ -98,38 +95,42 @@ export function SplitOneTotalAcrossPeople({ groundId }: { groundId: string }) {
       </div>
 
       {out && (
-        <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--gw-border)' }}>
+        <div className="gwui-rule-top gwui-mt-14 gwui-pt-12">
           {/* What it read, above what it concluded. A wrong column is the likeliest fault and the
               hardest to see in a number. */}
           {out.readFromTheFile && (
-            <p style={{ fontSize: 12, color: out.readFromTheFile.missing.length ? 'var(--gw-amber-t)' : 'var(--gw-sub)', margin: '0 0 10px', lineHeight: 1.5 }}>
+            <div className={`gwui-fs-13 gwui-mb-10 ${out.readFromTheFile.missing.length ? 'gwui-ink-amber' : 'gwui-ink-sub'}`} style={{ lineHeight: 1.5 }}>
               Read {out.readFromTheFile.people} {out.readFromTheFile.people === 1 ? 'person' : 'people'}
               {out.readFromTheFile.skipped ? `, skipped ${out.readFromTheFile.skipped} row${out.readFromTheFile.skipped === 1 ? '' : 's'} with nothing in them` : ''}
               {out.readFromTheFile.missing.length ? `. No column for: ${out.readFromTheFile.missing.join(', ')}.` : '.'}
-            </p>
+            </div>
           )}
 
-          <div style={{ display: 'grid', gap: 11 }}>
+          <div className="gwui-gap-11" style={{ display: 'grid' }}>
             {out.shares.map((s) => (
               <div key={s.key}>
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-dark)' }}>{s.key}</span>
-                  <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--gw-dark)', fontVariantNumeric: 'tabular-nums' }}>{s.target}</span>
+                <div className="gwui-gap-12" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+                  <span className="gwui-fs-14 gwui-ink-dark" style={{ fontWeight: 700 }}>{s.key}</span>
+                  {/* Board review, 30 September, item 9: a bare number ("4100") beside a comma-
+                      grouped one elsewhere on the board ("6,000") reads as two different systems.
+                      Thousands take a comma everywhere - TargetsBand.tsx already does this with
+                      `toLocaleString('en-GB')`, so this matches it. */}
+                  <span className="gwui-fs-15 gwui-ink-dark" style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{s.target.toLocaleString('en-GB')}</span>
                 </div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, maxWidth: '68ch' }}>
+                <div className="gwui-fs-13 gwui-ink-sub" style={{ lineHeight: 1.5, maxWidth: '68ch' }}>
                   {s.because}
                   {/* Said where it matters: a tenure nobody gave was read as a full year, and that
                       moved this person's number. */}
-                  {!s.monthsKnown && <span style={{ color: 'var(--gw-amber-t)' }}> Tenure was not in the file, so this reads them as a full year.</span>}
+                  {!s.monthsKnown && <span className="gwui-ink-amber"> Tenure was not in the file, so this reads them as a full year.</span>}
                 </div>
               </div>
             ))}
           </div>
 
-          <p style={{ fontSize: 12.5, color: 'var(--gw-text)', marginTop: 12, lineHeight: 1.55, maxWidth: '68ch' }}>{out.saying}</p>
-          <p style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 6, lineHeight: 1.5, maxWidth: '68ch' }}>
+          <div className="gwui-fs-13 gwui-ink-text gwui-mt-12" style={{ lineHeight: 1.55, maxWidth: '68ch' }}>{out.saying}</div>
+          <div className="gwui-fs-13 gwui-ink-sub gwui-mt-6" style={{ lineHeight: 1.5, maxWidth: '68ch' }}>
             Add the ones you want below, and say whose each is. Nothing here has been saved.
-          </p>
+          </div>
         </div>
       )}
     </div>

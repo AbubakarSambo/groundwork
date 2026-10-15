@@ -31,6 +31,7 @@ import { GroundsService } from './grounds.service';
 type Participant = {
   id: string;
   managingOnly: boolean;
+  partyType?: string;
   userId: string | null;
   invitedAt: Date | null;
   inviteTokenExpiresAt: Date | null;
@@ -63,6 +64,11 @@ const LAPSED_INVITE = new Date(Date.now() - 21 * DAY); // three weeks ago, alway
 function prismaWith(people: Participant[]) {
   const matches = (p: Participant, where: any, sessionNumber: number): boolean => {
     if (where.managingOnly === false && p.managingOnly) return false;
+    /* whoASessionCounts (decision 133): owes the session, or answered it. */
+    for (const and of where.AND ?? []) {
+      const ok = (and.OR as any[]).some((c) => (c.partyType ? (p.partyType ?? 'PARTICIPANT') === c.partyType && p.managingOnly === c.managingOnly : p.completedSessions.includes(sessionNumber)));
+      if (!ok) return false;
+    }
     return (where.OR as any[]).some((clause) => {
       if (clause.userId?.not === null) return p.userId !== null;
       if (clause.checkIns) return p.completedSessions.includes(sessionNumber);
@@ -145,15 +151,17 @@ describe('it still does not wait forever', () => {
     expect(await service(withANoShow).isSessionReadyForReport('g', 1)).toBe(true);
   });
 
-  it('everyone does a first check-in: session 1 waits for the managing-only lead, and only session 1', async () => {
+  /* CHANGED 11 OCTOBER (decision 133): session 1 used to wait for the managing-only lead. Every lead
+     now checks in when they choose, so no session waits on them, and they count when they answered. */
+  it('the lead checks in when they choose: no session waits for them', async () => {
     const leadNotYet = [
-      person('lead', { managingOnly: true }),
+      person('lead', { managingOnly: true, partyType: 'INITIATOR' }),
       person('ejiro', { completedSessions: [1] }),
       person('maureen', { completedSessions: [1] }),
     ];
-    expect(await service(leadNotYet).isSessionReadyForReport('g', 1)).toBe(false);
+    expect(await service(leadNotYet).isSessionReadyForReport('g', 1)).toBe(true);
     const leadDone = [
-      person('lead', { managingOnly: true, completedSessions: [1] }),
+      person('lead', { managingOnly: true, partyType: 'INITIATOR', completedSessions: [1] }),
       person('ejiro', { completedSessions: [1, 2] }),
       person('maureen', { completedSessions: [1, 2] }),
     ];

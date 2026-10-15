@@ -1,5 +1,6 @@
 import { toast } from 'sonner'
-import { useEffect, useRef, useState } from 'react'
+import { rememberTheFirstCheckInClosing } from '@/lib/the-closing-after-your-first-check-in'
+import { useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { authApi } from '@/api/auth'
 import { entryApi } from '@/api/entry'
@@ -28,7 +29,6 @@ export function GoogleCallbackPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const setAuth = useAuthStore(s => s.setAuth)
-  const [error, setError] = useState<string | null>(null)
   const exchanged = useRef(false)
 
   const code = params.get('code')
@@ -43,16 +43,16 @@ export function GoogleCallbackPage() {
    * be worse than the guess it replaces.
    */
   const shouldNameOrg = params.get('nameOrg') === 'true'
-  const [askingOrgName, setAskingOrgName] = useState(false)
-  const [orgName, setOrgName] = useState('')
-  const [savingOrg, setSavingOrg] = useState(false)
+  /* Where they were going before Google, handed back by the server (U.3 review). Only a path in this app. */
+  const rawNext = params.get('next')
+  const goingTo = rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//') && !rawNext.startsWith('/\\') ? rawNext : null
 
   useEffect(() => {
     if (exchanged.current) return
     exchanged.current = true
 
     if (!code) {
-      setError('That sign-in link was incomplete. Please try again.')
+      navigate('/google-failed', { replace: true })
       return
     }
 
@@ -88,6 +88,7 @@ export function GoogleCallbackPage() {
              * after sign-in was deleted by the code meant to be saving it. W14-11.
              */
             clearEntryHandover()
+            rememberTheFirstCheckInClosing(res.groundId)
             navigate(`/grounds/${res.groundId}`, { replace: true })
             return
           } catch {
@@ -99,96 +100,27 @@ export function GoogleCallbackPage() {
           }
         }
 
-        if (shouldNameOrg) { setAskingOrgName(true); return }
+        /* The organisation the server just made is named on "Create an organisation" (A3, U.3). */
+        if (shouldNameOrg) { navigate('/org-new?naming=1', { replace: true }); return }
+        if (goingTo) { navigate(goingTo, { replace: true }); return }
         navigate(isNewUser ? '/start' : '/', { replace: true })
       } catch {
         // Deliberately vague: the failure modes here are an expired code, a
         // reused code, or a server that cannot reach Google, and none of them
         // are the person's fault or worth explaining on a sign-in screen.
-        setError('That sign-in could not be completed. Please try again.')
+        // One page says so for every way Google can fail (A2, #/google-failed).
+        navigate('/google-failed', { replace: true })
       }
     })()
-  }, [code, isNewUser, navigate, setAuth, shouldNameOrg])
-
-  /**
-   * OPTIONAL, and it has to look optional.
-   *
-   * A default is already in place, so skipping costs nothing and nobody is held
-   * at a form on their way in. The point is only that the name on every page
-   * their team sees was chosen rather than concatenated.
-   */
-  if (askingOrgName) {
-    const save = async () => {
-      const trimmed = orgName.trim()
-      if (trimmed.length >= 2) {
-        setSavingOrg(true)
-        /**
-         * A NAME SOMEBODY TYPED, SILENTLY DISCARDED.
-         *
-         * "The default stands" was the whole error handling: a person types their
-         * company name, the call fails, and every page their team sees keeps the
-         * concatenated default - with no sign that the thing they just did came to
-         * nothing. The point of asking was that the name was chosen rather than
-         * generated, and swallowing the failure gives back exactly what the question
-         * existed to avoid.
-         */
-        try {
-          await authApi.renameOrganization(trimmed)
-        } catch {
-          toast.error('Your name did not save. You can set it any time from Settings.')
-        }
-      }
-      navigate('/start', { replace: true })
-    }
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <div style={{ maxWidth: 380, width: '100%', textAlign: 'center' }}>
-          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>What should we call your workspace?</div>
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 16 }}>
-            This is the name your team sees. You can change it later.
-          </div>
-          <input
-            autoFocus
-            value={orgName}
-            onChange={e => setOrgName(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') save() }}
-            placeholder="Your team or company name"
-            style={{ width: '100%', padding: '11px 13px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 12 }}
-          />
-          <button className="gw-btn" disabled={savingOrg} onClick={save} style={{ width: '100%', marginBottom: 10 }}>
-            {savingOrg ? 'Saving…' : 'Continue →'}
-          </button>
-          <button
-            onClick={() => navigate('/start', { replace: true })}
-            style={{ background: 'none', border: 'none', color: 'var(--gw-sub)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-          >
-            Skip for now
-          </button>
-        </div>
-      </div>
-    )
-  }
+  }, [code, isNewUser, navigate, setAuth, shouldNameOrg, goingTo])
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-page)' }}>
       <div className="gw-hdr">
         <span className="gw-logo">Groundwork</span>
       </div>
       <div className="gw-bd" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '70vh', textAlign: 'center' }}>
-        {error ? (
-          <>
-            <h1 className="gw-ttl" style={{ textAlign: 'center' }}>Sign-in did not complete</h1>
-            <div className="gw-sub-t" style={{ textAlign: 'center', maxWidth: 320, margin: '8px auto 18px' }}>{error}</div>
-            <button
-              onClick={() => navigate('/login', { replace: true })}
-              style={{ fontSize: 13, fontWeight: 700, color: 'white', background: 'var(--gw-navy)', border: 'none', borderRadius: 7, padding: '10px 18px', cursor: 'pointer', fontFamily: 'inherit', margin: '0 auto' }}
-            >
-              Back to sign in
-            </button>
-          </>
-        ) : (
-          <div className="gw-sub-t" style={{ textAlign: 'center' }}>Signing you in…</div>
-        )}
+        <div className="gw-sub-t" style={{ textAlign: 'center' }}>Signing you in…</div>
       </div>
     </div>
   )

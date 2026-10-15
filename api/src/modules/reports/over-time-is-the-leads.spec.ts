@@ -26,8 +26,15 @@ const whole: any = {
 };
 
 describe('the longitudinal read belongs to the lead', () => {
-  it('gives the lead all of it', () => {
-    expect(overTimeForThisReader(whole, { isLead: true, participantId: 'anyone' })).toBe(whole);
+  /*
+   * ALL OF IT EXCEPT THE PATTERNS, since 27 September 2026: patterns are served to nobody until
+   * they are done properly (patterns/patterns-are-served). Everything else still reaches the lead
+   * whole, and every participant rule below is unchanged.
+   */
+  it('gives the lead all of it, except the patterns while they are not served', () => {
+    const lead = overTimeForThisReader(whole, { isLead: true, participantId: 'anyone' })!;
+    /* Changed 30 Sep 2026 (request 87): the lead is also served `inSessions`, the heading's "in 3 sessions". */
+    expect(lead).toEqual({ ...whole, patterns: [], inSessions: 'in 3 sessions' });
   });
 
   it('gives a participant their own commitments and nobody else\'s', () => {
@@ -64,6 +71,10 @@ describe('the longitudinal read belongs to the lead', () => {
 
   it('and the report read applies it on both branches', () => {
     const src = fs.readFileSync(path.join(__dirname, 'reports.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-    expect(src.match(/overTime: overTimeForThisReader\(/g) ?? []).toHaveLength(2);
+    /* Two in get(), the forming and the released branch, and a third in the check before a report is
+       kept, which renders each participant's copy the way get() serves it (everyLineReadAsItWillBe). */
+    expect(src.match(/overTime: overTimeForThisReader\(/g) ?? []).toHaveLength(3);
+    const check = src.slice(src.indexOf('private async everyLineReadAsItWillBe'), src.indexOf('private applyNames'));
+    expect(check).toMatch(/overTime: overTimeForThisReader\(/);
   });
 });

@@ -1,4 +1,9 @@
-import { whatTheirWorkspaceIsCalled, whyNotAnotherWorkspace } from './a-roster-row-is-not-a-life-sentence';
+import { TheWaysToStopMail } from '../engagement/the-ways-to-stop-mail';
+import { theDomainOf, mayBeJoinedBy } from '../../common/an-email-domain';
+import { aPathInThisApp, theInviteLinkCodeIn } from '../../common/a-path-in-this-app';
+import { whatTheirWorkspaceIsCalled } from './a-roster-row-is-not-a-life-sentence';
+import { needsApproval, isAnAdminOf, whoToAsk } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
+import { tellTheAdminsSomebodyIsWaiting } from '../participants/somebody-is-waiting-at-the-door';
 import { hashed } from './a-token-is-stored-as-its-hash';
 import { sessionClaims, ASessionHolder, SignedInVia } from './a-session-token';
 import {
@@ -15,10 +20,11 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { GroundworkEvents, OrgSignedUpEvent } from '../../common/events';
+import { GroundworkEvents, OrgSignedUpEvent, OrgSizeSaidEvent } from '../../common/events';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { tidyANumberFor } from '../whatsapp/the-organisations-country';
 import { BillingService } from '../billing/billing.service';
 import {
   RegisterDto,
@@ -36,6 +42,7 @@ import { TokenType } from '@prisma/client';
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
 import { theFirstAdminHoldsIt } from '../users/the-person-who-set-this-up';
 import { whatToSayAboutADeadLink, expiresAtFor, howLongInWords } from './how-long-a-link-lasts';
+import { isTheirEmail, IS_THEIR_EMAIL } from './the-password-rules';
 import { THE_SAME_ANSWER_EITHER_WAY, type WhyTheyCouldNotSignIn } from './one-answer-at-the-door';
 
 type UserWithOrg = {
@@ -68,6 +75,68 @@ type UserWithOrg = {
 };
 
 import { whereTheyBelong, ROLE_FOR_SOMEBODY_EXPECTED } from './they-are-already-on-somebodys-roster';
+import { connectWhatsAppFor } from '../whatsapp/connect-whatsapp';
+import { aSignInsNumberChanged, aRosterNumberChanged, refuseANumberOnSomebodyElse, aSignInWithNoNumberTakesTheRosters, theSignInOf } from '../whatsapp/one-number-for-a-person';
+
+/**
+ * For an address that already has an account: the draft token a new address would have been given
+ * for the same request, in the same shape, stored nowhere. See the end of entrySave.
+ */
+/**
+ * A PASSWORD CHOSEN AT SIGN-UP IS KEPT ONLY FOR THE BROWSER THAT CHOSE IT (U.3 review, a security fix).
+ *
+ * Hafsah decided a password may be chosen at sign-up. But the waiting sign-up is keyed only by the
+ * address, so anybody could sign up with somebody else's address and a password of their own; when the
+ * owner opened the confirmation, the account was made with the stranger's password. Now a password
+ * comes with a random key, handed only to the browser that sent it and stored here as a hash. The
+ * confirmation puts the password on the account only when that key comes back with it. Opened
+ * anywhere else, the password is thrown away, and the person chooses one afterwards, exactly as after
+ * a sign-up by link. Nothing on screen or in any answer says a password had been chosen.
+ */
+function aPasswordKey(): { key: string; keyHash: string } {
+  const key = crypto.randomBytes(32).toString('hex');
+  return { key, keyHash: hashed(key) };
+}
+function theKeyMatches(presented: unknown, keyHash: string | null | undefined): boolean {
+  if (typeof presented !== 'string' || !presented || !keyHash) return false;
+  const a = Buffer.from(hashed(presented));
+  const b = Buffer.from(keyHash);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+function theSameShapeAsANewAddress(draft: unknown): { draftToken?: string } {
+  return draft ? { draftToken: crypto.randomBytes(32).toString('hex') } : {};
+}
+
+/** What "Create an organisation" sends. Every part is optional: the organisation menu's one-press door sends none. */
+export interface WhatANewOrganisationIsGiven {
+  name?: string;
+  billingEmail?: string;
+  /** "fewer" or "more" than `line` people, where `line` is the trial's team size they were shown. */
+  teamSize?: { said: 'fewer' | 'more'; line: number };
+}
+
+/**
+ * WHERE THE CONFIRMATION CARRIES THEM ON TO (U.3 review). The place kept with the waiting sign-up or
+ * the sign-in link, checked again on the way out, so a value written before the check existed can
+ * never send anybody outside the app.
+ */
+function goOnTo<T extends object>(res: T, kept: string | null | undefined): T & { next?: string } {
+  const next = aPathInThisApp(kept);
+  return next ? { ...res, next } : res;
+}
+
+/*
+ * NEVER "ACCOUNT" IN WHAT A PERSON READS (Hafsah's standing rule; request 141, review of 5 October 2026).
+ * The sign-up answer names the address only because it is the person's own: they typed it a moment ago.
+ */
+/** Said to somebody who set a password and never opened the link. */
+export const YOUR_SIGN_UP_IS_NOT_FINISHED = 'You have not finished creating your account yet. We have emailed you the link again. Open it, say where you work, and then sign in with your password.';
+
+export const theConfirmationLinkWasSent = (email: string): string =>
+  `Check your email. We sent a link to ${email} to confirm it is yours. Open it on any device.`;
+export const YOU_CAN_NO_LONGER_SIGN_IN_HERE =
+  'You can no longer sign in here. Ask the person who added you if you need to get back in.';
 
 @Injectable()
 export class AuthService {
@@ -83,16 +152,43 @@ export class AuthService {
     private events: EventEmitter2,
   ) {}
 
-  /** The back office hears about every new organisation. Best-effort; a sign-up never fails on it. */
-  private signedUp(org: { id: string; name: string }, adminEmail: string) {
+  /** Billing hears what somebody said about their team's size, for the free trial (U.19). Best-effort. */
+  private sizeSaid(organizationId: string, teamSize: { said: 'fewer' | 'more'; line: number }) {
     try {
-      this.events.emit(GroundworkEvents.ORG_SIGNED_UP, { organizationId: org.id, organizationName: org.name, adminEmail } satisfies OrgSignedUpEvent);
+      this.events.emit(GroundworkEvents.ORG_SIZE_SAID, { organizationId, said: teamSize.said, line: teamSize.line } satisfies OrgSizeSaidEvent);
+    } catch (err: any) {
+      this.logger.warn(`org.sizeSaid did not emit for ${organizationId}: ${err?.message}`);
+    }
+  }
+
+  /**
+   * A TEAM NAMED ON THE SIGN-UP FORM HAS ITS TRIAL BEFORE THE LINK ANSWERS (release check, 8 October 2026). The month was
+   * given by a listener of the sign-up event, which is sent from inside the transaction that makes the organisation, so
+   * it landed a moment after this answer. The page then saved the check-in it was holding at once, and that save was
+   * refused with "Your organisation has no plan yet" (seen on the test bed: the refusal at 15:48:29.136, the month
+   * written at 15:48:29.21). This waits for the same rule, after the organisation exists: the form promises the month to
+   * teams of fewer than 20, and billing still checks that against who is really there. Never throws.
+   */
+  private async theTrialIsGivenBeforeTheyGoOn(organizationId: string): Promise<void> {
+    try {
+      const events: any = this.events;
+      if (typeof events?.emitAsync !== 'function') return;
+      await events.emitAsync(GroundworkEvents.ORG_SIZE_SAID, { organizationId, said: 'fewer', line: 20 } satisfies OrgSizeSaidEvent);
+    } catch (err: any) {
+      this.logger.warn(`The trial for ${organizationId} was not in place before the link answered: ${err?.message}`);
+    }
+  }
+
+  /** The back office hears about every new organisation. Best-effort; a sign-up never fails on it. */
+  private signedUp(org: { id: string; name: string }, adminEmail: string, namedOnTheForm = false) {
+    try {
+      this.events.emit(GroundworkEvents.ORG_SIGNED_UP, { organizationId: org.id, organizationName: org.name, adminEmail, ...(namedOnTheForm ? { namedOnTheForm: true } : {}) } satisfies OrgSignedUpEvent);
     } catch (err: any) {
       this.logger.warn(`org.signedUp did not emit for ${org.id}: ${err?.message}`);
     }
   }
 
-  async register(dto: RegisterDto): Promise<{ message: string; email: string }> {
+  async register(dto: RegisterDto): Promise<{ message: string; email: string; passwordKey?: string }> {
     /**
      * THIS HONEYPOT GUARDS A DOOR NOBODY USES. W-UX-C. Not fixed - recorded, because the fix is a
      * decision rather than a line.
@@ -111,11 +207,11 @@ export class AuthService {
      * detected teaches it to try again without the trap.
      */
     if ((dto as any)._hp) {
-      return { message: 'Registration successful. Please check your email to verify your account.', email: dto.email.toLowerCase() };
+      return { message: theConfirmationLinkWasSent(dto.email.toLowerCase()), email: dto.email.toLowerCase() };
     }
 
     const existingUser = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
-    if (existingUser) throw new ConflictException('Email already registered');
+    if (existingUser) throw new ConflictException('That email address already has a sign-in, so sign in with it instead.');
 
     /**
      * NOTHING IS CREATED UNTIL THE ADDRESS IS PROVED. GW-001, closed here too.
@@ -135,8 +231,11 @@ export class AuthService {
      * The password hash rides along on that record rather than on a User, because the User is
      * precisely the thing that must not exist yet.
      */
+    if (isTheirEmail(dto.password, dto.email)) throw new BadRequestException(IS_THEIR_EMAIL);
     const passwordHash = await bcrypt.hash(dto.password, 12);
     const token = crypto.randomBytes(32).toString('hex');
+    /* Kept only for the browser that chose it (see aPasswordKey). */
+    const { key: passwordKey, keyHash: passwordKeyHash } = aPasswordKey();
 
     await this.prisma.pendingSignup.upsert({
       where: { email: dto.email.toLowerCase() },
@@ -148,6 +247,7 @@ export class AuthService {
         /* The person's own name, never their employer's domain, when none was typed. */
         orgName: dto.organizationName?.trim() || null,
         passwordHash,
+        passwordKeyHash,
         expiresAt: expiresAtFor('verify an address'),
       },
       update: {
@@ -156,21 +256,22 @@ export class AuthService {
         lastName: dto.lastName,
         orgName: dto.organizationName?.trim() || null,
         passwordHash,
+        passwordKeyHash,
         expiresAt: expiresAtFor('verify an address'),
       },
     });
 
     await this.emailService.sendVerificationEmail(dto.email.toLowerCase(), dto.firstName, token);
-    return { message: 'Registration successful. Please check your email to verify your account.', email: dto.email.toLowerCase() };
+    return { message: theConfirmationLinkWasSent(dto.email.toLowerCase()), email: dto.email.toLowerCase(), passwordKey };
   }
 
   async registerMagicLink(dto: MagicLinkRegisterDto): Promise<{ message: string; email: string }> {
     if ((dto as any)._hp) {
-      return { message: 'Account created. Please check your email to activate your account.', email: dto.email.toLowerCase() };
+      return { message: theConfirmationLinkWasSent(dto.email.toLowerCase()), email: dto.email.toLowerCase() };
     }
 
     const existingUser = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
-    if (existingUser) throw new ConflictException('Email already registered');
+    if (existingUser) throw new ConflictException('That email address already has a sign-in, so sign in with it instead.');
 
     const emailLocal = dto.email.toLowerCase().split('@')[0];
     const firstName = dto.firstName?.trim() || emailLocal.charAt(0).toUpperCase() + emailLocal.slice(1);
@@ -199,7 +300,7 @@ export class AuthService {
     });
 
     await this.emailService.sendMagicLinkEmail(dto.email.toLowerCase(), firstName, token);
-    return { message: 'Account created. Please check your email to activate your account.', email: dto.email.toLowerCase() };
+    return { message: theConfirmationLinkWasSent(dto.email.toLowerCase()), email: dto.email.toLowerCase() };
   }
 
   async login(dto: LoginDto): Promise<AuthResponseDto> {
@@ -221,12 +322,28 @@ export class AuthService {
       throw new UnauthorizedException(THE_SAME_ANSWER_EITHER_WAY);
     };
 
-    if (!user || user.deletedAt) refuse('no such account');
+    if (!user || user.deletedAt) {
+      /*
+       * SOMEBODY WHO SET A PASSWORD AND NEVER FINISHED (B-192, server half). Their account does not exist until the link is opened and an organisation chosen, so the password
+       * "did not work" and the one answer at the door told them to check it. If the password is the one they set, that proves the address is theirs, so they are told plainly
+       * what is left and the link is sent again (new, in case the old one ran out). Anybody else reads the same answer as before, so nothing is learnt about a stranger's address.
+       */
+      const pending = !user ? await this.prisma.pendingSignup.findUnique({ where: { email: dto.email.toLowerCase() } }).catch(() => null) : null;
+      if (pending?.passwordHash && (await bcrypt.compare(dto.password, pending.passwordHash).catch(() => false))) {
+        const token = crypto.randomBytes(32).toString('hex');
+        await this.prisma.pendingSignup.update({ where: { id: pending.id }, data: { token, expiresAt: expiresAtFor('verify an address') } });
+        await this.emailService.sendVerificationEmail(pending.email, pending.firstName, token).catch((err) => this.logger.error(`Failed to send the sign-up link again to ${pending.email}: ${err?.message}`));
+        this.logger.log(`Sign-in refused for ${dto.email.toLowerCase()}: the sign-up was never finished; the link was sent again.`);
+        throw new UnauthorizedException(YOUR_SIGN_UP_IS_NOT_FINISHED);
+      }
+      refuse('no such account');
+    }
     if (!user.isActive) refuse('the account is deactivated');
     if (!user.isEmailVerified) refuse('the address is not verified');
 
     if (!user.passwordHash) {
       if (user.googleId) {
+        await this.aNewLinkEndsTheOlderOnes(user.id, TokenType.PASSWORD_SETUP);
         const token = crypto.randomBytes(32).toString('hex');
         await this.prisma.emailVerificationToken.create({
           data: { userId: user.id, token: hashed(token), type: TokenType.PASSWORD_SETUP, expiresAt: expiresAtFor('set a password from an email') },
@@ -238,6 +355,7 @@ export class AuthService {
       }
       // Participant accounts are created without a password. Auto-send a setup
       // link so they can get back in without needing to contact anyone.
+      await this.aNewLinkEndsTheOlderOnes(user.id, TokenType.PASSWORD_SETUP);
       const token = crypto.randomBytes(32).toString('hex');
       await this.prisma.emailVerificationToken.create({
         data: { userId: user.id, token: hashed(token), type: TokenType.PASSWORD_SETUP, expiresAt: expiresAtFor('set a password from an email') },
@@ -296,11 +414,107 @@ export class AuthService {
         );
       }
 
+      /*
+       * THE PASSWORD CHOSEN AT SIGN-UP, ONLY IN THE BROWSER THAT CHOSE IT (aPasswordKey). Opened
+       * anywhere else, it is thrown away now, so no later answer on this link can bring it back, and
+       * the person chooses one after confirming, as after a sign-up by link. Nothing says so.
+       */
+      const passwordHash = pending.passwordHash && theKeyMatches(dto.passwordKey, pending.passwordKeyHash) ? pending.passwordHash : null;
+      if (pending.passwordHash && !passwordHash) {
+        await this.prisma.pendingSignup.update({ where: { id: pending.id }, data: { passwordHash: null, passwordKeyHash: null } });
+      }
+
       // Someone may have signed up by another route in the meantime.
       const already = await this.prisma.user.findUnique({ where: { email: pending.email }, include: { organization: true } });
       if (already) {
         await this.prisma.pendingSignup.delete({ where: { id: pending.id } }).catch(() => undefined);
-        return this.withPasswordSetup(await this.buildAuthResponse(already as unknown as UserWithOrg, 'link'), already.id);
+        return goOnTo(await this.withPasswordSetup(await this.buildAuthResponse(already as unknown as UserWithOrg, 'link'), already.id), pending.next);
+      }
+
+      /*
+       * INVITED TO A CHECK-IN, AND SIGNING UP INSTEAD OF OPENING THE INVITATION (journey test, 12 October).
+       *
+       * Pia was on Lena's check-in at Brightloom and asked for a sign-in link from the sign-in page. Her
+       * address had no account, so this made "Pia's workspace" with her as its admin, and her check-in was
+       * somewhere she could no longer reach. A person who has a place on a check-in never gets a new
+       * organisation made here. They are made exactly as opening the invitation makes them
+       * (participants.service.ts accept): a person of the inviting organisation, waiting for an admin there
+       * when somebody who is not an admin invited them, with their place on the check-in joined to them.
+       */
+      const invitedTo = await this.prisma.groundParticipant.findFirst({
+        where: { email: pending.email, userId: null },
+        orderBy: { createdAt: 'asc' },
+        select: { groundId: true, addedByUserId: true, ground: { select: { organizationId: true, initiatorId: true } } },
+      });
+      if (invitedTo?.ground) {
+        const orgId = invitedTo.ground.organizationId;
+        const inviter = await this.prisma.user.findUnique({
+          where: { id: whoToAsk(invitedTo.addedByUserId, invitedTo.ground.initiatorId) },
+          select: { role: true, organizationId: true },
+        });
+        const wait = needsApproval({
+          groundOrganizationId: orgId,
+          theirHomeOrganizationId: null,
+          alreadyAMemberHere: false,
+          addedByAnAdminOfThisOrg: isAnAdminOf(orgId, inviter as any),
+        });
+        const invited = await this.prisma.$transaction(async (tx) => {
+          const u = await tx.user.create({
+            data: {
+              organizationId: orgId,
+              email: pending.email,
+              firstName: pending.firstName,
+              lastName: pending.lastName ?? '',
+              passwordHash,
+              googleId: pending.googleId ?? undefined,
+              role: 'MEMBER',
+              isEmailVerified: true,
+              /* Holds no seat and cannot check in until somebody says yes, as on accepting. */
+              awaitingOrgApproval: wait,
+            },
+            include: { organization: true },
+          });
+          if (wait) {
+            await tx.membershipRequest.upsert({
+              where: { organizationId_userId: { organizationId: orgId, userId: u.id } },
+              create: { organizationId: orgId, userId: u.id, email: pending.email, requestedByUserId: invitedTo.ground!.initiatorId, groundId: invitedTo.groundId, viaInvitation: true },
+              update: {},
+            });
+          }
+          if (pending.draftToken) {
+            await tx.entryDraft.create({
+              data: { userId: u.id, draftToken: pending.draftToken, payload: (pending.payload ?? {}) as any, history: (pending.history ?? []) as any },
+            });
+          }
+          await tx.groundParticipant.updateMany({
+            where: { email: pending.email, userId: null, awaitingSeat: false, ground: { status: { not: 'AWAITING_APPROVAL' } } },
+            data: { userId: u.id },
+          });
+          await tx.pendingSignup.delete({ where: { id: pending.id } });
+          return u;
+        });
+        if (wait) {
+          tellTheAdminsSomebodyIsWaiting({ prisma: this.prisma, email: this.emailService, logger: this.logger }, orgId, invitedTo.groundId, invitedTo.ground.initiatorId, pending.email)
+            .catch((err: any) => this.logger.warn(`Could not tell the admins about ${pending.email}: ${err?.message}`));
+        }
+        this.logger.log(`${pending.email} confirmed an address that was invited to a check-in, and joined the organisation that invited them`);
+        /*
+         * Waiting: the app takes them to "Almost in". Not waiting: STRAIGHT INTO THEIR CHECK-IN, as opening
+         * the invitation does (InvitePage after accept). '/today' was a "home", and the link's page
+         * answers a home by posting /entry/commit for somebody who had nothing to save; a real
+         * destination goes there without a commit, so no 400 and nothing made. A draft they wrote in
+         * the entry chat still goes home, so the page saves it.
+         */
+        let onward = wait ? '/join/waiting' : '/today';
+        if (!wait && !pending.draftToken) {
+          const open = await Promise.resolve(this.prisma.checkIn?.findFirst?.({
+            where: { participant: { userId: invited.id, groundId: invitedTo.groundId }, status: { not: 'COMPLETED' as any } },
+            orderBy: { sessionNumber: 'asc' },
+            select: { id: true },
+          })).catch(() => null);
+          if (open?.id) onward = `/checkin/${open.id}`;
+        }
+        return goOnTo({ ...(await this.readyAfter(pending, await this.buildAuthResponse(invited as unknown as UserWithOrg, 'link'), invited.id)), justCreated: true }, onward);
       }
 
       /*
@@ -336,7 +550,8 @@ export class AuthService {
               email: pending.email,
               firstName: pending.firstName,
               lastName: pending.lastName ?? '',
-              passwordHash: pending.passwordHash,
+              passwordHash,
+              googleId: pending.googleId ?? undefined,
               /* Never an admin. Being listed is not authority over the company. */
               role: ROLE_FOR_SOMEBODY_EXPECTED as any,
               isEmailVerified: true,
@@ -346,9 +561,11 @@ export class AuthService {
           /* The roster row and the account meet, so the panel and every check-in
              read as this person from the first minute rather than the second
              time they sign in. */
-          await tx.person.update({ where: { id: belongs.personId }, data: { linkedUserId: u.id } });
+          const listed = await tx.person.update({ where: { id: belongs.personId }, data: { linkedUserId: u.id }, select: { phone: true } });
+          /* A sign-in made with no number takes the roster's (decision 106 item 3). */
+          await aSignInWithNoNumberTakesTheRosters(tx, u.id, listed?.phone);
           await tx.groundParticipant.updateMany({
-            where: { email: pending.email, userId: null },
+            where: { email: pending.email, userId: null, awaitingSeat: false, ground: { status: { not: 'AWAITING_APPROVAL' } } },
             data: { userId: u.id },
           });
           await tx.pendingSignup.delete({ where: { id: pending.id } });
@@ -356,18 +573,105 @@ export class AuthService {
         });
 
         this.logger.log(`${pending.email} joined the organisation that already listed them`);
-        return this.withPasswordSetup(await this.buildAuthResponse(joined as unknown as UserWithOrg, 'link'), joined.id);
+        /* This link has just made the account (U.2): the client says "Your email is confirmed". */
+        return goOnTo({ ...(await this.readyAfter(pending, await this.buildAuthResponse(joined as unknown as UserWithOrg, 'link'), joined.id)), justCreated: true }, pending.next);
+      }
+
+      /*
+       * AN INVITE LINK, OR AN ORGANISATION THAT LETS THEIR DOMAIN JOIN, MAKES NO ORGANISATION (U.3 review).
+       *
+       * Everybody who reached this line used to become the admin of a new organisation, named from
+       * what they typed or from their own name. So somebody who pressed "Join Coamana" on Coamana's
+       * invite link, or whose @coamana.com address Coamana lets join, got an empty organisation of
+       * their own as well, and landed in it. Now:
+       *   - From an invite link that is still open, with a seat: they join that organisation, as
+       *     "Takes part", on confirming. They pressed "Join" before signing up; that is the choice.
+       *   - Otherwise, if an organisation lets their confirmed domain join, or the link they came
+       *     from could not take them: nothing is made yet, and the answer asks "Where do you work?".
+       *     The next answer joins one that was offered, or creates their own (`createMyOwn`).
+       *   - Otherwise, as before: their own organisation, and they are its admin.
+       */
+      if (!dto.createMyOwn) {
+        const where = await this.whereAWaitingSignUpMayGo(pending.email, pending.next);
+        const chosen = dto.joinOrganizationId
+          ? where.offered.find((o) => o.id === dto.joinOrganizationId) ?? null
+          : where.byLink;
+        if (dto.joinOrganizationId && !chosen) {
+          throw new ForbiddenException('You cannot join that organisation with your email address. Ask somebody there to invite you.');
+        }
+        let problem: string | null = where.linkProblem;
+        if (chosen) {
+          const room = await this.billing.canInviteMember(chosen.id);
+          if (room.allowed) {
+            const joined = await this.prisma.$transaction(async (tx) => {
+              const u = await tx.user.create({
+                data: {
+                  organizationId: chosen.id,
+                  email: pending.email,
+                  firstName: pending.firstName,
+                  lastName: pending.lastName ?? '',
+                  passwordHash,
+              googleId: pending.googleId ?? undefined,
+                  /* "Takes part". Never an admin: joining is not authority over the company. */
+                  role: ROLE_FOR_SOMEBODY_EXPECTED as any,
+                  isEmailVerified: true,
+                  /*
+                   * THE ONE MEMBERSHIP, NESTED HERE (U.3 re-review). The database client's hook
+                   * (prisma.service.ts, theMembershipFollowsTheUser) adds a membership to every user
+                   * created with an organisation, unless the create brings its own. A second, separate
+                   * create collided with it on every join against the real database. So the membership
+                   * comes with the user, carrying how they joined, and the hook leaves it alone.
+                   */
+                  memberships: { create: { organizationId: chosen.id, role: ROLE_FOR_SOMEBODY_EXPECTED as any, joinedHow: chosen.how } },
+                },
+                include: { organization: true },
+              });
+              if (pending.draftToken) {
+                await tx.entryDraft.create({
+                  data: { userId: u.id, draftToken: pending.draftToken, payload: (pending.payload ?? {}) as any, history: (pending.history ?? []) as any },
+                });
+              }
+              await tx.groundParticipant.updateMany({ where: { email: pending.email, userId: null, awaitingSeat: false, ground: { status: { not: 'AWAITING_APPROVAL' } } }, data: { userId: u.id } });
+              await tx.pendingSignup.delete({ where: { id: pending.id } });
+              return u;
+            });
+            this.logger.log(`${pending.email} joined ${chosen.name} ${chosen.how === 'link' ? 'by its invite link' : 'by email domain'} on confirming`);
+            /* Joined, so not back to the invite link's "Join" button: on to Today. */
+            return { ...(await this.readyAfter(pending, await this.buildAuthResponse(joined as unknown as UserWithOrg, 'link'), joined.id)), justCreated: true, next: '/today' };
+          }
+          problem = `${chosen.name} has no room for another person on its plan right now. Ask an admin there to make room, or to invite you when there is.`;
+        }
+        if (where.offered.length > 0 || where.cameByLink) {
+          /* Nothing is made, and this link stays good until they choose (or it runs out). */
+          return {
+            /* Their own address, which this link has just proved, for "Your email is confirmed". */
+            email: pending.email,
+            whereDoYouWork: {
+              byDomain: where.byDomain.map((o) => ({ id: o.id, name: o.name, domain: where.domain! })),
+              ...(problem ? { problem } : {}),
+            },
+          } as any;
+        }
       }
 
       // The slug comes from the organisation NAME, never the email domain, so a
       // company's namespace cannot be claimed from an address. See GW-001.
-      const orgName = pending.orgName?.trim() || `${pending.firstName}'s workspace`;
+      /*
+       * "CREATE A NEW ORGANISATION" ON "WHERE DO YOU WORK?" (U.3 re-review). Named from what they typed
+       * at sign-up if they typed a name. The box is filled in from the address ("Coamana" from
+       * @coamana.com), and that suggestion is the name of the organisation they have just chosen not
+       * to join, so a name they only left as suggested is not used: they get "<first name>'s
+       * workspace", which they can rename. A plain sign-up keeps the suggestion, as Hafsah decided.
+       */
+      const onlySuggested = !!dto.createMyOwn && (pending.payload as any)?.orgNameSuggested === true;
+      const orgName = (onlySuggested ? '' : pending.orgName?.trim()) || `${pending.firstName}'s workspace`;
       const slug = await this.generateUniqueSlug(orgName);
 
       const created = await this.prisma.$transaction(async (tx) => {
         /* The contact email is the admin's until they say otherwise - see the note on register. */
         const org = await tx.organization.create({ data: { name: orgName, slug, email: pending.email } });
-        this.signedUp(org, pending.email);
+        /* A sign-up link that makes an organisation never asks the team's size, named or not (decision 121, item 3), so billing applies the trial rule itself. */
+        this.signedUp(org, pending.email, true);
         const u = await tx.user.create({
           data: {
             organizationId: org.id,
@@ -375,7 +679,8 @@ export class AuthService {
             firstName: pending.firstName,
             lastName: pending.lastName ?? '',
             /* Only the password signup path carries one. The others set a password later. */
-            passwordHash: pending.passwordHash,
+            passwordHash,
+              googleId: pending.googleId ?? undefined,
             role: 'ADMIN',
             // Verified by construction: this only runs because the link opened.
             isEmailVerified: true,
@@ -396,14 +701,19 @@ export class AuthService {
         }
         // Connect any check-ins made under this address before the account existed.
         await tx.groundParticipant.updateMany({
-          where: { email: pending.email, userId: null },
+          where: { email: pending.email, userId: null, awaitingSeat: false, ground: { status: { not: 'AWAITING_APPROVAL' } } },
           data: { userId: u.id },
         });
         await tx.pendingSignup.delete({ where: { id: pending.id } });
         return u;
       });
 
-      return this.withPasswordSetup(await this.buildAuthResponse(created as unknown as UserWithOrg, 'link'), created.id);
+      /* Named or left blank: the trial is in place before the page saves the check-in it was holding. */
+      await this.theTrialIsGivenBeforeTheyGoOn(created.organizationId);
+
+      /* This link has just made the account and its organisation (U.2). */
+      /* Chosen on "Where do you work?": on to the new organisation's Today, not back to where they came from. */
+      return goOnTo({ ...(await this.readyAfter(pending, await this.buildAuthResponse(created as unknown as UserWithOrg, 'link'), created.id)), justCreated: true }, dto.createMyOwn ? '/today' : pending.next);
     }
 
     const tokenRecord = await this.consumeToken(dto.token, TokenType.EMAIL_VERIFICATION, { allowExpiredMessage: 'This verification link has expired. Please request a new one.' });
@@ -414,17 +724,18 @@ export class AuthService {
       // Link any groundParticipant records whose email matches but have no userId yet.
       // This connects participants who checked in before creating their account.
       await tx.groundParticipant.updateMany({
-        where: { email: tokenRecord.user.email.toLowerCase(), userId: null },
+        where: { email: tokenRecord.user.email.toLowerCase(), userId: null, awaitingSeat: false, ground: { status: { not: 'AWAITING_APPROVAL' } } },
         data: { userId: tokenRecord.userId },
       });
       return { user: tokenRecord.user };
     });
 
-    return this.withPasswordSetup(await this.buildAuthResponse(user as unknown as UserWithOrg, 'link'), user.id);
+    return goOnTo(await this.withPasswordSetup(await this.buildAuthResponse(user as unknown as UserWithOrg, 'link'), user.id), tokenRecord.next);
   }
 
   async setPassword(dto: SetPasswordDto): Promise<AuthResponseDto> {
     const tokenRecord = await this.consumeToken(dto.token, TokenType.PASSWORD_SETUP, { allowExpiredMessage: 'This invitation link has expired. Please ask your admin to resend the invite.' });
+    if (isTheirEmail(dto.password, tokenRecord.user.email)) throw new BadRequestException(IS_THEIR_EMAIL);
     const passwordHash = await bcrypt.hash(dto.password, 12);
 
     const user = await this.prisma.$transaction(async (tx) => {
@@ -433,7 +744,7 @@ export class AuthService {
       // Link any groundParticipant records whose email matches - same as verifyEmail.
       // Covers participants who were invited before creating their account.
       await tx.groundParticipant.updateMany({
-        where: { email: tokenRecord.user.email.toLowerCase(), userId: null },
+        where: { email: tokenRecord.user.email.toLowerCase(), userId: null, awaitingSeat: false, ground: { status: { not: 'AWAITING_APPROVAL' } } },
         data: { userId: tokenRecord.userId },
       });
       return tokenRecord.user;
@@ -462,16 +773,33 @@ export class AuthService {
     // magic link - before this, the transcript lived only in the originating
     // browser's localStorage and a link opened anywhere else lost the ground.
     draft?: { payload?: Record<string, any>; history?: unknown[] },
-  ): Promise<{ message: string; email: string; draftToken?: string }> {
+    /* A password chosen at sign-up (U.2). Used only for an address with no account. */
+    password?: string,
+    /* Where in the app they were going (U.3 review). Only a path inside this app is kept. */
+    next?: string,
+  ): Promise<{ message: string; email: string; draftToken?: string; passwordKey?: string }> {
     const lower = email.toLowerCase();
+    const goingTo = aPathInThisApp(next);
     const message = 'Check your email for your sign-in link.';
 
+    /*
+     * CHECKED BEFORE THE ADDRESS IS LOOKED UP, so the answer cannot differ between an address that
+     * has an account and one that does not. The other two rules are on the request (EntrySaveDto).
+     */
+    if (password !== undefined && isTheirEmail(password, lower)) throw new BadRequestException(IS_THEIR_EMAIL);
+
     if (draft && JSON.stringify(draft).length > 500_000) {
-      throw new BadRequestException('Draft too large');
+      throw new BadRequestException('That draft is too long to keep, so shorten it and try again.');
     }
 
     let user = await this.prisma.user.findUnique({ where: { email: lower } });
     let draftToken: string | undefined;
+    /*
+     * THE KEY FOR THE PASSWORD, THE SAME SHAPE FOR EVERY ADDRESS. A new address with a password gets
+     * the real key; an address with an account gets one of the same shape that is stored nowhere and
+     * opens nothing, so the answer never says which addresses have accounts.
+     */
+    let passwordKey: string | undefined = password ? crypto.randomBytes(32).toString('hex') : undefined;
 
     if (!user) {
       /**
@@ -515,6 +843,12 @@ export class AuthService {
       const dt = draft ? crypto.randomBytes(32).toString('hex') : undefined;
       const typedOrgName = typeof draft?.payload?.orgName === 'string' ? draft.payload.orgName.trim().slice(0, 120) : '';
 
+      /* Hashed here and held on the waiting sign-up, never on a User, which must not exist yet (GW-001). */
+      const passwordHash = password ? await bcrypt.hash(password, 12) : undefined;
+      /* With a key only this browser is given, so the password is kept only for it (aPasswordKey). */
+      const keyed = password ? aPasswordKey() : undefined;
+      passwordKey = keyed?.key;
+
       await this.prisma.pendingSignup.upsert({
         where: { email: lower },
         create: {
@@ -522,6 +856,8 @@ export class AuthService {
           token,
           firstName,
           orgName: typedOrgName || null,
+          ...(passwordHash ? { passwordHash, passwordKeyHash: keyed!.keyHash } : {}),
+          next: goingTo,
           payload: (draft?.payload ?? {}) as any,
           history: (draft?.history ?? []) as any,
           draftToken: dt ?? null,
@@ -556,6 +892,10 @@ export class AuthService {
         update: {
           token,
           expiresAt: expiresAtFor('verify an address'),
+          /* A password sent again replaces the one before; a request without one leaves it alone. */
+          ...(passwordHash ? { passwordHash, passwordKeyHash: keyed!.keyHash } : {}),
+          /* The same for where they were going: a bare "send the link again" keeps the place. */
+          ...(goingTo ? { next: goingTo } : {}),
           ...(draft
             ? {
                 firstName,
@@ -602,7 +942,7 @@ export class AuthService {
         orderBy: { createdAt: 'desc' },
       });
       if (recentToken) {
-        return { message, email: lower };
+        return { message, email: lower, ...theSameShapeAsANewAddress(draft), ...(passwordKey ? { passwordKey } : {}) };
       }
       await this.prisma.emailVerificationToken.updateMany({
         where: { userId: user.id, type: TokenType.EMAIL_VERIFICATION, usedAt: null },
@@ -610,17 +950,46 @@ export class AuthService {
       });
       const token = crypto.randomBytes(32).toString('hex');
       await this.prisma.emailVerificationToken.create({
-        data: { userId: user.id, token: hashed(token), type: TokenType.EMAIL_VERIFICATION, expiresAt: expiresAtFor('verify an address') },
+        data: { userId: user.id, token: hashed(token), type: TokenType.EMAIL_VERIFICATION, expiresAt: expiresAtFor('verify an address'), ...(goingTo ? { next: goingTo } : {}) },
       });
       await this.emailService.sendMagicLinkEmail(lower, user.firstName, token);
     }
 
-    /* The key is absent, not undefined, when there is no token: a body that names it says the address had no account. */
-    return { message, email: lower, ...(draftToken ? { draftToken } : {}) };
+    /*
+     * THE SAME FIELDS FOR EVERY ADDRESS. U.2 review, Hafsah's rule of 26 September.
+     *
+     * A new address that sent a draft gets the token for its waiting sign-up, so the entry chat can
+     * keep editing it. An address with an account used to get no token at all, so the reply alone said
+     * which addresses have accounts. It now gets a token of the same shape that is stored nowhere and
+     * opens nothing: editing with it changes nothing (PATCH /entry/draft answers the same for a token
+     * it does not hold), and the account's draft is still never written from here. Without a draft,
+     * neither gets a token.
+     */
+    return { message, email: lower, ...(draftToken ? { draftToken } : user ? theSameShapeAsANewAddress(draft) : {}), ...(passwordKey ? { passwordKey } : {}) };
   }
 
-  async teamInvite(inviterOrgName: string, inviteeEmail: string, inviterOrganizationId?: string): Promise<{ message: string }> {
+  async teamInvite(
+    inviterOrgName: string,
+    inviteeEmail: string,
+    inviterOrganizationId?: string,
+    /**
+     * U.4: the role the admin chose on the People page ("Admin", "Can open check-ins", "Takes part"),
+     * and the name typed beside the address. Both optional: every other caller invites a member, and
+     * a missing name is still made from the address.
+     */
+    how: { role?: 'ADMIN' | 'LEAD' | 'MEMBER'; name?: string | null } = {},
+  ): Promise<{ message: string }> {
     const lower = inviteeEmail.toLowerCase();
+    const role = how.role ?? 'MEMBER';
+    /*
+     * THE ORGANISATION'S OWN NAME, FROM THE RECORD. The caller passed `user.organizationName`, which the signed-in
+     * user object does not carry, so every invitation said "You've been added to Groundwork on Groundwork" and told
+     * the invited person nothing about who had asked them. The inviting organisation is known here; read its name.
+     */
+    if (inviterOrganizationId) {
+      const inviting = await this.prisma.organization.findUnique({ where: { id: inviterOrganizationId }, select: { name: true } });
+      if (inviting?.name) inviterOrgName = inviting.name;
+    }
 
     let user = await this.prisma.user.findUnique({ where: { email: lower } });
 
@@ -637,7 +1006,9 @@ export class AuthService {
       }
 
       const localPart = lower.split('@')[0].replace(/[._\-+]/g, ' ').trim();
-      const firstName = (localPart.charAt(0).toUpperCase() + localPart.slice(1).split(' ')[0]).slice(0, 40) || 'there';
+      const typed = (how.name ?? '').replace(/\s+/g, ' ').trim();
+      const firstName = (typed ? typed.split(' ')[0] : (localPart.charAt(0).toUpperCase() + localPart.slice(1).split(' ')[0])).slice(0, 40) || 'there';
+      const lastName = typed ? typed.split(' ').slice(1).join(' ').slice(0, 100) : '';
 
       const result = await this.prisma.$transaction(async (tx) => {
         let organizationId = inviterOrganizationId;
@@ -651,7 +1022,8 @@ export class AuthService {
           organizationId = org.id;
         }
         const u = await tx.user.create({
-          data: { organizationId, email: lower, firstName, lastName: '', role: 'MEMBER', isEmailVerified: false },
+          /* The role the admin chose here (U.4); the membership row the middleware makes copies it. */
+          data: { organizationId, email: lower, firstName, lastName, role: inviterOrganizationId ? role : 'MEMBER', isEmailVerified: false },
         });
         /*
          * ONLY WHERE WE JUST MADE THE WORKSPACE FOR THEM. This branch also runs for somebody being
@@ -685,6 +1057,7 @@ export class AuthService {
        * ALWAYS MEMBER, never their role at home: being an admin of their own company says nothing
        * about what they should hold in somebody else's.
        */
+      let addedNow = false;
       if (inviterOrganizationId && user.organizationId !== inviterOrganizationId) {
         const already = await this.prisma.organizationMembership.findUnique({
           where: { userId_organizationId: { userId: user.id, organizationId: inviterOrganizationId } },
@@ -694,10 +1067,12 @@ export class AuthService {
           /* A person joining costs a seat here exactly as a new account does. */
           const canInvite = await this.billing.canInviteMember(inviterOrganizationId);
           if (!canInvite.allowed) throw new BadRequestException(canInvite.reason);
+          /* The role this organisation's admin chose for them here (U.4), never their role at home. */
           await this.prisma.organizationMembership.create({
-            data: { userId: user.id, organizationId: inviterOrganizationId, role: 'MEMBER' },
+            data: { userId: user.id, organizationId: inviterOrganizationId, role },
           });
           this.logger?.log?.(`Existing account ${lower} added to org ${inviterOrganizationId} as a member.`);
+          addedNow = true;
         }
       }
 
@@ -710,14 +1085,16 @@ export class AuthService {
       await this.prisma.emailVerificationToken.create({
         data: { userId: user.id, token: hashed(token), type: TokenType.EMAIL_VERIFICATION, expiresAt: expiresAtFor('sign in from a team invitation') },
       });
-      await this.emailService.sendMagicLinkEmail(lower, user.firstName, token);
+      /* Added to a new organisation just now: told so, by name, in a plain email (Hafsah, 12 October). */
+      if (addedNow) await this.emailService.sendAddedToAnotherOrganisation(lower, user.firstName, token, inviterOrgName);
+      else await this.emailService.sendMagicLinkEmail(lower, user.firstName, token);
     }
 
     return { message: 'Invite sent.' };
   }
 
-  async memberSignin(dto: MemberSigninDto): Promise<{ message: string; email: string; devUrl?: string }> {
-    const message = 'If an account with that email exists, a sign-in link has been sent.';
+  async memberSignin(dto: MemberSigninDto): Promise<{ message: string; email: string }> {
+    const message = 'We have sent a sign-in link to that address, if we know it. Check your email.';
     const email = dto.email.toLowerCase();
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user || user.deletedAt || !user.isActive) return { message, email };
@@ -737,18 +1114,17 @@ export class AuthService {
       data: { userId: user.id, token: hashed(token), type: TokenType.EMAIL_VERIFICATION, expiresAt: expiresAtFor('verify an address') },
     });
 
-    const result = await this.emailService.sendSignInLinkEmail(email, user.firstName, token).catch((err) => {
+    await this.emailService.sendSignInLinkEmail(email, user.firstName, token).catch((err) => {
       this.logger.error(`Failed to send member sign-in email to ${email}: ${err.message}`);
-      return { devUrl: undefined };
     });
-    return { message, email, ...(result.devUrl ? { devUrl: result.devUrl } : {}) };
+    /* The same answer for every address. The development link is in the server log, where the
+       email service writes every link it would have sent; it is never in the answer, because a
+       devUrl only for addresses that have an account says which addresses do (U.2 review). */
+    return { message, email };
   }
 
   async requestPasswordSetupForUser(userId: string): Promise<{ token: string }> {
-    await this.prisma.emailVerificationToken.updateMany({
-      where: { userId, type: TokenType.PASSWORD_SETUP, usedAt: null },
-      data: { usedAt: new Date() },
-    });
+    await this.aNewLinkEndsTheOlderOnes(userId, TokenType.PASSWORD_SETUP);
     const token = crypto.randomBytes(32).toString('hex');
     await this.prisma.emailVerificationToken.create({
       /* A fifth window (24h) sat here, distinct from the other three PASSWORD_SETUP ones for no
@@ -758,30 +1134,28 @@ export class AuthService {
     return { token };
   }
 
-  async forgotPassword(dto: ForgotPasswordDto): Promise<{ message: string; devUrl?: string }> {
-    const message = 'If an account with that email exists, a password reset link has been sent.';
+  async forgotPassword(dto: ForgotPasswordDto): Promise<{ message: string }> {
+    const message = 'We have sent a link to choose a new password to that address, if we know it. Check your email.';
     const user = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
     if (!user) return { message };
 
-    await this.prisma.emailVerificationToken.updateMany({
-      where: { userId: user.id, type: TokenType.PASSWORD_RESET, usedAt: null },
-      data: { usedAt: new Date() },
-    });
+    await this.aNewLinkEndsTheOlderOnes(user.id, TokenType.PASSWORD_RESET);
 
     const token = crypto.randomBytes(32).toString('hex');
     await this.prisma.emailVerificationToken.create({
       data: { userId: user.id, token: hashed(token), type: TokenType.PASSWORD_RESET, expiresAt: expiresAtFor('reset a password') },
     });
 
-    const result = await this.emailService.sendPasswordResetEmail(user.email, user.firstName, token).catch((err) => {
+    await this.emailService.sendPasswordResetEmail(user.email, user.firstName, token).catch((err) => {
       this.logger.error(`Failed to send password reset email to ${user.email}: ${err.message}`);
-      return { devUrl: undefined };
     });
-    return { message, ...(result.devUrl ? { devUrl: result.devUrl } : {}) };
+    /* The same answer for every address; the development link is in the server log only. See memberSignin. */
+    return { message };
   }
 
   async resetPassword(dto: ResetPasswordDto): Promise<AuthResponseDto> {
     const tokenRecord = await this.consumeToken(dto.token, TokenType.PASSWORD_RESET, { allowExpiredMessage: 'This reset link has expired. Please request a new one.' });
+    if (isTheirEmail(dto.password, tokenRecord.user.email)) throw new BadRequestException(IS_THEIR_EMAIL);
     const passwordHash = await bcrypt.hash(dto.password, 12);
 
     const user = await this.prisma.$transaction(async (tx) => {
@@ -823,7 +1197,13 @@ export class AuthService {
    */
   async findOrCreateGoogleUser(
     googleUser: { googleId: string; email: string; firstName: string; lastName: string },
-  ): Promise<{ token: string; isNewUser: boolean; needsOrgName: boolean }> {
+    /* Where in the app they were going, carried through Google as `state` (U.3 review). */
+    next?: string | null,
+  ): Promise<
+    | { token: string; isNewUser: boolean; needsOrgName: boolean; pendingToken?: never }
+    /* Nothing made yet: the browser goes to /verify-email with this token (U.3 review). */
+    | { pendingToken: string; token?: never; isNewUser?: never; needsOrgName?: never }
+  > {
     const email = googleUser.email.toLowerCase();
     let isNewUser = false;
     let needsOrgName = false;
@@ -868,8 +1248,40 @@ export class AuthService {
             },
             include: { organization: true },
           });
-          if (!user.isActive) throw new UnauthorizedException('Account is deactivated');
+          if (!user.isActive) throw new UnauthorizedException(YOU_CAN_NO_LONGER_SIGN_IN_HERE);
           return { token: this.generateToken(user, 'google'), isNewUser, needsOrgName: false };
+        }
+
+        /*
+         * FROM AN INVITE LINK, OR WITH A DOMAIN AN ORGANISATION LETS JOIN (U.3 review): the same as
+         * signing up by email. Nothing is made here. A waiting sign-up is kept, marked as proved by
+         * Google, and the browser goes to the same confirmation page with its token, where
+         * `verifyEmail` does what it does for everybody: joins an open link with a seat, or asks
+         * "Where do you work?" on a domain match or a closed or full link. One path, not a copy.
+         *
+         * The waiting sign-up is written fresh: anything an earlier, unproved sign-up for this address
+         * left on it (a password, a draft, an organisation name) was typed by somebody Google has not
+         * vouched for, so none of it is kept.
+         */
+        const where = await this.whereAWaitingSignUpMayGo(email, next);
+        if (where.cameByLink || where.offered.length > 0) {
+          const pendingToken = crypto.randomBytes(32).toString('hex');
+          const fresh = {
+            token: pendingToken,
+            firstName: googleUser.firstName || email.split('@')[0],
+            lastName: googleUser.lastName || null,
+            orgName: null,
+            passwordHash: null,
+            passwordKeyHash: null,
+            payload: {} as any,
+            history: [] as any,
+            draftToken: null,
+            next: aPathInThisApp(next),
+            googleId: googleUser.googleId,
+            expiresAt: expiresAtFor('choose where you work after Google'),
+          };
+          await this.prisma.pendingSignup.upsert({ where: { email }, create: { email, ...fresh }, update: fresh });
+          return { pendingToken };
         }
 
         // Nobody is expecting them. Make an organisation so they have somewhere
@@ -881,7 +1293,7 @@ export class AuthService {
         user = await this.prisma.$transaction(async (tx) => {
           /* The contact email is the admin's until they say otherwise - see the note on register. */
           const organization = await tx.organization.create({ data: { name: orgName, slug, email } });
-          this.signedUp(organization, email);
+          this.signedUp(organization, email, true);
           const created = await tx.user.create({
             data: {
               organizationId: organization.id,
@@ -901,7 +1313,7 @@ export class AuthService {
       }
     }
 
-    if (!user.isActive) throw new UnauthorizedException('Account is deactivated');
+    if (!user.isActive) throw new UnauthorizedException(YOU_CAN_NO_LONGER_SIGN_IN_HERE);
     return { token: this.generateToken(user, 'google'), isNewUser, needsOrgName };
   }
 
@@ -909,13 +1321,28 @@ export class AuthService {
    * VALID, AND NOTHING ELSE. This returned the address and first name behind an unused set-password
    * link, so a forwarded or logged link disclosed whose it was before anybody set anything (A10).
    */
-  async validateToken(token: string, type: string): Promise<{ valid: boolean }> {
+  async validateToken(token: string, type: string): Promise<{ valid: boolean; expired?: true }> {
+    /* A request with no token, or a token that is not a string (?token=a&token=b arrives as an
+       array), is not a link: say so, instead of a 500 from hashing nothing. U.2 review. */
+    if (typeof token !== 'string' || !token) return { valid: false };
     const tokenType =
       type === 'PASSWORD_SETUP' ? TokenType.PASSWORD_SETUP : type === 'PASSWORD_RESET' ? TokenType.PASSWORD_RESET : TokenType.EMAIL_VERIFICATION;
 
     const tokenRecord = await this.prisma.emailVerificationToken.findUnique({ where: { token: hashed(token) }, select: { usedAt: true, expiresAt: true, type: true } });
-    if (!tokenRecord || tokenRecord.usedAt || tokenRecord.expiresAt < new Date() || tokenRecord.type !== tokenType) {
+    if (!tokenRecord || tokenRecord.usedAt || tokenRecord.type !== tokenType) {
       return { valid: false };
+    }
+    /*
+     * AN UNUSED LINK OF THE RIGHT KIND THAT HAS RUN OUT SAYS SO. U.2.
+     *
+     * So the reset and set-password pages can open on "That link has expired" and offer a fresh one,
+     * instead of letting somebody type a password twice and only then be told. It says nothing the
+     * holder does not already know: they hold the link, and only a real, unused link of this kind
+     * gets this answer. An unknown, used or wrong-kind link still gets only { valid: false }, and
+     * nothing here ever names the account (see a-secret-is-not-readable-from-the-table).
+     */
+    if (tokenRecord.expiresAt < new Date()) {
+      return { valid: false, expired: true };
     }
     return { valid: true };
   }
@@ -938,10 +1365,48 @@ export class AuthService {
    */
   async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { organization: true } });
-    if (!user) throw new BadRequestException('User not found');
+    if (!user) throw new BadRequestException('We could not find that sign-in, so sign in again and try once more.');
     /* One builder. A field added to it cannot fail to reach this route now. */
     const belongsElsewhere = await this.belongsElsewhere(user.id, user.organizationId);
-    return { ...this.theUserShape(user as unknown as UserWithOrg, belongsElsewhere), orgCode: user.organization.slug, emailNotifications: user.emailNotifications };
+    return {
+      ...this.theUserShape(user as unknown as UserWithOrg, belongsElsewhere), orgCode: user.organization.slug, emailNotifications: user.emailNotifications,
+      /* Their own WhatsApp number, on their own read only (reviewer, 14 October): Settings read "WhatsApp Not set" with
+         Kevin's number saved, because this route never sent it. The sign-in's number, else the one on their roster entry. */
+      phoneNumber: (user as any).phoneNumber ?? await this.theirRosterNumber(user.organizationId, user.id, user.email),
+      /* True when they used the link in one of our emails. Settings says so, in the words of THE_SETTINGS_LABEL, and the switch turns it back on (decision 109). */
+      emailsStoppedFromAMail: await new TheWaysToStopMail(this.prisma).stoppedFromAMail(user.email).catch(() => false),
+      /* "Connect WhatsApp" for the person's own Settings, or null (decision 106 item 4). Only on their own read. */
+      connectWhatsApp: await connectWhatsAppFor(this.prisma, this.configService, { organizationId: user.organizationId, userId: user.id, email: user.email }),
+    };
+  }
+
+  /**
+   * THE SAME SHAPE `/auth/me` SENDS, CALLABLE FROM OUTSIDE THIS SERVICE (U.8 re-review).
+   *
+   * Every door that signs somebody in inside this service already goes through `buildAuthResponse`
+   * / `theUserShape`, so all of them carry `organizationName` and the rest. A door outside this
+   * service - `participants.service.ts`'s `accept()`, when somebody follows an emailed invite - built
+   * its own, smaller `user` object by hand: id, email, name, role, organizationId, and no
+   * `organizationName`. The app-wide safety net (`useWhoTheServerSaysYouAre`) papers over that with a
+   * follow-up `/auth/me`, but only once that request lands - so between accepting and that request
+   * landing, the switcher had nothing to say and showed nothing, or the wrong thing, until then.
+   *
+   * Rather than teach every other door to remember the same fetch-and-cast dance `getProfile` does,
+   * this is that dance, exposed once.
+   */
+  private async theirRosterNumber(organizationId: string, userId: string, email: string): Promise<string | null> {
+    const row = await (this.prisma as any).person?.findFirst?.({
+      where: { organizationId, phone: { not: null }, OR: [{ linkedUserId: userId }, { email: { equals: email, mode: 'insensitive' } }] },
+      select: { phone: true },
+    })?.catch?.(() => null);
+    return row?.phone ?? null;
+  }
+
+  async userShapeFor(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { organization: true } });
+    if (!user) throw new BadRequestException('We could not find that sign-in, so sign in again and try once more.');
+    const belongsElsewhere = await this.belongsElsewhere(user.id, user.organizationId);
+    return this.theUserShape(user as unknown as UserWithOrg, belongsElsewhere);
   }
 
   // --- helpers ---
@@ -953,8 +1418,32 @@ export class AuthService {
    * Only the verification path needs it: that is where the promise "you will be asked to set a
    * password" is made, and where it was being broken.
    */
+  /**
+   * A NEW PASSWORD LINK ENDS THE OLDER ONES. U.2 review, Hafsah's rule of 26 September.
+   *
+   * An older reset or set-up link must stop working as soon as a newer one is sent, so a link left
+   * in an old email, a forwarded message or a shared inbox cannot be used after the person has asked
+   * for another. Every place in this service that makes a reset or set-up link calls this first.
+   * Marked used rather than deleted, so an old link opened later says it did not work.
+   */
+  private async aNewLinkEndsTheOlderOnes(userId: string, type: 'PASSWORD_RESET' | 'PASSWORD_SETUP'): Promise<void> {
+    await this.prisma.emailVerificationToken.updateMany({
+      where: { userId, type: type === 'PASSWORD_RESET' ? TokenType.PASSWORD_RESET : TokenType.PASSWORD_SETUP, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+  }
+
+  /**
+   * The last step of a waiting sign-up becoming an account. One that Google proved (U.3 review) signs
+   * in with Google and is never sent to choose a password; every other one is, as before.
+   */
+  private async readyAfter(pending: { googleId?: string | null }, res: AuthResponseDto, userId: string): Promise<AuthResponseDto> {
+    return pending.googleId ? { ...res, needsPassword: false } : this.withPasswordSetup(res, userId);
+  }
+
   private async withPasswordSetup(res: AuthResponseDto, userId: string): Promise<AuthResponseDto> {
     if (!res.needsPassword) return res;
+    await this.aNewLinkEndsTheOlderOnes(userId, TokenType.PASSWORD_SETUP);
     const token = crypto.randomBytes(32).toString('hex');
     await this.prisma.emailVerificationToken.create({
       data: {
@@ -1058,8 +1547,16 @@ export class AuthService {
          * server-side for the reason `mayOpenCheckIns` is: the copy that drifts is the one deciding
          * whether somebody can reach the product at all.
          */
+        /*
+         * NOT THE CONTACT EMAIL ANY MORE (U.3). The prototype's "Create an organisation" asks for a
+         * billing email as optional ("Not shown to your team. You can add it later."), so an empty
+         * one is a finished organisation, not an unfinished one. The one thing an organisation
+         * cannot be without is its name, and every door names it at creation - so this is true
+         * only for a nameless organisation, which should not exist, and it still never sends
+         * somebody who belongs elsewhere to set up a workspace they did not ask for.
+         */
         mustSetUpOrganisation:
-          user.role === 'ADMIN' && !user.organization.email && !belongsElsewhere,
+          user.role === 'ADMIN' && !(user.organization.name ?? '').trim() && !belongsElsewhere,
         /**
          * THE ORGANISATION ITSELF, WHICH SIGNING IN DID NOT RETURN.
          *
@@ -1107,7 +1604,7 @@ export class AuthService {
      * rather than ask for another link.
      */
     const NOT_A_LINK_WE_KNOW =
-      'This link did not work. Password links are single use and they expire - open the most recent one from your inbox, or ask for a new one from the sign-in page.';
+      'This link did not work. Each link works only once, and only for a short while. Open the newest one in your inbox, or ask for a new one from the sign-in page.';
     if (!tokenRecord) throw new BadRequestException(NOT_A_LINK_WE_KNOW);
 
     /*
@@ -1142,25 +1639,24 @@ export class AuthService {
     if (dto.lastName !== undefined) userUpdate.lastName = dto.lastName.trim();
     if (dto.jobTitle !== undefined) userUpdate.jobTitle = dto.jobTitle.trim();
     if (dto.emailNotifications !== undefined) userUpdate.emailNotifications = dto.emailNotifications;
-    if (dto.phoneNumber !== undefined) userUpdate.phoneNumber = dto.phoneNumber ? WhatsAppService.normalize(dto.phoneNumber) : null;
 
-    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    const me = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    /* A first name of only spaces would wipe the name everybody reads (B-130). Somebody who has no name yet may still save the rest of the form. */
+    if (dto.firstName !== undefined && !dto.firstName.trim() && me.firstName?.trim()) throw new BadRequestException('Please write your first name. It cannot be left empty.');
+    /* Turning the switch on is the undo for a stop made from a link in a mail: the one choice, in both places (decision 109). */
+    if (dto.emailNotifications === true) await new TheWaysToStopMail(this.prisma).turnBackOnFor(me.email).catch(() => undefined);
+    /* One stored form for every number, the way WhatsApp sends it; a local number takes the
+       organisation's country, or is refused with a sentence asking for the whole number (survey item 6). */
+    if (dto.phoneNumber !== undefined) userUpdate.phoneNumber = dto.phoneNumber?.trim() ? await tidyANumberFor(this.prisma as any, me.organizationId, dto.phoneNumber) : null;
+    /* A number on somebody else's sign-in is refused with a sentence, before anything is written (decision 106 item 3). */
+    if (dto.phoneNumber !== undefined) await refuseANumberOnSomebodyElse(this.prisma, userUpdate.phoneNumber as string | null, userId);
 
-    const orgUpdate: Record<string, unknown> = {};
-    if (dto.orgName !== undefined) orgUpdate.name = dto.orgName.trim();
-    if (dto.orgEmail !== undefined) orgUpdate.email = dto.orgEmail.trim();
-    if (dto.orgSlug !== undefined) {
-      const slug = dto.orgSlug.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-      const existing = await this.prisma.organization.findUnique({ where: { slug } });
-      if (existing && existing.id !== user.organizationId) throw new ConflictException('Org code already taken');
-      orgUpdate.slug = slug;
+    /* Only the person's own row. The organisation is changed through PATCH /users/organization, by an admin. */
+    if (Object.keys(userUpdate).length) {
+      await this.prisma.user.update({ where: { id: userId }, data: userUpdate });
     }
-    if (dto.companyStage !== undefined) orgUpdate.companyStage = dto.companyStage;
-
-    await this.prisma.$transaction([
-      ...(Object.keys(userUpdate).length ? [this.prisma.user.update({ where: { id: userId }, data: userUpdate })] : []),
-      ...(Object.keys(orgUpdate).length ? [this.prisma.organization.update({ where: { id: user.organizationId }, data: orgUpdate })] : []),
-    ]);
+    /* And their roster entry follows, so the number they typed is the one they are written to and recognised by. */
+    if (dto.phoneNumber !== undefined) await aSignInsNumberChanged(this.prisma, userId, (userUpdate.phoneNumber as string | null) ?? null);
 
     return this.getProfile(userId);
   }
@@ -1208,13 +1704,29 @@ export class AuthService {
       where: { id: userId },
       select: { organizationId: true, role: true },
     });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
 
+    /* Never one they are held out of for want of a seat (U.4 third review): they have not been told
+       about it, so it is not theirs to see or switch to until the hold is cleared. */
     const memberships = await this.prisma.organizationMembership.findMany({
-      where: { userId },
-      select: { organizationId: true, role: true, organization: { select: { id: true, name: true, slug: true } } },
+      where: { userId, heldForASeat: false },
+      select: { organizationId: true, role: true, joinedHow: true, organization: { select: { id: true, name: true, slug: true } } },
       orderBy: { createdAt: 'asc' },
     });
+
+    /*
+     * WHY THEY ARE IN EACH ONE, WHERE THE SERVER KNOWS (U.3 review). The sidebar said "because your
+     * email address was on its list of people" to everybody in one organisation they had not made,
+     * including people who joined by domain or by link. Now: "list" when their own staff record there
+     * is linked to them, "domain" or "link" as recorded when they joined, and null otherwise, when no
+     * reason is given. Their own facts only.
+     */
+    const listedIn = new Set(
+      (await this.prisma.person.findMany({ where: { linkedUserId: userId }, select: { organizationId: true } }).catch(() => []))
+        .map((p) => p.organizationId),
+    );
+    const why = (organizationId: string, recorded?: string | null): 'list' | 'domain' | 'link' | null =>
+      recorded === 'domain' || recorded === 'link' ? recorded : listedIn.has(organizationId) ? 'list' : null;
 
     const rows = memberships.map((m) => ({
       id: m.organization.id,
@@ -1222,6 +1734,7 @@ export class AuthService {
       slug: m.organization.slug,
       role: m.role,
       active: m.organizationId === user.organizationId,
+      joinedHow: why(m.organizationId, m.joinedHow),
     }));
 
     // Self-healing rather than silently wrong: a user whose active org has no
@@ -1232,7 +1745,7 @@ export class AuthService {
         where: { id: user.organizationId },
         select: { id: true, name: true, slug: true },
       });
-      if (own) rows.unshift({ ...own, role: user.role, active: true });
+      if (own) rows.unshift({ ...own, role: user.role, active: true, joinedHow: why(own.id) });
     }
     return rows;
   }
@@ -1251,24 +1764,33 @@ export class AuthService {
   async switchOrganization(userId: string, organizationId: string, via: SignedInVia = 'password') {
     const membership = await this.prisma.organizationMembership.findUnique({
       where: { userId_organizationId: { userId, organizationId } },
-      select: { role: true, organization: { select: { id: true, name: true, slug: true } } },
+      select: { role: true, heldForASeat: true, organization: { select: { id: true, name: true, slug: true } } },
     });
-    if (!membership) {
+    /* Held for a seat (U.4 third review): refused exactly as if they were not a member, because they
+       have not been told they are one. */
+    if (!membership || membership.heldForASeat) {
       // Not "not found": from the caller's side this is being refused, and saying so
       // plainly is better than implying the organisation does not exist.
-      throw new ForbiddenException('You are not a member of that organisation');
+      throw new ForbiddenException('You are not a member of that organisation, so switch to one you belong to.');
     }
 
-    const user = await this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { id: userId },
       data: { organizationId, role: membership.role },
-      select: { id: true, email: true, firstName: true, lastName: true, organizationId: true, role: true, isPlatformAdmin: true },
+      select: { id: true, email: true, organizationId: true, role: true, tokenEpoch: true },
     });
 
+    /*
+     * THE FULL SHAPE, NOT A HAND-BUILT SUBSET (U.8 re-review). This used to select only id, email,
+     * name, role, organizationId, isPlatformAdmin - missing `organizationName`, which is the one
+     * field the switcher itself reads. `organization` below carried the name, but the client's
+     * setAuth call only ever reads `res.user`, so it went nowhere. One shape, from one builder,
+     * used by every door - see `userShapeFor`.
+     */
     return {
       /* Carried through: a Google-signed-in staff member switching organisation kept back-office access (B16, P2-024). */
-      accessToken: this.generateToken(user, via),
-      user,
+      accessToken: this.generateToken(updated, via),
+      user: await this.userShapeFor(userId),
       organization: membership.organization,
     };
   }
@@ -1280,6 +1802,118 @@ export class AuthService {
    */
   private generateToken(user: ASessionHolder, via: SignedInVia = 'password') {
     return this.jwtService.sign(sessionClaims(user, via));
+  }
+
+  /** On in Groundwork, or through the organisation's own connected number. Off when unsure. */
+  async whatsappIsOn(organizationId: string): Promise<boolean> {
+    const [platform, own] = await Promise.all([
+      this.whatsapp?.isEnabled?.().catch(() => false) ?? Promise.resolve(false),
+      this.prisma.whatsAppConnection.findUnique({ where: { organizationId }, select: { enabled: true } }).catch(() => null),
+    ]);
+    return !!platform || !!own?.enabled;
+  }
+
+  /**
+   * "WHERE DO YOU WORK?" (A3, #/welcome, U.3). What a signed-in person may join, and nothing else:
+   *
+   *   - Organisations that let anyone with this person's email domain join, when their address is
+   *     confirmed and the domain is not a public mail provider. No head count is given.
+   *   - Invitations still open for their exact address, in organisations they are not in yet, which
+   *     they join as a guest in that one check-in.
+   *
+   * Never an organisation they are already in, and never anything about anybody else.
+   */
+  async whereCanIJoin(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, isEmailVerified: true } });
+    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
+    const mine = await this.prisma.organizationMembership.findMany({ where: { userId }, select: { organizationId: true } });
+    const inIt = new Set(mine.map((m) => m.organizationId));
+    const domain = theDomainOf(user.email);
+    const byDomain = user.isEmailVerified && domain && mayBeJoinedBy(domain)
+      ? await this.prisma.organization.findMany({ where: { joinDomain: domain }, select: { id: true, name: true } })
+      : [];
+    const invitations = await this.prisma.groundParticipant.findMany({
+      where: {
+        email: { equals: user.email, mode: 'insensitive' }, userId: null, inviteToken: { not: null },
+        OR: [{ inviteTokenExpiresAt: null }, { inviteTokenExpiresAt: { gt: new Date() } }],
+      },
+      select: { inviteToken: true, ground: { select: { label: true, organizationId: true, organization: { select: { name: true } } } } },
+      take: 20,
+    });
+    /*
+     * WHETHER THEY BELONG ANYWHERE YET (U.4 review). "Where do you work?" is for somebody with no
+     * organisation of their own yet: the only ones they are in are ones just made for them, which they
+     * own, with nobody else in them and no check-in. Somebody invited to an organisation already
+     * belongs to it, and was being sent here after setting their password, offered a different
+     * organisation by domain, instead of going where the invitation led. The page says whether to go.
+     */
+    const theirs = inIt.size
+      ? await this.prisma.organization.findMany({
+        where: { id: { in: [...inIt] } },
+        select: { id: true, ownerUserId: true, _count: { select: { memberships: true, grounds: true } } },
+      })
+      : [];
+    const nowhereYet = theirs.length === inIt.size
+      && theirs.every((o: any) => o.ownerUserId === userId && (o._count?.memberships ?? 0) <= 1 && (o._count?.grounds ?? 0) === 0);
+    return {
+      nowhereYet,
+      byDomain: byDomain.filter((o) => !inIt.has(o.id)).map((o) => ({ id: o.id, name: o.name, domain: domain! })),
+      asAGuest: invitations
+        .filter((i) => i.ground && !inIt.has(i.ground.organizationId))
+        .map((i) => ({ organisationName: i.ground.organization?.name ?? '', checkInName: i.ground.label, invitePath: `/invite?token=${i.inviteToken}` })),
+    };
+  }
+
+  /**
+   * Where somebody whose sign-up is waiting may go, before any account exists (U.3 review): the
+   * organisation whose invite link they came from, if it is still open, and any organisation that
+   * lets their domain join (never a public mail domain). Only called once the link has proved the
+   * address, so it says no more than "Where do you work?" says to a signed-in person.
+   */
+  private async whereAWaitingSignUpMayGo(email: string, next: string | null | undefined) {
+    const code = theInviteLinkCodeIn(aPathInThisApp(next));
+    const linked = code
+      ? await this.prisma.organization.findUnique({ where: { inviteLinkCode: code }, select: { id: true, name: true } })
+      : null;
+    const domain = theDomainOf(email);
+    const byDomain = domain && mayBeJoinedBy(domain)
+      ? await this.prisma.organization.findMany({ where: { joinDomain: domain }, select: { id: true, name: true } })
+      : [];
+    const byLink = linked ? { ...linked, how: 'link' as const } : null;
+    const offered = [
+      ...(byLink ? [byLink] : []),
+      ...byDomain.filter((o) => o.id !== byLink?.id).map((o) => ({ ...o, how: 'domain' as const })),
+    ];
+    return {
+      domain,
+      byLink,
+      byDomain,
+      offered,
+      cameByLink: !!code,
+      linkProblem: code && !linked ? 'That invite link is not open any more. Ask whoever sent it for the new one.' : null,
+    };
+  }
+
+  /** "Join": by email domain, as "Takes part", through the seat check, then into it. */
+  async joinByDomain(userId: string, organizationId: string, via: SignedInVia = 'password') {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, isEmailVerified: true } });
+    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
+    const domain = theDomainOf(user.email);
+    const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { id: true, name: true, joinDomain: true } });
+    const allowed = !!org && !!domain && user.isEmailVerified && mayBeJoinedBy(domain) && org.joinDomain === domain;
+    /* Not "not found": from the person's side this is a refusal, said the same way whatever the reason. */
+    if (!allowed) throw new ForbiddenException('You cannot join that organisation with your email address. Ask somebody there to invite you.');
+    const already = await this.prisma.organizationMembership.findUnique({
+      where: { userId_organizationId: { userId, organizationId } }, select: { id: true },
+    });
+    if (!already) {
+      const room = await this.billing.canInviteMember(organizationId);
+      if (!room.allowed) {
+        throw new BadRequestException(`${org!.name} has no room for another person on its plan right now. Ask an admin there to make room, or to invite you when there is.`);
+      }
+      await this.prisma.organizationMembership.create({ data: { userId, organizationId, role: ROLE_FOR_SOMEBODY_EXPECTED as any, joinedHow: 'domain' } });
+    }
+    return this.switchOrganization(userId, organizationId, via);
   }
 
   /**
@@ -1294,27 +1928,36 @@ export class AuthService {
    * they already had stays exactly as it was, so a real employee who presses this by accident is
    * one switch away from where they were.
    */
-  async startMyOwnWorkspace(userId: string) {
+  async startMyOwnWorkspace(userId: string, what: WhatANewOrganisationIsGiven = {}) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, email: true, firstName: true, lastName: true, organizationId: true },
     });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
 
-    /* Theirs is one they are the ADMIN of. A membership somebody else gave them is not theirs. */
-    const owned = await this.prisma.organizationMembership.findFirst({
-      where: { userId, role: 'ADMIN' as any },
-      select: { organizationId: true },
-    });
-    const refusal = whyNotAnotherWorkspace({ alreadyOwnsOne: !!owned });
-    if (refusal) throw new BadRequestException(refusal);
+    /*
+     * MORE THAN ONE OF YOUR OWN, AS THE PROTOTYPE HAS IT (Hafsah, 26 September). This used to refuse
+     * a second organisation you administer ("a person with nine empty workspaces has a switcher worse
+     * than the trap was"). She decided a person can create more than one, each with its own plan, so
+     * there is no refusal here any more. Each new one starts on the free tier of its own.
+     */
 
-    const name = whatTheirWorkspaceIsCalled(user.firstName, user.lastName);
+    /*
+     * THE NAME THEY TYPED ON "Create an organisation", or their own name's workspace when this is
+     * the one-press door from the organisation menu. Never the email domain.
+     */
+    const name = (what.name ?? '').trim() || whatTheirWorkspaceIsCalled(user.firstName, user.lastName);
     /* From the NAME, never the email domain - the same rule as `register`. */
     const slug = await this.generateUniqueSlug(name);
+    /* The billing email is optional. Without one, bills go to the person who made it, as at every other door. */
+    const billingEmail = (what.billingEmail ?? '').trim().toLowerCase() || user.email;
+
+    /* What they said about their team's size, beside the line they were shown. Nothing grants a
+       trial from it yet (U.19); it is kept so that billing can, rather than asked again. */
+    const sizeSaid = what.teamSize ? { teamSizeSaid: what.teamSize.said, teamSizeLine: what.teamSize.line } : {};
 
     const org = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.organization.create({ data: { name: name, slug: slug, email: user.email } });
+      const created = await tx.organization.create({ data: { name: name, slug: slug, email: billingEmail, ...sizeSaid } });
       /*
        * AND SOMEBODY HOLDS IT.
        *
@@ -1344,6 +1987,7 @@ export class AuthService {
     });
 
     this.logger?.log?.(`${user.email} started their own workspace, and keeps the one they were listed in.`);
+    if (what.teamSize) this.sizeSaid(org.id, what.teamSize);
     return this.switchOrganization(userId, org.id);
   }
 

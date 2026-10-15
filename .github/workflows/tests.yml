@@ -32,7 +32,7 @@ jobs:
   api:
     name: API - types, guards, schema
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 60
     permissions:
       contents: read
 
@@ -58,6 +58,8 @@ jobs:
       NODE_ENV: development
       JWT_SECRET: ci-test-secret-not-for-production
       RESEND_API_KEY: re_test
+      # The type check of the whole API needs more than Node's default 2 GB heap on the runner.
+      NODE_OPTIONS: --max-old-space-size=6144
 
     steps:
       - uses: actions/checkout@v4
@@ -80,9 +82,12 @@ jobs:
         working-directory: api
         run: npx tsc --noEmit
 
+      # journey/ is local machinery (the existing-users check needs a copy of the live data, the journeys run against a
+      # local stack); it is never part of a pull request's product and runs on the release machine, not here.
+      # Hafsah's decision, 14 October.
       - name: Tests
         working-directory: api
-        run: npx jest --ci
+        run: npx jest --ci --testPathIgnorePatterns=/journey/
 
       # THE ONE THAT NEEDS A DATABASE.
       #
@@ -103,9 +108,12 @@ jobs:
   client:
     name: Client - types and guards
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 60
     permissions:
       contents: read
+
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
 
     steps:
       - uses: actions/checkout@v4

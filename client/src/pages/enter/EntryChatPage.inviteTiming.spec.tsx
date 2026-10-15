@@ -23,15 +23,16 @@ const src = readFileSync(
 )
 
 describe('INVITE-TIMING: add-participants step states invites are deferred until email confirmation', () => {
+  /* U.6 review: reworded so it never promises a send that can wait or fail. The rule it holds is
+     unchanged: nobody is invited before the check-in is saved and the email confirmed. */
   it('contains the deferred-send timing copy, consistent with the save card', () => {
-    expect(src).toMatch(/Invites don't go out yet/)
-    expect(src).toMatch(/sent once you save this check-in and confirm your email/)
+    expect(src).toMatch(/Nobody is invited before you save this check-in and confirm your email\./)
   })
 
   it('places the timing copy inside the invite-contributors step (not elsewhere)', () => {
     const heading = src.indexOf('const inviteHeading =')
     const input = src.indexOf('value={inviteEmail}')
-    const timing = src.indexOf("Invites don't go out yet")
+    const timing = src.indexOf('Nobody is invited before you save this check-in')
     expect(heading).toBeGreaterThan(-1)
     expect(input).toBeGreaterThan(-1)
     // the timing note sits after the invite heading logic and before the

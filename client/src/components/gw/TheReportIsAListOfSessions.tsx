@@ -1,30 +1,93 @@
 import { useNavigate } from 'react-router-dom'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import { Tag } from './kit'
+import { atTheStart } from '@/lib/a-colleague'
 
 /**
- * THE REPORT TAB IS A LIST: THE BOARD, THEN ONE ROW PER SESSION.
+ * EVERY SESSION: THE BOARD, THEN ONE LINE FOR EACH SESSION, NEWEST FIRST (U.9, B4).
  *
- * "The report page is annoying and carries too much. It is just meant to show a list of sessions
- * and then you click and get the report. And you see who's checked in, the report is counting."
+ * The words are the prototype's, from docs/prototype/screens/B4-reports-and-sharing/sessions.txt:
+ * "Every session", "Below is the board, then one line for each session, newest first. Open a
+ * session to see its report.", "The board", "Everything so far", and for each row "Session 37",
+ * "Tue, 22 Sept", "6 of 6 checked in" and "Shared" or "Not shared".
  *
- * What was on it: the board, a release control, the forming report's whole body, a resolution
- * strip, "how this report is put together", a correction paragraph, two alignment empty states and
- * a list of your own sessions - eight things competing on the screen you open to read one report.
+ * WHAT IT REPLACED. "Session reports · 12, 11 released", folded under the board, with rows reading
+ * "3 of 5 answered · waiting on Omar, Brian" and a pill saying "Released", "Ready to release" or
+ * "Forming". Pieces joined with dots, and three words for two states.
  *
- * A run is six or twelve sessions. The tab's job is to get you to the right one and to tell you,
- * before you click, whether it is finished and who it is counting.
+ * SHARED IS NOT THE SAME FACT AS CLOSED (screen fault 1, final walk). A round is "closed" once
+ * everybody in it has answered (`roundCompletions`); it is "shared" once the lead has actually
+ * released that session's report (`report.releasedAt` / `report.releasedSessions`, decision 76).
+ * A lead can release a session before everyone has answered, and a closed round is not shared
+ * until released - so the tag below reads `shared`, never `closed`. See `isSessionShared` in
+ * lib/session-rows.ts.
+ *
+ * WHO IT IS WAITING FOR STAYS, AS A SENTENCE. The prototype's row has no such line, but the product
+ * has had one since Hafsah asked to "see who's checked in, the report is counting". It is kept, and
+ * said as a sentence: "Omar has not checked in yet."
+ *
+ * The list is no longer folded under the board. The prototype shows every row open below it.
  */
 export interface SessionRow {
   /** The session number. */
   sessionNumber: number
   /** The check-in id of the reader's OWN session at this number, when they have one. */
   myCheckInId: string | null
-  /** How many people have answered this session, and how many the report is waiting for. */
-  answered: number
-  total: number
-  /** True once the round closed and the report for it stopped moving. */
+  /**
+   * How many people have answered this session, and how many the report is waiting for. `null`
+   * when this reader's own data cannot say - a restricted roster, on a round still open - rather
+   * than a smaller, false count (lib/session-rows.ts).
+   */
+  answered: number | null
+  total: number | null
+  /** True once everybody in this round has answered. NOT the same fact as `shared` - a lead can
+      release a session before everyone has answered, and a round that finished is not shared
+      until the lead releases it. Kept for the counting logic that needs it (session-rows.ts). */
   closed: boolean
+  /** True once this session's team picture has actually been released (`report.releasedAt` /
+      `report.releasedSessions`) - the fact the "Shared"/"Not shared" tag and "Share it" must use. */
+  shared: boolean
   /** Names of the people who have not answered yet, for the line under the row. */
   waitingOn: string[]
+  /** When this session really opened (its first completed check-in), for "Wed 23 Sept". Absent
+      when nobody has started it yet. */
+  opened?: string | null
+  /** The day this session is scheduled to open, for a round nobody has started - "opens on 6
+      Oct", never shown once `opened` is known. */
+  opensOn?: string | null
+}
+
+export const EVERY_SESSION = {
+  heading: 'Every session',
+  intro: 'Below is the board, then one line for each session, newest first. Open a session to see its report.',
+  board: 'The board',
+  boardSub: 'Everything so far',
+  shared: 'Shared',
+  notShared: 'Not shared',
+  nothingYet: 'No session has finished yet. Each one gets its own report here as it completes.',
+} as const
+
+/** "Wed, 23 Sept", as the prototype's rows read. */
+export function sessionDay(d: string | Date): string {
+  return whenItWas(d, 'shortWeekdayAndDay').replace(/^(\S+) /, '$1, ')
+}
+
+/** `null` when this reader has no count to give, truthfully - see `SessionRow.answered`. */
+export function checkedIn(answered: number | null, total: number | null): string | null {
+  if (answered == null || total == null) return null
+  return `${answered} of ${total} checked in`
+}
+
+/** "Omar has not checked in yet." Names, never a count alone, because the lead needs to know who. */
+export function stillToCheckIn(given: string[]): string {
+  if (given.length === 0) return ''
+  /* "a colleague" starts the sentence here, so it takes the capital (request 36). */
+  const names = given.map((n, i) => (i === 0 ? (n === 'you' ? 'You' : atTheStart(n)) : n))
+  if (names.length === 1) return names[0] === 'You' ? 'You have not checked in yet.' : `${names[0]} has not checked in yet.`
+  if (names.length === 2) return `${names[0]} and ${names[1]} have not checked in yet.`
+  if (names.length === 3) return `${names[0]}, ${names[1]} and ${names[2]} have not checked in yet.`
+  const more = names.length - 2
+  return `${names[0]}, ${names[1]} and ${more} others have not checked in yet.`
 }
 
 export function TheReportIsAListOfSessions({
@@ -32,107 +95,99 @@ export function TheReportIsAListOfSessions({
   boardRenders,
   onOpenBoard,
   onOpenSession,
+  onOpenWeek,
 }: {
   rows: SessionRow[]
   boardRenders: boolean
   onOpenBoard: () => void
   /** Opening a session with no check-in of your own on it - the lead's view of a round. */
   onOpenSession: (sessionNumber: number) => void
+  /**
+   * THE WEEKLY REPORT (B4, "This week"; docs/prototype/screens/B5-the-board/board-as-lead.txt's
+   * own "This week" report row). Optional because a check-in that does not run often enough to
+   * have one still lists its sessions - the weekly report page itself says so when there is
+   * nothing to show for a given week, so this entry point is safe to always offer once a caller
+   * passes it.
+   */
+  onOpenWeek?: () => void
 }) {
   const navigate = useNavigate()
 
   return (
-    <div>
+    <section aria-labelledby="every-session">
+      <h2 id="every-session" style={{ fontSize: 17, fontWeight: 700, margin: '0 0 4px', color: 'var(--gw-text)' }}>{EVERY_SESSION.heading}</h2>
+      <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.55, margin: '0 0 14px' }}>{EVERY_SESSION.intro}</p>
+
       {boardRenders && (
         <button
           onClick={onOpenBoard}
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-            background: 'var(--gw-dark)', color: 'white', border: 'none',
-            borderRadius: 10, padding: '14px 18px', marginBottom: 14, cursor: 'pointer', fontFamily: 'inherit',
+            background: 'white', color: 'var(--gw-text)', border: '1px solid var(--gw-border)',
+            borderRadius: 10, padding: '14px 16px', marginBottom: 12, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
           }}
         >
-          <span style={{ textAlign: 'left' }}>
-            <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>Open the team board</span>
-            <span style={{ display: 'block', fontSize: 11.5, color: 'rgba(255,255,255,.6)', marginTop: 2 }}>
-              The whole run in one place - every session, and what moved between them.
-            </span>
+          <span>
+            <span style={{ display: 'block', fontSize: 15, fontWeight: 700 }}>{EVERY_SESSION.board}</span>
+            <span style={{ display: 'block', fontSize: 13, color: 'var(--gw-sub)', marginTop: 2 }}>{EVERY_SESSION.boardSub}</span>
           </span>
-          <span style={{ fontSize: 13 }}>&rarr;</span>
+          <span aria-hidden style={{ fontSize: 14, color: 'var(--gw-navy)' }}>&rarr;</span>
         </button>
       )}
 
-      {/*
-        THE BOARD IS THE PAGE; THE SESSION LIST FOLDS UNDER IT. Hafsah, 21 Sep 2026: "keep the team board
-        on this page and minimize the other things, since we can assess the session reports via the team
-        boards." Every session's report is still one click away, behind a summary that says how many
-        there are and how many are released; where no board renders yet, the list stays open so a person
-        with no board loses nothing.
-      */}
+      {onOpenWeek && (
+        <button
+          onClick={onOpenWeek}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+            background: 'white', color: 'var(--gw-text)', border: '1px solid var(--gw-border)',
+            borderRadius: 10, padding: '14px 16px', marginBottom: 12, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+          }}
+        >
+          <span>
+            <span style={{ display: 'block', fontSize: 15, fontWeight: 700 }}>This week</span>
+            <span style={{ display: 'block', fontSize: 13, color: 'var(--gw-sub)', marginTop: 2 }}>What kept happening for three check-ins in a row or more</span>
+          </span>
+          <span aria-hidden style={{ fontSize: 14, color: 'var(--gw-navy)' }}>&rarr;</span>
+        </button>
+      )}
+
       {rows.length === 0 ? (
-        !boardRenders && (
-          <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: 20, fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-            No session has finished yet. Each one gets its own report here as it completes.
-          </div>
-        )
+        <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: 20, fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+          {EVERY_SESSION.nothingYet}
+        </div>
       ) : (
-        <details open={!boardRenders} style={{ marginTop: 4 }}>
-          <summary className="gw-fold-summary" style={{ cursor: 'pointer', fontSize: 12.5, color: 'var(--gw-sub)', padding: '6px 2px', display: 'flex', justifyContent: 'space-between' }}>
-            <span>Session reports · {rows.length}{rows.filter((r) => r.closed).length ? `, ${rows.filter((r) => r.closed).length} released` : ''}</span>
-            <span style={{ fontSize: 11.5 }}>each session's own report</span>
-          </summary>
-        <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden', marginTop: 6 }}>
+        <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>
           {rows.map((r, i) => (
             <button
               key={r.sessionNumber}
               onClick={() => (r.myCheckInId ? navigate(`/checkin/${r.myCheckInId}/report`) : onOpenSession(r.sessionNumber))}
               style={{
-                display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between',
-                gap: 12, padding: '13px 14px', background: 'white', border: 'none',
+                display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap',
+                gap: '6px 14px', padding: '13px 16px', background: 'white', border: 'none',
                 borderTop: i > 0 ? '1px solid var(--gw-border)' : undefined,
                 cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
               }}
             >
-              <span style={{ minWidth: 0 }}>
-                <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>Session {r.sessionNumber}</span>
-                {/*
-                  WHO THE REPORT IS COUNTING, before you click. One count, from the same definition
-                  the release rule uses - people still holding an invitation are in it, because the
-                  round waits for them.
-                */}
-                <span style={{ display: 'block', fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 1 }}>
-                  {r.answered} of {r.total} answered
-                  {r.waitingOn.length > 0 && ` · waiting on ${r.waitingOn.slice(0, 3).join(', ')}${r.waitingOn.length > 3 ? ` and ${r.waitingOn.length - 3} more` : ''}`}
-                </span>
+              <span style={{ minWidth: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '2px 16px' }}>
+                <span style={{ fontSize: 15, fontWeight: 700 }}>Session {r.sessionNumber}</span>
+                {r.opened
+                  ? <span style={{ fontSize: 13.5, color: 'var(--gw-sub)' }}>{sessionDay(r.opened)}</span>
+                  : r.opensOn && <span style={{ fontSize: 13.5, color: 'var(--gw-sub)' }}>opens on {sessionDay(r.opensOn)}</span>}
+                {checkedIn(r.answered, r.total) && (
+                  <span style={{ fontSize: 13.5, color: 'var(--gw-sub)' }}>{checkedIn(r.answered, r.total)}</span>
+                )}
+                {!r.closed && r.waitingOn.length > 0 && (
+                  <span style={{ flexBasis: '100%', fontSize: 13, color: 'var(--gw-sub)' }}>{stillToCheckIn(r.waitingOn)}</span>
+                )}
               </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                <span
-                  style={{
-                    fontSize: 11, fontWeight: 600, borderRadius: 6, padding: '2px 8px',
-                    background: r.closed ? 'var(--gw-green-bg)' : 'var(--gw-amber-bg)',
-                    color: r.closed ? 'var(--gw-green-t)' : 'var(--gw-amber-t)',
-                    border: `1px solid ${r.closed ? 'var(--gw-green-b)' : 'var(--gw-amber-b)'}`,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {/*
-                    'Final' read as 'the last one' on every row. It means the report is out.
-
-                    AND "FORMING" ON A ROUND WHERE EVERYBODY HAS ANSWERED IS WRONG IN THE OTHER
-                    DIRECTION. Read off a lead's own screen: "Session 1 · 3 of 3 answered · Forming",
-                    on a round whose report was written, complete and sitting behind that row. It
-                    is not forming; it is waiting for her, and she is the only person who can move
-                    it. Saying which of the two it is turns a status into the next thing to do.
-                  */}
-                  {r.closed ? 'Released' : r.answered >= r.total && r.total > 0 ? 'Ready to release' : 'Forming'}
-                </span>
-                <span style={{ fontSize: 13, color: 'var(--gw-navy)' }}>&rarr;</span>
+              <span style={{ whiteSpace: 'nowrap' }}>
+                <Tag tone={r.shared ? 'proven' : 'attention'}>{r.shared ? EVERY_SESSION.shared : EVERY_SESSION.notShared}</Tag>
               </span>
             </button>
           ))}
         </div>
-        </details>
       )}
-    </div>
+    </section>
   )
 }

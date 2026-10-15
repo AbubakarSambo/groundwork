@@ -41,6 +41,6 @@ export function theyOweAnAccountFirst(who: WhoIsAsking, round: ThisRound | null)
  * different products having two different policies.
  */
 export const BECAUSE_YOURS_WOULD_BE_AN_ANSWER =
-  'The board reads everybody\'s accounts side by side, and yours is not in yet. You will be able to '
-  + 'open it as soon as you have checked in - reading what everybody else said first would make '
-  + 'yours an answer to theirs, and the whole point is that they are independent.';
+  'The board puts what everybody said next to each other, and you have not answered yet. You will be able to '
+  + 'open it as soon as you have checked in. Reading what everybody else said first would make '
+  + 'yours an answer to theirs, and each answer is meant to be your own.';

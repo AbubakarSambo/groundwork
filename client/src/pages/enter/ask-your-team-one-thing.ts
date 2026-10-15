@@ -50,13 +50,21 @@ export const HOW_OFTEN: { value: HowOften; label: string }[] = [
  * A NAME FOR THE THING, TAKEN FROM THE QUESTION RATHER THAN ASKED FOR.
  *
  * A fifth field would be a fifth reason to abandon this. The lead's own line is the best name it
- * could have, trimmed to something that fits a list, and it is theirs to rename on Setup.
+ * could have, and it is theirs to rename on Setup.
+ *
+ * THE WHOLE QUESTION, NEVER ITS FIRST WORDS (U.6 review). It took the first six words, so "What
+ * moved this week, and what is stuck?" was named "What moved this week, and what" on the lead's
+ * header and in the rail. A question cut off in the middle is not a name. A question too long to
+ * be a name is named after the topic instead, and a second one with the same name gets ", from
+ * <date>" on the API side (four-check-ins-with-the-same-name).
  */
+export const THE_TOPIC_NAME = 'Get updates from your team'
+export const A_NAME_AT_MOST = 80
+
 export function aNameFromTheQuestion(theOneLine: string): string {
-  const words = (theOneLine ?? '').trim().replace(/[?.!]+$/, '').split(/\s+/)
-  if (!words[0]) return 'Team update'
-  const short = words.slice(0, 6).join(' ')
-  return short.length > 60 ? `${short.slice(0, 57)}...` : short
+  const whole = (theOneLine ?? '').trim().replace(/\s+/g, ' ')
+  if (!whole || whole.length > A_NAME_AT_MOST) return THE_TOPIC_NAME
+  return whole
 }
 
 /**

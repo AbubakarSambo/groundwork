@@ -32,7 +32,8 @@ describe('the order', () => {
   it('nothing said is the bottom, for the level and every dimension alike', () => {
     expect(NOTHING_SAID).toBe('managed');
     expect(rankOf(NOTHING_SAID)).toBe(0);
-    const code = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    /* The read lives in the-specificity-read.ts since request 103, so that is where this is pinned. */
+    const code = readFileSync(join(__dirname, 'the-specificity-read.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(code).toMatch(/return \{ level: NOTHING_SAID, dimensions: dims \};/);
     expect(code).not.toMatch(/level: 'vague', recallConfidence: 'uncertain'/);
   });

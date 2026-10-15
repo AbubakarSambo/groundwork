@@ -25,6 +25,11 @@
  * product writes the list, so a number can be checked before it is agreed to.
  */
 
+import { ContextItemKind } from '@prisma/client';
+import { whatTheWordsSuggest, theListsWordsFor, A_LIMIT_NOT_TO_GO_OVER, THE_FIVE_KINDS_SAID, type TargetDirection } from '../board/an-aim-or-a-limit';
+import { ABOUT_SOMEBODY } from './what-this-check-in-knows';
+import { NONE_IS_ASKED_UNTIL_YOU_CONFIRM_IT,THIS_ONE_IS_NOT_ASKED_UNTIL_YOU_CONFIRM_IT, plainQuestionFrom, whatGroundworkWillAsk } from './a-question-asked-word-for-word';
+
 export interface ADumpRead {
   /** What doing well looks like, in the lead's own words. */
   success?: string | null;
@@ -65,15 +70,19 @@ export interface ADumpRead {
 export const A_PASTE_IS_THIS_LONG = 400;
 export const looksLikeADump = (text: string): boolean => (text ?? '').trim().length >= A_PASTE_IS_THIS_LONG;
 
+/** What the lead reads for a question they wrote to themselves. */
+export const A_QUESTION_YOU_PUT_TO_YOURSELF = (question: string): string =>
+  `You put this question to yourself, so it stays open for you and nobody else is asked it: "${question}"`;
+
 export const A_DUMP_PROMPT = `Somebody running a team check-in has pasted everything they have about it. Read it once and take out only what a check-in keeps.
 
 WHAT DOING WELL LOOKS LIKE. Their own sentence about what would make this period a good one. Take the sentence that says what they want out of it, in their words, not a summary of the whole paste. A rule, an instruction or a slogan off a list is not it: "celebrate revenue not meetings" and "no proposal before qualification" are ways of working, not a picture of a good quarter. Nor is a remark about check-ins, accountability or this product itself - a paste often contains notes addressed to whoever set the check-in up, and none of those say what the work should look like. If no sentence in the paste says what a good period looks like, leave this out.
 
-NUMBERS THE WHOLE TEAM IS HELD TO. A total to reach, a ceiling not to pass. "N180m for Q4" is a target of 180000000. "Credit under 35%" is 35, not to exceed. Take the number they have settled on, not one they are arguing with: "the board wants 200 but I have agreed 180" is 180.
+NUMBERS THE WHOLE TEAM IS HELD TO. A total to reach, a ceiling not to pass. "N180m for Q4" is a target of 180000000. "Credit under 35%" is 35, not to exceed. Take the number they have settled on, not one they are arguing with: "the board wants 200 but I have agreed 180" is 180. A figure the paste says is not approved, not agreed, only a request, a maybe or a guess ("budget N1.2m, not approved yet", "maybe N20m, not sure") is not a number for anybody: leave it out of the numbers and put it under what is not settled. Last quarter's figure, a current figure, an amount somebody owes and a reserve, allowance or contingency in a budget are never targets.
 
 NAME EVERY MEASURE IN WORDS, as a person would read it on a board: "Q4 sales", "credit as a share of sales", "arrears", "new dealers signed". Never put the figure, a currency symbol or a currency letter in the name - "N for Q4" and "N180m" are not names of anything. The number goes in the number field and nowhere else.
 
-WHAT THEY EXPECT OF EACH NAMED PERSON. One entry per person, in the lead's own words, with EVERY number they gave for that person. "I want Dayo at N45m with credit under 35% of his own book" is Dayo, that sentence, and two numbers: Q4 sales 45000000, and credit as a share of his sales 35. "N35m and at least 4 new dealers signed" is two numbers, not one. Their last quarter's figure is not a target: it is what happened.
+WHAT THEY EXPECT OF EACH NAMED PERSON. One entry per person, in the lead's own words, with EVERY number they gave for that person. Some plans give each priority or workstream an owner ("Priority 2. Keep customers. Owner: Tobi Lawal. Complaints under 3 per 100 orders."). The numbers in that priority belong to that owner. Put them on that person and never also in the numbers for the whole team. The expectation is what the priority is ("Keep customers"), never the label that names the owner ("Owner: Tobi Lawal"). Sometimes the paste does not otherwise describe the owner. Still give their name and numbers exactly as written. That way they can be told apart from the team. "I want Dayo at N45m with credit under 35% of his own book" is Dayo, that sentence, and two numbers: Q4 sales 45000000, and credit as a share of his sales 35. "N35m and at least 4 new dealers signed" is two numbers, not one. Their last quarter's figure is not a target: it is what happened. A number inside the description of a job ("tell the top 30 customers", "count 4,200 items", "book two trucks") belongs to that job and is not a number the person is to reach, so do not give it as one.
 
 DATES. What is due and when, in the paste's own words: "quarter ends 31 December", "board meeting 15 January".
 
@@ -85,19 +94,19 @@ NOTES. Anything else worth keeping that is not a rule, a decision, an uncertaint
 
 EVERY LINE IN THOSE FOUR LISTS IS ONE SHORT PLAIN SENTENCE, twelve words or fewer, in the words the team would use. The paste is somebody thinking out loud: "dont sell AI lol sell knowing whats happening / fewer surprises / better decisions" is read back as "Sell fewer surprises and better decisions, not the technology". Keep the meaning and every specific - a name, a place, a number - and drop the aside, the swearing and the thinking-out-loud. Never invent a specific that is not there.
 
-WHAT IS STILL TO DECIDE. Anything the paste says needs deciding and has not been: "whether the target stays at 12m", "whether the 30-day rule is official". One line each, as a decision, not as a task.
+WHAT IS STILL TO DECIDE. Anything the paste says needs deciding and has not been: "whether the target stays at 12m", "whether the 30-day rule is official". One plain, full sentence each, written as a decision, not as a task.
 
 WHAT IS NOT SETTLED. Anything the paste contradicts itself about, is unsure of, or says explicitly not to treat as fact or as a target: two numbers for the same thing, a figure somebody mentioned but nobody approved, a task nobody knows is finished. Say the competing versions where the paste gives both.
 
-WHAT IS TO BE DONE. Every action the paste names: a proposal to send, a call somebody has to make, a list to clean, a thing to finish. One entry each, in the paste's words. Give the person ONLY where the paste says whose it is - most of a list of outstanding things has no owner, and leaving the owner out is the correct answer, never the nearest name. Give the timing only where the paste gives one, in its own words ("this week", "friday", "before Thursday"). Say whether the person said it themselves ("she said she would do it this week") or the lead is the one saying it needs doing.
+WHAT IS TO BE DONE. Every action the paste names: a proposal to send, a call somebody has to make, a list to clean, a thing to finish. One entry each, in the paste's words. A task listed under a person's name or under a workstream that person owns ("Ibrahim: racking installed by 24 October, power backup tested by 31 October") is one entry for each task, with that person as the owner and its own date. An action for somebody who is clearly not part of this team, such as a customer paying a bill or a supplier delivering, is not an action for this team: leave it out of this list and put it under notes. Give the person ONLY where the paste says whose it is - most of a list of outstanding things has no owner, and leaving the owner out is the correct answer, never the nearest name. Give the timing only where the paste gives one, in its own words ("this week", "friday", "before Thursday"). Say whether the person said it themselves ("she said she would do it this week") or the lead is the one saying it needs doing.
 
-QUESTIONS THE LEAD WANTS ASKED. Where the paste writes a question for a named person - "Amina - which accounts actually have a buying process?" - take the person and the question as written.
+QUESTIONS THE LEAD WANTS ASKED. Where the paste writes a question for a named person - "Amina - which accounts actually have a buying process?" - take the person and the question as written. A sentence that ends in a question mark and is addressed to a named person, even when the same person is also talked about earlier in the paste, is such a question. A question the person running the check-in puts to themselves ("I need to decide whether the Kisumu contract is worth keeping", "Do I move Brian onto retail?") is also taken, with personName "the lead", in the writer's own words as a question; it is theirs to think about and nobody else is asked.
 
 WHAT IS BETWEEN TWO PEOPLE. Where the paste describes something that involves two named people and belongs to neither alone - one promised what the other cannot build, one commits dates the other has to keep - name both people and say the thing in the paste's words.
 
 WHAT THEY SAY ABOUT EACH PERSON THAT IS NOT A NUMBER OR A JOB. The lead's read of somebody: how they work, what they are good at, what they keep doing. One entry per person, their words. This is an observation, never a fact about the person, and it is kept where only the lead can read it.
 
-Give names and wording exactly as the paste writes them. Do not correct them, expand them, or match them to anybody. Leave out anything that is an opinion about a person rather than a number or a job for them - that belongs somewhere else and not here. An empty field is a correct answer.`;
+Never write "I", "me" or "my" in a line you write: the team reads these lines, so say the person's name, or "the lead" where the paste does not give it. Give names and wording exactly as the paste writes them. Do not correct them, expand them, or match them to anybody. Leave out anything that is an opinion about a person rather than a number or a job for them - that belongs somewhere else and not here. An empty field is a correct answer.`;
 
 export const A_DUMP_SCHEMA = {
   name: 'emit_what_the_paste_holds',
@@ -141,7 +150,7 @@ export const A_DUMP_SCHEMA = {
       waysOfWorking: { type: 'array', description: 'How this team works. One short plain sentence each.', items: { type: 'string' } },
       strategy: { type: 'array', description: 'How this team wins work and what it leads with. One short plain sentence each.', items: { type: 'string' } },
       notes: { type: 'array', description: 'Anything else worth keeping that is not a rule, a decision, an uncertainty or a job. One short plain sentence each.', items: { type: 'string' } },
-      openDecisions: { type: 'array', description: 'What still has to be decided, one line each.', items: { type: 'string' } },
+      openDecisions: { type: 'array', description: 'What still has to be decided, one plain, full sentence each.', items: { type: 'string' } },
       notSettled: { type: 'array', description: 'What the paste contradicts itself about or says not to treat as fact. Give both versions where it gives both.', items: { type: 'string' } },
       aboutPeople: {
         type: 'array',
@@ -165,7 +174,7 @@ export const A_DUMP_SCHEMA = {
       },
       questionsForPeople: {
         type: 'array',
-        description: 'A question the paste writes for one named person.',
+        description: 'A question the paste writes for one named person, or one the writer puts to themselves (personName "the lead").',
         items: { type: 'object', properties: { personName: { type: 'string' }, question: { type: 'string' } }, required: ['personName', 'question'] },
       },
       betweenPeople: {
@@ -183,10 +192,16 @@ const fmt = (n: number): string =>
 
 export interface WhatAPasteGives {
   success: string | null;
-  teamTargets: { name: string; target: number | null; notToExceed: boolean }[];
+  /**
+   * `direction` is what the lead said yes to (decision 69), read back off the list they answered by
+   * `theDirectionsInTheList`. Absent or null until then: the list only suggests one.
+   */
+  teamTargets: { name: string; target: number | null; notToExceed: boolean; direction?: TargetDirection | null }[];
   forPeople: { who: string; participantId: string; expectation: string; targets: { name: string; number: number }[] }[];
   dates: { what: string; when: string }[];
   unmatched: string[];
+  /** What the paste said for each name that is not on this check-in, keyed by that name. Said, never kept. */
+  unmatchedParts?: Record<string, string[]>;
   /** The lists that are words rather than numbers, each one a bucket on the Context page. */
   waysOfWorking: string[];
   strategy: string[];
@@ -197,10 +212,19 @@ export interface WhatAPasteGives {
   aboutPeople: { who: string; participantId: string; observation: string }[];
   /** Actions. `participantId` is null where the paste named no owner, which is left as it is. */
   commitments: { who: string | null; participantId: string | null; action: string; outcome: string | null; when: string | null; theySaidIt: boolean }[];
-  /** A question the lead wants put to one person, in their own check-in. */
-  questionsForPeople: { who: string; participantId: string; question: string }[];
+  /**
+   * A question the lead wants put to one person, in their own check-in. `question` is the lead's own
+   * shorthand; `exactQuestion` is the sentence Groundwork will ask, word for word, once the lead has
+   * confirmed it. See a-question-asked-word-for-word.
+   */
+  questionsForPeople: { who: string; participantId: string; question: string; exactQuestion?: string | null }[];
   /** Something between two of them, which is neither person's alone. */
   betweenPeople: { who: string[]; participantIds: string[]; issue: string }[];
+  /**
+   * The sentence participants will be told this check-in is for. Offered in the say-back, and carried
+   * back from that list by the yes: if the list did not show it, it is absent and nothing is written.
+   */
+  toldToParticipants?: string | null;
 }
 
 /**
@@ -210,78 +234,187 @@ export interface WhatAPasteGives {
  * the difference is one line. Every number is shown as it will be written, so the lead is checking
  * the thing itself rather than a description of it.
  */
-export function whatWeTookFromThat(got: WhatAPasteGives, opts: { asking?: boolean } = {}): string | null {
+/**
+ * WHO WILL READ A LINE, SAID IN ONE SENTENCE, FROM THE SAME RULE THAT SAVES IT.
+ *
+ * The writer (`writeWhatThePasteGave`) saves a line as lead-only when its kind is about somebody
+ * (`ABOUT_SOMEBODY`) and as everyone's otherwise. The say-back and the confirmation read the same
+ * rule here, so a sentence can never say "kept for you" over a line that everyone will read
+ * (screens request 92, point 1).
+ */
+export function whoWillReadThese(kind: ContextItemKind): string {
+  return ABOUT_SOMEBODY.has(kind) ? 'Only you will see these.' : 'Everyone on this check-in will see these.';
+}
+
+/** The two lines that say what the people taking part will be told this check-in is for. */
+export const WHAT_PEOPLE_ARE_TOLD_OPENS = 'When you say yes, people taking part will be told this about the check-in.';
+export const WHAT_PEOPLE_WERE_TOLD_OPENS = 'People taking part have now been told this about the check-in.';
+
+/** The sentence a say-back offered for what participants are told, or null where it offered none. */
+export function theTellingInTheList(history: { role: 'user' | 'assistant'; content: string }[] | null | undefined): string | null {
+  const lastAssistant = [...(history ?? [])].reverse().find((t) => t.role === 'assistant')?.content ?? '';
+  if (!lastAssistant.trim().startsWith(THE_LIST_OPENS_WITH)) return null;
+  const at = lastAssistant.indexOf(WHAT_PEOPLE_ARE_TOLD_OPENS);
+  if (at < 0) return null;
+  const next = lastAssistant.slice(at + WHAT_PEOPLE_ARE_TOLD_OPENS.length).replace(/^\s*\n/, '').split('\n')[0] ?? '';
+  const told = next.trim().replace(/^[“"]\s*/, '').replace(/\s*[”"]$/, '').trim();
+  return told || null;
+}
+
+/**
+ * A DATE THE PASTE NAMED, AS ONE PLAIN SENTENCE, FOR THE RECORD.
+ *
+ * Dates used to be said back and then dropped ("they stay in this conversation and are not put on the
+ * record"), so a quarter's end, a board meeting or a start date was lost the moment the lead said yes.
+ * They are kept as notes the whole check-in can read. The date is written exactly as the paste wrote
+ * it, never turned into another form.
+ *
+ * A date that only repeats the timing of a job somebody is down as doing is not kept twice: the job
+ * already carries it.
+ */
+const A_DAY = /^(?:\d|mon|tue|wed|thu|fri|sat|sun|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|the \d)/i;
+const A_WORD_FOR_WHEN = /^(?:by|on|before|until|till|from|at|in|after|during|every|within|for|since|between|this|next|end|start|mid|early|late)\b/i;
+/*
+ * A MONTH, A QUARTER AND A VAGUE TIME ARE NOT A DAY. "Tunde Afolabi is joining on November." read as if
+ * November were a day. A day (a date, a weekday) takes "on"; a month, a year or a quarter takes "in"
+ * ("in November", "in Q4"); "mid-November" and "early November" take "in"; "the end of the month" takes
+ * "at". "Next week", "tomorrow" and "this Friday" stand on their own. Nothing is rewritten: the words
+ * the plan used are the words that stay.
+ */
+const A_MONTH = '(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)';
+const JUST_A_MONTH = new RegExp(`^(?:(?:early|mid|late|the (?:start|middle|end) of)[\\s-]+)?${A_MONTH}(?:\\s+\\d{4})?$`, 'i');
+const A_QUARTER = /^(?:q[1-4]|(?:the )?(?:first|second|third|fourth|last) quarter)(?:\s+(?:of\s+)?\d{4})?$/i;
+const A_YEAR = /^\d{4}$/;
+const STANDS_ALONE = /^(?:tomorrow|today|tonight|yesterday|next|this)\b/i;
+function joinedToWhat(w: string, t: string): string {
+  if (STANDS_ALONE.test(t)) return `${w} ${t}`;
+  if (/^(?:the )?end of\b/i.test(t) || /^end of\b/i.test(t)) return `${w} at ${/^the /i.test(t) ? '' : 'the '}${t}`;
+  if (JUST_A_MONTH.test(t) || A_QUARTER.test(t) || A_YEAR.test(t)) return `${w} in ${t}`;
+  if (/^(?:early|mid|late)[\s-]/i.test(t)) return `${w} in ${t}`;
+  if (A_WORD_FOR_WHEN.test(t)) return `${w} ${t}`;
+  return A_DAY.test(t) ? `${w} on ${t}` : `${w}, ${t}`;
+}
+export function aDateSaid(what: string, when: string): string {
+  const w = what.trim().replace(/[.:;,\s]+$/, '');
+  const t = when.trim().replace(/[.:;,\s]+$/, '');
+  if (!w) return `${t.charAt(0).toUpperCase()}${t.slice(1)}.`;
+  const joined = joinedToWhat(w, t);
+  return `${joined.charAt(0).toUpperCase()}${joined.slice(1)}.`;
+}
+export function theDatesToKeep(got: Pick<WhatAPasteGives, 'dates' | 'commitments'>): string[] {
+  const out: string[] = [];
+  for (const d of got.dates ?? []) {
+    const covered = (got.commitments ?? []).some((c) => c.when && theSameMeasure(c.when, d.when) && (theSameMeasure(c.action, d.what) || wordsOf(d.what).some((w) => wordsOf(c.action).includes(w) && w.length > 4)));
+    if (covered) continue;
+    const line = aDateSaid(d.what, d.when);
+    if (!out.some((o) => theSameMeasure(o, line))) out.push(line);
+  }
+  return out;
+}
+
+export function whatWeTookFromThat(
+  got: WhatAPasteGives,
+  opts: { asking?: boolean; told?: string | null; /** Who is reading it: a line about them says "you". */ reader?: { participantId?: string | null } | null } = {},
+): string | null {
+  /* The reader is "you" in a sentence the product writes, never their own name. */
+  const called = (who: string | null, participantId?: string | null): string | null =>
+    opts.reader?.participantId && participantId && participantId === opts.reader.participantId ? 'You' : who;
   const anything = got.success || got.teamTargets.length || got.forPeople.length || got.dates.length || got.unmatched.length
     || got.waysOfWorking?.length || got.openDecisions?.length || got.notSettled?.length || got.aboutPeople?.length
     || got.commitments?.length || got.questionsForPeople?.length || got.betweenPeople?.length
     || got.strategy?.length || got.notes?.length;
   if (!anything) return null;
   const lines: string[] = ['Here is what I took from that.'];
-  if (got.success) lines.push('', `What doing well looks like: "${got.success}"`);
+  if (got.success) lines.push('', `What doing well looks like is "${got.success}".`);
   if (got.teamTargets.length) {
-    lines.push('', 'For the whole check-in:');
+    lines.push('', 'These are for the whole check-in.');
     for (const t of got.teamTargets) {
-      lines.push(`- ${t.name}${t.target != null ? `: ${fmt(t.target)}${t.notToExceed ? ', not to be passed' : ''}` : ', tracked rather than counted'}`);
+      /* Decision 69: asking, each number says which way it goes, so the yes confirms it. Once recorded,
+         only a direction the lead said yes to is said. */
+      const way = theWayThisNumberGoes(t, !!opts.asking);
+      lines.push(`- ${t.name}${t.target != null ? `: ${fmt(t.target)}${way ? `, ${theListsWordsFor(way)}` : ''}` : ', tracked rather than counted'}`);
     }
+    /* Asking, the five kinds are offered in plain words, so a yes is a yes to each kind (decision 75, item 17). */
+    if (opts.asking && got.teamTargets.some((t) => t.target != null)) lines.push(`${THE_FIVE_KINDS_SAID} You can change the kind of any number on the board.`);
   }
   if (got.forPeople.length) {
-    lines.push('', 'What you expect of each person, in your words, marked as yours and not yet seen by them:');
+    lines.push('', 'This is what you expect of each person, in your words. It is marked as yours, and they have not seen it yet.');
     /* One line per person, carrying every number of theirs: two numbers read as the same sentence twice. */
     for (const p of got.forPeople) {
       const numbers = p.targets.map((t) => `${t.name}: ${fmt(t.number)}`);
-      lines.push(`- ${p.who}: "${p.expectation}"${numbers.length ? ` (${numbers.join('; ')})` : ''}`);
+      lines.push(`- ${called(p.who, p.participantId)}: "${p.expectation}"${numbers.length ? ` (${numbers.join('; ')})` : ''}`);
     }
   }
-  if (got.dates.length) {
-    lines.push('', 'Dates you named, which stay in this conversation rather than on the record:');
-    for (const d of got.dates) lines.push(`- ${d.what}: ${d.when}`);
+  const dates = theDatesToKeep(got);
+  if (dates.length) {
+    lines.push('', `These are the dates you named. ${whoWillReadThese(ContextItemKind.NOTE)}`);
+    for (const d of dates) lines.push(`- ${d}`);
   }
   if (got.strategy?.length) {
-    lines.push('', 'The strategy, as I read it. Everybody on the check-in will see these:');
+    lines.push('', `The strategy, as I read it. ${whoWillReadThese(ContextItemKind.STRATEGY)}`);
     for (const w of got.strategy) lines.push(`- ${w}`);
   }
   if (got.waysOfWorking?.length) {
-    lines.push('', 'How this team works. Everybody sees these, said as yours rather than as anything agreed:');
+    lines.push('', `How this team works, said as yours rather than as anything agreed. ${whoWillReadThese(ContextItemKind.WAY_OF_WORKING)}`);
     for (const w of got.waysOfWorking) lines.push(`- ${w}`);
   }
   if (got.notes?.length) {
-    lines.push('', 'Notes, kept as they are:');
+    lines.push('', `Notes, kept as they are. ${whoWillReadThese(ContextItemKind.NOTE)}`);
     for (const w of got.notes) lines.push(`- ${w}`);
   }
   if (got.openDecisions?.length) {
-    lines.push('', 'Still to decide, kept for you:');
+    lines.push('', `Still to decide. ${whoWillReadThese(ContextItemKind.DECISION)}`);
     for (const d of got.openDecisions) lines.push(`- ${d}`);
   }
   if (got.notSettled?.length) {
-    lines.push('', 'Not settled, so nothing here is treated as a fact or a target:');
+    lines.push('', `Not settled, so nothing here is treated as a fact or a target. ${whoWillReadThese(ContextItemKind.UNSETTLED)}`);
     for (const n of got.notSettled) lines.push(`- ${n}`);
   }
   if (got.aboutPeople?.length) {
-    lines.push('', 'What you said about each person that is not a number. Kept where only you read it, and never quoted to them or in a report:');
-    for (const a of got.aboutPeople) lines.push(`- ${a.who}: "${a.observation}"`);
+    lines.push('', `What you said about each person that is not a number. ${whoWillReadThese(ContextItemKind.ABOUT_A_PERSON)} They are never quoted to the person or in a report.`);
+    for (const a of got.aboutPeople) lines.push(`- ${called(a.who, a.participantId)}: "${a.observation}"`);
   }
   if (got.commitments?.length) {
     const owned = got.commitments.filter((c) => c.participantId);
     const nobodys = got.commitments.filter((c) => !c.participantId);
     if (owned.length) {
-      lines.push('', 'What people are down as doing. Nobody is marked as having done or not done any of it until they say:');
-      for (const c of owned) lines.push(`- ${c.who}: ${c.action}${c.when ? ` (${c.when})` : ''}${c.theySaidIt ? '' : ' - your words, not theirs'}`);
+      lines.push('', 'This is what people are down as doing. Nobody is marked as having done or not done any of it until they say.');
+      for (const c of owned) lines.push(`- ${called(c.who, c.participantId)}: ${c.action}${c.when ? ` (${c.when})` : ''}${c.theySaidIt ? '' : ' - your words, not theirs'}`);
     }
     if (nobodys.length) {
-      lines.push('', `${nobodys.length === 1 ? 'One thing has' : `${nobodys.length} things have`} no owner. Kept as they are rather than put on the nearest person:`);
+      lines.push('', `${nobodys.length === 1 ? 'One thing has no owner. It is kept as it is' : `${nobodys.length} things have no owner. They are kept as they are`}, and not put on the nearest person.`);
       for (const c of nobodys) lines.push(`- ${c.action}${c.when ? ` (${c.when})` : ''}`);
     }
   }
+  /*
+   * EACH QUESTION AS IT WILL BE ASKED, WORD FOR WORD, AND CONFIRMED ON ITS OWN. Decision 34: this list
+   * used to say "asked in their own words", and nobody had read what the person would actually be
+   * asked. The yes to this list keeps them; it does not send them.
+   */
   if (got.questionsForPeople?.length) {
-    lines.push('', 'Questions you want asked. Each one goes into that person\'s own check-in, asked in their own words:');
-    for (const q of got.questionsForPeople) lines.push(`- ${q.who}: ${q.question}`);
+    const one = got.questionsForPeople.length === 1;
+    lines.push('', one ? 'A question you want asked, exactly as Groundwork will ask it.' : 'Questions you want asked, each one exactly as Groundwork will ask it.');
+    for (const q of got.questionsForPeople) {
+      const thatQuestion = q.exactQuestion?.trim() || plainQuestionFrom(q.question, q.who);
+      /* A question the lead put to themselves is said as theirs, and nobody else is asked it. */
+      lines.push(opts.reader?.participantId && q.participantId === opts.reader.participantId
+        ? `- ${A_QUESTION_YOU_PUT_TO_YOURSELF(thatQuestion)}`
+        : `- ${whatGroundworkWillAsk(q.who, thatQuestion)}`);
+    }
+    lines.push(one ? THIS_ONE_IS_NOT_ASKED_UNTIL_YOU_CONFIRM_IT : NONE_IS_ASKED_UNTIL_YOU_CONFIRM_IT);
   }
   if (got.betweenPeople?.length) {
-    lines.push('', 'Between two people, so it sits with neither of them alone. Kept for you, never quoted to either:');
+    lines.push('', `Between two people, so it sits with neither of them alone. ${whoWillReadThese(ContextItemKind.BETWEEN_PEOPLE)} It is never quoted to either of them.`);
     for (const b of got.betweenPeople) lines.push(`- ${b.who.join(' and ')}: ${b.issue}`);
   }
   if (got.unmatched.length) {
-    lines.push('', `${got.unmatched.length === 1 ? 'One name is' : `${got.unmatched.length} names are`} not on this check-in: ${got.unmatched.join(', ')}. Add them and I will put their part on too.`);
+    lines.push('', got.unmatched.length === 1
+      ? 'One name is not on this check-in, so nothing is saved for them yet. If you add them and send this again, I will put their part on too.'
+      : `${got.unmatched.length} names are not on this check-in, so nothing is saved for them yet. If you add them and send this again, I will put their part on too.`);
+    for (const name of got.unmatched) {
+      const parts = got.unmatchedParts?.[name] ?? [];
+      lines.push(parts.length ? `- ${name} (${parts.join('; ')})` : `- ${name}`);
+    }
   }
   /*
    * AND WHAT THE PASTE DID NOT SETTLE, SAID OUT LOUD.
@@ -290,14 +423,17 @@ export function whatWeTookFromThat(got: WhatAPasteGives, opts: { asking?: boolea
    * number, no success sentence". The product knew all three and said none of them, so a lead read a
    * long confident list and could not see what was still missing from it.
    */
+  if (opts.told) {
+    lines.push('', opts.asking ? WHAT_PEOPLE_ARE_TOLD_OPENS : WHAT_PEOPLE_WERE_TOLD_OPENS, `“${opts.told}”`);
+  }
   const open: string[] = [];
-  if (!got.success) open.push('nothing in it says what doing well looks like, so nothing is set as the yardstick');
+  if (!got.success) open.push('Nothing in it says what doing well looks like, so nothing is set as the yardstick.');
   const noOwner = (got.commitments ?? []).filter((c) => !c.participantId).length;
-  if (noOwner) open.push(`${noOwner} thing${noOwner === 1 ? '' : 's'} to do with nobody's name on ${noOwner === 1 ? 'it' : 'them'}`);
+  if (noOwner) open.push(noOwner === 1 ? "One thing to do has nobody's name on it." : `${noOwner} things to do have nobody's name on them.`);
   const withoutANumber = (got.forPeople ?? []).filter((p) => !p.targets.length).map((p) => p.who);
-  if (withoutANumber.length) open.push(`${withoutANumber.join(', ')} ${withoutANumber.length === 1 ? 'has' : 'have'} something expected of them and no number to measure it by`);
+  if (withoutANumber.length) open.push(`${withoutANumber.join(', ')} ${withoutANumber.length === 1 ? 'has' : 'have'} something expected of them and no number to measure it by.`);
   if (open.length) {
-    lines.push('', `What this does not settle: ${open.join('; ')}.`);
+    lines.push('', `Some things are still not settled. ${open.join(' ')}`);
   }
   lines.push('', opts.asking ? 'Record all of this?' : 'Nothing else from it is kept.');
   return lines.join('\n');
@@ -318,6 +454,43 @@ export function whatWeTookFromThat(got: WhatAPasteGives, opts: { asking?: boolea
  * opens with THE_LIST_OPENS_WITH, which only whatWeTookFromThat writes.
  */
 export const THE_LIST_OPENS_WITH = 'Here is what I took from that.';
+
+/**
+ * WHICH WAY ONE OF THE TEAM'S NUMBERS GOES, AS THE LIST SAYS IT (decision 69).
+ *
+ * Asking: what the lead said yes to before, or else the suggestion, a limit where the paste said "not
+ * to exceed" or the name's words say so, and an aim otherwise. Recorded: only what was said yes to.
+ */
+export function theWayThisNumberGoes(t: { name: string; target: number | null; notToExceed?: boolean; direction?: TargetDirection | null }, asking: boolean): TargetDirection | null {
+  if (t.target == null) return null;
+  if (t.direction) return t.direction;
+  if (!asking) return null;
+  return t.notToExceed ? 'LIMIT' : whatTheWordsSuggest(t.name, t.target);
+}
+
+/**
+ * THE DIRECTIONS THE LEAD SAID YES TO, READ OFF THE LIST THEY ANSWERED (decision 69).
+ *
+ * A yes re-reads the paste, and a second reading can come back with a different "not to exceed" from
+ * the first. What the lead agreed to is what the list in front of them said, so it is read from there,
+ * the same way `theTellingInTheList` reads what participants are told. Keyed on the name, flattened.
+ */
+export function theDirectionsInTheList(history: { role: 'user' | 'assistant'; content: string }[] | null | undefined): Map<string, TargetDirection> {
+  const out = new Map<string, TargetDirection>();
+  const lastAssistant = [...(history ?? [])].reverse().find((t) => t.role === 'assistant')?.content ?? '';
+  if (!lastAssistant.trim().startsWith(THE_LIST_OPENS_WITH)) return out;
+  for (const line of lastAssistant.split('\n')) {
+    const m = line.match(/^-\s+(.+):\s+[^:]+,\s+(an aim to reach|a limit not to go over)\s*$/);
+    if (!m) continue;
+    out.set(aNameKey(m[1]), m[2] === A_LIMIT_NOT_TO_GO_OVER ? 'LIMIT' : 'AIM');
+  }
+  return out;
+}
+
+/** A target's name as the list and the yes compare it: lower case, one space, no end stop. */
+export function aNameKey(name: string): string {
+  return (name ?? '').toLowerCase().replace(/\s+/g, ' ').replace(/[.\s]+$/, '').trim();
+}
 
 /** Their answer to "Record all of this?", with nothing else in it. Anything longer is a new instruction. */
 const A_PLAIN_YES = /^(yes|yep|yeah|yup|ok|okay|sure|go ahead|do it|please do|confirm(ed)?|record (it|that|all of (it|that|this))|save (it|that)|take (it|that|the rest)|all of it|that is right|correct)\b[\s\S]{0,60}$/i;
@@ -528,6 +701,30 @@ const stem = (w: string): string =>
    demos supported" were written as two of David's measures by one paste read twice. */
 const wordsOf = (name: string): string[] =>
   (name ?? '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length > 2).map(stem);
+
+/**
+ * A NUMBER THE MODEL GAVE, AS THE PASTE WROTE IT.
+ *
+ * Found on the quarterly plan (4 October 2026): "late deliveries under 5%" came back as 0.05, was
+ * rounded to a whole number, and was stored as a limit of 0. A fraction under one is a percentage the
+ * model wrote as a fraction only where the paste really says that percentage ("5%"); otherwise it
+ * cannot be known what was meant, and no number is kept (the line is then tracked rather than counted,
+ * as it says). Whole numbers are rounded as they always were.
+ */
+export function theNumberAsWritten(n: number | null | undefined, pasted: string): number | null {
+  if (n == null || !Number.isFinite(n) || n <= 0) return null;
+  if (n >= 1) return Math.round(n);
+  const pct = Math.round(n * 100);
+  if (pct < 1) return null;
+  return new RegExp(`(?:^|[^\\d.])${pct}(?:\\.0+)?\\s?(?:%|percent|per cent)`, 'i').test(pasted ?? '') ? pct : null;
+}
+
+/** Whether these two names are made of the same words, whatever the order. Stricter than theSameMeasure, which lets one name sit inside another. */
+export function theSameWords(a: string, b: string): boolean {
+  const x = [...new Set(wordsOf(a))].sort();
+  const y = [...new Set(wordsOf(b))].sort();
+  return x.length > 0 && x.length === y.length && x.every((w, i) => w === y[i]);
+}
 
 /** Whether these two names are the same thing said at different lengths. */
 export function theSameMeasure(a: string, b: string): boolean {

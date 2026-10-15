@@ -63,7 +63,8 @@ describe('composition never costs the answer', () => {
     const { service } = svc(async () => reply);
     const r = await ask(service);
     expect(r.composedBy).toBe('model');
-    expect(r.styleVersion).toBe('v3');
+    /* v4 since 26 September 2026, when the one wording rulebook went into the style. */
+    expect(r.styleVersion).toBe('v4');
     expect((r.blocks[0] as any).body).toBe(reply);
   });
 

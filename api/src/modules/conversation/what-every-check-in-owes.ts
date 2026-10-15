@@ -230,7 +230,7 @@ export const WHAT_EACH_SITUATION_ADDS: Record<string, Owed[]> = {
  * specific projects are you working on right now" for a man in his first weeks. At a start, the
  * honest first-stage questions are what they mean to do first and how they mean to go about it.
  */
-const STARTING = new Set(['NEW_HIRE', 'NEW_COFOUNDER', 'NEW_ADVISOR', 'NEW_PROJECT', 'NEW_MANAGER', 'ROLE_HANDOVER']);
+const STARTING = new Set(['NEW_HIRE', 'NEW_COFOUNDER', 'NEW_ADVISOR', 'NEW_PROJECT', 'HELP_TEAM_UNDERSTAND', 'NEW_MANAGER', 'ROLE_HANDOVER']);
 const AT_A_START: Owed = {
   id: 'actually',
   what: 'what they mean to do first, and how they intend to go about it - their approach, not a list of things already done',
@@ -243,3 +243,6 @@ export function everythingOwedFor(scenario: string): Owed[] {
   const spine = STARTING.has(scenario) ? THE_SPINE.map((o) => (o.id === 'actually' ? AT_A_START : o)) : THE_SPINE;
   return [...spine, ...(WHAT_EACH_SITUATION_ADDS[scenario] ?? [])];
 }
+
+/* The anchor's check-ins owe what a project's did before the anchor had a situation of its own. */
+WHAT_EACH_SITUATION_ADDS.HELP_TEAM_UNDERSTAND = WHAT_EACH_SITUATION_ADDS.NEW_PROJECT;

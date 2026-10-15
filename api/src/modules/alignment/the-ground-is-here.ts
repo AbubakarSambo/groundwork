@@ -13,5 +13,5 @@ import { PrismaService } from '../prisma/prisma.service';
  */
 export async function theGroundIsHere(prisma: PrismaService, groundId: string, organizationId: string): Promise<void> {
   const ground = await prisma.ground.findFirst({ where: { id: groundId, organizationId }, select: { id: true } });
-  if (!ground) throw new NotFoundException('Check-in not found');
+  if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 }

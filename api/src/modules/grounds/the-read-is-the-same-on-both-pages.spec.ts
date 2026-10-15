@@ -23,7 +23,9 @@ import { alignmentRead } from './grounds.service';
  *      differs from the ground's, and a cross-org party deserves the same read as everybody else.
  */
 const SRC = readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8');
-const GET = SRC.slice(SRC.indexOf('async get(id: string'), SRC.indexOf('async getSessionProgress('));
+/* Ends at the mediator brief, which comes first: its report lookup (central question and whether it is released, decision 76 item 4)
+   feeds no alignment read, and this guard is about the lookups get() hands to alignmentRead. */
+const GET = SRC.slice(SRC.indexOf('async get(id: string'), SRC.indexOf('async getMediatorBrief('));
 
 describe('the counted fields are fetched wherever the read is computed', () => {
   it('both report lookups that feed the read select agreements and divergences', () => {

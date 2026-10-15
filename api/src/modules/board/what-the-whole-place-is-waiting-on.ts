@@ -12,14 +12,21 @@
  * only widens the scope and adds the one thing a single ground cannot know: how long.
  */
 import { ReadDependency, blockerHasSubstance, dedupeDependencies } from './reads';
+import type { WhoIsWaiting } from './the-person-waiting-by-name';
+import { itWasTakenFurther } from '../reports/what-they-said-they-did-about-it';
 
 /** A handoff with the two things a ground-scoped read cannot carry: whose it is, and where. */
-export type OrgDependency = ReadDependency & {
+/** Who is waiting travels with the wait, so each reader can be told a name or not (the-person-waiting-by-name.ts). */
+export type OrgDependency = ReadDependency & Partial<Omit<WhoIsWaiting, 'groundLabel'>> & {
   groundId: string;
   groundLabel: string;
   /** The waiting person, resolved across grounds. Their participant row differs in each one. */
   fromPersonKey: string;
   onPersonKey: string | null;
+  /** The name of the person it waits on, where they are somebody in the check-in. Never an address. */
+  onName?: string | null;
+  /** What they said they did about it, in their own words (what-they-said-they-did-about-it.ts). */
+  triedSaid?: string | null;
 };
 
 export type WaitingOn = OrgDependency & { waitingDays: number };
@@ -63,6 +70,18 @@ export function whatThePlaceIsWaitingOn(deps: OrgDependency[], now: Date): Waiti
       fromParticipantId: d.fromPersonKey,
       onParticipantId: d.onPersonKey,
     })),
+    /*
+     * WHETHER IT WAS TAKEN FURTHER SURVIVES THE MERGE (3 October 2026). The oldest mention is the one
+     * kept, and the product's overnight stamp (`escalatedAt`) or the person's own "I took it to the head
+     * of finance" (`triedSaid`) can sit on a later one. Either is kept: the earliest stamp, and the words
+     * that say it was taken further over words that do not.
+     */
+    (kept, said) => {
+      const k = kept as OrgDependency;
+      const s = said as OrgDependency;
+      if (s.escalatedAt && (!k.escalatedAt || new Date(s.escalatedAt).getTime() < new Date(k.escalatedAt).getTime())) k.escalatedAt = s.escalatedAt;
+      if (s.triedSaid?.trim() && (!k.triedSaid?.trim() || (itWasTakenFurther({ triedSaid: s.triedSaid }) && !itWasTakenFurther({ triedSaid: k.triedSaid })))) k.triedSaid = s.triedSaid;
+    },
   ) as OrgDependency[];
 
   return byPerson

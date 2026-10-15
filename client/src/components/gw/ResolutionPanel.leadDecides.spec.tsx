@@ -78,13 +78,17 @@ describe('what the new hire sees', () => {
     await screen.findByText('Keep the hire')
     expect(screen.queryByText('This is my answer')).toBeNull()
     expect(screen.queryByText('Change my answer')).toBeNull()
+    expect(screen.queryByText('Save the outcome and end it')).toBeNull()
+    expect(screen.queryByLabelText('Why, in a sentence or two')).toBeNull()
   })
 
   it('says plainly who decides, and that their account still counts', async () => {
     ;(resolutionApi.get as any).mockResolvedValue(state())
     renderPanel()
-    expect(await screen.findByText(/Whoever runs it decides which one it is/i)).toBeTruthy()
-    expect(screen.getByText(/account stays on the record either way/i)).toBeTruthy()
+    /* U.11: the prototype's words (ending-and-probation-review.txt), with the lead's name. */
+    expect(await screen.findByText(
+      'These are the outcomes this check-in can reach. the manager decides which one it is. Your words are kept either way, and you can still correct or add to them.',
+    )).toBeTruthy()
   })
 
   it('does not tell them everyone has to agree, because they do not', async () => {
@@ -101,14 +105,15 @@ describe('what the lead sees on the same ground', () => {
   it('can choose', async () => {
     ;(resolutionApi.get as any).mockResolvedValue(state({ viewerIsLead: true }))
     renderPanel()
-    expect(await screen.findByText('This is my answer')).toBeTruthy()
+    expect(await screen.findByText('Save the outcome and end it')).toBeTruthy()
   })
 
   it('is told it is theirs to decide, and that what people shared stands either way', async () => {
     ;(resolutionApi.get as any).mockResolvedValue(state({ viewerIsLead: true }))
     renderPanel()
     expect(await screen.findByText(/yours to decide/i)).toBeTruthy()
-    expect(screen.getByText(/what each person shared stays whichever way you go/i)).toBeTruthy()
+    /* U.11: one other person, so the prototype's "each of you" (it said "each person"). */
+    expect(screen.getByText(/what each of you shared stays whichever way you go/i)).toBeTruthy()
   })
 })
 

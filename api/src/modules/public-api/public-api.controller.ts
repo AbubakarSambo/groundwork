@@ -692,7 +692,7 @@ export class PublicApiController {
   @ApiOperation({ summary: 'Open a check-in as the person this panel session belongs to' })
   async openCheckInFromPanel(
     @Req() req: { panel: PanelCaller },
-    @Body() dto: { label?: string; scenario?: string; moment?: string; timelineDays?: number; cadence?: string; participants?: { personExternalId: string; roleAsDescribed?: string }[] },
+    @Body() dto: { label?: string; scenario?: string; moment?: string; timelineDays?: number; runsUntilEnded?: boolean; cadence?: string; participants?: { personExternalId: string; roleAsDescribed?: string }[] },
   ) {
     return this.checkIns.openACheckIn(req.panel.organizationId, req.panel.personId, dto);
   }

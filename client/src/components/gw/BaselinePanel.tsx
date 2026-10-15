@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
-import { Sec, Card } from '@/components/gw/kit'
+import { Section, Panel } from '@/components/gw/ui'
 import { toast } from 'sonner'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import { withSentenceCase } from '@/lib/an-aim-reads-as-a-sentence'
 
 /**
  * THE TEAM'S STARTING POINT. `GroundBaseline`, which had no reader and no writer.
@@ -31,7 +32,7 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
  * read against is the last thing that should be private from them, and if it moved mid-ground, the
  * move is the part they most need to see.
  */
-export function BaselinePanel({ groundId, canState }: { groundId: string; canState: boolean }) {
+export function BaselinePanel({ groundId, canState, groundStartedAt }: { groundId: string; canState: boolean; groundStartedAt?: string | null }) {
   const qc = useQueryClient()
   const [open, setOpen] = useState(false)
   const [success, setSuccess] = useState('')
@@ -67,13 +68,12 @@ export function BaselinePanel({ groundId, canState }: { groundId: string; canSta
   })
 
   return (
-    <div>
-      <Sec title="What doing well looks like" />
-      <Card pad="block">
+    <Section heading="What doing well looks like">
+      <Panel>
         {current ? (
           <>
             <div style={{ fontSize: 13.5, color: 'var(--gw-text)', lineHeight: 1.65 }}>
-              {current.successLooksLike || 'Not stated yet.'}
+              {current.successLooksLike ? withSentenceCase(current.successLooksLike) : 'Not stated yet.'}
             </div>
             {current.conditions.length > 0 && (
               <div style={{ marginTop: 12 }}>
@@ -98,8 +98,15 @@ export function BaselinePanel({ groundId, canState }: { groundId: string; canSta
               * that had actually been restated, not by reading the code.
               */}
             <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 10, lineHeight: 1.55 }}>
+              {/**
+                * B-141: version 1 is never a restatement, so its date is the check-in's own start
+                * date, not whenever the version-1 row happened to be written on the record
+                * (`effectiveFrom` can trail the real start - see when-the-clock-starts.ts for how the
+                * server itself picks a start date). A later version really did change something on
+                * that date, so it keeps `effectiveFrom`.
+                */}
               {current.version === 1
-                ? `Stated at the start, ${whenItWas(current.effectiveFrom, 'dayAndMonthLong')}.`
+                ? `Stated at the start, ${whenItWas(groundStartedAt || current.effectiveFrom, 'dayAndMonthLong')}.`
                 : `Version ${current.version}, from ${whenItWas(current.effectiveFrom, 'dayAndMonthLong')}.`}
               {current.changeReason && (
                 <> Changed because: {current.changeReason}</>
@@ -113,27 +120,28 @@ export function BaselinePanel({ groundId, canState }: { groundId: string; canSta
               * report will and will not be able to answer, which is the same framing
               * `what-this-ground-can-tell-you.ts` uses and the reason it works.
               */}
-            Nothing stated yet. The report can show where accounts differ without it. It cannot say
+            Nothing stated yet. The report can show where people's answers differ without it. It cannot say
             whether things went well, because nothing has said what well would look like.
           </div>
         )}
-      </Card>
+      </Panel>
 
       {/* Earlier versions. The arc is the point: what was believed then, against what is held now. */}
       {earlier.length > 0 && (
         <div style={{ marginTop: 10 }}>
-          <Sec title="What it said before" />
-          <Card pad="block">
+          <Section heading="What it said before">
+          <Panel>
             {earlier.map(v => (
               <div key={v.version} style={{ marginBottom: 10, paddingBottom: 10, borderBottom: '1px solid var(--gw-border)' }}>
-                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>{v.successLooksLike}</div>
+                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>{withSentenceCase(v.successLooksLike)}</div>
                 <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 4 }}>
                   Version {v.version}, until it was restated
                   {v.changeReason ? `. Changed because: ${v.changeReason}` : '.'}
                 </div>
               </div>
             ))}
-          </Card>
+          </Panel>
+          </Section>
         </div>
       )}
 
@@ -148,7 +156,7 @@ export function BaselinePanel({ groundId, canState }: { groundId: string; canSta
 
       {canState && open && (
         <div style={{ marginTop: 10 }}>
-          <Card pad="block">
+          <Panel>
             {/**
               * NOT PRE-FILLED WITH THE CURRENT TEXT. An editable copy of what is there invites a
               * correction, and a corrected baseline stops being a record of what was believed at the
@@ -180,8 +188,8 @@ export function BaselinePanel({ groundId, canState }: { groundId: string; canSta
                   style={{ width: '100%', padding: '9px 11px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
                 />
                 <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, marginTop: 6 }}>
-                  The version above stays on the record either way. A yardstick that moved with no account
-                  of why reads worse than either version does on its own.
+                  The version above stays on the record either way. A yardstick that moved with no reason
+                  given reads worse than either version does on its own.
                 </div>
               </>
             )}
@@ -200,9 +208,9 @@ export function BaselinePanel({ groundId, canState }: { groundId: string; canSta
                 Cancel
               </button>
             </div>
-          </Card>
+          </Panel>
         </div>
       )}
-    </div>
+    </Section>
   )
 }

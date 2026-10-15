@@ -55,7 +55,7 @@ describe('and the questions it must not swallow', () => {
 
 describe('what the answer refuses to mean', () => {
   it('an empty week never reads as everybody being fine', () => {
-    expect(NOTHING_FLAGGED).toContain('not the same as everybody being fine');
+    expect(NOTHING_FLAGGED).toContain('does not tell you how anybody is');
   });
 
   it('and the caveat is three separate things, because one sentence gets skimmed', () => {

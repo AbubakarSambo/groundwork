@@ -1,3 +1,4 @@
+import { withoutCommitmentsFromGoalsNotToldYet } from '../grounds/a-commitment-from-a-goal-not-told-is-not-read-by-its-person';
 import { Injectable, Logger, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
@@ -245,10 +246,10 @@ export class EmbedService {
      */
     const now = new Date();
     if (person.externalId && !alreadyNudgedToday(person.lastNudgedOn, now)) {
-      const open = await this.prisma.commitment.findMany({
+      const open = await withoutCommitmentsFromGoalsNotToldYet(this.prisma, await this.prisma.commitment.findMany({
         where: { organizationId, personExternalId: person.externalId, state: 'OPEN' },
-        select: { id: true, text: true, dueSaid: true, dueAt: true, state: true, lastFollowedUpAt: true },
-      });
+        select: { id: true, text: true, dueSaid: true, dueAt: true, state: true, lastFollowedUpAt: true, sourcePersonObjectiveId: true },
+      }));
       const one = theOneToRaise(open as any, now);
       if (one) {
         await this.prisma.person.update({ where: { id: person.id }, data: { lastNudgedOn: now } });

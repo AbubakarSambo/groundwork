@@ -15,7 +15,8 @@ const send = service.slice(service.indexOf('private async sendEmail('), service.
 describe('the text part', () => {
   it('keeps the words and the link addresses, and drops the markup', () => {
     const t = plainTextOf('<p>Hi &amp; hello</p><p><a href="https://x.test/go" style="x">Read it</a></p>');
-    expect(t).toBe('Hi & hello\nRead it (https://x.test/go)');
+    /* Changed 11 October: paragraphs are now separated by a blank line, as a text-only mail program needs to read them as paragraphs. */
+    expect(t).toBe('Hi & hello\n\nRead it (https://x.test/go)');
   });
   it('is passed to the provider on every production send', () => {
     expect(send).toMatch(/const text = plainTextOf\(options\.html\);/);
@@ -25,12 +26,14 @@ describe('the text part', () => {
 
 describe('the way out', () => {
   it('is added for every mail we decided to send, as a footer and as the headers a mail client reads', () => {
-    expect(send).toMatch(/whatThisMailIs\(sender\) !== 'the way back in' \? await this\.theWayToStopHearingFromUs\(options\.to\) : null/);
+    /* Changed 8 October: the footer was on everything except the way back in, so mail an unsubscribed person still gets carried a "stop them here" that stopped nothing. It is on what we decide to send (the-stop-link-is-only-where-it-stops.spec.ts). */
+    expect(send).toMatch(/whatThisMailIs\(sender\) === 'we decided to send it' \? await this\.theWayToStopHearingFromUs\(options\.to\) : null/);
     expect(send).toContain("'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'");
     expect(UNSUBSCRIBE_FOOTER('https://x.test/u/t')).toContain('href="https://x.test/u/t"');
   });
-  it('is minted from the same preference row the digest uses, and only where a person exists to hang it on', () => {
+  /* Changed under decision 109: the old test held that an address on no roster got no footer, which is the defect. Everyone has one now; the behaviour is read in engagement/everyone-can-stop-the-mail-we-decide-to-send.spec.ts. */
+  it('is minted from the preference row the digest uses for a person on a roster, and from the address alone for everybody else', () => {
     expect(service).toMatch(/emailPreference\.upsert\(\{\s*where: \{ organizationId_personExternalId/);
-    expect(service).toMatch(/if \(!person\) return null;/);
+    expect(service).toMatch(/emailAddressPreference\.upsert\(/);
   });
 });

@@ -7,6 +7,8 @@ import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd
 import { conversationApi } from '@/api/conversation'
 import { groundsApi } from '@/api/grounds'
 import { reportsApi } from '@/api/reports'
+import { useAuthStore } from '@/stores/auth'
+import { askNameFor } from '@/lib/ask-name'
 
 /**
  * EVERY SURFACE THAT SHOWS A REPORT, ON ONE PAGE, ON REAL DATA.
@@ -121,6 +123,7 @@ export default function EveryReportSideBySide() {
   const askedFor = params.get('checkin') ?? ''
   const [g, setG] = useState(groundId)
   const [s, setS] = useState(String(sessionNumber))
+  const askName = askNameFor(useAuthStore(state => state.user?.organization?.name?.trim() || state.user?.organizationName))
 
   /*
     FINDING YOUR OWN CHECK-IN RATHER THAN ASKING FOR ITS ID.
@@ -297,7 +300,7 @@ export default function EveryReportSideBySide() {
               head="Subject - The shared picture for this check-in is ready"
               lines={[
                 'Everybody has now checked in, so the shared picture is open to all of you at the same moment.',
-                'It shows where what you each said lines up, where it does not, and the one question worth answering together. It does not quote anybody: the words you wrote stay yours, and the picture draws on them without showing them.',
+                `It shows where what you each said lines up, where it does not, and the one question worth answering together. The people in this check-in, including your manager, can see what you say in it. Your questions to ${askName} stay private.`,
                 'Read the shared picture →',
               ]}
             />

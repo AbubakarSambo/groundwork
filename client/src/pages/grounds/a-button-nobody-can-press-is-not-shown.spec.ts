@@ -43,7 +43,8 @@ describe('each gated control', () => {
   it('the integrations page is behind the same door as the members page', () => {
     const app = read('App.tsx')
     const route = (p: string) => app.slice(app.indexOf(`path="${p}"`), app.indexOf('/>', app.indexOf(`path="${p}"`)))
-    expect(route('/org/integrations')).toContain('<AdminsOnly')
+    /* U.18: Connections moved to the prototype's three addresses; each is behind the same door. */
+    for (const p of ['/settings/connections', '/settings/whatsapp', '/settings/tools']) expect(route(p)).toContain('<AdminsOnly')
     expect(route('/org/members')).toContain('<AdminsOnly')
   })
 

@@ -21,9 +21,9 @@ describe('what a participant is told about this', () => {
     expect(theSituationIn("One session with 24 organisations we work with, to work out where MarketView should expand next. Last year's workshop gave us a word cloud; this time we need something the board can act on.")).toBe('One session with 24 organisations we work with, to work out where MarketView should expand next.');
   });
 
-  it('and the goals they may see are said in one line after it', () => {
+  it('and the goals they may see are said after it, each in a plain sentence', () => {
     const t = whatAParticipantIsToldAboutThis(brief, [{ name: 'New business in the first year', target: 400000 }, { name: 'Two large corporate or foundation projects.', target: 2 }])!;
-    expect(t).toContain('The goals on this check-in: New business in the first year (400,000); Two large corporate or foundation projects (2).');
+    expect(t).toContain('One of the goals on this check-in is new business in the first year, and the number to reach is 400,000. One of the goals on this check-in is two large corporate or foundation projects, and the number to reach is 2.');
     expect(whatAParticipantIsToldAboutThis('Do not lead them.', [])).toBeNull();
   });
 });
@@ -48,7 +48,7 @@ describe('the product writes what a participant is told, once, and checks it', (
       { name: 'Hit N180m', target: 180_000_000, ownerParticipantId: null },
       { name: 'N30m this quarter', target: 30_000_000, ownerParticipantId: 'bola' },
     ], { told: 'Your team is working to a sales target this quarter.', readerParticipantId: 'bola' })!;
-    expect(t).toBe('Your team is working to a sales target this quarter. Your goal: N30m this quarter (30,000,000). The goal for the whole check-in: Hit N180m (180,000,000).');
+    expect(t).toBe('Your team is working to a sales target this quarter. Your goal is 30 million naira this quarter. The goal for the whole check-in is to hit 180 million naira.');
   });
 });
 
@@ -60,7 +60,14 @@ describe('what the product wrote is what the About block reads', () => {
     expect(src).toMatch(/const WHAT_THE_BRIEF_IS_READ_FROM = \{[\s\S]{0,400}toldToParticipants: true/);
     expect(src).toMatch(/told: \(ground as any\)\.toldToParticipants/);
     const grounds = strip(require('fs').readFileSync(require('path').join(__dirname, 'grounds.service.ts'), 'utf8'));
-    expect(grounds).toMatch(/toldToParticipants\?\.trim\(\) \|\| theSituationIn\(brief\)/);
+    /* U.7 third review: the rule moved into one helper that the list and the single read both use. */
+    /* And the scenario, since decision 75, item 13: a team update's one line is the question everybody is sent. */
+    expect(grounds).toMatch(/whatSomeoneWhoDoesNotRunItReads\(\{ brief, toldToParticipants: \(ground as any\)\.toldToParticipants, scenario: \(ground as any\)\.scenario \}\)/);
+    const { whatSomeoneWhoDoesNotRunItReads } = require('./what-someone-who-does-not-run-it-reads');
+    const brief = 'Tunde has just joined us as Engagement Director. Help the person develop clarity.';
+    expect(whatSomeoneWhoDoesNotRunItReads({ brief, toldToParticipants: '  This check-in is about your first year.  ' })).toBe('This check-in is about your first year.');
+    /* Decision 75, item 13: no short version means nothing of the brief, where it used to be its situation sentences. */
+    expect(whatSomeoneWhoDoesNotRunItReads({ brief, toldToParticipants: null })).toBeNull();
   });
 });
 
@@ -109,5 +116,22 @@ describe('the telling has to be about this check-in', () => {
     /* The same sentence stands where there really are more rounds coming. */
     expect(holds('This check-in is about where your markets are growing. It involves short, regular questions in your own words.', { rounds: 6 }))
       .toContain('regular questions');
+  });
+});
+
+/** Review of 1 October 2026, run re-d: the lead's "I" and a number nobody can read, on a participant's page. */
+describe('each goal a participant reads is a plain sentence with numbers a person can read', () => {
+  it('the lead\'s own words about the team\'s goal are about "your lead", and a person\'s own goal is "you"', () => {
+    const t = whatAParticipantIsToldAboutThis('Help the person.', [
+      { name: "I'm aiming for N120 million disbursed this quarter.", target: 120_000_000, ownerParticipantId: null },
+      { name: 'approved facilities', target: 40, ownerParticipantId: null },
+      { name: 'My goal is 14 approved facilities this quarter.', target: 14, ownerParticipantId: 'ngozi' },
+    ], { readerParticipantId: 'ngozi' })!;
+    expect(t).toBe('Your goal is 14 approved facilities this quarter. Your lead is aiming for 120 million naira disbursed this quarter. One of the goals for the whole check-in is approved facilities, and the number to reach is 40.');
+    expect(t).not.toMatch(/\d{5,}|\d,\d{3},\d{3}|:|;|\bI'm\b|\bmy\b/);
+  });
+  it('a limit the lead set is said as a limit', () => {
+    const t = whatAParticipantIsToldAboutThis('Help the person.', [{ name: 'Spending this quarter', target: 180_000, direction: 'LIMIT' }])!;
+    expect(t).toBe('The goal on this check-in is spending this quarter, and the limit not to go over is 180,000.');
   });
 });

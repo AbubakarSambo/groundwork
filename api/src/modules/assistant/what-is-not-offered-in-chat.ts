@@ -34,6 +34,11 @@ export interface NotOffered {
 
 export const NOT_OFFERED_IN_CHAT: NotOffered[] = [
   {
+    area: 'learning',
+    why: 'not a person’s question',
+    because: 'Counts of how patterns, coaching steps and questions have gone, for Groundwork\'s own admin. Nobody inside a customer asks about them in chat.',
+  },
+  {
     area: 'admin',
     why: 'not a person’s question',
     because: 'The platform console. It belongs to us running Groundwork, not to anybody inside a customer.',
@@ -51,7 +56,7 @@ export const NOT_OFFERED_IN_CHAT: NotOffered[] = [
   {
     area: 'billing',
     why: 'not a person’s question',
-    because: 'Money. Nobody should be able to change what an organisation pays by typing a sentence, and a mistake here is not recoverable by saying so.',
+    because: 'Money is not changed in a chat. Nobody should change what an organisation pays by typing a sentence. A mistake here cannot be undone by saying so.',
   },
   {
     area: 'webhooks',
@@ -162,6 +167,16 @@ export const NOT_OFFERED_IN_CHAT: NotOffered[] = [
     why: 'not yet',
     because: 'Outcome feedback after the fact. It has no natural question somebody would ask yet.',
   },
+  {
+    area: 'suggestions',
+    why: 'the chat is the wrong shape',
+    because: 'Suggestions about a person, their side and appeals are private to the people involved. Each one is read and decided on its own page. Hafsah decides whether Ask Groundwork should ever offer them (U.14).',
+  },
+  {
+    area: 'ask',
+    why: 'not a person’s question',
+    because: 'It is Ask Groundwork itself: the door into this chat for somebody signed in to the product. There is nothing in it to ask the chat for.',
+  },
 ];
 
 export const NOT_OFFERED_AREAS = new Set(NOT_OFFERED_IN_CHAT.map((n) => n.area));
@@ -181,6 +196,10 @@ export const REACHABLE_IN_CHAT: Record<string, string> = {
   drafts: 'set_an_objective',
   detectors: 'what_should_we_talk_about',
   knowledge: 'how_we_work',
+  /* Moved off the not-offered list on 3 October (decision 85): an admin sets a suite up by
+     describing it, is asked only what is missing, reads it all back, and nothing is set until the
+     yes, which goes through the same SuitesService methods as the Suites page. */
+  suites: 'set_up_a_suite',
 };
 
 /**

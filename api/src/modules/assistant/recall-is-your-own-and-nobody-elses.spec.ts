@@ -36,6 +36,19 @@ describe('recall is your own and nobody else’s', () => {
   });
 });
 
+describe('and what they said in their own check-ins is found only through their own place in each', () => {
+  /* User journeys, F-13. The words of a check-in are searched too, and the boundary is again where the rows are chosen. */
+  const q = SRC.slice(SRC.indexOf('FROM conversation_turns'), SRC.indexOf('ORDER BY t.created_at DESC'));
+  it('the rows are chosen by the asker\'s own participant ids, found from their own sign-in', () => {
+    expect(q).toContain('c.participant_id = ANY(');
+    expect(SRC).toMatch(/groundParticipant\?\.findMany\?\.\(\{\s*where: \{ userId, ground: \{ organizationId, \.\.\.notAKeptCheckIn\(kept\) \} \}/);
+  });
+  it('only what the person said, never the assistant, and there is one such query', () => {
+    expect(q).toContain("t.role = 'PERSON'");
+    expect([...SRC.matchAll(/FROM conversation_turns/g)]).toHaveLength(1);
+  });
+});
+
 describe('a search word has to carry meaning', () => {
   it('drops stopwords, because "the" is in every sentence anybody writes', () => {
     /*

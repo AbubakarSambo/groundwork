@@ -80,6 +80,25 @@ export function whyTheyDoNotNeedApproval(who: WhoIsArriving): string | null {
   return null;
 }
 
+/**
+ * WHOSE ACTION ADDED THIS PERSON (U.4).
+ *
+ * The rule above says somebody an admin adds does not wait. The code asked the person who RUNS the
+ * check-in, and an admin who sets a check-in up for a lead is not the person who runs it: she named
+ * the lead, added four people, and all four were held for her own approval. So the question is asked
+ * of whoever added this person, recorded on their row; only where nothing recorded it (older rows)
+ * does it fall back to the person who runs the check-in, which is what it always did.
+ */
+export type WhoAddedThem = { role: string; organizationId: string } | null;
+
+export function whoToAsk(addedByUserId: string | null | undefined, initiatorId: string): string {
+  return addedByUserId || initiatorId;
+}
+
+export function isAnAdminOf(groundOrganizationId: string, adder: WhoAddedThem): boolean {
+  return adder?.role === 'ADMIN' && adder.organizationId === groundOrganizationId;
+}
+
 export function needsApproval(who: WhoIsArriving): boolean {
   return whyTheyDoNotNeedApproval(who) === null;
 }
@@ -93,3 +112,18 @@ export const WAITING_TO_BE_LET_IN =
 /** And the sentence the gate throws, which is the same fact in one line. */
 export const CANNOT_CHECK_IN_YET =
   'This check-in cannot start until an admin at the organisation that invited you approves you joining it.';
+
+/**
+ * AND THE REPORT WAITS AT THE SAME DOOR (request 49, 29 September 2026).
+ *
+ * The check-in refused somebody still waiting to be let in, and the report did not: Faraji, held
+ * for a seat, opened `GET /grounds/:id/report` and was served the released team report with every
+ * name in it. The decision: somebody held for a seat reads no report of a check-in - not the team
+ * report, not any session's, not the rounds, not the board, not a name - until an admin lets them
+ * into the organisation. Not "until they have answered": they cannot answer while held.
+ */
+export const CANNOT_READ_THE_REPORT_YET =
+  "You can read this check-in's report once an admin at the organisation that invited you approves you joining it.";
+
+export const CANNOT_OPEN_THE_BOARD_YET =
+  "You can open this check-in's board once an admin at the organisation that invited you approves you joining it.";

@@ -94,11 +94,16 @@ const REACHED_FROM_OUTSIDE = [
    */
   '/billing/callback',
   /**
-   * `RequireOrgSetup` and `RootRoute` redirect an admin with an incomplete org here - both live in
-   * App.tsx, which this scan excludes on purpose (every route would trivially "link" to itself
-   * otherwise). Nothing should link to it directly; arriving is the redirect's job, not a click's.
+   * An old address, kept because links to it are out there: it goes to /org-new ("Create an
+   * organisation", U.3), which the organisation menu links to. Nothing should link to the old one.
    */
   '/org/setup',
+  /**
+   * The old address of the Connect page (U.18). The links in the API-access and failed-delivery
+   * emails still carry it, and those emails must keep working exactly as now; it opens
+   * /settings/tools, "Connect your own tools", the page it always was. Nothing should link to it.
+   */
+  '/org/integrations',
   /**
    * The Groundwork team's own back office. Reached by typing the address, like
    * the prompt tools under /admin, and deliberately not linked from the product:
@@ -120,6 +125,14 @@ const REACHED_FROM_OUTSIDE = [
    * `/signout` entry above had been resting on precisely that kind of claim.
    */
   '/talk-to-us',
+  /**
+   * THE ANCHOR SCENARIO'S OWN FRONT DOOR (plan piece 2, docs/anchor-scenario-plan.md section 5).
+   * Reached the same way as "/answer": a link shared on WhatsApp, LinkedIn or email, not a link
+   * from inside this app. The app does not navigate to it on purpose - a signed-in person already
+   * has /start - and the page itself redirects there whenever the engine's switch is not on, which
+   * is its only state today (request 144, docs/requests-to-engine.md).
+   */
+  '/start/team',
 ]
 
 /**

@@ -35,9 +35,10 @@ vi.mock('@/api/auth', () => ({
 vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ user: null, isAuthenticated: false }) }))
 
 /**
- * The setup panel only appears once the check-in has been saved, and `emailSent`
- * is not restored from storage - so the save is driven for real rather than
- * seeded, which is closer to what the person does anyway.
+ * U.6: the schedule used to appear only after the check-in was saved, so this spec drove the save.
+ * It is set before saving now (TheSetup, from the prototype's setup.txt), so the spec reads it on
+ * the save card directly. The rhythms are named as the prototype names them ("Every week", not
+ * "Weekly"); what the spec holds - that an unchosen rhythm says so - is unchanged.
  */
 function seedSaved() {
   localStorage.setItem('gw_entry_session', JSON.stringify({
@@ -55,9 +56,8 @@ function seedSaved() {
 }
 
 async function saveTheGround() {
-  const emailBox = await screen.findByPlaceholderText(/your@email/i, {}, { timeout: 4000 })
-  fireEvent.change(emailBox, { target: { value: 'sahar@x.test' } })
-  fireEvent.click(screen.getByRole('button', { name: /Save my check-in/i }))
+  /* Nothing to press any more: the save card itself carries the schedule. */
+  await screen.findByPlaceholderText(/your@email/i, {}, { timeout: 4000 })
 }
 
 function renderPage() {
@@ -90,7 +90,7 @@ describe('the cadence nobody picked', () => {
     await saveTheGround()
     await waitFor(() => expect(screen.getByText(/Not set yet/i)).toBeTruthy())
 
-    fireEvent.click(screen.getByRole('button', { name: /^Weekly$/i }))
+    fireEvent.click(screen.getByRole('radio', { name: /^Every week$/i }))
 
     await waitFor(() => expect(screen.queryByText(/Not set yet/i)).toBeNull())
   })
@@ -101,9 +101,10 @@ describe('the cadence nobody picked', () => {
     seedSaved()
     renderPage()
     await saveTheGround()
-    await waitFor(() => expect(screen.getByRole('button', { name: /^Weekly$/i })).toBeTruthy())
-    for (const label of ['One time', 'Daily', 'Weekly', 'Every 2 weeks', 'Monthly']) {
-      expect(screen.getByRole('button', { name: new RegExp(`^${label}$`, 'i') })).toBeTruthy()
+    await waitFor(() => expect(screen.getByRole('radio', { name: /^Every week$/i })).toBeTruthy())
+    for (const label of ['Once', 'Every day', 'Every week', 'Every 2 weeks', 'Every month', 'When I choose']) {
+      /* Setup page, piece 3a: the rhythms are the shared `Choices` now (the prototype's `.seg`), one radio each. */
+      expect(screen.getByRole('radio', { name: new RegExp(`^${label}$`, 'i') })).toBeTruthy()
     }
   })
 })

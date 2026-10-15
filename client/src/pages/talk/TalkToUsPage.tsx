@@ -25,7 +25,7 @@ import { MARKETING_URL } from '@/lib/marketing'
  */
 const WHAT_ABOUT = [
   { key: 'coach', label: 'A coach in the room', lead: 'We would like a coach in the room.' },
-  { key: 'setup', label: 'Setting us up', lead: 'We would like help getting set up and training the team.' },
+  { key: 'setup', label: 'Setting you up', lead: 'We would like help getting set up and training the team.' },
   { key: 'integration', label: 'Integration support', lead: 'We would like help connecting Groundwork to our own tools.' },
   { key: 'other', label: 'Something else', lead: '' },
 ] as const

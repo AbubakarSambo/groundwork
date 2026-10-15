@@ -76,13 +76,16 @@ describe('the conversation', () => {
     expect(body.indexOf('The scope moved.')).toBeLessThan(body.indexOf('Still waiting on the partner.'))
   })
 
-  it('divides by session, with the date alongside', async () => {
+  it('divides by session, with the date alongside, as one plain phrase', async () => {
     // The one deliberate departure from a chat app: the unit here is the session,
     // which can span days, and the date is for orientation.
+    //
+    // U.8 re-review: this used to be two pieces stuck together with a dot -
+    // "Session 1 · 10 Aug 2026" - which is a label and a stamp, not a sentence
+    // anybody would say. It is one phrase now, with the month said in full.
     renderChat()
-    await waitFor(() => expect(screen.getByText(/Session 1/)).toBeTruthy())
-    expect(screen.getByText(/10 Aug 2026/)).toBeTruthy()
-    expect(screen.getByText(/24 Aug 2026/)).toBeTruthy()
+    await waitFor(() => expect(screen.getByText(/Session 1, on 10 August 2026/)).toBeTruthy())
+    expect(screen.getByText(/Session 2, on 24 August 2026/)).toBeTruthy()
   })
 
   it('labels a correction as an addition to the session it corrects', async () => {

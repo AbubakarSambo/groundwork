@@ -3,6 +3,7 @@ import { reportsApi } from '@/api/reports'
 import { toast } from 'sonner'
 import { useState } from 'react'
 import type { GroundParticipant } from '@/types'
+import { Button } from '@/components/gw/ui/Button'
 
 /**
  * THE PLACE TO SEND THE REPORT TO EVERYONE, AT THE END.
@@ -22,6 +23,14 @@ import type { GroundParticipant } from '@/types'
  * choice belongs at the moment of sending, because that is the moment somebody knows who is about
  * to read it. Named is preselected: it is what this did before the choice existed, and quietly
  * switching a hundred people to anonymised would be the product deciding by another route.
+ *
+ * GROUP 3 REVIEW, BATCH B: this used to be a boxed, bordered card of its own, with a navy button,
+ * sitting ABOVE "Every session" - the prototype's own sessions.jpg has no such card at all, and
+ * two navy buttons on one screen (this one beside the header's own navy "Your check-in") is more
+ * than the one navy button a screen gets. It is placed AFTER `TheReportIsAListOfSessions` now
+ * (GroundAdminPage.tsx), drawn as a short line rather than a card, and its button is `Button
+ * kind="secondary"` - white, the prototype's own outlined button - not navy. Every action it
+ * offered keeps working: sending, choosing named or anonymised, and reading who gets it.
  */
 export function SendTheReportToEveryone({ groundId, participants, answered }: {
   groundId: string
@@ -34,31 +43,66 @@ export function SendTheReportToEveryone({ groundId, participants, answered }: {
   const reachable = participants.filter((p) => answered.has(p.id) && p.partyType !== 'INITIATOR' && p.wantsTheReport !== false && !!p.email && !p.email.endsWith('@unclaimed.invalid'))
   const declined = participants.filter((p) => answered.has(p.id) && p.wantsTheReport === false)
   const [how, setHow] = useState<'NAMED' | 'ANONYMOUS'>('NAMED')
+  /**
+   * ONCE EVERYBODY WHO ASKED FOR IT ALREADY HAS IT, THE BUTTON HAS NOTHING LEFT TO DO.
+   *
+   * "Send to 1" used to answer "Everybody who asked for it already has it." as a toast that faded,
+   * leaving the same live "Send to 1" button behind it - press it again and it says the same thing
+   * again. `reachable` only asks who is allowed to be sent the report, not who already has this
+   * round's copy, so it stays the same count before and after a send that reached nobody. This
+   * remembers that answer so the button gives way to the sentence instead of repeating itself.
+   */
+  const [everybodyAlreadyTold, setEverybodyAlreadyTold] = useState(false)
   const send = useMutation({
     mutationFn: () => reportsApi.sendToEveryone(groundId, how),
     onSuccess: (r) => {
-      toast.success(r.sent === 0 && r.alreadyTold > 0 ? 'Everybody who asked for it already has it.' : `Sent to ${r.sent} ${r.sent === 1 ? 'person' : 'people'}${r.alreadyTold ? `; ${r.alreadyTold} already had it` : ''}.`)
+      if (r.sent === 0 && r.alreadyTold > 0) {
+        setEverybodyAlreadyTold(true)
+        toast.success('Everybody who asked for it already has it.')
+      } else {
+        setEverybodyAlreadyTold(false)
+        toast.success(`Sent to ${r.sent} ${r.sent === 1 ? 'person' : 'people'}${r.alreadyTold ? `; ${r.alreadyTold} already had it` : ''}.`)
+      }
+      /*
+       * FAULT 5 (LIVE RE-WALK): THE REPORT ROW SAID "NOT SHARED" UNTIL A RELOAD. A send that
+       * reaches everybody marks the report released server-side, but this only ever invalidated
+       * `['ground', groundId]` - the row that reads "Shared"/"Not shared yet" (YourWork.tsx's
+       * "Your reports", off `ground.report.releasedAt`) refreshed, but the report itself
+       * (`['report', groundId]`, GroundParticipantPage.tsx and TheSessionsReport.tsx) and each
+       * session's own shaped report (`['session-shaped-report', groundId, sessionNumber]`,
+       * TheSessionsReport.tsx) did not, so a reader already on one of those pages kept reading the
+       * stale, unreleased copy. Invalidated here too - a prefix match on `['session-shaped-
+       * report', groundId]` reaches every session number's own query without naming each one.
+       */
       qc.invalidateQueries({ queryKey: ['ground', groundId] })
+      qc.invalidateQueries({ queryKey: ['report', groundId] })
+      qc.invalidateQueries({ queryKey: ['session-shaped-report', groundId] })
     },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not send. Try again.'),
   })
   if (!answered.size) return null
+  /* Nothing left for the button to do: either nobody here may be sent it, or the last press
+     already reached everybody it could. Either way, say so instead of offering a press that can
+     only repeat the same answer. */
+  const nothingLeftToSend = reachable.length === 0 || everybodyAlreadyTold
   return (
-    <section aria-label="Send the report to everyone" style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 12 }}>
+    <section aria-label="Send the report to everyone" style={{ marginTop: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <div>
-          <div style={{ fontWeight: 700, fontSize: 14 }}>Send the report to everyone who asked for it</div>
-          <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 2 }}>
-            {reachable.length} {reachable.length === 1 ? 'person' : 'people'} answered and asked for it{declined.length ? `; ${declined.length} said no thanks` : ''}. Each gets a link to this session's report, once.
-          </div>
-        </div>
-        <button
-          onClick={() => send.mutate()}
-          disabled={send.isPending || reachable.length === 0}
-          style={{ padding: '9px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: send.isPending || reachable.length === 0 ? .5 : 1 }}
-        >
-          {send.isPending ? 'Sending…' : `Send ${how === 'ANONYMOUS' ? 'anonymised ' : ''}to ${reachable.length}`}
-        </button>
+        <p style={{ fontSize: 13.5, color: 'var(--gw-text)', margin: 0 }}>
+          {/*
+            ANSWERING IS NOT ASKING (real-user walk, Kijani Foods, fault 6). "2 people answered and
+            asked for the report" was not true: everyone who answers is counted here, whether or not
+            they asked for anything - `wantsTheReport !== false` is the default, not something a
+            person had to request. Two full sentences in place of one joined with a semicolon.
+          */}
+          {reachable.length} {reachable.length === 1 ? 'person has' : 'people have'} answered.{declined.length ? ` ${declined.length} ${declined.length === 1 ? 'person' : 'people'} said no thanks.` : ''} Each gets a link to this session's report, once.
+          {everybodyAlreadyTold && ' Everybody who asked for it already has it.'}
+        </p>
+        {!nothingLeftToSend && (
+          <Button kind="secondary" size="small" onClick={() => send.mutate()} disabled={send.isPending}>
+            {send.isPending ? 'Sending…' : `Send ${how === 'ANONYMOUS' ? 'anonymised ' : ''}to ${reachable.length}`}
+          </Button>
+        )}
       </div>
       {reachable.length > 0 && (
         <fieldset style={{ border: 0, padding: 0, margin: '12px 0 0' }}>
@@ -82,7 +126,9 @@ export function SendTheReportToEveryone({ groundId, participants, answered }: {
         <details style={{ marginTop: 8 }}>
           <summary style={{ fontSize: 12.5, color: 'var(--gw-navy)', cursor: 'pointer' }}>Who gets it</summary>
           <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12.5, color: 'var(--gw-sub)' }}>
-            {reachable.map((p) => <li key={p.id}>{nameOf(p) ? `${nameOf(p)} · ` : ''}{p.email}</li>)}
+            {/* A name and an address joined by a dot read as two fragments stapled together
+                (real-user walk, Kijani Foods, fault 6): "Esther Adeyemi (esther@kijani.test)". */}
+            {reachable.map((p) => <li key={p.id}>{nameOf(p) ? `${nameOf(p)} (${p.email})` : p.email}</li>)}
           </ul>
         </details>
       )}

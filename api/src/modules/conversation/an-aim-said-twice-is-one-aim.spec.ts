@@ -1,4 +1,4 @@
-import { theAimsThatAreNew, isTheSameAimSaidAsItsNumber } from './an-aim-said-twice-is-one-aim';
+import { theAimsThatAreNew, isTheSameAimSaidAsItsNumber, theCountTheNameAimsAt } from './an-aim-said-twice-is-one-aim';
 
 describe('an aim said twice is one aim', () => {
   const onBoard = [{ name: 'units of tea sold in Abuja', target: 10000 }];
@@ -137,5 +137,30 @@ describe('a verb is not what an aim is about', () => {
     const existing = [{ name: 'Secure the federal ministry MOU', target: null }];
     const fresh = [{ name: 'Get the state government letters of support', target: null }];
     expect(theAimsThatAreNew(fresh, existing)).toHaveLength(1);
+  });
+});
+
+/**
+ * "GET TO 20 PAYING CUSTOMERS BY DECEMBER." (screens request 136, item 1).
+ *
+ * The founder's own check-in is one person, and her only aim was stored with no number, so her board's headline had
+ * no answer and no bar at all. The sentence aims at a count in exactly the way the rule already reads; the only
+ * difference is the "to". What must not change is everything the rule deliberately refuses, so those are here too.
+ */
+describe('an aim that goes "to" a number still aims at it', () => {
+  it('reads the count the founder named', () => {
+    expect(theCountTheNameAimsAt('Get to 20 paying customers by December.')).toBe(20);
+    expect(theCountTheNameAimsAt('Grow to 150 active traders')).toBe(150);
+    expect(theCountTheNameAimsAt('Get up to 12 shops signed')).toBe(12);
+    expect(theCountTheNameAimsAt('Go to 1,200 farmers reached')).toBe(1200);
+  });
+
+  it('and still refuses a share, a sum of money and a figure that is not what is counted', () => {
+    expect(theCountTheNameAimsAt('Get to 12 percent margin')).toBeNull();
+    expect(theCountTheNameAimsAt('Get to 12% margin')).toBeNull();
+    expect(theCountTheNameAimsAt('Grow to 5 million in revenue')).toBeNull();
+    expect(theCountTheNameAimsAt('Get to 200,000 shillings a month')).toBeNull();
+    expect(theCountTheNameAimsAt('Get the team to agree on 3 priorities')).toBeNull();
+    expect(theCountTheNameAimsAt('A signed renewal before the end of March with no discount past 12 percent')).toBeNull();
   });
 });

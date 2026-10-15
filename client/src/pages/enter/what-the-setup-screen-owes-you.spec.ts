@@ -13,8 +13,13 @@ describe('what the setup screen owes you', () => {
   it('says which situation it chose, because it chooses one', () => {
     /* It classified her description, changed the plan to six sessions, put "Pick a different
        situation" on screen, and never said which situation it had picked. */
-    expect(PAGE).toContain('Set up as')
-    const at = PAGE.indexOf('Set up as')
+    /* U.6 review: said in start-chat.txt's words now, "This sounds like", with "It’s something else". */
+    expect(PAGE).toContain('This sounds like')
+    expect(PAGE).toContain('It’s something else')
+    /* Was `<span style={{ fontWeight: 700, ... }}>` (group 3, piece 4d-1 rebuilt the surrounding bar
+       from the shared parts and dropped the inline style, which a listed page may not carry - the
+       label is still bold, now a plain `<b>`). */
+    const at = PAGE.indexOf('This sounds like <b')
     expect(PAGE.slice(at - 900, at)).toMatch(/classifiedScenario/)
   })
 
@@ -25,10 +30,12 @@ describe('what the setup screen owes you', () => {
 
   it('offers a date for the invites rather than a day nobody set', () => {
     /* "As soon as I save" or "On the day it starts", with no start date set by default, is a
-       choice between now and now. */
-    expect(PAGE).toContain('On a date I pick')
+       choice between now and now. U.6: the choice is the prototype's "Now", "Tomorrow" or "On a
+       date" in TheSetup, and the old wording moved out of this page with it, so this reads there. */
+    const SETUP = readFileSync(join(__dirname, 'TheSetup.tsx'), 'utf8')
+    expect(SETUP).toContain("onADate: 'On a date'")
     expect(PAGE).not.toContain('On the day it starts')
-    expect(PAGE).toContain('The invites go out on the morning of that date')
+    expect(SETUP).toContain('Adding someone sends their invitation when it starts.')
   })
 
   it('keeps the plan when the check-in starts', () => {

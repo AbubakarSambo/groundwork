@@ -10,6 +10,8 @@ import { conversationApi } from '@/api/conversation'
  * explicit "ready to finish?" confirmation - it must not auto-end, and the
  * complete action must not fire on the first click. Clicking "Complete
  * session" now opens a confirm step; only "Finish session" finalises.
+ * Since U.8 the confirm step is the prototype's end card: "Finish my check-in now" (or the
+ * engine closing) brings it up, and only "That’s right, finish" finalises.
  * Wire the button straight back to complete.mutate() -> complete is called on
  * the first click -> this bites.
  */
@@ -54,28 +56,28 @@ describe('#4 END-CONFIRM: finishing a check-in requires explicit confirmation', 
 
   it('does not finalise on the first click - it asks to confirm first', async () => {
     renderChat()
-    const trigger = await screen.findByText(/Complete session/i, {}, { timeout: 4000 })
+    const trigger = await screen.findByText(/Finish my check-in now/i, {}, { timeout: 4000 })
     fireEvent.click(trigger)
-    // a confirm step appears...
-    await screen.findByText(/Ready to finish this session\?/i)
+    // a confirm step appears... (its fold's name and its own heading both say "what happens next" now, s68)
+    await screen.findAllByText(/What happens next/i)
     // ...and nothing has been finalised yet
     expect((conversationApi.complete as any)).not.toHaveBeenCalled()
   })
 
-  it('finalises only after the explicit "Finish session" confirmation', async () => {
+  it('finalises only after the explicit "That’s right, finish" on the end card', async () => {
     renderChat()
-    const trigger = await screen.findByText(/Complete session/i, {}, { timeout: 4000 })
+    const trigger = await screen.findByText(/Finish my check-in now/i, {}, { timeout: 4000 })
     fireEvent.click(trigger)
-    const finish = await screen.findByRole('button', { name: /Finish session/i })
+    const finish = await screen.findByRole('button', { name: /That’s right, finish/i })
     fireEvent.click(finish)
     await waitFor(() => expect((conversationApi.complete as any)).toHaveBeenCalledTimes(1))
   })
 
   it('can back out of the confirmation without finalising', async () => {
     renderChat()
-    const trigger = await screen.findByText(/Complete session/i, {}, { timeout: 4000 })
+    const trigger = await screen.findByText(/Finish my check-in now/i, {}, { timeout: 4000 })
     fireEvent.click(trigger)
-    fireEvent.click(await screen.findByRole('button', { name: /Not yet, keep going/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /Change something/i }))
     expect((conversationApi.complete as any)).not.toHaveBeenCalled()
   })
 })

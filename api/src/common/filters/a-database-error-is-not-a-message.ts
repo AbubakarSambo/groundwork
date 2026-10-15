@@ -17,6 +17,8 @@ import { HttpStatus } from '@nestjs/common';
  */
 export function whatToSayAboutADatabaseError(
   error: Error,
+  /** The developer API names the field in its own vocabulary; the screens' routes never do. */
+  forADeveloper = false,
 ): { status: number; message: string } | null {
   const name = error.name ?? '';
   const message = error.message ?? '';
@@ -30,6 +32,12 @@ export function whatToSayAboutADatabaseError(
   const isPrisma = name.startsWith('PrismaClient');
   if (!isPrisma) return null;
 
+  /* The database cannot be reached, or took too long (B-151): ours, not the caller's, and temporary. Said as that, not as "the database refused that request". */
+  const code0 = (error as { code?: string }).code;
+  if (name === 'PrismaClientInitializationError' || (name === 'PrismaClientKnownRequestError' && ['P1001', 'P1002', 'P1008', 'P1017', 'P2024'].includes(code0 ?? ''))) {
+    return { status: HttpStatus.SERVICE_UNAVAILABLE, message: 'Groundwork cannot reach its records for a moment. Nothing was changed. Please try again in a minute.' };
+  }
+
   if (name === 'PrismaClientValidationError') {
     /*
      * The one useful fact in the whole message is which argument was missing,
@@ -39,9 +47,11 @@ export function whatToSayAboutADatabaseError(
     const missing = message.match(/Argument `(\w+)` is missing/)?.[1];
     return {
       status: HttpStatus.BAD_REQUEST,
-      message: missing
-        ? `${missing} is required and was not sent.`
-        : 'Something in that request was the wrong shape. Check the fields you sent against the API docs.',
+      message: forADeveloper
+        ? missing
+          ? `${missing} is required and was not sent.`
+          : 'Something in that request was the wrong shape. Check the fields you sent against the API docs.'
+        : 'Part of what is needed was left out, so check what you filled in and try again.',
     };
   }
 
@@ -52,26 +62,26 @@ export function whatToSayAboutADatabaseError(
     if (code === 'P2002') {
       return {
         status: HttpStatus.CONFLICT,
-        message: 'Something with that name or key already exists.',
+        message: forADeveloper ? 'Something with that name or key already exists.' : 'That is already taken, so choose a different one.',
       };
     }
     /* Record not found for an update or delete. */
     if (code === 'P2025') {
       return {
         status: HttpStatus.NOT_FOUND,
-        message: 'That record does not exist, or no longer does.',
+        message: forADeveloper ? 'That record does not exist, or no longer does.' : 'That is not there any more, so refresh the page and look again.',
       };
     }
     /* Foreign key: pointed at something that is not there. */
     if (code === 'P2003') {
       return {
         status: HttpStatus.BAD_REQUEST,
-        message: 'That request points at a record that does not exist.',
+        message: forADeveloper ? 'That request points at a record that does not exist.' : 'Part of what you chose is not there any more, so refresh the page and choose again.',
       };
     }
     return {
       status: HttpStatus.BAD_REQUEST,
-      message: 'The database refused that request.',
+      message: forADeveloper ? 'The database refused that request.' : 'That could not be saved, so check what you typed and try again.',
     };
   }
 
@@ -81,6 +91,6 @@ export function whatToSayAboutADatabaseError(
    */
   return {
     status: HttpStatus.INTERNAL_SERVER_ERROR,
-    message: 'Something went wrong on our side. Nothing was changed.',
+    message: 'Something went wrong on our side. Nothing was changed, so please try again in a minute.',
   };
 }

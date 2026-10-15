@@ -1,283 +1,85 @@
-import { AdminFirstRun } from './an-admin-lands-on-a-check-in-list'
-import { howItEnded } from '@/lib/a-ground-that-has-ended'
-import { plannedSessionsFor } from '@/lib/sessionCount'
-import { HowItIsGoing } from '@/components/gw/how-it-is-going'
 import { useState } from 'react'
-import { railAttention } from '@/lib/rail-attention'
-import { whenItRunsOut } from '@/lib/when-it-runs-out'
-import { hasStalled } from '@/lib/a-ground-that-has-ended'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { groundsApi } from '@/api/grounds'
-import { authApi } from '@/api/auth'
-import { useAuthStore } from '@/stores/auth'
-import type { Ground } from '@/types'
-import { alignmentLabel } from '@/lib/alignment'
-import { personLabel } from '@/lib/utils'
-import { Stat } from '@/components/gw/kit'
 import { toast } from 'sonner'
+import { groundsApi } from '@/api/grounds'
+import { useAuthStore } from '@/stores/auth'
 import { useHelpStore } from '@/stores/help'
-import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
-
-
-const MODE_COLORS: Record<string, { bg: string; color: string }> = {
-  Starting:       { bg: 'var(--gw-green-bg)', color: 'var(--gw-green-t)' },
-  Recognition:    { bg: 'var(--gw-amber-bg)', color: 'var(--gw-amber-t)' },
-  Resolution:     { bg: 'var(--gw-blue-bg)', color: 'var(--gw-navy)' },
-  'Multi-party':  { bg: 'var(--gw-blue-bg)', color: 'var(--gw-navy)' },
-  Accountability: { bg: 'var(--gw-red-bg)', color: 'var(--gw-red-t)' },
-  Contract:       { bg: '#F0EAF8', color: '#5B2EA6' },
-  Urgent:         { bg: 'var(--gw-red-bg)', color: 'var(--gw-red-t)' },
-}
+import {
+  Page, PageTitle, Section, Panel, Button, Tag, Note, Empty, TextArea, TextField, CheckInsTable, CheckInRow,
+} from '@/components/gw/ui'
+import { cadenceLabel } from '@/lib/cadence'
+import { howARowReads, isFinished, type ListRow } from './how-a-row-reads'
+import { YouAreIn } from '@/pages/today/YouAreIn'
 
 /**
- * WHAT THE CHIP SAYS, AND WHY IT CHANGED.
+ * THE CHECK-INS LIST (C1, #/checkins in the prototype, /grounds here). The wording is copied from
+ * docs/prototype/screens/C1-today-and-check-ins/check-ins.txt:
  *
- * It showed `g.moment` - "STARTING" - which is a property of the situation, the same on the day a
- * check-in opens and the day it closes. So the one glanceable thing on a card said nothing about
- * whether the card wanted anything from you, and somebody scanning ten of them had to open each to
- * find out.
+ *   "Check-ins"
+ *   "Every check-in you run or take part in. Each has its own board."
+ *   "You run"  "3 open"     "You're in"  "2 open"     "Finished"
+ *   "Check-in"  "What it's for"  "Needs you"  "Where it stands"
+ *   "You see these boards as a participant: the team's picture once it's shared, and your own part in full."
  *
- * The rail beside it has answered that question for a long time, with `railAttention`. Same data,
- * same function: the sidebar was ranking by attention while the list showed the scenario, which is
- * two answers to one question.
+ * Each row is said from the reader's side (see how-a-row-reads.ts): "Kwame and you", "Run by Amani
+ * Njoroge", never the reader's own name and never pieces joined with dots.
  *
- * The list's ordering is deliberately left alone. It already sorts by urgency, on
- * `reportWaitingForMe` and `REPORT_READY`, which `railAttention` does not know about. Two rules for
- * two jobs is fine.
+ * WHAT THE LIST HOLDS IS THE SERVER'S. It shows the rows `GET /grounds` gives this reader, which is
+ * already cut to what they may see. An admin, and a lead with a department, are given check-ins they
+ * neither run nor take part in; those sit under their own heading, since the prototype draws no
+ * such reader here.
+ *
+ * NOT BUILT: "Examples in other shapes" (docs/prototype/not-to-build.md).
+ *
+ * REBUILT FROM THE SHARED PARTS (group 2): `Page`/`PageTitle` for the frame and "Start a check-in";
+ * `YouAreIn` (already a shared piece) for the just-joined banner; `Section` for each heading and its
+ * "N open"; the shared `CheckInsTable`/`CheckInRow` for every table, in place of the page's own
+ * `gw-ci-table` markup; `Panel` (with the shared caution tint) for "Waiting for you"; and
+ * `Note`/`Empty`/`Button` for loading, failure and the two empty-organisation states.
  */
-function whatThisWants(g: Ground, myUserId: string | null | undefined) {
-  /*
-   * A REPORT WAITING FOR YOU IS THE MOST ACTIONABLE THING ON THE CARD, and it was the one thing
-   * this function did not answer - so it was said by a seventh chip in the footer instead, while
-   * the badge whose whole job is "what needs you" said "Waiting on 2 of 3".
-   *
-   * First, because it outranks the rest: a round you still owe is work to do, and a report already
-   * written for you is work already done that nobody has read. Across ten grounds and thirty-three
-   * people not one report was ever activated, and the release email was the only thing that ever
-   * said so.
-   */
-  if ((g as any).reportWaitingForMe) {
-    return { text: 'Your report is ready', bg: 'var(--gw-green-bg)', color: 'var(--gw-green-t)' }
-  }
-  /*
-   * AND A CHECK-IN ABOUT TO RUN OUT SAYS SO FROM THE LIST.
-   *
-   * "have a risk of stalling show, don't just stall." Above the turn states on purpose: whether
-   * this check-in survives the week outranks whose turn it is, and somebody scanning the list is
-   * exactly who can still do something about it. See lib/when-it-runs-out.
-   */
-  const out = whenItRunsOut(g as any)
-  if (out.state === 'out') {
-    return { text: 'Time is up', bg: 'var(--gw-amber-bg)', color: 'var(--gw-amber-t)' }
-  }
-  if (out.state === 'soon') {
-    return { text: out.daysLeft === 1 ? 'Runs out tomorrow' : `Runs out in ${out.daysLeft} days`,
-             bg: 'var(--gw-amber-bg)', color: 'var(--gw-amber-t)' }
-  }
-  /* And one that already has, which the rail reads as nothing to do - because there is nothing to
-     do until somebody gives it more time, and that is what the badge says. */
-  if (hasStalled(g.status)) {
-    return { text: 'Out of time', bg: 'var(--gw-amber-bg)', color: 'var(--gw-amber-t)' }
-  }
-  const a = railAttention(g as any, myUserId)
-  switch (a.kind) {
-    case 'overdue':
-      return { text: a.daysLate === 1 ? 'Your turn · 1 day late' : `Your turn · ${a.daysLate} days late`,
-               bg: 'var(--gw-amber-bg)', color: 'var(--gw-amber-t)' }
-    case 'yours':
-      return { text: 'Your turn', bg: 'var(--gw-blue-bg)', color: 'var(--gw-navy)' }
-    case 'waiting':
-      return { text: `Waiting on ${a.total - a.done} of ${a.total}`, bg: 'var(--gw-bg)', color: 'var(--gw-sub)' }
-    default:
-      return null
-  }
+
+/** Rows that want something from the reader first; otherwise the order the server sent. */
+function byWhatNeedsYou(rows: { g: ListRow; reads: ReturnType<typeof howARowReads> }[]) {
+  const rank = (r: (typeof rows)[number]) =>
+    r.reads.needs?.tone === 'action' || r.reads.needs?.tone === 'proven' ? 0 : r.reads.needs ? 1 : 2
+  return [...rows].sort((a, b) => rank(a) - rank(b))
 }
 
-function GroundCard({ g, onClick, myUserId }: { g: Ground; onClick: () => void; myUserId?: string | null }) {
-  // What the report holds, or nothing. The old "{score}/5 {band}" was a count
-  // of completed check-ins wearing the word "Aligned".
-  const read = alignmentLabel((g as any).alignment)
-  const mc = MODE_COLORS[g.moment ?? ''] ?? MODE_COLORS['Resolution']
+function CheckInsRows({ rows }: { rows: { g: ListRow; reads: ReturnType<typeof howARowReads> }[] }) {
+  const navigate = useNavigate()
   return (
-    <div className="gw-ground-card" onClick={onClick}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 3 }}>{g.label}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            {(() => {
-              /* A check-in that is over says so, rather than "Nothing due". */
-              const over = howItEnded(g as any)
-              if (over) return <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)' }}>{over}</span>
-              const w = whatThisWants(g, myUserId)
-              return w
-                ? <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: w.bg, color: w.color }}>{w.text}</span>
-                : <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: mc.bg, color: mc.color }}>Nothing due</span>
-            })()}
-            {/*
-              A GROUND IN SOMEBODY ELSE'S ORGANISATION, SAID OUT LOUD.
-
-              `grounds.list` deliberately includes grounds in other organisations where
-              you are a participant - that is how somebody invited across a boundary
-              finds their check-in at all, and it was unambiguous when there was only
-              one organisation to be in.
-
-              With the switcher it is not. Switch to a client's organisation and your own
-              company's ground is still in the list, with nothing saying why. Seen while
-              clicking the switcher for the first time.
-            */}
-            {(g as any).otherOrgName && (
-              <span
-                title={`This check-in belongs to ${(g as any).otherOrgName}. You are in it as a participant.`}
-                style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'var(--gw-bg)', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)' }}
-              >
-                {(g as any).otherOrgName}
-              </span>
-            )}
-            {g.status === 'ACTIVE' && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--gw-green-b)', display: 'inline-block' }} />}
-          </div>
-        </div>
-        <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
-          {read
-            ? <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', textAlign: 'right', maxWidth: 132, lineHeight: 1.35 }}>{read}</div>
-            : <div style={{ fontSize: 11, color: 'var(--gw-muted)', textAlign: 'right' }}>No report yet</div>}
-        </div>
-      </div>
-      {/*
-        HOW THINGS ARE GOING, IN TWO OR THREE SENTENCES, NOT THE BRIEF.
-        The brief is the sentence somebody set this up with, so four goal check-ins read "We are
-        setting shared goals for this period and I want everyone aligned on what matters most" four
-        times and the list says nothing about where any of them actually is.
-        This is the last round's shared picture, cut to three sentences on the server - plain
-        language, written for that round, about how it is actually going. The finding is one ranked
-        line and reads as a headline; a manager landing here wants the paragraph.
-        The brief is still the fallback, because a check-in nobody has finished a round on has no
-        finding yet and still has to say what it is for.
-      */}
-      {/*
-        THE SUMMARY AND THE TWO FACTS A MANAGER CAME FOR, FROM ONE COMPONENT.
-        The brief is the sentence somebody set this up with, so four goal check-ins read the same
-        line four times and the list says nothing about where any of them actually is. What draws
-        here is the last round's shared picture, plus how far through and what is stuck - the same
-        component the boards page and the board's own header draw, so the three cannot drift.
-      */}
-      <HowItIsGoing summary={(g as any).latestSummary} brief={g.brief} glance={(g as any).glance} />
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        {/*
-          WHO LEADS IT, WHICH IS WHY /org/roster EXISTED. W9-5.
-          
-          `grounds.list` already returns every ground in the organisation when the
-          caller is an admin, so "All grounds" was the same data at a second address -
-          one page with two levels of detail, not two audiences. The lead was the one
-          column it added that mattered, and it is derivable here from the participant
-          the server already sends.
-        */}
-        <div style={{ fontSize: 11, color: 'var(--gw-sub)' }}>
-          {(() => {
-            /**
-             * "LED BY HAFSAH", LOWERCASE, FROM AN EMAIL ADDRESS. W8-66.
-             *
-             * The third place doing this. An address is not what somebody is called, and
-             * for a viewer who is not the ground's lead the API nulls the email on
-             * purpose - so the guess produced either a lowercase fragment or nothing at
-             * all. `grounds.list` now sends the display name.
-             */
-            /**
-             * And this is the line that comment is about, still splitting the address two lines
-             * under its own warning. W-UX-4. `personLabel` is the one chain now: name, else what
-             * they do here, else the address whole rather than a lowercase fragment of it.
-             */
-            const lead = (g.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
-            const firstName = (lead?.user?.firstName ?? (lead as any)?.firstName ?? '').trim()
-            const who = lead ? personLabel({ ...(lead as any), user: (lead as any).user ?? (firstName ? { firstName } : null) }) : null
-            /**
-             * THE SESSION COUNT, ON THE CARD SOMEBODY CHOOSES FROM. W13-6.
-             *
-             * "12 of 12 sessions done" is the clearest thing on the ground page and it
-             * appeared nowhere a person decides WHICH ground to open. Derived here from the
-             * timeline and rhythm the list already sends, the same way the ground page does
-             * it, rather than a new field.
-             *
-             * The RAIL is deliberately left alone: it lists names only, by her decision that
-             * a channel list is names, with the count on each row's tooltip. This is the card,
-             * which is where the choosing happens.
-             */
-            const planned = plannedSessionsFor(
-              g.timelineDays,
-              (g as any).cadence,
-              (g as any).maxSessions ?? (g as any).totalSessions,
-            )
-            // `roundsDone` comes from the list endpoint: rounds where EVERY party is
-            // complete, not a count of check-in rows.
-            const doneRounds = (g as any).roundsDone as number | undefined
-            const sessions = planned != null && doneRounds != null
-              /* A check-in that has ended will never reach the plan, so counting toward it is a
-                 promise it is not keeping. What happened is the number that is true. */
-              ? howItEnded(g as any)
-                ? `${doneRounds} session${doneRounds === 1 ? '' : 's'}`
-                : `${doneRounds} of ${planned} sessions done`
-              : planned != null
-                ? `${planned} sessions`
-                : null
-            const people = `${g.participants.length} participant${g.participants.length !== 1 ? 's' : ''}`
-            return who
-              ? `Led by ${who} · ${people}${sessions ? ` · ${sessions}` : ''}`
-              : `${people}${sessions ? ` · ${sessions}` : ''}`
-          })()}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          {/* Visible without opening it: a check-in with one person on it will never produce a shared report (B17). */}
-          {g.status === 'ACTIVE' && (g.participants as any[]).filter((p: any) => !p.managingOnly).length < 2 && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 20, padding: '2px 8px' }}>Needs a second person for a shared report</span>}
-          {g.status === 'ACTIVE' && g.participants.length > 1 && !(g.checkIns ?? []).some(c => c.status === 'COMPLETED') && (g.overdue ?? 0) === 0 && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 20, padding: '2px 8px' }}>No check-ins yet</span>}
-          {/*
-            "Your report is ready" MOVED UP, into the badge that answers what needs you - see
-            whatThisWants. Two places saying what a person should do next is how a card ends up with
-            a green chip down here and "Waiting on 2 of 3" at the top.
-          */}
-          {(g.overdue ?? 0) > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 20, padding: '2px 8px' }}>{g.overdue} overdue</span>}
-          {/*
-            AND THE REPORT_READY CHIP IS GONE, because nothing writes that status. This file already
-            says so about the two lines that sort on it: "nothing has written that status". A chip
-            behind a dead condition is a chip that can never appear, sitting next to a live one that
-            says the same thing.
-          */}
-          {g.daysLeft != null && <span style={{ fontSize: 11, color: 'var(--gw-sub)' }}>{g.daysLeft}d left</span>}
-        </div>
-      </div>
-    </div>
+    <>
+      {rows.map(({ g, reads }) => (
+        <CheckInRow
+          key={g.id}
+          to={`/grounds/${g.id}`}
+          onClick={() => navigate(`/grounds/${g.id}`)}
+          name={g.label}
+          about={reads.about}
+          forWhat={reads.forWhat}
+          needs={reads.needs && <Tag tone={reads.needs.tone}>{reads.needs.text}</Tag>}
+          stands={reads.stands}
+          standsTo={reads.standsTo}
+          also={reads.also}
+        />
+      ))}
+    </>
   )
 }
 
 export function GroundsListPage() {
-  const navigate = useNavigate()
   const qc = useQueryClient()
   const [searchParams] = useSearchParams()
   const user = useAuthStore(s => s.user)
   const isAdmin = user?.role === 'ADMIN'
   const justSetUp = searchParams.get('welcome') === '1'
-  const [showInviteColleague, setShowInviteColleague] = useState(false)
-  const [colleagueEmail, setColleagueEmail] = useState('')
-
-  const teamInviteMut = useMutation({
-    mutationFn: (email: string) => authApi.teamInvite(email),
-    onSuccess: () => {
-      toast.success('Invite sent.')
-      setColleagueEmail('')
-      setShowInviteColleague(false)
-    },
-    onError: () => toast.error('The invite did not send. Nobody has been emailed - try again.'),
-  })
+  const orgName = user?.organizationName ?? 'your organisation'
 
   /**
-   * `isError` MATTERS BECAUSE THE FALLBACK IS A LIE.
-   *
-   * This destructured `data = []` and nothing else, so a failed fetch fell through to the same
-   * branch as a genuinely empty account: "Your first check-in is one tap away", shown to somebody
-   * who may have ten of them. A person whose connection dropped is told their work does not exist -
-   * the worst available reading, and the one they are least able to check.
-   *
-   * "Nothing here yet" and "we could not load this" are different sentences. The page has to be
-   * able to say both.
+   * `isError` MATTERS BECAUSE THE FALLBACK IS A LIE. A failed fetch must not fall through to the
+   * same branch as a genuinely empty account: "Nothing here yet" and "we could not load this" are
+   * different sentences, and the page has to be able to say both.
    */
   const { data: grounds = [], isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['grounds'],
@@ -285,70 +87,9 @@ export function GroundsListPage() {
     enabled: !!user,
   })
 
-  // The billing-status query went with the upsells - nothing on this page
-  // depends on what the org is paying any more.
-
-  // checkoutMut removed with the two "Unlock insights" upsells.
   /**
-   * "ACTIVE GROUNDS 2" WITH ONE OF THEM NOT STARTED. W13-2.
-   *
-   * `active` was everything not closed, which counts a ground that is sitting in the
-   * approval queue directly above this tile - nobody invited, nothing happening, and it
-   * is being reported to the admin as work in progress in the same eyeful as
-   * "waiting for you".
-   *
-   * A ground waiting on an approval, or on its lead accepting it, has not started.
-   */
-  /* AWAITING_LEAD went on 10 Sep 2026 - a check-in is open from the moment it is made. */
-  const NOT_STARTED_YET = ['AWAITING_APPROVAL', 'DECLINED']
-  const active = grounds.filter(
-    g => g.status !== 'CLOSED' && g.status !== 'RESOLVED' && !NOT_STARTED_YET.includes(g.status),
-  )
-  /** What the list holds that the "In progress" tile above it does not count. */
-  const closedCount = grounds.length - active.length
-  /*
-   * WHICH PILE IS ON SCREEN. Opens on what is live, because that is what somebody came for; the
-   * closed ones are a place you go on purpose.
-   */
-  const [showing, setShowing] = useState<'open' | 'closed'>('open')
-  // Count reports waiting for THIS person. The old count was grounds in
-  // REPORT_READY status, which is a different thing and sat permanently at
-  // zero while every ground stayed ACTIVE.
-  const reportsReady = grounds.filter(g => (g as any).reportWaitingForMe).length
-
-  /**
-   * AND THE OTHER HALF OF THE SAME LEGACY, WHICH THE LABEL FIX EXPOSED.
-   *
-   * These two lines still test `status === 'REPORT_READY'`, and nothing has written that status
-   * since report release started auto-activating straight to ACTIVE - the schema says so in its own
-   * comment. So the "Needs your attention" banner could only ever fire on an overdue check-in, and
-   * the urgency sort's REPORT_READY weight was unreachable. A released report nobody had opened -
-   * the single most actionable thing on this page - was the one thing that could not raise its hand.
-   *
-   * `reportWaitingForMe` is the live signal for the same idea, so both now read it. The dead status
-   * is kept in the test rather than removed, because legacy rows written before that change still
-   * carry it and they should still surface.
-   */
-  const attentionWorthy = (g: typeof grounds[number]) =>
-    (g as any).reportWaitingForMe || g.status === 'REPORT_READY' || (g.overdue ?? 0) > 0
-  const needsAttention = grounds.filter(attentionWorthy)
-  const sortedGrounds = [...grounds].sort((a, b) => {
-    const urgency = (g: typeof a) =>
-      ((g as any).reportWaitingForMe || g.status === 'REPORT_READY') ? 10 : (g.overdue ?? 0) > 0 ? 5 : 0
-    return urgency(b) - urgency(a)
-  })
-
-  /* The pile on screen. `active` is already the live set, so closed is what it leaves out. */
-  const openIds = new Set(active.map((g) => g.id))
-  const visibleGrounds = sortedGrounds.filter((g) => (showing === 'closed' ? !openIds.has(g.id) : openIds.has(g.id)))
-
-  /**
-   * WHAT IS WAITING ON AN ADMIN. W9-7.
-   *
-   * A member's ground does not start until an admin accepts it, and nobody can be
-   * invited to it in the meantime. That is only a good rule if the admin can SEE what
-   * is waiting - a pending queue nobody looks at is just a ground that never starts,
-   * and the person who set it up has no idea why.
+   * WHAT IS WAITING ON AN ADMIN. W9-7. A member's check-in does not start until an admin accepts
+   * it. That is only a good rule if the admin can SEE what is waiting.
    */
   const { data: awaiting = [] } = useQuery({
     queryKey: ['awaiting-approval'],
@@ -358,447 +99,190 @@ export function GroundsListPage() {
   })
   const approveMut = useMutation({
     mutationFn: (groundId: string) => groundsApi.approve(groundId),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['awaiting-approval'] }); qc.invalidateQueries({ queryKey: ['grounds'] }); toast.success('Approved. The people involved can be invited now.') },
-    onError: () => toast.error('Not approved. Nothing has changed - try again.'),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['awaiting-approval'] })
+      qc.invalidateQueries({ queryKey: ['grounds'] })
+      qc.invalidateQueries({ queryKey: ['today'] })
+      toast.success('Approved. The people involved can be invited now.')
+    },
+    onError: () => toast.error('Not approved. Nothing has changed. Try again.'),
   })
   const declineMut = useMutation({
     mutationFn: ({ groundId, reason }: { groundId: string; reason: string }) => groundsApi.declineGround(groundId, reason),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['awaiting-approval'] }); toast.success('Declined. Nobody was invited.') },
-    onError: () => toast.error('Not declined. Nothing has changed - try again.'),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['awaiting-approval'] })
+      qc.invalidateQueries({ queryKey: ['today'] })
+      toast.success('Declined. Nobody was invited.')
+    },
+    onError: () => toast.error('Not declined. Nothing has changed. Try again.'),
   })
   const [declining, setDeclining] = useState<string | null>(null)
   const [declineReason, setDeclineReason] = useState('')
 
+  /* HAFSAH'S FAULT 4: a way to find one among a hundred (check-ins.txt draws no search box of its
+     own - there was no hundred-check-in organisation when it was written - so this is plain and
+     in keeping with the page's own voice, the same as the People page's "Find somebody"). Filters
+     by what this reader already sees: the row's own name, never anything the server did not send. */
+  const [find, setFind] = useState('')
+  const q = find.trim().toLowerCase()
+
+  const now = new Date()
+  const me = user?.id
+  const allRows = (grounds as unknown as ListRow[]).map(g => ({ g, reads: howARowReads(g, me, now, { isAdmin }) }))
+  const rows = q ? allRows.filter(r => r.g.label.toLowerCase().includes(q)) : allRows
+  const open = rows.filter(r => !isFinished(r.g))
+  const youRun = byWhatNeedsYou(open.filter(r => !!me && r.g.initiatorId === me))
+  const youreIn = byWhatNeedsYou(open.filter(r => r.g.initiatorId !== me && (r.g.participants ?? []).some(p => !!me && p.userId === me)))
+  const others = byWhatNeedsYou(open.filter(r => !youRun.includes(r) && !youreIn.includes(r)))
+  const finished = rows.filter(r => isFinished(r.g))
+
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
-      <div className="gw-hdr">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-          <svg width="18" height="14" viewBox="0 0 22 17" fill="none">
-            <rect x="5" y="0" width="12" height="3" rx="1.5" fill="var(--gw-navy)" opacity="0.45" />
-            <rect x="2" y="6" width="18" height="3" rx="1.5" fill="var(--gw-navy)" opacity="0.72" />
-            <rect x="0" y="12" width="22" height="3" rx="1.5" fill="var(--gw-navy)" />
-          </svg>
-          {/* The rail already says Groundwork two inches to the left. This said it again, so
-              the page's own name is here instead - which is the thing a second line of
-              chrome could usefully carry. W13-11. */}
-              <h1 className="gw-logo gw-page-h1">Check-ins</h1>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-{/* The 'Admin' / 'Team member' pill went: a badge of rank on every screen, saying what the rail already shows. */}
-          {/*
-            A SECOND NAVIGATION BAR FOR THINGS THE FIRST ONE ALREADY HAD. W-UX-3.
-            
-            Platform ops, Settings and Sign out were all here AND all in the rail immediately to the
-            left - Settings as a rail item, Sign out and the back office in the user block at the
-            bottom of it. Three links, twice, on the screen a person opens every day, and one of them
-            ("Admin") wore the same word as the pill beside it while going somewhere else entirely.
-            
-            The pill stays: it is the one thing here that is not navigation. It says what you are in
-            this organisation, which is what makes the difference between the two Admins legible.
-          */}
-        </div>
-      </div>
+    <Page>
+      <PageTitle
+        title="Check-ins"
+        subtitle="Every check-in you run or take part in. Each has its own board."
+        action={
+          /* A signed-in person starts one at /start?new=1, never the anonymous entry chat. */
+          user?.mayOpenCheckIns !== false && <Button to="/start?new=1">Start a check-in</Button>
+        }
+      />
 
-      {/**
-        * A LIST OF CARDS IS NOT A COLUMN OF PROSE.
-        *
-        * 600px is right for reading - the check-in page and a party's own view keep it, and should.
-        * This page is a stack of cards carrying a name, a status, a lead, a participant count and a
-        * session count, and it had the same cap. Measured on the running page: a 600px column inside
-        * a 1194px main, so 594px of the screen sat empty either side while every card wrapped.
-        *
-        * Wide here for the same reason the situation picker is wide - see
-        * the-picker-gets-the-whole-width.spec.ts, which measured the same thing before and after.
-        * 1160 rather than the full width, so the page still has margins and a long check-in name
-        * still has a line length somebody can read.
-        */}
-      <div className="gw-bd" style={{ paddingTop: 8, maxWidth: 1160, margin: '0 auto', width: '100%' }}>
-        {isAdmin && awaiting.length > 0 && (
-          <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 12, padding: '14px 16px', marginBottom: 18 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--gw-amber-t)', marginBottom: 4 }}>
-              Waiting for you
-            </div>
-            <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>
-              {awaiting.length === 1 ? 'Somebody has set up a check-in' : `${awaiting.length} check-ins have been set up`} and
-              {' '}nobody has been invited to {awaiting.length === 1 ? 'it' : 'them'} yet. Nothing goes out until you say so.
-            </div>
-            {awaiting.map(a => (
-              <div key={a.id} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '11px 13px', marginBottom: 8 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-text)' }}>{a.label}</div>
-                <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 2 }}>
-                  Set up by {a.createdBy}
-                  {/* A number the product chose is said to be one, so the admin approving it knows what was decided and what was assumed (B13, P6-002). */}
-                  {a.timelineDays ? ` · ${a.timelineDays} days${a.timelineStated === false ? ' (suggested)' : ''}` : ''}
-                  {a.cadence ? ` · ${a.cadence.replace(/_/g, ' ').toLowerCase()}${a.cadenceStated === false ? ' (suggested)' : ''}` : ''}
-                </div>
-                {declining === a.id ? (
-                  <div style={{ marginTop: 9 }}>
-                    <textarea
-                      value={declineReason}
-                      onChange={e => setDeclineReason(e.target.value)}
-                      placeholder="Why not? They will see this."
-                      rows={2}
-                      style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 12.5, fontFamily: 'inherit', lineHeight: 1.5, resize: 'vertical', outline: 'none' }}
-                    />
-                    <div style={{ display: 'flex', gap: 8, marginTop: 7 }}>
-                      <button
-                        onClick={() => { declineMut.mutate({ groundId: a.id, reason: declineReason }); setDeclining(null); setDeclineReason('') }}
-                        style={{ padding: '7px 13px', borderRadius: 7, background: 'var(--gw-red-t)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit' }}
-                      >Decline it</button>
-                      <button
-                        onClick={() => { setDeclining(null); setDeclineReason('') }}
-                        style={{ padding: '7px 13px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}
-                      >Keep it waiting</button>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', gap: 8, marginTop: 9, alignItems: 'center' }}>
-                    <button
-                      onClick={() => approveMut.mutate(a.id)}
-                      disabled={approveMut.isPending}
-                      style={{ padding: '7px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit' }}
-                    >Approve</button>
-                    <button
-                      onClick={() => setDeclining(a.id)}
-                      style={{ padding: '7px 12px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}
-                    >Not this one</button>
-                    <button
-                      onClick={() => navigate(`/grounds/${a.id}`)}
-                      style={{ background: 'none', border: 'none', color: 'var(--gw-navy)', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', padding: 0 }}
-                    >Look at it first →</button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+      {justSetUp && (
+        <YouAreIn checkIns={isLoading || isError ? null : grounds.length} mayStart={user?.mayOpenCheckIns !== false} />
+      )}
 
-        {/* ABOVE the admin/member split: this sat inside the member branch, and self-serve signup creates an
-            ADMIN, so the person who had just set a password never saw "You are in." (fix plan C11). */}
-        {justSetUp && (
-          <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 3 }}>You are in.</div>
-            <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', lineHeight: 1.5 }}>You will see your check-ins and reports here. Open one to start contributing.</div>
-          </div>
-        )}
-        {isAdmin ? (
-          <>
-            {/* Stats bar */}
-            <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-              {[
-                { val: active.length,    label: 'In progress' },
-                /* 'Participant sessions today' went: it counted activity, the one thing the product says it never does. */
-                /**
-                 * THE LABEL SAYS WHAT THE NUMBER COUNTS.
-                 *
-                 * It read "Reports ready" while counting reports waiting for THIS person to open -
-                 * and the initiator is exempt by design, because they released it and can always
-                 * read it. So a lead looking at a ground whose own summary line said "4 agreed, 2
-                 * still open" was told "Reports ready 0", on the same screen. The value was right
-                 * and had been fixed once already; the label was left behind pointing at the old
-                 * meaning.
-                 */
-                { val: reportsReady,     label: 'Waiting for you to read' },
-              /**
-               * A ZERO IS NOT A SUMMARY. W-UX-2.
-               *
-               * Two of the three tiles read 0 on every account looked at - "Participant sessions
-               * today" is zero for most of any given day by design, and "Waiting for you to read"
-               * exempts the lead, who is the person reading this page. So the widest, highest strip
-               * on the landing screen was mostly dead space.
-               *
-               * A count of nothing is not worth a tile. "In progress" always shows, because zero
-               * in progress is itself the thing a person needs to know; the other two earn their
-               * place only when there is something in them.
-               */
-              /*
-               * A ZERO IS NOT A NUMBER WORTH A TILE, and "In progress: 0" sitting above an empty
-               * state is the product reporting on its own emptiness. The empty state underneath
-               * already says there is nothing here, in words, and says what to do about it.
-               */
-              ].filter(s => s.val > 0).map(s => (
-                // The board's own stat tile, so the same number does not have two
-                // different looks depending on which page you opened it from.
-                <Stat key={s.label} label={s.label} value={String(s.val)} />
-              ))}
-            </div>
-
-            {/* Removed: "Unlock full insights" sold specificity trends and
-                confidence scores as a paid unlock, routed at a per-session
-                checkout. Neither half is real - there is no session billing,
-                and the insights were never locked. */}
-            {/*
-              * Open ground CTA - and not for somebody the rule would refuse. See AppShell: they
-              * used to fill in eight steps to be told no at the end.
-              */}
-            {user?.mayOpenCheckIns !== false && <button
-              onClick={() => navigate('/start?new=1')}
-              style={{ width: '100%', padding: '13px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-            >
-              <span>Start a check-in</span>
-              <span style={{ fontSize: 18, fontWeight: 300 }}>+</span>
-            </button>}
-
-            {/* Invite a colleague - admin only, matches the backend guard on POST /auth/team-invite */}
-            {isAdmin && (!showInviteColleague ? (
-              <button
-                onClick={() => setShowInviteColleague(true)}
-                /**
-                 * ONE PRIMARY ACTION PER SCREEN. W-UX-2.
-                 *
-                 * This was a second full-width navy button directly under "What's going on?" -
-                 * identical weight, identical colour, stacked. Two primaries is no primary, and the
-                 * one a person wants ninety-nine times out of a hundred is the one above. Inviting a
-                 * colleague is a real action and stays; it just stops shouting as loud.
-                 */
-                style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 20, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-              >
-                <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><circle cx="7" cy="7" r="3" stroke="var(--gw-navy)" strokeWidth="1.5"/><path d="M1 16c0-2.21 2.686-4 6-4s6 1.79 6 4" stroke="var(--gw-navy)" strokeWidth="1.5" strokeLinecap="round"/><path d="M15 8v4M13 10h4" stroke="var(--gw-navy)" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                Invite a team member
-              </button>
-            ) : (
-              <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>Invite a colleague</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-blue-t)', lineHeight: 1.5, marginBottom: 12 }}>
-                  They will receive an email with a link to sign in to Groundwork. They can then open and manage their own check-ins.
-                </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <input
-                    type="email"
-                    placeholder="colleague@company.com"
-                    value={colleagueEmail}
-                    onChange={e => setColleagueEmail(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter' && looksLikeAnAddress(colleagueEmail)) teamInviteMut.mutate(colleagueEmail.trim()) }}
-                    style={{ flex: 1, padding: '9px 12px', fontSize: 13, border: '1px solid var(--gw-blue-b)', borderRadius: 6, fontFamily: 'inherit', outline: 'none', background: 'white' }}
-                    autoFocus
+      {isAdmin && awaiting.length > 0 && (
+        <Panel className="gwui-panel-caution">
+          <h2>Waiting for you</h2>
+          <p className="gwui-panel-text-muted">
+            {awaiting.length === 1 ? 'Somebody has set up a check-in' : `${awaiting.length} check-ins have been set up`} and
+            {' '}nobody has been invited to {awaiting.length === 1 ? 'it' : 'them'} yet. Nothing goes out until you say so.
+          </p>
+          {awaiting.map(a => (
+            <div key={a.id} className="gwui-waiting-one">
+              <b>{a.label}</b>
+              <p className="gwui-panel-text-muted">
+                {a.createdBy} set it up.
+                {/* A number the product chose is said to be one, so the admin approving it knows what
+                    was decided and what was assumed (B13, P6-002). */}
+                {a.timelineDays ? ` It runs for ${a.timelineDays} days${a.timelineStated === false ? ', which Groundwork suggested' : ''}.` : ''}
+                {a.cadence ? ` ${a.cadence === 'SEQUENTIAL' ? 'People check in when the lead chooses' : `People check in ${cadenceLabel(a.cadence as never).toLowerCase()}`}${a.cadenceStated === false ? ', which Groundwork suggested' : ''}.` : ''}
+              </p>
+              {declining === a.id ? (
+                <div className="gwui-waiting-acts">
+                  <TextArea
+                    value={declineReason}
+                    onChange={e => setDeclineReason(e.target.value)}
+                    placeholder="Why not? They will see this."
+                    aria-label="Why not? They will see this."
+                    rows={2}
                   />
-                  <button
-                    onClick={() => { if (looksLikeAnAddress(colleagueEmail)) teamInviteMut.mutate(colleagueEmail.trim()) }}
-                    disabled={teamInviteMut.isPending || !looksLikeAnAddress(colleagueEmail)}
-                    style={{ padding: '9px 16px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit', flexShrink: 0 }}
-                  >
-                    {teamInviteMut.isPending ? 'Sending…' : 'Send invite'}
-                  </button>
-                  <button
-                    onClick={() => { setShowInviteColleague(false); setColleagueEmail('') }}
-                    style={{ padding: '9px 10px', borderRadius: 6, background: 'none', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', flexShrink: 0 }}
-                  >
-                    Cancel
-                  </button>
+                  {/* Not the screen's primary (navy) button: "Approve" is, and the two never show at
+                      once for the same row - this is a step before a decline, styled as the negative
+                      action it is. */}
+                  <Button kind="danger" size="small" onClick={() => { declineMut.mutate({ groundId: a.id, reason: declineReason }); setDeclining(null); setDeclineReason('') }}>Decline it</Button>
+                  <Button kind="secondary" size="small" onClick={() => { setDeclining(null); setDeclineReason('') }}>Keep it waiting</Button>
                 </div>
-              </div>
-            ))}
-
-            {/*
-              THE SAME NAME, THREE TIMES, ON THE SCREEN YOU LAND ON EVERY DAY.
-              
-              This banner listed every check-in needing attention BY NAME, and then the list below
-              listed all of them again by name, and the rail on the left listed them a third time.
-              Ten check-ins read as thirty things to do. The audit's own line: "Looks like you have
-              30 things when you have 10."
-              
-              The signal was never wrong - it is the duplication that was. The cards already sort
-              urgent-first and already carry the badge saying WHY ("Your report is ready", "2
-              overdue"), so a name list here added nothing a person could not see one inch lower.
-              What it could not see is the COUNT, so that is what is left: one line, no names.
-            */}
-            {!isLoading && needsAttention.length > 0 && (
-              <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 12.5, color: 'var(--gw-amber-t)', lineHeight: 1.5 }}>
-                <strong style={{ fontWeight: 700 }}>
-                  {needsAttention.length === 1 ? 'One check-in needs you' : `${needsAttention.length} check-ins need you`}
-                </strong>
-                {needsAttention.length === 1 ? ' - it is at the top of the list.' : ' - they are at the top of the list.'}
-              </div>
-            )}
-
-            {isLoading && <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 24 }}>Loading…</div>}
-
-            {/*
-              * AN ADMIN'S ROLLOUT, WHICH DOES NOT END WHEN THE FIRST CHECK-IN OPENS.
-              *
-              * This used to be inside the empty-list branch, so it vanished the moment somebody
-              * opened one - which is step two of five. It hid the list exactly when it started
-              * being useful. It decides for itself when it is finished, and hides then.
-              */}
-            {!isLoading && !isError && <AdminFirstRun />}
-
-            {!isLoading && isError && (
-              /* Could not load. Say which of the two things happened, and offer the one that helps. */
-              <div style={{ textAlign: 'center', padding: '48px 20px' }}>
-                <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, letterSpacing: '-.01em' }}>
-                  We could not load your check-ins
+              ) : (
+                <div className="gwui-waiting-acts">
+                  {/* Not this screen's primary (navy) button: "Start a check-in" is (U.5 review,
+                      "one primary action per screen"), so this stays secondary even though it is
+                      the main thing to do inside this one panel. */}
+                  <Button kind="secondary" size="small" onClick={() => approveMut.mutate(a.id)} disabled={approveMut.isPending}>Approve</Button>
+                  <Button kind="secondary" size="small" onClick={() => setDeclining(a.id)}>Not this one</Button>
+                  <Button kind="quiet" size="small" to={`/grounds/${a.id}`}>Look at it first</Button>
                 </div>
-                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, maxWidth: 320, margin: '0 auto 18px' }}>
-                  This is a connection problem, not a lost record. Nothing you have written is affected.
-                </div>
-                <button
-                  onClick={() => refetch()}
-                  disabled={isFetching}
-                  style={{ padding: '9px 18px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: isFetching ? 'default' : 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }}
-                >{isFetching ? 'Trying\u2026' : 'Try again'}</button>
-              </div>
-            )}
-
-            {!isLoading && !isError && grounds.length === 0 && (
-              <>
-              <div style={{ textAlign: 'center', padding: '48px 20px' }}>
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: 10, marginBottom: 24, height: 44 }}>
-                  <div style={{ width: 10, height: 32, borderRadius: 5, background: 'var(--gw-border)', opacity: .5 }} />
-                  <div style={{ width: 14, height: 44, borderRadius: 7, background: 'var(--gw-blue-b)' }} />
-                  <div style={{ width: 10, height: 28, borderRadius: 5, background: 'var(--gw-border)', opacity: .5 }} />
-                </div>
-                <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, letterSpacing: '-.01em' }}>Your first check-in is one tap away.</div>
-                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, maxWidth: 280, margin: '0 auto' }}>Open a check-in for a new hire, a cofounder conversation, or a team that needs alignment.</div>
-                {/*
-                  * THE THIRD BUTTON FOR ONE ACTION IS GONE. This screen had "Start a check-in" in
-                  * the rail, "Start a check-in" above, and "Open your first check-in" here - three
-                  * buttons doing one thing, which is how a screen stops having a primary action.
-                  * The words stay, because they say what a check-in is for. The button does not.
-                  */}
-                {/*
-                  AND THE OTHER THING SOMEBODY CAN DO HERE, WHICH IS TRY IT FIRST.
-                  
-                  This screen has one instruction: open a check-in. For anybody who has just signed
-                  up that means asking real colleagues to write about real work before they have
-                  seen a single thing the product produces. A person who is not ready to do that
-                  either does it anyway and regrets it, or leaves.
-                  
-                  A check-in needs two people to produce a report, so trying it alone is not
-                  obvious. It is possible, and the Help panel now says how. A line rather than a
-                  second button: the screen has just been cleared of a third button for one action,
-                  and this is not the action.
-                */}
-                <button
-                  onClick={() => useHelpStore.getState().show(4)}
-                  style={{
-                    marginTop: 14, background: 'none', border: 'none', padding: 0,
-                    fontSize: 12.5, fontWeight: 600, color: 'var(--gw-navy)',
-                    cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline',
-                  }}
-                >
-                  Or try it on your own first
-                </button>
-              </div>
-              </>
-            )}
-
-            {/**
-              * THE LIST SAYS WHAT IS IN IT, BECAUSE THE TILE ABOVE COUNTS SOMETHING ELSE.
-              *
-              * The tile reads `active.length` - check-ins that are running. This list shows every
-              * check-in, closed ones included. While nothing is closed the two agree and nobody
-              * notices. Close one and the screen reads "IN PROGRESS 9" directly above ten cards,
-              * with nothing saying why. Reproduced by closing one and looking.
-              *
-              * That is the defect `a-counter-must-count-what-it-says` is named for - a counter whose
-              * label promises one thing and whose value measures another - and the same shape as
-              * "0 of 2 checked in" over a roster showing two people checked in.
-              *
-              * Both numbers are right. Neither is wrong to show. What was missing is the sentence
-              * that makes them agree, so the heading says what the list holds and the difference
-              * stops being a contradiction.
-              */}
-            {/*
-              AND IT IS A FILTER NOW, NOT A SENTENCE ABOUT ONE.
-              "The filter is not visible anywhere" - correct, and there was not one to see. This
-              line said "All 12 check-ins, including 3 closed" over a list with the closed ones
-              mixed through it, which explains the count and leaves somebody scrolling for the three
-              they wanted. It names the two piles and lets you stand in either.
-              Only drawn when something IS closed: two tabs where one is always empty is furniture.
-            */}
-            {closedCount > 0 && (
-              <div role="tablist" aria-label="Which check-ins to show" style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-                {([['open', `In progress (${active.length})`], ['closed', `Closed (${closedCount})`]] as const).map(([key, text]) => (
-                  <button
-                    key={key}
-                    role="tab"
-                    aria-selected={showing === key}
-                    onClick={() => setShowing(key)}
-                    style={{
-                      fontSize: 12.5, fontWeight: showing === key ? 700 : 500,
-                      padding: '5px 12px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit',
-                      border: `1px solid ${showing === key ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
-                      background: showing === key ? 'var(--gw-navy)' : 'white',
-                      color: showing === key ? 'white' : 'var(--gw-text)',
-                    }}
-                  >
-                    {text}
-                  </button>
-                ))}
-              </div>
-            )}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {visibleGrounds.map(g => <GroundCard key={g.id} g={g} myUserId={user?.id} onClick={() => navigate(`/grounds/${g.id}`)} />)}
+              )}
             </div>
-            {visibleGrounds.length === 0 && (
-              <div style={{ fontSize: 13, color: 'var(--gw-sub)' }}>
-                {showing === 'closed' ? 'Nothing closed yet.' : 'Nothing in progress. Your closed check-ins are under Closed.'}
-              </div>
-            )}
-          </>
-        ) : (
-          <>
-            {/* Welcome banner after password setup */}
+          ))}
+        </Panel>
+      )}
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              {/* COUNTED THE SAME WAY THE ADMIN'S LIST COUNTS. This said "In progress (1)" over a
-                   single check-in that had ended, because it counted every row rather than the live
-                   ones. Same split, same words. */}
-              <div style={{ fontSize: 16, fontWeight: 700 }}>
-                {active.length > 0 ? `In progress (${active.length})` : closedCount > 0 ? 'Nothing in progress' : 'In progress'}
-                {closedCount > 0 && (
-                  <span style={{ fontSize: 12.5, fontWeight: 400, color: 'var(--gw-sub)', marginLeft: 8 }}>
-                    · {closedCount} closed
-                  </span>
-                )}
-              </div>
-              {/*
-                A SIGNED-IN PERSON MUST NOT BE SENT TO /start.
-                /start is the anonymous entry chat: no account, transcript in
-                localStorage, and a save card at the end asking for the email of
-                somebody who is already signed in. An admin who wants a ground
-                belongs in the picker at /grounds/new.
-              */}
-              {user?.mayOpenCheckIns !== false && <button
-                onClick={() => navigate('/start?new=1')}
-                style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-              >
-                + New check-in
-              </button>}
-            </div>
+      {isLoading && <Note>Loading…</Note>}
 
-            {/* Removed: this one was shown to CONTRIBUTORS, offering to
-                sell a participant their own record back. */}
-            {isLoading && <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 24 }}>Loading…</div>}
-            {!isLoading && grounds.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '48px 20px' }}>
-                <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Nothing here yet.</div>
-                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, maxWidth: 300, margin: '0 auto 8px' }}>
-                  A check-in is a shared space where two or more parties check in privately. The report releases when everyone has checked in.
+      {!isLoading && isError && (
+        /* Could not load. Say which of the two things happened, and offer the one that helps. */
+        <Empty title="We could not load your check-ins" action={<Button kind="secondary" onClick={() => refetch()} disabled={isFetching}>{isFetching ? 'Trying…' : 'Try again'}</Button>}>
+          This is a connection problem, not a lost record. Nothing you have written is affected.
+        </Empty>
+      )}
+
+      {!isLoading && !isError && grounds.length === 0 && (
+        <>
+          {/*
+           * TWO EMPTY STATES, FROM THE PROTOTYPE (F4-small-states/states.txt, "No check-ins yet,
+           * a lead" / "No check-ins yet, anyone else") - keyed on whether this reader may open a
+           * check-in at all (`mayOpenCheckIns`), not on `isAdmin`: the setting that decides who
+           * may start one is independent of role (docs/backend-map.md, "who may open check-ins").
+           * The prototype's "anyone else" state still offers "Set up one of your own"; that is
+           * only true here when the reader actually can, so it is left off when they cannot - the
+           * same door every other "Start a check-in" control already checks (`App.tsx`,
+           * `AppShell.tsx`).
+           */}
+          {user?.mayOpenCheckIns !== false ? (
+            <Empty
+              title="No check-ins yet"
+              action={
+                <div className="gwui-button-row">
+                  {/* Not this screen's primary (navy) button: "Start a check-in", above in
+                      PageTitle's own action, already is (U.5 review, "one primary action per
+                      screen"), so this stays secondary even with nothing else to press here. */}
+                  <Button kind="secondary" to="/start?new=1">Set up a check-in</Button>
+                  <button type="button" className="gwui-plain-link" onClick={() => useHelpStore.getState().show(4)}>Try one on your own</button>
                 </div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.5, maxWidth: 280, margin: '0 auto 24px' }}>
-                  You will see check-ins here when someone invites you, or when you open one yourself.
-                </div>
-                {user?.mayOpenCheckIns !== false && <button
-                  onClick={() => navigate('/start?new=1')}
-                  style={{ padding: '12px 24px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-                >
-                  Open a check-in
-                </button>}
-              </div>
-            )}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {grounds.map(g => (
-                // A non-admin who is themselves the initiator (or a lead admin
-                // assigned to run this ground) still needs the admin view - the
-                // participant page has no confirm-lead / add-participant / release
-                // actions. Only route to /p when they are genuinely a participant.
-                <GroundCard key={g.id} g={g} myUserId={user?.id} onClick={() => navigate(g.initiatorId === user?.id ? `/grounds/${g.id}` : `/grounds/${g.id}/p`)} />
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-    </div>
+              }
+            >
+              Describe what you want your team to check in about, and it’s set up as you talk.
+            </Empty>
+          ) : (
+            <Empty title="Nothing here yet">
+              Check-ins appear here when someone adds you to one. You’ll also get an email.
+            </Empty>
+          )}
+        </>
+      )}
+
+      {/* A way to find one among many (HAFSAH'S FAULT 4). Only once there is more than a
+          glance's worth to look through - with a handful, scanning the sections below is faster
+          than typing. */}
+      {!isLoading && !isError && allRows.length > 8 && (
+        <TextField
+          value={find}
+          onChange={(e) => setFind(e.target.value)}
+          placeholder="Find a check-in"
+          aria-label="Find a check-in"
+          style={{ maxWidth: 320 }}
+        />
+      )}
+
+      {!isLoading && !isError && allRows.length > 0 && rows.length === 0 && (
+        <Empty>{`Nothing here matches "${find.trim()}".`}</Empty>
+      )}
+
+      {youRun.length > 0 && (
+        <Section heading="You run" note={`${youRun.length} open`}>
+          <CheckInsTable label="You run"><CheckInsRows rows={youRun} /></CheckInsTable>
+        </Section>
+      )}
+      {youreIn.length > 0 && (
+        <Section heading="You’re in" note={`${youreIn.length} open`} foot="You see these boards as a participant: the team’s picture once it’s shared, and your own part in full.">
+          <CheckInsTable label="You’re in"><CheckInsRows rows={youreIn} /></CheckInsTable>
+        </Section>
+      )}
+      {/* An admin or a lead who runs none and is in none: said, so the list does not open on someone else's heading (U.5 review). */}
+      {others.length > 0 && youRun.length === 0 && youreIn.length === 0 && (
+        <Note>You do not run any check-ins, and you are not in any yet.</Note>
+      )}
+      {others.length > 0 && (
+        <Section heading={`Other check-ins in ${orgName}`} note={`${others.length} open`}>
+          <CheckInsTable label={`Other check-ins in ${orgName}`}><CheckInsRows rows={others} /></CheckInsTable>
+        </Section>
+      )}
+      {finished.length > 0 && (
+        <Section heading="Finished">
+          <CheckInsTable label="Finished"><CheckInsRows rows={finished} /></CheckInsTable>
+        </Section>
+      )}
+    </Page>
   )
 }

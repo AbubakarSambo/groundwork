@@ -10,10 +10,12 @@ import { join } from 'path'
 const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
 
 describe('the approval card', () => {
-  it('says "(suggested)" beside a rhythm or a length nobody chose', () => {
+  it('says, in a sentence, that Groundwork suggested a rhythm or a length nobody chose', () => {
+    /* U.5: "30 days (suggested) · weekly (suggested)" became sentences: "It runs for 30 days, which
+       Groundwork suggested. People check in weekly, which Groundwork suggested." */
     const list = strip(readFileSync(join(__dirname, 'GroundsListPage.tsx'), 'utf8'))
-    expect(list).toMatch(/a\.timelineStated === false \? ' \(suggested\)' : ''/)
-    expect(list).toMatch(/a\.cadenceStated === false \? ' \(suggested\)' : ''/)
+    expect(list).toMatch(/a\.timelineStated === false \? ', which Groundwork suggested' : ''/)
+    expect(list).toMatch(/a\.cadenceStated === false \? ', which Groundwork suggested' : ''/)
   })
 
   it('because the server says which it was', () => {

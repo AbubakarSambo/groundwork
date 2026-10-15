@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { join } from 'path'
+import { howCheckable } from './how-checkable-was-that-session'
 
 /**
  * SPECIFICITY AND CONFIDENCE ARE TWO DIFFERENT READS, AND MY RECORD SHOWED THEM AS ONE SHAPE.
@@ -48,11 +49,20 @@ describe('my record', () => {
   it('puts how checkable a session was on that session', () => {
     expect(REPORT_TAB).toContain('specificityBySession')
     expect(PHRASE).toContain('specific enough to check')
-    expect(PHRASE).toContain('little in it that can be checked')
+    /*
+     * U.9 THIRD REVIEW, ITEM 6: "MOSTLY GENERAL", NOT "LITTLE IN WHAT YOU SAID THAT CAN BE
+     * CHECKED". The Report tab's per-session line used to read a different field than the meter
+     * on the session itself, and the two could - and did - disagree for the same session ("What
+     * you said was specific in places." here, "Mostly general." there). This now reads the same
+     * `specificityLevel` the meter reads, banded the same way `whereItSits`
+     * (HowSpecificThisSessionWas.tsx) bands it, with matching wording for the low band.
+     */
+    expect(PHRASE).toContain('What you said was mostly general')
   })
 
   it('says nothing rather than guessing for a session that has not been read', () => {
-    expect(PHRASE).toMatch(/if \(score == null\) return ''/)
+    expect(howCheckable(null)).toBe('')
+    expect(howCheckable(undefined)).toBe('')
   })
 
   it('and drops the bars, which were a mark out of a scale nobody could see', () => {

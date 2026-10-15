@@ -164,3 +164,94 @@ describe('it reaches the assembled prompt', () => {
     expect(SERVICE).toMatch(/where: documentWhereFor\(/);
   });
 });
+
+/**
+ * NIGHT QUALITY RUN 1, PROBLEM 1. Amina's pin reached Collins's session and he was told "Amina shared
+ * a location pin on Monday for a Rangwe stockist shop, and Rangwe said Rangwe asked you to check it
+ * out." The prompt Collins's session receives now holds only the record's facts about her pin and
+ * photo, with the rule against a story above them.
+ */
+describe("a colleague's photo or pin, as Collins's session receives it", () => {
+  const { aColleaguesProofAsTheRecordHoldsIt, whatMayBeSaidAboutAColleaguesProof, isAColleaguesProof } = require('./where-this-document-came-from');
+  const pin = {
+    fileName: 'Location pin shared at 11:30 on Monday 19 October',
+    content: 'Amina shared a location pin at 11:30 on Monday 19 October. The pin is named Rangwe stockist shop. The address on the pin is Rangwe market, Homa Bay county. The pin is at latitude -0.6296, longitude 34.5948.',
+    uploaderNote: null, mimeType: 'text/plain', createdAt: new Date('2026-10-19T08:30:00Z'),
+  };
+  const photo = {
+    fileName: 'image-wamid.in.369badb59f254f98.png',
+    content: 'A delivery note DN-1182 signed by the Rangwe shop owner, showing six kits received.',
+    uploaderNote: 'DN-1182 signed', mimeType: 'image/png', createdAt: new Date('2026-10-19T08:31:00Z'),
+  };
+  const block = () => whatFitsInTheRoom([pin, photo].map((d) => ({
+    ...aColleaguesProofAsTheRecordHoldsIt(d, 'Amina Otieno', 'Africa/Nairobi'),
+    provenance: whatMayBeSaidAboutAColleaguesProof('Amina Otieno'),
+  }))).block;
+
+  it('knows a photo and a pin from a brief', () => {
+    expect(isAColleaguesProof(pin)).toBe(true);
+    expect(isAColleaguesProof(photo)).toBe(true);
+    expect(isAColleaguesProof({ fileName: 'handover-plan.txt', content: 'x', mimeType: 'text/plain' })).toBe(false);
+  });
+
+  it('holds who shared the pin, when, and its name', () => {
+    expect(block()).toContain('Amina shared a location pin at 11:30 on Monday 19 October. The pin is named Rangwe stockist shop.');
+  });
+
+  it('says plainly that nobody may be told who asked whom, why, or what it shows', () => {
+    const b = block();
+    expect(b).toContain('Never say who asked anybody to go there, why it was sent, or what it shows, unless Amina Otieno said so in those words.');
+    expect(b).toContain('Never put it to the person you are talking to as something they did, were asked to do, or know about.');
+    expect(WHAT_TO_DO_WITH_THESE).toContain("A COLLEAGUE'S PHOTO OR PIN");
+  });
+
+  it("never hands over what the machine read in Amina's photo, only her own words with it", () => {
+    const b = block();
+    expect(b).not.toContain('six kits received');
+    expect(b).toContain('A photo Amina Otieno sent with their own check-in on Monday 19 October. Amina Otieno wrote with it: "DN-1182 signed"');
+  });
+
+  /* Changed 12 October (Hafsah, step 3): this pinned that the session handed a colleague's proof over as the record holds it. Run 2
+     still put Amina's pin to Collins, so a colleague's proof is now never handed to another person's session at all. */
+  it('and the session is never handed a colleague\'s proof at all', () => {
+    const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
+    expect(src).toMatch(/withoutAColleaguesProof\(uploadedDocs as any\[\], \{ userId: checkIn\.participant\.userId, leadUserId: ground\.initiatorId \}\)/);
+    expect(src).not.toMatch(/aColleaguesProofAsTheRecordHoldsIt\(/);
+  });
+});
+
+/*
+ * HAFSAH, 12 OCTOBER, STEP 3: "A colleague's proof is never put to another person in their session; proof goes into the person's own
+ * check-in." Run 2: "Amina shared a location pin on Monday for a Rangwe stockist shop. Do you know about that one?"
+ */
+describe("Collins's session holds none of Amina's proof, and the shared page still shows it", () => {
+  const { withoutAColleaguesProof } = require('./where-this-document-came-from');
+  const { documentWhereFor, canSeeDocument } = require('../documents/who-can-see-a-document');
+  const amina = { userId: 'u-amina' };
+  const docs = [
+    { fileName: 'Location pin shared at 11:30 on Monday 19 October', content: 'Amina shared a location pin at 11:30 on Monday 19 October. The pin is named Rangwe stockist shop.', mimeType: 'text/plain', visibility: 'OPEN', participantId: 'p-amina', participant: amina },
+    { fileName: 'image-wamid.in.369badb59f254f98.png', content: 'A delivery note DN-1182.', uploaderNote: 'DN-1182 signed', mimeType: 'image/png', origin: 'photo', visibility: 'OPEN', participantId: 'p-amina', participant: amina },
+    { fileName: 'IMG_2041.jpg', content: 'A slip.', mimeType: 'image/jpeg', origin: 'photo', visibility: 'OPEN', participantId: 'p-amina', participant: amina },
+    { fileName: 'kit-price-list.pdf', content: 'Kits are 2,400 shillings.', mimeType: 'application/pdf', origin: 'typed', visibility: 'OPEN', participantId: 'p-esther', participant: { userId: 'u-esther' } },
+    { fileName: 'Location pin shared at 09:00 on Tuesday 20 October', content: 'Collins shared a location pin. The pin is named Oyugis shop.', mimeType: 'text/plain', visibility: 'OWN', participantId: 'p-collins', participant: { userId: 'u-collins' } },
+  ];
+
+  it("Collins's session is handed his own pin and Esther's price list, and nothing Amina sent", () => {
+    const handed = withoutAColleaguesProof(docs, { userId: 'u-collins', leadUserId: 'u-esther' });
+    expect(handed.map((d: any) => d.fileName)).toEqual(['kit-price-list.pdf', 'Location pin shared at 09:00 on Tuesday 20 October']);
+    expect(JSON.stringify(handed)).not.toMatch(/Amina|Rangwe|DN-1182/);
+  });
+
+  it("Amina's own session still has her pin and photos", () => {
+    expect(withoutAColleaguesProof(docs, { userId: 'u-amina', leadUserId: 'u-esther' })).toHaveLength(4);
+  });
+
+  it('the shared page still shows her pin and photo to Collins and to Esther, exactly as before', () => {
+    const where = documentWhereFor('g1', { participantId: 'p-collins', isLead: false }, true);
+    expect(JSON.stringify(where)).toContain('"visibility":"OPEN"');
+    for (const d of docs.slice(0, 3)) {
+      expect(canSeeDocument(d as any, { participantId: 'p-collins', isLead: false }, true)).toBe(true);
+      expect(canSeeDocument(d as any, { participantId: 'p-esther', isLead: true }, true)).toBe(true);
+    }
+  });
+});

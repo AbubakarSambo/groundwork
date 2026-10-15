@@ -111,6 +111,7 @@ export function withholdLiftsIn(value: unknown, corpus: string[]): { value: unkn
     const r = withoutLiftedSentences(value, corpus);
     return { value: r.text, withheld: r.withheld };
   }
+  if (value instanceof Date) return { value, withheld: 0 };
   if (Array.isArray(value)) {
     let withheld = 0;
     const out = value.map((v) => { const r = withholdLiftsIn(v, corpus); withheld += r.withheld; return r.value; });

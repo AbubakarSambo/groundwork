@@ -37,7 +37,7 @@ describe('the guard', () => {
 
   it('and on a protected route a missing token is still refused', () => {
     const g = guardFor({});
-    expect(() => g.handleRequest(null, null, null, ctxWith({}))).toThrow(/Invalid or expired token/);
+    expect(() => g.handleRequest(null, null, null, ctxWith({}))).toThrow(/Your sign-in has run out/);
     void reflector;
   });
 });

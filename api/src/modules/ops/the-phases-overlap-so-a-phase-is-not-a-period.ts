@@ -118,7 +118,7 @@ export function whyThisIsNotOperabilityWork(input: {
   if (permitted.length > 0) return null;
 
   return (
-    'No phase running today makes this a contribution on its own. Work that makes the company operable counts during the phase the company agreed it for - outside it, say what it unblocks, adds to the moat, or keeps up.'
+    'This does not count as a contribution on its own, because no phase running today allows it. Work that makes the company operable counts during the phase the company agreed for it. Outside that phase, say what it unblocks, what it adds to the moat, or what it keeps running.'
   );
 }
 

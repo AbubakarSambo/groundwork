@@ -61,6 +61,12 @@ describe('the end of an update, for the person who gave it', () => {
     expect(chat).toContain('navigate(`/grounds/${groundId}/board?done=1`, { replace: true })')
     const board = strip(readFileSync(join(__dirname, '..', '..', 'pages', 'board', 'BoardPage.tsx'), 'utf8'))
     expect(board).toContain("const justAnswered = searchParams.get('done') === '1'")
-    expect(board).toMatch(/\{justAnswered && <ThatIsOnTheRecord groundId=\{id!\} \/>\}[\s\S]{0,400}<header/)
+    /* U.10 item 2: the board's own dark header is gone, replaced by the shared shell every
+       check-in page now uses - a component, not a literal <header> tag. ThatIsOnTheRecord still
+       sits directly above it.
+       U.10 (a), REBUILT FROM THE SHARED PARTS: that shell is now components/gw/ui/CheckInHeader.tsx
+       (the older components/gw/TheCheckInHeader.tsx this pinned still exists and still runs the
+       report pages, but no longer this one), so the tag this looks for changed with it. */
+    expect(board).toMatch(/\{justAnswered && <ThatIsOnTheRecord groundId=\{id!\} \/>\}[\s\S]{0,400}<CheckInHeader/)
   })
 })

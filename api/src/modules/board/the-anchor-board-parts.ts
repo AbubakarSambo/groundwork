@@ -1,0 +1,97 @@
+import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
+import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
+import { theActiveLineFor } from './the-anchor-active-line';
+import { readTheMonthRecord } from './the-anchor-month-record';
+import { theMonthBoard, aDifferenceInAWords, aContributionSaid } from './the-anchor-month-board';
+import { theEndOfMonthRead, theMonthIsOver, herOwnWords } from './the-anchor-end-of-month';
+import { hasEnded } from '../grounds/a-ground-that-has-ended';
+import { theAnchorNudgeLine, theirOwnLastOpenPromise } from '../conversation/the-anchor-nudge';
+import type { TheActiveLine, TheMonthBoard, TheEndOfMonthRead, TheIdeasFromYourTeam } from '../entry/the-anchor-served-shapes';
+import { theIdeasFromYourTeam } from '../conversation/ideas-from-the-team';
+import { theAnchorSections, type AnchorBoardSections } from './the-anchor-sections-on-the-board';
+import { theOffersWaiting } from '../detectors/the-anchor-recommendations';
+import { GroundScenario } from '@prisma/client';
+
+/**
+ * THE ANCHOR SCENARIO'S PARTS OF THE BOARD (request 149). One door, so `board.service.ts` carries a single call.
+ *
+ * Served only for a check-in with `started_from` "anchor", only while `release.anchorScenario` is on, and only
+ * to whoever runs the check-in (the lead, the admin who set it up, an admin with access). The month board and the
+ * end-of-month read are the lead's own, as the screens' contract says ("Lead only"), so they go to the lead alone.
+ * For anybody else, and for every other check-in, this returns nothing, so the board is exactly what it was.
+ */
+export type TheAnchorParts = { activeLine?: TheActiveLine; theMonthBoard?: TheMonthBoard; theEndOfMonthRead?: TheEndOfMonthRead; yourPartInMovingThings?: string | null; aNudgeForYou?: string | null; ideasFromYourTeam?: TheIdeasFromYourTeam } & AnchorBoardSections;
+
+async function theAnchorPartsOnly(args: {
+  prisma: any;
+  ground: { id: string; startedFrom?: string | null; initiatorId?: string | null; status?: string | null; scenario?: GroundScenario | string | null; organizationId?: string | null };
+  readerRunsIt: boolean;
+  openRound: number;
+  roundOpenedAt: Date | null;
+  readerIsTheLead: boolean;
+  /** The record's own clock: when the board last changed. Never the moment it is read. */
+  clock: Date | null;
+  /** Whether the sweep has written the month's end on the record (decision 121, item 2). */
+  monthEnded?: boolean;
+  /** The board as this reader is served it, for the differences between accounts. */
+  served: { divergence?: { items?: { topic?: string; whoSeesIt?: string }[] } };
+  /** What keeps coming up, as questions the lead is already served. */
+  patterns: string[];
+  /** The reader's own row in the check-in, for their own recognition sentence. */
+  readerParticipantId?: string | null;
+}): Promise<TheAnchorParts> {
+  const { prisma, ground } = args;
+  if (ground.startedFrom !== STARTED_FROM_THE_ANCHOR) return {};
+  /*
+   * A PERSON IN THE CHECK-IN READS THE SAME SENTENCE THE LEAD READS ABOUT THEIR OWN CONTRIBUTION, AND NOBODY ELSE'S
+   * (piece 22; decision 96 item 9). Their own only, said to them as "you". Nothing else of the anchor parts.
+   */
+  if (!args.readerRunsIt) {
+    if (!args.readerParticipantId || !(await theAnchorScenarioIsOn(prisma))) return {};
+    const record = await readTheMonthRecord(prisma, ground.id, args.openRound);
+    const mine = (record.doneByPerson ?? []).find((d) => d.participantId === args.readerParticipantId);
+    /* In the app, the same nudge the email carries (piece 30), to them alone, while their check-in for the open round is not done. */
+    const answered = ((await prisma.checkIn?.findFirst?.({ where: { groundId: ground.id, participantId: args.readerParticipantId, sessionNumber: args.openRound, status: 'COMPLETED' }, select: { id: true } })?.catch?.(() => null)) ?? null);
+    const nudge = answered ? null : theAnchorNudgeLine(await theirOwnLastOpenPromise(prisma, ground.id, args.readerParticipantId));
+    /* Ideas from the team, to everyone in the check-in, each with who raised it (piece 19; decision 96 item 10). */
+    const ideas = theIdeasFromYourTeam(record.ideas ?? [], args.readerParticipantId, (pid) => (record.ideas ?? []).find((i) => i.ownerParticipantId === pid)?.raisedBy ?? null);
+    return { yourPartInMovingThings: mine ? aContributionSaid(null, mine.clauseToThem ?? mine.clause, mine.settledBy) : null, aNudgeForYou: nudge, ideasFromYourTeam: ideas, ...theAnchorSections({ scenario: ground.scenario as GroundScenario, reader: 'member', ideas }) };
+  }
+  if (!(await theAnchorScenarioIsOn(prisma))) return {};
+  const ended = hasEnded(ground.status ?? null);
+  /* An ended check-in has nobody to nudge, so it carries no line about who is active and who Groundwork has nudged. */
+  const parts: TheAnchorParts = ended ? {} : { activeLine: await theActiveLineFor(prisma, ground.id, args.openRound, args.roundOpenedAt) };
+  if (args.readerIsTheLead) {
+    const record = await readTheMonthRecord(prisma, ground.id, args.openRound);
+    const differences = (args.served.divergence?.items ?? []).map(aDifferenceInAWords).filter((x): x is string => !!x);
+    parts.theMonthBoard = theMonthBoard({ record, clock: args.clock, differences, patterns: args.patterns, ended });
+    parts.ideasFromYourTeam = theIdeasFromYourTeam(record.ideas ?? [], args.readerParticipantId ?? null, (pid) => (record.ideas ?? []).find((i) => i.ownerParticipantId === pid)?.raisedBy ?? null);
+    /* The month's end: twenty-eight days of the record's own clock, or the check-in has ended. Needs her own first words to begin with. */
+    if (theMonthIsOver(record.startedOn, args.clock, ended || !!args.monthEnded)) {
+      const herWords = await herOwnWords(prisma, ground.id, ground.initiatorId ?? null);
+      if (herWords) parts.theEndOfMonthRead = theEndOfMonthRead({ herWords, record, differences, patterns: args.patterns });
+    }
+    /* The same things, as the ordinary board's own sections under the switchboard's names (decision 114). */
+    const carrying = await herOwnWords(prisma, ground.id, ground.initiatorId ?? null);
+    const offers = ended || !ground.organizationId ? [] : await theOffersWaiting(prisma, ground.id, ground.organizationId).catch(() => []);
+    Object.assign(parts, theAnchorSections({
+      scenario: ground.scenario as GroundScenario, reader: 'lead', carrying, lenses: parts.theMonthBoard?.lenses ?? null, question: parts.theMonthBoard?.question ?? null,
+      ideas: parts.ideasFromYourTeam ?? null, people: parts.theMonthBoard?.peopleHelpingThingsMove ?? null, offers, record, ended,
+      monthBoard: parts.theMonthBoard ?? null, endOfMonth: parts.theEndOfMonthRead ?? null,
+    }));
+  } else {
+    /* Whoever runs it but is not the lead (an admin) reads the fixed words about how Groundwork works with the team, and nothing that is a person's or the lead's own: the ideas are for the people in the check-in. */
+    Object.assign(parts, theAnchorSections({ scenario: ground.scenario as GroundScenario, reader: 'member' }));
+  }
+  return parts;
+}
+
+/**
+ * The anchor's parts of the board, one door (request 149), and now also its sections under the switchboard's names (decision 114).
+ * A check-in is the anchor's when it was started from the anchor or its scenario is the anchor's; the switch gates both, as before.
+ */
+export async function theAnchorBoardParts(args: Parameters<typeof theAnchorPartsOnly>[0]): Promise<TheAnchorParts> {
+  const g = args.ground;
+  if (g.startedFrom !== STARTED_FROM_THE_ANCHOR && g.scenario !== GroundScenario.HELP_TEAM_UNDERSTAND) return {};
+  return theAnchorPartsOnly({ ...args, ground: { ...g, startedFrom: STARTED_FROM_THE_ANCHOR } });
+}

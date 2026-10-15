@@ -55,6 +55,10 @@ export interface WeighableEntry {
     | 'DIVERGENCE';
   text: string;
   session: number;
+  /** How the line is known: proven, confirmed, said or memory (week 6b). See how-a-line-is-known. */
+  mark?: 'proven' | 'confirmed' | 'said' | 'memory';
+  /** The mark in the prototype's own words, ready to print. */
+  markSays?: string;
 }
 
 /**
@@ -113,7 +117,7 @@ export function whatALeaderCanWeigh(input: WeighInput): WeighSection | null {
     whatTheRecordHolds: input.entries.filter((e) => WEIGHABLE.includes(e.kind)),
     whatNobodyHasEvidenceFor: untouched,
     note: untouched.length
-      ? `${untouched.length === 1 ? 'One thing' : `${untouched.length} things`} you said mattered ${untouched.length === 1 ? 'was' : 'were'} never reached by anybody's account. That is not evidence against anyone; it means the record cannot answer that part, and a decision that rests on it is resting on something else.`
+      ? `${untouched.length === 1 ? 'One thing' : `${untouched.length} things`} you said mattered ${untouched.length === 1 ? 'was' : 'were'} never reached by anything anybody said. That is not evidence against anyone; it means the record cannot answer that part, and a decision that rests on it is resting on something else.`
       : 'Everything you said mattered has something in the record bearing on it. Read the entries, not this summary of them.',
   };
 }
@@ -149,4 +153,30 @@ export function headingFor(viewer: 'the lead' | 'the subject' | 'somebody else')
       // about somebody else is the thing the whole wall exists to prevent.
       return null;
   }
+}
+
+/**
+ * WHO MAY READ THE WEIGHING AT ALL, DECIDED BEFORE IT IS BUILT.
+ *
+ * The comment on the join always said "only for the lead or the subject - never for a colleague",
+ * and nothing enforced it: every reader of a released report was handed every person's lines
+ * weighed against the lead's standard (found 29 September 2026). So the section is built only for:
+ *
+ * - the lead, who is the person running the check-in, and not an admin reading along;
+ * - the subject, which is the one person a check-in is about. A check-in with one person giving an
+ *   account besides the lead is about that person. A team check-in is about nobody in particular,
+ *   so nobody on it is the subject, and nobody but the lead reads it.
+ *
+ * Everybody else gets no section at all, not an empty one: an empty heading reads as something
+ * being held back.
+ */
+export function whoIsReadingTheWeighing(
+  viewer: { isTheLead: boolean; participantId: string | null },
+  parties: { id: string; partyType: string; managingOnly?: boolean | null }[],
+): 'the lead' | 'the subject' | 'somebody else' {
+  if (viewer.isTheLead) return 'the lead';
+  if (!viewer.participantId) return 'somebody else';
+  const givingAnAccount = parties.filter((p) => p.partyType !== 'INITIATOR' && !p.managingOnly);
+  if (givingAnAccount.length === 1 && givingAnAccount[0].id === viewer.participantId) return 'the subject';
+  return 'somebody else';
 }

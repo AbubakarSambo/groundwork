@@ -18,15 +18,20 @@ describe('the session-ready sweep', () => {
     expect(sweep).not.toContain('recordEntries');
     expect(sweep).not.toContain('Last time');
     expect(service).not.toContain('Last time:');
-    expect(service).toMatch(/async sendSessionReady\(email: string, groundLabel: string, checkInUrl: string\)/);
+    /* The one addition is `missed`, the product's own decision-136 lines folded into the opening (reviewer, 14 October); nothing the person wrote. */
+    /* And `groundId`, only to find whether WhatsApp is on for its organisation (fix list, item 5). */
+    expect(service).toMatch(/async sendSessionReady\(email: string, groundLabel: string, checkInUrl: string, simplerWords\?: boolean \| null, missed\?: string\[\] \| null, groundId\?: string\)/);
+    expect(sweep).toMatch(/theMissedNoticeToFold\(this\.prisma, p\.userId, p\.id, now\)/);
   });
 });
 
 describe('an invitation', () => {
-  it('lasts ninety days, written once and read by every writer', () => {
-    expect(AN_INVITE_LASTS_DAYS).toBe(90);
+  /* Was ninety. Hafsah's decision of 26 September (U.3): fourteen, as the prototype says, now that an
+     expired link offers a fresh one. Still written once and read by every writer. */
+  it('lasts fourteen days, written once and read by every writer', () => {
+    expect(AN_INVITE_LASTS_DAYS).toBe(14);
     const now = new Date('2026-09-11T00:00:00Z');
-    expect(inviteExpiryFrom(now).toISOString()).toBe('2026-12-10T00:00:00.000Z');
+    expect(inviteExpiryFrom(now).toISOString()).toBe('2026-09-25T00:00:00.000Z');
     for (const rel of ['../grounds/grounds.service.ts', '../participants/participants.service.ts']) {
       const src = strip(readFileSync(join(__dirname, rel), 'utf8'));
       expect(src).not.toMatch(/inviteTokenExpiresAt: new Date\(Date\.now\(\) \+ \d+ \* 24/);

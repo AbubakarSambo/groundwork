@@ -25,13 +25,31 @@ export interface BillingStatus {
   }
   /** `cap: null` means unlimited or no plan - render the count without a ceiling. W14-7. */
   people: { count: number; cap: number | null }
+  /** Request 197: "6 people are waiting for a seat because your plan is full. ...", the same sentence People says; null when nobody waits. */
+  overThePlanSays?: string | null
   /**
    * Set while a free run we gave them is running: what it covers and the day it ends. A free run
    * nobody can see ends as a surprise, which is the one thing it must not do.
    */
-  onTheHouse?: { plan: SubscriptionPlan; until: string } | null
+  onTheHouse?: { plan: SubscriptionPlan; until: string; freeTrial?: boolean } | null
   activeGrounds: GroundBalance[]
   card?: { brand: string; last4: string } | null
+  /**
+   * U.19: false when nothing covers the organisation and the free plan has stopped for it (the free
+   * trial's switch is on and it is new). True, or absent from an older server, means the free plan.
+   */
+  onTheFreePlan?: boolean
+  /** Admin only (U.19): the paid subscription invoices, newest first. */
+  invoices?: { paidOn: string; amountCents: number; currency: string }[]
+  /** Admin only: counts of what the organisation has done. */
+  usage?: { checkIns: number; reportsReleased: number; peopleTakingPart: number }
+  /**
+   * Admin only: what it began on, when it was set up - a plain sentence, never a figure.
+   * "When Baridi Appliances was set up, it had 20 or more people, so it began on a plan."
+   */
+  startedWith?: { said: 'fewer' | 'more'; line: number; says: string } | null
+  /** Admin only (fix list item 6): this month, line by line, each plan for your people, and a cheaper plan. Every sentence is the server's. */
+  month?: WhatAMonthSays | null
 }
 
 export interface ContributorCode {
@@ -48,6 +66,8 @@ export interface CanCreateGroundResult {
   freeReason?: string
   codeId?: string
   groundsUsed?: number
+  /** U.19: refused because the organisation has no plan and the free plan has stopped for it. */
+  noPlan?: boolean
 }
 
 /**
@@ -158,12 +178,34 @@ export interface LivePricingRow {
   /** Null means unlimited. Undefined means it has not loaded yet. */
   memberCap: number | null
   hasStripePrice: boolean
+  /** Fix list item 6: each seat past `memberCap`, a month ($5), and WhatsApp a month for each person who used it ($4). Null where not sold by itself. */
+  extraSeatCents?: number | null
+  whatsappPersonCents?: number | null
   updatedAt: string
+}
+
+export interface WhatAMonthSays {
+  people: number
+  plan: SubscriptionPlan | null
+  included: string | null
+  peopleSays: string
+  lines: { says: string; amount: string }[] | null
+  total: { says: string; amount: string } | null
+  free: string | null
+  priceChanges: string
+  cheaper: { plan: SubscriptionPlan; says: string; button: string } | null
+  plansNote: string | null
+  whatsappRate: string | null
+  plans: { plan: SubscriptionPlan; name: string; price: string; includes: string; extraSeats: string | null; whatsapp: string | null; forYou: string | null; yours: boolean }[]
+  forHowMany: string
+  numbers: { whatsappOn: boolean; whatsappUsedIt: number; whatsappFree: boolean; whatsappFlatCents: number | null }
 }
 
 export interface LivePricing {
   plans: LivePricingRow[]
   free: { groundLimit: number; memberLimit: number }
+  /** The free trial (Hafsah, 26 September). Billing grants it while it is on (U.19); say nothing while off. */
+  trial?: { on: boolean; teamsUnder: number; months: number }
 }
 
 /**
@@ -180,12 +222,77 @@ export function formatMonthlyPrice(cents: number): string {
   return `$${body}/mo`
 }
 
+/** "$400" and "$1,650", for a sentence: "Growth, $400 a month." The prototype's words. */
+export function formatDollars(cents: number): string {
+  const dollars = cents / 100
+  return `$${Number.isInteger(dollars)
+    ? dollars.toLocaleString('en-US')
+    : dollars.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
 export interface CodeShareCard {
   code: string
   expiresAt: string
   daysRemaining: number
   note?: string
   allowCodeCreation: boolean
+}
+
+/**
+ * WHATSAPP, THE PAID ADD-ON (decision 78, 2 October). `GET /billing/whatsapp` serves one of two
+ * shapes, and the server decides which, not the screen: an admin, while `release.planAndBillingNewParts`
+ * is on, reads `WhatsAppBillingAdmin`; everybody else, and an admin while that switch is off, reads
+ * only `WhatsAppBillingMinimal`. Nothing here holds a price, a limit or a number of its own - every
+ * sentence in `says` is built by the server and shown exactly as it comes.
+ */
+export interface WhatsAppBillingMinimal {
+  /**
+   * Whether the organisation's WhatsApp add-on is on (5 October, evening: every reader is served
+   * this now, not only an admin). Still never a price or a limit - those stay admin only.
+   */
+  on: boolean
+  sending: boolean
+  says: string | null
+}
+
+export interface WhatsAppBillingAdmin {
+  on: boolean
+  plan: SubscriptionPlan | null
+  price: { amountCents: number; currency: 'USD' } | null
+  charged: boolean
+  freeTrial: { months: number; endsOn: string } | null
+  /** The end of the free WhatsApp month every organisation gets, while it lasts (13 October, evening). */
+  freeUntil?: string | null
+  onTheFreePlan: boolean
+  use: { month: string; sent: number; limit: number | null; startsAgainOn: string }
+  sending: boolean
+  heldBecause: 'not turned on' | 'not on a paid plan' | 'at the limit' | null
+  says: {
+    onOrOff: string
+    /** "WhatsApp is free until 13 November 2026. To keep it after that, add it to your subscription with the switch above." */
+    freeMonth?: string | null
+    price: string | null
+    /** Fix list item 6, s73's WhatsApp card. */
+    whoIsCharged?: string | null
+    whoIsChargedMore?: string | null
+    people?: string | null
+    charge: string
+    use: string
+    atTheLimit: string | null
+    reachedTheLimit: string | null
+    held: string | null
+  }
+}
+
+export type WhatsAppBilling = WhatsAppBillingMinimal | WhatsAppBillingAdmin
+
+/**
+ * True only for the full admin shape. `on` is served to every reader now (5 October, evening), so
+ * it can no longer tell the two shapes apart - `says` still can: a plain sentence (or null) for
+ * everybody else, an object of sentences for an admin.
+ */
+export function isWhatsAppBillingAdmin(w: WhatsAppBilling | undefined): w is WhatsAppBillingAdmin {
+  return !!w && typeof (w as WhatsAppBillingAdmin).says === 'object' && (w as WhatsAppBillingAdmin).says !== null
 }
 
 export const billingApi = {
@@ -210,8 +317,11 @@ export const billingApi = {
   claimFreeExtension: (groundId: string) =>
     apiClient.post('/billing/free-extension', { groundId }).then(r => r.data),
 
+  /* Quiet on a server error: the billing page says what happened in one sentence of its own
+     ("Paying is not set up yet. Nothing was charged."), and the shared pop-up said the opposite
+     beside it (recheck, 7 October). */
   createSubscription: (plan: SubscriptionPlan) =>
-    apiClient.post<{ checkoutUrl: string }>('/billing/subscription', { plan }).then(r => r.data),
+    apiClient.post<{ checkoutUrl: string }>('/billing/subscription', { plan }, { skipServerErrorToast: true } as any).then(r => r.data),
 
   changeSubscriptionPlan: (plan: SubscriptionPlan) =>
     apiClient.patch<{ plan: SubscriptionPlan; periodEnd: string | null }>('/billing/subscription/plan', { plan }).then(r => r.data),
@@ -256,10 +366,29 @@ export const billingApi = {
     apiClient.post<{ ok: boolean; message: string; sessionsAdded?: number }>('/billing/contributor-codes/redeem', { code, groundId }).then(r => r.data),
 
   getContributorCodes: () =>
-    apiClient.get<ContributorCode[]>('/billing/contributor-codes').then(r => r.data),
+    apiClient.get<ContributorCode[]>('/billing/contributor-codes').then(r => (Array.isArray(r.data) ? r.data : [])),
 
   getContributorCodeShareCard: (codeId: string) =>
     apiClient.get<CodeShareCard>(`/billing/contributor-codes/${codeId}/share-card`).then(r => r.data),
+
+  /** WhatsApp, the paid add-on (decision 78). The server decides the shape; see `WhatsAppBilling` above. */
+  /** Fix list item 6: whether the next invitation adds a paid seat, and "This adds a seat: +$5 a month" when it does. */
+  nextSeat: () =>
+    apiClient.get<{ addsASeat: boolean; says: string | null }>('/billing/next-seat', { skipServerErrorToast: true } as any).then(r => r.data),
+
+  getWhatsApp: () =>
+    apiClient.get<WhatsAppBilling>('/billing/whatsapp').then(r => r.data),
+
+  /** An admin only; a lead or member is refused by the server. */
+  setWhatsApp: (on: boolean) =>
+    apiClient.patch<WhatsAppBilling>('/billing/whatsapp', { on }, { skipServerErrorToast: true } as any).then(r => r.data),
+
+  /**
+   * "Remind them", on a check-in paused until the team subscribes (upgrade.txt). An admin, a lead
+   * or a member may press it, at most once a day; a guest is refused by the server.
+   */
+  remindTheAdmins: (groundId: string) =>
+    apiClient.post<{ reminded: boolean; says: string }>('/billing/remind-the-admins', { groundId }).then(r => r.data),
 
   checkCanCreateGround: (accessCode?: string) =>
     apiClient.get<CanCreateGroundResult>('/billing/can-create-ground', {

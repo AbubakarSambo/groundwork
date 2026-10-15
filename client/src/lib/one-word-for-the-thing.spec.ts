@@ -41,7 +41,17 @@ const strip = (s: string) =>
  * Listed explicitly rather than loosening the pattern, so a real string can never hide behind a
  * broad exemption.
  */
-const CODE_NOT_COPY = [/\|\| !ground\) return/, /\|\| \(ground as any\)\.status ===/]
+const CODE_NOT_COPY = [
+  /\|\| !ground\) return/,
+  /\|\| \(ground as any\)\.status ===/,
+  /* CheckInPeopleAndSetup.tsx: `(ground as any).overWhatsApp === false ?` sits inside a `>...<`
+     JSX text position (a `value={...}` ternary), which reads to the `>text<` matcher as if it were
+     between two tags - it is a boolean comparison against the data model, never shown to anyone. */
+  /\(ground as any\)\.overWhatsApp === false \?/,
+  /* Same file: the reminders row's day/days pluraliser reads `ground.chaseAfterDays` inside a
+     template literal the `>...<` matcher also catches as prose. */
+  /\(\(ground as any\)\?\.chaseAfterDays/,
+]
 
 describe('one word for the thing a person opens', () => {
   const offenders: string[] = []
@@ -151,7 +161,10 @@ describe('one word for the thing a person opens', () => {
 })
 
 describe('and the two words stay distinct', () => {
-  const shell = readFileSync(join(SRC, 'components/gw/AppShell.tsx'), 'utf8')
+  /* NAV_ITEMS moved out of AppShell.tsx into nav-items.tsx (group 1 rebuild) - see
+     the-rebuilt-pages-use-only-the-new-parts.spec.ts. Behaviour is unchanged; only where the nav
+     item list itself is written moved. */
+  const shell = readFileSync(join(SRC, 'components/gw/nav-items.tsx'), 'utf8')
 
   it('the nav names the object', () => {
     /* Renamed to "All check-ins": the rail above it is already a list of check-ins, so the item
@@ -164,8 +177,16 @@ describe('and the two words stay distinct', () => {
      * The half of the decision that is easy to lose. If a later sweep renames sessions to
      * check-ins as well, the product can no longer say "your check-in has three sessions" and
      * every sentence about cadence becomes ambiguous.
+     *
+     * U.8 REVIEW: the bare `Session ${sessionNumber}` this pinned is gone from the bottom bar - an
+     * ordinary session says nothing there now (docs/prototype/screens/B3-the-check-in/*.txt never
+     * print a lone session number either; see the U.8 review). The word itself did not go with it:
+     * `privacyLabel` still says "Closing session ${sessionNumber}" and "Correcting session
+     * ${correctingSession}" for the two cases that DO have something to say about the session, so
+     * this now pins one of those instead of the sentence that was removed.
      */
     const chat = readFileSync(join(SRC, 'pages/chat/ChatPage.tsx'), 'utf8')
-    expect(chat).toMatch(/Session \$\{sessionNumber\}/)
+    expect(chat).toMatch(/[Cc]losing session \$\{sessionNumber\}/)
+    expect(chat).toMatch(/[Cc]orrecting session \$\{correctingSession\}/)
   })
 })

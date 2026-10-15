@@ -55,7 +55,11 @@ export function whenTheCheckInsLand(a: {
   howMany?: number
   today?: Date
 }): Date[] {
-  const first = theNextDayTheyWork(a.startsAt ?? a.today ?? new Date(), a.workingDays)
+  /* A DAY, NOT A MOMENT (U.6 review). "Now" is today with the clock's time on it, and every date
+     after it carried that time, so a check-in on the last day fell after that day's midnight and was
+     dropped from the count. Each date is the start of its day. */
+  const from = a.startsAt ?? a.today ?? new Date()
+  const first = theNextDayTheyWork(new Date(from.getFullYear(), from.getMonth(), from.getDate()), a.workingDays)
   if (a.cadence === 'ONE_TIME' || a.cadence === 'SEQUENTIAL') return [first]
 
   const out = [first]
@@ -65,14 +69,37 @@ export function whenTheCheckInsLand(a: {
   let cursor = first
   while (out.length < want) {
     const d = new Date(cursor)
+    /* Item 5, the same rule as the server's the-check-ins-own-schedule.ts: after the start, the next
+       one is the first set day still to come, so a Sunday start for "every Monday" lists Monday 12,
+       not Monday 19, and a start on the 11th for "the 20th" lists the 20th of the same month. */
+    /* "Now" (Hafsah, 11 October 2026), the same as the server: with no start chosen, the first one
+       stays open until the next set day at least half a cycle away (4 days for weekly, 7 for
+       fortnightly, half the start's month rounded down for monthly), so "every Monday" set up on
+       Sunday 11 lists Sun 11 October, Mon 19, Mon 26, and never two a day apart. */
+    const second = out.length === 1
+    const startsNow = a.startsAt == null
+    const onTheDay = (year: number, month: number, day: number) => new Date(year, month, Math.min(day, new Date(year, month + 1, 0).getDate()))
     if (a.cadence === 'MONTHLY') {
-      d.setMonth(d.getMonth() + 1)
-      if (a.anchorDay != null && a.anchorDay >= 1 && a.anchorDay <= 31) {
-        const daysInMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()
-        d.setDate(Math.min(a.anchorDay, daysInMonth))
+      const anchored = a.anchorDay != null && a.anchorDay >= 1 && a.anchorDay <= 31
+      const thisMonth = anchored ? onTheDay(d.getFullYear(), d.getMonth(), a.anchorDay!) : null
+      if (second && startsNow && anchored) {
+        const half = Math.floor(new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate() / 2)
+        const daysOn = (x: Date) => Math.round((x.getTime() - first.getTime()) / 86_400_000)
+        let j = 0
+        while (daysOn(onTheDay(first.getFullYear(), first.getMonth() + j, a.anchorDay!)) < half) j += 1
+        d.setTime(onTheDay(first.getFullYear(), first.getMonth() + j, a.anchorDay!).getTime())
+      } else if (second && thisMonth && thisMonth > first) d.setDate(thisMonth.getDate())
+      else {
+        d.setMonth(d.getMonth() + 1)
+        if (anchored) {
+          const daysInMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()
+          d.setDate(Math.min(a.anchorDay!, daysInMonth))
+        }
       }
     } else {
-      d.setDate(d.getDate() + s)
+      const setDay = a.anchorDay != null && a.anchorDay >= 0 && a.anchorDay <= 6
+      const firstGap = !setDay ? s : startsNow ? (a.cadence === 'FORTNIGHTLY' ? 7 : 4) : a.cadence === 'WEEKLY' ? 1 : s
+      d.setDate(d.getDate() + (second && (a.cadence === 'WEEKLY' || a.cadence === 'FORTNIGHTLY') ? firstGap : s))
       if ((a.cadence === 'WEEKLY' || a.cadence === 'FORTNIGHTLY') && a.anchorDay != null && a.anchorDay >= 0 && a.anchorDay <= 6) {
         while (d.getDay() !== a.anchorDay) d.setDate(d.getDate() + 1)
       }

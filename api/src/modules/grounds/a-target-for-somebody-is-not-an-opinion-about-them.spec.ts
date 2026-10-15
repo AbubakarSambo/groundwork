@@ -65,14 +65,27 @@ describe('a target for somebody is not an opinion about them', () => {
 
   it('a target for a named person is heard whatever question was open', () => {
     expect((src.match(/proposalFrom\('objectives', \w+, /g) ?? []).length).toBeGreaterThanOrEqual(2);
-    expect(src).toMatch(/if \(forSomebody\.kind === 'expectation'\) proposal = forSomebody;/);
+    /*
+     * FIX 4, 30 September 2026: this now also wins the turn for a `lead_read` proposal - a judgement
+     * about a named person, heard whatever question was open, the same as a checkable expectation
+     * always has been. See what-the-context-chat-heard.ts's objectives branch.
+     */
+    expect(src).toMatch(/if \(forSomebody\.kind === 'expectation' \|\| forSomebody\.kind === 'lead_read'\) proposal = forSomebody;/);
   });
 
   it('and both halves read the sentence the same way, so a yes lands', () => {
-    /* The chat proposes and `applyContextProposal` re-derives from the same words. A second reading
-       in only one of them shows the lead a proposal that the confirm step then cannot find. */
+    /*
+     * The chat proposes and `applyContextProposal` re-derives from the same words. A second reading
+     * in only one of them shows the lead a proposal that the confirm step then cannot find.
+     *
+     * FOUND LIVE, 30 September 2026: confirm's copy of the guard was renamed to
+     * `triedTheSecondReading`, so it could give an HONEST refusal - "I could not find that in what
+     * you said" - rather than leaking the open gap's own unrelated reason ("No length in that
+     * answer") when the second reading disagreed between the two calls. Both conditions are still on
+     * `openGap !== 'objectives'`, still one in each half.
+     */
     const chat = src.indexOf("if (openGap !== 'objectives') {");
-    const confirm = src.indexOf("if (openGap !== 'objectives') {", chat + 1);
+    const confirm = src.indexOf("const triedTheSecondReading = openGap !== 'objectives';");
     expect(chat).toBeGreaterThan(-1);
     expect(confirm).toBeGreaterThan(chat);
   });

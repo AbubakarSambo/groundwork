@@ -36,10 +36,11 @@ describe('three months on the house', () => {
     expect(prisma.freeRun.upsert.mock.calls[0][0].where.email).toBe('sam@work.com');
   });
 
-  it('defaults to the three months she asked for, and caps a typo', async () => {
+  /* Changed 5 October 2026: every free run is one month (Hafsah), where this pinned the three she first asked for. */
+  it('defaults to one month, and caps a typo', async () => {
     const { svc, prisma } = serviceWith(null);
     await svc.grant({ email: 'a@b.com' });
-    expect(prisma.freeRun.upsert.mock.calls[0][0].create.months).toBe(3);
+    expect(prisma.freeRun.upsert.mock.calls[0][0].create.months).toBe(1);
     await svc.grant({ email: 'a@b.com', months: 900 });
     expect(prisma.freeRun.upsert.mock.calls[1][0].update.months).toBe(24);
   });

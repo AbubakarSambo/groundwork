@@ -39,9 +39,9 @@ export class IntelligenceService {
    */
   async submitFeedback(groundId: string, userId: string, feltFair: boolean, note?: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const participant = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId } });
-    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!participant) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
 
     return this.prisma.outcomeFeedback.upsert({
       where: { groundId_participantId: { groundId, participantId: participant.id } },
@@ -67,16 +67,16 @@ export class IntelligenceService {
     dto: { rating: number; feltFair: boolean; whatWorked?: string; whatDidnt?: string; wouldUseAgain: boolean },
   ) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     const participant = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId } });
-    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!participant) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
 
     // Enforce one-submission-per-ground guard (in addition to the DB unique constraint).
     const existing = await this.prisma.outcomeFeedback.findUnique({
       where: { groundId_participantId: { groundId, participantId: participant.id } },
     });
-    if (existing) throw new ForbiddenException('You have already submitted feedback for this check-in');
+    if (existing) throw new ForbiddenException('You have already given your feedback on this check-in, so there is nothing more to send.');
 
     // wouldUseAgain lives in the note with the rest of the survey. It used to be
     // written into the feltFair COLUMN, which is the column every fairness

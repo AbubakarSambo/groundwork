@@ -1,13 +1,25 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString, IsOptional, MaxLength, IsDateString } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, IsOptional, MaxLength, IsDateString, ValidateIf } from 'class-validator';
 
 export class AddParticipantDto {
   @ApiProperty({ example: 'ada@acme.com' })
   /* The message is the one the organiser reads on the setup screen, so it is a sentence rather
      than class-validator's default "email must be an email". */
+  /* Not needed when a colleague is picked by id (U.4): the server looks their address up. */
+  @ValidateIf((o) => !o.colleagueId)
   @IsEmail({}, { message: 'That does not look like an email address. Check it and try again.' })
   @IsNotEmpty()
   email: string;
+
+  /**
+   * A COLLEAGUE PICKED FROM THE LIST, BY ID (U.4). The list of colleagues carries names, roles and
+   * teams, never addresses, so picking one sends this and the server finds the address.
+   */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  colleagueId?: string;
 
   @ApiPropertyOptional({ example: 'Head of Engineering', description: 'The role as the initiator describes it (shown to the participant - never hidden)' })
   @IsOptional()
@@ -21,6 +33,13 @@ export class AddParticipantDto {
   @IsString()
   @MaxLength(120)
   department?: string;
+
+  /** The name the lead gives this person, kept beside the address ("Name + email", the anchor's people step). Never read from the address. */
+  @ApiPropertyOptional({ example: 'Amani Wekesa', description: 'What the lead calls this person. Optional.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  displayName?: string;
 
   @ApiPropertyOptional({ example: 'Looking forward to aligning on the roadmap with you.', description: 'Optional personal note included in the invite email' })
   @IsOptional()

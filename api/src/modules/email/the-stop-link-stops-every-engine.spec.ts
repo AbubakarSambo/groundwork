@@ -37,10 +37,10 @@ describe('the arbiter reads it all', () => {
     expect(service).toMatch(/await this\.wouldTheyRatherNot\(options\.to, sender, context\)/);
   });
   it('every nudge names its participant, so every nudge carries its way out', () => {
-    expect(service).toMatch(/async sendNudge\([^)]*participantId: string\)/);
+    expect(service).toMatch(/async sendNudge\([^)]*participantId: string(, simplerWords\?: boolean \| null)?\)/);
     for (const rel of ['../grounds/grounds.cron.ts', '../conversation/remind.service.ts']) {
       const src = strip(readFileSync(join(__dirname, rel), 'utf8'));
-      for (const call of src.match(/sendNudge\([\s\S]*?\);/g) ?? []) expect(call).toMatch(/\.id,?\s*\)/);
+      for (const call of src.match(/sendNudge\([\s\S]*?\);/g) ?? []) expect(call).toMatch(/\.id,?\s*(\(checkIn\.ground as any\)\.simplerWords,?\s*)?\)/);
     }
   });
 });

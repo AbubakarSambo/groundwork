@@ -23,7 +23,11 @@ describe('the opening clause has a shape', () => {
     expect(turns.length).toBe(4);
     /* Each one answers a line from the conversation this was written from. */
     expect(OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE).toContain('Telling them is the part that makes those real.');
-    expect(OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE).toContain('That is a real answer and it goes down as it is.');
+    /* The fourth turn used to answer "Honestly I do not know" with "That is a real answer and it goes down as it is."
+       That is a comment on the answer, which the standard forbids and which the model then copied ("That is a real
+       answer, as it stands"), so the example now shows the question alone. */
+    expect(OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE).toContain('You:  "Who would know?"');
+    expect(OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE).not.toContain('That is a real answer');
   });
 
   it('and stops the product narrating what it is doing with their words', () => {
@@ -44,11 +48,26 @@ describe('a number with somebody name on it is asked about', () => {
   it('the goals pack asks whether that person has been told', () => {
     const pack = SCENARIO_PACKS.OKR_ALIGNMENT;
     expect(pack).toMatch(/HAVE THEY BEEN TOLD, AND THIS IS NOT OPTIONAL/);
-    expect(pack).toMatch(/does Amina know that is her number yet/);
+    expect(pack).toMatch(/does Nadia know that is her number yet/);
   });
 
   it('and takes "not yet" as an answer rather than a failing', () => {
     expect(SCENARIO_PACKS.OKR_ALIGNMENT).toMatch(/is never a failing/);
     expect(SCENARIO_PACKS.OKR_ALIGNMENT).toMatch(/never ask a second time in the same session/);
+  });
+});
+
+/**
+ * NIGHT QUALITY RUN 1, PROBLEM 6. Hassan, week 1: "Monthly restocking caps you at twelve refills a
+ * year across forty shops. Is that enough to hit the number?" It was this rule's own example, said
+ * word for word. The rule every turn receives no longer holds it, and says where a figure may come from.
+ */
+describe('the opener rule never hands the model a made-up figure', () => {
+  it('no longer holds the line Hassan was told', () => {
+    expect(OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE).not.toContain('twelve refills a year across forty shops');
+  });
+  it('and says a number is said only from the record or their own words', () => {
+    expect(OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE).toContain("Never say an example's words to anybody.");
+    expect(OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE).toContain('is said only when it is in the record or in their own words');
   });
 });

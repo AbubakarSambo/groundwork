@@ -30,6 +30,10 @@ export interface Target {
   name: string;
   target: number | null;
   ownerParticipantId?: string | null;
+  /** THE LEAD SAYS PLAINLY (decision 46, 29 September 2026), set when the target is made, never
+   * guessed from its wording - see GroundObjective.isADecisionAboutAPerson in schema.prisma. A
+   * target with this set is shown to the check-in's lead and nobody else. */
+  isADecisionAboutAPerson?: boolean;
 }
 
 /**
@@ -39,13 +43,23 @@ export interface Target {
  * existed, and it is still the common case - "paying companies", "first response under four hours".
  * Only a target with somebody's name on it is narrowed.
  */
+/** A total over this many people or fewer gives somebody's number away: it is the whole minus the reader's own. */
+export const MOST_PEOPLE_WHOSE_TOTAL_GIVES_ONE_AWAY = 2;
+
 export function targetsFor(
   targets: Target[],
   readerParticipantId: string | null,
   whoSees: WhoSees,
-  opts: { isLead?: boolean } = {},
+  opts: { isLead?: boolean; seesEveryShare?: boolean } = {},
 ): { shown: Target[]; alsoSay: string | null } {
-  if (whoSees === 'everybody' || opts.isLead) return { shown: targets, alsoSay: null };
+  if (opts.isLead) return { shown: targets, alsoSay: null };
+  /* A decision the lead has to make about somebody is the lead's alone, whoever else reads (request
+     42, decision 46). Read off the field the lead set when the target was made, never guessed from
+     its wording - see Target.isADecisionAboutAPerson above. */
+  targets = targets.filter((t) => !t.isADecisionAboutAPerson);
+  /* An admin, the chief executive included, sees the figures: every person's share (decision 86,
+     which reverses that part of decision 73). Never the lead's decision about a person, above. */
+  if (whoSees === 'everybody' || opts.seesEveryShare) return { shown: targets, alsoSay: null };
 
   const unowned = targets.filter((t) => !t.ownerParticipantId);
   const mine = targets.filter((t) => t.ownerParticipantId && t.ownerParticipantId === readerParticipantId);
@@ -84,7 +98,14 @@ export function targetsFor(
    */
   const everyoneNamed = unowned.length === 0;
   const heads = others.length + mine.length;
-  if (!everyoneNamed) {
+  /*
+   * AND THE TOTAL ONLY WHERE THREE OR MORE PEOPLE HAVE A NUMBER (decision 110, P3; Hafsah's hidden-target rule).
+   *
+   * With two people carrying a number, the whole minus your own IS your colleague's number, so "of 270 across two people" gave it
+   * away. With three or more, what is left is the sum of at least two others, which names nobody's. Where the total is withheld the
+   * reader is still told that other people's numbers are their own, so a short list is never a silent one.
+   */
+  if (!everyoneNamed || heads < MOST_PEOPLE_WHOSE_TOTAL_GIVES_ONE_AWAY + 1) {
     /*
      * NO NUMBER, BUT STILL AN ANSWER. Something is missing from this screen and the reason is worth
      * one line - without it, a person sees a short list and has no idea anything was left out.

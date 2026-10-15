@@ -60,15 +60,19 @@ describe('/auth/sent is a state of /auth, not a second page', () => {
 
   it('and it is the good version: the resend and the way back are both there', async () => {
     /**
-     * The whole point of the merge. These four things only existed on the separate
-     * page, so somebody who sent themselves a link from /auth got none of them - and
-     * a mistyped address had no exit at all.
+     * The whole point of the merge: somebody who sent themselves a link from /auth
+     * got no resend, and a mistyped address had no exit at all.
+     *
+     * U.2 reworded it as the prototype's "Check your email" (signin-sent.txt): the
+     * "What to expect" list and the spam-folder line went, because the prototype has
+     * neither and the list promised a password step that is waiting for a decision.
+     * The resend and the way back are what this test was for, and both stay.
      */
     renderAt('/auth/sent?email=sam%40acme.test')
-    await waitFor(() => expect(screen.getByText(/Resend available in/)).toBeTruthy())
-    expect(screen.getByText(/What to expect/)).toBeTruthy()
-    expect(screen.getByText(/Check your spam folder/)).toBeTruthy()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Send it again' })).toBeTruthy())
+    expect(screen.getByText(/You can send it again in 30 seconds\./)).toBeTruthy()
     expect(screen.getByText(/Wrong address\? Use a different one/)).toBeTruthy()
+    expect(screen.queryByText(/What to expect/)).toBeNull()
   })
 
   it('the old thin version is gone rather than kept alongside', async () => {

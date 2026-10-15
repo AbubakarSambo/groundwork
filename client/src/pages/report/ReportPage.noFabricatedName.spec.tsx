@@ -1,32 +1,28 @@
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
-import { dirname, join } from 'node:path'
+import { participantLabel } from '@/lib/utils'
 
 /**
- * NO-FABRICATED-NAME guard for the shared report's party handles. Used to
- * render the email local-part as if it were the person's name. Now uses
- * participantLabel() (real name -> roleAsDescribed -> "a teammate"), same
- * helper as every other name-display surface.
+ * NO-FABRICATED-NAME guard for a shared report's party handles. Used to render the email
+ * local-part as if it were the person's name.
+ *
+ * MOVED FROM THE DEAD REPORT BODY. `adminHandle`/`partHandle`, built with
+ * `adminParty ? participantLabel(adminParty) : 'the lead'`, lived in `ReportBody`
+ * (`ReportPage.tsx`), not mounted by any route since the Report tab became a list of sessions.
+ * Every live surface that names a party to another party (`SessionReportPage.tsx`'s `nameFor`,
+ * `WhatToProbeThemOn.tsx`, `UpdatesToTheRecord.tsx`, `BoardPage.tsx`'s `HiddenContributorRow`,
+ * `SharedReportForAParty.tsx`) goes through `peopleLabels`/`participantLabel` rather than
+ * re-implementing the fallback chain - so the rule is strongest checked at its one source, which is
+ * what this file now does, rather than against a pattern match on a page that no longer builds a
+ * handle at all.
  */
-const src = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), 'ReportPage.tsx'),
-  'utf8',
-)
-
-describe('ReportPage: party handles use participantLabel, not email.split', () => {
-  it('imports participantLabel', () => {
-    /**
-     * Loosened from the exact import line to the identifier: `personLabel` now sits alongside it in
-     * the same statement (the lead's own view may fall back to an address; a party's view may not),
-     * and pinning the literal line would make adding a second helper look like removing this one.
-     */
-    expect(src).toMatch(/import \{[^}]*\bparticipantLabel\b[^}]*\} from '@\/lib\/utils'/)
+describe('a party is never named by the local part of their email', () => {
+  it('participantLabel never reaches for the email, whatever is on the row', () => {
+    expect(participantLabel({ email: 'lena.lead@example.test' })).not.toContain('lena')
+    expect(participantLabel({ email: 'lena.lead@example.test' })).not.toContain('@')
   })
 
-  it('adminHandle/partHandle are built from participantLabel, not the email local-part', () => {
-    expect(src).toMatch(/adminHandle = adminParty \? participantLabel\(adminParty\)/)
-    expect(src).toMatch(/partHandle = partParty \? participantLabel\(partParty\)/)
-    expect(src).not.toMatch(/\.email\?\.split\('@'\)\[0\]/)
+  it('and falls back to a real name, or a plain neutral word, never an address', () => {
+    expect(participantLabel({ user: { firstName: 'Lena', lastName: 'Lead' }, email: 'lena.lead@example.test' })).toBe('Lena Lead')
+    expect(participantLabel({ email: 'lena.lead@example.test' })).toMatch(/colleague|lead/i)
   })
 })

@@ -31,34 +31,46 @@ describe('the ground returns its own change history', () => {
     expect(CODE).toMatch(/Array\.isArray\(rawLog\) \? rawLog : \[\]/);
   });
 
+  /*
+   * UPDATED (U.4 re-review, item 5). "the lead" or "a party" became "you", "the lead" or "an admin" -
+   * "party" read as work jargon on the settings page ("Changed by the party on..."), and the reader's
+   * own change now reads as "You changed...", which the old two-way split could not say. The rule
+   * this test exists to protect - `changedBy` is never resolved to a name - is unchanged and still
+   * checked below.
+   */
   it('never names who made the change', () => {
     /**
      * THE PART THAT MATTERS. Peer visibility can be off on this ground, and resolving `changedBy`
      * to a name here would walk straight around it - a party who is not supposed to know who else
      * is here would learn a name from a settings page.
      *
-     * "the lead" or "a party" is all anybody needs and is true either way.
+     * "you", "the lead" or "an admin" is all anybody needs and is true either way.
      */
-    expect(CODE).toMatch(/by: e\.changedBy === ground\.initiatorId \? \('lead' as const\) : \('party' as const\)/);
-    const block = CODE.slice(CODE.indexOf('const settingsChanges'), CODE.indexOf('const settingsChanges') + 600);
+    expect(CODE).toMatch(/by: e\.changedBy === requestingUserId \? \('you' as const\)/);
+    expect(CODE).toMatch(/: e\.changedBy === ground\.initiatorId \? \('lead' as const\)/);
+    expect(CODE).toMatch(/: \('admin' as const\)/);
+    const block = CODE.slice(CODE.indexOf('const settingsChanges'), CODE.indexOf('const settingsChanges') + 900);
     expect(block).not.toMatch(/firstName|lastName|changedBy: e\.changedBy/);
   });
 });
 
 describe('and the settings page shows it', () => {
+  /* The settings tab moved into its own file when it was rebuilt from the shared parts (People
+     and setup, 29 September), so the log is read where it now lives. */
   const PAGE = readFileSync(
-    join(__dirname, '../../../../client/src/pages/grounds/GroundAdminPage.tsx'),
+    join(__dirname, '../../../../client/src/pages/grounds/CheckInPeopleAndSetup.tsx'),
     'utf8',
   ).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
   it('under the controls that write it', () => {
-    expect(PAGE).toMatch(/What has been changed here/);
+    /* Under the settings it records, behind the sentence that says what is noted. */
+    expect(PAGE).toMatch(/Changes to how long it runs and how often are noted with who made them and the date\./);
     expect(PAGE).toMatch(/settingsChanges/);
   });
 
   it('newest first', () => {
     // The log is appended to, so raw order buries the change somebody just made.
-    expect(PAGE).toMatch(/\.settingsChanges\]\.reverse\(\)/);
+    expect(PAGE).toMatch(/\.settingsChanges(?: \?\? \[\]\))?\]\.reverse\(\)/);
   });
 
   it('and says what it changed from, not only what it is now', () => {

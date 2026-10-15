@@ -87,7 +87,7 @@ export function softSpots(a: AccountShape): { spot: SoftSpot; line: string }[] {
   if (a.sessions >= 2 && a.corroborated === 0 && couldHaveBeenChecked >= 2) {
     out.push({
       spot: 'nothing else touches it',
-      line: 'Nothing else in this ground touches any part of this account. That does not make it wrong, it makes it unchecked: it rests entirely on one person having described it accurately.',
+      line: 'Nothing else in this check-in touches any part of what this person said. That does not make it wrong, it makes it unchecked: it rests entirely on one person having described it accurately.',
     });
   }
 
@@ -105,7 +105,7 @@ export function softSpots(a: AccountShape): { spot: SoftSpot; line: string }[] {
   if (a.documents >= 1 && a.documentsReferredTo === 0) {
     out.push({
       spot: 'documents nobody uses',
-      line: 'Documents are attached here but nothing in the record refers to them. The documents are not doing any work in this picture, so treat this as an account without documents rather than one with them.',
+      line: 'Documents are attached here but nothing in the record refers to them. The documents are not doing any work in this picture, so treat this as what people said without documents rather than with them.',
     });
   }
 
@@ -124,7 +124,7 @@ export function softSpots(a: AccountShape): { spot: SoftSpot; line: string }[] {
 export function whatWouldRaiseIt(spot: SoftSpot): string {
   switch (spot) {
     case 'nothing else touches it':
-      return 'Ask one other person about any single part of it. One overlap is the difference between an unchecked account and a checked one.';
+      return 'Ask one other person about any single part of it. One overlap is the difference between something one person said and something that has been checked.';
     case 'the detail does not move':
       return 'Ask what changed since last time, and accept "nothing" as an answer. A recorded "nothing changed" is worth more than a repeated description.';
     case 'documents nobody uses':

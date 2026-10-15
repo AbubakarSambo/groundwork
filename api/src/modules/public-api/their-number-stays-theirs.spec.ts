@@ -26,7 +26,7 @@ describe('a message from somebody who is not on their roster', () => {
    * supplier, about a roster they have never heard of.
    */
   it('and never hears a sentence meant for somebody who wrote to us', () => {
-    const roster = "This number is not on your organisation's roster yet. Ask your admin to add it.";
+    const roster = 'Groundwork does not know this number yet. If you use Groundwork, add this number under Settings, or ask your admin to add it, then write again.';
     expect(aStrangerHearsNothing(roster, 'they do')).toBe(true);
     expect(aStrangerHearsNothing(roster, 'we do')).toBe(false);
     expect(ONLY_ON_OUR_OWN_NUMBER.length).toBeGreaterThan(1);
@@ -82,7 +82,8 @@ describe('one route, two doors', () => {
   /* A redelivery is not a second answer, the same as on the webhook. */
   it('and a message we have already answered is not answered twice', () => {
     const fn = SRC.slice(SRC.indexOf('async relay('), SRC.indexOf('private async route('));
-    expect(fn).toMatch(/firstTimeWeSeeThis\(organizationId, String\(messageId\)\)/);
+    /* Claimed with the number it came in on, their own (survey item 8). */
+    expect(fn).toMatch(/firstTimeWeSeeThis\(organizationId, anInboundKey\('theirs', WhatsAppService\.normalize\(from\), String\(messageId\)\)\)/);
   });
 
   it('and the door is their own credential, scoped', () => {
@@ -129,6 +130,22 @@ describe('the first message into a check-in that has not started', () => {
 
   /* A greeting on its own gets the opener and stops - there is nothing to answer yet. */
   it('and a greeting alone stops after the opener', () => {
-    expect(route).toMatch(/if \(A_GREETING_ALONE\.test\(text\)\) \{ await say\(reply\); return; \}/);
+    expect(route).toMatch(/if \((?:A_GREETING_ALONE\.test\(text\)|isAGreetingOrARequestToStart\(text\))( \|\| beginning)?\) \{ await say\(reply\); return; \}/);
+  });
+});
+
+/**
+ * THE RELAY CAN BE CALLED WITH THE CREDENTIAL IT IS FOR (piece 5, A). The global session guard refused a machine token on this route
+ * ("Your sign-in is no longer active, so sign in again."), so a customer's own system could never pass a message to us. The route takes the session guard off
+ * and puts the machine-token guard, with its scope, in its place; a route that only did the first would be open.
+ */
+import 'reflect-metadata';
+import { WhatsAppForAnOrganisationController } from './whatsapp-for-an-organisation.controller';
+import { MachineTokenGuard } from './machine-token.guard';
+describe('the relay route', () => {
+  const handler = WhatsAppForAnOrganisationController.prototype.relay;
+  it('is not behind the session guard, and is behind the machine-token guard with the scope it needs', () => {
+    expect(Reflect.getMetadata('isPublic', handler)).toBe(true);
+    expect((Reflect.getMetadata('__guards__', handler) as unknown[]).includes(MachineTokenGuard)).toBe(true);
   });
 });

@@ -27,6 +27,13 @@ describe('where a 401 sends somebody', () => {
     expect(authPage).toMatch(/searchParams\.get\('next'\)/)
   })
 
+  it('does not replace "You\'re signed out" with a timed-out sign-in', () => {
+    /* Found in the running app: opening /signout with a session that had already lapsed let a
+       request still in flight come back 401, and the tab went to "you were signed out because you
+       had been away" instead of staying on the page that had just signed them out. */
+    expect(client).toContain("const onAuthPage = ['/auth', '/signout'].some(p => window.location.pathname.startsWith(p))")
+  })
+
   it('does not build a next that points back at sign-in, which would loop', () => {
     expect(client).toContain("wasAt.startsWith('/auth')")
   })

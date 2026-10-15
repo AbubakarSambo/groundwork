@@ -64,7 +64,7 @@ describe('a check-in that is slow is not a check-in that is gone', () => {
      * to press. Not gone, and not loading either - it could not be loaded, and it can be retried.
      */
     expect(container.textContent).not.toContain('Loading')
-    expect(container.textContent).not.toContain('This check-in is not open to you')
+    expect(container.textContent).not.toContain('This check-in isn’t available any more')
     expect(container.textContent).toContain('Try again')
   })
 
@@ -81,13 +81,13 @@ describe('a check-in that is slow is not a check-in that is gone', () => {
     getByText('Try again').click()
 
     await waitFor(() => expect(container.textContent).not.toContain('We could not load this check-in'))
-    expect(container.textContent).not.toContain('This check-in is not open to you')
+    expect(container.textContent).not.toContain('This check-in isn’t available any more')
   })
 
   it('the party view does not accuse somebody of having been removed', async () => {
     /*
      * The same failure on `/grounds/:id/p` fell through to the same GroundGone, which reads
-     * "it may have been closed, or you are no longer part of it". So a request that failed told a
+     * "it may belong to an organisation you have since switched away from, or it may simply not be one of yours". So a request that failed told a
      * party they had been taken out of a check-in. Observed in the browser before it was fixed.
      */
     vi.spyOn(groundsApi, 'get').mockRejectedValue(Object.assign(new Error('network'), { response: undefined }))
@@ -108,7 +108,18 @@ describe('a check-in that is slow is not a check-in that is gone', () => {
     /* A 404 is the server saying it is not there, which is the one case worth the words. */
     vi.spyOn(groundsApi, 'get').mockRejectedValue(Object.assign(new Error('gone'), { response: { status: 404 } }))
     const { container } = show()
-    await waitFor(() => expect(container.textContent).toContain('This check-in is not open to you'))
+    await waitFor(() => expect(container.textContent).toContain('This check-in isn’t available any more'))
+    expect(container.textContent).not.toContain('Loading')
+  })
+
+  it('and says so, the same words, when it is a 403 instead - B-110, GW-PRI-04', async () => {
+    /* A 403 must read exactly like a 404 here: the only other true sentence for a 403 would say
+       this check-in exists and simply is not this reader's, which tells a stranger holding a
+       stale link that something real sits behind it - precisely what the 404 wording does not say. */
+    vi.spyOn(groundsApi, 'get').mockRejectedValue(Object.assign(new Error('forbidden'), { response: { status: 403 } }))
+    const { container } = show()
+    await waitFor(() => expect(container.textContent).toContain('This check-in isn’t available any more'))
+    expect(container.textContent).not.toContain('We could not load this check-in')
     expect(container.textContent).not.toContain('Loading')
   })
 
@@ -124,6 +135,6 @@ describe('a check-in that is slow is not a check-in that is gone', () => {
     } as any)
     const { container } = show()
     await waitFor(() => expect(container.textContent).not.toContain('Loading'))
-    expect(container.textContent).not.toContain('This check-in is not open to you')
+    expect(container.textContent).not.toContain('This check-in isn’t available any more')
   })
 })

@@ -1,3 +1,5 @@
+import { aNumberPeopleCanRead, theNumbersPeopleCanRead, aboutTheSpeaker, anAimAsASentence, anAimTheHolderSet, yourOwnWhereYouAreTheSubject } from '../board/an-aim-is-a-sentence-about-somebody';
+import { withNames } from '../reports/party-labels';
 /**
  * WHAT A PARTICIPANT IS TOLD ABOUT THIS CHECK-IN: THE SITUATION AND THE GOALS, NEVER THE INSTRUCTION.
  *
@@ -39,9 +41,55 @@ const ABOUT_THE_INTERVIEW = /\b(the (?:goal|answer) should emerge|what they say 
 
 const sentencesOf = (text: string): string[] => (text ?? '').replace(/\s+/g, ' ').trim().split(/(?<=[.!?])\s+/).filter(Boolean);
 
-/** The situation as the brief describes it: declarative sentences only, at most three. */
+/*
+ * THE ANSWERS SETUP PUT TOGETHER FROM THE LEAD'S CONVERSATION (request 41, from what-someone-who-
+ * does-not-run-it-reads.ts). The brief setup writes holds the situation, then the lead's answers:
+ * "When asked what the questions should focus on, the answer was taken to mean this. Aisha is often
+ * late with stock counts." Those are what the lead wants asked, and about whom. They passed the
+ * sentence filters below, so a participant's own session could read them whenever the short version
+ * was missing. The situation is now always read with them cut off.
+ */
+const THE_SETUP_ANSWERS_BEGIN = new RegExp(
+  [
+    /* Since the U.7 third review: "When asked why this matters now, the answer was taken to mean this." */
+    String.raw`\bWhen asked (?:who|why|what)\b`,
+    /* The U.7 re-check's wording: "Asked why this matters now, Wanjiru said “...”." */
+    String.raw`\bAsked (?:who is part|why this matters|what this is aiming|what the questions)\b`,
+    /* The U.7 review's wording. */
+    String.raw`\b(?:The people in it are|It matters now because|It is aiming at|The questions should focus on)\b`,
+    /* And the labelled pieces setup wrote before that. */
+    String.raw`\b(?:Who is part of this|Why now|What it is aiming at|Focus):`,
+  ].join('|'),
+);
+
+/**
+ * THE BRIEF AS THE LEAD READS IT (user journeys, F-1). Setup stores each answer after the question it answered, in a sentence saying what follows is a
+ * reading of the answer: "When asked who is part of this, the answer was taken to mean this. The sales team." That is how the answers are told apart
+ * from the situation, and every rule that keeps them from the people in the check-in looks for those words, so the stored brief keeps them. The lead
+ * reads the same facts as the question and the answer: "Who is part of this? The sales team." Only for the person who runs the check-in; nobody else
+ * is ever served the brief in this form, and nothing is stored in it.
+ */
+const THE_QUESTION_AND_ITS_READING: [RegExp, string][] = [
+  [/When asked who is part of this, the answer was taken to mean this\.\s*/g, 'Who is part of this? '],
+  [/When asked why this matters now, the answer was taken to mean this\.\s*/g, 'Why does this matter now? '],
+  [/When asked what this is aiming at, the answer was taken to mean (?:this|these \d+ things)\.\s*/g, 'What is this aiming at? '],
+  [/When asked what the questions should focus on, the answer was taken to mean this\.\s*/g, 'What should the questions focus on? '],
+];
+export function theBriefAsTheLeadReadsIt<T extends string | null | undefined>(brief: T): T {
+  if (typeof brief !== 'string') return brief;
+  return THE_QUESTION_AND_ITS_READING.reduce((t, [rx, to]) => t.replace(rx, to), brief) as T;
+}
+
+/** The brief with the answers setup put together cut off, leaving what it says about the situation. */
+export function withoutTheSetupAnswers(brief: string | null | undefined): string {
+  const text = (brief ?? '').trim();
+  const at = text.search(THE_SETUP_ANSWERS_BEGIN);
+  return (at >= 0 ? text.slice(0, at) : text).trim();
+}
+
+/** The situation as the brief describes it: declarative sentences only, at most three, never the setup answers. */
 export function theSituationIn(brief: string | null | undefined, max = 3): string | null {
-  const kept = sentencesOf(brief ?? '').filter((s) => !AN_INSTRUCTION.test(s) && !A_RULE_ABOUT_THEM.test(s) && !ABOUT_THE_INTERVIEW.test(s) && !THE_LEAD_TO_THE_PRODUCT.test(s));
+  const kept = sentencesOf(withoutTheSetupAnswers(brief)).filter((s) => !AN_INSTRUCTION.test(s) && !A_RULE_ABOUT_THEM.test(s) && !ABOUT_THE_INTERVIEW.test(s) && !THE_LEAD_TO_THE_PRODUCT.test(s));
   if (!kept.length) return null;
   return kept.slice(0, max).join(' ');
 }
@@ -51,6 +99,83 @@ export interface AGoalTheyMaySee {
   target: number | null;
   /** Whose goal it is; null for the whole check-in's. */
   ownerParticipantId?: string | null;
+  /** An aim to reach or a limit not to go over, where the lead has said (decision 69). */
+  direction?: 'AIM' | 'LIMIT' | 'RATE' | 'DEADLINE' | 'ZERO' | null;
+  /** Who said it, where it came out of a check-in. With the owner and not the lead, it is that person's own aim. */
+  setByParticipantId?: string | null;
+}
+
+/**
+ * A PERSON'S OWN AIM, AS THEIRS (decision 75, item 37). "You set yourself an aim of 3 shops in
+ * Kilimani." to them; "Rukia set an aim of 3 shops in Kilimani for their own work." to a colleague who
+ * may read it, and "A colleague set ..." where the name may not be said. Never "Your goal is", which
+ * reads as a number the lead set, and never "Your lead is aiming for", which it was not.
+ */
+function anOwnAimAsTheyReadIt(g: AGoalTheyMaySee, readerParticipantId: string | null | undefined, nameOf?: (participantId: string) => string | null): string {
+  const isTheReader = !!readerParticipantId && g.ownerParticipantId === readerParticipantId;
+  /* The reader is written as a label and then named "you" with its verbs, as the board does. */
+  const ME = 'Participant Z';
+  const holder = isTheReader ? ME : (nameOf?.(g.ownerParticipantId as string) ?? '').trim() || 'A colleague';
+  const said = anAimAsASentence(g.name ?? '', { speaker: holder, holder, target: g.target ?? null, direction: g.direction ?? null, setByTheHolder: true });
+  return isTheReader ? yourOwnWhereYouAreTheSubject(withNames(said, new Map(), [ME], { viewerLabel: ME }), []) : said;
+}
+
+/*
+ * EACH GOAL IS A SENTENCE, WITH NUMBERS A PERSON CAN READ (review of 1 October 2026). The block read
+ * "The goal for the whole check-in: I'm aiming for N120 million disbursed this quarter (120,000,000)."
+ * - the lead's "I" on the participant's page, pieces joined with a colon and a semicolon, and the
+ * number twice, once as the database holds it. Now each goal is its own plain sentence:
+ *
+ *   "Your goal is 30 million naira this quarter."
+ *   "The goal for the whole check-in is to hit 180 million naira."
+ *   "Your lead is aiming for 120 million naira disbursed this quarter."
+ *
+ * "I" in a goal for the whole check-in is the lead who set it, and in a person's own goal it is that
+ * person, the same reading the board uses when it does not know who said it.
+ */
+const A_CLAUSE = /(?:^|[^\p{L}'’])(?:I|I'm|I’m|I've|I’ve|I'll|I’ll|my|My|we|We|our|Our|me)(?![\p{L}'’])|\bthe (?:speaker|person)\b|\b(?:is|are|am|will|wants?|needs?|aims?|aiming|has|have)\b/u;
+const A_VERB_FIRST = /^(?:hit|reach|close|sell|sign|get|win|deliver|launch|disburse|achieve|grow|cut|reduce|keep|make|finish|complete|ship|hire|raise|land|onboard|bring|build|book|recover|collect)\b/i;
+
+/** "I'm aiming for", "my", "me" as the reader: "You are aiming for", "your", "you". */
+export function asTheReader(text: string): string {
+  return text
+    .replace(/(^|[^\p{L}'’])I(?:'|’)m\b/gu, '$1you are')
+    .replace(/(^|[^\p{L}'’])I am\b/gu, '$1you are')
+    .replace(/(^|[^\p{L}'’])I(?:'|’)ve\b/gu, '$1you have')
+    .replace(/(^|[^\p{L}'’])I(?:'|’)ll\b/gu, '$1you will')
+    .replace(/(^|[^\p{L}'’])I\b/gu, '$1you')
+    .replace(/\b[Mm]y\b/g, 'your')
+    .replace(/\bme\b/g, 'you')
+    .replace(/^./, (c) => c.toUpperCase());
+}
+
+/** One goal, as one or two plain sentences for the person reading. */
+export function aGoalAsTheyReadIt(g: AGoalTheyMaySee, opts: { isTheirs: boolean; leadIn: string }): string {
+  const readable = theNumbersPeopleCanRead((g.name ?? '').trim()).replace(/[.!?]+$/, '');
+  if (!readable) return '';
+  const number = typeof g.target === 'number' ? aNumberPeopleCanRead(g.target) : null;
+  const isALimit = g.direction === 'LIMIT';
+  if (A_CLAUSE.test(readable)) {
+    const said = opts.isTheirs ? asTheReader(readable) : aboutTheSpeaker(readable, 'Your lead');
+    const sentence = `${said.charAt(0).toUpperCase()}${said.slice(1)}.`;
+    if (g.direction === 'ZERO') return `${sentence} This should stay at zero, so any at all is a breach.`;
+    if (g.direction === 'DEADLINE') return `${sentence} It is a date to meet.`;
+    if (g.direction === 'RATE' && number) return `${sentence} The share to keep at or above is ${number}%.`;
+    return number && !sentence.includes(number)
+      ? `${sentence} The ${isALimit ? 'limit not to go over' : 'number to reach'} is ${number}.`
+      : sentence;
+  }
+  const words = readable.split(/\s+/);
+  if (/^\p{Lu}\p{Ll}*(?:-\p{Ll}+)*$/u.test(words[0] ?? '') && (words.length === 1 || /^[\p{Ll}\p{N}]/u.test(words[1]))) words[0] = words[0].toLowerCase();
+  const phrase = `${A_VERB_FIRST.test(words[0]) ? 'to ' : ''}${words.join(' ')}`;
+  /* Each kind in its own words (decision 75, item 17). */
+  const withTheNumber = g.direction === 'ZERO' ? ', which should stay at zero, so any at all is a breach'
+    : g.direction === 'DEADLINE' ? ', which is a date to meet'
+      : g.direction === 'RATE' && number ? `, and the share to keep at or above is ${number}%`
+        : number && !phrase.includes(number)
+          ? `, and the ${isALimit ? 'limit not to go over' : 'number to reach'} is ${number}`
+          : '';
+  return `${opts.leadIn} ${phrase}${withTheNumber}.`;
 }
 
 /*
@@ -68,6 +193,8 @@ export interface AGoalTheyMaySee {
  * another person on the check-in. What fails the check is dropped sentence by sentence; a rewrite
  * that leaves nothing falls back to the filtered brief.
  */
+import { PLAIN_WORDS } from '../conversation/plain-words';
+
 export const THE_TELLING_PROMPT = [
   'Write the "About this check-in" box: two or three sentences for a person taking part, read before their first answer.',
   'You are given what the person who set the check-in up wrote. It is addressed to the product, in their voice, and may include instructions on how to interview people. None of that is for the participant.',
@@ -96,6 +223,18 @@ export const THE_TELLING_PROMPT = [
   'Name the lead\'s own subjects, in their words: the places, the products, the people, the risks they actually listed. A long brief needs at least three of them; a telling that names none of them is refused.',
   'Say nothing about what happens to the answers - not the report, not who receives it, not that it is consolidated. The page already says that.',
   'Rules: no instructions to anybody. No "I" or "we". No numbers or targets (they are shown separately). No names of other participants. Nothing about how the interview will be run. Everyday words, at most 60 words in total. Answer with the sentences only.',
+  '',
+  PLAIN_WORDS,
+  '',
+  /*
+   * WRITTEN ONCE FOR EVERY PARTICIPANT, SO "YOU" IS THE PERSON READING IT AND NOBODY IS NAMED.
+   *
+   * This box is the odd one out. It is written once, like the report, but every reader of it is a
+   * participant and the box is about their own taking part, so "you" means the reader here and is
+   * correct. What it must never do is name anybody else, and the rule two paragraphs up already
+   * says so - said again here because the rulebook above tells every other surface to use names.
+   */
+  'ONE THING IN THE RULES ABOVE DOES NOT APPLY HERE. They say to use people\'s names. This box names nobody except the organisations and places the situation is about. "You" is the person reading it, which is right; every other person stays out of it.',
 ].join('\n');
 
 const ADDRESSED_TO_THE_PRODUCT = /\b(the product|groundwork|the model|the interviewer|the assistant|the lead wants|the lead would like|the lead needs|the manager wants)\b/i;
@@ -153,6 +292,14 @@ const theWordsThatNameSomething = (text: string): Set<string> => {
 const A_PROMISE_OF_MORE =
   /\b(regular|regularly|each week|each month|weekly|monthly|fortnightly|ongoing|over time|every week|every month|future sessions?|next session|from time to time|as the weeks)\b/i;
 
+/**
+ * A REPORT THE TELLING PROMISES. Found on the quarterly plan (4 October 2026): "You will be asked for
+ * your answers every week, and you will receive a consolidated report each time." Nobody set that
+ * up, and what each person is sent is not the brief's to promise. A sentence that says a combined
+ * report goes to everyone is left out of what people are told.
+ */
+const A_PROMISE_OF_A_REPORT = /\b(?:consolidated|combined)\s+report\b|\beveryone\b[^.]*\b(?:will\s+)?(?:receive|get)\b[^.]*\breport\b/i;
+
 /** Whether the rewrite says anything the lead's own words say. True when there is nothing to check against. */
 /**
  * ONE WORD IS ENOUGH FOR A SHORT BRIEF AND NOWHERE NEAR ENOUGH FOR A LONG ONE.
@@ -200,7 +347,8 @@ export function theTellingHolds(rewrite: string | null | undefined, opts?: { oth
     /* Numbers are shown separately, as the goals; a figure in the telling is a claim nobody checked. */
     .filter((t) => !/\d/.test(t))
     /* One round is one conversation, and the telling does not promise a second - see A_PROMISE_OF_MORE. */
-    .filter((t) => !(opts?.rounds != null && opts.rounds <= 1 && A_PROMISE_OF_MORE.test(t)));
+    .filter((t) => !(opts?.rounds != null && opts.rounds <= 1 && A_PROMISE_OF_MORE.test(t)))
+    .filter((t) => !A_PROMISE_OF_A_REPORT.test(t));
   if (!kept.length) return null;
   const told = kept.slice(0, opts?.max ?? 3).join(' ');
   /* Checked against the subject as a whole, not sentence by sentence: only one sentence has to name it. */
@@ -216,19 +364,46 @@ export function theTellingHolds(rewrite: string | null | undefined, opts?: { oth
 export function whatAParticipantIsToldAboutThis(
   brief: string | null | undefined,
   goals: AGoalTheyMaySee[],
-  opts?: { told?: string | null; readerParticipantId?: string | null },
+  opts?: {
+    told?: string | null; readerParticipantId?: string | null; scenario?: string | null;
+    /** The participant row of whoever runs the check-in, so a person's own aim is told from one the lead set. */
+    leadParticipantId?: string | null;
+    /** A colleague's name, or null where this reader may not be told who they are. */
+    nameOf?: (participantId: string) => string | null;
+  },
 ): string | null {
   const parts: string[] = [];
-  const told = (opts?.told ?? '').trim();
-  const situation = told || theSituationIn(brief);
+  /* Decision 75, item 13: the short version the lead confirmed, never the brief's own sentences in its place.
+     On a team update the lead's one line is the question the team is sent, so it is theirs to read. */
+  const situation = (opts?.told ?? '').trim() || (opts?.scenario === 'TEAM_UPDATES' ? (brief ?? '').trim() : '');
   if (situation) parts.push(situation);
-  const say = (g: AGoalTheyMaySee) => (g.target != null ? `${g.name.trim().replace(/[.]+$/, '')} (${g.target.toLocaleString('en-GB')})` : g.name.trim().replace(/[.]+$/, ''));
   const named = (goals ?? []).filter((g) => g?.name?.trim());
   const mine = opts?.readerParticipantId ? named.filter((g) => g.ownerParticipantId === opts.readerParticipantId) : [];
   const shared = named.filter((g) => !mine.includes(g));
-  if (mine.length) parts.push(`${mine.length === 1 ? 'Your goal' : 'Your goals'}: ${mine.slice(0, 4).map(say).join('; ')}.`);
-  if (shared.length) {
-    parts.push(`${shared.length === 1 ? (mine.length ? 'The goal for the whole check-in' : 'The goal on this check-in') : (mine.length ? 'The goals for the whole check-in' : 'The goals on this check-in')}: ${shared.slice(0, 4).map(say).join('; ')}.`);
+  const ownAim = (g: AGoalTheyMaySee) => opts?.leadParticipantId !== undefined && anAimTheHolderSet(g, opts.leadParticipantId) && typeof g.target === 'number';
+  for (const g of mine.slice(0, 4)) {
+    parts.push(ownAim(g)
+      ? anOwnAimAsTheyReadIt(g, opts?.readerParticipantId, opts?.nameOf)
+      : aGoalAsTheyReadIt(g, { isTheirs: true, leadIn: mine.length === 1 ? 'Your goal is' : 'One of your goals is' }));
   }
-  return parts.length ? parts.join(' ') : null;
+  const where = mine.length ? 'for the whole check-in' : 'on this check-in';
+  for (const g of shared.slice(0, 4)) {
+    parts.push(ownAim(g)
+      ? anOwnAimAsTheyReadIt(g, opts?.readerParticipantId, opts?.nameOf)
+      : aGoalAsTheyReadIt(g, { isTheirs: false, leadIn: shared.length === 1 ? `The goal ${where} is` : `One of the goals ${where} is` }));
+  }
+  const said = parts.filter(Boolean);
+  return said.length ? said.join(' ') : null;
+}
+
+
+/**
+ * "ZAWADI'S FIRST WEEKS", TO ZAWADI HERSELF, IS "YOUR FIRST WEEKS" (privacy sweep, 7 October, item 6). Only the possessive of the reader's own first name, only
+ * in what is served to them, and nothing about anybody else. Never a pronoun after it: only "Zawadi's" and its curly form are touched, so no verb has to agree.
+ */
+export function theirOwnFirstNameAsYour<T extends string | null | undefined>(text: T, firstName: string | null | undefined): T {
+  const first = (firstName ?? '').trim();
+  if (typeof text !== 'string' || first.length < 2) return text;
+  const rx = new RegExp(`(^|[.!?]\\s+|\\n)${first.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['\u2019]s\\b|(?<![\\p{L}])${first.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['\u2019]s\\b`, 'gu');
+  return text.replace(rx, (_m, lead) => (lead !== undefined ? `${lead}Your` : 'your')) as T;
 }

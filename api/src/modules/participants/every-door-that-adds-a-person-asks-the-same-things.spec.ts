@@ -21,7 +21,10 @@ describe('the doors', () => {
   it('adding a contributor in the app asks it beside the role', () => {
     expect(read('../grounds/dto/add-participant.dto.ts')).toMatch(/department\?: string/);
     const page = strip(readFileSync(join(CLIENT, 'pages', 'grounds', 'GroundAdminPage.tsx'), 'utf8'));
-    expect(page).toContain('placeholder="Their department (optional)"');
+    /* The add-person form moved into "Who's in it" when People and setup was rebuilt from the
+       shared parts (29 September); the page keeps the draft and sends it. */
+    const form = strip(readFileSync(join(CLIENT, 'components', 'gw', 'WhosInItRoster.tsx'), 'utf8'));
+    expect(form).toContain('placeholder="Their department (optional)"');
     expect(page).toMatch(/department: newParticipantDepartment\.trim\(\) \|\| undefined/);
   });
   it('the join page asks it beside "your part in this"', () => {

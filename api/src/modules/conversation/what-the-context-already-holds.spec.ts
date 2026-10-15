@@ -2,8 +2,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 import {
   whatTheySaidTheyWouldDo, thingsNobodyOwns, whatIsNotSettled, theQuestionsTheLeadWants,
-  whatSitsBetweenPeople, aPlaceToLook, whatTheyHedged, keepTheirHedge,
+  whatSitsBetweenPeople, whatTheyHedged, keepTheirHedge,
 } from './what-the-context-already-holds';
+import * as everythingItHolds from './what-the-context-already-holds';
 
 /**
  * "MAKE SURE IT IS USED AS CONTEXT IN THE CONVERSATIONS."
@@ -38,10 +39,16 @@ describe('what the context already holds', () => {
     expect(b).toContain('Never tell them the record says otherwise');
   });
 
-  it("asks the lead's questions in the interviewer's own words, without saying whose they are", () => {
-    const b = theQuestionsTheLeadWants(['which accounts actually have a buying process?']);
-    expect(b).toContain('Ask them in your own words');
-    expect(b).toContain('Never say who wants them asked');
+  /*
+   * Decision 34, 28 September 2026: a question the lead wants asked is asked in the exact words the
+   * lead confirmed, not in the interviewer's own. This used to pin "Ask them in your own words".
+   */
+  it("asks the lead's confirmed questions word for word, without saying whose they are", () => {
+    const b = theQuestionsTheLeadWants(['Which accounts actually have a buying process?']);
+    expect(b).toContain('- "Which accounts actually have a buying process?"');
+    expect(b).toContain('Ask each one exactly as it is written, word for word');
+    expect(b).not.toContain('in your own words');
+    expect(b).toContain('Never say who wants it asked');
   });
 
   it('holds a pair as a pair, and blames neither', () => {
@@ -50,11 +57,15 @@ describe('what the context already holds', () => {
     expect(b).toContain('never put it to this person as something they did wrong');
   });
 
-  it("and the lead's read of somebody is a place to look, nothing more", () => {
-    const b = aPlaceToLook(['does not ask for the deal']);
-    expect(b).toContain('Their read, not a fact');
-    expect(b).toContain('never quoted, never attributed');
-    expect(b).toContain('If what they tell you does not show it, it was not there');
+  /*
+   * THE LEAD'S READ OF SOMEBODY IS NOT A BLOCK ANY MORE. This used to pin "a place to look", the
+   * block that put the lead's private read of a person into that person's own session under an
+   * instruction never to quote it. Decision 32, 27 September 2026: it is left out of what the
+   * session is given instead, so the block and its instruction are gone. See
+   * a-leads-private-note-never-reaches-their-session.spec.ts for the turn itself.
+   */
+  it("and there is no block for the lead's read of somebody", () => {
+    expect((everythingItHolds as any).aPlaceToLook).toBeUndefined();
   });
 });
 
@@ -83,13 +94,20 @@ describe('a hedge stays a hedge', () => {
     const src = fs.readFileSync(path.join(__dirname, 'conversation.service.ts'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
     const join = src.slice(src.indexOf('return [systemPrompt, theirLanguage'));
-    for (const name of ['theirCommitments', 'nobodyOwns', 'notSettledBlock', 'leadsQuestions', 'betweenBlock', 'placeToLook', 'theirHedge']) {
+    for (const name of ['theirCommitments', 'nobodyOwns', 'notSettledBlock', 'leadsQuestions', 'betweenBlock', 'theirHedge']) {
       expect(join).toContain(name);
     }
-    /* The three things stay last; the hedge sits with the other right-now blocks in front of them. */
-    expect(join).toMatch(/theirHedge, theHole, cannotBeMissed, askedLastTurn, patternProbeBlock\]/);
-    /* Never the lead's read of themselves, and the unowned list is the lead's alone. */
-    expect(src).toContain("const placeToLook = isTheLead ? '' : aPlaceToLook(myReadLines)");
+    expect(join).not.toContain('placeToLook');
+    /* The three things stay last; the hedge sits with the other right-now blocks in front of them.
+       `heldBack` (what they have not said yet, week 1 of the weekly plan, 3fb7edf9) is one more
+       right-now block and belongs in the same place, after the hole and before the three that stay last. */
+    /* `proofKindly` (asking for proof kindly, week 4, task 2.5) is one more right-now block, after heldBack. */
+    /* `whereItIs` (what they will do is asked before the end, 1 October 2026) is one more, after proofKindly. */
+    expect(join).toMatch(/theirHedge, theHole, heldBack, proofKindly, whereItIs, cannotBeMissed, askedLastTurn, patternProbeBlock\]/);
+    /* The lead's read of a person is never read into a check-in, and what sits between two people
+       only into the lead's own - at the query, not by an instruction. The unowned list is the lead's alone. */
+    expect(src).toContain("kind: { notIn: (isTheLead ? ['ABOUT_A_PERSON'] : ['ABOUT_A_PERSON', 'BETWEEN_PEOPLE']) as any }");
+    expect(src).not.toContain('aPlaceToLook');
     expect(src).toContain("const nobodyOwns = isTheLead ? thingsNobodyOwns(ownerless) : ''");
   });
 });

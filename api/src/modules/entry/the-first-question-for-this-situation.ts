@@ -57,6 +57,11 @@ export const THE_FIRST_QUESTION: Record<GroundScenario, TheFirstQuestion> = {
     ask: 'Who is coming on, and what are they being brought in for?',
     until: 'who they are, what they are expected to contribute, and what they are being paid or given',
   },
+  /* The anchor's first question, from docs/anchor-scenario.md section 6. The anchor's door, its opening text and its conversation all read it from here (decision 114). */
+  HELP_TEAM_UNDERSTAND: {
+    ask: "What's happening right now that makes you wish your team saw more of what you see?",
+    until: 'what the lead is carrying and what they are seeing today',
+  },
   NEW_PROJECT: {
     ask: 'What is the project, and who is on it?',
     until: 'what is being built or delivered, who is working on it, and by when',
@@ -74,7 +79,7 @@ export const THE_FIRST_QUESTION: Record<GroundScenario, TheFirstQuestion> = {
     until: 'both names or roles, what the role covers, and the last day of the handover',
   },
   CONTRACT_REVIEW: {
-    ask: 'What are you about to sign, and who with?',
+    ask: 'What are you about to sign, and who is it with?',
     until: 'what the agreement is for, who the other side is, and when it is due to be signed',
   },
   IMPLEMENTATION_TRACKING: {
@@ -103,7 +108,7 @@ export const THE_FIRST_QUESTION: Record<GroundScenario, TheFirstQuestion> = {
     until: 'what the goals are, who is involved, and the period they run over',
   },
   WORKPLAN_BUDGET: {
-    ask: 'What is the plan for, and what resources do you actually have?',
+    ask: 'What is the plan for, and what money and people do you actually have for it?',
     until: 'the period, who owns which part, and the money or people available',
   },
   PULSE_CHECK: {
@@ -116,19 +121,20 @@ export const THE_FIRST_QUESTION: Record<GroundScenario, TheFirstQuestion> = {
    * this is the shortest `until` in the file on purpose.
    */
   TEAM_UPDATES: {
-    ask: 'What is the one thing you want to ask them? Your words - they will answer exactly this.',
+    ask: 'What is the one thing you want to ask them? They will answer exactly what you write.',
     until: 'the one line they are answering, who is answering it, and how often you want it',
   },
   REALIGN_TEAM: {
-    ask: 'Who do you need to realign with, and what do you think you see differently?',
+    ask: 'Who do you need to get on the same page with, and what do you think you each see differently?',
     until: 'who the other person is and what the disagreement is actually about',
   },
+  /* Hafsah's decision, 15 October 2026: this stays the product's own question, not the prototype's "Who is it, and what were they meant to be delivering?". */
   PIP: {
     ask: 'Who is this about, and what is not happening that should be?',
     until: 'the person, what is slipping specifically, and how long this has been going on',
   },
   BOARD_STRATEGY: {
-    ask: 'Who is on the leadership team, and what is the strategic question in front of you?',
+    ask: 'Who is on the leadership team, and what is the big question you have to decide?',
     until: 'who is in the room, what has to be decided, and when',
   },
   COHORT_CHECK: {
@@ -149,7 +155,7 @@ export const THE_FIRST_QUESTION: Record<GroundScenario, TheFirstQuestion> = {
      * nothing has been classified yet. So it asks the open question honestly rather than pretending
      * to know - and `classifyIntent` runs on their answer, after which the specific pack takes over.
      */
-    ask: 'What is going on? Tell me in your own words - a couple of sentences is plenty.',
+    ask: 'What is going on? Tell me in your own words. A couple of sentences is enough.',
     until: 'enough of the situation to know what it is, who is in it, and why it matters now',
   },
   DISCOVERY: {
@@ -180,7 +186,7 @@ export function theSetupPackFor(
    */
   const ask =
     scenario === GroundScenario.COHORT_CHECK && moment === GroundMoment.STARTING
-      ? 'Who are you onboarding, and what are they all starting?'
+      ? 'Who is starting, and what are they each starting on?'
       : q.ask;
 
   /**

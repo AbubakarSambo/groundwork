@@ -80,7 +80,30 @@ describe('opening a check-in returns what it should and nothing else', () => {
       /* The brief is echoed since 10 Sep 2026: the caller set the standard and could not see it. */
       'brief',
       'cadence', 'endsAt', 'id', 'invitations', 'label', 'mode', 'moment',
+      /* Request 37: says whether the check-in runs until the lead ends it, since timelineDays is then null. */
+      'runsUntilEnded',
       'scenario', 'startsAt', 'status', 'timelineDays',
     ]);
+  });
+});
+
+describe('opening a check-in that runs until its lead ends it, through POST /check-ins', () => {
+  it('hands runsUntilEnded on to the same create the product uses, and sends no length', async () => {
+    const seen: any[] = [];
+    const s = service();
+    s.grounds = { createForLead: async (_o: string, _u: string, d: any) => { seen.push(d); return { ...ground, timelineDays: 0, runsUntilEnded: true }; } };
+    const out: any = await s.open('org1', { ...dto, runsUntilEnded: true } as any);
+    expect(seen[0].runsUntilEnded).toBe(true);
+    expect(seen[0].timelineDays).toBeUndefined();
+    expect(out.runsUntilEnded).toBe(true);
+    expect(out.timelineDays).toBeNull();
+  });
+
+  it('does not set it when it is not asked for', async () => {
+    const seen: any[] = [];
+    const s = service();
+    s.grounds = { createForLead: async (_o: string, _u: string, d: any) => { seen.push(d); return ground; } };
+    await s.open('org1', dto as any);
+    expect(seen[0].runsUntilEnded).toBeUndefined();
   });
 });

@@ -3,7 +3,7 @@ import { COACH_CARD } from '../lib/scenario-catalog'
 import { join } from 'path'
 import { describe, it, expect } from 'vitest'
 import { type SubscriptionPlan } from './billing'
-import { SEEDED_PLANS, seededAmountLabel, seededCapLabel } from './pricing-seed.testonly'
+import { SEEDED_PLANS, seededAmountLabel, seededSeatsIncludedLabel } from './pricing-seed.testonly'
 
 /**
  * THE PUBLIC PRICE AND THE PRICE IN THE APP MUST BE THE SAME PRICE.
@@ -55,7 +55,8 @@ describe('the marketing site quotes the app price', () => {
        * The caps are the half of pricing that had already drifted - Scale said 1,000 people in
        * three places - so they are held to the seed exactly as the prices are.
        */
-      const cap = seededCapLabel(plan)
+      /* Changed 15 October (fix list item 6): the pages say "20 seats included" now that any plan can add seats. */
+      const cap = seededSeatsIncludedLabel(plan)
       expect(
         MARKETING.includes(cap),
         `the database seeds ${plan} at "${cap}" and the marketing page does not say that anywhere`,

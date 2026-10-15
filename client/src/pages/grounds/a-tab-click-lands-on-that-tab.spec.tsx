@@ -3,75 +3,95 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { GroundTabRow } from '@/components/gw/GroundTabRow'
-import { groundTabs } from './ground-tabs'
+import { MemoryRouter } from 'react-router-dom'
+import { Tabs } from '@/components/gw/ui/Tabs'
 
 /**
- * CLICKING A TAB HAS TO LAND ON THAT TAB.
+ * CLICKING A TAB HAS TO LAND ON THAT TAB - NOW POINTED AT THE REBUILT PARTS.
  *
- * `a-tab-can-be-linked-to.spec.ts` reads the source and checks that every shared key appears in
- * each page's `FROM_TAB_KEY`. It was green while Context was unreachable, because the defect was
- * not a missing entry - it was translating TWICE. The party's view mapped the tab list into its own
- * keys before handing it to the row, and then mapped the row's key AGAIN on the way back. `docs`
- * and `checkin` are not keys of that map in the shared direction, so both fell through to the
- * default. Three of the five spell the same either way, so Report, My record and Setup worked and
- * Context alone sent you back to the conversation. Reported as "her context page doesnt seem to
- * exist".
+ * This used to click `<GroundTabRow>`, driven by `groundTabs()`'s own six-or-seven-entry list.
+ * The check-in rebuild (docs/tasks-ui.md) folds that list to the prototype's five - Board,
+ * Check-in, Context, My work, People and setup - drawn by `components/gw/ui/CheckInHeader.tsx`,
+ * itself built from `components/gw/ui/Tabs.tsx`. `GroundTabRow.tsx` is deleted with this change
+ * (nothing imports it once this spec stops); `groundTabs()` and its own test suite are untouched,
+ * because neither page's tab ROW reads it any more - see the "ONE MOVE LIST" comments in
+ * GroundAdminPage.tsx and GroundParticipantPage.tsx for where each of the old seven/six tabs went.
  *
- * A source read cannot see that, because both halves are individually correct. So this clicks.
- *
- * The row is driven with the keys each view actually gives it, and every click must come back as
- * the key that was clicked - one hop, whoever is looking. A page is then free to translate that key
- * into its own vocabulary once, which is a single expression a reader can check.
+ * The rule this spec protects is the same one as before: a click reports the key that was clicked,
+ * one hop, whoever is looking - `Tabs` (the part both pages now render the row with) is exercised
+ * directly, the same way `GroundTabRow` used to be.
  */
-const VIEWS = {
-  'the lead': groundTabs({ contextEnabled: true, canRunThisCheckIn: true, isAParty: true }),
-  'a party': groundTabs({ contextEnabled: true, canRunThisCheckIn: false, isAParty: true }),
-} as const
+const THE_FIVE = [
+  { key: 'board', label: 'Board' },
+  { key: 'checkin', label: 'Check-in' },
+  /* Renamed to "Context and resources" (docs/tasks-ui.md, "one chat, Ask Groundwork, for
+     everything"), so the Resources panel it now carries has a name that says so. */
+  { key: 'context', label: 'Context and resources' },
+  { key: 'mywork', label: 'My work' },
+  { key: 'people', label: 'People and setup' },
+]
 
 describe('a tab click lands on the tab that was clicked', () => {
   it('found tabs to click, so an empty row cannot pass', () => {
-    expect(VIEWS['a party'].map(t => t.key)).toContain('context')
-    expect(VIEWS['the lead'].length).toBeGreaterThan(VIEWS['a party'].length)
+    expect(THE_FIVE.length).toBe(5)
   })
 
-  for (const [who, tabs] of Object.entries(VIEWS)) {
-    for (const t of tabs) {
-      it(`${who}: "${t.label}" reports ${t.key}`, async () => {
-        const onPick = vi.fn()
-        render(<GroundTabRow tabs={tabs} active={'chat' as string} onPick={onPick} />)
-        await userEvent.click(screen.getByRole('button', { name: t.label }))
-        expect(onPick).toHaveBeenCalledWith(t.key)
-      })
-    }
+  for (const t of THE_FIVE.filter((x) => x.key !== 'board')) {
+    it(`"${t.label}" reports ${t.key}`, async () => {
+      const onChange = vi.fn()
+      render(
+        <MemoryRouter>
+          <Tabs active="checkin" items={THE_FIVE} onChange={onChange} />
+        </MemoryRouter>,
+      )
+      await userEvent.click(screen.getByRole('tab', { name: t.label }))
+      expect(onChange).toHaveBeenCalledWith(t.key)
+    })
   }
+
+  it('"Board" is a real link, not a click that is reported back - it is a different route', () => {
+    render(
+      <MemoryRouter>
+        <Tabs active="checkin" items={THE_FIVE.map((t) => (t.key === 'board' ? { ...t, to: '/grounds/1/board' } : t))} />
+      </MemoryRouter>,
+    )
+    expect(screen.getByRole('tab', { name: 'Board' }).getAttribute('href')).toBe('/grounds/1/board')
+  })
 })
 
 /**
- * AND THE OTHER HALF OF THE SAME BUG, WHICH THE ROW CANNOT SEE.
+ * AND THE OTHER HALF: EACH PAGE HANDS THE HEADER THE SAME FIVE, IN THE SAME ORDER, AND
+ * TRANSLATES A CLICK BACK THROUGH ITS OWN MAP ONCE.
  *
- * The row above reports the key it was given. The defect was that the party's page handed it keys
- * from its OWN vocabulary and then read the answer as if it were the shared one. Both halves are
- * correct in isolation; the row test passes either way. So the rule is stated where it can be
- * checked: the list handed to the row is the shared list, unmapped, and the single translation
- * happens on the way back.
+ * The source read cannot see a click land - the row test above does that - but it can see that
+ * neither page quietly drops one of the five, reorders them, or resurrects a sixth.
  */
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 const PAGES = ['GroundAdminPage.tsx', 'GroundParticipantPage.tsx'] as const
 
-describe('the row is given the shared keys, and translation happens once', () => {
+describe('both pages hand the header the same five tabs, in the prototype order', () => {
   for (const f of PAGES) {
     const code = strip(readFileSync(join(__dirname, f), 'utf8'))
 
-    it(`${f}: hands the row the shared list rather than a re-keyed copy`, () => {
-      const row = code.slice(code.indexOf('<GroundTabRow'), code.indexOf('/>', code.indexOf('<GroundTabRow')))
-      expect(row).not.toMatch(/tabs=\{tabs\.map\(/)
-      expect(row).toMatch(/tabs=\{(?:tabs|groundTabs\()/)
+    it(`${f}: renders <CheckInHeader>, not the old <TheCheckInHeader>`, () => {
+      expect(code).toMatch(/<CheckInHeader/)
+      expect(code).not.toMatch(/<TheCheckInHeader/)
     })
 
-    it(`${f}: translates the clicked key through its own map, once`, () => {
-      const row = code.slice(code.indexOf('<GroundTabRow'), code.indexOf('/>', code.indexOf('<GroundTabRow')))
-      expect(row).toMatch(/onPick=\{k =>[\s\S]*FROM_TAB_KEY\[k\]/)
+    it(`${f}: the five keys appear in the prototype's order`, () => {
+      const start = code.indexOf('<CheckInHeader')
+      const header = code.slice(start, code.indexOf('/>', start))
+      const keys = ["'board'", "'checkin'", "'context'", "'mywork'", "'people'"]
+      let cursor = -1
+      for (const k of keys) {
+        const at = header.indexOf(k, cursor + 1)
+        expect(at, `${k} missing or out of order in ${f}`).toBeGreaterThan(cursor)
+        cursor = at
+      }
+    })
+
+    it(`${f}: translates the clicked key through onSelectTab, once`, () => {
+      expect(code).toMatch(/onSelectTab=\{[\s\S]*goTab\(/)
     })
   }
 })

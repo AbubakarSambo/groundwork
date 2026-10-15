@@ -69,7 +69,7 @@ describe('the context page keeps its promises', () => {
    * "Not yours" tells somebody a document exists, which is itself the leak.
    */
   it('a refusal never confirms a document exists', () => {
-    expect(DOCS).toContain("throw new NotFoundException('Document not found')");
+    expect(DOCS).toContain("throw new NotFoundException('That document could not be found, so refresh the page to see what is there now.')");
     expect(DOCS).not.toMatch(/ForbiddenException\('That document is not yours/);
   });
 

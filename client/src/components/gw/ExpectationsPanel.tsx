@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
-import { personLabel } from '@/lib/utils'
+import { peopleLabels, atTheStart } from '@/lib/utils'
 import { scrollToId } from '@/lib/scroll-to'
 import { toast } from 'sonner'
 import { whereItStands } from './where-a-promise-stands'
@@ -49,6 +49,28 @@ const CHECK_WORD: Record<string, string> = {
   A_NUMBER: 'a number crosses a line',
   A_JUDGEMENT: 'a judgement',
   NOT_CHECKABLE: 'nothing checkable yet',
+}
+
+/**
+ * "HOW WE'D KNOW: A NUMBER CROSSES A LINE" WAS A LABEL JOINED TO A PHRASE WITH A COLON, NOT A
+ * SENTENCE (group 3's review, batch A fault 6). Each check kind now reads as its own sentence.
+ */
+const CHECK_SENTENCE: Record<string, string> = {
+  DONE_OR_NOT: 'You will know this is done because it either happens or it does not.',
+  A_NUMBER: 'You will know this is done when a number crosses a line.',
+  A_JUDGEMENT: 'Whether this is done is a judgement call.',
+  NOT_CHECKABLE: 'There is nothing checkable here yet.',
+}
+
+/**
+ * "BY: BY 20 DECEMBER" AND "BY: THE SAME DAY" WERE A LABEL JOINED TO WHAT SOMEBODY SAID WITH A
+ * COLON, SOMETIMES DOUBLING THE WORD "BY" (fault 6). `dueSaid` is the person's own words and
+ * sometimes already starts with "by" - stripped here so the sentence never reads "by by 20
+ * December".
+ */
+function dueSentence(dueSaid: string): string {
+  const said = dueSaid.replace(/^\s*by\s+/i, '').trim()
+  return `It is due ${said}.`
 }
 
 type Objective = {
@@ -360,6 +382,13 @@ export function ExpectationsPanel({
         : (p.objective?.text?.trim() ? [p.objective] : []),
     }))
     .filter((row) => row.items.length > 0)
+  /* Never the lead's note as the name (request 36). Several with no name are "one colleague",
+     "another colleague", counted the same way on every screen. */
+  const everybody = (parties ?? []).filter((p) => !p.managingOnly)
+  const labels = peopleLabels(everybody as any[], {
+    forTheLead: true,
+    readerId: everybody.find((p) => !!viewerUserId && p.userId === viewerUserId)?.id ?? null,
+  })
 
   const markShown = useMutation({
     mutationFn: () => groundsApi.markMyExpectationShown(groundId),
@@ -432,7 +461,7 @@ export function ExpectationsPanel({
             >
               <div style={{ display: bare ? 'none' : 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginBottom: 5 }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-dark)' }}>
-                  {isMine ? 'You' : personLabel(p as any)}
+                  {isMine ? 'You' : atTheStart(labels.get(p.id) ?? 'a colleague')}
                 </span>
                 {o.authoredBy === 'self' && (
                   /** Rows from before one person owned expectations. Their own words are stronger, not weaker. */
@@ -469,7 +498,7 @@ export function ExpectationsPanel({
                 date and where the four explanations live.
               */}
               {(() => {
-                const stand = whereItStands(o, new Date())
+                const stand = whereItStands(o, new Date(), { isMine, name: labels.get(p.id) ?? 'a colleague' })
                 if (!stand.says) return null
                 const colour = stand.tone === 'late' ? 'var(--gw-amber-t)'
                   : stand.tone === 'done' ? 'var(--gw-green-t)'
@@ -483,10 +512,10 @@ export function ExpectationsPanel({
 
               {(o.check || o.dueSaid || o.dueKind === 'STANDING') && (
                 <div style={{ fontSize: 11.5, color: o.check === 'NOT_CHECKABLE' ? 'var(--gw-amber-t)' : 'var(--gw-muted)', marginTop: 3, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                  {o.check && <span>how we&rsquo;d know: {CHECK_WORD[o.check] ?? o.check}</span>}
+                  {o.check && <span>{CHECK_SENTENCE[o.check] ?? `You will know this is done by ${CHECK_WORD[o.check] ?? o.check}.`}</span>}
                   {o.dueSaid
-                    ? <span>by: {o.dueSaid}</span>
-                    : o.dueKind === 'STANDING' ? <span>standing, no end date</span> : null}
+                    ? <span>{dueSentence(o.dueSaid)}</span>
+                    : o.dueKind === 'STANDING' ? <span>This is a standing expectation, with no end date.</span> : null}
                 </div>
               )}
 
@@ -562,7 +591,13 @@ export function ExpectationsPanel({
                         : 'var(--gw-muted)',
                     }}
                   >
-                    <span style={{ fontWeight: a.tone === 'quiet' ? 400 : 600 }}>{a.label}</span>
+                    {/*
+                      GROUP 3'S REVIEW, BATCH A FAULT 6: "YOU DESCRIBED DOING WELL DIFFERENTLY ONE
+                      STATEMENT IS..." RAN TWO SENTENCES TOGETHER WITH NO FULL STOP. The label never
+                      carried its own punctuation, so a note straight after it read as one run-on
+                      sentence. The label is a full sentence of its own now, always.
+                    */}
+                    <span style={{ fontWeight: a.tone === 'quiet' ? 400 : 600 }}>{a.label}.</span>
                     {a.note && <span style={{ color: 'var(--gw-sub)' }}> {a.note}</span>}
                   </div>
                 )
@@ -603,8 +638,8 @@ export function ExpectationsPanel({
           The one sentence that has to be here. Somebody reading their own expectation for the first
           time needs to know both that they cannot edit it and that they are not stuck with it.
         */}
-        Everyone sees the same list. If something is wrong or has changed, say so in your check-in:
-        it is probed there and goes on the record.
+        Everyone sees the same list. If something is wrong or has changed, say so in your check-in.
+        You will be asked more about it there, and it will go on the record.
       </div>
     </div>
   )

@@ -72,7 +72,7 @@ describe('a manager\'s week, which must never become a ranking of people', () =>
   it('never lets an empty week read as everybody being fine', () => {
     expect(whoNeedsYou([]).buckets).toEqual([]);
     /* The sentence the whole file exists to get right. */
-    expect(NOTHING_FLAGGED).toContain('not the same as everybody being fine');
+    expect(NOTHING_FLAGGED).toContain('does not tell you how anybody is');
     expect(NOTHING_FLAGGED).toContain('quietest');
   });
 });

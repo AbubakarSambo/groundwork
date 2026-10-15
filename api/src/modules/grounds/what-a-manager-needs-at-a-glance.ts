@@ -1,5 +1,10 @@
+import { theDayInWords } from '../board/the-day-in-words';
+import { startsWithAPronoun, whoseIsIt } from './a-blocker-that-says-her-or-his';
+import { whereTheTeamIs, howManyAreDone } from './which-check-in-it-is';
 import { DependencyStatus } from '@prisma/client';
-import { whoIsExpected, howManyOfThemAnswered, type SomebodyWhoMightAnswer } from '../reports/how-many-have-answered';
+import { isNotLetInYet, isHeldAtTheDoor } from './who-an-admin-did-not-let-in';
+import { checksInOnlyWhenTheyChoose } from './the-lead-checks-in-when-they-choose';
+import { whoIsExpected, howManyOfThemAnswered, howManyInTheRoundAnswered, type SomebodyWhoMightAnswer } from '../reports/how-many-have-answered';
 import { ReadDependency, dedupeDependencies, blockerHasSubstance } from '../board/reads';
 import { oneBlockerPerThingWaitedOn, theyNamedWhatTheyAreWaitingOn } from '../board/a-blocker-with-nothing-in-it-is-the-same-blocker';
 
@@ -29,9 +34,39 @@ import { oneBlockerPerThingWaitedOn, theyNamedWhatTheyAreWaitingOn } from '../bo
  */
 export interface AtAGlance {
   /** Rounds finished, and how many the run plans. Null where nobody has set a length. */
-  progress: { roundsDone: number; roundsPlanned: number | null; answeredThisRound: number; ofPeople: number };
+  progress: {
+    roundsDone: number; roundsPlanned: number | null; answeredThisRound: number; ofPeople: number;
+    /** Who, of the people counted in `ofPeople`, has not answered yet: participant ids. So Today's
+        sentence and the list's "2 of 3 answered" count the same people (U.5 review). */
+    waitingOn: string[];
+    /** People on it who are not counted because an admin has not let them in yet, and who have not answered this round (decision 77). Said, never silently dropped. */
+    notLetIn?: number;
+    /** That as a sentence, or null: "Three more people are not counted yet, because an admin has not let them in." */
+    notCountedSays?: string | null;
+    /** Invited and not joined yet, as a count and a sentence of its own, so the board never says "everybody" over them (reviewer, 14 October). */
+    notJoinedYet?: number;
+    notJoinedSays?: string | null;
+    /** The team's round, from the board's own clock (whichRoundIsOpen). Every screen says which check-in it is from this. */
+    openRound?: number;
+    /** That round as a sentence for the list to show as it is: "It is on the second check-in of 12." Null before any. */
+    whereItIs?: string | null;
+    /** "Two of the 12 check-ins are done." for the line under it, or null where `whereItIs` already says it. */
+    howManyAreDone?: string | null;
+  };
   /** What is in the way, counted as the board counts it, with the longest-standing one named. */
-  inTheWay: { count: number; oldest: string | null; daysWaiting: number | null };
+  inTheWay: {
+    count: number; oldest: string | null;
+    /**
+     * Whole days the oldest one has waited, measured to the clock the caller gives. The board gives the record's
+     * own clock, so it never changes when the board is opened (request 117, part 9). Please draw `sinceSays`.
+     */
+    daysWaiting: number | null;
+    /** When the oldest one began, as a time, and as words: "since 28 September" (request 117, part 9). */
+    since?: string | null;
+    sinceSays?: string | null;
+    /** Who the oldest one is waited on from, so the list can name them for a reader who may. Never the screen's to read. */
+    oldestOnParticipantId?: string | null;
+  };
 }
 
 export interface GlanceInput {
@@ -50,6 +85,8 @@ export interface GlanceInput {
   scenario?: string | null;
   /** This round's check-ins, whatever their state. Kept for callers that do not carry rows per person. */
   thisRound: { participantId: string; status: string }[];
+  /** Only the check-ins list asks for this: the round in words, and who the oldest blocker is waited on from. The board does not serve either. */
+  forTheList?: boolean;
   dependencies: (ReadDependency & { createdAt?: Date | null; what: string })[];
 }
 
@@ -62,14 +99,48 @@ export function atAGlance(i: GlanceInput, now: Date = new Date()): AtAGlance {
    * invitation had lapsed held the denominator open. See how-many-have-answered.ts.
    */
   const session = i.sessionNumber ?? 1;
-  const rows = new Map<string, { status: string }[]>();
-  for (const c of i.thisRound) rows.set(c.participantId, [...(rows.get(c.participantId) ?? []), { status: c.status }]);
+  const rows = new Map<string, { status: string; closedReason?: string | null; turns?: unknown[] | null }[]>();
+  /* The close reason and the person's turns ride along, so a session the clock closed with nothing said is not counted as answered (test bed copy a, 9 October). */
+  for (const c of i.thisRound) rows.set(c.participantId, [...(rows.get(c.participantId) ?? []), { status: c.status, closedReason: (c as any).closedReason, turns: (c as any).turns }]);
   const withRows = i.people.map((p) => ({ ...p, checkIns: p.checkIns ?? rows.get(p.id) ?? [] }));
   const counted = howManyOfThemAnswered(withRows, session, i.scenario, now);
+  const shown = howManyInTheRoundAnswered(withRows, session, i.scenario);
   const answering = whoIsExpected(withRows, session, i.scenario, now);
   const done = new Set(answering.filter((p) => !counted.waitingOn.includes(p.id)).map((p) => p.id));
+  /* Journey test, 12 October: "1 of 2" beside five people. Who the count leaves out at the door is said beside it. */
+  const notCounted = withRows.filter((p) => isNotLetInYet(p) && !checksInOnlyWhenTheyChoose(p as any)
+    && !(p.checkIns ?? []).some((c: any) => (c.sessionNumber ?? session) === session && (c.status === 'COMPLETED' || c.status === 'DECLINED')));
+  const notLetIn = notCounted.filter(isHeldAtTheDoor).length;
+  /* Invited, not joined yet (decision 8 redone): not counted either, and said for what it is, never as "not let in". */
+  const notJoined = notCounted.filter((p: any) => !isHeldAtTheDoor(p) && p.notJoinedYet === true).length;
+  const notCountedSays = [whoIsNotCountedYet(notLetIn), whoHasNotJoinedYetCount(notJoined)].filter(Boolean).join(' ') || null;
 
-  const real = oneBlockerPerThingWaitedOn(dedupeDependencies(i.dependencies))
+  return {
+    progress: {
+      roundsDone: i.roundsDone,
+      roundsPlanned: i.roundsPlanned,
+      /* The two numbers people read count who is in the round by the header's rule. See whoIsInTheRound. */
+      answeredThisRound: shown.answered,
+      ofPeople: shown.ofPeople,
+      waitingOn: counted.waitingOn,
+      ...(notLetIn || notJoined ? { notLetIn, notJoinedYet: notJoined, notCountedSays, notJoinedSays: whoHasNotJoinedYetCount(notJoined) } : {}),
+      ...(i.forTheList ? {
+        openRound: session,
+        whereItIs: whereTheTeamIs(i.sessionNumber ? session : 0, i.roundsPlanned, i.roundsDone),
+        howManyAreDone: howManyAreDone(i.roundsDone, i.roundsPlanned),
+      } : {}),
+    },
+    inTheWay: whatIsInTheWay(i.dependencies, now, !!i.forTheList),
+  };
+}
+
+/**
+ * WHAT IS IN THE WAY, COUNTED AS THE BOARD COUNTS IT, with the longest-standing named one. Given every
+ * wait on the check-in for whoever runs it; given only the reader's own waits for a reader walled from
+ * their colleagues (see theGlanceAsThisReaderMayReadIt).
+ */
+export function whatIsInTheWay(dependencies: GlanceInput['dependencies'], now: Date = new Date(), forTheList = false): AtAGlance['inTheWay'] {
+  const real = oneBlockerPerThingWaitedOn(dedupeDependencies(dependencies))
     .filter((d) => d.status === DependencyStatus.BLOCKING || d.status === DependencyStatus.WAITING)
     .filter(blockerHasSubstance);
 
@@ -94,18 +165,53 @@ export function atAGlance(i: GlanceInput, now: Date = new Date()): AtAGlance {
   const oldest = byAge.find(theyNamedWhatTheyAreWaitingOn) ?? null;
 
   return {
-    progress: {
-      roundsDone: i.roundsDone,
-      roundsPlanned: i.roundsPlanned,
-      answeredThisRound: counted.answered,
-      ofPeople: counted.expected,
-    },
-    inTheWay: {
-      count: real.length,
-      oldest: oldest?.what ?? null,
-      daysWaiting: oldest?.createdAt
-        ? Math.max(0, Math.floor((now.getTime() - oldest.createdAt.getTime()) / A_DAY))
-        : null,
-    },
+    count: real.length,
+    oldest: oldest?.what ? (startsWithAPronoun(oldest.what) ? whoseIsIt(oldest.what, null, { onParticipantId: (oldest as any).onParticipantId ?? null, onLabel: (oldest as any).onLabel ?? null }) : oldest.what) : null,
+    ...(forTheList && oldest && startsWithAPronoun(oldest.what) ? { oldestOnParticipantId: (oldest as any).onParticipantId ?? null } : {}),
+    daysWaiting: oldest?.createdAt
+      ? Math.max(0, Math.floor((now.getTime() - new Date(oldest.createdAt).getTime()) / A_DAY))
+      : null,
+    /* The day it began, which reads the same at any hour (request 117, part 9). */
+    since: oldest?.createdAt ? new Date(oldest.createdAt).toISOString() : null,
+    sinceSays: oldest?.createdAt ? `since ${theDayInWords(new Date(oldest.createdAt), now)}` : null,
   };
+}
+
+/**
+ * THE GLANCE FOR A READER WHO MAY NOT READ THEIR COLLEAGUES (request 105, the more private choice): a
+ * participant where people see only themselves, anybody on an evaluation check-in who does not run it
+ * (the person reviewed, a colleague giving a view), and an admin without access to it. The rounds and how
+ * many have answered stay, because they name nobody. Who has not answered is cut to the reader alone, and
+ * what is in the way is counted and named from the reader's own waits only, never a colleague's.
+ */
+export function theGlanceAsThisReaderMayReadIt(
+  glance: AtAGlance,
+  reader: { participantId: string | null },
+  dependencies: GlanceInput['dependencies'],
+  now: Date = new Date(),
+): AtAGlance {
+  const me = reader.participantId;
+  const theirOwn = me ? (dependencies ?? []).filter((d: any) => d.fromParticipantId === me || d.onParticipantId === me) : [];
+  return {
+    ...glance,
+    progress: { ...glance.progress, waitingOn: (glance.progress.waitingOn ?? []).filter((id) => !!me && id === me) },
+    inTheWay: whatIsInTheWay(theirOwn, now, false),
+  };
+}
+
+const SMALL = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+/** The same sentence the lead's page says (client a-number-up-to-ten-in-words.ts, andWhoIsNotCountedYet). */
+/** "One more person is not counted yet, because they were invited and have not joined yet." */
+export function whoHasNotJoinedYetCount(n: number): string | null {
+  if (!n || n < 1) return null;
+  if (n === 1) return 'One more person is not counted yet, because they were invited and have not joined yet.';
+  const w = n < SMALL.length ? SMALL[n] : String(n);
+  return `${w.charAt(0).toUpperCase()}${w.slice(1)} more people are not counted yet, because they were invited and have not joined yet.`;
+}
+
+export function whoIsNotCountedYet(n: number): string | null {
+  if (!n || n < 1) return null;
+  if (n === 1) return 'One more person is not counted yet, because an admin has not let them in.';
+  const w = n < SMALL.length ? SMALL[n] : String(n);
+  return `${w.charAt(0).toUpperCase()}${w.slice(1)} more people are not counted yet, because an admin has not let them in.`;
 }

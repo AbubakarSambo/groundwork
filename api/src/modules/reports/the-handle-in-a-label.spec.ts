@@ -22,9 +22,19 @@ describe('the handle in a label', () => {
     expect(out).toBe('Both accounts describe your time as spent on panels. You have not followed up the telco.');
   });
 
-  it('a paragraph-long label the reader may not resolve prints as its handle', () => {
+  it('but a label the reader may not resolve prints as a plain phrase, not as a job', () => {
+    /*
+     * CHANGED 26 SEPTEMBER 2026, AND THIS ONE WAS A DEFECT, NOT ONLY OLD WORDING. It asserted
+     * "Managing Partner expects two large projects." - somebody's job, printed to a reader who is
+     * not allowed to know who they are. On a two-person check-in the job names the person as
+     * surely as the name would. Hafsah's decision says it plainly: "never a job title or detail
+     * that would give them away". So the handle is still what the READER'S OWN role shortens to,
+     * which the case above pins, and a person this reader may not name is "a colleague".
+     */
     const out = withNames(`${funmi} expects two large projects.`, new Map(), [funmi, tunde], { viewerLabel: tunde });
-    expect(out).toBe('Managing Partner expects two large projects.');
+    expect(out).toBe('A colleague expects two large projects.');
+    expect(out).not.toContain('Managing Partner');
+    expect(out).not.toContain('Sable Behavioural');
   });
 });
 
@@ -46,12 +56,19 @@ describe('a label that ends in a full stop still resolves', () => {
 });
 
 /** Run 8, 21 Sep 2026: a participant read the lead's whole role sentence where a name was not theirs to see. */
-describe('a label nobody may name reads as its handle', () => {
+describe('a label nobody may name reads as a plain phrase', () => {
   const { withNames } = require('./party-labels');
   const label = 'Expansion lead at MarketView, an agricultural market intelligence platform. I am running one session with 24 organisations to decide where we expand data coverage and networks next';
   it('in the middle of a sentence, and at the start of one', () => {
-    expect(withNames(`Nobody disagreed. ${label} said this was for: a shortlist.`, new Map(), [label])).toBe('Nobody disagreed. Expansion lead said this was for: a shortlist.');
-    expect(withNames(`What the ${label} set is open.`, new Map(), [label])).toBe('What the Expansion lead set is open.');
+    /*
+     * CHANGED 26 SEPTEMBER 2026. This asserted "Expansion lead said this was for: a shortlist." -
+     * the role of somebody the reader may not name, which on most check-ins names them. The
+     * paragraph never reaching the page is what this case was written for and is still true; what
+     * stands in its place is now a phrase that gives nothing away. The article in "What the ...
+     * set is open" comes away with it, because the phrase carries its own.
+     */
+    expect(withNames(`Nobody disagreed. ${label} said this was for: a shortlist.`, new Map(), [label])).toBe('Nobody disagreed. A colleague said this was for: a shortlist.');
+    expect(withNames(`What the ${label} set is open.`, new Map(), [label])).toBe('What a colleague set is open.');
   });
   it('but a reader who may see the name gets the name', () => {
     expect(withNames(`${label} said this was for: a shortlist.`, new Map([[label, 'Kemi Olawale']]), [label])).toBe('Kemi Olawale said this was for: a shortlist.');

@@ -8,6 +8,15 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
  * had been used or had expired months ago still uploaded a file onto the ground. The rule moved
  * here so that both doors ask it, and so that a third door added later has one place to look.
  */
+/** Said wherever an expired invitation is presented. It no longer promises an option that did not exist. */
+export const INVITATION_HAS_EXPIRED =
+  'This invitation link has expired. Invitation links last 14 days. Open the link again and ask for a fresh one, or ask the person who invited you.';
+
+/** Whether an invitation nobody accepted has run out. */
+export function hasExpired(participant: { userId: string | null; inviteTokenExpiresAt: Date | null }, now: Date = new Date()): boolean {
+  return !participant.userId && !!participant.inviteTokenExpiresAt && participant.inviteTokenExpiresAt < now;
+}
+
 export function assertInviteLinkStillOpens<T extends { userId: string | null; inviteTokenExpiresAt: Date | null }>(participant: T | null): T {
   if (!participant) {
     /**
@@ -23,23 +32,17 @@ export function assertInviteLinkStillOpens<T extends { userId: string | null; in
     throw new NotFoundException(
       /* Not "already been used": the token deliberately survives use, so that is no longer a state this
          sentence can be describing. The row is simply not found; say that, and what to do. */
-      'We do not recognise that link. If you have already joined, sign in with the password you set. Your setup link is in your email. If you have not joined yet, ask the person who added you for a new invite.',
+      'We do not recognise that link. Have you already joined? Then sign in as you usually do. Have you not joined yet? Ask the person who added you to send you a new invite.',
     );
   }
   // Skip expiry for participants who already accepted - they can always return via their link.
   const alreadyAccepted = !!participant.userId;
   /**
-   * Ninety days, and only for an invite nobody ever accepted.
-   *
-   * Fourteen days was short enough to expire on ordinary human timescales - annual leave, a quarter
-   * that slipped, a ground set up ahead of a start date - and the reward for being late was a dead
-   * link and an instruction to go and ask a colleague to resend it. Nobody should have to chase
-   * someone to get into their own record.
+   * Fourteen days (how-long-an-invite-lasts.ts), and only for an invite nobody ever accepted. The
+   * way on is a fresh link from the expired-link page, which is what this sentence says.
    */
   if (!alreadyAccepted && participant.inviteTokenExpiresAt && participant.inviteTokenExpiresAt < new Date()) {
-    throw new BadRequestException(
-      'This invite link is very old and has expired. Use the "send me a new link" option, or ask whoever added you to invite you again.',
-    );
+    throw new BadRequestException(INVITATION_HAS_EXPIRED);
   }
   return participant;
 }

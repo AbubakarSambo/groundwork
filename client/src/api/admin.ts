@@ -30,6 +30,20 @@ export interface CorrectionWindow {
   max: number
 }
 
+/** The regular free trial: whether it is on, the team size it is for, and how many months (decision 78: always 1 today). */
+export interface AdminFreeTrial {
+  on: boolean
+  teamsUnder: number
+  months: number
+}
+
+/** The anchor's own trial (anchor piece 34): whether it is on. Only on or off - its one month, for up to 20 people, is fixed. */
+export interface AdminAnchorTrial {
+  on: boolean
+  months: number
+  people: number
+}
+
 export interface FreeRunRow {
   id: string
   email: string
@@ -51,6 +65,9 @@ export interface PricingPlanRow {
   /** Null means unlimited. Editable here, because a cap only reachable by SQL is a cap that drifts. */
   memberCap: number | null
   hasStripePrice: boolean
+  /** Fix list item 6: an extra seat a month, and WhatsApp a month for each person who used it. Null where not sold by itself. */
+  extraSeatCents?: number | null
+  whatsappPersonCents?: number | null
   updatedAt: string
 }
 
@@ -102,7 +119,7 @@ export const adminApi = {
     apiClient.get<{ checkedAt: string; flaggedCount: number; rows: { table: string; writer: string; count: number | null; lastWrite: string | null; shippedAt: string | null; flagged: boolean; needs?: string; error?: string }[] }>('/admin/writers').then(r => r.data),
   /** Every organisation that has asked for the API — ours among them. */
   getApiAccessRequests: () =>
-    apiClient.get<ApiAccessRequest[]>('/admin/api-access').then(r => r.data),
+    apiClient.get<ApiAccessRequest[]>('/admin/api-access').then(r => (Array.isArray(r.data) ? r.data : [])),
 
   decideApiAccess: (id: string, status: ApiAccessRequest['status'], note?: string) =>
     apiClient.patch(`/admin/api-access/${id}`, { status, note }).then(r => r.data),
@@ -127,14 +144,15 @@ export const adminApi = {
 
   /** Whether this deployment can take money. Never the key itself. */
   getStripeStatus: () =>
-    apiClient.get<{ isConfigured: boolean; says: string }>('/admin/stripe').then(r => r.data),
+    apiClient.get<{ isConfigured: boolean; says: string; badge?: string; keyKind?: 'none' | 'placeholder' | 'test' | 'live' | 'unknown' }>('/admin/stripe').then(r => r.data),
 
   /**
-   * THREE MONTHS ON THE HOUSE. An address is promised a free run before there is an organisation to
-   * give it to; the clock starts when they sign up. See the API's three-months-on-the-house.
+   * ONE MONTH ON THE HOUSE (decision 78; the route keeps its old name). An address is promised a
+   * free run before there is an organisation to give it to; the clock starts when they sign up.
+   * See the API's three-months-on-the-house.
    */
   listFreeRuns: () =>
-    apiClient.get<FreeRunRow[]>('/admin/free-runs').then(r => r.data),
+    apiClient.get<FreeRunRow[]>('/admin/free-runs').then(r => (Array.isArray(r.data) ? r.data : [])),
 
   grantFreeRun: (body: { email: string; months?: number; plan?: string; note?: string }) =>
     apiClient.post<FreeRunRow>('/admin/free-runs', body).then(r => r.data),
@@ -143,7 +161,7 @@ export const adminApi = {
     apiClient.post(`/admin/free-runs/${id}/withdraw`).then(r => r.data),
 
   getPricing: () =>
-    apiClient.get<PricingPlanRow[]>('/admin/pricing').then(r => r.data),
+    apiClient.get<PricingPlanRow[]>('/admin/pricing').then(r => (Array.isArray(r.data) ? r.data : [])),
 
   getFreeGroundLimit: () =>
     apiClient.get<{ freeGroundLimit: number }>('/admin/pricing/free-ground-limit').then(r => r.data),
@@ -157,9 +175,23 @@ export const adminApi = {
   setFreeMemberLimit: (freeMemberLimit: number) =>
     apiClient.patch<{ freeMemberLimit: number }>('/admin/pricing/free-member-limit', { freeMemberLimit }).then(r => r.data),
 
+  getFreeTrial: () =>
+    apiClient.get<AdminFreeTrial>('/admin/pricing/free-trial').then(r => r.data),
+
+  /** Only `on` is switched here - every free run is one month (decision 78), so the months never change from this screen. */
+  setFreeTrial: (on: boolean) =>
+    apiClient.patch<AdminFreeTrial>('/admin/pricing/free-trial', { on }).then(r => r.data),
+
+  getAnchorTrial: () =>
+    apiClient.get<AdminAnchorTrial>('/admin/pricing/anchor-trial').then(r => r.data),
+
+  /** Only on or off: the anchor trial's one month, for up to 20 people, is fixed (anchor piece 34). */
+  setAnchorTrial: (on: boolean) =>
+    apiClient.patch<AdminAnchorTrial>('/admin/pricing/anchor-trial', { on }).then(r => r.data),
+
   /** Either field alone, or both. `memberCap: null` means unlimited, which is a value not an absence. */
-  setPlanLimits: (plan: SubscriptionPlan, body: { amountCents?: number; memberCap?: number | null }) =>
-    apiClient.patch<PricingPlanRow[]>(`/admin/pricing/${plan}`, body).then(r => r.data),
+  setPlanLimits: (plan: SubscriptionPlan, body: { amountCents?: number; memberCap?: number | null; extraSeatCents?: number | null; whatsappPersonCents?: number | null }) =>
+    apiClient.patch<PricingPlanRow[]>(`/admin/pricing/${plan}`, body).then(r => (Array.isArray(r.data) ? r.data : [])),
 
   /**
    * `setPricing` USED TO SIT HERE, AND IT WAS `setPlanLimits` WITH ONE FIELD. W-UX-C.

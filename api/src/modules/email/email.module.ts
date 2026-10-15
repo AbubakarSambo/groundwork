@@ -4,13 +4,15 @@ import { RoundDigestService } from './round-digest.service';
 import { DeliveryService } from './delivery.service';
 import { ResendWebhookController } from './resend-webhook.controller';
 import { UnsubscribeController } from './unsubscribe.controller';
+import { TheReminderLinkController } from './the-reminder-link.controller';
+import { TheWaysToStopMail } from '../engagement/the-ways-to-stop-mail';
 import { HeldMailCron } from './held-mail.cron';
 import { InviteBouncedListener } from './invite-bounced.listener';
 
 @Global()
 @Module({
-  controllers: [ResendWebhookController, UnsubscribeController],
-  providers: [EmailService, DeliveryService, RoundDigestService, HeldMailCron, InviteBouncedListener],
-  exports: [EmailService, RoundDigestService, DeliveryService],
+  controllers: [ResendWebhookController, UnsubscribeController, TheReminderLinkController],
+  providers: [TheWaysToStopMail, EmailService, DeliveryService, RoundDigestService, HeldMailCron, InviteBouncedListener],
+  exports: [TheWaysToStopMail, EmailService, RoundDigestService, DeliveryService],
 })
 export class EmailModule {}

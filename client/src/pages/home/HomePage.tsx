@@ -67,7 +67,7 @@ export function HomePage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--gw-page)', display: 'flex', flexDirection: 'column' }}>
       <div style={{ background: 'var(--gw-navy)', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
           <svg width="18" height="14" viewBox="0 0 22 17" fill="none">

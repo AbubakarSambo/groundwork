@@ -2,7 +2,7 @@ import { Controller, Get, Post, Param, Body, UseGuards, HttpCode, HttpStatus, Qu
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, IsOptional, MaxLength } from 'class-validator';
 import { PromptsService } from './prompts.service';
-import { PlatformAdminGuard } from '../../common';
+import { PlatformAdminGuard, CurrentUser } from '../../common';
 
 class CreatePromptVersionDto {
   @IsString()
@@ -46,8 +46,9 @@ export class PromptsController {
 
   @Post(':id/activate')
   @ApiOperation({ summary: 'Activate a prompt version (versioned against outcome data)' })
-  async activate(@Param('id') id: string) {
-    return this.prompts.activate(id);
+  async activate(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    /* Who activated it by hand, so a start never replaces it (decision 74, item 6). */
+    return this.prompts.activate(id, userId || undefined);
   }
 
   @Get('platform-funnel')

@@ -39,7 +39,11 @@ const GENERATOR = readFileSync(
 describe('the generator names the topic, never the person', () => {
   it('takes no participant argument at all', () => {
     /** The strongest form of the guarantee: it cannot name somebody it was never given. */
-    expect(GENERATOR).toMatch(/export function fallbackGroundName\(classifiedScenario\?: string, firstDescription\?: string\)/);
+    /* U.6 review: the second argument is where it runs (the organisation), not the lead's words,
+       which an invitation never carries (Hafsah, 27 September). Still no participant argument. */
+    /* 2724c9964 added a third argument, what the lead described so far, from which only a few fixed words are chosen
+       (KINDS_OF_WORK), never her sentence: still no participant argument. */
+    expect(GENERATOR).toMatch(/export function fallbackGroundName\(situation\?: string, where\?: string(?:, saidSoFar\?: string)?\)/);
     expect(GENERATOR).not.toMatch(/fallbackGroundName\([^)]*participants\[0\]/);
     expect(GENERATOR).not.toMatch(/fallbackGroundName\([^)]*peopleNamed/);
   });
@@ -48,11 +52,19 @@ describe('the generator names the topic, never the person', () => {
     expect(GENERATOR).not.toMatch(/\$\{name\}, \$\{base/);
   });
 
-  it('falls back to the situation, then to what the person actually typed', () => {
-    /* Better material than the card label it replaced: the situation as CLASSIFIED from their own
-       words, then their own first description, then "Untitled". */
-    expect(GENERATOR).toMatch(/const fromScenario = \(classifiedScenario \?\? ''\)/);
-    expect(GENERATOR).toMatch(/const said = \(firstDescription \?\? ''\)/);
+  /*
+   * CHANGED IN THE U.6 REVIEW. This required the fallback to go on to "what the person actually
+   * typed". That is the lead's own words, and they became the subject of the invitation sent to the
+   * person they were about ("Daniel isn't hitting his targets" to Daniel). Hafsah decided on 27
+   * September that an invitation never carries the lead's private words, not even reworded. So it
+   * falls back to the situation in plain words, then to a neutral "A check-in", never to her words.
+   * The rule this file is for, the topic and never the person, is unchanged.
+   */
+  it('falls back to the situation, then to a neutral name, never to what the lead typed', () => {
+    expect(GENERATOR).toMatch(/const fromScenario = \(situation \?\? ''\)/);
+    expect(GENERATOR).not.toMatch(/firstDescription/);
+    expect(GENERATOR).toMatch(/at \? `A check-in at \$\{at\}` : 'A check-in'/);
+    expect(GENERATOR).not.toMatch(/'Untitled'/);
   });
 
   it('and never to the raw enum in shouting caps', () => {

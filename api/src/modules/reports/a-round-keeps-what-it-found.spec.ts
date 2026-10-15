@@ -80,7 +80,19 @@ describe('and the list carries it', () => {
        sentences. The card leads with the summary and the board switcher uses the finding. */
     expect(GROUNDS).toMatch(/const latestFinding = /);
     expect(GROUNDS).toMatch(/const latestSummary = /);
-    expect(GROUNDS).toMatch(/latestFinding, latestSummary,/);
+    /* Given by name, and only through the gate (abb6f3b8, U.5 re-review): somebody who does not run
+       the check-in gets both only once the report is released, and both go through the report's own
+       naming door, so no label is ever served. This pinned the shorthand `latestFinding,
+       latestSummary,` that the gate replaced. */
+    /* And only once the latest round's own session is released (decision 76, item 4). */
+    expect(GROUNDS).toMatch(/const mayReadTheReport = runsIt \|\| \(!!fullReport\?\.releasedAt && peersVisibleEffective\s+&& latestRound !== null && isThisSessionReleased\(fullReport as any, latestRound\)\);/);
+    expect(GROUNDS).toMatch(/if \(!mayReadTheReport \|\| \(!latestFinding && !latestSummary\)\) return \{ latestFinding: null, latestSummary: null \};/);
+    expect(GROUNDS).toMatch(/this\.reportTextAsItWasShared\(\{ \.\.\.\(rest as any\), participants: allParticipants, initiatorId: .*? \?\? null \}, \{ latestFinding, latestSummary \}, fullReport\?\.sharedAs, me\?\.id \?\? null, runsIt\)/);
+    /* Changed on 5 October (requests 127, 129, 135, 136): the finding is served through the naming door and then put right
+       (a number said twice, a missing full stop), so the line has one wrapper more. It still comes only from `named`. */
+    expect(GROUNDS).toMatch(/return \{ latestFinding: aFindingThatReadsRight\(named\.latestFinding\) as typeof named\.latestFinding, latestSummary: named\.latestSummary \};/);
+    /* And never handed out raw, around the gate. */
+    expect(GROUNDS).not.toMatch(/latestFinding, latestSummary,/);
   });
 
   it('and the summary is cut where sentences actually end, wherever that now lives', () => {

@@ -14,9 +14,14 @@
  * 2. What is not settled is a reason to ask, never a correction. Where somebody states as fact
  *    something the record says is unknown, the conversation asks how they know - it does not tell
  *    them they are wrong, and it does not quietly overwrite the record either.
- * 3. The lead's read of a person is a place to look. Never quoted, never attributed, never put to
- *    them as a claim - the same rule the coaching steer has carried since it was written.
- * 4. A question the lead wrote is asked in the interviewer's own words, once, when it fits.
+ * 3. The lead's read of a person is not here at all. It used to reach that person's own session as
+ *    "a place to look", kept from them only by an instruction. Decision 32, 27 September 2026: a
+ *    lead's private notes about a person never reach the model in that person's own session, so
+ *    the conversation service does not read them in the first place.
+ * 4. A question the lead wants asked is asked word for word, once, when it fits - and only once the
+ *    lead has confirmed that exact sentence. Decision 34, 28 September 2026: it used to be "asked in
+ *    the interviewer's own words", which meant nobody had read what the person was actually asked.
+ *    See grounds/a-question-asked-word-for-word.
  */
 
 export interface ACommitmentOnRecord {
@@ -63,14 +68,21 @@ export function whatIsNotSettled(lines: string[]): string {
   ].join('\n');
 }
 
-/** A question the lead wants asked of this person. Asked once, in the interviewer's own words. */
-export function theQuestionsTheLeadWants(questions: string[]): string {
-  const rows = (questions ?? []).map((q) => (q ?? '').trim()).filter(Boolean);
+/**
+ * The questions the lead confirmed for this person, each as the exact sentence to ask. Only confirmed
+ * sentences are ever passed here - the caller reads nothing else - and one already asked in this
+ * check-in is left out by the caller too, so it is never asked twice.
+ */
+export function theQuestionsTheLeadWants(confirmed: string[]): string {
+  const rows = (confirmed ?? []).map((q) => (q ?? '').trim()).filter(Boolean);
   if (!rows.length) return '';
   return [
-    'THE PERSON RUNNING THIS CHECK-IN WANTS THESE ASKED:',
-    ...rows.slice(0, 5).map((r) => `- ${r}`),
-    'Ask them in your own words, one at a time, where they fit what is being discussed. Never say who wants them asked, never read one out as a list, and never ask one twice.',
+    `${rows.length === 1 ? 'A QUESTION' : 'QUESTIONS'} TO ASK THIS PERSON, WORD FOR WORD. Each one was confirmed exactly as it is written here:`,
+    ...rows.slice(0, 5).map((r) => `- "${r}"`),
+    'Ask each one exactly as it is written, word for word, as a sentence of its own, once, at the point where it fits what is being discussed. Do not change its words and do not add to it. Never say who wants it asked, and never read them out as a list.',
+    /* B-017: Amani's first check-in opened three minutes after Wairimu confirmed her question, and closed without it.
+       "Where it fits" left it to chance, so it is asked in this check-in, before it closes, whatever else came up. */
+    'Ask it in this check-in. If the conversation is about to close and it has not been asked yet, ask it before you close.',
   ].join('\n');
 }
 
@@ -82,17 +94,6 @@ export function whatSitsBetweenPeople(lines: string[]): string {
     'SOMETHING THAT SITS BETWEEN TWO PEOPLE, as the person running this check-in reads it. It is one person\'s account of a thing involving two, so it is not a fact about either of them:',
     ...rows.slice(0, 6).map((r) => `- ${r}`),
     'Use it to ask about the work: what was promised, what was agreed, what each side understood. Never quote it, never say who wrote it, and never put it to this person as something they did wrong.',
-  ].join('\n');
-}
-
-/** The lead's private read of this person: which behaviour to look at first, and nothing more. */
-export function aPlaceToLook(notes: string[]): string {
-  const rows = (notes ?? []).map((n) => (n ?? '').trim()).filter(Boolean);
-  if (!rows.length) return '';
-  return [
-    'A PLACE TO LOOK, FROM THE PERSON RUNNING THIS CHECK-IN. Their read, not a fact, and not something this person has seen:',
-    ...rows.slice(0, 3).map((r) => `- ${r}`),
-    'It decides which part of the work you ask about first. It is never quoted, never attributed, never described to them, and never the reason for anything you say. If what they tell you does not show it, it was not there.',
   ].join('\n');
 }
 

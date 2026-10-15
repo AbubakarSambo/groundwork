@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { theAddressTheApiListensOn } from './the-address-the-api-listens-on';
 import { ValidationPipe, Logger, RequestMethod } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
@@ -6,6 +7,7 @@ import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import type { Request as ExpressRequest, Response as ExpressResponse } from 'express';
 import { JwtService } from '@nestjs/jwt';
+import { howManyProxiesToTrust, theWarningWhenTheProxiesAreNotSaid } from './the-proxies-the-api-trusts';
 import { MAX_BATCH_BYTES } from './modules/subjects/how-heavy-a-batch-may-be';
 
 /**
@@ -41,6 +43,10 @@ async function bootstrap() {
   });
   /* Routing and the back-office door agree on spelling: /ADMIN is not /admin (B16, P2-007). */
   app.set('case sensitive routing', true);
+  /* Each visitor is counted by their own address, not the host's proxy's (B10). See the-proxies-the-api-trusts.ts. */
+  app.set('trust proxy', howManyProxiesToTrust(process.env));
+  const proxiesNotSaid = theWarningWhenTheProxiesAreNotSaid(process.env);
+  if (proxiesNotSaid) logger.warn(proxiesNotSaid);
 
   const configService = app.get(ConfigService);
 
@@ -220,7 +226,9 @@ async function bootstrap() {
   });
 
   const port = configService.get<number>('app.port') || 3000;
-  await app.listen(port, '0.0.0.0');
+  /* Narrowed to this machine only for an explicit development run; see the-address-the-api-listens-on.ts. */
+  const host = theAddressTheApiListensOn(process.env.NODE_ENV);
+  await app.listen(port, host);
   logger.log(`Groundwork API running on port ${port} (docs at /api/docs)`);
 }
 

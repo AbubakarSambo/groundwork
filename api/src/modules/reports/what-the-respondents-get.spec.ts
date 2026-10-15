@@ -34,15 +34,15 @@ describe('taking the names out of the words themselves', () => {
 
   /* THE HALF THAT ACTUALLY LEAKS. Label substitution never touches a name inside a sentence. */
   it('takes a name out of a quote', () => {
-    expect(withoutWhoSaidIt('Adaeze Nwosu told us to prepay.', them)).toBe('somebody in this check-in told us to prepay.');
+    expect(withoutWhoSaidIt('Adaeze Nwosu told us to prepay.', them)).toBe('Somebody in this check-in told us to prepay.');
   });
 
   it('and a first name on its own, which is just as identifying inside a network', () => {
-    expect(withoutWhoSaidIt('Adaeze said it twice.', them)).toBe('somebody in this check-in said it twice.');
+    expect(withoutWhoSaidIt('Adaeze said it twice.', them)).toBe('Somebody in this check-in said it twice.');
   });
 
   it('and the organisation', () => {
-    expect(withoutWhoSaidIt('Harvestline Foods buys in November.', them)).toBe('one organisation buys in November.');
+    expect(withoutWhoSaidIt('Harvestline Foods buys in November.', them)).toBe('One organisation buys in November.');
   });
 
   /* Longest first, or "Harvestline Foods" leaves "one organisation Foods" behind. */
@@ -64,8 +64,8 @@ describe('taking the names out of the words themselves', () => {
   it('and reaches every string in a report however deep it sits', () => {
     const report = { a: 'Adaeze Nwosu', b: { c: ['Harvestline Foods', 7, null] } };
     expect(nothingIdentifyingIn(report, them)).toEqual({
-      a: 'somebody in this check-in',
-      b: { c: ['one organisation', 7, null] },
+      a: 'Somebody in this check-in',
+      b: { c: ['One organisation', 7, null] },
     });
   });
 });

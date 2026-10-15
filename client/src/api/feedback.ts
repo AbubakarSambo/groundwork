@@ -13,7 +13,7 @@ export const feedbackApi = {
   submit: (data: { tab: string; pill: string; text?: string }) =>
     apiClient.post<FeedbackSubmission>('/feedback', data).then(r => r.data),
   list: () =>
-    apiClient.get<FeedbackSubmission[]>('/feedback').then(r => r.data),
+    apiClient.get<FeedbackSubmission[]>('/feedback').then(r => (Array.isArray(r.data) ? r.data : [])),
   updateStatus: (id: string, status: string) =>
     apiClient.patch<FeedbackSubmission>(`/feedback/${id}/status`, { status }).then(r => r.data),
 }

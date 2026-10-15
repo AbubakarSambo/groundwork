@@ -1,13 +1,19 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { InvitationExpired } from './InvitationExpired'
+import { theLastDay } from '@/lib/a-date-reads-the-same-everywhere'
 import { participantsApi } from '@/api'
+import type { InvitePreview } from '@/api/participants'
+import type { GroundScenario } from '@/types'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api/auth'
-import { Arrival } from '@/components/gw/Arrival'
+import { Page, Mark, PageTitle, Panel, SubHeading, Callout, Note, Button, FieldLabel, TextField, Modal, Stack } from '@/components/gw/ui'
 import { LinkProblem } from '@/components/gw/LinkProblem'
 import { toast } from 'sonner'
 import { opensStraightOnTheQuestion, whereTheLinkGoes } from './the-link-opens-on-the-question'
+import { isEvaluationScenario } from '@/lib/scenario-catalog'
+import { askNameFor } from '@/lib/ask-name'
 
 /**
  * The participant invite landing. ONE PATH: accepting the invite signs the
@@ -22,7 +28,40 @@ import { opensStraightOnTheQuestion, whereTheLinkGoes } from './the-link-opens-o
  * the full engine: intake context, versioned prompt, probing, doc upload
  * with assessment, record extraction, and the shared/forming report on their
  * ground page once everyone is in.
+ *
+ * REBUILT FROM THE SHARED PARTS (components/gw/ui only; design-audit.md section 4). Every state
+ * below is `Page narrow` with the small `Mark` at the top, the way join-invite.jpg,
+ * join-waiting.jpg, join-outoftime.jpg and join-expired.jpg all draw it - never the old
+ * `Arrival`/`gw-hdr`/`gw-ttl` chrome. See `one-arrival.spec.ts`, updated in the same commit: it
+ * used to pin every arrival route to `Arrival`, and now says why `/invite` is the one exception.
+ *
+ * PRIMARY-BUTTONS-NEVER-TOGETHER: "Pick up where I left off" (the `preview.alreadyAccepted`
+ * return, above the main return) and "Answer today's check-in now" (the fresh-invitation return,
+ * below it) are the component's only two primary buttons, and they belong to two `return`
+ * statements that cannot both execute for one render - a link is either already accepted or it
+ * is not. Whichever one is true decides which single primary button, if any, reaches the screen.
  */
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+/** "Monday 5 October", on the date as stored (a start is a day, kept at midnight UTC). */
+function theDayOf(iso: string): string {
+  const d = new Date(iso)
+  return `${DAYS[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`
+}
+
+/**
+ * ONE PLACE FOR THE PAGE'S OWN "ONE MOMENT" LINE (B-205 follow-up). This page's loading and
+ * in-between states ("Loading your invitation…", "Opening your question…", and now "Opening your
+ * check-in…" for somebody already signed in as the invitee) are one centred status line each, and
+ * they used to repeat the same `className="gwui-pt-sub"` inline at each call site. One-off style
+ * classes are only ever meant to go down (one-off-uses-only-go-down.spec.ts) - adding a third
+ * literal use of an already-flagged class for the new state would have moved it the wrong way, so
+ * this says it once and every call site reads from here instead.
+ */
+function OneLineStatus({ children }: { children: React.ReactNode }) {
+  return <p role="status" className="gwui-pt-sub" style={{ textAlign: 'center' }}>{children}</p>
+}
+
 export function InvitePage() {
   const [params] = useSearchParams()
   const token = params.get('token') ?? ''
@@ -34,22 +73,34 @@ export function InvitePage() {
   /** Set when the server has emailed a fresh way in, instead of signing us in here. */
   const [emailedTo, setEmailedTo] = useState<string | null>(null)
   /* The server's sentence for somebody signed in and not yet let in. Rendered, not navigated past. */
-  const [waiting, setWaiting] = useState('')
   /* The invited person cannot fix anything themselves and has no other way in; a toast that dismisses is not a failure surface. */
   const [failed, setFailed] = useState('')
   const [declinedQuietly, setDeclinedQuietly] = useState(false)
   const setAuth = useAuthStore((s) => s.setAuth)
+  const signedIn = useAuthStore((s) => !!s.isAuthenticated)
+  const signedInEmail = useAuthStore((s) => s.user?.email ?? null)
+  /* "Grace Achieng" for the sentence below - the signed-in person's own name, never the invitee's. */
+  const signedInName = useAuthStore((s) => s.user ? [s.user.firstName, s.user.lastName].filter(Boolean).join(' ').trim() : null)
   const qc = useQueryClient()
 
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
+  /* "What happens to what you write" (design-audit.md section 3, U.20 fifth review): kept out of
+     the page's flow, reachable from a plain link rather than an always-open section or the old
+     folding panel. Its content is the Modal's children, below. */
+  const [showWhatHappens, setShowWhatHappens] = useState(false)
 
-  const { data: preview, isLoading, isError } = useQuery({
+  const { data: answer, isLoading, isError } = useQuery({
     queryKey: ['invite', token],
     queryFn: () => participantsApi.preview(token),
     enabled: !!token,
     retry: false,
   })
+  /* An expired invitation opens "This link has expired" (U.3), which carries nothing but the lead's first name. */
+  const expired = answer && answer.expired === true ? answer : null
+  /* Held for a seat (U.4 third review): the page is the refusal, with no button to answer. */
+  const held = answer && (answer as any).heldForASeat === true ? (answer as { saying: string }) : null
+  const preview: InvitePreview | undefined = answer && answer.expired !== true && !held ? (answer as InvitePreview) : undefined
 
   const accept = useMutation({
     mutationFn: () => participantsApi.accept(token, { firstName: firstName || undefined, lastName: lastName || undefined }),
@@ -75,6 +126,11 @@ export function InvitePage() {
        * The middle case is the one that keeps a forwarded link worthless to
        * whoever received it, without the link ever being worthless to its owner.
        */
+      /* Queued for approval, first time or coming back: "Almost in", never a check-in that refuses them. */
+      if ((res as any).resumed && res.queuedForApproval) {
+        navigate('/join/waiting', { replace: true })
+        return
+      }
       if ((res as any).resumed) {
         /*
           REFRESH WHO THEY ARE BEFORE SENDING THEM ON.
@@ -115,7 +171,8 @@ export function InvitePage() {
       /* Signed in, and not yet let in. Sending them to a check-in that will refuse them, with a
          message about something else and a retry that can never work, is P4-B03. Told here. */
       if (res.queuedForApproval) {
-        setWaiting(res.saying ?? 'An admin at the organisation that invited you has to approve you joining it before you can start. They have been asked.')
+        /* "Almost in" (U.3), a page of its own that can be opened again and says who was asked. */
+        navigate('/join/waiting', { replace: true })
         return
       }
       // Seamless handoff: straight into their session-1 check-in on the
@@ -180,6 +237,42 @@ export function InvitePage() {
     }
   }, [preview, accept, straightToTheReport])
 
+  /**
+   * B-205: SOMEBODY ALREADY SIGNED IN AS THE VERY PERSON THIS INVITATION IS FOR.
+   *
+   * The old "You've already joined" screen offered "Sign in to continue" to Tobi even while he was
+   * signed in as himself - asking somebody to sign in again, on the account they are already using,
+   * is never a sentence a person should read. When this browser is signed in as the invited address,
+   * there is nothing left to ask: the same "accept" call that "Pick up where I left off" makes is
+   * fired here on its own, and the server's own `resumed` branch (participants.service.ts, matching
+   * `returningUserId` to the participant's `userId`) carries them straight into the check-in.
+   */
+  const signedInAsInvitee = !!preview && signedIn && !!signedInEmail && !!preview.email
+    && signedInEmail.trim().toLowerCase() === preview.email.trim().toLowerCase()
+  useEffect(() => {
+    if (preview?.alreadyAccepted && signedInAsInvitee && accept.isIdle) {
+      accept.mutate()
+    }
+  }, [preview, signedInAsInvitee, accept])
+
+  /**
+   * FAULT 3 (SCREENS, INVITE PAGE): PREFILL FIRST AND LAST NAME FROM WHAT THE LEAD ALREADY GAVE.
+   *
+   * The lead's people step now asks for a name beside each email (section 13), served back here
+   * as `preview.nameGiven` ("Musa Bello") - but these two fields stayed empty, asking the invited
+   * person to retype a name their own lead had just given. It only fills what the server already
+   * sends, split on the first space, and is still editable either way. This applies to every
+   * situation, not only the anchor, since every invite can carry a name now.
+   */
+  useEffect(() => {
+    const given = preview?.nameGiven?.trim()
+    if (!given || firstName || lastName) return
+    const [first, ...rest] = given.split(' ')
+    setFirstName(first)
+    setLastName(rest.join(' '))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preview?.nameGiven])
+
 
 
   /**
@@ -187,24 +280,12 @@ export function InvitePage() {
    * on. Not an error, and not a dead end - just one more click, landing in the
    * inbox that was actually invited.
    */
-  if (waiting) {
-    return (
-      <InviteShell>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 28, marginBottom: 12 }}>🕐</div>
-          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>One thing before you start</div>
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>{waiting}</div>
-        </div>
-      </InviteShell>
-    )
-  }
-
   if (emailedTo) {
     return (
-      <InviteShell>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 28, marginBottom: 12 }}>📬</div>
-          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Check your email</div>
+      <Page narrow>
+        <Mark />
+        <PageTitle title="Check your email" />
+        <p className="gwui-callout">
           {/*
            * WHICH LINK TO USE FROM HERE, SAID PLAINLY. Hafsah, 22 Sep 2026: "someone got a sign-in link and
            * a check-in link but their check-in link stopped working." It had not stopped: opened where they
@@ -212,296 +293,428 @@ export function InvitePage() {
            * from their side that is a link that no longer works. So this says what the check-in link now
            * does, which link takes them in, how long it lasts, and offers it again.
            */}
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-            You have already joined this check-in, and this device or browser is not signed in, so the
-            check-in link on its own cannot open it here. We have sent a sign-in link to{' '}
-            <strong>{emailedTo}</strong>. Open that one: it takes you straight to your check-in and works
-            for 24 hours. After that, the check-in link works on this device too.
-          </div>
-          <button
-            className="gw-btn"
-            style={{ display: 'inline-block', width: 'auto', padding: '8px 16px', marginTop: 14, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-border)' }}
-            disabled={accept.isPending}
-            onClick={() => accept.mutate()}
-          >
-            {accept.isPending ? 'Sending…' : 'Send it again'}
-          </button>
-        </div>
-      </InviteShell>
+          {/*
+            B-205: "THIS DEVICE OR BROWSER IS NOT SIGNED IN" IS NOT ALWAYS TRUE. Grace, signed in as
+            herself, pressed "Pick up where I left off" on Tobi's own invitation and read that this
+            browser was signed out - it was not, it was signed in as her. The only thing that is
+            always true here, signed in or not, as the right person or the wrong one, is that this
+            link does not open that check-in in this browser.
+          */}
+          This link does not open that check-in in this browser. We have sent a sign-in link to{' '}
+          <strong>{emailedTo}</strong>. Open that one. It takes you straight to your check-in, and it
+          works for 24 hours. After that, the check-in link works on this device too.
+        </p>
+        <Button kind="secondary" size="big" wide disabled={accept.isPending} onClick={() => accept.mutate()}>
+          {accept.isPending ? 'Sending…' : 'Send it again'}
+        </Button>
+      </Page>
     )
   }
 
-  if (preview && (opensStraightOnTheQuestion(preview.scenario) || straightToTheReport) && !failed && !waiting && !emailedTo && (accept.isPending || accept.isIdle || accept.isSuccess)) {
+  if (preview && (opensStraightOnTheQuestion(preview.scenario) || straightToTheReport) && !failed && !emailedTo && (accept.isPending || accept.isIdle || accept.isSuccess)) {
     return (
-      <InviteShell>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>{straightToTheReport ? 'Opening your report' : 'Opening your question'}</div>
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)' }}>One moment.</div>
-        </div>
-      </InviteShell>
+      <Page narrow>
+        <Mark />
+        <OneLineStatus>{straightToTheReport ? 'Opening your report…' : 'Opening your question…'}</OneLineStatus>
+      </Page>
     )
   }
 
-  if (!token) return <InviteShell><ErrorCard msg="This invite link is missing its token." /></InviteShell>
-  if (isLoading) return <InviteShell><LoadingCard /></InviteShell>
+  if (preview?.alreadyAccepted && signedInAsInvitee && !failed && (accept.isPending || accept.isIdle || accept.isSuccess)) {
+    return (
+      <Page narrow>
+        <Mark />
+        <OneLineStatus>Opening your check-in…</OneLineStatus>
+      </Page>
+    )
+  }
+
+  {/* WALKTHROUGH PASS 2, ITEM 4: "TOKEN" IS NOT A WORD A PERSON READS. "This invite link is missing
+      its token." described the bug in the engineer's own terms; the plain fact is that the link is
+      not complete, and the way through it is the same as any other broken link: open it again from
+      the email, or sign in. */}
+  if (!token) return <Page narrow><Mark /><LinkProblem kind="invite" detail="This invitation link is not complete. Open the link from your email again." /></Page>
+  if (isLoading) return <Page narrow><Mark /><OneLineStatus>Loading your invitation…</OneLineStatus></Page>
+  if (expired) return <InvitationExpired token={token} leadFirstName={expired.leadFirstName} />
+  if (held) { const card = heldForASeatCard(held.saying); return <Page narrow><Mark /><PageTitle title={card.heading} subtitle={card.sub} /></Page> }
   if (isError || !preview) return (
-    <InviteShell>
-      <ErrorCard msg="We do not recognise this link. If you have already joined, sign in with your email - and if you have not, ask whoever added you to send a new invite." />
-    </InviteShell>
+    <Page narrow>
+      <Mark />
+      {/*
+        REVIEW ROUND 3: "SIGN IN WITH YOUR EMAIL" TOLD A SIGNED-IN PERSON TO SIGN IN. Someone already
+        signed in who opens a broken link has no account question left to answer - signing in is not
+        a thing they still need to do, so the sentence that told them to was never true for them. Only
+        the signed-out form of the advice ever fit both readers; signed in, the only thing left to say
+        is that the link itself is gone.
+      */}
+      <LinkProblem
+        kind="invite"
+        detail={signedIn
+          ? 'We do not recognise this link. Ask the person who added you for a new invitation.'
+          : 'We do not recognise this link. If you have already joined, sign in with your email. If you have not, ask the person who added you for a new invitation.'}
+      />
+    </Page>
   )
+
+  const opensLater = preview.opensOn && new Date(preview.opensOn).getTime() > Date.now() ? preview.opensOn : null
+  /**
+   * THE SCENARIO'S OWN WORDS, SERVED LIKE ANY SCENARIO'S (decision 114; docs/answers-from-engine.md,
+   * "8 October (later): the anchor through the ordinary routes, route by route"). `invitationWords`
+   * is the ordinary field for this - present for a scenario that has its own words (today only the
+   * anchor's, with the switch on) and absent for the rest - read first; `anchorInvitation` is kept
+   * underneath it only until the server has moved every caller onto the new field.
+   */
+  const theInvitationWords = preview.invitationWords ?? preview.anchorInvitation
 
   if (preview.alreadyAccepted) {
+    /*
+     * B-205 (review round 2): SOMEBODY SIGNED IN AS A DIFFERENT PERSON IS TOLD SO, NOT ASKED TO
+     * SIGN IN.
+     *
+     * By the time this branch can be reached, `signedInAsInvitee` has already been handled above
+     * (its own effect fires `accept.mutate()` and the "Opening your check-in…" status covers it),
+     * so a browser signed in here is signed in as somebody OTHER than the invited address - Grace,
+     * on Tobi's own invitation. The old "Pick up where I left off" button called `accept.mutate()`
+     * regardless, which the server answered correctly (it never signs Grace into Tobi's account),
+     * but it did so by emailing TOBI a sign-in link FROM GRACE'S BROWSER, with nothing on screen
+     * ever telling Grace that is what her own click had just done. Said here instead, in the one
+     * sentence that is true of it: whose invitation this is, and who is signed in right now - with
+     * nothing to press that would act on somebody else's invitation from this account, and a way
+     * out that does not require guessing a password: "Go to Today", or sign out.
+     */
+    if (signedIn) {
+      return (
+        <Page narrow>
+          <Mark />
+          <PageTitle
+            title="This invitation is for someone else"
+            subtitle={`This invitation is for ${preview.email}. You are signed in as ${signedInName || signedInEmail}.`}
+          />
+          <Stack gap={10}>
+            <Button size="big" wide onClick={() => navigate('/today')}>Go to Today</Button>
+            <Button kind="quiet" wide to="/signout">Sign out</Button>
+          </Stack>
+        </Page>
+      )
+    }
+    /*
+     * B-205: "alreadyAccepted" MEANS "THIS ADDRESS ALREADY HAS AN ACCOUNT", NOT "THIS INVITATION WAS
+     * OPENED BEFORE". Tobi, invited to "Sales team, Q4" while already holding an account from Msingi
+     * (a-guest-is-a-guest-from-the-moment-they-are-added.ts links a matching email the moment they are
+     * added, before they ever click anything), read "You've already joined. Pick up your check-in" -
+     * false, he had never opened this invitation. The server cannot tell the two apart from one flag,
+     * so the wording here says only what is true either way: he has an account, and signing in to it
+     * picks up this check-in, whichever of the two is actually the case. Noted for the engine
+     * (docs/requests-to-engine.md): a `hasOpenedThisInvite` of its own would let this say "already
+     * joined" only when that is actually true.
+     *
+     * B-205 (review round 2): THE BUTTON NAMES WHAT IT ACTUALLY DOES. Signed out, this browser has
+     * no session for the server to "pick up" - Tobi has never opened this invitation before, so
+     * "Pick up where I left off" promises a continuation that never happened. What the button
+     * reliably does, for a signed-out browser, is ask the server for a way in, which the server then
+     * emails to the invited address.
+     */
     return (
-      <InviteShell>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 28, marginBottom: 12 }}>👋</div>
-          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>You've already joined</div>
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 20 }}>
-            Pick up your check-in for <strong>{preview.groundLabel}</strong>. If this is a new device we
-            will email you a sign-in link.
-          </div>
-          <button
-            className="gw-btn"
-            style={{ display: 'inline-block', width: 'auto', padding: '10px 20px', marginBottom: 10 }}
-            disabled={accept.isPending}
-            onClick={() => accept.mutate()}
-          >
-            <span role="status">{accept.isPending ? 'One moment…' : 'Pick up where I left off →'}</span>
-          </button>
-          <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 12 }}>or</div>
-          {/* /auth, not a protected route that bounces; and the secondary weight, because two identical primaries around an "or" is no choice. */}
-          <button className="gw-btn" style={{ display: 'inline-block', width: 'auto', padding: '10px 20px', background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-border)' }} onClick={() => navigate('/auth')}>
-            Sign in to continue →
-          </button>
-        </div>
-      </InviteShell>
+      <Page narrow>
+        <Mark />
+        <PageTitle
+          title="You already have an account"
+          subtitle={`Sign in to pick up this check-in, “${preview.groundLabel}”.`}
+        />
+        <Stack gap={10}>
+          <Button size="big" wide disabled={accept.isPending} onClick={() => accept.mutate()}>
+            {accept.isPending ? 'One moment…' : 'Email me a sign-in link'}
+          </Button>
+          {/* Kept for whoever would rather sign in with a password they already have than wait for
+              an email - unchanged by B-205 round 2, which only renamed the button above.
+
+              B-205 (review round 3): SIGNING IN LOST THE CHECK-IN. This sent Tobi to plain /auth,
+              with nowhere to come back to, so finishing sign-in landed him on Today rather than
+              back on this invitation. The same `next` AuthPage already honours for every other
+              signed-out door carries this invitation's own address back to it - and this page
+              itself, opened signed in as the invitee, already resumes the check-in on its own (see
+              `signedInAsInvitee` above). */}
+          <Button kind="secondary" size="big" wide onClick={() => navigate(`/auth?next=${encodeURIComponent(`/invite?token=${token}`)}`)}>Sign in to continue</Button>
+        </Stack>
+      </Page>
     )
   }
 
   return (
-    <Arrival wide>
-      <div>
-        <h1 className="gw-ttl">{preview.initiatorName} wants to hear your version</h1>
-        <div className="gw-sub-t">
-          A Groundwork session about: <strong>{preview.groundLabel}</strong>.
-        </div>
+    <Page narrow>
+      {/*
+        THE INVITATION, AS THE PROTOTYPE HAS IT (A3, join-invite.txt, U.3; rebuilt from
+        components/gw/ui in U.20), WITH HAFSAH'S ANSWER OF 29 SEPTEMBER ON ITEM 11 (CONFLICT A).
 
-        {preview.roleAsDescribed && (
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 12 }}>
-            {/*
-              NOT "YOUR ROLE AS DESCRIBED", because of who wrote the words underneath it.
+        The prototype's first line is kept. Its two held sentences, "Nobody else reads your
+        answers." and "Wairimu reads the report, not your words.", are dropped for good - they are
+        not true, once admins and colleagues in the same check-in can read it. In their place, the
+        line below is built from this check-in's own scenario, so it is always true of what the
+        server actually does: the admins sentence is left out for a performance plan, a promotion or
+        a renewal (`isEvaluationScenario`, in `scenario-catalog.ts`), and left out too when the
+        scenario is not known, which is the more private reading. This is a client-side stand-in for
+        a field the engine does not send yet (request 78); once it does, this should read that field
+        instead of guessing from the scenario. "Your number" is shown only when the record holds
+        this person's share of a target, which the invitation does not carry yet.
+      */}
+      <Mark />
+      {/*
+        THE PROTOTYPE'S GAPS (Hafsah, pictured at 1440px, U.20 sixth round, corrected in the eighth
+        round). Page's flat 30px stack is wrong for this screen. Nested Stacks carry the
+        prototype's own numbers instead - the title's line sits flush against the tinted box under
+        it, 0px; the tinted box to the facts panel 19; panel to the button 18; the button to the
+        note under it 10 - so PageTitle down to "About two minutes…" is one chain, each link its
+        own gap, and nothing here sets an inline margin, padding or gap again.
+      */}
+      <Stack gap={0}>
+        <PageTitle title={theInvitationWords?.heading ?? theInvitation(preview)} subtitle={(preview.organisationName || preview.endsAt) ? whereAndUntil(preview) : undefined} />
 
-              That string comes from the entry flow's people list, where the assistant describes
-              each person TO THE LEAD - "Nadia - Your new HR assistant and the subject of this
-              check-in". Handed to Nadia under "Your role as described", it reads as her own role
-              written in somebody else's second person: whose new HR assistant?
+        <Stack gap={19}>
+          <Callout>{whoCanReadThis(preview.scenario, preview.organisationName)}</Callout>
 
-              Attributed instead. The words are unchanged and the reader can now tell they are
-              somebody else's account of why they were added, which is exactly what they are - and
-              the invitation already says, two paragraphs down, that she is not expected to agree
-              with any of it.
-            */}
-            Your part in this: <strong>{preview.roleAsDescribed}</strong>
-          </div>
-        )}
-
-        {/*
-          THE ONE SENTENCE THAT WAS NOT TRUE, ON THE FIRST PAGE AN INVITED PERSON READS.
-
-          It said "Nobody ever reads what you write - not {initiator}, not anyone." What is written
-          is read: it is summarised, cross referenced against what other people said, and the
-          result is put in front of them. Promising otherwise is worse than promising nothing,
-          because the moment somebody works out what the product actually does, everything else on
-          this page stops counting.
-
-          So it says the true thing, and the true thing is already written down: this is the first
-          of the four claims in what-happens-to-what-you-write.ts, which is calibrated line by line
-          and even carries a "the part we are not going to dress up". That file was the standard
-          this box should always have met. Your own words about your own work can appear in the
-          report; what you say about somebody else never does. Saying "your wording is never shown"
-          would have been a second false promise pointing the other way.
-
-          "Your account stays private" went with it. Here it means somebody's version of events and
-          in a product it reads as a login, and it was carrying the false claim anyway.
-        */}
-        <div className="gw-box gw-box-blue" style={{ marginBottom: 16 }}>
-          What you write builds the shared report: <strong>where what you said and what they said
-          agree or differ</strong>, and what to do next.
-        </div>
-
-        {/* YOU ARE IN THIS, NOT REPORTING ON SOMEBODY ELSE.
-            Without saying so, an invitation to describe work involving another
-            person reads as being asked to give evidence about them. That is the
-            wrong idea of what this is and it changes what people write: they
-            either soften everything or aim it at the person. Saying your own
-            side is part of it, before anyone types anything, is the difference
-            between a shared picture and a witness statement. */}
-        <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 16 }}>
-          You'll be asked how the shared work is going, including your own side of it. This is not a
-          form about somebody else.
-        </div>
-
-        {/* FOUR THINGS, ONE SCREEN. (G28, and G27's ordering rule)
-            A participant gets a link in an email from somebody who did not
-            explain it, and decides in about four seconds whether this is a thing
-            that helps them or a thing being done to them. Everything above
-            answers what it is and what happens to their words. This answers the
-            three questions they actually have next, in the order they have them.
-
-            PURPOSE BEFORE PERFORMANCE (G27): why you specifically comes first.
-            Not what we want from you - what this is for and why your account
-            changes it. Somebody who understands why they matter writes a
-            different check-in from somebody complying with a request, and the
-            ordering is the whole of the difference. */}
-        <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-          <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-            <span style={{ fontSize: 13, flexShrink: 0 }}>&rarr;</span>
-            <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
-              <b>Why you.</b> You are close enough to this work to know things nobody else in it can see. Without what you are seeing, the picture is everybody else's.
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-            <span style={{ fontSize: 13, flexShrink: 0 }}>&rarr;</span>
-            <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
-              <b>What it takes.</b> About ten minutes, in a chat, whenever suits you. It asks questions and you answer in your own words.
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <span style={{ fontSize: 13, flexShrink: 0 }}>&rarr;</span>
-            <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
-              {/*
-                AND THE BUTTON NOBODY WAS WARNED ABOUT. The report is released to everybody in one
-                stroke - `releasedAt` is stamped once - which made "at the same moment" true of the
-                stamp and false of the reading: a party then meets an activation gate the lead does
-                not, and until they press it is closed. Somebody told they get it at the same moment
-                as their manager clicks through, finds a button, and reads that as the promise being
-                withdrawn at the last step. Ruled out 11 September; what is true is that it is the
-                SAME report and opening it is one press.
-              */}
-              <b>What you get back.</b> The same report {preview.initiatorName} gets. You open your
-              copy with one press when it lands, plus a short private note meant only for you.
-            </div>
-          </div>
-        </div>
-
-        {/*
-            THE PRIVACY BRIEFING, MOVED HERE RATHER THAN SHOWN AFTER.
-
-            An invited person used to meet FOUR screens between the email and their first
-            answer: this page, then a full-page privacy explainer, then a "Start my check-in"
-            button, then in some cases the ground page and a "Check in for session 1 of 2".
-            Two consecutive full-page explainers, the second one arriving AFTER they had
-            already committed by clicking "Add my version" - which is the wrong order for a
-            disclosure, because the decision it informs has been made by then.
-
-            So the disclosure sits with the decision. It is the same four claims, in the same
-            words, including the one we do not dress up. Accepting from this page now stamps
-            the acknowledgement (see accept.onSuccess), so the chat opens straight onto the
-            first question instead of repeating this back at them.
-        */}
-        <details style={{ marginBottom: 16, border: '1px solid var(--gw-border)', borderRadius: 10, background: 'white', padding: '12px 16px' }}>
-          <summary style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', cursor: 'pointer' }}>
-            What happens to what you write
-          </summary>
-          <div style={{ marginTop: 10, display: 'grid', gap: 10 }}>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 3 }}>Nobody you work with reads it</div>
-              <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>Not your manager, not whoever set this up, not an admin. What they see is the shared report, which is built by comparing what everyone said. Your own words about your own work can appear in it. Anything you say about somebody else never does, and it never says who said what about whom.</p>
-            </div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 3 }}>We cannot show it to ourselves either</div>
-              <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>When we look at a check-in to help with something, we can see whether people checked in and never what they said. That is enforced in the code and tested, not a policy we are asking you to trust.</p>
-            </div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 3 }}>Nothing here trains a model</div>
-              <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>What you say is used to build the shared picture and nothing else.</p>
-            </div>
-            <div>
-              <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-sub)', marginBottom: 3 }}>And the part we are not going to dress up</div>
-              <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>Your answers are stored on our servers, and they are processed by Google's models to build the record. We are not going to tell you they are unreadable to any human being anywhere, because that would not be true yet.</p>
-            </div>
-          </div>
-        </details>
-
-        <form onSubmit={(e) => { e.preventDefault(); setFailed(''); if (!accept.isPending) accept.mutate() }}>
-          {failed && <div className="gw-er" role="alert" style={{ marginBottom: 10 }}>{failed}</div>}
-          <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 8, lineHeight: 1.5 }}>
-            Your name is optional - the others will see it on the shared report if you add it.
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, marginBottom: 4 }}>
-            <div className="gw-fld" style={{ margin: 0 }}>
-              <label className="gw-label" htmlFor="invite-first">First name</label>
-              <input id="invite-first" className="gw-input" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Optional" />
-            </div>
-            <div className="gw-fld" style={{ margin: 0 }}>
-              <label className="gw-label" htmlFor="invite-last">Last name</label>
-              <input id="invite-last" className="gw-input" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Optional" />
-            </div>
-          </div>
-          <button className="gw-btn" type="submit" disabled={accept.isPending} style={{ marginTop: 12, opacity: accept.isPending ? 0.7 : 1 }}>
-            <span role="status">{accept.isPending ? 'Setting up your session…' : 'Add my version →'}</span>
-          </button>
-        </form>
-
-        <div style={{ marginTop: 12, fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', lineHeight: 1.6 }}>
-          This also saves your place, so you can come back any time to add to
-          the record - and see the shared report once everyone has checked in.
-          We'll email you a link for returning later.
-        </div>
-
-        <div style={{ marginTop: 10, fontSize: 12, color: 'var(--gw-muted)', textAlign: 'center' }}>
-          By joining, you agree that your contribution record belongs to you.
-        </div>
-
-        <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--gw-border)', textAlign: 'center' }}>
-          <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 8, lineHeight: 1.6 }}>
-            You are never obligated to take part. If you would rather not, you can simply close this -
-            nothing is shared, and declining is never shown as a negative.
-          </div>
-          {/* "/" for a signed-out invitee bounces to the marketing site - ejecting somebody from the product the
-              moment they decline, right after a paragraph promising declining is never held against them. A
-              settled state instead: nothing was shared, and they can come back. */}
-          {declinedQuietly ? (
-            <div role="status" style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-              Nothing has been shared and nobody is told. This link keeps working if you change your mind.
-            </div>
-          ) : (
-            <button
-              className="gw-back"
-              style={{ width: 'auto', padding: '6px 14px', fontSize: 12 }}
-              onClick={() => setDeclinedQuietly(true)}
-            >
-              Not right now
-            </button>
+          {/*
+            A SCENARIO'S OWN INVITATION WORDS (piece 11; docs/anchor-scenario-plan.md section 5 row
+            5; docs/answers-from-engine.md, "Request 149 (3 of 6)", and decision 114's "8 October
+            (later)" note). Drawn only when `theInvitationWords` is present - today only an anchor
+            invitation, with the switch on; every other invitation is exactly as it reads today. The
+            callout above (what the prototype always says about who can read this) is kept, unchanged,
+            ahead of these lines.
+          */}
+          {theInvitationWords && (
+            <Stack gap={10}>
+              {theInvitationWords.lines.map((line, i) => (
+                <p key={i} className="gwui-panel-text">{line}</p>
+              ))}
+            </Stack>
           )}
-        </div>
-      </div>
-    </Arrival>
-  )
-}
 
-/** The loading and error states, in the same chrome as the page they are standing in for. Stage 4. */
-function InviteShell({ children }: { children: React.ReactNode }) {
-  return (
-    <Arrival>
-      <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '32px 28px' }}>
-        {children}
+          {/* U.6 review: no "Your part in this". The server no longer sends it, because what it held
+              was the lead's sentence about this person. See the-leads-words-about-someone.ts. */}
+
+          <Stack gap={18}>
+            <Panel>
+              <div className="gwui-subheading-list">
+                {preview.schedule && (
+                  <div>
+                    <SubHeading>What it asks</SubHeading>
+                    <p className="gwui-panel-text">{preview.schedule}</p>
+                  </div>
+                )}
+                <div>
+                  <SubHeading>Who sees your answers</SubHeading>
+                  <p className="gwui-panel-text">
+                    You see your own report straight away. {preview.leadFirstName ?? 'The person who runs it'} shares a team report
+                    with everyone in it.
+                  </p>
+                </div>
+                {/* "Your number" (U.20 ninth round): shown only when the server says WHO would see
+                    this person's own share of a target, through the engine's own visibility rule
+                    (targetsFor, participants.service.ts's preview) - never the number itself, since
+                    this page is read with the link's token, before any sign-in. */}
+                {preview.yourNumberIsSeenBy && (
+                  <div>
+                    <SubHeading>Your number</SubHeading>
+                    <p className="gwui-panel-text">
+                      {preview.yourNumberIsSeenBy === 'everybody'
+                        ? 'Everybody in this check-in sees every number, including yours.'
+                        : `Only you and ${preview.leadFirstName ?? 'the person who runs it'} see your share of the target.`}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </Panel>
+
+            {/*
+              U.6 review: a check-in that opens later is not answered today. Its first check-in's day
+              is said, here, before the button rather than under "What happens to what you write", and
+              nothing offers to answer now.
+            */}
+            {opensLater && (
+              <p role="status" className="gwui-callout">
+                {/* B-147 follow-up: the prototype's own exact phrase (B1-starting-a-check-in/
+                    new.txt, "the first check-in opens tomorrow at 4pm") says "check-in" here, not
+                    "session" - left as the prototype has it rather than swept into the rename. */}
+                {`Your first check-in opens on ${theDayOf(opensLater)}.`}
+              </p>
+            )}
+
+            {!opensLater && (
+              <Stack gap={10}>
+                <form onSubmit={(e) => { e.preventDefault(); setFailed(''); if (!accept.isPending) accept.mutate() }}>
+                  <Stack gap={10}>
+                    {failed && <Note tone="error">{failed}</Note>}
+                    <div className="gwui-field-pair">
+                      <FieldLabel htmlFor="invite-first">
+                        First name
+                        <TextField id="invite-first" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Optional" />
+                      </FieldLabel>
+                      <FieldLabel htmlFor="invite-last">
+                        Last name
+                        <TextField id="invite-last" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Optional" />
+                      </FieldLabel>
+                    </div>
+                  </Stack>
+                  <p className="gwui-field-help">Your name is optional. If you add it, the others will see it on the shared report.</p>
+                  {/* Whether they go straight in or wait for an admin, as the invitation said it (Hafsah, 12 October). */}
+                  {preview?.whatHappensWhenYouJoin && <p className="gwui-field-help">{preview.whatHappensWhenYouJoin}</p>}
+                  <div className="gwui-form-actions">
+                    <Button type="submit" size="big" wide disabled={accept.isPending} >
+                      {accept.isPending ? 'Setting up your session…' : theInvitationWords?.button ?? 'Answer today’s check-in now'}
+                    </Button>
+                  </div>
+                </form>
+
+                <p className="gwui-fine" style={{ textAlign: 'center' }}>
+                  {/* "You choose how you sign in afterwards" only to someone not signed in (U.6 review). Whether an
+                      address has an account is never revealed, so being signed in is what this can know. */}
+                  {signedIn ? 'About ten minutes.' : 'About ten minutes. You choose how you sign in afterwards.'}
+                </p>
+              </Stack>
+            )}
+          </Stack>
+        </Stack>
+      </Stack>
+
+      {/*
+          THE PRIVACY BRIEFING - REACHABLE, NOT IN THE PAGE'S FLOW (Hafsah, pictured at 1440px
+          against join-invite.jpg: the always-open section made the page twice the prototype's
+          length, and the prototype has no such section at all). It used to arrive on the NEXT
+          screen, after "Add my version" - a disclosure shown after the decision it is meant to
+          inform - so it still has to be reachable from here, just not printed in full every time.
+          One plain link under the button's line opens the same four claims, unchanged, in the
+          shared Modal. Accepting from this page still stamps the acknowledgement (accept.onSuccess),
+          so the chat opens straight onto the first question instead of repeating this back at them.
+      */}
+      <p style={{ textAlign: 'center' }}>
+        <Button kind="quiet" onClick={() => setShowWhatHappens(true)}>What happens to what you write</Button>
+      </p>
+      {showWhatHappens && (
+        <Modal title="What happens to what you write" onClose={() => setShowWhatHappens(false)}>
+          <h2 className="gwui-empty-panel-title">What happens to what you write</h2>
+          {/* The fourth heading used to be styled differently from the other three (plain, muted
+              text rather than a heading) - Hafsah's first review. All four are SubHeading now. */}
+          <div className="gwui-subheading-list">
+            {/*
+              REPLACES THE OLD "NOBODY YOU WORK WITH READS IT" PANEL (Hafsah, 29 September, item 11,
+              conflict A): it told a participant that no manager and no admin ever saw their words,
+              which decision 1 in CLAUDE.md's privacy rules makes untrue for every check-in. This
+              says instead what is actually true of THIS check-in, built the same way as the
+              callout above (`whoCanReadThis`), so the two can never disagree.
+            */}
+            <div>
+              <SubHeading>Who can read what you write</SubHeading>
+              <p className="gwui-note">{whoCanReadThis(preview.scenario, preview.organisationName)}</p>
+            </div>
+            <div>
+              <SubHeading>We cannot show it to ourselves either</SubHeading>
+              <p className="gwui-note">When we look at a check-in to help with something, we can see whether people checked in and never what they said. That is enforced in the code and tested, not a policy we are asking you to trust.</p>
+            </div>
+            <div>
+              <SubHeading>Nothing here trains a model</SubHeading>
+              <p className="gwui-note">What you say is used to build the shared picture and nothing else.</p>
+            </div>
+            <div>
+              <SubHeading>And the part we are not going to dress up</SubHeading>
+              <p className="gwui-note">Your answers are stored on our servers, and they are processed by Google's models to build the record. We are not going to tell you they are unreadable to any human being anywhere, because that would not be true yet.</p>
+            </div>
+          </div>
+          <Button kind="secondary" onClick={() => setShowWhatHappens(false)}>Close</Button>
+        </Modal>
+      )}
+
+      {/* "By joining, you agree that your contribution record belongs to you." is gone (U.3 review): it
+          is not on the prototype, it is jargon, and nothing records it as a consent. */}
+
+      <div className="gwui-foot-divider">
+        <Note>
+          You never have to take part. If you would rather not, you can close this page. Nothing is
+          shared, and saying no is never held against you.
+        </Note>
+        {/* "/" for a signed-out invitee bounces to the marketing site - ejecting somebody from the product the
+            moment they decline, right after a paragraph promising declining is never held against them. A
+            settled state instead: nothing was shared, and they can come back. */}
+        {declinedQuietly ? (
+          <p role="status" className="gwui-note">
+            Nothing has been shared and nobody is told. This link keeps working if you change your mind.
+          </p>
+        ) : (
+          <Button kind="quiet" onClick={() => setDeclinedQuietly(true)}>Not right now</Button>
+        )}
       </div>
-    </Arrival>
+    </Page>
   )
 }
 
 /**
- * Was a dead end: a red tick, one sentence, nothing to press. W8-62.
- * `msg` is kept because the caller distinguishes a missing token from a failed
- * preview, but the way out is now the same in both.
+ * HELD FOR A SEAT, AS A SHORT HEADING AND ONE SENTENCE UNDER IT (Hafsah, pictured at 1440px).
+ *
+ * The server sends one fixed sentence for this (`HELD_FOR_A_SEAT`,
+ * api/src/modules/participants/participants.service.ts) - it used to be the page's whole heading,
+ * two sentences long. Split here into the prototype's own two-line pattern (a short heading, a
+ * sentence under it), never on the server: if it ever sends anything else, this falls back to the
+ * old shape - the whole sentence as the heading - rather than mangling text it does not recognise.
  */
-function ErrorCard({ msg }: { msg: string }) {
-  return <LinkProblem kind="invite" detail={msg} />
+export function heldForASeatCard(saying: string): { heading: string; sub?: string } {
+  const KNOWN = 'This check-in cannot start for you yet, because there is no seat for you on the plan. You will get your invitation as soon as there is one.'
+  if (saying === KNOWN) {
+    return {
+      heading: 'This check-in cannot start for you yet',
+      sub: 'There is no seat for you on the plan yet. You will get your invitation as soon as there is one.',
+    }
+  }
+  return { heading: saying }
 }
 
-function LoadingCard() {
-  return (
-    <div role="status" style={{ textAlign: 'center', color: 'var(--gw-muted)', fontSize: 13 }}>Loading invite…</div>
-  )
+/**
+ * WHO CAN READ THIS CHECK-IN, BUILT FROM ITS OWN SETTINGS (Hafsah, 29 September, item 11,
+ * conflict A). The prototype's first line, "The people in this check-in, including your manager,
+ * can see what you say in it.", is always true - decision 1 in CLAUDE.md's privacy rules makes it
+ * so for every check-in. The admins sentence is added only when it is true of THIS check-in: never
+ * on a performance plan, a promotion or a renewal (decision 5, corrected 29 September to cover all
+ * three the same way as a performance plan), and left out too when the scenario is not known,
+ * which is the more private reading. `isEvaluationScenario` (`scenario-catalog.ts`) is a
+ * client-side stand-in for a field the engine does not send yet (request 78); once it does, this
+ * should read that field instead of guessing from the scenario.
+ */
+export function whoCanReadThis(scenario: GroundScenario | null | undefined, organisationName?: string | null): string {
+  /*
+   * B-205: "YOUR ORGANISATION" IS NOT TRUE FOR EVERYONE WHO READS IT. The preview is served before
+   * anyone has signed in, so the server has no way yet to say whether the person opening this link
+   * belongs to the organisation running the check-in or is a guest in it (an outsider added to
+   * "Sales team, Q4" read it as if it were their own company). Naming the organisation instead of
+   * calling it "yours" is true for both a colleague and a guest, without needing to tell them apart -
+   * noted for the engine (docs/requests-to-engine.md) in case a field for that distinction is ever
+   * worth adding. Left out entirely, as before, when there is no organisation name to put in its
+   * place.
+   */
+  const admins = (!scenario || isEvaluationScenario(scenario) || !organisationName)
+    ? ''
+    : ` Admins at ${organisationName} can read every check-in.`
+  return `The people in this check-in, including your manager, can see what you say in it.${admins} Your own report and your questions to ${askNameFor(organisationName)} stay private.`
+}
+
+/** "Wairimu invited you to the sales team's check-in", with the check-in's own name. */
+export function theInvitation(p: { leadFirstName?: string | null; initiatorName: string; groundLabel: string }): string {
+  const who = (p.leadFirstName ?? '').trim() || p.initiatorName.trim() || 'Someone'
+  return `${who} invited you to “${p.groundLabel}”`
+}
+
+/**
+ * "This runs at Baridi Appliances until 30 September.", a full sentence of its own (U.3 review,
+ * B-088): "Baridi Appliances, until 30 September." joined two pieces with a comma rather than
+ * saying either one as a sentence. With only one of the two, it still reads as one: "A check-in at
+ * Coamana." or "It runs until 30 September."
+ *
+ * B-088: NO TIMEZONE OF THIS SCREEN'S OWN CHOOSING. Forcing `'UTC'` here, while every other date on
+ * the check-in itself (How long, on People and setup) reads in the viewer's own zone, is what made
+ * the two disagree - "Msingi Foods, until 7 November." here, "9 October to 8 November" on the
+ * check-in, same end date, two different renderings of it. `whenItWas` already reads the same way
+ * everywhere once nothing overrides it; this screen should not be the one surface that does.
+ */
+export function whereAndUntil(p: { organisationName?: string | null; endsAt?: string | null; today?: Date }): string {
+  const until = p.endsAt ? theLastDay(p.endsAt, p.today ?? new Date()) : null
+  const org = (p.organisationName ?? '').trim()
+  if (org && until) return `This runs at ${org} until ${until}.`
+  if (org) return `A check-in at ${org}.`
+  return `It runs until ${until}.`
 }

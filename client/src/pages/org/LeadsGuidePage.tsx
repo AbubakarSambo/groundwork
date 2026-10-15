@@ -4,6 +4,9 @@ import { toast } from 'sonner'
 import { HOW_TO_STEPS } from '@/components/gw/how-a-check-in-is-run'
 import { TextAction } from '@/components/gw/kit'
 import { copy } from '@/components/gw/copying-can-fail'
+import { useAuthStore } from '@/stores/auth'
+import { askNameFor } from '@/lib/ask-name'
+import { WHAT_AN_ADMIN_CANNOT_READ_WITHOUT_ACCESS } from '@/lib/what-an-admin-cannot-read-without-access'
 
 /**
  * THE PAGE AN ADMIN SENDS THEIR LEADS BEFORE A ROLLOUT.
@@ -24,6 +27,8 @@ import { copy } from '@/components/gw/copying-can-fail'
 export function LeadsGuidePage() {
   const navigate = useNavigate()
   const [copied, setCopied] = useState(false)
+  const { user } = useAuthStore()
+  const realOrgName = user?.organization?.name?.trim() || user?.organizationName
 
   /**
    * "SEND THIS LINK TO YOUR TEAM" WAS AN INSTRUCTION WITH NO CONTROL. The page told you to send it and
@@ -85,10 +90,19 @@ export function LeadsGuidePage() {
         */}
       <div style={{ background: 'var(--gw-card)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '15px 17px', marginBottom: 34 }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>What an admin can see</div>
+        {/*
+          FAULT 4, 6 Oct 2026: THIS USED TO SAY AN ADMIN "NEVER SEES ANYBODY'S CHECK-IN ITSELF" -
+          the opposite of decision 5 (docs/decisions.md), which an admin can act on only if this
+          page tells her the truth. Decision 5: admins see every board and report, including what
+          people said in them; they never see anyone's questions to Ask Groundwork, anyone's own
+          report, or a lead's private notes, and never a performance plan unless given access to
+          that check-in. Rewritten to say exactly that, with the organisation's own Ask name.
+        */}
         <p style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>
-          Whether a check-in was opened, who is in it, whether people have finished, and the report
-          once it is released. Never anybody's check-in itself. An admin approving a check-in is
-          approving that it happens, not reading it.
+          An admin can see every board and report, including what people said in them. An admin
+          never sees anyone's questions to {askNameFor(realOrgName)}, anyone's own report, or a
+          lead's private notes, and never {WHAT_AN_ADMIN_CANNOT_READ_WITHOUT_ACCESS} unless given
+          access to that check-in.
         </p>
       </div>
 

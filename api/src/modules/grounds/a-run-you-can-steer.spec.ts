@@ -25,7 +25,10 @@ import { join } from 'path';
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const CLIENT = join(__dirname, '..', '..', '..', '..', 'client', 'src');
 const CHAT = strip(readFileSync(join(CLIENT, 'components', 'gw', 'GroundChat.tsx'), 'utf8'));
-const LEAD = strip(readFileSync(join(CLIENT, 'pages', 'grounds', 'GroundAdminPage.tsx'), 'utf8'));
+/* The settings tab moved into CheckInPeopleAndSetup.tsx (29 September); its sentences can wrap
+   across lines there, so the two files are read together with their spaces collapsed. */
+const LEAD = (strip(readFileSync(join(CLIENT, 'pages', 'grounds', 'GroundAdminPage.tsx'), 'utf8')) + '\n'
+  + strip(readFileSync(join(CLIENT, 'pages', 'grounds', 'CheckInPeopleAndSetup.tsx'), 'utf8')).replace(/props\./g, '')).replace(/\s+/g, ' ');
 const PARTY = strip(readFileSync(join(CLIENT, 'pages', 'grounds', 'GroundParticipantPage.tsx'), 'utf8'));
 
 describe('waiting for the next session', () => {
@@ -36,7 +39,13 @@ describe('waiting for the next session', () => {
   it('and only to somebody who can actually change it', () => {
     /* A party cannot, and offering them a control that refuses is worse than saying nothing. */
     expect(CHAT).toContain('canChangeTheRhythm && onGoToSetup');
-    expect(LEAD).toContain('canChangeTheRhythm={true}');
+    /**
+     * client round 4, item A step 3: the lead's Check-in tab no longer mounts Composer directly -
+     * a party (which is who this control is ever offered to at all; see `isInitiator` on the
+     * party side below) is sent straight to /grounds/:id/p?open=1, and IT mounts Composer with
+     * `canChangeTheRhythm={isInitiator}`. Reading her own rhythm control now goes through that
+     * page, same as opening her check-in does - one implementation, not two.
+     */
     expect(PARTY).toContain('canChangeTheRhythm={isInitiator}');
   });
 
@@ -52,7 +61,8 @@ describe('the end of a check-in', () => {
   });
 
   it('beside the arithmetic, because that is the number it is the end of', () => {
-    const at = LEAD.indexOf('{timelineDaysDraft} days, {sessionsFor(timelineDaysDraft, cadenceDraft) ?? 1} session');
+    /* Counted with sessionsUpToTheEnd since the journey test of 12 October; the arithmetic is still the line the note sits beside. */
+    const at = LEAD.indexOf('${timelineDaysDraft} days, ${n} session');
     expect(at).toBeGreaterThan(-1);
     expect(LEAD.slice(at, at + 600)).toContain('how this should close');
   });

@@ -141,7 +141,7 @@ export function WhatThisCheckInStillNeeds({
               onClick={onGoToSetup}
               style={{ padding: '7px 13px', borderRadius: 8, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-navy)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
             >
-              Set a start date on Setup &rarr;
+              Set a start date on People and setup &rarr;
             </button>
           )}
         </div>
@@ -150,7 +150,7 @@ export function WhatThisCheckInStillNeeds({
         <div style={{ marginBottom: 13 }}>
           <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 2 }}>When is the next one?</div>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
-            Your next session opens on {whenItWas(nextOpens, 'dayAndMonthLong')}. The rhythm is set on Setup.
+            Your next session opens on {whenItWas(nextOpens, 'dayAndMonthLong')}. The rhythm is set on People and setup.
           </div>
         </div>
       )}
@@ -167,7 +167,7 @@ export function WhatThisCheckInStillNeeds({
             onClick={onGoToSetup}
             style={{ padding: '7px 13px', borderRadius: 8, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-navy)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
           >
-            Change it on Setup &rarr;
+            Change it on People and setup &rarr;
           </button>
         </div>
       )}
@@ -184,7 +184,7 @@ export function WhatThisCheckInStillNeeds({
             onClick={onGoToSetup}
             style={{ padding: '7px 13px', borderRadius: 8, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-navy)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
           >
-            Set it on Setup →
+            Set it on People and setup →
           </button>
         </div>
       )}

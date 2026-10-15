@@ -1,5 +1,6 @@
 import { apiClient } from './client'
 import type { Ground } from '@/types'
+import type { ServedPattern } from './patterns'
 
 export interface Delivery {
   id: string
@@ -11,6 +12,20 @@ export interface Delivery {
   carriedIntoCheckInId: string | null
 }
 
+
+/** One card the server read out of a plan, as it sends it. */
+export interface PlanCard {
+  id: string
+  kind: string
+  says: string
+  heading: string
+  landsIn: string
+  from: string
+  fromThePlan: string
+  note?: string
+  whichWay?: string
+  directionSuggested?: string
+}
 
 export type GroundScenario =
   | 'TEAM_UPDATES'
@@ -45,7 +60,9 @@ export interface CreateGroundBody {
 }
 
 export interface AddParticipantBody {
-  email: string
+  /** Their address, or leave it out and send `colleagueId` for somebody picked from the list (U.4). */
+  email?: string
+  colleagueId?: string
   roleAsDescribed?: string
   /** Optional, never inferred; blank means blank. */
   department?: string
@@ -72,13 +89,35 @@ export interface OrgRosterEntry {
   createdByAdmin: boolean
   lead: { id: string; firstName: string; lastName: string; email: string }
   memberCount: number
-  members: { email: string; partyType: 'INITIATOR' | 'PARTICIPANT'; roleAsDescribed: string | null; accepted: boolean; latestSpecificity: string | null }[]
+  members: { email: string; partyType: 'INITIATOR' | 'PARTICIPANT'; roleAsDescribed: string | null; accepted: boolean }[]
   contributedParties: number
-  report: { agreements: string[]; divergences: unknown[]; releasedAt: string | null } | null
+  report: { agreementsCount: number; differencesCount: number; releasedAt: string | null } | null
   lastActivity: string | null
 }
 
+/** "Out of time" (U.3): where a check-in that ran past its end date stands, for a person taking part. */
+export interface MoreTimeStanding {
+  outOfTime: boolean
+  checkInName: string
+  leadFirstName: string | null
+  ranUntil: string | null
+  /** Set when they already asked today. */
+  askedAt: string | null
+  /** "All 38 of your check-ins" (item 11): check-ins (Grounds) this person has ever been part of,
+      never sessions (CheckIn rounds) within them. */
+  checkInsCount: number
+}
+
 export const groundsApi = {
+  /** "Check in yourself" (decision 133): opens, or reuses, the lead's own check-in, any time it is running. */
+  checkInYourself: (id: string) =>
+    apiClient.post<{ checkInId: string; sessionNumber: number; opened: boolean }>(`/grounds/${id}/check-in-yourself`).then(r => r.data),
+  /** "Ask Wairimu for more time" (U.3). */
+  moreTime: (id: string) =>
+    apiClient.get<MoreTimeStanding>(`/grounds/${id}/more-time`).then(r => r.data),
+  askForMoreTime: (id: string) =>
+    apiClient.post<{ asked: true; askedAt: string }>(`/grounds/${id}/more-time`).then(r => r.data),
+
   list: () =>
     apiClient.get<Ground[]>('/grounds').then(r => (Array.isArray(r.data) ? r.data : [])),
 
@@ -99,6 +138,15 @@ export const groundsApi = {
      pages/report/why-you-cannot-see-this.ts. */
   get: (id: string) =>
     apiClient.get<Ground>(`/grounds/${id}`, { skipNotFoundToast: true, skipForbiddenToast: true } as any).then(r => r.data),
+
+  /**
+   * The one finding the shared picture names as still open, in a whole sentence, as this reader is served it (request 198). `finding` is null
+   * until the picture is released to this reader, and the call is refused for somebody with no right to the check-in.
+   */
+  finding: (id: string) =>
+    apiClient.get<{ groundId: string; label: string; sessionNumber: number | null; finding: string | null; moreStillOpen: number; conversationWorthHaving: string | null }>(
+      `/grounds/${id}/report/finding`, { skipNotFoundToast: true, skipForbiddenToast: true } as any,
+    ).then(r => r.data),
 
   /**
    * Whether the parties can see each other at all - who else is here, and how each is doing.
@@ -129,6 +177,27 @@ export const groundsApi = {
       .patch<{ id: string; overWhatsApp: boolean | null }>(`/grounds/${id}/over-whatsapp`, { over })
       .then(r => r.data),
 
+  /**
+   * "USE SIMPLER WORDS" (6 October answer). `false` for every check-in that exists and for a new
+   * one. Only the lead of the check-in, or an admin who runs it, may change it - the server refuses
+   * anybody else.
+   */
+  setSimplerWords: (id: string, on: boolean) =>
+    apiClient
+      .patch<{ id: string; simplerWords: boolean }>(`/grounds/${id}/simpler-words`, { on })
+      .then(r => r.data),
+
+  /**
+   * THE KIND OF WORK THIS CHECK-IN IS ABOUT (request 76), and its own stage names. Only the lead,
+   * or an admin of the organisation, can change it. `kind: null` clears it back to none. A name
+   * that is not one of the eleven kinds is refused with a plain sentence, shown as the server gives
+   * it. A later read never overwrites the lead's own choice.
+   */
+  setKindOfWork: (id: string, body: { kind?: string | null; stages?: string[] | null }) =>
+    apiClient
+      .patch<{ id: string; kindOfWork: string | null; kindOfWorkSetBy: string | null; workStages: string[] | null }>(`/grounds/${id}/kind-of-work`, body)
+      .then(r => r.data),
+
   setExpectThemToUnblock: (id: string, expect: boolean) =>
     apiClient
       .patch<{ id: string; expectThemToUnblock: boolean }>(`/grounds/${id}/expect-them-to-unblock`, { expect })
@@ -137,6 +206,17 @@ export const groundsApi = {
   // Initiator-only: whether participants can see each other's email. restrict=true hides.
   setExternalVisibility: (id: string, restrict: boolean) =>
     apiClient.patch<{ id: string; restrictExternalVisibility: boolean }>(`/grounds/${id}/external-visibility`, { restrict }).then(r => r.data),
+
+  /**
+   * REMINDERS (People and setup, "How it runs"). `PATCH /grounds/:id/chasing` has existed since the
+   * chasing cron read `chaseAfterDays`/`chasingStopped`/`tellTheLead`, and nothing on any screen ever
+   * wrote to it - so whether this check-in reminds people, on which day, and whether the lead hears
+   * who never started, could not be set from the product. Whoever set the check-in up only.
+   */
+  setChasing: (id: string, body: { days?: number[]; stopped?: boolean; tellTheLead?: boolean }) =>
+    apiClient
+      .patch<{ days: number[]; stopped: boolean; tellTheLead: boolean }>(`/grounds/${id}/chasing`, body)
+      .then(r => r.data),
 
   /*
    * `create` USED TO SIT HERE, and it went with the flow that called it.
@@ -230,6 +310,13 @@ export const groundsApi = {
   resendParticipantInvite: (groundId: string, participantId: string) =>
     apiClient.post(`/grounds/${groundId}/participants/${participantId}/resend-invite`).then(r => r.data),
 
+  /** D1 and D2 (13 October, evening): whoever runs the check-in adds somebody's WhatsApp number. */
+  /** Each person's WhatsApp number and where they are on it (whoever runs the check-in, or an admin). */
+  whereEachPersonIsOnWhatsApp: (groundId: string) =>
+    apiClient.get<{ participantId: string; phone: string | null; whatsapp: 'no-number' | 'not-connected' | 'waiting' | 'connected'; says: string }[]>(`/grounds/${groundId}/participants/whatsapp`).then(r => (r.data as any)?.data ?? r.data),
+  addTheirWhatsAppNumber: (groundId: string, participantId: string, phone: string) =>
+    apiClient.patch<{ said: string }>(`/grounds/${groundId}/participants/${participantId}/whatsapp-number`, { phone }).then(r => r.data),
+
   getMediatorBrief: (groundId: string) =>
     apiClient.get(`/grounds/${groundId}/mediator-brief`).then(r => r.data),
 
@@ -243,7 +330,9 @@ export const groundsApi = {
    */
   /** `startsAt` is an ISO date; the server refuses it once anybody has answered. */
   /** `brief` blank clears it; the server refuses both to anybody but the lead or an org admin. */
-  update: (groundId: string, body: { label?: string; timelineDays?: number; cadence?: GroundCadence; workingDays?: number[]; contextNote?: string; startsAt?: string; brief?: string }, opts?: { quiet?: boolean }) =>
+  /** `cadenceAnchorDay`: 0-6 (Sunday-Saturday) for a weekly or fortnightly rhythm, 1-31 for a
+      monthly one, `null` to clear it (request 194). Applies from the next session that is made. */
+  update: (groundId: string, body: { label?: string; timelineDays?: number; cadence?: GroundCadence; workingDays?: number[]; cadenceAnchorDay?: number | null; contextNote?: string; startsAt?: string; brief?: string; endsOn?: string }, opts?: { quiet?: boolean }) =>
     apiClient.patch<Ground>(`/grounds/${groundId}`, body, opts?.quiet
       ? ({ skipForbiddenToast: true, skipServerErrorToast: true } as any)
       : undefined).then(r => r.data),
@@ -264,7 +353,8 @@ export const groundsApi = {
       sessions: { sessionNumber: number; completedAt: string | null; status: string }[]
       specificity: { scores: number[]; avg: number; label: string } | null
       confidence: { score: number; label: string; description: string } | null
-      patterns: { observation: string; sessionNumber: number | null }[] | null
+      /** Your own patterns, and nobody else's. See api/src/modules/patterns/who-reads-a-pattern.ts. */
+      patterns: ServedPattern[] | null
       insightsLocked: boolean
     }>(`/grounds/${groundId}/my-record`).then(r => r.data),
 
@@ -310,6 +400,9 @@ export const groundsApi = {
         checkIns: { id: string; sessionNumber: number; status: string; completedAt: string | null; availableFrom?: string | null }[]
         latestStatus: string | null
         latestSessionNumber: number | null
+        /** The organisation's zone, and when the next one opens by the schedule before its row exists. */
+        zone?: string | null
+        nextOpensAt?: string | null
       }>(`/grounds/${groundId}/my-checkin-status`, {
         // A ground you can view but are not a party to returns 403 here. That is
         // a normal state for this call, not a failure worth interrupting anyone
@@ -370,7 +463,7 @@ export const groundsApi = {
   baselineHistory: (groundId: string) =>
     apiClient.get<{ version: number; successLooksLike: string | null; conditions: string[]; changeReason: string | null; effectiveFrom: string }[]>(
       `/grounds/${groundId}/baseline`,
-    ).then(r => r.data),
+    ).then(r => (Array.isArray(r.data) ? r.data : [])),
 
   /**
    * GW-EXP-2. Marks THIS viewer's own expectation as seen, and only their own.
@@ -479,7 +572,7 @@ export const groundsApi = {
   recordBaselineEntries: (groundId: string, texts: string[]) =>
     apiClient.post<{ text: string; capturedAtSession: number; createdAt: string }[]>(
       `/grounds/${groundId}/baseline-entries`, { texts },
-    ).then(r => r.data),
+    ).then(r => (Array.isArray(r.data) ? r.data : [])),
 
   baselineEntries: (groundId: string) =>
     apiClient.get<{
@@ -488,6 +581,19 @@ export const groundsApi = {
       canShowMovement: boolean
       frozenReason: string
     }>(`/grounds/${groundId}/baseline-entries`).then(r => r.data),
+
+  /** A plan, pasted or already a document on the check-in, read into separate cards. Nothing is stored until a yes. */
+  readAPlan: (groundId: string, input: { text?: string; documentId?: string }) =>
+    apiClient.post<{ proposals: PlanCard[]; says: string }>(`/grounds/${groundId}/plan/proposals`, input).then(r => r.data),
+  /** "Waiting for you to confirm": the cards still waiting. The lead's only. */
+  planCardsWaiting: (groundId: string) =>
+    apiClient.get<{ proposals: PlanCard[] }>(`/grounds/${groundId}/plan/proposals`).then(r => r.data),
+  confirmPlanCard: (groundId: string, cardId: string, direction?: string | null) =>
+    apiClient.post(`/grounds/${groundId}/plan/proposals/${cardId}/confirm`, direction ? { direction } : {}).then(r => r.data),
+  planCardNotNow: (groundId: string, cardId: string) =>
+    apiClient.post(`/grounds/${groundId}/plan/proposals/${cardId}/not-now`).then(r => r.data),
+  editPlanCard: (groundId: string, cardId: string, says: string) =>
+    apiClient.patch<PlanCard>(`/grounds/${groundId}/plan/proposals/${cardId}`, { says }).then(r => r.data),
 
   contextChat: (groundId: string, history: { role: 'user' | 'assistant'; content: string }[]) =>
     apiClient

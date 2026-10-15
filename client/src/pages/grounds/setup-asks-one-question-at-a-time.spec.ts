@@ -10,42 +10,42 @@ import { join } from 'path'
  * changing the timeframe meant scrolling past everybody's invitation and reading both privacy
  * toggles on the way, and nothing on screen said what anything was currently set to.
  *
- * Six rows now, each carrying its current value, one open at a time.
+ * REPOINTED FOR THE PEOPLE-AND-SETUP REBUILD (29 Sept). The single numbered accordion this spec
+ * used to pin - `Fold`, `openSetupBand`, one band open at a time - is the mechanism the rebuild
+ * retires: CheckInPeopleAndSetup.tsx follows the prototype instead
+ * (docs/prototype/screens/A4-people-roles-and-access/check-in-people-and-setup.txt), which is named
+ * `Section`s ("Who's in it", "How it runs", "Who sees what", ...) with a value on every row and a
+ * "Change" action per setting, not a single global accordion. `<Fold n=.../>`/`openSetupBand` no
+ * longer exist anywhere in the file, so the old assertions on them would only be pinning dead code.
+ *
+ * WHAT THIS FILE STILL HAS TO PROVE, unchanged: a person is never shown a wall of every control at
+ * once with nothing said about what it is currently set to, and pressing "Change" is what reveals
+ * more, not a page load.
  */
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
-const PAGE = strip(readFileSync(join(__dirname, 'GroundAdminPage.tsx'), 'utf8'))
+const PAGE = strip(readFileSync(join(__dirname, 'CheckInPeopleAndSetup.tsx'), 'utf8'))
 
-const start = PAGE.indexOf("{tab === 'settings' && (")
-const TAB = PAGE.slice(start, PAGE.indexOf('{shareCodeModalOpen && (', start))
-
-describe('the setup tab', () => {
-  it('is folds, not one long column', () => {
-    expect(start).toBeGreaterThan(-1)
-    const folds = TAB.match(/<Fold /g) ?? []
-    expect(folds.length).toBeGreaterThanOrEqual(5)
+describe('the People and setup tab', () => {
+  it('is named sections, not one long column', () => {
+    const sections = PAGE.match(/<Section\s/g) ?? []
+    expect(sections.length).toBeGreaterThanOrEqual(6)
   })
 
-  it('leaves no band as a bare heading, which is what it was before', () => {
-    expect(TAB).not.toContain('<Sec n={setupBand()}')
+  it('says what a setting is currently set to on its own row, before anything is opened', () => {
+    /* FieldRow's `value` is what shows without opening anything - "Every weekday, 90 days", not a
+       bare "How it runs" a reader has to click into to learn anything from. */
+    const rows = PAGE.match(/<FieldRow\b[\s\S]*?\/>/g) ?? []
+    expect(rows.length).toBeGreaterThan(0)
+    for (const row of rows) expect(row).toMatch(/label=/)
   })
 
-  it('opens one at a time', () => {
-    expect(PAGE).toContain('setOpenSetupBand((cur) => (cur === n ? -1 : n))')
-    expect(PAGE).toContain('open: openSetupBand === n')
+  it('reveals more controls behind "Change", rather than showing every control at once', () => {
+    expect(PAGE).toContain("setEditingWhen((v) => !v)")
+    expect(PAGE).toContain('{editingWhen &&')
   })
 
-  it('says what each closed band is currently set to', () => {
-    /* A row reading only "How it runs" is a row you have to open to learn anything from. */
-    for (const m of TAB.match(/<Fold [^>]*>/g) ?? []) expect(m).toContain('summary=')
-  })
-
-  it('declares its state above the page\'s early returns', () => {
-    /* This component returns early for several ground states. A hook under one of those is a hook
-       that sometimes does not run, and React fails the whole page for it - which is what happened. */
-    const hook = PAGE.indexOf('const [openSetupBand')
-    /* The first early return moved when the lead page went (10 Sep 2026). */
-    const firstReturn = PAGE.indexOf('  if (definitelyGone)')
-    expect(hook).toBeGreaterThan(-1)
-    expect(hook).toBeLessThan(firstReturn)
+  it('the old numbered accordion is gone, not just renamed', () => {
+    expect(PAGE).not.toMatch(/<Fold /)
+    expect(PAGE).not.toContain('openSetupBand')
   })
 })

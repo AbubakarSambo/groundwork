@@ -1,3 +1,4 @@
+import { withoutCommitmentsFromGoalsNotToldYet } from '../grounds/a-commitment-from-a-goal-not-told-is-not-read-by-its-person';
 import { Injectable } from '@nestjs/common';
 import { CheckInStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -7,6 +8,8 @@ import {
   WhatIsTrue,
   whatIsTrueFor,
 } from './what-is-true-for-this-person';
+import { keptInTheApp, notFromAKeptCheckIn } from './a-check-in-kept-in-the-app-is-not-read-on-whatsapp';
+import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 
 /**
  * THE ONE READ.
@@ -30,6 +33,8 @@ export class WhatIsTrueService {
       select: { externalId: true, displayName: true, email: true, linkedUserId: true },
     });
     if (!person) return null;
+    /* On WhatsApp, nothing said in a check-in kept in the app (decision 82, item 7). Empty in the app. */
+    const kept = await keptInTheApp(this.prisma as any, organizationId);
 
     const [subjects, commitments, sessions, decisions] = await Promise.all([
       this.prisma.subject.findMany({
@@ -42,10 +47,10 @@ export class WhatIsTrueService {
         orderBy: { dueDate: 'asc' },
       }),
       this.prisma.commitment.findMany({
-        where: { organizationId, personExternalId: person.externalId },
-        select: { text: true, dueSaid: true, state: true },
+        where: { organizationId, personExternalId: person.externalId, ...notFromAKeptCheckIn(kept, 'sourceGroundId') },
+        select: { text: true, dueSaid: true, state: true, sourcePersonObjectiveId: true },
         orderBy: { statedAt: 'desc' },
-      }),
+      }).then((rows) => withoutCommitmentsFromGoalsNotToldYet(this.prisma, rows)),
       this.sessionsFor(organizationId, person),
       this.prisma.knowledgeCard.findMany({
         /* `effectiveTo: null` is the current version — exactly one per key has
@@ -101,7 +106,7 @@ export class WhatIsTrueService {
       person.linkedUserId
         ? this.prisma.ground.findMany({
             where: { organizationId, initiatorId: person.linkedUserId, status: 'AWAITING_LEAD' },
-            select: { id: true, label: true },
+            select: { id: true, label: true, scenario: true },
           })
         : Promise.resolve([]),
       this.prisma.checkIn.findMany({
@@ -115,7 +120,7 @@ export class WhatIsTrueService {
           },
           status: { in: [CheckInStatus.NOT_STARTED, CheckInStatus.IN_PROGRESS] },
         },
-        include: { participant: { include: { ground: { select: { id: true, label: true } } } } },
+        include: { participant: { include: { ground: { select: { id: true, label: true, scenario: true } } } } },
         orderBy: { availableFrom: 'asc' },
       }),
     ]);
@@ -128,17 +133,19 @@ export class WhatIsTrueService {
         groundId: g.id,
         label: g.label,
         standing: 'waiting on you to start',
+        aboutOnePerson: isEvaluationCheckIn((g as any).scenario),
       })),
       ...checkIns
         /* Not yet open is not the same as nothing, and it is not something to
            offer either — so it is simply not a session that is true for them
            right now. The date is the product's, not a judgement. */
-        .filter((c) => !c.availableFrom || c.availableFrom <= now)
+        .filter((c) => c.status === CheckInStatus.IN_PROGRESS || !c.availableFrom || c.availableFrom <= now)
         .map((c): ASession => ({
           checkInId: c.id,
           groundId: c.participant.ground.id,
           label: c.participant.ground.label,
           standing: c.participant.userId === null ? 'invitation not accepted' : 'open to you',
+          aboutOnePerson: isEvaluationCheckIn((c.participant.ground as any).scenario),
         })),
     ];
   }

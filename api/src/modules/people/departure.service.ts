@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { onceAcrossCopies, theDay } from '../prisma/once-across-copies';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { CommitmentState, DependencyStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -129,6 +130,11 @@ export class DepartureService {
    */
   @Cron(CronExpression.EVERY_DAY_AT_3AM)
   async ageOutDepartedTurns() {
+    /* Once for its time across every copy of the API (decision 74, item 7). */
+    await onceAcrossCopies(this.prisma, 'age-out-departed-turns', theDay(), () => this.ageOutDepartedTurnsHere());
+  }
+
+  private async ageOutDepartedTurnsHere() {
     const orgs = await this.prisma.departureRecord.findMany({
       where: { turnsDeletedAt: null },
       select: { organizationId: true },

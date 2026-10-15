@@ -26,7 +26,14 @@ const board = (participants: any[], canEditFrame: boolean) => ({
   family: 'DELIVERY',
   sections: ['divergence'],
   title: 'The Kano sprint',
-  scenario: 'TEAM_UPDATES',
+  /*
+   * U.10 RE-REVIEW ITEM A: the switchboard now gates `divergence` per situation (see
+   * what-the-switchboard-allows.ts), and 'TEAM_UPDATES' (family UPDATE) never turns on "Accounts
+   * side by side" - this fixture's own `family: 'DELIVERY'` never matched it anyway. Changed to
+   * 'OKR_ALIGNMENT', a real DELIVERY situation whose switchboard row carries "Accounts side by
+   * side" as optional, which is what this test is actually about (one person, not this rule).
+   */
+  scenario: 'OKR_ALIGNMENT',
   coverageVariant: 'NONE',
   myParticipantId: 'p1',
   canEditFrame,
@@ -76,5 +83,30 @@ describe('a shared picture needs two accounts', () => {
     ;(boardApi.get as any).mockResolvedValue(board([...one, { id: 'p9', name: 'Ada', role: null, managingOnly: true, signedOffAt: null }], true))
     renderBoard()
     expect(await screen.findByText(/there is one person on this check-in/i)).toBeTruthy()
+  })
+})
+
+/**
+ * SCREENS ITEM b (8 October): a lead who does not check in never reads "You have answered this session.", and the one-person
+ * sentence does not say "accounts".
+ */
+describe('a lead who does not check in', () => {
+  const withGlance = (participants: any[], myParticipantId: string) => ({
+    ...board(participants, true),
+    myParticipantId,
+    howItIsGoing: { glance: { progress: { answeredThisRound: 1, ofPeople: 1 }, round: 1 } },
+  })
+  const leadWhoOnlyManages = { id: 'p-lead', name: 'Hafsah', role: null, managingOnly: true, signedOffAt: null }
+  const kito = { id: 'p-kito', name: 'Kito', role: null, managingOnly: false, signedOffAt: null }
+
+  it('does not read that she has answered, and the sentence does not say accounts', async () => {
+    ;(boardApi.get as any).mockResolvedValue(withGlance([leadWhoOnlyManages, kito], 'p-lead'))
+    ;(await import('@/api/grounds')).groundsApi.get = vi.fn().mockResolvedValue({ initiatorId: 'u1', participants: [] }) as any
+    const { container } = renderBoard()
+    expect(await screen.findByText(/there is one person on this check-in/i)).toBeTruthy()
+    expect(container.textContent).toContain('The one person in this session has answered.')
+    expect(container.textContent).not.toContain('You have answered this session.')
+    expect(container.textContent).toContain('This board compares what people said, and there is one person on this check-in.')
+    expect(container.textContent).not.toMatch(/compares accounts/)
   })
 })

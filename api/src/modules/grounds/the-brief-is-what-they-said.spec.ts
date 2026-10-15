@@ -51,7 +51,8 @@ describe('the brief', () => {
 
   it('travels on every commit, not only when somebody opts out of checking in', () => {
     /* This is why the server had a fallback at all: on the ordinary path the client sent nothing. */
-    expect(client).toMatch(/\.\.\.\(composeLeadBrief\(onboardingSelections\)[\s\S]{0,120}brief: composeLeadBrief\(onboardingSelections\)/);
+    /* U.7 re-check: the composer now also takes who answered, so the call carries a second argument. */
+    expect(client).toMatch(/\.\.\.\(composeLeadBrief\(onboardingSelections(, [^)]+)?\)[\s\S]{0,120}brief: composeLeadBrief\(onboardingSelections(, [^)]+)?\)/);
   });
 
   it('and is composed from their own answers', () => {

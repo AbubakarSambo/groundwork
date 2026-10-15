@@ -34,9 +34,12 @@
  * looks avoided".
  */
 
-/** Does this sentence ask something? */
+/**
+ * Does this sentence ask something? A question mark inside quotation marks is somebody's own words
+ * said back to them, not a question put to them, so it is not counted.
+ */
 export function isAQuestion(sentence: string): boolean {
-  return sentence.includes('?');
+  return (sentence ?? '').replace(/"[^"\n]*"|\u201C[^\u201D\n]*\u201D/g, '').includes('?');
 }
 
 /**

@@ -87,7 +87,7 @@ describe('once per session, and never about a percentage', () => {
   });
   it('is not asked again once an earlier turn put both numbers to them', () => {
     expect(theNumbersDoNotMeet(objectives, 'A small NGO proposal, around $12,000.', [], [])).not.toBeNull();
-    const asked = ['This check-in is aiming at 400,000. You have said 12,000 - is that your own part of it, or is the 400,000 something else?'];
+    const asked = ['This check-in is aiming at 400,000. You said 12,000. Is that your own part of it, or is the 400,000 something else?'];
     expect(theNumbersDoNotMeet(objectives, 'The $12,000 is one project.', [], asked)).toBeNull();
   });
 });

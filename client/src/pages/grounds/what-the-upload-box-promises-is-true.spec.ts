@@ -46,13 +46,15 @@ describe('what the upload box promises is true', () => {
      * held one document - the page telling the truth only after the upload it had already talked
      * somebody into, which is the bug this file exists for.
      */
-    expect(PAGE).toMatch(/It is private to you unless you decide to make it visible to everyone\./)
+    /* The prototype's sentence since U.7; it was "It is private to you unless you decide to make it
+       visible to everyone." Same promise: private first, and the uploader chooses. */
+    expect(PAGE).toMatch(/It starts private to you\. You choose who can read it\./)
   })
 
   /** And it is not conditional on the list being empty. */
   it('and keeps stating it once documents exist', () => {
-    const box = PAGE.slice(PAGE.indexOf('Upload a file as proof or context'), PAGE.indexOf('id="ga-doc-upload"'))
-    const privacyAt = box.indexOf('It is private to you')
+    const box = PAGE.slice(PAGE.indexOf("'Add a document'"), PAGE.indexOf('id="ga-doc-upload"'))
+    const privacyAt = box.indexOf('It starts private to you')
     const emptyBranchAt = box.indexOf('docs.length === 0')
     expect(privacyAt).toBeGreaterThan(-1)
     expect(emptyBranchAt).toBeGreaterThan(-1)
@@ -72,7 +74,7 @@ describe('what the upload box promises is true', () => {
     /* Bound to the ternary itself rather than to the word appearing nearby: an earlier version of
        this asserted `contextEnabled` was present within 700 characters, and replacing the condition
        with `true` left it green because another `contextEnabled` sat a few lines down. */
-    expect(PAGE).toMatch(/\{contextEnabled\s*\?\s*'It is private to you unless you decide to make it visible to everyone\./)
+    expect(PAGE).toMatch(/\{contextEnabled\s*\?\s*'It starts private to you\. You choose who can read it\./)
   })
 
   /** Her third sentence, and the one nobody knew: the file is not storage, it is read against you. */

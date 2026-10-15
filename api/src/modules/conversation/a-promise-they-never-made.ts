@@ -29,6 +29,8 @@
  * the session added nothing.
  */
 
+import { A_CLOSE_THAT_CLAIMS_NOTHING, isAFragment } from './a-cut-never-leaves-a-fragment';
+
 /** Words that carry no subject of their own, so overlap on one of them means nothing. */
 const CARRIES_NOTHING = new Set([
   'said', 'told', 'mentioned', 'committed', 'promised', 'would', 'will', 'going', 'send', 'sending',
@@ -42,18 +44,35 @@ const wordsIn = (s: string): string[] =>
 
 const carries = (w: string) => w.length >= 3 && !CARRIES_NOTHING.has(w);
 
+/*
+ * "WHAT YOU SAID IS NOW IN THE RECORD" TELLS THEM NOTHING THEY SAID.
+ *
+ * run-7, the crisis scenario. Elena Rossi's close was "What you said is now in the record, and the
+ * report will be ready for you. Speak soon." The first sentence matched "you said", nothing in it
+ * was hers, so it was cut as an invented promise, and what she read as her last turn was "Speak
+ * soon." "What you said" there is a noun phrase, the same as "your answers". It attributes nothing
+ * to her. So a "you said", "you told us", "you shared" or "you mentioned" that is only the object
+ * of "what", "everything", "anything", "all" or "whatever" is taken out before the sentence is
+ * read. "You said you would send the rota by Friday" is still read, and still cut.
+ */
+const WHAT_YOU_SAID_AS_A_NOUN =
+  /\b(?:what|everything|anything|all(?: that)?|whatever)\s+you(?:'ve| have)?\s+(?:said|told (?:me|us)|shared|mentioned)\b/gi;
+
 /** The sentences in a reply that tell somebody what they themselves said. */
 export function whatItSaysTheySaid(reply: string): string[] {
   return (reply.match(/[^.!?\n]*[.!?]?/g) ?? [])
     .map((s) => s.trim())
     .filter(Boolean)
-    /* "You will send the rota by Friday" is a commitment recited as theirs, the same as "you said you
-       would": a farmer who had said nothing about a rota read it at her close (run 6, 21 Sep 2026). */
-    .filter((s) => /\byou (said|told me|mentioned|committed|promised|agreed)\b/i.test(s)
-      || /^(?:so |and )?you (?:will|are going to|have agreed to|have committed to)\b/i.test(s)
-      /* "That you will send the rota by Friday is also noted" went to a rep who had said nothing about a rota: the
-         pack's own example sentence, recited as his (run 10, 21 Sep 2026). */
-      || /\bthat you (?:will|are going to|would|have agreed to)\b/i.test(s));
+    .filter((s) => {
+      const read = s.replace(WHAT_YOU_SAID_AS_A_NOUN, ' ');
+      return /\byou (said|told me|mentioned|committed|promised|agreed)\b/i.test(read)
+        /* "You will send the rota by Friday" is a commitment recited as theirs, the same as "you said you
+           would": a farmer who had said nothing about a rota read it at her close (run 6, 21 Sep 2026). */
+        || /^(?:so |and )?you (?:will|are going to|have agreed to|have committed to)\b/i.test(read.trim())
+        /* "That you will send the rota by Friday is also noted" went to a rep who had said nothing about a rota: the
+           pack's own example sentence, recited as his (run 10, 21 Sep 2026). */
+        || /\bthat you (?:will|are going to|would|have agreed to)\b/i.test(read);
+    });
 }
 
 /**
@@ -88,4 +107,25 @@ export function withoutThePromise(reply: string, sentence: string): string {
     .replace(/\n{3,}/g, '\n\n')
     .replace(/^[ \t]+/gm, '')
     .trim();
+}
+
+/*
+ * A CLOSE IS NEVER CUT DOWN TO TWO WORDS.
+ *
+ * The same run-7 close: once the first sentence was cut, "Speak soon." was all that was left, and
+ * that is what Elena read at the end of her check-in. On the closing turn a cut that leaves a
+ * fragment is replaced with the plain close. The fragment test and the close are shared with every
+ * other cut - see a-cut-never-leaves-a-fragment.
+ */
+export { A_CLOSE_THAT_CLAIMS_NOTHING };
+
+/**
+ * What to send once the promise is cut. `closing` is whether this is the last turn; only then is
+ * the plain close used. Mid-conversation the cut stands as it always has, where anything is left.
+ * The text before the cut is never restored: it is the invention.
+ */
+export function whatIsLeftToSend(reply: string, sentence: string, closing: boolean): string | null {
+  const cut = withoutThePromise(reply, sentence);
+  if (closing && isAFragment(cut)) return A_CLOSE_THAT_CLAIMS_NOTHING;
+  return cut.trim() ? cut : null;
 }

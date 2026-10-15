@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import type { TheLeadsReveal, ThePeopleStepRules } from './anchorShapes';
 
 const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api/v1` : '/api/v1'
 
@@ -28,6 +29,17 @@ export interface EntryReport {
   alsoCameUp?: { name: string; context: string }[]
   alsoCameUpNote?: string | null
   suggestedParties: { role: string; reason: string }[]
+  /**
+   * PIECE 8/9: THE LEAD'S REVEAL, "Help my team understand" (plan section 5, row 3;
+   * docs/answers-from-engine.md, "Request 149 (1 of 6)", `TheLeadsReveal`). Served now, only on an
+   * anchor draft's own report (`scenario === 'HELP_TEAM_UNDERSTAND'`) and only while
+   * `release.anchorScenario` is on - the key is absent otherwise, never `undefined` with the switch
+   * on. Present only for the lead: there is no other reader of a setup report, since it is read
+   * before anybody else has joined. `carrying`, `whatTheTeamNeedsToUnderstand` and `seeingToday`
+   * still read their "not written down yet" sentence until the seven fields are pulled from the
+   * lead's words (a model step, request 149 missing (2)).
+   */
+  leadsReveal?: TheLeadsReveal | null
 }
 
 // ── Entry session storage ─────────────────────────────────────────────────────
@@ -121,7 +133,14 @@ async function readEntryStream<T>(
     }
   }
   if (done) return done
-  throw new Error(failure ?? 'stream ended without a reply')
+  /*
+   * B-220: THE SERVER'S OWN SENTENCE, KEPT, NOT THROWN AWAY. `failure` is only ever set from a
+   * `{type: 'error', message}` block the server itself sent - a real, already-written sentence
+   * ("The reply could not be finished. Send that again."), not a technical detail. Marked
+   * `isServerMessage` so a caller can tell this apart from an ordinary thrown Error (a dropped
+   * connection, a non-200 status) whose `.message` is not fit to show on screen as it is.
+   */
+  throw Object.assign(new Error(failure ?? 'stream ended without a reply'), { isServerMessage: !!failure })
 }
 
 export interface OnboardResult {
@@ -142,10 +161,29 @@ export interface OnboardResult {
        */
       peopleNamed?: string[];
       goals?: string[]; brief?: string;
+      /** The name the lead gave in so many words ("Call it ..."). Absent when they did not. */
+      name?: string;
+      /** An address the lead typed beside a name, kept with that name. */
+      peopleEmails?: Record<string, string>;
       // What they actually said about rhythm and length. Absent when they did
       // not say - never guessed. GW-017.
       cadence?: 'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ONE_TIME';
       timelineDays?: number;
+      /** True when they said it runs until they end it themselves ("when I end it"). The engine then sends no length. */
+      runsUntilEnded?: boolean;
+      /**
+       * THE ANCHOR'S SEVEN ITEMS (fault 2; docs/answers-from-engine.md, "Request 144 (2) and (3)").
+       * Not served yet - every key is optional and absent today. Mirrors
+       * `FillsInAsYouTalk.tsx`'s `AnchorItemKey`, field for field, so the side panel can draw
+       * whichever of the seven the engine has heard so far, the moment it starts sending them.
+       */
+      responsibleFor?: string;
+      tryingToMove?: string;
+      howItContributes?: string;
+      seeingToday?: string;
+      whyItBothersYou?: string;
+      whatTheyDontUnderstand?: string;
+      whatTheyWouldDoDifferently?: string;
     };
     ready: boolean;
     /**
@@ -158,8 +196,15 @@ export interface OnboardResult {
 // ── Entry API ─────────────────────────────────────────────────────────────────
 
 export const entryApi = {
-  opener: (scenario?: string) =>
-    apiClient.post<{ reply: string }>('/entry/opener', { scenario }).then(r => r.data),
+  /**
+   * `POST /entry/opener`: `reply` is the opening words, as before. `source` and `thePeopleStep`
+   * ride on the same call for a scenario that has its own (today the anchor's, with its switch on)
+   * and are absent for every other - request 196, docs/answers-from-engine.md, "8 October (later):
+   * the anchor through the ordinary routes, route by route". `source` is not read by any caller yet
+   * (nothing used it off `/entry/anchor-start` either); `thePeopleStep` is, by `EntryChatPage.tsx`.
+   */
+  opener: (scenario?: string, source?: string) =>
+    apiClient.post<{ reply: string; source?: string; thePeopleStep?: ThePeopleStepRules }>('/entry/opener', { scenario, source }).then(r => r.data),
 
   // Supports two call forms:
   //   new: entryApi.chat(mode, messages)       → posts { mode, messages }
@@ -231,22 +276,52 @@ export const entryApi = {
    * listed her team in setup got a report saying "team members not named here", and a whole
    * "what's still open" item telling her to go and name them.
    */
-  report: (messages: ChatTurn[], scenario?: string, groundLabel?: string, peopleNamed?: string[]) =>
-    apiClient.post<{ report: EntryReport | null }>('/entry/report', { messages, scenario, groundLabel, peopleNamed }).then(r => r.data),
+  report: (
+    messages: ChatTurn[],
+    scenario?: string,
+    groundLabel?: string,
+    peopleNamed?: string[],
+    /*
+     * THE ANCHOR'S SEVEN ITEMS, SO THE LEAD'S REVEAL SAYS WHAT SHE SAID (request 166). Sent only for
+     * an anchor draft's own report - every other situation's report has nothing to send here, and the
+     * server reads nothing from an absent field.
+     */
+    anchorItems?: Record<string, unknown>,
+  ) =>
+    apiClient.post<{ report: EntryReport | null }>('/entry/report', { messages, scenario, groundLabel, peopleNamed, anchorItems }).then(r => r.data),
 
   commit: (payload: {
     groundLabel: string
+    setupKey?: string
     orgName?: string
     scenario?: string
     /* The four-field card sends these directly rather than through an interview - see
        ask-your-team-one-thing. Every other caller still lets the conversation settle them. */
     cadence?: 'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ONE_TIME' | 'SEQUENTIAL'
     checkInBy?: string
+    /** The last day, YYYY-MM-DD. Left out when it runs until the lead ends it. */
+    lastCheckInBy?: string
+    /** "When I end it": no planned length and no planned last session. */
+    runsUntilEnded?: boolean
+    /** Which days people work, 0 = Sunday. Left out when nobody said. */
+    workingDays?: number[]
     inviteNote?: string
     cadenceChosen?: boolean
+    /** RESTORED (nothing-removed-screens.md item 2): the day check-ins land on - a weekday (0 =
+        Sunday) for WEEKLY/FORTNIGHTLY, a day of the month for MONTHLY. Omit to leave it unset. */
+    cadenceAnchorDay?: number
     history: ChatTurn[]
     report?: EntryReport | null
-    contributors: { email: string; context?: string; inviteToken?: string; note?: string }[]
+    /** A colleague picked from the list is sent by `colleagueId`, never by address (U.4). */
+    contributors: {
+      email?: string
+      colleagueId?: string
+      context?: string
+      inviteToken?: string
+      note?: string
+      /** "Name + email" (anchor section 13): what the lead calls this person, asked beside their email. Anchor draft only. */
+      displayName?: string
+    }[]
     // Coordinator/lead path: the committer sets the ground up for someone else
     // to run. The lead is invited to confirm and becomes the initiator; the
     // onboarding context travels as `brief` (the coordinator has no transcript).
@@ -255,26 +330,68 @@ export const entryApi = {
      *  somebody who has just said they are not a party is still given a session to answer. */
     managingOnly?: boolean
     brief?: string
-  }) =>
+  }, opts?: { ifThereIsOne?: boolean }) =>
     apiClient.post<{
       groundId: string
+      /* Only with `ifThereIsOne`: nothing was saved anywhere, so nothing was made (and `groundId` is absent). */
+      nothing?: boolean
       joinToken?: string | null
       // who the commit successfully invited - drives the positive "Invited"
       // confirmation on the completion screen
       /* `waiting` is true where the invitation has NOT gone: the check-in starts in the future and
          the row is written uninvited, for the cron to send on the day. The screen has to say so, or
          "all participants i added didnt get an email" is what it produces. */
-      contributors?: { email: string; waiting?: boolean }[]
+      contributors?: { email: string; waiting?: boolean; waitingBecause?: 'starts_later' | 'no_seat' | 'mail_failed'; saying?: string }[]
       failedInvites?: string[]
       /* Why each one failed, in the API's own words. See entry.service.ts. */
       whyInvitesFailed?: { email: string; because: string }[]
-    }>('/entry/commit', payload).then(r => r.data),
+    }>(opts?.ifThereIsOne ? '/entry/commit?ifThereIsOne=1' : '/entry/commit', payload).then(r => r.data),
 
   // Pre-auth update of the server-side draft, authorized by the draftToken
   // issued at entry-save. Best-effort: callers swallow failures (localStorage
   // still mirrors the same data for the same-browser case).
   patchDraft: (draftToken: string, payload: Record<string, unknown>) =>
     apiClient.patch<{ ok: true }>('/entry/draft', { draftToken, payload }).then(r => r.data),
+}
+
+/**
+ * THE ANCHOR SCENARIO'S OWN START CALL (decision 114, docs/decisions-merged.md;
+ * docs/answers-from-engine.md, "8 October: decision 114, the anchor changes no screen").
+ *
+ * `GET /entry/anchor-available` is no longer called from the client: it used to be the public
+ * signal `AnchorLandingPage.tsx` asked before showing itself at all, and that page is gone - the
+ * anchor now opens from the ordinary entry chat like any scenario, and a 404 from `start` below
+ * already says the switch is off, which is the only thing `anchor-available` ever answered.
+ */
+export const entryAnchorApi = {
+  /**
+   * `GET /entry/anchor-start?source=<mark>`: called once, by `EntryChatPage.tsx`, on a fresh
+   * arrival with `?scenario=HELP_TEAM_UNDERSTAND` in the address. With the switch on it answers the
+   * situation key (`HELP_TEAM_UNDERSTAND`), a label for the ground, the source mark read back
+   * exactly as sent (or `null`), and `thePeopleStep` (docs/answers-from-engine.md, "Request 149 (2
+   * of 6)") - the people step's own heading, intro, context label, button and limit sentence,
+   * carried straight into the entry chat's people step rather than read off the fixed
+   * `ANCHOR_PEOPLE_STEP_RULES`. With the switch off it answers 404 - the caller falls back to
+   * today's ordinary door rather than show a sentence of its own.
+   *
+   * `firstQuestion` (request 163, item 9): the engine's own opening line for the anchor
+   * conversation, "What's happening right now that makes you wish your team saw more of what you
+   * see?". Not served yet - the caller falls back to `THE_ANCHOR_FIRST_QUESTION` (TheSetup.tsx)
+   * until it is.
+   */
+  start: (source?: string | null): Promise<{
+    available: true
+    scenario: 'HELP_TEAM_UNDERSTAND'
+    startedFrom: 'anchor'
+    groundLabel: string
+    source: string | null
+    thePeopleStep?: ThePeopleStepRules
+    firstQuestion?: string
+  }> =>
+    apiClient.get('/entry/anchor-start', {
+      params: source ? { source } : undefined,
+      skipNotFoundToast: true,
+    } as any).then(r => r.data),
 }
 
 // ── Join API (QR / broadcast link) ───────────────────────────────────────────
@@ -284,9 +401,13 @@ export const entryApi = {
  * signed in on any of these, which is the point - see the API's the-open-link.service.
  */
 export const openLinkApi = {
+  /* B-207: `skipNotFoundToast` - AnswerFirstPage already shows a broken link's own screen, "That
+     link didn't work" with the server's sentence underneath it. Without this, a bad token also
+     raised the generic 404 toast on top of it ("That is not here any more", with the same server
+     sentence again as its description) - one failure, said twice, stacked on the same screen. */
   whatThisIs: (token: string) =>
-    apiClient.get<{ groundLabel: string; theQuestion: string | null; askedBy: string | null; scenario: string }>(
-      '/entry/open', { params: { t: token } },
+    apiClient.get<{ groundLabel: string; theQuestion: string | null; askedBy: string | null; scenario: string; schedule?: string | null; endsAt?: string | null }>(
+      '/entry/open', { params: { t: token }, skipNotFoundToast: true } as any,
     ).then(r => r.data),
 
   start: (joinToken: string) =>
@@ -300,10 +421,13 @@ export const openLinkApi = {
 }
 
 export const joinApi = {
+  /* `skipNotFoundToast`: the /join page already says this itself in its own sentence (the same
+     reasoning as participantsApi.preview). Without it, a bad link raised a second, differently
+     worded toast on top of the page's own message - group 3's review, request batch A, fault 3. */
   preview: (token: string) =>
     apiClient.get<{ groundId: string; groundLabel: string; scenario: string; initiatorName: string }>(
       '/entry/join-preview',
-      { params: { t: token } },
+      { params: { t: token }, skipNotFoundToast: true } as any,
     ).then(r => r.data),
 
   /**
@@ -327,7 +451,13 @@ export const joinApi = {
       payload,
     ).then(r => r.data),
 
-  /** The address answered. This is the call that creates anything. */
+  /**
+   * The address answered. This is the call that creates anything.
+   *
+   * B-213: `skipNotFoundToast`, the same reasoning as `whatThisIs` above - JoinConfirmPage.tsx
+   * already shows its own page for a bad or missing token (`LinkProblem`, with the server's own
+   * sentence), so a plain 404 toast on top of it was the same failure said twice.
+   */
   confirm: (token: string) =>
     apiClient.post<{
       groundId: string; checkInId: string; accessToken: string; userId: string; existingAccount: boolean
@@ -336,5 +466,6 @@ export const joinApi = {
     }>(
       '/entry/join-confirm',
       { token },
+      { skipNotFoundToast: true } as any,
     ).then(r => r.data),
 }

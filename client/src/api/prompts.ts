@@ -83,6 +83,44 @@ export interface UsageFunnelData {
   stalledCheckIns: number
   session5Count: number
   avgDaysToFirstCheckin: { value: number | null; n: number }
+  /**
+   * THE ACTIVATION FUNNEL (docs/answers-from-engine.md, 8 October, "the engagement work", point 1;
+   * decision 109). Counts only, never a person or a word anybody said, over customers' check-ins
+   * and never our own organisations. `null` when it could not be read - draw nothing, the rest of
+   * the tab is unaffected.
+   */
+  activation: ActivationFunnel | null
+}
+
+/** One ordered stage's count, in `activation.reached`. */
+export type ActivationStage = 'created' | 'peopleAdded' | 'firstResponse' | 'enoughToReport' | 'firstInsight' | 'leadActed' | 'secondRound'
+/** Where a check-in stands now, each check-in counted in one bucket only, in `activation.now`. */
+export type ActivationNowBucket = 'test' | 'abandonedBeforeValue' | 'abandonedAfterValue' | 'active'
+/** What became of mail Groundwork decided to send, in `activation.emails`. */
+export type ActivationEmailOutcome = 'delivered' | 'failed' | 'held' | 'notSentOnPurpose'
+
+export interface ActivationFunnel {
+  reached: Record<ActivationStage, number>
+  now: Record<ActivationNowBucket, number>
+  /** Leads with a second check-in - repeat use. */
+  leadsWhoCameBack: number
+  emails: Record<ActivationEmailOutcome, number>
+  /**
+   * THE BACK OFFICE FUNNEL: PEOPLE, NOT ONLY CHECK-INS (docs/answers-from-engine.md, 8 October,
+   * point 2). Counts only - no name and no address is served. `undefined` on a server that has not
+   * shipped it yet; this whole part of the tab draws nothing then.
+   */
+  participants?: ParticipantActivation
+}
+
+/** One ordered step's count, how far people got, in `participants.reached`. */
+export type ParticipantReachedStep = 'added' | 'invited' | 'reached' | 'verified' | 'engaged' | 'inAHabit'
+/** Where the people who stopped are standing now, each counted in one bucket only, never overlapping. */
+export type ParticipantStuckBucket = 'notInvited' | 'invitedNotVerified' | 'verifiedNeverStarted' | 'startedNotFinished' | 'answeredOnceNotReturned' | 'wentQuiet'
+
+export interface ParticipantActivation {
+  reached: Record<ParticipantReachedStep, number>
+  stuck: Record<ParticipantStuckBucket, number>
 }
 
 export interface OrgListItem {
@@ -118,8 +156,8 @@ export interface FeedbackSummaryData {
 }
 
 export const promptsApi = {
-  list: () => apiClient.get<PromptVersion[]>('/prompts').then((r) => r.data),
-  byKey: (key: string) => apiClient.get<PromptVersion[]>(`/prompts/by-key/${encodeURIComponent(key)}`).then((r) => r.data),
+  list: () => apiClient.get<PromptVersion[]>('/prompts').then((r) => (Array.isArray(r.data) ? r.data : [])),
+  byKey: (key: string) => apiClient.get<PromptVersion[]>(`/prompts/by-key/${encodeURIComponent(key)}`).then((r) => (Array.isArray(r.data) ? r.data : [])),
   create: (key: string, content: string, summary?: string) =>
     apiClient.post<PromptVersion>('/prompts', { key, content, summary }).then((r) => r.data),
   activate: (id: string) => apiClient.post<PromptVersion>(`/prompts/${id}/activate`).then((r) => r.data),
@@ -128,7 +166,7 @@ export const promptsApi = {
   platformFunnel: (range: PanelRange = 'all') =>
     apiClient.get<UsageFunnelData>('/prompts/platform-funnel', { params: { range } }).then((r) => r.data),
   orgList: () =>
-    apiClient.get<OrgListItem[]>('/prompts/org-list').then((r) => r.data),
+    apiClient.get<OrgListItem[]>('/prompts/org-list').then((r) => (Array.isArray(r.data) ? r.data : [])),
 
   /**
    * WHO IS REGISTERED IN ONE ORGANISATION. The account list, never their work.
@@ -199,5 +237,5 @@ export interface CodeAccuracy {
  * customer-facing number.
  */
 export const patternAccuracyApi = {
-  summary: () => apiClient.get<CodeAccuracy[]>('/patterns/accuracy').then(r => r.data),
+  summary: () => apiClient.get<CodeAccuracy[]>('/patterns/accuracy').then(r => (Array.isArray(r.data) ? r.data : [])),
 }

@@ -29,6 +29,10 @@ vi.mock('@/api/billing', () => ({
     sendContributorCodeToEmail: vi.fn(), createSubscription: vi.fn(),
     cancelSubscription: vi.fn(), pauseSubscription: vi.fn(), resumeSubscription: vi.fn(),
     getPricing: vi.fn(),
+    /* WhatsApp billing (decision 78): the minimal, off-by-default shape, so this page's own
+       query resolves without pulling the add-on's section onto a screen this test is not about. */
+    getWhatsApp: vi.fn().mockResolvedValue({ on: false, sending: true, says: null }),
+    setWhatsApp: vi.fn(),
   },
   PLAN_LABELS: {}, PLAN_PRICES: {},
   formatMonthlyPrice: (c: number) => `$${c / 100}/mo`,
@@ -41,6 +45,12 @@ vi.mock('@/api/billing', () => ({
   formatMemberCap: (cap: number | null | undefined) =>
     cap === null ? 'Unlimited' : cap === undefined ? '' : `Up to ${cap} people`,
   FALLBACK_FREE_LIMITS: { groundLimit: 10, memberLimit: 5 },
+  /*
+   * Decides which WhatsApp shape was served. `on` is served to every reader now (5 October,
+   * evening), so this mirrors the real `isWhatsAppBillingAdmin` and reads `says` instead:
+   * `false` on the minimal shape (`says: null`) keeps the new section off.
+   */
+  isWhatsAppBillingAdmin: (w: any) => !!w && typeof w.says === 'object' && w.says !== null,
 }))
 vi.mock('@/api/grounds', () => ({ groundsApi: { list: vi.fn() } }))
 
@@ -68,14 +78,21 @@ beforeEach(() => {
 describe('a member who types the URL', () => {
   beforeEach(() => { role = 'MEMBER' })
 
+  /*
+   * B-216 (said why in the commit): the old sentence here, "You need admin access to manage
+   * billing for your organisation.", was a dead end with nothing to press - this now checks for
+   * the shared door's own wording instead (the same shape as the People page's refusal).
+   */
   it('is refused the page, not just the link', async () => {
     renderBilling()
-    await waitFor(() => expect(screen.getByText(/need admin access to manage billing/i)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Only an admin can open Plan and billing.')).toBeTruthy())
+    expect(screen.getByText(/Your role here is not an admin/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Back to your check-ins' })).toBeTruthy()
   })
 
   it('and is offered no way to spend the organisation\'s money', async () => {
     renderBilling()
-    await waitFor(() => screen.getByText(/need admin access/i))
+    await waitFor(() => screen.getByText('Only an admin can open Plan and billing.'))
     expect(screen.queryByText(/Subscribe/)).toBeNull()
     expect(screen.queryByText(/Upgrade your organisation/)).toBeNull()
     expect(screen.queryByText(/Access codes/)).toBeNull()
@@ -88,7 +105,7 @@ describe('a member who types the URL', () => {
      * fail, so gating the reads fixes the leak and the mess in one move.
      */
     renderBilling()
-    await waitFor(() => screen.getByText(/need admin access/i))
+    await waitFor(() => screen.getByText('Only an admin can open Plan and billing.'))
     expect(billingApi.status).not.toHaveBeenCalled()
     expect(billingApi.getContributorCodes).not.toHaveBeenCalled()
     expect(groundsApi.list).not.toHaveBeenCalled()
@@ -100,9 +117,16 @@ describe('a member who types the URL', () => {
 describe('an admin', () => {
   beforeEach(() => { role = 'ADMIN' })
 
+  /**
+   * CHANGED (Hafsah, 30 September, the setting row): this used to look for the subtitle "Your plan,
+   * and how many people it covers.", which settings-billing.jpg does not draw at all - it was the
+   * product's own invention, dropped now to match the prototype - so it checked for a sentence that
+   * should never have been on screen. Looks for the "Plans" section instead, which only the real
+   * (not the access-refused) page renders.
+   */
   it('still gets the real page', async () => {
     renderBilling()
-    await waitFor(() => expect(screen.getByText(/Your plan, and how many people it covers/i)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Plans')).toBeTruthy())
     expect(screen.queryByText(/need admin access/i)).toBeNull()
   })
 

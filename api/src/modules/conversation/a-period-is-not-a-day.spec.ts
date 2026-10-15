@@ -15,7 +15,7 @@ describe('a period is not a day', () => {
   it('says the date a period means and checks it, which is what she asked for', () => {
     const out = whatToDoAboutTheirDeadline('we want it done by the end of the year', on)!;
     expect(out).toContain('31 December 2026');
-    expect(out).toMatch(/end of the year - so 31 December 2026\?/);
+    expect(out).toMatch(/When you say end of the year, do you mean 31 December 2026\?/);
     expect(out).toMatch(/Ask once/);
   });
 
@@ -46,11 +46,12 @@ describe('a period is not a day', () => {
   it('reaches the live turn, appended to the prompt rather than run as a retry', () => {
     const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-    expect(src).toMatch(/const aboutTheirDeadline = whatToDoAboutTheirDeadline\(message, new Date\(\)\)/);
+    expect(src).toMatch(/const aboutTheirDeadline = whatToDoAboutTheirDeadline\(message, new Date\(\), repliesInThisCheckIn\)/);
     /* The prompt is now assembled from the composed blocks plus whatever this turn owes them - the
        deadline question and, since the same day, the numbers question. Both are about what the
        PERSON said, which is why they are appended here rather than run as retries afterwards. */
-    expect(src).toMatch(/const fullSystem = \[composed, aboutTheirDeadline/);
+    /* The team baseline is the one conversation that leaves it out: it learns how their work looks and does not turn a period they gave into a date to confirm. */
+    expect(src).toMatch(/const fullSystem = \[composed, (?:inTheBaseline \? null : )?aboutTheirDeadline/);
   });
 
   it('and the probe that had two specs and no callers now has one', () => {
@@ -88,7 +89,7 @@ describe('and the check that it actually said the date', () => {
 
   it('the second ask is the question and nothing else', () => {
     const ask = SAY_THE_DATE('end of the year', '31 December 2026');
-    expect(ask).toMatch(/"end of the year - so 31 December 2026\?"/);
+    expect(ask).toMatch(/"When you say end of the year, do you mean 31 December 2026\?"/);
     expect(ask).toMatch(/Nothing before it, no second question after it/);
     expect(ask).toMatch(/Saying the date is not repeating them back/);
   });

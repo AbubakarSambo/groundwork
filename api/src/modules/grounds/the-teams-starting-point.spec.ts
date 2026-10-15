@@ -23,14 +23,20 @@ const CODE = SERVICE.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '
 const STATE = CODE.slice(CODE.indexOf('async stateBaseline('), CODE.indexOf('async baselineHistory('));
 
 describe('stating it', () => {
-  it('is the lead\'s, or an admin in the same organisation', () => {
+  /**
+   * DECISION 63, 30 September 2026: narrowed from "the lead, or any admin of the organisation, at
+   * any time" to "the lead, or - only once the lead has left the organisation - an admin of it",
+   * through `mayConfirmSetupOn`, the one gate every setup writer in this file now calls. Updated
+   * rather than removed: the finding this test protects (an org admin can state it in the lead's
+   * place at all) is still true, only narrower now.
+   */
+  it('is the lead\'s, or - once the lead has left the organisation - an admin of theirs', () => {
     /**
      * A party stating it would be the person being read setting their own measure, which is the one
      * thing the report exists to compare against something else.
      */
-    expect(STATE).toMatch(/ground\.initiatorId !== requestingUserId && !isOrgAdmin/);
-    /* Through the one rule, which asks the role in THIS organisation. */
-    expect(STATE).toMatch(/isOrgAdmin = adminsThisOrg\(asker, ground\)/);
+    expect(STATE).toContain('this.mayConfirmSetupOn(ground, requestingUserId)');
+    expect(STATE).not.toMatch(/isOrgAdmin = adminsThisOrg\(asker, ground\)/);
   });
 
   it('writes a new version rather than editing the old one', () => {
@@ -132,7 +138,8 @@ describe('and the reads that were guessing now have the answer', () => {
      */
     const REPORTS = readFileSync(join(__dirname, '../reports/reports.service.ts'), 'utf8');
     expect(REPORTS).toMatch(/if \(restsOn\.length\) out\.whatItRestedOn = restsOn/);
-    const PAGE = readFileSync(join(__dirname, '../../../../client/src/pages/report/ReportPage.tsx'), 'utf8');
+    /* Request 99: the old report body is gone; the live home of this section is WhatToProbeThemOn. */
+    const PAGE = readFileSync(join(__dirname, '../../../../client/src/components/gw/WhatToProbeThemOn.tsx'), 'utf8');
     expect(PAGE).toMatch(/These were not in their hands\. Read anything unmet above against them first\./);
   });
 });

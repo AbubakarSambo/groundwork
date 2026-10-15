@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { EachPerson } from './EachPerson'
 
 /* The expectation part of a card is ExpectationsPanel, scoped to one person and drawn bare. It talks
@@ -47,7 +47,8 @@ describe('each person holds everything about them', () => {
   it('a collapsed row says what that person holds, in counts', () => {
     render(<EachPerson groundId="g1" people={people as any} targets={targets} toDos={toDos} files={files} asks={asks as any} viewerUserId="u2" isLead={false} />)
     /* Amina's row is shut for Miriam, and says what is in it. */
-    expect(screen.getByText(/1 expectation · 1 target · 1 to-do · 1 thing to show · 1 file/)).toBeTruthy()
+    /* U.7 review: joined with commas, not dots. */
+    expect(screen.getByText(/1 expectation, 1 target, 1 to-do, 1 thing to show, 1 file/)).toBeTruthy()
   })
 
   it('only your own to-do offers a state, and the team target is not on anybody\'s card', () => {
@@ -61,6 +62,128 @@ describe('each person holds everything about them', () => {
     const onChangeInChat = vi.fn()
     render(<EachPerson groundId="g1" people={people as any} targets={targets} toDos={toDos} files={files} asks={asks as any} viewerUserId="u9" isLead onChangeInChat={onChangeInChat} />)
     /* Nobody's row is open for a lead who is not on the check-in, so nothing is drawn yet. */
+    expect(screen.queryByText('Change this in the chat')).toBeNull()
+  })
+
+  /*
+   * U.7 REVIEW: "Your note" IS SAID ONLY TO THE LEAD WHO WROTE IT. Otieno, an admin not in the
+   * check-in, read "Baraka. Your note: ..." about a note Wanjiru wrote. The server no longer sends it
+   * to him; the card does not say it to him either, even if a row still carried one.
+   */
+  it('the lead reads her own note beside the name, and an admin reading the page does not', () => {
+    const withNote = [{ id: 'pb', userId: null, nameGiven: 'Baraka', roleAsDescribed: 'Baraka - slow to follow up', objective: { all: [] } }]
+    const { unmount } = render(<EachPerson groundId="g1" people={withNote as any} targets={[]} toDos={[]} files={[]} asks={{}} viewerUserId="u-wanjiru" isLead isTheLead />)
+    expect(document.body.textContent).toContain('Your note on Baraka')
+    expect(document.body.textContent).toContain('slow to follow up.')
+    unmount()
+    render(<EachPerson groundId="g1" people={withNote as any} targets={[]} toDos={[]} files={[]} asks={{}} viewerUserId="u-otieno" isLead />)
+    expect(document.body.textContent).not.toContain('Your note')
+    expect(document.body.textContent).not.toContain('slow to follow up')
+  })
+
+  /* U.7 review: said to the reader. Aisha reads "Your numbers" on her own card, and nobody but
+     the lead reads "your own check-in" about the lead's. */
+  it('Aisha reads her own numbers as hers, and a colleague with none is named', () => {
+    render(<EachPerson groundId="g1" people={people as any} targets={targets} toDos={toDos} files={files} asks={asks as any} viewerUserId="u1" isLead={false} leadFirstName="Wanjiru" />)
+    expect(screen.getByText('Your numbers')).toBeTruthy()
+    expect(screen.queryByText('Their numbers')).toBeNull()
+    expect(screen.getByText('Only you can read it.')).toBeTruthy()
+  })
+
+  it('with no number of your own, you read it in a sentence about you', () => {
+    render(<EachPerson groundId="g1" people={people as any} targets={[]} toDos={[]} files={[]} asks={{}} viewerUserId="u2" isLead={false} leadFirstName="Wanjiru" />)
+    expect(screen.getByText('You have no number of your own. Your check-in asks against the team’s.')).toBeTruthy()
+    /*
+     * FAULT 3a (ESTHER, LIVE RE-WALK): A MEMBER HAS NO CONVERSATION ON THIS PAGE. This pinned
+     * "...or from the conversation on this page." for a member too, who has no conversation here
+     * to point at (only the check-in's own lead does, through `onChangeInChat`). Updated to the
+     * shorter sentence a reader who is not the lead actually reads.
+     */
+    expect(screen.getByText('Nothing yet. It comes from Wanjiru’s own check-in.')).toBeTruthy()
+  })
+
+  it('an admin opening a card reads the lead by name, not "your"', () => {
+    render(<EachPerson groundId="g1" people={[people[1]] as any} targets={[]} toDos={[]} files={[]} asks={{}} viewerUserId="u-otieno" isLead leadFirstName="Wanjiru" />)
+    fireEvent.click(screen.getByText('Miriam'))
+    expect(screen.getByText('Miriam has no number of their own, so their check-in asks against the team’s.')).toBeTruthy()
+    /*
+     * FAULT 3a (ESTHER, LIVE RE-WALK): AN ADMIN HAS NO CONVERSATION ON THIS PAGE EITHER.
+     * `isLead` covers an admin as well as the check-in's own lead, but `onChangeInChat` is only
+     * ever passed for the lead herself (ContextPage.tsx: `isTheLead && contextEnabled`) - an admin
+     * read a sentence naming a conversation she was never given. Updated to the shorter sentence.
+     */
+    expect(screen.getByText('Nothing yet. It comes from Wanjiru’s own check-in.')).toBeTruthy()
+  })
+
+  it('the check-in’s own lead, who does have the conversation, reads the longer sentence', () => {
+    /* The conversation is there only when the page passes its handler (release check, 9 October). */
+    render(<EachPerson groundId="g1" people={[people[1]] as any} targets={[]} toDos={[]} files={[]} asks={{}} viewerUserId="u-wanjiru" isLead isTheLead leadFirstName="Wanjiru" onChangeInChat={() => {}} />)
+    fireEvent.click(screen.getByText('Miriam'))
+    expect(screen.getByText('Nothing yet. It comes from your own check-in, or from the conversation on this page.')).toBeTruthy()
+  })
+
+  /*
+   * B-082: ONCE THE OLD CHAT IS GONE, "CHANGE THIS IN THE CHAT" ASKS ASK INSTEAD OF A DEAD CONTROL.
+   * The lead's "Nothing yet" line stops naming "the conversation on this page" (there is none), and
+   * the link beside an expectation hands the whole question to Ask, not a half-sentence for a box
+   * that is never drawn.
+   */
+  it('once the old chat is off, the lead reads "telling Ask ..." and the link asks the whole question', () => {
+    const onChangeInChat = vi.fn()
+    render(
+      <EachPerson
+        groundId="g1" people={[people[1]] as any} targets={[]} toDos={[]} files={[]} asks={{}}
+        viewerUserId="u-wanjiru" isLead isTheLead leadFirstName="Wanjiru"
+        groundLabel="Weekly sales push" oldChatIsOpen={false} askName="Ask Kijani Foods"
+        onChangeInChat={onChangeInChat}
+      />,
+    )
+    fireEvent.click(screen.getByText('Miriam'))
+    expect(screen.getByText('Nothing yet. It comes from your own check-in, or from telling Ask Kijani Foods.')).toBeTruthy()
+    fireEvent.click(screen.getByText('Change this in the chat'))
+    expect(onChangeInChat).toHaveBeenCalledWith(
+      'Change what I expect of Miriam to ',
+      'I want to change what Weekly sales push expects of Miriam.',
+    )
+  })
+
+  /*
+   * B-116: ON HER OWN CARD, THE FILLED LINE SPEAKS AS HER, NOT ABOUT HER. The lead is also a
+   * participant on her own check-in, and her row's "Change this in the chat" filled the chat with
+   * "Change what I expect of Tendai Moyo to " - her own name, as if she were talking about somebody
+   * else. It must read "Change what I expect of myself to " instead, and the sentence handed to Ask
+   * (the old chat off) must say "...expects of me.", not her name.
+   */
+  it('the lead’s own card fills the chat as her, not about her by name', () => {
+    const onChangeInChat = vi.fn()
+    const withLead = [{ id: 'pl', userId: 'u-tendai', user: { firstName: 'Tendai', lastName: 'Moyo' }, objective: { all: [] } }]
+    render(
+      <EachPerson
+        groundId="g1" people={withLead as any} targets={[]} toDos={[]} files={[]} asks={{}}
+        viewerUserId="u-tendai" isLead isTheLead leadFirstName="Tendai"
+        groundLabel="Weekly sales push" onChangeInChat={onChangeInChat}
+      />,
+    )
+    /* Her own row is open by default (it is "mine"). */
+    fireEvent.click(screen.getByText('Change this in the chat'))
+    expect(onChangeInChat).toHaveBeenCalledWith(
+      'Change what I expect of myself to ',
+      'I want to change what Weekly sales push expects of me.',
+    )
+    expect(onChangeInChat).not.toHaveBeenCalledWith(
+      expect.stringContaining('Tendai Moyo'),
+      expect.anything(),
+    )
+  })
+
+  /* The release check of 9 October, merged with the screens' B-082: with the old context chat off, the
+     lead is never told about a conversation on this page that is gone, and is never shown a link with
+     nothing behind it. B-082's own case above covers the link going to Ask when it is passed. */
+  it('with the old context chat off, the lead reads no conversation on this page, and no link is drawn without a handler (release check, 9 October)', () => {
+    render(<EachPerson groundId="g1" people={[people[1]] as any} targets={[]} toDos={[]} files={[]} asks={{}} viewerUserId="u-wanjiru" isLead isTheLead leadFirstName="Wanjiru" oldChatIsOpen={false} />)
+    fireEvent.click(screen.getByText('Miriam'))
+    expect(screen.queryByText(/the conversation on this page/)).toBeNull()
+    expect(screen.getByText('Nothing yet. It comes from your own check-in, or from telling Ask Groundwork.')).toBeTruthy()
     expect(screen.queryByText('Change this in the chat')).toBeNull()
   })
 })

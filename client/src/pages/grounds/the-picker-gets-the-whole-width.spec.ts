@@ -47,8 +47,16 @@ const PICKER_STAGE = (() => {
 })()
 
 describe('the picker gets the whole width', () => {
+  /*
+   * WAS AN INLINE `style={{ maxWidth: ... }}`, PINNED HERE AS A STRING. Group 3, piece 4 (rebuilding
+   * this screen from the shared parts) moved the two widths into named classes in gw-ui.css -
+   * `.gwui-cg-body` (540px, the base) and `.gwui-cg-body-wide` (1160px, added only on the picker
+   * step) - because a listed page may carry no inline size/colour/spacing style. The guarantee this
+   * file exists to protect - the wide class is given to the step that renders the cards, and only
+   * that step - is unchanged; it is asked of the class name instead of the old inline expression.
+   */
   it('the wide column is given to the step that renders the cards', () => {
-    expect(SRC).toContain(`maxWidth: step === STAGE.${PICKER_STAGE} ? 1160 : 540`)
+    expect(SRC).toContain(`className={\`gwui-cg-body\${step === STAGE.${PICKER_STAGE} ? ' gwui-cg-body-wide' : ''}\`}`)
   })
 
   it('and the picker is not the first stage, which is what the condition used to say', () => {
@@ -57,7 +65,10 @@ describe('the picker gets the whole width', () => {
   })
 
   it('every other step keeps the narrow reading column', () => {
-    /* A form read across 1160px makes the eye travel from a label to its field. */
-    expect(SRC).toContain(': 540')
+    /* A form read across 1160px makes the eye travel from a label to its field. The base class is
+       540px; the wide class only adds the picker's own 1160px on top of it. */
+    const css = readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'ui', 'gw-ui.css'), 'utf8')
+    expect(css).toMatch(/\.gwui-cg-body\s*\{[^}]*max-width:\s*540px/)
+    expect(css).toMatch(/\.gwui-cg-body-wide\s*\{[^}]*max-width:\s*1160px/)
   })
 })

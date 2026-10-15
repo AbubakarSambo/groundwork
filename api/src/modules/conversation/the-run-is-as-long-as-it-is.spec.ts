@@ -28,7 +28,8 @@ const SERVICE = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8')
 describe('the session count reaches the prompt', () => {
   it('conversation.service actually calls totalSessionsFor', () => {
     // The regression exactly: imported, never called.
-    expect(SERVICE).toMatch(/totalSessions:\s*totalSessionsFor\(/);
+    /* E2 (13 October 2026): a daily check-in with no end said passes no total; every other one still passes totalSessionsFor. */
+    expect(SERVICE).toMatch(/totalSessions:\s*(?:aDailyCheckInWithNoEndSaid\(ground as any\) \? undefined : )?totalSessionsFor\(/);
   });
 
   it('and derives it from the same timeline and cadence the header uses', () => {

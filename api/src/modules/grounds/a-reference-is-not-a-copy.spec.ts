@@ -138,7 +138,7 @@ describe('what an update is allowed to destroy', () => {
   });
 
   it('and reads the prior pointer in order to be able to keep it', () => {
-    expect(extract).toContain('select: { id: true, text: true, trackedUrl: true }');
+    expect(extract).toContain('select: { id: true, text: true, trackedUrl: true, awareness: true, authoredBy: true }');
   });
 });
 

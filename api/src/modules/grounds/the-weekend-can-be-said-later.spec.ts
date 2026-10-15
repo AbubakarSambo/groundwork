@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { workingDaysOf, theNextDayTheyWork, isAWorkingDay } from './which-days-this-team-works';
 
@@ -12,7 +12,10 @@ import { workingDaysOf, theNextDayTheyWork, isAWorkingDay } from './which-days-t
  */
 const SERVICE = readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const CONTROLLER = readFileSync(join(__dirname, 'grounds.controller.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-const ADMIN_PAGE = readFileSync(join(__dirname, '../../../../client/src/pages/grounds/GroundAdminPage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+/* The settings tab moved into its own file (People and setup, rebuilt from the shared parts on
+   29 September); GroundAdminPage keeps the drafts and passes them in as props. Both are read. */
+const readClient = (f: string) => readFileSync(join(__dirname, '../../../../client/src/pages/grounds', f), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const ADMIN_PAGE = readClient('GroundAdminPage.tsx') + '\n' + readClient('CheckInPeopleAndSetup.tsx').replace(/props\./g, '');
 
 describe('the days a team works, after the check-in exists', () => {
   it('are accepted where the rhythm is changed', () => {
@@ -23,7 +26,7 @@ describe('the days a team works, after the check-in exists', () => {
 
   /* Changing when a check-in may open is the lead's call, like the rhythm itself. */
   it('and changing them is the lead\'s call', () => {
-    expect(SERVICE).toMatch(/const changesTheSchedule = requestedDays !== undefined \|\| dto\.cadence !== undefined \|\| dto\.workingDays !== undefined;/);
+    expect(SERVICE).toMatch(/const changesTheSchedule = requestedDays !== undefined \|\| dto\.cadence !== undefined \|\| dto\.workingDays !== undefined \|\| dto\.cadenceAnchorDay !== undefined;/);
   });
 
   it('and the change is on the record like every other schedule change', () => {
@@ -49,16 +52,28 @@ describe('the days a team works, after the check-in exists', () => {
   it('and the lead has somewhere to say it', () => {
     expect(ADMIN_PAGE).toMatch(/<WhichDaysTheyWork value=\{workingDaysDraft\} onChange=\{setWorkingDaysDraft\} \/>/);
     /* Sent with the rhythm it belongs to, and the save button knows it changed. */
-    expect(ADMIN_PAGE).toMatch(/saveSetup\.mutate\(\{ timelineDays: timelineDaysDraft, cadence: cadenceDraft, workingDays: workingDaysDraft \}\)/);
+    /* The save goes through one helper now (`theTimeframeToSave`, which also sends the end on the
+       field); what this guards is unchanged: the days travel with the rhythm and the length. */
+    expect(ADMIN_PAGE).toMatch(/saveSetup\.mutate\(theTimeframeToSave\(/);
+    expect(ADMIN_PAGE).toMatch(/return \{ timelineDays: p\.timelineDaysDraft, cadence: p\.cadenceDraft, workingDays: p\.workingDaysDraft/);
     expect(ADMIN_PAGE).toMatch(/!sameDays\(workingDaysDraft, \(ground as \{ workingDays\?: number\[\] \}\)\.workingDays\)/);
   });
 
   /* One picker, not a second copy that quietly stops agreeing with the first. */
   it('and there is one picker in the product', () => {
     const client = join(__dirname, '../../../../client/src');
-    const entry = readFileSync(join(client, 'pages/enter/EntryChatPage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-    expect(entry).toMatch(/<WhichDaysTheyWork value=\{workingDays\} onChange=\{setWorkingDays\} \/>/);
+    const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const entry = strip(readFileSync(join(client, 'pages/enter/EntryChatPage.tsx'), 'utf8'));
+    /* The setup draws the shared picker over the page's own days. How its change is handled (it is
+       also kept in the saved session since the setup page, piece 3a) is not what this guards. */
+    expect(entry).toMatch(/<WhichDaysTheyWork value=\{workingDays\} onChange=\{/);
     expect(entry).not.toMatch(/Which days does this team work\?/);
+    /* And no other screen draws its own copy: the picker's own choices live in one file only. */
+    const files: string[] = [];
+    const walk = (d: string) => { for (const f of readdirSync(d)) { const full = join(d, f); if (statSync(full).isDirectory()) walk(full); else if (/\.tsx?$/.test(f) && !/\.spec\./.test(f)) files.push(full); } };
+    walk(client);
+    const drawsTheChoices = files.filter((f) => /['>"]Weekdays only['<"]|Any day is fine/.test(strip(readFileSync(f, 'utf8'))));
+    expect(drawsTheChoices.map((f) => f.slice(client.length + 1))).toEqual(['components/gw/WhichDaysTheyWork.tsx']);
   });
 });
 

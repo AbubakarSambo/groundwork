@@ -72,7 +72,7 @@ export class CoachService {
      */
     if (intention.length < MIN_INTENTION_LENGTH) {
       throw new BadRequestException(
-        'Tell us a little more about what you want help with - a line or two is enough. It is what the first reply is written from.',
+        'Tell us a little more about what you want help with, because a line or two is enough for the first reply to be written from.',
       );
     }
 
@@ -165,7 +165,7 @@ export class CoachService {
 
   async setStatus(id: string, status: string) {
     const allowed = ['new', 'contacted', 'booked', 'done', 'declined'];
-    if (!allowed.includes(status)) throw new BadRequestException(`Status must be one of: ${allowed.join(', ')}`);
+    if (!allowed.includes(status)) throw new BadRequestException(`That is not a status that can be used, so choose one of ${allowed.join(', ')}.`);
     return this.prisma.coachRequest.update({ where: { id }, data: { status } });
   }
 }

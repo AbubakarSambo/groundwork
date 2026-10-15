@@ -154,16 +154,29 @@ describe('what the record can support', () => {
   })
 })
 
+/**
+ * REVIEW ROUND 3, "YOUR WORK" REBUILD: BOTH CARDS MOVED INTO THE SHARED `YourWork` COMPONENT
+ * (components/gw/checkin/YourWork.tsx), which both pages now call for My work/My record instead
+ * of laying the same cards out twice. "Both views show the same two cards" still holds - more
+ * strongly than before, since there is now exactly one copy of the layout, not two that could
+ * drift apart - checked here as both pages calling `YourWork`, and `YourWork` itself carrying
+ * both cards.
+ */
 describe('and both views of a check-in show the same two cards', () => {
+  const YOUR_WORK = read('checkin/YourWork.tsx')
+
+  it('both cards live in the one shared component', () => {
+    expect(YOUR_WORK).toContain('<WhatYourRecordCanSupport')
+    expect(YOUR_WORK).toContain('<TheFiveThingsThatMakeItCheckable')
+  })
+
   /* the-two-views-are-a-pair: what a tab contains may differ by role; a person being a lead on one
      check-in and a party on another must not have to relearn the page. */
   it('the party view', () => {
-    expect(PARTY).toContain('<WhatYourRecordCanSupport')
-    expect(PARTY).toContain('<TheFiveThingsThatMakeItCheckable')
+    expect(PARTY).toContain('<YourWork')
   })
 
   it('and the view that runs the check-in', () => {
-    expect(LEAD).toContain('<WhatYourRecordCanSupport')
-    expect(LEAD).toContain('<TheFiveThingsThatMakeItCheckable')
+    expect(LEAD).toContain('<YourWork')
   })
 })

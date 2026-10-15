@@ -53,15 +53,23 @@ describe('the brief answers this band own question', () => {
 
   it('objectives still render alongside it - neither replaces the other', () => {
     expect(BAND).toContain('objectives.length > 0')
-    /* One table since 22 September 2026, grouped by whose number it is: thirteen cards, each
-       repeating "a number crosses a line", was the bulk she asked to be rid of. */
-    expect(BAND).toContain('const theTeams = objectives.filter')
-    expect(BAND).toContain('The whole check-in')
+    /* One table since 22 September 2026: thirteen cards, each repeating "a number crosses a line",
+       was the bulk she asked to be rid of. Since U.7 the table is its own file, TargetsBand.tsx, in
+       the prototype's shape: the team's rows first, each named "The whole team", then each share. */
+    expect(BAND).toContain('<TargetsBand')
+    const TABLE = readFileSync(join(__dirname, 'TargetsBand.tsx'), 'utf8')
+    expect(TABLE).toContain('const theTeams = targets.filter')
+    expect(TABLE).toContain("'The whole team'")
   })
 
-  it('the source line names what is actually there rather than claiming both', () => {
-    /* It read "from the lead's own check-in" unconditionally, which was untrue of a brief. */
-    expect(BAND).toContain('from setup, in the lead')
-    expect(BAND).toContain('from setup, and the lead')
+  it('the brief says whose words it is, rather than claiming both', () => {
+    /* It read "from the lead's own check-in" unconditionally, which was untrue of a brief. Since U.7
+       the targets are their own band, so the line is only about the brief, in the prototype's
+       sentence: "Your words, from setup. Everyone reads this before they answer." */
+    /* U.7 review: "Your words, from setup." only while the text everyone reads is her unchanged
+       words, and then the truthful sentence about who reads it. The rendered lines, for each reader,
+       are in the-context-page-as-each-reader-sees-it.spec.tsx. */
+    expect(BAND).toContain('{whoseWords ? `${whoseWords} ` : \'\'}')
+    expect(BAND).toContain('This is what everyone in this check-in reads before they answer.')
   })
 })

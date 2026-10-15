@@ -92,7 +92,7 @@ describe('it goes to them and nobody else', () => {
     );
     expect(branch.length).toBeGreaterThan(200);
     expect(branch).toMatch(/person\.findFirst/);
-    expect(branch).toMatch(/sendRoundDigest\(me\.email/);
+    expect(branch).toMatch(/sendMeThat\(me\.email/);
   });
 
   it('and there is no way to name a different recipient', () => {

@@ -1,11 +1,33 @@
+import { theActivationFunnel } from '../engagement/the-activation-funnel';
 import { Injectable, NotFoundException, BadRequestException, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnthropicService, ChatTurn } from '../conversation/anthropic.service';
 import { SEED_PROMPTS } from '../conversation/prompt-library';
-import { SEAT_RELATION_COUNT } from '../../common/seats';
+import { seatsByOrganisation } from '../../common/seats';
 import { Prisma } from '@prisma/client';
-import { A_CUSTOMER, A_REAL_CHECK_IN, A_REAL_SESSION, aRealUsageEvent, aMean, inRange, session2RateOfThoseDue, sinceFor } from './what-the-platform-has-actually-done';
+import { A_CUSTOMER, A_REAL_CHECK_IN, A_REAL_SESSION, CLOSED_BY_THE_CLOCK, usageEventsByCustomers, aMean, inRange, session2RateOfThoseDue, sinceFor } from './what-the-platform-has-actually-done';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
+
+/** What the start writes in `activated_by` when it activates a version itself (decision 74, item 6). */
+export const SEEDED_ON_START = 'seeded on start';
+/** What `activated_by` says when a version was activated by hand and nobody's id was given. */
+export const ACTIVATED_BY_HAND = 'by hand';
+
+/**
+ * WHETHER THE ACTIVE VERSION IS THE SEEDING'S OWN, SO A START MAY REPLACE IT (decision 74, item 6).
+ *
+ *   - `activated_by` is SEEDED_ON_START: the start activated it.
+ *   - `activated_by` is anything else: somebody activated it by hand. Never replaced.
+ *   - `activated_by` is empty: activated before this rule, when nothing wrote the column. It counts as
+ *     the seeding's own only when the seeding made it: its summary is "Seeded on deploy", or it is
+ *     version 1 with no summary, which is how prisma/seed.ts writes a key's first version. Anything
+ *     else, such as a version made through /prompts with a summary of its own, is kept.
+ */
+export function theSeedingActivatedIt(v: { activatedBy?: string | null; summary?: string | null; version?: number | null }): boolean {
+  if (v.activatedBy) return v.activatedBy === SEEDED_ON_START;
+  if (v.summary === 'Seeded on deploy') return true;
+  return v.version === 1 && !v.summary;
+}
 
 /**
  * The moat. Every prompt is versioned; every change is versioned against
@@ -26,13 +48,20 @@ export class PromptsService implements OnModuleInit {
   ) {}
 
   /**
-   * Seed-on-deploy (B7): ensure every seeded prompt key has an active version.
-   * Idempotent - skips when the active content already matches; otherwise
-   * activates the matching version or creates and activates a new one (history
-   * preserved). Runs on every boot, so a deploy that changes a seed prompt
-   * (e.g. report_synthesis) takes effect without manual SQL.
+   * Seed-on-deploy (B7): ensure every seeded prompt key has an active version, so a deploy that
+   * changes a seed prompt (e.g. report_synthesis) takes effect without manual SQL. History is kept.
+   *
+   * A START NEVER OVERWRITES A PROMPT SOMEBODY ACTIVATED BY HAND (decision 74, item 6). For each key:
+   *   - When the file's words are new, a new version is added ("Seeded on deploy"), always.
+   *   - It is made active only when the active version is the seeding's own (see
+   *     `theSeedingActivatedIt`), or when the key has no active version at all.
+   *   - When somebody activated the active version by hand, it stays active. The new words wait as
+   *     an inactive version, and the start says so in its log.
+   * Which is which is `activated_by`: the seeding writes SEEDED_ON_START there, and activating by
+   * hand through /prompts writes the admin's user id.
    */
   async onModuleInit() {
+    let kept = 0;
     for (const seed of SEED_PROMPTS) {
       const active = await this.prisma.promptVersion.findFirst({ where: { key: seed.key, isActive: true } });
       if (active && active.content === seed.content) continue;
@@ -41,15 +70,18 @@ export class PromptsService implements OnModuleInit {
         where: { key: seed.key, content: seed.content },
         orderBy: { version: 'desc' },
       });
-      if (sameContent) {
-        await this.activate(sameContent.id);
+      const theWords = sameContent ?? (await this.createVersion(seed.key, seed.content, 'Seeded on deploy'));
+
+      if (active && !theSeedingActivatedIt(active)) {
+        kept += 1;
+        this.logger.warn(
+          `The prompt "${seed.key}" was activated by hand (version ${active.version}), so it stays active. The words in the code are kept as version ${theWords.version}, not active.`,
+        );
         continue;
       }
-
-      const created = await this.createVersion(seed.key, seed.content, 'Seeded on deploy');
-      await this.activate(created.id);
+      await this.activate(theWords.id, SEEDED_ON_START);
     }
-    this.logger.log(`Prompt seed ensured for ${SEED_PROMPTS.length} key(s).`);
+    this.logger.log(`Prompt seed ensured for ${SEED_PROMPTS.length} key(s). ${kept} activated by hand stayed as they were.`);
   }
 
   async getActive(key: string) {
@@ -57,7 +89,7 @@ export class PromptsService implements OnModuleInit {
       where: { key, isActive: true },
       orderBy: { version: 'desc' },
     });
-    if (!prompt) throw new NotFoundException(`No active prompt for key "${key}"`);
+    if (!prompt) throw new NotFoundException('That prompt has no version in use yet, so choose a version to use.');
     return prompt;
   }
 
@@ -125,6 +157,7 @@ export class PromptsService implements OnModuleInit {
       stalledCheckIns,
       session5Count,
       avgDaysRaw,
+      activation,
     ] = await Promise.all([
       // 1. Completed sessions per session number (1-7)
       Promise.all(
@@ -133,7 +166,8 @@ export class PromptsService implements OnModuleInit {
         ),
       ),
 
-      // 2. Avg session duration in minutes, with the sample size (raw SQL)
+      // 2. Avg session duration in minutes, with the sample size (raw SQL). Only sessions a person
+      //    finished: the clock closes the rest a day later (see CLOSED_BY_THE_CLOCK).
       this.prisma.$queryRaw<{ session_number: number; avg_minutes: number; n: number }[]>`
         SELECT ci.session_number, ROUND(AVG(EXTRACT(EPOCH FROM (ci.completed_at - ci.started_at)) / 60)::numeric, 1)::float as avg_minutes, COUNT(*)::int as n
         FROM check_ins ci
@@ -141,6 +175,7 @@ export class PromptsService implements OnModuleInit {
         JOIN organizations o ON o.id = g.organization_id
         WHERE ci.status = 'COMPLETED' AND ci.started_at IS NOT NULL AND ci.completed_at IS NOT NULL
           AND ci.is_setup = false AND o.is_internal = false ${sinceSql}
+          AND ci.closed_reason IS DISTINCT FROM ${CLOSED_BY_THE_CLOCK}
         GROUP BY ci.session_number
         ORDER BY ci.session_number
       `,
@@ -180,6 +215,10 @@ export class PromptsService implements OnModuleInit {
         JOIN check_ins ci ON ci.ground_id = g.id
         WHERE ci.session_number = 1 AND ci.started_at IS NOT NULL AND ci.is_setup = false AND o.is_internal = false ${sinceSql}
       `,
+
+      // 11. How far each check-in got towards being useful, and what became of the mail sent to bring people back (engagement spec sections 2, 34 and 35)
+      /* An extra read: if it cannot be made, the rest of the tab still is. */
+      theActivationFunnel(this.prisma, since, now).catch(() => null),
     ]);
 
     // Build funnel with drop-off rates, each carrying the count it is a rate of
@@ -228,6 +267,7 @@ export class PromptsService implements OnModuleInit {
       stalledCheckIns,
       session5Count,
       avgDaysToFirstCheckin,
+      activation,
     };
   }
 
@@ -275,8 +315,12 @@ export class PromptsService implements OnModuleInit {
         orderBy: [{ key: 'asc' }, { version: 'desc' }],
         select: { id: true, key: true, version: true, isActive: true, activatedAt: true, createdAt: true },
       }),
+      /* WITH A TIME, OR NOT IN THE FEED (item 19). Postgres puts a null first in a descending
+         order, so one session marked complete with no completion time came first here, and the
+         sort below read its null date and threw: the whole System tab came back as an error. A
+         session with no time has no place in a list ordered by time; it is still counted above. */
       this.prisma.checkIn.findMany({
-        where: aSession,
+        where: { ...aSession, completedAt: { not: null } },
         orderBy: { completedAt: 'desc' },
         take: 15,
         select: {
@@ -321,13 +365,23 @@ export class PromptsService implements OnModuleInit {
       },
     });
 
+    /* CHECK-INS USING A VERSION ARE CHECK-INS (item 19). `groundsUsingIt` counted outcomes, which only
+       a check-in that reached an agreed end has: on the test database 24 against 1,393 customers'
+       check-ins that record a version, and the active version read 0. */
+    const groundsByVersion = await this.prisma.ground.groupBy({
+      by: ['promptVersionId'],
+      where: { ...A_REAL_CHECK_IN, promptVersionId: { not: null } },
+      _count: { id: true },
+    });
+    const groundsOn = new Map(groundsByVersion.map((r) => [r.promptVersionId, r._count.id]));
+
     const promptPerformance = promptVersions.map((pv) => {
       const pvOutcomes = outcomes.filter((o) => o.promptVersionId === pv.id);
       const pvFeedback = feedback.filter((f) => f.ground.promptVersionId === pv.id);
       const fairCount = pvFeedback.filter((f) => f.feltFair).length;
       return {
         ...pv,
-        groundsUsingIt: pvOutcomes.length,
+        groundsUsingIt: groundsOn.get(pv.id) ?? 0,
         outcomesResolved: pvOutcomes.filter((o) => o.resolvedState !== 'STALLED').length,
         fairnessRate: pvFeedback.length > 0 ? Math.round((fairCount / pvFeedback.length) * 100) : null,
         feedbackResponses: pvFeedback.length,
@@ -357,6 +411,7 @@ export class PromptsService implements OnModuleInit {
         groundLabel: g.label,
       })),
     ]
+      .filter((a) => a.at instanceof Date)
       .sort((a, b) => b.at.getTime() - a.at.getTime())
       .slice(0, 20);
 
@@ -379,14 +434,18 @@ export class PromptsService implements OnModuleInit {
     };
   }
 
-  /** Activate a version (deactivates other versions of the same key). */
-  async activate(id: string) {
+  /**
+   * Activate a version (deactivates other versions of the same key). `activatedBy` is who did it: the
+   * admin's user id when it is done by hand through /prompts, or SEEDED_ON_START when the start did
+   * it. A start never replaces a version activated by hand (see onModuleInit).
+   */
+  async activate(id: string, activatedBy: string = ACTIVATED_BY_HAND) {
     const target = await this.prisma.promptVersion.findUnique({ where: { id } });
-    if (!target) throw new NotFoundException('Prompt version not found');
+    if (!target) throw new NotFoundException('That version of the prompt could not be found, so refresh the page.');
 
     await this.prisma.$transaction([
       this.prisma.promptVersion.updateMany({ where: { key: target.key }, data: { isActive: false } }),
-      this.prisma.promptVersion.update({ where: { id }, data: { isActive: true, activatedAt: new Date() } }),
+      this.prisma.promptVersion.update({ where: { id }, data: { isActive: true, activatedAt: new Date(), activatedBy } }),
     ]);
     return this.prisma.promptVersion.findUnique({ where: { id } });
   }
@@ -411,7 +470,7 @@ export class PromptsService implements OnModuleInit {
       where: { id: organizationId },
       select: { id: true, name: true, slug: true },
     });
-    if (!org) throw new NotFoundException('Organisation not found');
+    if (!org) throw new NotFoundException('We could not find that organisation, so sign in again and try once more.');
 
     const users = await this.prisma.user.findMany({
       where: { organizationId },
@@ -460,9 +519,11 @@ export class PromptsService implements OnModuleInit {
         careFeeStatus: true,
         createdAt: true,
         isInternal: true,
-        _count: { select: { grounds: true, ...SEAT_RELATION_COUNT } },
+        _count: { select: { grounds: true } },
       },
     });
+    /* People by the seat rule the organisation's own People page and its plan read (item 19). */
+    const seats = await seatsByOrganisation(this.prisma);
 
     const lastSession = await this.prisma.checkIn.groupBy({
       by: ['groundId'],
@@ -491,7 +552,7 @@ export class PromptsService implements OnModuleInit {
       careFeeStatus: org.careFeeStatus,
       isInternal: org.isInternal,
       groundCount: org._count.grounds,
-      userCount: org._count.users,
+      userCount: seats.get(org.id) ?? 0,
       lastActivity: lastActivityMap[org.id] ?? null,
       createdAt: org.createdAt,
     }));
@@ -514,13 +575,7 @@ export class PromptsService implements OnModuleInit {
         where: { ...aSession, completedAt: { gte: fourteenDaysAgo } },
         select: { completedAt: true, sessionNumber: true },
       }),
-      aRealUsageEvent(this.prisma).then((byACustomer) =>
-        this.prisma.usageEvent.groupBy({
-          by: ['type'],
-          where: { ...byACustomer, ...inRange('createdAt', since) },
-          _count: { id: true },
-        }),
-      ),
+      usageEventsByCustomers(this.prisma, since),
       this.prisma.checkIn.count({ where: { ...aSession, ...inRange('completedAt', since) } }),
       this.prisma.ground.count({ where: { ...A_REAL_CHECK_IN, report: { releasedAt: since ? { gte: since } : { not: null } } } }),
       this.prisma.ground.count({ where: { ...A_REAL_CHECK_IN, ...inRange('createdAt', since) } }),
@@ -539,7 +594,7 @@ export class PromptsService implements OnModuleInit {
       if (key in dayBuckets) dayBuckets[key]++;
     }
 
-    const usageMap = Object.fromEntries(usageEvents.map(e => [e.type, e._count.id]));
+    const usageMap = usageEvents;
 
     return {
       range: range ?? 'all',
@@ -554,7 +609,7 @@ export class PromptsService implements OnModuleInit {
 
   /** Sandbox: send one message turn using a custom system prompt. Never persisted. */
   async testChat(systemPrompt: string, messages: ChatTurn[]): Promise<{ reply: string }> {
-    if (!messages || messages.length === 0) throw new BadRequestException('messages required');
+    if (!messages || messages.length === 0) throw new BadRequestException('There was nothing to send, so write a message and try again.');
     const reply = await this.anthropic.respond(systemPrompt, messages);
     return { reply };
   }
@@ -600,7 +655,17 @@ Rules: No verdicts. No judgements of any person. No em dashes. Straight quotes. 
   }
 
   async feedbackSummary() {
+    /* EVERY ANSWER, AND ONLY CUSTOMERS' (item 19). `total` and `fairRate` were read off the fifty most
+       recent answers, so past fifty the total stopped at 50 and the rate covered only the latest; and
+       our own organisations' answers were counted. Both are counted over all customers' answers now;
+       the list still shows the latest fifty. */
+    const ofACustomer = { ground: A_REAL_CHECK_IN };
+    const [total, fairCount] = await Promise.all([
+      this.prisma.outcomeFeedback.count({ where: ofACustomer }),
+      this.prisma.outcomeFeedback.count({ where: { ...ofACustomer, feltFair: true } }),
+    ]);
     const feedback = await this.prisma.outcomeFeedback.findMany({
+      where: ofACustomer,
       orderBy: { createdAt: 'desc' },
       take: 50,
       select: {
@@ -611,9 +676,6 @@ Rules: No verdicts. No judgements of any person. No em dashes. Straight quotes. 
         ground: { select: { label: true, organization: { select: { slug: true } } } },
       },
     });
-
-    const total = feedback.length;
-    const fairCount = feedback.filter(f => f.feltFair).length;
 
     return {
       total,

@@ -57,6 +57,14 @@ describe('on the published API', () => {
     expect(summariseValidation(['message must be a string'])).toBe('The request did not validate: message must be a string');
     expect(summariseValidation(['a must be x', 'b must be y'])).toBe('2 fields did not validate: a, b.');
     expect(codeFor(404)).toBe('not_found');
+  });
+
+  it('passes on a message a DTO wrote as a sentence for a person, without the colon (U.2 re-review)', () => {
+    expect(summariseValidation(['Your password needs a number or a symbol.'])).toBe('Your password needs a number or a symbol.');
+    expect(summariseValidation(['Your password needs at least 8 characters.', 'Your password needs a number or a symbol.']))
+      .toBe('Your password needs at least 8 characters. Your password needs a number or a symbol.');
+    /* A mix keeps the old summary: not every message is a sentence written for a person. */
+    expect(summariseValidation(['Your password needs a number or a symbol.', 'token must be a string'])).toBe('2 fields did not validate: Your, token.');
     expect(codeFor(503)).toBe('server_error');
   });
 });

@@ -22,27 +22,32 @@ import { describe, it, expect } from 'vitest'
  * Checked as source: the value is that the confirm exists and names the role, and a jsdom
  * test of `window.confirm` proves the mock more than the product.
  */
-const SRC = readFileSync(join(__dirname, 'AppShell.tsx'), 'utf8')
+/*
+ * U.3: THE CONFIRM BOX IS REPLACED, NOT REMOVED. The protection W8-71 asked for stays: one click in the
+ * menu never switches. It opens the prototype's "Choose an organisation" page (#/orgs), whose every
+ * row names the role you will have there, and the switch happens only when a row there is pressed.
+ * The old assertions read the `window.confirm` call and its wording, which no longer exist.
+ */
+const SRC = readFileSync(join(__dirname, 'your-organisations.ts'), 'utf8')
 const CODE = SRC.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+const PAGE = readFileSync(join(__dirname, '../../pages/org/OrgsPage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
 
 describe('the switcher asks first', () => {
-  it('nothing switches without a confirm', () => {
-    expect(CODE).toMatch(/if \(!window\.confirm\([\s\S]{0,200}\)\) return\s*\n\s*switchOrg\.mutate\(o\.id\)/)
+  it('one click in the menu never switches: it opens "Choose an organisation"', () => {
+    expect(CODE).not.toMatch(/switchOrganization/)
+    expect(CODE).toMatch(/navigate\('\/orgs'\)/)
   })
 
-  it('and the confirm names the organisation and the role', () => {
-    // The role change is the part nobody expects, so it is in the question.
-    expect(CODE).toMatch(/Switch to \$\{o\.name\}\?/)
-    expect(CODE).toMatch(/as a \$\{asRole\}/)
+  it('and that page names the role on every row, before anything is pressed', () => {
+    expect(PAGE).toMatch(/roleWord\(o\.role\)/)
   })
 
-  it('the active organisation is still not clickable', () => {
-    // Confirming a switch to where you already are would be a dialogue that does nothing.
-    expect(CODE).toMatch(/if \(o\.active \|\| switchOrg\.isPending\) return/)
+  it('the active organisation is still not switched to again', () => {
+    expect(CODE).toMatch(/if \(o\.active\) return/)
   })
 
-  it('and the switch still happens once confirmed', () => {
+  it('and the switch still happens, from the page', () => {
     // A guard that only ever blocks is a broken feature, not a safe one.
-    expect(CODE).toContain('switchOrg.mutate(o.id)')
+    expect(PAGE).toContain('authApi.switchOrganization(organizationId)')
   })
 })

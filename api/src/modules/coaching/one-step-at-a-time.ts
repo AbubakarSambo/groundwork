@@ -70,7 +70,11 @@ export interface CoachingStateShape {
  * The first batch offered Tunde a step for chasing on the strength of one unanswered email. One
  * instance is not one. The pattern engine's own rule is three periods before a detection surfaces;
  * a coaching step is an offer rather than a finding, so it waits for the same thing to be seen in
- * two distinct sessions. This is that count.
+ * two distinct PERIODS (decision 57, item 1, 30 September 2026) - what `Observation.sessionNumber`
+ * holds is a period number, from `periodOf`: on a weekly-or-slower ground that is the session
+ * number, unchanged; on a daily ground it is the calendar week, so several sessions in one week are
+ * not counted as recurrence on their own. This function itself only ever counts distinct numbers in
+ * whatever it is handed - the caller is where "session" became "period". This is that count.
  */
 export const SESSIONS_BEFORE_A_STEP = 2;
 export function seenInEnoughSessions(observations: Observation[] | undefined, noticed: string | null): boolean {

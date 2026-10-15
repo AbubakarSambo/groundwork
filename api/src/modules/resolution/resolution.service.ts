@@ -1,12 +1,23 @@
-import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, Optional, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { readsAsAnAdmin, WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS } from '../grounds/who-may-read-this-check-in';
+import { refuseSomeoneHeldForASeat, refuseSomeoneAwaitingTheOrganisation } from '../participants/held-for-a-seat';
+import { CANNOT_CHECK_IN_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { PrismaService } from '../prisma/prisma.service';
 import { IntelligenceService } from '../intelligence';
 import { ReportsService } from '../reports';
 import { EmailService } from '../email/email.service';
+/** What the lead reads when they choose "not settled yet" at the ending. */
+export const NOT_SETTLED_KEEPS_IT_RUNNING = 'Nothing has ended. This check-in keeps running. If it needs more time, choose "Give it more time".';
 import { endStatesFor, isValidEndState, closingNeedsEveryone } from './end-states';
 import { GroundStatus, PartyType } from '@prisma/client';
-import { labelsForParties, namesVisibleTo, displayName } from '../reports/party-labels';
+import { SuggestionsService } from '../suggestions/suggestions.service';
+import { ReviewsProposedService } from '../suites/the-reviews-proposed.service';
+import { theEndingPageFor } from './what-the-ending-page-reads';
+import { whoTheEndingIsAbout } from './who-the-ending-is-about';
+import { peersAreNamedOn } from '../reports/peers-are-named';
+import { whatEachLabelIsCalled } from '../reports/no-internal-label-reaches-anyone';
+import { labelsForParties, namesVisibleTo, displayName, plainWordsByPerson, atTheStart } from '../reports/party-labels';
 
 /**
  * Resolution. A ground closes only when every ACTIVE party confirms the SAME
@@ -30,6 +41,8 @@ export class ResolutionService {
     private reports: ReportsService,
     private email: EmailService,
     private config: ConfigService,
+    @Optional() private suggestions?: SuggestionsService,
+    @Optional() private reviewsProposed?: ReviewsProposedService,
   ) {}
 
   /**
@@ -40,17 +53,28 @@ export class ResolutionService {
    * over a check-in that had ended.
    */
   async get(groundId: string, userId: string) {
-    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { id: true, organizationId: true, initiatorId: true } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { id: true, organizationId: true, initiatorId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
+    });
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    /* Nobody held for a seat or waiting for the organisation reads how everybody else means to end it (privacy row 5). */
+    if (ground.initiatorId !== userId) {
+      await refuseSomeoneHeldForASeat(this.prisma as any, groundId, userId);
+      await refuseSomeoneAwaitingTheOrganisation(this.prisma as any, userId, CANNOT_CHECK_IN_YET);
+    }
     const isParty = !!(await this.prisma.groundParticipant.findFirst({ where: { groundId, userId }, select: { id: true } }));
     if (!isParty) {
       const admin = await this.prisma.user.findFirst({
         where: { id: userId, organizationId: ground.organizationId, role: 'ADMIN' },
-        select: { id: true },
+        select: { role: true, organizationId: true },
       });
-      if (!admin) throw new ForbiddenException('You are not part of this check-in.');
+      /* An admin reads the outcome of a performance plan, a promotion or a renewal only when given access
+         (decision 5, request 78), or when asked to approve it (decision 75, item 2); otherwise it is as if
+         there were no such check-in. Reading only: proposing and confirming below are unchanged. */
+      if (!admin || !readsAsAnAdmin({ ...admin, userId }, ground)) throw new ForbiddenException('You are not part of this check-in.');
     }
-    return this.buildState(groundId, userId);
+    return { ...(await this.buildState(groundId, userId)), theEndingPage: await theEndingPageFor({ prisma: this.prisma, suggestions: this.suggestions }, groundId, userId) };
   }
 
   /**
@@ -59,14 +83,14 @@ export class ResolutionService {
    * they all chose the same end state. If they diverge, the divergence is
    * surfaced (in the returned state) and the ground stays open.
    */
-  async propose(groundId: string, userId: string, endState: string) {
+  async propose(groundId: string, userId: string, endState: string, reason?: string) {
     const { ground, participant } = await this.assertParty(groundId, userId);
 
     if (ground.status === GroundStatus.CLOSED || ground.status === GroundStatus.RESOLVED) {
-      throw new BadRequestException('This check-in is already resolved');
+      throw new BadRequestException('This check-in has already ended, so there is nothing more to do here.');
     }
     if (!isValidEndState(ground.scenario, endState)) {
-      throw new BadRequestException(`"${endState}" is not a valid end state for this scenario`);
+      throw new BadRequestException('That is not a way this kind of check-in can end, so choose one from the list.');
     }
 
     /**
@@ -86,8 +110,33 @@ export class ResolutionService {
      */
     if (!closingNeedsEveryone(ground.scenario) && participant.partyType !== PartyType.INITIATOR) {
       throw new ForbiddenException(
-        'In this check-in, the lead decides how it ends. Your account and your corrections stand on the record beside theirs.',
+        'In this check-in, the lead decides how it ends. What you said and your corrections stand on the record beside theirs.',
       );
+    }
+
+    /**
+     * A PERSON DECIDES, GIVING A REASON (decisions rule 6, U.11).
+     *
+     * The lead's answer closes the check-in, so it is the decision, and a decision is never recorded
+     * without why. The people in the check-in read the reason with the outcome ("Kwame reads this
+     * with the outcome."). Checked here, not only on the screen, so no other way in can close a
+     * check-in on a bare outcome.
+     */
+    const why = (reason ?? '').trim();
+    if (!why) {
+      throw new BadRequestException(
+        'Say why, in a sentence or two. The people in this check-in read it with the outcome.',
+      );
+    }
+
+    /*
+     * "NOT SETTLED YET" DOES NOT END THE CHECK-IN (B-149, 10 October 2026). One of the outcomes read "It is not settled yet, and more sessions are needed.", and
+     * choosing it closed the check-in it says needs more sessions. It keeps the check-in running and records nothing as the ending. A proper way to extend
+     * from here is on the roadmap; "Give it more time" exists meanwhile.
+     */
+    if (endState === 'NOT_YET') {
+      this.logger.log(`Ground ${groundId}: "not settled yet" was chosen at the ending, so the check-in keeps running and nothing was closed.`);
+      return { ...(await this.buildState(groundId, userId)), keptRunning: true, saying: NOT_SETTLED_KEEPS_IT_RUNNING };
     }
 
     // GW-16: detect a proposal change BEFORE upserting so we can clear stale
@@ -104,8 +153,8 @@ export class ResolutionService {
     // live in ResolutionConfirmation.
     const resolution = await this.prisma.resolution.upsert({
       where: { groundId },
-      create: { groundId, endState },
-      update: { endState },
+      create: { groundId, endState, reason: why },
+      update: { endState, reason: why },
     });
 
     if (endStateIsChanging) {
@@ -164,7 +213,7 @@ export class ResolutionService {
       this.logger.warn(`Resolution on ${groundId} did not close: ${chosenStates.size} state(s) from ${confirmations.length} answer(s).`);
     }
 
-    return this.buildState(groundId);
+    return this.buildState(groundId, userId);
   }
 
   /**
@@ -178,7 +227,7 @@ export class ResolutionService {
     const { ground, participant } = await this.assertParty(groundId, userId);
 
     if (ground.status === GroundStatus.CLOSED || ground.status === GroundStatus.RESOLVED) {
-      throw new BadRequestException('This check-in is already resolved');
+      throw new BadRequestException('This check-in has already ended, so there is nothing more to do here.');
     }
     /** Authorisation first: a party with no say here should not be told which end states are valid. */
     /**
@@ -198,12 +247,12 @@ export class ResolutionService {
      */
     if (!closingNeedsEveryone(ground.scenario) && participant.partyType !== PartyType.INITIATOR) {
       throw new ForbiddenException(
-        'In this check-in, the lead decides how it ends. Your account and your corrections stand on the record beside theirs.',
+        'In this check-in, the lead decides how it ends. What you said and your corrections stand on the record beside theirs.',
       );
     }
 
     if (!isValidEndState(ground.scenario, proposedEndState)) {
-      throw new BadRequestException(`"${proposedEndState}" is not a valid end state for this scenario`);
+      throw new BadRequestException('That is not a way this kind of check-in can end, so choose one from the list.');
     }
 
     // Replace the current leading proposal and clear all existing confirmations
@@ -228,13 +277,21 @@ export class ResolutionService {
     // Notify the other active parties.
     const active = await this.prisma.groundParticipant.findMany({
       where: { groundId, userId: { not: null } },
-      select: { id: true, email: true, roleAsDescribed: true },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, email: true, partyType: true, createdAt: true, nameGiven: true, user: { select: { firstName: true, lastName: true, email: true } } },
     });
     /**
      * The eighth hand-written name chain. Same shape as the others: the role, else a raw address,
      * with the person's actual NAME never consulted - and this one goes out in an email.
+     *
+     * AND WITH NO NAME, NEITHER THE ROLE NOR THE ADDRESS. Request 36, 27 September 2026. The role on
+     * the row is the lead's own description of the person, which can hold the lead's private words,
+     * and this email goes to everybody else in the check-in. The address is not theirs to be shown to
+     * a peer either (see `displayName`). With no name, they are what every surface calls them
+     * (plainWordsByPerson): the one who proposes is the lead, so "The lead suggested how to wrap this up".
      */
-    const proposerLabel = displayName(participant as any) ?? participant.roleAsDescribed?.trim() ?? participant.email;
+    const proposerLabel = displayName(participant as any)
+      ?? atTheStart(plainWordsByPerson([participant as any]).get(participant.id) ?? 'a colleague');
     const frontend = this.config.get<string>('resend.frontendUrl') || '';
     /* The ground page: `/grounds/:id/resolution` has never been a client route, so both of
        these invitations to settle an end state landed on the not-found page. The panel that
@@ -244,7 +301,8 @@ export class ResolutionService {
     const others = active.filter((p) => p.id !== participant.id);
     for (const p of others) {
       await this.email
-        .sendResolutionProposal(p.email, proposerLabel, proposedEndState, groundUrl)
+        .sendResolutionProposal(p.email, proposerLabel, proposedEndState, groundUrl, ground.scenario,
+          whoTheEndingIsAbout(active as any, namesVisibleTo(p.id, active as any), p.id))
         .catch((err: any) =>
           this.logger.error(`Counter-proposal email failed for participant ${p.id}: ${err.message}`),
         );
@@ -288,7 +346,10 @@ export class ResolutionService {
     // GW-50: close-confirmation email to all parties simultaneously.
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { label: true, participants: { select: { email: true } } },
+      select: {
+        label: true, scenario: true,
+        participants: { orderBy: { createdAt: 'asc' }, select: { id: true, email: true, partyType: true, createdAt: true, nameGiven: true, user: { select: { firstName: true, lastName: true, email: true } } } },
+      },
     });
     if (ground) {
       const frontend = this.config.get<string>('resend.frontendUrl') || '';
@@ -296,11 +357,20 @@ export class ResolutionService {
       await Promise.all(
         ground.participants.map((p) =>
           this.email
-            .sendGroundClosed(p.email, ground.label, endState, groundUrl)
+            /* Each person reads the ending as it is said to them: the person leaving reads "Your role", the
+               lead reads their name, and nobody reads a name the check-in does not show them (request 123 item 8). */
+            .sendGroundClosed(p.email, ground.label, endState, groundUrl, ground.scenario,
+              whoTheEndingIsAbout(ground.participants as any, namesVisibleTo(p.id, ground.participants as any), p.id))
             .catch((err: any) => this.logger.error(`Close email failed for ground ${groundId}: ${err.message}`)),
         ),
       );
     }
+
+    /* When the check-in was about one person and they carry on, a review is PROPOSED to whoever runs
+       reviews. Only their yes starts it, and nothing goes to the person. Best-effort, like the rest. */
+    await this.reviewsProposed?.whenACheckInEnds(groundId).catch((err: any) =>
+      this.logger.error(`Proposing a review after ground ${groundId} closed failed: ${err?.message}`),
+    );
 
     this.logger.log(`Ground ${groundId} closed with end state ${endState}. Billing stopped.`);
   }
@@ -312,7 +382,7 @@ export class ResolutionService {
    */
   private async buildState(groundId: string, viewerUserId?: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     const resolution = await this.prisma.resolution.findUnique({
       where: { groundId },
@@ -327,6 +397,7 @@ export class ResolutionService {
         userId: true,
         partyType: true,
         createdAt: true,
+        nameGiven: true,
         roleAsDescribed: true,
         /** For `labelsForParties`, which reads the name before anything else. */
         user: { select: { firstName: true, lastName: true, email: true } },
@@ -359,13 +430,24 @@ export class ResolutionService {
      * name still gets their role here, and nobody ever gets an email address.
      */
     const viewer = viewerUserId ? active.find((p) => p.userId === viewerUserId) : undefined;
-    const names = namesVisibleTo(viewer?.id ?? null, active as any);
+    /* An admin who is not in it reads the ending as a person who is not the lead does, as the options below already say it. */
+    const viewerIsLead = viewer?.partyType === PartyType.INITIATOR;
+    /* The check-in's own setting for whether colleagues see each other's names (decision 115), as every report read takes it. */
+    const peersAreNamed = peersAreNamedOn(ground as any, { participantId: viewer?.id ?? null });
+    const names = namesVisibleTo(viewer?.id ?? null, active as any, viewerIsLead || peersAreNamed);
+    const called = whatEachLabelIsCalled(active as any, {
+      viewerParticipantId: viewer?.id ?? null,
+      viewerIsLead,
+      peersAreNamed,
+      readerIsYou: true,
+    });
     const choiceByParticipant = new Map((resolution?.confirmations ?? []).map((c) => [c.participantId, c.endState]));
     const confirmations = active.map((p) => {
       const label = labels.get(p.id) ?? 'A party';
       return {
       participantId: p.id,
-      label: names.get(label) ?? label,
+      /* The reader is "You"; a colleague is a name where this reader may see it, otherwise "a colleague". Never a label. */
+      label: atTheStart(called.get(label.toLowerCase()) ?? 'a colleague'),
       partyType: p.partyType,
       endState: choiceByParticipant.get(p.id) ?? null,
       confirmed: choiceByParticipant.has(p.id),
@@ -373,13 +455,26 @@ export class ResolutionService {
     });
 
     return {
+      /**
+       * The outcome, and why, once it is decided (U.11). `reason` is the lead's own words, written
+       * for the people in the check-in to read with the outcome (decisions rule 6). This read is
+       * served only to a party or an admin of the organisation - see `get` - so nobody else reads it.
+       * The label and the name are the screen's: this carries the stored value and the reason only.
+       */
       resolution: resolution
-        ? { id: resolution.id, groundId, endState: resolution.endState, closedAt: resolution.closedAt }
+        ? {
+            id: resolution.id,
+            groundId,
+            endState: resolution.endState,
+            closedAt: resolution.closedAt,
+            reason: resolution.closedAt ? (resolution.reason ?? null) : null,
+          }
         : null,
       confirmations,
       confirmedCount: confirmations.filter((c) => c.confirmed).length,
       totalActive: active.length,
-      options: endStatesFor(ground.scenario),
+      /* The ending about a person leaving names them, through the same names this panel reads (request 123 item 8). */
+      options: endStatesFor(ground.scenario, whoTheEndingIsAbout(active as any, names, viewer?.id ?? null)),
       groundStatus: ground.status,
       /**
        * Who closes this ground, so the screen can stop asking the wrong person.
@@ -392,12 +487,17 @@ export class ResolutionService {
        */
       leadDecides: !closingNeedsEveryone(ground.scenario),
       viewerIsLead: viewerUserId ? ground.initiatorId === viewerUserId : false,
+      /**
+       * Whether the reader is in the check-in at all. An admin who only reads it has no account of
+       * their own on it, so the screen must not tell them "your account is kept".
+       */
+      viewerIsParty: !!viewer,
     };
   }
 
   private async assertParty(groundId: string, userId: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /**
      * `user` is included so callers can NAME this person. `displayName` reads `user.firstName`, and
      * without the relation it silently returns null - so a label built from it would have fallen
@@ -407,7 +507,7 @@ export class ResolutionService {
       where: { groundId, userId },
       include: { user: { select: { firstName: true, lastName: true, email: true } } },
     });
-    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!participant) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
     return { ground, participant };
   }
 }

@@ -23,10 +23,14 @@ export function whenThisIsOver(a: {
   roundsPlanned: number | null;
   /** The day the run ends, where there is one. */
   endsOn: Date | null;
+  /** Runs until the lead ends it: no total, no end date, and nothing to say about how far through it is. */
+  runsUntilEnded?: boolean;
 }): string {
   const lines: string[] = [];
-  const planned = a.roundsPlanned ?? null;
-  if (planned != null && planned <= 1) {
+  const planned = a.runsUntilEnded ? null : a.roundsPlanned ?? null;
+  if (a.runsUntilEnded) {
+    lines.push(`This is session ${a.sessionNumber}. It runs until the lead ends it, so there is no set number of sessions and no end date.`);
+  } else if (planned != null && planned <= 1) {
     lines.push('This is a one-off read. When this conversation ends, that is the whole of it: there is no next session and nobody will be asked again.');
   } else if (planned != null) {
     const left = Math.max(0, planned - a.sessionNumber);
@@ -39,7 +43,7 @@ export function whenThisIsOver(a: {
   } else {
     lines.push(`This is session ${a.sessionNumber}. How many more there are has not been set.`);
   }
-  if (a.endsOn) lines.push(`The whole thing ends on ${onADay(a.endsOn)}.`);
+  if (a.endsOn && !a.runsUntilEnded) lines.push(`The whole thing ends on ${onADay(a.endsOn)}.`);
   return [
     'HOW LONG THIS RUNS (fact, not something to raise).',
     ...lines,

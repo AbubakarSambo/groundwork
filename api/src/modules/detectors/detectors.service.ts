@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { CheckInStatus, DependencyStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { A_GUESTS_KEY_BEGINS } from '../assistant/a-guests-questions-are-kept-apart';
 import { OnboardingService } from '../grounds/onboarding.service';
 import { findUndeclaredDependencies, SubjectRef, Mention, sayIt } from './nobody-wrote-the-dependency-down';
 import { ClearedHandoff, unblockingCredits } from './somebody-else-says-you-unblocked-them';
@@ -11,6 +12,7 @@ import { quietUntil } from '../subjects/detection-holds-its-tongue';
 import { STOPWORDS } from '../knowledge/knowledge.service';
 import { namesFor, turnMentions } from './a-name-is-how-people-say-it';
 import { turnsFromCheckIns } from './a-check-in-is-where-people-talk';
+import { theGuestsHere, isAGuestHere } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { findGoalDivergence, sayIt as sayDivergence } from './describing-the-same-goal-differently';
 import {
   ContributionRow, findUnrecognisedContributors, findNominalOnly, sayUnrecognised, sayNominal,
@@ -272,13 +274,15 @@ export class DetectorsService {
       bySubject.set(g.subjectExternalId!, [...(bySubject.get(g.subjectExternalId!) ?? []), g.id]);
     }
 
+    /* A guest's aims are theirs, never an entry's on this list. See a-guest-is-never-somebody-on-the-hosts-list. */
+    const guests = await theGuestsHere(this.prisma, organizationId);
     let n = 0;
     for (const [subjectExternalId, groundIds] of bySubject) {
       const rows = await this.prisma.personObjective.findMany({
         where: { groundId: { in: groundIds } },
         select: {
           text: true, createdAt: true,
-          participant: { select: { email: true } },
+          participant: { select: { email: true, userId: true } },
         },
         orderBy: { createdAt: 'asc' },
       });
@@ -288,6 +292,7 @@ export class DetectorsService {
       const accounts: { personExternalId: string; text: string }[] = [];
       for (const r of rows) {
         if (!r.participant?.email || !r.text) continue;
+        if (isAGuestHere(guests, r.participant)) continue;
         const person = await this.prisma.person.findFirst({
           where: { organizationId, email: r.participant.email.toLowerCase() },
           select: { externalId: true },
@@ -406,10 +411,16 @@ export class DetectorsService {
       where: { status: DependencyStatus.CLEARED, ground: { organizationId } },
       select: {
         what: true,
-        fromParticipant: { select: { email: true } },
-        onParticipant: { select: { email: true } },
+        fromParticipant: { select: { email: true, userId: true } },
+        onParticipant: { select: { email: true, userId: true } },
       },
     });
+    /*
+     * A GUEST IS NOBODY ON THIS LIST, on either side of a handoff. A guest who cleared something is
+     * not credited to an entry that shares their address, and a guest who was waiting makes no entry
+     * the one they were waiting on. See a-guest-is-never-somebody-on-the-hosts-list.
+     */
+    const guests = await theGuestsHere(this.prisma, organizationId);
     /*
      * EMAIL FIRST, HANDLE SECOND, AND BOTH BECAUSE NEITHER IS RELIABLE ALONE.
      *
@@ -428,13 +439,13 @@ export class DetectorsService {
     }
     const cleared: ClearedHandoff[] = [];
     for (const r of clearedRows) {
-      const from = byEmail.get(r.fromParticipant?.email?.toLowerCase() ?? '');
+      if (!r.fromParticipant || isAGuestHere(guests, r.fromParticipant)) continue;
+      const from = byEmail.get(r.fromParticipant.email?.toLowerCase() ?? '');
       if (!from) continue;
-      cleared.push({
-        what: r.what,
-        fromPersonKey: from,
-        onPersonKey: byEmail.get(r.onParticipant?.email?.toLowerCase() ?? '') ?? null,
-      });
+      const on = r.onParticipant && !isAGuestHere(guests, r.onParticipant)
+        ? byEmail.get(r.onParticipant.email?.toLowerCase() ?? '') ?? null
+        : null;
+      cleared.push({ what: r.what, fromPersonKey: from, onPersonKey: on });
     }
     for (const c of unblockingCredits(cleared, subjects)) {
       rows.push({ ...c, kind: 'UNBLOCKING' });
@@ -597,14 +608,20 @@ export class DetectorsService {
      * row and a Person reliably share. Somebody unmatchable is treated as HAVING checked in rather
      * than as having not: the failure of a join must never become an accusation about a person.
      */
+    const guests = await theGuestsHere(this.prisma, organizationId);
     const emails = new Set(
       (await this.prisma.groundParticipant.findMany({
         where: { ground: { organizationId }, checkIns: { some: { status: CheckInStatus.COMPLETED } } },
-        select: { email: true },
-      })).map((p) => p.email?.toLowerCase()).filter(Boolean) as string[],
+        select: { email: true, userId: true },
+      })).filter((p) => !isAGuestHere(guests, p)).map((p) => p.email?.toLowerCase()).filter(Boolean) as string[],
     );
+    /*
+     * An entry that carries a guest's address is neither credited with the guest's check-in nor
+     * told it never checked in: it is unmatchable, and the rule above holds. See
+     * a-guest-is-never-somebody-on-the-hosts-list.
+     */
     const checkedIn = new Set(
-      people.filter((p) => !p.email || emails.has(p.email.toLowerCase())).map((p) => p.externalId),
+      people.filter((p) => !p.email || guests.emails.has(p.email.toLowerCase()) || emails.has(p.email.toLowerCase())).map((p) => p.externalId),
     );
 
     /*
@@ -744,8 +761,9 @@ export class DetectorsService {
       contributorExternalIds: Array.isArray(r.contributorExternalIds) ? (r.contributorExternalIds as string[]) : [],
       parentExternalId: r.parentExternalId,
     }));
+    /* Never a guest's questions: a guest is not on this organisation's list, and what they ask is theirs. See a-guests-questions-are-kept-apart. */
     const assistantTurns = await this.prisma.assistantTurn.findMany({
-      where: { organizationId, role: 'person' },
+      where: { organizationId, role: 'person', NOT: { personExternalId: { startsWith: A_GUESTS_KEY_BEGINS } } },
       select: { personExternalId: true, content: true, createdAt: true },
       orderBy: { createdAt: 'desc' },
       take: 2_000,
@@ -765,17 +783,28 @@ export class DetectorsService {
       where: { role: 'PERSON', checkIn: { ground: { organizationId } } },
       select: {
         content: true, createdAt: true,
-        checkIn: { select: { participant: { select: { email: true, user: { select: { email: true } } } } } },
+        checkIn: { select: { participant: { select: { email: true, userId: true, user: { select: { email: true } } } } } },
       },
       orderBy: { createdAt: 'desc' },
       take: 4_000,
     }).catch(() => [] as any[]);
+    /*
+     * NEVER A GUEST'S WORDS. A guest is from another organisation and is on nobody's row here, so
+     * what they said is read as nobody's rather than as the words of an entry that happens to share
+     * their address. See a-guest-is-never-somebody-on-the-hosts-list.
+     */
+    const guests = await theGuestsHere(this.prisma, organizationId);
+    const notAGuest = (spoken as any[]).filter((t) => !isAGuestHere(guests, {
+      userId: t.checkIn?.participant?.userId ?? null,
+      email: t.checkIn?.participant?.email ?? null,
+      userEmail: t.checkIn?.participant?.user?.email ?? null,
+    }));
     const directory = await this.prisma.person.findMany({
       where: { organizationId },
       select: { externalId: true, email: true },
     }).catch(() => [] as any[]);
     const fromCheckIns = turnsFromCheckIns(
-      (spoken as any[]).map((t) => ({
+      notAGuest.map((t) => ({
         email: t.checkIn?.participant?.email ?? null,
         userEmail: t.checkIn?.participant?.user?.email ?? null,
         content: t.content,
@@ -783,6 +812,9 @@ export class DetectorsService {
       })),
       directory as any[],
     );
+    if (notAGuest.length < (spoken as any[]).length) {
+      this.logger.log(`Org ${organizationId}: ${(spoken as any[]).length - notAGuest.length} check-in turn(s) are a guest's, so they are not read here.`);
+    }
     if (fromCheckIns.unmatched) {
       this.logger.log(`Org ${organizationId}: ${fromCheckIns.unmatched} check-in turn(s) belong to somebody who is not in the directory, so they are not read here.`);
     }

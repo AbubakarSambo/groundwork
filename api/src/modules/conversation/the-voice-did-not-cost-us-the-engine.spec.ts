@@ -101,8 +101,17 @@ describe('the voice did not cost us the engine', () => {
     expect(prompt).toMatch(/name the blocker out loud/);
   });
 
-  it('still carries the role it is talking to, and the function it detected', () => {
-    expect(prompt).toMatch(/Renewals owner/);
+  /*
+   * THE ROLE, BUT ONLY IN THE PERSON'S OWN WORDS. Request 36, 27 September 2026: for somebody the
+   * lead invited, `roleAsDescribed` is the lead's sentence about them, and it no longer reaches that
+   * person's own session. The lead's own row is their own words, so the lead's session still carries
+   * it - that is the wiring this test exists to keep.
+   */
+  it('still carries the role it is talking to, where the role is in their own words', async () => {
+    expect(prompt).not.toMatch(/Renewals owner/);
+    const theLeads = await service({ step: 'name the blocker out loud', staircase: 'ownership' })
+      .composeSystemPrompt({ ...checkIn, participant: { ...checkIn.participant, partyType: 'INITIATOR' } });
+    expect(theLeads).toMatch(/Renewals owner/);
   });
 
   it('still carries what earlier sessions established, which is the whole over-time claim', () => {

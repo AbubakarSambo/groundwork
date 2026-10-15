@@ -38,7 +38,8 @@ describe('the card and the pack are one product', () => {
     )
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/^\s*\/\/.*$/gm, '');
-    for (const s of scenarios) {
+    /* The anchor's situation has no card to click: its door is the shared link, so there is no card for its name to differ from. */
+    for (const s of scenarios.filter((x) => x !== GroundScenario.HELP_TEAM_UNDERSTAND)) {
       const row = THE_SCENARIO_TABLE[s]!;
       expect(catalogue).toContain(`${s}: '${row.name.replace(/'/g, "\\'")}'`);
     }
@@ -68,7 +69,7 @@ describe('the card and the pack are one product', () => {
 
   it('puts the right cell in front of the model', () => {
     const lead = whatThisCheckInIsFor(GroundScenario.OKR_ALIGNMENT, PartyType.INITIATOR, 'first');
-    expect(lead).toContain('Set Goals and Keep the Team on Track');
+    expect(lead).toContain('Set goals and keep the team on track');
     expect(lead).toContain('Set goals and understand what each person is working towards.');
 
     const later = whatThisCheckInIsFor(GroundScenario.OKR_ALIGNMENT, PartyType.PARTICIPANT, 'second');

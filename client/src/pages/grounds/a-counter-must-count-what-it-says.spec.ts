@@ -23,65 +23,70 @@ import { join } from 'path'
 const SRC = readFileSync(join(__dirname, 'GroundsListPage.tsx'), 'utf8')
 const CODE = SRC.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
-describe('the tile says what it counts', () => {
-  it('is no longer labelled "Reports ready"', () => {
+/*
+ * U.5: THE TILES WENT, AND THE RULE THEY WERE HELD TO STAYS. The list was rebuilt to the prototype's
+ * sections ("You run 3 open", "You're in 2 open", "Finished"), so there is no "Waiting for you to
+ * read" tile and no attention banner any more. What these checks protected still holds, and is now
+ * checked where it lives: each count counts exactly the rows under it, a report nobody has read still
+ * raises its hand and sorts to the top, the legacy REPORT_READY status still counts, and a session
+ * past its date still surfaces. The rendered counts are checked in
+ * the-check-ins-list-as-each-reader-reads-it.spec.tsx.
+ */
+const ROW = readFileSync(join(__dirname, 'how-a-row-reads.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+
+describe('each count says what it counts', () => {
+  it('is no longer labelled "Reports ready", nor anything else that counts one thing and says another', () => {
     expect(CODE).not.toMatch(/label: 'Reports ready'/)
   })
 
-  it('and names the thing it actually measures', () => {
-    expect(CODE).toMatch(/label: 'Waiting for you to read'/)
-  })
-
-  it('while still counting the live signal, not the dead status', () => {
-    /**
-     * The value was already correct and had been fixed once - the old version counted grounds in
-     * REPORT_READY and sat permanently at zero. This must not regress to that.
+  it('"N open" counts exactly the rows in that section', () => {
+    /*
+     * UPDATED, GROUP 2 REBUILD: the page's own local `Section({ title, count })` is gone; each
+     * heading is now the SHARED `Section` (components/gw/ui/Section.tsx), whose prop is `note`, and
+     * the shared `CheckInsTable` takes its rows as children (`CheckInRow` elements), not a `rows`
+     * array prop. The finding this test is named for - each section's count is the length of the
+     * rows actually drawn under it, not a separate number that can drift from them - still holds,
+     * checked the same way, against the new component names.
      */
-    expect(CODE).toMatch(/const reportsReady = grounds\.filter\(g => \(g as any\)\.reportWaitingForMe\)\.length/)
+    expect(CODE).toMatch(/<Section heading="You run" note=\{`\$\{youRun\.length\} open`\}>/)
+    expect(CODE).toMatch(/note=\{`\$\{youreIn\.length\} open`\}/)
+    expect(CODE).toMatch(/\$\{others\.length\} open/)
+    expect(CODE).toMatch(/const open = rows\.filter\(r => !isFinished\(r\.g\)\)/)
   })
 })
 
 describe('a report nobody has read can raise its hand', () => {
-  it('the attention filter reads the live signal', () => {
-    expect(CODE).toMatch(/reportWaitingForMe \|\| g\.status === 'REPORT_READY' \|\| \(g\.overdue \?\? 0\) > 0/)
+  it('reads the live signal', () => {
+    /* Live walk, 6 October: the legacy status now reads "Your" only to somebody in the check-in, so
+       the two signals are separate lines; both still raise the row. */
+    expect(ROW).toMatch(/if \(g\.reportWaitingForMe\) needs = \{ text: 'Your report is ready'/)
+    expect(ROW).toMatch(/else if \(g\.status === 'REPORT_READY'\) needs = /)
   })
 
   it('and so does the ordering, so it sorts to the top', () => {
-    const sort = CODE.slice(CODE.indexOf('const urgency ='))
-    expect(sort.slice(0, 200)).toMatch(/reportWaitingForMe/)
+    const sort = CODE.slice(CODE.indexOf('function byWhatNeedsYou'))
+    expect(sort.slice(0, 300)).toMatch(/tone === 'proven' \? 0/)
   })
 
   it('but the legacy status still counts, because old rows carry it', () => {
-    /**
-     * Deliberately kept rather than deleted. Grounds written before the release change really are
-     * REPORT_READY, and dropping the test would silently stop surfacing them.
-     */
-    expect(CODE).toMatch(/g\.status === 'REPORT_READY'/)
+    expect(ROW).toMatch(/g\.status === 'REPORT_READY'/)
   })
 
-  it('an overdue check-in still surfaces too', () => {
-    /** The control: this was the only thing that worked before, and it must keep working. */
-    expect(CODE).toMatch(/\(g\.overdue \?\? 0\) > 0/)
+  it('a session past its date still surfaces, and says how long ago it opened', () => {
+    expect(ROW).toMatch(/a\.kind === 'yours' \|\| a\.kind === 'overdue'\) needs = \{ text: 'Your turn'/)
+    expect(ROW).toMatch(/a\.kind === 'overdue'\) stands = `It opened \$\{a\.daysLate\} days ago`/)
   })
 })
 
 /* -------------------------------------------------------------------------- */
 
-describe('the rollout counter and the cards it sits above', () => {
+describe('the new organisation\'s checklist says what it counts', () => {
+  /* U.3: "Setting up <organisation>" and its "1 of 4 needed, plus 1 optional" are replaced by the
+     prototype's "Get <organisation> going" and "0 of 4 done", which counts every row it shows. The
+     WhatsApp row is only shown, and only counted, while WhatsApp is switched on. */
   const SRC = readFileSync(join(__dirname, 'an-admin-lands-on-a-check-in-list.tsx'), 'utf8')
 
-  it('says what it counts, because "1 of 4" above five cards reads as a bug', () => {
-    /*
-     * And it was not a bug. Connect is optional and the counter was right to leave it out. Being
-     * right is not enough when the two numbers a person can see disagree with each other.
-     */
-    expect(SRC).toContain('{done} of {counted.length} needed')
-    expect(SRC).toContain('plus ${steps.length - counted.length} optional')
-  })
-
-  it('marks the optional card as optional where the eye lands, not in the body text', () => {
-    expect(SRC).toContain('>Optional</span>')
-    /* The old version buried it at the start of the description, where it read as part of it. */
-    expect(SRC).not.toContain("'Optional. '")
+  it('counts exactly the rows it shows', () => {
+    expect(SRC).toContain('{done} of {steps.length} done')
   })
 })

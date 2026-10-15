@@ -64,3 +64,18 @@ describe('and a short brief is not held to a long brief\'s bar', () => {
     expect(itNamesWhatThisIsAbout('Anything at all.', null)).toBe(true);
   });
 });
+
+describe('a telling does not promise a report nobody set up', () => {
+  const { theTellingHolds } = require('./what-a-participant-is-told-about-this');
+  it('leaves out "you will receive a consolidated report each time" and keeps the sentence about the quarter', () => {
+    const told = theTellingHolds(
+      'It is for understanding how the quarterly priorities are going and what is blocking you. You will be asked for your answers every week, and you will receive a consolidated report each time.',
+      { about: 'quarterly priorities' },
+    );
+    expect(told).toBe('It is for understanding how the quarterly priorities are going and what is blocking you.');
+  });
+  it('and a report promised to everyone, in other words, is left out too', () => {
+    const told = theTellingHolds('This is about the quarterly priorities. Everyone who takes part will receive the report.', { about: 'quarterly priorities' });
+    expect(told).toBe('This is about the quarterly priorities.');
+  });
+});

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { railAttention, railRank, stillInRail, OVERDUE_AFTER_DAYS, RAIL_KEEPS_CLOSED_FOR_DAYS } from './rail-attention'
+import { openRound, railAttention, railRank, stillInRail, OVERDUE_AFTER_DAYS, RAIL_KEEPS_CLOSED_FOR_DAYS } from './rail-attention'
 
 /**
  * THE RAIL'S ATTENTION STATE.
@@ -88,6 +88,47 @@ describe('somebody who is not a party to the check-in', () => {
   })
 })
 
+/**
+ * B-078: A LEAD WHO ONLY MANAGES IS NOT COUNTED. In an anchor check-in (`HELP_TEAM_UNDERSTAND`),
+ * Grace runs it and never checks in - `whoIsInRound` already leaves her out of this exact count
+ * everywhere else on the page, but this function counted her (and her completed set-up round) as a
+ * party, so "Three of the four have not answered yet." was said about three people, none of whom
+ * had answered.
+ */
+describe('a lead who only manages is left out of how many are still out', () => {
+  const anchorGround = (over: Partial<Parameters<typeof railAttention>[0]> = {}) => ({
+    scenario: 'HELP_TEAM_UNDERSTAND',
+    participants: [
+      { id: 'p-grace', userId: 'u-grace', managingOnly: true },
+      { id: 'p-amani', userId: 'u-amani' },
+      { id: 'p-juma', userId: 'u-juma' },
+      { id: 'p-zola', userId: 'u-zola' },
+    ],
+    checkIns: [],
+    ...over,
+  }) as any
+
+  it('"none of the three has answered yet", not "three of the four"', () => {
+    const g = anchorGround({ checkIns: [
+      { participantId: 'p-grace', sessionNumber: 1, status: 'COMPLETED' },
+      { participantId: 'p-amani', sessionNumber: 1, status: 'NOT_STARTED' },
+      { participantId: 'p-juma', sessionNumber: 1, status: 'NOT_STARTED' },
+      { participantId: 'p-zola', sessionNumber: 1, status: 'NOT_STARTED' },
+    ] })
+    expect(railAttention(g, 'u-admin-not-in-it', NOW)).toEqual({ kind: 'waiting', done: 0, total: 3 })
+  })
+
+  it('a managing-only lead is left out past her own round in any scenario, the same rule everywhere', () => {
+    const g = anchorGround({ scenario: 'OTHER', checkIns: [
+      { participantId: 'p-grace', sessionNumber: 2, status: 'NOT_STARTED' },
+      { participantId: 'p-amani', sessionNumber: 2, status: 'COMPLETED' },
+      { participantId: 'p-juma', sessionNumber: 2, status: 'COMPLETED' },
+      { participantId: 'p-zola', sessionNumber: 2, status: 'NOT_STARTED' },
+    ] })
+    expect(railAttention(g, 'u-admin-not-in-it', NOW)).toEqual({ kind: 'waiting', done: 2, total: 3 })
+  })
+})
+
 describe('the order of the rail', () => {
   it('puts what needs you at the top, late first', () => {
     const order = [
@@ -118,5 +159,28 @@ describe('closed grounds leaving the rail', () => {
 
   it('an open ground always stays', () => {
     expect(stillInRail(ground(), NOW)).toBe(true)
+  })
+})
+
+describe('the waiting count is about a session that has opened', () => {
+  /*
+   * Found reading the admin's sidebar on the local check-in: session 3's rows existed, opening a week
+   * later, so the count said nobody had checked in for session 3 while two of five had finished
+   * session 2.
+   */
+  it('counts the latest open session, not one scheduled for next week', () => {
+    const NOW = new Date('2026-09-26T12:00:00Z')
+    const g = {
+      status: 'AWAITING_PARTIES',
+      participants: [{ id: 'a', userId: 'u-a' }, { id: 'b', userId: 'u-b' }, { id: 'c', userId: 'u-c' }],
+      checkIns: [
+        { participantId: 'a', sessionNumber: 2, status: 'COMPLETED', availableFrom: '2026-09-25T12:00:00Z' },
+        { participantId: 'b', sessionNumber: 2, status: 'COMPLETED', availableFrom: '2026-09-25T12:00:00Z' },
+        { participantId: 'c', sessionNumber: 2, status: 'IN_PROGRESS', availableFrom: '2026-09-25T12:00:00Z' },
+        { participantId: 'a', sessionNumber: 3, status: 'NOT_STARTED', availableFrom: '2026-10-03T12:00:00Z' },
+      ],
+    }
+    expect(openRound(g.checkIns, NOW)).toBe(2)
+    expect(railAttention(g, 'u-admin', NOW)).toEqual({ kind: 'waiting', done: 2, total: 3 })
   })
 })

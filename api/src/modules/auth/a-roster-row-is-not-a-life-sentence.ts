@@ -38,17 +38,3 @@ export function whatTheirWorkspaceIsCalled(firstName?: string | null, lastName?:
   return who ? `${first || who}'s workspace` : 'My workspace';
 }
 
-/** Why somebody cannot start a second one. Null where they can. */
-export function whyNotAnotherWorkspace(
-  { alreadyOwnsOne }: { alreadyOwnsOne: boolean },
-): string | null {
-  /*
-   * One is the point. This exists so somebody on a roster is not trapped, not so that anybody can
-   * mint organisations - a person with nine empty workspaces has a switcher that is worse than the
-   * trap was.
-   */
-  if (alreadyOwnsOne) {
-    return 'You already have your own workspace. Switch to it from the organisation menu.';
-  }
-  return null;
-}

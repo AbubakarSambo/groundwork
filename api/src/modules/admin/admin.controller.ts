@@ -1,5 +1,6 @@
-import { Controller, Get, Patch, Post, Param, Body, Headers, UseGuards, Logger, ForbiddenException, BadRequestException, HttpCode } from '@nestjs/common';
+import { Controller, Get, Patch, Post, Put, Param, Body, Headers, UseGuards, Logger, ForbiddenException, BadRequestException, HttpCode } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { IsEmail, IsInt, IsOptional, IsString, MaxLength, Max, Min } from 'class-validator';
 import { AdminService } from './admin.service';
 import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
@@ -17,8 +18,10 @@ const MIN_PLAN_AMOUNT_CENTS = 50;
 const MAX_PLAN_AMOUNT_CENTS = 500000;
 /** A seat cap larger than this is a typo, not a plan. Enterprise expresses unlimited with null. */
 const MAX_PLAN_MEMBER_CAP = 100000;
+/** The most WhatsApp messages a plan may allow in a month, against a typed extra zero. */
+const MAX_WHATSAPP_MONTHLY_LIMIT = 10_000_000;
 import { SubscriptionPlan, ApiAccessStatus } from '@prisma/client';
-
+import { whatTheStripeKeyIs } from '../billing/what-kind-of-stripe-key';
 // ---------------------------------------------------------------------------
 // OTP guard - reads X-Admin-OTP header and verifies it against the requesting
 // user's stored OTP before allowing destructive operations.
@@ -38,12 +41,12 @@ export class OtpGuard implements CanActivate {
     const req = context.switchToHttp().getRequest();
     const otp: string | undefined = req.headers['x-admin-otp'];
     if (!otp) {
-      throw new ForbiddenException('X-Admin-OTP header is required for this operation');
+      throw new ForbiddenException('Enter the code that was sent to you, then try again.');
     }
 
     const userId: string | undefined = req.user?.id;
     if (!userId) {
-      throw new ForbiddenException('Authenticated user not found');
+      throw new ForbiddenException('Your sign-in has run out, so sign in again.');
     }
 
     // verifyOtpForAdmin throws if invalid - let it bubble as 400/403
@@ -115,6 +118,32 @@ export class AdminController {
     return { freeMemberLimit: await this.pricing.getFreeMemberLimit() };
   }
 
+  @Get('pricing/free-trial')
+  @ApiOperation({ summary: 'The free trial: whether it is on, the team size it is for, and how many months' })
+  async getFreeTrial() {
+    return this.pricing.getFreeTrial();
+  }
+
+  /** Switch it on only once billing really grants it (U.19); until then the screens stay quiet about it. */
+  @Patch('pricing/free-trial')
+  @ApiOperation({ summary: 'Change the free trial' })
+  async setFreeTrial(@CurrentUser('id') userId: string, @Body() body: { on?: boolean; teamsUnder?: number; months?: number }) {
+    return this.pricing.setFreeTrial(body ?? {}, userId);
+  }
+
+  @Get('pricing/anchor-trial')
+  @ApiOperation({ summary: 'The anchor trial: whether it is on. One month, up to 20 people besides the lead.' })
+  async getAnchorTrial() {
+    return this.pricing.getAnchorTrial();
+  }
+
+  /** Off until Hafsah turns it on. Only on or off: its length and size are fixed (anchor piece 34). */
+  @Patch('pricing/anchor-trial')
+  @ApiOperation({ summary: 'Switch the anchor trial on or off' })
+  async setAnchorTrial(@CurrentUser('id') userId: string, @Body() body: { on?: boolean }) {
+    return this.pricing.setAnchorTrial(body ?? {}, userId);
+  }
+
   @Patch('pricing/free-member-limit')
   @ApiOperation({ summary: 'Change the free member limit' })
   async setFreeMemberLimit(@CurrentUser('id') userId: string, @Body() body: { freeMemberLimit: number }) {
@@ -129,9 +158,12 @@ export class AdminController {
 
   @Patch('pricing/:plan')
   @ApiOperation({ summary: 'Update the monthly price (in cents) for a subscription plan' })
-  async setPricing(@Param('plan') plan: string, @Body() body: { amountCents?: number; memberCap?: number | null }) {
+  async setPricing(
+    @Param('plan') plan: string,
+    @Body() body: { amountCents?: number; memberCap?: number | null; whatsappAddOnCents?: number | null; whatsappMonthlyLimit?: number | null; extraSeatCents?: number | null; whatsappPersonCents?: number | null },
+  ) {
     if (!Object.values(SubscriptionPlan).includes(plan as SubscriptionPlan)) {
-      throw new BadRequestException(`Unknown plan: ${plan}`);
+      throw new BadRequestException('That plan does not exist, so choose one from the list.');
     }
 
     /**
@@ -147,15 +179,51 @@ export class AdminController {
     if (body?.memberCap !== undefined) {
       const cap = body.memberCap;
       if (cap !== null && (!Number.isInteger(cap) || cap < 1 || cap > MAX_PLAN_MEMBER_CAP)) {
-        throw new BadRequestException(`memberCap must be null for unlimited, or a whole number between 1 and ${MAX_PLAN_MEMBER_CAP}.`);
+        throw new BadRequestException(`The most people a plan allows must be left empty for no limit, or be a whole number between 1 and ${MAX_PLAN_MEMBER_CAP}.`);
       }
       await this.pricing.setMemberCap(plan as SubscriptionPlan, cap);
     }
 
+    /**
+     * WHATSAPP, THE PAID ADD-ON, AND ITS MONTHLY LIMIT (decision 78). Edited here the way the plan
+     * price is, so neither lives in code. The add-on price is bounded like a plan price, because it
+     * bills the same cards; null takes it off sale on this plan. The limit is a count of messages a
+     * month; null means no limit.
+     */
+    if (body?.whatsappAddOnCents !== undefined) {
+      const c = body.whatsappAddOnCents;
+      if (c !== null && (!Number.isInteger(c) || c < MIN_PLAN_AMOUNT_CENTS || c > MAX_PLAN_AMOUNT_CENTS)) {
+        throw new BadRequestException(`The WhatsApp price must be empty, or a whole number of cents between ${MIN_PLAN_AMOUNT_CENTS} and ${MAX_PLAN_AMOUNT_CENTS}.`);
+      }
+      await this.pricing.setWhatsAppAddOnCents(plan as SubscriptionPlan, c);
+    }
+    /*
+     * THE EXTRA SEAT AND WHATSAPP PER PERSON (fix list item 6): edited here like the plan price, so neither lives in code.
+     * A whole number of cents from 50 (Stripe refuses less) to $1,000; empty takes it off sale on this plan.
+     */
+    for (const [field, what, set] of [
+      ['extraSeatCents', 'An extra seat', (c: number | null) => this.pricing.setExtraSeatCents(plan as SubscriptionPlan, c)],
+      ['whatsappPersonCents', 'WhatsApp for each person', (c: number | null) => this.pricing.setWhatsAppPersonCents(plan as SubscriptionPlan, c)],
+    ] as const) {
+      const c = (body as any)?.[field];
+      if (c === undefined) continue;
+      if (c !== null && (!Number.isInteger(c) || c < MIN_PLAN_AMOUNT_CENTS || c > 100_000)) {
+        throw new BadRequestException(`${what} must be empty, or a whole number of cents between ${MIN_PLAN_AMOUNT_CENTS} and 100000.`);
+      }
+      await set(c);
+    }
+    if (body?.whatsappMonthlyLimit !== undefined) {
+      const l = body.whatsappMonthlyLimit;
+      if (l !== null && (!Number.isInteger(l) || l < 0 || l > MAX_WHATSAPP_MONTHLY_LIMIT)) {
+        throw new BadRequestException(`The WhatsApp limit must be empty for no limit, or a whole number of messages between 0 and ${MAX_WHATSAPP_MONTHLY_LIMIT}.`);
+      }
+      await this.pricing.setWhatsAppMonthlyLimit(plan as SubscriptionPlan, l);
+    }
+
     /** Enterprise has no self-serve price, but it does have a cap, so it reaches this method. */
     if (body?.amountCents === undefined) {
-      if (body?.memberCap === undefined) {
-        throw new BadRequestException('Nothing to change. Send amountCents, memberCap, or both.');
+      if (body?.memberCap === undefined && body?.whatsappAddOnCents === undefined && body?.whatsappMonthlyLimit === undefined && body?.extraSeatCents === undefined && body?.whatsappPersonCents === undefined) {
+        throw new BadRequestException('Nothing to change. Send amountCents, memberCap, extraSeatCents, whatsappPersonCents, whatsappAddOnCents or whatsappMonthlyLimit.');
       }
       return this.pricing.listPlans();
     }
@@ -163,7 +231,7 @@ export class AdminController {
       throw new BadRequestException('Enterprise is contact-sales only and has no self-serve price.');
     }
     if (!Number.isInteger(body?.amountCents) || body.amountCents <= 0) {
-      throw new BadRequestException('amountCents must be a positive integer');
+      throw new BadRequestException('The price must be a whole number of cents and more than nothing.');
     }
     /**
      * AND BOUNDED, BECAUSE THIS FIELD BILLS REAL CARDS.
@@ -176,7 +244,7 @@ export class AdminController {
      */
     if (body.amountCents < MIN_PLAN_AMOUNT_CENTS || body.amountCents > MAX_PLAN_AMOUNT_CENTS) {
       throw new BadRequestException(
-        `amountCents must be between ${MIN_PLAN_AMOUNT_CENTS} and ${MAX_PLAN_AMOUNT_CENTS} - Stripe refuses anything smaller, and anything larger is almost certainly a typo.`,
+        `The price must be between ${MIN_PLAN_AMOUNT_CENTS} and ${MAX_PLAN_AMOUNT_CENTS} cents, because Stripe refuses anything smaller and anything larger is almost certainly a typo.`,
       );
     }
     await this.pricing.setAmountCents(plan as SubscriptionPlan, body.amountCents);
@@ -199,12 +267,9 @@ export class AdminController {
   @Get('stripe')
   @ApiOperation({ summary: 'Whether a Stripe key is configured on this deployment. Never the key.' })
   stripeStatus() {
-    return {
-      isConfigured: this.stripe.isConfigured,
-      says: this.stripe.isConfigured
-        ? 'A Stripe key is set. Checkout and subscriptions will reach Stripe.'
-        : 'No Stripe key is set here, so nothing can be charged. Prices below can still be edited; they will apply when a key is set.',
-    };
+    const kind = this.stripe.keyKind ?? (this.stripe.isConfigured ? 'unknown' : 'none');
+    /* A placeholder is not a key that works, so it is not "configured" for anything that needs to charge. */
+    return { isConfigured: this.stripe.isConfigured && kind !== 'placeholder', keyKind: kind, ...whatTheStripeKeyIs(kind) };
   }
 
   @Get('whatsapp')
@@ -218,6 +283,43 @@ export class AdminController {
   async setWhatsAppEnabled(@Body() body: { enabled: boolean }, @CurrentUser('id') userId: string) {
     await this.whatsapp.setEnabled(!!body.enabled, userId);
     return this.whatsapp.getToggleState();
+  }
+
+  // ── Groundwork's own WhatsApp number and its keys (5 Oct 2026) ─────────────
+  // Set here by Groundwork staff instead of only in the server's settings. The
+  // secrets go in and never come back out: every answer below says "set" or
+  // "not set". See whatsapp/groundworks-own-number.ts.
+
+  @Get('whatsapp/settings')
+  @ApiOperation({ summary: "Groundwork's own WhatsApp number, its IDs, whether each secret is set, and the webhook address. Never a secret." })
+  getOurWhatsAppSettings() {
+    return this.whatsapp.ourNumberAsStaffReadIt();
+  }
+
+  @Put('whatsapp/settings')
+  @ApiOperation({ summary: "Save Groundwork's own WhatsApp number, its IDs and its secrets. Secrets are stored encrypted and never returned." })
+  async saveOurWhatsAppSettings(
+    @Body() body: { displayNumber?: string | null; phoneNumberId?: string | null; businessAccountId?: string | null; accessToken?: string; appSecret?: string; verifyToken?: string; remove?: string[] },
+    @CurrentUser('id') userId: string,
+  ) {
+    const changed = await this.whatsapp.ownNumber.save(body ?? {}, userId);
+    const page = await this.whatsapp.ourNumberAsStaffReadIt();
+    return { ...page, saved: changed.length ? 'Your changes are saved.' : 'Nothing was changed.' };
+  }
+
+  @Get('whatsapp/settings/connection')
+  @ApiOperation({ summary: "Whether Meta accepts the access token and phone number ID in use. One read of the number; never the token." })
+  ourWhatsAppConnection() {
+    return this.whatsapp.isOurNumberConnected();
+  }
+
+  @Post('whatsapp/settings/test')
+  @HttpCode(200)
+  /* Five a minute: a test is one message to one phone, not a way to message many. */
+  @Throttle({ global: { limit: 5, ttl: 60_000 } })
+  @ApiOperation({ summary: "Send one test message from Groundwork's number to the number typed, and to nobody else." })
+  sendOurWhatsAppTest(@Body() body: { to?: string }, @CurrentUser('id') userId: string) {
+    return this.whatsapp.sendOurTest(body?.to ?? '', userId);
   }
 
   // ── Read-only ─────────────────────────────────────────────────────────────
@@ -280,6 +382,18 @@ export class AdminController {
   @ApiOperation({ summary: 'Change the correction window. Whole days, 0 to 90.' })
   setCorrectionWindow(@CurrentUser('id') userId: string, @Body() body: { days: number }) {
     return this.adminService.setCorrectionWindow(Number(body?.days), userId);
+  }
+
+  @Get('suggestion-thresholds')
+  @ApiOperation({ summary: 'The thresholds that let a suggestion be reached, one per verdict. Support is set from the start (decision 61); keep, reward, plan and exit are empty until set (decision 33). A labels object comes alongside the values with the plain words for each field.' })
+  getSuggestionThresholds() {
+    return this.adminService.getSuggestionThresholds();
+  }
+
+  @Patch('suggestion-thresholds')
+  @ApiOperation({ summary: 'Set the thresholds that let a suggestion be reached. Replaces the whole set.' })
+  setSuggestionThresholds(@CurrentUser('id') userId: string, @Body() body: unknown) {
+    return this.adminService.setSuggestionThresholds(body, userId);
   }
 
   @Get('writers')
@@ -355,7 +469,7 @@ export class AdminController {
   @ApiOperation({ summary: 'Set isPlatformAdmin=true for a user by email' })
   @ApiHeader({ name: 'X-Admin-OTP', description: 'Valid 6-digit OTP obtained from POST /admin/otp/request', required: true })
   addPlatformAdmin(@Body() body: { email: string }) {
-    if (!body?.email) throw new BadRequestException('email is required');
+    if (!body?.email) throw new BadRequestException('Add an email address and try again.');
     return this.adminService.addPlatformAdmin(body.email);
   }
 
@@ -383,9 +497,10 @@ export class AdminController {
 
 
   /**
-   * THREE MONTHS ON THE HOUSE, GIVEN TO AN ADDRESS BEFORE THERE IS AN ORGANISATION.
+   * A FREE RUN ON THE HOUSE, GIVEN TO AN ADDRESS BEFORE THERE IS AN ORGANISATION. One month unless staff
+   * type another length: every free run is one month (Hafsah, 5 October 2026), where it used to be three.
    *
-   * Her words: "we put in someone's email and their org gets free use for three months, when they
+   * Her earlier words: "we put in someone's email and their org gets free use for three months, when they
    * sign-up, they see it." The promise waits on the address; the clock starts when they take it up.
    */
   @Get('free-runs')

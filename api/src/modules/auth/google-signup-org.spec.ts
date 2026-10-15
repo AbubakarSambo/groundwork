@@ -49,6 +49,8 @@ function makeService(over: {
     organization: {
       create: jest.fn(async (a: any) => ({ id: 'org-new', ...a.data })),
       findUnique: jest.fn(async () => null),
+      /* No organisation lets this domain join (the lookup added in the U.3 review). */
+      findMany: jest.fn(async () => []),
       /* The new organisation claims a holder in the same transaction. See
          `the-person-who-set-this-up.ts` - a workspace with nobody holding it can never get one. */
       updateMany: jest.fn(async () => ({ count: 1 })),

@@ -1,9 +1,12 @@
-import { whichRoundIsOpen } from '../board/which-round-is-open';
+import { theTeamsOpenRound } from '../board/which-round-is-open';
 import { CheckInStatus } from '@prisma/client';
+import { awayUntilOn, type Stretch } from '../suites/who-is-away';
 import { atAGlance, type AtAGlance } from './what-a-manager-needs-at-a-glance';
 import { totalSessionsFor } from './session-count';
+import { isNotLetInYet } from './who-an-admin-did-not-let-in';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
 import { notTheWordParty } from '../reports/not-the-word-party';
+import { inOneFormOfNumber, theStoryHasSomeoneToPointTo, theCountSaidRight } from '../reports/the-picture-in-plain-sentences';
 
 /**
  * HOW A CHECK-IN IS GOING, COMPUTED ONCE, BECAUSE THREE SCREENS ASK IT.
@@ -39,19 +42,48 @@ export interface WhatItTakes {
   cadence: string | null;
   /** The newest round's shared picture, if one has been taken. */
   sharedPicture: string | null;
+  /** The opening, written once as plain sentences. Preferred over slicing the picture. */
+  theOpening?: string | null;
+  /** Each person's approved leave, by participant id (week 23). Somebody away is not waited on. */
+  leave?: Map<string, Stretch[]>;
+  /** The check-ins list only: it adds where the team is in words, and keeps who the oldest blocker is waited on from, so it can be named to a reader who may be told. */
+  forTheList?: boolean;
+  /**
+   * The round the opening was written for, passed only to a reader who is told the count (the lead's board). The opening is written once, when the round's report is
+   * taken, with the count of that moment in its first sentence. While that round is the open one, the count is the record's now, so the board's story and its
+   * "active" line cannot disagree for the minutes the next report takes to write (decision 7: nothing is rebuilt on opening; this is arithmetic on the record).
+   */
+  storyRound?: number | null;
 }
 
 export function howACheckInIsGoing(it: WhatItTakes, now: Date = new Date()): HowItIsGoing {
-  const sessions = (it.checkIns ?? []).filter((ci) => !(ci as any).isSetup);
+  /*
+   * NOT LET IN YET, NOT WAITED ON (decision 77). A row still to answer, belonging to somebody an admin
+   * has not let in, neither keeps a round from being done nor holds the open round back. Anything
+   * they did answer still counts.
+   */
+  const heldOut = new Set(((it.participants ?? []) as any[]).filter(isNotLetInYet).map((p: any) => p.id));
+  const sessions = (it.checkIns ?? []).filter((ci) => !(ci as any).isSetup)
+    .filter((ci: any) => !(ci.participantId && heldOut.has(ci.participantId) && ci.status !== CheckInStatus.COMPLETED && ci.status !== CheckInStatus.DECLINED));
 
   /*
    * A round is done when EVERY party's check-in for it is COMPLETED, which is the rule the ground
    * page uses. Counting check-in rows instead reads as double on a two-party ground ("24 of 12").
    */
   const numbers = [...new Set(sessions.map((ci) => ci.sessionNumber))];
-  const roundsDone = numbers.filter((n) =>
-    sessions.filter((ci) => ci.sessionNumber === n).every((ci) => ci.status === CheckInStatus.COMPLETED),
-  ).length;
+  /* A row for somebody who was away when it opened, or is away now and has not answered, is not
+     waited on (week 23). Anything they did answer still counts. */
+  const excused = (ci: any): boolean => {
+    if (ci.status === CheckInStatus.COMPLETED || !it.leave || !ci.participantId) return false;
+    const mine = it.leave.get(ci.participantId);
+    if (!mine) return false;
+    const opened = ci.availableFrom ?? ci.createdAt;
+    return !!awayUntilOn(mine, now) || (!!opened && !!awayUntilOn(mine, new Date(opened)));
+  };
+  const roundsDone = numbers.filter((n) => {
+    const row = sessions.filter((ci) => ci.sessionNumber === n);
+    return row.every((ci) => ci.status === CheckInStatus.COMPLETED || excused(ci)) && row.some((ci) => ci.status === CheckInStatus.COMPLETED);
+  }).length;
 
   /*
    * Cut to three sentences here rather than on a screen, because a screen cannot tell where a
@@ -67,9 +99,22 @@ export function howACheckInIsGoing(it: WhatItTakes, now: Date = new Date()): How
    * guard was written to stop being a surprise. Applying it in the shared function rather than in
    * each caller means the next screen to ask this question cannot forget.
    */
-  const latestSummary = it.sharedPicture
-    ? sentencesIn(notTheWordParty(it.sharedPicture)).slice(0, 3).join(' ').trim() || null
-    : null;
+  /*
+   * THE OPENING, NOT THE FIRST THREE SENTENCES OF THE REPORT.
+   *
+   * This sliced `sharedPicture`, so the board's summary was whatever the report happened to open
+   * with - which, across the twenty-four-scenario run, was the glued opening every single time
+   * (problem 12 of twelve: "the board copies the report's first paragraph").
+   *
+   * The opening is now written once as plain sentences and kept in its own column, so this reads
+   * the sentence somebody wrote for the job. The slice stays as the fallback, for a report written
+   * before the column existed or one whose wording call fell back - flat, but never empty.
+   */
+  const latestSummary = (it as any).theOpening?.trim()
+    ? theStoryHasSomeoneToPointTo(inOneFormOfNumber(notTheWordParty(String((it as any).theOpening).trim())))
+    : it.sharedPicture
+      ? theStoryHasSomeoneToPointTo(inOneFormOfNumber(sentencesIn(notTheWordParty(it.sharedPicture)).slice(0, 3).join(' ').trim())) || null
+      : null;
 
   /*
    * THE HIGHEST SESSION NUMBER IS NEXT WEEK'S ROW, NOT THE OPEN ROUND.
@@ -88,21 +133,23 @@ export function howACheckInIsGoing(it: WhatItTakes, now: Date = new Date()): How
   const roundsPlanned = totalSessionsFor(it.timelineDays as any, it.cadence as any) ?? null;
   /* There is no round after the last planned one: a stray session-2 row on a one-session run made the board
      read "0 of 2 answered this round" to somebody who had just answered (21 Sep 2026). */
-  const openRoundRaw = sessions.length ? whichRoundIsOpen(sessions as any) : 1;
+  const openRoundRaw = sessions.length ? theTeamsOpenRound(sessions as any, (it.participants ?? []) as any) : 1;
   const openRound = roundsPlanned && roundsPlanned > 0 ? Math.min(openRoundRaw, roundsPlanned) : openRoundRaw;
   const glance = atAGlance(
     {
       roundsDone,
       roundsPlanned,
-      people: (it.participants ?? []) as any,
+      people: ((it.participants ?? []) as any[]).map((p: any) => ({ ...p, awayUntil: awayUntilOn(it.leave?.get(p.id), now) })) as any,
       /* Which round, and the situation, so the population rule can be asked rather than guessed at. */
       sessionNumber: openRound,
       scenario: (it as any).scenario ?? null,
       thisRound: sessions.filter((c) => (c.sessionNumber ?? 1) === openRound) as any,
       dependencies: (it.dependencies ?? []) as any,
+      forTheList: it.forTheList,
     },
     now,
   );
 
-  return { latestSummary, glance };
+  const countIsLive = !it.forTheList && !!latestSummary && it.storyRound != null && it.storyRound === openRound && glance.progress.ofPeople > 0;
+  return { latestSummary: countIsLive ? theCountSaidRight(latestSummary!, glance.progress.answeredThisRound, glance.progress.ofPeople) : latestSummary, glance };
 }

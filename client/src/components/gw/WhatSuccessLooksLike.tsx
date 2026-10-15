@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { reportsApi } from '@/api/reports'
+import { Note } from '@/components/gw/ui'
+import { withSentenceCase } from '@/lib/an-aim-reads-as-a-sentence'
 
 /**
  * WHERE YOU ARE AGAINST THE THING YOU WERE ASKED TO DEFINE.
@@ -58,12 +60,19 @@ const STATE: Record<'everyone' | 'only-yours', Record<ConditionState, { word: st
   },
 }
 
+/**
+ * U.10 PICTURE-CHECK ROUND 6, ITEM H: A CARD TITLE, THE PROTOTYPE'S WEIGHT.
+ * This drew at 13px, muted grey - the caption weight for a small label above something else, not
+ * a title. The prototype's own card titles ("What the target of 25 assumes", "To close the gap,
+ * two of these three") are 18px, bold, near-black. Matched here so every card on the board reads
+ * at the same weight.
+ */
 const Heading = ({ children, note }: { children: React.ReactNode; note?: string | null }) => (
-  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
-    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--gw-muted)' }}>
+  <div className="gwui-gap-10 gwui-mb-8" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+    <div className="gwui-fs-18 gwui-ink-text" style={{ fontWeight: 700 }}>
       {children}
     </div>
-    {note ? <div style={{ fontSize: 11, color: 'var(--gw-muted)', flexShrink: 0 }}>{note}</div> : null}
+    {note ? <div className="gwui-fs-13 gwui-ink-muted" style={{ flexShrink: 0 }}>{note}</div> : null}
   </div>
 )
 
@@ -100,11 +109,11 @@ export function WhatSuccessLooksLike({
   if (!data) return null
 
   if (dense) {
-    const line = data.stated || data.saying
+    const line = data.stated ? withSentenceCase(data.stated) : data.saying
     if (!line) return null
     return (
-      <div style={{ fontSize: 12.5, color: data.stated ? 'var(--gw-text)' : 'var(--gw-muted)', lineHeight: 1.65 }}>
-        <span style={{ fontWeight: 700, color: 'var(--gw-text)' }}>What success looks like. </span>
+      <div className={`gwui-fs-13 ${data.stated ? 'gwui-ink-text' : 'gwui-ink-muted'}`} style={{ lineHeight: 1.65 }}>
+        <span className="gwui-ink-text" style={{ fontWeight: 700 }}>What success looks like. </span>
         {line}
       </div>
     )
@@ -117,12 +126,14 @@ export function WhatSuccessLooksLike({
     return (
       <div>
         {!headingIsTheCallers && <Heading>What success looks like</Heading>}
-        <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', lineHeight: 1.65 }}>{data.saying}</div>
+        <div className="gwui-fs-13 gwui-ink-muted" style={{ lineHeight: 1.65 }}>{data.saying}</div>
       </div>
     )
   }
 
   const { count, of } = data.spokenTo
+  const conditions = data.conditions ?? []
+  const definitions = data.definitions ?? []
 
   return (
     <div>
@@ -130,8 +141,8 @@ export function WhatSuccessLooksLike({
           to reach the reader either way, so it moves onto its own line rather than going with it. */}
       {headingIsTheCallers
         ? (of > 0 && (
-          <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginBottom: 8 }}>
-            {`${count} of ${of} ${data.counting === 'only-yours' ? 'you have spoken to' : 'spoken to'}`}
+          <div className="gwui-mb-8">
+            <Note>{`${count} of ${of} ${data.counting === 'only-yours' ? 'you have spoken to' : 'spoken to'}`}</Note>
           </div>
         ))
         : (
@@ -141,35 +152,37 @@ export function WhatSuccessLooksLike({
         )}
 
       {data.stated ? (
-        <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.65 }}>
-          {data.stated}
+        <div className="gwui-fs-13 gwui-ink-text" style={{ lineHeight: 1.65 }}>
+          {/* B-141: this is the same stated aim BaselinePanel.tsx reads back, lower-cased exactly as
+              typed until this reads it. Only the first letter is touched (an-aim-reads-as-a-sentence.ts) */}
+          {withSentenceCase(data.stated)}
           {data.version && data.version > 1 ? (
             /* A changed goal is not a wiped record, and the schema says so in as many words. The
                version is shown because being read against something restated in week six is a
                different fact from being read against the original. */
-            <span style={{ color: 'var(--gw-muted)', fontSize: 11.5 }}> · restated, version {data.version}</span>
+            <span className="gwui-fs-13 gwui-ink-muted"> · restated, version {data.version}</span>
           ) : null}
         </div>
       ) : (
-        <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', lineHeight: 1.65 }}>{data.saying}</div>
+        <div className="gwui-fs-13 gwui-ink-muted" style={{ lineHeight: 1.65 }}>{data.saying}</div>
       )}
 
-      {data.conditions.length > 0 && (
-        <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 7 }}>
-          {data.conditions.map((c, i) => {
+      {conditions.length > 0 && (
+        <div className="gwui-gap-7 gwui-mt-12" style={{ display: 'flex', flexDirection: 'column' }}>
+          {conditions.map((c, i) => {
             const s = STATE[data.counting ?? 'everyone'][c.state]
             return (
-              <div key={i} style={{ display: 'flex', gap: 9, alignItems: 'flex-start' }}>
-                <div style={{ width: 6, height: 6, borderRadius: '50%', background: s.dot, flexShrink: 0, marginTop: 6 }} />
+              <div key={i} className="gwui-gap-9" style={{ display: 'flex', alignItems: 'flex-start' }}>
+                <div className="gwui-mt-6" style={{ width: 6, height: 6, borderRadius: '50%', background: s.dot, flexShrink: 0 }} />
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.5 }}>{c.text}</div>
+                  <div className="gwui-fs-13 gwui-ink-text" style={{ lineHeight: 1.5 }}>{c.text}</div>
                   {/*
                     THE MATCH IS SHOWN, NEVER JUST ASSERTED. A condition is put in a state by a line
                     somebody actually wrote, and that line is printed under it - so a reader who
                     thinks the match is wrong can see that it is wrong, rather than being told a
                     condition is moving and having to take the product's word for it.
                   */}
-                  <div style={{ fontSize: 11.5, color: s.tone, lineHeight: 1.5, marginTop: 1 }}>
+                  <div className="gwui-fs-13 gwui-tone gwui-mt-1" style={{ lineHeight: 1.5, ['--gwui-tone' as any]: s.tone }}>
                     {c.why ? <>{s.word}{c.who ? ` · ${c.who}` : ''}: “{c.why}”</> : s.word}
                   </div>
                 </div>
@@ -185,33 +198,50 @@ export function WhatSuccessLooksLike({
         so the honest answer ("they arrive with the report") is indistinguishable from nobody having
         answered.
       */}
-      {data.counting === 'only-yours' && data.conditions.length > 0 && (
-        <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 9, lineHeight: 1.5 }}>
+      {data.counting === 'only-yours' && conditions.length > 0 && (
+        <div className="gwui-fs-13 gwui-ink-muted gwui-mt-9" style={{ lineHeight: 1.5 }}>
           This is what you said against it. What everybody else has said arrives with the report.
         </div>
       )}
 
-      {data.definitions.length > 0 && (
-        <div style={{ marginTop: 13, paddingTop: 11, borderTop: '1px solid var(--gw-border)' }}>
-          <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 7 }}>
+      {definitions.length > 0 && (
+        <div className="gwui-rule-top gwui-mt-13 gwui-pt-11">
+          <div className="gwui-mb-7">
             {/* No verdict on whether these agree with the statement above. The report's own engine
                 decides what agrees and what diverges, reading the whole account; a second answer
                 worked out from word overlap would be the worse of two, printed next to the better
                 one. Both are on the page. That was the entire problem. */}
-            And what each person says it is
+            <Note tone="muted">And what each person says it is</Note>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {data.definitions.map((d, i) => (
-              <div key={i} style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55 }}>
-                <span style={{ color: 'var(--gw-text)', fontWeight: 600 }}>
-                  {/* Null is the reader's own line, and so is their own name when the surface
-                      resolved it - both say "You" rather than printing a name back at them, and
-                      neither says "Somebody", which is what the null used to become. */}
-                  {d.who === null || (yourName && d.who === yourName) ? 'You' : d.who}
-                </span>
-                {': '}{d.text}
-              </div>
-            ))}
+          <div className="gwui-gap-6" style={{ display: 'flex', flexDirection: 'column' }}>
+            {definitions.map((d, i) => {
+              /* Null is the reader's own line, and so is their own name when the surface
+                 resolved it - both say "You" rather than printing a name back at them, and
+                 neither says "Somebody", which is what the null used to become. */
+              const who = d.who === null || (yourName && d.who === yourName) ? 'You' : d.who
+              /*
+               * RE-REVIEW: A NAME, A COLON, A LINE READS AS A LABEL, NOT A SENTENCE - "Rukia
+               * Otieno: Twelve signed supply contracts..." is a transcript excerpt, not a plain
+               * sentence a person reads. "You"/a named colleague gets a plain sentence that says
+               * who is speaking.
+               *
+               * SECOND REVIEW, 30 SEPTEMBER: "You say I want us to sign 12 shops." mixed the
+               * reader's own voice into the middle of somebody's words, with no quotation marks -
+               * lower-casing the first letter (the earlier fix for "I" becoming "i") was itself
+               * the wrong repair, because a person's own words are never rewritten at all, not
+               * even by one letter. What somebody said now stays exactly as said, in quotation
+               * marks, and the lead-in is always past tense ("said"), whether it introduces "You"
+               * or a colleague - a report reads what happened, not what somebody is saying right
+               * now. "You said, "I want us to sign 12 shops."" / "Amani Wekesa said, "I am aiming
+               * for 3 shops in Kilimani.""
+               */
+              return (
+                <div key={i} className="gwui-fs-13 gwui-ink-sub" style={{ lineHeight: 1.55 }}>
+                  <span className="gwui-ink-text" style={{ fontWeight: 600 }}>{who}</span>{' '}
+                  said, “{d.text}”
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
@@ -220,11 +250,11 @@ export function WhatSuccessLooksLike({
 }
 
 /** The same band, fetching for itself, for pages that do not already hold a report. */
-export function WhatSuccessLooksLikeFor({ groundId, yourName, dense }: { groundId: string; yourName?: string | null; dense?: boolean }) {
+export function WhatSuccessLooksLikeFor({ groundId, yourName, dense, headingIsTheCallers }: { groundId: string; yourName?: string | null; dense?: boolean; headingIsTheCallers?: boolean }) {
   const { data } = useQuery({
     queryKey: ['against-success', groundId],
     queryFn: () => reportsApi.againstSuccess(groundId),
     enabled: !!groundId,
   })
-  return <WhatSuccessLooksLike data={data as AgainstSuccess | undefined} yourName={yourName} dense={dense} />
+  return <WhatSuccessLooksLike data={data as AgainstSuccess | undefined} yourName={yourName} dense={dense} headingIsTheCallers={headingIsTheCallers} />
 }

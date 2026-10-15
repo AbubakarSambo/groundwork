@@ -54,10 +54,13 @@ describe('the quick read', () => {
   it('and every tile says in a whole clause what its number is of', () => {
     /* The sub-line used to be a fragment - "differences between accounts", "across targets this
        session" - which is a caption on a number nobody could read. */
-    expect(SERVICE).toContain('still open, as the written report reads it');
-    expect(SERVICE).toContain('no target moved this session');
-    expect(SERVICE).toContain('nobody named anything holding work up');
-    expect(SERVICE).toContain('of what was said is anchored to a document');
+    expect(SERVICE).toContain('The written report reads this as still open.');
+    expect(SERVICE).toContain('No target changed this session.');
+    expect(SERVICE).toContain('Nobody named anything holding work up.');
+    /* Request 67: the last tile's sub is now a whole sentence of its own, "15 of every 100 things
+       people said have a document behind them.", so the old fragment is gone. */
+    expect(SERVICE).toContain('of every 100 things people said');
+    expect(SERVICE).not.toContain('of what was said is anchored to a document');
   });
 
   it('and none of them reads as a verdict on a person', () => {

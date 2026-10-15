@@ -9,6 +9,12 @@ export const GroundworkEvents = {
      new organisation, a request for the API, a request for a call or coaching. Listened to in
      back-office/the-team-is-told.service.ts. */
   ORG_SIGNED_UP: 'org.signedUp',
+  /* WHAT SOMEBODY SAID ABOUT THEIR TEAM'S SIZE on "Create an organisation" (U.3), asked only while the
+     free trial is on. Billing listens, and grants the trial to a team under its size (U.19). */
+  ORG_SIZE_SAID: 'org.sizeSaid',
+  /* A CHECK-IN WAS STARTED FROM THE ANCHOR LINK, with the anchor switch on (anchor piece 34). Billing listens, and gives
+     the anchor's one-month trial while its own setting is on. */
+  ANCHOR_CHECK_IN_STARTED: 'anchor.checkInStarted',
   API_ACCESS_ASKED: 'apiAccess.asked',
   CALL_ASKED: 'call.asked',
   /** A session became open to somebody. The moment a host system can tell them, in their own channel. */
@@ -38,7 +44,29 @@ export const GroundworkEvents = {
    * email/invite-bounced.listener.ts.
    */
   INVITE_BOUNCED: 'invite.bounced',
+  /**
+   * SOMETHING THEY SAID THEY WOULD DO WAS SETTLED, done or not done (week 9): by the check-in's own
+   * words after it finished, or by the person by hand. Settling from a check-in is a model call that
+   * finishes after CHECK_IN_COMPLETED has already fired, so anything counted from settled commitments
+   * (a suggestion, week 10) listens for this too, or it would always read the record one check-in late.
+   */
+  COMMITMENTS_SETTLED: 'commitments.settled',
+  /**
+   * SOMEBODY WAS MADE AN ADMIN of an organisation. The reviews suite listens, so an appeal that waits for an admin
+   * other than the reviewer is told to them at once (decision 113, suites/an-appeal-waits-for-a-new-admin.ts).
+   */
+  ADMIN_MADE: 'admin.made',
 } as const;
+
+export interface AdminMadeEvent {
+  organizationId: string;
+  userId: string;
+}
+
+export interface CommitmentsSettledEvent {
+  groundId: string;
+  participantId: string;
+}
 
 export interface InviteBouncedEvent {
   participantId: string;
@@ -69,6 +97,14 @@ export interface RoundCompletedEvent {
   sessionNumber: number;
   /** Who the round was waiting on, as it stood when it closed. */
   participantCount: number;
+  /**
+   * From the record, for what a person reads (reviewer, 14 October): how many the session waited on
+   * once leave was taken off, and how many of them actually gave an account (a refusal or a session
+   * the clock closed with nothing said is not one). The digest said "Everyone has checked in... 3
+   * people took part" when only the lead had.
+   */
+  waitedOn?: number;
+  accountsGiven?: number;
 }
 
 export interface GroundActivatedEvent {
@@ -104,10 +140,24 @@ export interface BlockerEvent {
    nobody-connects-without-being-let-in.spec: no exemption for us anywhere in the access gate). */
 export const API_ACCESS_ASKED_EVENT = 'apiAccess.asked';
 
+export interface AnchorCheckInStartedEvent {
+  organizationId: string;
+  groundId: string;
+}
+
+export interface OrgSizeSaidEvent {
+  organizationId: string;
+  said: 'fewer' | 'more';
+  /** The team size they were shown, which is the trial's size at the moment they answered. */
+  line: number;
+}
+
 export interface OrgSignedUpEvent {
   organizationId: string;
   organizationName: string;
   adminEmail: string;
+  /** True when the organisation was made by a sign-up that never asks the team's size, whether it was named on the form or left blank (decision 121, item 3). */
+  namedOnTheForm?: boolean;
 }
 
 export interface ApiAccessAskedEvent {
