@@ -107,7 +107,7 @@ describe('a visitor who is not signed in', () => {
     expect(text()).toContain('+$5 per extra seat')
     expect(text()).toContain('WhatsApp: +$4 a month per person who uses it')
     expect(text()).toContain('Every person with a Groundwork account counts as a seat. Each plan includes a number of seats; add more any time for +$5 a seat a month. Unlimited check-ins, sessions and reports.')
-    expect(text()).toContain('Your team can check in on WhatsApp instead of the app. You pay only for people who use it: $4 a person a month, on any plan, never more than your seats. It’s included in your free month.')
+    expect(text()).toContain('Your team can check in on WhatsApp instead of the app. You pay only for people who use it: $4 a person a month, on any plan, never more than your seats. It is included in your free month.')
   })
 })
 

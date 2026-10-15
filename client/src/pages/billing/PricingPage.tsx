@@ -264,7 +264,7 @@ export function PricingPage() {
           <div style={{ background: 'var(--gw-card)', border: '1.5px solid var(--gw-border)', borderRadius: 14, padding: '20px 24px', marginBottom: 32 }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>WhatsApp check-ins, on any plan</div>
             <p style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, margin: 0 }}>
-              {`Your team can check in on WhatsApp instead of the app. You pay only for people who use it: ${formatDollars(personCents)} a person a month, on any plan, never more than your seats.${trialSentence ? ' It’s included in your free month.' : ''}`}
+              {`Your team can check in on WhatsApp instead of the app. You pay only for people who use it: ${formatDollars(personCents)} a person a month, on any plan, never more than your seats.${trialSentence ? ' It is included in your free month.' : ''}`}
             </p>
           </div>
         )}
