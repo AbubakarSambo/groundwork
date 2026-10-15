@@ -1,5 +1,6 @@
 import { withoutTheirWordsHandedBack, withoutAnAnswerToItsOwnQuestion } from '../conversation/a-reply-neither-hands-back-their-words-nor-answers-itself';
 import { asksAboutTheirJobAgain, withoutTheJobQuestion } from '../conversation/their-role-in-the-first-check-in';
+import { theSettersRole } from '../../common/a-role-or-nothing';
 import { askedToFinish, isTheWordFinish } from '../conversation/close-readiness';
 import { aFinishTooSoon } from '../conversation/a-finish-too-soon-is-said-plainly';
 import { endingOnTheClose } from '../conversation/the-close-says-what-comes-next';
@@ -2520,7 +2521,8 @@ from finishing at all.`;
      * on that column. The report's yourRole is what the interview extracted; roleAsDescribed is the
      * typed fallback. Whichever is there goes on the initiator's own row.
      */
-    const setterRole = ((dto.report as any)?.yourRole ?? dto.roleAsDescribed ?? '').toString().trim().slice(0, 300);
+    /* A role, or nothing (staging test, 15 October): "I own my own 10 deals and the weekly review." is an answer, not a role. */
+    const setterRole = theSettersRole(dto as any);
     if (setterRole) {
       await this.prisma.groundParticipant
         .updateMany({ where: { groundId: ground.id, userId: initiatorId, partyType: PartyType.INITIATOR }, data: { roleAsDescribed: setterRole } })
