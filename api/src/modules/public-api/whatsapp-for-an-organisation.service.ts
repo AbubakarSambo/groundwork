@@ -115,7 +115,8 @@ export class WhatsAppForAnOrganisationService {
     /* Blue ticks and "typing…", on the number this arrived on. AFTER the two guards above, so a
        redelivery or a double tap raises nothing, and before the model is asked, which is the wait
        it exists to cover. Never throws; a receipt that did not go does not cost the reply. */
-    if (message.id) await this.whatsapp.weAreReadingThis(String(message.id), organizationId, via);
+    /* Optional and caught here too (15 October): a sender without it, or one that throws, still leaves the reply to go. */
+    if (message.id && typeof this.whatsapp.weAreReadingThis === 'function') await this.whatsapp.weAreReadingThis(String(message.id), organizationId, via).catch(() => undefined);
     await this.route(organizationId, from, whatArrived(message), {
       /* A reply quoting one of our messages, or a template's button, carries that message's id (decision 106 item 1). */
       repliesTo: typeof message.context?.id === 'string' ? message.context.id : null,
