@@ -63,13 +63,24 @@ const NOT_A_UNIT = new Set([
   'more', 'least', 'about', 'around', 'up', 'down', 'over', 'under', 'target', 'goal', 'objective', 'period', 'q1', 'q2', 'q3', 'q4',
 ]);
 
-function whatIsBeingCounted(name: string): string | null {
+/* A DIFFERENCE MUST BE A REAL ONE (staging test, 15 October). "40 paid sales by 31 December" was read as counted in
+   "december", and the report's headline told Hafsah her numbers were "in different terms (december, deal)". What comes
+   after "by", "before", "until", "in" or "on" says when or where, never what is counted, and a month is never a
+   unit. A deal and a sale are the same thing counted on a sales check-in. */
+const WHEN_OR_WHERE = /\s+(?:by|before|until|till|from|on|in|at|during|within|end\s+of|the\s+end\s+of)\s+.*$/i;
+const A_MONTH_OR_DAY = /^(?:jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|sept|september|oct|october|nov|november|dec|december|monday|tuesday|wednesday|thursday|friday|saturday|sunday)$/;
+const THE_SAME_THING: Record<string, string> = { deal: 'sale' };
+
+export function whatIsBeingCounted(name: string): string | null {
   const words = (name ?? '')
+    .replace(WHEN_OR_WHERE, '')
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, ' ')
     .split(/\s+/)
-    .filter((w) => w && !/^\d+[km]?$/.test(w) && !/^n\d/.test(w) && !NOT_A_UNIT.has(w) && !/ing$/.test(w));
-  return words.length ? words[words.length - 1].replace(/s$/, '') : null;
+    .filter((w) => w && !/^\d+[km]?$/.test(w) && !/^n\d/.test(w) && !NOT_A_UNIT.has(w) && !/ing$/.test(w) && !A_MONTH_OR_DAY.test(w));
+  if (!words.length) return null;
+  const one = words[words.length - 1].replace(/s$/, '');
+  return THE_SAME_THING[one] ?? one;
 }
 
 export interface HowTheNumbersSit {
