@@ -1157,21 +1157,19 @@ export class EmailService implements OnModuleInit {
    * Each is the day's one routine message (ROUTINE_EMAILS), so what became of it is returned for the once-only record.
    */
   async sendFreeMonthEndsSoon(email: string, subject: string, lines: string[], linkLabel: string): Promise<'sent' | 'held' | 'suppressed'> {
-    return this.sendTheFreeMonth(email, subject, lines, linkLabel, 'sendFreeMonthEndsSoon');
+    const context: DeliveryContext = { kind: 'OTHER' };
+    await this.sendEmail({ to: email, subject, html: this.theFreeMonthsHtml(lines, linkLabel) }, context, 'sendFreeMonthEndsSoon');
+    return context.outcome ?? 'sent';
   }
 
   async sendFreeMonthEnded(email: string, subject: string, lines: string[], linkLabel: string): Promise<'sent' | 'held' | 'suppressed'> {
-    return this.sendTheFreeMonth(email, subject, lines, linkLabel, 'sendFreeMonthEnded');
+    const context: DeliveryContext = { kind: 'OTHER' };
+    await this.sendEmail({ to: email, subject, html: this.theFreeMonthsHtml(lines, linkLabel) }, context, 'sendFreeMonthEnded');
+    return context.outcome ?? 'sent';
   }
 
-  private async sendTheFreeMonth(email: string, subject: string, lines: string[], linkLabel: string, sender: string): Promise<'sent' | 'held' | 'suppressed'> {
-    const context: DeliveryContext = { kind: 'OTHER' };
-    await this.sendEmail({
-      to: email,
-      subject,
-      html: this.layout(lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('') + `<p><a href="${this.frontendUrl}/billing">${escapeHtml(linkLabel)}</a></p>`),
-    }, context, sender);
-    return context.outcome ?? 'sent';
+  private theFreeMonthsHtml(lines: string[], linkLabel: string): string {
+    return this.layout(lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('') + `<p><a href="${this.frontendUrl}/billing">${escapeHtml(linkLabel)}</a></p>`);
   }
 
   /**
