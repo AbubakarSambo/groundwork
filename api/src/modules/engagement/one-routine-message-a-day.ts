@@ -21,6 +21,8 @@ import { formsOfTheSameNumber } from '../whatsapp/a-number-whatsapp-can-reach';
 export const ROUTINE_EMAILS: ReadonlySet<string> = new Set([
   'sendNudge', 'sendAbsenceReminder', 'sendActivationReminder', 'sendActivationRevealReminder', 'sendFeedbackRequest',
   'sendRoundDigest', 'sendTestCheckInMovesOn', 'sendHeresWhatIsNew', 'sendYourWeek', 'sendLeadFirstCheckIn', 'sendTheReportFollowUp', 'sendWhoHasGoneQuiet', 'sendWaitingOnThePeople', 'sendWhoHasNotStarted', 'sendTheLeadsDailyNudge', 'sendMissedCheckIns',
+  /* The free month's two emails to an admin (15 October): Groundwork decides to send them, so each is the day's one. */
+  'sendFreeMonthEndsSoon', 'sendFreeMonthEnded',
 ]);
 
 /** A WhatsApp message Groundwork writes first that is the day's routine one: every first message except a check-in opening or closing. */
