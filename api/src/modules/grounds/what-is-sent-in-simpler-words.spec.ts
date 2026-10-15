@@ -15,12 +15,12 @@ const REPORT = {
 
 describe('the WhatsApp messages after "finish"', () => {
   it('say what they always said with the switch off', () => {
-    expect(theCheckInIsCompleteSaying()).toBe('Your check-in is complete and on record. Your report follows in a moment.');
+    expect(theCheckInIsCompleteSaying()).toBe('Your check-in is complete and on record.');
     expect(theCheckInIsCompleteSaying(false)).toBe(theCheckInIsCompleteSaying());
     expect(enoughToCloseSaying(false)).toBe('That is enough to close this check-in. Reply "finish" to complete it, or keep going.');
   });
   it('say it in short plain sentences with the switch on', () => {
-    expect(theCheckInIsCompleteSaying(true)).toBe('Your check-in is finished, and your answers are saved. Your report will come in a moment.');
+    expect(theCheckInIsCompleteSaying(true)).toBe('Your check-in is finished, and your answers are saved.');
     expect(enoughToCloseSaying(true)).toBe('You have said enough to finish. Write "finish" to end this check-in, or keep talking.');
   });
 });
