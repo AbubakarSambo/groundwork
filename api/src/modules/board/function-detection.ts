@@ -153,16 +153,22 @@ export function detectFunction(
   roleAsDescribed: string | null | undefined,
   accountTexts: string[],
   previous?: { fn: string | null; confidence: number | null } | null,
+  kindOfWork?: string | null,
 ): DetectionResult {
   if (runsTheirOwnBusiness(roleAsDescribed)) {
     return { fn: null, confidence: 0, basis: 'Runs their own business; no office function applies, so nothing is read against a role map.' };
   }
-  const prior = priorFunctionFromRole(roleAsDescribed);
+  const stated = priorFunctionFromRole(roleAsDescribed);
+  /* Hafsah, 16 October 2026: a title that agrees with the check-in's kind of work counts as confirmed. See theKindOfWorkAgrees. */
+  const agrees = !!stated && theKindOfWorkAgrees(stated.fn, kindOfWork);
+  const prior = stated && agrees ? { fn: stated.fn, confidence: Math.max(stated.confidence, MIN_COACHING_CONFIDENCE) } : stated;
+  const cap = agrees && prior ? prior.confidence : 0.45;
+  const held = agrees ? 'It agrees with the kind of work this check-in is about, so it counts as confirmed.' : 'Held provisional.';
 
   if (accountTexts.length === 0) {
     // Nothing but a title. Deliberately below the coaching threshold.
     return prior
-      ? { fn: prior.fn, confidence: prior.confidence, basis: 'Stated role only, no account yet. Held provisional.' }
+      ? { fn: prior.fn, confidence: prior.confidence, basis: `Stated role only, no account yet. ${held}` }
       : { fn: null, confidence: 0, basis: 'No stated role and no account yet.' };
   }
 
@@ -179,7 +185,7 @@ export function detectFunction(
 
   if (scores.size === 0) {
     return prior
-      ? { fn: prior.fn, confidence: prior.confidence, basis: 'Account did not clearly show a function. Falling back to the stated role, held provisional.' }
+      ? { fn: prior.fn, confidence: prior.confidence, basis: `Account did not clearly show a function. Falling back to the stated role. ${held}` }
       : { fn: null, confidence: 0, basis: 'Account did not clearly show a function, and no stated role to fall back on.' };
   }
 
@@ -206,8 +212,8 @@ export function detectFunction(
     return prior
       ? {
         fn: prior.fn,
-        confidence: Math.min(prior.confidence, 0.45),
-        basis: `The account carries one word of ${topFn.toLowerCase().replace(/_/g, ' ')} work and nothing more, which is too little to read a function from. The stated role stands, held provisional.`,
+        confidence: Math.min(prior.confidence, cap),
+        basis: `The account carries one word of ${topFn.toLowerCase().replace(/_/g, ' ')} work and nothing more, which is too little to read a function from. The stated role stands${agrees ? ', and it agrees with the kind of work this check-in is about' : ', held provisional'}.`,
       }
       : {
         fn: null,
@@ -236,11 +242,11 @@ export function detectFunction(
      */
     return {
       fn: prior.fn,
-      confidence: Math.min(prior.confidence, 0.45),
-      basis: `Stated role is ${prior.fn.toLowerCase().replace(/_/g, ' ')}; the account reads more like ${topFn.toLowerCase().replace(/_/g, ' ')} work (${topHits} signals of ${total}). The stated role stands, held provisional.`,
+      confidence: Math.min(prior.confidence, cap),
+      basis: `Stated role is ${prior.fn.toLowerCase().replace(/_/g, ' ')}; the account reads more like ${topFn.toLowerCase().replace(/_/g, ' ')} work (${topHits} signals of ${total}). The stated role stands${agrees ? ', and it agrees with the kind of work this check-in is about' : ', held provisional'}.`,
     };
   } else if (prior && prior.fn === topFn) {
-    confidence += 0.1;
+    confidence = Math.max(confidence + 0.1, agrees ? prior.confidence : 0);
     basisParts.push('The stated role agrees with the account.');
   }
 
@@ -318,6 +324,31 @@ export function aFunctionThatMayBeUsed(
  * in their first check-in, however plainly their title said what they do. One way of putting the two
  * together, used by all three reads.
  */
+/**
+ * THE FUNCTION A CHECK-IN'S KIND OF WORK IS ABOUT, where it plainly is one (see board/the-kind-of-work.ts). Only
+ * the kinds whose work is one function: a law firm matter, a government programme or a founder's own
+ * check-in is not one office function, so it agrees with no title.
+ */
+export const THE_FUNCTION_OF_A_KIND_OF_WORK: Record<string, RoleFunction> = {
+  'sales org': RoleFunction.SALES,
+  'engineering release': RoleFunction.ENGINEERING,
+  'support desk': RoleFunction.SUPPORT,
+  'distribution operations': RoleFunction.OPS,
+};
+
+/**
+ * A TITLE THAT AGREES WITH THE CHECK-IN'S KIND OF WORK COUNTS AS CONFIRMED (Hafsah, 16 October 2026).
+ *
+ * "Sales executive" in a sales check-in is two people saying the same thing: the person, in their own
+ * title, and the lead, in what the check-in is about. Waiting for a third yes kept the sales coaching
+ * from a sales executive who gave up on a sale before the approved discount was offered. The person can
+ * still correct it, by the same route as before (PATCH /participants/:id).
+ */
+export function theKindOfWorkAgrees(fn: RoleFunction | string | null | undefined, kindOfWork: string | null | undefined): boolean {
+  if (!fn || !kindOfWork) return false;
+  return THE_FUNCTION_OF_A_KIND_OF_WORK[kindOfWork.trim().toLowerCase()] === fn;
+}
+
 export function theStatedRole(roleAsDescribed: string | null | undefined, jobTitle: string | null | undefined): string | null {
   return [roleAsDescribed, jobTitle].map((s) => (s ?? '').trim()).filter(Boolean).join('. ') || null;
 }

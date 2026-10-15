@@ -4105,7 +4105,13 @@ export class ConversationService {
       this.hasOtherPartyCheckedIn(checkIn.groundId, checkIn.participantId),
       this.prisma.adminProfile.findUnique({ where: { userId: ground.initiatorId }, select: { signals: true } }).catch(() => null),
     ]);
-    const groundState = await this.buildGroundState(checkIn.groundId, otherPartyCheckedIn, aCheckInStartedFromTheAnchor(ground) && (await theAnchorScenarioIsOn(this.prisma)) === true);
+    const groundState = await this.buildGroundState(checkIn.groundId, otherPartyCheckedIn, aCheckInStartedFromTheAnchor(ground) && (await theAnchorScenarioIsOn(this.prisma)) === true, {
+      sessionNumber: checkIn.sessionNumber,
+      participantId: checkIn.participantId,
+      /* Names only where this check-in names people to each other, for this reader: never in an evaluation
+         (a colleague stays unnamed to the person reviewed) and never on a private check-in. */
+      namesMayBeSaid: (ground as any).mode !== 'PRIVATE' && peersAreNamedOn(ground as any, { participantId: checkIn.participantId }),
+    });
     const leadSignals = Array.isArray(initiatorProfile?.signals) ? (initiatorProfile!.signals as string[]) : null;
 
     // Session-1-only DB override for this scenario+party's pack (PromptVersion
@@ -9283,7 +9289,8 @@ ${told}` : '';
     detectedFunctionConfidence: number | null;
   }) {
     if (participant.detectedFunction) return;
-    const read = detectFunction(theStatedRole(participant.roleAsDescribed, await this.theirOwnJobTitle(participant.id)), [], null);
+    const theirs = await this.theirTitleAndKindOfWork(participant.id);
+    const read = detectFunction(theStatedRole(participant.roleAsDescribed, theirs.title), [], null, theirs.kindOfWork);
     if (!read.fn) return;
     await this.prisma.groundParticipant.update({
       where: { id: participant.id },
@@ -9320,23 +9327,24 @@ ${told}` : '';
     if (!texts.length) return { ...stored, modes: [] };
     const modes = detectUniversalModes(texts);
     if ((stored.confidence ?? 0) >= MIN_COACHING_CONFIDENCE) return { ...stored, modes };
-    const read = detectFunction(
-      theStatedRole(checkIn.participant.roleAsDescribed, await this.theirOwnJobTitle(checkIn.participantId ?? checkIn.participant.id ?? null)),
-      texts,
-      stored,
-    );
+    const theirs = await this.theirTitleAndKindOfWork(checkIn.participantId ?? checkIn.participant.id ?? null);
+    const read = detectFunction(theStatedRole(checkIn.participant.roleAsDescribed, theirs.title), texts, stored, theirs.kindOfWork);
     if (read.fn && read.fn !== stored.fn) {
       this.logger.log(`In-session function read on ${checkIn.id}: ${stored.fn ?? 'none'} -> ${read.fn} (${read.confidence}). ${read.basis}`);
     }
     return read.fn ? { fn: read.fn, confidence: read.confidence, modes } : { ...stored, modes };
   }
 
-  /** The person's own job title, which every read of their function starts from beside the lead's words. See theStatedRole. */
-  private async theirOwnJobTitle(participantId: string | null | undefined): Promise<string | null> {
-    if (!participantId) return null;
-    const row = await (this.prisma.groundParticipant?.findUnique?.({ where: { id: participantId }, select: { user: { select: { jobTitle: true } } } as any })
+  /**
+   * The person's own job title, which every read of their function starts from beside the lead's words (see
+   * theStatedRole), and the check-in's kind of work, which confirms the title when the two agree (Hafsah,
+   * 16 October 2026; see theKindOfWorkAgrees).
+   */
+  private async theirTitleAndKindOfWork(participantId: string | null | undefined): Promise<{ title: string | null; kindOfWork: string | null }> {
+    if (!participantId) return { title: null, kindOfWork: null };
+    const row = await (this.prisma.groundParticipant?.findUnique?.({ where: { id: participantId }, select: { user: { select: { jobTitle: true } }, ground: { select: { kindOfWork: true } } } as any })
       ?? Promise.resolve(null)).catch(() => null);
-    return (row as any)?.user?.jobTitle ?? null;
+    return { title: (row as any)?.user?.jobTitle ?? null, kindOfWork: (row as any)?.ground?.kindOfWork ?? null };
   }
 
   /**
@@ -9552,7 +9560,7 @@ ${told}` : '';
   async reviseDetectedFunction(participantId: string) {
     const p = await this.prisma.groundParticipant.findUnique({
       where: { id: participantId },
-      select: { roleAsDescribed: true, detectedFunction: true, detectedFunctionConfidence: true, detectedFunctionConfirmedAt: true, userId: true, ground: { select: { organizationId: true } } },
+      select: { roleAsDescribed: true, detectedFunction: true, detectedFunctionConfidence: true, detectedFunctionConfirmedAt: true, userId: true, ground: { select: { organizationId: true, kindOfWork: true } } },
     });
     if (!p) return;
     /* The person's own words about their job (their title, and what they said they are responsible for) help the read, beside the lead's. */
@@ -9584,6 +9592,7 @@ ${told}` : '';
       theStatedRole(p.roleAsDescribed, own.title),
       [...entries.map((e) => e.text), ...(own.owns ? [own.owns] : [])],
       { fn: p.detectedFunction, confidence: p.detectedFunctionConfidence },
+      (p as any).ground?.kindOfWork ?? null,
     );
 
     /**
@@ -11665,7 +11674,15 @@ ${told}` : '';
     return count > 0;
   }
 
-  private async buildGroundState(groundId: string, otherPartyCheckedIn: boolean, theAnchors = false): Promise<string> {
+  private async buildGroundState(
+    groundId: string,
+    otherPartyCheckedIn: boolean,
+    theAnchors = false,
+    thisSession?: { sessionNumber: number; participantId: string; namesMayBeSaid?: boolean },
+  ): Promise<string> {
+    const sessionNumber = thisSession?.sessionNumber;
+    /* Who has answered THIS session, by name, from the record. See whoHasAnsweredThisSession. */
+    const named = thisSession?.namesMayBeSaid ? await whoHasAnsweredThisSession(this.prisma, groundId, thisSession).catch(() => '') : '';
     /*
      * IN THE ANCHOR, THE LEAD IS NOT ONE OF THE PEOPLE WHO ANSWER. Her set-up conversation is saved as a finished session and she is on the roster, so
      * the count read "3 of 3 parties have submitted" to a team of two (found on the test bed, weekly check-in). It counts the team, in plain words.
@@ -11676,14 +11693,16 @@ ${told}` : '';
         ((await this.prisma.checkIn.findMany({ where: { groundId, status: CheckInStatus.COMPLETED, participant: { managingOnly: false } }, select: { participantId: true } })) ?? []).map((c: any) => c.participantId),
       ).size;
       const everyone = await this.prisma.groundParticipant.count({ where: team });
-      return `${answered} of ${everyone} people on the team have answered so far.`;
+      return [`${answered} of ${everyone} people on the team have answered so far.`, named].filter(Boolean).join(' ');
     }
     /* PEOPLE, NOT CHECK-INS. This counted every completed check-in, so from the second round on it
        said more had answered than there are people, and the model read it out: "Since then, 5 of
        the 4 people involved in this check-in have submitted" (week 3 re-runs, 28 Sep 2026). */
     const submittedCount = new Set(
       ((await this.prisma.checkIn.findMany({
-        where: { groundId, status: CheckInStatus.COMPLETED },
+        /* This session's, when it is known: a count across every session put people who answered weeks
+           ago in "since then" (Pulse check rerun, 15 October 2026). */
+        where: { groundId, status: CheckInStatus.COMPLETED, ...(sessionNumber ? { sessionNumber } : {}) },
         select: { participantId: true },
       })) ?? []).map((c: any) => c.participantId),
     ).size;
@@ -11694,7 +11713,7 @@ ${told}` : '';
     } else {
       parts.push(`${submittedCount} of ${totalCount} parties have submitted so far. The other party has not yet submitted.`);
     }
-    return parts.join(' ');
+    return [parts.join(' '), named].filter(Boolean).join(' ');
   }
 
   /**
@@ -12074,3 +12093,37 @@ ${told}` : '';
 }
 
 const REMOVED_FROM_THAT_ORGANISATION = 'You are no longer part of the organisation this check-in belongs to, so you cannot open it.';
+
+/**
+ * WHO HAS ANSWERED THIS SESSION, BY NAME, FROM THE RECORD (Pulse check rerun, 15 October 2026).
+ *
+ * The model was given a count across every session ever ("2 of 3 parties have submitted") and no
+ * names, and it put names to the count itself: "Since then, Wairimu Njoroge and Chidi Okeke have also
+ * checked in", when Chidi had not checked in at all. So it is told who has and who has not answered
+ * THIS session, by name, and told never to say anybody else has. Only whether somebody has answered,
+ * never anything they said - the same thing anybody may be told (prompt-library: "you can confirm
+ * whether they have or have not"). The lead is never listed as not having answered: a lead checks in
+ * only when they choose (decision 133), so it would be chasing them through somebody else.
+ */
+export async function whoHasAnsweredThisSession(prisma: any, groundId: string, s: { sessionNumber: number; participantId: string }): Promise<string> {
+  const rows: any[] = (await (prisma?.groundParticipant?.findMany?.({
+    where: { groundId, id: { not: s.participantId }, managingOnly: false },
+    select: {
+      id: true, partyType: true, nameGiven: true,
+      user: { select: { firstName: true, lastName: true } },
+      checkIns: { where: { sessionNumber: s.sessionNumber, status: CheckInStatus.COMPLETED }, select: { id: true } },
+    },
+  } as any) ?? Promise.resolve([]))) ?? [];
+  if (!Array.isArray(rows) || !rows.length) return '';
+  const nameOf = (p: any) => [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || (p.nameGiven ?? '').trim();
+  const answered = rows.filter((p) => (p.checkIns ?? []).length > 0).map(nameOf).filter(Boolean);
+  const notYet = rows.filter((p) => !(p.checkIns ?? []).length && p.partyType !== 'INITIATOR').map(nameOf).filter(Boolean);
+  const list = (names: string[]) => (names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
+  const lines: string[] = [];
+  lines.push(answered.length
+    ? `This session, ${list(answered)} ${answered.length === 1 ? 'has' : 'have'} answered.`
+    : 'This session, nobody else has answered yet.');
+  if (notYet.length) lines.push(`${list(notYet)} ${notYet.length === 1 ? 'has' : 'have'} not answered this session yet.`);
+  lines.push('Never say that anybody else has checked in or answered.');
+  return lines.join(' ');
+}
