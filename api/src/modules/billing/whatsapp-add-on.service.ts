@@ -553,6 +553,10 @@ export class WhatsAppAddOnService {
     };
     return {
       on: s.addOnOn,
+      /* WHETHER WHATSAPP IS ON FOR THE ORGANISATION, ONE FACT FOR EVERY PAGE (local test of staging, 15 October). `on` is the
+         add-on switch alone, so in the free month Connections read it and said "Your organisation has not turned on WhatsApp"
+         while this page said "WhatsApp is on for your organisation during its free month". This is the fact `onOrOff` says. */
+      onForTheOrganisation: s.addOnOn || s.inTheFreeWhatsAppMonth,
       /* Never a plan's name or price for an organisation on the free plan; its limit is in `use`. */
       plan: s.onTheFreePlan ? null : s.plan,
       price: s.onTheFreePlan ? null : s.flatKept ? (s.addOnCents === null ? null : { amountCents: s.addOnCents, currency: 'USD' }) : (s.personCents == null ? null : { amountCents: s.personCents, currency: 'USD', perPerson: true }),

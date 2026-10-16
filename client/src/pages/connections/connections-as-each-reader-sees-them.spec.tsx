@@ -47,10 +47,11 @@ let billingWhatsAppOn: boolean | undefined = true
 let billingWhatsAppSending = true
 let billingWhatsAppSays: string | null = null
 let billingWhatsAppAdminShape = false
+let billingWhatsAppOnForOrg: boolean | undefined = undefined
 const getWhatsAppMock = vi.fn(() => Promise.resolve(
   billingWhatsAppAdminShape
     ? {
-        on: billingWhatsAppOn, sending: billingWhatsAppSending, plan: null, price: null, charged: false,
+        on: billingWhatsAppOn, onForTheOrganisation: billingWhatsAppOnForOrg, sending: billingWhatsAppSending, plan: null, price: null, charged: false,
         freeTrial: null, onTheFreePlan: true, use: { month: '2026-10', sent: 0, limit: null, startsAgainOn: '2026-11-01' },
         heldBecause: null,
         says: { onOrOff: billingWhatsAppSays, price: null, charge: '', use: '', atTheLimit: null, reachedTheLimit: null, held: null },
@@ -102,7 +103,7 @@ function open(user: any, page: 'connections' | 'whatsapp' = 'connections') {
 }
 const hrefOf = (el: HTMLElement, name: string) => within(el).getByRole('link', { name }).getAttribute('href')
 
-beforeEach(() => { vi.clearAllMocks(); whatsappOn = true; billingWhatsAppOn = true; billingWhatsAppSending = true; billingWhatsAppSays = null; billingWhatsAppAdminShape = false })
+beforeEach(() => { vi.clearAllMocks(); whatsappOn = true; billingWhatsAppOn = true; billingWhatsAppSending = true; billingWhatsAppSays = null; billingWhatsAppAdminShape = false; billingWhatsAppOnForOrg = undefined })
 
 describe('a lead, a member and a guest', () => {
   for (const [who, user] of [['Wairimu, a lead', WAIRIMU], ['Miriam, a member', MIRIAM], ['Tomas, a guest', TOMAS]] as const) {
@@ -312,6 +313,25 @@ describe('Grace, an admin, reads Connections', () => {
     await within(wa).findByText('Your organisation has not turned on WhatsApp, so Groundwork does not send your people reminders or summaries on WhatsApp.')
     await within(wa).findByText(/You can turn it on in/)
     expect(hrefOf(wa, 'Plan and billing')).toBe('/billing#billing-whatsapp')
+  })
+
+  /*
+   * LOCAL TEST OF STAGING, 15 OCTOBER: IN THE FREE MONTH THE ADD-ON SWITCH IS OFF AND WHATSAPP IS ON. Drop Access read
+   * "Your organisation has not turned on WhatsApp" here and "WhatsApp is on for your organisation during its free month"
+   * on Plan and billing, and the opening message did go. Both read the server's one fact now.
+   */
+  it('in the free month, with the add-on switch still off: said as on, the same as Plan and billing', async () => {
+    billingWhatsAppOn = false
+    billingWhatsAppSending = true
+    billingWhatsAppOnForOrg = true
+    billingWhatsAppSays = 'WhatsApp is on for your organisation during its free month.'
+    billingWhatsAppAdminShape = true
+    serve()
+    open(GRACE)
+    const wa = await screen.findByRole('region', { name: 'WhatsApp' })
+    await waitFor(() => expect(getWhatsAppMock).toHaveBeenCalled())
+    await within(wa).findByText('Your people check in by replying to Groundwork’s WhatsApp number. A reply is their check-in, exactly as if typed here.')
+    expect(within(wa).queryByText(/has not turned on WhatsApp/)).toBeNull()
   })
 
   /*

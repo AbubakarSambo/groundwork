@@ -364,7 +364,12 @@ function WhatsAppSection({ orgName, glance }: { orgName: string; glance: { peopl
    * shows nothing here, exactly as before.
    */
   const billingWhatsApp = useQuery({ queryKey: ['billing-whatsapp'], queryFn: billingApi.getWhatsApp })
-  const orgWhatsAppAddOnOff = billingWhatsApp.data?.on === false || billingWhatsApp.data?.sending === false
+  /* ONE FACT WITH PLAN AND BILLING (local test of staging, 15 October): in the free month the add-on switch is off and WhatsApp
+     is on, and this said "has not turned on WhatsApp" beside Plan and billing's "WhatsApp is on for your organisation during its
+     free month". The admin's read now carries the fact that sentence says, and this reads it. */
+  const orgWhatsAppAddOnOff = isWhatsAppBillingAdmin(billingWhatsApp.data) && typeof billingWhatsApp.data.onForTheOrganisation === 'boolean'
+    ? !billingWhatsApp.data.onForTheOrganisation
+    : billingWhatsApp.data?.on === false || billingWhatsApp.data?.sending === false
   const whatsapp = useQuery({ queryKey: ['integrations', 'whatsapp'], queryFn: integrationsApi.whatsapp })
   const connection = whatsapp.data?.connection ?? null
   const [testing, setTesting] = useState(false)
