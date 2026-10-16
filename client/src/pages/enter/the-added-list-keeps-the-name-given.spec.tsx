@@ -96,6 +96,8 @@ describe('the added list and the waiting sentence keep the name given', () => {
     fireEvent.click(screen.getByText('Skip'))
     await waitFor(() => expect(screen.queryByText('What do they do, and why are they part of this?')).toBeNull())
 
+    /* The save step asks "Your name" now (local test of staging, 15 October). */
+    { const yourName = screen.queryByPlaceholderText('Your name'); if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } }) }
     fireEvent.change(screen.getByPlaceholderText('your@email.com'), { target: { value: 'lead@example.test' } })
     fireEvent.submit(screen.getByPlaceholderText('your@email.com').closest('form')!)
 
@@ -138,6 +140,8 @@ describe('the added list and the waiting sentence keep the name given', () => {
     renderPage()
     fireEvent.click(await screen.findByText(/Invite and finish/))
     const emailInput = screen.getByPlaceholderText('your@email.com')
+    /* The save step asks "Your name" now (local test of staging, 15 October). */
+    { const yourName = screen.queryByPlaceholderText('Your name'); if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } }) }
     fireEvent.change(emailInput, { target: { value: 'lead@example.test' } })
     fireEvent.submit(emailInput.closest('form')!)
     await waitFor(() => expect(authApi.entrySave).toHaveBeenCalled())

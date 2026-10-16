@@ -53,6 +53,8 @@ describe('GROUND-NAME: setup-screen rename reaches the commit body', () => {
     renderPage()
     // send the email -> emailSent + draftToken
     const emailInput = await screen.findByPlaceholderText('your@email.com')
+    /* The save step asks "Your name" now (local test of staging, 15 October). */
+    { const yourName = screen.queryByPlaceholderText('Your name'); if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } }) }
     fireEvent.change(emailInput, { target: { value: 'me@example-test.invalid' } })
     /* The input sits in a form now, so Enter is a submit (fix plan C2). */
     fireEvent.submit(emailInput.closest('form')!)

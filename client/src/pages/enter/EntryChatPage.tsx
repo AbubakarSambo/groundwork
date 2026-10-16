@@ -1331,6 +1331,9 @@ function kindOfCheckIn(situation: string | undefined): string {
  * back at her rather than anything that tells them apart as HERS. `undefined` when there is no
  * lead name to use yet (nobody signed in, nothing typed) - a guess is worse than the plain label.
  */
+/** Said when the save step's name is left empty (local test of staging, 15 October). */
+export const WRITE_YOUR_NAME = 'Write your name, so the people you invite know who is asking.'
+
 export function leadNameGroundNameFallback(leadFirstName: string | undefined, situation: string | undefined): string | undefined {
   const name = (leadFirstName ?? '').trim()
   if (!name) return undefined
@@ -1781,6 +1784,9 @@ export function EntryChatPage() {
   const [, setNeedsPeople] = useState(false)
   const [orgName, setOrgName] = useState('')
   const [email, setEmail] = useState('')
+  /* "Your name", asked once at the save step (local test of staging, 15 October): never worked out from the address. */
+  const [yourName, setYourName] = useState('')
+  const [nameError, setNameError] = useState('')
   const [emailSent, setEmailSent] = useState(false)
   const [emailError, setEmailError] = useState('')
 
@@ -3210,6 +3216,11 @@ export function EntryChatPage() {
     if (addingContributorFor && addingContributorEmail.trim()) {
       if (!queueSuggestedContributor(addingContributorFor, addingContributorLabel)) return
     }
+    /* THE NAME SHE GIVES, ASKED ONCE (local test of staging, 15 October). Hafsah saved from here with nothing asking, and
+       her invitations went out as "Hjumare would like your take on Sales check-in", a piece of her address. */
+    const name = yourName.replace(/\s+/g, ' ').trim()
+    if (!name) { setNameError(WRITE_YOUR_NAME); return }
+    setNameError('')
     const trimmed = email.trim()
     if (!looksLikeAnAddress(trimmed)) { setEmailError(NOT_AN_ADDRESS); return }
     // NOTE: a hard "set a date first" gate used to live here, but the date
@@ -3227,7 +3238,7 @@ export function EntryChatPage() {
     // same-browser mirror (and the legacy path for old links).
     const commitPayload = buildCommitPayload()
       try {
-      const res = await authApi.entrySave(trimmed, { payload: commitPayload, history }, trap.filled)
+      const res = await authApi.entrySave(trimmed, { payload: { ...commitPayload, firstName: name }, history }, trap.filled)
       setEmailSent(true)
       if (res.draftToken) {
         setDraftToken(res.draftToken)
@@ -5133,6 +5144,10 @@ export function EntryChatPage() {
                 {trap.field}
                 {/* A form, so Enter and the button are one path and the page's own message is the only channel (noValidate). */}
                 <form noValidate onSubmit={e => { e.preventDefault(); handleSave() }}>
+                <TextField type="text" autoComplete="name" placeholder="Your name" aria-label="Your name" value={yourName} onChange={e => { setYourName(e.target.value); setNameError('') }}
+                  className={`gwui-ec-savecard-field ${nameError ? 'gwui-ec-savecard-field-error' : ''}`}
+                />
+                {nameError && <div className="gwui-ec-savecard-error">{nameError}</div>}
                 <TextField type="email" placeholder="your@email.com" value={email} onChange={e => { setEmail(e.target.value); setEmailError('') }}
                   className={`gwui-ec-savecard-field ${emailError ? 'gwui-ec-savecard-field-error' : ''}`}
                 />
