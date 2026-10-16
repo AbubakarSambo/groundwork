@@ -91,7 +91,8 @@ describe('who added them decides, not who runs the check-in', () => {
   const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   it('accept() asks the recorded adder, and both doors that add a person record who did', () => {
     const service = strip(readFileSync(join(__dirname, 'participants.service.ts'), 'utf8'));
-    expect(service).toMatch(/where: \{ id: whoToAsk\(participant\.addedByUserId, ground\.initiatorId\) \}/);
+    /* Asked through howTheyStandIn since 15 October, so an admin with another organisation open still counts as an admin here. */
+    expect(service).toMatch(/howTheyStandIn\(tx, whoToAsk\(participant\.addedByUserId, ground\.initiatorId\), ground\.organizationId\)/);
     expect(service).toMatch(/addedByAnAdminOfThisOrg: isAnAdminOf\(ground\.organizationId, inviter\)/);
     const grounds = strip(readFileSync(join(__dirname, '..', 'grounds', 'grounds.service.ts'), 'utf8'));
     /* createForLead: the admin setting it up. addParticipant: the lead, or the admin who set it up. */

@@ -99,6 +99,27 @@ export function isAnAdminOf(groundOrganizationId: string, adder: WhoAddedThem): 
   return adder?.role === 'ADMIN' && adder.organizationId === groundOrganizationId;
 }
 
+/**
+ * HOW SOMEBODY STANDS IN ONE ORGANISATION, NOT IN THE ONE THEY HAVE OPEN (local test of staging, 15 October).
+ *
+ * A user's own `role` and `organizationId` are the organisation they have open right now: switching
+ * organisation rewrites both. Hafsah, an admin of Drop Access and of Muchemi & Co, invited Kevin to a Drop
+ * Access check-in and his invitation said "you go straight in". By the time he opened it she had Muchemi
+ * open, so her row read "admin of Muchemi", the rule read "not an admin of Drop Access", and Kevin waited
+ * for her to let him in. Her standing in the check-in's organisation is her membership there.
+ */
+export async function howTheyStandIn(db: any, userId: string | null | undefined, organizationId: string): Promise<WhoAddedThem> {
+  if (!userId) return null;
+  const user = await Promise.resolve(db.user?.findUnique?.({ where: { id: userId }, select: { role: true, organizationId: true } })).catch(() => null);
+  if (user?.organizationId === organizationId) return user;
+  const membership = await Promise.resolve(db.organizationMembership?.findUnique?.({
+    where: { userId_organizationId: { userId, organizationId } },
+    select: { role: true },
+  })).catch(() => null);
+  if (membership?.role) return { role: String(membership.role), organizationId };
+  return user ?? null;
+}
+
 export function needsApproval(who: WhoIsArriving): boolean {
   return whyTheyDoNotNeedApproval(who) === null;
 }
