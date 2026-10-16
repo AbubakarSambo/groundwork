@@ -24,6 +24,13 @@ export const FOR_THE_ORGANISATION = 'organisation';
 /** Words that say the document is for everybody, not for one check-in. */
 export const SAYS_IT_IS_FOR_THE_ORGANISATION = /\b(?:whole\s+)?(?:organi[sz]ation|company|everyone|everybody|handbook|policy|policies)\b/i;
 
+/**
+ * SAID PLAINLY FOR THE WHOLE ORGANISATION, EVEN INSIDE A CHECK-IN'S SETUP CONVERSATION (local test of staging, 15 October).
+ * Narrower than the test above, which also takes "everyone" or "policy": inside a check-in those can mean its own people.
+ * "The whole organisation", "the entire company", "for the organisation" cannot.
+ */
+export const SAYS_IT_IS_FOR_THE_WHOLE_ORGANISATION = /\b(?:whole|entire)\s+(?:organi[sz]ation|company)\b|\bfor\s+the\s+(?:organi[sz]ation|company)\b/i;
+
 /** "Msingi Foods", or "your organisation" when there is no real name yet. */
 export function theOrganisation(name?: string | null): string {
   const n = (name ?? '').replace(/\s+/g, ' ').trim();
