@@ -28,6 +28,12 @@ export const GroundworkEvents = {
   ROUND_COMPLETED: 'round.completed',
   GROUND_ACTIVATED: 'ground.activated',
   /**
+   * THE KIND OF WORK WAS READ, WHERE THERE WAS NONE (local test of staging, 15 October). The read runs on its own after a
+   * check-in is made, and a lead's first session from /start finishes before it does, so the records that session named
+   * (Kevin's Kilimani deal) were never read. The board listens, and reads the finished sessions' records once.
+   */
+  KIND_OF_WORK_READ: 'ground.kindOfWorkRead',
+  /**
    * A HANDOFF WAS NAMED FOR THE FIRST TIME. Only when it clears the board's substance bar, so a
    * passing remark does not become an alert in somebody else's channel.
    */
@@ -108,6 +114,10 @@ export interface RoundCompletedEvent {
 }
 
 export interface GroundActivatedEvent {
+  groundId: string;
+}
+
+export interface KindOfWorkReadEvent {
   groundId: string;
 }
 
