@@ -1,3 +1,4 @@
+import { aDayIsNotATarget, theNumberIsOnlyADay } from './a-day-is-not-a-target';
 import { aTypedReferenceBacksItsLine, proofAlreadyGiven, theLinesADocumentBacks, theLineADocumentWasSentFor } from './a-typed-reference-backs-its-line';
 import { whoMissedTheCheckInsJustBefore, whatTheSessionIsToldAboutMissing } from '../grounds/missed-check-ins';
 import { situationInWords } from './setup-already-asked-this';
@@ -10587,6 +10588,8 @@ ${told}` : '';
        * and the aim keeps its name and loses the number.
        */
       .map((a) => (a.target != null && !numbersInTheirWords.has(a.target) ? { ...a, target: null } : a))
+      /* "Filed on time on 22 October" aims at a day, not at 22 of anything (local test of staging, 15 October). */
+      .map((a) => aDayIsNotATarget(a))
       /* An aim the lead said as a share keeps its percent sign and its word, so a limit is not read as a count (user journeys, F-4). */
       .map((a) => theAimsNameKeepsItsShare([a], theirWordsAsText)[0]);
     /*
@@ -10666,6 +10669,8 @@ ${told}` : '';
   ): Promise<{ participantId: string; name: string; target: number }[]> {
     /* The person's own sentence is kept as they said it. The short label ("8 kits", "3 shops in Kilimani") is worked out from it
        when it is read (theAimItself), and only ever shown beside it (Hafsah, 12 October). */
+    /* A number said only as a day ("by 22 October") is not anybody's target (local test of staging, 15 October). */
+    rows = rows.filter((t) => !theNumberIsOnlyADay(t.name, t.target));
     if (!rows.length) return [];
     const [owned, team] = await Promise.all([
       this.prisma.groundObjective.findMany({
