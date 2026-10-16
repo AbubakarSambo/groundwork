@@ -67,7 +67,7 @@ import { EmailService } from '../email/email.service';
 import { BillingService } from '../billing';
 import { UsageService } from '../usage/usage.service';
 import { CreateGroundDto, AddParticipantDto, CreateGroundForLeadDto } from './dto';
-import { GroundworkEvents, GroundActivatedEvent, CommitmentsSettledEvent } from '../../common';
+import { GroundworkEvents, GroundActivatedEvent, CommitmentsSettledEvent, KindOfWorkReadEvent } from '../../common';
 import { createHash } from 'node:crypto';
 import { ContextItemKind, GroundScenario, GroundStatus, PartyType, CheckInStatus, Cadence, UsageEventType, TokenType, Prisma, GroundMoment, ContextNoteAudience, DocumentVisibility } from '@prisma/client';
 import { endStatesFor } from '../resolution/end-states';
@@ -5509,10 +5509,14 @@ export class GroundsService {
       /* The model call above can take seconds, and the lead (or a script) may choose a kind meanwhile.
          So the write itself says "only if nobody else has chosen", in one statement, never a check
          made before the call. A choice made in the meantime is left exactly as it is. */
-      await this.prisma.ground.updateMany({
+      const written = await this.prisma.ground.updateMany({
         where: { id: groundId, OR: [{ kindOfWorkSetBy: null }, { kindOfWorkSetBy: 'read' }] },
         data: { kindOfWork: kind, kindOfWorkSetBy: kind ? 'read' : null },
       });
+      /* A kind where there was none: the sessions already finished are read for their records now (15 October). */
+      if (kind && !hasOne && (written as any)?.count) {
+        this.events?.emit?.(GroundworkEvents.KIND_OF_WORK_READ, { groundId } satisfies KindOfWorkReadEvent);
+      }
     } catch (err: any) {
       this.logger.warn(`Reading the kind of work for ${groundId} failed: ${err?.message}`);
     }

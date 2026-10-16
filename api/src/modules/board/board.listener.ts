@@ -3,7 +3,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { AnthropicService } from '../conversation/anthropic.service';
-import { GroundworkEvents, type RoundCompletedEvent, type CheckInCompletedEvent } from '../../common/events';
+import { GroundworkEvents, type RoundCompletedEvent, type CheckInCompletedEvent, type KindOfWorkReadEvent } from '../../common/events';
 import { oneOfTheKinds, theRecordsPrompt, THE_RECORDS_SCHEMA, onlyRecordsTheLinesSay, theSameName, type AnOfferedRecord, type APersonALineMayName , KINDS_THAT_ARE_NOT_WORK } from './the-kind-of-work';
 import { theRoomsLabelFor } from './the-room-is-stored-with-labels';
 import { withAClaim } from './a-claim-on-a-record-is-checked-first';
@@ -59,6 +59,27 @@ export class BoardListener {
    */
   @OnEvent(GroundworkEvents.CHECK_IN_COMPLETED)
   async onCheckInCompleted(e: CheckInCompletedEvent) {
+    await this.readTheRecordsOf({ groundId: e.groundId, checkInId: e.checkInId });
+  }
+
+  /**
+   * THE KIND OF WORK ARRIVED AFTER THE SESSION (local test of staging, 15 October). Hafsah set up Drop Access's "Sales
+   * check-in" from /start: her first session finished as the check-in was made, while the kind of work was still being
+   * read, so the reading above found no kind and kept nothing. Kevin's Kilimani deal for 12 cartons, which she named,
+   * never reached "Every deal, day by day". Once the kind is read, each finished session is read for its records, the same
+   * way; a record already on the board is moved on, never written twice.
+   */
+  @OnEvent(GroundworkEvents.KIND_OF_WORK_READ)
+  async onKindOfWorkRead(e: KindOfWorkReadEvent) {
+    const done = await Promise.resolve((this.prisma as any).checkIn?.findMany?.({
+      where: { groundId: e.groundId, status: 'COMPLETED' },
+      select: { id: true },
+      orderBy: { createdAt: 'asc' },
+    })).catch(() => []);
+    for (const c of (done ?? []) as any[]) await this.readTheRecordsOf({ groundId: e.groundId, checkInId: c.id });
+  }
+
+  private async readTheRecordsOf(e: { groundId: string; checkInId: string }) {
     try {
       const ground = await this.prisma.ground.findUnique({
         where: { id: e.groundId },
