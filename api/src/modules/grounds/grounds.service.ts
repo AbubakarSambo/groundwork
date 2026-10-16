@@ -1,3 +1,4 @@
+import { theNumberIsOnlyADay } from '../conversation/a-day-is-not-a-target';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { organisationsThatTurnedWhatsAppOn } from '../whatsapp/only-where-whatsapp-is-turned-on';
 import { fullNameToCall } from '../engagement/a-name-to-call-them';
@@ -4814,7 +4815,9 @@ export class GroundsService {
       held.some((h) => h.owner === owner && theSameMeasure(h.name, name) && (h.target == null || target == null || h.target === target));
     const rows: { groundId: string; name: string; target: number | null; ownerParticipantId: string | null; sortOrder: number; direction?: string | null }[] = [];
     let sortOrder = existing.length;
-    for (const t of got.teamTargets) {
+    for (const t0 of got.teamTargets) {
+      /* A number said only as a day is not the measure's target (local test of staging, 15 October). */
+      const t = theNumberIsOnlyADay(t0.name, t0.target) ? { ...t0, target: null } : t0;
       if (alreadyHeld('team', t.name, t.target)) continue;
       held.push({ owner: 'team', name: t.name, target: t.target });
       /* Decision 69: only a direction the lead said yes to on the list; otherwise not set. */
@@ -4822,6 +4825,7 @@ export class GroundsService {
     }
     for (const p of got.forPeople) {
       for (const t of p.targets) {
+        if (theNumberIsOnlyADay(t.name, t.number)) continue;
         if (alreadyHeld(p.participantId, t.name, t.number)) continue;
         held.push({ owner: p.participantId, name: t.name, target: t.number });
         rows.push({ groundId, name: t.name, target: t.number, ownerParticipantId: p.participantId, sortOrder: sortOrder++, direction: null });
