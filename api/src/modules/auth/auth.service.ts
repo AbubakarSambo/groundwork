@@ -2,7 +2,7 @@ import { TheWaysToStopMail } from '../engagement/the-ways-to-stop-mail';
 import { theDomainOf, mayBeJoinedBy } from '../../common/an-email-domain';
 import { aPathInThisApp, theInviteLinkCodeIn } from '../../common/a-path-in-this-app';
 import { whatTheirWorkspaceIsCalled } from './a-roster-row-is-not-a-life-sentence';
-import { needsApproval, isAnAdminOf, whoToAsk } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
+import { needsApproval, isAnAdminOf, whoToAsk, howTheyStandIn } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { tellTheAdminsSomebodyIsWaiting } from '../participants/somebody-is-waiting-at-the-door';
 import { hashed } from './a-token-is-stored-as-its-hash';
 import { sessionClaims, ASessionHolder, SignedInVia } from './a-session-token';
@@ -448,10 +448,8 @@ export class AuthService {
       });
       if (invitedTo?.ground) {
         const orgId = invitedTo.ground.organizationId;
-        const inviter = await this.prisma.user.findUnique({
-          where: { id: whoToAsk(invitedTo.addedByUserId, invitedTo.ground.initiatorId) },
-          select: { role: true, organizationId: true },
-        });
+        /* As they stand in the check-in's organisation, not in whichever one they have open now (15 October). */
+        const inviter = await howTheyStandIn(this.prisma, whoToAsk(invitedTo.addedByUserId, invitedTo.ground.initiatorId), orgId);
         const wait = needsApproval({
           groundOrganizationId: orgId,
           theirHomeOrganizationId: null,
