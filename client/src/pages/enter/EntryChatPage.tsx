@@ -2330,7 +2330,7 @@ export function EntryChatPage() {
     try {
       /* The anchor's seven items go with the report too (request 166), so the lead's reveal says
          what she said rather than "not written down yet". Every other draft sends nothing here. */
-      const res = await entryApi.report(turns, scenario || undefined, groundName || undefined, onboardingSelections.peopleNamed, isAnchorDraft() ? onboardingSelections.anchorItems : undefined)
+      const res = await entryApi.report(turns, scenario || undefined, groundName || undefined, onboardingSelections.peopleNamed, isAnchorDraft() ? onboardingSelections.anchorItems : undefined, theirOwnSetupWords(onboardingHistory))
       setSessionReport(res.report)
       setReportTurnsForRetry(null)
       persistCheckin(turns, true, res.report ? JSON.stringify(res.report) : '')
