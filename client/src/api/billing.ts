@@ -257,6 +257,8 @@ export interface WhatsAppBillingMinimal {
 
 export interface WhatsAppBillingAdmin {
   on: boolean
+  /** On for the organisation: the add-on, or its free WhatsApp month. The fact `says.onOrOff` says (15 October). */
+  onForTheOrganisation?: boolean
   plan: SubscriptionPlan | null
   price: { amountCents: number; currency: 'USD' } | null
   charged: boolean

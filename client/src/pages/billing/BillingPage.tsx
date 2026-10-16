@@ -250,6 +250,14 @@ export function BillingPage() {
 
   const orgName = (user as any)?.organization?.name?.trim() || (user as any)?.organizationName || ''
   const covers = whatCoversThem(billingStatus)
+  /*
+   * SESSIONS ARE NOT COUNTED WHILE ANYTHING COVERS THE ORGANISATION (local test of staging, 15 October). Drop Access, in its
+   * free month, read "0 sessions left", "Free extension available" and "Add sessions" on a check-in with 55 of its 56
+   * sessions still to come, while every other tab counted them. The server never counts a session while a plan or a free
+   * run covers the organisation (billing.service.ts canStartSession, isCovered), so this page says what it says to a paying
+   * one: the sessions are unlimited. The same rule, read from the same served fact.
+   */
+  const sessionsAreNotCounted = covers === 'paid' || covers === 'on the house'
   const notices = theTrialNotices(billingStatus, livePricing)
   const trialSentence = theFreeTrialSentence(livePricing?.trial)
   const invoices = billingStatus?.invoices ?? []
@@ -621,8 +629,8 @@ export function BillingPage() {
         </Section>
       )}
 
-      <Section heading={isSubscribed ? 'Your check-ins' : 'In progress'}>
-        {isSubscribed && grounds.length > 0 ? (
+      <Section heading={sessionsAreNotCounted ? 'Your check-ins' : 'In progress'}>
+        {sessionsAreNotCounted && grounds.length > 0 ? (
           <Panel>
             {/*
              * B-231: "All 1 of your check-ins have unlimited sessions" DID NOT READ RIGHT FOR ONE
