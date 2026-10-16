@@ -44,12 +44,12 @@ describe('the three messages for somebody who stopped halfway', () => {
   it('off: the sentences are the ones already sent', () => {
     expect(carryOnSaying('Amani', 'X', false)).toBe('Hi Amani, your check-in for "X" is still open, and everything you have said so far is kept. Reply here to carry on whenever you are ready.');
     expect(closesInHalfAnHourSaying('X')).toBe('Your check-in for "X" closes in 30 minutes if nothing else is said. Add anything you still want on the record now.');
-    expect(closedByTheClockSaying('X', null)).toBe('Your check-in for "X" has closed, because nothing was said for twelve hours. Everything you said is kept on the record, and your report follows in a moment.');
+    expect(closedByTheClockSaying('X', null)).toBe('Your check-in for "X" has closed, because nothing was said for twelve hours. Everything you said is kept on the record.');
   });
   it('on: the plainer forms', () => {
     expect(carryOnSaying('Amani', 'X', true)).toBe('Hi Amani, your check-in for "X" is still open. Everything you have said is saved. Write here to carry on when you are ready.');
     expect(closesInHalfAnHourSaying('X', true)).toBe('Your check-in for "X" will close in 30 minutes if you say nothing more. Add anything you still want saved now.');
-    expect(closedByTheClockSaying('X', true)).toBe('Your check-in for "X" has closed, because nothing was said for twelve hours. Everything you said is saved. Your report will come in a moment.');
+    expect(closedByTheClockSaying('X', true)).toBe('Your check-in for "X" has closed, because nothing was said for twelve hours. Everything you said is saved.');
   });
   it('the reminder reads the check-in\'s own switch', async () => {
     for (const simplerWords of [false, true]) {
@@ -101,7 +101,7 @@ describe('what Amani is told when she writes "finish", and about the report', ()
   });
   it('and with the switch off the words are the ones always sent', () => {
     const { theCheckInIsCompleteSaying, enoughToCloseSaying } = require('../grounds/what-is-sent-in-simpler-words');
-    expect(theCheckInIsCompleteSaying(false)).toBe('Your check-in is complete and on record. Your report follows in a moment.');
+    expect(theCheckInIsCompleteSaying(false)).toBe('Your check-in is complete and on record.');
     expect(enoughToCloseSaying(undefined)).toBe('That is enough to close this check-in. Reply "finish" to complete it, or keep going.');
   });
 });

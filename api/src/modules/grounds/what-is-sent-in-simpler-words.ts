@@ -17,11 +17,15 @@
 export const THE_REPORT_IN_SIMPLER_WORDS =
   'THIS CHECK-IN USES SIMPLER WORDS, FOR EVERYBODY IN IT. Write every sentence of the report in short sentences, one idea in each, using everyday words that a person with basic English knows. Use no idioms and no figures of speech. Keep every fact, number, name and quote exactly as it is: simpler words never mean fewer facts.';
 
-/** What WhatsApp says when the person writes "finish" and the check-in is closed. */
+/**
+ * What WhatsApp says when the person writes "finish" and the check-in is closed. Only what has happened (a Pulse check on
+ * production, 15 October): "Your report follows in a moment" was followed by "The shared picture is made once everyone
+ * has answered", so the first was untrue. The message after this one says what comes next, whichever it is.
+ */
 export function theCheckInIsCompleteSaying(simplerWords?: boolean | null): string {
   return simplerWords
-    ? 'Your check-in is finished, and your answers are saved. Your report will come in a moment.'
-    : 'Your check-in is complete and on record. Your report follows in a moment.';
+    ? 'Your check-in is finished, and your answers are saved.'
+    : 'Your check-in is complete and on record.';
 }
 
 /** What WhatsApp adds when there is enough to close and the person has not said "finish". */

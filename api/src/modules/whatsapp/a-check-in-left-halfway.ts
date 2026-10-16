@@ -68,8 +68,8 @@ export function closesInHalfAnHourSaying(label: string, simplerWords?: boolean |
 export type WhyTheClockClosedIt = 'quiet' | 'age';
 export function closedByTheClockSaying(label: string, simplerWords?: boolean | null, why: WhyTheClockClosedIt = 'quiet'): string {
   const because = why === 'age' ? 'it has been open for two days' : 'nothing was said for twelve hours';
-  if (simplerWords) return `Your check-in for "${label}" has closed, because ${because}. Everything you said is saved. Your report will come in a moment.`;
-  return `Your check-in for "${label}" has closed, because ${because}. Everything you said is kept on the record, and your report follows in a moment.`;
+  if (simplerWords) return `Your check-in for "${label}" has closed, because ${because}. Everything you said is saved.`;
+  return `Your check-in for "${label}" has closed, because ${because}. Everything you said is kept on the record.`;
 }
 
 type Sender = { sendFor: (org: string, phone: string, text: string, context: { checkInId?: string; kind?: string; params?: string[] }) => Promise<{ sent: boolean }> };
