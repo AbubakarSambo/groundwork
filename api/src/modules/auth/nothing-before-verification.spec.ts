@@ -78,7 +78,9 @@ describe('the unverified path creates nothing real', () => {
   it('parks the whole signup instead, keyed to the verification token', () => {
     expect(NEW_ADDRESS_BRANCH).toMatch(/pendingSignup\.upsert/);
     // The transcript travels with it, so the link works from any browser.
-    expect(NEW_ADDRESS_BRANCH).toMatch(/payload: \(draft\?\.payload \?\? \{\}\) as any/);
+    /* The draft's own payload, without the name she gave, which is kept on the sign-up itself (15 October). */
+    expect(NEW_ADDRESS_BRANCH).toMatch(/\.\.\.theDraftsOwnPayload \} = \(draft\?\.payload \?\? \{\}\)/);
+    expect(NEW_ADDRESS_BRANCH).toMatch(/payload: theDraftsOwnPayload as any/);
     expect(NEW_ADDRESS_BRANCH).toMatch(/history: \(draft\?\.history \?\? \[\]\) as any/);
   });
 

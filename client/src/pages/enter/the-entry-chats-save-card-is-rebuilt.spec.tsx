@@ -140,6 +140,8 @@ describe('the save card, anonymous, before saving', () => {
     const { container } = renderPage()
     fireEvent.click(await screen.findByText(/Invite and finish/))
     const emailInput = screen.getByPlaceholderText('your@email.com')
+    /* The save step asks "Your name" now (local test of staging, 15 October). */
+    { const yourName = screen.queryByPlaceholderText('Your name'); if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } }) }
     fireEvent.change(emailInput, { target: { value: 'lead@example.test' } })
     fireEvent.submit(emailInput.closest('form')!)
     await waitFor(() => expect(authApi.entrySave).toHaveBeenCalledTimes(1))
@@ -147,6 +149,28 @@ describe('the save card, anonymous, before saving', () => {
     expect(screen.getByText('Name this situation')).toBeTruthy()
     expect(screen.getByText('Invite people')).toBeTruthy()
     expectAtMostOnePrimaryButton(container)
+  })
+})
+
+describe('the save card asks the lead her name, once (local test of staging, 15 October)', () => {
+  /* Hafsah saved from here with nothing asking, and her invitations went out as "Hjumare would like your take on Sales
+     check-in", a piece of her address. */
+  it('with no name, says why and sends nothing; with her name, sends it with the save', async () => {
+    const { authApi } = await import('@/api/auth')
+    vi.mocked(authApi.entrySave).mockResolvedValue({ draftToken: 'd-token' } as any)
+    seedClosedSession()
+    renderPage()
+    fireEvent.click(await screen.findByText(/Invite and finish/))
+    const emailInput = screen.getByPlaceholderText('your@email.com')
+    fireEvent.change(emailInput, { target: { value: 'hjumare+local@example.test' } })
+    fireEvent.submit(emailInput.closest('form')!)
+    expect(await screen.findByText('Write your name, so the people you invite know who is asking.')).toBeTruthy()
+    expect(authApi.entrySave).not.toHaveBeenCalled()
+    fireEvent.change(screen.getByPlaceholderText('Your name'), { target: { value: 'Hafsah Jumare' } })
+    fireEvent.submit(emailInput.closest('form')!)
+    await waitFor(() => expect(authApi.entrySave).toHaveBeenCalledTimes(1))
+    const [, body] = (authApi.entrySave as any).mock.calls[0]
+    expect(body.payload.firstName).toBe('Hafsah Jumare')
   })
 })
 
@@ -479,6 +503,8 @@ describe('a mentioned person keeps her name when added by typed address (fault 9
     renderPage()
     fireEvent.click(await screen.findByText(/Invite and finish/))
     const emailInput = screen.getByPlaceholderText('your@email.com')
+    /* The save step asks "Your name" now (local test of staging, 15 October). */
+    { const yourName = screen.queryByPlaceholderText('Your name'); if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } }) }
     fireEvent.change(emailInput, { target: { value: 'lead@example.test' } })
     fireEvent.submit(emailInput.closest('form')!)
     await waitFor(() => expect(authApi.entrySave).toHaveBeenCalled())

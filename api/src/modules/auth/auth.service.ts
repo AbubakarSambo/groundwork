@@ -815,8 +815,22 @@ export class AuthService {
        * company's name.
        */
       const localPart = lower.split('@')[0].replace(/[._\-+]/g, ' ').trim();
-      const typedFirstName = typeof draft?.payload?.firstName === 'string' ? draft.payload.firstName.trim().slice(0, 40) : '';
+      /*
+       * THE NAME SHE GAVE, SPLIT AS SHE WROTE IT (local test of staging, 15 October). The check-in's own save step asks
+       * "Your name" now: Hafsah, who saved from /start where nothing asked, sent invitations as "Hjumare would like your
+       * take on Sales check-in" and was greeted "Hi Hjumare", a piece of her address. "Hafsah Jumare" is Hafsah, and
+       * Jumare is her last name, never all of it in the first name. The address is only the last resort, for a door that
+       * sends no name at all.
+       */
+      const typedName = typeof draft?.payload?.firstName === 'string'
+        ? [draft.payload.firstName, typeof draft?.payload?.lastName === 'string' ? draft.payload.lastName : ''].join(' ').replace(/\s+/g, ' ').trim()
+        : '';
+      const typedFirstName = typedName ? typedName.split(' ')[0].slice(0, 40) : '';
+      const typedLastName = typedName ? typedName.split(' ').slice(1).join(' ').slice(0, 100) : '';
       const firstName = typedFirstName || (localPart.charAt(0).toUpperCase() + localPart.slice(1).split(' ')[0]).slice(0, 40) || 'User';
+      /* The name is kept on the waiting sign-up, not in the check-in's own draft, which the commit reads field by field. */
+      const { firstName: _givenFirst, lastName: _givenLast, ...theDraftsOwnPayload } = (draft?.payload ?? {}) as Record<string, any>;
+      void _givenFirst; void _givenLast;
 
       /**
        * NOTHING IS CREATED UNTIL THE ADDRESS IS PROVED.
@@ -855,10 +869,11 @@ export class AuthService {
           email: lower,
           token,
           firstName,
+          ...(typedLastName ? { lastName: typedLastName } : {}),
           orgName: typedOrgName || null,
           ...(passwordHash ? { passwordHash, passwordKeyHash: keyed!.keyHash } : {}),
           next: goingTo,
-          payload: (draft?.payload ?? {}) as any,
+          payload: theDraftsOwnPayload as any,
           history: (draft?.history ?? []) as any,
           draftToken: dt ?? null,
           expiresAt: expiresAtFor('verify an address'),
@@ -899,8 +914,9 @@ export class AuthService {
           ...(draft
             ? {
                 firstName,
+                lastName: typedLastName || null,
                 orgName: typedOrgName || null,
-                payload: (draft.payload ?? {}) as any,
+                payload: theDraftsOwnPayload as any,
                 history: (draft.history ?? []) as any,
                 draftToken: dt ?? null,
               }

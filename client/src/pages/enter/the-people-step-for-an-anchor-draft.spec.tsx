@@ -95,6 +95,8 @@ async function openInviteBlock(anchor: boolean) {
     return
   }
   const emailInput = await screen.findByPlaceholderText('your@email.com')
+  /* The save step asks "Your name" now (local test of staging, 15 October). */
+  { const yourName = screen.queryByPlaceholderText('Your name'); if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } }) }
   fireEvent.change(emailInput, { target: { value: 'lead@example.test' } })
   fireEvent.submit(emailInput.closest('form')!)
   await waitFor(() => expect(authApi.entrySave).toHaveBeenCalled())
