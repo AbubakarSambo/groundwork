@@ -54,6 +54,14 @@ export const reportsApi = {
 
   /* The route replies with when it happened, not the whole report (engine answer 43a) - the
      report itself is refetched separately once the release invalidates its query. */
+  /** "Hold it": today's team report waits until the lead shares it herself (Hafsah's answer 5, 16 October 2026). */
+  hold: (groundId: string) =>
+    apiClient.post<{ sessionNumber: number; held: boolean; says: string }>(`/grounds/${groundId}/report/hold`).then(r => r.data),
+
+  /** When today's team report is shared, as this reader is told it: the lead's words, or a team member's. */
+  sharing: (groundId: string) =>
+    apiClient.get<{ sessionNumber: number; shared: boolean; held: boolean; at: string | null; says: string }>(`/grounds/${groundId}/report/sharing`, { skipNotFoundToast: true } as any).then(r => r.data),
+
   release: (groundId: string) =>
     apiClient.post<{ groundId: string; releasedAt: string }>(`/grounds/${groundId}/report/release`).then(r => r.data),
 

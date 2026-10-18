@@ -220,6 +220,29 @@ describe('MarketView where next', () => {
   it('Martin, who checks in, is served none of it', async () => {
     expect(kindsFields(await boardAs(WHERE_NEXT, 'u-martin', 'MEMBER'))).toEqual([]);
   });
+
+  /* Screen match, 16 October (mvnext-board.jpg): where the lead has said who each person is, the people asked are grouped by those words. */
+  const DESCRIBED: Setup = {
+    ...WHERE_NEXT,
+    people: [
+      person('p-julia', 'u-lead', 'Julia', 'Fernandes', PartyType.INITIATOR),
+      { ...person('p-martin', 'u-martin', 'Martin', 'Vogel'), roleAsDescribed: 'Agroprocessor' } as any,
+      { ...person('p-ade', 'u-ade', 'Ade', 'Bello'), roleAsDescribed: 'Researcher' } as any,
+    ],
+  };
+  it('Julia reads the people grouped by who she said each one is, with how many in each answered', async () => {
+    const b = await boardAs(DESCRIBED, ...LEAD);
+    expect(b.byWhoTheyAre.state).toBe('filled');
+    expect(b.byWhoTheyAre.groups).toEqual([
+      { group: 'Agroprocessor', count: 1, answered: 1, says: '1 person, 1 answered.' },
+      { group: 'Researcher', count: 1, answered: 0, says: '1 person, 0 answered.' },
+    ]);
+  });
+  it('Martin, who checks in, is still served none of it, not even the lead’s words about who anybody is', async () => {
+    const b = await boardAs(DESCRIBED, 'u-martin', 'MEMBER');
+    expect(kindsFields(b)).toEqual([]);
+    expect(JSON.stringify(b)).not.toContain('Researcher');
+  });
 });
 
 /* ---------------------------------------------------------------------------------------------- */

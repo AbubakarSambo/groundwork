@@ -103,13 +103,19 @@ describe('for the lead, with the switch on', () => {
     expect(screen.queryByText('Groundwork recommends')).toBeNull()
   })
 
-  it('draws nothing, and never asks, with the switch off', async () => {
+  /*
+   * SCREEN MATCH, 16 OCTOBER: the lead asks whatever the switch, because an account several people name
+   * is offered on any check-in (detectors/an-account-several-people-name.ts); the server still offers
+   * the anchor's own check-ins only with the switch on. Was "never asks" - updated because the board as
+   * pictured has "Groundwork recommends" on every check-in. With nothing offered, nothing is drawn.
+   */
+  it('draws nothing with the switch off and nothing offered', async () => {
     ;(boardApi.get as any).mockResolvedValue(board(false))
     ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u1', participants: [] })
+    ;(recommendedCheckInsApi.list as any).mockResolvedValue({ offers: [] })
     renderBoard()
     await screen.findAllByText('Harvestline sales and delivery')
     expect(screen.queryByText('Groundwork recommends')).toBeNull()
-    expect(recommendedCheckInsApi.list).not.toHaveBeenCalled()
   })
 
   it('"Yes, set it up" calls the yes route, then draft-from-set-up, then opens /start prefilled with what it hands back', async () => {
@@ -157,6 +163,8 @@ describe('for a participant, not the lead', () => {
     renderBoard()
     await screen.findAllByText('Harvestline sales and delivery')
     expect(screen.queryByText('Groundwork recommends')).toBeNull()
-    expect(recommendedCheckInsApi.list).not.toHaveBeenCalled()
+    /* Was: the list was never asked for. Hafsah's answer 5 (16 October 2026): a team member is served offers about their own
+       work, so it is asked for; the server decides what is in it (groundwork-recommends-for-a-team-member-is-their-own-work.spec.ts),
+       and the lead's offers are never drawn on this board. */
   })
 })

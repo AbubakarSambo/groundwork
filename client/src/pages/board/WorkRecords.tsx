@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useState, type ReactNode } from 'react'
 import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -398,7 +398,7 @@ function WhatShowsIt({ row, leadFirstName, readerIsLead }: { row: AServedWorkRow
 /** `WhatShowsIt`, with its usual small top margin - written once, since every list that draws a
     record (the generic table, the sales deal grid, the timeline, the parties, the themes list)
     wrapped it in the exact same one-off class. */
-function WhatShowsItBlock(props: { row: AServedWorkRow; leadFirstName: string | null; readerIsLead: boolean }) {
+export function WhatShowsItBlock(props: { row: AServedWorkRow; leadFirstName: string | null; readerIsLead: boolean }) {
   return <div className="gwui-mt-4"><WhatShowsIt {...props} /></div>
 }
 
@@ -1253,7 +1253,7 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
       )}
 
       {canAdd && (
-        <div className="gwui-mt-14">
+        <div className="pb-add-record">
           {/* Board review, 1 October, item 8: this only opens the form below (a fold) - the real
               mutation is that form's own submit button, which stays a real button. A boxed
               secondary button here counted as a second control for one action. */}
@@ -1425,7 +1425,7 @@ export function WorkRecordsSections({ groundId, kindOfWork, sections, participan
  */
 function TheShapeOfTheWork({ stages, counts, itemNoun }: { stages: string[]; counts: Record<string, number>; itemNoun: string }) {
   return (
-    <div className="gwui-mt-14">
+    <div className="pb-add-record">
       <p className="gwui-mb-8 gwui-fs-16 gwui-ink-text" style={{fontWeight: 700}}>The shape of the work</p>
       <StageTrack stages={stages} counts={counts} itemNoun={itemNoun} />
     </div>
@@ -1445,4 +1445,68 @@ export function TheShapeOfTheWorkStrip({ kindOfWork, sections }: { kindOfWork?: 
   for (const row of section.rows) { const st = row.stageSays ?? row.stage; if (st) stageCounts[st] = (stageCounts[st] ?? 0) + 1 }
   const itemNoun = kindOfWork ? ITEM_NOUN_FOR_KIND[kindOfWork] : 'Item'
   return <TheShapeOfTheWork stages={section.stages} counts={stageCounts} itemNoun={itemNoun} />
+}
+
+/**
+ * CHANGING A DEAL, CONFIRMING WHOSE IT IS, AND ADDING ONE, FOR THE BOARD AS PICTURED (screen match, 16
+ * October; pictured/ThePicturedSalesBoard.tsx). The same mutations and the same form as the deal grid
+ * above, so nothing the lead could do on the old grid is lost: "Change" (with "Remove this record"),
+ * the claim's yes and no (decision 76, item 3), and "Add a record".
+ */
+export function TheDealsCanBeChanged({ groundId, section, participants, canEdit, children }: {
+  groundId: string
+  section: Extract<AServedWorkSection, { rows: AServedWorkRow[] }>
+  participants: { id: string; name: string | null }[]
+  canEdit: boolean
+  children: (api: { edit: (row: AServedWorkRow) => void; claim: (row: AServedWorkRow, yes: boolean) => void; claimPending: boolean }) => ReactNode
+}) {
+  const qc = useQueryClient()
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['board', groundId] })
+  const [adding, setAdding] = useState(false)
+  const [editingRow, setEditingRow] = useState<AServedWorkRow | null>(null)
+  const addItem = useMutation({
+    mutationFn: (dto: WorkItemInput) => boardApi.addWorkItem(groundId, dto),
+    onSuccess: () => { setAdding(false); invalidate() },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That record was not added. What you typed is still here, so try again.'),
+  })
+  const updateItem = useMutation({
+    mutationFn: (v: { itemId: string; dto: WorkItemInput }) => boardApi.updateWorkItem(groundId, v.itemId, v.dto),
+    onSuccess: () => { setEditingRow(null); invalidate() },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That change was not saved. Nothing has changed, so try again.'),
+  })
+  const removeItem = useMutation({
+    mutationFn: (itemId: string) => boardApi.deleteWorkItem(groundId, itemId),
+    onSuccess: () => { setEditingRow(null); invalidate() },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That record was not removed. Nothing has changed, so try again.'),
+  })
+  const claimItem = useMutation({
+    mutationFn: (v: { itemId: string; yes: boolean }) => boardApi.claimWorkItem(groundId, v.itemId, v.yes),
+    onSuccess: (data) => { invalidate(); if (data?.saidBack) toast.success(data.saidBack) },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. Nothing has changed, so try again.'),
+  })
+  const canAdd = canEdit && !!ITEM_KINDS_FOR_HOLDS[section.holds]?.length
+  return (
+    <>
+      {children({ edit: setEditingRow, claim: (row, yes) => claimItem.mutate({ itemId: row.id, yes }), claimPending: claimItem.isPending })}
+      {canAdd && (
+        <div className="pb-add-record">
+          <button onClick={() => setAdding(true)} className="gwui-plain-link">Add a record</button>
+        </div>
+      )}
+      {adding && (
+        <WorkItemForm section={section} participants={participants} editing={null} onClose={() => setAdding(false)} onSaved={(dto) => addItem.mutate(dto)} />
+      )}
+      {editingRow && (
+        <WorkItemForm
+          section={section}
+          participants={participants}
+          editing={editingRow}
+          onClose={() => setEditingRow(null)}
+          onSaved={(dto) => updateItem.mutate({ itemId: editingRow.id, dto })}
+          onRemove={canEdit ? () => removeItem.mutate(editingRow.id) : undefined}
+          removing={removeItem.isPending}
+        />
+      )}
+    </>
+  )
 }

@@ -21,6 +21,12 @@ export interface WhatTheBoardIsBuiltFrom {
   documentsEveryoneMayRead?: { createdAt?: Date | string | null }[];
   /** When the lead decided how the check-in ends (U.11). A decision is something new coming in. */
   decidedAt?: Date | string | null;
+  /**
+   * What the lead and the person agreed at the start, once the person has seen it (faith90-board.jpg: a check-in
+   * nobody has answered yet still changed when both confirmed what was agreed on day 1). A goal the person has not
+   * been told is left out, as a private document is: its time would say something was added they cannot see.
+   */
+  agreedWithThePerson?: { createdAt?: Date | string | null; updatedAt?: Date | string | null; seenBySubject?: boolean | null }[];
   /** When an anchor check-in's month ended (decision 121, item 2): a scheduled event, written once by the sweep, never by opening the board. */
   monthEndedAt?: Date | string | null;
 }
@@ -32,6 +38,7 @@ export function whenTheBoardLastChanged(from: WhatTheBoardIsBuiltFrom): string |
     ...(from.objectives ?? []).map((o) => o.updatedAt ?? o.createdAt),
     ...(from.dependencies ?? []).map((d) => d.updatedAt ?? d.createdAt),
     ...(from.documentsEveryoneMayRead ?? []).map((d) => d.createdAt),
+    ...(from.agreedWithThePerson ?? []).filter((a) => a.seenBySubject === true).map((a) => a.updatedAt ?? a.createdAt),
     from.decidedAt,
     from.monthEndedAt,
   ];

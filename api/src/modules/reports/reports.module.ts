@@ -1,3 +1,4 @@
+import { AReportSharesItselfCron } from './a-report-shares-itself.cron';
 import { Module } from '@nestjs/common';
 import { ReportsService } from './reports.service';
 import { ReportsController } from './reports.controller';
@@ -15,7 +16,7 @@ import { WorkspaceModule } from '../workspace/workspace.module';
 @Module({
   imports: [ConversationModule, GroundsModule, EmailModule, UsageModule, WorkspaceModule],
   controllers: [ReportsController, TheBlockerTraceController, TheWeeklyReportController],
-  providers: [ReportsService, ReportsListener, TheBlockerTraceService, TheWeeklyReportService],
+  providers: [ReportsService, ReportsListener, TheBlockerTraceService, TheWeeklyReportService, AReportSharesItselfCron],
   exports: [ReportsService],
 })
 export class ReportsModule {}

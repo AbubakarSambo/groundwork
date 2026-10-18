@@ -110,7 +110,10 @@ export function buildSessionRows(
     const fullParties = fullParticipants ? whoIsInRound(fullParticipants, n, ground?.scenario, checkIns) : null
     /* `ground.participants` is restricted to the viewer's own row when it is shorter than the full
        roster the board sent for the same round - the only case this read can be too small. */
-    const restricted = !!fullParties && fullParties.length > parties.length
+    /* Restricted means the viewer was sent only their own row. The board's roster can also be longer because it lists somebody
+       an admin has not let in yet, whom the ground's own list leaves out (decision 77); that is not a restricted read, and
+       treating it as one dropped the lead's own count, and "Today’s report shares itself" with it (screen match, 16 October). */
+    const restricted = !!fullParties && fullParties.length > parties.length && parties.length <= 1
     const closed = ((ground?.roundCompletions ?? []) as any[]).some((r) => r.sessionNumber === n)
     /* A session the clock closed with nothing said is not an answer (api an-answer-includes-a-refusal.ts): night quality run 1
        read "5 of 5 checked in" and "4 of 4" while Jared had missed both. */

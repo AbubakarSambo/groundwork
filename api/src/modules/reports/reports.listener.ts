@@ -12,6 +12,7 @@ import { EmailService } from '../email/email.service';
 import { GroundworkEvents, CheckInCompletedEvent, GroundActivatedEvent } from '../../common';
 import { GroundStatus, PartyType, ReportActivationStatus, CheckInStatus } from '@prisma/client';
 import { hasEnded, isHeld, hasStalled, isShut } from '../grounds/a-ground-that-has-ended';
+import { theTimeItSharesItself } from './a-report-shares-itself';
 
 /**
  * Bridges domain events to report generation. Lives in the reports module so
@@ -123,14 +124,22 @@ export class ReportsListener {
       // Once everyone is through, this is the real moment: mutual reveal,
       // billing activation, "your report is ready" notifications.
       this.logger.log(`All parties through session ${sessionNumber}. Releasing report and activating ground ${event.groundId}.`);
-      const g = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { organizationId: true, status: true } });
+      const g = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { organizationId: true, status: true, cadence: true, reportSharesAt: true } as any }) as any;
       if (g) {
-        await this.reports.release(event.groundId, g.organizationId);
-        /* release() now releases this session's picture on its own and tells people itself (decision 76, item 4);
-           this stays as the backstop for anybody it missed. Once per person per round, so nobody is told twice. */
-        await this.reports.tellThemTheReportIsReady(event.groundId, sessionNumber).catch((err: any) =>
-          this.logger.warn(`Telling the round on ${event.groundId} failed: ${err?.message}`),
-        );
+        /*
+         * A REPORT SHARES ITSELF AT ITS SET TIME, NOT THE MOMENT EVERYONE IS IN (Hafsah's answers 1 and 5, 16 October 2026).
+         * A check-in that repeats waits for its set time (or the lead's own "Share now"), so the lead can read it first and
+         * hold it; the job that shares it is ReportsService.shareTheReportsWhoseTimeHasCome. A one-time check-in has no set
+         * time and shares now, as it always did.
+         */
+        if (!theTimeItSharesItself(g)) {
+          await this.reports.release(event.groundId, g.organizationId);
+          /* release() now releases this session's picture on its own and tells people itself (decision 76, item 4);
+             this stays as the backstop for anybody it missed. Once per person per round, so nobody is told twice. */
+          await this.reports.tellThemTheReportIsReady(event.groundId, sessionNumber).catch((err: any) =>
+            this.logger.warn(`Telling the round on ${event.groundId} failed: ${err?.message}`),
+          );
+        }
         /*
          * THE REPORT OF THE LAST SESSION MUST NOT REOPEN THE GROUND. Releasing normally means the
          * ground is live, and for the closing session it is the opposite: the report lands after

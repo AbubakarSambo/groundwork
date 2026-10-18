@@ -818,6 +818,9 @@ export type BoardPresent = {
     state: 'filled' | 'not-known'
     says?: string
     why?: string
+    /** Who each person is in the lead's own words, served to the lead alone. */
+    note?: string
+    groups?: { group: string; count: number; answered: number; says: string }[]
   }
 
   /**

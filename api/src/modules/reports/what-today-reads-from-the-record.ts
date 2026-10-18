@@ -247,7 +247,8 @@ export async function sinceLastFrom(prisma: any, groundId: string, l: Loaded, re
 /**
  * (b) WHAT ONLY THE PERSON WHO RUNS THE CHECK-IN CAN SETTLE. Null for anybody else.
  */
-export async function forTheLeadFrom(prisma: any, groundId: string, l: Loaded, reader: Reader): Promise<ForTheLead[] | null> {
+/** `upTo` is how many Today shows (eight); the weekly report asks for up to sixteen, so it can take one from each place (screen match). */
+export async function forTheLeadFrom(prisma: any, groundId: string, l: Loaded, reader: Reader, upTo = 8): Promise<ForTheLead[] | null> {
   const { ground, participants, nameOf } = l;
   if (ground.initiatorId !== reader.userId) return null;
   const lead = participants.find((p) => p.userId === reader.userId) ?? null;
@@ -361,7 +362,7 @@ export async function forTheLeadFrom(prisma: any, groundId: string, l: Loaded, r
     if (!text) continue;
     out.push({ id: `note-${n.id}`, decide: sentence(text), why: 'You wrote this down as still to decide.', order: 2 });
   }
-  return out.sort((a, b) => a.order - b.order).slice(0, 8).map(({ order: _o, ...rest }) => rest);
+  return out.sort((a, b) => a.order - b.order).slice(0, upTo).map(({ order: _o, ...rest }) => rest);
 }
 
 /**
@@ -416,11 +417,11 @@ export async function whereWhatPeopleSaidDiffers(prisma: any, groundId: string, 
  * BOTH, FOR ONE READER OF THE LATEST REPORT. The fields are left out, not sent empty, where there is
  * nothing to say or the reader may not read them.
  */
-export async function whatTodayReads(prisma: any, groundId: string, reader: Reader): Promise<{ sinceLast?: SinceLast; forTheLead?: ForTheLead[] }> {
+export async function whatTodayReads(prisma: any, groundId: string, reader: Reader, opts: { everyThingForTheLead?: boolean } = {}): Promise<{ sinceLast?: SinceLast; forTheLead?: ForTheLead[] }> {
   const l = await load(prisma, groundId);
   if (!l) return {};
   const sinceLast = await sinceLastFrom(prisma, groundId, l, reader);
-  const forTheLead = await forTheLeadFrom(prisma, groundId, l, reader);
+  const forTheLead = await forTheLeadFrom(prisma, groundId, l, reader, opts.everyThingForTheLead ? 16 : 8);
   const today = await todayHeldToTheRecord(prisma, groundId, {
     ...(sinceLast ? { sinceLast } : {}),
     ...(forTheLead && forTheLead.length ? { forTheLead } : {}),

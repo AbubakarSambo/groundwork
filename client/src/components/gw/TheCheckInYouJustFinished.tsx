@@ -156,10 +156,12 @@ const SAYS: Record<string, { word: string; dot: string }> = {
   unspoken: { word: 'not spoken to', dot: 'var(--gw-border)' },
 }
 
-export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, light = false }: {
+export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, light = false, pictured = false }: {
   checkInId: string
   groundId: string
   sessionNumber: number
+  /** Your own report exactly as own-report.jpg draws it (screen match, screen 42). Everything else this card shows is on ?whole=1. */
+  pictured?: boolean
   /** The light own report, for a sales check-in (sales-first.md, sections 2 and 5). Other kinds read it as before. */
   light?: boolean
 }) {
@@ -525,6 +527,61 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
       )}
     </>
   )
+
+  /*
+   * YOUR OWN REPORT, AS PICTURED (own-report.jpg, screen 42). "What you did well" in its own panel, the session's own two
+   * sentences, "What you told us" as a list with each line's mark and where it comes from, "One thing to think about" in
+   * its own panel with one thing to think about, and "Something here isn't right". Every line is this person's own, served
+   * to them alone, as before. The rest of this card (the masthead, the folds, the rest of the private note, how checkable
+   * it was, each line's own take-back) is on the page as it was, one tap away (?whole=1).
+   */
+  if (pictured) {
+    const story: string | null = artifact.data?.artifact?.summary ?? null
+    const aQuestion: string | null = ((note?.beforeNextTime ?? []) as string[]).find((b) => /\?\s*$/.test(b)) ?? null
+    const toThinkAbout: string[] = carry ? [carry] : [note?.showingUp, aQuestion].filter(Boolean) as string[]
+    return (
+      <div className="pb-own-body">
+        {didWell.length > 0 && (
+          <section className="pb-own-panel" aria-label="What you did well">
+            <h2 className="pb-own-h">What you did well</h2>
+            <ul className="pb-own-list">
+              {didWell.map((x) => (
+                <li key={x.id}><ProofMark mark={x.mark} /><span>{x.text}{x.how ? ` ${x.how}` : ''}</span></li>
+              ))}
+            </ul>
+          </section>
+        )}
+        {story && <p className="pb-own-story">{story}</p>}
+        {said.length > 0 && (
+          <section aria-label="What you told us">
+            <h2 className="pb-own-h pb-own-h-rule">What you told us</h2>
+            <ul className="pb-own-told">
+              {said.map((x) => (
+                <li key={x.id} className={x.disputedAt ? 'pb-own-gone' : undefined}>
+                  <ProofMark mark={x.mark ?? 'said'} />
+                  <div>
+                    <span>{x.text}</span>
+                    {(x.how || x.typeSays) && <span className="pb-own-how">{x.how ?? x.typeSays}</span>}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+        {toThinkAbout.length > 0 && (
+          <section className="pb-own-panel" aria-label="One thing to think about">
+            <h2 className="pb-own-h">One thing to think about</h2>
+            {toThinkAbout.map((t) => <p key={t} className="pb-own-think">{t}</p>)}
+          </section>
+        )}
+        {!closed && (
+          <button type="button" className="pb-own-wrong" onClick={() => correct.mutate()} disabled={correct.isPending}>
+            {correct.isPending ? 'Opening…' : 'Something here isn’t right'}
+          </button>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="gw-close" style={{ margin: '16px 0 8px', background: 'var(--gw-card)', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>

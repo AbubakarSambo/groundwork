@@ -183,6 +183,13 @@ export class BoardController {
     return this.board.answerADecision(id, itemId, userId, dto.yes);
   }
 
+  @Post('not-relevant')
+  @ApiOperation({ summary: 'Lead only: say that what the organisation kept, offered as relevant, is not relevant to this check-in.' })
+  async sayItIsNotRelevant(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: { memoryIds?: string[] }) {
+    if (!Array.isArray(dto?.memoryIds) || !dto.memoryIds.length) throw new BadRequestException('Say which of what was offered is not relevant.');
+    return this.board.sayItIsNotRelevant(id, dto.memoryIds, userId);
+  }
+
   @Delete('work-items/:itemId')
   @ApiOperation({ summary: 'Lead only: remove a record of the kind of work.' })
   async deleteWorkItem(@Param('id') id: string, @Param('itemId') itemId: string, @CurrentUser('id') userId: string) {

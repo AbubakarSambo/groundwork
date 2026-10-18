@@ -4,6 +4,7 @@ import { ThisAddsASeat } from '@/components/gw/this-adds-a-seat'
 import { useState, type ReactNode } from 'react'
 import { WhatSuccessLooksLikeFor } from '@/components/gw/WhatSuccessLooksLike'
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
+import { SWITCHBOARD_MATRIX } from './the-switchboard-g2-table'
 import { ThatIsOnTheRecord } from '@/components/gw/ThatIsOnTheRecord'
 import { TheOtherBoardsYouAreIn } from '@/components/gw/TheOtherBoardsYouAreIn'
 import { HowItIsGoing } from '@/components/gw/how-it-is-going'
@@ -143,6 +144,9 @@ import { WhereEachPersonIs } from '@/components/gw/where-each-person-is'
 import { SplitOneTotalAcrossPeople } from '@/components/gw/split-one-total-across-people'
 import { WhatTheTargetAssumes } from '@/components/gw/TargetsBand'
 import { whenTheBoardLastChanged, whenTheBoardLastChangedInShort, whenItRanOutOfTime } from './when-the-board-last-changed'
+import { ThePicturedSalesBoard, theScheduleInWords, ThePicturedOwnDeals, ThePicturedAskBar, GroundworkRecommends } from './pictured/ThePicturedSalesBoard'
+import { ThePicturedBoard } from './pictured/ThePicturedBoard'
+import { MessageCircle } from 'lucide-react'
 import { TheLightSalesBoard, TheLightNeedsYou, TheLightBesideTheHeadline, TheLightBoxes, TheLightSummaryFirst } from './TheLightSalesBoard'
 import { SuggestionsForTheLead } from '@/components/gw/Suggestions'
 import { buildSessionRows } from '@/lib/session-rows'
@@ -616,7 +620,11 @@ function FoldEverythingElseUnless({ alreadyFolded, children }: { alreadyFolded: 
  * null when this reader has no report of their own yet), and "Read your own report" is drawn only
  * then, as the prototype shows it only once there is one to read.
  */
-function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords, myParticipantId, leadFirstName, yourShare, yourShareSays, myLatestCheckInId }: {
+function TheParticipantsOwnView({ pictured = false, board, myFirstName = null, groundId, teamPicture, kindOfWork, workRecords, myParticipantId, leadFirstName, yourShare, yourShareSays, myLatestCheckInId }: {
+  /** Screen match, 16 October: a sales check-in with deals draws this part as board-as-participant.jpg has it. */
+  pictured?: boolean
+  board?: any
+  myFirstName?: string | null
   groundId: string
   teamPicture: BoardPresent['teamPicture']
   kindOfWork: string | null
@@ -658,7 +666,7 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
         marked "Shared", which is not a fact the engine ever sent.
       */}
       {teamPicture && (
-        <Panel className="gwui-mt-16">
+        <Panel className={pictured ? 'pb-team-picture' : 'gwui-mt-16'}>
           {/*
             BOARD REVIEW, SALES PIECE C, ITEM 6: NEVER CLAIM IT IS "BELOW" AS A PLAIN FACT - LINK TO
             IT. "It is below, with everything else from this check-in." said where the team picture
@@ -716,13 +724,14 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
                   branch had none at all. */}
               {shared && <div className="gwui-fs-15 gwui-ink-sub gwui-mt-4" style={{lineHeight: 1.55}}>Your own report is ready now.</div>}
               <div className="gwui-mt-10">
-                <UIButton kind="secondary" to={`/checkin/${myLatestCheckInId}/report`}>Read your own report</UIButton>
+                <UIButton kind="secondary" wide={pictured} to={`/checkin/${myLatestCheckInId}/report`}>Read your own report</UIButton>
               </div>
             </>
           )}
         </Panel>
       )}
-      {isSalesKindOfWork && (
+      {pictured && board && <ThePicturedOwnDeals b={board} groundId={groundId} myFirstName={myFirstName} />}
+      {isSalesKindOfWork && !pictured && (
         <YourOwnRecordsSections
           groundId={groundId}
           kindOfWork={kindOfWork as any}
@@ -743,6 +752,12 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
       */}
       {(isSalesKindOfWork || kindOfWork === 'MarketView Q4') && !!yourShare?.length && (
         <Section heading="Your share">
+          {pictured ? (
+            /* As pictured: one panel, the share and who sees it in one line. */
+            <Panel>
+              {yourShare.map((s) => <p className="gwui-panel-text" key={s.objectiveId}><span>{s.says}</span> <span>{s.whoSees}</span></p>)}
+            </Panel>
+          ) : (
           <Stack gap={8}>
             {yourShare.map((s) => (
               <div key={s.objectiveId}>
@@ -751,6 +766,7 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
               </div>
             ))}
           </Stack>
+          )}
         </Section>
       )}
       {/*
@@ -1067,10 +1083,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const { data: recommended } = useQuery({
     queryKey: ['recommended-check-ins', id],
     queryFn: () => recommendedCheckInsApi.list(id!),
-    enabled: !!id && anchorRecommendationsOn,
+    /* Screen match, 16 October: an account several people name is offered on any check-in, so whoever runs it asks. */
+    /* And a team member, who is served only offers about their own work (Hafsah's answer 5, 16 October 2026; the server decides). */
+    enabled: !!id && (anchorRecommendationsOn || viewerRunsThisCheckIn || !!(data as any)?.myParticipantId),
     retry: false,
   })
-  const recommendedOffers: AnOfferTheLeadReads[] = anchorRecommendationsOn ? (recommended?.offers ?? []) : []
+  const recommendedOffers: AnOfferTheLeadReads[] = anchorRecommendationsOn || viewerRunsThisCheckIn ? (recommended?.offers ?? []) : []
+  /* What a team member is recommended: the server serves them only offers resting on their own work. */
+  const myOwnRecommendedOffers: AnOfferTheLeadReads[] = !viewerRunsThisCheckIn ? (recommended?.offers ?? []) : []
 
   const answerRecommendation = useMutation({
     mutationFn: (vars: { offerId: string; yes: boolean }): Promise<{ state: 'ACCEPTED' | 'DECLINED'; setUp?: unknown }> =>
@@ -1340,7 +1360,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    */
   const ninetyDaysSeeTheSamePictures = isOnboarding
     ? (viewerRunsThisCheckIn
-        ? (newHireFullName ? `You and ${newHireFullName} see the same pictures.` : null)
+        /* kwame-board.jpg names people by their first name ("Wairimu and Kwame see the same pictures"); the reader is "you". */
+        ? (newHireFullName ? `You and ${newHireFullName.trim().split(/\s+/)[0]} see the same pictures.` : null)
         : ((groundForSignals as any)?.leadFirstName ? `You and ${(groundForSignals as any).leadFirstName} see the same pictures.` : null))
     : null
   /*
@@ -1595,9 +1616,75 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * A team member on a sales board keeps her own view, with the short "Updated" line and the deal
    * key behind ⓘ.
    */
-  const light = !!b.atAGlance && !isParticipantView
+  /*
+   * SCREEN MATCH, 16 OCTOBER: THE SALES BOARD AS PICTURED, FOR WHOEVER RUNS IT. "Build each screen as
+   * pictured" (Hafsah, 15 October; docs/prototype/screens/B5-the-board/board-as-lead.jpg): the lead of a
+   * sales check-in reads the board the picture shows, every section open and in its order
+   * (pictured/ThePicturedSalesBoard.tsx), not the folded light board. The light board stays for an admin
+   * who only reads (the summary first), until its own screen (A4 read-only-view) is matched.
+   */
+  /* Only where deals are on record: a sales organisation's goals board with none (salesorg-board.jpg) has its own picture, matched on its own. */
+  /* "See every other part of this board": the whole board as it was, with nothing drawn as pictured. */
+  const theWholeBoard = searchParams.get('whole') === '1'
+  const picturedLead = !theWholeBoard && isSalesOrg && viewerRunsThisCheckIn && !isParticipantView && !groundId
+    && (b.workRecords ?? []).some((s: any) => s.section === 'Deal grid' && (s.rows ?? []).some((r: any) => r.kind === 'deal'))
+  /* A sales check-in of many people in teams (salesorg-board.jpg): every sale in one table, and the work by team. */
+  const picturedManyInTeams = picturedLead && (b.participants ?? []).filter((p: any) => !p.managingOnly).length > 10
+  /*
+   * THE SALES CHECK-IN IN ANOTHER SITUATION (B5-boards-every-situation/*-board.jpg): the same board, with the sections the
+   * switchboard switches on for that situation. "What needs you" (with what the target assumes) comes with lead
+   * actions, the day-by-day deals with the deal grid, blockers with blockers and what keeps coming up with patterns;
+   * the rest of the board is the same for every situation.
+   */
+  const situationRow = picturedLead && !picturedManyInTeams && b.scenario !== 'OKR_ALIGNMENT' ? (SWITCHBOARD_MATRIX.find((r) => r.scenario === b.scenario) ?? null) : null
+  const situationOrder = situationRow ? [
+    ...(situationRow.sectionsOn.includes('Lead actions') ? ['assumes', 'needsYou'] : []),
+    ...(situationRow.sectionsOn.includes('Deal grid') ? ['deals'] : []),
+    ...(situationRow.sectionsOn.includes('Blockers') ? ['blockers'] : []),
+    ...(situationRow.sectionsOn.includes('Patterns') ? ['patterns'] : []),
+    'reported', 'whoCheckedIn', 'teamToday', 'overTime', 'reports', 'otherBoards', 'help', 'otherTeams', 'openIssues', 'heading', 'ask', 'recommends',
+  ] : null
+  /* An engineering release, drawn the same way (eng-board.jpg), for whoever runs it. The other kinds whose example is drawn so join here as their own screens are matched. */
+  const picturedOtherKind = !theWholeBoard && viewerRunsThisCheckIn && !isParticipantView && !groundId
+    && ['engineering release', 'support desk', 'distribution operations', 'trader training programme', "founder's own check-in", 'asset loans', 'MarketView where next', 'MarketView Q4', 'a law firm matter', 'a government programme'].includes(String((b as any).kindOfWork ?? ''))
+  /* An admin who only reads a sales check-in reads the same board as pictured, with nothing to press (read-only-view.jpg). */
+  const picturedReader = !theWholeBoard && isSalesOrg && !viewerRunsThisCheckIn && !isParticipantView && !groundId && !!b.readOnlyNote
+    && (b.workRecords ?? []).some((s: any) => s.section === 'Deal grid' && (s.rows ?? []).some((r: any) => r.kind === 'deal'))
+  /* And a person in it reads their own part of the same board as pictured (board-as-participant.jpg). */
+  const picturedParticipant = !theWholeBoard && isSalesOrg && isParticipantView && !groundId
+    && (b.workRecords ?? []).some((s: any) => s.section === 'Deal grid' && (s.rows ?? []).some((r: any) => r.kind === 'deal'))
+  /* The onboarding board as pictured (kwame-board.jpg), for whoever runs it. */
+  const picturedOnboarding = !theWholeBoard && b.family === 'ONBOARDING' && viewerRunsThisCheckIn && !isParticipantView && !groundId
+  /*
+   * A person in a leadership-style goals check-in (leadership-board.jpg): the lead takes part too, it is about
+   * the goals, and it keeps no records of a kind of work. Their own part, as pictured. Any other participant's
+   * board is unchanged.
+   */
+  const picturedMember = !theWholeBoard && isParticipantView && !groundId && b.scenario === 'OKR_ALIGNMENT' && !(b as any).kindOfWork
+    && (groundForSignals as any)?.leadAnswersToo === true
+  /* A big decision worked through (supplier-board.jpg), for whoever runs it. */
+  const picturedDecision = !theWholeBoard && b.scenario === 'CRISIS_ALIGNMENT' && viewerRunsThisCheckIn && !isParticipantView && !groundId
+  /* A performance plan (danielpip-board.jpg), for whoever runs it: the suggestion first, then the person's case. */
+  const picturedPlan = !theWholeBoard && b.scenario === 'PIP' && viewerRunsThisCheckIn && !isParticipantView && !groundId
+  const planPersonId = picturedPlan ? ((b.participants ?? []).find((p) => !p.managingOnly && p.id !== b.myParticipantId)?.id ?? null) : null
+  const planNamesLine = picturedPlan && planPersonId
+    ? (() => { const f = String((b.participants ?? []).find((p) => p.id === planPersonId)?.name ?? '').trim().split(/\s+/)[0]; return f ? `${f} and you.` : null })()
+    : null
+  const drawnAsPictured = picturedLead || picturedReader || picturedOnboarding || picturedMember || picturedDecision || picturedPlan || picturedOtherKind
+  const light = !!b.atAGlance && !isParticipantView && !picturedLead && !picturedReader && !picturedOnboarding && !picturedDecision && !picturedPlan && !picturedOtherKind
+  /* "Daily on weekdays, from 4pm. Session 38 of 65. Runs until 30 September." (board-as-lead.txt). */
+  const picturedCadenceLine = [
+    picturedOnboarding ? onboardingNamesLine : picturedPlan ? planNamesLine : null,
+    theScheduleInWords((groundForSignals as any)?.cadence, (groundForSignals as any)?.workingDays, b.phaseSpine?.sessions?.[b.phaseSpine.sessions.length - 1]?.opensOn ?? null, (groundForSignals as any)?.cadenceAnchorDay ?? null),
+    spineWords && /Session (\d+) of \1\.$/.test(spineWords) ? spineWords.replace(/\.$/, ', the last one.') : spineWords,
+    /* An evaluation check-in is served no phase spine (board-families.ts keeps that family thin), so its count is read from the sessions its grid already holds. */
+    !spineWords && picturedPlan ? phaseSpineSentence(
+      (b.checkInGrid?.sessions ?? []).length ? { startsAt: null, endsAt: null, currentSession: Math.max(...(b.checkInGrid?.sessions ?? []).map(Number)) } : null,
+      plannedSessions ?? null,
+    ) : null,
+  ].filter(Boolean).join(' ') || cadenceLine
   const lightLead = light && viewerRunsThisCheckIn
-  const shortUpdatedLine = light || participantFoldsWhole
+  const shortUpdatedLine = light || (participantFoldsWhole && !picturedParticipant && !picturedMember)
   /*
    * ITEM 6 (ONBOARDING BOARD FIX 2): "GROUNDWORK DOES NOT KNOW WHAT KIND OF WORK..." IS NOT THE
    * PROTOTYPE'S OWN SECTION. For a kind of work the engine has not been told yet, every one of
@@ -2490,7 +2577,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         <CheckInHeader
           crumbs={[{ label: 'Check-ins', to: '/grounds' }, { label: b.title }]}
           title={b.title}
-          subtitle={cadenceLine || undefined}
+          subtitle={(picturedDecision ? (() => { const n = (b.participants ?? []).length; const done = (b as any).howItIsGoing?.glance?.progress?.answeredThisRound ?? null; return `${n} people answer once.${done != null ? ` ${done} of ${n} have answered.` : ''}` })() : picturedLead || picturedReader || picturedParticipant || picturedOnboarding || picturedPlan || picturedOtherKind ? picturedCadenceLine : picturedMember ? [((b.participants ?? []).find((p) => p.partyType === 'INITIATOR')?.name ? `Run by ${(b.participants ?? []).find((p) => p.partyType === 'INITIATOR')?.name}.` : null), theScheduleInWords((groundForSignals as any)?.cadence, (groundForSignals as any)?.workingDays, null, (groundForSignals as any)?.cadenceAnchorDay ?? null), spineWords].filter(Boolean).join(' ') : cadenceLine) || undefined}
           action={(
             /*
               B-204: AT A PHONE WIDTH, THE NEXT-SESSION NOTE COULD RUN THE WHOLE PAGE SIDEWAYS.
@@ -2545,14 +2632,22 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   own one-off classes instead of the shared `gwui-plain-link` every other quiet
                   text link on this board uses - the button-count test could not tell it apart
                   from a real button because of it. */}
-              <button type="button" onClick={showAsk} className="gwui-plain-link">
-                Ask
-              </button>
+              {picturedLead || picturedParticipant || picturedOnboarding || picturedMember || picturedDecision || picturedPlan || picturedOtherKind ? (
+                /* board-as-lead.jpg: a speech mark and "Ask", in bold, not underlined. */
+                <button type="button" onClick={showAsk} className="gwui-plain-link pb-ask-link">
+                  <MessageCircle size={18} aria-hidden="true" />
+                  Ask
+                </button>
+              ) : (
+                <button type="button" onClick={showAsk} className="gwui-plain-link">
+                  Ask
+                </button>
+              )}
             </FlexRow>
           )}
           active="board"
           tabs={headerTabs}
-          trailing={!groundId ? <TheOtherBoardsYouAreIn groundId={id!} label={light ? 'Views' : undefined} /> : undefined}
+          trailing={!groundId ? <TheOtherBoardsYouAreIn groundId={id!} label={light || picturedLead || picturedOnboarding || picturedMember || picturedParticipant || picturedDecision || picturedPlan || picturedOtherKind ? 'Views' : undefined} plain={picturedLead || picturedOnboarding || picturedMember || picturedParticipant || picturedDecision || picturedPlan || picturedOtherKind} /> : undefined}
         />
         )}
 
@@ -2593,6 +2688,222 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           <p role="note" className="gwui-fs-15 gwui-ink-text gwui-mt-8" style={{lineHeight: 1.55}}>{b.readOnlyNote}</p>
         )}
 
+        {((picturedLead && picturedManyInTeams) || picturedOtherKind) && (
+          <ThePicturedBoard
+            /* A founder's own check-in has one person in it (founder-board.jpg): no team today, no areas, no row per person. */
+            order={(((b as any).kindOfWork === 'a government programme'
+              /* A programme across levels (gov-board.jpg): what each level understood, the visit log, the counties. */
+              ? ['eachLevel', 'visitLog', 'counties', 'heading', 'recommends']
+              : (b as any).kindOfWork === 'a law firm matter'
+              /* A matter (matter-board.jpg): where it stands, what you need to decide, what changed this week. */
+              ? ['matterStands', 'youNeedToDecide', 'changedThisWeek', 'heading', 'recommends']
+              : (b as any).kindOfWork === 'MarketView Q4'
+              /* Numbers from the systems beside what people said (mvq4-board.jpg). */
+              ? ['question', 'needsYou', 'systemsShow', 'saidAndSystemsDiffer', 'heading', 'recommends']
+              : (b as any).kindOfWork === 'MarketView where next'
+              /* People asked once, each on their own (mvnext-board.jpg). */
+              ? ['inShort', 'byWhoTheyAre', 'whereNextRanked', 'whereTheyDisagree', 'cantTellYou', 'heading']
+              : (b as any).kindOfWork === 'asset loans'
+              /* A lending cohort (loans-board.jpg): what needs you, where the cohort stands, every trader, and what keeps coming up as the cohort's own question. */
+              ? ['needsYou', 'cohortStands', 'everySale', 'personPlaceOrModel', 'supportGiven', 'heading']
+              : (b as any).kindOfWork === "founder's own check-in"
+              ? ['headlineTargets', 'needsYou', 'everySale', 'reported', 'blockers', 'patterns', 'overTime', 'reports', 'otherBoards', 'heading', 'ask', 'recommends']
+              : ['headlineTargets', 'needsYou', 'everySale', 'teamToday', 'reported', 'themes', 'byTeam', 'whoCheckedIn', 'blockers', 'patterns', 'overTime', 'reports', 'otherBoards', 'heading', 'ask', 'recommends'])
+              /* With no piece of work on record yet, the kind of work's own empty table says so and offers to add one, in place of the table. */
+              .flatMap((k) => (k === 'everySale' && !(b.workRecords ?? []).some((x: any) => (x.section === 'Deal grid' || x.section === 'Work plan') && (x.rows ?? []).length) ? ['kindOfWork', 'otherRecords'] : [k]))) as any}
+            otherRecords={(
+              <WorkRecordsSections
+                groundId={id!}
+                kindOfWork={kindOfWorkKey as any}
+                sections={(b.workRecords ?? []).filter((x) => x.section === 'Deal grid' || x.section === 'Work plan')}
+                participants={(b.participants ?? []).map((p) => ({ id: p.id, name: p.name }))}
+                leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
+                readerIsLead={true}
+                canEdit={b.canEditFrame}
+              />
+            )}
+            kindOfWork={(
+              <KindOfWorkBanner
+                groundId={id!}
+                kindOfWork={(b as any).kindOfWork ?? null}
+                workStages={(groundForSignals as any)?.workStages}
+                canEdit={canEditKindOfWork}
+                kindsOffered={(b as any).kindsOffered}
+                readerIsTheFounder={(b as any).kindOfWork === "founder's own check-in"}
+              />
+            )}
+            b={b}
+            groundId={id!}
+            sessionRows={sessionRows as any[]}
+            renderActions={(action) => <ActionButtons groundId={id!} action={action} />}
+            overTime={overTimeSection()}
+            recommendations={recommendedOffers}
+            onAnswerRecommendation={(offerId, yes) => answerRecommendation.mutate({ offerId, yes })}
+            recommendationBusy={answerRecommendation.isPending}
+            onRecordTheDecision={() => navigate(`/grounds/${id}/end`)}
+            navigate={navigate}
+          />
+        )}
+        {picturedReader && (
+          <ThePicturedSalesBoard
+            b={b}
+            groundId={id!}
+            sessionRows={sessionRows as any[]}
+            renderActions={() => null}
+            overTime={overTimeSection()}
+            recommendations={[]}
+            onAnswerRecommendation={() => undefined}
+            recommendationBusy={false}
+            onRecordTheDecision={() => undefined}
+            navigate={navigate}
+            readOnly
+          />
+        )}
+        {picturedLead && situationOrder && (
+          <ThePicturedBoard
+            order={situationOrder as any}
+            b={b}
+            groundId={id!}
+            sessionRows={sessionRows as any[]}
+            renderActions={(action) => <ActionButtons groundId={id!} action={action} />}
+            overTime={overTimeSection()}
+            recommendations={recommendedOffers}
+            onAnswerRecommendation={(offerId, yes) => answerRecommendation.mutate({ offerId, yes })}
+            recommendationBusy={answerRecommendation.isPending}
+            onRecordTheDecision={() => navigate(`/grounds/${id}/end`)}
+            navigate={navigate}
+          />
+        )}
+        {picturedLead && !picturedManyInTeams && !situationOrder && (
+          <ThePicturedSalesBoard
+            b={b}
+            groundId={id!}
+            sessionRows={sessionRows as any[]}
+            renderActions={(action) => <ActionButtons groundId={id!} action={action} />}
+            overTime={overTimeSection()}
+            recommendations={recommendedOffers}
+            onAnswerRecommendation={(offerId, yes) => answerRecommendation.mutate({ offerId, yes })}
+            recommendationBusy={answerRecommendation.isPending}
+            onRecordTheDecision={() => navigate(`/grounds/${id}/end`)}
+            navigate={navigate}
+            otherRecords={(
+              <WorkRecordsSections
+                groundId={id!}
+                kindOfWork={kindOfWorkKey as any}
+                sections={(b.workRecords ?? []).filter((s) => s.section !== 'Deal grid' && s.state === 'filled')}
+                participants={(b.participants ?? []).map((p) => ({ id: p.id, name: p.name }))}
+                leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
+                readerIsLead={true}
+                canEdit={b.canEditFrame}
+              />
+            )}
+            kindOfWork={(
+              <KindOfWorkBanner
+                groundId={id!}
+                kindOfWork={(b as any).kindOfWork ?? null}
+                workStages={(groundForSignals as any)?.workStages}
+                canEdit={canEditKindOfWork}
+                kindsOffered={(b as any).kindsOffered}
+                readerIsTheFounder={false}
+              />
+            )}
+          />
+        )}
+        {picturedOnboarding && (
+          <ThePicturedBoard
+            /* Before anybody has answered (faith90-board.jpg) the board says it fills in after the first check-ins, and shows what was agreed and what is left to do. */
+            order={(b.checkInGrid?.rows ?? []).length > 0 && !(b.checkInGrid?.rows ?? []).some((r: any) => Object.values(r.cells ?? {}).includes('done'))
+              ? ['fillsIn', 'agreedAndApart', 'firstSteps', 'mayBeRelevant', 'heading']
+              : ['lastSession', 'agreedAtTheStart', 'changeSinceLast', 'ninetyDays', 'history', 'otherRecords', 'bothSeeIt', 'everySession', 'otherBoards', 'heading', 'ask', 'recommends']}
+            line={picturedCadenceLine}
+            otherRecords={(
+              <WorkRecordsSections
+                groundId={id!}
+                kindOfWork={kindOfWorkKey as any}
+                sections={(b.workRecords ?? []).filter((s) => s.state === 'filled')}
+                participants={(b.participants ?? []).map((p) => ({ id: p.id, name: p.name }))}
+                leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
+                readerIsLead={true}
+                canEdit={b.canEditFrame}
+              />
+            )}
+            personId={(b.participants ?? []).find((p) => !p.managingOnly && p.id !== b.myParticipantId)?.id ?? null}
+            seeTheSamePictures={ninetyDaysSeeTheSamePictures}
+            b={b}
+            groundId={id!}
+            sessionRows={sessionRows as any[]}
+            renderActions={(action) => <ActionButtons groundId={id!} action={action} />}
+            overTime={null}
+            recommendations={recommendedOffers}
+            onAnswerRecommendation={(offerId, yes) => answerRecommendation.mutate({ offerId, yes })}
+            recommendationBusy={answerRecommendation.isPending}
+            onRecordTheDecision={() => navigate(`/grounds/${id}/end`)}
+            navigate={navigate}
+          />
+        )}
+        {picturedMember && (
+          <ThePicturedBoard
+            order={['participantNote', 'priorities', 'yourPart', 'teamReport', 'companyBoard', 'everySession', 'otherBoards', 'ask']}
+            leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
+            reportHeading={`The ${String(b.title ?? '').split(',')[0].trim().toLowerCase()} report`}
+            b={b}
+            groundId={id!}
+            sessionRows={sessionRows as any[]}
+            renderActions={(action) => <ActionButtons groundId={id!} action={action} />}
+            overTime={null}
+            recommendations={[]}
+            onAnswerRecommendation={() => undefined}
+            recommendationBusy={false}
+            onRecordTheDecision={() => undefined}
+            navigate={navigate}
+          />
+        )}
+        {picturedDecision && (
+          <ThePicturedBoard
+            order={['theDecision', 'accounts', 'knownBelievedUnknown', 'everySession', 'otherBoards', 'heading', 'ask', 'recommends']}
+            leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
+            unknown={(((groundForSignals as any)?.contextItems ?? []) as any[]).filter((l) => l.kind === 'UNSETTLED' && !l.closedAt).map((l) => String(l.text ?? ''))}
+            b={b}
+            groundId={id!}
+            sessionRows={sessionRows as any[]}
+            renderActions={(action) => <ActionButtons groundId={id!} action={action} />}
+            overTime={null}
+            recommendations={recommendedOffers}
+            onAnswerRecommendation={(offerId, yes) => answerRecommendation.mutate({ offerId, yes })}
+            recommendationBusy={answerRecommendation.isPending}
+            onRecordTheDecision={() => navigate(`/grounds/${id}/end`)}
+            navigate={navigate}
+          />
+        )}
+        {picturedPlan && (
+          <ThePicturedBoard
+            order={['suggestion', 'theCase', 'everySession', 'otherBoards', 'heading', 'ask', 'recommends']}
+            personId={planPersonId}
+            leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
+            b={b}
+            groundId={id!}
+            sessionRows={sessionRows as any[]}
+            renderActions={(action) => <ActionButtons groundId={id!} action={action} />}
+            overTime={null}
+            recommendations={recommendedOffers}
+            onAnswerRecommendation={(offerId, yes) => answerRecommendation.mutate({ offerId, yes })}
+            recommendationBusy={answerRecommendation.isPending}
+            onRecordTheDecision={() => navigate(`/grounds/${id}/end`)}
+            navigate={navigate}
+          />
+        )}
+        {/*
+          NOTHING THE PICTURE LEAVES OUT IS LOST (screen match, 16 October). Under a board drawn as pictured, one link
+          opens the whole board as it was (?whole=1), so every section the picture does not show (open issues, what to
+          work on next, what to ask each person, the work plan, and the rest) is one tap away rather than gone.
+        */}
+        {drawnAsPictured && (
+          <div className="pb-whole-board-link">
+            <Link to={`/grounds/${id}/board?whole=1`} className="gwui-plain-link">See every other part of this board</Link>
+          </div>
+        )}
+        {!drawnAsPictured && (<>
+
         {/*
           THE PARTICIPANT'S OWN VIEW, FIRST (B5's board-as-participant.txt). See
           `TheParticipantsOwnView` for what it draws and from which fields, and `MaybeFolded` for
@@ -2600,6 +2911,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         {isParticipantView && (
           <TheParticipantsOwnView
+            pictured={picturedParticipant}
+            board={b}
+            myFirstName={(myName ?? '').split(/\s+/)[0] || null}
             groundId={id!}
             teamPicture={b.teamPicture}
             kindOfWork={(b as any).kindOfWork ?? null}
@@ -5063,7 +5377,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           one ("Why is Baraka Mwangi still waiting on the discount decision?"), else the plain
           example asked for.
         */}
-        <AskTheBoard firstBlocker={b.dependencies?.[0] ?? null} myParticipantId={b.myParticipantId} />
+        {picturedParticipant ? <ThePicturedAskBar b={b} /> : <AskTheBoard firstBlocker={b.dependencies?.[0] ?? null} myParticipantId={b.myParticipantId} />}
+        {/* As pictured, after the ask bar: only offers about the reader's own work (answer 5). */}
+        {picturedParticipant && <GroundworkRecommends offers={myOwnRecommendedOffers as any} onAnswer={(offerId, yes) => answerRecommendation.mutate({ offerId, yes })} busy={answerRecommendation.isPending} />}
+        </>)}
       </MaybeTheLightSalesBoard>
     </Page>
   )

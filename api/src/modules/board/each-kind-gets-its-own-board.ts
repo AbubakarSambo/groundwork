@@ -40,6 +40,8 @@ export interface APerson {
   isLead: boolean;
   /** Whether they have finished at least one check-in. */
   answered: boolean;
+  /** Who they are, in the lead's own words (roleAsDescribed), served to the lead alone; null for anybody else. */
+  describedAs?: string | null;
 }
 
 export interface AMetric {
@@ -135,9 +137,11 @@ function whatEachLevelUnderstood(i: WhatTheKindsBoardIsBuiltFrom) {
 }
 
 function theCounties(i: WhatTheKindsBoardIsBuiltFrom) {
-  const heading = 'The counties';
   const counties = rowsOf(i.board, 'Deal grid', 'county');
   const projects = rowsOf(i.board, 'Deal grid', 'project');
+  /* gov-board.jpg: "The three counties", how many there are said in words, up to ten. */
+  const IN_WORDS = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+  const heading = counties.length >= 2 && counties.length <= 10 ? `The ${IN_WORDS[counties.length]} counties` : 'The counties';
   if (!counties.length) return { heading, state: 'none-yet' as const, says: 'No county is on record yet.' };
   const under = (county: string) => projects.filter((p) => Object.values(p.fields ?? {}).some((v) => String(v).trim().toLowerCase() === county.trim().toLowerCase()));
   return {
@@ -290,6 +294,27 @@ function byWhoTheyAre(i: WhatTheKindsBoardIsBuiltFrom) {
      answered." under a summary saying all four had. A lead who only runs it is not counted. */
   const asked = i.people.filter((p) => !p.managingOnly && (!p.isLead || p.answered));
   const answered = asked.filter((p) => p.answered).length;
+  /*
+   * BY WHO THEY ARE, IN THE LEAD'S OWN WORDS (mvnext-board.jpg, screen match 16 October). Where the lead has said who
+   * each person is (roleAsDescribed, which only the lead is served), the people asked are grouped by those words,
+   * with how many in each answered. Nothing is inferred: a person the lead has not described leaves the groups
+   * not known, as before.
+   */
+  /* Only where the words tell people apart: one description for everybody ("the team") is no grouping. */
+  if (asked.length && asked.every((p) => (p.describedAs ?? '').trim()) && new Set(asked.map((p) => String(p.describedAs).trim().toLowerCase())).size > 1) {
+    const groups = new Map<string, APerson[]>();
+    for (const p of asked) { const g = String(p.describedAs).trim(); groups.set(g, [...(groups.get(g) ?? []), p]); }
+    return {
+      heading: 'By who they are',
+      state: 'filled' as const,
+      note: 'What each group said it needs',
+      says: someOfThemHave(answered, asked.length, 'answered.'),
+      groups: [...groups.entries()].map(([group, ps]) => {
+        const a = ps.filter((p) => p.answered).length;
+        return { group, count: ps.length, answered: a, says: `${ps.length} ${ps.length === 1 ? 'person' : 'people'}, ${a} answered.` };
+      }),
+    };
+  }
   return {
     heading: 'By who they are',
     state: 'not-known' as const,

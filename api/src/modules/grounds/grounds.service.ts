@@ -1,4 +1,5 @@
 import { theNumberIsOnlyADay } from '../conversation/a-day-is-not-a-target';
+import { readWhereEachPersonIsGettingStarted } from './getting-each-person-started';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { organisationsThatTurnedWhatsAppOn } from '../whatsapp/only-where-whatsapp-is-turned-on';
 import { fullNameToCall } from '../engagement/a-name-to-call-them';
@@ -8180,6 +8181,11 @@ export class GroundsService {
    * two is where this went wrong before - see the comment on the query.
    */
   /** D1 and D2 (13 October 2026, evening): see the-lead-adds-a-whatsapp-number.ts. */
+  /** Each person, from their invitation to coming back on their own (getting-each-person-started.ts). */
+  async whereEachPersonIsGettingStarted(input: { groundId: string; organizationId: string; userId: string; role: string }) {
+    return readWhereEachPersonIsGettingStarted(this.prisma as any, input);
+  }
+
   async whereEachPersonIsOnWhatsApp(input: { groundId: string; organizationId: string; userId: string; role: string }) {
     return whereEachPersonIsOnWhatsApp(this.prisma as any, input);
   }

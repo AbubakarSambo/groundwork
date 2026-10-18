@@ -150,6 +150,10 @@ A report for a team now runs three independent model calls together, and after i
 | Approved, and WhatsApp switched on. | Each organisation's messages are counted per calendar month (`whatsapp_monthly_use`), and at its plan's limit nothing more goes by WhatsApp until the next month; its admins are emailed once. The limits are a proposal until Hafsah answers. |
 | Some approved. | List them in `WHATSAPP_APPROVED_TEMPLATES` on the host, and switch WhatsApp on later, on Hafsah's word, not on release day. |
 
+### 10a. For Abubakar: submit new WhatsApp templates that say "about ten minutes" (Hafsah, 18 October)
+
+The Meta-approved templates `checkin_open`, `checkin_closes_soon` and `checkin_your_view_matters` say a check-in takes "five minutes". Hafsah's rule is "about ten minutes", and the approved templates are never changed. **To do:** submit new templates, with new names, whose words say "about ten minutes", and tell Hafsah when Meta approves them. Until then the approved ones go out unchanged.
+
 ### 10b. WhatsApp on the Connections page: the API's public address, and Groundwork's own number
 
 Two new settings, neither a secret, both optional (see `docs/deploy.md`, section 3).

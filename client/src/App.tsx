@@ -78,6 +78,8 @@ import { GroundParticipantPage } from '@/pages/grounds/GroundParticipantPage'
 import { GroundPage } from '@/pages/grounds/GroundPage'
 import { ReportPage } from '@/pages/report/ReportPage'
 import WeeklyReportPage from '@/pages/report/WeeklyReportPage'
+import { ThePersonPage } from '@/pages/board/ThePersonPage'
+import { WhereTheBlockerStarted } from '@/pages/board/WhereTheBlockerStarted'
 import { BoardPage } from '@/pages/board/BoardPage'
 import EndingPage from '@/pages/grounds/EndingPage'
 import { TeamBoardsPage } from '@/pages/boards/TeamBoardsPage'
@@ -638,6 +640,10 @@ export default function App() {
             {import.meta.env.DEV && <Route path="/dev/conversation" element={<ConversationPreviewPage />} />}
             <Route path="/boards" element={<RequireOrgSetup><TeamBoardsPage /></RequireOrgSetup>} />
             <Route path="/grounds/:id/board" element={<RequireOrgSetup><BoardPage /></RequireOrgSetup>} />
+            {/* One person in a check-in, for whoever runs it (person-page.jpg), opened from "The team today". */}
+            <Route path="/grounds/:id/person/:participantId" element={<RequireOrgSetup><ThePersonPage /></RequireOrgSetup>} />
+            {/* Where a blocker started, step by step (where-a-blocker-started.jpg), from "See where it started". */}
+            <Route path="/grounds/:id/trace" element={<RequireOrgSetup><WhereTheBlockerStarted /></RequireOrgSetup>} />
             {/* U.11: "How does this end?", where the lead decides, with a reason. */}
             <Route path="/grounds/:id/end" element={<RequireOrgSetup><EndingPage /></RequireOrgSetup>} />
             {/*

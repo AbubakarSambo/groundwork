@@ -13,6 +13,7 @@ import { aWaitOnOneself } from '../board/a-thing-is-not-somebody';
 import { notToldYet, withoutGoalsNotToldIn } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { aCheckInStartedFromTheAnchor } from '../conversation/the-anchor-weekly-check-in';
 import { theWordsOfWhatTheLeadHasNotToldThemAbout, theyRunThisCheckIn } from '../board/an-untold-goal-is-not-a-board-objective';
+import { whatIDontKnowYet } from './what-i-dont-know-yet';
 import { onceAcrossCopies, theHour, theWeek } from '../prisma/once-across-copies';
 import { theJudgementWithItsConversationPoints } from './the-judgement-and-a-goal-not-told';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from './no-internal-label-reaches-anyone';
@@ -226,6 +227,8 @@ import { documentBackedShare } from './backed-by-a-document';
 import { howManyHaveAnswered, howManyInTheRoundAnswered } from './how-many-have-answered';
 import { NOT_A_QUIET_CLOSE, aQuietCloseWhere, AN_ANSWER } from '../grounds/an-answer-includes-a-refusal';
 import { theInferencesOfSession, keptWithEachSessionsOwn } from './each-sessions-inferences-are-its-own';
+import { theTimeItSharesItself, isThisSessionHeld, withThisSessionHeld, whenItSharesItself, whatTheLeadIsToldAboutSharing, whatATeamMemberIsToldAboutSharing, type HowItIsShared } from './a-report-shares-itself';
+import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 import { asTheReleasedSessionHadIt, isThisSessionReleased, releasedSessionsOf, theLatestReleasedSession, theSessionTheReportHolds, thisSessionIsNotSharedYet, whatReleasingThisSessionDoes, withThisSessionReleased, youAreReadingAnEarlierSession } from './each-sessions-picture-is-released-on-its-own';
 import { aRoleInTheirOwnWords, withoutTheLeadsDescriptionOfAnyone, deeplyWithoutTheLeadsDescriptionOfAnyone, theShareableTextFor } from '../grounds/the-leads-words-about-someone';
 
@@ -5164,6 +5167,85 @@ happened, and what is in the way.`;
    * share it in their place, and the report and its notification say who shared it and why. See
    * who-shared-it-because-the-lead-left.ts.
    */
+  /**
+   * "HOLD IT" (Hafsah's answer 5, 16 October 2026): the lead keeps today's team report to herself until she shares it.
+   * Only the person who runs the check-in holds it, the same rule as sharing it (request 57). The session held is the
+   * one the report holds now; a session already shared cannot be held back. See a-report-shares-itself.ts.
+   */
+  async holdAsTheLead(groundId: string, userId: string, organizationId: string): Promise<{ sessionNumber: number; held: boolean; says: string }> {
+    const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId }, select: { initiatorId: true, cadence: true, reportSharesAt: true, report: { select: { releasedAt: true, releasedSessions: true, heldSessions: true } } } as any }) as any;
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    if (ground.initiatorId !== userId) throw new ForbiddenException('Only the person who runs this check-in can hold its report.');
+    if (!ground.report) throw new NotFoundException('This report is not written yet, so check again once somebody has checked in.');
+    const sessionNumber = await theSessionTheReportHolds(this.prisma, groundId);
+    if (isThisSessionReleased(ground.report, sessionNumber)) {
+      throw new BadRequestException('Today’s report is already shared with the team, so it cannot be held now.');
+    }
+    await this.prisma.report.update({ where: { groundId }, data: { heldSessions: withThisSessionHeld(ground.report, sessionNumber) } as any });
+    return { sessionNumber, held: true, says: whatTheLeadIsToldAboutSharing(sessionNumber, false, true, theTimeItSharesItself(ground)).says };
+  }
+
+  /**
+   * WHEN TODAY'S TEAM REPORT IS SHARED, AS THIS READER IS TOLD IT. The lead reads whether it shares itself, when, and
+   * whether she held it; a team member reads when it will reach them and never whether it was held; an admin who does
+   * not run it reads it as the lead does, without the hold. Facts about sharing only: nothing of the report itself.
+   */
+  async howTodaysReportIsShared(groundId: string, requestingUserId: string, requestingUserOrgId?: string): Promise<HowItIsShared | null> {
+    const ground = await (this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { initiatorId: true, organizationId: true, createdByUserId: true, cadence: true, reportSharesAt: true, participants: { select: { userId: true, partyType: true, user: { select: { firstName: true } } } }, report: { select: { releasedAt: true, releasedSessions: true, heldSessions: true } } } as any,
+    }) as Promise<any>).catch(() => null);
+    if (!ground?.report) return null;
+    const isLead = ground.initiatorId === requestingUserId;
+    const isAParty = (ground.participants ?? []).some((p: any) => p.userId === requestingUserId);
+    const isAdmin = !isLead && !isAParty && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground, groundId).catch(() => false));
+    if (!isLead && !isAParty && !isAdmin) return null;
+    const sessionNumber = await theSessionTheReportHolds(this.prisma, groundId);
+    const shared = isThisSessionReleased(ground.report, sessionNumber);
+    const held = isThisSessionHeld(ground.report, sessionNumber);
+    const time = theTimeItSharesItself(ground);
+    if (isLead || isAdmin) return whatTheLeadIsToldAboutSharing(sessionNumber, shared, isLead ? held : false, isLead || !held ? time : null);
+    const lead = (ground.participants ?? []).find((p: any) => p.userId === ground.initiatorId);
+    return whatATeamMemberIsToldAboutSharing(sessionNumber, shared, held, time, String(lead?.user?.firstName ?? '').trim());
+  }
+
+  /**
+   * THE REPORTS WHOSE TIME HAS COME SHARE THEMSELVES (Hafsah's answers 1 and 5, 16 October 2026). Run every quarter
+   * hour by the reports cron. For each check-in that repeats and is running, the session its report holds is shared
+   * once its set time has come round after the session's first check-in, unless it is shared already or the lead held
+   * it. Sharing goes through release(), the one way a report is shared, which tells people once each.
+   */
+  async shareTheReportsWhoseTimeHasCome(now: Date = new Date()): Promise<{ shared: number }> {
+    const grounds = await (this.prisma.ground.findMany({
+      where: { cadence: { not: 'ONE_TIME' }, status: { in: ['OPEN', 'AWAITING_PARTIES', 'ACTIVE'] as any }, report: { isNot: null } } as any,
+      select: { id: true, organizationId: true, cadence: true, reportSharesAt: true, report: { select: { releasedAt: true, releasedSessions: true, heldSessions: true } } } as any,
+    }) as Promise<any[]>).catch(() => [] as any[]);
+    let shared = 0;
+    for (const g of grounds) {
+      try {
+        const time = theTimeItSharesItself(g);
+        if (!time || !g.report) continue;
+        const sessionNumber = await theSessionTheReportHolds(this.prisma, g.id);
+        if (isThisSessionReleased(g.report, sessionNumber) || isThisSessionHeld(g.report, sessionNumber)) continue;
+        const first = await this.prisma.checkIn.findFirst({
+          where: { groundId: g.id, sessionNumber, status: CheckInStatus.COMPLETED, isSetup: false, completedAt: { not: null } },
+          orderBy: { completedAt: 'asc' },
+          select: { completedAt: true },
+        });
+        if (!first?.completedAt) continue;
+        const zone = (await theOrganisationsZone(this.prisma as any, g.organizationId).catch(() => null)) ?? THE_PRODUCTS_OWN_ZONE;
+        if (now.getTime() < whenItSharesItself(first.completedAt, time, zone).getTime()) continue;
+        await this.release(g.id, g.organizationId);
+        await this.tellThemTheReportIsReady(g.id, sessionNumber).catch(() => undefined);
+        shared += 1;
+      } catch (err: any) {
+        this.logger.warn(`Sharing the report of ${g.id} at its set time failed: ${err?.message}`);
+      }
+    }
+    if (shared) this.logger.log(`${shared} report(s) shared themselves at their set time.`);
+    return { shared };
+  }
+
   async releaseAsTheLead(groundId: string, userId: string, organizationId: string) {
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId }, select: { initiatorId: true } });
     if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
@@ -7152,7 +7234,38 @@ happened, and what is in the way.`;
   async sessionReport(groundId: string, sessionNumber: number, requestingUserId: string, requestingUserOrgId?: string, asIfReleased = false) {
     await this.refuseSomeoneNotYetLetIn(requestingUserId, groundId);
     const served = await this.sessionReportAsBuilt(groundId, sessionNumber, requestingUserId, requestingUserOrgId, asIfReleased);
-    return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, served);
+    /* What I don't know yet is added before the last read, so it goes through the same wall as every other line. */
+    return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, await this.withWhatIDontKnowYet(groundId, sessionNumber, requestingUserId, requestingUserOrgId, served));
+  }
+
+  /**
+   * "WHAT I DON'T KNOW YET", FOR WHOEVER RUNS THE CHECK-IN ONLY (screen match; what-i-dont-know-yet.ts). The open gaps
+   * of this check-in, by the board's own rule for who reads them (`stillUnanswered`): the lead, the admin who set it up
+   * and an admin who reads it. Anybody else is served the report without the field at all.
+   */
+  private async withWhatIDontKnowYet<T>(groundId: string, sessionNumber: number, requestingUserId: string, requestingUserOrgId: string | undefined, served: T): Promise<T> {
+    if (!served || typeof served !== 'object') return served;
+    const ground = await (this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: {
+        id: true, organizationId: true, initiatorId: true, createdByUserId: true, scenario: true, status: true, approvedById: true,
+        participants: { select: { id: true, userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true } } } },
+      } as any,
+    }) as Promise<any>).catch(() => null);
+    if (!ground) return served;
+    const inItAsAPerson = (ground.participants ?? []).some((p: any) => p.userId === requestingUserId && !p.managingOnly);
+    const runsIt = ground.initiatorId === requestingUserId
+      || (!inItAsAPerson && (theyRunThisCheckIn(requestingUserId, ground) || (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground, groundId).catch(() => false))));
+    if (!runsIt) return served;
+    const gaps = await ((this.prisma as any).checkInGap?.findMany?.({
+      where: { groundId, answeredAt: null },
+      select: { participantId: true, what: true, firstRound: true, asked: true, certain: true },
+    }) ?? Promise.resolve([])).catch(() => []);
+    const nameOf = (pid: string) => {
+      const p = (ground.participants ?? []).find((x: any) => x.id === pid);
+      return ((p?.user?.firstName ?? p?.nameGiven ?? '') as string).trim().split(/\s+/)[0] || null;
+    };
+    return { ...(served as any), whatIDontKnowYet: whatIDontKnowYet(gaps as any[], sessionNumber, nameOf) };
   }
 
   /**
