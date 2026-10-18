@@ -1,3 +1,4 @@
+import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
 import { isASalesKind, KINDS_THAT_ARE_NOT_WORK } from '../board/the-kind-of-work';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { theCriteriaOnRecord, theCriteriaAsked, isAPriceRange, ASKED_AS, THE_FOUR, type ACriterion } from '../board/a-deals-four-criteria';
@@ -191,8 +192,8 @@ async function attempt<T>(read: () => Promise<T> | T, otherwise: T): Promise<T> 
 }
 
 /**
- * THE BLOCK FOR THIS TURN, and the stored version it came from. Empty unless the check-in's kind of work is a sales kind and the
- * person checking in is not the lead (the lead's own check-in sets the check-in up). The stored version runs; the code's text is
+ * THE BLOCK FOR THIS TURN, and the stored version it came from. Empty unless the check-in's kind of work is a sales kind, Release
+ * 1's sales board is on for its organisation, and the person checking in is not the lead (the lead's own check-in sets the check-in up). The stored version runs; the code's text is
  * used only where no version is stored, and then the id is null.
  */
 export async function whatThisSalesCheckInGathers(
@@ -202,8 +203,11 @@ export async function whatThisSalesCheckInGathers(
   const none = { block: '', promptVersionId: null, last: '' };
   const participantId = checkIn.participantId ?? checkIn.participant?.id ?? null;
   if (!participantId) return none;
-  const ground = await attempt(() => deps.prisma.ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { kindOfWork: true } }), null);
+  const ground = await attempt(() => deps.prisma.ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { kindOfWork: true, organizationId: true } }), null);
   if (!isASalesKind(ground?.kindOfWork)) return none;
+  /* What a person is asked changes, so only where Release 1's sales board is on for the organisation (release-one-sales-board). Off,
+     a sales check-in is asked exactly as before, and the stored prompt kind_of_work.sales_org is never read. */
+  if (!(await theReleaseOneSalesBoardIsOn(deps.prisma, ground?.organizationId ?? null).catch(() => false))) return none;
   const party = checkIn.participant?.partyType
     ?? (await attempt(() => deps.prisma.groundParticipant?.findUnique?.({ where: { id: participantId }, select: { partyType: true } }), null))?.partyType;
   if (party === 'INITIATOR') return none;

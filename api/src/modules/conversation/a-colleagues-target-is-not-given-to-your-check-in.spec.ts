@@ -43,7 +43,8 @@ describe('both places the conversation used every target', () => {
   it('the prompt\'s objectives, and what the invention check treats as already said', () => {
     /* Since 1 October 2026 both also leave out a goal the lead has not told them about (decision 56, `untoldHere`). */
     /* Changed 8 October (anchor walk): on an anchor check-in a team member's model is given none of the lead's aims; every other check-in passes the targets this person may see, as before. */
-    expect(src).toContain('objectives: this.theLeadsOwnWordsStayHers(ground, checkIn) ? [] : this.theTargetsAsSentences(this.theTargetsThisPersonMaySee(ground as any, checkIn as any, untoldHere) as any[], ground as any, checkIn.participantId),');
+    /* Changed 19 October (Release 1, pull request 5): the same targets this person may see, with a deal's units or a count of places they set left out (notADealsFigure, on Release 1's sales check-in only; Drop Access run 1, item 27). */
+    expect(src).toContain('objectives: this.theLeadsOwnWordsStayHers(ground, checkIn) ? [] : this.theTargetsAsSentences((this.theTargetsThisPersonMaySee(ground as any, checkIn as any, untoldHere) as any[]).filter(notADealsFigure), ground as any, checkIn.participantId),');
     expect(src).toContain('...this.theTargetsThisPersonMaySee(ground as any, checkIn as any, untoldHere).map((o: any) => `${o.name ?? \'\'} ${o.target ?? \'\'}`),');
     expect(src).not.toContain("objectives: (ground as any).objectives ?? [],");
     expect(src).not.toContain("...((ground as any).objectives ?? []).map((o: any) => `${o.name ?? ''} ${o.target ?? ''}`),");

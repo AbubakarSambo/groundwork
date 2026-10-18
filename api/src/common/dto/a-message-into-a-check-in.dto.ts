@@ -1,5 +1,5 @@
 import {
-  IsIn, IsNotEmpty, IsString, Matches, MaxLength, registerDecorator, ValidationArguments, ValidationOptions,
+  IsIn, IsNotEmpty, IsOptional, IsString, Matches, MaxLength, registerDecorator, ValidationArguments, ValidationOptions,
 } from 'class-validator';
 
 /**
@@ -32,6 +32,17 @@ export class AMessageIntoACheckInDto {
   @Matches(/\S/, { message: 'a message has to say something' })
   @MaxLength(A_MESSAGE_MAX)
   message: string;
+
+  /*
+   * THE QUESTION ON THEIR SCREEN WHEN THEY ANSWERED (Drop Access run 1, item 26). Optional: the app sends the last thing Groundwork
+   * said that the person was shown. The same answer twice is a second press only while the reply to the first has not reached
+   * their screen; once it has, the same words are a new answer to it ("I do not know." twice), and get a new reply. See
+   * a-second-press-is-not-a-second-answer.
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(A_REPLAYED_TURN_MAX)
+  answering?: string;
 }
 
 /** A user turn in a replayed history is a message, and is capped like one. */

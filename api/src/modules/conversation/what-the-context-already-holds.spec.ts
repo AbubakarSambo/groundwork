@@ -103,7 +103,7 @@ describe('a hedge stays a hedge', () => {
        right-now block and belongs in the same place, after the hole and before the three that stay last. */
     /* `proofKindly` (asking for proof kindly, week 4, task 2.5) is one more right-now block, after heldBack. */
     /* `whereItIs` (what they will do is asked before the end, 1 October 2026) is one more, after proofKindly. */
-    expect(join).toMatch(/theirHedge, theHole, heldBack, proofKindly, whereItIs, cannotBeMissed, askedLastTurn, patternProbeBlock\]/);
+    expect(join).toMatch(/theirHedge, theHole, salesGathers\.last, heldBack, proofKindly, whereItIs, cannotBeMissed, askedLastTurn, patternProbeBlock\]/);
     /* The lead's read of a person is never read into a check-in, and what sits between two people
        only into the lead's own - at the query, not by an instruction. The unowned list is the lead's alone. */
     expect(src).toContain("kind: { notIn: (isTheLead ? ['ABOUT_A_PERSON'] : ['ABOUT_A_PERSON', 'BETWEEN_PEOPLE']) as any }");

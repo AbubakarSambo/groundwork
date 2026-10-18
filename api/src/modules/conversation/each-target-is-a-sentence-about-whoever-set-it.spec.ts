@@ -133,3 +133,36 @@ describe('which way a target goes, where the lead said and the sentence does not
     expect(s).toBe('Bisi wants visits under budget. The number 50 is a limit not to go over.');
   });
 });
+
+/*
+ * DROP ACCESS (TEST), 18 OCTOBER. Grace set "units sold by 30 October", 40, for Joseph on the board; the row records nobody as
+ * setting it. Joseph's model was told "You are aiming for 40 units sold by 30 October." and said to him "That's the goal you set
+ * for yourself." Now his model reads that Grace set it, and a number he set himself is still his own.
+ */
+describe('a number the lead set for somebody is never read as their own goal', () => {
+  const SET_ON_THE_BOARD = [target('o6', 'units sold by 30 October', 40, 'p1', null, null), target('o7', 'units sold by 30 October', 40, 'p2', null, null)];
+
+  it('Ngozi\'s model reads that Bisi set her 40, and never that it is her own', async () => {
+    const line = objectivesLine(await theCheckIn(SET_ON_THE_BOARD).promptFor(NGOZI));
+    expect(line).toContain('You are aiming for 40 units sold by 30 October. Bisi set this target for you.');
+    expect(line).not.toMatch(/Your own aim/);
+    expect(line).not.toMatch(/Kwame/);
+  });
+
+  it('the brief served to Ngozi says the same', async () => {
+    const brief = await theCheckIn(SET_ON_THE_BOARD).briefFor(NGOZI);
+    expect(brief.objectives.map((o: any) => o.name)).toEqual(['You are aiming for 40 units sold by 30 October. Bisi set this target for you.']);
+  });
+
+  it('Bisi, who set them, reads each person\'s number by their name, with no line saying she set it for herself', async () => {
+    const line = objectivesLine(await theCheckIn(SET_ON_THE_BOARD).promptFor(BISI));
+    expect(line).not.toMatch(/set this target for you/);
+    expect(line).toMatch(/Ngozi is aiming for 40 units sold by 30 October\./);
+  });
+
+  it('a number Ngozi set herself stays her own, with no line about Bisi', async () => {
+    const line = objectivesLine(await theCheckIn(STORED).promptFor(NGOZI));
+    expect(line).toContain('Your own aim is 14 approved facilities.');
+    expect(line).not.toMatch(/set this target for you/);
+  });
+});
