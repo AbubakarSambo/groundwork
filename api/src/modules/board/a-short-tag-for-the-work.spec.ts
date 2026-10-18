@@ -13,9 +13,10 @@ describe('a short tag for the work, from a pattern on record', () => {
     for (const code of ['B1', 'B3', 'K3', 'K4', 'E1', '']) expect(aShortTagForTheWork([code])).toBeNull();
   });
   it('the board serves it only on the lead’s own rows, from the patterns that reader is served, and only on a sales board', () => {
-    const src = readFileSync(join(__dirname, 'board.service.ts'), 'utf8');
-    const at = src.indexOf('A SHORT TAG FOR THE WORK, ON A SALES BOARD');
-    const block = src.slice(src.lastIndexOf('if ((isInitiator || adminHere) && Array.isArray(out.eachPerson))', at), at + 1400);
+    const src = readFileSync(join(__dirname, 'board.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    /* Found by its code, not by its comment, which is stripped first (a-guard-that-a-comment-satisfies-is-not-a-guard). */
+    const at = src.indexOf('aShortTagForTheWork(served');
+    const block = src.slice(src.lastIndexOf('if ((isInitiator || adminHere) && Array.isArray(out.eachPerson))', at), at + 400);
     expect(block).toContain("x?.about === 'the work'");
     expect(block).toContain("kind === 'sales org'");
     expect(block).toMatch(/where: \{ id: \{ in: served\.map\(\(x\) => x\.id\) \}, groundId \}/);

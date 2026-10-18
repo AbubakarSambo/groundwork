@@ -132,8 +132,8 @@ describe('the reports whose time has come share themselves', () => {
 });
 
 describe('everyone checking in no longer shares a repeating check-in’s report at once', () => {
-  const listener = (cadence: string) => {
-    const prisma: any = { ground: { findUnique: jest.fn(async () => ({ organizationId: 'org', status: 'ACTIVE', cadence })), update: jest.fn() }, report: { findUnique: jest.fn(async () => null) } };
+  const listener = (cadence: string, reportSharesAt: string | null = '18:30') => {
+    const prisma: any = { ground: { findUnique: jest.fn(async () => ({ organizationId: 'org', status: 'ACTIVE', cadence, reportSharesAt })), update: jest.fn() }, report: { findUnique: jest.fn(async () => null) } };
     const grounds: any = { isSessionReadyForReport: jest.fn(async () => true) };
     const reports: any = { synthesize: jest.fn(), release: jest.fn(), tellThemTheReportIsReady: jest.fn(async () => ({ attempted: 0, failed: 0 })), wordTheReadsFor: jest.fn(async () => []) };
     const l = new ReportsListener(prisma, grounds, reports, {} as any, { get: () => undefined } as any);
@@ -154,8 +154,10 @@ describe('everyone checking in no longer shares a repeating check-in’s report 
 });
 
 describe('the set time', () => {
-  it('is 6:30pm for a check-in that repeats, its own time where it has one, and none for a one-time check-in', () => {
-    expect(theTimeItSharesItself({ cadence: 'DAILY' })).toBe('18:30');
+  it('is the check-in\u2019s own time where it has one, none where it has none, and none for a one-time check-in', () => {
+    /* Changed 18 October (Hafsah): an empty time is off, so existing check-ins keep sharing as they always did. */
+    expect(theTimeItSharesItself({ cadence: 'DAILY' })).toBeNull();
+    expect(theTimeItSharesItself({ cadence: 'DAILY', reportSharesAt: '18:30' })).toBe('18:30');
     expect(theTimeItSharesItself({ cadence: 'WEEKLY', reportSharesAt: '17:00' })).toBe('17:00');
     expect(theTimeItSharesItself({ cadence: 'ONE_TIME' })).toBeNull();
     expect(asTheClockSaysIt('18:30')).toBe('6:30pm');
@@ -165,5 +167,46 @@ describe('the set time', () => {
   it('comes round in the organisation’s own day: a 4pm check-in in Nairobi shares at 6:30pm that day, a 9pm one the next day', () => {
     expect(whenItSharesItself(new Date('2026-09-23T13:00:00Z'), '18:30', 'Africa/Nairobi').toISOString()).toBe('2026-09-23T15:30:00.000Z');
     expect(whenItSharesItself(new Date('2026-09-23T18:00:00Z'), '18:30', 'Africa/Nairobi').toISOString()).toBe('2026-09-24T15:30:00.000Z');
+  });
+});
+
+
+describe('an existing check-in keeps sharing as it always did (Hafsah, 18 October 2026)', () => {
+  /* The migration adds report_shares_at empty on every existing check-in. Empty is off: the job never shares it, and
+     everyone checking in shares it at once, as before. */
+  const existing = () => {
+    const { svc, w } = serviceFor('sales');
+    const ground = { ...w.ground, reportSharesAt: null, report: w.report };
+    (svc as any).prisma.ground.findMany = async () => [ground];
+    (svc as any).prisma.checkIn.findFirst = async () => ({ completedAt: at('30') });
+    const released: string[] = [];
+    (svc as any).release = async (id: string) => { released.push(id); return null; };
+    return { svc, released };
+  };
+
+  it('the job that shares reports at their time never shares an existing check-in\u2019s report', async () => {
+    const { svc, released } = existing();
+    expect(await svc.shareTheReportsWhoseTimeHasCome(new Date('2026-10-01T17:45:00Z'))).toEqual({ shared: 0 });
+    expect(await svc.shareTheReportsWhoseTimeHasCome(new Date('2026-10-05T17:45:00Z'))).toEqual({ shared: 0 });
+    expect(released).toEqual([]);
+  });
+
+  it('everyone checking in shares an existing weekly check-in\u2019s report at once, as before', async () => {
+    const prisma: any = { ground: { findUnique: jest.fn(async () => ({ organizationId: 'org', status: 'ACTIVE', cadence: 'WEEKLY', reportSharesAt: null })), update: jest.fn() }, report: { findUnique: jest.fn(async () => null) } };
+    const grounds: any = { isSessionReadyForReport: jest.fn(async () => true) };
+    const reports: any = { synthesize: jest.fn(), release: jest.fn(), tellThemTheReportIsReady: jest.fn(async () => ({ attempted: 0, failed: 0 })), wordTheReadsFor: jest.fn(async () => []) };
+    const l = new ReportsListener(prisma, grounds, reports, {} as any, { get: () => undefined } as any);
+    await l.onCheckInCompleted({ groundId: 'g', sessionNumber: 2 } as any);
+    expect(reports.release).toHaveBeenCalled();
+  });
+});
+
+describe('a new check-in starts with its scenario\u2019s default', () => {
+  it('a new sales check-in that repeats shares at 6:30pm; other scenarios and one-time check-ins start off', () => {
+    const { theShareTimeANewCheckInStartsWith } = require('./a-report-shares-itself');
+    expect(theShareTimeANewCheckInStartsWith('OKR_ALIGNMENT', 'DAILY')).toBe('18:30');
+    expect(theShareTimeANewCheckInStartsWith('OKR_ALIGNMENT', 'ONE_TIME')).toBeNull();
+    expect(theShareTimeANewCheckInStartsWith('PULSE_CHECK', 'DAILY')).toBeNull();
+    expect(theShareTimeANewCheckInStartsWith('NEW_HIRE', 'WEEKLY')).toBeNull();
   });
 });

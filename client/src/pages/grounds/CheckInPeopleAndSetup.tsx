@@ -1,4 +1,7 @@
 import { useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { groundsApi } from '@/api/grounds'
+import { toast } from 'sonner'
 import {
   Section, Panel, FieldRows, FieldRow, SwitchRow, Choices, TextField, Select, FieldLabel,
   Button, Note, Callout,
@@ -680,7 +683,12 @@ export function CheckInPeopleAndSetup(props: {
           onChange={(on) => props.setWorkTogether.mutate(on)}
           disabled={!canEditRunOrAdmin || props.setWorkTogether.isPending}
         />
-        {/* THE TEAM'S REPORT SHARING IS NOT A SETTING HERE. Release happens from the report itself
+        {/* THE TEAM'S REPORT CAN SHARE ITSELF AT A SET TIME, ONLY WHERE IT IS TURNED ON (Hafsah, 18 October 2026).
+            Off is how every check-in made before this works, and keeps working. A one-time check-in has no time. */}
+        {ground.cadence !== 'ONE_TIME' && (
+          <TheReportSharesItself ground={ground} canChange={canEditRunOrAdmin} />
+        )}
+        {/* THE TEAM'S REPORT, AS IT STANDS. Sharing it now happens from the report itself; whether it shares itself is the switch above
             (Board/Context), so this row says the true, current state rather than offering a control
             this tab does not have.
 
@@ -846,4 +854,30 @@ export function theRhythmLine(ground: { cadence?: any; timelineDays?: number | n
   const n = ground.timelineDays ? sessionsFor(ground.timelineDays, ground.cadence) : null
   if ((ground as any).runsUntilItIsEnded || n == null) return `${cadenceLabel(ground.cadence)}, until you end it.${anchor}`
   return `${cadenceLabel(ground.cadence)}. ${n} session${n === 1 ? '' : 's'} in total.${anchor}`
+}
+
+function TheReportSharesItself({ ground, canChange }: { ground: any; canChange: boolean }) {
+  const qc = useQueryClient()
+  const at: string | null = ground?.reportSharesAt ?? null
+  const setIt = useMutation({
+    mutationFn: (time: string | null) => groundsApi.setReportSharesAt(ground.id, time),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['ground', ground.id] }),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not change. The report is still shared the same way. Try again in a moment.'),
+  })
+  const clock = (hhmm: string) => {
+    const [h, m] = hhmm.split(':').map(Number)
+    const h12 = h % 12 === 0 ? 12 : h % 12
+    return `${h12}${m ? `:${String(m).padStart(2, '0')}` : ''}${h >= 12 ? 'pm' : 'am'}`
+  }
+  return (
+    <SwitchRow
+      title="Share the team's report by itself"
+      detail={at
+        ? `The team's report shares itself at ${clock(at)} in your organisation's day, unless you choose "Hold it" first.`
+        : 'Off. The team’s report is shared once everyone has checked in, or when you share it.'}
+      on={!!at}
+      onChange={(on) => setIt.mutate(on ? '18:30' : null)}
+      disabled={!canChange || setIt.isPending}
+    />
+  )
 }

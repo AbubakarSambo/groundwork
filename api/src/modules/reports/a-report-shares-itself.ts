@@ -29,10 +29,25 @@ export function aTimeOfDay(v: unknown): string | null {
 }
 
 /** The time of day this check-in's session reports share themselves, or null when it shares once everyone has checked in. */
+/**
+ * ONLY WHERE IT IS TURNED ON (Hafsah, 18 October 2026). A check-in shares its report by itself only when it has a time
+ * of its own: the lead turned it on in People and setup, or a new check-in started with its scenario's default. An empty
+ * time means it is off, which is how every check-in made before this behaved and still behaves: the report is shared once
+ * everyone is in, or when the lead shares it. The migration leaves every existing check-in empty, so none of them changes.
+ */
 export function theTimeItSharesItself(g: ASharingCheckIn | null | undefined): string | null {
   if (!g) return null;
   if (g.cadence === 'ONE_TIME') return null;
-  return aTimeOfDay(g.reportSharesAt) ?? THE_DEFAULT_SHARE_TIME;
+  return aTimeOfDay(g.reportSharesAt);
+}
+
+/** The scenarios whose new check-ins start with the report sharing itself. Hafsah's kit draws it on the sales board. */
+export const A_NEW_CHECK_IN_SHARES_ITSELF_BY_DEFAULT: Readonly<Record<string, string>> = { OKR_ALIGNMENT: THE_DEFAULT_SHARE_TIME };
+
+/** The time a check-in made now starts with, from its scenario's default; none for a one-time check-in. */
+export function theShareTimeANewCheckInStartsWith(scenario: string | null | undefined, cadence: string | null | undefined): string | null {
+  if (!scenario || cadence === 'ONE_TIME') return null;
+  return A_NEW_CHECK_IN_SHARES_ITSELF_BY_DEFAULT[scenario] ?? null;
 }
 
 /** Whether the lead held this session ("Hold it"). */

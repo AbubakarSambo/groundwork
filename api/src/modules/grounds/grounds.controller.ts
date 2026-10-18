@@ -874,6 +874,16 @@ export class GroundsController {
     return this.grounds.setPeerVisibility(id, userId, !!body.visible);
   }
 
+  @Patch(':id/report-shares-at')
+  @ApiOperation({ summary: "Whether the team's report shares itself at a set time of day (empty is off)" })
+  async setReportSharesAt(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() body: { time: string | null },
+  ) {
+    return this.grounds.setReportSharesAt(id, userId, body?.time ?? null);
+  }
+
   @Patch(':id/people-work-together')
   @ApiOperation({ summary: "Whether the parties on this ground see each other's work - decides whether fairness reads have anything to stand on" })
   async setPeopleWorkTogether(

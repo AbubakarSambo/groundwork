@@ -12,7 +12,7 @@ This is the first of five small pull requests for Release 1 (Drop Access, a sale
 **Before you merge:**
 - [ ] **Take a backup of the database first.**
 - [ ] **There is one new migration,** `20261016090000_a_report_shares_itself_at_its_set_time`. It adds `grounds.report_shares_at` (empty) and `reports.held_sessions` (an empty list). No existing row is changed. See `docs/deploy.md`.
-- [ ] **One change existing users will notice:** a team report that the lead has not shared now shares itself at its set time, 6:30pm in the organisation's own day, unless the lead chooses "Hold it". This is Hafsah's decision of 16 October.
+- [ ] **Existing check-ins keep today's behaviour.** Their report is shared once everyone has checked in, or when the lead shares it, as now. A report shares itself at a set time (6:30pm, unless the lead holds it) only where a lead turns it on in People and setup, under Who sees what, or for a new check-in whose scenario's default says so (today only OKR_ALIGNMENT, the kit's sales board).
 - [ ] **No new templates, no new one-off scripts, no new settings.**
 - [ ] **GitHub's checks cannot run** (the Actions budget is used up), so they fail after 2 seconds. The local results are in the pull request's description.
 
