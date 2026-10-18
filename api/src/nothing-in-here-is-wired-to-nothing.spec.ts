@@ -1,3 +1,4 @@
+/* KNOWN FAILURE (Release 1, pull request 4, 19 October 2026): fails on origin/staging (794512bf0) and on pull request 3 too, run the same way; its two orphans here, board/the-deals-that-have-stalled.ts and conversation/what-a-sales-check-in-gathers.ts, are wired by pull request 5 (the lead's daily summary and the sales check-in's gathering). */
 import { readdirSync, readFileSync, statSync } from 'fs';
 import { join, relative, basename } from 'path';
 
@@ -54,6 +55,9 @@ const NOT_WIRED_ON_PURPOSE: Record<string, string> = {
   'a-whatsapp-inbound-harness.ts': 'test-only set-up shared by the WhatsApp inbound specs; nothing in the product should import it',
   // Week 26: the wording rules every product sentence is held to, run by the board and report specs.
   'a-product-sentence-is-plain.ts': 'the wording check the board and report specs run over every product sentence; a rule read by tests, not served',
+  /* Hafsah's quality pass, 18 October: the short run's record (Drop Access, gw_sweep_drop3), as the board specs and the report specs read it. */
+  'the-short-run-harness.ts': 'test-only set-up: the short run of Drop Access as the board specs read it; nothing in the product should import it',
+  'the-short-run-reports-bed.ts': 'test-only stand-in database holding the short run of Drop Access for the report specs; nothing in the product should import it',
   'request-92-harness.ts': 'test-only set-up shared by the request 92 specs in assistant/ and grounds/; nothing in the product should import it',
   // Duplicated deliberately into the client, and documented there.
   'what-this-ground-can-tell-you.ts': 'shares its rules with client/src/lib/contextStrength.ts by deliberate duplication - see the header in both',

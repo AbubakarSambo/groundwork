@@ -254,6 +254,8 @@ export interface SessionReportInputs {
   notJoinedYet?: number;
   /** Commitments this session that carry both somebody's name and a date. */
   commitmentsWithOwnerAndDate?: number;
+  /** Release 1's switch is on for the check-in's organisation (release-one-sales-board). */
+  releaseOne?: boolean;
 }
 
 /**
@@ -661,6 +663,7 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     stillOpen,
     commitments: commitmentsNow.length,
     commitmentsWithOwnerAndDate: input.commitmentsWithOwnerAndDate ?? 0,
+    releaseOne: !!input.releaseOne,
   });
 
   /*

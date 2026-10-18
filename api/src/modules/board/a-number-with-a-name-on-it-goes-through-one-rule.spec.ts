@@ -151,7 +151,7 @@ describe('every surface that hands out whose number it is', () => {
     'modules/conversation/asking-for-what-they-left-out.ts': "reads the owner of a deal (a work item) only to leave another rep's customers out of what this rep is asked; never a target or a number",
     /* Hafsah's quality pass, 18 October, sections 4 to 6: the sales reports read from the record. Each reads a deal's owner (a work item), and each person's
        own target only where the reader may read it: the lead, who runs the check-in and whom targetsFor shows every target, or that person about their own. */
-    /* 'modules/reports/the-sales-readings-for-a-report.ts' is excused in Release 1's part 4, which brings the file. */
+    'modules/reports/the-sales-readings-for-a-report.ts': "reads a deal's owner (a work item) and each person's target only for the lead who runs it, or for that person's own report; never another person's number to a person",
     'modules/reports/the-sales-team-report-from-the-record.ts': "shapes the team's report from the deals and the targets its caller hands in for the lead alone; serves nobody itself",
     'modules/reports/the-sales-week-in-words.ts': "keeps each person's lines by label with their own target; the weekly read hands a person only their own lines and the lead every line",
   };
