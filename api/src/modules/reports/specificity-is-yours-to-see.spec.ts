@@ -52,16 +52,22 @@ describe('GW-SPECIFICITY: whose read a person may see', () => {
   it('THE OTHER HALF: nobody else\'s reaches them, on any of the three carriers', () => {
     const seen = asParticipant('Ada');
     for (const other of ['Kwame', 'Nadia']) {
-      expect(seen.engagement.parties.find((p: any) => p.label === other).specificityLabel).toBeUndefined();
+      /* 18 October (Hafsah's quality pass, R-7): a participant keeps only their own row, so a colleague's row is gone, rating and all. */
+      expect(seen.engagement.parties.find((p: any) => p.label === other)?.specificityLabel).toBeUndefined();
       expect(seen.engagement.specificitySignal[other]).toBeUndefined();
     }
     expect(seen.engagement.specificityNotes.some((n: any) => n.label !== 'Ada')).toBe(false);
   });
 
-  it('everyone still appears in the report - it is participation that stays, not the grade', () => {
-    // Removing the label must not remove the person: the report is about a shared piece of work.
+  /*
+   * Changed 18 October (Hafsah's quality pass, R-7; CLAUDE.md, "each person's load across check-ins" is private, always): each row
+   * also counts that person's lines and documents, so a participant now reads only their own row; who checked in reaches them
+   * through the team picture. The lead still reads everyone's participation (every-report-read-strips-other-peoples-ratings).
+   * This test is stricter than before: no colleague's row reaches a participant at all.
+   */
+  it('a participant reads only their own participation row, never a colleague\'s load', () => {
     const seen = asParticipant('Ada');
-    expect(seen.engagement.parties.map((p: any) => p.label)).toEqual(['Ada', 'Kwame', 'Nadia']);
+    expect(seen.engagement.parties.map((p: any) => p.label)).toEqual(['Ada']);
     expect(seen.engagement.parties.every((p: any) => p.contributed)).toBe(true);
   });
 
