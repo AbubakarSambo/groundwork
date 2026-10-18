@@ -1,4 +1,3 @@
-import { theyAreConnectedOnWhatsApp } from '../whatsapp/connect-whatsapp';
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
@@ -146,8 +145,14 @@ export class WebhooksListener {
       : null;
     const phone = person?.phone ?? participant.user?.phoneNumber ?? null;
     if (!phone) return;
-    /* One channel for an opening (Hafsah, 14 October): WhatsApp only where they have joined there; otherwise the email carries it. */
-    if (!(await theyAreConnectedOnWhatsApp(this.prisma, { organizationId: ground.organizationId, userId: participant.userId, email: participant.user?.email ?? participant.email }))) return;
+    /*
+     * EVERYBODY WITH A NUMBER IS TOLD ON WHATSAPP (Hafsah's D2, put back after production, 15 October). "One channel for an
+     * opening" (14 October) sent the WhatsApp opening only to people who had already written from their number, so a
+     * person whose company added their number was never told there at all. Now: a number and WhatsApp on means the
+     * opening goes on WhatsApp (a template outside the 24 hours, as before). Somebody already connected there is told on
+     * WhatsApp only; somebody who has never written is told on WhatsApp and by email, both at once (the session-ready
+     * sweep in grounds.cron.ts skips the email only for the connected). No number: email only.
+     */
     const leave = await leaveOfThePeopleOn(this.prisma, [e.groundId]);
     if (awayUntilOn(leave.get(participant.id))) return;
     /* Told once: somebody invited by their number was already sent this opening before they joined (D2). */

@@ -131,11 +131,13 @@ describe("the opening notice, on Groundwork's own number", () => {
     await listener.onCheckInOpened(OPENED(1));
     expect(sendFor.mock.calls[0][1]).toBe('+254700000002');
   });
-  /* Hafsah, 14 October: each opening goes on one channel only. Somebody who has not joined on WhatsApp is told by email alone. */
-  it('never to somebody who has not joined on WhatsApp: the email carries their opening', async () => {
+  /* Changed 15 October, after production: "one channel for an opening" (14 October) kept the WhatsApp opening from
+     everybody whose company had added their number, against Hafsah's D2 ("it can be on both at the same time"). Somebody
+     who has not written yet is told on WhatsApp too; the email still goes to them (a-saved-number-is-told-on-whatsapp-and-by-email). */
+  it('also to somebody who has not written from their number yet: WhatsApp and the email, both', async () => {
     const { listener, sendFor } = aListener({ joined: false });
     await listener.onCheckInOpened(OPENED(3));
-    expect(sendFor).not.toHaveBeenCalled();
+    expect(sendFor).toHaveBeenCalledTimes(1);
   });
   it('never for a check-in kept in the app, nor for somebody on approved leave; the webhook still fires', async () => {
     const kept = aListener({ overWhatsApp: false });
