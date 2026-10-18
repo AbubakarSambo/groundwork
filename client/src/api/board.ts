@@ -864,8 +864,9 @@ export type BoardPresent = {
 
 export type BoardResponse = BoardAbsent | BoardWithheld | BoardPresent
 
-/** The eleven kinds of work Groundwork's board can draw records for, exactly as the server writes them. */
+/** The twelve kinds of work Groundwork's board can draw records for, exactly as the server writes them. */
 export const KIND_OF_WORK_OPTIONS = [
+  'sales team',
   'sales org',
   'engineering release',
   'support desk',
@@ -880,6 +881,8 @@ export const KIND_OF_WORK_OPTIONS = [
 ] as const
 
 export type KindOfWork = (typeof KIND_OF_WORK_OPTIONS)[number]
+
+/* Whether a kind is one of the two sales kinds: isASalesKind in lib/a-sales-kind.ts, kept apart so a spec's mock of this file never hides it. */
 
 /** One row of a kind of work's record: a deal, a release, a ticket, a deadline, a party, and so on. */
 export interface AServedWorkRow {

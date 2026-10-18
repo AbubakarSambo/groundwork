@@ -97,10 +97,20 @@ describe('the sales org’s Deal grid: filled, with stages, and a not-known Fore
    * name, "You added it.", "Nothing booked", the key naming only marks the grid draws, never "proven",
    * "Add a record", and "Remove this record" only behind "Change".
    */
+  /* Release 1: Drop Access is one lead and three reps, a sales team. The same sales board, with its own sentence. */
+  it('the lead of a sales team reads the same sales board, said as a sales team', async () => {
+    me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
+    renderBoard({ ...SALES_ORG, kindOfWork: 'sales team' })
+    expect(await screen.findByText('This check-in is about a sales team and its deals.')).toBeTruthy()
+    const dealGrid = screen.getByRole('region', { name: 'Every deal, day by day' })
+    expect(within(dealGrid).getAllByText('Nyama Choma Palace').length).toBeGreaterThan(0)
+    expect(within(dealGrid).getByText('Akinyi, KES 90K')).toBeTruthy()
+  })
+
   it('the lead reads the kind of work, the sales org’s own heading, one stage per row, and the key only for marks drawn', async () => {
     me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
     renderBoard(SALES_ORG)
-    expect(await screen.findByText('This check-in is about a sales team and its deals.')).toBeTruthy()
+    expect(await screen.findByText('This check-in is about a sales organisation of several teams, and its deals.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Change the kind of work' })).toBeTruthy()
 
     const dealGrid = screen.getByRole('region', { name: 'Every deal, day by day' })
@@ -139,7 +149,7 @@ describe('the sales org’s Deal grid: filled, with stages, and a not-known Fore
   it('opening "Change" on the open deal offers "Remove this record", behind its own confirmation', async () => {
     me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
     renderBoard(SALES_ORG)
-    await screen.findByText('This check-in is about a sales team and its deals.')
+    await screen.findByText('This check-in is about a sales organisation of several teams, and its deals.')
     const dealGrid = screen.getByRole('region', { name: 'Every deal, day by day' })
     within(dealGrid).getAllByRole('button', { name: 'Change' })[0].click()
     expect(await screen.findByRole('button', { name: 'Remove this record' })).toBeTruthy()
@@ -151,7 +161,7 @@ describe('the sales org’s Deal grid: filled, with stages, and a not-known Fore
   it('a colleague reads the same kind of work and record, but gets no way to change either', async () => {
     me = { id: 'u-akinyi', firstName: 'Akinyi', role: 'MEMBER' }
     renderBoard({ ...SALES_ORG, myParticipantId: 'p-akinyi', canEditFrame: false })
-    expect(await screen.findByText('This check-in is about a sales team and its deals.')).toBeTruthy()
+    expect(await screen.findByText('This check-in is about a sales organisation of several teams, and its deals.')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Change' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Choose' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Add a record' })).toBeNull()

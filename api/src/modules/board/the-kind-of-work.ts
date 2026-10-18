@@ -13,8 +13,9 @@ import { PLAIN_WORDS } from '../conversation/plain-words';
  * Until this, nothing recorded "sales" or "engineering" anywhere, so every board was drawn from its
  * family alone.
  *
- * WHAT IS STORED. `Ground.kindOfWork` holds one of the eleven names below, exactly, or null. It is
- * read from the lead's own words and the brief when setup is saved, checked here against the eleven
+ * WHAT IS STORED. `Ground.kindOfWork` holds one of the twelve names below, exactly, or null (the eleven kinds of
+ * the prototype's boards, with "sales team" beside "sales org" since Release 1). It is
+ * read from the lead's own words and the brief when setup is saved, checked here against the twelve
  * (anything else is null, never the nearest match), and the lead can change it. A lead's choice is
  * never overwritten by a later read.
  *
@@ -24,6 +25,7 @@ import { PLAIN_WORDS } from '../conversation/plain-words';
  */
 
 export const KINDS_OF_WORK = [
+  'sales team',
   'sales org',
   'engineering release',
   'support desk',
@@ -40,7 +42,21 @@ export const KINDS_OF_WORK = [
 export type KindOfWork = (typeof KINDS_OF_WORK)[number];
 
 /**
- * ONE OF THE ELEVEN, OR NOTHING. The code check on the model's answer and on what a lead sends: an
+ * THE TWO SALES KINDS (release plan, Release 1: "Set Drop Access's type to sales team, not sales org"). A "sales team" is
+ * one team selling, with one lead and the reps who report to them. A "sales org" is an organisation with several sales
+ * teams (the kit's salesorg board, Release 4). Until Release 4 builds that board, both are served the same sales board:
+ * the same deal rows, stages and every other sales path. Every place that asks "is this a sales check-in" asks this,
+ * never `=== 'sales org'`, so a sales team is never left out.
+ */
+export const THE_SALES_KINDS: readonly KindOfWork[] = ['sales team', 'sales org'];
+
+export function isASalesKind(kind: unknown): boolean {
+  const k = oneOfTheKinds(kind);
+  return !!k && THE_SALES_KINDS.includes(k);
+}
+
+/**
+ * ONE OF THE TWELVE, OR NOTHING. The code check on the model's answer and on what a lead sends: an
  * exact name (ignoring capitals and spaces at the ends) is that kind; anything else is null. Never
  * the nearest match, because a sales board drawn for a law firm is worse than the family's board.
  */
@@ -74,16 +90,20 @@ const FROM_ANOTHER_SYSTEM = 'Groundwork does not keep this yet. It needs numbers
 const FROM_PAYMENT_RECORDS = 'Groundwork does not keep this yet. It needs numbers from another system, such as payment records.';
 const FROM_THE_HELPDESK = 'Groundwork does not keep this yet. It needs the ticket counts from the helpdesk itself.';
 
+/* One sales board for both sales kinds until Release 4 draws the sales organisation's own (see THE_SALES_KINDS). */
+const THE_SALES_RECORDS: ARecordSection[] = [
+  { section: 'Deal grid', holds: 'deals', itemKinds: ['deal'], stages: ['Contacted', 'Need established', 'Pitched', 'Qualified', 'Quoted', 'Won'] },
+  { section: 'Forecast', holds: 'where the sales numbers are likely to end up', itemKinds: [], whyNotKnown: FROM_PAYMENT_RECORDS },
+];
+
 /**
  * EACH KIND'S RECORDS, FROM ITS PROTOTYPE EXAMPLE. The sections a kind fills, what each holds and,
  * where the example shows them, the stages in order. A section listed with no `itemKinds` is one the
  * example board draws but Groundwork has no record for; it is served as not known.
  */
 export const RECORDS_FOR_EACH_KIND: Record<KindOfWork, ARecordSection[]> = {
-  'sales org': [
-    { section: 'Deal grid', holds: 'deals', itemKinds: ['deal'], stages: ['Contacted', 'Need established', 'Pitched', 'Qualified', 'Quoted', 'Won'] },
-    { section: 'Forecast', holds: 'where the sales numbers are likely to end up', itemKinds: [], whyNotKnown: FROM_PAYMENT_RECORDS },
-  ],
+  'sales team': THE_SALES_RECORDS,
+  'sales org': THE_SALES_RECORDS,
   'engineering release': [
     { section: 'Deal grid', holds: 'releases and tasks', itemKinds: ['release', 'task'], stages: ['Worked on', 'Written', 'Merged', 'Tested', 'Deployed', 'Used'] },
   ],
@@ -256,8 +276,9 @@ export function theRecordSections(kind: KindOfWork | null, leadsStages: unknown,
 
 export const THE_KIND_OF_WORK_PROMPT = `You are reading how a lead described a check-in they are setting up, to say what kind of work it is about.
 
-Choose one of these eleven kinds, or none:
-- "sales org": a sales team selling to customers, with deals that move through stages.
+Choose one of these twelve kinds, or none:
+- "sales team": one team selling to customers, with one lead and the people who sell under them (for example reps, sales executives or account managers), and deals that move through stages.
+- "sales org": a sales organisation of several sales teams, each with its own lead, such as teams for different regions or products, selling to customers with deals that move through stages.
 - "engineering release": engineers building and shipping software, with tasks and releases.
 - "support desk": a customer support team answering tickets.
 - "distribution operations": sites, deliveries, equipment and suppliers, with incidents.
@@ -269,7 +290,7 @@ Choose one of these eleven kinds, or none:
 - "a law firm matter": a legal case or matter, with parties, a court and deadlines.
 - "a government programme": a government or public programme run through counties or regions and their projects.
 
-Give the kind's name exactly as written above. Choose a kind only when the lead's words clearly say it. When the work is none of these, or you are not sure, give none. A wrong kind is worse than none.`;
+Give the kind's name exactly as written above. Choose a kind only when the lead's words clearly say it. The people's job titles, where they are given, help: sales reps and a sales manager are selling. When the work is selling and nothing says there are several sales teams, it is a "sales team". When the work is none of these, or you are not sure, give none. A wrong kind is worse than none.`;
 
 export const THE_KIND_OF_WORK_SCHEMA = {
   name: 'emit_kind_of_work',
@@ -277,19 +298,27 @@ export const THE_KIND_OF_WORK_SCHEMA = {
   input_schema: {
     type: 'object',
     properties: {
-      kind: { type: 'string', description: 'One of the eleven names exactly, or "none".' },
+      kind: { type: 'string', description: 'One of the twelve names exactly, or "none".' },
     },
     required: ['kind'],
   },
 };
 
-/** The lead's words the read is given: the name, the brief, and the end they are working toward. */
-export function theSetupWords(g: { label?: string | null; brief?: string | null; endState?: string | null; resolutionState?: string | null }): string {
+/**
+ * The lead's words the read is given: the name, the brief, and the end they are working toward; and, where they are known,
+ * the job titles of the people in it (release plan, Release 1: a sales team is detected from its words and its job titles).
+ */
+export function theSetupWords(
+  g: { label?: string | null; brief?: string | null; endState?: string | null; resolutionState?: string | null },
+  jobTitles: (string | null | undefined)[] = [],
+): string {
+  const titles = [...new Set(jobTitles.map((t) => String(t ?? '').trim()).filter(Boolean))].slice(0, 20);
   return [
     g.label ? `What the lead called it: ${g.label}` : '',
     g.brief ? `What the lead said about it: ${g.brief}` : '',
     g.endState ? `What they are working toward: ${g.endState}` : '',
     g.resolutionState ? `How they hope it ends: ${g.resolutionState}` : '',
+    titles.length ? `The job titles of the people in it: ${titles.join(', ')}` : '',
   ].filter(Boolean).join('\n\n');
 }
 

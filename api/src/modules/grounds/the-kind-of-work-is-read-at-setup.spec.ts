@@ -1,5 +1,5 @@
 import { GroundsService } from './grounds.service';
-import { KINDS_OF_WORK, oneOfTheKinds } from '../board/the-kind-of-work';
+import { KINDS_OF_WORK, oneOfTheKinds, isASalesKind, THE_KIND_OF_WORK_PROMPT } from '../board/the-kind-of-work';
 
 /**
  * THE KIND OF WORK IS READ FROM WHAT THE LEAD SAID AT SETUP, AND THE LEAD HAS THE LAST WORD.
@@ -24,8 +24,9 @@ function build(ground: Record<string, any>, answer: any) {
 }
 
 describe('the kind of work, read at setup (request 76)', () => {
-  it('knows exactly the eleven kinds, and nothing near them', () => {
-    expect(KINDS_OF_WORK).toHaveLength(11);
+  it('knows exactly the twelve kinds (the eleven, and "sales team" since Release 1), and nothing near them', () => {
+    expect(KINDS_OF_WORK).toHaveLength(12);
+    expect(oneOfTheKinds(' Sales Team')).toBe('sales team');
     expect(oneOfTheKinds('  Sales Org ')).toBe('sales org');
     expect(oneOfTheKinds('a law firm matter')).toBe('a law firm matter');
     expect(oneOfTheKinds('sales')).toBeNull();
@@ -93,5 +94,52 @@ describe('the kind of work, read at setup (request 76)', () => {
     await expect(svc.setKindOfWork('g1', 'someone-else', { kind: 'sales org' })).rejects.toThrow(
       'Only the person who runs this check-in can change how it is set up. An admin can only do that once that person has left the organisation. Nothing was changed.',
     );
+  });
+});
+
+/*
+ * A SALES TEAM, AND A SALES ORGANISATION OF SEVERAL TEAMS (release plan, Release 1). Drop Access is one lead and three reps: a
+ * "sales team". "sales org" stays for an organisation with several sales teams, and keeps working as before.
+ */
+describe('a sales team is told from a sales organisation', () => {
+  it('the read tells the model the difference, and that one team selling is a sales team', () => {
+    expect(THE_KIND_OF_WORK_PROMPT).toContain('- "sales team": one team selling to customers, with one lead and the people who sell under them');
+    expect(THE_KIND_OF_WORK_PROMPT).toContain('- "sales org": a sales organisation of several sales teams, each with its own lead');
+    expect(THE_KIND_OF_WORK_PROMPT).toContain('When the work is selling and nothing says there are several sales teams, it is a "sales team".');
+  });
+
+  it('a sales team is read from the lead\'s words and the people\'s job titles, and kept', async () => {
+    const g: any = {
+      label: 'Sales team, Q4', brief: 'Kevin, Mercy and Joseph sell our freezers to hotels and shops. I want to see every deal.', kindOfWorkSetBy: null,
+      participants: [{ roleAsDescribed: 'Sales rep', user: { jobTitle: 'Sales rep' } }, { roleAsDescribed: null, user: { jobTitle: 'Sales manager' } }],
+    };
+    const { svc, updates, anthropic } = build(g, { kind: 'sales team' });
+    await svc.readTheKindOfWork('g1');
+    const told = String(anthropic.extract.mock.calls[0][1][0].content);
+    expect(told).toContain('The job titles of the people in it: Sales rep, Sales manager');
+    expect(updates).toEqual([{ kindOfWork: 'sales team', kindOfWorkSetBy: 'read' }]);
+    expect(isASalesKind(g.kindOfWork)).toBe(true);
+  });
+
+  it('a sales organisation of several teams is still read as "sales org", as before', async () => {
+    const g: any = { label: 'Group sales, 2027', brief: 'Our Nairobi, Mombasa and Kisumu sales teams, each with its own team lead.', kindOfWorkSetBy: null };
+    const { svc, updates } = build(g, { kind: 'sales org' });
+    await svc.readTheKindOfWork('g1');
+    expect(updates).toEqual([{ kindOfWork: 'sales org', kindOfWorkSetBy: 'read' }]);
+  });
+
+  it('an existing check-in read as "sales org" keeps it when its words are read again as a sales team: its row is not rewritten', async () => {
+    const g: any = { label: 'Sales, Q3', brief: 'Our reps sell freezers.', kindOfWork: 'sales org', kindOfWorkSetBy: 'read' };
+    const { svc, updates } = build(g, { kind: 'sales team' });
+    await svc.readTheKindOfWork('g1');
+    expect(updates).toEqual([]);
+    expect(g.kindOfWork).toBe('sales org');
+  });
+
+  it('the lead confirms "sales team" the way a kind of work is confirmed today', async () => {
+    const g: any = { initiatorId: 'lead', organizationId: 'org1', kindOfWork: 'sales org', kindOfWorkSetBy: 'read' };
+    const { svc } = build(g, null);
+    const set = await svc.setKindOfWork('g1', 'lead', { kind: 'sales team' });
+    expect(set).toMatchObject({ kindOfWork: 'sales team', kindOfWorkSetBy: 'lead' });
   });
 });

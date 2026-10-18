@@ -8,6 +8,7 @@ import { reportsApi } from '@/api/reports'
 import { WhereTheCohortStandsSection, SupportGivenSection, ByWhoTheyAreSection, WhereTheyDisagreeSection, WhatTheSystemsShowSection, WhereWhatWasSaidAndTheSystemsDifferSection, WhereTheMatterStandsSection, WhatYouNeedToDecideSection, WhatChangedThisWeekSection, WhatEachLevelUnderstoodSection, WhatTheVisitLogShowsSection, TheCountiesSection } from '../TheSwitchboardsSections'
 import { aRealOrganisationName } from '@/lib/ask-name'
 import { groundsApi } from '@/api/grounds'
+import { isASalesKind } from '@/lib/a-sales-kind'
 import { companyApi } from '@/api/company'
 import { useAuthStore } from '@/stores/auth'
 import { howARowReads, isFinished, type ListRow } from '@/pages/grounds/how-a-row-reads'
@@ -441,6 +442,7 @@ function TheHeadlineAndEachTarget({ b, withoutTargets = false }: { b: Any; witho
 
 /** What each kind of work's table calls one piece of work and the person on it (salesorg, eng, support, ops and programme boards). */
 const THE_TABLE: Record<string, { heading: string; item: string; who: string }> = {
+  'sales team': { heading: 'Every sale, and what shows it', item: 'Deal', who: 'Rep' },
   'sales org': { heading: 'Every sale, and what shows it', item: 'Deal', who: 'Rep' },
   'engineering release': { heading: 'Every task, and what shows it', item: 'Task', who: 'Owner' },
   'support desk': { heading: 'Every ticket, and what shows it', item: 'Ticket', who: 'Agent' },
@@ -712,7 +714,7 @@ export function ThePicturedBoard(p: PicturedBoardProps & { line?: string | null;
     teamToday: () => <TheTeamToday b={b} deals={deals} today={isoDay(now)} groundId={p.groundId} />,
     blockers: () => <Blockers b={b} groundId={p.groundId} />,
     patterns: () => <WhatKeepsComingUp b={b} />,
-    reported: () => <ReportedAgainstCriteria b={b} heading={b.byArea?.state === 'filled' && b.byArea.heading === 'By team' && (b.byArea.areas ?? []).length > 1 ? `Reported vs criteria met, across ${b.byArea.areas.length} teams` : b.kindOfWork === 'trader training programme' ? 'Drop-off by session' : b.kindOfWork && b.kindOfWork !== 'sales org' ? 'Reported vs evidence, stage by stage' : undefined} />,
+    reported: () => <ReportedAgainstCriteria b={b} heading={b.byArea?.state === 'filled' && b.byArea.heading === 'By team' && (b.byArea.areas ?? []).length > 1 ? `Reported vs criteria met, across ${b.byArea.areas.length} teams` : b.kindOfWork === 'trader training programme' ? 'Drop-off by session' : b.kindOfWork && !isASalesKind(b.kindOfWork) ? 'Reported vs evidence, stage by stage' : undefined} />,
     whoCheckedIn: () => <WhoCheckedIn b={b} />,
     overTime: () => p.overTime,
     reports: () => <Reports b={b} groundId={p.groundId} sessionRows={p.sessionRows} navigate={p.navigate} now={now} />,

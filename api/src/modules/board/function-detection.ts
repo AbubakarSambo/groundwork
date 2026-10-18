@@ -330,6 +330,7 @@ export function aFunctionThatMayBeUsed(
  * check-in is not one office function, so it agrees with no title.
  */
 export const THE_FUNCTION_OF_A_KIND_OF_WORK: Record<string, RoleFunction> = {
+  'sales team': RoleFunction.SALES,
   'sales org': RoleFunction.SALES,
   'engineering release': RoleFunction.ENGINEERING,
   'support desk': RoleFunction.SUPPORT,

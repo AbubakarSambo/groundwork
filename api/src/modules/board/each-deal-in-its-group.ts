@@ -1,4 +1,4 @@
-import type { AServedRecord, AServedSection, KindOfWork } from './the-kind-of-work';
+import { isASalesKind, type AServedRecord, type AServedSection, type KindOfWork } from './the-kind-of-work';
 import { theDayInWords } from './the-day-in-words';
 import { STALLED_AFTER_WORKING_DAYS, hasStalled, workingDaysSince } from './a-deal-that-has-stalled';
 
@@ -166,7 +166,7 @@ export function isADispatchNotADeal(r: Pick<AServedRecord, 'name' | 'said'>): bo
 export const A_DISPATCH_SAYS = 'This is stock sent out on a delivery note, not a sale, so it is not counted as a deal.';
 
 export function eachDealInItsGroup(kind: KindOfWork | null, sections: AServedSection[] | null | undefined, end: Date | null, now: Date): AServedSection[] | null | undefined {
-  if (kind !== 'sales org' || !Array.isArray(sections)) return sections;
+  if (!isASalesKind(kind) || !Array.isArray(sections)) return sections;
   const endKey = end ? dayKey(end) : null;
   return sections.map((sec: any) => {
     if (!Array.isArray(sec.rows) || !sec.rows.some((r: AServedRecord) => r.kind === 'deal')) return sec;

@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { Page, PageTitle, Section, Panel, Button } from '@/components/gw/ui'
 import { reportsApi } from '@/api/reports'
 import { boardApi } from '@/api/board'
+import { isASalesKind } from '@/lib/a-sales-kind'
 import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import '../../board/pictured/pictured-board.css'
@@ -75,7 +76,7 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
   const stages: string[] = (grid?.stages ?? []).slice(0, -1)
   const day = sessionDay ? isoDay(sessionDay) : null
   const moved: Any[] = day ? (grid?.rows ?? []).filter((row: Any) => row.kind !== 'county' && row.lastSaidOn === day) : []
-  const isSales = (b?.kindOfWork ?? ground?.kindOfWork) === 'sales org'
+  const isSales = isASalesKind(b?.kindOfWork ?? ground?.kindOfWork)
   /* kwame-team-report.jpg: a check-in about one new person is named by that person and the session. */
   const onboardingSubject = b?.family === 'ONBOARDING' ? firstName(((b?.participants ?? []) as Any[]).find((p) => p.partyType !== 'INITIATOR' && !p.managingOnly)?.name) : ''
 

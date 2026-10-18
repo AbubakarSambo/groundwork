@@ -3,6 +3,7 @@ import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { boardApi, KIND_OF_WORK_OPTIONS, type AServedWorkSection, type AServedWorkRow, type KindOfWork, type WorkItemInput } from '@/api/board'
+import { isASalesKind } from '@/lib/a-sales-kind'
 import { groundsApi } from '@/api/grounds'
 import { Link } from 'react-router-dom'
 import { Section, Panel, RowList, Row, Tag, Button, Modal, FieldLabel, TextField, TextArea, Select, StageTrack, ProofMark, Stack, Note, SubHeading, Folded } from '@/components/gw/ui'
@@ -23,7 +24,8 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
  * two can ever be on screen at once.
  */
 const KIND_OF_WORK_SENTENCE: Record<KindOfWork, string> = {
-  'sales org': "This check-in is about a sales team and its deals.",
+  'sales team': 'This check-in is about a sales team and its deals.',
+  'sales org': 'This check-in is about a sales organisation of several teams, and its deals.',
   'engineering release': 'This check-in is about an engineering release.',
   'support desk': 'This check-in is about a support desk and its tickets.',
   'distribution operations': 'This check-in is about distribution operations.',
@@ -48,7 +50,8 @@ const KIND_OF_WORK_SENTENCE: Record<KindOfWork, string> = {
  * person reads changes.
  */
 const KIND_OF_WORK_OPTION_LABEL: Record<KindOfWork, string> = {
-  'sales org': 'A sales team and its deals',
+  'sales team': 'One sales team and its deals',
+  'sales org': 'A sales organisation of several teams, and its deals',
   'engineering release': 'An engineering release',
   'support desk': 'A support desk and its tickets',
   'distribution operations': 'Distribution operations',
@@ -100,6 +103,7 @@ const DEAL_GRID_HEADING: Partial<Record<KindOfWork, string>> = {
      (docs/prototype/screens/B5-the-board/board-as-lead.txt, "Every deal, day by day") is the one
      this component actually draws for - WorkRecordsSections is only ever called from the Board
      page (BoardPage.tsx), never from the G1 example-check-ins screen the old heading quoted. */
+  'sales team': 'Every deal, day by day',
   'sales org': 'Every deal, day by day',
   /* Phase 2 of the board task, 1 October: the prototype's own eng example
      (docs/prototype/screens/G1-example-check-ins/eng.txt) heads this table "Every task, and
@@ -132,6 +136,7 @@ const WORK_PLAN_HEADING: Partial<Record<KindOfWork, string>> = {
  * `note` (Section's own slot for it) and the-prototype-count tests can't drift apart.
  */
 const DEAL_GRID_NOTE: Partial<Record<KindOfWork, string>> = {
+  'sales team': 'Grouped by what the proof says about closing this quarter.',
   'sales org': 'Grouped by what the proof says about closing this quarter.',
 }
 
@@ -192,6 +197,7 @@ const THEMES_NOTE: Partial<Record<KindOfWork, string>> = {
 
 /** The word for one row's kind, at the head of its own column ("Deal", "Task", "Item", "Trader"...). */
 const ITEM_NOUN_FOR_KIND: Record<KindOfWork, string> = {
+  'sales team': 'Deal',
   'sales org': 'Deal',
   'engineering release': 'Task',
   'support desk': 'Ticket',
@@ -212,6 +218,7 @@ const ITEM_NOUN_FOR_KIND: Record<KindOfWork, string> = {
 
 /** The word for whose it is, at the head of the owner column ("Rep" for sales, "Agent" for support desk...). */
 const OWNER_LABEL_FOR_KIND: Record<KindOfWork, string> = {
+  'sales team': 'Rep',
   'sales org': 'Rep',
   'engineering release': 'Owner',
   'support desk': 'Agent',
@@ -1096,7 +1103,7 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
   /* BOARD REVIEW, SALES PIECE C: the sales org's own Deal grid draws its own head and row shape
      (item 3 a, c, d - see `SalesDealGridHead`/`SalesDealGridRow`), not the generic table every
      other kind of work shares. */
-  const isSalesDealGrid = isDealGrid && kindOfWork === 'sales org'
+  const isSalesDealGrid = isDealGrid && isASalesKind(kindOfWork)
   /*
    * PROJECT BOARD REVIEW 1, FIX 10: "NOT RIGHT? TELL THE CHECK-IN" ON THE ENGINEERING GRID TOO.
    * eng.txt's own grid carries this line under its rows ("Something here wrong? Anyone can
@@ -1295,6 +1302,7 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
 /** The prototype's own heading for this reader's own records (board-as-participant.txt: "Your
     deals, day by day"), where it has one - otherwise the same shape every other kind uses. */
 const YOUR_OWN_HEADING: Partial<Record<KindOfWork, string>> = {
+  'sales team': 'Your deals, day by day',
   'sales org': 'Your deals, day by day',
 }
 
@@ -1308,7 +1316,7 @@ export function YourOwnRecordsSections({ groundId, kindOfWork, sections, myParti
   if (!sections?.length || !myParticipantId) return null
   const itemNoun = (kindOfWork ? ITEM_NOUN_FOR_KIND[kindOfWork] : 'Item').toLowerCase()
   const heading = (kindOfWork ? YOUR_OWN_HEADING[kindOfWork] : undefined) ?? `Your own ${itemNoun}s, day by day`
-  const isSalesDeals = kindOfWork === 'sales org'
+  const isSalesDeals = isASalesKind(kindOfWork)
   const mine = sections
     .filter((s): s is Extract<AServedWorkSection, { state: 'filled' | 'none-yet' }> => s.state !== 'not-known')
     .flatMap((s) => (s.rows ?? []).filter((r) => r.ownerParticipantId === myParticipantId))

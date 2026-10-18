@@ -4,6 +4,7 @@ import { reportsApi } from '@/api/reports'
 import { useQuery } from '@tanstack/react-query'
 import { TheSessionsReport } from '@/components/gw/TheSessionsReport'
 import { groundsApi } from '@/api/grounds'
+import { isASalesKind } from '@/lib/a-sales-kind'
 import { whoIsInRound } from '@/lib/who-is-in-this-round'
 import { useAuthStore } from '@/stores/auth'
 import { plannedSessionsFor } from '@/lib/sessionCount'
@@ -115,7 +116,7 @@ export default function RoundReportPage() {
           <TheSessionsReport
             groundId={id}
             sessionNumber={n}
-            light={(ground as any)?.kindOfWork === 'sales org'}
+            light={isASalesKind((ground as any)?.kindOfWork)}
             totalInThisRound={ground ? whoIsInRound(((ground as any).participants ?? []), n, (ground as any).scenario, (ground as any).checkIns ?? []).length : null}
           />
         )}
