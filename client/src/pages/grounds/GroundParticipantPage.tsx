@@ -1,3 +1,4 @@
+import { YourPeopleAndSetup } from './YourPeopleAndSetup'
 import { MyCheckInSessions } from '@/components/gw/MyCheckInSessions'
 import { howItEnded, hasStalled } from '@/lib/a-ground-that-has-ended'
 import { theRhythmInFull } from '@/lib/the-closing-after-your-first-check-in'
@@ -1027,7 +1028,9 @@ export function GroundParticipantPage() {
           one banned prop this div had) moves to a class; `display`/`flexDirection` are not banned
           and stay inline, keeping the flex context `order` needs.
         */}
-        {tab === 'settings' && (
+        {/* RELEASE 1B (pull request 1 of 3): with the organisation's switch on, a team member reads only the short page the
+            server serves them (YourPeopleAndSetup.tsx). Off, the tab below reads exactly as it did. */}
+        {tab === 'settings' && ((ground as any).release1bTabsOn === true ? <YourPeopleAndSetup groundId={id ?? ''} /> : (
           <div className="gwui-gap-10" style={{ display: 'flex', flexDirection: 'column' }}>
             {/*
               ROUND 4, ITEM A STEP 2: "WHO IS IN THIS", MOVED HERE FROM THE CHECK-IN TAB.
@@ -1075,7 +1078,7 @@ export function GroundParticipantPage() {
               totalSessions={totalSessions ?? null}
             />
           </div>
-        )}
+        ))}
       </div>
 
       {/* REVIEW ROUND 3, ITEM 2: THE PAYWALL, PULLED OUT INTO A SHARED COMPONENT (see useOpenSession.ts) */}
