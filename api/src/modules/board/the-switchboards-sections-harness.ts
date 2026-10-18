@@ -47,7 +47,7 @@ export interface Setup {
   personObjectives?: any[];
   closedAt?: Date | null;
   /** What people typed, as conversation turns the person wrote (role PERSON). */
-  turns?: { checkInId: string; content: string }[];
+  turns?: { checkInId: string; content: string; role?: 'AI' | 'PERSON' }[];
   createdByUserId?: string;
   /** A stored report, where a spec reads the parts of the board that are built from it. */
   report?: any;
@@ -88,6 +88,8 @@ export interface Setup {
   prismaExtras?: Record<string, any>;
   /** Anything else the ground row holds (for example `startedFrom: 'anchor'`). */
   groundRow?: Record<string, any>;
+  /** Release 1's sales board switched on for the organisation (Organization.release1SalesBoardOn). Off unless a spec says so, as for every organisation. */
+  releaseOneSalesBoard?: boolean;
 }
 
 /**
@@ -142,6 +144,8 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
   const prisma = new Proxy({
     ground: model({ findUnique: jest.fn(async () => clone(ground)) }),
     user: model({ findUnique: jest.fn(async () => ({ role, organizationId: 'org-1' })) }),
+    /* The organisation row, for its switches (release-one-sales-board). No row unless a spec sets one, as before. */
+    organization: model({ findUnique: jest.fn(async () => (setup.releaseOneSalesBoard === undefined ? null : { id: 'org-1', release1SalesBoardOn: setup.releaseOneSalesBoard, timeZone: null })) }),
     /* The session the stored report holds now is the highest anybody has finished (decision 76, item 4). */
     checkIn: model({
       findMany: jest.fn(async () => clone(checkIns)),
@@ -150,7 +154,14 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
     groundObjectiveSnapshot: model({ findMany: jest.fn(async () => clone(setup.snapshots ?? [])) }),
     /* The targets, read on their own too (what this session holds), as the database would give them. */
     groundObjective: model({ findMany: jest.fn(async () => clone(setup.objectives ?? [])) }),
-    conversationTurn: model({ findMany: jest.fn(async (args: any) => clone((setup.turns ?? []).filter((t) => (args?.where?.checkInId?.in ?? []).includes(t.checkInId)))) }),
+    conversationTurn: model({ findMany: jest.fn(async (args: any) => {
+      /* A turn with no role is one the person typed; a query for some roles gets only those. */
+      const roles: string[] | null = typeof args?.where?.role === 'string' ? [args.where.role] : (args?.where?.role?.in ?? null);
+      return clone((setup.turns ?? [])
+        .filter((t) => (args?.where?.checkInId?.in ?? []).includes(t.checkInId))
+        .filter((t) => !roles || roles.includes(t.role ?? 'PERSON'))
+        .map((t) => ({ ...t, role: t.role ?? 'PERSON' })));
+    }) }),
     personObjective: model({ findMany: jest.fn(async (args: any) => clone((setup.personObjectives ?? []).filter((o: any) => !args?.where?.awareness || o.awareness === args.where.awareness))) }),
     groundCommitment: model({ findMany: jest.fn(async () => clone(setup.commitments ?? [])) }),
     ...(setup.waitsAreReadOnTheirOwn ? {

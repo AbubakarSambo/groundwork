@@ -183,6 +183,34 @@ export class BoardController {
     return this.board.answerADecision(id, itemId, userId, dto.yes);
   }
 
+  @Post('waits/:waitId/answer')
+  @ApiOperation({ summary: 'Lead only: answer yes or no to a wait on the lead that a yes or a no answers, such as an answer about a price. The answer goes in how we work, and the wait is cleared.' })
+  async answerAWaitOnTheLead(@Param('id') id: string, @Param('waitId') waitId: string, @CurrentUser('id') userId: string, @Body() dto: { yes?: boolean }) {
+    if (typeof dto?.yes !== 'boolean') throw new BadRequestException('Say yes or no.');
+    return this.board.answerAWaitOnTheLead(id, waitId, userId, dto.yes);
+  }
+
+  @Post('deals/:dealId/decide')
+  @ApiOperation({ summary: 'Lead only: answer yes or no to a decision the lead promised herself about a deal, such as a discount its customer asked for. The answer goes in how we work.' })
+  async answerADecisionTheLeadPromised(@Param('id') id: string, @Param('dealId') dealId: string, @CurrentUser('id') userId: string, @Body() dto: { yes?: boolean }) {
+    if (typeof dto?.yes !== 'boolean') throw new BadRequestException('Say yes or no.');
+    return this.board.answerADecisionTheLeadPromised(id, dealId, userId, dto.yes);
+  }
+
+  @Post('stall-rule/answer')
+  @ApiOperation({ summary: 'Lead only: set the suggested stall rule (drop a deal after 3 working days with no answer), or say not now. The answer goes in how we work.' })
+  async answerTheStallRule(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: { yes?: boolean }) {
+    if (typeof dto?.yes !== 'boolean') throw new BadRequestException('Say yes or no.');
+    return this.board.answerTheStallRule(id, userId, dto.yes);
+  }
+
+  @Post('price-range/answer')
+  @ApiOperation({ summary: 'Lead only: answer whether a price range counts as a budget. The answer goes in how we work, and the board counts which deals are qualified by it.' })
+  async answerThePriceRange(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: { yes?: boolean }) {
+    if (typeof dto?.yes !== 'boolean') throw new BadRequestException('Say yes or no.');
+    return this.board.answerThePriceRange(id, userId, dto.yes);
+  }
+
   @Post('not-relevant')
   @ApiOperation({ summary: 'Lead only: say that what the organisation kept, offered as relevant, is not relevant to this check-in.' })
   async sayItIsNotRelevant(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: { memoryIds?: string[] }) {

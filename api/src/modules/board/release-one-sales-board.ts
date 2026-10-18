@@ -9,10 +9,7 @@
  * (Admin, Orgs: PATCH /admin/organisations/:id/release-one-sales-board) or a script does for a test organisation
  * (scripts/the-release-one-sales-board.ts). A row that cannot be read reads as off: it fails closed, to the board people had.
  *
- * NOTHING READS IT YET (Release 1, pull request 2 of 5): the switch exists and staff can turn it on. The parts of Release 1's
- * sales board that follow read it here, so an organisation with it off keeps exactly the board it has now.
- *
- * WHAT IT WILL HOLD BACK, AND ONLY THAT (the final surface, never the writers; "default on, hold the last inch"):
+ * WHAT IT HOLDS BACK, AND ONLY THAT (the final surface, never the writers; "default on, hold the last inch"):
  *  - on the board: each sales aim counted from the deals ("65 sold, 65 with proof of payment", the headline in the
  *    prototype's shape, your share in sales), a customer's reply moved onto its deal, the lead's yes-or-no answer to a wait
  *    in What needs you, each deal at the stall rule, and the heading of To close the gap;

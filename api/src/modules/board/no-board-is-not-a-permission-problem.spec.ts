@@ -24,7 +24,8 @@ const SRC = readFileSync(join(__dirname, 'board.service.ts'), 'utf8');
 const CODE = SRC.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 /* The window reaches the sections line: staging's own changes put it at 4,389 characters in, past the old 4,400 window's search (16 October). */
-const get = CODE.slice(CODE.indexOf('async get('), CODE.indexOf('async get(') + 6000);
+/* The whole of get(), to the next method: it grew past the first 6,000 characters this read, so the sections line fell outside it (fixed 18 October). */
+const get = CODE.slice(CODE.indexOf('async get('), CODE.indexOf('\n  async ', CODE.indexOf('async get(') + 10));
 
 describe('the board answers "is there one" before "who are you"', () => {
   it('both gates are still there', () => {

@@ -15,10 +15,10 @@ import { theRoundCappedAtThePlan, whatEachSessionSays } from './one-count-for-th
 import { aWaitSaidInFull } from './a-wait-said-in-full';
 import { howOftenItWasRaised } from './how-often-it-was-raised';
 import { theBlockers } from './the-blockers';
-import { aParticipantsOwnBoard } from './a-participants-board-is-their-own';
+import { aParticipantsOwnBoard, withoutOtherPeoplesDeals } from './a-participants-board-is-their-own';
 import { theBoardForThisKind } from './each-kind-gets-its-own-board';
 import { theGlanceAsThisReaderMayReadIt } from '../grounds/what-a-manager-needs-at-a-glance';
-import { howARecordIsKnown, theRecordsMark, whatHappensNext } from './what-happens-next-to-a-record';
+import { theNextStepTheyGave, howARecordIsKnown, theRecordsMark, whatHappensNext } from './what-happens-next-to-a-record';
 import { whereThisTargetStands, theHeadlineQuestion, theDirectionToReadIn, type ATeamAim } from './the-headline-and-where-each-target-stands';
 import { whereThisIsHeading } from './where-this-is-heading';
 import { whoTheEndingIsAbout } from '../resolution/who-the-ending-is-about';
@@ -38,12 +38,22 @@ export const NO_OPEN_ISSUES_ON_RECORD = 'Groundwork does not follow an issue fro
 import { theShareSays, YOU_HAVE_NO_SHARE_YET } from './your-share';
 import { theirOwnAimsKeptOnlyAsPromises, AN_AIM_FROM_THEIR_PROMISE } from './an-aim-kept-only-as-their-promise';
 import { eachDealInItsGroup } from './each-deal-in-its-group';
-import { notAnsweringSince } from './a-deal-that-has-stalled';
+import { aPromiseSomebodyElseMade } from '../conversation/a-promise-somebody-else-made';
+import { thePriceRangeAnswer, thePriceRangeDecision, THE_RANGE_QUESTION, type ARangeAnswer } from './a-deals-four-criteria';
+import { theDealWasDropped, theLostDeal } from './a-deal-that-was-dropped';
+import { theWordsNameTheDeal, theBackingDocuments, theDocumentBehind, thePaymentRecords, theSignedOrders, aPaymentRecordFor, type ABackingDocument } from './a-deals-proof-is-about-that-deal';
+import { withTheValueWorkedOut, withOnlyTheNumbersSaid, theBuyingDateOf, theBuyingDateTheySaid, BUYING_DATE, aLineIsAbout } from './a-deals-value-and-buying-date';
+import { theirLine, theirCheckInToday, HAS_NOT_CHECKED_IN_TODAY, CHECKED_IN_TODAY } from './each-persons-line-today';
+import { withoutADealsFigure } from './a-deals-units-are-not-a-target';
+import { KEEP_THE_TEAM_ON_TRACK, CONNECT_GOALS_ACROSS, A_NUMBER_MADE_OF_ITS_CUSTOMERS } from '../conversation/what-a-check-in-owes';
+import { eachTargetOnce, theDifferencesThatAreOnlyATargetSaidAgain } from './a-target-said-again-is-that-target';
+import { theCorrectionsOnTheCheckIn, withWhatACorrectionSettled, whoIsBehindALabel } from '../reports/a-correction-is-their-latest-word';
+import { notAnsweringSince, theContactOf, theNamesOnOurSide, thePeopleAtEachCustomer, workingDaysSince } from './a-deal-that-has-stalled';
 import { aRoundCanBeChecked } from './a-round-backed-by-a-document-can-be-checked';
-import { proofNamesTheDeal } from './one-deal-per-customer';
+import { proofNamesTheDeal, aLineNamesTheCustomer, theSameCustomer } from './one-deal-per-customer';
 import { isTheTeamPictureNowShared } from '../reports/each-sessions-picture-is-released-on-its-own';
 import { withoutItsOwnSpeaker } from './a-view-does-not-start-with-its-speaker';
-import { everyActionHasALabel, whatToDoAboutALeadAction, whatToDoAboutADecision, isAYesOrNoQuestion, theAnswerAsALine } from './what-needs-you-and-what-to-do';
+import { everyActionHasALabel, whatToDoAboutALeadAction, whatToDoAboutADecision, isAYesOrNoQuestion, theAnswerAsALine, aWaitTheLeadCanAnswer, whatToDoAboutAWaitTheLeadCanAnswer, theDealsAtTheStallRule } from './what-needs-you-and-what-to-do';
 import { theOwedThingAskedPlainly } from '../conversation/each-owed-thing-asked-plainly';
 import { howManyGoalsAreNotTold, notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead, aGoalTheLeadSetAndHasNotTold } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { whoAnAdminDidNotLetIn, isNotLetInYet, whoIsNotLetInYet, theWaitingToBeLetInLine } from '../grounds/who-an-admin-did-not-let-in';
@@ -191,6 +201,7 @@ import { theSameMeasure } from '../grounds/a-dump-is-many-things';
 import { theRisks, theWorkPlan, theTimeline, thePersonHistory, theBlockerCheck, theEvidenceIndex, theBusyOrMoving, theLeadActions, theObligations, theForecast, whoWaitedOnWhom, theContradictions, theQuestionsForTheLead, type WhoIsReading, type ACommitment } from './the-switchboards-own-sections';
 import { whoOwnsWhatForTheSubject, divergenceForTheSubject, theNewHireReadsTheLeadsWords } from '../reports/colleagues-exact-words-stay-with-the-manager';
 import { eachLineInTheirName, eachLineWithTheKindThatFits, inTheirOwnWords } from './what-each-person-said-is-in-their-name';
+import { theirWordsWithTheName } from './who-him-is-in-their-check-in';
 import { theRecordAQuoteMayComeFromByParticipant } from '../reports/a-quote-built-at-the-read';
 import { ReportsService } from '../reports/reports.service';
 import { peersAreNamedOn } from '../reports/peers-are-named';
@@ -198,6 +209,21 @@ import { aNameFor, thePersonWaitingAsTheyRead, atTheStartOfASentence, somebodyIn
 import { itWasTakenFurther } from '../reports/what-they-said-they-did-about-it';
 import { ESCALATE_AFTER_DAYS } from '../webhooks/a-handoff-that-has-sat-too-long';
 import { theMarkOf, whoAddedEachBackingDocument, WHAT_A_MARK_READS } from '../reports/how-a-line-is-known';
+import { theDayZone } from '../../common/the-organisations-own-day';
+import { whatTheDealStillNeeds, theValueLine } from './what-a-deal-still-needs';
+import { theDecisionsTheLeadPromised } from './a-decision-the-lead-promised';
+import { thePromisesCarriedOver } from './a-promise-carried-over';
+import { theSalesSignals } from './where-this-is-heading';
+import { whatToCoachThisWeek } from './what-to-coach-this-week';
+import { theDayTheyMeant } from '../grounds/when-a-handoff-is-due';
+import { theStagesKept } from './a-deals-stages-are-kept';
+import { aDaySaidInFull } from './a-day-said-in-full';
+import { theStallRuleOnRecord, theStallRuleAsALine, theStallRuleDeclined, NO_STALL_RULE_YET, THE_SUGGESTED_DAYS, type TheStallRule } from './the-stall-rule';
+import { whenTheyPay, theUnitsOf } from './a-sales-aim-is-counted-from-the-deals';
+import { theDealsOnRecord, theAimsTheDealsCount, theSalesStages, whereAWeeklyCountStands, whatTheseDealsHold, type ACountFromTheDeals, type ADealOnRecord } from './a-sales-aim-is-counted-from-the-deals';
+import { theWaitsOnCustomersApart, theirOwnAnswersWhereTheWaitsWereSaid, withoutTheWaitsOnCustomers } from './a-customers-reply-is-on-its-deal';
+import { theReleaseOneSalesBoardIsOn } from './release-one-sales-board';
+import { withTheStageKept, theStagesToKeep } from './a-deals-stages-are-kept';
 import { WHAT_EACH_MARK_SAYS } from '../reports/the-mark-on-every-line';
 
 /**
@@ -389,6 +415,46 @@ export class BoardService {
     await withTheirNamesFromTheOrganisation(this.prisma as any, (ground as any).organizationId, (ground.participants ?? []) as any);
     /* A wait on oneself is not a wait, a wait on "the lead" is a wait on the lead, and one wait said four ways is one (request 111 e, request 123 items 4 and 5). */
     (ground as any).dependencies = theWaitsAsABoardReadsThem((ground as any).dependencies ?? [], ground.participants.find((p) => !!ground.initiatorId && p.userId === ground.initiatorId)?.id);
+    /*
+     * ON A SALES CHECK-IN, AN AIM THE DEALS HOLD IS COUNTED FROM THE DEALS (Hafsah's answers of 17 October, Drop Access).
+     * Read once here, before anything reads a count, so every section that reads an aim (the targets, where each stands,
+     * the headline, the forecast, each person's share) reads the same number, from the record. Nothing is written: the
+     * count kept on the target is brought up to date by the board listener when something new comes in. See
+     * a-sales-aim-is-counted-from-the-deals.
+     */
+    const countedFromTheDeals = new Map<string, ACountFromTheDeals>();
+    let theDealsCounted: ADealOnRecord[] = [];
+    /* Release 1's sales board, switched on per organisation (release-one-sales-board). Off, the board reads as it did before it. */
+    const releaseOne = await theReleaseOneSalesBoardIsOn(this.prisma, (ground as any).organizationId);
+    /* The lead's answer on whether a price range counts as a budget, from how we work (a-deals-four-criteria). Release 1 only. */
+    const priceRange: ARangeAnswer = releaseOne && isASalesKind((ground as any).kindOfWork) ? await thePriceRangeAnswer(this.prisma, groundId) : null;
+    /* The lead's own stall rule, or none (standing decision 4, 18 October; the-stall-rule). Off Release 1, the rule the board always read. */
+    const stallRule: TheStallRule | null = releaseOne && isASalesKind((ground as any).kindOfWork) ? await theStallRuleOnRecord(this.prisma, groundId) : null;
+    const stallDays: number | null | undefined = stallRule ? stallRule.days : undefined;
+    /*
+     * A TARGET SAID AGAIN IS THAT TARGET (Hafsah's point 9, 17 October). An aim whose number and the thing it counts match a
+     * target already on record, the team's or the person's own, is that target: "My target is 120 units" from a rep is the team's
+     * 120, and "Sell 40 units" is the rep's own 40. Read once here, so every section reads each target once. Nothing is deleted.
+     * See a-target-said-again-is-that-target.
+     */
+    if (releaseOne && isASalesKind((ground as any).kindOfWork)) (ground as any).objectives = eachTargetOnce((ground.objectives ?? []) as any[]);
+    /* A DEAL'S UNITS ARE NOT A TARGET (Drop Access run 1, item 27): "the Mama Pima deal for 10 units" is the deal's. See a-deals-units-are-not-a-target. */
+    const theCustomers: string[] | null = releaseOne && isASalesKind((ground as any).kindOfWork)
+      ? [...new Set((((await Promise.resolve((this.prisma as any).workItem?.findMany?.({ where: { groundId, kind: { in: ['deal', 'lead'] } }, select: { name: true } })).catch(() => [])) ?? []) as { name: string }[]).map((r) => String(r.name ?? '').trim()).filter(Boolean))]
+      : null;
+    const thePeople = ((ground.participants ?? []) as any[]).map((p) => p.user?.firstName ?? '').filter(Boolean) as string[];
+    if (theCustomers) (ground as any).objectives = withoutADealsFigure((ground.objectives ?? []) as any[], theCustomers, thePeople);
+    if (releaseOne && isASalesKind((ground as any).kindOfWork)) {
+      /* "With proof of payment" counts the payment records only (Hafsah's point 12). */
+      theDealsCounted = await theDealsOnRecord(this.prisma, groundId, { paymentRecord: true }).catch(() => [] as ADealOnRecord[]);
+      const counted = theAimsTheDealsCount(ground.objectives as any[], theDealsCounted, theSalesStages((ground as any).workStages), now, theDayZone());
+      for (const o of (ground.objectives ?? []) as any[]) {
+        const c = counted.get(o.id);
+        if (!c) continue;
+        countedFromTheDeals.set(o.id, c);
+        o.count = c.count;
+      }
+    }
 
     /**
      * "THERE IS NO BOARD" IS ANSWERED BEFORE "WHO ARE YOU", AND THAT ORDER IS THE FIX.
@@ -515,6 +581,19 @@ export class BoardService {
     /* The rows as written, for when each thing was first and last said (the-same-thing-for-three-check-ins). */
     const rawDependencies = [...((ground as any).dependencies ?? [])] as any[];
     (ground as any).dependencies = oneBlockerPerThingWaitedOn(dedupeDependencies(ground.dependencies as any));
+    /*
+     * A CUSTOMER'S REPLY IS ON ITS DEAL (Hafsah's answer of 17 October). On a sales check-in, an open wait on a customer of a
+     * deal (the deal's contact, or its business) is taken off the waits every section reads (Blockers, Waiting on, the glance,
+     * the quick read, the risks) and kept for that deal, unless what was said says it stops the deal. Before anything reads the
+     * waits, so no section is left counting it. See a-customers-reply-is-on-its-deal.
+     */
+    let waitsOnCustomers: any[] = [];
+    if (theDealsCounted.length) {
+      const theirOwnAnswers = await theirOwnAnswersWhereTheWaitsWereSaid(this.prisma, (ground as any).dependencies as any[]).catch(() => new Map<string, string[]>());
+      const apart = theWaitsOnCustomersApart((ground as any).dependencies as any[], theDealsCounted, theirOwnAnswers);
+      (ground as any).dependencies = apart.team;
+      waitsOnCustomers = apart.onDeals;
+    }
 
     /* What this run can actually show: a one-round read has no across-rounds sections. See sectionsForARunOf. */
     /*
@@ -541,7 +620,11 @@ export class BoardService {
       }) ?? Promise.resolve([])).catch(() => []);
       const fromPromises = theirOwnAimsKeptOnlyAsPromises(promises as any[], (ground.objectives ?? []) as any[], ground.participants as any[], groundId);
       if (fromPromises.length) (ground as any).objectives = [...((ground.objectives ?? []) as any[]), ...fromPromises];
+      /* "My target is still 120 units by October 30th", kept as Kevin's promise, is the team's 120 said again (point 9). */
+      if (fromPromises.length && releaseOne && isASalesKind((ground as any).kindOfWork)) (ground as any).objectives = eachTargetOnce((ground.objectives ?? []) as any[]);
+      if (fromPromises.length && theCustomers) (ground as any).objectives = withoutADealsFigure((ground.objectives ?? []) as any[], theCustomers, thePeople);
     }
+
 
     /**
      * THE WALL THE CHECK-IN KEEPS, KEPT HERE TOO.
@@ -593,6 +676,43 @@ export class BoardService {
       me?.id ?? null,
       runsThisGround,
     );
+
+    /*
+     * AND A DIFFERENCE THAT IS ONLY THOSE TARGETS SAID AGAIN, OR ONLY WHERE SOMEBODY'S WORK STANDS, IS NOT ONE (point 9): Grace's
+     * 40 each against the reps naming the team's 120, and the 10 new leads against "I have not planned for generating new leads
+     * yet". Left out of the report as this board reads it, so every section that reads the differences leaves it out. Release 1's sales board only.
+     */
+    if (releaseOne && isASalesKind((ground as any).kindOfWork) && (ground as any).report && Array.isArray((ground as any).report.divergences)) {
+      const leadRowId = ground.participants.find((p: any) => !!ground.initiatorId && p.userId === ground.initiatorId)?.id ?? null;
+      const whoIs = (label: string): string | null => {
+        const n = label.trim().toLowerCase();
+        if (!n) return null;
+        return (ground.participants as any[]).find((p) => {
+          const full = [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim().toLowerCase();
+          return full === n || (p.user?.firstName ?? '').trim().toLowerCase() === n || (p.nameGiven ?? '').trim().toLowerCase() === n;
+        })?.id ?? null;
+      };
+      const report = { ...((ground as any).report as any) };
+      const only = theDifferencesThatAreOnlyATargetSaidAgain(report.divergences as any[], (ground.objectives ?? []) as any[], leadRowId, whoIs);
+      const notOne = (report.divergences as any[]).filter((d) => only.has(d));
+      if (notOne.length) {
+        report.divergences = (report.divergences as any[]).filter((d) => !notOne.includes(d));
+        /* The question the report drew from one of them is not a question either. */
+        const topics = notOne.map((d) => String(d?.topic ?? '').trim().replace(/[.!?]+$/, '')).filter(Boolean);
+        if (typeof report.centralQuestion === 'string' && topics.some((t) => report.centralQuestion.includes(t))) report.centralQuestion = null;
+        (ground as any).report = report;
+      }
+      /*
+       * AND A PERSON CORRECTING THEMSELVES SETTLES IT (Drop Access short run, item 1): a report stored before the rule kept Mercy's
+       * KES 120,000 and 125,000 as a difference and a question to ask her. Left out as this board reads it, by the rule the report is
+       * now written with (a-correction-is-their-latest-word).
+       */
+      const corrections = await theCorrectionsOnTheCheckIn(this.prisma, groundId).catch(() => []);
+      if (corrections.length) {
+        const settled = withWhatACorrectionSettled((ground as any).report, corrections, (label) => (/^you$/i.test(label.trim()) ? (me?.id ?? null) : whoIs(label) ?? whoIsBehindALabel(ground.participants as any[], labelsForParties(ground.participants as any))(label)));
+        if (settled.leftOut.length) (ground as any).report = settled.report;
+      }
+    }
 
     // WHOSE ANSWER THIS IS.
     //
@@ -711,6 +831,17 @@ export class BoardService {
     const aColleague = (pid: string | null | undefined) => atTheStart((pid ? noName.get(pid) : null) ?? 'a colleague');
     const theLeadsRow = ground.participants.find((x) => !!ground.initiatorId && x.userId === ground.initiatorId)?.id ?? null;
     const hiddenFromThisReader = (pid: string) => whoMaySee.peersHidden && pid !== me?.id && pid !== theLeadsRow;
+    /*
+     * THE FOUR CRITERIA ON EACH DEAL (Release 1's sales board; a-deals-four-criteria): the lead's answer on a price range, and who
+     * decides it as this reader names them ("You" to the lead, the lead's first name to anybody else).
+     */
+    const criteriaFor = (): { range: ARangeAnswer; whoDecides: string } | null => {
+      if (!releaseOne || !isASalesKind((ground as any).kindOfWork)) return null;
+      if (isInitiator) return { range: priceRange, whoDecides: 'You' };
+      const lead = theLeadsRow ? ground.participants.find((x: any) => x.id === theLeadsRow) as any : null;
+      const first = String(lead?.user?.firstName ?? lead?.nameGiven ?? '').trim().split(/\s+/)[0];
+      return { range: priceRange, whoDecides: first || 'The lead' };
+    };
     const nameOf = (pid: string) => {
       const p = ground.participants.find((x) => x.id === pid);
       if (!p) return null;
@@ -810,6 +941,8 @@ export class BoardService {
       /* The kind of work (request 76): one of the eleven names in the-kind-of-work.ts, or null. Checked
          again on the way out, so a stored value that is not one of the eleven is served as none. */
       kindOfWork: oneOfTheKinds((ground as any).kindOfWork),
+      /* Whether this organisation has Release 1's sales board switched on (release-one-sales-board), so the page draws what it serves. */
+      releaseOneSalesBoard: releaseOne,
       /* The kinds a NEW check-in may be given at release. A check-in that holds another keeps it above. */
       kindsOffered: await theBoardKindsOffered(this.prisma),
       /* Whether a new anchor check-in can be started (release.anchorScenario). Off at release. Nothing on the board changes with it yet. */
@@ -1083,7 +1216,8 @@ export class BoardService {
        * See one-count-for-the-sessions.
        */
       const planned = totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null;
-      const theRound = theRoundCappedAtThePlan(openRound, planned, mine as any[]);
+      /* A finished round hands the count to the next one that has come (theRoundThatHasCome), by the board's own clock. */
+      const theRound = theRoundCappedAtThePlan(openRound, planned, mine as any[], now, releaseOne);
       const roundNumbers = Array.from(new Set(checkIns.map((c) => c.sessionNumber))).sort((a, b) => a - b);
       /* The header is drawn from these two numbers ("Session 1 of 12."); see theHeaderSays for its words. */
       out.phaseSpine = {
@@ -1098,7 +1232,7 @@ export class BoardService {
              next sessions will start" (Hafsah, 22 Sep 2026); the pill said "Session 2" and nothing else.
              The earliest availableFrom across that session's check-ins is the day it opens. */
           const opens = forSession.map((c: any) => c.availableFrom).filter(Boolean).sort((a: Date, b: Date) => a.getTime() - b.getTime())[0] ?? null;
-          const line = whatEachSessionSays(n, mine as any[], theRound);
+          const line = whatEachSessionSays(n, mine as any[], theRound, now, releaseOne);
           /* A session somebody has already checked in to, or started, is open, never "upcoming" (request 115 g):
              session 2 read as upcoming while two people had answered it, because session 1 was still open. */
           const somebodyIsIn = forSession.some((c) => c.status !== CheckInStatus.NOT_STARTED);
@@ -1243,6 +1377,8 @@ export class BoardService {
         /** The lead's own sentence about what is unsettled here, where there is one. Never a block. */
         notSettled: whatIsNotSettledAbout({ name: o.name, target: o.target }, notSettledLines),
         id: o.id, name: o.name, count: o.count, prevCount: theFirstCount(o) ? null : o.prevCount, target: o.target,
+        /* Where the count comes from the deals on record (a sales aim), what they hold, in the prototype's words: "65 sold, 40 with proof of payment." */
+        fromTheDeals: (() => { const c = countedFromTheDeals.get(o.id); return c ? { counts: c.counts, sold: c.count, proven: c.proven, shown: c.shown ?? 0, currency: c.currency, says: c.says } : null; })(),
         /* What the target assumes (U.7), to whoever may read the target, and to nobody else. */
         assumes: Array.isArray((o as any).assumes) ? ((o as any).assumes as string[]).filter((a) => typeof a === 'string' && a.trim()) : [],
         /* Where nothing is written down, said plainly rather than left empty (request 115 c). Nothing is made up. */
@@ -1352,10 +1488,11 @@ export class BoardService {
        */
       out.yourShare = mine.map((o) => ({
         objectiveId: o.id,
-        says: theShareSays(o.name, o.count, o.target, o.direction),
+        /* On Release 1's sales board, the reader's own deals are named in it (R-5): from their own aim's count only. */
+        says: theShareSays(o.name, o.count, o.target, o.direction, releaseOne && countedFromTheDeals.get(o.id) ? { ...(o.fromTheDeals ?? {}), ...(countedFromTheDeals.get(o.id) as any) } : (o.fromTheDeals ?? null)),
         whoSees: (ground as any).whoSeesTargets === 'EVERYBODY'
           ? 'Everybody in this check-in sees your share.'
-          : `Only you and ${leadName ?? 'the person running this check-in'} see your share.`,
+          : `Only you and ${(releaseOne ? (leadName ?? '').split(/\s+/)[0] : leadName) || 'the person running this check-in'} see your share.`,
       }));
       if (!mine.length) out.yourShareSays = YOU_HAVE_NO_SHARE_YET;
     }
@@ -1479,8 +1616,27 @@ export class BoardService {
        * ..."), written for the model and never for a person. The board serves the plain question that
        * was owed, and one sentence about it for this reader; the stored line itself goes nowhere.
        */
+      /*
+       * A GAP THE RECORD NOW ANSWERS IS NOT STILL UNANSWERED (Drop Access short run, item 12). A gap is settled when a check-in
+       * ends; one asked before the rule that settles it was right ("Greenfield is secured for 25 units. And I've got Mama Mboga
+       * Mart wanting 2 units.") stayed open, and the board read "Mercy Wairimu has not answered it yet". Read again from the same
+       * rule (whatIsStillOwed's saidAbout), from that person's own lines, and on a sales check-in a number made up of what each
+       * customer takes (A_NUMBER_MADE_OF_ITS_CUSTOMERS). Nothing is written. Behind Release 1's switch: off, the board reads as before.
+       */
+      const owedByWhat = new Map([...KEEP_THE_TEAM_ON_TRACK, ...CONNECT_GOALS_ACROSS].map((o) => [o.what, o]));
+      const linesOf = new Map<string, { type: string; text: string }[]>();
+      const answeredBy = (o: { id: string; saidAbout?: RegExp }, text: string) => !!o.saidAbout && (o.saidAbout.test(text) || (o.id === 'how-the-number-is-made' && A_NUMBER_MADE_OF_ITS_CUSTOMERS.test(text)));
+      if (releaseOne && (gapRows as any[]).some((g) => owedByWhat.get(String(g.what ?? ''))?.saidAbout)) {
+        const theirs = ((await (this.prisma.recordEntry.findMany({ where: { disputedAt: null, participantId: { in: [...new Set((gapRows as any[]).map((g) => g.participantId))] } } as any, select: { participantId: true, type: true, text: true } as any }) as Promise<any[]>).catch(() => [])) ?? []) as any[];
+        for (const l of theirs) linesOf.set(l.participantId, [...(linesOf.get(l.participantId) ?? []), { type: l.type, text: cleanText(l.text ?? '') }]);
+      }
+      const nowAnswered = (g: any) => {
+        const o = owedByWhat.get(String(g.what ?? ''));
+        return !!o?.saidAbout && (linesOf.get(g.participantId) ?? []).some((l) => o.satisfiedBy.includes(l.type as any) && answeredBy(o, l.text));
+      };
       out.stillUnanswered = (gapRows as any[])
         .filter((g) => g.asked >= 2)
+        .filter((g) => !nowAnswered(g))
         .map((g) => {
           const isYou = !!me && g.participantId === me.id;
           const who = isYou ? 'You' : (nameOf(g.participantId) ?? aColleague(g.participantId));
@@ -1780,6 +1936,36 @@ export class BoardService {
         orderBy: { createdAt: 'asc' },
       }) ?? Promise.resolve([])).catch(() => [])) ?? []) as any[])
         .filter((c) => c?.source === 'CHECK_IN' && !!c.participantId && c.status !== 'DROPPED' && c.explicit !== false && typeof c.text === 'string' && c.text.trim());
+      /*
+       * WHO "HIM" IS (Drop Access short run, 18 October), with Release 1's switch on: a line that says "him" is read against the
+       * line before it in that person's check-in, and where that line names one person on record, the name is carried as
+       * `himIs` for eachLineInTheirName, which says it only where the reader may read their words. See who-him-is-in-their-check-in.
+       */
+      const himIsIn = new Map<string, { wordsWithHim: string; withTheName: string }>();
+      /* "Him" in the words the reader is served: their own typed sentences where the line came from them. */
+      const servedWords = (e: any) => inTheirOwnWords(cleanText(e.text), e.checkInId ? typed.get(e.checkInId) : undefined).text;
+      const saysHim = releaseOne ? (entries as any[]).filter((e) => e.checkInId && /\bhim\b/i.test(servedWords(e))) : [];
+      if (releaseOne && saysHim.length) {
+        const ids = [...new Set(saysHim.map((e) => e.checkInId as string))];
+        const turns = (((await ((this.prisma as any).conversationTurn?.findMany?.({
+          where: { checkInId: { in: ids }, role: { in: ['AI', 'PERSON'] } },
+          select: { checkInId: true, role: true, content: true },
+          orderBy: { createdAt: 'asc' },
+        }) ?? Promise.resolve([])).catch(() => [])) ?? []) as any[]);
+        const contacts = (((await ((this.prisma as any).workItem?.findMany?.({ where: { groundId, kind: 'deal' }, select: { fields: true } }) ?? Promise.resolve([])).catch(() => [])) ?? []) as any[])
+          .map((d) => theContactOf(d?.fields ?? null) ?? '').filter(Boolean);
+        const namesOf = (p: any) => [[p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim(), String(p?.user?.firstName ?? p?.nameGiven ?? '').trim().split(/\s+/)[0] ?? '', String(p?.nameGiven ?? '').trim()].filter((n) => n.length > 1);
+        const people = [...(ground.participants as any[]).flatMap(namesOf), ...contacts];
+        for (const e of saysHim) {
+          const owner = (checkIns as any[]).find((c) => c.id === e.checkInId)?.participantId;
+          if (owner !== e.participantId) continue;
+          const words = servedWords(e);
+          const them = (turns as any[]).filter((t) => t.checkInId === e.checkInId).map((t) => ({ role: String(t.role ?? 'PERSON'), content: String(t.content ?? '') }));
+          const speaker = namesOf((ground.participants as any[]).find((p) => p.id === e.participantId));
+          const named = theirWordsWithTheName(words, them, people, speaker);
+          if (named) himIsIn.set(e.id, { wordsWithHim: words, withTheName: named });
+        }
+      }
       /* The reader's own names, so their name inside a promise is said as "you" (the work plan's rule). */
       const myNames = me
         ? [[(me as any).user?.firstName, (me as any).user?.lastName].filter(Boolean).join(' ').trim(), ((me as any).user?.firstName ?? '').trim()].filter((n) => n.length > 1)
@@ -1787,6 +1973,8 @@ export class BoardService {
       /* Each line with when it was said, so promises and record lines read in the order they were said. */
       const theirPromises = (pid: string) => promisedInACheckIn
         .filter((c) => c.participantId === pid)
+        /* Never somebody else's promise as theirs (Hafsah's point 13, Release 1). */
+        .filter((c) => !(releaseOne && aPromiseSomebodyElseMade(cleanText(c.text))))
         /* The same promise in other words is one promise: the sameness rule the writer uses (request 130 b, review). */
         .filter((c) => !entries.some((e) => e.participantId === pid && e.type === 'COMMITMENT' && theSameMeasure(cleanText(e.text), cleanText(c.text))))
         .map((c) => {
@@ -1820,8 +2008,13 @@ export class BoardService {
            * reads.ts is the thing that READS the marker - that one is not a surface.
            */
           items: entries.filter((e) => e.participantId === p.id).map((e) => ({ at: new Date((e as any).createdAt ?? 0).getTime(), line: {
-            id: e.id, type: e.type,
+            id: e.id,
+            /* Somebody else's promise, kept before it was filed as theirs, reads as what happened, never as this person's
+               commitment or their "Will do" (Hafsah's point 13, behind Release 1's switch). */
+            type: releaseOne && e.type === 'COMMITMENT' && aPromiseSomebodyElseMade(cleanText(e.text)) ? 'PROGRESS' : e.type,
             ...inTheirOwnWords(cleanText(e.text), e.checkInId ? typed.get(e.checkInId) : undefined),
+            /* Never served as it is: eachLineInTheirName says it only where these same words reach the reader as theirs. */
+            ...(himIsIn.has(e.id) ? { theNameForHim: himIsIn.get(e.id) } : {}),
             mark: theMarkOf({ ...(e as any), text: cleanText(e.text) }, whoAdded),
             markSays: WHAT_EACH_MARK_SAYS[theMarkOf({ ...(e as any), text: cleanText(e.text) }, whoAdded)],
             sessionNumber: checkIns.find((c) => c.id === e.checkInId)?.sessionNumber ?? null,
@@ -2305,6 +2498,62 @@ export class BoardService {
           return tag ? { ...row, workTag: tag } : row;
         });
       }
+      /*
+       * THE TEAM TODAY IS ABOUT TODAY (Hafsah's point 10, 17 October; board-as-lead.txt). Each rep read "has not checked in for
+       * this session yet" on the day they had checked in, because the next session had opened. On Release 1's sales board, a
+       * person who checked in today reads their line from that check-in, word for word, and one who has not reads the kit's
+       * "Hasn't checked in today". Their words go to the lead only; an admin who reads reads that they checked in. See
+       * each-persons-line-today.
+       */
+      if (releaseOne && isASalesKind(kind)) {
+        const zone = theDayZone();
+        const today = new Map<string, any>();
+        for (const row of out.eachPersonToday as any[]) {
+          const c = theirCheckInToday(checkIns as any[], row.participantId, now, zone);
+          if (c) today.set(row.participantId, c);
+        }
+        /*
+         * ON A DAY WITH NO CHECK-IN, THE LAST ONE (Hafsah's quality pass, 18 October, B-21): Grace opened her board on Sunday and read
+         * "Hasn't checked in today" three times. On a day this check-in does not run (a weekend for a weekday check-in), each person's
+         * line is from their last check-in, with its day, and its tag says when ("Last in 14 Oct").
+         */
+        const weekday = new Intl.DateTimeFormat('en-GB', { timeZone: zone, weekday: 'short' }).format(now);
+        const aDayItRuns = !(/^(?:Sat|Sun)/.test(weekday) && String((ground as any).cadence ?? '').toUpperCase() === 'DAILY');
+        const last = new Map<string, any>();
+        if (!aDayItRuns) {
+          for (const row of out.eachPersonToday as any[]) {
+            if (today.has(row.participantId)) continue;
+            const c = (checkIns as any[]).filter((x) => x.participantId === row.participantId && String(x.status).toUpperCase() === 'COMPLETED' && x.completedAt && !x.isSetup)
+              .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())[0];
+            if (c) last.set(row.participantId, c);
+          }
+        }
+        const ids = [...today.values(), ...last.values()].map((c) => c.id);
+        const said = ids.length && isInitiator
+          ? ((await (this.prisma.recordEntry.findMany({ where: { disputedAt: null, checkInId: { in: ids } }, select: { checkInId: true, text: true, type: true, createdAt: true }, orderBy: { createdAt: 'asc' } } as any) as Promise<any[]>).catch(() => [] as any[])) ?? [])
+          : [];
+        const deals = isInitiator
+          ? (((await ((this.prisma as any).workItem?.findMany?.({ where: { groundId, kind: 'deal' }, select: { name: true, ownerParticipantId: true } }) ?? Promise.resolve([])).catch(() => [])) ?? []) as any[])
+          : [];
+        out.eachPersonToday = (out.eachPersonToday as any[]).map((row) => {
+          const c = today.get(row.participantId);
+          const before = last.get(row.participantId);
+          if (!c && before) {
+            const words = isInitiator
+              ? theirLine((said as any[]).filter((l) => l.checkInId === before.id).map((l) => ({ text: cleanText(String(l.text ?? '')), type: l.type ?? null, createdAt: l.createdAt })), deals.filter((d) => d.ownerParticipantId === row.participantId).map((d) => String(d.name ?? '')))
+              : null;
+            const on = aDaySaidInFull(new Date(before.completedAt));
+            const first = String(row.who ?? '').trim().split(/\s+/)[0] || 'They';
+            const shortDay = new Intl.DateTimeFormat('en-GB', { timeZone: zone, day: 'numeric', month: 'short' }).format(new Date(before.completedAt)).replace('Sept', 'Sep');
+            return { ...row, line: words ? `On ${on}, ${first} said, “${words}”` : `${first} last checked in on ${on}.`, checkedInToday: false, lastIn: shortDay };
+          }
+          if (!c) return { ...row, line: HAS_NOT_CHECKED_IN_TODAY, checkedInToday: false };
+          const line = isInitiator
+            ? theirLine((said as any[]).filter((l) => l.checkInId === c.id).map((l) => ({ text: cleanText(String(l.text ?? '')), type: l.type ?? null, createdAt: l.createdAt })), deals.filter((d) => d.ownerParticipantId === row.participantId).map((d) => String(d.name ?? '')))
+            : null;
+          return { ...row, line: line ?? CHECKED_IN_TODAY, checkedInToday: true };
+        });
+      }
     }
 
     /*
@@ -2379,6 +2628,8 @@ export class BoardService {
           /* The day somebody last spoke about it: the day of the line it came from (request 112 a). Null for one added on the board. */
           lastSaidOn: line?.createdAt ? new Date(line.createdAt).toISOString().slice(0, 10) : null,
           fields: plainFields(i.fields),
+          /* Each stage somebody said it was at, in order, for "Reported vs criteria met" (quality pass, 18 October, B-23). */
+          ...(releaseOne && i.kind === 'deal' ? { stagesSaid: [...new Set([...theStagesKept(i.fields).map((x) => x.stage), ...(i.stage ? [String(i.stage)] : [])])] } : {}),
           from: i.sourceEntryId ? 'said' : 'lead',
           ...(line ? { said: cleanText(line.text) } : {}),
           ...(line ? whoSaidIt(line.participantId) : { saidBy: null, saidByParticipantId: null, saidByLine: null }),
@@ -2388,7 +2639,8 @@ export class BoardService {
           ),
           /* The proof mark the screens' ProofMark reads (request 108 c), from the line it came from, never upgraded. */
           mark: theRecordsMark(line ? theMarkOf({ ...line, text: cleanText(line.text) }, whoAddedTheirs) : null),
-          ...whatHappensNext(i, openPromises.filter((c) => runsIt || c.participantId === me?.id || (!!ownerId && c.participantId === ownerId && c.participantId !== theLeadsRow)), (pid) => {
+          /* The lead's own promise ("Be following up more closely with each rep on ... Kilele Hotel, Greenfield Supermarket and Mama Pima Stores") is hers, never a deal's next step (Drop Access short run, item 5; Release 1's sales board). */
+          ...whatHappensNext(i, openPromises.filter((c) => !(releaseOne && i.kind === 'deal' && !!theLeadsRow && c.participantId === theLeadsRow && ownerId !== theLeadsRow)).filter((c) => runsIt || c.participantId === me?.id || (!!ownerId && c.participantId === ownerId && c.participantId !== theLeadsRow)), (pid) => {
             if (pid && pid === me?.id) return 'You';
             return pid ? (nameOf(pid) ?? aColleague(pid)) : 'Somebody';
           }),
@@ -2410,8 +2662,10 @@ export class BoardService {
         }) as Promise<any[]>).catch(() => [] as any[])) ?? []) as any[];
         const readableRows = everyLine.filter((l) => !l.disputedAt && mayReadTheWordsOf(l.participantId));
         const whoAddedEach = await whoAddedEachBackingDocument(this.prisma, readableRows).catch(() => new Map<string, string | null>());
+        /* The documents behind the lines, so proof counts only for the customer it is about, on the day it came in (a-deals-proof-is-about-that-deal). */
+        const docOf = await theBackingDocuments(this.prisma, readableRows).catch(() => new Map<string, ABackingDocument>());
         const readable = readableRows
-          .map((l) => ({ id: l.id, participantId: l.participantId, text: cleanText(l.text ?? ''), createdAt: l.createdAt, mark: theRecordsMark(theMarkOf({ ...l, text: cleanText(l.text ?? '') }, whoAddedEach)) as string, documentBy: l.anchoredDocumentId ? (whoAddedEach.get(l.anchoredDocumentId) ?? null) : null }));
+          .map((l) => ({ id: l.id, participantId: l.participantId, text: cleanText(l.text ?? ''), createdAt: l.createdAt, mark: theRecordsMark(theMarkOf({ ...l, text: cleanText(l.text ?? '') }, whoAddedEach)) as string, documentBy: l.anchoredDocumentId ? (whoAddedEach.get(l.anchoredDocumentId) ?? null) : null, ...(releaseOne ? theDocumentBehind(l.anchoredDocumentId, docOf) : {}) }));
         const owners = [...new Set(rows.filter((r) => r.kind === 'deal' && mayReadTheWordsOf(r.ownerParticipantId)).map((r) => r.ownerParticipantId as string))];
         const ownersCheckIns = (checkIns as any[]).filter((c) => owners.includes(c.participantId)).map((c) => c.id);
         const turns = ownersCheckIns.length
@@ -2422,8 +2676,69 @@ export class BoardService {
           })?.catch?.(() => [])) ?? []) as any[])
           : [];
         const ownerOfCheckIn = new Map((checkIns as any[]).map((c) => [c.id, c.participantId]));
+        /* Whose silence a line says: a person in the check-in or on the roster not answering is not the customer going quiet. */
+        const ourSide = await theNamesOnOurSide(this.prisma, (ground as any).organizationId, ground.participants as any[]).catch(() => [] as string[]);
+        /*
+         * A PAYMENT RECORD (Release 1's sales board; a-deals-four-criteria: "Won: paid, or a deposit received, with a payment
+         * record"). A line this reader may read, backed by a document, where the line or the document reads as a payment: an
+         * M-Pesa message, a receipt, money received. A signed order is proof, but not a payment.
+         */
+        /*
+         * Each payment record is about the customer its document names, or, with no document, the customer its line names
+         * (Drop Access run 1, A1: Savannah Cafe's M-Pesa message is not a payment from Ngong Road Minimart).
+         */
+        const provenHere = releaseOne
+          ? readableRows
+            .filter((l) => theRecordsMark(theMarkOf({ ...l, text: cleanText(l.text ?? '') }, whoAddedEach)) === 'proven')
+            .map((l) => ({ text: cleanText(l.text ?? ''), createdAt: l.createdAt, anchoredDocumentId: l.anchoredDocumentId ?? null }))
+          : [];
+        const paymentLines: { text: string }[] = releaseOne ? thePaymentRecords(provenHere, docOf) : [];
+        /* And the signed orders: with a payment record, the other proof that meets Won (Hafsah, 18 October, answer 2). */
+        const signedOrderLines: { text: string }[] = releaseOne ? theSignedOrders(provenHere, docOf) : [];
+        /* The people the record ties to each customer (a wait on Wanjiru about Mama Pima): their answers are the customer's (Drop Access run 1, A3). */
+        const peopleAt = releaseOne
+          ? await thePeopleAtEachCustomer(this.prisma, groundId, rows.filter((r) => r.kind === 'deal').map((r) => ({ id: r.id, name: r.name, ownerParticipantId: r.ownerParticipantId })), ourSide).catch(() => new Map<string, string[]>())
+          : new Map<string, string[]>();
         for (const r of rows) {
           if (r.kind !== 'deal') continue;
+          if (releaseOne) {
+            /*
+             * THE VALUE IS THE WHOLE DEAL'S, AND THE BUYING DATE IS THE CUSTOMER'S (Hafsah's points 5 and 6). A value the owner's lines
+             * call a price for one unit ("the KES 4,500 price for Juja Hardware") or a discount ("the KES 12,000 discount") is not the
+             * value; units times the price of one unit is. The buying date filed on the deal is served on its own, for its group.
+             * Read from the owner's lines whoever reads, so every reader reads the same deal. See a-deals-value-and-buying-date.
+             */
+            const theirs = everyLine.filter((l) => !l.disputedAt && (!r.ownerParticipantId || l.participantId === r.ownerParticipantId)).map((l) => cleanText(l.text ?? ''));
+            /*
+             * Only the units and value a line about this deal says, as the owner said them (Drop Access run 1, A2): the record's own
+             * note on a line ("[INFERRED: 'He' refers to Mr. Kariuki, owner of Juja Hardware]") says which customer a line is about.
+             */
+            const aboutIt = r.from === 'said'
+              ? everyLine
+                .filter((l) => !l.disputedAt && (!r.ownerParticipantId || l.participantId === r.ownerParticipantId))
+                .map((l) => String(l.text ?? ''))
+                .filter((t) => theWordsNameTheDeal(t, { name: r.name, fields: r.fields }) || theWordsNameTheDeal(cleanText(t), { name: r.name, fields: r.fields }))
+              : [];
+            const worked = withTheValueWorkedOut(aboutIt.length ? withOnlyTheNumbersSaid(r.fields, aboutIt) : r.fields, theirs);
+            /* Filed on the deal, or, where the listener has not filed it yet, the latest the owner said: the reports' own rule, so the board and the reports agree. */
+            r.buyingDate = theBuyingDateOf(worked)
+              ?? theBuyingDateTheySaid({ name: r.name, ownerParticipantId: r.ownerParticipantId, fields: worked }, everyLine.filter((l) => !l.disputedAt).map((l) => ({ text: cleanText(l.text ?? ''), participantId: l.participantId, createdAt: l.createdAt })));
+            delete worked[BUYING_DATE];
+            r.fields = worked;
+            r.paymentRecord = aPaymentRecordFor({ name: r.name, fields: worked }, paymentLines);
+            r.signedOrder = aPaymentRecordFor({ name: r.name, fields: worked }, signedOrderLines);
+            /*
+             * LOST: the customer said no, or the rep gave it up (Drop Access run 1, A5; Hafsah, 18 October: a Lost stage), with the
+             * reason in the rep's own words where this reader may read them, what shows it, and what it teaches only where the record
+             * supports it. Read from the owner's lines whoever reads, so every reader reads the same deal. See a-deal-that-was-dropped.
+             */
+            const salesStages = theSalesStages((ground as any).workStages);
+            const dropped = theDealWasDropped({ name: r.name, stage: r.stage, ownerParticipantId: r.ownerParticipantId, fields: worked }, everyLine, { lastStage: salesStages[salesStages.length - 1] ?? null, peopleThere: peopleAt.get(r.id) ?? [] });
+            if (dropped) {
+              const who = !mayReadTheWordsOf(r.ownerParticipantId) ? null : r.ownerParticipantId === me?.id ? 'You' : (r.owner ? theShortNameOf(r.owner) : null);
+              r.lost = { on: dropped.on, ...theLostDeal(r.name, dropped, who) };
+            }
+          }
           const value = theValueOf(r.fields);
           r.value = value;
           /* Proof on any line naming the customer shows the deal (problem 2): the M-Pesa line, not only the line the deal was written from. */
@@ -2436,10 +2751,18 @@ export class BoardService {
             r.knownSays = 'Proof shows it.';
           }
           r.valueSays = value ? null : NO_VALUE_SAID;
-          r.contactHistory = theContactHistory(r.name, readable, now);
+          /* The next step said about the deal, where no commitment names it (theNextStepTheyGave). Said as the speaker's, under the same naming rule. */
+          if (!r.next && releaseOne) {
+            const given = theNextStepTheyGave(r.fields, r.saidBy === 'You' ? 'You' : (r.saidBy ? `${r.saidBy.charAt(0).toUpperCase()}${r.saidBy.slice(1)}` : null));
+            if (given) Object.assign(r, given);
+          }
+          r.contactHistory = theContactHistory(r.name, readable, now, releaseOne ? r.fields : null, peopleAt.get(r.id) ?? []);
           /* When the customer stopped answering, from the lines this reader may read (A4). */
-          const silent = notAnsweringSince(r.name, readable as any);
+          const silent = notAnsweringSince(r.name, readable as any, releaseOne ? { people: ourSide, contact: theContactOf(r.fields), peopleThere: peopleAt.get(r.id) ?? [] } : {});
           r.notAnsweringSince = silent ? silent.toISOString().slice(0, 10) : null;
+          /* The last day somebody spoke with the customer before they went quiet: "no reply since 12 October" (standing decision 4). */
+          const quietFrom = r.notAnsweringSince;
+          if (releaseOne && quietFrom) (r as any).noReplySince = ((r.contactHistory ?? []) as any[]).map((c) => String(c.on)).filter((on) => on < quietFrom).sort().pop() ?? quietFrom;
           r.contactHistorySays = WHAT_CONTACT_HISTORY_IS;
           /*
            * ONE ANSWER TO "WHEN WAS IT LAST SPOKEN ABOUT" (request 117, part 4). A deal added on the board has no line
@@ -2451,7 +2774,7 @@ export class BoardService {
           const theirs = mayReadTheWordsOf(r.ownerParticipantId)
             ? turns.filter((t) => ownerOfCheckIn.get(t.checkInId) === r.ownerParticipantId).map((t) => String(t.content ?? ''))
             : [];
-          const words = theirs.length ? theirReadInTheirWords(r.name, theirs) : null;
+          const words = theirs.length ? theirReadInTheirWords(r.name, theirs, releaseOne ? rows.filter((x) => x.kind === 'deal' && x.id !== r.id).map((x) => String(x.name ?? '')) : []) : null;
           r.theirRead = words && r.owner
             ? (r.ownerParticipantId === me?.id
               ? { who: 'You', words, says: 'Your read, in your own words.' }
@@ -2613,6 +2936,8 @@ export class BoardService {
        */
       const onlyTheirOwn = aParticipantOnly;
       const reader: WhoIsReading = {
+        /* The kit's sales board has no "Tried:" or "Not backed:" beside a claim (Hafsah, 18 October, answer 5). */
+        noteBesideTheClaim: !(releaseOne && isASalesKind((ground as any).kindOfWork)),
         meId: me?.id ?? null,
         myNames: me
           ? [[me.user?.firstName, me.user?.lastName].filter(Boolean).join(' ').trim(), (me.user?.firstName ?? '').trim(), (me.user?.lastName ?? '').trim()]
@@ -2684,12 +3009,59 @@ export class BoardService {
       const leadActions = theLeadActions(mine.commitments, handoffs, sessions, untoldGoals, reader);
       /* What the lead can do about each one (request 112 b), to the lead alone. */
       if (leadActions.length) {
+        /* The deals on the board, for a wait whose words name one of the waiting person's own (aWaitTheLeadCanAnswer). */
+        const dealsOnTheBoard = ((Array.isArray(out.workRecords) ? out.workRecords : []) as any[])
+          .flatMap((s: any) => (s?.rows ?? []) as any[]).filter((r: any) => r?.kind === 'deal' && r.name);
         out.leadActions = isInitiator
           ? leadActions.map((a) => {
             const wait = a.id.startsWith('waiting-on-the-lead-') ? handoffs.find((h: any) => `waiting-on-the-lead-${h.id}` === a.id) : null;
-            return { ...a, action: whatToDoAboutALeadAction(a, groundId, wait?.fromParticipantId ? nameOf(wait.fromParticipantId) : null) };
+            const whoWaits = wait?.fromParticipantId ? nameOf(wait.fromParticipantId) : null;
+            /*
+             * A WAIT ON THE LEAD THAT A YES OR A NO ANSWERS (Hafsah, 17 October): the same line, with the question as the
+             * prototype puts it and Yes and No, which keep the answer and clear the wait. See aWaitTheLeadCanAnswer.
+             */
+            const decision = wait && releaseOne ? aWaitTheLeadCanAnswer(wait, whoWaits, dealsOnTheBoard.filter((r: any) => r.ownerParticipantId === wait.fromParticipantId), dealsOnTheBoard) : null;
+            if (wait && decision) return { ...a, decision: { question: decision.question, asked: decision.asked, why: decision.why, afterwards: decision.afterwards }, action: whatToDoAboutAWaitTheLeadCanAnswer(wait.id, groundId, decision) };
+            return { ...a, action: whatToDoAboutALeadAction(a, groundId, whoWaits) };
           })
           : leadActions;
+      }
+      /*
+       * A DECISION THE LEAD PROMISED HERSELF (standing decision 3 of Hafsah's quality pass, 18 October, B-8): to the lead alone, on
+       * Release 1's sales board, from her own promise to decide that names a deal and a discount its customer asked for that
+       * nobody has answered. Her yes or no goes in how we work, and then it is not asked again. See a-decision-the-lead-promised.
+       */
+      if (isInitiator && releaseOne && isASalesKind((ground as any).kindOfWork) && theLeadsRow) {
+        const dealRows = ((Array.isArray(out.workRecords) ? out.workRecords : []) as any[]).flatMap((s: any) => (s?.rows ?? []) as any[]).filter((r: any) => r?.kind === 'deal' && r.name && r.group !== 'won');
+        const wanted = [theLeadsRow, ...new Set(dealRows.map((r: any) => r.ownerParticipantId).filter(Boolean))] as string[];
+        const said = ((((await (this.prisma.recordEntry.findMany({ where: { disputedAt: null, participantId: { in: wanted } } as any, select: { text: true, type: true, participantId: true, createdAt: true } as any }) as Promise<any[]>).catch(() => [] as any[])) ?? []) as any[])
+          .map((l) => ({ text: cleanText(String(l.text ?? '')), type: l.type ?? null, participantId: l.participantId ?? null, createdAt: l.createdAt })));
+        const answers = (((await Promise.resolve((this.prisma as any).groundContextItem?.findMany?.({ where: { groundId, kind: 'WAY_OF_WORKING' }, select: { text: true } })).catch(() => [])) ?? []) as any[]).map((c) => String(c.text ?? ''));
+        const firstOf = (pid: string | null) => {
+          const p = pid ? (ground.participants as any[]).find((x) => x.id === pid) : null;
+          return p ? (String(p.user?.firstName ?? '').trim() || null) : null;
+        };
+        const promised = theDecisionsTheLeadPromised(
+          dealRows.map((r: any) => ({ id: r.id, name: r.name, ownerParticipantId: r.ownerParticipantId ?? null, fields: r.fields ?? null, stage: r.stage ?? null })),
+          said.filter((l) => l.participantId === theLeadsRow),
+          said.filter((l) => l.participantId !== theLeadsRow),
+          firstOf,
+          (q) => answers.includes(theAnswerAsALine(q, true)) || answers.includes(theAnswerAsALine(q, false)),
+        );
+        if (promised.length) {
+          out.leadActions = [...((out.leadActions ?? []) as any[]), ...promised.map((p) => ({
+            id: `the-leads-own-decision-${p.dealId}`,
+            kind: 'decision',
+            text: p.question,
+            decision: { question: p.question, asked: `${p.question.replace(/^Decide whether /, 'Can ').replace(/^Can (.+?) can have /, 'Can $1 have ')}?`, why: p.why, afterwards: 'Your answer goes in how we work, and the board stops asking.' },
+            action: {
+              label: 'Decide it',
+              says: 'Your answer goes in how we work, and the board stops asking.',
+              goesTo: null,
+              choices: [true, false].map((yes) => ({ label: yes ? 'Yes, agree to it' : 'No', route: { method: 'POST' as const, path: `/grounds/${groundId}/board/deals/${p.dealId}/decide`, body: { yes } } })),
+            },
+          }))];
+        }
       }
       /*
        * MISSED CHECK-INS (decision 136), to the lead of this check-in alone: three of the last four missed, said as facts and what they do, with the reason
@@ -2707,6 +3079,66 @@ export class BoardService {
       const waits = whoWaitedOnWhom(handoffs, reader);
       if (waits.length) out.whoWaitedOnWhom = waits;
       /*
+       * EACH WAIT ON A CUSTOMER, ON ITS DEAL (Hafsah's answer of 17 October), under the same wall as every other wait
+       * (`handoffMayBeRead`): "Kevin Omondi has been waiting on Jane for a deposit since 14 October, and it has not been
+       * cleared." on the Savannah Cafe deal, and "Waiting on Jane for a deposit" where the deal has no next step said.
+       */
+      if (waitsOnCustomers.length && Array.isArray(out.workRecords)) {
+        const readable = waitsOnCustomers.filter((w) => reader.handoffMayBeRead(w));
+        const saidOf = new Map(whoWaitedOnWhom(readable, reader).map((x) => [x.id, x.says]));
+        for (const sec of out.workRecords as any[]) {
+          for (const row of (sec?.rows ?? []) as any[]) {
+            if (row.kind !== 'deal') continue;
+            const onIt = readable.filter((w) => w.dealId === row.id && saidOf.has(w.id));
+            if (!onIt.length) continue;
+            row.waitingOnTheCustomer = onIt.map((w) => {
+              const what = String(w.what ?? '').trim().replace(/[.\s]+$/, '');
+              return { id: w.id, says: saidOf.get(w.id)!, step: `Waiting on ${String(w.onLabel).trim()} for ${/^[A-Z][a-z]/.test(what) ? what.charAt(0).toLowerCase() + what.slice(1) : what}` };
+            });
+            if (!row.next && !row.nextStep) row.nextStep = row.waitingOnTheCustomer[row.waitingOnTheCustomer.length - 1].step;
+          }
+        }
+      }
+      /*
+       * WHAT EACH DEAL STILL NEEDS, AND FROM WHOM (Hafsah's quality pass, 18 October: Q3, B-5, B-16, R-2, R-4; what-a-deal-still-needs).
+       * Release 1's sales board only. From the waits this reader may read (the same wall as every wait) and the owner's own lines
+       * only where this reader may read that owner's words: whoever runs it, or the owner reading their own deal.
+       */
+      if (releaseOne && isASalesKind((ground as any).kindOfWork) && Array.isArray(out.workRecords)) {
+        /* Each wait as it was said (before two sayings of one wait were joined), so its own day is kept; under the same wall. */
+        const readableWaits = rawDependencies.filter((w) => reader.handoffMayBeRead(w));
+        const owners = new Set<string>();
+        for (const sec of out.workRecords as any[]) for (const row of (sec?.rows ?? []) as any[]) if (row.kind === 'deal' && row.ownerParticipantId && (runsIt || row.ownerParticipantId === me?.id)) owners.add(row.ownerParticipantId);
+        const ownersLines = owners.size
+          ? ((((await (this.prisma.recordEntry.findMany({ where: { disputedAt: null, participantId: { in: [...owners] } } as any, select: { text: true, type: true, participantId: true, createdAt: true } as any }) as Promise<any[]>).catch(() => [] as any[])) ?? []) as any[])
+            .map((l) => ({ text: cleanText(String(l.text ?? '')), type: l.type ?? null, participantId: l.participantId ?? null, createdAt: l.createdAt })))
+          : [];
+        const firstNameOf = (pid: string | null) => {
+          const p = pid ? (ground.participants as any[]).find((x) => x.id === pid) : null;
+          return p ? (String(p.user?.firstName ?? '').trim() || (p.nameGiven ?? '').trim() || null) : null;
+        };
+        for (const sec of out.workRecords as any[]) {
+          for (const row of (sec?.rows ?? []) as any[]) {
+            if (row.kind !== 'deal') continue;
+            const theirs = ownersLines.filter((l) => l.participantId === row.ownerParticipantId);
+            const line = whatTheDealStillNeeds(
+              { name: row.name, ownerParticipantId: row.ownerParticipantId ?? null, group: row.group ?? null, stage: row.stage ?? null, fields: row.fields ?? null, buyingDate: row.buyingDate ?? null, notAnsweringSince: row.notAnsweringSince ?? null, paysWhen: whenTheyPay(row.fields ?? null, theirs.map((l) => ({ text: l.text, createdAt: new Date(l.createdAt) }))) },
+              readableWaits,
+              theirs,
+              { me: me?.id ?? null, lead: theLeadsRow, firstName: firstNameOf },
+            );
+            const valueLine = theValueLine({ name: row.name, ownerParticipantId: row.ownerParticipantId ?? null, fields: row.fields ?? null }, readableWaits, { me: me?.id ?? null, lead: theLeadsRow, firstName: firstNameOf }, theUnitsOf(row.fields ?? null));
+            if (valueLine && valueLine !== row.value) row.valueLine = valueLine;
+            if (!line) continue;
+            row.next = line.says;
+            row.nextStep = line.says;
+            row.nextSays = line.says;
+            row.nextKnown = 'said';
+            if (line.on) row.nextOn = line.on.toISOString().slice(0, 10);
+          }
+        }
+      }
+      /*
        * BLOCKERS, ONE SECTION (request 105): each open blocker with every time it was raised, what the
        * proof shows, the time given, and what would clear it only where somebody said so. Under the
        * same wall as every other wait (`handoffMayBeRead`). See the-blockers.
@@ -2718,8 +3150,91 @@ export class BoardService {
         mine.lines.map((l) => ({ ...l, wordsMayBeRead: mayReadEveryone || l.participantId === me?.id || !peersWalled })),
         (id) => (id ? sessionOfCheckIn.get(id) ?? null : null),
         reader,
+        undefined,
+        /* Behind Release 1's switch, a promise is what would clear a wait only by person and subject (Hafsah's point 8). */
+        {
+          byPersonAndSubject: releaseOne,
+          /* And, on Release 1's sales board, the kit's card (the-blockers, theKitsCard; quality pass B-10, B-17 to B-20). */
+          theKitsCard: releaseOne && isASalesKind((ground as any).kindOfWork)
+            ? {
+              deals: ((Array.isArray(out.workRecords) ? out.workRecords : []) as any[]).flatMap((sec: any) => (sec?.rows ?? []) as any[]).filter((x: any) => x?.kind === 'deal')
+                .map((x: any) => ({ name: String(x.name), fields: x.fields ?? null, buyingDate: x.buyingDate ?? null, units: theUnitsOf(x.fields ?? null) })),
+              firstName: (pid: string | null) => {
+                const p = pid ? (ground.participants as any[]).find((x) => x.id === pid) : null;
+                return p ? (String(p.user?.firstName ?? '').trim() || (p.nameGiven ?? '').trim() || null) : null;
+              },
+              waitsAsSaid: rawDependencies.filter((w) => reader.handoffMayBeRead(w)),
+              isAYesOrNo: (w: { what?: string | null }) => !!aWaitTheLeadCanAnswer(w, 'Somebody'),
+              linesOf: (pid: string | null) => (mine.lines as any[]).filter((l) => l.participantId === pid && l.createdAt && (mayReadEveryone || l.participantId === me?.id || !peersWalled)).map((l) => ({ text: l.text, createdAt: l.createdAt })),
+            }
+            : null,
+        },
       );
       if (blockers.length) out.blockers = blockers;
+      /*
+       * WHAT MOVED EACH DAY, FOR THE REPORTS LIST (Hafsah's quality pass, 18 October, B-24; the kit's "6 of 6 checked in. Nyama Choma
+       * Palace paid."): to whoever runs it, on Release 1's sales board, one sentence a day from the deals: a payment record, else a
+       * signed order, else a customer's yes to a quote, on the day it came in.
+       */
+      if (releaseOne && runsIt && isASalesKind((ground as any).kindOfWork) && Array.isArray(out.workRecords)) {
+        const byDay = new Map<string, { rank: number; says: string }>();
+        const put = (day: string | null | undefined, rank: number, says: string) => {
+          if (!day) return;
+          const had = byDay.get(day);
+          if (!had || rank < had.rank) byDay.set(day, { rank, says });
+        };
+        for (const sec of out.workRecords as any[]) for (const r of ((sec?.rows ?? []) as any[])) {
+          if (r?.kind !== 'deal') continue;
+          const units = theUnitsOf(r.fields ?? null);
+          const forUnits = units ? ` for ${units} ${units === 1 ? 'unit' : 'units'}` : '';
+          const proofDay = ((r.contactHistory ?? []) as any[]).filter((c) => /proof/i.test(String(c.how ?? ''))).map((c) => String(c.on)).sort()[0] ?? null;
+          if (r.paymentRecord) put(proofDay, 0, `${r.name} paid${forUnits}.`);
+          else if (r.signedOrder) put(proofDay, 1, `${r.name} signed${forUnits}.`);
+          const yes = String(r.fields?.['Quote accepted'] ?? '').slice(0, 10);
+          if (/^\d{4}-\d{2}-\d{2}$/.test(yes)) put(yes, 2, `${r.name} said yes${units ? ` to ${units} ${units === 1 ? 'unit' : 'units'}` : ' to the quote'}.`);
+        }
+        if (byDay.size) out.whatMovedEachDay = Object.fromEntries([...byDay.entries()].map(([d, v]) => [d, v.says]));
+      }
+      /* What to coach each rep this week, one line about the work, to whoever runs it (Q6; what-to-coach-this-week). */
+      if (releaseOne && runsIt && isASalesKind((ground as any).kindOfWork) && Array.isArray(out.eachPersonToday) && Array.isArray(out.workRecords)) {
+        const dealRows = (out.workRecords as any[]).flatMap((sec: any) => (sec?.rows ?? []) as any[]).filter((r: any) => r?.kind === 'deal');
+        const crit = (r: any) => (eachDealInItsGroup('sales org', [{ section: 'Deal grid', stages: theSalesStages((ground as any).workStages), rows: [r] }] as any, deadlineOf(ground as any), now, { countedFromTheDeals: true, contactedWhenSpokenOf: true, byBuyingDate: true, criteria: criteriaFor(), stallDays }) as any[])?.[0]?.rows?.[0]?.criteria ?? [];
+        const owners = [...new Set(dealRows.map((r: any) => r.ownerParticipantId).filter(Boolean))] as string[];
+        const said = owners.length
+          ? ((((await (this.prisma.recordEntry.findMany({ where: { disputedAt: null, participantId: { in: owners } } as any, select: { text: true, type: true, participantId: true, createdAt: true } as any }) as Promise<any[]>).catch(() => [] as any[])) ?? []) as any[])
+            .map((l) => ({ text: cleanText(String(l.text ?? '')), type: l.type ?? null, participantId: l.participantId ?? null, createdAt: l.createdAt })))
+          : [];
+        const coachFirst = (pid: string | null) => (pid ? String((ground.participants as any[]).find((x) => x.id === pid)?.user?.firstName ?? '').trim() || null : null);
+        const coached = dealRows.map((r: any) => ({ name: r.name, ownerParticipantId: r.ownerParticipantId ?? null, stage: r.stage ?? null, fields: r.fields ?? null, buyingDate: r.buyingDate ?? null, lost: r.lost ?? null, criteria: crit(r) }));
+        out.eachPersonToday = (out.eachPersonToday as any[]).map((row) => {
+          const line = whatToCoachThisWeek(row.participantId, coachFirst(row.participantId) ?? 'them', coached, rawDependencies.filter((w) => reader.handoffMayBeRead(w)), said, coachFirst);
+          return line ? { ...row, thisWeek: line } : row;
+        });
+      }
+      /*
+       * A PROMISE CARRIED OVER, THREE CHECK-INS RUNNING (standing decision 5, as changed on 18 October; a-promise-carried-over), on
+       * Release 1's sales board: to whoever runs it, each one; to a person, only their own. Said about the work, in our words.
+       */
+      if (releaseOne && isASalesKind((ground as any).kindOfWork)) {
+        const readableWaits = (handoffs as any[]).filter((w) => reader.handoffMayBeRead(w));
+        const holders = [...new Set(readableWaits.map((w) => w.onParticipantId).filter(Boolean))] as string[];
+        const theirCheckIns = (checkIns as any[]).filter((c) => holders.includes(c.participantId));
+        const turns = theirCheckIns.length
+          ? ((((await (this.prisma as any).conversationTurn?.findMany?.({ where: { checkInId: { in: theirCheckIns.map((c) => c.id) } }, select: { checkInId: true, role: true, content: true, createdAt: true }, orderBy: { createdAt: 'asc' } })?.catch?.(() => [])) ?? []) as any[]))
+          : [];
+        const dealNames = ((Array.isArray(out.workRecords) ? out.workRecords : []) as any[]).flatMap((sec: any) => (sec?.rows ?? []) as any[]).filter((r: any) => r?.kind === 'deal').map((r: any) => String(r.name));
+        const carried = thePromisesCarriedOver(readableWaits, checkIns as any[], mine.lines as any[], turns, dealNames)
+          .filter((x) => runsIt || x.participantId === me?.id);
+        if (carried.length) {
+          out.keepsComingUp = carried.map((x) => ({ participantId: x.participantId, says: x.says, yours: x.participantId === me?.id }));
+          if (Array.isArray(out.eachPersonToday)) {
+            out.eachPersonToday = (out.eachPersonToday as any[]).map((row) => {
+              const mineToo = carried.find((x) => x.participantId === row.participantId);
+              return mineToo && !row.keepsComingUp ? { ...row, keepsComingUp: mineToo.says } : row;
+            });
+          }
+        }
+      }
       /*
        * THE GLANCE COUNTS WHAT THE BLOCKERS LIST HOLDS (request 132 a and b, request 129 item 2). The glance was counted by
        * its own rule, with a bar of substance the list does not use, so the lead read "1 thing is in the way" over a list of
@@ -2779,12 +3294,25 @@ export class BoardService {
       const readsTheAims = runsIt || runsThisGround || (!!me && (ground as any).whoSeesTargets === 'EVERYBODY');
       if (!evaluation && readsTheAims && Array.isArray(out.objectives) && (out.objectives as any[]).length) {
         const stored = new Map(((ground.objectives ?? []) as any[]).map((o) => [o.id, o]));
-        const served = (out.objectives as any[]).filter((o) => stored.has(o.id)).map((o) => {
+        /* A count that starts again each week is not carried forward at a pace (whereAWeeklyCountStands). */
+        const served = (out.objectives as any[]).filter((o) => stored.has(o.id) && countedFromTheDeals.get(o.id)?.window !== 'week').map((o) => {
           const row = stored.get(o.id);
           return { id: o.id, about: String(o.name ?? ''), target: typeof o.target === 'number' ? o.target : null, ownerParticipantId: o.ownerParticipantId ?? null, direction: asADirection(row.direction) ?? whatTheWordsSuggest(row.name, row.target) };
         });
         const counts = await (this.prisma.groundObjectiveSnapshot.findMany({ where: { groundId }, select: { objectiveId: true, sessionNumber: true, count: true } }) as Promise<any[]>).catch(() => [] as any[]);
-        const forecast = theForecast(served, (counts ?? []) as any[], totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null);
+        const forecast = theForecast(served, (counts ?? []) as any[], totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null)
+          /*
+           * NO PACE FROM TOO LITTLE (Hafsah's quality pass, 18 October, B-26): "about 215 by session 15" was carried forward from two
+           * orders in three sessions. On Release 1's sales board, an aim counted from the deals is carried forward only from four
+           * sessions and three sales or more.
+           */
+          .filter((f: any) => {
+            const c = countedFromTheDeals.get(f.objectiveId);
+            if (!releaseOne || !c) return true;
+            const sessionsCounted = new Set(((counts ?? []) as any[]).filter((x) => x.objectiveId === f.objectiveId).map((x) => x.sessionNumber)).size;
+            const sales = (c.paidDeals?.length ?? 0) + (c.signedDeals?.length ?? 0) + (c.saidDeals?.length ?? 0);
+            return sessionsCounted >= 4 && sales >= 3;
+          });
         if (forecast.length) out.forecast = forecast;
         /*
          * WHERE EACH TARGET STANDS, AND THE HEADLINE QUESTION (request 108, a and b). From the same targets and
@@ -2795,6 +3323,11 @@ export class BoardService {
         const totalSessions = totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null;
         const countsOf = (id: string) => ((counts ?? []) as any[]).filter((c) => c.objectiveId === id && typeof c.sessionNumber === 'number');
         const aims: ATeamAim[] = [];
+        /* What the deals under "Likely" hold, for an aim counted from the deals: the prototype's "and 2 more are likely". From the same rows and groups as the deal grid. */
+        const salesHere = isASalesKind((ground as any).kindOfWork);
+        const likelyDeals = salesHere && countedFromTheDeals.size
+          ? ((eachDealInItsGroup('sales org', out.workRecords as any, deadlineOf(ground as any), now, { countedFromTheDeals: releaseOne, contactedWhenSpokenOf: releaseOne, byBuyingDate: releaseOne, criteria: criteriaFor(), stallDays }) ?? []) as any[]).flatMap((sec) => (sec.rows ?? []) as any[]).filter((r) => r.kind === 'deal' && r.group === 'likely')
+          : [];
         out.objectives = (out.objectives as any[]).map((o) => {
           const row = stored.get(o.id);
           if (!row || o.ownerParticipantId || row.isADecisionAboutAPerson) return { ...o, stands: null };
@@ -2802,14 +3335,22 @@ export class BoardService {
           const journeyDirection = (o.journey?.direction ?? 'unknown') as 'up' | 'down' | 'unknown';
           const start = typeof o.journey?.start === 'number' ? o.journey.start : null;
           const dueDay = theDayItIsDue(row.dueOn, now);
-          const stands = whereThisTargetStands(
-            { id: o.id, target: typeof o.target === 'number' ? o.target : null, count: o.count, start, direction, journeyDirection, notSettled: o.notSettled ?? null, dueDay, isPast: aDeadlineHasPassed(row.dueOn, now) },
-            countsOf(o.id), totalSessions,
-          );
-          aims.push({ id: o.id, name: String(row.name ?? ''), target: typeof o.target === 'number' ? o.target : null, count: o.count, start, direction, journeyDirection, word: stands?.word ?? null, dueDay });
+          const weekly = countedFromTheDeals.get(o.id)?.window === 'week' && typeof o.target === 'number' && !direction;
+          const stands = weekly
+            ? whereAWeeklyCountStands(o.count, o.target)
+            : whereThisTargetStands(
+              { id: o.id, target: typeof o.target === 'number' ? o.target : null, count: o.count, start, direction, journeyDirection, notSettled: o.notSettled ?? null, dueDay, isPast: aDeadlineHasPassed(row.dueOn, now) },
+              countsOf(o.id), totalSessions,
+            );
+          const fromTheDeals = countedFromTheDeals.get(o.id) ?? null;
+          aims.push({
+            id: o.id, name: String(row.name ?? ''), target: typeof o.target === 'number' ? o.target : null, count: o.count, start, direction, journeyDirection, word: stands?.word ?? null, dueDay,
+            ...(fromTheDeals ? { fromTheDeals, likely: whatTheseDealsHold(fromTheDeals.counts, likelyDeals, fromTheDeals.currency) } : {}),
+          });
           return { ...o, stands };
         });
-        const headline = theHeadlineQuestion(aims, deadlineOf(ground as any), now);
+        const leadFirst = (ground.participants as any[]).find((p) => p.id === theLeadsRow)?.user?.firstName ?? null;
+        const headline = theHeadlineQuestion(aims, deadlineOf(ground as any), now, { askedBy: isInitiator ? 'you' : leadFirst });
         if (headline) out.headline = headline;
       }
       /*
@@ -2824,7 +3365,51 @@ export class BoardService {
       if ((!evaluation && (runsIt || adminHere)) || (evaluation && isInitiator)) {
         const leadRow = (ground.participants as any[]).find((p) => p.id === theLeadsRow);
         const leadName = [leadRow?.user?.firstName, leadRow?.user?.lastName].filter(Boolean).join(' ').trim() || (leadRow?.nameGiven ?? '').trim() || null;
+        /* Release 1's sales board, to whoever runs it: the signals and what would settle it, from the deals (theSalesSignals; B-26 to B-28). */
+        let sales: { signals: any[]; whatWouldSettleIt: string[] } | null = null;
+        const teamAim = ((ground.objectives ?? []) as any[]).find((o) => !o.ownerParticipantId && countedFromTheDeals.get(o.id) && countedFromTheDeals.get(o.id)!.counts !== 'new leads' && typeof o.target === 'number');
+        if (releaseOne && isInitiator && isASalesKind((ground as any).kindOfWork) && teamAim) {
+          const c = countedFromTheDeals.get(teamAim.id)!;
+          const last = (theSalesStages((ground as any).workStages).slice(-1)[0] ?? 'Won').toLowerCase();
+          const open = theDealsCounted.filter((d) => String(d.stage ?? '').toLowerCase() !== last && !d.dropped);
+          const openHold = whatTheseDealsHold(c.counts, open as any, c.currency);
+          const firstOf = (pid: string | null) => (pid ? String((ground.participants as any[]).find((x) => x.id === pid)?.user?.firstName ?? '').trim() || null : null);
+          const waiting = new Map<string, { count: number; aboutPrice: boolean }>();
+          for (const w of rawDependencies) {
+            if (!theLeadsRow || w.onParticipantId !== theLeadsRow || !w.fromParticipantId || String(w.status).toUpperCase() === 'CLEARED' || w.clearedAt) continue;
+            const had = waiting.get(w.fromParticipantId) ?? { count: 0, aboutPrice: true };
+            waiting.set(w.fromParticipantId, { count: had.count + 1, aboutPrice: had.aboutPrice && /\b(?:price|discount|quote|offer)\b/i.test(String(w.what ?? '')) });
+          }
+          for (const a of ((out.leadActions ?? []) as any[]).filter((x) => String(x?.id ?? '').startsWith('the-leads-own-decision-'))) {
+            const dealId = String(a.id).replace('the-leads-own-decision-', '');
+            const owner = theDealsCounted.find((d) => d.id === dealId)?.ownerParticipantId ?? null;
+            if (!owner) continue;
+            const had = waiting.get(owner) ?? { count: 0, aboutPrice: true };
+            waiting.set(owner, { count: had.count + 1, aboutPrice: had.aboutPrice });
+          }
+          const paymentsDue: { says: string; day: string | null }[] = [];
+          for (const d of open) {
+            const contact = String(d.fields?.Contact ?? '').trim();
+            const w = rawDependencies.find((x) => !x.onParticipantId && x.fromParticipantId === d.ownerParticipantId && String(x.status).toUpperCase() !== 'CLEARED' && !x.clearedAt
+              && (!!contact && String(x.onLabel ?? '').trim().toLowerCase() === contact.toLowerCase()) && /\b(?:deposit|payment|pay)\b/i.test(String(x.what ?? '')));
+            if (!w) continue;
+            const day = w.dueOn ? new Date(w.dueOn) : theDayTheyMeant(w.dueSaid ?? null, new Date(w.createdAt));
+            paymentsDue.push({ says: `${d.name} pays its ${/deposit/i.test(String(w.what)) ? 'deposit' : 'payment'}`, day: day ? aDaySaidInFull(day) : null });
+          }
+          for (const d of theDealsCounted.filter((x) => String(x.stage ?? '').toLowerCase() === last && !x.paid && x.paysWhen)) {
+            const m = String(d.paysWhen).match(/^pays (on delivery)?(?: ?on )?(.*)$/);
+            paymentsDue.push({ says: `${d.name} pays${m?.[1] ? ' on delivery' : ''}`, day: m?.[2] ? m[2].trim() || null : null });
+          }
+          sales = theSalesSignals({
+            sold: c.count, target: teamAim.target, thing: c.counts === 'value' ? '' : c.thing,
+            wonDeals: [...(c.paidDeals ?? []), ...(c.signedDeals ?? []), ...(c.saidDeals ?? [])].map((x) => x.name),
+            openHold,
+            answersWaiting: [...waiting.entries()].map(([pid, v]) => ({ first: firstOf(pid) ?? 'Somebody', ...v })),
+            paymentsDue,
+          });
+        }
         out.whereThisIsHeading = whereThisIsHeading({
+          sales,
           scenario: ground.scenario,
           hadAnObjective: ((ground.objectives ?? []) as any[]).length > 0,
           readerIsTheLead: isInitiator,
@@ -3046,12 +3631,36 @@ export class BoardService {
        * a-participants-board-is-their-own.
        */
       if (aParticipantOnly && me?.id) {
+        /* Every deal on record before the board is narrowed to the reader's own: whose each is, so the wall below knows the others'. */
+        const everyDeal = ((Array.isArray(walled.workRecords) ? walled.workRecords : []) as any[]).flatMap((sec: any) => (Array.isArray(sec?.rows) ? sec.rows : []) as any[]).filter((r: any) => r?.kind === 'deal' && r.name);
         walled = aParticipantsOwnBoard(walled, {
           meId: me.id,
           /* Each session's team picture is released on its own (decision 76, item 4): shared only once the session the report holds now is. */
           released: teamPictureShared,
           hasOwnReport: (checkIns as any[]).some((c) => c.participantId === me.id && String(c.status).toUpperCase() === 'COMPLETED' && !wasAQuietClose(c)),
         });
+        /*
+         * THE DAY THE REPORTS ARE FOR, WHEN IT IS NOT TODAY (Hafsah's quality pass, 18 October, R-1): on Sunday Mercy read "Today's team
+         * picture is shared." and "Your own report is ready now." of Wednesday's. Release 1's sales board says the day: "The team's
+         * report for Wednesday 14 October is shared." and "Your report for 14 October is ready."
+         */
+        if (releaseOne && isASalesKind((ground as any).kindOfWork) && walled.teamPicture) {
+          const zone = theDayZone();
+          const dayOf = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+          const done = (checkIns as any[]).filter((c) => String(c.status).toUpperCase() === 'COMPLETED' && c.completedAt && !c.isSetup);
+          const latest = (xs: any[]) => xs.map((c) => new Date(c.completedAt)).sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
+          const teamDay = latest(done);
+          const myDay = latest(done.filter((c) => c.participantId === me.id));
+          if (teamDay && dayOf(teamDay) !== dayOf(now)) (walled.teamPicture as any).forDay = aDaySaidInFull(teamDay);
+          if (myDay && dayOf(myDay) !== dayOf(now)) (walled.teamPicture as any).yourReportFor = theDayInWords(myDay, now);
+        }
+        /* A rep's board never names another rep's deals, in any section (Drop Access run 1, A9; withoutOtherPeoplesDeals). Release 1's sales board. */
+        if (releaseOne && isASalesKind((ground as any).kindOfWork)) {
+          const mine = everyDeal.filter((r: any) => r.ownerParticipantId === me.id).map((r: any) => String(r.name));
+          const others = [...new Set(everyDeal.filter((r: any) => r.ownerParticipantId !== me.id).map((r: any) => String(r.name)))]
+            .filter((n) => !mine.some((m) => theSameCustomer(m, n)));
+          walled = withoutOtherPeoplesDeals(walled, me.id, others, aLineNamesTheCustomer) as any;
+        }
       }
       /*
        * BY AREA OF WORK, AND WHAT WAS REPORTED AT EACH SALES STAGE (request 107 c). Read last, from the
@@ -3060,15 +3669,66 @@ export class BoardService {
        */
       if (Array.isArray(walled.workRecords) && oneOfTheKinds((ground as any).kindOfWork)) {
         /* Each deal in its group, with why, from the rows this reader is served (request 112 a). See each-deal-in-its-group. */
-        walled.workRecords = eachDealInItsGroup(oneOfTheKinds((ground as any).kindOfWork), walled.workRecords, deadlineOf(ground as any), now);
+        walled.workRecords = eachDealInItsGroup(oneOfTheKinds((ground as any).kindOfWork), walled.workRecords, deadlineOf(ground as any), now, { countedFromTheDeals: releaseOne, contactedWhenSpokenOf: releaseOne, byBuyingDate: releaseOne, criteria: criteriaFor(), stallDays });
         walled.byArea = theWorkByArea(walled.workRecords);
-        const atEachStage = reportedAgainstTheRules(oneOfTheKinds((ground as any).kindOfWork), walled.workRecords);
+        const atEachStage = reportedAgainstTheRules(oneOfTheKinds((ground as any).kindOfWork), walled.workRecords, { criteria: !!criteriaFor() });
         if (atEachStage) walled.reportedAgainstCriteria = atEachStage;
+        /* The stages said were read for that count only; they are not served on each row. */
+        for (const sec of ((walled.workRecords ?? []) as any[])) for (const r of ((sec?.rows ?? []) as any[])) if (r && 'stagesSaid' in r) delete r.stagesSaid;
         /* To close the gap (request 115 c): to whoever is served the headline, from the deals they are served. See to-close-the-gap. */
         if (walled.headline && !aParticipantOnly) {
           const storedAims = new Map(((ground.objectives ?? []) as any[]).map((o) => [o.id, o]));
-          const gap = toCloseTheGap(oneOfTheKinds((ground as any).kindOfWork), walled.workRecords, ((walled.objectives ?? []) as any[]).map((o) => ({ ...o, dueOn: storedAims.get(o.id)?.dueOn ?? null })), deadlineOf(ground as any), now);
+          const gap = toCloseTheGap(oneOfTheKinds((ground as any).kindOfWork), walled.workRecords, ((walled.objectives ?? []) as any[]).map((o) => ({ ...o, dueOn: storedAims.get(o.id)?.dueOn ?? null })), deadlineOf(ground as any), now, { nothingBooked: releaseOne, inShort: releaseOne });
+          /* The heading ("To close the gap, two of these three") is Release 1's; off, the gap reads as it did before it. */
+          if (gap && !releaseOne) delete (gap as any).heading;
           if (gap) walled.toCloseTheGap = gap;
+        }
+        /*
+         * "DECIDE WHETHER A PRICE RANGE COUNTS AS A BUDGET" (board-as-lead.txt), to the lead alone, only where a deal she is served
+         * has a budget said as a range and she has not answered. Her answer goes in how we work (answerThePriceRange).
+         */
+        if (isInitiator && releaseOne) {
+          const asked = thePriceRangeDecision(((walled.workRecords ?? []) as any[]).flatMap((sec: any) => (sec?.rows ?? []) as any[]), priceRange, groundId);
+          if (asked) walled.leadActions = [asked, ...((Array.isArray(walled.leadActions) ? walled.leadActions : []) as any[])];
+        }
+        /* Each deal at the stall rule, with whose it is, to the lead alone (board-as-lead.txt, "Ask him"). See theDealsAtTheStallRule. */
+        if (isInitiator && releaseOne) {
+          const stalledRows = ((walled.workRecords ?? []) as any[]).flatMap((sec: any) => (sec?.rows ?? []) as any[]).filter((r: any) => r?.kind === 'deal' && r.group === 'cold');
+          const ownersLines = stalledRows.length
+            ? ((((await (this.prisma.recordEntry.findMany({ where: { disputedAt: null, participantId: { in: [...new Set(stalledRows.map((r: any) => r.ownerParticipantId).filter(Boolean))] as string[] } } as any, select: { text: true, participantId: true, createdAt: true } as any }) as Promise<any[]>).catch(() => [] as any[])) ?? []) as any[])
+              .map((l) => ({ text: cleanText(String(l.text ?? '')), participantId: l.participantId ?? null, createdAt: l.createdAt })))
+            : [];
+          /* Only by the lead's own rule (standing decision 4): with none set, no deal is at a stall rule. */
+          const stalled = stallRule?.days ? theDealsAtTheStallRule(stalledRows, { lines: ownersLines, theLeadsRule: { days: stallRule.days } }) : [];
+          if (stalled.length) (walled as any).atTheStallRule = stalled;
+          /*
+           * NO STALL RULE SET YET (standing decision 4): one item under What needs you, with the suggested default for her to confirm.
+           * Her yes keeps the rule in how we work; her no is kept too, and it is not asked again.
+           */
+          if (stallRule && stallRule.days == null && !stallRule.declined) {
+            const quiet = ((walled.workRecords ?? []) as any[]).flatMap((sec: any) => (sec?.rows ?? []) as any[]).filter((r: any) => r?.kind === 'deal' && r.notAnsweringSince && workingDaysSince(new Date(r.notAnsweringSince), now) >= THE_SUGGESTED_DAYS);
+            const example = quiet[0] ? ` ${quiet[0].name} has not answered since ${theDayItBegan(quiet[0].noReplySince ?? quiet[0].notAnsweringSince, now)}, which is more than that.` : '';
+            walled.leadActions = [...((Array.isArray(walled.leadActions) ? walled.leadActions : []) as any[]), {
+              id: 'the-stall-rule',
+              kind: 'decision',
+              text: NO_STALL_RULE_YET,
+              decision: {
+                question: NO_STALL_RULE_YET,
+                asked: `Do you want to drop a deal after ${THE_SUGGESTED_DAYS} working days with no answer?`,
+                why: `Groundwork suggests dropping a deal after ${THE_SUGGESTED_DAYS} working days with no answer from the customer. Until you set a rule, no deal is marked cold or dropped for going quiet.${example}`,
+                afterwards: 'Your answer goes in how we work.',
+              },
+              action: {
+                label: 'Set it',
+                says: 'Your answer goes in how we work.',
+                goesTo: null,
+                choices: [
+                  { label: `Yes, ${THE_SUGGESTED_DAYS} working days`, route: { method: 'POST' as const, path: `/grounds/${groundId}/board/stall-rule/answer`, body: { yes: true } } },
+                  { label: 'Not now', route: { method: 'POST' as const, path: `/grounds/${groundId}/board/stall-rule/answer`, body: { yes: false } } },
+                ],
+              },
+            }];
+          }
         }
       }
       /*
@@ -3125,16 +3785,18 @@ export class BoardService {
   /** The rows the switchboard's own sections read, as stored. Read only: opening a board writes nothing. */
   private async theRecordTheSwitchboardsSectionsRead(groundId: string, checkIns: { id: string; sessionNumber: number }[]): Promise<{
     commitments: ACommitment[];
-    lines: { id: string; participantId: string | null; text: string; mark: string; sessionNumber: number | null }[];
+    lines: { id: string; participantId: string | null; text: string; mark: string; sessionNumber: number | null; createdAt?: Date | null; checkInId?: string | null; documentWords?: string | null }[];
   }> {
     const commitments = await ((this.prisma as any).groundCommitment?.findMany?.({ where: { groundId }, orderBy: { createdAt: 'asc' } }) ?? Promise.resolve([])).catch(() => []);
     /* Only lines somebody has not disputed, marked by the same rule as the reports (how-a-line-is-known). */
     const entries = await (this.prisma.recordEntry.findMany({
       where: { disputedAt: null, participant: { groundId } },
-      select: { id: true, participantId: true, type: true, text: true, checkInId: true, ...WHAT_A_MARK_READS },
+      select: { id: true, participantId: true, type: true, text: true, checkInId: true, createdAt: true, ...WHAT_A_MARK_READS },
       orderBy: { createdAt: 'asc' },
     }) as Promise<any[]>).catch(() => [] as any[]);
     const whoAdded = await whoAddedEachBackingDocument(this.prisma, entries as any[]).catch(() => new Map<string, string | null>());
+    /* The words of the document behind each line, so a document is proof only of what it is about (the-blockers, B-17). */
+    const docOf = await theBackingDocuments(this.prisma, entries as any[]).catch(() => new Map<string, ABackingDocument>());
     const lines = (entries as any[]).map((e) => {
       const text = cleanText(e.text);
       return {
@@ -3143,6 +3805,9 @@ export class BoardService {
         text,
         mark: theMarkOf({ ...e, text }, whoAdded),
         sessionNumber: checkIns.find((c) => c.id === e.checkInId)?.sessionNumber ?? null,
+        createdAt: e.createdAt ? new Date(e.createdAt) : null,
+        checkInId: e.checkInId ?? null,
+        documentWords: theDocumentBehind(e.anchoredDocumentId, docOf).documentWords,
       };
     });
     return { commitments: commitments as ACommitment[], lines };
@@ -3650,6 +4315,8 @@ export class BoardService {
   async addWorkItem(groundId: string, requestingUserId: string, dto: WorkItemInput) {
     const { ground, kind } = await this.theLeadsWorkItemGround(groundId, requestingUserId);
     const data = this.theWorkItemFields(ground, kind, dto, true);
+    /* The stage it is put at, kept with its day (a-deals-stages-are-kept). */
+    if (data.stage) data.fields = withTheStageKept(data.fields ?? {}, data.stage, new Date(), 'board');
     return (this.prisma as any).workItem.create({ data: { groundId, ...data, addedByUserId: requestingUserId } });
   }
 
@@ -3659,7 +4326,11 @@ export class BoardService {
     if (!item) throw new NotFoundException('That record is not on this check-in.');
     const data = this.theWorkItemFields(ground, kind, { kind: item.kind, ...dto }, false);
     /* A claim waiting for the lead's answer is not one of the record's details, so editing them keeps it. */
-    if (data.fields !== undefined) data.fields = { ...data.fields, ...whatIsNotADetail(item.fields) };
+    if (data.fields !== undefined) data.fields = { ...data.fields, ...whatIsNotADetail(item.fields), ...theStagesToKeep(item.fields) };
+    /* A stage the lead moves it to on the board is kept with its day, after where it stood (a-deals-stages-are-kept). */
+    if (data.stage && String(data.stage).toLowerCase() !== String(item.stage ?? '').toLowerCase()) {
+      data.fields = withTheStageKept(data.fields ?? item.fields, data.stage, new Date(), 'board', { stage: item.stage ?? null, since: item.updatedAt ? new Date(item.updatedAt) : null });
+    }
     /* The lead naming the owner herself answers any claim: it is her decision either way. */
     if (data.ownerParticipantId !== undefined && theClaimOn(item.fields)) {
       data.fields = afterTheLeadsAnswer(data.fields ?? item.fields, data.ownerParticipantId === theClaimOn(item.fields)!.participantId);
@@ -3715,6 +4386,98 @@ export class BoardService {
     return { answered: { id: itemId, yes }, saidBack: `This is now in how we work. It reads, "${text}"` };
   }
 
+  /**
+   * THE LEAD ANSWERS A WAIT ON THEM THAT A YES OR A NO ANSWERS (Hafsah, 17 October; board-as-lead.txt and team-report.txt,
+   * "Yes" and "No"). Joseph Kariuki waits on Grace for "an answer about the KES 4,500 price for Juja Hardware". Only the
+   * lead answers, only a wait on the lead herself, and only one aWaitTheLeadCanAnswer reads as a yes-or-no question. The
+   * answer is kept the way an answered decision is kept (answerADecision): a line in how we work, read by everybody, in
+   * the lead's own words ("On whether to agree to the KES 4,500 price for Juja Hardware, the answer is yes."). The wait
+   * is then cleared, because the answer it waited for has been given, so it comes off the board and off the report.
+   */
+  async answerAWaitOnTheLead(groundId: string, waitId: string, requestingUserId: string, yes: boolean) {
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { id: true, initiatorId: true } as any }) as any;
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    if (ground.initiatorId !== requestingUserId) throw new ForbiddenException('Only the lead of this check-in can answer this.');
+    const lead = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId: requestingUserId }, select: { id: true } }) as any;
+    const wait = await (this.prisma as any).groundDependency.findFirst({
+      where: { id: waitId, groundId, clearedAt: null, status: { in: ['WAITING', 'BLOCKING'] } },
+      select: { id: true, what: true, then: true, createdAt: true, fromParticipantId: true, onParticipantId: true },
+    });
+    if (!wait || !lead || wait.onParticipantId !== lead.id) throw new NotFoundException('This is not waiting for an answer any more.');
+    /* The deals, so the question kept is the one the board asked (aWaitTheLeadCanAnswer, quality pass B-7). */
+    const theDeals = (((await Promise.resolve((this.prisma as any).workItem?.findMany?.({ where: { groundId, kind: 'deal' }, select: { name: true, fields: true, ownerParticipantId: true } })).catch(() => [])) ?? []) as any[])
+      .map((d) => ({ name: String(d.name ?? ''), fields: plainFields(d.fields), ownerParticipantId: d.ownerParticipantId ?? null }));
+    const from = wait.fromParticipantId
+      ? await this.prisma.groundParticipant.findFirst({ where: { id: wait.fromParticipantId, groundId }, select: { nameGiven: true, user: { select: { firstName: true, lastName: true } } } as any }) as any
+      : null;
+    const whoWaits = from ? ([from.user?.firstName, from.user?.lastName].filter(Boolean).join(' ').trim() || String(from.nameGiven ?? '').trim() || null) : null;
+    const decision = aWaitTheLeadCanAnswer(wait, whoWaits, theDeals.filter((d) => d.ownerParticipantId === wait.fromParticipantId), theDeals);
+    if (!decision) throw new BadRequestException('This is not a question with a yes or a no. Tell Groundwork in your check-in what you will do about it.');
+    const text = theAnswerAsALine(decision.question, yes);
+    await (this.prisma as any).groundContextItem.create({
+      data: { groundId, kind: 'WAY_OF_WORKING', text, audience: 'EVERYONE', source: 'BOARD', authorUserId: requestingUserId },
+    });
+    await (this.prisma as any).groundDependency.update({ where: { id: wait.id }, data: { status: 'CLEARED', clearedAt: new Date() } });
+    return { answered: { id: wait.id, yes }, saidBack: `This is now in how we work. It reads, "${text}"` };
+  }
+
+  /**
+   * THE LEAD ANSWERS "DECIDE WHETHER A PRICE RANGE COUNTS AS A BUDGET" (Hafsah's answer to Needs Hafsah 7: "Whether a price range
+   * counts as a budget is Grace's decision for Drop Access ... put it under 'What needs you' with Yes and No, as the kit does, and
+   * apply her answer"). Kept as an answered decision is kept (answerADecision): a line in how we work, read by everybody, in the
+   * lead's own words ("On whether a price range counts as a budget, the answer is yes."). The board reads it for the Qualified rule
+   * (a-deals-four-criteria, thePriceRangeAnswer). Only the lead answers, and only once.
+   */
+  /**
+   * THE LEAD ANSWERS A DECISION SHE PROMISED HERSELF (quality pass, 18 October, B-8; a-decision-the-lead-promised). Lead only. The
+   * question is read again from the record, as the board asked it, and her answer is kept in how we work, read by everybody; the
+   * board then stops asking.
+   */
+  async answerADecisionTheLeadPromised(groundId: string, dealId: string, requestingUserId: string, yes: boolean) {
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { id: true, initiatorId: true, participants: { select: { id: true, userId: true, user: { select: { firstName: true } } } } } as any }) as any;
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    if (ground.initiatorId !== requestingUserId) throw new ForbiddenException('Only the lead of this check-in can answer this.');
+    const lead = (ground.participants as any[]).find((p) => p.userId === requestingUserId);
+    const deals = (((await Promise.resolve((this.prisma as any).workItem?.findMany?.({ where: { groundId, kind: 'deal' }, select: { id: true, name: true, fields: true, stage: true, ownerParticipantId: true } })).catch(() => [])) ?? []) as any[])
+      .map((d) => ({ id: d.id, name: String(d.name ?? ''), fields: plainFields(d.fields), stage: d.stage ?? null, ownerParticipantId: d.ownerParticipantId ?? null }));
+    const said = (((await (this.prisma.recordEntry.findMany({ where: { disputedAt: null, participant: { groundId } } as any, select: { text: true, type: true, participantId: true, createdAt: true } as any }) as Promise<any[]>).catch(() => [] as any[])) ?? []) as any[])
+      .map((l) => ({ text: cleanText(String(l.text ?? '')), type: l.type ?? null, participantId: l.participantId ?? null, createdAt: l.createdAt }));
+    const firstOf = (pid: string | null) => (ground.participants as any[]).find((p) => p.id === pid)?.user?.firstName ?? null;
+    const asked = theDecisionsTheLeadPromised(deals.filter((d) => d.stage !== 'Won'), said.filter((l) => l.participantId === lead?.id), said.filter((l) => l.participantId !== lead?.id), firstOf, () => false).find((p) => p.dealId === dealId);
+    if (!asked) throw new NotFoundException('This is not waiting for an answer any more.');
+    const text = theAnswerAsALine(asked.question, yes);
+    await (this.prisma as any).groundContextItem.create({
+      data: { groundId, kind: 'WAY_OF_WORKING', text, audience: 'EVERYONE', source: 'BOARD', authorUserId: requestingUserId },
+    });
+    return { answered: { id: dealId, yes }, saidBack: `This is now in how we work. It reads, "${text}"` };
+  }
+
+  /** The lead sets the suggested stall rule, or says not now (standing decision 4; the-stall-rule). Lead only; kept in how we work. */
+  async answerTheStallRule(groundId: string, requestingUserId: string, yes: boolean) {
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { id: true, initiatorId: true } as any }) as any;
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    if (ground.initiatorId !== requestingUserId) throw new ForbiddenException('Only the lead of this check-in can set its stall rule.');
+    const now = await theStallRuleOnRecord(this.prisma, groundId);
+    if (now.days != null) throw new BadRequestException(`A stall rule is already set: ${theStallRuleAsALine(now.days)}`);
+    const text = yes ? theStallRuleAsALine(THE_SUGGESTED_DAYS) : theStallRuleDeclined;
+    await (this.prisma as any).groundContextItem.create({
+      data: { groundId, kind: 'WAY_OF_WORKING', text, audience: 'EVERYONE', source: 'BOARD', authorUserId: requestingUserId },
+    });
+    return { answered: { id: 'the-stall-rule', yes }, saidBack: `This is now in how we work. It reads, "${text}"` };
+  }
+
+  async answerThePriceRange(groundId: string, requestingUserId: string, yes: boolean) {
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { id: true, initiatorId: true } as any }) as any;
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    if (ground.initiatorId !== requestingUserId) throw new ForbiddenException('Only the lead of this check-in can answer this.');
+    if (await thePriceRangeAnswer(this.prisma, groundId)) throw new BadRequestException('This has been answered already. It is in how we work, where you can change it.');
+    const text = theAnswerAsALine(THE_RANGE_QUESTION, yes);
+    await (this.prisma as any).groundContextItem.create({
+      data: { groundId, kind: 'WAY_OF_WORKING', text, audience: 'EVERYONE', source: 'BOARD', authorUserId: requestingUserId },
+    });
+    return { answered: { yes }, saidBack: `This is now in how we work. It reads, "${text}"` };
+  }
+
   async deleteWorkItem(groundId: string, itemId: string, requestingUserId: string) {
     await this.theLeadsWorkItemGround(groundId, requestingUserId);
     const item = await (this.prisma as any).workItem.findFirst({ where: { id: itemId, groundId }, select: { id: true } });
@@ -3726,7 +4489,7 @@ export class BoardService {
   async createObjective(
     groundId: string,
     requestingUserId: string,
-    dto: { name: string; target?: number | null; ownerParticipantId?: string | null; isADecisionAboutAPerson?: boolean; direction?: TargetDirection | null; dueOn?: string | null },
+    dto: { name: string; target?: number | null; ownerParticipantId?: string | null; isADecisionAboutAPerson?: boolean; direction?: TargetDirection | null; dueOn?: string | null; assumes?: string[] },
   ) {
     await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
     const owner = await this.whoOnThisGround(groundId, dto.ownerParticipantId);
@@ -3755,6 +4518,10 @@ export class BoardService {
         ownerParticipantId: owner,
         sortOrder: count,
         addedAtSession,
+        /* What the target rests on, as the lead wrote it when she made it (the same rule as updateObjective):
+           blank lines dropped, nothing reworded. Before this a new target lost them, so the board said nobody
+           had written down what it assumes (Drop Access, 18 October). */
+        assumes: Array.isArray(dto.assumes) ? dto.assumes.map((a) => String(a ?? '').trim()).filter(Boolean).slice(0, 12) : [],
         /* Decision 46, 29 September 2026: said plainly by the lead when the target is made, never
            guessed from its wording. This route is already the lead's alone - assertInitiatorOfBoardGround
            above. */
@@ -4034,7 +4801,7 @@ export class BoardService {
       },
       select: {
         fromParticipantId: true, onParticipantId: true, onLabel: true, what: true,
-        status: true, createdAt: true, groundId: true,
+        status: true, createdAt: true, groundId: true, sourceCheckInId: true,
         /*
          * WHETHER IT WAS TAKEN FURTHER (3 October 2026). Never selected before, so "where am I needed" could
          * never show the people whose wait was taken further. `escalatedAt` is the product's own overnight
@@ -4066,8 +4833,13 @@ export class BoardService {
       if (p.email && n) rosterName.set(String(p.email).toLowerCase(), n);
     }
 
+    /* A customer's reply is on its deal, not something the place is waiting on, unless it was said to stop the deal (a-customers-reply-is-on-its-deal). */
+    /* Behind Release 1's switch for this organisation: off, every wait is read as it was before it. */
+    const teamWaits = (await theReleaseOneSalesBoardIsOn(this.prisma, organizationId).catch(() => false))
+      ? await withoutTheWaitsOnCustomers(this.prisma, rows as any[]).catch(() => rows as any[])
+      : (rows as any[]);
     const deps: OrgDependency[] = [];
-    for (const r of rows as any[]) {
+    for (const r of teamWaits as any[]) {
       /* Nobody waits on themselves (request 117, part 6): Today and Ask Groundwork read this too. */
       if (aWaitOnOneself(r)) continue;
       const from = r.fromParticipant?.email?.toLowerCase();

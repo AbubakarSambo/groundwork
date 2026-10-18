@@ -18,7 +18,7 @@ describe('a sale somebody said they made is their claim, not a sale won', () => 
   it('Collins\'s "I did eleven" is in its own group, in his words, and nothing is under Won', () => {
     const [sec] = grid([deal('d-collins', 'memory')]);
     expect(sec.groups).toEqual([
-      { group: 'said-won', heading: 'Said to be won, not shown yet', reason: 'Somebody said each of these was won, in their own words. Nothing has been shown to back them yet, so they are not counted as won.', rowIds: ['d-collins'] },
+      { group: 'said-won', heading: 'Said to be won, not shown yet', reason: 'Somebody said each of these was won, in their own words. Nothing has been shown to back them yet, so they count in what is sold as their word, not as sales with proof of payment.', rowIds: ['d-collins'] },
     ]);
     expect(sec.rows[0].said).toBe('I did eleven, all the deliveries are done.');
     expect(sec.rows[0].groupSays).toMatch(/^It rests on what somebody said, with no proof yet\./);

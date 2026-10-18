@@ -1,3 +1,4 @@
+import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
 import { HOW, whatProvedIt } from '../conversation/the-end-card';
 import { filesSentWith } from './files-sent-with-a-check-in';
 import { aRoleOrNothing } from '../../common/a-role-or-nothing';
@@ -6388,7 +6389,9 @@ happened, and what is in the way.`;
     }) ?? Promise.resolve([] as any[]))?.catch?.(() => [] as any[])) ?? []) as any[];
     const givers = new Set(((ground?.participants ?? []) as any[]).filter((p) => !p.managingOnly && !isNotLetInYet(p)).map((p) => p.id));
     const planned = totalSessionsFor(ground?.timelineDays, ground?.cadence) ?? null;
-    const clock = theSessionClock(rows.filter((c) => !c.isSetup) as any, givers, planned);
+    /* A finished round hands the count on only with Release 1's sales board on, as the board's header reads it. */
+    const handOn = await theReleaseOneSalesBoardIsOn(this.prisma, ground?.organizationId ?? null).catch(() => false);
+    const clock = theSessionClock(rows.filter((c) => !c.isSetup) as any, givers, planned, new Date(), handOn);
     return { current: clock.currentSession, planned: clock.plannedSessions };
   }
 

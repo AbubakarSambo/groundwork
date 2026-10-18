@@ -47,7 +47,8 @@ export function theHeaderSays(openRound: number, planned: number | null, allFini
   return planned && planned >= openRound ? `Session ${openRound} of ${planned}.` : `Session ${openRound}.`;
 }
 
-export function whatEachSessionSays(n: number, rows: ASessionRow[], openRound: number, now = new Date()): { says: string; openedOn: Date | null } {
+/** `handOn`: Release 1's reading (a finished round hands the count on); false reads as the board did before it (release-one-sales-board). */
+export function whatEachSessionSays(n: number, rows: ASessionRow[], openRound: number, now = new Date(), handOn = true): { says: string; openedOn: Date | null } {
   const forSession = rows.filter((r) => r.sessionNumber === n);
   const allDone = forSession.length > 0 && forSession.every((r) => r.status === 'COMPLETED' || r.status === 'DECLINED');
   const came = forSession.map((r) => asDate(r.availableFrom)).filter((d): d is Date => !!d && d.getTime() <= now.getTime()).sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
@@ -62,6 +63,15 @@ export function whatEachSessionSays(n: number, rows: ASessionRow[], openRound: n
   if (n === openRound) {
     return { says: openedOn ? `Session ${n} opened on ${aDayPeopleRead(openedOn, now)}, and it is still open.` : `Session ${n} is open now.`, openedOn };
   }
+  /*
+   * A SESSION THESE ROWS SAY IS FINISHED IS NEVER "STILL OPEN" (Drop Access short run, item 14). Mercy's board read "Session 3
+   * finished on 14 October." and, the next line, "Session 4 opened on 15 October, while session 3 is still open.": the open
+   * round was counted across the check-in, and these rows had session 3 done. Where they do, a later session that has come is
+   * said as open, on its own.
+   */
+  const openOne = rows.filter((r) => r.sessionNumber === openRound);
+  const theOpenOneIsDone = openOne.length > 0 && openOne.every((r) => r.status === 'COMPLETED' || r.status === 'DECLINED');
+  if (handOn && theOpenOneIsDone && (came || started)) return { says: openedOn ? `Session ${n} opened on ${aDayPeopleRead(openedOn, now)}, and it is still open.` : `Session ${n} is open now.`, openedOn };
   if (started) return { says: `Session ${n} has started for some people, while session ${openRound} is still open.`, openedOn };
   if (came) return { says: `Session ${n} opened on ${aDayPeopleRead(came, now)}, while session ${openRound} is still open.`, openedOn };
   if (opensLater) return { says: `Session ${n} opens on ${aDayPeopleRead(opensLater, now)}.`, openedOn: null };
@@ -91,7 +101,27 @@ export interface TheSessionClock {
  * beside six finished sessions, and "This is session 3 of 3" to the founder. A session somebody has
  * started is a session, so the count never says fewer than have run.
  */
-export function theRoundCappedAtThePlan(open: number, planned: number | null, rows: { sessionNumber: number; status: string }[]): number {
+/*
+ * A FINISHED ROUND HANDS THE COUNT TO THE NEXT ONE THAT HAS COME (Drop Access short run, 18 October). Mercy's board header read
+ * "Daily on weekdays, from 8am. Session 3 of 15." while the line under it read "Session 4 opened on 15 October, and it is still
+ * open.": everybody had finished session 3, and session 4 had been made available on 15 October with nobody in it yet. The open
+ * round stayed 3, because nobody had started 4. Where every row of the open round is finished, the round is the next one that has
+ * come (its day to be available has passed) or that somebody has started, so the header and every session's line read one count.
+ */
+export function theRoundThatHasCome(open: number, rows: ASessionRow[], now = new Date()): number {
+  const done = (r: ASessionRow) => r.status === 'COMPLETED' || r.status === 'DECLINED';
+  const theOpenOne = rows.filter((r) => r.sessionNumber === open);
+  if (!theOpenOne.length || !theOpenOne.every(done)) return open;
+  const hasCome = (r: ASessionRow) => {
+    const from = asDate(r.availableFrom);
+    return r.status !== 'NOT_STARTED' || (!!from && from.getTime() <= now.getTime());
+  };
+  const later = rows.filter((r) => r.sessionNumber > open && hasCome(r)).map((r) => r.sessionNumber);
+  return later.length ? Math.min(...later) : open;
+}
+
+export function theRoundCappedAtThePlan(open: number, planned: number | null, rows: ASessionRow[], now = new Date(), handOn = true): number {
+  if (handOn) open = theRoundThatHasCome(open, rows, now);
   const ranPastThePlan = !!planned && planned > 0 && rows.some((r) => r.sessionNumber > planned && r.status !== 'NOT_STARTED');
   return planned && planned > 0 && !ranPastThePlan ? Math.min(Math.max(open, 1), planned) : Math.max(open, 1);
 }
@@ -101,11 +131,13 @@ export function theSessionClock(
   whoChecksIn: ReadonlySet<string>,
   planned: number | null,
   now = new Date(),
+  /* Release 1's reading, where its switch is on for the organisation; false reads as before it (theRoundThatHasCome). */
+  handOn = true,
 ): TheSessionClock {
   const theirs = rows.filter((r) => whoChecksIn.has(r.participantId));
   const highest = rows.reduce((m, r) => Math.max(m, r.sessionNumber ?? 1), 1);
   const open = theirs.length ? whichRoundIsOpen(theirs as any) : highest;
-  const current = theRoundCappedAtThePlan(open, planned, theirs);
+  const current = theRoundCappedAtThePlan(open, planned, theirs, now, handOn);
   const done = (r: ASessionRow) => r.status === 'COMPLETED' || r.status === 'DECLINED';
   const allFinished = !!planned && theirs.length > 0 && theirs.every(done) && theirs.some((r) => r.sessionNumber >= planned);
   const ahead = [...new Set(theirs.filter((r) => r.sessionNumber > current && r.status !== 'NOT_STARTED').map((r) => r.sessionNumber))].sort((a, b) => a - b)[0];
@@ -113,6 +145,6 @@ export function theSessionClock(
     currentSession: current,
     plannedSessions: planned,
     says: theHeaderSays(current, planned, allFinished),
-    whileOpen: ahead ? whatEachSessionSays(ahead, theirs, current, now).says : null,
+    whileOpen: ahead ? whatEachSessionSays(ahead, theirs, current, now, handOn).says : null,
   };
 }

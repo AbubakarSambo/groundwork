@@ -1,6 +1,7 @@
 import { aNumberPeopleCanRead } from './an-aim-is-a-sentence-about-somebody';
 import { theWordsSayItIsALimit, aDeadlineIsDone, type TargetDirection } from './a-measure-that-goes-down-is-still-going-well';
 import { theDayInWords } from './the-day-in-words';
+import { theSalesAnswer, type ACountFromTheDeals } from './a-sales-aim-is-counted-from-the-deals';
 
 /** The direction a target is read in: the lead's, or a limit where its words say so, or not said. */
 export function theDirectionToReadIn(said: TargetDirection | null, name: string | null | undefined): TargetDirection | null {
@@ -171,6 +172,11 @@ export interface AHeadline {
   /** One line under it, from the counts the board already serves. Null where the aim has no number. */
   answer: string | null;
   bars: AHeadlineBar[];
+  /**
+   * ONE QUESTION, ONE TARGET (Hafsah's quality pass, 18 October, B-1): on a sales check-in the question asks only the sales aim, and
+   * a count of new leads is its own line: "6 new leads this week, of the 30 you asked for."
+   */
+  besides?: { objectiveId: string; count: number; target: number; says: string }[];
 }
 
 export interface ATeamAim {
@@ -185,6 +191,10 @@ export interface ATeamAim {
   word: AStandingWord | null;
   /** For a date to meet: the day it is due, in words. */
   dueDay?: string | null;
+  /** On a sales check-in, where the count is the deals on record (a-sales-aim-is-counted-from-the-deals). */
+  fromTheDeals?: ACountFromTheDeals | null;
+  /** What the deals under "Likely" hold, in the same measure. */
+  likely?: number;
 }
 
 export { theDayInWords } from './the-day-in-words';
@@ -293,6 +303,13 @@ function anAnswerFor(p: APhrase, when: string | null): string {
       ? `So far it is ${read(a.count)}, which is ${read(a.count - target)} over the limit of ${read(target)}.`
       : `So far it is ${read(a.count)}, within the limit of ${read(target)}.`;
   }
+  /*
+   * AN AIM COUNTED FROM THE DEALS IS ANSWERED IN THE PROTOTYPE'S SHAPE (board-as-lead.txt: "Not yet. 21 freezers are sold and
+   * 2 more are likely. That makes 23 of the 25 needed."). New leads keep the plain count below.
+   */
+  if (a.fromTheDeals && a.fromTheDeals.counts !== 'new leads' && a.journeyDirection !== 'down') {
+    return theSalesAnswer(a.fromTheDeals, target, a.likely ?? 0);
+  }
   const goesDown = a.journeyDirection === 'down';
   const reached = goesDown ? a.count <= target : a.count >= target;
   const of = p.thing ? `${read(a.count)} of the ${read(target)} ${p.thing}` : `${read(a.count)} of ${read(target)}`;
@@ -315,10 +332,25 @@ function anAnswerFor(p: APhrase, when: string | null): string {
  */
 const beforeTheDay = (phrase: string): string => (/,\s/.test(phrase) ? ', ' : ' ');
 
-export function theHeadlineQuestion(aims: ATeamAim[], deadline: Date | null, now: Date = new Date()): AHeadline | null {
+export function theHeadlineQuestion(aims: ATeamAim[], deadline: Date | null, now: Date = new Date(), opts: { askedBy?: string | null } = {}): AHeadline | null {
   /* An aim the lead already put as a question ("Is the cohort repaying, and why not where it isn't?") is the question (request 133). */
   const alreadyAsked = aims.find((a) => a.target == null && /\?\s*$/.test(a.name ?? '') && (a.name ?? '').trim().split(/\s+/).length <= 20);
   if (alreadyAsked) return { question: alreadyAsked.name.trim().replace(/\s+/g, ' '), answer: null, bars: [] };
+  /* A sales aim counted from the deals is the one question; new leads are said on their own line (B-1). */
+  const aSale = aims.some((a) => a.fromTheDeals && a.fromTheDeals.counts !== 'new leads' && typeof a.target === 'number');
+  const leadsApart = aSale ? aims.filter((a) => a.fromTheDeals?.counts === 'new leads' && typeof a.target === 'number') : [];
+  const besides = leadsApart.map((a) => {
+    const week = a.fromTheDeals?.window === 'week' ? ' this week' : '';
+    const who = opts.askedBy === 'you' ? 'you asked for' : opts.askedBy ? `${opts.askedBy} asked for` : 'aimed for';
+    const lead = a.count === 1 ? '1 new lead' : `${read(a.count)} new leads`;
+    return { objectiveId: a.id, count: a.count, target: a.target as number, says: `${lead}${week}, of the ${read(a.target as number)} ${who}.` };
+  });
+  const asked = aims.filter((a) => !leadsApart.includes(a));
+  const withBesides = (h: AHeadline | null): AHeadline | null => (h && besides.length ? { ...h, besides } : h);
+  return withBesides(theQuestionOf(asked, deadline, now));
+}
+
+function theQuestionOf(aims: ATeamAim[], deadline: Date | null, now: Date): AHeadline | null {
   const phrases = aims.map(aPhraseFor).filter((p): p is APhrase => !!p);
   const counted = phrases.filter((p) => typeof p.aim.target === 'number' || p.aim.direction === 'DEADLINE' || p.aim.direction === 'ZERO').slice(0, 2);
   const byDate = deadline ? `by ${theDayInWords(deadline, now)}` : null;

@@ -53,6 +53,18 @@ export interface WhoIsReading {
   nameOf: (participantId: string) => string | null;
   /** Said when this reader may not read the person's name: 'A colleague'. */
   aColleague: (participantId: string | null | undefined) => string;
+  /**
+   * Whether a claim about a colleague carries the "Tried:" or "Not backed:" note beside it. The kit's sales board has neither: its
+   * blockers say "What the proof shows" and "Would clear it" on their own lines (Hafsah, 18 October, answer 5: "The board follows my
+   * kit."). False on Release 1's sales board; left out, the note stays, as on every other kind of board.
+   */
+  noteBesideTheClaim?: boolean;
+}
+
+/** The note beside a claim about a colleague, where this board carries it, with a space before it; nothing where it does not. */
+function theNoteHere(d: { what?: string | null; triedSaid?: string | null }, r: WhoIsReading | undefined, who: string, on: string | null): string {
+  if (r?.noteBesideTheClaim === false) return '';
+  return ` ${theNoteBesideTheClaim(d, theNamesInTheNote(r, who, on))}`;
 }
 
 export interface ACommitment {
@@ -220,7 +232,7 @@ export function whoIsWaitedOn(r: WhoIsReading, d: { onParticipantId?: string | n
  */
 export const aClaimOnlyTheSpeakerMakes = (d: { onParticipantId?: string | null; confirmed?: boolean }): boolean => !!d.onParticipantId && d.confirmed === false;
 export function theirAccountOfTheWait(who: string, on: string, what: string, d: { what?: string | null; triedSaid?: string | null }, r?: WhoIsReading): string {
-  return `${who} ${who === 'You' ? 'say' : 'says'} the work is waiting on ${on} for ${what.replace(/[.\s]+$/, '')}. ${theNoteBesideTheClaim(d, theNamesInTheNote(r, who, on))}`;
+  return `${who} ${who === 'You' ? 'say' : 'says'} the work is waiting on ${on} for ${what.replace(/[.\s]+$/, '')}.${theNoteHere(d, r, who, on)}`;
 }
 
 /** The people the note names, as this reader may read them: the lead is "you" to the lead, a name where it may be read, else "the lead". */
@@ -446,7 +458,7 @@ export function theTimeline(
     const who = whoIs(r, d.fromParticipantId);
     const on = whoIsWaitedOn(r, d);
     const what = inASentence(on ? aThingWithoutItsHolder(d.what, d.onLabel) : d.what);
-    push(d.createdAt, `${on ? `${who} said the work was waiting on ${on} for ${what}.` : `${who} said the work was waiting for ${what}.`}${thatWaitsOn(d)}${on && aClaimOnlyTheSpeakerMakes(d) ? ` ${theNoteBesideTheClaim(d, theNamesInTheNote(r, who, on))}` : ''}`);
+    push(d.createdAt, `${on ? `${who} said the work was waiting on ${on} for ${what}.` : `${who} said the work was waiting for ${what}.`}${thatWaitsOn(d)}${on && aClaimOnlyTheSpeakerMakes(d) ? theNoteHere(d, r, who, on) : ''}`);
     if (d.clearedAt) push(d.clearedAt, `The wait for ${inASentence(d.what)} was cleared.`);
   }
   if (closedAt) push(closedAt, 'The check-in was closed.');
@@ -905,7 +917,7 @@ export function whoWaitedOnWhom(handoffs: AHandoff[], r: WhoIsReading): AWait[] 
           : (since
             ? `${who} ${who === 'You' ? 'say' : 'says'} the work has been waiting${onWhom} for ${what} since ${saidAsDate(since)}.`
             : `${who} ${who === 'You' ? 'say' : 'says'} the work is waiting${onWhom} for ${what}.`);
-        return { id: d.id, says: `${account}${thatWaitsOn(d)} ${theNoteBesideTheClaim(d, theNamesInTheNote(r, who, on))}`, startedAt: since, clearedAt: cleared ? clearedOn : null, days: null };
+        return { id: d.id, says: `${account}${thatWaitsOn(d)}${theNoteHere(d, r, who, on)}`, startedAt: since, clearedAt: cleared ? clearedOn : null, days: null };
       }
       const says = cleared
         ? (since && clearedOn && days === 0

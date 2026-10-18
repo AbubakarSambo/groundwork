@@ -29,6 +29,8 @@ const THE_FRAME = [
   'groundStatus', 'endState', 'coverageVariant', 'startingState', 'myParticipantId', 'canEditFrame', 'readOnlyNote',
   'lastChangedAt', 'participants', 'aTeamReportComes', 'whoIsAway', 'waitingToBeLetIn', 'phaseSpine', 'whyYouOnlySeeYourself', 'poll',
   'withheldUntilYouCheckIn', 'saying', 'reason', 'howItIsGoing',
+  /* Whether the organisation has Release 1's sales board on: the rep's page draws what the lead's draws, from the same switch. */
+  'releaseOneSalesBoard',
 ] as const;
 
 /** Served row by row: only the rows that carry the reader's own participant id. */
@@ -73,7 +75,9 @@ export function aParticipantsOwnBoard(board: Record<string, any>, reader: { meId
     out.workRecords = board.workRecords.map((sec: any) => {
       if (!Array.isArray(sec.rows)) return sec;
       const rows = sec.rows.filter((r: any) => r?.ownerParticipantId === me);
-      return { ...sec, rows, state: rows.length ? 'filled' : 'none-yet', onlyYours: ONLY_YOURS };
+      /* Their own lost deals only (Hafsah, 18 October: "A rep sees only their own lost deals"). */
+      const lost = Array.isArray(sec.lost) ? sec.lost.filter((l: any) => l?.ownerParticipantId === me) : undefined;
+      return { ...sec, rows, state: rows.length ? 'filled' : 'none-yet', onlyYours: ONLY_YOURS, ...(lost ? { lost } : {}) };
     });
   }
 
@@ -109,5 +113,48 @@ export function aParticipantsOwnBoard(board: Record<string, any>, reader: { meId
   } else {
     out.teamPicture = { shared: false, says: THE_TEAM_PICTURE_IS_NOT_SHARED_YET, yourOwnReport: reader.hasOwnReport ? YOUR_OWN_REPORT_IS_READY : null };
   }
+  return out;
+}
+
+/*
+ * A REP'S BOARD NEVER NAMES ANOTHER REP'S DEALS (Drop Access run 1, A9; switchboard.md, "A rep's board: ... never ... other reps'
+ * deals"). Kevin's board read "One person is aiming to sell 30 units to Tuskys Westgate." in its aims, and "Greenfield Supermarket",
+ * "Juja Hardware" and "Mama Pima Stores" in its places: Mercy's and Joseph's customers. On a sales check-in, a participant's board
+ * keeps nothing that names a customer whose deal is somebody else's and not also theirs. A line in a list is left out; a wait the
+ * reader is in stays, without the words about the other customer; a sentence on its own is not served. The frame (who is on the
+ * check-in, its title) is never read for this. Applied after aParticipantsOwnBoard, on the board as served, so a section added
+ * later is walled too.
+ */
+const THE_FRAME_IS_NOT_READ = new Set(['participants', 'title', 'groundId', 'myParticipantId', 'sections', 'phaseSpine', 'whoIsAway', 'waitingToBeLetIn']);
+
+export function withoutOtherPeoplesDeals(board: Record<string, any>, me: string, othersDeals: readonly string[], namesIt: (text: string, deal: string) => boolean): Record<string, any> {
+  if (!othersDeals.length) return board;
+  const named = (v: unknown): boolean => {
+    if (typeof v === 'string') return othersDeals.some((d) => namesIt(v, d));
+    if (Array.isArray(v)) return v.some(named);
+    if (v && typeof v === 'object') return Object.values(v).some(named);
+    return false;
+  };
+  const isMine = (o: any) => !!o && typeof o === 'object' && !Array.isArray(o) && (o.fromParticipantId === me || o.onParticipantId === me || o.ownerParticipantId === me || o.participantId === me);
+  const walk = (v: any): any => {
+    if (Array.isArray(v)) {
+      return v.filter((x) => isMine(x) || !named(x)).map(walk);
+    }
+    if (v && typeof v === 'object') {
+      const out: Record<string, any> = {};
+      const mine = isMine(v);
+      for (const [k, x] of Object.entries(v)) {
+        if (typeof x === 'string') {
+          /* In a wait the reader is in, what is waited for stays; another line naming somebody else's customer does not. */
+          if (named(x) && !(mine && (k === 'what' || k === 'id'))) { out[k] = null; continue; }
+          out[k] = x;
+        } else out[k] = walk(x);
+      }
+      return out;
+    }
+    return v;
+  };
+  const out: Record<string, any> = {};
+  for (const [k, v] of Object.entries(board)) out[k] = THE_FRAME_IS_NOT_READ.has(k) ? v : walk(v);
   return out;
 }

@@ -87,6 +87,12 @@ export function aDecisionAsAQuestion(text: string): string {
   return capital(t.replace(/^whether\s+/i, ''));
 }
 
+/** A topic that is a sentence of its own: it starts with a person or runs past a short phrase. */
+export function isAWholeSentence(topic: string): boolean {
+  const t = (topic ?? '').trim();
+  return /^(?:you|i|we|they|he|she|the team|everyone|nobody|participants?)\b/i.test(t) || t.split(/\s+/).length > 12;
+}
+
 export function theOpenIssues(from: WhatTheIssuesAreReadFrom): AnOpenIssue[] {
   const out: AnOpenIssue[] = [];
 
@@ -95,16 +101,23 @@ export function theOpenIssues(from: WhatTheIssuesAreReadFrom): AnOpenIssue[] {
     if (!topic || !d.withFirstName) continue;
     const weeks = d.since ? Math.floor((from.now.getTime() - d.since.getTime()) / (7 * DAY)) : 0;
     const forHowLong = weeks >= 2 ? ` for ${weeks} weeks` : '';
+    /*
+     * A TOPIC THAT IS A WHOLE SENTENCE IS NOT PUT INSIDE ANOTHER ONE (Drop Access, 16 October). Grace read "Joseph and you see You
+     * expect each team member to generate 10 new leads weekly, but participants' records do not show this ... differently". A
+     * short thing ("Mama Fresh", "what counts as money ready") reads inside the sentence as before; a sentence is said on its own.
+     */
+    const aSentence = isAWholeSentence(topic);
+    const what = aSentence ? 'this' : topic;
     out.push({
       id: `difference-${d.key}`,
-      title: `${d.withFirstName} and you see ${topic} differently`,
+      title: `${d.withFirstName} and you see ${what} differently`,
       step: 'Unclear',
       next: `have the conversation with ${d.withFirstName}.`,
       says: null,
       conversation: {
         heading: 'This needs a conversation',
-        says: `You and ${d.withFirstName} have seen this differently${forHowLong}, and it has not been talked about.`,
-        wayToStart: `“${d.withFirstName}, we see ${topic} differently. Can we agree on it?”`,
+        says: `${aSentence ? `${capital(topic)}. ` : ''}You and ${d.withFirstName} have seen this differently${forHowLong}, and it has not been talked about.`,
+        wayToStart: `“${d.withFirstName}, we see ${what} differently. Can we agree on it?”`,
       },
       action: { label: 'Prepare the conversation', says: 'Your check-in helps you prepare what to say, and what to ask.', goesTo: 'check-in' },
       quiet: { label: 'Not now', says: 'It stays here, at Unclear, until one of you says something new about it.' },
