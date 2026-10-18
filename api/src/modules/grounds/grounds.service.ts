@@ -1,4 +1,6 @@
 import { theNumberIsOnlyADay } from '../conversation/a-day-is-not-a-target';
+import { readWhereEachPersonIsGettingStarted } from './getting-each-person-started';
+import { theShareTimeANewCheckInStartsWith, aTimeOfDay } from '../reports/a-report-shares-itself';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { organisationsThatTurnedWhatsAppOn } from '../whatsapp/only-where-whatsapp-is-turned-on';
 import { fullNameToCall } from '../engagement/a-name-to-call-them';
@@ -749,6 +751,8 @@ export class GroundsService {
         timelineStated: dto.runsUntilEnded === true || dto.timelineDays != null || !!dto.endsAt,
         cadenceStated: dto.cadence != null,
         cadence: dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario],
+        /* A new check-in starts with its scenario's default for sharing its report by itself (Hafsah, 18 October 2026). */
+        reportSharesAt: theShareTimeANewCheckInStartsWith(dto.scenario, dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario]),
         cadenceAnchorDay: dto.cadenceAnchorDay ?? null,
         workingDays: workingDaysOf(dto.workingDays),
         startsAt: this.theFirstDayTheyWork(dto.startsAt ? new Date(dto.startsAt) : null, dto.workingDays),
@@ -965,6 +969,8 @@ export class GroundsService {
           timelineStated: dto.runsUntilEnded === true || dto.timelineDays != null || !!dto.endsAt,
           cadenceStated: dto.cadence != null,
           cadence: dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario],
+          /* A new check-in starts with its scenario's default for sharing its report by itself (Hafsah, 18 October 2026). */
+          reportSharesAt: theShareTimeANewCheckInStartsWith(dto.scenario, dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario]),
           cadenceAnchorDay: dto.cadenceAnchorDay ?? null,
           workingDays: workingDaysOf(dto.workingDays),
           startsAt: this.theFirstDayTheyWork(dto.startsAt ? new Date(dto.startsAt) : null, dto.workingDays),
@@ -5666,6 +5672,24 @@ export class GroundsService {
    * these grounds up for other people and often knows the answer when the lead is
    * still being onboarded.
    */
+  /**
+   * WHETHER THE TEAM'S REPORT SHARES ITSELF, AND AT WHAT TIME (Hafsah, 18 October 2026). Off is an empty time: the report
+   * is shared once everyone is in, or when the lead shares it, as every check-in made before this does. On is a time of day
+   * in the organisation's own day ("18:30"). The lead, or an admin once the lead has left, as for the other settings.
+   */
+  async setReportSharesAt(groundId: string, requestingUserId: string, time: string | null) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { initiatorId: true, organizationId: true, cadence: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
+    });
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    await this.mayConfirmSetupOn(ground, requestingUserId);
+    const at = time == null ? null : aTimeOfDay(time);
+    if (time != null && !at) throw new BadRequestException('Give the time as hours and minutes, for example 18:30.');
+    if (at && (ground as any).cadence === 'ONE_TIME') throw new BadRequestException('A one-time check-in shares its report once everyone is in, so it has no time to set.');
+    return this.prisma.ground.update({ where: { id: groundId }, data: { reportSharesAt: at } as any, select: { id: true, reportSharesAt: true } as any });
+  }
+
   async setPeopleWorkTogether(groundId: string, requestingUserId: string, together: boolean) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
@@ -8180,6 +8204,11 @@ export class GroundsService {
    * two is where this went wrong before - see the comment on the query.
    */
   /** D1 and D2 (13 October 2026, evening): see the-lead-adds-a-whatsapp-number.ts. */
+  /** Each person, from their invitation to coming back on their own (getting-each-person-started.ts). */
+  async whereEachPersonIsGettingStarted(input: { groundId: string; organizationId: string; userId: string; role: string }) {
+    return readWhereEachPersonIsGettingStarted(this.prisma as any, input);
+  }
+
   async whereEachPersonIsOnWhatsApp(input: { groundId: string; organizationId: string; userId: string; role: string }) {
     return whereEachPersonIsOnWhatsApp(this.prisma as any, input);
   }

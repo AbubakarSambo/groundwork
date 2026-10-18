@@ -40,7 +40,7 @@ import './ui/gw-ui.css'
  * mapping table: "The team-board switcher" goes to "The Views menu"). Without it, the button names
  * the board you are on, as before.
  */
-export function TheOtherBoardsYouAreIn({ groundId, label }: { groundId: string; label?: string }) {
+export function TheOtherBoardsYouAreIn({ groundId, label, plain }: { groundId: string; label?: string; /** Drawn as plain words, "Views ▾", as board-as-lead.jpg has it. */ plain?: boolean }) {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
 
@@ -63,7 +63,7 @@ export function TheOtherBoardsYouAreIn({ groundId, label }: { groundId: string; 
         onClick={() => setOpen(!open)}
         aria-expanded={open}
         aria-haspopup="listbox"
-        className="gwui-boards-trigger"
+        className={plain ? "gwui-boards-trigger gwui-boards-trigger-plain" : "gwui-boards-trigger"}
       >
         <span className="gwui-boards-trigger-label">
           {label ?? here?.label ?? 'This board'}

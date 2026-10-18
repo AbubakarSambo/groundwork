@@ -589,6 +589,13 @@ export class GroundsController {
     return this.grounds.whereEachPersonIsOnWhatsApp({ groundId: id, organizationId: user.organizationId, userId: user.id, role: user.role });
   }
 
+  /** Each person on this check-in, from their invitation to coming back on their own (whoever runs it, or an admin). */
+  @Get(':id/participants/getting-started')
+  @ApiOperation({ summary: 'Each person on this check-in, from their invitation to checking in on their own (whoever runs the check-in, or an admin)' })
+  async whereEachPersonIsGettingStarted(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
+    return this.grounds.whereEachPersonIsGettingStarted({ groundId: id, organizationId: user.organizationId, userId: user.id, role: user.role });
+  }
+
   @Get(':id/mediator-brief')
   @ApiOperation({ summary: 'Get a structural brief for use with a facilitator (initiator or a party on this ground - no separate org-admin access exists)' })
   async mediatorBrief(@Param('id') id: string, @CurrentUser('id') userId: string) {
@@ -865,6 +872,16 @@ export class GroundsController {
     @Body() body: { visible: boolean },
   ) {
     return this.grounds.setPeerVisibility(id, userId, !!body.visible);
+  }
+
+  @Patch(':id/report-shares-at')
+  @ApiOperation({ summary: "Whether the team's report shares itself at a set time of day (empty is off)" })
+  async setReportSharesAt(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() body: { time: string | null },
+  ) {
+    return this.grounds.setReportSharesAt(id, userId, body?.time ?? null);
   }
 
   @Patch(':id/people-work-together')

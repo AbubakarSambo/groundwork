@@ -79,7 +79,8 @@ describe('the cron sweeps leave a held ground alone', () => {
 
 describe('releasing a report leaves a held ground alone', () => {
   const listener = (status: GroundStatus) => {
-    const prisma: any = { ground: { findUnique: jest.fn(async () => ({ organizationId: 'org', status })), update: jest.fn() } };
+    /* A one-time check-in, which still shares the moment everyone is in: a check-in that repeats waits for its set time (Hafsah's answer 5, 16 October 2026; a-report-shares-itself.spec). */
+    const prisma: any = { ground: { findUnique: jest.fn(async () => ({ organizationId: 'org', status, cadence: 'ONE_TIME' })), update: jest.fn() } };
     const grounds: any = { isSessionReadyForReport: jest.fn(async () => true) };
     const reports: any = { synthesize: jest.fn(), release: jest.fn(), tellThemTheReportIsReady: jest.fn(async () => ({ attempted: 0, failed: 0 })) };
     const l = new ReportsListener(prisma, grounds, reports, {} as any, { get: () => undefined } as any);

@@ -69,15 +69,28 @@ export function whatToDoAboutALeadAction(row: { id: string }, groundId: string, 
 }
 
 /** A question the lead wrote that is answered yes or no: "Whether to ..." with no "or", or "Should we ...?" and the like. */
+/* "Decide whether a price range counts as a budget" (board-as-lead.txt) is the same question as "Whether ...". */
+const withoutDecide = (text: string) => (text ?? '').trim().replace(/^decide\s+(?=whether\b)/i, '');
+
+/**
+ * THE YES, IN THE QUESTION'S OWN VERB (board-as-lead.txt: "Decide whether a price range counts as a
+ * budget", then "Yes, it counts" and "No"). A "whether" question whose verb is plain to find answers
+ * "Yes, it counts"; anything else answers a plain "Yes".
+ */
+export function theYesFor(question: string): string {
+  const m = withoutDecide(question).match(/^whether\s+(?:a|an|the|this|that|our|their|each)?\s*(?:[\p{L}\p{N}-]+\s+){0,3}?(counts|needs|works|stays|goes|applies|matters|holds|fits)\b/iu);
+  return m ? `Yes, it ${m[1].toLowerCase()}` : 'Yes';
+}
+
 export function isAYesOrNoQuestion(text: string): boolean {
-  const t = (text ?? '').trim();
+  const t = withoutDecide(text);
   if (/^whether\b/i.test(t)) return !/\bor\b/i.test(t);
   return /^(should|shall|do|does|did|is|are|can|will|may|must)\b[^?]*\?$/i.test(t);
 }
 
 /** The line that goes in how we work once the lead answers, in the lead's own words. */
 export function theAnswerAsALine(question: string, yes: boolean): string {
-  const q = (question ?? '').trim().replace(/[.!?]+$/, '');
+  const q = withoutDecide(question).replace(/[.!?]+$/, '');
   const answer = yes ? 'yes' : 'no';
   if (/^whether\b/i.test(q)) return `On ${q.charAt(0).toLowerCase()}${q.slice(1)}, the answer is ${answer}.`;
   return `The answer to "${q}?" is ${answer}.`;
@@ -97,7 +110,7 @@ export function whatToDoAboutADecision(
         label: 'Decide it',
         says: 'Your answer goes in how we work, and this comes off the list of things still to decide.',
         goesTo: null,
-        choices: [{ label: 'Yes', route: route(true) }, { label: 'No', route: route(false) }],
+        choices: [{ label: theYesFor(d.question), route: route(true) }, { label: 'No', route: route(false) }],
       };
     }
     return { label: 'Open the Context page', says: 'Write down what you decided on the Context page, and close this line there.', goesTo: 'context' };

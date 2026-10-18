@@ -81,7 +81,7 @@ const DIDNT_SAVE = 'That did not save. What you wrote is still here, so you can 
  * the check-in ends; on the ending page, the ones that are. Anybody else reads nothing here: the
  * person reads theirs on their own You board, and an admin reads appeals on Today.
  */
-export function SuggestionsForTheLead({ groundId, where }: { groundId: string; where: 'board' | 'ending' }) {
+export function SuggestionsForTheLead({ groundId, where, alsoTold }: { groundId: string; where: 'board' | 'ending'; alsoTold?: string[] }) {
   const { data } = useQuery({
     queryKey: ['suggestions', groundId],
     queryFn: () => suggestionsApi.onCheckIn(groundId),
@@ -91,10 +91,10 @@ export function SuggestionsForTheLead({ groundId, where }: { groundId: string; w
     .filter(isForTheLead)
     .filter(s => (where === 'ending') === s.aboutTheEnding)
   if (!mine.length) return null
-  return <>{mine.map(s => <ASuggestionForTheLead key={s.id} s={s} groundId={groundId} />)}</>
+  return <>{mine.map(s => <ASuggestionForTheLead key={s.id} s={s} groundId={groundId} alsoTold={alsoTold} />)}</>
 }
 
-function ASuggestionForTheLead({ s, groundId }: { s: SuggestionForTheLead; groundId: string }) {
+function ASuggestionForTheLead({ s, groundId, alsoTold }: { s: SuggestionForTheLead; groundId: string; alsoTold?: string[] }) {
   const qc = useQueryClient()
   const [mode, setMode] = useState<'none' | 'agree' | 'else'>('none')
   const [changing, setChanging] = useState(false)
@@ -202,6 +202,8 @@ function ASuggestionForTheLead({ s, groundId }: { s: SuggestionForTheLead; groun
       {s.decision && !changing && s.mayChangeTheDecision && (
         <div className={rowClass} style={rowStyle}><Button kind="quiet" size="small" onClick={() => setChanging(true)}>Change my decision</Button></div>
       )}
+      {/* danielpip-board.jpg: what the person was already shown on their own board, under the card, only when the board says they saw it first. */}
+      {(alsoTold ?? []).map((t) => <div key={t} className={quietClass}>{t}</div>)}
     </section>
   )
 }

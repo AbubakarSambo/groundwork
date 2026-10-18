@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BoardPage } from './BoardPage'
@@ -95,50 +95,38 @@ function renderBoard(payload: any) {
 beforeEach(() => vi.clearAllMocks())
 
 describe('the onboarding board’s own order (day-30-and-60.txt)', () => {
-  it('draws "What was agreed at the start", the new hire’s history and "Where you both see it differently" right after "What needs you", in that order', async () => {
+  /*
+   * SCREEN MATCH, 16 OCTOBER: THE LEAD'S ONBOARDING BOARD AS PICTURED (kwame-board.jpg, day-30-and-60.txt), in the
+   * picture's order: what was agreed at the start, the change since last check-in, the 90 days, the new hire's
+   * history, then where you both see it differently. These three tests used to pin the older order (after "What
+   * needs you") and the fold with the "Groundwork does not know what kind of work" sentence; the picture has neither.
+   * A work record with real rows still draws, after the history, never in a fold.
+   */
+  it('draws "What was agreed at the start", the new hire’s history and "Where you both see it differently", in that order', async () => {
     me = { id: 'u-amina', firstName: 'Amina', role: 'MEMBER' }
     renderBoard(boardAsLead())
     await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })
-
     expect(screen.getByText('What was agreed at the start')).toBeTruthy()
-    expect(screen.getByText('Tobi owns the five largest client relationships.')).toBeTruthy()
-    /* The prototype's "His history" names no pronoun - the new hire's own first name instead. */
-    expect(screen.getByText('Tobi’s history')).toBeTruthy()
-    expect(screen.queryByText('What each person has done so far')).toBeNull()
+    expect(screen.getByText(/^Tobi’s history/)).toBeTruthy()
     expect(screen.getByText('Where you both see it differently')).toBeTruthy()
     expect(screen.queryByText('Where people differ')).toBeNull()
-
     const body = document.body.textContent ?? ''
-    const needsYou = body.indexOf('What needs you in this check-in')
     const startingState = body.indexOf('What was agreed at the start')
     const history = body.indexOf('Tobi’s history')
     const divergence = body.indexOf('Where you both see it differently')
-    expect(needsYou).toBeGreaterThanOrEqual(0)
-    expect(startingState).toBeGreaterThan(needsYou)
     expect(history).toBeGreaterThan(startingState)
     expect(divergence).toBeGreaterThan(history)
   })
 
-  /*
-   * PHONE CHECK, ITEM 8: SAID ONCE, NOT AS THREE (OR FIVE) NEAR-IDENTICAL HEADINGS. This used to
-   * assert the opposite - "Deal grid", "Forecast" and "Themes" each drawn as their own heading in
-   * the fold, the same stock sentence repeated under each - which is exactly the bug the phone
-   * check found: a reader sees the same "Groundwork does not know what kind of work..." sentence
-   * three or five times in a row. Updated to check the one sentence it now reads, and that none of
-   * the raw switchboard names appear as a heading beside it.
-   */
-  it('says once, with no heading, that Groundwork does not know what kind of work this check-in is about, when every work record is not-known', async () => {
+  it('says nothing about a kind of work it does not know, and has no fold', async () => {
     me = { id: 'u-amina', firstName: 'Amina', role: 'MEMBER' }
     renderBoard(boardAsLead())
     await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })
-    const fold = screen.getByText('Everything else from this check-in').closest('details') as HTMLElement
-    expect(within(fold).getByText('Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind.')).toBeTruthy()
-    expect(within(fold).queryByText('Deal grid')).toBeNull()
-    expect(within(fold).queryByText('Forecast')).toBeNull()
-    expect(within(fold).queryByText('Themes')).toBeNull()
+    expect(screen.queryByText('Everything else from this check-in')).toBeNull()
+    expect(screen.queryByText('Deal grid')).toBeNull()
   })
 
-  it('keeps a work-record section with real rows exactly where it was, not in the fold', async () => {
+  it('keeps a work-record section with real rows on the board', async () => {
     me = { id: 'u-amina', firstName: 'Amina', role: 'MEMBER' }
     renderBoard(boardAsLead({
       workRecords: [
@@ -149,8 +137,6 @@ describe('the onboarding board’s own order (day-30-and-60.txt)', () => {
       ],
     }))
     await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })
-    const fold = screen.getByText('Everything else from this check-in').closest('details') as HTMLElement
-    expect(within(fold).queryByText('Empower Tobi on pricing')).toBeNull()
     expect(screen.getByText('Empower Tobi on pricing')).toBeTruthy()
   })
 

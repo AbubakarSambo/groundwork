@@ -104,6 +104,30 @@ export class ReportsController {
     return this.reports.generateForAdmin(groundId, organizationId, userId);
   }
 
+  /** "Hold it": the lead keeps today's team report to herself until she shares it (Hafsah's answer 5, 16 October 2026). */
+  @Post('hold')
+  @ApiOperation({ summary: "Hold today's team report so it does not share itself at its set time" })
+  async hold(
+    @Param('groundId') groundId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('organizationId') organizationId: string,
+  ) {
+    return this.reports.holdAsTheLead(groundId, userId, organizationId);
+  }
+
+  /** When today's team report is shared, as this reader is told it. Nothing of the report itself. */
+  @Get('sharing')
+  @ApiOperation({ summary: "When today's team report is shared, as this reader is told it" })
+  async sharing(
+    @Param('groundId') groundId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('organizationId') organizationId: string,
+  ) {
+    const said = await this.reports.howTodaysReportIsShared(groundId, userId, organizationId);
+    if (!said) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    return said;
+  }
+
   /* No role gate here. The person who runs a check-in may be a member with "Can open check-ins", and the
      service already refuses everybody but the lead (and an admin where the lead has left): decision 76. */
   @Post('release')

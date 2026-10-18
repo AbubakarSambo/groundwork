@@ -101,12 +101,13 @@ function boardFor(scenario: string) {
   }
 }
 
+const DRAWN_AS_PICTURED = new Set(['CRISIS_ALIGNMENT', 'PIP'])
 function renderBoardFor(scenario: string) {
   ;(boardApi.get as any).mockResolvedValue(boardFor(scenario))
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={['/grounds/g1/board']}>
+      <MemoryRouter initialEntries={[DRAWN_AS_PICTURED.has(scenario) ? '/grounds/g1/board?whole=1' : '/grounds/g1/board']}>
         <Routes><Route path="/grounds/:id/board" element={<BoardPage />} /></Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -118,6 +119,15 @@ describe('the switchboard decides the board, for all 24 situations', () => {
     expect(SWITCHBOARD_MATRIX.length).toBe(24)
   })
 
+  /*
+   * SCREEN MATCH, 16 OCTOBER: A SITUATION WHOSE BOARD IS NOW DRAWN AS PICTURED IS CHECKED BY ITS OWN SPEC, not by
+   * these seven older section titles. "Work through a big decision" (CRISIS_ALIGNMENT) is supplier-board.jpg's
+   * decision board: the decision, each account side by side, what is known, believed and unknown (see
+   * a-decision-board-as-the-lead-reads-it.spec.tsx). "Help someone get back on track" (PIP) is danielpip-board.jpg's:
+   * Groundwork's suggestion, the person's case, every session (a-performance-plan-board-as-each-reader-reads-it.spec.tsx).
+   * Nothing is lost: these two are still checked here, every section in order, on "See every other part of this
+   * board" (?whole=1), the whole board as it was.
+   */
   for (const row of SWITCHBOARD_MATRIX) {
     it(`${row.situation} (${row.scenario}): shows exactly the switchboard's sections, in order`, async () => {
       const named = new Set([...row.sectionsOn, ...row.optional])

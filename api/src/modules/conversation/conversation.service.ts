@@ -59,6 +59,7 @@ import { askWhoCarriesWhichPart, alreadyAskedWhoCarriesWhat } from './who-carrie
 import { askWhereTheNumberStands, saysWhereItStands } from './a-number-with-no-starting-point';
 import { somethingTheyCouldNotHaveSaid } from './something-they-could-not-have-said-themselves';
 import { movedTheirTargetToWhereTheyAre, A_STANDING_IS_NOT_A_TARGET } from './where-you-are-is-not-what-you-aim-at';
+import { leanIsOnForThisProcess, NO_SECOND_TRY, aSecondTryTheLeanVersionKeeps, THE_LEAN_CORE } from './the-lean-conversation';
 import { whatToDoAboutTheirDeadline, theDateItHadToSay, didNotSayTheDate, SAY_THE_DATE, theQuestionTheProductAsks, repeatsTheInstruction } from './a-period-is-not-a-day';
 import { theNumbersDoNotMeet, askWhichItIs, saidBothNumbers, theQuestionAboutTheNumbers, theNumbersIn } from './the-numbers-do-not-meet';
 import { thePeriodTheyNamed } from './when-words-mean-a-date';
@@ -3888,6 +3889,8 @@ export class ConversationService {
     const base = this.promptForThisTurn.get(checkInId) ?? '';
     const added = (base && system.startsWith(base) ? system.slice(base.length) : system).trim();
     if (added) this.retryInstructionsForThisTurn.set(checkInId, [...(this.retryInstructionsForThisTurn.get(checkInId) ?? []), added]);
+    /* THE LEAN CONVERSATION (replays on this computer only): no second try for style; the four that guard a hard limit stay. See the-lean-conversation.ts. */
+    if (leanIsOnForThisProcess() && !aSecondTryTheLeanVersionKeeps(added, [HERS_TO_DRAW, IT_NAMED_THE_UNTOLD_NUMBER, SAY_THE_DATE('', ''), A_STANDING_IS_NOT_A_TARGET(0, 0)])) return NO_SECOND_TRY;
     return system;
   }
   private _retryInstructionsForThisTurn?: Map<string, string[]>;
@@ -5971,6 +5974,15 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     /* The engine's rules open the prompt and are never rewritten; everything joined after them is walked. */
     const theRules = [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE].filter(Boolean).join('\n\n');
+    /*
+     * THE LEAN CONVERSATION, FOR SIDE-BY-SIDE REPLAYS ON THIS COMPUTER ONLY (fix list, item 4). Never on where people are:
+     * see leanIsOnForThisProcess. The short core in place of the rulebook, then the facts and the libraries, and nothing else.
+     */
+    if (leanIsOnForThisProcess()) {
+      const theLeanRules = [THE_LEAN_CORE, theirLanguage].filter(Boolean).join('\n\n');
+      return [THE_LEAN_CORE, theirLanguage, intakeBlock, recordAlreadyHolds, alreadyGiven, owedBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, finalSessionContext, returningUserContext, roleProbeBlock, theJob, theJobThisTurn, roleConfirmationBlock, coachingBlock, patternProbeBlock, dynamicContext, docContext, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork]
+        .filter(Boolean).join('\n\n').replace(/^[\s\S]*$/, (all) => theRulesKeptTheRestWithoutStandInLabels(all, theLeanRules, calledHere));
+    }
     return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, alreadyGiven, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, theJob, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, burden, putThisToThem, askedWhenThisEnds, theJobThisTurn, theirHedge, theHole, heldBack, proofKindly, whereItIs, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n').replace(/^[\s\S]*$/, (all) => theRulesKeptTheRestWithoutStandInLabels(all, theRules, calledHere));
   }
 

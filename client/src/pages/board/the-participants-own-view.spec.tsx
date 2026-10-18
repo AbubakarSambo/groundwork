@@ -133,8 +133,9 @@ describe('the participant’s own view, first (board-as-participant.txt)', () =>
     // prototype's own heading (board-as-participant.txt: "Your deals, day by day" - board fix,
     // sales B, item 3b, not "Your own deals, day by day").
     const ownSection = screen.getByText('Your deals, day by day').closest('section') as HTMLElement
-    expect(within(ownSection).getByText('Only yours.')).toBeTruthy()
-    expect(within(ownSection).getByText('Westgate Deli')).toBeTruthy()
+    // Screen match, 16 October: "Only yours", as pictured, and her first deal also opened below the grid.
+    expect(within(ownSection).getByText('Only yours')).toBeTruthy()
+    expect(within(ownSection).getAllByText('Westgate Deli').length).toBeGreaterThan(0)
     expect(within(ownSection).queryByText('Greenhill Mart')).toBeNull()
 
     // No "Your share" box: this fixture sends no `yourShare` field, so nothing is drawn.
@@ -237,8 +238,12 @@ describe('the participant’s own view, first (board-as-participant.txt)', () =>
     expect(screen.queryByText('Today’s team picture isn’t shared yet.')).toBeNull()
     expect(screen.queryByText('Your deals, day by day')).toBeNull()
     expect(screen.queryByText('The whole check-in')).toBeNull()
-    // Her own and Aisha's deals are both plainly on the page, not behind a fold.
-    expect(screen.getByText('Westgate Deli')).toBeTruthy()
-    expect(screen.getByText('Greenhill Mart')).toBeTruthy()
+    // Her own and Aisha's deals are both plainly on the page, not behind a fold. (Screen match, 16
+    // October: the lead's board as pictured also opens the first deal in full below the grid, so a
+    // deal's name can appear twice; getAll, not get.)
+    expect(screen.getAllByText('Westgate Deli').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Greenhill Mart').length).toBeGreaterThan(0)
+    // A forecast from another system is still on the lead's board.
+    expect(screen.getByText('This quarter')).toBeTruthy()
   })
 })

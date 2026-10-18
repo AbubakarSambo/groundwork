@@ -199,6 +199,8 @@ Things worth knowing about how they run:
 - Two pairs of migrations share a timestamp (`20260927180000_*` and `20260927190000_*`). Prisma runs them in full name order, which is the order above.
 - The local test database (`gw_pw9_1786222102`) has every one of them applied (checked on 5 October: all 82), up to `20261004100000_a_check_in_remembers_it_began_at_the_anchor_link`. Migration 83, `20261005200000_a_free_run_is_one_month`, is written and not yet applied there (its default still reads 3).
 
+**Release 1, pull request 1 (18 October):** `20261016090000_a_report_shares_itself_at_its_set_time` adds `grounds.report_shares_at` (VARCHAR(5), empty) and `reports.held_sessions` (INTEGER[], default empty). Add-only; every statement can run again; no existing row is changed. **Existing check-ins keep today's behaviour:** the column is empty on every one of them, and empty means the report is shared once everyone has checked in, or when the lead shares it, as now. A report shares itself at a set time (6:30pm) only where a lead turns it on in People and setup, under Who sees what, or for a new check-in whose scenario's default says so (today only "Set goals and keep the team on track", OKR_ALIGNMENT, the kit's sales board). A test checks that an existing check-in's report does not share itself after the migration. To roll back: revert the pull request; the two columns can stay, as nothing else reads them.
+
 ## 3. Settings and environment variables
 
 **Two new environment variables are read by the API since the remote `main`, and neither is a secret.** Both are optional: the API starts and works without them. The client reads the same names as before. (The client now also reads `DEV`, which Vite sets itself.)

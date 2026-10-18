@@ -1,7 +1,7 @@
 import { railAttention, openRound } from '@/lib/rail-attention'
 import { hasEnded, hasStalled } from '@/lib/a-ground-that-has-ended'
 import { plannedSessionsFor } from '@/lib/sessionCount'
-import { scenarioLabel } from '@/lib/scenario-catalog'
+import { scenarioLabel, isEvaluationScenario } from '@/lib/scenario-catalog'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { whenItRunsOut } from '@/lib/when-it-runs-out'
 import type { TagTone } from '@/components/gw/kit'
@@ -43,6 +43,8 @@ export interface ListRow {
   otherOrgName?: string | null
   reportWaitingForMe?: boolean
   roundsDone?: number
+  /** The sessions whose team report has been shared, as the list serves it. */
+  report?: { releasedAt?: string | null; releasedSessions?: number[] | null } | null
   participants?: {
     id: string
     userId?: string | null
@@ -121,7 +123,9 @@ function whoIsIn(g: ListRow, me: string | null | undefined): string | null {
     if (mine && firstName(others[0])) return `${firstName(others[0])} and you.`
     if (!mine && firstName(others[0]) && firstName(others[1])) return `${firstName(others[0])} and ${firstName(others[1])}.`
   }
-  return `${people.length} people.`
+  /* The people who check in: a lead who only manages is not counted ("6 people" for six reps and their lead, check-ins.txt). */
+  const checkingIn = people.filter(p => !p.managingOnly).length
+  return `${checkingIn || people.length} people.`
 }
 
 function sessionsOf(g: ListRow) {
@@ -200,6 +204,13 @@ export function howARowReads(g: ListRow, me: string | null | undefined, now: Dat
   else if (hasStalled(g.status) || out.state === 'out') needs = { text: 'Out of time', tone: 'attention' }
   else if (out.state === 'soon') needs = { text: out.daysLeft === 1 ? 'Runs out tomorrow' : `Runs out in ${out.daysLeft} days`, tone: 'attention' }
   else if (a.kind === 'yours' || a.kind === 'overdue') needs = { text: 'Your turn', tone: 'action' }
+  /*
+   * TODAY'S REPORT IS READY (check-ins.jpg and every board's "The other boards you’re in": "Sales team, Q3, Today’s report
+   * ready"). For whoever runs a check-in that repeats, this session's team report is there to read and share once anybody
+   * has checked in (it shares itself at its set time unless they hold it). A one-time check-in still waits for everybody.
+   */
+  /* Not on a check-in about one person: there is no team to share it with, and both accounts being in is what counts there. */
+  else if (iRunIt && !allDone && !isEvaluationScenario(g.scenario) && g.cadence && g.cadence !== 'ONE_TIME' && round > 0 && aSessionReportToShare(g, round)) needs = { text: g.cadence === 'DAILY' ? 'Today’s report ready' : 'This session’s report is ready', tone: 'proven' }
   else if (a.kind === 'waiting' && iRunIt) {
     const byId = new Map((g.participants ?? []).map(p => [p.id, p]))
     const missing = sessionsOf(g).filter(c => c.sessionNumber === round && c.status !== 'COMPLETED').map(c => byId.get(c.participantId))
@@ -220,6 +231,8 @@ export function howARowReads(g: ListRow, me: string | null | undefined, now: Dat
   else if (allDone && iRunIt) stands = 'Decide how it ends'
   else if (a.kind === 'overdue') stands = `It opened ${a.daysLate} days ago`
   else if (done === 0 && round <= 1 && !answered) stands = 'Just started'
+  /* danielpip-board.jpg, "Daniel, the next six weeks: Both accounts in": on a check-in about one person, the person's account and the lead's are both in for this session. */
+  else if (round > 0 && isEvaluationScenario(g.scenario) && ofPeople === 2 && answered === 2) stands = 'Both accounts in'
   else if (round > 0 && ofPeople > 1 && answered != null && answered < ofPeople) stands = `${answered} of ${ofPeople} answered`
   else if (next) stands = `Next: ${whenItWas(next, 'dayAndMonthLong')}`
   else if (planned) stands = `${done} of ${planned} sessions done`
@@ -234,6 +247,13 @@ export function howARowReads(g: ListRow, me: string | null | undefined, now: Dat
   else if (iRunIt && g.status === 'ACTIVE' && (g.participants ?? []).filter(p => !p.managingOnly).length < 2) also = 'It needs a second person for a shared report.'
 
   return { about, forWhat, needs, stands, also }
+}
+
+/** This session has at least one check-in finished, and its team report has not been shared yet. */
+function aSessionReportToShare(g: ListRow, round: number): boolean {
+  const finished = (g.checkIns ?? []).some((c) => c.sessionNumber === round && c.status === 'COMPLETED' && !c.isSetup)
+  const shared = (g.report?.releasedSessions ?? []).includes(round)
+  return finished && !shared
 }
 
 function sentenceStart(s: string): string {

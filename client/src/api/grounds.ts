@@ -320,6 +320,10 @@ export const groundsApi = {
   getMediatorBrief: (groundId: string) =>
     apiClient.get(`/grounds/${groundId}/mediator-brief`).then(r => r.data),
 
+  /** Whether the team's report shares itself at a time of day ("18:30"); null is off (Hafsah, 18 October 2026). */
+  setReportSharesAt: (groundId: string, time: string | null) =>
+    apiClient.patch<{ id: string; reportSharesAt: string | null }>(`/grounds/${groundId}/report-shares-at`, { time }).then(r => r.data),
+
   setPeopleWorkTogether: (groundId: string, together: boolean) =>
     apiClient.patch<{ id: string; peopleWorkTogether: boolean }>(`/grounds/${groundId}/people-work-together`, { together }).then(r => r.data),
 

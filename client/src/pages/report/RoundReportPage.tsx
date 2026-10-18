@@ -1,4 +1,6 @@
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { ThePicturedTeamReport, TheTeamReportIsNotSharedYet } from './pictured/ThePicturedTeamReport'
+import { reportsApi } from '@/api/reports'
 import { useQuery } from '@tanstack/react-query'
 import { TheSessionsReport } from '@/components/gw/TheSessionsReport'
 import { groundsApi } from '@/api/grounds'
@@ -19,6 +21,7 @@ import { GroundGone } from '@/components/gw/GroundGone'
 export default function RoundReportPage() {
   const { id, sessionNumber } = useParams<{ id: string; sessionNumber: string }>()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const user = useAuthStore((st) => st.user)
   const n = Number(sessionNumber)
   /*
@@ -44,6 +47,13 @@ export default function RoundReportPage() {
    * the same two statuses. The same two reasons GroundAdminPage and GroundParticipantPage already
    * read as "gone" (GW-PRI-04: one screen, whichever reason) apply here too.
    */
+  /* Whether this session's team report has been shared, for a person who checks in (team-report-as-participant.jpg). */
+  const { data: shaped } = useQuery({
+    queryKey: ['session-shaped-report', id, n],
+    queryFn: () => reportsApi.sessionReport(id!, n),
+    enabled: !!id && Number.isFinite(n) && !!ground && (ground as any)?.initiatorId !== user?.id,
+    retry: false,
+  })
   const definitelyGone = isError && [404, 403].includes((error as any)?.response?.status)
   if (definitelyGone) return <GroundGone />
 
@@ -51,6 +61,17 @@ export default function RoundReportPage() {
   const isAParty = !!(ground as any)?.viewerIsInitiator || !!(ground as any)?.participants?.some((p: any) => p.userId === user?.id)
   const contextEnabled = (ground as any)?.contextEnabled === true
   const plannedSessions = ground ? plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).plannedSessions) : null
+
+  /*
+   * SCREEN MATCH, 16 OCTOBER: THE TEAM'S REPORT AS PICTURED, FOR WHOEVER RUNS THE CHECK-IN (team-report.jpg). The whole
+   * report as it was stays one tap away, on "See every other part of this report" (?whole=1).
+   */
+  if (id && ground && canRunThisCheckIn && Number.isFinite(n) && searchParams.get('whole') !== '1') {
+    return <ThePicturedTeamReport groundId={id} sessionNumber={n} ground={ground} />
+  }
+  if (id && ground && !canRunThisCheckIn && isAParty && shaped && (shaped as any).released === false && searchParams.get('whole') !== '1') {
+    return <TheTeamReportIsNotSharedYet groundId={id} sessionNumber={n} ground={ground} />
+  }
 
   return (
     <div style={{ maxWidth: 1060, margin: '0 auto', padding: '20px 20px 60px' }}>

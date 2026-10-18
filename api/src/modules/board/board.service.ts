@@ -22,6 +22,8 @@ import { howARecordIsKnown, theRecordsMark, whatHappensNext } from './what-happe
 import { whereThisTargetStands, theHeadlineQuestion, theDirectionToReadIn, type ATeamAim } from './the-headline-and-where-each-target-stands';
 import { whereThisIsHeading } from './where-this-is-heading';
 import { whoTheEndingIsAbout } from '../resolution/who-the-ending-is-about';
+import { readWhatMayBeRelevant, whatWasSaidNotRelevant, NOT_RELEVANT_KEY, type SomethingThatMayBeRelevant } from './what-may-be-relevant';
+import { mayReadWhatIsKept } from '../knowledge/organisation-memory';
 import { theMonthEndedOn } from './the-anchor-month-end-event';
 import { deadlineOf } from '../grounds/when-the-clock-starts';
 import { theWorkByArea, reportedAgainstTheRules } from './the-work-by-area-and-by-stage';
@@ -29,6 +31,7 @@ import { theBoardAtAGlance } from './the-board-at-a-glance';
 import { toCloseTheGap } from './to-close-the-gap';
 import { theValueOf, theContactHistory, theirReadInTheirWords, NO_VALUE_SAID, WHAT_CONTACT_HISTORY_IS } from './a-deal-row-from-its-record';
 import { helpNobodyMentioned } from './help-nobody-mentioned';
+import { theOpenIssues, sharesTheWords, ISSUE_STEPS, type AnOpenIssue, type WhatTheIssuesAreReadFrom } from './the-open-issues';
 
 /** Said where the prototype has "Open issues" (request 115 c): what the record would need to hold. */
 export const NO_OPEN_ISSUES_ON_RECORD = 'Groundwork does not follow an issue from the day it is raised to the day it is decided and done, so there is no list of open issues here. Where people see something differently, and the questions written down to decide on the Context page, are under what needs you.';
@@ -53,6 +56,7 @@ import { contributionWithoutTheLeadsAdvice, coverageWithoutTheLeadsAdvice } from
 import { coverageAsThisReaderMayRead, withNoRatingNumber } from './no-rating-is-served';
 import { theBoardKindsOffered, theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { theAnchorBoardParts } from './the-anchor-board-parts';
+import { aShortTagForTheWork } from './a-short-tag-for-the-work';
 import { oneOfTheKinds, plainFields, theSameName, theRecordSections, itemKindsFor, stagesFor, RECORDS_FOR_EACH_KIND, KINDS_THAT_ARE_NOT_WORK, type AServedRecord, type KindOfWork } from './the-kind-of-work';
 
 /** What the lead sends to add or change a record of the kind of work. */
@@ -962,6 +966,12 @@ export class BoardService {
           take: 1,
           select: { createdAt: true },
         })?.catch?.(() => []) ?? [],
+        agreedWithThePerson: await ((this.prisma as any).personObjective?.findMany?.({
+          where: { groundId, seenBySubject: true },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { createdAt: true, seenBySubject: true },
+        }) ?? Promise.resolve([])).catch(() => []),
         decidedAt: (ground as any).closedAt ?? null,
         monthEndedAt: theMonthEndedOn((ground as any).groundAuditLog),
       }),
@@ -2281,6 +2291,20 @@ export class BoardService {
         const points = isInitiator ? untoldByParticipant.get(row.participantId) : undefined;
         return { participantId: row.participantId, who: row.who, line, ...(k ? { keepsComingUp: k.says } : {}), ...(points?.length ? { conversationPoints: points } : {}) };
       });
+      /*
+       * A SHORT TAG FOR THE WORK, ON A SALES BOARD (board-as-lead.txt: "Many visits, few moves", "Visits without names"),
+       * from the patterns about the work this reader is already served, and nothing else. See a-short-tag-for-the-work.ts.
+       */
+      const kind = oneOfTheKinds((ground as any).kindOfWork);
+      const served = ((out.patterns as any[] | undefined) ?? []).filter((x) => x?.id && x?.participantId && x?.about === 'the work');
+      if (kind === 'sales org' && served.length) {
+        const rows = ((await (this.prisma as any).patternDetection?.findMany?.({ where: { id: { in: served.map((x) => x.id) }, groundId }, select: { id: true, code: true } })?.catch?.(() => [])) ?? []) as { id: string; code: string }[];
+        const codeOf = new Map(rows.map((r) => [r.id, r.code]));
+        out.eachPersonToday = (out.eachPersonToday as any[]).map((row) => {
+          const tag = aShortTagForTheWork(served.filter((x) => x.participantId === row.participantId).map((x) => codeOf.get(x.id) ?? ''));
+          return tag ? { ...row, workTag: tag } : row;
+        });
+      }
     }
 
     /*
@@ -2794,7 +2818,10 @@ export class BoardService {
        * (decision 6). Built from what this reader is already served and the endings the check-in's own way of
        * recording a decision offers. See where-this-is-heading.
        */
-      if (!evaluation && (runsIt || adminHere)) {
+      /* ON AN EVALUATION CHECK-IN, THE LEAD ONLY (Hafsah's answer 3, 16 October 2026): the possible outcomes are about a person,
+         so only the lead reads them; the person sees the facts, then the decision with its reasons once it is made (decision 6),
+         and nobody else, not even the admin who set it up, reads where it is heading. */
+      if ((!evaluation && (runsIt || adminHere)) || (evaluation && isInitiator)) {
         const leadRow = (ground.participants as any[]).find((p) => p.id === theLeadsRow);
         const leadName = [leadRow?.user?.firstName, leadRow?.user?.lastName].filter(Boolean).join(' ').trim() || (leadRow?.nameGiven ?? '').trim() || null;
         out.whereThisIsHeading = whereThisIsHeading({
@@ -2979,6 +3006,9 @@ export class BoardService {
             managingOnly: !!p.managingOnly,
             isLead: p.id === theLeadsRow,
             answered: answeredBy.has(p.id),
+            /* The lead's own words about who each person is, as this reader is already served them on the board's own
+               participants (the lead alone; theLeadsWordsAbout, applied once there). */
+            describedAs: ((walled as any).participants ?? []).find((x: any) => x.id === p.id)?.role ?? null,
           }));
           /* Numbers from another system about what this check-in is about: only whoever runs it reads them. */
           const subject = (ground as any).subjectExternalId as string | null;
@@ -3046,7 +3076,18 @@ export class BoardService {
        * an issue through its stages, so nothing is made up: whoever runs the check-in is told what would be needed.
        */
       if (runsItForAPattern(ground as any, requestingUserId) && !isEvaluationCheckIn(ground.scenario)) {
-        walled.openIssues = { state: 'not-known', why: NO_OPEN_ISSUES_ON_RECORD };
+        /* What on record already moves towards a decision, each at its stage (the-open-issues, screen match 16 October). */
+        const read = await this.theOpenIssuesOnRecord(ground as any, groundId, theLeadsRow, reportSafe, visibleNames, now).catch((err: any) => { this.logger.warn(`Open issues could not be read for ${groundId}: ${err?.message ?? err}`); return [] as AnOpenIssue[]; });
+        /* What only the lead can do (her own promise kept, a conversation she prepares) is offered to the lead alone; anybody else who runs it reads where each stands. */
+        const issues = isInitiator ? read : read.map((i) => ({ ...i, action: null, quiet: null }));
+        walled.openIssues = issues.length
+          ? { state: 'filled', issues, steps: ISSUE_STEPS }
+          : { state: 'not-known', why: NO_OPEN_ISSUES_ON_RECORD };
+      }
+      /* What the organisation kept from another check-in of the same kind, for the lead who runs this one (what-may-be-relevant). */
+      if (isInitiator) {
+        const relevant = await this.whatMayBeRelevantHere(ground as any, requestingUserId).catch((err: any) => { this.logger.warn(`What may be relevant could not be read for ${groundId}: ${err?.message ?? err}`); return []; });
+        if (relevant.length) (walled as any).mayBeRelevant = relevant;
       }
       /* And no number that rates a person leaves on any section, whoever reads it (request 111 a). */
       /* A sentence true of several people is said once for the section (request 117, part 8). */
@@ -3111,6 +3152,77 @@ export class BoardService {
    * The open decisions the lead wrote down, and only where they chose to share the note. A private
    * note is private: the audience is the lead's choice and this reads it rather than deciding it.
    */
+  /**
+   * The rows the open issues are read from (the-open-issues.ts): a difference between the lead and one other
+   * person in the report, the lead's questions still to decide with how many check-ins raised the same words,
+   * what the organisation kept from deciding before, and what the lead said they would do.
+   */
+  /** Kept knowledge from other check-ins of this one's kind, behind the organisation memory's own wall (what-may-be-relevant.ts). */
+  private async whatMayBeRelevantHere(ground: any, readerUserId: string): Promise<SomethingThatMayBeRelevant[]> {
+    const reader = await this.prisma.user.findUnique({ where: { id: readerUserId }, select: { role: true } });
+    return readWhatMayBeRelevant(this.prisma, ground, { userId: readerUserId, role: (reader as any)?.role ?? null }, (r) => mayReadWhatIsKept(this.prisma, r));
+  }
+
+  /** The lead says what was offered as relevant is not, for this check-in. Kept in the check-in's own record; the organisation's knowledge is not touched. */
+  async sayItIsNotRelevant(groundId: string, memoryIds: string[], requestingUserId: string) {
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { id: true, initiatorId: true, groundAuditLog: true } as any }) as any;
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    if (ground.initiatorId !== requestingUserId) throw new ForbiddenException('Only the lead of this check-in can say this.');
+    const log = ground.groundAuditLog && typeof ground.groundAuditLog === 'object' && !Array.isArray(ground.groundAuditLog) ? ground.groundAuditLog : {};
+    const ids = [...new Set([...whatWasSaidNotRelevant(log), ...memoryIds.filter((x) => typeof x === 'string' && x)])];
+    await this.prisma.ground.update({ where: { id: groundId }, data: { groundAuditLog: { ...log, [NOT_RELEVANT_KEY]: { memoryIds: ids } } } as any });
+    return { notRelevant: ids.length };
+  }
+
+  private async theOpenIssuesOnRecord(ground: any, groundId: string, leadRow: string | null, reportSafe: any, visibleNames: Map<string, string>, now: Date): Promise<AnOpenIssue[]> {
+    const people: any[] = ground.participants ?? [];
+    const firstOf = (pid: string | null | undefined) => {
+      const p = people.find((x) => x.id === pid);
+      const full = [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim() || (p?.nameGiven ?? '').trim();
+      return full ? full.split(/\s+/)[0] : null;
+    };
+    const idForName = (name: string | null | undefined) => {
+      const n = (name ?? '').trim().toLowerCase();
+      if (!n) return null;
+      return people.find((p) => {
+        const full = [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim().toLowerCase();
+        return full === n || (p.user?.firstName ?? '').trim().toLowerCase() === n;
+      })?.id ?? null;
+    };
+    const differences: WhatTheIssuesAreReadFrom['differences'] = [];
+    for (const [i, d] of (Array.isArray(reportSafe?.divergences) ? reportSafe.divergences : []).entries()) {
+      const sides: any[] = Array.isArray(d?.positions) ? d.positions : Array.isArray(d?.perspectives) ? d.perspectives : [];
+      /* "the initiator" is the lead; read by the lead, their own side is already "You" by now. */
+      const idOf = (label: string) => (/^(?:the\s+)?initiator$/i.test(label.trim()) || label.trim() === 'You' || visibleNames.get(label) === 'You' ? leadRow : idForName(visibleNames.get(label) ?? label));
+      const ids = [...new Set(sides.map((x) => idOf(String(x?.participantLabel ?? ''))).filter(Boolean) as string[])];
+      if (!leadRow || ids.length !== 2 || !ids.includes(leadRow)) continue;
+      const other = ids.find((x) => x !== leadRow)!;
+      const first = firstOf(other);
+      if (first && typeof d?.topic === 'string') differences.push({ key: String(i), topic: d.topic, withFirstName: first, since: d?.since ? new Date(d.since) : null });
+    }
+    const asked = await (this.prisma.groundContextItem?.findMany?.({
+      where: { groundId, kind: 'DECISION' as any, audience: 'EVERYONE' as any, closedAt: null },
+      select: { id: true, text: true, createdAt: true },
+      orderBy: { createdAt: 'asc' },
+      take: 8,
+    }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
+    const lines = asked.length
+      ? await ((this.prisma.recordEntry as any)?.findMany?.({ where: { disputedAt: null, participant: { groundId } }, select: { text: true, checkInId: true } }) ?? Promise.resolve([])).catch(() => [])
+      : [];
+    const stillToDecide = (asked as any[]).map((q) => ({
+      id: q.id, text: String(q.text ?? '').trim(), createdAt: new Date(q.createdAt),
+      raisedIn: new Set((lines as any[]).filter((l) => l.checkInId && sharesTheWords(String(l.text ?? ''), String(q.text ?? ''))).map((l) => l.checkInId)).size,
+    })).filter((q) => q.text);
+    const memories = ((await ((this.prisma as any).organizationMemory?.findMany?.({ where: { organizationId: ground.organizationId, status: 'KEPT' }, select: { text: true }, take: 50 }) ?? Promise.resolve([])).catch(() => [])) ?? []) as { text: string }[];
+    const promises = leadRow
+      ? ((await ((this.prisma as any).groundCommitment?.findMany?.({ where: { groundId, participantId: leadRow, status: 'UNKNOWN' }, select: { id: true, text: true, createdAt: true }, orderBy: { createdAt: 'asc' } }) ?? Promise.resolve([])).catch(() => [])) ?? []) as any[]
+      : [];
+    return theOpenIssues({
+      groundId, now, differences, stillToDecide, memories,
+      leadPromises: promises.map((p) => ({ id: p.id, text: String(p.text ?? ''), createdAt: new Date(p.createdAt) })),
+    });
+  }
+
   private async whatTheLeadSaysIsStillToDecide(groundId: string): Promise<{ id: string | null; text: string }[]> {
     const lines = await (this.prisma.groundContextItem?.findMany?.({
       where: { groundId, kind: 'DECISION' as any, audience: 'EVERYONE' as any, closedAt: null },

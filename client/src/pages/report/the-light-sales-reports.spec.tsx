@@ -82,7 +82,12 @@ describe('the weekly report, light', () => {
   beforeEach(() => {
     vi.mocked(groundsApi.get).mockResolvedValue({ id: 'g1', label: 'Sales team, Q3', kindOfWork: 'sales org' } as any)
   })
-  it('opens on what this week shows, the week in numbers and what to do next week; the rest folds with the server’s facts', async () => {
+  /*
+   * SCREEN MATCH, 16 OCTOBER (weekly-report.jpg): every part of the weekly report is open now, in the picture's order;
+   * the three parts the light report folded to one line each are drawn in full, so nothing is behind a fold. Was
+   * "the rest folds with the server's facts".
+   */
+  it('opens every part in the picture’s order, with nothing folded', async () => {
     vi.mocked(reportsApi.week).mockResolvedValue({
       weekStart: '2026-10-12', builtAt: null, heading: 'This week, 12 to 14 Oct, so far', whatThisIs: 'The daily reports show each day.',
       eachPerson: [{ who: 'Miriam Wanjiru', isYou: false, says: 'Miriam Wanjiru named Green Mart this week.' }],
@@ -100,16 +105,19 @@ describe('the weekly report, light', () => {
         </MemoryRouter>
       </QueryClientProvider>,
     )
-    const shows = await screen.findByRole('region', { name: 'What this week shows' })
-    const numbers = screen.getByRole('region', { name: 'The week in numbers' })
+    const numbers = await screen.findByRole('region', { name: 'The week in numbers' })
+    const shows = screen.getByRole('region', { name: 'What this week shows' })
+    const three = screen.getByRole('region', { name: 'Things that happened in three check-ins in a row' })
+    const proof = screen.getByRole('region', { name: 'What people said, and what the proof shows' })
     const todo = screen.getByRole('region', { name: 'For you to do next week' })
-    const more = screen.getByRole('region', { name: 'More in this report' })
-    expect(shows.compareDocumentPosition(numbers) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(numbers.compareDocumentPosition(todo) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(within(numbers).getByText('15 of the 18 check-ins due this week were made.')).toBeTruthy()
-    const three = within(more).getByText('Things that happened in three check-ins in a row').closest('details') as HTMLElement
-    expect(three.querySelector('.gwui-fold-fact')?.textContent).toBe('1 thing that keeps happening')
+    expect(numbers.compareDocumentPosition(shows) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(shows.compareDocumentPosition(three) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(three.compareDocumentPosition(proof) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(proof.compareDocumentPosition(todo) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    /* As weekly-report.jpg: each number with what it counts. Its own sentence is on ?whole=1 (weekly-report-for-each-reader.spec.tsx). */
+    expect(within(numbers).getByText('of check-ins made this week')).toBeTruthy()
     expect(within(three).getByText('Visits without the shop’s name.')).toBeTruthy()
+    expect(document.querySelector('details')).toBeNull()
   })
 })
 

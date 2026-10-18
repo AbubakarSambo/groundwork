@@ -770,6 +770,21 @@ export function WhereTheCohortStandsSection({ data }: { data: BoardPresent['wher
  */
 export function ByWhoTheyAreSection({ data }: { data: BoardPresent['byWhoTheyAre'] }) {
   if (!data) return null
+  if (data.state === 'filled' && (data.groups ?? []).length) {
+    /* mvnext-board.jpg: one card for each group, in the lead's own words for who they are. */
+    return (
+      <Section heading={data.heading} note={data.note ?? data.says}>
+        <div className="pb-cards3">
+          {(data.groups ?? []).map((g) => (
+            <Panel key={g.group}>
+              <p className="pb-card-h">{g.group}</p>
+              <p className="gwui-panel-text">{g.says}</p>
+            </Panel>
+          ))}
+        </div>
+      </Section>
+    )
+  }
   return (
     <Section heading={data.heading} note={data.says}>
       {data.state === 'not-known' && <Note tone="muted">{data.why}</Note>}

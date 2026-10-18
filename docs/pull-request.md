@@ -5,6 +5,17 @@ This replaces pull requests #324 and `groundwork-next-release`. It is made from 
 1. **The engine** (`api/`): the server, its migrations, its tests, the one-off scripts the release night runs, and these notes.
 2. **The screens** (`client/` and `marketing/`): the screens, their tests and the browser tests. They call the engine's new routes, so merge the engine first.
 
+## Release 1, pull request 1 of 5: the pictured board and reports (18 October)
+
+This is the first of five small pull requests for Release 1 (Drop Access, a sales team). They are merged in order, each built on the one before. This one brings the screens Release 1 is built on: the board, the team report, each person's own report and the weekly report, drawn as Hafsah's pictures show them, with the API they read.
+
+**Before you merge:**
+- [ ] **Take a backup of the database first.**
+- [ ] **There is one new migration,** `20261016090000_a_report_shares_itself_at_its_set_time`. It adds `grounds.report_shares_at` (empty) and `reports.held_sessions` (an empty list). No existing row is changed. See `docs/deploy.md`.
+- [ ] **Existing check-ins keep today's behaviour.** Their report is shared once everyone has checked in, or when the lead shares it, as now. A report shares itself at a set time (6:30pm, unless the lead holds it) only where a lead turns it on in People and setup, under Who sees what, or for a new check-in whose scenario's default says so (today only OKR_ALIGNMENT, the kit's sales board).
+- [ ] **No new templates, no new one-off scripts, no new settings.**
+- [ ] **GitHub's checks cannot run** (the Actions budget is used up), so they fail after 2 seconds. The local results are in the pull request's description.
+
 ## This update, 14 October (after #326 and #327)
 
 This update is made from staging as it is now (`a767ec6c3`). Like the release before it, it comes as two pull requests, the engine first and then the screens.

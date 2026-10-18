@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { TheLeadsOwnWayIn } from '@/components/gw/TheLeadsOwnWayIn'
 import { isSessionShared } from '@/lib/session-rows'
 import { useMemo } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { conversationApi } from '@/api/conversation'
 import { groundsApi } from '@/api/grounds'
@@ -27,6 +27,7 @@ import { useBackOrFallback } from '@/lib/a-back-button-never-leaves-groundwork'
 import { TheCheckInHeader } from '@/components/gw/TheCheckInHeader'
 import { checkInHeaderTabs } from '@/pages/grounds/ground-tabs'
 import { Page, Button, Panel, Callout, Section, SubHeading, Note, Tag, Stack } from '@/components/gw/ui'
+import '../board/pictured/pictured-board.css'
 
 /**
  * U.9 RE-REVIEW: "WHAT YOU SHARED:" IS A LABEL BOLTED ONTO A SENTENCE WITH A COLON.
@@ -70,6 +71,7 @@ export default function SessionReportPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const viewerUserId = useAuthStore(st => st.user?.id)
+  const [searchParams] = useSearchParams()
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['session-report', checkInId],
@@ -193,6 +195,14 @@ export default function SessionReportPage() {
     refetchInterval: (q: any) => (theTeamsReportIsBehind(q?.state?.data, ground) ? 5_000 : false),
   })
   const readingThePreviousVersion = useMemo(() => theTeamsReportIsBehind(groundReport, ground), [groundReport, ground])
+  /* When the team's report reaches this reader (Hafsah's answers 1 and 5, 16 October 2026): "It is usually shared by 6:30pm." */
+  const { data: sharing } = useQuery({
+    queryKey: ['report-sharing', data?.groundId],
+    queryFn: () => reportsApi.sharing(data!.groundId as string),
+    enabled: !!data?.groundId && !!(ground as any)?.report,
+    retry: false,
+    staleTime: 30_000,
+  })
 
   /**
    * CORRECTING IT, from the page that shows it.
@@ -262,6 +272,40 @@ export default function SessionReportPage() {
      link in an email, must not fall through to about:blank. "Back to your check-ins" names where it
      goes instead. */
   const back = useBackOrFallback('/grounds', 'Back to your check-ins')
+
+  /*
+   * SCREEN MATCH, 16 OCTOBER: YOUR OWN REPORT AS PICTURED (own-report.jpg), for a sales check-in, where the light own
+   * report already lives. The check-in's name and the day, "Only you", "Your report", your own report itself, and
+   * whether the team's report is shared yet. Everything else this page shows is one tap away (?whole=1).
+   */
+  if (!isLoading && !isError && data?.groundId && data?.sessionNumber && (ground as any)?.kindOfWork === 'sales org' && searchParams.get('whole') !== '1') {
+    const teamShared = !!shape && (shape as any).released === true
+    const checkInLabel: string = (ground as any)?.label ?? 'This check-in'
+    return (
+      <Page>
+        <div className="pb-own">
+          <div className="pb-own-top">
+            <span className="pb-sub">{`${checkInLabel}${data.finishedAt ? `, ${whenItWas(data.finishedAt, 'dayAndMonthLong')}` : ''}`}</span>
+            <Tag>Only you</Tag>
+          </div>
+          <h1 className="pb-own-title">Your report</h1>
+          <TheCheckInYouJustFinished checkInId={checkInId!} groundId={data.groundId as string} sessionNumber={data.sessionNumber as number} light pictured />
+          <div className="pb-own-team">
+            <div>
+              <b>The team’s report</b>
+              <p className="pb-sub">{teamShared ? 'Shared. Open it to read the whole team’s picture.' : `Not shared yet.${sharing?.says && !sharing.shared ? ` ${sharing.says.replace(/ You’ll get an email when.*$/, '')}` : ''}`}</p>
+            </div>
+            {teamShared
+              ? <Link className="gwui-plain-link" to={`/grounds/${data.groundId}/session/${data.sessionNumber}`}>Open it</Link>
+              : <Tag tone="attention">Waiting</Tag>}
+          </div>
+          <div className="pb-whole-board-link">
+            <Link to={`/checkin/${checkInId}/report?whole=1`} className="gwui-plain-link">See every other part of this report</Link>
+          </div>
+        </div>
+      </Page>
+    )
+  }
 
   return (
     <Page>

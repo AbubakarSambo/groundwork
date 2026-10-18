@@ -45,12 +45,12 @@ const base = {
   workRecords: [],
 }
 
-function renderBoard(payload: any) {
+function renderBoard(payload: any, at = '/grounds/g1/board') {
   ;(boardApi.get as any).mockResolvedValue(payload)
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={['/grounds/g1/board']}>
+      <MemoryRouter initialEntries={[at]}>
         <Routes><Route path="/grounds/:id/board" element={<BoardPage />} /></Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -71,8 +71,9 @@ describe('the kind-of-work dialog, scoped to kindsOffered', () => {
     expect(labels).not.toContain("A founder's own check-in, about their own commitments and decisions")
   })
 
+  /* Screen match, 16 October: a law firm matter's lead first reads matter-board.jpg's own board, which has neither; both hold, unchanged, on "See every other part of this board" (?whole=1). */
   it('still lists the check-in’s own kind even when it is not offered, so it can still be saved', async () => {
-    renderBoard({ ...base, kindOfWork: 'a law firm matter', kindsOffered: ['sales org'] })
+    renderBoard({ ...base, kindOfWork: 'a law firm matter', kindsOffered: ['sales org'] }, '/grounds/g1/board?whole=1')
     await userEvent.click(await screen.findByRole('button', { name: 'Change the kind of work' }))
     const select = screen.getByLabelText('Kind of work') as HTMLSelectElement
     const labels = Array.from(select.options).map((o) => o.textContent)

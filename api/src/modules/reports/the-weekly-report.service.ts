@@ -31,7 +31,7 @@ import { PATTERN_ROW_SELECT, servedPatterns, runsItForAPattern } from '../patter
 import {
   theFactsIn, theSentencesIn, theWeeksHeading, whatThisReportIs, theCheckInsMade, theThingsWithProof, aTargetThisWeek,
   movedThisWeek, whatCameUpAcrossTheTeam, whatWasSaidAndWhatTheProofShows, aCommitmentThatSettled, aHandoffThatCleared, theirSideOfIt,
-  forTheLeadToDo, yourOwnToDo, whereItComesFrom, NOTHING_MOVED, NOTHING_DROPPED, NO_RESULT,
+  forTheLeadToDo, yourOwnToDo, whereItComesFrom, aBlockerFromBeforeTheWeek, NOTHING_MOVED, NOTHING_DROPPED, NO_RESULT,
   type TheWeeksFacts, type AWeeksCount, type AWeeksCommitment, type AFigure, type AThingToDo, type WhatChanged,
 } from './the-weekly-report';
 
@@ -300,10 +300,19 @@ export class TheWeeklyReportService {
     });
 
     /* WHAT ONLY THE LEAD CAN SETTLE, as Today reads it for the lead, kept by label. */
-    const forTheLead = ground.initiatorId
-      ? (((await whatTodayReads(this.prisma, groundId, { userId: ground.initiatorId, isAdmin: false }).catch(() => ({} as any)))?.forTheLead ?? []) as any[])
-        .map((x) => ({ do: namesOff(x.decide), why: namesOff(x.why), ...(x.changes ? { changes: namesOff(x.changes) } : {}), from: whereItComesFrom(String(x.id ?? '')) }))
+    const leadsItems = ground.initiatorId
+      ? (((await whatTodayReads(this.prisma, groundId, { userId: ground.initiatorId, isAdmin: false }, { everyThingForTheLead: true }).catch(() => ({} as any)))?.forTheLead ?? []) as any[])
       : [];
+    /* When each wait behind one was first raised, so one still open from before this week reads as a blocker that keeps coming back. */
+    const handoffIds = leadsItems.map((x) => String(x.id ?? '')).filter((id) => id.startsWith('handoff-')).map((id) => id.slice('handoff-'.length));
+    const raisedAt = new Map<string, Date>(handoffIds.length
+      ? ((await (this.prisma as any).groundDependency?.findMany?.({ where: { id: { in: handoffIds } }, select: { id: true, createdAt: true } })?.catch?.(() => []) ?? []) as any[]).map((d) => [d.id, d.createdAt])
+      : []);
+    const forTheLead = leadsItems.map((x) => {
+      const id = String(x.id ?? '');
+      const from = aBlockerFromBeforeTheWeek(whereItComesFrom(id), id.startsWith('handoff-') ? raisedAt.get(id.slice('handoff-'.length)) : null, start);
+      return { do: namesOff(x.decide), why: namesOff(x.why), ...(x.changes ? { changes: namesOff(x.changes) } : {}), from };
+    });
 
     const lastAt = done.map((c) => c.completedAt).filter(Boolean).map((d) => new Date(d)).sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
     const periods = [...new Set(done.filter((c) => !c.isSetup && typeof c.sessionNumber === 'number').map((c) => periodOf({ sessionNumber: c.sessionNumber, when: c.completedAt }, ground)))];

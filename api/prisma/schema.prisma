@@ -1044,6 +1044,10 @@ model Ground {
   timelineWeeks    Int?    @map("timeline_weeks")
   cadence          Cadence @default(FORTNIGHTLY)
   cadenceAnchorDay Int?    @map("cadence_anchor_day") // weekly: 0=Sun..6=Sat ("every Monday"); monthly: 1-31 (day of month)
+  /// THE TIME OF DAY EACH SESSION'S TEAM REPORT SHARES ITSELF, "HH:MM" in the organisation's own day (Hafsah's answer 5, 16 October 2026:
+  /// "Reports share themselves at their set time unless the lead holds them"). Null means the product's default, 18:30, for a check-in that
+  /// repeats; a one-time check-in shares when everyone has checked in, as before. See reports/a-report-shares-itself.ts.
+  reportSharesAt   String? @map("report_shares_at") @db.VarChar(5)
 
   /// WHICH DAYS THIS TEAM WORKS. 0=Sun..6=Sat. Empty means every day, which is the honest default
   /// for a product that does not know whose week this is.
@@ -2402,6 +2406,9 @@ model Report {
   /// released, never a later one as the report grows into it. Empty until anything is released.
   /// See reports/each-sessions-picture-is-released-on-its-own.ts.
   releasedSessions Int[]    @default([]) @map("released_sessions")
+  /// THE SESSIONS THE LEAD HELD ("Hold it", Hafsah's answer 5, 16 October 2026). A report shares itself at the check-in's set time unless
+  /// its session is here; a held session waits until the lead shares it herself. Read in reports/a-report-shares-itself.ts.
+  heldSessions     Int[]    @default([]) @map("held_sessions")
   createdAt       DateTime  @default(now()) @map("created_at")
   /// WHEN THIS WAS LAST WRITTEN, WHICH IS NOT WHEN THE ROW WAS MADE.
   ///

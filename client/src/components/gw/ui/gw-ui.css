@@ -580,6 +580,7 @@ a.gwui-person-row:hover { background: var(--gw-page); }
    same specificity as `.gwui-input`'s own `width: 100%` (defined later in this file), which would
    otherwise win the cascade by source order and put Save back underneath a full-width field. ──── */
 .gwui-narrow-field.gwui-narrow-field { width: 260px; max-width: 100%; }
+.gwui-invite-actions > input.gwui-input.gwui-narrow-field { flex: 0 1 260px; }
 
 /* ── FLUSH FIELD ROWS: no longer needed for spacing (every FieldRow sits flush now, `srow` has no
    side padding at all - see FIELD ROW below), kept as a harmless no-op so the `flush` prop on

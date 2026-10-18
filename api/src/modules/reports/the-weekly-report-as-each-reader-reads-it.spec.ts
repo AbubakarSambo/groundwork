@@ -202,8 +202,8 @@ describe('the lead reads the whole week', () => {
     const { r } = await served(LEAD);
     expect(r.forNextWeek).toEqual(expect.arrayContaining([
       { do: 'Decide whether a price range counts as a budget.', why: 'Aisha is waiting on you for it.', comesFrom: 'This comes from a blocker.' },
-      { do: 'Talk with Baraka about “The work stops until there is another call”.', why: 'Baraka has seen this and has not answered yet.', comesFrom: 'This comes from something that kept happening.' },
-      { do: 'Decide whether to hire a second driver.', why: 'You wrote this down as still to decide.', comesFrom: 'This comes from something you wrote down to decide.' },
+      { do: 'Talk with Baraka about “The work stops until there is another call”.', why: 'Baraka has seen this and has not answered yet.', comesFrom: 'From a pattern' },
+      { do: 'Decide whether to hire a second driver.', why: 'You wrote this down as still to decide.', comesFrom: 'Decision needed' },
     ]));
   });
 
@@ -263,7 +263,7 @@ describe('a person reads only what is about them, and the team\'s own counts', (
       ],
     });
     expect(r.forNextWeek).toEqual([
-      { do: 'Send Green Mart the price list on Monday.', why: 'You said this week that you would do this, and it is still open.', comesFrom: 'This comes from what you said you would do.' },
+      { do: 'Send Green Mart the price list on Monday.', why: 'You said this week that you would do this, and it is still open.', comesFrom: 'From your commitments' },
     ]);
     expect(r.acrossTheTeam).toEqual([]);
     const all = JSON.stringify(r);
@@ -278,7 +278,7 @@ describe('a person reads only what is about them, and the team\'s own counts', (
     expect(r.whatChanged!.moved).toEqual(['You committed to call Mama Fresh by Thursday, and you say it is done. Nothing has been shown to back it yet.']);
     expect(r.whatChanged!.dropped).toEqual(['Nothing was dropped this week.']);
     expect(r.forNextWeek).toEqual([
-      { do: 'Send the quote on Friday.', why: 'You said this week that you would do this, and it is still open.', comesFrom: 'This comes from what you said you would do.' },
+      { do: 'Send the quote on Friday.', why: 'You said this week that you would do this, and it is still open.', comesFrom: 'From your commitments' },
     ]);
     expect(JSON.stringify(r)).not.toMatch(/Baraka|Kwik|The work stops|second driver|Chidi/);
   });
@@ -318,6 +318,8 @@ describe('the parts on their own', () => {
     expect(theWeeksHeading('2026-09-21', '2026-09-23T08:00:00Z', new Date('2026-09-23T10:00:00Z'))).toBe('This week, 21 to 23 Sep, so far');
     expect(theWeeksHeading('2026-09-28', '2026-10-02T08:00:00Z', new Date('2026-10-06T10:00:00Z'))).toBe('The week of 28 Sep to 2 Oct');
     expect(theWeeksHeading('2026-09-21', '2026-09-21T08:00:00Z', new Date('2026-09-21T10:00:00Z'))).toBe('This week, 21 Sep, so far');
+    /* A week still going runs to today, whenever its last check-in was (screen match, 16 October). */
+    expect(theWeeksHeading('2026-09-21', '2026-09-21T08:00:00Z', new Date('2026-09-23T10:00:00Z'))).toBe('This week, 21 to 23 Sep, so far');
   });
 
   it('does not read "maybe 30 units" as a date', () => {
@@ -485,7 +487,7 @@ describe('with no setting at all, the lead reads Baraka’s pattern in the week 
   it('the lead reads the pattern Baraka has had his turn on, and a nudge to talk it through', async () => {
     const { r } = await served(LEAD);
     expect(JSON.stringify(r.threeInARow)).toContain('The work stops until there is another call');
-    expect((r.forNextWeek ?? []).filter((f: any) => f.comesFrom === 'This comes from something that kept happening.').length).toBeGreaterThan(0);
+    expect((r.forNextWeek ?? []).filter((f: any) => f.comesFrom === 'From a pattern').length).toBeGreaterThan(0);
   });
 
   it('an admin who does not run the check-in reads none', async () => {

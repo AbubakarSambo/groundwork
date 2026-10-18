@@ -87,12 +87,12 @@ function aBoard(overrides: Record<string, unknown> = {}) {
   }
 }
 
-function renderBoard(board: any) {
+function renderBoard(board: any, at = '/grounds/g-mvq4/board') {
   ;(boardApi.get as any).mockResolvedValue(board)
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={['/grounds/g-mvq4/board']}>
+      <MemoryRouter initialEntries={[at]}>
         <Routes><Route path="/grounds/:id/board" element={<BoardPage />} /></Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -147,9 +147,10 @@ describe('the MarketView Q4 board, as the lead', () => {
     expect(within(section).getByText('A document on this check-in says it differently. It says, "two paid, one invoice open."')).toBeTruthy()
   })
 
+  /* Screen match, 16 October: the lead first reads mvq4-board.jpg's own board, which has none of these; they hold, word for word, on "See every other part of this board" (?whole=1). */
   it('folds the records table, the team, "Who checked in", "Over time", "Reports" and "Help nobody mentioned"; keeps patterns and coaching open', async () => {
     me = { id: 'p-lead', firstName: 'Wairimu', role: 'MEMBER' }
-    renderBoard(aBoard())
+    renderBoard(aBoard(), '/grounds/g-mvq4/board?whole=1')
     await screen.findByRole('heading', { name: 'MarketView, Q4' })
 
     const fold = screen.getByText('Everything else from this check-in').closest('details') as HTMLElement

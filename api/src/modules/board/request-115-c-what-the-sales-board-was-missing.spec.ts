@@ -129,10 +129,23 @@ describe('request 115 (c): help nobody mentioned', () => {
 });
 
 describe('request 115 (c): open issues, and what a target assumes', () => {
-  it('Bisi and the admin who set it up are told what open issues would need, and nothing is made up', async () => {
-    for (const reader of [BISI, SETUP] as (readonly [string, string])[]) {
-      expect((await boardAs(WITH_AN_AIM, ...reader)).openIssues).toEqual({ state: 'not-known', why: NO_OPEN_ISSUES_ON_RECORD });
-    }
+  /*
+   * SCREEN MATCH, 16 OCTOBER: OPEN ISSUES ARE READ FROM THE RECORD NOW (the-open-issues.ts). Was "told what open
+   * issues would need": Bisi's own promise from a week ago is on record, so it is an issue at "Being done", and only
+   * Bisi, who made it, is asked whether it happened. The admin who set it up reads where it stands, with nothing to
+   * press. Juma, Femi and Ngozi are still told nothing.
+   */
+  it('Bisi and the admin who set it up read what is on record at its step, and only Bisi is asked whether it happened', async () => {
+    const bisi = (await boardAs(WITH_AN_AIM, ...BISI)).openIssues;
+    expect(bisi.state).toBe('filled');
+    const doing = bisi.issues.find((i: any) => i.step === 'Being done');
+    expect(doing.title).toBe('Follow up directly with the committee members');
+    expect(doing.action.choices.map((c: any) => c.label)).toEqual(['Yes, it’s done', 'Not yet']);
+    const setUp = (await boardAs(WITH_AN_AIM, ...SETUP)).openIssues;
+    expect(setUp.issues.map((i: any) => i.title)).toEqual(bisi.issues.map((i: any) => i.title));
+    expect(setUp.issues.every((i: any) => i.action === null)).toBe(true);
+    expect(JSON.stringify(bisi)).not.toMatch(/\b(?:PIP|exit|at risk)\b/i);
+    expect(NO_OPEN_ISSUES_ON_RECORD).toMatch(/^Groundwork does not follow an issue/);
     for (const reader of [JUMA, FEMI, NGOZI] as (readonly [string, string])[]) {
       expect((await boardAs(WITH_AN_AIM, ...reader)).openIssues).toBeUndefined();
     }
