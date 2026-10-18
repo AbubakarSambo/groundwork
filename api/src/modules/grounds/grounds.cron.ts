@@ -1,4 +1,5 @@
 import { theyAreConnectedOnWhatsApp } from '../whatsapp/connect-whatsapp';
+import { theEmailOpeningShould } from './an-opening-goes-on-one-channel';
 import { theCheckInIsOpen } from '../whatsapp/what-goes-to-a-phone';
 import { Injectable, Logger, OnApplicationBootstrap, Optional } from '@nestjs/common';
 import { owesThisSession } from './the-lead-checks-in-when-they-choose';
@@ -792,12 +793,13 @@ export class GroundsCron implements OnApplicationBootstrap {
       select: {
         id: true,
         groundId: true,
+        availableFrom: true,
         participant: {
           select: {
             id: true,
             email: true,
             userId: true,
-            ground: { select: { label: true, simplerWords: true, organizationId: true } },
+            ground: { select: { label: true, simplerWords: true, organizationId: true, overWhatsApp: true } },
             /* No recordEntries here, structurally (NL-007): this sweep used to put the person's last
                private record line into the mail and the WhatsApp body as "Last time: ...". The product's
                central promise is that nothing they wrote reaches a mailbox; the reminder never needed it. */
@@ -834,6 +836,14 @@ export class GroundsCron implements OnApplicationBootstrap {
         /* Hafsah, 14 October (later): for somebody on WhatsApp, the missed-check-ins notice goes in their WhatsApp check-in too,
            never by email. It stays on Today, and is said before the first question once they reply (whatsapp-for-an-organisation). */
         if (await theyAreConnectedOnWhatsApp(this.prisma, { organizationId: (p.ground as any).organizationId, userId: p.userId, email: p.email })) {
+          await this.prisma.checkIn.update({ where: { id: ci.id }, data: { sessionReadyNotifiedAt: now } });
+          continue;
+        }
+        /* ONE CHANNEL FOR EVERY OPENING (release plan Part 0; Drop Access run 1, item 10): when the WhatsApp opening went, or is held
+           for the night, no email goes; while it is still on its way the email waits for the next sweep. See an-opening-goes-on-one-channel. */
+        const should = await theEmailOpeningShould(this.prisma, ci as any, now);
+        if (should === 'wait') continue;
+        if (should === 'skip') {
           await this.prisma.checkIn.update({ where: { id: ci.id }, data: { sessionReadyNotifiedAt: now } });
           continue;
         }

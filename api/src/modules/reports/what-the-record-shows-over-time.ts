@@ -1,3 +1,4 @@
+import { theThingWaitedFor } from '../board/a-wait-said-in-full';
 import { aPartyOutside, theSameThing } from '../board/a-thing-is-not-somebody';
 import { someOfThemHave } from './some-of-them-has-or-have';
 /**
@@ -927,6 +928,20 @@ export function overTimeAsServed(
   opts: { sessionsSoFar?: number | null; meetingsOnRecord?: boolean } = {},
 ): WhatTheRecordShowsOverTime | null {
   if (!it) return null;
+  /*
+   * A wait stored before it was written without "her" (Drop Access run 1, A7; theThingWaitedFor) reads as it is written now:
+   * Grace read "Joseph Kariuki is waiting on you for her approval" from the report kept before the fix.
+   */
+  if (Array.isArray(it.dependencies)) {
+    it = {
+      ...it,
+      dependencies: it.dependencies.map((d: any) => {
+        if (!d || typeof d.what !== 'string' || !d.onParticipantId) return d;
+        const what = theThingWaitedFor(d.what, d.onParticipantId);
+        return what === d.what ? d : { ...d, what, ...(typeof d.say === 'string' ? { say: d.say.split(d.what).join(what) } : {}) };
+      }),
+    };
+  }
   const sessionsSoFar = opts.sessionsSoFar && opts.sessionsSoFar > 0 ? opts.sessionsSoFar : (it.sessions ?? 0);
   /* The sentence is rebuilt from the row, so a report stored before it was rewritten reads it too. */
   const commitments = (it.commitments ?? []).map((c) => (c && typeof c.what === 'string' && typeof c.who === 'string' && typeof c.theySaidIt === 'boolean'

@@ -28,7 +28,7 @@ const PLAN = { id: 'g-pip', label: 'Performance plan, Femi', scenario: 'ALIGNMEN
 let promiseCount = 0;
 const promise = (over: any) => ({ id: `pr-${++promiseCount}`, text: 'send the price list', dueDate: day('2026-10-06'), groundId: 'g-sales', authoredBy: 'self', seenBySubject: true, participantId: 'p-omar', participant: { ...PEOPLE['p-omar'], ground: SALES }, ...over });
 
-interface Opts { phone?: string | null; whatsappOn?: boolean; promises?: any[]; waits?: any[]; colleaguesPromises?: any[]; objectives?: any[]; snapshots?: any[]; waiting?: boolean; onLeave?: boolean; stopped?: boolean; quiet?: boolean; quietRows?: any[]; sendResult?: any; held?: boolean; weekend?: boolean }
+interface Opts { phone?: string | null; whatsappOn?: boolean; promises?: any[]; waits?: any[]; colleaguesPromises?: any[]; objectives?: any[]; snapshots?: any[]; waiting?: boolean; onLeave?: boolean; stopped?: boolean; quiet?: boolean; quietRows?: any[]; sendResult?: any; held?: boolean; weekend?: boolean; releaseOne?: boolean }
 
 function aMorning(o: Opts = {}) {
   const whats: { org: string; to: string; text: string; context: any }[] = [];
@@ -45,7 +45,8 @@ function aMorning(o: Opts = {}) {
   ];
   const prisma: any = {
     ground: { findMany: jest.fn(async () => [SALES, PLAN]) },
-    organization: { findMany: jest.fn(async () => [{ id: 'org-1' }]) },
+    /* Release 1's sales board, off unless the case switches it on (release-one-sales-board). */
+    organization: { findMany: jest.fn(async () => [{ id: 'org-1' }]), findUnique: jest.fn(async () => ({ release1SalesBoardOn: !!o.releaseOne })) },
     platformSetting: { findUnique: jest.fn(async () => ({ value: { at: '2026-09-01T00:00:00Z' } })), create: jest.fn(), update: jest.fn() },
     user: { findUnique: jest.fn(async () => ({ firstName: 'Wairimu', email: 'wairimu@x.test', phoneNumber: o.phone === undefined ? null : o.phone, deletedAt: null, isActive: true })), findMany: jest.fn(async () => []) },
     person: { findFirst: jest.fn(async () => ({ phone: o.phone === undefined ? '+254711000111' : o.phone, externalId: 'e-wairimu' })), findMany: jest.fn(async () => []) },
@@ -77,14 +78,15 @@ function aMorning(o: Opts = {}) {
 const QUIET_ROWS = ['p-omar', 'p-bisi', 'p-kofi'].map((id) => ({ participantId: id, sessionNumber: 2, status: 'NOT_STARTED', createdAt: day('2026-09-28'), availableFrom: day('2026-09-28'), participant: PEOPLE[id] }));
 
 describe('what Wairimu reads on her phone, outside the 24 hours (the template, one paragraph)', () => {
-  it('has the approval first, then the overdue, most late first, and the link to Today', async () => {
+  /* The link is the board of the check-in the facts are about: the template says "You can open your board for the full picture here" (Drop Access short run, item 11). */
+  it('has the approval first, then the overdue, most late first, and the link to the board of the check-in it is about', async () => {
     const m = aMorning();
     expect(await m.run()).toEqual({ tried: 1 });
     expect(m.whats).toHaveLength(1);
     const { params } = m.whats[0].context;
     expect(m.whats[0].context.kind).toBe('lead-summary');
     expect(params[0]).toBe('Wairimu');
-    expect(params[2]).toBe('https://myground.work/today');
+    expect(params[2]).toBe('https://myground.work/grounds/g-sales/board');
     expect(params[1]).toBe(
       'These need you. Amina’s leave from Wednesday 14 October to Friday 16 October is waiting for you to approve or decline. '.replace('’', "'")
       + 'You committed to “write up the Kisumu visit”. That was due by Friday 9 October and is three days late. '
@@ -250,6 +252,15 @@ describe('the risks', () => {
     expect(m.mails[0][2].needsYou).toEqual(['Kofi is waiting on you for the pricing for Q4 since Thursday 8 October.']);
   });
 
+  it('an answer somebody is waiting on her for, with no day and no kind, needs her too (Drop Access, 16 October), with Release 1\'s switch on', async () => {
+    const m = aMorning({
+      promises: [], waiting: false, phone: null, releaseOne: true,
+      waits: [{ id: 'w-9', groundId: 'g-sales', what: 'an answer about the KES 4,500 price for Juja Hardware', namedTheThing: true, onLabel: null, status: 'WAITING', createdAt: day('2026-10-08'), dueOn: null, blockerKind: null, fromParticipantId: 'p-kofi', onParticipantId: 'p-wairimu', fromParticipant: PEOPLE['p-kofi'], onParticipant: PEOPLE['p-wairimu'] }],
+    });
+    await m.run();
+    expect(m.mails[0][2].needsYou).toEqual(['Kofi is waiting on you for an answer about the KES 4,500 price for Juja Hardware since Thursday 8 October.']);
+  });
+
   it('a wait with a day that has passed is overdue on the team, in the one who owes it, once they said it is theirs', async () => {
     const m = aMorning({
       promises: [], waiting: false, phone: null,
@@ -405,6 +416,14 @@ describe('a wait is told only when it reads as a sentence', () => {
     const m = aMorning({ phone: null, promises: [], waiting: false, waits: [wait({})] });
     await m.run();
     expect(m.mails[0][2].risks).toEqual(['Bisi says the work has been waiting on Omar for the price list since Monday 21 September. Not backed: no attempt to unblock mentioned. Bisi could have messaged Omar, asked again, or raised it with you.']);
+  });
+
+  /* Drop Access run 1, item 18, behind Release 1's switch: a message no longer carries "Not backed: ... could have messaged ..." (clipped,
+     judging, and untrue in the run); it says what was tried, in full with its day, or nothing. */
+  it('with Release 1\'s switch on, the same wait carries no "Not backed:" note', async () => {
+    const m = aMorning({ phone: null, promises: [], waiting: false, waits: [wait({})], releaseOne: true });
+    await m.run();
+    expect(m.mails[0][2].risks).toEqual(['Bisi says the work has been waiting on Omar for the price list since Monday 21 September.']);
   });
 });
 

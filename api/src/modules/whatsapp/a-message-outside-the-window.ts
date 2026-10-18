@@ -29,6 +29,8 @@ export const BUSINESS_INITIATED: ReadonlySet<string> = new Set([
   'checkin-catch-up',
   'anchor-weekly-insight', 'anchor-follow-up',
   'report', 'report-retry', 'request-waiting', 'request-decided', 'review-started', 'review-decided',
+  /* A thank-you for an answer when the report has nothing in it yet: Groundwork writes it first, it has no template, so it goes inside the 24 hours only (Drop Access run 1, item 22). */
+  'report-thanks',
   /* What waits for an approver, said once for all of it (the-approvals-summary.ts). */
   'requests-waiting',
   /* A check-in left halfway (a-check-in-left-halfway.ts): the reminder to carry on, the half-hour warning, and the clock closing it. */
@@ -89,7 +91,9 @@ export const OPENING_OR_CLOSING: ReadonlySet<string> = new Set(['checkin-open', 
  * Groundwork starts is new, and goes to an organisation only once it has turned WhatsApp on (decisions
  * 78 and 88), or when it already had a number of its own connected.
  */
-export const WENT_BEFORE_THIS_RELEASE: ReadonlySet<string> = new Set(['report', 'report-retry']);
+export const WENT_BEFORE_THIS_RELEASE: ReadonlySet<string> = new Set(['report', 'report-retry', 'report-thanks']);
+/** Never a first contact: a thank-you with nothing to read is not how Groundwork introduces itself to a number (Drop Access run 1, item 23). */
+export const NEVER_THE_FIRST_MESSAGE: ReadonlySet<string> = new Set(['report-thanks']);
 export const NOT_TURNED_ON_QUIETLY = 'This organisation has not turned on WhatsApp; not sent';
 export const NOT_TODAY = 'Groundwork has already written first to this person as often as it may today; not sent';
 export const THEY_SAID_NOT_NOW = 'This person replied "Not now" today; not sent';

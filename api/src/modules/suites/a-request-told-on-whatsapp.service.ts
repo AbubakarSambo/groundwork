@@ -1,3 +1,4 @@
+import { theOrganisationsZone } from '../../common/the-organisations-own-day';
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
@@ -112,9 +113,9 @@ export class ARequestToldOnWhatsApp {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, firstName: true, deletedAt: true } }).catch(() => null);
     if (!user || user.deletedAt) return 'nothing';
     if (fallsInLeave(now, await theirApprovedLeave(this.prisma, userId, organizationId))) return 'held';
-    /* Quiet hours are where the person is: their own time zone when the directory has one, Lagos otherwise (decision 83). */
+    /* Quiet hours are where the person is: their own time zone when the directory has one (decision 83), else the organisation's (release plan Part 0). */
     const reach = await this.reach(organizationId, userId);
-    if (itIsQuietNow(now, reach.timezone)) return 'held';
+    if (itIsQuietNow(now, reach.timezone ?? (await theOrganisationsZone(this.prisma as any, organizationId).catch(() => null)))) return 'held';
     /* Only what has not been said to this person yet. */
     const told = await this.prisma.suiteEvent.findMany({ where: { organizationId, kind: 'told', toUserId: userId, ref: { in: mine.refs.map((r) => r.id) } }, select: { ref: true } }).catch(() => []);
     const said = new Set((told ?? []).map((t) => t.ref));

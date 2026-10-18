@@ -111,6 +111,24 @@ export function nothingToReadYet(report: any): boolean {
   return !!report && report.state === 'forming' && (report.whereThingsStand?.agreed ?? 0) === 0 && (report.whereThingsStand?.stillOpen ?? 0) === 0;
 }
 
+/**
+ * A REPORT NOTICE WITH NOTHING IN IT IS NOT A REPORT NOTICE (Drop Access run 1, items 22 and 23). Outside the 24 hours the notice can only go
+ * as groundwork_report_ready, "Your report for {{1}} is ready. {{2}} Open Groundwork to read it.", and with nothing agreed or open yet {{2}}
+ * was "Not everyone has answered yet, so there is nothing to agree or differ with." or "Everybody has answered. The report has not yet found
+ * anything they agree or differ on." The second went to Joseph at 11:30 on days Grace was told at 15:30 that two differences were still open;
+ * the first was Grace's very first WhatsApp message. A notice is worth its template only when the report has something agreed or open;
+ * otherwise it is a thank-you said inside the 24 hours only (its own kind, with no template), and nothing outside them.
+ */
+export const THANKS_ONLY = 'report-thanks';
+const SAYS_NOTHING_YET = /has not yet found anything|nothing to agree or differ/i;
+export function aReportWorthItsTemplate(report: any): boolean {
+  if (!report) return false;
+  const counted = (report.whereThingsStand?.agreed ?? 0) > 0 || (report.whereThingsStand?.stillOpen ?? 0) > 0;
+  if (counted) return true;
+  /* A report of one person's own work has no agreements to count and still says something; only "nothing yet" says nothing. */
+  return !nothingToReadYet(report) && !SAYS_NOTHING_YET.test(String(report.whereThingsStand?.saying ?? ''));
+}
+
 export const THANKS_YOUR_ANSWER_IS_IN = (label: string) =>
   `Thank you, your answer for ${label} is in. The shared picture is made once everyone has answered, and you will be told as soon as there is something to read.`;
 

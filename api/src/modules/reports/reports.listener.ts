@@ -1,3 +1,4 @@
+import { CLOSED_BY_THE_CLOCK } from '../../common/closed-by-the-clock';
 import { nameToCall } from '../engagement/a-name-to-call-them';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { whoIsLeftToCheckIn } from '../email/who-has-not-checked-in-yet';
@@ -245,6 +246,13 @@ export class ReportsListener {
     });
     if (!ground?.initiator?.email) return;
     if (!ground.participants.find((p) => p.id === event.participantId)?.checkIns.length) return;
+    /*
+     * A CHECK-IN THE CLOCK CLOSED IS NOT "<NAME> HAS CHECKED IN" (Drop Access run 1, item 12). Joseph's day 5 check-in was closed by the
+     * clock at 23:30 after he had said only "I do not know", and Grace was emailed "Joseph Kariuki has checked in ... Everyone has now
+     * checked in." He had not finished. What he said is kept and read in the report; the lead is not told he checked in.
+     */
+    const closed: any = await Promise.resolve((this.prisma as any).checkIn?.findUnique?.({ where: { id: event.checkInId }, select: { closedReason: true } })).catch(() => null);
+    if (closed?.closedReason === CLOSED_BY_THE_CLOCK) return;
 
     const who = ground.participants.find((p) => p.id === event.participantId);
     const participantEmail = who?.user?.email;

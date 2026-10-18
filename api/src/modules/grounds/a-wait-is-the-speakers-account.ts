@@ -1,3 +1,4 @@
+import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 /**
  * A WAIT ON A COLLEAGUE IS THE SPEAKER'S ACCOUNT, NOT A FACT ABOUT THE COLLEAGUE (decision 137;
  * decision 139, must-fix 4).
@@ -110,7 +111,8 @@ export async function theConfirmedWaits(
  * speaker's own words about it (what they said they did, `triedSaid`, and the stored wait text): what they tried to unblock it, or that they
  * have not said. It is a fact about the record, never a label on either person. The "Tried:" and "Not backed:" forms are Hafsah's own wording.
  */
-const AN_ATTEMPT = /\b(nudg\w*|chas\w*|follow\w*[ -]up|followed up|asked (?:again|twice|him|her|them|\w+ again)|re-?asked|remind\w*|call(?:ed)?|phon\w*|rang|email\w*|messag\w*|text\w*|whatsapp\w*|wrote|sent (?:him|her|them|a)\b|raised it|took it (?:to|above)|escalat\w*|spoke (?:to|with)|talked (?:to|with)|went to (?:see|his|her|their))\b/i;
+/* "asked Grace about the price" is an attempt too (Drop Access run 1, item 18: Joseph's "I've asked Grace about the price" was read as nothing tried). */
+const AN_ATTEMPT = /\b(nudg\w*|chas\w*|follow\w*[ -]up|followed up|asked (?:again|twice|him|her|them|\w+ again|(?!for\b|if\b|whether\b|me\b|us\b|to\b)\w+ (?:about|for|if|whether|to)\b)|re-?asked|remind\w*|call(?:ed)?|phon\w*|rang|email\w*|messag\w*|text\w*|whatsapp\w*|wrote|sent (?:him|her|them|a)\b|raised it|took it (?:to|above)|escalat\w*|spoke (?:to|with)|talked (?:to|with)|went to (?:see|his|her|their))\b/i;
 
 export const NOT_BACKED = 'Not backed: no attempt to unblock mentioned.';
 
@@ -155,6 +157,26 @@ export function whatTheyCouldHaveDone(names: WhoTheNoteNames = {}): string {
   /* The lead is the one waited on, or the one waiting: there is nobody above them here to raise it with. */
   if (theSame(on, lead) || theSame(by, lead)) return `${by} could have messaged ${on} or asked again.`;
   return `${by} could have messaged ${on}, asked again, or raised it with ${lead}.`;
+}
+
+/**
+ * WHAT THEY TRIED, IN A FULL SENTENCE, OR NOTHING: the note a MESSAGE carries (Drop Access run 1, item 18). Grace's Friday letter read
+ * "Joseph says the work is waiting on you for a decision on the KES 4,500 price for Juja Hardware. Not backed: no attempt to unblock
+ * mentioned. Joseph could have messaged you or asked again." It was clipped, it judged, and it was untrue: Joseph had said "I've asked
+ * Grace about the price" and "I asked her already" about the same wait, said again in other words. Read from every time the wait was
+ * said (dedupeDependencies keeps the fullest words and the day), a message says what was tried in the speaker's own words with the
+ * day, "Joseph said on Friday 23 October, “I've asked Grace about the price.”", or says nothing beside the claim. The board keeps
+ * Hafsah's "Tried:" and "Not backed:" note (change 4) until she says otherwise.
+ */
+export function whatTheyTriedInFull(w: { what?: string | null; triedSaid?: string | null; triedSaidAt?: Date | string | null; createdAt?: Date | string | null }, by: string | null | undefined): string {
+  const text = theAttemptSaid(w);
+  if (!text) return '';
+  const who = String(by ?? '').trim() || 'They';
+  const Who = /^you$/i.test(who) ? 'You' : who.charAt(0).toUpperCase() + who.slice(1);
+  const at = w.triedSaidAt ?? w.createdAt ?? null;
+  const day = at ? whenItWas(at, 'weekdayAndDay') : null;
+  const words = text.replace(/\s+/g, ' ').trim().replace(/[.\s]+$/, '');
+  return `${Who} said${day ? ` on ${day}` : ''}, “${words.charAt(0).toUpperCase()}${words.slice(1)}.”`;
 }
 
 /**

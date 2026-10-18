@@ -18,7 +18,7 @@ import { DeliveryService, DeliveryContext } from './delivery.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { theCheckInForAnEmail } from './the-check-in-for-an-email';
 import { STOP_LINE } from '../conversation/ignoring-it-should-be-enough';
-import { ROUTINE_EMAILS, THEY_HAD_ONE_TODAY, theirRoutineMessagesToday } from '../engagement/one-routine-message-a-day';
+import { ROUTINE_EMAILS, THEY_HAD_ONE_TODAY, theirRoutineMessagesToday, THE_SUMMARY_SENDERS, justAfterTheSummary, whoTheyAre, theyRunACheckIn } from '../engagement/one-routine-message-a-day';
 import { NOT_SENT_WHILE_AWAY, whatThisMailIs, whetherToSend } from './nothing-goes-out-that-was-turned-off';
 import { whoIsAwayOn } from '../suites/who-is-away';
 import { inQuietHours, nextAllowedMoment } from './nothing-lands-at-3am';
@@ -445,7 +445,9 @@ export class EmailService implements OnModuleInit {
     /* ONE ROUTINE MESSAGE A PERSON A DAY, ACROSS EMAIL AND WHATSAPP TOGETHER (decision 109, item 6). Asked after the person's own wishes, and only of the
        routine senders: approvals, openings and closings, and everything somebody asked for are never counted or held back. */
     const rather = (sender ? await this.wouldTheyRatherNot(options.to, sender, context) : null)
-      ?? (sender && ROUTINE_EMAILS.has(sender) ? await this.theyHadTheirOneToday(options.to) : null);
+      ?? (sender && ROUTINE_EMAILS.has(sender) && !THE_SUMMARY_SENDERS.has(sender) ? await this.theyHadTheirOneToday(options.to) : null)
+      /* The summary by email never follows the same summary on WhatsApp. */
+      ?? (sender && THE_SUMMARY_SENDERS.has(sender) ? await this.theSummaryWentOnWhatsAppToday(options.to) : null);
     if (rather) {
       /* Logged rather than silent: an email that did not go out for a good reason is still a thing
          somebody may be waiting for, and "nothing happened" is the hardest kind of bug to chase. */
@@ -463,13 +465,45 @@ export class EmailService implements OnModuleInit {
      * held-mail.cron.ts. The way-back-in and asked-for mails go at once: somebody who just asked for
      * a sign-in link is awake.
      */
-    if (sender && whatThisMailIs(sender) === 'we decided to send it') {
+    /* THE LEAD'S SUMMARY WINS (standing decision, 18 October; Drop Access run 1, item 16): routine mail to somebody who runs a check-in
+       waits for the morning summary, and then goes only if the summary did not. See one-routine-message-a-day.ts. */
+    if (sender && ROUTINE_EMAILS.has(sender) && !THE_SUMMARY_SENDERS.has(sender)) {
+      const waited = await this.waitForTheLeadsSummary(options, context, sender);
+      if (waited) { if (context) context.outcome = 'held'; return undefined; }
+    }
+    /* Every mail but the way back in and the running of the product (release plan Part 0, Drop Access run 1 item 12): "Joseph Kariuki has
+       checked in" was an asked-for mail and went at half past two in the morning in Nairobi. Quiet hours hold it until seven. */
+    if (sender && (whatThisMailIs(sender) === 'we decided to send it' || whatThisMailIs(sender) === 'asked for')) {
       const held = await this.holdForTheMorning(options, context, sender);
       if (held) { if (context) context.outcome = 'held'; return undefined; }
     }
     const went = await this.deliverNow(options, context, sender);
     if (context) context.outcome = 'sent';
     return went;
+  }
+
+  /** Null unless the lead's summary already went to this person on WhatsApp today. */
+  private async theSummaryWentOnWhatsAppToday(to: string): Promise<string | null> {
+    const them = await whoTheyAre(this.prisma as any, { email: to }).catch(() => ({ emails: [], phones: [] as string[] }));
+    if (!them.phones.length) return null;
+    const now = new Date();
+    const rows: any[] = await Promise.resolve((this.prisma as any).whatsAppSend?.findMany?.({ where: { phone: { in: them.phones }, createdAt: { gte: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())) }, sentAt: { not: null } }, select: { kind: true } }) ?? []).catch(() => []);
+    return (rows ?? []).some((r) => /^lead-summary(?::|$)/.test(r.kind ?? '')) ? THEY_HAD_ONE_TODAY : null;
+  }
+
+  /** Routine mail to a lead before the morning summary's hour is held until just after it. True when it was held. */
+  private async waitForTheLeadsSummary(options: { to: string; subject: string; html: string }, context: DeliveryContext | undefined, sender: string): Promise<boolean> {
+    try {
+      const now = new Date();
+      const after = justAfterTheSummary(now);
+      if (now.getTime() >= after.getTime()) return false;
+      if (!(await theyRunACheckIn(this.prisma, options.to))) return false;
+      await this.prisma.scheduledEmail.create({ data: { toAddress: options.to, subject: options.subject, html: options.html, sender, context: (context ?? null) as any, notBefore: after } });
+      this.writeItDown(options, sender, 'held', `waits for the lead's morning summary; goes at ${after.toISOString()} only if the summary did not`);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /** Whether this person has already been sent the day's one routine message, by email or on WhatsApp (decision 109, item 6). Null when they have not. */
@@ -514,7 +548,7 @@ export class EmailService implements OnModuleInit {
     const options = { to: row.toAddress, subject: row.subject, html: row.html };
     if (row.sender) {
       const rather = (await this.wouldTheyRatherNot(row.toAddress, row.sender, (row.context ?? undefined) as DeliveryContext | undefined))
-        ?? (ROUTINE_EMAILS.has(row.sender) ? await this.theyHadTheirOneToday(row.toAddress) : null);
+        ?? (ROUTINE_EMAILS.has(row.sender) && !THE_SUMMARY_SENDERS.has(row.sender) ? await this.theyHadTheirOneToday(row.toAddress) : null);
       if (rather) {
         this.logger.log(`Not sending the held "${row.subject}" to ${row.toAddress}: ${rather}`);
         await this.writeItDown(options, row.sender, 'suppressed', rather);
@@ -1549,15 +1583,21 @@ export class EmailService implements OnModuleInit {
   async sendParticipantCheckedIn(adminEmail: string, participantName: string, groundLabel: string, groundUrl: string, stillPending?: number | WhoIsLeft, progress?: { answered: string[]; ofHowMany: number; youAreStillToAnswer?: boolean }): Promise<void> {
     const left: WhoIsLeft | undefined = typeof stillPending === 'number' ? { names: [], count: stillPending } : stillPending;
     const partial = progress && progress.answered.length > 0 && progress.answered.length < progress.ofHowMany ? thePartialPicture(groundLabel, progress, left) : null;
+    /*
+     * "THREE OF FOUR PEOPLE HAVE CHECKED IN ... NOT THE WHOLE TEAM'S VIEW YET" IS NOT SENT (Drop Access run 1, item 24; standing decision of
+     * 18 October). Grace had eighteen of these in ten days, on days her own check-in was optional too. Her one routine message is the
+     * morning summary, and who has checked in is on the board; she is emailed when everybody is in.
+     */
+    if (partial) { this.logger.log(`Not sending "${partial.subject}": a partial count goes in the lead's board and summary, not by email.`); return; }
     const pendingNote = left && left.count > 0
       ? `<p>${escapeHtml(haveNotCheckedInSaid(left))} The report is made once everyone is in.</p>`
       : `<p>Everyone has now checked in. The shared report is ready to go out.</p>`;
     await this.sendEmail({
       to: adminEmail,
-      subject: partial ? partial.subject : `${participantName} has checked in on ${groundLabel}`,
+      subject: `${participantName} has checked in on ${groundLabel}`,
       html: this.layout(
         `<p><strong>${escapeHtml(participantName)}</strong> has checked in on <strong>${escapeHtml(groundLabel)}</strong>.</p>
-         ${partial ? partial.lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('') : pendingNote}
+         ${pendingNote}
          <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View check-in →</a></p>
          <p style="font-size:12px;color:#9B9590;">You can see who has checked in and read what they said in the check-in, and the shared picture once it is ready. Everybody in it is told the moment the picture is ready.</p>`,
       ),

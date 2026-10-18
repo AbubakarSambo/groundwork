@@ -27,7 +27,8 @@ describe('the next allowed moment', () => {
 
 describe('every sender', () => {
   it('asks the one rule, and a refused mail is written down with its moment rather than dropped', () => {
-    expect(service).toMatch(/if \(sender && whatThisMailIs\(sender\) === 'we decided to send it'\) \{\s*const held = await this\.holdForTheMorning\(/);
+    /* Changed 18 October (Drop Access run 1, item 12): a mail somebody asked for is held in the night too ("Joseph Kariuki has checked in" went at 2:30am in Nairobi). Only the way back in and the running of the product go at any hour. */
+    expect(service).toMatch(/if \(sender && \(whatThisMailIs\(sender\) === 'we decided to send it' \|\| whatThisMailIs\(sender\) === 'asked for'\)\) \{\s*const held = await this\.holdForTheMorning\(/);
     expect(service).toMatch(/scheduledEmail\.create\(\{\s*data: \{ toAddress: options\.to, subject: options\.subject, html: options\.html, sender, context: [^,]+, notBefore \}/);
   });
   it('and the sweep sends what is due, once, under its own lock', () => {

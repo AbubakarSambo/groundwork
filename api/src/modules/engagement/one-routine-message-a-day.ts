@@ -1,3 +1,4 @@
+import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
 import { FIRST_MESSAGES, OPENING_OR_CLOSING } from '../whatsapp/a-message-outside-the-window';
 import { formsOfTheSameNumber } from '../whatsapp/a-number-whatsapp-can-reach';
 
@@ -23,7 +24,34 @@ export const ROUTINE_EMAILS: ReadonlySet<string> = new Set([
   'sendRoundDigest', 'sendTestCheckInMovesOn', 'sendHeresWhatIsNew', 'sendYourWeek', 'sendLeadFirstCheckIn', 'sendTheReportFollowUp', 'sendWhoHasGoneQuiet', 'sendWaitingOnThePeople', 'sendWhoHasNotStarted', 'sendTheLeadsDailyNudge', 'sendMissedCheckIns',
   /* The free month's two emails to an admin (15 October): Groundwork decides to send them, so each is the day's one. */
   'sendFreeMonthEndsSoon', 'sendFreeMonthEnded',
+  /* Not 'sendTimeRunningOut' (Release 1, pull request 5): "runs out in 7 days" is the only warning before a check-in is stalled, and the
+     summary's lines can be cut for room, so it stays an email of its own rather than waiting for the summary and folding into it
+     (docs/release-questions.md). It never holds the summary back: the summary is never held by the day's count. */
 ]);
+
+/**
+ * THE LEAD'S DAILY SUMMARY WINS (standing decision, 18 October 2026; Drop Access run 1, items 16 and 24). For somebody who runs a check-in,
+ * the morning summary is the one routine message of the day. Routine mail to her asked for before the summary's hour waits until just after
+ * it, and then goes only if the summary did not (one a day), so "session 8 is complete" or "runs out in 7 days" can never take the
+ * summary's place. What they said is in the summary: what needs her, what is late, and the risks, the end of the check-in among them.
+ * Approvals and security mail are not routine and are never held by this. The summary itself is never held back by the day's count.
+ */
+export const THE_SUMMARY_SENDERS: ReadonlySet<string> = new Set(['sendTheLeadsDailyNudge']);
+/** Whether this address runs a check-in that is still going: the person whose morning summary routine mail waits for. */
+export async function theyRunACheckIn(prisma: any, email: string): Promise<boolean> {
+  const one = await Promise.resolve(prisma?.ground?.findFirst?.({
+    where: { initiator: { email: { equals: String(email ?? '').trim(), mode: 'insensitive' } }, status: { notIn: A_GROUND_NO_MESSAGE_IS_ABOUT } },
+    select: { id: true },
+  })).catch(() => null);
+  return !!one;
+}
+
+/** The summary goes at 9am in Lagos (grounds.cron.ts, sendTheLeadsDailyNudges); routine mail to a lead waits until half an hour after. */
+export function justAfterTheSummary(now: Date): Date {
+  const lagos = new Date(now.getTime() + 60 * 60 * 1000);
+  const at = new Date(Date.UTC(lagos.getUTCFullYear(), lagos.getUTCMonth(), lagos.getUTCDate(), 8, 30));
+  return at;
+}
 
 /** A WhatsApp message Groundwork writes first that is the day's routine one: every first message except a check-in opening or closing. */
 export function aRoutineWhatsApp(kind: string | null | undefined): boolean {
