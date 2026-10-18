@@ -28,11 +28,11 @@ describe('the new sales board switch, as staff read it', () => {
   })
 
   it('switching it on sends on for that organisation alone, and says back what the server says', async () => {
-    ;(adminApi.setReleaseOneSalesBoard as any).mockResolvedValue({ id: 'org-drop', name: 'Drop Access (test)', release1SalesBoardOn: true, says: 'Drop Access (test) now has the new sales board. Its board, team report and weekly report show it from the next time they are opened.' })
+    ;(adminApi.setReleaseOneSalesBoard as any).mockResolvedValue({ id: 'org-drop', name: 'Drop Access (test)', release1SalesBoardOn: true, says: 'Drop Access (test) has the new sales board switched on. Its board and reports show it once the rest of Release 1 is in, from the next time they are opened.' })
     renderWith(<ReleaseOneSalesBoardSwitch org={{ id: 'org-drop', name: 'Drop Access (test)', release1SalesBoardOn: false }} />)
     fireEvent.click(screen.getByRole('button', { name: 'Switch the new sales board on for Drop Access (test)' }))
     await waitFor(() => expect(adminApi.setReleaseOneSalesBoard).toHaveBeenCalledWith('org-drop', true))
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Drop Access (test) now has the new sales board. Its board, team report and weekly report show it from the next time they are opened.'))
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Drop Access (test) has the new sales board switched on. Its board and reports show it once the rest of Release 1 is in, from the next time they are opened.'))
   })
 
   it('reads on, and says switching it off loses nothing', () => {

@@ -67,7 +67,7 @@ describe('Groundwork staff switch it on, one organisation at a time', () => {
     const { svc, updates } = service({ id: 'org-drop', name: 'Drop Access (test)' });
     const r = await svc.setReleaseOneSalesBoard('org-drop', true);
     expect(updates).toEqual([{ where: { id: 'org-drop' }, data: { release1SalesBoardOn: true }, select: { id: true, name: true, release1SalesBoardOn: true } }]);
-    expect(r.says).toBe('Drop Access (test) now has the new sales board. Its board, team report and weekly report show it from the next time they are opened.');
+    expect(r.says).toBe('Drop Access (test) has the new sales board switched on. Its board and reports show it once the rest of Release 1 is in, from the next time they are opened.');
   });
 
   it('off returns the organisation to its previous board, and says nothing is lost', async () => {
