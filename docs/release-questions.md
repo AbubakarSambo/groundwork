@@ -154,6 +154,14 @@ A report for a team now runs three independent model calls together, and after i
 
 The Meta-approved templates `checkin_open`, `checkin_closes_soon` and `checkin_your_view_matters` say a check-in takes "five minutes". Hafsah's rule is "about ten minutes", and the approved templates are never changed. **To do:** submit new templates, with new names, whose words say "about ten minutes", and tell Hafsah when Meta approves them. Until then the approved ones go out unchanged.
 
+### 10a-2. For Abubakar: Release 1, pull request 5 (19 October)
+
+1. **A new table and a new scheduled job.** `scheduled_whatsapp_messages` holds a WhatsApp message Groundwork starts in quiet hours (after 8 in the evening and before 7 in the morning, where the organisation is), and `held-for-the-night.cron.ts` sends it at 7, every fifteen minutes, under its own lock (920015). Can the host run one more fifteen-minute job, once only, as it runs the held mail? If the job does not run, nothing is lost: the rows wait, and the message is in the app.
+2. **Which time zone is an organisation in?** Quiet hours read the organisation's named zone, else where most of its people's numbers are, else Lagos. An organisation with no zone and no numbers is read in Lagos time. Please say if any live organisation should have its zone set first.
+3. **The lead's morning summary goes at 9 in Lagos time**, and routine mail to somebody who runs a check-in now waits until half an hour after it (08:30 UTC) and goes only if the summary did not. A lead in a zone far from Lagos would have that mail held into her afternoon. Is 9 in Lagos right for the live leads, or should the summary's hour be each organisation's?
+4. **For Hafsah: "runs out in 7 days" stays its own email.** On Drop Access it was folded into the lead's summary as a risk. It is the only warning before a check-in is stalled, and the summary's lines can be cut for room, so this pull request keeps it as an email of its own for every organisation (it no longer holds the summary back). Should it fold into the summary once the summary is sure to carry it?
+5. **For Hafsah: what applies to every organisation.** The pull request lists, in `docs/pull-request.md`, what every organisation reads differently whatever the switch says: her standing rules (one channel per opening, quiet hours ending at 7 where the organisation is, one routine message a day with the lead's summary as hers, "about ten minutes") and the corrections of things that were untrue. Everything else new is behind Release 1's switch. Please confirm the list.
+
 ### 10b. WhatsApp on the Connections page: the API's public address, and Groundwork's own number
 
 Two new settings, neither a secret, both optional (see `docs/deploy.md`, section 3).
