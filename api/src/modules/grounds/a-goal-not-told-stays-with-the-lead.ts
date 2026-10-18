@@ -76,18 +76,25 @@ export function aWeekHasPassedSinceNotTold(
  * set this goal and have not told him yet."). Uses the person's name, never a pronoun.
  */
 /**
+ * THE AREA OF A GOAL, AS IT READS INSIDE A SENTENCE. "Order confirmation process", worded with a capital as a heading, is "the order
+ * confirmation process" in a sentence (Drop Access short run, item 13), where Release 1's switch is on for the organisation; off, it
+ * reads as before. A name ("Kilele Hotel") keeps its capitals. Used by the lead's nudge and by what the person reads a week on.
+ */
+export function theAreaInASentence(area: string, opts: { releaseOne?: boolean } = {}): string {
+  const worded = (area ?? '').trim();
+  const asAHeading = !!opts.releaseOne && /^[A-Z][a-z'’-]*(?:\s+[a-z0-9][\w'’-]*)*$/.test(worded) && !/^(?:I|I['’]\w+)$/.test(worded.split(/\s+/)[0]);
+  const lowered = asAHeading ? `${worded.charAt(0).toLowerCase()}${worded.slice(1)}` : worded;
+  return (asAHeading && !/^(?:the|a|an|this|that|these|those|your|their|his|her|its|our|my)\s/i.test(lowered) ? `the ${lowered}` : lowered) || 'this part of the work';
+}
+
+/**
  * `area` is the WORDED area (the-area-of-a-goal-is-worded-once.ts's `areaOfGoalOrFallback`), a
  * plain noun phrase such as "the scheduling and the stock counts" or the fixed fallback "this part
  * of the work" - never the raw goal text, which may still carry a number or a deadline.
  */
 export function theLeadIsNudgedToTell(personName: string, area: string, opts: { releaseOne?: boolean } = {}): { decide: string; why: string } {
   const name = (personName ?? 'them').trim() || 'them';
-  /* "Order confirmation process", worded with a capital as a heading, is "the order confirmation process" in a sentence (Drop Access short run, item 13),
-     where Release 1's switch is on for the organisation; off, as before. A name ("Kilele Hotel") keeps its capitals. */
-  const worded = (area ?? '').trim();
-  const asAHeading = !!opts.releaseOne && /^[A-Z][a-z'’-]*(?:\s+[a-z0-9][\w'’-]*)*$/.test(worded) && !/^(?:I|I['’]\w+)$/.test(worded.split(/\s+/)[0]);
-  const lowered = asAHeading ? `${worded.charAt(0).toLowerCase()}${worded.slice(1)}` : worded;
-  const about = (asAHeading && !/^(?:the|a|an|this|that|these|those|your|their|his|her|its|our|my)\s/i.test(lowered) ? `the ${lowered}` : lowered) || 'this part of the work';
+  const about = theAreaInASentence(area, opts);
   return {
     decide: `Tell ${name} about the goal you set for ${about}.`,
     why: `You have not told ${name} yet.`,
@@ -122,9 +129,10 @@ export function howManyGoalsAreNotTold(rows: readonly { participantId?: string |
  * about this work, and will talk it through with them. No number, no target wording - only the
  * worded area (see `theLeadIsNudgedToTell` above for what `area` is).
  */
-export function whatThePersonReadsAfterAWeek(leadName: string, area: string): string {
+export function whatThePersonReadsAfterAWeek(leadName: string, area: string, opts: { releaseOne?: boolean } = {}): string {
   const lead = (leadName ?? 'Your lead').trim() || 'Your lead';
-  const about = (area ?? '').trim() || 'this part of the work';
+  /* The same wording as the lead's nudge, so both say "the order confirmation process" (Drop Access short run, item 13; Release 1, part 5). */
+  const about = theAreaInASentence(area, opts);
   return `${lead} has set a goal about ${about}, and will talk it through with you.`;
 }
 

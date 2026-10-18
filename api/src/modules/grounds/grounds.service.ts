@@ -2376,7 +2376,7 @@ export class GroundsService {
           ...o,
           /* The plain sentence only - never the lead's own private note about telling them
              (`awarenessDetail`), which stays the lead's alone like any other private note. */
-          text: whatThePersonReadsAfterAWeek(leadFirst, await areaOfGoalOrFallback(this.prisma, o.text ?? '')),
+          text: whatThePersonReadsAfterAWeek(leadFirst, await areaOfGoalOrFallback(this.prisma, o.text ?? ''), { releaseOne: await theReleaseOneSalesBoardIsOn(this.prisma, (ground as any).organizationId).catch(() => false) }),
           awarenessDetail: null,
         })));
         objectiveRows = [...objectiveRows, ...worded];

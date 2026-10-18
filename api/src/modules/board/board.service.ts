@@ -1423,7 +1423,7 @@ export class BoardService {
       if (untoldRows.length) {
         const leadFirst = theFirstNameOfAParticipant((ground.participants as any[]).find((p) => p.partyType === 'INITIATOR')) || 'Your lead';
         const withArea = await Promise.all(untoldRows.map(async (g) => ({ ...g, area: await areaOfGoalOrFallback(this.prisma, g.text ?? '') })));
-        for (const say of whatThePersonReadsOfTheirOwnUntoldGoals(withArea, me?.id ?? null, leadFirst)) {
+        for (const say of whatThePersonReadsOfTheirOwnUntoldGoals(withArea, me?.id ?? null, leadFirst, new Date(), { releaseOne: await theReleaseOneSalesBoardIsOn(this.prisma, (ground as any).organizationId).catch(() => false) })) {
           (out.objectives as any[]).push({
             journey: { direction: 'unknown', start: null, now: 0, target: null, say: '', covered: null },
             notSettled: null, id: `lead-set-goal-${(out.objectives as any[]).length}`, name: say, count: 0, prevCount: 0, target: null,
