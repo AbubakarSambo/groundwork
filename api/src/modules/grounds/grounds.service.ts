@@ -80,6 +80,8 @@ import { howACheckInIsGoing } from './how-a-check-in-is-going';
 import { theGlanceAsThisReaderMayReadIt, whatIsInTheWay } from './what-a-manager-needs-at-a-glance';
 import { totalSessionsFor } from './session-count';
 import { readPeopleAndSetup } from './people-and-setup';
+import { readReferencesAndResources, readTheEvidence, aLineToKeep, aKeyFactFrom, type EvidenceQuery } from './references-and-resources';
+import { theRelease1bTabsAreOn } from './release-1b-tabs';
 import { theSessionClock } from '../board/one-count-for-the-sessions';
 import { answeredOnALink, aLinkRoundIsReady } from './an-open-link-has-no-roster';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
@@ -8256,6 +8258,71 @@ export class GroundsService {
     await refuseSomeoneAwaitingTheOrganisation(this.prisma as any, userId, CANNOT_CHECK_IN_YET);
     await this.assertMaySeeGround(groundId, userId);
     return readPeopleAndSetup(this.prisma as any, { groundId, organizationId, userId });
+  }
+
+  /** References and resources, as this reader may read it (Release 1B, pull request 2 of 3). Asked after the check-in's own read rules. */
+  async referencesAndResources(groundId: string, userId: string) {
+    await refuseSomeoneAwaitingTheOrganisation(this.prisma as any, userId, CANNOT_CHECK_IN_YET);
+    await this.assertMaySeeGround(groundId, userId);
+    return readReferencesAndResources(this.prisma as any, { groundId, userId, contextEnabled: this.contextEnabled() });
+  }
+
+  /** One page of the evidence this reader may read (Release 1B, pull request 2 of 3). */
+  async referencesEvidence(groundId: string, userId: string, query: EvidenceQuery) {
+    await refuseSomeoneAwaitingTheOrganisation(this.prisma as any, userId, CANNOT_CHECK_IN_YET);
+    await this.assertMaySeeGround(groundId, userId);
+    return (await readTheEvidence(this.prisma as any, { groundId, userId }, query)) ?? { on: false };
+  }
+
+  /**
+   * THE LEAD ADDS TO REFERENCES AND RESOURCES, AND NOBODY ELSE (Release 1B, pull request 2 of 3: "Only the lead adds to it";
+   * Hafsah, 18 October: team members "can't add to it"). The same gate as every other setup change (decision 63: the lead, or an
+   * admin standing in only once the lead has left the organisation), asked here at the server, so a team member's request is
+   * refused whatever the screen draws. Only while the organisation's switch is on.
+   */
+  private async aReferencesWriteIsAllowed(groundId: string, userId: string) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { id: true, initiatorId: true, organizationId: true, status: true, endState: true, scenario: true, participants: { select: { id: true, userId: true } } } as any,
+    }) as any;
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    if (!(await theRelease1bTabsAreOn(this.prisma as any, ground.organizationId))) {
+      throw new ForbiddenException('References and resources is not open for this organisation yet.');
+    }
+    const confirm = await this.mayConfirmSetupOn(ground, userId);
+    const refused = whyItRefuses(ground.status, ground.endState, confirm.as === 'lead' ? 'the lead' : 'anybody else', ground.scenario);
+    if (refused) throw new BadRequestException(refused);
+    return { ground, confirm, confirmedByAdminNote: confirm.as === 'admin' ? confirmedByAnAdminSentence(confirm.confirmedByName, confirm.leadName) : null };
+  }
+
+  async addAReference(groundId: string, userId: string, input: { kind?: string; text?: string; label?: string; aboutParticipantId?: string | null }) {
+    const { ground, confirmedByAdminNote } = await this.aReferencesWriteIsAllowed(groundId, userId);
+    const line = aLineToKeep(input, ground.participants ?? [], ground.initiatorId);
+    const made = await this.prisma.groundContextItem.create({
+      data: { groundId, kind: line.kind as any, text: line.text, audience: line.audience as any, aboutParticipantId: line.aboutParticipantId, source: 'TYPED', authorUserId: userId, confirmedByAdminNote },
+      select: { id: true, kind: true, text: true },
+    });
+    this.logger.log(`Ground ${groundId}: a ${line.kind} line was added on References and resources.`);
+    return made.kind === 'KEY_FACT' ? { id: made.id, kind: made.kind, ...aKeyFactFrom(made.id, made.text) } : made;
+  }
+
+  async changeAReference(groundId: string, userId: string, lineId: string, change: { text?: string; label?: string; closed?: boolean }) {
+    const { ground, confirmedByAdminNote } = await this.aReferencesWriteIsAllowed(groundId, userId);
+    const line = await this.prisma.groundContextItem.findFirst({ where: { id: lineId, groundId }, select: { id: true, kind: true, text: true, aboutParticipantId: true } }) as any;
+    if (!line) throw new NotFoundException('That line is no longer part of this check-in, so refresh the page.');
+    const PAGE_KINDS = ['WAY_OF_WORKING', 'STRATEGY', 'NOTE', 'STAGE_NEEDS', 'COACHING', 'RISK', 'KEY_FACT', 'PERSON_NOTE', 'HELP_WITH'];
+    if (!PAGE_KINDS.includes(String(line.kind))) throw new BadRequestException('That line is not changed from References and resources.');
+    let text: string | undefined;
+    if (typeof change?.text === 'string') {
+      const pageKind = line.kind === 'WAY_OF_WORKING' || line.kind === 'STRATEGY' || line.kind === 'NOTE' ? 'RULE' : line.kind;
+      const label = line.kind === 'KEY_FACT' ? (change.label ?? String(line.text ?? '').split('\n')[0]) : undefined;
+      text = aLineToKeep({ kind: pageKind, text: change.text, label, aboutParticipantId: line.aboutParticipantId }, ground.participants ?? [], ground.initiatorId).text;
+    }
+    return this.prisma.groundContextItem.update({
+      where: { id: line.id },
+      data: { ...(text ? { text } : {}), ...(change?.closed === undefined ? {} : { closedAt: change.closed ? new Date() : null }), confirmedByAdminNote },
+      select: { id: true, kind: true, text: true, closedAt: true },
+    });
   }
 
   async whereEachPersonIsGettingStarted(input: { groundId: string; organizationId: string; userId: string; role: string }) {
