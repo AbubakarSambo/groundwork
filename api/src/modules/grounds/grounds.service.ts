@@ -79,6 +79,7 @@ import { defaultModeFor, boardRendersFor } from '../board/board-families';
 import { howACheckInIsGoing } from './how-a-check-in-is-going';
 import { theGlanceAsThisReaderMayReadIt, whatIsInTheWay } from './what-a-manager-needs-at-a-glance';
 import { totalSessionsFor } from './session-count';
+import { readPeopleAndSetup } from './people-and-setup';
 import { theSessionClock } from '../board/one-count-for-the-sessions';
 import { answeredOnALink, aLinkRoundIsReady } from './an-open-link-has-no-roster';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
@@ -1925,7 +1926,7 @@ export class GroundsService {
         /* For `guestIn`: whose workspace this check-in belongs to. And whether it has a WhatsApp
            number, which is what the "where people answer this" setting needs - riding along on a
            read that already has the organisation in hand, rather than a second query. */
-        organization: { select: { name: true, whatsappConnection: { select: { enabled: true } } } },
+        organization: { select: { name: true, release1bTabsOn: true, whatsappConnection: { select: { enabled: true } } } },
         /**
          * WHAT THE WHOLE CHECK-IN IS AIMING AT. Written by the lead's own check-in alongside the
          * per-person expectations, and never read back until now - so the Context page had a band
@@ -1981,7 +1982,7 @@ export class GroundsService {
                name is actually needed. The WhatsApp connection rides along for the same reason it
                does above - and it has to be here too, or a cross-org lead is the one person who
                cannot see the setting. */
-            organization: { select: { name: true, whatsappConnection: { select: { enabled: true } } } },
+            organization: { select: { name: true, release1bTabsOn: true, whatsappConnection: { select: { enabled: true } } } },
             /**
              * THE SAME LIST AS THE PRIMARY READ ABOVE, and it has to stay that way: this is the
              * cross-org participant's path, and anything missing here is a field that exists for
@@ -2988,6 +2989,8 @@ export class GroundsService {
        * which is the pattern this codebase has caught three times.
        */
       orgHasWhatsApp,
+      /* Release 1B's new check-in tabs for this organisation (release-1b-tabs.ts): which People and setup the page draws. A yes or no, nothing about anybody. */
+      release1bTabsOn: (ground as any).organization?.release1bTabsOn === true,
       alignment,
       daysLeft,
       endsOn,
@@ -8248,6 +8251,13 @@ export class GroundsService {
    */
   /** D1 and D2 (13 October 2026, evening): see the-lead-adds-a-whatsapp-number.ts. */
   /** Each person, from their invitation to coming back on their own (getting-each-person-started.ts). */
+  /** People and setup, as this reader may read it (Release 1B, pull request 1 of 3). Asked after the check-in's own read rules. */
+  async peopleAndSetup(groundId: string, organizationId: string, userId: string) {
+    await refuseSomeoneAwaitingTheOrganisation(this.prisma as any, userId, CANNOT_CHECK_IN_YET);
+    await this.assertMaySeeGround(groundId, userId);
+    return readPeopleAndSetup(this.prisma as any, { groundId, organizationId, userId });
+  }
+
   async whereEachPersonIsGettingStarted(input: { groundId: string; organizationId: string; userId: string; role: string }) {
     return readWhereEachPersonIsGettingStarted(this.prisma as any, input);
   }
