@@ -134,9 +134,17 @@ export const A_TEXT_MESSAGE_LIMIT = 4096;
 /** The longest "where things stand" line that goes into a template's blank. */
 export const ONE_SHORT_LINE = 200;
 
-/** The first sentence of where things stand, on one line and short. */
+/**
+ * Where things stand, on one line and short: the whole of it when it fits, else its first sentence.
+ *
+ * THE FIRST SENTENCE ALONE CAN BE UNTRUE (Pulse check rerun, 15 October 2026). "Everybody who has joined
+ * has answered. One person has not joined yet." reached Zawadi as "Everybody who has joined has
+ * answered." while Chidi, in the same check-in, had not answered at all. The second sentence is the
+ * part that keeps the first one honest, so when the whole line fits it is sent whole.
+ */
 export function whereThingsStandInOneLine(report: any): string {
   const saying = String(report?.whereThingsStand?.saying ?? '').replace(/\s+/g, ' ').trim();
+  if (saying && saying.length <= ONE_SHORT_LINE) return saying;
   const first = (saying.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? saying).trim();
   return first.length <= ONE_SHORT_LINE ? first : `${first.slice(0, ONE_SHORT_LINE - 1).replace(/\s+\S*$/, '')}…`;
 }

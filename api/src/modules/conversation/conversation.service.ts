@@ -115,7 +115,7 @@ import {
 import {
   detectFunction, detectUniversalModes, needsRoleConfirmation, roleConfirmationQuestion,
   ROLE_CONFIRM_ASKED, ROLE_CONFIRM_COOLDOWN_PERIODS, ROLE_CONFIRMATION_READ_PROMPT, ROLE_CONFIRMATION_READ_SCHEMA,
-  theRoleConfirmationVerdict, LOW_CONFIDENCE_CONFIRM_THRESHOLD,
+  theRoleConfirmationVerdict, LOW_CONFIDENCE_CONFIRM_THRESHOLD, aFunctionThatMayBeUsed, theStatedRole,
 } from '../board/function-detection';
 import { RoleFunction } from '../board/role-maps';
 import { whoOpenedThis } from './who-opened-this';
@@ -4105,7 +4105,13 @@ export class ConversationService {
       this.hasOtherPartyCheckedIn(checkIn.groundId, checkIn.participantId),
       this.prisma.adminProfile.findUnique({ where: { userId: ground.initiatorId }, select: { signals: true } }).catch(() => null),
     ]);
-    const groundState = await this.buildGroundState(checkIn.groundId, otherPartyCheckedIn, aCheckInStartedFromTheAnchor(ground) && (await theAnchorScenarioIsOn(this.prisma)) === true);
+    const groundState = await this.buildGroundState(checkIn.groundId, otherPartyCheckedIn, aCheckInStartedFromTheAnchor(ground) && (await theAnchorScenarioIsOn(this.prisma)) === true, {
+      sessionNumber: checkIn.sessionNumber,
+      participantId: checkIn.participantId,
+      /* Names only where this check-in names people to each other, for this reader: never in an evaluation
+         (a colleague stays unnamed to the person reviewed) and never on a private check-in. */
+      namesMayBeSaid: (ground as any).mode !== 'PRIVATE' && peersAreNamedOn(ground as any, { participantId: checkIn.participantId }),
+    });
     const leadSignals = Array.isArray(initiatorProfile?.signals) ? (initiatorProfile!.signals as string[]) : null;
 
     // Session-1-only DB override for this scenario+party's pack (PromptVersion
@@ -6457,7 +6463,7 @@ ${told}` : '';
     const participant = await this.prisma.groundParticipant.findUnique({
       where: { id: participantId },
       select: {
-        detectedFunction: true, detectedFunctionConfidence: true,
+        detectedFunction: true, detectedFunctionConfidence: true, detectedFunctionConfirmedAt: true,
         joinedAt: true, leftAt: true, leavePeriods: true,
       },
     });
@@ -6493,7 +6499,12 @@ ${told}` : '';
     }
 
     const map = roleMapFor(participant?.detectedFunction);
-    const confident = (participant?.detectedFunctionConfidence ?? 0) >= MIN_COACHING_CONFIDENCE;
+    /* Confident, or confirmed by the person or their lead (decision 57, item 5): a confirmed role is
+       not a guess, so its own behaviours are read. See aFunctionThatMayBeUsed. */
+    const confident = aFunctionThatMayBeUsed(
+      { fn: participant?.detectedFunction as any, confidence: participant?.detectedFunctionConfidence ?? 0 },
+      (participant as any)?.detectedFunctionConfirmedAt ?? null,
+    );
     /**
      * A ROLE NOBODY MAPPED IS STILL A PERSON.
      *
@@ -6513,7 +6524,7 @@ ${told}` : '';
     const whyTheFloor = readFromTheAccount
       ? (!map?.failureSignals?.length
         ? `no role map for function ${participant?.detectedFunction ?? 'none'}`
-        : `function ${participant?.detectedFunction} at confidence ${participant?.detectedFunctionConfidence ?? 0}, below ${MIN_COACHING_CONFIDENCE}`)
+        : `function ${participant?.detectedFunction} at confidence ${participant?.detectedFunctionConfidence ?? 0}, below ${MIN_COACHING_CONFIDENCE} and not confirmed`)
       : null;
 
     const turns = await this.prisma.conversationTurn.findMany({
@@ -7259,13 +7270,13 @@ ${told}` : '';
     );
 
     /* What they said about their job in a first check-in is taken out first (decision 129), so the function read below can use it. */
-    Promise.resolve()
+    const theFunctionRead = Promise.resolve()
       .then(() => keepWhatTheySaidAboutTheirJob({ prisma: this.prisma as any, anthropic: this.anthropic as any, prompts: this.prompts as any }, { id: checkIn.id, participantId: checkIn.participantId }, this.logger))
       .catch((err) => this.logger.warn(`Reading what they said about their job failed for check-in ${checkIn.id}: ${err?.message}`))
       .then(() => this.reviseDetectedFunction(checkIn.participantId))
       .catch((err) => this.logger.warn(`Function detection failed for participant ${checkIn.participantId}: ${err.message}`));
 
-    this.extractRoleConfirmation({ id: checkIn.id, participantId: checkIn.participantId }).catch((err) =>
+    const theRoleConfirmation = this.extractRoleConfirmation({ id: checkIn.id, participantId: checkIn.participantId }).catch((err) =>
       this.logger.warn(`Role-confirmation read failed for check-in ${checkIn.id}: ${err.message}`),
     );
 
@@ -7277,9 +7288,17 @@ ${told}` : '';
      * Best-effort and last, like the others: nothing about coaching may delay or
      * block a session completing.
      */
-    this.observeForCoaching(checkIn.id, checkIn.participantId, checkIn.sessionNumber).catch((err) =>
-      this.logger.warn(`Coaching observation failed for check-in ${checkIn.id}: ${err.message}`),
-    );
+    /*
+     * AFTER THE ROLE IS READ AND ANY CONFIRMATION IS STAMPED, never beside them (production check-in,
+     * 15 October 2026). The three ran at once, so which behaviours the coach read this session against
+     * depended on which finished first: a person who confirmed "yes, my work is sales" in this very
+     * check-in could still be read against the floor because the stamp landed a moment later. Both
+     * already swallow their own failures, so waiting on them can never stop the coach running, and
+     * none of this delays the session completing.
+     */
+    Promise.allSettled([theFunctionRead, theRoleConfirmation])
+      .then(() => this.observeForCoaching(checkIn.id, checkIn.participantId, checkIn.sessionNumber))
+      .catch((err) => this.logger.warn(`Coaching observation failed for check-in ${checkIn.id}: ${err.message}`));
 
     const won = await this.prisma.checkIn.updateMany({
       where: { id: checkIn.id, status: { not: CheckInStatus.COMPLETED } },
@@ -9270,7 +9289,8 @@ ${told}` : '';
     detectedFunctionConfidence: number | null;
   }) {
     if (participant.detectedFunction) return;
-    const read = detectFunction(participant.roleAsDescribed, [], null);
+    const theirs = await this.theirTitleAndKindOfWork(participant.id);
+    const read = detectFunction(theStatedRole(participant.roleAsDescribed, theirs.title), [], null, theirs.kindOfWork);
     if (!read.fn) return;
     await this.prisma.groundParticipant.update({
       where: { id: participant.id },
@@ -9296,7 +9316,7 @@ ${told}` : '';
    * that cannot be seen from outside. The texts are read once now and used for both.
    */
   private async roleReadForThisTurn(
-    checkIn: { id: string; participant: { roleAsDescribed: string | null; detectedFunction: string | null; detectedFunctionConfidence: number | null } },
+    checkIn: { id: string; participantId?: string; participant: { id?: string; roleAsDescribed: string | null; detectedFunction: string | null; detectedFunctionConfidence: number | null } },
     latestMessage?: string,
   ): Promise<{ fn: string | null; confidence: number | null; modes: UniversalMode[] }> {
     const stored = { fn: checkIn.participant.detectedFunction, confidence: checkIn.participant.detectedFunctionConfidence };
@@ -9307,11 +9327,24 @@ ${told}` : '';
     if (!texts.length) return { ...stored, modes: [] };
     const modes = detectUniversalModes(texts);
     if ((stored.confidence ?? 0) >= MIN_COACHING_CONFIDENCE) return { ...stored, modes };
-    const read = detectFunction(checkIn.participant.roleAsDescribed, texts, stored);
+    const theirs = await this.theirTitleAndKindOfWork(checkIn.participantId ?? checkIn.participant.id ?? null);
+    const read = detectFunction(theStatedRole(checkIn.participant.roleAsDescribed, theirs.title), texts, stored, theirs.kindOfWork);
     if (read.fn && read.fn !== stored.fn) {
       this.logger.log(`In-session function read on ${checkIn.id}: ${stored.fn ?? 'none'} -> ${read.fn} (${read.confidence}). ${read.basis}`);
     }
     return read.fn ? { fn: read.fn, confidence: read.confidence, modes } : { ...stored, modes };
+  }
+
+  /**
+   * The person's own job title, which every read of their function starts from beside the lead's words (see
+   * theStatedRole), and the check-in's kind of work, which confirms the title when the two agree (Hafsah,
+   * 16 October 2026; see theKindOfWorkAgrees).
+   */
+  private async theirTitleAndKindOfWork(participantId: string | null | undefined): Promise<{ title: string | null; kindOfWork: string | null }> {
+    if (!participantId) return { title: null, kindOfWork: null };
+    const row = await (this.prisma.groundParticipant?.findUnique?.({ where: { id: participantId }, select: { user: { select: { jobTitle: true } }, ground: { select: { kindOfWork: true } } } as any })
+      ?? Promise.resolve(null)).catch(() => null);
+    return { title: (row as any)?.user?.jobTitle ?? null, kindOfWork: (row as any)?.ground?.kindOfWork ?? null };
   }
 
   /**
@@ -9527,7 +9560,7 @@ ${told}` : '';
   async reviseDetectedFunction(participantId: string) {
     const p = await this.prisma.groundParticipant.findUnique({
       where: { id: participantId },
-      select: { roleAsDescribed: true, detectedFunction: true, detectedFunctionConfidence: true, userId: true, ground: { select: { organizationId: true } } },
+      select: { roleAsDescribed: true, detectedFunction: true, detectedFunctionConfidence: true, detectedFunctionConfirmedAt: true, userId: true, ground: { select: { organizationId: true, kindOfWork: true } } },
     });
     if (!p) return;
     /* The person's own words about their job (their title, and what they said they are responsible for) help the read, beside the lead's. */
@@ -9556,9 +9589,10 @@ ${told}` : '';
     });
 
     let result = detectFunction(
-      [p.roleAsDescribed, own.title].filter(Boolean).join('. ') || null,
+      theStatedRole(p.roleAsDescribed, own.title),
       [...entries.map((e) => e.text), ...(own.owns ? [own.owns] : [])],
       { fn: p.detectedFunction, confidence: p.detectedFunctionConfidence },
+      (p as any).ground?.kindOfWork ?? null,
     );
 
     /**
@@ -9625,9 +9659,9 @@ ${told}` : '';
      * nine, which is a product decision rather than a bug - and it is now a
      * decision somebody can see.
      */
-    if (!result.fn || result.confidence < MIN_COACHING_CONFIDENCE) {
+    if (!aFunctionThatMayBeUsed(result, (p as any).detectedFunctionConfirmedAt ?? null)) {
       this.logger.log(
-        `No function is confident enough for participant ${participantId} (${result.fn ?? 'none'} at ${result.confidence}). ` +
+        `No function is confident enough for participant ${participantId} (${result.fn ?? 'none'} at ${result.confidence}, not confirmed). ` +
           `Role-tuned probes and coaching are OFF for them, which is correct and not a failure: ${result.basis} ` +
           `If this holds for a whole ground, either the work is not covered by the nine role maps or nobody described the role at setup.`,
       );
@@ -11640,7 +11674,15 @@ ${told}` : '';
     return count > 0;
   }
 
-  private async buildGroundState(groundId: string, otherPartyCheckedIn: boolean, theAnchors = false): Promise<string> {
+  private async buildGroundState(
+    groundId: string,
+    otherPartyCheckedIn: boolean,
+    theAnchors = false,
+    thisSession?: { sessionNumber: number; participantId: string; namesMayBeSaid?: boolean },
+  ): Promise<string> {
+    const sessionNumber = thisSession?.sessionNumber;
+    /* Who has answered THIS session, by name, from the record. See whoHasAnsweredThisSession. */
+    const named = thisSession?.namesMayBeSaid ? await whoHasAnsweredThisSession(this.prisma, groundId, thisSession).catch(() => '') : '';
     /*
      * IN THE ANCHOR, THE LEAD IS NOT ONE OF THE PEOPLE WHO ANSWER. Her set-up conversation is saved as a finished session and she is on the roster, so
      * the count read "3 of 3 parties have submitted" to a team of two (found on the test bed, weekly check-in). It counts the team, in plain words.
@@ -11651,14 +11693,16 @@ ${told}` : '';
         ((await this.prisma.checkIn.findMany({ where: { groundId, status: CheckInStatus.COMPLETED, participant: { managingOnly: false } }, select: { participantId: true } })) ?? []).map((c: any) => c.participantId),
       ).size;
       const everyone = await this.prisma.groundParticipant.count({ where: team });
-      return `${answered} of ${everyone} people on the team have answered so far.`;
+      return [`${answered} of ${everyone} people on the team have answered so far.`, named].filter(Boolean).join(' ');
     }
     /* PEOPLE, NOT CHECK-INS. This counted every completed check-in, so from the second round on it
        said more had answered than there are people, and the model read it out: "Since then, 5 of
        the 4 people involved in this check-in have submitted" (week 3 re-runs, 28 Sep 2026). */
     const submittedCount = new Set(
       ((await this.prisma.checkIn.findMany({
-        where: { groundId, status: CheckInStatus.COMPLETED },
+        /* This session's, when it is known: a count across every session put people who answered weeks
+           ago in "since then" (Pulse check rerun, 15 October 2026). */
+        where: { groundId, status: CheckInStatus.COMPLETED, ...(sessionNumber ? { sessionNumber } : {}) },
         select: { participantId: true },
       })) ?? []).map((c: any) => c.participantId),
     ).size;
@@ -11669,7 +11713,7 @@ ${told}` : '';
     } else {
       parts.push(`${submittedCount} of ${totalCount} parties have submitted so far. The other party has not yet submitted.`);
     }
-    return parts.join(' ');
+    return [parts.join(' '), named].filter(Boolean).join(' ');
   }
 
   /**
@@ -12049,3 +12093,37 @@ ${told}` : '';
 }
 
 const REMOVED_FROM_THAT_ORGANISATION = 'You are no longer part of the organisation this check-in belongs to, so you cannot open it.';
+
+/**
+ * WHO HAS ANSWERED THIS SESSION, BY NAME, FROM THE RECORD (Pulse check rerun, 15 October 2026).
+ *
+ * The model was given a count across every session ever ("2 of 3 parties have submitted") and no
+ * names, and it put names to the count itself: "Since then, Wairimu Njoroge and Chidi Okeke have also
+ * checked in", when Chidi had not checked in at all. So it is told who has and who has not answered
+ * THIS session, by name, and told never to say anybody else has. Only whether somebody has answered,
+ * never anything they said - the same thing anybody may be told (prompt-library: "you can confirm
+ * whether they have or have not"). The lead is never listed as not having answered: a lead checks in
+ * only when they choose (decision 133), so it would be chasing them through somebody else.
+ */
+export async function whoHasAnsweredThisSession(prisma: any, groundId: string, s: { sessionNumber: number; participantId: string }): Promise<string> {
+  const rows: any[] = (await (prisma?.groundParticipant?.findMany?.({
+    where: { groundId, id: { not: s.participantId }, managingOnly: false },
+    select: {
+      id: true, partyType: true, nameGiven: true,
+      user: { select: { firstName: true, lastName: true } },
+      checkIns: { where: { sessionNumber: s.sessionNumber, status: CheckInStatus.COMPLETED }, select: { id: true } },
+    },
+  } as any) ?? Promise.resolve([]))) ?? [];
+  if (!Array.isArray(rows) || !rows.length) return '';
+  const nameOf = (p: any) => [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || (p.nameGiven ?? '').trim();
+  const answered = rows.filter((p) => (p.checkIns ?? []).length > 0).map(nameOf).filter(Boolean);
+  const notYet = rows.filter((p) => !(p.checkIns ?? []).length && p.partyType !== 'INITIATOR').map(nameOf).filter(Boolean);
+  const list = (names: string[]) => (names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
+  const lines: string[] = [];
+  lines.push(answered.length
+    ? `This session, ${list(answered)} ${answered.length === 1 ? 'has' : 'have'} answered.`
+    : 'This session, nobody else has answered yet.');
+  if (notYet.length) lines.push(`${list(notYet)} ${notYet.length === 1 ? 'has' : 'have'} not answered this session yet.`);
+  lines.push('Never say that anybody else has checked in or answered.');
+  return lines.join(' ');
+}
