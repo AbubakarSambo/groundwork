@@ -314,7 +314,8 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
               })
               const isLead = p.userId === g?.initiatorId
               const stage = ((started?.people ?? []) as { participantId: string; reached: number; says: string }[]).find((s) => s.participantId === p.id)
-              const phone = ((numbers ?? []) as any[]).find((x) => x.participantId === p.id)?.phone ?? null
+              const onWhatsApp = ((numbers ?? []) as any[]).find((x) => x.participantId === p.id)
+              const phone = onWhatsApp?.phone ?? null
               const problem = row.statusText !== 'Checking in' && row.statusText !== 'Runs it'
               return (
                 <div id={`person-${p.id}`} key={p.id}>
@@ -338,7 +339,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
                       {numberFor === p.id
                         ? <TheirNumber groundId={id} participantId={p.id} name={row.name} phone={phone} onDone={() => setNumberFor(null)} />
                         : phone
-                          ? <>{aNumberAsShown(phone)}{' '}<button type="button" className="gwui-plain-link" onClick={() => setNumberFor(p.id)}>Change</button></>
+                          ? <>{aNumberAsShown(phone)}{' '}<button type="button" className="gwui-plain-link" onClick={() => setNumberFor(p.id)}>Change</button>{onWhatsApp?.says ? <Text size="13" ink="sub" as="p">{onWhatsApp.says}</Text> : null}</>
                           : <>None yet{' '}<button type="button" className="gwui-plain-link" onClick={() => setNumberFor(p.id)}>Add a number</button></>}
                     </span>
                     <Stack gap={4}>
@@ -350,6 +351,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
                       <Tag tone={problem ? row.tone : 'proven'}>{problem || !stage ? row.statusText : STAGE_SAID[stage.reached]}</Tag>
                       {stage && <Text size="13" ink="sub" as="p">{stage.says}</Text>}
                       {row.sessionLine && <Text size="13" ink="sub" as="p">{row.sessionLine}</Text>}
+                      <Text size="13" ink="sub" as="p">{row.when}</Text>
                     </Stack>
                   </PersonRow>
                 </div>
@@ -425,7 +427,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
                 <FieldRow label="How often" value={HOW_OFTEN.find((h) => h.key === howOftenKey(g?.cadence, g?.workingDays ?? []))?.label ?? ''} />
               </FieldRows>
             )}
-            {page && <Text size="15" as="p">{page.sessions}</Text>}
+            {page && <Text size="15" as="p">{page.sessions}{typeof g?.daysLeft === 'number' && g?.endsOn ? ` ${g.daysLeft} day${g.daysLeft === 1 ? '' : 's'} left.` : ''}</Text>}
             {props.theTimeframeChanged && (
               <Note>
                 {`${props.timelineDaysDraft} days, ${n} session${n === 1 ? '' : 's'}.`}
@@ -717,7 +719,7 @@ function TheJoinLink({ joinToken, label, joined, onShareCode }: { joinToken: str
         </Stack>
         <Stack gap={10}>
           <Text size="15" weight={700} as="p">{`Anyone with this link can answer ${label}`}</Text>
-          <Text size="14" ink="sub" as="p">Scanning the QR code opens the same link. It works on any phone. {SHARE_A_LINK.whoCanAnswer}</Text>
+          <Text size="14" ink="sub" as="p">Scanning the QR code opens the same link. It works on any phone. {SHARE_A_LINK.forWhom} {SHARE_A_LINK.whoCanAnswer}</Text>
           <FlexRow gap={8} wrap align="center">
             <TextField aria-label="Join link" readOnly value={url} />
             <Button kind="secondary" size="small" onClick={async () => { if (await copy(url)) { setCopied(true); setTimeout(() => setCopied(false), 2000) } else toast.error(SHARE_A_LINK.cannotCopy) }}>
