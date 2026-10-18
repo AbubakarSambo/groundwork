@@ -85,6 +85,22 @@ export class AdminService implements OnApplicationBootstrap {
   // ---------------------------------------------------------------------------
 
   /**
+   * RELEASE 1'S SALES BOARD FOR ONE ORGANISATION (board/release-one-sales-board). Writes the one column and nothing else. Said
+   * back in a full sentence, for the Orgs tab to show as it is given.
+   */
+  async setReleaseOneSalesBoard(organizationId: string, on: boolean): Promise<{ id: string; name: string; release1SalesBoardOn: boolean; says: string }> {
+    const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { id: true } });
+    if (!org) throw new NotFoundException('That organisation could not be found, so refresh the list and try again.');
+    const row = await this.prisma.organization.update({ where: { id: organizationId }, data: { release1SalesBoardOn: on }, select: { id: true, name: true, release1SalesBoardOn: true } });
+    return {
+      ...row,
+      says: on
+        ? `${row.name} now has the new sales board. Its board, team report and weekly report show it from the next time they are opened.`
+        : `${row.name} is back on its previous board. Nothing it has said or added is lost.`,
+    };
+  }
+
+  /**
    * THE FIRST COACHING OUTPUTS, WITH THEIR INPUT. Nothing here reaches a person until the
    * coaching_live setting is true; this is where somebody reads a batch before deciding that.
    */
