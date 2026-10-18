@@ -49,7 +49,7 @@ const KIND_OF_WORK_SENTENCE: Record<KindOfWork, string> = {
  * sends is still one of the engine's own eleven names (`KIND_OF_WORK_OPTIONS`) - only the label a
  * person reads changes.
  */
-const KIND_OF_WORK_OPTION_LABEL: Record<KindOfWork, string> = {
+export const KIND_OF_WORK_OPTION_LABEL: Record<KindOfWork, string> = {
   'sales team': 'One sales team and its deals',
   'sales org': 'A sales organisation of several teams, and its deals',
   'engineering release': 'An engineering release',

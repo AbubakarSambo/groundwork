@@ -324,6 +324,13 @@ export const groundsApi = {
   addTheirWhatsAppNumber: (groundId: string, participantId: string, phone: string) =>
     apiClient.patch<{ said: string }>(`/grounds/${groundId}/participants/${participantId}/whatsapp-number`, { phone }).then(r => r.data),
 
+  /** Each person from their invitation to coming back on their own (whoever runs the check-in, or an admin). */
+  whereEachPersonIsGettingStarted: (groundId: string) =>
+    apiClient.get<{ stages: string[]; people: { participantId: string; name: string; team: string | null; reached: number; says: string; needsYou?: { what: 'the address'; email: string | null } }[] }>(`/grounds/${groundId}/participants/getting-started`).then(r => (r.data as any)?.data ?? r.data),
+  /** People and setup as this reader may read it (Release 1B, pull request 1 of 3). `{ on: false }` while the switch is off. */
+  peopleAndSetup: (groundId: string) =>
+    apiClient.get<PeopleAndSetup>(`/grounds/${groundId}/people-and-setup`).then(r => (r.data as any)?.data ?? r.data),
+
   getMediatorBrief: (groundId: string) =>
     apiClient.get(`/grounds/${groundId}/mediator-brief`).then(r => r.data),
 
@@ -620,3 +627,11 @@ export const groundsApi = {
       }>(`/grounds/${groundId}/context-chat`, { history })
       .then(r => r.data),
 }
+
+/** People and setup, as the server serves it to this reader (api grounds/people-and-setup.ts). */
+export type ASetupProblem = { participantId: string; says: string; fix: 'fix-the-address' | 'add-a-number' | 'add-their-role' | 'let-them-in' | 'view-plans' | null }
+export type PeopleAndSetup =
+  | { on: false }
+  | { on: true; view: 'member'; howItRuns: string; yourRole: string; status: string; yourSessionsDone: number; sessionsPlanned: number | null; runsIt: string | null; whoSeesWhat: string }
+  | { on: true; view: 'reader'; howItRuns: string; runsIt: string | null }
+  | { on: true; view: 'lead' | 'admin'; howItRuns: string; problems: ASetupProblem[]; sessions: string; joinedWithTheLink: string; kindOfWork: string | null; kindsOffered: string[]; othersWithAccess: string; runsIt: string | null; organisationName: string; roleDescribed: Record<string, boolean> }
