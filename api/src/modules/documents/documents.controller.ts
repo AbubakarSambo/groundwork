@@ -51,11 +51,13 @@ export class DocumentsController {
     @Param('groundId') groundId: string,
     @UploadedFile() file: Express.Multer.File,
     @CurrentUser('id') userId: string,
-    @Body() body: { consentConfirmed?: string | boolean; uploaderNote?: string },
+    @Body() body: { consentConfirmed?: string | boolean; uploaderNote?: string; fromTheCheckIn?: string | boolean },
   ) {
     /* Multipart, so it arrives as the string "true" rather than a boolean. */
     const confirmed = body?.consentConfirmed === true || body?.consentConfirmed === 'true';
-    return this.docs.upload(groundId, userId, file, confirmed, body?.uploaderNote);
+    /* Release 1B: added in the person's own check-in, so it may be filed as evidence on its item (proof-filed-on-its-item.ts). */
+    const fromTheCheckIn = body?.fromTheCheckIn === true || body?.fromTheCheckIn === 'true';
+    return this.docs.upload(groundId, userId, file, confirmed, body?.uploaderNote, fromTheCheckIn ? { fromTheCheckIn: true } : {});
   }
 
   @Get()

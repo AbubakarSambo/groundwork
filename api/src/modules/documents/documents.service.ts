@@ -1,3 +1,4 @@
+import { fileTheProofOnItsItem } from './proof-filed-on-its-item';
 import { theNumberAsWritten, theSameWords } from '../grounds/a-dump-is-many-things';
 import { theFigureAsWritten } from './a-number-keeps-its-unit';
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger, Inject, forwardRef } from '@nestjs/common';
@@ -412,7 +413,7 @@ export class DocumentsService {
      * choosing to share it, so it is kept already opened to the check-in, the same state an app upload
      * reaches when its uploader opens it. Never set by the app's upload, which keeps the private default.
      */
-    opts: { sharedWithTheCheckIn?: boolean } = {},
+    opts: { sharedWithTheCheckIn?: boolean; fromTheCheckIn?: boolean } = {},
   ) {
     this.refuseWhatCannotBeRead(file);
 
@@ -514,6 +515,17 @@ export class DocumentsService {
     void this.readTheRestOfIt(doc.id, groundId, participant.id, content, doc.fileName);
     const held = null as any;
 
+    /*
+     * PROOF ADDED IN A CHECK-IN, FILED ON ITS ITEM (Release 1B, pull request 2 of 3). Only a file added in a check-in (the web
+     * check-in says so; a file sent on WhatsApp during one is), only while the organisation's Release 1B switch is on, and from
+     * the words just taken out of it, with no model call. Awaited, so the check-in's next turn can say where it was filed; a
+     * failure here is never why somebody could not attach a file. See proof-filed-on-its-item.ts.
+     */
+    const filed = (opts.fromTheCheckIn || opts.sharedWithTheCheckIn)
+      ? await fileTheProofOnItsItem(this.prisma as any, { id: doc.id, groundId, participantId: participant.id, fileName: doc.fileName, mimeType: doc.mimeType, uploaderNote: (doc as any).uploaderNote ?? null, content })
+        .catch((err: any) => { this.logger?.warn?.(`Could not file ${doc.fileName} as evidence: ${err?.message}`); return null; })
+      : null;
+
     // Extract structured claims from the document content and write them as
     // RecordEntry rows so they flow into the report corpus automatically.
     // Fire-and-forget - a failure here must not block the upload response.
@@ -543,6 +555,8 @@ export class DocumentsService {
       numbersWaiting: (held as any)?.waiting?.length ?? 0,
       /* Kept, but nothing in it could be read: the person is asked to say what it shows. */
       couldNotRead: weCouldNotReadIt(content),
+      /* Release 1B: where it was filed as evidence, when it was added in a check-in with the switch on. Absent otherwise. */
+      ...(filed ? { filedAsEvidence: { on: filed.itemName ?? null } } : {}),
     };
   }
 
