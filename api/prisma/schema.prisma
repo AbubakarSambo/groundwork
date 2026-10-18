@@ -580,10 +580,12 @@ model Organization {
   whatsappFlatAddOnKept  Boolean   @default(false) @map("whatsapp_flat_add_on_kept")
   /// RELEASE 1'S SALES BOARD, A SWITCH PER ORGANISATION (release plan, Part 0, "Existing users: in every release"). Off for
   /// every organisation already here and every new one, until Groundwork staff switch it on (Admin, Orgs) or a script does
-  /// for a test organisation. Off: the board reads as it did before Release 1's sales board. On (Release 1, pull request 3):
-  /// the sales board counts each sales aim from the deals ("65 sold, 65 with proof of payment"), says What needs you, To close
-  /// the gap by what each deal holds, and the Context tab's targets once and "The plan, as agreed". The writers (deal rows,
-  /// each stage kept with its day) run either way, so switching it off loses nothing.
+  /// for a test organisation. Off: the board and the reports read as they did before Release 1's sales board. On (Release 1,
+  /// pull requests 3 and 4): the sales board counts each sales aim from the deals ("65 sold, 65 with proof of payment"), says
+  /// What needs you, To close the gap by what each deal holds, and the Context tab's targets once and "The plan, as agreed";
+  /// the team report, each person's own report and the weekly report of a sales check-in read from the deals. The writers
+  /// (deal rows, each stage kept with its day, the week's deals kept on the weekly row) run either way, so switching it off
+  /// loses nothing.
   release1SalesBoardOn   Boolean   @default(false) @map("release_1_sales_board_on")
   whatsappMonthlyUse     WhatsAppMonthlyUse[]
 

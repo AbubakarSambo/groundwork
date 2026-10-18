@@ -14,7 +14,18 @@
  *    prototype's shape, your share in sales), a customer's reply moved onto its deal, the lead's yes-or-no answer to a wait
  *    in What needs you, each deal at the stall rule, and the heading of To close the gap;
  *  - in the board listener: keeping a sales aim's stored count at the deals (off, the count is read from what was said, as before);
- *  - in the weekly report: the week's deals and the sales targets they count.
+ *  - in the weekly report: the week's deals and the sales targets they count, the kit's five numbers, What this week shows,
+ *    a promise carried over three check-ins running, What changed with Adapted, For you to do next week in order, and a daily
+ *    check-in's week to its last check-in (Release 1, pull request 4);
+ *  - in the team report (Release 1, pull request 4): the title, In short, What moved, each person marked proven or said with
+ *    Will do, Where people see it differently, How much it can rely on, What I don't know yet, Why the numbers don't match,
+ *    the closing line, a person correcting themselves settling a difference, and "1 of the 5 commitments has";
+ *  - in each person's own report (Release 1, pull request 4): the you-lines, a document's date over memory, a customer's
+ *    promise on the deal, One thing to think about, the story paragraph, and each line said once;
+ *  - in Today and the lead's list: one wait said once, what changes said as the waiting person's, a side that said nothing
+ *    left out, and a difference that is only a target said again or settled by a correction left out.
+ * Whatever the switch says: a participant's report carries only their own engagement row and session count (own-reads-only),
+ * because each person's load is private, always.
  * The deal rows, each stage kept with its day, and the check-in's gathering of them run either way, because they only add.
  */
 export const THE_RELEASE_ONE_SALES_BOARD = 'release1SalesBoardOn';
