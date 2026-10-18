@@ -1297,6 +1297,8 @@ model Ground {
   dependencies               GroundDependency[]
   workMentions               WorkMention[]
   workItems                  WorkItem[]
+  /// Release 1B: proof added in check-ins, filed on its item (ItemEvidence).
+  itemEvidence               ItemEvidence[]
   poll                       GroundPoll?
   participantRequests        ParticipantRequest[]
   contributorCodeRedemptions ContributorCodeRedemption[]
@@ -5475,6 +5477,8 @@ model GroundDocument {
   participant GroundParticipant? @relation(fields: [participantId], references: [id], onDelete: SetNull)
 
   proposals KnowledgeProposal[]
+  /// Release 1B: where this document was filed as evidence, when it was added as proof in a check-in.
+  evidence  ItemEvidence[]
 
   @@index([groundId, participantId])
   @@map("ground_documents")
@@ -5600,6 +5604,20 @@ enum ContextItemKind {
   QUESTION_FOR_PERSON
   /// Something involving two named people that belongs to neither alone.
   BETWEEN_PEOPLE
+  /// RELEASE 1B, REFERENCES AND RESOURCES (pull request 2 of 3). What a stage of the work needs ("Qualified: need, budget,
+  /// decision maker and buying date."), typed by the lead under How we work. About the work, so shared with the team.
+  STAGE_NEEDS
+  /// Coaching for the whole team ("Find the decision maker before quoting."), under How we work. Shared with the team.
+  COACHING
+  /// A risk to watch for ("A price below KES 4,200."), under How we work. A thing to look out for, never a status. Shared.
+  RISK
+  /// One of the key facts under About this work: the label on its first line, the fact on the next. Shared with the team.
+  KEY_FACT
+  /// The lead's note on one person, under People. The lead's alone, never shown to the person, never quoted; with Release
+  /// 1B's switch on it shapes that person's own check-in (Hafsah, 18 October). ABOUT_A_PERSON still reaches no check-in.
+  PERSON_NOTE
+  /// What the lead wants to help one person with, under People. The lead's alone, the same as PERSON_NOTE.
+  HELP_WITH
 }
 
 model GroundContextItem {
@@ -8715,4 +8733,38 @@ model ReportRead {
   @@unique([groundId, sessionNumber, userId])
   @@index([userId])
   @@map("report_reads")
+}
+
+/// PROOF ADDED IN A CHECK-IN, FILED ON ITS ITEM (Release 1B, pull request 2 of 3, References and resources; Hafsah, 18 October
+/// 2026: "Proof added in a check-in is read, filed on its item as evidence, and shown on the board beside that item").
+/// One row per document someone added in their check-in (on the web or WhatsApp), written once when it arrives and only while
+/// the organisation's Release 1B switch is on. Read with what the document was read as: which item it names (a deal, a work
+/// item), what kind of thing it is, and whether it counts as proof. Never rewritten when a page opens. The document itself
+/// keeps its own visibility; this row only says where it was filed.
+/// WHO READS IT: the lead of the check-in reads every row; each person reads only the rows for what they added.
+model ItemEvidence {
+  id            String   @id @default(uuid())
+  groundId      String   @map("ground_id")
+  documentId    String   @map("document_id")
+  /// Who added it: the person in the check-in.
+  participantId String?  @map("participant_id")
+  /// The item it was filed on, where its words name one. Null where none could be told apart.
+  workItemId    String?  @map("work_item_id")
+  /// The item's name when it was filed, so the list still says it if the item is renamed.
+  itemName      String?  @map("item_name")
+  /// What it was read as: "A signed order", "A payment", "A quote", "A photo" or "A document".
+  readAs        String   @map("read_as")
+  /// Whether it counts as proof. A visit photo, or a document with no order, payment or quote in it, does not.
+  countsAsProof Boolean  @default(false) @map("counts_as_proof")
+  /// One short line of what it shows, from the document's own words.
+  shows         String?  @db.Text
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  ground   Ground         @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  document GroundDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId])
+  @@index([groundId, createdAt])
+  @@index([workItemId])
+  @@map("item_evidence")
 }
