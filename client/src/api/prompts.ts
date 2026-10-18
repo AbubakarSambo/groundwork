@@ -134,6 +134,8 @@ export interface OrgListItem {
   isInternal: boolean
   /** Release 1's sales board, switched on for this organisation by staff. Off for every organisation until then. */
   release1SalesBoardOn?: boolean
+  /** Release 1B's new check-in tabs, switched on for this organisation by staff. Off for every organisation until then. */
+  release1bTabsOn?: boolean
   groundCount: number
   userCount: number
   lastActivity: string | null

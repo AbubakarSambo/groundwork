@@ -588,6 +588,11 @@ model Organization {
   /// is kept, and the lead's morning summary and the weekly letter read from the deals. The writers (deal rows, each stage
   /// kept with its day, the week's deals kept on the weekly row) run either way, so switching it off loses nothing.
   release1SalesBoardOn   Boolean   @default(false) @map("release_1_sales_board_on")
+  /// RELEASE 1B'S NEW CHECK-IN TABS, A SWITCH PER ORGANISATION (Hafsah, 18 October 2026). Off for every organisation until
+  /// Groundwork staff switch it on in Admin, Orgs, or a script does for a "(test)" organisation. On, People and setup reads as
+  /// the B8 pictures for the lead, a team member and an admin who does not run it; off, it reads exactly as before. It writes
+  /// nothing on its own: existing check-ins keep their cadence and every setting.
+  release1bTabsOn        Boolean   @default(false) @map("release_1b_tabs_on")
   whatsappMonthlyUse     WhatsAppMonthlyUse[]
 
   companyStage CompanyStage? @map("company_stage")
