@@ -116,6 +116,7 @@ describe('an admin who does not run it, Naomi, reads the whole page with no endi
       { participantId: 'p-joseph', says: "Nobody has described Joseph Mutua's role here, so Joseph gets the general questions.", fix: null },
       { participantId: 'p-peter', says: "Peter Ouma can't start, because the invitation to Peter bounced.", fix: null },
     ]);
+    expect(r.roleDescribed).toEqual({ 'p-grace': true, 'p-kevin': true, 'p-mercy': true, 'p-joseph': false, 'p-peter': true });
     const served = JSON.stringify(r);
     expect(served).not.toContain(LEAD_NOTE_ABOUT_KEVIN);
     expect(served).not.toContain('Agent, Thika');

@@ -64,6 +64,8 @@ export type PeopleAndSetup =
       othersWithAccess: string;
       runsIt: string | null;
       organisationName: string;
+      /** Whether each person's role here has been described: yes or no only, never the words, which are the lead's. */
+      roleDescribed: Record<string, boolean>;
     };
 
 const WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -303,5 +305,6 @@ export async function readPeopleAndSetup(
     othersWithAccess,
     runsIt: leadName,
     organisationName: orgName,
+    roleDescribed: Object.fromEntries(rows.map((p) => [p.id, !!(p.roleAsDescribed ?? '').trim()])),
   };
 }
