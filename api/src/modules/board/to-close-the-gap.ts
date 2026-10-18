@@ -1,4 +1,4 @@
-import type { AServedRecord, AServedSection, KindOfWork } from './the-kind-of-work';
+import { isASalesKind, type AServedRecord, type AServedSection, type KindOfWork } from './the-kind-of-work';
 import { theDayInWords, aDateOnly } from './the-day-in-words';
 import { theWordsSayItIsALimit } from './a-measure-that-goes-down-is-still-going-well';
 
@@ -36,7 +36,7 @@ export function toCloseTheGap(
   end: Date | null,
   now: Date,
 ): ToCloseTheGap | null {
-  if (kind !== 'sales org' || !Array.isArray(sections)) return null;
+  if (!isASalesKind(kind) || !Array.isArray(sections)) return null;
   /* A limit not to go over, a share, a date or a zero is not an aim with a gap to close: "35 more are needed" of a credit limit of 35 per cent counted deals toward it (user journeys, F-4). */
   const aim = teamAims.find((a) => !a.ownerParticipantId && typeof a.target === 'number' && a.target > a.count
     && (!a.direction || a.direction === 'AIM') && !theWordsSayItIsALimit(a.name));

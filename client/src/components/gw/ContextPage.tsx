@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
+import { isASalesKind } from '@/lib/a-sales-kind'
 import { documentsApi } from '@/api/documents'
 import { askApi } from '@/api/ask'
 import { toast } from 'sonner'
@@ -440,7 +441,7 @@ export function ContextPage({
    * one-line fact on each folded part is counted from what the server sent this reader (the ground
    * read, the documents read), never read off the screen, and says only what those hold.
    */
-  const light = (ground as any).kindOfWork === 'sales org'
+  const light = isASalesKind((ground as any).kindOfWork)
   const onAPhone = useIsAPhone()
   const thePageAtAGlance = (() => {
     const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`

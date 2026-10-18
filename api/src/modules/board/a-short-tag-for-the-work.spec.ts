@@ -18,7 +18,8 @@ describe('a short tag for the work, from a pattern on record', () => {
     const at = src.indexOf('aShortTagForTheWork(served');
     const block = src.slice(src.lastIndexOf('if ((isInitiator || adminHere) && Array.isArray(out.eachPerson))', at), at + 400);
     expect(block).toContain("x?.about === 'the work'");
-    expect(block).toContain("kind === 'sales org'");
+    /* A sales board of either sales kind, a team or an organisation of several teams (Release 1). */
+    expect(block).toContain('isASalesKind(kind)');
     expect(block).toMatch(/where: \{ id: \{ in: served\.map\(\(x\) => x\.id\) \}, groundId \}/);
   });
 });

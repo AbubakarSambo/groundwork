@@ -578,6 +578,11 @@ model Organization {
   /// An organisation that was paying the old flat WhatsApp line when the new pricing came in keeps exactly that line until
   /// it adds a seat, switches WhatsApp off and on, or changes plan (fix list item 6). Then it moves to WhatsApp per person.
   whatsappFlatAddOnKept  Boolean   @default(false) @map("whatsapp_flat_add_on_kept")
+  /// RELEASE 1'S SALES BOARD, A SWITCH PER ORGANISATION (release plan, Part 0, "Existing users: in every release"). Off for
+  /// every organisation already here and every new one, until Groundwork staff switch it on (Admin, Orgs) or a script does
+  /// for a test organisation. Nothing reads it yet; the parts of Release 1's sales board that follow read it, so that off
+  /// keeps the board, the team report and the weekly report exactly as they were. Switching it off loses nothing.
+  release1SalesBoardOn   Boolean   @default(false) @map("release_1_sales_board_on")
   whatsappMonthlyUse     WhatsAppMonthlyUse[]
 
   companyStage CompanyStage? @map("company_stage")

@@ -138,6 +138,10 @@ export const adminApi = {
   setCoachingLive: (live: boolean) =>
     apiClient.patch<{ live: boolean }>('/admin/coaching', { live }).then(r => r.data),
 
+  /** Release 1's sales board, switched on or off for one organisation (staff only). The server says back what changed. */
+  setReleaseOneSalesBoard: (organizationId: string, on: boolean) =>
+    apiClient.patch<{ id: string; name: string; release1SalesBoardOn: boolean; says: string }>(`/admin/organisations/${organizationId}/release-one-sales-board`, { on }).then(r => r.data),
+
   getCorrectionWindow: () => apiClient.get<CorrectionWindow>('/admin/correction-window').then(r => r.data),
   setCorrectionWindow: (days: number) =>
     apiClient.patch<CorrectionWindow>('/admin/correction-window', { days }).then(r => r.data),

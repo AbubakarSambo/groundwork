@@ -132,6 +132,8 @@ export interface OrgListItem {
   careFeeStatus: string
   /** One of ours. Listed, so it can be found; counted nowhere. */
   isInternal: boolean
+  /** Release 1's sales board, switched on for this organisation by staff. Off for every organisation until then. */
+  release1SalesBoardOn?: boolean
   groundCount: number
   userCount: number
   lastActivity: string | null

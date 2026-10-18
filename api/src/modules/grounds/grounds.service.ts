@@ -51,7 +51,7 @@ import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { aKindMayBeGiven, theBoardKindsOffered, theOldContextChatIsOpen } from '../admin/what-is-hidden-at-release';
 import { askNameOf } from '../assistant/ask-name';
-import { KINDS_OF_WORK, THE_KIND_OF_WORK_PROMPT, THE_KIND_OF_WORK_SCHEMA, oneOfTheKinds, theSetupWords } from '../board/the-kind-of-work';
+import { KINDS_OF_WORK, THE_KIND_OF_WORK_PROMPT, THE_KIND_OF_WORK_SCHEMA, oneOfTheKinds, isASalesKind, theSetupWords } from '../board/the-kind-of-work';
 import { PrismaService } from '../prisma/prisma.service';
 import { theNextDayTheyWork, workingDaysOf, theDaysItRunsOn } from './which-days-this-team-works';
 import { targetsFor } from '../board/whose-number-is-whose-business';
@@ -5500,12 +5500,16 @@ export class GroundsService {
     try {
       const g = await this.prisma.ground.findUnique({
         where: { id: groundId },
-        select: { label: true, brief: true, endState: true, resolutionState: true, kindOfWorkSetBy: true, kindOfWork: true },
+        select: {
+          label: true, brief: true, endState: true, resolutionState: true, kindOfWorkSetBy: true, kindOfWork: true,
+          /* The people's job titles, so a sales team is told by its reps and its sales manager as well as by its words (Release 1). */
+          participants: { select: { roleAsDescribed: true, user: { select: { jobTitle: true } } } },
+        },
       });
       if (!g || theReadingMustLeaveIt(g.kindOfWorkSetBy)) return;
       /* A check-in that already has a kind keeps it, offered or not (docs/deploy.md, "Hidden at release"). */
       const hasOne = oneOfTheKinds(g.kindOfWork);
-      const words = theSetupWords(g);
+      const words = theSetupWords(g, ((g.participants ?? []) as any[]).flatMap((p) => [p.user?.jobTitle, p.roleAsDescribed]));
       if (!words.trim()) return;
       const answer = await this.anthropic.extract<{ kind?: string }>(
         THE_KIND_OF_WORK_PROMPT,
@@ -5513,6 +5517,12 @@ export class GroundsService {
         THE_KIND_OF_WORK_SCHEMA,
       );
       const read = oneOfTheKinds(answer?.kind);
+      /*
+       * A SALES CHECK-IN KEEPS THE SALES KIND IT HOLDS (Release 1). "sales team" came in beside "sales org"; a check-in read as a
+       * sales org before keeps that, and one read as a sales team keeps that, when a later read of its words says the other. Only
+       * the lead moves it between the two (PATCH /grounds/:id/kind-of-work), so no existing check-in's kind is rewritten by a read.
+       */
+      if (read && hasOne && isASalesKind(read) && isASalesKind(hasOne)) return;
       /* A kind not offered at release is never given to a check-in by the read; one it already holds stays. */
       const kind = read && (await aKindMayBeGiven(this.prisma, read, hasOne)) ? read : null;
       if (read && !kind && hasOne) return;
@@ -5533,7 +5543,7 @@ export class GroundsService {
   }
 
   /**
-   * THE LEAD CHANGES THE KIND OF WORK, AND ITS STAGE NAMES. `kind` must be one of the eleven or null
+   * THE LEAD CHANGES THE KIND OF WORK, AND ITS STAGE NAMES. `kind` must be one of the twelve or null
    * (none of them); anything else is refused in plain words rather than stored. `stages` are the
    * organisation's own names, in order; an empty list goes back to the kind's defaults.
    */

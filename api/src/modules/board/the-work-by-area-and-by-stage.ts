@@ -1,4 +1,4 @@
-import type { AServedSection, AServedRecord, KindOfWork } from './the-kind-of-work';
+import { isASalesKind, type AServedSection, type AServedRecord, type KindOfWork } from './the-kind-of-work';
 
 /**
  * THE WORK BY AREA, AND WHAT WAS REPORTED AT EACH SALES STAGE (request 107 c).
@@ -88,11 +88,12 @@ export function reportedAgainstTheRules(kind: KindOfWork | null, sections: AServ
    * own word ("2 tasks were reported at Merged"), and the sales board is unchanged.
    */
   const grid = (sections ?? []).find((s: any) => Array.isArray(s.rows) && Array.isArray(s.stages) && s.stages.length && s.rows.length) as any;
-  if (kind !== 'sales org' && !grid) return null;
-  const deals: AServedRecord[] = grid ? grid.rows.filter((r: AServedRecord) => kind === 'sales org' ? r.kind === 'deal' : true) : [];
+  const sales = isASalesKind(kind);
+  if (!sales && !grid) return null;
+  const deals: AServedRecord[] = grid ? grid.rows.filter((r: AServedRecord) => sales ? r.kind === 'deal' : true) : [];
   const kinds = [...new Set(deals.map((d) => d.kind))];
-  const noun = kind === 'sales org' ? 'deal' : kinds.length === 1 ? kinds[0] : 'piece of work';
-  const rules = kind === 'sales org' ? NO_STAGE_RULES : NO_STAGE_RULES.replace('what a deal must show at each stage', 'what each piece of work must show at each stage');
+  const noun = sales ? 'deal' : kinds.length === 1 ? kinds[0] : 'piece of work';
+  const rules = sales ? NO_STAGE_RULES : NO_STAGE_RULES.replace('what a deal must show at each stage', 'what each piece of work must show at each stage');
   const order: string[] = Array.isArray(grid?.stages) ? grid.stages : [];
   /*
    * ONLY STAGES WITH SOMETHING IN THEM (request 115 f). Four rows of "Nobody has reported a deal at ..."
@@ -124,5 +125,5 @@ export function reportedAgainstTheRules(kind: KindOfWork | null, sections: AServ
       const says = [reportedSays, addedSays].filter(Boolean).join(' ');
       return { stage, reported: at.length, withProof, ...(added.length ? { addedOnTheBoard: added.length } : {}), says };
     });
-  return { state: 'not-known', why: rules, stages, ...(stages.length ? {} : { says: kind === 'sales org' ? NO_DEAL_REPORTED_YET : `Nobody has reported a ${noun} at any stage yet.` }) };
+  return { state: 'not-known', why: rules, stages, ...(stages.length ? {} : { says: sales ? NO_DEAL_REPORTED_YET : `Nobody has reported a ${noun} at any stage yet.` }) };
 }

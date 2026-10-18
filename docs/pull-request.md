@@ -16,6 +16,22 @@ This is the first of five small pull requests for Release 1 (Drop Access, a sale
 - [ ] **No new templates, no new one-off scripts, no new settings.**
 - [ ] **GitHub's checks cannot run** (the Actions budget is used up), so they fail after 2 seconds. The local results are in the pull request's description.
 
+## Release 1, pull request 2 of 5: "sales team", and the switch for Release 1's sales board (19 October)
+
+The second of the five pull requests for Release 1. It is built on pull request 1 and does two things.
+
+1. **"Sales team" is a kind of work of its own,** beside "sales org". A sales team is one lead and the people who sell under them (Drop Access: Grace and three reps); a sales org is a sales organisation of several teams. Until Release 4 draws the sales organisation's own board, both get the same sales board, deal grid, stages, To close the gap, customer standing and sales reports: every place in the code that asked whether a check-in is "sales org" now asks whether it is either sales kind (`isASalesKind` in the API, and its twin in `client/src/lib/a-sales-kind.ts`). The read at setup is told the difference and is given the people's job titles. A check-in that already holds one sales kind keeps it when a later read says the other; only the lead changes it. Wherever "sales org" is offered, "sales team" is offered too. The lead now reads "One sales team and its deals" and "A sales organisation of several teams, and its deals" in the chooser, and "This check-in is about a sales team and its deals." or "This check-in is about a sales organisation of several teams, and its deals." on the board.
+2. **A switch per organisation for Release 1's sales board,** `Organization.release1SalesBoardOn`, off for every organisation. Groundwork staff switch it on in Admin, Orgs, inside each opened organisation, under "The new sales board"; a script does it for a test organisation only. In this pull request nothing reads it yet: the parts of the sales board that follow in pull requests 3 to 5 read it, so an organisation with it off keeps the board it has.
+
+**Before you merge:**
+- [ ] **Take a backup of the database first.**
+- [ ] **There is one new migration,** `20261017120000_release_one_sales_board_switch`. It adds `organizations.release_1_sales_board_on`, false for every existing organisation. No other row is changed. See `docs/deploy.md`.
+- [ ] **Existing organisations see nothing new.** The switch is off for all of them, and nothing reads it yet. Existing check-ins keep the kind of work they have; "sales org" ones are not moved to "sales team".
+- [ ] **No new templates, no new settings, no new prompt versions.** The read of the kind of work at setup is a prompt in the code (`THE_KIND_OF_WORK_PROMPT`), not one stored in the database, so the new wording is the one that runs.
+- [ ] **One new one-off script,** `api/scripts/the-release-one-sales-board.ts`, for test organisations only. It is never run by a deploy.
+
+**Old tests this changes, and why:** the kinds count is twelve now; the offered list includes "sales team"; the short-tag source check reads `isASalesKind`; the sales org's banner and chooser label on the board now say "a sales organisation of several teams", because "a sales team" is the new kind's sentence.
+
 ## This update, 14 October (after #326 and #327)
 
 This update is made from staging as it is now (`a767ec6c3`). Like the release before it, it comes as two pull requests, the engine first and then the screens.

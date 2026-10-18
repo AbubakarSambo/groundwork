@@ -57,7 +57,7 @@ import { coverageAsThisReaderMayRead, withNoRatingNumber } from './no-rating-is-
 import { theBoardKindsOffered, theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { theAnchorBoardParts } from './the-anchor-board-parts';
 import { aShortTagForTheWork } from './a-short-tag-for-the-work';
-import { oneOfTheKinds, plainFields, theSameName, theRecordSections, itemKindsFor, stagesFor, RECORDS_FOR_EACH_KIND, KINDS_THAT_ARE_NOT_WORK, type AServedRecord, type KindOfWork } from './the-kind-of-work';
+import { oneOfTheKinds, isASalesKind, plainFields, theSameName, theRecordSections, itemKindsFor, stagesFor, RECORDS_FOR_EACH_KIND, KINDS_THAT_ARE_NOT_WORK, type AServedRecord, type KindOfWork } from './the-kind-of-work';
 
 /** What the lead sends to add or change a record of the kind of work. */
 export interface WorkItemInput {
@@ -2297,7 +2297,7 @@ export class BoardService {
        */
       const kind = oneOfTheKinds((ground as any).kindOfWork);
       const served = ((out.patterns as any[] | undefined) ?? []).filter((x) => x?.id && x?.participantId && x?.about === 'the work');
-      if (kind === 'sales org' && served.length) {
+      if (isASalesKind(kind) && served.length) {
         const rows = ((await (this.prisma as any).patternDetection?.findMany?.({ where: { id: { in: served.map((x) => x.id) }, groundId }, select: { id: true, code: true } })?.catch?.(() => [])) ?? []) as { id: string; code: string }[];
         const codeOf = new Map(rows.map((r) => [r.id, r.code]));
         out.eachPersonToday = (out.eachPersonToday as any[]).map((row) => {
@@ -2400,7 +2400,7 @@ export class BoardService {
        * or everybody's for whoever runs it and an admin outside an evaluation check-in, or where people see
        * each other and this reader's board is not only their own. See a-deal-row-from-its-record.
        */
-      if (kind === 'sales org' && rows.some((r) => r.kind === 'deal')) {
+      if (isASalesKind(kind) && rows.some((r) => r.kind === 'deal')) {
         const readsEveryonesWords = runsIt || (adminHere && !isEvaluationCheckIn(ground.scenario))
           || (!whoMaySee.peersHidden && !colleaguesWordsWalled && !aParticipantOnly);
         const mayReadTheWordsOf = (pid: string | null | undefined) => !!pid && (pid === me?.id || readsEveryonesWords);
@@ -3102,7 +3102,7 @@ export class BoardService {
        * folded line and two for each box, built from this board as served, after every wall, so a fact never says
        * more than the sections it sums up. For the sales board, and not to a participant, who reads their own view.
        */
-      if (oneOfTheKinds((ground as any).kindOfWork) === 'sales org' && !aParticipantOnly) {
+      if (isASalesKind((ground as any).kindOfWork) && !aParticipantOnly) {
         (asServed as any).atAGlance = theBoardAtAGlance(asServed, {
           readerCheckedInThisRound: me?.id
             ? (checkIns as any[]).some((c) => c.participantId === me.id && c.sessionNumber === openRound && String(c.status).toUpperCase() === 'COMPLETED')

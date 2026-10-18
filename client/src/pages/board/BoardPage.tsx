@@ -12,6 +12,7 @@ import { WhatToSettleTogether } from '@/components/gw/what-to-settle-together'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { CheckInLinks } from './CheckInLinks'
 import { boardApi, type BoardPresent, type CoverageVariant, type AnAction, type StartingStateAtTheStart, type ChangeSinceLast, type NinetyDays } from '@/api/board'
+import { isASalesKind } from '@/lib/a-sales-kind'
 import { apiClient } from '@/api/client'
 import { groundsApi } from '@/api/grounds'
 import { participantRequestsApi } from '@/api/participantRequests'
@@ -655,7 +656,7 @@ function TheParticipantsOwnView({ pictured = false, board, myFirstName = null, g
    * sales kind of work specifically, so every other kind of work this screen already serves is
    * unaffected.
    */
-  const isSalesKindOfWork = kindOfWork === 'sales org'
+  const isSalesKindOfWork = isASalesKind(kindOfWork)
   return (
     <>
       {/*
@@ -1453,7 +1454,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * false claim about her own deals, which she had just read above. A participant now gets none of
    * `workRecords` here, deal grid or forecast - only her own records, already shown.
    */
-  const isSalesOrg = ((b as any).kindOfWork ?? null) === 'sales org'
+  const isSalesOrg = isASalesKind((b as any).kindOfWork ?? null)
   /*
    * PROJECT BOARD REVIEW 1, FIX 11: THE TWO PROJECT SCENARIOS - "GET A NEW PROJECT OFF TO A GOOD
    * START" (NEW_PROJECT, eng.txt's own check-in) AND "GET A PROJECT BACK ON TRACK" (DRIFT). Used

@@ -6,6 +6,7 @@ import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { conversationApi } from '@/api/conversation'
 import { groundsApi } from '@/api/grounds'
+import { isASalesKind } from '@/lib/a-sales-kind'
 import { reportsApi } from '@/api/reports'
 import { InferenceReviewPanel } from '@/components/InferenceReviewPanel'
 import { TheSessionsReport } from '@/components/gw/TheSessionsReport'
@@ -278,7 +279,7 @@ export default function SessionReportPage() {
    * report already lives. The check-in's name and the day, "Only you", "Your report", your own report itself, and
    * whether the team's report is shared yet. Everything else this page shows is one tap away (?whole=1).
    */
-  if (!isLoading && !isError && data?.groundId && data?.sessionNumber && (ground as any)?.kindOfWork === 'sales org' && searchParams.get('whole') !== '1') {
+  if (!isLoading && !isError && data?.groundId && data?.sessionNumber && isASalesKind((ground as any)?.kindOfWork) && searchParams.get('whole') !== '1') {
     const teamShared = !!shape && (shape as any).released === true
     const checkInLabel: string = (ground as any)?.label ?? 'This check-in'
     return (
@@ -516,7 +517,7 @@ export default function SessionReportPage() {
                 checkInId={checkInId!}
                 groundId={data!.groundId as string}
                 sessionNumber={data!.sessionNumber as number}
-                light={(ground as any)?.kindOfWork === 'sales org'}
+                light={isASalesKind((ground as any)?.kindOfWork)}
               />
             )}
 
@@ -695,7 +696,7 @@ export default function SessionReportPage() {
             own-report.txt: "The team’s report / Not shared yet"). The done page's own rule and tags: this
             session's own release, never another session's.
           */}
-          {(ground as any)?.kindOfWork === 'sales org' ? (
+          {isASalesKind((ground as any)?.kindOfWork) ? (
             <div className="gwui-sentence-row">
               <SubHeading>The team’s report</SubHeading>
               {isSessionShared((ground as any)?.report, data.sessionNumber as number)
@@ -737,7 +738,7 @@ export default function SessionReportPage() {
           <TheSessionsReport
             groundId={data.groundId}
             sessionNumber={data.sessionNumber}
-            light={(ground as any)?.kindOfWork === 'sales org'}
+            light={isASalesKind((ground as any)?.kindOfWork)}
             totalInThisRound={ground ? whoIsInRound(((ground as any).participants ?? []), data.sessionNumber, (ground as any).scenario, (ground as any).checkIns ?? []).length : null}
           />
           {/* A self-correction shows up as a flagged, dated entry rather than being blended in

@@ -497,6 +497,18 @@ export class AdminController {
 
 
   /**
+   * RELEASE 1'S SALES BOARD, ONE ORGANISATION AT A TIME (release plan, Part 0: "switch it on for the test organisations; then
+   * on staging; then for real clients, one at a time"). Staff only, by the guard on this controller. Off returns the
+   * organisation to the board it had, with nothing lost.
+   */
+  @Patch('organisations/:organizationId/release-one-sales-board')
+  @ApiOperation({ summary: "Switch Release 1's sales board on or off for one organisation" })
+  setReleaseOneSalesBoard(@Param('organizationId') organizationId: string, @Body() dto: { on?: unknown }) {
+    if (typeof dto?.on !== 'boolean') throw new BadRequestException('Say whether the new sales board should be on or off for this organisation.');
+    return this.adminService.setReleaseOneSalesBoard(organizationId, dto.on);
+  }
+
+  /**
    * A FREE RUN ON THE HOUSE, GIVEN TO AN ADDRESS BEFORE THERE IS AN ORGANISATION. One month unless staff
    * type another length: every free run is one month (Hafsah, 5 October 2026), where it used to be three.
    *
