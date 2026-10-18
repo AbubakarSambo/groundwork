@@ -191,7 +191,8 @@ export type BoardPresent = {
    * server's own "Your own report is ready now.", or null when this reader has no report yet) while
    * it has not. Present only on a participant's own narrowed board - absent for the lead.
    */
-  teamPicture?: { shared: true } | { shared: false; says: string; yourOwnReport: string | null }
+  /** `forDay` and `yourReportFor`: the day the reports are for, where it is not today (quality pass, 18 October, R-1). */
+  teamPicture?: { shared: true; forDay?: string; yourReportFor?: string } | { shared: false; says: string; yourOwnReport: string | null; forDay?: string; yourReportFor?: string }
   /**
    * "YOUR SHARE" (request 107 c; board-as-participant.txt: "4 of your 5 sales so far; 3 paid. Only
    * you and Wairimu see your share."). Only this reader's own targets with a number set, each
@@ -568,7 +569,13 @@ export type BoardPresent = {
   }
   /** What the person who runs the check-in needs to do. At most 10, for that reader only. */
   /** `action` is sent to the lead alone - see `AnAction`. */
-  leadActions?: { id: string; says: string; because: string | null; action?: AnAction }[]
+  /**
+   * `decision`, to the lead alone, where a wait on the lead is answered by a yes or a no ("Decide whether to agree to the
+   * KES 4,500 price for Juja Hardware"), with who asked and when; its `action` then carries "Yes, agree to it" and "No".
+   */
+  leadActions?: { id: string; says: string; because: string | null; decision?: { question: string; asked?: string; why: string; afterwards?: string }; action?: AnAction }[]
+  /** Each deal at the stall rule, grouped by whose it is, to the lead alone: "Mama Pima Stores has not answered Joseph since 12 October", "Ask Joseph". */
+  atTheStallRule?: { participantId: string; name: string; deals: string[]; title: string; detail: string; ask: string }[]
   /** MISSED CHECK-INS (decision 136), to the lead of this check-in alone: the whole line, already worded, with the reason the person gave and the next step suggested inside it. */
   missedCheckIns?: { participantId: string; name: string; text: string; reason: string | null; suggestion: string | null }[]
   /** What each side promised, and what somebody here still waits on that side for. One per person, then each outside party named. */
@@ -728,6 +735,8 @@ export type BoardPresent = {
     gap: number
     aim: string
     says: string
+    /** "To close the gap, two of these three", counted by what each deal holds in the aim's measure; null where none is needed. */
+    heading?: string | null
     deals: { id: string; name: string; owner: string | null; says: string }[]
   } | null
 
@@ -959,6 +968,12 @@ export type AServedWorkSection =
        * `rows`. Present only on the sales org's "Deal grid" section.
        */
       groups?: { group: 'likely' | 'possible' | 'next-quarter' | 'cooling' | 'cold' | 'said-won' | 'won'; heading: string; reason: string; rowIds: string[] }[]
+      /*
+       * LOST DEALS, AND WHY (Hafsah, 18 October: a Lost stage). A deal the customer said no to, or the rep gave up, one row each and
+       * never in a group or an open total: the reason in the rep's own words (null where none was given), what shows it, and what it
+       * teaches only where the record supports it. A rep is sent only their own.
+       */
+      lost?: { id: string; name: string; owner: string | null; ownerParticipantId: string | null; on: string; reason: string | null; reasonFrom: string; lesson: string | null; says: string }[]
       /** What the record cannot support, said plainly once under the grid - never claimed by a group. */
       groupsNote?: string[]
       /** Present only on a participant's own board, where this section already holds only their own rows ("Only yours."). */

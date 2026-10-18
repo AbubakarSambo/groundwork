@@ -87,7 +87,14 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
     return it ? String(it.text).replace(/^[^"“]*?said,\s*/i, '').replace(/^["“]|["”]$/g, '') : null
   }
   const differences: Any[] = rep.whereThingsStand?.openWithReasons ?? []
-  const question: Any = (b?.decisions ?? []).find((d: Any) => (d.action?.choices ?? []).length && (d.action.choices as Any[]).every((c: Any) => !c.route || String(c.route.path ?? '').startsWith(`/grounds/${groundId}/`)))
+  const toThisCheckIn = (x: Any) => (x?.action?.choices ?? []).length && (x.action.choices as Any[]).every((c: Any) => !c.route || String(c.route.path ?? '').startsWith(`/grounds/${groundId}/`))
+  /*
+   * The question the lead wrote down to settle, or else a wait on the lead that a yes or a no answers (Joseph Kariuki's
+   * "an answer about the KES 4,500 price for Juja Hardware"), answered the same way as on the board, so both update.
+   * The server sends either only to the lead, and the second only with Release 1's sales board on; with neither, the section is not shown.
+   */
+  const question: Any = (b?.decisions ?? []).find(toThisCheckIn)
+    ?? ((b?.leadActions ?? []) as Any[]).filter((a) => a?.decision?.question && toThisCheckIn(a)).map((a) => ({ question: a.decision.asked ?? a.decision.question, why: a.decision.why, afterwards: a.decision.afterwards, action: a.action }))[0]
 
   /* faith90-team-report.jpg: before anybody has checked in there is no team report yet, and the page says when there will be. */
   if (counting.length && !answered.length) {
@@ -252,10 +259,11 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
           {question.why && <p className="gwui-panel-text">{question.why}</p>}
           <div className="pb-relevant-actions">
             {(question.action.choices as Any[]).filter((c) => c.route).map((c, i) => (
-              <Button key={c.label} kind={i === 0 ? 'primary' : 'secondary'} disabled={answer.isPending} onClick={() => answer.mutate(c.route)}>{/^No$/.test(c.label) ? theNoFor((question.action.choices as Any[])[0].label) : c.label}</Button>
+              <Button key={c.label} kind={i === 0 ? 'primary' : /^No\b/.test(c.label) ? 'quiet' : 'secondary'} disabled={answer.isPending} onClick={() => answer.mutate(c.route)}>{/^No$/.test(c.label) ? theNoFor((question.action.choices as Any[])[0].label) : c.label}</Button>
             ))}
           </div>
-          <p className="pb-foot">Your answer updates the board, and everyone counts the same way from now on.</p>
+          {/* For a wait on the lead, only what the record can say the answer does: the wait is cleared. */}
+          <p className="pb-foot">{question.afterwards ?? 'Your answer updates the board, and everyone counts the same way from now on.'}</p>
         </div>
       )}
 

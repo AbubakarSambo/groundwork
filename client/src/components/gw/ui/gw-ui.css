@@ -121,7 +121,7 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 .gwui-pt-headtext { min-width: 0; }
 .gwui-pt-title {
   font-family: var(--gw-font-name); font-size: 30px; line-height: 1.18; font-weight: 500;
-  color: var(--gw-text); margin: 0;
+  color: var(--gw-text); margin: 0; font-variant-numeric: lining-nums;
 }
 @media (max-width: 640px) {
   .gwui-pt-title { font-size: 24px; }
@@ -2178,7 +2178,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ec-savecard-error { font-size: 13px; color: var(--gw-red-t); margin-bottom: 6px; }
 .gwui-ec-savecard-or-row { display: flex; align-items: center; gap: 8px; padding: 12px 0 8px; }
 .gwui-ec-savecard-or-text { font-size: 13px; color: var(--gw-muted); }
-.gwui-ec-savecard-confirm-box { position: sticky; top: 8px; z-index: 5; background: var(--gw-green-bg); border: 1px solid var(--gw-green-b-soft); border-radius: 10px; padding: 14px 16px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+.gwui-ec-savecard-confirm-box { position: sticky; top: 8px; z-index: 5; background: var(--gw-green-bg); border: 1px solid var(--gw-green-b-soft); border-radius: 10px; padding: 14px 16px; margin-bottom: 20px; }
 .gwui-ec-savecard-confirm-title { font-size: 14px; font-weight: 700; color: var(--gw-green-t); margin-bottom: 4px; }
 .gwui-ec-savecard-confirm-body { font-size: 13px; color: var(--gw-green-t); line-height: 1.6; }
 .gwui-ec-savecard-confirm-sub { font-size: 13px; color: var(--gw-green-t); line-height: 1.6; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--gw-green-b-soft); }

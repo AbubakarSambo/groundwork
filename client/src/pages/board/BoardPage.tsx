@@ -545,7 +545,8 @@ function ActionButtons({ groundId, action }: { groundId: string; action?: AnActi
         {choices.map((c) => (
           <UIButton
             key={c.label}
-            kind="secondary"
+            /* D-3: "No" and "Not now" are the prototype's .btn.quiet beside the answer. */
+            kind={/^(?:No|Not now)\b/.test(c.label) ? 'quiet' : 'secondary'}
             size="small"
             disabled={run.isPending}
             onClick={c.route ? () => { setNotYetSaid(null); run.mutate(c.route) } : () => setNotYetSaid(action.says ?? null)}
@@ -676,7 +677,8 @@ function TheParticipantsOwnView({ pictured = false, board, myFirstName = null, g
             and open it themselves. This instead opens that fold and jumps straight to it.
           */}
           <Text size="16" ink="dark" weight={700}>
-            {shared ? 'Today’s team picture is shared.' : 'Today’s team picture isn’t shared yet.'}
+            {/* The day it is for, where it is not today (quality pass, 18 October, R-1). */}
+            {shared ? (teamPicture?.forDay ? `The team’s report for ${teamPicture.forDay} is shared.` : 'Today’s team picture is shared.') : 'Today’s team picture isn’t shared yet.'}
           </Text>
           <div className="gwui-fs-15 gwui-ink-sub gwui-mt-4" style={{lineHeight: 1.55}}>
             {shared
@@ -714,7 +716,7 @@ function TheParticipantsOwnView({ pictured = false, board, myFirstName = null, g
               redirect kept only for the rare case nothing has completed for this reader yet.
             */
             <Link to={myLatestCheckInId ? `/checkin/${myLatestCheckInId}/report` : `/grounds/${groundId}/report`} className="gwui-plain-link gwui-fs-15 gwui-mt-4">
-              Open today’s team picture.
+              {teamPicture?.forDay ? 'Open it.' : 'Open today’s team picture.'}
             </Link>
           )}
           {(shared || (teamPicture && 'yourOwnReport' in teamPicture && teamPicture.yourOwnReport)) && !!myLatestCheckInId && (
@@ -723,7 +725,7 @@ function TheParticipantsOwnView({ pictured = false, board, myFirstName = null, g
                   "...Your own report is ready now. / Read your own report"). The non-shared branch
                   above already carries this sentence as part of its own paragraph; the shared
                   branch had none at all. */}
-              {shared && <div className="gwui-fs-15 gwui-ink-sub gwui-mt-4" style={{lineHeight: 1.55}}>Your own report is ready now.</div>}
+              {shared && <div className="gwui-fs-15 gwui-ink-sub gwui-mt-4" style={{lineHeight: 1.55}}>{teamPicture?.yourReportFor ? `Your report for ${teamPicture.yourReportFor} is ready.` : 'Your own report is ready now.'}</div>}
               <div className="gwui-mt-10">
                 <UIButton kind="secondary" wide={pictured} to={`/checkin/${myLatestCheckInId}/report`}>Read your own report</UIButton>
               </div>

@@ -211,6 +211,17 @@ describe('the participant’s own view, first (board-as-participant.txt)', () =>
     expect(open).toHaveAttribute('href', '/checkin/ci-miriam-1/report')
   })
 
+  it('on a later day, reads the day the reports are for: never "Today’s team picture" of Wednesday’s (quality pass, 18 October, R-1)', async () => {
+    me = { id: 'u-miriam', firstName: 'Miriam', role: 'MEMBER' }
+    renderBoard(board({ teamPicture: { shared: true, forDay: 'Wednesday 14 October', yourReportFor: '14 October' } }))
+    await screen.findByRole('heading', { name: 'Sales team, Q3' })
+    expect(screen.getByText('The team’s report for Wednesday 14 October is shared.')).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Open it.' })).toHaveAttribute('href', '/checkin/ci-miriam-1/report')
+    expect(screen.getByText('Your report for 14 October is ready.')).toBeTruthy()
+    expect(screen.queryByText('Today’s team picture is shared.')).toBeNull()
+    expect(screen.queryByText('Your own report is ready now.')).toBeNull()
+  })
+
   it('reads "Your share" when the engine sends one, ending with who else sees it', async () => {
     me = { id: 'u-miriam', firstName: 'Miriam', role: 'MEMBER' }
     renderBoard(board({
