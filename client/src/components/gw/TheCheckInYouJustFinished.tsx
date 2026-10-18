@@ -63,6 +63,8 @@ interface MyRow {
   how?: string | null
   checkInId: string | null
   sessionNumber: number | null
+  /** The line as read with a document's date where the document dates it differently (served on Release 1's sales check-ins). */
+  readAs?: string | null
 }
 
 /**
@@ -536,9 +538,62 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
    * it was, each line's own take-back) is on the page as it was, one tap away (?whole=1).
    */
   if (pictured) {
-    const story: string | null = artifact.data?.artifact?.summary ?? null
+    /* Release 1's sales own report (Hafsah's points 21 and 22): no second summary paragraph, and one question about one of your own deals that is stuck. */
+    const releaseOne = d?.releaseOneSalesReport === true
+    const story: string | null = releaseOne ? null : artifact.data?.artifact?.summary ?? null
     const aQuestion: string | null = ((note?.beforeNextTime ?? []) as string[]).find((b) => /\?\s*$/.test(b)) ?? null
-    const toThinkAbout: string[] = carry ? [carry] : [note?.showingUp, aQuestion].filter(Boolean) as string[]
+    /* Each line once (Drop Access short run, item 14), on Release 1's sales check-in: a line in What you did well is not listed again under What you told us. */
+    const toldUs = releaseOne ? said.filter((x) => !didWell.includes(x)) : said
+    const toThinkAbout: string[] = releaseOne
+      ? (d?.forYouToThinkAbout ? [d.forYouToThinkAbout as string] : [])
+      : carry ? [carry] : [note?.showingUp, aQuestion].filter(Boolean) as string[]
+    /*
+     * Quality pass, 18 October, O-1 to O-6: on Release 1's sales check-in the server reads your own report from your own deals and
+     * lines (your-own-report-from-the-record): what you did well in your own name, the kit's story, and what you told us said once.
+     */
+    const own: { didWell: { text: string; how: string | null; mark: string }[]; story: string | null; toldUs: { text: string; how: string | null; mark: string }[] } | null = releaseOne ? d?.yourOwnReport ?? null : null
+    if (own) {
+      return (
+        <div className="pb-own-body">
+          {own.didWell.length > 0 && (
+            <section className="pb-own-panel" aria-label="What you did well">
+              <h2 className="pb-own-h">What you did well</h2>
+              <ul className="pb-own-list">
+                {own.didWell.map((x) => <li key={x.text}><ProofMark mark={x.mark} /><span>{x.text}{x.how ? ` ${x.how}` : ''}</span></li>)}
+              </ul>
+            </section>
+          )}
+          {own.story && <p className="pb-own-story">{own.story}</p>}
+          {own.toldUs.length > 0 && (
+            <section aria-label="What you told us">
+              <h2 className="pb-own-h pb-own-h-rule">What you told us</h2>
+              <ul className="pb-own-told">
+                {own.toldUs.map((x) => (
+                  <li key={x.text}>
+                    <ProofMark mark={x.mark} />
+                    <div>
+                      <span>{x.text}</span>
+                      {x.how && <span className="pb-own-how">{x.how}</span>}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          {toThinkAbout.length > 0 && (
+            <section className="pb-own-panel" aria-label="One thing to think about">
+              <h2 className="pb-own-h">One thing to think about</h2>
+              {toThinkAbout.map((t) => <p key={t} className="pb-own-think">{t}</p>)}
+            </section>
+          )}
+          {!closed && (
+            <button type="button" className="pb-own-wrong" onClick={() => correct.mutate()} disabled={correct.isPending}>
+              {correct.isPending ? 'Opening…' : 'Something here isn’t right'}
+            </button>
+          )}
+        </div>
+      )
+    }
     return (
       <div className="pb-own-body">
         {didWell.length > 0 && (
@@ -546,21 +601,21 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
             <h2 className="pb-own-h">What you did well</h2>
             <ul className="pb-own-list">
               {didWell.map((x) => (
-                <li key={x.id}><ProofMark mark={x.mark} /><span>{x.text}{x.how ? ` ${x.how}` : ''}</span></li>
+                <li key={x.id}><ProofMark mark={x.mark} /><span>{x.readAs ?? x.text}{x.how ? ` ${x.how}` : ''}</span></li>
               ))}
             </ul>
           </section>
         )}
         {story && <p className="pb-own-story">{story}</p>}
-        {said.length > 0 && (
+        {toldUs.length > 0 && (
           <section aria-label="What you told us">
             <h2 className="pb-own-h pb-own-h-rule">What you told us</h2>
             <ul className="pb-own-told">
-              {said.map((x) => (
+              {toldUs.map((x) => (
                 <li key={x.id} className={x.disputedAt ? 'pb-own-gone' : undefined}>
                   <ProofMark mark={x.mark ?? 'said'} />
                   <div>
-                    <span>{x.text}</span>
+                    <span>{x.readAs ?? x.text}</span>
                     {(x.how || x.typeSays) && <span className="pb-own-how">{x.how ?? x.typeSays}</span>}
                   </div>
                 </li>
