@@ -10,6 +10,7 @@ import { peersAreNamedByDefaultOn } from '../reports/peers-are-named';
 
 export { whoSeesWhatYouSayIn } from './who-sees-what-you-say';
 import { whoSeesWhatYouSayIn } from './who-sees-what-you-say';
+import { theLeadsRuleForASale, withWhatHerRuleSays } from '../engagement/a-question-her-own-rule-answers';
 import { keptOffThePhone } from '../whatsapp/a-check-in-kept-off-the-phone';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -94,11 +95,13 @@ export class EmailService implements OnModuleInit {
    * shown word for word to the people in it (the privacy rule). The prototype's sentence (join-invite)
    * where people see each other; where they do not (a cohort, a review), what is true there.
    */
-  async whoSeesWhatYouSay(context?: DeliveryContext): Promise<string> {
+  async whoSeesWhatYouSay(context?: DeliveryContext, to?: string | null): Promise<string> {
     const g = context?.groundId
-      ? await Promise.resolve(theCheckInForAnEmail(this.prisma, context.groundId, { scenario: true, peersVisibleToEachOther: true, organization: { select: { name: true } } }))?.catch?.(() => null)
+      ? await Promise.resolve(theCheckInForAnEmail(this.prisma, context.groundId, { scenario: true, peersVisibleToEachOther: true, organization: { select: { name: true } }, initiator: { select: { email: true } } }))?.catch?.(() => null)
       : null;
-    return whoSeesWhatYouSayIn(g);
+    /* To the person who runs it, written for them (Hafsah, 19 October, point 5). */
+    const runsIt = !!to && !!g?.initiator?.email && String(g.initiator.email).trim().toLowerCase() === String(to).trim().toLowerCase();
+    return whoSeesWhatYouSayIn(g, runsIt);
   }
 
   buildInviteUrl(inviteToken: string): string {
@@ -579,7 +582,7 @@ export class EmailService implements OnModuleInit {
      * forgot were the ones nobody had read recently. See what-groundwork-is.ts for why the way-back-in
      * mails are excluded.
      */
-    options = { ...options, html: withWhatGroundworkIs(options.html, sender, shouldSayWhatGroundworkIs(sender) && !/Groundwork is where the people involved/.test(options.html) ? await this.whoSeesWhatYouSay(context) : undefined) };
+    options = { ...options, html: withWhatGroundworkIs(options.html, sender, shouldSayWhatGroundworkIs(sender) && !/Groundwork is where the people involved/.test(options.html) ? await this.whoSeesWhatYouSay(context, options.to) : undefined) };
 
     /*
      * EVERY MESSAGE CARRIES A WAY OUT, A TEXT PART, AND ITS OWN HEADERS - HERE, ONCE, FOR ALL
@@ -1355,7 +1358,14 @@ export class EmailService implements OnModuleInit {
     /* Who checked in for this picture, said to this reader (email/who-checked-in-for-this-picture.ts). Null when everybody asked has answered. */
     whoCheckedIn?: string[] | null): Promise<void> {
     /* Who can see what people said, as the invitation says it (whoSeesWhatYouSay): not "it does not quote anybody", which is not true. */
-    const whoSees = await this.whoSeesWhatYouSay(groundId ? { groundId } as DeliveryContext : undefined);
+    const whoSees = await this.whoSeesWhatYouSay(groundId ? { groundId } as DeliveryContext : undefined, email);
+    /* To the person who runs it, a question her own rule for a sale already answers is answered from the record (Hafsah, 19 October, point 5). */
+    if (groundId && theInsight?.length) {
+      const g = await Promise.resolve(theCheckInForAnEmail(this.prisma, groundId, { initiator: { select: { email: true } } }))?.catch?.(() => null);
+      const runsIt = !!g?.initiator?.email && String(g.initiator.email).trim().toLowerCase() === String(email ?? '').trim().toLowerCase();
+      const rule = runsIt ? await theLeadsRuleForASale(this.prisma, groundId).catch(() => null) : null;
+      if (rule) theInsight = theInsight.map((l) => withWhatHerRuleSays(l, rule));
+    }
     await this.sendEmail({
       to: email,
       subject: subjectLine ?? `The shared picture for "${groundLabel}" is ready`,
