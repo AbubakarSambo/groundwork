@@ -737,7 +737,8 @@ export class EmailService implements OnModuleInit {
     return { devUrl };
   }
 
-  async sendAddPasswordEmail(email: string, firstName: string, token: string): Promise<void> {
+  /* `usesGoogle`: only somebody who signs in with Google is told a password lets them sign in without it (messages test, 19 October, finding 17). */
+  async sendAddPasswordEmail(email: string, firstName: string, token: string, usesGoogle = false): Promise<void> {
     const url = `${this.frontendUrl}/set-password?token=${token}`;
     await this.sendEmail({
       to: email,
@@ -750,7 +751,7 @@ export class EmailService implements OnModuleInit {
        */
       html: this.layout(
         `<p>${greeting(firstName)}</p>` +
-        `<p>Groundwork is where you and the people you work with each say how a piece of work is actually going, separately, and get one shared picture back. Setting a password means you can sign in without Google.</p>` +
+        `<p>Groundwork is where you and the people you work with each say how a piece of work is actually going, separately, and get one shared picture back. ${usesGoogle ? 'Setting a password means you can sign in without Google.' : 'Setting a password means you can come back and sign in with this email address and your password.'}</p>` +
         `<p><a href="${url}">Set password</a></p>` +
         `<p style="color:#888;font-size:12px;">This link lasts ${howLongInWords('set a password from an email')} and can only be used once. If it has expired, ask for a new one from the sign-in page.</p>`,
       ),

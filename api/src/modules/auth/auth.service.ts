@@ -348,7 +348,7 @@ export class AuthService {
         await this.prisma.emailVerificationToken.create({
           data: { userId: user.id, token: hashed(token), type: TokenType.PASSWORD_SETUP, expiresAt: expiresAtFor('set a password from an email') },
         });
-        this.emailService.sendAddPasswordEmail(user.email, user.firstName, token).catch((err) =>
+        this.emailService.sendAddPasswordEmail(user.email, user.firstName, token, true).catch((err) =>
           this.logger.error(`Failed to send add-password email to ${user.email}: ${err.message}`),
         );
         refuse('they sign in with Google and have no password');
