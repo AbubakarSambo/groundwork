@@ -723,7 +723,7 @@ export class WhatsAppService implements OnModuleInit {
     const onThisNumber = await this.lastWroteOn(via, organizationId, to);
     const lastWrote = ownNumber?.enabled ? onThisNumber : (onThisNumber ?? person?.whatsappLastInboundAt);
     if (insideTheServiceWindow(lastWrote)) return { free: true };
-    const approved = await this.approvedFor(organizationId);
+    const approved = await this.approvedFor(organizationId, via);
     /*
      * THE FIRST MESSAGE TO A NUMBER NAMES THE ORGANISATION AND SAYS "NOT YOU? REPLY STOP" (decision 106
      * item 2). A number typed wrong reaches a stranger; the first thing they read says who it is for and how
@@ -878,15 +878,18 @@ export class WhatsAppService implements OnModuleInit {
    * templates approved still had every business-initiated message recorded as not sent - and
    * nothing anywhere said our environment was the reason.
    *
-   * Falls back to ours only when there is no connection of their own, which is the case that IS
-   * our number.
+   * Theirs counts only for a message that goes on their number: a connection that is switched on,
+   * and a send on 'theirs'. A switched-off connection sends on our number (sendFor), so it is read
+   * exactly like no connection, with our list; reading their list there, which starts empty, left
+   * everything Groundwork starts outside the 24 hours recorded as not sent (Drop Access, October).
+   * A message on our number, for an organisation that has its own, is ours too.
    */
-  private async approvedFor(organizationId: string | null): Promise<readonly string[]> {
-    if (organizationId) {
+  private async approvedFor(organizationId: string | null, via: WhichNumber = 'theirs'): Promise<readonly string[]> {
+    if (organizationId && via === 'theirs') {
       const own = await this.prisma.whatsAppConnection
-        .findUnique({ where: { organizationId }, select: { approvedTemplates: true } })
+        .findUnique({ where: { organizationId }, select: { approvedTemplates: true, enabled: true } })
         .catch(() => null);
-      if (own) return own.approvedTemplates;
+      if (own?.enabled) return own.approvedTemplates ?? [];
     }
     return this.config.get<string[]>('whatsapp.approvedTemplates') ?? [];
   }
