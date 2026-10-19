@@ -67,7 +67,8 @@ describe('the weekly report for 12 to 14 October', () => {
       ['Answer Joseph Kariuki on 5 units at KES 4,500 for Juja Hardware', 'Mr Kariuki is waiting for Joseph Kariuki to call back.'],
       ['Decide whether Mama Pima Stores can have 10 units for KES 38,000, which is KES 12,000 off', 'Wanjiru asked Joseph Kariuki on 12 October and has had no answer. You said on 12 October that you would decide that day.'],
       ['Decide what to do about the samples for Tuskys Westgate', 'Joseph Kariuki promised it three check-ins running, and Mercy Wairimu is still waiting.'],
-      ['Tell the team a sale counts only with a payment or a signed order', 'Mercy Wairimu counted Greenfield Supermarket as sold on 12 October, before there was a payment or a signed order.'],
+      /* Changed 19 October (messages test, finding 5): the reason says what came and when, never "before there was a payment" beside a record that holds one. */
+      ['Tell the team a sale counts only with a payment or a signed order', 'Mercy Wairimu counted Greenfield Supermarket as sold on 12 October, and the first document about it came on 13 October.'],
       ['Decide whether Kevin Omondi drops Upper Hill Offices', 'Paul has not answered three calls from Kevin Omondi, on 13 and 14 October. No stall rule is set yet.'],
     ]);
     expect(JSON.stringify(grace)).not.toMatch(/order confirmation process|deal activation|Participant [A-Z]/);
