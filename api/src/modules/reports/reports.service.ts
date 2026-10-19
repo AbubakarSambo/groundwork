@@ -3,6 +3,8 @@ import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
 import { whatTheSwitchboardServes, type TheSwitchboardServed } from '../board/the-switchboard';
 import { theCorrectionsOnTheCheckIn, withWhatACorrectionSettled, whoIsBehindALabel } from './a-correction-is-their-latest-word';
 import { theReleaseOneSalesBoardIsOnFor } from '../board/release-one-sales-board';
+import { theSalesAndTheirProof, whatIsOnFileForEachSale, withoutAsksForProofOnFile } from './proof-on-file-is-never-asked-for';
+import { theDealsOnRecord } from '../board/a-sales-aim-is-counted-from-the-deals';
 import { isASalesKind } from '../board/the-kind-of-work';
 import { withoutADealsFigure, theCustomersOnRecordIfSales } from '../board/a-deals-units-are-not-a-target';
 /** The customers on record on a sales check-in, only where Release 1's switch is on for its organisation; null otherwise, so the report is built as before. */
@@ -4933,6 +4935,10 @@ happened, and what is in the way.`;
      * the people instead. Same schema out, so nothing downstream knows which one ran.
      */
     let material = table;
+    /* On a sales check-in with Release 1's switch on, each sale and what is on file for it, from the same rows the headline counts. */
+    const salesAndProof = (await theReleaseOneSalesBoardIsOnFor(this.prisma, groundId).catch(() => false))
+      ? theSalesAndTheirProof(await theDealsOnRecord(this.prisma, groundId, { paymentRecord: true }).catch(() => []))
+      : [];
     let instruction = theJudgementInstruction(
       'whoever called this check-in',
       'what to do next about the people and the work it covers',
@@ -5020,6 +5026,11 @@ happened, and what is in the way.`;
         sessions,
         namedByMoreThanOne(shared),
       );
+      /* What is on file for each sale, so a sale with a payment record on file is never asked about again (proof-on-file-is-never-asked-for). */
+      if (salesAndProof.length) {
+        const whoOwns = (pid: string | null) => room!.people.find((p) => p.participantId === pid)?.who ?? null;
+        material = `${material}\n\n${whatIsOnFileForEachSale(salesAndProof, whoOwns)}`;
+      }
       instruction = theJudgementOverARoom(
         'whoever called this check-in',
         'what to do next about the people and the work it covers',
@@ -5142,6 +5153,10 @@ happened, and what is in the way.`;
       kept = numbers.judgement;
       if (numbers.leftOut.length) this.logger.warn(`The judgement on ${groundId}: left out ${numbers.leftOut.length} line(s) with a number no block holds: ${numbers.leftOut.map((x) => `"${x}"`).join(', ')}`);
     }
+    /* And a line the record proves false about proof on file is left out (proof-on-file-is-never-asked-for). */
+    const onFile = withoutAsksForProofOnFile(kept, salesAndProof);
+    kept = onFile.judgement;
+    if (onFile.leftOut.length) this.logger.warn(`The judgement on ${groundId}: left out ${onFile.leftOut.length} line(s) about proof the record already holds: ${onFile.leftOut.map((x) => `"${x}"`).join(', ')}`);
     this.logger.log(`Judged ${answers.length} answer(s) on ${groundId} over ${frame.length} fields.`);
     /* Which instruction wrote it: the stored version's id, or null where the code text ran. */
     return { judgement: { ...kept, promptVersionId: stored?.id ?? null }, table };
