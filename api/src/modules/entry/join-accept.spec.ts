@@ -112,7 +112,9 @@ describe('the attack this closes', () => {
   it('sends the link to the address that was typed, and nowhere else', async () => {
     const { service, email } = makeService();
     await service.askToJoin({ joinToken: 'jt', email: 'Cohort@Acme.test' });
-    expect(email.sendJoinConfirmation).toHaveBeenCalledWith('cohort@acme.test', expect.any(String));
+    /* Changed 19 October (messages test, finding 16): the call also carries the check-in, its lead and organisation the mail now names. Still only to the address typed. */
+    expect(email.sendJoinConfirmation).toHaveBeenCalledWith('cohort@acme.test', expect.any(String), expect.anything());
+    expect(email.sendJoinConfirmation).toHaveBeenCalledTimes(1);
   });
 
   it('refuses a link nobody issued before sending anything', async () => {

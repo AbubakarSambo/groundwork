@@ -64,7 +64,11 @@ describe('what Vera reads', () => {
       lines: [
         'Hello Vera. Here is your week in Groundwork. Only you can read this.',
         'You kept three of the four things you said you would do in the last four weeks.',
-        'Two things you said you would do are still open, "Send the deck to Kofi" and "Call the bank".',
+        /* Changed 19 October (messages test, finding 14): each open thing is said on its own with the check-in it was said in, the latest
+           first, where it was a list of loose quotes. Her board here carries no day for them, so none is said. */
+        'Two things you said you would do are still open.',
+        'In "Kenya launch", you said "Call the bank".',
+        'In "Sales team, Q4", you said "Send the deck to Kofi".',
         'You are waiting for "the budget to be approved" from Lucy.',
         'James is waiting for "The pricing sheet" from you in "Kenya launch".',
         'Somebody is waiting for "The venue contract" from you in "Sales team, Q4".',

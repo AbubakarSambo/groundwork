@@ -195,12 +195,22 @@ export function theSalesWeekInWords(input: {
       const wonOn = (d.stagesKept ?? []).filter((s) => String(s.stage).toLowerCase() === input.lastStage.toLowerCase()).map((s) => new Date(s.on)).sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
       const docs = lines.filter((l) => l.anchoredDocumentId && aLineIsAbout(l.text, d)).map((l) => input.documents.find((x) => x.id === l.anchoredDocumentId)?.createdAt).filter((x): x is Date => !!x);
       const proofOn = [d.paidOn ?? null, ...docs].filter((x): x is Date => !!x).sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
-      return wonOn && inTheWeek(wonOn) && (!proofOn || aDayKey(proofOn, input.zone) > aDayKey(wonOn, input.zone)) ? { d, wonOn } : null;
-    }).filter((x): x is { d: ADealOnRecord; wonOn: Date } => !!x);
+      return wonOn && inTheWeek(wonOn) && (!proofOn || aDayKey(proofOn, input.zone) > aDayKey(wonOn, input.zone)) ? { d, wonOn, proofOn: proofOn as Date | null } : null;
+    }).filter((x): x is { d: ADealOnRecord; wonOn: Date; proofOn: Date | null } => !!x);
     if (early.length) {
+      /*
+       * WHAT CAME, AND WHEN, NEVER "BEFORE THERE WAS A PAYMENT" (messages test, 19 October, finding 5). Kevin counted Kilele Hotel as sold on
+       * 12 October with the M-Pesa message on his phone, and gave its code on 13 October: the letter said "There is a payment record." under
+       * what moved and "before there was a payment" under what to do. The reason now says the day the record came, or that none has.
+       */
+      const whatCame = (x: { d: ADealOnRecord; proofOn: Date | null }) => {
+        if (!x.proofOn) return x.d.signed ? 'before a payment or a signed order was on record' : 'and nothing written shows a payment or a signed order for it yet';
+        const itsPayment = !!x.d.paidOn && x.d.paidOn.getTime() === x.proofOn.getTime();
+        return `and ${itsPayment ? 'its payment record' : 'the first document about it'} came on ${day(x.proofOn)}`;
+      };
       forTheLead.push({
         do: 'Tell the team a sale counts only with a payment or a signed order',
-        why: early.map((x) => `${labelOf(x.d.ownerParticipantId) ?? 'Somebody'} counted ${x.d.name} as sold on ${day(x.wonOn)}, before there was a payment or a signed order.`).join(' '),
+        why: early.map((x) => `${labelOf(x.d.ownerParticipantId) ?? 'Somebody'} counted ${x.d.name} as sold on ${day(x.wonOn)}, ${whatCame(x)}.`).join(' '),
         from: 'the plan',
       });
     }

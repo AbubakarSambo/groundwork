@@ -1,3 +1,4 @@
+import { theOrganisationsZone } from '../../common/the-organisations-own-day';
 import { theyAreConnectedOnWhatsApp } from '../whatsapp/connect-whatsapp';
 import { theEmailOpeningShould } from './an-opening-goes-on-one-channel';
 import { theCheckInIsOpen } from '../whatsapp/what-goes-to-a-phone';
@@ -1420,7 +1421,7 @@ export class GroundsCron implements OnApplicationBootstrap {
       select: {
         id: true,
         email: true,
-        ground: { select: { id: true, label: true } },
+        ground: { select: { id: true, label: true, organizationId: true, report: { select: { releasedAt: true } } } },
         user: { select: { emailNotifications: true } },
       },
     });
@@ -1433,7 +1434,9 @@ export class GroundsCron implements OnApplicationBootstrap {
         if ((await howManyReportReadyRemindersWereSent(this.prisma as any, p.email, p.ground.label)) >= THE_MOST_REPORT_READY_REMINDERS) continue;
         /* Not again within NUDGE_THROTTLE_DAYS of the last one that went, read from the record of messages. */
         if ((await howManyReportReadyRemindersWereSent(this.prisma as any, p.email, p.ground.label, throttleBefore)) > 0) continue;
-        await this.email.sendActivationRevealReminder(p.email, p.ground.label, `${frontend}/grounds/${p.ground.id}/report`);
+        /* The day it became ready, in the organisation's own zone (messages test, 19 October, finding 1), never "a few days". */
+        const zone = (p.ground as any).organizationId ? await theOrganisationsZone(this.prisma as any, (p.ground as any).organizationId).catch(() => null) : null;
+        await this.email.sendActivationRevealReminder(p.email, p.ground.label, `${frontend}/grounds/${p.ground.id}/report`, (p.ground as any).report?.releasedAt ?? null, zone);
         revealReminders++;
       } catch (err: any) {
         this.logger.error(`Reveal reminder failed for participant ${p.id}: ${err.message}`);
