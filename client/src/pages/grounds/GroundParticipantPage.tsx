@@ -27,6 +27,7 @@ import { MyParticipation } from '@/components/gw/MyParticipation'
 import { SharedReportForAParty } from '@/components/gw/SharedReportForAParty'
 import { ContextPage } from '@/components/gw/ContextPage'
 import { ReferencesAndResourcesPage } from './ReferencesAndResources'
+import { MyWorkPage } from './MyWorkPage'
 import { theContextTabsName } from '@/lib/the-references-tab'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
@@ -926,7 +927,11 @@ export function GroundParticipantPage() {
 
         {/* CHECK-IN TAB */}
         {/* MY RECORD TAB */}
-        {tab === 'record' && (
+        {/* RELEASE 1B (pull request 3 of 3): with the organisation's switch on, My work is the B7 page, served to this person as
+            their own (MyWorkPage.tsx), with the rest of today's page and the parts that left References and resources under it.
+            Off, today's page exactly as it was. */}
+        {tab === 'record' && (() => {
+          const yours = (
           <YourWork
             groundId={id!}
             ground={ground}
@@ -959,8 +964,13 @@ export function GroundParticipantPage() {
             /* A party's "the team's, Read" opens the fuller shared-report reading experience below,
                not a bare per-session link - see the note on `onReadTeamReport` in YourWork.tsx. */
             onReadTeamReport={() => goTab('report')}
+            asTheRestOfMyWork={(ground as any).release1bTabsOn === true}
           />
-        )}
+          )
+          return (ground as any).release1bTabsOn === true
+            ? <MyWorkPage groundId={id!} onAllYourReports={() => goTab('report')} rest={<>{yours}<ContextPage ground={ground} role={isInitiator ? 'lead' : 'party'} viewerUserId={user?.id} only="what-moved-to-my-work" /></>} />
+            : yours
+        })()}
 
         {/* REPORT TAB */}
         {tab === 'report' && (
