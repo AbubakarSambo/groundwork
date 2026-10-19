@@ -156,6 +156,8 @@ export type BoardPresent = {
   groundId: string
   /** The collections board (Release 2), only where the switchboard picks it; walled and worded by the server. */
   collections?: import('@/lib/collect-whats-owed').TheCollectionsBoard
+  /** The matter board (Release 2), only where the switchboard picks it; walled and worded by the server. */
+  matter?: import('@/lib/collect-whats-owed').TheMatterBoard
   atAGlance?: TheBoardAtAGlance | null
   renders: true
   withheldUntilYouCheckIn?: false
