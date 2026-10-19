@@ -28,6 +28,7 @@ import { withoutTheWaitsOnCustomers } from '../board/a-customers-reply-is-on-its
 import { oneBlockerPerThingWaitedOn, theyNamedWhatTheyAreWaitingOn } from '../board/a-blocker-with-nothing-in-it-is-the-same-blocker';
 import { startsWithAPronoun } from '../grounds/a-blocker-that-says-her-or-his';
 import { theWaitSaid } from '../board/a-wait-said-in-full';
+import { aHolderSaidWithWhose } from '../board/a-holder-in-their-own-words';
 import { ESCALATE_AFTER_DAYS } from '../webhooks/a-handoff-that-has-sat-too-long';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { nameToCall, SOMEONE } from './a-name-to-call-them';
@@ -400,7 +401,8 @@ export async function whatIsOutstandingFor(
   const real = (await withoutTheWaitsOnCustomers(prisma, oneBlockerPerThingWaitedOn(dedupeDependencies(waits as any)).filter(blockerHasSubstance) as any[]).catch(() => oneBlockerPerThingWaitedOn(dedupeDependencies(waits as any)).filter(blockerHasSubstance) as any[])) as any[];
   const saidWait = (w: any, isAre: string): string => {
     const from = hers.has(w.fromParticipantId) ? 'You' : nameToCall(w.fromParticipant);
-    const on = hers.has(w.onParticipantId) ? 'you' : w.onParticipant ? nameToCall(w.onParticipant) : (w.onLabel ?? '').trim();
+    /* "my supervisor" is the waiting person's, named (Hafsah, 19 October, point 6). */
+    const on = hers.has(w.onParticipantId) ? 'you' : w.onParticipant ? nameToCall(w.onParticipant) : aHolderSaidWithWhose((w.onLabel ?? '').trim(), from === 'You' ? null : from, from === 'You');
     const verb = from === 'You' ? (isAre === 'has been' ? 'have been' : 'are') : isAre;
     return theWaitSaid(from, verb, on, w.what).replace(/\.$/, '');
   };
@@ -409,7 +411,7 @@ export async function whatIsOutstandingFor(
   /* "Kofi says the work is waiting on Omar for the stock count. Not backed: no attempt to unblock mentioned." */
   const theirAccountOfAWait = (w: any, since?: string): string => {
     const from = hers.has(w.fromParticipantId) ? 'You' : nameToCall(w.fromParticipant);
-    const on = w.onParticipant ? nameToCall(w.onParticipant) : (w.onLabel ?? '').trim();
+    const on = w.onParticipant ? nameToCall(w.onParticipant) : aHolderSaidWithWhose((w.onLabel ?? '').trim(), from === 'You' ? null : from, from === 'You');
     /* What they said they tried, in full with its day, or nothing beside the claim (Drop Access run 1, item 18), where Release 1's switch
        is on; off, the note beside the claim as before. */
     const tried = releaseOne ? whatTheyTriedInFull(w, from) : theNoteBesideTheClaim(w, { by: from, on, lead: 'you' });
