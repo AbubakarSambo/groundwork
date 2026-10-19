@@ -190,3 +190,48 @@ Whatever the first message is (an opening notice, an approval, a review, the dai
 ## Names no longer used
 
 `groundwork_session_ready`, `groundwork_check_in_opened` and `groundwork_check_in_nudge` were names in the code before decision 83. `checkin_open` replaces the first two. The third was for a check-in started and left, and is not needed: Groundwork already finishes a started check-in after 12 hours of quiet. None of the three needs submitting.
+
+## The four new templates of 19 October, for Abubakar to submit
+
+Written 19 October 2026 (Hafsah's points 10 to 12), copied word for word from her note "WhatsApp template updates, for approval". None of them changes an approved template. In the code they are `THE_FOUR_OF_19_OCTOBER` in `api/src/modules/whatsapp/a-message-outside-the-window.ts`, each used only when its name is in `WHATSAPP_APPROVED_TEMPLATES`, only outside the 24 hours, and only when the message carries every blank. Until each is approved and listed, the message it replaces goes by email instead (`whatsapp/by-email-instead.ts`), one channel per opening and at most one routine message a day. `checkin_open` stays in use until `groundwork_checkin_open_v2` is approved and listed. Every WhatsApp message that failed in the messages test of 19 October is listed, with which of these covers it, in the messages test's own notes (`failed-whatsapp.md`, kept with the run, outside this repository).
+
+### 1. groundwork_checkin_open_v2
+
+- **Replaces:** `checkin_open` (which says "about five minutes"). Once this is approved, every new opening uses it.
+- **Category:** Utility
+- **Body:**
+  Hi {{1}}, your check-in for {{2}} is open. It takes about ten minutes, and you can answer right here. Reply START to begin.
+- **Variables:** {{1}} first name; {{2}} check-in name.
+- **Sample values:** {{1}} = Mercy; {{2}} = Sales team, Q4
+
+### 2. groundwork_checkin_thanks
+
+- **Replaces:** the thank-you after a check-in (`report-thanks`), which fails outside 24 hours.
+- **Category:** Utility
+- **Body:**
+  Thank you, {{1}}. Your answer for {{2}} is in. You will hear here when the team's report is ready to read.
+- **Variables:** {{1}} first name; {{2}} check-in name.
+- **Sample values:** {{1}} = Mercy; {{2}} = Sales team, Q4
+- **Rule:** send it once per check-in, only straight after that person's own check-in. Never again for an earlier one.
+
+### 3. groundwork_your_report_ready
+
+- **Replaces:** the "your report is ready" message, which fails outside 24 hours.
+- **Category:** Utility
+- **Body:**
+  Hi {{1}}, your own report for {{2}} is ready. It shows what you did, what is still open and what to do next. Open it here: {{3}} . Reply STOP to stop these messages.
+- **Variables:** {{1}} first name; {{2}} check-in name; {{3}} link to their report.
+- **Sample values:** {{1}} = Mercy; {{2}} = Sales team, Q4; {{3}} = https://myground.work/r/abc123
+
+### 4. groundwork_promise_due
+
+- **Replaces:** follow-ups on promises, which fail outside 24 hours.
+- **Category:** Utility
+- **Body:**
+  Hi {{1}}, you said you would {{2}} by {{3}}. Reply DONE if it is done, or tell me what changed.
+- **Variables:** {{1}} first name; {{2}} the promise, in the person's own words; {{3}} the day it was due.
+- **Sample values:** {{1}} = Joseph; {{2}} = bring the samples for Tuskys Westgate; {{3}} = Thursday 15 October
+- **Rules:**
+  - Send it only for the person's own promise, never someone else's.
+  - Never send it for a promise already said done, in any words.
+  - It counts as that day's one routine message.
