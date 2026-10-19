@@ -287,6 +287,7 @@ import { asADirection } from '../board/an-aim-or-a-limit';
 import { theTargetAsASentence } from './each-target-is-a-sentence-about-whoever-set-it';
 import { withoutOurInstructions, withoutTalkAboutTheConversation } from './our-instructions-never-reach-them';
 import { withoutAConclusionNobodyDrew } from './a-conclusion-nobody-drew-is-never-sent';
+import { withEarlierWordsOnTheirOwnDay, type AnEarlierWord } from './earlier-words-keep-their-own-day';
 import { withoutTheLeadsBrief, aSentenceThatQuotesTheBrief, theLeadsSetupWords } from './the-leads-brief-is-never-quoted-to-them';
 import { withoutSentencesAboutOneOfThem } from '../reports/one-persons-circumstances-stay-their-own';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
@@ -1566,6 +1567,15 @@ export class ConversationService {
       const concluded = withoutAConclusionNobodyDrew(raw, sayable, saidHereBefore);
       for (const c of concluded.cut) this.logger.warn(`Check-in ${(checkIn as any).id}: cut a conclusion nobody drew: "${c.slice(0, 160)}"`);
       raw = concluded.text;
+      /* And their earlier words put back with the day they were said, never "this morning" a day later (Hafsah, 19 October, point 3).
+         See earlier-words-keep-their-own-day. */
+      if ((checkIn as any)?.participantId && /\b(?:this morning|this afternoon|this evening|tonight|today|tomorrow|yesterday)\b/i.test(raw)) {
+        const before: AnEarlierWord[] = await (this.prisma.conversationTurn?.findMany?.({ where: { role: TurnRole.PERSON, checkIn: { participantId: (checkIn as any).participantId, id: { not: (checkIn as any).id } } }, select: { content: true, createdAt: true }, orderBy: { createdAt: 'desc' }, take: 200 }) ?? Promise.resolve([]))
+          .then((rows: any[]) => (rows ?? []).map((r) => ({ content: r.content ?? '', at: r.createdAt }))).catch(() => [] as AnEarlierWord[]);
+        const onTheirDay = withEarlierWordsOnTheirOwnDay(raw, before, new Date());
+        if (onTheirDay !== raw) this.logger.log(`Check-in ${(checkIn as any).id}: earlier words were put back with the day they were said.`);
+        raw = onTheirDay;
+      }
     }
     const noRecordInvented = withoutARecordClaimNobodyHolds(raw, saidHereBefore);
     if (noRecordInvented.cut.length) this.logger.warn(`Check-in ${(checkIn as any).id}: cut ${noRecordInvented.cut.length} sentence(s) claiming what "the record" shows, which this person's record does not hold.`);
