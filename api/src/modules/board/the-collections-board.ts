@@ -1,6 +1,7 @@
 import type { ACollectionsType } from '../grounds/collect-whats-owed';
 import { theBillsPlural } from '../grounds/collect-whats-owed';
 import { F, FOLLOWS_UP_ID, NOT_YET_RAISED, LOAN_OWED, aDay, thePromisesKept, theStagesKept } from './the-collections-record';
+import { asHappened, theEventAsSaid } from './a-fee-note-due-on-an-event';
 
 /**
  * THE COLLECTIONS BOARD, BUILT FROM THE RECORD ONLY (release plan, Release 2, "The collections board (loans shape)"; the kit's
@@ -56,6 +57,29 @@ export interface ABillOnTheBoard {
   proof: APayment[];
   /** The check-ins whose lines named this bill. */
   saidIn: string[];
+  /**
+   * WHERE IT FELL DUE ON AN EVENT (a-fee-note-due-on-an-event): the day, the event it waited for, and the line that said it happened,
+   * in its own words only where this reader may read that check-in's words, else null. Set by the board's service, for this reader.
+   */
+  event?: AnEventSaid | null;
+  /** Lines that came close and wait for the lead's answer: to the lead of this check-in only. */
+  toConfirm?: (AnEventSaid & { lineId: string })[];
+}
+
+/** A line from a matter check-in about the event a bill waits for, as this reader may read it. */
+export interface AnEventSaid {
+  /** The day it fell due (or would), as YYYY-MM-DD. */
+  day: string;
+  /** What the bill waits for, as said: "the reply is filed". */
+  event: string;
+  /** The check-in it was said in, by its name. */
+  from: string;
+  /** The day it was said, as YYYY-MM-DD. */
+  saidOn: string;
+  /** Who said it: a first name, or "You". Null where this reader may not read who said what there. */
+  by: string | null;
+  /** Their words, only where this reader may read that check-in's words. */
+  said: string | null;
 }
 
 export interface ACollectionsPerson { id: string; firstName: string; isTheLead: boolean }
@@ -73,6 +97,8 @@ export interface TheCollectionsInput {
   reader: { runsIt: boolean; participantId: string | null };
   /** The lead confirmed the stall rule for promised payments (collect-whats-owed, theCollectionsStallRuleIn). */
   stallRuleSet: boolean;
+  /** The check-in's id, for the routes the lead answers with. */
+  groundId?: string;
 }
 
 export interface ACollectionsRow {
@@ -105,7 +131,13 @@ export interface TheCollectionsBoard {
   answerFrom: string;
   /** The bar under the answer: the share paid with proof, and the share paid on somebody's word, of what is due. */
   bar: { proven: number; said: number } | null;
-  needsYou: { heading: string; rows: { title: string; says: string }[]; empty: string | null };
+  needsYou: {
+    heading: string;
+    rows: { title: string; says: string }[];
+    empty: string | null;
+    /** Lines that came close to the event a bill waits for, for the lead to confirm (a-fee-note-due-on-an-event). Lead only. */
+    toConfirm?: { id: string; title: string; says: string; choices: { label: string; route: { method: 'POST'; path: string; body: Record<string, unknown> } }[] }[];
+  };
   stand: { heading: string; total: string; groups: { group: AGroup; label: string; count: number; says: string }[] };
   every: { heading: string; note: string; columns: string[]; rows: ACollectionsRow[]; empty: string | null; foot: string | null };
   patterns: { heading: string; note: string; rows: { title: string; says: string; tag: string }[]; empty: string | null; foot: string };
@@ -192,6 +224,9 @@ export function theGroupOf(r: ABillOnTheBoard, input: TheCollectionsInput): AGro
   const late = (due && due < today) || (promise?.missed ?? false);
   if (r.kind === LOAN_OWED) {
     if (!heard || daysBetween(heard, today) > NOT_HEARD_DAYS) return 'not-heard';
+  } else if (r.event && due && !promise && daysBetween(due, today) <= NOT_HEARD_DAYS) {
+    /* It fell due on an event in the matter in the last three weeks (a-fee-note-due-on-an-event): due, and not yet late to follow up. */
+    return 'on-track';
   } else if (late && !promise && (!heard || daysBetween(heard, today) > NOT_HEARD_DAYS)) {
     return 'not-heard';
   }
@@ -294,6 +329,19 @@ export function buildTheCollectionsBoard(input: TheCollectionsInput): TheCollect
         title: loans ? `${who === 'You' ? 'You' : who} missed the day ${who === 'You' ? 'you' : 'they'} promised to pay by` : `${who} missed the date they promised to pay by`,
         says: `${Cap(aBill(r))}${amountWords}. ${loans ? (who === 'You' ? 'You' : 'They') : 'The client'} promised to pay by ${aDayInWords(promise.by, zone)}, and nothing has come in.${input.stallRuleSet ? ` It is stalled by your rule.` : ''}${followsUp}`,
       });
+    } else if (r.event && group !== 'paid' && !promise) {
+      /* IT FELL DUE ON AN EVENT IN THE MATTER (a-fee-note-due-on-an-event), with the line that said it, as this reader may read it. */
+      const ev = r.event;
+      const whenItFallsDue = `It falls due when ${theEventAsSaid(ev.event)}.`;
+      const said = ev.said && ev.by
+        ? `${ev.by} said in ${ev.from} on ${aDayInWords(ev.saidOn, zone)}, “${stop(ev.said)}.”`
+        : `${ev.from} reported it on ${aDayInWords(ev.saidOn, zone)}.`;
+      const raised = !!field(r, F.number) && r.stage !== NOT_YET_RAISED;
+      need.push({
+        rank: 2,
+        title: raised ? `${Cap(aBill(r))} fell due on ${aDayInWords(ev.day, zone)}` : `A ${bill} for ${who} fell due on ${aDayInWords(ev.day, zone)}, and it is not raised yet`,
+        says: `${whenItFallsDue} ${said}${amt ? ` It is for ${money(amt.value, amt.currency)}${raised ? ', and nothing is paid yet' : ''}.` : raised ? ' Nothing is paid yet.' : ''}${followsUp}`,
+      });
     } else if (group === 'not-heard') {
       const due = theDueDay(r);
       need.push({
@@ -328,10 +376,26 @@ export function buildTheCollectionsBoard(input: TheCollectionsInput): TheCollect
     }
   }
   need.sort((a, b) => a.rank - b.rank);
+  /* A line that came close to the event a bill waits for, for the lead to confirm: nothing has changed until she says. */
+  const toConfirm = loans || !input.groundId ? [] : rows.flatMap(({ r }) => (r.toConfirm ?? []).map((c) => {
+    const n = field(r, F.number);
+    const client = field(r, F.client) || r.name;
+    const said = c.said && c.by
+      ? `${c.by} said in ${c.from} on ${aDayInWords(c.saidOn, zone)}, “${stop(c.said)}.”`
+      : `Something said in ${c.from} on ${aDayInWords(c.saidOn, zone)} may be it.`;
+    const route = (yes: boolean) => ({ method: 'POST' as const, path: `/grounds/${input.groundId}/board/due-on-an-event/answer`, body: { itemId: r.id, lineId: c.lineId, yes } });
+    return {
+      id: `${r.id}:${c.lineId}`,
+      title: n ? `Did ${bill} ${n} for ${client} fall due on ${aDayInWords(c.day, zone)}?` : `Did the ${bill} for ${client} that is not raised yet fall due on ${aDayInWords(c.day, zone)}?`,
+      says: `It falls due when ${theEventAsSaid(c.event)}. ${said} Groundwork cannot tell whether this is the same event, so nothing has changed.`,
+      choices: [{ label: 'Yes, it is due', route: route(true) }, { label: 'No, it is not', route: route(false) }],
+    };
+  }));
   const needsYou = {
     heading: 'What needs you',
     rows: need.slice(0, 5).map(({ title, says }) => ({ title, says })),
-    empty: need.length ? null : (loans ? 'Nothing needs you on the loans right now.' : `Nothing needs you on the ${bills} right now.`),
+    empty: need.length || toConfirm.length ? null : (loans ? 'Nothing needs you on the loans right now.' : `Nothing needs you on the ${bills} right now.`),
+    ...(toConfirm.length ? { toConfirm } : {}),
   };
 
   /* ------------------------------------------------------------ where they stand */
@@ -344,7 +408,14 @@ export function buildTheCollectionsBoard(input: TheCollectionsInput): TheCollect
         if (!p) return n === 1 ? 'On somebody’s word only, with no proof yet.' : 'All on somebody’s word only, with no proof yet.';
         return p === n ? (n === 1 ? 'With proof.' : 'All with proof.') : `${count(p)} with proof, and ${countLower(n - p)} on somebody’s word only.`;
       }
-      case 'on-track': return loans ? 'Repaying on time.' : 'Due, and the day it falls due has not passed.';
+      case 'on-track': {
+        if (loans) return 'Repaying on time.';
+        /* One that fell due on an event in the matter in the last three weeks is due, and not yet late to follow up. */
+        const onEvent = rows.filter((x) => x.group === 'on-track' && x.r.event).length;
+        if (!onEvent) return 'Due, and the day it falls due has not passed.';
+        if (onEvent === n) return n === 1 ? 'It fell due on an event in the matter in the last three weeks.' : 'They fell due on events in the matters in the last three weeks.';
+        return `${count(n - onEvent)} ${n - onEvent === 1 ? 'is' : 'are'} not due yet, and ${countLower(onEvent)} fell due on an event in the matter in the last three weeks.`;
+      }
       case 'behind-in-touch': return loans ? 'Behind on a repayment, and still checking in.' : 'Past the day it fell due or the day the client promised, and the client is in touch.';
       case 'blocked': return loans ? 'Something stops the repayment, in the borrower’s own words.' : 'The client disputes it, or something stops it being paid.';
       case 'not-heard': return loans ? `No check-in and no repayment for ${NOT_HEARD_DAYS / 7} weeks.` : `Past due, and nobody has heard from the client for ${NOT_HEARD_DAYS / 7} weeks.`;
@@ -369,7 +440,9 @@ export function buildTheCollectionsBoard(input: TheCollectionsInput): TheCollect
     const promise = theOpenPromise(r, today);
     const paidDay = thePaidDay(r, zone);
     const fallsDue = due
-      ? (due < today && group !== 'paid' ? `${aDayInWords(due, zone)}, ${daysBetween(due, today)} days ago` : aDayInWords(due, zone))
+      ? (due < today && group !== 'paid'
+        ? `${aDayInWords(due, zone)}, ${daysBetween(due, today) === 1 ? 'yesterday' : `${daysBetween(due, today)} days ago`}${r.event ? `, when ${asHappened(r.event.event)}` : ''}`
+        : `${aDayInWords(due, zone)}${r.event ? `, when ${asHappened(r.event.event)}` : ''}`)
       : when ? `When ${stop(when.replace(/^when\s+/i, '')).replace(/^./, (c) => c.toLowerCase())}` : 'Not said yet';
     /* What a document says is read by whoever runs the check-in and by the person who added it (Release 1B's rule for evidence); anybody else reads only that proof is there. */
     const proofWords = r.proof.filter((p) => reader.runsIt || (!!reader.participantId && p.addedBy === reader.participantId)).map((p) => `${p.readAs === 'A payment' ? 'A payment record' : p.readAs} was added on ${aDayInWords(new Date(p.on), zone)}.${p.shows ? ` It reads, “${stop(p.shows)}.”` : ''}`);
