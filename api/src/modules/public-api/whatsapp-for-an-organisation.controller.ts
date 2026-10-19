@@ -5,7 +5,7 @@ import { MachineTokenGuard, RequiresScope, type MachineCaller } from './machine-
 import { A_MESSAGE_MAX } from '../../common/dto';
 import { ConfigService } from '@nestjs/config';
 import { LANGUAGES_WE_CONVERSE_IN } from './a-whatsapp-message-is-routed';
-import { THE_NAMES_TO_SUBMIT } from '../whatsapp/a-message-outside-the-window';
+import { THE_NAMES_TO_SUBMIT, THE_NAMES_WE_MAY_USE } from '../whatsapp/a-message-outside-the-window';
 import { ApiExcludeEndpoint, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
@@ -66,6 +66,8 @@ export class WhatsAppForAnOrganisationController {
 
   /* Every template the product starts (THE_NAMES_TO_SUBMIT). Every other send is a reply, which needs no template. */
   private static readonly THE_ONES_WE_START = THE_NAMES_TO_SUBMIT;
+  /* With the four of 19 October (docs/whatsapp-templates.md), which an organisation with its own number may list once Meta approves them. None is needed to start a conversation, and none is on the page's list yet: they are submitted by Groundwork first (docs/release-questions.md). */
+  private static readonly THE_ONES_WE_MAY_USE = THE_NAMES_WE_MAY_USE;
 
   /* ---------------- the admin half ---------------- */
 
@@ -190,9 +192,9 @@ export class WhatsAppForAnOrganisationController {
     @Body() dto: { approved?: string[] },
   ) {
     const asked = Array.isArray(dto?.approved) ? dto.approved : [];
-    const unknown = asked.filter((n) => !WhatsAppForAnOrganisationController.THE_ONES_WE_START.includes(n));
+    const unknown = asked.filter((n) => !WhatsAppForAnOrganisationController.THE_ONES_WE_MAY_USE.includes(n));
     if (unknown.length) {
-      throw new BadRequestException(`Not one of ours: ${unknown.join(', ')}. The names are ${WhatsAppForAnOrganisationController.THE_ONES_WE_START.join(', ')}.`);
+      throw new BadRequestException(`Not one of ours: ${unknown.join(', ')}. The names are ${WhatsAppForAnOrganisationController.THE_ONES_WE_MAY_USE.join(', ')}.`);
     }
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } });
     if (!own) throw new BadRequestException('Connect your WhatsApp number first.');
