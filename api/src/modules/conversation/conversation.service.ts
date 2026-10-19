@@ -286,6 +286,7 @@ import { mayThisGoalBeCopiedToCommitments } from '../grounds/a-commitment-from-a
 import { asADirection } from '../board/an-aim-or-a-limit';
 import { theTargetAsASentence } from './each-target-is-a-sentence-about-whoever-set-it';
 import { withoutOurInstructions, withoutTalkAboutTheConversation } from './our-instructions-never-reach-them';
+import { withoutAConclusionNobodyDrew } from './a-conclusion-nobody-drew-is-never-sent';
 import { withoutTheLeadsBrief, aSentenceThatQuotesTheBrief, theLeadsSetupWords } from './the-leads-brief-is-never-quoted-to-them';
 import { withoutSentencesAboutOneOfThem } from '../reports/one-persons-circumstances-stay-their-own';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
@@ -1560,6 +1561,11 @@ export class ConversationService {
       const aboutItself = withoutTalkAboutTheConversation(raw, theirWordsHere[theirWordsHere.length - 1] ?? null, saidHereBefore);
       for (const c of aboutItself.cut) this.logger.warn(`Check-in ${(checkIn as any).id}: cut a sentence about the conversation itself: "${c.slice(0, 160)}"`);
       raw = aboutItself.text;
+      /* And no conclusion of ours that something did not happen, and no question that takes it as given, where nothing they said says it
+         (Hafsah, 19 October, point 3). See a-conclusion-nobody-drew-is-never-sent. */
+      const concluded = withoutAConclusionNobodyDrew(raw, sayable, saidHereBefore);
+      for (const c of concluded.cut) this.logger.warn(`Check-in ${(checkIn as any).id}: cut a conclusion nobody drew: "${c.slice(0, 160)}"`);
+      raw = concluded.text;
     }
     const noRecordInvented = withoutARecordClaimNobodyHolds(raw, saidHereBefore);
     if (noRecordInvented.cut.length) this.logger.warn(`Check-in ${(checkIn as any).id}: cut ${noRecordInvented.cut.length} sentence(s) claiming what "the record" shows, which this person's record does not hold.`);
