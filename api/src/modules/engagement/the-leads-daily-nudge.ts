@@ -1,4 +1,5 @@
 import { theSalesMorning } from './the-sales-morning-from-the-record';
+import { withWhatTheBoardsSay, type TheLeadsBoard } from './the-summary-reads-the-board';
 import { DependencyStatus, GroundStatus } from '@prisma/client';
 import { whichOfThesePromisesAreDone } from '../conversation/a-promise-said-done-is-kept';
 import { theDealsThatHaveStalled } from '../board/the-deals-that-have-stalled';
@@ -630,6 +631,18 @@ export interface TheNudgeDoors {
   email: { sendTheLeadsDailyNudge: (to: string, subject: string, parts: TheNudgeParts, firstName: string | null | undefined, linkLabel: string, linkUrl: string) => Promise<'sent' | 'held' | 'suppressed' | unknown> };
   boards: TheBoards;
   frontendUrl: string;
+  /* The lead's own board, as she opens it, for what her summary says (the-summary-reads-the-board.ts). Without it, the summary reads the record alone, as before. */
+  board?: { get(groundId: string, requestingUserId: string): Promise<any> };
+}
+
+/** Each of the lead's boards, as she is served it, for her summary. A board that cannot be read adds nothing. */
+async function theLeadsBoards(door: NonNullable<TheNudgeDoors['board']>, lead: { userId: string; grounds: any[] }): Promise<TheLeadsBoard[]> {
+  const out: TheLeadsBoard[] = [];
+  for (const g of lead.grounds.filter((x) => !isEvaluationCheckIn(x.scenario))) {
+    const board = await door.get(g.id, lead.userId).catch(() => null);
+    if (board) out.push({ label: g.label, groundId: g.id, keptInTheApp: keptOffThePhone(g), board });
+  }
+  return out;
 }
 
 /**
@@ -665,7 +678,10 @@ export async function sendTheLeadsDailyNudges(deps: TheNudgeDoors, now: Date = n
       const user = await prisma.user.findUnique({ where: { id: lead.userId }, select: { firstName: true, email: true, phoneNumber: true, deletedAt: true, isActive: true } });
       if (!user || user.deletedAt || user.isActive === false) continue;
       if (fallsInLeave(now, await theirApprovedLeave(prisma, lead.userId, lead.organizationId))) continue;
-      const everything = await whatIsOutstandingFor(prisma, lead, { boards: deps.boards, release }, now);
+      const fromTheRecord = await whatIsOutstandingFor(prisma, lead, { boards: deps.boards, release }, now);
+      /* What her board says too, in the same three parts (Hafsah, 19 October, point 1): never a single minor line when the board has more. */
+      const everything = deps.board ? withWhatTheBoardsSay(fromTheRecord, await theLeadsBoards(deps.board, lead).catch(() => [])) : fromTheRecord;
+      everything.needsYou.sort((a, b) => (a.group ?? 9) - (b.group ?? 9) || (b.late ?? 0) - (a.late ?? 0));
       /* What is said once (decision 136) is left out once it has been said. */
       const toldBefore = new Set<string>();
       for (const t of everything.risks) if (t.onceKey && await hasBeenToldOnce(prisma, t.onceKey)) toldBefore.add(t.onceKey);

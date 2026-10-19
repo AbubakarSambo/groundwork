@@ -1007,8 +1007,13 @@ export class GroundsCron implements OnApplicationBootstrap {
   }
 
   async sendTheLeadsDailyNudgesInner(now: Date = new Date()): Promise<{ tried: number }> {
+    /* The lead's own board, as she opens it, so her summary says what her board says (point 1, 19 October). Found by name, without importing the board's module here. */
+    let boards: { get(groundId: string, userId: string): Promise<any> } | undefined;
+    try {
+      if (this.moduleRef) { const { BoardService } = await import('../board/board.service'); boards = this.moduleRef.get(BoardService, { strict: false }); }
+    } catch { boards = undefined; }
     const result = await sendTheLeadsDailyNudges(
-      { prisma: this.prisma, whatsapp: this.whatsapp as any, email: this.email as any, boards: { leave: this.leave, timeSheets: this.timeSheets, spending: this.spending }, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
+      { prisma: this.prisma, whatsapp: this.whatsapp as any, email: this.email as any, boards: { leave: this.leave, timeSheets: this.timeSheets, spending: this.spending }, frontendUrl: this.config.get<string>('resend.frontendUrl') || '', ...(boards ? { board: { get: (groundId: string, userId: string) => boards.get(groundId, userId) } } : {}) },
       now,
     ).catch((err: any) => { this.logger.warn(`The leads' daily nudges could not be sent: ${err?.message}`); return { tried: 0 }; });
     if (result.tried) this.logger.log(`Lead daily nudge: ${result.tried} tried.`);
