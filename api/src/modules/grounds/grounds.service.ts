@@ -132,9 +132,12 @@ import { isThisSessionReleased, isTheTeamPictureNowShared, releasedSessionsOf } 
 import { theContextReadsEachTargetOnce, eachTargetOnceOnTheContextTab } from './the-context-reads-each-target-once';
 import { thePlanAsAgreed } from './the-plan-as-agreed';
 import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
+import { theRelease2CollectionsIsOn } from './release-2-collections';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
+  /* Twelve weeks at a week apart, under the twenty-session cap, the clock the other weekly standing read has (collect-whats-owed.ts). */
+  COLLECTIONS: 90,
   /** Short on purpose: nobody has named the situation yet, so committing months to it is a guess. */
   OPEN_READ: 30,
   NEW_HIRE: 90,
@@ -282,6 +285,8 @@ export const RECOMMENDED_MOMENT: Record<GroundScenario, GroundMoment> = {
   TEAM_UPDATES: GroundMoment.STARTING,
   /** The case is built from a period that has already happened. */
   RECOGNITION: GroundMoment.RECOGNITION,
+  /* STARTING, like the other recurring reads: the first session sets out what each person follows up, and every later one reads it. */
+  COLLECTIONS: GroundMoment.STARTING,
 
   // Closing something out.
   /** What the term delivered, judged against what it was meant to. */
@@ -342,6 +347,8 @@ export const RECOMMENDED_CADENCE: Record<GroundScenario, Cadence> = {
   DISCOVERY: Cadence.ONE_TIME,
   /* Her default of the three offered - daily, weekly, every two weeks. The other two are a click. */
   TEAM_UPDATES: Cadence.WEEKLY,
+  /* Weekly: the prototype's SIT_SCHED has no row for it, and the release plan's collections check-in is weekly (collect-whats-owed.ts). */
+  COLLECTIONS: Cadence.WEEKLY,
 };
 
 // All scenarios support any number of participants - the initiator decides who
@@ -627,6 +634,17 @@ export class GroundsService {
   }
 
   /**
+   * COLLECT WHAT'S OWED IS OFFERED ONLY WHERE RELEASE 2 IS ON (release plan, Release 2; release-2-collections.ts). The picker
+   * shows it only there, and the server says the same, so a new check-in with it is refused anywhere else, in a full sentence,
+   * before anything is spent or written. Every other situation is untouched.
+   */
+  private async aNewCheckInMayBeThisSituation(organizationId: string, scenario: GroundScenario | string | null | undefined): Promise<void> {
+    if (scenario !== GroundScenario.COLLECTIONS) return;
+    if (await theRelease2CollectionsIsOn(this.prisma, organizationId)) return;
+    throw new BadRequestException('Collecting what is owed is not open to your organisation yet, so choose another situation for this check-in.');
+  }
+
+  /**
    * @param creatorRole the caller's role in the organisation. A ground created by
    *   somebody who is not an ADMIN waits for one to accept it - her requirement, and
    *   the reason it is a parameter rather than a lookup is that the controller already
@@ -681,6 +699,8 @@ export class GroundsService {
   }
 
   async create(organizationId: string, initiatorId: string, dto: CreateGroundDto, creatorRole?: string) {
+    /* Collect what's owed only where the organisation's Release 2 switch is on; refused before anything is spent (release-2-collections.ts). */
+    await this.aNewCheckInMayBeThisSituation(organizationId, dto.scenario);
     /* A daily check-in nobody gave days for runs Monday to Friday (Hafsah, 15 October). */
     dto = { ...dto, workingDays: theDaysItRunsOn(dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario], dto.workingDays) };
     /* What this organisation already calls its check-ins, so a new one is not the fourth thing in
@@ -933,6 +953,7 @@ export class GroundsService {
    * reject them.
    */
   async createForLead(organizationId: string, adminUserId: string, dto: CreateGroundForLeadDto) {
+    await this.aNewCheckInMayBeThisSituation(organizationId, dto.scenario);
     dto = { ...dto, workingDays: theDaysItRunsOn(dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario], dto.workingDays) };
     const canCreate = await this.billing.canCreateGround(organizationId);
     if (!canCreate.allowed) {

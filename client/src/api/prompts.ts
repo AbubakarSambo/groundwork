@@ -136,6 +136,8 @@ export interface OrgListItem {
   release1SalesBoardOn?: boolean
   /** Release 1B's new check-in tabs, switched on for this organisation by staff. Off for every organisation until then. */
   release1bTabsOn?: boolean
+  /** Release 2 (collect what's owed, and the switchboard's Release 2 rows), switched on for this organisation by staff. Off for every organisation until then. */
+  release2CollectionsOn?: boolean
   groundCount: number
   userCount: number
   lastActivity: string | null

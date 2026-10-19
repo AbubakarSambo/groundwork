@@ -79,6 +79,7 @@ export function situationInWords(scenario: GroundScenario | null): string | null
     case GroundScenario.OKR_ALIGNMENT: return 'setting shared goals';
     case GroundScenario.WORKPLAN_BUDGET: return 'a workplan and budget';
     case GroundScenario.PULSE_CHECK: return 'a regular read on live work';
+    case GroundScenario.COLLECTIONS: return 'collecting what is owed';
     case GroundScenario.DRIFT: return 'a project that has gone off track';
     case GroundScenario.CRISIS_ALIGNMENT: return 'a big decision';
     case GroundScenario.BOARD_STRATEGY: return 'board or leadership strategy';

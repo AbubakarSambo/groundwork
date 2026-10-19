@@ -116,6 +116,12 @@ export const END_STATES: Record<GroundScenario, { value: string; label: string; 
     { value: 'REVISION_NEEDED', label: 'The plan needs changes before it can be approved.' },
     { value: 'NOT_YET', label: 'It is not settled yet, because the plan is not complete.' },
   ],
+  /* Collect what's owed (Release 2): the same plain endings as the other recurring read, said about what is owed. */
+  COLLECTIONS: [
+    { value: 'ON_TRACK', label: 'What is owed is being paid as agreed.' },
+    { value: 'ATTENTION_NEEDED', label: 'Some payments, each one named, need attention.' },
+    { value: 'NOT_YET', label: 'It is not settled yet, and it will be checked again next session.' },
+  ],
   PULSE_CHECK: [
     { value: 'ON_TRACK', label: 'Things are going as planned.' },
     { value: 'ATTENTION_NEEDED', label: 'Some things, each one named, need attention.' },

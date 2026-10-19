@@ -1335,6 +1335,46 @@ export function Release1bTabsSwitch({ org }: { org: Pick<OrgListItem, 'id' | 'na
   )
 }
 
+/**
+ * RELEASE 2, COLLECT WHAT'S OWED, ONE ORGANISATION AT A TIME (release plan, Release 2: test organisations first, then Muchemi &
+ * Co once Hafsah says so). Off returns the organisation to what it had, with nothing lost.
+ */
+export function Release2CollectionsSwitch({ org }: { org: Pick<OrgListItem, 'id' | 'name' | 'release2CollectionsOn'> }) {
+  const qc = useQueryClient()
+  const on = org.release2CollectionsOn === true
+  const toggle = useMutation({
+    mutationFn: (next: boolean) => adminApi.setRelease2Collections(org.id, next),
+    onSuccess: (r) => {
+      qc.setQueryData(['platform-org-list'], (old: OrgListItem[] | undefined) => (old ?? []).map((o) => (o.id === r.id ? { ...o, release2CollectionsOn: r.release2CollectionsOn } : o)))
+      qc.invalidateQueries({ queryKey: ['platform-org-list'] })
+      toast.success(r.says)
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That could not be changed. Try again.'),
+  })
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: 10, marginTop: 10, borderTop: '1px solid var(--gw-border)' }}>
+      <div>
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)' }}>Collect what’s owed</div>
+        <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2, lineHeight: 1.5 }}>
+          {on
+            ? `${org.name} can start a check-in to collect what is owed. Switching it off returns them to what they had, and nothing is lost.`
+            : `${org.name} cannot start a check-in to collect what is owed. Switch it on for a test organisation first, and for a real client only once Hafsah says so.`}
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => toggle.mutate(!on)}
+        disabled={toggle.isPending}
+        style={{ width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer', background: on ? 'var(--gw-navy)' : 'var(--gw-border)', position: 'relative', flexShrink: 0 }}
+        aria-label={on ? `Switch collecting what is owed off for ${org.name}` : `Switch collecting what is owed on for ${org.name}`}
+        aria-pressed={on}
+      >
+        <span style={{ position: 'absolute', top: 3, left: on ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+      </button>
+    </div>
+  )
+}
+
 function OrgsTab({ orgs }: { orgs: OrgListItem[] }) {
   const [search, setSearch] = useState('')
   const [open, setOpen] = useState<string | null>(null)
@@ -1384,6 +1424,7 @@ function OrgsTab({ orgs }: { orgs: OrgListItem[] }) {
            </div>
            {open === org.id && <ReleaseOneSalesBoardSwitch org={org} />}
            {open === org.id && <Release1bTabsSwitch org={org} />}
+           {open === org.id && <Release2CollectionsSwitch org={org} />}
            {open === org.id && <PeopleInOrg organizationId={org.id} />}
           </div>
         ))}
