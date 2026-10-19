@@ -1,3 +1,4 @@
+import { aWaitSomebodyElseChases } from './a-wait-somebody-else-chases';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { theRelease1bTabsAreOn } from '../grounds/release-1b-tabs';
 import { theReferencesTemplateFor } from '../grounds/the-references-template';
@@ -147,6 +148,11 @@ export interface TheRecordForOnePerson {
   waitsOnThem: AHandoffRow[];
   /** Every handoff this person raised. */
   raised: AHandoffRow[];
+  /**
+   * What colleagues in this check-in chase or promise themselves: their own waits and promises, read only to tell which of this
+   * person's waits are somebody else's to chase (a-wait-somebody-else-chases). Never shown.
+   */
+  othersChase?: string[];
   /** Colleagues who credited this person in their own check-ins, one entry per check-in, named where this reader may. */
   credits: { fromName: string | null; checkInId: string | null }[];
   checkIns: ACheckInRow[];
@@ -254,7 +260,8 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
   const done = due.filter((c) => c.status === 'COMPLETED');
   const onTime = done.filter(wasOnTime);
   const specific = done.filter((c) => c.specificityLevel === 'specific');
-  const raised = dedupeDependencies(r.raised.filter((d) => d.onParticipantId !== r.person.participantId) as any[]) as AHandoffRow[];
+  /* Not a blocker of theirs to have tried on: a wait a colleague here is chasing or has promised (a-wait-somebody-else-chases). */
+  const raised = dedupeDependencies(r.raised.filter((d) => d.onParticipantId !== r.person.participantId && !aWaitSomebodyElseChases(String((d as any).what ?? ''), r.othersChase ?? [])) as any[]) as AHandoffRow[];
   const tried = raised.filter((d) => String(d.triedSaid ?? '').trim());
   const cleared = raised.filter((d) => d.status === 'CLEARED');
   const creditors = [...new Set(r.credits.map((c) => c.fromName ?? 'A colleague'))];
@@ -590,6 +597,12 @@ export async function readMyWork(
     prisma.groundObjective?.findMany?.({ where: { groundId: ground.id, ownerParticipantId: pid }, select: { name: true, target: true, count: true, ownerParticipantId: true, isADecisionAboutAPerson: true }, orderBy: { sortOrder: 'asc' } }).catch(() => []) ?? [],
   ]);
 
+  /* Colleagues' own waits and promises here, to tell which waits are theirs to chase. Never served. */
+  const [othersDeps, othersCommitments] = await Promise.all([
+    prisma.groundDependency?.findMany?.({ where: { groundId: ground.id, fromParticipantId: { not: pid } }, select: { what: true } }).catch(() => []) ?? [],
+    prisma.groundCommitment?.findMany?.({ where: { groundId: ground.id, participantId: { not: pid } }, select: { text: true } }).catch(() => []) ?? [],
+  ]);
+
   /* Their own first line in each finished check-in, for the person alone: a person's own report is private, always. */
   const done = (checkIns as any[]).filter((c) => c.status === 'COMPLETED');
   const ownLines = reader === 'self' && done.length
@@ -619,6 +632,10 @@ export async function readMyWork(
     commitments: commitments as any[],
     waitsOnThem: (deps as any[]).filter((d) => d.onParticipantId === pid).map((d) => ({ ...d, fromName: nameOf(d.fromParticipantId) })),
     raised: (deps as any[]).filter((d) => d.fromParticipantId === pid),
+    othersChase: [
+      ...((othersDeps as any[]) ?? []).map((d) => String(d.what ?? '')),
+      ...((othersCommitments as any[]) ?? []).map((c) => String(c.text ?? '')),
+    ].filter((t) => t.trim()),
     credits: (mentions as any[]).filter((m) => m.sourceParticipantId !== pid).map((m) => ({ fromName: nameOf(m.sourceParticipantId), checkInId: m.checkInId ?? null })),
     checkIns: checkIns as any[],
     ownLines,
