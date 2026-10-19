@@ -253,7 +253,7 @@ The first of three small pull requests for Release 2, built on Release 1B's pull
 
 **Test data:** hand-written for Muchemi & Co (test) in `api/src/modules/grounds/__fixtures__/muchemi-and-co.ts`, with no passwords and no real client data: Wanjiru Muchemi (the partner, the lead), Brian Otieno and Aisha Kamau (associates), Njeri Wambui (accounts), David Mwangi (paralegal, the litigation check-in only); the weekly fee notes check-in and the litigation daily; fee notes due on a date and on an event, one paid with proof and one on someone's word, one promised and missed, one disputed, one not heard from and one not yet raised.
 
-**Old tests this changes:** none.
+**Old tests this changes, and why:** `client/src/lib/the-recommended-rhythm-agrees-with-the-engine.spec.ts`. COLLECTIONS is not a card in the catalogue both pickers are built from (it is offered only behind its switch, from `client/src/lib/collect-whats-owed.ts`), so it is left out of the catalogue comparison and compared instead, line for line, with its own file: weekly, twelve weeks, starting. Nothing the test checked before is loosened.
 
 ## This update, 14 October (after #326 and #327)
 
