@@ -22,7 +22,8 @@ import { COLLECTIONS_TYPES, COLLECTIONS_TYPE_LABEL, theCollectionsTypeRead } fro
  *
  * WHICH RELEASE BUILDS EACH ROW. Release 1 built the sales team row (its board and reports are drawn by the code behind
  * `release1SalesBoardOn`, which this table names and does not replace). Release 2's rows are listed now so its next two pull
- * requests only draw them: the collections board and its reports (pull request 2), the matter board (pull request 3).
+ * requests only draw them: the collections board and its reports (pull request 2, built: the-collections-board.ts and its reports),
+ * the matter board (pull request 3).
  */
 
 /** The switchboard's types. Each is the department or kind of work, in the release plan's words. */
@@ -78,12 +79,12 @@ export const THE_SWITCHBOARD: readonly ASwitchboardRow[] = [
   {
     scenario: GroundScenario.COLLECTIONS, type: 'invoices or fee notes', board: 'the collections board',
     reports: { team: 'full', own: true, weekly: true, weeklyNumbers: ['collected this week', 'due', 'overdue', 'paid with proof'] },
-    switch: 'release2CollectionsOn', release: 'Release 2, pull request 2', built: false,
+    switch: 'release2CollectionsOn', release: 'Release 2, pull request 2', built: true,
   },
   {
     scenario: GroundScenario.COLLECTIONS, type: 'loans', board: 'the loans board',
     reports: { team: 'full', own: true, weekly: true, weeklyNumbers: ['collected this week', 'due', 'overdue', 'paid with proof'] },
-    switch: 'release2CollectionsOn', release: 'Release 2, pull request 2', built: false,
+    switch: 'release2CollectionsOn', release: 'Release 2, pull request 2', built: true,
   },
   {
     scenario: GroundScenario.PULSE_CHECK, type: 'legal matter', board: 'the matter board',

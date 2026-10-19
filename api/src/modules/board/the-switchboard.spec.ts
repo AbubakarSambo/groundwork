@@ -19,8 +19,8 @@ describe('the table', () => {
   it('has the rows the release plan names, and no others yet', () => {
     expect(THE_SWITCHBOARD.map((r) => [r.scenario, r.type, r.board, r.switch, r.release, r.built])).toEqual([
       ['OKR_ALIGNMENT', 'sales team', 'the sales board', 'release1SalesBoardOn', 'Release 1', true],
-      ['COLLECTIONS', 'invoices or fee notes', 'the collections board', 'release2CollectionsOn', 'Release 2, pull request 2', false],
-      ['COLLECTIONS', 'loans', 'the loans board', 'release2CollectionsOn', 'Release 2, pull request 2', false],
+      ['COLLECTIONS', 'invoices or fee notes', 'the collections board', 'release2CollectionsOn', 'Release 2, pull request 2', true],
+      ['COLLECTIONS', 'loans', 'the loans board', 'release2CollectionsOn', 'Release 2, pull request 2', true],
       ['PULSE_CHECK', 'legal matter', 'the matter board', 'release2CollectionsOn', 'Release 2, pull request 3', false],
     ]);
     expect(CHECK_IN_TYPES).toEqual(['sales team', 'invoices or fee notes', 'loans', 'legal matter']);
@@ -58,10 +58,11 @@ describe('what it picks', () => {
     expect(whatTheSwitchboardPicks('OKR_ALIGNMENT', 'sales team', R2).board).toBe('today');
   });
 
-  it('Release 2\'s rows wait for their boards: on, they still pick today until pull requests 2 and 3 draw them', () => {
-    for (const type of ['invoices or fee notes', 'loans']) {
-      expect(whatTheSwitchboardPicks('COLLECTIONS', type, R2)).toEqual(expect.objectContaining({ board: 'today', reports: 'today', because: 'its board is not built yet' }));
-    }
+  /* Release 2, pull request 2 draws the collections board and its reports, so its two rows are built; the matter board waits for pull request 3. */
+  it('Release 2\'s collections rows pick the collections board and the loans board where the switch is on; the matter board still waits', () => {
+    expect(whatTheSwitchboardPicks('COLLECTIONS', 'invoices or fee notes', R2)).toEqual(expect.objectContaining({ board: 'the collections board', because: 'its row' }));
+    expect(whatTheSwitchboardPicks('COLLECTIONS', 'loans', R2)).toEqual(expect.objectContaining({ board: 'the loans board', because: 'its row' }));
+    expect((whatTheSwitchboardPicks('COLLECTIONS', 'loans', R2).reports as any).team).toBe('full');
     expect(whatTheSwitchboardPicks('PULSE_CHECK', 'legal matter', R2).because).toBe('its board is not built yet');
   });
 });

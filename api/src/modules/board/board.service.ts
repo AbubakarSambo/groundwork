@@ -225,6 +225,7 @@ import { theDealsOnRecord, theAimsTheDealsCount, theSalesStages, whereAWeeklyCou
 import { theWaitsOnCustomersApart, theirOwnAnswersWhereTheWaitsWereSaid, withoutTheWaitsOnCustomers } from './a-customers-reply-is-on-its-deal';
 import { theReleaseOneSalesBoardIsOn } from './release-one-sales-board';
 import { whatTheSwitchboardServes, type TheSwitchboardServed } from './the-switchboard';
+import { theCollectionsBoardFor } from './the-collections-board.service';
 import { withTheStageKept, theStagesToKeep } from './a-deals-stages-are-kept';
 import { WHAT_EACH_MARK_SAYS } from '../reports/the-mark-on-every-line';
 
@@ -381,6 +382,18 @@ export class BoardService {
   private async theSwitchboardsPick(ground: any): Promise<{ switchboard?: TheSwitchboardServed }> {
     const served = await whatTheSwitchboardServes(this.prisma, ground).catch(() => null);
     return served ? { switchboard: served } : {};
+  }
+
+  /**
+   * THE COLLECTIONS BOARD (Release 2, pull request 2 of 3; the-collections-board), as `{ collections }`, only where the switchboard
+   * picks the collections board or the loans board for this check-in: Release 2 on, a "Collect what's owed" check-in, its type on
+   * record. Walled for this reader before it is built (the-collections-board.service). Otherwise nothing, so the board is as before.
+   */
+  private async theCollectionsBoardIfPicked(ground: any, reader: { runsIt: boolean; participantId: string | null }, now: Date): Promise<{ collections?: unknown }> {
+    const served = await whatTheSwitchboardServes(this.prisma, ground).catch(() => null);
+    if (!served || (served.board !== 'the collections board' && served.board !== 'the loans board')) return {};
+    const board = await theCollectionsBoardFor(this.prisma, ground.id, reader, now).catch(() => null);
+    return board ? { collections: board } : {};
   }
 
   async get(
@@ -953,6 +966,8 @@ export class BoardService {
       releaseOneSalesBoard: releaseOne,
       /* What the switchboard picks for this scenario and type (the-switchboard.ts), only where Release 2 is on; off, the key is not served at all. */
       ...(await this.theSwitchboardsPick(ground as any)),
+      /* The collections board, where the switchboard picks it, walled for this reader (the-collections-board.service). */
+      ...(await this.theCollectionsBoardIfPicked(ground as any, { runsIt: isInitiator || theyRunIt, participantId: me?.id ?? null }, now)),
       /* The kinds a NEW check-in may be given at release. A check-in that holds another keeps it above. */
       kindsOffered: await theBoardKindsOffered(this.prisma),
       /* Whether a new anchor check-in can be started (release.anchorScenario). Off at release. Nothing on the board changes with it yet. */
