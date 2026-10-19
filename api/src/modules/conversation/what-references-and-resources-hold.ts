@@ -28,6 +28,15 @@ import { theRelease1bTabsAreOn } from '../grounds/release-1b-tabs';
 /** The People section's kinds. Read here for the one person each is about, and dropped at every other read in a check-in. */
 export const THE_PEOPLE_NOTES: ReadonlySet<string> = new Set(['PERSON_NOTE', 'HELP_WITH']);
 
+/**
+ * WAITS ON HAFSAH (decision 32 against her brief of 18 October). Her brief says the check-ins read "the lead's People note";
+ * decision 32 says a lead's private notes never reach that person's own session. A privacy rule changes only on her word, so
+ * until she says so the People notes stay on the References and resources page and no check-in is handed them. Built and
+ * tested narrowly (only that one person's own check-in, never the lead's, never quoted) so that turning this on is one line.
+ * See docs/release-questions.md.
+ */
+export const THE_PEOPLE_NOTES_REACH_THEIR_OWN_CHECK_IN = { on: false };
+
 export const REFERENCES_HEADING = 'WHAT THIS TEAM’S REFERENCES AND RESOURCES SAY';
 
 export interface WhatReferencesHold {
@@ -80,7 +89,7 @@ export async function whatReferencesAndResourcesHold(
       OR: [
         { kind: { in: ['STAGE_NEEDS', 'COACHING', 'RISK'] }, audience: 'EVERYONE' },
         /* The lead's note on one person, asked for by that person's own id, and never in the lead's own check-in. */
-        ...(isTheLead ? [] : [{ kind: { in: ['PERSON_NOTE', 'HELP_WITH'] }, aboutParticipantId: checkIn.participantId }]),
+        ...(isTheLead || !THE_PEOPLE_NOTES_REACH_THEIR_OWN_CHECK_IN.on ? [] : [{ kind: { in: ['PERSON_NOTE', 'HELP_WITH'] }, aboutParticipantId: checkIn.participantId }]),
       ],
     },
     select: { kind: true, text: true, aboutParticipantId: true },

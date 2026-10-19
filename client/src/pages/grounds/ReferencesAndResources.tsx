@@ -410,7 +410,7 @@ function People({ groundId, people, onDone }: { groundId: string; people: NonNul
     )
   )
   return (
-    <Section heading="People" note="Only you see this. Your notes on each person. Their check-ins use these. They never see them.">
+    <Section heading="People" note="Only you see this. Your notes on each person. They never see them. Their check-ins do not use them yet.">
       <Stack gap={10}>
         {people.length > 5 && (
           <FlexRow gap={8} align="center" wrap>

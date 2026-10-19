@@ -1,7 +1,7 @@
 import { GroundScenario, PartyType, CheckInStatus } from '@prisma/client';
 import { ConversationService } from './conversation.service';
 import { ConversationContextService } from './context.service';
-import { theReferencesBlock, REFERENCES_HEADING } from './what-references-and-resources-hold';
+import { theReferencesBlock, REFERENCES_HEADING, THE_PEOPLE_NOTES_REACH_THEIR_OWN_CHECK_IN } from './what-references-and-resources-hold';
 
 /**
  * THE CHECK-INS READ REFERENCES AND RESOURCES (Release 1B, pull request 2 of 3; Hafsah, 18 October 2026: "The check-ins read
@@ -183,9 +183,18 @@ describe("with Release 1B's switch off, the check-ins ask exactly as today", () 
 });
 
 describe('with it on, the check-ins read References and resources', () => {
-  afterEach(() => { SWITCH_ON = true; LINES_HELD = CONTEXT_LINES; });
+  afterEach(() => { SWITCH_ON = true; LINES_HELD = CONTEXT_LINES; THE_PEOPLE_NOTES_REACH_THEIR_OWN_CHECK_IN.on = false; });
 
-  it('Ngozi\u2019s own check-in is given the stage needs, coaching, risks, the lead\u2019s note on her, and her proof; never Femi\u2019s note', async () => {
+  it('until Hafsah says so (decision 32), no check-in is handed a People note: Ngozi gets the stage needs, coaching, risks and her proof, and neither note', async () => {
+    const { service, handed } = aServiceFor(NGOZI);
+    await service.sendMessage('ci1', 'u-ngozi', 'The invoice is still waiting for Abena to approve it.');
+    const all = allOf(handed);
+    for (const t of [REFERENCES_HEADING, STAGE, COACH, RISK]) expect(all).toContain(t);
+    for (const t of [NOTE_ON_NGOZI, HELP_NGOZI, NOTE_ON_FEMI]) expect(all).not.toContain(t);
+  });
+
+  it('once Hafsah turns it on, Ngozi\u2019s own check-in is given the stage needs, coaching, risks, the lead\u2019s note on her, and her proof; never Femi\u2019s note', async () => {
+    THE_PEOPLE_NOTES_REACH_THEIR_OWN_CHECK_IN.on = true;
     const { service, handed } = aServiceFor(NGOZI);
     await service.sendMessage('ci1', 'u-ngozi', 'The invoice is still waiting for Abena to approve it.');
     const all = allOf(handed);
