@@ -154,6 +154,8 @@ describe('every surface that hands out whose number it is', () => {
     'modules/reports/the-sales-readings-for-a-report.ts': "reads a deal's owner (a work item) and each person's target only for the lead who runs it, or for that person's own report; never another person's number to a person",
     'modules/reports/the-sales-team-report-from-the-record.ts': "shapes the team's report from the deals and the targets its caller hands in for the lead alone; serves nobody itself",
     'modules/reports/the-sales-week-in-words.ts': "keeps each person's lines by label with their own target; the weekly read hands a person only their own lines and the lead every line",
+    /* Release 1B, pull request 2 of 3: proof added in a check-in is filed on its item. It reads a work item's owner only to prefer the person's own item when filing; it serves nobody, and never reads a target or a number. */
+    'modules/documents/proof-filed-on-its-item.ts': "reads a work item's owner only to file proof on the person's own item; serves nobody, never a target or a number",
   };
 
   it('goes through the one rule, or says why it is not a reader', () => {
