@@ -35,7 +35,8 @@ describe('every sender', () => {
     expect(cron).toMatch(/@Cron\('\*\/15 \* \* \* \*', \{ timeZone: 'UTC' \}\)/);
     expect(cron).toContain('CronLock.HELD_MAIL');
     expect(cron).toMatch(/where: \{ sentAt: null, notBefore: \{ lte: new Date\(\) \} \}/);
-    expect(cron).toMatch(/await this\.email\.deliverHeld\(row\);\s*await this\.prisma\.scheduledEmail\.update\(\{ where: \{ id: row\.id \}, data: \{ sentAt: new Date\(\) \} \}\)/);
+    /* Changed 19 October (point 7, finding 3): the row is taken first, only where nobody has taken it, and then sent, so two runs never both decide it. a-held-email-is-one-decision.spec.ts reads it run. */
+    expect(cron).toMatch(/const claimed = await this\.prisma\.scheduledEmail\.updateMany\(\{ where: \{ id: row\.id, sentAt: null \}, data: \{ sentAt: new Date\(\) \} \}\)[\s\S]*?if \(!claimed\?\.count\) continue;[\s\S]*?await this\.email\.deliverHeld\(row\);/);
   });
   it('the digest no longer drops a mail for the hour', () => {
     expect(digest).toMatch(/if \(refuse && refuse !== 'quiet_hours'\)/);
