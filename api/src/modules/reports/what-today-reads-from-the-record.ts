@@ -288,8 +288,10 @@ export async function forTheLeadFrom(prisma: any, groundId: string, l: Loaded, r
   const out: (ForTheLead & { order: number })[] = [];
   for (const rows of groups.values()) {
     const d = rows[0];
-    const what = inASentence(d.what);
     const waiting = [...new Set(rows.map((r) => r.fromParticipantId))].map((pid) => nameOf(pid));
+    /* "my reminder" is the waiting person's, said to the lead as theirs: "a response to Aisha Kamau's reminder" (messages test, fourth run:
+       Wanjiru's letter said "Decide what to do about a response to my reminder."). */
+    const what = waiting.length === 1 && waiting[0] ? inASentence(String(d.what ?? '').replace(/\b(?:my|mine)\b/gi, `${waiting[0]}’s`)) : inASentence(d.what);
     const are = waiting.length === 1 ? 'is' : 'are both';
     const are3 = waiting.length > 2 ? 'are all' : are;
     let decide: string;
