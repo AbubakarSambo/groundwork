@@ -292,6 +292,7 @@ import { withoutOurInstructions, withoutTalkAboutTheConversation } from './our-i
 import { withoutAConclusionNobodyDrew } from './a-conclusion-nobody-drew-is-never-sent';
 import { withoutPressingOrAccusing, withOnePossessive } from './nothing-sent-presses-or-accuses';
 import { withNoPastQuestionAboutADayToCome } from './a-day-to-come-is-never-asked-about-as-past';
+import { withoutAPastedLine } from './a-pasted-line-is-never-read-back';
 import { withEarlierWordsOnTheirOwnDay, type AnEarlierWord } from './earlier-words-keep-their-own-day';
 import { withoutTheLeadsBrief, aSentenceThatQuotesTheBrief, theLeadsSetupWords } from './the-leads-brief-is-never-quoted-to-them';
 import { withoutSentencesAboutOneOfThem } from '../reports/one-persons-circumstances-stay-their-own';
@@ -1575,6 +1576,10 @@ export class ConversationService {
       const concluded = withoutAConclusionNobodyDrew(raw, sayable, saidHereBefore);
       for (const c of concluded.cut) this.logger.warn(`Check-in ${(checkIn as any).id}: cut a conclusion nobody drew: "${c.slice(0, 160)}"`);
       raw = concluded.text;
+      /* And no line of the record pasted into a sentence between hyphens (messages test, fourth run). See a-pasted-line-is-never-read-back. */
+      const pasted = withoutAPastedLine(raw);
+      for (const c of pasted.cut) this.logger.warn(`Check-in ${(checkIn as any).id}: cut a pasted line: "${c.slice(0, 160)}"`);
+      if (pasted.cut.length) raw = pasted.text && /\?/.test(pasted.text) ? pasted.text : `${pasted.text ? `${pasted.text} ` : ''}${aQuestionNotYetAsked(WHAT_ELSE, saidHereBefore) ?? WHAT_ELSE}`;
       /* And nothing that presses them or calls their account doubtful, and no "Wanjiru's's" (messages test, fourth run). See nothing-sent-presses-or-accuses. */
       const pressed = withoutPressingOrAccusing(raw, saidHereBefore);
       for (const c of pressed.cut) this.logger.warn(`Check-in ${(checkIn as any).id}: cut a sentence that pressed or accused: "${c.slice(0, 160)}"`);
