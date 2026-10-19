@@ -291,6 +291,7 @@ import { theTargetAsASentence } from './each-target-is-a-sentence-about-whoever-
 import { withoutOurInstructions, withoutTalkAboutTheConversation } from './our-instructions-never-reach-them';
 import { withoutAConclusionNobodyDrew } from './a-conclusion-nobody-drew-is-never-sent';
 import { withoutPressingOrAccusing, withOnePossessive } from './nothing-sent-presses-or-accuses';
+import { withNoPastQuestionAboutADayToCome } from './a-day-to-come-is-never-asked-about-as-past';
 import { withEarlierWordsOnTheirOwnDay, type AnEarlierWord } from './earlier-words-keep-their-own-day';
 import { withoutTheLeadsBrief, aSentenceThatQuotesTheBrief, theLeadsSetupWords } from './the-leads-brief-is-never-quoted-to-them';
 import { withoutSentencesAboutOneOfThem } from '../reports/one-persons-circumstances-stay-their-own';
@@ -1586,6 +1587,15 @@ export class ConversationService {
         const onTheirDay = withEarlierWordsOnTheirOwnDay(raw, before, new Date());
         if (onTheirDay !== raw) this.logger.log(`Check-in ${(checkIn as any).id}: earlier words were put back with the day they were said.`);
         raw = onTheirDay;
+      }
+      /* And never a question about a day that has not come, asked as if it had (messages test, fourth run: Amos asked on Wednesday "What
+         happened when you went back on Friday?"). See a-day-to-come-is-never-asked-about-as-past. */
+      if ((checkIn as any)?.participantId && /\b(?:sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/i.test(raw)) {
+        const theirs: AnEarlierWord[] = await (this.prisma.conversationTurn?.findMany?.({ where: { role: TurnRole.PERSON, checkIn: { participantId: (checkIn as any).participantId } }, select: { content: true, createdAt: true }, orderBy: { createdAt: 'desc' }, take: 200 }) ?? Promise.resolve([]))
+          .then((rows: any[]) => (rows ?? []).map((r) => ({ content: r.content ?? '', at: r.createdAt }))).catch(() => [] as AnEarlierWord[]);
+        const notYet = withNoPastQuestionAboutADayToCome(raw, theirs, new Date(), { alreadyAsked: saidHereBefore });
+        for (const c of notYet.cut) this.logger.warn(`Check-in ${(checkIn as any).id}: cut a question about a day that has not come: "${c.slice(0, 160)}"`);
+        raw = notYet.text;
       }
     }
     const noRecordInvented = withoutARecordClaimNobodyHolds(raw, saidHereBefore);
