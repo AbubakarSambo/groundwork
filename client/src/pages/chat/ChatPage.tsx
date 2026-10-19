@@ -659,7 +659,8 @@ export function ChatPage() {
      */
     mutationFn: ({ file, ctx }: { file: File; ctx: string }) => {
       if (!groundId) throw new Error('groundId missing')
-      return documentsApi.upload(groundId, file, false, ctx)
+      /* Added in the check-in itself: with Release 1B's switch on, the server files it as evidence on its item. */
+      return documentsApi.upload(groundId, file, false, ctx, { fromTheCheckIn: true })
     },
     onSuccess: async (doc, { ctx }) => {
       /* Now that it has landed, the sheet can go. */
