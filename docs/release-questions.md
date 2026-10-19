@@ -367,3 +367,13 @@ These do not block the pull request, which is off for every organisation, but ea
 4. **What counts as proof of payment.** Only a payment document filed on the bill: a bank slip, an M-Pesa message or a record from the accounting system, added in a check-in. A person saying "I have the slip" stays "said". Is that right, and should a document added in References and resources count too?
 5. **"Where this is heading" lays out outcomes for the lead** (follow up the ones behind, settle the disputed ones, raise the ones not yet raised, ask for proof of what is said to be paid). A person never reads it. Are these the outcomes she wants, or should the list be hers to set?
 
+
+### Release 2, pull request 3 of 3: the matter board, due on an event, and fee notes in References and resources (19 October)
+
+These do not block the pull request, which is off for every organisation.
+
+1. **The kit's other matter sections.** "More confident than the evidence allows", "This may change the strategy", the handover card and "Where this is heading" have nothing on record for a matter yet, so they are not drawn. Should they wait for a later release, or be drawn now with a sentence saying nothing is on record?
+2. **Who reads every fee line on the matter board.** The lead of the fee notes check-in reads every fee note; anybody else only their own. Where the litigation lead is not the lead of the fee notes check-in, she reads only her own. Is that right, or should whoever runs the litigation check-in read every fee line?
+3. **What a matter is.** A matter is one the firm bills on that the litigation check-in names. A matter with no fee note is not drawn. Should the check-in keep its own list of matters?
+4. **Near misses.** A line that names the matter and the last word of the event and its verb ("the mention date is set" beside "the hearing date is set"), or the event with no matter named, is asked about; nothing else is. Is that the right line, or too often or too seldom?
+5. **The team report for a legal matter** keeps today's shape; the switchboard row names "each matter's fees, in one line" for it, not built in this pull request. Build it next?
