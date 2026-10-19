@@ -83,10 +83,22 @@ export function whoItWasFor(p: AnOpenPromise, waits: AWaitOnRecord[], namesOf: (
   return [...out];
 }
 
+/*
+ * A FOLLOW-UP SAID DONE IN OTHER WORDS (messages test, 19 October, finding 1). Mercy promised "I'll follow up with Joseph about the
+ * samples today." On Wednesday 14 October at 09:30 she said "I called Joseph yesterday about the samples.", and at 11:00 Grace's
+ * summary still said "Mercy committed to “follow up with Joseph about the samples today”. That was due by Monday 12 October and is
+ * two days late." Her line was kept as a worry (the samples had still not come), so it was never read. A promise to follow somebody
+ * up is kept by its maker saying they called, rang, wrote to or spoke to that person about the thing, whichever way the line was
+ * kept, as long as nothing in the sentence says it has not happened.
+ */
+const A_FOLLOW_UP = /\b(?:follow(?:ing)?[\s-]+up|chase|call|phone|ring|contact|speak|talk|check\s+in|email|message|text|remind)\b/i;
+const FOLLOWED_UP = /\b(?:followed[\s-]+up|chased|called|phoned|rang|contacted|spoke|talked|checked\s+in|emailed|messaged|texted|reminded|reached)\b/i;
+
 /** Whether one line says this promise is done. */
 export function aLineSaysThePromiseIsDone(line: ALineOnRecord, p: AnOpenPromise, ctx: { forWhom: string[]; waits: AWaitOnRecord[]; namesOf: (participantId: string) => string[] }): boolean {
-  if (String(line.type).toUpperCase() !== 'PROGRESS') return false;
   const byTheMaker = line.participantId === p.participantId;
+  const aFollowUpDone = byTheMaker && A_FOLLOW_UP.test(p.text);
+  if (String(line.type).toUpperCase() !== 'PROGRESS' && !aFollowUpDone) return false;
   const byWhomItWasFor = ctx.forWhom.includes(line.participantId);
   if (!byTheMaker && !byWhomItWasFor) return false;
   /* The thing, in the promise's words and in the words of what the people it was for were waiting on its maker for. */
@@ -95,12 +107,15 @@ export function aLineSaysThePromiseIsDone(line: ALineOnRecord, p: AnOpenPromise,
   if (!thing.size) return false;
   const otherSide = byTheMaker ? ctx.forWhom.flatMap((id) => ctx.namesOf(id)) : ctx.namesOf(p.participantId);
   const otherWords = otherSide.flatMap((n) => wordsOf(n)).filter((w) => w.length >= 2);
+  const aProgressLine = String(line.type).toUpperCase() === 'PROGRESS';
   return sentences(line.text).some((s) => {
     const said = new Set(wordsOf(s).map(aForm));
     if (![...thing].some((w) => said.has(w))) return false;
     const namesTheOtherSide = otherWords.some((w) => said.has(w) || said.has(one(w)));
     if (!byTheMaker && !namesTheOtherSide) return false;
-    return IT_HAPPENED.test(s) && !NOT_YET.test(s);
+    if (aProgressLine && IT_HAPPENED.test(s) && !NOT_YET.test(s)) return true;
+    /* The follow-up itself, in other words: by its maker, to the person it was for, about the thing, and nothing saying it has not happened. */
+    return aFollowUpDone && namesTheOtherSide && FOLLOWED_UP.test(s) && !NOT_YET.test(s);
   });
 }
 
@@ -138,7 +153,8 @@ export function thePromisesSaidDone(
 export async function theRecordForPromises(prisma: any, groundIds: string[]): Promise<{ lines: ALineOnRecord[]; waits: AWaitOnRecord[]; people: { id: string; groundId: string; names: string[] }[] }> {
   if (!groundIds.length) return { lines: [], waits: [], people: [] };
   const [lines, waits, people] = await Promise.all([
-    Promise.resolve(prisma.recordEntry?.findMany?.({ where: { disputedAt: null, type: 'PROGRESS', participant: { groundId: { in: groundIds } } }, select: { id: true, participantId: true, type: true, text: true, createdAt: true } }) ?? []).catch(() => []),
+    /* A worry too: a follow-up said done is sometimes kept as one (finding 1); aLineSaysThePromiseIsDone reads it only for that. */
+    Promise.resolve(prisma.recordEntry?.findMany?.({ where: { disputedAt: null, type: { in: ['PROGRESS', 'WORRY'] }, participant: { groundId: { in: groundIds } } }, select: { id: true, participantId: true, type: true, text: true, createdAt: true } }) ?? []).catch(() => []),
     Promise.resolve(prisma.groundDependency?.findMany?.({ where: { groundId: { in: groundIds } }, select: { id: true, fromParticipantId: true, onParticipantId: true, what: true, status: true, clearedAt: true } }) ?? []).catch(() => []),
     Promise.resolve(prisma.groundParticipant?.findMany?.({ where: { groundId: { in: groundIds } }, select: { id: true, groundId: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } }) ?? []).catch(() => []),
   ]);
