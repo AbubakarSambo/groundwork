@@ -418,8 +418,8 @@ export function wasAskedAndNotAnswered(question: string, turns: readonly { role:
  * The kit's closing line: "How sure Groundwork is about this report: sure about Kilele Hotel, which is backed by M-Pesa, and
  * Greenfield Supermarket, which has a signed order. Not sure about the deals still open, which are each person’s word so far."
  */
-export function howSureGroundworkIs(won: readonly { name: string; paid: boolean; signed: boolean; byMPesa: boolean }[], openDeals: number): string {
-  const sure = [...won.filter((d) => d.paid), ...won.filter((d) => !d.paid && d.signed)].map((d) => `${d.name}, which ${d.paid ? (d.byMPesa ? 'is backed by M-Pesa' : 'is backed by a payment record') : 'has a signed order'}`);
+export function howSureGroundworkIs(won: readonly { name: string; paid: boolean; signed: boolean; byMPesa: boolean; mpesaCode?: string | null }[], openDeals: number): string {
+  const sure = [...won.filter((d) => d.paid), ...won.filter((d) => !d.paid && d.signed)].map((d) => `${d.name}, which ${d.paid ? (d.mpesaCode ? `M-Pesa code ${d.mpesaCode} backs` : d.byMPesa ? 'is backed by M-Pesa' : 'is backed by a payment record') : 'has a signed order'}`);
   const notSure = openDeals ? 'Not sure about the deals still open, which are each person’s word so far.' : '';
   if (!sure.length) return `How sure Groundwork is about this report: not sure yet, because no sale has a payment or a signed order behind it.${notSure ? ` ${notSure}` : ''}`;
   return `How sure Groundwork is about this report: sure about ${sure.length > 1 ? `${sure.slice(0, -1).join(', ')}, and ${sure[sure.length - 1]}` : sure[0]}.${notSure ? ` ${notSure}` : ''}`;

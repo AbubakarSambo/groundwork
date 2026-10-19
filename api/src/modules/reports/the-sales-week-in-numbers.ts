@@ -90,6 +90,8 @@ export interface AMoveThisWeek {
   paid: boolean;
   /** A photo or document backs a line about it. */
   proven: boolean;
+  /** The M-Pesa code typed for it, where that is its payment record. */
+  mpesaCode?: string | null;
 }
 
 export interface APersonsSalesWeek {
@@ -192,8 +194,8 @@ export function theSalesWeek(
       if (from === null) from = onRecord[i - 1].stage;
       to = onRecord[i].stage;
     }
-    if (from && to) moves.push({ name: d.name, ownerParticipantId: d.ownerParticipantId, from, to, won: wonThisWeek && to.trim().toLowerCase() === last.toLowerCase(), paid: !!d.paid, proven: !!d.proven });
-    else if (wonThisWeek) moves.push({ name: d.name, ownerParticipantId: d.ownerParticipantId, from: null, to: last, won: true, paid: !!d.paid, proven: !!d.proven });
+    if (from && to) moves.push({ name: d.name, ownerParticipantId: d.ownerParticipantId, from, to, won: wonThisWeek && to.trim().toLowerCase() === last.toLowerCase(), paid: !!d.paid, proven: !!d.proven, ...((d as any).mpesaCode ? { mpesaCode: (d as any).mpesaCode } : {}) });
+    else if (wonThisWeek) moves.push({ name: d.name, ownerParticipantId: d.ownerParticipantId, from: null, to: last, won: true, paid: !!d.paid, proven: !!d.proven, ...((d as any).mpesaCode ? { mpesaCode: (d as any).mpesaCode } : {}) });
     const isWon = String(d.stage ?? '').toLowerCase() === last.toLowerCase();
     if (!isWon && droppedBy(d)) {
       if (inTheWeek(new Date(`${d.dropped!.on}T12:00:00Z`))) droppedDeals.push({ name: d.name, ownerParticipantId: d.ownerParticipantId, on: d.dropped!.on, line: d.dropped!.line, because: d.dropped!.because });

@@ -43,7 +43,7 @@ import { eachDealInItsGroup } from './each-deal-in-its-group';
 import { aPromiseSomebodyElseMade } from '../conversation/a-promise-somebody-else-made';
 import { thePriceRangeAnswer, thePriceRangeDecision, THE_RANGE_QUESTION, type ARangeAnswer } from './a-deals-four-criteria';
 import { theDealWasDropped, theLostDeal } from './a-deal-that-was-dropped';
-import { theWordsNameTheDeal, theBackingDocuments, theDocumentBehind, thePaymentRecords, theSignedOrders, aPaymentRecordFor, type ABackingDocument } from './a-deals-proof-is-about-that-deal';
+import { theWordsNameTheDeal, theBackingDocuments, theDocumentBehind, thePaymentRecords, theSignedOrders, aPaymentRecordFor, theMPesaCodeFor, type ABackingDocument } from './a-deals-proof-is-about-that-deal';
 import { withTheValueWorkedOut, withOnlyTheNumbersSaid, theBuyingDateOf, theBuyingDateTheySaid, BUYING_DATE, aLineIsAbout } from './a-deals-value-and-buying-date';
 import { theirLine, theirCheckInToday, HAS_NOT_CHECKED_IN_TODAY, CHECKED_IN_TODAY } from './each-persons-line-today';
 import { withoutADealsFigure } from './a-deals-units-are-not-a-target';
@@ -2755,6 +2755,9 @@ export class BoardService {
             delete worked[BUYING_DATE];
             r.fields = worked;
             r.paymentRecord = aPaymentRecordFor({ name: r.name, fields: worked }, paymentLines);
+            /* An M-Pesa code given in words is the payment record, shown as "M-Pesa code" (Hafsah, 19 October; theMPesaCodeFor). */
+            const code = r.paymentRecord ? theMPesaCodeFor({ name: r.name, fields: worked }, provenHere) : null;
+            if (code) { (r as any).mpesaCode = code; r.known = 'proof'; r.mark = 'proven'; r.knownSays = `M-Pesa code ${code} shows it.`; }
             r.signedOrder = aPaymentRecordFor({ name: r.name, fields: worked }, signedOrderLines);
             /*
              * LOST: the customer said no, or the rep gave it up (Drop Access run 1, A5; Hafsah, 18 October: a Lost stage), with the

@@ -7,7 +7,7 @@ import { cleanText } from '../reports/what-the-record-actually-holds';
 import { theStagesKept, type AStageOnRecord } from './a-deals-stages-are-kept';
 import { theDealWasDropped, type ADroppedDeal } from './a-deal-that-was-dropped';
 import { thePeopleAtEachCustomer } from './a-deal-that-has-stalled';
-import { theBackingDocuments, theDocumentBehind, thePaymentRecords, theSignedOrders, aPaymentRecordFor, type ABackingDocument } from './a-deals-proof-is-about-that-deal';
+import { theBackingDocuments, theDocumentBehind, thePaymentRecords, theSignedOrders, aPaymentRecordFor, theMPesaCodeFor, type ABackingDocument } from './a-deals-proof-is-about-that-deal';
 import { aLineIsAbout } from './a-deals-value-and-buying-date';
 import { theDayTheyMeant } from '../grounds/when-a-handoff-is-due';
 import { aDaySaidInFull } from './a-day-said-in-full';
@@ -110,6 +110,8 @@ export interface ADealOnRecord {
   paysWhen?: string | null;
   /** The lead set the rule that a sale counts only with a payment or a signed order (a-sale-counts-only-with-proof). */
   wonNeedsProof?: boolean;
+  /** The M-Pesa code typed for it, where that is its payment record (theMPesaCodeFor). Only where the payment record is read. */
+  mpesaCode?: string | null;
 }
 
 const NUMBER_WORDS: Record<string, number> = {
@@ -437,6 +439,9 @@ export async function theDealsOnRecord(prisma: any, groundId: string, opts: { pa
       ...(opts.paymentRecord ? {
         signed: aPaymentRecordFor({ name: i.name, fields }, signedOrders),
         ...(wonNeedsProof ? { wonNeedsProof: true } : {}),
+        mpesaCode: theMPesaCodeFor({ name: i.name, fields }, lines
+          .filter((l) => theMarkOf({ ...l, text: cleanText(l.text ?? '') }, whoAdded) === 'proven')
+          .map((l) => ({ text: cleanText(l.text ?? ''), anchoredDocumentId: l.anchoredDocumentId ?? null }))),
         alreadyOpen: wasAlreadyOpen({ name: i.name, fields, createdAt: new Date(i.createdAt) }, lines.map((l) => ({ ...l, text: cleanText(l.text ?? '') })), leadRows),
         paysWhen: whenTheyPay(fields, lines.filter((l) => !owner || l.participantId === owner).map((l) => ({ text: cleanText(l.text ?? ''), createdAt: new Date(l.createdAt) }))),
         peopleThere: peopleAt.get(i.id) ?? [],

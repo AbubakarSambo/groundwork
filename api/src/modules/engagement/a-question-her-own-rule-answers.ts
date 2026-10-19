@@ -13,7 +13,7 @@ import { theDealsOnRecord } from '../board/a-sales-aim-is-counted-from-the-deals
  * Only where she set the rule, the sentence asks whether something meets it, and it names exactly one deal on record.
  */
 export interface TheLeadsRuleForASale {
-  deals: { name: string; paid: boolean; signed: boolean }[];
+  deals: { name: string; paid: boolean; signed: boolean; mpesaCode?: string | null }[];
 }
 
 const THE_RULE = /\bpayment or (?:a )?signed order\b|\bsigned order or (?:a )?payment\b/i;
@@ -32,8 +32,8 @@ export function withWhatHerRuleSays(line: string, rule: TheLeadsRuleForASale | n
     const d = named[0];
     changed = true;
     const tail = /\s+$/.exec(s)?.[0] ?? '';
-    const proof = d.paid ? 'There is a payment record' : d.signed ? 'There is a signed order' : null;
-    return `Your rule is that a sale counts only with a payment or a signed order. ${proof ? `${proof} for ${d.name}, so it counts.` : `Nothing on record shows a payment or a signed order for ${d.name} yet, so it does not count yet.`}${tail}`;
+    const proof = d.paid && d.mpesaCode ? `M-Pesa code ${d.mpesaCode} shows the payment for ${d.name}, so it counts.` : d.paid ? `There is a payment record for ${d.name}, so it counts.` : d.signed ? `There is a signed order for ${d.name}, so it counts.` : null;
+    return `Your rule is that a sale counts only with a payment or a signed order. ${proof ?? `Nothing on record shows a payment or a signed order for ${d.name} yet, so it does not count yet.`}${tail}`;
   });
   return changed ? out.join('').trim() : line;
 }
@@ -49,5 +49,5 @@ export async function theLeadsRuleForASale(prisma: any, groundId: string): Promi
     || said.some((l) => THE_RULE.test(String(l?.text ?? '')));
   if (!set) return null;
   const deals = await theDealsOnRecord(prisma, groundId, { paymentRecord: true }).catch(() => []);
-  return { deals: deals.map((d) => ({ name: d.name, paid: !!d.paid, signed: !!d.signed })) };
+  return { deals: deals.map((d) => ({ name: d.name, paid: !!d.paid, signed: !!d.signed, mpesaCode: d.mpesaCode ?? null })) };
 }
