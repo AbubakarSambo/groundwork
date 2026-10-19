@@ -334,7 +334,7 @@ export function aCommitmentSaid(
   } else if (aFragmentOfTheirs) {
     /* "In session 1, you said, "send the data room". The time you gave for it was "on Wednesday"." is two clipped quotes. A piece of
        theirs that is not a sentence is said as what they said they would do, with the time inside it (request 136 item 3). */
-    const theTime = c.when && (quoteWhen || looksLikeATimeOrADate(c.when)) && !whenAlreadySaidIn(c.when, c.what) ? ` ${c.when.trim().replace(/[.!?]+$/, '')}` : '';
+    const theTime = c.when && looksLikeATimeOrADate(c.when) && !whenAlreadySaidIn(c.when, c.what) ? ` ${c.when.trim().replace(/[.!?]+$/, '')}` : '';
     whenIsInTheSentence = true;
     out.push(stated !== null
       ? `In session ${stated}, ${mid} said ${who === 'You' ? 'you' : 'they'} would ${clause}${theTime}.`
@@ -354,7 +354,9 @@ export function aCommitmentSaid(
   const flat = (t: string) => t.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
   const whenAlreadySaid = !!c.when && !!flat(c.when) && ` ${flat(c.what ?? '')} `.includes(` ${flat(c.when)} `) && (quoteWhat || !!clause);
   if (whenAlreadySaid || whenIsInTheSentence) { /* said in the words above */ }
-  else if (c.when && quoteWhen) out.push(`The time ${c.theySaidIt ? mid : leadMid} gave for it was "${c.when}".`);
+  /* Quoted or not, only words that read as a time are said as the time (messages test, 19 October, finding 11): "given their histories",
+     kept word for word as the time Wanjiru gave, is a reason and is left out. */
+  else if (c.when && quoteWhen && looksLikeATimeOrADate(c.when)) out.push(`The time ${c.theySaidIt ? mid : leadMid} gave for it was "${c.when}".`);
   else if (c.when && looksLikeATimeOrADate(c.when)) out.push(`The time ${c.theySaidIt ? mid : leadMid} gave for it was ${c.when}.`);
   if (c.restatedIn.length) {
     out.push(`${who} said it again in ${c.restatedIn.length === 1 ? `session ${c.restatedIn[0]}` : `sessions ${listed(c.restatedIn)}`}.`);
