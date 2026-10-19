@@ -1,5 +1,5 @@
 import { theSalesMorning } from './the-sales-morning-from-the-record';
-import { withWhatTheBoardsSay, type TheLeadsBoard } from './the-summary-reads-the-board';
+import { withWhatTheBoardsSay, type TheLeadsBoard, type TheRecordBesideTheBoard } from './the-summary-reads-the-board';
 import { DependencyStatus, GroundStatus } from '@prisma/client';
 import { whichOfThesePromisesAreDone } from '../conversation/a-promise-said-done-is-kept';
 import { theDealsThatHaveStalled } from '../board/the-deals-that-have-stalled';
@@ -59,7 +59,7 @@ const AT_MOST = 3;
 
 const capital = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
 const quoted = (x: string) => `“${x.replace(/[.\s]+$/, '')}”`;
-const sentence = (s: string) => (/[.!?]$/.test(s.trim()) ? s.trim() : `${s.trim()}.`);
+const sentence = (s: string) => (/[.!?][”"’)]?$/.test(s.trim()) ? s.trim() : `${s.trim()}.`);
 
 /** One thing that is outstanding, said as a full sentence. `late` orders the overdue ones; `keptInTheApp` keeps it off a phone. */
 export interface AThingOutstanding {
@@ -636,13 +636,31 @@ export interface TheNudgeDoors {
 }
 
 /** Each of the lead's boards, as she is served it, for her summary. A board that cannot be read adds nothing. */
-async function theLeadsBoards(door: NonNullable<TheNudgeDoors['board']>, lead: { userId: string; grounds: any[] }): Promise<TheLeadsBoard[]> {
+async function theLeadsBoards(door: NonNullable<TheNudgeDoors['board']>, lead: { userId: string; grounds: any[] }, prisma?: any): Promise<TheLeadsBoard[]> {
   const out: TheLeadsBoard[] = [];
   for (const g of lead.grounds.filter((x) => !isEvaluationCheckIn(x.scenario))) {
     const board = await door.get(g.id, lead.userId).catch(() => null);
-    if (board) out.push({ label: g.label, groundId: g.id, keptInTheApp: keptOffThePhone(g), board });
+    if (board) out.push({ label: g.label, groundId: g.id, keptInTheApp: keptOffThePhone(g), board, ...(prisma ? { record: await theRecordBesideTheBoard(prisma, g.id, lead.userId).catch(() => undefined) } : {}) });
   }
   return out;
+}
+
+/** What was said in one of her check-ins, and who said it, for a decision said with its customer, its person and its day. */
+async function theRecordBesideTheBoard(prisma: any, groundId: string, leadUserId: string): Promise<TheRecordBesideTheBoard | undefined> {
+  const people: any[] = (await Promise.resolve(prisma.groundParticipant?.findMany?.({ where: { groundId }, select: { id: true, userId: true, leftAt: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } })).catch(() => [])) ?? [];
+  const lines: any[] = (await Promise.resolve(prisma.recordEntry?.findMany?.({ where: { disputedAt: null, participant: { groundId } }, select: { text: true, type: true, participantId: true, createdAt: true } })).catch(() => [])) ?? [];
+  if (!Array.isArray(people) || !Array.isArray(lines) || !lines.length) return undefined;
+  const byId = new Map(people.map((p) => [p.id, p]));
+  return {
+    lines: lines.map((l) => ({ text: String(l.text ?? '').replace(/\s*\[[^\]]*\]/g, '').trim(), type: l.type ?? null, participantId: l.participantId, createdAt: l.createdAt })).filter((l) => l.text),
+    nameOf: (id: string) => {
+      const p = byId.get(id);
+      if (!p || p.userId === leadUserId) return null;
+      const n = nameToCall(p);
+      return n === SOMEONE ? null : n;
+    },
+    hers: new Set(people.filter((p) => p.userId === leadUserId).map((p) => p.id)),
+  };
 }
 
 /**
@@ -680,7 +698,7 @@ export async function sendTheLeadsDailyNudges(deps: TheNudgeDoors, now: Date = n
       if (fallsInLeave(now, await theirApprovedLeave(prisma, lead.userId, lead.organizationId))) continue;
       const fromTheRecord = await whatIsOutstandingFor(prisma, lead, { boards: deps.boards, release }, now);
       /* What her board says too, in the same three parts (Hafsah, 19 October, point 1): never a single minor line when the board has more. */
-      const everything = deps.board ? withWhatTheBoardsSay(fromTheRecord, await theLeadsBoards(deps.board, lead).catch(() => [])) : fromTheRecord;
+      const everything = deps.board ? withWhatTheBoardsSay(fromTheRecord, await theLeadsBoards(deps.board, lead, prisma).catch(() => [])) : fromTheRecord;
       everything.needsYou.sort((a, b) => (a.group ?? 9) - (b.group ?? 9) || (b.late ?? 0) - (a.late ?? 0));
       /* What is said once (decision 136) is left out once it has been said. */
       const toldBefore = new Set<string>();

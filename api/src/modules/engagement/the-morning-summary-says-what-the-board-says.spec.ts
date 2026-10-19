@@ -26,8 +26,22 @@ const PEOPLE = [
 const SAMPLES = { id: 'w-samples', groundId: G, fromParticipantId: 'gp-mercy', onParticipantId: 'gp-joseph', onLabel: null, what: 'samples', status: 'WAITING', clearedAt: null, dueOn: new Date('2026-10-15T00:00:00Z'), createdAt: new Date('2026-10-12T11:07:08.086Z'), namedTheThing: true };
 
 /* Grace's board as she was served it that morning: its own decisions, and its own "To close the gap" from the open deals on record. */
-const deal = (name: string, units: string | null) => ({ kind: 'deal', id: `d-${name}`, name, group: 'possible', owner: null, fields: units ? { Units: units } : {} });
-const OPEN = [deal('Ngong Road Minimart', '4'), deal('Juja Hardware', '5'), deal('Mama Pima', '10'), deal('Savannah Cafe', '6'), deal('Westlands Pharmacy', '2'), deal('Upper Hill Offices', null)];
+const deal = (name: string, units: string | null, ownerParticipantId: string | null = null) => ({ kind: 'deal', id: `d-${name}`, name, group: 'possible', owner: null, ownerParticipantId, fields: units ? { Units: units } : {} });
+const OPEN = [deal('Ngong Road Minimart', '4', 'gp-kevin'), deal('Juja Hardware', '5', 'gp-joseph'), deal('Mama Pima', '10', 'gp-joseph'), deal('Savannah Cafe', '6', 'gp-kevin'), deal('Westlands Pharmacy', '2'), deal('Upper Hill Offices', null, 'gp-kevin')];
+/* What was said in the check-in, as the run's record holds it (Monday 12 October): Joseph at 11:09 in Nairobi, Grace in her own check-in. */
+const SAID = [
+  { participantId: 'gp-joseph', type: 'WORRY', text: 'Wanjiru is still deciding. She wants a discount.', createdAt: new Date('2026-10-12T11:09:19.756Z') },
+  { participantId: 'gp-joseph', type: 'WORRY', text: "She's waiting to see if I'll give her the discount. That's what she said.", createdAt: new Date('2026-10-12T11:09:19.756Z') },
+  { participantId: 'gp-joseph', type: 'INTENT', text: "I'm working on getting 10 units confirmed from Mama Pima Stores.", createdAt: new Date('2026-10-12T11:09:19.756Z') },
+  { participantId: 'gp-grace', type: 'COMMITMENT', text: 'I need to make a decision about his KES 4,500 pricing request.', createdAt: new Date('2026-10-12T08:33:26.128Z') },
+  /* Mercy, Wednesday 14 October: which customer the samples are for. */
+  { participantId: 'gp-mercy', type: 'WORRY', text: 'The samples from Joseph are holding up Tuskys Westgate.', createdAt: new Date('2026-10-14T06:32:53.832Z') },
+];
+/* The deals on record, as the run holds them: Tuskys is Mercy's. */
+const ON_RECORD = [
+  { id: 'wi-tuskys', groundId: G, kind: 'deal', name: 'Tuskys', stage: null, ownerParticipantId: 'gp-mercy', fields: {}, createdAt: new Date('2026-10-12T11:07:08Z') },
+  { id: 'wi-pima', groundId: G, kind: 'deal', name: 'Mama Pima', stage: null, ownerParticipantId: 'gp-joseph', fields: { Units: '10' }, createdAt: new Date('2026-10-12T11:00:52Z') },
+];
 const AIM = { id: 'obj-120', name: 'Units sold by 30 October', target: 120, count: 65, ownerParticipantId: null, dueOn: new Date('2026-10-30T00:00:00Z'), direction: 'AIM', fromTheDeals: { counts: 'units' } };
 const BOARD = {
   decisions: [
@@ -35,12 +49,17 @@ const BOARD = {
     { question: 'People in this check-in said different things. A decision on a discount for a potential 10-unit sale is holding up progress. This needs settling.', why: 'What people said about this does not match, so nobody can assume it is agreed.', owner: 'You', source: 'divergence' },
   ],
   leadActions: [{ id: 'the-stall-rule', kind: 'decision', text: 'No stall rule set yet' }],
+  /* The board's own read of the difference, as served to Grace: what each person said about it. */
+  divergence: { items: [{ topic: 'A decision on a discount for a potential 10-unit sale is holding up progress.', settledBy: "The initiator needs to provide a 'yes' or 'no' answer on the discount request.", positions: [
+    { who: 'Joseph Kariuki', view: 'Joseph Kariuki is waiting on a decision about a discount request for the Mama Pima Stores deal.' },
+    { who: 'You', view: "You have noted the need to make a decision on Joseph Kariuki's pricing request." },
+  ] }] },
   objectives: [AIM],
   workRecords: [{ rows: OPEN }],
   toCloseTheGap: toCloseTheGap('sales team', [{ rows: OPEN }] as any, [AIM], new Date('2026-10-30T00:00:00Z'), NOW, { nothingBooked: true, inShort: true }),
 };
 
-function graceMorning(o: { board?: any; releaseOne?: boolean } = {}) {
+function graceMorning(o: { board?: any; releaseOne?: boolean; said?: any[] } = {}) {
   const whats: any[] = [];
   const base: any = {
     ground: {
@@ -53,6 +72,8 @@ function graceMorning(o: { board?: any; releaseOne?: boolean } = {}) {
     person: { findFirst: jest.fn(async () => ({ phone: '+254700300001', externalId: 'grace' })), findMany: jest.fn(async () => []) },
     groundParticipant: { findMany: jest.fn(async ({ where }: any) => (where?.userId ? [{ id: 'gp-grace', groundId: G }] : PEOPLE.filter((p) => p.partyType !== 'INITIATOR').map((p) => ({ ...p, groundId: G, email: null, managingOnly: false, leftAt: null, user: { ...p.user, lastName: null, awaitingOrgApproval: false } })))) },
     groundDependency: { findMany: jest.fn(async () => [SAMPLES]) },
+    recordEntry: { findMany: jest.fn(async () => (o.said ?? SAID).map((l: any, i: number) => ({ id: `re-${i}`, checkInId: null, disputedAt: null, ...l }))) },
+    workItem: { findMany: jest.fn(async () => ON_RECORD) },
   };
   const prisma: any = new Proxy(base, { get: (t: any, k: string) => t[k] ?? new Proxy({}, { get: (_x: any, m: string) => jest.fn(async () => (m === 'findMany' ? [] : m === 'count' ? 0 : null)) }) });
   const whatsapp: any = { isEnabled: jest.fn(async () => true), hasSaidStop: jest.fn(async () => false), sendFor: jest.fn(async (_o: string, _t: string, text: string, context: any) => { whats.push({ text, context }); return { sent: true }; }) };
@@ -63,32 +84,40 @@ function graceMorning(o: { board?: any; releaseOne?: boolean } = {}) {
 const onHerPhone = (w: any) => fill(TEMPLATES['lead-summary'].body, w.context.params);
 
 describe("Grace's morning summary on Thursday 15 October", () => {
-  it('before: from the record alone it is the one line the run sent', async () => {
+  it('from the record alone: the one thing due today, with the customer it is for and the day the wait began', async () => {
     const m = graceMorning();
     await m.run();
-    expect(m.whats[0].context.params[1]).toBe('Joseph promised Mercy samples today.');
+    expect(m.whats[0].context.params[1]).toBe('Joseph promised Mercy the samples for Tuskys today. Mercy has been waiting since Monday 12 October.');
   });
 
-  it('now: all three parts the board has, most important first, never a single minor line', async () => {
+  it('now: all three parts the board has, most important first, and the decision says the customer, the person and the day', async () => {
     const m = graceMorning({ board: BOARD });
     await m.run();
     const p = m.whats[0].context.params[1];
     expect(p).toBe(
-      'One thing needs you today. A decision on a discount for a potential 10-unit sale is holding up progress, and people said different things about it, so it needs settling. '
-      + 'Joseph promised Mercy samples today. '
+      'One thing needs you today. Decide on the discount Mama Pima wants on 10 units. Joseph said on Monday 12 October, “Wanjiru is still deciding. She wants a discount.” '
+      + 'Joseph promised Mercy the samples for Tuskys today. Mercy has been waiting since Monday 12 October. '
       + 'These are risks. 55 more units are needed to reach the target of 120 units. Even if all six open deals close, that is 27 units, 28 short. Upper Hill Offices has no number of units yet.',
     );
+    /* Never the vague line the run sent, with no customer, no person and no day. */
+    expect(p).not.toContain('A decision on a discount for a potential 10-unit sale is holding up progress');
     /* The customer's decision is never put to her. */
     expect(p).not.toContain('Kevin Omondi is waiting on a decision on the quote');
     expect(onHerPhone(m.whats[0]).length).toBeLessThanOrEqual(1024);
     expect(onHerPhone(m.whats[0])).toMatch(/^Good morning Grace\. Here is today's summary of your check-ins\. /);
   });
 
+  it('where the record does not say who asked, the board\'s own sentence stands, never anything vaguer', async () => {
+    const m = graceMorning({ board: BOARD, said: [] });
+    await m.run();
+    expect(m.whats[0].context.params[1]).toContain('A decision on a discount for a potential 10-unit sale is holding up progress, and people said different things about it, so it needs settling.');
+  });
+
   it('without Release 1\'s switch the decision she owes is still said, and the deals are not read', async () => {
     const m = graceMorning({ board: BOARD, releaseOne: false });
     await m.run();
     const p = m.whats[0].context.params[1];
-    expect(p).toContain('A decision on a discount for a potential 10-unit sale is holding up progress');
+    expect(p).toContain('Decide on the discount Mama Pima wants on 10 units. Joseph said on Monday 12 October, “Wanjiru is still deciding. She wants a discount.”');
     expect(p).not.toContain('55 more units');
   });
 });
