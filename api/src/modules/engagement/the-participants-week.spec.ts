@@ -1,4 +1,4 @@
-import { sendTheParticipantsWeeks, theirWeekInWords } from './the-participants-week';
+import { sendTheParticipantsWeeks, theirWeekInWords, theDayTheCountBegins } from './the-participants-week';
 import { ROUTINE_EMAILS } from './one-routine-message-a-day';
 import { ENGAGEMENT_MOMENT_KEY } from './the-engagement-release-moment';
 import { whatThisMailIs } from '../email/nothing-goes-out-that-was-turned-off';
@@ -63,7 +63,8 @@ describe('what Vera reads', () => {
       subject: 'You kept three of the four things you said you would do; two requests are waiting on you',
       lines: [
         'Hello Vera. Here is your week in Groundwork. Only you can read this.',
-        'You kept three of the four things you said you would do in the last four weeks.',
+        /* Her four promises were all said five days ago, so the count says since that day, not "in the last four weeks" (engine test, Mercy's week). */
+        `You kept three of the four things you said you would do since ${theDayTheCountBegins([{ createdAt: recent }], NOW)}.`,
         /* Changed 19 October (messages test, finding 14): each open thing is said on its own with the check-in it was said in, the latest
            first, where it was a list of loose quotes. Her board here carries no day for them, so none is said. */
         'Two things you said you would do are still open.',
