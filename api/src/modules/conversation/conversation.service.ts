@@ -293,6 +293,7 @@ import { withoutAConclusionNobodyDrew } from './a-conclusion-nobody-drew-is-neve
 import { withoutPressingOrAccusing, withOnePossessive } from './nothing-sent-presses-or-accuses';
 import { withNoPastQuestionAboutADayToCome } from './a-day-to-come-is-never-asked-about-as-past';
 import { withoutAPastedLine } from './a-pasted-line-is-never-read-back';
+import { theMPesaCodesSaid, theMPesaCodesForTheModel, theScreenshotWasAskedFor, withTheScreenshotAskedOnce, type AnMPesaCodeOnRecord } from './an-mpesa-code-is-asked-about-once';
 import { withEarlierWordsOnTheirOwnDay, type AnEarlierWord } from './earlier-words-keep-their-own-day';
 import { withoutTheLeadsBrief, aSentenceThatQuotesTheBrief, theLeadsSetupWords } from './the-leads-brief-is-never-quoted-to-them';
 import { withoutSentencesAboutOneOfThem } from '../reports/one-persons-circumstances-stay-their-own';
@@ -1523,6 +1524,17 @@ export class ConversationService {
    * own conversation: the phrase there would be about the reader, and the setup block already tells
    * the model to say "you".
    */
+  /** The M-Pesa codes this person typed in this check-in's sessions, with our own turns to them, for asking for the screenshot once. */
+  private async theirMPesaCodes(participantId: string | null | undefined): Promise<{ codes: AnMPesaCodeOnRecord[]; ourTurns: { content: string; at: Date }[] }> {
+    if (!participantId) return { codes: [], ourTurns: [] };
+    const turns: any[] = await (this.prisma.conversationTurn?.findMany?.({ where: { checkIn: { participantId } }, select: { role: true, content: true, createdAt: true }, orderBy: { createdAt: 'asc' }, take: 2000 }) ?? Promise.resolve([])).catch(() => []);
+    const rows = Array.isArray(turns) ? turns : [];
+    return {
+      codes: theMPesaCodesSaid(rows.filter((t) => t.role === TurnRole.PERSON).map((t) => ({ text: String(t.content ?? ''), at: t.createdAt }))),
+      ourTurns: rows.filter((t) => t.role === TurnRole.AI).map((t) => ({ content: String(t.content ?? ''), at: t.createdAt })),
+    };
+  }
+
   private async theTurnAsItIsSaved(checkIn: { groundId?: string; participant?: { partyType?: PartyType } }, raw: string): Promise<string> {
     /* NO INTERNAL NAME, LAST OF ALL HERE TOO: every saved turn comes through (night quality run 2, "NEW_PROJECT"). */
     raw = aPersonNeverReadsAnInternalName(raw, `check-in ${(checkIn as any)?.id ?? ''} turn`, this.logger);
@@ -1576,6 +1588,13 @@ export class ConversationService {
       const concluded = withoutAConclusionNobodyDrew(raw, sayable, saidHereBefore);
       for (const c of concluded.cut) this.logger.warn(`Check-in ${(checkIn as any).id}: cut a conclusion nobody drew: "${c.slice(0, 160)}"`);
       raw = concluded.text;
+      /* And the screenshot of an M-Pesa code's sale asked for once only (Hafsah, 19 October). See an-mpesa-code-is-asked-about-once. */
+      if ((checkIn as any)?.participantId && /\b(?:screenshot|screen shot|forward|send|share|attach|add|upload)\b/i.test(raw)) {
+        const m = await this.theirMPesaCodes((checkIn as any).participantId).catch(() => ({ codes: [], ourTurns: [] }));
+        const once = withTheScreenshotAskedOnce(raw, m.codes, (c) => theScreenshotWasAskedFor(c, m.ourTurns), saidHereBefore);
+        for (const c of once.cut) this.logger.warn(`Check-in ${(checkIn as any).id}: cut a second request for an M-Pesa screenshot: "${c.slice(0, 160)}"`);
+        raw = once.text;
+      }
       /* And no line of the record pasted into a sentence between hyphens (messages test, fourth run). See a-pasted-line-is-never-read-back. */
       const pasted = withoutAPastedLine(raw);
       for (const c of pasted.cut) this.logger.warn(`Check-in ${(checkIn as any).id}: cut a pasted line: "${c.slice(0, 160)}"`);
@@ -4564,7 +4583,11 @@ export class ConversationService {
       }))
       .then((rows: any) => (Array.isArray(rows) ? rows : []))
       .catch(() => [] as any[]);
-    const alreadyGiven = proofAlreadyGiven(turnsThisSession.filter((t) => t.role === 'PERSON').map((t) => String(t.content ?? '')), sentThisSession);
+    const alreadyGiven = [
+      proofAlreadyGiven(turnsThisSession.filter((t) => t.role === 'PERSON').map((t) => String(t.content ?? '')), sentThisSession),
+      /* An M-Pesa code given in words is proof of payment; the screenshot is asked for once for each sale (Hafsah, 19 October). See an-mpesa-code-is-asked-about-once. */
+      await this.theirMPesaCodes(checkIn.participantId).then((m) => theMPesaCodesForTheModel(m.codes, (c) => theScreenshotWasAskedFor(c, m.ourTurns))).catch(() => ''),
+    ].filter(Boolean).join('\n\n');
 
     /*
      * A MEETING HAPPENED AND NOBODY IS ON IT.
