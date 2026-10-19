@@ -1,4 +1,5 @@
 import { organisationsThatTurnedWhatsAppOn } from '../whatsapp/only-where-whatsapp-is-turned-on';
+import { theWordForTheBill, aWordForTheBillMayBe } from '../grounds/collect-whats-owed';
 import { theOpeningGoesToTheNumberJustAdded } from '../grounds/the-lead-adds-a-whatsapp-number';
 import { whereTheyAreOnWhatsApp, WHERE_ON_WHATSAPP_SAYS, type WhereOnWhatsApp } from '../whatsapp/where-they-are-on-whatsapp';
 import { aNameTypedInLowerCase } from '../../common/a-name-typed-in-lower-case';
@@ -99,6 +100,23 @@ export class UsersService {
   async theTimeZone(organizationId: string) {
     const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { timeZone: true } });
     return { timeZone: org?.timeZone ?? null, inUse: await theOrganisationsZone(this.prisma as any, organizationId) };
+  }
+
+  /**
+   * THE ORGANISATION'S OWN WORD FOR A BILL (release plan, Release 2): "fee note" at a law firm, "invoice" where nobody has said.
+   * Read and changed by an admin of the organisation; the scenario "Collect what's owed" uses it in what it says.
+   */
+  async theWordForTheBill(organizationId: string) {
+    const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { billWord: true } });
+    const word = theWordForTheBill(org);
+    return { word, setHere: !!org?.billWord, says: org?.billWord ? `Your organisation calls a bill a ${word}.` : `Nobody has said what your organisation calls a bill, so Groundwork says ${word}.` };
+  }
+
+  async setTheWordForTheBill(organizationId: string, word: unknown) {
+    const ok = aWordForTheBillMayBe(word);
+    if (!ok.ok) throw new BadRequestException(ok.says);
+    await this.prisma.organization.update({ where: { id: organizationId }, data: { billWord: ok.word } });
+    return this.theWordForTheBill(organizationId);
   }
 
   async setTheTimeZone(organizationId: string, timeZone: string | null) {
