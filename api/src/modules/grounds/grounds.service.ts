@@ -133,7 +133,7 @@ import { theContextReadsEachTargetOnce, eachTargetOnceOnTheContextTab } from './
 import { thePlanAsAgreed } from './the-plan-as-agreed';
 import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
 import { theRelease2CollectionsIsOn } from './release-2-collections';
-import { TYPES_A_SCENARIO_OFFERS, CHECK_IN_TYPE_LABEL, oneOfTheTypes } from '../board/the-switchboard';
+import { aKindTheSwitchboardNeeds, TYPES_A_SCENARIO_OFFERS, CHECK_IN_TYPE_LABEL, oneOfTheTypes } from '../board/the-switchboard';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
@@ -5561,7 +5561,7 @@ export class GroundsService {
       const g = await this.prisma.ground.findUnique({
         where: { id: groundId },
         select: {
-          label: true, brief: true, endState: true, resolutionState: true, kindOfWorkSetBy: true, kindOfWork: true,
+          label: true, brief: true, endState: true, resolutionState: true, kindOfWorkSetBy: true, kindOfWork: true, organizationId: true,
           /* The people's job titles, so a sales team is told by its reps and its sales manager as well as by its words (Release 1). */
           participants: { select: { roleAsDescribed: true, user: { select: { jobTitle: true } } } },
         },
@@ -5584,7 +5584,8 @@ export class GroundsService {
        */
       if (read && hasOne && isASalesKind(read) && isASalesKind(hasOne)) return;
       /* A kind not offered at release is never given to a check-in by the read; one it already holds stays. */
-      const kind = read && (await aKindMayBeGiven(this.prisma, read, hasOne)) ? read : null;
+      /* Or one the switchboard needs where its switch is on for this organisation (messages test, 19 October, finding 19). */
+      const kind = read && ((await aKindMayBeGiven(this.prisma, read, hasOne)) || (await aKindTheSwitchboardNeeds(this.prisma, read, (g as any).organizationId))) ? read : null;
       if (read && !kind && hasOne) return;
       /* The model call above can take seconds, and the lead (or a script) may choose a kind meanwhile.
          So the write itself says "only if nobody else has chosen", in one statement, never a check
@@ -5616,8 +5617,8 @@ export class GroundsService {
         throw new BadRequestException(`That is not one of the kinds of work Groundwork knows. Choose one of these: ${KINDS_OF_WORK.join(', ')}.`);
       }
       if (kind) {
-        const holds = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { kindOfWork: true } });
-        if (!(await aKindMayBeGiven(this.prisma, kind, holds?.kindOfWork))) {
+        const holds = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { kindOfWork: true, organizationId: true } });
+        if (!(await aKindMayBeGiven(this.prisma, kind, holds?.kindOfWork)) && !(await aKindTheSwitchboardNeeds(this.prisma, kind, holds?.organizationId))) {
           const offered = await theBoardKindsOffered(this.prisma);
           throw new BadRequestException(`Groundwork does not offer that kind of work yet. Choose ${offered.length ? `one of these: ${offered.join(', ')}` : 'none of them, because none is offered at the moment'}.`);
         }
