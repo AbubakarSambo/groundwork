@@ -1,11 +1,12 @@
 import { GroundsCron } from './grounds.cron';
 
 /**
- * DECISION 117, D14 (Hafsah, 8 October): "YOUR REPORT IS READY" GOES AT MOST TWICE FOR A PERSON AND A REPORT.
+ * DECISION 117, D14 (Hafsah, 8 October): "YOUR REPORT IS READY" GOES AT MOST TWICE FOR A PERSON AND A REPORT. Since 19 October, ONCE
+ * (Hafsah: "Stop the second "your report is ready" reminder."): the first stays, and no second goes.
  *
  * It repeated every three days for as long as the person had not activated their report, and nothing activates one any more. Here the
  * clock runs thirty days, the job runs every day, and the record of messages is the one the mailer writes. The person is sent it on the
- * first day and on the fourth, and never again; a second report is a second count; a person who opted out is sent none.
+ * first day, and never again; a second report is a second count; a person who opted out is sent none.
  */
 const DAY = 86_400_000;
 const START = new Date('2026-10-01T09:00:00Z');
@@ -51,10 +52,12 @@ async function thirtyDays(service: GroundsCron) {
 }
 
 describe('the "your report is ready" reminder, over thirty days', () => {
-  it('goes twice to a person for a report, on the first day and the fourth, and then never', async () => {
+  it('goes once to a person for a report, on the first day, and then never (changed 19 October from twice, by Hafsah\'s answer)', async () => {
     const { service, log } = world([{ id: 'p1', email: 'luis@x.test', label: 'Okr alignment', groundId: 'g1' }]);
     await thirtyDays(service);
-    expect(log).toHaveLength(2);
+    expect(log).toHaveLength(1);
+    expect(log[0].createdAt.toISOString().slice(0, 10)).toBe('2026-10-01');
+    expect(log[0].subject).toBe('Your report for "Okr alignment" is ready to view');
   });
 
   it('counts each report on its own, and each person on their own', async () => {
@@ -64,8 +67,8 @@ describe('the "your report is ready" reminder, over thirty days', () => {
       { id: 'p3', email: 'rukia@x.test', label: 'Okr alignment', groundId: 'g1' },
     ]);
     await thirtyDays(service);
-    expect(log).toHaveLength(6);
-    for (const to of ['luis@x.test', 'rukia@x.test']) expect(log.filter((n) => n.toAddress === to && n.subject.includes('Okr alignment'))).toHaveLength(2);
+    expect(log).toHaveLength(3);
+    for (const to of ['luis@x.test', 'rukia@x.test']) expect(log.filter((n) => n.toAddress === to && n.subject.includes('Okr alignment'))).toHaveLength(1);
   });
 
   it('sends none to a person who turned the mail off', async () => {
