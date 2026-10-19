@@ -53,6 +53,7 @@ import { theRanOutOfTimeSubject } from '../engagement/the-leads-subjects-carry-t
 import { sendTheTestCheckInMessages } from '../engagement/a-test-check-in-moves-on';
 import { theirPromiseToFollowUp } from '../engagement/a-follow-up-from-their-own-record';
 import { theOpeningNeverReachedThem, itHasBeenOpenLongEnough } from '../engagement/a-person-the-opening-never-reached';
+import { itWasOpenedByEmailOnly } from '../whatsapp/a-session-opened-by-email';
 import { formsOfTheSameNumber } from '../whatsapp/a-number-whatsapp-can-reach';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { isNotLetInYet } from './who-an-admin-did-not-let-in';
@@ -936,6 +937,8 @@ export class GroundsCron implements OnApplicationBootstrap {
         if (!phone) continue;
         const catchUp = !what;
         if (catchUp && !(await theOpeningNeverReachedThem(this.prisma, ci, formsOfTheSameNumber(phone), now))) continue;
+        /* A session opened by email, and not on WhatsApp, is not reminded "due tomorrow" on WhatsApp (point 8, 19 October; a-session-opened-by-email.ts). */
+        if (what === 'due-tomorrow' && (await itWasOpenedByEmailOnly(this.prisma, ci, [ci.participant.email, user?.email]))) continue;
         const who = { firstName: user?.firstName, label: await nameFor({ userId: ci.participant.userId, email: ci.participant.email }, ci.groundId, ci.ground.label) };
         let said;
         if (catchUp) said = theCheckInIsStillOpen(who, ci.ground.simplerWords);
@@ -1004,8 +1007,13 @@ export class GroundsCron implements OnApplicationBootstrap {
   }
 
   async sendTheLeadsDailyNudgesInner(now: Date = new Date()): Promise<{ tried: number }> {
+    /* The lead's own board, as she opens it, so her summary says what her board says (point 1, 19 October). Found by name, without importing the board's module here. */
+    let boards: { get(groundId: string, userId: string): Promise<any> } | undefined;
+    try {
+      if (this.moduleRef) { const { BoardService } = await import('../board/board.service'); boards = this.moduleRef.get(BoardService, { strict: false }); }
+    } catch { boards = undefined; }
     const result = await sendTheLeadsDailyNudges(
-      { prisma: this.prisma, whatsapp: this.whatsapp as any, email: this.email as any, boards: { leave: this.leave, timeSheets: this.timeSheets, spending: this.spending }, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
+      { prisma: this.prisma, whatsapp: this.whatsapp as any, email: this.email as any, boards: { leave: this.leave, timeSheets: this.timeSheets, spending: this.spending }, frontendUrl: this.config.get<string>('resend.frontendUrl') || '', ...(boards ? { board: { get: (groundId: string, userId: string) => boards.get(groundId, userId) } } : {}) },
       now,
     ).catch((err: any) => { this.logger.warn(`The leads' daily nudges could not be sent: ${err?.message}`); return { tried: 0 }; });
     if (result.tried) this.logger.log(`Lead daily nudge: ${result.tried} tried.`);

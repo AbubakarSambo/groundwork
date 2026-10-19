@@ -23,10 +23,20 @@ export class HeldMailCron {
         take: 200,
       });
       for (const row of due) {
+        /*
+         * CLAIMED BEFORE IT IS SENT, SO ONE HELD MAIL IS ONE DECISION (messages test, 19 October, finding 3). On Thursday 15 October
+         * the held "Three of four people have checked in for the third check-in on "Sales team, Q4", and here is what is new" reached
+         * Grace half an hour after her WhatsApp summary, while a row for the same email said "suppressed": two runs read the same
+         * row before either marked it, one sent it and the other then found her day's message gone. The row is now taken first, by
+         * the one run that marks it, and only that run asks the day's rules, at the moment of sending, and sends or holds it back.
+         */
+        const claimed = await this.prisma.scheduledEmail.updateMany({ where: { id: row.id, sentAt: null }, data: { sentAt: new Date() } }).catch(() => ({ count: 0 }));
+        if (!claimed?.count) continue;
         try {
           await this.email.deliverHeld(row);
-          await this.prisma.scheduledEmail.update({ where: { id: row.id }, data: { sentAt: new Date() } });
         } catch (err: any) {
+          /* Not sent: let go of it, so the next run tries again. */
+          await this.prisma.scheduledEmail.updateMany({ where: { id: row.id }, data: { sentAt: null } }).catch(() => undefined);
           this.logger.error(`Held mail ${row.id} to ${row.toAddress} could not be sent: ${err?.message}`);
         }
       }

@@ -1497,6 +1497,34 @@ export class EmailService implements OnModuleInit {
     return context.outcome ?? 'sent';
   }
 
+  /**
+   * A MESSAGE WHATSAPP COULD NOT TAKE, BY EMAIL INSTEAD (whatsapp/by-email-instead.ts). The WhatsApp message's own words, as an email
+   * says them, and a link to the check-in where there is one. Three senders, so the one door knows what each is: the day's routine
+   * message (counted as the day's one), a notice about a check-in, and the answer to the person's own check-in. Says what became of it.
+   */
+  private whatWhatsAppCouldNotTake(text: string): string {
+    const paragraphs = String(text ?? '').split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+    return paragraphs.map((p) => `<p>${escapeHtml(p).replace(/\n/g, '<br>')}</p>`).join('');
+  }
+
+  async sendTheRoutineMessageByEmail(email: string, subject: string, text: string, linkLabel: string | null, linkUrl: string | null, participantId?: string): Promise<'sent' | 'held' | 'suppressed'> {
+    const context: DeliveryContext = { kind: 'OTHER', ...(participantId ? { participantId } : {}) };
+    await this.sendEmail({ to: email, subject, html: this.layout(this.whatWhatsAppCouldNotTake(text) + (linkUrl ? `<p><a href="${linkUrl}">${escapeHtml(linkLabel || 'Open Groundwork')}</a></p>` : '')) }, context, 'sendTheRoutineMessageByEmail');
+    return context.outcome ?? 'sent';
+  }
+
+  async sendTheMessageByEmail(email: string, subject: string, text: string, linkLabel: string | null, linkUrl: string | null, participantId?: string): Promise<'sent' | 'held' | 'suppressed'> {
+    const context: DeliveryContext = { kind: 'OTHER', ...(participantId ? { participantId } : {}) };
+    await this.sendEmail({ to: email, subject, html: this.layout(this.whatWhatsAppCouldNotTake(text) + (linkUrl ? `<p><a href="${linkUrl}">${escapeHtml(linkLabel || 'Open Groundwork')}</a></p>` : '')) }, context, 'sendTheMessageByEmail');
+    return context.outcome ?? 'sent';
+  }
+
+  async sendTheAnswerByEmail(email: string, subject: string, text: string, linkLabel: string | null, linkUrl: string | null, participantId?: string): Promise<'sent' | 'held' | 'suppressed'> {
+    const context: DeliveryContext = { kind: 'OTHER', ...(participantId ? { participantId } : {}) };
+    await this.sendEmail({ to: email, subject, html: this.layout(this.whatWhatsAppCouldNotTake(text) + (linkUrl ? `<p><a href="${linkUrl}">${escapeHtml(linkLabel || 'Open Groundwork')}</a></p>` : '')) }, context, 'sendTheAnswerByEmail');
+    return context.outcome ?? 'sent';
+  }
+
   /** WHO HAS GONE QUIET, as an insight to the lead (decision 109, journeys 7 and 9). Says what became of it. Words: engagement/who-has-gone-quiet.ts. */
   async sendWhoHasGoneQuiet(email: string, subject: string, lines: string[], linkLabel: string, linkUrl: string): Promise<'sent' | 'held' | 'suppressed'> {
     const context: DeliveryContext = { kind: 'OTHER' };
