@@ -227,6 +227,9 @@ import { theWaitsOnCustomersApart, theirOwnAnswersWhereTheWaitsWereSaid, without
 import { theReleaseOneSalesBoardIsOn } from './release-one-sales-board';
 import { whatTheSwitchboardServes, type TheSwitchboardServed } from './the-switchboard';
 import { theCollectionsBoardFor } from './the-collections-board.service';
+import { theMatterBoardFor } from './the-matter-board.service';
+import { theBillAfterTheLeadsAnswer } from './a-fee-note-due-on-an-event';
+import { aCollectionsCheckInWithRelease2 } from '../grounds/release-2-collections';
 import { withTheStageKept, theStagesToKeep } from './a-deals-stages-are-kept';
 import { WHAT_EACH_MARK_SAYS } from '../reports/the-mark-on-every-line';
 
@@ -3715,6 +3718,21 @@ export class BoardService {
         }
       }
       /*
+       * THE MATTER BOARD (Release 2, pull request 3 of 3; the-matter-board), as `matter`, only where the switchboard picks it: Release 2
+       * on, a PULSE_CHECK whose type on record is a legal matter. Built after every wall above, and walled again for this reader at its
+       * own read (the-matter-board.service): the check-in's lines, deadlines and waits as this reader is served them (whoever runs it
+       * every one, a person their own), each matter's fees by part 2's rule in the fee notes check-in, and what waits for a decision
+       * from the board this reader is already served. Off, nothing is added and the board is as before.
+       */
+      {
+        const matter = await theMatterBoardFor(this.prisma, groundId, { runsIt: isInitiator || theyRunIt, participantId: me?.id ?? null, userId: requestingUserId }, now, {
+          decisions: ((Array.isArray(walled.decisions) ? walled.decisions : []) as any[])
+            .filter((d) => typeof d?.question === 'string' && d.question.trim())
+            .map((d) => ({ question: String(d.question), why: typeof d.why === 'string' ? d.why : null })),
+        }).catch((err: any) => { this.logger.warn(`The matter board could not be read for ${groundId}: ${err?.message ?? err}`); return null; });
+        if (matter) walled.matter = matter;
+      }
+      /*
        * BY AREA OF WORK, AND WHAT WAS REPORTED AT EACH SALES STAGE (request 107 c). Read last, from the
        * records this reader is served after every wall above, so they count only rows the reader can
        * already read. See the-work-by-area-and-by-stage.
@@ -4522,6 +4540,27 @@ export class BoardService {
       data: { groundId, kind: 'WAY_OF_WORKING', text, audience: 'EVERYONE', source: 'BOARD', authorUserId: requestingUserId },
     });
     return { answered: { id: 'the-stall-rule', yes }, saidBack: `This is now in how we work. It reads, "${text}"` };
+  }
+
+  /**
+   * THE LEAD'S ANSWER TO A LINE THAT CAME CLOSE TO THE EVENT A FEE NOTE WAITS FOR (a-fee-note-due-on-an-event). Lead of the fee notes
+   * check-in only, where Release 2 is on. Yes makes the fee note due on that day, with the line as its source; no keeps the line as
+   * answered, so it is not asked again. Nothing else on the fee note changes.
+   */
+  async answerADueOnAnEvent(groundId: string, requestingUserId: string, itemId: string, lineId: string, yes: boolean) {
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { id: true, initiatorId: true } as any }) as any;
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    if (ground.initiatorId !== requestingUserId) throw new ForbiddenException('Only the lead of this check-in can answer this.');
+    if (!(await aCollectionsCheckInWithRelease2(this.prisma, groundId))) throw new NotFoundException('This is not waiting for an answer any more.');
+    const item = await (this.prisma as any).workItem.findFirst({ where: { id: itemId, groundId, kind: 'bill' }, select: { id: true, stage: true, fields: true } });
+    if (!item) throw new NotFoundException('That fee note is not on this check-in.');
+    const after = theBillAfterTheLeadsAnswer(item, lineId, yes);
+    if (!after) throw new NotFoundException('This is not waiting for an answer any more.');
+    await (this.prisma as any).workItem.update({ where: { id: item.id }, data: { stage: after.stage, fields: after.fields, ...(after.dueAt ? { dueAt: after.dueAt } : {}) } });
+    return {
+      answered: { id: `${itemId}:${lineId}`, yes },
+      saidBack: yes ? 'It is due from that day now, and it shows under What needs you.' : 'Nothing has changed, and you will not be asked about that line again.',
+    };
   }
 
   async answerThePriceRange(groundId: string, requestingUserId: string, yes: boolean) {

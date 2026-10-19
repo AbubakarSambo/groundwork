@@ -319,7 +319,7 @@ function Evidence({ groundId, served }: { groundId: string; served: Served }) {
           </Select>
           <Select value={group} onChange={(e) => { setGroup(e.target.value); setPage(1) }} aria-label="Kind of evidence">
             <option value="">All</option>
-            {GROUPS.map((g) => <option key={g} value={g}>{g}</option>)}
+            {(served.evidenceGroups ?? GROUPS).map((g) => <option key={g} value={g}>{g}</option>)}
           </Select>
         </FlexRow>
         {ev.total === 0 ? (

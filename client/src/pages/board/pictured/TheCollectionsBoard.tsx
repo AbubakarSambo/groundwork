@@ -15,7 +15,9 @@ const GROUP_TONE: Record<string, 'proven' | 'attention' | 'concern' | 'plain'> =
   paid: 'proven', 'on-track': 'proven', 'behind-in-touch': 'attention', blocked: 'attention', 'not-heard': 'concern', 'on-event': 'plain', 'not-raised': 'plain',
 }
 
-export function TheCollectionsBoard({ board: c, onRecordTheDecision }: { board: TheBoard; onRecordTheDecision?: () => void }) {
+type ARoute = { method: 'POST'; path: string; body: Record<string, unknown> }
+
+export function TheCollectionsBoard({ board: c, onRecordTheDecision, onAnswer, answering }: { board: TheBoard; onRecordTheDecision?: () => void; onAnswer?: (route: ARoute) => void; answering?: boolean }) {
   const loans = c.type === 'loans'
   return (
     <div className="pb" data-collections-board={c.type}>
@@ -37,7 +39,28 @@ export function TheCollectionsBoard({ board: c, onRecordTheDecision }: { board: 
               <p className="pb-card-h">{r.title}</p>
               <p className="gwui-panel-text">{r.says}</p>
             </div>
-          )) : <p className="gwui-panel-text">{c.needsYou.empty}</p>}
+          )) : (c.needsYou.empty ? <p className="gwui-panel-text">{c.needsYou.empty}</p> : null)}
+          {(c.needsYou.toConfirm ?? []).map((q) => (
+            <div className="pb-kv-list" key={q.id} data-to-confirm={q.id}>
+              <p className="pb-card-h">{q.title}</p>
+              <p className="gwui-panel-text">{q.says}</p>
+              {onAnswer && (
+                <div className="pb-choices">
+                  {q.choices.map((ch) => (
+                    <button
+                      key={ch.label}
+                      type="button"
+                      className={`gwui-btn ${/^No\b/.test(ch.label) ? 'gwui-btn-quiet' : 'gwui-btn-secondary'}`}
+                      disabled={answering}
+                      onClick={() => onAnswer(ch.route)}
+                    >
+                      {ch.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
         </Panel>
       </section>
 

@@ -204,6 +204,14 @@ export class BoardController {
     return this.board.answerTheStallRule(id, userId, dto.yes);
   }
 
+  @Post('due-on-an-event/answer')
+  @ApiOperation({ summary: 'Lead only, where Release 2 is on: say whether a line from a matter check-in made a fee note due. Yes writes the day; no keeps the line as answered.' })
+  async answerADueOnAnEvent(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: { itemId?: string; lineId?: string; yes?: boolean }) {
+    if (typeof dto?.yes !== 'boolean') throw new BadRequestException('Say yes or no.');
+    if (typeof dto?.itemId !== 'string' || typeof dto?.lineId !== 'string' || !dto.itemId || !dto.lineId) throw new BadRequestException('Say which fee note and which line this is about.');
+    return this.board.answerADueOnAnEvent(id, userId, dto.itemId, dto.lineId, dto.yes);
+  }
+
   @Post('price-range/answer')
   @ApiOperation({ summary: 'Lead only: answer whether a price range counts as a budget. The answer goes in how we work, and the board counts which deals are qualified by it.' })
   async answerThePriceRange(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: { yes?: boolean }) {

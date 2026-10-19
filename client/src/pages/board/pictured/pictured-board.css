@@ -352,3 +352,15 @@
 /* The team's report, quality pass of 18 October: each person's summary carries its mark (T-7), and the kit's closing line (T-12). */
 .pb-dot-inline { margin-right: 8px; vertical-align: -1px; }
 .pb-how-sure { margin: 16px 0 0; color: var(--gw-text); line-height: 1.5; }
+
+/* Release 2, pull request 3 of 3: the lead's answer under What needs you, and the matter board (matter-board.jpg). */
+.pb-choices { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.pb-matter-intro { font-size: 17px; line-height: 1.5; color: var(--gw-text); margin: 18px 0 0; }
+.pb-matter-stands { font-family: var(--gw-font-name); font-size: 22px; line-height: 1.45; font-weight: 500; color: var(--gw-text); margin: 8px 0 12px; }
+.pb-matter-fees { display: flex; gap: 8px; align-items: baseline; font-size: 15px; line-height: 1.5; color: var(--gw-text); border-top: 1px solid var(--gw-border); padding-top: 10px; }
+.pb-changed { display: grid; grid-template-columns: 22px 180px minmax(0, 1fr); gap: 4px 12px; align-items: baseline; padding: 14px 0; border-top: 1px solid var(--gw-border); font-size: 15px; }
+.pb-changed-who { font-weight: 700; }
+@media (max-width: 760px) {
+  .pb-changed { grid-template-columns: 22px minmax(0, 1fr); }
+  .pb-changed > :nth-child(3) { grid-column: 2; }
+}

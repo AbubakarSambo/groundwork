@@ -46,6 +46,13 @@ const BUILT_FROM_THEIR_OWN = ['risks', 'workPlan', 'timeline', 'personHistory', 
 /** The team's picture: served only once the report has been released to the people in it. */
 const THE_TEAMS_PICTURE = ['divergence', 'whatTheAnswersSay', 'whatTheRoomIsAbout', 'whatTheRoomIsAboutNote', 'quickRead', 'forecast', 'headline'] as const;
 
+/**
+ * Release 2's boards, served as they come: each is walled for this reader at its own read before it is put on the board (the
+ * collections board: each person only the bills they follow up, the-collections-board.service; the matter board: each person
+ * their own lines and only their own fee notes, the-matter-board.service). Listed here on purpose, so the default stays narrow.
+ */
+const WALLED_AT_THEIR_OWN_READ = ['collections', 'matter'] as const;
+
 /** The lead's own reads: always empty for a participant, said as nothing rather than left out. */
 const THE_LEADS_OWN = ['theJudgement', 'theTable', 'overTime'] as const;
 
@@ -62,6 +69,7 @@ export function aParticipantsOwnBoard(board: Record<string, any>, reader: { meId
   if (out.howItIsGoing && !reader.released) out.howItIsGoing = { ...out.howItIsGoing, latestSummary: null };
 
   for (const k of THE_LEADS_OWN) out[k] = null;
+  for (const k of WALLED_AT_THEIR_OWN_READ) if (board[k]) out[k] = board[k];
   for (const k of BUILT_FROM_THEIR_OWN) if (Array.isArray(board[k]) && board[k].length) out[k] = board[k];
 
   for (const k of ROWS_THAT_ARE_THEIRS) {

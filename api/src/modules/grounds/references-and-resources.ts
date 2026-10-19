@@ -2,7 +2,9 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { theRelease1bTabsAreOn } from './release-1b-tabs';
 import { readsAsAnAdmin } from './who-may-read-this-check-in';
 import { whatSomeoneWhoDoesNotRunItReads } from './what-someone-who-does-not-run-it-reads';
-import { theReferencesTemplateFor } from './the-references-template';
+import { theReferencesTemplateFor, theCollectionsReferencesTemplate, type TheReferencesTemplate } from './the-references-template';
+import { theRelease2CollectionsIsOn } from './release-2-collections';
+import { theCollectionsTypeFor } from '../board/the-collections-record';
 import { documentWhereFor } from '../documents/who-can-see-a-document';
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
 
@@ -75,7 +77,7 @@ export interface APieceOfEvidence {
   addedOn: string;
   on: string;
   countsAsProof: boolean;
-  group: 'Orders and quotes' | 'Payments' | 'Photos' | 'Other documents';
+  group: 'Orders and quotes' | 'Payments' | 'Photos' | 'Other documents' | 'Court filings' | 'Client letters';
 }
 
 export interface AnEvidencePage {
@@ -136,6 +138,8 @@ export type ReferencesAndResources =
       documents: { total: number; items: ADocument[]; notOpenToYou: boolean } | null;
       evidence: AnEvidencePage | null;
       evidenceSays: string;
+      /** The evidence groups to filter by, where they are not the usual four: a "Collect what's owed" check-in's, as the fee-notes pictures draw them. */
+      evidenceGroups?: APieceOfEvidence['group'][];
       questions: { total: number; items: { asked: string; answer: string; who: string }[]; emptySays: string };
       people?: APersonInPeople[];
     };
@@ -181,6 +185,37 @@ export function theGroupOf(readAs: string): APieceOfEvidence['group'] {
   if (/payment/i.test(readAs)) return 'Payments';
   if (/photo/i.test(readAs)) return 'Photos';
   return 'Other documents';
+}
+
+/**
+ * THE EVIDENCE GROUPS OF A "COLLECT WHAT'S OWED" CHECK-IN, as the fee-notes pictures draw them: Court filings, Payments, Client
+ * letters. Anything else is Other documents.
+ */
+export function theCollectionsGroupOf(readAs: string): APieceOfEvidence['group'] {
+  if (/payment|slip|remittance|m-?pesa|receipt/i.test(readAs)) return 'Payments';
+  if (/court|filing|filed|stamped|pleading/i.test(readAs)) return 'Court filings';
+  if (/client|letter|email|message/i.test(readAs)) return 'Client letters';
+  return 'Other documents';
+}
+
+/** Where a piece of evidence was filed, in the organisation's word for the bill: "Fee note FN-004", or "Kasarani Foods, fee note". */
+export function theBillItBelongsTo(itemName: string, billWord: string): string {
+  const n = String(itemName ?? '').trim();
+  if (/^[A-Za-z]{0,6}[-\s]?\d{1,8}$/.test(n)) return `${billWord.charAt(0).toUpperCase()}${billWord.slice(1)} ${n}`;
+  return `${n}, ${billWord}`;
+}
+
+/**
+ * THE TEMPLATE FOR THIS CHECK-IN: the kind of work's, or, for a "Collect what's owed" check-in where Release 2 is on too, the
+ * collections starting set in the organisation's own word for the bill. Null for collections where Release 2 is off, so the page
+ * reads exactly as Release 1B drew it.
+ */
+async function theTemplateHere(prisma: any, ground: any): Promise<{ template: TheReferencesTemplate; collections: boolean }> {
+  if (ground.scenario === 'COLLECTIONS' && (await theRelease2CollectionsIsOn(prisma, ground.organizationId).catch(() => false))) {
+    const it = await theCollectionsTypeFor(prisma, ground.id).catch(() => null);
+    if (it) return { template: theCollectionsReferencesTemplate(it.type, it.billWord), collections: true };
+  }
+  return { template: theReferencesTemplateFor(ground.kindOfWork), collections: false };
 }
 
 /** A key fact is kept as its label on the first line and the fact on the next. */
@@ -246,20 +281,21 @@ async function theEvidencePage(prisma: any, ground: any, view: string, mine: any
   if (since) where.createdAt = { gte: new Date(now.getTime() - since * 86400000) };
   const rows: any[] = (await prisma.itemEvidence?.findMany?.({ where, orderBy: { createdAt: 'desc' }, take: 5000 }).catch(() => [])) ?? [];
   const people = new Map<string, string>((ground.participants ?? []).map((p: any) => [p.id, fullName(p.user, p.nameGiven) || 'Somebody']));
-  const itemWord = theReferencesTemplateFor(ground.kindOfWork).itemWord;
+  const here = await theTemplateHere(prisma, ground);
+  const itemWord = here.template.itemWord;
   const all: APieceOfEvidence[] = rows.map((r) => {
     const by = r.participantId ? firstOf(people.get(r.participantId)) : '';
     return {
       id: r.id,
       readAs: r.readAs,
       shows: r.shows ?? null,
-      belongsTo: r.itemName || `Not filed on a ${itemWord} yet`,
+      belongsTo: r.itemName ? (here.collections ? theBillItBelongsTo(r.itemName, itemWord) : r.itemName) : `Not filed on ${/^[aeiou]/i.test(itemWord) ? 'an' : 'a'} ${itemWord} yet`,
       addedBy: view === 'member' ? 'You' : (by || 'Somebody'),
       addedById: r.participantId ?? null,
       addedOn: aDayIn(r.createdAt, timeZone),
       on: new Date(r.createdAt).toISOString().slice(0, 10),
       countsAsProof: r.countsAsProof === true,
-      group: theGroupOf(r.readAs),
+      group: here.collections ? theCollectionsGroupOf(r.readAs) : theGroupOf(r.readAs),
     };
   });
   const q = (query.q ?? '').trim().toLowerCase();
@@ -292,7 +328,7 @@ export async function readReferencesAndResources(
   const timeZone = ground.organization?.timeZone || 'Africa/Lagos';
   const leadName = fullName(ground.initiator) || null;
   const leadFirst = firstOf(leadName) || 'the person who runs it';
-  const template = theReferencesTemplateFor(ground.kindOfWork);
+  const { template, collections } = await theTemplateHere(prisma, ground);
   const nameOf = new Map<string, string>((ground.participants ?? []).map((p: any) => [p.id, fullName(p.user, p.nameGiven)]));
 
   /* Every open line, then only what this reader may read: the lead every line, everybody else the shared lines about the work. */
@@ -387,6 +423,7 @@ export async function readReferencesAndResources(
     documents,
     evidence: view === 'reader' ? null : evidence,
     evidenceSays,
+    ...(collections ? { evidenceGroups: ['Court filings', 'Payments', 'Client letters', 'Other documents'] as APieceOfEvidence['group'][] } : {}),
     questions: {
       total: 0,
       items: [],

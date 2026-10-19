@@ -150,6 +150,7 @@ import { ThePicturedBoard } from './pictured/ThePicturedBoard'
 import { MessageCircle } from 'lucide-react'
 import { TheLightSalesBoard, TheLightNeedsYou, TheLightBesideTheHeadline, TheLightBoxes, TheLightSummaryFirst } from './TheLightSalesBoard'
 import { TheCollectionsBoard } from './pictured/TheCollectionsBoard'
+import { TheMatterBoard } from './pictured/TheMatterBoard'
 import { SuggestionsForTheLead } from '@/components/gw/Suggestions'
 import { buildSessionRows } from '@/lib/session-rows'
 import { peopleLabels, personLabel } from '@/lib/utils'
@@ -990,6 +991,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const id = groundId ?? idFromRoute
   const navigate = useNavigate()
   const qc = useQueryClient()
+  /* The lead's answer to a line that came close to the event a fee note waits for (Release 2), through the same gate as every board action. */
+  const answerOnTheCollectionsBoard = useRunBoardAction(id ?? '')
   const [variant, setVariant] = useState<CoverageVariant | undefined>(undefined)
   /* Closed unless opened: five paragraphs of instructions were the first screen on a phone. */
   const [howToRead, setHowToRead] = useState(() => localStorage.getItem(HOW_TO_READ_KEY) === 'open')
@@ -1681,8 +1684,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * place of every other drawing of the board; the whole board as it was stays one tap away (?whole=1).
    */
   const picturedCollections = !theWholeBoard && !groundId && !!b.collections
-  const drawnAsPictured = picturedCollections || ((picturedLead || picturedReader || picturedOnboarding || picturedMember || picturedDecision || picturedPlan || picturedOtherKind) && !b.collections)
-  const light = !!b.atAGlance && !isParticipantView && !picturedLead && !picturedReader && !picturedOnboarding && !picturedDecision && !picturedPlan && !picturedOtherKind && !picturedCollections
+  /*
+   * THE MATTER BOARD (Release 2, pull request 3 of 3; TheMatterBoard), for every reader the server serves it to: served only where the
+   * switchboard picks it, and already walled at the server (whoever runs it every matter and every fee line it may read; a person their
+   * own lines and only their own fee notes). In place of every other drawing of the board; the whole board stays one tap away (?whole=1).
+   */
+  const picturedMatter = !theWholeBoard && !groundId && !!b.matter && !b.collections
+  const drawnAsPictured = picturedCollections || picturedMatter || ((picturedLead || picturedReader || picturedOnboarding || picturedMember || picturedDecision || picturedPlan || picturedOtherKind) && !b.collections)
+  const light = !!b.atAGlance && !isParticipantView && !picturedLead && !picturedReader && !picturedOnboarding && !picturedDecision && !picturedPlan && !picturedOtherKind && !picturedCollections && !picturedMatter
   /* "Daily on weekdays, from 4pm. Session 38 of 65. Runs until 30 September." (board-as-lead.txt). */
   const picturedCadenceLine = [
     picturedOnboarding ? onboardingNamesLine : picturedPlan ? planNamesLine : null,
@@ -2701,9 +2710,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         )}
 
         {picturedCollections && b.collections && (
-          <TheCollectionsBoard board={b.collections} onRecordTheDecision={viewerRunsThisCheckIn ? () => navigate(`/grounds/${id}/end`) : undefined} />
+          <TheCollectionsBoard
+            board={b.collections}
+            onRecordTheDecision={viewerRunsThisCheckIn ? () => navigate(`/grounds/${id}/end`) : undefined}
+            onAnswer={viewerRunsThisCheckIn ? (route) => answerOnTheCollectionsBoard.mutate(route) : undefined}
+            answering={answerOnTheCollectionsBoard.isPending}
+          />
         )}
-        {!picturedCollections && ((picturedLead && picturedManyInTeams) || picturedOtherKind) && (
+        {picturedMatter && b.matter && <TheMatterBoard board={b.matter} />}
+        {!picturedCollections && !picturedMatter && ((picturedLead && picturedManyInTeams) || picturedOtherKind) && (
           <ThePicturedBoard
             /* A founder's own check-in has one person in it (founder-board.jpg): no team today, no areas, no row per person. */
             order={(((b as any).kindOfWork === 'a government programme'
@@ -2759,7 +2774,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             navigate={navigate}
           />
         )}
-        {!picturedCollections && picturedReader && (
+        {!picturedCollections && !picturedMatter && picturedReader && (
           <ThePicturedSalesBoard
             b={b}
             groundId={id!}
@@ -2774,7 +2789,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             readOnly
           />
         )}
-        {!picturedCollections && picturedLead && situationOrder && (
+        {!picturedCollections && !picturedMatter && picturedLead && situationOrder && (
           <ThePicturedBoard
             order={situationOrder as any}
             b={b}
@@ -2789,7 +2804,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             navigate={navigate}
           />
         )}
-        {!picturedCollections && picturedLead && !picturedManyInTeams && !situationOrder && (
+        {!picturedCollections && !picturedMatter && picturedLead && !picturedManyInTeams && !situationOrder && (
           <ThePicturedSalesBoard
             b={b}
             groundId={id!}
@@ -2824,7 +2839,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             )}
           />
         )}
-        {!picturedCollections && picturedOnboarding && (
+        {!picturedCollections && !picturedMatter && picturedOnboarding && (
           <ThePicturedBoard
             /* Before anybody has answered (faith90-board.jpg) the board says it fills in after the first check-ins, and shows what was agreed and what is left to do. */
             order={(b.checkInGrid?.rows ?? []).length > 0 && !(b.checkInGrid?.rows ?? []).some((r: any) => Object.values(r.cells ?? {}).includes('done'))
@@ -2856,7 +2871,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             navigate={navigate}
           />
         )}
-        {!picturedCollections && picturedMember && (
+        {!picturedCollections && !picturedMatter && picturedMember && (
           <ThePicturedBoard
             order={['participantNote', 'priorities', 'yourPart', 'teamReport', 'companyBoard', 'everySession', 'otherBoards', 'ask']}
             leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
@@ -2873,7 +2888,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             navigate={navigate}
           />
         )}
-        {!picturedCollections && picturedDecision && (
+        {!picturedCollections && !picturedMatter && picturedDecision && (
           <ThePicturedBoard
             order={['theDecision', 'accounts', 'knownBelievedUnknown', 'everySession', 'otherBoards', 'heading', 'ask', 'recommends']}
             leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
@@ -2890,7 +2905,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             navigate={navigate}
           />
         )}
-        {!picturedCollections && picturedPlan && (
+        {!picturedCollections && !picturedMatter && picturedPlan && (
           <ThePicturedBoard
             order={['suggestion', 'theCase', 'everySession', 'otherBoards', 'heading', 'ask', 'recommends']}
             personId={planPersonId}

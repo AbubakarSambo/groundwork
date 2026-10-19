@@ -67,7 +67,11 @@ export interface TheCollectionsBoard {
   answer: string
   answerFrom: string
   bar: { proven: number; said: number } | null
-  needsYou: { heading: string; rows: { title: string; says: string }[]; empty: string | null }
+  needsYou: {
+    heading: string; rows: { title: string; says: string }[]; empty: string | null
+    /** Lines that came close to the event a fee note waits for, for the lead to confirm (Release 2, pull request 3). Lead only. */
+    toConfirm?: { id: string; title: string; says: string; choices: { label: string; route: { method: 'POST'; path: string; body: Record<string, unknown> } }[] }[]
+  }
   stand: { heading: string; total: string; groups: { group: ACollectionsGroup; label: string; count: number; says: string }[] }
   every: {
     heading: string; note: string; columns: string[]; empty: string | null; foot: string | null
@@ -100,3 +104,24 @@ export interface TheCollectionsTeamReport {
 
 /** Each person's own report on their own bills. */
 export interface TheCollectionsOwnReport { title: string; inShort: string[]; whatMoved: string[]; forYouToDo: string[]; dontKnowYet: string[] }
+
+/**
+ * THE MATTER BOARD AS THE SERVER SERVES IT (api/src/modules/board/the-matter-board.ts; Release 2, pull request 3 of 3), already walled
+ * for this reader and already worded: the screen draws it and words nothing of its own. Served as `matter` on the board, only where
+ * the switchboard picks the matter board (Release 2 on, a PULSE_CHECK whose type on record is a legal matter).
+ */
+export interface TheMatterBoard {
+  intro: string
+  question: string
+  matters: { key: string; name: string; stands: string; fees: string; feeMark: 'proven' | 'said' | 'none' }[]
+  mattersEmpty: string | null
+  decide: null | { heading: string; rows: { question: string; why: string | null }[]; empty: string | null }
+  changed: {
+    heading: string
+    rows: { id: string; who: string; matter: string | null; said: string; mark: 'proven' | 'said'; markSays: string; itChanged: string | null }[]
+    empty: string | null
+    legend: { mark: 'proven' | 'said'; says: string }[]
+    note: string
+  }
+  feesNote: string
+}

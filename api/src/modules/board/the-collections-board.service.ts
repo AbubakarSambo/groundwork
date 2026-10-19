@@ -1,7 +1,8 @@
 import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 import { theCollectionsStallRuleIn } from '../grounds/collect-whats-owed';
 import { buildTheCollectionsBoard, type ABillOnTheBoard, type TheCollectionsBoard } from './the-collections-board';
-import { BILL, LOAN_OWED, FOLLOWS_UP_ID, aBillIsNamed, theCollectionsTypeFor } from './the-collections-record';
+import { BILL, LOAN_OWED, FOLLOWS_UP_ID, F, aBillIsNamed, theCollectionsTypeFor } from './the-collections-record';
+import { DUE_ON_AN_EVENT, MAY_BE_DUE, type ALineKept } from './a-fee-note-due-on-an-event';
 
 /**
  * THE COLLECTIONS BOARD, SERVED TO ONE READER (Release 2, pull request 2 of 3). Read only: opening a board writes nothing.
@@ -60,7 +61,9 @@ export async function theCollectionsBoardFor(prisma: any, groundId: string, read
   })).catch(() => null) as any;
   if (!ground) return null;
   const zone = (await theOrganisationsZone(prisma, ground.organizationId).catch(() => null)) ?? THE_PRODUCTS_OWN_ZONE;
-  const rows = theBillsThisReaderMayRead(await theBillsOnRecord(prisma, groundId), reader);
+  const readerUserId = ((ground.participants ?? []) as any[]).find((p) => p.id === reader.participantId)?.userId ?? null;
+  const isTheLead = !!readerUserId && readerUserId === ground.initiatorId;
+  const rows = await withTheEventsSaid(prisma, theBillsThisReaderMayRead(await theBillsOnRecord(prisma, groundId), reader), { userId: readerUserId, isTheLead }, zone);
   const people = ((ground.participants ?? []) as any[]).map((p) => ({
     id: p.id,
     firstName: String(p.user?.firstName ?? p.nameGiven ?? '').trim().split(/\s+/)[0] || '',
@@ -81,5 +84,42 @@ export async function theCollectionsBoardFor(prisma: any, groundId: string, read
   return buildTheCollectionsBoard({
     type: it.type, billWord: it.billWord, rows, people, lastCheckIn, now, zone, reader,
     stallRuleSet: theCollectionsStallRuleIn(ways).set,
+    groundId,
+  });
+}
+
+/**
+ * THE EVENTS SAID IN A MATTER CHECK-IN, ON THE BILLS THIS READER READS (a-fee-note-due-on-an-event). A bill that fell due on an event
+ * carries the line that said it; where a line came close, the lead is asked. What people say in a check-in is shown word for word only
+ * to the people in that check-in (and whoever runs it): a reader who is not in the matter check-in reads that it was reported there,
+ * and on which day, never the words or who said them. The lines that came close are given to the lead of this check-in only.
+ */
+export async function withTheEventsSaid<T extends ABillOnTheBoard>(prisma: any, rows: T[], reader: { userId: string | null; isTheLead: boolean }, zone: string): Promise<T[]> {
+  const kept = (r: T) => [(r.fields ?? {})[DUE_ON_AN_EVENT], ...(reader.isTheLead && Array.isArray((r.fields ?? {})[MAY_BE_DUE]) ? ((r.fields ?? {})[MAY_BE_DUE] as any[]) : [])].filter(Boolean) as ALineKept[];
+  const groundIds = [...new Set(rows.flatMap((r) => kept(r).map((k) => k.groundId)).filter(Boolean))];
+  if (!groundIds.length) return rows;
+  const grounds = new Map<string, any>();
+  for (const id of groundIds) {
+    const g = await Promise.resolve(prisma?.ground?.findUnique?.({ where: { id }, select: { id: true, label: true, initiatorId: true, participants: { select: { id: true, userId: true, nameGiven: true, user: { select: { firstName: true } } } } } })).catch(() => null);
+    if (g) grounds.set(id, g);
+  }
+  const dayOf = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso));
+  const asSaid = (k: ALineKept, event: string) => {
+    const g = grounds.get(k.groundId);
+    const inIt = !!g && !!reader.userId && (g.initiatorId === reader.userId || ((g.participants ?? []) as any[]).some((p) => p.userId === reader.userId));
+    const p = ((g?.participants ?? []) as any[]).find((x) => x.id === k.saidBy);
+    const by = !inIt ? null : p?.userId && p.userId === reader.userId ? 'You' : (String(p?.user?.firstName ?? p?.nameGiven ?? '').trim().split(/\s+/)[0] || 'Somebody');
+    return { day: k.day, event, from: String(k.label || g?.label || 'another check-in').trim(), saidOn: dayOf(k.at), by, said: inIt ? k.text : null };
+  };
+  return rows.map((r) => {
+    const f = (r.fields ?? {}) as any;
+    const event = String(f[F.dueWhen] ?? '').trim();
+    const due = f[DUE_ON_AN_EVENT] as ALineKept | undefined;
+    const close = reader.isTheLead && Array.isArray(f[MAY_BE_DUE]) ? (f[MAY_BE_DUE] as ALineKept[]) : [];
+    return {
+      ...r,
+      ...(due && event ? { event: asSaid(due, event) } : {}),
+      ...(close.length && event ? { toConfirm: close.map((c) => ({ ...asSaid(c, event), lineId: c.lineId })) } : {}),
+    };
   });
 }
