@@ -26,6 +26,8 @@ import { BetweenCheckIns } from '@/components/gw/BetweenCheckIns'
 import { MyParticipation } from '@/components/gw/MyParticipation'
 import { SharedReportForAParty } from '@/components/gw/SharedReportForAParty'
 import { ContextPage } from '@/components/gw/ContextPage'
+import { ReferencesAndResourcesPage } from './ReferencesAndResources'
+import { theContextTabsName } from '@/lib/the-references-tab'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 
@@ -678,7 +680,7 @@ export function GroundParticipantPage() {
           tabs={[
             { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
             { key: 'checkin', label: 'Check-in' },
-            { key: 'context', label: contextEnabled ? 'Context and resources' : 'Documents' },
+            { key: 'context', label: theContextTabsName(ground as any, contextEnabled ? 'Context and resources' : 'Documents') },
             { key: 'mywork', label: 'My work' },
             { key: 'people', label: 'People and setup' },
           ]}
@@ -1014,9 +1016,10 @@ export function GroundParticipantPage() {
           order, with a stray heading and buttons pointing at a chat this page does not have. One
           file now owns the bands and their order - see ContextPage.
         */}
-        {tab === 'docs' && (
-          <ContextPage ground={ground} role={isInitiator ? 'lead' : 'party'} viewerUserId={user?.id} />
-        )}
+        {/* RELEASE 1B (pull request 2 of 3): References and resources where the organisation's switch is on; off, as before. */}
+        {tab === 'docs' && ((ground as any).release1bTabsOn === true
+          ? <ReferencesAndResourcesPage groundId={id ?? ''} ground={ground} isTheLead={isInitiator} />
+          : <ContextPage ground={ground} role={isInitiator ? 'lead' : 'party'} viewerUserId={user?.id} />)}
 
         {/* SETTINGS TAB */}
         {/*

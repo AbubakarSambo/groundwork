@@ -41,6 +41,9 @@ export const REBUILT_PAGES: string[] = [
   'pages/grounds/CheckInPeopleAndSetup.tsx',
   'pages/grounds/PeopleAndSetupAsPictured.tsx',
   'pages/grounds/YourPeopleAndSetup.tsx',
+  /* Release 1B, pull request 2 of 3: References and resources, and an item's evidence on the board. */
+  'pages/grounds/ReferencesAndResources.tsx',
+  'components/gw/ItsEvidence.tsx',
   'pages/board/BoardPage.tsx',
   'pages/board/WorkRecords.tsx',
   'components/gw/where-each-person-is.tsx',

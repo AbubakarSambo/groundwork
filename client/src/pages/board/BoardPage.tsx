@@ -154,6 +154,7 @@ import { buildSessionRows } from '@/lib/session-rows'
 import { peopleLabels, personLabel } from '@/lib/utils'
 import { EVERY_SESSION, checkedIn } from '@/components/gw/TheReportIsAListOfSessions'
 import { useAskStore } from '@/stores/ask'
+import { theContextTabsName } from '@/lib/the-references-tab'
 import { Page, CheckInHeader, Section, Placed, UpdatedLine, Panel, RowList, Row, Tag, type TagTone, Button as UIButton, PeopleTable, PersonRow, EdgeRow, EdgeList, Folded, Callout, Stack, SubHeading, Note, FlexRow, Text } from '@/components/gw/ui'
 import { initialsOf } from '@/pages/org/people-here'
 import { cadenceLabel } from '@/lib/cadence'
@@ -1712,7 +1713,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const headerTabs = [
     { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
     ...(viewerRunsThisCheckIn || isAParty ? [{ key: 'chat', label: 'Check-in', to: `/grounds/${id}` }] : []),
-    { key: 'context', label: 'Context and resources', to: `/grounds/${id}?tab=context` },
+    /* Release 1B: "References and resources" where the organisation's switch is on (the-references-tab.ts). */
+    { key: 'context', label: theContextTabsName(groundForSignals as any, 'Context and resources'), to: `/grounds/${id}?tab=context` },
     ...(viewerRunsThisCheckIn || isAParty ? [{ key: myWorkTab, label: 'My work', to: `/grounds/${id}?tab=${myWorkTab}` }] : []),
     { key: 'settings', label: 'People and setup', to: `/grounds/${id}?tab=settings` },
   ]

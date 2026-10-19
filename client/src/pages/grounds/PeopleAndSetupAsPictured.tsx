@@ -9,7 +9,6 @@ import {
 } from '@/components/gw/ui'
 import { AddPeopleForm, whereThisPersonIs } from '@/components/gw/WhosInItRoster'
 import { useTheNextSeat } from '@/components/gw/this-adds-a-seat'
-import { BaselinePanel } from '@/components/gw/BaselinePanel'
 import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
 import { WhichDaysTheyWork, WEEKDAYS } from '@/components/gw/WhichDaysTheyWork'
 import { AnchorDayPicker } from '@/components/gw/AnchorDayPicker'
@@ -514,9 +513,8 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
         <Stack gap={10}>
           <StartingPointPanel groundId={id} canRecord={isInitiator} />
           <Note>Recorded once, from your first session. It stays as written, and the board measures progress from it.</Note>
-          {/* "What doing well looks like" moves to References and resources in Release 1B's pull request 2; until that tab
-              has it, it stays here so nothing is lost. */}
-          <BaselinePanel groundId={id} canState={isInitiator} groundStartedAt={props.startsAtOnRecord || props.createdAtOnRecord} />
+          {/* "What doing well looks like" is under About this work on References and resources now (Release 1B, pull request 2
+              of 3), with its versions and wording; this page is drawn only where that tab is too. */}
         </Stack>
       </Section>
 

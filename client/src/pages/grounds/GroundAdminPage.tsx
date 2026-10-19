@@ -13,6 +13,8 @@ import { railAttention } from '@/lib/rail-attention'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ContextPage } from '@/components/gw/ContextPage'
+import { ReferencesAndResourcesPage } from './ReferencesAndResources'
+import { theContextTabsName } from '@/lib/the-references-tab'
 import { YourWork } from '@/components/gw/checkin/YourWork'
 import { Note, Callout, Button, Panel, Stack, Avatar, Tag, TextField, SubHeading, Empty, Folded, Modal, Section } from '@/components/gw/ui'
 import { TheLeadsOwnWayIn, YOU_CHECK_IN_WHEN_YOU_CHOOSE } from '@/components/gw/TheLeadsOwnWayIn'
@@ -1650,7 +1652,7 @@ export function GroundAdminPage() {
             [
               { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
               { key: 'checkin', label: 'Check-in' },
-              { key: 'context', label: contextEnabled ? 'Context and resources' : 'Documents' },
+              { key: 'context', label: theContextTabsName(ground as any, contextEnabled ? 'Context and resources' : 'Documents') },
               { key: 'mywork', label: 'My work' },
               { key: 'people', label: 'People and setup' },
             ].filter(t => t.key === 'checkin'
@@ -2873,13 +2875,17 @@ export function GroundAdminPage() {
           admin either - only the check-in's own lead may change what it says it is for; an admin
           still reads it, like everybody else in the check-in.
         */}
-        {tab === 'docs' && (
+        {/* RELEASE 1B (pull request 2 of 3): with the organisation's switch on, the tab is References and resources, served to
+            each reader as their own view (ReferencesAndResources.tsx). Off, today's Context page, exactly as it was. */}
+        {tab === 'docs' && ((ground as any).release1bTabsOn === true ? (
+          <ReferencesAndResourcesPage groundId={id ?? ''} ground={ground} isTheLead={isInitiator} />
+        ) : (
           <ContextPage
             ground={ground}
             role={isInitiator ? 'lead' : canRunThisGround ? 'admin' : 'party'}
             viewerUserId={user?.id}
           />
-        )}
+        ))}
 
         {/* REPORT */}
         {/*
