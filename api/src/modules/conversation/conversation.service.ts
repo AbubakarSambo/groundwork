@@ -302,7 +302,7 @@ import { askWhoSecuredIt } from './who-secured-that-meeting';
 import { READ_WHAT_THEY_PROMISED, WHAT_THEY_PROMISED_SCHEMA, theOnesToKeep } from './what-they-said-they-would-do-next';
 import { theFullerPromise, nameTwoDifferentDates } from './the-same-promise-said-more-fully';
 import { aPromiseSomebodyElseMade } from './a-promise-somebody-else-made';
-import { clearTheWaitsSaidDone } from './a-wait-said-done-is-cleared';
+import { clearTheWaitsSaidDone, clearTheWaitsAnEventEnded } from './a-wait-said-done-is-cleared';
 import { keepThePromisesSaidDone } from './a-promise-said-done-is-kept';
 import { theReleaseOneSalesBoardIsOnFor } from '../board/release-one-sales-board';
 import { aCollectionsCheckInWithRelease2 } from '../grounds/release-2-collections';
@@ -7341,6 +7341,9 @@ ${told}` : '';
          (Hafsah's point 14, Release 1). After both, so it reads this check-in's lines and its newest waits. */
       .then(() => clearTheWaitsSaidDone(this.prisma, checkIn.groundId))
       .then((n) => { if (n) this.logger.log(`Check-in ${checkIn.id}: cleared ${n} wait(s) somebody said were done.`); })
+      /* And every wait for an event, in any of the organisation's check-ins, that somebody has now said happened (messages test, fourth run). */
+      .then(() => clearTheWaitsAnEventEnded(this.prisma, checkIn.groundId))
+      .then((n) => { if (n) this.logger.log(`Check-in ${checkIn.id}: cleared ${n} wait(s) for something somebody said has happened.`); })
       /* And every open promise its maker, or the person it was for, has now said is done is kept (Drop Access run 1, item 13). */
       .then(() => keepThePromisesSaidDone(this.prisma, checkIn.groundId))
       .then((n) => { if (n) this.logger.log(`Check-in ${checkIn.id}: kept ${n} promise(s) somebody said were done.`); })

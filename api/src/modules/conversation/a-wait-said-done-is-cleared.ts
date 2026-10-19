@@ -1,4 +1,5 @@
 import { theReleaseOneSalesBoardIsOnFor } from '../board/release-one-sales-board';
+import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 
 /**
  * A WAIT IS CLEARED WHEN EITHER SIDE SAYS IT IS DONE (Hafsah's point 14, Drop Access, 17 October; release plan Part 1A: "A wait
@@ -177,4 +178,84 @@ export async function clearTheWaitsSaidDone(prisma: any, groundId: string): Prom
     await prisma.groundDependency.updateMany({ where: { id: c.id, clearedAt: null }, data: { status: 'CLEARED', clearedAt: c.clearedAt } });
   }
   return cleared.length;
+}
+
+/*
+ * A WAIT FOR AN EVENT ENDS WHEN ANYBODY IN THE ORGANISATION SAYS IT HAPPENED, IN ANY OF ITS CHECK-INS (messages test, fourth run).
+ * Muchemi & Co. On Monday 12 October Wanjiru said in "Fee notes" that she was waiting "for the reply to be filed in Kasarani Foods v.
+ * Tumaini Traders" and "for the hearing date to be set for the third Kasarani Foods fee note", and in "Litigation team daily" for
+ * "confirmation of the Kasarani Foods filing". On Tuesday Brian said in "Litigation team daily" "The reply in Kasarani Foods v. Tumaini
+ * Traders was filed today.", and on Wednesday David said there "In Kasarani Foods versus Tumaini Traders, the hearing date is set for
+ * November 12th." The Fee notes board still had her waiting for both on Thursday and Friday: a wait was read only against the lines of
+ * the check-in it was said in, and only from the person waiting or holding it.
+ *
+ * A wait for an event is one whose thing says the event: "<the thing> to be <filed, set, signed, ...> ..." or "confirmation of the
+ * <matter> filing". It is over when a line said after it, in any of the organisation's check-ins that are not about one person, names
+ * the thing and the matter it is about (its proper names, "Kasarani"), says it was filed, set or signed, and nothing in the sentence says
+ * it has not or not yet, or that only part of it happened. Who said it does not matter: an event is a fact about the work. Only that
+ * the wait is over is written (cleared on the day of that line); nobody's words move between check-ins. A correction of what is untrue,
+ * so for every organisation.
+ */
+const AN_EVENT = /^\s*(?:the\s+|a\s+)?(.+?)\s+to\s+be\s+(filed|lodged|served|submitted|set|fixed|scheduled|listed|issued|granted|signed|approved|confirmed|heard|registered)\b(.*)$/i;
+const A_FILING_CONFIRMED = /^\s*(?:the\s+)?(?:confirmation|news|word)\s+(?:of|that)\s+(?:the\s+)?(.+?)\s+(filing|lodging|submission)\s*$/i;
+const AS_DONE: Record<string, string> = { filing: 'filed', lodging: 'lodged', submission: 'submitted' };
+const NAME_WORD = /\b[A-Z][a-z]{2,}\b/g;
+
+export interface AnEvent { thing: string[]; done: string; names: string[] }
+
+/** The event a wait is for, or null when it is not one. */
+export function theEventAWaitIsFor(what: string): AnEvent | null {
+  const w = String(what ?? '').trim().replace(/[.\s]+$/, '');
+  const a = AN_EVENT.exec(w);
+  const b = a ? null : A_FILING_CONFIRMED.exec(w);
+  if (!a && !b) return null;
+  const head = (a ? a[1] : '').trim();
+  const rest = a ? `${a[1]} ${a[3]}` : b![1];
+  const names = [...new Set([...rest.matchAll(NAME_WORD)].map((m) => one(m[0].toLowerCase())))];
+  const thing = a ? theThingsOwnWords(head).filter((x) => !names.includes(x)) : [];
+  if (!thing.length && !names.length) return null;
+  return { thing, done: a ? a[2].toLowerCase() : AS_DONE[b![2].toLowerCase()], names };
+}
+
+/** Whether one line says the event happened. */
+export function aLineSaysTheEventHappened(line: { text: string }, e: AnEvent): boolean {
+  return sentences(line.text).some((s) => {
+    const said = new Set(wordsOf(s).map(one));
+    if (!e.thing.every((w) => said.has(w))) return false;
+    /* The matter: its first proper name at least ("Kasarani"). */
+    if (e.names.length && !said.has(e.names[0])) return false;
+    if (!new RegExp(`\\b${e.done}\\b`, 'i').test(s)) return false;
+    return !NOT_YET.test(s.replace(/\bnot\s+(?:due|before)\b/gi, '')) && !ONLY_PART_OF_IT.test(s) && !STILL_WAITING.test(s);
+  });
+}
+
+/** Clears, across the organisation of this check-in, every open wait for an event a line says happened. Returns how many. */
+export async function clearTheWaitsAnEventEnded(prisma: any, groundId: string): Promise<number> {
+  const here = await Promise.resolve(prisma.ground?.findUnique?.({ where: { id: groundId }, select: { organizationId: true } })).catch(() => null);
+  if (!here?.organizationId) return 0;
+  const grounds: any[] = (await Promise.resolve(prisma.ground?.findMany?.({ where: { organizationId: here.organizationId }, select: { id: true, scenario: true } })).catch(() => [])) ?? [];
+  const ids = grounds.filter((g) => !isEvaluationCheckIn(g.scenario)).map((g) => g.id);
+  if (!ids.length) return 0;
+  const waits: AnOpenWait[] = (await prisma.groundDependency.findMany({
+    where: { groundId: { in: ids }, status: { in: ['WAITING', 'BLOCKING'] }, clearedAt: null },
+    select: { id: true, fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, createdAt: true, sourceCheckInId: true },
+  })) ?? [];
+  const events = waits.map((w) => ({ w, e: theEventAWaitIsFor(w.what) })).filter((x): x is { w: AnOpenWait; e: AnEvent } => !!x.e);
+  if (!events.length) return 0;
+  const lines: ALineOnRecord[] = (await prisma.recordEntry.findMany({
+    where: { disputedAt: null, type: 'PROGRESS', participant: { groundId: { in: ids } } },
+    select: { id: true, participantId: true, checkInId: true, type: true, text: true, createdAt: true },
+  })) ?? [];
+  let n = 0;
+  for (const { w, e } of events) {
+    const after = new Date(w.createdAt).getTime();
+    const done = lines
+      .filter((l) => l.checkInId !== w.sourceCheckInId && new Date(l.createdAt).getTime() > after)
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+      .find((l) => aLineSaysTheEventHappened(l, e));
+    if (!done) continue;
+    await prisma.groundDependency.updateMany({ where: { id: w.id, clearedAt: null }, data: { status: 'CLEARED', clearedAt: new Date(done.createdAt) } });
+    n++;
+  }
+  return n;
 }
