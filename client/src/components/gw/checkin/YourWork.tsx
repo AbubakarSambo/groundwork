@@ -164,12 +164,20 @@ export interface YourWorkProps {
    * this page still gets the plain per-session link.
    */
   onReadTeamReport?: () => void
+  /**
+   * RELEASE 1B (pull request 3 of 3): THE REST OF TODAY'S PAGE, UNDER THE NEW MY WORK. Where the organisation's switch is on,
+   * MyWorkPage.tsx draws the person's name and numbers, To do (what you said you'd do), and Your reports, so this draws
+   * everything else today's page holds, by the same code: what keeps coming up (with its answer box), what you are carrying
+   * forward, how checkable your record is, your record, your check-ins, what success looks like, what you delivered,
+   * corrections, what to walk in with, and the lead's two links. Left out, the page is exactly as before.
+   */
+  asTheRestOfMyWork?: boolean
 }
 
 export function YourWork({
   groundId, ground, myRecord, mySoloReport, refetchSoloReport, specificity, report,
   totalSessions, completedCount, myFinishedSessions, sessionDots, myParticipant, myName, leadFirstName,
-  otherParties, postReportGuide, aTeamReportComes, onSeeEverySession, onReadTeamReport, onSeeRoster,
+  otherParties, postReportGuide, aTeamReportComes, onSeeEverySession, onReadTeamReport, onSeeRoster, asTheRestOfMyWork,
 }: YourWorkProps) {
   const myCommitments = ((ground?.commitments ?? []) as any[]).filter((c) => c.participantId === myParticipant?.id)
   /* Their own files, the WhatsApp photos and pins included, from the same list and cache the Context tab reads. */
@@ -206,7 +214,8 @@ export function YourWork({
      something to show, one full-width column when only one side does, and a single stacked column
      once the page is too narrow for 320px twice - the same rule this page already follows for
      its own responsive rows, not a new one invented for this fix. */
-  const sideColumn = (patterns.length > 0 || myCommitments.length > 0 || myFinishedSessions.length > 0) && (
+  const rest = !!asTheRestOfMyWork
+  const sideColumn = (patterns.length > 0 || (!rest && (myCommitments.length > 0 || myFinishedSessions.length > 0))) && (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {patterns.length > 0 && (
         <Section heading="Something that keeps coming up">
@@ -218,7 +227,7 @@ export function YourWork({
         </Section>
       )}
 
-      {myCommitments.length > 0 && (
+      {!rest && myCommitments.length > 0 && (
         <Section heading="What you said you’d do">
           <Panel pad={false}>
             {/*
@@ -250,7 +259,7 @@ export function YourWork({
         </Section>
       )}
 
-      {myFinishedSessions.length > 0 && (
+      {!rest && myFinishedSessions.length > 0 && (
         <Section heading="Your reports">
           <Panel pad={false}>
             {myFinishedSessions.slice(0, 5).map((s, i) => {
@@ -282,7 +291,7 @@ export function YourWork({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <PageTitle
+      {!rest && <PageTitle
         eyebrow={ground?.label}
         title="Your work"
         subtitle={
@@ -290,9 +299,9 @@ export function YourWork({
             ? 'Everything you’ve said, and what the proof shows. Only you see this page, apart from the pattern below.'
             : 'Everything you’ve said, and what the proof shows. Only you see this page.'
         }
-      />
+      />}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: 20, alignItems: 'start' }}>
+      {rest ? sideColumn : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: 20, alignItems: 'start' }}>
         <div>
           {/* THE NUMBER TILES THE SERVED DATA SUPPORTS. my-record.jpg shows a row of three; this
               check-in's own scenario decides how many of them mean anything here. */}
@@ -333,7 +342,7 @@ export function YourWork({
         </div>
 
         {sideColumn}
-      </div>
+      </div>}
 
       {/* B-080: she never checks in, so there is no record of her own to carry forward, and "This
           appears once you finish your first check-in." would never stop being true. */}

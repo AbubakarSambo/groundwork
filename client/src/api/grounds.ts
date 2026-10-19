@@ -344,6 +344,10 @@ export const groundsApi = {
   changeAReference: (groundId: string, lineId: string, body: { text?: string; label?: string; closed?: boolean }) =>
     apiClient.patch(`/grounds/${groundId}/references-and-resources/lines/${lineId}`, body).then(r => (r.data as any)?.data ?? r.data),
 
+  /** My work: one person's page in this check-in, for that person or the lead (Release 1B, pull request 3 of 3). `{ on: false }` while the switch is off. */
+  myWork: (groundId: string, person?: string | null) =>
+    apiClient.get<MyWork>(`/grounds/${groundId}/my-work`, { params: person ? { person } : {} }).then(r => (r.data as any)?.data ?? r.data),
+
   getMediatorBrief: (groundId: string) =>
     apiClient.get(`/grounds/${groundId}/mediator-brief`).then(r => r.data),
 
@@ -673,4 +677,32 @@ export type ReferencesAndResources =
       evidenceSays: string
       questions: { total: number; items: { asked: string; answer: string; who: string }[]; emptySays: string }
       people?: { participantId: string; name: string; role: string | null; note: AReferenceLine | null; helpWith: AReferenceLine | null; earlier: string[] }[]
+    }
+
+/** My work, as the server serves it to this reader (api board/my-work.ts). */
+export type ABehaviourRead = { key: string; name: string; verdict: 'Strength' | 'Needs work' | 'Not enough yet'; happened: string; means: string | null; toImprove: string | null; basedOn: string | null }
+export type MyWork =
+  | { on: false }
+  | {
+      on: true
+      view: 'self' | 'lead'
+      checkInName: string
+      person: { participantId: string; name: string; firstName: string }
+      people?: { participantId: string; name: string }[]
+      heading: string
+      topLine: string
+      numbers: { value: string; label: string }[]
+      focus: { line: string; why: string } | null
+      focusEmpty: string
+      toDo: {
+        othersNeed: { id: string; text: string; when: string }[]
+        own: { id: string; text: string; when: string | null; done: boolean; late: boolean; whose: string | null }[]
+        emptySays: string
+      }
+      achieved: { items: { text: string; proof: string }[]; note: string; emptySays: string }
+      performing: { note: string; behaviours: ABehaviourRead[]; libraryNote: string }
+      coaching: { better: { text: string; from: string }[]; keep: string[]; betterEmpty: string; keepEmpty: string }
+      checkIns: { heading: string; due: number; done: number; onTime: number; specific: number; emptySays: string | null }
+      reports: { heading: string; items: { checkInId: string; when: string; line: string }[]; emptySays: string; private?: string }
+      items: { heading: string; note: string; itemWord: string; rows: { id: string; name: string; stage: string | null; next: string; nextBooked: boolean; proof: string; proven: boolean }[]; emptySays: string }
     }

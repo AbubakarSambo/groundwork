@@ -73,6 +73,7 @@ export function ContextPage({
   ground,
   role,
   viewerUserId,
+  only,
 }: {
   ground: any
   /** 'lead' is whoever runs this check-in, including an org admin reading with their eyes. */
@@ -95,6 +96,13 @@ export function ContextPage({
    */
   role: 'lead' | 'admin' | 'party'
   viewerUserId?: string | null
+  /**
+   * RELEASE 1B (pull request 3 of 3): ONLY THE PARTS THAT MOVE TO MY WORK. With Release 1B's switch on, References and resources
+   * no longer draws the targets, the plan as agreed, each person's card and what people are down as doing ("progress and
+   * promises, which belong on the board and in My work"), so My work draws them, here, by this same code, with the same words,
+   * controls and rules. Left out, the page is exactly as before.
+   */
+  only?: 'what-moved-to-my-work'
 }) {
   const id: string = ground.id
   const qc = useQueryClient()
@@ -1454,6 +1462,17 @@ export function ContextPage({
             )}
     </>
   )
+
+  if (only === 'what-moved-to-my-work') {
+    return (
+      <div data-gw-moved-to-my-work>
+        {partD}
+        {partPlan}
+        {partF}
+        {partH}
+      </div>
+    )
+  }
 
   return (
     <div>

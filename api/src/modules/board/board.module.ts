@@ -3,6 +3,7 @@ import { BoardService } from './board.service';
 import { BoardListener } from './board.listener';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { BoardController } from './board.controller';
+import { MyWorkController } from './my-work.controller';
 import { GroundsModule } from '../grounds/grounds.module';
 import { ReportsModule } from '../reports/reports.module';
 
@@ -23,7 +24,7 @@ import { ReportsModule } from '../reports/reports.module';
    * reason as above.
    */
   imports: [forwardRef(() => GroundsModule), forwardRef(() => ReportsModule)],
-  controllers: [BoardController],
+  controllers: [BoardController, MyWorkController],
   providers: [BoardService, BoardListener, AnthropicService],
   exports: [BoardService],
 })
