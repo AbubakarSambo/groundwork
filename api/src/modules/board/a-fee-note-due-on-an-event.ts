@@ -70,6 +70,13 @@ export interface AnEventWaitedFor {
 /** The event a bill waits for, read from its "Due when": "the reply is filed" is the reply, filed. Null where it cannot be read so. */
 export function theEventWaitedFor(dueWhen: unknown): AnEventWaitedFor | null {
   const s = plainWords(dueWhen).replace(/^(?:when|once|after|upon|on)\s+/, '');
+  /* "when I get the hearing date" is the hearing date, set (messages test, 19 October, finding 4: it was read as the event "i", "the"). */
+  const got = s.match(/^(?:i|we|they|you|he|she)\s+(?:get|receive|have|hear|learn|know|am given|are given|is given)\s+(?:of\s+)?(?:(?:the|our|their|a|an)\s+)?(.+)$/);
+  if (got) {
+    const thing = got[1].trim();
+    if (!thing || thing.split(' ').length > 5) return null;
+    return { subject: thing, participle: /\b(?:date|day|time)$/.test(thing) ? 'set' : 'received' };
+  }
   const m = s.match(/^(?:(?:the|our|their|a|an)\s+)?(.+?)\s+(?:is|are|gets|get|has been|have been|was|were)\s+([a-z]+)(?:\s.*)?$/);
   if (!m) return null;
   const subject = m[1].trim();
@@ -111,19 +118,27 @@ export function whatALineSaysOfTheEvent(text: string, ev: AnEventWaitedFor, said
   /* Close: the last word of what it is about and the word for what happens to it are both there ("the mention date is set" beside
      "the hearing date is set"). "The reply is drafted" is not close to "the reply is filed". */
   const touches = new RegExp(`\\b${head}\\b`).test(line) && new RegExp(`\\b${part}\\b`).test(line);
-  const tries: RegExp[] = [
-    new RegExp(`\\b${subj}\\b((?: [a-z0-9']+){0,4}?) (?:was|were|is|are|has been|have been|had been|got|has now been|was finally|is now) ${part}\\b(.*)$`),
+  /* Between the thing and what happened to it: up to four words, or the matter it is in ("the reply in Kasarani Foods v. Tumaini Traders
+     was filed", messages test, 19 October, finding 4). */
+  const between = `((?: [a-z0-9']+){0,4}?|(?: (?:in|for|on|of|at|about) [a-z0-9']+(?: [a-z0-9']+){0,7}?))`;
+  /* `subjectFirst`: what is between the thing and what happened to it is in m[1], and what follows in the last group. */
+  const tries: { re: RegExp; subjectFirst: boolean }[] = [
+    { re: new RegExp(`\\b${subj}\\b${between} (?:was|were|is|are|has been|have been|had been|got|has now been|was finally|is now) ${part}\\b(.*)$`), subjectFirst: true },
   ];
-  if (/ed$/.test(ev.participle) || IRREGULAR_PAST.has(ev.participle)) {
-    tries.push(new RegExp(`\\b(?:we|they|i|he|she|the court|court|the registry|registry|counsel|[a-z]+) ${part} (?:the |our |their )?${subj}\\b(.*)$`));
+  /* A date said for it is that date set: "the hearing date for Kasarani Foods v. Tumaini Traders is November 12" (finding 4). */
+  if (ev.participle === 'set' && /\b(?:date|day)$/.test(ev.subject)) {
+    tries.push({ re: new RegExp(`\\b${subj}\\b${between} (?:is|was|has been|is now) (?:set )?(?:for |on )?(?:(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday) )?(?:\\d{1,2}(?:st|nd|rd|th)? (?:${MONTHS.join('|')})|(?:${MONTHS.join('|')}) \\d{1,2})\\b(.*)$`), subjectFirst: true });
   }
-  for (const re of tries) {
-    const m = line.match(re);
+  if (/ed$/.test(ev.participle) || IRREGULAR_PAST.has(ev.participle)) {
+    tries.push({ re: new RegExp(`\\b(?:we|they|i|he|she|the court|court|the registry|registry|counsel|[a-z]+) ${part} (?:the |our |their )?${subj}\\b(.*)$`), subjectFirst: false });
+  }
+  for (const t of tries) {
+    const m = line.match(t.re);
     if (!m || m.index === undefined) continue;
     const before = line.slice(Math.max(0, m.index - 40), m.index).split(' ').slice(-4).join(' ');
-    const between = re === tries[0] ? (m[1] ?? '') : '';
+    const between = t.subjectFirst ? (m[1] ?? '') : '';
     if (NOT_YET.test(before) || NOT_YET.test(between)) continue;
-    const rest = (re === tries[0] ? m[2] : m[1]) ?? '';
+    const rest = m[m.length - 1] ?? '';
     return { happened: true, touches: true, day: theDayAfterTheEvent(rest, saidOn) };
   }
   return { happened: false, touches, day: null };
