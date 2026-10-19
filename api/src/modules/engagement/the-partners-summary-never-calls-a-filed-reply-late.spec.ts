@@ -56,3 +56,37 @@ describe('a reply said filed keeps the promise to send it', () => {
     expect(said(o)).not.toContain('is one day late');
   });
 });
+
+/*
+ * THE SECOND RUN (messages test after the fixes, 19 October): Brian's promise said "it". On Monday 12 October, in one answer, he said
+ * "The reply was drafted." and "I will send it to Wanjiru tomorrow for her review." On Tuesday, "The reply in Kasarani Foods v. Tumaini
+ * Traders was filed today." Wanjiru's summary on Wednesday, Thursday and Friday still read "In “Litigation team daily”, Brian said “I will
+ * send it to Wanjiru tomorrow for her review”. That was due by Tuesday 13 October and is one day late." (then two, then three).
+ */
+const IT = { ...BRIANS_PROMISE, id: '85b35902-1629-421d-93a9-e175582383f1', text: 'I will send it to Wanjiru tomorrow for her review.', kind: 'COMMITMENT', createdAt: new Date('2026-10-12T11:02:49.991Z') };
+const MONDAY = [
+  { id: 'l-working', participantId: P.brian, type: 'INTENT', text: 'I am working on Kasarani Foods v. Tumaini Traders.', createdAt: new Date('2026-10-12T11:02:43.211Z') },
+  { id: 'l-drafted', participantId: P.brian, type: 'PROGRESS', text: 'The reply was drafted.', createdAt: new Date('2026-10-12T11:02:43.211Z') },
+];
+const FILED = { id: 'l-filed-run2', participantId: P.brian, type: 'PROGRESS', text: 'The reply in Kasarani Foods v. Tumaini Traders was filed today.', createdAt: new Date('2026-10-13T11:01:55.904Z') };
+
+describe('a promise that says "it" is about what its maker had just said was done', () => {
+  it('"I will send it to Wanjiru tomorrow for her review." is kept by "The reply ... was filed today."', () => {
+    expect(thePromisesSaidDone([IT], [...MONDAY, FILED], [], (id) => NAMES[id] ?? [], Object.values(P)).map((k) => k.id)).toEqual([IT.id]);
+  });
+  it('without the line it came after, "it" is about nothing, and nothing keeps it', () => {
+    expect(thePromisesSaidDone([IT], [FILED], [], (id) => NAMES[id] ?? [], Object.values(P))).toEqual([]);
+  });
+  it('two things said done in that answer, and "it" could be either: nothing keeps it', () => {
+    const two = [...MONDAY, { id: 'l-other', participantId: P.brian, type: 'PROGRESS', text: 'The witness list was updated.', createdAt: new Date('2026-10-12T11:02:43.211Z') }];
+    expect(thePromisesSaidDone([IT], [...two, FILED], [], (id) => NAMES[id] ?? [], Object.values(P))).toEqual([]);
+  });
+  it('Wanjiru\'s summary on Thursday 15 October does not call it late', async () => {
+    const now = new Date('2026-10-15T05:00:00Z');
+    const prisma = theRecord(now, [...MONDAY, FILED]);
+    prisma.personObjective.findMany = jest.fn(async () => [{ ...IT, participant: { ground: { id: G, label: 'Litigation team daily', scenario: 'PULSE_CHECK', overWhatsApp: true }, ...PERSON_OF(P.brian) } }]);
+    const o = await whatIsOutstandingFor(prisma, LEAD, { boards: {} as any, release: new Date('2026-01-01') }, now);
+    expect(o.overdueOnYourTeam).toEqual([]);
+    expect(said(o)).not.toContain('I will send it to Wanjiru tomorrow for her review');
+  });
+});
