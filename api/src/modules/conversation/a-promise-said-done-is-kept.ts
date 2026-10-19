@@ -35,6 +35,14 @@ export interface ALineOnRecord {
   text: string;
   createdAt: Date | string;
 }
+/** One answer a person gave in a check-in, with the question Groundwork had just asked them. Their own words, never shown: read only for whether a promise was kept. */
+export interface AnAnswerOnRecord {
+  participantId: string;
+  checkInId: string;
+  asked: string;
+  said: string;
+  at: Date | string;
+}
 export interface AWaitOnRecord {
   id: string;
   fromParticipantId: string;
@@ -118,6 +126,103 @@ export function whatAPromiseCalledItIsAbout(p: AnOpenPromise, lines: ALineOnReco
   return things.length === 1 ? theThingIn(things[0]) : [];
 }
 
+/*
+ * A FOLLOW-UP SAID DONE, AND WHAT THE OTHER PERSON SAID BACK (messages test, third run, item 4). On Wednesday 14 October Mercy said "I
+ * called Joseph yesterday about the samples, and he said he'll have them ready by Thursday." Her week on Thursday still listed "Follow
+ * up with Joseph again" as open: the "he'll" in what Joseph said back was read as hers. A follow-up is read in its own part of the
+ * sentence, up to ", and he ..." where the other person's answer begins. "I called Joseph but he hasn't answered" is still not done.
+ */
+const THE_OTHER_PERSONS_ANSWER_BEGINS = /,?\s+and\s+(?=(?:he|she|they|it|we)\b)/i;
+const theFollowUpPart = (s: string) => s.split(THE_OTHER_PERSONS_ANSWER_BEGINS)[0];
+
+/*
+ * "DID YOU LET HER KNOW?" "YES, I DID." (messages test, third run, item 8). Brian promised on Tuesday 13 October "I will let Njeri know
+ * today." On Wednesday Groundwork asked him "Last time you said you needed to tell Njeri in accounts about the Kasarani Foods filing. Did
+ * you let her know?" and he answered "Yes, I did." Wanjiru's summaries on Thursday and Friday still said "That was due by Tuesday 13
+ * October and is two days late." A promise is kept when, after it was made, its maker was asked whether it happened, in a question that
+ * names it, and said yes, with nothing in that first sentence that says it has not or not yet.
+ */
+const A_DID_YOU_QUESTION = /^(?:so\s+|and\s+)?(?:did|have|has|had|were|was)\s+you\b[^?]*\?$/i;
+const A_YES = /^(?:yes|yeah|yep|yup|i did|i have|i had|done|it is done|it's done|that's done|that is done|all done|sure did)\b/i;
+function theLastQuestionIn(t: string): string {
+  const qs = sentences(t).filter((x) => /\?$/.test(x));
+  return qs[qs.length - 1] ?? '';
+}
+export function aYesToTheQuestionAboutIt(a: AnAnswerOnRecord, p: AnOpenPromise): boolean {
+  if (a.participantId !== p.participantId) return false;
+  const q = theLastQuestionIn(a.asked);
+  if (!A_DID_YOU_QUESTION.test(q)) return false;
+  const thing = new Set(theThingIn(p.text));
+  if (!thing.size) return false;
+  /* The question names it: the promise's own words, in the question or the sentence it asks about. */
+  const asked = new Set(wordsOf(a.asked).map(aForm));
+  const shared = [...thing].filter((w) => asked.has(w)).length;
+  if (shared < Math.min(2, thing.size)) return false;
+  const first = (sentences(a.said)[0] ?? '').trim();
+  if (!A_YES.test(first)) return false;
+  return !NOT_YET.test(first.replace(A_YES, ''));
+}
+
+/*
+ * WHO "HER" IS, AND WHAT SHE SAID WHEN HE FOLLOWED UP (messages test, third run, item 2). On Monday 12 October Joseph said "Mama Pima is
+ * still deciding on the 10 units. She wants a KES 12,000 discount." and, asked what he would do about it, "I'll try to persuade her on
+ * the price. I'll follow up with her tomorrow." On Wednesday he said "Mama Pima isn't ready to buy yet." Grace's summaries on Thursday
+ * and Friday said "Joseph said “I'll follow up with her tomorrow”. That was due by Tuesday 13 October and is two days late.": the
+ * follow-up had happened, and the line never said who "her" was.
+ *  - Who: the one name in the question the promise answered and the maker's answer just before it, read from those two turns only.
+ *  - Kept: a later answer or line of the maker's that names that customer and says what they said or decided ("isn't ready", "wants",
+ *    "agreed", "said"), and nothing in it that says they could not be reached.
+ */
+const A_PRONOUN_OBJECT = /\b(?:with|to|call|phone|ring|visit|remind|ask|tell|email|text|message|see|persuade|chase)\s+(her|him|them)\b/i;
+const NOT_A_NAME = new Set(['I', 'It', 'What', 'When', 'Who', 'Why', 'How', 'Where', 'Which', 'That', 'This', 'The', 'She', 'He', 'They', 'We', 'You', 'My', 'Our', 'Your', 'Her', 'His', 'Their', 'Yes', 'No', 'Okay', 'Ok', 'So', 'And', 'But', 'Last', 'Today', 'Tomorrow', 'Yesterday', 'Groundwork',
+  'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']);
+/** The names in a turn: two or more capitalised words together ("Mama Pima"), or one that does not open its sentence ("with Joseph"). */
+export function theNamesIn(t: string): string[] {
+  const out: string[] = [];
+  for (const s of sentences(t)) {
+    const words = s.replace(/[^A-Za-z0-9'’ -]/g, ' ').split(/\s+/).filter(Boolean);
+    let run: string[] = [];
+    let runStartsTheSentence = false;
+    const flush = () => {
+      const kept = run.filter((w) => !NOT_A_NAME.has(w));
+      if (kept.length >= 2 || (kept.length === 1 && !(runStartsTheSentence && run.length === 1))) out.push(kept.join(' '));
+      run = [];
+    };
+    words.forEach((w, i) => {
+      const capital = /^[A-Z][a-z'’]+$/.test(w) && !NOT_A_NAME.has(w);
+      if (capital) { if (!run.length) runStartsTheSentence = i === 0; run.push(w); } else flush();
+    });
+    flush();
+  }
+  return [...new Set(out)];
+}
+export function whoAPromiseIsAbout(p: AnOpenPromise, answers: AnAnswerOnRecord[], namesOf: (participantId: string) => string[] = () => []): string | null {
+  if (!A_PRONOUN_OBJECT.test(p.text)) return null;
+  const mine = answers.filter((a) => a.participantId === p.participantId).sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+  const promised = wordsOf(p.text).join(' ');
+  const at = mine.findIndex((a) => ` ${wordsOf(a.said).join(' ')} `.includes(` ${promised} `));
+  if (at === -1) return null;
+  const theirOwn = new Set(namesOf(p.participantId).map((n) => n.toLowerCase()));
+  const named = (t: string) => theNamesIn(t).filter((n) => !theirOwn.has(n.toLowerCase()));
+  const inTheAnswer = named(mine[at].said);
+  if (inTheAnswer.length) return null; /* It names somebody itself: "her" may be another. */
+  const inTheQuestion = named(mine[at].asked);
+  const before = at > 0 && mine[at - 1].checkInId === mine[at].checkInId ? named(mine[at - 1].said) : [];
+  const both = inTheQuestion.filter((n) => before.includes(n));
+  const candidates = both.length ? both : [...new Set([...inTheQuestion, ...before])];
+  return candidates.length === 1 ? candidates[0] : null;
+}
+const THEY_ANSWERED = /\b(?:is|isn't|is not|was|wasn't|was not|are|aren't)\s+(?:still\s+)?(?:not\s+)?(?:ready|interested|keen|happy|sure|deciding|thinking)\b|\b(?:said|says|told me|wants|wanted|agreed|declined|decided|refused|accepted|rejected|confirmed|signed|paid|ordered|bought|asked for)\b/i;
+const THEY_COULD_NOT_BE_REACHED = /\b(?:hasn't|has not|haven't|have not|didn't|did not|not)\s+(?:replied|answered|responded|picked up|returned|got back|called back)|\bno (?:reply|answer|response)\b|\bcould(?:n't| not) (?:reach|get hold of|get through)\b|\bunreachable\b|\bvoicemail\b|\bnot answering\b/i;
+export function theyFollowedUpAndWereAnswered(text: string, who: string): boolean {
+  const name = wordsOf(who);
+  if (!name.length) return false;
+  return sentences(text).some((s) => {
+    const said = ` ${wordsOf(s).join(' ')} `;
+    return said.includes(` ${name.join(' ')} `) && THEY_ANSWERED.test(s) && !THEY_COULD_NOT_BE_REACHED.test(s);
+  });
+}
+
 /** Whether one line says this promise is done. */
 export function aLineSaysThePromiseIsDone(line: ALineOnRecord, p: AnOpenPromise, ctx: { forWhom: string[]; waits: AWaitOnRecord[]; namesOf: (participantId: string) => string[]; itMeans?: string[] }): boolean {
   const byTheMaker = line.participantId === p.participantId;
@@ -139,7 +244,8 @@ export function aLineSaysThePromiseIsDone(line: ALineOnRecord, p: AnOpenPromise,
     if (!byTheMaker && !namesTheOtherSide) return false;
     if (aProgressLine && IT_HAPPENED.test(s) && !NOT_YET.test(s)) return true;
     /* The follow-up itself, in other words: by its maker, to the person it was for, about the thing, and nothing saying it has not happened. */
-    return aFollowUpDone && namesTheOtherSide && FOLLOWED_UP.test(s) && !NOT_YET.test(s);
+    const part = theFollowUpPart(s);
+    return aFollowUpDone && namesTheOtherSide && FOLLOWED_UP.test(part) && !NOT_YET.test(part);
   });
 }
 
@@ -150,17 +256,33 @@ export function thePromisesSaidDone(
   waits: AWaitOnRecord[],
   namesOf: (participantId: string) => string[],
   everybody: string[],
+  answers: AnAnswerOnRecord[] = [],
 ): { id: string; keptAt: Date; because: string }[] {
   const out: { id: string; keptAt: Date; because: string }[] = [];
   for (const p of promises) {
     const made = new Date(p.createdAt).getTime();
     const forWhom = whoItWasFor(p, waits, namesOf, everybody);
     const itMeans = whatAPromiseCalledItIsAbout(p, lines);
-    const said = lines
+    /* Their own answers count as lines for a follow-up said done, from the check-ins after the one it was made in. */
+    const madeIn = answers.find((a) => a.participantId === p.participantId && ` ${wordsOf(a.said).join(' ')} `.includes(` ${wordsOf(p.text).join(' ')} `))?.checkInId;
+    const later = answers.filter((a) => new Date(a.at).getTime() > made && a.checkInId !== madeIn);
+    const asLines: ALineOnRecord[] = later.filter((a) => a.participantId === p.participantId).map((a, i) => ({ id: `answer:${a.checkInId}:${i}`, participantId: a.participantId, type: 'ANSWER', text: a.said, createdAt: a.at }));
+    const said = [...lines, ...asLines]
       .filter((l) => new Date(l.createdAt).getTime() > made)
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
       .find((l) => aLineSaysThePromiseIsDone(l, p, { forWhom, waits, namesOf, itMeans }));
     if (said) { out.push({ id: p.id, keptAt: new Date(said.createdAt), because: said.id }); continue; }
+    /* Asked whether it happened, and they said yes. */
+    const yes = later.find((a) => aYesToTheQuestionAboutIt(a, p));
+    if (yes) { out.push({ id: p.id, keptAt: new Date(yes.at), because: `answer:${yes.checkInId}` }); continue; }
+    /* A follow-up with "her", and what she said when he did. */
+    const who = whoAPromiseIsAbout(p, answers, namesOf);
+    if (who && A_FOLLOW_UP.test(p.text)) {
+      const answered = [...asLines, ...lines.filter((l) => l.participantId === p.participantId && new Date(l.createdAt).getTime() > made)]
+        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+        .find((l) => theyFollowedUpAndWereAnswered(l.text, who));
+      if (answered) { out.push({ id: p.id, keptAt: new Date(answered.createdAt), because: answered.id }); continue; }
+    }
     /* The wait on its maker, by somebody it was for, cleared after it was made: the same thing, done. */
     const itsThing = theThingIn(p.text);
     const theSameThing = (w: AWaitOnRecord) => (p.owedToParticipantId
@@ -175,15 +297,34 @@ export function thePromisesSaidDone(
 }
 
 /** The record a check-in's promises are read against: its lines, its waits, and who is in it. */
-export async function theRecordForPromises(prisma: any, groundIds: string[]): Promise<{ lines: ALineOnRecord[]; waits: AWaitOnRecord[]; people: { id: string; groundId: string; names: string[] }[] }> {
-  if (!groundIds.length) return { lines: [], waits: [], people: [] };
-  const [lines, waits, people] = await Promise.all([
+/** Each person's answers in these check-ins, each with the question it answered. Read for promises only, never served. */
+export function theAnswersIn(checkIns: { id: string; participantId: string | null; turns?: { role: string; content: string | null; createdAt: Date | string }[] }[]): AnAnswerOnRecord[] {
+  const out: AnAnswerOnRecord[] = [];
+  for (const c of checkIns ?? []) {
+    if (!c?.participantId) continue;
+    let asked = '';
+    for (const t of c.turns ?? []) {
+      const text = String(t.content ?? '').trim();
+      if (!text) continue;
+      if (String(t.role) === 'PERSON') { out.push({ participantId: c.participantId, checkInId: c.id, asked, said: text, at: t.createdAt }); asked = ''; }
+      else asked = text;
+    }
+  }
+  return out;
+}
+
+export async function theRecordForPromises(prisma: any, groundIds: string[]): Promise<{ lines: ALineOnRecord[]; waits: AWaitOnRecord[]; people: { id: string; groundId: string; names: string[] }[]; answers: AnAnswerOnRecord[] }> {
+  if (!groundIds.length) return { lines: [], waits: [], people: [], answers: [] };
+  const [lines, waits, people, checkIns] = await Promise.all([
     /* A worry too: a follow-up said done is sometimes kept as one (finding 1); aLineSaysThePromiseIsDone reads it only for that. */
     Promise.resolve(prisma.recordEntry?.findMany?.({ where: { disputedAt: null, type: { in: ['PROGRESS', 'WORRY'] }, participant: { groundId: { in: groundIds } } }, select: { id: true, participantId: true, type: true, text: true, createdAt: true } }) ?? []).catch(() => []),
     Promise.resolve(prisma.groundDependency?.findMany?.({ where: { groundId: { in: groundIds } }, select: { id: true, fromParticipantId: true, onParticipantId: true, what: true, status: true, clearedAt: true } }) ?? []).catch(() => []),
     Promise.resolve(prisma.groundParticipant?.findMany?.({ where: { groundId: { in: groundIds } }, select: { id: true, groundId: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } }) ?? []).catch(() => []),
+    /* What they were asked and what they answered, so "Did you let her know?" "Yes, I did." keeps the promise (item 8). */
+    Promise.resolve(prisma.checkIn?.findMany?.({ where: { groundId: { in: groundIds }, startedAt: { not: null } }, select: { id: true, participantId: true, turns: { orderBy: { createdAt: 'asc' }, select: { role: true, content: true, createdAt: true } } } }) ?? []).catch(() => []),
   ]);
   return {
+    answers: theAnswersIn(Array.isArray(checkIns) ? checkIns : []),
     lines: Array.isArray(lines) ? lines : [],
     waits: Array.isArray(waits) ? waits : [],
     people: (Array.isArray(people) ? people : []).map((p: any) => ({ id: p.id, groundId: p.groundId, names: [p.user?.firstName, p.user?.lastName, p.nameGiven].filter((n: any) => !!n && !!String(n).trim()) })),
@@ -192,11 +333,16 @@ export async function theRecordForPromises(prisma: any, groundIds: string[]): Pr
 
 /** The ids of these open promises the record says are done. */
 export async function whichOfThesePromisesAreDone(prisma: any, promises: (AnOpenPromise & { groundId: string })[]): Promise<Set<string>> {
+  return new Set((await whenThesePromisesWereKept(prisma, promises)).keys());
+}
+
+/** The open promises the record says are done, each with the moment it was said. */
+export async function whenThesePromisesWereKept(prisma: any, promises: (AnOpenPromise & { groundId: string })[]): Promise<Map<string, Date>> {
   const groundIds = [...new Set(promises.map((p) => p.groundId).filter(Boolean))];
-  if (!promises.length || !groundIds.length) return new Set();
+  if (!promises.length || !groundIds.length) return new Map();
   const r = await theRecordForPromises(prisma, groundIds);
   const namesOf = (id: string) => r.people.find((p) => p.id === id)?.names ?? [];
-  const done = new Set<string>();
+  const done = new Map<string, Date>();
   for (const g of groundIds) {
     const inIt = new Set(r.people.filter((p) => p.groundId === g).map((p) => p.id));
     const said = thePromisesSaidDone(
@@ -205,10 +351,25 @@ export async function whichOfThesePromisesAreDone(prisma: any, promises: (AnOpen
       r.waits.filter((w) => inIt.has(w.fromParticipantId)),
       namesOf,
       [...inIt],
+      r.answers.filter((a) => inIt.has(a.participantId)),
     );
-    said.forEach((s) => done.add(s.id));
+    said.forEach((s) => done.set(s.id, s.keptAt));
   }
   return done;
+}
+
+/** Who each of these promises means by "her", "him" or "them", where the check-in it was said in says (item 2). */
+export async function whoThesePromisesAreAbout(prisma: any, promises: (AnOpenPromise & { groundId: string })[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  const which = promises.filter((p) => p.groundId && A_PRONOUN_OBJECT.test(p.text ?? ''));
+  if (!which.length) return out;
+  const r = await theRecordForPromises(prisma, [...new Set(which.map((p) => p.groundId))]);
+  const namesOf = (id: string) => r.people.find((p) => p.id === id)?.names ?? [];
+  for (const p of which) {
+    const who = whoAPromiseIsAbout(p, r.answers, namesOf);
+    if (who) out.set(p.id, who);
+  }
+  return out;
 }
 
 /**
@@ -225,7 +386,7 @@ export async function keepThePromisesSaidDone(prisma: any, groundId: string): Pr
   }) ?? []).catch(() => []);
   if (!open?.length) return 0;
   const r = await theRecordForPromises(prisma, [groundId]);
-  const said = thePromisesSaidDone(open, r.lines, r.waits, (id) => r.people.find((p) => p.id === id)?.names ?? [], r.people.map((p) => p.id));
+  const said = thePromisesSaidDone(open, r.lines, r.waits, (id) => r.people.find((p) => p.id === id)?.names ?? [], r.people.map((p) => p.id), r.answers);
   for (const s of said) {
     await prisma.personObjective.updateMany({ where: { id: s.id, status: 'OPEN' }, data: { status: 'MET', statusChangedAt: s.keptAt } });
   }

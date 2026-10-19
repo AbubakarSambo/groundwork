@@ -2,7 +2,7 @@ import { theFeeNotesThatFellDueOnAnEvent } from '../board/a-fee-note-that-fell-d
 import { theSalesMorning } from './the-sales-morning-from-the-record';
 import { withWhatTheBoardsSay, type TheLeadsBoard, type TheRecordBesideTheBoard } from './the-summary-reads-the-board';
 import { DependencyStatus, GroundStatus } from '@prisma/client';
-import { whichOfThesePromisesAreDone } from '../conversation/a-promise-said-done-is-kept';
+import { whichOfThesePromisesAreDone, whoThesePromisesAreAbout } from '../conversation/a-promise-said-done-is-kept';
 import { theDealsThatHaveStalled } from '../board/the-deals-that-have-stalled';
 import { theConfirmedWaits, whatTheyTriedInFull, theNoteBesideTheClaim } from '../grounds/a-wait-is-the-speakers-account';
 import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
@@ -376,13 +376,16 @@ export async function whatIsOutstandingFor(
   /* A PROMISE SAID DONE IS NEVER LATE (Drop Access run 1, item 13): by its maker, by the person it was for, or by the wait on its maker
      for the same thing being cleared. Read here from the record too, so a promise the record says is done is never told as overdue. */
   const saidDone = await whichOfThesePromisesAreDone(prisma, (promises as any[]).filter((p) => p.groundId && p.createdAt)).catch(() => new Set<string>());
+  /* "I'll follow up with her tomorrow" says who "her" is, from the check-in it was said in (messages test, third run, item 2). */
+  const aboutWhom = await whoThesePromisesAreAbout(prisma, (promises as any[]).filter((p) => p.groundId && p.createdAt && !saidDone.has(p.id))).catch(() => new Map<string, string>());
   for (const pr of promises) {
     if (saidDone.has(pr.id)) continue;
     const g = pr.participant?.ground;
     if (!g || isEvaluationCheckIn(g.scenario) || !pr.text?.trim()) continue;
     const late = daysLate(pr.dueDate, today);
     if (late < 1) continue;
-    const text = (who: string) => `${THE_PLACE_FIRST}${theyCommitted(who, pr.text)}. That was due by ${theDay(pr.dueDate)} and is ${lateWords(late)}.`;
+    const about = aboutWhom.get(pr.id);
+    const text = (who: string) => `${THE_PLACE_FIRST}${theyCommitted(who, pr.text)}${about ? ` about ${about}` : ''}. That was due by ${theDay(pr.dueDate)} and is ${lateWords(late)}.`;
     /* "Someone" is the word for a person nobody has a name for (decision 115): a lead cannot act on it, so it is not told. */
     if (pr.participant?.userId !== lead.userId && nameToCall(pr.participant) === SOMEONE) continue;
     if (pr.participant?.userId === lead.userId) out.needsYou.push({ text: text('You'), late, group: 2, keptInTheApp: keptOffThePhone(g), place: g.label, groundId: g.id, daysOverdue: late, about: { kind: 'promise', ids: [pr.id] }, owedTo: pr.owedToParticipantId ?? null, dueSaid: theDay(pr.dueDate) });
