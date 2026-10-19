@@ -225,6 +225,25 @@ export function theyFollowedUpAndWereAnswered(text: string, who: string): boolea
   });
 }
 
+/*
+ * A FOLLOW-UP, AND WHAT THE CUSTOMER SAID BACK, WHEN ASKED ABOUT IT (messages test, fourth run). Joseph said on Monday 12 October "I'll
+ * follow up on Mama Pima." On Wednesday he was asked "Last time you mentioned you would follow up on Mama Pima. What is the stage of that
+ * deal right now?" and said "Wanjiru said to call her next week. It's still pending." His week on Thursday still listed "Follow up on Mama
+ * Pima" as open. A promise to follow something up is kept when, after it was made, its maker was asked about it, in a question that names
+ * it, and the first sentence of the answer says what the other side said or decided, with nothing in it that says they could not be reached.
+ */
+export function aFollowUpAnsweredWhenAskedAboutIt(a: AnAnswerOnRecord, p: AnOpenPromise): boolean {
+  if (a.participantId !== p.participantId || !A_FOLLOW_UP.test(p.text)) return false;
+  const thing = new Set(theThingIn(p.text).filter((w) => !['follow', 'chase', 'call', 'contact', 'check', 'speak', 'talk', 'remind'].includes(w)));
+  if (!thing.size) return false;
+  const asked = new Set(wordsOf(a.asked).map(aForm));
+  if ([...thing].filter((w) => asked.has(w)).length < Math.min(2, thing.size)) return false;
+  const first = (sentences(a.said)[0] ?? '').trim();
+  if (!first || THEY_COULD_NOT_BE_REACHED.test(first)) return false;
+  if (/^(?:i\s+)?(?:haven't|have not|didn't|did not|couldn't|could not|not yet|no\b)/i.test(first)) return false;
+  return THEY_ANSWERED.test(first);
+}
+
 /** Whether one line says this promise is done. */
 export function aLineSaysThePromiseIsDone(line: ALineOnRecord, p: AnOpenPromise, ctx: { forWhom: string[]; waits: AWaitOnRecord[]; namesOf: (participantId: string) => string[]; itMeans?: string[] }): boolean {
   const byTheMaker = line.participantId === p.participantId;
@@ -277,6 +296,9 @@ export function thePromisesSaidDone(
     /* Asked whether it happened, and they said yes. */
     const yes = later.find((a) => aYesToTheQuestionAboutIt(a, p));
     if (yes) { out.push({ id: p.id, keptAt: new Date(yes.at), because: `answer:${yes.checkInId}` }); continue; }
+    /* Asked about the thing they would follow up, they said what the customer said back (messages test, fourth run). */
+    const answered = later.find((a) => aFollowUpAnsweredWhenAskedAboutIt(a, p));
+    if (answered) { out.push({ id: p.id, keptAt: new Date(answered.at), because: `answer:${answered.checkInId}` }); continue; }
     /* A follow-up with "her", and what she said when he did. */
     const who = whoAPromiseIsAbout(p, answers, namesOf);
     if (who && A_FOLLOW_UP.test(p.text)) {
