@@ -4,10 +4,11 @@ import { A_GROUND_NO_MESSAGE_IS_ABOUT, A_GROUND_IS_HELD } from '../grounds/a-gro
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 import { keptOffThePhone } from '../whatsapp/a-check-in-kept-off-the-phone';
 import { organisationsThatTurnedWhatsAppOn } from '../whatsapp/only-where-whatsapp-is-turned-on';
-import { A_TEMPLATE_BODY_LIMIT, TEMPLATES, oneLine } from '../whatsapp/a-message-outside-the-window';
+import { A_TEMPLATE_BODY_LIMIT, TEMPLATES, oneLine, NOT_TODAY, THEY_SAID_NOT_NOW, NOT_TURNED_ON_QUIETLY } from '../whatsapp/a-message-outside-the-window';
 import { ITS_OWN_WORDS_AT_MOST } from '../whatsapp/the-first-message-to-a-number';
 import { whatWaitsForYouToDecide, type TheBoards } from '../suites/what-waits-for-you-to-decide';
 import { whatWaitsInASentence } from '../whatsapp/the-leads-daily-summary';
+import { THEY_HAD_ONE_TODAY } from './one-routine-message-a-day';
 import { theirApprovedLeave, fallsInLeave, whoOnACheckInIsAway } from '../suites/who-is-away';
 import { theirRosterEntry } from '../suites/a-roster-entry-and-its-sign-in';
 import { isAWorkingDay } from '../grounds/which-days-this-team-works';
@@ -505,8 +506,14 @@ export interface TheNudgeDoors {
   frontendUrl: string;
 }
 
-/** Why a message to a phone did not go, in the cases where the lead is still owed her nudge, by email. */
-const WHEN_THE_PHONE_CANNOT_BE_USED = /Outside the 24-hour service window|first message to this number|said STOP|not approved/i;
+/**
+ * THE DAY'S OWN LIMITS: the only reasons a message to the phone did not go that mean nothing more today. Every other
+ * "not sent" (outside the 24 hours, a first message not approved, STOP, a refusal by Meta itself, WhatsApp not
+ * configured, keys that cannot be opened, a held add-on) leaves the lead still owed her nudge, by email (Drop Access,
+ * October). It used to be the other way round, a short list of reasons that sent the email, so a refusal by Meta sent
+ * nothing at all. Still one routine message a day: a WhatsApp that did not go is not one.
+ */
+const THE_DAYS_OWN_LIMITS: ReadonlySet<string> = new Set([NOT_TODAY, THEY_SAID_NOT_NOW, NOT_TURNED_ON_QUIETLY, THEY_HAD_ONE_TODAY]);
 
 /**
  * THE MORNING SWEEP. One message a lead, by the channel decision 120 names. Returns how many were tried (sent, held for the morning or refused by a rule).
@@ -549,8 +556,8 @@ export async function sendTheLeadsDailyNudges(deps: TheNudgeDoors, now: Date = n
         /* The words a person reads inside the 24 hours are the window form; outside it, the template with its one paragraph. */
         const result: any = await deps.whatsapp.sendFor(lead.organizationId, phone, window, { kind: NUDGE_KIND, params: template.params });
         if (result?.sent !== false) { await markTold(phoneFacts); tried++; continue; }
-        /* Not sent for a reason that means the phone cannot be used today: she is owed it by email instead. Held back by a rule of the day (one a day, "not now") means nothing more today. */
-        if (!WHEN_THE_PHONE_CANNOT_BE_USED.test(String(result?.error ?? ''))) { tried++; continue; }
+        /* Held back by a rule of the day (one a day, "Not now", WhatsApp not turned on) means nothing more today. Any other reason it did not go: she is owed it by email instead. */
+        if (THE_DAYS_OWN_LIMITS.has(String(result?.error ?? ''))) { tried++; continue; }
       }
       if (await isAlreadyHeld(prisma, NUDGE_SENDER, user.email)) continue;
       const went = await deps.email.sendTheLeadsDailyNudge(user.email, theNudgeSubject(outstanding), theNudgeParts(outstanding), user.firstName, 'See everything', link);
