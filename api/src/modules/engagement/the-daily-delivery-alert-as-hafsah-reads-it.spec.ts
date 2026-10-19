@@ -1,4 +1,4 @@
-import { sendTheDailyDeliveryAlert, theAlertEmail, whatWentWrongYesterday, theDeliveryAlertAddress, DELIVERY_ALERT_KEY, yesterdayInLagos } from './the-daily-delivery-alert';
+import { sendTheDailyDeliveryAlert, theAlertEmail, whatWentWrongYesterday, theDeliveryAlertAddress, DELIVERY_ALERT_KEY, yesterdayInNairobi } from './the-daily-delivery-alert';
 import { OUTSIDE_THE_WINDOW, NOT_TODAY } from '../whatsapp/a-message-outside-the-window';
 import { FIRST_CONTACT_NOT_APPROVED } from '../whatsapp/the-first-message-to-a-number';
 import { BY_EMAIL_ROUTINE } from '../whatsapp/by-email-instead';
@@ -9,14 +9,14 @@ import { EmailService } from '../email/email.service';
 import { whatIsNotPlainIn } from '../reports/a-product-sentence-is-plain';
 
 /**
- * THE DAILY DELIVERY ALERT, AS HAFSAH READS IT. Tuesday 20 October 2026, half past ten in Lagos, about Monday 19 October.
+ * THE DAILY DELIVERY ALERT, AS HAFSAH READS IT. Tuesday 20 October 2026, half past seven in Nairobi, about Monday 19 October.
  *
  * Drop Access: Peter Njoroge's opening was refused on WhatsApp and no email went; Mercy Wanjiru's opening went on WhatsApp, but her reminder
  * that the check-in is due tomorrow was refused; Joseph Kariuki's opening was refused on WhatsApp and went by email instead, and he answered.
  * The lead, Wanjiru Kamau, had her morning summary on WhatsApp. Bridge Merchant: Amos Otieno's morning summary was never tried, and Grace
  * Akinyi, the only person in his check-in, was reached on WhatsApp and did not answer.
  */
-const NOW = new Date('2026-10-20T09:30:00Z');
+const NOW = new Date('2026-10-20T04:30:00Z');
 const MON = (hhmm: string) => new Date(`2026-10-19T${hhmm}:00Z`);
 
 const person = (id: string, first: string, last: string, email: string, phone: string | null = null) => ({
@@ -102,10 +102,10 @@ async function theEmail(w = aWorld()) {
 }
 
 describe('the daily delivery alert, as Hafsah reads it on Tuesday 20 October', () => {
-  it('reads Monday 19 October, the Lagos day before', () => {
-    const { from, to } = yesterdayInLagos(NOW);
-    expect(from.toISOString()).toBe('2026-10-18T23:00:00.000Z');
-    expect(to.toISOString()).toBe('2026-10-19T23:00:00.000Z');
+  it('reads Monday 19 October, the Nairobi day before', () => {
+    const { from, to } = yesterdayInNairobi(NOW);
+    expect(from.toISOString()).toBe('2026-10-18T21:00:00.000Z');
+    expect(to.toISOString()).toBe('2026-10-19T21:00:00.000Z');
   });
 
   it('is one email to the platform address, with the clients counted in the subject', async () => {

@@ -13,7 +13,7 @@ import { ROUTINE_EMAILS, aRoutineWhatsApp } from './one-routine-message-a-day';
  *
  * In the Drop Access runs, openings, reminders and the lead's morning summary were written down as "not sent" and nobody heard. This reads
  * the send records each morning, for every client organisation, and emails one platform address a plain list of what went wrong the day
- * before (yesterday is the Lagos day, the one the morning jobs run on):
+ * before (yesterday is the Nairobi day, East Africa Time, so Hafsah reads it before the team's day starts):
  *   - a check-in that opened and whose opening reached the person on no channel: no WhatsApp message for that check-in went, and no opening
  *     email went to them either;
  *   - a reminder that was tried and did not go, with the reason WhatsApp or the email service gave, unless the same message went by email;
@@ -35,6 +35,8 @@ const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 /** Lagos is one hour ahead of UTC all year. */
 const LAGOS_OFFSET = HOUR;
+/** Nairobi (East Africa Time) is three hours ahead of UTC all year. */
+const NAIROBI_OFFSET = 3 * HOUR;
 
 export function anEmailAddress(raw: unknown): string | null {
   const s = typeof raw === 'string' ? raw.trim() : '';
@@ -51,16 +53,16 @@ export async function theDeliveryAlertAddress(prisma: any, env: Record<string, s
   return { email: null, from: null };
 }
 
-/** Yesterday, as a day in Lagos, and the seven days that end with it. */
-export function yesterdayInLagos(now: Date): { from: Date; to: Date; weekFrom: Date } {
-  const lagos = new Date(now.getTime() + LAGOS_OFFSET);
-  const todayStarts = Date.UTC(lagos.getUTCFullYear(), lagos.getUTCMonth(), lagos.getUTCDate()) - LAGOS_OFFSET;
+/** Yesterday, as a day in Nairobi, and the seven days that end with it. */
+export function yesterdayInNairobi(now: Date): { from: Date; to: Date; weekFrom: Date } {
+  const nairobi = new Date(now.getTime() + NAIROBI_OFFSET);
+  const todayStarts = Date.UTC(nairobi.getUTCFullYear(), nairobi.getUTCMonth(), nairobi.getUTCDate()) - NAIROBI_OFFSET;
   return { from: new Date(todayStarts - DAY), to: new Date(todayStarts), weekFrom: new Date(todayStarts - 7 * DAY) };
 }
 
 /** "Monday 19 October". */
 export function theDayItWas(d: Date): string {
-  return new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Africa/Lagos' }).format(d);
+  return new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Africa/Nairobi' }).format(d);
 }
 
 /** What WhatsApp gave as the reason, said as the end of a sentence that starts "WhatsApp did not send it". */
@@ -139,7 +141,7 @@ const forARealPerson = (ci: any) => {
  * WHAT WENT WRONG YESTERDAY, organisation by organisation. Only organisations with a problem are returned.
  */
 export async function whatWentWrongYesterday(prisma: any, now: Date = new Date()): Promise<WhatWentWrong> {
-  const { from, to, weekFrom } = yesterdayInLagos(now);
+  const { from, to, weekFrom } = yesterdayInNairobi(now);
   const day = theDayItWas(from);
   const orgs: { id: string; name: string }[] = await Promise.resolve(prisma.organization.findMany({ where: { isInternal: false }, select: { id: true, name: true } })).catch(() => []);
   if (!orgs.length) return { day, organisations: [] };
@@ -243,7 +245,7 @@ export async function whatWentWrongYesterday(prisma: any, now: Date = new Date()
   }
 
   /* 3. THE LEAD'S MORNING SUMMARY. The summary goes at nine in Lagos; a check-in started after that had no summary to miss. */
-  const summaryAt = new Date(from.getTime() + 9 * HOUR - LAGOS_OFFSET);
+  const summaryAt = new Date(from.getTime() + NAIROBI_OFFSET + 9 * HOUR - LAGOS_OFFSET);
   const grounds: any[] = await Promise.resolve(prisma.ground.findMany({
     where: { organizationId: { in: orgIds }, status: { notIn: A_GROUND_NO_MESSAGE_IS_ABOUT }, createdAt: { lt: summaryAt } },
     select: { id: true, label: true, organizationId: true, initiatorId: true, workingDays: true, status: true, createdAt: true,

@@ -277,7 +277,7 @@ For reference, the production start-up check (unchanged since the remote `main`)
 
 ### The daily delivery alert
 
-Every morning at 10:30 in Lagos the API emails one Groundwork address a list of the openings, reminders and lead's morning summaries that did not go out the day before, and the check-ins nobody answered, for every client organisation. Nothing is sent on a day when nothing went wrong. It is Groundwork's own operations email and never goes to a client.
+Every morning at 7:30 in Nairobi (East Africa Time) the API emails one Groundwork address a list of the openings, reminders and lead's morning summaries that did not go out the day before, and the check-ins nobody answered, for every client organisation. Nothing is sent on a day when nothing went wrong. It is Groundwork's own operations email and never goes to a client.
 
 **To turn it on, set the address.** Either save it in the back office at Admin, then System, "Daily delivery alert" (kept in the `platform_settings` row `delivery_alert_email`), or set the environment variable `DELIVERY_ALERT_EMAIL` on the hosted API. An address saved in the back office is used before the environment variable. Neither is a secret. With neither set, the alert is never sent.
 

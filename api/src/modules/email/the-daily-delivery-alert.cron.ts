@@ -6,8 +6,9 @@ import { EmailService } from './email.service';
 import { sendTheDailyDeliveryAlert } from '../engagement/the-daily-delivery-alert';
 
 /**
- * THE DAILY DELIVERY ALERT, at half past ten in the morning in Lagos: an hour and a half after the lead's morning summary has had its
- * chance, so yesterday's summaries and anything held overnight have had time to go. Its own lock, and once across every copy of the API
+ * THE DAILY DELIVERY ALERT, at half past seven in the morning in Nairobi (East Africa Time), so Hafsah can act before the team's day
+ * starts. It reads the whole of yesterday in Nairobi, so yesterday's lead's summaries (nine in Lagos) and anything held overnight have
+ * had their chance. Its own lock, and once across every copy of the API
  * (decision 74, item 7), so the platform address is written to once. What it reads and says is in engagement/the-daily-delivery-alert.ts.
  */
 @Injectable()
@@ -16,7 +17,7 @@ export class TheDailyDeliveryAlertCron {
 
   constructor(private readonly prisma: PrismaService, private readonly email: EmailService) {}
 
-  @Cron('30 10 * * *', { timeZone: 'Africa/Lagos' })
+  @Cron('30 7 * * *', { timeZone: 'Africa/Nairobi' })
   async sendTheDailyDeliveryAlert() {
     await this.prisma.withAdvisoryLock(CronLock.DELIVERY_ALERT, async () => {
       await onceAcrossCopies(this.prisma, 'daily-delivery-alert', theDay(), () => this.sendNow());

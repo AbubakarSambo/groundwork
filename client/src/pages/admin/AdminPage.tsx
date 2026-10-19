@@ -200,7 +200,7 @@ function DeliveryAlertRow() {
     <div style={{ ...C, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 700 }}>Daily delivery alert</div>
-        <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2, lineHeight: 1.5 }}>Every morning at half past ten in Lagos, this address is sent a list of the openings, reminders and morning summaries that did not go out the day before, for every client. Nothing is sent on a day when nothing went wrong. {now}</div>
+        <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2, lineHeight: 1.5 }}>Every morning at half past seven in Nairobi (East Africa Time), this address is sent a list of the openings, reminders and morning summaries that did not go out the day before, for every client. Nothing is sent on a day when nothing went wrong. {now}</div>
         {err && <div role="alert" style={{ fontSize: 12, color: 'var(--gw-red-t)', marginTop: 4 }}>{err}</div>}
       </div>
       {editing ? (
