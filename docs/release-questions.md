@@ -348,3 +348,12 @@ These do not block the pull request, which is off for every organisation, but ea
 3. **Two "Keep doing" lines are ours.** The pictures have no Keep doing line for Handling blockers or Working on the right things, so "Trying one thing yourself before you raise a blocker." and "Spending your time where it counts." were written from the spec's strength lines. Keep them, or give the words?
 4. **Your reports, one line each.** A person's own report has no one-line summary stored, so each line is the person's own first sentence from that check-in, in quotes. Is that right, or should each report get a one-line summary?
 
+### Release 2, pull request 1 of 3: the switchboard foundation and Collect what's owed (19 October)
+
+These do not block the pull request, which is off for every organisation, but each should be answered before the switch is turned on for Muchemi & Co.
+
+1. **The default rhythm for a new collections check-in.** The prototype's SIT_SCHED has no row for COLLECTIONS. It takes weekly, over twelve weeks (the release plan's weekly collections check-in, and the clock the other weekly standing read has, under the twenty-session cap). Is weekly on Mondays, ongoing, what Hafsah wants, as the B8 fee notes picture ("Weekly on Mondays", "until you end it") suggests?
+2. **The working label.** "Collect what’s owed" is used everywhere a scenario is named, as the release plan and the B8 picture say. Is it the name to keep?
+3. **The organisation's word for a bill has a route and no screen.** An admin can set it (`PATCH /users/organization/word-for-the-bill`); where should it be set on screen: on the Company page, or in References and resources?
+4. **Where the type is read from when the lead's words say neither.** The organisation's record means its word for a bill, or a type its leads confirmed on another collections check-in. Where neither says, the lead is asked to choose rather than given a guess. Is that right, or should "fee notes or invoices" be the default?
+5. **A sales organisation has no switchboard type yet.** "sales org" is served Release 1's sales board by Release 1's own code; the switchboard gives it no row until Release 4 draws the sales organisation's own board.

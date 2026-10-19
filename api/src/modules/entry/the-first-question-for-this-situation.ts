@@ -111,6 +111,11 @@ export const THE_FIRST_QUESTION: Record<GroundScenario, TheFirstQuestion> = {
     ask: 'What is the plan for, and what money and people do you actually have for it?',
     until: 'the period, who owns which part, and the money or people available',
   },
+  /* Collect what's owed (Release 2): the bills first, then who follows them up. Only reached where Release 2 is on. */
+  COLLECTIONS: {
+    ask: 'What is owed to you, and who follows it up?',
+    until: 'what is owed and by whom, who follows each one up or owes it, and how often you want to hear from them',
+  },
   PULSE_CHECK: {
     ask: 'Who is on the team, and what are they each working on?',
     until: 'who the people are, what each of them owns, and how often you want to hear from them',

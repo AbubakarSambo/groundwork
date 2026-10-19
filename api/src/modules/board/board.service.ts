@@ -225,6 +225,7 @@ import { whenTheyPay, theUnitsOf } from './a-sales-aim-is-counted-from-the-deals
 import { theDealsOnRecord, theAimsTheDealsCount, theSalesStages, whereAWeeklyCountStands, whatTheseDealsHold, type ACountFromTheDeals, type ADealOnRecord } from './a-sales-aim-is-counted-from-the-deals';
 import { theWaitsOnCustomersApart, theirOwnAnswersWhereTheWaitsWereSaid, withoutTheWaitsOnCustomers } from './a-customers-reply-is-on-its-deal';
 import { theReleaseOneSalesBoardIsOn } from './release-one-sales-board';
+import { whatTheSwitchboardServes, type TheSwitchboardServed } from './the-switchboard';
 import { withTheStageKept, theStagesToKeep } from './a-deals-stages-are-kept';
 import { WHAT_EACH_MARK_SAYS } from '../reports/the-mark-on-every-line';
 
@@ -377,6 +378,12 @@ export class BoardService {
    * a participant, an admin, the API - serves the lines already worded, and the engine's own words
    * where a line has not been worded yet. See the-board-as-each-reader-reads-it.spec.
    */
+  /** The switchboard's pick for the board, as `{ switchboard }` where Release 2 is on, or nothing at all. Never fails the board. */
+  private async theSwitchboardsPick(ground: any): Promise<{ switchboard?: TheSwitchboardServed }> {
+    const served = await whatTheSwitchboardServes(this.prisma, ground).catch(() => null);
+    return served ? { switchboard: served } : {};
+  }
+
   async get(
     groundId: string,
     requestingUserId: string,
@@ -945,6 +952,8 @@ export class BoardService {
       kindOfWork: oneOfTheKinds((ground as any).kindOfWork),
       /* Whether this organisation has Release 1's sales board switched on (release-one-sales-board), so the page draws what it serves. */
       releaseOneSalesBoard: releaseOne,
+      /* What the switchboard picks for this scenario and type (the-switchboard.ts), only where Release 2 is on; off, the key is not served at all. */
+      ...(await this.theSwitchboardsPick(ground as any)),
       /* The kinds a NEW check-in may be given at release. A check-in that holds another keeps it above. */
       kindsOffered: await theBoardKindsOffered(this.prisma),
       /* Whether a new anchor check-in can be started (release.anchorScenario). Off at release. Nothing on the board changes with it yet. */

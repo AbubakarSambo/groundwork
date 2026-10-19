@@ -77,6 +77,8 @@ export type GroundScenario =
   | 'COHORT_CHECK'
   | 'ACUTE_SHOCK'
   | 'OPEN_READ'
+  /** Collect what's owed (Release 2): offered only where the organisation's Release 2 switch is on. */
+  | 'COLLECTIONS'
 
 export type GroundMoment = 'STARTING' | 'RECOGNITION' | 'RESOLUTION'
 

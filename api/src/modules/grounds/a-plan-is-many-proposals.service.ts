@@ -14,6 +14,11 @@ import { asADirection, type TargetDirection } from '../board/an-aim-or-a-limit';
 import { FROM_YOUR_CHECK_IN, theTargetAsALine } from './the-leads-targets-wait-for-her-yes';
 import { isASalesKind } from '../board/the-kind-of-work';
 import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
+import { theRelease2CollectionsIsOn } from './release-2-collections';
+import {
+  THE_COLLECTIONS_STALL_RULE_CARD, THE_COLLECTIONS_STALL_RULE_NOTE, theCollectionsStallRuleAsALine, theCollectionsStallRuleDeclined,
+  theCollectionsStallRuleIn, theWordForTheBill,
+} from './collect-whats-owed';
 import { theStallRuleOnRecord, theStallRuleAsALine, theStallRuleDeclined, THE_SUGGESTED_DAYS, NO_STALL_RULE_YET } from '../board/the-stall-rule';
 import { A_PLAN_PROMPT, A_PLAN_SCHEMA, aPersonToAdd, flatten, proposalsFromAPlan, type PlanProposal, type PlanProposalFields, type PlanRead } from './a-plan-is-many-proposals';
 
@@ -206,7 +211,8 @@ export class APlanIsManyProposalsService {
    * answer" for her to confirm. Confirm and Not now keep her answer in how we work, the same as on the board (answerTheStallRule).
    */
   private async theStallRuleSuggested(groundId: string, organizationId: string): Promise<any | null> {
-    const g = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { kindOfWork: true } as any }).catch(() => null) as any;
+    const g = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { kindOfWork: true, scenario: true } as any }).catch(() => null) as any;
+    if (g?.scenario === 'COLLECTIONS') return this.theCollectionsStallRuleSuggested(groundId, organizationId);
     if (!isASalesKind(g?.kindOfWork) || !(await theReleaseOneSalesBoardIsOn(this.prisma, organizationId))) return null;
     const rule = await theStallRuleOnRecord(this.prisma, groundId);
     if (rule.days != null || rule.declined) return null;
@@ -218,6 +224,40 @@ export class APlanIsManyProposalsService {
       landsIn: 'How we work', from: 'Groundwork', fromThePlan: NO_STALL_RULE_YET,
       note: 'Until you set a stall rule, no deal is marked cold or dropped for going quiet.',
     };
+  }
+
+  /**
+   * COLLECT WHAT'S OWED: THE TEMPLATE'S STALL RULE, AS A SUGGESTION (release plan, Release 2; standing decision 4, 18 October). On
+   * a collections check-in where Release 2 is on, the lead has set no such rule and has not said not now, Groundwork suggests "a
+   * promised payment date passes without payment" in the organisation's word for the bill. It applies only once she confirms it,
+   * and either answer is kept in how we work.
+   */
+  private async theCollectionsStallRuleSuggested(groundId: string, organizationId: string): Promise<any | null> {
+    if (!(await theRelease2CollectionsIsOn(this.prisma, organizationId))) return null;
+    const lines = ((await Promise.resolve(this.prisma.groundContextItem?.findMany?.({ where: { groundId, kind: 'WAY_OF_WORKING' }, select: { text: true, kind: true, closedAt: true } })).catch(() => [])) ?? []) as any[];
+    const rule = theCollectionsStallRuleIn(lines);
+    if (rule.set || rule.declined) return null;
+    const bill = theWordForTheBill(await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { billWord: true } as any }).catch(() => null) as any);
+    const line = theCollectionsStallRuleAsALine(bill);
+    return {
+      id: THE_COLLECTIONS_STALL_RULE_CARD, kind: 'rule', suggested: true, status: 'PENDING',
+      heading: 'A rule Groundwork suggests, because no stall rule is set yet. It would go in how we work.',
+      says: line, line,
+      landsIn: 'How we work', from: 'Groundwork', fromThePlan: NO_STALL_RULE_YET,
+      note: THE_COLLECTIONS_STALL_RULE_NOTE,
+    };
+  }
+
+  /** The collections stall rule card's answer, kept in how we work. */
+  private async answerTheCollectionsStallRuleCard(groundId: string, userId: string, yes: boolean) {
+    const g = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true, scenario: true } as any }).catch(() => null) as any;
+    if (g?.scenario !== 'COLLECTIONS' || !(await theRelease2CollectionsIsOn(this.prisma, g?.organizationId))) throw new BadRequestException('That suggestion is not open on this check-in.');
+    const lines = ((await Promise.resolve(this.prisma.groundContextItem?.findMany?.({ where: { groundId, kind: 'WAY_OF_WORKING' }, select: { text: true, kind: true, closedAt: true } })).catch(() => [])) ?? []) as any[];
+    if (theCollectionsStallRuleIn(lines).set) throw new BadRequestException('A stall rule is already set.');
+    const bill = theWordForTheBill(await this.prisma.organization.findUnique({ where: { id: g.organizationId }, select: { billWord: true } as any }).catch(() => null) as any);
+    const text = yes ? theCollectionsStallRuleAsALine(bill) : theCollectionsStallRuleDeclined;
+    const made = await this.prisma.groundContextItem.create({ select: { id: true }, data: { groundId, kind: 'WAY_OF_WORKING' as any, text, audience: 'EVERYONE' as any, source: 'BOARD' as any, authorUserId: userId } as any });
+    return { confirmed: { id: THE_COLLECTIONS_STALL_RULE_CARD, kind: 'rule', says: text, status: yes ? 'CONFIRMED' : 'NOT_NOW' }, wrote: { table: 'GroundContextItem', id: made.id } };
   }
 
   /** The stall rule card's answer, kept in how we work as the board keeps it. */
@@ -233,6 +273,7 @@ export class APlanIsManyProposalsService {
   async notNow(groundId: string, userId: string, pid: string) {
     const ground = await this.theLeadsCheckIn(groundId, userId, ONLY_THE_LEAD_CONFIRMS, { evenIfItCannotTakeThings: true });
     if (pid === THE_STALL_RULE_CARD) return (await this.answerTheStallRuleCard(groundId, userId, false)).confirmed as any;
+    if (pid === THE_COLLECTIONS_STALL_RULE_CARD) return (await this.answerTheCollectionsStallRuleCard(groundId, userId, false)).confirmed as any;
     const row = await this.theWaitingOne(groundId, pid);
     const done = await this.prisma.planProposal.update({ where: { id: row.id }, data: { status: 'NOT_NOW', decidedAt: new Date(), decidedByUserId: userId } });
     return this.served(done as any, this.people(ground));
@@ -284,6 +325,7 @@ export class APlanIsManyProposalsService {
   async confirm(groundId: string, userId: string, pid: string, answer: { direction?: unknown; email?: unknown } = {}) {
     const ground = await this.theLeadsCheckIn(groundId, userId, ONLY_THE_LEAD_CONFIRMS);
     if (pid === THE_STALL_RULE_CARD) return this.answerTheStallRuleCard(groundId, userId, true);
+    if (pid === THE_COLLECTIONS_STALL_RULE_CARD) return this.answerTheCollectionsStallRuleCard(groundId, userId, true);
     const row = await this.theWaitingOne(groundId, pid);
     const held = this.recheck(row, this.people(ground));
     if (!held) throw new BadRequestException('That is not in the plan as written, so nothing was added.');

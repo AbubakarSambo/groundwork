@@ -132,9 +132,13 @@ import { isThisSessionReleased, isTheTeamPictureNowShared, releasedSessionsOf } 
 import { theContextReadsEachTargetOnce, eachTargetOnceOnTheContextTab } from './the-context-reads-each-target-once';
 import { thePlanAsAgreed } from './the-plan-as-agreed';
 import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
+import { theRelease2CollectionsIsOn } from './release-2-collections';
+import { aKindTheSwitchboardNeeds, TYPES_A_SCENARIO_OFFERS, CHECK_IN_TYPE_LABEL, oneOfTheTypes } from '../board/the-switchboard';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
+  /* Twelve weeks at a week apart, under the twenty-session cap, the clock the other weekly standing read has (collect-whats-owed.ts). */
+  COLLECTIONS: 90,
   /** Short on purpose: nobody has named the situation yet, so committing months to it is a guess. */
   OPEN_READ: 30,
   NEW_HIRE: 90,
@@ -282,6 +286,8 @@ export const RECOMMENDED_MOMENT: Record<GroundScenario, GroundMoment> = {
   TEAM_UPDATES: GroundMoment.STARTING,
   /** The case is built from a period that has already happened. */
   RECOGNITION: GroundMoment.RECOGNITION,
+  /* STARTING, like the other recurring reads: the first session sets out what each person follows up, and every later one reads it. */
+  COLLECTIONS: GroundMoment.STARTING,
 
   // Closing something out.
   /** What the term delivered, judged against what it was meant to. */
@@ -342,6 +348,8 @@ export const RECOMMENDED_CADENCE: Record<GroundScenario, Cadence> = {
   DISCOVERY: Cadence.ONE_TIME,
   /* Her default of the three offered - daily, weekly, every two weeks. The other two are a click. */
   TEAM_UPDATES: Cadence.WEEKLY,
+  /* Weekly: the prototype's SIT_SCHED has no row for it, and the release plan's collections check-in is weekly (collect-whats-owed.ts). */
+  COLLECTIONS: Cadence.WEEKLY,
 };
 
 // All scenarios support any number of participants - the initiator decides who
@@ -627,6 +635,17 @@ export class GroundsService {
   }
 
   /**
+   * COLLECT WHAT'S OWED IS OFFERED ONLY WHERE RELEASE 2 IS ON (release plan, Release 2; release-2-collections.ts). The picker
+   * shows it only there, and the server says the same, so a new check-in with it is refused anywhere else, in a full sentence,
+   * before anything is spent or written. Every other situation is untouched.
+   */
+  private async aNewCheckInMayBeThisSituation(organizationId: string, scenario: GroundScenario | string | null | undefined): Promise<void> {
+    if (scenario !== GroundScenario.COLLECTIONS) return;
+    if (await theRelease2CollectionsIsOn(this.prisma, organizationId)) return;
+    throw new BadRequestException('Collecting what is owed is not open to your organisation yet, so choose another situation for this check-in.');
+  }
+
+  /**
    * @param creatorRole the caller's role in the organisation. A ground created by
    *   somebody who is not an ADMIN waits for one to accept it - her requirement, and
    *   the reason it is a parameter rather than a lookup is that the controller already
@@ -681,6 +700,8 @@ export class GroundsService {
   }
 
   async create(organizationId: string, initiatorId: string, dto: CreateGroundDto, creatorRole?: string) {
+    /* Collect what's owed only where the organisation's Release 2 switch is on; refused before anything is spent (release-2-collections.ts). */
+    await this.aNewCheckInMayBeThisSituation(organizationId, dto.scenario);
     /* A daily check-in nobody gave days for runs Monday to Friday (Hafsah, 15 October). */
     dto = { ...dto, workingDays: theDaysItRunsOn(dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario], dto.workingDays) };
     /* What this organisation already calls its check-ins, so a new one is not the fourth thing in
@@ -933,6 +954,7 @@ export class GroundsService {
    * reject them.
    */
   async createForLead(organizationId: string, adminUserId: string, dto: CreateGroundForLeadDto) {
+    await this.aNewCheckInMayBeThisSituation(organizationId, dto.scenario);
     dto = { ...dto, workingDays: theDaysItRunsOn(dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario], dto.workingDays) };
     const canCreate = await this.billing.canCreateGround(organizationId);
     if (!canCreate.allowed) {
@@ -5539,7 +5561,7 @@ export class GroundsService {
       const g = await this.prisma.ground.findUnique({
         where: { id: groundId },
         select: {
-          label: true, brief: true, endState: true, resolutionState: true, kindOfWorkSetBy: true, kindOfWork: true,
+          label: true, brief: true, endState: true, resolutionState: true, kindOfWorkSetBy: true, kindOfWork: true, organizationId: true,
           /* The people's job titles, so a sales team is told by its reps and its sales manager as well as by its words (Release 1). */
           participants: { select: { roleAsDescribed: true, user: { select: { jobTitle: true } } } },
         },
@@ -5562,7 +5584,8 @@ export class GroundsService {
        */
       if (read && hasOne && isASalesKind(read) && isASalesKind(hasOne)) return;
       /* A kind not offered at release is never given to a check-in by the read; one it already holds stays. */
-      const kind = read && (await aKindMayBeGiven(this.prisma, read, hasOne)) ? read : null;
+      /* Or one the switchboard needs where its switch is on for this organisation (messages test, 19 October, finding 19). */
+      const kind = read && ((await aKindMayBeGiven(this.prisma, read, hasOne)) || (await aKindTheSwitchboardNeeds(this.prisma, read, (g as any).organizationId))) ? read : null;
       if (read && !kind && hasOne) return;
       /* The model call above can take seconds, and the lead (or a script) may choose a kind meanwhile.
          So the write itself says "only if nobody else has chosen", in one statement, never a check
@@ -5594,8 +5617,8 @@ export class GroundsService {
         throw new BadRequestException(`That is not one of the kinds of work Groundwork knows. Choose one of these: ${KINDS_OF_WORK.join(', ')}.`);
       }
       if (kind) {
-        const holds = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { kindOfWork: true } });
-        if (!(await aKindMayBeGiven(this.prisma, kind, holds?.kindOfWork))) {
+        const holds = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { kindOfWork: true, organizationId: true } });
+        if (!(await aKindMayBeGiven(this.prisma, kind, holds?.kindOfWork)) && !(await aKindTheSwitchboardNeeds(this.prisma, kind, holds?.organizationId))) {
           const offered = await theBoardKindsOffered(this.prisma);
           throw new BadRequestException(`Groundwork does not offer that kind of work yet. Choose ${offered.length ? `one of these: ${offered.join(', ')}` : 'none of them, because none is offered at the moment'}.`);
         }
@@ -5611,6 +5634,37 @@ export class GroundsService {
       where: { id: groundId },
       data,
       select: { id: true, kindOfWork: true, kindOfWorkSetBy: true, workStages: true },
+    });
+  }
+
+  /** Whether this organisation may start a check-in to collect what is owed (Release 2). A yes or no, nothing about anybody. */
+  async situationsOffered(organizationId: string): Promise<{ collections: boolean }> {
+    return { collections: await theRelease2CollectionsIsOn(this.prisma, organizationId) };
+  }
+
+  /**
+   * THE LEAD CONFIRMS THE TYPE (Release 2, the switchboard foundation; board/the-switchboard.ts). Written only here, only by the
+   * lead (or an admin once the lead has left, as every setting), only where the organisation's Release 2 switch is on, and only a
+   * type this check-in's scenario offers. Nothing else writes it, so no existing check-in's type is ever rewritten. Refusals are
+   * full sentences, and nothing is written with one.
+   */
+  async confirmTheType(groundId: string, requestingUserId: string, body: { type?: unknown }) {
+    await this.aSettingOnlyTheLeadMayChange(groundId, requestingUserId);
+    const g = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { id: true, scenario: true, organizationId: true } });
+    if (!g) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    if (!(await theRelease2CollectionsIsOn(this.prisma, g.organizationId))) {
+      throw new BadRequestException('Choosing the type of a check-in is not open to your organisation yet, so nothing was changed.');
+    }
+    const offered = TYPES_A_SCENARIO_OFFERS[g.scenario as GroundScenario];
+    if (!offered) throw new BadRequestException('This check-in has no type to choose. Its kind of work decides its board.');
+    const type = oneOfTheTypes(body?.type);
+    if (!type || !offered.includes(type)) {
+      throw new BadRequestException(`Choose one of these: ${offered.map((t) => CHECK_IN_TYPE_LABEL[t]).join(' or ')}.`);
+    }
+    return this.prisma.ground.update({
+      where: { id: groundId },
+      data: { checkInType: type, checkInTypeConfirmedAt: new Date() },
+      select: { id: true, checkInType: true, checkInTypeConfirmedAt: true },
     });
   }
 

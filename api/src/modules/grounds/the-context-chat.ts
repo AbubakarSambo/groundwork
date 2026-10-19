@@ -129,6 +129,8 @@ const WORTH_COUNTING = new Set([
   'NEW_PROJECT', 'HELP_TEAM_UNDERSTAND', 'ROLE_HANDOVER', 'NEW_COFOUNDER', 'OKR_ALIGNMENT', 'WORKPLAN_BUDGET',
   'BOARD_STRATEGY', 'PULSE_CHECK', 'COHORT_CHECK', 'NEW_HIRE', 'NEW_MANAGER', 'NEW_ADVISOR',
   'PIP', 'CONTRACT_RENEWAL', 'RECOGNITION', 'IMPLEMENTATION_TRACKING',
+  /* Collect what's owed (Release 2): amounts and dates, so it counts. */
+  'COLLECTIONS',
 ]);
 
 export function contextGaps(g: ContextGaps): ContextGap[] {

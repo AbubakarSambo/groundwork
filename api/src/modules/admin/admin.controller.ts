@@ -521,6 +521,18 @@ export class AdminController {
   }
 
   /**
+   * RELEASE 2, COLLECT WHAT'S OWED, ONE ORGANISATION AT A TIME (release plan, Release 2: test organisations first, then Muchemi
+   * & Co once Hafsah says so). Staff only, by the guard on this controller. Off returns the organisation to what it had, with
+   * nothing lost.
+   */
+  @Patch('organisations/:organizationId/release-2-collections')
+  @ApiOperation({ summary: "Switch Release 2 (collect what's owed) on or off for one organisation" })
+  setRelease2Collections(@Param('organizationId') organizationId: string, @Body() dto: { on?: unknown }) {
+    if (typeof dto?.on !== 'boolean') throw new BadRequestException('Say whether Release 2 should be on or off for this organisation.');
+    return this.adminService.setRelease2Collections(organizationId, dto.on);
+  }
+
+  /**
    * A FREE RUN ON THE HOUSE, GIVEN TO AN ADDRESS BEFORE THERE IS AN ORGANISATION. One month unless staff
    * type another length: every free run is one month (Hafsah, 5 October 2026), where it used to be three.
    *

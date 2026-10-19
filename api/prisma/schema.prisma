@@ -142,6 +142,13 @@ enum GroundScenario {
   /// report saying the numbers reconcile and nothing needs anybody. See the note on
   /// CONTRACT_REVIEW for why these are two cards rather than one.
   IMPLEMENTATION_TRACKING
+
+  /// COLLECT WHAT'S OWED (working label; release plan, Release 2). A team following up what people owe the organisation:
+  /// invoices or fee notes (staff follow up clients) or loans (those who owe check in themselves). Stages Invoiced, Due,
+  /// Reminded, Chased, Promised, Paid. Offered only where the organisation's Release 2 switch is on
+  /// (`Organization.release2CollectionsOn`), and only to a new check-in: no existing check-in's scenario is changed to it.
+  /// See board/the-switchboard.ts and grounds/collections.ts.
+  COLLECTIONS
 }
 
 //
@@ -593,6 +600,14 @@ model Organization {
   /// the B8 pictures for the lead, a team member and an admin who does not run it; off, it reads exactly as before. It writes
   /// nothing on its own: existing check-ins keep their cadence and every setting.
   release1bTabsOn        Boolean   @default(false) @map("release_1b_tabs_on")
+  /// RELEASE 2, COLLECT WHAT'S OWED, A SWITCH PER ORGANISATION (release plan, Release 2). Off for every organisation until
+  /// Groundwork staff switch it on in Admin, Orgs, or a script does for a "(test)" organisation. On: the scenario picker
+  /// offers "Collect what's owed" for a new check-in, the switchboard (board/the-switchboard.ts) reads Release 2's rows, and
+  /// "What it is" on People and setup asks the lead to confirm the type. Off: everything reads and behaves as before.
+  release2CollectionsOn  Boolean   @default(false) @map("release_2_collections_on")
+  /// THE ORGANISATION'S OWN WORD FOR A BILL (release plan, Release 2): "fee note" for a law firm, for example. Null reads
+  /// as "invoice". Written only by an admin of the organisation (PATCH /users/organization/word-for-the-bill).
+  billWord               String?   @map("bill_word")
   whatsappMonthlyUse     WhatsAppMonthlyUse[]
 
   companyStage CompanyStage? @map("company_stage")
@@ -1113,6 +1128,13 @@ model Ground {
   /// Who set it: "read" when Groundwork read it from setup, "lead" when the lead chose it. A lead's
   /// choice is never overwritten by a later read.
   kindOfWorkSetBy   String?   @map("kind_of_work_set_by")
+  /// THE TYPE THE LEAD CONFIRMED (Release 2, the switchboard foundation; board/the-switchboard.ts). One of the switchboard's
+  /// types for this check-in's scenario ("invoices or fee notes", "loans"), written only when the lead confirms it in "What
+  /// it is" on People and setup, while the organisation's Release 2 switch is on. Null on every check-in that exists: an
+  /// existing check-in's type is read from its own record (its kind of work) each time it is read, and never written.
+  checkInType            String?   @map("check_in_type")
+  /// When the lead confirmed it. Null while nobody has.
+  checkInTypeConfirmedAt DateTime? @map("check_in_type_confirmed_at")
   /// WHERE THIS CHECK-IN WAS STARTED FROM, when it was started from the anchor link (docs/anchor-scenario-plan.md, piece 15). "anchor" or
   /// null. Written once, when the lead saves what they said in the anchor conversation and the anchor switch is on. A check-in that holds it
   /// keeps behaving as an anchor check-in even if the switch is later turned off. Null on every check-in that exists.

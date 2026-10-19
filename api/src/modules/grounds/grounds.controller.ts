@@ -356,6 +356,17 @@ export class GroundsController {
     return this.grounds.listAwaitingApproval(user.organizationId, user.id);
   }
 
+  /**
+   * THE SITUATIONS THIS ORGANISATION MAY START BEYOND THE USUAL LIST (Release 2): "Collect what's owed" where its Release 2
+   * switch is on. A yes or no about the organisation, nothing about anybody. Declared before `:id`, for the reason above. The
+   * server asks again when the check-in is created.
+   */
+  @Get('situations-offered')
+  @ApiOperation({ summary: 'Whether this organisation may start a check-in to collect what is owed (Release 2)' })
+  async situationsOffered(@CurrentUser() user: CurrentUserData) {
+    return this.grounds.situationsOffered(user.organizationId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a ground (status, participants, check-ins)' })
   async get(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
@@ -953,6 +964,17 @@ export class GroundsController {
     @Body() body: { together: boolean },
   ) {
     return this.grounds.setPeopleWorkTogether(id, userId, !!body.together);
+  }
+
+  /** Release 2: the lead confirms this check-in's type in "What it is" (board/the-switchboard.ts). */
+  @Patch(':id/check-in-type')
+  @ApiOperation({ summary: "The lead confirms the type of this check-in, one of the types its scenario offers (Release 2)" })
+  async confirmTheType(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() body: { type?: unknown },
+  ) {
+    return this.grounds.confirmTheType(id, userId, body ?? {});
   }
 
   @Patch(':id/kind-of-work')

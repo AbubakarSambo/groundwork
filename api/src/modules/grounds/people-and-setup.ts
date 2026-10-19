@@ -6,6 +6,7 @@ import { totalSessionsFor } from './session-count';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { peersAreNamedOn } from '../reports/peers-are-named';
 import { theBoardKindsOffered } from '../admin/what-is-hidden-at-release';
+import { TYPES_A_SCENARIO_OFFERS, CHECK_IN_TYPE_LABEL, theTypeToOffer } from '../board/the-switchboard';
 
 /**
  * PEOPLE AND SETUP, AS EACH READER IS SERVED IT (Release 1B, pull request 1 of 3; Hafsah's people-and-setup.md, 17 October
@@ -66,7 +67,22 @@ export type PeopleAndSetup =
       organisationName: string;
       /** Whether each person's role here has been described: yes or no only, never the words, which are the lead's. */
       roleDescribed: Record<string, boolean>;
+      /** Release 2 only, and only for a scenario with types of its own: the type to confirm in "What it is". Absent otherwise. */
+      checkInType?: TheTypeInWhatItIs;
     };
+
+/**
+ * THE TYPE, IN "WHAT IT IS" (Release 2, the switchboard foundation). The types this scenario offers, in the B8 picture's words;
+ * the one on record or read for the lead to confirm; whether she has; one sentence saying where it came from; and whether this
+ * reader may confirm it (the lead only). Served only where the organisation's Release 2 switch is on.
+ */
+export interface TheTypeInWhatItIs {
+  offered: { type: string; label: string }[];
+  type: string | null;
+  confirmed: boolean;
+  says: string;
+  mayConfirm: boolean;
+}
 
 const WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const ordinal = (n: number) => (n % 10 === 1 && n !== 11 ? `${n}st` : n % 10 === 2 && n !== 12 ? `${n}nd` : n % 10 === 3 && n !== 13 ? `${n}rd` : `${n}th`);
@@ -200,8 +216,10 @@ export async function readPeopleAndSetup(
       id: true, organizationId: true, initiatorId: true, createdByUserId: true, scenario: true, status: true, approvedById: true,
       cadence: true, workingDays: true, cadenceAnchorDay: true, timelineDays: true, runsUntilEnded: true, startsAt: true, endsAt: true,
       createdAt: true, overWhatsApp: true, kindOfWork: true, peersVisibleToEachOther: true, restrictExternalVisibility: true,
+      /* The type, for "What it is" where Release 2 is on (the-switchboard.ts). The words are read here and never served. */
+      kindOfWorkSetBy: true, checkInType: true, checkInTypeConfirmedAt: true, label: true, brief: true,
       initiator: { select: { firstName: true, lastName: true } },
-      organization: { select: { name: true, timeZone: true, whatsappConnection: { select: { enabled: true } } } },
+      organization: { select: { name: true, timeZone: true, billWord: true, release2CollectionsOn: true, whatsappConnection: { select: { enabled: true } } } },
       participants: {
         select: {
           id: true, userId: true, email: true, nameGiven: true, partyType: true, managingOnly: true, roleAsDescribed: true,
@@ -293,6 +311,8 @@ export async function readPeopleAndSetup(
     ? 'Only the people above can see it. An admin reads it only if they set it up or approved it.'
     : `The people above and the admins of ${orgName} can see it. So can a lead in the same department, once the team's report is shared.`;
 
+  const checkInType = await theTypeInWhatItIs(prisma, ground, isLead);
+
   return {
     on: true,
     view: isLead ? 'lead' : 'admin',
@@ -306,5 +326,32 @@ export async function readPeopleAndSetup(
     runsIt: leadName,
     organisationName: orgName,
     roleDescribed: Object.fromEntries(rows.map((p) => [p.id, !!(p.roleAsDescribed ?? '').trim()])),
+    ...(checkInType ? { checkInType } : {}),
+  };
+}
+
+/** The sentence under the type, for the lead and for an admin who does not run it. */
+export function whereTheTypeCameFrom(readFrom: string | null, confirmed: boolean, isLead: boolean, leadFirst: string): string {
+  if (confirmed) return isLead ? 'You confirmed this. The board, the reports and what each check-in asks about follow it.' : `${leadFirst} confirmed this. The board, the reports and what each check-in asks about follow it.`;
+  const toConfirm = isLead ? 'Save changes to confirm it.' : `${leadFirst} has not confirmed it yet.`;
+  if (readFrom === 'your words') return `Groundwork read this from what ${isLead ? 'you' : leadFirst} wrote when setting it up. ${toConfirm}`;
+  if (readFrom === 'your organisation' || readFrom === 'its kind of work') return `Groundwork read this from ${isLead ? 'your' : 'the'} organisation's record. ${toConfirm}`;
+  return isLead ? 'Choose the kind of work, so the board and the reports fit it.' : `${leadFirst} has not chosen the kind of work yet.`;
+}
+
+async function theTypeInWhatItIs(prisma: any, ground: any, isLead: boolean): Promise<TheTypeInWhatItIs | null> {
+  const offered = TYPES_A_SCENARIO_OFFERS[ground.scenario as keyof typeof TYPES_A_SCENARIO_OFFERS];
+  if (!offered || ground.organization?.release2CollectionsOn !== true) return null;
+  const others: any[] = await Promise.resolve(prisma.ground?.findMany?.({
+    where: { organizationId: ground.organizationId, scenario: ground.scenario, id: { not: ground.id }, checkInTypeConfirmedAt: { not: null } },
+    select: { checkInType: true },
+  })).catch(() => []) ?? [];
+  const read = theTypeToOffer(ground, { billWord: ground.organization?.billWord ?? null, typesConfirmedHere: others.map((o) => o.checkInType).filter(Boolean) });
+  return {
+    offered: offered.map((t) => ({ type: t, label: CHECK_IN_TYPE_LABEL[t] })),
+    type: read.type,
+    confirmed: read.confirmed,
+    says: whereTheTypeCameFrom(read.readFrom, read.confirmed, isLead, ground.initiator?.firstName || 'The person who runs it'),
+    mayConfirm: isLead,
   };
 }
