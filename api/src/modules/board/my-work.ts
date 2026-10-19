@@ -11,6 +11,7 @@ import { peersAreNamedOn, theReaderBySignIn } from '../reports/peers-are-named';
 import { isASalesKind, oneOfTheKinds, RECORDS_FOR_EACH_KIND, type AServedRecord } from './the-kind-of-work';
 import { plainNameOf } from '../patterns/plain-pattern-names';
 import { THE_SEVEN_BEHAVIOURS, WHERE_THE_WORDS_COME_FROM, theBehaviour, type ABehaviourKey } from '../patterns/the-seven-behaviours';
+import { thePersonJudgementsAreOn, NOT_SHOWN_IN_THIS_ORGANISATION } from '../organisation/person-judgements';
 
 /**
  * MY WORK, AS EACH READER IS SERVED IT (Release 1B, pull request 3 of 3; Hafsah's references-and-my-work.md of 17 October 2026,
@@ -69,6 +70,11 @@ export interface ACoachingLine { text: string; from: string }
 
 export interface MyWorkServed {
   on: true;
+  /**
+   * False where the organisation's switch keeps judgements of a person off (organisation/person-judgements.ts): no behaviours, no focus,
+   * no coaching about the person, no strengths, and no on-time or specific counts are in the payload. Absent everywhere else.
+   */
+  judgements?: false;
   /** 'self': the person reads their own page. 'lead': the lead reads one person's page. */
   view: 'self' | 'lead';
   checkInName: string;
@@ -138,6 +144,8 @@ export interface AHandoffRow {
 }
 
 export interface TheRecordForOnePerson {
+  /** False where the organisation keeps judgements of a person off. Absent or true: as before. */
+  judgements?: boolean;
   reader: 'self' | 'lead';
   person: { participantId: string; name: string; firstName: string };
   leadFirst: string;
@@ -452,6 +460,59 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
     };
   });
 
+  /* JUDGEMENTS OF A PERSON OFF FOR THIS ORGANISATION: none of them is built, and the page says so plainly. */
+  if (r.judgements === false) {
+    return {
+      on: true,
+      judgements: false,
+      view: r.reader,
+      checkInName,
+      person: r.person,
+      heading: `${first}’s work`,
+      topLine: self
+        ? `What you need to do and what you’ve done. ${leadFirst} sees this page too.`
+        : `What ${first} needs to do and what ${first} has done. ${first} sees this page too.`,
+      numbers: numbers.slice(0, 3),
+      focus: null,
+      focusEmpty: NOT_SHOWN_IN_THIS_ORGANISATION,
+      toDo: {
+        othersNeed,
+        own,
+        emptySays: self ? 'Nothing to do yet. What you say you will do in a check-in shows here.' : `${first} has nothing to do yet. What ${first} says in a check-in shows here.`,
+      },
+      achieved: {
+        items: achieved,
+        note: 'In this check-in',
+        emptySays: self ? 'Nothing yet. What you finish, with its proof, shows here.' : `Nothing yet. What ${first} finishes, with its proof, shows here.`,
+      },
+      performing: { note: NOT_SHOWN_IN_THIS_ORGANISATION, behaviours: [], libraryNote: '' },
+      coaching: {
+        /* Only the lead's coaching for the whole team, which is about nobody in particular. */
+        better: r.teamCoaching.map((t) => ({ text: stop(t), from: self ? `${leadFirst}’s coaching for the team` : 'Your coaching for the team' })),
+        keep: [],
+        betterEmpty: NOT_SHOWN_IN_THIS_ORGANISATION,
+        keepEmpty: NOT_SHOWN_IN_THIS_ORGANISATION,
+      },
+      checkIns: {
+        heading: `${Your} check-ins`,
+        due: due.length,
+        done: done.length,
+        onTime: 0,
+        specific: 0,
+        emptySays: due.length ? null : (self ? 'No check-in has been due yet.' : `No check-in has been due for ${first} yet.`),
+      },
+      reports,
+      items: {
+        heading: `${Your} ${words.itemsWord}`,
+        note: `${open.length} open`,
+        itemWord: words.itemWord,
+        rows,
+        emptySays: words.keepsItems
+          ? (self ? `You have no ${words.itemsWord} on the board yet.` : `${first} has no ${words.itemsWord} on the board yet.`)
+          : 'This check-in keeps no items on its board.',
+      },
+    };
+  }
   return {
     on: true,
     view: r.reader,
@@ -630,7 +691,10 @@ export async function readMyWork(
   const mayRead = targetsFor(objectives as any[], mine?.id ?? null, 'their own', { isLead }).shown as any[];
   const target = mayRead.find((o) => o.ownerParticipantId === pid && !o.isADecisionAboutAPerson && typeof o.target === 'number' && o.target > 0) ?? null;
 
+  /* Judgements of a person off for this organisation: no pattern, note or coaching about the person is read into the page. */
+  const judgements = await thePersonJudgementsAreOn(prisma, ground.organizationId);
   const record: TheRecordForOnePerson = {
+    ...(judgements ? {} : { judgements: false }),
     reader,
     person: { participantId: pid, name, firstName: firstOf(name) },
     leadFirst,
@@ -646,9 +710,9 @@ export async function readMyWork(
     credits: (mentions as any[]).filter((m) => m.sourceParticipantId !== pid).map((m) => ({ fromName: nameOf(m.sourceParticipantId), checkInId: m.checkInId ?? null })),
     checkIns: checkIns as any[],
     ownLines,
-    patterns: patterns.map((p: any) => ({ heading: String(p.heading ?? ''), kind: String(p.kind ?? ''), oneStep: p.oneStep ?? null, yours: p.yours })),
+    patterns: judgements ? patterns.map((p: any) => ({ heading: String(p.heading ?? ''), kind: String(p.kind ?? ''), oneStep: p.oneStep ?? null, yours: p.yours })) : [],
     teamCoaching: (lines as any[]).filter((l) => l.kind === 'COACHING').map((l) => String(l.text ?? '').trim()).filter(Boolean),
-    helpWith,
+    helpWith: judgements ? helpWith : null,
     target: target ? { count: target.count ?? 0, target: target.target } : null,
     now,
     timeZone,

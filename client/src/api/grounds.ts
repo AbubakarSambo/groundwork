@@ -715,6 +715,8 @@ export type MyWork =
   | { on: false }
   | {
       on: true
+      /** False where the organisation keeps judgements of a person off: no behaviours, focus, coaching about the person, strengths, or on-time and specific counts are served. */
+      judgements?: false
       view: 'self' | 'lead'
       checkInName: string
       person: { participantId: string; name: string; firstName: string }

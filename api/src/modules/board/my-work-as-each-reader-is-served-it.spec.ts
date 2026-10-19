@@ -21,7 +21,7 @@ const HELP_MERCY = 'Find the decision maker at each school before quoting.';
 const TEAM_COACHING = 'Book the next step before you leave each visit.';
 const KEVINS_PROMISE = 'I will visit two shops in Westlands tomorrow.';
 
-function theSalesCheckIn(over: { switchOn?: boolean; thin?: boolean } = {}) {
+function theSalesCheckIn(over: { switchOn?: boolean; thin?: boolean; judgementsOff?: boolean } = {}) {
   const person = (id: string, userId: string, first: string, last: string) => ({
     id, userId, email: `${first.toLowerCase()}@dropaccess.test`, nameGiven: null, partyType: id === 'p-grace' ? 'INITIATOR' : 'PARTICIPANT',
     managingOnly: id === 'p-grace', createdAt: at('01'), user: { firstName: first, lastName: last },
@@ -74,7 +74,7 @@ function theSalesCheckIn(over: { switchOn?: boolean; thin?: boolean } = {}) {
   ];
   const reads: string[] = [];
   const prisma: any = {
-    organization: { findUnique: async () => ({ release1bTabsOn: over.switchOn !== false }) },
+    organization: { findUnique: async () => ({ release1bTabsOn: over.switchOn !== false, personJudgementsOn: !over.judgementsOff }) },
     ground: { findFirst: async () => ground },
     groundCommitment: { findMany: async ({ where }: any) => { reads.push(`commitments:${where.participantId}`); return commitments.filter((c) => c.participantId === where.participantId); } },
     groundDependency: { findMany: async ({ where }: any) => { reads.push(`handoffs:${where.OR[0].fromParticipantId}`); const pid = where.OR[0].fromParticipantId; return deps.filter((d) => d.fromParticipantId === pid || d.onParticipantId === pid); } },
@@ -264,5 +264,37 @@ describe('My work, as each reader is served it', () => {
     }
     const eng = myWorkFrom({ ...base, kindOfWork: 'engineering release' }, 'Engineering release');
     expect(eng.items.heading).toBe('Your releases');
+  });
+});
+
+/**
+ * JUDGEMENTS OF A PERSON OFF FOR THE ORGANISATION (production truth, 19 October 2026; organisation/person-judgements.ts). Grace and Mercy
+ * are served what happened (the numbers, to do, what was achieved, the items) and none of what judges Mercy: no behaviours, no focus,
+ * no coaching from her pattern, no note about her, no strengths, and no on-time or specific counts.
+ */
+describe('My work, with judgements of a person off for Drop Access', () => {
+  for (const [who, userId] of [['Mercy, her own page', 'u-mercy'], ['Grace, on Mercy’s page', 'u-grace']] as const) {
+    it(`${who}: what happened is served, and nothing that judges Mercy`, async () => {
+      const c = theSalesCheckIn({ judgementsOff: true });
+      const page = (await readMyWork(c.prisma, c.board, { groundId: 'g-sales', userId, personId: userId === 'u-grace' ? 'p-mercy' : null }, NOW)) as MyWorkServed;
+      expect(page.judgements).toBe(false);
+      expect(page.performing.behaviours).toEqual([]);
+      expect(page.performing.note).toBe('This part is turned off for your organisation.');
+      expect(page.focus).toBeNull();
+      expect(page.coaching.keep).toEqual([]);
+      expect(page.coaching.better.map((b) => b.text)).toEqual([TEAM_COACHING]);
+      expect(page.checkIns.onTime).toBe(0);
+      expect(page.checkIns.specific).toBe(0);
+      expect(page.numbers.map((n) => n.label)).toContain('promises kept');
+      const text = allText(page);
+      expect(text).not.toContain(HELP_MERCY);
+      expect(text).not.toMatch(/Strength|Needs work|same problem is raised again|One step they could take/);
+    });
+  }
+  it('with it on, as before', async () => {
+    const c = theSalesCheckIn();
+    const page = (await readMyWork(c.prisma, c.board, { groundId: 'g-sales', userId: 'u-mercy' }, NOW)) as MyWorkServed;
+    expect(page.judgements).toBeUndefined();
+    expect(page.performing.behaviours).toHaveLength(7);
   });
 });

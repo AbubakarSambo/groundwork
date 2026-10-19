@@ -240,3 +240,36 @@ describe('with the switch off, My work and the Context page are as before', () =
     expect(screen.queryByText(/Sell 120 dispensers/)).toBeNull()
   })
 })
+
+/**
+ * WITH JUDGEMENTS OF A PERSON OFF FOR THE ORGANISATION (api organisation/person-judgements.ts; the payload as
+ * api/src/modules/board/my-work-as-each-reader-is-served-it.spec.ts proves the server serves it): Mercy reads what happened, and none of
+ * what judges her.
+ */
+const SERVED_TO_MERCY_WITHOUT_JUDGEMENTS = {
+  ...SERVED_TO_MERCY,
+  judgements: false,
+  topLine: 'What you need to do and what you’ve done. Grace sees this page too.',
+  focus: null,
+  focusEmpty: 'This part is turned off for your organisation.',
+  performing: { note: 'This part is turned off for your organisation.', behaviours: [], libraryNote: '' },
+  coaching: { better: [{ text: 'Book the next step before you leave each visit.', from: 'Grace’s coaching for the team' }], keep: [], betterEmpty: 'This part is turned off for your organisation.', keepEmpty: 'This part is turned off for your organisation.' },
+  checkIns: { heading: 'Your check-ins', due: 10, done: 10, onTime: 0, specific: 0, emptySays: null },
+}
+
+describe('My work, with judgements of a person off', () => {
+  it('Mercy reads what happened, with no focus, no behaviours, no strengths and no on-time or specific counts', async () => {
+    vi.mocked(groundsApi.myWork).mockResolvedValue(SERVED_TO_MERCY_WITHOUT_JUDGEMENTS as any)
+    wrap(<MyWorkPage groundId="g-sales" />)
+    expect(await screen.findByRole('heading', { name: 'Mercy’s work' })).toBeTruthy()
+    const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
+    expect(headings).toEqual(['Mercy’s work', 'To do', 'What you achieved', 'How you’re performing', 'Coaching', 'Your deals'])
+    expect(screen.getByText('This part is turned off for your organisation.')).toBeTruthy()
+    expect(screen.getByText('Book the next step before you leave each visit.')).toBeTruthy()
+    expect(screen.queryByText('Keep doing')).toBeNull()
+    expect(screen.queryByText('On time')).toBeNull()
+    expect(screen.queryByText('Specific')).toBeNull()
+    expect(screen.queryByText(/Strength|Needs work/)).toBeNull()
+    expect(screen.getByText('10 of 10')).toBeTruthy()
+  })
+})
