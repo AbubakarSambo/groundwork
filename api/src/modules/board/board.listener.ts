@@ -11,6 +11,7 @@ import { theAnswerAsALine } from './what-needs-you-and-what-to-do';
 import { oneOfTheKinds, isASalesKind, theRecordsPrompt, THE_RECORDS_SCHEMA, onlyRecordsTheLinesSay, theSameName, type AnOfferedRecord, type APersonALineMayName , KINDS_THAT_ARE_NOT_WORK } from './the-kind-of-work';
 import { theRoomsLabelFor } from './the-room-is-stored-with-labels';
 import { fileTheBillsSaid } from './the-collections-record';
+import { fileTheFeeNotesDueOnAnEvent } from './a-fee-note-due-on-an-event';
 import { withAClaim } from './a-claim-on-a-record-is-checked-first';
 import { withTheStageKept, theStagesToKeep } from './a-deals-stages-are-kept';
 import { theSameCustomer, aDealTheLeadNamedBecomesTheReps } from './one-deal-per-customer';
@@ -70,6 +71,12 @@ export class BoardListener {
   @OnEvent(GroundworkEvents.CHECK_IN_COMPLETED)
   async onCheckInCompleted(e: CheckInCompletedEvent) {
     await this.readTheRecordsFrom(e);
+    /*
+     * ON A MATTER CHECK-IN WITH RELEASE 2 ON, A FEE NOTE WAITING FOR AN EVENT THIS CHECK-IN REPORTS FALLS DUE THAT DAY
+     * (a-fee-note-due-on-an-event). No model; never a guess: a line that only comes close is kept for the lead to confirm.
+     * Anywhere else this returns null at once and writes nothing.
+     */
+    await fileTheFeeNotesDueOnAnEvent({ prisma: this.prisma, logger: this.logger }, e).catch(() => null);
     /* What the owner said of each deal, read from their own turns with no model (what-the-owner-said-of-each-deal). */
     await this.fileWhatTheOwnerSaid(e.groundId, e.checkInId, typeof e.sessionNumber === 'number' ? e.sessionNumber : null);
     /* The lead's answer on a price range, said in her own check-in, is kept as her Yes or No on the board is (Drop Access run 1, A6). */
