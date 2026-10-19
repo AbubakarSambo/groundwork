@@ -34,7 +34,8 @@ describe('what Wairimu reads', () => {
     expect(await w.run()).toEqual({ tried: 1 });
     expect(w.sent).toEqual([{
       to: 'wairimu@baridi.test',
-      subject: 'Five of six people have checked in on "Sales team, Q4", and here is what is new',
+      /* Changed 19 October (messages test, finding 17): the subject says which check-in its count is about, as the body does. */
+      subject: 'Five of six people have checked in for the third check-in on "Sales team, Q4", and here is what is new',
       lines: [
         'Hello Wairimu. Here is where your check-ins stand today.',
         'In "Sales team, Q4", five of six people have checked in for the third check-in, and Omar has not yet.',

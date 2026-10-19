@@ -116,3 +116,43 @@ export function withoutOurInstructions(
   const text = kept.join('').replace(/[ \t]{2,}/g, ' ').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
   return { text: text || (aQuestionNotYetAsked(WHAT_ELSE, alreadyAsked) ?? WHAT_ELSE), cut };
 }
+
+/*
+ * AND NO TALK ABOUT THE CONVERSATION ITSELF, WHATEVER WORDS IT IS IN (messages test, 19 October, finding 6). Kevin read, on WhatsApp on
+ * Wednesday 14 October, "You've asked about proof for Savannah Cafe for three turns now and you're getting a commitment to a future action,
+ * not an existing one. Let's shift focus.": the loop guard's note (ASKED_IT_TWICE_ALREADY) told back in the model's own words, sharing no
+ * six-word run with it, so the copy check above let it by. A minute later he read "You named a problem without being asked: ...", the
+ * prompt's line for a person who volunteers a problem, when his last words were "She confirmed yesterday, she's taking the 6 units!".
+ *
+ * So, on every reply as it is saved: a sentence about the conversation's own turns, about shifting its focus, or about the kind of answer
+ * being given ("a commitment to a future action") is cut, since nothing said to a person is about those; and "You named a problem without
+ * being asked" is cut where their last words name no problem. Never left empty: where nothing is left, the plain question this check-in
+ * has not asked yet.
+ */
+const TALK_ABOUT_THE_CONVERSATION: RegExp[] = [
+  /\b(?:for|in|over|across) (?:the )?(?:last |past )?(?:two|three|four|five|six|several|\d+) turns\b/i,
+  /\b(?:two|three|four|five|six|\d+) turns (?:now|running|in a row)\b/i,
+  /^\W*let(?:'|\u2019)?s (?:shift|change|move) (?:the |our )?focus\b/i,
+  /\bshift(?:ing)? (?:the |our )?focus\b/i,
+  /\ba commitment to a future action\b/i,
+];
+const NAMED_A_PROBLEM_UNASKED = /\bnamed (?:a|the|your) (?:problem|blocker|gap|failure)\b[^.?!]*\bwithout (?:being asked|being probed|me asking)\b/i;
+/** Words that name a problem: something late, stuck, missing, wrong, or owned up to. */
+const A_PROBLEM_NAMED = /\b(?:problem|problems|issue|issues|stuck|block(?:ed|er|ing)?|late|behind|delay(?:ed|s)?|miss(?:ed|ing)|lost|los(?:e|ing)|fail(?:ed|ing|ure)?|wrong|mistake|forgot|struggl\w*|hard|difficult|worr\w*|concern\w*|risk\w*|can't|cannot|couldn't|didn't|haven't|hasn't|won't|not yet|no one|nobody|waiting|slow|short|down)\b/i;
+
+export function withoutTalkAboutTheConversation(reply: string, theirLastWords: string | null | undefined, alreadyAsked: string[] = []): InstructionCut {
+  if (!reply) return { text: reply, cut: [] };
+  const theyNamedOne = A_PROBLEM_NAMED.test(String(theirLastWords ?? '').replace(/[\u2019]/g, "'"));
+  const sentences = intoSentences(reply);
+  const cutHere = sentences.map((s) => {
+    const t = s.replace(/"[^"\n]*"|\u201c[^\u201d]*\u201d/g, ' ').trim();
+    if (TALK_ABOUT_THE_CONVERSATION.some((re) => re.test(t))) return true;
+    return NAMED_A_PROBLEM_UNASKED.test(t) && !theyNamedOne;
+  });
+  if (!cutHere.some(Boolean)) return { text: reply, cut: [] };
+  const cut: string[] = [];
+  const kept: string[] = [];
+  sentences.forEach((s, i) => (cutHere[i] ? cut.push(s.trim()) : kept.push(s)));
+  const text = kept.join('').replace(/[ \t]{2,}/g, ' ').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  return { text: text || (aQuestionNotYetAsked(WHAT_ELSE, alreadyAsked) ?? WHAT_ELSE), cut };
+}

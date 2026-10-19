@@ -254,7 +254,17 @@ const listed = (xs: string[]) => (xs.length < 2 ? xs.join('') : xs.length === 2 
  * them are mentioned only when somebody is (a confirmed wait, change 4). The lead is named where a name can be
  * said; otherwise "your manager".
  */
-export function whatThePersonReads(stand: Pick<WhereTheyStand, 'inARow'>, o: { leadName?: string | null; somebodyWaitsOnThem: boolean }): string {
+/**
+ * WHAT THE PERSON IS TOLD ABOUT THE LEAD AND WHAT THE LEAD IS TOLD COME FROM ONE RULE (Drop Access run 1, item 25). Joseph missed two in a row
+ * and read "Grace will see this.", but Grace is told only from three of the last four missed (TOLD_THE_LEAD, in her morning summary), so
+ * she was not. The person's line now reads the same stage the lead's does: "Grace will see this." once she is told, and before that "If you
+ * miss the next one as well, Grace will be told."
+ */
+export function theLeadIsTold(stand: Pick<WhereTheyStand, 'stage'>): boolean {
+  return (stand.stage ?? 0) >= TOLD_THE_LEAD;
+}
+
+export function whatThePersonReads(stand: Pick<WhereTheyStand, 'inARow'> & Partial<Pick<WhereTheyStand, 'stage'>>, o: { leadName?: string | null; somebodyWaitsOnThem: boolean }): string {
   const lead = o.leadName && o.leadName !== SOMEONE ? o.leadName.trim() : null;
   const theLead = lead ?? 'your manager';
   const what = ['Things you know about surface late'];
@@ -266,9 +276,14 @@ export function whatThePersonReads(stand: Pick<WhereTheyStand, 'inARow'>, o: { l
     /* Walk fault 6: two full sentences, never two parts joined with a colon. */
     'When you miss them, your team works without your view.',
     `${listed(what)}.`,
-    `${lead ?? 'Your manager'} will see this.`,
+    theLeadIsTold({ stage: stand.stage ?? whereTheyStandFromARow(stand.inARow) }) ? `${lead ?? 'Your manager'} will see this.` : `If you miss the next one as well, ${lead ?? 'your manager'} will be told.`,
     'About ten minutes now puts your view back in the picture.',
   ].join(' ');
+}
+
+/** The stage a run of misses in a row alone reaches, where only the run is known: three in a row is three of the last four. */
+function whereTheyStandFromARow(inARow: number): Stage {
+  return inARow >= 3 ? TOLD_THE_LEAD : inARow >= 2 ? TOLD_THE_PERSON : 0;
 }
 
 /**

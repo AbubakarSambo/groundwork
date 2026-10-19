@@ -113,7 +113,8 @@ describe('the organisation handler', () => {
     const at = SRC.indexOf('private async sendTheReport(');
     const body = SRC.slice(at, SRC.indexOf('private async readLanguageOnce('));
     /* sendOn: the same send, on the number the person last wrote to (survey item 8). */
-    expect(body.match(/this\.whatsapp\.sendOn\(/g)).toHaveLength(2);
+    /* Changed 18 October (Drop Access run 1, items 22 and 23): a third send, the thank-you when the report has nothing in it yet, which goes inside the 24 hours only. */
+    expect(body.match(/this\.whatsapp\.sendOn\(/g)).toHaveLength(3);
     expect(body.match(/this\.reports\.sessionReport\(/g)).toHaveLength(1);
   });
 

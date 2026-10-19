@@ -62,7 +62,8 @@ describe('an email about a check-in', () => {
   /* Decision 131: a reminder says in one short sentence what the person gets from answering. The email's words, never a submitted template's. */
   it('says what it always said with the switch off, and what the person gets from answering', () => {
     expect(THE_EMAILS.nudge(false).stillOpen).toBe('is still open. About ten minutes now puts your view into the shared picture, and you read it too.');
-    expect(THE_EMAILS.nextCheckInOpen(false).after).toBe('. Answering keeps the picture you and your team read up to date.');
+    /* Changed 18 October (Drop Access run 1, item 11): a check-in's length is said wherever an opening is, "about ten minutes" (release plan Part 0). */
+    expect(THE_EMAILS.nextCheckInOpen(false).after).toBe('. It takes about ten minutes, and answering keeps the picture you and your team read up to date.');
     expect(THE_EMAILS.nudge(false).theOtherHasAnswered).toBe('They have already shared their side. Yours is the last one we are waiting for.');
     expect(THE_EMAILS.nextCheckInOpen().before).toBe('A new check-in is ready for');
   });

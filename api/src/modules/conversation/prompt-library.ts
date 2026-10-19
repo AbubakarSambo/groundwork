@@ -11,6 +11,7 @@ import { alreadyEstablished } from './setup-already-asked-this';
 import { whatThisCheckInIsFor, whichStage, THE_SCENARIO_TABLE, type Stage } from './the-scenario-table';
 import { NOTHING_HERE_IS_PLEASED_WITH_YOU } from './nothing-here-is-pleased-with-you';
 import { GroundScenario, PartyType, GroundMoment } from '@prisma/client';
+import { SALES_CHECK_IN_GATHERS_KEY, SALES_CHECK_IN_GATHERS_PROMPT } from './what-a-sales-check-in-gathers';
 import { FIRST_CHECK_IN_ROLE_KEY, FIRST_CHECK_IN_ROLE_PROMPT, ROLE_READING_KEY, ROLE_READING_PROMPT } from './their-role-in-the-first-check-in';
 import { ALIGNMENT_FEED_ONLY_CODES, PATTERN_DETECTION_PROMPT, PATTERN_DETECTION_PROMPT_KEY } from '../patterns/pattern-library';
 import { whereInTheRun } from './where-in-the-run';
@@ -5159,6 +5160,8 @@ export const SEED_PROMPTS: { key: string; content: string }[] = [
   { key: ROLE_READING_KEY, content: ROLE_READING_PROMPT },
   /* The judgement over a check-in's people (change 4): seeded, so the version stored is the one that runs and the judgement's promptVersionId names it. Filled with fillTheJudgement, as the code text is. */
   { key: THE_JUDGEMENT_ROOM_KEY, content: theRoomJudgementTemplate() },
+  /* What a sales check-in gathers for the board (Hafsah, 16 October 2026): the version stored here is the one that runs, and the turn hands its id back. */
+  { key: SALES_CHECK_IN_GATHERS_KEY, content: SALES_CHECK_IN_GATHERS_PROMPT },
   ...buildPartySeeds(),
 ];
 

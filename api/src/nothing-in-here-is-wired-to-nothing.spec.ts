@@ -1,4 +1,3 @@
-/* KNOWN FAILURE (Release 1, pull request 4, 19 October 2026): fails on origin/staging (794512bf0) and on pull request 3 too, run the same way; its two orphans here, board/the-deals-that-have-stalled.ts and conversation/what-a-sales-check-in-gathers.ts, are wired by pull request 5 (the lead's daily summary and the sales check-in's gathering). */
 import { readdirSync, readFileSync, statSync } from 'fs';
 import { join, relative, basename } from 'path';
 

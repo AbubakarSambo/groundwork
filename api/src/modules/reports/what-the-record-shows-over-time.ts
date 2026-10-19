@@ -1,3 +1,4 @@
+import { theThingWaitedFor } from '../board/a-wait-said-in-full';
 import { aPartyOutside, theSameThing } from '../board/a-thing-is-not-somebody';
 import { someOfThemHave } from './some-of-them-has-or-have';
 /**
@@ -335,7 +336,7 @@ export function aCommitmentSaid(
   } else if (aFragmentOfTheirs) {
     /* "In session 1, you said, "send the data room". The time you gave for it was "on Wednesday"." is two clipped quotes. A piece of
        theirs that is not a sentence is said as what they said they would do, with the time inside it (request 136 item 3). */
-    const theTime = c.when && (quoteWhen || looksLikeATimeOrADate(c.when)) && !whenAlreadySaidIn(c.when, c.what) ? ` ${c.when.trim().replace(/[.!?]+$/, '')}` : '';
+    const theTime = c.when && looksLikeATimeOrADate(c.when) && !whenAlreadySaidIn(c.when, c.what) ? ` ${c.when.trim().replace(/[.!?]+$/, '')}` : '';
     whenIsInTheSentence = true;
     out.push(stated !== null
       ? `In session ${stated}, ${mid} said ${who === 'You' ? 'you' : 'they'} would ${clause}${theTime}.`
@@ -355,7 +356,9 @@ export function aCommitmentSaid(
   const flat = (t: string) => t.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
   const whenAlreadySaid = !!c.when && !!flat(c.when) && ` ${flat(c.what ?? '')} `.includes(` ${flat(c.when)} `) && (quoteWhat || !!clause);
   if (whenAlreadySaid || whenIsInTheSentence) { /* said in the words above */ }
-  else if (c.when && quoteWhen) out.push(`The time ${c.theySaidIt ? mid : leadMid} gave for it was "${c.when}".`);
+  /* Quoted or not, only words that read as a time are said as the time (messages test, 19 October, finding 11): "given their histories",
+     kept word for word as the time Wanjiru gave, is a reason and is left out. */
+  else if (c.when && quoteWhen && looksLikeATimeOrADate(c.when)) out.push(`The time ${c.theySaidIt ? mid : leadMid} gave for it was "${c.when}".`);
   else if (c.when && looksLikeATimeOrADate(c.when)) out.push(`The time ${c.theySaidIt ? mid : leadMid} gave for it was ${c.when}.`);
   if (c.restatedIn.length) {
     out.push(`${who} said it again in ${c.restatedIn.length === 1 ? `session ${c.restatedIn[0]}` : `sessions ${listed(c.restatedIn)}`}.`);
@@ -935,6 +938,20 @@ export function overTimeAsServed(
   opts: { sessionsSoFar?: number | null; meetingsOnRecord?: boolean } = {},
 ): WhatTheRecordShowsOverTime | null {
   if (!it) return null;
+  /*
+   * A wait stored before it was written without "her" (Drop Access run 1, A7; theThingWaitedFor) reads as it is written now:
+   * Grace read "Joseph Kariuki is waiting on you for her approval" from the report kept before the fix.
+   */
+  if (Array.isArray(it.dependencies)) {
+    it = {
+      ...it,
+      dependencies: it.dependencies.map((d: any) => {
+        if (!d || typeof d.what !== 'string' || !d.onParticipantId) return d;
+        const what = theThingWaitedFor(d.what, d.onParticipantId);
+        return what === d.what ? d : { ...d, what, ...(typeof d.say === 'string' ? { say: d.say.split(d.what).join(what) } : {}) };
+      }),
+    };
+  }
   const sessionsSoFar = opts.sessionsSoFar && opts.sessionsSoFar > 0 ? opts.sessionsSoFar : (it.sessions ?? 0);
   /* The sentence is rebuilt from the row, so a report stored before it was rewritten reads it too. */
   const commitments = (it.commitments ?? []).map((c) => (c && typeof c.what === 'string' && typeof c.who === 'string' && typeof c.theySaidIt === 'boolean'

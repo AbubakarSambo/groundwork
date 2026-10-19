@@ -10,6 +10,7 @@ import { peersAreNamedByDefaultOn } from '../reports/peers-are-named';
 
 export { whoSeesWhatYouSayIn } from './who-sees-what-you-say';
 import { whoSeesWhatYouSayIn } from './who-sees-what-you-say';
+import { theLeadsRuleForASale, withWhatHerRuleSays } from '../engagement/a-question-her-own-rule-answers';
 import { keptOffThePhone } from '../whatsapp/a-check-in-kept-off-the-phone';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -18,7 +19,7 @@ import { DeliveryService, DeliveryContext } from './delivery.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { theCheckInForAnEmail } from './the-check-in-for-an-email';
 import { STOP_LINE } from '../conversation/ignoring-it-should-be-enough';
-import { ROUTINE_EMAILS, THEY_HAD_ONE_TODAY, theirRoutineMessagesToday } from '../engagement/one-routine-message-a-day';
+import { ROUTINE_EMAILS, THEY_HAD_ONE_TODAY, theirRoutineMessagesToday, THE_SUMMARY_SENDERS, justAfterTheSummary, whoTheyAre, theyRunACheckIn } from '../engagement/one-routine-message-a-day';
 import { NOT_SENT_WHILE_AWAY, whatThisMailIs, whetherToSend } from './nothing-goes-out-that-was-turned-off';
 import { whoIsAwayOn } from '../suites/who-is-away';
 import { inQuietHours, nextAllowedMoment } from './nothing-lands-at-3am';
@@ -94,11 +95,13 @@ export class EmailService implements OnModuleInit {
    * shown word for word to the people in it (the privacy rule). The prototype's sentence (join-invite)
    * where people see each other; where they do not (a cohort, a review), what is true there.
    */
-  async whoSeesWhatYouSay(context?: DeliveryContext): Promise<string> {
+  async whoSeesWhatYouSay(context?: DeliveryContext, to?: string | null): Promise<string> {
     const g = context?.groundId
-      ? await Promise.resolve(theCheckInForAnEmail(this.prisma, context.groundId, { scenario: true, peersVisibleToEachOther: true, organization: { select: { name: true } } }))?.catch?.(() => null)
+      ? await Promise.resolve(theCheckInForAnEmail(this.prisma, context.groundId, { scenario: true, peersVisibleToEachOther: true, organization: { select: { name: true } }, initiator: { select: { email: true } } }))?.catch?.(() => null)
       : null;
-    return whoSeesWhatYouSayIn(g);
+    /* To the person who runs it, written for them (Hafsah, 19 October, point 5). */
+    const runsIt = !!to && !!g?.initiator?.email && String(g.initiator.email).trim().toLowerCase() === String(to).trim().toLowerCase();
+    return whoSeesWhatYouSayIn(g, runsIt);
   }
 
   buildInviteUrl(inviteToken: string): string {
@@ -271,7 +274,7 @@ export class EmailService implements OnModuleInit {
     to: string, adminFirstName: string, who: string, addedBy: string, checkInLabel: string | null,
     /* U.4 review: the subject names the person and the organisation when both are known, rather than
        an address and "your organisation". A name is only ever one the person gave, never guessed. */
-    known: { name?: string | null; organisationName?: string | null } = {},
+    known: { name?: string | null; organisationName?: string | null; cameThroughTheLink?: boolean; theReaderInvitedThem?: boolean } = {},
   ): Promise<void> {
     const name = (known.name ?? '').trim();
     const org = (known.organisationName ?? '').trim();
@@ -284,7 +287,7 @@ export class EmailService implements OnModuleInit {
       subject: `${named} is waiting to be let into ${org || 'your organisation'}.`,
       html: this.layout(
         `<p>${greeting(adminFirstName)}</p>
-         <p><strong>${escapeHtml(named)}</strong> was invited to check in${checkInLabel ? ` on <strong>${escapeHtml(checkInLabel)}</strong>` : ''} by ${escapeHtml(by)}, and they are not in your organisation yet.${named === 'Someone' && who?.includes('@') ? ` The address they were invited with is <strong>${escapeHtml(who)}</strong>.` : ''}</p>
+         <p>${theyCameHow(named, checkInLabel, by, known)}, and they are not in your organisation yet.${named === 'Someone' && who?.includes('@') ? ` The address they ${known.cameThroughTheLink ? 'gave' : 'were invited with'} is <strong>${escapeHtml(who)}</strong>.` : ''}</p>
          <p>They can sign in, and they cannot start until you approve them joining. Nobody outside your organisation is added to it, or counted on your plan, without this.</p>
          <p><a href="${this.frontendUrl.replace(/\/$/, '')}/org/members" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">See who is waiting →</a></p>`,
       ),
@@ -308,13 +311,20 @@ export class EmailService implements OnModuleInit {
   }
 
   /** And the answer, to the person who was waiting. */
-  async sendYouAreInNow(to: string, organizationName: string): Promise<void> {
+  /*
+   * BY NAME, AND WHICH CHECK-IN (messages test, 19 October, finding 15): Amos read "Hi, An admin at Drop Access (test) has approved you joining,
+   * so the check-in you were invited to is open." with no name, though he gave it, and "invited", though he came by the link.
+   */
+  async sendYouAreInNow(to: string, organizationName: string, known: { firstName?: string | null; checkInLabel?: string | null; letInBy?: string | null } = {}): Promise<void> {
+    const by = (known.letInBy ?? '').trim();
+    const letInBy = by && !by.includes('@') && by !== 'Someone' ? `${escapeHtml(by)}, an admin at <strong>${escapeHtml(organizationName)}</strong>,` : `An admin at <strong>${escapeHtml(organizationName)}</strong>`;
+    const what = known.checkInLabel?.trim() ? `your check-in for <strong>"${escapeHtml(known.checkInLabel.trim())}"</strong> is open` : 'your check-in is open';
     await this.sendEmail({
       to,
       subject: `You can start your check-in now`,
       html: this.layout(
-        `<p>${greeting(null)}</p>
-         <p>An admin at <strong>${organizationName}</strong> has approved you joining, so the check-in you were invited to is open.</p>
+        `<p>${greeting(known.firstName ?? null)}</p>
+         <p>${letInBy} has let you in, so ${what}.</p>
          <p><a href="${this.frontendUrl.replace(/\/$/, '')}/grounds" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open my check-in →</a></p>`,
       ),
     }, undefined, 'sendYouAreInNow');
@@ -445,7 +455,9 @@ export class EmailService implements OnModuleInit {
     /* ONE ROUTINE MESSAGE A PERSON A DAY, ACROSS EMAIL AND WHATSAPP TOGETHER (decision 109, item 6). Asked after the person's own wishes, and only of the
        routine senders: approvals, openings and closings, and everything somebody asked for are never counted or held back. */
     const rather = (sender ? await this.wouldTheyRatherNot(options.to, sender, context) : null)
-      ?? (sender && ROUTINE_EMAILS.has(sender) ? await this.theyHadTheirOneToday(options.to) : null);
+      ?? (sender && ROUTINE_EMAILS.has(sender) && !THE_SUMMARY_SENDERS.has(sender) ? await this.theyHadTheirOneToday(options.to) : null)
+      /* The summary by email never follows the same summary on WhatsApp. */
+      ?? (sender && THE_SUMMARY_SENDERS.has(sender) ? await this.theSummaryWentOnWhatsAppToday(options.to) : null);
     if (rather) {
       /* Logged rather than silent: an email that did not go out for a good reason is still a thing
          somebody may be waiting for, and "nothing happened" is the hardest kind of bug to chase. */
@@ -463,13 +475,45 @@ export class EmailService implements OnModuleInit {
      * held-mail.cron.ts. The way-back-in and asked-for mails go at once: somebody who just asked for
      * a sign-in link is awake.
      */
-    if (sender && whatThisMailIs(sender) === 'we decided to send it') {
+    /* THE LEAD'S SUMMARY WINS (standing decision, 18 October; Drop Access run 1, item 16): routine mail to somebody who runs a check-in
+       waits for the morning summary, and then goes only if the summary did not. See one-routine-message-a-day.ts. */
+    if (sender && ROUTINE_EMAILS.has(sender) && !THE_SUMMARY_SENDERS.has(sender)) {
+      const waited = await this.waitForTheLeadsSummary(options, context, sender);
+      if (waited) { if (context) context.outcome = 'held'; return undefined; }
+    }
+    /* Every mail but the way back in and the running of the product (release plan Part 0, Drop Access run 1 item 12): "Joseph Kariuki has
+       checked in" was an asked-for mail and went at half past two in the morning in Nairobi. Quiet hours hold it until seven. */
+    if (sender && (whatThisMailIs(sender) === 'we decided to send it' || whatThisMailIs(sender) === 'asked for')) {
       const held = await this.holdForTheMorning(options, context, sender);
       if (held) { if (context) context.outcome = 'held'; return undefined; }
     }
     const went = await this.deliverNow(options, context, sender);
     if (context) context.outcome = 'sent';
     return went;
+  }
+
+  /** Null unless the lead's summary already went to this person on WhatsApp today. */
+  private async theSummaryWentOnWhatsAppToday(to: string): Promise<string | null> {
+    const them = await whoTheyAre(this.prisma as any, { email: to }).catch(() => ({ emails: [], phones: [] as string[] }));
+    if (!them.phones.length) return null;
+    const now = new Date();
+    const rows: any[] = await Promise.resolve((this.prisma as any).whatsAppSend?.findMany?.({ where: { phone: { in: them.phones }, createdAt: { gte: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())) }, sentAt: { not: null } }, select: { kind: true } }) ?? []).catch(() => []);
+    return (rows ?? []).some((r) => /^lead-summary(?::|$)/.test(r.kind ?? '')) ? THEY_HAD_ONE_TODAY : null;
+  }
+
+  /** Routine mail to a lead before the morning summary's hour is held until just after it. True when it was held. */
+  private async waitForTheLeadsSummary(options: { to: string; subject: string; html: string }, context: DeliveryContext | undefined, sender: string): Promise<boolean> {
+    try {
+      const now = new Date();
+      const after = justAfterTheSummary(now);
+      if (now.getTime() >= after.getTime()) return false;
+      if (!(await theyRunACheckIn(this.prisma, options.to))) return false;
+      await this.prisma.scheduledEmail.create({ data: { toAddress: options.to, subject: options.subject, html: options.html, sender, context: (context ?? null) as any, notBefore: after } });
+      this.writeItDown(options, sender, 'held', `waits for the lead's morning summary; goes at ${after.toISOString()} only if the summary did not`);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /** Whether this person has already been sent the day's one routine message, by email or on WhatsApp (decision 109, item 6). Null when they have not. */
@@ -514,7 +558,7 @@ export class EmailService implements OnModuleInit {
     const options = { to: row.toAddress, subject: row.subject, html: row.html };
     if (row.sender) {
       const rather = (await this.wouldTheyRatherNot(row.toAddress, row.sender, (row.context ?? undefined) as DeliveryContext | undefined))
-        ?? (ROUTINE_EMAILS.has(row.sender) ? await this.theyHadTheirOneToday(row.toAddress) : null);
+        ?? (ROUTINE_EMAILS.has(row.sender) && !THE_SUMMARY_SENDERS.has(row.sender) ? await this.theyHadTheirOneToday(row.toAddress) : null);
       if (rather) {
         this.logger.log(`Not sending the held "${row.subject}" to ${row.toAddress}: ${rather}`);
         await this.writeItDown(options, row.sender, 'suppressed', rather);
@@ -538,7 +582,7 @@ export class EmailService implements OnModuleInit {
      * forgot were the ones nobody had read recently. See what-groundwork-is.ts for why the way-back-in
      * mails are excluded.
      */
-    options = { ...options, html: withWhatGroundworkIs(options.html, sender, shouldSayWhatGroundworkIs(sender) && !/Groundwork is where the people involved/.test(options.html) ? await this.whoSeesWhatYouSay(context) : undefined) };
+    options = { ...options, html: withWhatGroundworkIs(options.html, sender, shouldSayWhatGroundworkIs(sender) && !/Groundwork is where the people involved/.test(options.html) ? await this.whoSeesWhatYouSay(context, options.to) : undefined) };
 
     /*
      * EVERY MESSAGE CARRIES A WAY OUT, A TEXT PART, AND ITS OWN HEADERS - HERE, ONCE, FOR ALL
@@ -696,7 +740,8 @@ export class EmailService implements OnModuleInit {
     return { devUrl };
   }
 
-  async sendAddPasswordEmail(email: string, firstName: string, token: string): Promise<void> {
+  /* `usesGoogle`: only somebody who signs in with Google is told a password lets them sign in without it (messages test, 19 October, finding 17). */
+  async sendAddPasswordEmail(email: string, firstName: string, token: string, usesGoogle = false): Promise<void> {
     const url = `${this.frontendUrl}/set-password?token=${token}`;
     await this.sendEmail({
       to: email,
@@ -709,7 +754,7 @@ export class EmailService implements OnModuleInit {
        */
       html: this.layout(
         `<p>${greeting(firstName)}</p>` +
-        `<p>Groundwork is where you and the people you work with each say how a piece of work is actually going, separately, and get one shared picture back. Setting a password means you can sign in without Google.</p>` +
+        `<p>Groundwork is where you and the people you work with each say how a piece of work is actually going, separately, and get one shared picture back. ${usesGoogle ? 'Setting a password means you can sign in without Google.' : 'Setting a password means you can come back and sign in with this email address and your password.'}</p>` +
         `<p><a href="${url}">Set password</a></p>` +
         `<p style="color:#888;font-size:12px;">This link lasts ${howLongInWords('set a password from an email')} and can only be used once. If it has expired, ask for a new one from the sign-in page.</p>`,
       ),
@@ -1309,9 +1354,18 @@ export class EmailService implements OnModuleInit {
    * reports/who-shared-it-because-the-lead-left.ts, which builds the sentence. Null in the
    * ordinary case, where the lead released it themselves and nothing extra is said.
    */
-  async sendReportReady(email: string, groundLabel: string, reportUrl: string, sharedByAnAdminSentence?: string, groundId?: string, subjectLine?: string, theInsight?: string[], theChat?: { url: string; label: string }): Promise<void> {
+  async sendReportReady(email: string, groundLabel: string, reportUrl: string, sharedByAnAdminSentence?: string, groundId?: string, subjectLine?: string, theInsight?: string[], theChat?: { url: string; label: string },
+    /* Who checked in for this picture, said to this reader (email/who-checked-in-for-this-picture.ts). Null when everybody asked has answered. */
+    whoCheckedIn?: string[] | null): Promise<void> {
     /* Who can see what people said, as the invitation says it (whoSeesWhatYouSay): not "it does not quote anybody", which is not true. */
-    const whoSees = await this.whoSeesWhatYouSay(groundId ? { groundId } as DeliveryContext : undefined);
+    const whoSees = await this.whoSeesWhatYouSay(groundId ? { groundId } as DeliveryContext : undefined, email);
+    /* To the person who runs it, a question her own rule for a sale already answers is answered from the record (Hafsah, 19 October, point 5). */
+    if (groundId && theInsight?.length) {
+      const g = await Promise.resolve(theCheckInForAnEmail(this.prisma, groundId, { initiator: { select: { email: true } } }))?.catch?.(() => null);
+      const runsIt = !!g?.initiator?.email && String(g.initiator.email).trim().toLowerCase() === String(email ?? '').trim().toLowerCase();
+      const rule = runsIt ? await theLeadsRuleForASale(this.prisma, groundId).catch(() => null) : null;
+      if (rule) theInsight = theInsight.map((l) => withWhatHerRuleSays(l, rule));
+    }
     await this.sendEmail({
       to: email,
       subject: subjectLine ?? `The shared picture for "${groundLabel}" is ready`,
@@ -1327,7 +1381,10 @@ export class EmailService implements OnModuleInit {
         /* THE FINDING FIRST (engagement spec section 7) when the report has one for this reader; otherwise the notice it always was. */
         (theInsight?.length
           ? theInsight.map((l) => `<p>${escapeHtml(l)}</p>`).join('') + `<p>The shared picture for <strong>${escapeHtml(groundLabel)}</strong> is open to all of you at the same moment, with the detail behind this.</p>`
-          : `<p>Everybody on <strong>${escapeHtml(groundLabel)}</strong> has now checked in, so the shared picture is open to all of you at the same moment.</p>` +
+          /* NEVER "EVERYBODY HAS NOW CHECKED IN" WHEN SOMEBODY HAD NOT (messages test, 19 October, finding 2): who did, from the session's rows. */
+          : (whoCheckedIn?.length
+            ? whoCheckedIn.map((l) => `<p>${escapeHtml(l)}</p>`).join('') + `<p>It is open to all of you at the same moment.</p>`
+            : `<p>Everybody on <strong>${escapeHtml(groundLabel)}</strong> has now checked in, so the shared picture is open to all of you at the same moment.</p>`) +
             `<p>It shows where what you each said lines up, where it does not, and the one question worth answering together.</p>`) +
         `<p>${escapeHtml(whoSees)}</p>` +
         (sharedByAnAdminSentence ? `<p>${escapeHtml(sharedByAnAdminSentence)}</p>` : '') +
@@ -1450,6 +1507,34 @@ export class EmailService implements OnModuleInit {
     return context.outcome ?? 'sent';
   }
 
+  /**
+   * A MESSAGE WHATSAPP COULD NOT TAKE, BY EMAIL INSTEAD (whatsapp/by-email-instead.ts). The WhatsApp message's own words, as an email
+   * says them, and a link to the check-in where there is one. Three senders, so the one door knows what each is: the day's routine
+   * message (counted as the day's one), a notice about a check-in, and the answer to the person's own check-in. Says what became of it.
+   */
+  private whatWhatsAppCouldNotTake(text: string): string {
+    const paragraphs = String(text ?? '').split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+    return paragraphs.map((p) => `<p>${escapeHtml(p).replace(/\n/g, '<br>')}</p>`).join('');
+  }
+
+  async sendTheRoutineMessageByEmail(email: string, subject: string, text: string, linkLabel: string | null, linkUrl: string | null, participantId?: string): Promise<'sent' | 'held' | 'suppressed'> {
+    const context: DeliveryContext = { kind: 'OTHER', ...(participantId ? { participantId } : {}) };
+    await this.sendEmail({ to: email, subject, html: this.layout(this.whatWhatsAppCouldNotTake(text) + (linkUrl ? `<p><a href="${linkUrl}">${escapeHtml(linkLabel || 'Open Groundwork')}</a></p>` : '')) }, context, 'sendTheRoutineMessageByEmail');
+    return context.outcome ?? 'sent';
+  }
+
+  async sendTheMessageByEmail(email: string, subject: string, text: string, linkLabel: string | null, linkUrl: string | null, participantId?: string): Promise<'sent' | 'held' | 'suppressed'> {
+    const context: DeliveryContext = { kind: 'OTHER', ...(participantId ? { participantId } : {}) };
+    await this.sendEmail({ to: email, subject, html: this.layout(this.whatWhatsAppCouldNotTake(text) + (linkUrl ? `<p><a href="${linkUrl}">${escapeHtml(linkLabel || 'Open Groundwork')}</a></p>` : '')) }, context, 'sendTheMessageByEmail');
+    return context.outcome ?? 'sent';
+  }
+
+  async sendTheAnswerByEmail(email: string, subject: string, text: string, linkLabel: string | null, linkUrl: string | null, participantId?: string): Promise<'sent' | 'held' | 'suppressed'> {
+    const context: DeliveryContext = { kind: 'OTHER', ...(participantId ? { participantId } : {}) };
+    await this.sendEmail({ to: email, subject, html: this.layout(this.whatWhatsAppCouldNotTake(text) + (linkUrl ? `<p><a href="${linkUrl}">${escapeHtml(linkLabel || 'Open Groundwork')}</a></p>` : '')) }, context, 'sendTheAnswerByEmail');
+    return context.outcome ?? 'sent';
+  }
+
   /** WHO HAS GONE QUIET, as an insight to the lead (decision 109, journeys 7 and 9). Says what became of it. Words: engagement/who-has-gone-quiet.ts. */
   async sendWhoHasGoneQuiet(email: string, subject: string, lines: string[], linkLabel: string, linkUrl: string): Promise<'sent' | 'held' | 'suppressed'> {
     const context: DeliveryContext = { kind: 'OTHER' };
@@ -1533,13 +1618,20 @@ export class EmailService implements OnModuleInit {
    * the INITIATOR to release/activate billing on a ground - a different
    * concept from a participant's own individual reveal.
    */
-  async sendActivationRevealReminder(email: string, groundLabel: string, reportUrl: string): Promise<void> {
+  /*
+   * THE DAY IT BECAME READY, NEVER "A FEW DAYS" (messages test, 19 October, finding 1). Drop Access's picture was released on Monday at
+   * 18:30 and four people were told at noon on Tuesday it "has been ready for a few days now", and to "confirm you are ready to see it",
+   * though a released picture is open to the person it is for and nothing is left to confirm. `readySince` is the report's release time,
+   * said in the organisation's own zone. Applies to everyone: it only makes the mail true.
+   */
+  async sendActivationRevealReminder(email: string, groundLabel: string, reportUrl: string, readySince?: Date | null, zone?: string | null): Promise<void> {
+    const since = readySince ? whenItWas(readySince, 'weekdayAndDay', zone ?? undefined) : '';
     await this.sendEmail({
       to: email,
       subject: reportReadyReminderSubject(groundLabel),
       html: this.layout(
-        `<p>The shared picture for <strong>${escapeHtml(groundLabel)}</strong> has been ready for a few days now.</p>
-         <p>It shows where accounts agree, where they differ, and what is still unresolved. You just need to confirm you are ready to see it.</p>
+        `<p>The shared picture for <strong>${escapeHtml(groundLabel)}</strong> ${since ? `has been ready since ${escapeHtml(since)}` : 'is ready'}.</p>
+         <p>It shows where what you each said agrees, where it differs, and what is still open. It is open to you now, and nothing else is needed from you to read it.</p>
          <p><a href="${reportUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View your report →</a></p>`,
       ),
     }, undefined, 'sendActivationRevealReminder');
@@ -1549,15 +1641,21 @@ export class EmailService implements OnModuleInit {
   async sendParticipantCheckedIn(adminEmail: string, participantName: string, groundLabel: string, groundUrl: string, stillPending?: number | WhoIsLeft, progress?: { answered: string[]; ofHowMany: number; youAreStillToAnswer?: boolean }): Promise<void> {
     const left: WhoIsLeft | undefined = typeof stillPending === 'number' ? { names: [], count: stillPending } : stillPending;
     const partial = progress && progress.answered.length > 0 && progress.answered.length < progress.ofHowMany ? thePartialPicture(groundLabel, progress, left) : null;
+    /*
+     * "THREE OF FOUR PEOPLE HAVE CHECKED IN ... NOT THE WHOLE TEAM'S VIEW YET" IS NOT SENT (Drop Access run 1, item 24; standing decision of
+     * 18 October). Grace had eighteen of these in ten days, on days her own check-in was optional too. Her one routine message is the
+     * morning summary, and who has checked in is on the board; she is emailed when everybody is in.
+     */
+    if (partial) { this.logger.log(`Not sending "${partial.subject}": a partial count goes in the lead's board and summary, not by email.`); return; }
     const pendingNote = left && left.count > 0
       ? `<p>${escapeHtml(haveNotCheckedInSaid(left))} The report is made once everyone is in.</p>`
       : `<p>Everyone has now checked in. The shared report is ready to go out.</p>`;
     await this.sendEmail({
       to: adminEmail,
-      subject: partial ? partial.subject : `${participantName} has checked in on ${groundLabel}`,
+      subject: `${participantName} has checked in on ${groundLabel}`,
       html: this.layout(
         `<p><strong>${escapeHtml(participantName)}</strong> has checked in on <strong>${escapeHtml(groundLabel)}</strong>.</p>
-         ${partial ? partial.lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('') : pendingNote}
+         ${pendingNote}
          <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View check-in →</a></p>
          <p style="font-size:12px;color:#9B9590;">You can see who has checked in and read what they said in the check-in, and the shared picture once it is ready. Everybody in it is told the moment the picture is ready.</p>`,
       ),
@@ -1593,13 +1691,23 @@ export class EmailService implements OnModuleInit {
    * here — the asking page says the same sentence either way, and an email that
    * said "welcome back" would put the difference back.
    */
-  async sendJoinConfirmation(email: string, token: string): Promise<void> {
+  /*
+   * WHICH CHECK-IN, WHO RUNS IT AND WHERE (messages test, 19 October, finding 16): "Somebody shared a Groundwork check-in with you" named
+   * nothing. What the join page itself shows whoever has the link, and nothing about whether the address has an account here.
+   */
+  async sendJoinConfirmation(email: string, token: string, about: { firstName?: string | null; checkInLabel?: string | null; leadName?: string | null; organisationName?: string | null } = {}): Promise<void> {
     const url = `${this.frontendUrl}/join/confirm?token=${token}`;
+    const label = (about.checkInLabel ?? '').trim();
+    const lead = (about.leadName ?? '').trim();
+    const org = (about.organisationName ?? '').trim();
+    const where = label
+      ? `<p>${greeting(about.firstName ?? null)}</p><p>This address was entered on the join page of <strong>"${escapeHtml(label)}"</strong>, a check-in${lead ? ` ${escapeHtml(lead)} runs` : ''}${org && !isAMadeUpWorkspaceName(org) ? ` at ${escapeHtml(org)}` : ''}.</p>`
+      : `<p>Somebody shared a Groundwork check-in with you and this address was entered to join it.</p>`;
     await this.sendEmail({
       to: email,
-      subject: 'Your Groundwork check-in',
+      subject: label ? `Your check-in for "${label}"` : 'Your Groundwork check-in',
       html: this.layout(
-        `<p>Somebody shared a Groundwork check-in with you and this address was entered to join it.</p>
+        `${where}
          <p>Opening the link below starts your check-in. It lasts 24 hours and works once.</p>
          <p><a href="${url}">Start my check-in</a></p>
          <p style="color:#6B6560;font-size:13px;">If you did not ask for this, nothing has been created and you can ignore it.</p>`,
@@ -2112,6 +2220,18 @@ export function escapeHtml(s: string): string {
 }
 
 /* Who invited them, for the middle of a sentence: "Someone", the word for a person with no name, reads "somebody on your team" there. */
+/*
+ * HOW THEY CAME TO BE WAITING, TRUE FOR THIS READER (messages test, 19 October, finding 7). Amos joined Sales team, Q4 through its join link
+ * and Grace read "Amos Kiprono was invited to check in on Sales team, Q4 by Grace Achieng": nobody invited him, and the reader was Grace.
+ */
+function theyCameHow(named: string, checkInLabel: string | null, by: string, known: { cameThroughTheLink?: boolean; theReaderInvitedThem?: boolean }): string {
+  const who = `<strong>${escapeHtml(named)}</strong>`;
+  const onIt = checkInLabel ? ` on <strong>${escapeHtml(checkInLabel)}</strong>` : '';
+  if (known.cameThroughTheLink) return checkInLabel ? `${who} asked to join <strong>${escapeHtml(checkInLabel)}</strong> through its join link` : `${who} asked to join through a check-in's join link`;
+  if (known.theReaderInvitedThem) return `You invited ${who} to check in${onIt}`;
+  return `${who} was invited to check in${onIt} by ${escapeHtml(by)}`;
+}
+
 function theInviter(addedBy: string | null | undefined): string {
   const by = (addedBy ?? '').trim();
   return !by || by === 'Someone' || by.includes('@') ? 'somebody on your team' : by;

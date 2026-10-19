@@ -1,3 +1,4 @@
+import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
 import { theCheckInsHeldForASeat } from '../participants/held-for-a-seat';
 import { WAITING_TO_BE_LET_IN } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
@@ -81,7 +82,7 @@ export class YourBoardService {
               const lead = (g?.participants ?? []).find((p: any) => p.userId === g?.initiatorId);
               const leadName = theFirstNameOfAParticipant(lead) || 'Your lead';
               const area = await areaOfGoalOrFallback(this.prisma, o.text);
-              return { ...o, text: whatThePersonReadsAfterAWeek(leadName, area) };
+              return { ...o, text: whatThePersonReadsAfterAWeek(leadName, area, { releaseOne: await theReleaseOneSalesBoardIsOn(this.prisma, g?.organizationId ?? reader.organizationId).catch(() => false) }) };
             })))
         : none,
       participantIds.length

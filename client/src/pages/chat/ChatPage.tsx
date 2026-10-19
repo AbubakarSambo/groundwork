@@ -923,6 +923,15 @@ export function ChatPage() {
      * fallback below.
      */
     const localId = `local-${Date.now()}`
+    /*
+     * THE SAME WORDS, SAID AGAIN TO THE NEXT QUESTION (Drop Access, item 26). Only when this answer is word for word their last
+     * one, the question on their screen goes with it, so the server knows they read the reply and are answering it, rather than
+     * pressing twice. Any other answer goes as it always has.
+     */
+    const lastOfTheirs = [...msgs].reverse().find(m => m.role === 'PERSON')?.content ?? null
+    const answering = lastOfTheirs != null && lastOfTheirs.trim() === message.trim()
+      ? ([...msgs].reverse().find(m => m.role === 'AI' && m.content && m.content !== '…')?.content ?? null)
+      : null
     const optimisticTurn: Msg[] = [{ id: localId, role: 'PERSON', content: message }, { id: aiId, role: 'AI', content: '…' }]
     setMsgs(v => [...v, ...optimisticTurn])
     /**
@@ -940,7 +949,10 @@ export function ChatPage() {
      * else runs, so the `onDelta`/`onDone` maps below always have something to find,
      * whatever the timing of the stream.
      */
-    setDisplayedMsgs(v => [...v, ...optimisticTurn])
+    /* From `msgs`, whole, not from what the typewriter has shown so far (Drop Access, 16 October): Mercy answered while the first
+       question was still being typed out, and it stayed on her screen as "Last t" for the rest of the check-in, because the
+       typewriter is not resumed while a stream runs. */
+    setDisplayedMsgs([...msgs, ...optimisticTurn])
     /**
      * Promote the echo once the server has actually answered.
      *
@@ -954,7 +966,7 @@ export function ChatPage() {
     let started = false
     streamingRef.current = true
     try {
-      await streamMessage(checkInId, message, {
+      const handlers: Parameters<typeof streamMessage>[2] = {
         onDelta: (text) => {
           started = true
           acc += text
@@ -973,7 +985,8 @@ export function ChatPage() {
           if (r.endCard) setEndCard(r.endCard)
         },
         onError: (m) => { throw new Error(m) },
-      })
+      }
+      await (answering ? streamMessage(checkInId, message, handlers, answering) : streamMessage(checkInId, message, handlers))
       streamingRef.current = false
       setLoading(false)
     } catch (err) {
@@ -983,7 +996,7 @@ export function ChatPage() {
         setMsgs(v => v.filter(m => m.id !== aiId)) // drop the empty AI bubble; keep the person's message
         setDisplayedMsgs(v => v.filter(m => m.id !== aiId))
         try {
-          const res = await conversationApi.send(checkInId, message)
+          const res = await (answering ? conversationApi.send(checkInId, message, answering) : conversationApi.send(checkInId, message))
           acknowledge()
           setMsgs(v => v.concat({ id: `ai-${Date.now()}`, role: 'AI', content: res.endCard ? closingMessageText(res.reply, res.endCard) : res.reply, closesTheCheckIn: !!res.sessionComplete && !res.endCard, suggestedAnswers: res.suggestedAnswers, ideaOffer: res.ideaOffer, requestOffer: res.requestOffer, openTheRequest: res.openTheRequest }))
           if (res.sessionComplete) setDone(true)

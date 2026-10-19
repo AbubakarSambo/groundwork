@@ -67,13 +67,15 @@ describe('what each reader reads', () => {
   it('the person, with somebody waiting on them and the lead named', () => {
     const text = whatThePersonReads({ inARow: 2 }, { leadName: 'Amani', somebodyWaitsOnThem: true });
     console.log(`THE PERSON READS:\n${text}`);
-    expect(text).toBe("You've missed your last two check-ins. When you miss them, your team works without your view. Things you know about surface late, people waiting on you go unseen, and Amani has to chase instead of help. Amani will see this. About ten minutes now puts your view back in the picture.");
+    /* Changed 18 October (Drop Access run 1, item 25): at two missed in a row the lead is not told yet (she is from three of the last four), so the person reads that she will be if they miss the next one, never that she will see this. */
+    expect(text).toBe("You've missed your last two check-ins. When you miss them, your team works without your view. Things you know about surface late, people waiting on you go unseen, and Amani has to chase instead of help. If you miss the next one as well, Amani will be told. About ten minutes now puts your view back in the picture.");
   });
 
   it('the person, with nobody waiting on them: no word about people waiting', () => {
     const text = whatThePersonReads({ inARow: 2 }, { leadName: null, somebodyWaitsOnThem: false });
     expect(text).not.toMatch(/waiting on you/);
-    expect(text).toContain('your manager has to chase instead of help. Your manager will see this.');
+    /* Changed 18 October (Drop Access run 1, item 25): at two missed in a row the lead is not told yet (she is from three of the last four), so the person reads that she will be if they miss the next one, never that she will see this. */
+    expect(text).toContain('your manager has to chase instead of help. If you miss the next one as well, your manager will be told.');
   });
 
   it('the lead: facts and what they do, the name and never a guessed pronoun or a label', () => {

@@ -63,12 +63,14 @@ export async function streamMessage(
   checkInId: string,
   message: string,
   handlers: { onDelta: (text: string) => void; onDone: (r: SendMessageResponse) => void; onError?: (m: string) => void },
+  /* The last thing Groundwork said that is on their screen: the same words twice after it is read are a new answer (item 26). */
+  answering?: string | null,
 ): Promise<void> {
   const token = localStorage.getItem('token')
   const res = await fetch(`${API_BASE}/check-ins/${checkInId}/messages/stream`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: token ? `Bearer ${token}` : '' },
-    body: JSON.stringify({ message }),
+    body: JSON.stringify(answering ? { message, answering } : { message }),
   })
   if (!res.ok || !res.body) throw new Error(`stream failed: ${res.status}`)
   const reader = res.body.getReader()
@@ -115,8 +117,8 @@ export const conversationApi = {
   open: (checkInId: string) =>
     apiClient.post<OpenCheckInResponse>(`/check-ins/${checkInId}/open`, undefined, { skipForbiddenToast: true, skipNotFoundToast: true, skipServerErrorToast: true } as any).then(r => r.data),
 
-  send: (checkInId: string, message: string) =>
-    apiClient.post<SendMessageResponse>(`/check-ins/${checkInId}/messages`, { message }).then(r => r.data),
+  send: (checkInId: string, message: string, answering?: string | null) =>
+    apiClient.post<SendMessageResponse>(`/check-ins/${checkInId}/messages`, answering ? { message, answering } : { message }).then(r => r.data),
 
   complete: (checkInId: string) =>
     apiClient.post(`/check-ins/${checkInId}/complete`).then(r => r.data),

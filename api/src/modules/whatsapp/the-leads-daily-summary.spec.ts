@@ -178,9 +178,13 @@ describe("the sender's rules hold for the summary", () => {
   }
   const m = theLeadsDailySummary('Wairimu', 'In "Sales team, Q3", all 6 people have checked in.', 'https://myground.work/grounds');
 
+  /* Changed 18 October (standing decision, Drop Access run 1 item 16): the summary is her one routine message and it wins. Another message of the
+     morning (an opening here) no longer holds it back; only a summary already sent today does. */
   it('it is her one message of the day, and an approval told straight away does not use it up', async () => {
-    const used = aSender({ whatsappStoppedAt: null, whatsappLastInboundAt: new Date() }, [{ kind: 'checkin-open' }]);
+    const used = aSender({ whatsappStoppedAt: null, whatsappLastInboundAt: new Date() }, [{ kind: 'lead-summary' }]);
     expect(await used.sendFor('org-1', '+254711000111', m.text, { kind: m.kind, params: m.params })).toEqual({ sent: false, error: NOT_TODAY });
+    const opened = aSender({ whatsappStoppedAt: null, whatsappLastInboundAt: new Date() }, [{ kind: 'checkin-open' }]);
+    expect((await opened.sendFor('org-1', '+254711000111', m.text, { kind: m.kind, params: m.params })).sent).toBe(true);
     const after = aSender({ whatsappStoppedAt: null, whatsappLastInboundAt: new Date() }, [{ kind: 'request-waiting' }]);
     expect((await after.sendFor('org-1', '+254711000111', m.text, { kind: m.kind, params: m.params })).sent).toBe(true);
   });

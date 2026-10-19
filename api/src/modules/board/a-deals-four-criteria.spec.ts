@@ -158,7 +158,9 @@ describe('gathering: what the check-in is told about each open deal of theirs', 
   it('a rep\'s turn reads Groundwork\'s own turns in their own check-ins only, and the block carries their deals\' missing criteria', async () => {
     const asked: any[] = [];
     const prisma: any = {
-      ground: { findUnique: async () => ({ kindOfWork: 'sales team' }) },
+      /* Release 1's sales board on for the organisation: the gathering is read only there (Release 1, pull request 5). */
+      ground: { findUnique: async () => ({ kindOfWork: 'sales team', organizationId: 'org-1' }) },
+      organization: { findUnique: async () => ({ release1SalesBoardOn: true }) },
       groundParticipant: { findUnique: async () => ({ partyType: 'PARTICIPANT' }) },
       workItem: { findMany: async () => [kasarani] },
       checkIn: { findMany: async (q: any) => { asked.push(q); return [{ id: 'c1' }, { id: 'c2' }]; } },

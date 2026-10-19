@@ -95,7 +95,7 @@ export class AdminService implements OnApplicationBootstrap {
     return {
       ...row,
       says: on
-        ? `${row.name} has the new sales board switched on. Its board and reports show it once the rest of Release 1 is in, from the next time they are opened.`
+        ? `${row.name} now has the new sales board. Its board, team report and weekly report show it from the next time they are opened.`
         : `${row.name} is back on its previous board. Nothing it has said or added is lost.`,
     };
   }

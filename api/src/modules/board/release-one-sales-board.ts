@@ -26,7 +26,17 @@
  *    left out, and a difference that is only a target said again or settled by a correction left out.
  * Whatever the switch says: a participant's report carries only their own engagement row and session count (own-reads-only),
  * because each person's load is private, always.
- * The deal rows, each stage kept with its day, and the check-in's gathering of them run either way, because they only add.
+ *  - in the conversation and the messages (Release 1, pull request 5): what a sales check-in gathers (the stored prompt
+ *    kind_of_work.sales_org, the four criteria and the proof asked once), a promise said done kept on the record, another rep's
+ *    customers never put to a rep, the lead's morning summary read from the deals with what is due today and tomorrow, its
+ *    lines chosen part by part and its counts in one form, an answer she owes with no day of its own, a wait past its day on
+ *    somebody outside the check-in, her promise said once inside the decision it answers, what was tried said in full in the
+ *    messages in place of the "Not backed:" note, the weekly letter's counts in one form and one decision said once, a report
+ *    notice with nothing in it said as a thank-you inside the 24 hours only, and a goal not told worded as a sentence in the
+ *    message a person reads a week on.
+ * The deal rows and each stage kept with its day run either way, because they only add. The rules every organisation has
+ * whatever the switch says (each opening on one channel, quiet hours ending at seven in the organisation's zone, one routine
+ * message a day with the lead's summary as hers, and the corrections of what was untrue) are listed in docs/pull-request.md.
  */
 export const THE_RELEASE_ONE_SALES_BOARD = 'release1SalesBoardOn';
 

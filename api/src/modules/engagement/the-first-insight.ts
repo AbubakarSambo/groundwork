@@ -28,6 +28,21 @@ export interface TheInsight {
 
 const capital = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
 
+/*
+ * WHAT EACH PERSON SAID, NEVER "YOUR ACCOUNT STATES" (Hafsah, 19 October, point 5: "Never ... 'your account states' to the person who
+ * runs it."). Grace's shared-picture email of Tuesday 13 October opened "Your account states that no sales have been confirmed with proof
+ * of payment, while Kevin Omondi's account states that a 40-unit sale has been closed and paid for". A person said it: "You said that no
+ * sales have been confirmed with proof of payment, while Kevin Omondi said that a 40-unit sale has been closed and paid for". For every
+ * reader, since "account" is never said about what a person said.
+ */
+const AN_ACCOUNT_VERB = '(?:states|says|shows|describes|reports|indicates|notes|mentions|claims)';
+export function whatEachPersonSaid(t: string): string {
+  return String(t ?? '')
+    .replace(new RegExp(`\\b((?:[A-Z][\\p{L}'’-]+)(?:\\s+[A-Z][\\p{L}'’-]+)*)['’]s accounts? ${AN_ACCOUNT_VERB}(?:\\s+that)?\\s+`, 'gu'), '$1 said that ')
+    .replace(new RegExp(`\\bYour accounts? ${AN_ACCOUNT_VERB}(?:\\s+that)?\\s+`, 'g'), 'You said that ')
+    .replace(new RegExp(`\\byour accounts? ${AN_ACCOUNT_VERB}(?:\\s+that)?\\s+`, 'g'), 'you said that ');
+}
+
 /** What the report names as still open, cleaned: no full stop or colon at its end, and not longer than a line. */
 export function anOpenThing(t: unknown): string | null {
   const x = String(t ?? '').replace(/\s+/g, ' ').trim().replace(/[.:;,\s]+$/, '');
@@ -42,7 +57,8 @@ export function aTopicQuoted(t: unknown): string | null {
   return x ? `"${x}"` : null;
 }
 
-const LOWER_AFTER_A_COMMA = /^(?:The|A|An|Whether|What|How|Who|When|Where|Which|Why|If|This|That|Our|Their|His|Her|Its)\b/;
+/* "You", "Your", "We", "They" and the other words that are not names too (messages test, 19 October, finding 8: In "Sales team, Q4", You and the team ...). */
+const LOWER_AFTER_A_COMMA = /^(?:The|A|An|Whether|What|How|Who|When|Where|Which|Why|If|This|That|Our|Their|His|Her|Its|You|Your|We|They|There|It|Everyone|Nobody|Each|Both|Some|All|No|None|Participants?)\b/;
 const lowerFirstOfAClause = (s: string) => (LOWER_AFTER_A_COMMA.test(s) ? `${s.charAt(0).toLowerCase()}${s.slice(1)}` : s);
 
 /**
@@ -76,7 +92,7 @@ export function theFirstInsight(report: any, label: string, reader: { isTheLead:
   const stand = report?.whereThingsStand;
   if (!stand || report?.withheldUntilYouAnswer) return null;
   const settled = Array.isArray(stand.settled) ? stand.settled.length : Number(stand.agreed) || 0;
-  const open: string[] = (Array.isArray(stand.differences) ? stand.differences : Array.isArray(stand.open) ? stand.open : []).map(anOpenThing).filter((t: string | null): t is string => !!t);
+  const open: string[] = (Array.isArray(stand.differences) ? stand.differences : Array.isArray(stand.open) ? stand.open : []).map(anOpenThing).filter((t: string | null): t is string => !!t).map(whatEachPersonSaid);
   if (settled === 0 && open.length === 0) return null;
 
   const lines: string[] = [];
@@ -88,13 +104,13 @@ export function theFirstInsight(report: any, label: string, reader: { isTheLead:
       `${capital(aNumberInWords(settled))} ${settled === 1 ? 'thing is' : 'things are'} settled and ${aNumberInWords(open.length)} ${open.length === 1 ? 'is' : 'are'} still open.`,
     );
   }
-  const question = String(report?.theConversationWorthHaving ?? '').replace(/\s+/g, ' ').trim();
+  const question = whatEachPersonSaid(String(report?.theConversationWorthHaving ?? '').replace(/\s+/g, ' ').trim());
   /* What the report writes about one finding can say it in all three places; a line that repeats one already in the mail is left out (a-sentence-said-twice.ts). */
   if (question && !lines.some((l) => saysTheSame(l, question))) lines.push(`${theConversationWorthHavingSaying(reader.simplerWords)} ${question}`);
 
   if (reader.isTheLead && open.length) {
     const first = (Array.isArray(stand.openWithReasons) ? stand.openWithReasons : [])[0];
-    const settledBy = String(first?.settledBy ?? '').replace(/\s+/g, ' ').trim();
+    const settledBy = whatEachPersonSaid(String(first?.settledBy ?? '').replace(/\s+/g, ' ').trim());
     if (settledBy && lines.some((l) => saysTheSame(l, settledBy))) {
       /* It says what the mail already says, so it is not said again. */
     } else {

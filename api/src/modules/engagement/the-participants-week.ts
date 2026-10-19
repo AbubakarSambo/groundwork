@@ -1,11 +1,14 @@
 import { GroundStatus } from '@prisma/client';
-import { theConfirmedWaits, theNoteBesideTheClaim } from '../grounds/a-wait-is-the-speakers-account';
+import { theConfirmedWaits, whatTheyTriedInFull, theNoteBesideTheClaim } from '../grounds/a-wait-is-the-speakers-account';
+import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
 import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
 import { nameToCall, aNameToList } from './a-name-to-call-them';
 import { aNumberInWords } from './a-number-in-words';
 import { theEngagementMoment } from './the-engagement-release-moment';
 import { thereIsASessionToCome } from './heres-what-is-new';
-import { theOwnWeekOf, theOwnKept } from '../grounds/your-board';
+import { theOwnWeekOf, theOwnKept, theOwnKeptWords } from '../grounds/your-board';
+import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
+import { theOrganisationsZone } from '../../common/the-organisations-own-day';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 
 /**
@@ -43,11 +46,66 @@ export function saysTheSameThing(what: string, from: string): boolean {
   return shared / b.size >= 0.6;
 }
 
+/*
+ * A WAIT SAID TO THE PERSON WAITING IS IN THEIR OWN PERSON, AND SAID ONCE (messages test after the fixes, 19 October, finding 11; Hafsah,
+ * 19 October, points 4 and 6). David Mwangi read, on Thursday 15 October, three waits that are one:
+ *   You are waiting for "a clear role defined for the Jamii Clinics employment claim" from my supervisor.
+ *   You are waiting for "the name of their supervisor".
+ *   You are waiting for "a clear role for this claim".
+ * "my supervisor" is his own word, read back to him as if it were ours, and "their supervisor" is his, said about him. He said "I don't
+ * know who my supervisor is yet." Now he reads one line:
+ *   You are waiting for "a clear role defined for the Jamii Clinics employment claim" from your supervisor, and for the name of your
+ *   supervisor.
+ * "my" in who they wait on is "your"; "their" in what they wait for is "your" only where their own words say "my" of the same thing. A
+ * wait whose words are all in a fuller one, adding no name, is that wait; and the name of the very person a wait is on goes with it.
+ */
+export function inTheirOwnPerson(t: string, theirOwnWords: readonly string[], isWhoTheyWaitOn = false): string {
+  const text = String(t ?? '');
+  if (isWhoTheyWaitOn && /^\s*(?:my|mine)\s+/i.test(text)) return text.replace(/^\s*(?:my|mine)\s+/i, 'your ');
+  return text.replace(/\btheir\s+([a-z][a-z-]*)/gi, (m, noun: string) => (theirOwnWords.some((l) => new RegExp(`\\bmy\\s+${noun}\\b`, 'i').test(l)) ? `your ${noun}` : m));
+}
+const A_NAME = /\b[A-Z][a-z]+/g;
+const namesIn = (t: string) => (String(t ?? '').replace(/^\s*\S+/, '').match(A_NAME) ?? []).map((x) => x.toLowerCase());
+export function theSameWaitOnce(waits: { what: string; from: string | null }[]): { what: string; from: string | null; andFor?: string }[] {
+  const kept: { what: string; from: string | null; andFor?: string }[] = [];
+  const fuller = (a: string, b: string) => wordsOf(a).size > wordsOf(b).size;
+  for (const d of waits) {
+    const same = kept.findIndex((k) => {
+      const [long, short] = fuller(k.what, d.what) ? [k.what, d.what] : [d.what, k.what];
+      const longWords = wordsOf(long);
+      const adds = namesIn(short).filter((n) => !longWords.has(n));
+      return !adds.length && saysTheSameThing(long, short);
+    });
+    if (same >= 0) {
+      const k = kept[same];
+      if (fuller(d.what, k.what)) kept[same] = { ...k, what: d.what, from: k.from ?? d.from };
+      else if (!k.from && d.from) kept[same] = { ...k, from: d.from };
+      continue;
+    }
+    kept.push({ ...d });
+  }
+  /* "the name of your supervisor" goes with the wait on "your supervisor". */
+  const out: { what: string; from: string | null; andFor?: string }[] = [];
+  for (const d of kept) {
+    const m = /^\s*(?:the\s+)?name\s+of\s+(.+?)\s*$/i.exec(trimmed(d.what));
+    const on = m ? kept.find((k) => k !== d && k.from && trimmed(k.from).toLowerCase() === m[1].toLowerCase()) : undefined;
+    if (on && !on.andFor) { on.andFor = trimmed(d.what); continue; }
+    out.push(d);
+  }
+  return out;
+}
+
 export interface TheirWeek {
   /** What they kept and settled in the last four weeks, in check-ins still going. */
   kept: { kept: number; of: number } | null;
   /** What they said they would do, still open, in their own words. */
   open: string[];
+  /** The same, with the check-in and the day each was said, where known: each is then said on its own (messages test, 19 October, finding 14). */
+  openSaid?: { text: string; checkIn: string; day: string | null }[];
+  /** What they kept, in their own words, where the count can say which (finding 14: "You kept the one thing" said not which). */
+  keptWhat?: string[];
+  /** Their own words in these check-ins, for "my" and "their" said back to them as "your". */
+  theirOwnWords?: string[];
   /** What they are waiting on, in their own words, and from whom where they and the check-in let it be said. */
   waitingOn: { what: string; from: string | null }[];
   /** What waits on them, as the board serves it: who is null where the check-in does not let them see. */
@@ -80,13 +138,32 @@ export function theirWeekInWords(firstName: string | null | undefined, w: TheirW
   const subject = facts.map((f, i) => (i ? `${f.charAt(0).toLowerCase()}${f.slice(1)}` : cap(f))).join('; ');
 
   const lines = [`Hello ${firstName?.trim() || 'there'}. Here is your week in Groundwork. Only you can read this.`];
-  if (kept) lines.push(kept.of === 1 ? 'You kept the one thing you said you would do in the last four weeks.' : kept.kept === kept.of ? `You kept all ${aNumberInWords(kept.of)} things you said you would do in the last four weeks.` : `You kept ${aNumberInWords(kept.kept)} of the ${aNumberInWords(kept.of)} things you said you would do in the last four weeks.`);
+  if (kept) {
+    /* Which, where the count can say: its own words, at most three (messages test, 19 October, finding 14). */
+    const which = (w.keptWhat ?? []).length === kept.kept && kept.kept <= 3 ? `, ${listed(quoted(w.keptWhat!))}` : '';
+    lines.push(kept.of === 1 ? `You kept the one thing you said you would do in the last four weeks${which}.` : kept.kept === kept.of ? `You kept all ${aNumberInWords(kept.of)} things you said you would do in the last four weeks${which}.` : `You kept ${aNumberInWords(kept.kept)} of the ${aNumberInWords(kept.of)} things you said you would do in the last four weeks${which}.`);
+  }
   if (reports.length) lines.push(reports.length === 1 ? `Your report for "${trimmed(reports[0])}" is ready to read.` : `Your reports for ${listed(quoted(reports.slice(0, 3)))} are ready to read.`);
-  if (w.open.length) {
+  if (w.openSaid?.length) {
+    /* EACH ON ITS OWN, WITH WHERE AND WHEN IT WAS SAID (messages test, 19 October, finding 14): "Follow up with her" in a list of three said
+       nothing about which customer or when. The latest first; the rest are counted, and are on their page. */
+    const n = w.openSaid.length;
+    lines.push(`${cap(aNumberInWords(n))} ${thing(n)} you said you would do ${n === 1 ? 'is' : 'are'} still open.`);
+    for (const o of [...w.openSaid].reverse().slice(0, 3)) lines.push(`${o.day ? `On ${o.day}, in` : 'In'} "${o.checkIn}", you said "${trimmed(o.text)}".`);
+    if (n > 3) lines.push(`The other ${aNumberInWords(n - 3)} ${n - 3 === 1 ? 'is' : 'are'} on your page.`);
+  } else if (w.open.length) {
     const shown = w.open.slice(0, 3);
     lines.push(`${cap(aNumberInWords(w.open.length))} ${thing(w.open.length)} you said you would do ${w.open.length === 1 ? 'is' : 'are'} still open, ${listed(quoted(shown))}${w.open.length > 3 ? `, and ${aNumberInWords(w.open.length - 3)} more` : ''}.`);
   }
-  for (const d of w.waitingOn.slice(0, 3)) lines.push(`You are waiting for "${trimmed(d.what)}"${d.from && !saysTheSameThing(d.what, d.from) ? ` from ${d.from}` : ''}.`);
+  /* One line for one thing waited for (finding 14: David read the same wait twice, once with "from the lawyers" and once without). */
+  const waitedFor = new Map<string, { what: string; from: string | null }>();
+  for (const d0 of w.waitingOn) {
+    const d = { what: inTheirOwnPerson(d0.what, w.theirOwnWords ?? []), from: d0.from ? inTheirOwnPerson(d0.from, w.theirOwnWords ?? [], true) : d0.from };
+    const key = trimmed(d.what).toLowerCase();
+    const had = waitedFor.get(key);
+    if (!had || (!had.from && d.from)) waitedFor.set(key, d);
+  }
+  for (const d of theSameWaitOnce([...waitedFor.values()]).slice(0, 3)) lines.push(`You are waiting for "${trimmed(d.what)}"${d.from && !saysTheSameThing(d.what, d.from) ? ` from ${d.from}` : ''}${d.andFor ? `, and for ${trimmed(d.andFor)}` : ''}.`);
   for (const r of w.waitingOnYou.slice(0, 3)) lines.push(`${cap(r.who ?? 'somebody')} ${r.who === 'you' ? 'are' : 'is'} waiting for "${trimmed(r.what)}" from you in "${r.checkIn}".`);
   for (const r of (w.saidToWaitOnYou ?? []).slice(0, 3)) {
     const who = cap(r.who && r.who !== 'you' ? r.who : 'somebody');
@@ -151,10 +228,14 @@ export async function sendTheParticipantsWeeks(
         orderBy: { createdAt: 'asc' },
       });
       /* What they kept, only from check-ins still going: their own settled commitments there, in the last four weeks. */
+      /* Their own words, for "my supervisor" said back to them as "your supervisor". */
+      const ownLines: any[] = await Promise.resolve(prisma.recordEntry?.findMany?.({ where: { participantId: { in: mine.participantIds }, disputedAt: null }, select: { text: true } }) ?? []).catch(() => []);
       const commitments: any[] = await Promise.resolve(prisma.groundCommitment.findMany({
         where: { groundId: { in: mine.groundIds }, participantId: { in: mine.participantIds }, status: { in: ['DONE', 'NOT_DONE'] } },
-        select: { status: true, createdAt: true, settledAt: true },
+        select: { status: true, createdAt: true, settledAt: true, text: true },
       })).catch(() => []);
+      /* The day each open thing was said, in the organisation's own zone. */
+      const zone = await theOrganisationsZone(prisma, user.organizationId).catch(() => null);
       const own = theOwnWeekOf(board);
       /* Which of the waits on them only the speaker claims: no promise of theirs in that check-in names it (decision 137). */
       const onThem: any[] = await Promise.resolve(prisma.groundDependency.findMany({
@@ -165,16 +246,25 @@ export async function sendTheParticipantsWeeks(
       const onlyClaimed = new Map((Array.isArray(onThem) ? onThem : []).filter((d) => !confirmed.has(d.id)).map((d) => [`${d.ground?.label ?? ''}|${(d.what ?? '').trim().toLowerCase()}`, d] as [string, any]));
       const isOnlyClaimed = (i: { what: string; checkIn: string }) => onlyClaimed.has(`${i.checkIn}|${(i.what ?? '').trim().toLowerCase()}`);
       const askedOfThem = own.askedOfYou.filter((i) => inOpen(i.checkIn));
+      const releaseOne = await theReleaseOneSalesBoardIsOn(prisma, user.organizationId).catch(() => false);
       const week: TheirWeek = {
         kept: theOwnKept(Array.isArray(commitments) ? commitments : [], now),
         open: own.open.filter((s) => inOpen(s.checkIn)).map((s) => s.text),
+        openSaid: own.open.filter((s) => inOpen(s.checkIn)).map((s) => ({ text: s.text, checkIn: s.checkIn, day: s.saidAt ? whenItWas(s.saidAt, 'weekdayAndDay', zone ?? undefined) : null })),
+        keptWhat: theOwnKeptWords(Array.isArray(commitments) ? commitments : [], now),
         waitingOn: waits.filter((d) => inOpen(d.ground?.label)).filter((d) => !!d.what?.trim()).map((d) => ({
           what: d.what,
           from: d.onLabel?.trim() || (d.ground?.peersVisibleToEachOther !== false ? (d.onParticipant && aNameToList(nameToCall(d.onParticipant)) ? nameToCall(d.onParticipant) : null) : null),
         })),
         waitingOnYou: askedOfThem.filter((i) => !isOnlyClaimed(i)),
-        saidToWaitOnYou: askedOfThem.filter(isOnlyClaimed).map((i) => ({ ...i, note: theNoteBesideTheClaim(onlyClaimed.get(`${i.checkIn}|${(i.what ?? '').trim().toLowerCase()}`), { by: i.who, on: 'you' }) })),
+        /* What was tried, said in full with its day or not at all (Drop Access run 1, item 18), where Release 1's switch is on for their
+           organisation; off, the note beside the claim as before. */
+        saidToWaitOnYou: askedOfThem.filter(isOnlyClaimed).map((i) => {
+          const claim = onlyClaimed.get(`${i.checkIn}|${(i.what ?? '').trim().toLowerCase()}`);
+          return { ...i, note: releaseOne ? whatTheyTriedInFull(claim ?? {}, i.who) : theNoteBesideTheClaim(claim, { by: i.who, on: 'you' }) };
+        }),
         reportsReady: [...mine.reportsReady],
+        theirOwnWords: (Array.isArray(ownLines) ? ownLines : []).map((l) => String(l?.text ?? '')).filter(Boolean),
       };
       const words = theirWeekInWords(user.firstName, week);
       if (!words) continue;

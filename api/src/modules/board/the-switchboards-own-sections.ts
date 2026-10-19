@@ -328,7 +328,8 @@ export function theWorkPlan(
           }
           : null,
       }, so);
-      const when = c.whenSaid && (c.whenSaidWordForWord === true || looksLikeATimeOrADate(c.whenSaid)) ? c.whenSaid.trim() : null;
+      /* Only words that read as a time, quoted or not (messages test, 19 October, finding 11). */
+      const when = c.whenSaid && looksLikeATimeOrADate(c.whenSaid) ? c.whenSaid.trim() : null;
       return { id: c.id, participantId: c.participantId, who, says, when, state: stateOf(c.status), statedInSession: c.statedInSession ?? null };
     })
     /* What is still open first, then what ended, each in the order it was said. */

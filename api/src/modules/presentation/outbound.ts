@@ -239,9 +239,29 @@ export function aFragmentNotASentence(sentence: string): boolean {
   if (!t) return true;
   /* Opens on a verb or a conjunction with no subject before it. */
   if (/^(?:is|are|was|were|has|have|had|does|do|did|which|whom)\b/i.test(t)) return true;
+  /* Or is a subject and nothing else: "It clearly." (Drop Access run 1, item 29). */
+  if (isOnlyASubject(t)) return true;
   /* Or trails off on the word the removed half was going to complete. */
   if (/(?:,\s*(?:and|but|or|which|that|it|so)|\band it|\bwhich)\s*[.!?]?$/i.test(t)) return true;
   return false;
+}
+
+/*
+ * A SUBJECT AND NOTHING ELSE IS NOT A SENTENCE (Drop Access run 1, item 29). Mercy read "That is delivered and confirmed. It
+ * clearly. What is the day Mama Mboga Mart will buy?": a strip had taken the rest of the sentence ("It clearly, your record shows
+ * that." loses its narration and leaves "It clearly."). A sentence that is only a pronoun, with at most one word such as
+ * "clearly" or "also" after it, says nothing and reads as the product being broken. It goes, wherever it is, when the reply has
+ * something else in it.
+ */
+const ONLY_A_SUBJECT = /^(?:it|this|that|they|he|she|we|there|which)(?:\s+(?:\w+ly|also|still|just|now|already|too|then))?\s*[.!]?$/i;
+export function isOnlyASubject(sentence: string): boolean {
+  return ONLY_A_SUBJECT.test(String(sentence ?? '').trim());
+}
+export function withoutASubjectAndNothingElse(text: string): string {
+  const sentences = sentencesIn(text);
+  if (sentences.length < 2 || !sentences.some(isOnlyASubject)) return text;
+  const kept = sentences.filter((x) => !isOnlyASubject(x));
+  return kept.length ? kept.join(' ').trim() : text;
 }
 
 export function withoutAFragmentAtTheFront(text: string): string {
@@ -480,6 +500,8 @@ export function forHumans(text: string | null | undefined): string {
   out = withoutRecordNarration(out);
   /** After the narration strip: a mark and a narration often share the same sentence. */
   out = withoutTheMark(out);
+  /* And the debris a strip can leave behind: "It clearly." on its own (Drop Access run 1, item 29). */
+  out = withoutASubjectAndNothingElse(out);
   /*
    * AND A REPLY THAT OPENS MID-SENTENCE.
    *

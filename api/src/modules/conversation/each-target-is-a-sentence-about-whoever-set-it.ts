@@ -48,7 +48,14 @@ export function theTargetAsASentence(o: ATargetToWord, who: WhoIsInIt): string {
     if (id === who.readerId) return who.readerFirstName?.trim() || 'You';
     return who.firstNameOf(id)?.trim() || A_COLLEAGUE;
   };
-  const setBy = o.setByParticipantId ?? o.ownerParticipantId ?? who.leadId;
+  /*
+   * WHO SET IT, WHERE NOTHING SAYS (Drop Access, 18 October). Grace added "units sold by 30 October", 40, for Joseph on
+   * the board, a row with nobody recorded as setting it, and it was read as Joseph's own: his model was told "You are
+   * aiming for 40 units" and said to him "That's the goal you set for yourself." A target the holder set is always
+   * recorded as theirs (the extraction writes setByParticipantId), so a target with no setter that somebody other than
+   * the lead holds was set by the lead.
+   */
+  const setBy = o.setByParticipantId ?? (o.ownerParticipantId && o.ownerParticipantId !== who.leadId ? who.leadId : o.ownerParticipantId) ?? who.leadId;
   const direction = asADirection(o.direction);
   const inNames = anAimAsASentence(o.name ?? '', {
     speaker: nameFor(setBy),
@@ -60,7 +67,12 @@ export function theTargetAsASentence(o: ATargetToWord, who: WhoIsInIt): string {
   });
   const reader = who.readerFirstName?.trim();
   const toThem = reader ? withNames(inNames, new Map(), [reader], { viewerLabel: reader }) : inNames;
-  const sentence = yourOwnWhereYouAreTheSubject(toThem, []);
+  const said = yourOwnWhereYouAreTheSubject(toThem, []);
+  /* A target somebody else set for the reader says who set it, so it is never taken as their own goal. */
+  const setter = setBy && setBy !== who.readerId ? who.firstNameOf(setBy)?.trim() : null;
+  const sentence = o.ownerParticipantId && o.ownerParticipantId === who.readerId && setter && !said.includes(setter)
+    ? `${said} ${setter} set this target for you.`
+    : said;
   /* Which way it goes, where the lead said and the sentence does not already say it. */
   if (!direction || o.target == null) return sentence;
   if (direction === 'LIMIT' && /\bno more than\b/i.test(sentence)) return sentence;

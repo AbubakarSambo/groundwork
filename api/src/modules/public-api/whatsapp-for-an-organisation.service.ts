@@ -1,3 +1,5 @@
+import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
+import { isHeldForTheNight } from '../whatsapp/quiet-hours-are-the-organisations';
 import { theMissedNoticeOnWhatsApp, rememberTheMissedNoticeTold } from '../engagement/missed-check-ins-told-first';
 import { openTheLeadsCheckIn } from '../grounds/check-in-yourself';
 import { ParticipantsService } from '../participants/participants.service';
@@ -37,8 +39,7 @@ import { formsOfTheSameNumber } from '../whatsapp/a-number-whatsapp-can-reach';
 import { theCheckInIsCompleteSaying, enoughToCloseSaying } from '../grounds/what-is-sent-in-simpler-words';
 import { AnOpenCheckIn, whatTheFileIsCalled, sessionHeader, whichOneRows, whichOneAsText, pickedOne, pickedFromText, whatArrived, reportAsText, nothingToReadYet, THANKS_YOUR_ANSWER_IS_IN, reportAsTemplateBlanks, LANGUAGES_WE_CONVERSE_IN, A_FINISH_WORD, A_GREETING_ALONE, A_NOT_NOW, NOT_NOW_SAYING,
   NOT_ENOUGH_YET_TO_FINISH, isAnAskWord, A_BACK_WORD, A_WISH_TO_CARRY_ON_THE_CHECK_IN, isAGreetingOrARequestToStart, A_SWITCH_WORD, A_YES, A_NO, THE_WORDS, NOW_ASKING, ASKING_NEEDS_A_ROSTER_ENTRY, ASK_READS_WORDS,
-  ONLY_ONE_OPEN, NONE_OPEN, BACK_IN, BACK_TO_NOTHING, ASKING, isAsking, wasIn, namedCheckIn, looksLikeARequest, shallITreatThisAs, YES_OR_NO, HELD_WORDS_PUT_IN, heldWordsNotPut, type ARequest,
-} from './a-whatsapp-message-is-routed';
+  ONLY_ONE_OPEN, NONE_OPEN, BACK_IN, BACK_TO_NOTHING, ASKING, isAsking, wasIn, namedCheckIn, looksLikeARequest, shallITreatThisAs, YES_OR_NO, HELD_WORDS_PUT_IN, heldWordsNotPut, type ARequest, aReportWorthItsTemplate, THANKS_ONLY } from './a-whatsapp-message-is-routed';
 import { A_STOP_WORD, A_START_WORD, STOPPED_SAYING, RESUMED_SAYING, UNKNOWN_NUMBER_SAYING } from '../whatsapp/a-message-outside-the-window';
 import { keptOffThePhone, answerItInTheApp } from '../whatsapp/a-check-in-kept-off-the-phone';
 import { WhichNumber, anInboundKey } from '../whatsapp/one-number-per-conversation';
@@ -693,7 +694,15 @@ export class WhatsAppForAnOrganisationService {
       if (!phone) return;
       const alreadySent = await this.prisma.whatsAppSend.findFirst({ where: { checkInId: c.id, kind: { in: ['report', 'report:template'] }, sentAt: { not: null } }, select: { id: true } }).catch(() => null);
       if (alreadySent) return;
-      void this.sendTheReport(c.ground.organizationId, { id: c.id, status: c.status, sessionNumber: c.sessionNumber, label: c.ground.label, simplerWords: c.ground.simplerWords }, c.participant.userId, phone)
+      /*
+       * ONE THANK-YOU FOR ONE ANSWER (messages test after the fixes, 19 October, finding 10). Brian answered "Litigation team daily" on
+       * Tuesday 13 October and was thanked. On Thursday and Friday at 07:30 he read again "Thank you, your answer for Litigation team
+       * daily is in.", though he had not answered: the morning backstop re-emits a round's completion as a repair, and each repair
+       * thanked him again. A repair is never somebody answering, and an answer already thanked is not thanked twice. The report itself
+       * still goes, once, when there is something in it to read.
+       */
+      const thankedAlready = e.source === 'repair' || !!(await this.prisma.whatsAppSend.findFirst({ where: { checkInId: c.id, kind: THANKS_ONLY, sentAt: { not: null } }, select: { id: true } }).catch(() => null));
+      void this.sendTheReport(c.ground.organizationId, { id: c.id, status: c.status, sessionNumber: c.sessionNumber, label: c.ground.label, simplerWords: c.ground.simplerWords }, c.participant.userId, phone, { thankedAlready })
         .catch((err: any) => this.logger.warn(`WhatsApp report after completion failed for ${e.checkInId}: ${err?.message}`));
     } catch (err: any) {
       this.logger.warn(`WhatsApp report after completion failed for ${e.checkInId}: ${err?.message}`);
@@ -732,15 +741,23 @@ export class WhatsAppForAnOrganisationService {
     }
   }
 
-  private async sendTheReport(organizationId: string, c: AnOpenCheckIn, userId: string, phone: string) {
+  private async sendTheReport(organizationId: string, c: AnOpenCheckIn, userId: string, phone: string, o: { thankedAlready?: boolean } = {}) {
     const row = await this.prisma.checkIn.findUnique({ where: { id: c.id }, select: { groundId: true, participant: { select: { language: true } } } });
     if (!row) return;
+    /* The blanks of the two newer templates (docs/whatsapp-templates.md, 2 and 3), used only once each is approved and listed: the person's first name, the check-in, and the link to their own report. With no first name on record, neither is offered. */
+    const firstName = String((await Promise.resolve((this.prisma as any).user?.findUnique?.({ where: { id: userId }, select: { firstName: true } })).catch(() => null))?.firstName ?? '').trim();
+    const theirReport = `${(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '')}/checkin/${c.id}/report`;
+    const paramsFor: Record<string, string[]> = firstName
+      ? { groundwork_checkin_thanks: [firstName, c.label], groundwork_your_report_ready: [firstName, c.label, theirReport] }
+      : {};
     /* The read is computed; right after completion it may still be forming, so it is tried a few times. */
     let report: any = null;
     for (let i = 0; i < 4 && !report; i++) {
       report = await this.reports.sessionReport(row.groundId, c.sessionNumber, userId, organizationId).catch(() => null);
       if (!report?.whereThingsStand) { report = null; await new Promise((r) => setTimeout(r, 4000)); }
     }
+    /* Already thanked, or a repair: nothing to read yet means nothing to say (finding 10). */
+    if (o.thankedAlready && (!report || nothingToReadYet(report))) return;
     let text = nothingToReadYet(report) ? THANKS_YOUR_ANSWER_IS_IN(c.label) : report ? reportAsText(report, c.label, c.simplerWords) : `Your check-in on ${c.label} is on record. The report is being written and is in Groundwork under Report.`;
     /* The language follows the person's own messages (reviewer, 14 October): Kevin wrote English throughout and his
        thank-you came in Swahili, from one early read of "Kilele Hotel, 40 units, paid today." */
@@ -753,12 +770,20 @@ export class WhatsAppForAnOrganisationService {
        failed send is retried once with the text in hand rather than by running all of that again. */
     /* On the number the person last wrote to, so the report arrives in the same conversation (survey item 8). */
     const via = (await this.whatsapp.lastWroteTo(organizationId, phone).catch(() => null)) ?? 'theirs';
-    const first = await this.whatsapp.sendOn(via, organizationId, phone, text, { checkInId: c.id, kind: 'report', params });
+    /* Nothing agreed or open yet: a thank-you inside the 24 hours, and nothing outside them (items 22 and 23), where Release 1's switch is
+       on for the organisation (release-one-sales-board); off, the notice goes as before. */
+    if (!aReportWorthItsTemplate(report) && (await theReleaseOneSalesBoardIsOn(this.prisma, organizationId).catch(() => false))) {
+      if (o.thankedAlready) return;
+      const thanks = await this.whatsapp.sendOn(via, organizationId, phone, await this.inTheirLanguage(THANKS_YOUR_ANSWER_IS_IN(c.label), theLanguageOfTheirOwnWords(theirWords, row.participant.language)), { checkInId: c.id, kind: THANKS_ONLY, paramsFor });
+      if (!thanks.sent) this.logger.log(`Check-in ${c.id}: nothing to read in the report yet, and outside the 24 hours there is nothing to send.`);
+      return;
+    }
+    const first = await this.whatsapp.sendOn(via, organizationId, phone, text, { checkInId: c.id, kind: 'report', params, paramsFor });
     /* A message the organisation's own WhatsApp settings hold back is not a failure to log twice and retry (B-119): the report is in the app. */
-    if (!first.sent && isHeldByTheAddOn(first.error)) return;
+    if (!first.sent && (isHeldByTheAddOn(first.error) || isHeldForTheNight(first.error))) return;
     if (!first.sent) {
       await new Promise((r) => setTimeout(r, 3000));
-      const second = await this.whatsapp.sendOn(via, organizationId, phone, text, { checkInId: c.id, kind: 'report-retry', params });
+      const second = await this.whatsapp.sendOn(via, organizationId, phone, text, { checkInId: c.id, kind: 'report-retry', params, paramsFor });
       if (!second.sent) this.logger.error(`The report for check-in ${c.id} could not be sent to WhatsApp twice: ${second.error ?? 'no detail'}`);
     }
   }

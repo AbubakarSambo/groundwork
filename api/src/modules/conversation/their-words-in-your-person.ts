@@ -46,8 +46,42 @@ const capitalisedLike = (original: string, replaced: string) => (/^[A-Z]/.test(o
  * The sentence with any copied first-person span of theirs turned to the second person. Unchanged
  * where nothing they said appears in it, or what appears carries no first-person pronoun.
  */
+/*
+ * AND THEIR SENTENCE SAID IN OTHER WORDS, IN THE FIRST PERSON (Drop Access run 1, item 30). Mercy said "I'll follow up with Esther on
+ * Kawangware Fresh tomorrow to see if she has a budget." and on her next check-in Groundwork said, as itself, "I'm following up with
+ * Esther on Kawangware Fresh tomorrow to see if Fresh has a budget." It was not a copy, word for word, so the turn above did not
+ * see it. A sentence of the reply that opens with "I" and is about what one of their own first-person sentences is about (most of
+ * its words are theirs: the same people, places and things) is their sentence in our mouth, and it is said back to them as theirs:
+ * "You're following up with Esther ...". The product's own "I" ("I will ask you how it went", "I have one more question") shares
+ * almost nothing with what they said and is left alone.
+ */
+const OPENS_IN_THE_FIRST_PERSON = /^\s*(?:I|I'm|I've|I'll|I'd|I am|I will|I was|My)\b/;
+const CARRIES_NOTHING = new Set(['that', 'this', 'with', 'from', 'have', 'will', 'been', 'they', 'them', 'their', 'there', 'what', 'when', 'where', 'which', 'would', 'could', 'should', 'about', 'into', 'over', 'more', 'also', 'just', 'then', 'than', 'some', 'today', 'still', 'going', 'make', 'sure', 'want', 'need', 'know', 'think', 'your', 'yours']);
+const stem = (w: string) => w.replace(/(?:ing|ed|es|s)$/, '');
+const carriers = (t: string) => [...new Set(words(t).filter((w) => w.length >= 4 && !CARRIES_NOTHING.has(w)).map(stem))];
+function aSentenceOfTheirsInOurMouth(sentence: string, personSaid: string[]): boolean {
+  if (!OPENS_IN_THE_FIRST_PERSON.test(sentence)) return false;
+  const ours = carriers(sentence);
+  if (ours.length < 3) return false;
+  for (const said of personSaid) {
+    for (const theirs of (said ?? '').split(/(?<=[.!?])\s+/)) {
+      if (!FIRST_PERSON.test(theirs)) continue;
+      const t = new Set(carriers(theirs));
+      const shared = ours.filter((w) => t.has(w)).length;
+      if (shared >= 3 && shared / ours.length >= 0.6) return true;
+    }
+  }
+  return false;
+}
+
 export function inYourPerson(sentence: string, personSaid: string[]): string {
-  let out = sentence;
+  /* Sentence by sentence, keeping the spaces and line breaks between them. */
+  let out = sentence.split(/((?<=[.!?])\s+)/).map((part) => {
+    if (!part.trim() || !aSentenceOfTheirsInOurMouth(part, personSaid)) return part;
+    const lead = part.match(/^\s*/)?.[0] ?? '';
+    const body = turned(part.slice(lead.length));
+    return lead + body.charAt(0).toUpperCase() + body.slice(1);
+  }).join('');
   for (const said of personSaid) {
     for (const theirs of (said ?? '').split(/(?<=[.!?])\s+/)) {
       const ws = words(theirs);
@@ -71,5 +105,34 @@ export function inYourPerson(sentence: string, personSaid: string[]): string {
       out = before + (opensASentence ? capitalisedLike(m[0], flipped) : flipped) + out.slice(m.index + m[0].length);
     }
   }
-  return out;
+  return aSentenceOfTheirsInsideOurs(out, personSaid);
+}
+
+/*
+ * THEIR SENTENCE INSIDE OURS, SAID AS PART OF IT (Drop Access short run, item 4). Kevin read "You said Doing well means
+ * consistently hitting my sales targets and bringing in new clients., then reported specific sales." Their sentence went in
+ * whole, with its capital and its full stop, in the middle of ours. After "you said", "you mentioned" or "you told us", what
+ * they said is reported: its first word in small letters (unless it is a name, which they write with a capital anywhere),
+ * their "I" and "my" said as "you" and "your", and never a full stop before a comma. Words in quotation marks are left as
+ * they are.
+ */
+const YOU_SAID = /\b([Yy]ou (?:said|mentioned|told us|told me|wrote|stated)(?: that)?) ([A-Z][a-z'’]+)\b/g;
+function aNameTheyWrite(word: string, personSaid: string[]): boolean {
+  if (/^I(?:['’].*)?$/.test(word)) return true;
+  /* A word they write with a capital where it does not open a sentence is a name, and so is a name on the roster ("Joseph"). */
+  if (personSaid.some((t) => new RegExp(`(?:[^.!?\\s]\\s+|,\\s*)${escape(word)}\\b`).test(String(t ?? '')) || new RegExp(`^${escape(word)}(?:\\s|$)`).test(String(t ?? '').trim()) && !/[.!?]\s*$/.test(String(t ?? '').trim()))) return true;
+  /* Only a word that opens one of their own sentences is taken as their sentence's first word. */
+  return !personSaid.some((t) => new RegExp(`(?:^|[.!?]\\s+)${escape(word)}\\s`).test(String(t ?? '')));
+}
+export function aSentenceOfTheirsInsideOurs(text: string, personSaid: string[]): string {
+  let out = text.replace(YOU_SAID, (whole, lead: string, word: string, offset: number, all: string) => {
+    const before = all.slice(0, offset);
+    const inQuotes = (before.match(/"/g) ?? []).length % 2 === 1 || before.lastIndexOf('\u201c') > before.lastIndexOf('\u201d');
+    if (inQuotes || aNameTheyWrite(word, personSaid)) return whole;
+    return `${lead} ${word.charAt(0).toLowerCase()}${word.slice(1)}`;
+  });
+  /* Their "my" and "I" in what is reported, up to the end of the clause. */
+  out = out.replace(/\b([Yy]ou (?:said|mentioned|told us|told me|wrote|stated)(?: that)? )([a-z][^,;:?!"“”]*?)(?=\.?,|[;:?!]|\.(?:\s|$)|$)/g, (_w, lead: string, clause: string) => lead + turned(clause));
+  /* No full stop before a comma: "new clients., then" is "new clients, then". */
+  return out.replace(/([A-Za-z]{2,})\.,(\s)/g, '$1,$2');
 }

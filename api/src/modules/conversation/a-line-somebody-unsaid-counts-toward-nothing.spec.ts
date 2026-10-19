@@ -1,5 +1,3 @@
-/* KNOWN FAILURE (Release 1, pull request 1, 18 October 2026): this test fails on origin/staging (cbc1927ed) too, run the
-   same way, so this pull request does not cause it: it checks the kind of work read from a line, which comes in a later pull request. Left in place, not changed, so it is fixed in its own change. */
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -15,7 +13,7 @@ describe('a line somebody unsaid counts toward nothing', () => {
      * line could pick the role map somebody is coached and probed against for the rest of the run,
      * and the louder the misreading the more it looked like a function.
      */
-    const at = SERVICE.indexOf('detectFunction(\n      [p.roleAsDescribed');
+    const at = SERVICE.indexOf('detectFunction(\n      theStatedRole(p.roleAsDescribed');
     const from = SERVICE.lastIndexOf('recordEntry.findMany({', at);
     expect(from).toBeGreaterThan(-1);
     expect(SERVICE.slice(from, at)).toContain('disputedAt: null');

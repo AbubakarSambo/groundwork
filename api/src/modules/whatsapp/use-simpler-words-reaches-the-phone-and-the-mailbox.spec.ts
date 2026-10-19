@@ -86,7 +86,8 @@ describe('the emails', () => {
   });
   it('the next check-in: off is the old sentence, on is the plainer one', async () => {
     const ready = (s?: boolean) => (e: any) => e.sendSessionReady('a@k.test', 'Sales team, Q4', 'https://x/y', s);
-    expect(await render(ready())).toBe('A new check-in is ready for Sales team, Q4. Answering keeps the picture you and your team read up to date. Check in');
+    /* Changed 18 October (Drop Access run 1, item 11): the opening says how long a check-in takes, about ten minutes. */
+    expect(await render(ready())).toBe('A new check-in is ready for Sales team, Q4. It takes about ten minutes, and answering keeps the picture you and your team read up to date. Check in');
     expect(await render(ready(true))).toBe('Your next check-in for Sales team, Q4 is open. It takes about ten minutes. Your answers go into the report. Check in');
   });
 });

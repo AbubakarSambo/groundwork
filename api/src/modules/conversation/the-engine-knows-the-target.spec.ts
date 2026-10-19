@@ -106,7 +106,9 @@ describe('and the service actually fetches them', () => {
     /* Since 1 October 2026 also without a goal the lead has not told them about (decision 56), and worded
        as sentences about whoever set each one (decision 69). Stricter again. */
     /* Changed 8 October (anchor walk): preceded by the wall that gives a team member of an anchor check-in none of the lead's aims. */
-    expect(CODE).toMatch(/objectives: this\.theLeadsOwnWordsStayHers\(ground, checkIn\) \? \[\] : this\.theTargetsAsSentences\(this\.theTargetsThisPersonMaySee\(ground as any, checkIn as any, untoldHere\)/);
+    /* Changed 18 October (Drop Access run 1, item 27): a deal's units are taken out of the targets the person may see (notADealsFigure), so the
+       targets are wrapped in "( ... as any[]).filter(notADealsFigure)" before they are worded. Stricter again; the wall and the read are unchanged. */
+    expect(CODE).toMatch(/objectives: this\.theLeadsOwnWordsStayHers\(ground, checkIn\) \? \[\] : this\.theTargetsAsSentences\(\(this\.theTargetsThisPersonMaySee\(ground as any, checkIn as any, untoldHere\) as any\[\]\)\.filter\(notADealsFigure\)/);
   });
 });
 

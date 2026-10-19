@@ -29,6 +29,8 @@ export const BUSINESS_INITIATED: ReadonlySet<string> = new Set([
   'checkin-catch-up',
   'anchor-weekly-insight', 'anchor-follow-up',
   'report', 'report-retry', 'request-waiting', 'request-decided', 'review-started', 'review-decided',
+  /* A thank-you for an answer when the report has nothing in it yet: Groundwork writes it first, it has no template, so it goes inside the 24 hours only (Drop Access run 1, item 22). */
+  'report-thanks',
   /* What waits for an approver, said once for all of it (the-approvals-summary.ts). */
   'requests-waiting',
   /* A check-in left halfway (a-check-in-left-halfway.ts): the reminder to carry on, the half-hour warning, and the clock closing it. */
@@ -89,7 +91,9 @@ export const OPENING_OR_CLOSING: ReadonlySet<string> = new Set(['checkin-open', 
  * Groundwork starts is new, and goes to an organisation only once it has turned WhatsApp on (decisions
  * 78 and 88), or when it already had a number of its own connected.
  */
-export const WENT_BEFORE_THIS_RELEASE: ReadonlySet<string> = new Set(['report', 'report-retry']);
+export const WENT_BEFORE_THIS_RELEASE: ReadonlySet<string> = new Set(['report', 'report-retry', 'report-thanks']);
+/** Never a first contact: a thank-you with nothing to read is not how Groundwork introduces itself to a number (Drop Access run 1, item 23). */
+export const NEVER_THE_FIRST_MESSAGE: ReadonlySet<string> = new Set(['report-thanks']);
 export const NOT_TURNED_ON_QUIETLY = 'This organisation has not turned on WhatsApp; not sent';
 export const NOT_TODAY = 'Groundwork has already written first to this person as often as it may today; not sent';
 export const THEY_SAID_NOT_NOW = 'This person replied "Not now" today; not sent';
@@ -197,9 +201,60 @@ TEMPLATES['first-contact'] = aTemplate('groundwork_first_contact', 'This is Grou
 /** The names an organisation submits to Meta, once each: every template the product starts. */
 export const THE_NAMES_TO_SUBMIT: string[] = [...new Set(Object.values(TEMPLATES).map((t) => t.name))];
 
+/*
+ * THE FOUR TEMPLATES OF 19 OCTOBER (docs/whatsapp-templates.md, "The new templates"), word for word, for Abubakar to submit. None of
+ * them changes an approved template: each is a new one, and each is used only when all three hold:
+ *  - its name is in WHATSAPP_APPROVED_TEMPLATES (or in the organisation's own approved list);
+ *  - the person is outside the 24 hours (inside them, the ordinary message goes as free text, as before);
+ *  - the message carries every one of its blanks (a thank-you with no first name cannot say "Thank you, {{1}}").
+ * Until one is approved and listed, the template it replaces goes as before where that one is approved, and otherwise the same
+ * message goes by email instead (whatsapp.service.ts, byEmailInstead). checkin_open stays in use until groundwork_checkin_open_v2
+ * is approved and listed. The list is empty today, so nobody's messages change from these.
+ */
+export const THE_FOUR_OF_19_OCTOBER = {
+  checkInOpen: aTemplate('groundwork_checkin_open_v2', 'Hi {{1}}, your check-in for {{2}} is open. It takes about ten minutes, and you can answer right here. Reply START to begin.'),
+  thanks: aTemplate('groundwork_checkin_thanks', "Thank you, {{1}}. Your answer for {{2}} is in. You will hear here when the team's report is ready to read."),
+  yourReport: aTemplate('groundwork_your_report_ready', 'Hi {{1}}, your own report for {{2}} is ready. It shows what you did, what is still open and what to do next. Open it here: {{3}} . Reply STOP to stop these messages.'),
+  promiseDue: aTemplate('groundwork_promise_due', 'Hi {{1}}, you said you would {{2}} by {{3}}. Reply DONE if it is done, or tell me what changed.'),
+} as const;
+export const THE_FOUR_NAMES: string[] = Object.values(THE_FOUR_OF_19_OCTOBER).map((t) => t.name);
+/** Every name the product may use: the ones it starts with today, and the four of 19 October. */
+export const THE_NAMES_WE_MAY_USE: string[] = [...new Set([...THE_NAMES_TO_SUBMIT, ...THE_FOUR_NAMES])];
+
+/** Which of the four goes in place of a message, first, before the template that message has always had. */
+export const THE_NEWER_TEMPLATE_FIRST: Record<string, ATemplate[]> = {
+  'checkin-open': [THE_FOUR_OF_19_OCTOBER.checkInOpen],
+  'checkin-catch-up': [THE_FOUR_OF_19_OCTOBER.checkInOpen],
+  /* Only straight after the person's own check-in, once for it: its one sender is the thank-you after a finished check-in. */
+  'report-thanks': [THE_FOUR_OF_19_OCTOBER.thanks],
+  report: [THE_FOUR_OF_19_OCTOBER.yourReport],
+  'report-retry': [THE_FOUR_OF_19_OCTOBER.yourReport],
+  /* The person's own promise, never anybody else's, with the day it was due; a sender that has no day for it does not offer its blanks. */
+  'anchor-follow-up': [THE_FOUR_OF_19_OCTOBER.promiseDue],
+};
+
+/* groundwork_checkin_open_v2 has checkin_open's two blanks, in the same order: the opening's own words fill it. The others say a message's own blanks. */
+const THE_SAME_BLANKS_AS_BEFORE: ReadonlySet<string> = new Set(['groundwork_checkin_open_v2']);
+const howManyBlanks = (body: string) => new Set([...body.matchAll(/\{\{(\d+)\}\}/g)].map((m) => m[1])).size;
+
+/** The template a message goes as outside the 24 hours, and the words for its blanks; null when none is approved for it. */
+export function theTemplateToUse(
+  kind: string | null | undefined,
+  approved: readonly string[],
+  words: { params?: string[]; paramsFor?: Record<string, string[]> } = {},
+): { template: ATemplate; params?: string[] } | null {
+  if (!kind) return null;
+  for (const t of THE_NEWER_TEMPLATE_FIRST[kind] ?? []) {
+    if (!approved.includes(t.name)) continue;
+    const params = words.paramsFor?.[t.name] ?? (THE_SAME_BLANKS_AS_BEFORE.has(t.name) ? words.params : undefined);
+    if (params && params.length >= howManyBlanks(t.body) && params.every((p) => !!String(p ?? '').trim())) return { template: t, params };
+  }
+  const t = TEMPLATES[kind];
+  return t && approved.includes(t.name) ? { template: t } : null;
+}
+
 export function templateFor(kind: string | null | undefined, approved: readonly string[]): ATemplate | null {
-  const t = kind ? TEMPLATES[kind] : null;
-  return t && approved.includes(t.name) ? t : null;
+  return theTemplateToUse(kind, approved)?.template ?? null;
 }
 
 export const OUTSIDE_THE_WINDOW = 'Outside the 24-hour service window and no approved template for this message; not sent';

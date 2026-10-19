@@ -1,4 +1,6 @@
+import { theOrganisationsZone } from '../../common/the-organisations-own-day';
 import { theyAreConnectedOnWhatsApp } from '../whatsapp/connect-whatsapp';
+import { theEmailOpeningShould } from './an-opening-goes-on-one-channel';
 import { theCheckInIsOpen } from '../whatsapp/what-goes-to-a-phone';
 import { Injectable, Logger, OnApplicationBootstrap, Optional } from '@nestjs/common';
 import { owesThisSession } from './the-lead-checks-in-when-they-choose';
@@ -51,6 +53,7 @@ import { theRanOutOfTimeSubject } from '../engagement/the-leads-subjects-carry-t
 import { sendTheTestCheckInMessages } from '../engagement/a-test-check-in-moves-on';
 import { theirPromiseToFollowUp } from '../engagement/a-follow-up-from-their-own-record';
 import { theOpeningNeverReachedThem, itHasBeenOpenLongEnough } from '../engagement/a-person-the-opening-never-reached';
+import { itWasOpenedByEmailOnly } from '../whatsapp/a-session-opened-by-email';
 import { formsOfTheSameNumber } from '../whatsapp/a-number-whatsapp-can-reach';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { isNotLetInYet } from './who-an-admin-did-not-let-in';
@@ -792,12 +795,13 @@ export class GroundsCron implements OnApplicationBootstrap {
       select: {
         id: true,
         groundId: true,
+        availableFrom: true,
         participant: {
           select: {
             id: true,
             email: true,
             userId: true,
-            ground: { select: { label: true, simplerWords: true, organizationId: true } },
+            ground: { select: { label: true, simplerWords: true, organizationId: true, overWhatsApp: true } },
             /* No recordEntries here, structurally (NL-007): this sweep used to put the person's last
                private record line into the mail and the WhatsApp body as "Last time: ...". The product's
                central promise is that nothing they wrote reaches a mailbox; the reminder never needed it. */
@@ -834,6 +838,14 @@ export class GroundsCron implements OnApplicationBootstrap {
         /* Hafsah, 14 October (later): for somebody on WhatsApp, the missed-check-ins notice goes in their WhatsApp check-in too,
            never by email. It stays on Today, and is said before the first question once they reply (whatsapp-for-an-organisation). */
         if (await theyAreConnectedOnWhatsApp(this.prisma, { organizationId: (p.ground as any).organizationId, userId: p.userId, email: p.email })) {
+          await this.prisma.checkIn.update({ where: { id: ci.id }, data: { sessionReadyNotifiedAt: now } });
+          continue;
+        }
+        /* ONE CHANNEL FOR EVERY OPENING (release plan Part 0; Drop Access run 1, item 10): when the WhatsApp opening went, or is held
+           for the night, no email goes; while it is still on its way the email waits for the next sweep. See an-opening-goes-on-one-channel. */
+        const should = await theEmailOpeningShould(this.prisma, ci as any, now);
+        if (should === 'wait') continue;
+        if (should === 'skip') {
           await this.prisma.checkIn.update({ where: { id: ci.id }, data: { sessionReadyNotifiedAt: now } });
           continue;
         }
@@ -925,6 +937,8 @@ export class GroundsCron implements OnApplicationBootstrap {
         if (!phone) continue;
         const catchUp = !what;
         if (catchUp && !(await theOpeningNeverReachedThem(this.prisma, ci, formsOfTheSameNumber(phone), now))) continue;
+        /* A session opened by email, and not on WhatsApp, is not reminded "due tomorrow" on WhatsApp (point 8, 19 October; a-session-opened-by-email.ts). */
+        if (what === 'due-tomorrow' && (await itWasOpenedByEmailOnly(this.prisma, ci, [ci.participant.email, user?.email]))) continue;
         const who = { firstName: user?.firstName, label: await nameFor({ userId: ci.participant.userId, email: ci.participant.email }, ci.groundId, ci.ground.label) };
         let said;
         if (catchUp) said = theCheckInIsStillOpen(who, ci.ground.simplerWords);
@@ -993,8 +1007,13 @@ export class GroundsCron implements OnApplicationBootstrap {
   }
 
   async sendTheLeadsDailyNudgesInner(now: Date = new Date()): Promise<{ tried: number }> {
+    /* The lead's own board, as she opens it, so her summary says what her board says (point 1, 19 October). Found by name, without importing the board's module here. */
+    let boards: { get(groundId: string, userId: string): Promise<any> } | undefined;
+    try {
+      if (this.moduleRef) { const { BoardService } = await import('../board/board.service'); boards = this.moduleRef.get(BoardService, { strict: false }); }
+    } catch { boards = undefined; }
     const result = await sendTheLeadsDailyNudges(
-      { prisma: this.prisma, whatsapp: this.whatsapp as any, email: this.email as any, boards: { leave: this.leave, timeSheets: this.timeSheets, spending: this.spending }, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
+      { prisma: this.prisma, whatsapp: this.whatsapp as any, email: this.email as any, boards: { leave: this.leave, timeSheets: this.timeSheets, spending: this.spending }, frontendUrl: this.config.get<string>('resend.frontendUrl') || '', ...(boards ? { board: { get: (groundId: string, userId: string) => boards.get(groundId, userId) } } : {}) },
       now,
     ).catch((err: any) => { this.logger.warn(`The leads' daily nudges could not be sent: ${err?.message}`); return { tried: 0 }; });
     if (result.tried) this.logger.log(`Lead daily nudge: ${result.tried} tried.`);
@@ -1410,7 +1429,7 @@ export class GroundsCron implements OnApplicationBootstrap {
       select: {
         id: true,
         email: true,
-        ground: { select: { id: true, label: true } },
+        ground: { select: { id: true, label: true, organizationId: true, report: { select: { releasedAt: true } } } },
         user: { select: { emailNotifications: true } },
       },
     });
@@ -1423,7 +1442,9 @@ export class GroundsCron implements OnApplicationBootstrap {
         if ((await howManyReportReadyRemindersWereSent(this.prisma as any, p.email, p.ground.label)) >= THE_MOST_REPORT_READY_REMINDERS) continue;
         /* Not again within NUDGE_THROTTLE_DAYS of the last one that went, read from the record of messages. */
         if ((await howManyReportReadyRemindersWereSent(this.prisma as any, p.email, p.ground.label, throttleBefore)) > 0) continue;
-        await this.email.sendActivationRevealReminder(p.email, p.ground.label, `${frontend}/grounds/${p.ground.id}/report`);
+        /* The day it became ready, in the organisation's own zone (messages test, 19 October, finding 1), never "a few days". */
+        const zone = (p.ground as any).organizationId ? await theOrganisationsZone(this.prisma as any, (p.ground as any).organizationId).catch(() => null) : null;
+        await this.email.sendActivationRevealReminder(p.email, p.ground.label, `${frontend}/grounds/${p.ground.id}/report`, (p.ground as any).report?.releasedAt ?? null, zone);
         revealReminders++;
       } catch (err: any) {
         this.logger.error(`Reveal reminder failed for participant ${p.id}: ${err.message}`);
