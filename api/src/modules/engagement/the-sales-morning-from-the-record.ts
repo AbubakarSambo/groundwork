@@ -78,6 +78,27 @@ export function theThingWithItsDeal(thing: string, fromParticipantId: string | n
   return `the ${bare} for ${[...named][0]}`;
 }
 
+/** The words of a thing waited for, each in its one form ("samples" and "sample" alike), with the small words left out. */
+const thingWords = (t: string) => String(t ?? '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
+  .filter((x) => x.length >= 4 && !['the', 'that', 'this', 'from', 'with', 'they', 'promised', 'have', 'them'].includes(x)).map((x) => x.replace(/s$/, ''));
+/**
+ * The day a wait was first said: the earliest of the waits from the same person on the same person for the same thing (a word of the
+ * thing in common), cleared or not, since a wait said again in a later check-in is the same wait.
+ */
+export function theFirstTimeThisWaitWasSaid(w: { fromParticipantId: string | null; onParticipantId: string | null; what: string | null; createdAt: Date | string }, all: { fromParticipantId: string | null; onParticipantId: string | null; what: string | null; createdAt: Date | string; clearedAt?: Date | string | null }[]): Date {
+  const mine = new Set(thingWords(String(w.what ?? '')));
+  let at = new Date(w.createdAt);
+  for (const x of all) {
+    if (x.fromParticipantId !== w.fromParticipantId || x.onParticipantId !== w.onParticipantId || !x.onParticipantId) continue;
+    if (!thingWords(String(x.what ?? '')).some((k) => mine.has(k))) continue;
+    /* A wait for the same thing that ended before this one began is an earlier wait, not this one. */
+    if (x.clearedAt && new Date(x.clearedAt).getTime() <= new Date(w.createdAt).getTime()) continue;
+    const t = new Date(x.createdAt);
+    if (t.getTime() < at.getTime()) at = t;
+  }
+  return at;
+}
+
 export async function theSalesMorning(
   prisma: any,
   groundId: string,
@@ -145,7 +166,11 @@ export async function theSalesMorning(
     told.add(key);
     const twice = carried.some((c) => c.participantId === w.onParticipantId);
     const thing = theThingWithItsDeal(String(w.what ?? '').trim().replace(/[.\s]+$/, ''), w.fromParticipantId, deals, lines);
-    const since = keyOf(new Date(w.createdAt), zone) < today ? ` ${first(w.fromParticipantId)} has been waiting since ${whenItWas(w.createdAt, 'weekdayAndDay', zone)}.` : '';
+    /* Since the first time they said they were waiting on them for it: Mercy waited on Joseph for "the sample units he promised" from
+       Monday and for "the Tuskys Westgate samples" from Wednesday, one wait said twice, and Grace read "since Wednesday 14 October"
+       (messages test, fourth run). */
+    const startedAt = theFirstTimeThisWaitWasSaid(w, waits);
+    const since = keyOf(startedAt, zone) < today ? ` ${first(w.fromParticipantId)} has been waiting since ${whenItWas(startedAt, 'weekdayAndDay', zone)}.` : '';
     due.push(twice
       ? `${first(w.onParticipantId)} has promised ${first(w.fromParticipantId)} ${thing} three check-ins running, for today.`
       : `${first(w.onParticipantId)} promised ${first(w.fromParticipantId)} ${thing} today.${since}`);

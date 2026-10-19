@@ -1,3 +1,4 @@
+import { theDayAPromiseWasFor } from './each-earlier-thing-has-its-day';
 /**
  * WHAT THE LEAD ALREADY WROTE DOWN, IN THE CONVERSATION THAT ASKS ABOUT IT.
  *
@@ -33,15 +34,19 @@ export interface ACommitmentOnRecord {
   explicit?: boolean;
   /** Whose it is, for the lead's own view of everybody else's. Absent in the person's own block. */
   who?: string | null;
+  /** When it was said, so its "tomorrow" is counted from that day (each-earlier-thing-has-its-day). */
+  saidOn?: Date | string | null;
 }
 
 /** What this person is down as doing, put to them as a question and never as a finding. */
-export function whatTheySaidTheyWouldDo(rows: ACommitmentOnRecord[]): string {
+export function whatTheySaidTheyWouldDo(rows: ACommitmentOnRecord[], days?: { now: Date; zone?: string }): string {
   const theirs = (rows ?? []).filter((r) => r?.text?.trim());
   if (!theirs.length) return '';
+  /* With the day it was said and the day it was for, where both are known (messages test, third run, items 10 and 13). */
+  const when = (r: ACommitmentOnRecord) => (days && r.saidOn ? theDayAPromiseWasFor(r.when, r.saidOn, days.now, days.zone) : r.when ? ` (said: ${r.when.trim()})` : '');
   return [
     'WHAT THEY ARE DOWN AS DOING. Nobody has said whether any of it happened, and you do not know either.',
-    ...theirs.map((r) => `- ${r.text.trim()}${r.when ? ` (said: ${r.when.trim()})` : ''}${r.explicit === false ? ' - the person running this check-in said this needs doing; they may never have agreed to it' : ''}`),
+    ...theirs.map((r) => `- ${r.text.trim()}${when(r)}${r.explicit === false ? ' - the person running this check-in said this needs doing; they may never have agreed to it' : ''}`),
     'Ask what happened to the ones that matter this session, one at a time, in your own words. Never state that something is done, late or dropped - you do not know. Where they say it is done, ask what shows it.',
   ].join('\n');
 }

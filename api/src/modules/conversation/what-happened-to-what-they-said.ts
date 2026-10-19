@@ -128,6 +128,34 @@ export function itHappenedInTheirWords(words: unknown, said: readonly AnAnswer[]
 }
 
 /*
+ * "I DIDN'T MANAGE TO CALL THE HR MANAGER YESTERDAY." (messages test, fourth run). Aisha promised on Tuesday 13 October "I'll be calling the
+ * HR manager at Jamii Clinics again to directly follow up on the witness statements." It was read as done from her later words that day,
+ * and on Wednesday she said "I'm afraid I didn't manage to call the HR manager yesterday. I'll be sure to do that tomorrow, though." Her
+ * week on Thursday said "You kept two of the three things you said you would do ... and "Be calling the HR manager at Jamii Clinics
+ * again ..."". Their own plain word that it did not happen, said after it was read as done from what they said, makes it not done: a
+ * sentence of theirs that says they did not (or could not, or did not manage to) do it, with the promise's own verb or two of its words.
+ */
+const DID_NOT = /\b(?:didn't|did not|didn’t|haven't|have not|haven’t|couldn't|could not|couldn’t|wasn't able to|was not able to|failed to|never got to|never got round to)\s+(?:manage\s+to\s+|get\s+to\s+|get\s+round\s+to\s+|get\s+a\s+chance\s+to\s+)?([a-z]+)\b/i;
+const verbOf = (w: string) => w.toLowerCase().replace(/(?:ing|ed|s)$/, '').replace(/(.)\1$/, '$1');
+const THE_SMALL = new Set(['the', 'and', 'with', 'about', 'again', 'that', 'this', 'will', 'from', 'their', 'there', 'those', 'directly', 'today', 'tomorrow', 'yesterday', 'follow']);
+const wordsIn = (t: string) => new Set(norm(t).split(' ').filter((w) => w.length >= 4 && !THE_SMALL.has(w)).map(verbOf));
+export function theySaidItDidNotHappen(promised: string, said: readonly AnAnswer[]): boolean {
+  const promise = wordsIn(promised);
+  const verbs = new Set(norm(promised).split(' ').map(verbOf));
+  for (const a of said) {
+    const answer = typeof a === 'string' ? a : a.said;
+    for (const sentence of String(answer ?? '').split(/(?<=[.!?])\s+/)) {
+      const m = DID_NOT.exec(sentence);
+      if (!m) continue;
+      const verb = verbOf(m[1]);
+      const shared = [...wordsIn(sentence)].filter((w) => promise.has(w)).length;
+      if ((verbs.has(verb) && shared >= 1) || shared >= 2) return true;
+    }
+  }
+  return false;
+}
+
+/*
  * A STATUS IS FILLED IN FROM WHAT IS CONFIRMED, NEVER FROM A GUESS (Hafsah, 12 October, after night quality run 2). Collins's "Do ten kits"
  * and "twelve kits" were written as kept from "Last week I did nine, maybe ten" and "I did eleven ... It was only the rain that stopped the
  * twelfth", which he took back two answers later ("Honestly eleven was rounding up, it is lower, maybe four or five"). A hedged number, a

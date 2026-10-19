@@ -1,3 +1,4 @@
+import { aWaitSomebodyElseChases } from './a-wait-somebody-else-chases';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { theRelease1bTabsAreOn } from '../grounds/release-1b-tabs';
 import { theReferencesTemplateFor } from '../grounds/the-references-template';
@@ -10,6 +11,7 @@ import { peersAreNamedOn, theReaderBySignIn } from '../reports/peers-are-named';
 import { isASalesKind, oneOfTheKinds, RECORDS_FOR_EACH_KIND, type AServedRecord } from './the-kind-of-work';
 import { plainNameOf } from '../patterns/plain-pattern-names';
 import { THE_SEVEN_BEHAVIOURS, WHERE_THE_WORDS_COME_FROM, theBehaviour, type ABehaviourKey } from '../patterns/the-seven-behaviours';
+import { thePersonJudgementsAreOn, NOT_SHOWN_IN_THIS_ORGANISATION } from '../organisation/person-judgements';
 
 /**
  * MY WORK, AS EACH READER IS SERVED IT (Release 1B, pull request 3 of 3; Hafsah's references-and-my-work.md of 17 October 2026,
@@ -68,6 +70,11 @@ export interface ACoachingLine { text: string; from: string }
 
 export interface MyWorkServed {
   on: true;
+  /**
+   * False where the organisation's switch keeps judgements of a person off (organisation/person-judgements.ts): no behaviours, no focus,
+   * no coaching about the person, no strengths, and no on-time or specific counts are in the payload. Absent everywhere else.
+   */
+  judgements?: false;
   /** 'self': the person reads their own page. 'lead': the lead reads one person's page. */
   view: 'self' | 'lead';
   checkInName: string;
@@ -110,6 +117,7 @@ export interface ACheckInRow {
   createdAt?: Date | string | null;
   completedAt?: Date | string | null;
   specificityLevel?: string | null;
+  specificityDimensions?: unknown;
 }
 
 export interface ACommitmentRow {
@@ -136,6 +144,8 @@ export interface AHandoffRow {
 }
 
 export interface TheRecordForOnePerson {
+  /** False where the organisation keeps judgements of a person off. Absent or true: as before. */
+  judgements?: boolean;
   reader: 'self' | 'lead';
   person: { participantId: string; name: string; firstName: string };
   leadFirst: string;
@@ -147,6 +157,11 @@ export interface TheRecordForOnePerson {
   waitsOnThem: AHandoffRow[];
   /** Every handoff this person raised. */
   raised: AHandoffRow[];
+  /**
+   * What colleagues in this check-in chase or promise themselves: their own waits and promises, read only to tell which of this
+   * person's waits are somebody else's to chase (a-wait-somebody-else-chases). Never shown.
+   */
+  othersChase?: string[];
   /** Colleagues who credited this person in their own check-ins, one entry per check-in, named where this reader may. */
   credits: { fromName: string | null; checkInId: string | null }[];
   checkIns: ACheckInRow[];
@@ -253,8 +268,15 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
   const due = r.checkIns.filter((c) => wasDue(c, r.now)).sort((a, b) => a.sessionNumber - b.sessionNumber);
   const done = due.filter((c) => c.status === 'COMPLETED');
   const onTime = done.filter(wasOnTime);
-  const specific = done.filter((c) => c.specificityLevel === 'specific');
-  const raised = dedupeDependencies(r.raised.filter((d) => d.onParticipantId !== r.person.participantId) as any[]) as AHandoffRow[];
+  /*
+   * SPECIFIC BY THE BOARD'S OWN RULE (engine test, Drop Access). Kevin gave the M-Pesa code QJK4TL2MX9, "Jane wants 6 units, so I sent
+   * a quote for 30k", names, days and amounts, and his My work said "0 of 6 were specific", while the board read the same rounds as
+   * checkable. A check-in is specific where its own read says so, or where at least one thing in it could be checked: the board's
+   * first test of whether a round can be checked (aRoundCanBeChecked).
+   */
+  const specific = done.filter((c) => c.specificityLevel === 'specific' || (c.specificityDimensions as any)?.checkable === 'specific');
+  /* Not a blocker of theirs to have tried on: a wait a colleague here is chasing or has promised (a-wait-somebody-else-chases). */
+  const raised = dedupeDependencies(r.raised.filter((d) => d.onParticipantId !== r.person.participantId && !aWaitSomebodyElseChases(String((d as any).what ?? ''), r.othersChase ?? [])) as any[]) as AHandoffRow[];
   const tried = raised.filter((d) => String(d.triedSaid ?? '').trim());
   const cleared = raised.filter((d) => d.status === 'CLEARED');
   const creditors = [...new Set(r.credits.map((c) => c.fromName ?? 'A colleague'))];
@@ -438,6 +460,59 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
     };
   });
 
+  /* JUDGEMENTS OF A PERSON OFF FOR THIS ORGANISATION: none of them is built, and the page says so plainly. */
+  if (r.judgements === false) {
+    return {
+      on: true,
+      judgements: false,
+      view: r.reader,
+      checkInName,
+      person: r.person,
+      heading: `${first}’s work`,
+      topLine: self
+        ? `What you need to do and what you’ve done. ${leadFirst} sees this page too.`
+        : `What ${first} needs to do and what ${first} has done. ${first} sees this page too.`,
+      numbers: numbers.slice(0, 3),
+      focus: null,
+      focusEmpty: NOT_SHOWN_IN_THIS_ORGANISATION,
+      toDo: {
+        othersNeed,
+        own,
+        emptySays: self ? 'Nothing to do yet. What you say you will do in a check-in shows here.' : `${first} has nothing to do yet. What ${first} says in a check-in shows here.`,
+      },
+      achieved: {
+        items: achieved,
+        note: 'In this check-in',
+        emptySays: self ? 'Nothing yet. What you finish, with its proof, shows here.' : `Nothing yet. What ${first} finishes, with its proof, shows here.`,
+      },
+      performing: { note: NOT_SHOWN_IN_THIS_ORGANISATION, behaviours: [], libraryNote: '' },
+      coaching: {
+        /* Only the lead's coaching for the whole team, which is about nobody in particular. */
+        better: r.teamCoaching.map((t) => ({ text: stop(t), from: self ? `${leadFirst}’s coaching for the team` : 'Your coaching for the team' })),
+        keep: [],
+        betterEmpty: NOT_SHOWN_IN_THIS_ORGANISATION,
+        keepEmpty: NOT_SHOWN_IN_THIS_ORGANISATION,
+      },
+      checkIns: {
+        heading: `${Your} check-ins`,
+        due: due.length,
+        done: done.length,
+        onTime: 0,
+        specific: 0,
+        emptySays: due.length ? null : (self ? 'No check-in has been due yet.' : `No check-in has been due for ${first} yet.`),
+      },
+      reports,
+      items: {
+        heading: `${Your} ${words.itemsWord}`,
+        note: `${open.length} open`,
+        itemWord: words.itemWord,
+        rows,
+        emptySays: words.keepsItems
+          ? (self ? `You have no ${words.itemsWord} on the board yet.` : `${first} has no ${words.itemsWord} on the board yet.`)
+          : 'This check-in keeps no items on its board.',
+      },
+    };
+  }
   return {
     on: true,
     view: r.reader,
@@ -579,7 +654,7 @@ export async function readMyWork(
     prisma.workMention?.findMany?.({ where: { groundId: ground.id, aboutParticipantId: pid, kind: 'CREDIT' }, select: { sourceParticipantId: true, checkInId: true } }).catch(() => []) ?? [],
     prisma.checkIn?.findMany?.({
       where: { participantId: pid, groundId: ground.id, isSetup: false, isSelfCorrection: false, isClarification: false, isPostSignOff: false, optional: false },
-      select: { id: true, sessionNumber: true, status: true, availableFrom: true, createdAt: true, completedAt: true, specificityLevel: true },
+      select: { id: true, sessionNumber: true, status: true, availableFrom: true, createdAt: true, completedAt: true, specificityLevel: true, specificityDimensions: true },
       orderBy: { sessionNumber: 'asc' },
     }).catch(() => []) ?? [],
     prisma.groundContextItem?.findMany?.({
@@ -588,6 +663,12 @@ export async function readMyWork(
       orderBy: { createdAt: 'asc' },
     }).catch(() => []) ?? [],
     prisma.groundObjective?.findMany?.({ where: { groundId: ground.id, ownerParticipantId: pid }, select: { name: true, target: true, count: true, ownerParticipantId: true, isADecisionAboutAPerson: true }, orderBy: { sortOrder: 'asc' } }).catch(() => []) ?? [],
+  ]);
+
+  /* Colleagues' own waits and promises here, to tell which waits are theirs to chase. Never served. */
+  const [othersDeps, othersCommitments] = await Promise.all([
+    prisma.groundDependency?.findMany?.({ where: { groundId: ground.id, fromParticipantId: { not: pid } }, select: { what: true } }).catch(() => []) ?? [],
+    prisma.groundCommitment?.findMany?.({ where: { groundId: ground.id, participantId: { not: pid } }, select: { text: true } }).catch(() => []) ?? [],
   ]);
 
   /* Their own first line in each finished check-in, for the person alone: a person's own report is private, always. */
@@ -610,7 +691,10 @@ export async function readMyWork(
   const mayRead = targetsFor(objectives as any[], mine?.id ?? null, 'their own', { isLead }).shown as any[];
   const target = mayRead.find((o) => o.ownerParticipantId === pid && !o.isADecisionAboutAPerson && typeof o.target === 'number' && o.target > 0) ?? null;
 
+  /* Judgements of a person off for this organisation: no pattern, note or coaching about the person is read into the page. */
+  const judgements = await thePersonJudgementsAreOn(prisma, ground.organizationId);
   const record: TheRecordForOnePerson = {
+    ...(judgements ? {} : { judgements: false }),
     reader,
     person: { participantId: pid, name, firstName: firstOf(name) },
     leadFirst,
@@ -619,12 +703,16 @@ export async function readMyWork(
     commitments: commitments as any[],
     waitsOnThem: (deps as any[]).filter((d) => d.onParticipantId === pid).map((d) => ({ ...d, fromName: nameOf(d.fromParticipantId) })),
     raised: (deps as any[]).filter((d) => d.fromParticipantId === pid),
+    othersChase: [
+      ...((othersDeps as any[]) ?? []).map((d) => String(d.what ?? '')),
+      ...((othersCommitments as any[]) ?? []).map((c) => String(c.text ?? '')),
+    ].filter((t) => t.trim()),
     credits: (mentions as any[]).filter((m) => m.sourceParticipantId !== pid).map((m) => ({ fromName: nameOf(m.sourceParticipantId), checkInId: m.checkInId ?? null })),
     checkIns: checkIns as any[],
     ownLines,
-    patterns: patterns.map((p: any) => ({ heading: String(p.heading ?? ''), kind: String(p.kind ?? ''), oneStep: p.oneStep ?? null, yours: p.yours })),
+    patterns: judgements ? patterns.map((p: any) => ({ heading: String(p.heading ?? ''), kind: String(p.kind ?? ''), oneStep: p.oneStep ?? null, yours: p.yours })) : [],
     teamCoaching: (lines as any[]).filter((l) => l.kind === 'COACHING').map((l) => String(l.text ?? '').trim()).filter(Boolean),
-    helpWith,
+    helpWith: judgements ? helpWith : null,
     target: target ? { count: target.count ?? 0, target: target.target } : null,
     now,
     timeZone,

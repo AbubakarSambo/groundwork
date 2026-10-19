@@ -1,3 +1,4 @@
+import { aLineWithItsDay, todayForTheModel } from './each-earlier-thing-has-its-day';
 /**
  * WHAT THE RECORD ALREADY HOLDS ABOUT THIS PERSON, PUT IN FRONT OF THE CONVERSATION.
  *
@@ -121,6 +122,11 @@ export function whatTheRecordAlreadyHolds(input: {
    * own words. Task 2.4 (week 3): good news first, when there is some. Empty when there is none.
    */
   wentWellLastTime?: string[];
+  /** The day each of saidLastTime was said, in the same order, and the organisation's zone (each-earlier-thing-has-its-day). */
+  saidLastTimeOn?: (Date | string | null)[];
+  zone?: string;
+  /** True to open with today's day, so a day they named is counted from the day they said it. */
+  sayToday?: boolean;
   now: Date;
   /**
    * WHETHER THIS CHECK-IN EXPECTS PEOPLE TO HAVE TRIED, which is a decision its lead makes.
@@ -254,9 +260,11 @@ export function whatTheRecordAlreadyHolds(input: {
     parts.push(
       'WHAT THIS PERSON SAID LAST TIME, in their own words. If they said they would do something, ' +
       'ask whether it happened before asking anything new.\n' +
-      saidLastTime.map((s) => `- "${s}"`).join('\n'),
+      saidLastTime.map((s, i) => aLineWithItsDay(s, input.saidLastTimeOn?.[i] ?? null, input.zone)).join('\n'),
     );
   }
+  /* Today's day first, so every day below is read from the day it was said (messages test, third run, items 7, 10, 12, 13). */
+  if (input.sayToday) parts.unshift(todayForTheModel(now, input.zone));
 
   return parts.join('\n\n');
 }

@@ -1,3 +1,4 @@
+import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
 import { theRelease1bTabsAreOn } from '../grounds/release-1b-tabs';
 import { aLineThatSaysItHappened } from './somebody-said-it-happened';
 import { withoutTheLeadsSetUpForAMember } from '../grounds/the-leads-set-up-is-the-leads-in-the-anchor';
@@ -43,7 +44,7 @@ import { eachDealInItsGroup } from './each-deal-in-its-group';
 import { aPromiseSomebodyElseMade } from '../conversation/a-promise-somebody-else-made';
 import { thePriceRangeAnswer, thePriceRangeDecision, THE_RANGE_QUESTION, type ARangeAnswer } from './a-deals-four-criteria';
 import { theDealWasDropped, theLostDeal } from './a-deal-that-was-dropped';
-import { theWordsNameTheDeal, theBackingDocuments, theDocumentBehind, thePaymentRecords, theSignedOrders, aPaymentRecordFor, type ABackingDocument } from './a-deals-proof-is-about-that-deal';
+import { theWordsNameTheDeal, theBackingDocuments, theDocumentBehind, thePaymentRecords, theSignedOrders, aPaymentRecordFor, theMPesaCodeFor, type ABackingDocument } from './a-deals-proof-is-about-that-deal';
 import { withTheValueWorkedOut, withOnlyTheNumbersSaid, theBuyingDateOf, theBuyingDateTheySaid, BUYING_DATE, aLineIsAbout } from './a-deals-value-and-buying-date';
 import { theirLine, theirCheckInToday, HAS_NOT_CHECKED_IN_TODAY, CHECKED_IN_TODAY } from './each-persons-line-today';
 import { withoutADealsFigure } from './a-deals-units-are-not-a-target';
@@ -626,8 +627,10 @@ export class BoardService {
      * switch on brings it back where it was; off, the board neither builds it nor tells the page it
      * has one. See patterns-are-served.
      */
+    /* Judgements of a person off for this organisation: no pattern section, no pattern questions, no coaching about a person (organisation/person-judgements.ts). */
+    const judged = await thePersonJudgementsAreOn(this.prisma, (ground as any).organizationId ?? null);
     const sections = sectionsForARunOf(ground.scenario, totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null)
-      .filter((s) => PATTERNS_ARE_SERVED || s !== 'patterns');
+      .filter((s) => (PATTERNS_ARE_SERVED && judged) || s !== 'patterns');
     const has = (s: BoardSection) => sections.includes(s);
     const family = familyFor(ground.scenario);
 
@@ -936,7 +939,7 @@ export class BoardService {
      * patterns the lead is served, so on the same timing: after the person's answer, or after 3 or 7 days. Nobody
      * else reads `overTime`. See pattern-questions-to-settle-first.
      */
-    const patternQuestions: string[] = isInitiator
+    const patternQuestions: string[] = isInitiator && judged
       ? await (async () => {
           const rows = await (this.prisma as any).patternDetection.findMany({
             where: { groundId },
@@ -1098,7 +1101,8 @@ export class BoardService {
           sessionsSoFar: Math.max(0, ...checkIns.filter((c: any) => !c.isSetup && c.status === CheckInStatus.COMPLETED && !wasAQuietClose(c)).map((c: any) => c.sessionNumber ?? 0)),
           meetingsOnRecord: await meetingsOnRecordFor(this.prisma, groundId),
         });
-        return served && patternQuestions.length ? { ...served, toSettleFirst: [...(served.toSettleFirst ?? []), ...patternQuestions] } : served;
+        const kept = served && !judged ? { ...served, patterns: [] } as any : served;
+        return kept && patternQuestions.length ? { ...kept, toSettleFirst: [...(kept.toSettleFirst ?? []), ...patternQuestions] } : kept;
       })() : null,
       myParticipantId: me?.id ?? null,
       // Whether the caller may set the frame (targets, the poll question). The
@@ -2361,7 +2365,7 @@ export class BoardService {
      * or an admin who set the check-in up for them - never a participant, never an admin without that
      * access, even one who can otherwise read the rest of this board (decision 64).
      */
-    if (has('contribution') && PATTERNS_ARE_SERVED && readsHowTheLeadingIsLanding(ground as any, requestingUserId)) {
+    if (has('contribution') && PATTERNS_ARE_SERVED && judged && readsHowTheLeadingIsLanding(ground as any, requestingUserId)) {
       // Only meaningful where someone actually manages someone: needs a manager
       // and at least one report, both with accounts on record.
       // The forbidden-name list is built from THIS ground's participants. See
@@ -2401,7 +2405,7 @@ export class BoardService {
     /* The coaching, from the report's own builders and under its privacy (request 79 b): your own note, and
        for whoever runs the check-in and an admin with access to it, what to ask each person (decision 93, row 9). */
     {
-      const coaching = await Promise.resolve().then(() => this.reports.coachingForTheBoard(groundId, requestingUserId, { adminReadsIt: adminHere })).catch(() => null);
+      const coaching = judged ? await Promise.resolve().then(() => this.reports.coachingForTheBoard(groundId, requestingUserId, { adminReadsIt: adminHere })).catch(() => null) : null;
       if (coaching) (out as any).coaching = coaching;
     }
 
@@ -2755,6 +2759,10 @@ export class BoardService {
             delete worked[BUYING_DATE];
             r.fields = worked;
             r.paymentRecord = aPaymentRecordFor({ name: r.name, fields: worked }, paymentLines);
+            /* An M-Pesa code given in words is the payment record, shown as "M-Pesa code" (Hafsah, 19 October; theMPesaCodeFor). */
+            const shownByADocument = r.paymentRecord && aPaymentRecordFor({ name: r.name, fields: worked }, thePaymentRecords(provenHere.filter((l) => !!l.anchoredDocumentId), docOf));
+            const code = r.paymentRecord && !shownByADocument ? theMPesaCodeFor({ name: r.name, fields: worked }, provenHere) : null;
+            if (code) { (r as any).mpesaCode = code; r.known = 'proof'; r.mark = 'proven'; r.knownSays = `M-Pesa code ${code} shows it.`; }
             r.signedOrder = aPaymentRecordFor({ name: r.name, fields: worked }, signedOrderLines);
             /*
              * LOST: the customer said no, or the rep gave it up (Drop Access run 1, A5; Hafsah, 18 October: a Lost stage), with the
@@ -2762,7 +2770,7 @@ export class BoardService {
              * supports it. Read from the owner's lines whoever reads, so every reader reads the same deal. See a-deal-that-was-dropped.
              */
             const salesStages = theSalesStages((ground as any).workStages);
-            const dropped = theDealWasDropped({ name: r.name, stage: r.stage, ownerParticipantId: r.ownerParticipantId, fields: worked }, everyLine, { lastStage: salesStages[salesStages.length - 1] ?? null, peopleThere: peopleAt.get(r.id) ?? [] });
+            const dropped = theDealWasDropped({ name: r.name, stage: r.stage, ownerParticipantId: r.ownerParticipantId, fields: worked }, everyLine, { lastStage: salesStages[salesStages.length - 1] ?? null, peopleThere: peopleAt.get(r.id) ?? [], saidInTheCheckIn: ((items as any[]).find((x) => x.id === r.id)?.fields as any)?._dropped ?? null });
             if (dropped) {
               const who = !mayReadTheWordsOf(r.ownerParticipantId) ? null : r.ownerParticipantId === me?.id ? 'You' : (r.owner ? theShortNameOf(r.owner) : null);
               r.lost = { on: dropped.on, ...theLostDeal(r.name, dropped, who) };
@@ -3251,7 +3259,7 @@ export class BoardService {
         if (byDay.size) out.whatMovedEachDay = Object.fromEntries([...byDay.entries()].map(([d, v]) => [d, v.says]));
       }
       /* What to coach each rep this week, one line about the work, to whoever runs it (Q6; what-to-coach-this-week). */
-      if (releaseOne && runsIt && isASalesKind((ground as any).kindOfWork) && Array.isArray(out.eachPersonToday) && Array.isArray(out.workRecords)) {
+      if (releaseOne && runsIt && judged && isASalesKind((ground as any).kindOfWork) && Array.isArray(out.eachPersonToday) && Array.isArray(out.workRecords)) {
         const dealRows = (out.workRecords as any[]).flatMap((sec: any) => (sec?.rows ?? []) as any[]).filter((r: any) => r?.kind === 'deal');
         const crit = (r: any) => (eachDealInItsGroup('sales org', [{ section: 'Deal grid', stages: theSalesStages((ground as any).workStages), rows: [r] }] as any, deadlineOf(ground as any), now, { countedFromTheDeals: true, contactedWhenSpokenOf: true, byBuyingDate: true, criteria: criteriaFor(), stallDays }) as any[])?.[0]?.rows?.[0]?.criteria ?? [];
         const owners = [...new Set(dealRows.map((r: any) => r.ownerParticipantId).filter(Boolean))] as string[];

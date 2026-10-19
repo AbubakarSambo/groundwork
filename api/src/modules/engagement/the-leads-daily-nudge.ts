@@ -1,8 +1,9 @@
 import { theFeeNotesThatFellDueOnAnEvent } from '../board/a-fee-note-that-fell-due-said-to-the-lead';
+import { theNewsThesePromisesWaitOn, type TheNewsGiven } from './a-promise-that-waits-on-news';
 import { theSalesMorning } from './the-sales-morning-from-the-record';
 import { withWhatTheBoardsSay, type TheLeadsBoard, type TheRecordBesideTheBoard } from './the-summary-reads-the-board';
 import { DependencyStatus, GroundStatus } from '@prisma/client';
-import { whichOfThesePromisesAreDone } from '../conversation/a-promise-said-done-is-kept';
+import { whichOfThesePromisesAreDone, whoThesePromisesAreAbout } from '../conversation/a-promise-said-done-is-kept';
 import { theDealsThatHaveStalled } from '../board/the-deals-that-have-stalled';
 import { theConfirmedWaits, whatTheyTriedInFull, theNoteBesideTheClaim } from '../grounds/a-wait-is-the-speakers-account';
 import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
@@ -359,9 +360,16 @@ export async function whatIsOutstandingFor(
   const people = new Map<string, any>((mine as any[]).map((p) => [p.id, p]));
   const letIn = (p: any) => !!p && !p.managingOnly && !p.leftAt && !isNotLetInYet(p);
   const herself = ids.length
-    ? await prisma.groundParticipant.findMany({ where: { groundId: { in: ids }, userId: lead.userId }, select: { id: true, groundId: true } }).catch(() => [])
+    ? await prisma.groundParticipant.findMany({ where: { groundId: { in: ids }, userId: lead.userId }, select: { id: true, groundId: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } }).catch(() => [])
     : [];
   const hers = new Set<string>((herself as any[]).map((p) => p.id));
+  /* Her own names, so a promise about her is told to her as "about you" (messages test, fourth run: "Joseph said “I'll speak to her tomorrow” about Grace."). */
+  const herNames = new Set<string>((herself as any[]).flatMap((p) => {
+    const first = String(p.user?.firstName ?? '').trim();
+    const last = String(p.user?.lastName ?? '').trim();
+    return [first, `${first} ${last}`.trim(), String(p.nameGiven ?? '').trim()];
+  }).filter(Boolean).map((n) => n.toLowerCase()));
+  const aboutHer = (who: string | undefined) => (who && herNames.has(who.trim().toLowerCase()) ? 'you' : who);
 
   /* WHAT HAS NO DAY IS NEVER LATE. Promises with a real date that has passed, hers first. */
   const promises: any[] = await prisma.personObjective.findMany({
@@ -377,13 +385,29 @@ export async function whatIsOutstandingFor(
   /* A PROMISE SAID DONE IS NEVER LATE (Drop Access run 1, item 13): by its maker, by the person it was for, or by the wait on its maker
      for the same thing being cleared. Read here from the record too, so a promise the record says is done is never told as overdue. */
   const saidDone = await whichOfThesePromisesAreDone(prisma, (promises as any[]).filter((p) => p.groundId && p.createdAt)).catch(() => new Set<string>());
+  /* "I'll follow up with her tomorrow" says who "her" is, from the check-in it was said in (messages test, third run, item 2). */
+  const aboutWhom = await whoThesePromisesAreAbout(prisma, (promises as any[]).filter((p) => p.groundId && p.createdAt && !saidDone.has(p.id))).catch(() => new Map<string, string>());
+  /* A promise to check for news somebody else already gave is never late (Hafsah, 19 October, FN-005): see a-promise-that-waits-on-news. */
+  const theNews = await theNewsThesePromisesWaitOn(prisma, lead.organizationId, (promises as any[]).filter((p) => p.groundId && p.createdAt && !saidDone.has(p.id)).map((p) => ({ id: p.id, text: p.text ?? '', participantId: p.participantId, groundId: p.groundId, createdAt: p.createdAt, userId: p.participant?.userId ?? null }))).catch(() => new Map<string, TheNewsGiven>());
   for (const pr of promises) {
     if (saidDone.has(pr.id)) continue;
     const g = pr.participant?.ground;
     if (!g || isEvaluationCheckIn(g.scenario) || !pr.text?.trim()) continue;
     const late = daysLate(pr.dueDate, today);
     if (late < 1) continue;
-    const text = (who: string) => `${THE_PLACE_FIRST}${theyCommitted(who, pr.text)}. That was due by ${theDay(pr.dueDate)} and is ${lateWords(late)}.`;
+    const about = aboutHer(aboutWhom.get(pr.id));
+    /* "Brian said on Wednesday 14 October that it was filed; Njeri hasn't been told." Once their next check-in has told them, nothing. */
+    const news = theNews.get(pr.id);
+    if (news) {
+      if (news.told || pr.participant?.userId === lead.userId) continue;
+      if (!(ids.includes(pr.groundId) && letIn(pr.participant) && (pr.authoredBy === 'self' || pr.seenBySubject))) continue;
+      const maker = nameToCall(pr.participant);
+      if (maker === SOMEONE) continue;
+      const reporter = news.byUserId === lead.userId ? 'You' : (news.byName ?? 'Somebody');
+      out.needsYou.push({ text: `${THE_PLACE_FIRST}${theyCommitted(maker, pr.text)}${about ? ` about ${about}` : ''}. ${reporter} said on ${theDay(news.at)} that it ${news.happened}; ${maker} hasn't been told.`, late: 0, group: 1, keptInTheApp: keptOffThePhone(g), place: g.label, groundId: g.id, about: { kind: 'promise', ids: [pr.id] } });
+      continue;
+    }
+    const text = (who: string) => `${THE_PLACE_FIRST}${theyCommitted(who, pr.text)}${about ? ` about ${about}` : ''}. That was due by ${theDay(pr.dueDate)} and is ${lateWords(late)}.`;
     /* "Someone" is the word for a person nobody has a name for (decision 115): a lead cannot act on it, so it is not told. */
     if (pr.participant?.userId !== lead.userId && nameToCall(pr.participant) === SOMEONE) continue;
     if (pr.participant?.userId === lead.userId) out.needsYou.push({ text: text('You'), late, group: 2, keptInTheApp: keptOffThePhone(g), place: g.label, groundId: g.id, daysOverdue: late, about: { kind: 'promise', ids: [pr.id] }, owedTo: pr.owedToParticipantId ?? null, dueSaid: theDay(pr.dueDate) });

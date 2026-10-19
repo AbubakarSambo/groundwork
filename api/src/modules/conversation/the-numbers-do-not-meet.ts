@@ -39,7 +39,12 @@ const READS_AS_A_DATE = new RegExp(
   + '|\\b(mon|tues|wednes|thurs|fri|satur|sun)day\\s+(the\\s+)?(\\d+)'
   + '|\\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\\.?\\s+(\\d+)'
   + '|(\\d+)\\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*'
-  + '|\\b(by|on)\\s+the\\s+(\\d+)',
+  + '|\\b(by|on)\\s+the\\s+(\\d+)'
+  /* A TIME OF DAY IS NOT A TARGET EITHER (messages test, fourth run). Kevin said "I'm visiting Kasarani Gym tomorrow at 10 to discuss
+     their 3 units." and was asked "This check-in is aiming at 120. You said 10. Is that your own part of it?" He had never said 10; Grace
+     had set him 40. "at 10", "at 10:30", "10am" and "10 o'clock" are times. */
+  + '|\\bat\\s+(\\d{1,2})(?:[:.](\\d{2}))?\\s*(?:am|pm|a\\.m\\.|p\\.m\\.|o[\'’]clock)?(?=\\s*(?:$|[.;!?)]|,(?!\\d)|to\\b|in the\\b|on\\b|tomorrow|today|tonight|this\\b|and\\b|sharp\\b))'
+  + '|\\b(\\d{1,2})(?:[:.](\\d{2}))?\\s*(?:am|pm|a\\.m\\.|p\\.m\\.|o[\'’]clock)(?![a-z])',
   'gi',
 );
 

@@ -1,3 +1,4 @@
+import { thePersonJudgementsAreOn, thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
 import { theNumberIsOnlyADay } from '../conversation/a-day-is-not-a-target';
 import { readWhereEachPersonIsGettingStarted } from './getting-each-person-started';
 import { theShareTimeANewCheckInStartsWith, aTimeOfDay } from '../reports/a-report-shares-itself';
@@ -2115,7 +2116,8 @@ export class GroundsService {
      * check-in, after three periods, in plain words, built by patterns/who-reads-a-pattern. Nothing
      * at all while patterns are not served, and then not even the reader lookup is made.
      */
-    const signals = PATTERNS_ARE_SERVED && !heldButAnswered
+    /* Judgements of a person off for this organisation: no pattern about anybody (organisation/person-judgements.ts). */
+    const signals = PATTERNS_ARE_SERVED && !heldButAnswered && (await thePersonJudgementsAreOn(this.prisma, (ground as any).organizationId ?? organizationId))
       ? await (async () => {
           const namesForPatterns = whoIsWhoIn(ground.participants as any, ground.initiatorId, (ground as any).cadence);
           const served = servedPatterns(
@@ -8670,11 +8672,11 @@ export class GroundsService {
      * once, and gave no way to answer. None at all while patterns are not served.
      */
     const namesForOwnPatterns = whoIsWhoIn((participant as any).ground?.participants, (participant as any).ground?.initiatorId, (participant as any).ground?.cadence);
-    const servedOwn = servedPatterns(
+    const servedOwn = (await thePersonJudgementsAreOnFor(this.prisma, groundId)) ? servedPatterns(
       participant.patternDetections as any,
       { participantId: participant.id, runsIt: false },
       namesForOwnPatterns,
-    );
+    ) : [];
     /* Opening a page never asks the model (decision 7): kept wording only. */
     const patterns = await wordPatternEvidence(
       servedOwn,

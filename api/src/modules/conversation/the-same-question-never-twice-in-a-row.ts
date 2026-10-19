@@ -83,6 +83,9 @@ export function notAQuestionAlreadyAnswered(reply: string, earlierAiTurns: reado
     /* A question about a named thing ("When does Savannah Cafe pay the KES 15,000 deposit?") is the same question by its words; a general
        one ("What will you do about that, and by when?") only where what comes before it says the same again. */
     if (/\d|\s[A-Z][a-z]/.test(q.trim().slice(1))) return true;
+    /* And one that says enough of its own to be about one thing: Kevin was asked "What is one thing you wish had gone differently with
+       those two shops?" in his opening on Tuesday 13 October, answered it, and was asked it again word for word (messages test, fourth run). */
+    if (contentOf(q).length >= 5) return true;
     return sentences.some((s) => saysAgain(s, t));
   });
   if (!asked) return said;

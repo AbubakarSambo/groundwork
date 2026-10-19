@@ -157,3 +157,36 @@ export function theDocumentBehind(anchoredDocumentId: string | null | undefined,
   if (!d) return { documentWords: null, documentOn: null };
   return { documentWords: aDocumentHasWords(d) ? theDocumentsWords(d) : null, documentOn: d.createdAt ? new Date(d.createdAt) : null };
 }
+
+/*
+ * AN M-PESA CODE GIVEN IN WORDS IS PROOF OF PAYMENT, AND IS SHOWN AS "M-PESA CODE" (Hafsah, 19 October: "An M-Pesa code given in words
+ * counts as proof of payment. Show it as "M-Pesa code", and ask once for the screenshot."). Kevin said on Tuesday 13 October "Kilele
+ * Hotel's payment was KES 200,000 via M-Pesa. The confirmation code is QJK4TL2MX9." The line is kept as typed proof
+ * (a-typed-reference-backs-its-line) and counts wherever proof of payment counts; where the proof is shown it reads "M-Pesa code
+ * QJK4TL2MX9", never "a payment record" or "a document".
+ */
+/* M-Pesa codes: ten capitals and digits, with at least two letters and one digit ("QJK4TL2MX9"), as a-typed-reference-backs-its-line reads them. */
+const AN_MPESA_CODE = /\b(?=[A-Z0-9]{10}\b)(?=[A-Z0-9]*\d)(?=(?:[0-9]*[A-Z]){2})[A-Z0-9]{10}\b/g;
+
+/** The M-Pesa codes typed in a line, once each. */
+export function theMPesaCodesIn(text: string | null | undefined): string[] {
+  return [...new Set(String(text ?? '').match(AN_MPESA_CODE) ?? [])];
+}
+
+/**
+ * The M-Pesa code typed for this deal: on a line with no document that names the deal and reads as a payment. Null where the payment
+ * record is a document (an M-Pesa message, a receipt), or there is none.
+ */
+export function theMPesaCodeFor(deal: { name: string; fields?: Record<string, string> | null }, lines: readonly { text: string; anchoredDocumentId?: string | null }[]): string | null {
+  for (const l of lines) {
+    if (l.anchoredDocumentId) continue;
+    const text = String(l.text ?? '');
+    const codes = theMPesaCodesIn(text);
+    if (!codes.length || !readsAsAPayment(text) || !theWordsNameTheDeal(text, deal)) continue;
+    return codes[0];
+  }
+  return null;
+}
+
+/** How the proof of a payment typed as an M-Pesa code is said: "M-Pesa code QJK4TL2MX9". */
+export const anMPesaCode = (code: string) => `M-Pesa code ${code}`;

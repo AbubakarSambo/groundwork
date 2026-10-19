@@ -22,7 +22,8 @@ export function whatTheLeadsWeeklyReportSays(read: TheWeeklyReportAsServed | nul
   const moved = (read.whatChanged?.moved ?? []).map((s) => String(s ?? '').trim()).filter((s) => s && s !== NOTHING_MOVED);
   /* ONLY THE FIRST SENTENCE OF WHY. The report joins what only the lead can settle with what the person said would change ("Once it is settled, I can quote."), which is
      the person's voice, and in a letter where "I" is Groundwork it would read as Groundwork's. The first sentence is the reason, in the report's voice. */
-  const firstSentence = (t: string) => (t.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? t).trim();
+  /* Never at the full stop of a title or "v." (messages test, fourth run: "it is waiting on Mr." in Wanjiru's letter, for Mr. Baraka). */
+  const firstSentence = (t: string) => (t.match(/^.*?(?<!\b(?:Mr|Mrs|Ms|Dr|Prof|St|v|vs|No))[.!?](?=\s|$)/)?.[0] ?? t).trim();
   const toDo = (read.forNextWeek ?? []).map((t) => ({ do: String(t.do ?? '').trim(), why: firstSentence(String(t.why ?? '').trim()) })).filter((t) => t.do);
   return moved.length || toDo.length ? { moved, toDo } : null;
 }

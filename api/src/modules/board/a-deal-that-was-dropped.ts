@@ -19,7 +19,7 @@ import { cleanText } from '../reports/what-the-record-actually-holds';
  * too ("Still no reply [INFERRED: from Ngong Road Minimart].").
  */
 
-const TURNED_DOWN = /\bsaid no\b|\bturned (?:us|it|me|him|her|them|the offer) down\b|\bturned down\b|\b(?:not|no longer) interested\b|\bdeclined\b|\balready buys? from\b|\bnot on my list any ?more\b|\bhappy with (?:their|the|its) (?:current )?supplier\b/i;
+const TURNED_DOWN = /\bshut (?:me|us|him|her|them) down\b|\balready (?:had|have|has) (?:a|another|their own) supplier\b|\bsaid no\b|\bturned (?:us|it|me|him|her|them|the offer) down\b|\bturned down\b|\b(?:not|no longer) interested\b|\bdeclined\b|\balready buys? from\b|\bnot on my list any ?more\b|\bhappy with (?:their|the|its) (?:current )?supplier\b/i;
 const GAVE_UP = /\b(?:stopped|stop|quit) chasing\b|\b(?:moving|moved) on from\b|\b(?:i['’]?m|i am|we['’]?re|we are) moving on\b|\bso i['’]?m moving on\b|\b(?:gave|giving) up on\b|\bdropp(?:ed|ing) (?:it|them|the deal|the lead)\b|\bletting (?:it|them) go\b|\bno longer (?:chasing|pursuing)\b/i;
 const OPENED_AGAIN = /\b(?:paid|ordered|signed|bought|said yes|agreed to buy|changed (?:his|her|their) mind|wants? to buy|will buy|['’]ll buy)\b/i;
 const NEGATED = /\b(?:not|no|never|won['’]?t|hasn['’]?t|haven['’]?t|didn['’]?t|isn['’]?t)\b/i;
@@ -48,7 +48,7 @@ export function aLineDropsADeal(text: string): boolean {
 export function theDealWasDropped(
   deal: { name: string; stage?: string | null; ownerParticipantId?: string | null; fields?: Record<string, string> | null },
   lines: readonly { text: string; participantId?: string | null; createdAt: Date | string; disputedAt?: Date | string | null; anchoredDocumentId?: string | null }[],
-  opts: { lastStage?: string | null; peopleThere?: readonly string[] } = {},
+  opts: { lastStage?: string | null; peopleThere?: readonly string[]; saidInTheCheckIn?: { on: string; line: string } | null } = {},
 ): ADroppedDeal | null {
   if (opts.lastStage && String(deal.stage ?? '').trim().toLowerCase() === opts.lastStage.trim().toLowerCase()) return null;
   const about = (raw: string) => theWordsNameTheDeal(raw, deal)
@@ -61,7 +61,14 @@ export function theDealWasDropped(
     .sort((a, b) => a.at.getTime() - b.at.getTime());
   let dropped: { line: string; at: Date; shown: boolean } | null = null;
   let withAReason: { line: string; at: Date; shown: boolean } | null = null;
-  for (const l of theirs) {
+  /* What its owner said of it in the check-in, in a sentence that did not name it (what-the-owner-said-of-each-deal), counts from its day. */
+  const inTheCheckIn = opts.saidInTheCheckIn && typeof opts.saidInTheCheckIn.line === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(String(opts.saidInTheCheckIn.on))
+    ? { text: cleanText(opts.saidInTheCheckIn.line), at: new Date(`${opts.saidInTheCheckIn.on}T23:59:59Z`), shown: false } : null;
+  if (inTheCheckIn) {
+    dropped = { line: inTheCheckIn.text, at: inTheCheckIn.at, shown: false };
+    if (/\bbecause\b/i.test(inTheCheckIn.text)) withAReason = dropped;
+  }
+  for (const l of inTheCheckIn ? theirs.filter((x) => x.at.toISOString().slice(0, 10) > opts.saidInTheCheckIn!.on || aLineDropsADeal(x.text)) : theirs) {
     if (aLineDropsADeal(l.text)) {
       dropped = { line: l.text, at: l.at, shown: l.shown };
       if (/\bbecause\b/i.test(l.text)) withAReason = { line: l.text, at: l.at, shown: l.shown };

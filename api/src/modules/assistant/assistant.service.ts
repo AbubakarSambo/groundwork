@@ -1,3 +1,4 @@
+import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
 import { WAITING_TO_BE_LET_IN } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { asksWhatWeKnowOfTheirJob, parseAJobCorrection, theCorrectionSaidBack, whatTheyToldUs, SHARE_KIND as JOB_CORRECTION_KIND } from './my-job-in-ask';
 import { correctTheirJob, theirJobForThem } from '../suites/correct-their-job';
@@ -1112,6 +1113,10 @@ export class AssistantService {
       return rules('how_am_i_doing', text('I cannot match you to a check-in, so I have nothing to go on yet.'));
     }
 
+    /* Judgements of a person off for the organisation: no coaching step is told (organisation/person-judgements.ts). */
+    if (!(await thePersonJudgementsAreOn(this.prisma, organizationId))) {
+      return rules('how_am_i_doing', text('Your organisation does not show coaching about people here, so there is no step to tell you. What you said you would do is on your page.'));
+    }
     const state = await this.prisma.coachingState.findFirst({
       /* On WhatsApp, never a step from a check-in kept in the app (decision 82, item 7). */
       where: { participant: { email: person.email, ground: { organizationId }, ...this.notInAKeptCheckIn(await keptInTheApp(this.prisma as any, organizationId)) } },

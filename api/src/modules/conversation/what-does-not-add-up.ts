@@ -133,6 +133,16 @@ function wordsOfTarget(name: string): string[] {
     .slice(0, 4) ?? [];
 }
 
+/* "They each want 1 unit", "1 unit each", "2 apiece", "1 unit per kiosk"; never "25 units at KES 5,000 each", whose "each" is the price's. */
+export function aFigureForEachOne(text: string, raw: string): boolean {
+  const t = String(text ?? '');
+  const at = t.indexOf(raw);
+  if (at === -1) return false;
+  const before = t.slice(Math.max(0, at - 20), at);
+  const after = t.slice(at + raw.length);
+  return /\beach\s+(?:\w+\s+){0,2}$/i.test(before) || /^\s*(?:each|apiece|per\s+(?:kiosk|shop|store|customer|outlet|school|person|head|site|branch))\b/i.test(after);
+}
+
 export function whatDoesNotAddUp(input: WhatToCheck): ADifference[] {
   const out: ADifference[] = [];
   const said = input.said.filter((s) => s.text?.trim());
@@ -148,8 +158,16 @@ export function whatDoesNotAddUp(input: WhatToCheck): ADifference[] {
     if (/^\s*(to|aiming|aim|hoping|planning|target|goal)\b/i.test(clean(s.text))) continue;
     /* One customer's units are compared only with the same customer's; a number about no customer only with another about none. */
     const about = input.customers ? (theCustomerALineIsAbout(s.text, input.customers) ?? (aDealsFigure(s.text, input.customers, input.people ?? []) ? `a deal: ${s.text}` : '')) : '';
-    for (const n of numbersWithUnits(whatIsNotAnAimIn(s.text, !!input.customers))) {
+    const read = whatIsNotAnAimIn(s.text, !!input.customers);
+    for (const n of numbersWithUnits(read)) {
       if (n.unit === 'money' || n.unit === 'percent') continue;
+      /*
+       * A FIGURE FOR EACH ONE IS NOT A COUNT (engine test, Drop Access). Mercy said on Monday 12 October of the Kawangware kiosks "They
+       * each want 1 unit", and on Wednesday "Greenfield Supermarket was interested in 25 units from the start". Her check-ins in
+       * sessions 2, 3, 5 and 6 asked her to settle "each want 1 unit" against "interested in 25 units", two customers read as one.
+       * A number said for each one ("each", "apiece", "per shop") is not a count of anything to set against another.
+       */
+      if (aFigureForEachOne(read, n.raw)) continue;
       /* A target's own number said again is that target, not a count of anything (point 9; answer 7): "120 units sold in total". */
       if (input.customers && input.targets.some((t) => t.target != null && t.target === n.value)) continue;
       const key = about ? `${n.unit}\u0000${about.toLowerCase()}` : n.unit;

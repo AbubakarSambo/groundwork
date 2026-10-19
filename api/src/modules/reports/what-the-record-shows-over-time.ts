@@ -1035,10 +1035,11 @@ export function theRecordOverTime(o: {
 export function overTimeForThisReader(
   it: WhatTheRecordShowsOverTime | null | undefined,
   viewer: { isLead: boolean; participantId: string | null },
-  opts: { meetingsOnRecord?: boolean } = {},
+  opts: { meetingsOnRecord?: boolean; judgements?: boolean } = {},
 ): WhatTheRecordShowsOverTime | null {
   if (!it) return null;
-  if (viewer.isLead) return overTimeAsServed(it, { meetingsOnRecord: opts.meetingsOnRecord });
+  /* Judgements of a person off for the organisation (organisation/person-judgements.ts): the lead reads no pattern about anybody. */
+  if (viewer.isLead) { const served = overTimeAsServed(it, { meetingsOnRecord: opts.meetingsOnRecord }); return served && opts.judgements === false ? { ...served, patterns: [] } as any : served; }
   const mine = viewer.participantId;
   if (!mine) return null;
   return {

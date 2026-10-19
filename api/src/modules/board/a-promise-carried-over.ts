@@ -53,7 +53,20 @@ export function thePromisesCarriedOver(
       return here.some((t, i) => String(t.role ?? '').toUpperCase() === 'PERSON' && STILL_TO_DO.test(String(t.content ?? ''))
         && (namesTheThing(String(t.content ?? ''), what, dealNames) || (i > 0 && String(here[i - 1].role ?? '').toUpperCase() !== 'PERSON' && namesTheThing(String(here[i - 1].content ?? ''), what, dealNames))));
     };
-    if (!lastThree.every(saidItIn) || seen.has(key)) continue;
+    /*
+     * ONLY A PROMISE THEY MADE THEMSELVES (engine test, Drop Access, week of 12 October). Grace waited on Kevin, Mercy, Joseph and Peter
+     * for "proof of what is real on his deals". Each was asked about proof in each check-in and answered with a plan for something else
+     * ("I'll follow up with Jane first thing tomorrow morning"), and the weekly report said of all four "Proof of what is real on his
+     * deals, promised three check-ins running, still not done", and "Kevin Omondi promised it three check-ins running". Kevin never
+     * promised it: it was Grace's wait on him. A wait counts as their carried-over promise only where, at least once, their own words
+     * name the thing and say they will do it.
+     */
+    const theirOwnWords = [
+      ...lines.filter((l) => l.participantId === w.onParticipantId).map((l) => l.text),
+      ...turns.filter((t) => String(t.role ?? '').toUpperCase() === 'PERSON' && theirs.some((c) => c.id === t.checkInId)).map((t) => String(t.content ?? '')),
+    ];
+    const promisedItThemselves = theirOwnWords.some((t) => namesTheThing(t, what, dealNames) && STILL_TO_DO.test(t));
+    if (!promisedItThemselves || !lastThree.every(saidItIn) || seen.has(key)) continue;
     seen.add(key);
     const thing = what.charAt(0).toUpperCase() + what.slice(1).replace(/[.\s]+$/, '');
     out.push({ participantId: w.onParticipantId, waitId: w.id, says: `${thing}, promised three check-ins running, still not done.` });

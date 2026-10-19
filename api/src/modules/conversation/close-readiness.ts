@@ -44,8 +44,14 @@ const SAYS_NOTHING_TO_ADD =
  *
  * Hafsah: "it also doesnt end naturally." She asked three times.
  */
+/*
+ * "THAT'S ALL I CAN DO FOR NOW" IS ABOUT THE WORK, NOT LEAVING (messages test, fourth run). Mercy, asked on Wednesday 14 October what she
+ * had done about Joseph's samples, said "I called Joseph on Tuesday, and he said he'd have them for me on Thursday. That's all I can do for
+ * now." and her check-in closed after two questions: "Thanks. I have what you said so far, and you can add more later today." "That's all"
+ * followed by what they can do, have or know is about the work.
+ */
 export const WANTS_OUT =
-  /\b(that'?s (it|me|all)|that is (it|all|everything)|(that'?s|that is) (everything|all)( from (me|my side))?|i'?m done|i am done|we'?(re| are) done|i have nothing (else|more)( to add)?|i'?ve nothing (else|more)|done for (?:now|today|the day)|need to go|got to go|have to go|can we (stop|finish)|later|another time|skip this|end (the|this) (session|check-?in|conversation)|(session|check-?in|conversation) end|(?:please )?(?:finish|end|stop|close) (?:the|this|my) (?:session|check-?in|conversation)|^\s*(?:please\s+)?(?:finish|end it|stop|close it)(?:\s+(?:it|this|now|please))*\s*[.!]*\s*$|wrap (this |it )?up|stop (the|this) (session|check-?in)|no more questions)/i;
+  /\b(that'?s (it|me|all)(?!\s+(?:i|we|they|he|she|you)\s+(?:can|could|have|had|did|do|know|need|got|was|am|is)\b)|that is (it|all|everything)(?!\s+(?:i|we|they|he|she|you)\s+(?:can|could|have|had|did|do|know|need|got|was|am|is)\b)|(that'?s|that is) (everything|all)( from (me|my side))?(?!\s+(?:i|we|they|he|she|you)\s+(?:can|could|have|had|did|do|know|need|got|was|am|is)\b)|i'?m done|i am done|we'?(re| are) done|i have nothing (else|more)( to add)?|i'?ve nothing (else|more)|done for (?:now|today|the day)|need to go|got to go|have to go|can we (stop|finish)|later|another time|skip this|end (the|this) (session|check-?in|conversation)|(session|check-?in|conversation) end|(?:please )?(?:finish|end|stop|close) (?:the|this|my) (?:session|check-?in|conversation)|^\s*(?:please\s+)?(?:finish|end it|stop|close it)(?:\s+(?:it|this|now|please))*\s*[.!]*\s*$|wrap (this |it )?up|stop (the|this) (session|check-?in)|no more questions)/i;
 
 export interface CloseReadiness {
   ready: boolean;

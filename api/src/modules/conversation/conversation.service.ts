@@ -1,3 +1,5 @@
+import { thePersonJudgementsAreOn, thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
+import { withoutAMissedStepNobodySaid } from './a-missing-proof-is-not-a-missed-step';
 import { aDayIsNotATarget, theNumberIsOnlyADay } from './a-day-is-not-a-target';
 import { theThingWaitedFor } from '../board/a-wait-said-in-full';
 import { theTargetItSaysAgain } from '../board/a-target-said-again-is-that-target';
@@ -82,7 +84,7 @@ import { whatChangedOnTheirDeals } from './what-changed-on-their-deals';
 import { oneOfTheKinds, isASalesKind } from '../board/the-kind-of-work';
 import { theEndCard, theCardStillStanding, whatTheyWereAskedToShow, type EndCard, type ALineForTheCard } from './the-end-card';
 import { aThingToCarry, openingWithASentence, thePrivateSummaryAsRead } from './the-private-summary-opens-with-a-sentence';
-import { READ_WHAT_HAPPENED, WHAT_HAPPENED_SCHEMA, theSettlements, thePrompt as theHappenedPrompt, aCommitmentKey, oneOfEach, type AnAnswer } from './what-happened-to-what-they-said';
+import { READ_WHAT_HAPPENED, WHAT_HAPPENED_SCHEMA, theSettlements, thePrompt as theHappenedPrompt, aCommitmentKey, oneOfEach, theySaidItDidNotHappen, type AnAnswer } from './what-happened-to-what-they-said';
 import { theProofSettlements, thePrompt as theProofPrompt, WHICH_COMMITMENT_A_LINE_KEEPS_PROMPT, WHICH_COMMITMENT_A_LINE_KEEPS_SCHEMA, whatThisLineProves, mayBeSettledByProof } from './settled-by-proof';
 import { whoAddedEachBackingDocument } from '../reports/how-a-line-is-known';
 import { aWaitThatConfirms, theLineToConfirm, thePrompt as theDeliveredPrompt, WHICH_LINE_WAS_DELIVERED_PROMPT, WHICH_LINE_WAS_DELIVERED_SCHEMA } from './confirmed-by-who-received-it';
@@ -289,6 +291,12 @@ import { asADirection } from '../board/an-aim-or-a-limit';
 import { theTargetAsASentence } from './each-target-is-a-sentence-about-whoever-set-it';
 import { withoutOurInstructions, withoutTalkAboutTheConversation } from './our-instructions-never-reach-them';
 import { withoutAConclusionNobodyDrew } from './a-conclusion-nobody-drew-is-never-sent';
+import { withoutPressingOrAccusing, withOnePossessive } from './nothing-sent-presses-or-accuses';
+import { withNoPastQuestionAboutADayToCome } from './a-day-to-come-is-never-asked-about-as-past';
+import { withoutAPastedLine } from './a-pasted-line-is-never-read-back';
+import { theNewsThesePromisesWaitOn, theNewsInOneLine } from '../engagement/a-promise-that-waits-on-news';
+import { whenItWas as aDayOfTheirs } from '../../common/a-date-reads-the-same-everywhere';
+import { theMPesaCodesSaid, theMPesaCodesForTheModel, theScreenshotWasAskedFor, withTheScreenshotAskedOnce, type AnMPesaCodeOnRecord } from './an-mpesa-code-is-asked-about-once';
 import { withEarlierWordsOnTheirOwnDay, type AnEarlierWord } from './earlier-words-keep-their-own-day';
 import { withoutTheLeadsBrief, aSentenceThatQuotesTheBrief, theLeadsSetupWords } from './the-leads-brief-is-never-quoted-to-them';
 import { withoutSentencesAboutOneOfThem } from '../reports/one-persons-circumstances-stay-their-own';
@@ -299,7 +307,7 @@ import { askWhoSecuredIt } from './who-secured-that-meeting';
 import { READ_WHAT_THEY_PROMISED, WHAT_THEY_PROMISED_SCHEMA, theOnesToKeep } from './what-they-said-they-would-do-next';
 import { theFullerPromise, nameTwoDifferentDates } from './the-same-promise-said-more-fully';
 import { aPromiseSomebodyElseMade } from './a-promise-somebody-else-made';
-import { clearTheWaitsSaidDone } from './a-wait-said-done-is-cleared';
+import { clearTheWaitsSaidDone, clearTheWaitsAnEventEnded } from './a-wait-said-done-is-cleared';
 import { keepThePromisesSaidDone } from './a-promise-said-done-is-kept';
 import { theReleaseOneSalesBoardIsOnFor } from '../board/release-one-sales-board';
 import { aCollectionsCheckInWithRelease2 } from '../grounds/release-2-collections';
@@ -1456,7 +1464,9 @@ export class ConversationService {
     const quoted = nothingSaidYetCannotBeQuoted(held, saidSoFar, whoSetItUp);
     if (quoted.changed) this.logger.warn(`Check-in ${checkIn.id}: the opener quoted a person who has not spoken; rewritten.`);
     /* An opener never answers its own question for them: "Is that now filed? Understood. What is..." (E7). */
-    const guarded = await this.theTurnAsItIsSaved(checkIn as any, withoutAnAnswerToItsOwnQuestion(quoted.text));
+    const guarded0 = await this.theTurnAsItIsSaved(checkIn as any, withoutAnAnswerToItsOwnQuestion(quoted.text));
+    /* News a promise of theirs waits on, that somebody else already gave: told in one line, first (Hafsah, 19 October, FN-005). See a-promise-that-waits-on-news. */
+    const guarded = await this.withTheNewsTheyWaitOn(checkIn as any, guarded0).catch(() => guarded0);
     /* The checks after the bar can take the question out (Kevin's first WhatsApp message read only "This is our first
        check-in, and it's about getting a regular read on the work you're doing."): the opening always ends on a question (reviewer, 14 October). */
     const opening = isADeadEnd(guarded, false) ? withAQuestion(guarded, { opening: true }) : guarded;
@@ -1519,9 +1529,39 @@ export class ConversationService {
    * own conversation: the phrase there would be about the reader, and the setup block already tells
    * the model to say "you".
    */
+  /**
+   * THE NEWS A PROMISE OF THEIRS WAITS ON, TOLD IN THEIR OPENING (Hafsah, 19 October: "Njeri's next opening tells her it's filed."). One
+   * line before the opening: "Brian said on Wednesday 14 October that the reply for FN-005 was filed." Who said it is named only where
+   * they are in the check-in it was said in. Nothing where the opening already says it.
+   */
+  private async withTheNewsTheyWaitOn(checkIn: { participantId?: string; groundId?: string; participant?: { userId?: string | null } }, opening: string): Promise<string> {
+    if (!checkIn?.participantId || !checkIn.groundId || !opening) return opening;
+    const promises: any[] = await (this.prisma as any).personObjective?.findMany?.({ where: { participantId: checkIn.participantId, status: 'OPEN', kind: { in: ['COMMITMENT', 'TODO'] } }, select: { id: true, text: true, participantId: true, groundId: true, createdAt: true } })?.catch?.(() => []) ?? [];
+    if (!Array.isArray(promises) || !promises.length) return opening;
+    const g = await (this.prisma as any).ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { organizationId: true } })?.catch?.(() => null);
+    if (!g?.organizationId) return opening;
+    const news = await theNewsThesePromisesWaitOn(this.prisma, g.organizationId, promises.map((p) => ({ ...p, userId: checkIn.participant?.userId ?? null })));
+    const lines = [...news.values()].filter((n) => !n.told).map((n) => theNewsInOneLine(n, aDayOfTheirs(n.at, 'weekdayAndDay')));
+    const fresh = [...new Set(lines)].filter((l) => !opening.includes(l));
+    return fresh.length ? `${fresh[0]} ${opening}` : opening;
+  }
+
+  /** The M-Pesa codes this person typed in this check-in's sessions, with our own turns to them, for asking for the screenshot once. */
+  private async theirMPesaCodes(participantId: string | null | undefined): Promise<{ codes: AnMPesaCodeOnRecord[]; ourTurns: { content: string; at: Date }[] }> {
+    if (!participantId) return { codes: [], ourTurns: [] };
+    const turns: any[] = await (this.prisma.conversationTurn?.findMany?.({ where: { checkIn: { participantId } }, select: { role: true, content: true, createdAt: true }, orderBy: { createdAt: 'asc' }, take: 2000 }) ?? Promise.resolve([])).catch(() => []);
+    const rows = Array.isArray(turns) ? turns : [];
+    return {
+      codes: theMPesaCodesSaid(rows.filter((t) => t.role === TurnRole.PERSON).map((t) => ({ text: String(t.content ?? ''), at: t.createdAt }))),
+      ourTurns: rows.filter((t) => t.role === TurnRole.AI).map((t) => ({ content: String(t.content ?? ''), at: t.createdAt })),
+    };
+  }
+
   private async theTurnAsItIsSaved(checkIn: { groundId?: string; participant?: { partyType?: PartyType } }, raw: string): Promise<string> {
     /* NO INTERNAL NAME, LAST OF ALL HERE TOO: every saved turn comes through (night quality run 2, "NEW_PROJECT"). */
     raw = aPersonNeverReadsAnInternalName(raw, `check-in ${(checkIn as any)?.id ?? ''} turn`, this.logger);
+    /* "Wanjiru's's" is "Wanjiru's" on every path (messages test, fourth run). */
+    raw = withOnePossessive(raw);
     /*
      * AND A QUESTION THE LEAD CONFIRMED IS ASKED IN THE WORDS THEY CONFIRMED. Decision 34: the model
      * decides when to ask it, and where it asked it its own way the confirmed sentence is put back.
@@ -1570,6 +1610,21 @@ export class ConversationService {
       const concluded = withoutAConclusionNobodyDrew(raw, sayable, saidHereBefore);
       for (const c of concluded.cut) this.logger.warn(`Check-in ${(checkIn as any).id}: cut a conclusion nobody drew: "${c.slice(0, 160)}"`);
       raw = concluded.text;
+      /* And the screenshot of an M-Pesa code's sale asked for once only (Hafsah, 19 October). See an-mpesa-code-is-asked-about-once. */
+      if ((checkIn as any)?.participantId && /\b(?:screenshot|screen shot|forward|send|share|attach|add|upload)\b/i.test(raw)) {
+        const m = await this.theirMPesaCodes((checkIn as any).participantId).catch(() => ({ codes: [], ourTurns: [] }));
+        const once = withTheScreenshotAskedOnce(raw, m.codes, (c) => theScreenshotWasAskedFor(c, m.ourTurns), saidHereBefore);
+        for (const c of once.cut) this.logger.warn(`Check-in ${(checkIn as any).id}: cut a second request for an M-Pesa screenshot: "${c.slice(0, 160)}"`);
+        raw = once.text;
+      }
+      /* And no line of the record pasted into a sentence between hyphens (messages test, fourth run). See a-pasted-line-is-never-read-back. */
+      const pasted = withoutAPastedLine(raw);
+      for (const c of pasted.cut) this.logger.warn(`Check-in ${(checkIn as any).id}: cut a pasted line: "${c.slice(0, 160)}"`);
+      if (pasted.cut.length) raw = pasted.text && /\?/.test(pasted.text) ? pasted.text : `${pasted.text ? `${pasted.text} ` : ''}${aQuestionNotYetAsked(WHAT_ELSE, saidHereBefore) ?? WHAT_ELSE}`;
+      /* And nothing that presses them or calls their account doubtful, and no "Wanjiru's's" (messages test, fourth run). See nothing-sent-presses-or-accuses. */
+      const pressed = withoutPressingOrAccusing(raw, saidHereBefore);
+      for (const c of pressed.cut) this.logger.warn(`Check-in ${(checkIn as any).id}: cut a sentence that pressed or accused: "${c.slice(0, 160)}"`);
+      raw = pressed.text;
       /* And their earlier words put back with the day they were said, never "this morning" a day later (Hafsah, 19 October, point 3).
          See earlier-words-keep-their-own-day. */
       if ((checkIn as any)?.participantId && /\b(?:this morning|this afternoon|this evening|tonight|today|tomorrow|yesterday)\b/i.test(raw)) {
@@ -1579,10 +1634,23 @@ export class ConversationService {
         if (onTheirDay !== raw) this.logger.log(`Check-in ${(checkIn as any).id}: earlier words were put back with the day they were said.`);
         raw = onTheirDay;
       }
+      /* And never a question about a day that has not come, asked as if it had (messages test, fourth run: Amos asked on Wednesday "What
+         happened when you went back on Friday?"). See a-day-to-come-is-never-asked-about-as-past. */
+      if ((checkIn as any)?.participantId && /\b(?:sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/i.test(raw)) {
+        const theirs: AnEarlierWord[] = await (this.prisma.conversationTurn?.findMany?.({ where: { role: TurnRole.PERSON, checkIn: { participantId: (checkIn as any).participantId } }, select: { content: true, createdAt: true }, orderBy: { createdAt: 'desc' }, take: 200 }) ?? Promise.resolve([]))
+          .then((rows: any[]) => (rows ?? []).map((r) => ({ content: r.content ?? '', at: r.createdAt }))).catch(() => [] as AnEarlierWord[]);
+        const notYet = withNoPastQuestionAboutADayToCome(raw, theirs, new Date(), { alreadyAsked: saidHereBefore });
+        for (const c of notYet.cut) this.logger.warn(`Check-in ${(checkIn as any).id}: cut a question about a day that has not come: "${c.slice(0, 160)}"`);
+        raw = notYet.text;
+      }
     }
     const noRecordInvented = withoutARecordClaimNobodyHolds(raw, saidHereBefore);
     if (noRecordInvented.cut.length) this.logger.warn(`Check-in ${(checkIn as any).id}: cut ${noRecordInvented.cut.length} sentence(s) claiming what "the record" shows, which this person's record does not hold.`);
     raw = noRecordInvented.text;
+    /* And no missed step nobody said, and no "your task is to wait" (messages test, third run, item 11). See a-missing-proof-is-not-a-missed-step. */
+    const noMissedStep = withoutAMissedStepNobodySaid(raw, saidHereBefore);
+    if (noMissedStep.cut.length) this.logger.warn(`Check-in ${(checkIn as any).id}: cut ${noMissedStep.cut.length} sentence(s) saying a step was missed, or mocking a wait, that nobody said.`);
+    raw = noMissedStep.text;
     /*
      * AND NOTHING GROUNDWORK DID NOT DO, OR THE RECORD DOES NOT HOLD (decision 139, must-fix 3). "What happened to the four items you
      * escalated 15 days ago?" went to Felix, who had escalated nothing; "Donholm Distributors placing a 100-bag order this week counts as a
@@ -4393,7 +4461,7 @@ export class ConversationService {
         },
         orderBy: { createdAt: 'desc' },
         take: 6,
-        select: { text: true, type: true },
+        select: { text: true, type: true, createdAt: true },
       })?.catch(() => [] as any[]) ?? [],
     ]);
     /* What the colleagues they wait on promised here: only a colleague's own promise confirms a wait (decision 137). */
@@ -4415,6 +4483,8 @@ export class ConversationService {
      * was kept as Joseph's own target before this was read, so it is left out wherever this turn reads their targets.
      */
     const theCustomersHere = await this.theCustomersOnRecordIfSales(ground.id);
+    /* The organisation's own zone, for the day each earlier thing was said (each-earlier-thing-has-its-day). */
+    const theZoneHere = (ground as any).organizationId ? await theOrganisationsZone(this.prisma as any, (ground as any).organizationId).catch(() => null) : null;
     const thePeopleHere = ((ground.participants ?? []) as any[]).map((p) => p.user?.firstName ?? '').filter(Boolean) as string[];
     const notADealsFigure = (o: any) => !(theCustomersHere && o.setByParticipantId === checkIn.participantId && (aDealsFigure(String(o.name ?? ''), theCustomersHere, thePeopleHere) || aCountOfPlacesVisited(String(o.name ?? ''))));
     const objectivesOnRecord = this.theLeadsOwnWordsStayHers(ground, checkIn) ? [] : withoutWhatTheLeadHasNotToldThemAbout(
@@ -4450,6 +4520,9 @@ export class ConversationService {
         theyConfirmedIt: theWaitIsConfirmed({ onParticipantId: d.onParticipantId ?? null, what: d.what, triedSaid: d.triedSaid ?? null, groundId: ground.id }, theColleaguesOwnPromises as any[]),
       })),
       saidLastTime: (lastTimeRows as any[]).map((e) => String(e.text ?? '').replace(/\s+/g, ' ').trim()).filter(Boolean).reverse(),
+      saidLastTimeOn: (lastTimeRows as any[]).filter((e) => String(e.text ?? '').trim()).map((e) => e.createdAt ?? null).reverse(),
+      zone: theZoneHere ?? undefined,
+      sayToday: (checkIn.sessionNumber ?? 1) > 1,
       /* The lead's call for this check-in, not a global rule. See the field on the ground. */
       expectThemToUnblock: (ground as any).expectThemToUnblock !== false,
       now: new Date(),
@@ -4532,7 +4605,11 @@ export class ConversationService {
       }))
       .then((rows: any) => (Array.isArray(rows) ? rows : []))
       .catch(() => [] as any[]);
-    const alreadyGiven = proofAlreadyGiven(turnsThisSession.filter((t) => t.role === 'PERSON').map((t) => String(t.content ?? '')), sentThisSession);
+    const alreadyGiven = [
+      proofAlreadyGiven(turnsThisSession.filter((t) => t.role === 'PERSON').map((t) => String(t.content ?? '')), sentThisSession),
+      /* An M-Pesa code given in words is proof of payment; the screenshot is asked for once for each sale (Hafsah, 19 October). See an-mpesa-code-is-asked-about-once. */
+      await this.theirMPesaCodes(checkIn.participantId).then((m) => theMPesaCodesForTheModel(m.codes, (c) => theScreenshotWasAskedFor(c, m.ourTurns))).catch(() => ''),
+    ].filter(Boolean).join('\n\n');
 
     /*
      * A MEETING HAPPENED AND NOBODY IS ON IT.
@@ -5215,13 +5292,16 @@ Open the session by naming that you're returning to session ${checkIn.selfCorrec
     const isTheLead = checkIn.participant.partyType === PartyType.INITIATOR;
     const commitmentRows = await (this.prisma.groundCommitment?.findMany?.({
       where: { groundId: checkIn.groundId },
-      select: { text: true, whenSaid: true, explicit: true, participantId: true, status: true },
+      select: { text: true, whenSaid: true, explicit: true, participantId: true, status: true, createdAt: true },
       orderBy: { createdAt: 'asc' },
       take: 40,
     }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
     const mine = (commitmentRows as any[]).filter((c) => c.participantId === checkIn.participantId && c.status === 'UNKNOWN');
     const ownerless = (commitmentRows as any[]).filter((c) => !c.participantId && c.status === 'UNKNOWN').map((c) => c.text as string);
-    const theirCommitments = whatTheySaidTheyWouldDo(mine.map((c) => ({ text: c.text, when: c.whenSaid, explicit: c.explicit })));
+    const theirCommitments = whatTheySaidTheyWouldDo(
+      mine.map((c) => ({ text: c.text, when: c.whenSaid, explicit: c.explicit, saidOn: c.createdAt ?? null })),
+      { now: new Date(), zone: (ground as any).organizationId ? (await theOrganisationsZone(this.prisma as any, (ground as any).organizationId).catch(() => null)) ?? undefined : undefined },
+    );
     /* The unowned list is the lead's to place, and nobody else's to be asked about. */
     const nobodyOwns = isTheLead ? thingsNobodyOwns(ownerless) : '';
 
@@ -5451,7 +5531,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * A coaching block that always has something in it is a product that always
      * has something to say about you.
      */
-    const coachingBlock = await this.coachingBlock(checkIn.participantId, checkIn.sessionNumber);
+    /* Judgements of a person off for this organisation: no coaching, pattern or earlier "seen before" about them reaches the model (organisation/person-judgements.ts). */
+    const judgedHere = await thePersonJudgementsAreOn(this.prisma, (ground as any)?.organizationId ?? null);
+    const coachingBlock = judgedHere ? await this.coachingBlock(checkIn.participantId, checkIn.sessionNumber) : '';
 
     /*
      * WHAT KEEPS HAPPENING, AS A QUESTION.
@@ -5465,7 +5547,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * Same failure mode as the coaching block above: a chain that runs in full and says nothing to
      * anybody. Gated on SURFACED and two periods, one question at most, and never named.
      */
-    const patternProbeBlock = await this.whatKeepsHappeningBlock(checkIn.participantId);
+    const patternProbeBlock = judgedHere ? await this.whatKeepsHappeningBlock(checkIn.participantId) : '';
     /*
      * WHAT A SALES CHECK-IN GATHERS (Hafsah, 16 October 2026). In a sales check-in the conversation is told what the board needs
      * about every customer (stage, value, last contact, next step, proof), every lead and who does what by when, and is given the
@@ -5775,7 +5857,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     /* Immediately after the intake block, because it is about the same objectives and the two read
        as one thing: what was agreed, and what is happening against it. */
     const [seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed] = await Promise.all([
-      this.whatHasBeenSeenAcrossTheirSessions(checkIn.participantId),
+      judgedHere ? this.whatHasBeenSeenAcrossTheirSessions(checkIn.participantId) : Promise.resolve(''),
       this.prisma.recordEntry
         .findMany({
           where: { participantId: checkIn.participantId, documentSays: { not: null }, disputedAt: null },
@@ -6565,6 +6647,9 @@ ${told}` : '';
    */
   private async observeForCoaching(checkInId: string, participantId: string, sessionNumber: number): Promise<void> {
     if (!this.coachingEnabled()) return;
+    /* Judgements of a person off for this organisation: nobody is read for coaching (organisation/person-judgements.ts). */
+    const at = await (this.prisma.checkIn?.findUnique?.({ where: { id: checkInId }, select: { groundId: true } }) ?? Promise.resolve(null)).catch(() => null);
+    if (!(await thePersonJudgementsAreOnFor(this.prisma, (at as any)?.groundId ?? null))) return;
 
     /* A set-up conversation is not a check-in, so it is never read for coaching. */
     const thisOne = await (this.prisma.checkIn?.findUnique?.({ where: { id: checkInId }, select: { isSetup: true } }) ?? Promise.resolve(null)).catch(() => null);
@@ -7311,6 +7396,9 @@ ${told}` : '';
          (Hafsah's point 14, Release 1). After both, so it reads this check-in's lines and its newest waits. */
       .then(() => clearTheWaitsSaidDone(this.prisma, checkIn.groundId))
       .then((n) => { if (n) this.logger.log(`Check-in ${checkIn.id}: cleared ${n} wait(s) somebody said were done.`); })
+      /* And every wait for an event, in any of the organisation's check-ins, that somebody has now said happened (messages test, fourth run). */
+      .then(() => clearTheWaitsAnEventEnded(this.prisma, checkIn.groundId))
+      .then((n) => { if (n) this.logger.log(`Check-in ${checkIn.id}: cleared ${n} wait(s) for something somebody said has happened.`); })
       /* And every open promise its maker, or the person it was for, has now said is done is kept (Drop Access run 1, item 13). */
       .then(() => keepThePromisesSaidDone(this.prisma, checkIn.groundId))
       .then((n) => { if (n) this.logger.log(`Check-in ${checkIn.id}: kept ${n} promise(s) somebody said were done.`); })
@@ -7874,7 +7962,8 @@ ${told}` : '';
     const row = await this.prisma.checkIn?.findUnique?.({ where: { id: checkIn.id }, select: { sessionPlan: true, isFinal: true } as any }).catch(() => null);
     let plan = tidyThePlan((row as any)?.sessionPlan);
     if (!plan && got.forTheOpener) {
-      const [patterns, coaching, earlierTurns] = await Promise.all([
+      const judged = await thePersonJudgementsAreOn(this.prisma, ground?.organizationId ?? null);
+      const [patterns0, coaching0, earlierTurns] = await Promise.all([
         this.prisma.patternDetection?.findMany?.({
           where: { participantId: checkIn.participantId },
           select: { code: true, observationText: true, periodsObserved: true },
@@ -7888,6 +7977,8 @@ ${told}` : '';
           take: 80,
         })?.catch(() => [] as any[]) ?? [],
       ]);
+      const patterns = judged ? patterns0 : [];
+      const coaching = judged ? coaching0 : null;
       const codeOf = (code: string) => [...POSITIVE_CODES, ...CARRYING_CODES, ...BAD_FAITH_CODES].find((c) => c.code === code);
       const planned = totalSessionsFor(ground.timelineDays, ground.cadence) ?? null;
       const brief = theBriefForThePlanner({
@@ -8308,6 +8399,7 @@ ${told}` : '';
       orderBy: { createdAt: 'asc' },
       take: 20,
     });
+    await this.whatTheyNowSayDidNotHappen(checkInId, row as any, said).catch(() => undefined);
     if (!open.length) return 0;
     /* The same promise written twice is put once, and what they said about it settles both rows. */
     const once = oneOfEach(open);
@@ -8336,6 +8428,19 @@ ${told}` : '';
       this.events?.emit?.(GroundworkEvents.COMMITMENTS_SETTLED, { groundId: row.groundId, participantId: row.participantId } satisfies CommitmentsSettledEvent);
     }
     return settled.length;
+  }
+
+  /** Read as done from what they said, and now they say it did not happen: not done (messages test, fourth run). See theySaidItDidNotHappen. */
+  private async whatTheyNowSayDidNotHappen(checkInId: string, row: { groundId: string; participantId: string; startedAt: Date | null }, said: AnAnswer[]): Promise<void> {
+    const readAsDone: any[] = await Promise.resolve(this.prisma.groundCommitment.findMany({
+      where: { groundId: row.groundId, participantId: row.participantId, status: 'DONE', settledBy: 'SAID', settledInCheckInId: { not: checkInId }, createdAt: { lt: row.startedAt ?? new Date() } },
+      select: { id: true, text: true, status: true, settledBy: true },
+    })).catch(() => []);
+    for (const c of (Array.isArray(readAsDone) ? readAsDone : []).filter((x) => x.status === 'DONE' && x.settledBy === 'SAID')) {
+      if (!theySaidItDidNotHappen(String(c.text ?? ''), said)) continue;
+      await this.prisma.groundCommitment.updateMany({ where: { id: c.id, status: 'DONE', settledBy: 'SAID' }, data: { status: 'NOT_DONE', settledAt: new Date(), settledInCheckInId: checkInId, settledBy: 'SAID' } });
+      this.logger.log(`Check-in ${checkInId}: commitment ${c.id} was read as done, and they now say it did not happen.`);
+    }
   }
 
   async writeWhatTheyPromised(checkInId: string): Promise<void> {

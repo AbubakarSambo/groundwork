@@ -608,6 +608,11 @@ model Organization {
   /// THE ORGANISATION'S OWN WORD FOR A BILL (release plan, Release 2): "fee note" for a law firm, for example. Null reads
   /// as "invoice". Written only by an admin of the organisation (PATCH /users/organization/word-for-the-bill).
   billWord               String?   @map("bill_word")
+  /// WHETHER ANYTHING THAT JUDGES A PERSON IS BUILT AND SERVED, A SWITCH PER ORGANISATION (production truth, 19 October 2026). On
+  /// for every organisation, as it has always been. Off: My work's behaviours, its focus line and its check-in quality counts,
+  /// coaching about a person, the pattern and verdict lines about a person, and suggestions about a person are neither built nor
+  /// served for that organisation (organisation/person-judgements.ts). The board, the summaries and the reports still go ahead.
+  personJudgementsOn     Boolean   @default(true) @map("person_judgements_on")
   whatsappMonthlyUse     WhatsAppMonthlyUse[]
 
   companyStage CompanyStage? @map("company_stage")

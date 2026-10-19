@@ -95,6 +95,8 @@ export function theSalesWeekInWords(input: {
       const units = u === null ? '' : `${u} ${u === 1 ? 'unit' : 'units'}`;
       if (d.paid) return `${L} sold ${units || 'it'}, paid, to ${d.name}.`;
       if (d.signed) return `${L} has ${units ? `${units} on a signed order` : 'a signed order'} from ${d.name}.`;
+      /* A document she added backs it (engine test: Mercy's mama-rose-receipt.txt, Friday 16 October): never "nothing written". */
+      if (d.proven) return `${L} counts ${units ? `${units} sold to` : 'a sale to'} ${d.name}. A document backs it, but it does not show a payment.`;
       return `${L} counts ${units ? `${units} sold to` : 'a sale to'} ${d.name}, and nothing written shows it yet.`;
     });
     const target = input.targets.find((t) => t.participantId === p.id);

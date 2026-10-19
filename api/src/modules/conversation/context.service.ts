@@ -1,3 +1,4 @@
+import { thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
 import { Injectable } from '@nestjs/common';
 import { whatMightHelp, NOT_A_STANDARD } from '../detectors/what-worked-for-somebody-else';
 import { PrismaService } from '../prisma/prisma.service';
@@ -318,10 +319,11 @@ export class ConversationContextService {
      * this decision holds to the same three-period floor as everything else. Read the honest count
      * instead of trusting the status column.
      */
-    const surfacedRaw = await this.prisma.patternDetection.findMany({
+    /* Judgements of a person off for this organisation: no pattern about them shapes a question (organisation/person-judgements.ts). */
+    const surfacedRaw = (await thePersonJudgementsAreOnFor(this.prisma, groundId)) ? await this.prisma.patternDetection.findMany({
       where: { participantId, status: 'SURFACED', code: { notIn: [...ALIGNMENT_FEED_ONLY_CODES] } },
       select: { code: true, periodsObserved: true, seenInSessions: true },
-    });
+    }) : [];
     // GW-07 defense-in-depth: filter again in memory so a DB inconsistency
     // cannot leak a feed-only code into the conversation context.
     const surfacedCodes = surfacedRaw.filter((p) => !ALIGNMENT_FEED_ONLY_CODES.has(p.code) && hasBeenSeenInThreePeriods(p));
@@ -402,10 +404,10 @@ export class ConversationContextService {
 
     /* Escalate contradictions to tier 3 if a pattern has genuinely reached three periods for this
        party (decision 57, item 8) - not merely SURFACED, which a good-news code reaches after one. */
-    const surfacedForEscalation = await this.prisma.patternDetection.findMany({
+    const surfacedForEscalation = (await thePersonJudgementsAreOnFor(this.prisma, groundId)) ? await this.prisma.patternDetection.findMany({
       where: { participantId, status: 'SURFACED' },
       select: { periodsObserved: true, seenInSessions: true },
-    });
+    }) : [];
     if (surfacedForEscalation.some((p) => hasBeenSeenInThreePeriods(p))) {
       injections.forEach((i) => { if (i.type === 'CONTRADICTION') i.tier = 3; });
     }

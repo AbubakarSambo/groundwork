@@ -58,6 +58,8 @@ function ThePage({ groundId, served, onPerson, rest, onAllYourReports }: {
   const self = served.view === 'self'
   const first = served.person.firstName
   const your = self ? 'Your' : `${first}’s`
+  /* Judgements of a person are served unless the organisation keeps them off (api organisation/person-judgements.ts). */
+  const judged = served.judgements !== false
   return (
     <Stack gap={30}>
       {/* THE LEAD CHOOSES WHOSE PAGE. Only in her payload. */}
@@ -77,17 +79,21 @@ function ThePage({ groundId, served, onPerson, rest, onAllYourReports }: {
         </Section>
       </div>
 
-      {/* THE FOCUS THIS WEEK, from the most important Needs work */}
-      <Section heading={`${your} focus this week`}>
-        {served.focus
-          ? <div data-gw-my-work-focus><Callout tone="info" title={served.focus.line}>{served.focus.why}</Callout></div>
-          : <Note tone="muted">{served.focusEmpty}</Note>}
-      </Section>
+      {/* THE FOCUS THIS WEEK, from the most important Needs work. Not served where the organisation keeps judgements of a person off. */}
+      {judged && (
+        <Section heading={`${your} focus this week`}>
+          {served.focus
+            ? <div data-gw-my-work-focus><Callout tone="info" title={served.focus.line}>{served.focus.why}</Callout></div>
+            : <Note tone="muted">{served.focusEmpty}</Note>}
+        </Section>
+      )}
 
       <ToDo served={served} askedOf={self ? 'Asked of you' : `Asked of ${first}`} />
       <Achieved served={served} heading={self ? 'What you achieved' : `What ${first} achieved`} />
-      <Performing served={served} heading={self ? 'How you’re performing' : `How ${first} is performing`} />
-      <Coaching served={served} />
+      {judged
+        ? <Performing served={served} heading={self ? 'How you’re performing' : `How ${first} is performing`} />
+        : <Section heading={self ? 'How you’re performing' : `How ${first} is performing`}><Note tone="muted">{served.performing.note}</Note></Section>}
+      {(judged || served.coaching.better.length > 0) && <Coaching served={served} />}
 
       {/* YOUR CHECK-INS AND YOUR REPORTS, side by side */}
       <div className="gwui-two-up">
@@ -95,8 +101,8 @@ function ThePage({ groundId, served, onPerson, rest, onAllYourReports }: {
           {served.checkIns.emptySays ? <Note tone="muted">{served.checkIns.emptySays}</Note> : (
             <FieldRows>
               <FieldRow label="Done" value={`${served.checkIns.done} of ${served.checkIns.due}`} />
-              <FieldRow label="On time" value={`${served.checkIns.onTime} of ${served.checkIns.due}`} />
-              <FieldRow label="Specific" value={`${served.checkIns.specific} of ${served.checkIns.due}`} />
+              {judged && <FieldRow label="On time" value={`${served.checkIns.onTime} of ${served.checkIns.due}`} />}
+              {judged && <FieldRow label="Specific" value={`${served.checkIns.specific} of ${served.checkIns.due}`} />}
             </FieldRows>
           )}
         </Panel>
@@ -213,9 +219,10 @@ function Performing({ served, heading }: { served: Served; heading: string }) {
 
 function Coaching({ served }: { served: Served }) {
   const c = served.coaching
+  const judged = served.judgements !== false
   return (
     <Section heading="Coaching">
-      <div className="gwui-two-up">
+      <div className={judged ? 'gwui-two-up' : undefined}>
         <Panel heading="Things to do better">
           {c.better.length === 0 ? <Note tone="muted">{c.betterEmpty}</Note> : (
             <ul className="gwui-panel-list">
@@ -228,13 +235,15 @@ function Coaching({ served }: { served: Served }) {
             </ul>
           )}
         </Panel>
-        <Panel heading="Keep doing">
-          {c.keep.length === 0 ? <Note tone="muted">{c.keepEmpty}</Note> : (
-            <ul className="gwui-panel-list">
-              {c.keep.map((k) => <li key={k}>{k}</li>)}
-            </ul>
-          )}
-        </Panel>
+        {judged && (
+          <Panel heading="Keep doing">
+            {c.keep.length === 0 ? <Note tone="muted">{c.keepEmpty}</Note> : (
+              <ul className="gwui-panel-list">
+                {c.keep.map((k) => <li key={k}>{k}</li>)}
+              </ul>
+            )}
+          </Panel>
+        )}
       </div>
     </Section>
   )

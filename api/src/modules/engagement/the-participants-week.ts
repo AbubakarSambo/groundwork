@@ -69,7 +69,23 @@ const namesIn = (t: string) => (String(t ?? '').replace(/^\s*\S+/, '').match(A_N
 export function theSameWaitOnce(waits: { what: string; from: string | null }[]): { what: string; from: string | null; andFor?: string }[] {
   const kept: { what: string; from: string | null; andFor?: string }[] = [];
   const fuller = (a: string, b: string) => wordsOf(a).size > wordsOf(b).size;
+  /*
+   * THE SAME THING FROM THE SAME PERSON IS ONE WAIT (messages test, fourth run). Mercy read "You are waiting for "the sample units he
+   * promised" from Joseph." and "You are waiting for "the Tuskys Westgate samples" from Joseph.", one wait said on Monday and again on
+   * Wednesday. Waits on the same person that share the thing's own word ("sample") are one; the one that names the customer is said.
+   */
+  const one = (w: string) => w.replace(/ies$/, 'y').replace(/([^s])s$/, '$1');
+  const things = (t: string) => new Set([...wordsOf(t)].filter((w) => w.length >= 4 && !['promised', 'their', 'there', 'that', 'this', 'what', 'have'].includes(w)).map(one));
+  const sameFromSameThing = (a: { what: string; from: string | null }, b: { what: string; from: string | null }) =>
+    !!a.from && !!b.from && trimmed(a.from).toLowerCase() === trimmed(b.from).toLowerCase() && [...things(a.what)].some((w) => things(b.what).has(w));
+  const naming = (t: string) => (String(t ?? '').match(A_NAME) ?? []).length;
   for (const d of waits) {
+    const twice = kept.findIndex((k) => sameFromSameThing(k, d));
+    if (twice >= 0) {
+      const k = kept[twice];
+      if (naming(d.what) > naming(k.what) || (naming(d.what) === naming(k.what) && fuller(d.what, k.what))) kept[twice] = { ...k, what: d.what };
+      continue;
+    }
     const same = kept.findIndex((k) => {
       const [long, short] = fuller(k.what, d.what) ? [k.what, d.what] : [d.what, k.what];
       const longWords = wordsOf(long);
@@ -104,6 +120,12 @@ export interface TheirWeek {
   openSaid?: { text: string; checkIn: string; day: string | null }[];
   /** What they kept, in their own words, where the count can say which (finding 14: "You kept the one thing" said not which). */
   keptWhat?: string[];
+  /**
+   * THE DAY THE COUNT BEGINS, WHERE IT IS LESS THAN FOUR WEEKS AGO (engine test, Mercy's week of Thursday 15 October). "You kept two of the
+   * three things you said you would do in the last four weeks" was read four days into her first check-in. Where the first of the
+   * things counted was said less than four weeks ago, the count says since when ("since Monday 12 October").
+   */
+  keptSince?: string | null;
   /** Their own words in these check-ins, for "my" and "their" said back to them as "your". */
   theirOwnWords?: string[];
   /** What they are waiting on, in their own words, and from whom where they and the check-in let it be said. */
@@ -121,6 +143,15 @@ export interface TheirWeek {
    * for a report; after that the report is told here, in the regular summary, and only here.
    */
   reportsReady?: string[];
+}
+
+/** The day the first thing counted was said, where that is less than four weeks ago; otherwise null and the count says "in the last four weeks". */
+export function theDayTheCountBegins(rows: readonly { createdAt?: Date | string | null }[], now: Date, zone?: string): string | null {
+  const times = rows.map((r) => (r.createdAt ? new Date(r.createdAt).getTime() : NaN)).filter((t) => Number.isFinite(t));
+  if (!times.length) return null;
+  const first = Math.min(...times);
+  if (now.getTime() - first >= 28 * 86_400_000) return null;
+  return whenItWas(new Date(first), 'weekdayAndDay', zone);
 }
 
 /** The email, or null where nothing useful is left to say. Full sentences, numbers in words, no colon anywhere. */
@@ -141,7 +172,8 @@ export function theirWeekInWords(firstName: string | null | undefined, w: TheirW
   if (kept) {
     /* Which, where the count can say: its own words, at most three (messages test, 19 October, finding 14). */
     const which = (w.keptWhat ?? []).length === kept.kept && kept.kept <= 3 ? `, ${listed(quoted(w.keptWhat!))}` : '';
-    lines.push(kept.of === 1 ? `You kept the one thing you said you would do in the last four weeks${which}.` : kept.kept === kept.of ? `You kept all ${aNumberInWords(kept.of)} things you said you would do in the last four weeks${which}.` : `You kept ${aNumberInWords(kept.kept)} of the ${aNumberInWords(kept.of)} things you said you would do in the last four weeks${which}.`);
+    const when = w.keptSince ? `since ${w.keptSince}` : 'in the last four weeks';
+    lines.push(kept.of === 1 ? `You kept the one thing you said you would do ${when}${which}.` : kept.kept === kept.of ? `You kept all ${aNumberInWords(kept.of)} things you said you would do ${when}${which}.` : `You kept ${aNumberInWords(kept.kept)} of the ${aNumberInWords(kept.of)} things you said you would do ${when}${which}.`);
   }
   if (reports.length) lines.push(reports.length === 1 ? `Your report for "${trimmed(reports[0])}" is ready to read.` : `Your reports for ${listed(quoted(reports.slice(0, 3)))} are ready to read.`);
   if (w.openSaid?.length) {
@@ -252,6 +284,7 @@ export async function sendTheParticipantsWeeks(
         open: own.open.filter((s) => inOpen(s.checkIn)).map((s) => s.text),
         openSaid: own.open.filter((s) => inOpen(s.checkIn)).map((s) => ({ text: s.text, checkIn: s.checkIn, day: s.saidAt ? whenItWas(s.saidAt, 'weekdayAndDay', zone ?? undefined) : null })),
         keptWhat: theOwnKeptWords(Array.isArray(commitments) ? commitments : [], now),
+        keptSince: theDayTheCountBegins(Array.isArray(commitments) ? commitments : [], now, zone ?? undefined),
         waitingOn: waits.filter((d) => inOpen(d.ground?.label)).filter((d) => !!d.what?.trim()).map((d) => ({
           what: d.what,
           from: d.onLabel?.trim() || (d.ground?.peersVisibleToEachOther !== false ? (d.onParticipant && aNameToList(nameToCall(d.onParticipant)) ? nameToCall(d.onParticipant) : null) : null),

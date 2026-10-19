@@ -1,5 +1,6 @@
 import { aLineIsAbout } from './a-deals-value-and-buying-date';
 import { theDayTheyMeant } from '../grounds/when-a-handoff-is-due';
+import { aLineDropsADeal } from './a-deal-that-was-dropped';
 
 /**
  * WHAT A DEAL'S OWNER SAID OF IT, READ FROM THEIR OWN CHECK-IN, WITH NO MODEL (Hafsah's quality pass, 18 October, B-5, B-12 to B-15).
@@ -42,6 +43,8 @@ export interface WhatTheOwnerSaid {
   stage: string | null;
   /** The details to keep, plain values only. */
   set: Record<string, string>;
+  /** The customer said no, or the rep gave it up, in a sentence about this deal that does not name it (kept on the deal, never shown as a detail). */
+  dropped?: { on: string; line: string };
 }
 
 const STAGES = ['Contacted', 'Need established', 'Pitched', 'Qualified', 'Quoted', 'Won'];
@@ -58,6 +61,19 @@ const THE_OWNER = /\b(?:is|['’]s)\s+the owner\b|,\s*the owner,\s*decides\b|\bt
 const A_DEPOSIT_ON = /\b(?:pay|pays|paying)\b[^.]*\bdeposit\b[^.]*\bon\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i;
 const WANTS_UNITS = /\bwants?\s+(\d+|[a-z]+)\s+units?\b/i;
 const FOR_UNITS = /\bfor\s+(?:the\s+)?(\d+|[a-z]+)\s+units?\b/i;
+/*
+ * THE UNITS A CUSTOMER COMMITTED TO OR ORDERED (messages test, third run, item 1). On Monday 12 October, asked "What specifically have you
+ * done with Greenfield Supermarket since we last spoke?", Mercy said "I've secured a verbal commitment from Mrs. Njeri for 25 units. That
+ * deal is won." Grace's summary on Tuesday said "Savannah Cafe, Upper Hill Offices, Tuskys Westgate, Greenfield and Juja Hardware have no
+ * number of units yet." A commitment, an order or a sale for a number of units, said as done, is the units of the deal in focus.
+ */
+/*
+ * THE UNITS A PRICE OR A DISCOUNT WAS ASKED FOR (messages test, fourth run). Joseph said of Mama Pima on Monday 12 October "Wanjiru wants
+ * 12,000 shillings off for 10 units.", and Amos of Westlands Pharmacy on Tuesday "She just asked for a price for two units." Grace's
+ * summaries said "Mama Pima Stores ... have no number of units yet" and "... Westlands Pharmacy have no number of units yet."
+ */
+const A_PRICE_FOR_UNITS = /\b(?:price|prices|discount|off|quote|offer)\b[^.]*?\bfor\s+(?:the\s+)?(\d+|[a-z]+)\s+units?\b/i;
+const COMMITTED_UNITS = /\b(?:commitment|committed|order|ordered|orders|sold|bought|purchased|purchase|signed|agreed|confirmed|deal)\b(?:[^.]|\b(?:Mrs?|Ms|Dr)\.)*?\bfor\s+(?:the\s+)?(\d+|[a-z]+)\s+units?\b|\b(?:bought|ordered|purchased|signed for|took)\s+(?:the\s+)?(\d+|[a-z]+)\s+units?\b/i;
 
 const toNumber = (s: string): number | null => (/^\d+$/.test(s) ? Number(s) : NUMBER_WORDS[s.toLowerCase()] ?? null);
 const plain = (fields: Record<string, unknown> | null | undefined, key: string): string => {
@@ -65,7 +81,8 @@ const plain = (fields: Record<string, unknown> | null | undefined, key: string):
   return typeof v === 'string' ? v.trim() : '';
 };
 const dayKey = (d: Date) => d.toISOString().slice(0, 10);
-const sentencesOf = (text: string): string[] => String(text ?? '').split(/(?<=[.!?])\s+|\n+/).map((s) => s.trim()).filter(Boolean);
+/* "Mrs. Njeri" and "Kasarani Foods v. Tumaini Traders" are one sentence: a full stop after Mr, Mrs, Ms, Dr or v does not end one. */
+const sentencesOf = (text: string): string[] => String(text ?? '').split(/(?<!\b(?:Mr|Mrs|Ms|Dr|v|vs)\.)(?<=[.!?])\s+|\n+/).map((s) => s.trim()).filter(Boolean);
 
 /** The name a sentence opens on, as the person at the customer: "Ali said he'll decide next week." gives "Ali". */
 function aPersonItOpensOn(sentence: string, ours: ReadonlySet<string>, dealName: string): string | null {
@@ -110,7 +127,13 @@ export function whatTheOwnerSaidOfEachDeal(
     said(d).set[key] = value;
     now.get(d.id)![key] = value;
   };
-  const named = (text: string) => deals.filter((d) => aLineIsAbout(text, { name: d.name, fields: { Contact: plain(now.get(d.id), 'Contact') } }));
+  /* "the Mama Pima deal" is Mama Pima Stores: a name is also said without "Stores", "Store", "Shop" or "Ltd" at its end, where two words are left (messages test, fourth run). */
+  const shortName = (name: string) => {
+    const m = /^(.+?)\s+(?:stores?|shops?|ltd\.?|limited)$/i.exec(name.trim());
+    return m && m[1].trim().split(/\s+/).length >= 2 ? m[1].trim() : null;
+  };
+  const named = (text: string) => deals.filter((d) => aLineIsAbout(text, { name: d.name, fields: { Contact: plain(now.get(d.id), 'Contact') } })
+    || (!!shortName(d.name) && aLineIsAbout(text, { name: shortName(d.name)!, fields: null })));
   let focus: ADealToRead | null = null;
   const ordered = [...turns].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   for (const t of ordered) {
@@ -150,8 +173,10 @@ export function whatTheOwnerSaidOfEachDeal(
         if (stageAt(stageNow.get(d.id)) < stageAt('Quoted')) { said(d).stage = 'Quoted'; stageNow.set(d.id, 'Quoted'); }
       }
       /* The units the customer wants. */
+      const committed = !NOT_DONE_YET.test(s) ? s.match(COMMITTED_UNITS) : null;
       const wants = s.match(WANTS_UNITS) ?? (A_QUOTE.test(s) ? s.match(FOR_UNITS) : null);
-      const units = wants ? toNumber(wants[1]) : null;
+      const asked = !wants && !committed ? s.match(A_PRICE_FOR_UNITS) : null;
+      const units = wants ? toNumber(wants[1]) : committed ? toNumber(committed[1] ?? committed[2]) : asked ? toNumber(asked[1]) : null;
       if (units && !plain(f, 'Units')) keep(d, 'Units', String(units));
       if (units && !plain(f, 'Need') && WANTS_UNITS.test(s)) keep(d, 'Need', `${units} ${units === 1 ? 'unit' : 'units'}`);
       if (units && stageAt(stageNow.get(d.id)) < stageAt('Need established') && WANTS_UNITS.test(s)) { said(d).stage = 'Need established'; stageNow.set(d.id, 'Need established'); }
@@ -164,6 +189,12 @@ export function whatTheOwnerSaidOfEachDeal(
       if (owner && unnamed) keep(d, 'Decision maker', `${owner}, the owner`);
       const decider = !owner ? s.match(DECIDES_BY_NAME)?.[1] ?? null : null;
       if (decider && unnamed && !NOT_A_NAME.test(decider) && !ours.has(decider.toLowerCase())) keep(d, 'Decision maker', decider);
+      /*
+       * THE CUSTOMER SAID NO, IN A SENTENCE THAT DOES NOT NAME THEM (messages test, fourth run). Asked "Kamau Electricals is a deal you
+       * were hoping to win. What specifically did you offer them ...?", Kevin said on Tuesday 13 October "They just shut me down right
+       * away saying they already had a supplier." Grace's summary on Wednesday still counted Kamau Electricals as an open deal.
+       */
+      if (!here.length && aLineDropsADeal(s) && !NOT_DONE_YET.test(s) && !said(d).dropped) said(d).dropped = { on: dayKey(on), line: s };
       /* The day the customer pays a deposit. */
       const deposit = s.match(A_DEPOSIT_ON);
       if (deposit && !plain(f, 'Buying date')) {
@@ -172,6 +203,6 @@ export function whatTheOwnerSaidOfEachDeal(
       }
     }
   }
-  for (const [id, w] of out) if (!w.stage && !Object.keys(w.set).length) out.delete(id);
+  for (const [id, w] of out) if (!w.stage && !Object.keys(w.set).length && !w.dropped) out.delete(id);
   return out;
 }

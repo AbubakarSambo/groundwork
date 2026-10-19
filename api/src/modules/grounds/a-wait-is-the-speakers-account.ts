@@ -101,6 +101,35 @@ export async function theConfirmedWaits(
     }) ?? [],
   ).catch(() => []);
   for (const w of onSomebody) if (theWaitIsConfirmed(w, Array.isArray(promises) ? promises : [])) confirmed.add(w.id);
+  /*
+   * OR THEY SAID IT IS THEIRS, IN THEIR OWN WORDS (messages test, fourth run). Joseph's week on Thursday 15 October said "Mercy Wairimu says
+   * the work is waiting for "the sample units he promised" from you ... That is what Mercy Wairimu said, and you have not said it yourself."
+   * On Wednesday he had said "I wish I had remembered the samples for Mercy. I've had them ready since Monday." A line of the colleague's own
+   * that names the thing and the person waiting confirms it.
+   */
+  const left = onSomebody.filter((w) => !confirmed.has(w.id));
+  if (!left.length) return confirmed;
+  try {
+    const fromOf = new Map<string, string | null>(left.filter((w) => (w as any).fromParticipantId).map((w) => [w.id, (w as any).fromParticipantId]));
+    const unknown = left.filter((w) => !fromOf.has(w.id)).map((w) => w.id);
+    if (unknown.length) {
+      const rows: any[] = (await Promise.resolve(prisma?.groundDependency?.findMany?.({ where: { id: { in: unknown } }, select: { id: true, fromParticipantId: true } })).catch(() => [])) ?? [];
+      for (const r of Array.isArray(rows) ? rows : []) fromOf.set(r.id, r.fromParticipantId ?? null);
+    }
+    const fromIds = [...new Set([...fromOf.values()].filter((x): x is string => !!x))];
+    if (!fromIds.length) return confirmed;
+    const people: any[] = (await Promise.resolve(prisma?.groundParticipant?.findMany?.({ where: { id: { in: fromIds } }, select: { id: true, nameGiven: true, user: { select: { firstName: true } } } })).catch(() => [])) ?? [];
+    const firstOf = new Map<string, string>((Array.isArray(people) ? people : []).map((p) => [p.id, String(p.user?.firstName ?? p.nameGiven ?? '').trim().split(/\s+/)[0] ?? '']));
+    const lines: any[] = (await Promise.resolve(prisma?.recordEntry?.findMany?.({ where: { participantId: { in: [...new Set(left.map((w) => w.onParticipantId as string))] }, disputedAt: null }, select: { participantId: true, text: true } })).catch(() => [])) ?? [];
+    for (const w of left) {
+      const first = firstOf.get(fromOf.get(w.id) ?? '') ?? '';
+      if (first.length < 2) continue;
+      const them = new RegExp(`\\b${first.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+      if ((Array.isArray(lines) ? lines : []).some((l) => l.participantId === w.onParticipantId && them.test(String(l.text ?? '')) && theirOwnPromiseNamesIt(w.what, String(l.text ?? '')))) confirmed.add(w.id);
+    }
+  } catch {
+    /* Not being able to read it confirms nothing. */
+  }
   return confirmed;
 }
 

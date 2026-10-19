@@ -149,6 +149,8 @@ export const NO_SALE_YET = 'No sale so far this week.';
 /** "Nyama Choma Palace bought. There is a payment record.", as the kit says it. */
 export function aDealThatMoved(m: AMoveThisWeek, sayAs: HowSomebodyIsSaid): string {
   if (m.won) {
+    /* An M-Pesa code given in words is the payment record, shown as "M-Pesa code" (Hafsah, 19 October). */
+    if (m.paid && m.mpesaCode) return `${m.name} bought. M-Pesa code ${m.mpesaCode} shows the payment.`;
     if (m.paid) return `${m.name} bought. There is a payment record.`;
     if (m.proven) return `${m.name} bought. A document backs it, but it does not show a payment.`;
     const who = sayAs(m.ownerParticipantId);

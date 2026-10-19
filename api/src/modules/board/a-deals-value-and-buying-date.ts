@@ -209,7 +209,13 @@ export function aLineIsAbout(line: string, deal: { name: string; fields?: Record
   const text = String(line ?? '');
   const name = squash(deal.name);
   if (name.length >= 3 && squash(text).includes(name)) return true;
-  const contact = (theContactOf(deal.fields ?? null) ?? '').trim();
+  /*
+   * A TITLE WITH OR WITHOUT ITS FULL STOP IS THE SAME PERSON (engine test, Drop Access). Greenfield's contact is Mrs Achola. Mercy said
+   * "Mrs. Achola said the quote for KES 125,000 is fine." and, read as about no deal, the quote was filed on the deal before it in the
+   * same answer, Mama Rose's kiosk, and the weekly report said "Mama Rose's KES 125,000". The contact is matched by their name, with any
+   * title before it written either way.
+   */
+  const contact = (theContactOf(deal.fields ?? null) ?? '').trim().replace(/^(?:mr|mrs|ms|miss|dr)\.?\s+/i, '');
   if (!/^[A-Z][\p{L}'’-]+(?:\s+[A-Z][\p{L}'’-]+)?$/u.test(contact)) return false;
   return new RegExp(`(?:^|[^\\p{L}])${aWord(contact)}(?=$|[^\\p{L}])`, 'u').test(text);
 }

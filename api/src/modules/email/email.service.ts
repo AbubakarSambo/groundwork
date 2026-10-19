@@ -96,11 +96,22 @@ export class EmailService implements OnModuleInit {
    * where people see each other; where they do not (a cohort, a review), what is true there.
    */
   async whoSeesWhatYouSay(context?: DeliveryContext, to?: string | null): Promise<string> {
-    const g = context?.groundId
-      ? await Promise.resolve(theCheckInForAnEmail(this.prisma, context.groundId, { scenario: true, peersVisibleToEachOther: true, organization: { select: { name: true } }, initiator: { select: { email: true } } }))?.catch?.(() => null)
+    /*
+     * A MAIL THAT KNOWS THE PERSON KNOWS THE CHECK-IN (messages test, third run: the thank-you that went by email instead of WhatsApp).
+     * Grace and Wanjiru each finished their own check-in and were emailed "The people in this check-in, including your manager, can
+     * see what you say in it." The mail carried the person's place in the check-in and not the check-in, so it was read as nobody's
+     * check-in and said in a team member's words. The check-in is read from the person's place, and the one who runs it is the lead.
+     */
+    const place = !context?.groundId && context?.participantId
+      ? await Promise.resolve((this.prisma as any).groundParticipant?.findUnique?.({ where: { id: context.participantId }, select: { groundId: true, partyType: true } }))?.catch?.(() => null)
+      : null;
+    const groundId = context?.groundId ?? place?.groundId ?? null;
+    const g = groundId
+      ? await Promise.resolve(theCheckInForAnEmail(this.prisma, groundId, { scenario: true, peersVisibleToEachOther: true, organization: { select: { name: true } }, initiator: { select: { email: true } } }))?.catch?.(() => null)
       : null;
     /* To the person who runs it, written for them (Hafsah, 19 October, point 5). */
-    const runsIt = !!to && !!g?.initiator?.email && String(g.initiator.email).trim().toLowerCase() === String(to).trim().toLowerCase();
+    const runsIt = (!!to && !!g?.initiator?.email && String(g.initiator.email).trim().toLowerCase() === String(to).trim().toLowerCase())
+      || (!!g && place?.partyType === 'INITIATOR');
     return whoSeesWhatYouSayIn(g, runsIt);
   }
 

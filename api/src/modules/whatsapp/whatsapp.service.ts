@@ -88,6 +88,10 @@ import { ATemplate, insideTheServiceWindow, isBusinessInitiated, WENT_BEFORE_THI
  * of the app can wire against this service today and it goes live the
  * moment credentials land, with no code change.
  */
+/** The messages that say "in an hour" or "in half an hour": by the morning after a night held, the moment they were about has passed. */
+export const ABOUT_THE_NEXT_HOUR: ReadonlySet<string> = new Set(['opens-soon', 'closes-soon', 'closes-in-half-an-hour']);
+export const THE_HOUR_IT_WAS_ABOUT_HAS_PASSED = 'Held for quiet hours, and the hour it was about has passed; not sent';
+
 @Injectable()
 export class WhatsAppService implements OnModuleInit {
   private readonly logger = new Logger(WhatsAppService.name);
@@ -207,6 +211,9 @@ export class WhatsAppService implements OnModuleInit {
     await this.writeItDown(organizationId, to, result, { checkInId: context.checkInId ?? null, kind: 'held-told' });
   }
 
+  /** The messages that are about the next hour, so are untrue once a night has passed. */
+  static readonly ABOUT_THE_NEXT_HOUR = ABOUT_THE_NEXT_HOUR;
+
   /**
    * HELD FOR THE NIGHT (release plan Part 0; Drop Access run 1, item 12). A message Groundwork starts, asked to go in quiet hours
    * where the organisation is, is kept with its words and sent at seven by held-for-the-night.cron.ts, which asks every other rule
@@ -235,6 +242,17 @@ export class WhatsAppService implements OnModuleInit {
   /** A message held for the night, when its morning has come. Every other rule is asked again on the way. */
   async sendHeldForTheNight(row: { organizationId: string | null; phone: string; text: string; context: unknown }): Promise<SendResult> {
     const context = { ...((row.context ?? {}) as SendContext), afterTheNight: true };
+    /*
+     * "OPENS IN AN HOUR" IS NEVER SENT THE MORNING AFTER (engine test, Muchemi & Co, Sunday 18 October). At 9pm Aisha, Njeri and Brian
+     * were each to be told "your check-in for Fee notes opens in an hour, at 12:00 am East Africa Time". It was quiet hours, so it was
+     * held, and at seven the next morning it went out beside "your check-in for Fee notes is open". A message about the next hour or
+     * half hour is about a moment that has passed by the morning: it is written down as not sent, with the reason, and never sent.
+     */
+    if (ABOUT_THE_NEXT_HOUR.has(String(context.kind ?? '').replace(/:template$/, ''))) {
+      const result: SendResult = { sent: false, error: THE_HOUR_IT_WAS_ABOUT_HAS_PASSED };
+      await this.writeItDown(row.organizationId, row.phone, result, context);
+      return result;
+    }
     return row.organizationId ? this.sendFor(row.organizationId, row.phone, row.text, context) : this.sendMessage(row.phone, row.text, context);
   }
 

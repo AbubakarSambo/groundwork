@@ -1,3 +1,4 @@
+import { thePersonJudgementsAreOn, thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
 import { dedupeDependencies } from '../board/reads';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
 import { theDifferencesThatAreOnlyATargetSaidAgain } from '../board/a-target-said-again-is-that-target';
@@ -288,8 +289,10 @@ export async function forTheLeadFrom(prisma: any, groundId: string, l: Loaded, r
   const out: (ForTheLead & { order: number })[] = [];
   for (const rows of groups.values()) {
     const d = rows[0];
-    const what = inASentence(d.what);
     const waiting = [...new Set(rows.map((r) => r.fromParticipantId))].map((pid) => nameOf(pid));
+    /* "my reminder" is the waiting person's, said to the lead as theirs: "a response to Aisha Kamau's reminder" (messages test, fourth run:
+       Wanjiru's letter said "Decide what to do about a response to my reminder."). */
+    const what = waiting.length === 1 && waiting[0] ? inASentence(String(d.what ?? '').replace(/\b(?:my|mine)\b/gi, `${waiting[0]}’s`)) : inASentence(d.what);
     const are = waiting.length === 1 ? 'is' : 'are both';
     const are3 = waiting.length > 2 ? 'are all' : are;
     let decide: string;
@@ -337,7 +340,8 @@ export async function forTheLeadFrom(prisma: any, groundId: string, l: Loaded, r
    * goes away the moment `talkedAboutAt` is set, which is why it is left out below rather than left
    * on the list with a "done" flag.
    */
-  if (lead) {
+  /* Judgements of a person off for the organisation: no "talk with them about" a pattern (organisation/person-judgements.ts). */
+  if (lead && (await thePersonJudgementsAreOn(prisma, (ground as any).organizationId ?? null))) {
     const patternRows = (((await prisma.patternDetection?.findMany?.({
       where: { groundId, participantId: { not: lead.id } },
       select: PATTERN_ROW_SELECT,

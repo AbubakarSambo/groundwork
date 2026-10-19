@@ -60,7 +60,8 @@ describe('your week says each thing with where and when it was said', () => {
       askedOfYou: { items: [] },
     }) };
     await sendTheParticipantsWeeks({ prisma, board, email: { sendYourWeek: async (to: string, subject: string, lines: string[]) => { sent.push({ to, subject, lines }); } }, frontendUrl: 'http://localhost:5196' }, now);
-    expect(sent[0].lines).toContain('You kept the one thing you said you would do in the last four weeks, "Call Mrs. Njeri tomorrow, Tuesday, October 13th".');
+    /* Said on Monday 12 October, read that week: "since Monday 12 October", not "in the last four weeks" (engine test, Mercy's week). */
+    expect(sent[0].lines).toContain('You kept the one thing you said you would do since Monday 12 October, "Call Mrs. Njeri tomorrow, Tuesday, October 13th".');
     expect(sent[0].lines).toContain('On Wednesday 14 October, in "Sales team, Q4", you said "Call Rose tomorrow to follow up on the two units".');
   });
 });

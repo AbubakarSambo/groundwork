@@ -1,3 +1,4 @@
+import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
 import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { theGuestsHere, isAGuestHere, isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { howForecastsHaveGone, NEVER_CONCLUDE_FROM_FORECASTS } from '../detectors/what-a-forecast-turned-out-to-be';
@@ -888,7 +889,7 @@ export class GroundsByApiService {
         /* Never a pattern mirrored from a check-in, served or not: this read is about one named person,
            it printed the code as "A B5 finding", and it is mirrored after one session, before the person
            has read it. People read patterns only through patterns/who-reads-a-pattern. */
-        where: { organizationId, personExternalId, resolvedAt: null, sourcePatternDetectionId: null },
+        where: { organizationId, personExternalId, resolvedAt: null, sourcePatternDetectionId: null, ...((await thePersonJudgementsAreOn(this.prisma, organizationId)) ? {} : { id: '__judgements_of_a_person_are_off__' }) },
         select: { key: true, evidence: true, subjectExternalId: true, firstSeenAt: true },
       }),
       this.prisma.contribution.findMany({
@@ -952,7 +953,7 @@ export class GroundsByApiService {
      */
     const fromObjectives = commitments.map((c) => c.sourcePersonObjectiveId).filter((x): x is string => !!x);
     const coachingByObjective = new Map<string, { offered: number; managed: number }>();
-    if (fromObjectives.length) {
+    if (fromObjectives.length && (await thePersonJudgementsAreOn(this.prisma, organizationId))) {
       const objectives = await this.prisma.personObjective.findMany({
         where: { id: { in: fromObjectives } },
         select: { id: true, seenBySubject: true, participantId: true },
@@ -1050,8 +1051,11 @@ export class GroundsByApiService {
       select: { key: true, personExternalId: true, subjectExternalId: true, evidence: true,
         firstSeenAt: true, lastSeenAt: true },
     });
+    const judged = await thePersonJudgementsAreOn(this.prisma, organizationId);
     for (const f of findings) {
       if (!mayTouch(fence, f.personExternalId ?? undefined) && f.personExternalId) continue;
+      /* Judgements of a person off for this organisation: no finding about a person (organisation/person-judgements.ts). */
+      if (f.personExternalId && !judged) continue;
       const says = (f.evidence as any)?.says;
       if (typeof says !== 'string') continue;
       add({
