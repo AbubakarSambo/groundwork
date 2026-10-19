@@ -113,6 +113,8 @@ const FOLLOWED_UP = /\b(?:followed[\s-]+up|chased|called|phoned|rang|contacted|s
 const A_PRONOUN_PROMISE = /\b(?:send|bring|give|share|file|submit|deliver|hand|email|forward|show|finish|return|take|get|pay|sign|lodge|serve|issue)\s+(?:it|them|this|that|those|these)\b/i;
 const WHAT_A_LINE_IS_ABOUT = /^(?:the|my|our|this|that|his|her|their)\s+([a-z][a-z\s-]*?)\s+(?:was|were|is|are|has\s+been|have\s+been|got)\s+[a-z]+ed\b/i;
 const A_QUARTER_HOUR = 15 * 60 * 1000;
+/* "The reply is drafted.", "The reply was drafted." */
+const WHAT_A_LINE_IS_ABOUT_DONE = /^(?:the|my|our|this|that|his|her|their)\s+([a-z][a-z\s-]*?)\s+(?:was|were|is|are|has\s+been|have\s+been|got)\s+(?:now\s+)?[a-z]+ed\b/i;
 export function whatAPromiseCalledItIsAbout(p: AnOpenPromise, lines: ALineOnRecord[]): string[] {
   if (!A_PRONOUN_PROMISE.test(p.text)) return [];
   const made = new Date(p.createdAt).getTime();
@@ -124,6 +126,42 @@ export function whatAPromiseCalledItIsAbout(p: AnOpenPromise, lines: ALineOnReco
   /* Only where the answer was about one thing: two things said done, and "it" could be either. */
   const things = [...new Set(before.map((x) => x.trim().toLowerCase()))];
   return things.length === 1 ? theThingIn(things[0]) : [];
+}
+
+/*
+ * A FILING ENDS A PROMISE OF WORK ON WHAT WAS FILED (messages test, fourth run). Brian said on Monday 12 October "The reply is drafted."
+ * and "The draft will be with her tomorrow for review." On Tuesday he said "The reply in Kasarani Foods v. Tumaini Traders was filed today."
+ * Wanjiru's summaries on Wednesday, Thursday and Friday said "Brian committed to “The draft will be with her tomorrow for review” ... That
+ * was due by Tuesday 13 October and is one day late." A promise of a draft, a review, revisions or comments is over once the thing itself
+ * was filed, lodged, served or submitted, said by anybody in the check-in, with nothing in the sentence that says it has not. The thing is
+ * the promise's own words, or, where it names only the draft, what its maker had just said was drafted.
+ */
+const WORK_ON_IT = new Set(['draft', 'review', 'revision', 'comment', 'edit', 'change', 'input', 'feedback', 'amendment', 'correction', 'version']);
+const IT_WAS_FILED = /\b(?:filed|lodged|served|submitted)\b/i;
+export function theThingItselfWasFiled(p: AnOpenPromise, lines: ALineOnRecord[]): ALineOnRecord | null {
+  const thing = theThingIn(p.text);
+  if (!thing.some((w) => WORK_ON_IT.has(w))) return null;
+  let itself = thing.filter((w) => !WORK_ON_IT.has(w) && !Object.values(FORMS).includes(w));
+  if (!itself.length) {
+    const made = new Date(p.createdAt).getTime();
+    const before = lines
+      .filter((l) => l.participantId === p.participantId && String(l.type).toUpperCase() === 'PROGRESS')
+      .filter((l) => { const at = new Date(l.createdAt).getTime(); return at <= made && made - at <= A_QUARTER_HOUR; })
+      .map((l) => WHAT_A_LINE_IS_ABOUT_DONE.exec(String(l.text ?? '').trim())?.[1])
+      .filter((x): x is string => !!x);
+    const things = [...new Set(before.map((x) => x.trim().toLowerCase()))];
+    if (things.length !== 1) return null;
+    itself = theThingIn(things[0]).filter((w) => !WORK_ON_IT.has(w));
+  }
+  if (!itself.length) return null;
+  const made = new Date(p.createdAt).getTime();
+  return lines
+    .filter((l) => new Date(l.createdAt).getTime() > made && String(l.type).toUpperCase() === 'PROGRESS')
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+    .find((l) => sentences(l.text).some((s) => {
+      const said = new Set(wordsOf(s).map(aForm));
+      return itself.every((w) => said.has(w)) && IT_WAS_FILED.test(s) && !NOT_YET.test(s);
+    })) ?? null;
 }
 
 /*
@@ -293,6 +331,9 @@ export function thePromisesSaidDone(
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
       .find((l) => aLineSaysThePromiseIsDone(l, p, { forWhom, waits, namesOf, itMeans }));
     if (said) { out.push({ id: p.id, keptAt: new Date(said.createdAt), because: said.id }); continue; }
+    /* A promise of a draft or a review of a thing that was then filed. */
+    const filed = theThingItselfWasFiled(p, lines);
+    if (filed) { out.push({ id: p.id, keptAt: new Date(filed.createdAt), because: filed.id }); continue; }
     /* Asked whether it happened, and they said yes. */
     const yes = later.find((a) => aYesToTheQuestionAboutIt(a, p));
     if (yes) { out.push({ id: p.id, keptAt: new Date(yes.at), because: `answer:${yes.checkInId}` }); continue; }
