@@ -283,6 +283,8 @@ export function aCommitmentSaid(
     who: string; what: string; when: string | null; statedInSession: number | null; restatedIn: number[];
     status: string; theySaidIt: boolean; settledBy?: string | null; fromAPaste?: boolean; leadLabel?: string;
     saidWordForWord?: boolean; whenSaidWordForWord?: boolean;
+    /** Somebody else said it happened (board/somebody-said-it-happened.ts): who, the day, and their words where this reader may read them. */
+    saidHappened?: { who: string; day: string | null; words: string | null } | null;
   },
   sessionsSoFar: number,
 ): string {
@@ -358,7 +360,13 @@ export function aCommitmentSaid(
   if (c.restatedIn.length) {
     out.push(`${who} said it again in ${c.restatedIn.length === 1 ? `session ${c.restatedIn[0]}` : `sessions ${listed(c.restatedIn)}`}.`);
   }
-  if (open) {
+  if (open && c.saidHappened) {
+    /* NEVER "NOBODY HAS SAID" WHEN SOMEBODY DID (messages test, 19 October, finding 4). It stays open: only its maker settles it. */
+    const by = c.saidHappened.who;
+    const on = c.saidHappened.day ? ` on ${c.saidHappened.day}` : '';
+    const words = String(c.saidHappened.words ?? '').trim().replace(/"/g, '\u201d');
+    out.push(words ? `${by} said${on}, "${/[.!?]$/.test(words) ? words : `${words}.`}"` : `${by} said${on} that it happened.`);
+  } else if (open) {
     out.push(sessionsOpen !== null && sessionsOpen > 0
       ? `It has been open for ${sessionsOpen} ${sessionsOpen === 1 ? 'session' : 'sessions'}, and nobody has said whether it happened.`
       : 'Nobody has said yet whether it happened.');
