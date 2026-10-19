@@ -46,3 +46,47 @@ export function notTheSameQuestionTwiceInARow(reply: string, earlierAiTurns: rea
   const rest = `${said.slice(0, at)}${instead}${said.slice(at + q.length)}`.replace(/[ \t]{2,}/g, ' ').trim();
   return rest;
 }
+
+/*
+ * AND NEVER AGAIN ONCE IT HAS BEEN ANSWERED (Hafsah, 19 October, point 3: "It never asks the same question again once it's answered.";
+ * messages test after the fixes, finding 2). Kevin Omondi was asked at 14:00 on Wednesday 14 October "That is 46 units toward the 40
+ * Grace set for you. You also said you were aiming for another 80 units by October 30th. Which of those stands now?" and answered "The
+ * 120 units by Oct 30th is the team target. I've got 46 units towards that." Two and a half minutes and seven turns later he read
+ * "Understood. Grace set a target of 40 units for you by October 30th, and you said you were aiming for another 80 units by then.
+ * Which of those stands now?" The turn-before check above could not see it: it was asked further back.
+ *
+ * Every question this check-in asked earlier has been answered, because the person spoke after it. So the reply's question is not put
+ * again where it is one asked earlier, in the same words: a question about a named thing by its words alone, any other ("Which of
+ * those stands now?") only where what comes before it says again what that earlier turn said. The question, and the sentences that only said that again, are
+ * replaced by the plain question this check-in has not asked yet.
+ */
+const SMALL = new Set(['the', 'and', 'for', 'you', 'your', 'that', 'this', 'with', 'are', 'was', 'were', 'have', 'has', 'had', 'but', 'not', 'also', 'then', 'now', 'there', 'their', 'them', 'they', 'what', 'which', 'those', 'these', 'from', 'into', 'about', 'been', 'will', 'would', 'could', 'should', 'understood', 'okay']);
+const contentOf = (t: string) => bones(t).split(' ').filter((w) => w.length >= 3 && !SMALL.has(w));
+const saysAgain = (sentence: string, earlier: string): boolean => {
+  const words = contentOf(sentence);
+  if (words.length < 3) return false;
+  const there = new Set(contentOf(earlier));
+  return words.filter((w) => there.has(w)).length / words.length >= 0.5;
+};
+
+/** The reply, without a question this check-in asked and the person answered earlier. */
+export function notAQuestionAlreadyAnswered(reply: string, earlierAiTurns: readonly string[]): string {
+  const said = String(reply ?? '').trim();
+  const q = theQuestionItAsks(said);
+  if (!said || !q || !earlierAiTurns.length) return said;
+  const at = said.lastIndexOf(q);
+  const before = said.slice(0, at);
+  const sentences = (before.match(/[^.!?\n]+[.!?]+\s*|[^.!?\n]+$/g) ?? []).map((s) => s);
+  const asked = earlierAiTurns.find((t) => {
+    const theirs = (String(t ?? '').match(/[^.!?\n]*\?/g) ?? []).map((x) => bones(x));
+    if (!theirs.includes(bones(q))) return false;
+    /* A question about a named thing ("When does Savannah Cafe pay the KES 15,000 deposit?") is the same question by its words; a general
+       one ("What will you do about that, and by when?") only where what comes before it says the same again. */
+    if (/\d|\s[A-Z][a-z]/.test(q.trim().slice(1))) return true;
+    return sentences.some((s) => saysAgain(s, t));
+  });
+  if (!asked) return said;
+  const kept = sentences.filter((s) => !saysAgain(s, asked)).join('').trim();
+  const instead = aQuestionNotYetAsked(WHAT_ELSE, [...earlierAiTurns]) ?? WHAT_ELSE;
+  return `${kept ? `${kept} ` : ''}${instead}${said.slice(at + q.length)}`.replace(/[ \t]{2,}/g, ' ').trim();
+}
