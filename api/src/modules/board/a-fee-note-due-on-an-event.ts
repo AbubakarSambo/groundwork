@@ -293,6 +293,14 @@ export async function fileTheFeeNotesDueOnAnEvent(
           await prisma.workItem.update({ where: { id: bill.id }, data: { stage: after.stage, fields: after.fields, dueAt: after.dueAt } });
           bill.stage = after.stage;
           bill.fields = after.fields;
+          /* And the waits for the same event end with it, in the fee note's check-in and wherever they name its client (findings 11, 13). */
+          const ev = theEventWaitedFor(w.dueWhen);
+          if (ev) {
+            const open = ((await Promise.resolve(prisma.groundDependency?.findMany?.({ where: { ground: { organizationId: ground.organizationId }, clearedAt: null, status: { in: ['WAITING', 'BLOCKING'] } }, select: { id: true, groundId: true, what: true, status: true, clearedAt: true, createdAt: true } })).catch(() => [])) ?? []) as any[];
+            const theOnlyOneWaitingHere = waiting.filter((x) => x.groundId === bill.groundId && plainWords(x.dueWhen) === plainWords(w.dueWhen)).length === 1;
+            const ends = theWaitsThisEventEnds(open, ev, { groundId: bill.groundId, client: w.client, matter: w.matter, theOnlyOneWaitingHere }, at);
+            if (ends.length) await prisma.groundDependency.updateMany({ where: { id: { in: ends }, clearedAt: null }, data: { status: 'CLEARED', clearedAt: at } });
+          }
         } else {
           const list: ALineKept[] = Array.isArray(bill.fields?.[MAY_BE_DUE]) ? bill.fields[MAY_BE_DUE] : [];
           if (list.some((x) => x.lineId === l.id)) continue;
@@ -309,6 +317,39 @@ export async function fileTheFeeNotesDueOnAnEvent(
     deps.logger?.warn(`Reading check-in ${e.checkInId} for the events fee notes wait for failed: ${err?.message}`);
     return 0;
   }
+}
+
+/**
+ * AN EVENT REPORTED IN ONE CHECK-IN ENDS THE WAITS FOR IT IN THE OTHERS (Hafsah, 19 October, point 4: "an event reported in one check-in
+ * (the hearing date set) clears the waits in others, on the board and in 'Your week'"; messages test after the fixes, findings 11 and 13).
+ *
+ * Muchemi & Co. (test). On Monday 12 October, in "Fee notes", Njeri said "I'll raise the next Kasarani Foods fee note when the hearing
+ * date is set.", and the record kept her wait for "the hearing date to be set". On Wednesday 14 October, in "Litigation team daily",
+ * David said "I was at the registry for Kasarani Foods v. Tumaini Traders. The hearing date is set for 12 November.", and the fee note
+ * was made due. Njeri's "Your week" on Thursday still said "You are waiting for "the hearing date to be set"", and the Fee notes board
+ * still told Wanjiru "You need to find out who can provide the hearing date to be set that Njeri Wambui is waiting for, because nobody
+ * has been named yet."
+ *
+ * When a line makes a fee note due, the open waits for that same event end with it, on the day the line was said:
+ *  - in the fee note's own check-in, a wait for the thing the event is about ("the hearing date"), where that fee note is the only one
+ *    there waiting for that event, so the wait cannot be about another;
+ *  - anywhere else in the organisation, only a wait that also names the fee note's client or matter.
+ * Never a wait said after the line, and never one that is already cleared.
+ */
+export function theWaitsThisEventEnds(
+  waits: readonly { id: string; groundId: string; what: string; status?: string | null; clearedAt?: Date | string | null; createdAt: Date | string }[],
+  ev: AnEventWaitedFor,
+  bill: { groundId: string; client: string; matter: string | null; theOnlyOneWaitingHere: boolean },
+  at: Date,
+): string[] {
+  const subject = ` ${plainWords(ev.subject)} `;
+  return waits.filter((w) => {
+    if (String(w.status ?? '').toUpperCase() === 'CLEARED' || w.clearedAt) return false;
+    if (new Date(w.createdAt).getTime() > at.getTime()) return false;
+    if (!` ${plainWords(w.what)} `.includes(subject)) return false;
+    if (w.groundId === bill.groundId && bill.theOnlyOneWaitingHere) return true;
+    return !!whatALineNames(w.what, { client: bill.client, matter: bill.matter });
+  }).map((w) => w.id);
 }
 
 /**
