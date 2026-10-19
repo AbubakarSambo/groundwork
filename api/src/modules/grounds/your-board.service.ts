@@ -18,6 +18,7 @@ import { SuggestionsService } from '../suggestions/suggestions.service';
 import type { ForThePerson } from '../suggestions/a-suggestion-told-like-a-signal';
 import { askedOfYou, type AskedOfYou } from './asked-of-you';
 import { theDayIn } from './when-a-handoff-is-due';
+import { whenThesePromisesWereKept } from '../conversation/a-promise-said-done-is-kept';
 import {
   PATTERN_ROW_SELECT, servedPatterns, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson,
   type APatternRow,
@@ -154,6 +155,20 @@ export class YourBoardService {
         : none,
     ]);
 
+    /*
+     * WHAT THE RECORD SAYS IS DONE IS NOT LISTED AS OPEN (messages test, third run, item 4). Mercy said on Monday "I'll follow up with
+     * Joseph again", and on Wednesday "I called Joseph yesterday about the samples, and he said he'll have them ready by Thursday." Her
+     * week on Thursday listed it under "Two things you said you would do are still open". The same reading the lead's summary uses
+     * (a-promise-said-done-is-kept) is applied here, as served: nothing is written, and only her own promises are read.
+     */
+    const openOnes = [
+      ...(commitments as any[]).filter((c) => c.status === 'UNKNOWN' && c.participantId && c.createdAt).map((c) => ({ id: c.id, groundId: c.groundId, participantId: c.participantId, text: c.text, createdAt: c.createdAt })),
+      ...(objectives as any[]).filter((o) => (o.status ?? 'OPEN') === 'OPEN' && o.authoredBy === 'self' && ['COMMITMENT', 'TODO'].includes(o.kind) && o.createdAt).map((o) => ({ id: o.id, groundId: o.groundId, participantId: o.participantId, text: o.text, createdAt: o.createdAt })),
+    ];
+    const keptSaid = openOnes.length ? await whenThesePromisesWereKept(this.prisma as any, openOnes).catch(() => new Map<string, Date>()) : new Map<string, Date>();
+    const commitmentsRead = (commitments as any[]).map((c) => (keptSaid.has(c.id) ? { ...c, status: 'DONE', settledBy: 'SAID', settledAt: keptSaid.get(c.id) } : c));
+    const objectivesRead = (objectives as any[]).map((o) => (keptSaid.has(o.id) ? { ...o, status: 'MET' } : o));
+
     /* Groundwork's suggestions about you, in the shape the person it is about may read (facts and
        the decision with its reasons, never the verdict). Left off when there are none. */
     const aboutYou = this.suggestions ? await this.suggestions.aboutYou({ userId: reader.userId, organizationId: reader.organizationId }) : [];
@@ -172,9 +187,9 @@ export class YourBoardService {
     });
 
     const board = yourBoard(mine, { userId: reader.userId, organizationId: reader.organizationId }, {
-      objectives: objectives as any,
+      objectives: objectivesRead as any,
       ownedTargets: this.onlyYours(targetsYouMayRead, participantIds),
-      commitments: commitments as any,
+      commitments: commitmentsRead as any,
       coaching: coaching as any,
       todos: todos as any,
       leave: await theirApprovedLeave(this.prisma as any, reader.userId, reader.organizationId),
