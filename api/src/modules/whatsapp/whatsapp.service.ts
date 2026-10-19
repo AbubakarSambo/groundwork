@@ -33,6 +33,8 @@ export type SendContext = {
   kind?: string;
   /** The product's own words for the template's {{1}}, {{2}}, used when the message has to go as a template. */
   params?: string[];
+  /** The words for a newer template's blanks, by its name, where they differ from `params` (a-message-outside-the-window.ts, THE_NEWER_TEMPLATE_FIRST). */
+  paramsFor?: Record<string, string[]>;
   /** Set only by held-for-the-night.cron.ts: the message was held for quiet hours and its morning has come, so the night is not asked again. */
   afterTheNight?: boolean;
 };
@@ -61,6 +63,9 @@ export function metaErrorCode(body: string): string {
   }
 }
 import { PrismaService } from '../prisma/prisma.service';
+import { EmailService } from '../email/email.service';
+import { ALREADY_GO_BY_EMAIL, AN_OPENING, BY_EMAIL_ROUTINE, BY_EMAIL_AFTER_THEIR_OWN, THE_OPENING_EMAILS, oneMessage, theOnceKey, theSenderFor, theSubjectFor, theWordsForAnEmail, whatsAppCouldNotTakeIt } from './by-email-instead';
+import { hasBeenToldOnce, nowToldOnce } from '../engagement/a-message-sent-once';
 import { WhatsAppAddOnService } from '../billing/whatsapp-add-on.service';
 import { aLocalForm, callingCodeOf, formsOfTheSameNumber, tidyANumber } from './a-number-whatsapp-can-reach';
 import { theCountryCodeOf, tidyANumberFor } from './the-organisations-country';
@@ -70,7 +75,7 @@ import { aSignInsNumberChanged, refuseANumberOnSomebodyElse } from './one-number
 import { FIRST_CONTACT, FIRST_CONTACT_NOT_APPROVED, theFirstContactLine } from './the-first-message-to-a-number';
 import { aRoutineWhatsApp, theirRoutineMessagesToday } from '../engagement/one-routine-message-a-day';
 import { heldUntilTheMorning, QUIET_HOURS_HELD } from './quiet-hours-are-the-organisations';
-import { ATemplate, insideTheServiceWindow, isBusinessInitiated, WENT_BEFORE_THIS_RELEASE, NOT_TURNED_ON_QUIETLY, templateFor, OUTSIDE_THE_WINDOW, THEY_SAID_STOP, FIRST_MESSAGES, APPROVALS, ONLY_HELD_BY_NOT_NOW, OPENING_OR_CLOSING, NOT_TODAY, THEY_SAID_NOT_NOW, NEVER_THE_FIRST_MESSAGE } from './a-message-outside-the-window';
+import { ATemplate, insideTheServiceWindow, isBusinessInitiated, WENT_BEFORE_THIS_RELEASE, NOT_TURNED_ON_QUIETLY, templateFor, theTemplateToUse, OUTSIDE_THE_WINDOW, THEY_SAID_STOP, FIRST_MESSAGES, APPROVALS, ONLY_HELD_BY_NOT_NOW, OPENING_OR_CLOSING, NOT_TODAY, THEY_SAID_NOT_NOW, NEVER_THE_FIRST_MESSAGE } from './a-message-outside-the-window';
 
 /**
  * Single Groundwork-owned WhatsApp Business number, shared across every org -
@@ -96,6 +101,8 @@ export class WhatsAppService implements OnModuleInit {
      * builds this by hand without it still runs; Nest always provides it.
      */
     @Optional() private addOn?: WhatsAppAddOnService,
+    /* For a message WhatsApp could not take: the same message, by email instead (by-email-instead.ts). Optional and last, so a test that builds this by hand still runs. */
+    @Optional() private email?: EmailService,
   ) {
     this.ownNumber = new GroundworksOwnNumber(config, prisma);
   }
@@ -373,6 +380,7 @@ export class WhatsAppService implements OnModuleInit {
       if (gate.template) { const ours = await this.ours(); return this.sendTemplate(ours.phoneNumberId ?? '', ours.accessToken ?? '', org, to, text, gate.template, gate.params ? { ...context, params: gate.params } : context); }
       const result: SendResult = { sent: false, error: gate.because };
       await this.writeItDown(org, to, result, context);
+      await this.byEmailInstead(org, to, text, context, gate.because);
       return result;
     }
     if (!(await this.isEnabled())) {
@@ -601,6 +609,7 @@ export class WhatsAppService implements OnModuleInit {
       if (gate.template) return this.sendTemplate(own.phoneNumberId, theirKey(own, 'accessToken'), organizationId, to, text, gate.template, gate.params ? { ...context, params: gate.params } : context);
       const result: SendResult = { sent: false, error: gate.because };
       await this.writeItDown(organizationId, to, result, context);
+      await this.byEmailInstead(organizationId, to, text, context, gate.because);
       return result;
     }
     const result = await this.deliver(own.phoneNumberId, theirKey(own, 'accessToken'), to, await this.namedForSomebodyInTwoOrganisations(organizationId, to, text, context));
@@ -765,7 +774,12 @@ export class WhatsAppService implements OnModuleInit {
      * groundwork_first_contact, carrying the message's own words; until Meta approves that template, a first
      * message is recorded as not sent, rather than sent without the protection.
      */
-    if (NEVER_THE_FIRST_MESSAGE.has(context.kind as string)) return { free: false, template: null, because: OUTSIDE_THE_WINDOW };
+    /* Never a first contact; otherwise, once Meta approved its own template (groundwork_checkin_thanks) and it is listed, it goes as that. */
+    if (NEVER_THE_FIRST_MESSAGE.has(context.kind as string) && !lastWrote && (await this.neverInTouchWith(to))) return { free: false, template: null, because: OUTSIDE_THE_WINDOW };
+    if (NEVER_THE_FIRST_MESSAGE.has(context.kind as string)) {
+      const thanks = theTemplateToUse(context.kind, approved, { params: context.params, paramsFor: context.paramsFor });
+      return { free: false, template: thanks?.template ?? null, because: OUTSIDE_THE_WINDOW, ...(thanks?.params ? { params: thanks.params } : {}) };
+    }
     if (!lastWrote && !this.somebodyIsAlreadyWritingFirstTo(to) && (await this.neverInTouchWith(to)) && !this.somebodyIsAlreadyWritingFirstTo(to)) {
       /* Claimed at once, so a second check-in opening for the same number in the same moment is the ordinary notice and not a second introduction (user journeys, F-19). */
       const first = templateFor(FIRST_CONTACT, approved);
@@ -773,7 +787,48 @@ export class WhatsAppService implements OnModuleInit {
       this.firstContactsBeingSent.set(WhatsAppService.normalize(to), Date.now());
       return { free: false, template: first, because: OUTSIDE_THE_WINDOW, params: [await this.nameOfTheOrganisation(organizationId), theFirstContactLine(context.kind, context.params, text)] };
     }
-    return { free: false, template: templateFor(context.kind, approved), because: OUTSIDE_THE_WINDOW };
+    const chosen = theTemplateToUse(context.kind, approved, { params: context.params, paramsFor: context.paramsFor });
+    return { free: false, template: chosen?.template ?? null, because: OUTSIDE_THE_WINDOW, ...(chosen?.params ? { params: chosen.params } : {}) };
+  }
+
+  /**
+   * THE SAME MESSAGE BY EMAIL, WHEN WHATSAPP COULD NOT TAKE IT (Hafsah, 19 October, point 2; see by-email-instead.ts for every rule).
+   * Never throws into the sender's flow: an email that could not go is a warning, and the WhatsApp record already says why.
+   */
+  private async byEmailInstead(organizationId: string | null, to: string, text: string, context: SendContext, because: string): Promise<void> {
+    const kind = context.kind ?? '';
+    if (!this.email || !organizationId || !isBusinessInitiated(kind) || !whatsAppCouldNotTakeIt(because) || ALREADY_GO_BY_EMAIL.has(kind)) return;
+    try {
+      const forms = formsOfTheSameNumber(to);
+      /* Whose message it is: the check-in's own person, or the one person on this organisation's roster with this number. */
+      const ci: any = context.checkInId
+        ? await Promise.resolve((this.prisma as any).checkIn?.findUnique?.({ where: { id: context.checkInId }, select: { id: true, createdAt: true, participantId: true, participant: { select: { email: true, user: { select: { email: true } } } } } })).catch(() => null)
+        : null;
+      const onTheRoster: any = ci ? null : await Promise.resolve((this.prisma as any).person?.findFirst?.({ where: { organizationId, phone: { in: forms }, active: true }, select: { email: true } })).catch(() => null);
+      const address = String(ci?.participant?.user?.email ?? ci?.participant?.email ?? onTheRoster?.email ?? '').trim();
+      if (!address || /@unclaimed\.invalid$/i.test(address)) return;
+      const once = theOnceKey(kind, context.checkInId, WhatsAppService.normalize(to), new Date());
+      if (await hasBeenToldOnce(this.prisma, once)) return;
+      /* One channel per opening: an opening already told by email for this check-in is not told again. */
+      if (AN_OPENING.has(kind) && ci?.createdAt) {
+        const told = await Promise.resolve((this.prisma as any).notification?.findFirst?.({
+          where: { channel: 'email', sender: { in: THE_OPENING_EMAILS }, outcome: { in: ['sent', 'held'] }, toAddress: { equals: address, mode: 'insensitive' }, createdAt: { gte: ci.createdAt } },
+          select: { id: true },
+        })).catch(() => null);
+        if (told) return;
+      }
+      const words = theWordsForAnEmail(text);
+      const frontend = (this.config.get<string>('resend.frontendUrl') || '').replace(/\/$/, '');
+      /* A message about a check-in that is still to answer links to it; the thank-you and the report do not. */
+      const link = context.checkInId && frontend && oneMessage(kind) !== 'report' && kind !== 'report-thanks' ? { label: 'Open your check-in', url: `${frontend}/checkin/${context.checkInId}` } : null;
+      const sender = theSenderFor(kind);
+      const send = sender === BY_EMAIL_ROUTINE ? this.email.sendTheRoutineMessageByEmail : sender === BY_EMAIL_AFTER_THEIR_OWN ? this.email.sendTheAnswerByEmail : this.email.sendTheMessageByEmail;
+      const went = await send.call(this.email, address, theSubjectFor(words), words, link?.label ?? null, link?.url ?? null, ci?.participantId ?? undefined);
+      await nowToldOnce(this.prisma, once, went, { sender, to: address });
+      this.logger.log(`A ${kind} message WhatsApp could not take went by email instead (${went}).`);
+    } catch (err: any) {
+      this.logger.warn(`A ${kind} message WhatsApp could not take could not go by email either: ${err?.message}`);
+    }
   }
 
   /** Numbers the first message is on its way to, by when it was claimed. Only one introduction goes to a number: the very first message. */
