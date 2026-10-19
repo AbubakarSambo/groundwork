@@ -113,6 +113,40 @@ Groundwork staff, switching it on in Admin, Orgs, now read: "Drop Access (test) 
 
 **Old tests this changes, and why:** `one-routine-message-a-day` expects the lead's summary to go after a routine email (standing rule: the summary wins). `the-leads-daily-nudge` expects the summary's link to be the check-in's board, and its "answer with no day" case switches Release 1 on. `a-deals-four-criteria` and `release-one-sales-board` switch Release 1 on where they read the gathering, and the admin message is the new sentence. `a-colleagues-target-is-not-given-to-your-check-in` reads the targets line as it now is (a deal's figure left out). `a-line-somebody-unsaid-counts-toward-nothing` and `nothing-in-here-is-wired-to-nothing` lose their KNOWN FAILURE notes: they pass now. The new tests from the Drop Access run switch Release 1 on wherever what they read is behind it, and the morning summary, the weekly letter and the gathering each have a case with it off.
 
+## Release 1B, pull request 1 of 3: People and setup (19 October)
+
+The first of three small pull requests for Release 1B, built on Release 1's pull request 5. It rebuilds People and setup as Hafsah's B8 pictures draw it, from everything the tab has today, behind a new switch per organisation, `Organization.release1bTabsOn`, off for every organisation. With it off, People and setup reads exactly as it does today. With it on, there are three views, decided by the server (`GET /grounds/:id/people-and-setup`, `grounds/people-and-setup.ts`):
+
+1. **The lead (runs it): the whole page,** in the pictures' order: How this check-in runs (one sentence, "5 people answer every weekday, until 30 October, on WhatsApp or here.", and each setup problem with its one fix), What it is (name, scenario and kind of work), Who's in it (one list of people with their role here, WhatsApp and getting started; the join link and QR code; today's add-person form), When it runs, How people answer, Starting point, Who sees what, Recent changes, and the ending ("Decide how it ends", and "Delete this test" while nobody else has answered). Nothing applies until "Save changes"; each change is written through the route that already writes it, so "What it is" confirms the kind of work only through PATCH kind-of-work, and never on its own.
+2. **An admin who does not run it: the whole page with no ending.** "You can't end a check-in you don't run. Ask us and we'll end it, usually the same day." with "Ask us to end this check-in". She is told whether a person's role has been described, never the lead's words, and every control the server refuses her is a sentence, not a control.
+3. **A team member: only the short page.** One sentence on how it runs, Your role (their own job title), Your status, Your sessions, Runs it, and "Grace knows who is here. You see the team's report once it's shared, with names." The server serves a member those keys and nothing else.
+
+Groundwork staff, switching it on in Admin, Orgs, read: "Drop Access (test) now has the new People and setup tab. Each check-in shows it the next time it is opened, and no setting changes."
+
+**Before you merge:**
+- [ ] **Take a backup of the database first.**
+- [ ] **There is one new migration,** `20261019120000_release_1b_tabs_switch`. It adds `organizations.release_1b_tabs_on`, false for every existing organisation. No other row is changed. See `docs/deploy.md`.
+- [ ] **Existing users see nothing new.** The switch is off for every organisation. With it on, existing check-ins keep their cadence and every setting: opening the page writes nothing.
+- [ ] **No new templates, no new settings, no new prompt versions, no new scheduled job.**
+- [ ] **One new one-off script,** `api/scripts/the-release-1b-tabs.ts`, for test organisations only. It is never run by a deploy.
+
+**Where the picture and the product differ, and which is kept** (the product's working behaviour, each time):
+- **The join link.** The picture shows `myground.work/j/drop-sales-q4` and a short code "DQ4-7KM typed in at myground.work/join". The product's link for a check-in is `/answer?t=<a long token>` (anyone answers without an account and says who they are at the end); `/j/<code>` is the organisation's own invite link, not a check-in's, and `/join` takes the token in the address, not a typed code. There is no short code for a check-in, so today's "Or share an access code instead" stays where the code would be.
+- **Who gets in.** The picture offers "People at Drop Access get in straight away; anyone else waits for an admin" or "Everyone waits for you to let them in". The open link has one rule: anyone with it answers. It is said as that sentence, with no choice.
+- **Their role here.** "They describe it when they join" or "Same for everyone": the open link asks no role. Said as "They aren't asked for one. You can add it in the list below."
+- **Works until.** The picture offers "The check-in ends", "7 days from now" or "The first 20 people join". The product's link works until the check-in ends (or is paused) and has no expiry or count of its own. Kept as "The check-in ends", said as a sentence.
+- **Make a new link and code, and Turn it off.** No route makes a new token or turns the link off, and every check-in is assumed to have one, so they are not drawn. The count under them is real: "3 people have answered with it." (people who came through the link).
+- **Choose another scenario.** No route changes a check-in's scenario, so the scenario is shown, not changed. The kind of work is chosen there.
+- **Remind the admin.** No route lets a lead remind an admin for somebody else; an admin reads "Let them in on People" instead, as today.
+- **Give someone access.** No one-by-one grant exists. "Others with access" says the server's rule as a sentence.
+- **"Not seen"** for each other's check-ins, **"each answers before reading the other's"**, and **"no names, and only groups of 5 or more"**: not in the product, so not offered; the two choices it holds are.
+- **"Linked to"** another check-in: not in the product; not drawn.
+- **One navy button.** "Copy link" and "Save changes" are navy in the picture; here "Add people" is the only primary button, by Hafsah's rule of 30 September.
+- **Recent changes** record what they recorded before (how long it runs and how often); a saved change to another setting is not yet added to it.
+- **"What doing well looks like"** moves to References and resources in pull request 2 of 3; until then it stays under Starting point, so nothing is lost.
+
+**Old tests this changes, and why:** `the-rebuilt-pages-use-only-the-new-parts.spec.ts` lists the two new pages among the rebuilt pages, which hold them to its rules; nothing it checks is loosened.
+
 ## This update, 14 October (after #326 and #327)
 
 This update is made from staging as it is now (`a767ec6c3`). Like the release before it, it comes as two pull requests, the engine first and then the screens.

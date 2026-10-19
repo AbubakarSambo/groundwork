@@ -19,6 +19,7 @@ import { SELECTABLE_CADENCES, sessionsFor, cadenceLabel } from '@/lib/cadence'
 import { scenarioLabel } from '@/lib/scenario-catalog'
 import { whenItWas, theLastDay } from '@/lib/a-date-reads-the-same-everywhere'
 import { whenTheCheckInsLand, type Cadence } from '@/components/gw/when-the-check-ins-land'
+import { PeopleAndSetupAsPictured } from './PeopleAndSetupAsPictured'
 
 /**
  * "PEOPLE AND SETUP" (the lead's check-in tab), rebuilt from `components/gw/ui`.
@@ -71,7 +72,7 @@ import { whenTheCheckInsLand, type Cadence } from '@/components/gw/when-the-chec
  * `whatToDoToday`) - never "3 days, then 4 more, then 7 more". This says that plainly instead of
  * joining the days with "or", which read as a choice rather than a schedule.
  */
-function chasingSentence(days: number[]): string {
+export function chasingSentence(days: number[]): string {
   const sorted = [...days].sort((a, b) => a - b)
   const [first, ...rest] = sorted
   const day = (n: number) => `${n} day${n === 1 ? '' : 's'}`
@@ -185,7 +186,7 @@ export function peersVisibilitySentence(args: {
   return `${who}, once the team's report is shared. ${notNamed}`
 }
 
-export function CheckInPeopleAndSetup(props: {
+export type PeopleAndSetupProps = {
   ground: any
   user: any
   id: string
@@ -248,7 +249,18 @@ export function CheckInPeopleAndSetup(props: {
   confirmDelete: boolean; setConfirmDelete: (v: boolean) => void
   deleteError: string | null; setDeleteError: (v: string | null) => void
   removeGround: { mutate: () => void; isPending: boolean }
-}) {
+}
+
+/**
+ * RELEASE 1B (pull request 1 of 3): WITH THE ORGANISATION'S SWITCH ON, PEOPLE AND SETUP IS THE B8 PICTURES' PAGE
+ * (PeopleAndSetupAsPictured.tsx); OFF, IT IS TODAY'S PAGE BELOW, EXACTLY AS IT WAS. The server says which (`release1bTabsOn` on
+ * GET /grounds/:id); two components rather than an early return, so neither page's hooks depend on the other's.
+ */
+export function CheckInPeopleAndSetup(props: PeopleAndSetupProps) {
+  return props.ground?.release1bTabsOn === true ? <PeopleAndSetupAsPictured {...props} /> : <TodaysPeopleAndSetup {...props} />
+}
+
+function TodaysPeopleAndSetup(props: PeopleAndSetupProps) {
   const {
     ground, user, navigate, isInitiator, isOrgAdmin, viewerIsAParty, mySessionsDone, plannedSessions,
   } = props
@@ -856,7 +868,7 @@ export function theRhythmLine(ground: { cadence?: any; timelineDays?: number | n
   return `${cadenceLabel(ground.cadence)}. ${n} session${n === 1 ? '' : 's'} in total.${anchor}`
 }
 
-function TheReportSharesItself({ ground, canChange }: { ground: any; canChange: boolean }) {
+export function TheReportSharesItself({ ground, canChange }: { ground: any; canChange: boolean }) {
   const qc = useQueryClient()
   const at: string | null = ground?.reportSharesAt ?? null
   const setIt = useMutation({

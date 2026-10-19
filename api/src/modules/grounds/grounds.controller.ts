@@ -596,6 +596,17 @@ export class GroundsController {
     return this.grounds.whereEachPersonIsGettingStarted({ groundId: id, organizationId: user.organizationId, userId: user.id, role: user.role });
   }
 
+  /**
+   * PEOPLE AND SETUP, AS THIS READER IS SERVED IT (Release 1B, pull request 1 of 3): the lead the whole page, an admin who
+   * does not run it the whole page with no ending, a team member only their short page. `{ on: false }` while Release 1B's
+   * switch is off for the organisation. Only reads. See people-and-setup.ts.
+   */
+  @Get(':id/people-and-setup')
+  @ApiOperation({ summary: 'People and setup, as this reader may read it (the lead, an admin who does not run it, or a team member)' })
+  async peopleAndSetup(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
+    return this.grounds.peopleAndSetup(id, user.organizationId, user.id);
+  }
+
   @Get(':id/mediator-brief')
   @ApiOperation({ summary: 'Get a structural brief for use with a facilitator (initiator or a party on this ground - no separate org-admin access exists)' })
   async mediatorBrief(@Param('id') id: string, @CurrentUser('id') userId: string) {
