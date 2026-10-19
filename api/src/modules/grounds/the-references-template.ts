@@ -77,3 +77,47 @@ export function theReferencesTemplateFor(kindOfWork: string | null | undefined):
     startingSetFor: null,
   };
 }
+
+/**
+ * THE STARTING SET FOR "COLLECT WHAT'S OWED" (Release 2, pull request 3 of 3; the B6 fee-notes pictures,
+ * references-fee-notes-lead.txt and -member.txt; Hafsah: "collections' definitions, documents and evidence go into the new References
+ * and resources tab"). Used only where both Release 1B's tabs and Release 2 are on, for a "Collect what's owed" check-in. Every line is
+ * already true of the product there: what Due, Promised and Paid mean is how the collections record files a bill (the-collections-
+ * record: due on a date or an event; a client's promise kept as the client's; paid counts only with proof), and the two risks are
+ * what the collections board already watches for (a bill due on an event and not raised, a promised date missed). In the
+ * organisation's own word for the bill; the fee notes words are the picture's.
+ */
+export function theCollectionsReferencesTemplate(type: 'invoices or fee notes' | 'loans', billWord: string): TheReferencesTemplate {
+  if (type === 'loans') {
+    return {
+      itemWord: 'loan',
+      stages: ['Disbursed', 'Due', 'Reminded', 'Chased', 'Promised', 'Paid'],
+      startingStageNeeds: [
+        'Due: the repayment day has passed.',
+        'Promised: the borrower gave a date.',
+        'Paid: with an M-Pesa message, a bank slip or the repayment record.',
+      ],
+      startingRules: [],
+      startingRisks: ['A promised date that passes without payment.'],
+      startingSetFor: 'loan repayments',
+    };
+  }
+  const bill = billWord;
+  const bills = /s$/.test(bill) ? bill : `${bill}s`;
+  const feeNotes = bill === 'fee note';
+  return {
+    itemWord: bill,
+    stages: ['Not yet raised', 'Invoiced', 'Due', 'Reminded', 'Chased', 'Promised', 'Paid'],
+    startingStageNeeds: [
+      feeNotes ? 'Due: the date or event in the engagement letter has passed.' : `Due: the date or event the ${bill} falls due on has passed.`,
+      'Promised: the client gave a date.',
+      'Paid: with a slip, M-Pesa message or receipt.',
+    ],
+    startingRules: [],
+    startingRisks: [
+      feeNotes ? 'A court event that makes a fee note due, with no fee note raised.' : `An event that makes ${/^[aeiou]/i.test(bill) ? 'an' : 'a'} ${bill} due, with no ${bill} raised.`,
+      'A promised date that passes without payment.',
+    ],
+    startingSetFor: bills,
+  };
+}

@@ -1,0 +1,271 @@
+{
+  "wanjiru": {
+    "on": true,
+    "view": "lead",
+    "checkInName": "Fee notes",
+    "leadName": "Wanjiru Muchemi",
+    "topLine": "Your team’s reference for this work. They can read it, except People. Only you can add to it.",
+    "mayAdd": true,
+    "itemWord": "fee note",
+    "about": {
+      "purpose": "Every fee note goes out when it falls due, and clients pay within 30 days. Brian and Aisha follow up the clients, and Njeri raises the fee notes and records what is paid.",
+      "whose": "Wanjiru, at setup",
+      "keyFacts": [],
+      "alsoWorthKnowing": [],
+      "emptySays": null
+    },
+    "howWeWork": {
+      "rules": [],
+      "stageNeeds": [
+        {
+          "id": "template-stage-0",
+          "text": "Due: the date or event in the engagement letter has passed.",
+          "fromTheTemplate": true
+        },
+        {
+          "id": "template-stage-1",
+          "text": "Promised: the client gave a date.",
+          "fromTheTemplate": true
+        },
+        {
+          "id": "template-stage-2",
+          "text": "Paid: with a slip, M-Pesa message or receipt.",
+          "fromTheTemplate": true
+        }
+      ],
+      "coaching": [],
+      "risks": [
+        {
+          "id": "template-risk-0",
+          "text": "A court event that makes a fee note due, with no fee note raised.",
+          "fromTheTemplate": true
+        },
+        {
+          "id": "template-risk-1",
+          "text": "A promised date that passes without payment.",
+          "fromTheTemplate": true
+        }
+      ],
+      "startingSetSays": "Lines marked as Groundwork’s are the starting set for fee notes."
+    },
+    "documents": {
+      "total": 3,
+      "items": [
+        {
+          "id": "d-fee-schedule",
+          "name": "Fee schedule 2026.pdf",
+          "added": "You, 1 September",
+          "addedOn": "2026-09-01",
+          "summary": "Rates and terms: payment within 30 days.",
+          "whoCanSee": "Everyone",
+          "kind": "PDFs"
+        },
+        {
+          "id": "d-billing-guidelines",
+          "name": "Billing guidelines.docx",
+          "added": "Njeri, 1 September",
+          "addedOn": "2026-09-01",
+          "summary": "When to raise, remind, call and escalate.",
+          "whoCanSee": "Everyone",
+          "kind": "Documents"
+        },
+        {
+          "id": "d-engagement-kasarani",
+          "name": "Engagement letter, Kasarani Foods.pdf",
+          "added": "You, 3 September",
+          "addedOn": "2026-09-03",
+          "summary": "Three fee notes of KES 250,000: on instruction, on filing the reply, on the hearing date.",
+          "whoCanSee": "Only you",
+          "kind": "PDFs"
+        }
+      ],
+      "notOpenToYou": false
+    },
+    "evidence": {
+      "total": 2,
+      "page": 1,
+      "pageSize": 25,
+      "items": [
+        {
+          "id": "ev-fn004",
+          "readAs": "A payment",
+          "shows": "Equity Bank remittance advice: KES 250,000 received from Kasarani Foods for FN-004.",
+          "belongsTo": "Fee note FN-004",
+          "addedBy": "Njeri",
+          "addedById": "p-njeri",
+          "addedOn": "20 October",
+          "on": "2026-10-20",
+          "countsAsProof": true,
+          "group": "Payments"
+        },
+        {
+          "id": "ev-fn007-email",
+          "readAs": "A client email",
+          "shows": "Will pay once head office releases the funds.",
+          "belongsTo": "Fee note FN-007",
+          "addedBy": "Aisha",
+          "addedById": "p-aisha",
+          "addedOn": "12 October",
+          "on": "2026-10-12",
+          "countsAsProof": false,
+          "group": "Client letters"
+        }
+      ],
+      "people": [
+        {
+          "id": "p-njeri",
+          "name": "Njeri"
+        },
+        {
+          "id": "p-aisha",
+          "name": "Aisha"
+        }
+      ]
+    },
+    "evidenceSays": "Photos, slips and documents your team added as proof. Each also shows on the board.",
+    "evidenceGroups": [
+      "Court filings",
+      "Payments",
+      "Client letters",
+      "Other documents"
+    ],
+    "questions": {
+      "total": 0,
+      "items": [],
+      "emptySays": "Nobody has asked about this work yet. Questions asked with Ask about this work will show here, with their answers."
+    },
+    "suggested": [],
+    "people": [
+      {
+        "participantId": "p-brian",
+        "name": "Brian Otieno",
+        "role": "Associate",
+        "note": null,
+        "helpWith": null,
+        "earlier": []
+      },
+      {
+        "participantId": "p-aisha",
+        "name": "Aisha Kamau",
+        "role": "Associate",
+        "note": null,
+        "helpWith": null,
+        "earlier": []
+      },
+      {
+        "participantId": "p-njeri",
+        "name": "Njeri Wambui",
+        "role": "Accounts",
+        "note": null,
+        "helpWith": null,
+        "earlier": []
+      }
+    ]
+  },
+  "aisha": {
+    "on": true,
+    "view": "member",
+    "checkInName": "Fee notes",
+    "leadName": "Wanjiru Muchemi",
+    "topLine": "Your team’s reference for this work, kept by Wanjiru.",
+    "mayAdd": false,
+    "itemWord": "fee note",
+    "about": {
+      "purpose": "Every fee note goes out when it falls due, and clients pay within 30 days. Brian and Aisha follow up the clients, and Njeri raises the fee notes and records what is paid.",
+      "whose": "Wanjiru, at setup",
+      "keyFacts": [],
+      "alsoWorthKnowing": [],
+      "emptySays": null
+    },
+    "howWeWork": {
+      "rules": [],
+      "stageNeeds": [
+        {
+          "id": "template-stage-0",
+          "text": "Due: the date or event in the engagement letter has passed.",
+          "fromTheTemplate": true
+        },
+        {
+          "id": "template-stage-1",
+          "text": "Promised: the client gave a date.",
+          "fromTheTemplate": true
+        },
+        {
+          "id": "template-stage-2",
+          "text": "Paid: with a slip, M-Pesa message or receipt.",
+          "fromTheTemplate": true
+        }
+      ],
+      "coaching": [],
+      "risks": [
+        {
+          "id": "template-risk-0",
+          "text": "A court event that makes a fee note due, with no fee note raised.",
+          "fromTheTemplate": true
+        },
+        {
+          "id": "template-risk-1",
+          "text": "A promised date that passes without payment.",
+          "fromTheTemplate": true
+        }
+      ],
+      "startingSetSays": "Lines marked as Groundwork’s are the starting set for fee notes."
+    },
+    "documents": {
+      "total": 2,
+      "items": [
+        {
+          "id": "d-fee-schedule",
+          "name": "Fee schedule 2026.pdf",
+          "added": "Wanjiru, 1 September",
+          "addedOn": "2026-09-01",
+          "summary": "Rates and terms: payment within 30 days.",
+          "whoCanSee": "Everyone",
+          "kind": "PDFs"
+        },
+        {
+          "id": "d-billing-guidelines",
+          "name": "Billing guidelines.docx",
+          "added": "Njeri, 1 September",
+          "addedOn": "2026-09-01",
+          "summary": "When to raise, remind, call and escalate.",
+          "whoCanSee": "Everyone",
+          "kind": "Documents"
+        }
+      ],
+      "notOpenToYou": false
+    },
+    "evidence": {
+      "total": 1,
+      "page": 1,
+      "pageSize": 25,
+      "items": [
+        {
+          "id": "ev-fn007-email",
+          "readAs": "A client email",
+          "shows": "Will pay once head office releases the funds.",
+          "belongsTo": "Fee note FN-007",
+          "addedBy": "You",
+          "addedById": "p-aisha",
+          "addedOn": "12 October",
+          "on": "2026-10-12",
+          "countsAsProof": false,
+          "group": "Client letters"
+        }
+      ],
+      "people": []
+    },
+    "evidenceSays": "Proof you added in your check-ins. Each also shows on the board.",
+    "evidenceGroups": [
+      "Court filings",
+      "Payments",
+      "Client letters",
+      "Other documents"
+    ],
+    "questions": {
+      "total": 0,
+      "items": [],
+      "emptySays": "Nobody has asked about this work yet. Ask about this work, and the question and its answer will show here."
+    }
+  }
+}

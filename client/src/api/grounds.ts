@@ -684,7 +684,7 @@ export type PeopleAndSetup =
 /** References and resources, as the server serves it to this reader (api grounds/references-and-resources.ts). */
 export type AReferenceKind = 'RULE' | 'STAGE_NEEDS' | 'COACHING' | 'RISK' | 'KEY_FACT' | 'PERSON_NOTE' | 'HELP_WITH'
 export type AReferenceLine = { id: string; text: string; fromTheTemplate?: boolean; onlyYou?: boolean }
-export type APieceOfEvidence = { id: string; readAs: string; shows: string | null; belongsTo: string; addedBy: string; addedById: string | null; addedOn: string; on: string; countsAsProof: boolean; group: 'Orders and quotes' | 'Payments' | 'Photos' | 'Other documents' }
+export type APieceOfEvidence = { id: string; readAs: string; shows: string | null; belongsTo: string; addedBy: string; addedById: string | null; addedOn: string; on: string; countsAsProof: boolean; group: 'Orders and quotes' | 'Payments' | 'Photos' | 'Other documents' | 'Court filings' | 'Client letters' }
 export type AnEvidencePage = { total: number; page: number; pageSize: number; items: APieceOfEvidence[]; people: { id: string; name: string }[] }
 export type AReferenceDocument = { id: string; name: string; added: string; addedOn: string; summary: string | null; whoCanSee: string; kind: 'Photos' | 'Spreadsheets' | 'PDFs' | 'Documents' }
 export type ReferencesAndResources =
@@ -703,6 +703,8 @@ export type ReferencesAndResources =
       documents: { total: number; items: AReferenceDocument[]; notOpenToYou: boolean } | null
       evidence: AnEvidencePage | null
       evidenceSays: string
+      /** The evidence groups to filter by, where they are not the usual four (a "Collect what’s owed" check-in, Release 2). */
+      evidenceGroups?: APieceOfEvidence['group'][]
       questions: { total: number; items: { asked: string; answer: string; who: string }[]; emptySays: string }
       people?: { participantId: string; name: string; role: string | null; note: AReferenceLine | null; helpWith: AReferenceLine | null; earlier: string[] }[]
     }
