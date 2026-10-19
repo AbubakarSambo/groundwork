@@ -40,6 +40,9 @@ export const EACH_OWED_THING_ASKED_PLAINLY: Record<string, string> = {
   'what that work needs to be possible - money, people, time': 'What does that work need, in money, people or time?',
   'what actually happened against the plan': 'What actually happened against the plan?',
   'how the work is going right now, not in general': 'How is the work going right now?',
+  /* Collect what's owed (Release 2). */
+  'each bill they follow up or owe, by name, with its amount': 'How much is each bill you follow up or owe?',
+  'what is in the way of each one being paid, in their own words': 'What is in the way of each one being paid?',
   'what they think is actually wrong': 'What do you think is actually wrong?',
   'what would have to change for it to come right': 'What would have to change for it to come right?',
   'their own view of the decision, and what they are weighing': 'What is your own view of the decision?',

@@ -82,8 +82,8 @@ export class ReportsController {
     /* The light report's one fact for each folded line (sales-first.md, section 2, rule 3), from the report as this reader is served it, after every wall. */
     const served = withItsFacts(report, theSessionReportAtAGlance);
     /* What the switchboard picks for the reports, only where Release 2 is on (board/the-switchboard.ts); off, the report is served exactly as before. */
-    const pick = served && typeof served === 'object' && !Array.isArray(served) ? await this.reports.theSwitchboardsPickFor(groundId) : {};
-    return pick.switchboard ? { ...(served as object), switchboard: pick.switchboard } : served;
+    const pick = served && typeof served === 'object' && !Array.isArray(served) ? ((await this.reports.theSwitchboardsPickFor?.(groundId).catch(() => ({}))) ?? {}) : {};
+    return (pick as any).switchboard ? { ...(served as object), switchboard: (pick as any).switchboard } : served;
   }
 
   /**

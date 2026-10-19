@@ -118,6 +118,16 @@ export const SCENARIO_LABELS = {
 
 export type ScenarioKey = keyof typeof SCENARIO_LABELS
 
+/**
+ * THE NAMES OF SITUATIONS OFFERED ONLY WHERE AN ORGANISATION'S SWITCH IS ON. Kept out of SCENARIO_LABELS, which both pickers build
+ * every card from, so with the switch off nothing is offered that was not before. The name is the server's scenario table's
+ * (the-scenario-table.ts), as every other one is.
+ */
+export const LABELS_BEHIND_A_SWITCH = {
+  /* Release 2, working label. */
+  COLLECTIONS: 'Collect what’s owed',
+} as const
+
 /** Every situation, in the order a person is most likely to be looking for it. */
 export const SCENARIO_KEYS = Object.keys(SCENARIO_LABELS) as ScenarioKey[]
 
@@ -152,7 +162,8 @@ export function scenarioLabel(key: string, brief?: string | null): string {
    */
   if (key === 'HELP_TEAM_UNDERSTAND') return 'Help my team understand'
   /* Collect what's owed (Release 2) is offered only where its switch is on, so it is kept out of SCENARIO_LABELS for the same reason (lib/collect-whats-owed.ts). */
-  if (key === 'COLLECTIONS') return 'Collect what’s owed'
+  const behindASwitch = (LABELS_BEHIND_A_SWITCH as Record<string, string>)[key]
+  if (behindASwitch) return behindASwitch
   const known = (SCENARIO_LABELS as Record<string, string>)[key]
   if (known) return known
   return key.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())
