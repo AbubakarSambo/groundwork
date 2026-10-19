@@ -1,3 +1,4 @@
+import { withoutAMissedStepNobodySaid } from './a-missing-proof-is-not-a-missed-step';
 import { aDayIsNotATarget, theNumberIsOnlyADay } from './a-day-is-not-a-target';
 import { theThingWaitedFor } from '../board/a-wait-said-in-full';
 import { theTargetItSaysAgain } from '../board/a-target-said-again-is-that-target';
@@ -1583,6 +1584,10 @@ export class ConversationService {
     const noRecordInvented = withoutARecordClaimNobodyHolds(raw, saidHereBefore);
     if (noRecordInvented.cut.length) this.logger.warn(`Check-in ${(checkIn as any).id}: cut ${noRecordInvented.cut.length} sentence(s) claiming what "the record" shows, which this person's record does not hold.`);
     raw = noRecordInvented.text;
+    /* And no missed step nobody said, and no "your task is to wait" (messages test, third run, item 11). See a-missing-proof-is-not-a-missed-step. */
+    const noMissedStep = withoutAMissedStepNobodySaid(raw, saidHereBefore);
+    if (noMissedStep.cut.length) this.logger.warn(`Check-in ${(checkIn as any).id}: cut ${noMissedStep.cut.length} sentence(s) saying a step was missed, or mocking a wait, that nobody said.`);
+    raw = noMissedStep.text;
     /*
      * AND NOTHING GROUNDWORK DID NOT DO, OR THE RECORD DOES NOT HOLD (decision 139, must-fix 3). "What happened to the four items you
      * escalated 15 days ago?" went to Felix, who had escalated nothing; "Donholm Distributors placing a 100-bag order this week counts as a
