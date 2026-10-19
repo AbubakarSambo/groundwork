@@ -203,3 +203,32 @@ describe('what Fatuma reads when Kevin says he is waiting on her', () => {
     expect(w.sent[0].lines).toContain('Kevin Odhiambo is waiting for "the final prices" from you in "Duka pilot".');
   });
 });
+
+/*
+ * DAVID'S THREE WAITS ARE ONE, SAID IN HIS OWN PERSON (messages test after the fixes, 19 October, finding 11). "Your week" to David
+ * Mwangi, Thursday 15 October, from the run's own rows: on Monday he said "I don't know who my supervisor is yet.", and on Wednesday
+ * "I don't know my supervisor."
+ */
+describe('what David reads about what he is waiting for', () => {
+  const DAVIDS = {
+    kept: null, open: [], waitingOnYou: [],
+    waitingOn: [
+      { what: 'a clear role defined for the Jamii Clinics employment claim', from: 'my supervisor' },
+      { what: 'the name of their supervisor', from: null },
+      { what: 'a clear role for this claim', from: null },
+    ],
+    theirOwnWords: ["I don't have a clear role defined for this claim yet.", "I don't know who my supervisor is yet.", "I don't know my supervisor."],
+  };
+  it('now: one line, in his own person', () => {
+    const lines = theirWeekInWords('David', DAVIDS as any)!.lines.filter((l) => l.startsWith('You are waiting for'));
+    expect(lines).toEqual(['You are waiting for "a clear role defined for the Jamii Clinics employment claim" from your supervisor, and for the name of your supervisor.']);
+  });
+  it('two waits with different customers are never one', () => {
+    const lines = theirWeekInWords('Mercy', { kept: null, open: [], waitingOnYou: [], waitingOn: [{ what: 'the signed order for Greenfield', from: null }, { what: 'the signed order for Tuskys', from: null }] } as any)!.lines.filter((l) => l.startsWith('You are waiting for'));
+    expect(lines).toEqual(['You are waiting for "the signed order for Greenfield".', 'You are waiting for "the signed order for Tuskys".']);
+  });
+  it('"their" stays where their own words do not say "my" of it', () => {
+    const lines = theirWeekInWords('Njeri', { kept: null, open: [], waitingOnYou: [], waitingOn: [{ what: 'their payment for FN-006', from: 'Baraka Hardware' }], theirOwnWords: ['I raise the fee notes.'] } as any)!.lines.filter((l) => l.startsWith('You are waiting for'));
+    expect(lines).toEqual(['You are waiting for "their payment for FN-006" from Baraka Hardware.']);
+  });
+});
