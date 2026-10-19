@@ -40,6 +40,16 @@ const sentence = (s: string) => (/[.!?][”"’)]?$/.test(s.trim()) ? s.trim() :
 const quoted = (x: string) => `“${x.replace(/[.\s]+$/, '')}”`;
 const PLACE = '{in}';
 
+/** What is waited for, said so two sentences about one wait read as the same thing. */
+export const theThingWaitedFor = (t: string): string => String(t ?? '').toLowerCase().replace(/[‘’“”'"]/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+
+/** The thing waited for in the board's decision made from a wait ("Peter Njoroge is waiting on you for X." or "... waiting on X, so it needs deciding."). */
+export function aWaitInADecision(question: string): string {
+  const q = String(question ?? '').trim();
+  const m = /\bwaiting on (.+?), so it needs deciding\.$/.exec(q) ?? /\bwaiting (?:on [^.]*? for|for) (.+?)(?:, and nobody has been named to provide it)?\.$/.exec(q);
+  return m ? m[1] : '';
+}
+
 /** "People in this check-in said different things. X. This needs settling." said as one plain thing for her to settle. */
 export function aDecisionSheOwes(question: string, source?: string | null): string {
   const q = String(question ?? '').trim();
@@ -115,6 +125,13 @@ export function withWhatTheBoardsSay(o: WhatIsOutstanding, boards: TheLeadsBoard
   const out: WhatIsOutstanding = { ...o, needsYou: [...o.needsYou], risks: [...o.risks] };
   const said = new Set([...out.needsYou, ...out.overdueOnYourTeam, ...out.risks, ...(out.dueToday ?? [])].map((t) => sameSentenceKey(t.text.split(PLACE).join(''))));
   const aboutIds = new Set([...out.needsYou, ...out.risks].flatMap((t) => t.about?.ids ?? []));
+  /*
+   * ONE WAIT ON HER IS SAID ONCE (engine test, second run, Drop Access, from Friday 16 October). Grace read every morning "Peter is
+   * waiting on you for a specific area to focus on since Thursday 15 October. Peter Njoroge is waiting on you for a specific area to
+   * focus on.": the first from the record, the second the same wait as her board's decision. A decision the board made from a wait
+   * the summary already says, for the same thing, is not said again.
+   */
+  const waitsSaid = new Set([...out.needsYou, ...out.risks].map((t) => theThingWaitedFor(t.waitFor ?? '')).filter(Boolean));
   const add = (list: AThingOutstanding[], t: AThingOutstanding, at?: number): boolean => {
     const key = sameSentenceKey(t.text.split(PLACE).join(''));
     if (!key || said.has(key)) return false;
@@ -128,6 +145,7 @@ export function withWhatTheBoardsSay(o: WhatIsOutstanding, boards: TheLeadsBoard
     /* NEEDS YOU: a decision on her board that is hers. A decision a customer owes is the customer's, never hers. */
     for (const d of (Array.isArray(board.decisions) ? board.decisions : []) as any[]) {
       if (String(d?.owner ?? '') !== 'You' || !String(d?.question ?? '').trim()) continue;
+      if (d?.source === 'blocker' && waitsSaid.has(theThingWaitedFor(aWaitInADecision(String(d.question))))) continue;
       add(out.needsYou, { ...base, text: aDecisionSaidFromTheRecord(d, board, b.record) ?? aDecisionSheOwes(d.question, d.source), group: 1, about: { kind: 'decision', ids: [String(d.id ?? d.question)] } });
     }
     /* A wait on her the board lists, that the summary does not already say from the record. */

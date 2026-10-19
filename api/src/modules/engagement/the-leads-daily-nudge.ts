@@ -92,6 +92,8 @@ export interface AThingOutstanding {
   from?: string | null;
   owedTo?: string | null;
   dueSaid?: string;
+  /** For a wait: what is waited for, as it was said, so the board's sentence about the same wait is not said again (the-summary-reads-the-board). Never said. */
+  waitFor?: string;
 }
 
 const THE_PLACE_MARK = '{in}';
@@ -459,13 +461,13 @@ export async function whatIsOutstandingFor(
        summary left out the one thing that needed her. */
     if (onHer && (w.blockerKind === 'DECISION' || (releaseOne && !w.dueOn))) {
       const since = `since ${theDay(w.createdAt)}`;
-      out.needsYou.push({ text: `${saidWait(w, 'is')}${THE_PLACE_MARK} ${since}.`, late: late > 0 ? late : 0, group: 1, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId), groundId: w.groundId, daysOverdue: Math.max(0, late), about: { kind: 'decision', ids: w.ids ?? [w.id] }, from: w.fromParticipantId });
+      out.needsYou.push({ text: `${saidWait(w, 'is')}${THE_PLACE_MARK} ${since}.`, late: late > 0 ? late : 0, group: 1, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId), groundId: w.groundId, daysOverdue: Math.max(0, late), about: { kind: 'decision', ids: w.ids ?? [w.id] }, from: w.fromParticipantId, waitFor: String(w.what ?? '') });
       counted.add(w.id);
       continue;
     }
     if (late < 1) continue;
     const text = `${saidWait(w, 'is')}${THE_PLACE_MARK}, which was due on ${theDay(w.dueOn)} and is ${lateWords(late)}.`;
-    if (onHer) out.needsYou.push({ text, late, group: 2, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId), groundId: w.groundId, daysOverdue: late, about: { kind: 'wait', ids: w.ids ?? [w.id] } });
+    if (onHer) out.needsYou.push({ text, late, group: 2, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId), groundId: w.groundId, daysOverdue: late, about: { kind: 'wait', ids: w.ids ?? [w.id] }, waitFor: String(w.what ?? '') });
     /* Somebody's word alone is not a late mark on a colleague: Juma was shown "ten days late" every morning for shops he had sent. The claim stays,
        as the speaker's account with the note beside it, and with no day or lateness against the colleague (Hafsah, change 4). */
     else if (w.onParticipant && !confirmedWaits.has(w.id)) {
