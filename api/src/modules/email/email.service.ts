@@ -271,7 +271,7 @@ export class EmailService implements OnModuleInit {
     to: string, adminFirstName: string, who: string, addedBy: string, checkInLabel: string | null,
     /* U.4 review: the subject names the person and the organisation when both are known, rather than
        an address and "your organisation". A name is only ever one the person gave, never guessed. */
-    known: { name?: string | null; organisationName?: string | null } = {},
+    known: { name?: string | null; organisationName?: string | null; cameThroughTheLink?: boolean; theReaderInvitedThem?: boolean } = {},
   ): Promise<void> {
     const name = (known.name ?? '').trim();
     const org = (known.organisationName ?? '').trim();
@@ -284,7 +284,7 @@ export class EmailService implements OnModuleInit {
       subject: `${named} is waiting to be let into ${org || 'your organisation'}.`,
       html: this.layout(
         `<p>${greeting(adminFirstName)}</p>
-         <p><strong>${escapeHtml(named)}</strong> was invited to check in${checkInLabel ? ` on <strong>${escapeHtml(checkInLabel)}</strong>` : ''} by ${escapeHtml(by)}, and they are not in your organisation yet.${named === 'Someone' && who?.includes('@') ? ` The address they were invited with is <strong>${escapeHtml(who)}</strong>.` : ''}</p>
+         <p>${theyCameHow(named, checkInLabel, by, known)}, and they are not in your organisation yet.${named === 'Someone' && who?.includes('@') ? ` The address they ${known.cameThroughTheLink ? 'gave' : 'were invited with'} is <strong>${escapeHtml(who)}</strong>.` : ''}</p>
          <p>They can sign in, and they cannot start until you approve them joining. Nobody outside your organisation is added to it, or counted on your plan, without this.</p>
          <p><a href="${this.frontendUrl.replace(/\/$/, '')}/org/members" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">See who is waiting →</a></p>`,
       ),
@@ -2164,6 +2164,18 @@ export function escapeHtml(s: string): string {
 }
 
 /* Who invited them, for the middle of a sentence: "Someone", the word for a person with no name, reads "somebody on your team" there. */
+/*
+ * HOW THEY CAME TO BE WAITING, TRUE FOR THIS READER (messages test, 19 October, finding 7). Amos joined Sales team, Q4 through its join link
+ * and Grace read "Amos Kiprono was invited to check in on Sales team, Q4 by Grace Achieng": nobody invited him, and the reader was Grace.
+ */
+function theyCameHow(named: string, checkInLabel: string | null, by: string, known: { cameThroughTheLink?: boolean; theReaderInvitedThem?: boolean }): string {
+  const who = `<strong>${escapeHtml(named)}</strong>`;
+  const onIt = checkInLabel ? ` on <strong>${escapeHtml(checkInLabel)}</strong>` : '';
+  if (known.cameThroughTheLink) return checkInLabel ? `${who} asked to join <strong>${escapeHtml(checkInLabel)}</strong> through its join link` : `${who} asked to join through a check-in's join link`;
+  if (known.theReaderInvitedThem) return `You invited ${who} to check in${onIt}`;
+  return `${who} was invited to check in${onIt} by ${escapeHtml(by)}`;
+}
+
 function theInviter(addedBy: string | null | undefined): string {
   const by = (addedBy ?? '').trim();
   return !by || by === 'Someone' || by.includes('@') ? 'somebody on your team' : by;

@@ -3208,7 +3208,7 @@ from finishing at all.`;
       this.email.sendAddPasswordEmail(email, user.firstName, setupToken).catch(() => null);
     }
     if (queuedForApproval) {
-      tellTheAdminsSomebodyIsWaiting({ prisma: this.prisma, email: this.email, logger: this.logger }, ground.organizationId, ground.id, ground.initiatorId, email)
+      tellTheAdminsSomebodyIsWaiting({ prisma: this.prisma, email: this.email, logger: this.logger }, ground.organizationId, ground.id, ground.initiatorId, email, { cameThroughTheLink: true })
         .catch((err: any) => this.logger.warn(`Could not tell the admins about ${email}: ${err.message}`));
     }
 
