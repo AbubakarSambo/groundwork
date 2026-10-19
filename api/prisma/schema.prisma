@@ -613,6 +613,12 @@ model Organization {
   /// coaching about a person, the pattern and verdict lines about a person, and suggestions about a person are neither built nor
   /// served for that organisation (organisation/person-judgements.ts). The board, the summaries and the reports still go ahead.
   personJudgementsOn     Boolean   @default(true) @map("person_judgements_on")
+  /// THE DIRECT MORNING, A SWITCH PER ORGANISATION (Hafsah, 20 October 2026). Off for every organisation until
+  /// scripts/the-direct-morning.ts sets it on for one, by its id. On: the lead's morning summary answers the target, what needs
+  /// her, what is about to close and who on the team needs her; her board opens at the same four parts; each team member's
+  /// opening names the one thing that matters to them today; and the messages, emails and screens say names, numbers,
+  /// customers and days without explaining Groundwork (organisation/the-direct-morning-switch.ts). Off: everything reads as before.
+  directMorningOn        Boolean   @default(false) @map("direct_morning_on")
   whatsappMonthlyUse     WhatsAppMonthlyUse[]
 
   companyStage CompanyStage? @map("company_stage")
