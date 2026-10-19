@@ -43,6 +43,22 @@ export function aHolderInTheirOwnWords(onLabel: string | null | undefined, reade
 }
 
 /*
+ * WHOSE, NAMED (Hafsah, 19 October, point 6: "Name whose supervisor."). David Mwangi said he was waiting on "my supervisor" for a clear
+ * role on the Jamii Clinics employment claim, and Wanjiru's weekly letter read "David Mwangi cannot move until it is settled, and it is
+ * waiting on my supervisor.", David's words in her mouth. Where the sentence already names who is waiting, the holder is said with
+ * that name: "David Mwangi’s supervisor"; to the person waiting, "your supervisor". With no name to give, as before.
+ */
+export function aHolderSaidWithWhose(onLabel: string, whose: string | null, readerIsTheOneWaiting = false): string {
+  const m = String(onLabel ?? '').match(MINE);
+  if (!m) return anArticleSaidMidSentence(onLabel);
+  const rest = m[2].trim();
+  if (readerIsTheOneWaiting) return `your ${rest}`;
+  /* "our" is the team's, and the reader is on it. */
+  if (m[1].toLowerCase() === 'our') return `${whose ? `${whose}’s team’s` : 'the team’s'} ${rest}`;
+  return whose ? `${whose}’s ${rest}` : `their own ${rest}`;
+}
+
+/*
  * ONE HOLDER OR SEVERAL (2 October 2026). "Their own direct reports holds it." read as broken English. Whoever holds
  * a wait can be one person, a team, or several people in the waiting person's own words, so the verb follows them.
  *

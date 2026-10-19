@@ -94,8 +94,32 @@ export function whoItWasFor(p: AnOpenPromise, waits: AWaitOnRecord[], namesOf: (
 const A_FOLLOW_UP = /\b(?:follow(?:ing)?[\s-]+up|chase|call|phone|ring|contact|speak|talk|check\s+in|email|message|text|remind)\b/i;
 const FOLLOWED_UP = /\b(?:followed[\s-]+up|chased|called|phoned|rang|contacted|spoke|talked|checked\s+in|emailed|messaged|texted|reminded|reached)\b/i;
 
+/*
+ * A PROMISE THAT SAYS "IT" IS ABOUT WHAT ITS MAKER HAD JUST SAID (messages test, 19 October, finding 3, still there after the first
+ * fix). Brian said on Monday 12 October "The reply was drafted." and, in the same answer, "I will send it to Wanjiru tomorrow for her
+ * review." On Tuesday he said "The reply in Kasarani Foods v. Tumaini Traders was filed today." The promise named no thing of its own,
+ * so the filing did not keep it, and Wanjiru's summary called it late on three mornings. A promise whose thing is "it", "them", "this"
+ * or "that" is about what its maker had just said was done, in the same answer: the thing that line is about ("the reply"). Only the
+ * maker's own lines of the quarter of an hour before the promise, and only a line that says what happened to a named thing.
+ */
+const A_PRONOUN_PROMISE = /\b(?:send|bring|give|share|file|submit|deliver|hand|email|forward|show|finish|return|take|get|pay|sign|lodge|serve|issue)\s+(?:it|them|this|that|those|these)\b/i;
+const WHAT_A_LINE_IS_ABOUT = /^(?:the|my|our|this|that|his|her|their)\s+([a-z][a-z\s-]*?)\s+(?:was|were|is|are|has\s+been|have\s+been|got)\s+[a-z]+ed\b/i;
+const A_QUARTER_HOUR = 15 * 60 * 1000;
+export function whatAPromiseCalledItIsAbout(p: AnOpenPromise, lines: ALineOnRecord[]): string[] {
+  if (!A_PRONOUN_PROMISE.test(p.text)) return [];
+  const made = new Date(p.createdAt).getTime();
+  const before = lines
+    .filter((l) => l.participantId === p.participantId && String(l.type).toUpperCase() === 'PROGRESS')
+    .filter((l) => { const at = new Date(l.createdAt).getTime(); return at <= made && made - at <= A_QUARTER_HOUR; })
+    .map((l) => WHAT_A_LINE_IS_ABOUT.exec(String(l.text ?? '').trim())?.[1])
+    .filter((x): x is string => !!x);
+  /* Only where the answer was about one thing: two things said done, and "it" could be either. */
+  const things = [...new Set(before.map((x) => x.trim().toLowerCase()))];
+  return things.length === 1 ? theThingIn(things[0]) : [];
+}
+
 /** Whether one line says this promise is done. */
-export function aLineSaysThePromiseIsDone(line: ALineOnRecord, p: AnOpenPromise, ctx: { forWhom: string[]; waits: AWaitOnRecord[]; namesOf: (participantId: string) => string[] }): boolean {
+export function aLineSaysThePromiseIsDone(line: ALineOnRecord, p: AnOpenPromise, ctx: { forWhom: string[]; waits: AWaitOnRecord[]; namesOf: (participantId: string) => string[]; itMeans?: string[] }): boolean {
   const byTheMaker = line.participantId === p.participantId;
   const aFollowUpDone = byTheMaker && A_FOLLOW_UP.test(p.text);
   if (String(line.type).toUpperCase() !== 'PROGRESS' && !aFollowUpDone) return false;
@@ -103,7 +127,7 @@ export function aLineSaysThePromiseIsDone(line: ALineOnRecord, p: AnOpenPromise,
   if (!byTheMaker && !byWhomItWasFor) return false;
   /* The thing, in the promise's words and in the words of what the people it was for were waiting on its maker for. */
   const waitedFor = ctx.waits.filter((w) => w.onParticipantId === p.participantId && ctx.forWhom.includes(w.fromParticipantId)).flatMap((w) => theThingIn(w.what));
-  const thing = new Set([...theThingIn(p.text), ...waitedFor]);
+  const thing = new Set([...theThingIn(p.text), ...waitedFor, ...(ctx.itMeans ?? [])]);
   if (!thing.size) return false;
   const otherSide = byTheMaker ? ctx.forWhom.flatMap((id) => ctx.namesOf(id)) : ctx.namesOf(p.participantId);
   const otherWords = otherSide.flatMap((n) => wordsOf(n)).filter((w) => w.length >= 2);
@@ -131,10 +155,11 @@ export function thePromisesSaidDone(
   for (const p of promises) {
     const made = new Date(p.createdAt).getTime();
     const forWhom = whoItWasFor(p, waits, namesOf, everybody);
+    const itMeans = whatAPromiseCalledItIsAbout(p, lines);
     const said = lines
       .filter((l) => new Date(l.createdAt).getTime() > made)
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-      .find((l) => aLineSaysThePromiseIsDone(l, p, { forWhom, waits, namesOf }));
+      .find((l) => aLineSaysThePromiseIsDone(l, p, { forWhom, waits, namesOf, itMeans }));
     if (said) { out.push({ id: p.id, keptAt: new Date(said.createdAt), because: said.id }); continue; }
     /* The wait on its maker, by somebody it was for, cleared after it was made: the same thing, done. */
     const itsThing = theThingIn(p.text);
