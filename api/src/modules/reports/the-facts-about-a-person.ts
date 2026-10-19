@@ -1,3 +1,4 @@
+import { numbersWithUnits } from '../conversation/what-does-not-add-up';
 /**
  * WHAT THE RECORD HOLDS ABOUT ONE PERSON, AS FACTS RATHER THAN AS A PARAGRAPH.
  *
@@ -183,9 +184,21 @@ export function factsAbout(p: APersonToWriteUp, thisSession: number): PersonFact
   const withNumber = progress.filter((s) => carriesANumber(s.text));
   const stand = latest(withNumber) ?? latest(progress);
   /* And the figure they gave before it, where it differs. See the field's note. */
-  const nowSays = new Set(stand ? theNumbersIn(stand.text) : []);
+  /*
+   * EVERYTHING SAID IN THAT LATEST SESSION IS WHAT THEY SAY NOW (engine test, Drop Access). Kevin said "Kilele Hotel bought 40 units"
+   * in sessions 2, 3, 4 and 6, and in session 6 also gave a 6-unit sale. Only the 6-unit line was read as now, so the 40 from session 4
+   * was handed over as an earlier figure, and the team report said "the 40-unit sale is no longer mentioned". A figure said again in
+   * the latest session is not an earlier one.
+   */
+  /* Counts, not money: "40 units, KES 200,000" said again as "40 units" is the same count said again. */
+  const counts = (t: string): number[] => {
+    const withoutMoney = String(t ?? '').replace(/\b(?:KES|KSh|Ksh|NGN|USD|GHS|ZAR|TZS|UGX|RWF)\s?\d[\d,]*(?:\.\d+)?\s*(?:k|m|million|thousand)?/gi, ' ');
+    const c = numbersWithUnits(withoutMoney).filter((n) => n.unit !== 'money' && n.unit !== 'percent').map((n) => n.value);
+    return c.length ? c : theNumbersIn(t);
+  };
+  const nowSays = new Set(stand ? withNumber.filter((s) => s.session === stand.session).flatMap((s) => counts(s.text)) : []);
   const earlier = stand
-    ? latest(withNumber.filter((s) => s.session < stand.session && theNumbersIn(s.text).some((n) => !nowSays.has(n))))
+    ? latest(withNumber.filter((s) => s.session < stand.session && counts(s.text).some((n) => !nowSays.has(n))))
     : undefined;
 
   /*
