@@ -24,6 +24,8 @@ export const ROUTINE_EMAILS: ReadonlySet<string> = new Set([
   'sendRoundDigest', 'sendTestCheckInMovesOn', 'sendHeresWhatIsNew', 'sendYourWeek', 'sendLeadFirstCheckIn', 'sendTheReportFollowUp', 'sendWhoHasGoneQuiet', 'sendWaitingOnThePeople', 'sendWhoHasNotStarted', 'sendTheLeadsDailyNudge', 'sendMissedCheckIns',
   /* The free month's two emails to an admin (15 October): Groundwork decides to send them, so each is the day's one. */
   'sendFreeMonthEndsSoon', 'sendFreeMonthEnded',
+  /* The day's routine WhatsApp message, by email when WhatsApp could not take it (whatsapp/by-email-instead.ts): still the day's one. */
+  'sendTheRoutineMessageByEmail',
   /* Not 'sendTimeRunningOut' (Release 1, pull request 5): "runs out in 7 days" is the only warning before a check-in is stalled, and the
      summary's lines can be cut for room, so it stays an email of its own rather than waiting for the summary and folding into it
      (docs/release-questions.md). It never holds the summary back: the summary is never held by the day's count. */

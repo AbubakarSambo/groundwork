@@ -25,8 +25,13 @@ export class HeldForTheNightCron {
       });
       for (const row of due) {
         try {
-          /* Marked first, so a send that throws halfway is never repeated by the next pass. */
-          await (this.prisma as any).scheduledWhatsApp.update({ where: { id: row.id }, data: { sentAt: new Date() } });
+          /* Marked first, so a send that throws halfway is never repeated by the next pass. Taken only where nobody has taken it yet, so
+             two runs that read the same row never both send it (messages test, 19 October, finding 3, the same race as the held email). */
+          const held = (this.prisma as any).scheduledWhatsApp;
+          const taken = typeof held.updateMany === 'function'
+            ? ((await held.updateMany({ where: { id: row.id, sentAt: null }, data: { sentAt: new Date() } }))?.count ?? 0)
+            : ((await held.update({ where: { id: row.id }, data: { sentAt: new Date() } })), 1);
+          if (!taken) continue;
           const went = await this.whatsapp.sendHeldForTheNight(row);
           if (went.sent) sent++;
         } catch (err: any) {
