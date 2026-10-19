@@ -9,6 +9,8 @@ import { situationInWords } from './setup-already-asked-this';
 import { aNameAPersonGave, aPersonNeverReadsAnInternalName } from '../../common/no-internal-name-reaches-a-person';
 import { HELD_FOR_A_SEAT } from '../participants/held-for-a-seat';
 import { checksInOnlyWhenTheyChoose } from '../grounds/the-lead-checks-in-when-they-choose';
+import { whenThisSessionsRoundClosed } from '../grounds/a-session-nobody-opened';
+import { theReleaseMoment } from '../grounds/the-release-moment';
 import { theWaitIsConfirmed } from '../grounds/a-wait-is-the-speakers-account';
 import { theRoleBlock, keepWhatTheySaidAboutTheirJob, theirJobAsTheyToldUs, theirJobAsKept, asksAboutTheirJob, THE_REPLY_DID_NOT_ASK_ABOUT_THEIR_JOB, SAYS_WHICH_CHECK_IN_THIS_IS, NEVER_SAY_WHICH_CHECK_IN_THIS_IS, asksAboutTheirJobAgain, withoutTheJobQuestion, THEIR_JOB_WAS_ASKED_ALREADY } from './their-role-in-the-first-check-in';
 import { whereASessionsReportStands } from './where-a-sessions-report-stands';
@@ -1154,8 +1156,27 @@ export class ConversationService {
     return new ServiceUnavailableException(whenTheConversationCannotBeReached({ isTheLead, leadFirstName: row?.ground?.initiator?.firstName ?? null }));
   }
 
-  private async openOnce(checkInId: string, requestingUserId: WhoIsAsking, alreadyWritten?: string | null) {
+  private async openOnce(checkInId: string, requestingUserId: WhoIsAsking, alreadyWritten?: string | null): Promise<any> {
     const checkIn = await this.openTheDoor(checkInId, requestingUserId);
+
+    /*
+     * A SESSION WHOSE ROUND HAS CLOSED IS NOT TODAY'S (engine test, second run). Opened after its round closed, with nothing of theirs in
+     * it, it is closed as missed exactly as the half-hourly sweep would have closed it, and today's session is opened instead, so what
+     * they say counts for the day they say it and nothing tells them they are overdue. The session actually opened is returned with
+     * its id. See grounds/a-session-nobody-opened.
+     */
+    if (checkIn.status === CheckInStatus.NOT_STARTED) {
+      const now = new Date();
+      const release = await theReleaseMoment(this.prisma, now).catch(() => null);
+      const closedAt = release ? await whenThisSessionsRoundClosed(this.prisma, checkIn.id, now, release).catch(() => null) : null;
+      if (closedAt && await this.closeAsMissed(checkIn.id, closedAt).catch(() => false)) {
+        const today = await this.prisma.checkIn.findUnique({ where: { participantId_sessionNumber: { participantId: checkIn.participantId, sessionNumber: checkIn.sessionNumber + 1 } }, select: { id: true, status: true } }).catch(() => null);
+        if (today && today.status === CheckInStatus.NOT_STARTED) {
+          this.logger.log(`Check-in ${checkIn.id}: its round closed at ${closedAt.toISOString()}, so it was closed as missed and session ${checkIn.sessionNumber + 1} (${today.id}) was opened instead.`);
+          return { ...(await this.openOnce(today.id, requestingUserId, alreadyWritten)), checkInId: today.id };
+        }
+      }
+    }
 
     /**
      * THE BRIEF, FETCHED HERE BECAUSE THIS QUERY WAS ALREADY RUNNING.

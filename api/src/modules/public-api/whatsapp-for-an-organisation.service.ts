@@ -603,6 +603,9 @@ export class WhatsAppForAnOrganisationService {
       let reply = '';
       if (current.status === 'NOT_STARTED') {
         const first = await this.conversation.open(current.id, userId!);
+        /* A session whose round had closed was closed as missed and today's opened instead (conversation.open): the answer goes there. */
+        const today = (first as any)?.checkInId as string | undefined;
+        if (today && today !== current.id) Object.assign(current, { id: today, sessionNumber: (current.sessionNumber ?? 0) + 1 });
         /* The missed-check-ins notice, first, before the first question, for somebody on WhatsApp (Hafsah, 14 October). */
         const missed = await this.theMissedNoticeFor(current.id, userId!);
         /* The words that switch, said once, when the check-in starts on WhatsApp. */
@@ -994,8 +997,8 @@ export class WhatsAppForAnOrganisationService {
         const who = await this.whatsapp.whoIsWritingTo(r.organizationId, r.phone);
         const ci: any = await this.prisma.checkIn.findUnique({ where: { id: heldFrom }, select: { id: true, status: true } });
         if (!who.userId || !ci || !['NOT_STARTED', 'IN_PROGRESS'].includes(ci.status)) { this.logger.warn(`Held words for ${heldFrom} could not be put in the check-in, and were cleared.`); continue; }
-        if (ci.status === 'NOT_STARTED') await this.conversation.open(ci.id, who.userId);
-        await this.conversation.sendMessage(ci.id, who.userId, words, { door: 'whatsapp' });
+        const opened: any = ci.status === 'NOT_STARTED' ? await this.conversation.open(ci.id, who.userId) : null;
+        await this.conversation.sendMessage(opened?.checkInId ?? ci.id, who.userId, words, { door: 'whatsapp' });
         putIn += 1;
       } catch (err: any) {
         this.logger.warn(`Held words for ${heldFrom} could not be put in the check-in, and were cleared: ${err?.message}`);
@@ -1076,7 +1079,9 @@ export class WhatsAppForAnOrganisationService {
 
   private async openIfWaiting(c: AnOpenCheckIn, userId: string): Promise<string | null> {
     if (c.status !== 'NOT_STARTED') return null;
-    const first = await this.conversation.open(c.id, userId);
+    const first: any = await this.conversation.open(c.id, userId);
+    /* Today's session, where the one asked for had a round that had closed (conversation.open). */
+    if (first?.checkInId && first.checkInId !== c.id) Object.assign(c, { id: first.checkInId, sessionNumber: (c.sessionNumber ?? 0) + 1 });
     c.status = 'IN_PROGRESS';
     return first.reply;
   }

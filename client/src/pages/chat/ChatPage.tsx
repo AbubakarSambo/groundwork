@@ -413,6 +413,11 @@ export function ChatPage() {
       })
     },
     onSuccess: res => {
+      /* The session whose round had closed was closed as missed and today's opened instead: this page follows it, so what is said goes there. */
+      if (res.checkInId && res.checkInId !== checkInId) {
+        navigate(`/checkin/${res.checkInId}`, { replace: true, state: { ...((location.state as any) ?? {}), sessionNumber: sessionNumber + 1 } })
+        return
+      }
       setMsgs([{ id: 'ai-open', role: 'AI', content: res.reply, suggestedAnswers: res.suggestedAnswers, ideaOffer: res.ideaOffer, requestOffer: res.requestOffer, openTheRequest: res.openTheRequest }])
       if (res.groundId && !groundId) setGroundId(res.groundId)
       if (res.brief) setBrief(res.brief)
