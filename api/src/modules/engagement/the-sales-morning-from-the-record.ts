@@ -6,6 +6,8 @@ import { theOtherQuotesPrice } from '../board/what-needs-you-and-what-to-do';
 import { theDecisionsTheLeadPromised } from '../board/a-decision-the-lead-promised';
 import { thePromisesCarriedOver } from '../board/a-promise-carried-over';
 import { cleanText } from '../reports/what-the-record-actually-holds';
+import { aLineIsAbout } from '../board/a-deals-value-and-buying-date';
+import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 
 /**
  * GRACE'S MORNING SUMMARY ON A SALES CHECK-IN, READ FROM THE DEALS (Hafsah's quality pass of 18 October, section 7, M-1 to M-3; behind
@@ -52,6 +54,28 @@ function since(at: Date, now: Date, zone: string): string {
   const [, m, d] = key.split('-').map(Number);
   const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   return days >= 1 && days <= 6 ? `since ${WEEKDAYS[new Date(`${key}T12:00:00Z`).getUTCDay()]}` : `since ${d} ${months[m - 1]}`;
+}
+
+/*
+ * WHAT IS PROMISED, WITH THE CUSTOMER IT IS FOR (Hafsah, 19 October: every line in the summary names the customer, the person and the
+ * day). Grace read "Joseph promised Mercy samples today." The record kept the wait as "samples", and Mercy's own lines said which
+ * customer they are for: "The samples from Joseph are holding up Tuskys Westgate." She now reads "Joseph promised Mercy the samples for
+ * Tuskys today. Mercy has been waiting since Monday 12 October." Only where the waiting person's own lines name the thing beside exactly
+ * one of their deals; a thing that already names its deal is said as it is.
+ */
+export function theThingWithItsDeal(thing: string, fromParticipantId: string | null, deals: { name: string; ownerParticipantId?: string | null; fields?: Record<string, string> | null }[], lines: { text: string; participantId: string | null }[]): string {
+  const words = thing.toLowerCase().replace(/^(?:the|a|an|some)\s+/, '').split(/\s+/).filter((w) => w.length >= 3);
+  if (!words.length || deals.some((d) => aLineIsAbout(thing, d))) return thing;
+  const theirs = deals.filter((d) => d.ownerParticipantId === fromParticipantId && !(d as any).dropped);
+  const named = new Set<string>();
+  for (const l of lines.filter((x) => x.participantId === fromParticipantId)) {
+    const said = l.text.toLowerCase();
+    if (!words.every((w) => said.includes(w.replace(/s$/, '')))) continue;
+    for (const d of theirs) if (aLineIsAbout(l.text, d)) named.add(d.name);
+  }
+  if (named.size !== 1) return thing;
+  const bare = thing.replace(/^(?:the|a|an|some)\s+/i, '');
+  return `the ${bare} for ${[...named][0]}`;
 }
 
 export async function theSalesMorning(
@@ -120,10 +144,11 @@ export async function theSalesMorning(
     if (told.has(key)) continue;
     told.add(key);
     const twice = carried.some((c) => c.participantId === w.onParticipantId);
-    const thing = String(w.what ?? '').trim().replace(/[.\s]+$/, '');
+    const thing = theThingWithItsDeal(String(w.what ?? '').trim().replace(/[.\s]+$/, ''), w.fromParticipantId, deals, lines);
+    const since = keyOf(new Date(w.createdAt), zone) < today ? ` ${first(w.fromParticipantId)} has been waiting since ${whenItWas(w.createdAt, 'weekdayAndDay', zone)}.` : '';
     due.push(twice
       ? `${first(w.onParticipantId)} has promised ${first(w.fromParticipantId)} ${thing} three check-ins running, for today.`
-      : `${first(w.onParticipantId)} promised ${first(w.fromParticipantId)} ${thing} today.`);
+      : `${first(w.onParticipantId)} promised ${first(w.fromParticipantId)} ${thing} today.${since}`);
   }
   for (const [when, key] of [['Today', today], ['Tomorrow', plusDays(today, 1)]] as const) {
     const pays: string[] = [];

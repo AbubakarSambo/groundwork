@@ -15,7 +15,7 @@ import { whatMovedInTheRound } from './what-this-session-holds';
 import { yourOwnWhereYouAreTheSubject, anAimTheHolderSet } from '../board/an-aim-is-a-sentence-about-somebody';
 import { asADirection } from '../board/an-aim-or-a-limit';
 import { PATTERN_ROW_SELECT, servedPatterns, patternTalkNudge } from '../patterns/who-reads-a-pattern';
-import { anArticleSaidMidSentence } from '../board/a-holder-in-their-own-words';
+import { aHolderSaidWithWhose } from '../board/a-holder-in-their-own-words';
 import { everyLineTheFinalCheckPasses, type WhatTheRecordHolds } from '../conversation/the-final-check';
 import { whatTheRecordHolds } from '../conversation/what-the-record-holds';
 
@@ -232,7 +232,7 @@ export async function sinceLastFrom(prisma: any, groundId: string, l: Loaded, re
   const onWhom = (d: any) =>
     d.onParticipantId && d.onParticipantId === me?.id ? ' on you'
       : d.onParticipantId ? ` on ${nameOf(d.onParticipantId)}`
-        : (d.onLabel ?? '').trim() ? ` on ${anArticleSaidMidSentence((d.onLabel ?? '').trim())}` : '';
+        : (d.onLabel ?? '').trim() ? ` on ${aHolderSaidWithWhose((d.onLabel ?? '').trim(), d.fromParticipantId === me?.id ? null : nameOf(d.fromParticipantId), d.fromParticipantId === me?.id)}` : '';
   /* One sentence per thing, with everybody it is about: "Brian and Miriam are now waiting on you for …". */
   const said = (list: any[], now: 'no longer' | 'now') => {
     const groups = new Map<string, any[]>();
@@ -300,7 +300,8 @@ export async function forTheLeadFrom(prisma: any, groundId: string, l: Loaded, r
     } else {
       decide = QUESTION_WORD.test(what) ? `Decide ${what}.` : `Decide what to do about ${what}.`;
       /* A thing the same as what is waited for is not said twice (request 107 b). */
-      const onWho = d.onParticipantId ? nameOf(d.onParticipantId) : (theSameThing(d.onLabel, d.what) ? '' : anArticleSaidMidSentence((d.onLabel ?? '').trim()));
+      /* "my supervisor" is the waiting person's, named: "David Mwangi’s supervisor" (Hafsah, 19 October, point 6). */
+      const onWho = d.onParticipantId ? nameOf(d.onParticipantId) : (theSameThing(d.onLabel, d.what) ? '' : aHolderSaidWithWhose((d.onLabel ?? '').trim(), waiting.length === 1 ? waiting[0] : null));
       why = `${andList(waiting)} cannot move until it is settled${onWho ? `, and it is waiting on ${onWho}` : ''}.`;
     }
     const thenAsSaid = rows.map((r) => (r.then ?? '').trim()).find(Boolean);
