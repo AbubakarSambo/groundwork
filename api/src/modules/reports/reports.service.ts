@@ -2427,6 +2427,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
         targets: (objectivesForTheGaps as any[])
           .filter((o) => !o.ownerParticipantId || o.ownerParticipantId === p.id)
           .map((o) => ({ name: o.name, target: o.target, count: o.count ?? 0, yours: o.ownerParticipantId === p.id, setByThem: o.setByParticipantId === p.id })),
+        /* On a sales check-in, one customer's figure is only set against the same customer's (the-facts-about-a-person). */
+        customers: theCustomers,
+        people: theFirstNames,
       }, roundNow))
       .filter((f): f is NonNullable<typeof f> => !!f);
     const howManyDifferences = Array.isArray((result as any).divergences) ? (result as any).divergences.length : 0;
