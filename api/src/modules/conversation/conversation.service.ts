@@ -290,6 +290,7 @@ import { asADirection } from '../board/an-aim-or-a-limit';
 import { theTargetAsASentence } from './each-target-is-a-sentence-about-whoever-set-it';
 import { withoutOurInstructions, withoutTalkAboutTheConversation } from './our-instructions-never-reach-them';
 import { withoutAConclusionNobodyDrew } from './a-conclusion-nobody-drew-is-never-sent';
+import { withoutPressingOrAccusing, withOnePossessive } from './nothing-sent-presses-or-accuses';
 import { withEarlierWordsOnTheirOwnDay, type AnEarlierWord } from './earlier-words-keep-their-own-day';
 import { withoutTheLeadsBrief, aSentenceThatQuotesTheBrief, theLeadsSetupWords } from './the-leads-brief-is-never-quoted-to-them';
 import { withoutSentencesAboutOneOfThem } from '../reports/one-persons-circumstances-stay-their-own';
@@ -1523,6 +1524,8 @@ export class ConversationService {
   private async theTurnAsItIsSaved(checkIn: { groundId?: string; participant?: { partyType?: PartyType } }, raw: string): Promise<string> {
     /* NO INTERNAL NAME, LAST OF ALL HERE TOO: every saved turn comes through (night quality run 2, "NEW_PROJECT"). */
     raw = aPersonNeverReadsAnInternalName(raw, `check-in ${(checkIn as any)?.id ?? ''} turn`, this.logger);
+    /* "Wanjiru's's" is "Wanjiru's" on every path (messages test, fourth run). */
+    raw = withOnePossessive(raw);
     /*
      * AND A QUESTION THE LEAD CONFIRMED IS ASKED IN THE WORDS THEY CONFIRMED. Decision 34: the model
      * decides when to ask it, and where it asked it its own way the confirmed sentence is put back.
@@ -1571,6 +1574,10 @@ export class ConversationService {
       const concluded = withoutAConclusionNobodyDrew(raw, sayable, saidHereBefore);
       for (const c of concluded.cut) this.logger.warn(`Check-in ${(checkIn as any).id}: cut a conclusion nobody drew: "${c.slice(0, 160)}"`);
       raw = concluded.text;
+      /* And nothing that presses them or calls their account doubtful, and no "Wanjiru's's" (messages test, fourth run). See nothing-sent-presses-or-accuses. */
+      const pressed = withoutPressingOrAccusing(raw, saidHereBefore);
+      for (const c of pressed.cut) this.logger.warn(`Check-in ${(checkIn as any).id}: cut a sentence that pressed or accused: "${c.slice(0, 160)}"`);
+      raw = pressed.text;
       /* And their earlier words put back with the day they were said, never "this morning" a day later (Hafsah, 19 October, point 3).
          See earlier-words-keep-their-own-day. */
       if ((checkIn as any)?.participantId && /\b(?:this morning|this afternoon|this evening|tonight|today|tomorrow|yesterday)\b/i.test(raw)) {
