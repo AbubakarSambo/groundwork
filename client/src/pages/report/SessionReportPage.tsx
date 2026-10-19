@@ -294,7 +294,7 @@ export default function SessionReportPage() {
           <div className="pb-own-team">
             <div>
               <b>The team’s report</b>
-              <p className="pb-sub">{teamShared ? 'Shared. Open it to read the whole team’s picture.' : `Not shared yet.${sharing?.says && !sharing.shared ? ` ${sharing.says.replace(/ You’ll get an email when.*$/, '')}` : ''}`}</p>
+              <p className="pb-sub">{teamShared ? ((shape as any)?.releaseOneSalesReport === true ? 'Shared. Open it.' : 'Shared. Open it to read the whole team’s picture.') : `Not shared yet.${sharing?.says && !sharing.shared ? ` ${sharing.says.replace(/ You’ll get an email when.*$/, '')}` : ''}`}</p>
             </div>
             {teamShared
               ? <Link className="gwui-plain-link" to={`/grounds/${data.groundId}/session/${data.sessionNumber}`}>Open it</Link>

@@ -122,7 +122,14 @@ export default function WeeklyReportPage() {
             </div>
           </Section>
         )}
-        {(data.eachPerson.length > 0 || (data.acrossTheTeam && data.acrossTheTeam.length > 0)) && (
+        {/* A sales check-in (Release 1): the server's paragraphs, read from the deals, as the kit has them. */}
+        {(data.whatThisWeekShows ?? []).length > 0 ? (
+          <Section heading="What this week shows">
+            <div className="wr-panel">{(data.whatThisWeekShows ?? []).map((p, i) => <p key={i}>{p}</p>)}</div>
+            {/* sales-weekly-report.txt: the amber strip under the panel (quality pass, 18 October, W-8). */}
+            {(data.acrossTheTeam ?? []).map((line, i) => <p key={`att-${i}`} className="wr-strip">{line}</p>)}
+          </Section>
+        ) : (data.eachPerson.length > 0 || (data.acrossTheTeam && data.acrossTheTeam.length > 0)) && (
           <Section heading="What this week shows">
             {data.eachPerson.length > 0 && (
               <div className="wr-panel">{data.eachPerson.map((p, i) => <p key={i}>{p.says}</p>)}</div>
@@ -145,10 +152,11 @@ export default function WeeklyReportPage() {
         {changed && (
           <Section heading="What changed">
             <div className="wr-panel wr-changed">
-              {(['moved', 'dropped', 'result'] as const).map((key) => (
+              {/* sales-weekly-report.txt: Moved, Dropped, Adapted (only where somebody changed the way they work, W-6), Result. */}
+              {(['moved', 'dropped', 'adapted', 'result'] as const).filter((key) => (changed[key] ?? []).length > 0).map((key) => (
                 <div key={key} className="wr-changed-row">
-                  <b>{key === 'moved' ? 'Moved' : key === 'dropped' ? 'Dropped' : 'Result'}</b>
-                  <div>{changed[key].map((line, i) => <p key={i}>{line}</p>)}</div>
+                  <b>{key === 'moved' ? 'Moved' : key === 'dropped' ? 'Dropped' : key === 'adapted' ? 'Adapted' : 'Result'}</b>
+                  <div>{(changed[key] ?? []).map((line, i) => <p key={i}>{line}</p>)}</div>
                 </div>
               ))}
             </div>
@@ -157,7 +165,8 @@ export default function WeeklyReportPage() {
         {data.forNextWeek && data.forNextWeek.length > 0 && (
           <Section heading="For you to do next week">
             <div className="wr-rows">
-              {threeFromDifferentPlaces(data.forNextWeek).map((row, i) => (
+              {/* A sales week read from the record is in the order to do it (W-7), up to five; otherwise three from different places. */}
+              {(data.forNextWeekIsRanked ? data.forNextWeek.slice(0, 5) : threeFromDifferentPlaces(data.forNextWeek)).map((row, i) => (
                 <div key={i} className="wr-row wr-row-navy">
                   <b>{row.do}</b>
                   {row.why && <span>{row.why}</span>}
@@ -188,7 +197,13 @@ export default function WeeklyReportPage() {
             <NumberTiles label="The week in numbers" tiles={data.inNumbers.map((row, i) => ({ key: String(i), label: row.of, value: String(row.figure), sub: row.says }))} />
           </Section>
         )}
-        {(data.eachPerson.length > 0 || (data.acrossTheTeam && data.acrossTheTeam.length > 0)) && (
+        {(data.whatThisWeekShows ?? []).length > 0 ? (
+          <Section heading="What this week shows">
+            <div className="gwui-light-report-part">
+              {(data.whatThisWeekShows ?? []).map((p, i) => <p key={i} className="gwui-panel-text">{p}</p>)}
+            </div>
+          </Section>
+        ) : (data.eachPerson.length > 0 || (data.acrossTheTeam && data.acrossTheTeam.length > 0)) && (
           <Section heading="What this week shows">
             <div className="gwui-light-report-part">
               {data.eachPerson.map((p, i) => <p key={i} className="gwui-panel-text">{p.says}</p>)}
@@ -216,10 +231,10 @@ export default function WeeklyReportPage() {
         {data.whatChanged && (
           <Section heading="What changed">
             <div className="gwui-light-report-part">
-              {(['moved', 'dropped', 'result'] as const).map((key) => (
+              {(['moved', 'dropped', 'adapted', 'result'] as const).filter((key) => (data.whatChanged![key] ?? []).length > 0).map((key) => (
                 <div key={key}>
-                  <p className="gwui-panel-text gwui-light-report-do">{key === 'moved' ? 'Moved' : key === 'dropped' ? 'Dropped' : 'Result'}</p>
-                  {data.whatChanged![key].map((line, i) => <p key={i} className="gwui-panel-text-muted">{line}</p>)}
+                  <p className="gwui-panel-text gwui-light-report-do">{key === 'moved' ? 'Moved' : key === 'dropped' ? 'Dropped' : key === 'adapted' ? 'Adapted' : 'Result'}</p>
+                  {(data.whatChanged![key] ?? []).map((line, i) => <p key={i} className="gwui-panel-text-muted">{line}</p>)}
                 </div>
               ))}
             </div>

@@ -40,8 +40,9 @@ describe('every report read strips other people\'s ratings', () => {
     expect(JSON.stringify(out.engagement.specificityNotes)).not.toContain('Participant B');
     expect(out.engagement.specificitySignal['Participant B']).toBeUndefined();
     expect(out.engagement.pictureConfidence['Participant B']).toBeUndefined();
-    expect(out.engagement.parties[1].specificityLabel).toBeUndefined();
-    expect(out.engagement.parties[0].specificityLabel).toBe('HIGH');
+    /* 18 October (Hafsah's quality pass, R-7): a participant keeps only their own row, so a colleague's row is gone, rating and all. */
+    expect(out.engagement.parties.find((p: any) => p.label === 'Participant B')?.specificityLabel).toBeUndefined();
+    expect(out.engagement.parties.find((p: any) => p.label === 'Participant A').specificityLabel).toBe('HIGH');
   });
 
   /*
@@ -83,9 +84,10 @@ describe('every report read strips other people\'s ratings', () => {
       }
       expect(e.specificitySignal?.[label]).toBeUndefined();
       expect(e.pictureConfidence?.[label]).toBeUndefined();
-      expect(e.parties.find((p: any) => p.label === label).specificityLabel).toBeUndefined();
+      /* 18 October (Hafsah's quality pass, R-7): a participant keeps only their own row, so a colleague's row is gone, rating and all. */
+      expect(e.parties.find((p: any) => p.label === label)?.specificityLabel).toBeUndefined();
       /* Screens request 52: the per-person confidence band on the same row is a rating too. */
-      expect(e.parties.find((p: any) => p.label === label).confidence).toBeUndefined();
+      expect(e.parties.find((p: any) => p.label === label)?.confidence).toBeUndefined();
       expect(out.finalSynthesis.tiers[idOf[label]]).toBeUndefined();
     }
     /* Participation is not a rating and stays for everybody. */

@@ -53,6 +53,29 @@ The third of the five pull requests for Release 1. It is built on pull requests 
 
 **Old tests this changes, and why:** `a-number-with-a-name-on-it-goes-through-one-rule.spec.ts` no longer excuses `reports/the-sales-readings-for-a-report.ts`, which comes in pull request 4 with its excuse. `a-gap-the-record-now-answers-is-not-unanswered.spec.ts` and `a-finished-session-is-never-still-open.spec.ts` switch Release 1 on, because what they check is behind the switch here, and each gains a case that reads the board with it off.
 
+## Release 1, pull request 4 of 5: the reports (19 October)
+
+The fourth of the five pull requests for Release 1. It is built on pull request 3 (the sales board) and reads the same switch, `Organization.release1SalesBoardOn`. With the switch off, which it is for every organisation, the team report, each person's own report and the weekly report read as they did before, with one exception for everyone (item 5). With it on, a sales check-in's reports read as the kit's:
+
+1. **The team report.** Its title and day, In short from the deals, What moved with the stage each deal reached and its owner's line, each person in the third person marked proven or said, opened to their own words, with what they will do, Where people see it differently in full sentences, How much it can rely on and why ("1 of the 5 commitments has"), What I don't know yet (a question asked and not answered, then what the deals cannot tell yet), Why the numbers don't match where the record can work it out, and the closing line, "How sure Groundwork is about this report". A person correcting themselves settles a difference.
+2. **Your own report.** What you did well in your own name ("You got Greenfield Supermarket's signed order for 25 units, KES 125,000, on 13 October, and you added it. It counts as proof."), a line read with its document's date over memory, a customer's promise on the deal as the customer's, the kit's story in place of a second summary paragraph, what you told us said once, and One thing to think about from one of your own deals.
+3. **The weekly report.** The kit's five numbers counted from the deals, What this week shows from the deals with the amber strip, "The samples for Tuskys Westgate, promised three check-ins running, still not done.", What changed with Moved, Dropped and Adapted, For you to do next week in the order to do it with where each comes from, and a daily check-in's week to its last check-in with the day it was written.
+4. **Today and the lead's list.** One wait said once, what changes said as the waiting person's, a side that said nothing left out, a difference that is only a target said again or settled by a correction left out, and "Tell Mercy Wairimu about the goal you set for the order confirmation process."
+5. **For every organisation, switch or not:** a participant's report carries only their own engagement row and session count. Each person's load is private, always, and the stored report carried every colleague's row to a participant. The lead and an org admin keep every row.
+
+**Before you merge:**
+- [ ] **Take a backup of the database first.**
+- [ ] **There is no new migration.** `schema.prisma` only changes the comment on `release1SalesBoardOn`.
+- [ ] **Existing organisations see nothing new, except item 5.** The switch is off for all of them. `release-one-reports-switch-as-each-reader-reads-it.spec.ts` reads the team report, Mercy's own lines and the weekly report with it off, as Grace and Mercy, and each new test that switches it on has a case with it off. `each-persons-load-is-their-own-in-the-report.spec.ts` proves item 5 as each reader.
+- [ ] **What runs for every sales check-in, whatever the switch says** (the writer): the weekly row keeps the week's deals and each sales target's count from the deals beside the count said. The read serves them only with the switch on.
+- [ ] **No new templates, no new settings, no new prompt versions, no new one-off scripts.** The reports' new sentences are written in code from the record; no prompt changes.
+
+**Brought early from later pull requests:** none. The six report files part 3 brought unwired are now wired.
+
+**Left for pull request 5:** the lead's daily summary and engagement messages, message channels, quiet hours (including the reports listener's "a check-in the clock closed is not 'has checked in'"), the sales check-in's gathering prompt and its wiring, the conversation's own fixes, and the ScheduledWhatsApp migration. Also left: a weekly report stored before the "her approval" fix reading the wait as now written (`what-the-record-shows-over-time.ts`, Drop Access run 1, A7), and the same goal wording in the message a person reads a week on (`whatThePersonReadsAfterAWeek`), both of which the source applied to every organisation.
+
+**Old tests this changes, and why:** `a-private-guide-is-private`, `every-report-read-strips-other-peoples-ratings` and `specificity-is-yours-to-see` now expect a participant to read only their own row (stricter, item 5). `a-number-with-a-name-on-it-goes-through-one-rule` excuses `reports/the-sales-readings-for-a-report.ts`, which this pull request brings. `nothing-in-here-is-wired-to-nothing` lists the short run's report bed as test-only, and carries a KNOWN FAILURE note: it fails on staging and on pull request 3 as well, and its two orphans are wired by pull request 5.
+
 ## This update, 14 October (after #326 and #327)
 
 This update is made from staging as it is now (`a767ec6c3`). Like the release before it, it comes as two pull requests, the engine first and then the screens.

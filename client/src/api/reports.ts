@@ -114,9 +114,13 @@ export interface WeeklyReport {
   inNumbers?: { figure: string; of: string; says: string }[]
   eachPerson: { who: string; isYou: boolean; says: string }[]
   acrossTheTeam?: string[]
+  /** On a sales check-in (Release 1): what this week shows, in paragraphs read from the deals, drawn in place of eachPerson and acrossTheTeam. */
+  whatThisWeekShows?: string[]
   threeInARow?: { who: string; isYou: boolean; says: string }[]
   saidAndProof?: string | null
-  whatChanged?: { moved: string[]; dropped: string[]; result: string[] }
+  whatChanged?: { moved: string[]; dropped: string[]; adapted?: string[]; result: string[] }
+  /** A sales week read from the record: forNextWeek is in the order to do it (quality pass, 18 October, W-7). */
+  forNextWeekIsRanked?: boolean
   forNextWeek?: { do: string; why: string; comesFrom: string }[]
 }
 

@@ -1,4 +1,9 @@
+import { dedupeDependencies } from '../board/reads';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
+import { theDifferencesThatAreOnlyATargetSaidAgain } from '../board/a-target-said-again-is-that-target';
+import { theCorrectionsOnTheCheckIn, isOnlyACorrection, whoIsBehindALabel } from './a-correction-is-their-latest-word';
+import { isASalesKind } from '../board/the-kind-of-work';
+import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
 import { theSameThing } from '../board/a-thing-is-not-somebody';
 import { plainWordsByPerson, atTheStart, labelsForParties, namesVisibleTo, withNames, eachSideGetsSomebody } from './party-labels';
 import { targetsFor } from '../board/whose-number-is-whose-business';
@@ -10,7 +15,7 @@ import { whatMovedInTheRound } from './what-this-session-holds';
 import { yourOwnWhereYouAreTheSubject, anAimTheHolderSet } from '../board/an-aim-is-a-sentence-about-somebody';
 import { asADirection } from '../board/an-aim-or-a-limit';
 import { PATTERN_ROW_SELECT, servedPatterns, patternTalkNudge } from '../patterns/who-reads-a-pattern';
-import { anArticleSaidMidSentence } from '../board/a-holder-in-their-own-words';
+import { aHolderSaidWithWhose } from '../board/a-holder-in-their-own-words';
 import { everyLineTheFinalCheckPasses, type WhatTheRecordHolds } from '../conversation/the-final-check';
 import { whatTheRecordHolds } from '../conversation/what-the-record-holds';
 
@@ -59,6 +64,12 @@ export interface ForTheLead {
   decide: string;
   why: string;
   changes?: string;
+  /**
+   * A difference on a sales check-in that is only a target said again (point 9). Set only where the caller asked to keep them
+   * marked (the weekly report, which decides at its read by Release 1's switch); otherwise such a difference is left out where
+   * the switch is on, and never served with this mark.
+   */
+  onlyATargetSaidAgain?: true;
 }
 
 export interface Reader {
@@ -93,6 +104,8 @@ async function load(prisma: any, groundId: string) {
     select: {
       initiatorId: true,
       createdByUserId: true,
+      organizationId: true,
+      kindOfWork: true,
       whoSeesTargets: true,
       peersVisibleToEachOther: true,
       cadence: true,
@@ -219,7 +232,7 @@ export async function sinceLastFrom(prisma: any, groundId: string, l: Loaded, re
   const onWhom = (d: any) =>
     d.onParticipantId && d.onParticipantId === me?.id ? ' on you'
       : d.onParticipantId ? ` on ${nameOf(d.onParticipantId)}`
-        : (d.onLabel ?? '').trim() ? ` on ${anArticleSaidMidSentence((d.onLabel ?? '').trim())}` : '';
+        : (d.onLabel ?? '').trim() ? ` on ${aHolderSaidWithWhose((d.onLabel ?? '').trim(), d.fromParticipantId === me?.id ? null : nameOf(d.fromParticipantId), d.fromParticipantId === me?.id)}` : '';
   /* One sentence per thing, with everybody it is about: "Brian and Miriam are now waiting on you for …". */
   const said = (list: any[], now: 'no longer' | 'now') => {
     const groups = new Map<string, any[]>();
@@ -248,10 +261,12 @@ export async function sinceLastFrom(prisma: any, groundId: string, l: Loaded, re
  * (b) WHAT ONLY THE PERSON WHO RUNS THE CHECK-IN CAN SETTLE. Null for anybody else.
  */
 /** `upTo` is how many Today shows (eight); the weekly report asks for up to sixteen, so it can take one from each place (screen match). */
-export async function forTheLeadFrom(prisma: any, groundId: string, l: Loaded, reader: Reader, upTo = 8): Promise<ForTheLead[] | null> {
+export async function forTheLeadFrom(prisma: any, groundId: string, l: Loaded, reader: Reader, upTo = 8, opts: { markTargetsSaidAgain?: boolean } = {}): Promise<ForTheLead[] | null> {
   const { ground, participants, nameOf } = l;
   if (ground.initiatorId !== reader.userId) return null;
   const lead = participants.find((p) => p.userId === reader.userId) ?? null;
+  /* What Release 1 changes here (one wait said once, what changes said as the waiting person's, a side that said nothing left out) is read only where its switch is on. */
+  const releaseOne = await theReleaseOneSalesBoardIsOn(prisma, (ground as any).organizationId).catch(() => false);
   const open = ((ground.dependencies ?? []) as any[])
     .filter((d) => d.status !== 'CLEARED' && (d.what ?? '').trim() && d.fromParticipantId !== lead?.id);
   /* Newest row of each thing wins: a handoff somebody stopped calling blocking is not blocking. */
@@ -259,7 +274,10 @@ export async function forTheLeadFrom(prisma: any, groundId: string, l: Loaded, r
   const onTheLead = (d: any) => !!lead && d.onParticipantId === lead.id;
   const isADecision = (d: any) => d.blockerKind === 'DECISION';
   /* A decision waiting on a colleague is theirs to make; one waiting on nobody here is the lead's. */
-  const mine = current.filter((d) => onTheLead(d) || d.status === 'BLOCKING' || (isADecision(d) && !d.onParticipantId));
+  /* The same wait said again in other words ("a decision on the KES 4,500 price for Juja Hardware", "approval on the KES 4,500 price for 5 units",
+     "an answer about the KES 4,500 price") is one thing to settle, said once (Drop Access run 1, item 19). */
+  const theLeadsToSettle = current.filter((d) => onTheLead(d) || d.status === 'BLOCKING' || (isADecision(d) && !d.onParticipantId));
+  const mine = releaseOne ? dedupeDependencies(theLeadsToSettle as any[]) as any[] : theLeadsToSettle;
 
   /* One item per thing, with everybody who is waiting for it. */
   const groups = new Map<string, any[]>();
@@ -282,10 +300,12 @@ export async function forTheLeadFrom(prisma: any, groundId: string, l: Loaded, r
     } else {
       decide = QUESTION_WORD.test(what) ? `Decide ${what}.` : `Decide what to do about ${what}.`;
       /* A thing the same as what is waited for is not said twice (request 107 b). */
-      const onWho = d.onParticipantId ? nameOf(d.onParticipantId) : (theSameThing(d.onLabel, d.what) ? '' : anArticleSaidMidSentence((d.onLabel ?? '').trim()));
+      /* "my supervisor" is the waiting person's, named: "David Mwangi’s supervisor" (Hafsah, 19 October, point 6). */
+      const onWho = d.onParticipantId ? nameOf(d.onParticipantId) : (theSameThing(d.onLabel, d.what) ? '' : aHolderSaidWithWhose((d.onLabel ?? '').trim(), waiting.length === 1 ? waiting[0] : null));
       why = `${andList(waiting)} cannot move until it is settled${onWho ? `, and it is waiting on ${onWho}` : ''}.`;
     }
-    const then = rows.map((r) => (r.then ?? '').trim()).find(Boolean);
+    const thenAsSaid = rows.map((r) => (r.then ?? '').trim()).find(Boolean);
+    const then = releaseOne ? whatChangesSaidAsTheirs(thenAsSaid ?? '', waiting.length === 1 ? waiting[0] : null) : thenAsSaid;
     out.push({
       id: `handoff-${d.id}`,
       decide,
@@ -296,7 +316,18 @@ export async function forTheLeadFrom(prisma: any, groundId: string, l: Loaded, r
   }
 
   /* Where people said different things, one item per open difference on the stored report. */
-  out.push(...(await whereWhatPeopleSaidDiffers(prisma, groundId, participants, lead)).map((x) => ({ ...x, order: 1 })));
+  /*
+   * A DIFFERENCE THAT IS ONLY A TARGET SAID AGAIN IS NOT ONE (point 9), on a sales check-in, as the board reads it: Grace's 40
+   * each against the reps naming the team's 120 was "Confirm the individual sales target for each person" here and on the weekly
+   * report after the board had dropped it. Left out where Release 1's switch is on; the weekly report keeps it marked and decides
+   * at its read, so a week kept while the switch was on reads as before once it is off.
+   */
+  const sales = isASalesKind((ground as any).kindOfWork) ? { objectives: ((ground as any).objectives ?? []) as any[], leadRowId: lead?.id ?? null } : null;
+  const differences = await whereWhatPeopleSaidDiffers(prisma, groundId, participants, lead, sales, { releaseOne });
+  const leaveOut = !opts.markTargetsSaidAgain && differences.some((d) => d.onlyATargetSaidAgain) && releaseOne;
+  out.push(...differences
+    .filter((d) => !(leaveOut && d.onlyATargetSaidAgain))
+    .map(({ onlyATargetSaidAgain, ...x }) => ({ ...x, ...(opts.markTargetsSaidAgain && onlyATargetSaidAgain ? { onlyATargetSaidAgain } : {}), order: 1 })));
 
   /*
    * DECISION 57, ITEM 3. "AFTER A PATTERN REACHES THE LEAD, THEY ARE NUDGED ONCE TO HAVE THE
@@ -337,7 +368,7 @@ export async function forTheLeadFrom(prisma: any, groundId: string, l: Loaded, r
   for (const o of untold) {
     const name = nameOf(o.participantId);
     const area = await areaOfGoalOrFallback(prisma, o.text ?? '');
-    const nudge = theLeadIsNudgedToTell(name, area);
+    const nudge = theLeadIsNudgedToTell(name, area, { releaseOne });
     /*
      * A WEEK ON, THE REMINDER IS STRONGER, ONCE, IN FULL SENTENCES. Item 4: once a week has passed
      * not told, the person has already been told plainly on their own board that a goal exists, with
@@ -370,7 +401,13 @@ export async function forTheLeadFrom(prisma: any, groundId: string, l: Loaded, r
  * rewritten when something new comes in, so what is on it now is what is still open. Names go in
  * through `withNames`, as the lead's own report has them, and the lead's own side is "you".
  */
-export async function whereWhatPeopleSaidDiffers(prisma: any, groundId: string, participants: any[], lead: any | null): Promise<ForTheLead[]> {
+export async function whereWhatPeopleSaidDiffers(
+  prisma: any, groundId: string, participants: any[], lead: any | null,
+  /** On a sales check-in: the targets on record, so a difference that is only one of them said again is marked (point 9). */
+  sales: { objectives: { target?: number | null; ownerParticipantId?: string | null }[]; leadRowId: string | null } | null = null,
+  /** Release 1's switch is on for the check-in's organisation: a side that said nothing is left out. */
+  opts: { releaseOne?: boolean } = {},
+): Promise<ForTheLead[]> {
   const report = await prisma.report?.findUnique?.({ where: { groundId }, select: { divergences: true } })?.catch?.(() => null);
   const divs = (Array.isArray(report?.divergences) ? report.divergences : []) as any[];
   if (!divs.length) return [];
@@ -388,9 +425,22 @@ export async function whereWhatPeopleSaidDiffers(prisma: any, groundId: string, 
   const visible = namesVisibleTo(lead?.id ?? null, participants as any);
   const leadLabel = lead ? labels.get(lead.id) ?? null : null;
   const named = (t: unknown) => withNames(String(t ?? '').trim(), visible, labels.values(), { viewerLabel: leadLabel });
+  const byLabel = new Map([...labels.entries()].map(([pid, label]) => [label.toLowerCase(), pid]));
+  const sameTarget = sales
+    ? theDifferencesThatAreOnlyATargetSaidAgain(divs, sales.objectives, sales.leadRowId, (label) => byLabel.get(label.trim().toLowerCase()) ?? null)
+    : new Set<any>();
+  /* A person correcting themselves is their latest word, not a difference (Drop Access short run, item 1; a-correction-is-their-latest-word). Release 1's sales check-in, as the board. */
+  if (sales) {
+    const corrections = await theCorrectionsOnTheCheckIn(prisma, groundId).catch(() => []);
+    const whoIs = (label: string) => byLabel.get(label.trim().toLowerCase()) ?? whoIsBehindALabel(participants as any[], labels)(label);
+    for (const d of divs) if (corrections.length && isOnlyACorrection(d, corrections, whoIs)) sameTarget.add(d);
+  }
   const out: ForTheLead[] = [];
   divs.slice(0, 4).forEach((d, i) => {
-    const sides = eachSideGetsSomebody((Array.isArray(d?.positions) ? d.positions : Array.isArray(d?.perspectives) ? d.perspectives : []) as any[], visible.keys());
+    /* A side that said nothing is not one of the people who said different things (Mercy's empty side on the Drop Access bed). */
+    const said = ((Array.isArray(d?.positions) ? d.positions : Array.isArray(d?.perspectives) ? d.perspectives : []) as any[])
+      .filter((side) => !(opts.releaseOne && typeof side?.view === 'string' && !side.view.trim()));
+    const sides = eachSideGetsSomebody(said, visible.keys());
     const who = [...new Set(sides.map((side) => {
       const l = String(side?.participantLabel ?? '').trim();
       if (leadLabel && l.toLowerCase() === leadLabel.toLowerCase()) return 'you';
@@ -408,6 +458,7 @@ export async function whereWhatPeopleSaidDiffers(prisma: any, groundId: string, 
         : knowsWho ? `Settle the difference between what ${andList(who)} said.` : 'Settle the difference between what people said.',
       why: `${topic ? `${sentence(topic)} ` : ''}${whoSaid} said different things about this, so nobody can assume it is agreed.`,
       ...(atStake ? { changes: sentence(atStake) } : {}),
+      ...(sameTarget.has(d) ? { onlyATargetSaidAgain: true as const } : {}),
     });
   });
   return out;
@@ -417,11 +468,11 @@ export async function whereWhatPeopleSaidDiffers(prisma: any, groundId: string, 
  * BOTH, FOR ONE READER OF THE LATEST REPORT. The fields are left out, not sent empty, where there is
  * nothing to say or the reader may not read them.
  */
-export async function whatTodayReads(prisma: any, groundId: string, reader: Reader, opts: { everyThingForTheLead?: boolean } = {}): Promise<{ sinceLast?: SinceLast; forTheLead?: ForTheLead[] }> {
+export async function whatTodayReads(prisma: any, groundId: string, reader: Reader, opts: { everyThingForTheLead?: boolean; markTargetsSaidAgain?: boolean } = {}): Promise<{ sinceLast?: SinceLast; forTheLead?: ForTheLead[] }> {
   const l = await load(prisma, groundId);
   if (!l) return {};
   const sinceLast = await sinceLastFrom(prisma, groundId, l, reader);
-  const forTheLead = await forTheLeadFrom(prisma, groundId, l, reader, opts.everyThingForTheLead ? 16 : 8);
+  const forTheLead = await forTheLeadFrom(prisma, groundId, l, reader, opts.everyThingForTheLead ? 16 : 8, { markTargetsSaidAgain: opts.markTargetsSaidAgain });
   const today = await todayHeldToTheRecord(prisma, groundId, {
     ...(sinceLast ? { sinceLast } : {}),
     ...(forTheLead && forTheLead.length ? { forTheLead } : {}),
@@ -453,4 +504,27 @@ export async function todayHeldToTheRecord<T extends { sinceLast?: SinceLast; fo
   } catch {
     return today;
   }
+}
+
+/**
+ * WHAT CHANGES ONCE IT IS SETTLED, SAID AS THE WAITING PERSON'S (Drop Access short run, item 13). Joseph said "I'll ask Grace first
+ * about the price, then I'll call him back.", and Grace's weekly report read "Once it is settled, I'll call him back.", Joseph's
+ * own words in Groundwork's mouth, about somebody it never names. Their "I" is said as their name ("Joseph Kariuki will ..."); a
+ * line that still leans on a "him", "her" or "them" nobody named, or that has no one person to say it as, is left out.
+ */
+export function whatChangesSaidAsTheirs(then: string, who: string | null): string | null {
+  const t = String(then ?? '').trim();
+  if (!t) return null;
+  const FIRST = /(?<![\p{L}'’])(?:I|I['’](?:ll|m|d|ve)|my|me|we|our|us)(?![\p{L}'’])/u;
+  const firstLower = /(?<![\p{L}'’])(?:my|me|we|our|us)(?![\p{L}'’])/iu;
+  if (!FIRST.test(t) && !firstLower.test(t)) return t;
+  if (!who) return null;
+  const said = t
+    .replace(/^I['’]ll\b/, `${who} will`).replace(/^I will\b/, `${who} will`).replace(/^I can\b/, `${who} can`)
+    .replace(/^I['’]m\b/, `${who} is`).replace(/^I am\b/, `${who} is`).replace(/^I\b/, who)
+    .replace(/(?<![\p{L}'’])my(?![\p{L}'’])/giu, 'their').replace(/(?<![\p{L}'’])me(?![\p{L}'’])/giu, 'them');
+  /* Still somebody's "I" or "we" in the middle, or a "him" or "her" nobody named: it cannot stand on its own. */
+  if (FIRST.test(said) || /(?<![\p{L}'’])(?:we|our|us)(?![\p{L}'’])/iu.test(said)) return null;
+  if (/(?<![\p{L}'’])(?:him|her|he|she)(?![\p{L}'’])/iu.test(said)) return null;
+  return said;
 }

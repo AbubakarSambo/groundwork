@@ -34,6 +34,7 @@ import { aDeadlineIsDone } from '../board/a-measure-that-goes-down-is-still-goin
 import { aCountThatMovedSaid, theMoneyItCountsIn } from './a-count-that-moved-is-one-sentence';
 import { inOurVoice } from './what-the-record-shows-over-time';
 import { theWeekOf } from './the-weekly-sentence-about-each-person';
+import type { TheSalesWeek, ATargetFromTheDeals } from './the-sales-week-in-numbers';
 
 /* ------------------------------------------------------------------------------------------------
  * WHAT IS KEPT WHEN A CHECK-IN COMES IN. Report labels, never names.
@@ -51,6 +52,12 @@ export interface AWeeksTarget {
   from: number | null;
   /** The person who holds it set it themselves (decision 75, item 37). Absent on a week kept before. */
   setByTheHolder?: boolean;
+  /** On a sales check-in: set by whoever runs it, set on the board, and what the deals on record hold for it (the-sales-week-in-numbers). */
+  setByTheLead?: boolean;
+  setOnTheBoard?: boolean;
+  fromTheDeals?: ATargetFromTheDeals | null;
+  /** On a sales check-in, the count as read from what was said, before the deals counted it; served where Release 1's board is off. */
+  countSaid?: number;
 }
 
 export interface AWeeksCommitment {
@@ -98,6 +105,10 @@ export interface AThingForTheLead {
   why: string;
   changes?: string;
   from: WhereItComesFrom;
+  /** A difference on a sales check-in that is only a target said again (point 9): left out at the read where Release 1's switch is on. */
+  onlyATargetSaidAgain?: true;
+  /** A goal the lead set and has not told its person about (a-goal-not-told-stays-with-the-lead). */
+  untoldGoal?: true;
 }
 
 export interface TheWeeksFacts {
@@ -119,6 +130,8 @@ export interface TheWeeksFacts {
   cleared: AWeeksHandoff[];
   /** For the person who runs the check-in only, written by report label. */
   forTheLead: AThingForTheLead[];
+  /** On a sales check-in only: what the deals on record did this week, counts only (the-sales-week-in-numbers). */
+  sales?: TheSalesWeek;
 }
 
 /** The row as stored: the first version kept only the array of sentences. */
@@ -148,16 +161,28 @@ function aDayInLagos(d: Date): { day: number; month: string; key: string } {
  * "This week, 21 to 23 Sep, so far", as the prototype heads it, while the week is still going. A week
  * that has ended reads "The week of 21 to 25 Sep", to the day the last check-in came in; a week still going runs to today.
  */
-export function theWeeksHeading(weekStart: string, lastAt: Date | string | null, now: Date = new Date()): string {
+export function theWeeksHeading(
+  weekStart: string, lastAt: Date | string | null, now: Date = new Date(),
+  /*
+   * A DAILY CHECK-IN'S WEEK RUNS TO ITS LAST CHECK-IN, AND SAYS WHEN IT WAS WRITTEN (quality pass, 18 October, W-1): Grace read "This week,
+   * 12 to 18 Oct, so far" on a report written on Thursday 15 October from check-ins up to Wednesday 14 October. Each day of a daily
+   * check-in has its own check-in, so the days after the last one are days nothing came in yet.
+   */
+  opts: { cadence?: string | null; writtenAt?: Date | string | null } = {},
+): string {
   const start = aDayInLagos(new Date(`${weekStart}T00:00:00+01:00`));
   /* While the week is going, "so far" runs to today (screen match, 16 October: a weekly check-in that met on Monday read
      "This week, 21 Sep, so far" on Wednesday; the picture says "21 to 23 Sep"). A week that has ended runs to its last check-in. */
   const going = theWeekOf(now).key === weekStart;
-  const end = going ? aDayInLagos(now) : lastAt ? aDayInLagos(new Date(lastAt)) : start;
+  const daily = opts.cadence === 'DAILY' && !!lastAt;
+  const end = going && !daily ? aDayInLagos(now) : lastAt ? aDayInLagos(new Date(lastAt)) : start;
   const range = end.key <= start.key
     ? `${start.day} ${start.month}`
     : start.month === end.month ? `${start.day} to ${end.day} ${end.month}` : `${start.day} ${start.month} to ${end.day} ${end.month}`;
-  return going ? `This week, ${range}, so far` : `The week of ${range}`;
+  if (!going) return `The week of ${range}`;
+  const written = daily && opts.writtenAt ? new Date(opts.writtenAt) : null;
+  const writtenDay = written ? new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Africa/Lagos' }).format(written) : null;
+  return writtenDay && aDayInLagos(written as Date).key > end.key ? `This week, ${range}, so far. Written ${writtenDay}.` : `This week, ${range}, so far`;
 }
 
 /** The sentence under the heading, from the prototype. A check-in that is not daily has no daily reports. */
@@ -353,6 +378,8 @@ export function whatWasSaidAndWhatTheProofShows(c: Omit<AWeeksCount, 'participan
 export interface WhatChanged {
   moved: string[];
   dropped: string[];
+  /** How somebody changed the way they work this week, as the kit's "Adapted" (quality pass, 18 October, W-6). Only where there is one. */
+  adapted?: string[];
   result: string[];
 }
 
@@ -490,3 +517,21 @@ export function yourOwnToDo(c: AWeeksCommitment): AThingToDo | null {
 }
 
 export const ourVoice = inOurVoice;
+
+/**
+ * THE WEEK AS IT READ BEFORE RELEASE 1'S SALES BOARD (release-one-sales-board), for an organisation that has it switched off:
+ * no week's deals, and each target at the count read from what was said. Pure; the stored week is never changed.
+ */
+export function asTheWeekReadBeforeReleaseOne<F extends { sales?: unknown; targets?: AWeeksTarget[] } | null | undefined>(facts: F): F {
+  if (!facts) return facts;
+  const { sales: _sales, ...rest } = facts as any;
+  void _sales;
+  return {
+    ...rest,
+    targets: ((facts as any).targets ?? []).map((t: AWeeksTarget) => {
+      const { fromTheDeals: _f, setByTheLead: _l, setOnTheBoard: _b, countSaid, ...kept } = t;
+      void _f; void _l; void _b;
+      return { ...kept, count: typeof countSaid === 'number' ? countSaid : t.count };
+    }),
+  } as F;
+}

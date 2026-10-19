@@ -80,9 +80,14 @@ export function aWeekHasPassedSinceNotTold(
  * plain noun phrase such as "the scheduling and the stock counts" or the fixed fallback "this part
  * of the work" - never the raw goal text, which may still carry a number or a deadline.
  */
-export function theLeadIsNudgedToTell(personName: string, area: string): { decide: string; why: string } {
+export function theLeadIsNudgedToTell(personName: string, area: string, opts: { releaseOne?: boolean } = {}): { decide: string; why: string } {
   const name = (personName ?? 'them').trim() || 'them';
-  const about = (area ?? '').trim() || 'this part of the work';
+  /* "Order confirmation process", worded with a capital as a heading, is "the order confirmation process" in a sentence (Drop Access short run, item 13),
+     where Release 1's switch is on for the organisation; off, as before. A name ("Kilele Hotel") keeps its capitals. */
+  const worded = (area ?? '').trim();
+  const asAHeading = !!opts.releaseOne && /^[A-Z][a-z'’-]*(?:\s+[a-z0-9][\w'’-]*)*$/.test(worded) && !/^(?:I|I['’]\w+)$/.test(worded.split(/\s+/)[0]);
+  const lowered = asAHeading ? `${worded.charAt(0).toLowerCase()}${worded.slice(1)}` : worded;
+  const about = (asAHeading && !/^(?:the|a|an|this|that|these|those|your|their|his|her|its|our|my)\s/i.test(lowered) ? `the ${lowered}` : lowered) || 'this part of the work';
   return {
     decide: `Tell ${name} about the goal you set for ${about}.`,
     why: `You have not told ${name} yet.`,

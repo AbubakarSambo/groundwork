@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -52,11 +53,14 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
   })
   const answer = useMutation({
     mutationFn: (route: { method: string; path: string; body: Any }) => (route.method === 'PATCH' ? apiClient.patch(route.path, route.body) : apiClient.post(route.path, route.body)),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['board', groundId] }); toast.success('This is now in how we work.') },
+    onSuccess: (res: Any) => { qc.invalidateQueries({ queryKey: ['board', groundId] }); toast.success(res?.data?.saidBack ?? 'This is now in how we work.') },
     onError: () => toast.error('That did not save. Nothing has changed, so try again.'),
   })
+  const [opened, setOpened] = useState<string | null>(null)
   const rep: Any = r
   const b: Any = board
+  /* Release 1's sales team report, read from the deals on the server (the-sales-readings-for-a-report): the day, In short, what moved and why the numbers don't match. */
+  const teamsDay: Any = rep?.theTeamsDay ?? null
   const label = ground?.label ?? b?.title ?? 'This check-in'
   if (!rep) return <Page><PageTitle crumbs={[{ label: 'Check-ins', to: '/grounds' }, { label, to: `/grounds/${groundId}/board` }, { label: 'Reports' }]} subtitle="Getting the report…" /></Page>
 
@@ -75,7 +79,14 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
   const grid = (b?.workRecords ?? []).find((s: Any) => s.section === 'Deal grid')
   const stages: string[] = (grid?.stages ?? []).slice(0, -1)
   const day = sessionDay ? isoDay(sessionDay) : null
-  const moved: Any[] = day ? (grid?.rows ?? []).filter((row: Any) => row.kind !== 'county' && row.lastSaidOn === day) : []
+  const moved: Any[] = teamsDay
+    ? ((teamsDay.moved ?? []) as Any[]).map((m) => {
+      const row = (grid?.rows ?? []).find((x: Any) => x.id === m.dealId) ?? (grid?.rows ?? []).find((x: Any) => x.name === m.name) ?? {}
+      /* The line is what moved, from the server (whatAMoveSays): the stage it reached and the owner's own line about it, never the
+         deal's latest sentence, which can be about a budget nobody gave (Drop Access, 18 October). */
+      return { ...row, id: m.dealId, name: m.name, owner: m.owner ?? row.owner, stage: m.to, mark: m.proven ? 'proven' : 'said', movedSays: typeof m.says === 'string' ? m.says : null }
+    })
+    : day ? (grid?.rows ?? []).filter((row: Any) => row.kind !== 'county' && row.lastSaidOn === day) : []
   const isSales = isASalesKind(b?.kindOfWork ?? ground?.kindOfWork)
   /* kwame-team-report.jpg: a check-in about one new person is named by that person and the session. */
   const onboardingSubject = b?.family === 'ONBOARDING' ? firstName(((b?.participants ?? []) as Any[]).find((p) => p.partyType !== 'INITIATOR' && !p.managingOnly)?.name) : ''
@@ -84,7 +95,13 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
   const willDo = (who: string): string | null => {
     const row = (b?.whoOwnsWhat ?? []).find((w: Any) => w.name === who)
     const it = (row?.items ?? []).find((i: Any) => i.type === 'COMMITMENT' && i.sessionNumber === sessionNumber)
-    return it ? String(it.text).replace(/^[^"“]*?said,\s*/i, '').replace(/^["“]|["”]$/g, '') : null
+    if (!it) return null
+    if (!teamsDay) return String(it.text).replace(/^[^"“]*?said,\s*/i, '').replace(/^["“]|["”]$/g, '')
+    /* On Release 1's sales team report: who "him" is, where the check-in names him (the server's withTheName); otherwise their own words, and where they say
+       "him" or "her" with nobody named, in quotation marks as theirs. */
+    if (typeof it.withTheName === 'string' && it.withTheName.trim()) return it.withTheName.trim()
+    const words = String(it.text).replace(/^[^"“]*?said,\s*/i, '').replace(/^["“]|["”]$/g, '')
+    return /\b(?:him|her)\b/i.test(words) && /said,\s*["“]/.test(String(it.text)) ? `"${words}"` : words
   }
   const differences: Any[] = rep.whereThingsStand?.openWithReasons ?? []
   const toThisCheckIn = (x: Any) => (x?.action?.choices ?? []).length && (x.action.choices as Any[]).every((c: Any) => !c.route || String(c.route.path ?? '').startsWith(`/grounds/${groundId}/`))
@@ -118,14 +135,16 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
       <PageTitle
         crumbs={[{ label: 'Check-ins', to: '/grounds' }, { label, to: `/grounds/${groundId}/board` }, { label: 'Reports' }]}
         /* one-session.jpg: a shared session is named by its number; today's, not shared yet, by its day. */
-        title={onboardingSubject ? `${onboardingSubject}, session ${sessionNumber}` : rep.released ? `Session ${sessionNumber}` : sessionDay ? `The team’s report, ${aDay(sessionDay)}` : `The team’s report, session ${sessionNumber}`}
+        title={onboardingSubject ? `${onboardingSubject}, session ${sessionNumber}` : teamsDay?.title ? teamsDay.title : rep.released ? `Session ${sessionNumber}` : sessionDay ? `The team’s report, ${aDay(sessionDay)}` : `The team’s report, session ${sessionNumber}`}
       />
       {/* team-report.jpg: when it last changed and who checked in on the left, "Yesterday" and "This week" as buttons on the right. */}
       <div className="pb-report-head">
         <div>
-          {lastIn && (
-            <p className="pb-updated">{`Last updated on ${aDay(lastIn.completedAt)} at ${aTime(lastIn.completedAt)}${lastInName ? `, when ${lastInName} checked in` : ''}. It only changes when something new comes in, such as a check-in, a document or a number from another system.`}</p>
-          )}
+          {teamsDay?.lastUpdated
+            ? <p className="pb-updated">{teamsDay.lastUpdated}</p>
+            : lastIn && (
+              <p className="pb-updated">{`Last updated on ${aDay(lastIn.completedAt)} at ${aTime(lastIn.completedAt)}${lastInName ? `, when ${lastInName} checked in` : ''}. It only changes when something new comes in, such as a check-in, a document or a number from another system.`}</p>
+            )}
           <p className="pb-report-count">
             {`Session ${sessionNumber}. ${answered.length} of ${counting.length} people checked in.`}
             {notIn.length > 0 && ` ${listed(notIn)} had not checked in${lastIn ? ` by ${aTime(lastIn.completedAt)}` : ' yet'}.`}
@@ -172,7 +191,9 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
 
       {/* team-report.jpg: "In short" is the report's own few sentences on the page, not in a box. */}
       <Section heading="In short">
-        {((rep.pictureLines ?? []) as string[]).length
+        {teamsDay
+          ? <div className="pb-in-short">{((teamsDay.inShort ?? []) as string[]).map((l) => <p className="pb-read" key={l}>{l}</p>)}</div>
+          : ((rep.pictureLines ?? []) as string[]).length
           ? <div className="pb-in-short">{(rep.pictureLines as string[]).map((l) => <p className="pb-read" key={l}>{l}</p>)}</div>
           : <p className="gwui-panel-text">{rep.finding?.text ?? 'Nothing is written for this session yet.'}</p>}
       </Section>
@@ -185,7 +206,7 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
               return (
                 <div className="pb-person-deal pb-moved" key={row.id}>
                   <div><b>{row.name}</b><div className="pb-sub">{firstName(row.owner)}</div></div>
-                  <span>{row.theirRead?.words ?? row.said ?? ''}</span>
+                  <span>{teamsDay ? (row.movedSays ?? '') : (row.theirRead?.words ?? row.said ?? '')}</span>
                   <div className="pb-track" aria-label={`${row.name}: ${row.stage ?? 'no stage yet'}`}>
                     {stages.map((s, i) => (
                       <span key={s} className="pb-track-step">
@@ -206,13 +227,29 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
         <div className="pb-rows pb-rows-flat">
           {((rep.whatEachPersonSaid ?? []) as Any[]).map((p) => (
             <div className="pb-row pb-row-person-did" key={p.who}>
-              <b>{p.isYou ? 'You' : firstName(p.who)}</b>
-              <span>{(p.lines ?? []).join(' ')}</span>
-              {willDo(p.who) ? <span><span className="pb-sub">Will do:</span> {willDo(p.who)}</span> : <span className="pb-sub">Will do: did not say</span>}
+              {/* team-report.jpg: a short summary, and each person opens to what they said in their own words. */}
+              {teamsDay
+                ? <button type="button" className="gwui-plain-link pb-person-open" aria-expanded={opened === p.who} onClick={() => setOpened(opened === p.who ? null : p.who)}><b>{p.isYou ? 'You' : firstName(p.who)}</b></button>
+                : <b>{p.isYou ? 'You' : firstName(p.who)}</b>}
+              {/* Quality pass, 18 October, T-6 and T-7: the server's summary in the third person, marked as the legend below says. */}
+              <span>
+                {teamsDay && p.mark && <span className={`pb-dot ${p.mark === 'proven' ? 'pb-dot-proof' : 'pb-dot-said'} pb-dot-inline`} role="img" aria-label={p.mark === 'proven' ? 'Proven' : 'Only someone’s word'} />}
+                {teamsDay ? (p.inShort ?? (p.lines ?? [])[0] ?? '') : (p.lines ?? []).join(' ')}
+              </span>
+              {(() => {
+                const will = teamsDay && typeof p.willDo === 'string' && p.willDo ? p.willDo : willDo(p.who)
+                return will ? <span><span className="pb-sub">Will do:</span> {will}</span> : <span className="pb-sub">Will do: did not say</span>
+              })()}
             </div>
           ))}
         </div>
         <p className="pb-foot">Short summaries. Open a person to see what they said, in their own words.</p>
+        {teamsDay && opened && ((rep.whatEachPersonSaid ?? []) as Any[]).filter((p) => p.who === opened).map((p) => (
+          <Panel key={p.who}>
+            <h3 className="pb-card-h">{`${p.isYou ? 'You' : firstName(p.who)}, in ${p.isYou ? 'your' : 'their'} own words`}</h3>
+            {((p.lines ?? []) as string[]).map((l, i) => <p className="gwui-panel-text" key={i}>{`“${l}”`}</p>)}
+          </Panel>
+        ))}
         <div className="pb-legend">
           <span><span className="pb-dot pb-dot-proof" /> Proven</span>
           <span><span className="pb-dot pb-dot-proof" /> Confirmed by the person who received it</span>
@@ -221,7 +258,13 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
         </div>
       </Section>
 
-      {differences.length > 0 && (
+      {/* Quality pass, 18 October, T-8: on Release 1's sales check-in, what the record shows in full sentences, never the model's fragments. */}
+      {teamsDay && ((teamsDay.whereTheySeeItDifferently ?? []) as string[]).length > 0 && (
+        <Section heading="Where people see it differently">
+          <Panel>{(teamsDay.whereTheySeeItDifferently as string[]).map((l) => <p className="gwui-panel-text" key={l}>{l}</p>)}</Panel>
+        </Section>
+      )}
+      {!teamsDay && differences.length > 0 && (
         <Section heading="Where people see it differently">
           {/* team-report.jpg: one panel, each side in its own column, the name in bold over what they said. */}
           {differences.map((d) => (
@@ -249,6 +292,13 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
         {/* danielpip-team-report.jpg: a way to say something here is wrong, which the check-in takes in, and the change and the original both show. */}
         <div><Button kind="quiet" to={`/grounds/${groundId}`}>Something here isn’t right</Button></div>
       </Section>
+
+      {/* sales-team-report.txt: "Why the numbers don’t match", only where the record can work it out (the price range). */}
+      {((teamsDay?.whyTheNumbersDontMatch ?? []) as string[]).length > 0 && (
+        <Section heading="Why the numbers don’t match">
+          <div className="pb-cant-tell">{(teamsDay.whyTheNumbersDontMatch as string[]).map((l) => <p key={l}>{l}</p>)}</div>
+        </Section>
+      )}
 
       {/* team-report.jpg: the lead's own question, in a dark-edged box with the heading inside it. The other check-ins' team
           reports have no question to answer and no such section; the conversation worth having is on "?whole=1". */}
@@ -284,6 +334,9 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
             : <p className="gwui-panel-text">Nothing Groundwork asked for in this check-in is still waiting for an answer.</p>}
         </Panel>
       )}
+
+      {/* sales-team-report.txt: the closing line, how sure Groundwork is about this report (T-12). */}
+      {teamsDay?.howSure && <p className="pb-how-sure">{teamsDay.howSure}</p>}
 
       <div className="pb-whole-board-link">
         <Link to={`/grounds/${groundId}/session/${sessionNumber}?whole=1`} className="gwui-plain-link">See every other part of this report</Link>
