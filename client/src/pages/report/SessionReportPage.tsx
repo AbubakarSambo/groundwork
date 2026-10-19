@@ -28,6 +28,7 @@ import { useBackOrFallback } from '@/lib/a-back-button-never-leaves-groundwork'
 import { TheCheckInHeader } from '@/components/gw/TheCheckInHeader'
 import { checkInHeaderTabs } from '@/pages/grounds/ground-tabs'
 import { Page, Button, Panel, Callout, Section, SubHeading, Note, Tag, Stack } from '@/components/gw/ui'
+import { TheCollectionsOwnReportSections } from '../board/pictured/TheCollectionsBoard'
 import '../board/pictured/pictured-board.css'
 
 /**
@@ -426,6 +427,8 @@ export default function SessionReportPage() {
           <Stack gap={18}>
           {/* Simple and visual, and only on this half. See the component's own note for why. */}
           <HowSpecificThisSessionWas level={shape?.howClearThisWas?.level} />
+          {/* Release 2: on a "Collect what's owed" check-in, your own report on the bills you follow up (or your own loan), as the server words it. */}
+          {(shape as any)?.collectionsOwnReport && <TheCollectionsOwnReportSections r={(shape as any).collectionsOwnReport} />}
 
           {/*
             THE TOP HALF WAS A SECOND COPY OF THE BOTTOM HALF.
