@@ -4,6 +4,8 @@ import { theWordsNameTheDeal } from '../board/a-deals-proof-is-about-that-deal';
 import { aLineNamesTheCustomer } from '../board/one-deal-per-customer';
 import { KINDS_THAT_ARE_NOT_WORK } from '../board/the-kind-of-work';
 import { weCouldNotReadIt } from './a-document-we-could-not-read-is-not-a-source';
+import { aCollectionsCheckInWithRelease2 } from '../grounds/release-2-collections';
+import { BILL, LOAN_OWED, aBillIsNamed } from '../board/the-collections-record';
 
 /**
  * PROOF ADDED IN A CHECK-IN IS FILED ON ITS ITEM (Release 1B, pull request 2 of 3; Hafsah, 18 October 2026: "Proof added in a
@@ -43,8 +45,11 @@ export interface AnItem { id: string; kind: string; name: string; ownerParticipa
 
 /** The one item these words name, the person's own first; null where none or more than one. */
 export function theItemItNames(words: string, items: AnItem[], participantId: string | null): AnItem | null {
-  const named = items.filter((i) => !KINDS_THAT_ARE_NOT_WORK.includes(i.kind) && String(i.name ?? '').trim().length >= 3).filter((i) =>
-    i.kind === 'deal' ? theWordsNameTheDeal(words, { name: i.name, fields: i.fields ?? null }) : aLineNamesTheCustomer(words, i.name));
+  /* A fee note or an invoice by its number, else its client (Release 2); a loan is the one loan of the person who added it. */
+  const ownLoans = items.filter((i) => i.kind === LOAN_OWED && !!participantId && i.ownerParticipantId === participantId);
+  if (ownLoans.length === 1) return ownLoans[0];
+  const named = items.filter((i) => !KINDS_THAT_ARE_NOT_WORK.includes(i.kind) && i.kind !== LOAN_OWED && (String(i.name ?? '').trim().length >= 3 || i.kind === BILL)).filter((i) =>
+    i.kind === 'deal' ? theWordsNameTheDeal(words, { name: i.name, fields: i.fields ?? null }) : i.kind === BILL ? aBillIsNamed(words, i) : aLineNamesTheCustomer(words, i.name));
   const theirs = named.filter((i) => participantId && i.ownerParticipantId === participantId);
   if (theirs.length === 1) return theirs[0];
   if (theirs.length > 1) return null;
@@ -66,7 +71,8 @@ export async function fileTheProofOnItsItem(
   now: Date = new Date(),
 ): Promise<{ id: string; itemName: string | null } | null> {
   const ground = await prisma?.ground?.findUnique?.({ where: { id: doc.groundId }, select: { organizationId: true } }).catch(() => null);
-  if (!ground || !(await theRelease1bTabsAreOn(prisma, ground.organizationId))) return null;
+  /* Or on a "Collect what's owed" check-in with Release 2 on, where a slip or a message is what makes a bill paid (Release 2). */
+  if (!ground || !((await theRelease1bTabsAreOn(prisma, ground.organizationId)) || (await aCollectionsCheckInWithRelease2(prisma, doc.groundId)))) return null;
   const words = [doc.fileName, doc.uploaderNote, weCouldNotReadIt(doc.content) ? '' : doc.content].filter((x) => String(x ?? '').trim()).join(' ');
   const reading = whatTheProofIs(words, doc.mimeType);
   const items: AnItem[] = (await prisma.workItem?.findMany?.({

@@ -10,6 +10,7 @@ import { withTheCriteriaSaid, thePriceRangeAnswer, theLeadsRangeAnswerIn, THE_RA
 import { theAnswerAsALine } from './what-needs-you-and-what-to-do';
 import { oneOfTheKinds, isASalesKind, theRecordsPrompt, THE_RECORDS_SCHEMA, onlyRecordsTheLinesSay, theSameName, type AnOfferedRecord, type APersonALineMayName , KINDS_THAT_ARE_NOT_WORK } from './the-kind-of-work';
 import { theRoomsLabelFor } from './the-room-is-stored-with-labels';
+import { fileTheBillsSaid } from './the-collections-record';
 import { withAClaim } from './a-claim-on-a-record-is-checked-first';
 import { withTheStageKept, theStagesToKeep } from './a-deals-stages-are-kept';
 import { theSameCustomer, aDealTheLeadNamedBecomesTheReps } from './one-deal-per-customer';
@@ -100,6 +101,12 @@ export class BoardListener {
   }
 
   private async readTheRecordsFrom(e: { groundId: string; checkInId: string; sessionNumber?: number | null }) {
+    /*
+     * ON A "COLLECT WHAT'S OWED" CHECK-IN WITH RELEASE 2 ON, EACH BILL SAID IS ONE ROW (the-collections-record). Its own reading, in
+     * place of the kind of work's: a fee notes check-in read as "a law firm matter" keeps fee notes, never deadlines. Null means it is
+     * not one, and the reading below runs exactly as before.
+     */
+    if ((await fileTheBillsSaid({ prisma: this.prisma, anthropic: this.anthropic as any, logger: this.logger }, e, THE_RECORDS_SCHEMA).catch(() => null)) !== null) return;
     try {
       const ground = await this.prisma.ground.findUnique({
         where: { id: e.groundId },

@@ -37,3 +37,17 @@ export async function theRelease2CollectionsIsOnFor(prisma: Reader, groundId: st
     return false;
   }
 }
+
+/**
+ * A "COLLECT WHAT'S OWED" CHECK-IN WHOSE ORGANISATION HAS RELEASE 2 ON (Release 2, pull request 2 of 3). Where it is, a client's
+ * promise to pay is the client's, never the person checking in's commitment (a-promise-somebody-else-made), as on a Release 1
+ * sales check-in. Reads as no wherever anything cannot be read.
+ */
+export async function aCollectionsCheckInWithRelease2(prisma: Reader, groundId: string): Promise<boolean> {
+  try {
+    const g = await prisma?.ground?.findUnique?.({ where: { id: groundId }, select: { organizationId: true, scenario: true } });
+    return g?.scenario === 'COLLECTIONS' && (await theRelease2CollectionsIsOn(prisma, g?.organizationId ?? null));
+  } catch {
+    return false;
+  }
+}
