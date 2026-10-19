@@ -111,6 +111,7 @@ export interface ACheckInRow {
   createdAt?: Date | string | null;
   completedAt?: Date | string | null;
   specificityLevel?: string | null;
+  specificityDimensions?: unknown;
 }
 
 export interface ACommitmentRow {
@@ -259,7 +260,13 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
   const due = r.checkIns.filter((c) => wasDue(c, r.now)).sort((a, b) => a.sessionNumber - b.sessionNumber);
   const done = due.filter((c) => c.status === 'COMPLETED');
   const onTime = done.filter(wasOnTime);
-  const specific = done.filter((c) => c.specificityLevel === 'specific');
+  /*
+   * SPECIFIC BY THE BOARD'S OWN RULE (engine test, Drop Access). Kevin gave the M-Pesa code QJK4TL2MX9, "Jane wants 6 units, so I sent
+   * a quote for 30k", names, days and amounts, and his My work said "0 of 6 were specific", while the board read the same rounds as
+   * checkable. A check-in is specific where its own read says so, or where at least one thing in it could be checked: the board's
+   * first test of whether a round can be checked (aRoundCanBeChecked).
+   */
+  const specific = done.filter((c) => c.specificityLevel === 'specific' || (c.specificityDimensions as any)?.checkable === 'specific');
   /* Not a blocker of theirs to have tried on: a wait a colleague here is chasing or has promised (a-wait-somebody-else-chases). */
   const raised = dedupeDependencies(r.raised.filter((d) => d.onParticipantId !== r.person.participantId && !aWaitSomebodyElseChases(String((d as any).what ?? ''), r.othersChase ?? [])) as any[]) as AHandoffRow[];
   const tried = raised.filter((d) => String(d.triedSaid ?? '').trim());
@@ -586,7 +593,7 @@ export async function readMyWork(
     prisma.workMention?.findMany?.({ where: { groundId: ground.id, aboutParticipantId: pid, kind: 'CREDIT' }, select: { sourceParticipantId: true, checkInId: true } }).catch(() => []) ?? [],
     prisma.checkIn?.findMany?.({
       where: { participantId: pid, groundId: ground.id, isSetup: false, isSelfCorrection: false, isClarification: false, isPostSignOff: false, optional: false },
-      select: { id: true, sessionNumber: true, status: true, availableFrom: true, createdAt: true, completedAt: true, specificityLevel: true },
+      select: { id: true, sessionNumber: true, status: true, availableFrom: true, createdAt: true, completedAt: true, specificityLevel: true, specificityDimensions: true },
       orderBy: { sessionNumber: 'asc' },
     }).catch(() => []) ?? [],
     prisma.groundContextItem?.findMany?.({
