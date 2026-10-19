@@ -358,9 +358,16 @@ export async function whatIsOutstandingFor(
   const people = new Map<string, any>((mine as any[]).map((p) => [p.id, p]));
   const letIn = (p: any) => !!p && !p.managingOnly && !p.leftAt && !isNotLetInYet(p);
   const herself = ids.length
-    ? await prisma.groundParticipant.findMany({ where: { groundId: { in: ids }, userId: lead.userId }, select: { id: true, groundId: true } }).catch(() => [])
+    ? await prisma.groundParticipant.findMany({ where: { groundId: { in: ids }, userId: lead.userId }, select: { id: true, groundId: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } }).catch(() => [])
     : [];
   const hers = new Set<string>((herself as any[]).map((p) => p.id));
+  /* Her own names, so a promise about her is told to her as "about you" (messages test, fourth run: "Joseph said “I'll speak to her tomorrow” about Grace."). */
+  const herNames = new Set<string>((herself as any[]).flatMap((p) => {
+    const first = String(p.user?.firstName ?? '').trim();
+    const last = String(p.user?.lastName ?? '').trim();
+    return [first, `${first} ${last}`.trim(), String(p.nameGiven ?? '').trim()];
+  }).filter(Boolean).map((n) => n.toLowerCase()));
+  const aboutHer = (who: string | undefined) => (who && herNames.has(who.trim().toLowerCase()) ? 'you' : who);
 
   /* WHAT HAS NO DAY IS NEVER LATE. Promises with a real date that has passed, hers first. */
   const promises: any[] = await prisma.personObjective.findMany({
@@ -384,7 +391,7 @@ export async function whatIsOutstandingFor(
     if (!g || isEvaluationCheckIn(g.scenario) || !pr.text?.trim()) continue;
     const late = daysLate(pr.dueDate, today);
     if (late < 1) continue;
-    const about = aboutWhom.get(pr.id);
+    const about = aboutHer(aboutWhom.get(pr.id));
     const text = (who: string) => `${THE_PLACE_FIRST}${theyCommitted(who, pr.text)}${about ? ` about ${about}` : ''}. That was due by ${theDay(pr.dueDate)} and is ${lateWords(late)}.`;
     /* "Someone" is the word for a person nobody has a name for (decision 115): a lead cannot act on it, so it is not told. */
     if (pr.participant?.userId !== lead.userId && nameToCall(pr.participant) === SOMEONE) continue;

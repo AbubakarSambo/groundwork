@@ -185,6 +185,8 @@ export function theNamesIn(t: string): string[] {
     let runStartsTheSentence = false;
     const flush = () => {
       const kept = run.filter((w) => !NOT_A_NAME.has(w));
+      /* "Wanjiru's feedback" names Wanjiru: a name is said without the 's that makes it whose (messages test, fourth run: "about Wanjiru's"). */
+      if (kept.length && /['’]s$/.test(kept[kept.length - 1])) kept[kept.length - 1] = kept[kept.length - 1].replace(/['’]s$/, '');
       if (kept.length >= 2 || (kept.length === 1 && !(runStartsTheSentence && run.length === 1))) out.push(kept.join(' '));
       run = [];
     };
