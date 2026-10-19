@@ -694,7 +694,15 @@ export class WhatsAppForAnOrganisationService {
       if (!phone) return;
       const alreadySent = await this.prisma.whatsAppSend.findFirst({ where: { checkInId: c.id, kind: { in: ['report', 'report:template'] }, sentAt: { not: null } }, select: { id: true } }).catch(() => null);
       if (alreadySent) return;
-      void this.sendTheReport(c.ground.organizationId, { id: c.id, status: c.status, sessionNumber: c.sessionNumber, label: c.ground.label, simplerWords: c.ground.simplerWords }, c.participant.userId, phone)
+      /*
+       * ONE THANK-YOU FOR ONE ANSWER (messages test after the fixes, 19 October, finding 10). Brian answered "Litigation team daily" on
+       * Tuesday 13 October and was thanked. On Thursday and Friday at 07:30 he read again "Thank you, your answer for Litigation team
+       * daily is in.", though he had not answered: the morning backstop re-emits a round's completion as a repair, and each repair
+       * thanked him again. A repair is never somebody answering, and an answer already thanked is not thanked twice. The report itself
+       * still goes, once, when there is something in it to read.
+       */
+      const thankedAlready = e.source === 'repair' || !!(await this.prisma.whatsAppSend.findFirst({ where: { checkInId: c.id, kind: THANKS_ONLY, sentAt: { not: null } }, select: { id: true } }).catch(() => null));
+      void this.sendTheReport(c.ground.organizationId, { id: c.id, status: c.status, sessionNumber: c.sessionNumber, label: c.ground.label, simplerWords: c.ground.simplerWords }, c.participant.userId, phone, { thankedAlready })
         .catch((err: any) => this.logger.warn(`WhatsApp report after completion failed for ${e.checkInId}: ${err?.message}`));
     } catch (err: any) {
       this.logger.warn(`WhatsApp report after completion failed for ${e.checkInId}: ${err?.message}`);
@@ -733,7 +741,7 @@ export class WhatsAppForAnOrganisationService {
     }
   }
 
-  private async sendTheReport(organizationId: string, c: AnOpenCheckIn, userId: string, phone: string) {
+  private async sendTheReport(organizationId: string, c: AnOpenCheckIn, userId: string, phone: string, o: { thankedAlready?: boolean } = {}) {
     const row = await this.prisma.checkIn.findUnique({ where: { id: c.id }, select: { groundId: true, participant: { select: { language: true } } } });
     if (!row) return;
     /* The blanks of the two newer templates (docs/whatsapp-templates.md, 2 and 3), used only once each is approved and listed: the person's first name, the check-in, and the link to their own report. With no first name on record, neither is offered. */
@@ -748,6 +756,8 @@ export class WhatsAppForAnOrganisationService {
       report = await this.reports.sessionReport(row.groundId, c.sessionNumber, userId, organizationId).catch(() => null);
       if (!report?.whereThingsStand) { report = null; await new Promise((r) => setTimeout(r, 4000)); }
     }
+    /* Already thanked, or a repair: nothing to read yet means nothing to say (finding 10). */
+    if (o.thankedAlready && (!report || nothingToReadYet(report))) return;
     let text = nothingToReadYet(report) ? THANKS_YOUR_ANSWER_IS_IN(c.label) : report ? reportAsText(report, c.label, c.simplerWords) : `Your check-in on ${c.label} is on record. The report is being written and is in Groundwork under Report.`;
     /* The language follows the person's own messages (reviewer, 14 October): Kevin wrote English throughout and his
        thank-you came in Swahili, from one early read of "Kilele Hotel, 40 units, paid today." */
@@ -763,6 +773,7 @@ export class WhatsAppForAnOrganisationService {
     /* Nothing agreed or open yet: a thank-you inside the 24 hours, and nothing outside them (items 22 and 23), where Release 1's switch is
        on for the organisation (release-one-sales-board); off, the notice goes as before. */
     if (!aReportWorthItsTemplate(report) && (await theReleaseOneSalesBoardIsOn(this.prisma, organizationId).catch(() => false))) {
+      if (o.thankedAlready) return;
       const thanks = await this.whatsapp.sendOn(via, organizationId, phone, await this.inTheirLanguage(THANKS_YOUR_ANSWER_IS_IN(c.label), theLanguageOfTheirOwnWords(theirWords, row.participant.language)), { checkInId: c.id, kind: THANKS_ONLY, paramsFor });
       if (!thanks.sent) this.logger.log(`Check-in ${c.id}: nothing to read in the report yet, and outside the 24 hours there is nothing to send.`);
       return;
