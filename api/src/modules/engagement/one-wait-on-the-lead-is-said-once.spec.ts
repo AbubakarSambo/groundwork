@@ -40,3 +40,13 @@ describe("Grace's morning summary, with Peter's wait on her", () => {
     expect(all.needsYou.map((t) => t.text)).toContain('Joseph Kariuki is waiting on your answer about the KES 4,500 price, so it needs deciding{in}.');
   });
 });
+
+describe('A difference on her board, in the same summary', () => {
+  it('says once that it needs settling', () => {
+    const all = withWhatTheBoardsSay({ ...fromTheRecord(), needsYou: [] }, [{ label: 'Sales team, Q4', groundId: GROUND, board: { decisions: [
+      { question: 'People in this check-in said different things about the status of the sale to Mama Pima Stores, so it needs settling.', owner: 'You', source: 'divergence' },
+    ] } }]);
+    const said = withPlacesWhereTheyTellApart(all).needsYou.map((t) => t.text);
+    expect(said).toEqual(['People in this check-in said different things about the status of the sale to Mama Pima Stores, so it needs settling.']);
+  });
+});

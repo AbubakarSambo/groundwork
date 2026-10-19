@@ -54,6 +54,9 @@ export function aWaitInADecision(question: string): string {
 export function aDecisionSheOwes(question: string, source?: string | null): string {
   const q = String(question ?? '').trim();
   if (source === 'divergence') {
+    /* "... said different things about the status of the sale to Mama Pima Stores, so it needs settling." already says it once (engine test, second run). */
+    const about = /^(.+? said different things about .+?), so it needs settling\.?$/i.exec(q);
+    if (about) return `${about[1]}${PLACE}, so it needs settling.`;
     const core = q.replace(/^People in this check-in said different things\.\s*/i, '').replace(/\s*This needs settling\.?$/i, '').trim();
     if (core) return `${sentence(core).replace(/\.$/, '')}${PLACE}, and people said different things about it, so it needs settling.`;
   }
