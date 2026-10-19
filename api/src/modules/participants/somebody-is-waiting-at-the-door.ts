@@ -19,6 +19,8 @@ export async function tellTheAdminsSomebodyIsWaiting(
   groundId: string,
   inviterId: string,
   who: string,
+  /* How they came (messages test, 19 October, finding 7): through the check-in's join link nobody invited them. */
+  how: { cameThroughTheLink?: boolean } = {},
 ): Promise<void> {
   const [admins, inviter, ground, person, org] = await Promise.all([
     deps.prisma.user.findMany({
@@ -37,7 +39,12 @@ export async function tellTheAdminsSomebodyIsWaiting(
     : 'somebody on your team';
   for (const admin of admins) {
     await deps.email
-      .sendSomebodyIsWaiting(admin.email, admin.firstName ?? 'there', who, addedBy, ground?.label ?? null, { name, organisationName: org?.name ?? null })
+      .sendSomebodyIsWaiting(admin.email, admin.firstName ?? 'there', who, addedBy, ground?.label ?? null, {
+        name, organisationName: org?.name ?? null,
+        cameThroughTheLink: how.cameThroughTheLink === true,
+        /* The reader is "you", never their own name (messages test, 19 October, finding 7). */
+        theReaderInvitedThem: !!inviter?.email && inviter.email.trim().toLowerCase() === String(admin.email ?? '').trim().toLowerCase(),
+      })
       .catch((err: any) => deps.logger.warn(`Waiting-notice to ${admin.email} failed: ${err.message}`));
   }
 }

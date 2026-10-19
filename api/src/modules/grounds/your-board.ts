@@ -120,6 +120,8 @@ export interface SomethingYouSaid {
   stateSays: string;
   /** How a settled one is known, for the mark: their word, their own document, or the colleague who received it. */
   settledBy?: 'said' | 'proven' | 'confirmed';
+  /** When they said it, so their own weekly email can say the day (messages test, 19 October, finding 14). */
+  saidAt?: string | null;
 }
 
 /**
@@ -491,7 +493,7 @@ export function yourBoard(
     if (!state || !rawText) continue;
     const checkIn = labelOf.get(c.groundId)!;
     const by = state !== 'open' && c.settledBy ? SETTLED_BY[c.settledBy] : undefined;
-    addSaid({ id: c.id, text: asAnAction(rawText), when: state === 'open' ? whenItWasFor(c.whenSaid, c.createdAt, now) : whenInOneForm(c.whenSaid), checkIn, state, stateSays: STATE_SAYS[state], ...(by ? { settledBy: by } : {}), t: time(c.createdAt), open: state === 'open', groundId: c.groundId }, rawText, c.whenSaid);
+    addSaid({ id: c.id, text: asAnAction(rawText), when: state === 'open' ? whenItWasFor(c.whenSaid, c.createdAt, now) : whenInOneForm(c.whenSaid), checkIn, state, stateSays: STATE_SAYS[state], ...(by ? { settledBy: by } : {}), saidAt: c.createdAt ? new Date(c.createdAt).toISOString() : null, t: time(c.createdAt), open: state === 'open', groundId: c.groundId }, rawText, c.whenSaid);
   }
   for (const o of rows.objectives) {
     if (!isMine(o.groundId, o.participantId)) continue;
@@ -499,7 +501,7 @@ export function yourBoard(
     const state: SaidState | null = (o.status ?? 'OPEN') === 'OPEN' ? 'open' : o.status === 'MET' ? 'kept' : null;
     const rawText = (o.text ?? '').trim();
     if (!state || !rawText) continue;
-    addSaid({ id: o.id, text: asAnAction(rawText), when: whenInOneForm(o.dueSaid), checkIn: labelOf.get(o.groundId)!, state, stateSays: STATE_SAYS[state], t: time(o.createdAt), open: state === 'open', groundId: o.groundId }, rawText, o.dueSaid);
+    addSaid({ id: o.id, text: asAnAction(rawText), when: whenInOneForm(o.dueSaid), checkIn: labelOf.get(o.groundId)!, state, stateSays: STATE_SAYS[state], saidAt: o.createdAt ? new Date(o.createdAt).toISOString() : null, t: time(o.createdAt), open: state === 'open', groundId: o.groundId }, rawText, o.dueSaid);
   }
   const order: Record<SaidState, number> = { open: 0, kept: 1, not_done: 2 };
   said.sort((a, b) => order[a.state] - order[b.state] || a.t - b.t);
@@ -538,12 +540,12 @@ export function yourBoard(
  */
 export function theOwnWeekOf(board: (Partial<YourBoard> & { askedOfYou?: { items?: { who: string | null; what: string; checkIn: string }[] } | null }) | null | undefined): {
   kept: { kept: number; of: number } | null;
-  open: { text: string; checkIn: string }[];
+  open: { text: string; checkIn: string; saidAt?: string | null }[];
   askedOfYou: { who: string | null; what: string; checkIn: string }[];
 } {
   return {
     kept: board?.keptLately ? { kept: board.keptLately.kept, of: board.keptLately.of } : null,
-    open: (board?.saidYoudDo ?? []).filter((s) => s.state === 'open').map((s) => ({ text: s.text, checkIn: s.checkIn })),
+    open: (board?.saidYoudDo ?? []).filter((s) => s.state === 'open').map((s) => ({ text: s.text, checkIn: s.checkIn, ...(s.saidAt ? { saidAt: s.saidAt } : {}) })),
     askedOfYou: (board?.askedOfYou?.items ?? []).map((i) => ({ who: i.who ?? null, what: i.what, checkIn: i.checkIn })),
   };
 }
@@ -553,6 +555,21 @@ export function theOwnWeekOf(board: (Partial<YourBoard> & { askedOfYou?: { items
  * THE COUNT OF WHAT YOU KEPT, FOR YOUR OWN WEEKLY EMAIL (decision 109, spec 25), over the rows of the check-ins the email is about. Kept here so that the
  * count is worked out in this file alone (the guard in kept-in-the-last-four-weeks-is-yours-alone.spec.ts). It is yours and goes to you.
  */
+/**
+ * WHICH THINGS YOU KEPT, IN YOUR OWN WORDS, for your own weekly email (messages test, 19 October, finding 14: "You kept the one thing you
+ * said you would do" said not which). The same rows and window as the count: yours, settled done in the last four weeks.
+ */
+export function theOwnKeptWords(
+  rows: readonly { status: string | null; text?: string | null; createdAt?: Date | string | null; settledAt?: Date | string | null }[],
+  now: Date = new Date(),
+): string[] {
+  const from = now.getTime() - THE_LAST_FOUR_WEEKS_MS;
+  return rows
+    .filter((r) => r.status === 'DONE' && !!String(r.text ?? '').trim())
+    .filter((r) => { const t = time(r.settledAt) || time(r.createdAt); return !!t && t >= from && t <= now.getTime(); })
+    .map((r) => asAnAction(String(r.text).trim()));
+}
+
 export function theOwnKept(
   rows: readonly { status: string | null; createdAt?: Date | string | null; settledAt?: Date | string | null }[],
   now: Date = new Date(),

@@ -158,9 +158,28 @@ export class WebhooksListener {
     /* Told once: somebody invited by their number was already sent this opening before they joined (D2). */
     const already = await Promise.resolve((this.prisma as any).whatsAppSend?.findFirst?.({ where: { checkInId: e.checkInId, kind: { startsWith: 'checkin-open' } }, select: { id: true } })).catch(() => null);
     if (already) return;
+    /*
+     * ONE CHANNEL PER OPENING, FOR SOMEBODY LET IN (messages test, 19 October, the rule check). Amos asked to join through the link, was let in at
+     * 09:15 and emailed "You can start your check-in now", added his number, and at 09:30 was sent this opening for the same first session. The
+     * approval email is that session's opening, on email: where it was sent after this check-in was made, the first session is not told again.
+     */
+    if (e.sessionNumber === 1 && await this.theApprovalEmailOpenedIt(e.checkInId, participant)) return;
     const said = theCheckInIsOpen({ firstName: participant.user?.firstName, label: ground.label }, ground.simplerWords);
     /* Business-initiated: goes as free text inside the window, as a template outside it, or not at all. */
     await this.whatsapp.sendFor(ground.organizationId, phone, said.text, { checkInId: e.checkInId, kind: said.kind, params: said.params });
+  }
+
+  /** Whether "You can start your check-in now" went to this person after this check-in was made: that email opened it. */
+  private async theApprovalEmailOpenedIt(checkInId: string, participant: { email: string | null; user?: { email?: string | null } | null }): Promise<boolean> {
+    const ci = await Promise.resolve((this.prisma as any).checkIn?.findUnique?.({ where: { id: checkInId }, select: { createdAt: true, status: true } })).catch(() => null);
+    if (!ci?.createdAt || (ci.status && ci.status !== 'NOT_STARTED')) return false;
+    const addresses = [...new Set([participant.email, participant.user?.email].filter((a): a is string => !!a && !!a.trim()).map((a) => a.trim().toLowerCase()))];
+    if (!addresses.length) return false;
+    const told = await Promise.resolve((this.prisma as any).notification?.findFirst?.({
+      where: { channel: 'email', sender: 'sendYouAreInNow', outcome: { in: ['sent', 'held'] }, OR: addresses.map((a) => ({ toAddress: { equals: a, mode: 'insensitive' } })), createdAt: { gte: ci.createdAt } },
+      select: { id: true },
+    })).catch(() => null);
+    return !!told;
   }
 
   @OnEvent(GroundworkEvents.CHECK_IN_COMPLETED)
