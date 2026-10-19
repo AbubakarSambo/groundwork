@@ -1,3 +1,4 @@
+import { aLineThatSaysItHappened } from './somebody-said-it-happened';
 import { withoutTheLeadsSetUpForAMember } from '../grounds/the-leads-set-up-is-the-leads-in-the-anchor';
 import { owesThisSession } from '../grounds/the-lead-checks-in-when-they-choose';
 import { whoHasMissedCheckIns, whatTheLeadReads, theNextStepSuggested, TOLD_THE_LEAD, whoMissedTheCheckInsJustBefore } from '../grounds/missed-check-ins';
@@ -3785,7 +3786,7 @@ export class BoardService {
   /** The rows the switchboard's own sections read, as stored. Read only: opening a board writes nothing. */
   private async theRecordTheSwitchboardsSectionsRead(groundId: string, checkIns: { id: string; sessionNumber: number }[]): Promise<{
     commitments: ACommitment[];
-    lines: { id: string; participantId: string | null; text: string; mark: string; sessionNumber: number | null; createdAt?: Date | null; checkInId?: string | null; documentWords?: string | null }[];
+    lines: { id: string; participantId: string | null; text: string; mark: string; sessionNumber: number | null; type?: string | null; createdAt?: Date | null; checkInId?: string | null; documentWords?: string | null }[];
   }> {
     const commitments = await ((this.prisma as any).groundCommitment?.findMany?.({ where: { groundId }, orderBy: { createdAt: 'asc' } }) ?? Promise.resolve([])).catch(() => []);
     /* Only lines somebody has not disputed, marked by the same rule as the reports (how-a-line-is-known). */
@@ -3805,12 +3806,18 @@ export class BoardService {
         text,
         mark: theMarkOf({ ...e, text }, whoAdded),
         sessionNumber: checkIns.find((c) => c.id === e.checkInId)?.sessionNumber ?? null,
+        type: e.type ?? null,
         createdAt: e.createdAt ? new Date(e.createdAt) : null,
         checkInId: e.checkInId ?? null,
         documentWords: theDocumentBehind(e.anchoredDocumentId, docOf).documentWords,
       };
     });
-    return { commitments: commitments as ACommitment[], lines };
+    /* Where somebody else said an open promise happened, the board says who and what, never "nobody has said" (messages test, 19 October, finding 4). */
+    const withWhatWasSaid = (commitments as ACommitment[]).map((c) => {
+      const said = aLineThatSaysItHappened(c as any, lines);
+      return said ? { ...c, saidHappened: { participantId: said.participantId, text: said.text, createdAt: said.createdAt ?? null } } : c;
+    });
+    return { commitments: withWhatWasSaid, lines };
   }
 
   /**
