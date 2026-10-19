@@ -152,3 +152,92 @@ export function muchemiLines(): any[] {
     createdAt: new Date(`${MUCHEMI_SESSIONS[n - 1][0]}T09:${String(10 + i).padStart(2, '0')}:00.000Z`),
   }));
 }
+
+/* ------------------------------------------------------------------------------------------------------------------------------
+ * THE LITIGATION DAILY, AS THE MATTER BOARD AND DUE ON AN EVENT READ IT (Release 2, pull request 3 of 3). Hand-written, made up.
+ * Wanjiru runs it; Brian, Aisha and David, the paralegal, check in each weekday. Their places in this check-in are their own rows,
+ * apart from their places in the fee notes check-in, as in the product: a person is a different participant in each check-in.
+ * ---------------------------------------------------------------------------------------------------------------------------- */
+
+/** Each person's place in the litigation daily. */
+export const MUCHEMI_LITIGATION_PID: Record<string, string> = { wanjiru: 'l-wanjiru', brian: 'l-brian', aisha: 'l-aisha', david: 'l-david' };
+
+/** The three weekdays it has run this week, Monday 19 to Wednesday 21 October. */
+export const MUCHEMI_LITIGATION_SESSIONS = [['2026-10-19', 1], ['2026-10-20', 2], ['2026-10-21', 3]] as const;
+
+export function muchemiLitigationCheckIns(): any[] {
+  return MUCHEMI_LITIGATION_SESSIONS.flatMap(([day, n]) => (['brian', 'aisha', 'david'] as const).map((who) => ({
+    id: `c-lit-${who}-${n}`, groundId: MUCHEMI_LITIGATION.id, participantId: MUCHEMI_LITIGATION_PID[who], sessionNumber: n, status: 'COMPLETED', isSetup: false,
+    completedAt: new Date(`${day}T10:00:00.000Z`), availableFrom: new Date(`${day}T06:00:00.000Z`),
+  })));
+}
+
+/**
+ * WHAT WAS SAID IN THE LITIGATION DAILY, IN THEIR OWN WORDS. Two lines report the events two Kasarani Foods fee notes wait for:
+ * Brian's "the reply was filed on 20 October" (FN-005 waits for "the reply is filed") and David's "the hearing date is set" (the
+ * third Kasarani Foods fee note, not raised yet, waits for "the hearing date is set"). One line comes close and must not match:
+ * David's "the mention date is set", which is a date being set in the same matter, and not the hearing date. Brian's "the reply is
+ * drafted" is about the reply and is not its filing.
+ */
+export const MUCHEMI_THE_REPLY_WAS_FILED = 'In Kasarani Foods v. Tumaini Traders, the reply was filed on 20 October.';
+export const MUCHEMI_THE_HEARING_DATE_IS_SET = 'In Kasarani Foods v. Tumaini Traders, the hearing date is set, for 12 November.';
+export const MUCHEMI_THE_NEAR_MISS = 'Kasarani Foods: the mention date is set for 3 November.';
+
+export function muchemiLitigationLines(): any[] {
+  const said: [string, number, string, string][] = [
+    ['brian', 1, 'In Kasarani Foods v. Tumaini Traders, the reply is drafted and goes to Wanjiru for review tomorrow.', '09:10'],
+    ['aisha', 1, 'Jamii Clinics employment claim: the witness statements are still with the client.', '09:20'],
+    ['david', 1, 'The bundle for the Jamii Clinics employment claim is indexed.', '09:30'],
+    ['brian', 2, MUCHEMI_THE_REPLY_WAS_FILED, '09:10'],
+    ['david', 2, MUCHEMI_THE_NEAR_MISS, '09:30'],
+    ['david', 3, MUCHEMI_THE_HEARING_DATE_IS_SET, '09:30'],
+    ['aisha', 3, 'Jamii Clinics employment claim: the client sent two of the three witness statements.', '09:40'],
+  ];
+  return said.map(([who, n, text, time]) => ({
+    id: `e-lit-${who}-${n}`, participantId: MUCHEMI_LITIGATION_PID[who], checkInId: `c-lit-${who}-${n}`, groundId: MUCHEMI_LITIGATION.id, text, type: 'PROGRESS',
+    anchoredDocumentId: null, recallBased: true, anchoredOrigin: null, confirmedAt: null, disputedAt: null,
+    createdAt: new Date(`${MUCHEMI_LITIGATION_SESSIONS[n - 1][0]}T${time}:00.000Z`),
+  }));
+}
+
+/** The deadlines the litigation daily keeps, each with whose it is. */
+export function muchemiLitigationDeadlines(): any[] {
+  return [
+    { id: 'w-lit-hearing', groundId: MUCHEMI_LITIGATION.id, kind: 'deadline', name: 'The hearing in Kasarani Foods v. Tumaini Traders', stage: null,
+      ownerParticipantId: MUCHEMI_LITIGATION_PID.david, dueAt: new Date('2026-11-12T00:00:00.000Z'), fields: {}, createdAt: new Date('2026-10-21T09:30:00.000Z'), sourceEntryId: 'e-lit-david-3' },
+    { id: 'w-lit-statements', groundId: MUCHEMI_LITIGATION.id, kind: 'deadline', name: 'The witness statements for the Jamii Clinics employment claim', stage: null,
+      ownerParticipantId: MUCHEMI_LITIGATION_PID.aisha, dueAt: new Date('2026-10-30T00:00:00.000Z'), fields: {}, createdAt: new Date('2026-10-19T09:20:00.000Z'), sourceEntryId: 'e-lit-aisha-1' },
+  ];
+}
+
+/** What is in the way in the litigation daily, and not cleared. */
+export function muchemiLitigationWaits(): any[] {
+  return [
+    { id: 'dep-lit-statement', groundId: MUCHEMI_LITIGATION.id, fromParticipantId: MUCHEMI_LITIGATION_PID.aisha, onParticipantId: null, onLabel: 'Jamii Clinics',
+      what: 'the last witness statement', status: 'WAITING', clearedAt: null, createdAt: new Date('2026-10-19T09:20:00.000Z') },
+  ];
+}
+
+/**
+ * THE FEE NOTES CHECK-IN'S DOCUMENTS AND THE PROOF FILED ON ITS BILLS, AS REFERENCES AND RESOURCES SHOWS THEM (the B6 fee-notes
+ * pictures). The engagement letter is the partner's, closed to the people in the check-in; the fee schedule and the billing
+ * guidelines are open to everyone. The bank slip for FN-004 is filed as evidence (MUCHEMI_EVIDENCE), and so is a client's email on
+ * FN-007, which is not proof of payment.
+ */
+export const MUCHEMI_DOCUMENTS = [
+  { id: 'd-engagement-kasarani', groundId: 'g-muchemi-fee-notes', fileName: 'Engagement letter, Kasarani Foods.pdf', mimeType: 'application/pdf', createdAt: new Date('2026-09-03T08:00:00.000Z'),
+    visibility: 'CLOSED', participantId: 'p-wanjiru', uploaderNote: null, isConversation: false, assessment: { suggests: ['Three fee notes of KES 250,000: on instruction, on filing the reply, on the hearing date.'] } },
+  { id: 'd-fee-schedule', groundId: 'g-muchemi-fee-notes', fileName: 'Fee schedule 2026.pdf', mimeType: 'application/pdf', createdAt: new Date('2026-09-01T08:00:00.000Z'),
+    visibility: 'OPEN', participantId: 'p-wanjiru', uploaderNote: null, isConversation: false, assessment: { suggests: ['Rates and terms: payment within 30 days.'] } },
+  { id: 'd-billing-guidelines', groundId: 'g-muchemi-fee-notes', fileName: 'Billing guidelines.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', createdAt: new Date('2026-09-01T09:00:00.000Z'),
+    visibility: 'OPEN', participantId: 'p-njeri', uploaderNote: null, isConversation: false, assessment: { suggests: ['When to raise, remind, call and escalate.'] } },
+  { id: 'd-slip-fn004', groundId: 'g-muchemi-fee-notes', fileName: 'Equity slip FN-004.jpg', mimeType: 'image/jpeg', createdAt: new Date('2026-10-20T10:00:00.000Z'),
+    visibility: 'OPEN', participantId: 'p-njeri', uploaderNote: null, isConversation: false, assessment: null },
+  { id: 'd-email-fn007', groundId: 'g-muchemi-fee-notes', fileName: 'Jamii Clinics email.pdf', mimeType: 'application/pdf', createdAt: new Date('2026-10-12T10:00:00.000Z'),
+    visibility: 'OPEN', participantId: 'p-aisha', uploaderNote: null, isConversation: false, assessment: null },
+];
+
+export const MUCHEMI_MORE_EVIDENCE = [
+  { id: 'ev-fn007-email', groundId: 'g-muchemi-fee-notes', documentId: 'd-email-fn007', participantId: 'p-aisha', workItemId: 'w-fn007', itemName: 'FN-007',
+    readAs: 'A client email', countsAsProof: false, shows: 'Will pay once head office releases the funds.', createdAt: new Date('2026-10-12T10:00:00.000Z') },
+];
