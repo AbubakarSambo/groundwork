@@ -1567,13 +1567,20 @@ export class EmailService implements OnModuleInit {
    * the INITIATOR to release/activate billing on a ground - a different
    * concept from a participant's own individual reveal.
    */
-  async sendActivationRevealReminder(email: string, groundLabel: string, reportUrl: string): Promise<void> {
+  /*
+   * THE DAY IT BECAME READY, NEVER "A FEW DAYS" (messages test, 19 October, finding 1). Drop Access's picture was released on Monday at
+   * 18:30 and four people were told at noon on Tuesday it "has been ready for a few days now", and to "confirm you are ready to see it",
+   * though a released picture is open to the person it is for and nothing is left to confirm. `readySince` is the report's release time,
+   * said in the organisation's own zone. Applies to everyone: it only makes the mail true.
+   */
+  async sendActivationRevealReminder(email: string, groundLabel: string, reportUrl: string, readySince?: Date | null, zone?: string | null): Promise<void> {
+    const since = readySince ? whenItWas(readySince, 'weekdayAndDay', zone ?? undefined) : '';
     await this.sendEmail({
       to: email,
       subject: reportReadyReminderSubject(groundLabel),
       html: this.layout(
-        `<p>The shared picture for <strong>${escapeHtml(groundLabel)}</strong> has been ready for a few days now.</p>
-         <p>It shows where accounts agree, where they differ, and what is still unresolved. You just need to confirm you are ready to see it.</p>
+        `<p>The shared picture for <strong>${escapeHtml(groundLabel)}</strong> ${since ? `has been ready since ${escapeHtml(since)}` : 'is ready'}.</p>
+         <p>It shows where what you each said agrees, where it differs, and what is still open. It is open to you now, and nothing else is needed from you to read it.</p>
          <p><a href="${reportUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View your report →</a></p>`,
       ),
     }, undefined, 'sendActivationRevealReminder');
