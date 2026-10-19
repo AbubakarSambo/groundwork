@@ -243,7 +243,7 @@ The first of three small pull requests for Release 2, built on Release 1B's pull
 - [ ] **Existing users see nothing new.** The switch is off for every organisation. With it on, existing check-ins keep their scenario, cadence and every setting; their type is read from their own record and never written.
 - [ ] **No new stored prompt,** template, setting row or scheduled job. The collections pack is in the code, and no `PromptVersion` row exists for it, so the file is what runs.
 - [ ] **One new one-off script,** `api/scripts/the-release-2-collections.ts`, for "(test)" organisations only. It is never run by a deploy.
-- [ ] **The developer API's list of situations is unchanged:** COLLECTIONS is left out of it, as the anchor's own situation is.
+- [ ] **The developer API's list of situations names COLLECTIONS,** as it names every real situation (its guard asks for that). A check-in opened with it through the API is refused unless the organisation's switch is on, as in the product.
 
 **Where the plan and the product differ, and which is kept:**
 - **The default rhythm.** The prototype's SIT_SCHED has no row for this scenario. It takes weekly over twelve weeks, the collections check-in's rhythm in the release plan and the clock the other weekly standing read has (a question for Hafsah).

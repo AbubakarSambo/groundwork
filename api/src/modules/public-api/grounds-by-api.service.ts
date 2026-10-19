@@ -23,8 +23,8 @@ import { SeedInput, normalise, missingOwedTo, NOT_A_KIND } from './what-was-alre
  * a helpful error naming a set that is missing it.
  */
 /* Not the anchor's own situation: it starts from its link, and the developer API keeps working exactly as it did. */
-/* Nor Collect what's owed (Release 2): it is behind a switch per organisation in the product, and the API's list stays as it was. */
-const SCENARIOS = Object.values(GroundScenario).filter((s) => s !== GroundScenario.HELP_TEAM_UNDERSTAND && s !== GroundScenario.COLLECTIONS);
+/* Collect what's owed (Release 2) is a real situation and is listed; a check-in with it is refused by createForLead unless the organisation's Release 2 switch is on. */
+const SCENARIOS = Object.values(GroundScenario).filter((s) => s !== GroundScenario.HELP_TEAM_UNDERSTAND);
 const MOMENTS = Object.values(GroundMoment);
 
 /**

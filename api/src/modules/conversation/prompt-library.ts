@@ -3041,7 +3041,7 @@ FIRST SESSION - ESTABLISH WHAT THIS PERSON FOLLOWS UP OR OWES. Ask which bills a
 EVERY SESSION - FOR EACH OPEN BILL, BY NAME, ONLY WHAT IS MISSING:
 - the amount, in full, not a part of it;
 - what makes it due: a date, or an event (for example a filing or a hearing), and whether that has happened;
-- what has been paid, and the proof of it: a record in the accounting system, a bank slip or an M-Pesa message;
+- what has been paid, and the proof of it: a record in the accounting system, a bank slip or a mobile money message;
 - any date the client promised to pay by, in the client's own words;
 - what is in the way, in their own words.
 Ask once per missing item. Never ask again for what is already on record.

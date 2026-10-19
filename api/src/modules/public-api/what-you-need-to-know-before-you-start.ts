@@ -118,8 +118,7 @@ export const THE_PANEL = {
 
 export const VOCABULARY = {
   /* The anchor's own situation is not one the developer API offers: it starts from its link, and the API keeps working exactly as it did. */
-  /* Not Collect what's owed (Release 2), which is behind a switch per organisation; the API's closed set stays as it was. */
-  scenario: Object.values(GroundScenario).filter((s) => s !== GroundScenario.HELP_TEAM_UNDERSTAND && s !== GroundScenario.COLLECTIONS),
+  scenario: Object.values(GroundScenario).filter((s) => s !== GroundScenario.HELP_TEAM_UNDERSTAND),
   moment: Object.values(GroundMoment),
   objectiveKind: Object.values(ObjectiveKind),
 } as const;

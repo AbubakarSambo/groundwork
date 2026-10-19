@@ -156,7 +156,7 @@ export const WHAT_EACH_SITUATION_ADDS: Record<string, Owed[]> = {
   /* Collect what's owed (Release 2): each bill by name, and what is in the way of it being paid. */
   COLLECTIONS: [
     { id: 'each-bill', what: 'each bill they follow up or owe, by name, with its amount', role: ['member', 'partner'], stage: ['first'], satisfiedBy: [T.COMMITMENT, T.INTENT] },
-    { id: 'in-the-way', what: 'what is in the way of each one being paid, in their own words', role: ['member', 'partner'], stage: ['first', 'middle'], satisfiedBy: [T.WORRY, T.ASK] },
+    { id: 'in-the-way', what: 'what is in the way of each one being paid, as they put it', role: ['member', 'partner'], stage: ['first', 'middle'], satisfiedBy: [T.WORRY, T.ASK] },
   ],
   DRIFT: [
     { id: 'what-they-think', what: 'what they think is actually wrong', role: ['lead', 'member', 'partner'], stage: ['first'], satisfiedBy: [T.WORRY, T.TENSION, T.OPERATING_DIFFERENCE] },
