@@ -1,7 +1,10 @@
 import 'reflect-metadata';
 import { TodayController } from '../grounds/today.controller';
 import { everythingOutstandingFor, sendTheLeadsDailyNudges, theWindowForm, theTemplateParagraph, theNudgeParts, theNudgeSubject, atMostThreeLines, type WhatIsOutstanding } from './the-leads-daily-nudge';
-import { TEMPLATES, A_TEMPLATE_BODY_LIMIT, OUTSIDE_THE_WINDOW } from '../whatsapp/a-message-outside-the-window';
+import { TEMPLATES, A_TEMPLATE_BODY_LIMIT, OUTSIDE_THE_WINDOW, NOT_TODAY, THEY_SAID_NOT_NOW, NOT_TURNED_ON_QUIETLY } from '../whatsapp/a-message-outside-the-window';
+import { THEY_HAD_ONE_TODAY } from './one-routine-message-a-day';
+import { THEIR_KEYS_CANNOT_BE_OPENED } from '../whatsapp/an-organisations-own-keys';
+import { WHATSAPP_NOT_ON_A_PAID_PLAN } from '../billing/whatsapp-add-on.service';
 import { theFirstContactLine, ITS_OWN_WORDS_AT_MOST } from '../whatsapp/the-first-message-to-a-number';
 
 /**
@@ -198,10 +201,39 @@ describe('who gets it, and how', () => {
     expect(m.mails).toHaveLength(1);
   });
 
-  it('when the day\'s one message has already gone, nothing more is sent by any door', async () => {
-    const m = aMorning({ sendResult: { sent: false, error: 'They have already been sent one routine message today, by email or on WhatsApp.' } });
-    await m.run();
+  /* The day's own limits, as the WhatsApp sender words them (whatsapp.service.ts howOftenToday and mayInitiate). The string this
+     case used before was a shortened copy of the email's own wording, which the WhatsApp sender never returns. */
+  it.each([
+    ['the day\'s one message has already gone', NOT_TODAY],
+    ['she replied "Not now" today', THEY_SAID_NOT_NOW],
+    ['her organisation has not turned WhatsApp on', NOT_TURNED_ON_QUIETLY],
+    ['she has had her one routine message today', THEY_HAD_ONE_TODAY],
+  ])('when %s, nothing more is sent by any door', async (_why, error) => {
+    const m = aMorning({ sendResult: { sent: false, error } });
+    expect(await m.run()).toEqual({ tried: 1 });
+    expect(m.whats).toHaveLength(1);
     expect(m.mails).toEqual([]);
+  });
+
+  /* Drop Access, October: a refusal by Meta itself, or WhatsApp not working on this server, sent the lead nothing at all. */
+  it.each([
+    ['Meta refuses it', '{"error":{"message":"(#131026) Message undeliverable","type":"OAuthException","code":131026}}'],
+    ['WhatsApp is not configured on this server', 'WhatsApp is not configured on this deployment'],
+    ['the organisation\'s keys cannot be opened', THEIR_KEYS_CANNOT_BE_OPENED],
+    ['the WhatsApp add-on is held', WHATSAPP_NOT_ON_A_PAID_PLAN],
+    ['the template could not be sent', 'template send failed'],
+    ['no reason is given', undefined],
+  ])('when %s, she is owed it by email, once, with the same facts', async (_why, error) => {
+    const m = aMorning({ sendResult: { sent: false, ...(error === undefined ? {} : { error }) } });
+    expect(await m.run()).toEqual({ tried: 1 });
+    expect(m.whats).toHaveLength(1);
+    expect(m.mails).toHaveLength(1);
+    const [to, subject, parts, first, label, link] = m.mails[0];
+    expect(to).toBe('wairimu@x.test');
+    expect(subject).toBe('Two things need you and four are overdue on your team');
+    expect(first).toBe('Wairimu');
+    expect([label, link]).toEqual(['See everything', 'https://myground.work/today']);
+    expect(parts.needsYou).toHaveLength(2);
   });
 
   it('nothing outstanding, nothing sent', async () => {
