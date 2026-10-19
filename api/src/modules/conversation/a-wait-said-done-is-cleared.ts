@@ -103,7 +103,7 @@ function theThingItselfWasFiled(line: ALineOnRecord, wait: AnOpenWait, thing: st
 }
 
 /** Whether one line says this wait is done. `namesOf` gives a person's own names (first name, full name). */
-export function aLineSaysItIsDone(line: ALineOnRecord, wait: AnOpenWait, namesOf: (participantId: string) => string[]): boolean {
+export function aLineSaysItIsDone(line: ALineOnRecord, wait: AnOpenWait, namesOf: (participantId: string) => string[], atTheCustomer: (holder: string) => string[] = () => []): boolean {
   if (String(line.type).toUpperCase() !== 'PROGRESS') return false;
   const byTheOneWaiting = line.participantId === wait.fromParticipantId;
   const byTheOneHoldingIt = !!wait.onParticipantId && line.participantId === wait.onParticipantId;
@@ -112,8 +112,10 @@ export function aLineSaysItIsDone(line: ALineOnRecord, wait: AnOpenWait, namesOf
   if (!byTheOneWaiting && !byTheOneHoldingIt) return anOutsideBodyGaveIt(line, wait, thing);
   if (theThingItselfWasFiled(line, wait, thing)) return true;
   if (byTheOneWaiting && STILL_WAITING.test(line.text)) return false;
+  /* A person at a customer is named by the customer too: Mercy waited on "Mrs. Njeri" for "the signed order", and said "Greenfield
+     Supermarket signed the order!" (messages test, fourth run). */
   const otherSide = byTheOneWaiting
-    ? (wait.onParticipantId ? namesOf(wait.onParticipantId) : [String(wait.onLabel ?? '')])
+    ? (wait.onParticipantId ? namesOf(wait.onParticipantId) : [String(wait.onLabel ?? ''), ...atTheCustomer(String(wait.onLabel ?? ''))])
     : namesOf(wait.fromParticipantId);
   const otherWords = otherSide.flatMap((n) => wordsOf(n)).filter((w) => w.length >= 2);
   return sentences(line.text).some((s) => {
@@ -131,6 +133,7 @@ export function theWaitsSaidDone(
   lines: ALineOnRecord[],
   namesOf: (participantId: string) => string[],
   lastRaisedAt: (w: AnOpenWait) => Date,
+  atTheCustomer: (holder: string) => string[] = () => [],
 ): { id: string; clearedAt: Date; lineId: string }[] {
   const out: { id: string; clearedAt: Date; lineId: string }[] = [];
   for (const w of waits) {
@@ -138,7 +141,7 @@ export function theWaitsSaidDone(
     const done = lines
       .filter((l) => l.checkInId !== w.sourceCheckInId && new Date(l.createdAt).getTime() > after)
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-      .find((l) => aLineSaysItIsDone(l, w, namesOf));
+      .find((l) => aLineSaysItIsDone(l, w, namesOf, atTheCustomer));
     if (done) out.push({ id: w.id, clearedAt: new Date(done.createdAt), lineId: done.id });
   }
   return out;
@@ -169,11 +172,22 @@ export async function clearTheWaitsSaidDone(prisma: any, groundId: string): Prom
     ? await prisma.checkIn.findMany({ where: { id: { in: sources } }, select: { id: true, completedAt: true } })
     : [];
   const doneAt = new Map(checkIns.map((c) => [c.id, c.completedAt ? new Date(c.completedAt) : null]));
+  /* The customers each person outside the check-in is at: the deals whose contact they are. */
+  const deals: any[] = (await Promise.resolve(prisma.workItem?.findMany?.({ where: { groundId, kind: 'deal' }, select: { name: true, fields: true } })).catch(() => [])) ?? [];
+  const bare = (n: string) => String(n ?? '').trim().replace(/^(?:mr|mrs|ms|miss|dr)\.?\s+/i, '').toLowerCase();
+  const atTheCustomer = (holder: string): string[] => {
+    const h = bare(holder);
+    if (!h) return [];
+    return (Array.isArray(deals) ? deals : []).filter((d) => {
+      const contact = typeof d?.fields?.Contact === 'string' ? bare(d.fields.Contact.split(',')[0]) : '';
+      return contact && contact === h;
+    }).map((d) => String(d.name ?? '')).filter(Boolean);
+  };
   const cleared = theWaitsSaidDone(waits, lines, namesOf, (w) => {
     const at = w.sourceCheckInId ? doneAt.get(w.sourceCheckInId) : null;
     const made = new Date(w.createdAt);
     return at && at.getTime() > made.getTime() ? at : made;
-  });
+  }, atTheCustomer);
   for (const c of cleared) {
     await prisma.groundDependency.updateMany({ where: { id: c.id, clearedAt: null }, data: { status: 'CLEARED', clearedAt: c.clearedAt } });
   }
