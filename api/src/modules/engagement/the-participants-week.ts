@@ -69,7 +69,23 @@ const namesIn = (t: string) => (String(t ?? '').replace(/^\s*\S+/, '').match(A_N
 export function theSameWaitOnce(waits: { what: string; from: string | null }[]): { what: string; from: string | null; andFor?: string }[] {
   const kept: { what: string; from: string | null; andFor?: string }[] = [];
   const fuller = (a: string, b: string) => wordsOf(a).size > wordsOf(b).size;
+  /*
+   * THE SAME THING FROM THE SAME PERSON IS ONE WAIT (messages test, fourth run). Mercy read "You are waiting for "the sample units he
+   * promised" from Joseph." and "You are waiting for "the Tuskys Westgate samples" from Joseph.", one wait said on Monday and again on
+   * Wednesday. Waits on the same person that share the thing's own word ("sample") are one; the one that names the customer is said.
+   */
+  const one = (w: string) => w.replace(/ies$/, 'y').replace(/([^s])s$/, '$1');
+  const things = (t: string) => new Set([...wordsOf(t)].filter((w) => w.length >= 4 && !['promised', 'their', 'there', 'that', 'this', 'what', 'have'].includes(w)).map(one));
+  const sameFromSameThing = (a: { what: string; from: string | null }, b: { what: string; from: string | null }) =>
+    !!a.from && !!b.from && trimmed(a.from).toLowerCase() === trimmed(b.from).toLowerCase() && [...things(a.what)].some((w) => things(b.what).has(w));
+  const naming = (t: string) => (String(t ?? '').match(A_NAME) ?? []).length;
   for (const d of waits) {
+    const twice = kept.findIndex((k) => sameFromSameThing(k, d));
+    if (twice >= 0) {
+      const k = kept[twice];
+      if (naming(d.what) > naming(k.what) || (naming(d.what) === naming(k.what) && fuller(d.what, k.what))) kept[twice] = { ...k, what: d.what };
+      continue;
+    }
     const same = kept.findIndex((k) => {
       const [long, short] = fuller(k.what, d.what) ? [k.what, d.what] : [d.what, k.what];
       const longWords = wordsOf(long);
