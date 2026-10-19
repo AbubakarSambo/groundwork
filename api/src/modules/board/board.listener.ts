@@ -304,7 +304,9 @@ export class BoardListener {
       for (const [id, w] of said) {
         const d = deals.find((x) => x.id === id);
         const moved = w.stage && !anEarlierStage(w.stage, d.stage, ground?.workStages) ? w.stage : null;
-        const after = withTheStageKept({ ...((d.fields as any) ?? {}), ...w.set }, moved, keptAt, 'check-in', { stage: d.stage ?? null, since: null });
+        /* The customer's no, said of it without its name, is kept on it unseen, for the board's lost deals (a-deal-that-was-dropped). */
+        const dropped = w.dropped && !(d.fields as any)?._dropped ? { _dropped: w.dropped } : {};
+        const after = withTheStageKept({ ...((d.fields as any) ?? {}), ...w.set, ...dropped }, moved, keptAt, 'check-in', { stage: d.stage ?? null, since: null });
         await (this.prisma as any).workItem.update({ where: { id }, data: { ...(moved ? { stage: moved } : {}), fields: withTheCriteriaSaid(d.fields as any, after, saidIn) } });
       }
       return said.size;

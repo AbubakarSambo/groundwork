@@ -2762,7 +2762,7 @@ export class BoardService {
              * supports it. Read from the owner's lines whoever reads, so every reader reads the same deal. See a-deal-that-was-dropped.
              */
             const salesStages = theSalesStages((ground as any).workStages);
-            const dropped = theDealWasDropped({ name: r.name, stage: r.stage, ownerParticipantId: r.ownerParticipantId, fields: worked }, everyLine, { lastStage: salesStages[salesStages.length - 1] ?? null, peopleThere: peopleAt.get(r.id) ?? [] });
+            const dropped = theDealWasDropped({ name: r.name, stage: r.stage, ownerParticipantId: r.ownerParticipantId, fields: worked }, everyLine, { lastStage: salesStages[salesStages.length - 1] ?? null, peopleThere: peopleAt.get(r.id) ?? [], saidInTheCheckIn: ((items as any[]).find((x) => x.id === r.id)?.fields as any)?._dropped ?? null });
             if (dropped) {
               const who = !mayReadTheWordsOf(r.ownerParticipantId) ? null : r.ownerParticipantId === me?.id ? 'You' : (r.owner ? theShortNameOf(r.owner) : null);
               r.lost = { on: dropped.on, ...theLostDeal(r.name, dropped, who) };
