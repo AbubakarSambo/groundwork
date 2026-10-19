@@ -5,6 +5,7 @@ import { theCorrectionsOnTheCheckIn, withWhatACorrectionSettled, whoIsBehindALab
 import { theReleaseOneSalesBoardIsOnFor } from '../board/release-one-sales-board';
 import { theSalesAndTheirProof, whatIsOnFileForEachSale, withoutAsksForProofOnFile } from './proof-on-file-is-never-asked-for';
 import { theDealsOnRecord } from '../board/a-sales-aim-is-counted-from-the-deals';
+import { withoutDifferencesNobodyHad } from './agreeing-with-the-lead-is-not-a-difference';
 import { isASalesKind } from '../board/the-kind-of-work';
 import { withoutADealsFigure, theCustomersOnRecordIfSales } from '../board/a-deals-units-are-not-a-target';
 /** The customers on record on a sales check-in, only where Release 1's switch is on for its organisation; null otherwise, so the report is built as before. */
@@ -2609,6 +2610,26 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * carry a number that is already in it.
      */
     await atStakePass;
+    /*
+     * A DIFFERENCE NOBODY HAD IS NOT KEPT, before the judgement reads the differences (agreeing-with-the-lead-is-not-a-difference):
+     * on a sales check-in, a side whose every figure the other person said too, against the other's own deal, is not a difference
+     * between them. Mercy said the team's 120 as Grace did, and Grace's board said they understood the goal differently.
+     */
+    if (Array.isArray((result as any).divergences) && theCustomers) {
+      const labelToId = new Map([...labelById.entries()].map(([id, l]) => [l, id]));
+      const linesOf = (label: string) => {
+        const id = labelToId.get(label);
+        return id ? records.filter((r) => r.participant.id === id).map((r) => cleanText(r.text)) : null;
+      };
+      const nobodyHad = withoutDifferencesNobodyHad((result as any).divergences, linesOf, theCustomers, theFirstNames);
+      if (nobodyHad.leftOut.length) {
+        this.logger.log(`Report for ground ${groundId}: ${nobodyHad.leftOut.length} difference(s) left out, because each side's figures were the other person's too. First: ${nobodyHad.leftOut[0]}`);
+        (result as any).divergences = nobodyHad.divergences;
+        /* And the question drawn from one that went, as a correction's are (a-correction-is-their-latest-word). */
+        const topics = nobodyHad.leftOut.map((t) => t.trim().replace(/[.!?]+$/, '')).filter(Boolean);
+        if (typeof (result as any).centralQuestion === 'string' && topics.some((t) => (result as any).centralQuestion.includes(t))) (result as any).centralQuestion = null;
+      }
+    }
     const theJudgement = await this.judgeTheAnswers(groundId, {
       /*
        * THE ROOM, for a ground too small for counts to mean anything. Built from what synthesis has
