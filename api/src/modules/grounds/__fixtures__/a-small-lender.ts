@@ -69,12 +69,14 @@ export const LENDER_EVIDENCE = [
 export function lenderCheckIns(): any[] {
   const days = ['2026-09-21', '2026-09-28', '2026-10-05', '2026-10-12', '2026-10-19'];
   return days.flatMap((day, i) => (['achieng', 'musa', 'peter'] as const)
-    /* Peter stops checking in after 21 September. */
-    .filter((who) => who !== 'peter' || i === 0)
-    .map((who) => ({
-      id: `c-${who}-${i + 1}`, groundId: LENDER_LOANS.id, participantId: LENDER_PEOPLE[who].participantId, sessionNumber: i + 1, status: 'COMPLETED', isSetup: false,
-      completedAt: new Date(`${day}T10:00:00.000Z`), availableFrom: new Date(`${day}T06:00:00.000Z`),
-    })));
+    .map((who) => {
+      /* Peter stops checking in after 21 September: each check-in after it opens for him and is never started. */
+      const stopped = who === 'peter' && i > 0;
+      return {
+        id: `c-${who}-${i + 1}`, groundId: LENDER_LOANS.id, participantId: LENDER_PEOPLE[who].participantId, sessionNumber: i + 1, status: stopped ? 'NOT_STARTED' : 'COMPLETED', isSetup: false,
+        completedAt: stopped ? null : new Date(`${day}T10:00:00.000Z`), availableFrom: new Date(`${day}T06:00:00.000Z`),
+      };
+    }));
 }
 
 export function lenderLines(): any[] {

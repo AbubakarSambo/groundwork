@@ -75,7 +75,7 @@ export function thePrismaFor(world: ACollectionsWorld): any {
         && (where.createdAt ? inList(l.createdAt, where.createdAt) : true))),
     },
     checkIn: {
-      findMany: jest.fn(async ({ where }: any) => world.checkIns.filter((c) => c.groundId === where.groundId && inList(c.status, where.status) && inList(c.participantId, where.participantId)
+      findMany: jest.fn(async ({ where }: any) => world.checkIns.filter((c) => c.groundId === where.groundId && inList(c.status, where.status) && inList(c.participantId, where.participantId) && inList(c.sessionNumber, where.sessionNumber)
         && (where.isSetup === undefined || c.isSetup === where.isSetup) && (where.completedAt ? inList(c.completedAt, where.completedAt) : true))),
     },
     groundContextItem: { findMany: jest.fn(async ({ where }: any) => world.ways.filter((w) => w.groundId === where.groundId)) },
