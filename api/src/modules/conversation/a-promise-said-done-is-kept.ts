@@ -51,6 +51,8 @@ const FORMS: Record<string, string> = {
   bought: 'buy', did: 'do', done: 'do', met: 'meet', told: 'tell', spoke: 'speak', spoken: 'speak', wrote: 'write', written: 'write', sold: 'sell',
   went: 'go', gone: 'go', left: 'leave', found: 'find', shown: 'show', showed: 'show', delivered: 'deliver', called: 'call', dropped: 'drop',
   shared: 'share', signed: 'sign', finished: 'finish', returned: 'return', handed: 'hand', emailed: 'email', fixed: 'fix', sorted: 'sort',
+  /* Messages test, 19 October, finding 3: a court filing is said done as "filed", "lodged", "served" or "submitted". */
+  filed: 'file', filing: 'file', files: 'file', lodged: 'lodge', served: 'serve', submitted: 'submit', issued: 'issue',
 };
 const NOT_THE_THING = new Set([
   'the', 'a', 'an', 'for', 'of', 'on', 'to', 'from', 'with', 'and', 'or', 'my', 'our', 'their', 'his', 'her', 'its', 'this', 'that', 'these', 'those',
@@ -65,9 +67,11 @@ const wordsOf = (t: string) => String(t ?? '').toLowerCase().replace(/[‘’]/g
 const aForm = (w: string) => FORMS[w] ?? one(w);
 const theThingIn = (t: string): string[] => wordsOf(t).filter((w) => w.length >= 3 && !NOT_THE_THING.has(w) && !/^\d/.test(w)).map(aForm);
 
-const IT_HAPPENED = /\b(?:brought|delivered|sent|gave|given|handed|dropped|shared|arrived|received|got|came|paid|returned|signed|approved|answered|replied|done|sorted|cleared|finished|completed|called|met|spoke|showed|took|made|did|kept)\b/i;
+const IT_HAPPENED = /\b(?:brought|delivered|sent|gave|given|handed|dropped|shared|arrived|received|got|came|paid|returned|signed|approved|answered|replied|done|sorted|cleared|finished|completed|called|met|spoke|showed|took|made|did|kept|filed|lodged|served|submitted|issued)\b/i;
 const NOT_YET = /\b(?:not|never|no|yet|haven't|hasn't|hadn't|didn't|don't|doesn't|won't|will|going to|need to|needs to|wish|hope|should|would|could|if|until|unless|forgot)\b|n't\b|\bI'll\b|\bhe'll\b|\bshe'll\b|\bthey'll\b/i;
-const sentences = (t: string) => String(t ?? '').replace(/\[[^\]]*\]/g, '').replace(/[‘’]/g, "'").split(/(?<=[.;!?])\s+/).map((s) => s.trim()).filter(Boolean);
+/* "Kasarani Foods v. Tumaini Traders" is one sentence: a full stop after "v", "vs", "Mr", "Mrs", "Ms" or "Dr" does not end one
+   (messages test, 19 October, finding 3: "The reply in Kasarani Foods v." and "Tumaini Traders was filed today." were read apart). */
+const sentences = (t: string) => String(t ?? '').replace(/\[[^\]]*\]/g, '').replace(/[‘’]/g, "'").split(/(?<!\b(?:v|vs|V|Vs|Mr|Mrs|Ms|Dr)\.)(?<=[.;!?])\s+/).map((s) => s.trim()).filter(Boolean);
 
 /** Who a promise was for: the person it is owed to, anybody it names, and anybody who was waiting on its maker. */
 export function whoItWasFor(p: AnOpenPromise, waits: AWaitOnRecord[], namesOf: (participantId: string) => string[], everybody: string[]): string[] {

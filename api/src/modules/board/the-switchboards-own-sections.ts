@@ -1,3 +1,5 @@
+import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
+import { theDayZone } from '../../common/the-organisations-own-day';
 import { wasAQuietClose } from '../grounds/an-answer-includes-a-refusal';
 import { theNoteBesideTheClaim, WhoTheNoteNames } from '../grounds/a-wait-is-the-speakers-account';
 import { theWaitSaid, aHolderThatIsOnlyTheThing, PLAIN_WORDS } from './a-wait-said-in-full';
@@ -84,6 +86,8 @@ export interface ACommitment {
   saidWordForWord: boolean;
   whenSaidWordForWord: boolean;
   createdAt: Date | string;
+  /** Somebody else in the check-in said, after it was made, that it happened (somebody-said-it-happened.ts). Open all the same. */
+  saidHappened?: { participantId: string | null; text: string; createdAt?: Date | string | null } | null;
 }
 
 export interface AHandoff {
@@ -315,8 +319,17 @@ export function theWorkPlan(
         leadLabel,
         saidWordForWord: c.saidWordForWord === true,
         whenSaidWordForWord: c.whenSaidWordForWord === true,
+        /* Who said it happened, never "nobody has said" (messages test, 19 October, finding 4). Their words only to a reader who reads everyone's. */
+        saidHappened: c.saidHappened?.participantId && r.personMayBeRead(c.saidHappened.participantId)
+          ? {
+            who: whoIs(r, c.saidHappened.participantId),
+            day: c.saidHappened.createdAt ? whenItWas(c.saidHappened.createdAt, 'dayAndMonthLong', theDayZone()) : null,
+            words: r.mayReadEveryone ? c.saidHappened.text : null,
+          }
+          : null,
       }, so);
-      const when = c.whenSaid && (c.whenSaidWordForWord === true || looksLikeATimeOrADate(c.whenSaid)) ? c.whenSaid.trim() : null;
+      /* Only words that read as a time, quoted or not (messages test, 19 October, finding 11). */
+      const when = c.whenSaid && looksLikeATimeOrADate(c.whenSaid) ? c.whenSaid.trim() : null;
       return { id: c.id, participantId: c.participantId, who, says, when, state: stateOf(c.status), statedInSession: c.statedInSession ?? null };
     })
     /* What is still open first, then what ended, each in the order it was said. */

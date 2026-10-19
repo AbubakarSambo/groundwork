@@ -268,8 +268,18 @@ export class WhoIsWaitingAtTheDoorService {
       }
     });
 
+    /* By name, which check-in, and who let them in (messages test, 19 October, finding 15). */
+    const [them, admin, theCheckIn] = await Promise.all([
+      Promise.resolve((this.prisma as any).user?.findUnique?.({ where: { id: request.userId }, select: { firstName: true, lastName: true } })).catch(() => null),
+      Promise.resolve((this.prisma as any).user?.findUnique?.({ where: { id: adminUserId }, select: { firstName: true, lastName: true } })).catch(() => null),
+      request.groundId ? Promise.resolve((this.prisma as any).ground?.findUnique?.({ where: { id: request.groundId }, select: { label: true } })).catch(() => null) : Promise.resolve(null),
+    ]);
     this.email
-      .sendYouAreInNow(request.email, request.organization.name)
+      .sendYouAreInNow(request.email, request.organization.name, {
+        firstName: (them as any)?.firstName ?? null,
+        checkInLabel: (theCheckIn as any)?.label ?? null,
+        letInBy: [(admin as any)?.firstName, (admin as any)?.lastName].filter(Boolean).join(' ').trim() || null,
+      })
       .catch((err: any) => this.logger.warn(`Could not tell ${request.email} they were approved: ${err.message}`));
 
     /* And whoever invited them (U.4): the People page promises both are told. */

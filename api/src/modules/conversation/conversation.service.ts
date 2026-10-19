@@ -286,7 +286,7 @@ import { withoutWhatTheLeadHasNotToldThemAbout, type AnUntoldGoalRow } from '../
 import { mayThisGoalBeCopiedToCommitments } from '../grounds/a-commitment-from-a-goal-not-told-is-not-read-by-its-person';
 import { asADirection } from '../board/an-aim-or-a-limit';
 import { theTargetAsASentence } from './each-target-is-a-sentence-about-whoever-set-it';
-import { withoutOurInstructions } from './our-instructions-never-reach-them';
+import { withoutOurInstructions, withoutTalkAboutTheConversation } from './our-instructions-never-reach-them';
 import { withoutTheLeadsBrief, aSentenceThatQuotesTheBrief, theLeadsSetupWords } from './the-leads-brief-is-never-quoted-to-them';
 import { withoutSentencesAboutOneOfThem } from '../reports/one-persons-circumstances-stay-their-own';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
@@ -1548,7 +1548,7 @@ export class ConversationService {
        is cut whatever voice it is in, and whether or not this turn kept them (final evaluation, profile 1). */
     const theNotes = [ASKED_IT_TWICE_ALREADY];
     if ((checkIn as any)?.id) {
-      const theirWordsHere: string[] = await (this.prisma.conversationTurn?.findMany?.({ where: { checkInId: (checkIn as any).id, role: TurnRole.PERSON }, select: { content: true } }) ?? Promise.resolve([]))
+      const theirWordsHere: string[] = await (this.prisma.conversationTurn?.findMany?.({ where: { checkInId: (checkIn as any).id, role: TurnRole.PERSON }, select: { content: true }, orderBy: { createdAt: 'asc' } }) ?? Promise.resolve([]))
         .then((rows: any[]) => (rows ?? []).map((r) => r.content ?? '')).catch(() => [] as string[]);
       const sayable = [
         ...theirWordsHere,
@@ -1558,6 +1558,10 @@ export class ConversationService {
       const ours = withoutOurInstructions(raw, thePrompt, sayable, saidHereBefore, theNotes);
       for (const c of ours.cut) this.logger.warn(`Check-in ${(checkIn as any).id}: cut a sentence that copied our instructions to the model: "${c.slice(0, 160)}"`);
       raw = ours.text;
+      /* And no talk about the conversation itself, in any words (messages test, 19 October, finding 6). See withoutTalkAboutTheConversation. */
+      const aboutItself = withoutTalkAboutTheConversation(raw, theirWordsHere[theirWordsHere.length - 1] ?? null, saidHereBefore);
+      for (const c of aboutItself.cut) this.logger.warn(`Check-in ${(checkIn as any).id}: cut a sentence about the conversation itself: "${c.slice(0, 160)}"`);
+      raw = aboutItself.text;
     }
     const noRecordInvented = withoutARecordClaimNobodyHolds(raw, saidHereBefore);
     if (noRecordInvented.cut.length) this.logger.warn(`Check-in ${(checkIn as any).id}: cut ${noRecordInvented.cut.length} sentence(s) claiming what "the record" shows, which this person's record does not hold.`);

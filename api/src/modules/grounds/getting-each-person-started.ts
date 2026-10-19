@@ -1,4 +1,6 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { theDayZone } from '../../common/the-organisations-own-day';
+import { isHeldAtTheDoor } from './who-an-admin-did-not-let-in';
 
 /**
  * GETTING EACH PERSON STARTED (screen match, 16 October; N-phase-16-getting-each-person-started/
@@ -36,11 +38,14 @@ export interface APersonGettingStarted {
 }
 
 const DAY = 86_400_000;
+/* The organisation's own day (common/the-organisations-own-day): the product's own zone, as before, outside a signed-in request. */
 const theDay = (d: Date, now: Date) => {
   const days = Math.floor((now.getTime() - d.getTime()) / DAY);
-  const f = (o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('en-GB', { ...o, timeZone: 'Africa/Lagos' }).format(d);
+  const f = (o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('en-GB', { ...o, timeZone: theDayZone() }).format(d);
   return days < 7 ? `on ${f({ weekday: 'long' })}` : `on ${f({ day: 'numeric', month: 'long' })}`;
 };
+/* A day still to come, said in full: "on Monday 19 October". */
+const aDayToCome = (d: Date) => `on ${new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: theDayZone() }).format(d)}`;
 
 export interface APersonsRows {
   participantId: string;
@@ -52,11 +57,13 @@ export interface APersonsRows {
   bounced: boolean;
   delivered: boolean;
   email?: string | null;
-  /** Their check-ins on this check-in: when each started and finished. */
-  checkIns: { startedAt: Date | null; completedAt: Date | null; quietClose: boolean }[];
+  /** Their check-ins on this check-in: when each started and finished, and, where the row says, which session and when it opens. */
+  checkIns: { startedAt: Date | null; completedAt: Date | null; quietClose: boolean; sessionNumber?: number | null; availableFrom?: Date | null }[];
+  /** Held at the organisation's door: they joined, and an admin has not let them in yet (who-an-admin-did-not-let-in). */
+  waitingToBeLetIn?: boolean;
 }
 
-export function whereEachPersonIsGettingStarted(people: APersonsRows[], now: Date): APersonGettingStarted[] {
+export function whereEachPersonIsGettingStarted(people: APersonsRows[], now: Date, reader: { readerIsAnAdmin?: boolean } = {}): APersonGettingStarted[] {
   return people.map((p) => {
     const first = p.name.trim().split(/\s+/)[0] || p.name;
     const finished = p.checkIns.filter((c) => c.completedAt && !c.quietClose).map((c) => c.completedAt as Date).sort((a, b) => b.getTime() - a.getTime());
@@ -75,8 +82,19 @@ export function whereEachPersonIsGettingStarted(people: APersonsRows[], now: Dat
       ? `${first} was invited by email ${theDay(p.invitedAt, now)}.${p.delivered ? ' The email reached them,' : ''} ${p.delivered ? 'but they have' : `${first} has`} not opened the link yet.`
       : `${first} has not opened the link yet.`;
     else if (!finished.length && startedNotFinished.length) says = `${first} started a check-in ${theDay(startedNotFinished[0], now)} and stopped before the end. What they said is saved.`;
+    /* WHAT STOPS THEM, WHERE IT IS AN ADMIN'S APPROVAL (messages test, 19 October, finding 9): Amos waited for Grace to let him in, and the line did not say so. */
+    else if (!finished.length && p.waitingToBeLetIn) says = `${first} opened the link${p.acceptedAt ? ` ${theDay(p.acceptedAt, now)}` : ''}, and is waiting for ${reader.readerIsAnAdmin ? 'you' : 'an admin of your organisation'} to let them in before they can start a check-in.${reader.readerIsAnAdmin ? ' You can let them in on the People page.' : ''}`;
     else if (!finished.length) says = `${first} opened the link${p.acceptedAt ? ` ${theDay(p.acceptedAt, now)}` : ''}, but has not started a check-in yet.`;
-    else if (finished.length === 1) says = `${first} checked in once, ${theDay(finished[0], now)}, and has not come back since.`;
+    else if (finished.length === 1) {
+      /* THE CHECK-IN'S RHYTHM (messages test, 19 October, finding 10): "has not come back since" only once a later check-in has opened to them. */
+      const nextToCome = p.checkIns
+        .filter((c) => !c.completedAt && c.availableFrom && c.availableFrom.getTime() > now.getTime())
+        .map((c) => c.availableFrom as Date).sort((a, b) => a.getTime() - b.getTime())[0];
+      const oneHasOpened = p.checkIns.some((c) => !c.completedAt && (!c.availableFrom || c.availableFrom.getTime() <= now.getTime()));
+      says = !oneHasOpened && nextToCome
+        ? `${first} checked in ${theDay(finished[0], now)}. ${first}'s next check-in opens ${aDayToCome(nextToCome)}.`
+        : `${first} checked in once, ${theDay(finished[0], now)}, and has not come back since.`;
+    }
     else if (!comingBack) says = `${first} has checked in ${finished.length} times, and not in the last two weeks.`;
     else says = `${first} checks in on their own, most recently ${theDay(finished[0], now)}.`;
     return {
@@ -105,8 +123,8 @@ export async function readWhereEachPersonIsGettingStarted(
     where: { groundId: input.groundId, managingOnly: false, OR: [{ userId: null }, { userId: { not: ground.initiatorId } }] },
     select: {
       id: true, email: true, nameGiven: true, invitedAt: true, acceptedAt: true, userId: true, inviteDeliveryStatus: true, department: true,
-      user: { select: { firstName: true, lastName: true } },
-      checkIns: { select: { startedAt: true, completedAt: true, closedReason: true } },
+      user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } },
+      checkIns: { select: { startedAt: true, completedAt: true, closedReason: true, sessionNumber: true, availableFrom: true } },
     },
   });
   return {
@@ -121,7 +139,8 @@ export async function readWhereEachPersonIsGettingStarted(
       bounced: String(p.inviteDeliveryStatus ?? '').toUpperCase() === 'BOUNCED',
       email: p.email ?? null,
       delivered: String(p.inviteDeliveryStatus ?? '').toUpperCase() === 'DELIVERED',
-      checkIns: (p.checkIns ?? []).map((c: any) => ({ startedAt: c.startedAt ? new Date(c.startedAt) : null, completedAt: c.completedAt ? new Date(c.completedAt) : null, quietClose: c.closedReason === 'auto_closed' })),
-    })), now),
+      checkIns: (p.checkIns ?? []).map((c: any) => ({ startedAt: c.startedAt ? new Date(c.startedAt) : null, completedAt: c.completedAt ? new Date(c.completedAt) : null, quietClose: c.closedReason === 'auto_closed', sessionNumber: c.sessionNumber ?? null, availableFrom: c.availableFrom ? new Date(c.availableFrom) : null })),
+      waitingToBeLetIn: isHeldAtTheDoor(p),
+    })), now, { readerIsAnAdmin: input.role === 'ADMIN' }),
   };
 }

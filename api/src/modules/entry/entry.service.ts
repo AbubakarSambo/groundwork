@@ -2973,7 +2973,7 @@ from finishing at all.`;
 
     const ground = await this.prisma.ground.findUnique({
       where: { joinToken: dto.joinToken },
-      select: { id: true, status: true, endState: true, scenario: true },
+      select: { id: true, status: true, endState: true, scenario: true, label: true, organization: { select: { name: true } }, initiator: { select: { firstName: true, lastName: true } } },
     });
     if (!ground) throw new NotFoundException(whyThisDidNotWork('that link is not one we know'));
     /* Nobody is mailed a way into a check-in that is over or on hold. See grounds.service#getJoinPreview. */
@@ -3007,7 +3007,12 @@ from finishing at all.`;
     /* Sent, not awaited into the response: whether the mail provider is having a
        moment must not tell the caller whether that address exists here. */
     this.email
-      .sendJoinConfirmation(email, token)
+      .sendJoinConfirmation(email, token, {
+        firstName: dto.firstName?.trim() || null,
+        checkInLabel: (ground as any).label ?? null,
+        leadName: [(ground as any).initiator?.firstName, (ground as any).initiator?.lastName].filter(Boolean).join(' ').trim() || null,
+        organisationName: (ground as any).organization?.name ?? null,
+      })
       .catch((err) => this.logger.error(`join confirmation to ${email} failed: ${err?.message}`));
 
     this.logger.log(`join-ask: link sent for ground ${ground.id}`);
@@ -3208,7 +3213,7 @@ from finishing at all.`;
       this.email.sendAddPasswordEmail(email, user.firstName, setupToken).catch(() => null);
     }
     if (queuedForApproval) {
-      tellTheAdminsSomebodyIsWaiting({ prisma: this.prisma, email: this.email, logger: this.logger }, ground.organizationId, ground.id, ground.initiatorId, email)
+      tellTheAdminsSomebodyIsWaiting({ prisma: this.prisma, email: this.email, logger: this.logger }, ground.organizationId, ground.id, ground.initiatorId, email, { cameThroughTheLink: true })
         .catch((err: any) => this.logger.warn(`Could not tell the admins about ${email}: ${err.message}`));
     }
 

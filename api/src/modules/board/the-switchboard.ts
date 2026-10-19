@@ -112,6 +112,21 @@ const THE_TYPE_OF_A_KIND: Record<string, ACheckInType> = {
   'asset loans': 'loans',
 };
 
+/**
+ * A KIND OF WORK THE SWITCHBOARD NEEDS, WHERE ITS SWITCH IS ON (messages test, 19 October, finding 19). "a law firm matter" is how a
+ * pulse check reads as a legal matter and is served the matter board, but the kinds offered to every organisation are the sales and
+ * engineering ones, so Muchemi & Co.'s litigation daily was refused it and ran with no kind of work. A kind the switchboard maps to a
+ * type with a row may be given wherever that row's switch is on for the organisation; everywhere else, only the kinds offered.
+ */
+export async function aKindTheSwitchboardNeeds(prisma: any, kindOfWork: unknown, organizationId: string | null | undefined): Promise<boolean> {
+  const type = theTypeOfAKind(kindOfWork);
+  if (!type || !organizationId) return false;
+  const rows = THE_SWITCHBOARD.filter((r) => r.type === type);
+  if (!rows.length) return false;
+  const switches = await theSwitchesOf(prisma, organizationId);
+  return rows.some((r) => switches[r.switch] === true);
+}
+
 export function theTypeOfAKind(kindOfWork: unknown): ACheckInType | null {
   const k = oneOfTheKinds(kindOfWork);
   return k ? THE_TYPE_OF_A_KIND[k] ?? null : null;

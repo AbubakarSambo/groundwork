@@ -131,9 +131,14 @@ export function digestSubject(f: DigestFacts): string {
 }
 
 export function digestBody(f: DigestFacts, unsubscribeUrl: string): string {
-  const attention = f.needsAttention === 0
+  /* WHAT IT IS, WITH NO NAME IN IT (messages test, 19 October: "1 thing needs attention" did not say what). The count is of the waits still
+     open; who waits on whom, and for what, stays behind the link with the rest. */
+  const n = f.needsAttention;
+  const inWords = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+  const count = n <= 10 ? inWords[n] : String(n);
+  const attention = n === 0
     ? 'Nothing is flagged for attention.'
-    : `${f.needsAttention} ${f.needsAttention === 1 ? 'thing needs' : 'things need'} attention.`;
+    : `${count.charAt(0).toUpperCase()}${count.slice(1)} ${n === 1 ? 'thing somebody is waiting for is' : 'things people are waiting for are'} still open, and the check-in's board shows who is waiting and for what.`;
 
   /* Reviewer, 14 October: "Everyone has checked in... 3 people took part" when only the lead had.
      "Everyone" only when everyone gave an account; otherwise how many of how many, from the record. */

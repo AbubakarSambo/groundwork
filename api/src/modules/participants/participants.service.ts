@@ -461,7 +461,15 @@ export class ParticipantsService {
     // Send a password setup link so the participant can return after their
     // initial session without being locked out. Only send when no password
     // is set - existing accounts that already have one don't need this.
-    if (!user.passwordHash) {
+    /*
+     * ONE EMAIL WHILE ITS LINK STILL WORKS (messages test, 19 October, finding 17): Brian accepted his Fee notes invitation and, minutes later and
+     * signed in, his Litigation team daily one, and was sent "Set a password for Groundwork" twice. A setup link sent and not used or run out is
+     * still his way in, so no second one goes.
+     */
+    const aLiveSetupLink = !user.passwordHash
+      ? await Promise.resolve((this.prisma as any).emailVerificationToken?.findFirst?.({ where: { userId: user.id, type: TokenType.PASSWORD_SETUP, usedAt: null, expiresAt: { gt: new Date() } }, select: { id: true } })).catch(() => null)
+      : null;
+    if (!user.passwordHash && !aLiveSetupLink) {
       const setupToken = crypto.randomBytes(32).toString('hex');
       await this.prisma.emailVerificationToken.create({
         data: {
