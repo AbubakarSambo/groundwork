@@ -1,4 +1,5 @@
 import { ANSWER_ON_WHATSAPP_INSTEAD } from '@/lib/answer-on-whatsapp-instead'
+import { WaitingForYouToConfirm } from '@/components/gw/ThePlanPage'
 import { CheckInOnWhatsApp } from '@/components/gw/CheckInOnWhatsApp'
 import { useState, useEffect, useRef } from 'react'
 import { nothingInternalReachesTheBubble } from '@/lib/nothing-internal-reaches-the-bubble'
@@ -1721,6 +1722,14 @@ export function ChatPage() {
               onFinish={() => complete.mutate()}
               onChange={() => { setDone(false); taRef.current?.focus() }}
             />
+          )}
+          {/*
+            THE TARGETS YOU GAVE, AT THE END OF YOUR OWN CHECK-IN (Hafsah, 18 October). Once the lead has finished, the targets read
+            from her words wait here as one card, for her to confirm or correct before they go on record. The server holds them back
+            only on a sales check-in with Release 1's sales board on, so with it off nothing shows here.
+          */}
+          {completed && groundId && (ground.data as any)?.viewerIsInitiator && (
+            <WaitingForYouToConfirm groundId={groundId} lookAgain onlyTheTargetsYouGave />
           )}
           {/* THE END OF A SESSION (fix list, item 5): the next one can be answered on WhatsApp. Only where the server serves the way to connect. */}
           {(done || completed) && !declined && connectWhatsApp && (

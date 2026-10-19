@@ -96,6 +96,27 @@ describe('GW-BOARD-WRITE-01: only the initiator sets the frame', () => {
   });
 });
 
+describe('A new target keeps what it assumes (Drop Access, 18 October)', () => {
+  it('the lead writes what the target of 120 assumes when she makes it, and it is stored as she wrote it', async () => {
+    const { service, objectiveCreate } = makeService();
+    await service.createObjective('g1', 'lead', {
+      name: 'Units sold by 30 October',
+      target: 120,
+      assumes: ['Each of the three reps sells about 40 units.', '  ', 'A sale counts only with proof of payment or a signed order.'],
+    });
+    expect(objectiveCreate.mock.calls[0][0].data.assumes).toEqual([
+      'Each of the three reps sells about 40 units.',
+      'A sale counts only with proof of payment or a signed order.',
+    ]);
+  });
+
+  it('a target made with nothing it assumes is stored with an empty list', async () => {
+    const { service, objectiveCreate } = makeService();
+    await service.createObjective('g1', 'lead', { name: 'Units sold by 30 October', target: 120 });
+    expect(objectiveCreate.mock.calls[0][0].data.assumes).toEqual([]);
+  });
+});
+
 describe('GW-BOARD-WRITE-02: no writes to a section the board does not have', () => {
   it('the initiator CAN add a target to a private check-in, now that it has a board', async () => {
     /**

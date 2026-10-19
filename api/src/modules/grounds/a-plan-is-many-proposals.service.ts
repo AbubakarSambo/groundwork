@@ -11,14 +11,24 @@ import { whyItRefuses } from './a-ground-that-has-ended';
 import { BoardService } from '../board/board.service';
 import { GroundsService } from './grounds.service';
 import { asADirection, type TargetDirection } from '../board/an-aim-or-a-limit';
+import { FROM_YOUR_CHECK_IN, theTargetAsALine } from './the-leads-targets-wait-for-her-yes';
+import { isASalesKind } from '../board/the-kind-of-work';
+import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
+import { theStallRuleOnRecord, theStallRuleAsALine, theStallRuleDeclined, THE_SUGGESTED_DAYS, NO_STALL_RULE_YET } from '../board/the-stall-rule';
 import { A_PLAN_PROMPT, A_PLAN_SCHEMA, aPersonToAdd, flatten, proposalsFromAPlan, type PlanProposal, type PlanProposalFields, type PlanRead } from './a-plan-is-many-proposals';
 
 interface StoredProposal {
   id: string; groundId: string; kind: string; says: string; fields: unknown; fromThePlan: string;
-  fromDocument: string | null; status: string; editedAt: Date | null;
+  fromDocument: string | null; status: string; editedAt: Date | null; createdAt?: Date | null;
 }
 
-export type ServedProposal = PlanProposal & { status: string; editedAt: Date | null };
+/**
+ * `fromYourCheckIn`: one of the targets read from the lead's own check-in, which the page shows together as one card (the-leads-
+ * targets-wait-for-her-yes), with the day it was said.
+ */
+export type ServedProposal = PlanProposal & { status: string; editedAt: Date | null; fromYourCheckIn?: boolean; saidOn?: string | null };
+
+const isFromHerCheckIn = (row: { fromDocument?: string | null }) => row.fromDocument === FROM_YOUR_CHECK_IN;
 
 export const ONLY_THE_LEAD_READS_A_PLAN = 'Only the person who runs this check-in can turn a plan into proposals.';
 export const ONLY_THE_LEAD_CONFIRMS = 'Only the person who runs this check-in can confirm what goes into it.';
@@ -30,6 +40,8 @@ export const ONLY_THE_LEAD_CONFIRMS = 'Only the person who runs this check-in ca
  * exactly one thing, once, after checking the stored proposal again against its own quote. The lead's
  * only: every route refuses anybody else, so a participant never reads a proposal.
  */
+const THE_STALL_RULE_CARD = 'the-stall-rule';
+
 @Injectable()
 export class APlanIsManyProposalsService {
   private readonly logger = new Logger(APlanIsManyProposalsService.name);
@@ -126,6 +138,10 @@ export class APlanIsManyProposalsService {
       id: row.id, kind: String(row.kind).toLowerCase(), says: row.says, fields: row.fields, fromThePlan: row.fromThePlan,
       line: row.says, saidAs: row.fromThePlan, from: row.fromDocument ?? 'the plan you pasted',
     } as unknown as PlanProposal);
+    /* A target from her own check-in reads as the line kept with it, which says the target as it would go on the record. */
+    if (isFromHerCheckIn(row)) {
+      return { ...base, says: row.says, line: row.says, from: 'your check-in', status: row.status, editedAt: row.editedAt ?? null, fromYourCheckIn: true, saidOn: row.createdAt ? new Date(row.createdAt).toISOString().slice(0, 10) : null };
+    }
     return { ...base, status: row.status, editedAt: row.editedAt ?? null };
   }
 
@@ -180,12 +196,43 @@ export class APlanIsManyProposalsService {
     const people = this.people(ground);
     /* A person already added since the plan was read needs no card any more. */
     const stillOffered = rows.filter((r: any) => String(r.kind).toLowerCase() !== 'person' || this.recheck(r, people));
-    return { proposals: stillOffered.map((r: any) => this.served(r, people)) };
+    const suggested = await this.theStallRuleSuggested(groundId, ground.organizationId);
+    return { proposals: [...stillOffered.map((r: any) => this.served(r, people)), ...(suggested ? [suggested] : [])] };
+  }
+
+  /**
+   * NO STALL RULE SET YET, AS A SUGGESTION IN CONTEXT (Hafsah's standing decision 4, 18 October): on a sales check-in with Release 1's
+   * board, where the lead has set no stall rule and has not said not now, Groundwork suggests "Drop a deal after 3 working days with no
+   * answer" for her to confirm. Confirm and Not now keep her answer in how we work, the same as on the board (answerTheStallRule).
+   */
+  private async theStallRuleSuggested(groundId: string, organizationId: string): Promise<any | null> {
+    const g = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { kindOfWork: true } as any }).catch(() => null) as any;
+    if (!isASalesKind(g?.kindOfWork) || !(await theReleaseOneSalesBoardIsOn(this.prisma, organizationId))) return null;
+    const rule = await theStallRuleOnRecord(this.prisma, groundId);
+    if (rule.days != null || rule.declined) return null;
+    return {
+      id: THE_STALL_RULE_CARD, kind: 'rule', suggested: true, status: 'PENDING',
+      heading: 'A rule Groundwork suggests, because no stall rule is set yet. It would go in how we work.',
+      says: `Drop a deal after ${THE_SUGGESTED_DAYS} working days with no answer from the customer`,
+      line: `Drop a deal after ${THE_SUGGESTED_DAYS} working days with no answer from the customer`,
+      landsIn: 'How we work', from: 'Groundwork', fromThePlan: NO_STALL_RULE_YET,
+      note: 'Until you set a stall rule, no deal is marked cold or dropped for going quiet.',
+    };
+  }
+
+  /** The stall rule card's answer, kept in how we work as the board keeps it. */
+  private async answerTheStallRuleCard(groundId: string, userId: string, yes: boolean) {
+    const rule = await theStallRuleOnRecord(this.prisma, groundId);
+    if (rule.days != null) throw new BadRequestException('A stall rule is already set.');
+    const text = yes ? theStallRuleAsALine(THE_SUGGESTED_DAYS) : theStallRuleDeclined;
+    const made = await this.prisma.groundContextItem.create({ select: { id: true }, data: { groundId, kind: 'WAY_OF_WORKING' as any, text, audience: 'EVERYONE' as any, source: 'BOARD' as any, authorUserId: userId } as any });
+    return { confirmed: { id: THE_STALL_RULE_CARD, kind: 'rule', says: text, status: yes ? 'CONFIRMED' : 'NOT_NOW' }, wrote: { table: 'GroundContextItem', id: made.id } };
   }
 
   /** Not now: kept, and off the waiting list. Nothing is written anywhere else. */
   async notNow(groundId: string, userId: string, pid: string) {
     const ground = await this.theLeadsCheckIn(groundId, userId, ONLY_THE_LEAD_CONFIRMS, { evenIfItCannotTakeThings: true });
+    if (pid === THE_STALL_RULE_CARD) return (await this.answerTheStallRuleCard(groundId, userId, false)).confirmed as any;
     const row = await this.theWaitingOne(groundId, pid);
     const done = await this.prisma.planProposal.update({ where: { id: row.id }, data: { status: 'NOT_NOW', decidedAt: new Date(), decidedByUserId: userId } });
     return this.served(done as any, this.people(ground));
@@ -200,6 +247,24 @@ export class APlanIsManyProposalsService {
     const ground = await this.theLeadsCheckIn(groundId, userId, ONLY_THE_LEAD_CONFIRMS);
     const row = await this.theWaitingOne(groundId, pid);
     const people = this.people(ground);
+    /*
+     * A TARGET FROM HER OWN CHECK-IN IS CORRECTED BY HER (Hafsah, 18 October: "the lead taps right or corrects them"). What it
+     * counts and its number are what she types now; her correction becomes the words it is kept with, so the confirm checks it
+     * against them. It stays waiting until she confirms.
+     */
+    if (isFromHerCheckIn(row)) {
+      const f = (row.fields ?? {}) as any;
+      const what = typeof change?.fields?.what === 'string' && change.fields.what.trim() ? change.fields.what.trim().replace(/\s+/g, ' ').slice(0, 300) : f.what;
+      const raw = change?.fields?.number as unknown;
+      const number = raw === null || raw === '' ? undefined : raw === undefined ? f.number : Number(raw);
+      if (number !== undefined && !(Number.isInteger(number) && (number as number) > 0)) throw new BadRequestException('Write the number as a whole number above nought, and try again.');
+      if (!what) throw new BadRequestException('Write what this target counts, and try again.');
+      const line = theTargetAsALine({ name: what, target: number ?? null, ownerParticipantId: f.participantId ?? null, personName: f.personOnTheCheckIn ?? f.personName ?? null });
+      const fields = { ...f, what, ...(number !== undefined ? { number } : {}) };
+      if (number === undefined) delete (fields as any).number;
+      const saved = await this.prisma.planProposal.update({ where: { id: row.id }, data: { says: line, fields: fields as any, fromThePlan: line, editedAt: new Date() } });
+      return this.served(saved as any, people);
+    }
     const says = change?.says?.trim().replace(/\s+/g, ' ');
     const held = this.recheck(row, people, { says, fields: change?.fields ?? {} });
     if (!held) throw new BadRequestException('The number or the date is not in the plan\'s own words, so it was not changed.');
@@ -218,6 +283,7 @@ export class APlanIsManyProposalsService {
    */
   async confirm(groundId: string, userId: string, pid: string, answer: { direction?: unknown; email?: unknown } = {}) {
     const ground = await this.theLeadsCheckIn(groundId, userId, ONLY_THE_LEAD_CONFIRMS);
+    if (pid === THE_STALL_RULE_CARD) return this.answerTheStallRuleCard(groundId, userId, true);
     const row = await this.theWaitingOne(groundId, pid);
     const held = this.recheck(row, this.people(ground));
     if (!held) throw new BadRequestException('That is not in the plan as written, so nothing was added.');

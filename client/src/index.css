@@ -639,10 +639,9 @@ body {
   cursor: pointer;
   transition: all 0.15s;
 }
+/* D-4: a card keeps no shadow and does not lift; its border says it is under the pointer. */
 .gw-ground-card:hover {
   border-color: var(--gw-blue-b);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(12,68,124,.08);
 }
 
 /* ── CREATE GROUND STEP DOTS ─────────────────────────────── */
@@ -1077,7 +1076,6 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
-  box-shadow: 0 2px 8px rgba(0,0,0,.2);
   transition: background 0.1s;
 }
 .gw-feedback-btn:hover { background: var(--gw-navy-d); }
@@ -1104,10 +1102,10 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
   align-items: center;
   justify-content: center;
   color: white;
-  box-shadow: 0 2px 12px rgba(0,0,0,.18);
-  transition: transform 0.12s, box-shadow 0.12s;
+  transition: background 0.1s;
 }
-.gw-fb-btn:hover { transform: scale(1.06); box-shadow: 0 4px 16px rgba(0,0,0,.22); }
+/* D-4: no shadow on a button (the prototype's .btn has none). */
+.gw-fb-btn:hover { background: var(--gw-navy-d); }
 .gw-fb-label { font-size: 10px; color: var(--gw-muted); font-weight: 500; letter-spacing: .02em; }
 /* THE OLD FEEDBACK PANEL'S RULES ARE GONE. A `.gw-fb-panel` block from an earlier widget (fixed,
    bottom 80px, right 20px, 320px wide, and an open/closed animation on data-open) still applied to

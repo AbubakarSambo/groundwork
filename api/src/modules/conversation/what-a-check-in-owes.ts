@@ -82,6 +82,13 @@ const T = RecordEntryType;
  * First is the starting point, middle is what changed, last is where it landed. Read down a stage
  * and it is one conversation; read across a role and it is three different jobs.
  */
+/**
+ * A NUMBER MADE UP OF WHAT EACH CUSTOMER TAKES: "Greenfield is secured for 25 units. And I've got Mama Mboga Mart wanting 2 units. So
+ * that's 27 units total." answers how they are making their number (Drop Access short run, item 12). Release 1, part 3: read by the
+ * board alone, behind Release 1's switch (board.service, stillUnanswered); the conversation's own rule below is unchanged until its part.
+ */
+export const A_NUMBER_MADE_OF_ITS_CUSTOMERS = /\b\d+\s+(?:units?|pieces|bags|cartons|boxes)\b[\s\S]*?\b\d+\s+(?:units?|pieces|bags|cartons|boxes)\b/i;
+
 export const KEEP_THE_TEAM_ON_TRACK: Owed[] = [
   { id: 'aim', what: 'what this is trying to achieve', role: ['lead'], stage: ['first'], satisfiedBy: [T.SUCCESS_DEFINITION] },
   { id: 'targets', what: 'the goals or targets, as numbers or dates', role: ['lead'], stage: ['first'], satisfiedBy: [T.TIMEFRAME, T.SUCCESS_DEFINITION] },

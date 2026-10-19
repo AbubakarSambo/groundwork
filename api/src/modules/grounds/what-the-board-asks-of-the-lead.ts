@@ -1,4 +1,5 @@
 import type { Need } from './what-needs-you';
+import { isASalesKind } from '../board/the-kind-of-work';
 
 /**
  * WHAT THE BOARD ASKS OF THE LEAD, SAID ON TODAY TOO (screens request 122, part 1).
@@ -20,6 +21,37 @@ export function whatTheBoardAsksOfTheLead(board: any, check: { id: string; organ
   /* Each thing once, however the board lists it (request 151, E6). */
   const seen = new Set<string>();
   const isNew = (t: string) => { const k = t.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim(); if (seen.has(k)) return false; seen.add(k); return true; };
+  /*
+   * RELEASE 1'S SALES BOARD: TODAY READS WHAT ITS "WHAT NEEDS YOU" SHOWS, AND ONLY THAT (Hafsah's quality pass, 18 October, B-32).
+   * Grace's sidebar said "7 things need you" while her board listed 2: Today also counted every open promise of hers and every
+   * wait drawn under Blockers. On that board, Today takes the same items the board draws there, in its words: each decision with
+   * its yes or no, each deal at the stall rule, each decision the board lists itself, and each missed check-in.
+   */
+  if (board.releaseOneSalesBoard === true && isASalesKind(board.kindOfWork)) {
+    for (const a of Array.isArray(board.leadActions) ? board.leadActions : []) {
+      const title = said(a?.decision?.question);
+      if (!title || !(a?.action?.choices ?? []).length || !isNew(title)) continue;
+      out.push({ ...base, key: `board-action-${check.id}-${said(a?.id) ?? out.length}`, kind: 'decide', title, detail: said(a?.decision?.why) });
+    }
+    for (const x of Array.isArray(board.atTheStallRule) ? board.atTheStallRule : []) {
+      const title = said(x?.title);
+      if (!title || !isNew(title)) continue;
+      out.push({ ...base, key: `board-stall-${check.id}-${said(x?.participantId) ?? out.length}`, kind: 'look', title, detail: said(x?.detail) });
+    }
+    const openIssues = Array.isArray(board.openIssues?.issues) && board.openIssues.issues.length > 0;
+    for (const d of Array.isArray(board.decisions) ? board.decisions : []) {
+      if (d?.source === 'blocker' || (d?.source === 'divergence' && openIssues)) continue;
+      const title = said(d?.question);
+      if (!title || !isNew(title)) continue;
+      out.push({ ...base, key: `board-decision-${check.id}-${out.length}`, kind: 'decide', title, detail: said(d?.why) });
+    }
+    for (const m of Array.isArray(board.missedCheckIns) ? board.missedCheckIns : []) {
+      const title = said(m?.text);
+      if (!title || !isNew(title)) continue;
+      out.push({ ...base, key: `board-missed-${check.id}-${said(m?.participantId) ?? out.length}`, kind: 'look', title, detail: null });
+    }
+    return out;
+  }
   for (const d of Array.isArray(board.decisions) ? board.decisions : []) {
     const title = said(d?.question);
     if (!title || !isNew(title)) continue;

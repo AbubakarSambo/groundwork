@@ -126,6 +126,9 @@ import { aLabelTheyCanTellApart } from './four-check-ins-with-the-same-name';
 import { howCheckableIsYoursAlone } from './how-checkable-is-yours-alone';
 import { writeADocumentsNumbers } from '../documents/write-a-documents-numbers';
 import { isThisSessionReleased, isTheTeamPictureNowShared, releasedSessionsOf } from '../reports/each-sessions-picture-is-released-on-its-own';
+import { theContextReadsEachTargetOnce, eachTargetOnceOnTheContextTab } from './the-context-reads-each-target-once';
+import { thePlanAsAgreed } from './the-plan-as-agreed';
+import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
@@ -2046,6 +2049,9 @@ export class GroundsService {
       /* Nobody an admin has not let in yet holds the clock back (decision 77). */
       new Set((((ground as any).participants ?? []) as any[]).filter((p) => !p.managingOnly && !isNotLetInYet(p)).map((p) => p.id)),
       noEnd ? null : totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null,
+      new Date(),
+      /* A finished round hands the count on only with Release 1's sales board on, as the board's header reads it. */
+      await theReleaseOneSalesBoardIsOn(this.prisma, (ground as any).organizationId),
     );
 
     /*
@@ -2381,6 +2387,15 @@ export class GroundsService {
      * at once, and the map used to keep whichever row happened to come back last - so the page showed
      * one thing and the rest were invisible even though they were stored.
      */
+    /*
+     * EACH TARGET ONCE, AS THE BOARD READS IT (Hafsah, 18 October). A target said again, as a target or as somebody's expectation,
+     * is that target, and the Context tab lists it once. See the-context-reads-each-target-once.
+     */
+    if (theContextReadsEachTargetOnce((ground as any).kindOfWork, await theReleaseOneSalesBoardIsOn(this.prisma, (ground as any).organizationId))) {
+      const once = eachTargetOnceOnTheContextTab(((ground as any).objectives ?? []) as any[], objectiveRows as any[]);
+      (ground as any).objectives = once.targets;
+      objectiveRows = once.expectations as typeof objectiveRows;
+    }
     const objectivesByParticipant = new Map<string, typeof objectiveRows>();
     for (const o of objectiveRows) {
       const list = objectivesByParticipant.get(o.participantId) ?? [];
@@ -3112,6 +3127,24 @@ export class GroundsService {
       ...theWordsOfWhatTheLeadHasNotToldThemAbout(((ground as any).objectives ?? []) as any[], objectiveRowsAsStored as any[], (ground.participants ?? []) as any[], viewerRunsIt)
         .filter((t) => !objectiveRowsAsStored.some((o: any) => aWeekHasPassedSinceNotTold(o) && (o.text ?? '') === t)),
     ]);
+    /*
+     * THE PLAN, AS AGREED (Hafsah, 18 October; the prototype's Context page). From the targets and commitments this reader is
+     * already served, and the rows a plan card the lead confirmed wrote. Never invented; absent when nothing is on record.
+     * Behind Release 1's switch, on a sales check-in only: with it off the Context tab reads exactly as it did.
+     */
+    if (isASalesKind((ground as any).kindOfWork) && (await theReleaseOneSalesBoardIsOn(this.prisma, (ground as any).organizationId))) {
+      const confirmedRows = await ((this.prisma as any).planProposal?.findMany?.({ where: { groundId: id, status: 'CONFIRMED', becameId: { not: null } }, select: { becameId: true } }) ?? Promise.resolve([])).catch(() => [] as any[]);
+      const nameOfHere = (pid: string) => { const p = ((ground.participants ?? []) as any[]).find((x: any) => x.id === pid); return p?.user?.firstName ?? p?.nameGiven ?? null; };
+      const meHere = ((ground.participants ?? []) as any[]).find((p: any) => !!requestingUserId && p.userId === requestingUserId)?.id ?? null;
+      const plan = thePlanAsAgreed({
+        targets: (((thePage as any).objectives ?? []) as any[]),
+        commitments: (((thePage as any).commitments ?? []) as any[]),
+        confirmed: new Set((confirmedRows as any[]).map((r: any) => r.becameId).filter(Boolean)),
+        nameOf: nameOfHere,
+        meId: meHere,
+      });
+      if (plan.length) (thePage as any).planAsAgreed = plan;
+    }
     /* A goal whose whole sentence carried a number this reader may not read is not left as a goal with no words (it is not served, and what the person's own row says is said plainly). */
     /* In an anchor check-in the lead's own set-up (her aim, what it will cover, what a complete answer holds) is hers alone (decision 96, item 8). */
     /* The reader's own first name, as a possessive, is "your": "Zawadi's first weeks" is "Your first weeks" to Zawadi (privacy sweep, 7 October). */
@@ -5491,7 +5524,7 @@ export class GroundsService {
 
   /** Whether people on this check-in see each other's numbers, or only their own. */
   /**
-   * THE KIND OF WORK, READ FROM SETUP (request 76). One of the eleven kinds in
+   * THE KIND OF WORK, READ FROM SETUP (request 76). One of the twelve kinds in
    * board/the-kind-of-work.ts, read from the lead's own words and the brief with the model, and kept
    * only when the answer is exactly one of the eleven. Never over a lead's own choice: once the lead
    * has set it, only the lead changes it. Best effort: a failed read leaves it as it was.

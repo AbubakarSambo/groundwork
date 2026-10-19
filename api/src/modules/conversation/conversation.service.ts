@@ -1,4 +1,6 @@
 import { aDayIsNotATarget, theNumberIsOnlyADay } from './a-day-is-not-a-target';
+import { theThingWaitedFor } from '../board/a-wait-said-in-full';
+import { theTargetItSaysAgain } from '../board/a-target-said-again-is-that-target';
 import { aTypedReferenceBacksItsLine, proofAlreadyGiven, theLinesADocumentBacks, theLineADocumentWasSentFor } from './a-typed-reference-backs-its-line';
 import { whoMissedTheCheckInsJustBefore, whatTheSessionIsToldAboutMissing } from '../grounds/missed-check-ins';
 import { situationInWords } from './setup-already-asked-this';
@@ -77,7 +79,7 @@ import { recordRoundCompletion } from '../grounds/round-completion';
 import { Prisma } from '@prisma/client';
 import { endingOnTheClose, endsOnTheClose, type Door } from './the-close-says-what-comes-next';
 import { whatChangedOnTheirDeals } from './what-changed-on-their-deals';
-import { oneOfTheKinds } from '../board/the-kind-of-work';
+import { oneOfTheKinds, isASalesKind } from '../board/the-kind-of-work';
 import { theEndCard, theCardStillStanding, whatTheyWereAskedToShow, type EndCard, type ALineForTheCard } from './the-end-card';
 import { aThingToCarry, openingWithASentence, thePrivateSummaryAsRead } from './the-private-summary-opens-with-a-sentence';
 import { READ_WHAT_HAPPENED, WHAT_HAPPENED_SCHEMA, theSettlements, thePrompt as theHappenedPrompt, aCommitmentKey, oneOfEach, type AnAnswer } from './what-happened-to-what-they-said';
@@ -238,6 +240,7 @@ import { isADeadEnd, ASK_SOMETHING_OR_CLOSE } from './a-reply-that-asks-nothing-
 import { withAQuestion } from './nobody-is-left-looking-at-a-paragraph';
 import { theReportIsNotTheirsYet, withoutPromisingTheReport } from './the-report-is-not-yours-to-promise';
 import { notTheSameAsLastTime } from './the-same-sentence-five-times';
+import { aDealsFigure, aCountOfPlacesVisited } from '../board/a-deals-units-are-not-a-target';
 import { theWorkTheySaid, notARemarkAboutUs, ANSWER_THE_REMARK, aboutTheToolNotTheWork } from './a-remark-about-the-tool-is-not-the-work';
 import { nothingYet, withThisTurn, whatToAskAbout, type WhatWeHave, type Claim } from './what-we-have-so-far';
 import {
@@ -288,6 +291,10 @@ import { namesOnTheRoster, targetsHiddenFrom, withoutHiddenTargets } from '../bo
 import { askWhoSecuredIt } from './who-secured-that-meeting';
 import { READ_WHAT_THEY_PROMISED, WHAT_THEY_PROMISED_SCHEMA, theOnesToKeep } from './what-they-said-they-would-do-next';
 import { theFullerPromise, nameTwoDifferentDates } from './the-same-promise-said-more-fully';
+import { aPromiseSomebodyElseMade } from './a-promise-somebody-else-made';
+import { clearTheWaitsSaidDone } from './a-wait-said-done-is-cleared';
+import { theReleaseOneSalesBoardIsOnFor } from '../board/release-one-sales-board';
+import { FROM_YOUR_CHECK_IN, theWordsItCameFrom, theTargetAsALine, type ATargetToHold } from '../grounds/the-leads-targets-wait-for-her-yes';
 import { theSameMeasure } from '../grounds/a-dump-is-many-things';
 import { aRoleInTheirOwnWords } from '../grounds/the-leads-words-about-someone';
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
@@ -6178,6 +6185,8 @@ ${told}` : '';
     const agreed = this.anchorWeekForThisTurn.get(checkIn.id)?.agreed ?? null;
     if (!agreed) return { forTheModel: '', weSay: '' };
     if (agreed.kind === 'no') return { forTheModel: whatHappenedToTheOffer(agreed, false), weSay: '' };
+    /* A yes to somebody else's promise is not theirs to keep (Hafsah's point 13, Release 1): nothing is written. */
+    if (aPromiseSomebodyElseMade(agreed.text) && (await theReleaseOneSalesBoardIsOnFor(this.prisma, checkIn.groundId))) return { forTheModel: '', weSay: '' };
     let written: boolean | 'already' = false;
     try {
       const theirs = await this.prisma.groundCommitment.findMany({
@@ -7209,7 +7218,12 @@ ${told}` : '';
     // Best-effort: a failure here must never block the check-in completing.
     this.extractDependencies(checkIn.id, checkIn.participantId, checkIn.groundId).catch((err) =>
       this.logger.warn(`Dependency extraction failed for check-in ${checkIn.id}: ${err.message}`),
-    );
+    )
+      /* Then every open wait on this check-in that either side has now said is done is cleared, on the day it was said
+         (Hafsah's point 14, Release 1). After both, so it reads this check-in's lines and its newest waits. */
+      .then(() => clearTheWaitsSaidDone(this.prisma, checkIn.groundId))
+      .then((n) => { if (n) this.logger.log(`Check-in ${checkIn.id}: cleared ${n} wait(s) somebody said were done.`); })
+      .catch((err) => this.logger.warn(`Could not clear the waits said done after ${checkIn.id}: ${err?.message ?? err}`));
 
     // Re-read which function map fits this person, from their own account. Runs
     // every session because detection is continuous, not a tag set once.
@@ -8253,7 +8267,9 @@ ${told}` : '';
       this.logger.warn(`What they promised on ${checkInId} did not read: ${err?.message}`);
       return null;
     });
-    const keep = theOnesToKeep(Array.isArray(read?.commitments) ? read.commitments : []);
+    /* Only their own promises: one whose subject is a customer or a colleague is that person's (Hafsah's point 13, Release 1). */
+    const somebodyElses = (await theReleaseOneSalesBoardIsOnFor(this.prisma, row.groundId)) ? aPromiseSomebodyElseMade : () => false;
+    const keep = theOnesToKeep(Array.isArray(read?.commitments) ? read.commitments : []).filter((c) => !somebodyElses(c.action));
     if (!keep.length) return;
 
     const theirs = await this.prisma.groundCommitment.findMany({
@@ -9193,10 +9209,13 @@ ${told}` : '';
       return countCheckableSpecifics(t) === 0;
     };
 
+    /* Release 1's switch, for the line that is somebody else's promise (below). */
+    let releaseOne = false;
     /* EVERYBODY IN THIS CHECK-IN BY NAME, for the line that puts the wrong one on somebody's work. */
     const roster: string[] = await (async () => {
       const ci = await this.prisma.checkIn?.findUnique?.({ where: { id: checkInId }, select: { groundId: true } });
       if (!ci?.groundId) return [] as string[];
+      releaseOne = await theReleaseOneSalesBoardIsOnFor(this.prisma, ci.groundId);
       const rows: any[] = (await this.prisma.groundParticipant?.findMany?.({ where: { groundId: ci.groundId }, select: { nameGiven: true, user: { select: { firstName: true, lastName: true } } } } as any)) ?? [];
       return rows.flatMap((r) => [r.user?.firstName ?? r.nameGiven ?? '', r.user?.lastName ?? '']).filter(Boolean);
     })().catch(() => [] as string[]);
@@ -9260,10 +9279,13 @@ ${told}` : '';
         /* "November 12 2026" came back typed COMMITMENT and sat under Commitments on the shared
            report. A line that is nothing but a date is a timeframe, whatever the extractor called it. */
         const bareDate = /^\s*(?:by |on |until |before |from )?(?:\d{1,2}(?:st|nd|rd|th)?\s+)?(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?(?:\s+\d{1,2}(?:st|nd|rd|th)?)?,?(?:\s+\d{4})?\s*\.?\s*$/i.test(e.text) || /^\s*(?:by |on |until |before )?\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}\s*$/.test(e.text);
+        /* SOMEBODY ELSE'S PROMISE IS NOT THEIRS (Hafsah's point 13, behind Release 1's switch): "Rose said she will buy the two
+           units on 30 October." is Rose's, filed with what happened on the deal, never as the speaker's own commitment. */
+        const somebodyElses = releaseOne && e.type === 'COMMITMENT' && aPromiseSomebodyElseMade(e.text);
         return {
           participantId,
           checkInId,
-          type: (bareDate ? 'TIMEFRAME' : e.type) as RecordEntryType,
+          type: (bareDate ? 'TIMEFRAME' : somebodyElses ? 'PROGRESS' : e.type) as RecordEntryType,
           verifiability: v as any,
           /* A half sentence that kept its "and" is not a line anybody should read under a heading.
              See half-a-sentence-is-not-a-line-in-a-report. */
@@ -10064,6 +10086,18 @@ ${told}` : '';
     }
   }
 
+  /**
+   * The customers on record on a sales check-in (its deals and leads, by name), or null where the check-in is not a sales one, or
+   * where Release 1's sales board is off for its organisation: the record writers that read it then write exactly as before.
+   */
+  private async theCustomersOnRecordIfSales(groundId: string): Promise<string[] | null> {
+    const g = await Promise.resolve(this.prisma.ground?.findUnique?.({ where: { id: groundId }, select: { kindOfWork: true } as any })).catch(() => null);
+    if (!g || !isASalesKind((g as any).kindOfWork)) return null;
+    if (!(await theReleaseOneSalesBoardIsOnFor(this.prisma, groundId).catch(() => false))) return null;
+    const rows = ((await Promise.resolve((this.prisma as any).workItem?.findMany?.({ where: { groundId, kind: { in: ['deal', 'lead'] } }, select: { name: true } })).catch(() => [])) ?? []) as { name: string }[];
+    return [...new Set(rows.map((r) => String(r.name ?? '').trim()).filter(Boolean))];
+  }
+
   private async writeTheirOwnPromises(
     participantId: string,
     groundId: string,
@@ -10095,6 +10129,9 @@ ${told}` : '';
 
     const KINDS = ['TODO', 'COMMITMENT', 'TARGET', 'GOAL'];
     const CHECKS = ['DONE_OR_NOT', 'A_NUMBER', 'A_JUDGEMENT', 'NOT_CHECKABLE'];
+    /* In a sales check-in a number about one customer's deal is the deal's, never their target (Drop Access, item 27; a-deals-units-are-not-a-target). */
+    const theCustomers = await this.theCustomersOnRecordIfSales(groundId);
+    const thePeople = participants.map((p) => p.user?.firstName ?? '').filter(Boolean);
     const DUES = ['A_DATE', 'A_CYCLE', 'STANDING', 'NOT_SAID'];
 
     for (const p of result.promises) {
@@ -10140,7 +10177,7 @@ ${told}` : '';
         await this.prisma.personObjective.create({ data: { ...data, groundId, participantId } });
       }
       const asANumber = aNumberTheySaid(data.target);
-      if (data.kind === 'TARGET' && data.measure && asANumber != null) counted.push({ participantId, name: text, target: asANumber });
+      if (data.kind === 'TARGET' && data.measure && asANumber != null && !(theCustomers && aDealsFigure(text, theCustomers, thePeople))) counted.push({ participantId, name: text, target: asANumber });
     }
     return counted;
   }
@@ -10580,6 +10617,7 @@ ${told}` : '';
      * it alone. The board already has the honest shape for that case - "the record shows 40 for
      * this, not 0, press to accept" - and `suggestedCount` is where a conflict belongs, not here.
      */
+    const onASalesCheckIn = !!(result.groundAims ?? []).length && !!(await this.theCustomersOnRecordIfSales(groundId).catch(() => null));
     const aims = (result.groundAims ?? [])
       /* An aim everybody reads never carries a figure only a private document holds (problem 3). */
       .filter((a) => !carriesAPrivateFigure({ name: a?.name, target: a?.target ?? null }, privateFigures))
@@ -10593,6 +10631,8 @@ ${told}` : '';
       .filter((a) => a.name)
       /* "Grace is working on the Kilele account." says what somebody does, and is not an aim (reviewer, 14 October). */
       .filter((a) => !isWhatSomebodyDoesNotAnAim(a))
+      /* "tomorrow I'm also visiting two shops on Ngong Road" is a visit, not an aim, on a sales check-in (a-deals-units-are-not-a-target). */
+      .filter((a) => !(onASalesCheckIn && aCountOfPlacesVisited(a.name)))
       /*
        * A TARGET HAS TO BE A NUMBER THEY SAID. Run 4, 20 Sep 2026: a rep said "50kg bags" and the
        * extraction wrote him a N50m target, which the next turn then asked him about. A number that
@@ -10615,12 +10655,18 @@ ${told}` : '';
          "bring in $400k of new business" is not setting a second target (run 6, 20 Sep 2026). */
       const existing = await this.prisma.groundObjective.findMany({
         where: { groundId, OR: [{ ownerParticipantId: null }, ...(aimsAreShared ? [] : [{ ownerParticipantId: participantId }])] },
-        select: { name: true, target: true },
+        select: { name: true, target: true, ownerParticipantId: true },
       });
       /* Matching on the name alone put "units of tea sold in Abuja (10,000)" and "10,000 units
          (10,000)" on the same board, as two objectives. See an-aim-said-twice-is-one-aim. */
-      const fresh = theAimsThatAreNew(aimsWithTheirNumbers, existing as any, (n) => numbersInTheirWords.has(n));
-      if (fresh.length) {
+      const fresh = theAimsThatAreNew(aimsWithTheirNumbers, existing as any, (n) => numbersInTheirWords.has(n))
+        /* A target on record said again, with the same number and the same thing counted, is that target (Hafsah's point 9; a-target-said-again-is-that-target). */
+        .filter((a) => !(onASalesCheckIn && theTargetItSaysAgain({ name: a.name, target: a.target, ownerParticipantId: aimsAreShared ? null : participantId }, existing as any[])));
+      /* The lead's targets wait for her yes on a sales check-in with Release 1 on (the-leads-targets-wait-for-her-yes). */
+      const heldForHerYes = fresh.length && aimsAreShared ? await this.theLeadsTargetsWaitForHerYes(groundId) : false;
+      if (heldForHerYes) {
+        await this.holdTheTargetsForHerYes(groundId, fresh.map((a) => ({ name: a.name, target: a.target, ownerParticipantId: null, personName: null })), theirOwnTurns);
+      } else if (fresh.length) {
         await this.prisma.groundObjective.createMany({
           /* A person's own aim keeps the thing counted as its name, and its day as its date (request 117, part 11). */
           data: fresh.map((a, i) => {
@@ -10661,7 +10707,47 @@ ${told}` : '';
     }
 
     /* A sum said only to ask for it is the request's, never somebody's goal (user journeys, F-9). */
-    await this.putOwnedTargetsOnTheRecord(groundId, theirOwnNumbers.filter((t) => !sumsOnlyARequestSaid.has(t.target)), participantId);
+    await this.putOwnedTargetsOnTheRecord(groundId, theirOwnNumbers.filter((t) => !sumsOnlyARequestSaid.has(t.target)), participantId,
+      (await this.theLeadsTargetsWaitForHerYes(groundId)) ? { holdFor: theirOwnTurns, people: ground.participants as any[] } : undefined);
+  }
+
+  /** On a sales check-in with Release 1's sales board on, the targets read from the lead's words wait for her yes. */
+  private async theLeadsTargetsWaitForHerYes(groundId: string): Promise<boolean> {
+    const g = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { kindOfWork: true } as any }).catch(() => null);
+    if (!g || !isASalesKind((g as any).kindOfWork)) return false;
+    return theReleaseOneSalesBoardIsOnFor(this.prisma, groundId);
+  }
+
+  /**
+   * THE TARGETS FROM THE LEAD'S WORDS, KEPT AS ONE CARD FOR HER YES (Hafsah, 18 October). Each is a waiting proposal of kind GOAL
+   * with the sentence of hers that holds its number; one already waiting is not kept twice. Nothing goes on the record here.
+   */
+  private async holdTheTargetsForHerYes(groundId: string, rows: ATargetToHold[], theirTurns: string[]): Promise<number> {
+    const g = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true } });
+    if (!g?.initiatorId || !rows.length) return 0;
+    const waiting = await this.prisma.planProposal.findMany({ where: { groundId, status: 'PENDING', fromDocument: FROM_YOUR_CHECK_IN }, select: { fields: true } }).catch(() => [] as any[]);
+    const same = (f: any, t: ATargetToHold) => String(f?.what ?? '').trim().toLowerCase() === t.name.trim().toLowerCase() && (f?.number ?? null) === t.target && (f?.participantId ?? null) === t.ownerParticipantId;
+    let kept = 0;
+    for (const t of rows) {
+      if (waiting.some((w: any) => same(w.fields, t))) continue;
+      const quote = theWordsItCameFrom(t, theirTurns);
+      if (!quote) { this.logger.warn(`Ground ${groundId}: a target from the lead's words has no sentence of hers that holds it, so it was not kept: ${t.name}`); continue; }
+      await this.prisma.planProposal.create({
+        data: {
+          groundId,
+          createdByUserId: g.initiatorId,
+          kind: 'GOAL',
+          says: theTargetAsALine(t),
+          fields: { what: t.name.slice(0, 300), ...(typeof t.target === 'number' ? { number: t.target } : {}), ...(t.ownerParticipantId ? { participantId: t.ownerParticipantId, personName: t.personName ?? undefined, personOnTheCheckIn: t.personName ?? undefined } : {}) } as any,
+          fromThePlan: quote.slice(0, 600),
+          fromDocument: FROM_YOUR_CHECK_IN,
+          status: 'PENDING',
+        },
+      });
+      kept += 1;
+    }
+    if (kept) this.logger.log(`Ground ${groundId}: ${kept} target(s) from the lead's words wait for her yes.`);
+    return kept;
   }
 
   /**
@@ -10678,11 +10764,17 @@ ${told}` : '';
     groundId: string,
     rows: { participantId: string; name: string; target: number }[],
     setByParticipantId: string,
+    /* The lead's numbers for each person, on a sales check-in with Release 1 on: kept for her yes, never written here. */
+    hold?: { holdFor: string[]; people: { id: string; user?: { firstName?: string | null; lastName?: string | null } | null; email?: string | null }[] },
   ): Promise<{ participantId: string; name: string; target: number }[]> {
     /* The person's own sentence is kept as they said it. The short label ("8 kits", "3 shops in Kilimani") is worked out from it
        when it is read (theAimItself), and only ever shown beside it (Hafsah, 12 October). */
     /* A number said only as a day ("by 22 October") is not anybody's target (local test of staging, 15 October). */
     rows = rows.filter((t) => !theNumberIsOnlyADay(t.name, t.target));
+    /* On a sales check-in a count of places visited ("visiting two shops on Ngong Road") is something they will do, never a target (a-deals-units-are-not-a-target). */
+    /* Both behind Release 1's switch, on a sales check-in (theCustomersOnRecordIfSales is null otherwise). */
+    const onReleaseOne = rows.length ? !!(await this.theCustomersOnRecordIfSales(groundId)) : false;
+    if (onReleaseOne) rows = rows.filter((r) => !aCountOfPlacesVisited(r.name));
     if (!rows.length) return [];
     const [owned, team] = await Promise.all([
       this.prisma.groundObjective.findMany({
@@ -10708,16 +10800,25 @@ ${told}` : '';
       const theirOwn = owned.filter((o) => o.ownerParticipantId === t.participantId).map((o) => ({ name: o.name, target: o.target }));
       const aim = { name: t.name, target: t.target };
       if (!theAimsThatAreNew([aim], theirOwn).length) continue;
-      const theTeams = team.find((a) => !theAimsThatAreNew([aim], [{ name: a.name, target: a.target }]).length);
+      /* "Sell 40 units" beside their own "units sold by 30 October" of 40 is that target (point 9). */
+      if (onReleaseOne && theTargetItSaysAgain({ name: t.name, target: t.target, ownerParticipantId: t.participantId }, owned.filter((o) => o.ownerParticipantId === t.participantId) as any[])) continue;
+      const theTeams = team.find((a) => !theAimsThatAreNew([aim], [{ name: a.name, target: a.target }]).length)
+        /* "My target is 120 units" from a rep, beside the team's "Units sold by 30 October" of 120, is the team's target (point 9). */
+        ?? (onReleaseOne ? theTargetItSaysAgain({ name: t.name, target: t.target, ownerParticipantId: t.participantId }, team as any[]) : undefined);
       if (theTeams) {
         const by = /\bby\s+(.+?)[.!]?$/i.exec(t.name)?.[1] ?? null;
-        const day = by && !theTeams.dueOn ? theDayTheyMeant(by, new Date()) : null;
+        const day = by && !theTeams.dueOn && !hold ? theDayTheyMeant(by, new Date()) : null;
         if (day) await this.prisma.groundObjective.update({ where: { id: theTeams.id }, data: { dueOn: day } }).catch(() => undefined);
         continue;
       }
       fresh.push(t);
     }
     if (!fresh.length) return [];
+    if (hold) {
+      const nameOf = (pid: string) => { const p = hold.people.find((x) => x.id === pid); return [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim() || null; };
+      await this.holdTheTargetsForHerYes(groundId, fresh.map((t) => ({ name: theNameWithItsSum(t.name, t.target, aNumberPeopleCanRead), target: t.target, ownerParticipantId: t.participantId, personName: nameOf(t.participantId) })), hold.holdFor);
+      return [];
+    }
     const wrote = await this.prisma.groundObjective.createMany({
       data: fresh.map((t, i) => ({
         groundId,
@@ -11047,6 +11148,8 @@ ${told}` : '';
   }
 
   async extractDependencies(checkInId: string, participantId: string, groundId: string) {
+    /* Release 1's sales board, on for this organisation: a wait is then written as theThingWaitedFor says (below). */
+    const releaseOneHere = await theReleaseOneSalesBoardIsOnFor(this.prisma, groundId).catch(() => false);
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: { mode: true, scenario: true, organizationId: true, participants: { select: { id: true, email: true, user: { select: { firstName: true, lastName: true } } } } },
@@ -11186,7 +11289,8 @@ ${told}` : '';
           // Keep the spoken name when it did not match a participant, so an
           // external blocker is still visible instead of silently dropped.
           onLabel,
-          what: d.what.trim(),
+          /* Never "her approval" about the person waited on (Drop Access run 1, A7; theThingWaitedFor), behind Release 1's switch. */
+          what: releaseOneHere ? theThingWaitedFor(d.what, onParticipantId) : d.what.trim(),
           then: d.then?.trim() || null,
           /* Their own words for what they have already done about it. Null means they did not say,
              which is what "nothing said yet" on the board honestly means. */

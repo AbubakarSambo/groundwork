@@ -79,6 +79,8 @@ export function whereThisIsHeading(a: {
   now?: Date;
   /** Who an ending about one person leaving is about, as this reader may name them (request 123 item 8). */
   who?: TheEndingIsAbout | null;
+  /** On Release 1's sales board, the signals and what would settle it read from the deals (theSalesSignals). */
+  sales?: { signals: ASignal[]; whatWouldSettleIt: string[] } | null;
 }): WhereThisIsHeading {
   const endings = endStatesForGround(a.scenario, { hadAnObjective: a.hadAnObjective, who: a.who });
   const outcomes = endings.map((e) => ({ value: e.value, says: inPlainWords(e.label), more: e.description?.trim() || null }));
@@ -124,7 +126,8 @@ export function whereThisIsHeading(a: {
     });
   }
 
-  const stillToDecide = (Array.isArray(b.decisions) ? b.decisions : [])
+  if (a.sales) signals.splice(0, signals.length, ...a.sales.signals);
+  const stillToDecide = a.sales?.whatWouldSettleIt.length ? a.sales.whatWouldSettleIt : (Array.isArray(b.decisions) ? b.decisions : [])
     .filter((d: any) => d?.source === 'lead' && typeof d.question === 'string' && d.question.trim())
     .map((d: any) => d.question.trim());
 
@@ -143,11 +146,64 @@ export function whereThisIsHeading(a: {
     signalsSays: signals.length ? null : NO_SIGNALS_YET,
     whatWouldSettleIt: stillToDecide,
     whatWouldSettleItSays: stillToDecide.length
-      ? `${lead} wrote ${stillToDecide.length === 1 ? 'this' : 'these'} down as still to decide.`
+      ? (a.sales?.whatWouldSettleIt.length ? null as unknown as string : `${lead} wrote ${stillToDecide.length === 1 ? 'this' : 'these'} down as still to decide.`)
       : NOTHING_SAYS_WHAT_WOULD_SETTLE_IT,
     whoDecides: `${lead} decide${lead === 'You' ? '' : 's'}.`,
     groundworkDoesNotChoose: GROUNDWORK_DOES_NOT_CHOOSE,
     recordTheDecision: a.readerIsTheLead && !a.decided ? 'Record the decision' : null,
     decided,
   };
+}
+
+/**
+ * WHERE A SALES CHECK-IN IS HEADING, IN THE KIT'S ONE-LINERS (Hafsah's quality pass, 18 October, B-26 to B-28; sales-board.txt:
+ * "Forecast: 23 of 25 on proof / From payments and quotes", "Samuel's five leads, three check-ins with no reply / From his
+ * check-ins", and what would settle it as one sentence). Grace's read "about 215 by session 15" from two orders in three sessions,
+ * and repeated her blockers as signals. From the deals on record only:
+ *   "Forecast: 65 of 120, and 27 more at most from open deals", from "From the deals. The 65 sold came from two orders, Kilele
+ *   Hotel and Greenfield Supermarket."
+ *   "Joseph's deals wait on two price answers from you", from "From Joseph's check-ins."
+ *   "Whether Savannah Cafe pays its deposit and Greenfield Supermarket pays on delivery on Friday 16 October, and where 28 more units
+ *   come from."
+ */
+export interface TheSalesHeadingFacts {
+  sold: number;
+  target: number;
+  thing: string;
+  /** The won deals the number is, by name. */
+  wonDeals: string[];
+  /** What the open deals hold, in the aim's measure. */
+  openHold: number;
+  /** For whoever runs it: per person, how many answers of theirs wait on the lead (waits and her own promised decisions). */
+  answersWaiting: { first: string; count: number; aboutPrice: boolean }[];
+  /** Payments the customers said they will make, each with its day: "Savannah Cafe pays its deposit". */
+  paymentsDue: { says: string; day: string | null }[];
+}
+
+const SAY = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+const inWords = (n: number) => SAY[n] ?? String(n);
+const listed = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
+
+export function theSalesSignals(f: TheSalesHeadingFacts): { signals: ASignal[]; whatWouldSettleIt: string[] } {
+  const n = (v: number) => v.toLocaleString('en-GB');
+  const signals: ASignal[] = [];
+  const from = f.wonDeals.length
+    ? `From the deals. The ${n(f.sold)} sold came from ${f.wonDeals.length === 1 ? 'one order' : `${inWords(f.wonDeals.length)} orders`}, ${listed(f.wonDeals)}.`
+    : 'From the deals.';
+  signals.push({ says: `Forecast: ${n(f.sold)} of ${n(f.target)}, and ${n(f.openHold)} more at most from open deals`, from });
+  for (const p of f.answersWaiting.filter((x) => x.count > 0)) {
+    const what = p.aboutPrice ? 'price answers' : 'answers';
+    signals.push({
+      says: p.count === 1 ? `${p.first}'s deal waits on a ${p.aboutPrice ? 'price answer' : 'answer'} from you` : `${p.first}'s deals wait on ${inWords(p.count)} ${what} from you`,
+      from: `From ${p.first}'s check-ins.`,
+    });
+  }
+  const short = f.target - f.sold - f.openHold;
+  const days = [...new Set(f.paymentsDue.map((p) => p.day))];
+  const pays = f.paymentsDue.length
+    ? (days.length === 1 && days[0] ? `${listed(f.paymentsDue.map((p) => p.says))} on ${days[0]}` : listed(f.paymentsDue.map((p) => (p.day ? `${p.says} on ${p.day}` : p.says))))
+    : null;
+  const where = short > 0 ? `where ${n(short)} more ${f.thing} come from` : null;
+  const settle = pays && where ? `Whether ${pays}, and ${where}.` : pays ? `Whether ${pays}.` : where ? `Where ${n(short)} more ${f.thing} come from.` : null;
+  return { signals, whatWouldSettleIt: settle ? [settle] : [] };
 }

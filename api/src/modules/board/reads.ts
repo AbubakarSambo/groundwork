@@ -199,11 +199,18 @@ const stamp = (d?: Date | number) => (d instanceof Date ? d.getTime() : (d ?? 0)
  */
 const WORDS_THAT_ONLY_ASK = new Set([
   'the', 'a', 'an', 'my', 'our', 'his', 'her', 'their', 'this', 'that', 'these', 'those', 'some', 'any', 'more', 'for', 'to', 'of', 'on', 'in', 'from', 'with', 'and', 'or', 'about', 'if', 'whether', 'is', 'are', 'be', 'it', 'its', 'they', 'them', 'fine', 'ok', 'okay', 'alright', 'allowed', 'can', 'could', 'may', 'should', 'will', 'would', 'go', 'ahead', 'permission', 'confirmation', 'confirm', 'confirmed', 'approval', 'approve', 'approved', 'authorisation', 'authorization', 'clearance', 'agreement', 'word', 'say', 'so', 'yes', 'nod',
+  /* "A decision on the KES 4,500 price", "an answer about the KES 4,500 price": asking for a decision or an answer on a thing is asking for the thing (Drop Access run 1, item 14). */
+  'decision', 'decide', 'answer', 'reply', 'response',
+  /* A to-do is said "Sort out ..." or "Decide on ...": those words only ask too. */
+  'sort', 'out',
 ]);
+/* "4,500" is one number, never "4" and "500". */
 const coreOfAWait = (what: string | null | undefined): Set<string> =>
   new Set(
-    String(what ?? '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !WORDS_THAT_ONLY_ASK.has(w)),
+    String(what ?? '').toLowerCase().replace(/(\d),(?=\d{3}\b)/g, '$1').replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !WORDS_THAT_ONLY_ASK.has(w)),
   );
+/** An amount in a wait's words: a number of three digits or more ("4500" from "KES 4,500"). */
+const AN_AMOUNT = /^\d{3,}$/;
 export function theSameWaitInOtherWords(
   a: { fromParticipantId?: string | null; onParticipantId?: string | null; onLabel?: string | null; what?: string | null },
   b: { fromParticipantId?: string | null; onParticipantId?: string | null; onLabel?: string | null; what?: string | null },
@@ -212,10 +219,37 @@ export function theSameWaitInOtherWords(
   const label = (x: { onLabel?: string | null }) => String(x.onLabel ?? '').trim().toLowerCase();
   const sameHolder = a.onParticipantId || b.onParticipantId ? a.onParticipantId === b.onParticipantId : !!label(a) && label(a) === label(b);
   if (!sameHolder) return false;
-  const x = coreOfAWait(a.what);
-  const y = coreOfAWait(b.what);
+  if (theSameThingInOtherWords(a.what, b.what)) return true;
+  /*
+   * ONE WAIT PER HOLDER AND THING (Drop Access short run, item 9). Mercy waited on Joseph for "the sample units he promised" (12
+   * October) and for "the samples for Tuskys Westgate" (14 October), and every board listed both. On the same colleague, a thing
+   * that is one word once the words that only say how many or whose are gone ("sample"), named again in the other wait, is that
+   * thing: one wait. Only for a colleague in the check-in, where the holder is surely the same person.
+   */
+  if (!a.onParticipantId || a.onParticipantId !== b.onParticipantId) return false;
+  const x = theThingItself(a.what);
+  const y = theThingItself(b.what);
+  return x.size >= 1 && x.size === y.size && [...x].every((w) => y.has(w));
+}
+
+/* The words that say how many, whose or for whom, not what: "the sample units he promised" and "the samples for Tuskys Westgate" are both "sample"; "the budget review for the north region" is "budget review", never "budget". */
+const ONLY_HOW_MANY_OR_WHOSE = new Set(['unit', 'piece', 'item', 'thing', 'stuff', 'promised', 'promise', 'said', 'agreed', 'owed', 'one', 'lot', 'set', 'batch', 'him', 'she', 'he', 'they']);
+const theThingItself = (what: string | null | undefined): Set<string> =>
+  new Set([...coreOfAWait(String(what ?? '').replace(/\s+(?:for|at|from|to|so|by)\s+.*$/i, ''))].map((w) => (w.length > 4 ? w.replace(/(?:ies)$/, 'y').replace(/(?<=[^s])s$/, '') : w)).filter((w) => !ONLY_HOW_MANY_OR_WHOSE.has(w) && !/^\d/.test(w)));
+
+/** The thing two waits are for, the same once the words that only ask for it are taken away, or the same amount and another word of it in common. */
+export function theSameThingInOtherWords(aWhat: string | null | undefined, bWhat: string | null | undefined): boolean {
+  const x = coreOfAWait(aWhat);
+  const y = coreOfAWait(bWhat);
   const [small, big] = x.size <= y.size ? [x, y] : [y, x];
-  return small.size >= 2 && [...small].every((w) => big.has(w));
+  if (small.size >= 2 && [...small].every((w) => big.has(w))) return true;
+  /*
+   * THE SAME AMOUNT FOR THE SAME THING (Drop Access run 1, item 14). Joseph waited on Grace for "a decision on the KES 4,500 price for Juja
+   * Hardware" and for "approval on the KES 4,500 price for 5 units", and Grace's morning summary listed both: the same price, the same
+   * customer's five units, told twice. Same person, same holder, the same amount and another word of the thing in common is one wait.
+   */
+  const shared = [...small].filter((w) => big.has(w));
+  return shared.some((w) => AN_AMOUNT.test(w)) && shared.some((w) => !AN_AMOUNT.test(w) && !/^\d/.test(w) && w !== 'kes' && w !== 'ksh' && w !== 'ngn' && w !== 'usd');
 }
 
 /**
@@ -265,6 +299,12 @@ export function dedupeDependencies<T extends ReadDependency>(deps: T[], alsoKeep
       (hit as any).onLabel = d.onLabel ?? hit.onLabel;
       /* Each time it was said, kept so the board can say how often it was raised (request 107 c). */
       (hit as any).raisedAt = [...((hit as any).raisedAt ?? []), { at: d.createdAt ?? null, checkInId: (d as any).sourceCheckInId ?? null }];
+      /* Every row it stands for, so a message about it is one item for all of them, by the record's ids (Drop Access run 1, item 14). */
+      (hit as any).ids = [...((hit as any).ids ?? [(hit as any).id]), (d as any).id].filter(Boolean);
+      /* What they said they tried, from whichever time they said it: the fullest, with when it was said (item 18). */
+      const tried = String((d as any).triedSaid ?? '').trim();
+      if (tried && tried.length > String((hit as any).triedSaid ?? '').trim().length) { (hit as any).triedSaid = tried; (hit as any).triedSaidAt = d.createdAt ?? null; }
+      else if (!(hit as any).triedSaidAt && String((hit as any).triedSaid ?? '').trim()) (hit as any).triedSaidAt = hit.createdAt ?? null;
       /* Anything else a caller needs kept from a later mention. No caller passes it, nothing changes. */
       alsoKeep?.(hit, d);
       continue;

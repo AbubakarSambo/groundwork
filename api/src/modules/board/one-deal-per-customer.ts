@@ -44,21 +44,46 @@ export function aLineNamesTheCustomer(line: string, dealName: string): boolean {
   const who = theCustomerIn(dealName);
   if (!who.length) return false;
   const words = squash(line).split(' ');
+  /* The same words with their capitals, one for one, so a name said short can be told from another name that starts the same way. */
+  const asWritten = String(line ?? '').replace(/[‘’“”'"]/g, '').replace(/[^A-Za-z0-9\s-]/g, ' ').replace(/\s+/g, ' ').trim().split(' ');
   for (let i = 0; i < words.length; i++) {
     let n = 0;
     while (n < who.length && words[i + n] === who[n]) n++;
-    if (n === who.length || (n > 0 && theSameCustomer(who.slice(0, n).join(' '), who.join(' ')))) return true;
+    if (n === who.length) return true;
+    /*
+     * "Mama Pima hasn't replied since Monday." is not about Mama Mboga Mart (Drop Access, 17 October): the short form "Mama"
+     * is followed by another name, written with a capital, so the line names a different customer. "Kilele 40" and "Kilele
+     * M-Pesa" still name Kilele Hotel.
+     */
+    const next = asWritten.length === words.length ? asWritten[i + n] : undefined;
+    const anotherName = !!next && /^[A-Z]/.test(next) && !NOT_THE_CUSTOMER.test(next.toLowerCase());
+    if (n > 0 && !anotherName && theSameCustomer(who.slice(0, n).join(' '), who.join(' '))) return true;
   }
   return false;
 }
 
 /** Whether any line this reader may read, naming the customer, is backed by the speaker's own document. */
-export function proofNamesTheDeal(dealName: string, lines: { text: string; mark: string; documentBy?: string | null }[], dealOwnerId?: string | null): boolean {
+export function proofNamesTheDeal(dealName: string, lines: { text: string; mark: string; documentBy?: string | null; documentWords?: string | null }[], dealOwnerId?: string | null): boolean {
   /*
    * And a line backed by the deal owner's own document, whoever said it (pilots after fixes, A3): Kevin's M-Pesa photo
    * ("Ksh496,000.00 received from KILELE HOTEL LTD") was put under Grace's "Kevin sold Kilele 40 units, paid", so no line
    * was "the speaker's own document" and Kilele stayed "Said to be won, not shown yet" for five days. Proof given counts
    * (Hafsah, 12 October).
    */
-  return lines.some((l) => (l.mark === 'proven' || (!!dealOwnerId && l.documentBy === dealOwnerId)) && aLineNamesTheCustomer(l.text, dealName));
+  /*
+   * And the proof must be about this customer (Drop Access run 1, A1): a document that can be read names the customers it is about.
+   * Kevin's "I've also sent out quotes to Savannah Cafe and Ngong Road Minimart." was backed by Savannah Cafe's M-Pesa message, so it
+   * shows Savannah Cafe, never Ngong Road Minimart. A photo, or a reference typed in full, is read by the line that names it.
+   */
+  return lines.some((l) => (l.mark === 'proven' || (!!dealOwnerId && l.documentBy === dealOwnerId))
+    && aLineNamesTheCustomer(l.text, dealName)
+    && (!l.documentWords || aLineNamesTheCustomer(l.documentWords, dealName)));
+}
+
+/**
+ * A DEAL THE LEAD NAMED BECOMES THE REP'S WHEN THE REP SPEAKS OF IT (Drop Access, 16 October 2026). Only a deal, only one whose
+ * record came from a lead's own line, and only when somebody who is not a lead now says it. A deal one rep said stays theirs.
+ */
+export function aDealTheLeadNamedBecomesTheReps(owner: string | null | undefined, speaker: string | null | undefined, leads: ReadonlySet<string>, kind: string | null | undefined): boolean {
+  return kind === 'deal' && !!owner && !!speaker && owner !== speaker && leads.has(owner) && !leads.has(speaker);
 }

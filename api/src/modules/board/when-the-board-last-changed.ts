@@ -10,14 +10,20 @@
  * Opening the board is not on that list, and nothing here is written: this only reads times the
  * record already holds.
  *
+ * WHEN SOMETHING CAME IN, NEVER WHEN A ROW WAS WRITTEN AGAIN (Hafsah's quality pass, 18 October, B-30): Grace's board read "Last
+ * updated on Sunday 18 October at 8:09pm" though nothing had come in since 14 October; the report, the counts and the waits had
+ * been written again from the same record. So a target counts from when it was set, a wait from when it was raised or cleared,
+ * and the report's rewrite only where it followed something that came in (within the hour after it). A check-in, a document, a
+ * decision still count when they come in.
+ *
  * A private document is left out on purpose. Its time would tell the others that somebody added
  * something they cannot see.
  */
 export interface WhatTheBoardIsBuiltFrom {
   checkIns?: { completedAt?: Date | string | null }[];
-  report?: { updatedAt?: Date | string | null; createdAt?: Date | string | null } | null;
+  report?: { updatedAt?: Date | string | null; createdAt?: Date | string | null; releasedAt?: Date | string | null } | null;
   objectives?: { updatedAt?: Date | string | null; createdAt?: Date | string | null }[];
-  dependencies?: { updatedAt?: Date | string | null; createdAt?: Date | string | null }[];
+  dependencies?: { updatedAt?: Date | string | null; createdAt?: Date | string | null; clearedAt?: Date | string | null }[];
   documentsEveryoneMayRead?: { createdAt?: Date | string | null }[];
   /** When the lead decided how the check-in ends (U.11). A decision is something new coming in. */
   decidedAt?: Date | string | null;
@@ -32,12 +38,20 @@ export interface WhatTheBoardIsBuiltFrom {
 }
 
 export function whenTheBoardLastChanged(from: WhatTheBoardIsBuiltFrom): string | null {
-  const times: (Date | string | null | undefined)[] = [
+  const ms = (t: Date | string | null | undefined) => (t ? new Date(t).getTime() : NaN);
+  const cameIn: (Date | string | null | undefined)[] = [
     ...(from.checkIns ?? []).map((c) => c.completedAt),
-    from.report?.updatedAt ?? from.report?.createdAt,
-    ...(from.objectives ?? []).map((o) => o.updatedAt ?? o.createdAt),
-    ...(from.dependencies ?? []).map((d) => d.updatedAt ?? d.createdAt),
+    ...(from.objectives ?? []).map((o) => o.createdAt ?? o.updatedAt),
+    ...(from.dependencies ?? []).map((d) => d.clearedAt ?? d.createdAt ?? d.updatedAt),
     ...(from.documentsEveryoneMayRead ?? []).map((d) => d.createdAt),
+  ];
+  const lastIn = Math.max(...cameIn.map(ms).filter(Number.isFinite), -Infinity);
+  /* The report rewritten: only as part of something coming in, never a rewrite days later from the same record. */
+  const rewrite = from.report?.updatedAt ?? from.report?.createdAt;
+  const rewriteCounts = !!rewrite && (!Number.isFinite(lastIn) || ms(rewrite) <= lastIn + 3_600_000);
+  const times: (Date | string | null | undefined)[] = [
+    ...cameIn,
+    rewriteCounts ? rewrite : from.report?.createdAt,
     ...(from.agreedWithThePerson ?? []).filter((a) => a.seenBySubject === true).map((a) => a.updatedAt ?? a.createdAt),
     from.decidedAt,
     from.monthEndedAt,

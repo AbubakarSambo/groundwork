@@ -38,6 +38,8 @@ export function theRecordsMark(lineMark: HowALineIsKnown | null): ARecordsMark {
 
 export interface WhatComesNext {
   next: string | null;
+  /** The step alone, short, the way the prototype's Next step column reads it ("Send the quote, with a photo"). The sentence above says whose it is. */
+  nextStep?: string | null;
   nextKnown: 'said' | null;
   nextSays: string;
 }
@@ -55,7 +57,28 @@ export function whatHappensNext(
     const who = whoIs(promise.participantId);
     const clause = inOurVoice(promise.text, who === 'You' ? 'you' : 'them');
     const says = clause ? `${who} committed to ${clause}.` : `${who} made a commitment about it, which is in the record.`;
-    return { next: says, nextKnown: 'said', nextSays: says };
+    return { next: says, nextStep: clause ? aStepOnItsOwn(clause) : null, nextKnown: 'said', nextSays: says };
   }
   return { next: null, nextKnown: null, nextSays: 'Nobody has said what happens next.' };
+}
+
+/**
+ * THE NEXT STEP AS THE DEAL'S OWN LINE SAID IT (Hafsah, 16 October 2026). Where no open commitment names the customer, the next
+ * step said about the deal in a check-in, kept with it as "Next step" (and "Next step by"), is the deal's next step, in that
+ * person's words and said as theirs. Nothing is made up: with neither, the deal still says nobody has said.
+ */
+export function theNextStepTheyGave(fields: Record<string, string> | null | undefined, who: string | null): WhatComesNext | null {
+  const step = String(fields?.['Next step'] ?? '').trim().replace(/[.\s]+$/, '');
+  if (!step || !who) return null;
+  const by = String(fields?.['Next step by'] ?? '').trim().replace(/[.\s]+$/, '');
+  const quoted = `“${step.charAt(0).toLowerCase()}${step.slice(1)}”`;
+  const already = by && step.toLowerCase().includes(by.toLowerCase());
+  const says = `${who === 'You' ? 'You' : who} said the next step is ${quoted}${by && !already ? `, by ${by}` : ''}.`;
+  return { next: says, nextStep: aStepOnItsOwn(by && !already ? `${step}, by ${by}` : step), nextKnown: 'said', nextSays: says };
+}
+
+/** "send the quote, with a photo" as the column reads it: "Send the quote, with a photo". */
+export function aStepOnItsOwn(step: string): string {
+  const t = step.trim().replace(/[.\s]+$/, '');
+  return t ? `${t.charAt(0).toUpperCase()}${t.slice(1)}` : t;
 }

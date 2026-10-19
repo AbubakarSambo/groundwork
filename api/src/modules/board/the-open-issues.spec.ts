@@ -69,3 +69,16 @@ describe('open issues, each at its step', () => {
     expect(aPromiseAsATitle("I'll send Grace the stand quote.")).toBe('Send Grace the stand quote');
   });
 });
+
+describe('a difference whose topic is a whole sentence (Drop Access, 16 October)', () => {
+  it('is said on its own, never inside "see ... differently"', () => {
+    const [d] = theOpenIssues({
+      groundId: 'g', now,
+      differences: [{ key: '1', topic: "You expect each team member to generate 10 new leads weekly, but participants' records do not show this is being tracked", withFirstName: 'Joseph', since: null as any }],
+      stillToDecide: [], memories: [], leadPromises: [],
+    } as any);
+    expect(d.title).toBe('Joseph and you see this differently');
+    expect(d.conversation!.says).toBe("You expect each team member to generate 10 new leads weekly, but participants' records do not show this is being tracked. You and Joseph have seen this differently, and it has not been talked about.");
+    expect(d.conversation!.wayToStart).toBe('“Joseph, we see this differently. Can we agree on it?”');
+  });
+});

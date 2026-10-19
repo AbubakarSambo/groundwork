@@ -259,7 +259,9 @@ export function theAimItself(name: string, target: number | null): string | null
 }
 
 function theAimFrom(name: string, target: number | null): string | null {
-  const t = theNumbersPeopleCanRead((name ?? '').trim()).replace(/[.!?\s]+$/, '');
+  /* "Sell 40 units" and "Open 10 new leads weekly" (Drop Access, 16 October) read "You are aiming for 40 Sell 40 units": an aim
+     said as a thing to do is the thing it counts, "40 units". */
+  const t = aThingToDoIsWhatItCounts(theNumbersPeopleCanRead((name ?? '').trim()).replace(/[.!?\s]+$/, ''));
   if (!t) return null;
   let what: string | null = null;
   if (onlySaysWhatIsCounted(t)) {
@@ -330,8 +332,13 @@ export const THE_NAME_TO_DO = /^(\p{Lu}[\p{L}'’-]*(?:\s+\p{Lu}[\p{L}'’-]*)?)
  * The name of an aim, as one full sentence about a person, in labels. The board names it for the
  * reader with `withNames` after this.
  */
+/** "Sell 40 units" is "40 units"; "Open 10 new leads weekly" is "10 new leads weekly". Only a verb straight before a number. */
+export function aThingToDoIsWhatItCounts(t: string): string {
+  return t.replace(/^(?:sell|open|close|sign|get|reach|hit|make|win|bring\s+in|find|add|do)\s+(?=\d|(?:one|two|three|four|five|six|seven|eight|nine|ten|twenty|thirty|forty|fifty)\b)/i, '');
+}
+
 export function anAimAsASentence(name: string, who: WhoAnAimIsAbout): string {
-  let t = theNumbersPeopleCanRead((name ?? '').trim());
+  let t = aThingToDoIsWhatItCounts(theNumbersPeopleCanRead((name ?? '').trim()));
   if (!t) return t;
   /* Their own sentence that would read as a thing ("my plan is five kits ...") is quoted as theirs, with the label beside it. */
   const theirs = theirOwnSentence(name);

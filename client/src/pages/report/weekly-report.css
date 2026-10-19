@@ -1,7 +1,7 @@
 /* weekly-report.jpg (screens 43, 44, 50 to 80): the weekly report as pictured, in the product's own tokens. */
 .wr-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
 .wr-tile { background: var(--gw-card); border: 1px solid var(--gw-border); border-radius: 12px; padding: 18px 22px; display: grid; gap: 4px; }
-.wr-tile b { font-family: var(--gw-serif, Georgia, serif); font-weight: 400; font-size: 26px; color: var(--gw-text); }
+.wr-tile b { font-family: var(--gw-font-name); font-weight: 500; font-variant-numeric: lining-nums; font-size: 26px; color: var(--gw-text); }
 .wr-tile span { font-size: 15px; color: var(--gw-sub); line-height: 1.4; }
 .wr-panel { background: var(--gw-card); border: 1px solid var(--gw-border); border-radius: 12px; padding: 18px 22px; display: grid; gap: 10px; }
 .wr-panel p { margin: 0; font-size: 16px; line-height: 1.5; color: var(--gw-text); }
@@ -12,11 +12,11 @@
 .wr-row span { font-size: 15px; color: var(--gw-sub); line-height: 1.45; }
 .wr-row-amber { border-left-color: var(--gw-amber-t, #8A5C1A); }
 .wr-row-navy { border-left-color: var(--gw-navy, #0C447C); }
-.wr-row .wr-from { background: var(--gw-bg, #F7F1E5); border-radius: 13px; padding: 2px 10px; font-size: 13.5px; font-weight: 700; color: var(--gw-text); justify-self: stretch; }
+.wr-row .wr-from { display: inline-flex; align-items: center; min-height: 26px; background: var(--gw-bg, #F7F1E5); border-radius: 13px; padding: 0 10px; font-size: 13.5px; font-weight: 700; color: var(--gw-text); justify-self: stretch; }
 .wr-changed { gap: 0; }
 .wr-changed-row { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 12px; padding: 14px 0; border-top: 1px solid var(--gw-border); }
 .wr-changed-row b { font-size: 13.5px; color: var(--gw-text); padding-top: 2px; }
 .wr-changed-row p { margin: 0; font-size: 16px; color: var(--gw-text); }
 @media (max-width: 600px) { .wr-changed-row { grid-template-columns: 1fr; } }
-.wr-nothing-h { font-family: var(--gw-serif, Georgia, serif); font-weight: 400; font-size: 26px; margin: 24px 0 8px; color: var(--gw-text); }
+.wr-nothing-h { font-family: var(--gw-font-name); font-weight: 500; font-size: 26px; margin: 24px 0 8px; color: var(--gw-text); }
 .wr-nothing-p { font-size: 16px; color: var(--gw-sub); margin: 0 0 16px; }

@@ -25,6 +25,13 @@ export interface PlanCard {
   note?: string
   whichWay?: string
   directionSuggested?: string
+  /** One of the targets read from the lead's own check-in: shown together, as one card (Hafsah, 18 October). */
+  fromYourCheckIn?: boolean
+  /** The day she said it, as YYYY-MM-DD. */
+  saidOn?: string | null
+  /** Groundwork's own suggestion, quoting nobody: no quotation and no Edit (the stall rule, standing decision 4). */
+  suggested?: boolean
+  fields?: { what?: string; number?: number; personName?: string; personOnTheCheckIn?: string; participantId?: string }
 }
 
 export type GroundScenario =
@@ -598,6 +605,9 @@ export const groundsApi = {
     apiClient.post(`/grounds/${groundId}/plan/proposals/${cardId}/not-now`).then(r => r.data),
   editPlanCard: (groundId: string, cardId: string, says: string) =>
     apiClient.patch<PlanCard>(`/grounds/${groundId}/plan/proposals/${cardId}`, { says }).then(r => r.data),
+  /** A target from the lead's own check-in, corrected: what it counts and its number, as she types them. */
+  correctATargetCard: (groundId: string, cardId: string, fields: { what: string; number: number | null }) =>
+    apiClient.patch<PlanCard>(`/grounds/${groundId}/plan/proposals/${cardId}`, { fields }).then(r => r.data),
 
   contextChat: (groundId: string, history: { role: 'user' | 'assistant'; content: string }[]) =>
     apiClient

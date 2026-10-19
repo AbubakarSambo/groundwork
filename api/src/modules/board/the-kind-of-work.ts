@@ -1,3 +1,4 @@
+import { withTheValueWorkedOut, theBuyingDateOf, aBuyingDateSaid, aLineIsAbout, BUYING_DATE } from './a-deals-value-and-buying-date';
 import { PLAIN_WORDS } from '../conversation/plain-words';
 
 /**
@@ -206,6 +207,21 @@ export interface AServedRecord {
   ownerClaim?: { participantId: string; who: string; says: string };
   /** What happens next, only as somebody said it: an open commitment that names it. Null where nobody has said. */
   next?: string | null;
+  /** The step alone, short, for the deal grid's Next step column and the gap list; `next` says whose it is. */
+  nextStep?: string | null;
+  /** Each stage somebody said a deal was at (a-deals-stages-are-kept), for "Reported vs criteria met". */
+  stagesSaid?: string[];
+  /** The day the customer said they will buy, YYYY-MM-DD, filed on the deal (Release 1's sales board; a-deals-value-and-buying-date). */
+  buyingDate?: string | null;
+  /** A payment or deposit record backs it (Release 1's sales board; a-deals-four-criteria). "With proof of payment" counts these alone. */
+  paymentRecord?: boolean;
+  /** A signed order backs it. Won is met with a signed order or a payment record (Hafsah, 18 October, answer 2). */
+  signedOrder?: boolean;
+  /** Its four criteria, ticked as the kit ticks them, and the stages its record meets (Release 1's sales board). */
+  criteria?: { criterion: string; label: string; met: boolean; says: string | null }[];
+  criteriaSays?: string;
+  stagesMet?: string[];
+  stageMet?: string | null;
   nextKnown?: 'said' | null;
   nextSays?: string;
   /** What it is worth, where somebody said (request 115 b), and the sentence where nobody has. */
@@ -216,6 +232,11 @@ export interface AServedRecord {
   contactHistorySays?: string;
   /** The owner's own latest sentence that names it, word for word, where this reader may read their words. */
   theirRead?: { who: string; words: string; says: string } | null;
+  /**
+   * DROPPED (Release 1's sales board; a-deal-that-was-dropped): the customer turned it down, or the rep gave it up. Not an open
+   * deal: the grid shows it once, as one line at the foot of the group it would be in, and no count of open deals reads it.
+   */
+  lost?: { on: string; reason: string | null; reasonFrom: string; lesson: string | null; says: string } | null;
 }
 
 export type AServedSection =
@@ -324,6 +345,14 @@ export function theSetupWords(
 
 // --- Reading records from what people said -----------------------------------------------------
 
+/**
+ * A SALES DEAL AND ITS DETAILS (Hafsah, 16 October 2026). What reps say becomes deals and leads on the record, one per
+ * customer, with the details the board shows: what it is worth, who they dealt with, and the next step with its day. A lead is
+ * a deal at its first stage. The labels are fixed so the board can read them (theValueOf reads "Value"; the next step is read
+ * from "Next step" where no commitment names the customer).
+ */
+export const A_DEAL_AND_ITS_DETAILS = `For a sales team, every customer a line names is one deal, a new lead included: give it once per customer, named only as the business is named ("Savannah Cafe", never "Jane Mwende at Savannah Cafe"; the person goes in Contact), and never as a person in the team. A line that names no business ("two shops on Ngong Road") names no deal. What each stage means: Contacted is a business and a person reached, and a new lead is Contacted; Need established is the customer's need said; Pitched is an offer made with its price; Qualified is a need, a budget the customer stated, who decides and a buying date; Quoted is a quote the customer received; Won is paid or an order signed, and a yes with the payment or the order still to come is not Won. Give the stage the line supports, and none when it does not say. Use only these labels for details, each only when the line says it: Value (what the whole deal is worth, such as KES 30,000 for 6 units; never the price of one unit, and never a discount), Price each (the price of one unit, such as KES 4,500, when that is what the line says), Units (how many), Contact (the person they dealt with at the customer), Next step (what happens next, in a few words), Next step by (its day, as said), Buying date (the day the customer said they will buy, as YYYY-MM-DD; it is the customer's date, never the rep's own next step), Need (what the customer needs, in the customer's own words as the line gives them, such as "3 units for the members' area"; a discount or a lower price the customer asks for is never their need), Budget stated (the money the customer said they have or will spend, as said: an amount such as KES 15,000, or a range kept as the range, such as KES 10,000 to 15,000; never the rep's own price or quote), Decision maker (who at the customer decides, by name or by role, such as "the owner" or "Mrs Njeri, the buyer"). A discount the customer asked for is not a value. A line that names only the person at a customer, as the deals on record give them ("Rose said she will buy on October 30th", where Rose is the contact at Mama Mboga Mart), is about that customer's deal: give the deal by its name on record.`;
+
 export function theRecordsPrompt(kind: KindOfWork): string {
   const sections = RECORDS_FOR_EACH_KIND[kind].filter((s) => s.itemKinds.length);
   const lines = sections.map((s) => `- ${s.holds} (give kind as one of: ${s.itemKinds.map((k) => `"${k}"`).join(', ')})${s.stages ? `. Stages, in order: ${s.stages.join(', ')}` : ''}`);
@@ -332,7 +361,7 @@ ${lines.join('\n')}
 
 Each line has an id. For every record a line names, give the id of the line, the kind, and the record's name as it was said in that line, word for word, such as a customer's name, a release's name, a ticket, a county or a party. Give a stage only when the line says it, using one of the stages above. Give a due date only when the line says one, as YYYY-MM-DD. Give other details only when the line says them, as short label and value pairs, such as Value and KES 90K.
 
-Leave out anything the line does not say. Never make up a record, a name, a stage or a date. When no line names a record, give an empty list.
+${isASalesKind(kind) ? `${A_DEAL_AND_ITS_DETAILS}\n\n` : ''}Leave out anything the line does not say. Never make up a record, a name, a stage or a date. When no line names a record, give an empty list.
 
 Each line says who said it. Every record is the speaker's own; do not give an owner.
 
@@ -430,6 +459,8 @@ export function aNameThatNamesSomething(name: string | null | undefined): boolea
   const n = (name ?? '').trim().replace(/[.,;:!?]+$/, '');
   /* "something I don't have" (the loans board): a name that starts with "something" names nothing. */
   if (/^(?:something|anything|nothing|everything)\b/i.test(n)) return false;
+  /* "two shops on Ngong Road" (Drop Access, 16 October): a count of places names no customer anybody could find again. */
+  if (/^(?:\d+|a few|a couple of|some|several|many|two|three|four|five|six|seven|eight|nine|ten)\s+(?:other\s+|new\s+|more\s+)?(?:shops?|stores?|customers?|businesses|business|hotels?|supermarkets?|clients?|leads?|offices?|kiosks?|outlets?|places?)\b/i.test(n)) return false;
   return !!n && !ONLY_POINTS_ELSEWHERE.test(n.charAt(0).toLowerCase() + n.slice(1));
 }
 
@@ -438,6 +469,9 @@ export function aNameThatNamesSomething(name: string | null | undefined): boolea
  * it was given, its kind belongs to this kind of work, and its name is in that line's words. A stage
  * must be one of the stages; a date must be a real date. Everything else is dropped, never guessed.
  */
+/* A line that names a business of its own ("Ngong Road Minimart wants ...") does not go on from the line before it. */
+const A_CUSTOMER_NAMED = /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\s+(?:Cafe|Gym|Hotel|Stores?|Shop|Mart|Minimart|Supermarket|Hardware|Electricals|Offices|Supplies|Spa|Fresh|Foods|Deli|Butchery|Ltd|Limited)\b/;
+
 export function onlyRecordsTheLinesSay(
   kind: KindOfWork,
   offered: AnOfferedRecord[] | null | undefined,
@@ -445,6 +479,8 @@ export function onlyRecordsTheLinesSay(
   leadsStages: unknown,
   /** The people in the check-in, so a record the speaker says is somebody else's is theirs. See theOwnerTheLineNames. */
   people: readonly APersonALineMayName[] = [],
+  /** The deals on record, so a line that names only a deal's contact ("Rose said she will buy") is about that deal (point 6). */
+  dealsOnRecord: readonly { name: string; fields?: Record<string, string> | null; ownerParticipantId?: string | null }[] = [],
 ): { kind: string; name: string; stage: string | null; dueAt: Date | null; fields: Record<string, string>; sourceEntryId: string; ownerParticipantId: string }[] {
   const byId = new Map(lines.map((l) => [l.id, l]));
   const allowed = new Set(itemKindsFor(kind));
@@ -454,7 +490,21 @@ export function onlyRecordsTheLinesSay(
     const line = r.lineId ? byId.get(r.lineId) : undefined;
     const name = (r.name ?? '').trim();
     if (!line || !r.kind || !allowed.has(r.kind) || !name || name.length > 120 || !aNameThatNamesSomething(name)) continue;
-    if (!squash(line.text).includes(squash(name))) continue;
+    if (!squash(line.text).includes(squash(name))) {
+      /* A line that names only the contact at a customer the speaker already has on record is about that deal (Hafsah's point 6). */
+      const theirs = r.kind === 'deal' ? dealsOnRecord.find((d) => squash(d.name) === squash(name) && (!d.ownerParticipantId || d.ownerParticipantId === line.participantId)) : undefined;
+      /*
+       * AN ANSWER THAT GOES ON FROM THE LINE BEFORE IT (the four criteria, Drop Access test bed, 18 October). Joseph said "Juja
+       * Hardware: I met Mr Kariuki again, he still wants 5 units." and then "He has about KES 22,500 for the 5 units.", which names
+       * nobody. A deal line that names no customer is about the deal that the same person's line just before it, in this check-in,
+       * named. Only the line just before, and only by the same person.
+       */
+      const at = lines.indexOf(line);
+      const before = at > 0 ? lines[at - 1] : null;
+      const goesOn = r.kind === 'deal' && !!before && before.participantId === line.participantId && !A_CUSTOMER_NAMED.test(line.text)
+        && (squash(before.text).includes(squash(name)) || (!!theirs && aLineIsAbout(before.text, theirs)));
+      if (!goesOn && (!theirs || !aLineIsAbout(line.text, theirs))) continue;
+    }
     /* A person in the check-in is never a customer, a deal or any other record (pilots after fixes, 14 October): Joseph's
        "She wants 12,000 for 10 units" became a deal called "Mercy". */
     if (isOneOfThePeople(name, people)) continue;
@@ -462,7 +512,22 @@ export function onlyRecordsTheLinesSay(
     const stages = stagesFor(section, leadsStages) ?? [];
     const stage = stages.find((s) => s.toLowerCase() === (r.stage ?? '').trim().toLowerCase()) ?? null;
     const due = /^\d{4}-\d{2}-\d{2}$/.test((r.due ?? '').trim()) ? new Date(`${r.due!.trim()}T00:00:00.000Z`) : null;
-    const fields = plainFields(Object.fromEntries((r.details ?? []).map((d) => [d?.label ?? '', d?.value ?? ''])));
+    let fields = plainFields(Object.fromEntries((r.details ?? []).map((d) => [d?.label ?? '', d?.value ?? ''])));
+    if (isASalesKind(kind) && r.kind === 'deal') {
+      /*
+       * The value is the whole deal's: a price for one unit or a discount is kept under its own name (Hafsah's point 5). And only
+       * the units and value this line says, or the same person's line just before it that it goes on from (Drop Access run 1, A2:
+       * "Units: 40" was written on Juja Hardware from "I can ask Grace again. I'll do it today.").
+       */
+      const at = lines.indexOf(line);
+      const before = at > 0 && lines[at - 1].participantId === line.participantId ? [lines[at - 1].text] : [];
+      fields = withTheValueWorkedOut(fields, [line.text, ...before], { onlyNumbersSaid: true });
+      /* A buying date is a real day, or it is not kept; where the model gave none, the line's own words are read for one (point 6). */
+      const given = theBuyingDateOf(fields);
+      delete fields[BUYING_DATE];
+      const day = given ?? aBuyingDateSaid(line.text, new Date());
+      if (day) fields[BUYING_DATE] = day;
+    }
     const key = `${r.kind}|${squash(name)}|${line.id}`;
     if (seen.has(key)) continue;
     seen.add(key);

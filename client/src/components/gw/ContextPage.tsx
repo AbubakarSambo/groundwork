@@ -6,7 +6,7 @@ import { documentsApi } from '@/api/documents'
 import { askApi } from '@/api/ask'
 import { toast } from 'sonner'
 import { personLabel, peopleLabels, firstNameOrLabel, atTheStart } from '@/lib/utils'
-import { Section, Panel, Button, TextArea, Tag, Note, Callout, Choices, SubHeading, FoldedLine, SmallMenu } from '@/components/gw/ui'
+import { Section, Panel, Button, TextArea, Tag, Note, Callout, Choices, SubHeading, FoldedLine, SmallMenu, RowList, Row } from '@/components/gw/ui'
 import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
 import { scrollToId } from '@/lib/scroll-to'
 import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
@@ -678,6 +678,25 @@ export function ContextPage({
 
     </>
   )
+  /*
+   * THE PLAN, AS AGREED (Hafsah, 18 October; the prototype's full Context page: "10 new leads a week", "Samuel, Weekly"). The
+   * server builds each line from the record (confirmed plan cards, and targets a person carries on a cadence) and sends only what
+   * this reader may read. With nothing on record it sends none, and the section is left out: the prototype has no empty wording.
+   */
+  const planAsAgreed: { id: string; what: string; who: string; when: string }[] = (ground as any).planAsAgreed ?? []
+  const thePlanRows = planAsAgreed.length > 0 ? (
+      <Panel pad={false}>
+        <RowList label="The plan, as agreed">
+          {planAsAgreed.map((l) => (
+            <Row key={l.id} columns="1fr auto" inset="panel">
+              <span>{l.what}</span>
+              <Note tone="muted">{`${l.who}, ${l.when}`}</Note>
+            </Row>
+          ))}
+        </RowList>
+      </Panel>
+  ) : null
+  const partPlan = thePlanRows ? <><Section heading="The plan, as agreed" />{thePlanRows}</> : null
   const partE = (
     <>
             {/*
@@ -1470,6 +1489,7 @@ export function ContextPage({
                 {partG}
                 {partH}
                 {partI}
+                {partPlan}
               </>
             )}
             {/*
@@ -1495,6 +1515,9 @@ export function ContextPage({
                   )}
                   {(isTheLead || theBuckets.some((b) => b.lines.length > 0)) && (
                     <FoldedLine name="How we work" fact={thePageAtAGlance.howWeWork}>{partI}</FoldedLine>
+                  )}
+                  {partPlan && (
+                    <FoldedLine name="The plan, as agreed" fact={planAsAgreed.length === 1 ? '1 line agreed' : `${planAsAgreed.length} lines agreed`}>{thePlanRows}</FoldedLine>
                   )}
                   <FoldedLine name="Documents" fact={thePageAtAGlance.documents}>{partG}</FoldedLine>
                   {isLead && <FoldedLine name="Each person’s card" fact={thePageAtAGlance.people}>{partF}</FoldedLine>}

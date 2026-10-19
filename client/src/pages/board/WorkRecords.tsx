@@ -1210,6 +1210,18 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
       {isSalesDealGrid ? <Stack gap={12}><DealGridKey rows={dealGridRows} />{dealGridContent}</Stack> : dealGridContent}
 
       {/*
+        LOST DEALS, AND WHY (Hafsah, 18 October: a Lost stage). Never in a group or an open total; one line each, in the
+        server's own sentences: what happened and why, in the rep's words, what shows it, and a lesson only where the record has one.
+      */}
+      {isSalesDealGrid && 'lost' in section && (section.lost ?? []).length > 0 && (
+        <Stack gap={6}>
+          <SubHeading>Lost deals, and why</SubHeading>
+          <Note tone="muted">A reason with no source stays unverified. An unknown reason is flagged, because it can’t be learned from.</Note>
+          {(section.lost ?? []).map((l) => <Note key={`lost-${l.id}`}>{[l.says, l.reasonFrom, l.lesson].filter(Boolean).join(' ')}</Note>)}
+        </Stack>
+      )}
+
+      {/*
         REQUEST 112 (a): WHAT THE RECORD CANNOT SUPPORT, SAID PLAINLY ONCE UNDER THE GRID
         ("Nothing on record says what a deal must show at each stage..."). Never claimed by a
         group's own heading or reason - said once, here, so no group reads as more than it is.

@@ -32,6 +32,27 @@ The second of the five pull requests for Release 1. It is built on pull request 
 
 **Old tests this changes, and why:** the kinds count is twelve now; the offered list includes "sales team"; the short-tag source check reads `isASalesKind`; the sales org's banner and chooser label on the board now say "a sales organisation of several teams", because "a sales team" is the new kind's sentence.
 
+## Release 1, pull request 3 of 5: the sales board (19 October)
+
+The third of the five pull requests for Release 1. It is built on pull requests 1 and 2, and it is the first one that reads the switch `Organization.release1SalesBoardOn`. With the switch off, which it is for every organisation, a board reads as it did before. With it on, a sales check-in's board reads as the kit's sales board:
+
+1. **Deals and leads counted from the record.** Each sales aim is counted from the deals: what is sold, what is proven by a payment record or a signed order ("65 sold, 65 with proof of payment"), and new leads. A customer's reply is kept on its deal, not as a team wait. A deal's value is the whole deal, never the price of one unit or a discount. The day the customer said they will buy is on the deal. Each stage a deal is put at is kept with its day.
+2. **What needs you.** Each decision a wait on the lead is waiting for, with Yes and No; "Decide whether a price range counts as a budget"; a decision the lead promised herself; "No stall rule set yet", with 3 working days suggested for her to confirm; and, at the end of her own check-in and on the Context tab, the targets read from her words as one card to confirm or correct before they go on record. Today counts the same list.
+3. **To close the gap, the four criteria and the groups.** Each deal's four criteria (need, budget stated, who decides, buying date) ticked, the stages its record meets, what it still needs and from whom, and its group: Likely, Possible, Next quarter, Cooling, and Cold only under a stall rule the lead set. Lost deals are listed once, with the reason in the rep's own words.
+4. **The team today and the blockers.** Each rep's line from today's check-in and what to coach them on this week, a promise carried over three check-ins running, and each blocker in the kit's format with what was tried, in a full sentence with its day. A target said again is that target, and is counted once.
+5. **Context.** Each target once, as the board reads it, and "The plan, as agreed".
+
+**Before you merge:**
+- [ ] **Take a backup of the database first.**
+- [ ] **There is no new migration.** `schema.prisma` only changes the comment on `release1SalesBoardOn`.
+- [ ] **Existing organisations see nothing new.** The switch is off for all of them. The tests named `release-one-sales-board-switch-as-each-reader-reads-it`, and each new test's "with Release 1's switch off" case, read the board, the session header, Context and the gaps as before.
+- [ ] **What runs for every sales check-in, whatever the switch says** (the writers, as `release-one-sales-board.ts` says: they only add): the deal rows are read with each deal's details (value, price each, units, contact, next step, buying date, need, budget stated, decision maker), and each stage is kept with its day. The records read is a prompt in the code (`theRecordsPrompt`), not one stored in the database, so the new wording is the one that runs.
+- [ ] **No new templates, no new settings, no new prompt versions, no new one-off scripts.**
+
+**Brought early from later pull requests, unused by the product until then:** `api/src/modules/reports/a-correction-is-their-latest-word.ts` (the board reads it), `the-sales-week-in-numbers.ts`, `what-a-sales-week-shows.ts`, `a-sales-report-read-from-the-deals.ts`, `the-sales-week-in-words.ts`, `the-sales-team-report-from-the-record.ts` (board tests read them), and `api/src/modules/conversation/what-a-sales-check-in-gathers.ts` (the four criteria test reads it; nothing calls it yet).
+
+**Old tests this changes, and why:** `a-number-with-a-name-on-it-goes-through-one-rule.spec.ts` no longer excuses `reports/the-sales-readings-for-a-report.ts`, which comes in pull request 4 with its excuse. `a-gap-the-record-now-answers-is-not-unanswered.spec.ts` and `a-finished-session-is-never-still-open.spec.ts` switch Release 1 on, because what they check is behind the switch here, and each gains a case that reads the board with it off.
+
 ## This update, 14 October (after #326 and #327)
 
 This update is made from staging as it is now (`a767ec6c3`). Like the release before it, it comes as two pull requests, the engine first and then the screens.
