@@ -133,6 +133,7 @@ import { theContextReadsEachTargetOnce, eachTargetOnceOnTheContextTab } from './
 import { thePlanAsAgreed } from './the-plan-as-agreed';
 import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
 import { theRelease2CollectionsIsOn } from './release-2-collections';
+import { TYPES_A_SCENARIO_OFFERS, CHECK_IN_TYPE_LABEL, oneOfTheTypes } from '../board/the-switchboard';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
@@ -5632,6 +5633,32 @@ export class GroundsService {
       where: { id: groundId },
       data,
       select: { id: true, kindOfWork: true, kindOfWorkSetBy: true, workStages: true },
+    });
+  }
+
+  /**
+   * THE LEAD CONFIRMS THE TYPE (Release 2, the switchboard foundation; board/the-switchboard.ts). Written only here, only by the
+   * lead (or an admin once the lead has left, as every setting), only where the organisation's Release 2 switch is on, and only a
+   * type this check-in's scenario offers. Nothing else writes it, so no existing check-in's type is ever rewritten. Refusals are
+   * full sentences, and nothing is written with one.
+   */
+  async confirmTheType(groundId: string, requestingUserId: string, body: { type?: unknown }) {
+    await this.aSettingOnlyTheLeadMayChange(groundId, requestingUserId);
+    const g = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { id: true, scenario: true, organizationId: true } });
+    if (!g) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    if (!(await theRelease2CollectionsIsOn(this.prisma, g.organizationId))) {
+      throw new BadRequestException('Choosing the type of a check-in is not open to your organisation yet, so nothing was changed.');
+    }
+    const offered = TYPES_A_SCENARIO_OFFERS[g.scenario as GroundScenario];
+    if (!offered) throw new BadRequestException('This check-in has no type to choose. Its kind of work decides its board.');
+    const type = oneOfTheTypes(body?.type);
+    if (!type || !offered.includes(type)) {
+      throw new BadRequestException(`Choose one of these: ${offered.map((t) => CHECK_IN_TYPE_LABEL[t]).join(' or ')}.`);
+    }
+    return this.prisma.ground.update({
+      where: { id: groundId },
+      data: { checkInType: type, checkInTypeConfirmedAt: new Date() },
+      select: { id: true, checkInType: true, checkInTypeConfirmedAt: true },
     });
   }
 

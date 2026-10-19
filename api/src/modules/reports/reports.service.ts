@@ -1,4 +1,5 @@
 import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
+import { whatTheSwitchboardServes, type TheSwitchboardServed } from '../board/the-switchboard';
 import { theCorrectionsOnTheCheckIn, withWhatACorrectionSettled, whoIsBehindALabel } from './a-correction-is-their-latest-word';
 import { theReleaseOneSalesBoardIsOnFor } from '../board/release-one-sales-board';
 import { isASalesKind } from '../board/the-kind-of-work';
@@ -7284,6 +7285,24 @@ happened, and what is in the way.`;
   /** Decision 133: when the lead opens a report, the time is recorded (a-lead-read-this-report.ts). It never fails the read. */
   async noteTheLeadRead(groundId: string, sessionNumber: number, userId: string): Promise<void> {
     await recordThatTheLeadRead(this.prisma, groundId, sessionNumber, userId).catch((err: any) => this.logger?.warn?.(`A report read was not recorded: ${err?.message}`));
+  }
+
+  /**
+   * WHAT THE SWITCHBOARD PICKS FOR THIS CHECK-IN'S REPORTS (board/the-switchboard.ts), as `{ switchboard }` where the organisation's
+   * Release 2 switch is on, or nothing at all, so a report served where it is off is exactly what it was. Called only after the
+   * report itself was allowed to this reader; it reads the check-in's scenario and type, nothing about a person.
+   */
+  async theSwitchboardsPickFor(groundId: string): Promise<{ switchboard?: TheSwitchboardServed }> {
+    try {
+      const g = await this.prisma.ground.findUnique({
+        where: { id: groundId },
+        select: { organizationId: true, scenario: true, kindOfWork: true, kindOfWorkSetBy: true, checkInType: true, checkInTypeConfirmedAt: true } as any,
+      });
+      const served = g ? await whatTheSwitchboardServes(this.prisma, g as any) : null;
+      return served ? { switchboard: served } : {};
+    } catch {
+      return {};
+    }
   }
 
   async sessionReport(groundId: string, sessionNumber: number, requestingUserId: string, requestingUserOrgId?: string, asIfReleased = false) {

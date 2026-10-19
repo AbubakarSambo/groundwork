@@ -955,6 +955,17 @@ export class GroundsController {
     return this.grounds.setPeopleWorkTogether(id, userId, !!body.together);
   }
 
+  /** Release 2: the lead confirms this check-in's type in "What it is" (board/the-switchboard.ts). */
+  @Patch(':id/check-in-type')
+  @ApiOperation({ summary: "The lead confirms the type of this check-in, one of the types its scenario offers (Release 2)" })
+  async confirmTheType(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() body: { type?: unknown },
+  ) {
+    return this.grounds.confirmTheType(id, userId, body ?? {});
+  }
+
   @Patch(':id/kind-of-work')
   @ApiOperation({ summary: 'The lead sets the kind of work this check-in is about (one of eleven, or none), and its own stage names' })
   async setKindOfWork(
