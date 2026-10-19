@@ -1,3 +1,4 @@
+import { theFeeNotesThatFellDueOnAnEvent } from '../board/a-fee-note-that-fell-due-said-to-the-lead';
 import { NOT_A_QUIET_CLOSE } from '../grounds/an-answer-includes-a-refusal';
 import { CheckInStatus, GroundStatus } from '@prisma/client';
 import { owesThisSession } from '../grounds/the-lead-checks-in-when-they-choose';
@@ -393,10 +394,10 @@ export async function sendTheLeadsWeeklyLetters(
   const kind = every ? (every.anchorIsOn ? {} : WHERE_A_GROUND_IS_NOT_THE_ANCHORS) : WHERE_A_GROUND_IS_THE_ANCHORS;
   const grounds: any[] = await everyRowAPageAtATime((page: any) => prisma.ground.findMany({
     where: { ...kind, status: { notIn: TERMINAL } },
-    select: { id: true, label: true, initiatorId: true, ...(every ? { scenario: true } : {}) },
+    select: { id: true, label: true, initiatorId: true, organizationId: true, ...(every ? { scenario: true } : {}) },
     ...page,
   }), 1000);
-  const byLead = new Map<string, { id: string; label: string; initiatorId: string; scenario?: string | null }[]>();
+  const byLead = new Map<string, { id: string; label: string; initiatorId: string; organizationId?: string; scenario?: string | null }[]>();
   for (const g of grounds) byLead.set(g.initiatorId, [...(byLead.get(g.initiatorId) ?? []), g]);
 
   const base = (deps.frontendUrl || '').replace(/\/$/, '');
@@ -419,6 +420,11 @@ export async function sendTheLeadsWeeklyLetters(
           const reported = await prisma.report?.findFirst?.({ where: { groundId: g.id, releasedAt: { not: null } }, select: { id: true } }).catch(() => null);
           if (next.kind === 'another' && w.checkedIn > 0 && reported) w.next = theSuggestionSaid(next);
         }
+        /* A fee note that fell due on an event this week, or can now be raised, first in what moved (messages test, 19 October, finding 4). Release 2 only. */
+        const fellDue = g.organizationId
+          ? await theFeeNotesThatFellDueOnAnEvent(prisma, { userId: leadId, organizationId: g.organizationId }, [g.id], new Date(now.getTime() - 7 * 86_400_000)).catch(() => [])
+          : [];
+        if (fellDue.length) w.moved = [...fellDue.map((f) => f.text), ...(w.moved ?? [])];
         weeks.push(w);
       }
       const letter = theLeadsLetter(weeks, every ? { onlyWhenSomethingHappened: true } : {});

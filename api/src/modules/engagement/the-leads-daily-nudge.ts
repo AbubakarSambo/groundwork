@@ -1,3 +1,4 @@
+import { theFeeNotesThatFellDueOnAnEvent } from '../board/a-fee-note-that-fell-due-said-to-the-lead';
 import { theSalesMorning } from './the-sales-morning-from-the-record';
 import { DependencyStatus, GroundStatus } from '@prisma/client';
 import { whichOfThesePromisesAreDone } from '../conversation/a-promise-said-done-is-kept';
@@ -573,6 +574,13 @@ export async function whatIsOutstandingFor(
     decision.late = Math.max(decision.late ?? 0, pr.late ?? 0);
     decision.about = { kind: 'decision', ids: [...(decision.about?.ids ?? []), ...(pr.about?.ids ?? [])] };
     out.needsYou = out.needsYou.filter((t) => t !== pr);
+  }
+  /*
+   * A FEE NOTE THAT FELL DUE ON AN EVENT, OR CAN NOW BE RAISED (messages test, 19 October, finding 4), where Release 2 is on: said in the
+   * week after the event was reported, while the fee note waits to be followed up or raised. See a-fee-note-that-fell-due-said-to-the-lead.
+   */
+  for (const f of await theFeeNotesThatFellDueOnAnEvent(prisma, { userId: lead.userId, organizationId: lead.organizationId }, ids, new Date(now.getTime() - 7 * DAY)).catch(() => [])) {
+    out.needsYou.push({ text: f.text, group: 0, keptInTheApp: kept(f.groundId), place: labelOf.get(f.groundId), groundId: f.groundId, about: { kind: 'fee-note', ids: [f.billId] } });
   }
   /* Most important first within a part: in "Needs you" what waits for her to approve, then a decision she owes, then her own late commitments; always the most overdue first. */
   const byLate = (a: AThingOutstanding, b: AThingOutstanding) => (b.late ?? 0) - (a.late ?? 0);
