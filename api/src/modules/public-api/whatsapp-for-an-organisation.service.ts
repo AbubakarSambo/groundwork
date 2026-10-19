@@ -603,11 +603,9 @@ export class WhatsAppForAnOrganisationService {
       let reply = '';
       if (current.status === 'NOT_STARTED') {
         const first = await this.conversation.open(current.id, userId!);
-        /* A session whose round had closed was closed as missed and today's opened instead (conversation.open): the answer goes there. */
-        const today = (first as any)?.checkInId as string | undefined;
-        if (today && today !== current.id) Object.assign(current, { id: today, sessionNumber: (current.sessionNumber ?? 0) + 1 });
         /* The missed-check-ins notice, first, before the first question, for somebody on WhatsApp (Hafsah, 14 October). */
-        const missed = await this.theMissedNoticeFor(current.id, userId!);
+        /* Today's session, where the one asked for had a round that had closed (see today, below). */
+        const missed = await this.theMissedNoticeFor(this.today(current, first), userId!);
         /* The words that switch, said once, when the check-in starts on WhatsApp. */
         reply = `${sessionHeader(current)} ${THE_WORDS(ask)}\n\n${missed ? `${missed.text}\n\n` : ''}${first.reply}`;
         if (missed) await rememberTheMissedNoticeTold(this.prisma, missed.key, 'sent').catch(() => undefined);
@@ -1077,11 +1075,20 @@ export class WhatsAppForAnOrganisationService {
     return row?.participantId ? theMissedNoticeOnWhatsApp(this.prisma, userId, row.participantId).catch(() => null) : null;
   }
 
+  /**
+   * TODAY'S SESSION. A session whose round had closed was closed as missed and today's opened instead (conversation.open, engine test,
+   * second run): the check-in being answered becomes today's, so what they say goes there. Returns its id.
+   */
+  private today(c: AnOpenCheckIn, opened: unknown): string {
+    const today = (opened as any)?.checkInId as string | undefined;
+    if (today && today !== c.id) Object.assign(c, { id: today, sessionNumber: (c.sessionNumber ?? 0) + 1 });
+    return c.id;
+  }
+
   private async openIfWaiting(c: AnOpenCheckIn, userId: string): Promise<string | null> {
     if (c.status !== 'NOT_STARTED') return null;
-    const first: any = await this.conversation.open(c.id, userId);
-    /* Today's session, where the one asked for had a round that had closed (conversation.open). */
-    if (first?.checkInId && first.checkInId !== c.id) Object.assign(c, { id: first.checkInId, sessionNumber: (c.sessionNumber ?? 0) + 1 });
+    const first = await this.conversation.open(c.id, userId);
+    this.today(c, first);
     c.status = 'IN_PROGRESS';
     return first.reply;
   }
