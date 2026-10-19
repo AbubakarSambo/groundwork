@@ -124,6 +124,8 @@ export const CronLock = {
   HELD_REQUESTS: 920_014,
   /** WhatsApp messages held for quiet hours, sent at seven in the organisation's morning. See whatsapp/held-for-the-night.cron.ts. */
   HELD_WHATSAPP: 920_015,
+  /** The daily delivery alert to Groundwork's own address. See email/the-daily-delivery-alert.cron.ts. */
+  DELIVERY_ALERT: 920_016,
 } as const;
 
 /**

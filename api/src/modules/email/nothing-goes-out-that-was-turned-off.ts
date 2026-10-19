@@ -174,6 +174,8 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   /* To our own roster, about the running of the product. Exempt from the customer-facing preference:
      an API-access request has to reach somebody. */
   sendTeamAlert: 'operational',
+  /* Groundwork's own morning list of what did not go out yesterday, to the one platform address set for it (engagement/the-daily-delivery-alert.ts). */
+  sendTheDailyDeliveryAlert: 'operational',
 
   /* They took part; this is the outcome. */
   sendReportReady: 'asked for',
