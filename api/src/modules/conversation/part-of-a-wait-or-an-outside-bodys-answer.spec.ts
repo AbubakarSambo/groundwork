@@ -42,3 +42,21 @@ describe("Brian's wait on the court for a hearing date", () => {
     expect(aLineSaysItIsDone(DAVID, onNjeri, namesOf)).toBe(false);
   });
 });
+
+/*
+ * A FILING ENDS THE WAIT FOR WORK ON WHAT WAS FILED (engine test, Muchemi & Co). Wanjiru waited on Brian for "revisions to the Kasarani
+ * Foods reply". On Wednesday 14 October Brian said "The reply in Kasarani Foods v. Tumaini Traders was successfully filed today." Her
+ * summary on Tuesday 20 October said the revisions were "due on Thursday 15 October and ... five days late".
+ */
+describe("Wanjiru's wait on Brian for revisions to the Kasarani Foods reply", () => {
+  const NAMES2: Record<string, string[]> = { 'p-wanjiru': ['Wanjiru', 'Muchemi'], 'p-brian': ['Brian', 'Otieno'] };
+  const REVISIONS: AnOpenWait = { id: 'd-revisions', fromParticipantId: 'p-wanjiru', onParticipantId: 'p-brian', onLabel: null, what: 'revisions to the Kasarani Foods reply', createdAt: at('2026-10-13T08:31:03Z'), sourceCheckInId: 'c2-wanjiru' };
+  const names = (pid: string) => NAMES2[pid] ?? [];
+  it("Brian's filing clears it, though he did not name Wanjiru", () => {
+    expect(aLineSaysItIsDone(line('b1', 'p-brian', 'c3-brian', 'Good morning all. The reply in Kasarani Foods v. Tumaini Traders was successfully filed today.', '2026-10-14T11:00:28Z'), REVISIONS, names)).toBe(true);
+  });
+  it('but "The reply has not been filed yet" does not, and nor does a filing of something else', () => {
+    expect(aLineSaysItIsDone(line('b2', 'p-brian', 'c3-brian', 'The Kasarani Foods reply has not been filed yet.', '2026-10-14T11:00:28Z'), REVISIONS, names)).toBe(false);
+    expect(aLineSaysItIsDone(line('b3', 'p-brian', 'c3-brian', 'The Jamii Clinics witness statements were filed today.', '2026-10-14T11:00:28Z'), REVISIONS, names)).toBe(false);
+  });
+});

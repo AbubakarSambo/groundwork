@@ -49,7 +49,7 @@ const IT_HAPPENED = /\b(?:brought|delivered|sent|gave|given|handed|dropped|share
 const NOT_YET = /\b(?:not|never|no|still|yet|haven't|hasn't|hadn't|didn't|don't|doesn't|won't|will|going to|need to|needs to|wish|hope|should|would|could|if|until|unless|forgot)\b|n't\b|\bI'll\b|\bhe'll\b|\bshe'll\b|\bthey'll\b/i;
 const NOT_WAITING_ANY_MORE = /\b(?:not|no longer)\s+waiting\s+(?:on|for)\b[^.;!?]*?(?:\b(?:any ?more|now)\b|$)|\bno longer waiting\b/i;
 
-const sentences = (t: string) => String(t ?? '').replace(/\[[^\]]*\]/g, '').replace(/[‘’]/g, "'").split(/(?<=[.;!?])\s+/).map((s) => s.trim()).filter(Boolean);
+const sentences = (t: string) => String(t ?? '').replace(/\[[^\]]*\]/g, '').replace(/[‘’]/g, "'").split(/(?<!\b(?:v|vs|V|Vs|Mr|Mrs|Ms|Dr)\.)(?<=[.;!?])\s+/).map((s) => s.trim()).filter(Boolean);
 
 /*
  * PART OF IT CAME, AND THE REST IS STILL AWAITED (messages test, third run, item 9). Aisha waited on the client for the witness
@@ -82,6 +82,25 @@ function anOutsideBodyGaveIt(line: ALineOnRecord, wait: AnOpenWait, thing: strin
   });
 }
 
+/*
+ * A FILING ENDS THE WAIT FOR WORK ON WHAT WAS FILED (engine test, Muchemi & Co). Wanjiru waited on Brian for "revisions to the Kasarani
+ * Foods reply". On Wednesday 14 October Brian said "The reply in Kasarani Foods v. Tumaini Traders was successfully filed today." Her
+ * summary on Tuesday 20 October said "You are waiting on Brian for revisions to the Kasarani Foods reply ..., which was due on Thursday
+ * 15 October and is five days late." A wait for revisions, a review, comments or a draft of a thing is over once the thing itself was
+ * filed, lodged, served or submitted, said by either side, with nothing in the sentence that says it has not.
+ */
+const WORK_ON_IT = new Set(['revision', 'review', 'comment', 'draft', 'edit', 'change', 'input', 'feedback', 'amendment', 'correction', 'final', 'finalised', 'finalized', 'version']);
+const IT_WAS_FILED = /\b(?:filed|lodged|served|submitted)\b/i;
+function theThingItselfWasFiled(line: ALineOnRecord, wait: AnOpenWait, thing: string[]): boolean {
+  if (!thing.some((w) => WORK_ON_IT.has(w))) return false;
+  const itself = thing.filter((w) => !WORK_ON_IT.has(w));
+  if (!itself.length) return false;
+  return sentences(line.text).some((s) => {
+    const said = new Set(wordsOf(s).map(one));
+    return itself.every((w) => said.has(w)) && IT_WAS_FILED.test(s) && !NOT_YET.test(s);
+  });
+}
+
 /** Whether one line says this wait is done. `namesOf` gives a person's own names (first name, full name). */
 export function aLineSaysItIsDone(line: ALineOnRecord, wait: AnOpenWait, namesOf: (participantId: string) => string[]): boolean {
   if (String(line.type).toUpperCase() !== 'PROGRESS') return false;
@@ -90,6 +109,7 @@ export function aLineSaysItIsDone(line: ALineOnRecord, wait: AnOpenWait, namesOf
   const thing = theThingsOwnWords(wait.what);
   if (!thing.length) return false;
   if (!byTheOneWaiting && !byTheOneHoldingIt) return anOutsideBodyGaveIt(line, wait, thing);
+  if (theThingItselfWasFiled(line, wait, thing)) return true;
   if (byTheOneWaiting && STILL_WAITING.test(line.text)) return false;
   const otherSide = byTheOneWaiting
     ? (wait.onParticipantId ? namesOf(wait.onParticipantId) : [String(wait.onLabel ?? '')])
