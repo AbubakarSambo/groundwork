@@ -4393,7 +4393,7 @@ export class ConversationService {
         },
         orderBy: { createdAt: 'desc' },
         take: 6,
-        select: { text: true, type: true },
+        select: { text: true, type: true, createdAt: true },
       })?.catch(() => [] as any[]) ?? [],
     ]);
     /* What the colleagues they wait on promised here: only a colleague's own promise confirms a wait (decision 137). */
@@ -4415,6 +4415,8 @@ export class ConversationService {
      * was kept as Joseph's own target before this was read, so it is left out wherever this turn reads their targets.
      */
     const theCustomersHere = await this.theCustomersOnRecordIfSales(ground.id);
+    /* The organisation's own zone, for the day each earlier thing was said (each-earlier-thing-has-its-day). */
+    const theZoneHere = (ground as any).organizationId ? await theOrganisationsZone(this.prisma as any, (ground as any).organizationId).catch(() => null) : null;
     const thePeopleHere = ((ground.participants ?? []) as any[]).map((p) => p.user?.firstName ?? '').filter(Boolean) as string[];
     const notADealsFigure = (o: any) => !(theCustomersHere && o.setByParticipantId === checkIn.participantId && (aDealsFigure(String(o.name ?? ''), theCustomersHere, thePeopleHere) || aCountOfPlacesVisited(String(o.name ?? ''))));
     const objectivesOnRecord = this.theLeadsOwnWordsStayHers(ground, checkIn) ? [] : withoutWhatTheLeadHasNotToldThemAbout(
@@ -4450,6 +4452,9 @@ export class ConversationService {
         theyConfirmedIt: theWaitIsConfirmed({ onParticipantId: d.onParticipantId ?? null, what: d.what, triedSaid: d.triedSaid ?? null, groundId: ground.id }, theColleaguesOwnPromises as any[]),
       })),
       saidLastTime: (lastTimeRows as any[]).map((e) => String(e.text ?? '').replace(/\s+/g, ' ').trim()).filter(Boolean).reverse(),
+      saidLastTimeOn: (lastTimeRows as any[]).filter((e) => String(e.text ?? '').trim()).map((e) => e.createdAt ?? null).reverse(),
+      zone: theZoneHere ?? undefined,
+      sayToday: (checkIn.sessionNumber ?? 1) > 1,
       /* The lead's call for this check-in, not a global rule. See the field on the ground. */
       expectThemToUnblock: (ground as any).expectThemToUnblock !== false,
       now: new Date(),
@@ -5215,13 +5220,16 @@ Open the session by naming that you're returning to session ${checkIn.selfCorrec
     const isTheLead = checkIn.participant.partyType === PartyType.INITIATOR;
     const commitmentRows = await (this.prisma.groundCommitment?.findMany?.({
       where: { groundId: checkIn.groundId },
-      select: { text: true, whenSaid: true, explicit: true, participantId: true, status: true },
+      select: { text: true, whenSaid: true, explicit: true, participantId: true, status: true, createdAt: true },
       orderBy: { createdAt: 'asc' },
       take: 40,
     }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
     const mine = (commitmentRows as any[]).filter((c) => c.participantId === checkIn.participantId && c.status === 'UNKNOWN');
     const ownerless = (commitmentRows as any[]).filter((c) => !c.participantId && c.status === 'UNKNOWN').map((c) => c.text as string);
-    const theirCommitments = whatTheySaidTheyWouldDo(mine.map((c) => ({ text: c.text, when: c.whenSaid, explicit: c.explicit })));
+    const theirCommitments = whatTheySaidTheyWouldDo(
+      mine.map((c) => ({ text: c.text, when: c.whenSaid, explicit: c.explicit, saidOn: c.createdAt ?? null })),
+      { now: new Date(), zone: (ground as any).organizationId ? (await theOrganisationsZone(this.prisma as any, (ground as any).organizationId).catch(() => null)) ?? undefined : undefined },
+    );
     /* The unowned list is the lead's to place, and nobody else's to be asked about. */
     const nobodyOwns = isTheLead ? thingsNobodyOwns(ownerless) : '';
 
