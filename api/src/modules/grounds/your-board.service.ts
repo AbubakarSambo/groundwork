@@ -1,3 +1,4 @@
+import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
 import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
 import { theCheckInsHeldForASeat } from '../participants/held-for-a-seat';
@@ -49,6 +50,8 @@ export class YourBoardService {
     askedFor?: string | null,
   ): Promise<YourBoard & { suggestionsAboutYou?: ForThePerson[]; askedOfYou?: AskedOfYou }> {
     if (askedFor && askedFor !== reader.userId) throw new ForbiddenException(NOT_YOURS);
+    /* Judgements of a person off for this organisation: no coaching step and no pattern about the reader (organisation/person-judgements.ts). */
+    const judged = await thePersonJudgementsAreOn(this.prisma, reader.organizationId);
 
     const list = ((await this.grounds.list(reader.organizationId, reader.userId, reader.email, reader.role)) ?? []) as any[];
     /* Only the check-ins in this organisation that you run or take part in, and only your own place in each. */
@@ -100,7 +103,7 @@ export class YourBoardService {
             orderBy: { createdAt: 'asc' },
           })
         : none,
-      participantIds.length
+      participantIds.length && judged
         ? this.prisma.coachingState.findMany({
             where: { participantId: { in: participantIds } },
             select: { participantId: true, currentStep: true, updatedAt: true },
@@ -133,7 +136,7 @@ export class YourBoardService {
        * below still runs it through the one rule (patterns/who-reads-a-pattern.ts) rather than
        * trusting that, so three check-ins and a plain name are still required.
        */
-      participantIds.length
+      participantIds.length && judged
         ? this.prisma.patternDetection.findMany({
             where: { participantId: { in: participantIds } },
             select: {

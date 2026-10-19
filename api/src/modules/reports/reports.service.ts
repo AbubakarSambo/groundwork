@@ -1,3 +1,4 @@
+import { thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
 import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
 import { whatTheSwitchboardServes, type TheSwitchboardServed } from '../board/the-switchboard';
 import { theCorrectionsOnTheCheckIn, withWhatACorrectionSettled, whoIsBehindALabel } from './a-correction-is-their-latest-word';
@@ -3859,7 +3860,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * after three periods, in plain words; and the picture carries none, because it is shared and a
      * pattern never is. Nothing at all while patterns are not served, and then not even the read.
      */
-    const patternRowsForPage = PATTERNS_ARE_SERVED
+    /* Judgements of a person off for this organisation: no pattern about anybody in the report (organisation/person-judgements.ts). */
+    const patternRowsForPage = PATTERNS_ARE_SERVED && (await thePersonJudgementsAreOnFor(this.prisma, groundId))
       ? await this.prisma.patternDetection.findMany({ where: { groundId }, orderBy: [{ lastSeenAt: 'desc' }], select: PATTERN_ROW_SELECT })
       : [];
     /* A report for session N shows only what had reached three periods BY session N - not the
@@ -6284,8 +6286,8 @@ happened, and what is in the way.`;
    */
   private async whatTheRecordHoldsFor(groundId: string, ground: any, asOf?: AsOfARound) {
     const [detectionsNow, dependenciesNow, entriesNow, docsNow, sessionsNow] = await Promise.all([
-      /* Not even read while patterns are not served. */
-      PATTERNS_ARE_SERVED
+      /* Not even read while patterns are not served, or where the organisation keeps judgements of a person off. */
+      PATTERNS_ARE_SERVED && (await thePersonJudgementsAreOnFor(this.prisma, groundId))
         ? this.prisma.patternDetection.findMany({
           where: { groundId },
           orderBy: { lastSeenAt: 'desc' },
@@ -6379,6 +6381,7 @@ happened, and what is in the way.`;
    * Null when there is nothing to serve, so the board draws nothing rather than an empty block.
    */
   async coachingForTheBoard(groundId: string, requestingUserId: string, opts: { adminReadsIt?: boolean } = {}): Promise<{ yours: any; eachPerson: any } | null> {
+    if (!(await thePersonJudgementsAreOnFor(this.prisma, groundId))) return null;
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       include: { participants: { include: { user: { select: { firstName: true, lastName: true, email: true } } } }, report: true },
@@ -6728,6 +6731,8 @@ happened, and what is in the way.`;
     closedAt: Date | null,
     period: number,
   ): Promise<{ coaching?: any; probes?: any; inferences?: any[] }> {
+    /* Judgements of a person off for this organisation: no coaching or probe about anybody (organisation/person-judgements.ts). */
+    if (!(await thePersonJudgementsAreOnFor(this.prisma, groundId))) return {};
     const holds = await theSessionTheReportHolds(this.prisma, groundId);
     const asOf = await this.whereThisSessionIsCut(groundId, sessionNumber, closedAt, period);
     const labels = labelsForParties(ground.participants as any);
@@ -7726,7 +7731,7 @@ happened, and what is in the way.`;
            anonymously shared report loses its identifying detail, and a read that skips it would
            name people on a check-in shared without names. */
         overTime: (this.asItWasShared(
-          { ...(ground as any), report: { overTime: overTimeForThisReader((ground.report as any)?.overTime as any, { isLead: isInitiator || isOrgAdmin, participantId: participant?.id ?? null }, { meetingsOnRecord: await meetingsOnRecordFor(this.prisma, (ground as any).id) }) } },
+          { ...(ground as any), report: { overTime: overTimeForThisReader((ground.report as any)?.overTime as any, { isLead: isInitiator || isOrgAdmin, participantId: participant?.id ?? null }, { meetingsOnRecord: await meetingsOnRecordFor(this.prisma, (ground as any).id), judgements: await thePersonJudgementsAreOnFor(this.prisma, (ground as any).id) }) } },
           participant?.id ?? null,
           isInitiator || isOrgAdmin,
         ) as any).overTime,
@@ -7894,7 +7899,7 @@ happened, and what is in the way.`;
        */
       /* And named through the wrapper, for the reason in the forming branch above. */
       overTime: (this.asItWasShared(
-        { ...(ground as any), report: { overTime: overTimeForThisReader((ground.report as any)?.overTime as any, { isLead: isInitiator || isOrgAdmin, participantId: participant?.id ?? null }, { meetingsOnRecord: await meetingsOnRecordFor(this.prisma, (ground as any).id) }) } },
+        { ...(ground as any), report: { overTime: overTimeForThisReader((ground.report as any)?.overTime as any, { isLead: isInitiator || isOrgAdmin, participantId: participant?.id ?? null }, { meetingsOnRecord: await meetingsOnRecordFor(this.prisma, (ground as any).id), judgements: await thePersonJudgementsAreOnFor(this.prisma, (ground as any).id) }) } },
         participant?.id ?? null,
         isInitiator || isOrgAdmin,
       ) as any).overTime,

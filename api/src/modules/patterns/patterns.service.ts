@@ -1,4 +1,5 @@
 import { restsOnARecordNobodyHolds, whatTheRecordRuleTookOut, aLineForWhatTheRecordRuleTookOut } from './a-pattern-does-not-rest-on-a-record-nobody-holds';
+import { thePersonJudgementsAreOn, thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
 import { Injectable, Optional, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { theirApprovedLeave } from '../suites/who-is-away';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
@@ -133,6 +134,8 @@ export class PatternsService {
       },
     });
     if (!checkIn || checkIn.patternsAnalyzedAt) return;
+    /* Judgements of a person off for this organisation: no pattern is found about anybody, and the check-in is marked read so the sweep does not retry it (organisation/person-judgements.ts). */
+    if (!(await thePersonJudgementsAreOnFor(this.prisma, checkIn.groundId))) { await this.markAnalyzed(checkInId); return; }
 
     /* The period this check-in belongs to, honestly (decision 57, item 1). A session on a weekly-or-
        slower ground is its own period; a session on a daily ground belongs to the calendar week it
@@ -526,6 +529,7 @@ export class PatternsService {
      * to do it, and one that forgets puts "The record shows..." back on screen.
      * Storing the plain sentence means there is only one place it can go wrong.
      */
+    if (!(await thePersonJudgementsAreOnFor(this.prisma, groundId))) return null as any;
     const observationText = plainVoice(rawObservation);
     const existing = await this.prisma.patternDetection.findUnique({
       where: { participantId_code: { participantId, code } },
@@ -591,6 +595,7 @@ export class PatternsService {
     evidenceSource?: AnEvidenceSource,
     promptVersionId?: string | null,
   ) {
+    if (!(await thePersonJudgementsAreOnFor(this.prisma, groundId))) return null as any;
     const existing = await this.prisma.patternDetection.findUnique({
       where: { participantId_code: { participantId, code } },
     });
@@ -742,6 +747,7 @@ export class PatternsService {
    * grounds (the earliest) so it surfaces in the alignment feed.
    */
   async detectConcentrationRisk(orgId: string): Promise<void> {
+    if (!(await thePersonJudgementsAreOn(this.prisma, orgId))) return;
     // Find all active grounds for the org.
     const activeGrounds = await this.prisma.ground.findMany({
       where: { organizationId: orgId, status: { in: ACTIVE_STATUSES } },

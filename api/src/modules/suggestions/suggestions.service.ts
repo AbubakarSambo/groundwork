@@ -1,3 +1,4 @@
+import { thePersonJudgementsAreOn, thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { notToldYet, theConversationPointForTheLead } from '../grounds/a-goal-not-told-stays-with-the-lead';
@@ -123,6 +124,8 @@ export class SuggestionsService {
     if (!aVerdictIsReachedOn(ground)) {
       throw new BadRequestException('A suggestion is only reached on a performance plan, a recognition, a contract renewal or a probation.');
     }
+    /* Judgements of a person off for this organisation: no suggestion about anybody is kept (organisation/person-judgements.ts). */
+    if (!(await thePersonJudgementsAreOn(this.prisma, ground.organizationId))) return null as any;
     const about = await this.prisma.groundParticipant.findFirst({
       where: { id: input.aboutParticipantId, groundId: input.groundId },
       select: { id: true },
@@ -184,6 +187,7 @@ export class SuggestionsService {
   async reachFromTheRecord(groundId: string, record: TheRecordForOnePerson, now: Date = new Date()) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { scenario: true } });
     if (!aVerdictIsReachedOn(ground)) return null;
+    if (!(await thePersonJudgementsAreOnFor(this.prisma, groundId))) return null;
     const thresholds = await this.thresholds();
     await this.markWhetherTheyCaughtUp(groundId, record, thresholds, now);
     const suggestion = aSuggestionFromTheRecord(groundId, record, thresholds);
@@ -220,6 +224,7 @@ export class SuggestionsService {
     const role = await this.whoIsTheReader(ground, reader);
     if (role === 'outsider') throw new ForbiddenException(REFUSED.notInIt);
     if (!aVerdictIsReachedOn(ground)) return { suggestions: [] };
+    if (!(await thePersonJudgementsAreOn(this.prisma, (ground as any).organizationId ?? reader.organizationId))) return { suggestions: [] };
     if (role === 'colleague') {
       /* A colleague may still be the person some of these are about. */
       const rows = await this.rows({ groundId, about: { userId: reader.userId } });
@@ -270,6 +275,7 @@ export class SuggestionsService {
    * does not run a check-in the person is in. Null when there is none.
    */
   async latestForTheLeadAbout(personUserId: string, reader: Reader, now: Date = new Date()): Promise<ForTheLead | null> {
+    if (!(await thePersonJudgementsAreOn(this.prisma, reader.organizationId))) return null;
     const rows = (await this.prisma.suggestion.findMany({
       where: { organizationId: reader.organizationId, about: { userId: personUserId } },
       orderBy: { createdAt: 'desc' },
@@ -297,6 +303,7 @@ export class SuggestionsService {
 
   /** For the You board: every suggestion about the reader, in this organisation, as they may read it. */
   async aboutYou(reader: Reader): Promise<ForThePerson[]> {
+    if (!(await thePersonJudgementsAreOn(this.prisma, reader.organizationId))) return [];
     const rows = (await this.prisma.suggestion.findMany({
       where: { organizationId: reader.organizationId, about: { userId: reader.userId } },
       orderBy: { createdAt: 'desc' },
@@ -314,6 +321,7 @@ export class SuggestionsService {
   /** For an admin's Today: every appeal in their organisation still to be decided. */
   async appealsToDecide(reader: Reader): Promise<{ appeals: ForAnAdmin[] }> {
     if (!(await this.isAdminOf(reader.userId, reader.organizationId))) throw new ForbiddenException(REFUSED.onlyAnAdmin);
+    if (!(await thePersonJudgementsAreOn(this.prisma, reader.organizationId))) return { appeals: [] };
     const rows = (await this.prisma.suggestion.findMany({
       where: { organizationId: reader.organizationId, appealedAt: { not: null }, appealOutcome: null },
       orderBy: { appealedAt: 'asc' },

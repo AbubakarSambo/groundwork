@@ -1,3 +1,4 @@
+import { thePersonJudgementsAreOn, thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
 import { NOT_A_QUIET_CLOSE, wasAQuietClose } from '../grounds/an-answer-includes-a-refusal';
 import { theConfirmedWaits, theNoteBesideTheClaim } from '../grounds/a-wait-is-the-speakers-account';
 import { aGroundIsTheAnchors } from '../conversation/the-anchor-weekly-check-in';
@@ -719,6 +720,7 @@ export class TheWeeklyReportService {
   /** The patterns this reader may read, as they read them everywhere else, that came up in a period of this week. */
   private async threeInARow(groundId: string, ground: any, facts: TheWeeksFacts, me: any, readerUserId: string, labels: Map<string, string>, whoIs: (pid: string) => string, now: Date) {
     if (!facts.periods.length) return [];
+    if (!(await thePersonJudgementsAreOnFor(this.prisma, groundId))) return [];
     const rows: any[] = ((await ((this.prisma as any).patternDetection?.findMany?.({ where: { groundId }, select: PATTERN_ROW_SELECT }) ?? Promise.resolve([])).catch(() => [])) ?? []) as any[];
     const lead = (ground.participants ?? []).find((p: any) => p.partyType === PartyType.INITIATOR) ?? null;
     const served = servedPatterns(rows, { participantId: me?.id ?? null, runsIt: runsItForAPattern(ground, readerUserId) }, {

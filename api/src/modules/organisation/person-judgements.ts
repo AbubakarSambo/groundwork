@@ -11,7 +11,7 @@
  *  - the patterns found about a person, and the lines served from them on the board, in the reports and in the check-in;
  *  - the detectors' verdicts about a person;
  *  - the coaching about a person, in the check-in and anywhere it is served;
- *  - a suggestion about a person, and a role gap note about a person.
+ *  - a suggestion about a person, and the detectors' findings about a person served to the developer API.
  * The board, the summaries and the reports still go ahead: they say what happened, never what somebody is.
  *
  * READ ONCE PER CALL. A database with no such row (a test, a script) reads as on, as every organisation has been. A row that cannot be

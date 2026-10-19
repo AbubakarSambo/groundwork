@@ -1,3 +1,4 @@
+import { thePersonJudgementsAreOn, thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
 import { dedupeDependencies } from '../board/reads';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
 import { theDifferencesThatAreOnlyATargetSaidAgain } from '../board/a-target-said-again-is-that-target';
@@ -339,7 +340,8 @@ export async function forTheLeadFrom(prisma: any, groundId: string, l: Loaded, r
    * goes away the moment `talkedAboutAt` is set, which is why it is left out below rather than left
    * on the list with a "done" flag.
    */
-  if (lead) {
+  /* Judgements of a person off for the organisation: no "talk with them about" a pattern (organisation/person-judgements.ts). */
+  if (lead && (await thePersonJudgementsAreOn(prisma, (ground as any).organizationId ?? null))) {
     const patternRows = (((await prisma.patternDetection?.findMany?.({
       where: { groundId, participantId: { not: lead.id } },
       select: PATTERN_ROW_SELECT,

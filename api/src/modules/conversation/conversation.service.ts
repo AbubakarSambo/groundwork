@@ -1,3 +1,4 @@
+import { thePersonJudgementsAreOn, thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
 import { withoutAMissedStepNobodySaid } from './a-missing-proof-is-not-a-missed-step';
 import { aDayIsNotATarget, theNumberIsOnlyADay } from './a-day-is-not-a-target';
 import { theThingWaitedFor } from '../board/a-wait-said-in-full';
@@ -5530,7 +5531,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * A coaching block that always has something in it is a product that always
      * has something to say about you.
      */
-    const coachingBlock = await this.coachingBlock(checkIn.participantId, checkIn.sessionNumber);
+    /* Judgements of a person off for this organisation: no coaching, pattern or earlier "seen before" about them reaches the model (organisation/person-judgements.ts). */
+    const judgedHere = await thePersonJudgementsAreOn(this.prisma, (ground as any)?.organizationId ?? null);
+    const coachingBlock = judgedHere ? await this.coachingBlock(checkIn.participantId, checkIn.sessionNumber) : '';
 
     /*
      * WHAT KEEPS HAPPENING, AS A QUESTION.
@@ -5544,7 +5547,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * Same failure mode as the coaching block above: a chain that runs in full and says nothing to
      * anybody. Gated on SURFACED and two periods, one question at most, and never named.
      */
-    const patternProbeBlock = await this.whatKeepsHappeningBlock(checkIn.participantId);
+    const patternProbeBlock = judgedHere ? await this.whatKeepsHappeningBlock(checkIn.participantId) : '';
     /*
      * WHAT A SALES CHECK-IN GATHERS (Hafsah, 16 October 2026). In a sales check-in the conversation is told what the board needs
      * about every customer (stage, value, last contact, next step, proof), every lead and who does what by when, and is given the
@@ -5854,7 +5857,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     /* Immediately after the intake block, because it is about the same objectives and the two read
        as one thing: what was agreed, and what is happening against it. */
     const [seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed] = await Promise.all([
-      this.whatHasBeenSeenAcrossTheirSessions(checkIn.participantId),
+      judgedHere ? this.whatHasBeenSeenAcrossTheirSessions(checkIn.participantId) : Promise.resolve(''),
       this.prisma.recordEntry
         .findMany({
           where: { participantId: checkIn.participantId, documentSays: { not: null }, disputedAt: null },
@@ -6644,6 +6647,9 @@ ${told}` : '';
    */
   private async observeForCoaching(checkInId: string, participantId: string, sessionNumber: number): Promise<void> {
     if (!this.coachingEnabled()) return;
+    /* Judgements of a person off for this organisation: nobody is read for coaching (organisation/person-judgements.ts). */
+    const at = await (this.prisma.checkIn?.findUnique?.({ where: { id: checkInId }, select: { groundId: true } }) ?? Promise.resolve(null)).catch(() => null);
+    if (!(await thePersonJudgementsAreOnFor(this.prisma, (at as any)?.groundId ?? null))) return;
 
     /* A set-up conversation is not a check-in, so it is never read for coaching. */
     const thisOne = await (this.prisma.checkIn?.findUnique?.({ where: { id: checkInId }, select: { isSetup: true } }) ?? Promise.resolve(null)).catch(() => null);
@@ -7956,7 +7962,8 @@ ${told}` : '';
     const row = await this.prisma.checkIn?.findUnique?.({ where: { id: checkIn.id }, select: { sessionPlan: true, isFinal: true } as any }).catch(() => null);
     let plan = tidyThePlan((row as any)?.sessionPlan);
     if (!plan && got.forTheOpener) {
-      const [patterns, coaching, earlierTurns] = await Promise.all([
+      const judged = await thePersonJudgementsAreOn(this.prisma, ground?.organizationId ?? null);
+      const [patterns0, coaching0, earlierTurns] = await Promise.all([
         this.prisma.patternDetection?.findMany?.({
           where: { participantId: checkIn.participantId },
           select: { code: true, observationText: true, periodsObserved: true },
@@ -7970,6 +7977,8 @@ ${told}` : '';
           take: 80,
         })?.catch(() => [] as any[]) ?? [],
       ]);
+      const patterns = judged ? patterns0 : [];
+      const coaching = judged ? coaching0 : null;
       const codeOf = (code: string) => [...POSITIVE_CODES, ...CARRYING_CODES, ...BAD_FAITH_CODES].find((c) => c.code === code);
       const planned = totalSessionsFor(ground.timelineDays, ground.cadence) ?? null;
       const brief = theBriefForThePlanner({
