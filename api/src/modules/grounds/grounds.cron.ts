@@ -53,6 +53,7 @@ import { theRanOutOfTimeSubject } from '../engagement/the-leads-subjects-carry-t
 import { sendTheTestCheckInMessages } from '../engagement/a-test-check-in-moves-on';
 import { theirPromiseToFollowUp } from '../engagement/a-follow-up-from-their-own-record';
 import { theOpeningNeverReachedThem, itHasBeenOpenLongEnough } from '../engagement/a-person-the-opening-never-reached';
+import { itWasOpenedByEmailOnly } from '../whatsapp/a-session-opened-by-email';
 import { formsOfTheSameNumber } from '../whatsapp/a-number-whatsapp-can-reach';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { isNotLetInYet } from './who-an-admin-did-not-let-in';
@@ -936,6 +937,8 @@ export class GroundsCron implements OnApplicationBootstrap {
         if (!phone) continue;
         const catchUp = !what;
         if (catchUp && !(await theOpeningNeverReachedThem(this.prisma, ci, formsOfTheSameNumber(phone), now))) continue;
+        /* A session opened by email, and not on WhatsApp, is not reminded "due tomorrow" on WhatsApp (point 8, 19 October; a-session-opened-by-email.ts). */
+        if (what === 'due-tomorrow' && (await itWasOpenedByEmailOnly(this.prisma, ci, [ci.participant.email, user?.email]))) continue;
         const who = { firstName: user?.firstName, label: await nameFor({ userId: ci.participant.userId, email: ci.participant.email }, ci.groundId, ci.ground.label) };
         let said;
         if (catchUp) said = theCheckInIsStillOpen(who, ci.ground.simplerWords);
