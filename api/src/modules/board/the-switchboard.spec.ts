@@ -21,7 +21,8 @@ describe('the table', () => {
       ['OKR_ALIGNMENT', 'sales team', 'the sales board', 'release1SalesBoardOn', 'Release 1', true],
       ['COLLECTIONS', 'invoices or fee notes', 'the collections board', 'release2CollectionsOn', 'Release 2, pull request 2', true],
       ['COLLECTIONS', 'loans', 'the loans board', 'release2CollectionsOn', 'Release 2, pull request 2', true],
-      ['PULSE_CHECK', 'legal matter', 'the matter board', 'release2CollectionsOn', 'Release 2, pull request 3', false],
+      /* Release 2, pull request 3 draws the matter board (the-matter-board.ts), so its row is built now. */
+      ['PULSE_CHECK', 'legal matter', 'the matter board', 'release2CollectionsOn', 'Release 2, pull request 3', true],
     ]);
     expect(CHECK_IN_TYPES).toEqual(['sales team', 'invoices or fee notes', 'loans', 'legal matter']);
   });
@@ -58,12 +59,13 @@ describe('what it picks', () => {
     expect(whatTheSwitchboardPicks('OKR_ALIGNMENT', 'sales team', R2).board).toBe('today');
   });
 
-  /* Release 2, pull request 2 draws the collections board and its reports, so its two rows are built; the matter board waits for pull request 3. */
-  it('Release 2\'s collections rows pick the collections board and the loans board where the switch is on; the matter board still waits', () => {
+  /* Release 2, pull request 2 drew the collections board and its reports; pull request 3 draws the matter board, so all three rows are built. */
+  it('Release 2\'s rows pick the collections board, the loans board and the matter board where the switch is on', () => {
     expect(whatTheSwitchboardPicks('COLLECTIONS', 'invoices or fee notes', R2)).toEqual(expect.objectContaining({ board: 'the collections board', because: 'its row' }));
     expect(whatTheSwitchboardPicks('COLLECTIONS', 'loans', R2)).toEqual(expect.objectContaining({ board: 'the loans board', because: 'its row' }));
     expect((whatTheSwitchboardPicks('COLLECTIONS', 'loans', R2).reports as any).team).toBe('full');
-    expect(whatTheSwitchboardPicks('PULSE_CHECK', 'legal matter', R2).because).toBe('its board is not built yet');
+    expect(whatTheSwitchboardPicks('PULSE_CHECK', 'legal matter', R2)).toEqual(expect.objectContaining({ board: 'the matter board', because: 'its row' }));
+    expect(whatTheSwitchboardPicks('PULSE_CHECK', 'legal matter', OFF)).toEqual(expect.objectContaining({ board: 'today', because: 'its switch is off' }));
   });
 });
 
@@ -105,8 +107,8 @@ describe('what the board and the reports are told', () => {
     expect(await theSwitchesOf(prismaFor('broken'), 'org')).toEqual({});
   });
 
-  it('where Release 2 is on: the type, whether it was confirmed, and today\'s board until the new one is drawn', async () => {
-    expect(await whatTheSwitchboardServes(prismaFor(R2), MUCHEMI_LITIGATION)).toEqual({ type: 'legal matter', typeConfirmed: false, board: 'today', reports: 'today' });
+  it('where Release 2 is on: the type, whether it was confirmed, and the board its row picks (the matter board for the litigation daily, read from its own record)', async () => {
+    expect(await whatTheSwitchboardServes(prismaFor(R2), MUCHEMI_LITIGATION)).toEqual({ type: 'legal matter', typeConfirmed: false, board: 'the matter board', reports: 'full' });
     expect(await whatTheSwitchboardServes(prismaFor(R2), MUCHEMI_FEE_NOTES)).toEqual({ type: null, typeConfirmed: false, board: 'today', reports: 'today' });
   });
 
@@ -114,12 +116,12 @@ describe('what the board and the reports are told', () => {
     const board = Object.assign(Object.create(BoardService.prototype), { prisma: prismaFor(OFF) });
     expect(await (board as any).theSwitchboardsPick(MUCHEMI_LITIGATION)).toEqual({});
     const on = Object.assign(Object.create(BoardService.prototype), { prisma: prismaFor(R2) });
-    expect(await (on as any).theSwitchboardsPick(MUCHEMI_LITIGATION)).toEqual({ switchboard: { type: 'legal matter', typeConfirmed: false, board: 'today', reports: 'today' } });
+    expect(await (on as any).theSwitchboardsPick(MUCHEMI_LITIGATION)).toEqual({ switchboard: { type: 'legal matter', typeConfirmed: false, board: 'the matter board', reports: 'full' } });
   });
 
   it('a session report is served exactly as before where Release 2 is off, and with the pick where it is on', async () => {
     const theReport = { inShort: 'Three fee notes moved this week.', sections: [] };
-    for (const [sw, expected] of [[OFF, undefined], [R2, { type: 'legal matter', typeConfirmed: false, board: 'today', reports: 'today' }]] as const) {
+    for (const [sw, expected] of [[OFF, undefined], [R2, { type: 'legal matter', typeConfirmed: false, board: 'the matter board', reports: 'full' }]] as const) {
       const prisma: any = { ...prismaFor(sw as any), ground: { findUnique: jest.fn(async () => MUCHEMI_LITIGATION) } };
       const reports = Object.assign(Object.create(ReportsService.prototype), { prisma });
       reports.sessionReport = jest.fn(async () => ({ ...theReport }));

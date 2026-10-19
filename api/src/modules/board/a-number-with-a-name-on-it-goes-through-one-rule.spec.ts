@@ -162,6 +162,9 @@ describe('every surface that hands out whose number it is', () => {
     'modules/board/the-collections-board.ts': "reads a bill's owner (a work item) to say who follows it up, from bills already walled for this reader; never a target or a number",
     'modules/board/the-collections-board.service.ts': "reads each bill's owner (a work item) to wall the bills to the reader before the board is built; never a target or a number",
     'modules/reports/the-collections-reports.ts': "reads a bill's owner (a work item) to say whose it is, from bills already walled for this reader; never a target or a number",
+    'modules/board/a-fee-note-due-on-an-event.ts': "reads the bills that wait for an event (work items) to write their day from a matter check-in's line; serves nobody, never a target or a number",
+    'modules/board/the-matter-board.ts': "reads a deadline's or a wait's owner (work items) to say they are the reader's own, from rows already walled for this reader; never a target or a number",
+    'modules/board/the-matter-board.service.ts': "reads each deadline's owner (a work item) to wall the matter board to the reader before it is built; never a target or a number",
     'modules/grounds/__fixtures__/muchemi-and-co.ts': 'hand-written test rows for Release 2: fee notes as work items, never a target',
     'modules/grounds/__fixtures__/a-small-lender.ts': 'hand-written test rows for Release 2: loans as work items, never a target',
   };

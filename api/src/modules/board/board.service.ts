@@ -226,6 +226,7 @@ import { theWaitsOnCustomersApart, theirOwnAnswersWhereTheWaitsWereSaid, without
 import { theReleaseOneSalesBoardIsOn } from './release-one-sales-board';
 import { whatTheSwitchboardServes, type TheSwitchboardServed } from './the-switchboard';
 import { theCollectionsBoardFor } from './the-collections-board.service';
+import { theMatterBoardFor } from './the-matter-board.service';
 import { theBillAfterTheLeadsAnswer } from './a-fee-note-due-on-an-event';
 import { aCollectionsCheckInWithRelease2 } from '../grounds/release-2-collections';
 import { withTheStageKept, theStagesToKeep } from './a-deals-stages-are-kept';
@@ -3714,6 +3715,21 @@ export class BoardService {
             .filter((n) => !mine.some((m) => theSameCustomer(m, n)));
           walled = withoutOtherPeoplesDeals(walled, me.id, others, aLineNamesTheCustomer) as any;
         }
+      }
+      /*
+       * THE MATTER BOARD (Release 2, pull request 3 of 3; the-matter-board), as `matter`, only where the switchboard picks it: Release 2
+       * on, a PULSE_CHECK whose type on record is a legal matter. Built after every wall above, and walled again for this reader at its
+       * own read (the-matter-board.service): the check-in's lines, deadlines and waits as this reader is served them (whoever runs it
+       * every one, a person their own), each matter's fees by part 2's rule in the fee notes check-in, and what waits for a decision
+       * from the board this reader is already served. Off, nothing is added and the board is as before.
+       */
+      {
+        const matter = await theMatterBoardFor(this.prisma, groundId, { runsIt: isInitiator || theyRunIt, participantId: me?.id ?? null, userId: requestingUserId }, now, {
+          decisions: ((Array.isArray(walled.decisions) ? walled.decisions : []) as any[])
+            .filter((d) => typeof d?.question === 'string' && d.question.trim())
+            .map((d) => ({ question: String(d.question), why: typeof d.why === 'string' ? d.why : null })),
+        }).catch((err: any) => { this.logger.warn(`The matter board could not be read for ${groundId}: ${err?.message ?? err}`); return null; });
+        if (matter) walled.matter = matter;
       }
       /*
        * BY AREA OF WORK, AND WHAT WAS REPORTED AT EACH SALES STAGE (request 107 c). Read last, from the
