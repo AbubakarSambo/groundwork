@@ -24,6 +24,12 @@ export interface CoachingBatch {
   }[]
 }
 
+/** Where the daily delivery alert goes: saved here, from the server setting, or nowhere (nothing is sent). */
+export interface DeliveryAlert {
+  email: string | null
+  from: 'here' | 'server' | null
+}
+
 export interface CorrectionWindow {
   days: number
   default: number
@@ -148,6 +154,9 @@ export const adminApi = {
   setRelease2Collections: (organizationId: string, on: boolean) =>
     apiClient.patch<{ id: string; name: string; release2CollectionsOn: boolean; says: string }>(`/admin/organisations/${organizationId}/release-2-collections`, { on }).then(r => r.data),
 
+  getDeliveryAlert: () => apiClient.get<DeliveryAlert>('/admin/delivery-alert').then(r => r.data),
+  setDeliveryAlert: (email: string) =>
+    apiClient.patch<DeliveryAlert>('/admin/delivery-alert', { email }).then(r => r.data),
   getCorrectionWindow: () => apiClient.get<CorrectionWindow>('/admin/correction-window').then(r => r.data),
   setCorrectionWindow: (days: number) =>
     apiClient.patch<CorrectionWindow>('/admin/correction-window', { days }).then(r => r.data),
