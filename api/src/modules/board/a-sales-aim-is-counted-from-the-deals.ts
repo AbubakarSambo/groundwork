@@ -417,6 +417,21 @@ export async function theDealsOnRecord(prisma: any, groundId: string, opts: { pa
       docOf,
     )
     : [];
+  /*
+   * PROOF FILED ON THE DEAL ITSELF IS ITS PROOF (engine test, second run, Drop Access, Friday 16 October). Kevin sent
+   * mpesa-savannah-deposit.pdf in his check-in at 11:01 ("RBT7Y3KQ2P Confirmed. Ksh15,000.00 received from JANE MWENDE ... Ref: deposit 6
+   * dispensers."), and it was read and filed on Savannah Cafe as "A payment" (proof-filed-on-its-item.ts). No line of his was anchored to
+   * it, because the message names Jane, not the cafe, so this read nothing of it, and the weekly report built at 11:15 said "Savannah Cafe
+   * bought. Nothing written shows it yet, only what Kevin Omondi said." The evidence row filed on the deal is read here: a payment filed on
+   * it is its payment record, a signed order its signed order, and either backs it. Only where the payment record is read.
+   */
+  const filed: { workItemId: string; readAs: string; createdAt: Date }[] = opts.paymentRecord
+    ? (((await Promise.resolve(prisma.itemEvidence?.findMany?.({
+      where: { groundId, workItemId: { in: items.map((i) => i.id) }, countsAsProof: true },
+      select: { workItemId: true, readAs: true, createdAt: true },
+    })).catch(() => [])) ?? []) as any[]).map((e) => ({ workItemId: String(e.workItemId), readAs: String(e.readAs ?? ''), createdAt: new Date(e.createdAt) }))
+    : [];
+  const filedOn = (id: string, readAs: string) => filed.filter((e) => e.workItemId === id && e.readAs === readAs).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   const out: ADealOnRecord[] = [];
   /* With Release 1's rules (the payment record read), the people at each customer and whether each deal was dropped, as the board reads them. */
   const peopleAt = opts.paymentRecord
@@ -429,8 +444,11 @@ export async function theDealsOnRecord(prisma: any, groundId: string, opts: { pa
     if (isADispatchNotADeal({ name: i.name, said: line ? cleanText(line.text ?? '') : '' } as any)) continue;
     const owner: string | null = line?.participantId ?? i.ownerParticipantId ?? null;
     const sourceMark = line ? theMarkOf({ ...line, text: cleanText(line.text ?? '') }, whoAdded) : null;
-    const proven = sourceMark === 'proven' || proofNamesTheDeal(i.name, marked, owner);
+    const paymentFiled = filedOn(i.id, 'A payment');
+    const orderFiled = filedOn(i.id, 'A signed order');
+    const proven = sourceMark === 'proven' || proofNamesTheDeal(i.name, marked, owner) || paymentFiled.length > 0 || orderFiled.length > 0;
     const fields = plainFields(i.fields);
+    const paidOnALine = opts.paymentRecord ? payments.filter((t) => aPaymentRecordFor({ name: i.name, fields }, [t])).map((t) => t.at) : [];
     out.push({
       id: i.id,
       name: i.name,
@@ -439,17 +457,17 @@ export async function theDealsOnRecord(prisma: any, groundId: string, opts: { pa
       fields,
       firstOnRecordAt: new Date(i.createdAt),
       proven,
-      paid: opts.paymentRecord ? aPaymentRecordFor({ name: i.name, fields }, payments) : proven,
+      paid: opts.paymentRecord ? paidOnALine.length > 0 || paymentFiled.length > 0 : proven,
       paidOn: opts.paymentRecord
-        ? payments.filter((t) => aPaymentRecordFor({ name: i.name, fields }, [t])).map((t) => t.at).sort((a, b) => a.getTime() - b.getTime())[0] ?? null
+        ? [...paidOnALine, ...paymentFiled.map((e) => e.createdAt)].sort((a, b) => a.getTime() - b.getTime())[0] ?? null
         : null,
       stagesKept: theStagesKept(i.fields),
       stageSaidOn: line?.createdAt ? new Date(line.createdAt) : null,
       ...(opts.paymentRecord ? {
-        signed: aPaymentRecordFor({ name: i.name, fields }, signedOrders),
+        signed: aPaymentRecordFor({ name: i.name, fields }, signedOrders) || orderFiled.length > 0,
         ...(wonNeedsProof ? { wonNeedsProof: true } : {}),
         /* Only where no document shows the payment: an M-Pesa message sent is said as before. */
-        mpesaCode: aPaymentRecordFor({ name: i.name, fields }, documentPayments) ? null : theMPesaCodeFor({ name: i.name, fields }, lines
+        mpesaCode: aPaymentRecordFor({ name: i.name, fields }, documentPayments) || paymentFiled.length > 0 ? null : theMPesaCodeFor({ name: i.name, fields }, lines
           .filter((l) => theMarkOf({ ...l, text: cleanText(l.text ?? '') }, whoAdded) === 'proven')
           .map((l) => ({ text: cleanText(l.text ?? ''), anchoredDocumentId: l.anchoredDocumentId ?? null }))),
         alreadyOpen: wasAlreadyOpen({ name: i.name, fields, createdAt: new Date(i.createdAt) }, lines.map((l) => ({ ...l, text: cleanText(l.text ?? '') })), leadRows),

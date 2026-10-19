@@ -92,6 +92,8 @@ export interface AThingOutstanding {
   from?: string | null;
   owedTo?: string | null;
   dueSaid?: string;
+  /** For a wait: what is waited for, as it was said, so the board's sentence about the same wait is not said again (the-summary-reads-the-board). Never said. */
+  waitFor?: string;
 }
 
 const THE_PLACE_MARK = '{in}';
@@ -459,13 +461,13 @@ export async function whatIsOutstandingFor(
        summary left out the one thing that needed her. */
     if (onHer && (w.blockerKind === 'DECISION' || (releaseOne && !w.dueOn))) {
       const since = `since ${theDay(w.createdAt)}`;
-      out.needsYou.push({ text: `${saidWait(w, 'is')}${THE_PLACE_MARK} ${since}.`, late: late > 0 ? late : 0, group: 1, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId), groundId: w.groundId, daysOverdue: Math.max(0, late), about: { kind: 'decision', ids: w.ids ?? [w.id] }, from: w.fromParticipantId });
+      out.needsYou.push({ text: `${saidWait(w, 'is')}${THE_PLACE_MARK} ${since}.`, late: late > 0 ? late : 0, group: 1, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId), groundId: w.groundId, daysOverdue: Math.max(0, late), about: { kind: 'decision', ids: w.ids ?? [w.id] }, from: w.fromParticipantId, waitFor: String(w.what ?? '') });
       counted.add(w.id);
       continue;
     }
     if (late < 1) continue;
     const text = `${saidWait(w, 'is')}${THE_PLACE_MARK}, which was due on ${theDay(w.dueOn)} and is ${lateWords(late)}.`;
-    if (onHer) out.needsYou.push({ text, late, group: 2, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId), groundId: w.groundId, daysOverdue: late, about: { kind: 'wait', ids: w.ids ?? [w.id] } });
+    if (onHer) out.needsYou.push({ text, late, group: 2, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId), groundId: w.groundId, daysOverdue: late, about: { kind: 'wait', ids: w.ids ?? [w.id] }, waitFor: String(w.what ?? '') });
     /* Somebody's word alone is not a late mark on a colleague: Juma was shown "ten days late" every morning for shops he had sent. The claim stays,
        as the speaker's account with the note beside it, and with no day or lateness against the colleague (Hafsah, change 4). */
     else if (w.onParticipant && !confirmedWaits.has(w.id)) {
@@ -703,14 +705,18 @@ async function theRecordBesideTheBoard(prisma: any, groundId: string, leadUserId
 }
 
 /**
- * THE BOARD THE MORNING MESSAGE LINKS TO (Drop Access short run, item 11). `lead_daily_summary` says "You can open your board for the
- * full picture here {{3}}", and {{3}} was Today. The template is unchanged; its link is the board of the check-in the message is
- * about: the one check-in its facts come from, or her only check-in, else the list of her check-ins, where each board is.
+ * THE BOARD THE MORNING MESSAGE LINKS TO (Drop Access short run, item 11; engine test, second run). `lead_daily_summary` says "You can
+ * open your board for the full picture here {{3}}", and {{3}} was Today. The template is unchanged; its link is a board: the one
+ * check-in its facts come from, or her only check-in. Where the facts come from more than one check-in, it is the board of the
+ * check-in the message's first line is about, in the order the message says them (what needs her, what is due, what is overdue, the
+ * risks): Wanjiru runs two check-ins, and from Tuesday 13 October her link went to the list of her check-ins, which is not her board.
+ * Only where no line says which check-in it is about, and she runs several, it is Today, where everything is.
  */
 export function theBoardTheMessageIsAbout(base: string, grounds: { id: string }[], facts: WhatIsOutstanding): string {
-  const about = [...new Set([...facts.needsYou, ...facts.overdueOnYourTeam, ...facts.risks].map((t) => t.groundId).filter((g): g is string => !!g))];
-  const one = about.length === 1 ? about[0] : about.length === 0 && grounds.length === 1 ? grounds[0].id : null;
-  return one ? `${base}/grounds/${one}/board` : `${base}/grounds`;
+  const inOrder = [...facts.needsYou, ...(facts.dueToday ?? []), ...facts.overdueOnYourTeam, ...facts.risks];
+  const about = [...new Set(inOrder.map((t) => t.groundId).filter((g): g is string => !!g))];
+  const one = about.length ? about[0] : grounds.length === 1 ? grounds[0].id : null;
+  return one ? `${base}/grounds/${one}/board` : `${base}/today`;
 }
 
 /**

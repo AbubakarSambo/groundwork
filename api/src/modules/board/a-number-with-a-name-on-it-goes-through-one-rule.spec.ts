@@ -167,6 +167,9 @@ describe('every surface that hands out whose number it is', () => {
     'modules/board/the-matter-board.service.ts': "reads each deadline's owner (a work item) to wall the matter board to the reader before it is built; never a target or a number",
     'modules/grounds/__fixtures__/muchemi-and-co.ts': 'hand-written test rows for Release 2: fee notes as work items, never a target',
     'modules/grounds/__fixtures__/a-small-lender.ts': 'hand-written test rows for Release 2: loans as work items, never a target',
+    /* Engine test, second run: the facts each conversation and each judgement is given about deals. */
+    'modules/conversation/their-own-deals-and-what-is-on-file.ts': "reads a deal's owner (a work item) to keep only the person's own deals, and only their own target, which the caller reads for them; never another person's number",
+    'modules/reports/proof-on-file-is-never-asked-for.ts': "reads a sale's owner (a work item) to name whose sale it is in the judgement, which only the lead who runs the check-in reads; never a target or a number",
   };
 
   it('goes through the one rule, or says why it is not a reader', () => {

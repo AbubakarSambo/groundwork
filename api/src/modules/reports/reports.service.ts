@@ -3,6 +3,9 @@ import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
 import { whatTheSwitchboardServes, type TheSwitchboardServed } from '../board/the-switchboard';
 import { theCorrectionsOnTheCheckIn, withWhatACorrectionSettled, whoIsBehindALabel } from './a-correction-is-their-latest-word';
 import { theReleaseOneSalesBoardIsOnFor } from '../board/release-one-sales-board';
+import { theSalesAndTheirProof, whatIsOnFileForEachSale, withoutAsksForProofOnFile } from './proof-on-file-is-never-asked-for';
+import { theDealsOnRecord } from '../board/a-sales-aim-is-counted-from-the-deals';
+import { withoutDifferencesNobodyHad } from './agreeing-with-the-lead-is-not-a-difference';
 import { isASalesKind } from '../board/the-kind-of-work';
 import { withoutADealsFigure, theCustomersOnRecordIfSales } from '../board/a-deals-units-are-not-a-target';
 /** The customers on record on a sales check-in, only where Release 1's switch is on for its organisation; null otherwise, so the report is built as before. */
@@ -2427,6 +2430,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
         targets: (objectivesForTheGaps as any[])
           .filter((o) => !o.ownerParticipantId || o.ownerParticipantId === p.id)
           .map((o) => ({ name: o.name, target: o.target, count: o.count ?? 0, yours: o.ownerParticipantId === p.id, setByThem: o.setByParticipantId === p.id })),
+        /* On a sales check-in, one customer's figure is only set against the same customer's (the-facts-about-a-person). */
+        customers: theCustomers,
+        people: theFirstNames,
       }, roundNow))
       .filter((f): f is NonNullable<typeof f> => !!f);
     const howManyDifferences = Array.isArray((result as any).divergences) ? (result as any).divergences.length : 0;
@@ -2604,6 +2610,26 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * carry a number that is already in it.
      */
     await atStakePass;
+    /*
+     * A DIFFERENCE NOBODY HAD IS NOT KEPT, before the judgement reads the differences (agreeing-with-the-lead-is-not-a-difference):
+     * on a sales check-in, a side whose every figure the other person said too, against the other's own deal, is not a difference
+     * between them. Mercy said the team's 120 as Grace did, and Grace's board said they understood the goal differently.
+     */
+    if (Array.isArray((result as any).divergences) && theCustomers) {
+      const labelToId = new Map([...labelById.entries()].map(([id, l]) => [l, id]));
+      const linesOf = (label: string) => {
+        const id = labelToId.get(label);
+        return id ? records.filter((r) => r.participant.id === id).map((r) => cleanText(r.text)) : null;
+      };
+      const nobodyHad = withoutDifferencesNobodyHad((result as any).divergences, linesOf, theCustomers, theFirstNames);
+      if (nobodyHad.leftOut.length) {
+        this.logger.log(`Report for ground ${groundId}: ${nobodyHad.leftOut.length} difference(s) left out, because each side's figures were the other person's too. First: ${nobodyHad.leftOut[0]}`);
+        (result as any).divergences = nobodyHad.divergences;
+        /* And the question drawn from one that went, as a correction's are (a-correction-is-their-latest-word). */
+        const topics = nobodyHad.leftOut.map((t) => t.trim().replace(/[.!?]+$/, '')).filter(Boolean);
+        if (typeof (result as any).centralQuestion === 'string' && topics.some((t) => (result as any).centralQuestion.includes(t))) (result as any).centralQuestion = null;
+      }
+    }
     const theJudgement = await this.judgeTheAnswers(groundId, {
       /*
        * THE ROOM, for a ground too small for counts to mean anything. Built from what synthesis has
@@ -4930,6 +4956,10 @@ happened, and what is in the way.`;
      * the people instead. Same schema out, so nothing downstream knows which one ran.
      */
     let material = table;
+    /* On a sales check-in with Release 1's switch on, each sale and what is on file for it, from the same rows the headline counts. */
+    const salesAndProof = (await theReleaseOneSalesBoardIsOnFor(this.prisma, groundId).catch(() => false))
+      ? theSalesAndTheirProof(await theDealsOnRecord(this.prisma, groundId, { paymentRecord: true }).catch(() => []))
+      : [];
     let instruction = theJudgementInstruction(
       'whoever called this check-in',
       'what to do next about the people and the work it covers',
@@ -5017,6 +5047,11 @@ happened, and what is in the way.`;
         sessions,
         namedByMoreThanOne(shared),
       );
+      /* What is on file for each sale, so a sale with a payment record on file is never asked about again (proof-on-file-is-never-asked-for). */
+      if (salesAndProof.length) {
+        const whoOwns = (pid: string | null) => room!.people.find((p) => p.participantId === pid)?.who ?? null;
+        material = `${material}\n\n${whatIsOnFileForEachSale(salesAndProof, whoOwns)}`;
+      }
       instruction = theJudgementOverARoom(
         'whoever called this check-in',
         'what to do next about the people and the work it covers',
@@ -5139,6 +5174,10 @@ happened, and what is in the way.`;
       kept = numbers.judgement;
       if (numbers.leftOut.length) this.logger.warn(`The judgement on ${groundId}: left out ${numbers.leftOut.length} line(s) with a number no block holds: ${numbers.leftOut.map((x) => `"${x}"`).join(', ')}`);
     }
+    /* And a line the record proves false about proof on file is left out (proof-on-file-is-never-asked-for). */
+    const onFile = withoutAsksForProofOnFile(kept, salesAndProof);
+    kept = onFile.judgement;
+    if (onFile.leftOut.length) this.logger.warn(`The judgement on ${groundId}: left out ${onFile.leftOut.length} line(s) about proof the record already holds: ${onFile.leftOut.map((x) => `"${x}"`).join(', ')}`);
     this.logger.log(`Judged ${answers.length} answer(s) on ${groundId} over ${frame.length} fields.`);
     /* Which instruction wrote it: the stored version's id, or null where the code text ran. */
     return { judgement: { ...kept, promptVersionId: stored?.id ?? null }, table };

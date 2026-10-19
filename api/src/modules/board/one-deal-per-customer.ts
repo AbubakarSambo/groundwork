@@ -46,6 +46,15 @@ export function aLineNamesTheCustomer(line: string, dealName: string): boolean {
   const words = squash(line).split(' ');
   /* The same words with their capitals, one for one, so a name said short can be told from another name that starts the same way. */
   const asWritten = String(line ?? '').replace(/[‘’“”'"]/g, '').replace(/[^A-Za-z0-9\s-]/g, ' ').replace(/\s+/g, ' ').trim().split(' ');
+  /*
+   * And where each word ends a sentence, so the capital that starts the next sentence is not read as another name (engine test, second
+   * run): Joseph's "I'm closing Juja Hardware and Mama Pima. That's 35 units." named Juja Hardware only, because "That" followed "Pima".
+   */
+  const endsASentence: boolean[] = [];
+  for (const t of String(line ?? '').replace(/[‘’“”'"]/g, '').replace(/([.!?])/g, ' $1 ').replace(/[^A-Za-z0-9\s.!?-]/g, ' ').split(/\s+/).filter(Boolean)) {
+    if (/^[.!?]+$/.test(t)) { if (endsASentence.length) endsASentence[endsASentence.length - 1] = true; } else endsASentence.push(false);
+  }
+  const aligned = endsASentence.length === asWritten.length;
   for (let i = 0; i < words.length; i++) {
     let n = 0;
     while (n < who.length && words[i + n] === who[n]) n++;
@@ -56,7 +65,8 @@ export function aLineNamesTheCustomer(line: string, dealName: string): boolean {
      * M-Pesa" still name Kilele Hotel.
      */
     const next = asWritten.length === words.length ? asWritten[i + n] : undefined;
-    const anotherName = !!next && /^[A-Z]/.test(next) && !NOT_THE_CUSTOMER.test(next.toLowerCase());
+    const atTheEndOfASentence = n > 0 && aligned && endsASentence[i + n - 1] === true;
+    const anotherName = !!next && !atTheEndOfASentence && /^[A-Z]/.test(next) && !NOT_THE_CUSTOMER.test(next.toLowerCase());
     if (n > 0 && !anotherName && theSameCustomer(who.slice(0, n).join(' '), who.join(' '))) return true;
   }
   return false;

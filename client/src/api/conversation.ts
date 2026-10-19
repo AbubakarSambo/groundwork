@@ -27,7 +27,7 @@ export interface CheckInBrief {
  * docs/requests-to-engine.md, request 7; the screen draws nothing until they come.
  */
 /** `mayCompleteAfter`: the turn floor the server holds this check-in to. The screen offers to finish at that count and not before, so the offer is never refused. */
-export interface OpenCheckInResponse { reply: string; groundId?: string; brief?: CheckInBrief | null; mayCompleteAfter?: number; suggestedAnswers?: string[]; ideaOffer?: TheIdeaOfferInTheCheckIn | null; requestOffer?: TheRequestOfferInTheCheckIn | null; openTheRequest?: TheRequestToOpen | null }
+export interface OpenCheckInResponse { reply: string; /** The session actually opened, where the one asked for had a round that had closed and today's was opened instead. */ checkInId?: string; groundId?: string; brief?: CheckInBrief | null; mayCompleteAfter?: number; suggestedAnswers?: string[]; ideaOffer?: TheIdeaOfferInTheCheckIn | null; requestOffer?: TheRequestOfferInTheCheckIn | null; openTheRequest?: TheRequestToOpen | null }
 /*
  * THE END CARD'S PARTS THAT ONLY THE ENGINE CAN WRITE (B3, check-in-end-card.txt), sent with the reply
  * that closes the conversation. Asked of the engine workspace in docs/requests-to-engine.md,

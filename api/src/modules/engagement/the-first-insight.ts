@@ -2,6 +2,7 @@ import { aNumberInWords } from './a-number-in-words';
 import { saysTheSame } from './a-sentence-said-twice';
 import { theConversationWorthHavingSaying } from '../grounds/what-is-sent-in-simpler-words';
 import { isAWholeSentence } from '../reports/what-people-said-differently-about';
+import { A_LINE_WE_COULD_NOT_RESTATE } from '../reports/said-in-its-own-words';
 
 /**
  * THE FIRST MEANINGFUL INSIGHT IS IN THE MAIL (engagement spec section 7; section 36, journey 5).
@@ -51,6 +52,19 @@ export function anOpenThing(t: unknown): string | null {
   return x.length <= 400 ? x : `${x.slice(0, 400).replace(/\s+\S*$/, '')}...`;
 }
 
+/**
+ * A STAND-IN IS NEVER SAID AS A FINDING (engine test, second run, Muchemi & Co, Wednesday 14 October). A difference whose words could not
+ * be restated without repeating somebody's own is stored as "[One line here repeated somebody's exact words ...]", and Wanjiru's
+ * shared-picture email opened with that line, "[...], and one more difference is still open.". It still counts as a difference; it is
+ * never the one named, and where it is the only one, the mail says how many the picture found.
+ */
+export const isAStandIn = (t: string): boolean => {
+  const x = String(t ?? '').trim();
+  return x.includes(A_LINE_WE_COULD_NOT_RESTATE.slice(1, 40)) || /^\[[^\]]*\]\.?$/.test(x);
+};
+/** The things open, the ones that can be named first, so a stand-in is never the one said. */
+const nameableFirst = (open: string[]) => [...open.filter((t) => !isAStandIn(t)), ...open.filter(isAStandIn)];
+
 /** A thing the report names, as it is quoted. */
 export function aTopicQuoted(t: unknown): string | null {
   const x = anOpenThing(t);
@@ -97,7 +111,10 @@ export function theFirstInsight(report: any, label: string, reader: { isTheLead:
 
   const lines: string[] = [];
   const name = cutLabel(label, 60);
-  if (open.length) lines.push(firstOpenSaid(name, open, true));
+  const ordered = nameableFirst(open);
+  const noneNameable = open.length > 0 && isAStandIn(ordered[0]);
+  const theCount = (l: string) => `The shared picture for "${l}" found ${aNumberInWords(open.length)} ${open.length === 1 ? 'difference' : 'differences'} still open`;
+  if (open.length) lines.push(noneNameable ? `${theCount(name)}.` : firstOpenSaid(name, ordered, true));
   else lines.push(`${capital(aNumberInWords(settled))} ${settled === 1 ? 'thing' : 'things'} in "${name}" ${settled === 1 ? 'is' : 'are'} settled, and none are still open.`);
   if (open.length) {
     lines.push(
@@ -109,7 +126,9 @@ export function theFirstInsight(report: any, label: string, reader: { isTheLead:
   if (question && !lines.some((l) => saysTheSame(l, question))) lines.push(`${theConversationWorthHavingSaying(reader.simplerWords)} ${question}`);
 
   if (reader.isTheLead && open.length) {
-    const first = (Array.isArray(stand.openWithReasons) ? stand.openWithReasons : [])[0];
+    /* What would settle the one named first, never a stand-in's. */
+    const reasons: any[] = Array.isArray(stand.openWithReasons) ? stand.openWithReasons : [];
+    const first = noneNameable ? null : reasons.find((r) => !isAStandIn(String(r?.topic ?? '')) && anOpenThing(r?.topic) === anOpenThing(ordered[0])) ?? reasons.find((r) => !isAStandIn(String(r?.topic ?? '')));
     const settledBy = whatEachPersonSaid(String(first?.settledBy ?? '').replace(/\s+/g, ' ').trim());
     if (settledBy && lines.some((l) => saysTheSame(l, settledBy))) {
       /* It says what the mail already says, so it is not said again. */
@@ -124,7 +143,7 @@ export function theFirstInsight(report: any, label: string, reader: { isTheLead:
 
   return {
     hasAFinding: open.length > 0,
-    subjectForTheLead: reader.isTheLead && open.length ? aSubjectThatFits(firstOpenSaid(cutLabel(label, 40), open, false), `The shared picture for "${cutLabel(label, 40)}" found ${aNumberInWords(open.length)} ${open.length === 1 ? 'difference' : 'differences'} still open`) : null,
+    subjectForTheLead: reader.isTheLead && open.length ? (noneNameable ? theCount(cutLabel(label, 40)) : aSubjectThatFits(firstOpenSaid(cutLabel(label, 40), ordered, false), theCount(cutLabel(label, 40)))) : null,
     lines,
   };
 }
@@ -138,7 +157,7 @@ export function theFirstOpenDifference(report: any): string | null {
   const open: unknown[] = Array.isArray(report.whereThingsStand.differences) ? report.whereThingsStand.differences : Array.isArray(report.whereThingsStand.open) ? report.whereThingsStand.open : [];
   for (const t of open) {
     const x = anOpenThing(t);
-    if (x) return isAWholeSentence(x) ? lowerFirstOfAClause(x) : `the people differ on "${x}"`;
+    if (x && !isAStandIn(x)) return isAWholeSentence(x) ? lowerFirstOfAClause(x) : `the people differ on "${x}"`;
   }
   return null;
 }
@@ -152,8 +171,8 @@ export function theFirstOpenDifference(report: any): string | null {
 export function theFindingOnItsOwn(report: any, label: string): { finding: string; moreStillOpen: number; conversationWorthHaving: string | null } | null {
   if (!report?.whereThingsStand || report?.withheldUntilYouAnswer) return null;
   const open: string[] = (Array.isArray(report.whereThingsStand.differences) ? report.whereThingsStand.differences : Array.isArray(report.whereThingsStand.open) ? report.whereThingsStand.open : []).map(anOpenThing).filter((t: string | null): t is string => !!t);
-  if (!open.length) return null;
-  const first = open[0];
+  const first = open.find((t) => !isAStandIn(t));
+  if (!first) return null;
   const finding = isAWholeSentence(first) ? `${capital(first)}.` : `The people in "${cutLabel(label, 60)}" differ on "${first}".`;
   const question = String(report.theConversationWorthHaving ?? '').replace(/\s+/g, ' ').trim();
   return { finding, moreStillOpen: open.length - 1, conversationWorthHaving: question || null };

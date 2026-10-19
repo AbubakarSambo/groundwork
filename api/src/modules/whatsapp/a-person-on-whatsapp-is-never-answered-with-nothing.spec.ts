@@ -103,7 +103,9 @@ describe('the organisation handler', () => {
   it('wraps the open-and-answer path in a try whose catch says the sentence, as the finish branch already did', () => {
     const at = SRC.indexOf("const r = await this.conversation.sendMessage(current.id, userId!, text, { door: 'whatsapp' });");
     expect(at).toBeGreaterThan(0);
-    const before = SRC.slice(at - 600, at);
+    /* 700, not 600 (engine test, second run): the open path now also follows today's session when the one asked for had a round
+       that had closed, which put the try a few characters further back. Still the one try around the open and the answer. */
+    const before = SRC.slice(at - 700, at);
     const after = SRC.slice(at, at + 700);
     expect(before).toMatch(/try \{/);
     expect(after).toMatch(/catch \(e: any\) \{[\s\S]*await say\(/);

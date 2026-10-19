@@ -115,7 +115,11 @@ export function useOpenSession(groundId: string | undefined) {
         return
       }
       setProbeStatus('idle')
-      settleProbe({ blocked: false, checkIn })
+      /* Today's session, where the one asked for had a round that had closed: the page goes to the one that was opened. */
+      const opened = typeof res.data?.checkInId === 'string' && res.data.checkInId !== checkIn.id
+        ? { ...checkIn, id: res.data.checkInId, sessionNumber: (checkIn.sessionNumber ?? 0) + 1 }
+        : checkIn
+      settleProbe({ blocked: false, checkIn: opened })
       /*
        * B-211: NO TOAST ON FAILURE. A failed open already gets its own permanent note on the
        * page (`openFailed`/`openError`, just below, read by GroundParticipantPage.tsx and
