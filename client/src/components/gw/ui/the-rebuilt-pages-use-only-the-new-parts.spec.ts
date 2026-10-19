@@ -315,6 +315,8 @@ describe('a rebuilt page never falls back to the old parts', () => {
       'pages/grounds/CheckInPeopleAndSetup.tsx',
       'pages/grounds/PeopleAndSetupAsPictured.tsx',
       'pages/grounds/YourPeopleAndSetup.tsx',
+      'pages/grounds/ReferencesAndResources.tsx',
+      'components/gw/ItsEvidence.tsx',
       'pages/board/BoardPage.tsx',
       'pages/board/WorkRecords.tsx',
       'components/gw/where-each-person-is.tsx',

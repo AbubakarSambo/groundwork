@@ -1,3 +1,4 @@
+import { ItsEvidence } from '@/components/gw/ItsEvidence'
 import { createContext, useContext, useState, type ReactNode } from 'react'
 import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -691,7 +692,7 @@ function SalesDealGridHead() {
  * (the engine's own `groupsNote`), so a tick here would be invented, not read off the record.
  */
 function DealDetail({ row, groundId }: { row: AServedWorkRow; groundId: string }) {
-  const hasDetail = !!row.groupSays || !!row.contactHistory?.length || !!row.theirRead || !!row.valueSays
+  const hasDetail = !!row.groupSays || !!row.contactHistory?.length || !!row.theirRead || !!row.valueSays || !!row.evidence?.length
   if (!hasDetail) return null
   return (
     <Folded summary="Why it’s here">
@@ -712,6 +713,7 @@ function DealDetail({ row, groundId }: { row: AServedWorkRow; groundId: string }
             {row.contactHistorySays && <Note tone="muted">{row.contactHistorySays}</Note>}
           </div>
         )}
+        <ItsEvidence evidence={row.evidence} />
         {row.theirRead && (
           <div>
             <SubHeading as="h3">{row.theirRead.says}</SubHeading>

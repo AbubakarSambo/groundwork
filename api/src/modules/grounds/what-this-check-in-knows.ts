@@ -25,6 +25,9 @@ export const ABOUT_SOMEBODY: Set<ContextItemKind> = new Set([
   ContextItemKind.ABOUT_A_PERSON,
   ContextItemKind.QUESTION_FOR_PERSON,
   ContextItemKind.BETWEEN_PEOPLE,
+  /* Release 1B, References and resources: the lead's note on a person, and what to help them with. People, only the lead. */
+  ContextItemKind.PERSON_NOTE,
+  ContextItemKind.HELP_WITH,
 ]);
 
 /** The buckets the page draws, in the order it draws them. */

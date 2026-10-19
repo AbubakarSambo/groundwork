@@ -954,6 +954,8 @@ export interface AServedWorkRow {
   /** Each day somebody spoke about it in a check-in, newest first - only lines this reader may read. */
   contactHistory?: { on: string; how: 'with proof' | 'in their words'; says: string }[]
   contactHistorySays?: string
+  /** Release 1B: the proof filed on this item, beside it. Only while the organisation's switch is on, only what this reader may read. */
+  evidence?: { id: string; documentId: string; readAs: string; countsAsProof: boolean; shows: string | null; addedOn: string; addedBy: string }[]
   /** The owner's own latest sentence that names it, word for word - null where they never named it, or this reader may not read their words. */
   theirRead?: { who: string; words: string; says: string } | null
 }

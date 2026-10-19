@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, ParseIntPipe, Query } from '@nestjs/common';
 import { IsBoolean, MinLength } from 'class-validator';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IsOptional, IsInt, Min, Max, IsEnum, IsIn, IsArray } from 'class-validator';
@@ -605,6 +605,56 @@ export class GroundsController {
   @ApiOperation({ summary: 'People and setup, as this reader may read it (the lead, an admin who does not run it, or a team member)' })
   async peopleAndSetup(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
     return this.grounds.peopleAndSetup(id, user.organizationId, user.id);
+  }
+
+  /**
+   * REFERENCES AND RESOURCES, AS THIS READER IS SERVED IT (Release 1B, pull request 2 of 3): the lead every section, a team
+   * member never People, the lead's notes or a document they may not open. `{ on: false }` while Release 1B's switch is off
+   * for the organisation. Only reads. See references-and-resources.ts.
+   */
+  @Get(':id/references-and-resources')
+  @ApiOperation({ summary: 'References and resources, as this reader may read it (the lead, a team member, or an admin)' })
+  async referencesAndResources(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.grounds.referencesAndResources(id, userId);
+  }
+
+  /** One page of the evidence this reader may read: the lead all of it, each person only their own. 25 to a page, newest first. */
+  @Get(':id/references-and-resources/evidence')
+  @ApiOperation({ summary: 'One page of the evidence on References and resources, with search and filters' })
+  async referencesEvidence(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Query('page') page?: string,
+    @Query('q') q?: string,
+    @Query('group') group?: string,
+    @Query('person') person?: string,
+    @Query('when') when?: string,
+  ) {
+    const w = when === 'week' || when === 'month' || when === 'quarter' ? when : 'any';
+    return this.grounds.referencesEvidence(id, userId, { page: Number(page) || 1, q, group, person, when: w });
+  }
+
+  /** The lead adds a line to References and resources. Anybody else is refused at the server. */
+  @Post(':id/references-and-resources/lines')
+  @ApiOperation({ summary: 'Add a line to References and resources (the lead only)' })
+  async addAReference(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: { kind?: string; text?: string; label?: string; aboutParticipantId?: string | null },
+  ) {
+    return this.grounds.addAReference(id, userId, dto ?? {});
+  }
+
+  /** The lead rewords or removes a line on References and resources. Anybody else is refused at the server. */
+  @Patch(':id/references-and-resources/lines/:lineId')
+  @ApiOperation({ summary: 'Change or remove a line on References and resources (the lead only)' })
+  async changeAReference(
+    @Param('id') id: string,
+    @Param('lineId') lineId: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: { text?: string; label?: string; closed?: boolean },
+  ) {
+    return this.grounds.changeAReference(id, userId, lineId, dto ?? {});
   }
 
   @Get(':id/mediator-brief')

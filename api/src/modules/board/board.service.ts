@@ -1,3 +1,4 @@
+import { theRelease1bTabsAreOn } from '../grounds/release-1b-tabs';
 import { aLineThatSaysItHappened } from './somebody-said-it-happened';
 import { withoutTheLeadsSetUpForAMember } from '../grounds/the-leads-set-up-is-the-leads-in-the-anchor';
 import { owesThisSession } from '../grounds/the-lead-checks-in-when-they-choose';
@@ -2817,6 +2818,32 @@ export class BoardService {
             saidByParticipantId: c.participantId,
             mark: 'said',
           } as AServedRecord);
+        }
+      }
+      /*
+       * EACH ITEM'S OWN EVIDENCE, BESIDE IT (Release 1B, pull request 2 of 3: "Proof added in a check-in is read, filed on its item
+       * as evidence, and shown on the board beside that item"). Only while the organisation's Release 1B switch is on; off, the
+       * rows are served exactly as before. Whoever runs it reads every piece; anybody else only what they added themselves, the
+       * same rule as References and resources' Evidence. Read from the rows proof-filed-on-its-item.ts wrote, never worked out here.
+       */
+      if (rows.length && await theRelease1bTabsAreOn(this.prisma as any, (ground as any).organizationId)) {
+        const filed = ((await ((this.prisma as any).itemEvidence?.findMany?.({
+          where: { groundId, workItemId: { in: rows.map((r: any) => r.id).filter(Boolean) } },
+          select: { id: true, documentId: true, participantId: true, workItemId: true, readAs: true, countsAsProof: true, shows: true, createdAt: true },
+          orderBy: { createdAt: 'desc' },
+        }) ?? Promise.resolve([])).catch(() => [])) ?? []) as any[];
+        const zone = theDayZone();
+        for (const r of rows as any[]) {
+          const mine = filed.filter((e) => e.workItemId === r.id && (runsIt || (!!me?.id && e.participantId === me.id)));
+          r.evidence = mine.map((e) => ({
+            id: e.id,
+            documentId: e.documentId,
+            readAs: e.readAs,
+            countsAsProof: e.countsAsProof === true,
+            shows: e.shows ?? null,
+            addedOn: new Intl.DateTimeFormat('en-GB', { timeZone: zone, day: 'numeric', month: 'long' }).format(new Date(e.createdAt)),
+            addedBy: e.participantId && e.participantId === me?.id ? 'You' : (e.participantId ? nameOf(e.participantId) : null) ?? 'a colleague',
+          }));
         }
       }
       out.workRecords = theRecordSections(kind, (ground as any).workStages, rows);

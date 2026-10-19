@@ -1,3 +1,4 @@
+import { ItsEvidence } from '@/components/gw/ItsEvidence'
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -584,6 +585,8 @@ export function TheOpenDeal({ r, groupNote, today, groundId, onChange, ownTag = 
           <p className="gwui-panel-text">Nobody has spoken about it in a check-in yet.</p>
         )}
       </Panel>
+      {/* Release 1B: the proof filed on this deal, beside it (served only while the switch is on). */}
+      {(r.evidence ?? []).length > 0 && <Panel><ItsEvidence evidence={r.evidence} /></Panel>}
       {r.theirRead?.words && (
         <Panel>
           <h3 className="pb-small-h">{r.theirRead.who === 'You' ? 'Your read, in your words' : `${firstName(r.theirRead.who)}’s read, in their words`}</h3>

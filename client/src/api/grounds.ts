@@ -331,6 +331,19 @@ export const groundsApi = {
   peopleAndSetup: (groundId: string) =>
     apiClient.get<PeopleAndSetup>(`/grounds/${groundId}/people-and-setup`).then(r => (r.data as any)?.data ?? r.data),
 
+  /** References and resources as this reader may read it (Release 1B, pull request 2 of 3). `{ on: false }` while the switch is off. */
+  referencesAndResources: (groundId: string) =>
+    apiClient.get<ReferencesAndResources>(`/grounds/${groundId}/references-and-resources`).then(r => (r.data as any)?.data ?? r.data),
+  /** One page of the evidence this reader may read: 25 to a page, newest first, with search and filters. */
+  referencesEvidence: (groundId: string, q: { page?: number; q?: string; group?: string; person?: string; when?: string }) =>
+    apiClient.get<AnEvidencePage | { on: false }>(`/grounds/${groundId}/references-and-resources/evidence`, { params: q }).then(r => (r.data as any)?.data ?? r.data),
+  /** The lead adds a line (the server refuses anybody else). */
+  addAReference: (groundId: string, body: { kind: AReferenceKind; text: string; label?: string; aboutParticipantId?: string }) =>
+    apiClient.post(`/grounds/${groundId}/references-and-resources/lines`, body).then(r => (r.data as any)?.data ?? r.data),
+  /** The lead rewords or removes a line (the server refuses anybody else). */
+  changeAReference: (groundId: string, lineId: string, body: { text?: string; label?: string; closed?: boolean }) =>
+    apiClient.patch(`/grounds/${groundId}/references-and-resources/lines/${lineId}`, body).then(r => (r.data as any)?.data ?? r.data),
+
   getMediatorBrief: (groundId: string) =>
     apiClient.get(`/grounds/${groundId}/mediator-brief`).then(r => r.data),
 
@@ -635,3 +648,29 @@ export type PeopleAndSetup =
   | { on: true; view: 'member'; howItRuns: string; yourRole: string; status: string; yourSessionsDone: number; sessionsPlanned: number | null; runsIt: string | null; whoSeesWhat: string }
   | { on: true; view: 'reader'; howItRuns: string; runsIt: string | null }
   | { on: true; view: 'lead' | 'admin'; howItRuns: string; problems: ASetupProblem[]; sessions: string; joinedWithTheLink: string; kindOfWork: string | null; kindsOffered: string[]; othersWithAccess: string; runsIt: string | null; organisationName: string; roleDescribed: Record<string, boolean> }
+
+/** References and resources, as the server serves it to this reader (api grounds/references-and-resources.ts). */
+export type AReferenceKind = 'RULE' | 'STAGE_NEEDS' | 'COACHING' | 'RISK' | 'KEY_FACT' | 'PERSON_NOTE' | 'HELP_WITH'
+export type AReferenceLine = { id: string; text: string; fromTheTemplate?: boolean; onlyYou?: boolean }
+export type APieceOfEvidence = { id: string; readAs: string; shows: string | null; belongsTo: string; addedBy: string; addedById: string | null; addedOn: string; on: string; countsAsProof: boolean; group: 'Orders and quotes' | 'Payments' | 'Photos' | 'Other documents' }
+export type AnEvidencePage = { total: number; page: number; pageSize: number; items: APieceOfEvidence[]; people: { id: string; name: string }[] }
+export type AReferenceDocument = { id: string; name: string; added: string; addedOn: string; summary: string | null; whoCanSee: string; kind: 'Photos' | 'Spreadsheets' | 'PDFs' | 'Documents' }
+export type ReferencesAndResources =
+  | { on: false }
+  | {
+      on: true
+      view: 'lead' | 'member' | 'admin' | 'reader'
+      checkInName: string
+      leadName: string | null
+      topLine: string
+      mayAdd: boolean
+      itemWord: string
+      about: { purpose: string | null; whose: string | null; keyFacts: { id: string; label: string; fact: string }[]; alsoWorthKnowing: AReferenceLine[]; emptySays: string | null; yourOwnWords?: string }
+      suggested?: { id: string; what: string; from: string; says: string; saidAs: string }[]
+      howWeWork: { rules: AReferenceLine[]; stageNeeds: AReferenceLine[]; coaching: AReferenceLine[]; risks: AReferenceLine[]; startingSetSays: string | null }
+      documents: { total: number; items: AReferenceDocument[]; notOpenToYou: boolean } | null
+      evidence: AnEvidencePage | null
+      evidenceSays: string
+      questions: { total: number; items: { asked: string; answer: string; who: string }[]; emptySays: string }
+      people?: { participantId: string; name: string; role: string | null; note: AReferenceLine | null; helpWith: AReferenceLine | null; earlier: string[] }[]
+    }
