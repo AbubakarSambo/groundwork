@@ -10,6 +10,8 @@ import { aNameAPersonGave, aPersonNeverReadsAnInternalName } from '../../common/
 import { HELD_FOR_A_SEAT } from '../participants/held-for-a-seat';
 import { checksInOnlyWhenTheyChoose } from '../grounds/the-lead-checks-in-when-they-choose';
 import { whenThisSessionsRoundClosed } from '../grounds/a-session-nobody-opened';
+import { theirOwnDealsAndWhatIsOnFile } from './their-own-deals-and-what-is-on-file';
+import { theDealsOnRecord } from '../board/a-sales-aim-is-counted-from-the-deals';
 import { theReleaseMoment } from '../grounds/the-release-moment';
 import { theWaitIsConfirmed } from '../grounds/a-wait-is-the-speakers-account';
 import { theRoleBlock, keepWhatTheySaidAboutTheirJob, theirJobAsTheyToldUs, theirJobAsKept, asksAboutTheirJob, THE_REPLY_DID_NOT_ASK_ABOUT_THEIR_JOB, SAYS_WHICH_CHECK_IN_THIS_IS, NEVER_SAY_WHICH_CHECK_IN_THIS_IS, asksAboutTheirJobAgain, withoutTheJobQuestion, THEIR_JOB_WAS_ASKED_ALREADY } from './their-role-in-the-first-check-in';
@@ -4616,6 +4618,21 @@ export class ConversationService {
         });
       })
       .catch(() => '');
+    /*
+     * THEIR OWN DEALS, THE FIGURES THEY GAVE AND WHAT IS ON FILE (their-own-deals-and-what-is-on-file): facts for the model, on a sales
+     * check-in with Release 1's switch on, so "Mama Pima is 15 units now" is heard beside "10-unit deal" and "paid a deposit" beside
+     * nothing on file. Their own deals only.
+     */
+    const theirDealsBlock = theCustomersHere ? await (async () => {
+      const deals = await theDealsOnRecord(this.prisma, ground.id, { paymentRecord: true });
+      const theirLines: any[] = ((await Promise.resolve(this.prisma.recordEntry?.findMany?.({
+        where: { participantId: checkIn.participantId, disputedAt: null, checkIn: { status: 'COMPLETED' } },
+        select: { text: true, createdAt: true, participantId: true },
+      })).catch(() => [])) ?? []) as any[];
+      const own = (objectivesOnRecord as any[]).find((o) => o.ownerParticipantId === checkIn.participantId && typeof o.target === 'number' && /\bunits?\b/i.test(String(o.name ?? '')));
+      const paidUnits = deals.filter((d) => d.ownerParticipantId === checkIn.participantId && d.paid && !d.dropped).reduce((t, d) => t + (Number(String(d.fields?.Units ?? '').replace(/,/g, '')) || 0), 0);
+      return theirOwnDealsAndWhatIsOnFile(deals, theirLines.map((l) => ({ text: cleanText(String(l.text ?? '')), createdAt: l.createdAt, participantId: l.participantId })), checkIn.participantId, theZoneHere, own ? { target: own.target, paidUnits } : null);
+    })().catch(() => '') : '';
     /* PROOF ALREADY GIVEN (Hafsah, 12 October): Hassan typed three M-Pesa codes and was asked for them
        again on the next turn. What they have typed this session is handed over as already given. */
     /* And a photo, document or pin they sent during this check-in is already given too. */
@@ -6082,7 +6099,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ['A_CORRECTION_IS_NOT_A_SCOLDING', A_CORRECTION_IS_NOT_A_SCOLDING],
       ['ANSWER_THE_REMARK', ANSWER_THE_REMARK],
       ['openWithSomethingNew', OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE],
-      ['planBlock', planBlock], ['disagreementBlock', disagreementBlock], ['recordAlreadyHolds', recordAlreadyHolds], ['doesNotAddUp', doesNotAddUp], ['alreadyGiven', alreadyGiven], ['owedBlock', owedBlock], ['spineSoFar', spineSoFar], ['intakeBlock', intakeBlock],
+      ['planBlock', planBlock], ['disagreementBlock', disagreementBlock], ['recordAlreadyHolds', recordAlreadyHolds], ['doesNotAddUp', doesNotAddUp], ['theirDealsBlock', theirDealsBlock], ['alreadyGiven', alreadyGiven], ['owedBlock', owedBlock], ['spineSoFar', spineSoFar], ['intakeBlock', intakeBlock],
       ['pendingLines', pendingLines.join('')], ['evidenceLines', evidenceLines.join('')],
       ['theirWeek', theirWeek], ['howWeDoIt', howWeDoIt], ['styleBlock', styleBlock],
       ['clarificationContext', clarificationContext], ['selfCorrectionContext', selfCorrectionContext],
@@ -6181,7 +6198,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       return [THE_LEAN_CORE, theirLanguage, intakeBlock, recordAlreadyHolds, alreadyGiven, owedBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, finalSessionContext, returningUserContext, roleProbeBlock, salesGathersBlock, referencesBlock, feeNotesWaitBlock, theJob, theJobThisTurn, roleConfirmationBlock, coachingBlock, patternProbeBlock, dynamicContext, docContext, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork]
         .filter(Boolean).join('\n\n').replace(/^[\s\S]*$/, (all) => theRulesKeptTheRestWithoutStandInLabels(all, theLeanRules, calledHere));
     }
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, alreadyGiven, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, salesGathersBlock, referencesBlock, feeNotesWaitBlock, theJob, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, burden, putThisToThem, askedWhenThisEnds, theJobThisTurn, theirHedge, theHole, salesGathers.last, heldBack, proofKindly, whereItIs, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n').replace(/^[\s\S]*$/, (all) => theRulesKeptTheRestWithoutStandInLabels(all, theRules, calledHere));
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, theirDealsBlock, alreadyGiven, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, salesGathersBlock, referencesBlock, feeNotesWaitBlock, theJob, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, burden, putThisToThem, askedWhenThisEnds, theJobThisTurn, theirHedge, theHole, salesGathers.last, heldBack, proofKindly, whereItIs, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n').replace(/^[\s\S]*$/, (all) => theRulesKeptTheRestWithoutStandInLabels(all, theRules, calledHere));
   }
 
   /**

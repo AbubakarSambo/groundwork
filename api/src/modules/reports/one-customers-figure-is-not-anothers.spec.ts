@@ -59,8 +59,8 @@ describe("What the report is handed about Kevin on Thursday, on Drop Access's sa
     expect(f.whatDoesNotAddUp.join(' ')).not.toMatch(/\b40\b/);
   });
 
-  it('keeps the change he made himself on one customer, Ngong Road Minimart from 4 units to 5', () => {
-    expect(kevin(CUSTOMERS).whatDoesNotAddUp).toContain('That is 4 units then 5: up 25%');
+  it('does not hand over as a difference the figure he put right himself, "Ali at Ngong Road Minimart wants 5 units, not 4."', () => {
+    expect(kevin(CUSTOMERS).whatDoesNotAddUp).toEqual([]);
   });
 
   it('hands over no earlier figure that is about another customer', () => {

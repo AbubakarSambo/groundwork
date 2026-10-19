@@ -114,8 +114,19 @@ const clean = (t: string): string => (t ?? '').replace(/\[VERIFIABILITY:\w+\]\s*
 const AN_AIM = /\b(aim(?:ing)?(?: for)?|target|goal|hope|hoping|plan(?:ning)?|want(?:ed)? to|need(?:ed)? to|should|by the end|to have|to get|to reach)\b/i;
 /* On a sales check-in (customers on record are given), "wants to" and "needs to" are aims too (Drop Access run 1, items 27 and 28). Release 1, part 3: only where `customers` is given; the rest of the conversation keeps AN_AIM until its own part. */
 const AN_AIM_ON_A_SALES_CHECK_IN = /\b(aim(?:ing)?(?: for)?|target|goal|hope|hoping|plan(?:ning)?|wants? to|wanted to|needs? to|needed to|should|by the end|to have|to get|to reach)\b/i;
-/** The text with its aim clauses taken out: "500 birds, aiming for 400 eggs a day" leaves "500 birds". */
-const whatIsNotAnAimIn = (t: string, onASalesCheckIn = false): string => clean(t).split(/[,;]|\b(?:and|but)\b/i).filter((c) => !(onASalesCheckIn ? AN_AIM_ON_A_SALES_CHECK_IN : AN_AIM).test(c)).join(', ');
+/*
+ * ON A SALES CHECK-IN, A TARGET NAMED WITH ITS NUMBER IS NOT AN AIM CLAUSE (engine test, second run, Drop Access, Joseph). "That 10-unit
+ * deal for Mama Pima is definitely part of my 30-unit target." was left out whole because it has the word "target" in it, so his
+ * Mama Pima deal of 10 units on Monday was never set against "Mama Pima is 15 units now" on Tuesday, and the check-in answered
+ * "Fifteen units for Mama Pima is a real expansion". The target's own words are taken out ("my 30-unit target", "a target of 30
+ * units"); what is left is read as before. And "10-unit" is 10 units.
+ */
+const A_TARGET_WITH_ITS_NUMBER = /\b(?:my|our|the|his|her|their|your|a)\s+\d[\d,]*[-\s]?units?\s+(?:target|goal)\b|\b(?:target|goal)\s+of\s+\d[\d,]*\s*units?\b/gi;
+export const onASalesCheckInRead = (t: string): string => t.replace(A_TARGET_WITH_ITS_NUMBER, ' ').replace(/\b(\d[\d,]*)-(units?)\b/gi, '$1 $2');
+/** The text with its aim clauses taken out: "500 birds, aiming for 400 eggs a day" leaves "500 birds". A comma inside a number
+    ("KES 15,000 deposit") is not a clause: split there, "Jane will pay a KES 15,000 deposit" became "000 deposit", and the check-in
+    was handed "That is 0 deposits then 0: up 100%" (engine test, second run, Kevin). */
+const whatIsNotAnAimIn = (t: string, onASalesCheckIn = false): string => (onASalesCheckIn ? onASalesCheckInRead(clean(t)) : clean(t)).split(/(?<!\d),|,(?!\d{3}\b)|;|\b(?:and|but)\b/i).filter((c) => !(onASalesCheckIn ? AN_AIM_ON_A_SALES_CHECK_IN : AN_AIM).test(c)).join(', ');
 
 const quote = (t: string): string => `"${(t ?? '').replace(/\[VERIFIABILITY:\w+\]\s*/g, '').replace(/\[INFERRED:[^\]]*\]/g, '').replace(/\s+/g, ' ').trim()}"`;
 
@@ -181,6 +192,12 @@ export function whatDoesNotAddUp(input: WhatToCheck): ADifference[] {
     const first = xs.filter((x) => x.session === sessions[0]).sort((a, b) => b.value - a.value)[0];
     const last = xs.filter((x) => x.session === sessions[sessions.length - 1]).sort((a, b) => b.value - a.value)[0];
     if (!first || !last || first.text === last.text) continue;
+    /*
+     * A FIGURE THEY PUT RIGHT THEMSELVES IS SETTLED (engine test, second run, Kevin). "Ali at Ngong Road Minimart wants 5 units, not 4."
+     * on Wednesday was put back to him on Thursday, Friday and Monday as "you quoted 4 units, then 5; which number stands now?". On a
+     * sales check-in, where any line of the later sessions says the new figure and the old one as not it, it is not asked about.
+     */
+    if (input.customers && xs.some((x) => x.session > sessions[0] && x.value === last.value && new RegExp(`\\bnot\\s+${first.value}\\b`, 'i').test(x.text))) continue;
     const change = pct(first.value, last.value);
     if (change < 20) continue;
     out.push({
