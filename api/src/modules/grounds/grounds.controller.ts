@@ -356,6 +356,17 @@ export class GroundsController {
     return this.grounds.listAwaitingApproval(user.organizationId, user.id);
   }
 
+  /**
+   * THE SITUATIONS THIS ORGANISATION MAY START BEYOND THE USUAL LIST (Release 2): "Collect what's owed" where its Release 2
+   * switch is on. A yes or no about the organisation, nothing about anybody. Declared before `:id`, for the reason above. The
+   * server asks again when the check-in is created.
+   */
+  @Get('situations-offered')
+  @ApiOperation({ summary: 'Whether this organisation may start a check-in to collect what is owed (Release 2)' })
+  async situationsOffered(@CurrentUser() user: CurrentUserData) {
+    return this.grounds.situationsOffered(user.organizationId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a ground (status, participants, check-ins)' })
   async get(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {

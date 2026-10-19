@@ -1008,7 +1008,7 @@ export function CreateGroundPage() {
     card.scenario === 'OPEN_READ' ? theWords.describeOwnLabel : card.label
 
   const renderSituation = (card: ScenarioCard) => {
-                        const facts = SCENARIO_FACTS[card.scenario]
+                        const facts = SCENARIO_FACTS[card.scenario as keyof typeof SCENARIO_FACTS]
                         const isSel = selectedCard === card.cardKey
                         const arcOpen = openArc === card.cardKey
                         const pick = () => {
@@ -1027,7 +1027,7 @@ export function CreateGroundPage() {
                           /* And where in the arc. Step one required this second choice and disabled
                              Continue until it was answered, without saying which choice was missing -
                              while the card just clicked already answered it. Still changeable below. */
-                          setMoment(RECOMMENDED_MOMENT[card.scenario] as GroundMoment)
+                          setMoment(RECOMMENDED_MOMENT[card.scenario as keyof typeof RECOMMENDED_MOMENT] as GroundMoment)
                         }
                         return (
                           <SituationCard

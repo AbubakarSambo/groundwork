@@ -151,6 +151,8 @@ export function scenarioLabel(key: string, brief?: string | null): string {
    * `SCENARIO_LABELS` keeps it out of `SCENARIO_KEYS`, which both pickers build their cards from.
    */
   if (key === 'HELP_TEAM_UNDERSTAND') return 'Help my team understand'
+  /* Collect what's owed (Release 2) is offered only where its switch is on, so it is kept out of SCENARIO_LABELS for the same reason (lib/collect-whats-owed.ts). */
+  if (key === 'COLLECTIONS') return 'Collect what’s owed'
   const known = (SCENARIO_LABELS as Record<string, string>)[key]
   if (known) return known
   return key.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())

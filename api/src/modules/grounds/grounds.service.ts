@@ -5636,6 +5636,11 @@ export class GroundsService {
     });
   }
 
+  /** Whether this organisation may start a check-in to collect what is owed (Release 2). A yes or no, nothing about anybody. */
+  async situationsOffered(organizationId: string): Promise<{ collections: boolean }> {
+    return { collections: await theRelease2CollectionsIsOn(this.prisma, organizationId) };
+  }
+
   /**
    * THE LEAD CONFIRMS THE TYPE (Release 2, the switchboard foundation; board/the-switchboard.ts). Written only here, only by the
    * lead (or an admin once the lead has left, as every setting), only where the organisation's Release 2 switch is on, and only a

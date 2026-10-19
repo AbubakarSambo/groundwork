@@ -47,6 +47,21 @@ export type GroundScenario =
   | 'OPEN_READ'
   // One honest read from everybody, once. The only situation with no run and no board.
   | 'SNAPSHOT'
+  /** Collect what's owed (Release 2): offered only where the organisation's Release 2 switch is on. Mirrors the server enum. */
+  | 'COLLECTIONS'
+
+/**
+ * RELEASE 2: THE TYPE IN "WHAT IT IS", served only where the organisation's Release 2 switch is on and the scenario has types
+ * of its own: the types offered, in the B8 picture's words; the one on record or read for the lead to confirm; whether she has;
+ * one sentence saying where it came from; and whether this reader may confirm it (the lead only).
+ */
+export interface TheTypeInWhatItIs {
+  offered: { type: string; label: string }[]
+  type: string | null
+  confirmed: boolean
+  says: string
+  mayConfirm: boolean
+}
 
 export type GroundMoment = 'STARTING' | 'RECOGNITION' | 'RESOLUTION'
 export type GroundCadence = 'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'SEQUENTIAL' | 'ONE_TIME'
@@ -204,6 +219,19 @@ export const groundsApi = {
     apiClient
       .patch<{ id: string; kindOfWork: string | null; kindOfWorkSetBy: string | null; workStages: string[] | null }>(`/grounds/${id}/kind-of-work`, body)
       .then(r => r.data),
+
+  /**
+   * RELEASE 2: THE LEAD CONFIRMS THE TYPE in "What it is" on People and setup, one of the types the check-in's scenario offers.
+   * Only the lead; only where the organisation's Release 2 switch is on. A refusal is a full sentence, shown as the server gives it.
+   */
+  confirmTheType: (id: string, type: string) =>
+    apiClient
+      .patch<{ id: string; checkInType: string | null; checkInTypeConfirmedAt: string | null }>(`/grounds/${id}/check-in-type`, { type })
+      .then(r => r.data),
+
+  /** RELEASE 2: whether this organisation may start a check-in to collect what is owed. The server asks again on create. */
+  situationsOffered: () =>
+    apiClient.get<{ collections: boolean }>('/grounds/situations-offered').then(r => (r.data as any)?.data ?? r.data),
 
   setExpectThemToUnblock: (id: string, expect: boolean) =>
     apiClient
@@ -651,7 +679,7 @@ export type PeopleAndSetup =
   | { on: false }
   | { on: true; view: 'member'; howItRuns: string; yourRole: string; status: string; yourSessionsDone: number; sessionsPlanned: number | null; runsIt: string | null; whoSeesWhat: string }
   | { on: true; view: 'reader'; howItRuns: string; runsIt: string | null }
-  | { on: true; view: 'lead' | 'admin'; howItRuns: string; problems: ASetupProblem[]; sessions: string; joinedWithTheLink: string; kindOfWork: string | null; kindsOffered: string[]; othersWithAccess: string; runsIt: string | null; organisationName: string; roleDescribed: Record<string, boolean> }
+  | { on: true; view: 'lead' | 'admin'; howItRuns: string; problems: ASetupProblem[]; sessions: string; joinedWithTheLink: string; kindOfWork: string | null; kindsOffered: string[]; othersWithAccess: string; runsIt: string | null; organisationName: string; roleDescribed: Record<string, boolean>; checkInType?: TheTypeInWhatItIs }
 
 /** References and resources, as the server serves it to this reader (api grounds/references-and-resources.ts). */
 export type AReferenceKind = 'RULE' | 'STAGE_NEEDS' | 'COACHING' | 'RISK' | 'KEY_FACT' | 'PERSON_NOTE' | 'HELP_WITH'

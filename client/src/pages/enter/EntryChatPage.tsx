@@ -45,6 +45,11 @@ import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
 import { copy } from '@/components/gw/copying-can-fail'
+import { groundsApi } from '@/api/grounds'
+import {
+  COLLECT_WHATS_OWED, COLLECT_WHATS_OWED_CARD, COLLECT_WHATS_OWED_GROUP, COLLECT_WHATS_OWED_OPENER, COLLECT_WHATS_OWED_FOR_EXAMPLE,
+  soundsLikeCollectingWhatsOwed,
+} from '@/lib/collect-whats-owed'
 import { whatIsSetAndWhatIsNot, whenTheCheckInsLand } from '@/components/gw/when-the-check-ins-land'
 import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
 import { Button, Callout, Note, Section, TextField, TextArea, Bubble, Composer, PhaseSteps, Modal, Mark, GroundworkIsWriting } from '@/components/gw/ui'
@@ -1477,6 +1482,19 @@ export function EntryChatPage() {
    * the whole complaint: "new hire does not ask you about the new hire".
    */
   const [pickedScenario, setPickedScenario] = useState<string | null>(null)
+  /**
+   * RELEASE 2: "COLLECT WHAT'S OWED" IS OFFERED ONLY WHERE THE ORGANISATION'S SWITCH IS ON. Asked of the server for somebody
+   * signed in; somebody signed out, or an organisation with the switch off, gets the list exactly as it was. The server asks again
+   * when the check-in is created, so this only decides what is shown.
+   */
+  const situationsOfferedQuery = useQuery({
+    queryKey: ['situations-offered'],
+    queryFn: () => groundsApi.situationsOffered(),
+    enabled: !!user,
+    retry: false,
+    staleTime: 60_000,
+  })
+  const collectionsOffered = !!user && situationsOfferedQuery.data?.collections === true
 
   /**
    * THE REFUSAL COMES BEFORE THE WORK, WHICH IS WHERE IT USED TO BE AND WHERE I MOVED IT FROM.
@@ -2623,7 +2641,8 @@ export function EntryChatPage() {
           if (planned != null) { setSessions(planned); setPlannedFrom({ timelineDays: res.extracted.timelineDays, cadence: res.extracted.cadence ?? cadence }); setSessionsTypedByLead(false) }
         }
         // Background classify intent when we have initial
-        if (res.extracted.initial && !isAnchorDraft()) {
+        /* Nor is Collect what's owed (Release 2): the classifier does not know it, so any answer it gave would be wrong. */
+        if (res.extracted.initial && !isAnchorDraft() && pickedScenario !== 'COLLECTIONS' && scenarioNow !== 'COLLECTIONS') {
           /*
            * FAULT 1(a): AN ANCHOR DRAFT IS NEVER RECLASSIFIED.
            *
@@ -3499,6 +3518,16 @@ export function EntryChatPage() {
   /** Words typed at the door, or on the list, open the conversation as describing it yourself. */
   function describeItInYourOwnWords(text: string) {
     setSeeingEverySituation(false)
+    /*
+     * RELEASE 2: THE DETECTION WORDS (collect, owed, invoice, fee note, debtor, repay, loan, credit), the way the prototype's start
+     * screen reads what was typed. Only where the organisation's switch is on; anywhere else this reads exactly as before.
+     */
+    if (collectionsOffered && soundsLikeCollectingWhatsOwed(text)) {
+      setPickedSituation(COLLECT_WHATS_OWED)
+      setPickedScenario('COLLECTIONS')
+      sendOnboarding(text, 'COLLECTIONS')
+      return
+    }
     setPickedSituation('other')
     setPickedScenario(null)
     sendOnboarding(text, null)
@@ -4334,7 +4363,8 @@ export function EntryChatPage() {
                   {seeingEverySituation ? (
                     <EverySituation
                       signedIn={!!user}
-                      openerFor={(card) => whatThisCardSays(card.label)}
+                      openerFor={(card) => (card.cardKey === COLLECT_WHATS_OWED_CARD.cardKey ? COLLECT_WHATS_OWED_OPENER : whatThisCardSays(card.label))}
+                      alsoOffered={collectionsOffered ? [{ card: COLLECT_WHATS_OWED_CARD, group: COLLECT_WHATS_OWED_GROUP, forExample: COLLECT_WHATS_OWED_FOR_EXAMPLE }] : []}
                       onSend={describeItInYourOwnWords}
                       onDescribe={() => setSeeingEverySituation(false) /* back to the one box: describing it is the first screen (U.6 review) */}
                       onStart={(card, opener) => {

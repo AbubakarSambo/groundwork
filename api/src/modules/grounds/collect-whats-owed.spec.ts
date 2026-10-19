@@ -132,6 +132,12 @@ describe('a new check-in can collect what is owed only where Release 2 is on', (
     expect(billing.canCreateGround).toHaveBeenCalled();
   });
 
+  it('the picker is told yes only where the switch is on, and no where its row cannot be read', async () => {
+    expect(await grounds(true).svc.situationsOffered(MUCHEMI_ORG.id)).toEqual({ collections: true });
+    expect(await grounds(false).svc.situationsOffered('org-drop')).toEqual({ collections: false });
+    expect(await grounds('broken').svc.situationsOffered('org-drop')).toEqual({ collections: false });
+  });
+
   it('every other situation is never asked about the switch, so nothing changes for it', async () => {
     const { svc } = grounds(false);
     await expect(svc.create(MUCHEMI_ORG.id, MUCHEMI_PEOPLE.partner.userId, { scenario: 'PULSE_CHECK', label: 'Litigation team daily' } as any, 'ADMIN')).rejects.toThrow('reached the billing gate');

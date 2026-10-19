@@ -134,12 +134,27 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
   const changedKeys = (Object.keys(onRecord) as (keyof typeof onRecord)[]).filter((k) => draft[k] !== onRecord[k] && !(k === 'remindOther' && draft.remind !== 'other'))
   const rolesChanged = Object.entries(roles).filter(([pid, v]) => v.trim() !== ((g?.participants ?? []).find((p: any) => p.id === pid)?.roleAsDescribed ?? '').trim())
   const startChanged = props.canOfferStartDate && props.startsAtDraft !== props.startsAtOnRecord
-  const anyChange = changedKeys.length > 0 || rolesChanged.length > 0 || props.theTimeframeChanged || startChanged
+  /*
+   * RELEASE 2: THE TYPE, CONFIRMED BY THE LEAD (the switchboard foundation). Served only where the organisation's Release 2 switch
+   * is on and the scenario has types of its own; then the Kind of work row offers those types, as the B8 fee notes picture draws
+   * them, with the one Groundwork read already chosen. Nothing is stored until the lead saves; saving stores her choice as
+   * confirmed. Where it is not served, the row is today's kind of work, exactly as before.
+   */
+  const typeServed = page?.checkInType ?? null
+  const [typeDraft, setTypeDraft] = useState<string>(typeServed?.type ?? '')
+  useEffect(() => { setTypeDraft(typeServed?.type ?? '') }, [typeServed?.type, typeServed?.confirmed])
+  const typeToConfirm = !!typeServed?.mayConfirm && !!typeDraft && (typeDraft !== typeServed.type || !typeServed.confirmed)
+  const anyChange = changedKeys.length > 0 || rolesChanged.length > 0 || props.theTimeframeChanged || startChanged || typeToConfirm
 
   const setKind = useMutation({
     mutationFn: (kind: string | null) => groundsApi.setKindOfWork(id, { kind }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['ground', id] }); qc.invalidateQueries({ queryKey: ['people-and-setup', id] }); qc.invalidateQueries({ queryKey: ['board', id] }) },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'The kind of work did not change. Try again in a moment.'),
+  })
+  const confirmType = useMutation({
+    mutationFn: (type: string) => groundsApi.confirmTheType(id, type),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['ground', id] }); qc.invalidateQueries({ queryKey: ['people-and-setup', id] }); qc.invalidateQueries({ queryKey: ['board', id] }) },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'The kind of work was not confirmed. Try again in a moment.'),
   })
   const setSharesAt = useMutation({
     mutationFn: (time: string | null) => groundsApi.setReportSharesAt(id, time),
@@ -149,6 +164,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
 
   const discard = () => {
     setDraft(onRecord)
+    setTypeDraft(typeServed?.type ?? '')
     setRoles({})
     props.setTimelineDaysDraft(g?.timelineDays)
     props.setCadenceDraft(g?.cadence as GroundCadence)
@@ -164,6 +180,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
     if (startChanged) patch.startsAt = props.startsAtDraft || undefined
     if (Object.keys(patch).length) props.saveSetup.mutate(patch)
     if (changedKeys.includes('kindOfWork')) setKind.mutate(draft.kindOfWork || null)
+    if (typeToConfirm) confirmType.mutate(typeDraft)
     if (changedKeys.includes('remind') || changedKeys.includes('remindOther')) {
       if (draft.remind === 'never') props.setChasing.mutate({ stopped: true })
       else {
@@ -260,6 +277,19 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
                 : g?.label}
             />
             <FieldRow label="Scenario" value={g?.scenario ? scenarioLabel(g.scenario, g.brief) : 'Not set.'} />
+            {typeServed ? (
+            <FieldRow
+              label="Kind of work"
+              value={typeServed.mayConfirm
+                ? (
+                  <Select aria-label="Kind of work" value={typeDraft} onChange={(e) => setTypeDraft(e.target.value)}>
+                    {!typeDraft && <option value="">Not known yet</option>}
+                    {typeServed.offered.map((t) => <option key={t.type} value={t.type}>{t.label}</option>)}
+                  </Select>
+                )
+                : (typeServed.offered.find((t) => t.type === typeServed.type)?.label ?? 'Nobody has said yet.')}
+            />
+            ) : (
             <FieldRow
               label="Kind of work"
               value={canEditRunOrAdmin && page
@@ -271,7 +301,9 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
                 )
                 : (g?.kindOfWork ? ((KIND_OF_WORK_OPTION_LABEL as Record<string, string>)[g.kindOfWork] ?? g.kindOfWork) : 'Nobody has said yet.')}
             />
+            )}
           </FieldRows>
+          {typeServed && <Note>{typeServed.says}</Note>}
           <Note>The scenario and kind of work decide the board, the reports, and what each check-in asks about.</Note>
         </Panel>
       </Section>
