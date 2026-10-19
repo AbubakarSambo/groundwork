@@ -58,6 +58,13 @@ const THE_OWNER = /\b(?:is|['’]s)\s+the owner\b|,\s*the owner,\s*decides\b|\bt
 const A_DEPOSIT_ON = /\b(?:pay|pays|paying)\b[^.]*\bdeposit\b[^.]*\bon\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i;
 const WANTS_UNITS = /\bwants?\s+(\d+|[a-z]+)\s+units?\b/i;
 const FOR_UNITS = /\bfor\s+(?:the\s+)?(\d+|[a-z]+)\s+units?\b/i;
+/*
+ * THE UNITS A CUSTOMER COMMITTED TO OR ORDERED (messages test, third run, item 1). On Monday 12 October, asked "What specifically have you
+ * done with Greenfield Supermarket since we last spoke?", Mercy said "I've secured a verbal commitment from Mrs. Njeri for 25 units. That
+ * deal is won." Grace's summary on Tuesday said "Savannah Cafe, Upper Hill Offices, Tuskys Westgate, Greenfield and Juja Hardware have no
+ * number of units yet." A commitment, an order or a sale for a number of units, said as done, is the units of the deal in focus.
+ */
+const COMMITTED_UNITS = /\b(?:commitment|committed|order|ordered|orders|sold|bought|purchased|purchase|signed|agreed|confirmed|deal)\b(?:[^.]|\b(?:Mrs?|Ms|Dr)\.)*?\bfor\s+(?:the\s+)?(\d+|[a-z]+)\s+units?\b|\b(?:bought|ordered|purchased|signed for|took)\s+(?:the\s+)?(\d+|[a-z]+)\s+units?\b/i;
 
 const toNumber = (s: string): number | null => (/^\d+$/.test(s) ? Number(s) : NUMBER_WORDS[s.toLowerCase()] ?? null);
 const plain = (fields: Record<string, unknown> | null | undefined, key: string): string => {
@@ -65,7 +72,8 @@ const plain = (fields: Record<string, unknown> | null | undefined, key: string):
   return typeof v === 'string' ? v.trim() : '';
 };
 const dayKey = (d: Date) => d.toISOString().slice(0, 10);
-const sentencesOf = (text: string): string[] => String(text ?? '').split(/(?<=[.!?])\s+|\n+/).map((s) => s.trim()).filter(Boolean);
+/* "Mrs. Njeri" and "Kasarani Foods v. Tumaini Traders" are one sentence: a full stop after Mr, Mrs, Ms, Dr or v does not end one. */
+const sentencesOf = (text: string): string[] => String(text ?? '').split(/(?<!\b(?:Mr|Mrs|Ms|Dr|v|vs)\.)(?<=[.!?])\s+|\n+/).map((s) => s.trim()).filter(Boolean);
 
 /** The name a sentence opens on, as the person at the customer: "Ali said he'll decide next week." gives "Ali". */
 function aPersonItOpensOn(sentence: string, ours: ReadonlySet<string>, dealName: string): string | null {
@@ -150,8 +158,9 @@ export function whatTheOwnerSaidOfEachDeal(
         if (stageAt(stageNow.get(d.id)) < stageAt('Quoted')) { said(d).stage = 'Quoted'; stageNow.set(d.id, 'Quoted'); }
       }
       /* The units the customer wants. */
+      const committed = !NOT_DONE_YET.test(s) ? s.match(COMMITTED_UNITS) : null;
       const wants = s.match(WANTS_UNITS) ?? (A_QUOTE.test(s) ? s.match(FOR_UNITS) : null);
-      const units = wants ? toNumber(wants[1]) : null;
+      const units = wants ? toNumber(wants[1]) : committed ? toNumber(committed[1] ?? committed[2]) : null;
       if (units && !plain(f, 'Units')) keep(d, 'Units', String(units));
       if (units && !plain(f, 'Need') && WANTS_UNITS.test(s)) keep(d, 'Need', `${units} ${units === 1 ? 'unit' : 'units'}`);
       if (units && stageAt(stageNow.get(d.id)) < stageAt('Need established') && WANTS_UNITS.test(s)) { said(d).stage = 'Need established'; stageNow.set(d.id, 'Need established'); }
