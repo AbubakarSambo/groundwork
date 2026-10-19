@@ -57,6 +57,9 @@ import { isNotLetInYet } from './who-an-admin-did-not-let-in';
 import { theNamesOfReadersCheckIns } from './the-names-of-a-readers-check-ins';
 import { isAWorkingDay } from './which-days-this-team-works';
 
+/** How long the session-ready email waits for the WhatsApp opening to go, for somebody connected there, before it goes instead. */
+const THE_WHATSAPP_OPENING_IS_WAITED_FOR_MS = 30 * 60_000;
+
 /* Every kind a morning message is recorded under, sent, held or as a template. */
 const MORNING_KINDS = ['overdue', 'due-tomorrow', 'team-almost-in', 'your-view-matters', 'anchor-follow-up'].flatMap((k) => [k, `${k}:template`, `${k}:held`]);
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
@@ -792,6 +795,7 @@ export class GroundsCron implements OnApplicationBootstrap {
       select: {
         id: true,
         groundId: true,
+        availableFrom: true,
         participant: {
           select: {
             id: true,
@@ -833,9 +837,23 @@ export class GroundsCron implements OnApplicationBootstrap {
          */
         /* Hafsah, 14 October (later): for somebody on WhatsApp, the missed-check-ins notice goes in their WhatsApp check-in too,
            never by email. It stays on Today, and is said before the first question once they reply (whatsapp-for-an-organisation). */
+        /*
+         * ONLY WHEN THE WHATSAPP OPENING WENT (Drop Access, October). Counting as connected skipped the email even when the
+         * WhatsApp opening was refused (no approved template, a refusal by Meta, keys that cannot be opened), so the person
+         * was told nowhere. Now the email is skipped only once a checkin-open row for this check-in has gone. While none has
+         * gone and the session opened under half an hour ago, it is left untold, so the next sweep looks again (the opening is
+         * sent from an event and may not be written yet); after that the email goes. Never both for one opening that went.
+         */
         if (await theyAreConnectedOnWhatsApp(this.prisma, { organizationId: (p.ground as any).organizationId, userId: p.userId, email: p.email })) {
-          await this.prisma.checkIn.update({ where: { id: ci.id }, data: { sessionReadyNotifiedAt: now } });
-          continue;
+          const wentOnWhatsApp = await this.prisma.whatsAppSend
+            .findFirst({ where: { checkInId: ci.id, kind: { startsWith: 'checkin-open' }, sentAt: { not: null } }, select: { id: true } })
+            .catch(() => null);
+          if (wentOnWhatsApp) {
+            await this.prisma.checkIn.update({ where: { id: ci.id }, data: { sessionReadyNotifiedAt: now } });
+            continue;
+          }
+          const openedAt = ci.availableFrom ? new Date(ci.availableFrom).getTime() : 0;
+          if (now.getTime() - openedAt < THE_WHATSAPP_OPENING_IS_WAITED_FOR_MS) continue;
         }
         const went = await this.email.sendSessionReady(p.email, await nameFor({ userId: p.userId, email: p.email }, ci.groundId, p.ground.label), checkInUrl, p.ground.simplerWords, missed?.lines ?? null, ci.groundId);
         if (missed && went !== 'suppressed') await rememberTheMissedNoticeTold(this.prisma, missed.key, (went ?? 'sent') as any, { sender: 'sendSessionReady', to: p.email });
