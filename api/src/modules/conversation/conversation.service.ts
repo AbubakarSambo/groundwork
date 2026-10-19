@@ -241,7 +241,7 @@ import { isADeadEnd, ASK_SOMETHING_OR_CLOSE } from './a-reply-that-asks-nothing-
 import { withAQuestion } from './nobody-is-left-looking-at-a-paragraph';
 import { theReportIsNotTheirsYet, withoutPromisingTheReport } from './the-report-is-not-yours-to-promise';
 import { notTheSameAsLastTime } from './the-same-sentence-five-times';
-import { notTheSameQuestionTwiceInARow } from './the-same-question-never-twice-in-a-row';
+import { notTheSameQuestionTwiceInARow, notAQuestionAlreadyAnswered } from './the-same-question-never-twice-in-a-row';
 import { aDealsFigure, aCountOfPlacesVisited } from '../board/a-deals-units-are-not-a-target';
 import { aCustomerIsNotAPerson } from './no-guessed-pronoun-for-a-named-person';
 import { theWorkTheySaid, notARemarkAboutUs, ANSWER_THE_REMARK, aboutTheToolNotTheWork } from './a-remark-about-the-tool-is-not-the-work';
@@ -3098,7 +3098,8 @@ export class ConversationService {
       /* AND NEVER THE QUESTION THEY WERE ASKED ON THE TURN BEFORE, read on the text that is saved (Drop Access, items 26 to 28). */
       if (!endsOnTheClose(reply)) {
         const askedHere = ((await (this.prisma as any).conversationTurn?.findMany?.({ where: { checkInId: checkIn.id, role: TurnRole.AI }, orderBy: { createdAt: 'asc' }, select: { content: true } })?.catch?.(() => [])) ?? []) as { content: string | null }[];
-        const once = notTheSameQuestionTwiceInARow(reply, askedHere.map((t) => t.content ?? ''));
+        /* Nor a question asked and answered earlier in this check-in (Hafsah, 19 October, point 3). */
+        const once = notAQuestionAlreadyAnswered(notTheSameQuestionTwiceInARow(reply, askedHere.map((t) => t.content ?? '')), askedHere.map((t) => t.content ?? ''));
         if (once !== reply.trim()) {
           this.logger.warn(`Check-in ${checkIn.id}: the reply asked the question of the turn before again; it was replaced.`);
           reply = once;
