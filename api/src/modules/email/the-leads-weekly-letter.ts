@@ -220,7 +220,9 @@ export function theRestOfTheWeekIn(w: AWeekInOneCheckIn, roomForToDo: number): s
   const todo = (w.toDo ?? []).filter((t) => !moved.some((m) => saysTheSame(m, `${t.do} ${t.why ?? ''}`))).slice(0, Math.max(0, roomForToDo));
   if (todo.length) {
     out.push('Here is what I would do this week.');
-    for (const t of todo) out.push(`${t.do.trim()}${t.why?.trim() ? ` ${t.why.trim()}` : ''}`);
+    /* Each thing to do is a sentence of its own, before its reason (messages test, 19 October, finding 5: "... or a signed order Kevin Omondi counted ..."). */
+    const asASentence = (x: string) => (/[.!?]["\u201d]?$/.test(x.trim()) ? x.trim() : `${x.trim()}.`);
+    for (const t of todo) out.push(`${asASentence(t.do)}${t.why?.trim() ? ` ${asASentence(t.why)}` : ''}`);
   }
   if (w.next) out.push(`Here is something worth doing next. ${w.next}`);
   return out;

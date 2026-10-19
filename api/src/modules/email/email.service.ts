@@ -271,7 +271,7 @@ export class EmailService implements OnModuleInit {
     to: string, adminFirstName: string, who: string, addedBy: string, checkInLabel: string | null,
     /* U.4 review: the subject names the person and the organisation when both are known, rather than
        an address and "your organisation". A name is only ever one the person gave, never guessed. */
-    known: { name?: string | null; organisationName?: string | null } = {},
+    known: { name?: string | null; organisationName?: string | null; cameThroughTheLink?: boolean; theReaderInvitedThem?: boolean } = {},
   ): Promise<void> {
     const name = (known.name ?? '').trim();
     const org = (known.organisationName ?? '').trim();
@@ -284,7 +284,7 @@ export class EmailService implements OnModuleInit {
       subject: `${named} is waiting to be let into ${org || 'your organisation'}.`,
       html: this.layout(
         `<p>${greeting(adminFirstName)}</p>
-         <p><strong>${escapeHtml(named)}</strong> was invited to check in${checkInLabel ? ` on <strong>${escapeHtml(checkInLabel)}</strong>` : ''} by ${escapeHtml(by)}, and they are not in your organisation yet.${named === 'Someone' && who?.includes('@') ? ` The address they were invited with is <strong>${escapeHtml(who)}</strong>.` : ''}</p>
+         <p>${theyCameHow(named, checkInLabel, by, known)}, and they are not in your organisation yet.${named === 'Someone' && who?.includes('@') ? ` The address they ${known.cameThroughTheLink ? 'gave' : 'were invited with'} is <strong>${escapeHtml(who)}</strong>.` : ''}</p>
          <p>They can sign in, and they cannot start until you approve them joining. Nobody outside your organisation is added to it, or counted on your plan, without this.</p>
          <p><a href="${this.frontendUrl.replace(/\/$/, '')}/org/members" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">See who is waiting →</a></p>`,
       ),
@@ -308,13 +308,20 @@ export class EmailService implements OnModuleInit {
   }
 
   /** And the answer, to the person who was waiting. */
-  async sendYouAreInNow(to: string, organizationName: string): Promise<void> {
+  /*
+   * BY NAME, AND WHICH CHECK-IN (messages test, 19 October, finding 15): Amos read "Hi, An admin at Drop Access (test) has approved you joining,
+   * so the check-in you were invited to is open." with no name, though he gave it, and "invited", though he came by the link.
+   */
+  async sendYouAreInNow(to: string, organizationName: string, known: { firstName?: string | null; checkInLabel?: string | null; letInBy?: string | null } = {}): Promise<void> {
+    const by = (known.letInBy ?? '').trim();
+    const letInBy = by && !by.includes('@') && by !== 'Someone' ? `${escapeHtml(by)}, an admin at <strong>${escapeHtml(organizationName)}</strong>,` : `An admin at <strong>${escapeHtml(organizationName)}</strong>`;
+    const what = known.checkInLabel?.trim() ? `your check-in for <strong>"${escapeHtml(known.checkInLabel.trim())}"</strong> is open` : 'your check-in is open';
     await this.sendEmail({
       to,
       subject: `You can start your check-in now`,
       html: this.layout(
-        `<p>${greeting(null)}</p>
-         <p>An admin at <strong>${organizationName}</strong> has approved you joining, so the check-in you were invited to is open.</p>
+        `<p>${greeting(known.firstName ?? null)}</p>
+         <p>${letInBy} has let you in, so ${what}.</p>
          <p><a href="${this.frontendUrl.replace(/\/$/, '')}/grounds" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open my check-in →</a></p>`,
       ),
     }, undefined, 'sendYouAreInNow');
@@ -730,7 +737,8 @@ export class EmailService implements OnModuleInit {
     return { devUrl };
   }
 
-  async sendAddPasswordEmail(email: string, firstName: string, token: string): Promise<void> {
+  /* `usesGoogle`: only somebody who signs in with Google is told a password lets them sign in without it (messages test, 19 October, finding 17). */
+  async sendAddPasswordEmail(email: string, firstName: string, token: string, usesGoogle = false): Promise<void> {
     const url = `${this.frontendUrl}/set-password?token=${token}`;
     await this.sendEmail({
       to: email,
@@ -743,7 +751,7 @@ export class EmailService implements OnModuleInit {
        */
       html: this.layout(
         `<p>${greeting(firstName)}</p>` +
-        `<p>Groundwork is where you and the people you work with each say how a piece of work is actually going, separately, and get one shared picture back. Setting a password means you can sign in without Google.</p>` +
+        `<p>Groundwork is where you and the people you work with each say how a piece of work is actually going, separately, and get one shared picture back. ${usesGoogle ? 'Setting a password means you can sign in without Google.' : 'Setting a password means you can come back and sign in with this email address and your password.'}</p>` +
         `<p><a href="${url}">Set password</a></p>` +
         `<p style="color:#888;font-size:12px;">This link lasts ${howLongInWords('set a password from an email')} and can only be used once. If it has expired, ask for a new one from the sign-in page.</p>`,
       ),
@@ -1343,7 +1351,9 @@ export class EmailService implements OnModuleInit {
    * reports/who-shared-it-because-the-lead-left.ts, which builds the sentence. Null in the
    * ordinary case, where the lead released it themselves and nothing extra is said.
    */
-  async sendReportReady(email: string, groundLabel: string, reportUrl: string, sharedByAnAdminSentence?: string, groundId?: string, subjectLine?: string, theInsight?: string[], theChat?: { url: string; label: string }): Promise<void> {
+  async sendReportReady(email: string, groundLabel: string, reportUrl: string, sharedByAnAdminSentence?: string, groundId?: string, subjectLine?: string, theInsight?: string[], theChat?: { url: string; label: string },
+    /* Who checked in for this picture, said to this reader (email/who-checked-in-for-this-picture.ts). Null when everybody asked has answered. */
+    whoCheckedIn?: string[] | null): Promise<void> {
     /* Who can see what people said, as the invitation says it (whoSeesWhatYouSay): not "it does not quote anybody", which is not true. */
     const whoSees = await this.whoSeesWhatYouSay(groundId ? { groundId } as DeliveryContext : undefined);
     await this.sendEmail({
@@ -1361,7 +1371,10 @@ export class EmailService implements OnModuleInit {
         /* THE FINDING FIRST (engagement spec section 7) when the report has one for this reader; otherwise the notice it always was. */
         (theInsight?.length
           ? theInsight.map((l) => `<p>${escapeHtml(l)}</p>`).join('') + `<p>The shared picture for <strong>${escapeHtml(groundLabel)}</strong> is open to all of you at the same moment, with the detail behind this.</p>`
-          : `<p>Everybody on <strong>${escapeHtml(groundLabel)}</strong> has now checked in, so the shared picture is open to all of you at the same moment.</p>` +
+          /* NEVER "EVERYBODY HAS NOW CHECKED IN" WHEN SOMEBODY HAD NOT (messages test, 19 October, finding 2): who did, from the session's rows. */
+          : (whoCheckedIn?.length
+            ? whoCheckedIn.map((l) => `<p>${escapeHtml(l)}</p>`).join('') + `<p>It is open to all of you at the same moment.</p>`
+            : `<p>Everybody on <strong>${escapeHtml(groundLabel)}</strong> has now checked in, so the shared picture is open to all of you at the same moment.</p>`) +
             `<p>It shows where what you each said lines up, where it does not, and the one question worth answering together.</p>`) +
         `<p>${escapeHtml(whoSees)}</p>` +
         (sharedByAnAdminSentence ? `<p>${escapeHtml(sharedByAnAdminSentence)}</p>` : '') +
@@ -1567,13 +1580,20 @@ export class EmailService implements OnModuleInit {
    * the INITIATOR to release/activate billing on a ground - a different
    * concept from a participant's own individual reveal.
    */
-  async sendActivationRevealReminder(email: string, groundLabel: string, reportUrl: string): Promise<void> {
+  /*
+   * THE DAY IT BECAME READY, NEVER "A FEW DAYS" (messages test, 19 October, finding 1). Drop Access's picture was released on Monday at
+   * 18:30 and four people were told at noon on Tuesday it "has been ready for a few days now", and to "confirm you are ready to see it",
+   * though a released picture is open to the person it is for and nothing is left to confirm. `readySince` is the report's release time,
+   * said in the organisation's own zone. Applies to everyone: it only makes the mail true.
+   */
+  async sendActivationRevealReminder(email: string, groundLabel: string, reportUrl: string, readySince?: Date | null, zone?: string | null): Promise<void> {
+    const since = readySince ? whenItWas(readySince, 'weekdayAndDay', zone ?? undefined) : '';
     await this.sendEmail({
       to: email,
       subject: reportReadyReminderSubject(groundLabel),
       html: this.layout(
-        `<p>The shared picture for <strong>${escapeHtml(groundLabel)}</strong> has been ready for a few days now.</p>
-         <p>It shows where accounts agree, where they differ, and what is still unresolved. You just need to confirm you are ready to see it.</p>
+        `<p>The shared picture for <strong>${escapeHtml(groundLabel)}</strong> ${since ? `has been ready since ${escapeHtml(since)}` : 'is ready'}.</p>
+         <p>It shows where what you each said agrees, where it differs, and what is still open. It is open to you now, and nothing else is needed from you to read it.</p>
          <p><a href="${reportUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View your report →</a></p>`,
       ),
     }, undefined, 'sendActivationRevealReminder');
@@ -1633,13 +1653,23 @@ export class EmailService implements OnModuleInit {
    * here — the asking page says the same sentence either way, and an email that
    * said "welcome back" would put the difference back.
    */
-  async sendJoinConfirmation(email: string, token: string): Promise<void> {
+  /*
+   * WHICH CHECK-IN, WHO RUNS IT AND WHERE (messages test, 19 October, finding 16): "Somebody shared a Groundwork check-in with you" named
+   * nothing. What the join page itself shows whoever has the link, and nothing about whether the address has an account here.
+   */
+  async sendJoinConfirmation(email: string, token: string, about: { firstName?: string | null; checkInLabel?: string | null; leadName?: string | null; organisationName?: string | null } = {}): Promise<void> {
     const url = `${this.frontendUrl}/join/confirm?token=${token}`;
+    const label = (about.checkInLabel ?? '').trim();
+    const lead = (about.leadName ?? '').trim();
+    const org = (about.organisationName ?? '').trim();
+    const where = label
+      ? `<p>${greeting(about.firstName ?? null)}</p><p>This address was entered on the join page of <strong>"${escapeHtml(label)}"</strong>, a check-in${lead ? ` ${escapeHtml(lead)} runs` : ''}${org && !isAMadeUpWorkspaceName(org) ? ` at ${escapeHtml(org)}` : ''}.</p>`
+      : `<p>Somebody shared a Groundwork check-in with you and this address was entered to join it.</p>`;
     await this.sendEmail({
       to: email,
-      subject: 'Your Groundwork check-in',
+      subject: label ? `Your check-in for "${label}"` : 'Your Groundwork check-in',
       html: this.layout(
-        `<p>Somebody shared a Groundwork check-in with you and this address was entered to join it.</p>
+        `${where}
          <p>Opening the link below starts your check-in. It lasts 24 hours and works once.</p>
          <p><a href="${url}">Start my check-in</a></p>
          <p style="color:#6B6560;font-size:13px;">If you did not ask for this, nothing has been created and you can ignore it.</p>`,
@@ -2152,6 +2182,18 @@ export function escapeHtml(s: string): string {
 }
 
 /* Who invited them, for the middle of a sentence: "Someone", the word for a person with no name, reads "somebody on your team" there. */
+/*
+ * HOW THEY CAME TO BE WAITING, TRUE FOR THIS READER (messages test, 19 October, finding 7). Amos joined Sales team, Q4 through its join link
+ * and Grace read "Amos Kiprono was invited to check in on Sales team, Q4 by Grace Achieng": nobody invited him, and the reader was Grace.
+ */
+function theyCameHow(named: string, checkInLabel: string | null, by: string, known: { cameThroughTheLink?: boolean; theReaderInvitedThem?: boolean }): string {
+  const who = `<strong>${escapeHtml(named)}</strong>`;
+  const onIt = checkInLabel ? ` on <strong>${escapeHtml(checkInLabel)}</strong>` : '';
+  if (known.cameThroughTheLink) return checkInLabel ? `${who} asked to join <strong>${escapeHtml(checkInLabel)}</strong> through its join link` : `${who} asked to join through a check-in's join link`;
+  if (known.theReaderInvitedThem) return `You invited ${who} to check in${onIt}`;
+  return `${who} was invited to check in${onIt} by ${escapeHtml(by)}`;
+}
+
 function theInviter(addedBy: string | null | undefined): string {
   const by = (addedBy ?? '').trim();
   return !by || by === 'Someone' || by.includes('@') ? 'somebody on your team' : by;

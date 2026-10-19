@@ -84,7 +84,8 @@ describe('what a digest may carry', () => {
     const body = digestBody(facts, 'https://app/u/tok');
     expect(digestSubject(facts)).toBe('Renewal push - session 3 is complete');
     expect(body).toMatch(/4 people took part/);
-    expect(body).toMatch(/2 things need attention/);
+    /* Changed 19 October (messages test): "2 things need attention" did not say what; it says what kind of thing, still with no name. */
+    expect(body).toMatch(/Two things people are waiting for are still open, and the check-in's board shows who is waiting and for what\./);
     expect(body).toMatch(/https:\/\/app\/grounds\/g1/);
   });
 

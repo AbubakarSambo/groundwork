@@ -42,7 +42,8 @@ export function aTopicQuoted(t: unknown): string | null {
   return x ? `"${x}"` : null;
 }
 
-const LOWER_AFTER_A_COMMA = /^(?:The|A|An|Whether|What|How|Who|When|Where|Which|Why|If|This|That|Our|Their|His|Her|Its)\b/;
+/* "You", "Your", "We", "They" and the other words that are not names too (messages test, 19 October, finding 8: In "Sales team, Q4", You and the team ...). */
+const LOWER_AFTER_A_COMMA = /^(?:The|A|An|Whether|What|How|Who|When|Where|Which|Why|If|This|That|Our|Their|His|Her|Its|You|Your|We|They|There|It|Everyone|Nobody|Each|Both|Some|All|No|None|Participants?)\b/;
 const lowerFirstOfAClause = (s: string) => (LOWER_AFTER_A_COMMA.test(s) ? `${s.charAt(0).toLowerCase()}${s.slice(1)}` : s);
 
 /**
