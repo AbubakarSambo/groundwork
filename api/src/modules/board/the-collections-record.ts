@@ -354,3 +354,19 @@ export function aBillIsNamed(words: string, bill: { name: string; fields?: unkno
   const client = squash(fieldOf(bill, F.client) || bill.name);
   return client.length >= 3 && squash(words).includes(client);
 }
+
+/**
+ * A BILL MARKED PAID IS NEVER WAITED ON FOR ITS PAYMENT (Hafsah, 19 October, point 4: "a bill marked paid is never called late (FN-004)";
+ * messages test after the fixes, finding 8). Muchemi & Co. (test): Njeri said on Monday 12 October that Kasarani Foods had paid the
+ * KES 250,000 for FN-004, and the bill is marked Paid. The wait set up that morning, "payment for fee note FN-004" on Kasarani Foods, was
+ * never cleared, and Wanjiru's morning summary said four mornings running "You are waiting on Kasarani Foods for payment for fee note
+ * FN-004, which was due on Monday 5 October and is eight days late." A wait for the payment of a bill the record marks Paid is over: the
+ * bill it names, by its number, or by its client where it has none, is Paid. Read wherever a wait is told as late.
+ */
+const A_PAYMENT_WAIT = /\b(?:pay(?:s|ing|ment|ments)?|paid|money|settle(?:d|ment)?|kes|ksh)\b/i;
+export function theBillThisWaitIsPaidOn(what: string, bills: readonly { name: string; stage?: string | null; fields?: unknown }[]): { name: string } | null {
+  if (!A_PAYMENT_WAIT.test(String(what ?? ''))) return null;
+  const named = bills.filter((b) => aBillIsNamed(what, b));
+  if (named.length !== 1) return null;
+  return String(named[0].stage ?? '').trim().toLowerCase() === 'paid' ? named[0] : null;
+}
