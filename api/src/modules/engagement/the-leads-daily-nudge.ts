@@ -28,6 +28,7 @@ import { withoutTheWaitsOnCustomers } from '../board/a-customers-reply-is-on-its
 import { oneBlockerPerThingWaitedOn, theyNamedWhatTheyAreWaitingOn } from '../board/a-blocker-with-nothing-in-it-is-the-same-blocker';
 import { startsWithAPronoun } from '../grounds/a-blocker-that-says-her-or-his';
 import { theWaitSaid } from '../board/a-wait-said-in-full';
+import { BILL, theBillThisWaitIsPaidOn } from '../board/the-collections-record';
 import { aHolderSaidWithWhose } from '../board/a-holder-in-their-own-words';
 import { ESCALATE_AFTER_DAYS } from '../webhooks/a-handoff-that-has-sat-too-long';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
@@ -399,6 +400,9 @@ export async function whatIsOutstandingFor(
     : [];
   /* A customer's reply is on its deal, not a wait on the team, unless it was said to stop the deal (a-customers-reply-is-on-its-deal). */
   const real = (await withoutTheWaitsOnCustomers(prisma, oneBlockerPerThingWaitedOn(dedupeDependencies(waits as any)).filter(blockerHasSubstance) as any[]).catch(() => oneBlockerPerThingWaitedOn(dedupeDependencies(waits as any)).filter(blockerHasSubstance) as any[])) as any[];
+  /* A wait for the payment of a bill the record marks Paid is over (theBillThisWaitIsPaidOn): never told as late (Hafsah, 19 October, point 4). */
+  const bills: any[] = ids.length ? ((await Promise.resolve(prisma.workItem?.findMany?.({ where: { groundId: { in: ids }, kind: BILL }, select: { groundId: true, name: true, stage: true, fields: true } })).catch(() => [])) ?? []) : [];
+  for (let i = real.length - 1; i >= 0; i--) if (theBillThisWaitIsPaidOn(real[i].what, bills.filter((b) => b.groundId === real[i].groundId))) real.splice(i, 1);
   const saidWait = (w: any, isAre: string): string => {
     const from = hers.has(w.fromParticipantId) ? 'You' : nameToCall(w.fromParticipant);
     /* "my supervisor" is the waiting person's, named (Hafsah, 19 October, point 6). */

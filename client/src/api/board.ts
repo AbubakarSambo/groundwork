@@ -154,6 +154,8 @@ export type TheBoardAtAGlance = {
 
 export type BoardPresent = {
   groundId: string
+  /** The collections board (Release 2), only where the switchboard picks it; walled and worded by the server. */
+  collections?: import('@/lib/collect-whats-owed').TheCollectionsBoard
   atAGlance?: TheBoardAtAGlance | null
   renders: true
   withheldUntilYouCheckIn?: false

@@ -30,6 +30,8 @@ import { theSalesWeek, theSalesWeekFigures, theSalesTargetsToList, aSalesTargetT
 import { cleanText } from './what-the-record-actually-holds';
 import { whatTheSalesWeekShows, whatChangedInTheSalesWeek, theStalledDealsToAskAbout, theTeamsWeekInASentence, theOneThingTheRecordShowsNext } from './what-a-sales-week-shows';
 import { theSalesWeekInWords, thePricesOnlySaid } from './the-sales-week-in-words';
+import { theCollectionsWeekFor, theCollectionsBoardIsPicked } from './the-collections-readings-for-a-report';
+import { theCollectionsWeekServed, type TheCollectionsWeek } from './the-collections-reports';
 import { theBuyingDateOf, theBuyingDateTheySaid } from '../board/a-deals-value-and-buying-date';
 import { whatTodayReads } from './what-today-reads-from-the-record';
 import { inOurVoice } from './what-the-record-shows-over-time';
@@ -350,6 +352,13 @@ export class TheWeeklyReportService {
       }
     }
 
+    /*
+     * ON A "COLLECT WHAT'S OWED" CHECK-IN WHERE THE SWITCHBOARD PICKS THE COLLECTIONS BOARD (Release 2, pull request 2): the week's
+     * bills, kept by participant id and the client's name, never a person's name (the-collections-reports). Served only while it is
+     * still picked; anywhere else nothing is kept and the week is built exactly as before.
+     */
+    const collections: TheCollectionsWeek | null = await theCollectionsWeekFor(this.prisma, groundId, start, at).catch(() => null);
+
     /* WHAT MORE THAN ONE PERSON NAMED, by label. Names of people in the check-in are never a "thing". */
     const people = parties.filter((p) => labels.get(p.id)).map((p) => ({ who: labels.get(p.id)!, texts: said.filter((r) => r.participantId === p.id).map((r) => String(r.text ?? '')) }));
     const theirNames = parties.flatMap((p) => [fullNameOf(p), p.user?.firstName, p.user?.lastName, p.nameGiven].filter(Boolean) as string[]);
@@ -432,6 +441,7 @@ export class TheWeeklyReportService {
       cleared,
       forTheLead,
       ...(sales ? { sales } : {}),
+      ...(collections ? { collections } : {}),
     };
     return this.prisma.weeklyReport.upsert({
       where: { groundId_weekStart: { groundId, weekStart: key } },
@@ -684,6 +694,25 @@ export class TheWeeklyReportService {
       if (words) out.forNextWeekIsRanked = true;
     }
     else if (me) out.forNextWeek = facts.open.filter((c) => c.participantId === me.id).map(yourOwnToDo).filter((t): t is AThingToDo => !!t).slice(0, 5).map((t) => ({ do: served(t.do), why: t.why, comesFrom: t.comesFrom }));
+
+    /*
+     * THE WEEK ON THE BILLS (Release 2, pull request 2; the-collections-reports), where the week kept them and the switchboard still
+     * picks the collections board: check-ins made, then collected this week, due, overdue and paid with proof, counted from the bills
+     * this reader may read; what this week shows, what changed, what was said and what the proof shows, and what to do next week.
+     */
+    const theBills = (facts as any).collections as TheCollectionsWeek | undefined;
+    if (theBills && Array.isArray(theBills.bills) && (await theCollectionsBoardIsPicked(this.prisma, groundId).catch(() => false))) {
+      const wz = (await theOrganisationsZone(this.prisma as any, ground.organizationId).catch(() => null)) ?? THE_PRODUCTS_OWN_ZONE;
+      const nameOf = (pid: string | null): string => (pid && me && pid === me.id ? 'you' : pid ? whoIs(pid) : 'somebody');
+      const week = theCollectionsWeekServed(theBills, { runsIt: viewerIsLead, participantId: me?.id ?? null }, nameOf, wz);
+      out.inNumbers = [theCheckInsMade(facts.checkIns.due, facts.checkIns.made), ...week.inNumbers]
+        .filter((f): f is AFigure => !!f).map((f) => ({ figure: f.figure, of: served(f.of), says: served(f.says) }));
+      out.whatThisWeekShows = week.whatThisWeekShows.map((x) => served(x));
+      if (out.whatThisWeekShows.length) delete out.saying;
+      out.whatChanged = { moved: week.whatChanged.moved.map((x) => served(x)), dropped: week.whatChanged.dropped.map((x) => served(x)), result: week.whatChanged.result.map((x) => served(x)) };
+      out.saidAndProof = served(week.saidAndProof);
+      if (runsIt || me) out.forNextWeek = [...(runsIt ? (out.forNextWeek ?? []) : []), ...week.forNextWeek.map((t) => ({ do: served(t.do), why: served(t.why), comesFrom: t.comesFrom }))].slice(0, 8);
+    }
     return finish(out);
   }
 

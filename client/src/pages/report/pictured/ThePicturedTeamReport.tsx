@@ -10,6 +10,8 @@ import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import '../../board/pictured/pictured-board.css'
 import { TheCheckInsOwnHeader } from './TheCheckInsOwnHeader'
+import { TheCollectionsTeamReportSections } from '../../board/pictured/TheCollectionsBoard'
+import type { TheCollectionsTeamReport } from '@/lib/collect-whats-owed'
 
 /**
  * THE TEAM'S REPORT FOR ONE SESSION, AS PICTURED, FOR WHOEVER RUNS THE CHECK-IN (screen match, 16 October;
@@ -61,6 +63,8 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
   const b: Any = board
   /* Release 1's sales team report, read from the deals on the server (the-sales-readings-for-a-report): the day, In short, what moved and why the numbers don't match. */
   const teamsDay: Any = rep?.theTeamsDay ?? null
+  /* Release 2's team report on the bills, served only to whoever runs a collections check-in (the-collections-readings-for-a-report). */
+  const collections: TheCollectionsTeamReport | null = rep?.collectionsReport ?? null
   const label = ground?.label ?? b?.title ?? 'This check-in'
   if (!rep) return <Page><PageTitle crumbs={[{ label: 'Check-ins', to: '/grounds' }, { label, to: `/grounds/${groundId}/board` }, { label: 'Reports' }]} subtitle="Getting the report…" /></Page>
 
@@ -135,7 +139,7 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
       <PageTitle
         crumbs={[{ label: 'Check-ins', to: '/grounds' }, { label, to: `/grounds/${groundId}/board` }, { label: 'Reports' }]}
         /* one-session.jpg: a shared session is named by its number; today's, not shared yet, by its day. */
-        title={onboardingSubject ? `${onboardingSubject}, session ${sessionNumber}` : teamsDay?.title ? teamsDay.title : rep.released ? `Session ${sessionNumber}` : sessionDay ? `The team’s report, ${aDay(sessionDay)}` : `The team’s report, session ${sessionNumber}`}
+        title={collections ? collections.title : onboardingSubject ? `${onboardingSubject}, session ${sessionNumber}` : teamsDay?.title ? teamsDay.title : rep.released ? `Session ${sessionNumber}` : sessionDay ? `The team’s report, ${aDay(sessionDay)}` : `The team’s report, session ${sessionNumber}`}
       />
       {/* team-report.jpg: when it last changed and who checked in on the left, "Yesterday" and "This week" as buttons on the right. */}
       <div className="pb-report-head">
@@ -189,6 +193,9 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
         </Panel>
       )}
 
+      {/* Release 2: on a "Collect what's owed" check-in where the switchboard picks the collections board, the team's report on the
+          bills, in the full shape, as the server words it (the-collections-reports); every other check-in reads the sections below. */}
+      {collections ? <TheCollectionsTeamReportSections r={collections} /> : (<>
       {/* team-report.jpg: "In short" is the report's own few sentences on the page, not in a box. */}
       <Section heading="In short">
         {teamsDay
@@ -317,10 +324,12 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
         </div>
       )}
 
+      </>)}
+
       <Link to={`/grounds/${groundId}?tab=report`} className="pb-wide-btn">Every session</Link>
 
       {/* team-report.jpg: below "Every session", what was asked and not answered yet, and what happens next. Served to whoever runs the check-in only (what-i-dont-know-yet.ts). */}
-      {Array.isArray(rep.whatIDontKnowYet) && (
+      {!collections && Array.isArray(rep.whatIDontKnowYet) && (
         <Panel className="pb-unknowns">
           <h3 className="pb-box-h">What I don’t know yet</h3>
           <p className="pb-sub pb-unknowns-note">Things Groundwork can’t tell from what it has, and what it will ask next.</p>

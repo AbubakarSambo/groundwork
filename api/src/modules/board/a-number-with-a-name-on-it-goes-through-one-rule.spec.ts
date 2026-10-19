@@ -156,6 +156,14 @@ describe('every surface that hands out whose number it is', () => {
     'modules/reports/the-sales-week-in-words.ts': "keeps each person's lines by label with their own target; the weekly read hands a person only their own lines and the lead every line",
     /* Release 1B, pull request 2 of 3: proof added in a check-in is filed on its item. It reads a work item's owner only to prefer the person's own item when filing; it serves nobody, and never reads a target or a number. */
     'modules/documents/proof-filed-on-its-item.ts': "reads a work item's owner only to file proof on the person's own item; serves nobody, never a target or a number",
+    /* Release 2, pull request 2 of 3: the collections record, board and reports. Each reads a bill's owner (a work item: a fee note, an invoice or a loan) to say who
+       follows it up, and the service walls the bills to the reader before anything is built (the lead every bill, a person their own). None reads a target or a number on one. */
+    'modules/board/the-collections-record.ts': "writes each bill as a work item owned by the person who said it; serves nobody, never a target or a number",
+    'modules/board/the-collections-board.ts': "reads a bill's owner (a work item) to say who follows it up, from bills already walled for this reader; never a target or a number",
+    'modules/board/the-collections-board.service.ts': "reads each bill's owner (a work item) to wall the bills to the reader before the board is built; never a target or a number",
+    'modules/reports/the-collections-reports.ts': "reads a bill's owner (a work item) to say whose it is, from bills already walled for this reader; never a target or a number",
+    'modules/grounds/__fixtures__/muchemi-and-co.ts': 'hand-written test rows for Release 2: fee notes as work items, never a target',
+    'modules/grounds/__fixtures__/a-small-lender.ts': 'hand-written test rows for Release 2: loans as work items, never a target',
   };
 
   it('goes through the one rule, or says why it is not a reader', () => {

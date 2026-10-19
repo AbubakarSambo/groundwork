@@ -301,6 +301,7 @@ import { aPromiseSomebodyElseMade } from './a-promise-somebody-else-made';
 import { clearTheWaitsSaidDone } from './a-wait-said-done-is-cleared';
 import { keepThePromisesSaidDone } from './a-promise-said-done-is-kept';
 import { theReleaseOneSalesBoardIsOnFor } from '../board/release-one-sales-board';
+import { aCollectionsCheckInWithRelease2 } from '../grounds/release-2-collections';
 import { FROM_YOUR_CHECK_IN, theWordsItCameFrom, theTargetAsALine, type ATargetToHold } from '../grounds/the-leads-targets-wait-for-her-yes';
 import { theSameMeasure } from '../grounds/a-dump-is-many-things';
 import { aRoleInTheirOwnWords } from '../grounds/the-leads-words-about-someone';
@@ -6265,7 +6266,7 @@ ${told}` : '';
     if (!agreed) return { forTheModel: '', weSay: '' };
     if (agreed.kind === 'no') return { forTheModel: whatHappenedToTheOffer(agreed, false), weSay: '' };
     /* A yes to somebody else's promise is not theirs to keep (Hafsah's point 13, Release 1): nothing is written. */
-    if (aPromiseSomebodyElseMade(agreed.text) && (await theReleaseOneSalesBoardIsOnFor(this.prisma, checkIn.groundId))) return { forTheModel: '', weSay: '' };
+    if (aPromiseSomebodyElseMade(agreed.text) && ((await theReleaseOneSalesBoardIsOnFor(this.prisma, checkIn.groundId)) || (await aCollectionsCheckInWithRelease2(this.prisma, checkIn.groundId)))) return { forTheModel: '', weSay: '' };
     let written: boolean | 'already' = false;
     try {
       const theirs = await this.prisma.groundCommitment.findMany({
@@ -8352,7 +8353,8 @@ ${told}` : '';
       return null;
     });
     /* Only their own promises: one whose subject is a customer or a colleague is that person's (Hafsah's point 13, Release 1). */
-    const somebodyElses = (await theReleaseOneSalesBoardIsOnFor(this.prisma, row.groundId)) ? aPromiseSomebodyElseMade : () => false;
+    /* And on a "Collect what's owed" check-in with Release 2 on: a client's promise to pay is filed on the bill as the client's (the-collections-record). */
+    const somebodyElses = (await theReleaseOneSalesBoardIsOnFor(this.prisma, row.groundId)) || (await aCollectionsCheckInWithRelease2(this.prisma, row.groundId)) ? aPromiseSomebodyElseMade : () => false;
     const keep = theOnesToKeep(Array.isArray(read?.commitments) ? read.commitments : []).filter((c) => !somebodyElses(c.action));
     if (!keep.length) return;
 

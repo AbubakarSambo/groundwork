@@ -149,6 +149,7 @@ import { ThePicturedSalesBoard, theScheduleInWords, ThePicturedOwnDeals, ThePict
 import { ThePicturedBoard } from './pictured/ThePicturedBoard'
 import { MessageCircle } from 'lucide-react'
 import { TheLightSalesBoard, TheLightNeedsYou, TheLightBesideTheHeadline, TheLightBoxes, TheLightSummaryFirst } from './TheLightSalesBoard'
+import { TheCollectionsBoard } from './pictured/TheCollectionsBoard'
 import { SuggestionsForTheLead } from '@/components/gw/Suggestions'
 import { buildSessionRows } from '@/lib/session-rows'
 import { peopleLabels, personLabel } from '@/lib/utils'
@@ -1674,8 +1675,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const planNamesLine = picturedPlan && planPersonId
     ? (() => { const f = String((b.participants ?? []).find((p) => p.id === planPersonId)?.name ?? '').trim().split(/\s+/)[0]; return f ? `${f} and you.` : null })()
     : null
-  const drawnAsPictured = picturedLead || picturedReader || picturedOnboarding || picturedMember || picturedDecision || picturedPlan || picturedOtherKind
-  const light = !!b.atAGlance && !isParticipantView && !picturedLead && !picturedReader && !picturedOnboarding && !picturedDecision && !picturedPlan && !picturedOtherKind
+  /*
+   * THE COLLECTIONS BOARD (Release 2, pull request 2 of 3; TheCollectionsBoard), for every reader the server serves it to: it is
+   * served only where the switchboard picks it, and already walled at the server (the lead every bill, a person their own). In
+   * place of every other drawing of the board; the whole board as it was stays one tap away (?whole=1).
+   */
+  const picturedCollections = !theWholeBoard && !groundId && !!b.collections
+  const drawnAsPictured = picturedCollections || ((picturedLead || picturedReader || picturedOnboarding || picturedMember || picturedDecision || picturedPlan || picturedOtherKind) && !b.collections)
+  const light = !!b.atAGlance && !isParticipantView && !picturedLead && !picturedReader && !picturedOnboarding && !picturedDecision && !picturedPlan && !picturedOtherKind && !picturedCollections
   /* "Daily on weekdays, from 4pm. Session 38 of 65. Runs until 30 September." (board-as-lead.txt). */
   const picturedCadenceLine = [
     picturedOnboarding ? onboardingNamesLine : picturedPlan ? planNamesLine : null,
@@ -2693,7 +2700,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           <p role="note" className="gwui-fs-15 gwui-ink-text gwui-mt-8" style={{lineHeight: 1.55}}>{b.readOnlyNote}</p>
         )}
 
-        {((picturedLead && picturedManyInTeams) || picturedOtherKind) && (
+        {picturedCollections && b.collections && (
+          <TheCollectionsBoard board={b.collections} onRecordTheDecision={viewerRunsThisCheckIn ? () => navigate(`/grounds/${id}/end`) : undefined} />
+        )}
+        {!picturedCollections && ((picturedLead && picturedManyInTeams) || picturedOtherKind) && (
           <ThePicturedBoard
             /* A founder's own check-in has one person in it (founder-board.jpg): no team today, no areas, no row per person. */
             order={(((b as any).kindOfWork === 'a government programme'
@@ -2749,7 +2759,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             navigate={navigate}
           />
         )}
-        {picturedReader && (
+        {!picturedCollections && picturedReader && (
           <ThePicturedSalesBoard
             b={b}
             groundId={id!}
@@ -2764,7 +2774,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             readOnly
           />
         )}
-        {picturedLead && situationOrder && (
+        {!picturedCollections && picturedLead && situationOrder && (
           <ThePicturedBoard
             order={situationOrder as any}
             b={b}
@@ -2779,7 +2789,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             navigate={navigate}
           />
         )}
-        {picturedLead && !picturedManyInTeams && !situationOrder && (
+        {!picturedCollections && picturedLead && !picturedManyInTeams && !situationOrder && (
           <ThePicturedSalesBoard
             b={b}
             groundId={id!}
@@ -2814,7 +2824,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             )}
           />
         )}
-        {picturedOnboarding && (
+        {!picturedCollections && picturedOnboarding && (
           <ThePicturedBoard
             /* Before anybody has answered (faith90-board.jpg) the board says it fills in after the first check-ins, and shows what was agreed and what is left to do. */
             order={(b.checkInGrid?.rows ?? []).length > 0 && !(b.checkInGrid?.rows ?? []).some((r: any) => Object.values(r.cells ?? {}).includes('done'))
@@ -2846,7 +2856,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             navigate={navigate}
           />
         )}
-        {picturedMember && (
+        {!picturedCollections && picturedMember && (
           <ThePicturedBoard
             order={['participantNote', 'priorities', 'yourPart', 'teamReport', 'companyBoard', 'everySession', 'otherBoards', 'ask']}
             leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
@@ -2863,7 +2873,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             navigate={navigate}
           />
         )}
-        {picturedDecision && (
+        {!picturedCollections && picturedDecision && (
           <ThePicturedBoard
             order={['theDecision', 'accounts', 'knownBelievedUnknown', 'everySession', 'otherBoards', 'heading', 'ask', 'recommends']}
             leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
@@ -2880,7 +2890,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             navigate={navigate}
           />
         )}
-        {picturedPlan && (
+        {!picturedCollections && picturedPlan && (
           <ThePicturedBoard
             order={['suggestion', 'theCase', 'everySession', 'otherBoards', 'heading', 'ask', 'recommends']}
             personId={planPersonId}

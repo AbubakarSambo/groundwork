@@ -97,6 +97,7 @@ const patternCatalogue = () => (patternByCode ??= new Map(
 ));
 import { cleanText } from './what-the-record-actually-holds';
 import { withTheSalesReadings, theirOwnLinesReadRight } from './the-sales-readings-for-a-report';
+import { withTheCollectionsReadings } from './the-collections-readings-for-a-report';
 import { theMarksOfAReport, markTheRows, withTheMarksOnItsLines, WHAT_EACH_MARK_SAYS } from './the-mark-on-every-line';
 import { theMarkOf, whoAddedEachBackingDocument, WHAT_A_MARK_READS, type HowALineIsKnown } from './how-a-line-is-known';
 import { withoutAGuessedPronoun } from './nobody-is-he-or-she-here';
@@ -7323,7 +7324,9 @@ happened, and what is in the way.`;
     /* What I don't know yet is added before the last read, so it goes through the same wall as every other line. So are, on a
        sales check-in with Release 1's switch on, what the deals say, for each reader only what is theirs (the-sales-readings-for-a-report). */
     return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, await this.withWhatIDontKnowYet(groundId, sessionNumber, requestingUserId, requestingUserOrgId,
-      await withTheSalesReadings(this.prisma, groundId, sessionNumber, requestingUserId, served).catch(() => served)));
+      /* And, where the switchboard picks the collections board, the bills' own team report or the reader's own (the-collections-readings-for-a-report). */
+      await withTheSalesReadings(this.prisma, groundId, sessionNumber, requestingUserId, served).catch(() => served)
+        .then((x) => withTheCollectionsReadings(this.prisma, groundId, sessionNumber, requestingUserId, x).catch(() => x))));
   }
 
   /**
