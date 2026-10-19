@@ -432,7 +432,8 @@ export class EmailService implements OnModuleInit {
   }
 
   private async sendEmail(
-    options: { to: string; subject: string; html: string },
+    /** `text` only where the plain words cannot be read off the HTML well, as with a table (the daily delivery alert). */
+    options: { to: string; subject: string; html: string; text?: string },
     context?: DeliveryContext,
     /** Which sender this is. Defaulted so nothing breaks, and every sender passes it. */
     sender?: string,
@@ -569,7 +570,7 @@ export class EmailService implements OnModuleInit {
   }
 
   private async deliverNow(
-    options: { to: string; subject: string; html: string },
+    options: { to: string; subject: string; html: string; text?: string },
     context?: DeliveryContext,
     sender?: string,
   ): Promise<string | undefined> {
@@ -595,7 +596,7 @@ export class EmailService implements OnModuleInit {
        appeal, an invitation) and what is about running the product, so "stop them here" under those promised something that was not true. It is on what we decide to send. */
     const wayOut = sender && whatThisMailIs(sender) === 'we decided to send it' ? await this.theWayToStopHearingFromUs(options.to) : null;
     if (wayOut) options = { ...options, html: `${options.html}${UNSUBSCRIBE_FOOTER(wayOut)}` };
-    const text = plainTextOf(options.html);
+    const text = options.text ?? plainTextOf(options.html);
     /* The one-click POST goes to the API, not the page: a mail program posts it with no person reading anything. */
     const apiOrigin = (this.configService.get<string>('app.publicApiUrl') || '').replace(/\/$/, '');
     /* RFC 8058: the one-click header is promised only where the address in it really takes a POST and stops the mail with no page. That is the API's
@@ -1149,6 +1150,21 @@ export class EmailService implements OnModuleInit {
       return { sent: true };
     } catch (err: any) {
       this.logger.error(`Team alert to ${email} did not send: ${err?.message}`);
+      return { sent: false };
+    }
+  }
+
+  /**
+   * THE DAILY DELIVERY ALERT (engagement/the-daily-delivery-alert.ts). Groundwork's own operations email to the one platform address
+   * set for it, never to a client. The words and the table are built and escaped there; the text part is its own, because a table read
+   * off the HTML runs its cells together.
+   */
+  async sendTheDailyDeliveryAlert(to: string, subject: string, html: string, text: string): Promise<{ sent: boolean }> {
+    try {
+      await this.sendEmail({ to, subject, html: this.layout(html), text }, undefined, 'sendTheDailyDeliveryAlert');
+      return { sent: true };
+    } catch (err: any) {
+      this.logger.error(`The daily delivery alert to ${to} did not send: ${err?.message}`);
       return { sent: false };
     }
   }

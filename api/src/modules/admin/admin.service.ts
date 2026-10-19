@@ -23,6 +23,7 @@ import {
   thresholdsInForce, type SuggestionThresholds,
 } from '../suggestions/thresholds';
 import { fullNameToCall } from '../engagement/a-name-to-call-them';
+import { DELIVERY_ALERT_KEY, anEmailAddress, theDeliveryAlertAddress } from '../engagement/the-daily-delivery-alert';
 
 @Injectable()
 export class AdminService implements OnApplicationBootstrap {
@@ -193,6 +194,27 @@ export class AdminService implements OnApplicationBootstrap {
       update: { value: live, updatedBy: adminUserId },
     });
     return { live };
+  }
+
+  /**
+   * WHERE THE DAILY DELIVERY ALERT GOES (engagement/the-daily-delivery-alert.ts): one address, saved here, else the server setting
+   * DELIVERY_ALERT_EMAIL. Empty by default, and nothing is sent while it is empty.
+   */
+  async getDeliveryAlert(): Promise<{ email: string | null; from: 'here' | 'server' | null }> {
+    return theDeliveryAlertAddress(this.prisma);
+  }
+
+  /** An empty value clears the saved address, and the server setting is used again if there is one. */
+  async setDeliveryAlert(raw: unknown, adminUserId: string): Promise<{ email: string | null; from: 'here' | 'server' | null }> {
+    const given = typeof raw === 'string' ? raw.trim() : '';
+    const email = given ? anEmailAddress(given) : '';
+    if (email === null) throw new BadRequestException('That needs to be one email address, for example ops@myground.work.');
+    await this.prisma.platformSetting.upsert({
+      where: { key: DELIVERY_ALERT_KEY },
+      create: { key: DELIVERY_ALERT_KEY, value: email, updatedBy: adminUserId },
+      update: { value: email, updatedBy: adminUserId },
+    });
+    return theDeliveryAlertAddress(this.prisma);
   }
 
   async getCorrectionWindow(): Promise<{ days: number; default: number; max: number }> {

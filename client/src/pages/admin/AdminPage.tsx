@@ -173,6 +173,50 @@ function CoachingSwitch() {
 }
 
 /**
+ * WHERE THE DAILY DELIVERY ALERT GOES (api engagement/the-daily-delivery-alert.ts). One address, Groundwork's own. Empty means nothing is
+ * sent. Saved here wins over the server setting DELIVERY_ALERT_EMAIL; clearing it here falls back to that setting.
+ */
+function DeliveryAlertRow() {
+  const qc = useQueryClient()
+  const { data } = useQuery({ queryKey: ['admin-delivery-alert'], queryFn: adminApi.getDeliveryAlert })
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState('')
+  const [err, setErr] = useState<string | null>(null)
+  const save = useMutation({
+    mutationFn: () => adminApi.setDeliveryAlert(value.trim()),
+    onSuccess: (res) => {
+      qc.setQueryData(['admin-delivery-alert'], res)
+      setEditing(false)
+      setErr(null)
+      toast.success(res.email ? `The daily delivery alert now goes to ${res.email}.` : 'No address is set now, so the daily delivery alert is not sent.')
+    },
+    onError: (e: any) => setErr(e?.response?.data?.message ?? e.message),
+  })
+  if (!data) return null
+  const now = data.email
+    ? (data.from === 'server' ? `It goes to ${data.email}, which is set on the server. An address saved here is used instead.` : `It goes to ${data.email}.`)
+    : 'No address is set, so nothing is sent.'
+  return (
+    <div style={{ ...C, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700 }}>Daily delivery alert</div>
+        <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2, lineHeight: 1.5 }}>Every morning at half past seven in Nairobi (East Africa Time), this address is sent a list of the openings, reminders and morning summaries that did not go out the day before, for every client. Nothing is sent on a day when nothing went wrong. {now}</div>
+        {err && <div role="alert" style={{ fontSize: 12, color: 'var(--gw-red-t)', marginTop: 4 }}>{err}</div>}
+      </div>
+      {editing ? (
+        <form onSubmit={(e) => { e.preventDefault(); save.mutate() }} style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          <input type="email" value={value} onChange={e => setValue(e.target.value)} placeholder="ops@myground.work" aria-label="Address for the daily delivery alert" style={{ width: 220, maxWidth: '100%', padding: '5px 8px', fontSize: 13, borderRadius: 6, border: '1px solid var(--gw-border)', fontFamily: 'inherit' }} />
+          <button type="submit" disabled={save.isPending} style={{ padding: '5px 10px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Save</button>
+          <button type="button" onClick={() => { setEditing(false); setErr(null) }} style={{ padding: '5px 10px', borderRadius: 6, background: 'none', color: 'var(--gw-muted)', fontSize: 12, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+        </form>
+      ) : (
+        <button type="button" onClick={() => { setValue(data.from === 'here' ? data.email ?? '' : ''); setEditing(true) }} style={{ padding: '5px 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-navy)', fontSize: 12, fontWeight: 700, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>{data.email ? 'Change' : 'Set an address'}</button>
+      )}
+    </div>
+  )
+}
+
+/**
  * HOW LONG SOMEBODY HAS TO CORRECT THEIR OWN RECORD after a report is released. Read by the report
  * and by the conversation, written by nothing but SQL until now. Zero is allowed on purpose: it means
  * a released report is final the moment it is released.
@@ -875,6 +919,11 @@ function SystemTab({ dash }: { dash: PlatformDashboardData }) {
           <CoachingSwitch />
           <StripeStatus />
         </div>
+      </section>
+
+      <section>
+        <div style={SL}>Delivery</div>
+        <DeliveryAlertRow />
       </section>
 
       <section>

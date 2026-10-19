@@ -372,6 +372,18 @@ export class AdminController {
     return this.adminService.setCoachingLive(!!body?.live, userId);
   }
 
+  @Get('delivery-alert')
+  @ApiOperation({ summary: 'The address the daily delivery alert goes to, and whether it was saved here or comes from the server setting' })
+  getDeliveryAlert() {
+    return this.adminService.getDeliveryAlert();
+  }
+
+  @Patch('delivery-alert')
+  @ApiOperation({ summary: 'Set the address the daily delivery alert goes to. An empty value clears it.' })
+  setDeliveryAlert(@CurrentUser('id') userId: string, @Body() body: { email: string }) {
+    return this.adminService.setDeliveryAlert(body?.email ?? '', userId);
+  }
+
   @Get('correction-window')
   @ApiOperation({ summary: 'How many days somebody has to correct their own record after a report is released' })
   getCorrectionWindow() {
