@@ -180,7 +180,8 @@ export async function sendTheLeadsDailySummaries(
          whatever else is true, so a lead with an approval that has waited a week is not told the same thing every morning (it was, eight mornings running, in a copy of a real database). */
       const said = hashOfTheWords(paragraph);
       if ((await lastSaid(prisma, lead.leadId)) === said) continue;
-      const link = lead.checkIns.length === 1 ? `${base}/grounds/${lead.checkIns[0].groundId}/board` : `${base}/grounds`;
+      /* "You can open your board" opens a board: the check-in the paragraph begins with (engine test, second run, Wanjiru's two check-ins). */
+      const link = lead.checkIns.length ? `${base}/grounds/${lead.checkIns[0].groundId}/board` : `${base}/today`;
       const message = theLeadsDailySummary(user.firstName, paragraph, link);
       const result: any = await deps.whatsapp.sendFor(lead.organizationId, phone, message.text, { kind: message.kind, params: message.params });
       /* Remembered only when it really went: one the day's limit, a "not now" or an unapproved template refused is tried again, and says the same thing then. */
