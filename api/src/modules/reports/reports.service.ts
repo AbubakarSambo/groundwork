@@ -236,6 +236,7 @@ import { CANNOT_READ_THE_REPORT_YET } from '../participants/nobody-joins-your-co
 import { documentBackedShare } from './backed-by-a-document';
 import { howManyHaveAnswered, howManyInTheRoundAnswered } from './how-many-have-answered';
 import { NOT_A_QUIET_CLOSE, aQuietCloseWhere, AN_ANSWER } from '../grounds/an-answer-includes-a-refusal';
+import { whoCheckedInForThisPicture, type SomebodyAskedThisSession } from '../email/who-checked-in-for-this-picture';
 import { theInferencesOfSession, keptWithEachSessionsOwn } from './each-sessions-inferences-are-its-own';
 import { theTimeItSharesItself, isThisSessionHeld, withThisSessionHeld, whenItSharesItself, whatTheLeadIsToldAboutSharing, whatATeamMemberIsToldAboutSharing, type HowItIsShared } from './a-report-shares-itself';
 import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
@@ -5477,7 +5478,7 @@ happened, and what is in the way.`;
   async tellThemTheReportIsReady(groundId: string, sessionNumber: number, onlyParticipantId?: string, sharedByAnAdminSentence?: string): Promise<{ attempted: number; failed: number }> {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      include: { participants: { include: { user: { select: { passwordHash: true } } } } },
+      include: { participants: { include: { user: { select: { passwordHash: true, firstName: true, lastName: true } } } } },
     });
     if (!ground) return { attempted: 0, failed: 0 };
     const frontend = this.config.get<string>('resend.frontendUrl');
@@ -5505,6 +5506,16 @@ happened, and what is in the way.`;
       /* Somebody who was asked and said no is not sent it. Null is nobody asked, which is everybody the lead invited. */
       && (p as any).wantsTheReport !== false,
     );
+    /*
+     * WHO WAS ASKED FOR THIS SESSION, AND WHO ANSWERED, from its own rows (messages test, 19 October, finding 2). A picture released at the end
+     * of the day goes with whoever answered, so the mail says who did rather than "everybody has now checked in".
+     */
+    const thisSession = ((await (this.prisma.checkIn?.findMany?.({ where: { groundId, sessionNumber }, select: { participantId: true, status: true } }) ?? Promise.resolve([] as any[])).catch(() => [] as any[])) as any[]);
+    const asked: SomebodyAskedThisSession[] = thisSession.map((c: any) => {
+      const who = ground.participants.find((x) => x.id === c.participantId) as any;
+      const name = [who?.user?.firstName, who?.user?.lastName].filter((x: any) => typeof x === 'string' && x.trim()).join(' ').trim() || (who?.nameGiven ?? '').trim() || null;
+      return { participantId: c.participantId, name, answered: c.status === CheckInStatus.COMPLETED && !saidNothing.has(c.participantId) };
+    });
     let failed = 0;
     for (const p of owed) {
       try {
@@ -5522,7 +5533,8 @@ happened, and what is in the way.`;
           const chat = insight?.hasAFinding && p.user?.passwordHash
             ? { url: `${frontend}/chat?about=${groundId}`, label: p.userId === ground.initiatorId ? 'I can help you do that' : 'I can help you talk it through' }
             : undefined;
-          await this.email.sendReportReady(p.email, ground.label, linkFor(p), sharedByAnAdminSentence, ground.id, subject, insight?.lines, chat);
+          const whoCheckedIn = whoCheckedInForThisPicture(ground.label, sessionNumber, asked, p.id, peersAreNamedOn(ground as any, { participantId: p.id }));
+          await this.email.sendReportReady(p.email, ground.label, linkFor(p), sharedByAnAdminSentence, ground.id, subject, insight?.lines, chat, whoCheckedIn);
         }
       } catch (err: any) {
         failed += 1;
