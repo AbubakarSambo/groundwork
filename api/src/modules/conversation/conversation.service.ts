@@ -8360,19 +8360,6 @@ ${told}` : '';
    * Only the commitments of theirs that were open before this check-in, and so were put to them;
    * only DONE or NOT_DONE, and only what they plainly said. See what-happened-to-what-they-said.
    */
-  /** Read as done from what they said, and now they say it did not happen: not done (messages test, fourth run). See theySaidItDidNotHappen. */
-  private async whatTheyNowSayDidNotHappen(checkInId: string, row: { groundId: string; participantId: string; startedAt: Date | null }, said: AnAnswer[]): Promise<void> {
-    const readAsDone: any[] = await Promise.resolve(this.prisma.groundCommitment.findMany({
-      where: { groundId: row.groundId, participantId: row.participantId, status: 'DONE', settledBy: 'SAID', settledInCheckInId: { not: checkInId }, createdAt: { lt: row.startedAt ?? new Date() } },
-      select: { id: true, text: true, status: true, settledBy: true },
-    })).catch(() => []);
-    for (const c of (Array.isArray(readAsDone) ? readAsDone : []).filter((x) => x.status === 'DONE' && x.settledBy === 'SAID')) {
-      if (!theySaidItDidNotHappen(String(c.text ?? ''), said)) continue;
-      await this.prisma.groundCommitment.updateMany({ where: { id: c.id, status: 'DONE', settledBy: 'SAID' }, data: { status: 'NOT_DONE', settledAt: new Date(), settledInCheckInId: checkInId, settledBy: 'SAID' } });
-      this.logger.log(`Check-in ${checkInId}: commitment ${c.id} was read as done, and they now say it did not happen.`);
-    }
-  }
-
   async settleWhatTheySaidTheyWouldDo(checkInId: string): Promise<number> {
     if (!this.prisma.groundCommitment?.findMany) return 0;
     const row = await this.prisma.checkIn.findUnique({
@@ -8432,6 +8419,19 @@ ${told}` : '';
       this.events?.emit?.(GroundworkEvents.COMMITMENTS_SETTLED, { groundId: row.groundId, participantId: row.participantId } satisfies CommitmentsSettledEvent);
     }
     return settled.length;
+  }
+
+  /** Read as done from what they said, and now they say it did not happen: not done (messages test, fourth run). See theySaidItDidNotHappen. */
+  private async whatTheyNowSayDidNotHappen(checkInId: string, row: { groundId: string; participantId: string; startedAt: Date | null }, said: AnAnswer[]): Promise<void> {
+    const readAsDone: any[] = await Promise.resolve(this.prisma.groundCommitment.findMany({
+      where: { groundId: row.groundId, participantId: row.participantId, status: 'DONE', settledBy: 'SAID', settledInCheckInId: { not: checkInId }, createdAt: { lt: row.startedAt ?? new Date() } },
+      select: { id: true, text: true, status: true, settledBy: true },
+    })).catch(() => []);
+    for (const c of (Array.isArray(readAsDone) ? readAsDone : []).filter((x) => x.status === 'DONE' && x.settledBy === 'SAID')) {
+      if (!theySaidItDidNotHappen(String(c.text ?? ''), said)) continue;
+      await this.prisma.groundCommitment.updateMany({ where: { id: c.id, status: 'DONE', settledBy: 'SAID' }, data: { status: 'NOT_DONE', settledAt: new Date(), settledInCheckInId: checkInId, settledBy: 'SAID' } });
+      this.logger.log(`Check-in ${checkInId}: commitment ${c.id} was read as done, and they now say it did not happen.`);
+    }
   }
 
   async writeWhatTheyPromised(checkInId: string): Promise<void> {
