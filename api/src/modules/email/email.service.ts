@@ -308,13 +308,20 @@ export class EmailService implements OnModuleInit {
   }
 
   /** And the answer, to the person who was waiting. */
-  async sendYouAreInNow(to: string, organizationName: string): Promise<void> {
+  /*
+   * BY NAME, AND WHICH CHECK-IN (messages test, 19 October, finding 15): Amos read "Hi, An admin at Drop Access (test) has approved you joining,
+   * so the check-in you were invited to is open." with no name, though he gave it, and "invited", though he came by the link.
+   */
+  async sendYouAreInNow(to: string, organizationName: string, known: { firstName?: string | null; checkInLabel?: string | null; letInBy?: string | null } = {}): Promise<void> {
+    const by = (known.letInBy ?? '').trim();
+    const letInBy = by && !by.includes('@') && by !== 'Someone' ? `${escapeHtml(by)}, an admin at <strong>${escapeHtml(organizationName)}</strong>,` : `An admin at <strong>${escapeHtml(organizationName)}</strong>`;
+    const what = known.checkInLabel?.trim() ? `your check-in for <strong>"${escapeHtml(known.checkInLabel.trim())}"</strong> is open` : 'your check-in is open';
     await this.sendEmail({
       to,
       subject: `You can start your check-in now`,
       html: this.layout(
-        `<p>${greeting(null)}</p>
-         <p>An admin at <strong>${organizationName}</strong> has approved you joining, so the check-in you were invited to is open.</p>
+        `<p>${greeting(known.firstName ?? null)}</p>
+         <p>${letInBy} has let you in, so ${what}.</p>
          <p><a href="${this.frontendUrl.replace(/\/$/, '')}/grounds" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open my check-in →</a></p>`,
       ),
     }, undefined, 'sendYouAreInNow');
@@ -1645,13 +1652,23 @@ export class EmailService implements OnModuleInit {
    * here — the asking page says the same sentence either way, and an email that
    * said "welcome back" would put the difference back.
    */
-  async sendJoinConfirmation(email: string, token: string): Promise<void> {
+  /*
+   * WHICH CHECK-IN, WHO RUNS IT AND WHERE (messages test, 19 October, finding 16): "Somebody shared a Groundwork check-in with you" named
+   * nothing. What the join page itself shows whoever has the link, and nothing about whether the address has an account here.
+   */
+  async sendJoinConfirmation(email: string, token: string, about: { firstName?: string | null; checkInLabel?: string | null; leadName?: string | null; organisationName?: string | null } = {}): Promise<void> {
     const url = `${this.frontendUrl}/join/confirm?token=${token}`;
+    const label = (about.checkInLabel ?? '').trim();
+    const lead = (about.leadName ?? '').trim();
+    const org = (about.organisationName ?? '').trim();
+    const where = label
+      ? `<p>${greeting(about.firstName ?? null)}</p><p>This address was entered on the join page of <strong>"${escapeHtml(label)}"</strong>, a check-in${lead ? ` ${escapeHtml(lead)} runs` : ''}${org && !isAMadeUpWorkspaceName(org) ? ` at ${escapeHtml(org)}` : ''}.</p>`
+      : `<p>Somebody shared a Groundwork check-in with you and this address was entered to join it.</p>`;
     await this.sendEmail({
       to: email,
-      subject: 'Your Groundwork check-in',
+      subject: label ? `Your check-in for "${label}"` : 'Your Groundwork check-in',
       html: this.layout(
-        `<p>Somebody shared a Groundwork check-in with you and this address was entered to join it.</p>
+        `${where}
          <p>Opening the link below starts your check-in. It lasts 24 hours and works once.</p>
          <p><a href="${url}">Start my check-in</a></p>
          <p style="color:#6B6560;font-size:13px;">If you did not ask for this, nothing has been created and you can ignore it.</p>`,
