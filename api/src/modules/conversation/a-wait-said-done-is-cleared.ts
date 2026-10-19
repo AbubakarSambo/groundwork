@@ -51,14 +51,46 @@ const NOT_WAITING_ANY_MORE = /\b(?:not|no longer)\s+waiting\s+(?:on|for)\b[^.;!?
 
 const sentences = (t: string) => String(t ?? '').replace(/\[[^\]]*\]/g, '').replace(/[‘’]/g, "'").split(/(?<=[.;!?])\s+/).map((s) => s.trim()).filter(Boolean);
 
+/*
+ * PART OF IT CAME, AND THE REST IS STILL AWAITED (messages test, third run, item 9). Aisha waited on the client for the witness
+ * statements. On Tuesday 13 October she said "Since the last check-in, the client has sent us two of the three witness statements for
+ * the Jamii Clinics employment claim. We're just waiting on the last one now." That cleared the whole wait, and Wanjiru's weekly letter
+ * said "Aisha Kamau is no longer waiting on the client for the witness statements." Some of the thing is not the thing: a sentence
+ * that says part of it came does not clear it, and nor does a line in which the one waiting says they are still waiting.
+ */
+const ONLY_PART_OF_IT = /\b(?:(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+)\s+(?:out\s+)?of\s+(?:the\s+|our\s+|their\s+)?(?:two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|\d+)|some of|part of|half of|most of|all but|the first (?:one|two|three|part|half)|only (?:one|two|three|some|part))\b/i;
+const STILL_WAITING = /\b(?:still|just|now)\s+waiting\b|\bwaiting\s+(?:on|for)\s+the\s+(?:last|rest|final|other|remaining)\b|\bstill\s+(?:missing|outstanding|to come)\b/i;
+
+/*
+ * WHAT AN OUTSIDE BODY GAVE, SAID BY ANYBODY IN THE CHECK-IN (messages test, third run, item 14). Brian waited on the court for a hearing
+ * date. On Wednesday 14 October, four minutes later, David said in the same check-in "In Kasarani Foods v. Tumaini Traders, the hearing
+ * date is set for November 12th." The litigation board still said on Thursday and Friday "Brian Otieno is waiting on the court for a
+ * hearing date." A wait on somebody outside the check-in (a court, a client, a supplier) is cleared by a line from anybody in it that
+ * names the whole thing waited for and says it was given, set or happened, with nothing in the sentence that says it has not.
+ */
+const IT_WAS_GIVEN = /\b(?:(?:is|was|has been|have been|got|were|are)\s+(?:now\s+)?(?:set|fixed|scheduled|listed|issued|granted|given|confirmed|received|delivered|sent|paid|approved|signed|filed))\b/i;
+function anOutsideBodyGaveIt(line: ALineOnRecord, wait: AnOpenWait, thing: string[]): boolean {
+  if (wait.onParticipantId || !String(wait.onLabel ?? '').trim()) return false;
+  if (line.participantId === wait.fromParticipantId) return false;
+  /* The holder's own name is not the thing: "the court to set a hearing date" is the hearing date. */
+  const holder = new Set(wordsOf(String(wait.onLabel ?? '')).map(one));
+  const itself = thing.filter((w) => !holder.has(w));
+  if (!itself.length) return false;
+  return sentences(line.text).some((s) => {
+    const said = new Set(wordsOf(s).map(one));
+    return itself.every((w) => said.has(w)) && (IT_WAS_GIVEN.test(s) || IT_HAPPENED.test(s)) && !NOT_YET.test(s.replace(/\bnot\s+(?:due|before)\b/gi, '')) && !ONLY_PART_OF_IT.test(s);
+  });
+}
+
 /** Whether one line says this wait is done. `namesOf` gives a person's own names (first name, full name). */
 export function aLineSaysItIsDone(line: ALineOnRecord, wait: AnOpenWait, namesOf: (participantId: string) => string[]): boolean {
   if (String(line.type).toUpperCase() !== 'PROGRESS') return false;
   const byTheOneWaiting = line.participantId === wait.fromParticipantId;
   const byTheOneHoldingIt = !!wait.onParticipantId && line.participantId === wait.onParticipantId;
-  if (!byTheOneWaiting && !byTheOneHoldingIt) return false;
   const thing = theThingsOwnWords(wait.what);
   if (!thing.length) return false;
+  if (!byTheOneWaiting && !byTheOneHoldingIt) return anOutsideBodyGaveIt(line, wait, thing);
+  if (byTheOneWaiting && STILL_WAITING.test(line.text)) return false;
   const otherSide = byTheOneWaiting
     ? (wait.onParticipantId ? namesOf(wait.onParticipantId) : [String(wait.onLabel ?? '')])
     : namesOf(wait.fromParticipantId);
@@ -68,7 +100,7 @@ export function aLineSaysItIsDone(line: ALineOnRecord, wait: AnOpenWait, namesOf
     if (!thing.some((w) => said.has(w))) return false;
     if (byTheOneWaiting && NOT_WAITING_ANY_MORE.test(s)) return true;
     const namesTheOtherSide = otherWords.some((w) => said.has(w) || said.has(one(w)));
-    return namesTheOtherSide && IT_HAPPENED.test(s) && !NOT_YET.test(s);
+    return namesTheOtherSide && IT_HAPPENED.test(s) && !NOT_YET.test(s) && !ONLY_PART_OF_IT.test(s);
   });
 }
 
