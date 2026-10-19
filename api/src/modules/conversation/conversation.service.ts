@@ -293,6 +293,8 @@ import { withoutAConclusionNobodyDrew } from './a-conclusion-nobody-drew-is-neve
 import { withoutPressingOrAccusing, withOnePossessive } from './nothing-sent-presses-or-accuses';
 import { withNoPastQuestionAboutADayToCome } from './a-day-to-come-is-never-asked-about-as-past';
 import { withoutAPastedLine } from './a-pasted-line-is-never-read-back';
+import { theNewsThesePromisesWaitOn, theNewsInOneLine } from '../engagement/a-promise-that-waits-on-news';
+import { whenItWas as aDayOfTheirs } from '../../common/a-date-reads-the-same-everywhere';
 import { theMPesaCodesSaid, theMPesaCodesForTheModel, theScreenshotWasAskedFor, withTheScreenshotAskedOnce, type AnMPesaCodeOnRecord } from './an-mpesa-code-is-asked-about-once';
 import { withEarlierWordsOnTheirOwnDay, type AnEarlierWord } from './earlier-words-keep-their-own-day';
 import { withoutTheLeadsBrief, aSentenceThatQuotesTheBrief, theLeadsSetupWords } from './the-leads-brief-is-never-quoted-to-them';
@@ -1461,7 +1463,9 @@ export class ConversationService {
     const quoted = nothingSaidYetCannotBeQuoted(held, saidSoFar, whoSetItUp);
     if (quoted.changed) this.logger.warn(`Check-in ${checkIn.id}: the opener quoted a person who has not spoken; rewritten.`);
     /* An opener never answers its own question for them: "Is that now filed? Understood. What is..." (E7). */
-    const guarded = await this.theTurnAsItIsSaved(checkIn as any, withoutAnAnswerToItsOwnQuestion(quoted.text));
+    const guarded0 = await this.theTurnAsItIsSaved(checkIn as any, withoutAnAnswerToItsOwnQuestion(quoted.text));
+    /* News a promise of theirs waits on, that somebody else already gave: told in one line, first (Hafsah, 19 October, FN-005). See a-promise-that-waits-on-news. */
+    const guarded = await this.withTheNewsTheyWaitOn(checkIn as any, guarded0).catch(() => guarded0);
     /* The checks after the bar can take the question out (Kevin's first WhatsApp message read only "This is our first
        check-in, and it's about getting a regular read on the work you're doing."): the opening always ends on a question (reviewer, 14 October). */
     const opening = isADeadEnd(guarded, false) ? withAQuestion(guarded, { opening: true }) : guarded;
@@ -1524,6 +1528,23 @@ export class ConversationService {
    * own conversation: the phrase there would be about the reader, and the setup block already tells
    * the model to say "you".
    */
+  /**
+   * THE NEWS A PROMISE OF THEIRS WAITS ON, TOLD IN THEIR OPENING (Hafsah, 19 October: "Njeri's next opening tells her it's filed."). One
+   * line before the opening: "Brian said on Wednesday 14 October that the reply for FN-005 was filed." Who said it is named only where
+   * they are in the check-in it was said in. Nothing where the opening already says it.
+   */
+  private async withTheNewsTheyWaitOn(checkIn: { participantId?: string; groundId?: string; participant?: { userId?: string | null } }, opening: string): Promise<string> {
+    if (!checkIn?.participantId || !checkIn.groundId || !opening) return opening;
+    const promises: any[] = await (this.prisma as any).personObjective?.findMany?.({ where: { participantId: checkIn.participantId, status: 'OPEN', kind: { in: ['COMMITMENT', 'TODO'] } }, select: { id: true, text: true, participantId: true, groundId: true, createdAt: true } })?.catch?.(() => []) ?? [];
+    if (!Array.isArray(promises) || !promises.length) return opening;
+    const g = await (this.prisma as any).ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { organizationId: true } })?.catch?.(() => null);
+    if (!g?.organizationId) return opening;
+    const news = await theNewsThesePromisesWaitOn(this.prisma, g.organizationId, promises.map((p) => ({ ...p, userId: checkIn.participant?.userId ?? null })));
+    const lines = [...news.values()].filter((n) => !n.told).map((n) => theNewsInOneLine(n, aDayOfTheirs(n.at, 'weekdayAndDay')));
+    const fresh = [...new Set(lines)].filter((l) => !opening.includes(l));
+    return fresh.length ? `${fresh[0]} ${opening}` : opening;
+  }
+
   /** The M-Pesa codes this person typed in this check-in's sessions, with our own turns to them, for asking for the screenshot once. */
   private async theirMPesaCodes(participantId: string | null | undefined): Promise<{ codes: AnMPesaCodeOnRecord[]; ourTurns: { content: string; at: Date }[] }> {
     if (!participantId) return { codes: [], ourTurns: [] };
