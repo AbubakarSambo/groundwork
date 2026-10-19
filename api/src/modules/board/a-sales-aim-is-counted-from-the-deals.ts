@@ -400,6 +400,15 @@ export async function theDealsOnRecord(prisma: any, groundId: string, opts: { pa
       docOf,
     )
     : [];
+  /* The payment records a document shows, so a code typed beside an M-Pesa message is not said as the proof. */
+  const documentPayments: { text: string; at: Date }[] = opts.paymentRecord
+    ? thePaymentRecords(
+      lines
+        .filter((l) => !!l.anchoredDocumentId && theMarkOf({ ...l, text: cleanText(l.text ?? '') }, whoAdded) === 'proven')
+        .map((l) => ({ text: cleanText(l.text ?? ''), createdAt: l.createdAt, anchoredDocumentId: l.anchoredDocumentId ?? null })),
+      docOf,
+    )
+    : [];
   const signedOrders: { text: string; at: Date }[] = opts.paymentRecord
     ? theSignedOrders(
       lines
@@ -439,7 +448,8 @@ export async function theDealsOnRecord(prisma: any, groundId: string, opts: { pa
       ...(opts.paymentRecord ? {
         signed: aPaymentRecordFor({ name: i.name, fields }, signedOrders),
         ...(wonNeedsProof ? { wonNeedsProof: true } : {}),
-        mpesaCode: theMPesaCodeFor({ name: i.name, fields }, lines
+        /* Only where no document shows the payment: an M-Pesa message sent is said as before. */
+        mpesaCode: aPaymentRecordFor({ name: i.name, fields }, documentPayments) ? null : theMPesaCodeFor({ name: i.name, fields }, lines
           .filter((l) => theMarkOf({ ...l, text: cleanText(l.text ?? '') }, whoAdded) === 'proven')
           .map((l) => ({ text: cleanText(l.text ?? ''), anchoredDocumentId: l.anchoredDocumentId ?? null }))),
         alreadyOpen: wasAlreadyOpen({ name: i.name, fields, createdAt: new Date(i.createdAt) }, lines.map((l) => ({ ...l, text: cleanText(l.text ?? '') })), leadRows),

@@ -2756,7 +2756,8 @@ export class BoardService {
             r.fields = worked;
             r.paymentRecord = aPaymentRecordFor({ name: r.name, fields: worked }, paymentLines);
             /* An M-Pesa code given in words is the payment record, shown as "M-Pesa code" (Hafsah, 19 October; theMPesaCodeFor). */
-            const code = r.paymentRecord ? theMPesaCodeFor({ name: r.name, fields: worked }, provenHere) : null;
+            const shownByADocument = r.paymentRecord && aPaymentRecordFor({ name: r.name, fields: worked }, thePaymentRecords(provenHere.filter((l) => !!l.anchoredDocumentId), docOf));
+            const code = r.paymentRecord && !shownByADocument ? theMPesaCodeFor({ name: r.name, fields: worked }, provenHere) : null;
             if (code) { (r as any).mpesaCode = code; r.known = 'proof'; r.mark = 'proven'; r.knownSays = `M-Pesa code ${code} shows it.`; }
             r.signedOrder = aPaymentRecordFor({ name: r.name, fields: worked }, signedOrderLines);
             /*
