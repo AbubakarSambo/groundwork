@@ -356,3 +356,14 @@ These do not block the pull request, which is off for every organisation, but ea
 3. **The organisation's word for a bill has a route and no screen.** An admin can set it (`PATCH /users/organization/word-for-the-bill`); where should it be set on screen: on the Company page, or in References and resources?
 4. **Where the type is read from when the lead's words say neither.** The organisation's record means its word for a bill, or a type its leads confirmed on another collections check-in. Where neither says, the lead is asked to choose rather than given a guess. Is that right, or should "fee notes or invoices" be the default?
 5. **A sales organisation has no switchboard type yet.** "sales org" is served Release 1's sales board by Release 1's own code; the switchboard gives it no row until Release 4 draws the sales organisation's own board.
+
+### Release 2, pull request 2 of 3: the collections board and its reports (19 October)
+
+These do not block the pull request, which is off for every organisation, but each should be answered before the switch is turned on for Muchemi & Co or a lender.
+
+1. **Should the person who handles accounts read every fee note?** The B8 picture's rule is "Each person sees their own; the partner sees all", so Njeri, who records payments and follows up none, reads none on the board or in her reports, though she adds the slips. The same picture offers "Everyone sees all" as the other choice, which is not built yet. Keep it so, give accounts every fee note, or build the choice?
+2. **The loans board's groups.** The kit's "Repaying and trading" and "Behind, but trading" need a borrower's trading on record, which a check-in only sometimes has. The board uses "Repaying on time", "Behind, but in touch", "Genuinely blocked", "Not heard from" and "Repaid", and shows trading in the Business column where a borrower said it. Keep these, or use the kit's words?
+3. **When is a client "not heard from"?** Past due, with no promise, and nobody has spoken to the client for three weeks; for a borrower, no check-in for three weeks. Is three weeks right?
+4. **What counts as proof of payment.** Only a payment document filed on the bill: a bank slip, an M-Pesa message or a record from the accounting system, added in a check-in. A person saying "I have the slip" stays "said". Is that right, and should a document added in References and resources count too?
+5. **"Where this is heading" lays out outcomes for the lead** (follow up the ones behind, settle the disputed ones, raise the ones not yet raised, ask for proof of what is said to be paid). A person never reads it. Are these the outcomes she wants, or should the list be hers to set?
+
