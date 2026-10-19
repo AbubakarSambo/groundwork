@@ -328,3 +328,12 @@ From the earlier "Needs Hafsah" lists, still open and not blocking:
 - Deal stages (Contacted, Need, Pitched and so on): the engine has none, so that part of the weekly report is not built.
 - Who may mark somebody else's to-do as done.
 - Week 0's next step (the recommendation is option 2).
+
+### Release 1B, pull request 2 of 3: References and resources (19 October)
+
+These do not block the pull request, which is off for every organisation, but each should be answered before the switch is turned on for a real client.
+
+1. **The lead's People note now reaches that person's own check-in, where the switch is on.** Hafsah's spec and her brief of 18 October say the check-in "reads the lead's People note for the person it's talking to". Decision 32 (27 September) said a lead's private notes about a person never reach the model in that person's own session. Built as narrowly as both allow: only notes written in the new People section ("Your note" and "Help them with") are read, only in that one person's own check-in, only while the switch is on, and the model is told never to say, quote or hint at them. Her older notes about a person, and her read of them, are still never read (decision 32's test is unchanged and passes). Is that the line she wants?
+2. **Suggested from your check-ins.** Nothing yet picks a rule or guideline out of the lead's own check-in. The section shows a plan's proposals still waiting for her instead. Should the lead's check-in offer what she says as a rule, the way the prototype draws it?
+3. **Questions and answers, and Ask about this work.** Ask does not keep the questions asked about one check-in, does not answer only from this page with its source, and does not send an unanswered question to the lead. The button opens Ask set to this check-in; the section says nobody has asked yet. Build these in Ask?
+4. **A document a team member shares in a check-in** is filed as evidence where it is proof. It is not yet put on the lead's board for her to decide whether to add it to Documents. Should it be?
