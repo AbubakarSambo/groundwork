@@ -295,6 +295,8 @@ export default function SessionReportPage() {
             {!direct && <Tag>Only you</Tag>}
           </div>
           <h1 className="pb-own-title">Your report</h1>
+          {/* Credit for checking in on time (api engagement/who-answers-and-when.ts): served to the person whose report it is, with the direct morning on. */}
+          {data.onTime && <p className="pb-on-time">{data.onTime}</p>}
           <TheCheckInYouJustFinished checkInId={checkInId!} groundId={data.groundId as string} sessionNumber={data.sessionNumber as number} light pictured />
           <div className="pb-own-team">
             <div>
@@ -429,6 +431,7 @@ export default function SessionReportPage() {
             <Tag>Only you</Tag>
           </div>
           <Note>What you said this session, and what to do with it.</Note>
+          {data?.onTime && <p className="pb-on-time">{data.onTime}</p>}
 
           <Stack gap={18}>
           {/* Simple and visual, and only on this half. See the component's own note for why. */}

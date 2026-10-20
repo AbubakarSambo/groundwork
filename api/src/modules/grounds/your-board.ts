@@ -209,17 +209,21 @@ const A_BARE_WORD = /^[a-z][a-z-]*$/;
  * 30000000." is now "30 million naira disbursed. You have 4 million naira of 30 million naira.", and a
  * goal written in the first person ("I'm aiming for ...") is about the reader, whose goal it is.
  */
-function goalFromTarget(t: OwnedTargetRow, firstNames: readonly string[] = []): string {
+export function goalFromTarget(t: OwnedTargetRow, firstNames: readonly string[] = []): string {
   const readable = aboutTheReaderAsYou(theNumbersPeopleCanRead(t.name.trim().replace(/[.\s]+$/, '')), firstNames);
   const asYours = asTheReader(readable);
   const name = asYours.toLowerCase() === readable.toLowerCase() ? readable : asYours;
   const hasTarget = t.target !== null && t.target !== undefined;
   const money = theMoneyItCountsIn(name);
   const n = (x: number) => `${aNumberPeopleCanRead(x)}${money && x !== 0 ? ` ${money}` : ''}`;
+  /* A target passed is never "You have 49 of 30" (night run 2, Kevin): what there is, and by how much it is past the target. */
+  const past = hasTarget && (t.target as number) > 0 && (t.count ?? 0) > (t.target as number);
+  if (A_BARE_WORD.test(name) && past) return `You have ${n(t.count ?? 0)} ${name}, ${n((t.count ?? 0) - (t.target as number))} more than the ${n(t.target as number)}.`;
   if (A_BARE_WORD.test(name) && hasTarget) return `You have ${n(t.count ?? 0)} of ${n(t.target as number)} ${name}.`;
   if (!hasTarget) return asASentence(name);
   /* A target of one on a sentence is done or not done; "You have 0 of 1." counted a piece that is not a thing (B-167). */
   if (t.target === 1 && !A_BARE_WORD.test(name)) return `${asASentence(name)} ${(t.count ?? 0) >= 1 ? 'You have reached it.' : 'You have not reached it yet.'}`;
+  if (past) return `${asASentence(name)} You have ${n(t.count ?? 0)} so far, ${n((t.count ?? 0) - (t.target as number))} more than the ${n(t.target as number)}.`;
   return `${asASentence(name)} You have ${n(t.count ?? 0)} of ${n(t.target as number)}.`;
 }
 

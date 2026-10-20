@@ -7,6 +7,7 @@ import { whenItWasFor } from '../grounds/a-day-said-is-read-on-the-day-it-was-sa
 import { asAnAction } from '../grounds/a-promise-as-an-action';
 import { dedupeDependencies } from './reads';
 import { targetsFor } from './whose-number-is-whose-business';
+import { theUnitsOf } from './a-sales-aim-is-counted-from-the-deals';
 import { peersAreNamedOn, theReaderBySignIn } from '../reports/peers-are-named';
 import { isASalesKind, oneOfTheKinds, RECORDS_FOR_EACH_KIND, type AServedRecord } from './the-kind-of-work';
 import { plainNameOf } from '../patterns/plain-pattern-names';
@@ -376,8 +377,29 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
 
   /* ------------------------------------------------------------------ the top: three numbers, and the focus */
   const numbers: { value: string; label: string }[] = [];
-  if (words.keepsItems && items.length) numbers.push({ value: String(finished.length), label: `${words.doneWord}, ${proven.length} with proof` });
-  if (r.target) numbers.push({ value: `${r.target.count} of ${r.target.target}`, label: `${your} target` });
+  /*
+   * THE NUMBERS AGREE WITH EACH OTHER, AND NONE SAYS MORE THAN THE TARGET HOLDS (night run 2, 20 October). Kevin's page read "3, sold, 2 with
+   * proof" beside "49 of 30, your target": the first counted his deals and the second his units, and "49 of 30" read as 49 out of 30. Where
+   * the target counts units and his sold deals' units are exactly the target's count, the first number counts the same units (49 sold,
+   * 46 with proof, as his share says it); a target passed says by how much, beside the target itself.
+   */
+  const unitsIn = (xs: typeof items): number | null => {
+    let n = 0;
+    for (const i of xs) { const u = theUnitsOf((i as any).fields ?? null); if (u === null) return null; n += u; }
+    return n;
+  };
+  const soldUnits = words.sales && r.target ? unitsIn(finished) : null;
+  const inUnits = soldUnits !== null && soldUnits > 0 && soldUnits === r.target?.count && soldUnits !== finished.length;
+  if (words.keepsItems && items.length) {
+    numbers.push(inUnits
+      ? { value: String(soldUnits), label: `${words.doneWord}, ${unitsIn(proven) ?? 0} with proof` }
+      : { value: String(finished.length), label: `${words.doneWord}, ${proven.length} with proof` });
+  }
+  if (r.target) {
+    numbers.push(r.target.count > r.target.target
+      ? { value: `${r.target.count - r.target.target} over`, label: `${your} target of ${r.target.target}` }
+      : { value: `${r.target.count} of ${r.target.target}`, label: `${your} target` });
+  }
   if (settled.length) numbers.push({ value: `${kept.length} of ${settled.length}`, label: 'promises kept' });
   if (numbers.length < 3 && due.length) numbers.push({ value: `${done.length} of ${due.length}`, label: 'check-ins' });
 

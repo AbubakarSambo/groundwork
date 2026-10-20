@@ -328,6 +328,7 @@ import { notToldYet } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { wordTheAreaOfAGoal, areaOfGoalOrFallback } from '../grounds/the-area-of-a-goal-is-worded-once';
 import { saysWhatAnUntoldGoalWithholds, IT_NAMED_THE_UNTOLD_NUMBER, type AnUntoldGoal } from './an-untold-goals-number-is-not-said';
 import { aTeamMembersOpeningFor, theOneThingTodayBlock, type ATeamMembersOpening } from './the-one-thing-today';
+import { onTimeForThemselves } from '../engagement/who-answers-and-when';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -11832,8 +11833,11 @@ ${told}` : '';
       },
     });
     const report = (row?.sessionReport ?? null) as Record<string, unknown> | null;
+    /* Credit for checking in on time, to the person whose report it is (engagement/who-answers-and-when.ts; direct morning only). */
+    const onTime = await onTimeForThemselves(this.prisma, row?.groundId ?? null, checkIn.participantId).catch(() => null);
     return {
       report,
+      ...(onTime ? { onTime } : {}),
       /* Whether the report is there, will not come, or the session is still open, in a sentence. A finished session with no report is never going to get one. */
       ...whereASessionsReportStands({ report, finishedAt: row?.completedAt ?? null }),
       finishedAt: row?.completedAt ?? null,

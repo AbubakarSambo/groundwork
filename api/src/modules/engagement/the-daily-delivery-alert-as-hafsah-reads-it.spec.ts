@@ -276,3 +276,45 @@ describe('the daily delivery alert, in plain words', () => {
     expect(faults).toEqual([]);
   });
 });
+
+/*
+ * NUDGES THAT GET ANSWERS (20 October 2026). The lead's own nudge is not a routine message: a nudge row, sent or not, is never reported as
+ * a reminder that did not go out, and a nudge that went never counts as the person's opening having reached them. A message not sent
+ * after two missed days (never-the-same-words-twice.ts) is reported as that choice, under its own heading, never as "did not go out".
+ */
+describe('the lead’s own nudge, and a message not sent on purpose', () => {
+  const THE_SAME = 'Not sent again: they had not checked in for 2 days or more, and these were the same words as the last message they were sent.';
+  it('a nudge from the lead, sent or refused, is not reported as a reminder that did not go out, and is not Peter’s opening', async () => {
+    const w = aWorld();
+    w.sends.push(
+      { organizationId: 'o1', phone: '+254700000011', checkInId: 'c1', kind: 'lead-nudge', sentAt: MON('12:30'), failedAt: null, error: null, createdAt: MON('12:30') },
+      { organizationId: 'o1', phone: '+254700000012', checkInId: 'c2', kind: 'lead-nudge:template', sentAt: null, failedAt: MON('12:31'), error: OUTSIDE_THE_WINDOW, createdAt: MON('12:31') },
+    );
+    w.mail.push({ channel: 'email', toAddress: 'mercy@drop.test', sender: 'sendTheLeadsNudge', subject: 'Wanjiru has a question for you today', outcome: 'failed', because: 'validation_error: x', createdAt: MON('12:32') });
+    const { text } = await theEmail(w);
+    expect(text).not.toMatch(/nudge|question for you today/i);
+    /* Peter's opening still did not reach him, whatever the nudge did. */
+    expect(text).toContain("Peter Njoroge's opening for Sales team, Q4 did not go out on Monday 19 October.");
+  });
+
+  it('an opening not sent after two missed days is said as that choice, and not as an opening that did not go out', async () => {
+    const w = aWorld();
+    w.sends = w.sends.filter((s) => s.checkInId !== 'c1');
+    w.mail.push({ channel: 'whatsapp', toAddress: 'peter@drop.test', sender: 'checkin-open', subject: null, outcome: 'skipped', because: THE_SAME, createdAt: MON('05:00') });
+    const { text, html } = await theEmail(w);
+    expect(text).not.toContain("Peter Njoroge's opening for Sales team, Q4 did not go out");
+    expect(text).toContain('Messages not sent on purpose');
+    expect(text).toContain("Groundwork did not send Peter Njoroge's opening for Sales team, Q4 on Monday 19 October, on purpose. Peter had not checked in for 2 days or more, and it would have said the same words as the last message Peter was sent.");
+    const said = text.split('\n').find((l) => l.includes('on purpose.'))!.replace(/^- /, '');
+    expect(whatIsNotPlainIn(said, { whole: true })).toEqual([]);
+    expect(html).toContain('Messages not sent on purpose');
+  });
+
+  it('a reminder not sent after two missed days is said as that choice too, and each person’s week is still there', async () => {
+    const w = aWorld();
+    w.mail.push({ channel: 'whatsapp', toAddress: 'mercy@drop.test', sender: 'overdue', subject: null, outcome: 'skipped', because: THE_SAME, createdAt: MON('08:30') });
+    const { text } = await theEmail(w);
+    expect(text).toContain("Groundwork did not send Mercy Wanjiru's reminder that their check-in is late on Monday 19 October, on purpose. Mercy had not checked in for 2 days or more, and it would have said the same words as the last message Mercy was sent.");
+    expect(text).toContain('How each person at Drop Access answered in the last 7 days');
+  });
+});

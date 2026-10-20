@@ -9,6 +9,8 @@ import { WorkspaceNotifierService } from '../workspace/workspace-notifier.servic
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { theCheckInIsOpen } from '../whatsapp/what-goes-to-a-phone';
 import { aTeamMembersOpeningFor } from '../conversation/the-one-thing-today';
+import { theSameWordsAgain, rememberTheWords, writeDownTheSkip } from '../engagement/never-the-same-words-twice';
+import { isHeldForTheNight } from '../whatsapp/quiet-hours-are-the-organisations';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { leaveOfThePeopleOn, awayUntilOn } from '../suites/who-is-away';
 
@@ -174,8 +176,14 @@ export class WebhooksListener {
      */
     const personal = await aTeamMembersOpeningFor(this.prisma, { groundId: e.groundId, participantId: participant.id, sessionNumber: e.sessionNumber }).catch(() => null);
     const said = personal ? { ...today, text: personal.text } : today;
+    /* After two missed days, never the same words twice in a row (engagement/never-the-same-words-twice.ts; direct morning only). */
+    if (await theSameWordsAgain(this.prisma, { groundId: e.groundId, participantId: participant.id, words: said.text })) {
+      await writeDownTheSkip(this.prisma, { channel: 'whatsapp', to: participant.user?.email ?? participant.email ?? phone, sender: said.kind, organizationId: ground.organizationId });
+      return;
+    }
     /* Business-initiated: goes as free text inside the window, as a template outside it, or not at all. */
-    await this.whatsapp.sendFor(ground.organizationId, phone, said.text, { checkInId: e.checkInId, kind: said.kind, params: said.params });
+    const went = await this.whatsapp.sendFor(ground.organizationId, phone, said.text, { checkInId: e.checkInId, kind: said.kind, params: said.params });
+    if (went?.sent || isHeldForTheNight(went?.error)) await rememberTheWords(this.prisma, e.groundId, participant.id, said.text);
   }
 
   /** Whether "You can start your check-in now" went to this person after this check-in was made: that email opened it. */

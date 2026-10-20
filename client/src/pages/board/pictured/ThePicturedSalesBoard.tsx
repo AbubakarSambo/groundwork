@@ -12,6 +12,7 @@ import { whenTheBoardLastChanged } from '../when-the-board-last-changed'
 import { TheDealsCanBeChanged, WhatShowsItBlock } from '../WorkRecords'
 import './pictured-board.css'
 import { useTheDirectMorning } from '@/lib/the-direct-morning'
+import { TheNudgeButton } from './TheNudgeButton'
 
 /**
  * THE SALES BOARD AS PICTURED, FOR WHOEVER RUNS IT (screen match, 16 October; the target is
@@ -676,6 +677,8 @@ export function TheTeamToday({ b, deals: dealSection, today, groundId }: { b: An
               </span>
               {/* What keeps coming up, then what to coach this week, about the work (quality pass, 18 October, Q6). */}
               <span className="pb-sub">{[r.keepsComingUp ?? theirWorkPattern(r.participantId), r.thisWeek].filter(Boolean).join(' ')}</span>
+              {/* "Nudge Peter": served to the lead alone, with the direct morning on (TheNudgeButton.tsx). */}
+              {r.nudge && <span className="pb-row-nudge"><TheNudgeButton groundId={groundId} nudge={r.nudge} /></span>}
             </div>
           )
         })}

@@ -149,7 +149,7 @@ export const conversationApi = {
    */
   sessionReport: (checkInId: string) =>
     apiClient.get(`/check-ins/${checkInId}/session-report`, { skipNotFoundToast: true, skipForbiddenToast: true } as any)
-      .then(r => r.data as { report: import('./entry').EntryReport | null; finishedAt: string | null; sessionNumber: number | null; groundId: string | null; isInitiator: boolean; state?: 'ready' | 'open' | 'not-kept'; says?: string }),
+      .then(r => r.data as { report: import('./entry').EntryReport | null; finishedAt: string | null; sessionNumber: number | null; groundId: string | null; isInitiator: boolean; state?: 'ready' | 'open' | 'not-kept'; says?: string; onTime?: string }),
 
   documentReceived: (checkInId: string) =>
     apiClient.post<{ reply: string }>(`/check-ins/${checkInId}/document-received`).then(r => r.data),

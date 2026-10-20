@@ -7,6 +7,9 @@ import { FIRST_CONTACT_NOT_APPROVED } from '../whatsapp/the-first-message-to-a-n
 import { THEIR_KEYS_CANNOT_BE_OPENED } from '../whatsapp/an-organisations-own-keys';
 import { BY_EMAIL_NOTICE, BY_EMAIL_ROUTINE, THE_OPENING_EMAILS } from '../whatsapp/by-email-instead';
 import { ROUTINE_EMAILS, aRoutineWhatsApp } from './one-routine-message-a-day';
+import { SKIPPED } from './never-the-same-words-twice';
+/* The lead's own nudge on WhatsApp (the-leads-own-nudge.ts, NUDGE_KIND), named here so this read-only alert does not load the sender. */
+const NUDGE_KIND = 'lead-nudge';
 
 /**
  * THE DAILY DELIVERY ALERT: GROUNDWORK'S OWN MORNING EMAIL ABOUT WHAT DID NOT GO OUT YESTERDAY (19 October).
@@ -107,13 +110,14 @@ const REMINDER_EMAILS = new Set([...ROUTINE_EMAILS, 'sendTimeRunningOut', BY_EMA
 const OPENING_EMAILS = new Set([...THE_OPENING_EMAILS, BY_EMAIL_NOTICE]);
 const SUMMARY_SENDER = 'sendTheLeadsDailyNudge';
 
-export type ProblemKind = 'opening' | 'reminder' | 'summary' | 'nobody-answered';
+export type ProblemKind = 'opening' | 'reminder' | 'summary' | 'nobody-answered' | 'not-sent-on-purpose';
 export interface AProblem { kind: ProblemKind; sentence: string }
 export interface AResponseRate { name: string; opened: number; answered: number; notAnswered: number; percent: number }
 export interface AnOrganisationsDay { organizationId: string; name: string; problems: AProblem[]; rates: AResponseRate[] }
 export interface WhatWentWrong { day: string; organisations: AnOrganisationsDay[] }
 
 const lower = (s: string | null | undefined) => String(s ?? '').trim().toLowerCase();
+const firstOfAName = (name: string) => name.split(/\s+/)[0] || name;
 const within = (d: Date | string | null | undefined, from: Date, to: Date) => {
   if (!d) return false;
   const t = new Date(d).getTime();
@@ -172,6 +176,17 @@ export async function whatWentWrongYesterday(prisma: any, now: Date = new Date()
     select: { toAddress: true, sender: true, subject: true, outcome: true, because: true, createdAt: true },
   })).catch(() => []);
   const mailTo = (emails: string[]) => { const set = new Set(emails.map(lower).filter(Boolean)); return mail.filter((m) => set.has(lower(m.toAddress))); };
+  /*
+   * NOT SENT ON PURPOSE (nudges that get answers, 20 October): after two missed days the same opening or reminder is not sent again
+   * (never-the-same-words-twice.ts). Written down as `skipped`, on either channel, and reported as that choice, never as a message that
+   * did not go out.
+   */
+  const skipped: any[] = (await Promise.resolve(prisma.notification.findMany({
+    where: { outcome: SKIPPED, createdAt: { gte: from, lt: to } },
+    select: { channel: true, toAddress: true, sender: true, outcome: true, because: true, createdAt: true },
+  })).catch(() => [])).filter((m: any) => m.outcome === SKIPPED && within(m.createdAt, from, to));
+  const skippedFor = (email: string | null | undefined) => skipped.filter((m) => lower(m.toAddress) === lower(email));
+  const toldAboutTheSkip = new Set<any>();
 
   const people: any[] = await Promise.resolve(prisma.person?.findMany?.({ where: { organizationId: { in: orgIds } }, select: { organizationId: true, email: true, phone: true, displayName: true } }) ?? []).catch(() => []);
   const leave = await leaveOfThePeopleOn(prisma, [...new Set(theWeek.map((c) => c.groundId))]).catch(() => new Map());
@@ -188,12 +203,19 @@ export async function whatWentWrongYesterday(prisma: any, now: Date = new Date()
   const onLeave = (ci: any) => !!awayUntilOn(leave.get(ci.participant?.id), openedAt(ci));
   for (const ci of yesterdays) {
     if (answered(ci) || onLeave(ci)) continue;
-    const mine = sends.filter((s) => s.checkInId === ci.id);
+    /* The lead's own nudge is not the opening: it never counts as the opening having reached them (the-leads-own-nudge.ts). */
+    const mine = sends.filter((s) => s.checkInId === ci.id && !String(s.kind ?? '').startsWith(NUDGE_KIND));
     if (mine.some((s) => s.sentAt)) continue;
     const since = openedAt(ci).getTime() - DAY;
     const emails = mailTo([ci.participant?.email]).filter((m) => OPENING_EMAILS.has(m.sender) && new Date(m.createdAt).getTime() >= since);
     if (emails.some((m) => m.outcome === 'sent')) continue;
     const name = theirWholeName(ci.participant);
+    const onPurpose = skippedFor(ci.participant?.email).find((m) => /^(?:checkin-open|checkin-catch-up|sendSessionReady)(?::|$)/.test(m.sender ?? ''));
+    if (onPurpose) {
+      toldAboutTheSkip.add(onPurpose);
+      forOrg(ci.ground.organizationId).problems.push({ kind: 'not-sent-on-purpose', sentence: `Groundwork did not send ${name}'s opening for ${ci.ground.label} on ${theDayItWas(openedAt(ci))}, on purpose. ${firstOfAName(name)} had not checked in for 2 days or more, and it would have said the same words as the last message ${firstOfAName(name)} was sent.` });
+      continue;
+    }
     const triedOnWhatsApp = mine.filter((s) => /^(checkin-open|checkin-catch-up)(?::|$)/.test(s.kind ?? '') && !s.sentAt);
     const whatsapp = triedOnWhatsApp.length ? ` WhatsApp did not send it ${whatWhatsAppSaid(triedOnWhatsApp[triedOnWhatsApp.length - 1].error, triedOnWhatsApp[triedOnWhatsApp.length - 1].kind)}.` : ' Nothing was tried on WhatsApp.';
     const tried = emails.filter((m) => m.outcome !== 'sent').pop();
@@ -241,6 +263,20 @@ export async function whatWentWrongYesterday(prisma: any, now: Date = new Date()
       const name = hit.split('|')[1];
       const subject = String(m.subject ?? '').trim();
       forOrg(org).problems.push({ kind: 'reminder', sentence: `${name}'s email${subject ? ` "${subject}"` : ''} did not go out on ${theDayItWas(new Date(m.createdAt))}. ${whatTheEmailSaid(m)}` });
+    }
+  }
+
+  /* Every other message not sent on purpose: a reminder after two missed days, said as that choice. */
+  for (const m of skipped) {
+    if (toldAboutTheSkip.has(m)) continue;
+    for (const [org, set] of addressesOf) {
+      const hit = [...set].find((e) => e.startsWith(`${lower(m.toAddress)}|`));
+      if (!hit) continue;
+      const name = hit.split('|')[1];
+      const base = String(m.sender ?? '').split(':')[0];
+      const what = WHAT_A_REMINDER_IS[base] ? WHAT_A_REMINDER_IS[base]('their check-in') : base === 'sendSessionReady' || base === 'checkin-open' ? 'opening' : 'reminder email';
+      forOrg(org).problems.push({ kind: 'not-sent-on-purpose', sentence: `Groundwork did not send ${name}'s ${what} on ${theDayItWas(new Date(m.createdAt))}, on purpose. ${firstOfAName(name)} had not checked in for 2 days or more, and it would have said the same words as the last message ${firstOfAName(name)} was sent.` });
+      break;
     }
   }
 
@@ -320,7 +356,7 @@ export async function whatWentWrongYesterday(prisma: any, now: Date = new Date()
       .sort((a, b) => a.percent - b.percent || a.name.localeCompare(b.name));
   }
 
-  const order: ProblemKind[] = ['opening', 'reminder', 'summary', 'nobody-answered'];
+  const order: ProblemKind[] = ['opening', 'reminder', 'summary', 'nobody-answered', 'not-sent-on-purpose'];
   const organisations = [...report.values()]
     .filter((r) => r.problems.length)
     .map((r) => ({ ...r, problems: [...r.problems].sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind)) }))
@@ -333,6 +369,7 @@ const HEADINGS: Record<ProblemKind, string> = {
   reminder: 'Reminders that did not go out',
   summary: 'Morning summaries that did not go out',
   'nobody-answered': 'Check-ins nobody answered',
+  'not-sent-on-purpose': 'Messages not sent on purpose',
 };
 
 const esc = (s: string) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -348,12 +385,15 @@ export function theirWeek(r: AResponseRate): string {
 /** The email, as subject, plain text and HTML. Null when nothing went wrong. */
 export function theAlertEmail(found: WhatWentWrong): { subject: string; text: string; html: string } | null {
   if (!found.organisations.length) return null;
-  const delivery = found.organisations.filter((o) => o.problems.some((p) => p.kind !== 'nobody-answered')).length;
-  const n = delivery || found.organisations.length;
+  const delivery = found.organisations.filter((o) => o.problems.some((p) => p.kind !== 'nobody-answered' && p.kind !== 'not-sent-on-purpose')).length;
+  const unanswered = found.organisations.filter((o) => o.problems.some((p) => p.kind === 'nobody-answered')).length;
+  const n = delivery || unanswered || found.organisations.length;
   const clients = `${n} ${n === 1 ? 'client' : 'clients'}`;
   const subject = delivery
     ? `Groundwork: ${clients} had messages that did not go out yesterday`
-    : `Groundwork: ${clients} had a check-in nobody answered yesterday`;
+    : unanswered
+      ? `Groundwork: ${clients} had a check-in nobody answered yesterday`
+      : `Groundwork: ${clients} had messages not sent on purpose yesterday`;
   const opening = `This is what went wrong yesterday, ${found.day}, for Groundwork's clients. Only the organisations with a problem are listed.`;
   const closing = 'This email goes to the delivery alert address set in the back office, under Admin and then System. It is sent only on a day when something went wrong.';
   const text: string[] = [opening, ''];

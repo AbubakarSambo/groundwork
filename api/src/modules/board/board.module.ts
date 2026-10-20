@@ -6,6 +6,8 @@ import { BoardController } from './board.controller';
 import { MyWorkController } from './my-work.controller';
 import { GroundsModule } from '../grounds/grounds.module';
 import { ReportsModule } from '../reports/reports.module';
+import { TheLeadsOwnNudgeController } from './the-leads-own-nudge.controller';
+import { TheLeadsOwnNudgeService } from '../engagement/the-leads-own-nudge';
 
 @Module({
   /*
@@ -24,8 +26,8 @@ import { ReportsModule } from '../reports/reports.module';
    * reason as above.
    */
   imports: [forwardRef(() => GroundsModule), forwardRef(() => ReportsModule)],
-  controllers: [BoardController, MyWorkController],
-  providers: [BoardService, BoardListener, AnthropicService],
+  controllers: [BoardController, MyWorkController, TheLeadsOwnNudgeController],
+  providers: [BoardService, BoardListener, AnthropicService, TheLeadsOwnNudgeService],
   exports: [BoardService],
 })
 export class BoardModule {}

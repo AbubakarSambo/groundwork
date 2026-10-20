@@ -35,6 +35,8 @@ export const BUSINESS_INITIATED: ReadonlySet<string> = new Set([
   'requests-waiting',
   /* A check-in left halfway (a-check-in-left-halfway.ts): the reminder to carry on, the half-hour warning, and the clock closing it. */
   'carry-on', 'closes-in-half-an-hour', 'closed-by-the-clock',
+  /* The lead's own nudge (engagement/the-leads-own-nudge.ts): Groundwork writes it for her, so the 24 hours, the template, quiet hours and STOP hold. */
+  'lead-nudge',
 ]);
 
 /**
@@ -83,7 +85,11 @@ export const APPROVALS: ReadonlySet<string> = new Set(['request-waiting', 'reque
  * first, so the person's own "Not now" today holds it, as it holds the others; STOP and the 24 hours hold it
  * anyway, through the gates before this one.
  */
-export const ONLY_HELD_BY_NOT_NOW: ReadonlySet<string> = new Set(['closed-by-the-clock']);
+/*
+ * THE LEAD'S OWN NUDGE (nudges that get answers, 20 October). The lead pressed "Nudge Peter": it is not the day's routine message, so it
+ * neither counts towards the one a day nor is held by it, but Peter's own "Not now" today holds it, as STOP and quiet hours do.
+ */
+export const ONLY_HELD_BY_NOT_NOW: ReadonlySet<string> = new Set(['closed-by-the-clock', 'lead-nudge']);
 /** The messages that mark a day a check-in opens or closes, when two may go. */
 export const OPENING_OR_CLOSING: ReadonlySet<string> = new Set(['checkin-open', 'opens-soon', 'closes-soon', 'closes-in-half-an-hour']);
 /**
@@ -189,6 +195,12 @@ export const TEMPLATES: Record<string, ATemplate> = {
   /* No template for the appeal of a decided review (decision 124, item 4): its messages go by email and in the app only. */
 };
 TEMPLATES['report-retry'] = TEMPLATES.report;
+/*
+ * THE LEAD'S OWN NUDGE, OUTSIDE THE 24 HOURS, GOES AS THE APPROVED TEMPLATE THAT FITS (nudges that get answers, 20 October): "your view
+ * matters", which names the lead in {{3}} ("Your answers help Grace understand what's in your way"). Its wording is never changed; inside
+ * the 24 hours the lead's own words go instead.
+ */
+TEMPLATES['lead-nudge'] = TEMPLATES['your-view-matters'];
 /* The catch-up for somebody the opening notice never reached is the opening notice's own template: no new template (Hafsah, 8 October). */
 TEMPLATES['checkin-catch-up'] = TEMPLATES['checkin-open'];
 /*

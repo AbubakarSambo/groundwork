@@ -90,7 +90,7 @@ describe('with Release 1\'s sales board on', () => {
   it('Femi reads 40 of his 46 proven paid and the rest on his word; Kwame reads his 25 backed by the signed order, with no proof of payment yet', async () => {
     const f = await boardAs(run(), ...FEMI);
     expect(f.yourShare.map((s: any) => s.says)).toEqual([
-      /* Changed 18 October (Hafsah's quality pass, R-5): the share names the reader's own deals and what proves each. */ 'You have sold 46 of your 40 units so far, 40 paid (Kilele Hotel) and 6 on your word (Savannah Cafe).',
+      /* Changed 18 October (Hafsah's quality pass, R-5): the share names the reader's own deals and what proves each. */ /* Changed 20 October (night run 2, Kevin's 49 of 30): 46 is not a part of 40, so a passed target says by how much. */ 'You have sold 46 units so far, 6 more than your target of 40, 40 paid (Kilele Hotel) and 6 on your word (Savannah Cafe).',
     ]);
     const k = await boardAs(run(), ...KWAME);
     expect(k.yourShare.map((s: any) => s.says)).toEqual([

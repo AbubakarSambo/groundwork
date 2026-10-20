@@ -13,6 +13,7 @@ import { theCollectionsTypeFor } from '../board/the-collections-record';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
+import { theirDay, twoMissedDaysSaid, notInTodaySaid, onTimeSaid, mayBeNudged, type ASessionOnRecord, type TheirDay } from './who-answers-and-when';
 
 /**
  * THE DIRECT MORNING (Hafsah, 20 October 2026; behind `organizations.direct_morning_on`, organisation/the-direct-morning-switch.ts).
@@ -68,6 +69,11 @@ export interface TheDirectMorning {
   subjectAfterTheName: string;
   /** Kept in the app (the check-in is not answered on WhatsApp): nothing of it goes to a phone. */
   keptInTheApp?: boolean;
+  /**
+   * The team members the lead may nudge today (nudges that get answers): their session is open and not answered, and they are past
+   * their usual time or missed a day before today (who-answers-and-when.ts). The board draws "Nudge Peter" for each, to the lead alone.
+   */
+  mayBeNudged?: { participantId: string; firstName: string }[];
 }
 
 /* ------------------------------------------------------------------------------------------------------------------------- */
@@ -161,6 +167,8 @@ export interface TheSalesMorningInput {
   lastCheckIn: Record<string, Date | null>;
   /** Each person's first check-in opened, so somebody who never checked in is told only once one was due. */
   firstOpened: Record<string, Date | null>;
+  /** Every session on record (who-answers-and-when.ts): who is past their usual time today, who missed two days, who keeps answering on time. */
+  sessions?: ASessionOnRecord[];
   workingDays: number[] | null;
   now: Date;
   zone: string;
@@ -415,15 +423,9 @@ export function theTeamLines(input: TheSalesMorningInput, name: (pid: string | n
       const thing = w ? theThingWithItsDeal(stop(String(w.what ?? '')), w.fromParticipantId, input.deals as any, input.lines) : stop(carried.says.replace(/, promised three check-ins running, still not done\.?$/, ''));
       said.push({ text: `${who} has promised ${thing.replace(/^(?![Tt]he\b)/, 'the ')} 3 times without delivering, so call ${who}.`.replace(/\bthe the\b/i, 'the'), rank: 9 });
     }
-    /* A check-in not made since the last working day. */
-    const last = input.lastCheckIn[p.id] ?? null;
-    const opened = input.firstOpened[p.id] ?? null;
-    if (last) {
-      const k = keyIn(last, input.zone);
-      if (k < before) said.push({ text: `${who} hasn't checked in ${sinceADay(k, today)}.`, rank: 10 });
-    } else if (opened && keyIn(opened, input.zone) <= before) {
-      said.push({ text: `${who} hasn't checked in yet.`, rank: 10 });
-    }
+    /* A check-in not made: two missed days (call them), not in today by their usual time, or not since the last working day. */
+    const day = input.sessions ? theirDay(p.id, input.sessions, input.now, input.zone) : null;
+    said.push(...theCheckInLines(p.id, who, day, input.lastCheckIn, input.firstOpened, today, before, input.workingDays, input.zone));
     /* A sale on record with no proof. */
     const noProof = rows.filter((r) => r.ownerParticipantId === p.id && r.group === 'said-won');
     if (noProof.length) said.push({ text: `${noProof.length === 1 ? `${who}'s sale to ${noProof[0].name} has` : `${who} has ${noProof.length} sales that have`} no proof yet, so ask ${who} for the payment record.`, rank: 12 });
@@ -435,8 +437,49 @@ export function theTeamLines(input: TheSalesMorningInput, name: (pid: string | n
     if (proven.length) said.push({ text: `${who} has ${proven.length} ${proven.length === 1 ? 'sale' : 'sales'} with proof, so tell ${who} well done.`, rank: 13 });
     said.sort((a, b) => a.rank - b.rank);
     if (said[0]) out.push(said[0]);
+    /* Credit for answering on time, beside whatever else is said about them (facts only, no label). */
+    const credit = day && !day.lateToday && !day.missedDays.length ? onTimeSaid(who, day, today) : null;
+    if (credit) out.push({ text: credit, rank: 14 });
   }
   return out.sort((a, b) => a.rank - b.rank);
+}
+
+/**
+ * THE CHECK-IN LINES FOR ONE PERSON (nudges that get answers). With the sessions read: two missed days in a row is "Peter hasn't checked
+ * in for 2 days, on Monday 19 October and Tuesday 20 October, so call Peter." (rank 8, before a promise not kept); past their usual time
+ * today is "Peter hasn't checked in today, and last checked in yesterday." (rank 10). Otherwise, as before: not since the last working day.
+ */
+export function theCheckInLines(
+  pid: string, who: string, day: TheirDay | null, lastCheckIn: Record<string, Date | null>, firstOpened: Record<string, Date | null>,
+  today: string, before: string, workingDays: number[] | null, zone: string,
+): AMorningLine[] {
+  if (day) {
+    const two = twoMissedDaysSaid(who, day, workingDays);
+    if (two) return [{ text: two, rank: 8 }];
+    const notIn = notInTodaySaid(who, day, today);
+    if (notIn) return [{ text: notIn, rank: 10 }];
+  }
+  const last = lastCheckIn[pid] ?? null;
+  const opened = firstOpened[pid] ?? null;
+  if (last) {
+    const k = keyIn(last, zone);
+    if (k < before) return [{ text: `${who} hasn't checked in ${sinceADay(k, today)}.`, rank: 10 }];
+  } else if (opened && keyIn(opened, zone) <= before) {
+    return [{ text: `${who} hasn't checked in yet.`, rank: 10 }];
+  }
+  return [];
+}
+
+/** The team members the lead may nudge today, by their first names as the morning calls them. */
+export function whoMayBeNudged(
+  people: { id: string; name: string; managingOnly?: boolean; left?: boolean }[], hers: ReadonlySet<string>, sessions: ASessionOnRecord[] | undefined, now: Date, zone: string,
+): { participantId: string; firstName: string }[] {
+  if (!sessions) return [];
+  const names = theNamesToCall(people.map((p) => ({ id: p.id, name: p.name })));
+  return people
+    .filter((p) => !hers.has(p.id) && !p.managingOnly && !p.left && names.get(p.id))
+    .filter((p) => mayBeNudged(theirDay(p.id, sessions, now, zone)))
+    .map((p) => ({ participantId: p.id, firstName: names.get(p.id)! }));
 }
 
 /** The four parts of one sales check-in, from the lead's board as she is served it and the record beside it. */
@@ -485,6 +528,7 @@ export interface TheCollectionsMorningInput {
   waits: AWaitOnRecord[];
   lastCheckIn: Record<string, Date | null>;
   firstOpened: Record<string, Date | null>;
+  sessions?: ASessionOnRecord[];
   workingDays: number[] | null;
   now: Date;
   zone: string;
@@ -583,7 +627,7 @@ export function theCollectionsDirectMorning(input: TheCollectionsMorningInput): 
   if (!chase.length) chase.push({ text: `No ${word} needs chasing today.`, rank: 9, key: '' });
 
   /* 4. The team: who has not checked in since the last working day. */
-  const team = theCheckInsNotMade(input.people, input.hers, input.lastCheckIn, input.firstOpened, today, input.workingDays, zone, names);
+  const team = theCheckInsNotMade(input.people, input.hers, input.lastCheckIn, input.firstOpened, today, input.workingDays, zone, names, input.sessions, now);
   return {
     groundId: input.groundId, label: input.label, kind: 'collections',
     parts: [
@@ -600,6 +644,7 @@ export function theCollectionsDirectMorning(input: TheCollectionsMorningInput): 
 export function theCheckInsNotMade(
   people: { id: string; managingOnly?: boolean; left?: boolean }[], hers: ReadonlySet<string>,
   lastCheckIn: Record<string, Date | null>, firstOpened: Record<string, Date | null>, today: string, workingDays: number[] | null, zone: string, names: Map<string, string>,
+  sessions?: ASessionOnRecord[], now?: Date,
 ): AMorningLine[] {
   const before = theWorkingDayBefore(today, workingDays);
   const out: AMorningLine[] = [];
@@ -607,14 +652,12 @@ export function theCheckInsNotMade(
     if (hers.has(p.id) || p.managingOnly || p.left) continue;
     const who = names.get(p.id);
     if (!who) continue;
-    const last = lastCheckIn[p.id] ?? null;
-    const opened = firstOpened[p.id] ?? null;
-    if (last) {
-      const k = keyIn(last, zone);
-      if (k < before) out.push({ text: `${who} hasn't checked in ${sinceADay(k, today)}.`, rank: 10 });
-    } else if (opened && keyIn(opened, zone) <= before) out.push({ text: `${who} hasn't checked in yet.`, rank: 10 });
+    const day = sessions && now ? theirDay(p.id, sessions, now, zone) : null;
+    out.push(...theCheckInLines(p.id, who, day, lastCheckIn, firstOpened, today, before, workingDays, zone));
+    const credit = day && !day.lateToday && !day.missedDays.length ? onTimeSaid(who, day, today) : null;
+    if (credit) out.push({ text: credit, rank: 14 });
   }
-  return out;
+  return out.sort((a, b) => a.rank - b.rank);
 }
 
 /**
@@ -622,7 +665,7 @@ export function theCheckInsNotMade(
  * people said that she has to settle), what is due in the next seven days, and who has not checked in. No target part: there is no
  * number to count.
  */
-export function theMatterDirectMorning(input: { groundId: string; label: string; board: any; people: TheCollectionsMorningInput['people']; hers: ReadonlySet<string>; waits: AWaitOnRecord[]; items: { kind: string; name: string; dueAt: Date | string | null; ownerParticipantId: string | null }[]; lastCheckIn: Record<string, Date | null>; firstOpened: Record<string, Date | null>; workingDays: number[] | null; now: Date; zone: string }): TheDirectMorning {
+export function theMatterDirectMorning(input: { groundId: string; label: string; board: any; people: TheCollectionsMorningInput['people']; hers: ReadonlySet<string>; waits: AWaitOnRecord[]; items: { kind: string; name: string; dueAt: Date | string | null; ownerParticipantId: string | null }[]; lastCheckIn: Record<string, Date | null>; firstOpened: Record<string, Date | null>; sessions?: ASessionOnRecord[]; workingDays: number[] | null; now: Date; zone: string }): TheDirectMorning {
   const today = keyIn(input.now, input.zone);
   const names = theNamesToCall(input.people.map((p) => ({ id: p.id, name: p.name })));
   const name = (pid: string | null) => (pid ? names.get(pid) ?? null : null);
@@ -655,7 +698,7 @@ export function theMatterDirectMorning(input: { groundId: string; label: string;
   const due = input.items.filter((i) => i.dueAt && keyIn(new Date(i.dueAt), 'UTC') >= today && keyIn(new Date(i.dueAt), 'UTC') <= lastDay)
     .sort((a, b) => new Date(a.dueAt as any).getTime() - new Date(b.dueAt as any).getTime())
     .map((i) => ({ text: `${capital(stop(i.name))} is due ${aDayFromToday(keyIn(new Date(i.dueAt as any), 'UTC'), today)}${name(i.ownerParticipantId) ? `, and ${name(i.ownerParticipantId)} has it` : ''}.`, rank: 7 }));
-  const team = theCheckInsNotMade(input.people, input.hers, input.lastCheckIn, input.firstOpened, today, input.workingDays, input.zone, names);
+  const team = theCheckInsNotMade(input.people, input.hers, input.lastCheckIn, input.firstOpened, today, input.workingDays, input.zone, names, input.sessions, input.now);
   return {
     groundId: input.groundId, label: input.label, kind: 'matter',
     parts: [
@@ -760,7 +803,7 @@ export async function theDirectMorningFor(
     managingOnly: !!p.managingOnly, left: !!p.leftAt, isTheLead: p.userId === opts.leadUserId || p.partyType === 'INITIATOR', userId: p.userId,
   }));
   const hers = new Set(people.filter((p) => p.isTheLead).map((p) => p.id));
-  const checkIns: any[] = ((await Promise.resolve(prisma?.checkIn?.findMany?.({ where: { groundId: ground.id }, select: { id: true, participantId: true, status: true, isSetup: true, completedAt: true, availableFrom: true, createdAt: true, closedReason: true } })).catch(() => [])) ?? []) as any[];
+  const checkIns: any[] = ((await Promise.resolve(prisma?.checkIn?.findMany?.({ where: { groundId: ground.id }, select: { id: true, participantId: true, sessionNumber: true, status: true, isSetup: true, completedAt: true, availableFrom: true, createdAt: true, closedReason: true } })).catch(() => [])) ?? []) as any[];
   const lastCheckIn: Record<string, Date | null> = {};
   const firstOpened: Record<string, Date | null> = {};
   for (const c of checkIns) {
@@ -774,6 +817,8 @@ export async function theDirectMorningFor(
     if (!lastCheckIn[c.participantId] || at > (lastCheckIn[c.participantId] as Date)) lastCheckIn[c.participantId] = at;
   }
   const kept = ground.overWhatsApp === false;
+  const sessions = checkIns as ASessionOnRecord[];
+  const nudgeable = { mayBeNudged: whoMayBeNudged(people, hers, sessions, now, zone) };
 
   const waitsAll: AWaitOnRecord[] = ((await Promise.resolve(prisma?.groundDependency?.findMany?.({ where: { groundId: ground.id } })).catch(() => [])) ?? []) as any[];
   const openWaits = waitsAll.filter((w) => String(w.status).toUpperCase() !== 'CLEARED' && !w.clearedAt);
@@ -785,14 +830,16 @@ export async function theDirectMorningFor(
     const served = opts.board?.collections ?? await theCollectionsBoardFor(prisma, ground.id, { runsIt: true, participantId: leadRow }, now).catch(() => null);
     const bills = await withTheEventsSaid(prisma, theBillsThisReaderMayRead(await theBillsOnRecord(prisma, ground.id), { runsIt: true, participantId: leadRow }), { userId: opts.leadUserId, isTheLead: true }, zone).catch(() => []);
     return {
-      ...theCollectionsDirectMorning({ groundId: ground.id, label: ground.label, billWord: collections.billWord, bills, served, people, hers, waits: openWaits, lastCheckIn, firstOpened, workingDays: ground.workingDays ?? null, now, zone }),
+      ...theCollectionsDirectMorning({ groundId: ground.id, label: ground.label, billWord: collections.billWord, bills, served, people, hers, waits: openWaits, lastCheckIn, firstOpened, sessions, workingDays: ground.workingDays ?? null, now, zone }),
+      ...nudgeable,
       ...(kept ? { keptInTheApp: true } : {}),
     };
   }
   if (!isASalesKind(ground.kindOfWork)) {
     const items: any[] = ((await Promise.resolve(prisma?.workItem?.findMany?.({ where: { groundId: ground.id } })).catch(() => [])) ?? []) as any[];
     return {
-      ...theMatterDirectMorning({ groundId: ground.id, label: ground.label, board: opts.board, people, hers, waits: openWaits, items, lastCheckIn, firstOpened, workingDays: ground.workingDays ?? null, now, zone }),
+      ...theMatterDirectMorning({ groundId: ground.id, label: ground.label, board: opts.board, people, hers, waits: openWaits, items, lastCheckIn, firstOpened, sessions, workingDays: ground.workingDays ?? null, now, zone }),
+      ...nudgeable,
       ...(kept ? { keptInTheApp: true } : {}),
     };
   }
@@ -806,9 +853,10 @@ export async function theDirectMorningFor(
   const sales = await theSalesMorning(prisma, ground.id, opts.leadUserId, now, zone).catch(() => null);
   return {
     ...theSalesDirectMorning({
-      board: opts.board, groundId: ground.id, label: ground.label, hers, people, waits: open, deals, carried, sales, lastCheckIn, firstOpened,
+      board: opts.board, groundId: ground.id, label: ground.label, hers, people, waits: open, deals, carried, sales, lastCheckIn, firstOpened, sessions,
       workingDays: ground.workingDays ?? null, now, zone, lines,
     }),
+    ...nudgeable,
     ...(kept ? { keptInTheApp: true } : {}),
   };
 }
