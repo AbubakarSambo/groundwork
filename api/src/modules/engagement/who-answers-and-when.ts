@@ -19,6 +19,9 @@
  * FACTS ONLY. Nothing here is a label on a person: a sentence built from it says what happened and on which day.
  */
 
+import { theDirectMorningIsOnFor } from '../organisation/the-direct-morning-switch';
+import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
+
 export const AN_HOUR_AFTER_THEIR_USUAL_TIME = 60;
 export const THREE_HOURS_AFTER_IT_OPENED = 180;
 export const SESSIONS_READ = 10;
@@ -220,3 +223,23 @@ export function onTimeSaidToYou(d: TheirDay, today: string): string | null {
 
 /** Whether the lead may nudge them today: their session is open and not answered, and they are late today or missed a day before it. */
 export const mayBeNudged = (d: TheirDay) => d.dueToday && !d.answeredToday && (d.lateToday || d.missedDays.length > 0);
+
+/**
+ * ON THEIR OWN PAGE (their own report): "You checked in on time today, 5 days running." For the person whose report it is, read by
+ * nobody else (the route serves a session's report to its owner alone). Null with nothing to credit, or with the direct morning off.
+ */
+export async function onTimeForThemselves(prisma: any, groundId: string | null | undefined, participantId: string, now: Date = new Date()): Promise<string | null> {
+  try {
+    if (!groundId) return null;
+    if (!(await theDirectMorningIsOnFor(prisma, groundId))) return null;
+    const g = await prisma?.ground?.findUnique?.({ where: { id: groundId }, select: { organizationId: true } });
+    const zone = (g?.organizationId ? await theOrganisationsZone(prisma, g.organizationId).catch(() => null) : null) ?? THE_PRODUCTS_OWN_ZONE;
+    const sessions: ASessionOnRecord[] = (await prisma?.checkIn?.findMany?.({
+      where: { groundId, participantId },
+      select: { id: true, participantId: true, sessionNumber: true, status: true, isSetup: true, completedAt: true, availableFrom: true, createdAt: true, closedReason: true },
+    })) ?? [];
+    return onTimeSaidToYou(theirDay(participantId, sessions, now, zone), aDayIn(now, zone));
+  } catch {
+    return null;
+  }
+}

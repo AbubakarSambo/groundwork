@@ -376,3 +376,5 @@
 .pb-row-nudge { grid-column: 1 / -1; }
 .pb-nudge { font-size: 14px; }
 .pb-nudged { font-size: 14px; color: var(--gw-text); }
+/* "You checked in on time today, 5 days running." on your own report (SessionReportPage.tsx). */
+.pb-on-time { font-size: 15px; color: var(--gw-text); margin: 6px 0 0; }
