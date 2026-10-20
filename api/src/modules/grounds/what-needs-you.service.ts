@@ -13,7 +13,7 @@ import { theFreeTrialLine } from './the-free-trial-on-today';
 import { PrismaService } from '../prisma/prisma.service';
 import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { GroundsService } from './grounds.service';
-import { whatNeedsYou, type Need, type WhatNeedsYou } from './what-needs-you';
+import { whatNeedsYou, needsSaidDirectly, type Need, type WhatNeedsYou } from './what-needs-you';
 import { LeaveBoardService } from '../suites/the-leave-board.service';
 import { whoIsAwayOn } from '../suites/who-is-away';
 import { TimeSheetsService } from '../suites/the-time-sheets.service';
@@ -336,6 +336,7 @@ export class WhatNeedsYouService {
     ).catch(() => null);
     /* The direct morning (organisation/the-screen-is-told-the-direct-morning.ts): one yes or no for the page's fixed words. It shows nothing more. */
     const directMorning = await theDirectMorningIsOn(this.prisma, organizationId);
+    if (directMorning) { told.needs = needsSaidDirectly(told.needs); }
     return forTheLead ? { ...told, forTheLead, directMorning } : { ...told, directMorning };
   }
 

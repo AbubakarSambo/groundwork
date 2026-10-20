@@ -79,3 +79,22 @@ describe('a reader who may not see the check-in is refused, with the direct morn
     await expect(svc.peopleAndSetup('g-sales', 'org-drop', 'u-stranger')).rejects.toThrow('Not yours to read');
   });
 });
+
+import { needsSaidDirectly } from '../grounds/what-needs-you';
+
+describe('needsSaidDirectly (Today and You, with the direct morning on)', () => {
+  it('a check-in’s estimate is "A few minutes." and says nothing about how answers are read; every other need is as it was', () => {
+    const needs = [
+      { key: 'a', title: 'Your next check-in for Sales team, Q4', detail: 'About ten minutes.' },
+      { key: 'b', title: 'Your check-in for Sales team, Q4', detail: 'About ten minutes. Everyone else’s answers are read against yours.' },
+      { key: 'c', title: 'Read the report', detail: 'Ready since Monday.' },
+      { key: 'd', title: 'Your own report for Sales team, Q4', detail: 'Only you see it.' },
+    ];
+    expect(needsSaidDirectly(needs)).toEqual([
+      { key: 'a', title: 'Your next check-in for Sales team, Q4', detail: 'A few minutes.' },
+      { key: 'b', title: 'Your check-in for Sales team, Q4', detail: 'A few minutes.' },
+      { key: 'c', title: 'Read the report', detail: 'Ready since Monday.' },
+      { key: 'd', title: 'Your own report for Sales team, Q4', detail: null },
+    ]);
+  });
+});

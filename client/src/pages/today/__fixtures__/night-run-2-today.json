@@ -1,0 +1,60 @@
+{
+ "_from": "Cut from ~/Desktop/engine-test/run2/raw/record.json (second night run): the last capture, Tuesday 20 October, morning (the end), as the API served each reader.",
+ "grace": {
+  "needs": [
+   {
+    "groundId": "a0cdc357-32d0-4df4-bece-692b27e5511f",
+    "organizationId": "e58e5288-17f4-4cf0-bbd8-6156e57c2f31",
+    "checkInLabel": "Sales team, Q4",
+    "onTheBoardToo": true,
+    "action": {
+     "label": "Open it",
+     "to": "/grounds/a0cdc357-32d0-4df4-bece-692b27e5511f"
+    },
+    "key": "board-action-a0cdc357-32d0-4df4-bece-692b27e5511f-the-stall-rule",
+    "kind": "decide",
+    "title": "No stall rule set yet",
+    "detail": "Groundwork suggests dropping a deal after 3 working days with no answer from the customer. Until you set a rule, no deal is marked cold or dropped for going quiet. Upper Hill Offices has not answered since 13 October, which is more than that."
+   },
+   {
+    "key": "own-a0cdc357-32d0-4df4-bece-692b27e5511f",
+    "kind": "ready",
+    "title": "Your own report for Sales team, Q4",
+    "detail": "Only you see it.",
+    "action": {
+     "label": "Read it",
+     "to": "/checkin/fbe8c9b5-96bd-4ced-8536-7a43e36cd0ad/report"
+    },
+    "groundId": "a0cdc357-32d0-4df4-bece-692b27e5511f",
+    "organizationId": "e58e5288-17f4-4cf0-bbd8-6156e57c2f31",
+    "checkInLabel": "Sales team, Q4"
+   }
+  ],
+  "count": 2,
+  "line": "In Sales team, Q4, 4 of 5 have checked in for the sixth check-in. Joseph did not check in before it closed.",
+  "comingUp": [
+   {
+    "at": "2026-10-30T17:00:00.000Z",
+    "what": "Sales team, Q4 ends.",
+    "to": "/grounds/a0cdc357-32d0-4df4-bece-692b27e5511f",
+    "groundId": "a0cdc357-32d0-4df4-bece-692b27e5511f",
+    "checkInStartedOn": "2026-10-12T05:00:01.398Z"
+   }
+  ],
+  "forTheLead": {
+   "nobodyHasStarted": [],
+   "whatIWouldDoThisWeek": [
+    {
+     "groundId": "a0cdc357-32d0-4df4-bece-692b27e5511f",
+     "label": "Sales team, Q4",
+     "lines": [
+      "Here is what I would do this week.",
+      "Answer Peter Njoroge on a specific area to focus on.",
+      "Tell the team a sale counts only with a payment or a signed order.",
+      "Sort out a specific area to focus on. Peter Njoroge is waiting on you for it."
+     ]
+    }
+   ]
+  }
+ }
+}
