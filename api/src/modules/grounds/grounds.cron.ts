@@ -1,5 +1,7 @@
 import { theOrganisationsZone } from '../../common/the-organisations-own-day';
 import { aTeamMembersOpeningFor } from '../conversation/the-one-thing-today';
+import { theSameWordsAgain, rememberTheWords, writeDownTheSkip } from '../engagement/never-the-same-words-twice';
+import { isHeldForTheNight } from '../whatsapp/quiet-hours-are-the-organisations';
 import { theyAreConnectedOnWhatsApp } from '../whatsapp/connect-whatsapp';
 import { theEmailOpeningShould } from './an-opening-goes-on-one-channel';
 import { theCheckInIsOpen } from '../whatsapp/what-goes-to-a-phone';
@@ -853,8 +855,16 @@ export class GroundsCron implements OnApplicationBootstrap {
         }
         /* With the direct morning on, the one thing that matters to them today is the email's opening line and its subject (conversation/the-one-thing-today); off, or nothing specific on record, the email is today's. */
         const personal = await aTeamMembersOpeningFor(this.prisma, { groundId: ci.groundId, participantId: p.id, sessionNumber: (ci as any).sessionNumber ?? null, now }).catch(() => null);
+        /* After two missed days, never the same words twice in a row (engagement/never-the-same-words-twice.ts; direct morning only). */
+        const words = [personal?.text ?? `Your next check-in is open: ${p.ground.label}`, ...(missed?.lines ?? [])].join(' ');
+        if (await theSameWordsAgain(this.prisma, { groundId: ci.groundId, participantId: p.id, words, now })) {
+          await writeDownTheSkip(this.prisma, { channel: 'email', to: p.email, sender: 'sendSessionReady', organizationId: (p.ground as any).organizationId });
+          await this.prisma.checkIn.update({ where: { id: ci.id }, data: { sessionReadyNotifiedAt: now } });
+          continue;
+        }
         const went = await this.email.sendSessionReady(p.email, await nameFor({ userId: p.userId, email: p.email }, ci.groundId, p.ground.label), checkInUrl, p.ground.simplerWords, missed?.lines ?? null, ci.groundId, personal ? { subject: personal.subject, line: personal.text } : null);
         if (missed && went !== 'suppressed') await rememberTheMissedNoticeTold(this.prisma, missed.key, (went ?? 'sent') as any, { sender: 'sendSessionReady', to: p.email });
+        if (went !== 'suppressed') await rememberTheWords(this.prisma, ci.groundId, p.id, words, now);
 
         await this.prisma.checkIn.update({ where: { id: ci.id }, data: { sessionReadyNotifiedAt: now } });
       } catch (err: any) {
@@ -972,7 +982,16 @@ export class GroundsCron implements OnApplicationBootstrap {
         const kept = best.get(key);
         if (kept && kept.rank <= rank) continue;
         const message = said;
-        best.set(key, { rank, go: () => this.whatsapp.sendFor(ci.ground.organizationId, phone, message.text, { checkInId: ci.id, kind: message.kind, params: message.params }) });
+        best.set(key, { rank, go: async () => {
+          /* After two missed days, never the same words twice in a row (engagement/never-the-same-words-twice.ts; direct morning only). */
+          if (await theSameWordsAgain(this.prisma, { groundId: ci.groundId, participantId: ci.participantId, words: message.text, now })) {
+            await writeDownTheSkip(this.prisma, { channel: 'whatsapp', to: ci.participant.email ?? user?.email ?? phone, sender: message.kind, organizationId: ci.ground.organizationId });
+            return;
+          }
+          const went = await this.whatsapp.sendFor(ci.ground.organizationId, phone, message.text, { checkInId: ci.id, kind: message.kind, params: message.params });
+          if (went?.sent || isHeldForTheNight(went?.error)) await rememberTheWords(this.prisma, ci.groundId, ci.participantId, message.text, now);
+          return went;
+        } });
       } catch (err: any) {
         this.logger.warn(`WhatsApp reminder failed for check-in ${ci.id}: ${err?.message}`);
       }
