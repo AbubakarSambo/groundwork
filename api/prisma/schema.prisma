@@ -1445,6 +1445,39 @@ model CoachingState {
   @@map("coaching_states")
 }
 
+/// A PERSON'S RECORD IN ONE CHECK-IN, KEPT FROM THE RECORD (Groundwork does the managing, part 1; Hafsah, 21 October 2026).
+///
+/// One row for each person in each check-in, beside the other rows derived about a person (CoachingState, PatternDetection). `record`
+/// holds every entry with its evidence (their own words, the day, the session, the ids behind it): what they said was sold, paid or
+/// signed and whether anything on file shows it, their promises and how each went, figures that changed, where their time went, the
+/// blockers they raised and what they tried first, and each check-in's quality. `coaching` holds what Groundwork coached them on, when,
+/// and whether it got better, stayed the same or got worse. Never a score or a label on the person.
+///
+/// Rebuilt only when something new comes in (a check-in finishing, promises settled after it), never when a page is opened
+/// (board/the-persons-record-store.ts). WHO READS IT: the person reads their own; whoever runs the check-in reads the rows of the
+/// people in it, as a manager would in a normal staff assessment; nobody else. A person's rows across check-ins are read for that
+/// person alone. Served only where the organisation's direct morning is on.
+model PersonRecord {
+  id             String   @id @default(uuid())
+  groundId       String   @map("ground_id")
+  participantId  String   @unique @map("participant_id")
+  organizationId String?  @map("organization_id")
+  userId         String?  @map("user_id")
+  record         Json
+  coaching       Json     @default("[]")
+  /// The last of their check-ins the coaching was read after.
+  lastSession    Int?     @map("last_session")
+  /// A fingerprint of the record it was built as, so a rebuild that finds nothing new writes nothing.
+  builtFrom      String   @map("built_from")
+  builtAt        DateTime @default(now()) @map("built_at")
+
+  participant GroundParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@index([groundId])
+  @@index([userId, organizationId])
+  @@map("person_records")
+}
+
 model GroundParticipant {
   /// Things a check-in asked this person for and did not get. See CheckInGap.
   gaps                       CheckInGap[]
@@ -1604,6 +1637,8 @@ model GroundParticipant {
   // [{ from, to }], to null while still away.
   leavePeriods               Json?             @map("leave_periods")
   coachingState              CoachingState?
+  /// Their record in this check-in, kept from the record (Groundwork does the managing). See PersonRecord.
+  personRecord               PersonRecord?
   detectedFunction           String?           @map("detected_function")
   detectedFunctionConfidence Float?            @map("detected_function_confidence")
   detectedFunctionAt         DateTime?         @map("detected_function_at")
