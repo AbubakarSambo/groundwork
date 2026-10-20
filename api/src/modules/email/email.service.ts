@@ -296,13 +296,15 @@ export class EmailService implements OnModuleInit {
        never in the subject or where the name goes. `who` is the address they were invited with. */
     const named = name && !name.includes('@') ? name : 'Someone';
     const by = theInviter(addedBy);
+    /* With the direct morning on (a-direct-email.ts): what they can do and what it needs from you, without explaining the rule behind it. */
+    const direct = await theDirectMorningForAMail(this.prisma, to);
     await this.sendEmail({
       to,
       subject: `${named} is waiting to be let into ${org || 'your organisation'}.`,
       html: this.layout(
         `<p>${greeting(adminFirstName)}</p>
          <p>${theyCameHow(named, checkInLabel, by, known)}, and they are not in your organisation yet.${named === 'Someone' && who?.includes('@') ? ` The address they ${known.cameThroughTheLink ? 'gave' : 'were invited with'} is <strong>${escapeHtml(who)}</strong>.` : ''}</p>
-         <p>They can sign in, and they cannot start until you approve them joining. Nobody outside your organisation is added to it, or counted on your plan, without this.</p>
+         <p>They can sign in, and they cannot start until you approve them joining.${direct ? '' : ' Nobody outside your organisation is added to it, or counted on your plan, without this.'}</p>
          <p><a href="${this.frontendUrl.replace(/\/$/, '')}/org/members" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">See who is waiting →</a></p>`,
       ),
     }, undefined, 'sendSomebodyIsWaiting');

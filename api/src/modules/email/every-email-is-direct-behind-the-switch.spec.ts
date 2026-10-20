@@ -312,3 +312,19 @@ describe('the round digest (to Kevin, session 1 of "Sales team, Q4")', () => {
     ].join('\n'));
   });
 });
+
+describe('somebody is waiting to be let in (to Grace)', () => {
+  const send = async (on: boolean) => {
+    const email = aMailer(on);
+    await email.sendSomebodyIsWaiting(GRACE, 'Grace', 'peter@dropaccess.test', 'Grace Achieng', 'Sales team, Q4', { name: 'Peter Njoroge', organisationName: 'Drop Access (test)', cameThroughTheLink: true });
+    return read(GRACE)!;
+  };
+  it('off: as the night run sent it, with the rule explained', async () => {
+    expect((await send(false)).text.split('\n\n')[2]).toBe('They can sign in, and they cannot start until you approve them joining. Nobody outside your organisation is added to it, or counted on your plan, without this.');
+  });
+  it('on: what it needs from her', async () => {
+    const m = await send(true);
+    expect(m.subject).toBe('Peter Njoroge is waiting to be let into Drop Access (test).');
+    expect(m.text.split('\n\n')[2]).toBe('They can sign in, and they cannot start until you approve them joining.');
+  });
+});
