@@ -8,6 +8,7 @@ import { withoutTheEmptyOnes } from './an-item-the-model-left-empty-is-not-an-it
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { theModelStandInIsOn, theStandInReply, THE_STAND_IN_READ_NO_FILE } from './a-stand-in-for-the-model';
 
 
 /**
@@ -261,11 +262,15 @@ export class AnthropicService implements OnApplicationBootstrap {
   private readonly logger = new Logger(AnthropicService.name);
   private client: GoogleGenAI;
   private model: string;
+  /** A local browser test's stand-in for the model (a-stand-in-for-the-model.ts). Never on in production. */
+  private readonly standIn: boolean;
   /** What a person in a conversation talks to. See geminiConfig.conversationModel. */
   private conversationModel: string;
   private maxTokens: number;
 
   constructor(private config: ConfigService) {
+    this.standIn = theModelStandInIsOn();
+    if (this.standIn) this.logger.warn('THE MODEL STAND-IN IS ON (GROUNDWORK_MODEL_STAND_IN=fixed-questions): no model is called; every reply is a fixed question. Local test only.');
     const inlineJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
     if (inlineJson) {
       const keyPath = path.join(os.tmpdir(), 'gcp-service-account.json');
@@ -394,6 +399,7 @@ export class AnthropicService implements OnApplicationBootstrap {
    */
   private async healthCheck(): Promise<{ ok: boolean; latencyMs: number; model: string; models: { conversation: string; reports: string }; lastRebuildAt: Date | null; error?: string }> {
     const started = Date.now();
+    if (this.standIn) return { ok: true, latencyMs: 0, model: this.model, models: this.modelsInUse(), lastRebuildAt: this.lastRebuildAt, error: 'the model stand-in is on (local test only); no model was called' };
     try {
       const res = await this.client.models.generateContent({
         model: this.model,
@@ -431,6 +437,7 @@ export class AnthropicService implements OnApplicationBootstrap {
    * accumulated text at the end, which catches a double hyphen split across deltas.
    */
   async *respondStream(systemPrompt: string, history: ChatTurn[]): AsyncGenerator<string, void, unknown> {
+    if (this.standIn) { yield theStandInReply(history); return; }
     const contents = history.map((t) => ({
       role: t.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: t.content }],
@@ -508,6 +515,7 @@ export class AnthropicService implements OnApplicationBootstrap {
    * gets). Every existing caller passes nothing and keeps the model's own default behaviour.
    */
   async respond(systemPrompt: string, history: ChatTurn[], options: { temperature?: number; seed?: number } = {}): Promise<string> {
+    if (this.standIn) return theStandInReply(history);
     const contents = history.map((t) => ({
       role: t.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: t.content }],
@@ -557,6 +565,7 @@ export class AnthropicService implements OnApplicationBootstrap {
    * through separate OCR/parsing libraries.
    */
   async respondWithMedia(systemPrompt: string, prompt: string, media: { mimeType: string; base64: string }): Promise<string> {
+    if (this.standIn) return THE_STAND_IN_READ_NO_FILE;
     let res: Awaited<ReturnType<typeof this.client.models.generateContent>>;
     try {
       res = await tryAgainIfItIsJustBusy(
@@ -599,6 +608,8 @@ export class AnthropicService implements OnApplicationBootstrap {
     tool: { name: string; description: string; input_schema: any },
     options: { thinkingBudget?: number; fast?: boolean; patient?: boolean; temperature?: number; seed?: number } = {},
   ): Promise<T | null> {
+    /* The stand-in finds nothing, as a model that found nothing would. */
+    if (this.standIn) return null;
     const contents = history.map((t) => ({
       role: t.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: t.content }],
