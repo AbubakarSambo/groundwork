@@ -31,7 +31,8 @@ describe('with the direct morning off', () => {
 
 describe('only the person whose report it is', () => {
   it('the route reads the check-in as its owner’s before it says anything', () => {
-    const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'conversation', 'conversation.service.ts'), 'utf8');
+    const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'conversation', 'conversation.service.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     const at = src.indexOf('async getSessionReport(');
     const body = src.slice(at, src.indexOf('\n  }\n', at));
     expect(body.indexOf('this.loadOwnedCheckIn(checkInId, requestingUserId)')).toBeGreaterThan(0);
