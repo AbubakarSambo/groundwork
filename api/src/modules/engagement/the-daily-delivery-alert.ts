@@ -410,8 +410,8 @@ export function theAlertEmail(found: WhatWentWrong): { subject: string; text: st
     if (o.rates.length) {
       const heading = `How each person at ${o.name} answered in the last 7 days`;
       text.push(heading, ...o.rates.map((r) => `- ${theirWeek(r)}`), '');
-      const th = 'text-align:left;padding:4px 10px 4px 0;border-bottom:1px solid #ccc;font-size:13px';
-      const td = 'padding:4px 10px 4px 0;border-bottom:1px solid #eee;font-size:13px';
+      const th = 'text-align:left;padding:4px 10px 4px 0;border-bottom:1px solid #EDE5D6;font-size:13px';
+      const td = 'padding:4px 10px 4px 0;border-bottom:1px solid #F7F1E5;font-size:13px';
       html.push(
         `<h3 style="font-size:14px;margin:16px 0 6px">${esc(heading)}</h3>`
         + `<table style="border-collapse:collapse"><thead><tr><th style="${th}">Person</th><th style="${th}">Opened</th><th style="${th}">Answered</th><th style="${th}">Not answered</th><th style="${th}">Answered (percent)</th></tr></thead><tbody>`
@@ -421,7 +421,7 @@ export function theAlertEmail(found: WhatWentWrong): { subject: string; text: st
     }
   }
   text.push(closing);
-  html.push(`<p style="margin-top:24px;color:#555">${esc(closing)}</p>`);
+  html.push(`<p style="margin-top:24px;color:#4E4236">${esc(closing)}</p>`);
   return { subject, text: text.join('\n'), html: html.join('') };
 }
 
