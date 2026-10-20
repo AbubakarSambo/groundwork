@@ -8,6 +8,7 @@ import { Page, Panel, Button, CheckInHeader } from '@/components/gw/ui'
 import { theScheduleInWords } from './pictured/ThePicturedSalesBoard'
 import { phaseSpineSentence } from '@/lib/phase-spine-sentence'
 import { plannedSessionsFor } from '@/lib/sessionCount'
+import { theContextTabsName } from '@/lib/the-references-tab'
 import { TheOtherBoardsYouAreIn } from '@/components/gw/TheOtherBoardsYouAreIn'
 import './pictured/pictured-board.css'
 
@@ -47,7 +48,7 @@ export function WhereTheBlockerStarted() {
   const tabs = [
     { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
     ...(runsIt || isAParty ? [{ key: 'chat', label: 'Check-in', to: `/grounds/${id}` }] : []),
-    { key: 'context', label: 'Context and resources', to: `/grounds/${id}?tab=context` },
+    { key: 'context', label: theContextTabsName(g, 'Context and resources'), to: `/grounds/${id}?tab=context` },
     ...(runsIt || isAParty ? [{ key: myWork, label: 'My work', to: `/grounds/${id}?tab=${myWork}` }] : []),
     { key: 'settings', label: 'People and setup', to: `/grounds/${id}?tab=settings` },
   ]

@@ -337,7 +337,7 @@ export default function SessionReportPage() {
           isAParty
           hasOpenSessionNow={hasOpenSessionNow}
           active="report"
-          tabs={checkInHeaderTabs({ id: data.groundId as string, contextEnabled, canRunThisCheckIn: amTheInitiator, isAParty: true })}
+          tabs={checkInHeaderTabs({ id: data.groundId as string, contextEnabled, canRunThisCheckIn: amTheInitiator, isAParty: true, ground: ground as any })}
         />
       ) : (
         <button type="button" onClick={back.onClick} className="gwui-plain-link">
