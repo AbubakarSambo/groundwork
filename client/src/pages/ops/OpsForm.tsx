@@ -65,10 +65,10 @@ export function Adder<T>({
 
   if (!open) {
     return (
-      <button
+      <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
         type="button"
         onClick={() => setOpen(true)}
-        style={{ ...CARD, padding: '7px 13px', cursor: 'pointer', fontSize: 13, marginBottom: 14 }}
+        style={{ marginBottom: 14 }}
       >
         {title}
       </button>
@@ -128,28 +128,18 @@ export function Adder<T>({
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-        <button
+        <button className="gwui-btn gwui-btn-primary gwui-btn-small"
           type="submit"
           disabled={save.isPending || missing.length > 0}
-          style={{
-            ...CARD,
-            padding: '6px 14px',
-            cursor: missing.length > 0 ? 'not-allowed' : 'pointer',
-            fontSize: 13,
-            fontWeight: 600,
-            background: missing.length > 0 ? 'white' : 'var(--gw-navy)',
-            color: missing.length > 0 ? 'var(--gw-sub)' : 'white',
-          }}
         >
           {save.isPending ? 'Saving…' : submitLabel}
         </button>
-        <button
+        <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
           type="button"
           onClick={() => {
             setOpen(false)
             save.reset()
           }}
-          style={{ ...CARD, padding: '6px 12px', cursor: 'pointer', fontSize: 13 }}
         >
           Cancel
         </button>

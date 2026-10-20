@@ -2158,7 +2158,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ec-savecard-add-pending { font-size: 13px; color: var(--gw-green-t); font-weight: 600; margin-top: 6px; }
 .gwui-ec-savecard-add-row { display: flex; gap: 6px; margin-top: 6px; }
 .gwui-ec-savecard-add-error { font-size: 13px; color: var(--gw-red-t); margin-top: 4px; }
-.gwui-ec-savecard-whatnext { background: #F0F4FA; border-radius: 10px; padding: 14px 16px; margin-bottom: 18px; }
+.gwui-ec-savecard-whatnext { background: var(--gw-blue-bg); border-radius: 10px; padding: 14px 16px; margin-bottom: 18px; }
 /* SCREEN FAULT 10 (FINAL WALK): "WHAT HAPPENS NEXT" IN CAPITALS. The prototype's own end-card
    (check-in-end-card.txt) writes this heading in sentence case, not as a small label - so the
    uppercase transform is dropped; the rest of the heading's own styling (size, weight, colour,

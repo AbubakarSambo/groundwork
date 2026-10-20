@@ -16,8 +16,6 @@ import { whatsAppSettingsApi, type OurWhatsAppSettings, type SaveOurWhatsAppSett
 const small = { fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55 } as const
 const label = { fontSize: 13, fontWeight: 700, display: 'block', marginBottom: 4 } as const
 const input = { width: '100%', boxSizing: 'border-box', padding: '8px 10px', fontSize: 14, borderRadius: 6, border: '1px solid var(--gw-border)', fontFamily: 'inherit', background: 'white', color: 'var(--gw-text)' } as const
-const btn = { fontSize: 13, padding: '7px 14px', borderRadius: 6, border: '1px solid var(--gw-border)', background: 'white', color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit' } as const
-const primary = { ...btn, background: 'var(--gw-navy)', color: 'white', border: 'none', fontWeight: 600 } as const
 const card = { border: '1px solid var(--gw-border)', borderRadius: 8, padding: 16, marginTop: 16, background: 'var(--gw-card)' } as const
 
 type Plain = 'displayNumber' | 'phoneNumberId' | 'businessAccountId'
@@ -128,7 +126,7 @@ function TheForm({ page }: { page: OurWhatsAppSettings }) {
             />
             <div style={{ ...small, marginTop: 4 }}>{hint} {s.saying}</div>
             {s.from === 'here' && (
-              <button type="button" style={{ ...btn, marginTop: 6 }} onClick={() => remove.mutate(key)} disabled={remove.isPending}>
+              <button type="button" className="gwui-btn gwui-btn-secondary gwui-btn-small" style={{ marginTop: 6 }} onClick={() => remove.mutate(key)} disabled={remove.isPending}>
                 Remove the saved {name.toLowerCase()}
               </button>
             )}
@@ -137,7 +135,7 @@ function TheForm({ page }: { page: OurWhatsAppSettings }) {
       })}
 
       <div style={{ marginTop: 18, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <button type="button" style={primary} onClick={submit} disabled={save.isPending}>{save.isPending ? 'Saving…' : 'Save'}</button>
+        <button type="button" className="gwui-btn gwui-btn-primary gwui-btn-small" onClick={submit} disabled={save.isPending}>{save.isPending ? 'Saving…' : 'Save'}</button>
         {message && <span style={{ fontSize: 13, color: message.ok ? 'var(--gw-green-t)' : 'var(--gw-red-t)' }}>{message.text}</span>}
       </div>
     </div>
@@ -156,7 +154,7 @@ function TheConnection() {
           <strong>{connection.data.connected ? 'Connected' : 'Not connected'}.</strong> {connection.data.saying.replace(/^(Connected|Not connected)\.\s*/, '')}
         </p>
       )}
-      <button type="button" style={{ ...btn, marginTop: 10 }} onClick={() => connection.refetch()} disabled={connection.isFetching}>Check again</button>
+      <button type="button" className="gwui-btn gwui-btn-secondary gwui-btn-small" style={{ marginTop: 10 }} onClick={() => connection.refetch()} disabled={connection.isFetching}>Check again</button>
     </div>
   )
 }
@@ -184,7 +182,7 @@ function TheTest() {
           aria-label="The number to send the test message to"
           style={{ ...input, flex: '1 1 220px', width: 'auto' }}
         />
-        <button type="button" style={primary} onClick={() => test.mutate(to)} disabled={test.isPending || !to.trim()}>
+        <button type="button" className="gwui-btn gwui-btn-primary gwui-btn-small" onClick={() => test.mutate(to)} disabled={test.isPending || !to.trim()}>
           {test.isPending ? 'Sending…' : 'Send a test message'}
         </button>
       </div>
@@ -237,7 +235,7 @@ export function WhatsAppSettingsPage() {
             {page.webhook.address && (
               <button
                 type="button"
-                style={{ ...btn, marginTop: 10 }}
+                className="gwui-btn gwui-btn-secondary gwui-btn-small" style={{ marginTop: 10 }}
                 onClick={() => { navigator.clipboard?.writeText(page.webhook.address ?? '').then(() => setCopied(true)).catch(() => undefined) }}
               >{copied ? 'Copied' : 'Copy the address'}</button>
             )}

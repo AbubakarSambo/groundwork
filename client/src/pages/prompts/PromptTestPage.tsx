@@ -168,15 +168,10 @@ function ConversationLane({
           rows={2}
           style={{ flex: 1, resize: 'none', fontSize: 12, fontFamily: 'inherit', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '7px 9px', lineHeight: 1.5, color: 'var(--gw-text)' }}
         />
-        <button
+        <button className="gwui-btn gwui-btn-primary gwui-btn-small"
           onClick={send}
           disabled={!lane.input.trim() || sendMutation.isPending}
-          style={{
-            padding: '8px 12px', borderRadius: 6, background: ACCENT, color: 'white',
-            fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-            opacity: (!lane.input.trim() || sendMutation.isPending) ? 0.5 : 1,
-            flexShrink: 0,
-          }}
+          style={{ flexShrink: 0 }}
         >
           ↑
         </button>
@@ -321,14 +316,9 @@ export function PromptTestPage() {
                 </select>
               </div>
             </div>
-            <button
+            <button className="gwui-btn gwui-btn-primary"
               onClick={() => generateReport.mutate()}
               disabled={generateReport.isPending || !hasEnoughData}
-              style={{
-                padding: '10px 18px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white',
-                fontSize: 13, fontWeight: 700, border: 'none', cursor: generateReport.isPending || !hasEnoughData ? 'not-allowed' : 'pointer',
-                fontFamily: 'inherit', opacity: generateReport.isPending || !hasEnoughData ? 0.5 : 1,
-              }}
             >
               {generateReport.isPending ? 'Generating…' : 'Generate reports'}
             </button>

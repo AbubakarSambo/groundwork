@@ -1766,7 +1766,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 .gw-org-rows-foot { text-align: center; margin: 20px 0 0; }
 .gw-rl-menu-join { color: var(--gw-navy); font-weight: 700; }
 
-.gw-invite-note { background: #F6EFE4; color: var(--gw-text); border-radius: 8px; padding: 12px 14px; font-size: 14.5px; line-height: 1.5; margin: 0 0 18px; }
+.gw-invite-note { background: var(--gw-bg); color: var(--gw-text); border-radius: 8px; padding: 12px 14px; font-size: 14.5px; line-height: 1.5; margin: 0 0 18px; }
 
 /* The invitation's facts (A3, join-invite.txt): "What it asks", "Who sees your answers". */
 .gw-invite-facts { background: #fff; border: 1px solid var(--gw-border); border-radius: 10px; padding: 16px 20px; margin-bottom: 16px; display: grid; gap: 14px; }

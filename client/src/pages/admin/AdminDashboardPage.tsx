@@ -224,17 +224,16 @@ function OtpModal({ title, description, onConfirm, onClose, onSuccess }: OtpModa
               A 6-digit verification code will be sent to your email address.
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button
+              <button className="gwui-btn gwui-btn-primary"
                 ref={first}
                 onClick={handleRequestOtp}
                 disabled={loading}
-                style={{ flex: 1, padding: '10px 0', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, fontFamily: 'inherit' }}
+                style={{ flex: 1 }}
               >
                 {loading ? 'Sending…' : 'Send code'}
               </button>
-              <button
+              <button className="gwui-btn gwui-btn-secondary"
                 onClick={onClose}
-                style={{ padding: '10px 16px', borderRadius: 7, background: 'var(--gw-bg)', color: 'var(--gw-text)', fontSize: 13, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Cancel
               </button>
@@ -258,16 +257,15 @@ function OtpModal({ title, description, onConfirm, onClose, onSuccess }: OtpModa
             />
             {error && <div style={{ fontSize: 12, color: 'var(--gw-danger)', marginBottom: 10 }}>{error}</div>}
             <div style={{ display: 'flex', gap: 8 }}>
-              <button
+              <button className="gwui-btn gwui-btn-danger"
                 onClick={handleConfirm}
                 disabled={loading || otp.length < 6}
-                style={{ flex: 1, padding: '10px 0', borderRadius: 7, background: 'var(--gw-danger)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: (loading || otp.length < 6) ? 'not-allowed' : 'pointer', opacity: (loading || otp.length < 6) ? 0.7 : 1, fontFamily: 'inherit' }}
+                style={{ flex: 1 }}
               >
                 {loading ? 'Confirming…' : 'Confirm'}
               </button>
-              <button
+              <button className="gwui-btn gwui-btn-secondary"
                 onClick={onClose}
-                style={{ padding: '10px 16px', borderRadius: 7, background: 'var(--gw-bg)', color: 'var(--gw-text)', fontSize: 13, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Cancel
               </button>
@@ -353,16 +351,15 @@ function CodeManagementSection({ codes, onDisable }: { codes: AdminCode[]; onDis
                     </span>
                   </td>
                   <td style={{ padding: '8px 10px' }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: c.allowCodeCreation ? '#EEF3FB' : 'var(--gw-bg)', color: c.allowCodeCreation ? 'var(--gw-navy)' : 'var(--gw-muted)', border: '1px solid var(--gw-border)' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: c.allowCodeCreation ? 'var(--gw-blue-bg)' : 'var(--gw-bg)', color: c.allowCodeCreation ? 'var(--gw-navy)' : 'var(--gw-muted)', border: '1px solid var(--gw-border)' }}>
                       {c.allowCodeCreation ? 'Yes' : 'No'}
                     </span>
                   </td>
                   <td style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--gw-navy)', textAlign: 'right' }}>{c.redemptionCount}</td>
                   <td style={{ padding: '8px 10px' }}>
                     {c.active && (
-                      <button
+                      <button className="gwui-btn gwui-btn-secondary gwui-btn-small gwui-btn-red-text"
                         onClick={() => onDisable(c.id)}
-                        style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 5, background: '#fff0f0', color: 'var(--gw-danger)', border: '1px solid #f5c6cb', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
                       >
                         Disable
                       </button>
@@ -595,9 +592,8 @@ function AdminManagementSection({
                 {[a.firstName, a.lastName].filter(Boolean).join(' ') || 'no name on the account'}
               </div>
             </div>
-            <button
+            <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
               onClick={() => setRemoving(a)}
-              style={{ fontSize: 12, padding: '6px 12px', borderRadius: 6, background: 'white', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
             >
               Take off
             </button>
@@ -621,9 +617,8 @@ function AdminManagementSection({
             onFocus={e => { e.target.style.borderColor = 'var(--gw-navy)' }}
             onBlur={e => { e.target.style.borderColor = 'var(--gw-border)' }}
           />
-          <button
+          <button className="gwui-btn gwui-btn-primary gwui-btn-small"
             type="submit"
-            style={{ padding: '9px 18px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
           >
             Add them
           </button>
@@ -761,10 +756,9 @@ function OpsAccessSection() {
               It has not been set up here yet. This writes the periods, the workstreams and the six
               people, and is safe to run twice.
             </div>
-            <button
+            <button className="gwui-btn gwui-btn-primary gwui-btn-small"
               onClick={() => run(adminApi.setUpOps)}
               disabled={busy}
-              style={{ padding: '9px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: busy ? 'wait' : 'pointer', fontFamily: 'inherit' }}
             >
               Set it up
             </button>
@@ -809,10 +803,9 @@ function OpsAccessSection() {
                   </div>
                 ))}
               </div>
-              <button
+              <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
                 onClick={() => setLinking(p.key)}
                 disabled={busy}
-                style={{ fontSize: 12, padding: '6px 12px', borderRadius: 6, background: 'white', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 {p.linkedAccount ? 'Connect another' : 'Connect an account'}
               </button>
@@ -835,10 +828,9 @@ function OpsAccessSection() {
                   autoFocus
                   style={{ flex: 1, padding: '8px 11px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', outline: 'none' }}
                 />
-                <button
+                <button className="gwui-btn gwui-btn-primary gwui-btn-small"
                   type="submit"
                   disabled={busy}
-                  style={{ padding: '8px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                 >
                   Connect
                 </button>
@@ -961,23 +953,20 @@ export function AdminDashboardPage() {
             <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 1 }}>Codes · Billing · Users · Feedback</div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button
+            <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
               onClick={() => navigate('/admin')}
-              style={{ fontSize: 12, padding: '7px 14px', borderRadius: 6, background: 'white', border: '1px solid var(--gw-border)', color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit' }}
             >
               Platform console →
             </button>
-            <button
+            <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
               onClick={() => navigate('/ops')}
-              style={{ fontSize: 12, padding: '7px 14px', borderRadius: 6, background: 'white', border: '1px solid var(--gw-border)', color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit' }}
             >
               Our own system →
             </button>
             {/* Access to the API is granted here rather than bought. Our own
                 organisation appears on that list like anybody else's. */}
-            <button
+            <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
               onClick={() => navigate('/admin/api-access')}
-              style={{ fontSize: 12, padding: '7px 14px', borderRadius: 6, background: 'white', border: '1px solid var(--gw-border)', color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit' }}
             >
               API access →
             </button>

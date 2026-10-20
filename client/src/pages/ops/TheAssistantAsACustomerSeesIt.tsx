@@ -787,20 +787,11 @@ export function TheAssistantAsACustomerSeesIt() {
             {g.brief && (
               <div style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>{g.brief}</div>
             )}
-            <button
+            <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
               type="button"
               onClick={() => startIt(g.groundId)}
               disabled={busy}
-              style={{
-                marginTop: 8,
-                fontSize: 12.5,
-                padding: '4px 10px',
-                borderRadius: 6,
-                border: '1px solid var(--gw-border)',
-                background: 'var(--gw-card)',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-              }}
+              style={{ marginTop: 8 }}
             >
               Start it
             </button>
@@ -841,20 +832,11 @@ export function TheAssistantAsACustomerSeesIt() {
             }}
           >
             You have a check-in waiting on {c.ground?.label ?? 'a piece of work'}.
-            <button
+            <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
               type="button"
               onClick={() => openCheckIn(c.checkInId)}
               disabled={busy}
-              style={{
-                marginLeft: 8,
-                fontSize: 12.5,
-                padding: '4px 10px',
-                borderRadius: 6,
-                border: '1px solid var(--gw-border)',
-                background: 'var(--gw-card)',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-              }}
+              style={{ marginLeft: 8 }}
             >
               Open it
             </button>
@@ -1082,21 +1064,9 @@ export function TheAssistantAsACustomerSeesIt() {
             outline: 'none',
           }}
         />
-        <button
+        <button className="gwui-btn gwui-btn-primary gwui-btn-small"
           type="submit"
           disabled={!session || busy || !typing.trim()}
-          style={{
-            padding: '8px 14px',
-            borderRadius: 8,
-            border: 'none',
-            background: 'var(--gw-navy)',
-            color: 'white',
-            fontSize: 13,
-            fontWeight: 700,
-            fontFamily: 'inherit',
-            cursor: session && typing.trim() ? 'pointer' : 'default',
-            opacity: session && typing.trim() && !busy ? 1 : 0.5,
-          }}
         >
           {busy ? '…' : 'Send'}
         </button>
