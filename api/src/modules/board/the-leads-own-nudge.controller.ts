@@ -1,7 +1,7 @@
 import { Controller, Param, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common';
-import { TheLeadsOwnNudgeService } from './the-leads-own-nudge';
+import { TheLeadsOwnNudgeService } from '../engagement/the-leads-own-nudge';
 
 /**
  * "NUDGE PETER" (engagement/the-leads-own-nudge.ts). POST /grounds/:id/board/nudge/:participantId. The lead who runs the check-in only:

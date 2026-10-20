@@ -78,7 +78,8 @@ export function theNudgeSays(firstName: string | null, leadFirst: string, openin
 /** The day's nudge for this person, if the lead has sent one: when, as "10:40" in the zone. */
 export async function theNudgeToday(prisma: any, participantId: string, now: Date, zone: string): Promise<string | null> {
   try {
-    const row = await prisma?.platformSetting?.findUnique?.({ where: { key: THE_NUDGE_KEY(participantId, aDayIn(now, zone)) } });
+    const key = THE_NUDGE_KEY(participantId, aDayIn(now, zone));
+    const row = await prisma?.platformSetting?.findUnique?.({ where: { key } });
     const at = (row?.value as any)?.at;
     return at ? aTimeOfDay(new Date(at), zone) : null;
   } catch {
@@ -173,8 +174,9 @@ export class TheLeadsOwnNudgeService {
       return { nudged: false, at: null, channel: null, says: outcome === 'stopped' ? `${first} has turned these messages off, so no nudge was sent, and you can call ${first} instead.` : `The nudge to ${first} could not be sent, so you can call ${first} instead.` };
     }
     const value = { at: now.toISOString(), channel, outcome, by: requestingUserId };
-    try { await prisma.platformSetting.create({ data: { key: THE_NUDGE_KEY(participantId, aDayIn(now, zone)), value, updatedBy: 'engagement' } }); }
-    catch { try { await prisma.platformSetting.update({ where: { key: THE_NUDGE_KEY(participantId, aDayIn(now, zone)) }, data: { value, updatedBy: 'engagement' } }); } catch { /* another copy wrote it */ } }
+    const key = THE_NUDGE_KEY(participantId, aDayIn(now, zone));
+    try { await prisma.platformSetting.create({ data: { key, value, updatedBy: 'engagement' } }); }
+    catch { try { await prisma.platformSetting.update({ where: { key }, data: { value, updatedBy: 'engagement' } }); } catch { /* another copy wrote it */ } }
     const at = aTimeOfDay(now, zone);
     return { nudged: true, at, channel, says: outcome === 'held' ? `You nudged ${first} at ${at}, and it goes at 7am, after quiet hours.` : `Nudged at ${at}` };
   }
