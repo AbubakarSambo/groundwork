@@ -1,4 +1,5 @@
 import { theOrganisationsZone } from '../../common/the-organisations-own-day';
+import { aTeamMembersOpeningFor } from '../conversation/the-one-thing-today';
 import { theyAreConnectedOnWhatsApp } from '../whatsapp/connect-whatsapp';
 import { theEmailOpeningShould } from './an-opening-goes-on-one-channel';
 import { theCheckInIsOpen } from '../whatsapp/what-goes-to-a-phone';
@@ -795,6 +796,7 @@ export class GroundsCron implements OnApplicationBootstrap {
       select: {
         id: true,
         groundId: true,
+        sessionNumber: true,
         availableFrom: true,
         participant: {
           select: {
@@ -849,7 +851,9 @@ export class GroundsCron implements OnApplicationBootstrap {
           await this.prisma.checkIn.update({ where: { id: ci.id }, data: { sessionReadyNotifiedAt: now } });
           continue;
         }
-        const went = await this.email.sendSessionReady(p.email, await nameFor({ userId: p.userId, email: p.email }, ci.groundId, p.ground.label), checkInUrl, p.ground.simplerWords, missed?.lines ?? null, ci.groundId);
+        /* With the direct morning on, the one thing that matters to them today is the email's opening line and its subject (conversation/the-one-thing-today); off, or nothing specific on record, the email is today's. */
+        const personal = await aTeamMembersOpeningFor(this.prisma, { groundId: ci.groundId, participantId: p.id, sessionNumber: (ci as any).sessionNumber ?? null, now }).catch(() => null);
+        const went = await this.email.sendSessionReady(p.email, await nameFor({ userId: p.userId, email: p.email }, ci.groundId, p.ground.label), checkInUrl, p.ground.simplerWords, missed?.lines ?? null, ci.groundId, personal ? { subject: personal.subject, line: personal.text } : null);
         if (missed && went !== 'suppressed') await rememberTheMissedNoticeTold(this.prisma, missed.key, (went ?? 'sent') as any, { sender: 'sendSessionReady', to: p.email });
 
         await this.prisma.checkIn.update({ where: { id: ci.id }, data: { sessionReadyNotifiedAt: now } });
@@ -941,7 +945,12 @@ export class GroundsCron implements OnApplicationBootstrap {
         if (what === 'due-tomorrow' && (await itWasOpenedByEmailOnly(this.prisma, ci, [ci.participant.email, user?.email]))) continue;
         const who = { firstName: user?.firstName, label: await nameFor({ userId: ci.participant.userId, email: ci.participant.email }, ci.groundId, ci.ground.label) };
         let said;
-        if (catchUp) said = theCheckInIsStillOpen(who, ci.ground.simplerWords);
+        /* The opening that never reached them, again: with the direct morning on, its free message is the one thing that matters to them today (the template outside the 24 hours is unchanged). */
+        if (catchUp) {
+          said = theCheckInIsStillOpen(who, ci.ground.simplerWords);
+          const personal = await aTeamMembersOpeningFor(this.prisma, { groundId: ci.groundId, participantId: ci.participantId, sessionNumber: ci.sessionNumber, now }).catch(() => null);
+          if (personal) said = { ...said, text: personal.text };
+        }
         else if (what === 'overdue') said = itIsOverdue(who, ci.ground.simplerWords);
         else if (what === 'due-tomorrow') said = itIsDueTomorrow(who, dueAt!, ci.ground.simplerWords);
         else {

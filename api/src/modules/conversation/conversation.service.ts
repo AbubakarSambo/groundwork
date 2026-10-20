@@ -327,6 +327,7 @@ import { whereToTakeALongPaste } from './a-long-paste-from-the-lead-has-a-better
 import { notToldYet } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { wordTheAreaOfAGoal, areaOfGoalOrFallback } from '../grounds/the-area-of-a-goal-is-worded-once';
 import { saysWhatAnUntoldGoalWithholds, IT_NAMED_THE_UNTOLD_NUMBER, type AnUntoldGoal } from './an-untold-goals-number-is-not-said';
+import { aTeamMembersOpeningFor, theOneThingTodayBlock, type ATeamMembersOpening } from './the-one-thing-today';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -1400,7 +1401,23 @@ export class ConversationService {
      * reads the brief's subjects. The comparison was interesting once; it is not worth seconds of
      * somebody's arrival.
      */
-    const openerSystem = alreadyWritten
+    /*
+     * EACH TEAM MEMBER'S OPENING, BEHIND THE DIRECT MORNING (part 3; Hafsah, 20 October 2026). With the organisation's switch on, a team
+     * member is opened with the one thing on record that matters to them today, and that question is the opening turn word for word: the
+     * product writes the line from the record, as it writes WHO_ARE_YOU_IN_THIS, and the model takes it from there (theOneThingTodayBlock
+     * on every turn after). Null with the switch off, for the lead, on a correction, a closing session, the "who are you in this"
+     * question, and where nothing specific is on record: then the opening is written exactly as before. See the-one-thing-today.
+     */
+    const whoAreYouComesFirst = STARTING_SCENARIOS.has(String(ground?.scenario ?? '')) && checkIn.participant.partyType !== PartyType.INITIATOR
+      && checkIn.sessionNumber === 1 && !theRosterAlreadySaysWhoTheyAre(aRoleInTheirOwnWords(checkIn.participant as any));
+    const personal = !alreadyWritten && correctingSession == null && !(checkIn as any).isFinal && !whoAreYouComesFirst
+      ? await aTeamMembersOpeningFor(this.prisma, { groundId: checkIn.groundId, participantId: checkIn.participantId, sessionNumber: checkIn.sessionNumber }).catch(() => null)
+      : null;
+    if (personal) {
+      this.theOneThingTodayFor.set(checkIn.id, personal);
+      this.logger.log(`Check-in ${checkIn.id}: the direct morning's own opening, from the record (${personal.things.map((t) => t.key.split(':')[0]).join(', ')}${personal.late ? ', late' : ''}).`);
+    }
+    const openerSystem = alreadyWritten || personal
       ? ''
       : await (async () => {
         const composedOpener = await this.composeSystemPrompt(checkIn, undefined, { forTheOpener: true });
@@ -1449,6 +1466,8 @@ export class ConversationService {
     const theBaselineIsRunning = !!this.anchorWeekForThisTurn.get(checkIn.id)?.isTheBaseline;
     const reply = alreadyWritten
       ? alreadyWritten
+      : personal
+      ? personal.text
       : startsSomething && notTheLead && firstSession && theRosterIsSilent && correctingSession == null && !(checkIn as any).isFinal && !theBaselineIsRunning
       ? WHO_ARE_YOU_IN_THIS
       : await this.anthropic.respond(openerSystem, [
@@ -1471,7 +1490,7 @@ export class ConversationService {
        is not rewritten, and above all it is not rewritten DIFFERENTLY for each person. */
     /* The anchor's weekly opening never announces a new angle ("Today we are going to..."): see withoutAnAnnouncedAngle. */
     const theOpening = this.anchorWeekForThisTurn.get(checkIn.id) && !alreadyWritten ? withoutAnAnnouncedAngle(forHumans(reply)) : forHumans(reply);
-    const held = alreadyWritten
+    const held = alreadyWritten || personal
       ? forHumans(reply)
       : await this.theOpenerIsHeldToTheSameBar(checkIn.id, openerSystem, beginMessage, theOpening);
     /* Before this person has typed a word in any session, nothing can be "you said". See the module. */
@@ -1493,7 +1512,9 @@ export class ConversationService {
     const guarded = await this.withTheNewsTheyWaitOn(checkIn as any, guarded0).catch(() => guarded0);
     /* The checks after the bar can take the question out (Kevin's first WhatsApp message read only "This is our first
        check-in, and it's about getting a regular read on the work you're doing."): the opening always ends on a question (reviewer, 14 October). */
-    const opening = isADeadEnd(guarded, false) ? withAQuestion(guarded, { opening: true }) : guarded;
+    const modelsOpening = isADeadEnd(guarded, false) ? withAQuestion(guarded, { opening: true }) : guarded;
+    /* The direct morning's own opening is said as it was written, first; news a promise of theirs waits on follows it. */
+    const opening = personal ? await this.thePersonalOpeningAsSaid(checkIn as any, personal.text) : modelsOpening;
 
     // An opener never closes a session, but strip defensively so the marker can
     // never reach a person even if the model emits it in the wrong place.
@@ -1512,7 +1533,7 @@ export class ConversationService {
     const contextAtTheTop = await this.theContextNotYetSaid(checkIn as any);
     /* Suggested answers under the opening question too. */
     const suggestedAnswers = await this.suggestedAnswersFor(aiTurn.id, aiTurn.content ?? '', null, checkIn.id);
-    return { reply: contextAtTheTop ? `${contextAtTheTop}\n\n${aiTurn.content}` : aiTurn.content, theOpener: aiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any), await this.untoldGoalsOn(checkIn.groundId)), mayCompleteAfter: theFloorForAPersonsFinish(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null), ...(suggestedAnswers.length ? { suggestedAnswers } : {}), ...(this.anchorVersionForThisTurn.get(checkIn.id) ? { promptVersionId: this.anchorVersionForThisTurn.get(checkIn.id) } : {}) };
+    return { reply: contextAtTheTop ? (personal ? `${aiTurn.content}\n\n${contextAtTheTop}` : `${contextAtTheTop}\n\n${aiTurn.content}`) : aiTurn.content, theOpener: aiTurn.content, ...(personal ? { personalOpening: true } : {}), groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any), await this.untoldGoalsOn(checkIn.groundId)), mayCompleteAfter: theFloorForAPersonsFinish(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null), ...(suggestedAnswers.length ? { suggestedAnswers } : {}), ...(this.anchorVersionForThisTurn.get(checkIn.id) ? { promptVersionId: this.anchorVersionForThisTurn.get(checkIn.id) } : {}) };
   }
 
 
@@ -1558,6 +1579,35 @@ export class ConversationService {
    * line before the opening: "Brian said on Wednesday 14 October that the reply for FN-005 was filed." Who said it is named only where
    * they are in the check-in it was said in. Nothing where the opening already says it.
    */
+  /** The direct morning's own opening, word for word, with the news a promise of theirs waits on after it (never before it, so the line is first). */
+  private async thePersonalOpeningAsSaid(checkIn: { participantId?: string; groundId?: string; participant?: { userId?: string | null } }, line: string): Promise<string> {
+    const withNews = await this.withTheNewsTheyWaitOn(checkIn, line).catch(() => line);
+    const news = withNews !== line && withNews.endsWith(` ${line}`) ? withNews.slice(0, withNews.length - line.length - 1).trim() : '';
+    return news ? `${line}\n\n${news}` : line;
+  }
+
+  /**
+   * THE DIRECT MORNING'S OPENING, FOR THE TURNS AFTER IT. Only where this check-in's first turn was that opening: kept from the open in
+   * this copy of the API, else read again from the record and kept only if the first turn is still those words. Nothing otherwise, and
+   * nothing with the switch off (aTeamMembersOpeningFor reads it), so the prompt is byte for byte what it was.
+   */
+  private async theOneThingTodayHere(checkIn: { id: string; groundId: string; participantId: string; sessionNumber: number }): Promise<string> {
+    if (!checkIn?.id) return '';
+    if (!this.theOneThingTodayFor.has(checkIn.id)) {
+      const opening = await aTeamMembersOpeningFor(this.prisma, { groundId: checkIn.groundId, participantId: checkIn.participantId, sessionNumber: checkIn.sessionNumber }).catch(() => null);
+      const first = opening ? await (this.prisma.conversationTurn?.findFirst?.({ where: { checkInId: checkIn.id, role: TurnRole.AI }, orderBy: { createdAt: 'asc' }, select: { content: true } } as any) ?? Promise.resolve(null)).catch(() => null) as any : null;
+      this.theOneThingTodayFor.set(checkIn.id, opening && String(first?.content ?? '').startsWith(opening.text) ? opening : null);
+    }
+    return theOneThingTodayBlock(this.theOneThingTodayFor.get(checkIn.id) ?? null);
+  }
+
+  /* Each team member's opening, kept for the turns after it in this copy of the API (the-one-thing-today). Read again from the record when it is not here. */
+  private _theOneThingTodayFor?: Map<string, ATeamMembersOpening | null>;
+  private get theOneThingTodayFor(): Map<string, ATeamMembersOpening | null> {
+    if (!this._theOneThingTodayFor) this._theOneThingTodayFor = new Map();
+    return this._theOneThingTodayFor;
+  }
+
   private async withTheNewsTheyWaitOn(checkIn: { participantId?: string; groundId?: string; participant?: { userId?: string | null } }, opening: string): Promise<string> {
     if (!checkIn?.participantId || !checkIn.groundId || !opening) return opening;
     const promises: any[] = await (this.prisma as any).personObjective?.findMany?.({ where: { participantId: checkIn.participantId, status: 'OPEN', kind: { in: ['COMMITMENT', 'TODO'] } }, select: { id: true, text: true, participantId: true, groundId: true, createdAt: true } })?.catch?.(() => []) ?? [];
@@ -6079,6 +6129,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     if (theDisagreementSentence) this.knownForThisTurn.set(checkIn.id, [...(this.knownForThisTurn.get(checkIn.id) ?? []), theDisagreementSentence]);
 
+    /* The direct morning's own opening, already asked, and what the record holds behind it: context for every turn after it (the-one-thing-today). */
+    const theOneThingToday = how?.forTheOpener ? '' : await this.theOneThingTodayHere(checkIn as any).catch(() => '');
     const thisTurn = {
       hasASituationPack: !!(packForThisSituation && packForThisSituation.trim().length > 200),
       sessionNumber: checkIn.sessionNumber,
@@ -6110,7 +6162,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ['clarificationContext', clarificationContext], ['selfCorrectionContext', selfCorrectionContext],
       ['finalSessionContext', finalSessionContext], ['howLongThisRuns', howLongThisRuns], ['returningUserContext', returningUserContext],
       ['roleProbeBlock', roleProbeBlock], ['salesGathersBlock', salesGathersBlock], ['referencesBlock', referencesBlock], ['feeNotesWaitBlock', feeNotesWaitBlock], ['theirJob', theJob], ['theJobThisTurn', theJobThisTurn], ['coachingBlock', coachingBlock],
-      ['patternProbeBlock', patternProbeBlock], ['theHole', theHole], ['theOneThingBack', theOneThingBack],
+      ['patternProbeBlock', patternProbeBlock], ['theHole', theHole], ['theOneThingToday', theOneThingToday], ['theOneThingBack', theOneThingBack],
       ['theFloorGiveBack', theFloorGiveBack], ['whoCarriesWhichPart', numbersAndOwners.whoCarries], ['whereTheNumberStands', numbersAndOwners.whereItStands], ['whoSecuredIt', whoSecuredIt],
       ['oneThingToDoBetter', oneThingToDoBetter],
       ['seenBefore', seenBefore], ['closeHeldLine', closeHeldLine],
@@ -6200,10 +6252,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     if (leanIsOnForThisProcess()) {
       const theLeanRules = [THE_LEAN_CORE, theirLanguage].filter(Boolean).join('\n\n');
-      return [THE_LEAN_CORE, theirLanguage, intakeBlock, recordAlreadyHolds, alreadyGiven, owedBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, finalSessionContext, returningUserContext, roleProbeBlock, salesGathersBlock, referencesBlock, feeNotesWaitBlock, theJob, theJobThisTurn, roleConfirmationBlock, coachingBlock, patternProbeBlock, dynamicContext, docContext, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork]
+      return [THE_LEAN_CORE, theirLanguage, intakeBlock, recordAlreadyHolds, alreadyGiven, owedBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, finalSessionContext, returningUserContext, roleProbeBlock, salesGathersBlock, referencesBlock, feeNotesWaitBlock, theJob, theJobThisTurn, roleConfirmationBlock, coachingBlock, patternProbeBlock, dynamicContext, docContext, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, theOneThingToday]
         .filter(Boolean).join('\n\n').replace(/^[\s\S]*$/, (all) => theRulesKeptTheRestWithoutStandInLabels(all, theLeanRules, calledHere));
     }
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, theirDealsBlock, alreadyGiven, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, salesGathersBlock, referencesBlock, feeNotesWaitBlock, theJob, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, burden, putThisToThem, askedWhenThisEnds, theJobThisTurn, theirHedge, theHole, salesGathers.last, heldBack, proofKindly, whereItIs, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n').replace(/^[\s\S]*$/, (all) => theRulesKeptTheRestWithoutStandInLabels(all, theRules, calledHere));
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, theirDealsBlock, alreadyGiven, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, salesGathersBlock, referencesBlock, feeNotesWaitBlock, theJob, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, burden, putThisToThem, askedWhenThisEnds, theJobThisTurn, theirHedge, theHole, theOneThingToday, salesGathers.last, heldBack, proofKindly, whereItIs, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n').replace(/^[\s\S]*$/, (all) => theRulesKeptTheRestWithoutStandInLabels(all, theRules, calledHere));
   }
 
   /**
