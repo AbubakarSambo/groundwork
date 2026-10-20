@@ -36,6 +36,8 @@ export function theShareSays(
       : groups.map((g) => `${say(sum(g.xs))} ${g.word} (${listed(g.xs)})`).join(', ').replace(/, ([^,]*)$/, ' and $1');
     const signed = fromTheDeals.signedDeals ?? [];
     const due = signed.length === 1 && signed[0].paysWhen ? ` Payment is due ${signed[0].paysWhen.replace(/^pays\s+/, '')}.` : '';
+    /* A target passed is never "49 of your 30" (night run 2, Kevin): what is sold, and by how much it is past the target. */
+    if (count > target) return `You have sold ${say(count)}${thing} so far, ${say(count - target)} more than your target of ${say(target)}, ${how}.${due}`;
     return `You have sold ${say(count)} of your ${say(target)}${thing} so far, ${how}.${due}`;
   }
   /*
@@ -62,6 +64,7 @@ export function theShareSays(
           ? `None of ${it} has proof of payment yet, so ${fromTheDeals.counts === 'value' ? 'it rests' : 'they rest'} on your word.`
           : `Proof of payment shows ${say(proven)} of ${it}, and the rest is on your word.`)
         : `${proven === 0 ? `None of ${it} has proof of payment yet.` : `Proof of payment shows ${say(proven)} of ${it}.`}${backed}${word > 0 ? ` The rest is on your word.` : ''}`;
+    if (count > target) return `${aim} You have sold ${n} so far, ${say(count - target)} more than the ${say(target)}. ${paid}`;
     return `${aim} You have sold ${n} of the ${say(target)} so far. ${paid}`;
   }
   if (direction === 'ZERO' && (count == null || count === 0)) return `${aim} There have been none so far, which is where it should stay.`;
@@ -72,5 +75,6 @@ export function theShareSays(
   if (direction === 'RATE') return `${aim} You are at ${aNumberPeopleCanRead(count)}% so far.`;
   if (direction === 'ZERO') return `${aim} There ${count === 1 ? 'has been 1' : `have been ${aNumberPeopleCanRead(count)}`} so far, and any at all is a breach.`;
   if (direction === 'DEADLINE') return `${aim} ${count >= (target > 0 ? target : 1) ? 'It is done.' : 'It is not done yet.'}`;
+  if (target > 0 && count > target) return `${aim} You have ${aNumberPeopleCanRead(count)} so far, ${aNumberPeopleCanRead(count - target)} more than the ${aNumberPeopleCanRead(target)}.`;
   return `${aim} You have ${aNumberPeopleCanRead(count)} of the ${aNumberPeopleCanRead(target)} so far.`;
 }
