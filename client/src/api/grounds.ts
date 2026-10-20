@@ -709,6 +709,16 @@ export type ReferencesAndResources =
       people?: { participantId: string; name: string; role: string | null; note: AReferenceLine | null; helpWith: AReferenceLine | null; earlier: string[] }[]
     }
 
+/** A person's record and the coaching Groundwork gave them, in the server's own words (api board/the-persons-record-in-words.ts). */
+export type ThePersonsRecordServed = {
+  heading: string
+  note: string
+  parts: { heading: string; says: string; toChange: string | null; evidence: string[] }[]
+  coaching: { said: string; since: string }[]
+  coachingEmpty: string
+  /** The person's own page alone. */
+  acrossYourCheckIns?: { heading: string; lines: string[] }
+}
 /** My work, as the server serves it to this reader (api board/my-work.ts). */
 export type ABehaviourRead = { key: string; name: string; verdict: 'Strength' | 'Needs work' | 'Not enough yet'; happened: string; means: string | null; toImprove: string | null; basedOn: string | null }
 export type MyWork =
@@ -737,4 +747,6 @@ export type MyWork =
       checkIns: { heading: string; due: number; done: number; onTime: number; specific: number; emptySays: string | null }
       reports: { heading: string; items: { checkInId: string; when: string; line: string }[]; emptySays: string; private?: string }
       items: { heading: string; note: string; itemWord: string; rows: { id: string; name: string; stage: string | null; next: string; nextBooked: boolean; proof: string; proven: boolean }[]; emptySays: string }
+      /** Only where the organisation's direct morning and judgements of a person are on. */
+      record?: ThePersonsRecordServed
     }

@@ -1,0 +1,2008 @@
+{
+ "about": "Test data only. What the API serves each reader from the second night run (gw_night_run2), captured on 21 October 2026 by running readMyWork and the reports controller over api board/__fixtures__/the-persons-record-night-run-2.json, with the direct morning on.",
+ "myWork": {
+  "Aisha as Aisha": {
+   "on": true,
+   "view": "self",
+   "checkInName": "Fee notes",
+   "person": {
+    "participantId": "069181e0-bb64-46bb-a603-a7f5eb2a90fe",
+    "name": "Aisha Kamau",
+    "firstName": "Aisha"
+   },
+   "heading": "Aisha’s work",
+   "topLine": "What you need to do, what you’ve done, and how to get better. Wanjiru sees this page too.",
+   "numbers": [
+    {
+     "value": "2 of 2",
+     "label": "check-ins"
+    }
+   ],
+   "focus": null,
+   "focusEmpty": "Nothing needs work yet. Your focus will show here once your check-ins show something to work on.",
+   "toDo": {
+    "othersNeed": [],
+    "own": [
+     {
+      "id": "c403f8c6-937d-437f-b043-3f17bc643a0c",
+      "text": "Follow up with Mr. Baraka",
+      "when": "It was due on 19 October.",
+      "done": false,
+      "late": true,
+      "whose": null
+     },
+     {
+      "id": "f74abcc9-9f84-4698-b912-ab17848dbbf1",
+      "text": "I can ask them for the slip.",
+      "when": "This afternoon",
+      "done": false,
+      "late": false,
+      "whose": null
+     },
+     {
+      "id": "c20ba924-2a35-4211-8f6c-3c205a1371ae",
+      "text": "Check in with Jamii Clinics again",
+      "when": "Towards the end of this week",
+      "done": false,
+      "late": false,
+      "whose": null
+     },
+     {
+      "id": "c88f5d4c-a21b-4965-9b5e-41d7c1b210d9",
+      "text": "I expect to confirm it",
+      "when": "By the end of the month",
+      "done": false,
+      "late": false,
+      "whose": null
+     }
+    ],
+    "emptySays": "Nothing to do yet. What you say you will do in a check-in shows here."
+   },
+   "achieved": {
+    "items": [],
+    "note": "In this check-in",
+    "emptySays": "Nothing yet. What you finish, with its proof, shows here."
+   },
+   "performing": {
+    "note": "The same seven behaviours in every check-in, read from your last 2 check-ins.",
+    "behaviours": [
+     {
+      "key": "keeping-promises",
+      "name": "Keeping promises",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "planning-ahead",
+      "name": "Planning ahead",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "handling-blockers",
+      "name": "Handling blockers",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "working-on-the-right-things",
+      "name": "Working on the right things",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "backing-claims-with-proof",
+      "name": "Backing claims with proof",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "helping-your-team",
+      "name": "Helping your team",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "check-in-quality",
+      "name": "Check-in quality",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     }
+    ],
+    "libraryNote": "What each behaviour means and how to improve come from the behaviour and pattern library, so the words are the same in every check-in."
+   },
+   "coaching": {
+    "better": [],
+    "keep": [],
+    "betterEmpty": "Nothing yet. Lines show here from Wanjiru’s coaching for the team and from what keeps coming up in your check-ins.",
+    "keepEmpty": "Your strengths will show here once your check-ins show them."
+   },
+   "checkIns": {
+    "heading": "Your check-ins",
+    "due": 2,
+    "done": 2,
+    "onTime": 2,
+    "specific": 2,
+    "emptySays": null
+   },
+   "reports": {
+    "heading": "Your reports",
+    "items": [
+     {
+      "checkInId": "808cb71f-bdf9-47f6-80e3-903a16feed7b",
+      "when": "Monday 19 October",
+      "line": "“FN-006 for Baraka Hardware has been paid”"
+     },
+     {
+      "checkInId": "bc6bc09f-378d-4e10-ab97-14f7c84ae8a8",
+      "when": "Monday 12 October",
+      "line": "“Once they tell me they've paid, I consider my part done until Njeri confirms it on her end.”"
+     }
+    ],
+    "emptySays": "Your own report for each check-in will show here once you finish one."
+   },
+   "items": {
+    "heading": "Your deadlines",
+    "note": "0 open",
+    "itemWord": "deadline",
+    "rows": [],
+    "emptySays": "You have no deadlines on the board yet."
+   },
+   "record": {
+    "heading": "Your record in Fee notes",
+    "note": "This is read from what you said in your check-ins and what is on file. It changes only when something new comes in.",
+    "parts": [
+     {
+      "heading": "What you said and what shows it",
+      "says": "You said four times that something was sold, paid or signed. None of them has proof on file, and you took one back later.",
+      "toChange": "Adding the photo, slip or link when you say something is done would change this.",
+      "evidence": [
+       "On Monday 12 October you said “Baraka Hardware actually paid last week; Mr. Baraka told me personally.” Nothing on file shows it yet.",
+       "On Monday 12 October you said “I think they've paid, I believe it went through on Friday.” On Monday 19 October you said “I was mistaken; Jamii Clinics hasn't actually paid yet.”",
+       "On Monday 12 October you said “the bursar at Upendo Schools confirmed it's sorted.” Nothing on file shows it yet.",
+       "On Monday 19 October you said “FN-006 for Baraka Hardware has been paid.” Nothing on file shows it yet."
+      ]
+     },
+     {
+      "heading": "Promises",
+      "says": "Neither of the two promises you made that came due was kept. Two are past their day with nothing said about them yet.",
+      "toChange": "Promising less, and saying early when a date will move, would change this.",
+      "evidence": [
+       "You promised “I can ask them for the slip.” for Monday 12 October, and nothing you have said since shows it done.",
+       "You promised “I'll follow up with Mr. Baraka.” for Monday 19 October, and nothing you have said since shows it done."
+      ]
+     },
+     {
+      "heading": "Your check-ins",
+      "says": "You did two of two check-ins, all on time. Two of them named the item, what changed and the day.",
+      "toChange": null,
+      "evidence": []
+     }
+    ],
+    "coaching": [
+     {
+      "said": "After your check-in on Monday 12 October, Groundwork told you “Add the photo, slip or link when you say something is done. For FN-009, that would be the payment slip, the bank statement or the M-Pesa message.”",
+      "since": "Backing what you say with proof has stayed the same since then."
+     }
+    ],
+    "coachingEmpty": "Groundwork has not coached you on anything yet.",
+    "acrossYourCheckIns": {
+     "heading": "In your other check-ins",
+     "lines": [
+      "In Litigation team daily, you kept three of three promises that came due and you did six of six check-ins."
+     ]
+    }
+   }
+  },
+  "Aisha as Wanjiru": {
+   "on": true,
+   "view": "lead",
+   "checkInName": "Fee notes",
+   "person": {
+    "participantId": "069181e0-bb64-46bb-a603-a7f5eb2a90fe",
+    "name": "Aisha Kamau",
+    "firstName": "Aisha"
+   },
+   "heading": "Aisha’s work",
+   "topLine": "What Aisha needs to do, what Aisha has done, and how Aisha can get better. Aisha sees this page too.",
+   "numbers": [
+    {
+     "value": "2 of 2",
+     "label": "check-ins"
+    }
+   ],
+   "focus": null,
+   "focusEmpty": "Nothing needs work yet. Aisha’s focus will show here once the check-ins show something to work on.",
+   "toDo": {
+    "othersNeed": [],
+    "own": [
+     {
+      "id": "c403f8c6-937d-437f-b043-3f17bc643a0c",
+      "text": "Follow up with Mr. Baraka",
+      "when": "It was due on 19 October.",
+      "done": false,
+      "late": true,
+      "whose": null
+     },
+     {
+      "id": "f74abcc9-9f84-4698-b912-ab17848dbbf1",
+      "text": "I can ask them for the slip.",
+      "when": "This afternoon",
+      "done": false,
+      "late": false,
+      "whose": null
+     },
+     {
+      "id": "c20ba924-2a35-4211-8f6c-3c205a1371ae",
+      "text": "Check in with Jamii Clinics again",
+      "when": "Towards the end of this week",
+      "done": false,
+      "late": false,
+      "whose": null
+     },
+     {
+      "id": "c88f5d4c-a21b-4965-9b5e-41d7c1b210d9",
+      "text": "I expect to confirm it",
+      "when": "By the end of the month",
+      "done": false,
+      "late": false,
+      "whose": null
+     }
+    ],
+    "emptySays": "Aisha has nothing to do yet. What Aisha says in a check-in shows here."
+   },
+   "achieved": {
+    "items": [],
+    "note": "In this check-in",
+    "emptySays": "Nothing yet. What Aisha finishes, with its proof, shows here."
+   },
+   "performing": {
+    "note": "The same seven behaviours in every check-in, read from Aisha’s last 2 check-ins.",
+    "behaviours": [
+     {
+      "key": "keeping-promises",
+      "name": "Keeping promises",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "planning-ahead",
+      "name": "Planning ahead",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "handling-blockers",
+      "name": "Handling blockers",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "working-on-the-right-things",
+      "name": "Working on the right things",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "backing-claims-with-proof",
+      "name": "Backing claims with proof",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "helping-your-team",
+      "name": "Helping your team",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "check-in-quality",
+      "name": "Check-in quality",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     }
+    ],
+    "libraryNote": "What each behaviour means and how to improve come from the behaviour and pattern library, so the words are the same in every check-in."
+   },
+   "coaching": {
+    "better": [],
+    "keep": [],
+    "betterEmpty": "Nothing yet. Lines show here from your coaching for the team and from what keeps coming up in Aisha’s check-ins.",
+    "keepEmpty": "Aisha’s strengths will show here once the check-ins show them."
+   },
+   "checkIns": {
+    "heading": "Aisha’s check-ins",
+    "due": 2,
+    "done": 2,
+    "onTime": 2,
+    "specific": 2,
+    "emptySays": null
+   },
+   "reports": {
+    "heading": "Aisha’s reports",
+    "items": [],
+    "emptySays": "",
+    "private": "Aisha’s own reports are Aisha’s alone, so they are not shown here."
+   },
+   "items": {
+    "heading": "Aisha’s deadlines",
+    "note": "0 open",
+    "itemWord": "deadline",
+    "rows": [],
+    "emptySays": "Aisha has no deadlines on the board yet."
+   },
+   "record": {
+    "heading": "Aisha’s record in Fee notes",
+    "note": "This is read from what Aisha said in Aisha’s check-ins and what is on file. It changes only when something new comes in.",
+    "parts": [
+     {
+      "heading": "What Aisha said and what shows it",
+      "says": "Aisha said four times that something was sold, paid or signed. None of them has proof on file, and Aisha took one back later.",
+      "toChange": "Adding the photo, slip or link when Aisha says something is done would change this.",
+      "evidence": [
+       "On Monday 12 October Aisha said “Baraka Hardware actually paid last week; Mr. Baraka told me personally.” Nothing on file shows it yet.",
+       "On Monday 12 October Aisha said “I think they've paid, I believe it went through on Friday.” On Monday 19 October Aisha said “I was mistaken; Jamii Clinics hasn't actually paid yet.”",
+       "On Monday 12 October Aisha said “the bursar at Upendo Schools confirmed it's sorted.” Nothing on file shows it yet.",
+       "On Monday 19 October Aisha said “FN-006 for Baraka Hardware has been paid.” Nothing on file shows it yet."
+      ]
+     },
+     {
+      "heading": "Promises",
+      "says": "Neither of the two promises Aisha made that came due was kept. Two are past their day with nothing said about them yet.",
+      "toChange": "Promising less, and saying early when a date will move, would change this.",
+      "evidence": [
+       "Aisha promised “I can ask them for the slip.” for Monday 12 October, and nothing Aisha has said since shows it done.",
+       "Aisha promised “I'll follow up with Mr. Baraka.” for Monday 19 October, and nothing Aisha has said since shows it done."
+      ]
+     },
+     {
+      "heading": "Aisha’s check-ins",
+      "says": "Aisha did two of two check-ins, all on time. Two of them named the item, what changed and the day.",
+      "toChange": null,
+      "evidence": []
+     }
+    ],
+    "coaching": [
+     {
+      "said": "After Aisha’s check-in on Monday 12 October, Groundwork told Aisha “Add the photo, slip or link when you say something is done. For FN-009, that would be the payment slip, the bank statement or the M-Pesa message.”",
+      "since": "Backing what Aisha says with proof has stayed the same since then."
+     }
+    ],
+    "coachingEmpty": "Groundwork has not coached Aisha on anything yet."
+   },
+   "people": [
+    {
+     "participantId": "0f8505ac-f7a8-4d30-9fa7-1636efc59b05",
+     "name": "You"
+    },
+    {
+     "participantId": "06c97be4-47d8-4260-b223-090a9b8365f9",
+     "name": "Brian Otieno"
+    },
+    {
+     "participantId": "069181e0-bb64-46bb-a603-a7f5eb2a90fe",
+     "name": "Aisha Kamau"
+    },
+    {
+     "participantId": "87dc90a9-acf2-4cdd-9c33-a2fde7126ada",
+     "name": "Njeri Wambui"
+    }
+   ]
+  },
+  "Njeri as Njeri": {
+   "on": true,
+   "view": "self",
+   "checkInName": "Fee notes",
+   "person": {
+    "participantId": "87dc90a9-acf2-4cdd-9c33-a2fde7126ada",
+    "name": "Njeri Wambui",
+    "firstName": "Njeri"
+   },
+   "heading": "Njeri’s work",
+   "topLine": "What you need to do, what you’ve done, and how to get better. Wanjiru sees this page too.",
+   "numbers": [
+    {
+     "value": "2 of 2",
+     "label": "check-ins"
+    }
+   ],
+   "focus": null,
+   "focusEmpty": "Nothing needs work yet. Your focus will show here once your check-ins show something to work on.",
+   "toDo": {
+    "othersNeed": [
+     {
+      "id": "f84b19ba-21a6-4fb6-b054-a67f8d2ca702",
+      "text": "Aisha is waiting on you for confirmation that the payment from Upendo Schools is sorted (FN-009).",
+      "when": "Since 12 October"
+     },
+     {
+      "id": "de33c347-1098-4980-8974-352be053399d",
+      "text": "Aisha is waiting on you for confirmation of payment for Baraka Hardware (FN-006).",
+      "when": "Since 12 October"
+     },
+     {
+      "id": "a40324a3-fa58-4c9f-9213-4d11030e2175",
+      "text": "Wanjiru is waiting on you to see the payment for FN-004 in the bank.",
+      "when": "Since 19 October"
+     }
+    ],
+    "own": [
+     {
+      "id": "02bb5ddf-2d26-4009-89d0-2adf1c27b53f",
+      "text": "I can check the system",
+      "when": "When I am at my desk",
+      "done": false,
+      "late": false,
+      "whose": null
+     },
+     {
+      "id": "4843ccbb-7585-45af-bdcc-6e07a458eaed",
+      "text": "Wait for the bank to confirm payment.",
+      "when": null,
+      "done": false,
+      "late": false,
+      "whose": null
+     },
+     {
+      "id": "1f9a0c37-3c71-4396-9ef3-9de063d3bac5",
+      "text": "Check daily.",
+      "when": null,
+      "done": false,
+      "late": false,
+      "whose": null
+     }
+    ],
+    "emptySays": "Nothing to do yet. What you say you will do in a check-in shows here."
+   },
+   "achieved": {
+    "items": [],
+    "note": "In this check-in",
+    "emptySays": "Nothing yet. What you finish, with its proof, shows here."
+   },
+   "performing": {
+    "note": "The same seven behaviours in every check-in, read from your last 2 check-ins.",
+    "behaviours": [
+     {
+      "key": "keeping-promises",
+      "name": "Keeping promises",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "planning-ahead",
+      "name": "Planning ahead",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "handling-blockers",
+      "name": "Handling blockers",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "working-on-the-right-things",
+      "name": "Working on the right things",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "backing-claims-with-proof",
+      "name": "Backing claims with proof",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "helping-your-team",
+      "name": "Helping your team",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "check-in-quality",
+      "name": "Check-in quality",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     }
+    ],
+    "libraryNote": "What each behaviour means and how to improve come from the behaviour and pattern library, so the words are the same in every check-in."
+   },
+   "coaching": {
+    "better": [],
+    "keep": [],
+    "betterEmpty": "Nothing yet. Lines show here from Wanjiru’s coaching for the team and from what keeps coming up in your check-ins.",
+    "keepEmpty": "Your strengths will show here once your check-ins show them."
+   },
+   "checkIns": {
+    "heading": "Your check-ins",
+    "due": 2,
+    "done": 2,
+    "onTime": 2,
+    "specific": 2,
+    "emptySays": null
+   },
+   "reports": {
+    "heading": "Your reports",
+    "items": [
+     {
+      "checkInId": "0498b60b-40de-4d0d-9ac4-7a86d25b5dc9",
+      "when": "Monday 19 October",
+      "line": "“I haven't done anything to get sight of those payments. I'm still waiting for them to reflect in the bank.”"
+     },
+     {
+      "checkInId": "b6048797-e510-40bf-94d6-644652d86628",
+      "when": "Monday 12 October",
+      "line": "“A payment counts only when I see it in the bank.”"
+     }
+    ],
+    "emptySays": "Your own report for each check-in will show here once you finish one."
+   },
+   "items": {
+    "heading": "Your deadlines",
+    "note": "0 open",
+    "itemWord": "deadline",
+    "rows": [],
+    "emptySays": "You have no deadlines on the board yet."
+   },
+   "record": {
+    "heading": "Your record in Fee notes",
+    "note": "This is read from what you said in your check-ins and what is on file. It changes only when something new comes in.",
+    "parts": [
+     {
+      "heading": "What you said and what shows it",
+      "says": "You said once that something was sold, paid or signed, and it has proof on file.",
+      "toChange": null,
+      "evidence": [
+       "On Monday 12 October you said “FN-004 is paid. I received a bank slip today for the KES 250,000 remittance from Kasarani Foods and have recorded the payment.” A document you added shows it."
+      ]
+     },
+     {
+      "heading": "Blockers",
+      "says": "You raised one blocker, and did not say what you had tried first.",
+      "toChange": null,
+      "evidence": [
+       "On Monday 12 October you raised a blocker, waiting for word that the reply is filed for FN-005, and did not say what you had tried first."
+      ]
+     },
+     {
+      "heading": "Your check-ins",
+      "says": "You did two of two check-ins, all on time. Two of them named the item, what changed and the day.",
+      "toChange": null,
+      "evidence": []
+     }
+    ],
+    "coaching": [],
+    "coachingEmpty": "Groundwork has not coached you on anything yet."
+   }
+  },
+  "Kevin as Kevin": {
+   "on": true,
+   "view": "self",
+   "checkInName": "Sales team, Q4",
+   "person": {
+    "participantId": "9f2e58a4-06d8-4a0a-bddc-03cd96df027c",
+    "name": "Kevin Omondi",
+    "firstName": "Kevin"
+   },
+   "heading": "Kevin’s work",
+   "topLine": "What you need to do, what you’ve done, and how to get better. Grace sees this page too.",
+   "numbers": [
+    {
+     "value": "19 over",
+     "label": "your target of 30"
+    },
+    {
+     "value": "0 of 1",
+     "label": "promises kept"
+    },
+    {
+     "value": "6 of 6",
+     "label": "check-ins"
+    }
+   ],
+   "focus": null,
+   "focusEmpty": "Nothing needs work yet. Your focus will show here once your check-ins show something to work on.",
+   "toDo": {
+    "othersNeed": [],
+    "own": [
+     {
+      "id": "209f20fc-78ce-4819-99d7-3be0f33631e0",
+      "text": "Call her tomorrow morning.",
+      "when": "It was due on 14 October.",
+      "done": false,
+      "late": true,
+      "whose": null
+     },
+     {
+      "id": "bce79180-35c9-4488-8a14-c24355a0d072",
+      "text": "Follow up soon.",
+      "when": "Soon",
+      "done": false,
+      "late": false,
+      "whose": null
+     },
+     {
+      "id": "923025c6-07cd-4d79-9ce6-d7a7f680382c",
+      "text": "Follow up with him",
+      "when": "Next week",
+      "done": false,
+      "late": false,
+      "whose": null
+     },
+     {
+      "id": "3bf11ce7-27d7-468d-b40b-c66be0988dda",
+      "text": "I can get it for you.",
+      "when": "Right now",
+      "done": false,
+      "late": false,
+      "whose": null
+     },
+     {
+      "id": "7e673a98-940c-4dbe-ab3f-5fee10dc7ed6",
+      "text": "I'm going to follow up with a few new leads I have for hotels in the CBD.",
+      "when": null,
+      "done": false,
+      "late": false,
+      "whose": null
+     },
+     {
+      "id": "b0635515-dfa6-4db4-9e48-b71bd98828ba",
+      "text": "Call them",
+      "when": "Today",
+      "done": false,
+      "late": false,
+      "whose": null
+     }
+    ],
+    "emptySays": "Nothing to do yet. What you say you will do in a check-in shows here."
+   },
+   "achieved": {
+    "items": [
+     {
+      "text": "You kept 0 of 1 promises.",
+      "proof": "Your check-ins"
+     }
+    ],
+    "note": "In this check-in",
+    "emptySays": "Nothing yet. What you finish, with its proof, shows here."
+   },
+   "performing": {
+    "note": "The same seven behaviours in every check-in, read from your last 6 check-ins.",
+    "behaviours": [
+     {
+      "key": "keeping-promises",
+      "name": "Keeping promises",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "planning-ahead",
+      "name": "Planning ahead",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "handling-blockers",
+      "name": "Handling blockers",
+      "verdict": "Strength",
+      "happened": "You raised 2 blockers and said what you had tried first on 1 of them. 1 of them is cleared now.",
+      "means": "Clearing blockers yourself shows ownership.",
+      "toImprove": null,
+      "basedOn": "2 blockers raised between 14 and 15 October"
+     },
+     {
+      "key": "working-on-the-right-things",
+      "name": "Working on the right things",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "backing-claims-with-proof",
+      "name": "Backing claims with proof",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "helping-your-team",
+      "name": "Helping your team",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "check-in-quality",
+      "name": "Check-in quality",
+      "verdict": "Strength",
+      "happened": "You did 6 of 6 check-ins on time. 6 of 6 were specific.",
+      "means": "Specific, on-time check-ins make your work visible.",
+      "toImprove": null,
+      "basedOn": "6 check-ins"
+     }
+    ],
+    "libraryNote": "What each behaviour means and how to improve come from the behaviour and pattern library, so the words are the same in every check-in."
+   },
+   "coaching": {
+    "better": [],
+    "keep": [
+     "Trying one thing yourself before you raise a blocker.",
+     "Specific, on-time check-ins."
+    ],
+    "betterEmpty": "Nothing yet. Lines show here from Grace’s coaching for the team and from what keeps coming up in your check-ins.",
+    "keepEmpty": "Your strengths will show here once your check-ins show them."
+   },
+   "checkIns": {
+    "heading": "Your check-ins",
+    "due": 6,
+    "done": 6,
+    "onTime": 6,
+    "specific": 6,
+    "emptySays": null
+   },
+   "reports": {
+    "heading": "Your reports",
+    "items": [
+     {
+      "checkInId": "58c94007-d435-45c0-bdb0-83677b2954a3",
+      "when": "Monday 19 October",
+      "line": "“Roysambu Gym signed the order for 3 units today.”"
+     },
+     {
+      "checkInId": "8445497a-a503-4775-abf8-af89d6aa0557",
+      "when": "Friday 16 October",
+      "line": "“Ngong Road Minimart wants 5 units. Ali confirmed that to me after I sent the initial quote.”"
+     },
+     {
+      "checkInId": "fdf46c23-df9a-4bd2-b1f7-861f7794433c",
+      "when": "Thursday 15 October",
+      "line": "“Jane said she'll pay the deposit tomorrow”"
+     }
+    ],
+    "emptySays": "Your own report for each check-in will show here once you finish one."
+   },
+   "items": {
+    "heading": "Your deals",
+    "note": "0 open",
+    "itemWord": "deal",
+    "rows": [],
+    "emptySays": "You have no deals on the board yet."
+   },
+   "record": {
+    "heading": "Your record in Sales team, Q4",
+    "note": "This is read from what you said in your check-ins and what is on file. It changes only when something new comes in.",
+    "parts": [
+     {
+      "heading": "What you said and what shows it",
+      "says": "You said four times that something was sold, paid or signed. Three of them have proof on file.",
+      "toChange": null,
+      "evidence": [
+       "On Monday 12 October you said “Just closed a big one today... proof of payment for Kilele Hotel.” A document you added shows it.",
+       "On Friday 16 October you said “Jane paid the KES 15,000 deposit for Savannah Cafe today.” A payment record shows it.",
+       "On Monday 19 October you said “Roysambu Gym signed the order for 3 units today.” Nothing on file shows it yet.",
+       "On Monday 19 October you said “Jane paid the remaining KES 15,000 balance for the 6 Savannah Cafe units. The M-Pesa confirmation code is RCD8M1LS4W.” The M-Pesa code RCD8M1LS4W shows it."
+      ]
+     },
+     {
+      "heading": "Promises",
+      "says": "You kept one of the two promises that came due. One was not done.",
+      "toChange": null,
+      "evidence": [
+       "You promised “I'll call Paul.” on Monday 12 October, and said later it was not done.",
+       "You promised “I'll call her tomorrow morning.” on Tuesday 13 October, and it was done by Wednesday 14 October."
+      ]
+     },
+     {
+      "heading": "Figures that changed",
+      "says": "You put a figure right yourself.",
+      "toChange": null,
+      "evidence": [
+       "You put the figure for Ngong Road Minimart right yourself, from 4 units to 5, on Wednesday 14 October."
+      ]
+     },
+     {
+      "heading": "Blockers",
+      "says": "You raised two blockers and said what you had tried first on one of them.",
+      "toChange": null,
+      "evidence": [
+       "On Wednesday 14 October you raised a blocker, waiting for a reply to my calls, and said what had been tried, “I've tried Paul a couple of times”.",
+       "On Thursday 15 October you raised a blocker, waiting for the deposit, and did not say what you had tried first."
+      ]
+     },
+     {
+      "heading": "Your check-ins",
+      "says": "You did six of six check-ins, all on time. Six of them named the item, what changed and the day.",
+      "toChange": null,
+      "evidence": []
+     }
+    ],
+    "coaching": [],
+    "coachingEmpty": "Groundwork has not coached you on anything yet."
+   }
+  },
+  "Joseph as Joseph": {
+   "on": true,
+   "view": "self",
+   "checkInName": "Sales team, Q4",
+   "person": {
+    "participantId": "2274e6af-8d37-4388-bd39-8a7aeb582d7b",
+    "name": "Joseph Kariuki",
+    "firstName": "Joseph"
+   },
+   "heading": "Joseph’s work",
+   "topLine": "What you need to do, what you’ve done, and how to get better. Grace sees this page too.",
+   "numbers": [
+    {
+     "value": "0 of 30",
+     "label": "your target"
+    },
+    {
+     "value": "0 of 2",
+     "label": "promises kept"
+    },
+    {
+     "value": "6 of 6",
+     "label": "check-ins"
+    }
+   ],
+   "focus": {
+    "line": "Try one thing before you raise a blocker, and say what you tried.",
+    "why": "You raised 4 blockers and said what you had tried first on 0 of them."
+   },
+   "focusEmpty": "Nothing needs work yet. Your focus will show here once your check-ins show something to work on.",
+   "toDo": {
+    "othersNeed": [],
+    "own": [
+     {
+      "id": "9d3b29d8-afc4-4204-bed8-d2a8832523f6",
+      "text": "Get that price to Juja Hardware",
+      "when": "This week",
+      "done": false,
+      "late": false,
+      "whose": null
+     },
+     {
+      "id": "98237adc-4936-4522-a870-2284fcee1c43",
+      "text": "Be sure to get it once we finalize the deal.",
+      "when": "Once we finalize the deal",
+      "done": false,
+      "late": false,
+      "whose": null
+     }
+    ],
+    "emptySays": "Nothing to do yet. What you say you will do in a check-in shows here."
+   },
+   "achieved": {
+    "items": [
+     {
+      "text": "You kept 0 of 2 promises.",
+      "proof": "Your check-ins"
+     }
+    ],
+    "note": "In this check-in",
+    "emptySays": "Nothing yet. What you finish, with its proof, shows here."
+   },
+   "performing": {
+    "note": "The same seven behaviours in every check-in, read from your last 6 check-ins.",
+    "behaviours": [
+     {
+      "key": "keeping-promises",
+      "name": "Keeping promises",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "planning-ahead",
+      "name": "Planning ahead",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "handling-blockers",
+      "name": "Handling blockers",
+      "verdict": "Needs work",
+      "happened": "You raised 4 blockers and said what you had tried first on 0 of them.",
+      "means": "Raising blockers without trying to clear them can look like excuses.",
+      "toImprove": "Try one thing before you raise a blocker, and say what you tried.",
+      "basedOn": "4 blockers raised between 14 and 16 October"
+     },
+     {
+      "key": "working-on-the-right-things",
+      "name": "Working on the right things",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "backing-claims-with-proof",
+      "name": "Backing claims with proof",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "helping-your-team",
+      "name": "Helping your team",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "check-in-quality",
+      "name": "Check-in quality",
+      "verdict": "Needs work",
+      "happened": "You did 6 of 6 check-ins, 4 of them on time. 5 of 6 were specific.",
+      "means": "Vague or late check-ins hide what you’re doing.",
+      "toImprove": "Name the item, what changed and the day, every time.",
+      "basedOn": "6 check-ins"
+     }
+    ],
+    "libraryNote": "What each behaviour means and how to improve come from the behaviour and pattern library, so the words are the same in every check-in."
+   },
+   "coaching": {
+    "better": [],
+    "keep": [],
+    "betterEmpty": "Nothing yet. Lines show here from Grace’s coaching for the team and from what keeps coming up in your check-ins.",
+    "keepEmpty": "Your strengths will show here once your check-ins show them."
+   },
+   "checkIns": {
+    "heading": "Your check-ins",
+    "due": 6,
+    "done": 6,
+    "onTime": 4,
+    "specific": 5,
+    "emptySays": null
+   },
+   "reports": {
+    "heading": "Your reports",
+    "items": [
+     {
+      "checkInId": "132c9d25-b55a-4964-a367-9920af30656e",
+      "when": "Today",
+      "line": "Session 6."
+     },
+     {
+      "checkInId": "e281d304-5fbe-4862-befd-7b19fedb2f60",
+      "when": "Monday 19 October",
+      "line": "“Mr. Mutua wants to wait until November.”"
+     },
+     {
+      "checkInId": "091d67ba-2158-4989-976d-86a0d84c593e",
+      "when": "Friday 16 October",
+      "line": "“I was busy in the field yesterday, so I haven't had a chance to get a decision on the KES 4,500 price yet.”"
+     }
+    ],
+    "emptySays": "Your own report for each check-in will show here once you finish one."
+   },
+   "items": {
+    "heading": "Your deals",
+    "note": "0 open",
+    "itemWord": "deal",
+    "rows": [],
+    "emptySays": "You have no deals on the board yet."
+   },
+   "record": {
+    "heading": "Your record in Sales team, Q4",
+    "note": "This is read from what you said in your check-ins and what is on file. It changes only when something new comes in.",
+    "parts": [
+     {
+      "heading": "What you said and what shows it",
+      "says": "You said three times that something was sold, paid or signed. None of them has proof on file, and you took two back later.",
+      "toChange": "Adding the photo, slip or link when you say something is done would change this.",
+      "evidence": [
+       "On Monday 12 October you said “I've got some big deals in the pipeline that are basically closed.” Nothing on file shows it yet.",
+       "On Monday 12 October you said “That 10-unit deal for Mama Pima is definitely part of my 30-unit target. It's basically closed.” On Friday 16 October you said “The Mama Pima deposit hasn't actually come through yet, she's still choosing.”",
+       "On Wednesday 14 October you said “Mama Pima paid a deposit.” On Friday 16 October you said “The Mama Pima deposit hasn't actually come through yet, she's still choosing.”"
+      ]
+     },
+     {
+      "heading": "Promises",
+      "says": "Neither of the two promises you made that came due was kept. Two were not done.",
+      "toChange": "Promising less, and saying early when a date will move, would change this.",
+      "evidence": [
+       "You promised “I'll get it to him.” on Tuesday 13 October, and said later it was not done.",
+       "You promised “I'll follow up on that.” on Friday 16 October, and said later it was not done."
+      ]
+     },
+     {
+      "heading": "Figures that changed",
+      "says": "One figure you gave changed from one check-in to the next, with nothing said about why.",
+      "toChange": "Saying so yourself when a figure changes, with what shows the new one, would change this.",
+      "evidence": [
+       "On Monday 12 October you said 10 units for Mama Pima Stores, and on Tuesday 13 October you said 15 units."
+      ]
+     },
+     {
+      "heading": "Where your time went",
+      "says": "Juja Hardware cannot buy now, and you have not spent a check-in on it since.",
+      "toChange": null,
+      "evidence": [
+       "On Monday 19 October you said “The KES 4,500 price was for Juja Hardware, and they've decided to wait until November.”"
+      ]
+     },
+     {
+      "heading": "Blockers",
+      "says": "You raised four blockers and said what you had tried first on none of them.",
+      "toChange": "Trying one thing before raising a blocker, and saying what was tried, would change this.",
+      "evidence": [
+       "On Wednesday 14 October you raised a blocker, waiting for a decision on whether to offer a unit at KES 4,500, and did not say what you had tried first.",
+       "On Wednesday 14 October you raised a blocker, waiting for the M-Pesa payment, and did not say what you had tried first.",
+       "On Friday 16 October you raised a blocker, waiting for the signed agreement from Juja Hardware, and did not say what you had tried first.",
+       "On Friday 16 October you raised a blocker, waiting for a decision on the KES 4,500 price, and did not say what you had tried first."
+      ]
+     },
+     {
+      "heading": "Your check-ins",
+      "says": "You did six of six check-ins, four of them on time. Five of them named the item, what changed and the day.",
+      "toChange": "Naming the item, what changed and the day, every time, would change this.",
+      "evidence": [
+       "On Friday 16 October, the check-in was done more than a day after it opened.",
+       "On Monday 19 October, the check-in was done more than a day after it opened.",
+       "On Tuesday 20 October, the check-in did not name the item, what changed and the day."
+      ]
+     }
+    ],
+    "coaching": [
+     {
+      "said": "After your check-in on Monday 12 October, Groundwork told you “Add the photo, slip or link when you say something is done.”",
+      "since": "Backing what you say with proof has stayed the same since then."
+     }
+    ],
+    "coachingEmpty": "Groundwork has not coached you on anything yet."
+   }
+  },
+  "Mercy as Mercy": {
+   "on": true,
+   "view": "self",
+   "checkInName": "Sales team, Q4",
+   "person": {
+    "participantId": "5632caa0-593e-48d5-910e-5c9ea5bc4fb2",
+    "name": "Mercy Wairimu",
+    "firstName": "Mercy"
+   },
+   "heading": "Mercy’s work",
+   "topLine": "What you need to do, what you’ve done, and how to get better. Grace sees this page too.",
+   "numbers": [
+    {
+     "value": "26 of 30",
+     "label": "your target"
+    },
+    {
+     "value": "1 of 4",
+     "label": "promises kept"
+    },
+    {
+     "value": "6 of 6",
+     "label": "check-ins"
+    }
+   ],
+   "focus": {
+    "line": "Promise less, and say early when a date will move.",
+    "why": "You kept 1 of 4 promises."
+   },
+   "focusEmpty": "Nothing needs work yet. Your focus will show here once your check-ins show something to work on.",
+   "toDo": {
+    "othersNeed": [],
+    "own": [
+     {
+      "id": "bcc3fb65-097d-4aa3-9f3a-73aa1eccc527",
+      "text": "Follow up with Mrs. Achola on Friday if I haven't heard from her by then to see if she's reviewed the quote and is ready to sign.",
+      "when": "It was due on 16 October.",
+      "done": false,
+      "late": true,
+      "whose": null
+     },
+     {
+      "id": "79d008f0-bfd2-4f66-8e8c-8af33f685464",
+      "text": "Call Mrs. Achola first thing Monday to get the manager's name and an estimated time for the sign-off.",
+      "when": "It was due on 19 October.",
+      "done": false,
+      "late": true,
+      "whose": null
+     },
+     {
+      "id": "5c2f2425-acfa-413e-960e-0bc4d3685b00",
+      "text": "Also try to call Mrs. Achola at Greenfield",
+      "when": null,
+      "done": false,
+      "late": false,
+      "whose": null
+     },
+     {
+      "id": "07421327-337b-4def-b2b1-2c5f7fe6823b",
+      "text": "Check in with them",
+      "when": "In January",
+      "done": false,
+      "late": false,
+      "whose": null
+     },
+     {
+      "id": "008c2fbf-4a11-4fed-9573-4f6347be3641",
+      "text": "I need to arrange for her dispenser to be delivered.",
+      "when": "This week",
+      "done": false,
+      "late": false,
+      "whose": null
+     },
+     {
+      "id": "f866a753-9797-4b19-b61c-a877b43797f3",
+      "text": "Get it sorted out",
+      "when": "This week",
+      "done": false,
+      "late": false,
+      "whose": null
+     },
+     {
+      "id": "4f14b741-b3c9-43b3-b93a-9f3a3c22d92e",
+      "text": "Make a plan this week to identify and visit more bigger shops, and fewer kiosks.",
+      "when": "This week",
+      "done": false,
+      "late": false,
+      "whose": null
+     },
+     {
+      "id": "35e02b75-9c26-43b5-8baa-47b59ae18874",
+      "text": "Get it from Mrs. Achola on Monday.",
+      "when": "Done on 19 October.",
+      "done": true,
+      "late": false,
+      "whose": null
+     }
+    ],
+    "emptySays": "Nothing to do yet. What you say you will do in a check-in shows here."
+   },
+   "achieved": {
+    "items": [
+     {
+      "text": "You kept 1 of 4 promises.",
+      "proof": "Your check-ins"
+     }
+    ],
+    "note": "In this check-in",
+    "emptySays": "Nothing yet. What you finish, with its proof, shows here."
+   },
+   "performing": {
+    "note": "The same seven behaviours in every check-in, read from your last 6 check-ins.",
+    "behaviours": [
+     {
+      "key": "keeping-promises",
+      "name": "Keeping promises",
+      "verdict": "Needs work",
+      "happened": "You kept 1 of 4 promises.",
+      "means": "Promises that slip make it hard for others to rely on you.",
+      "toImprove": "Promise less, and say early when a date will move.",
+      "basedOn": "Your check-ins"
+     },
+     {
+      "key": "planning-ahead",
+      "name": "Planning ahead",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "handling-blockers",
+      "name": "Handling blockers",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "working-on-the-right-things",
+      "name": "Working on the right things",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "backing-claims-with-proof",
+      "name": "Backing claims with proof",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "helping-your-team",
+      "name": "Helping your team",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "check-in-quality",
+      "name": "Check-in quality",
+      "verdict": "Strength",
+      "happened": "You did 6 of 6 check-ins, 5 of them on time. 6 of 6 were specific.",
+      "means": "Specific, on-time check-ins make your work visible.",
+      "toImprove": null,
+      "basedOn": "6 check-ins"
+     }
+    ],
+    "libraryNote": "What each behaviour means and how to improve come from the behaviour and pattern library, so the words are the same in every check-in."
+   },
+   "coaching": {
+    "better": [],
+    "keep": [
+     "Specific, on-time check-ins."
+    ],
+    "betterEmpty": "Nothing yet. Lines show here from Grace’s coaching for the team and from what keeps coming up in your check-ins.",
+    "keepEmpty": "Your strengths will show here once your check-ins show them."
+   },
+   "checkIns": {
+    "heading": "Your check-ins",
+    "due": 6,
+    "done": 6,
+    "onTime": 5,
+    "specific": 6,
+    "emptySays": null
+   },
+   "reports": {
+    "heading": "Your reports",
+    "items": [
+     {
+      "checkInId": "91de86aa-005d-4e75-b395-d5c057a05d1a",
+      "when": "Monday 19 October",
+      "line": "“The head teacher said they won't have a budget until January.”"
+     },
+     {
+      "checkInId": "9df791d6-6e48-426e-9a03-badafecaabf2",
+      "when": "Friday 16 October",
+      "line": "“The bursar confirmed no budget this year.”"
+     },
+     {
+      "checkInId": "58a25179-4456-405a-a9cb-bd6cc34e4aed",
+      "when": "Thursday 15 October",
+      "line": "“I sent over the quote for KES 125,000 today.”"
+     }
+    ],
+    "emptySays": "Your own report for each check-in will show here once you finish one."
+   },
+   "items": {
+    "heading": "Your deals",
+    "note": "0 open",
+    "itemWord": "deal",
+    "rows": [],
+    "emptySays": "You have no deals on the board yet."
+   },
+   "record": {
+    "heading": "Your record in Sales team, Q4",
+    "note": "This is read from what you said in your check-ins and what is on file. It changes only when something new comes in.",
+    "parts": [
+     {
+      "heading": "What you said and what shows it",
+      "says": "You said five times that something was sold, paid or signed, and every one has proof on file.",
+      "toChange": null,
+      "evidence": [
+       "On Friday 16 October you said “Mama Rose's Kiosk bought one unit today for KES 5,000 cash.” A document you added shows it.",
+       "On Monday 19 October you said “We have the signed purchase order.” A document you added shows it.",
+       "On Monday 19 October you said “It confirms the order for 25 units from Greenfield Supermarket at KES 125,000, and it's signed.” A document you added shows it.",
+       "On Monday 19 October you said “Greenfield signed the order today!” A document you added shows it.",
+       "On Monday 19 October you said “Mama Rose's Kiosk already paid for her unit last Friday.” A document you added shows it."
+      ]
+     },
+     {
+      "heading": "Promises",
+      "says": "You kept five of the seven promises that came due, one of them late. Two were not done.",
+      "toChange": null,
+      "evidence": [
+       "You promised “I'll follow up with the remaining Kawangware kiosks this week to see if any are ready to commit.” on Monday 12 October, and said later it was not done.",
+       "You promised “I need to call Mrs. Achola at Greenfield Supermarket.” on Monday 12 October, and said later it was not done.",
+       "You promised “I'll also try to call Mrs. Achola at Greenfield.” on Wednesday 14 October, and it was done by Monday 19 October.",
+       "You promised “I'll check in with them.” on Wednesday 14 October, and it was done by Friday 16 October.",
+       "You promised “I'll follow up with Mrs. Achola on Friday if I haven't heard from her by then to see if she's reviewed the quote and is ready to sign.” for Friday 16 October, and it was done on Monday 19 October.",
+       "You promised “I'll call Mrs. Achola first thing Monday to get the manager's name and an estimated time for the sign-off.” on Friday 16 October, and it was done by Monday 19 October.",
+       "You promised “I'll get it from Mrs. Achola on Monday.” on Friday 16 October, and it was done by Monday 19 October."
+      ]
+     },
+     {
+      "heading": "Where your time went",
+      "says": "Sunrise Primary School cannot buy now, and you talked about it in two check-ins after that was on record.",
+      "toChange": null,
+      "evidence": [
+       "On Wednesday 14 October you said “At Sunrise Primary... they still have no budget this year.”"
+      ]
+     },
+     {
+      "heading": "Blockers",
+      "says": "You raised one blocker, and did not say what you had tried first.",
+      "toChange": null,
+      "evidence": [
+       "On Friday 16 October you raised a blocker, waiting for her manager's sign-off, and did not say what you had tried first."
+      ]
+     },
+     {
+      "heading": "Your check-ins",
+      "says": "You did six of six check-ins, five of them on time. Six of them named the item, what changed and the day.",
+      "toChange": null,
+      "evidence": [
+       "On Wednesday 14 October, the check-in was done more than a day after it opened."
+      ]
+     }
+    ],
+    "coaching": [],
+    "coachingEmpty": "Groundwork has not coached you on anything yet."
+   }
+  },
+  "Peter as Peter": {
+   "on": true,
+   "view": "self",
+   "checkInName": "Sales team, Q4",
+   "person": {
+    "participantId": "dfda363d-d9f3-4f01-bcb0-ae9f8d722f6f",
+    "name": "Peter Njoroge",
+    "firstName": "Peter"
+   },
+   "heading": "Peter’s work",
+   "topLine": "What you need to do, what you’ve done, and how to get better. Grace sees this page too.",
+   "numbers": [
+    {
+     "value": "0 of 30",
+     "label": "your target"
+    },
+    {
+     "value": "0 of 1",
+     "label": "promises kept"
+    },
+    {
+     "value": "6 of 6",
+     "label": "check-ins"
+    }
+   ],
+   "focus": {
+    "line": "Try one thing before you raise a blocker, and say what you tried.",
+    "why": "You raised 2 blockers and said what you had tried first on 0 of them."
+   },
+   "focusEmpty": "Nothing needs work yet. Your focus will show here once your check-ins show something to work on.",
+   "toDo": {
+    "othersNeed": [],
+    "own": [
+     {
+      "id": "ff12de7a-6ed4-45d5-9f7c-0c9ac3981098",
+      "text": "Try to reach them again next week to get those details.",
+      "when": "Next week",
+      "done": false,
+      "late": false,
+      "whose": null
+     },
+     {
+      "id": "c6b72817-580c-4363-bb19-1af1815bf094",
+      "text": "Visit some more shops, like I planned",
+      "when": null,
+      "done": false,
+      "late": false,
+      "whose": null
+     }
+    ],
+    "emptySays": "Nothing to do yet. What you say you will do in a check-in shows here."
+   },
+   "achieved": {
+    "items": [
+     {
+      "text": "You kept 0 of 1 promises.",
+      "proof": "Your check-ins"
+     }
+    ],
+    "note": "In this check-in",
+    "emptySays": "Nothing yet. What you finish, with its proof, shows here."
+   },
+   "performing": {
+    "note": "The same seven behaviours in every check-in, read from your last 6 check-ins.",
+    "behaviours": [
+     {
+      "key": "keeping-promises",
+      "name": "Keeping promises",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "planning-ahead",
+      "name": "Planning ahead",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "handling-blockers",
+      "name": "Handling blockers",
+      "verdict": "Needs work",
+      "happened": "You raised 2 blockers and said what you had tried first on 0 of them.",
+      "means": "Raising blockers without trying to clear them can look like excuses.",
+      "toImprove": "Try one thing before you raise a blocker, and say what you tried.",
+      "basedOn": "2 blockers raised between 15 and 19 October"
+     },
+     {
+      "key": "working-on-the-right-things",
+      "name": "Working on the right things",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "backing-claims-with-proof",
+      "name": "Backing claims with proof",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "helping-your-team",
+      "name": "Helping your team",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "check-in-quality",
+      "name": "Check-in quality",
+      "verdict": "Strength",
+      "happened": "You did 6 of 6 check-ins on time. 5 of 6 were specific.",
+      "means": "Specific, on-time check-ins make your work visible.",
+      "toImprove": null,
+      "basedOn": "6 check-ins"
+     }
+    ],
+    "libraryNote": "What each behaviour means and how to improve come from the behaviour and pattern library, so the words are the same in every check-in."
+   },
+   "coaching": {
+    "better": [],
+    "keep": [
+     "Specific, on-time check-ins."
+    ],
+    "betterEmpty": "Nothing yet. Lines show here from Grace’s coaching for the team and from what keeps coming up in your check-ins.",
+    "keepEmpty": "Your strengths will show here once your check-ins show them."
+   },
+   "checkIns": {
+    "heading": "Your check-ins",
+    "due": 6,
+    "done": 6,
+    "onTime": 6,
+    "specific": 5,
+    "emptySays": null
+   },
+   "reports": {
+    "heading": "Your reports",
+    "items": [
+     {
+      "checkInId": "b88b3f9b-1122-4a2b-89d9-9ed9d6ce5370",
+      "when": "Monday 19 October",
+      "line": "“I left one [brochure] with the receptionist on Monday last week, the 12th. [INFERRED: what was left and to whom, from context]”"
+     },
+     {
+      "checkInId": "4dcd5e3d-8a93-429e-a411-8d7edbc7e325",
+      "when": "Friday 16 October",
+      "line": "“I'm thinking of trying more shops next week.”"
+     },
+     {
+      "checkInId": "fda92ed2-a16d-4fc1-b15b-d807cfc3e066",
+      "when": "Thursday 15 October",
+      "line": "“I actually only spoke to the receptionist there. I haven't spoken to Paul.”"
+     }
+    ],
+    "emptySays": "Your own report for each check-in will show here once you finish one."
+   },
+   "items": {
+    "heading": "Your deals",
+    "note": "0 open",
+    "itemWord": "deal",
+    "rows": [],
+    "emptySays": "You have no deals on the board yet."
+   },
+   "record": {
+    "heading": "Your record in Sales team, Q4",
+    "note": "This is read from what you said in your check-ins and what is on file. It changes only when something new comes in.",
+    "parts": [
+     {
+      "heading": "Promises",
+      "says": "You made one promise that came due, and it was not kept. You said later it was not done.",
+      "toChange": "Promising less, and saying early when a date will move, would change this.",
+      "evidence": [
+       "You promised “I'll follow up with Upper Hill Offices.” on Tuesday 13 October, and said later it was not done."
+      ]
+     },
+     {
+      "heading": "Blockers",
+      "says": "You raised two blockers and said what you had tried first on none of them.",
+      "toChange": "Trying one thing before raising a blocker, and saying what was tried, would change this.",
+      "evidence": [
+       "On Thursday 15 October you raised a blocker, waiting for a specific area to focus on, and did not say what you had tried first.",
+       "On Monday 19 October you raised a blocker, waiting for a list of leads for this week, and did not say what you had tried first."
+      ]
+     },
+     {
+      "heading": "Your check-ins",
+      "says": "You did six of six check-ins, all on time. Five of them named the item, what changed and the day.",
+      "toChange": null,
+      "evidence": [
+       "On Tuesday 13 October, the check-in did not name the item, what changed and the day."
+      ]
+     }
+    ],
+    "coaching": [
+     {
+      "said": "After your check-in on Monday 19 October, Groundwork told you “Try one thing before you raise a blocker, and say what you tried.”",
+      "since": "No check-in since then shows whether it has changed yet."
+     }
+    ],
+    "coachingEmpty": "Groundwork has not coached you on anything yet."
+   }
+  },
+  "Joseph as Grace": {
+   "on": true,
+   "view": "lead",
+   "checkInName": "Sales team, Q4",
+   "person": {
+    "participantId": "2274e6af-8d37-4388-bd39-8a7aeb582d7b",
+    "name": "Joseph Kariuki",
+    "firstName": "Joseph"
+   },
+   "heading": "Joseph’s work",
+   "topLine": "What Joseph needs to do, what Joseph has done, and how Joseph can get better. Joseph sees this page too.",
+   "numbers": [
+    {
+     "value": "0 of 30",
+     "label": "Joseph’s target"
+    },
+    {
+     "value": "0 of 2",
+     "label": "promises kept"
+    },
+    {
+     "value": "6 of 6",
+     "label": "check-ins"
+    }
+   ],
+   "focus": {
+    "line": "Try one thing before you raise a blocker, and say what you tried.",
+    "why": "Joseph raised 4 blockers and said what Joseph had tried first on 0 of them."
+   },
+   "focusEmpty": "Nothing needs work yet. Joseph’s focus will show here once the check-ins show something to work on.",
+   "toDo": {
+    "othersNeed": [],
+    "own": [
+     {
+      "id": "9d3b29d8-afc4-4204-bed8-d2a8832523f6",
+      "text": "Get that price to Juja Hardware",
+      "when": "This week",
+      "done": false,
+      "late": false,
+      "whose": null
+     },
+     {
+      "id": "98237adc-4936-4522-a870-2284fcee1c43",
+      "text": "Be sure to get it once we finalize the deal.",
+      "when": "Once we finalize the deal",
+      "done": false,
+      "late": false,
+      "whose": null
+     }
+    ],
+    "emptySays": "Joseph has nothing to do yet. What Joseph says in a check-in shows here."
+   },
+   "achieved": {
+    "items": [
+     {
+      "text": "Joseph kept 0 of 2 promises.",
+      "proof": "Joseph’s check-ins"
+     }
+    ],
+    "note": "In this check-in",
+    "emptySays": "Nothing yet. What Joseph finishes, with its proof, shows here."
+   },
+   "performing": {
+    "note": "The same seven behaviours in every check-in, read from Joseph’s last 6 check-ins.",
+    "behaviours": [
+     {
+      "key": "keeping-promises",
+      "name": "Keeping promises",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "planning-ahead",
+      "name": "Planning ahead",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "handling-blockers",
+      "name": "Handling blockers",
+      "verdict": "Needs work",
+      "happened": "Joseph raised 4 blockers and said what Joseph had tried first on 0 of them.",
+      "means": "Raising blockers without trying to clear them can look like excuses.",
+      "toImprove": "Try one thing before you raise a blocker, and say what you tried.",
+      "basedOn": "4 blockers raised between 14 and 16 October"
+     },
+     {
+      "key": "working-on-the-right-things",
+      "name": "Working on the right things",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "backing-claims-with-proof",
+      "name": "Backing claims with proof",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "helping-your-team",
+      "name": "Helping your team",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "check-in-quality",
+      "name": "Check-in quality",
+      "verdict": "Needs work",
+      "happened": "Joseph did 6 of 6 check-ins, 4 of them on time. 5 of 6 were specific.",
+      "means": "Vague or late check-ins hide what you’re doing.",
+      "toImprove": "Name the item, what changed and the day, every time.",
+      "basedOn": "6 check-ins"
+     }
+    ],
+    "libraryNote": "What each behaviour means and how to improve come from the behaviour and pattern library, so the words are the same in every check-in."
+   },
+   "coaching": {
+    "better": [],
+    "keep": [],
+    "betterEmpty": "Nothing yet. Lines show here from your coaching for the team and from what keeps coming up in Joseph’s check-ins.",
+    "keepEmpty": "Joseph’s strengths will show here once the check-ins show them."
+   },
+   "checkIns": {
+    "heading": "Joseph’s check-ins",
+    "due": 6,
+    "done": 6,
+    "onTime": 4,
+    "specific": 5,
+    "emptySays": null
+   },
+   "reports": {
+    "heading": "Joseph’s reports",
+    "items": [],
+    "emptySays": "",
+    "private": "Joseph’s own reports are Joseph’s alone, so they are not shown here."
+   },
+   "items": {
+    "heading": "Joseph’s deals",
+    "note": "0 open",
+    "itemWord": "deal",
+    "rows": [],
+    "emptySays": "Joseph has no deals on the board yet."
+   },
+   "record": {
+    "heading": "Joseph’s record in Sales team, Q4",
+    "note": "This is read from what Joseph said in Joseph’s check-ins and what is on file. It changes only when something new comes in.",
+    "parts": [
+     {
+      "heading": "What Joseph said and what shows it",
+      "says": "Joseph said three times that something was sold, paid or signed. None of them has proof on file, and Joseph took two back later.",
+      "toChange": "Adding the photo, slip or link when Joseph says something is done would change this.",
+      "evidence": [
+       "On Monday 12 October Joseph said “I've got some big deals in the pipeline that are basically closed.” Nothing on file shows it yet.",
+       "On Monday 12 October Joseph said “That 10-unit deal for Mama Pima is definitely part of my 30-unit target. It's basically closed.” On Friday 16 October Joseph said “The Mama Pima deposit hasn't actually come through yet, she's still choosing.”",
+       "On Wednesday 14 October Joseph said “Mama Pima paid a deposit.” On Friday 16 October Joseph said “The Mama Pima deposit hasn't actually come through yet, she's still choosing.”"
+      ]
+     },
+     {
+      "heading": "Promises",
+      "says": "Neither of the two promises Joseph made that came due was kept. Two were not done.",
+      "toChange": "Promising less, and saying early when a date will move, would change this.",
+      "evidence": [
+       "Joseph promised “I'll get it to him.” on Tuesday 13 October, and said later it was not done.",
+       "Joseph promised “I'll follow up on that.” on Friday 16 October, and said later it was not done."
+      ]
+     },
+     {
+      "heading": "Figures that changed",
+      "says": "One figure Joseph gave changed from one check-in to the next, with nothing said about why.",
+      "toChange": "Saying so at once when a figure changes, with what shows the new one, would change this.",
+      "evidence": [
+       "On Monday 12 October Joseph said 10 units for Mama Pima Stores, and on Tuesday 13 October Joseph said 15 units."
+      ]
+     },
+     {
+      "heading": "Where Joseph’s time went",
+      "says": "Juja Hardware cannot buy now, and Joseph has not spent a check-in on it since.",
+      "toChange": null,
+      "evidence": [
+       "On Monday 19 October Joseph said “The KES 4,500 price was for Juja Hardware, and they've decided to wait until November.”"
+      ]
+     },
+     {
+      "heading": "Blockers",
+      "says": "Joseph raised four blockers and said what had been tried first on none of them.",
+      "toChange": "Trying one thing before raising a blocker, and saying what was tried, would change this.",
+      "evidence": [
+       "On Wednesday 14 October Joseph raised a blocker, waiting for a decision on whether to offer a unit at KES 4,500, and did not say what had been tried first.",
+       "On Wednesday 14 October Joseph raised a blocker, waiting for the M-Pesa payment, and did not say what had been tried first.",
+       "On Friday 16 October Joseph raised a blocker, waiting for the signed agreement from Juja Hardware, and did not say what had been tried first.",
+       "On Friday 16 October Joseph raised a blocker, waiting for a decision on the KES 4,500 price, and did not say what had been tried first."
+      ]
+     },
+     {
+      "heading": "Joseph’s check-ins",
+      "says": "Joseph did six of six check-ins, four of them on time. Five of them named the item, what changed and the day.",
+      "toChange": "Naming the item, what changed and the day, every time, would change this.",
+      "evidence": [
+       "On Friday 16 October, the check-in was done more than a day after it opened.",
+       "On Monday 19 October, the check-in was done more than a day after it opened.",
+       "On Tuesday 20 October, the check-in did not name the item, what changed and the day."
+      ]
+     }
+    ],
+    "coaching": [
+     {
+      "said": "After Joseph’s check-in on Monday 12 October, Groundwork told Joseph “Add the photo, slip or link when you say something is done.”",
+      "since": "Backing what Joseph says with proof has stayed the same since then."
+     }
+    ],
+    "coachingEmpty": "Groundwork has not coached Joseph on anything yet."
+   },
+   "people": [
+    {
+     "participantId": "9594ee31-5f40-41d2-97fe-e87527405712",
+     "name": "You"
+    },
+    {
+     "participantId": "9f2e58a4-06d8-4a0a-bddc-03cd96df027c",
+     "name": "Kevin Omondi"
+    },
+    {
+     "participantId": "5632caa0-593e-48d5-910e-5c9ea5bc4fb2",
+     "name": "Mercy Wairimu"
+    },
+    {
+     "participantId": "2274e6af-8d37-4388-bd39-8a7aeb582d7b",
+     "name": "Joseph Kariuki"
+    },
+    {
+     "participantId": "dfda363d-d9f3-4f01-bcb0-ae9f8d722f6f",
+     "name": "Peter Njoroge"
+    }
+   ]
+  }
+ },
+ "ownReport": {
+  "Aisha, session 2": {
+   "heading": "What Groundwork followed up for you",
+   "note": "This is read from what you said in your check-ins and what is on file. It changes only when something new comes in.",
+   "parts": [
+    {
+     "heading": "What you said and what shows it",
+     "says": "You said once that something was sold, paid or signed, and nothing on file shows it yet.",
+     "toChange": "Adding the photo, slip or link when you say something is done would change this.",
+     "evidence": [
+      "On Monday 19 October you said “FN-006 for Baraka Hardware has been paid.” Nothing on file shows it yet."
+     ]
+    },
+    {
+     "heading": "Promises",
+     "says": "Neither of the two promises you made that came due was kept. Two are past their day with nothing said about them yet.",
+     "toChange": "Promising less, and saying early when a date will move, would change this.",
+     "evidence": [
+      "You promised “I can ask them for the slip.” for Monday 12 October, and nothing you have said since shows it done.",
+      "You promised “I'll follow up with Mr. Baraka.” for Monday 19 October, and nothing you have said since shows it done."
+     ]
+    }
+   ],
+   "coaching": [
+    {
+     "said": "After your check-in on Monday 12 October, Groundwork told you “Add the photo, slip or link when you say something is done. For FN-009, that would be the payment slip, the bank statement or the M-Pesa message.”",
+     "since": "Backing what you say with proof has stayed the same since then."
+    }
+   ],
+   "coachingEmpty": "Groundwork has not coached you on anything yet."
+  },
+  "Njeri, session 2": null,
+  "Joseph, session 3": {
+   "heading": "What Groundwork followed up for you",
+   "note": "This is read from what you said in your check-ins and what is on file. It changes only when something new comes in.",
+   "parts": [
+    {
+     "heading": "What you said and what shows it",
+     "says": "You said once that something was sold, paid or signed, and nothing on file shows it. You took it back later.",
+     "toChange": "Adding the photo, slip or link when you say something is done would change this.",
+     "evidence": [
+      "On Wednesday 14 October you said “Mama Pima paid a deposit.” On Friday 16 October you said “The Mama Pima deposit hasn't actually come through yet, she's still choosing.”"
+     ]
+    },
+    {
+     "heading": "Blockers",
+     "says": "You raised two blockers and said what you had tried first on none of them.",
+     "toChange": "Trying one thing before raising a blocker, and saying what was tried, would change this.",
+     "evidence": [
+      "On Wednesday 14 October you raised a blocker, waiting for a decision on whether to offer a unit at KES 4,500, and did not say what you had tried first.",
+      "On Wednesday 14 October you raised a blocker, waiting for the M-Pesa payment, and did not say what you had tried first."
+     ]
+    }
+   ],
+   "coaching": [
+    {
+     "said": "After your check-in on Monday 12 October, Groundwork told you “Add the photo, slip or link when you say something is done.”",
+     "since": "Backing what you say with proof has stayed the same since then."
+    }
+   ],
+   "coachingEmpty": "Groundwork has not coached you on anything yet."
+  },
+  "Kevin, session 6": {
+   "heading": "What Groundwork followed up for you",
+   "note": "This is read from what you said in your check-ins and what is on file. It changes only when something new comes in.",
+   "parts": [
+    {
+     "heading": "What you said and what shows it",
+     "says": "You said twice that something was sold, paid or signed. One of them has proof on file.",
+     "toChange": null,
+     "evidence": [
+      "On Monday 19 October you said “Roysambu Gym signed the order for 3 units today.” Nothing on file shows it yet.",
+      "On Monday 19 October you said “Jane paid the remaining KES 15,000 balance for the 6 Savannah Cafe units. The M-Pesa confirmation code is RCD8M1LS4W.” The M-Pesa code RCD8M1LS4W shows it."
+     ]
+    }
+   ],
+   "coaching": [],
+   "coachingEmpty": "Groundwork has not coached you on anything yet."
+  },
+  "Mercy, session 6": {
+   "heading": "What Groundwork followed up for you",
+   "note": "This is read from what you said in your check-ins and what is on file. It changes only when something new comes in.",
+   "parts": [
+    {
+     "heading": "What you said and what shows it",
+     "says": "You said four times that something was sold, paid or signed, and every one has proof on file.",
+     "toChange": null,
+     "evidence": [
+      "On Monday 19 October you said “We have the signed purchase order.” A document you added shows it.",
+      "On Monday 19 October you said “It confirms the order for 25 units from Greenfield Supermarket at KES 125,000, and it's signed.” A document you added shows it.",
+      "On Monday 19 October you said “Greenfield signed the order today!” A document you added shows it.",
+      "On Monday 19 October you said “Mama Rose's Kiosk already paid for her unit last Friday.” A document you added shows it."
+     ]
+    }
+   ],
+   "coaching": [],
+   "coachingEmpty": "Groundwork has not coached you on anything yet."
+  },
+  "Peter, session 6": {
+   "heading": "What Groundwork followed up for you",
+   "note": "This is read from what you said in your check-ins and what is on file. It changes only when something new comes in.",
+   "parts": [
+    {
+     "heading": "Blockers",
+     "says": "You raised one blocker, and did not say what you had tried first.",
+     "toChange": null,
+     "evidence": [
+      "On Monday 19 October you raised a blocker, waiting for a list of leads for this week, and did not say what you had tried first."
+     ]
+    }
+   ],
+   "coaching": [
+    {
+     "said": "After your check-in on Monday 19 October, Groundwork told you “Try one thing before you raise a blocker, and say what you tried.”",
+     "since": "No check-in since then shows whether it has changed yet."
+    }
+   ],
+   "coachingEmpty": "Groundwork has not coached you on anything yet."
+  }
+ }
+}

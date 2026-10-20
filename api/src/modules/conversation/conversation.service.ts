@@ -12,6 +12,7 @@ import { HELD_FOR_A_SEAT } from '../participants/held-for-a-seat';
 import { checksInOnlyWhenTheyChoose } from '../grounds/the-lead-checks-in-when-they-choose';
 import { whenThisSessionsRoundClosed } from '../grounds/a-session-nobody-opened';
 import { theirOwnDealsAndWhatIsOnFile } from './their-own-deals-and-what-is-on-file';
+import { theManagingBlockFor, theTurnManaged } from './groundwork-manages-the-check-in';
 import { theDealsOnRecord } from '../board/a-sales-aim-is-counted-from-the-deals';
 import { theReleaseMoment } from '../grounds/the-release-moment';
 import { theWaitIsConfirmed } from '../grounds/a-wait-is-the-speakers-account';
@@ -1691,6 +1692,11 @@ export class ConversationService {
         for (const c of once.cut) this.logger.warn(`Check-in ${(checkIn as any).id}: cut a second request for an M-Pesa screenshot: "${c.slice(0, 160)}"`);
         raw = once.text;
       }
+      /* And, where the direct morning is on, what would show a claim is asked for once only, and no label is put on the person
+         (groundwork-manages-the-check-in). Off, the turn is as written. */
+      const managed = await theTurnManaged(this.prisma, checkIn as any, raw, saidHereBefore).catch(() => ({ text: raw, cut: [] as string[] }));
+      for (const c of managed.cut) this.logger.warn(`Check-in ${(checkIn as any).id}: cut a second request for what would show a claim, or a label on the person: "${c.slice(0, 160)}"`);
+      raw = managed.text;
       /* And no line of the record pasted into a sentence between hyphens (messages test, fourth run). See a-pasted-line-is-never-read-back. */
       const pasted = withoutAPastedLine(raw);
       for (const c of pasted.cut) this.logger.warn(`Check-in ${(checkIn as any).id}: cut a pasted line: "${c.slice(0, 160)}"`);
@@ -5627,6 +5633,12 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     /* Judgements of a person off for this organisation: no coaching, pattern or earlier "seen before" about them reaches the model (organisation/person-judgements.ts). */
     const judgedHere = await thePersonJudgementsAreOn(this.prisma, (ground as any)?.organizationId ?? null);
     const coachingBlock = judgedHere ? await this.coachingBlock(checkIn.participantId, checkIn.sessionNumber) : '';
+    /*
+     * GROUNDWORK MANAGES, INSIDE THE CHECK-IN (groundwork-manages-the-check-in.ts): what is late, what they said and nothing shows, a
+     * figure that changed, and one line of coaching on their own pattern, from their own record as it was last built. Only where the
+     * direct morning is on; the coaching line only where judgements of a person are on too. Off, nothing is added.
+     */
+    const managingBlock = await theManagingBlockFor(this.prisma, checkIn as any, judgedHere).catch(() => '');
 
     /*
      * WHAT KEEPS HAPPENING, AS A QUESTION.
@@ -6156,7 +6168,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ['A_CORRECTION_IS_NOT_A_SCOLDING', A_CORRECTION_IS_NOT_A_SCOLDING],
       ['ANSWER_THE_REMARK', ANSWER_THE_REMARK],
       ['openWithSomethingNew', OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE],
-      ['planBlock', planBlock], ['disagreementBlock', disagreementBlock], ['recordAlreadyHolds', recordAlreadyHolds], ['doesNotAddUp', doesNotAddUp], ['theirDealsBlock', theirDealsBlock], ['alreadyGiven', alreadyGiven], ['owedBlock', owedBlock], ['spineSoFar', spineSoFar], ['intakeBlock', intakeBlock],
+      ['planBlock', planBlock], ['disagreementBlock', disagreementBlock], ['recordAlreadyHolds', recordAlreadyHolds], ['doesNotAddUp', doesNotAddUp], ['theirDealsBlock', theirDealsBlock], ['managingBlock', managingBlock], ['alreadyGiven', alreadyGiven], ['owedBlock', owedBlock], ['spineSoFar', spineSoFar], ['intakeBlock', intakeBlock],
       ['pendingLines', pendingLines.join('')], ['evidenceLines', evidenceLines.join('')],
       ['theirWeek', theirWeek], ['howWeDoIt', howWeDoIt], ['styleBlock', styleBlock],
       ['clarificationContext', clarificationContext], ['selfCorrectionContext', selfCorrectionContext],
@@ -6252,10 +6264,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     if (leanIsOnForThisProcess()) {
       const theLeanRules = [THE_LEAN_CORE, theirLanguage].filter(Boolean).join('\n\n');
-      return [THE_LEAN_CORE, theirLanguage, intakeBlock, recordAlreadyHolds, alreadyGiven, owedBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, finalSessionContext, returningUserContext, roleProbeBlock, salesGathersBlock, referencesBlock, feeNotesWaitBlock, theJob, theJobThisTurn, roleConfirmationBlock, coachingBlock, patternProbeBlock, dynamicContext, docContext, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, theOneThingToday]
+      return [THE_LEAN_CORE, theirLanguage, intakeBlock, recordAlreadyHolds, managingBlock, alreadyGiven, owedBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, finalSessionContext, returningUserContext, roleProbeBlock, salesGathersBlock, referencesBlock, feeNotesWaitBlock, theJob, theJobThisTurn, roleConfirmationBlock, coachingBlock, patternProbeBlock, dynamicContext, docContext, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, theOneThingToday]
         .filter(Boolean).join('\n\n').replace(/^[\s\S]*$/, (all) => theRulesKeptTheRestWithoutStandInLabels(all, theLeanRules, calledHere));
     }
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, theirDealsBlock, alreadyGiven, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, salesGathersBlock, referencesBlock, feeNotesWaitBlock, theJob, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, theOneThingToday, burden, putThisToThem, askedWhenThisEnds, theJobThisTurn, theirHedge, theHole, salesGathers.last, heldBack, proofKindly, whereItIs, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n').replace(/^[\s\S]*$/, (all) => theRulesKeptTheRestWithoutStandInLabels(all, theRules, calledHere));
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, theirDealsBlock, managingBlock, alreadyGiven, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, salesGathersBlock, referencesBlock, feeNotesWaitBlock, theJob, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, theOneThingToday, burden, putThisToThem, askedWhenThisEnds, theJobThisTurn, theirHedge, theHole, salesGathers.last, heldBack, proofKindly, whereItIs, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n').replace(/^[\s\S]*$/, (all) => theRulesKeptTheRestWithoutStandInLabels(all, theRules, calledHere));
   }
 
   /**

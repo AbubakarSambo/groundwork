@@ -15,7 +15,7 @@ import { theShortRun, reader } from '../board/the-short-run-harness';
 import * as SERVED from '../reports/__fixtures__/night-run-2-served.json';
 
 /**
- * WITH THE DIRECT MORNING OFF, EVERY READER GETS EXACTLY WHAT ORIGIN/STAGING 77b5ec42c SERVED (Hafsah, 20 October 2026: "with it off,
+ * WITH THE DIRECT MORNING OFF, EVERY READER GETS EXACTLY WHAT ORIGIN/STAGING SERVED (captured at 77b5ec42c, re-captured at f77ba8a1d after #392 and #393) (Hafsah, 20 October 2026: "with it off,
  * every reader must get exactly today's output").
  *
  * The same code below was run on a checkout of origin/staging at 77b5ec42c, over the same stored data (the second night run, test data
