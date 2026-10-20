@@ -96,14 +96,11 @@ export function EverySituation({
                 const chosen = picked?.cardKey === card.cardKey
                 return (
                   <button
+                    className={`gwui-choice-card${chosen ? ' gwui-choice-card-on' : ''}`}
                     key={card.cardKey}
                     type="button"
                     aria-pressed={chosen}
                     onClick={() => (card.scenario === 'OPEN_READ' ? onDescribe() : setPicked(card))}
-                    style={{
-                      textAlign: 'left', background: 'white', borderRadius: 8, padding: '12px 14px', cursor: 'pointer', fontFamily: 'inherit',
-                      border: chosen ? '2px solid var(--gw-text)' : '1px solid var(--gw-border)',
-                    }}
                   >
                     <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>{sentenceCase(card.label)}</span>
                     <span style={{ display: 'block', fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.45 }}>{theOneLine(card)}</span>

@@ -644,9 +644,8 @@ function FreeGroundLimitRow() {
           >
             {save.isPending ? 'Saving...' : 'Save'}
           </button>
-          <button
+          <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
             onClick={() => { setEditing(false); setErr(null) }}
-            style={{ padding: '5px 9px', fontSize: 12, borderRadius: 6, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
           >
             Cancel
           </button>
@@ -654,9 +653,8 @@ function FreeGroundLimitRow() {
       ) : (
         <>
           <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-navy)' }}>{data.freeGroundLimit}</span>
-          <button
+          <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
             onClick={() => { setValue(String(data.freeGroundLimit)); setEditing(true) }}
-            style={{ padding: '5px 9px', fontSize: 12, borderRadius: 6, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
           >
             Change
           </button>
@@ -1854,10 +1852,9 @@ function InboxTab({ data, onRead }: {
               </div>
             )}
             {!m.readAt && (
-              <button
+              <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
                 type="button"
                 onClick={() => onRead(m.id)}
-                style={{ fontSize: 11.5, fontWeight: 700, padding: '5px 11px', borderRadius: 6, border: '1px solid var(--gw-border)', background: 'none', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
               >Mark read</button>
             )}
           </div>
@@ -1934,10 +1931,9 @@ function CallRequestsTab({ data, onAnswered }: {
                 {r.note}
               </div>
             )}
-            <button
+            <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
               type="button"
               onClick={() => onAnswered(r.id)}
-              style={{ fontSize: 11.5, fontWeight: 700, padding: '5px 11px', borderRadius: 6, border: '1px solid var(--gw-border)', background: 'none', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
             >Mark answered</button>
           </div>
         ))}

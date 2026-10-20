@@ -126,10 +126,9 @@ function ConversationLane({
           )}
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
-          <button
+          <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
             onClick={() => fileRef.current?.click()}
             title="Attach a text document to this lane"
-            style={{ fontSize: 11, color: 'var(--gw-sub)', background: 'none', border: '1px solid var(--gw-border)', borderRadius: 4, padding: '3px 8px', cursor: 'pointer', fontFamily: 'inherit' }}
           >
             Doc
           </button>
@@ -257,15 +256,13 @@ export function PromptTestPage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: editingPrompt ? '1px solid var(--gw-border)' : 'none' }}>
             <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)' }}>Prompt engine</span>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button
+              <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
                 onClick={() => { setSystemPrompt(DEFAULT_PROMPT); setEditingPrompt(false) }}
-                style={{ fontSize: 11, color: 'var(--gw-muted)', background: 'none', border: '1px solid var(--gw-border)', borderRadius: 4, padding: '3px 8px', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Reset to default
               </button>
-              <button
+              <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
                 onClick={() => setEditingPrompt(e => !e)}
-                style={{ fontSize: 11, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-navy)', borderRadius: 4, padding: '3px 8px', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}
               >
                 {editingPrompt ? 'Done' : 'Edit'}
               </button>
