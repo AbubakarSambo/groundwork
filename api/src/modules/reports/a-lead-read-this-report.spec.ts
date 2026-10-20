@@ -57,7 +57,7 @@ describe('when a lead reads the weekly report (change 6)', () => {
   it('is written by the weekly report route for the week served, with nothing rebuilt', async () => {
     const weekly: any = { read: jest.fn(async () => ({ weekStart: '2026-10-12', eachPerson: [] })), noteTheLeadRead: jest.fn(async () => undefined), build: jest.fn() };
     const out = await new TheWeeklyReportController(weekly).week('g1', 'u-wairimu', 'USER', 'org1');
-    expect(out).toEqual({ weekStart: '2026-10-12', eachPerson: [] });
+    expect(out).toEqual({ weekStart: '2026-10-12', eachPerson: [], directMorning: false });
     expect(weekly.noteTheLeadRead).toHaveBeenCalledWith('g1', '2026-10-12', 'u-wairimu');
     expect(weekly.build).not.toHaveBeenCalled();
   });
