@@ -1,3 +1,4 @@
+import { theDirectMorningIsOnFor } from '../organisation/the-direct-morning-switch';
 import { thePersonJudgementsAreOn, thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
 import { withoutAMissedStepNobodySaid } from './a-missing-proof-is-not-a-missed-step';
 import { aDayIsNotATarget, theNumberIsOnlyADay } from './a-day-is-not-a-target';
@@ -60,7 +61,7 @@ import { ConversationContextService } from './context.service';
 import { almostNothingHereYet, theFloorFor, theFloorForAPersonsFinish } from './how-short-a-check-in-may-be';
 import { withoutTheLastOne } from './a-first-session-has-no-last-one';
 import { theContextWeHave, whoThisNameIs, theNameWeUseFor, WHAT_A_DOCUMENT_HOLDS_PROMPT, WHAT_A_DOCUMENT_HOLDS_SCHEMA, MOST_OF_A_DOCUMENT_WE_READ, type WhatADocumentHolds } from '../documents/what-a-document-holds';
-import { isAnApology, NOTHING_TO_APOLOGISE_FOR } from './an-apology-is-not-owed';
+import { isAnApology, NOTHING_TO_APOLOGISE_FOR, NOTHING_TO_APOLOGISE_FOR_DIRECTLY } from './an-apology-is-not-owed';
 import { theOneThingToDoBetter } from './what-this-session-is-missing';
 import { theAimsThatAreNew } from './an-aim-said-twice-is-one-aim';
 import { askWhoCarriesWhichPart, alreadyAskedWhoCarriesWhat } from './who-carries-which-part';
@@ -2110,7 +2111,7 @@ export class ConversationService {
        * unlike the too-short refusal, where it can. See
        * there-is-a-ceiling-and-it-is-not-a-surprise.ts.
        */
-      throw new BadRequestException({ message: theCeilingIsReached(), canFinish: true });
+      throw new BadRequestException({ message: theCeilingIsReached(await theDirectMorningIsOnFor(this.prisma, checkIn.groundId)), canFinish: true });
     }
     /* The word "finish" on its own, before there is enough to finish with, is a command and not an answer: one plain sentence, as on WhatsApp, and nothing is kept (user journeys, F-10). */
     if (isTheWordFinish(message)) {
@@ -2431,7 +2432,7 @@ export class ConversationService {
             /* Asked three times is not declined: they answered, just not with what the model wanted. "Then it
                goes on this record as not given: what has moved since last time" went to Bola after she had
                said what moved (run 8, 21 Sep 2026). The answer stands as given; only a refusal is an absence. */
-            screened = { ...screened, text: recordAndMoveOn(null, how), hits: [] };
+            screened = { ...screened, text: recordAndMoveOn(null, how, await theDirectMorningIsOnFor(this.prisma, checkIn.groundId)), hits: [] };
             this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again and there was nothing else in it; recorded the absence and moved on to ${JSON.stringify(how.question ?? how.owed ?? 'nothing')}.`);
           }
         }
@@ -2617,7 +2618,7 @@ export class ConversationService {
             /* They said no twice over and the model would ask a third time. The product records the absence
                and moves on; a third ask is the badgering the judge counted. See a-refusal-is-an-answer. */
             const how = await this.howToMoveOn(checkIn.id, lastAsk);
-            screened = { ...screened, text: recordAndMoveOn(how.declinedWhat, how), hits: [] };
+            screened = { ...screened, text: recordAndMoveOn(how.declinedWhat, how, await theDirectMorningIsOnFor(this.prisma, checkIn.groundId)), hits: [] };
             this.logger.warn(`Check-in ${checkIn.id}: declined twice and the model asked again; recorded the absence and moved on.`);
           } else {
             this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again too; the first stands.`);
@@ -2690,7 +2691,7 @@ export class ConversationService {
        */
       if (earlierAsks.length && alreadyAskedTwice(screened.text, earlierAsks)) {
         const how = await this.howToMoveOn(checkIn.id, earlierAsks[earlierAsks.length - 1] ?? '');
-        screened = { ...screened, text: recordAndMoveOn(null, how), hits: [] };
+        screened = { ...screened, text: recordAndMoveOn(null, how, await theDirectMorningIsOnFor(this.prisma, checkIn.groundId)), hits: [] };
         this.logger.warn(`Check-in ${checkIn.id}: the reply still repeated a question after every retry; recorded and moved on to ${JSON.stringify(how.question ?? how.owed ?? 'nothing')}.`);
       }
 
@@ -3272,7 +3273,11 @@ export class ConversationService {
     const signalled = !answeringAnOffer && (hadCloseMarker || theyAreLeaving || this.closesInOtherWords(reply, message));
     const close: { ready: boolean; ask?: string; sayFirst?: string; nextStep?: { isLead: boolean; personSaid: string[] } } = signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : { ready: false };
     /* A close on an apology says, first, that none was owed. See an-apology-is-not-owed. */
-    if (close.ready && !close.ask && isAnApology(message)) close.sayFirst = NOTHING_TO_APOLOGISE_FOR;
+    /* WITH THE DIRECT MORNING ON (email/a-direct-email.ts): nothing about how the record will read, and an apology met in four words. */
+    const directClose = close.ready && !close.ask && (close.sayFirst === NO_DECISION_YET || close.sayFirst === NOTHING_HERE_HAS_A_NUMBER || isAnApology(message))
+      ? await theDirectMorningIsOnFor(this.prisma, checkIn.groundId) : false;
+    if (directClose && (close.sayFirst === NO_DECISION_YET || close.sayFirst === NOTHING_HERE_HAS_A_NUMBER)) delete close.sayFirst;
+    if (close.ready && !close.ask && isAnApology(message)) close.sayFirst = directClose ? NOTHING_TO_APOLOGISE_FOR_DIRECTLY : NOTHING_TO_APOLOGISE_FOR;
     if (close.ask) {
       /* The goodbye goes first. It was written before the product ruled on the close, and appending
          a question underneath it told a lead the session was over and then that it was not. */

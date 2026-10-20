@@ -64,7 +64,8 @@ describe('and the service uses both', () => {
   it('has no bare turn-limit sentence left, on either path', () => {
     expect(src).not.toContain('Session turn limit reached');
     /* Changed 28 Sep 2026: the streamed route now runs sendMessage itself (the-streamed-route-is-the-plain-route), so a rule held on both paths is in sendMessage once, and the stream runs it. */
-    expect((src.match(/theCeilingIsReached\(\)/g) ?? []).length).toBe(1);
+    /* Changed 20 Oct 2026: the call now passes the direct morning's switch, theCeilingIsReached(<switch>), still once. */
+    expect((src.match(/theCeilingIsReached\(/g) ?? []).length).toBe(1);
     expect(theStreamedRouteRunsThePlainRoute(src)).toBe(true);
   });
 
