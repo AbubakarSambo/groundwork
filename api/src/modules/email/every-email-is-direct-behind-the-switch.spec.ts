@@ -290,3 +290,25 @@ describe('with the direct morning on, every email says what happened and nothing
     }
   });
 });
+
+describe('the round digest (to Kevin, session 1 of "Sales team, Q4")', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { digestBody } = require('./nothing-lands-at-3am');
+  const facts = { groundLabel: 'Sales team, Q4', sessionNumber: 1, participantCount: 5, accountsGiven: 5, needsAttention: 1, permalink: 'http://localhost:5220/grounds/g' };
+  it('off: as the night run sent it', () => {
+    expect(digestBody(facts, 'http://localhost:5220/unsubscribe/u')).toBe([
+      'Everyone has checked in for session 1 of Sales team, Q4.',
+      "5 people took part. One thing somebody is waiting for is still open, and the check-in's board shows who is waiting and for what.",
+      'Read it here: http://localhost:5220/grounds/g',
+      '',
+      'To stop these emails: http://localhost:5220/unsubscribe/u',
+    ].join('\n'));
+  });
+  it('on: the link in a sentence, and one way to stop them, in the footer', () => {
+    expect(digestBody(facts, 'http://localhost:5220/unsubscribe/u', true)).toBe([
+      'Everyone has checked in for session 1 of Sales team, Q4.',
+      "5 people took part. One thing somebody is waiting for is still open, and the check-in's board shows who is waiting and for what.",
+      "Read it on the check-in's board at http://localhost:5220/grounds/g",
+    ].join('\n'));
+  });
+});
