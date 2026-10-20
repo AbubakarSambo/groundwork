@@ -227,6 +227,34 @@ export function theTargetLines(board: any, now: Date, zone: string): { lines: AM
 const A_DECISION = /\b(?:decision|decide|approv\w*|yes or no|go-ahead|sign[- ]off on the price|price)\b/i;
 const A_VAGUE_HOLDER = /\b(?:unknown|someone|somebody|nobody|anyone|whoever|not sure)\b/i;
 const wordsOf = (t: string) => String(t ?? '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !['the', 'and', 'for', 'with', 'from'].includes(w));
+/*
+ * ONE WAIT, ONE PLAIN SENTENCE: who waits, on whom, since when, and for what (Wanjiru's morning, 20 October). Two lines read wrong:
+ * "Brian is waiting on the court's e-filing portal for the e-filing portal to be working." said the portal twice, and "Brian has been
+ * waiting for the Nyota Logistics fee dispute from you since Thursday." made a dispute the thing he waits to be given.
+ */
+/** A matter waited on, rather than a thing to be given: "the Nyota Logistics fee dispute". Only where the words name nothing else. */
+const A_MATTER = /\b(?:dispute|claim|case|matter|issue|situation)$/i;
+const NO_PREPOSITION = /^(?:(?!\b(?:on|with|about|for|of|to|from|in|by|at)\b).)*$/i;
+/** A thing waited on to be in a state: "the e-filing portal to be working". */
+const A_STATE = /^(.+?)(\s+to\s+(?:be|start|work|come|reflect|clear|arrive)\b.*)$/i;
+
+/** "Peter has been waiting on you since Thursday for a specific area to focus on." / "... about the Nyota Logistics fee dispute." */
+export function aWaitOnYouSaid(rep: string, what: string, since: string): string {
+  const about = A_MATTER.test(what) && NO_PREPOSITION.test(what);
+  return `${rep} has been waiting on you ${since} ${about ? 'about' : 'for'} ${what}.`;
+}
+
+/** "Brian has been waiting since 13 October for the court's e-filing portal to be working." / "Aisha has been waiting on Mr. Baraka since Monday for proof of payment for FN-006." */
+export function aWaitOnAHolderSaid(rep: string, holder: string, what: string, since: string): string {
+  const st = A_STATE.exec(what);
+  if (st) {
+    const theThing = wordsOf(st[1]);
+    const theHolder = new Set(wordsOf(holder));
+    if (theThing.length && theThing.every((w) => theHolder.has(w))) return `${rep} has been waiting ${since} for ${holder}${st[2]}.`;
+  }
+  return `${rep} has been waiting on ${holder} ${since} for ${what}.`;
+}
+
 /** The holder is somebody: not empty, not "an unknown source", and not the thing waited for said again ("the pricing decision"). */
 export function aNamedHolder(onLabel: string | null | undefined, what: string | null | undefined): string | null {
   const h = String(onLabel ?? '').trim();
@@ -291,7 +319,7 @@ export function theNeedsYouLines(input: TheSalesMorningInput, name: (pid: string
     const since = sinceADay(keyIn(new Date(w.createdAt), input.zone), today);
     if (w.onParticipantId && input.hers.has(w.onParticipantId)) {
       said.add(key);
-      lines.push({ text: `${rep} has been waiting for ${what} from you ${since}.`, rank: 4 });
+      lines.push({ text: aWaitOnYouSaid(rep, what, since), rank: 4 });
       first = first ?? `${rep} is waiting on you`;
       continue;
     }
@@ -523,7 +551,7 @@ export function theCollectionsDirectMorning(input: TheCollectionsMorningInput): 
     said.add(key);
     const rep = Name(w.fromParticipantId);
     if (!rep) continue;
-    needs.push({ text: `${rep} has been waiting for ${what} from you ${sinceADay(keyIn(new Date(w.createdAt), zone), today)}.`, rank: 3 });
+    needs.push({ text: aWaitOnYouSaid(rep, what, sinceADay(keyIn(new Date(w.createdAt), zone), today)), rank: 3 });
     first = first ?? `${rep} is waiting on you`;
   }
   for (const b of onAWord) {
@@ -610,12 +638,12 @@ export function theMatterDirectMorning(input: { groundId: string; label: string;
     if (said.has(key)) continue;
     if (w.onParticipantId && input.hers.has(w.onParticipantId)) {
       said.add(key);
-      needs.push({ text: `${rep} has been waiting for ${what} from you ${sinceADay(keyIn(new Date(w.createdAt), input.zone), today)}.`, rank: 2 });
+      needs.push({ text: aWaitOnYouSaid(rep, what, sinceADay(keyIn(new Date(w.createdAt), input.zone), today)), rank: 2 });
       first = first ?? `${rep} is waiting on you`;
     } else if (!w.onParticipantId && String(w.status).toUpperCase() === 'BLOCKING') {
       said.add(key);
       const holder = aNamedHolder(w.onLabel, w.what);
-      needs.push({ text: holder ? `${rep} is waiting on ${holder} for ${what}.` : `${rep} is waiting for ${what}, and nobody has been named to give it, so say who will.`, rank: 4 });
+      needs.push({ text: holder ? aWaitOnAHolderSaid(rep, holder, what, sinceADay(keyIn(new Date(w.createdAt), input.zone), today)) : `${rep} is waiting for ${what}, and nobody has been named to give it, so say who will.`, rank: 4 });
     }
   }
   for (const d of ((input.board?.decisions ?? []) as any[]).filter((x) => x?.source === 'divergence' && /^you$/i.test(String(x?.owner ?? '')))) {

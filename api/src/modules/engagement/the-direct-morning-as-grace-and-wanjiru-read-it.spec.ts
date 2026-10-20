@@ -1,5 +1,5 @@
 import { sendTheLeadsDailyNudges, whatIsOutstandingFor, theTemplateParagraph, withPlacesWhereTheyTellApart, theseForAPhone, theBoardTheMessageIsAbout } from './the-leads-daily-nudge';
-import { theDirectMorningFor, theParagraph, theEmailParts, theSubject, asServedOnTheBoard } from './the-direct-morning';
+import { theDirectMorningFor, theParagraph, theEmailParts, theSubject, asServedOnTheBoard, aWaitOnYouSaid, aWaitOnAHolderSaid } from './the-direct-morning';
 import { theNightRunsDatabase, theLeadsBoard, theLeadOf, N } from './the-night-run-bed';
 import { TEMPLATES } from '../whatsapp/a-message-outside-the-window';
 
@@ -48,7 +48,7 @@ describe('Grace’s direct morning, Tuesday 20 October, Drop Access (test), from
       ] },
       { key: 'needsYou', heading: 'What needs you today', lines: [
         'Juja Hardware wants 5 units at KES 4,500 instead of 5,000, and Joseph is waiting for a yes or no from Management, so get it for Joseph.',
-        'Peter has been waiting for a specific area to focus on from you since Thursday.',
+        'Peter has been waiting on you since Thursday for a specific area to focus on.',
         'Peter is waiting for a list of leads for this week, and nobody has been named to give it, so send it or say who will.',
       ] },
       { key: 'closing', heading: 'About to close', lines: ['Ngong Road Minimart pays KES 25,000 for 5 units on delivery tomorrow.'] },
@@ -87,7 +87,7 @@ describe('the summary she is sent, with the switch on', () => {
     expect(ctx.kind).toBe('lead-summary');
     expect(ctx.params[0]).toBe('Grace');
     expect(ctx.params[2]).toBe(`${BASE}/grounds/${DROP}/board`);
-    expect(ctx.params[1]).toBe("Target: 75 of 120 sold, 47 paid. None of the open deals is likely by 30 October. You're 45 short, and the open deals cover only 40 of them, so the team needs new leads this week. Needs you today: Juja Hardware wants 5 units at KES 4,500 instead of 5,000, and Joseph is waiting for a yes or no from Management, so get it for Joseph. Peter has been waiting for a specific area to focus on from you since Thursday. Peter is waiting for a list of leads for this week, and nobody has been named to give it, so send it or say who will. Closing: Ngong Road Minimart pays KES 25,000 for 5 units on delivery tomorrow. Your team: Kevin's sale to Roysambu Gym has no proof yet, so ask Kevin for the payment record. Mercy has 2 sales with proof, so tell Mercy well done.");
+    expect(ctx.params[1]).toBe("Target: 75 of 120 sold, 47 paid. None of the open deals is likely by 30 October. You're 45 short, and the open deals cover only 40 of them, so the team needs new leads this week. Needs you today: Juja Hardware wants 5 units at KES 4,500 instead of 5,000, and Joseph is waiting for a yes or no from Management, so get it for Joseph. Peter has been waiting on you since Thursday for a specific area to focus on. Peter is waiting for a list of leads for this week, and nobody has been named to give it, so send it or say who will. Closing: Ngong Road Minimart pays KES 25,000 for 5 units on delivery tomorrow. Your team: Kevin's sale to Roysambu Gym has no proof yet, so ask Kevin for the payment record. Mercy has 2 sales with proof, so tell Mercy well done.");
     const whole = TEMPLATES['lead-summary'].body.replace(/\{\{(\d+)\}\}/g, (_x: string, n: string) => ctx.params[Number(n) - 1]);
     expect(whole.length).toBeLessThanOrEqual(1024);
     const first = ctx.paramsFor.groundwork_first_contact[0];
@@ -98,7 +98,7 @@ describe('the summary she is sent, with the switch on', () => {
     expect(text).toBe([
       'Good morning Grace.',
       "Will we reach 120 units sold by 30 October?\n75 of 120 sold, 47 paid.\nNone of the open deals is likely by 30 October.\nYou're 45 short, and the open deals cover only 40 of them, so the team needs new leads this week.",
-      'What needs you today\nJuja Hardware wants 5 units at KES 4,500 instead of 5,000, and Joseph is waiting for a yes or no from Management, so get it for Joseph.\nPeter has been waiting for a specific area to focus on from you since Thursday.\nPeter is waiting for a list of leads for this week, and nobody has been named to give it, so send it or say who will.',
+      'What needs you today\nJuja Hardware wants 5 units at KES 4,500 instead of 5,000, and Joseph is waiting for a yes or no from Management, so get it for Joseph.\nPeter has been waiting on you since Thursday for a specific area to focus on.\nPeter is waiting for a list of leads for this week, and nobody has been named to give it, so send it or say who will.',
       'About to close\nNgong Road Minimart pays KES 25,000 for 5 units on delivery tomorrow.',
       "Your team today\nKevin's sale to Roysambu Gym has no proof yet, so ask Kevin for the payment record.\nMercy has 2 sales with proof, so tell Mercy well done.",
       `Your board is here ${BASE}/grounds/${DROP}/board`,
@@ -168,7 +168,7 @@ describe('Wanjiru’s direct morning, Muchemi & Co (test): fee notes and the lit
       ] },
       { heading: 'What needs you today, in Fee notes', lines: [
         'Nyota Logistics disputes FN-008, saying the contract review was billed twice, and Brian follows it up, so decide whether to correct it.',
-        'Brian has been waiting for guidance on how to proceed with the double-billing claim from you since 12 October.',
+        'Brian has been waiting on you since 12 October for guidance on how to proceed with the double-billing claim.',
         'You marked FN-004 for Kasarani Foods paid, so file the bank slip or the M-Pesa message.',
       ] },
       { heading: 'Who to chase, in Fee notes', lines: [
@@ -178,8 +178,8 @@ describe('Wanjiru’s direct morning, Muchemi & Co (test): fee notes and the lit
         'Ask Njeri for the proof that FN-009 for Upendo Schools is paid.',
       ] },
       { heading: 'What needs you today, in Litigation team daily', lines: [
-        "Brian is waiting on the court's e-filing portal for the e-filing portal to be working.",
-        'Brian has been waiting for the Nyota Logistics fee dispute from you since Thursday.',
+        "Brian has been waiting since 13 October for the court's e-filing portal to be working.",
+        'Brian has been waiting on you since Thursday about the Nyota Logistics fee dispute.',
         'People said different things about who is assigned to the Jamii Clinics employment claim, so settle it with them.',
         'People said different things about the current status of the Kasarani Foods reply, so settle it with them.',
       ] },
@@ -204,5 +204,54 @@ describe('only the lead who runs the check-in is served it', () => {
     expect(at).toBeGreaterThan(0);
     const before = src.slice(Math.max(0, at - 400), at);
     expect(before).toMatch(/if \(isInitiator\) \{\s*const morning = await theDirectMorningFor\(this\.prisma, \{ groundId, leadUserId: requestingUserId, board: asServed, now \}\)/);
+  });
+});
+
+/*
+ * EACH WAIT IS ONE PLAIN SENTENCE: who waits, on whom, since when, and for what. From the stored waits of the second night run: Brian's
+ * wait on "the court's e-filing portal" for "the e-filing portal to be working", and his wait on Wanjiru for "the Nyota Logistics fee
+ * dispute". They read "Brian is waiting on the court's e-filing portal for the e-filing portal to be working." and "Brian has been
+ * waiting for the Nyota Logistics fee dispute from you since Thursday."
+ */
+/** Two words said together twice in one line ("e-filing portal ... e-filing portal"), or null. */
+function theSamePairTwice(line: string): string | null {
+  const w = line.toLowerCase().split(/[^a-z0-9'-]+/).filter((x) => x.length > 3);
+  const seen = new Set<string>();
+  for (let i = 0; i + 1 < w.length; i++) { const pair = `${w[i]} ${w[i + 1]}`; if (seen.has(pair)) return pair; seen.add(pair); }
+  return null;
+}
+
+describe('each wait in the direct morning is one plain sentence', () => {
+  it('the check finds the line as it read', () => {
+    expect(theSamePairTwice("Brian is waiting on the court's e-filing portal for the e-filing portal to be working.")).toBe('e-filing portal');
+  });
+
+  const lit = N.lit.waits as any[];
+  const portal = lit.find((w) => w.what === 'the e-filing portal to be working');
+  const dispute = lit.find((w) => w.what === 'the Nyota Logistics fee dispute');
+
+  it('the thing waited on is said once, as the holder', () => {
+    expect(portal.onLabel).toBe("the court's e-filing portal");
+    expect(aWaitOnAHolderSaid('Brian', portal.onLabel, portal.what, 'since 13 October')).toBe("Brian has been waiting since 13 October for the court's e-filing portal to be working.");
+    /* A holder who is not the thing itself is said as who he waits on. */
+    expect(aWaitOnAHolderSaid('Aisha', 'Mr. Baraka', 'proof of payment for FN-006', 'since Monday')).toBe('Aisha has been waiting on Mr. Baraka since Monday for proof of payment for FN-006.');
+  });
+
+  it('a dispute is what he waits on you about, never a thing to be given', () => {
+    expect(aWaitOnYouSaid('Brian', dispute.what, 'since Thursday')).toBe('Brian has been waiting on you since Thursday about the Nyota Logistics fee dispute.');
+    expect(aWaitOnYouSaid('Brian', 'guidance on how to proceed with the double-billing claim', 'since 12 October')).toBe('Brian has been waiting on you since 12 October for guidance on how to proceed with the double-billing claim.');
+  });
+
+  it('no line of Grace’s or Wanjiru’s morning says the same thing twice in a row or ends on "from you since"', async () => {
+    const all: string[] = [];
+    for (const g of ['drop', 'fees', 'lit'] as const) {
+      const m = await theDirectMorningFor(theNightRunsDatabase(g, { directMorning: true }), { groundId: N[g].ground.id, leadUserId: theLeadOf(g).userId, board: theLeadsBoard(g), now: NOW });
+      all.push(...asServedOnTheBoard(m!).parts.flatMap((p) => p.lines));
+    }
+    for (const line of all) {
+      expect(line).not.toMatch(/from you since/);
+      expect(theSamePairTwice(line)).toBeNull();
+      expect(line).toMatch(/^[A-Z0-9].*[.!?]$/);
+    }
   });
 });
