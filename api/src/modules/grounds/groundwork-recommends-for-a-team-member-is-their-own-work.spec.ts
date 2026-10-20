@@ -1,6 +1,8 @@
-// @ts-nocheck -- see the note below: it calls RecommendedCheckInsService.forTheReader, which this pull request does not bring, so it cannot type-check here; its assertions are unchanged.
-/* KNOWN FAILURE (Release 1, pull request 1, 18 October 2026): this test fails on origin/staging (cbc1927ed) too, run the
-   same way, so this pull request does not cause it: it calls RecommendedCheckInsService.forTheReader, which is not in this pull request. Left in place, not changed, so it is fixed in its own change. */
+// @ts-nocheck -- kept as it was written; RecommendedCheckInsService.forTheReader is in this branch now.
+/* KNOWN FAILURE, NOW ONE TEST (browser test, 20 October 2026). forTheReader is brought to staging, so a team member reads only
+   their own offers and somebody with no part in it is told it cannot be found: the other four tests pass. The first still fails
+   on staging, because it expects the account offer ("an account several people name"), which staging does not have; it is
+   left unchanged so it passes when that change arrives. No assertion here was changed. */
 import { NotFoundException } from '@nestjs/common';
 import { RecommendedCheckInsService } from './recommended-check-ins.service';
 
