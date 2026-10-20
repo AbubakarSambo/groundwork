@@ -773,7 +773,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    thin grey outline, whose words are red. Not a fifth kind: the secondary kind with red text. */
 .gwui-btn-secondary.gwui-btn-red-text { color: var(--gw-red-t); }
 .gwui-btn-big { min-height: 54px; font-size: 17px; padding: 0 22px; }
-.gwui-btn-small { min-height: 36px; font-size: 14.5px; padding: 0 12px; }
+.gwui-btn-small { min-height: 44px; font-size: 14.5px; padding: 0 12px; }
 /*
  * FAULT D1 (reviewer, third round): THE FORK BUTTON'S TEXT WAS CLIPPED ON THE LEFT AT 1024px
  * ("heck in once…"). `.gwui-btn`'s own `white-space: nowrap` already had a mobile-only exception

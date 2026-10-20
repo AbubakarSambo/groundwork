@@ -1466,7 +1466,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 .gw-b-quiet { background: transparent; color: var(--gw-navy); padding: 0 8px; }
 .gw-b-quiet:hover:not(:disabled) { text-decoration: underline; }
 .gw-b-big { min-height: 54px; font-size: 17px; padding: 0 22px; }
-.gw-b-small { min-height: 36px; font-size: 14.5px; padding: 0 12px; }
+.gw-b-small { min-height: 44px; font-size: 14.5px; padding: 0 12px; }
 .gw-b-wide { width: 100%; }
 @media (max-width: 640px) {
   /* A long label wraps rather than pushing the page sideways, and a small button is still a thumb. */
