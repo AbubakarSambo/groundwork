@@ -803,7 +803,9 @@ export class WhatsAppService implements OnModuleInit {
       const first = templateFor(FIRST_CONTACT, approved);
       if (!first) return { free: false, template: null, because: FIRST_CONTACT_NOT_APPROVED };
       this.firstContactsBeingSent.set(WhatsAppService.normalize(to), Date.now());
-      return { free: false, template: first, because: OUTSIDE_THE_WINDOW, params: [await this.nameOfTheOrganisation(organizationId), theFirstContactLine(context.kind, context.params, text)] };
+      /* A message that says which shorter words it carries as a first contact (the direct morning: whole sentences that fit, never cut mid-sentence) carries those. */
+      const ownFirstWords = context.paramsFor?.[first.name]?.[0];
+      return { free: false, template: first, because: OUTSIDE_THE_WINDOW, params: [await this.nameOfTheOrganisation(organizationId), ownFirstWords ?? theFirstContactLine(context.kind, context.params, text)] };
     }
     const chosen = theTemplateToUse(context.kind, approved, { params: context.params, paramsFor: context.paramsFor });
     return { free: false, template: chosen?.template ?? null, because: OUTSIDE_THE_WINDOW, ...(chosen?.params ? { params: chosen.params } : {}) };

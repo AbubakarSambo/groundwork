@@ -1535,6 +1535,29 @@ export class EmailService implements OnModuleInit {
   }
 
   /**
+   * THE DIRECT MORNING, BY EMAIL (engagement/the-direct-morning.ts; behind organizations.direct_morning_on): the same four parts as the
+   * WhatsApp summary, each under its heading, with no template around them, and the link to the board. Sent as the lead's daily
+   * summary, so it is still her one routine message of the day.
+   */
+  async sendTheDirectMorning(
+    email: string, subject: string, firstName: string | null | undefined,
+    parts: { heading: string; lines: string[] }[], linkLabel: string, linkUrl: string,
+  ): Promise<'sent' | 'held' | 'suppressed'> {
+    const context: DeliveryContext = { kind: 'OTHER' };
+    const section = (heading: string, lines: string[]) => (lines.length ? `<p><strong>${escapeHtml(heading)}</strong></p>${lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('')}` : '');
+    await this.sendEmail({
+      to: email,
+      subject,
+      html: this.layout(
+        `<p>Good morning ${escapeHtml(firstName?.trim() || 'there')}.</p>`
+        + parts.map((p) => section(p.heading, p.lines)).join('')
+        + `<p><a href="${linkUrl}">${escapeHtml(linkLabel)}</a></p>`,
+      ),
+    }, context, 'sendTheLeadsDailyNudge');
+    return context.outcome ?? 'sent';
+  }
+
+  /**
    * A MESSAGE WHATSAPP COULD NOT TAKE, BY EMAIL INSTEAD (whatsapp/by-email-instead.ts). The WhatsApp message's own words, as an email
    * says them, and a link to the check-in where there is one. Three senders, so the one door knows what each is: the day's routine
    * message (counted as the day's one), a notice about a check-in, and the answer to the person's own check-in. Says what became of it.
