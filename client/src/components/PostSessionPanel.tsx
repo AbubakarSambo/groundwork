@@ -58,10 +58,9 @@ export function PostSessionPanel({ groundId, freeExtensionUsed, onDismiss }: Pro
             <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 12 }}>
               Not ready to pay yet? Keep using Groundwork until you are confident it is delivering value. Add another free session and continue your Check-in.
             </div>
-            <button
+            <button className="gwui-btn gwui-btn-secondary"
               onClick={() => claimFreeExtensionMut.mutate()}
               disabled={claimFreeExtensionMut.isPending}
-              style={{ padding: '9px 18px', borderRadius: 7, background: 'var(--gw-green-t)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: claimFreeExtensionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: claimFreeExtensionMut.isPending ? 0.7 : 1 }}
             >
               {claimFreeExtensionMut.isPending ? 'Adding...' : 'Continue for free'}
             </button>
@@ -81,16 +80,14 @@ export function PostSessionPanel({ groundId, freeExtensionUsed, onDismiss }: Pro
             Your team is getting value from Groundwork. Unlock unlimited check-ins and unlimited sessions for everyone in your organisation with one simple monthly subscription.
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button
+            <button className="gwui-btn gwui-btn-primary"
               onClick={() => createSubscriptionMut.mutate('STARTER')}
               disabled={createSubscriptionMut.isPending}
-              style={{ padding: '9px 18px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: createSubscriptionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: createSubscriptionMut.isPending ? 0.7 : 1 }}
             >
               {createSubscriptionMut.isPending ? 'Redirecting...' : 'Upgrade organisation'}
             </button>
-            <button
+            <button className="gwui-btn gwui-btn-secondary"
               onClick={() => navigate('/pricing')}
-              style={{ padding: '9px 18px', borderRadius: 7, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
             >
               View all plans
             </button>

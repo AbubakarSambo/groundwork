@@ -1,39 +1,46 @@
 @import "tailwindcss";
 
-@theme {
-  --color-gw-navy: #0C447C;
-  --color-gw-navy-d: #042C53;
-  --color-gw-bg: #F7F1E5;
-  --color-gw-dark: #0A1628;
-  --color-gw-green-bg: #E1F5EE;
-  --color-gw-green-t: #085041;
-  --color-gw-green-b: #5DCAA5;
-  --color-gw-amber-bg: #FDF3E3;
-  --color-gw-amber-t: #8A5C1A;
-  --color-gw-amber-b: #E8A94A;
-  --color-gw-red-bg: #FCEBEB;
-  --color-gw-red-t: #791F1F;
-  --color-gw-red-b: #F09595;
-  --color-gw-blue-bg: #EEF4FB;
-  --color-gw-blue-t: #0C447C;
-  --color-gw-blue-b: #B5D4F4;
-  --color-gw-border: #EDE5D6;
-  --color-gw-muted: #7D6A55;
-  --color-gw-sub: #4E4236;
-  --color-gw-text: #1A1916;
+/*
+ * TAILWIND'S NAMES FOR THE SAME COLOURS, READ FROM THE ONE SET BELOW (`:root`). They were typed
+ * here a second time as literals, and two of them (the "secondary" pair) were slate greys the
+ * kit never uses. `inline` makes each utility read the token itself, so there is one source.
+ */
+@theme inline {
+  --color-gw-navy: var(--gw-navy);
+  --color-gw-navy-d: var(--gw-navy-d);
+  --color-gw-bg: var(--gw-bg);
+  --color-gw-dark: var(--gw-dark);
+  --color-gw-green-bg: var(--gw-green-bg);
+  --color-gw-green-t: var(--gw-green-t);
+  --color-gw-green-b: var(--gw-green-b);
+  --color-gw-amber-bg: var(--gw-amber-bg);
+  --color-gw-amber-t: var(--gw-amber-t);
+  --color-gw-amber-b: var(--gw-amber-b);
+  --color-gw-red-bg: var(--gw-red-bg);
+  --color-gw-red-t: var(--gw-red-t);
+  --color-gw-red-b: var(--gw-red-b);
+  --color-gw-blue-bg: var(--gw-blue-bg);
+  --color-gw-blue-t: var(--gw-blue-t);
+  --color-gw-blue-b: var(--gw-blue-b);
+  --color-gw-border: var(--gw-border);
+  --color-gw-muted: var(--gw-muted);
+  --color-gw-sub: var(--gw-sub);
+  --color-gw-text: var(--gw-text);
 
-  --color-primary: #0C447C;
+  --color-primary: var(--gw-navy);
   --color-primary-foreground: #ffffff;
-  --color-background: #FDFBF6;
-  --color-foreground: #1A1916;
-  --color-muted: #F7F1E5;
-  --color-muted-foreground: #4E4236;
-  --color-border: #EDE5D6;
-  --color-secondary: #f1f5f9;
-  --color-secondary-foreground: #64748b;
-  --color-destructive: #791F1F;
-  --color-card: #ffffff;
-  --color-card-foreground: #1A1916;
+  --color-background: var(--gw-page);
+  --color-foreground: var(--gw-text);
+  --color-muted: var(--gw-bg);
+  --color-muted-foreground: var(--gw-sub);
+  --color-border: var(--gw-border);
+  --color-secondary: var(--gw-card);
+  --color-secondary-foreground: var(--gw-text);
+  --color-destructive: var(--gw-red-t);
+  --color-card: var(--gw-card);
+  --color-card-foreground: var(--gw-text);
+  --font-sans: var(--gw-font-ui);
+  --font-serif: var(--gw-font-name);
 }
 
 :root {
@@ -136,7 +143,7 @@
   /* For type below 11px, where a ratio written for 14px text stops being enough. Small uppercase
      labels at 9.5px measured 4.68-4.85 against white on --gw-muted: passing the letter of the bar
      and not the point of it. This is the same family, darker, for exactly those labels. */
-  --gw-sub-d: #4A4540;
+  --gw-sub-d: #40362B;
   /* Secondary text: the design system's "Muted", a dark warm brown (9.7 on white, 8.7 on the fill). */
   --gw-sub: #4E4236;
   --gw-text: #1A1916;
@@ -204,7 +211,7 @@
   /** The bright red of a destructive control, distinct from --gw-red-t's dark prose red. */
   --gw-danger: #C0392B;
   /** Between --gw-text and --gw-sub: secondary prose that still has to be read. */
-  --gw-sub-d: #4A4540;
+  --gw-sub-d: #40362B;
 
   /**
    * THE SOFT BORDERS, which were the actual gap.
@@ -217,6 +224,30 @@
   --gw-red-b-soft: #F5C6C6;
   /** The bright green of a live positive marker, where --gw-green-b is a border weight. */
   --gw-green-live: #34D399;
+
+  /*
+   * THE KIT'S SHAPES, NAMED ONCE (Hafsah's kit and the prototype's app.css, 20 October).
+   *
+   * The prototype's own names, so a rule copied from its app.css can be read against this file:
+   * `--rule` is the line between things, `--rule2` the stronger line on an input or a secondary
+   * button, `--surface` a panel. They are second names for tokens above, not new colours.
+   */
+  --gw-surface: var(--gw-card);
+  --gw-rule: var(--gw-border);
+  /* A secondary button and a chip are outlined with a hairline drawn inside them, never a border
+     (which would change their size) and never a shadow under them. */
+  --gw-hairline: inset 0 0 0 1.5px var(--gw-rule-2);
+  /* The kit's corners: 8px on a button, 12px on a panel or card, 14px on a pop-up window. */
+  --gw-radius-btn: 8px;
+  --gw-radius-card: 12px;
+  --gw-radius-pop: 14px;
+  /* THE ONLY SHADOWS IN THE PRODUCT, and only on something that sits above the page: a pop-up
+     window (modal), a menu, a toast, a sheet that slides in. A card, a button, a bubble or a row
+     on the page has none; it is told apart by its line, not by a shadow under it. */
+  --gw-shadow-menu: 0 14px 40px rgba(26, 25, 22, .14);
+  --gw-shadow-modal: 0 20px 60px rgba(26, 25, 22, .2);
+  --gw-shadow-toast: 0 10px 30px rgba(26, 25, 22, .2);
+  --gw-shadow-sheet: -12px 0 40px rgba(26, 25, 22, .1);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -231,7 +262,17 @@ body {
   background: var(--gw-page);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  /* Lining figures everywhere: Literata draws old-style numbers by default, so "2,400" in a title
+     sat with its digits at different heights. Numbers that line up in a column also take tabular
+     widths (every table). */
+  font-variant-numeric: lining-nums;
 }
+
+table { font-variant-numeric: lining-nums tabular-nums; }
+
+/* Every control takes the page's typeface. A browser draws a button, an input and a select in its
+   own system font unless told otherwise, which is how a stray grey "Arial" button appeared. */
+button, input, select, textarea { font-family: inherit; }
 
 #root {
   min-height: 100vh;
@@ -368,17 +409,20 @@ body {
 .gw-chat-ta:focus { border-color: #0C447C; background: white; }
 
 .gw-send-btn {
-  padding: 0 14px;
-  border-radius: var(--gw-radius);
-  background: #0C447C;
-  color: white;
-  border: none;
+  /* The kit's primary button (app.css .btn.pri): flat navy, white, bold, 8px corners, 44px. */
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: var(--gw-radius-btn);
+  background: var(--gw-navy);
+  color: #fff;
+  border: 0;
   cursor: pointer;
   font-size: 16px;
+  font-weight: 700;
   flex-shrink: 0;
   transition: background 0.1s;
 }
-.gw-send-btn:hover { background: #042C53; }
+.gw-send-btn:hover { background: var(--gw-navy-d); }
 .gw-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ── HEADER ──────────────────────────────────────────────── */
@@ -409,28 +453,34 @@ body {
 }
 
 .gw-back {
-  font-size: 12px;
-  color: var(--gw-sub);
+  /* The kit's secondary button, small: the surface colour with a hairline drawn inside it. */
+  min-height: 44px;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--gw-text);
   cursor: pointer;
-  padding: 5px 10px;
-  border-radius: var(--gw-radius);
-  border: 1px solid var(--gw-border);
-  background: white;
+  padding: 0 12px;
+  border-radius: var(--gw-radius-btn);
+  border: 0;
+  box-shadow: var(--gw-hairline);
+  background: var(--gw-card);
   font-family: inherit;
   transition: background 0.1s;
 }
-.gw-back:hover { background: var(--gw-bg); }
+.gw-back:hover { background: var(--gw-page); }
 
 /* ── BUTTONS ─────────────────────────────────────────────── */
 .gw-btn {
+  /* The kit's primary button, full width. */
   width: 100%;
-  padding: 10px;
-  border-radius: var(--gw-radius);
-  background: #0C447C;
+  min-height: 44px;
+  padding: 10px 18px;
+  border-radius: var(--gw-radius-btn);
+  background: var(--gw-navy);
   color: white;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
-  border: none;
+  border: 0;
   cursor: pointer;
   margin-top: 10px;
   font-family: inherit;
@@ -438,18 +488,21 @@ body {
   display: block;
   text-align: center;
 }
-.gw-btn:hover { background: #042C53; }
+.gw-btn:hover { background: var(--gw-navy-d); }
 .gw-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .gw-btn-sec {
+  /* The kit's secondary button, full width: the surface colour, a hairline inside, bold. */
   width: 100%;
-  padding: 10px;
-  border-radius: var(--gw-radius);
-  background: white;
+  min-height: 44px;
+  padding: 10px 18px;
+  border-radius: var(--gw-radius-btn);
+  background: var(--gw-card);
   color: var(--gw-text);
-  font-size: 13px;
-  font-weight: 400;
-  border: 1px solid var(--gw-border);
+  font-size: 16px;
+  font-weight: 700;
+  border: 0;
+  box-shadow: var(--gw-hairline);
   cursor: pointer;
   margin-top: 8px;
   font-family: inherit;
@@ -457,20 +510,26 @@ body {
   display: block;
   text-align: center;
 }
-.gw-btn-sec:hover { background: var(--gw-bg); }
+.gw-btn-sec:hover { background: var(--gw-page); }
 
 .gw-btn-sm {
-  padding: 5px 12px;
+  /* The kit's chip (app.css .chip): a rounded choice, the surface colour with a hairline inside. */
+  min-height: 40px;
+  padding: 0 14px;
   border-radius: 20px;
-  font-size: 12px;
-  border: 1px solid var(--gw-border);
-  background: var(--gw-bg);
-  color: var(--gw-sub);
+  font-size: 15px;
+  border: 0;
+  box-shadow: var(--gw-hairline);
+  background: var(--gw-card);
+  color: var(--gw-text);
   cursor: pointer;
   font-family: inherit;
+  display: inline-flex;
+  align-items: center;
   transition: all 0.1s;
 }
-.gw-btn-sm:hover { background: white; color: var(--gw-text); border-color: var(--gw-muted); }
+.gw-btn-sm:hover { background: var(--gw-page); }
+@media (max-width: 640px) { .gw-btn-sm { min-height: 44px; } }
 
 /* ── FORMS ───────────────────────────────────────────────── */
 .gw-fld { margin-bottom: 13px; }
@@ -496,12 +555,15 @@ body {
 .gw-input,
 .gw-select,
 .gw-ta {
+  /* The kit's field (app.css .input): 48px, 16px words (a phone zooms into anything smaller),
+     10px corners and the stronger warm line at 1.5px. */
   width: 100%;
-  padding: 10px 12px;
-  font-size: 13px;
-  border: 1px solid var(--gw-rule-2);
-  border-radius: var(--gw-radius);
-  background: #FFFFFF;
+  min-height: 48px;
+  padding: 10px 16px;
+  font-size: 16px;
+  border: 1.5px solid var(--gw-rule-2);
+  border-radius: 10px;
+  background: var(--gw-card);
   color: var(--gw-text);
   font-family: inherit;
   outline: none;
@@ -511,7 +573,7 @@ body {
    whole signal. A ring rather than a hairline, because a one-pixel colour change is not a focus
    state anybody using a keyboard can see. */
 .gw-input:focus, .gw-select:focus, .gw-ta:focus {
-  border-color: #0C447C;
+  border-color: var(--gw-navy);
   box-shadow: 0 0 0 3px rgba(12, 68, 124, .12);
 }
 .gw-ta { resize: vertical; line-height: 1.5; }
@@ -905,7 +967,8 @@ body.gw-sb-collapsed .gw-main { margin-left: 0; }
   justify-content: center;
   padding: 0;
   font-family: inherit;
-  box-shadow: 2px 0 6px rgba(0,0,0,.06);
+  /* No shadow: it sits on the page, so its line says where it ends. */
+  box-shadow: var(--gw-hairline);
   opacity: 0;
   pointer-events: none;
   transition: color 0.1s, background 0.1s, opacity 0.22s;
@@ -1212,7 +1275,7 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
   .gw-main-content { margin-left: 0 !important; padding: 0 !important; max-width: none !important; }
   main, body { background: white !important; color: black !important; }
   a { color: inherit !important; text-decoration: none !important; }
-  section, .gw-card { break-inside: avoid; border-color: #bbb !important; box-shadow: none !important; }
+  section, .gw-card { break-inside: avoid; border-color: var(--gw-rule-2) !important; box-shadow: none !important; }
   @page { margin: 1.5cm 2cm; }
 }
 
@@ -1403,12 +1466,12 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
 .gw-b-quiet { background: transparent; color: var(--gw-navy); padding: 0 8px; }
 .gw-b-quiet:hover:not(:disabled) { text-decoration: underline; }
 .gw-b-big { min-height: 54px; font-size: 17px; padding: 0 22px; }
-.gw-b-small { min-height: 36px; font-size: 14.5px; padding: 0 12px; }
+.gw-b-small { min-height: 44px; font-size: 14.5px; padding: 0 12px; }
 .gw-b-wide { width: 100%; }
 @media (max-width: 640px) {
   /* A long label wraps rather than pushing the page sideways, and a small button is still a thumb. */
   .gw-b { white-space: normal; }
-  .gw-b-small { min-height: 40px; }
+  .gw-b-small { min-height: 44px; }
 }
 
 /* A tag is a short fact about a thing, never a label on a person. Each colour means one thing. */
@@ -1560,7 +1623,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
 .gw-rl-me { all: unset; box-sizing: border-box; cursor: pointer; display: flex; gap: 10px; align-items: center; width: 100%; min-height: 44px; border-radius: 8px; padding: 2px; }
 .gw-rl-me:hover { background: var(--gw-card); }
 .gw-rl-av { width: 34px; height: 34px; border-radius: 50%; background: var(--gw-blue-bg); color: var(--gw-navy); display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13.5px; flex: none; }
-.gw-rl-menu { position: fixed; z-index: 60; width: 280px; max-width: calc(100vw - 20px); background: var(--gw-card); border: 1px solid var(--gw-rule-2); border-radius: 12px; box-shadow: 0 14px 40px rgba(26,25,22,.14); padding: 6px; display: flex; flex-direction: column; }
+.gw-rl-menu { position: fixed; z-index: 60; width: 280px; max-width: calc(100vw - 20px); background: var(--gw-card); border: 1px solid var(--gw-rule-2); border-radius: 12px; box-shadow: var(--gw-shadow-menu); padding: 6px; display: flex; flex-direction: column; }
 .gw-rl-menu-org { top: 118px; }
 .gw-rl-menu-me { bottom: 70px; width: 236px; }
 .gw-rl-menu-h { font-size: 13px; font-weight: 700; color: var(--gw-sub); padding: 8px 10px 4px; }
@@ -1607,7 +1670,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
 .gw-rl-jump:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 1px; }
 .gw-rl-jump kbd { margin-left: auto; font: inherit; font-size: 13px; color: var(--gw-sub); }
 .gw-jump-bg { background: rgba(26, 25, 22, .35); display: flex; align-items: flex-start; justify-content: center; padding: 12vh 16px 16px; }
-.gw-jump { width: 100%; max-width: 560px; background: var(--gw-card); border: 1px solid var(--gw-rule-2); border-radius: 14px; box-shadow: 0 20px 60px rgba(26,25,22,.2); overflow: hidden; display: flex; flex-direction: column; max-height: 70vh; }
+.gw-jump { width: 100%; max-width: 560px; background: var(--gw-card); border: 1px solid var(--gw-rule-2); border-radius: var(--gw-radius-pop); box-shadow: var(--gw-shadow-modal); overflow: hidden; display: flex; flex-direction: column; max-height: 70vh; }
 .gw-jump-input { border: 0; border-bottom: 1px solid var(--gw-border); padding: 16px 18px; font: inherit; font-size: 17px; color: var(--gw-text); background: var(--gw-card); outline: none; min-width: 0; }
 .gw-jump-list { overflow-y: auto; padding: 6px; }
 .gw-jump-h { font-size: 13px; font-weight: 700; color: var(--gw-sub); padding: 10px 12px 4px; }
@@ -1634,7 +1697,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
 .gw-auth-sub strong { color: var(--gw-text); }
 .gw-auth-fld { margin-bottom: 16px; }
 .gw-auth-label { display: block; font-size: 14.5px; font-weight: 700; color: var(--gw-text); margin-bottom: 8px; }
-.gw-auth-input { width: 100%; min-height: 48px; padding: 0 16px; font: inherit; font-size: 16px; color: var(--gw-text); background: #fff; border: 1px solid var(--gw-rule-2); border-radius: 8px; outline: none; }
+.gw-auth-input { width: 100%; min-height: 48px; padding: 0 16px; font: inherit; font-size: 16px; color: var(--gw-text); background: #fff; border: 1.5px solid var(--gw-rule-2); border-radius: 10px; outline: none; }
 .gw-auth-input:focus { border-color: var(--gw-navy); box-shadow: 0 0 0 3px rgba(12, 68, 124, .14); }
 .gw-auth-input::placeholder { color: var(--gw-muted); }
 .gw-auth-pw { position: relative; display: block; }
@@ -1658,7 +1721,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
 .gw-auth-notice p { margin: 0; }
 .gw-auth-notice .gw-auth-notice-h { font-weight: 700; margin-bottom: 2px; }
 .gw-auth-links { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 22px; }
-.gw-auth-link { background: none; border: 0; padding: 0; font: inherit; font-size: 15px; font-weight: 700; color: var(--gw-navy); cursor: pointer; text-decoration: none; min-height: 32px; }
+.gw-auth-link { background: none; border: 0; padding: 0; font: inherit; font-size: 15px; font-weight: 700; color: var(--gw-navy); cursor: pointer; text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; }
 .gw-auth-link:hover { text-decoration: underline; }
 .gw-auth-link:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 2px; border-radius: 4px; }
 .gw-auth-small { font-size: 14.5px; line-height: 1.5; color: var(--gw-sub); margin: 16px 0 0; }
@@ -1689,7 +1752,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
 .gw-auth-or { text-align: center; font-size: 14.5px; color: var(--gw-sub); margin: 14px 0; }
 .gw-auth-choice { border: 0; padding: 0; margin: 0 0 16px; display: grid; gap: 8px; }
 .gw-auth-choice legend { padding: 0; margin-bottom: 4px; }
-.gw-auth-choice label { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 12px; border: 1px solid var(--gw-rule-2); border-radius: 8px; background: #fff; font-size: 16px; color: var(--gw-text); cursor: pointer; }
+.gw-auth-choice label { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px; border: 1.5px solid var(--gw-rule-2); border-radius: 8px; background: #fff; font-size: 16px; color: var(--gw-text); cursor: pointer; }
 .gw-auth-choice input { width: 18px; height: 18px; accent-color: var(--gw-navy); margin: 0; }
 .gw-auth-choice label:has(input:checked) { border-color: var(--gw-navy); box-shadow: inset 0 0 0 1px var(--gw-navy); }
 
@@ -1706,7 +1769,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
 .gw-org-rows-foot { text-align: center; margin: 20px 0 0; }
 .gw-rl-menu-join { color: var(--gw-navy); font-weight: 700; }
 
-.gw-invite-note { background: #F6EFE4; color: var(--gw-text); border-radius: 8px; padding: 12px 14px; font-size: 14.5px; line-height: 1.5; margin: 0 0 18px; }
+.gw-invite-note { background: var(--gw-bg); color: var(--gw-text); border-radius: 8px; padding: 12px 14px; font-size: 14.5px; line-height: 1.5; margin: 0 0 18px; }
 
 /* The invitation's facts (A3, join-invite.txt): "What it asks", "Who sees your answers". */
 .gw-invite-facts { background: #fff; border: 1px solid var(--gw-border); border-radius: 10px; padding: 16px 20px; margin-bottom: 16px; display: grid; gap: 14px; }

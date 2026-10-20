@@ -163,11 +163,9 @@ export function TargetsBand({
                 placeholder="One thing on each line."
               />
               <div className="gwui-gap-8 gwui-mt-8" style={{ display: 'flex' }}>
-                <button
+                <button className="gwui-btn gwui-btn-primary gwui-btn-small"
                   onClick={() => saveAssumes.mutate({ id: t.id, lines: draft.split('\n').map((l) => l.trim()).filter(Boolean) })}
                   disabled={saveAssumes.isPending}
-                  className="gwui-fs-13 gwui-ink-white gwui-pt-7 gwui-pr-13 gwui-pb-7 gwui-pl-13 gwui-rule-none"
-                  style={{ borderRadius: 7, background: 'var(--gw-navy)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
                 >
                   {saveAssumes.isPending ? 'Saving…' : 'Save'}
                 </button>

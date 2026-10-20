@@ -57,20 +57,19 @@ export function ThatIsOnTheRecord({ groundId }: { groundId: string }) {
         <div style={{ marginTop: 10 }}>
           <label htmlFor="record-email" style={{ display: 'block', fontSize: 12.5, color: 'var(--gw-sub)', marginBottom: 4 }}>Where should your report go?</label>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <input
+            <input className="gwui-input"
               id="record-email" type="email" autoComplete="email" value={email}
               onChange={(e) => { setEmail(e.target.value); setProblem('') }}
               placeholder="you@work.com"
-              style={{ flex: '1 1 220px', padding: '9px 12px', fontSize: 14, borderRadius: 8, border: '1px solid var(--gw-border)', fontFamily: 'inherit' }}
+              style={{ flex: '1 1 220px' }}
             />
-            <button
+            <button className="gwui-btn gwui-btn-primary gwui-btn-small"
               onClick={() => { if (!looksLikeAnAddress(email)) { setProblem('That does not look like an email address.'); return } change.mutate() }}
               disabled={change.isPending || !email.trim()}
-              style={{ padding: '9px 14px', borderRadius: 8, border: 'none', background: 'var(--gw-navy)', color: 'white', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: change.isPending || !email.trim() ? .5 : 1 }}
             >
               {change.isPending ? 'Saving…' : 'Send it there'}
             </button>
-            <button onClick={() => setEditing(false)} style={{ padding: '9px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', background: 'white', color: 'var(--gw-sub)', fontSize: 13.5, cursor: 'pointer', fontFamily: 'inherit' }}>
+            <button className="gwui-btn gwui-btn-secondary gwui-btn-small" onClick={() => setEditing(false)} >
               Keep it
             </button>
           </div>

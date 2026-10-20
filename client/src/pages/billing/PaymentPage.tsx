@@ -128,10 +128,10 @@ export function PaymentPage() {
               {codeMsg && (
                 <div style={{ fontSize: 12, color: codeMsg.ok ? 'var(--gw-green-t)' : 'var(--gw-danger)', marginBottom: 8 }}>{codeMsg.text}</div>
               )}
-              <button
+              <button className="gwui-btn gwui-btn-primary"
                 onClick={() => redeemCode.mutate()}
                 disabled={!code.trim() || redeemCode.isPending}
-                style={{ width: '100%', padding: '9px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: !code.trim() ? 'not-allowed' : 'pointer', opacity: !code.trim() ? 0.45 : 1, fontFamily: 'inherit' }}
+                style={{ width: '100%' }}
               >
                 {redeemCode.isPending ? 'Checking...' : 'Apply'}
               </button>

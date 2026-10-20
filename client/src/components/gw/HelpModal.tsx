@@ -277,7 +277,7 @@ export function HelpModal() {
       onClick={(e) => { if (e.target === e.currentTarget) hide() }}
       style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.75)', zIndex: 9000, overflowY: 'auto', padding: '20px 16px', display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}
     >
-      <div style={{ background: 'white', borderRadius: 14, width: '100%', maxWidth: 560, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', margin: '0 auto' }}>
+      <div style={{ background: 'white', borderRadius: 14, width: '100%', maxWidth: 560, overflow: 'hidden', boxShadow: 'var(--gw-shadow-modal)', margin: '0 auto' }}>
 
         {/* Header */}
         <div style={{ background: 'var(--gw-dark)', padding: '24px 24px 20px', position: 'relative' }}>

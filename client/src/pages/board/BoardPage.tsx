@@ -2652,9 +2652,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 !viewerRunsThisCheckIn && (noSessionOpenForReader || noSessionOpenForReaderFallback || iHaveNothingOpenOrPending) ? (
                   (whenTheNextSessionOpens ?? whenTheNextSessionOpensFallback) && <Note tone="muted">{whenTheNextSessionOpens ?? whenTheNextSessionOpensFallback}</Note>
                 ) : (
-                  <Link
+                  <Link className="gwui-btn gwui-btn-primary"
                     to={`/grounds/${id}`}
-                    className="gwui-pt-8 gwui-pr-14 gwui-pb-8 gwui-pl-14 gwui-ink-white gwui-fs-16" style={{borderRadius: 7, background: 'var(--gw-navy)', fontWeight: 700, textDecoration: 'none', fontFamily: 'inherit'}}
                   >
                     {isAParty && !viewerRunsThisCheckIn ? 'Start my check-in' : 'Your check-in'}
                   </Link>

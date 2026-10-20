@@ -107,9 +107,9 @@ export function StartingPointPanel({ groundId, canRecord }: { groundId: string; 
       </Section>
 
       {canRecord && !picking && (
-        <button
+        <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
           onClick={() => setPicking(true)}
-          style={{ marginTop: 10, padding: '9px 14px', borderRadius: 8, background: 'none', border: '1px solid var(--gw-border)', fontSize: 12.5, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit' }}
+          style={{ marginTop: 10 }}
         >
           {entries.length ? 'Add to the starting point →' : 'Record where this stood →'}
         </button>
@@ -156,16 +156,14 @@ export function StartingPointPanel({ groundId, canRecord }: { groundId: string; 
             )}
 
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              <button
+              <button className="gwui-btn gwui-btn-primary gwui-btn-small"
                 onClick={() => record.mutate()}
                 disabled={!chosen.size || record.isPending}
-                style={{ padding: '9px 16px', borderRadius: 7, background: chosen.size ? 'var(--gw-navy)' : 'var(--gw-border)', color: chosen.size ? 'white' : 'var(--gw-muted)', border: 'none', fontSize: 13, fontWeight: 700, cursor: chosen.size ? 'pointer' : 'default', fontFamily: 'inherit' }}
               >
                 {record.isPending ? 'Recording…' : `Record ${chosen.size || ''} as the starting point`.trim()}
               </button>
-              <button
+              <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
                 onClick={() => { setPicking(false); setChosen(new Set()) }}
-                style={{ padding: '9px 16px', borderRadius: 7, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Cancel
               </button>

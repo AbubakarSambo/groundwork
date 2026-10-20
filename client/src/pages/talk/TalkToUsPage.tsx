@@ -97,8 +97,9 @@ export function TalkToUsPage() {
 
   const label = { display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--gw-sub)', marginBottom: 5 } as const
   const field = {
-    width: '100%', padding: '10px 12px', fontSize: 14, border: '1px solid var(--gw-border)',
-    borderRadius: 8, fontFamily: 'inherit', boxSizing: 'border-box' as const, marginBottom: 14,
+    /* The kit's field (app.css .input). */
+    width: '100%', padding: '12px 16px', fontSize: 16, border: '1.5px solid var(--gw-rule-2)', borderRadius: 10, background: 'var(--gw-card)', color: 'var(--gw-text)',
+    fontFamily: 'inherit', boxSizing: 'border-box' as const, marginBottom: 14,
   }
 
   if (said === 'sent') {
@@ -185,15 +186,9 @@ export function TalkToUsPage() {
 
         {said && said !== 'sent' && <p className="gw-er" role="alert" style={{ fontSize: 13, marginBottom: 12 }}>{said}</p>}
 
-        <button
+        <button className="gwui-btn gwui-btn-primary"
           type="submit"
           disabled={send.isPending || !longEnough}
-          style={{
-            background: 'var(--gw-navy)', color: 'white', border: 'none', borderRadius: 8,
-            padding: '12px 24px', fontSize: 14, fontWeight: 700, fontFamily: 'inherit',
-            cursor: send.isPending || !longEnough ? 'default' : 'pointer',
-            opacity: send.isPending || !longEnough ? 0.6 : 1,
-          }}
         >
           {send.isPending ? 'Sending…' : 'Send the request'}
         </button>

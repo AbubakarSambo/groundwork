@@ -642,7 +642,6 @@ export function TheAssistantAsACustomerSeesIt() {
           fontWeight: 700,
           fontFamily: 'inherit',
           cursor: 'pointer',
-          boxShadow: '0 2px 10px rgba(0,0,0,.14)',
         }}
       >
         Ask Groundwork
@@ -664,7 +663,7 @@ export function TheAssistantAsACustomerSeesIt() {
         flexDirection: 'column',
         ...CARD,
         padding: 0,
-        boxShadow: '0 6px 28px rgba(0,0,0,.18)',
+        boxShadow: 'var(--gw-shadow-menu)',
       }}
     >
       <header
@@ -788,20 +787,11 @@ export function TheAssistantAsACustomerSeesIt() {
             {g.brief && (
               <div style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>{g.brief}</div>
             )}
-            <button
+            <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
               type="button"
               onClick={() => startIt(g.groundId)}
               disabled={busy}
-              style={{
-                marginTop: 8,
-                fontSize: 12.5,
-                padding: '4px 10px',
-                borderRadius: 6,
-                border: '1px solid var(--gw-border)',
-                background: 'var(--gw-card)',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-              }}
+              style={{ marginTop: 8 }}
             >
               Start it
             </button>
@@ -842,20 +832,11 @@ export function TheAssistantAsACustomerSeesIt() {
             }}
           >
             You have a check-in waiting on {c.ground?.label ?? 'a piece of work'}.
-            <button
+            <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
               type="button"
               onClick={() => openCheckIn(c.checkInId)}
               disabled={busy}
-              style={{
-                marginLeft: 8,
-                fontSize: 12.5,
-                padding: '4px 10px',
-                borderRadius: 6,
-                border: '1px solid var(--gw-border)',
-                background: 'var(--gw-card)',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-              }}
+              style={{ marginLeft: 8 }}
             >
               Open it
             </button>
@@ -1048,7 +1029,7 @@ export function TheAssistantAsACustomerSeesIt() {
             </button>
           </>
         )}
-        <input
+        <input className="gwui-input"
           value={typing}
           onChange={(e) => setTyping(e.target.value)}
           disabled={!session || busy}
@@ -1072,32 +1053,11 @@ export function TheAssistantAsACustomerSeesIt() {
                 : 'Ask about your objectives, people or what is due'
           }
           aria-label="Message"
-          style={{
-            flex: 1,
-            padding: '8px 11px',
-            borderRadius: 8,
-            border: '1px solid var(--gw-border)',
-            fontSize: 13,
-            fontFamily: 'inherit',
-            background: 'white',
-            outline: 'none',
-          }}
+          style={{ flex: 1 }}
         />
-        <button
+        <button className="gwui-btn gwui-btn-primary gwui-btn-small"
           type="submit"
           disabled={!session || busy || !typing.trim()}
-          style={{
-            padding: '8px 14px',
-            borderRadius: 8,
-            border: 'none',
-            background: 'var(--gw-navy)',
-            color: 'white',
-            fontSize: 13,
-            fontWeight: 700,
-            fontFamily: 'inherit',
-            cursor: session && typing.trim() ? 'pointer' : 'default',
-            opacity: session && typing.trim() && !busy ? 1 : 0.5,
-          }}
         >
           {busy ? '…' : 'Send'}
         </button>

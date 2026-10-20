@@ -142,7 +142,7 @@ export function Sec({ title, src, n, on = 'light', size = 'default' }: { title: 
 export function Card({ children, pad = true }: { children: React.ReactNode; pad?: boolean | 'block' }) {
   const padding = pad === 'block' ? '14px 16px' : pad ? '6px 16px' : 0
   return (
-    <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, boxShadow: '0 1px 2px rgba(20,24,40,.05)', padding }}>
+    <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding }}>
       {children}
     </div>
   )
@@ -164,7 +164,7 @@ export function Pill({ children, tone = 'flat', outline = false }: { children: R
     warn: { bg: 'var(--gw-amber-bg)', fg: 'var(--gw-amber-t)', b: 'var(--gw-amber-b)' },
     bad: { bg: 'var(--gw-red-bg)', fg: 'var(--gw-red-t)', b: 'var(--gw-red-b)' },
     info: { bg: 'var(--gw-blue-bg)', fg: 'var(--gw-blue-t)', b: 'var(--gw-blue-b)' },
-    flat: { bg: '#EEF0F4', fg: 'var(--gw-sub)', b: 'var(--gw-border)' },
+    flat: { bg: 'var(--gw-bg)', fg: 'var(--gw-sub)', b: 'var(--gw-border)' },
   }
   const c = m[tone] ?? m.flat
   return (

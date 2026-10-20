@@ -530,7 +530,7 @@ function FeedbackWidget() {
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
           className="gw-fb-overlay"
         >
-          <div ref={panelRef} className="gw-fb-panel" role="dialog" aria-modal="true" aria-label="Feedback" style={{ background: 'white', borderRadius: 12, padding: 20, width: '100%', maxWidth: 480, maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 18px 48px rgba(10,22,40,.28)' }}>
+          <div ref={panelRef} className="gw-fb-panel" role="dialog" aria-modal="true" aria-label="Feedback" style={{ background: 'white', borderRadius: 12, padding: 20, width: '100%', maxWidth: 480, maxHeight: '85vh', overflowY: 'auto', boxShadow: 'var(--gw-shadow-modal)' }}>
             {/* Tabs */}
             <div style={{ display: 'flex', borderBottom: '1px solid var(--gw-border)', marginBottom: 16 }}>
               {(['reaction', 'build', 'wrong'] as FbTab[]).map(t => (
@@ -567,15 +567,9 @@ function FeedbackWidget() {
                   <>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
                       {REACTION_OPTIONS.map(o => (
-                        <button
+                        <button className={`gwui-choice${reaction === o ? ' gwui-choice-on' : ''}`}
                           key={o}
                           onClick={() => setReaction(o)}
-                          style={{
-                            padding: '6px 11px', borderRadius: 20, fontSize: 12,
-                            border: '1px solid rgba(0,0,0,.14)', background: reaction === o ? 'var(--gw-navy)' : 'none',
-                            color: reaction === o ? 'white' : 'rgba(0,0,0,.55)',
-                            cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1.3,
-                          }}
                         >
                           {o}
                         </button>
@@ -591,15 +585,9 @@ function FeedbackWidget() {
                   <>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
                       {BUILD_OPTIONS.map(o => (
-                        <button
+                        <button className={`gwui-choice${buildPick === o ? ' gwui-choice-on' : ''}`}
                           key={o}
                           onClick={() => setBuildPick(o)}
-                          style={{
-                            padding: '6px 11px', borderRadius: 20, fontSize: 12,
-                            border: '1px solid rgba(0,0,0,.14)', background: buildPick === o ? 'var(--gw-navy)' : 'none',
-                            color: buildPick === o ? 'white' : 'rgba(0,0,0,.55)',
-                            cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1.3,
-                          }}
                         >
                           {BUILD_OPTION_LABELS[o] ?? o}
                         </button>
@@ -623,15 +611,15 @@ function FeedbackWidget() {
                 )}
 
                 <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                  <button onClick={() => hidePanel()}
-                    style={{ padding: '11px 16px', background: 'none', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', borderRadius: 6, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <button className="gwui-btn gwui-btn-secondary" onClick={() => hidePanel()}
+                    >
                     Cancel
                   </button>
                   {whyNotValid() && (
                     <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', width: '100%', marginBottom: 6 }}>{whyNotValid()}</div>
                   )}
-                  <button onClick={submit} disabled={!valid()}
-                    style={{ flex: 1, padding: 11, background: 'var(--gw-navy)', color: 'white', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: valid() ? 1 : 0.38 }}>
+                  <button className="gwui-btn gwui-btn-primary" onClick={submit} disabled={!valid()}
+                    style={{ flex: 1 }}>
                     Send
                   </button>
                 </div>
@@ -1715,7 +1703,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {isAuthenticated && askOpen && (
         <div className="gw-ask-drawer" style={{
           position: 'fixed', top: 0, right: 0, bottom: 0, width: 400, maxWidth: '100vw', zIndex: 45,
-          boxShadow: '-8px 0 24px rgba(26, 25, 22, 0.08)',
+          boxShadow: 'var(--gw-shadow-sheet)',
         }}>
           <AskGroundwork
             onClose={hideAsk}

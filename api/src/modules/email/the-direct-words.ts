@@ -3,9 +3,11 @@
  * link. No paragraph about Groundwork, no note about who sees what, no "shared picture", no count of things settled, and nothing that
  * hedges. Only ever used where the switch is on: with it off, each sender writes what it always wrote.
  */
+import { MAIL_BUTTON } from './the-kits-look-in-an-email';
+
 const esc = (s: string) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const p = (s: string) => `<p>${esc(s)}</p>`;
-const BUTTON = 'display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;';
+const BUTTON = MAIL_BUTTON;
 const button = (url: string, label: string) => `<p><a href="${url}" style="${BUTTON}">${esc(label)}</a></p>`;
 
 /** The report is ready: the finding first, as the reader is served it, then the link. */

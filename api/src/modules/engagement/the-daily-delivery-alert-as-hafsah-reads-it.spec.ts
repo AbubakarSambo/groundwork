@@ -181,7 +181,8 @@ describe('the daily delivery alert, as Hafsah reads it on Tuesday 20 October', (
     expect(text).toContain('- Peter Njoroge was sent 2 check-ins and answered 1, so 1 was not answered (50 percent answered).');
     expect(text).toContain('- Joseph Kariuki was sent 1 check-in and answered it.');
     expect(text).toContain('- Grace Akinyi was sent 1 check-in and did not answer it.');
-    expect(html).toContain('<th style="text-align:left;padding:4px 10px 4px 0;border-bottom:1px solid #ccc;font-size:13px">Not answered</th>');
+    /* UPDATED 20 October (the kit's design everywhere): the header's line is the kit's warm rule (#EDE5D6), not grey #ccc. Only the colour changed. */
+    expect(html).toContain('<th style="text-align:left;padding:4px 10px 4px 0;border-bottom:1px solid #EDE5D6;font-size:13px">Not answered</th>');
     expect(html).toMatch(/<td[^>]*>Grace Akinyi<\/td><td[^>]*>1<\/td><td[^>]*>0<\/td><td[^>]*>1<\/td><td[^>]*>0<\/td>/);
   });
 

@@ -70,7 +70,7 @@ export default function OpsTargetCompaniesPage() {
     return (
       <section className="gw-page" style={{ padding: 40, maxWidth: 640 }}>
         <h1 style={{ fontSize: 20, marginBottom: 8 }}>We could not load the list</h1>
-        <button type="button" onClick={() => targetCompanies.refetch()} style={{ ...CARD, cursor: 'pointer' }}>
+        <button className="gwui-btn gwui-btn-secondary gwui-btn-small" type="button" onClick={() => targetCompanies.refetch()} >
           Try again
         </button>
       </section>

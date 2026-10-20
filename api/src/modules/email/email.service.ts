@@ -38,6 +38,7 @@ import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { theAnchorInvitation } from '../entry/the-anchor-people-step';
 import { aCheckInStartedFromTheAnchor, theCheckInWasStartedFromTheAnchor } from '../conversation/the-anchor-weekly-check-in';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
+import { MAIL_BUTTON, MAIL_FONT_UI, dressedInTheKitsLook } from './the-kits-look-in-an-email';
 
 /**
  * Groundwork email library. Per the product rules, every message names
@@ -75,7 +76,7 @@ export class EmailService implements OnModuleInit {
       const connect = await connectWhatsAppFor(this.prisma, this.configService, { organizationId: checkIn.organizationId, email, keptInTheApp: keptOffThePhone(checkIn), forTheInvitation });
       if (!connect) return '';
       return `<p>${escapeHtml(youCanAlsoAnswerOnWhatsApp(connect.number))}</p>
-         <p><a href="${connect.link}" style="display:inline-block;background:#25D366;color:#0A1628;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:bold;">${connect.says}</a></p>`;
+         <p><a href="${connect.link}" style="display:inline-block;background:#25D366;color:#0A1628;padding:12px 20px;border:0;border-radius:8px;text-decoration:none;font-weight:700;font-size:16px;line-height:20px;font-family:Atkinson Hyperlegible,Arial,Helvetica,sans-serif;">${connect.says}</a></p>`;
     } catch {
       return '';
     }
@@ -305,7 +306,7 @@ export class EmailService implements OnModuleInit {
         `<p>${greeting(adminFirstName)}</p>
          <p>${theyCameHow(named, checkInLabel, by, known)}, and they are not in your organisation yet.${named === 'Someone' && who?.includes('@') ? ` The address they ${known.cameThroughTheLink ? 'gave' : 'were invited with'} is <strong>${escapeHtml(who)}</strong>.` : ''}</p>
          <p>They can sign in, and they cannot start until you approve them joining.${direct ? '' : ' Nobody outside your organisation is added to it, or counted on your plan, without this.'}</p>
-         <p><a href="${this.frontendUrl.replace(/\/$/, '')}/org/members" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">See who is waiting →</a></p>`,
+         <p><a href="${this.frontendUrl.replace(/\/$/, '')}/org/members" style="${MAIL_BUTTON}">See who is waiting →</a></p>`,
       ),
     }, undefined, 'sendSomebodyIsWaiting');
   }
@@ -321,7 +322,7 @@ export class EmailService implements OnModuleInit {
       html: this.layout(
         `<p>${greeting(leadFirstName)}</p>
          <p><strong>${escapeHtml(who)}</strong> asked you to give <strong>${escapeHtml(checkInLabel)}</strong> more time. It reached its end date, so nobody can add to it until you do. Everything already in it is kept.</p>
-         <p><a href="${this.frontendUrl.replace(/\/$/, '')}/grounds/${encodeURIComponent(groundId)}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Give it more time →</a></p>`,
+         <p><a href="${this.frontendUrl.replace(/\/$/, '')}/grounds/${encodeURIComponent(groundId)}" style="${MAIL_BUTTON}">Give it more time →</a></p>`,
       ),
     }, undefined, 'sendMoreTimeAsked');
   }
@@ -341,7 +342,7 @@ export class EmailService implements OnModuleInit {
       html: this.layout(
         `<p>${greeting(known.firstName ?? null)}</p>
          <p>${letInBy} has let you in, so ${what}.</p>
-         <p><a href="${this.frontendUrl.replace(/\/$/, '')}/grounds" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open my check-in →</a></p>`,
+         <p><a href="${this.frontendUrl.replace(/\/$/, '')}/grounds" style="${MAIL_BUTTON}">Open my check-in →</a></p>`,
       ),
     }, undefined, 'sendYouAreInNow');
   }
@@ -381,7 +382,7 @@ export class EmailService implements OnModuleInit {
       html: this.layout(
         `<p>${greeting(firstName)}</p>
          <p>An admin has decided not to add ${nameless ? 'the person you invited' : `<strong>${escapeHtml(who)}</strong>`} to your organisation, so they cannot check in on it.${nameless && address?.includes('@') ? ` The address you invited them with is <strong>${escapeHtml(address)}</strong>.` : ''}</p>
-         ${reason ? `<p style="border-left:3px solid #E2E0DB;padding:8px 14px;margin:18px 0;color:#4A4540;">${escapeHtml(reason)}</p>` : ''}
+         ${reason ? `<p style="border-left:3px solid #EDE5D6;padding:8px 14px;margin:18px 0;color:#4E4236;">${escapeHtml(reason)}</p>` : ''}
          <p>They have not been told. If they should hear anything about it, that is yours to say.</p>`,
       ),
     }, undefined, 'sendTheyWereNotLetIn');
@@ -618,6 +619,10 @@ export class EmailService implements OnModuleInit {
     const wayOut = sender && whatThisMailIs(sender) === 'we decided to send it' ? await this.theWayToStopHearingFromUs(options.to) : null;
     if (wayOut) options = { ...options, html: `${options.html}${UNSUBSCRIBE_FOOTER(wayOut)}` };
     const text = options.text ?? plainTextOf(options.html);
+    /* THE KIT'S LOOK, PUT ON ONCE AND LAST (the-kits-look-in-an-email.ts): after every footer, so the footer sits inside the card, and after
+       the text part is read, so the frame adds nothing to the words. Only what goes out wears it: the links read below for a local run are
+       the mail's own, never the font sheet's. */
+    const dressed = dressedInTheKitsLook(options.html);
     /* The one-click POST goes to the API, not the page: a mail program posts it with no person reading anything. */
     const apiOrigin = (this.configService.get<string>('app.publicApiUrl') || '').replace(/\/$/, '');
     /* RFC 8058: the one-click header is promised only where the address in it really takes a POST and stops the mail with no page. That is the API's
@@ -643,7 +648,7 @@ export class EmailService implements OnModuleInit {
         /* MAIL_CATCHER_PORT is for a test bed only (two testers, two catchers). Unset, it is 1025 as it always was. This branch is only ever reached when nothing is sent for real. */
         const transport = nodemailer.createTransport({ host: '127.0.0.1', port: Number(process.env.MAIL_CATCHER_PORT) || 1025, secure: false, ignoreTLS: true });
         /* The text part too (11 October): this copy is the one a person testing locally reads, and it went with the HTML only, so every mail looked as if its text part were empty. */
-        await transport.sendMail({ from: this.fromEmail, to: options.to, subject: options.subject, html: options.html, text });
+        await transport.sendMail({ from: this.fromEmail, to: options.to, subject: options.subject, html: dressed, text });
       } catch (_) { /* mailcatcher not running - console log is still available */ }
       const devId = `dev-${crypto.randomUUID()}`;
       await this.delivery.recordSend(devId, options.to, context);
@@ -664,7 +669,7 @@ export class EmailService implements OnModuleInit {
       const match = options.html.match(/href="([^"]+)"/);
       return match?.[1];
     }
-    const { data, error } = await this.theResendClient().emails.send({ from: this.fromEmail, ...options, text, ...(headers ? { headers } : {}) });
+    const { data, error } = await this.theResendClient().emails.send({ from: this.fromEmail, ...options, text, html: dressed, ...(headers ? { headers } : {}) });
     if (error) {
       this.logger.error(`Failed to send email to ${options.to}: ${error.name} - ${error.message}`);
       this.writeItDown(options, sender, 'failed', `${error.name}: ${error.message}`);
@@ -690,7 +695,7 @@ export class EmailService implements OnModuleInit {
   }
 
   private layout(body: string): string {
-    return `<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">${withoutDeveloperComments(body)}</div>`;
+    return `<div style="font-family:${MAIL_FONT_UI};max-width:600px;margin:0 auto;">${withoutDeveloperComments(body)}</div>`;
   }
 
   // --- Auth ---
@@ -748,7 +753,7 @@ export class EmailService implements OnModuleInit {
        * (sign-up-says-nothing-about-who-has-an-account.spec.ts). So it reads as a sign-in link first, which is true for both, and says in one
        * sentence that it also sets things up the first time (request 182 item 7). It no longer says somebody "just signed up".
        */
-      html: this.layout(`<p>${greeting(firstName)}</p><p>Click the link below to sign in to Groundwork. No password is needed. If this is your first time, the same link also finishes setting up your sign-in.</p><p><a href="${url}">Sign in</a></p><p>This link lasts ${howLongInWords('verify an address')}.</p><p style="color:#888;font-size:12px;">If you did not ask for this, you can ignore this email. Nothing happens unless you click the link.</p>`),
+      html: this.layout(`<p>${greeting(firstName)}</p><p>Click the link below to sign in to Groundwork. No password is needed. If this is your first time, the same link also finishes setting up your sign-in.</p><p><a href="${url}">Sign in</a></p><p>This link lasts ${howLongInWords('verify an address')}.</p><p style="color:#4E4236;font-size:13px;">If you did not ask for this, you can ignore this email. Nothing happens unless you click the link.</p>`),
     }, { kind: 'MAGIC_LINK' }, 'sendMagicLinkEmail');
   }
 
@@ -783,7 +788,7 @@ export class EmailService implements OnModuleInit {
           ? `<p>${thePassword}</p>`
           : `<p>Groundwork is where you and the people you work with each say how a piece of work is actually going, separately, and get one shared picture back. ${thePassword}</p>`) +
         `<p><a href="${url}">Set password</a></p>` +
-        `<p style="color:#888;font-size:12px;">This link lasts ${howLongInWords('set a password from an email')} and can only be used once. If it has expired, ask for a new one from the sign-in page.</p>`,
+        `<p style="color:#4E4236;font-size:13px;">This link lasts ${howLongInWords('set a password from an email')} and can only be used once. If it has expired, ask for a new one from the sign-in page.</p>`,
       ),
     }, undefined, 'sendAddPasswordEmail');
   }
@@ -804,10 +809,10 @@ export class EmailService implements OnModuleInit {
       subject: 'Your Groundwork access code',
       html: this.layout(
         `<p>Here is your Groundwork access code. It gives you ${sessionsGranted} session${sessionsGranted !== 1 ? 's' : ''} free of charge.</p>
-         <p style="font-size:22px;font-weight:bold;letter-spacing:0.1em;background:#F5F3EF;border-radius:6px;padding:14px 20px;display:inline-block;">${code}</p>
+         <p style="font-size:22px;font-weight:700;letter-spacing:0.1em;background:#F7F1E5;border-radius:8px;padding:14px 20px;display:inline-block;font-variant-numeric:lining-nums tabular-nums;">${code}</p>
          <p>To use it: go to <a href="https://app.myground.work">app.myground.work</a>, sign up, set up a check-in, and enter this code when prompted. Your check-in stays private until the report is released.</p>
          <p>Any questions, reply to this email.</p>
-         <p style="color:#9B9590;font-size:12px;">The Groundwork team</p>`,
+         <p style="color:#4E4236;font-size:13px;">The Groundwork team</p>`,
       ),
     }, undefined, 'sendContributorCode');
   }
@@ -826,7 +831,7 @@ export class EmailService implements OnModuleInit {
     await this.sendEmail({
       to: email,
       subject: named ? `You've been added to ${orgName} on Groundwork` : `You've been added to another team on Groundwork`,
-      html: this.layout(`<p>${greeting(firstName)}</p><p>${them} has added you on Groundwork. You already use Groundwork, and everything you have there stays as it is.</p><p>Use the link below to sign in. Then choose ${named ? escapeHtml(orgName) : 'the new team'} from your organisations to see what is there for you.</p><p><a href="${url}">Sign in</a></p><p>This link lasts ${howLongInWords('sign in from a team invitation')}.</p><p style="color:#888;font-size:12px;">If you were not expecting this, you can ignore this email.</p>`),
+      html: this.layout(`<p>${greeting(firstName)}</p><p>${them} has added you on Groundwork. You already use Groundwork, and everything you have there stays as it is.</p><p>Use the link below to sign in. Then choose ${named ? escapeHtml(orgName) : 'the new team'} from your organisations to see what is there for you.</p><p><a href="${url}">Sign in</a></p><p>This link lasts ${howLongInWords('sign in from a team invitation')}.</p><p style="color:#4E4236;font-size:13px;">If you were not expecting this, you can ignore this email.</p>`),
     }, undefined, 'sendAddedToAnotherOrganisation');
   }
 
@@ -837,7 +842,7 @@ export class EmailService implements OnModuleInit {
     await this.sendEmail({
       to: email,
       subject: named ? `You've been added to ${orgName} on Groundwork` : `You've been added to Groundwork`,
-      html: this.layout(`<p>${greeting(firstName)}</p><p>${named ? escapeHtml(orgName) : 'Your team'} has added you to Groundwork. Groundwork is where each person in a piece of work says how it is going in their own words, so problems are found sooner. The people in each check-in you join, and your organisation's admins, can read what you say in it. Your questions to ${escapeHtml(askName(orgName))} stay private.</p><p><a href="${url}">Accept invite</a></p><p style="color:#888;font-size:12px;">If you were not expecting this, you can ignore this email. Nothing is active until you click the link.</p>`),
+      html: this.layout(`<p>${greeting(firstName)}</p><p>${named ? escapeHtml(orgName) : 'Your team'} has added you to Groundwork. Groundwork is where each person in a piece of work says how it is going in their own words, so problems are found sooner. The people in each check-in you join, and your organisation's admins, can read what you say in it. Your questions to ${escapeHtml(askName(orgName))} stay private.</p><p><a href="${url}">Accept invite</a></p><p style="color:#4E4236;font-size:13px;">If you were not expecting this, you can ignore this email. Nothing is active until you click the link.</p>`),
     }, undefined, 'sendUserInvite');
   }
 
@@ -882,7 +887,7 @@ export class EmailService implements OnModuleInit {
     const theirFirstName = (them?.user?.firstName?.trim() || them?.nameGiven?.trim().split(/\s+/)[0] || '') || null;
     /* Free text from the inviter, inside a styled block, in a mail from noreply@: escaped, so a note
        with an ampersand or an angle bracket renders as written rather than as half a sentence. */
-    const noteHtml = note ? `<p style="border-left:3px solid #5DCAA5;padding:8px 14px;margin:20px 0;color:#4A4540;font-style:italic;">${escapeHtml(note)}</p>` : '';
+    const noteHtml = note ? `<p style="border-left:3px solid #5DCAA5;padding:8px 14px;margin:20px 0;color:#4E4236;font-style:italic;">${escapeHtml(note)}</p>` : '';
     const devUrl = await this.sendEmail({
       to: email,
       subject: `${founderName} would like your take on ${groundLabel}`,
@@ -907,9 +912,9 @@ export class EmailService implements OnModuleInit {
            The words above it already explain what a check-in is and that nobody on the team reads
            it. The button only has to say what pressing it starts.
          -->
-         <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Start my check-in →</a></p>
+         <p><a href="${url}" style="${MAIL_BUTTON}">Start my check-in →</a></p>
          ${await this.theWhatsAppLine(email, context)}
-         <p style="font-size:12px;color:#9B9590;">You are never obligated to take part. If you would rather not, you can simply ignore this - declining is never shown as a negative.</p>
+         <p style="font-size:13px;color:#4E4236;">You are never obligated to take part. If you would rather not, you can simply ignore this - declining is never shown as a negative.</p>
          ${stopLine ?? ''}`,
       ),
     }, context ?? { kind: 'PARTICIPANT_INVITE' }, 'sendParticipantInvite');
@@ -952,7 +957,7 @@ export class EmailService implements OnModuleInit {
       html: this.layout(
         `<p>${escapeHtml(greetingLine)}</p>
          <p>${escapeHtml(paragraph)}</p>
-         <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open Groundwork to read and answer</a></p>`,
+         <p><a href="${url}" style="${MAIL_BUTTON}">Open Groundwork to read and answer</a></p>`,
       ),
     }, undefined, 'sendApprovalsSummary');
   }
@@ -964,7 +969,7 @@ export class EmailService implements OnModuleInit {
       html: this.layout(
         `<p>${greeting(firstName)}</p>
          <p>An admin in your organisation has approved <strong>${escapeHtml(groundLabel)}</strong>. ${invitedNow > 0 ? `${invitedNow === 1 ? 'The person' : 'The people'} you named ${invitedNow === 1 ? 'has' : 'have'} now been invited, so you do not need to invite them again.` : 'You can invite the people involved now, and their check-ins can begin.'}</p>
-         <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open the check-in →</a></p>`,
+         <p><a href="${url}" style="${MAIL_BUTTON}">Open the check-in →</a></p>`,
       ),
     }, undefined, 'sendGroundApproved');
   }
@@ -980,7 +985,7 @@ export class EmailService implements OnModuleInit {
       html: this.layout(
         `<p>${greeting(firstName)}</p>
          <p>An admin in your organisation has not approved <strong>${escapeHtml(groundLabel)}</strong>, so it will not run and nobody has been invited to it.</p>
-         ${reason ? `<p style="border-left:3px solid #E2E0DB;padding:8px 14px;color:#4A4540;">${escapeHtml(reason)}</p>` : ''}
+         ${reason ? `<p style="border-left:3px solid #EDE5D6;padding:8px 14px;color:#4E4236;">${escapeHtml(reason)}</p>` : ''}
          <p>Nothing you wrote has been shared with anybody. If this was a misunderstanding, the fastest way through it is a conversation with whoever administers Groundwork for your organisation.</p>`,
       ),
     }, undefined, 'sendGroundDeclined');
@@ -1000,7 +1005,7 @@ export class EmailService implements OnModuleInit {
            sentence, in the email that gets opened before the check-in does.
          -->
          <p>The Context and resources tab on the check-in is where background goes - notes, and documents like a plan, a brief or a spreadsheet. What you upload is yours by default; mark it open to the check-in and everybody works from it, and their check-ins will have read it too.</p>
-         <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Review and begin →</a></p>`,
+         <p><a href="${url}" style="${MAIL_BUTTON}">Review and begin →</a></p>`,
       ),
     }, context ?? { kind: 'LEAD_INVITE' }, 'sendLeadInvite');
     return { devUrl };
@@ -1037,7 +1042,7 @@ export class EmailService implements OnModuleInit {
         `<p>We have not been able to deliver events to <b>${endpointAddress}</b>. The last one - a <code>${eventType}</code> - was tried ${attempts} times over about a day and we have now stopped trying for that event.</p>` +
         `<p>We have switched this endpoint off, so nothing more queues against a receiver we know we cannot reach. Nothing has been lost on our side: every attempt and its response is in your delivery log. Once it is reachable again, switch it back on from your integrations page and new events flow to it.</p>` +
         `<p><a href="${this.frontendUrl}/org/integrations">Open your integrations</a></p>` +
-        `<p style="color:#888;font-size:12px;">You are getting this because you are an admin on this organisation. One notice a day per endpoint, however many events are affected.</p>`,
+        `<p style="color:#4E4236;font-size:13px;">You are getting this because you are an admin on this organisation. One notice a day per endpoint, however many events are affected.</p>`,
       ),
     }, undefined, 'sendWebhookEndpointDying');
   }
@@ -1050,8 +1055,8 @@ export class EmailService implements OnModuleInit {
       subject: `Your invitation to ${groundLabel} lapses in two days`,
       html: this.layout(
         `<p>You were invited to say what you see in <strong>${escapeHtml(groundLabel)}</strong>, and the invitation has not been opened. It lapses in two days.</p>` +
-        `<p><a href="${inviteUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Add my account →</a></p>` +
-        `<p style="font-size:12px;color:#9B9590;">You are never obligated to take part. If you would rather not, ignore this and nothing more comes about it.</p>${(await this.theWayToStopBeingChased(participantId)) ?? ''}`,
+        `<p><a href="${inviteUrl}" style="${MAIL_BUTTON}">Add my account →</a></p>` +
+        `<p style="font-size:13px;color:#4E4236;">You are never obligated to take part. If you would rather not, ignore this and nothing more comes about it.</p>${(await this.theWayToStopBeingChased(participantId)) ?? ''}`,
       ),
     }, context, 'sendInviteAboutToLapse');
     return context.outcome ?? 'sent';
@@ -1066,7 +1071,7 @@ export class EmailService implements OnModuleInit {
         `<p>${greeting(firstName)}</p>` +
         `<p>The invitation you sent to <strong>${escapeHtml(invitee)}</strong> for <strong>${escapeHtml(groundLabel)}</strong> was never opened and has now lapsed. They are still on the check-in; nothing has been sent to them since the reminder two days ago.</p>` +
         `<p>Resend it from the check-in, correct the address, or take them off - whichever is true.</p>` +
-        `<p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open the check-in →</a></p>`,
+        `<p><a href="${groundUrl}" style="${MAIL_BUTTON}">Open the check-in →</a></p>`,
       ),
     }, undefined, 'sendInviteLapsed');
   }
@@ -1080,7 +1085,7 @@ export class EmailService implements OnModuleInit {
         `<p>${greeting(firstName)}</p>` +
         `<p>The invitation you sent to <strong>${escapeHtml(invitee)}</strong> for <strong>${escapeHtml(groundLabel)}</strong> bounced: that address did not accept it. Nothing more will be sent to it.</p>` +
         `<p>If the address is wrong, correct it on the check-in and the invitation goes again to the new one. If it is right, they may need to ask their mail administrator why it was refused.</p>` +
-        `<p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open the check-in →</a></p>`,
+        `<p><a href="${groundUrl}" style="${MAIL_BUTTON}">Open the check-in →</a></p>`,
       ),
     }, undefined, 'sendInviteBounced');
   }
@@ -1095,7 +1100,7 @@ export class EmailService implements OnModuleInit {
         `<p>${greeting(firstName)}</p>` +
         `<p>Your organisation's request for API access has been approved. The Connect page now shows your keys, the calls, and the reference.</p>` +
         `<p>Next step: issue a key for the system you are connecting, swap it for a token, and send something - the page ticks off each step as it sees it happen.</p>` +
-        `<p><a href="${link}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open Connect →</a></p>`,
+        `<p><a href="${link}" style="${MAIL_BUTTON}">Open Connect →</a></p>`,
       ),
     }, undefined, 'sendApiAccessApproved');
   }
@@ -1107,7 +1112,7 @@ export class EmailService implements OnModuleInit {
       html: this.layout(
         `<p>${greeting(firstName)}</p>` +
         `<p>Your organisation's request for API access was not approved. The reason given:</p>` +
-        `<p style="border-left:3px solid #E2E0DB;padding:8px 14px;margin:18px 0;color:#4A4540;">${escapeHtml(note)}</p>` +
+        `<p style="border-left:3px solid #EDE5D6;padding:8px 14px;margin:18px 0;color:#4E4236;">${escapeHtml(note)}</p>` +
         `<p>If that changes what you intend to build, you can ask again from the Connect page, and it is read by a person.</p>` +
         `<p><a href="${link}">Open Connect</a></p>`,
       ),
@@ -1121,7 +1126,7 @@ export class EmailService implements OnModuleInit {
       html: this.layout(
         `<p>${greeting(firstName)}</p>` +
         `<p>Your organisation's API access has been withdrawn, effective now: calls made with your keys will be refused from this point. The reason given:</p>` +
-        `<p style="border-left:3px solid #E2E0DB;padding:8px 14px;margin:18px 0;color:#4A4540;">${escapeHtml(note)}</p>` +
+        `<p style="border-left:3px solid #EDE5D6;padding:8px 14px;margin:18px 0;color:#4E4236;">${escapeHtml(note)}</p>` +
         `<p>Nothing you have built is deleted, and the records and reports are unaffected. If you believe this is wrong, reply to this email.</p>` +
         `<p><a href="${link}">Open Connect</a></p>`,
       ),
@@ -1156,7 +1161,7 @@ export class EmailService implements OnModuleInit {
         subject: 'Your Groundwork admin code',
         html: this.layout(
           `<p>Your one-time code is <strong>${code}</strong>. It expires in ten minutes.</p>` +
-          `<p style="color:#888;font-size:12px;">If you did not ask for this, somebody signed in as you is trying to perform an admin operation that cannot be undone. Tell the team.</p>`,
+          `<p style="color:#4E4236;font-size:13px;">If you did not ask for this, somebody signed in as you is trying to perform an admin operation that cannot be undone. Tell the team.</p>`,
         ),
       }, undefined, 'sendAdminOtp');
       return { sent: true };
@@ -1289,7 +1294,7 @@ export class EmailService implements OnModuleInit {
         `<p>${escapeHtml(who)}</p>` +
         `<p style="border-left:3px solid #5DCAA5;padding:10px 16px;margin:20px 0;font-size:17px;">${escapeHtml(question)}</p>` +
         rest.map((l) => `<p>${escapeHtml(l)}</p>`).join('') +
-        `<p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">${THE_TEAM_BUTTON} &rarr;</a></p>` +
+        `<p><a href="${url}" style="${MAIL_BUTTON}">${THE_TEAM_BUTTON} &rarr;</a></p>` +
         (await this.theWhatsAppLine(email, context)) +
         /*
          * IT DID NOT GO INTO ONE SUMMARY UNREAD.
@@ -1301,7 +1306,7 @@ export class EmailService implements OnModuleInit {
          * Hafsah had the same sentence removed from the answering screen on 23 September 2026. It
          * was still here, in the mail that gets people to that screen.
          */
-        `<p style="font-size:12px;color:#9B9590;">${escapeHtml(who.split(' ')[0] || 'Whoever asked')} reads the answers, and they go into one report that everybody who took part receives.</p>`,
+        `<p style="font-size:13px;color:#4E4236;">${escapeHtml(who.split(' ')[0] || 'Whoever asked')} reads the answers, and they go into one report that everybody who took part receives.</p>`,
       ),
     }, context ?? { kind: 'PARTICIPANT_INVITE' }, 'sendTeamUpdateAsk');
     return { devUrl };
@@ -1370,7 +1375,7 @@ export class EmailService implements OnModuleInit {
         words.lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('') +
         /* The same true sentence every invitation carries about who can read what is said in a check-in. */
         `<p>${escapeHtml(await this.whoSeesWhatYouSay(context))}</p>` +
-        `<p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">${escapeHtml(words.button)} &rarr;</a></p>` +
+        `<p><a href="${url}" style="${MAIL_BUTTON}">${escapeHtml(words.button)} &rarr;</a></p>` +
         `${await this.theWhatsAppLine(email, context)}` +
         `${stopLine ?? ''}`,
       ),
@@ -1390,7 +1395,7 @@ export class EmailService implements OnModuleInit {
         `<p style="border-left:3px solid #5DCAA5;padding:10px 16px;margin:20px 0;font-size:17px;">${escapeHtml(question)}</p>` +
         rest.map((l) => `<p>${escapeHtml(l)}</p>`).join('') +
         (sharedByAnAdminSentence ? `<p>${escapeHtml(sharedByAnAdminSentence)}</p>` : '') +
-        `<p><a href="${reportUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">${THE_LEAD_BUTTON} &rarr;</a></p>`,
+        `<p><a href="${reportUrl}" style="${MAIL_BUTTON}">${THE_LEAD_BUTTON} &rarr;</a></p>`,
       ),
     }, undefined, 'sendTeamUpdateAllIn');
   }
@@ -1440,10 +1445,10 @@ export class EmailService implements OnModuleInit {
         (sharedByAnAdminSentence ? `<p>${escapeHtml(sharedByAnAdminSentence)}</p>` : '') +
         /* With a finding, the way into Ask about it is the main link, and the shared picture is still one plain link away. */
         (theChat
-          ? `<p><a href="${theChat.url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">${escapeHtml(theChat.label)}</a></p>` +
+          ? `<p><a href="${theChat.url}" style="${MAIL_BUTTON}">${escapeHtml(theChat.label)}</a></p>` +
             `<p><a href="${reportUrl}">Read the shared picture</a></p>`
-          : `<p><a href="${reportUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Read the shared picture →</a></p>`) +
-        `<p style="font-size:12px;color:#9B9590;">Groundwork is where the people involved in a piece of work each say how it is going, and get one shared picture back.</p>`,
+          : `<p><a href="${reportUrl}" style="${MAIL_BUTTON}">Read the shared picture →</a></p>`) +
+        `<p style="font-size:13px;color:#4E4236;">Groundwork is where the people involved in a piece of work each say how it is going, and get one shared picture back.</p>`,
       ),
     }, undefined, 'sendReportReady');
   }
@@ -1683,7 +1688,7 @@ export class EmailService implements OnModuleInit {
       html: this.layout(
         `<p>One of the parties on <strong>${escapeHtml(groundLabel)}</strong> corrected their account after you had already seen the shared report.</p>
          <p>The report now shows this as an update, flagged with when it happened - it does not show what was changed in their own words.</p>
-         <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open the report →</a></p>`,
+         <p><a href="${groundUrl}" style="${MAIL_BUTTON}">Open the report →</a></p>`,
       ),
     }, undefined, 'sendLateCorrectionNotice');
   }
@@ -1697,7 +1702,7 @@ export class EmailService implements OnModuleInit {
         `<p>All accounts are in for <strong>${escapeHtml(groundLabel)}</strong> and the shared report has been generated.</p>
          <p>The report shows where accounts agree, where they differ, and what is still unresolved. The people in the check-in can read what each person said.</p>
          <p>Open the check-in to read and release the report to all parties.</p>
-         <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Read and release the report →</a></p>`,
+         <p><a href="${groundUrl}" style="${MAIL_BUTTON}">Read and release the report →</a></p>`,
       ),
     }, undefined, 'sendActivationReminder');
   }
@@ -1724,7 +1729,7 @@ export class EmailService implements OnModuleInit {
       html: direct ? this.layout(markedAsDirect(true) + theReportIsStillWaitingDirectly(groundLabel, reportUrl, since)) : this.layout(
         `<p>The shared picture for <strong>${escapeHtml(groundLabel)}</strong> ${since ? `has been ready since ${escapeHtml(since)}` : 'is ready'}.</p>
          <p>It shows where what you each said agrees, where it differs, and what is still open. It is open to you now, and nothing else is needed from you to read it.</p>
-         <p><a href="${reportUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View your report →</a></p>`,
+         <p><a href="${reportUrl}" style="${MAIL_BUTTON}">View your report →</a></p>`,
       ),
     }, undefined, 'sendActivationRevealReminder');
   }
@@ -1753,8 +1758,8 @@ export class EmailService implements OnModuleInit {
       html: direct ? this.layout(markedAsDirect(true) + somebodyCheckedInDirectly({ name: participantName, label: groundLabel, reported, stillToCome: left && left.count > 0 ? haveNotCheckedInSaid(left) : null, url: groundUrl })) : this.layout(
         `<p><strong>${escapeHtml(participantName)}</strong> has checked in on <strong>${escapeHtml(groundLabel)}</strong>.</p>
          ${pendingNote}
-         <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View check-in →</a></p>
-         <p style="font-size:12px;color:#9B9590;">You can see who has checked in and read what they said in the check-in, and the shared picture once it is ready. Everybody in it is told the moment the picture is ready.</p>`,
+         <p><a href="${groundUrl}" style="${MAIL_BUTTON}">View check-in →</a></p>
+         <p style="font-size:13px;color:#4E4236;">You can see who has checked in and read what they said in the check-in, and the shared picture once it is ready. Everybody in it is told the moment the picture is ready.</p>`,
       ),
     }, undefined, 'sendParticipantCheckedIn');
   }
@@ -1807,7 +1812,7 @@ export class EmailService implements OnModuleInit {
         `${where}
          <p>Opening the link below starts your check-in. It lasts 24 hours and works once.</p>
          <p><a href="${url}">Start my check-in</a></p>
-         <p style="color:#6B6560;font-size:13px;">If you did not ask for this, nothing has been created and you can ignore it.</p>`,
+         <p style="color:#4E4236;font-size:13px;">If you did not ask for this, nothing has been created and you can ignore it.</p>`,
       ),
     }, undefined, 'sendJoinConfirmation');
   }
@@ -2173,7 +2178,7 @@ export class EmailService implements OnModuleInit {
 
     const urgencyNote =
       daysRemaining <= 3
-        ? `<p style="color:#c0392b;font-weight:bold;">Your code expires in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}. Act now to avoid losing access.</p>`
+        ? `<p style="color:#791F1F;font-weight:700;">Your code expires in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}. Act now to avoid losing access.</p>`
         : `<p>Your code expires in <strong>${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}</strong>.</p>`;
 
     const bodyHtml = isCreateNudge
@@ -2301,7 +2306,7 @@ function decodeEntities(t: string): string {
 
 /** Appended to every mail we decided to send. The link works with no sign-in (round-digest.service.ts#unsubscribe). */
 export const UNSUBSCRIBE_FOOTER = (url: string) =>
-  `<p style="font-size:12px;color:#9B9590;margin-top:28px;">If you would rather not get the emails we decide to send, you can <a href="${url}" style="color:#9B9590;">stop them here</a>.</p>`;
+  `<p style="font-size:13px;color:#4E4236;margin-top:28px;">If you would rather not get the emails we decide to send, you can <a href="${url}" style="color:#4E4236;">stop them here</a>.</p>`;
 
 /** Takes out `<!-- ... -->` comments. A conditional comment for a mail client (`<!--[if`) is left alone. */
 export function withoutDeveloperComments(html: string): string {

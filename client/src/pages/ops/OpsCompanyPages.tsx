@@ -147,11 +147,11 @@ export function OpsQuarterPage() {
       {canOpen.data?.ready && mayOpen && (periods.data ?? []).find((p) => p.key === period)?.status !== 'OPEN' && (
         <section style={{ ...CARD, marginBottom: 14 }}>
           <p style={{ fontSize: 14, margin: 0 }}>{canOpen.data.says}</p>
-          <button
+          <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
             type="button"
             onClick={() => open.mutate()}
             disabled={open.isPending}
-            style={{ marginTop: 10, fontSize: 13, padding: '6px 12px', borderRadius: 6, border: '1px solid var(--gw-border)', cursor: 'pointer' }}
+            style={{ marginTop: 10 }}
           >
             {open.isPending ? 'Opening…' : 'Open this period'}
           </button>
@@ -649,11 +649,10 @@ export function OpsApprovalsPage() {
           )}
           <div style={{ display: 'flex', gap: 6 }}>
             {(['APPROVED', 'CHANGES_REQUESTED', 'REJECTED'] as const).map((status) => (
-              <button
+              <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
                 key={status}
                 type="button"
                 onClick={() => decide.mutate({ id: a.id, status })}
-                style={{ ...CARD, padding: '4px 10px', fontSize: 12, cursor: 'pointer' }}
               >
                 {status === 'APPROVED' ? 'Approve' : status === 'REJECTED' ? 'No' : 'Ask for changes'}
               </button>
@@ -1002,11 +1001,10 @@ export function OpsIntegrationPage() {
       </section>
 
       {s?.enabled && (
-        <button
+        <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
           type="button"
           onClick={() => push.mutate()}
           disabled={push.isPending}
-          style={{ ...CARD, cursor: 'pointer', fontSize: 13 }}
         >
           {push.isPending ? 'Sending…' : 'Send this period across'}
         </button>

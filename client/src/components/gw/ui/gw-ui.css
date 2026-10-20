@@ -773,7 +773,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    thin grey outline, whose words are red. Not a fifth kind: the secondary kind with red text. */
 .gwui-btn-secondary.gwui-btn-red-text { color: var(--gw-red-t); }
 .gwui-btn-big { min-height: 54px; font-size: 17px; padding: 0 22px; }
-.gwui-btn-small { min-height: 36px; font-size: 14.5px; padding: 0 12px; }
+.gwui-btn-small { min-height: 44px; font-size: 14.5px; padding: 0 12px; }
 /*
  * FAULT D1 (reviewer, third round): THE FORK BUTTON'S TEXT WAS CLIPPED ON THE LEFT AT 1024px
  * ("heck in once…"). `.gwui-btn`'s own `white-space: nowrap` already had a mobile-only exception
@@ -788,7 +788,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-btn-wide { width: 100%; white-space: normal; }
 @media (max-width: 640px) {
   .gwui-btn { white-space: normal; }
-  .gwui-btn-small { min-height: 40px; }
+  .gwui-btn-small { min-height: 44px; }
 }
 
 /* ── TAG (prototype: .tag, .tag.rec/.att/.act/.con/.plain) ────────────────── */
@@ -836,7 +836,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-toast {
   position: fixed; left: 50%; transform: translateX(-50%); bottom: 90px; z-index: 60;
   background: var(--gw-text); color: #fff; padding: 12px 18px; border-radius: 10px; font-size: 15px;
-  box-shadow: 0 10px 30px rgba(0,0,0,.2); max-width: 90vw;
+  box-shadow: var(--gw-shadow-toast); max-width: 90vw;
 }
 
 /* ── MODAL (prototype: .modal-bg, .modal) ────────────────────────────────── */
@@ -1096,7 +1096,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-win-row { background: var(--gw-green-bg); border-radius: 9px; margin: 2px -8px; }
 /* The poll's own "I can make this" toggle, picked vs not. */
 .gwui-poll-chip-on  { background: var(--gw-blue-bg); color: var(--gw-blue-t); border: 1px solid var(--gw-blue-b); }
-.gwui-poll-chip-off { background: #F1F2F5; color: var(--gw-sub); border: 1px solid var(--gw-border); }
+.gwui-poll-chip-off { background: var(--gw-bg); color: var(--gw-sub); border: 1px solid var(--gw-border); }
 /* "The picture" - a blue accent stripe on a panel's left edge (WhatTheNetworkSaid). */
 .gwui-accent-left-blue { border-left: 3px solid var(--gw-blue-b); }
 /* The prototype's wide outlined "Every session" button (board-as-lead.jpg): white, a visible dark
@@ -1162,7 +1162,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; right: auto;
   min-width: 260px; max-width: min(360px, calc(100vw - 36px));
   background: white; border: 1px solid var(--gw-border); border-radius: 10px; padding: 6px;
-  box-shadow: 0 10px 30px rgba(20, 24, 40, .18); max-height: 320px; overflow-y: auto;
+  box-shadow: var(--gw-shadow-menu); max-height: 320px; overflow-y: auto;
 }
 .gwui-boards-option {
   display: block; width: 100%; text-align: left; background: none; border: none;
@@ -1714,7 +1714,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ci-header-sub { font-size: 13px; color: var(--gw-sub); margin-top: 2px; }
 .gwui-ci-pause-wrap { position: relative; flex-shrink: 0; }
 .gwui-ci-pause-btn { background: none; border: none; padding: 6px 4px; font-size: 14px; font-weight: 700; color: var(--gw-navy); cursor: pointer; font-family: inherit; min-height: 36px; }
-.gwui-ci-menu { position: absolute; right: 0; top: 40px; z-index: 30; background: #fff; border: 1px solid var(--gw-border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.12); padding: 6px; width: 260px; }
+.gwui-ci-menu { position: absolute; right: 0; top: 40px; z-index: 30; background: #fff; border: 1px solid var(--gw-border); border-radius: 12px; box-shadow: var(--gw-shadow-menu); padding: 6px; width: 260px; }
 .gwui-ci-menu-item { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; padding: 10px 12px; border-radius: 8px; background: none; border: none; cursor: pointer; font-family: inherit; font-size: 14px; text-align: left; }
 .gwui-ci-menu-item-title { font-weight: 700; color: var(--gw-text); }
 .gwui-ci-menu-item-note { font-size: 13px; color: var(--gw-sub); line-height: 1.45; }
@@ -2141,7 +2141,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ec-savecard-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 50; overflow-y: auto; display: flex; align-items: flex-start; justify-content: center; padding: 24px 16px 48px; transition: opacity .3s, visibility .3s; }
 .gwui-ec-savecard-overlay-hidden { opacity: 0; pointer-events: none; visibility: hidden; }
 .gwui-ec-savecard-overlay-shown { opacity: 1; pointer-events: auto; visibility: visible; }
-.gwui-ec-savecard { width: 100%; max-width: 640px; background: white; border-radius: 14px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.22); }
+.gwui-ec-savecard { width: 100%; max-width: 640px; background: white; border-radius: var(--gw-radius-pop); overflow: hidden; box-shadow: var(--gw-shadow-modal); }
 .gwui-ec-savecard-header { background: var(--gw-dark); color: white; padding: 20px 22px 16px; }
 .gwui-ec-savecard-eyebrow { font-size: 13px; color: var(--gw-green-b); font-weight: 700; margin-bottom: 6px; }
 .gwui-ec-savecard-title { font-size: 18px; font-weight: 800; letter-spacing: -.01em; line-height: 1.2; }
@@ -2158,7 +2158,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ec-savecard-add-pending { font-size: 13px; color: var(--gw-green-t); font-weight: 600; margin-top: 6px; }
 .gwui-ec-savecard-add-row { display: flex; gap: 6px; margin-top: 6px; }
 .gwui-ec-savecard-add-error { font-size: 13px; color: var(--gw-red-t); margin-top: 4px; }
-.gwui-ec-savecard-whatnext { background: #F0F4FA; border-radius: 10px; padding: 14px 16px; margin-bottom: 18px; }
+.gwui-ec-savecard-whatnext { background: var(--gw-blue-bg); border-radius: 10px; padding: 14px 16px; margin-bottom: 18px; }
 /* SCREEN FAULT 10 (FINAL WALK): "WHAT HAPPENS NEXT" IN CAPITALS. The prototype's own end-card
    (check-in-end-card.txt) writes this heading in sentence case, not as a small label - so the
    uppercase transform is dropped; the rest of the heading's own styling (size, weight, colour,
@@ -2478,7 +2478,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-menu-btn::after { content: " ▾"; white-space: pre; }
 .gwui-menu-btn-main { background: var(--gw-navy); border-color: var(--gw-navy); color: #fff; }
 .gwui-menu-btn:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 2px; }
-.gwui-menu-pop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; background: var(--gw-card); border: 1px solid var(--gw-border); border-radius: 10px; padding: 8px; display: flex; flex-direction: column; gap: 4px; min-width: 220px; box-shadow: 0 8px 24px rgba(0, 0, 0, .12); }
+.gwui-menu-pop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; background: var(--gw-card); border: 1px solid var(--gw-border); border-radius: 10px; padding: 8px; display: flex; flex-direction: column; gap: 4px; min-width: 220px; box-shadow: var(--gw-shadow-menu); }
 .gwui-menu-pop-left { left: 0; right: auto; }
 /* One page header on a phone: no breadcrumb, the main action small beside the title */
 @media (max-width: 640px) {

@@ -110,16 +110,9 @@ export function WhatThisCheckInStillNeeds({
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {SELECTABLE_CADENCES.map((c) => (
-              <button
+              <button className={`gwui-choice${cadence === c.cadence ? ' gwui-choice-on' : ''}`}
                 key={c.cadence}
                 onClick={() => onPickCadence(c.cadence)}
-                style={{
-                  padding: '6px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                  fontFamily: 'inherit',
-                  border: '1px solid ' + (cadence === c.cadence ? 'var(--gw-navy)' : 'var(--gw-border)'),
-                  background: cadence === c.cadence ? 'var(--gw-navy)' : 'white',
-                  color: cadence === c.cadence ? 'white' : 'var(--gw-text)',
-                }}
               >
                 {c.label}
               </button>
@@ -137,9 +130,8 @@ export function WhatThisCheckInStillNeeds({
             is invited on the day rather than now.
           </div>
           {renderStartDate ?? (
-            <button
+            <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
               onClick={onGoToSetup}
-              style={{ padding: '7px 13px', borderRadius: 8, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-navy)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
             >
               Set a start date on People and setup &rarr;
             </button>
@@ -163,9 +155,8 @@ export function WhatThisCheckInStillNeeds({
               ? <>You said {saidDate} in your check-in. The check-in itself is set to {timelineDays ?? 90} days, and everything that says days remaining counts against that, not against your date.</>
               : <>Nobody chose this, so it is {timelineDays ?? 90} days by default. Everything that says days remaining is counting against that number.</>}
           </div>
-          <button
+          <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
             onClick={onGoToSetup}
-            style={{ padding: '7px 13px', borderRadius: 8, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-navy)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
           >
             Change it on People and setup &rarr;
           </button>
@@ -180,9 +171,8 @@ export function WhatThisCheckInStillNeeds({
               ? <>Your brief says &ldquo;{briefStandard}&rdquo;. That is being read as the standard until you set one here.</>
               : <>You said it in the session. It is not set as the standard, so nothing is being read against it.</>}
           </div>
-          <button
+          <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
             onClick={onGoToSetup}
-            style={{ padding: '7px 13px', borderRadius: 8, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-navy)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
           >
             Set it on People and setup →
           </button>

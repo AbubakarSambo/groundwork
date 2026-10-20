@@ -366,7 +366,7 @@
 }
 
 /* The direct morning at the top of the lead's board (TheMorningAtTheTop.tsx): the four parts, then the board as it is. */
-.pb.pb-morning { gap: 20px; margin-bottom: 44px; padding-bottom: 28px; border-bottom: 1px solid var(--gw-line, #E8E5DE); }
+.pb.pb-morning { gap: 20px; margin-bottom: 44px; padding-bottom: 28px; border-bottom: 1px solid var(--gw-line); }
 .pb-morning-part p { margin: 6px 0 0; line-height: 1.5; }
 .pb-morning-part .pb-answer { font-size: 18px; }
 .pb-morning-deals .pb-grid { margin-top: 12px; overflow-x: auto; }

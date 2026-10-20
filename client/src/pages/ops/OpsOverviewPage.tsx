@@ -100,20 +100,11 @@ export default function OpsOverviewPage() {
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 18 }}>
         {WINDOWS.map((w) => (
-          <button
+          <button className={`gwui-choice${w.key === window.key ? ' gwui-choice-on' : ''}`}
             key={w.key}
             type="button"
             onClick={() => setWindow(w)}
             aria-pressed={w.key === window.key}
-            style={{
-              border: '1px solid var(--gw-border)',
-              borderRadius: 20,
-              padding: '3px 11px',
-              fontSize: 12,
-              cursor: 'pointer',
-              background: w.key === window.key ? 'var(--gw-navy)' : 'white',
-              color: w.key === window.key ? 'white' : 'var(--gw-navy)',
-            }}
           >
             {w.label}
           </button>

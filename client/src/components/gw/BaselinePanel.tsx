@@ -146,9 +146,9 @@ export function BaselinePanel({ groundId, canState, groundStartedAt }: { groundI
       )}
 
       {canState && !open && (
-        <button
+        <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
           onClick={() => setOpen(true)}
-          style={{ marginTop: 10, background: 'none', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '9px 14px', fontSize: 12.5, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit' }}
+          style={{ marginTop: 10 }}
         >
           {current ? 'This has changed →' : 'Say what doing well looks like →'}
         </button>
@@ -163,29 +163,29 @@ export function BaselinePanel({ groundId, canState, groundStartedAt }: { groundI
               * start. The old statement is above, to be read rather than overwritten.
               */}
             <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>What would doing well look like?</div>
-            <textarea
+            <textarea className="gwui-input"
               value={success}
               onChange={e => setSuccess(e.target.value)}
               rows={3}
               placeholder="In your own words. Not a target for one person - what would make you say, at the end, that this went the way it should have."
-              style={{ width: '100%', padding: '9px 11px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', lineHeight: 1.55 }}
+              style={{ width: '100%' }}
             />
             <div style={{ fontSize: 12.5, fontWeight: 700, margin: '12px 0 4px' }}>What has to be true for it? One per line.</div>
-            <textarea
+            <textarea className="gwui-input"
               value={conditions}
               onChange={e => setConditions(e.target.value)}
               rows={3}
               placeholder={'Things that are not in their hands.\nA decision from somebody else, a tool, another team’s work.'}
-              style={{ width: '100%', padding: '9px 11px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', lineHeight: 1.55 }}
+              style={{ width: '100%' }}
             />
             {current && (
               <>
                 <div style={{ fontSize: 12.5, fontWeight: 700, margin: '12px 0 4px' }}>Why is this changing?</div>
-                <input
+                <input className="gwui-input"
                   value={reason}
                   onChange={e => setReason(e.target.value)}
                   placeholder="The priorities moved, the role changed, we got it wrong the first time"
-                  style={{ width: '100%', padding: '9px 11px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                  style={{ width: '100%' }}
                 />
                 <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, marginTop: 6 }}>
                   The version above stays on the record either way. A yardstick that moved with no reason
@@ -194,16 +194,14 @@ export function BaselinePanel({ groundId, canState, groundStartedAt }: { groundI
               </>
             )}
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              <button
+              <button className="gwui-btn gwui-btn-primary gwui-btn-small"
                 onClick={() => state.mutate()}
                 disabled={state.isPending || (!success.trim() && !conditions.trim())}
-                style={{ padding: '9px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: state.isPending ? 0.6 : 1 }}
               >
                 {state.isPending ? 'Recording…' : current ? 'Record as a new version' : 'Record it'}
               </button>
-              <button
+              <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
                 onClick={() => setOpen(false)}
-                style={{ padding: '9px 16px', borderRadius: 7, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Cancel
               </button>

@@ -91,7 +91,7 @@ function WhatsAppToggle() {
           }}
           aria-label={data.adminEnabled ? 'Turn off WhatsApp' : 'Turn on WhatsApp'}
         >
-          <span style={{ position: 'absolute', top: 3, left: data.adminEnabled ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+          <span style={{ position: 'absolute', top: 3, left: data.adminEnabled ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: 'var(--gw-hairline)' }} />
         </button>
       </div>
       <div style={{ fontSize: 11, marginTop: 8, fontWeight: 700, color: data.live ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
@@ -145,7 +145,7 @@ function CoachingSwitch() {
           }}
           aria-label={data.live ? 'Turn off coaching' : 'Turn on coaching'}
         >
-          <span style={{ position: 'absolute', top: 3, left: data.live ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+          <span style={{ position: 'absolute', top: 3, left: data.live ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: 'var(--gw-hairline)' }} />
         </button>
       </div>
       <div style={{ fontSize: 11, marginTop: 8, fontWeight: 700, color: data.live ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
@@ -205,12 +205,12 @@ function DeliveryAlertRow() {
       </div>
       {editing ? (
         <form onSubmit={(e) => { e.preventDefault(); save.mutate() }} style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-          <input type="email" value={value} onChange={e => setValue(e.target.value)} placeholder="ops@myground.work" aria-label="Address for the daily delivery alert" style={{ width: 220, maxWidth: '100%', padding: '5px 8px', fontSize: 13, borderRadius: 6, border: '1px solid var(--gw-border)', fontFamily: 'inherit' }} />
-          <button type="submit" disabled={save.isPending} style={{ padding: '5px 10px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Save</button>
+          <input className="gwui-input" type="email" value={value} onChange={e => setValue(e.target.value)} placeholder="ops@myground.work" aria-label="Address for the daily delivery alert" style={{ width: 220, maxWidth: '100%' }} />
+          <button className="gwui-btn gwui-btn-primary gwui-btn-small" type="submit" disabled={save.isPending} >Save</button>
           <button type="button" onClick={() => { setEditing(false); setErr(null) }} style={{ padding: '5px 10px', borderRadius: 6, background: 'none', color: 'var(--gw-muted)', fontSize: 12, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
         </form>
       ) : (
-        <button type="button" onClick={() => { setValue(data.from === 'here' ? data.email ?? '' : ''); setEditing(true) }} style={{ padding: '5px 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-navy)', fontSize: 12, fontWeight: 700, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>{data.email ? 'Change' : 'Set an address'}</button>
+        <button className="gwui-btn gwui-btn-secondary gwui-btn-small" type="button" onClick={() => { setValue(data.from === 'here' ? data.email ?? '' : ''); setEditing(true) }} style={{ flexShrink: 0 }}>{data.email ? 'Change' : 'Set an address'}</button>
       )}
     </div>
   )
@@ -254,13 +254,13 @@ function CorrectionWindowRow() {
       {editing ? (
         <form onSubmit={(e) => { e.preventDefault(); save.mutate() }} style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
           <input type="number" min={0} max={data.max} step={1} value={value} onChange={e => setValue(e.target.value)} aria-label="Days to correct a record" style={{ width: 70, padding: '5px 8px', fontSize: 13, borderRadius: 6, border: '1px solid var(--gw-border)', fontFamily: 'inherit' }} />
-          <button type="submit" disabled={save.isPending} style={{ padding: '5px 10px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Save</button>
+          <button className="gwui-btn gwui-btn-primary gwui-btn-small" type="submit" disabled={save.isPending} >Save</button>
           <button type="button" onClick={() => { setEditing(false); setErr(null) }} style={{ padding: '5px 10px', borderRadius: 6, background: 'none', color: 'var(--gw-muted)', fontSize: 12, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
         </form>
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-navy)' }}>{data.days}</span>
-          <button type="button" onClick={() => { setValue(String(data.days)); setEditing(true) }} style={{ padding: '5px 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-navy)', fontSize: 12, fontWeight: 700, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}>Edit</button>
+          <button className="gwui-btn gwui-btn-secondary gwui-btn-small" type="button" onClick={() => { setValue(String(data.days)); setEditing(true) }} >Edit</button>
         </div>
       )}
     </div>
@@ -349,14 +349,14 @@ function PlanCentsField({ row, field, what }: { row: PricingPlanRow; field: 'ext
           <input autoFocus aria-label={`${what} on ${row.label}, dollars a month`} value={value} placeholder="not sold" onChange={e => setValue(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') setEditing(false) }}
             style={{ width: 60, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--gw-border)', fontSize: 11, fontFamily: 'inherit' }} />
-          <button onClick={submit} disabled={save.isPending} style={{ padding: '3px 8px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 11, fontWeight: 700, border: 'none', cursor: save.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}>Save</button>
+          <button className="gwui-btn gwui-btn-primary gwui-btn-small" onClick={submit} disabled={save.isPending} >Save</button>
           <button onClick={() => setEditing(false)} style={{ padding: '3px 8px', borderRadius: 6, background: 'none', color: 'var(--gw-muted)', fontSize: 11, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
         </>
       ) : (
         <>
           <span>{cents === null ? `${what} is not sold on this plan.` : `${what}: ${formatDollars(cents)} a month.`}</span>
-          <button onClick={() => { setValue(cents === null ? '' : centsForEditing(cents)); setEditing(true) }}
-            style={{ padding: '2px 7px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-navy)', fontSize: 11, fontWeight: 700, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}>
+          <button className="gwui-btn gwui-btn-secondary gwui-btn-small" onClick={() => { setValue(cents === null ? '' : centsForEditing(cents)); setEditing(true) }}
+            >
             Edit
           </button>
         </>
@@ -445,15 +445,14 @@ function PricingRow({ row }: { row: PricingPlanRow }) {
                 style={{ width: 74, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--gw-border)', fontSize: 11, fontFamily: 'inherit' }}
               />
               <span>people</span>
-              <button onClick={submitCap} disabled={saveCap.isPending} style={{ padding: '3px 8px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 11, fontWeight: 700, border: 'none', cursor: saveCap.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}>Save</button>
+              <button className="gwui-btn gwui-btn-primary gwui-btn-small" onClick={submitCap} disabled={saveCap.isPending} >Save</button>
               <button onClick={() => setEditingCap(false)} style={{ padding: '3px 8px', borderRadius: 6, background: 'none', color: 'var(--gw-muted)', fontSize: 11, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
             </>
           ) : (
             <>
               <span>{row.memberCap === null ? 'Unlimited people' : `Up to ${row.memberCap.toLocaleString('en-US')} people`}</span>
-              <button
+              <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
                 onClick={() => { setCapValue(row.memberCap === null ? '' : String(row.memberCap)); setEditingCap(true) }}
-                style={{ padding: '2px 7px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-navy)', fontSize: 11, fontWeight: 700, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Edit cap
               </button>
@@ -474,10 +473,9 @@ function PricingRow({ row }: { row: PricingPlanRow }) {
             style={{ width: 70, padding: '5px 7px', borderRadius: 6, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit' }}
           />
           <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>/mo</span>
-          <button
+          <button className="gwui-btn gwui-btn-primary gwui-btn-small"
             onClick={submit}
             disabled={save.isPending}
-            style={{ padding: '5px 10px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: save.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
           >
             Save
           </button>
@@ -493,10 +491,9 @@ function PricingRow({ row }: { row: PricingPlanRow }) {
           <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-navy)' }}>
             {row.amountCents === null ? 'Contact us' : formatMonthlyPrice(row.amountCents)}
           </span>
-          <button
+          <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
             hidden={row.amountCents === null}
             onClick={() => { setValue(centsForEditing(row.amountCents ?? 0)); setEditing(true) }}
-            style={{ padding: '5px 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-navy)', fontSize: 12, fontWeight: 700, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
           >
             Edit
           </button>
@@ -566,10 +563,9 @@ function FreeMemberLimitRow() {
             style={{ width: 64, padding: '5px 7px', borderRadius: 6, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit' }}
           />
           <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>people</span>
-          <button
+          <button className="gwui-btn gwui-btn-primary gwui-btn-small"
             onClick={() => save.mutate()}
             disabled={save.isPending}
-            style={{ padding: '5px 10px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: save.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
           >
             Save
           </button>
@@ -583,9 +579,8 @@ function FreeMemberLimitRow() {
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-navy)' }}>{data.freeMemberLimit}</span>
-          <button
+          <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
             onClick={() => { setValue(String(data.freeMemberLimit)); setEditing(true) }}
-            style={{ padding: '5px 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-navy)', fontSize: 12, fontWeight: 700, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
           >
             Edit
           </button>
@@ -643,16 +638,14 @@ function FreeGroundLimitRow() {
             onChange={e => setValue(e.target.value)}
             style={{ width: 62, padding: '5px 8px', fontSize: 13, borderRadius: 6, border: '1px solid var(--gw-border)', fontFamily: 'inherit' }}
           />
-          <button
+          <button className="gwui-btn gwui-btn-primary gwui-btn-small"
             onClick={() => save.mutate()}
             disabled={save.isPending}
-            style={{ padding: '5px 11px', fontSize: 12, fontWeight: 700, borderRadius: 6, border: 'none', background: 'var(--gw-navy)', color: 'white', cursor: 'pointer', fontFamily: 'inherit' }}
           >
             {save.isPending ? 'Saving...' : 'Save'}
           </button>
-          <button
+          <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
             onClick={() => { setEditing(false); setErr(null) }}
-            style={{ padding: '5px 9px', fontSize: 12, borderRadius: 6, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
           >
             Cancel
           </button>
@@ -660,9 +653,8 @@ function FreeGroundLimitRow() {
       ) : (
         <>
           <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-navy)' }}>{data.freeGroundLimit}</span>
-          <button
+          <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
             onClick={() => { setValue(String(data.freeGroundLimit)); setEditing(true) }}
-            style={{ padding: '5px 9px', fontSize: 12, borderRadius: 6, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
           >
             Change
           </button>
@@ -747,7 +739,7 @@ export function FreeTrialRow() {
           }}
           aria-label={data.on ? 'Turn off the free trial' : 'Turn on the free trial'}
         >
-          <span style={{ position: 'absolute', top: 3, left: data.on ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+          <span style={{ position: 'absolute', top: 3, left: data.on ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: 'var(--gw-hairline)' }} />
         </button>
       </div>
       <div style={{ fontSize: 11, marginTop: 8, fontWeight: 700, color: data.on ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
@@ -798,7 +790,7 @@ export function AnchorTrialRow() {
           }}
           aria-label={data.on ? 'Turn off the anchor trial' : 'Turn on the anchor trial'}
         >
-          <span style={{ position: 'absolute', top: 3, left: data.on ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+          <span style={{ position: 'absolute', top: 3, left: data.on ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: 'var(--gw-hairline)' }} />
         </button>
       </div>
       <div style={{ fontSize: 11, marginTop: 8, fontWeight: 700, color: data.on ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
@@ -851,8 +843,8 @@ function FreeRunsPanel() {
   if (error || !data) return <SectionFailed what="Free runs" error={error} retry={() => refetch()} />
 
   const field: React.CSSProperties = {
-    padding: '7px 10px', border: '1px solid var(--gw-border)', borderRadius: 7,
-    fontSize: 13, fontFamily: 'inherit', background: 'white', color: 'var(--gw-text)',
+    /* The kit's field (app.css .input). */
+    padding: '12px 16px', fontSize: 16, border: '1.5px solid var(--gw-rule-2)', borderRadius: 10, background: 'var(--gw-card)', color: 'var(--gw-text)', fontFamily: 'inherit',
   }
 
   return (
@@ -867,11 +859,9 @@ function FreeRunsPanel() {
         </select>
         <input id="free-run-note" value={note} onChange={e => setNote(e.target.value)}
                placeholder="why, for us" style={{ ...field, flex: '1 1 160px' }} />
-        <button
+        <button className="gwui-btn gwui-btn-primary gwui-btn-small"
           onClick={() => grant.mutate()}
           disabled={!email.trim() || grant.isPending}
-          style={{ padding: '8px 14px', borderRadius: 7, border: 'none', background: 'var(--gw-navy)', color: '#fff',
-                   fontSize: 13, fontWeight: 600, cursor: email.trim() ? 'pointer' : 'default', fontFamily: 'inherit' }}
         >{grant.isPending ? 'Saving...' : 'Give them the months'}</button>
       </div>
       {said && <div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>{said}</div>}
@@ -1338,7 +1328,7 @@ export function ReleaseOneSalesBoardSwitch({ org }: { org: Pick<OrgListItem, 'id
         aria-label={on ? `Switch the new sales board off for ${org.name}` : `Switch the new sales board on for ${org.name}`}
         aria-pressed={on}
       >
-        <span style={{ position: 'absolute', top: 3, left: on ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+        <span style={{ position: 'absolute', top: 3, left: on ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: 'var(--gw-hairline)' }} />
       </button>
     </div>
   )
@@ -1378,7 +1368,7 @@ export function Release1bTabsSwitch({ org }: { org: Pick<OrgListItem, 'id' | 'na
         aria-label={on ? `Switch the new check-in tabs off for ${org.name}` : `Switch the new check-in tabs on for ${org.name}`}
         aria-pressed={on}
       >
-        <span style={{ position: 'absolute', top: 3, left: on ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+        <span style={{ position: 'absolute', top: 3, left: on ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: 'var(--gw-hairline)' }} />
       </button>
     </div>
   )
@@ -1418,7 +1408,7 @@ export function Release2CollectionsSwitch({ org }: { org: Pick<OrgListItem, 'id'
         aria-label={on ? `Switch collecting what is owed off for ${org.name}` : `Switch collecting what is owed on for ${org.name}`}
         aria-pressed={on}
       >
-        <span style={{ position: 'absolute', top: 3, left: on ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+        <span style={{ position: 'absolute', top: 3, left: on ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: 'var(--gw-hairline)' }} />
       </button>
     </div>
   )
@@ -1433,11 +1423,11 @@ function OrgsTab({ orgs }: { orgs: OrgListItem[] }) {
 
   return (
     <div>
-      <input
+      <input className="gwui-input"
         value={search}
         onChange={e => setSearch(e.target.value)}
         placeholder="Search orgs…"
-        style={{ width: '100%', padding: '9px 12px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', marginBottom: 14, boxSizing: 'border-box' }}
+        style={{ width: '100%', marginBottom: 14 }}
       />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {filtered.map(org => (
@@ -1593,10 +1583,10 @@ function InAppFeedback() {
                   </div>
                 </div>
                 {f.status === 'new' ? (
-                  <button
+                  <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
                     onClick={() => setStatus.mutate({ id: f.id, status: 'reviewed' })}
                     disabled={setStatus.isPending}
-                    style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--gw-border)', background: 'white', color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit' }}
+                    style={{ flexShrink: 0 }}
                   >
                     Mark read
                   </button>
@@ -1708,9 +1698,9 @@ function PromptsTab({ navigate }: { navigate: (path: string) => void }) {
       <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>
         Conversation prompts are versioned and stored in the database. Changes are logged with a summary and activation is deliberate - deactivating a version does not delete it. Outcome data is tracked per version so you can compare fairness rates across prompt iterations.
       </div>
-      <button
+      <button className="gwui-btn gwui-btn-primary"
         onClick={() => navigate('/prompts')}
-        style={{ alignSelf: 'flex-start', padding: '10px 18px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+        style={{ alignSelf: 'flex-start' }}
       >
         Open prompt management →
       </button>
@@ -1788,11 +1778,10 @@ function CoachTab({ rows, onChanged }: { rows: CoachRequestRow[]; onChanged: () 
           {NEXT[r.status] && NEXT[r.status].length > 0 && (
             <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
               {NEXT[r.status].map(next => (
-                <button
+                <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
                   key={next}
                   type="button"
                   onClick={async () => { await coachApi.setStatus(r.id, next); onChanged() }}
-                  style={{ fontSize: 11.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', padding: '4px 10px', borderRadius: 5, border: '1px solid var(--gw-blue-b)', background: 'none', color: 'var(--gw-navy)' }}
                 >
                   Mark {next}
                 </button>
@@ -1863,10 +1852,9 @@ function InboxTab({ data, onRead }: {
               </div>
             )}
             {!m.readAt && (
-              <button
+              <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
                 type="button"
                 onClick={() => onRead(m.id)}
-                style={{ fontSize: 11.5, fontWeight: 700, padding: '5px 11px', borderRadius: 6, border: '1px solid var(--gw-border)', background: 'none', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
               >Mark read</button>
             )}
           </div>
@@ -1943,10 +1931,9 @@ function CallRequestsTab({ data, onAnswered }: {
                 {r.note}
               </div>
             )}
-            <button
+            <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
               type="button"
               onClick={() => onAnswered(r.id)}
-              style={{ fontSize: 11.5, fontWeight: 700, padding: '5px 11px', borderRadius: 6, border: '1px solid var(--gw-border)', background: 'none', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
             >Mark answered</button>
           </div>
         ))}
