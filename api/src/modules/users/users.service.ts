@@ -941,8 +941,18 @@ export class UsersService {
   }
 
   async update(id: string, organizationId: string, dto: UpdateUserDto, _actingUserId: string) {
-    const user = await this.prisma.user.findFirst({ where: { id, organizationId } });
-    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
+    /*
+     * SOMEBODY WHO BELONGS HERE, WHICHEVER ORGANISATION THEY LAST LOOKED AT (Drop Access, 21 October). This read `User.organizationId`,
+     * the organisation a person last switched to, so an admin saving the number of somebody listed on People, who was looking at another
+     * organisation of theirs, was told "We could not find that sign-in" and nothing was saved. Their membership here says they belong,
+     * and with which role here.
+     */
+    const found = await this.prisma.user.findFirst({ where: { id, OR: [{ organizationId }, { memberships: { some: { organizationId } } }] } });
+    if (!found) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
+    const here = found.organizationId === organizationId
+      ? null
+      : await Promise.resolve((this.prisma as any).organizationMembership?.findFirst?.({ where: { userId: id, organizationId }, select: { role: true } })).catch(() => null);
+    const user = here?.role ? { ...found, role: here.role as any } : found;
 
     if (dto.email && dto.email.toLowerCase() !== user.email) {
       const taken = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
