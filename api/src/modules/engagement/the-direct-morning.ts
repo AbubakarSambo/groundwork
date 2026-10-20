@@ -4,8 +4,11 @@ import { theOtherQuotesPrice } from '../board/what-needs-you-and-what-to-do';
 import { thePromisesCarriedOver, type APromiseCarriedOver } from '../board/a-promise-carried-over';
 import { theSalesMorning, theThingWithItsDeal, type TheSalesMorning } from './the-sales-morning-from-the-record';
 import { theCollectionsBoardFor } from '../board/the-collections-board.service';
-import type { TheCollectionsBoard } from '../board/the-collections-board';
-import { anAmount, money as billMoney } from '../board/the-collections-board';
+import type { TheCollectionsBoard, ABillOnTheBoard } from '../board/the-collections-board';
+import { anAmount, money as billMoney, theDueDay } from '../board/the-collections-board';
+import { theBillsOnRecord, theBillsThisReaderMayRead, withTheEventsSaid } from '../board/the-collections-board.service';
+import { F } from '../board/the-collections-record';
+import { asHappened } from '../board/a-fee-note-due-on-an-event';
 import { theCollectionsTypeFor } from '../board/the-collections-record';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
@@ -59,7 +62,7 @@ export interface TheMorningPart {
 export interface TheDirectMorning {
   groundId: string;
   label: string;
-  kind: 'sales' | 'collections';
+  kind: 'sales' | 'collections' | 'matter';
   parts: TheMorningPart[];
   /** The email's subject line, after the lead's first name: "49 short of 120, and Joseph needs your yes on Juja Hardware". */
   subjectAfterTheName: string;
@@ -200,7 +203,7 @@ export function theTargetLines(board: any, now: Date, zone: string): { lines: AM
   const likelyUnits = likely.reduce((n, r) => n + (theUnitsOf(r.fields) ?? 0), 0);
   const lines: AMorningLine[] = [];
   lines.push({ text: `${commas(sold)} of ${commas(target)} sold${paid !== null ? `, ${commas(paid)} paid` : ''}.`, rank: 0 });
-  lines.push({ text: likelyUnits > 0 ? `${commas(likelyUnits)} more likely${by ? ` by ${by}` : ''}.` : `None of the open deals is likely${by ? ` by ${by}` : ''} yet.`, rank: 1 });
+  lines.push({ text: likelyUnits > 0 ? `${commas(likelyUnits)} more likely${by ? ` by ${by}` : ''}.` : `None of the open deals is likely${by ? ` by ${by}` : ''}.`, rank: 1 });
   const gap = target - sold - likelyUnits;
   if (gap <= 0) {
     lines.push({ text: sold >= target ? 'You have reached the target.' : 'With the likely deals, you reach the target.', rank: 1 });
@@ -299,6 +302,11 @@ export function theNeedsYouLines(input: TheSalesMorningInput, name: (pid: string
         : `${rep} is waiting for ${what}, and nobody has been named to give it, so send it or say who will.`, rank: 5 });
       first = first ?? `${rep} is waiting on ${what}`;
     }
+  }
+  /* Then a difference people said that is hers to settle, as the board lists it. */
+  for (const d of ((input.board?.decisions ?? []) as any[]).filter((x) => x?.source === 'divergence' && /^you$/i.test(String(x?.owner ?? '')))) {
+    const m = /^People in this check-in said different things about (.+?), so it needs settling\.?$/i.exec(String(d.question ?? '').trim());
+    if (m) lines.push({ text: `People said different things about ${m[1]}, so settle it with them.`, rank: 6 });
   }
   if (!lines.length) lines.push({ text: 'Nothing is waiting on you today.', rank: 6 });
   return { lines, first };
@@ -433,57 +441,201 @@ export function theSalesDirectMorning(input: TheSalesMorningInput): TheDirectMor
 
 /**
  * FOR A "COLLECT WHAT'S OWED" CHECK-IN (Muchemi & Co's fee notes): what is owed in total and what is paid with proof; what fell due
- * today and why (the event it waited for); who to chase (the client, the amount, who follows it up); and what needs the partner. Read
- * from the collections board the lead is served, so the summary and the board agree.
+ * today and why (the event it waited for); what needs the partner; and who to chase (the client, the amount, who follows it up). Read
+ * from the bills on record as the collections board reads them (the-collections-board.service), with each bill's event where the
+ * partner may read it, so the summary and the board agree.
  */
-export function theCollectionsDirectMorning(groundId: string, label: string, c: TheCollectionsBoard, now: Date, zone: string, lastCheckIn: Record<string, Date | null>, people: { id: string; name: string; isTheLead: boolean }[], workingDays: number[] | null): TheDirectMorning {
+export interface TheCollectionsMorningInput {
+  groundId: string;
+  label: string;
+  billWord: string;
+  bills: ABillOnTheBoard[];
+  /** The collections board's own rows for this reader, for who said a bill is paid. */
+  served: TheCollectionsBoard | null;
+  people: { id: string; name: string; isTheLead?: boolean; managingOnly?: boolean; left?: boolean }[];
+  hers: ReadonlySet<string>;
+  waits: AWaitOnRecord[];
+  lastCheckIn: Record<string, Date | null>;
+  firstOpened: Record<string, Date | null>;
+  workingDays: number[] | null;
+  now: Date;
+  zone: string;
+}
+
+const listed = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}` : xs[0] ?? '');
+
+export function theCollectionsDirectMorning(input: TheCollectionsMorningInput): TheDirectMorning {
+  const { now, zone } = input;
   const today = keyIn(now, zone);
-  const word = c.billWord || 'invoice';
-  const rows = c.every?.rows ?? [];
-  let owed = 0; let paidProven = 0; let paidSaid = 0; let currency = 'KES';
-  for (const r of rows) {
-    const a = anAmount(r.amount);
-    if (!a) continue;
-    currency = a.currency;
-    if (r.group === 'paid') { if (r.payment?.mark === 'proven') paidProven += a.value; else paidSaid += a.value; }
-    else owed += a.value;
+  const word = input.billWord || 'invoice';
+  const names = theNamesToCall(input.people.map((p) => ({ id: p.id, name: p.name })));
+  const name = (pid: string | null) => (pid ? (input.hers.has(pid) ? 'you' : names.get(pid) ?? null) : null);
+  const Name = (pid: string | null) => { const n = name(pid); return n ? capital(n) : null; };
+  const f = (b: ABillOnTheBoard, k: string) => field(b.fields as any, k);
+  /* Who follows a bill up: the person named for it, else the person who keeps it, as the board says it. */
+  const followerOf = (b: ABillOnTheBoard): string | null => String((b.fields as any)?._followsUp ?? '').trim() || b.ownerParticipantId || null;
+  /* A row with no number and no amount is not a bill anybody can chase ("the Nyota dispute"). */
+  const bills = input.bills.filter((b) => f(b, F.number) || anAmount(f(b, F.amount)));
+  const whoOwes = (b: ABillOnTheBoard) => f(b, F.client) || f(b, F.matter) || b.name;
+  const numbered = (b: ABillOnTheBoard) => `${f(b, F.number) || b.name} for ${whoOwes(b)}`;
+  const amountOf = (b: ABillOnTheBoard) => anAmount(f(b, F.amount));
+  const servedRow = (b: ABillOnTheBoard) => (input.served?.every?.rows ?? []).find((r) => r.id === b.id) ?? null;
+  const paid = bills.filter((b) => b.stage === 'Paid');
+  const proven = paid.filter((b) => (b.proof ?? []).length > 0);
+  const onAWord = paid.filter((b) => !(b.proof ?? []).length);
+  const unpaid = bills.filter((b) => b.stage !== 'Paid');
+  let currency = 'KES';
+  const sum = (xs: ABillOnTheBoard[]) => xs.reduce((n, b) => { const a = amountOf(b); if (a) currency = a.currency; return n + (a?.value ?? 0); }, 0);
+  const owed = sum(unpaid);
+  const noAmount = unpaid.filter((b) => !amountOf(b)).length;
+  const plural = (n: number) => (n === 1 ? word : `${word}s`);
+
+  /* 1. What is owed, what is paid with proof, and what fell due today and why. */
+  const target: AMorningLine[] = [{
+    text: `${billMoney(owed, currency)} is owed on ${unpaid.length} ${plural(unpaid.length)}${noAmount ? `, and ${noAmount} of them have no amount on record` : ''}. ${proven.length ? `${billMoney(sum(proven), currency)} is paid with proof.` : 'Nothing is paid with proof yet.'}`,
+    rank: 0,
+  }];
+  if (onAWord.length) target.push({ text: `${listed(onAWord.map(numbered))} ${onAWord.length === 1 ? 'is' : 'are'} marked paid, ${billMoney(sum(onAWord), currency)}${onAWord.length > 1 ? ' in all' : ''}, with no proof filed.`, rank: 1 });
+  const fell = unpaid.filter((b) => theDueDay(b) === today);
+  for (const b of fell) {
+    const why = b.event?.event ? asHappened(b.event.event) : f(b, F.dueWhen) ? asHappened(f(b, F.dueWhen)) : '';
+    target.push({ text: `${numbered(b)}${amountOf(b) ? `, ${billMoney(amountOf(b)!.value, amountOf(b)!.currency)},` : ''} fell due today${why ? `, because ${why}` : ''}.`, rank: 1 });
   }
-  const unpaid = rows.filter((r) => r.group !== 'paid');
-  const target: AMorningLine[] = [
-    { text: `${billMoney(owed, currency)} is owed on ${unpaid.length} ${unpaid.length === 1 ? word : `${word}s`}, and ${billMoney(paidProven, currency)} is paid with proof.`, rank: 0 },
-  ];
-  if (paidSaid > 0) target.push({ text: `Another ${billMoney(paidSaid, currency)} is paid on somebody's word, with no proof filed yet.`, rank: 1 });
-  /* What fell due today, and why. */
-  const fell = rows.filter((r) => r.group !== 'paid' && /\btoday\b/i.test(String(r.fallsDue ?? '')));
-  for (const r of fell) target.push({ text: `${r.number ?? capital(word)} for ${r.who}${r.amount ? `, ${r.amount},` : ''} fell due today${/because|when|after/i.test(r.fallsDue) ? `, ${stop(r.fallsDue.replace(/^.*?today,?\s*/i, ''))}` : ''}.`, rank: 1 });
-  /* What needs the partner: the board's own What needs you, said as it is. */
-  const needs: AMorningLine[] = [
-    ...(c.needsYou?.rows ?? []).map((r, i) => ({ text: sentence(`${stop(r.title)}. ${stop(r.says)}`), rank: 2 + i })),
-    ...(c.needsYou?.toConfirm ?? []).map((r) => ({ text: sentence(`${stop(r.title)}. ${stop(r.says)}`), rank: 3 })),
-  ];
+  if (!fell.length) target.push({ text: `No ${word} fell due today.`, rank: 6 });
+
+  /* 2. What needs the partner: a dispute, an event to confirm, what somebody waits on her for, a payment she marked with no proof. */
+  const needs: AMorningLine[] = [];
+  let first: string | null = null;
+  for (const b of unpaid.filter((x) => f(x, F.disputed))) {
+    const by = Name(followerOf(b));
+    needs.push({ text: `${whoOwes(b)} disputes ${f(b, F.number) || b.name}, saying ${stop(f(b, F.disputed)).replace(/^./, (c) => c.toLowerCase())}${by && by !== 'You' ? `, and ${by} follows it up` : ''}, so decide whether to correct it.`, rank: 2 });
+    first = first ?? `${whoOwes(b)} disputes ${f(b, F.number) || b.name}`;
+  }
+  for (const c of input.served?.needsYou?.toConfirm ?? []) needs.push({ text: sentence(stop(c.title)), rank: 3 });
+  const said = new Set<string>();
+  for (const w of input.waits) {
+    if (String(w.status).toUpperCase() === 'CLEARED' || w.clearedAt || !w.fromParticipantId || input.hers.has(w.fromParticipantId)) continue;
+    if (!w.onParticipantId || !input.hers.has(w.onParticipantId)) continue;
+    const what = stop(String(w.what ?? ''));
+    if (!what || /\b(?:it|this|that|them)\b/i.test(what) || /\b(?:I|me|my)\b/.test(what)) continue;
+    const key = `${w.fromParticipantId}|${wordsOf(what).sort().join(' ')}`;
+    if (said.has(key)) continue;
+    said.add(key);
+    const rep = Name(w.fromParticipantId);
+    if (!rep) continue;
+    needs.push({ text: `${rep} has been waiting for ${what} from you ${sinceADay(keyIn(new Date(w.createdAt), zone), today)}.`, rank: 3 });
+    first = first ?? `${rep} is waiting on you`;
+  }
+  for (const b of onAWord) {
+    const row = servedRow(b);
+    if (row && /as you said/i.test(row.payment?.says ?? '')) needs.push({ text: `You marked ${numbered(b)} paid, so file the bank slip or the M-Pesa message.`, rank: 5 });
+  }
   if (!needs.length) needs.push({ text: 'Nothing is waiting on you today.', rank: 6 });
-  /* Who to chase: the client, the amount, who follows it up. */
-  const chase = unpaid.filter((r) => ['behind-in-touch', 'not-heard', 'blocked', 'on-track'].includes(r.group))
-    .map((r) => ({ text: `${r.who}${r.number ? ` (${r.number})` : ''} owes ${r.amount ?? 'an amount nobody has said yet'}${r.followsUp ? `, and ${r.followsUp} follows it up` : ', and nobody follows it up yet, so name who will'}.`, rank: r.group === 'not-heard' || r.group === 'behind-in-touch' ? 4 : 8 }));
-  if (!chase.length) chase.push({ text: `No ${word} needs chasing today.`, rank: 9 });
-  /* The team: who has not checked in since the last working day. */
-  const before = theWorkingDayBefore(today, workingDays);
-  const names = theNamesToCall(people.map((p) => ({ id: p.id, name: p.name })));
-  const team: AMorningLine[] = [];
-  for (const p of people) {
-    if (p.isTheLead) continue;
-    const last = lastCheckIn[p.id] ?? null;
-    if (last && keyIn(last, zone) < before) team.push({ text: `${names.get(p.id)} hasn't checked in ${sinceADay(keyIn(last, zone), today)}.`, rank: 10 });
+
+  /* 3. Who to chase: the client, the amount, who follows it up. What fell due first, then what is behind, then a payment said with no proof. */
+  const chase: { text: string; rank: number; key: string }[] = [];
+  for (const b of unpaid.filter((x) => !f(x, F.disputed))) {
+    const due = theDueDay(b);
+    const by = Name(followerOf(b));
+    const amount = amountOf(b);
+    const followed = by ? (by === 'You' ? 'and you follow it up' : `and ${by} follows it up`) : 'and nobody follows it up yet, so name who will';
+    if (due && due <= today) {
+      const why = b.event?.event ? `, when ${asHappened(b.event.event)}` : '';
+      chase.push({ text: `${numbered(b)}${amount ? `, ${billMoney(amount.value, amount.currency)},` : ''} fell due ${due === today ? 'today' : `on ${dayAndMonth(due)}`}${why}, and nothing is paid yet. ${by ? `${by === 'You' ? 'You follow' : `${by} follows`} it up.` : 'Nobody follows it up yet, so name who will.'}`, rank: 4, key: due });
+    } else if (amount) {
+      chase.push({ text: `${whoOwes(b)} owes ${billMoney(amount.value, amount.currency)} on ${f(b, F.number) || b.name}, ${followed}.`, rank: 8, key: due ?? '9999' });
+    }
   }
+  for (const b of onAWord) {
+    const row = servedRow(b);
+    const sayer = /as (\w+) said/i.exec(row?.payment?.says ?? '')?.[1];
+    if (sayer && !/^you$/i.test(sayer)) chase.push({ text: `Ask ${sayer} for the proof that ${numbered(b)} is paid.`, rank: 9, key: '9999' });
+  }
+  chase.sort((a, b) => a.rank - b.rank || a.key.localeCompare(b.key));
+  if (!chase.length) chase.push({ text: `No ${word} needs chasing today.`, rank: 9, key: '' });
+
+  /* 4. The team: who has not checked in since the last working day. */
+  const team = theCheckInsNotMade(input.people, input.hers, input.lastCheckIn, input.firstOpened, today, input.workingDays, zone, names);
   return {
-    groundId, label, kind: 'collections',
+    groundId: input.groundId, label: input.label, kind: 'collections',
     parts: [
-      { key: 'target', heading: 'What is owed, and what is paid', lead: 'Owed:', lines: target },
+      { key: 'target', heading: `What is owed, and what is paid`, lead: 'Owed:', lines: target },
       { key: 'needsYou', heading: 'What needs you today', lead: 'Needs you today:', lines: needs },
-      { key: 'closing', heading: 'Who to chase', lead: 'To chase:', lines: chase },
+      { key: 'closing', heading: 'Who to chase', lead: 'To chase:', lines: chase.map(({ text, rank }) => ({ text, rank })) },
       { key: 'team', heading: 'Your team today', lead: 'Your team:', lines: team },
     ],
-    subjectAfterTheName: `${billMoney(owed, currency)} owed on ${label}${fell.length ? `, and ${fell.length === 1 ? `${fell[0].who} fell due today` : `${fell.length} fell due today`}` : ''}`,
+    subjectAfterTheName: `${billMoney(owed, currency)} owed${first ? `, and ${first}` : fell.length ? `, and ${fell.length === 1 ? `${numbered(fell[0])} fell due today` : `${fell.length} fell due today`}` : ''}`,
+  };
+}
+
+/** Who has not checked in since the last working day, one line each. */
+export function theCheckInsNotMade(
+  people: { id: string; managingOnly?: boolean; left?: boolean }[], hers: ReadonlySet<string>,
+  lastCheckIn: Record<string, Date | null>, firstOpened: Record<string, Date | null>, today: string, workingDays: number[] | null, zone: string, names: Map<string, string>,
+): AMorningLine[] {
+  const before = theWorkingDayBefore(today, workingDays);
+  const out: AMorningLine[] = [];
+  for (const p of people) {
+    if (hers.has(p.id) || p.managingOnly || p.left) continue;
+    const who = names.get(p.id);
+    if (!who) continue;
+    const last = lastCheckIn[p.id] ?? null;
+    const opened = firstOpened[p.id] ?? null;
+    if (last) {
+      const k = keyIn(last, zone);
+      if (k < before) out.push({ text: `${who} hasn't checked in ${sinceADay(k, today)}.`, rank: 10 });
+    } else if (opened && keyIn(opened, zone) <= before) out.push({ text: `${who} hasn't checked in yet.`, rank: 10 });
+  }
+  return out;
+}
+
+/**
+ * FOR ANY OTHER CHECK-IN THE LEAD RUNS WITH THE SWITCH ON (Muchemi & Co's litigation team): what needs her (a wait on her, a difference
+ * people said that she has to settle), what is due in the next seven days, and who has not checked in. No target part: there is no
+ * number to count.
+ */
+export function theMatterDirectMorning(input: { groundId: string; label: string; board: any; people: TheCollectionsMorningInput['people']; hers: ReadonlySet<string>; waits: AWaitOnRecord[]; items: { kind: string; name: string; dueAt: Date | string | null; ownerParticipantId: string | null }[]; lastCheckIn: Record<string, Date | null>; firstOpened: Record<string, Date | null>; workingDays: number[] | null; now: Date; zone: string }): TheDirectMorning {
+  const today = keyIn(input.now, input.zone);
+  const names = theNamesToCall(input.people.map((p) => ({ id: p.id, name: p.name })));
+  const name = (pid: string | null) => (pid ? names.get(pid) ?? null : null);
+  const needs: AMorningLine[] = [];
+  let first: string | null = null;
+  const said = new Set<string>();
+  for (const w of input.waits) {
+    if (String(w.status).toUpperCase() === 'CLEARED' || w.clearedAt || !w.fromParticipantId || input.hers.has(w.fromParticipantId)) continue;
+    const rep = name(w.fromParticipantId);
+    const what = stop(String(w.what ?? ''));
+    if (!rep || !what || /\b(?:it|this|that|them)\b/i.test(what) || /\b(?:I|me|my)\b/.test(what)) continue;
+    const key = `${w.fromParticipantId}|${wordsOf(what).sort().join(' ')}`;
+    if (said.has(key)) continue;
+    if (w.onParticipantId && input.hers.has(w.onParticipantId)) {
+      said.add(key);
+      needs.push({ text: `${rep} has been waiting for ${what} from you ${sinceADay(keyIn(new Date(w.createdAt), input.zone), today)}.`, rank: 2 });
+      first = first ?? `${rep} is waiting on you`;
+    } else if (!w.onParticipantId && String(w.status).toUpperCase() === 'BLOCKING') {
+      said.add(key);
+      const holder = aNamedHolder(w.onLabel, w.what);
+      needs.push({ text: holder ? `${rep} is waiting on ${holder} for ${what}.` : `${rep} is waiting for ${what}, and nobody has been named to give it, so say who will.`, rank: 4 });
+    }
+  }
+  for (const d of ((input.board?.decisions ?? []) as any[]).filter((x) => x?.source === 'divergence' && /^you$/i.test(String(x?.owner ?? '')))) {
+    const m = /^People in this check-in said different things about (.+?), so it needs settling\.?$/i.exec(String(d.question ?? '').trim());
+    if (m) needs.push({ text: `People said different things about ${m[1]}, so settle it with them.`, rank: 5 });
+  }
+  if (!needs.length) needs.push({ text: 'Nothing is waiting on you today.', rank: 6 });
+  const lastDay = plus(today, 7);
+  const due = input.items.filter((i) => i.dueAt && keyIn(new Date(i.dueAt), 'UTC') >= today && keyIn(new Date(i.dueAt), 'UTC') <= lastDay)
+    .sort((a, b) => new Date(a.dueAt as any).getTime() - new Date(b.dueAt as any).getTime())
+    .map((i) => ({ text: `${capital(stop(i.name))} is due ${aDayFromToday(keyIn(new Date(i.dueAt as any), 'UTC'), today)}${name(i.ownerParticipantId) ? `, and ${name(i.ownerParticipantId)} has it` : ''}.`, rank: 7 }));
+  const team = theCheckInsNotMade(input.people, input.hers, input.lastCheckIn, input.firstOpened, today, input.workingDays, input.zone, names);
+  return {
+    groundId: input.groundId, label: input.label, kind: 'matter',
+    parts: [
+      { key: 'needsYou', heading: 'What needs you today', lead: 'Needs you today:', lines: needs },
+      { key: 'closing', heading: 'Due in the next seven days', lead: 'Due this week:', lines: due },
+      { key: 'team', heading: 'Your team today', lead: 'Your team:', lines: team },
+    ],
+    subjectAfterTheName: first ?? `today on ${input.label}`,
   };
 }
 
@@ -558,8 +710,8 @@ export function theSubject(firstName: string | null | undefined, mornings: TheDi
 
 /**
  * THE DIRECT MORNING FOR ONE CHECK-IN, for the lead who runs it, from her board as served and the record beside it. Null where the
- * switch is off for the organisation, where the reader does not run it, or where the check-in is neither a sales check-in nor a
- * "collect what's owed" one (those keep the summary as it was).
+ * switch is off for the organisation or where the reader does not run it. A sales check-in reads its deals, a "collect what's owed"
+ * one its bills, and any other check-in what waits on the lead, what is due and who has not checked in.
  */
 export async function theDirectMorningFor(
   prisma: any,
@@ -580,31 +732,44 @@ export async function theDirectMorningFor(
     managingOnly: !!p.managingOnly, left: !!p.leftAt, isTheLead: p.userId === opts.leadUserId || p.partyType === 'INITIATOR', userId: p.userId,
   }));
   const hers = new Set(people.filter((p) => p.isTheLead).map((p) => p.id));
-  const checkIns: any[] = ((await Promise.resolve(prisma?.checkIn?.findMany?.({ where: { groundId: ground.id }, select: { id: true, participantId: true, status: true, isSetup: true, completedAt: true, availableFrom: true, createdAt: true } })).catch(() => [])) ?? []) as any[];
+  const checkIns: any[] = ((await Promise.resolve(prisma?.checkIn?.findMany?.({ where: { groundId: ground.id }, select: { id: true, participantId: true, status: true, isSetup: true, completedAt: true, availableFrom: true, createdAt: true, closedReason: true } })).catch(() => [])) ?? []) as any[];
   const lastCheckIn: Record<string, Date | null> = {};
   const firstOpened: Record<string, Date | null> = {};
   for (const c of checkIns) {
     if (c.isSetup) continue;
     const opened = c.availableFrom ? new Date(c.availableFrom) : c.createdAt ? new Date(c.createdAt) : null;
     if (opened && opened <= now && (!firstOpened[c.participantId] || opened < (firstOpened[c.participantId] as Date))) firstOpened[c.participantId] = opened;
-    if (String(c.status).toUpperCase() !== 'COMPLETED' || !c.completedAt) continue;
+    /* A session the clock closed with nothing said is not a check-in made. */
+    if (String(c.status).toUpperCase() !== 'COMPLETED' || !c.completedAt || /auto|expired|timed/i.test(String(c.closedReason ?? ''))) continue;
     const at = new Date(c.completedAt);
     if (at > now) continue;
     if (!lastCheckIn[c.participantId] || at > (lastCheckIn[c.participantId] as Date)) lastCheckIn[c.participantId] = at;
   }
   const kept = ground.overWhatsApp === false;
 
-  /* A "collect what's owed" check-in reads the collections board, as the lead is served it. */
-  if (await theCollectionsTypeFor(prisma, ground.id).catch(() => null)) {
-    const leadRow = people.find((p) => p.isTheLead)?.id ?? null;
-    const c = opts.board?.collections ?? await theCollectionsBoardFor(prisma, ground.id, { runsIt: true, participantId: leadRow }, now).catch(() => null);
-    if (!c) return null;
-    return { ...theCollectionsDirectMorning(ground.id, ground.label, c, now, zone, lastCheckIn, people, ground.workingDays ?? null), ...(kept ? { keptInTheApp: true } : {}) };
-  }
-  if (!isASalesKind(ground.kindOfWork) || !opts.board) return null;
+  const waitsAll: AWaitOnRecord[] = ((await Promise.resolve(prisma?.groundDependency?.findMany?.({ where: { groundId: ground.id } })).catch(() => [])) ?? []) as any[];
+  const openWaits = waitsAll.filter((w) => String(w.status).toUpperCase() !== 'CLEARED' && !w.clearedAt);
 
-  const waits: AWaitOnRecord[] = ((await Promise.resolve(prisma?.groundDependency?.findMany?.({ where: { groundId: ground.id } })).catch(() => [])) ?? []) as any[];
-  const open = waits.filter((w) => String(w.status).toUpperCase() !== 'CLEARED' && !w.clearedAt);
+  /* A "collect what's owed" check-in reads the bills as the collections board reads them for the person who runs it. */
+  const collections = await theCollectionsTypeFor(prisma, ground.id).catch(() => null);
+  if (collections) {
+    const leadRow = people.find((p) => p.isTheLead)?.id ?? null;
+    const served = opts.board?.collections ?? await theCollectionsBoardFor(prisma, ground.id, { runsIt: true, participantId: leadRow }, now).catch(() => null);
+    const bills = await withTheEventsSaid(prisma, theBillsThisReaderMayRead(await theBillsOnRecord(prisma, ground.id), { runsIt: true, participantId: leadRow }), { userId: opts.leadUserId, isTheLead: true }, zone).catch(() => []);
+    return {
+      ...theCollectionsDirectMorning({ groundId: ground.id, label: ground.label, billWord: collections.billWord, bills, served, people, hers, waits: openWaits, lastCheckIn, firstOpened, workingDays: ground.workingDays ?? null, now, zone }),
+      ...(kept ? { keptInTheApp: true } : {}),
+    };
+  }
+  if (!isASalesKind(ground.kindOfWork)) {
+    const items: any[] = ((await Promise.resolve(prisma?.workItem?.findMany?.({ where: { groundId: ground.id } })).catch(() => [])) ?? []) as any[];
+    return {
+      ...theMatterDirectMorning({ groundId: ground.id, label: ground.label, board: opts.board, people, hers, waits: openWaits, items, lastCheckIn, firstOpened, workingDays: ground.workingDays ?? null, now, zone }),
+      ...(kept ? { keptInTheApp: true } : {}),
+    };
+  }
+  if (!opts.board) return null;
+  const open = openWaits;
   const deals: ADealOnRecord[] = await theDealsOnRecord(prisma, ground.id, { paymentRecord: true }).catch(() => [] as ADealOnRecord[]);
   const lines: any[] = (((await Promise.resolve(prisma?.recordEntry?.findMany?.({ where: { participant: { groundId: ground.id }, disputedAt: null }, select: { text: true, type: true, participantId: true, checkInId: true, createdAt: true } })).catch(() => [])) ?? []) as any[])
     .map((l) => ({ ...l, text: cleanText(String(l.text ?? '')) }));

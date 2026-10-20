@@ -41,6 +41,9 @@ import { theEngagementMoment } from './the-engagement-release-moment';
 import { theQuietIn, quietIn } from './who-has-gone-quiet';
 import { whoHasMissedCheckIns, whatTheLeadReads, TOLD_THE_LEAD } from '../grounds/missed-check-ins';
 import { isAlreadyHeld, hasBeenToldOnce, nowToldOnce } from './a-message-sent-once';
+import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
+import { theDirectMorningFor, theParagraph, theEmailParts, theSubject, type TheDirectMorning } from './the-direct-morning';
+import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 
 /**
  * THE LEAD'S DAILY NUDGE ABOUT WHAT IS OUTSTANDING (decision 120).
@@ -669,7 +672,11 @@ async function theLeadsAndTheirCheckIns(prisma: any) {
 export interface TheNudgeDoors {
   prisma: any;
   whatsapp: { sendFor: (organizationId: string, phone: string, text: string, ctx: { kind: string; params: string[] }) => Promise<any>; isEnabled(): Promise<boolean>; hasSaidStop?: (phone: string) => Promise<boolean> };
-  email: { sendTheLeadsDailyNudge: (to: string, subject: string, parts: TheNudgeParts, firstName: string | null | undefined, linkLabel: string, linkUrl: string) => Promise<'sent' | 'held' | 'suppressed' | unknown> };
+  email: {
+    sendTheLeadsDailyNudge: (to: string, subject: string, parts: TheNudgeParts, firstName: string | null | undefined, linkLabel: string, linkUrl: string) => Promise<'sent' | 'held' | 'suppressed' | unknown>;
+    /* The direct morning by email (the-direct-morning.ts), where the organisation's switch is on. */
+    sendTheDirectMorning?: (to: string, subject: string, firstName: string | null | undefined, parts: { heading: string; lines: string[] }[], linkLabel: string, linkUrl: string) => Promise<'sent' | 'held' | 'suppressed' | unknown>;
+  };
   boards: TheBoards;
   frontendUrl: string;
   /* The lead's own board, as she opens it, for what her summary says (the-summary-reads-the-board.ts). Without it, the summary reads the record alone, as before. */
@@ -732,7 +739,7 @@ const THE_DAYS_OWN_LIMITS: ReadonlySet<string> = new Set([NOT_TODAY, THEY_SAID_N
  * THE MORNING SWEEP. One message a lead, by the channel decision 120 names. Returns how many were tried (sent, held for the morning or refused by a rule).
  * A lead on approved leave, with nothing outstanding, or whose sign-in is gone gets nothing.
  */
-export async function sendTheLeadsDailyNudges(deps: TheNudgeDoors, now: Date = new Date()): Promise<{ tried: number }> {
+export async function sendTheLeadsDailyNudges(deps: TheNudgeDoors, now: Date = new Date(), opts: { onlyTheDirectMorningAt7?: boolean } = {}): Promise<{ tried: number }> {
   const { prisma } = deps;
   const release = await theEngagementMoment(prisma, now).catch(() => null);
   const leads = await theLeadsAndTheirCheckIns(prisma);
@@ -747,6 +754,17 @@ export async function sendTheLeadsDailyNudges(deps: TheNudgeDoors, now: Date = n
       const user = await prisma.user.findUnique({ where: { id: lead.userId }, select: { firstName: true, email: true, phoneNumber: true, deletedAt: true, isActive: true } });
       if (!user || user.deletedAt || user.isActive === false) continue;
       if (fallsInLeave(now, await theirApprovedLeave(prisma, lead.userId, lead.organizationId))) continue;
+      /*
+       * THE DIRECT MORNING (the-direct-morning.ts), where the organisation's switch is on: the target, what needs her, what is about to
+       * close and her team, by seven in the morning where the organisation is, and never twice in a day. Off, everything below runs as before.
+       */
+      const direct = await theDirectMorningIsOn(prisma, lead.organizationId);
+      if (opts.onlyTheDirectMorningAt7 && !direct) continue;
+      if (direct) {
+        const went = await sendTheDirectMorningTo(deps, lead, user, now, { onlyAt7: !!opts.onlyTheDirectMorningAt7 });
+        if (went === 'sent') { tried++; continue; }
+        if (went === 'not-now' || opts.onlyTheDirectMorningAt7) continue;
+      }
       const fromTheRecord = await whatIsOutstandingFor(prisma, lead, { boards: deps.boards, release }, now);
       /* What her board says too, in the same three parts (Hafsah, 19 October, point 1): never a single minor line when the board has more. */
       const everything = deps.board ? withWhatTheBoardsSay(fromTheRecord, await theLeadsBoards(deps.board, lead, prisma).catch(() => [])) : fromTheRecord;
@@ -785,4 +803,73 @@ export async function sendTheLeadsDailyNudges(deps: TheNudgeDoors, now: Date = n
     }
   }
   return { tried };
+}
+
+
+/** The day's key for the direct morning, once a lead and a day. */
+export const theDirectMorningsKey = (userId: string, day: string) => `direct-morning.${userId}.${day}`;
+const theDayIn7 = (now: Date, zone: string) => new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+const theHourIn = (now: Date, zone: string) => Number(new Intl.DateTimeFormat('en-GB', { timeZone: zone, hour: '2-digit', hourCycle: 'h23' }).format(now));
+
+/**
+ * THE DIRECT MORNING, SENT (Hafsah, 20 October 2026). One message, the lead's one routine message that day: on WhatsApp where she has a
+ * number, WhatsApp is on for her organisation and she has not said stop, else by email when WhatsApp cannot take it (the same rule as
+ * the summary above). The template lead_daily_summary is unchanged: its {{2}} carries the four parts, cut by priority, never in the
+ * middle of a sentence, and its {{3}} is her board. As the very first message to her number it goes as groundwork_first_contact, with
+ * the same four parts cut to fit that template. Inside the 24 hours it is a message of its own, each part on its own lines.
+ * 'sent' when it went (or was held for the morning), 'not-now' when a rule of the day holds it back, 'nothing' when there is nothing
+ * to say (a lead with no check-in it reads), so the summary as before goes instead.
+ */
+export async function sendTheDirectMorningTo(
+  deps: TheNudgeDoors,
+  lead: { userId: string; organizationId: string; grounds: any[] },
+  user: { firstName?: string | null; email: string; phoneNumber?: string | null },
+  now: Date,
+  opts: { onlyAt7?: boolean } = {},
+): Promise<'sent' | 'not-now' | 'nothing'> {
+  const { prisma } = deps;
+  const zone = (await theOrganisationsZone(prisma, lead.organizationId).catch(() => null)) ?? THE_PRODUCTS_OWN_ZONE;
+  /* By seven where the organisation is: the early sweep sends it in the quarter hour from seven; the 9am sweep only if it has not gone. */
+  if (opts.onlyAt7 && theHourIn(now, zone) !== 7) return 'not-now';
+  const key = theDirectMorningsKey(lead.userId, theDayIn7(now, zone));
+  if (await hasBeenToldOnce(prisma, key)) return 'not-now';
+  if (!deps.board) return 'nothing';
+  const mornings: TheDirectMorning[] = [];
+  for (const g of lead.grounds.filter((x) => !isEvaluationCheckIn(x.scenario))) {
+    const board = await deps.board.get(g.id, lead.userId).catch(() => null);
+    if (!board) continue;
+    const m = await theDirectMorningFor(prisma, { groundId: g.id, leadUserId: lead.userId, board, now }).catch(() => null);
+    if (m && m.parts.some((p) => p.lines.length)) mornings.push(m);
+  }
+  if (!mornings.length) return 'nothing';
+  const base = (deps.frontendUrl || '').replace(/\/$/, '');
+  const link = `${base}/grounds/${mornings[0].groundId}/board`;
+  const subject = theSubject(user.firstName, mornings);
+  const body = TEMPLATES[NUDGE_KIND].body;
+  const first = user.firstName?.trim() || 'there';
+
+  const entry = await theirRosterEntry(prisma, lead.organizationId, lead.userId, { phone: true }).catch(() => null);
+  const phone: string | null = entry?.phone ?? user.phoneNumber ?? null;
+  const stopped = phone && deps.whatsapp.hasSaidStop ? await deps.whatsapp.hasSaidStop(phone).catch(() => false) : false;
+  const turnedOn = await organisationsThatTurnedWhatsAppOn(prisma, deps.whatsapp as any, [lead.organizationId]).catch(() => new Set<string>());
+  const forAPhone = mornings.filter((m) => !m.keptInTheApp);
+  if (phone && !stopped && turnedOn.has(lead.organizationId) && forAPhone.length) {
+    const fixed = body.replace(/\{\{\d+\}\}/g, '').length + oneLine(first).length + oneLine(link).length;
+    /* The template may carry 1,024 characters in all. */
+    const paragraph = theParagraph(forAPhone, A_TEMPLATE_BODY_LIMIT - fixed - 4).text;
+    const params = [first, oneLine(paragraph), link];
+    /* As the first message to the number, groundwork_first_contact carries the whole template's words in at most 800: cut by priority, never mid-sentence. */
+    const shortRoom = ITS_OWN_WORDS_AT_MOST - fixed - 4;
+    const shortParams = [first, oneLine(theParagraph(forAPhone, shortRoom).text), link];
+    const firstContact = body.replace(/\{\{(\d+)\}\}/g, (_m, n) => shortParams[Number(n) - 1] ?? '');
+    const window = [`Good morning ${first}.`, ...theEmailParts(forAPhone).map((p) => [p.heading, ...p.lines].join('\n')), `Your board is here ${link}`].join('\n\n');
+    const result: any = await deps.whatsapp.sendFor(lead.organizationId, phone, window, { kind: NUDGE_KIND, params, paramsFor: { groundwork_first_contact: [firstContact] } } as any);
+    if (result?.sent !== false) { await nowToldOnce(prisma, key, 'sent'); return 'sent'; }
+    if (THE_DAYS_OWN_LIMITS.has(String(result?.error ?? ''))) { await nowToldOnce(prisma, key, 'held'); return 'not-now'; }
+  }
+  if (await isAlreadyHeld(prisma, NUDGE_SENDER, user.email)) return 'not-now';
+  if (!deps.email.sendTheDirectMorning) return 'nothing';
+  const went = await deps.email.sendTheDirectMorning(user.email, subject, user.firstName, theEmailParts(mornings), 'Open your board', link);
+  await nowToldOnce(prisma, key, went as any, { sender: NUDGE_SENDER, to: user.email });
+  return 'sent';
 }

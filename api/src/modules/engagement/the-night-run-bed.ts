@@ -55,6 +55,7 @@ export function theNightRunsDatabase(g: AGroundOfTheRun, opts: { directMorning?:
   const ground = { ...R.ground, participants: R.participants };
   const org = { ...(N.org as any[]).find((o) => o.id === R.ground.organizationId), directMorningOn: opts.directMorning ?? false, personJudgementsOn: opts.judgements ?? true };
   const people = (id: string | null) => R.participants.find((p: any) => p.id === id) ?? null;
+  const settings = new Map<string, any>();
   const waits = R.waits.map((w: any) => ({ ...w, fromParticipant: people(w.fromParticipantId), onParticipant: people(w.onParticipantId) }));
   return {
     organization: { findUnique: jest.fn(async () => structuredClone(org)), findMany: jest.fn(async () => [structuredClone(org)]) },
@@ -68,9 +69,22 @@ export function theNightRunsDatabase(g: AGroundOfTheRun, opts: { directMorning?:
     groundDocument: table(R.documents),
     conversationTurn: table(R.turns),
     groundObjective: table(R.objectives),
+    groundObjectiveSnapshot: table([]),
     personObjective: table(R.personObjectives),
     groundContextItem: table(R.contextItems),
-    user: { findMany: jest.fn(async () => []), findUnique: jest.fn(async () => null) },
+    user: {
+      findMany: jest.fn(async () => []),
+      findUnique: jest.fn(async ({ where }: any = {}) => { const p = R.participants.find((x: any) => x.userId && x.userId === where?.id); return p ? { firstName: p.user?.firstName ?? null, email: p.user?.email ?? `${p.userId}@test`, phoneNumber: p.user?.phoneNumber ?? null, deletedAt: null, isActive: true } : null; }),
+    },
+    person: { findFirst: jest.fn(async () => null), findMany: jest.fn(async () => []) },
+    /* What has been said once (a-message-sent-once), kept for the test. */
+    platformSetting: {
+      findUnique: jest.fn(async ({ where }: any) => (settings.has(where.key) ? { key: where.key, value: settings.get(where.key) } : null)),
+      create: jest.fn(async ({ data }: any) => { settings.set(data.key, data.value); return data; }),
+      update: jest.fn(async ({ where, data }: any) => { settings.set(where.key, data.value); return data; }),
+    },
+    scheduledEmail: { findFirst: jest.fn(async () => null) },
+    notification: { findFirst: jest.fn(async () => null) },
     $queryRaw: jest.fn(async () => []),
   } as any;
 }

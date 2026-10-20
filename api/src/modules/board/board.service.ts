@@ -1,3 +1,4 @@
+import { theDirectMorningFor, asServedOnTheBoard } from '../engagement/the-direct-morning';
 import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
 import { theRelease1bTabsAreOn } from '../grounds/release-1b-tabs';
 import { aLineThatSaysItHappened } from './somebody-said-it-happened';
@@ -3847,6 +3848,14 @@ export class BoardService {
             : null,
           readerIsTheLead: isInitiator,
         });
+      }
+      /*
+       * THE DIRECT MORNING AT THE TOP (engagement/the-direct-morning.ts): for the lead who runs it, where her organisation's switch is on,
+       * the same four parts her morning summary says, in the same order, built from this board as she is served it. Never to anybody else.
+       */
+      if (isInitiator) {
+        const morning = await theDirectMorningFor(this.prisma, { groundId, leadUserId: requestingUserId, board: asServed, now }).catch(() => null);
+        if (morning) (asServed as any).theMorning = asServedOnTheBoard(morning);
       }
       /* The anchor scenario's own parts (request 149), added after every wall above: only whoever runs an anchor check-in, only with the switch on. */
       const roundOpensAt = (checkIns as any[]).filter((c) => c.sessionNumber === openRound).map((c) => c.availableFrom ?? c.startedAt).filter(Boolean).sort((a: Date, b: Date) => a.getTime() - b.getTime())[0] ?? null;

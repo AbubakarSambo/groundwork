@@ -1020,6 +1020,29 @@ export class GroundsCron implements OnApplicationBootstrap {
     return result;
   }
 
+  /**
+   * THE DIRECT MORNING BY SEVEN (engagement/the-direct-morning.ts; Hafsah, 20 October 2026): every quarter hour, for the organisations whose
+   * switch is on, the lead's morning summary goes in the hour from seven where the organisation is, before the check-ins open, once a day
+   * a lead. The 9am sweep above sends it only to a lead it did not reach. Organisations with the switch off are never read here.
+   */
+  @Cron('*/15 * * * *', { timeZone: 'UTC' })
+  async sendTheDirectMorningsAtSeven() {
+    await onceAcrossCopies(this.prisma, 'direct-morning-at-seven', new Date().toISOString().slice(0, 16), () => this.sendTheDirectMorningsAtSevenInner());
+  }
+
+  async sendTheDirectMorningsAtSevenInner(now: Date = new Date()): Promise<{ tried: number }> {
+    const any = await (this.prisma as any).organization.findFirst({ where: { directMorningOn: true }, select: { id: true } }).catch(() => null);
+    if (!any) return { tried: 0 };
+    let boards: { get(groundId: string, userId: string): Promise<any> } | undefined;
+    try {
+      if (this.moduleRef) { const { BoardService } = await import('../board/board.service'); boards = this.moduleRef.get(BoardService, { strict: false }); }
+    } catch { boards = undefined; }
+    return sendTheLeadsDailyNudges(
+      { prisma: this.prisma, whatsapp: this.whatsapp as any, email: this.email as any, boards: { leave: this.leave, timeSheets: this.timeSheets, spending: this.spending }, frontendUrl: this.config.get<string>('resend.frontendUrl') || '', ...(boards ? { board: { get: (groundId: string, userId: string) => boards.get(groundId, userId) } } : {}) },
+      now, { onlyTheDirectMorningAt7: true },
+    ).catch((err: any) => { this.logger.warn(`The direct mornings could not be sent: ${err?.message}`); return { tried: 0 }; });
+  }
+
   /** The old name of the job, kept so the journeys and the test bed that call it by that name still run the one morning job. */
   async sendTheLeadsDailySummaries() { return this.sendTheLeadsDailyNudges(); }
   async sendTheLeadsDailySummariesInner(now: Date = new Date()) { return this.sendTheLeadsDailyNudgesInner(now); }
