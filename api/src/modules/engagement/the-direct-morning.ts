@@ -446,7 +446,7 @@ export function theTeamLines(input: TheSalesMorningInput, name: (pid: string | n
 
 /**
  * THE CHECK-IN LINES FOR ONE PERSON (nudges that get answers). With the sessions read: two missed days in a row is "Peter hasn't checked
- * in for 2 days, on Monday 19 October and Tuesday 20 October. Call Peter." (rank 8, before a promise not kept); past their usual time
+ * in for 2 days, on Monday 19 October and Tuesday 20 October, so call Peter." (rank 8, before a promise not kept); past their usual time
  * today is "Peter hasn't checked in today, and last checked in yesterday." (rank 10). Otherwise, as before: not since the last working day.
  */
 export function theCheckInLines(

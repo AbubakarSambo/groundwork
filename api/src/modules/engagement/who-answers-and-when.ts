@@ -186,17 +186,17 @@ const listed = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')}
 /* The sentences the lead reads                                                                                                */
 /* ------------------------------------------------------------------------------------------------------------------------- */
 
-/** "Peter hasn't checked in for 2 days, on Monday 19 October and Tuesday 20 October. Call Peter." Null under two missed days. */
+/** "Peter hasn't checked in for 2 days, on Monday 19 October and Tuesday 20 October, so call Peter." Null under two missed days. */
 export function twoMissedDaysSaid(who: string, d: TheirDay, workingDays: number[] | null | undefined): string | null {
   const n = d.missedDays.length;
   if (n < 2) return null;
   const names = d.missedDays.map(aDayByName);
   if (oneAfterAnother(d.missedDays, workingDays)) {
     return n === 2
-      ? `${who} hasn't checked in for 2 days, on ${listed(names)}. Call ${who}.`
-      : `${who} hasn't checked in for ${n} days, since ${names[0]}. Call ${who}.`;
+      ? `${who} hasn't checked in for 2 days, on ${listed(names)}, so call ${who}.`
+      : `${who} hasn't checked in for ${n} days, since ${names[0]}, so call ${who}.`;
   }
-  return `${who} hasn't checked in the last ${n} times the check-in opened, on ${listed(names)}. Call ${who}.`;
+  return `${who} hasn't checked in the last ${n} times the check-in opened, on ${listed(names)}, so call ${who}.`;
 }
 
 /** "Peter hasn't checked in today, and last checked in on Monday 19 October." Null unless they are late today. */

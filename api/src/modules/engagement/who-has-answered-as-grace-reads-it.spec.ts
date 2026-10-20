@@ -7,7 +7,7 @@ import { theirDay, theirUsualTime, twoMissedDaysSaid, notInTodaySaid, onTimeSaid
  * second night run (gw_night_run2). Behind the direct morning's switch: off, nothing here is said to anybody.
  *
  *  - Past their usual time today: "Peter hasn't checked in today, and last checked in yesterday."
- *  - Two missed days in a row: "Joseph hasn't checked in for 2 days, on Tuesday 20 October and Wednesday 21 October. Call Joseph."
+ *  - Two missed days in a row: "Joseph hasn't checked in for 2 days, on Tuesday 20 October and Wednesday 21 October, so call Joseph."
  *  - Checking in on time: "Kevin checked in on time 6 days running."
  */
 const DROP = N.drop.ground.id;
@@ -80,7 +80,7 @@ describe('Grace’s morning and the top of her board, with the switch on', () =>
 
   it('after two missed days in a row, says so plainly with the days, and tells Grace to call', async () => {
     const m = await morningAt(new Date('2026-10-22T06:00:00Z'), { rows: josephMissesTwoDays() });
-    expect(team(m)[0]).toBe("Joseph hasn't checked in for 2 days, on Tuesday 20 October and Wednesday 21 October. Call Joseph.");
+    expect(team(m)[0]).toBe("Joseph hasn't checked in for 2 days, on Tuesday 20 October and Wednesday 21 October, so call Joseph.");
     /* The same line in her email, under its heading. */
     expect(theEmailParts([m!]).find((p) => p.heading === 'Your team today')!.lines[0]).toBe(team(m)[0]);
     expect(m!.mayBeNudged!.map((p) => p.participantId)).toContain(JOSEPH);
@@ -103,9 +103,9 @@ describe('with the switch off', () => {
 describe('the sentences, one at a time', () => {
   const day = (over: any) => ({ participantId: 'p', dueToday: true, answeredToday: false, answeredOnTimeToday: false, lateAfter: null, lateToday: false, lastCheckedIn: '2026-10-19', missedDays: [], onTimeRunning: 0, onTimeLastDay: null, ...over });
   it('two missed days on a weekly check-in are said as the times it opened, not as days in a row', () => {
-    expect(twoMissedDaysSaid('Peter', day({ missedDays: ['2026-10-12', '2026-10-19'] }), [1, 2, 3, 4, 5])).toBe("Peter hasn't checked in the last 2 times the check-in opened, on Monday 12 October and Monday 19 October. Call Peter.");
-    expect(twoMissedDaysSaid('Peter', day({ missedDays: ['2026-10-16', '2026-10-19'] }), [1, 2, 3, 4, 5])).toBe("Peter hasn't checked in for 2 days, on Friday 16 October and Monday 19 October. Call Peter.");
-    expect(twoMissedDaysSaid('Peter', day({ missedDays: ['2026-10-14', '2026-10-15', '2026-10-16'] }), null)).toBe("Peter hasn't checked in for 3 days, since Wednesday 14 October. Call Peter.");
+    expect(twoMissedDaysSaid('Peter', day({ missedDays: ['2026-10-12', '2026-10-19'] }), [1, 2, 3, 4, 5])).toBe("Peter hasn't checked in the last 2 times the check-in opened, on Monday 12 October and Monday 19 October, so call Peter.");
+    expect(twoMissedDaysSaid('Peter', day({ missedDays: ['2026-10-16', '2026-10-19'] }), [1, 2, 3, 4, 5])).toBe("Peter hasn't checked in for 2 days, on Friday 16 October and Monday 19 October, so call Peter.");
+    expect(twoMissedDaysSaid('Peter', day({ missedDays: ['2026-10-14', '2026-10-15', '2026-10-16'] }), null)).toBe("Peter hasn't checked in for 3 days, since Wednesday 14 October, so call Peter.");
     expect(twoMissedDaysSaid('Peter', day({ missedDays: ['2026-10-19'] }), null)).toBeNull();
   });
   it('not in today, and the credit', () => {

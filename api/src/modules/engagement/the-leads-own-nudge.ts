@@ -160,7 +160,7 @@ export class TheLeadsOwnNudgeService {
       if (r.sent) { channel = 'whatsapp'; outcome = 'sent'; }
       else if (isHeldForTheNight(r.error)) { channel = 'whatsapp'; outcome = 'held'; }
       else if (r.error === THEY_SAID_STOP || r.error === THEY_SAID_NOT_NOW) {
-        return { nudged: false, at: null, channel: null, says: r.error === THEY_SAID_STOP ? `${first} said STOP on WhatsApp, so no nudge was sent. Call ${first} instead.` : `${first} replied "Not now" on WhatsApp today, so no nudge was sent. Call ${first} instead.` };
+        return { nudged: false, at: null, channel: null, says: r.error === THEY_SAID_STOP ? `${first} said STOP on WhatsApp, so no nudge was sent, and you can call ${first} instead.` : `${first} replied "Not now" on WhatsApp today, so no nudge was sent, and you can call ${first} instead.` };
       }
     }
     if (!channel && address && !/@unclaimed\.invalid$/i.test(address)) {
@@ -170,12 +170,12 @@ export class TheLeadsOwnNudgeService {
       else if (went === 'suppressed') outcome = 'stopped';
     }
     if (!channel) {
-      return { nudged: false, at: null, channel: null, says: outcome === 'stopped' ? `${first} has turned these messages off, so no nudge was sent. Call ${first} instead.` : `The nudge to ${first} could not be sent. Call ${first} instead.` };
+      return { nudged: false, at: null, channel: null, says: outcome === 'stopped' ? `${first} has turned these messages off, so no nudge was sent, and you can call ${first} instead.` : `The nudge to ${first} could not be sent, so you can call ${first} instead.` };
     }
     const value = { at: now.toISOString(), channel, outcome, by: requestingUserId };
     try { await prisma.platformSetting.create({ data: { key: THE_NUDGE_KEY(participantId, aDayIn(now, zone)), value, updatedBy: 'engagement' } }); }
     catch { try { await prisma.platformSetting.update({ where: { key: THE_NUDGE_KEY(participantId, aDayIn(now, zone)) }, data: { value, updatedBy: 'engagement' } }); } catch { /* another copy wrote it */ } }
     const at = aTimeOfDay(now, zone);
-    return { nudged: true, at, channel, says: outcome === 'held' ? `Nudged at ${at}. It goes at 7am, after quiet hours.` : `Nudged at ${at}` };
+    return { nudged: true, at, channel, says: outcome === 'held' ? `You nudged ${first} at ${at}, and it goes at 7am, after quiet hours.` : `Nudged at ${at}` };
   }
 }

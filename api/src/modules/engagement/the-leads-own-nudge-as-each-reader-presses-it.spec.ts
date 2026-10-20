@@ -70,7 +70,7 @@ describe('Grace nudges Joseph', () => {
   it('in quiet hours it is held until seven, and nothing goes by email in its place', async () => {
     const w = aWorld({ whatsapp: () => ({ sent: false, error: QUIET_HOURS_HELD(new Date('2026-10-21T04:00:00Z')) }) });
     const r = await w.svc.nudge(DROP, JOSEPH, GRACE, new Date('2026-10-20T19:30:00Z'));
-    expect(r.says).toBe('Nudged at 22:30. It goes at 7am, after quiet hours.');
+    expect(r.says).toBe('You nudged Joseph at 22:30, and it goes at 7am, after quiet hours.');
     expect(w.mails).toHaveLength(0);
   });
 
@@ -79,7 +79,7 @@ describe('Grace nudges Joseph', () => {
       const w = aWorld({ whatsapp: () => ({ sent: false, error }) });
       const r = await w.svc.nudge(DROP, JOSEPH, GRACE, AFTERNOON);
       expect(r.nudged).toBe(false);
-      expect(r.says).toMatch(/so no nudge was sent\. Call Joseph instead\.$/);
+      expect(r.says).toMatch(/so no nudge was sent, and you can call Joseph instead\.$/);
       expect(w.mails).toHaveLength(0);
       /* Not recorded, so it is not "Nudged at" on her board. */
       expect((await theNudgesOnTheBoard(w.db, N.drop.ground.organizationId, [{ participantId: JOSEPH, firstName: 'Joseph' }], AFTERNOON))[0].says).toBe('Nudge Joseph');
@@ -88,7 +88,7 @@ describe('Grace nudges Joseph', () => {
 
   it('his own stop link stops the email, and Grace is told so', async () => {
     const w = aWorld({ whatsapp: () => ({ sent: false, error: OUTSIDE_THE_WINDOW }), email: 'suppressed' });
-    expect((await w.svc.nudge(DROP, JOSEPH, GRACE, AFTERNOON)).says).toBe('Joseph has turned these messages off, so no nudge was sent. Call Joseph instead.');
+    expect((await w.svc.nudge(DROP, JOSEPH, GRACE, AFTERNOON)).says).toBe('Joseph has turned these messages off, so no nudge was sent, and you can call Joseph instead.');
   });
 
   it('nobody is nudged who has already checked in today, or has nothing open', async () => {

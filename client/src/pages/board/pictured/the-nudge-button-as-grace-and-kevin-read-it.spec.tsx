@@ -57,10 +57,10 @@ describe('Grace, at the top of her board', () => {
   })
 
   it('where nothing could be sent, reads why and to call instead', async () => {
-    vi.mocked(boardApi.nudge).mockResolvedValue({ nudged: false, at: null, says: 'Kevin said STOP on WhatsApp, so no nudge was sent. Call Kevin instead.' })
+    vi.mocked(boardApi.nudge).mockResolvedValue({ nudged: false, at: null, says: 'Kevin said STOP on WhatsApp, so no nudge was sent, and you can call Kevin instead.' })
     wrap(<TheMorningAtTheTop m={afternoon} b={{ workRecords: drop.workRecords }} />)
     fireEvent.click(screen.getByRole('button', { name: 'Nudge Kevin' }))
-    expect(await screen.findByText('Kevin said STOP on WhatsApp, so no nudge was sent. Call Kevin instead.')).toBeTruthy()
+    expect(await screen.findByText('Kevin said STOP on WhatsApp, so no nudge was sent, and you can call Kevin instead.')).toBeTruthy()
   })
 })
 
