@@ -1,5 +1,8 @@
 import { WhatsAppService } from './whatsapp.service';
-import { TEMPLATES, fill, THE_NAMES_TO_SUBMIT, THE_FOUR_OF_19_OCTOBER, THE_NAMES_WE_MAY_USE, theTemplateToUse } from './a-message-outside-the-window';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { TEMPLATES, fill, THE_NAMES_TO_SUBMIT, THE_FOUR_OF_19_OCTOBER, THE_ONE_OF_21_OCTOBER, THE_NAMES_WE_MAY_USE, FIRST_MESSAGES, theTemplateToUse } from './a-message-outside-the-window';
+import { theReminderBody } from '../grounds/what-is-sent-in-simpler-words';
 import { THANKS_YOUR_ANSWER_IS_IN } from '../public-api/a-whatsapp-message-is-routed';
 import { ROUTINE_EMAILS } from '../engagement/one-routine-message-a-day';
 import { BY_EMAIL_ROUTINE, BY_EMAIL_AFTER_THEIR_OWN, theWordsForAnEmail } from './by-email-instead';
@@ -171,5 +174,58 @@ describe('the four templates of 19 October, each only once it is listed (point 1
       const t = theTemplateToUse(kind, THE_NAMES_TO_SUBMIT, { params: ['a', 'b', 'c'], paramsFor: { groundwork_checkin_thanks: ['a', 'b'], groundwork_your_report_ready: ['a', 'b', 'c'], groundwork_promise_due: ['a', 'b', 'c'] } });
       expect(String(t?.template.name ?? '')).not.toMatch(/^groundwork_(checkin_open_v2|checkin_thanks|your_report_ready|promise_due)$/);
     }
+  });
+});
+
+/*
+ * THE TEMPLATE OF 21 OCTOBER (Hafsah's answers of 21 October): groundwork_checkin_closes_soon_v2 replaces checkin_closes_soon once it is
+ * approved and listed, outside the 24 hours only. Read as Mercy reads her phone.
+ */
+describe('the closing reminder of 21 October, only once it is listed', () => {
+  const realFetch = (global as any).fetch;
+  let fetchSpy: jest.Mock;
+  beforeEach(() => { fetchSpy = jest.fn(async () => ({ ok: true, status: 200, text: async () => '{"messages":[{"id":"wamid.1"}]}' })); (global as any).fetch = fetchSpy; });
+  afterEach(() => { (global as any).fetch = realFetch; });
+  const sent = () => JSON.parse(fetchSpy.mock.calls[0][1].body);
+  const read = (body: any, t: { body: string }) => fill(t.body, body.template.components[0].parameters.map((p: any) => p.text));
+  const params = ['Mercy', 'Sales team, Q4', '6pm'];
+  const text = fill(theReminderBody('closes-soon', TEMPLATES['closes-soon'].body), params);
+
+  it('holds the words of docs/whatsapp-templates.md exactly, may be listed, and checkin_closes_soon is unchanged', () => {
+    expect(THE_ONE_OF_21_OCTOBER.closesSoon.name).toBe('groundwork_checkin_closes_soon_v2');
+    expect(THE_ONE_OF_21_OCTOBER.closesSoon.body).toBe('Hi {{1}}, your check-in for {{2}} closes at {{3}}. It takes about ten minutes, and you can answer right here.');
+    expect(THE_NAMES_WE_MAY_USE).toContain('groundwork_checkin_closes_soon_v2');
+    expect(THE_NAMES_TO_SUBMIT).not.toContain('groundwork_checkin_closes_soon_v2');
+    expect(TEMPLATES['closes-soon'].body).toBe('Hi {{1}}, your check-in for {{2}} closes in an hour, at {{3}}. Five minutes now means your view is part of this round.');
+    const doc = readFileSync(join(__dirname, '..', '..', '..', '..', 'docs', 'whatsapp-templates.md'), 'utf8');
+    const section = doc.slice(doc.indexOf('### 5. groundwork_checkin_closes_soon_v2'));
+    expect(/- \*\*Body:\*\*\s*(.+)/.exec(section)![1].trim()).toBe(THE_ONE_OF_21_OCTOBER.closesSoon.body);
+    expect(section).toMatch(/\*\*Category:\*\* Utility/);
+    expect(section).toContain('{{1}} = Mercy; {{2}} = Sales team, Q4; {{3}} = 6pm');
+  });
+
+  it('checkin_closes_soon goes as today until groundwork_checkin_closes_soon_v2 is approved and listed', async () => {
+    const before = aSender({ approved: THE_NAMES_TO_SUBMIT });
+    await before.wa.sendFor('org-drop', '+254700300003', text, { checkInId: 'ci-mercy', kind: 'closes-soon', params });
+    expect(sent().template.name).toBe('checkin_closes_soon');
+    expect(read(sent(), TEMPLATES['closes-soon'])).toBe('Hi Mercy, your check-in for Sales team, Q4 closes in an hour, at 6pm. Five minutes now means your view is part of this round.');
+    fetchSpy.mockClear();
+    const after = aSender({ approved: [...THE_NAMES_TO_SUBMIT, 'groundwork_checkin_closes_soon_v2'] });
+    await after.wa.sendFor('org-drop', '+254700300003', text, { checkInId: 'ci-mercy', kind: 'closes-soon', params });
+    expect(sent().template.name).toBe('groundwork_checkin_closes_soon_v2');
+    expect(read(sent(), THE_ONE_OF_21_OCTOBER.closesSoon)).toBe('Hi Mercy, your check-in for Sales team, Q4 closes at 6pm. It takes about ten minutes, and you can answer right here.');
+  });
+
+  it('inside the 24 hours the reminder goes as an ordinary message, as before, even once it is listed', async () => {
+    const { wa } = aSender({ approved: [...THE_NAMES_TO_SUBMIT, 'groundwork_checkin_closes_soon_v2'], lastWrote: new Date(Date.now() - 60 * 60 * 1000) });
+    await wa.sendFor('org-drop', '+254700300003', text, { checkInId: 'ci-mercy', kind: 'closes-soon', params });
+    expect(sent().type).toBe('text');
+    expect(sent().text.body).toBe('Hi Mercy, your check-in for Sales team, Q4 closes in an hour, at 6pm. About ten minutes now means your view is part of this round.');
+  });
+
+  it('it is never sent with a blank missing, and it counts towards the messages Groundwork writes first that day', () => {
+    expect(theTemplateToUse('closes-soon', ['groundwork_checkin_closes_soon_v2'], { params: ['Mercy', 'Sales team, Q4'] })).toBeNull();
+    expect(theTemplateToUse('closes-soon', ['groundwork_checkin_closes_soon_v2', 'checkin_closes_soon'], { params: ['Mercy', 'Sales team, Q4'] })?.template.name).toBe('checkin_closes_soon');
+    expect(FIRST_MESSAGES.has('closes-soon')).toBe(true);
   });
 });
