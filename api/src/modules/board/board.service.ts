@@ -1,5 +1,6 @@
 import { theDirectMorningFor, asServedOnTheBoard } from '../engagement/the-direct-morning';
 import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
+import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { theRelease1bTabsAreOn } from '../grounds/release-1b-tabs';
 import { aLineThatSaysItHappened } from './somebody-said-it-happened';
 import { withoutTheLeadsSetUpForAMember } from '../grounds/the-leads-set-up-is-the-leads-in-the-anchor';
@@ -3133,10 +3134,13 @@ export class BoardService {
        * leave. Not to an admin, a colleague or the person themselves (they read their own on Today).
        */
       if (isInitiator) {
+        /* With the direct morning on, the fact, the reason and what to do, without the lecture on what missing costs or "Groundwork will not start one by itself". */
         const missed = (await whoHasMissedCheckIns(this.prisma, [groundId]).catch(() => [] as Awaited<ReturnType<typeof whoHasMissedCheckIns>>))
-          .filter((m) => m.stand.stage >= TOLD_THE_LEAD && m.name !== SOMEONE_NAMED)
-          .map((m) => ({ participantId: m.participantId, name: m.name, text: whatTheLeadReads(m.name, m.stand), reason: m.stand.reason, suggestion: theNextStepSuggested(m.name, m.stand.stage) }));
-        if (missed.length) (out as any).missedCheckIns = missed;
+          .filter((m) => m.stand.stage >= TOLD_THE_LEAD && m.name !== SOMEONE_NAMED);
+        const direct = missed.length ? await theDirectMorningIsOn(this.prisma, (ground as any).organizationId).catch(() => false) : false;
+        const missedSaid = missed
+          .map((m) => ({ participantId: m.participantId, name: m.name, text: whatTheLeadReads(m.name, m.stand, undefined, direct), reason: m.stand.reason, suggestion: theNextStepSuggested(m.name, m.stand.stage, direct) }));
+        if (missedSaid.length) (out as any).missedCheckIns = missedSaid;
       }
       const obligations = theObligations(people, mine.commitments, handoffs, sessions, reader);
       if (obligations.length) out.obligations = obligations;

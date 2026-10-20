@@ -346,6 +346,8 @@ export async function whatIsOutstandingFor(
 ): Promise<WhatIsOutstanding> {
   /* What Release 1 adds to the summary is read only where its switch is on for her organisation (release-one-sales-board). */
   const releaseOne = await theReleaseOneSalesBoardIsOn(prisma, lead.organizationId).catch(() => false);
+  /* With the direct morning on, a missed check-in is the fact, the reason and what to do, and a wait carries what they tried in full rather than "Not backed". */
+  const direct = await theDirectMorningIsOn(prisma, lead.organizationId).catch(() => false);
   const out: WhatIsOutstanding = { needsYou: [], overdueOnYourTeam: [], risks: [], ...(releaseOne ? { releaseOne: true } : {}) };
   const today = theDayIn('Africa/Lagos', now);
   const grounds = lead.grounds.filter((g) => !isEvaluationCheckIn(g.scenario));
@@ -449,7 +451,7 @@ export async function whatIsOutstandingFor(
     const on = w.onParticipant ? nameToCall(w.onParticipant) : aHolderSaidWithWhose((w.onLabel ?? '').trim(), from === 'You' ? null : from, from === 'You');
     /* What they said they tried, in full with its day, or nothing beside the claim (Drop Access run 1, item 18), where Release 1's switch
        is on; off, the note beside the claim as before. */
-    const tried = releaseOne ? whatTheyTriedInFull(w, from) : theNoteBesideTheClaim(w, { by: from, on, lead: 'you' });
+    const tried = releaseOne || direct ? whatTheyTriedInFull(w, from) : theNoteBesideTheClaim(w, { by: from, on, lead: 'you' });
     return `${from} ${from === 'You' ? 'say' : 'says'} the work ${since ? 'has been' : 'is'} waiting on ${on} for ${String(w.what ?? '').trim().replace(/[.\s]+$/, '')}${THE_PLACE_MARK}${since ? ` since ${since}` : ''}.${tried ? ` ${tried}` : ''}`;
   };
   const counted = new Set<string>();
@@ -571,7 +573,7 @@ export async function whatIsOutstandingFor(
     const g = grounds.find((x) => x.id === m.groundId);
     if (!g) continue;
     missedLines.push({
-      text: whatTheLeadReads(m.name, m.stand, g.label),
+      text: whatTheLeadReads(m.name, m.stand, g.label, direct),
       keptInTheApp: keptOffThePhone(g),
       groundId: g.id,
       about: { kind: 'missed', ids: [m.participantId] },
