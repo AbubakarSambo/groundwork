@@ -1,3 +1,4 @@
+import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { GroundStatus } from '@prisma/client';
 import { theConfirmedWaits, whatTheyTriedInFull, theNoteBesideTheClaim } from '../grounds/a-wait-is-the-speakers-account';
 import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
@@ -155,7 +156,8 @@ export function theDayTheCountBegins(rows: readonly { createdAt?: Date | string 
 }
 
 /** The email, or null where nothing useful is left to say. Full sentences, numbers in words, no colon anywhere. */
-export function theirWeekInWords(firstName: string | null | undefined, w: TheirWeek) {
+/** `direct`: the direct morning is on for their organisation (email/a-direct-email.ts), so the greeting carries no note about who can read it. */
+export function theirWeekInWords(firstName: string | null | undefined, w: TheirWeek, direct = false) {
   /* A kept count of nothing is not said: "You kept none of two" is a verdict, and the open things below it say what is true. */
   const kept = w.kept && w.kept.of > 0 && w.kept.kept > 0 ? w.kept : null;
   const facts: string[] = [];
@@ -168,7 +170,7 @@ export function theirWeekInWords(firstName: string | null | undefined, w: TheirW
   if (!facts.length) return null;
   const subject = facts.map((f, i) => (i ? `${f.charAt(0).toLowerCase()}${f.slice(1)}` : cap(f))).join('; ');
 
-  const lines = [`Hello ${firstName?.trim() || 'there'}. Here is your week in Groundwork. Only you can read this.`];
+  const lines = [direct ? `Hello ${firstName?.trim() || 'there'}. Here is your week.` : `Hello ${firstName?.trim() || 'there'}. Here is your week in Groundwork. Only you can read this.`];
   if (kept) {
     /* Which, where the count can say: its own words, at most three (messages test, 19 October, finding 14). */
     const which = (w.keptWhat ?? []).length === kept.kept && kept.kept <= 3 ? `, ${listed(quoted(w.keptWhat!))}` : '';
@@ -279,6 +281,7 @@ export async function sendTheParticipantsWeeks(
       const isOnlyClaimed = (i: { what: string; checkIn: string }) => onlyClaimed.has(`${i.checkIn}|${(i.what ?? '').trim().toLowerCase()}`);
       const askedOfThem = own.askedOfYou.filter((i) => inOpen(i.checkIn));
       const releaseOne = await theReleaseOneSalesBoardIsOn(prisma, user.organizationId).catch(() => false);
+      const direct = await theDirectMorningIsOn(prisma, user.organizationId);
       const week: TheirWeek = {
         kept: theOwnKept(Array.isArray(commitments) ? commitments : [], now),
         open: own.open.filter((s) => inOpen(s.checkIn)).map((s) => s.text),
@@ -294,12 +297,12 @@ export async function sendTheParticipantsWeeks(
            organisation; off, the note beside the claim as before. */
         saidToWaitOnYou: askedOfThem.filter(isOnlyClaimed).map((i) => {
           const claim = onlyClaimed.get(`${i.checkIn}|${(i.what ?? '').trim().toLowerCase()}`);
-          return { ...i, note: releaseOne ? whatTheyTriedInFull(claim ?? {}, i.who) : theNoteBesideTheClaim(claim, { by: i.who, on: 'you' }) };
+          return { ...i, note: releaseOne || direct ? whatTheyTriedInFull(claim ?? {}, i.who) : theNoteBesideTheClaim(claim, { by: i.who, on: 'you' }) };
         }),
         reportsReady: [...mine.reportsReady],
         theirOwnWords: (Array.isArray(ownLines) ? ownLines : []).map((l) => String(l?.text ?? '')).filter(Boolean),
       };
-      const words = theirWeekInWords(user.firstName, week);
+      const words = theirWeekInWords(user.firstName, week, direct);
       if (!words) continue;
       await deps.email.sendYourWeek(user.email, words.subject, words.lines, words.linkLabel, link);
       tried++;

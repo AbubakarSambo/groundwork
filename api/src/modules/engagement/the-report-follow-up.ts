@@ -1,3 +1,4 @@
+import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { GroundStatus } from '@prisma/client';
 import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
 import { theEngagementMoment } from './the-engagement-release-moment';
@@ -42,7 +43,8 @@ export function cutAtAWord(label: string, max: number): string {
 const things = (n: number, one: string, many: string) => `${aNumberInWords(n)} ${n === 1 ? one : many}`;
 const capital = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
 
-export function theFollowUpWords(firstName: string | null | undefined, label: string, wentOut: Date, c: WhatChangedSinceTheReport) {
+/** `direct`: the direct morning is on (email/a-direct-email.ts), so the finding is said as "The report found", never "the shared picture". */
+export function theFollowUpWords(firstName: string | null | undefined, label: string, wentOut: Date, c: WhatChangedSinceTheReport, direct = false) {
   const changed: string[] = [];
   if (c.done > 0) changed.push(`${things(c.done, 'thing people said they would do was', 'things people said they would do were')} done`);
   if (c.cleared > 0) changed.push(`${things(c.cleared, 'handoff was', 'handoffs were')} cleared`);
@@ -62,7 +64,7 @@ export function theFollowUpWords(firstName: string | null | undefined, label: st
   /* THE FINDING, WHERE THERE IS ONE (engagement spec section 11). The message goes only when no next session has been opened, so no picture has been made since
      and the difference the report found has not been looked at again: that is said as what it is, and not as "still unresolved". */
   const looked = c.difference
-    ? [`The shared picture found that ${c.difference}. No check-in has been held since, so that has not been looked at again.`]
+    ? [`${direct ? 'The report found' : 'The shared picture found'} that ${c.difference}. No check-in has been held since, so that has not been looked at again.`]
     : [];
   const lines = [
     `Hello ${firstName?.trim() || 'there'}. The report for "${label}" went out on ${whenItWas(wentOut, 'day')}.`,
@@ -119,7 +121,7 @@ export async function sendTheReportFollowUps(
       const difference = deps.theDifference
         ? await deps.theDifference({ groundId: r.groundId, organizationId: r.ground.organizationId, leadUserId: r.ground.initiatorId, lastReleasedSession: Math.max(1, ...((r.releasedSessions as number[] | undefined) ?? [1])) }).catch(() => null)
         : null;
-      const w = theFollowUpWords(lead.firstName, r.ground.label, r.releasedAt, { done, cleared, waiting, open, difference, scenario: r.ground.scenario, daysSinceTheReport: Math.floor((now.getTime() - new Date(r.releasedAt).getTime()) / DAY) });
+      const w = theFollowUpWords(lead.firstName, r.ground.label, r.releasedAt, { done, cleared, waiting, open, difference, scenario: r.ground.scenario, daysSinceTheReport: Math.floor((now.getTime() - new Date(r.releasedAt).getTime()) / DAY) }, await theDirectMorningIsOn(prisma, r.ground.organizationId));
       const went = await deps.email.sendTheReportFollowUp(lead.email, w.subject, w.lines, w.linkLabel, `${base}/grounds/${r.groundId}/board`);
       await nowToldOnce(prisma, once, went, { sender: REPORT_FOLLOW_UP_SENDER, to: lead.email });
       if (went !== 'suppressed') tried++;

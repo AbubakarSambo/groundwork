@@ -1,3 +1,4 @@
+import { theDirectMorningIsOnFor } from '../organisation/the-direct-morning-switch';
 import { theFeeNotesThatFellDueOnAnEvent } from '../board/a-fee-note-that-fell-due-said-to-the-lead';
 import { NOT_A_QUIET_CLOSE } from '../grounds/an-answer-includes-a-refusal';
 import { CheckInStatus, GroundStatus } from '@prisma/client';
@@ -331,6 +332,7 @@ export async function theWeekOf(prisma: any, g: { id: string; label: string; ini
   const isConfirmed = (r: any, i: number) => confirmedWaits.has(r.id ?? `w-${i}`);
   const waitingOn = tally(openOnSomebody.filter(isConfirmed).map((r) => r.onParticipantId));
   const releaseOne = await theReleaseOneSalesBoardIsOnFor(prisma, g.id).catch(() => false);
+  const direct = await theDirectMorningIsOnFor(prisma, g.id);
   /* The same wait said again in other words is one claim, with the fullest words of what was tried (items 18 and 19), where Release 1's
      switch is on; off, each claim as before. */
   const unconfirmed = openOnSomebody.filter((r, i) => !isConfirmed(r, i) && String(r.what ?? '').trim());
@@ -341,7 +343,8 @@ export async function theWeekOf(prisma: any, g: { id: string; label: string; ini
       if (!from || !on) return null;
       /* What they said they tried, in full and with the day, or nothing: never "Not backed:" in a message (item 18), where Release 1's
          switch is on; off, the note beside the claim as before. */
-      const tried = releaseOne ? whatTheyTriedInFull(r, from === 'you' ? 'You' : from) : theNoteBesideTheClaim(r, { by: from, on, lead: 'you' });
+      /* With the direct morning on too (email/a-direct-email.ts): what was tried in their words, or nothing, never "Not backed". */
+      const tried = releaseOne || direct ? whatTheyTriedInFull(r, from === 'you' ? 'You' : from) : theNoteBesideTheClaim(r, { by: from, on, lead: 'you' });
       return `${from === 'you' ? 'You say' : `${from} says`} the work is waiting on ${on} for ${String(r.what).trim().replace(/[.\s]+$/, '')}.${tried ? ` ${tried}` : ''}`;
     })
     .filter((x): x is string => !!x);

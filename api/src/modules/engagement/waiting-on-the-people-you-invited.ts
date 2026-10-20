@@ -1,3 +1,4 @@
+import { theDirectMorningIsOnFor } from '../organisation/the-direct-morning-switch';
 import { GroundStatus } from '@prisma/client';
 import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
@@ -37,7 +38,12 @@ export interface WhoWasInvited {
   remindingAgainOn: Date[];
 }
 
-export function theWaitingWords(firstName: string | null | undefined, w: WhoWasInvited) {
+/**
+ * `direct`: the direct morning is on for her organisation (email/a-direct-email.ts). Who has not started, who has had a reminder, and when the
+ * next goes, and nothing about what Groundwork is doing for her or whether she needs to chase.
+ */
+export function theWaitingWords(firstName: string | null | undefined, w: WhoWasInvited, direct = false) {
+  if (direct) return theWaitingWordsDirectly(firstName, w);
   const n = w.invited.length;
   const named = namesWithTheRestCounted(w.invited, aNumberInWords);
   const who = listed(named);
@@ -62,6 +68,22 @@ export function theWaitingWords(firstName: string | null | undefined, w: WhoWasI
   };
 }
 
+
+function theWaitingWordsDirectly(firstName: string | null | undefined, w: WhoWasInvited) {
+  const n = w.invited.length;
+  const who = listed(namesWithTheRestCounted(w.invited, aNumberInWords));
+  const reminded = namesWithTheRestCounted(w.reminded, aNumberInWords);
+  return {
+    subject: n === 1 ? `${capital(who)} has not started "${w.label}" yet` : `Nobody has started "${w.label}" yet`,
+    lines: [
+      `Hello ${firstName?.trim() || 'there'}. ${capital(who)} ${n === 1 ? 'was' : 'were'} invited to "${w.label}" on ${whenItWas(w.invitedOn, 'day')}, and nobody has started yet.`,
+      reminded.length ? `${capital(listed(reminded))} ${w.reminded.length === 1 ? 'has' : 'have'} had a reminder.` : `${n === 1 ? 'They have' : 'Each of them has'} had the invitation.`,
+      ...(w.remindingAgainOn.length ? [`The next reminder goes on ${listed(w.remindingAgainOn.map((d) => whenItWas(d, 'day')))}.`] : []),
+      `You could write to them yourself, "I would value your view on ${w.label}. It takes about ten minutes."`,
+    ],
+    linkLabel: 'See who has started',
+  };
+}
 
 /** The columns of a check-in that `whoIsWaitedOn` reads. */
 export const WHAT_WAITING_READS = {
@@ -132,7 +154,7 @@ export async function sendWhatGroundworkIsDoing(
       if (!facts) continue;
       const once = `waiting-on-the-people:${g.id}`;
       if (await hasBeenToldOnce(prisma, once) || await isAlreadyHeld(prisma, WAITING_SENDER, lead.email)) continue;
-      const w = theWaitingWords(lead.firstName, facts);
+      const w = theWaitingWords(lead.firstName, facts, await theDirectMorningIsOnFor(prisma, g.id));
       const went = await deps.email.sendWaitingOnThePeople(lead.email, w.subject, w.lines, w.linkLabel, `${base}/grounds/${g.id}`);
       await nowToldOnce(prisma, once, went, { sender: WAITING_SENDER, to: lead.email });
       if (went !== 'suppressed') tried++;

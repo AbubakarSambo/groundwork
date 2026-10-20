@@ -1,3 +1,4 @@
+import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { CheckInStatus } from '@prisma/client';
 import { CLOSED_BY_THE_CLOCK } from '../../common/closed-by-the-clock';
 import { checksInOnlyWhenTheyChoose } from './the-lead-checks-in-when-they-choose';
@@ -264,8 +265,21 @@ export function theLeadIsTold(stand: Pick<WhereTheyStand, 'stage'>): boolean {
   return (stand.stage ?? 0) >= TOLD_THE_LEAD;
 }
 
-export function whatThePersonReads(stand: Pick<WhereTheyStand, 'inARow'> & Partial<Pick<WhereTheyStand, 'stage'>>, o: { leadName?: string | null; somebodyWaitsOnThem: boolean }): string {
+/**
+ * `o.direct`: the direct morning is on for the check-in's organisation (email/a-direct-email.ts). How many were missed, whether the lead is
+ * told, and how long it takes, without a lecture on what missing costs the team.
+ */
+export function whatThePersonReads(stand: Pick<WhereTheyStand, 'inARow'> & Partial<Pick<WhereTheyStand, 'stage'>>, o: { leadName?: string | null; somebodyWaitsOnThem: boolean; direct?: boolean }): string {
   const lead = o.leadName && o.leadName !== SOMEONE ? o.leadName.trim() : null;
+  if (o.direct) {
+    const told = theLeadIsTold({ stage: stand.stage ?? whereTheyStandFromARow(stand.inARow) });
+    return [
+      `You've missed your last ${aNumberInWords(Math.max(2, stand.inARow))} check-ins.`,
+      ...(o.somebodyWaitsOnThem ? ['Somebody on the team is waiting on you.'] : []),
+      told ? `${lead ?? 'Your manager'} will see this.` : `If you miss the next one as well, ${lead ?? 'your manager'} will be told.`,
+      'It takes about ten minutes.',
+    ].join(' ');
+  }
   const theLead = lead ?? 'your manager';
   const what = ['Things you know about surface late'];
   if (o.somebodyWaitsOnThem) what.push('people waiting on you go unseen');
@@ -290,14 +304,15 @@ function whereTheyStandFromARow(inARow: number): Stage {
  * The lead's line: facts and what they do, never a label (Hafsah's wording, with the person's name and no guessed pronoun). The reason the person gave,
  * if they gave one, goes beside the fact it explains; the next step, a suggestion only, goes last.
  */
-export function whatTheLeadReads(name: string, stand: Pick<WhereTheyStand, 'ofTheLastFour' | 'lastFour'> & { reason?: string | null; stage?: Stage }, label?: string | null): string {
+/** `direct`: with the direct morning on, the fact, their reason and what to do, without the lecture on what missing costs (email/a-direct-email.ts). */
+export function whatTheLeadReads(name: string, stand: Pick<WhereTheyStand, 'ofTheLastFour' | 'lastFour'> & { reason?: string | null; stage?: Stage }, label?: string | null, direct = false): string {
   const where = label ? ` on "${label}"` : '';
   const reason = theirReasonBesideIt(name, stand.reason);
-  const next = stand.stage ? theNextStepSuggested(name, stand.stage) : null;
+  const next = stand.stage ? theNextStepSuggested(name, stand.stage, direct) : null;
   return [
     `${name} has missed ${stand.ofTheLastFour} of the last ${stand.lastFour} check-ins${where}.`,
     ...(reason ? [reason] : []),
-    'When someone stops checking in, the team loses their view, problems surface late, and the effort to keep everyone in step falls on you and the rest of the team.',
+    ...(direct ? [] : ['When someone stops checking in, the team loses their view, problems surface late, and the effort to keep everyone in step falls on you and the rest of the team.']),
     `Speak to ${name} this week.`,
     ...(next ? [next] : []),
   ].join(' ');
@@ -310,9 +325,10 @@ export function theirReasonBesideIt(name: string, reason: string | null | undefi
 }
 
 /** The next step, a suggestion only: the lead decides, and Groundwork does nothing by itself. */
-export function theNextStepSuggested(name: string, stage: Stage): string | null {
-  if (stage === A_SUPPORT_PLAN) return `${name} has kept missing check-ins since you were told. If talking has not helped, a support plan is the next step you could take. You decide, and Groundwork will not start one by itself.`;
-  if (stage === A_FORMAL_PROCESS) return `${name} has still kept missing check-ins. If a support plan has not helped, a formal process in the performance suite is the next step you could take. You decide, and Groundwork will not start one by itself.`;
+export function theNextStepSuggested(name: string, stage: Stage, direct = false): string | null {
+  const nothingByItself = direct ? '' : ' You decide, and Groundwork will not start one by itself.';
+  if (stage === A_SUPPORT_PLAN) return `${name} has kept missing check-ins since you were told. If talking has not helped, a support plan is the next step you could take.${nothingByItself}`;
+  if (stage === A_FORMAL_PROCESS) return `${name} has still kept missing check-ins. If a support plan has not helped, a formal process in the performance suite is the next step you could take.${nothingByItself}`;
   return null;
 }
 
@@ -391,7 +407,7 @@ export async function whatThePersonIsToldAboutMissing(prisma: any, userId: strin
       text: '',
     });
     const t = out[out.length - 1];
-    t.text = whatThePersonReads(f.stand, { leadName: t.leadName, somebodyWaitsOnThem: await somebodyWaitsOn(prisma, f.participantId) });
+    t.text = whatThePersonReads(f.stand, { leadName: t.leadName, somebodyWaitsOnThem: await somebodyWaitsOn(prisma, f.participantId), direct: await theDirectMorningIsOn(prisma, g.organizationId) });
   }
   return out;
 }
