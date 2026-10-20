@@ -997,7 +997,20 @@ export interface WorkItemInput {
   fields?: Record<string, string>
 }
 
+/** "Nudge Peter" (api engagement/the-leads-own-nudge.ts): served to the lead alone, with the direct morning on. */
+export interface ANudgeServed {
+  participantId: string
+  firstName: string
+  /** "Nudge Peter", or "Nudged at 10:40" once she has today. */
+  says: string
+  nudgedAt: string | null
+}
+
 export const boardApi = {
+  /** The lead's one-tap nudge. The server refuses anybody but the lead who runs the check-in. */
+  nudge: (groundId: string, participantId: string) =>
+    apiClient.post<{ nudged: boolean; at: string | null; says: string; channel?: 'whatsapp' | 'email' | null }>(`/grounds/${groundId}/board/nudge/${participantId}`).then((r) => r.data),
+
   get: (groundId: string, coverage?: CoverageVariant) =>
     apiClient
       .get<BoardResponse>(`/grounds/${groundId}/board`, {

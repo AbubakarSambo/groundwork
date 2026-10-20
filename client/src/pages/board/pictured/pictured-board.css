@@ -370,3 +370,9 @@
 .pb-morning-part p { margin: 6px 0 0; line-height: 1.5; }
 .pb-morning-part .pb-answer { font-size: 18px; }
 .pb-morning-deals .pb-grid { margin-top: 12px; overflow-x: auto; }
+
+/* "Nudge Peter" (TheNudgeButton.tsx): the lead's one-tap nudge, at the top and on each row of The team today. */
+.pb-nudges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.pb-row-nudge { grid-column: 1 / -1; }
+.pb-nudge { font-size: 14px; }
+.pb-nudged { font-size: 14px; color: var(--gw-text); }

@@ -1,5 +1,7 @@
 import './pictured-board.css'
 import { useState } from 'react'
+import { TheNudgeButton } from './TheNudgeButton'
+import type { ANudgeServed } from '@/api/board'
 
 /**
  * THE DIRECT MORNING AT THE TOP OF THE LEAD'S BOARD (Hafsah, 20 October 2026; api engagement/the-direct-morning.ts).
@@ -15,6 +17,8 @@ export interface TheMorningServed {
   groundId: string
   kind: 'sales' | 'collections' | 'matter'
   parts: { key: 'target' | 'needsYou' | 'closing' | 'team'; heading: string; lines: string[] }[]
+  /** "Nudge Peter" for each person who has not answered today (api engagement/the-leads-own-nudge.ts), to the lead alone. */
+  nudges?: ANudgeServed[]
 }
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -44,6 +48,11 @@ export function TheMorningAtTheTop({ m, b }: { m: TheMorningServed; b: Any }) {
         <div key={p.key} className="pb-morning-part" data-part={p.key}>
           {i === 0 ? <p className="pb-q">{p.heading}</p> : <h2 className="pb-card-h">{p.heading}</h2>}
           {p.lines.map((l) => <p key={l} className={i === 0 ? 'pb-answer' : 'gwui-panel-text'}>{l}</p>)}
+          {p.key === 'team' && (m.nudges ?? []).length > 0 && (
+            <div className="pb-nudges">
+              {(m.nudges ?? []).map((n) => <TheNudgeButton key={n.participantId} groundId={m.groundId} nudge={n} />)}
+            </div>
+          )}
         </div>
       ))}
       {deals.length > 0 && (
