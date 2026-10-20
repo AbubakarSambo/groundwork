@@ -12,7 +12,7 @@ function aWorld(o: { switchedOn?: boolean; addOn?: boolean; display?: string | n
   const prisma: any = {
     platformSetting: { findUnique: jest.fn(async ({ where }: any) => (where.key === 'whatsapp_enabled' ? { value: o.switchedOn ?? true } : null)) },
     organization: { findUnique: jest.fn(async () => ({ whatsappAddOnOn: o.addOn ?? true })) },
-    whatsAppConnection: { findUnique: jest.fn(async () => (o.ownNumber ? { enabled: true } : null)) },
+    whatsAppConnection: { findUnique: jest.fn(async () => (o.ownNumber ? { enabled: true, phoneNumberId: '109822345561', accessToken: 't', appSecret: 's', verifyToken: 'v', webhookVerifiedAt: new Date('2026-10-01') } : null)) },
     person: { findFirst: jest.fn(async () => ({ phone: o.phone === undefined ? '+254700000001' : o.phone, whatsappLastInboundAt: o.wrote ? new Date() : null })) },
     user: { findUnique: jest.fn(async () => ({ phoneNumber: null })) },
     whatsAppInboundMessage: { findFirst: jest.fn(async () => null) },

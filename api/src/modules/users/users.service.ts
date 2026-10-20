@@ -32,6 +32,7 @@ import { theInvitationsWaiting, keepThemWaiting, stopWaiting, type AnInvitationW
 import { aLineOrNothing, wouldMakeALoop, CANNOT_REPORT_TO_THEMSELVES, THAT_WOULD_MAKE_A_LOOP, NOT_IN_THIS_ORGANISATION } from './where-they-sit';
 import { groundsAViewerMayList } from '../grounds/who-may-read-this-check-in';
 import { fullNameToCall } from '../engagement/a-name-to-call-them';
+import { itSendsFromTheirNumber, WHAT_SAYS_IT_WORKS } from '../whatsapp/a-connection-that-works';
 
 @Injectable()
 export class UsersService {
@@ -77,7 +78,7 @@ export class UsersService {
         select: { subscriptionPlan: true, subscriptionStatus: true, freeUntil: true, freePlan: true },
       }),
       this.prisma.apiCredential.count({ where: { organizationId, revokedAt: null } }),
-      this.prisma.whatsAppConnection.findUnique({ where: { organizationId }, select: { enabled: true } }).catch(() => null),
+      this.prisma.whatsAppConnection.findUnique({ where: { organizationId }, select: WHAT_SAYS_IT_WORKS }).catch(() => null),
       readerId ? this.prisma.user.findUnique({ where: { id: readerId }, select: { welcomeCardSeenAt: true } }) : null,
       /* Off when there is no WhatsApp service here at all, which is the safe direction. */
       this.whatsapp ? this.whatsapp.isEnabled().catch(() => false) : Promise.resolve(false),
@@ -91,7 +92,7 @@ export class UsersService {
       paying: isCovered(org ?? { subscriptionPlan: null, subscriptionStatus: null }),
       connected: keys > 0,
       whatsappOn,
-      whatsappConnected: !!wa?.enabled,
+      whatsappConnected: itSendsFromTheirNumber(wa),
       welcomeCardSeen: !!reader?.welcomeCardSeenAt,
     };
   }

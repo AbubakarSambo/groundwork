@@ -77,6 +77,7 @@ type UserWithOrg = {
 import { whereTheyBelong, ROLE_FOR_SOMEBODY_EXPECTED } from './they-are-already-on-somebodys-roster';
 import { connectWhatsAppFor } from '../whatsapp/connect-whatsapp';
 import { aSignInsNumberChanged, aRosterNumberChanged, refuseANumberOnSomebodyElse, aSignInWithNoNumberTakesTheRosters, theSignInOf } from '../whatsapp/one-number-for-a-person';
+import { itSendsFromTheirNumber, WHAT_SAYS_IT_WORKS } from '../whatsapp/a-connection-that-works';
 
 /**
  * For an address that already has an account: the draft token a new address would have been given
@@ -1822,9 +1823,9 @@ export class AuthService {
   async whatsappIsOn(organizationId: string): Promise<boolean> {
     const [platform, own] = await Promise.all([
       this.whatsapp?.isEnabled?.().catch(() => false) ?? Promise.resolve(false),
-      this.prisma.whatsAppConnection.findUnique({ where: { organizationId }, select: { enabled: true } }).catch(() => null),
+      this.prisma.whatsAppConnection.findUnique({ where: { organizationId }, select: WHAT_SAYS_IT_WORKS }).catch(() => null),
     ]);
-    return !!platform || !!own?.enabled;
+    return !!platform || itSendsFromTheirNumber(own);
   }
 
   /**

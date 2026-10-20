@@ -35,7 +35,9 @@ describe('the service', () => {
     expect(service.match(/const gate = await this\.mayInitiate\(/g)?.length).toBe(2);
     /* Measured on the number the message goes from (survey item 8); the person's own stamp only where ours is the only number. */
     expect(service).toContain('if (insideTheServiceWindow(lastWrote)) return { free: true };');
-    expect(service).toContain('const lastWrote = ownNumber?.enabled ? onThisNumber : (onThisNumber ?? person?.whatsappLastInboundAt);');
+    /* And only for a number Groundwork has been in touch with: a changed number has never written (Drop Access, 21 October). */
+    expect(service).toContain('const lastWrote = itSendsFromTheirNumber(ownNumber) ? onThisNumber : (onThisNumber ?? theirStamp);');
+    expect(service).toContain("const theirStamp = !onThisNumber && person?.whatsappLastInboundAt && !(await this.neverInTouchWith(to)) ? person.whatsappLastInboundAt : null;");
     expect(service).toContain('because: OUTSIDE_THE_WINDOW');
     expect(OUTSIDE_THE_WINDOW).toMatch(/not sent$/);
     expect(service).toMatch(/type: 'template'/);

@@ -69,6 +69,7 @@ import { hasBeenToldOnce, nowToldOnce } from '../engagement/a-message-sent-once'
 import { WhatsAppAddOnService } from '../billing/whatsapp-add-on.service';
 import { aLocalForm, callingCodeOf, formsOfTheSameNumber, tidyANumber } from './a-number-whatsapp-can-reach';
 import { theCountryCodeOf, tidyANumberFor } from './the-organisations-country';
+import { itSendsFromTheirNumber, WHAT_SAYS_IT_WORKS, whatIsMissingFrom, NOTHING_WAS_SAVED_BECAUSE, THIS_IS_FOR_YOUR_OWN_NUMBER, THAT_IS_A_TEAM_MEMBERS_NUMBER, A_PHONE_NUMBER_IS_NOT_ITS_ID } from './a-connection-that-works';
 import { WhichNumber, inboundKeysFrom, whichNumberOf } from './one-number-per-conversation';
 import { GroundworksOwnNumber, OurNumber } from './groundworks-own-number';
 import { aSignInsNumberChanged, refuseANumberOnSomebodyElse } from './one-number-for-a-person';
@@ -204,7 +205,7 @@ export class WhatsAppService implements OnModuleInit {
     const text = WhatsAppService.heldSaying(saying);
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
     let result: SendResult;
-    if (own?.enabled) result = theirKey(own, 'accessToken') ? await this.deliver(own.phoneNumberId, theirKey(own, 'accessToken'), to, text) : { sent: false, error: THEIR_KEYS_CANNOT_BE_OPENED };
+    if (own && itSendsFromTheirNumber(own)) result = theirKey(own, 'accessToken') ? await this.deliver(own.phoneNumberId, theirKey(own, 'accessToken'), to, text) : { sent: false, error: THEIR_KEYS_CANNOT_BE_OPENED };
     else if (await this.isEnabled()) { const ours = await this.ours(); result = await this.post(ours.phoneNumberId ?? '', ours.accessToken ?? '', to, text); }
     else result = { sent: false, error: 'WhatsApp is not configured on this deployment' };
     /* Written down, never counted: this one is free. */
@@ -550,7 +551,7 @@ export class WhatsAppService implements OnModuleInit {
       let accessToken: string | undefined;
       if (via === 'theirs' && organizationId) {
         const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
-        if (!own?.enabled) return;
+        if (!own || !itSendsFromTheirNumber(own)) return;
         phoneNumberId = own.phoneNumberId;
         /* Sealed on the row, so it goes through the same opener every send uses. */
         accessToken = theirKey(own, 'accessToken');
@@ -614,7 +615,8 @@ export class WhatsAppService implements OnModuleInit {
     const held = (await this.heldFor(organizationId, to, context)) ?? (await this.heldForTheNight(organizationId, to, text, context));
     if (held) return held;
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
-    if (!own || !own.enabled) return this.sendOnOurNumber(organizationId, to, text, context);
+    /* A row that is switched off, or half set up and never proven, is no connection: Groundwork's own number (a-connection-that-works.ts). */
+    if (!own || !itSendsFromTheirNumber(own)) return this.sendOnOurNumber(organizationId, to, text, context);
     if (!theirKey(own, 'accessToken')) {
       /* The token is sealed and this server cannot open it (the key was changed or removed). Nothing is sent, and the reason is kept. */
       const result: SendResult = { sent: false, error: THEIR_KEYS_CANNOT_BE_OPENED };
@@ -695,7 +697,7 @@ export class WhatsAppService implements OnModuleInit {
   async sendListFor(organizationId: string, phoneNumber: string, body: string, rows: { id: string; title: string; description: string }[], fallbackText: string): Promise<boolean> {
     if (await this.heldFor(organizationId, WhatsAppService.normalize(phoneNumber), { kind: 'which-one' })) return false;
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
-    if (!own || !own.enabled) return (await this.sendOnOurNumber(organizationId, WhatsAppService.normalize(phoneNumber), fallbackText, { kind: 'which-one' })).sent;
+    if (!own || !itSendsFromTheirNumber(own)) return (await this.sendOnOurNumber(organizationId, WhatsAppService.normalize(phoneNumber), fallbackText, { kind: 'which-one' })).sent;
     if (!theirKey(own, 'accessToken')) { this.logger.warn(`WhatsApp list not sent for org ${organizationId}: ${THEIR_KEYS_CANNOT_BE_OPENED}`); return false; }
     const to = WhatsAppService.normalize(phoneNumber).replace('+', '');
     try {
@@ -722,7 +724,7 @@ export class WhatsAppService implements OnModuleInit {
    */
   async fetchMediaFor(organizationId: string | null, mediaId: string): Promise<{ buffer: Buffer; mimeType: string } | null> {
     const own = organizationId ? await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null) : null;
-    const token = (own ? theirKey(own, 'accessToken') : undefined) ?? (await this.ours()).accessToken;
+    const token = (own && itSendsFromTheirNumber(own) ? theirKey(own, 'accessToken') : undefined) ?? (await this.ours()).accessToken;
     if (!token) return null;
     try {
       const meta = await fetch(`${this.graphBase()}/${mediaId}`, { headers: { Authorization: `Bearer ${token}` } });
@@ -779,10 +781,16 @@ export class WhatsAppService implements OnModuleInit {
      * person's own stamp is the same thing, and is what older messages carry.
      */
     const ownNumber = organizationId
-      ? await this.prisma.whatsAppConnection?.findUnique({ where: { organizationId }, select: { enabled: true } }).catch(() => null)
+      ? await this.prisma.whatsAppConnection?.findUnique({ where: { organizationId }, select: WHAT_SAYS_IT_WORKS }).catch(() => null)
       : null;
     const onThisNumber = await this.lastWroteOn(via, organizationId, to);
-    const lastWrote = ownNumber?.enabled ? onThisNumber : (onThisNumber ?? person?.whatsappLastInboundAt);
+    /*
+     * THE PERSON'S OWN STAMP IS ABOUT THE NUMBER IT CAME FROM (Drop Access, 21 October; findings 1.4 D). When a number is changed the
+     * stamp stays on the roster entry, so a new number that has never written read as inside the 24 hours: the message went as plain
+     * text and Meta refused it. The stamp counts only for a number Groundwork has been in touch with; a new one gets the first contact.
+     */
+    const theirStamp = !onThisNumber && person?.whatsappLastInboundAt && !(await this.neverInTouchWith(to)) ? person.whatsappLastInboundAt : null;
+    const lastWrote = itSendsFromTheirNumber(ownNumber) ? onThisNumber : (onThisNumber ?? theirStamp);
     if (insideTheServiceWindow(lastWrote)) return { free: true };
     const approved = await this.approvedFor(organizationId, via);
     /*
@@ -939,8 +947,8 @@ export class WhatsAppService implements OnModuleInit {
     if (org.whatsappAddOnOn) return true;
     /* Every organisation's free WhatsApp month (Hafsah, 13 October 2026, evening): on without anybody turning it on. */
     if (org.whatsappFreeUntil && new Date(org.whatsappFreeUntil).getTime() > Date.now()) return true;
-    const own = await this.prisma.whatsAppConnection?.findUnique?.({ where: { organizationId }, select: { enabled: true } })?.catch?.(() => null);
-    return !!own?.enabled;
+    const own = await this.prisma.whatsAppConnection?.findUnique?.({ where: { organizationId }, select: WHAT_SAYS_IT_WORKS })?.catch?.(() => null);
+    return itSendsFromTheirNumber(own);
   }
 
   /**
@@ -1006,9 +1014,9 @@ export class WhatsAppService implements OnModuleInit {
   private async approvedFor(organizationId: string | null, via: WhichNumber = 'theirs'): Promise<readonly string[]> {
     if (organizationId && via === 'theirs') {
       const own = await this.prisma.whatsAppConnection
-        .findUnique({ where: { organizationId }, select: { approvedTemplates: true, enabled: true } })
+        .findUnique({ where: { organizationId }, select: { approvedTemplates: true, ...WHAT_SAYS_IT_WORKS } })
         .catch(() => null);
-      if (own?.enabled) return own.approvedTemplates ?? [];
+      if (itSendsFromTheirNumber(own)) return own!.approvedTemplates ?? [];
     }
     return this.config.get<string[]>('whatsapp.approvedTemplates') ?? [];
   }
@@ -1118,31 +1126,58 @@ export class WhatsAppService implements OnModuleInit {
     const phoneNumberId = dto.phoneNumberId?.trim();
     const accessToken = dto.accessToken?.trim();
     const appSecret = dto.appSecret?.trim();
-    if (!phoneNumberId) throw new BadRequestException('Add the phone number ID that Meta gives the number, which is not the phone number itself.');
-    if (!/^\d{6,}$/.test(phoneNumberId)) throw new BadRequestException('The phone number ID is digits only, and you can find it under API Setup in your WhatsApp settings in Meta Business.');
     /* Secrets are never written in the clear: a NEW secret with no key on the server is not saved, and the admin is told, in words that are about us and not about a setting. The setting's name goes to the log only. A save with no new secret (the display number, say) needs no key. */
     if ((accessToken || appSecret) && !theServerCanKeepSecrets()) {
       this.logger.error(`An organisation (${organizationId}) tried to save WhatsApp keys, and they were not saved: ${whyItCannot()} (SETTINGS_ENCRYPTION_KEY).`);
       throw new BadRequestException(THE_SERVER_HAS_NO_KEY);
     }
     const existing = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } });
-    if (!accessToken && !existing) throw new BadRequestException('Add the permanent access token from Meta the first time you save.');
-    if (!appSecret && !existing) throw new BadRequestException("Add the app secret from your Meta app when you first save, so Groundwork can check that messages really come from Meta.");
-    const verifyToken = existing?.verifyToken ?? `gwv_${crypto.randomBytes(16).toString('hex')}`;
+    /*
+     * NEVER HALF SET UP FROM SOMEBODY TYPING A NUMBER (Drop Access, 21 October; a-connection-that-works.ts). Every key is needed, or
+     * nothing is saved and the admin reads why and where a team member's number goes instead. A key already kept stays when it is not
+     * typed again; a business account ID or a display number that is not sent is kept, never wiped (findings 1.4 J).
+     */
+    const businessAccountId = dto.businessAccountId?.trim() || existing?.businessAccountId || '';
+    const displayTyped = dto.displayNumber?.trim() || existing?.displayNumber || '';
+    const missing = whatIsMissingFrom({ ...dto, phoneNumberId, accessToken, appSecret, businessAccountId, displayNumber: displayTyped }, existing && { accessToken: existing.accessToken, appSecret: existing.appSecret });
+    if (missing.length) throw new BadRequestException(NOTHING_WAS_SAVED_BECAUSE(missing));
+    if (!/^\d{6,}$/.test(phoneNumberId!)) throw new BadRequestException(A_PHONE_NUMBER_IS_NOT_ITS_ID);
+    if (!/^\d{6,}$/.test(businessAccountId)) throw new BadRequestException(`Nothing was saved, because the WhatsApp Business account ID is digits only. You find it in Meta Business, under WhatsApp accounts. ${THIS_IS_FOR_YOUR_OWN_NUMBER}`);
+    /* Kept as typed, for people to read; checked in the one stored form. */
+    const displayNumber = displayTyped;
+    const displayAsStored = await this.tidyFor(organizationId, displayTyped).catch(() => {
+      throw new BadRequestException(`Nothing was saved, because the number as people will see it is not a whole phone number. ${THIS_IS_FOR_YOUR_OWN_NUMBER}`);
+    });
+    /* A team member's own number, typed where the organisation's Business number goes, is refused, and so is a phone number typed as its ID. */
+    const someone = (await this.whoseNumberInThisOrganisation(organizationId, displayAsStored)) ?? (await this.whoseNumberInThisOrganisation(organizationId, phoneNumberId!));
+    if (someone) throw new BadRequestException(THAT_IS_A_TEAM_MEMBERS_NUMBER(someone.name));
+    if (phoneNumberId!.startsWith('0') || phoneNumberId === displayAsStored.replace(/\D/g, '')) throw new BadRequestException(A_PHONE_NUMBER_IS_NOT_ITS_ID);
+    const verifyToken = existing?.verifyToken || `gwv_${crypto.randomBytes(16).toString('hex')}`;
     const row = await this.prisma.whatsAppConnection.upsert({
       where: { organizationId },
       create: {
-        organizationId, phoneNumberId, businessAccountId: dto.businessAccountId?.trim() || null, displayNumber: dto.displayNumber?.trim() || null,
-        /* Only built when they were typed: an existing connection saved again without them keeps its sealed ones (the update below). */
+        organizationId, phoneNumberId: phoneNumberId!, businessAccountId, displayNumber,
+        /* Built before Prisma chooses create or update, so only sealed when typed: an existing row saved again keeps its own (the update below). */
         accessToken: accessToken ? sealTheirKey(organizationId, 'accessToken', accessToken) : '', appSecret: appSecret ? sealTheirKey(organizationId, 'appSecret', appSecret) : '', verifyToken, enabled: true,
       },
       update: {
-        phoneNumberId, businessAccountId: dto.businessAccountId?.trim() || null, displayNumber: dto.displayNumber?.trim() || null,
+        phoneNumberId: phoneNumberId!, businessAccountId, displayNumber, verifyToken,
         ...(accessToken ? { accessToken: sealTheirKey(organizationId, 'accessToken', accessToken) } : {}), ...(appSecret ? { appSecret: sealTheirKey(organizationId, 'appSecret', appSecret) } : {}),
       },
     });
     this.logger.log(`WhatsApp connected for org ${organizationId} on number id ${row.phoneNumberId}`);
     return this.connectionFor(organizationId);
+  }
+
+  /** Whose number this is among the people of this organisation (its roster, and the sign-ins of its members), by name. Null when nobody's. */
+  private async whoseNumberInThisOrganisation(organizationId: string, raw: string): Promise<{ name: string | null } | null> {
+    const forms = formsOfTheSameNumber(raw);
+    if (!forms.length) return null;
+    const onTheRoster: any = await Promise.resolve((this.prisma as any).person?.findFirst?.({ where: { organizationId, phone: { in: forms } }, select: { givenName: true, familyName: true, displayName: true } })).catch(() => null);
+    if (onTheRoster) return { name: (onTheRoster.displayName || [onTheRoster.givenName, onTheRoster.familyName].filter(Boolean).join(' ')).trim() || null };
+    const signIn: any = await Promise.resolve((this.prisma as any).user?.findFirst?.({ where: { phoneNumber: { in: forms }, deletedAt: null, memberships: { some: { organizationId } } }, select: { firstName: true, lastName: true } })).catch(() => null);
+    if (signIn) return { name: [signIn.firstName, signIn.lastName].filter(Boolean).join(' ').trim() || null };
+    return null;
   }
 
   async setConnectionEnabled(organizationId: string, enabled: boolean) {

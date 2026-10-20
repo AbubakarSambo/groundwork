@@ -48,6 +48,7 @@ import { seatsIn } from '../../common/seats';
 import { whetherThereIsRoomForOneMore, type SeatAnswer } from './added-but-waiting-for-a-seat';
 import { whatTheDocumentsSay, stillNeedsSomethingInWriting } from './what-the-documents-say';
 import { whatFitsInTheRoom, tellThemWhatIsMissing } from '../conversation/a-prompt-that-ran-out-of-room-says-so';
+import { itSendsFromTheirNumber, WHAT_SAYS_IT_WORKS } from '../whatsapp/a-connection-that-works';
 import { daysRemaining, deadlineOf, clockStartsAt } from './when-the-clock-starts';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
@@ -5715,9 +5716,9 @@ export class GroundsService {
     if (over === true) {
       const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true } });
       const connected = ground
-        ? await this.prisma.whatsAppConnection.findUnique({ where: { organizationId: ground.organizationId }, select: { enabled: true } })
+        ? await this.prisma.whatsAppConnection.findUnique({ where: { organizationId: ground.organizationId }, select: WHAT_SAYS_IT_WORKS })
         : null;
-      if (!connected?.enabled) {
+      if (!itSendsFromTheirNumber(connected)) {
         throw new BadRequestException('This organisation has no WhatsApp number connected yet. Connect one on the Connect page first.');
       }
     }
