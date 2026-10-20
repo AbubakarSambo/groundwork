@@ -1,5 +1,5 @@
 import { whatIsOutstandingFor, theTemplateParagraph, withPlacesWhereTheyTellApart, theseForAPhone, type WhatIsOutstanding } from './the-leads-daily-nudge';
-import { theNewsAPromiseWaitsOn, aLineGivesTheNews } from './a-promise-that-waits-on-news';
+import { theNewsAPromiseWaitsOn, aLineGivesTheNews, theNewsInOneLine } from './a-promise-that-waits-on-news';
 import { ConversationService } from '../conversation/conversation.service';
 
 /**
@@ -57,12 +57,30 @@ describe("Njeri's check for FN-005, in Wanjiru's summary", () => {
 });
 
 describe("Njeri's next opening", () => {
-  it('tells her, in one line, that it was filed and on which day; who said it only where she is in that check-in', async () => {
+  /* Hafsah's answers of 21 October: the fact, with no source. Before, it read "Somebody in another check-in said on Wednesday 14 October that the reply for FN-005 was filed." */
+  it('tells her, in one line, what was filed and on which day, and never who said it or where', async () => {
     const service: any = Object.create(ConversationService.prototype);
     service.prisma = theRecord({ lines: [BRIANS_LINE] });
     const opening = await service.withTheNewsTheyWaitOn({ participantId: 'fees-njeri', groundId: FEES, participant: { userId: 'u-njeri' } }, 'Last time you said you would check on FN-005. What has happened since then?');
-    expect(opening).toBe('Somebody in another check-in said on Wednesday 14 October that the reply for FN-005 was filed. Last time you said you would check on FN-005. What has happened since then?');
+    expect(opening).toBe('The FN-005 reply was filed on Wednesday 14 October. Last time you said you would check on FN-005. What has happened since then?');
+    expect(opening).not.toMatch(/Brian|somebody|another check-in/i);
     service.prisma.groundParticipant.findFirst = jest.fn(async () => ({ id: 'lit-njeri' }));
-    expect(await service.withTheNewsTheyWaitOn({ participantId: 'fees-njeri', groundId: FEES, participant: { userId: 'u-njeri' } }, 'What has happened since then?')).toBe('Brian said on Wednesday 14 October that the reply for FN-005 was filed. What has happened since then?');
+    const inIt = await service.withTheNewsTheyWaitOn({ participantId: 'fees-njeri', groundId: FEES, participant: { userId: 'u-njeri' } }, 'What has happened since then?');
+    expect(inIt).toBe('The FN-005 reply was filed on Wednesday 14 October. What has happened since then?');
+    expect(inIt).not.toMatch(/Brian|somebody|another check-in/i);
+  });
+  it('once she has had a check-in since, the opening is left as it was', async () => {
+    const service: any = Object.create(ConversationService.prototype);
+    service.prisma = theRecord({ lines: [BRIANS_LINE], njeriCheckedInSince: true });
+    expect(await service.withTheNewsTheyWaitOn({ participantId: 'fees-njeri', groundId: FEES, participant: { userId: 'u-njeri' } }, 'What has happened since then?')).toBe('What has happened since then?');
+  });
+});
+
+describe('the line, for any thing the record names', () => {
+  const given = (thing: string, happened: string): any => ({ byParticipantId: 'x', byUserId: null, byName: 'Brian', groundId: 'g', at: new Date(), happened, thing, told: false, theyAreInIt: true });
+  it('says the thing, what happened and the day, and nothing about who said it', () => {
+    expect(theNewsInOneLine(given('the reply for FN-005', 'was filed'), 'Wednesday 14 October')).toBe('The FN-005 reply was filed on Wednesday 14 October.');
+    expect(theNewsInOneLine(given('the hearing date', 'was set'), 'Monday 19 October')).toBe('The hearing date was set on Monday 19 October.');
+    expect(theNewsInOneLine(given('the contract with Tuskys', 'was signed'), 'Friday 16 October')).toBe('The contract with Tuskys was signed on Friday 16 October.');
   });
 });

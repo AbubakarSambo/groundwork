@@ -14,7 +14,7 @@ import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
  * paid or sent ("to see if the reply for FN-005 has been filed", "when I'm told the reply is filed"). The news is given by a line said
  * after the promise, by somebody else, in any of the organisation's check-ins that are not about one person, that names the thing (and,
  * for a fee note, its client or matter) and says it was done. Until the person who promised has had a check-in since, they have not been
- * told: the lead reads who said it and on which day, never "late". Their next opening tells them, in one line.
+ * told: the lead reads who said it and on which day, never "late". Their next opening tells them the fact, in one line, with no source.
  */
 export interface TheNewsAPromiseWaitsOn {
   /** The thing's own words, each in one form ("reply"). */
@@ -79,7 +79,7 @@ export interface TheNewsGiven {
   thing: string;
   /** Whether the person who promised has had a check-in in that check-in since: their opening told them. */
   told: boolean;
-  /** Whether the person who promised is in the check-in it was said in, so may be told who said it. */
+  /** Whether the person who promised is in the check-in it was said in. Their opening never names who said it either way (21 October). */
   theyAreInIt: boolean;
 }
 
@@ -120,8 +120,19 @@ export async function theNewsThesePromisesWaitOn(
   return out;
 }
 
-/** The one line their next opening tells them: "Brian said on Wednesday 14 October that the reply for FN-005 was filed." */
+/*
+ * THE ONE LINE THEIR NEXT OPENING TELLS THEM (Hafsah's answers of 21 October): the fact, with no source. "The FN-005 reply was filed on
+ * Wednesday 14 October." The thing, what happened to it, and the day: never the name of the person who said it, and never "somebody in
+ * another check-in". Who said it stays for the lead's summary only.
+ */
 export function theNewsInOneLine(n: TheNewsGiven, day: string): string {
-  const who = n.theyAreInIt && n.byName ? n.byName : 'Somebody in another check-in';
-  return `${who} said on ${day} that ${n.thing} ${n.happened}.`;
+  return `${theThingToSayFirst(n.thing)} ${n.happened} on ${day}.`;
+}
+
+/** "the reply for FN-005" said first in a sentence: "The FN-005 reply". Anything else keeps its own words, with a capital. */
+function theThingToSayFirst(thing: string): string {
+  const t = String(thing ?? '').trim().replace(/^(?:the|our|a)\s+/i, '');
+  const byNumber = /^(.+?)\s+(?:for|of|on|in)\s+(?:the\s+)?([A-Z]{1,4}-\d{2,})$/.exec(t);
+  const said = byNumber ? `${byNumber[2]} ${byNumber[1]}` : t;
+  return `The ${said}`;
 }
