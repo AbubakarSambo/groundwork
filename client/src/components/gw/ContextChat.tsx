@@ -451,7 +451,7 @@ export function ContextChat({ groundId }: { groundId: string }) {
             onKeyDown={e => { if (e.key === 'Enter') submit() }}
             data-gw-context-chat-input
             placeholder="Type your answer…"
-            style={{ flex: 1, padding: '8px 4px', border: 'none', fontSize: 13.5, fontFamily: 'inherit', outline: 'none', background: 'transparent' }}
+            style={{ flex: 1, minHeight: 44, padding: '8px 4px', border: 'none', fontSize: 16, fontFamily: 'inherit', outline: 'none', background: 'transparent' }}
           />
           <button className="gwui-btn gwui-btn-primary gwui-btn-small"
             onClick={submit}

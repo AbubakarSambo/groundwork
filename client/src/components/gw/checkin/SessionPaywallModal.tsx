@@ -117,7 +117,7 @@ export function SessionPaywallModal({
                 value={paywall.code}
                 onChange={e => { paywall.setCode(e.target.value); paywall.setCodeMsg(null) }}
                 placeholder="Enter code"
-                style={{ flex: 1, padding: '9px 11px', fontSize: 13, fontFamily: 'inherit', border: `1px solid ${paywall.codeMsg && !paywall.codeMsg.ok ? 'var(--gw-danger)' : 'var(--gw-border)'}`, borderRadius: 7, background: 'var(--gw-paper-2)', color: 'var(--gw-dark)', outline: 'none' }}
+                className="gwui-input" style={{ flex: 1, ...(paywall.codeMsg && !paywall.codeMsg.ok ? { borderColor: 'var(--gw-danger)' } : {}) }}
               />
               <button className="gwui-btn gwui-btn-primary gwui-btn-small"
                 onClick={() => paywall.redeem.mutate()}

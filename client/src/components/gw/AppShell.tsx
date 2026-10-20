@@ -580,8 +580,8 @@ function FeedbackWidget() {
                       ))}
                     </div>
                     <input type="email" placeholder="Your email, if you'd like a reply" value={contactEmail} onChange={e => setContactEmail(e.target.value)}
-                      className="gwui-fb-field"
-                      style={{ width: '100%', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 10 }} />
+                      className="gwui-fb-field gwui-input"
+                      style={{ boxSizing: 'border-box', marginBottom: 10 }} />
                   </>
                 )}
 
@@ -609,8 +609,8 @@ function FeedbackWidget() {
                       className="gwui-fb-field"
                       style={{ width: '100%', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', minHeight: 100, boxSizing: 'border-box', marginBottom: 10 }} />
                     <input type="email" placeholder="Your email, if you'd like a reply" value={contactEmail} onChange={e => setContactEmail(e.target.value)}
-                      className="gwui-fb-field"
-                      style={{ width: '100%', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 10 }} />
+                      className="gwui-fb-field gwui-input"
+                      style={{ boxSizing: 'border-box', marginBottom: 10 }} />
                   </>
                 )}
 
