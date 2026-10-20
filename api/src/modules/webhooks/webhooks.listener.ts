@@ -165,7 +165,7 @@ export class WebhooksListener {
      * approval email is that session's opening, on email: where it was sent after this check-in was made, the first session is not told again.
      */
     if (e.sessionNumber === 1 && await this.theApprovalEmailOpenedIt(e.checkInId, participant)) return;
-    const said = theCheckInIsOpen({ firstName: participant.user?.firstName, label: ground.label }, ground.simplerWords);
+    const today = theCheckInIsOpen({ firstName: participant.user?.firstName, label: ground.label }, ground.simplerWords);
     /*
      * WITH THE DIRECT MORNING ON, THE ONE THING THAT MATTERS TO THEM TODAY IS THE MESSAGE (part 3; conversation/the-one-thing-today). Inside
      * the 24 hours the personal line goes as the free message and is their check-in's first question; outside them the approved template
@@ -173,8 +173,9 @@ export class WebhooksListener {
      * nothing specific on record, the notice is today's, word for word.
      */
     const personal = await aTeamMembersOpeningFor(this.prisma, { groundId: e.groundId, participantId: participant.id, sessionNumber: e.sessionNumber }).catch(() => null);
+    const said = personal ? { ...today, text: personal.text } : today;
     /* Business-initiated: goes as free text inside the window, as a template outside it, or not at all. */
-    await this.whatsapp.sendFor(ground.organizationId, phone, personal?.text ?? said.text, { checkInId: e.checkInId, kind: said.kind, params: said.params });
+    await this.whatsapp.sendFor(ground.organizationId, phone, said.text, { checkInId: e.checkInId, kind: said.kind, params: said.params });
   }
 
   /** Whether "You can start your check-in now" went to this person after this check-in was made: that email opened it. */

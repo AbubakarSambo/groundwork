@@ -614,7 +614,19 @@ export class WhatsAppForAnOrganisationService {
         /* Today's session, where the one asked for had a round that had closed (see today, below). */
         const missed = await this.theMissedNoticeFor(this.today(current, first), userId!);
         /* The words that switch, said once, when the check-in starts on WhatsApp. */
-        reply = `${sessionHeader(current)}${await this.theWordsOnce(ask, organizationId, from)}\n\n${missed ? `${missed.text}\n\n` : ''}${first.reply}`;
+        const theWords = await this.theWordsOnce(ask, organizationId, from);
+        reply = `${sessionHeader(current)}${theWords}\n\n${missed ? `${missed.text}\n\n` : ''}${first.reply}`;
+        /*
+         * THE DIRECT MORNING'S OWN OPENING IS THE FIRST THING THEY READ (part 3; Hafsah, 20 October 2026; conversation/the-one-thing-today).
+         * With the switch on and an opening from the record, it comes first, then the missed notice, then the words that switch where they
+         * are said; the session's number is not said. Where that opening already reached them as the free message inside the 24 hours and
+         * they answered it, it is not said again: their message is the answer to it, and the missed notice goes on its own, first.
+         */
+        if ((first as any)?.personalOpening) {
+          const alreadyRead = !beginning && !isAGreetingOrARequestToStart(text) && await this.thePersonalOpeningWentAsAMessage(current.id);
+          reply = alreadyRead ? '' : [first.reply, missed?.text ?? '', theWords.trim()].filter(Boolean).join('\n\n');
+          if (alreadyRead && missed) await say(missed.text);
+        }
         if (missed) await rememberTheMissedNoticeTold(this.prisma, missed.key, 'sent').catch(() => undefined);
         /* A short first answer is still an answer. "Not much yet", "It's blocked", "Behind again" are
            twelve characters or fewer and were thrown away. Only a greeting and nothing else is not
@@ -1092,6 +1104,15 @@ export class WhatsAppForAnOrganisationService {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Whether this check-in's opening went to them as the direct morning's own words, free inside the 24 hours: kind exactly `checkin-open`
+   * or its catch-up, and sent (outside the window it goes as the template, recorded as `checkin-open:template`). Never throws.
+   */
+  private async thePersonalOpeningWentAsAMessage(checkInId: string): Promise<boolean> {
+    const row = await Promise.resolve((this.prisma as any).whatsAppSend?.findFirst?.({ where: { checkInId, kind: { in: ['checkin-open', 'checkin-catch-up'] }, sentAt: { not: null } }, select: { id: true } })).catch(() => null);
+    return !!row;
   }
 
   private async theMissedNoticeFor(checkInId: string, userId: string): Promise<{ key: string; text: string } | null> {
