@@ -171,7 +171,8 @@ describe('the missed notice for somebody on WhatsApp', () => {
   it('comes first in the first WhatsApp message after they reply, before the first question, and the email opening is left out', () => {
     const strip = (x: string) => x.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     const wa = strip(readFileSync(join(__dirname, '..', 'public-api', 'whatsapp-for-an-organisation.service.ts'), 'utf8'));
-    expect(wa).toMatch(/reply = `\$\{sessionHeader\(current\)\} \$\{THE_WORDS\(ask\)\}\\n\\n\$\{missed \? `\$\{missed\.text\}\\n\\n` : ''\}\$\{first\.reply\}`;/);
+    /* Changed 20 Oct 2026: the words that switch are said through theWordsOnce, which with the direct morning on says them the first time only. */
+    expect(wa).toMatch(/reply = `\$\{sessionHeader\(current\)\}\$\{(?:await this\.theWordsOnce\(ask, organizationId, from\)|theWords)\}\\n\\n\$\{missed \? `\$\{missed\.text\}\\n\\n` : ''\}\$\{first\.reply\}`;/);
     const cron = strip(readFileSync(join(__dirname, '..', 'grounds', 'grounds.cron.ts'), 'utf8'));
     expect(cron).toMatch(/if \(await theyAreConnectedOnWhatsApp\(this\.prisma, \{ organizationId: \(p\.ground as any\)\.organizationId, userId: p\.userId, email: p\.email \}\)\) \{/);
   });

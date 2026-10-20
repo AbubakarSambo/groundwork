@@ -149,6 +149,11 @@ export interface TheRecordForOnePerson {
   reader: 'self' | 'lead';
   person: { participantId: string; name: string; firstName: string };
   leadFirst: string;
+  /**
+   * True where the person whose page it is runs the check-in and reads it as their own (Grace on "Grace’s work"). She is "you"
+   * on it: "Grace sees this page too" and "Grace’s coaching for the team" were said to Grace about Grace (night run, 20 October).
+   */
+  readerRunsIt?: boolean;
   kindOfWork: string | null;
   /** The board's rows this reader is served, owned by this person. */
   items: (AServedRecord & { evidence?: { readAs: string; countsAsProof: boolean }[] })[];
@@ -251,6 +256,10 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
   const self = r.reader === 'self';
   const first = r.person.firstName || 'This person';
   const leadFirst = r.leadFirst || 'the person who runs it';
+  /* The lead on her own page: nobody else to name, and her own coaching is "your" coaching. */
+  const herOwn = self && r.readerRunsIt === true;
+  const alsoSees = herOwn ? '' : ` ${leadFirst} sees this page too.`;
+  const theLeads = herOwn ? 'Your' : `${leadFirst}’s`;
   /** "you"/"your" to the person, the person's name to the lead. */
   const You = self ? 'You' : first;
   const your = self ? 'your' : `${first}’s`;
@@ -400,7 +409,7 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
         when: when ? (isDone || late ? when : cap(when)) : null,
         done: isDone,
         late,
-        whose: c.explicit === false ? (self ? `${leadFirst} asked for this.` : 'You asked for this.') : null,
+        whose: c.explicit === false ? (self && !herOwn ? `${leadFirst} asked for this.` : 'You asked for this.') : null,
       };
     })
     .sort((a, b) => Number(a.done) - Number(b.done) || Number(b.late) - Number(a.late));
@@ -420,8 +429,8 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
 
   /* ------------------------------------------------------------------ coaching */
   const better: ACoachingLine[] = [
-    ...r.teamCoaching.map((t) => ({ text: stop(t), from: self ? `${leadFirst}’s coaching for the team` : 'Your coaching for the team' })),
-    ...(r.helpWith ? [{ text: stop(r.helpWith), from: self ? `${leadFirst}’s note for you` : `Your note for ${first}` }] : []),
+    ...r.teamCoaching.map((t) => ({ text: stop(t), from: self ? `${theLeads} coaching for the team` : 'Your coaching for the team' })),
+    ...(r.helpWith ? [{ text: stop(r.helpWith), from: self ? (herOwn ? 'Your own note' : `${leadFirst}’s note for you`) : `Your note for ${first}` }] : []),
     ...attention.map((p) => ({ text: !self && p.oneStep ? p.oneStep : stop(p.heading), from: self ? 'From your pattern' : `From ${first}’s pattern` })),
   ];
   const keep = behaviours.filter((b) => b.verdict === 'Strength').map((b) => theBehaviour(b.key).keepDoing);
@@ -470,7 +479,7 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
       person: r.person,
       heading: `${first}’s work`,
       topLine: self
-        ? `What you need to do and what you’ve done. ${leadFirst} sees this page too.`
+        ? `What you need to do and what you’ve done.${alsoSees}`
         : `What ${first} needs to do and what ${first} has done. ${first} sees this page too.`,
       numbers: numbers.slice(0, 3),
       focus: null,
@@ -488,7 +497,7 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
       performing: { note: NOT_SHOWN_IN_THIS_ORGANISATION, behaviours: [], libraryNote: '' },
       coaching: {
         /* Only the lead's coaching for the whole team, which is about nobody in particular. */
-        better: r.teamCoaching.map((t) => ({ text: stop(t), from: self ? `${leadFirst}’s coaching for the team` : 'Your coaching for the team' })),
+        better: r.teamCoaching.map((t) => ({ text: stop(t), from: self ? `${theLeads} coaching for the team` : 'Your coaching for the team' })),
         keep: [],
         betterEmpty: NOT_SHOWN_IN_THIS_ORGANISATION,
         keepEmpty: NOT_SHOWN_IN_THIS_ORGANISATION,
@@ -520,7 +529,7 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
     person: r.person,
     heading: `${first}’s work`,
     topLine: self
-      ? `What you need to do, what you’ve done, and how to get better. ${leadFirst} sees this page too.`
+      ? `What you need to do, what you’ve done, and how to get better.${alsoSees}`
       : `What ${first} needs to do, what ${first} has done, and how ${first} can get better. ${first} sees this page too.`,
     numbers: numbers.slice(0, 3),
     focus,
@@ -548,7 +557,7 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
       better,
       keep,
       betterEmpty: self
-        ? `Nothing yet. Lines show here from ${leadFirst}’s coaching for the team and from what keeps coming up in your check-ins.`
+        ? `Nothing yet. Lines show here from ${herOwn ? 'your' : `${leadFirst}’s`} coaching for the team and from what keeps coming up in your check-ins.`
         : `Nothing yet. Lines show here from your coaching for the team and from what keeps coming up in ${first}’s check-ins.`,
       keepEmpty: self ? 'Your strengths will show here once your check-ins show them.' : `${first}’s strengths will show here once the check-ins show them.`,
     },
@@ -698,6 +707,7 @@ export async function readMyWork(
     reader,
     person: { participantId: pid, name, firstName: firstOf(name) },
     leadFirst,
+    ...(reader === 'self' && isLead ? { readerRunsIt: true } : {}),
     kindOfWork: ground.kindOfWork ?? null,
     items,
     commitments: commitments as any[],
@@ -735,4 +745,19 @@ function emptyFor(label: string | null) {
     items: { heading: '', note: '', itemWord: '', rows: [], emptySays: '' },
     checkInName: label || 'This check-in',
   };
+}
+
+/**
+ * MY WORK, SAID DIRECTLY (the direct morning, Hafsah, 20 October 2026; organisation/the-direct-morning-switch.ts). Where the switch
+ * is on, the page carries no note about who else sees it and no note about where its words come from. The page is the same page:
+ * who may read it is decided before this, the same either way.
+ */
+export function myWorkSaidDirectly<T>(served: T): T {
+  const s: any = served;
+  if (!s || typeof s !== 'object' || s.on !== true) return served;
+  return {
+    ...s,
+    ...(typeof s.topLine === 'string' ? { topLine: s.topLine.replace(/ [^.]+ sees this page too\.$/, '') } : {}),
+    ...(s.performing && typeof s.performing === 'object' ? { performing: { ...s.performing, libraryNote: '' } } : {}),
+  } as T;
 }

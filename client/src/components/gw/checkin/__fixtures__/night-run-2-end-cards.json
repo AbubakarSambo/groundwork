@@ -1,0 +1,87 @@
+{
+ "_from": "Cut from ~/Desktop/engine-test/run2/raw/record.json (second night run): the end card the API served Grace (she runs Sales team, Q4) and Mercy (a rep, on the web; Kevin answers on WhatsApp) at the end of their latest web check-in.",
+ "grace": {
+  "date": "2026-10-19",
+  "sessionNumber": 6,
+  "endCard": {
+   "next": [
+    "There are 3 more lines in your record. You can read them all in your record after you finish.",
+    "If you have something written for any of these, such as a message or a photo, add it. Then that line counts as proven."
+   ],
+   "inYourRecord": [
+    {
+     "how": "You said you will do this. I will ask you how it went.",
+     "mark": "said",
+     "says": "I'm going out with one rep this week."
+    },
+    {
+     "how": "You gave this from memory. Nothing written backs it yet.",
+     "mark": "memory",
+     "says": "The site visit with Mr. Kiprop for Lavington Business Park is confirmed for tomorrow, Tuesday, at 10."
+    },
+    {
+     "how": "You gave this from memory. Nothing written backs it yet.",
+     "mark": "memory",
+     "says": "I sent the proposal on Tuesday, 13 October."
+    },
+    {
+     "how": "You said this.",
+     "mark": "said",
+     "says": "The target is still 30 units for each rep, so 120 total."
+    },
+    {
+     "how": "You said this.",
+     "mark": "said",
+     "says": "The 60 units that arrived were for stock, not my personal sales."
+    },
+    {
+     "how": "You said this.",
+     "mark": "said",
+     "says": "My part of the 120 target will come from deals like Lavington Business Park."
+    }
+   ]
+  }
+ },
+ "mercy": {
+  "date": "2026-10-19",
+  "sessionNumber": 6,
+  "endCard": {
+   "next": [
+    "There are 2 more lines in your record. You can read them all in your record after you finish.",
+    "If you have something written for any of these, such as a message or a photo, add it. Then that line counts as proven."
+   ],
+   "inYourRecord": [
+    {
+     "how": "You said you will do this. I will ask you how it went.",
+     "mark": "said",
+     "says": "I need to arrange for her dispenser to be delivered."
+    },
+    {
+     "how": "You said this.",
+     "mark": "said",
+     "says": "Greenfield signed the order today!"
+    },
+    {
+     "how": "From the document you added.",
+     "mark": "proven",
+     "says": "We have the signed purchase order."
+    },
+    {
+     "how": "From the document you added.",
+     "mark": "proven",
+     "says": "It confirms the order for 25 units from Greenfield Supermarket at KES 125,000, and it's signed."
+    },
+    {
+     "how": "From the document you added.",
+     "mark": "proven",
+     "says": "Delivery is scheduled for Thursday."
+    },
+    {
+     "how": "From the receipt you added.",
+     "mark": "proven",
+     "says": "Mama Rose's Kiosk already paid for her unit last Friday."
+    }
+   ]
+  }
+ }
+}

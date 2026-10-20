@@ -29,9 +29,14 @@ export function whenTheBoardLastChangedInShort(at: string | null | undefined): s
   return `${weekday} ${whenItWas(at, 'dayOfMonth')} ${month}, ${atTime(at)}`
 }
 
-export function whenTheBoardLastChanged(at: string | null | undefined): string {
-  if (!at) return THE_BOARD_ONLY_CHANGES
-  return `Last updated on ${whenItWas(at, 'weekdayAndDay')} at ${atTime(at)}. ${THE_BOARD_ONLY_CHANGES}`
+/**
+ * With the direct morning on (lib/the-direct-morning.tsx), the day and the time alone: "Last updated on Tuesday 20 October at 8am."
+ * No explanation of how the board works, and nothing at all where the record holds no time.
+ */
+export function whenTheBoardLastChanged(at: string | null | undefined, direct = false): string {
+  if (!at) return direct ? '' : THE_BOARD_ONLY_CHANGES
+  const when = `Last updated on ${whenItWas(at, 'weekdayAndDay')} at ${atTime(at)}.`
+  return direct ? when : `${when} ${THE_BOARD_ONLY_CHANGES}`
 }
 
 /**

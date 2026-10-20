@@ -281,6 +281,8 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendMissedCheckIns: 'we decided to send it',
   /* What is outstanding for a lead, once each morning when something is (decision 120). */
   sendTheLeadsDailyNudge: 'we decided to send it',
+  /* The direct morning (behind organizations.direct_morning_on): the lead's daily summary in its four parts. It is sent under the daily nudge's name, so it is still her one routine message of the day. */
+  sendTheDirectMorning: 'we decided to send it',
   /* A message WhatsApp could not take, by email instead (whatsapp/by-email-instead.ts): the day's routine one and a notice are ours to send; the thank-you and the report follow the person's own check-in. */
   sendTheRoutineMessageByEmail: 'we decided to send it',
   sendTheMessageByEmail: 'we decided to send it',

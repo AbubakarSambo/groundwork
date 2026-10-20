@@ -1,3 +1,4 @@
+import { useTheDirectMorning } from '@/lib/the-direct-morning'
 import { Panel, SubHeading, Tag, Note, Stack } from '@/components/gw/ui'
 
 /**
@@ -48,6 +49,8 @@ export function WhatToWorkOnNext({ note, guide }: {
   /** The three lines about the conversation to have next, when a release has produced them. */
   guide?: { openingLine?: string; questionToCarry?: string; toAcknowledge?: string } | null
 }) {
+  /* The direct morning (lib/the-direct-morning.tsx): no "Only you" tag and no privacy note. Who is served it is the backend's rule. */
+  const direct = useTheDirectMorning()
   if (!note && !guide) return null
   const conversation = [
     { h: 'A way to open', text: guide?.openingLine },
@@ -60,9 +63,9 @@ export function WhatToWorkOnNext({ note, guide }: {
       <Stack gap={12}>
         <div className="gwui-sentence-row">
           <SubHeading>What to work on next</SubHeading>
-          <Tag>Only you</Tag>
+          {!direct && <Tag>Only you</Tag>}
         </div>
-        <Note>Written for you. It is not part of the shared report.</Note>
+        {!direct && <Note>Written for you. It is not part of the shared report.</Note>}
 
         {note && (
           <Stack gap={12}>

@@ -8,6 +8,7 @@ import { roundCompletedPayload, checkInCompletedPayload, checkInOpenedPayload, b
 import { WorkspaceNotifierService } from '../workspace/workspace-notifier.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { theCheckInIsOpen } from '../whatsapp/what-goes-to-a-phone';
+import { aTeamMembersOpeningFor } from '../conversation/the-one-thing-today';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { leaveOfThePeopleOn, awayUntilOn } from '../suites/who-is-away';
 
@@ -164,7 +165,15 @@ export class WebhooksListener {
      * approval email is that session's opening, on email: where it was sent after this check-in was made, the first session is not told again.
      */
     if (e.sessionNumber === 1 && await this.theApprovalEmailOpenedIt(e.checkInId, participant)) return;
-    const said = theCheckInIsOpen({ firstName: participant.user?.firstName, label: ground.label }, ground.simplerWords);
+    const today = theCheckInIsOpen({ firstName: participant.user?.firstName, label: ground.label }, ground.simplerWords);
+    /*
+     * WITH THE DIRECT MORNING ON, THE ONE THING THAT MATTERS TO THEM TODAY IS THE MESSAGE (part 3; conversation/the-one-thing-today). Inside
+     * the 24 hours the personal line goes as the free message and is their check-in's first question; outside them the approved template
+     * goes exactly as it is, from the same blanks, and the personal line is the first thing they read once they reply START. Off, or with
+     * nothing specific on record, the notice is today's, word for word.
+     */
+    const personal = await aTeamMembersOpeningFor(this.prisma, { groundId: e.groundId, participantId: participant.id, sessionNumber: e.sessionNumber }).catch(() => null);
+    const said = personal ? { ...today, text: personal.text } : today;
     /* Business-initiated: goes as free text inside the window, as a template outside it, or not at all. */
     await this.whatsapp.sendFor(ground.organizationId, phone, said.text, { checkInId: e.checkInId, kind: said.kind, params: said.params });
   }

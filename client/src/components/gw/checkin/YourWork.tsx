@@ -1,3 +1,4 @@
+import { useTheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { groundsApi } from '@/api/grounds'
@@ -179,6 +180,8 @@ export function YourWork({
   totalSessions, completedCount, myFinishedSessions, sessionDots, myParticipant, myName, leadFirstName,
   otherParties, postReportGuide, aTeamReportComes, onSeeEverySession, onReadTeamReport, onSeeRoster, asTheRestOfMyWork,
 }: YourWorkProps) {
+  /* The direct morning (lib/the-direct-morning.tsx): no "Only you see this page." Who reads it is the backend's rule, the same either way. */
+  const direct = useTheDirectMorning() || isTheDirectMorningOn(ground)
   const myCommitments = ((ground?.commitments ?? []) as any[]).filter((c) => c.participantId === myParticipant?.id)
   /* Their own files, the WhatsApp photos and pins included, from the same list and cache the Context tab reads. */
   const { data: docsOnTheCheckIn } = useQuery({
@@ -295,7 +298,9 @@ export function YourWork({
         eyebrow={ground?.label}
         title="Your work"
         subtitle={
-          patterns.length > 0
+          direct
+            ? 'Everything you’ve said, and what the proof shows.'
+            : patterns.length > 0
             ? 'Everything you’ve said, and what the proof shows. Only you see this page, apart from the pattern below.'
             : 'Everything you’ve said, and what the proof shows. Only you see this page.'
         }

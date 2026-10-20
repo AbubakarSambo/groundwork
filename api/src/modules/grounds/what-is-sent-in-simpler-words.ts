@@ -92,6 +92,8 @@ export const THE_EMAILS = {
     simplerWords
       ? { stillOpen: 'is still open. It takes about ten minutes. Your answers go into the report.', theOtherHasAnswered: 'The other person has already answered. Yours is the last answer we need.' }
       : { stillOpen: 'is still open. About ten minutes now puts your view into the shared picture, and you read it too.', theOtherHasAnswered: 'They have already shared their side. Yours is the last one we are waiting for.' },
+  /** The same, with the direct morning on (email/a-direct-email.ts): how long it takes, and that everybody else is in, and nothing about a shared picture. */
+  nudgeDirect: () => ({ stillOpen: 'is still open. It takes about ten minutes.', theOtherHasAnswered: 'Everyone else has checked in. Yours is the last one.' }),
   /** "A new check-in is ready for X." */
   nextCheckInOpen: (simplerWords?: boolean | null) =>
     simplerWords ? { before: 'Your next check-in for', after: ' is open. It takes about ten minutes. Your answers go into the report.' } : { before: 'A new check-in is ready for', after: '. It takes about ten minutes, and answering keeps the picture you and your team read up to date.' },

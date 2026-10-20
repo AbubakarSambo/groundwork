@@ -70,6 +70,15 @@ const NOT_A_UNIT = new Set([
 const WHEN_OR_WHERE = /\s+(?:by|before|until|till|from|on|in|at|during|within|end\s+of|the\s+end\s+of)\s+.*$/i;
 const A_MONTH_OR_DAY = /^(?:jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|sept|september|oct|october|nov|november|dec|december|monday|tuesday|wednesday|thursday|friday|saturday|sunday)$/;
 const THE_SAME_THING: Record<string, string> = { deal: 'sale' };
+/* WHAT HAPPENED TO THE THING IS NOT THE THING (night run 2, 20 October 2026). Drop Access's target was "Units sold by 30 October" and
+   each rep's "units sold by 30 October". The last word was "sold", so the report was told "the objective is 120 solds", and where one
+   number was named "30 units" it was told the numbers were "in different terms (sold, unit)" and could not be added up. Both are units.
+   A word after the thing counted that says what was done to it (sold, paid, delivered, signed) is passed over. */
+const WHAT_WAS_DONE_TO_IT = new Set([
+  'sold', 'paid', 'closed', 'delivered', 'signed', 'collected', 'won', 'made', 'done', 'approved', 'shipped', 'dispatched', 'booked',
+  'filed', 'completed', 'processed', 'issued', 'installed', 'received', 'placed', 'confirmed', 'cleared', 'submitted', 'settled',
+  'finished', 'sent', 'served', 'bought', 'disbursed', 'onboarded', 'recruited', 'hired', 'trained', 'registered', 'resolved',
+]);
 
 export function whatIsBeingCounted(name: string): string | null {
   const words = (name ?? '')
@@ -78,6 +87,7 @@ export function whatIsBeingCounted(name: string): string | null {
     .replace(/[^a-z0-9\s]/g, ' ')
     .split(/\s+/)
     .filter((w) => w && !/^\d+[km]?$/.test(w) && !/^n\d/.test(w) && !NOT_A_UNIT.has(w) && !/ing$/.test(w) && !A_MONTH_OR_DAY.test(w));
+  while (words.length > 1 && WHAT_WAS_DONE_TO_IT.has(words[words.length - 1])) words.pop();
   if (!words.length) return null;
   const one = words[words.length - 1].replace(/s$/, '');
   return THE_SAME_THING[one] ?? one;

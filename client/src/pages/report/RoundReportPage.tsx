@@ -1,3 +1,4 @@
+import { TheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ThePicturedTeamReport, TheTeamReportIsNotSharedYet } from './pictured/ThePicturedTeamReport'
 import { reportsApi } from '@/api/reports'
@@ -61,6 +62,8 @@ export default function RoundReportPage() {
   const canRunThisCheckIn = !!user?.id && (ground as any)?.initiatorId === user.id
   const isAParty = !!(ground as any)?.viewerIsInitiator || !!(ground as any)?.participants?.some((p: any) => p.userId === user?.id)
   const contextEnabled = (ground as any)?.contextEnabled === true
+  /* The direct morning (lib/the-direct-morning.tsx), from the check-in this page already reads, said once for what it draws. */
+  const direct = isTheDirectMorningOn(ground)
   const plannedSessions = ground ? plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).plannedSessions) : null
 
   /*
@@ -68,13 +71,14 @@ export default function RoundReportPage() {
    * report as it was stays one tap away, on "See every other part of this report" (?whole=1).
    */
   if (id && ground && canRunThisCheckIn && Number.isFinite(n) && searchParams.get('whole') !== '1') {
-    return <ThePicturedTeamReport groundId={id} sessionNumber={n} ground={ground} />
+    return <TheDirectMorning on={direct}><ThePicturedTeamReport groundId={id} sessionNumber={n} ground={ground} /></TheDirectMorning>
   }
   if (id && ground && !canRunThisCheckIn && isAParty && shaped && (shaped as any).released === false && searchParams.get('whole') !== '1') {
-    return <TheTeamReportIsNotSharedYet groundId={id} sessionNumber={n} ground={ground} />
+    return <TheDirectMorning on={direct}><TheTeamReportIsNotSharedYet groundId={id} sessionNumber={n} ground={ground} /></TheDirectMorning>
   }
 
   return (
+    <TheDirectMorning on={direct}>
     <div style={{ maxWidth: 1060, margin: '0 auto', padding: '20px 20px 60px' }}>
       {/*
         U.10 PICTURE-CHECK ROUND 6, ITEM I: THE SAME SHARED HEADER EVERY CHECK-IN PAGE NOW USES.
@@ -122,5 +126,6 @@ export default function RoundReportPage() {
         )}
       </div>
     </div>
+    </TheDirectMorning>
   )
 }

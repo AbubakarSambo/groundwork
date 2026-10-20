@@ -130,7 +130,11 @@ export function digestSubject(f: DigestFacts): string {
   return `${f.groundLabel} - session ${f.sessionNumber} is complete`;
 }
 
-export function digestBody(f: DigestFacts, unsubscribeUrl: string): string {
+/**
+ * `direct`: the direct morning is on for the check-in's organisation (a-direct-email.ts). The link is said in a sentence, and the second
+ * way to stop these emails is left out: the footer every mail of this kind carries already has it.
+ */
+export function digestBody(f: DigestFacts, unsubscribeUrl: string, direct = false): string {
   /* WHAT IT IS, WITH NO NAME IN IT (messages test, 19 October: "1 thing needs attention" did not say what). The count is of the waits still
      open; who waits on whom, and for what, stays behind the link with the rest. */
   const n = f.needsAttention;
@@ -149,6 +153,7 @@ export function digestBody(f: DigestFacts, unsubscribeUrl: string): string {
       `${of} ${of === 1 ? 'person' : 'people'} took part. ${attention}`]
     : [`Session ${f.sessionNumber} of ${f.groundLabel} has closed.`,
       `${gave} of ${of} ${of === 1 ? 'person' : 'people'} checked in. ${attention}`];
+  if (direct) return [...said, `Read it on the check-in's board at ${f.permalink}`].join('\n');
   return [
     ...said,
     /* The link is the point of the mail. What was actually said stays behind it, under whatever

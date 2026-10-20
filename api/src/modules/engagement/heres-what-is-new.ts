@@ -1,3 +1,4 @@
+import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { whoHasNotJoinedYet, WHAT_SAYS_SOMEBODY_JOINED } from '../grounds/invited-not-joined-yet';
 import { wasAQuietClose } from '../grounds/an-answer-includes-a-refusal';
 import { CheckInStatus, GroundStatus } from '@prisma/client';
@@ -140,8 +141,10 @@ export async function sendHeresWhatIsNew(
   let tried = 0;
   for (const [leadId, theirs] of byLead) {
     try {
-      const user = await prisma.user.findUnique({ where: { id: leadId }, select: { email: true, firstName: true, deletedAt: true, isActive: true } });
+      const user = await prisma.user.findUnique({ where: { id: leadId }, select: { email: true, firstName: true, deletedAt: true, isActive: true, organizationId: true } });
       if (!user?.email || user.deletedAt || user.isActive === false) continue;
+      /* WITH THE DIRECT MORNING ON, NO EMAIL ABOUT WHAT GROUNDWORK NOW DOES (email/a-direct-email.ts): it is about the product, not her work. */
+      if (await theDirectMorningIsOn(prisma, user.organizationId)) continue;
       const had = await prisma.notification.findFirst({ where: { channel: 'email', sender: WHATS_NEW_SENDER, toAddress: user.email.trim().toLowerCase(), outcome: 'sent' }, select: { id: true } });
       if (had || await isAlreadyHeld(prisma, WHATS_NEW_SENDER, user.email)) continue;
       const stands: AnExistingCheckIn[] = [];

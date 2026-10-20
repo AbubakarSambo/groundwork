@@ -1,0 +1,278 @@
+{
+ "_from": "Cut from ~/Desktop/engine-test/run2/raw/record.json (second night run): the last capture, Tuesday 20 October, morning (the end), as the API served each reader.",
+ "grace": {
+  "checkIns": [
+   {
+    "id": "a0cdc357-32d0-4df4-bece-692b27e5511f",
+    "label": "Sales team, Q4",
+    "youRunIt": true,
+    "line": "You run this check-in. You have finished six check-ins.",
+    "to": "/grounds/a0cdc357-32d0-4df4-bece-692b27e5511f"
+   }
+  ],
+  "turns": [],
+  "goals": [
+   {
+    "id": "804b250a-5b03-423e-838c-cec1cfb3abff",
+    "says": "I'll be checking in daily for their updates on deals in progress, sales with proof, and next steps.",
+    "checkIn": "Sales team, Q4"
+   }
+  ],
+  "saidYoudDo": [
+   {
+    "id": "a79213f6-2062-402c-857b-88872f515542",
+    "text": "My main responsibility is to support the team in hitting those targets and to close my own deals.",
+    "when": "Right now",
+    "checkIn": "Sales team, Q4",
+    "state": "open",
+    "stateSays": "Open",
+    "saidAt": "2026-10-12T08:33:15.817Z"
+   },
+   {
+    "id": "9390c994-af29-402f-ac0f-fc7eddccb004",
+    "text": "Do that now.",
+    "when": null,
+    "checkIn": "Sales team, Q4",
+    "state": "open",
+    "stateSays": "Open",
+    "saidAt": "2026-10-13T11:00:02.192Z"
+   },
+   {
+    "id": "58b82876-64a5-4040-86fc-0174ac31f36c",
+    "text": "Follow up with him",
+    "when": "next week",
+    "checkIn": "Sales team, Q4",
+    "state": "open",
+    "stateSays": "Open",
+    "saidAt": "2026-10-14T11:00:01.706Z"
+   },
+   {
+    "id": "2f4d4ce5-8e2a-4dec-8deb-e6481bbe3504",
+    "text": "Follow up with Mr. Kiprop",
+    "when": "It was due on 19 October.",
+    "checkIn": "Sales team, Q4",
+    "state": "open",
+    "stateSays": "Open",
+    "saidAt": "2026-10-14T11:00:01.712Z"
+   },
+   {
+    "id": "762de7f7-15d9-4427-b510-8cf21ab15fa7",
+    "text": "Contact Mr. Kiprop to confirm the details for the site visit.",
+    "when": null,
+    "checkIn": "Sales team, Q4",
+    "state": "open",
+    "stateSays": "Open",
+    "saidAt": "2026-10-15T08:31:45.944Z"
+   },
+   {
+    "id": "84b470a2-5700-4f3d-9a1c-d43bf4c9de56",
+    "text": "Call Mr. Kiprop on Monday if he doesn't respond tomorrow.",
+    "when": null,
+    "checkIn": "Sales team, Q4",
+    "state": "open",
+    "stateSays": "Open",
+    "saidAt": "2026-10-15T08:31:45.949Z"
+   },
+   {
+    "id": "40accaf7-78da-450a-82aa-f7f12f102c44",
+    "text": "Be in touch with Mr. Kiprop to confirm the exact time and make arrangements for that.",
+    "when": "next Tuesday",
+    "checkIn": "Sales team, Q4",
+    "state": "open",
+    "stateSays": "Open",
+    "saidAt": "2026-10-16T08:32:19.721Z"
+   },
+   {
+    "id": "2392e671-34dd-4cb4-bb2d-5900d1594b0e",
+    "text": "If Mr. Kiprop hasn't responded by tomorrow, my plan for tomorrow is to focus on getting the 60 units from the warehouse and booking the delivery van.",
+    "when": "tomorrow",
+    "checkIn": "Sales team, Q4",
+    "state": "kept",
+    "stateSays": "Kept",
+    "saidAt": "2026-10-12T11:00:10.649Z"
+   },
+   {
+    "id": "847eed3f-ea6d-41c5-94be-9e3dff4d6797",
+    "text": "Send a reminder email on Monday, in addition to calling him",
+    "when": "Monday",
+    "checkIn": "Sales team, Q4",
+    "state": "kept",
+    "stateSays": "Kept",
+    "settledBy": "said",
+    "saidAt": "2026-10-14T11:00:01.714Z"
+   },
+   {
+    "id": "0d93129d-ec30-4cd5-85a6-08239933039f",
+    "text": "My plan for tomorrow is to focus on getting the 60 units from the warehouse and booking the delivery van.",
+    "when": null,
+    "checkIn": "Sales team, Q4",
+    "state": "kept",
+    "stateSays": "Kept",
+    "settledBy": "said",
+    "saidAt": "2026-10-15T08:31:45.953Z"
+   },
+   {
+    "id": "4cc2793b-bc8f-4971-9da9-050f582b08d1",
+    "text": "Be checking in with the team on their deals shortly.",
+    "when": null,
+    "checkIn": "Sales team, Q4",
+    "state": "not_done",
+    "stateSays": "Not done",
+    "settledBy": "said",
+    "saidAt": "2026-10-13T11:00:02.189Z"
+   }
+  ],
+  "todos": [],
+  "coaching": {
+   "says": "One thing to try this week is to leave every conversation with a dated next action somebody agreed to.",
+   "checkIn": "Sales team, Q4"
+  },
+  "ownReports": [
+   {
+    "checkIn": "Sales team, Q4",
+    "at": "2026-10-19T08:32:15.421Z",
+    "to": "/checkin/fbe8c9b5-96bd-4ced-8536-7a43e36cd0ad/report"
+   }
+  ],
+  "keptLately": {
+   "kept": 2,
+   "of": 3,
+   "says": "In the last four weeks, you kept two of your three commitments."
+  },
+  "askedOfYou": {
+   "items": [
+    {
+     "id": "cf1ee764-daa2-4325-b043-875b91eb6a25",
+     "who": "Peter Njoroge",
+     "checkIn": "Sales team, Q4",
+     "what": "a specific area to focus on",
+     "asked": "2026-10-15T11:09:25.344Z",
+     "dueSaid": null,
+     "dueOn": null,
+     "dueWord": null,
+     "standing": "No date has been given yet."
+    }
+   ],
+   "says": "1 request from 1 person across 1 check-in."
+  }
+ },
+ "kevin": {
+  "checkIns": [
+   {
+    "id": "a0cdc357-32d0-4df4-bece-692b27e5511f",
+    "label": "Sales team, Q4",
+    "youRunIt": false,
+    "line": "You have finished six check-ins.",
+    "to": "/grounds/a0cdc357-32d0-4df4-bece-692b27e5511f"
+   }
+  ],
+  "turns": [
+   {
+    "key": "turn-a0cdc357-32d0-4df4-bece-692b27e5511f",
+    "title": "Your next check-in for Sales team, Q4",
+    "detail": "About ten minutes.",
+    "action": {
+     "label": "Start it",
+     "to": "/checkin/7cdb6772-39e3-467b-a55f-6495bbe831c6"
+    }
+   }
+  ],
+  "goals": [
+   {
+    "id": "dc5f3b5a-5966-4edf-865d-c3813c35c775",
+    "says": "Sell 30 units.",
+    "checkIn": "Sales team, Q4"
+   },
+   {
+    "id": "7d4d5f85-c2ef-47ef-bf4f-ad2fc41835a8",
+    "says": "Grace has set a goal about the daily updates, and will talk it through with you.",
+    "checkIn": "Sales team, Q4"
+   },
+   {
+    "id": "e8308ff2-efb0-4f85-aad9-6e4d709d0e09",
+    "says": "Units sold by 30 October. You have 49 of 30.",
+    "checkIn": "Sales team, Q4"
+   }
+  ],
+  "saidYoudDo": [
+   {
+    "id": "bce79180-35c9-4488-8a14-c24355a0d072",
+    "text": "Follow up soon.",
+    "when": "soon",
+    "checkIn": "Sales team, Q4",
+    "state": "open",
+    "stateSays": "Open",
+    "saidAt": "2026-10-13T11:04:27.900Z"
+   },
+   {
+    "id": "209f20fc-78ce-4819-99d7-3be0f33631e0",
+    "text": "Call her tomorrow morning.",
+    "when": "It was due on 14 October.",
+    "checkIn": "Sales team, Q4",
+    "state": "open",
+    "stateSays": "Open",
+    "saidAt": "2026-10-13T11:04:27.904Z"
+   },
+   {
+    "id": "923025c6-07cd-4d79-9ce6-d7a7f680382c",
+    "text": "Follow up with him",
+    "when": "next week",
+    "checkIn": "Sales team, Q4",
+    "state": "open",
+    "stateSays": "Open",
+    "saidAt": "2026-10-16T11:03:23.680Z"
+   },
+   {
+    "id": "3bf11ce7-27d7-468d-b40b-c66be0988dda",
+    "text": "I can get it for you.",
+    "when": "right now",
+    "checkIn": "Sales team, Q4",
+    "state": "open",
+    "stateSays": "Open",
+    "saidAt": "2026-10-19T11:03:06.516Z"
+   },
+   {
+    "id": "7e673a98-940c-4dbe-ab3f-5fee10dc7ed6",
+    "text": "I'm going to follow up with a few new leads I have for hotels in the CBD.",
+    "when": null,
+    "checkIn": "Sales team, Q4",
+    "state": "open",
+    "stateSays": "Open",
+    "saidAt": "2026-10-19T11:03:06.520Z"
+   },
+   {
+    "id": "c16b9d1a-f4e0-4ed7-9adf-5a416e93c96b",
+    "text": "Call them by end of day tomorrow.",
+    "when": "by end of day tomorrow",
+    "checkIn": "Sales team, Q4",
+    "state": "kept",
+    "stateSays": "Kept",
+    "saidAt": "2026-10-12T11:05:06.899Z"
+   },
+   {
+    "id": "76dc128e-bf0d-46c6-818a-8af53c3cafd5",
+    "text": "Call Paul",
+    "when": "tomorrow afternoon",
+    "checkIn": "Sales team, Q4",
+    "state": "not_done",
+    "stateSays": "Not done",
+    "settledBy": "said",
+    "saidAt": "2026-10-12T11:04:54.162Z"
+   }
+  ],
+  "todos": [],
+  "coaching": null,
+  "ownReports": [
+   {
+    "checkIn": "Sales team, Q4",
+    "at": "2026-10-19T11:03:03.823Z",
+    "to": "/checkin/58c94007-d435-45c0-bdb0-83677b2954a3/report"
+   }
+  ],
+  "keptLately": {
+   "kept": 0,
+   "of": 1,
+   "says": "In the last four weeks, you did not keep your one commitment."
+  }
+ }
+}

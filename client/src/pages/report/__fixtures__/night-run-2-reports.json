@@ -1,0 +1,2040 @@
+{
+ "_from": "Cut from ~/Desktop/engine-test/run2/raw/record.json (second night run): the last capture, Tuesday 20 October, morning (the end), as the API served each reader.",
+ "grace": {
+  "teamReport": {
+   "sessionNumber": 6,
+   "data": {
+    "sessionNumber": 6,
+    "plannedSessions": 15,
+    "runsUntilEnded": false,
+    "position": "Session 6 of 15.",
+    "state": "forming",
+    "confidence": {
+     "score": 59,
+     "band": "partial",
+     "saying": "All 5 people checked in, and 5 of the 36 things said have a document behind them.",
+     "reasons": [
+      "Kevin’s “Ngong Road Minimart wants 5 units. Ali confirmed it” and Kevin’s “I can get you the signed order from Roysambu Gym”, and four more, have no date."
+     ],
+     "note": "These are lines taken from what people said, not lines they wrote. Anyone can mark one of their own as not what they said, and it stops counting."
+    },
+    "whereThingsStand": {
+     "agreed": 3,
+     "stillOpen": 2,
+     "saying": "Three things are settled, and two are still open.",
+     "settled": [
+      "Everyone agrees on the team target of 120 units sold by October 30.",
+      "All representatives agree on their individual target of 30 units.",
+      "A sale must be confirmed with either a signed order or proof of payment."
+     ],
+     "settledMarks": [
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      }
+     ],
+     "open": [
+      "There is a difference in how sales are being counted towards the goal.",
+      "The price of a dispenser is not being applied consistently."
+     ],
+     "differences": [
+      "There is a difference in how sales are being counted towards the goal.",
+      "The price of a dispenser is not being applied consistently."
+     ],
+     "openMarks": [
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      }
+     ],
+     "openWithReasons": [
+      {
+       "topic": "There is a difference in how sales are being counted towards the goal.",
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "positions": [
+        {
+         "who": "Grace Achieng",
+         "view": "You described 60 units dispatched from a warehouse as general inventory, not as part of any individual's sales count, and that you do not know their current status.",
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "who": "Kevin Omondi",
+         "view": "Kevin Omondi has reported sales by providing proof of payment or deposit for specific clients, such as a 40-unit sale to Kilele Hotel and a 6-unit sale to Savannah Cafe.",
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "who": "Mercy Wairimu",
+         "view": "Mercy Wairimu confirmed a 25-unit sale with a signed purchase order from Greenfield Supermarket and a cash sale for one unit to Mama Rose's Kiosk.",
+         "mark": "proven",
+         "markSays": "Proven"
+        },
+        {
+         "who": "Joseph Kariuki",
+         "view": "Joseph Kariuki has described deals as 'basically closed' that were later revealed to be undecided, such as a 10-unit deal with Mama Pima Stores.",
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ],
+       "restsOn": [
+        "Your account described a 60-unit delivery as team inventory rather than a personal sale, and mentioned not knowing their location after dispatch.",
+        "In contrast, your record of a meeting with the owner of Mama Pima Stores showed the owner had not yet committed or paid, though Joseph Kariuki had previously described the deal as nearly complete."
+       ],
+       "restsOnMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ],
+       "atStake": "If the team uses different standards for what counts as a 'sold' unit, the actual number of completed sales may not match the reported progress toward the 120-unit goal.",
+       "settledBy": "Agree on the specific event that qualifies a unit as 'sold' for tracking purposes, and what evidence is required."
+      },
+      {
+       "topic": "The price of a dispenser is not being applied consistently.",
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "positions": [
+        {
+         "who": "Grace Achieng",
+         "view": "You set the price at KES 5,000 per unit in the brief, and later mentioned a discounted price of KES 4,800 for orders of ten or more units.",
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "who": "Joseph Kariuki",
+         "view": "Joseph Kariuki asked for permission to offer a price of KES 4,500 to a customer to close a deal for 5 units.",
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ],
+       "restsOn": [
+        "Joseph Kariuki asked, 'I need to know if we can offer a unit at KES 4,500.'",
+        "Your brief defined the price as 'KES 5,000 a unit'."
+       ],
+       "restsOnMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ],
+       "atStake": "If pricing is inconsistent, the team may be offering unnecessary discounts, or deals may be lost over pricing that could have been approved.",
+       "settledBy": "Establish and share a clear, consistent policy on pricing and discounts."
+      }
+     ]
+    },
+    "atAGlance": [
+     {
+      "label": "Differences",
+      "value": "2",
+      "sub": "People said different things. There is a difference in how sales are being counted towards the goal. 1 more difference is still open.",
+      "tone": "warn"
+     },
+     {
+      "label": "Movement",
+      "value": "None",
+      "sub": "No target changed this session.",
+      "tone": "flat"
+     },
+     {
+      "label": "Blockers",
+      "value": "2",
+      "sub": "Work is held up by a specific area to focus on. 1 more is holding work up.",
+      "tone": "bad"
+     },
+     {
+      "label": "How much was said",
+      "value": "17% documented",
+      "sub": "17 of every 100 things people said have a document behind them.",
+      "tone": "good"
+     }
+    ],
+    "whatEachPersonSaid": [
+     {
+      "who": "Peter Njoroge",
+      "isYou": false,
+      "lines": [
+       "I left one with the receptionist on Monday last week, the 12th.",
+       "I keep calling them, but nobody's picked up since then.",
+       "I think I might have been a bit optimistic, she just took a brochure really.",
+       "I don't really have a list of leads for this week yet.",
+       "I'm just not sure what to do next without an area, or some leads to follow up on.",
+       "It makes it hard to plan.",
+       "I haven't visited any shops yet this week.",
+       "I don't really have a solid plan right now.",
+       "I'm not sure how I'm going to reach it without more clear leads or guidance.",
+       "I'll try calling Upper Hill Offices again, just in case.",
+       "Maybe visit some more shops, like I planned."
+      ],
+      "lineMarks": [
+       "said",
+       "said",
+       "said",
+       "said",
+       "said",
+       "said",
+       "said",
+       "said",
+       "said",
+       "said",
+       "said"
+      ],
+      "lineMarksSay": [
+       "Only someone’s word",
+       "Only someone’s word",
+       "Only someone’s word",
+       "Only someone’s word",
+       "Only someone’s word",
+       "Only someone’s word",
+       "Only someone’s word",
+       "Only someone’s word",
+       "Only someone’s word",
+       "Only someone’s word",
+       "Only someone’s word"
+      ],
+      "finding": "Peter Njoroge reports that trying to sell to offices and shops is not working out. Peter Njoroge is now thinking about trying hospitals.",
+      "hasGap": false,
+      "inShort": "I left one with the receptionist on Monday last week, the 12th.",
+      "mark": "said",
+      "willDo": "Try calling Upper Hill Offices again, just in case."
+     },
+     {
+      "who": "Grace Achieng",
+      "isYou": true,
+      "lines": [
+       "The site visit with Mr. Kiprop for Lavington Business Park is confirmed for tomorrow, Tuesday, at 10.",
+       "I sent the proposal on Tuesday, 13 October.",
+       "The 60 units that arrived were for stock, not my personal sales.",
+       "My part of the 120 target will come from deals like Lavington Business Park.",
+       "I don't have details on what happened to the 60 units after the van was dispatched.",
+       "I haven't had one-on-one calls with the reps yet this week.",
+       "I expect them to post their updates here daily.",
+       "I'm going out with one rep this week."
+      ],
+      "lineMarks": [
+       "memory",
+       "memory",
+       "said",
+       "said",
+       "memory",
+       "said",
+       "said",
+       "said"
+      ],
+      "lineMarksSay": [
+       "From memory only",
+       "From memory only",
+       "Only someone’s word",
+       "Only someone’s word",
+       "From memory only",
+       "Only someone’s word",
+       "Only someone’s word",
+       "Only someone’s word"
+      ],
+      "saying": "Has a site visit confirmed for a business park deal as part of a sales target, sent the proposal for it, and is managing reps but has not yet had one-on-one calls with them this week.",
+      "finding": "You say that 60 units arrived for stock in the week of 12 October, but you do not know what happened to the units after dispatch. You have a site visit for a separate potential deal of 20 units with Mr. Kiprop.",
+      "hasGap": true,
+      "inShort": "The site visit with Mr. Kiprop for Lavington Business Park is confirmed for tomorrow, Tuesday, at 10.",
+      "mark": "said",
+      "willDo": "I'm going out with one rep this week."
+     },
+     {
+      "who": "Kevin Omondi",
+      "isYou": false,
+      "lines": [
+       "Delivery for Savannah Cafe's 6 units was this morning.",
+       "Jane paid the remaining KES 15,000 balance for the 6 Savannah Cafe units. The M-Pesa confirmation code is RCD8M1LS4W.",
+       "Roysambu Gym signed the order for 3 units today.",
+       "Ngong Road Minimart wants 5 units. Ali confirmed it.",
+       "Ngong Road Minimart's 5 units are to be paid on delivery on Wednesday.",
+       "I can get you the signed order from Roysambu Gym.",
+       "I'll call the new leads I have for hotels in the CBD."
+      ],
+      "lineMarks": [
+       "memory",
+       "proven",
+       "memory",
+       "said",
+       "said",
+       "said",
+       "said"
+      ],
+      "lineMarksSay": [
+       "From memory only",
+       "Proven",
+       "From memory only",
+       "Only someone’s word",
+       "Only someone’s word",
+       "Only someone’s word",
+       "Only someone’s word"
+      ],
+      "finding": "Kevin Omondi delivered 6 units to Savannah Cafe in the week of 19 October, and Kevin Omondi is waiting for an approval for 3 units from Roysambu Gym. Ngong Road Minimart wants 5 units.",
+      "hasGap": true,
+      "inShort": "Roysambu Gym signed the order for 3 units today.",
+      "mark": "said",
+      "willDo": "Ngong Road Minimart wants 5 units. Ali at Ngong Road Minimart confirmed it."
+     },
+     {
+      "who": "Mercy Wairimu",
+      "isYou": false,
+      "lines": [
+       "We have the signed purchase order.",
+       "It confirms the order for 25 units from Greenfield Supermarket at KES 125,000, and it's signed.",
+       "Delivery is scheduled for Thursday.",
+       "Greenfield signed the order today!",
+       "Mama Rose's Kiosk already paid for her unit last Friday",
+       "I need to arrange for her dispenser to be delivered.",
+       "The head teacher said they won't have a budget until January.",
+       "I'm going to focus more on bigger shops and less on the kiosks going forward."
+      ],
+      "lineMarks": [
+       "proven",
+       "proven",
+       "proven",
+       "proven",
+       "proven",
+       "said",
+       "said",
+       "said"
+      ],
+      "lineMarksSay": [
+       "Proven",
+       "Proven",
+       "Proven",
+       "Proven",
+       "Proven",
+       "Only someone’s word",
+       "Only someone’s word",
+       "Only someone’s word"
+      ],
+      "finding": "In the week of 19 October, Mercy Wairimu got a signed order for 25 units from Greenfield Supermarket. Sunrise Primary School told Mercy Wairimu that they have no budget until January.",
+      "hasGap": false,
+      "inShort": "It confirms the order for 25 units from Greenfield Supermarket at KES 125,000, and it's signed.",
+      "mark": "said",
+      "willDo": "Arrange for her dispenser to be delivered."
+     }
+    ],
+    "sections": [
+     {
+      "title": "Progress and priorities",
+      "about": "what people said they are doing, and what they said matters most",
+      "items": [
+       {
+        "text": "The site visit with Mr. Kiprop for Lavington Business Park is confirmed for tomorrow, Tuesday, at 10.",
+        "who": "You",
+        "documented": false,
+        "figureIs": "from memory",
+        "mark": "memory",
+        "markSays": "From memory only"
+       },
+       {
+        "text": "I sent the proposal on Tuesday, 13 October.",
+        "who": "You",
+        "documented": false,
+        "figureIs": "from memory",
+        "mark": "memory",
+        "markSays": "From memory only"
+       },
+       {
+        "text": "Delivery for Savannah Cafe's 6 units was this morning.",
+        "who": "Kevin Omondi",
+        "documented": false,
+        "figureIs": "from memory",
+        "mark": "memory",
+        "markSays": "From memory only"
+       },
+       {
+        "text": "Jane paid the remaining KES 15,000 balance for the 6 Savannah Cafe units. The M-Pesa confirmation code is RCD8M1LS4W.",
+        "who": "Kevin Omondi",
+        "documented": true,
+        "mark": "proven",
+        "markSays": "Proven"
+       },
+       {
+        "text": "Roysambu Gym signed the order for 3 units today.",
+        "who": "Kevin Omondi",
+        "documented": false,
+        "figureIs": "from memory",
+        "mark": "memory",
+        "markSays": "From memory only"
+       },
+       {
+        "text": "We have the signed purchase order.",
+        "who": "Mercy Wairimu",
+        "documented": true,
+        "mark": "proven",
+        "markSays": "Proven"
+       },
+       {
+        "text": "It confirms the order for 25 units from Greenfield Supermarket at KES 125,000, and it's signed.",
+        "who": "Mercy Wairimu",
+        "documented": true,
+        "mark": "proven",
+        "markSays": "Proven"
+       },
+       {
+        "text": "Delivery is scheduled for Thursday.",
+        "who": "Mercy Wairimu",
+        "documented": true,
+        "mark": "proven",
+        "markSays": "Proven"
+       },
+       {
+        "text": "Greenfield signed the order today!",
+        "who": "Mercy Wairimu",
+        "documented": true,
+        "mark": "proven",
+        "markSays": "Proven"
+       },
+       {
+        "text": "Mama Rose's Kiosk already paid for her unit last Friday",
+        "who": "Mercy Wairimu",
+        "documented": true,
+        "mark": "proven",
+        "markSays": "Proven"
+       },
+       {
+        "text": "The head teacher said they won't have a budget until January.",
+        "who": "Mercy Wairimu",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "I left one with the receptionist on Monday last week, the 12th.",
+        "who": "Peter Njoroge",
+        "documented": false,
+        "figureIs": "from memory",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "The 60 units that arrived were for stock, not my personal sales.",
+        "who": "You",
+        "documented": false,
+        "figureIs": "from memory",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "My part of the 120 target will come from deals like Lavington Business Park.",
+        "who": "You",
+        "documented": false,
+        "figureIs": "from memory",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "I'm going to focus more on bigger shops and less on the kiosks going forward.",
+        "who": "Mercy Wairimu",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ]
+     },
+     {
+      "title": "Commitments",
+      "about": "what people committed to, and what last session's commitments were not returned to",
+      "items": [
+       {
+        "text": "I'm going out with one rep this week.",
+        "who": "You",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "Ngong Road Minimart wants 5 units. Ali confirmed it.",
+        "who": "Kevin Omondi",
+        "documented": false,
+        "figureIs": "from memory",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "Ngong Road Minimart's 5 units are to be paid on delivery on Wednesday.",
+        "who": "Kevin Omondi",
+        "documented": false,
+        "figureIs": "from memory",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "I can get you the signed order from Roysambu Gym.",
+        "who": "Kevin Omondi",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "I'll call the new leads I have for hotels in the CBD.",
+        "who": "Kevin Omondi",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "I need to arrange for her dispenser to be delivered.",
+        "who": "Mercy Wairimu",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "I'll try calling Upper Hill Offices again, just in case.",
+        "who": "Peter Njoroge",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "Maybe visit some more shops, like I planned.",
+        "who": "Peter Njoroge",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ]
+     },
+     {
+      "title": "Risks and concerns",
+      "about": "what people said they are worried about, and where two accounts pull against each other",
+      "items": [
+       {
+        "text": "I don't have details on what happened to the 60 units after the van was dispatched.",
+        "who": "You",
+        "documented": false,
+        "figureIs": "from memory",
+        "mark": "memory",
+        "markSays": "From memory only"
+       },
+       {
+        "text": "I haven't had one-on-one calls with the reps yet this week.",
+        "who": "You",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "I expect them to post their updates here daily.",
+        "who": "You",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "I keep calling them, but nobody's picked up since then.",
+        "who": "Peter Njoroge",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "I think I might have been a bit optimistic, she just took a brochure really.",
+        "who": "Peter Njoroge",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "I don't really have a list of leads for this week yet.",
+        "who": "Peter Njoroge",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "I'm just not sure what to do next without an area, or some leads to follow up on.",
+        "who": "Peter Njoroge",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "It makes it hard to plan.",
+        "who": "Peter Njoroge",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "I haven't visited any shops yet this week.",
+        "who": "Peter Njoroge",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "I don't really have a solid plan right now.",
+        "who": "Peter Njoroge",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "I'm not sure how I'm going to reach it without more clear leads or guidance.",
+        "who": "Peter Njoroge",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ],
+      "note": "Most of this is Peter Njoroge's - which says they name problems out loud, not that they are the problem. Whoever is not here has not said there is nothing wrong; they have said nothing."
+     },
+     {
+      "title": "Asks",
+      "about": "what people said they need from somebody else",
+      "items": [],
+      "saying": "Nobody asked for anything this session."
+     },
+     {
+      "title": "What changed since last session",
+      "about": "what this session says that the one before it did not",
+      "items": [],
+      "saying": "This record does not thread across sessions, so what moved since last time cannot be read from it. What each person said this session is above."
+     },
+     {
+      "title": "What changed since the beginning",
+      "about": "this session against what was agreed and where things stood on day one",
+      "items": [],
+      "saying": "Nothing was recorded at the start, so there is no day one to measure against. Whoever runs this can still state it."
+     },
+     {
+      "title": "What this rests on",
+      "about": "the documents behind what people said, rather than recollection",
+      "items": [
+       {
+        "text": "mpesa-savannah-deposit.pdf is a typed document.",
+        "who": "Kevin Omondi",
+        "documented": true
+       },
+       {
+        "text": "mpesa-kilele-hotel.pdf is a typed document.",
+        "who": "Kevin Omondi",
+        "documented": true
+       }
+      ]
+     }
+    ],
+    "howClearThisWas": {
+     "level": "vague",
+     "saying": "What people said stayed general. A report can only be as specific as what it was given, so this one names fewer things than it otherwise would. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+    },
+    "theConversationWorthHaving": "There is a difference in how sales are being counted towards the goal. Agree on the specific event that qualifies a unit as 'sold' for tracking purposes, and what evidence is required.",
+    "againstSuccess": {
+     "statedFromBrief": false,
+     "counting": "everyone",
+     "stated": "Units sold by 30 October",
+     "version": null,
+     "conditions": [],
+     "spokenTo": {
+      "count": 0,
+      "of": 0
+     },
+     "definitions": [
+      {
+       "who": "You",
+       "text": "I'll be checking in daily for their updates on deals in progress, sales with proof, and next steps. That's how we'll track progress."
+      },
+      {
+       "who": "You",
+       "text": "30 units for each of you"
+      },
+      {
+       "who": "You",
+       "text": "hitting our target of 120 units sold by October 30th"
+      },
+      {
+       "who": "Kevin Omondi",
+       "text": "hit that 30 units"
+      },
+      {
+       "who": "Mercy Wairimu",
+       "text": "My target is 30 units"
+      },
+      {
+       "who": "Mercy Wairimu",
+       "text": "We're all aiming for that 120 total as a team."
+      },
+      {
+       "who": "Joseph Kariuki",
+       "text": "My goal is to hit my target of 30 units, absolutely."
+      },
+      {
+       "who": "Peter Njoroge",
+       "text": "contribute to our target of 120 units"
+      },
+      {
+       "who": "Peter Njoroge",
+       "text": "I'm aiming for around 30 units, like everyone else."
+      },
+      {
+       "who": "You",
+       "text": "a price of KES 4,800 per unit for orders of 10 or more."
+      },
+      {
+       "who": "You",
+       "text": "Mr. Kiprop would need to accept the proposal and either provide proof of payment or a signed order for the 20 units."
+      },
+      {
+       "who": "Joseph Kariuki",
+       "text": "Our units are KES 5,000"
+      },
+      {
+       "who": "Peter Njoroge",
+       "text": "either proof of payment or a signed order"
+      },
+      {
+       "who": "You",
+       "text": "The 30 units per rep is their individual sales target."
+      },
+      {
+       "who": "Joseph Kariuki",
+       "text": "Their need is for dispensers, the owner Mr. Mutua makes the decision, and he wants 5 units if the price is KES 4,500 each."
+      },
+      {
+       "who": "You",
+       "text": "The target is still 30 units for each rep, so 120 total."
+      }
+     ],
+     "sides": "both",
+     "saying": null
+    },
+    "cascade": {
+     "isCascade": true,
+     "basis": [
+      "DECLARED",
+      "SAID_IN_THE_CHAT"
+     ],
+     "parentNamed": "120 target will come from deals like Lavington Business Park",
+     "teamsNamed": [
+      "per"
+     ],
+     "why": "The objectives here are held as part of 120 target will come from deals like Lavington Business Park. What is shown below is whether the parts add up to it, not how any team is doing."
+    },
+    "myTimeframe": null,
+    "briefStandard": "We sell water dispensers to hotels, supermarkets, offices and shops in Nairobi at KES 5,000 a unit.",
+    "correctable": false,
+    "whyNotCorrectable": "Corrections to this session closed on 19 October 2026, 7 days after the report went out. Anything you want to add goes in your next check-in, where it is recorded as a change rather than as a correction.",
+    "counting": [
+     {
+      "who": "Peter Njoroge",
+      "isYou": false,
+      "answered": true,
+      "hasShownTheirs": false
+     },
+     {
+      "who": "Grace Achieng",
+      "isYou": true,
+      "answered": true,
+      "hasShownTheirs": false
+     },
+     {
+      "who": "Kevin Omondi",
+      "isYou": false,
+      "answered": true,
+      "hasShownTheirs": false
+     },
+     {
+      "who": "Joseph Kariuki",
+      "isYou": false,
+      "answered": false,
+      "hasShownTheirs": false
+     },
+     {
+      "who": "Mercy Wairimu",
+      "isYou": false,
+      "answered": true,
+      "hasShownTheirs": false
+     }
+    ],
+    "waitingToBeLetIn": null,
+    "everybodyHasShownTheirs": false,
+    "released": true,
+    "releasedSessions": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    "iHaveShownMine": false,
+    "patterns": [],
+    "coaching": {
+     "aboutYou": [
+      "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+     ],
+     "showingUp": null,
+     "whyItMatters": "This is session 7 of 15 of this work. Nothing has come up often enough yet to be called a pattern.",
+     "beforeNextTime": [
+      "Peter Njoroge has been waiting on you for a specific area to focus on since 15 October. Either do it, or give a date you can do it by.",
+      "Put updates from each rep on their deals in progress, what was sold with proof, and what each does next, acceptance of the proposal and either proof of payment or a signed order for the 20 units, an answer on the proposal for 20 units, updates on their deals, a response, updates from the reps on their deals and details on what happened to the 60 units in writing, with the date you need them by."
+     ],
+     "general": true,
+     "role": {
+      "label": "What you said",
+      "onTrack": "What you said can be checked later, because it has a date, a number or a name on it. You also say what you did about anything that stalled.",
+      "goingWrong": "What you said is hard to check later: it has no dates, numbers or names, or things were named and not carried through.",
+      "protectAgainst": "A short account does not mean a weak one; little may have happened yet or nobody may have asked the right question.",
+      "noticed": null,
+      "lookingLike": null
+     },
+     "whyNoRoleMap": "No role was given, so this is about where you are in the check-in rather than about a kind of work."
+    },
+    "probes": [
+     {
+      "who": "Peter Njoroge",
+      "participantId": "dfda363d-d9f3-4f01-bcb0-ae9f8d722f6f",
+      "probe": [
+       "Peter Njoroge has not answered this session, so nothing below is from this round.",
+       "Peter Njoroge has been waiting on you for a specific area to focus on since 15 October. Give Peter Njoroge an answer, or say when you will.",
+       "Peter Njoroge has been waiting for a list of leads for this week since 19 October, and nothing on record says it was raised higher. Ask what has stopped Peter Njoroge raising it."
+      ],
+      "encourage": [
+       "Peter Njoroge said, \"contribute to our target of 120 units\" Peter Njoroge also said, \"I'm aiming for around 30 units, like everyone else.\" Both are worth getting on record, so anyone can check them later."
+      ],
+      "triedToUnblock": "It was asked for, and nothing on record shows it was taken any further. It does not say whether anything happened outside the check-ins."
+     },
+     {
+      "who": "Kevin Omondi",
+      "participantId": "9f2e58a4-06d8-4a0a-bddc-03cd96df027c",
+      "probe": [
+       "Kevin Omondi has not answered this session, so nothing below is from this round.",
+       "Kevin Omondi has been waiting for a reply to my calls since 14 October, and nothing on record says it was raised higher. Ask what has stopped Kevin Omondi raising it."
+      ],
+      "encourage": [
+       "Kevin Omondi put two things on record that anyone could check later, which is worth recognising.",
+       "Kevin Omondi attached 2 documents, so their side can be checked rather than taken on trust."
+      ],
+      "triedToUnblock": "It was asked for, and nothing on record shows it was taken any further. It does not say whether anything happened outside the check-ins."
+     },
+     {
+      "who": "Joseph Kariuki",
+      "participantId": "2274e6af-8d37-4388-bd39-8a7aeb582d7b",
+      "probe": [
+       "Joseph Kariuki has not answered this session, so nothing below is from this round.",
+       "Joseph Kariuki has been waiting for a decision on whether to offer a unit at KES 4,500, the M-Pesa payment, her final decision on the number of units and confirmation of payment, the signed agreement from Juja Hardware and a decision on the KES 4,500 price since 14 October, and nothing on record says it was raised higher. Ask what has stopped Joseph Kariuki raising it."
+      ],
+      "encourage": [
+       "Joseph Kariuki said, \"My goal is to hit my target of 30 units, absolutely.\" Joseph Kariuki also said, \"My job is to get those water dispensers sold.\" Both are worth getting on record, so anyone can check them later."
+      ],
+      "triedToUnblock": "It was asked for, and nothing on record shows it was taken any further. It does not say whether anything happened outside the check-ins."
+     },
+     {
+      "who": "Mercy Wairimu",
+      "participantId": "5632caa0-593e-48d5-910e-5c9ea5bc4fb2",
+      "probe": [
+       "Mercy Wairimu has not answered this session, so nothing below is from this round.",
+       "Mercy Wairimu has been waiting for her manager's sign-off since 16 October, and nothing on record says it was raised higher. Ask what has stopped Mercy Wairimu raising it."
+      ],
+      "encourage": [
+       "Mercy Wairimu said, \"My target is 30 units\" Mercy Wairimu also said, \"We're all aiming for that 120 total as a team.\" Both are worth getting on record, so anyone can check them later.",
+       "Mercy Wairimu attached 2 documents, so their side can be checked rather than taken on trust."
+      ],
+      "triedToUnblock": "It was asked for, and nothing on record shows it was taken any further. It does not say whether anything happened outside the check-ins."
+     }
+    ],
+    "inferences": [],
+    "pictureLines": [
+     "This is what changed since the last round. The status of a key 10-unit deal is described differently by two people. There are conflicting descriptions of how your sales contribute to the team's 120-unit target. Those were a difference last time, and they are no longer showing as one. There is a difference in how sales are being counted towards the goal. The price of a dispenser is not being applied consistently. These are new this round.",
+     "The objective is 120 solds, and the individual numbers on record add up to 120, which is exactly the objective.",
+     "4 of 5 people have answered this session. There is enough here to talk about, and not enough to settle anything.",
+     "You and Peter Njoroge are waiting on you for 4 things, starting with updates from the reps on their deals, with no escalation on record."
+    ],
+    "picture": [
+     {
+      "key": "moved",
+      "text": "This is what changed since the last round. The status of a key 10-unit deal is described differently by two people. There are conflicting descriptions of how your sales contribute to the team's 120-unit target. Those were a difference last time, and they are no longer showing as one. There is a difference in how sales are being counted towards the goal. The price of a dispenser is not being applied consistently. These are new this round."
+     },
+     {
+      "key": "numbers",
+      "text": "The objective is 120 solds, and the individual numbers on record add up to 120, which is exactly the objective."
+     },
+     {
+      "key": "basis",
+      "text": "4 of 5 people have answered this session. There is enough here to talk about, and not enough to settle anything."
+     },
+     {
+      "key": "block-unkinded",
+      "text": "You and Peter Njoroge are waiting on you for 4 things, starting with updates from the reps on their deals, with no escalation on record."
+     }
+    ],
+    "finding": {
+     "key": "numbers",
+     "text": "The objective is 120 solds, and the individual numbers on record add up to 120, which is exactly the objective.",
+     "basis": "4 of 5 people have answered this session. There is enough here to talk about, and not enough to settle anything.",
+     "wouldHaveSurfaced": "The next time this would have come up on its own is the end of this run, 9 check-ins away."
+    },
+    "sharedPicture": "This is what changed since the last round. The status of a key 10-unit deal is described differently by two people. There are conflicting descriptions of how your sales contribute to the team's 120-unit target. Those were a difference last time, and they are no longer showing as one. There is a difference in how sales are being counted towards the goal. The price of a dispenser is not being applied consistently. These are new this round. The objective is 120 solds, and the individual numbers on record add up to 120, which is exactly the objective. 4 of 5 people have answered this session. There is enough here to talk about, and not enough to settle anything. You and Peter Njoroge are waiting on you for 4 things, starting with updates from the reps on their deals, with no escalation on record.",
+    "pictureBasis": "engines",
+    "whyNoQuestion": null,
+    "direction": null,
+    "whatWentQuiet": null,
+    "writtenPicture": null,
+    "takenAt": null,
+    "amendedAt": null,
+    "amendedNote": null,
+    "showsEverybody": true,
+    "releaseOneSalesReport": true,
+    "theTeamsDay": {
+     "day": "2026-10-20",
+     "title": "The team’s report, Tuesday 20 October",
+     "lastUpdated": "Last updated on Tuesday 20 October at 8am, when Joseph checked in. It only changes when something new comes in, such as a check-in, a document or a number from another system.",
+     "inShort": [
+      "Two sales moved forward today, but neither of them has proof yet.",
+      "Peter is waiting on your specific area to focus on."
+     ],
+     "moved": [
+      {
+       "dealId": "aa1a3250-a055-420b-9ab7-da06fccd7c35",
+       "name": "Greenfield Supermarket",
+       "owner": "Mercy",
+       "from": "Quoted",
+       "to": "Won",
+       "proven": false,
+       "says": "Now won. Mercy said, \"It confirms the order for 25 units from Greenfield Supermarket at KES 125,000, and it's signed.\""
+      },
+      {
+       "dealId": "f2958f15-b8ef-4078-8ecd-9ffffc5025e4",
+       "name": "Roysambu Gym",
+       "owner": "Kevin",
+       "from": "Quoted",
+       "to": "Won",
+       "proven": false,
+       "says": "Now won. Kevin said, \"Roysambu Gym signed the order for 3 units today.\""
+      }
+     ],
+     "whyTheNumbersDontMatch": null,
+     "whereTheySeeItDifferently": [],
+     "howSure": "How sure Groundwork is about this report: sure about Savannah Cafe, which is backed by a payment record, Kilele Hotel, which is backed by M-Pesa, Mama Rose's Kiosk, which is backed by a payment record, and Greenfield Supermarket, which has a signed order. Not sure about the deals still open, which are each person’s word so far."
+    },
+    "whatIDontKnowYet": [
+     {
+      "title": "When Mr. Kiprop, The head teacher, Mrs. Atieno, Ali and The owner will buy",
+      "says": "No buying date is on record for any of them. Next: You, Mercy, Joseph and Kevin will be asked."
+     },
+     {
+      "title": "What Upper Hill Offices needs",
+      "says": "Peter has not reached the receptionist since 13 October. Next: Peter will be asked."
+     }
+    ],
+    "inThisReport": {
+     "reliesOn": "All 5 people checked in, and 5 of the 36 things said have a document behind them",
+     "eachPersonDid": "4 people, each in their own words",
+     "picture": "This is what changed since the last round",
+     "goodLooksLike": "16 people said it in their own words",
+     "sitsUnder": "120 target will come from deals like Lavington Business Park"
+    },
+    "switchboard": {
+     "type": "sales team",
+     "typeConfirmed": true,
+     "board": "the sales board",
+     "reports": "full"
+    }
+   }
+  },
+  "weekly": {
+   "weekStart": "2026-10-19",
+   "builtAt": "2026-10-20T05:00:00.058Z",
+   "eachPerson": [
+    {
+     "who": "Peter Njoroge",
+     "isYou": false,
+     "says": "Peter Njoroge has sold none of the 30 units yet. Who decides is not on record yet for Peter's open deal."
+    },
+    {
+     "who": "Kevin Omondi",
+     "isYou": false,
+     "says": "Kevin Omondi sold 6 units, paid, to Savannah Cafe. Kevin sold 40 units, paid, to Kilele Hotel. Kevin counts 3 units sold to Roysambu Gym, and nothing written shows it yet. Who decides is not on record yet for Kevin's open deal."
+    },
+    {
+     "who": "Joseph Kariuki",
+     "isYou": false,
+     "says": "Joseph Kariuki has sold none of the 30 units yet. No buying date is on record for any of Joseph's open deals."
+    },
+    {
+     "who": "Mercy Wairimu",
+     "isYou": false,
+     "says": "Mercy Wairimu has 25 units on a signed order from Greenfield Supermarket. Mercy sold 1 unit, paid, to Mama Rose's Kiosk. The buying date is not on record yet for Mercy's open deal."
+    }
+   ],
+   "heading": "This week, 19 Oct, so far. Written Tuesday 20 October.",
+   "whatThisIs": "The daily reports show each day. This weekly report shows what kept happening for three check-ins in a row or more.",
+   "inNumbers": [
+    {
+     "figure": "50%",
+     "of": "of check-ins made this week",
+     "says": "5 of the 10 check-ins due this week were made."
+    },
+    {
+     "figure": "2",
+     "of": "deals moved stage",
+     "says": "2 deals moved from one stage to another this week."
+    },
+    {
+     "figure": "1",
+     "of": "sale backed by a document",
+     "says": "1 of the 2 sales closed this week has a payment record or a signed order behind it."
+    },
+    {
+     "figure": "2",
+     "of": "sales closed, 0 with proof of payment",
+     "says": "2 sales were closed this week. Proof of payment shows none of them yet. A document backs 1 more, but it does not show a payment. The other is the word of the person who closed it."
+    },
+    {
+     "figure": "0",
+     "of": "deals hit a stall rule",
+     "says": "No stall rule is set yet, so no deal is marked for going quiet."
+    }
+   ],
+   "whatThisWeekShows": [
+    "Two deals moved forward this week.",
+    "Peter Njoroge has sold none of the 30 units yet. Who decides is not on record yet for Peter's open deal. Kevin Omondi sold 6 units, paid, to Savannah Cafe. Kevin sold 40 units, paid, to Kilele Hotel. Kevin counts 3 units sold to Roysambu Gym, and nothing written shows it yet. Who decides is not on record yet for Kevin's open deal. Joseph Kariuki has sold none of the 30 units yet. No buying date is on record for any of Joseph's open deals. Mercy Wairimu has 25 units on a signed order from Greenfield Supermarket. Mercy sold 1 unit, paid, to Mama Rose's Kiosk. The buying date is not on record yet for Mercy's open deal."
+   ],
+   "acrossTheTeam": [],
+   "threeInARow": [],
+   "saidAndProof": "One price this week is only someone’s word: Ngong Road Minimart’s KES 25,000. Ask for a copy of the quote.",
+   "whatChanged": {
+    "moved": [
+     "Greenfield Supermarket bought. A document backs it, but it does not show a payment.",
+     "Roysambu Gym bought. Nothing written shows it yet, only what Kevin Omondi said."
+    ],
+    "dropped": [
+     "No deal was lost this week."
+    ],
+    "result": [
+     "2 sales so far this week, none with proof of payment yet."
+    ]
+   },
+   "forNextWeek": [
+    {
+     "do": "Answer Peter Njoroge on a specific area to focus on",
+     "why": "Peter Njoroge asked you on 15 October.",
+     "comesFrom": "This comes from a blocker."
+    },
+    {
+     "do": "Tell the team a sale counts only with a payment or a signed order",
+     "why": "Kevin Omondi counted Roysambu Gym as sold on 19 October, and nothing written shows a payment or a signed order for it yet.",
+     "comesFrom": "This comes from the plan."
+    },
+    {
+     "do": "Sort out a specific area to focus on.",
+     "why": "Peter Njoroge is waiting on you for it. Once it is settled, Peter can plan their work.",
+     "comesFrom": "This comes from a blocker that keeps coming back."
+    },
+    {
+     "do": "Decide what to do about a decision on whether to offer a unit at KES 4,500.",
+     "why": "Joseph Kariuki cannot move until it is settled, and it is waiting on Management.",
+     "comesFrom": "This comes from a blocker that keeps coming back."
+    },
+    {
+     "do": "Decide what to do about a decision on the KES 4,500 price.",
+     "why": "Joseph Kariuki cannot move until it is settled, and it is waiting on the pricing decision.",
+     "comesFrom": "This comes from a blocker that keeps coming back."
+    },
+    {
+     "do": "Decide what to do about a list of leads for this week.",
+     "why": "Peter Njoroge cannot move until it is settled, and it is waiting on an unknown source. Once it is settled, Peter can plan their work.",
+     "comesFrom": "This comes from a blocker."
+    },
+    {
+     "do": "Agree on the specific event that qualifies a unit as 'sold' for tracking purposes, and what evidence is required.",
+     "why": "There is a difference in how sales are being counted towards the goal. You, Kevin Omondi, Mercy Wairimu and Joseph Kariuki said different things about this, so nobody can assume it is agreed. If the team uses different standards for what counts as a 'sold' unit, the actual number of completed sales may not match the reported progress toward the 120-unit goal.",
+     "comesFrom": "This comes from a disagreement in the team."
+    },
+    {
+     "do": "Establish and share a clear, consistent policy on pricing and discounts.",
+     "why": "The price of a dispenser is not being applied consistently. You and Joseph Kariuki said different things about this, so nobody can assume it is agreed. If pricing is inconsistent, the team may be offering unnecessary discounts, or deals may be lost over pricing that could have been approved.",
+     "comesFrom": "This comes from a disagreement in the team."
+    }
+   ],
+   "forNextWeekIsRanked": true,
+   "inThisReport": {
+    "saidAndProof": "One price this week is only someone’s word: Ngong Road Minimart’s KES 25,000",
+    "whatChanged": "2 sales so far this week, none with proof of payment yet"
+   }
+  }
+ },
+ "kevin": {
+  "teamReport": {
+   "sessionNumber": 6,
+   "data": {
+    "sessionNumber": 6,
+    "plannedSessions": 15,
+    "runsUntilEnded": false,
+    "position": "Session 6 of 15.",
+    "state": "forming",
+    "confidence": {
+     "score": 59,
+     "band": "partial",
+     "saying": "There is enough here to talk about, and not enough to settle anything.",
+     "reasons": [
+      "1 of 5 people has not answered yet. Their side is not in this.",
+      "6 of 36 lines are backed by a document. The rest is from memory.",
+      "6 of the 8 commitments have no owner or no date. Naming one of each would make them checkable."
+     ],
+     "note": "These are lines taken from what people said, not lines they wrote. Anyone can mark one of their own as not what they said, and it stops counting."
+    },
+    "whereThingsStand": {
+     "agreed": 3,
+     "stillOpen": 2,
+     "saying": "Three things are settled, and two are still open.",
+     "settled": [
+      "Everyone agrees on the team target of 120 units sold by October 30.",
+      "All representatives agree on their individual target of 30 units.",
+      "A sale must be confirmed with either a signed order or proof of payment."
+     ],
+     "settledMarks": [
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      }
+     ],
+     "open": [
+      "There is a difference in how sales are being counted towards the goal.",
+      "The price of a dispenser is not being applied consistently."
+     ],
+     "differences": [
+      "There is a difference in how sales are being counted towards the goal.",
+      "The price of a dispenser is not being applied consistently."
+     ],
+     "openMarks": [
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      }
+     ],
+     "openWithReasons": [
+      {
+       "topic": "There is a difference in how sales are being counted towards the goal.",
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "positions": [
+        {
+         "who": "Grace Achieng",
+         "view": "Grace Achieng described 60 units dispatched from a warehouse as general inventory, not as part of any individual's sales count, and that Grace Achieng does not know their current status.",
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "who": "Kevin Omondi",
+         "view": "You have reported sales by providing proof of payment or deposit for specific clients, such as a 40-unit sale to Kilele Hotel and a 6-unit sale to Savannah Cafe.",
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "who": "Mercy Wairimu",
+         "view": "Mercy Wairimu confirmed a 25-unit sale with a signed purchase order from Greenfield Supermarket and a cash sale for one unit to Mama Rose's Kiosk.",
+         "mark": "proven",
+         "markSays": "Proven"
+        },
+        {
+         "who": "Joseph Kariuki",
+         "view": "Joseph Kariuki has described deals as 'basically closed' that were later revealed to be undecided, such as a 10-unit deal with Mama Pima Stores.",
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ],
+       "restsOn": [
+        "Grace Achieng's account described a 60-unit delivery as team inventory rather than a personal sale, and mentioned not knowing their location after dispatch.",
+        "In contrast, Grace Achieng's record of a meeting with the owner of Mama Pima Stores showed the owner had not yet committed or paid, though Joseph Kariuki had previously described the deal as nearly complete."
+       ],
+       "restsOnMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ],
+       "atStake": "If the team uses different standards for what counts as a 'sold' unit, the actual number of completed sales may not match the reported progress toward the 120-unit goal.",
+       "settledBy": "Agree on the specific event that qualifies a unit as 'sold' for tracking purposes, and what evidence is required."
+      },
+      {
+       "topic": "The price of a dispenser is not being applied consistently.",
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "positions": [
+        {
+         "who": "Grace Achieng",
+         "view": "Grace Achieng set the price at KES 5,000 per unit in the brief, and later mentioned a discounted price of KES 4,800 for orders of ten or more units.",
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "who": "Joseph Kariuki",
+         "view": "Joseph Kariuki asked for permission to offer a price of KES 4,500 to a customer to close a deal for 5 units.",
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ],
+       "restsOn": [
+        "Joseph Kariuki asked, 'I need to know if we can offer a unit at KES 4,500.'",
+        "Grace Achieng's brief defined the price as 'KES 5,000 a unit'."
+       ],
+       "restsOnMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ],
+       "atStake": "If pricing is inconsistent, the team may be offering unnecessary discounts, or deals may be lost over pricing that could have been approved.",
+       "settledBy": "Establish and share a clear, consistent policy on pricing and discounts."
+      }
+     ]
+    },
+    "atAGlance": [
+     {
+      "label": "Differences",
+      "value": "2",
+      "sub": "People said different things. There is a difference in how sales are being counted towards the goal. 1 more difference is still open.",
+      "tone": "warn"
+     },
+     {
+      "label": "Movement",
+      "value": "None",
+      "sub": "No target changed this session.",
+      "tone": "flat"
+     },
+     {
+      "label": "Blockers",
+      "value": "2",
+      "sub": "Work is held up by a specific area to focus on. 1 more is holding work up.",
+      "tone": "bad"
+     },
+     {
+      "label": "How much was said",
+      "value": "17% documented",
+      "sub": "17 of every 100 things people said have a document behind them.",
+      "tone": "good"
+     }
+    ],
+    "whatEachPersonSaid": [
+     {
+      "who": "Peter Njoroge",
+      "isYou": false,
+      "lines": [
+       "I left one with the receptionist on Monday last week, the 12th.",
+       "I keep calling them, but nobody's picked up since then.",
+       "I think I might have been a bit optimistic, she just took a brochure really.",
+       "I don't really have a list of leads for this week yet.",
+       "I'm just not sure what to do next without an area, or some leads to follow up on.",
+       "It makes it hard to plan.",
+       "I haven't visited any shops yet this week.",
+       "I don't really have a solid plan right now.",
+       "I'm not sure how I'm going to reach it without more clear leads or guidance.",
+       "I'll try calling Upper Hill Offices again, just in case.",
+       "Maybe visit some more shops, like I planned."
+      ],
+      "lineMarks": [
+       "said",
+       "said",
+       "said",
+       "said",
+       "said",
+       "said",
+       "said",
+       "said",
+       "said",
+       "said",
+       "said"
+      ],
+      "lineMarksSay": [
+       "Only someone’s word",
+       "Only someone’s word",
+       "Only someone’s word",
+       "Only someone’s word",
+       "Only someone’s word",
+       "Only someone’s word",
+       "Only someone’s word",
+       "Only someone’s word",
+       "Only someone’s word",
+       "Only someone’s word",
+       "Only someone’s word"
+      ],
+      "finding": "Peter Njoroge reports that trying to sell to offices and shops is not working out. Peter Njoroge is now thinking about trying hospitals.",
+      "hasGap": false
+     },
+     {
+      "who": "Grace Achieng",
+      "isYou": false,
+      "lines": [
+       "The site visit with Mr. Kiprop for Lavington Business Park is confirmed for tomorrow, Tuesday, at 10.",
+       "I sent the proposal on Tuesday, 13 October.",
+       "The 60 units that arrived were for stock, not my personal sales.",
+       "My part of the 120 target will come from deals like Lavington Business Park.",
+       "I don't have details on what happened to the 60 units after the van was dispatched.",
+       "I haven't had one-on-one calls with the reps yet this week.",
+       "I expect them to post their updates here daily.",
+       "I'm going out with one rep this week."
+      ],
+      "lineMarks": [
+       "memory",
+       "memory",
+       "said",
+       "said",
+       "memory",
+       "said",
+       "said",
+       "said"
+      ],
+      "lineMarksSay": [
+       "From memory only",
+       "From memory only",
+       "Only someone’s word",
+       "Only someone’s word",
+       "From memory only",
+       "Only someone’s word",
+       "Only someone’s word",
+       "Only someone’s word"
+      ],
+      "saying": "Has a site visit confirmed for a business park deal as part of a sales target, sent the proposal for it, and is managing reps but has not yet had one-on-one calls with them this week.",
+      "finding": "Grace Achieng says that 60 units arrived for stock in the week of 12 October, but Grace Achieng does not know what happened to the units after dispatch. Grace Achieng has a site visit for a separate potential deal of 20 units with Mr. Kiprop.",
+      "hasGap": true
+     },
+     {
+      "who": "Kevin Omondi",
+      "isYou": true,
+      "lines": [
+       "Delivery for Savannah Cafe's 6 units was this morning.",
+       "Jane paid the remaining KES 15,000 balance for the 6 Savannah Cafe units. The M-Pesa confirmation code is RCD8M1LS4W.",
+       "Roysambu Gym signed the order for 3 units today.",
+       "Ngong Road Minimart wants 5 units. Ali confirmed it.",
+       "Ngong Road Minimart's 5 units are to be paid on delivery on Wednesday.",
+       "I can get you the signed order from Roysambu Gym.",
+       "I'll call the new leads I have for hotels in the CBD."
+      ],
+      "lineMarks": [
+       "memory",
+       "proven",
+       "memory",
+       "said",
+       "said",
+       "said",
+       "said"
+      ],
+      "lineMarksSay": [
+       "From memory only",
+       "Proven",
+       "From memory only",
+       "Only someone’s word",
+       "Only someone’s word",
+       "Only someone’s word",
+       "Only someone’s word"
+      ],
+      "finding": "You delivered 6 units to Savannah Cafe in the week of 19 October, and you are waiting for an approval for 3 units from Roysambu Gym. Ngong Road Minimart wants 5 units.",
+      "hasGap": true
+     },
+     {
+      "who": "Mercy Wairimu",
+      "isYou": false,
+      "lines": [
+       "We have the signed purchase order.",
+       "It confirms the order for 25 units from Greenfield Supermarket at KES 125,000, and it's signed.",
+       "Delivery is scheduled for Thursday.",
+       "Greenfield signed the order today!",
+       "Mama Rose's Kiosk already paid for her unit last Friday",
+       "I need to arrange for her dispenser to be delivered.",
+       "The head teacher said they won't have a budget until January.",
+       "I'm going to focus more on bigger shops and less on the kiosks going forward."
+      ],
+      "lineMarks": [
+       "proven",
+       "proven",
+       "proven",
+       "proven",
+       "proven",
+       "said",
+       "said",
+       "said"
+      ],
+      "lineMarksSay": [
+       "Proven",
+       "Proven",
+       "Proven",
+       "Proven",
+       "Proven",
+       "Only someone’s word",
+       "Only someone’s word",
+       "Only someone’s word"
+      ],
+      "finding": "In the week of 19 October, Mercy Wairimu got a signed order for 25 units from Greenfield Supermarket. Sunrise Primary School told Mercy Wairimu that they have no budget until January.",
+      "hasGap": false
+     }
+    ],
+    "sections": [
+     {
+      "title": "Progress and priorities",
+      "about": "what people said they are doing, and what they said matters most",
+      "items": [
+       {
+        "text": "The site visit with Mr. Kiprop for Lavington Business Park is confirmed for tomorrow, Tuesday, at 10.",
+        "who": "Grace Achieng",
+        "documented": false,
+        "figureIs": "from memory",
+        "mark": "memory",
+        "markSays": "From memory only"
+       },
+       {
+        "text": "I sent the proposal on Tuesday, 13 October.",
+        "who": "Grace Achieng",
+        "documented": false,
+        "figureIs": "from memory",
+        "mark": "memory",
+        "markSays": "From memory only"
+       },
+       {
+        "text": "Delivery for Savannah Cafe's 6 units was this morning.",
+        "who": "You",
+        "documented": false,
+        "figureIs": "from memory",
+        "mark": "memory",
+        "markSays": "From memory only"
+       },
+       {
+        "text": "Jane paid the remaining KES 15,000 balance for the 6 Savannah Cafe units. The M-Pesa confirmation code is RCD8M1LS4W.",
+        "who": "You",
+        "documented": true,
+        "mark": "proven",
+        "markSays": "Proven"
+       },
+       {
+        "text": "Roysambu Gym signed the order for 3 units today.",
+        "who": "You",
+        "documented": false,
+        "figureIs": "from memory",
+        "mark": "memory",
+        "markSays": "From memory only"
+       },
+       {
+        "text": "We have the signed purchase order.",
+        "who": "Mercy Wairimu",
+        "documented": true,
+        "mark": "proven",
+        "markSays": "Proven"
+       },
+       {
+        "text": "It confirms the order for 25 units from Greenfield Supermarket at KES 125,000, and it's signed.",
+        "who": "Mercy Wairimu",
+        "documented": true,
+        "mark": "proven",
+        "markSays": "Proven"
+       },
+       {
+        "text": "Delivery is scheduled for Thursday.",
+        "who": "Mercy Wairimu",
+        "documented": true,
+        "mark": "proven",
+        "markSays": "Proven"
+       },
+       {
+        "text": "Greenfield signed the order today!",
+        "who": "Mercy Wairimu",
+        "documented": true,
+        "mark": "proven",
+        "markSays": "Proven"
+       },
+       {
+        "text": "Mama Rose's Kiosk already paid for her unit last Friday",
+        "who": "Mercy Wairimu",
+        "documented": true,
+        "mark": "proven",
+        "markSays": "Proven"
+       },
+       {
+        "text": "The head teacher said they won't have a budget until January.",
+        "who": "Mercy Wairimu",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "I left one with the receptionist on Monday last week, the 12th.",
+        "who": "Peter Njoroge",
+        "documented": false,
+        "figureIs": "from memory",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "The 60 units that arrived were for stock, not my personal sales.",
+        "who": "Grace Achieng",
+        "documented": false,
+        "figureIs": "from memory",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "My part of the 120 target will come from deals like Lavington Business Park.",
+        "who": "Grace Achieng",
+        "documented": false,
+        "figureIs": "from memory",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "I'm going to focus more on bigger shops and less on the kiosks going forward.",
+        "who": "Mercy Wairimu",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ]
+     },
+     {
+      "title": "Commitments",
+      "about": "what people committed to, and what last session's commitments were not returned to",
+      "items": [
+       {
+        "text": "I'm going out with one rep this week.",
+        "who": "Grace Achieng",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "Ngong Road Minimart wants 5 units. Ali confirmed it.",
+        "who": "You",
+        "documented": false,
+        "figureIs": "from memory",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "Ngong Road Minimart's 5 units are to be paid on delivery on Wednesday.",
+        "who": "You",
+        "documented": false,
+        "figureIs": "from memory",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "I can get you the signed order from Roysambu Gym.",
+        "who": "You",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "I'll call the new leads I have for hotels in the CBD.",
+        "who": "You",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "I need to arrange for her dispenser to be delivered.",
+        "who": "Mercy Wairimu",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "I'll try calling Upper Hill Offices again, just in case.",
+        "who": "Peter Njoroge",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "Maybe visit some more shops, like I planned.",
+        "who": "Peter Njoroge",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ]
+     },
+     {
+      "title": "Risks and concerns",
+      "about": "what people said they are worried about, and where two accounts pull against each other",
+      "items": [
+       {
+        "text": "I don't have details on what happened to the 60 units after the van was dispatched.",
+        "who": "Grace Achieng",
+        "documented": false,
+        "figureIs": "from memory",
+        "mark": "memory",
+        "markSays": "From memory only"
+       },
+       {
+        "text": "I haven't had one-on-one calls with the reps yet this week.",
+        "who": "Grace Achieng",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "I expect them to post their updates here daily.",
+        "who": "Grace Achieng",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "I keep calling them, but nobody's picked up since then.",
+        "who": "Peter Njoroge",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "I think I might have been a bit optimistic, she just took a brochure really.",
+        "who": "Peter Njoroge",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "I don't really have a list of leads for this week yet.",
+        "who": "Peter Njoroge",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "I'm just not sure what to do next without an area, or some leads to follow up on.",
+        "who": "Peter Njoroge",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "It makes it hard to plan.",
+        "who": "Peter Njoroge",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "I haven't visited any shops yet this week.",
+        "who": "Peter Njoroge",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "I don't really have a solid plan right now.",
+        "who": "Peter Njoroge",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "text": "I'm not sure how I'm going to reach it without more clear leads or guidance.",
+        "who": "Peter Njoroge",
+        "documented": false,
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ],
+      "note": "Most of this is Peter Njoroge's - which says they name problems out loud, not that they are the problem. Whoever is not here has not said there is nothing wrong; they have said nothing."
+     },
+     {
+      "title": "Asks",
+      "about": "what people said they need from somebody else",
+      "items": [],
+      "saying": "Nobody asked for anything this session."
+     },
+     {
+      "title": "What changed since last session",
+      "about": "what this session says that the one before it did not",
+      "items": [],
+      "saying": "This record does not thread across sessions, so what moved since last time cannot be read from it. What each person said this session is above."
+     },
+     {
+      "title": "What changed since the beginning",
+      "about": "this session against what was agreed and where things stood on day one",
+      "items": [],
+      "saying": "Nothing was recorded at the start, so there is no day one to measure against. Whoever runs this can still state it."
+     },
+     {
+      "title": "What this rests on",
+      "about": "the documents behind what people said, rather than recollection",
+      "items": [
+       {
+        "text": "mpesa-savannah-deposit.pdf is a typed document.",
+        "who": "You",
+        "documented": true
+       },
+       {
+        "text": "mpesa-kilele-hotel.pdf is a typed document.",
+        "who": "You",
+        "documented": true
+       }
+      ]
+     }
+    ],
+    "howClearThisWas": {
+     "level": "vague",
+     "saying": "What people said stayed general. A report can only be as specific as what it was given, so this one names fewer things than it otherwise would. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+    },
+    "theConversationWorthHaving": "There is a difference in how sales are being counted towards the goal. Agree on the specific event that qualifies a unit as 'sold' for tracking purposes, and what evidence is required.",
+    "againstSuccess": {
+     "statedFromBrief": false,
+     "counting": "everyone",
+     "stated": null,
+     "version": null,
+     "conditions": [],
+     "spokenTo": {
+      "count": 0,
+      "of": 0
+     },
+     "definitions": [
+      {
+       "who": "Grace Achieng",
+       "text": "I'll be checking in daily for their updates on deals in progress, sales with proof, and next steps. That's how we'll track progress."
+      },
+      {
+       "who": "Grace Achieng",
+       "text": "30 units for each of you"
+      },
+      {
+       "who": "Grace Achieng",
+       "text": "hitting our target of 120 units sold by October 30th"
+      },
+      {
+       "who": "You",
+       "text": "hit that 30 units"
+      },
+      {
+       "who": "Mercy Wairimu",
+       "text": "My target is 30 units"
+      },
+      {
+       "who": "Mercy Wairimu",
+       "text": "We're all aiming for that 120 total as a team."
+      },
+      {
+       "who": "Joseph Kariuki",
+       "text": "My goal is to hit my target of 30 units, absolutely."
+      },
+      {
+       "who": "Peter Njoroge",
+       "text": "contribute to our target of 120 units"
+      },
+      {
+       "who": "Peter Njoroge",
+       "text": "I'm aiming for around 30 units, like everyone else."
+      },
+      {
+       "who": "Grace Achieng",
+       "text": "a price of KES 4,800 per unit for orders of 10 or more."
+      },
+      {
+       "who": "Grace Achieng",
+       "text": "Mr. Kiprop would need to accept the proposal and either provide proof of payment or a signed order for the 20 units."
+      },
+      {
+       "who": "Joseph Kariuki",
+       "text": "Our units are KES 5,000"
+      },
+      {
+       "who": "Peter Njoroge",
+       "text": "either proof of payment or a signed order"
+      },
+      {
+       "who": "Grace Achieng",
+       "text": "The 30 units per rep is their individual sales target."
+      },
+      {
+       "who": "Joseph Kariuki",
+       "text": "Their need is for dispensers, the owner Mr. Mutua makes the decision, and he wants 5 units if the price is KES 4,500 each."
+      },
+      {
+       "who": "Grace Achieng",
+       "text": "The target is still 30 units for each rep, so 120 total."
+      }
+     ],
+     "sides": "only-the-parties",
+     "saying": "Grace Achieng said what success looks like in their own check-in, and it is in the list below. Grace Achieng has not set it as the standard yet, so nothing is measured against it. They can set it on People and setup."
+    },
+    "cascade": {
+     "isCascade": true,
+     "basis": [
+      "DECLARED",
+      "SAID_IN_THE_CHAT"
+     ],
+     "parentNamed": "120 target will come from deals like Lavington Business Park",
+     "teamsNamed": [
+      "per"
+     ],
+     "why": "The objectives here are held as part of 120 target will come from deals like Lavington Business Park. What is shown below is whether the parts add up to it, not how any team is doing."
+    },
+    "myTimeframe": null,
+    "briefStandard": "We sell water dispensers to hotels, supermarkets, offices and shops in Nairobi at KES 5,000 a unit.",
+    "correctable": false,
+    "whyNotCorrectable": "Corrections to this session closed on 19 October 2026, 7 days after the report went out. Anything you want to add goes in your next check-in, where it is recorded as a change rather than as a correction.",
+    "counting": [
+     {
+      "who": "Peter Njoroge",
+      "isYou": false,
+      "answered": true,
+      "hasShownTheirs": false
+     },
+     {
+      "who": "Grace Achieng",
+      "isYou": false,
+      "answered": true,
+      "hasShownTheirs": false
+     },
+     {
+      "who": "Kevin Omondi",
+      "isYou": true,
+      "answered": true,
+      "hasShownTheirs": false
+     },
+     {
+      "who": "Joseph Kariuki",
+      "isYou": false,
+      "answered": false,
+      "hasShownTheirs": false
+     },
+     {
+      "who": "Mercy Wairimu",
+      "isYou": false,
+      "answered": true,
+      "hasShownTheirs": false
+     }
+    ],
+    "waitingToBeLetIn": null,
+    "everybodyHasShownTheirs": false,
+    "released": true,
+    "releasedSessions": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    "iHaveShownMine": false,
+    "patterns": [],
+    "coaching": {
+     "aboutYou": [],
+     "showingUp": null,
+     "whyItMatters": "This is session 7 of 15 of this work. Nothing has come up often enough yet to be called a pattern.",
+     "beforeNextTime": [
+      "Put a reply to my calls in writing, with the date you need it by."
+     ],
+     "general": true,
+     "role": {
+      "label": "What you said",
+      "onTrack": "What you said can be checked later, because it has a date, a number or a name on it. You also say what you did about anything that stalled.",
+      "goingWrong": "What you said is hard to check later: it has no dates, numbers or names, or things were named and not carried through.",
+      "protectAgainst": "A short account does not mean a weak one; little may have happened yet or nobody may have asked the right question.",
+      "noticed": null,
+      "lookingLike": null
+     },
+     "whyNoRoleMap": "No role was given, so this is about where you are in the check-in rather than about a kind of work."
+    },
+    "pictureLines": [
+     "This is what changed since the last round. The status of a key 10-unit deal is described differently by two people. There are conflicting descriptions of how Grace Achieng's sales contribute to the team's 120-unit target. Those were a difference last time, and they are no longer showing as one. There is a difference in how sales are being counted towards the goal. The price of a dispenser is not being applied consistently. These are new this round.",
+     "The objective is 120 solds, and the individual numbers on record add up to 120, which is exactly the objective.",
+     "4 of 5 people have answered this session. There is enough here to talk about, and not enough to settle anything.",
+     "Grace Achieng and Peter Njoroge are waiting on Grace Achieng for 4 things, starting with updates from the reps on their deals, with no escalation on record."
+    ],
+    "picture": [
+     {
+      "key": "moved",
+      "text": "This is what changed since the last round. The status of a key 10-unit deal is described differently by two people. There are conflicting descriptions of how Grace Achieng's sales contribute to the team's 120-unit target. Those were a difference last time, and they are no longer showing as one. There is a difference in how sales are being counted towards the goal. The price of a dispenser is not being applied consistently. These are new this round."
+     },
+     {
+      "key": "numbers",
+      "text": "The objective is 120 solds, and the individual numbers on record add up to 120, which is exactly the objective."
+     },
+     {
+      "key": "basis",
+      "text": "4 of 5 people have answered this session. There is enough here to talk about, and not enough to settle anything."
+     },
+     {
+      "key": "block-unkinded",
+      "text": "Grace Achieng and Peter Njoroge are waiting on Grace Achieng for 4 things, starting with updates from the reps on their deals, with no escalation on record."
+     }
+    ],
+    "finding": {
+     "key": "numbers",
+     "text": "The objective is 120 solds, and the individual numbers on record add up to 120, which is exactly the objective.",
+     "basis": "4 of 5 people have answered this session. There is enough here to talk about, and not enough to settle anything.",
+     "wouldHaveSurfaced": "The next time this would have come up on its own is the end of this run, 9 check-ins away."
+    },
+    "sharedPicture": "This is what changed since the last round. The status of a key 10-unit deal is described differently by two people. There are conflicting descriptions of how Grace Achieng's sales contribute to the team's 120-unit target. Those were a difference last time, and they are no longer showing as one. There is a difference in how sales are being counted towards the goal. The price of a dispenser is not being applied consistently. These are new this round. The objective is 120 solds, and the individual numbers on record add up to 120, which is exactly the objective. 4 of 5 people have answered this session. There is enough here to talk about, and not enough to settle anything. Grace Achieng and Peter Njoroge are waiting on Grace Achieng for 4 things, starting with updates from the reps on their deals, with no escalation on record.",
+    "pictureBasis": "engines",
+    "whyNoQuestion": null,
+    "direction": null,
+    "whatWentQuiet": "12 things people were waiting on have not been raised since. They may be resolved; nobody has said so.",
+    "writtenPicture": null,
+    "takenAt": null,
+    "amendedAt": null,
+    "amendedNote": null,
+    "showsEverybody": true,
+    "releaseOneSalesReport": true,
+    "forYouToThinkAbout": "Roysambu Gym said yes on 19 October, but nothing on record says they have paid yet. What would help you get the payment this week?",
+    "yourOwnReport": {
+     "didWell": [],
+     "story": "Roysambu Gym is your third sale, 49 of your 30 units.",
+     "toldUs": [
+      {
+       "text": "Ngong Road Minimart wants 5 units. Ali confirmed it.",
+       "how": null,
+       "mark": "said"
+      },
+      {
+       "text": "Ngong Road Minimart's 5 units are to be paid on delivery on Wednesday.",
+       "how": null,
+       "mark": "said"
+      },
+      {
+       "text": "You can get you the signed order from Roysambu Gym.",
+       "how": null,
+       "mark": "said"
+      },
+      {
+       "text": "You’ll call the new leads you have for hotels in the CBD.",
+       "how": null,
+       "mark": "said"
+      },
+      {
+       "text": "Roysambu Gym signed the order for 3 units today.",
+       "how": "You said this.",
+       "mark": "said"
+      },
+      {
+       "text": "Delivery for Savannah Cafe's 6 units was this morning.",
+       "how": "You said this.",
+       "mark": "said"
+      },
+      {
+       "text": "Jane paid the remaining KES 15,000 balance for the 6 Savannah Cafe units. The M-Pesa confirmation code is RCD8M1LS4W.",
+       "how": "You said this.",
+       "mark": "said"
+      }
+     ]
+    },
+    "inThisReport": {
+     "reliesOn": "There is enough here to talk about, and not enough to settle anything",
+     "eachPersonDid": "4 people, each in their own words",
+     "picture": "This is what changed since the last round",
+     "notRaisedAgain": "12 things people were waiting on have not been raised since",
+     "goodLooksLike": "16 people said it in their own words",
+     "sitsUnder": "120 target will come from deals like Lavington Business Park"
+    },
+    "switchboard": {
+     "type": "sales team",
+     "typeConfirmed": true,
+     "board": "the sales board",
+     "reports": "full"
+    }
+   }
+  },
+  "weekly": {
+   "weekStart": "2026-10-19",
+   "builtAt": "2026-10-20T05:00:00.058Z",
+   "eachPerson": [
+    {
+     "who": "You",
+     "isYou": true,
+     "says": "You sold 6 units, paid, to Savannah Cafe. You sold 40 units, paid, to Kilele Hotel. You count 3 units sold to Roysambu Gym, and nothing written shows it yet. Who decides is not on record yet for your open deal."
+    }
+   ],
+   "heading": "This week, 19 Oct, so far. Written Tuesday 20 October.",
+   "whatThisIs": "The daily reports show each day. This weekly report shows what kept happening for three check-ins in a row or more.",
+   "inNumbers": [
+    {
+     "figure": "50%",
+     "of": "of check-ins made this week",
+     "says": "5 of the 10 check-ins due this week were made."
+    },
+    {
+     "figure": "2",
+     "of": "deals moved stage",
+     "says": "2 deals moved from one stage to another this week."
+    },
+    {
+     "figure": "1",
+     "of": "sale backed by a document",
+     "says": "1 of the 2 sales closed this week has a payment record or a signed order behind it."
+    },
+    {
+     "figure": "2",
+     "of": "sales closed, 0 with proof of payment",
+     "says": "2 sales were closed this week. Proof of payment shows none of them yet. A document backs 1 more, but it does not show a payment. The other is the word of the person who closed it."
+    },
+    {
+     "figure": "0",
+     "of": "deals hit a stall rule",
+     "says": "No stall rule is set yet, so no deal is marked for going quiet."
+    }
+   ],
+   "whatThisWeekShows": [
+    "You sold 6 units, paid, to Savannah Cafe. You sold 40 units, paid, to Kilele Hotel. You count 3 units sold to Roysambu Gym, and nothing written shows it yet. Who decides is not on record yet for your open deal."
+   ],
+   "acrossTheTeam": [],
+   "threeInARow": [],
+   "saidAndProof": "One price this week is only your word: Ngong Road Minimart’s KES 25,000. Ask for a copy of the quote.",
+   "whatChanged": {
+    "moved": [
+     "Roysambu Gym bought. Nothing written shows it yet, only what you said."
+    ],
+    "dropped": [
+     "No deal was lost this week."
+    ],
+    "result": [
+     "1 sale so far this week, with no proof of payment yet."
+    ]
+   },
+   "forNextWeek": [
+    {
+     "do": "Call them.",
+     "why": "You said this week that you would do this, and it is still open.",
+     "comesFrom": "From your commitments"
+    }
+   ],
+   "inThisReport": {
+    "saidAndProof": "One price this week is only your word: Ngong Road Minimart’s KES 25,000",
+    "whatChanged": "1 sale so far this week, with no proof of payment yet"
+   }
+  }
+ }
+}

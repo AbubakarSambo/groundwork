@@ -98,7 +98,8 @@ describe('what Amani is told when she writes "finish", and about the report', ()
   it('each takes the check-in\'s own switch', () => {
     expect(src).toContain('theCheckInIsCompleteSaying(current.simplerWords)');
     expect(src).toContain('enoughToCloseSaying(current.simplerWords)');
-    expect(src).toContain('reportAsText(report, c.label, c.simplerWords)');
+    /* Changed 20 Oct 2026: and the direct morning's switch after it (email/a-direct-email.ts). */
+    expect(src).toContain('reportAsText(report, c.label, c.simplerWords, direct)');
   });
   it('and with the switch off the words are the ones always sent', () => {
     const { theCheckInIsCompleteSaying, enoughToCloseSaying } = require('../grounds/what-is-sent-in-simpler-words');

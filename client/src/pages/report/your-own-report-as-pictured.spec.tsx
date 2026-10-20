@@ -66,3 +66,34 @@ describe('your own report, on a sales check-in', () => {
     expect(await screen.findByText('Everything about this session, on 23 September. Your report first, then the team’s report.')).toBeTruthy()
   })
 })
+
+/**
+ * WITH THE DIRECT MORNING ON (Hafsah, 20 October 2026): Kevin's own report on "Sales team, Q4" carries no "Only you" tag, and the
+ * team's report, once shared, is "Shared. Open it." Who may read his own report is the server's rule, the same either way.
+ */
+describe('your own report, with the direct morning on', () => {
+  beforeEach(() => {
+    vi.mocked(conversationApi.sessionReport).mockResolvedValue({ groundId: 'g1', sessionNumber: 6, report: null, finishedAt: '2026-10-19T09:00:00.000Z' } as any)
+    vi.mocked(reportsApi.get).mockResolvedValue({} as any)
+  })
+  const ground = (on: boolean) => ({ id: 'g1', label: 'Sales team, Q4', kindOfWork: 'sales team', directMorningOn: on, participants: [{ userId: 'u-miriam', partyType: 'PARTICIPANT' }] })
+
+  it('off: "Only you", as before', async () => {
+    vi.mocked(reportsApi.sessionReport).mockResolvedValue({ released: true } as any)
+    vi.mocked(groundsApi.get).mockResolvedValue(ground(false) as any)
+    renderIt()
+    expect(await screen.findByText('Shared. Open it to read the whole team’s picture.')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Your report' })).toBeTruthy()
+    expect(screen.getByText('Only you')).toBeTruthy()
+  })
+
+  it('on: no "Only you", and the team’s report is "Shared. Open it."', async () => {
+    vi.mocked(reportsApi.sessionReport).mockResolvedValue({ released: true } as any)
+    vi.mocked(groundsApi.get).mockResolvedValue(ground(true) as any)
+    renderIt()
+    expect(await screen.findByText('Shared. Open it.')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Your report' })).toBeTruthy()
+    expect(screen.queryByText('Only you')).toBeNull()
+    expect(screen.getByText('What you did well')).toBeTruthy()
+  })
+})

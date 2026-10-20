@@ -1,5 +1,6 @@
 import { isSessionShared } from '@/lib/session-rows'
 import { useId } from 'react'
+import { useTheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useNavigate, Link } from 'react-router-dom'
 import { theClosingAfterYourFirstCheckIn } from '@/lib/the-closing-after-your-first-check-in'
@@ -53,7 +54,9 @@ const SHOW_THE_COUNT = false
 
 /** The two report cards - see the comment above where this is called for why the heading above
     it is conditional while this panel is not. */
-function OwnAndTeamReports({ checkInId, groundId, sessionNumber, aTeamReport, teamReportReleased, onCorrect, correcting }: {
+function OwnAndTeamReports({ checkInId, groundId, sessionNumber, aTeamReport, teamReportReleased, onCorrect, correcting, direct = false }: {
+  /** The direct morning (lib/the-direct-morning.tsx): no "Only you" tag. Who reads it is the backend's rule, the same either way. */
+  direct?: boolean
   checkInId: string
   groundId: string
   sessionNumber: number
@@ -67,7 +70,7 @@ function OwnAndTeamReports({ checkInId, groundId, sessionNumber, aTeamReport, te
       <div style={{ padding: '14px 16px' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap' }}>
           <h3 className="gwui-panel-text" style={{ fontWeight: 700 }}>Your own report</h3>
-          <Tag tone="plain">Only you</Tag>
+          {!direct && <Tag tone="plain">Only you</Tag>}
         </div>
         <p className="gwui-panel-text">What you said today and what it shows. Ready now.</p>
         <div style={{ marginTop: 10 }}>
@@ -172,7 +175,9 @@ export function TheDonePage({
   })
 
   const g: any = ground.data
-  const leadName = whoElseAnswers(g)
+  /* The direct morning (lib/the-direct-morning.tsx): from the page that holds this one, or from the check-in read here. */
+  const direct = useTheDirectMorning() || isTheDirectMorningOn(g)
+  const leadName = direct ? null : whoElseAnswers(g)
   const next = whenTheNextOneOpens(mine.data?.checkIns, checkInId, new Date(), mine.data)
   /*
    * RE-REVIEW: "YOUR NEXT CHECK-IN IS OPEN NOW." NEEDS A DOOR TO WALK THROUGH.
@@ -264,10 +269,10 @@ export function TheDonePage({
         */}
       {aTeamReport ? (
         <Section heading="Two reports come from this">
-          <OwnAndTeamReports checkInId={checkInId} groundId={groundId} sessionNumber={sessionNumber} aTeamReport teamReportReleased={teamReportReleased} onCorrect={() => correct.mutate()} correcting={correct.isPending} />
+          <OwnAndTeamReports direct={direct} checkInId={checkInId} groundId={groundId} sessionNumber={sessionNumber} aTeamReport teamReportReleased={teamReportReleased} onCorrect={() => correct.mutate()} correcting={correct.isPending} />
         </Section>
       ) : (
-        <OwnAndTeamReports checkInId={checkInId} groundId={groundId} sessionNumber={sessionNumber} aTeamReport={false} teamReportReleased={teamReportReleased} onCorrect={() => correct.mutate()} correcting={correct.isPending} />
+        <OwnAndTeamReports direct={direct} checkInId={checkInId} groundId={groundId} sessionNumber={sessionNumber} aTeamReport={false} teamReportReleased={teamReportReleased} onCorrect={() => correct.mutate()} correcting={correct.isPending} />
       )}
 
       {changed.length > 0 && (
@@ -305,9 +310,11 @@ export function TheDonePage({
               <span className="gwui-panel-text">{five.filter(f => f.there).length} of 5</span>
             </div>
           )}
-          <p className="gwui-panel-text">
-            Groundwork looked for these five things. It may have missed some of what you said.
-          </p>
+          {!direct && (
+            <p className="gwui-panel-text">
+              Groundwork looked for these five things. It may have missed some of what you said.
+            </p>
+          )}
           <ul style={{ listStyle: 'none', margin: '10px 0 0', padding: 0, display: 'grid', gap: 6 }}>
             {/*
               REVIEW ROUND 3, ITEM 8: THE PROTOTYPE'S SHORT ITEMS - ONE LINE EACH, WITH THE TICK
@@ -330,7 +337,7 @@ export function TheDonePage({
               </li>
             ))}
           </ul>
-          <p className="gwui-panel-text-muted" style={{ marginTop: 10 }}>This is about the check-in. Only you see it.</p>
+          {!direct && <p className="gwui-panel-text-muted" style={{ marginTop: 10 }}>This is about the check-in. Only you see it.</p>}
         </FoldedLine>
       )}
 

@@ -219,7 +219,10 @@ export function draftThePicture(i: PictureInput): Drafted[] {
        * typed, and half the time it is the THING, not a person. A name resolved from a participant
        * id is a person; a free-text label is not trusted to be one.
        */
-      const on = [...new Set(bs.map((b) => b.onIsPerson ? b.on : null).filter(Boolean))] as string[];
+      /* AND NOBODY IN THE SENTENCE WAITS ON THEMSELVES (night run 2, 20 October 2026). Grace Achieng waited on her reps and Peter Njoroge
+         waited on her, and the two waits were said as one: "Grace Achieng and Peter Njoroge are waiting on Grace Achieng for 4 things".
+         Somebody who is one of those waiting is never also who they are all waiting on; the things are still said. For everybody. */
+      const on = [...new Set(bs.map((b) => b.onIsPerson ? b.on : null).filter(Boolean))].filter((n) => !bs.some((b) => b.who === n)) as string[];
       const escalated = bs.filter((b) => b.escalated).length;
       /* The reader is "You" as a name and "you" mid-sentence. Read live as "waiting on You for". */
       const mid = (n: string) => (n === 'You' ? 'you' : n);

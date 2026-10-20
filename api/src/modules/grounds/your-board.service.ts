@@ -9,6 +9,8 @@ import { areaOfGoalOrFallback } from './the-area-of-a-goal-is-worded-once';
 import { ForbiddenException, Injectable, Optional } from '@nestjs/common';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { PrismaService } from '../prisma/prisma.service';
+import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
+import { needsSaidDirectly } from './what-needs-you';
 import { theirApprovedLeave } from '../suites/who-is-away';
 import { GroundsService } from './grounds.service';
 import { yourBoard, type YourBoard, type YourPattern } from './your-board';
@@ -48,7 +50,7 @@ export class YourBoardService {
   async forReader(
     reader: { userId: string; email: string; organizationId: string; role: string },
     askedFor?: string | null,
-  ): Promise<YourBoard & { suggestionsAboutYou?: ForThePerson[]; askedOfYou?: AskedOfYou }> {
+  ): Promise<YourBoard & { suggestionsAboutYou?: ForThePerson[]; askedOfYou?: AskedOfYou; directMorning?: boolean }> {
     if (askedFor && askedFor !== reader.userId) throw new ForbiddenException(NOT_YOURS);
     /* Judgements of a person off for this organisation: no coaching step and no pattern about the reader (organisation/person-judgements.ts). */
     const judged = await thePersonJudgementsAreOn(this.prisma, reader.organizationId);
@@ -207,6 +209,7 @@ export class YourBoardService {
      * written from your own answers, and only through the link that reads it, which is yours alone.
      */
     const ownReportsHeld = await this.theOwnReportsOfCheckInsHeldForASeat(reader);
+    const direct = await theDirectMorningIsOn(this.prisma, reader.organizationId);
     const withHeld = ownReportsHeld.length
       ? { ...board, ownReports: [...board.ownReports, ...ownReportsHeld.filter((h) => !board.ownReports.some((r) => r.to === h.to))].sort((a, b) => (b.at ?? '').localeCompare(a.at ?? '')) }
       : board;
@@ -216,6 +219,9 @@ export class YourBoardService {
       ...(aboutYou.length ? { suggestionsAboutYou: aboutYou } : {}),
       ...(asked ? { askedOfYou: asked } : {}),
       ...(patterns.length ? { patterns } : {}),
+      /* The direct morning (organisation/the-screen-is-told-the-direct-morning.ts): one yes or no for the page's fixed words. It shows nothing more. */
+      ...(direct ? { turns: needsSaidDirectly(withHeld.turns ?? []) } : {}),
+      directMorning: direct,
     };
   }
 

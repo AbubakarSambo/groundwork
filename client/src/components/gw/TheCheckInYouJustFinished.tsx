@@ -1,3 +1,4 @@
+import { useTheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -204,6 +205,8 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
     enabled: !!groundId,
     retry: false,
   })
+  /* The direct morning (lib/the-direct-morning.tsx): no privacy note, and the team's report is called the team's report. */
+  const direct = useTheDirectMorning() || isTheDirectMorningOn(ground.data)
   const mySpecificity = useQuery({
     queryKey: ['my-specificity', groundId],
     queryFn: () => groundsApi.getMySpecificity(groundId),
@@ -480,7 +483,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
           {note?.showingUp && (
             <div style={{ marginTop: 12, background: 'var(--gw-blue-bg)', borderRadius: 8, padding: '11px 13px' }}>
               {/* Navy on the blue tint, never a grey ink on a tinted ground. */}
-              <div className="gw-stamp" style={{ color: 'var(--gw-navy)', marginBottom: 6 }}>Written for you. It is not part of the shared picture.</div>
+              {!direct && <div className="gw-stamp" style={{ color: 'var(--gw-navy)', marginBottom: 6 }}>Written for you. It is not part of the shared picture.</div>}
               <p className="gw-p" style={{ margin: 0, color: 'var(--gw-navy)', maxWidth: '68ch' }}>{note.showingUp}</p>
               {note.whyItMatters && <p className="gw-small" style={{ margin: '6px 0 0', color: 'var(--gw-navy)', maxWidth: '68ch' }}>{note.whyItMatters}</p>}
               {(note.beforeNextTime ?? []).length > 0 && (
@@ -521,9 +524,11 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
               mostUseful={mySpecificity.data?.mostUseful ?? null}
               strongest={mySpecificity.data?.strongest ?? null}
             />
-            <p className="gw-small" style={{ margin: 0, color: 'var(--gw-sub)', maxWidth: '68ch' }}>
-              Yours alone. It is a read of how checkable this sitting is, not a mark on you.
-            </p>
+            {!direct && (
+              <p className="gw-small" style={{ margin: 0, color: 'var(--gw-sub)', maxWidth: '68ch' }}>
+                Yours alone. It is a read of how checkable this sitting is, not a mark on you.
+              </p>
+            )}
           </>)}
         </div>
       )}
@@ -657,7 +662,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
           {/* The date this sitting happened. A report with no date on it is a report somebody
               cannot place against anything else that was going on that week. */}
           {thisSitting?.completedAt ? `, on ${whenItWas(thisSitting.completedAt, 'dayAndMonth')}` : ''}
-          {'. Only you read this part.'}
+          {direct ? '.' : '. Only you read this part.'}
         </div>
       </div>
 
@@ -724,7 +729,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
         >
           {/* The shared half is a different report and it lives on its own page. It is not copied
               here: that copy is what made one finding reach one person on four screens. */}
-          See the shared picture for this session
+          {direct ? 'See the team’s report for this session' : 'See the shared picture for this session'}
         </button>
         {/*
           A REPORT YOU CANNOT ARGUE WITH IS A REPORT YOU STOP TRUSTING.
@@ -766,7 +771,9 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
           already scoped to `sessionNumber` above - this session's own state, not the ground's.
         */}
         <div className="gw-mini" style={{ color: 'var(--gw-sub)', maxWidth: '68ch' }}>
-          {d?.released
+          {direct
+            ? (d?.released ? 'The team’s report is shared.' : 'The team’s report is not shared yet.')
+            : d?.released
             ? 'The shared picture is open, and everyone reads the same report.'
             : 'This half is yours. The shared picture opens to everybody at the same moment.'}
         </div>

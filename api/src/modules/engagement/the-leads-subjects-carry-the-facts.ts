@@ -35,7 +35,13 @@ export function theRanOutOfTimeSubject(label: string, s: WhereItStood | null, fo
 }
 
 /** When the shared picture is ready. The lead may be given the week's two facts first; everybody else, the count. */
-export function theSharedPictureSubject(label: string, s: WhereItStood | null, facts: string | null): string {
+export function theSharedPictureSubject(label: string, s: WhereItStood | null, facts: string | null, direct = false): string {
+  /* With the direct morning on (email/a-direct-email.ts): the same facts, and "the report", never "the shared picture". */
+  if (direct) {
+    if (facts) return `${facts}, and the report for "${label}" is ready`;
+    if (s && s.ofHowMany > 1 && s.answered >= s.ofHowMany) return `All ${aNumberInWords(s.ofHowMany)} people on "${label}" have checked in, and the report is ready`;
+    return `Your report for "${label}" is ready`;
+  }
   if (facts) return `${facts}, and the shared picture for "${label}" is ready`;
   if (s && s.ofHowMany > 1 && s.answered >= s.ofHowMany) return `All ${aNumberInWords(s.ofHowMany)} people on "${label}" have checked in, and the shared picture is ready`;
   return `The shared picture for "${label}" is ready`;

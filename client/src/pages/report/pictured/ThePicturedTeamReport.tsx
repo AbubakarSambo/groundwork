@@ -1,3 +1,4 @@
+import { useTheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -35,6 +36,8 @@ const RELY: Record<string, string> = { thin: 'low', partial: 'medium', solid: 'h
 const theNoFor = (yes: string) => (/^Yes, it /.test(yes) ? 'No, it doesn’t' : 'No')
 
 export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { groundId: string; sessionNumber: number; ground: Any }) {
+  /* The direct morning (lib/the-direct-morning.tsx): no explanation of the report or of Groundwork. Who reads it is the backend's rule. */
+  const direct = useTheDirectMorning() || isTheDirectMorningOn(ground)
   const qc = useQueryClient()
   const me = useAuthStore((st) => st.user)
   const myName = [me?.firstName, (me as Any)?.lastName].filter(Boolean).join(' ').trim()
@@ -124,7 +127,7 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
         {/* faith90-team-report.jpg: the check-in's own header as the board draws it, "Your check-in" and the tabs, above the first report's note. */}
         <TheCheckInsOwnHeader groundId={groundId} ground={ground} sessionNumber={sessionNumber} label={label} />
         {lastIn && (
-          <p className="pb-updated">{`Last updated on ${aDay(lastIn.completedAt)} at ${aTime(lastIn.completedAt)}${lastInName ? `, when ${lastInName} checked in` : ''}. It only changes when something new comes in, such as a check-in, a document or a number from another system.`}</p>
+          <p className="pb-updated">{`Last updated on ${aDay(lastIn.completedAt)} at ${aTime(lastIn.completedAt)}${lastInName ? `, when ${lastInName} checked in` : ''}.${direct ? '' : ' It only changes when something new comes in, such as a check-in, a document or a number from another system.'}`}</p>
         )}
         <Panel className="pb-first-report">
           <h3 className="pb-card-h">The first team report</h3>
@@ -145,9 +148,9 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
       <div className="pb-report-head">
         <div>
           {teamsDay?.lastUpdated
-            ? <p className="pb-updated">{teamsDay.lastUpdated}</p>
+            ? <p className="pb-updated">{direct ? String(teamsDay.lastUpdated).replace(' It only changes when something new comes in, such as a check-in, a document or a number from another system.', '') : teamsDay.lastUpdated}</p>
             : lastIn && (
-              <p className="pb-updated">{`Last updated on ${aDay(lastIn.completedAt)} at ${aTime(lastIn.completedAt)}${lastInName ? `, when ${lastInName} checked in` : ''}. It only changes when something new comes in, such as a check-in, a document or a number from another system.`}</p>
+              <p className="pb-updated">{`Last updated on ${aDay(lastIn.completedAt)} at ${aTime(lastIn.completedAt)}${lastInName ? `, when ${lastInName} checked in` : ''}.${direct ? '' : ' It only changes when something new comes in, such as a check-in, a document or a number from another system.'}`}</p>
             )}
           <p className="pb-report-count">
             {`Session ${sessionNumber}. ${answered.length} of ${counting.length} people checked in.`}
@@ -267,12 +270,12 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
 
       {/* Quality pass, 18 October, T-8: on Release 1's sales check-in, what the record shows in full sentences, never the model's fragments. */}
       {teamsDay && ((teamsDay.whereTheySeeItDifferently ?? []) as string[]).length > 0 && (
-        <Section heading="Where people see it differently">
+        <Section heading={direct ? 'Where people said different things' : 'Where people see it differently'}>
           <Panel>{(teamsDay.whereTheySeeItDifferently as string[]).map((l) => <p className="gwui-panel-text" key={l}>{l}</p>)}</Panel>
         </Section>
       )}
       {!teamsDay && differences.length > 0 && (
-        <Section heading="Where people see it differently">
+        <Section heading={direct ? 'Where people said different things' : 'Where people see it differently'}>
           {/* team-report.jpg: one panel, each side in its own column, the name in bold over what they said. */}
           {differences.map((d) => (
             <Panel key={d.topic}>
@@ -332,7 +335,7 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
       {!collections && Array.isArray(rep.whatIDontKnowYet) && (
         <Panel className="pb-unknowns">
           <h3 className="pb-box-h">What I don’t know yet</h3>
-          <p className="pb-sub pb-unknowns-note">Things Groundwork can’t tell from what it has, and what it will ask next.</p>
+          {!direct && <p className="pb-sub pb-unknowns-note">Things Groundwork can’t tell from what it has, and what it will ask next.</p>}
           {(rep.whatIDontKnowYet as Any[]).length
             ? (rep.whatIDontKnowYet as Any[]).map((x, i) => (
               <div className="pb-unknown" key={i}>
@@ -340,7 +343,7 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
                 <p className="pb-sub">{x.says}</p>
               </div>
             ))
-            : <p className="gwui-panel-text">Nothing Groundwork asked for in this check-in is still waiting for an answer.</p>}
+            : <p className="gwui-panel-text">{direct ? 'Nothing asked for in this check-in is still waiting for an answer.' : 'Nothing Groundwork asked for in this check-in is still waiting for an answer.'}</p>}
         </Panel>
       )}
 
@@ -361,6 +364,8 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
  * to answer, so it is not offered here.
  */
 export function TheTeamReportIsNotSharedYet({ groundId, sessionNumber, ground }: { groundId: string; sessionNumber: number; ground: Any }) {
+  /* The direct morning (lib/the-direct-morning.tsx), as for the report itself. */
+  const direct = useTheDirectMorning() || isTheDirectMorningOn(ground)
   const me = useAuthStore((st) => st.user)
   const label = ground?.label ?? 'This check-in'
   const parties: Any[] = ground?.participants ?? []
@@ -377,7 +382,7 @@ export function TheTeamReportIsNotSharedYet({ groundId, sessionNumber, ground }:
     <Page>
       <PageTitle crumbs={[{ label: 'Check-ins', to: '/grounds' }, { label, to: `/grounds/${groundId}/board` }]} title="The team’s report isn’t shared yet" />
       {lastIn && (
-        <p className="pb-updated">{`Last updated on ${aDay(lastIn.completedAt)} at ${aTime(lastIn.completedAt)}${lastInName ? `, when ${lastInName === firstName(me?.firstName) ? 'you' : lastInName} checked in` : ''}. It only changes when something new comes in, such as a check-in, a document or a number from another system.`}</p>
+        <p className="pb-updated">{`Last updated on ${aDay(lastIn.completedAt)} at ${aTime(lastIn.completedAt)}${lastInName ? `, when ${lastInName === firstName(me?.firstName) ? 'you' : lastInName} checked in` : ''}.${direct ? '' : ' It only changes when something new comes in, such as a check-in, a document or a number from another system.'}`}</p>
       )}
       <Panel>
         <p className="gwui-panel-text">{sharing?.says ?? `${leadFirst} has not shared it yet. You’ll get an email when ${leadFirst} does.`}</p>

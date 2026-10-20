@@ -1,3 +1,4 @@
+import { TheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
 import { useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
@@ -43,7 +44,12 @@ export function MyWorkPage({ groundId, rest, onAllYourReports }: {
   if (error || !data) return <Callout tone="warning">My work could not be read just now. Try again in a moment.</Callout>
   /* The server says the switch is off: today's page, as it was handed in. */
   if (!data.on) return <>{rest}</>
-  return <ThePage groundId={groundId} served={data} onPerson={setPerson} rest={rest} onAllYourReports={onAllYourReports} />
+  /* The direct morning (lib/the-direct-morning.tsx): said once for the page and the rest of My work inside it. */
+  return (
+    <TheDirectMorning on={isTheDirectMorningOn(data)}>
+      <ThePage groundId={groundId} served={data} onPerson={setPerson} rest={rest} onAllYourReports={onAllYourReports} />
+    </TheDirectMorning>
+  )
 }
 
 const VERDICT_TONE: Record<ABehaviourRead['verdict'], 'proven' | 'attention' | 'plain'> = {

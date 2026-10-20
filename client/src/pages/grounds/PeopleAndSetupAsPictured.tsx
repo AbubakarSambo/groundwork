@@ -1,3 +1,4 @@
+import { isTheDirectMorningOn } from '@/lib/the-direct-morning'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -93,6 +94,8 @@ const remindKeyOf = (stopped: boolean, days: number[]) => stopped ? 'never' : da
 export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
   const { ground, user, id, isInitiator, isOrgAdmin, viewerIsAParty, mySessionsDone, plannedSessions } = props
   const g: any = ground
+  /* The direct morning (lib/the-direct-morning.tsx), from the check-in this page holds: no explanation of how Groundwork uses the setup. */
+  const direct = isTheDirectMorningOn(g)
   const qc = useQueryClient()
   const canEditRunOrAdmin = typeof g?.mayChangeSetup === 'boolean' ? g.mayChangeSetup === true : (isInitiator || isOrgAdmin)
   const canEditLeadOnly = isInitiator
@@ -304,7 +307,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
             )}
           </FieldRows>
           {typeServed && <Note>{typeServed.says}</Note>}
-          <Note>The scenario and kind of work decide the board, the reports, and what each check-in asks about.</Note>
+          {!direct && <Note>The scenario and kind of work decide the board, the reports, and what each check-in asks about.</Note>}
         </Panel>
       </Section>
 
@@ -394,6 +397,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
             the questions their check-in asks. Their role in your organisation is set in People.
           </Note>
           <Note>Groundwork writes to each person on WhatsApp once their number is here, and they can answer there.</Note>
+          {!direct && (
           <Note>
             {props.whoIsInThisPeersHidden
               ? 'People on this check-in answer without seeing each other. You can see who is here.'
@@ -401,6 +405,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
                 ? 'When everyone has checked in, the report shows where the team agrees, where it differs, and what to do next.'
                 : 'When everyone has checked in, the report shows where you agree, where you differ, and what to do next.'}
           </Note>
+          )}
         </Stack>
       </Section>
 

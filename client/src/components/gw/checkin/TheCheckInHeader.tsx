@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import '@/components/gw/ui/gw-ui.css'
+import { useTheDirectMorning } from '@/lib/the-direct-morning'
 
 /**
  * THE CHECK-IN'S HEADER (B3, docs/prototype/screens/B3-the-check-in/check-in-start.txt).
@@ -39,6 +40,8 @@ export function TheCheckInHeader({
   onSkip?: () => void
 }) {
   const [open, setOpen] = useState(false)
+  /* The direct morning (lib/the-direct-morning.tsx): each choice says what it does, and nothing that defends the product. */
+  const direct = useTheDirectMorning()
   const box = useRef<HTMLDivElement>(null)
 
   /* A menu that stays open after you look away covers the conversation. */
@@ -78,7 +81,7 @@ export function TheCheckInHeader({
                   className="gwui-ci-menu-item"
                 >
                   <span className="gwui-ci-menu-item-title">Stop for now</span>
-                  <span className="gwui-ci-menu-item-note">Everything you have said is saved. You can come back to it any time.</span>
+                  <span className="gwui-ci-menu-item-note">{direct ? 'You can come back to it later.' : 'Everything you have said is saved. You can come back to it any time.'}</span>
                 </button>
               )}
               {onSkip && (
@@ -89,7 +92,7 @@ export function TheCheckInHeader({
                   className="gwui-ci-menu-item"
                 >
                   <span className="gwui-ci-menu-item-title">Skip this check-in</span>
-                  <span className="gwui-ci-menu-item-note">You can say no. You will see what that means before anything is recorded.</span>
+                  {!direct && <span className="gwui-ci-menu-item-note">You can say no. You will see what that means before anything is recorded.</span>}
                 </button>
               )}
             </div>

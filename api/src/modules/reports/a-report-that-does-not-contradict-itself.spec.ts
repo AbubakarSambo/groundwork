@@ -168,7 +168,8 @@ describe('the report is written as one story', () => {
     expect(SYNTHESIS_RULES).toContain('If divergences is empty, the opening does not say anybody disagrees.');
     expect(SYNTHESIS_RULES).toContain('Never say people disagree on a point and, anywhere else, that they agree on the same point.');
     const svc = withoutComments(fs.readFileSync(path.join(__dirname, 'reports.service.ts'), 'utf8'));
-    expect(svc).toMatch(/const systemPrompt = synthesisVersion\.content \+ "\\n\\n" \+ SYNTHESIS_RULES/);
+    /* The direct morning's block may wrap it and go after it (the-direct-morning-is-written-straight); the rules still follow the stored version. */
+    expect(svc).toMatch(/const systemPrompt = (?:withTheDirectMorning\()?synthesisVersion\.content \+ "\\n\\n" \+ SYNTHESIS_RULES/);
   });
 });
 

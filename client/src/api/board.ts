@@ -203,7 +203,8 @@ export type BoardPresent = {
    * already said as a full sentence (`says`) and already ending in who else may see it (`whoSees`).
    * Present only for a participant who owns at least one such target.
    */
-  yourShare?: { objectiveId: string; says: string; whoSees: string }[]
+  /** `whoSees` is left out where the direct morning is on: no note about who else sees it. */
+  yourShare?: { objectiveId: string; says: string; whoSees?: string }[]
   /**
    * REQUEST 110 (a): the sentence to show beside an empty `yourShare` ("There is no number of yours
    * on this board yet, so there is no share to show."). Sent only when `yourShare` is `[]`.

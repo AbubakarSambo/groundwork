@@ -1,4 +1,5 @@
 import { theOrganisationsZone } from '../../common/the-organisations-own-day';
+import { aTeamMembersOpeningFor } from '../conversation/the-one-thing-today';
 import { theyAreConnectedOnWhatsApp } from '../whatsapp/connect-whatsapp';
 import { theEmailOpeningShould } from './an-opening-goes-on-one-channel';
 import { theCheckInIsOpen } from '../whatsapp/what-goes-to-a-phone';
@@ -795,6 +796,7 @@ export class GroundsCron implements OnApplicationBootstrap {
       select: {
         id: true,
         groundId: true,
+        sessionNumber: true,
         availableFrom: true,
         participant: {
           select: {
@@ -849,7 +851,9 @@ export class GroundsCron implements OnApplicationBootstrap {
           await this.prisma.checkIn.update({ where: { id: ci.id }, data: { sessionReadyNotifiedAt: now } });
           continue;
         }
-        const went = await this.email.sendSessionReady(p.email, await nameFor({ userId: p.userId, email: p.email }, ci.groundId, p.ground.label), checkInUrl, p.ground.simplerWords, missed?.lines ?? null, ci.groundId);
+        /* With the direct morning on, the one thing that matters to them today is the email's opening line and its subject (conversation/the-one-thing-today); off, or nothing specific on record, the email is today's. */
+        const personal = await aTeamMembersOpeningFor(this.prisma, { groundId: ci.groundId, participantId: p.id, sessionNumber: (ci as any).sessionNumber ?? null, now }).catch(() => null);
+        const went = await this.email.sendSessionReady(p.email, await nameFor({ userId: p.userId, email: p.email }, ci.groundId, p.ground.label), checkInUrl, p.ground.simplerWords, missed?.lines ?? null, ci.groundId, personal ? { subject: personal.subject, line: personal.text } : null);
         if (missed && went !== 'suppressed') await rememberTheMissedNoticeTold(this.prisma, missed.key, (went ?? 'sent') as any, { sender: 'sendSessionReady', to: p.email });
 
         await this.prisma.checkIn.update({ where: { id: ci.id }, data: { sessionReadyNotifiedAt: now } });
@@ -941,7 +945,12 @@ export class GroundsCron implements OnApplicationBootstrap {
         if (what === 'due-tomorrow' && (await itWasOpenedByEmailOnly(this.prisma, ci, [ci.participant.email, user?.email]))) continue;
         const who = { firstName: user?.firstName, label: await nameFor({ userId: ci.participant.userId, email: ci.participant.email }, ci.groundId, ci.ground.label) };
         let said;
-        if (catchUp) said = theCheckInIsStillOpen(who, ci.ground.simplerWords);
+        /* The opening that never reached them, again: with the direct morning on, its free message is the one thing that matters to them today (the template outside the 24 hours is unchanged). */
+        if (catchUp) {
+          said = theCheckInIsStillOpen(who, ci.ground.simplerWords);
+          const personal = await aTeamMembersOpeningFor(this.prisma, { groundId: ci.groundId, participantId: ci.participantId, sessionNumber: ci.sessionNumber, now }).catch(() => null);
+          if (personal) said = { ...said, text: personal.text };
+        }
         else if (what === 'overdue') said = itIsOverdue(who, ci.ground.simplerWords);
         else if (what === 'due-tomorrow') said = itIsDueTomorrow(who, dueAt!, ci.ground.simplerWords);
         else {
@@ -1018,6 +1027,29 @@ export class GroundsCron implements OnApplicationBootstrap {
     ).catch((err: any) => { this.logger.warn(`The leads' daily nudges could not be sent: ${err?.message}`); return { tried: 0 }; });
     if (result.tried) this.logger.log(`Lead daily nudge: ${result.tried} tried.`);
     return result;
+  }
+
+  /**
+   * THE DIRECT MORNING BY SEVEN (engagement/the-direct-morning.ts; Hafsah, 20 October 2026): every quarter hour, for the organisations whose
+   * switch is on, the lead's morning summary goes in the hour from seven where the organisation is, before the check-ins open, once a day
+   * a lead. The 9am sweep above sends it only to a lead it did not reach. Organisations with the switch off are never read here.
+   */
+  @Cron('*/15 * * * *', { timeZone: 'UTC' })
+  async sendTheDirectMorningsAtSeven() {
+    await onceAcrossCopies(this.prisma, 'direct-morning-at-seven', new Date().toISOString().slice(0, 16), () => this.sendTheDirectMorningsAtSevenInner());
+  }
+
+  async sendTheDirectMorningsAtSevenInner(now: Date = new Date()): Promise<{ tried: number }> {
+    const any = await (this.prisma as any).organization.findFirst({ where: { directMorningOn: true }, select: { id: true } }).catch(() => null);
+    if (!any) return { tried: 0 };
+    let boards: { get(groundId: string, userId: string): Promise<any> } | undefined;
+    try {
+      if (this.moduleRef) { const { BoardService } = await import('../board/board.service'); boards = this.moduleRef.get(BoardService, { strict: false }); }
+    } catch { boards = undefined; }
+    return sendTheLeadsDailyNudges(
+      { prisma: this.prisma, whatsapp: this.whatsapp as any, email: this.email as any, boards: { leave: this.leave, timeSheets: this.timeSheets, spending: this.spending }, frontendUrl: this.config.get<string>('resend.frontendUrl') || '', ...(boards ? { board: { get: (groundId: string, userId: string) => boards.get(groundId, userId) } } : {}) },
+      now, { onlyTheDirectMorningAt7: true },
+    ).catch((err: any) => { this.logger.warn(`The direct mornings could not be sent: ${err?.message}`); return { tried: 0 }; });
   }
 
   /** The old name of the job, kept so the journeys and the test bed that call it by that name still run the one morning job. */

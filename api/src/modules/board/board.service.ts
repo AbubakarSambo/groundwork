@@ -1,4 +1,6 @@
+import { theDirectMorningFor, asServedOnTheBoard } from '../engagement/the-direct-morning';
 import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
+import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { theRelease1bTabsAreOn } from '../grounds/release-1b-tabs';
 import { aLineThatSaysItHappened } from './somebody-said-it-happened';
 import { withoutTheLeadsSetUpForAMember } from '../grounds/the-leads-set-up-is-the-leads-in-the-anchor';
@@ -221,7 +223,7 @@ import { whatToCoachThisWeek } from './what-to-coach-this-week';
 import { theDayTheyMeant } from '../grounds/when-a-handoff-is-due';
 import { theStagesKept } from './a-deals-stages-are-kept';
 import { aDaySaidInFull } from './a-day-said-in-full';
-import { theStallRuleOnRecord, theStallRuleAsALine, theStallRuleDeclined, NO_STALL_RULE_YET, THE_SUGGESTED_DAYS, type TheStallRule } from './the-stall-rule';
+import { theStallRuleOnRecord, theStallRuleAsALine, theStallRuleDeclined, NO_STALL_RULE_YET, THE_SUGGESTED_DAYS, THE_STALL_RULE_ASKED, type TheStallRule } from './the-stall-rule';
 import { whenTheyPay, theUnitsOf } from './a-sales-aim-is-counted-from-the-deals';
 import { theDealsOnRecord, theAimsTheDealsCount, theSalesStages, whereAWeeklyCountStands, whatTheseDealsHold, type ACountFromTheDeals, type ADealOnRecord } from './a-sales-aim-is-counted-from-the-deals';
 import { theWaitsOnCustomersApart, theirOwnAnswersWhereTheWaitsWereSaid, withoutTheWaitsOnCustomers } from './a-customers-reply-is-on-its-deal';
@@ -452,6 +454,8 @@ export class BoardService {
     let theDealsCounted: ADealOnRecord[] = [];
     /* Release 1's sales board, switched on per organisation (release-one-sales-board). Off, the board reads as it did before it. */
     const releaseOne = await theReleaseOneSalesBoardIsOn(this.prisma, (ground as any).organizationId);
+    /* The direct morning (organisation/the-direct-morning-switch): it changes the board's own words, never who reads what. Off, as before. */
+    const direct = await theDirectMorningIsOn(this.prisma, (ground as any).organizationId).catch(() => false);
     /* The lead's answer on whether a price range counts as a budget, from how we work (a-deals-four-criteria). Release 1 only. */
     const priceRange: ARangeAnswer = releaseOne && isASalesKind((ground as any).kindOfWork) ? await thePriceRangeAnswer(this.prisma, groundId) : null;
     /* The lead's own stall rule, or none (standing decision 4, 18 October; the-stall-rule). Off Release 1, the rule the board always read. */
@@ -1523,9 +1527,12 @@ export class BoardService {
         objectiveId: o.id,
         /* On Release 1's sales board, the reader's own deals are named in it (R-5): from their own aim's count only. */
         says: theShareSays(o.name, o.count, o.target, o.direction, releaseOne && countedFromTheDeals.get(o.id) ? { ...(o.fromTheDeals ?? {}), ...(countedFromTheDeals.get(o.id) as any) } : (o.fromTheDeals ?? null)),
-        whoSees: (ground as any).whoSeesTargets === 'EVERYBODY'
-          ? 'Everybody in this check-in sees your share.'
-          : `Only you and ${(releaseOne ? (leadName ?? '').split(/\s+/)[0] : leadName) || 'the person running this check-in'} see your share.`,
+        /* With the direct morning on, no note about who else sees it: who reads it is the backend's rule, the same either way. */
+        ...(direct ? {} : {
+          whoSees: (ground as any).whoSeesTargets === 'EVERYBODY'
+            ? 'Everybody in this check-in sees your share.'
+            : `Only you and ${(releaseOne ? (leadName ?? '').split(/\s+/)[0] : leadName) || 'the person running this check-in'} see your share.`,
+        }),
       }));
       if (!mine.length) out.yourShareSays = YOU_HAVE_NO_SHARE_YET;
     }
@@ -3132,10 +3139,12 @@ export class BoardService {
        * leave. Not to an admin, a colleague or the person themselves (they read their own on Today).
        */
       if (isInitiator) {
+        /* With the direct morning on, the fact, the reason and what to do, without the lecture on what missing costs or "Groundwork will not start one by itself". */
         const missed = (await whoHasMissedCheckIns(this.prisma, [groundId]).catch(() => [] as Awaited<ReturnType<typeof whoHasMissedCheckIns>>))
-          .filter((m) => m.stand.stage >= TOLD_THE_LEAD && m.name !== SOMEONE_NAMED)
-          .map((m) => ({ participantId: m.participantId, name: m.name, text: whatTheLeadReads(m.name, m.stand), reason: m.stand.reason, suggestion: theNextStepSuggested(m.name, m.stand.stage) }));
-        if (missed.length) (out as any).missedCheckIns = missed;
+          .filter((m) => m.stand.stage >= TOLD_THE_LEAD && m.name !== SOMEONE_NAMED);
+        const missedSaid = missed
+          .map((m) => ({ participantId: m.participantId, name: m.name, text: whatTheLeadReads(m.name, m.stand, undefined, direct), reason: m.stand.reason, suggestion: theNextStepSuggested(m.name, m.stand.stage, direct) }));
+        if (missedSaid.length) (out as any).missedCheckIns = missedSaid;
       }
       const obligations = theObligations(people, mine.commitments, handoffs, sessions, reader);
       if (obligations.length) out.obligations = obligations;
@@ -3789,11 +3798,14 @@ export class BoardService {
             walled.leadActions = [...((Array.isArray(walled.leadActions) ? walled.leadActions : []) as any[]), {
               id: 'the-stall-rule',
               kind: 'decision',
-              text: NO_STALL_RULE_YET,
+              /* With the direct morning on, the question itself and what follows from it, with no "Groundwork suggests" (the-stall-rule). */
+              text: direct ? THE_STALL_RULE_ASKED : NO_STALL_RULE_YET,
               decision: {
-                question: NO_STALL_RULE_YET,
-                asked: `Do you want to drop a deal after ${THE_SUGGESTED_DAYS} working days with no answer?`,
-                why: `Groundwork suggests dropping a deal after ${THE_SUGGESTED_DAYS} working days with no answer from the customer. Until you set a rule, no deal is marked cold or dropped for going quiet.${example}`,
+                question: direct ? THE_STALL_RULE_ASKED : NO_STALL_RULE_YET,
+                asked: THE_STALL_RULE_ASKED,
+                why: direct
+                  ? `No deal is marked cold or dropped for going quiet until you set this.${example}`
+                  : `Groundwork suggests dropping a deal after ${THE_SUGGESTED_DAYS} working days with no answer from the customer. Until you set a rule, no deal is marked cold or dropped for going quiet.${example}`,
                 afterwards: 'Your answer goes in how we work.',
               },
               action: {
@@ -3847,6 +3859,14 @@ export class BoardService {
             : null,
           readerIsTheLead: isInitiator,
         });
+      }
+      /*
+       * THE DIRECT MORNING AT THE TOP (engagement/the-direct-morning.ts): for the lead who runs it, where her organisation's switch is on,
+       * the same four parts her morning summary says, in the same order, built from this board as she is served it. Never to anybody else.
+       */
+      if (isInitiator) {
+        const morning = await theDirectMorningFor(this.prisma, { groundId, leadUserId: requestingUserId, board: asServed, now }).catch(() => null);
+        if (morning) (asServed as any).theMorning = asServedOnTheBoard(morning);
       }
       /* The anchor scenario's own parts (request 149), added after every wall above: only whoever runs an anchor check-in, only with the switch on. */
       const roundOpensAt = (checkIns as any[]).filter((c) => c.sessionNumber === openRound).map((c) => c.availableFrom ?? c.startedAt).filter(Boolean).sort((a: Date, b: Date) => a.getTime() - b.getTime())[0] ?? null;

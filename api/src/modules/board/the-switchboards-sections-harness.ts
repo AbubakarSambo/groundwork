@@ -90,6 +90,8 @@ export interface Setup {
   groundRow?: Record<string, any>;
   /** Release 1's sales board switched on for the organisation (Organization.release1SalesBoardOn). Off unless a spec says so, as for every organisation. */
   releaseOneSalesBoard?: boolean;
+  /** The direct morning switched on for the organisation (Organization.directMorningOn). Off unless a spec says so. */
+  directMorning?: boolean;
 }
 
 /**
@@ -145,7 +147,7 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
     ground: model({ findUnique: jest.fn(async () => clone(ground)) }),
     user: model({ findUnique: jest.fn(async () => ({ role, organizationId: 'org-1' })) }),
     /* The organisation row, for its switches (release-one-sales-board). No row unless a spec sets one, as before. */
-    organization: model({ findUnique: jest.fn(async () => (setup.releaseOneSalesBoard === undefined ? null : { id: 'org-1', release1SalesBoardOn: setup.releaseOneSalesBoard, timeZone: null })) }),
+    organization: model({ findUnique: jest.fn(async () => (setup.releaseOneSalesBoard === undefined && setup.directMorning === undefined ? null : { id: 'org-1', release1SalesBoardOn: setup.releaseOneSalesBoard === true, directMorningOn: setup.directMorning === true, timeZone: null })) }),
     /* The session the stored report holds now is the highest anybody has finished (decision 76, item 4). */
     checkIn: model({
       findMany: jest.fn(async () => clone(checkIns)),

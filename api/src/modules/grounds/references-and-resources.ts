@@ -414,7 +414,7 @@ export async function readReferencesAndResources(
     checkInName: ground.label || 'This check-in',
     leadName,
     topLine: isLead
-      ? 'Your team’s reference for this work. They can read it, except People. Only you can add to it.'
+      ? THE_LEADS_TOP_LINE
       : `Your team’s reference for this work, kept by ${leadFirst}.`,
     mayAdd: isLead,
     itemWord: template.itemWord,
@@ -513,4 +513,20 @@ export function aLineToKeep(
     return { kind, text, audience: 'LEAD_ONLY', aboutParticipantId: who.id };
   }
   return { kind, text, audience: 'EVERYONE', aboutParticipantId: null };
+}
+
+/**
+ * REFERENCES AND RESOURCES, SAID DIRECTLY (the direct morning, Hafsah, 20 October 2026; organisation/the-direct-morning-switch.ts).
+ * Where the switch is on, the lead's top line says what the page is, with no note about who can read or add to it, and the purpose
+ * carries no line about Groundwork having written it. Which sections a reader is served is decided before this, the same either way.
+ */
+export const THE_LEADS_TOP_LINE = 'Your team’s reference for this work. They can read it, except People. Only you can add to it.';
+export function referencesSaidDirectly<T>(served: T): T {
+  const s: any = served;
+  if (!s || typeof s !== 'object' || s.on !== true) return served;
+  return {
+    ...s,
+    ...(s.topLine === THE_LEADS_TOP_LINE ? { topLine: 'Your team’s reference for this work.' } : {}),
+    ...(s.about && typeof s.about.whose === 'string' && /^Groundwork wrote this from /.test(s.about.whose) ? { about: { ...s.about, whose: null } } : {}),
+  } as T;
 }

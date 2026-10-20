@@ -15,7 +15,7 @@ const invite = strip(readFileSync(join(__dirname, '..', '..', '..', '..', 'clien
 describe('the report-ready mail', () => {
   it('gives a participant with no password their invite link with the report as next, and everybody else the report', () => {
     /* The mails moved out of release() into tellThemTheReportIsReady, and link to the round's page. */
-    const tell = reports.slice(reports.indexOf('async tellThemTheReportIsReady('), reports.indexOf('async tellThemTheReportIsReady(') + 4000);
+    const tell = reports.slice(reports.indexOf('async tellThemTheReportIsReady('), reports.indexOf('async tellThemTheReportIsReady(') + 5000);
     expect(tell).toMatch(/p\.user\?\.passwordHash \|\| !p\.inviteToken\s*\? `\$\{frontend\}\/grounds\/\$\{groundId\}\/session\/\$\{sessionNumber\}`\s*: `\$\{frontend\}\/invite\?token=\$\{p\.inviteToken\}&next=\$\{encodeURIComponent\(`\/grounds\/\$\{groundId\}\/session\/\$\{sessionNumber\}`\)\}`/);
     /* Decision 53 (29 September 2026) added a fourth argument: the sentence naming who shared the
        report, when it was not the lead - see who-shared-it-because-the-lead-left.ts. */
@@ -24,8 +24,9 @@ describe('the report-ready mail', () => {
        finding where there is one. The link, the sentence naming who shared it and the check-in are the same. */
     /* Changed again on 8 October (request 198): the call also carries the way into Ask about the finding, `chat`, only where there is a finding and the person signs in with a password. */
     /* Changed 19 October (messages test, finding 2): the call also passes who checked in for the picture; the link is still linkFor(p). */
-    expect(tell).toMatch(/sendReportReady\(p\.email, ground\.label, linkFor\(p\), sharedByAnAdminSentence, ground\.id, subject, insight\?\.lines, chat, whoCheckedIn\)/);
-    expect(tell).toMatch(/await this\.theReportReadySubject\(ground, p\)/);
+    /* Changed 20 Oct 2026: the direct morning's switch, read once for the check-in, goes last (email/a-direct-email.ts). */
+    expect(tell).toMatch(/sendReportReady\(p\.email, ground\.label, linkFor\(p\), sharedByAnAdminSentence, ground\.id, subject, insight\?\.lines, chat, whoCheckedIn, direct\)/);
+    expect(tell).toMatch(/await this\.theReportReadySubject\(ground, p, direct\)/);
     /* And release() sends through it, not on its own. */
     const release = reports.slice(reports.indexOf('async release('), reports.indexOf('async tellThemTheReportIsReady('));
     expect(release).toContain('await this.tellThemTheReportIsReady(groundId, roundNow, undefined, sharedBecauseLeadLeft?.sentence)');

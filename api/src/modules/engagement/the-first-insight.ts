@@ -102,7 +102,11 @@ const cutLabel = (label: string, max: number) => (label.length <= max ? label : 
  * The insight for one reader from the report they are served. Null where the report has nothing settled and nothing open yet (it is still forming, or
  * nobody has said enough to name either), so nothing is claimed.
  */
-export function theFirstInsight(report: any, label: string, reader: { isTheLead: boolean; simplerWords?: boolean | null }): TheInsight | null {
+/**
+ * WITH THE DIRECT MORNING ON (email/a-direct-email.ts): the finding, and what to do about it, and nothing else. No count of things settled and
+ * still open, no "a conversation worth having" before the question, and "the report" where it said "the shared picture". Off, as it was.
+ */
+export function theFirstInsight(report: any, label: string, reader: { isTheLead: boolean; simplerWords?: boolean | null; direct?: boolean }): TheInsight | null {
   const stand = report?.whereThingsStand;
   if (!stand || report?.withheldUntilYouAnswer) return null;
   const settled = Array.isArray(stand.settled) ? stand.settled.length : Number(stand.agreed) || 0;
@@ -113,17 +117,18 @@ export function theFirstInsight(report: any, label: string, reader: { isTheLead:
   const name = cutLabel(label, 60);
   const ordered = nameableFirst(open);
   const noneNameable = open.length > 0 && isAStandIn(ordered[0]);
-  const theCount = (l: string) => `The shared picture for "${l}" found ${aNumberInWords(open.length)} ${open.length === 1 ? 'difference' : 'differences'} still open`;
+  const direct = reader.direct === true;
+  const theCount = (l: string) => `${direct ? 'The report' : 'The shared picture'} for "${l}" found ${aNumberInWords(open.length)} ${open.length === 1 ? 'difference' : 'differences'} still open`;
   if (open.length) lines.push(noneNameable ? `${theCount(name)}.` : firstOpenSaid(name, ordered, true));
-  else lines.push(`${capital(aNumberInWords(settled))} ${settled === 1 ? 'thing' : 'things'} in "${name}" ${settled === 1 ? 'is' : 'are'} settled, and none are still open.`);
-  if (open.length) {
+  else lines.push(direct ? `Nothing in the report for "${name}" is still open.` : `${capital(aNumberInWords(settled))} ${settled === 1 ? 'thing' : 'things'} in "${name}" ${settled === 1 ? 'is' : 'are'} settled, and none are still open.`);
+  if (open.length && !direct) {
     lines.push(
       `${capital(aNumberInWords(settled))} ${settled === 1 ? 'thing is' : 'things are'} settled and ${aNumberInWords(open.length)} ${open.length === 1 ? 'is' : 'are'} still open.`,
     );
   }
   const question = whatEachPersonSaid(String(report?.theConversationWorthHaving ?? '').replace(/\s+/g, ' ').trim());
   /* What the report writes about one finding can say it in all three places; a line that repeats one already in the mail is left out (a-sentence-said-twice.ts). */
-  if (question && !lines.some((l) => saysTheSame(l, question))) lines.push(`${theConversationWorthHavingSaying(reader.simplerWords)} ${question}`);
+  if (question && !lines.some((l) => saysTheSame(l, question))) lines.push(direct ? (/[.!?]$/.test(question) ? question : `${question}.`) : `${theConversationWorthHavingSaying(reader.simplerWords)} ${question}`);
 
   if (reader.isTheLead && open.length) {
     /* What would settle the one named first, never a stand-in's. */

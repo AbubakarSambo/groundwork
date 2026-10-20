@@ -1,10 +1,13 @@
+import { withTheDirectMorningSaid } from '../organisation/the-screen-is-told-the-direct-morning';
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BoardService } from './board.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CurrentUser } from '../../common';
 import { withoutComparisonsAnywhere } from '../reports/no-comparison-between-people';
-import { readMyWork } from './my-work';
+import { theDirectMorningIsOnFor } from '../organisation/the-direct-morning-switch';
+import { inTheDirectMorningsWords } from '../reports/the-direct-morning-says-the-fact';
+import { readMyWork, myWorkSaidDirectly } from './my-work';
 
 /**
  * MY WORK (Release 1B, pull request 3 of 3): one person's page in one check-in, served to that person or to the lead alone.
@@ -21,6 +24,10 @@ export class MyWorkController {
   @Get()
   @ApiOperation({ summary: 'My work: one person’s page in this check-in, for that person or the lead (Release 1B)' })
   async get(@Param('id') id: string, @CurrentUser('id') userId: string, @Query('person') person?: string) {
-    return withoutComparisonsAnywhere(await readMyWork(this.prisma as any, this.board, { groundId: id, userId, personId: person || null }));
+    /* The direct morning: the product's own hedges say the fact or nothing, as served (reports/the-direct-morning-says-the-fact.ts). Off, as before. */
+    const on = await theDirectMorningIsOnFor(this.prisma, id);
+    /* And the page is told it, as one yes or no for its fixed words (organisation/the-screen-is-told-the-direct-morning.ts). */
+    const served = withoutComparisonsAnywhere(await readMyWork(this.prisma as any, this.board, { groundId: id, userId, personId: person || null }));
+    return withTheDirectMorningSaid(on ? myWorkSaidDirectly(inTheDirectMorningsWords(served, on)) : served, on);
   }
 }
