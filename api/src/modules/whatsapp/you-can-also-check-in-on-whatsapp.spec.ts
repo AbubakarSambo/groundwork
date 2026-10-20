@@ -21,9 +21,10 @@ function aWorld(o: { on?: boolean; keptInTheApp?: boolean; wrote?: boolean } = {
     platformSetting: { findUnique: jest.fn(async ({ where }: any) => (where.key === 'whatsapp_enabled' ? { value: true } : null)) },
     organization: { findUnique: jest.fn(async () => ({ whatsappAddOnOn: o.on ?? true, whatsappFreeUntil: null })) },
     whatsAppConnection: { findUnique: jest.fn(async () => null) },
-    person: { findFirst: jest.fn(async () => ({ phone: null, whatsappLastInboundAt: o.wrote ? new Date() : null })) },
+    /* "She already writes from her number": her number on the roster, and a message that came from it (Drop Access, 21 October: a stamp alone, with no number, is not writing from one). */
+    person: { findFirst: jest.fn(async () => ({ phone: o.wrote ? '+254700000009' : null, whatsappLastInboundAt: o.wrote ? new Date() : null })), findMany: jest.fn(async () => (o.wrote ? [{ phone: '+254700000009' }] : [])) },
     user: { findUnique: jest.fn(async () => ({ phoneNumber: null })) },
-    whatsAppInboundMessage: { findFirst: jest.fn(async () => null) },
+    whatsAppInboundMessage: { findFirst: jest.fn(async () => (o.wrote ? { messageId: 'ours:+254700000009:wamid.1' } : null)) },
     ground: {
       findUnique: jest.fn(async () => ({ organizationId: 'org-1', overWhatsApp: o.keptInTheApp ? false : null })),
       findMany: jest.fn(async () => [{ overWhatsApp: o.keptInTheApp ? false : null }]),

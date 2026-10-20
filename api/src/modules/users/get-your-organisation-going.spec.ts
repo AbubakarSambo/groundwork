@@ -34,7 +34,7 @@ describe('the checklist\'s facts', () => {
   });
 
   it('WhatsApp switched on in Groundwork, and the organisation\'s own number connected', async () => {
-    const { service } = make({ whatsappOn: true, wa: { enabled: true } })
+    const { service } = make({ whatsappOn: true, wa: { enabled: true, phoneNumberId: '109822345561', accessToken: 't', appSecret: 's', verifyToken: 'v', webhookVerifiedAt: new Date('2026-10-01') } as any })
     expect(await service.rolloutFacts('o1', 'u1')).toMatchObject({ whatsappOn: true, whatsappConnected: true });
   });
 

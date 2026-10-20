@@ -3,7 +3,7 @@ import { aTeamMembersOpeningFor } from '../conversation/the-one-thing-today';
 import { theSameWordsAgain, rememberTheWords, writeDownTheSkip } from '../engagement/never-the-same-words-twice';
 import { isHeldForTheNight } from '../whatsapp/quiet-hours-are-the-organisations';
 import { theyAreConnectedOnWhatsApp } from '../whatsapp/connect-whatsapp';
-import { theEmailOpeningShould } from './an-opening-goes-on-one-channel';
+import { theEmailOpeningShould, whatBecameOfIt, THE_WHATSAPP_OPENING_MAY_TAKE_MS } from './an-opening-goes-on-one-channel';
 import { theCheckInIsOpen } from '../whatsapp/what-goes-to-a-phone';
 import { Injectable, Logger, OnApplicationBootstrap, Optional } from '@nestjs/common';
 import { owesThisSession } from './the-lead-checks-in-when-they-choose';
@@ -842,8 +842,19 @@ export class GroundsCron implements OnApplicationBootstrap {
         /* Hafsah, 14 October (later): for somebody on WhatsApp, the missed-check-ins notice goes in their WhatsApp check-in too,
            never by email. It stays on Today, and is said before the first question once they reply (whatsapp-for-an-organisation). */
         if (await theyAreConnectedOnWhatsApp(this.prisma, { organizationId: (p.ground as any).organizationId, userId: p.userId, email: p.email })) {
-          await this.prisma.checkIn.update({ where: { id: ci.id }, data: { sessionReadyNotifiedAt: now } });
-          continue;
+          /*
+           * UNLESS THE WHATSAPP OPENING DID NOT GO (Drop Access, 21 October). Somebody connected was told on WhatsApp alone, so when Meta
+           * refused that opening they were told nothing at all. Now: it went, or is held for the night, and no email goes; it is still
+           * on its way, and the email waits for the next sweep (half an hour at most); it was tried and did not go, and the email goes.
+           */
+          const tried: any[] = await Promise.resolve(this.prisma.whatsAppSend.findMany({ where: { checkInId: ci.id, kind: { startsWith: 'checkin-open' } }, select: { kind: true, sentAt: true } })).catch(() => []);
+          const became = whatBecameOfIt(Array.isArray(tried) ? tried : []);
+          const since = (ci as any).availableFrom ? new Date((ci as any).availableFrom).getTime() : now.getTime();
+          if (became === 'not-yet' && now.getTime() - since < THE_WHATSAPP_OPENING_MAY_TAKE_MS) continue;
+          if (became !== 'did-not-go') {
+            await this.prisma.checkIn.update({ where: { id: ci.id }, data: { sessionReadyNotifiedAt: now } });
+            continue;
+          }
         }
         /* ONE CHANNEL FOR EVERY OPENING (release plan Part 0; Drop Access run 1, item 10): when the WhatsApp opening went, or is held
            for the night, no email goes; while it is still on its way the email waits for the next sweep. See an-opening-goes-on-one-channel. */
@@ -1362,16 +1373,18 @@ export class GroundsCron implements OnApplicationBootstrap {
       try {
         const g = ci.participant.ground;
         if (keptOffThePhone(g) || !turnedOn.has(g.organizationId) || !ci.participant.email) continue;
-        const before = await this.prisma.whatsAppSend.findFirst({ where: { checkInId: ci.id, kind: { startsWith: 'checkin-open' } }, select: { id: true } });
-        if (before) continue;
         /* One number for a person: the roster's, or else the one on their sign-in (an admin saving it on People writes there). */
         const person = await this.prisma.person.findFirst({
-          where: { organizationId: g.organizationId, email: { equals: ci.participant.email, mode: 'insensitive' }, active: true },
+          where: { organizationId: g.organizationId, email: { equals: ci.participant.email, mode: 'insensitive' }, active: true, phone: { not: null } },
+          orderBy: { updatedAt: 'desc' },
           select: { phone: true, givenName: true },
         });
         const signIn = person?.phone ? null : await this.prisma.user.findFirst({ where: { email: { equals: ci.participant.email, mode: 'insensitive' }, deletedAt: null }, select: { phoneNumber: true, firstName: true } });
         const phone = person?.phone ?? signIn?.phoneNumber ?? null;
         if (!phone) continue;
+        /* Told once per number (Drop Access, 21 October; findings 1.4 E): an opening to a number since changed never stops the one to the new number. */
+        const before = await this.prisma.whatsAppSend.findFirst({ where: { checkInId: ci.id, kind: { startsWith: 'checkin-open' }, phone: { in: formsOfTheSameNumber(phone) } }, select: { id: true } });
+        if (before) continue;
         const said = theCheckInIsOpen({ firstName: person?.givenName ?? signIn?.firstName ?? null, label: g.label }, g.simplerWords);
         await this.whatsapp.sendFor(g.organizationId, phone, said.text, { checkInId: ci.id, kind: said.kind, params: said.params });
         sent++;

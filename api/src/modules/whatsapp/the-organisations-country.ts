@@ -13,6 +13,7 @@ type Db = {
   whatsAppConnection?: { findUnique: (q: any) => Promise<any> };
   person?: { findMany: (q: any) => Promise<any[]> };
   user?: { findMany: (q: any) => Promise<any[]> };
+  organization?: { findUnique: (q: any) => Promise<any> };
 };
 
 export async function theCountryCodeOf(db: Db, organizationId: string | null | undefined): Promise<string | null> {
@@ -32,8 +33,24 @@ export async function theCountryCodeOf(db: Db, organizationId: string | null | u
     const code = callingCodeOf(n);
     if (code) codes.add(code);
   }
-  return codes.size === 1 ? [...codes][0] : null;
+  if (codes.size === 1) return [...codes][0];
+  if (codes.size > 1) return null;
+  /*
+   * AND THE ORGANISATION'S OWN TIME ZONE, WHEN IT NAMES ONE COUNTRY (Drop Access, 21 October). Grace's first number for her team was
+   * "0712345678", and with no number kept yet it was refused, though Drop Access had set its time zone to Africa/Nairobi. A zone that
+   * is one country says the country without guessing; any other zone, or none, still asks for the whole number.
+   */
+  const org = await (db as any).organization?.findUnique?.({ where: { id: organizationId }, select: { timeZone: true } })?.catch?.(() => null);
+  return THE_COUNTRY_OF_A_ZONE[String(org?.timeZone ?? '').trim()] ?? null;
 }
+
+/** Time zones that are one country, and that country's calling code. Only these; a zone shared by several countries says nothing. */
+export const THE_COUNTRY_OF_A_ZONE: Record<string, string> = {
+  'Africa/Nairobi': '254', 'Africa/Lagos': '234', 'Africa/Kampala': '256', 'Africa/Dar_es_Salaam': '255', 'Africa/Kigali': '250',
+  'Africa/Accra': '233', 'Africa/Addis_Ababa': '251', 'Africa/Johannesburg': '27', 'Africa/Cairo': '20', 'Africa/Lusaka': '260',
+  'Africa/Harare': '263', 'Africa/Kinshasa': '243', 'Africa/Dakar': '221', 'Africa/Abidjan': '225', 'Africa/Casablanca': '212',
+  'Europe/London': '44', 'Europe/Dublin': '353', 'Europe/Paris': '33', 'Europe/Berlin': '49', 'Asia/Kolkata': '91', 'Asia/Dubai': '971',
+};
 
 /**
  * A NUMBER SOMEBODY TYPED, IN THE ONE STORED FORM, OR A PLAIN SENTENCE SAYING WHAT TO WRITE. Used

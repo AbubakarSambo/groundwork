@@ -177,9 +177,11 @@ export class ScimService {
      * refused with a sentence before anything is written; otherwise the sign-in follows the roster below.
      */
     const phoneChanged = 'phone' in data && (data.phone ?? null) !== (prior?.phone ?? null);
+    /* The "last wrote" stamp was about the old number (Drop Access, 21 October; findings 1.4 D). */
+    if (phoneChanged && prior) data.whatsappLastInboundAt = null;
     if (phoneChanged && data.phone) {
       const own = await theSignInOf(this.prisma, { organizationId, linkedUserId: prior?.linkedUserId ?? null, email: data.email ?? prior?.email ?? null });
-      await refuseANumberOnSomebodyElse(this.prisma, data.phone, own?.id ?? null);
+      await refuseANumberOnSomebodyElse(this.prisma, data.phone, own?.id ?? null, organizationId);
     }
 
     const row = prior

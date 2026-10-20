@@ -118,6 +118,12 @@ export interface WhatsAppConnection {
    */
   keysNeedTypingAgain?: boolean
   keysNeedTypingAgainSays?: string | null
+  /**
+   * WHETHER THIS IS THE NUMBER IN USE (Drop Access, 21 October 2026). A row switched on but half set up, or never proven by Meta
+   * or a message, is not: Groundwork's own number is. `notInUseSays` is the served sentence, to show word for word.
+   */
+  inUse?: boolean
+  notInUseSays?: string | null
 }
 
 /** The counts on the Connections page (U.18). Counts only, and admins only, on the server. */
