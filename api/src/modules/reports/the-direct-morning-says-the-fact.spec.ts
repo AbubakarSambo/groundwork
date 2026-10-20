@@ -44,7 +44,7 @@ const THE_HEDGES = [
   /It is worth confirming/, /not enough to settle anything/, /It doesn[’']t choose/, /It is not a promise/,
   /Nothing on record holds each contact with the customer/, /somebody spoke about it/, /It rests on what somebody said/,
   /Groundwork does not keep this yet/, /Groundwork does not know what kind of work/, /Groundwork does not follow an issue/,
-  /see this differently/, /nobody can assume it is agreed/, /are settled, and .* still open/, /is settled, and .* still open/,
+  /see this differently/, /described differently/, /described in \w+ different ways/, /nobody can assume it is agreed/, /are settled, and .* still open/, /is settled, and .* still open/,
   /The parts? that changed (?:were|was)[^.]*the shared picture/,
 ];
 
@@ -149,6 +149,13 @@ describe('every sentence the code writes for these places is one the direct morn
     expect(saidTheDirectWay(whoSeesThisDifferently(['a colleague', 'Grace Achieng'], null))).toBe('People said different things about this.');
     expect(saidTheDirectWay('It rests on what somebody said, with no proof yet.')).toBe('There is no proof yet.');
     expect(saidTheDirectWay(whoSeesThisDifferently(['Kevin Omondi', 'Grace Achieng', 'Joseph Kariuki'], 'Kevin Omondi'))).toBe('You, Grace Achieng and Joseph Kariuki said different things about this.');
+  });
+
+  it('a difference the report\'s writer named "described differently", as stored before the direct block', () => {
+    expect(saidTheDirectWay('The status of a key 10-unit deal is described differently by two people.')).toBe('The status of a key 10-unit deal is not agreed.');
+    expect(saidTheDirectWay('The payment status of fee note FN-004 for Kasarani Foods is described in three different ways.')).toBe('There are three different accounts of the payment status of fee note FN-004 for Kasarani Foods.');
+    expect(saidTheDirectWay('The payment status of fee note FN-004 for Kasarani Foods is described differently by different people. Njeri Wambui, you and Brian Otieno said different things about this, so nobody can assume it is agreed.'))
+      .toBe('The payment status of fee note FN-004 for Kasarani Foods is not agreed. Njeri Wambui, you and Brian Otieno said different things about this.');
   });
 
   it('a person\'s own words are never rewritten, even where they happen to match', () => {

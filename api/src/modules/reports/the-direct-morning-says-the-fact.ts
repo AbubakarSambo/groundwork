@@ -29,6 +29,9 @@ export const THE_DIRECT_MORNINGS_WORDS: ARewrite[] = [
   /* reports/confidence-in-the-picture.ts */
   { find: /This is the picture as it stands, from what has been said so far\. It is not a verdict, and the next session can change any part of it\./g, put: '' },
   { find: /Described differently by more than one person( \(session \d+\))?\. People said different things about it, so it is not settled\./g, put: 'People said different things about this$1.' },
+  /* A difference the report's writer named before the direct block, as stored: "The status of the deal is described differently by two people." */
+  { find: /\bThe ([^.]*?) (is|are) described differently(?: by (?:two|three|four|five|six|different|several|more than one) people)?\./g, put: (_all: string, thing: string, verb: string) => `The ${thing} ${verb} not agreed.` },
+  { find: /\bThe ([^.]*?) (?:is|are) described in (two|three|four|five|six) different ways\./g, put: (_all: string, thing: string, n: string) => `There are ${n} different accounts of the ${thing}.` },
   /* reports/the-weekly-sentence-about-each-person.ts */
   { find: /, but gave no next step or date, so it is not yet clear what happens next\./g, put: ', and gave no next step or date.' },
   { find: /, but named no ([^.,]+), so it is not yet clear who it is for\./g, put: ', and named no $1.' },
