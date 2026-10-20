@@ -7,7 +7,7 @@ import { CurrentUser } from '../../common';
 import { withoutComparisonsAnywhere } from '../reports/no-comparison-between-people';
 import { theDirectMorningIsOnFor } from '../organisation/the-direct-morning-switch';
 import { inTheDirectMorningsWords } from '../reports/the-direct-morning-says-the-fact';
-import { readMyWork } from './my-work';
+import { readMyWork, myWorkSaidDirectly } from './my-work';
 
 /**
  * MY WORK (Release 1B, pull request 3 of 3): one person's page in one check-in, served to that person or to the lead alone.
@@ -27,6 +27,7 @@ export class MyWorkController {
     /* The direct morning: the product's own hedges say the fact or nothing, as served (reports/the-direct-morning-says-the-fact.ts). Off, as before. */
     const on = await theDirectMorningIsOnFor(this.prisma, id);
     /* And the page is told it, as one yes or no for its fixed words (organisation/the-screen-is-told-the-direct-morning.ts). */
-    return withTheDirectMorningSaid(inTheDirectMorningsWords(withoutComparisonsAnywhere(await readMyWork(this.prisma as any, this.board, { groundId: id, userId, personId: person || null })), on), on);
+    const served = withoutComparisonsAnywhere(await readMyWork(this.prisma as any, this.board, { groundId: id, userId, personId: person || null }));
+    return withTheDirectMorningSaid(on ? myWorkSaidDirectly(inTheDirectMorningsWords(served, on)) : served, on);
   }
 }

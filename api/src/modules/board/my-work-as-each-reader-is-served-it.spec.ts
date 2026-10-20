@@ -1,5 +1,5 @@
 import { ForbiddenException } from '@nestjs/common';
-import { readMyWork, myWorkFrom, THE_LEADS_NOTE_SHOWS_ON_THEIR_OWN_MY_WORK, type MyWorkServed } from './my-work';
+import { readMyWork, myWorkFrom, myWorkSaidDirectly, THE_LEADS_NOTE_SHOWS_ON_THEIR_OWN_MY_WORK, type MyWorkServed } from './my-work';
 import { THE_SEVEN_BEHAVIOURS } from '../patterns/the-seven-behaviours';
 
 /**
@@ -296,5 +296,50 @@ describe('My work, with judgements of a person off for Drop Access', () => {
     const page = (await readMyWork(c.prisma, c.board, { groundId: 'g-sales', userId: 'u-mercy' }, NOW)) as MyWorkServed;
     expect(page.judgements).toBeUndefined();
     expect(page.performing.behaviours).toHaveLength(7);
+  });
+});
+
+/**
+ * GRACE ON HER OWN PAGE IS "YOU" (night run 2, 20 October 2026). Grace runs "Sales team, Q4" and checks in herself. Her own page said
+ * "Grace sees this page too." and "Lines show here from Grace’s coaching for the team" to Grace. Fixed for everybody: nobody else is
+ * named on her own page. Mercy's own page still names Grace, and Grace on Mercy's page still names Mercy.
+ */
+describe('My work, the lead on her own page', () => {
+  const base = { reader: 'self' as const, person: { participantId: 'p-grace', name: 'Grace Achieng', firstName: 'Grace' }, leadFirst: 'Grace', kindOfWork: 'sales org', items: [], commitments: [], waitsOnThem: [], raised: [], credits: [], checkIns: [], ownLines: [], patterns: [], teamCoaching: ['Book the next step before you leave'], helpWith: null, target: null, now: NOW, timeZone: 'Africa/Nairobi' };
+
+  it('Grace reads her own page as "you", with nobody named as also seeing it', () => {
+    const page = myWorkFrom({ ...base, readerRunsIt: true }, 'Sales team, Q4');
+    expect(page.topLine).toBe('What you need to do, what you’ve done, and how to get better.');
+    expect(page.coaching.better[0].from).toBe('Your coaching for the team');
+  });
+
+  it('a team member’s own page still names who runs it', () => {
+    const page = myWorkFrom({ ...base, person: { participantId: 'p-mercy', name: 'Mercy Wanjiru', firstName: 'Mercy' } }, 'Sales team, Q4');
+    expect(page.topLine).toBe('What you need to do, what you’ve done, and how to get better. Grace sees this page too.');
+    expect(page.coaching.better[0].from).toBe('Grace’s coaching for the team');
+  });
+});
+
+/** MY WORK, SAID DIRECTLY (the direct morning): no note about who else sees it and none about where the words come from. Off, untouched. */
+describe('myWorkSaidDirectly', () => {
+  const base = { reader: 'self' as const, person: { participantId: 'p-kevin', name: 'Kevin Omondi', firstName: 'Kevin' }, leadFirst: 'Grace', kindOfWork: 'sales org', items: [], commitments: [], waitsOnThem: [], raised: [], credits: [], checkIns: [], ownLines: [], patterns: [], teamCoaching: [], helpWith: null, target: null, now: NOW, timeZone: 'Africa/Nairobi' };
+
+  it('Kevin reads what the page is for, and no privacy note or library note', () => {
+    const page: any = { ...myWorkFrom(base, 'Sales team, Q4') };
+    expect(page.topLine).toContain('Grace sees this page too.');
+    const direct: any = myWorkSaidDirectly(page);
+    expect(direct.topLine).toBe('What you need to do, what you’ve done, and how to get better.');
+    expect(direct.performing.libraryNote).toBe('');
+    expect(direct.performing.behaviours).toEqual(page.performing.behaviours);
+    expect(direct.items).toEqual(page.items);
+  });
+
+  it('Grace on Kevin’s page reads the same, without "Kevin sees this page too."', () => {
+    const page: any = { ...myWorkFrom({ ...base, reader: 'lead' }, 'Sales team, Q4') };
+    expect((myWorkSaidDirectly(page) as any).topLine).toBe('What Kevin needs to do, what Kevin has done, and how Kevin can get better.');
+  });
+
+  it('a page that is off is passed on as it is', () => {
+    expect(myWorkSaidDirectly({ on: false })).toEqual({ on: false });
   });
 });
