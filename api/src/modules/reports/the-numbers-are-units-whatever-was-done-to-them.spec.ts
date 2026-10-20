@@ -1,5 +1,6 @@
 import { howTheNumbersSit, whatIsBeingCounted } from './do-the-parts-add-up-to-the-whole';
 import { N } from '../engagement/the-night-run-bed';
+import { draftThePicture } from './the-picture-is-drafted-from-the-reads';
 
 /**
  * THE FIRST FINDING OF THE TEAM REPORT WAS FALSE (review of 20 October 2026, "8. Reports and My work"). Drop Access's objective is
@@ -27,5 +28,11 @@ describe('Drop Access\'s numbers, as the night run stored them', () => {
     const says = howTheNumbersSit(mixed as any, 4).says!;
     expect(says).not.toMatch(/different terms|solds/);
     expect(says).toMatch(/^THE NUMBERS: the objective is 120 units, and the individual numbers on record add up to 120/);
+  });
+
+  it('and the line every reader of the team report reads says 120 units, where it said "120 solds"', () => {
+    const numbers = howTheNumbersSit(objectives as any, 4).says!;
+    const line = draftThePicture({ numbers, answered: 4, ofPeople: 5, confidence: { saying: 'There is enough here to act on.' }, patterns: [], coverage: [], contribution: [], blockers: [] } as any).find((d) => d.key === 'numbers')!.text;
+    expect(line).toBe('The objective is 120 units, and the individual numbers on record add up to 120, which is exactly the objective.');
   });
 });
