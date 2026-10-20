@@ -105,7 +105,8 @@ describe('the organisation handler', () => {
     expect(at).toBeGreaterThan(0);
     /* 700, not 600 (engine test, second run): the open path now also follows today's session when the one asked for had a round
        that had closed, which put the try a few characters further back. Still the one try around the open and the answer. */
-    const before = SRC.slice(at - 700, at);
+    /* 1100 (20 October): the words that switch are now said through theWordsOnce, and the direct morning's own opening is read on the same path. Still the one try. */
+    const before = SRC.slice(at - 1100, at);
     const after = SRC.slice(at, at + 700);
     expect(before).toMatch(/try \{/);
     expect(after).toMatch(/catch \(e: any\) \{[\s\S]*await say\(/);

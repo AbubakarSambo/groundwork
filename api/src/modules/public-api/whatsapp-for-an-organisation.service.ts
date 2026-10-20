@@ -1,3 +1,4 @@
+import { theDirectMorningIsOn, theDirectMorningIsOnFor } from '../organisation/the-direct-morning-switch';
 import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
 import { isHeldForTheNight } from '../whatsapp/quiet-hours-are-the-organisations';
 import { theMissedNoticeOnWhatsApp, rememberTheMissedNoticeTold } from '../engagement/missed-check-ins-told-first';
@@ -46,6 +47,9 @@ import { WhichNumber, anInboundKey } from '../whatsapp/one-number-per-conversati
 import {
   aStrangerHearsNothing, NOT_ONE_OF_YOURS, type WhatCameBack, type WhoHoldsTheNumber,
 } from './their-number-stays-theirs';
+
+/** The note that the words that switch were said on this number (theWordsOnce). */
+const THE_WORDS_TOLD = 'the-words-told';
 
 /**
  * WHAT HAPPENS TO A WHATSAPP MESSAGE SENT TO AN ORGANISATION'S NUMBER.
@@ -329,7 +333,7 @@ export class WhatsAppForAnOrganisationService {
     if (userId && !isAsking(thread?.checkInId) && this.aHoldHasExpired(thread)) {
       await this.forgetTheRequest(organizationId, from);
       const heldFrom = open.find((c) => c.id === thread!.checkInId);
-      if (heldFrom) await say(await this.putInTheCheckIn(heldFrom, userId, thread!.requestWords!, organizationId));
+      if (heldFrom) await say(await this.putInTheCheckIn(heldFrom, userId, thread!.requestWords!, organizationId, from));
       else await say(heldWordsNotPut(thread!.requestWords!, ask));
     }
 
@@ -357,7 +361,7 @@ export class WhatsAppForAnOrganisationService {
           const opened = await this.openIfWaiting(target, userId!);
           /* Back in a check-in already begun: the question that was waiting is asked again (B-146), not left for her to remember. */
           const waiting = opened ? null : await this.theQuestionStillWaiting(target.id, userId!);
-          await say(opened ? `${sessionHeader(target)} ${THE_WORDS(ask)}\n\n${opened}` : waiting ? `${BACK_IN(target)}\n\n${waiting}` : BACK_IN(target));
+          await say(opened ? `${sessionHeader(target)}${await this.theWordsOnce(ask, organizationId, from)}\n\n${opened}` : waiting ? `${BACK_IN(target)}\n\n${waiting}` : BACK_IN(target));
           return;
         }
         if (open.length > 1) {
@@ -425,7 +429,7 @@ export class WhatsAppForAnOrganisationService {
       if (arrived.kind === 'pick' || /^\s*\d{1,2}\s*$/.test(arrived.kind === 'text' ? arrived.text : '')) {
         /* The pick itself is not an answer. Open it if it is waiting, and say where they are. */
         const opened = await this.openIfWaiting(current, userId!);
-        await say(`${sessionHeader(current)}${opened ? ` ${THE_WORDS(ask)}\n\n${opened}` : ' Carry on where you left off.'}`);
+        await say(`${sessionHeader(current)}${opened ? `${await this.theWordsOnce(ask, organizationId, from)}\n\n${opened}` : ' Carry on where you left off.'}`);
         return;
       }
     } else if (remembered) {
@@ -451,8 +455,11 @@ export class WhatsAppForAnOrganisationService {
       try {
         /* Sent in reply during a check-in, so shared with it (Hafsah, 11 October 2026). */
         const doc: any = await this.documents.upload(ground!.groundId, userId!, { originalname: arrived.fileName, mimetype: fetched.mimeType, buffer: fetched.buffer, size: fetched.buffer.length } as any, false, arrived.caption || undefined, { sharedWithTheCheckIn: true });
-        const once = await this.sayOnceThatProofIsShared(doc, organizationId, from);
+        /* With the direct morning on (email/a-direct-email.ts): where the file went, and nothing about who can see it or how it is read. Who can see it is unchanged. */
+        const direct = await theDirectMorningIsOnFor(this.prisma, ground!.groundId);
+        const once = direct ? '' : await this.sayOnceThatProofIsShared(doc, organizationId, from);
         if (doc?.couldNotRead) { await say(`${I_COULD_NOT_OPEN_THAT_FILE}${once}`); return; }
+        if (direct) { await say(`${whatTheFileIsCalled(arrived)} is on your check-in${arrived.caption ? `, with your note "${arrived.caption.replace(/[.\s]+$/, '')}"` : ''}.`); return; }
         await say(`${whatTheFileIsCalled(arrived)} is on your check-in${arrived.caption ? ` with your note: ${arrived.caption}` : ''}.${doc?.visibility === 'OPEN' ? '' : ` ${doc?.whoCanSeeIt ?? 'Only you can see it until you say otherwise.'}`} Anything it backs up is read against what you said.${once}`);
       } catch (err: any) {
         await say(aFileProblemInWords(err));
@@ -596,7 +603,7 @@ export class WhatsAppForAnOrganisationService {
      */
     if (current.status === 'IN_PROGRESS' && arrived.kind === 'text' && (beginning || isAGreetingOrARequestToStart(text))) {
       const waiting = await this.theQuestionStillWaiting(current.id, userId!);
-      if (waiting) { await say(`${sessionHeader(current)} ${THE_WORDS(ask)}\n\n${waiting}`); return; }
+      if (waiting) { await say(`${sessionHeader(current)}${await this.theWordsOnce(ask, organizationId, from)}\n\n${waiting}`); return; }
     }
     if (beginning && current.status !== 'NOT_STARTED') { await say(`${sessionHeader(current)} Carry on where you left off.`); return; }
     try {
@@ -607,7 +614,7 @@ export class WhatsAppForAnOrganisationService {
         /* Today's session, where the one asked for had a round that had closed (see today, below). */
         const missed = await this.theMissedNoticeFor(this.today(current, first), userId!);
         /* The words that switch, said once, when the check-in starts on WhatsApp. */
-        reply = `${sessionHeader(current)} ${THE_WORDS(ask)}\n\n${missed ? `${missed.text}\n\n` : ''}${first.reply}`;
+        reply = `${sessionHeader(current)}${await this.theWordsOnce(ask, organizationId, from)}\n\n${missed ? `${missed.text}\n\n` : ''}${first.reply}`;
         if (missed) await rememberTheMissedNoticeTold(this.prisma, missed.key, 'sent').catch(() => undefined);
         /* A short first answer is still an answer. "Not much yet", "It's blocked", "Behind again" are
            twelve characters or fewer and were thrown away. Only a greeting and nothing else is not
@@ -759,14 +766,16 @@ export class WhatsAppForAnOrganisationService {
     }
     /* Already thanked, or a repair: nothing to read yet means nothing to say (finding 10). */
     if (o.thankedAlready && (!report || nothingToReadYet(report))) return;
-    let text = nothingToReadYet(report) ? THANKS_YOUR_ANSWER_IS_IN(c.label) : report ? reportAsText(report, c.label, c.simplerWords) : `Your check-in on ${c.label} is on record. The report is being written and is in Groundwork under Report.`;
+    /* The direct morning's switch for this check-in's organisation, read once for this message (email/a-direct-email.ts). */
+    const direct = await theDirectMorningIsOnFor(this.prisma, row.groundId);
+    let text = nothingToReadYet(report) ? THANKS_YOUR_ANSWER_IS_IN(c.label, direct) : report ? reportAsText(report, c.label, c.simplerWords, direct) : `Your check-in on ${c.label} is on record. The report is being written and is in Groundwork under Report.`;
     /* The language follows the person's own messages (reviewer, 14 October): Kevin wrote English throughout and his
        thank-you came in Swahili, from one early read of "Kilele Hotel, 40 units, paid today." */
     const theirWords: string[] = await Promise.resolve((this.prisma as any).conversationTurn?.findMany?.({ where: { checkInId: c.id, role: 'PERSON' }, select: { content: true } }) ?? [])
       .then((rows: any[]) => (Array.isArray(rows) ? rows : []).map((r) => r.content ?? '')).catch(() => [] as string[]);
     text = await this.inTheirLanguage(text, theLanguageOfTheirOwnWords(theirWords, row.participant.language));
     /* Outside the 24 hours it goes as groundwork_report_ready: the name and one short line, never a line break. */
-    const params = reportAsTemplateBlanks(report, c.label);
+    const params = reportAsTemplateBlanks(report, c.label, direct);
     /* Retry the SEND, not the report. The synthesis, four polls and a translation are already paid for; a
        failed send is retried once with the text in hand rather than by running all of that again. */
     /* On the number the person last wrote to, so the report arrives in the same conversation (survey item 8). */
@@ -775,7 +784,7 @@ export class WhatsAppForAnOrganisationService {
        on for the organisation (release-one-sales-board); off, the notice goes as before. */
     if (!aReportWorthItsTemplate(report) && (await theReleaseOneSalesBoardIsOn(this.prisma, organizationId).catch(() => false))) {
       if (o.thankedAlready) return;
-      const thanks = await this.whatsapp.sendOn(via, organizationId, phone, await this.inTheirLanguage(THANKS_YOUR_ANSWER_IS_IN(c.label), theLanguageOfTheirOwnWords(theirWords, row.participant.language)), { checkInId: c.id, kind: THANKS_ONLY, paramsFor });
+      const thanks = await this.whatsapp.sendOn(via, organizationId, phone, await this.inTheirLanguage(THANKS_YOUR_ANSWER_IS_IN(c.label, direct), theLanguageOfTheirOwnWords(theirWords, row.participant.language)), { checkInId: c.id, kind: THANKS_ONLY, paramsFor });
       if (!thanks.sent) this.logger.log(`Check-in ${c.id}: nothing to read in the report yet, and outside the 24 hours there is nothing to send.`);
       return;
     }
@@ -1005,6 +1014,21 @@ export class WhatsAppForAnOrganisationService {
     return { putIn, cleared };
   }
 
+  /**
+   * THE WORDS THAT SWITCH ("ask", "back", "switch"), WITH THE SPACE BEFORE THEM. Said every time a check-in starts here, as before; with the
+   * direct morning on for the organisation (email/a-direct-email.ts), said the first time on this number only, and noted so (a note, never a
+   * message sent, as "answered-here" is). Nothing a person can do changes: the words still work whenever they write them.
+   */
+  private async theWordsOnce(ask: string, organizationId: string | null | undefined, phone: string | null | undefined): Promise<string> {
+    const said = ` ${THE_WORDS(ask)}`;
+    if (!organizationId || !phone || !(await theDirectMorningIsOn(this.prisma, organizationId))) return said;
+    const sends = (this.prisma as any).whatsAppSend;
+    const told = await Promise.resolve(sends?.findFirst?.({ where: { organizationId, phone, kind: THE_WORDS_TOLD }, select: { id: true } })).catch(() => null);
+    if (told) return '';
+    await Promise.resolve(sends?.create?.({ data: { organizationId, phone, kind: THE_WORDS_TOLD, checkInId: null, sentAt: null, failedAt: null, status: null, error: null } })).catch(() => undefined);
+    return said;
+  }
+
   /** Words were held for a yes or a no, and the ten minutes passed with no answer. */
   private aHoldHasExpired(thread: { requestKind?: string | null; requestWords?: string | null; requestAskedAt?: Date | string | null } | null): boolean {
     if (!thread?.requestAskedAt || !thread.requestKind || thread.requestWords == null) return false;
@@ -1014,13 +1038,13 @@ export class WhatsAppForAnOrganisationService {
    * The words go into the check-in as an answer, as the "no" puts them, and the check-in's reply is
    * what the person reads. A check-in not yet started is opened first. A refusal is said, never lost.
    */
-  private async putInTheCheckIn(c: AnOpenCheckIn, userId: string, words: string, organizationId?: string): Promise<string> {
+  private async putInTheCheckIn(c: AnOpenCheckIn, userId: string, words: string, organizationId?: string, phone?: string): Promise<string> {
     const ask = await askNameOf(this.prisma, organizationId ?? (c as any).organizationId);
     try {
       const opened = await this.openIfWaiting(c, userId);
       const r = await this.conversation.sendMessage(c.id, userId, words, { door: 'whatsapp' });
       const reply = `${HELD_WORDS_PUT_IN(words)}\n\n${r.reply}`;
-      return opened ? `${sessionHeader(c)} ${THE_WORDS(ask)}\n\n${opened}\n\n${reply}` : reply;
+      return opened ? `${sessionHeader(c)}${await this.theWordsOnce(ask, organizationId ?? (c as any).organizationId, phone)}\n\n${opened}\n\n${reply}` : reply;
     } catch (e: any) {
       const refused = e?.response?.message ?? e?.message;
       return `${heldWordsNotPut(words, ask)}${refused ? ` ${Array.isArray(refused) ? refused.join(' ') : refused}` : ''}`;
