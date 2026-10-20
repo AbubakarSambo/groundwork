@@ -1,4 +1,5 @@
 import { aWaitSomebodyElseChases } from './a-wait-somebody-else-chases';
+import { saidWhatTheyTried } from '../grounds/a-wait-is-the-speakers-account';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { theRelease1bTabsAreOn } from '../grounds/release-1b-tabs';
 import { theReferencesTemplateFor } from '../grounds/the-references-template';
@@ -287,7 +288,8 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
   const specific = done.filter((c) => c.specificityLevel === 'specific' || (c.specificityDimensions as any)?.checkable === 'specific');
   /* Not a blocker of theirs to have tried on: a wait a colleague here is chasing or has promised (a-wait-somebody-else-chases). */
   const raised = dedupeDependencies(r.raised.filter((d) => d.onParticipantId !== r.person.participantId && !aWaitSomebodyElseChases(String((d as any).what ?? ''), r.othersChase ?? [])) as any[]) as AHandoffRow[];
-  const tried = raised.filter((d) => String(d.triedSaid ?? '').trim());
+  /* What they said they tried first: Peter's "I haven't done anything about that yet" was counted as something tried (Drop Access, second night run). */
+  const tried = raised.filter((d) => saidWhatTheyTried(d.triedSaid));
   const cleared = raised.filter((d) => d.status === 'CLEARED');
   const creditors = [...new Set(r.credits.map((c) => c.fromName ?? 'A colleague'))];
   const creditCheckIns = new Set(r.credits.map((c, i) => c.checkInId ?? `credit-${i}`)).size;

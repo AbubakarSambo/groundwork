@@ -141,7 +141,8 @@ export async function theConfirmedWaits(
  * have not said. It is a fact about the record, never a label on either person. The "Tried:" and "Not backed:" forms are Hafsah's own wording.
  */
 /* "asked Grace about the price" is an attempt too (Drop Access run 1, item 18: Joseph's "I've asked Grace about the price" was read as nothing tried). */
-const AN_ATTEMPT = /\b(nudg\w*|chas\w*|follow\w*[ -]up|followed up|asked (?:again|twice|him|her|them|\w+ again|(?!for\b|if\b|whether\b|me\b|us\b|to\b)\w+ (?:about|for|if|whether|to)\b)|re-?asked|remind\w*|call(?:ed)?|phon\w*|rang|email\w*|messag\w*|text\w*|whatsapp\w*|wrote|sent (?:him|her|them|a)\b|raised it|took it (?:to|above)|escalat\w*|spoke (?:to|with)|talked (?:to|with)|went to (?:see|his|her|their))\b/i;
+/* "I've tried Paul a couple of times" and "a reply to my calls" are attempts too (Drop Access, second night run, Kevin); "I haven't tried" is not. */
+const AN_ATTEMPT = /\b(nudg\w*|chas\w*|follow\w*[ -]up|followed up|asked (?:again|twice|him|her|them|\w+ again|(?!for\b|if\b|whether\b|me\b|us\b|to\b)\w+ (?:about|for|if|whether|to)\b)|re-?asked|remind\w*|call(?:ed|s)?|phon\w*|rang|email\w*|messag\w*|text\w*|whatsapp\w*|wrote|sent (?:him|her|them|a)\b|raised it|took it (?:to|above)|escalat\w*|spoke (?:to|with)|talked (?:to|with)|went to (?:see|his|her|their)|(?<!(?:n['’]t|not|never)\s)tried (?!nothing\b|anything\b)\w+)\b/i;
 
 export const NOT_BACKED = 'Not backed: no attempt to unblock mentioned.';
 
@@ -152,6 +153,16 @@ function theAttemptSaid(w: { what?: string | null; triedSaid?: string | null }):
     if (text && AN_ATTEMPT.test(text)) return text;
   }
   return null;
+}
+
+/*
+ * WHAT THEY SAID THEY TRIED FIRST, WHERE THEY SAID ANYTHING (Drop Access, second night run). Peter's "I haven't done anything about that
+ * yet" was kept as what he had tried, and My work counted it as something tried first. Words that say nothing was tried are not.
+ */
+const NOTHING_TRIED = /\b(?:haven['’]t|have not|hasn['’]t|has not|didn['’]t|did not|not yet|nothing|no one|nobody)\b|^\s*no\b|^\s*none\b/i;
+export function saidWhatTheyTried(triedSaid: string | null | undefined): boolean {
+  const t = String(triedSaid ?? '').trim();
+  return !!t && !NOTHING_TRIED.test(t);
 }
 
 /** Is the speaker's attempt to unblock it in the record? The same check the note uses, so a wait the note says they tried is confirmed. */
