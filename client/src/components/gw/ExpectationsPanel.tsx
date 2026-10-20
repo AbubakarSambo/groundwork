@@ -316,10 +316,9 @@ function TrackedElsewhere({
             placeholder="What does it say now?"
             style={{ flex: 1, padding: '7px 10px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none' }}
           />
-          <button
+          <button className="gwui-btn gwui-btn-primary gwui-btn-small"
             onClick={() => looking.trim() && looked.mutate(looking.trim())}
             disabled={!looking.trim() || looked.isPending}
-            style={{ padding: '7px 12px', borderRadius: 7, background: looking.trim() ? 'var(--gw-navy)' : 'var(--gw-border)', color: looking.trim() ? 'white' : 'var(--gw-muted)', border: 'none', cursor: looking.trim() ? 'pointer' : 'default', fontSize: 12, fontWeight: 700, fontFamily: 'inherit' }}
           >
             Save
           </button>

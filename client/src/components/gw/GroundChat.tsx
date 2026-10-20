@@ -318,10 +318,10 @@ export function Composer({ groundId, openCheckInId, openSessionNumber, totalSess
   if (openCheckInId) {
     return (
       <div style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 14, marginTop: 18 }}>
-        <button
+        <button className="gwui-btn gwui-btn-primary"
           onClick={() => (onOpenSession ? onOpenSession() : navigate(`/checkin/${openCheckInId}`))}
           disabled={openPending}
-          style={{ width: '100%', padding: '13px 16px', borderRadius: 10, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+          style={{ width: '100%' }}
         >
           {/* The total rides along here on purpose. In the card view it lived on the
               open-session card; in a conversation there is nowhere else for "how
@@ -428,10 +428,10 @@ export function Composer({ groundId, openCheckInId, openSessionNumber, totalSess
             onChange={e => { const f = e.target.files?.[0]; if (f) upload.mutate(f); e.target.value = '' }}
           />
         </label>
-        <button
+        <button className="gwui-btn gwui-btn-primary"
           onClick={() => text.trim() && add.mutate(text.trim())}
           disabled={!text.trim() || add.isPending}
-          style={{ flexShrink: 0, padding: '9px 16px', borderRadius: 8, background: text.trim() ? 'var(--gw-navy)' : 'var(--gw-border)', color: text.trim() ? 'white' : 'var(--gw-muted)', fontSize: 13, fontWeight: 700, border: 'none', cursor: text.trim() ? 'pointer' : 'default', fontFamily: 'inherit' }}
+          style={{ flexShrink: 0 }}
         >
           {add.isPending ? 'Saving…' : 'Note it'}
         </button>
@@ -537,10 +537,10 @@ export function GroundChat({
           first session, when there is nothing above it.
         */}
         {isParty && openCheckInId && sessions.length > 0 && (
-          <button
+          <button className="gwui-btn gwui-btn-primary"
             onClick={() => (onOpenSession ? onOpenSession() : navigate(`/checkin/${openCheckInId}`))}
             disabled={openPending}
-            style={{ width: '100%', padding: '13px 16px', borderRadius: 10, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 6 }}
+            style={{ width: '100%', marginBottom: 6 }}
           >
             Do check-in {openSessionNumber ?? sessions.length + 1}{totalSessions ? ` of ${totalSessions}` : ''} · about ten minutes
           </button>

@@ -170,10 +170,9 @@ export function AddADocument({
       )}
 
       <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginTop: 18, flexWrap: 'wrap' }}>
-        <button
+        <button className="gwui-btn gwui-btn-primary"
           onClick={() => keep.mutate()}
           disabled={keep.isPending || drop.isPending}
-          style={{ padding: '10px 18px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
         >
           {keep.isPending ? 'Saving…' : 'Add it to Context and resources'}
         </button>

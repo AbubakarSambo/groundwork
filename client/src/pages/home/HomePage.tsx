@@ -124,25 +124,10 @@ export function HomePage() {
               onFocus={e => { e.target.style.borderColor = 'var(--gw-navy)' }}
               onBlur={e => { e.target.style.borderColor = 'var(--gw-border)' }}
             />
-            <button
+            <button className="gwui-btn gwui-btn-primary"
               onClick={handleSubmit}
               disabled={faqMutation.isPending}
-              style={{
-                padding: '0 14px',
-                borderRadius: 8,
-                background: 'var(--gw-navy)',
-                color: 'white',
-                border: 'none',
-                cursor: faqMutation.isPending ? 'not-allowed' : 'pointer',
-                fontSize: 18,
-                flexShrink: 0,
-                height: 44,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: faqMutation.isPending ? 0.6 : 1,
-                fontFamily: 'inherit',
-              }}
+              style={{ flexShrink: 0 }}
             >
               {faqMutation.isPending ? '…' : '↑'}
             </button>

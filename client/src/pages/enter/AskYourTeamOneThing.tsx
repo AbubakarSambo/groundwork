@@ -161,15 +161,9 @@ export default function AskYourTeamOneThing({ onBack }: { onBack?: () => void })
           <div style={legend}>By when</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {HOW_OFTEN.map(o => (
-              <button
+              <button className={`gwui-choice${howOften === o.value ? ' gwui-choice-on' : ''}`}
                 key={o.value} type="button" onClick={() => setHowOften(o.value)}
                 aria-pressed={howOften === o.value}
-                style={{
-                  padding: '8px 14px', borderRadius: 999, cursor: 'pointer', fontSize: 14,
-                  border: `1px solid ${howOften === o.value ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
-                  background: howOften === o.value ? 'var(--gw-navy)' : 'transparent',
-                  color: howOften === o.value ? '#fff' : 'inherit',
-                }}
               >{o.label}</button>
             ))}
           </div>
@@ -222,13 +216,8 @@ export default function AskYourTeamOneThing({ onBack }: { onBack?: () => void })
         {trap.field}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 4 }}>
-          <button
+          <button className="gwui-btn gwui-btn-primary"
             type="button" onClick={send} disabled={!canSend}
-            style={{
-              padding: '11px 22px', borderRadius: 8, border: 'none', fontSize: 15, fontWeight: 600,
-              background: canSend ? 'var(--gw-navy)' : 'var(--gw-border)',
-              color: canSend ? '#fff' : 'var(--gw-muted)', cursor: canSend ? 'pointer' : 'default',
-            }}
           >{sending ? 'Sending...' : 'Send'}</button>
           {missing && <span style={{ fontSize: 13, color: 'var(--gw-muted)' }}>{missing}</span>}
           {onBack && (

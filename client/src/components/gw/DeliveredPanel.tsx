@@ -119,10 +119,9 @@ export function DeliveredPanel({
           style={{ padding: '9px 11px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none' }}
         />
         <div>
-          <button
+          <button className="gwui-btn gwui-btn-primary gwui-btn-small"
             onClick={() => add.mutate()}
             disabled={!text.trim() || add.isPending}
-            style={{ padding: '9px 15px', borderRadius: 7, background: text.trim() ? 'var(--gw-navy)' : 'var(--gw-border)', color: text.trim() ? 'white' : 'var(--gw-muted)', border: 'none', cursor: text.trim() ? 'pointer' : 'default', fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit' }}
           >
             {add.isPending ? 'Saving…' : 'Add it'}
           </button>

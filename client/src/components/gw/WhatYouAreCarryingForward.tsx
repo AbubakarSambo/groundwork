@@ -128,16 +128,16 @@ export function WhatYouAreCarryingForward({
               This is all or nothing. All sections of your private report become visible at once. You can stop sharing at any time.
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button
+              <button className="gwui-btn gwui-btn-secondary"
                 onClick={() => setShowShareConfirm(false)}
-                style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--gw-paper-2)', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                style={{ flex: 1 }}
               >
                 Cancel
               </button>
-              <button
+              <button className="gwui-btn gwui-btn-primary"
                 onClick={() => setSoloSharedMut.mutate(true)}
                 disabled={setSoloSharedMut.isPending}
-                style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: setSoloSharedMut.isPending ? 0.6 : 1 }}
+                style={{ flex: 1 }}
               >
                 {setSoloSharedMut.isPending ? 'Sharing…' : 'Yes, share it'}
               </button>

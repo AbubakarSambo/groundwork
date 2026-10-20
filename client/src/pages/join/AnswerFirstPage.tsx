@@ -298,8 +298,8 @@ export function AnswerFirstPage() {
               Answer in your own words. It takes about ten minutes. The answers help everybody get a
               shared picture, and you will receive the consolidated report at the end.
             </p>
-            <button onClick={begin} disabled={busy}
-              style={{ marginTop: 16, padding: '12px 22px', borderRadius: 8, border: 'none', background: 'var(--gw-navy)', color: '#fff', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+            <button className="gwui-btn gwui-btn-primary" onClick={begin} disabled={busy}
+              style={{ marginTop: 16 }}>
               {busy ? 'Starting...' : 'Start'}
             </button>
             {/* The reason, where the button is. See begin() for the hundred people this is for. */}
@@ -359,17 +359,13 @@ export function AnswerFirstPage() {
                 placeholder="Type your answer" style={{ ...field, flex: 1, resize: 'none', minWidth: 0, maxHeight: 140 }}
               />
               <button onClick={say} disabled={busy || !input.trim()} aria-label="Send"
-                style={{ width: 42, height: 42, borderRadius: '50%', border: 'none', background: 'var(--gw-navy)', color: '#fff', fontSize: 18, cursor: 'pointer', flexShrink: 0, opacity: busy || !input.trim() ? .5 : 1 }}>
+                style={{ width: 44, height: 44, borderRadius: '50%', border: 'none', background: 'var(--gw-navy)', color: '#fff', fontSize: 18, cursor: 'pointer', flexShrink: 0, opacity: busy || !input.trim() ? .5 : 1 }}>
                 ↑
               </button>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, gap: 10 }}>
-              <button onClick={() => setPhase('address')}
-                style={{
-                  background: 'white', border: '1px solid var(--gw-border)', borderRadius: 20,
-                  color: 'var(--gw-navy)', fontSize: 13.5, fontWeight: 600, padding: '8px 15px',
-                  cursor: 'pointer', fontFamily: 'inherit', minHeight: 40,
-                }}>
+              <button className="gwui-btn gwui-btn-secondary" onClick={() => setPhase('address')}
+                >
                 I am done
               </button>
               {/* What pressing it does, so nobody presses it wondering whether it throws away the
@@ -425,8 +421,8 @@ export function AnswerFirstPage() {
               <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 10 }}>{whatIsStillNeeded(name, org, email)}</div>
             )}
             <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
-              <button onClick={() => finish(true)} disabled={busy || !email.trim() || !name.trim() || !org.trim()}
-                style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: 'var(--gw-navy)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: busy || !email.trim() || !name.trim() || !org.trim() ? .5 : 1 }}>
+              <button className="gwui-btn gwui-btn-primary" onClick={() => finish(true)} disabled={busy || !email.trim() || !name.trim() || !org.trim()}
+                >
                 Done
               </button>
             </div>

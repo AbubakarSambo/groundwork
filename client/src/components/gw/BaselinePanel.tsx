@@ -146,9 +146,9 @@ export function BaselinePanel({ groundId, canState, groundStartedAt }: { groundI
       )}
 
       {canState && !open && (
-        <button
+        <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
           onClick={() => setOpen(true)}
-          style={{ marginTop: 10, background: 'none', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '9px 14px', fontSize: 12.5, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit' }}
+          style={{ marginTop: 10 }}
         >
           {current ? 'This has changed →' : 'Say what doing well looks like →'}
         </button>
@@ -194,16 +194,14 @@ export function BaselinePanel({ groundId, canState, groundStartedAt }: { groundI
               </>
             )}
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              <button
+              <button className="gwui-btn gwui-btn-primary gwui-btn-small"
                 onClick={() => state.mutate()}
                 disabled={state.isPending || (!success.trim() && !conditions.trim())}
-                style={{ padding: '9px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: state.isPending ? 0.6 : 1 }}
               >
                 {state.isPending ? 'Recording…' : current ? 'Record as a new version' : 'Record it'}
               </button>
-              <button
+              <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
                 onClick={() => setOpen(false)}
-                style={{ padding: '9px 16px', borderRadius: 7, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Cancel
               </button>

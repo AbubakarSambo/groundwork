@@ -106,20 +106,11 @@ export function TeamBoardsPage() {
         {tabs.map(g => {
           const on = g.id === active!.id
           return (
-            <button
+            <button className={`gwui-choice${on ? ' gwui-choice-on' : ''}`}
               key={g.id}
               role="tab"
               aria-selected={on}
               onClick={() => setParams({ ground: g.id })}
-              style={{
-                fontSize: 12.5, fontWeight: on ? 700 : 500, fontFamily: 'inherit', cursor: 'pointer',
-                padding: '7px 12px', borderRadius: 8,
-                border: `1px solid ${on ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
-                background: on ? 'var(--gw-navy)' : 'var(--gw-card)',
-                color: on ? '#fff' : 'var(--gw-text)',
-                /* A press on a phone needs somewhere to land. */
-                minHeight: 36,
-              }}
             >
               {g.label}
               {qualifierFor.get(g.id) && (

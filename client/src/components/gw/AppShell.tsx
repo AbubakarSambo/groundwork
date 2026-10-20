@@ -567,15 +567,9 @@ function FeedbackWidget() {
                   <>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
                       {REACTION_OPTIONS.map(o => (
-                        <button
+                        <button className={`gwui-choice${reaction === o ? ' gwui-choice-on' : ''}`}
                           key={o}
                           onClick={() => setReaction(o)}
-                          style={{
-                            padding: '6px 11px', borderRadius: 20, fontSize: 12,
-                            border: '1px solid rgba(0,0,0,.14)', background: reaction === o ? 'var(--gw-navy)' : 'none',
-                            color: reaction === o ? 'white' : 'rgba(0,0,0,.55)',
-                            cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1.3,
-                          }}
                         >
                           {o}
                         </button>
@@ -591,15 +585,9 @@ function FeedbackWidget() {
                   <>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
                       {BUILD_OPTIONS.map(o => (
-                        <button
+                        <button className={`gwui-choice${buildPick === o ? ' gwui-choice-on' : ''}`}
                           key={o}
                           onClick={() => setBuildPick(o)}
-                          style={{
-                            padding: '6px 11px', borderRadius: 20, fontSize: 12,
-                            border: '1px solid rgba(0,0,0,.14)', background: buildPick === o ? 'var(--gw-navy)' : 'none',
-                            color: buildPick === o ? 'white' : 'rgba(0,0,0,.55)',
-                            cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1.3,
-                          }}
                         >
                           {BUILD_OPTION_LABELS[o] ?? o}
                         </button>
@@ -623,15 +611,15 @@ function FeedbackWidget() {
                 )}
 
                 <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                  <button onClick={() => hidePanel()}
-                    style={{ padding: '11px 16px', background: 'none', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', borderRadius: 6, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <button className="gwui-btn gwui-btn-secondary" onClick={() => hidePanel()}
+                    >
                     Cancel
                   </button>
                   {whyNotValid() && (
                     <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', width: '100%', marginBottom: 6 }}>{whyNotValid()}</div>
                   )}
-                  <button onClick={submit} disabled={!valid()}
-                    style={{ flex: 1, padding: 11, background: 'var(--gw-navy)', color: 'white', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: valid() ? 1 : 0.38 }}>
+                  <button className="gwui-btn gwui-btn-primary" onClick={submit} disabled={!valid()}
+                    style={{ flex: 1 }}>
                     Send
                   </button>
                 </div>

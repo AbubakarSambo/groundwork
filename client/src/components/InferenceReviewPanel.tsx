@@ -53,25 +53,14 @@ export function InferenceReviewPanel({ groundId, inferences }: Props) {
             Inferred because: {inf.reason}
           </p>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button
+            <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
               onClick={() => setDismissed(prev => new Set([...prev, inf.id]))}
-              style={{
-                fontSize: 12, fontWeight: 600, color: 'var(--gw-green-t)',
-                background: 'var(--gw-green-bg)', border: '1px solid #BFE6D4',
-                borderRadius: 7, padding: '5px 12px', cursor: 'pointer',
-              }}
             >
               This is right
             </button>
-            <button
+            <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
               onClick={() => clarifyMut.mutate(inf.id)}
               disabled={clarifyMut.isPending}
-              style={{
-                fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)',
-                background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)',
-                borderRadius: 7, padding: '5px 12px', cursor: 'pointer',
-                opacity: clarifyMut.isPending ? 0.6 : 1,
-              }}
             >
               {clarifyMut.isPending ? 'Loading...' : 'Correct this'}
             </button>
