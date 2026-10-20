@@ -530,7 +530,7 @@ function FeedbackWidget() {
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
           className="gw-fb-overlay"
         >
-          <div ref={panelRef} className="gw-fb-panel" role="dialog" aria-modal="true" aria-label="Feedback" style={{ background: 'white', borderRadius: 12, padding: 20, width: '100%', maxWidth: 480, maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 18px 48px rgba(10,22,40,.28)' }}>
+          <div ref={panelRef} className="gw-fb-panel" role="dialog" aria-modal="true" aria-label="Feedback" style={{ background: 'white', borderRadius: 12, padding: 20, width: '100%', maxWidth: 480, maxHeight: '85vh', overflowY: 'auto', boxShadow: 'var(--gw-shadow-modal)' }}>
             {/* Tabs */}
             <div style={{ display: 'flex', borderBottom: '1px solid var(--gw-border)', marginBottom: 16 }}>
               {(['reaction', 'build', 'wrong'] as FbTab[]).map(t => (
@@ -1715,7 +1715,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {isAuthenticated && askOpen && (
         <div className="gw-ask-drawer" style={{
           position: 'fixed', top: 0, right: 0, bottom: 0, width: 400, maxWidth: '100vw', zIndex: 45,
-          boxShadow: '-8px 0 24px rgba(26, 25, 22, 0.08)',
+          boxShadow: 'var(--gw-shadow-sheet)',
         }}>
           <AskGroundwork
             onClose={hideAsk}

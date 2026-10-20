@@ -231,7 +231,6 @@ export function Message({ role, content }: { role: 'AI' | 'PERSON'; content: str
         fontSize: 14,
         lineHeight: 1.65,
         whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0,
-        boxShadow: mine ? 'none' : '0 1px 3px rgba(0,0,0,.06)',
       }}
     >
       {nothingInternalReachesTheBubble(content)}

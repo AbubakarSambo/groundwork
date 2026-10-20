@@ -642,7 +642,6 @@ export function TheAssistantAsACustomerSeesIt() {
           fontWeight: 700,
           fontFamily: 'inherit',
           cursor: 'pointer',
-          boxShadow: '0 2px 10px rgba(0,0,0,.14)',
         }}
       >
         Ask Groundwork
@@ -664,7 +663,7 @@ export function TheAssistantAsACustomerSeesIt() {
         flexDirection: 'column',
         ...CARD,
         padding: 0,
-        boxShadow: '0 6px 28px rgba(0,0,0,.18)',
+        boxShadow: 'var(--gw-shadow-menu)',
       }}
     >
       <header

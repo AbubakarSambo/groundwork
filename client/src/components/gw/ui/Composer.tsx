@@ -71,7 +71,7 @@ export function Composer({
   return (
     <div style={{ padding: '12px 16px', borderTop: '1px solid var(--gw-border)', display: 'flex', gap: 8, alignItems: 'center', background: 'var(--gw-page)', position: 'relative' }}>
       {plusOpen && plusMenu && (
-        <div style={{ position: 'absolute', bottom: '100%', left: 16, marginBottom: 8, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: 6, zIndex: 20, width: 260, maxWidth: 'calc(100vw - 40px)' }}>
+        <div style={{ position: 'absolute', bottom: '100%', left: 16, marginBottom: 8, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, boxShadow: 'var(--gw-shadow-menu)', padding: 6, zIndex: 20, width: 260, maxWidth: 'calc(100vw - 40px)' }}>
           {plusMenu}
         </div>
       )}

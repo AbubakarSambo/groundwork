@@ -91,7 +91,7 @@ function WhatsAppToggle() {
           }}
           aria-label={data.adminEnabled ? 'Turn off WhatsApp' : 'Turn on WhatsApp'}
         >
-          <span style={{ position: 'absolute', top: 3, left: data.adminEnabled ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+          <span style={{ position: 'absolute', top: 3, left: data.adminEnabled ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: 'var(--gw-hairline)' }} />
         </button>
       </div>
       <div style={{ fontSize: 11, marginTop: 8, fontWeight: 700, color: data.live ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
@@ -145,7 +145,7 @@ function CoachingSwitch() {
           }}
           aria-label={data.live ? 'Turn off coaching' : 'Turn on coaching'}
         >
-          <span style={{ position: 'absolute', top: 3, left: data.live ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+          <span style={{ position: 'absolute', top: 3, left: data.live ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: 'var(--gw-hairline)' }} />
         </button>
       </div>
       <div style={{ fontSize: 11, marginTop: 8, fontWeight: 700, color: data.live ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
@@ -747,7 +747,7 @@ export function FreeTrialRow() {
           }}
           aria-label={data.on ? 'Turn off the free trial' : 'Turn on the free trial'}
         >
-          <span style={{ position: 'absolute', top: 3, left: data.on ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+          <span style={{ position: 'absolute', top: 3, left: data.on ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: 'var(--gw-hairline)' }} />
         </button>
       </div>
       <div style={{ fontSize: 11, marginTop: 8, fontWeight: 700, color: data.on ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
@@ -798,7 +798,7 @@ export function AnchorTrialRow() {
           }}
           aria-label={data.on ? 'Turn off the anchor trial' : 'Turn on the anchor trial'}
         >
-          <span style={{ position: 'absolute', top: 3, left: data.on ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+          <span style={{ position: 'absolute', top: 3, left: data.on ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: 'var(--gw-hairline)' }} />
         </button>
       </div>
       <div style={{ fontSize: 11, marginTop: 8, fontWeight: 700, color: data.on ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
@@ -1338,7 +1338,7 @@ export function ReleaseOneSalesBoardSwitch({ org }: { org: Pick<OrgListItem, 'id
         aria-label={on ? `Switch the new sales board off for ${org.name}` : `Switch the new sales board on for ${org.name}`}
         aria-pressed={on}
       >
-        <span style={{ position: 'absolute', top: 3, left: on ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+        <span style={{ position: 'absolute', top: 3, left: on ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: 'var(--gw-hairline)' }} />
       </button>
     </div>
   )
@@ -1378,7 +1378,7 @@ export function Release1bTabsSwitch({ org }: { org: Pick<OrgListItem, 'id' | 'na
         aria-label={on ? `Switch the new check-in tabs off for ${org.name}` : `Switch the new check-in tabs on for ${org.name}`}
         aria-pressed={on}
       >
-        <span style={{ position: 'absolute', top: 3, left: on ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+        <span style={{ position: 'absolute', top: 3, left: on ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: 'var(--gw-hairline)' }} />
       </button>
     </div>
   )
@@ -1418,7 +1418,7 @@ export function Release2CollectionsSwitch({ org }: { org: Pick<OrgListItem, 'id'
         aria-label={on ? `Switch collecting what is owed off for ${org.name}` : `Switch collecting what is owed on for ${org.name}`}
         aria-pressed={on}
       >
-        <span style={{ position: 'absolute', top: 3, left: on ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+        <span style={{ position: 'absolute', top: 3, left: on ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: 'var(--gw-hairline)' }} />
       </button>
     </div>
   )

@@ -214,7 +214,7 @@ function OtpModal({ title, description, onConfirm, onClose, onSuccess }: OtpModa
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
       onKeyDown={e => { if (e.key === 'Escape' && !loading) onClose() }}
     >
-      <div style={{ background: 'white', borderRadius: 10, padding: '24px 24px 20px', maxWidth: 400, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
+      <div style={{ background: 'white', borderRadius: 10, padding: '24px 24px 20px', maxWidth: 400, width: '100%', boxShadow: 'var(--gw-shadow-modal)' }}>
         <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--gw-navy)', marginBottom: 6 }}>{title}</div>
         <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 20 }}>{description}</div>
 
