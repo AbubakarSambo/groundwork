@@ -71,6 +71,18 @@ describe('Callout', () => {
     expect(screen.getByText('The people in this check-in can see what you say in it.')).toHaveClass('gwui-callout')
   })
 
+  it('holds a row with a button without a block inside a paragraph (People and setup\'s problems, browser test 20 October)', () => {
+    const errors: unknown[] = []
+    const was = console.error
+    console.error = (...a: unknown[]) => { errors.push(a) }
+    try {
+      render(<Callout tone="warning"><div className="row"><span>Joseph has not joined yet.</span><button>Send it again</button></div></Callout>)
+      render(<Callout title="One thing"><div>Two lines.</div></Callout>)
+    } finally { console.error = was }
+    expect(document.querySelector('p .row, p div')).toBeNull()
+    expect(errors.filter((e) => /descendant|nested/.test(String((e as unknown[])[0])))).toEqual([])
+  })
+
   it('matches the prototype\'s injected values (s44.js): background var(--chat) i.e. var(--gw-bg), 10px corners', () => {
     expect(CSS).toMatch(/\.gwui-callout \{[^}]*background: var\(--gw-bg\)/)
     expect(CSS).toMatch(/\.gwui-callout \{[^}]*border-radius: 10px/)

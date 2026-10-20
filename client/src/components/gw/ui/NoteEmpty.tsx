@@ -79,14 +79,16 @@ export function Callout({ tone, title, role, children }: {
     return (
       <div className={className} role={role}>
         <p className="gwui-callout-title">{title}</p>
-        <p className="gwui-callout-body">{children}</p>
+        <div className="gwui-callout-body">{children}</div>
       </div>
     )
   }
+  /* A DIV, NOT A P (browser test, 20 October 2026): a callout often holds a row with a button in it (People and
+     setup's problems), and a <div> inside a <p> is not allowed, so React warned on every opening of that tab. */
   return (
-    <p className={className} role={role}>
+    <div className={className} role={role}>
       {children}
-    </p>
+    </div>
   )
 }
 
