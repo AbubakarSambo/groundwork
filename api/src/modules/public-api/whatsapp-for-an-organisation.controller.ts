@@ -1,3 +1,4 @@
+import { itSendsFromTheirNumber, NOT_FINISHED_SO_GROUNDWORKS_NUMBER } from '../whatsapp/a-connection-that-works';
 import { answerFirst } from '../whatsapp/answer-the-webhook-then-do-the-work';
 import { Body, Controller, Delete, Get, HttpCode, Logger, Param, Post, Put, Query, Req, Res, BadRequestException, UseGuards } from '@nestjs/common';
 import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
@@ -111,6 +112,8 @@ export class WhatsAppForAnOrganisationController {
           phoneNumberId: true, businessAccountId: true, displayNumber: true, approvedTemplates: true, enabled: true,
           connectedAt: true, lastInboundAt: true, lastOutboundAt: true, webhookVerifiedAt: true,
           verifyToken: true,
+          /* Read only to say whether the row works (a-connection-that-works.ts); never served. */
+          accessToken: true, appSecret: true,
         },
       }),
       this.prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true } }),
@@ -130,6 +133,9 @@ export class WhatsAppForAnOrganisationController {
           lastOutboundAt: row.lastOutboundAt,
           /* U.18: the callback address is proven once Meta's handshake answered, or a message came in through it. */
           webhookProvenAt: row.webhookVerifiedAt ?? row.lastInboundAt ?? null,
+          /* Whether this is the number in use. A row switched on but half set up, or never proven, is not: Groundwork's own number is (Drop Access, 21 October). */
+          inUse: itSendsFromTheirNumber(row),
+          ...(row.enabled && !itSendsFromTheirNumber(row) ? { notInUseSays: NOT_FINISHED_SO_GROUNDWORKS_NUMBER } : {}),
         }
       : null;
     const ours = this.config.get<string[]>('whatsapp.approvedTemplates') ?? [];
@@ -148,7 +154,8 @@ export class WhatsAppForAnOrganisationController {
       ...whatsAppAsTheAdminReadsIt({
         organizationId,
         organisationName: org?.name ?? '',
-        own: row ? { enabled: row.enabled, displayNumber: row.displayNumber, verifyTokenSet: !!row.verifyToken } : null,
+        /* A row switched on but not finished is read as no connection, as the sender reads it: Groundwork's number is in use. */
+        own: row && (!row.enabled || itSendsFromTheirNumber(row)) ? { enabled: row.enabled, displayNumber: row.displayNumber, verifyTokenSet: !!row.verifyToken } : null,
         groundwork: {
           credentialsConfigured: toggle.credentialsConfigured,
           switchedOn: toggle.adminEnabled,

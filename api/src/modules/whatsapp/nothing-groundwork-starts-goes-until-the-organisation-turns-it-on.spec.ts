@@ -17,11 +17,12 @@ function aSender(opts: { addOn: boolean; own?: boolean }) {
   const prisma: any = {
     platformSetting: { findUnique: jest.fn(async () => ({ value: true })) },
     organization: { findUnique: jest.fn(async () => ({ whatsappAddOnOn: opts.addOn })) },
-    whatsAppConnection: { findUnique: jest.fn(async () => (opts.own ? { enabled: true, phoneNumberId: '222', accessToken: 't', approvedTemplates: [], id: 'c-1' } : null)), update: jest.fn(async () => ({})) },
+    whatsAppConnection: { findUnique: jest.fn(async () => (opts.own ? { enabled: true, phoneNumberId: '222222', accessToken: 't', appSecret: 's', verifyToken: 'v', webhookVerifiedAt: new Date('2026-10-01'), approvedTemplates: [], id: 'c-1' } : null)), update: jest.fn(async () => ({})) },
     person: { findFirst: jest.fn(async () => ({ whatsappStoppedAt: null, whatsappLastInboundAt: new Date() })), findMany: jest.fn(async () => []) },
     user: { findMany: jest.fn(async () => []) },
     whatsAppInboundMessage: { findFirst: jest.fn(async () => null) },
-    whatsAppSend: { create: jest.fn(async (q: any) => { rows.push(q.data); return {}; }), findMany: jest.fn(async () => []), findFirst: jest.fn(async () => null) },
+    /* Groundwork has written to this number before: their own stamp is about this number (a-connection-that-works.ts, 21 October). */
+    whatsAppSend: { create: jest.fn(async (q: any) => { rows.push(q.data); return {}; }), findMany: jest.fn(async () => []), findFirst: jest.fn(async (q: any) => (q?.where?.sentAt ? { id: 'sent-before' } : null)) },
     notification: { create: jest.fn(async () => ({})) },
   };
   const config: any = { get: (k: string) => ({ 'whatsapp.enabled': true, 'whatsapp.accessToken': 'test-token', 'whatsapp.phoneNumberId': '111', 'whatsapp.approvedTemplates': [] } as any)[k] };

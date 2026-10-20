@@ -15,7 +15,7 @@ const OPEN_TEXT = fill(TEMPLATES['checkin-open'].body, OPEN);
 function aSender(connection: { enabled: boolean; approvedTemplates: string[] } | null, o: { lastInboundAt?: Date | null } = {}) {
   const rows: any[] = [];
   const row = connection
-    ? { id: 'conn-1', organizationId: 'org-1', phoneNumberId: '999999', accessToken: 'their-token', appSecret: null, verifyToken: 'v', displayNumber: '+254711000000', ...connection }
+    ? { id: 'conn-1', organizationId: 'org-1', phoneNumberId: '999999', accessToken: 'their-token', appSecret: 'their-secret', verifyToken: 'v', webhookVerifiedAt: new Date('2026-10-01'), displayNumber: '+254711000000', ...connection }
     : null;
   const prisma: any = {
     platformSetting: { findUnique: jest.fn(async () => ({ value: true })) },

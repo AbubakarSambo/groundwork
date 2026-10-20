@@ -54,11 +54,11 @@ describe('the read receipt and the typing indicator', () => {
 
   it("uses the organisation's own number when that is where the message arrived", async () => {
     const fetchMock = ok();
-    const connection = { organizationId: 'org-1', enabled: true, phoneNumberId: 'their-number', accessToken: 'their-token', appSecret: 's' };
+    const connection = { organizationId: 'org-1', enabled: true, phoneNumberId: '222222222', accessToken: 'their-token', appSecret: 's', verifyToken: 'v', webhookVerifiedAt: new Date('2026-10-01') };
     await aService(fetchMock, connection).weAreReadingThis('wamid.DEF', 'org-1', 'theirs');
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toContain('/their-number/messages');
+    expect(url).toContain('/222222222/messages');
     expect(init.headers.Authorization).toBe('Bearer their-token');
   });
 

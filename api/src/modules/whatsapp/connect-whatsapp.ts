@@ -3,6 +3,7 @@ import type { ConfigService } from '@nestjs/config';
 import { GroundworksOwnNumber } from './groundworks-own-number';
 import { formsOfTheSameNumber } from './a-number-whatsapp-can-reach';
 import { inboundKeysFrom } from './one-number-per-conversation';
+import { itSendsFromTheirNumber, WHAT_SAYS_IT_WORKS } from './a-connection-that-works';
 
 /**
  * "CONNECT WHATSAPP": ONE TAP THAT OPENS WHATSAPP WITH "Hi" ALREADY TYPED TO GROUNDWORK'S NUMBER
@@ -52,8 +53,9 @@ export async function connectWhatsAppFor(
     if (switchedOn?.value !== true) return null;
     const org = await prisma.organization?.findUnique?.({ where: { id: who.organizationId }, select: { whatsappAddOnOn: true, whatsappFreeUntil: true } });
     if (!whatsAppIsOnFor(org)) return null;
-    const own = await prisma.whatsAppConnection?.findUnique?.({ where: { organizationId: who.organizationId }, select: { enabled: true } })?.catch?.(() => null);
-    if (own?.enabled) return null;
+    /* Only an organisation number that really works points elsewhere; a half-set-up row is no connection (a-connection-that-works.ts). */
+    const own = await prisma.whatsAppConnection?.findUnique?.({ where: { organizationId: who.organizationId }, select: WHAT_SAYS_IT_WORKS })?.catch?.(() => null);
+    if (itSendsFromTheirNumber(own)) return null;
     if (!who.forTheInvitation && (await theyHaveWrittenFromTheirNumber(prisma, who))) return null;
     return { link: aConnectLink(number), number, says: CONNECT_WHATSAPP };
   } catch {
