@@ -150,7 +150,9 @@ describe('missed check-ins, told to the person first (decision 136)', () => {
 describe('the missed notice for somebody on WhatsApp', () => {
   const onWhatsApp = (prisma: any) => {
     prisma.organization = { findUnique: jest.fn(async () => ({ whatsappAddOnOn: true, whatsappFreeUntil: null })) };
-    prisma.person = { findFirst: jest.fn(async () => ({ phone: '+254700000002', whatsappLastInboundAt: new Date('2026-09-20T09:00:00Z') })), findMany: jest.fn(async () => []) };
+    prisma.person = { findFirst: jest.fn(async () => ({ phone: '+254700000002', whatsappLastInboundAt: new Date('2026-09-20T09:00:00Z') })), findMany: jest.fn(async (q: any) => (q?.where?.OR ? [{ phone: '+254700000002' }] : [])) };
+    /* He writes from the number he has now (Drop Access, 21 October: "connected" is about the current number, from what came from it). */
+    prisma.whatsAppInboundMessage = { findFirst: jest.fn(async () => ({ messageId: 'ours:+254700000002:wamid.1' })) };
     return prisma;
   };
   it('is never sent by email', async () => {

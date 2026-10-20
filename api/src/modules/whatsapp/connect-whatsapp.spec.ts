@@ -13,9 +13,14 @@ function aWorld(o: { switchedOn?: boolean; addOn?: boolean; display?: string | n
     platformSetting: { findUnique: jest.fn(async ({ where }: any) => (where.key === 'whatsapp_enabled' ? { value: o.switchedOn ?? true } : null)) },
     organization: { findUnique: jest.fn(async () => ({ whatsappAddOnOn: o.addOn ?? true })) },
     whatsAppConnection: { findUnique: jest.fn(async () => (o.ownNumber ? { enabled: true, phoneNumberId: '109822345561', accessToken: 't', appSecret: 's', verifyToken: 'v', webhookVerifiedAt: new Date('2026-10-01') } : null)) },
-    person: { findFirst: jest.fn(async () => ({ phone: o.phone === undefined ? '+254700000001' : o.phone, whatsappLastInboundAt: o.wrote ? new Date() : null })) },
+    person: {
+      findFirst: jest.fn(async () => ({ phone: o.phone === undefined ? '+254700000001' : o.phone, whatsappLastInboundAt: o.wrote ? new Date() : null })),
+      /* Every roster entry that is her (one-number-for-a-person.ts, theNumberOnRecord). */
+      findMany: jest.fn(async () => (o.phone === null ? [] : [{ phone: o.phone === undefined ? '+254700000001' : o.phone }])),
+    },
     user: { findUnique: jest.fn(async () => ({ phoneNumber: null })) },
-    whatsAppInboundMessage: { findFirst: jest.fn(async () => null) },
+    /* She wrote from the number she has now: a message came from it (Drop Access, 21 October: the stamp alone is not about this number). */
+    whatsAppInboundMessage: { findFirst: jest.fn(async () => (o.wrote ? { messageId: 'ours:+254700000001:wamid.1' } : null)) },
     ground: { findUnique: jest.fn(async () => ({ organizationId: 'org-1', overWhatsApp: null })) },
   };
   const config: any = { get: (k: string) => ({ 'whatsapp.enabled': true, 'whatsapp.accessToken': 't', 'whatsapp.phoneNumberId': '1', 'whatsapp.displayNumber': o.display === undefined ? DISPLAY : o.display } as any)[k] };

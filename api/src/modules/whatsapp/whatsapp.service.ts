@@ -1258,7 +1258,7 @@ export class WhatsAppService implements OnModuleInit {
   async setPhoneNumber(userId: string, rawNumber: string | null): Promise<void> {
     const user = rawNumber?.trim() ? await this.prisma.user.findUnique({ where: { id: userId }, select: { organizationId: true } }) : null;
     const number = rawNumber?.trim() ? await this.tidyFor(user?.organizationId ?? null, rawNumber) : null;
-    await refuseANumberOnSomebodyElse(this.prisma, number, userId);
+    await refuseANumberOnSomebodyElse(this.prisma, number, userId, user?.organizationId ?? null);
     await this.prisma.user.update({ where: { id: userId }, data: { phoneNumber: number } });
     await aSignInsNumberChanged(this.prisma, userId, number);
   }

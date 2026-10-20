@@ -7,7 +7,11 @@ import { theyAreConnectedOnWhatsApp } from './connect-whatsapp';
 function prismaFor(o: { written: boolean; whatsappOn: boolean; phone?: string | null }) {
   return {
     organization: { findUnique: jest.fn(async () => ({ whatsappAddOnOn: o.whatsappOn, whatsappFreeUntil: null })) },
-    person: { findFirst: jest.fn(async () => ({ phone: o.phone === undefined ? '+254722000203' : o.phone, whatsappLastInboundAt: null })) },
+    person: {
+      findFirst: jest.fn(async () => ({ phone: o.phone === undefined ? '+254722000203' : o.phone, whatsappLastInboundAt: null })),
+      /* Every roster entry that is her (one-number-for-a-person.ts, theNumberOnRecord). */
+      findMany: jest.fn(async () => (o.phone === null ? [] : [{ phone: o.phone === undefined ? '+254722000203' : o.phone }])),
+    },
     user: { findUnique: jest.fn(async () => ({ phoneNumber: null })) },
     whatsAppInboundMessage: { findFirst: jest.fn(async () => (o.written ? { messageId: 'in:theirs:254722000203:1' } : null)) },
   };

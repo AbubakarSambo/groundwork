@@ -4,6 +4,7 @@ import { GroundworksOwnNumber } from './groundworks-own-number';
 import { formsOfTheSameNumber } from './a-number-whatsapp-can-reach';
 import { inboundKeysFrom } from './one-number-per-conversation';
 import { itSendsFromTheirNumber, WHAT_SAYS_IT_WORKS } from './a-connection-that-works';
+import { theNumberOnRecord } from './one-number-for-a-person';
 
 /**
  * "CONNECT WHATSAPP": ONE TAP THAT OPENS WHATSAPP WITH "Hi" ALREADY TYPED TO GROUNDWORK'S NUMBER
@@ -79,20 +80,26 @@ export async function theyAreConnectedOnWhatsApp(prisma: any, who: { organizatio
   }
 }
 
-/** Their saved number (roster first, then their sign-in), and whether anything has ever come from it. */
+/**
+ * Their saved number (every roster entry that is them, then their sign-in), and whether anything has ever come from THAT number.
+ *
+ * ABOUT THE NUMBER THEY HAVE NOW (Drop Access, 21 October; findings 1.4 D). This trusted the roster's "last wrote" stamp whatever
+ * number it came from, so somebody whose number was changed still read as connected: the opening email was skipped and the WhatsApp
+ * opening to the new number was refused. The stamp counts only where Groundwork has already written to the number they have now; a
+ * message that came from that number always counts.
+ */
 async function theyHaveWrittenFromTheirNumber(prisma: any, who: { organizationId?: string | null; userId?: string | null; email?: string | null }): Promise<boolean> {
-  const person = await prisma.person?.findFirst?.({
-    where: { organizationId: who.organizationId, OR: [...(who.userId ? [{ linkedUserId: who.userId }] : []), ...(who.email ? [{ email: who.email.toLowerCase() }] : [])] },
-    select: { phone: true, whatsappLastInboundAt: true },
-  });
-  if (person?.whatsappLastInboundAt) return true;
-  const user = who.userId ? await prisma.user?.findUnique?.({ where: { id: who.userId }, select: { phoneNumber: true } }) : null;
-  const phone = person?.phone ?? user?.phoneNumber ?? null;
+  if (!who.organizationId) return false;
+  const phone = await theNumberOnRecord(prisma, who.organizationId, who);
   if (!phone) return false;
   const forms = formsOfTheSameNumber(phone);
   const came = await prisma.whatsAppInboundMessage?.findFirst?.({
     where: { OR: forms.flatMap((f: string) => [{ messageId: { startsWith: inboundKeysFrom('ours', f) } }, { messageId: { startsWith: inboundKeysFrom('theirs', f) } }]) },
     select: { messageId: true },
   });
-  return !!came;
+  if (came) return true;
+  const stamped = await prisma.person?.findFirst?.({ where: { organizationId: who.organizationId, phone: { in: forms }, whatsappLastInboundAt: { not: null } }, select: { id: true } });
+  if (!stamped) return false;
+  const went = await prisma.whatsAppSend?.findFirst?.({ where: { phone: { in: forms }, sentAt: { not: null } }, select: { id: true } });
+  return !!went;
 }
