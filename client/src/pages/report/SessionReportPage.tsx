@@ -1,3 +1,4 @@
+import { TheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { TheLeadsOwnWayIn } from '@/components/gw/TheLeadsOwnWayIn'
 import { isSessionShared } from '@/lib/session-rows'
@@ -130,6 +131,8 @@ export default function SessionReportPage() {
 
   /* Only the person who runs the check-in is offered these: a party cannot change either, and
      telling somebody about a setting they have no access to is worse than not mentioning it. */
+  /* The direct morning (lib/the-direct-morning.tsx), from the check-in this page already reads. */
+  const direct = isTheDirectMorningOn(ground)
   const amTheInitiator = ((ground as any)?.participants ?? []).some(
     (p: any) => p.userId === viewerUserId && p.partyType === 'INITIATOR',
   )
@@ -284,18 +287,19 @@ export default function SessionReportPage() {
     const teamShared = !!shape && (shape as any).released === true
     const checkInLabel: string = (ground as any)?.label ?? 'This check-in'
     return (
+      <TheDirectMorning on={direct}>
       <Page>
         <div className="pb-own">
           <div className="pb-own-top">
             <span className="pb-sub">{`${checkInLabel}${data.finishedAt ? `, ${whenItWas(data.finishedAt, 'dayAndMonthLong')}` : ''}`}</span>
-            <Tag>Only you</Tag>
+            {!direct && <Tag>Only you</Tag>}
           </div>
           <h1 className="pb-own-title">Your report</h1>
           <TheCheckInYouJustFinished checkInId={checkInId!} groundId={data.groundId as string} sessionNumber={data.sessionNumber as number} light pictured />
           <div className="pb-own-team">
             <div>
               <b>The team’s report</b>
-              <p className="pb-sub">{teamShared ? ((shape as any)?.releaseOneSalesReport === true ? 'Shared. Open it.' : 'Shared. Open it to read the whole team’s picture.') : `Not shared yet.${sharing?.says && !sharing.shared ? ` ${sharing.says.replace(/ You’ll get an email when.*$/, '')}` : ''}`}</p>
+              <p className="pb-sub">{teamShared ? ((shape as any)?.releaseOneSalesReport === true || direct ? 'Shared. Open it.' : 'Shared. Open it to read the whole team’s picture.') : `Not shared yet.${sharing?.says && !sharing.shared ? ` ${sharing.says.replace(/ You’ll get an email when.*$/, '')}` : ''}`}</p>
             </div>
             {teamShared
               ? <Link className="gwui-plain-link" to={`/grounds/${data.groundId}/session/${data.sessionNumber}`}>Open it</Link>
@@ -306,10 +310,12 @@ export default function SessionReportPage() {
           </div>
         </div>
       </Page>
+      </TheDirectMorning>
     )
   }
 
   return (
+    <TheDirectMorning on={direct}>
     <Page>
       {/*
         U.10 PICTURE-CHECK ROUND 6, ITEM I: THE SHARED HEADER, ONCE THE PAGE HAS SOMETHING TO
@@ -453,10 +459,10 @@ export default function SessionReportPage() {
           {!isLoading && !isError && !data?.report && !(groundReport as any)?.soloArtifact && amTheInitiator && !data?.finishedAt && data?.groundId && (
             <Panel>
               <Stack gap={10}>
-                <SubHeading>Own reports are private</SubHeading>
-                <Note>Each person’s own report is theirs alone. Yours appears here after your own check-in.</Note>
+                <SubHeading>{direct ? 'Your own report' : 'Own reports are private'}</SubHeading>
+                <Note>{direct ? 'Yours appears here after your own check-in.' : 'Each person’s own report is theirs alone. Yours appears here after your own check-in.'}</Note>
                 {!['CLOSED', 'RESOLVED', 'STALLED', 'PAUSED'].includes((ground as any)?.status) && <TheLeadsOwnWayIn groundId={data.groundId as string} />}
-                <Note>Your check-ins here are optional. Check in when you want your own view in the picture.</Note>
+                {!direct && <Note>Your check-ins here are optional. Check in when you want your own view in the picture.</Note>}
               </Stack>
             </Panel>
           )}
@@ -638,7 +644,7 @@ export default function SessionReportPage() {
           */}
           {data?.finishedAt && (
             <Stack gap={10}>
-              <Note>This record is yours. You can keep your own copy, and it will always be here for you.</Note>
+              <Note>{direct ? 'You can keep your own copy.' : 'This record is yours. You can keep your own copy, and it will always be here for you.'}</Note>
               <button
                 type="button"
                 disabled={downloadRecord.isPending}
@@ -733,11 +739,14 @@ export default function SessionReportPage() {
             on Rukia Otieno for 3 things", which is exactly what it claimed never happened. The
             sentence now says only what is true and actually enforced.
           */}
+          {/* The direct morning: when it closed, and nothing that explains or defends the report. Who reads what is the backend's rule. */}
+          {direct ? (shape?.state === 'final' && <Note>{`Closed${shape.takenAt ? ` ${whenItWas(shape.takenAt, 'day')}` : ''}.`}</Note>) : (
           <Note>
             {shape?.state === 'final'
               ? `Closed${shape.takenAt ? ` ${whenItWas(shape.takenAt, 'day')}` : ''}. This does not change. What each person said about their own work can appear here. Nobody's private judgement of somebody else does.`
               : 'Everybody’s side of this session, together, and it updates as people check in. What each person said about their own work can appear here. Nobody\'s private judgement of somebody else does.'}
           </Note>
+          )}
           <TheSessionsReport
             groundId={data.groundId}
             sessionNumber={data.sessionNumber}
@@ -851,6 +860,7 @@ export default function SessionReportPage() {
         </div>
       )}
     </Page>
+    </TheDirectMorning>
   )
 }
 

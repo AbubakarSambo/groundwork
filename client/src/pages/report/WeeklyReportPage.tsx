@@ -1,3 +1,4 @@
+import { isTheDirectMorningOn } from '@/lib/the-direct-morning'
 import { useQuery } from '@tanstack/react-query'
 import { TheLeadsOwnWayIn } from '@/components/gw/TheLeadsOwnWayIn'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -70,6 +71,8 @@ export default function WeeklyReportPage() {
   }
 
   if (!data) return null
+  /* The direct morning (lib/the-direct-morning.tsx): the week itself, with no line explaining what a weekly report is. */
+  const direct = isTheDirectMorningOn(data) || isTheDirectMorningOn(ground)
 
   /* "This week, 21 to 23 Sep, so far" when the server sends it; a week with nothing to show yet
      reads only `saying`, exactly as the lead-less daily report already does elsewhere. */
@@ -111,7 +114,7 @@ export default function WeeklyReportPage() {
     const changed = data.whatChanged
     return (
       <Page>
-        <PageTitle crumbs={crumbs} title={title} subtitle={data.whatThisIs} />
+        <PageTitle crumbs={crumbs} title={title} subtitle={direct ? undefined : data.whatThisIs} />
         {data.saying && <Note>{data.saying}</Note>}
         {data.inNumbers && data.inNumbers.length > 0 && (
           <Section heading="The week in numbers">
@@ -190,7 +193,7 @@ export default function WeeklyReportPage() {
   {
     return (
       <Page>
-        <PageTitle crumbs={crumbs} title={title} subtitle={data.whatThisIs} />
+        <PageTitle crumbs={crumbs} title={title} subtitle={direct ? undefined : data.whatThisIs} />
         {data.saying && <Note>{data.saying}</Note>}
         {data.inNumbers && data.inNumbers.length > 0 && (
           <Section heading="The week in numbers">
