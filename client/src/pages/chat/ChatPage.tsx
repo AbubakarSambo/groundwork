@@ -1,3 +1,4 @@
+import { TheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
 import { ANSWER_ON_WHATSAPP_INSTEAD } from '@/lib/answer-on-whatsapp-instead'
 import { WaitingForYouToConfirm } from '@/components/gw/ThePlanPage'
 import { CheckInOnWhatsApp } from '@/components/gw/CheckInOnWhatsApp'
@@ -186,6 +187,8 @@ export function ChatPage() {
     retry: false,
   })
   const checkInName: string = groundLabel || (ground.data as any)?.label || ''
+  /* The direct morning (lib/the-direct-morning.tsx): the fixed lines on this screen are direct where the organisation's switch is on. */
+  const direct = isTheDirectMorningOn(ground.data)
   const [brief, setBrief] = useState<CheckInBrief | null>(null)
   /**
    * "CONNECT WHATSAPP" (decision 106, 5 October, night): served on the person's own transcript
@@ -1241,6 +1244,7 @@ export function ChatPage() {
       every size, colour and spacing of this screen's own markup in gw-ui.css's `.gwui-ci-*`
       classes rather than an inline style.
     */
+    <TheDirectMorning on={direct}>
     <div className="gwui-ci-page">
       <div className="gwui-ci-wrap">
       {/**
@@ -1283,7 +1287,7 @@ export function ChatPage() {
                         ? `Correcting session ${correctingSession}`
                         : isFinalSession
                           ? `Closing session ${sessionNumber}. This is your final account.`
-                          : 'About ten minutes'
+                          : direct ? 'A few minutes' : 'About ten minutes'
                   }
                   mayPause={opened && !completed && !declined}
                   /* Not in the bare frame: the only control on that screen should not lead out of the thing
@@ -1574,7 +1578,7 @@ export function ChatPage() {
                   {brief!.alsoSay && (
                     <p className="gwui-panel-text-muted">{brief!.alsoSay}</p>
                   )}
-                  <p className="gwui-panel-text-muted">Answer in your own words. You are not expected to agree with any of it.</p>
+                  {!direct && <p className="gwui-panel-text-muted">Answer in your own words. You are not expected to agree with any of it.</p>}
                 </div>
               )}
               {priorRecordLines.length > 0 && (
@@ -1827,7 +1831,7 @@ export function ChatPage() {
                   <li>This cannot be undone for this session.</li>
                   <li>The session finishes without your answers, so nobody is left waiting on you.</li>
                   <li>The report will say you declined. It will not guess at what you would have said.</li>
-                  <li>Nothing you have written here is shown to anyone.</li>
+                  {!direct && <li>Nothing you have written here is shown to anyone.</li>}
                 </ul>
                 <div className="gwui-ci-confirm-actions">
                   <Button kind="primary" onClick={() => decline.mutate()} disabled={decline.isPending}>
@@ -2004,5 +2008,6 @@ export function ChatPage() {
         </div>
       )}
     </div>
+    </TheDirectMorning>
   )
 }
