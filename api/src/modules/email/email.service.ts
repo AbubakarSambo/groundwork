@@ -29,7 +29,8 @@ import { greeting } from './a-greeting-with-no-name';
 import { howLongInWords } from '../auth/how-long-a-link-lasts';
 import { shouldSayWhatGroundworkIs, withWhatGroundworkIs } from './what-groundwork-is';
 import { markedAsDirect, theDirectMarkOn, theDirectMorningForAMail, withoutTheDirectMark } from './a-direct-email';
-import { theReportReadyDirectly } from './the-direct-words';
+import { whatTheyReported } from '../engagement/what-they-reported';
+import { somebodyCheckedInDirectly, theInvitationDirectly, theReportIsStillWaitingDirectly, theReportReadyDirectly } from './the-direct-words';
 import { haveNotCheckedInSaid, type WhoIsLeft } from './who-has-not-checked-in-yet';
 import { whatTheTeamGets, whatTheLeadGets, THE_TEAM_BUTTON, THE_LEAD_BUTTON } from './one-line-one-link-one-report';
 import { thePartialPicture } from '../engagement/a-partial-picture-said-honestly';
@@ -421,7 +422,7 @@ export class EmailService implements OnModuleInit {
     }
   }
 
-  private async theWayToStopBeingChased(participantId?: string): Promise<string | null> {
+  private async theWayToStopBeingChased(participantId?: string, direct = false): Promise<string | null> {
     if (!participantId) return null;
     try {
       const row = await this.prisma.groundParticipant.findUnique({
@@ -437,7 +438,7 @@ export class EmailService implements OnModuleInit {
           data: { stopRemindersToken: token },
         });
       }
-      return STOP_LINE(`${this.frontendUrl.replace(/\/$/, '')}/stop-reminders/${token}`);
+      return STOP_LINE(`${this.frontendUrl.replace(/\/$/, '')}/stop-reminders/${token}`, direct);
     } catch (err: any) {
       this.logger.warn(`Could not build a stop-reminders link for participant ${participantId}: ${err.message}`);
       return null;
@@ -762,6 +763,8 @@ export class EmailService implements OnModuleInit {
   /* `usesGoogle`: only somebody who signs in with Google is told a password lets them sign in without it (messages test, 19 October, finding 17). */
   async sendAddPasswordEmail(email: string, firstName: string, token: string, usesGoogle = false): Promise<void> {
     const url = `${this.frontendUrl}/set-password?token=${token}`;
+    /* With the direct morning on, what the password does, and no sentence about what Groundwork is (a-direct-email.ts). */
+    const direct = await theDirectMorningForAMail(this.prisma, email);
     await this.sendEmail({
       to: email,
       subject: 'Set a password for Groundwork',
@@ -773,7 +776,7 @@ export class EmailService implements OnModuleInit {
        */
       html: this.layout(
         `<p>${greeting(firstName)}</p>` +
-        `<p>Groundwork is where you and the people you work with each say how a piece of work is actually going, separately, and get one shared picture back. ${usesGoogle ? 'Setting a password means you can sign in without Google.' : 'Setting a password means you can come back and sign in with this email address and your password.'}</p>` +
+        `<p>${direct ? '' : 'Groundwork is where you and the people you work with each say how a piece of work is actually going, separately, and get one shared picture back. '}${usesGoogle ? 'Setting a password means you can sign in without Google.' : 'Setting a password means you can come back and sign in with this email address and your password.'}</p>` +
         `<p><a href="${url}">Set password</a></p>` +
         `<p style="color:#888;font-size:12px;">This link lasts ${howLongInWords('set a password from an email')} and can only be used once. If it has expired, ask for a new one from the sign-in page.</p>`,
       ),
@@ -864,7 +867,9 @@ export class EmailService implements OnModuleInit {
      * The last paragraph promises that ignoring this is enough. theWayToStopBeingChased is what
      * makes that true.
      */
-    const stopLine = await this.theWayToStopBeingChased(context?.participantId);
+    /* With the direct morning on (a-direct-email.ts): who asks, what it is, and the button. No note about who sees it, and nothing about not having to take part. */
+    const direct = await theDirectMorningForAMail(this.prisma, email, context);
+    const stopLine = await this.theWayToStopBeingChased(context?.participantId, direct);
     /* THE NAME THE LEAD TYPED, OR THE ONE ON THEIR SIGN-IN (B-002). The mail said "Hi," to a person the lead had named. */
     const them = context?.participantId
       ? await this.prisma.groundParticipant.findUnique({ where: { id: context.participantId }, select: { nameGiven: true, user: { select: { firstName: true } } } }).catch(() => null)
@@ -876,7 +881,10 @@ export class EmailService implements OnModuleInit {
     const devUrl = await this.sendEmail({
       to: email,
       subject: `${founderName} would like your take on ${groundLabel}`,
-      html: this.layout(
+      html: direct ? this.layout(markedAsDirect(true) + theInvitationDirectly({
+        hello: greeting(theirFirstName), from: founderName, label: groundLabel, joining: await this.whatHappensWhenTheyJoin(context), noteHtml, url,
+        whatsApp: await this.theWhatsAppLine(email, context), stopLine: stopLine ?? '',
+      })) : this.layout(
         `<p>${escapeHtml(greeting(theirFirstName))}</p>
          <p><strong>${escapeHtml(founderName)}</strong> would like to know what you are seeing in <strong>${escapeHtml(groundLabel)}</strong>.</p>
          <p>It is a short check-in, about ten minutes, where you say what is actually going on from where you sit.</p>
@@ -1461,7 +1469,9 @@ export class EmailService implements OnModuleInit {
 
   /** The reminder's subject and words, the same whichever way it came. */
   private async theNudge(groundLabel: string, link: string, scenario: string | undefined, otherPartyCompleted: boolean | undefined, theAnchorLine: string | null | undefined, participantId: string, simplerWords?: boolean | null, email?: string): Promise<{ subject: string; html: string }> {
-    const words = THE_EMAILS.nudge(simplerWords);
+    /* With the direct morning on (a-direct-email.ts): the check-in by its name, how long it takes, and who else is in. No "shared picture", no "their side". */
+    const direct = await theDirectMorningForAMail(this.prisma, email, { participantId });
+    const words = direct ? THE_EMAILS.nudgeDirect() : THE_EMAILS.nudge(simplerWords);
     const subjectMap: Record<string, string> = {
       NEW_HIRE: 'Your 90-day check-in is waiting',
       NEW_COFOUNDER: 'Your cofounder check-in is open',
@@ -1476,7 +1486,7 @@ export class EmailService implements OnModuleInit {
       PIP: 'Your performance plan check-in is waiting',
     };
     /* Said with the check-in's name, so four waiting check-ins are four different subjects (B-145). */
-    const subject = (scenario && subjectMap[scenario]) || `Your check-in for ${groundLabel} is waiting`;
+    const subject = (!direct && scenario && subjectMap[scenario]) || `Your check-in for ${groundLabel} is waiting`;
     const otherPartyNote = otherPartyCompleted
       ? `<p><strong>${words.theOtherHasAnswered}</strong></p>`
       : '';
@@ -1484,7 +1494,7 @@ export class EmailService implements OnModuleInit {
       subject,
       /* A reminder with no way to stop it is the whole defect. This is the second mail it goes on. */
       /* On an anchor check-in, the anchor's own line (piece 30): their own open promise said back to them, or what has changed. */
-      html: this.layout(`<p>Your check-in for <strong>${escapeHtml(groundLabel)}</strong> ${words.stillOpen}</p>${theAnchorLine ? `<p>${escapeHtml(theAnchorLine)}</p>` : ''}${otherPartyNote}<p>${link}</p>${(await this.theWayToStopBeingChased(participantId)) ?? ''}${email ? await this.theWhatsAppLineForAParticipant(email, participantId) : ''}`),
+      html: this.layout(`${direct ? markedAsDirect(true) : ''}<p>Your check-in for <strong>${escapeHtml(groundLabel)}</strong> ${words.stillOpen}</p>${theAnchorLine ? `<p>${escapeHtml(theAnchorLine)}</p>` : ''}${otherPartyNote}<p>${link}</p>${(await this.theWayToStopBeingChased(participantId, direct)) ?? ''}${email ? await this.theWhatsAppLineForAParticipant(email, participantId) : ''}`),
     };
   }
 
@@ -1687,10 +1697,11 @@ export class EmailService implements OnModuleInit {
    */
   async sendActivationRevealReminder(email: string, groundLabel: string, reportUrl: string, readySince?: Date | null, zone?: string | null): Promise<void> {
     const since = readySince ? whenItWas(readySince, 'weekdayAndDay', zone ?? undefined) : '';
+    const direct = await theDirectMorningForAMail(this.prisma, email);
     await this.sendEmail({
       to: email,
       subject: reportReadyReminderSubject(groundLabel),
-      html: this.layout(
+      html: direct ? this.layout(markedAsDirect(true) + theReportIsStillWaitingDirectly(groundLabel, reportUrl, since)) : this.layout(
         `<p>The shared picture for <strong>${escapeHtml(groundLabel)}</strong> ${since ? `has been ready since ${escapeHtml(since)}` : 'is ready'}.</p>
          <p>It shows where what you each said agrees, where it differs, and what is still open. It is open to you now, and nothing else is needed from you to read it.</p>
          <p><a href="${reportUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View your report →</a></p>`,
@@ -1699,7 +1710,9 @@ export class EmailService implements OnModuleInit {
   }
 
   /** Participant checked in. The lead is told by the person's name, with how many are still to come. */
-  async sendParticipantCheckedIn(adminEmail: string, participantName: string, groundLabel: string, groundUrl: string, stillPending?: number | WhoIsLeft, progress?: { answered: string[]; ofHowMany: number; youAreStillToAnswer?: boolean }): Promise<void> {
+  async sendParticipantCheckedIn(adminEmail: string, participantName: string, groundLabel: string, groundUrl: string, stillPending?: number | WhoIsLeft, progress?: { answered: string[]; ofHowMany: number; youAreStillToAnswer?: boolean },
+    /* Which check-in this was, so that with the direct morning on the lead is told what the person reported (engagement/what-they-reported.ts). */
+    about?: { groundId: string; participantId: string; checkInId?: string | null }): Promise<void> {
     const left: WhoIsLeft | undefined = typeof stillPending === 'number' ? { names: [], count: stillPending } : stillPending;
     const partial = progress && progress.answered.length > 0 && progress.answered.length < progress.ofHowMany ? thePartialPicture(groundLabel, progress, left) : null;
     /*
@@ -1711,10 +1724,13 @@ export class EmailService implements OnModuleInit {
     const pendingNote = left && left.count > 0
       ? `<p>${escapeHtml(haveNotCheckedInSaid(left))} The report is made once everyone is in.</p>`
       : `<p>Everyone has now checked in. The shared report is ready to go out.</p>`;
+    /* With the direct morning on (a-direct-email.ts): what they reported, the customers, units and money, where the lead may read it on her board. */
+    const direct = about?.groundId ? await theDirectMorningForAMail(this.prisma, adminEmail, { groundId: about.groundId }) : false;
+    const reported = direct && about ? await whatTheyReported(this.prisma, about, participantName.trim().split(/\s+/)[0] || participantName) : [];
     await this.sendEmail({
       to: adminEmail,
       subject: `${participantName} has checked in on ${groundLabel}`,
-      html: this.layout(
+      html: direct ? this.layout(markedAsDirect(true) + somebodyCheckedInDirectly({ name: participantName, label: groundLabel, reported, stillToCome: left && left.count > 0 ? haveNotCheckedInSaid(left) : null, url: groundUrl })) : this.layout(
         `<p><strong>${escapeHtml(participantName)}</strong> has checked in on <strong>${escapeHtml(groundLabel)}</strong>.</p>
          ${pendingNote}
          <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View check-in →</a></p>

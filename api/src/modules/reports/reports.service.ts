@@ -1,6 +1,7 @@
 import { thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
 import { theDirectMorningIsOnFor, theDirectMorningIsOn as theOrganisationsDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { withTheDirectMorning, whichDirectBlockRan, THE_DIRECT_TEAM_REPORT, THE_DIRECT_JUDGEMENT, THE_DIRECT_OWN_REPORT } from './the-direct-morning-is-written-straight';
+import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
 import { whatTheSwitchboardServes, type TheSwitchboardServed } from '../board/the-switchboard';
 import { theCorrectionsOnTheCheckIn, withWhatACorrectionSettled, whoIsBehindALabel } from './a-correction-is-their-latest-word';
@@ -5476,11 +5477,12 @@ happened, and what is in the way.`;
     ground: { id: string; label: string; initiatorId: string; organizationId: string; simplerWords?: boolean | null },
     p: { userId: string | null },
     sessionNumber: number,
+    direct = false,
   ) {
     if (!p.userId) return null;
     /* As if released: this goes out at the moment of release, before it is stamped, and a participant's own read of the team's picture is withheld until then. */
     const report = await this.sessionReport(ground.id, sessionNumber, p.userId, ground.organizationId, true);
-    return theFirstInsight(report, ground.label, { isTheLead: p.userId === ground.initiatorId, simplerWords: ground.simplerWords });
+    return theFirstInsight(report, ground.label, { isTheLead: p.userId === ground.initiatorId, simplerWords: ground.simplerWords, direct });
   }
 
   /**
@@ -5502,11 +5504,11 @@ happened, and what is in the way.`;
     return found ? { ...none, ...found } : none;
   }
 
-  private async theReportReadySubject(ground: { id: string; label: string; initiatorId: string }, p: { userId: string | null }): Promise<string | undefined> {
+  private async theReportReadySubject(ground: { id: string; label: string; initiatorId: string }, p: { userId: string | null }, direct = false): Promise<string | undefined> {
     const stood = await theOpenSession(this.prisma, ground.id, ground.initiatorId);
     const isTheLead = !!p.userId && p.userId === ground.initiatorId;
     const facts = isTheLead ? theFactsOfTheWeek(await theWeekOf(this.prisma, ground, new Date())) : null;
-    return theSharedPictureSubject(ground.label, stood, facts);
+    return theSharedPictureSubject(ground.label, stood, facts, direct);
   }
 
   /**
@@ -5567,6 +5569,8 @@ happened, and what is in the way.`;
       const name = [who?.user?.firstName, who?.user?.lastName].filter((x: any) => typeof x === 'string' && x.trim()).join(' ').trim() || (who?.nameGiven ?? '').trim() || null;
       return { participantId: c.participantId, name, answered: c.status === CheckInStatus.COMPLETED && !saidNothing.has(c.participantId) };
     });
+    /* The direct morning's switch, read once for this check-in's organisation (email/a-direct-email.ts). */
+    const direct = owed.length ? await theDirectMorningIsOn(this.prisma, (ground as any).organizationId) : false;
     let failed = 0;
     for (const p of owed) {
       try {
@@ -5577,15 +5581,15 @@ happened, and what is in the way.`;
         if (aStandingUpdate && theOneLine) await this.email.sendTeamUpdateAllIn(p.email, theOneLine, ground.participants.length, linkFor(p), sharedByAnAdminSentence);
         else {
           /* The finding itself, as this reader is served the report (spec section 7). Where it cannot be read, the notice goes as it always did. */
-          const insight = await this.theInsightFor(ground, p, sessionNumber).catch(() => null);
-          const subject = (insight?.subjectForTheLead) ?? await this.theReportReadySubject(ground, p).catch(() => undefined);
+          const insight = await this.theInsightFor(ground, p, sessionNumber, direct).catch(() => null);
+          const subject = (insight?.subjectForTheLead) ?? await this.theReportReadySubject(ground, p, direct).catch(() => undefined);
           /* WHERE THERE IS A FINDING, "I CAN HELP YOU DO THAT" (request 198): a way into Ask about this check-in, for the lead, and for a participant only where the report served to them names one. */
           /* Only for somebody who signs in with a password: a person who comes in on an invite link is taken only to the report (the invite page honours no other path). */
           const chat = insight?.hasAFinding && p.user?.passwordHash
             ? { url: `${frontend}/chat?about=${groundId}`, label: p.userId === ground.initiatorId ? 'I can help you do that' : 'I can help you talk it through' }
             : undefined;
           const whoCheckedIn = whoCheckedInForThisPicture(ground.label, sessionNumber, asked, p.id, peersAreNamedOn(ground as any, { participantId: p.id }));
-          await this.email.sendReportReady(p.email, ground.label, linkFor(p), sharedByAnAdminSentence, ground.id, subject, insight?.lines, chat, whoCheckedIn);
+          await this.email.sendReportReady(p.email, ground.label, linkFor(p), sharedByAnAdminSentence, ground.id, subject, insight?.lines, chat, whoCheckedIn, direct);
         }
       } catch (err: any) {
         failed += 1;
