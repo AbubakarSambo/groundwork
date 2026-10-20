@@ -347,6 +347,19 @@ describe('Grace, an admin, reads Connections', () => {
     expect(within(wa).getByText('Switched off')).toBeTruthy()
   })
 
+  it('a row switched on but never finished reads "Not finished", says Groundwork’s number is in use, and where a team member’s number goes (Drop Access, 21 October)', async () => {
+    const says = "Your organisation's own WhatsApp number is not finished, so Groundwork writes to your people from Groundwork's own WhatsApp number until it is."
+    serve({ connection: { ...CONNECTED, displayNumber: '0712 345 678', webhookProvenAt: null, lastInboundAt: null, lastOutboundAt: null, inUse: false, notInUseSays: says } })
+    open(GRACE)
+    const wa = await screen.findByRole('region', { name: 'WhatsApp' })
+    await within(wa).findByText('Not finished')
+    expect(within(wa).queryByText('Connected')).toBeNull()
+    expect(within(wa).getByText(says)).toBeTruthy()
+    expect(wa.textContent).toContain("This is for connecting your organisation's own WhatsApp Business number. To let a team member check in on WhatsApp, add their number on People and setup.")
+    expect(wa.textContent).not.toContain('Your people check in by replying to 0712 345 678')
+    expect(within(wa).getByRole('link', { name: 'People and setup' }).getAttribute('href')).toBe('/grounds')
+  })
+
   it('"Your numbers", with only the rows something real stands behind', async () => {
     serve({ glance: { whatsapp: null, figures: { fromYourProduct: true } } })
     open(GRACE)
@@ -541,7 +554,7 @@ describe('Grace, an admin, reads Connections', () => {
 })
 
 describe('Grace, an admin, connects WhatsApp step by step', () => {
-  it('starts at step 2, with the prototype’s heading, lede and the three things to paste', async () => {
+  it('starts at step 2, with the prototype’s heading, lede and the five things to paste', async () => {
     serve()
     open(GRACE, 'whatsapp')
     /*
@@ -559,7 +572,10 @@ describe('Grace, an admin, connects WhatsApp step by step', () => {
        because Groundwork's own number already works for everyone without any of this. */
     expect(screen.getByRole('heading', { name: 'Use your organisation’s own WhatsApp number' })).toBeTruthy()
     expect(screen.getByText('This is optional and advanced. Groundwork’s own number already works for everyone, without any of this. Most of it happens in Meta’s settings. You can stop at any step, and what you have entered is kept.')).toBeTruthy()
-    await screen.findByText('Paste three things from Meta')
+    /* Five, not the prototype's three (Drop Access, 21 October): a connection is saved only with every key. */
+    await screen.findByText('Paste five things from Meta')
+    expect(screen.getByText((_t, el) => el?.tagName === 'P' && el.textContent === "This is for connecting your organisation's own WhatsApp Business number. To let a team member check in on WhatsApp, add their number on People and setup.")).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'People and setup' }).getAttribute('href')).toBe('/grounds')
     for (const [label, hint] of [
       ['Phone number ID', 'You find it in Meta, under WhatsApp, then API Setup.'],
       ['Access token', 'Use a permanent token from a system user, not the one that lasts 24 hours. You find it in Meta, under Business Settings, then System users.'],
@@ -570,7 +586,9 @@ describe('Grace, an admin, connects WhatsApp step by step', () => {
     }
     expect(screen.getByText(/A Meta Business account, a WhatsApp Business number on it, and a Meta app with WhatsApp added\./)).toBeTruthy()
     /* PLAIN WORDS, NOT "id" (group 1 review, CLAUDE.md's banned-jargon list). */
-    expect(screen.getByText('Your WhatsApp Business account ID, if you have one')).toBeTruthy()
+    expect(screen.getByText('Your WhatsApp Business account ID')).toBeTruthy()
+    expect(screen.getByText('You find it in Meta Business, under WhatsApp accounts.')).toBeTruthy()
+    expect(screen.getByText('The number, as people will see it')).toBeTruthy()
     expect(screen.queryByText('WhatsApp Business Account id (optional)')).toBeNull()
     /* GROUP 1 RE-REVIEW, FAULT F: this read as plain grey text, not a link, with nothing to show
        it was clickable. Underlined now, the same style "Read them" and other in-sentence links
@@ -598,17 +616,31 @@ describe('Grace, an admin, connects WhatsApp step by step', () => {
     expect(screen.getByRole('link', { name: 'Read how this works' }).getAttribute('href')).toBe('/settings/tools')
   })
 
-  it('"Connect" needs all three the first time, and sends them to the server', async () => {
+  it('"Connect" sends what was typed to the server, which decides what is missing', async () => {
     serve()
     api.connectWhatsapp.mockResolvedValue({ connection: CONNECTED, webhookPath: '/x' })
     open(GRACE, 'whatsapp')
     const connect = await screen.findByRole('button', { name: 'Connect' })
+    /* Nothing typed yet: nothing to send. */
     expect((connect as HTMLButtonElement).disabled).toBe(true)
     fireEvent.change(screen.getByRole('textbox', { name: 'Phone number ID' }), { target: { value: '109822345561' } })
     fireEvent.change(screen.getByLabelText('Access token'), { target: { value: 'EAA-token' } })
     fireEvent.change(screen.getByLabelText('App secret'), { target: { value: 'secret' } })
     fireEvent.click(connect)
     await waitFor(() => expect(api.connectWhatsapp).toHaveBeenCalledWith(expect.objectContaining({ phoneNumberId: '109822345561', accessToken: 'EAA-token', appSecret: 'secret' })))
+  })
+
+  it('Grace types Kevin’s number where the organisation’s number goes: nothing is saved, and the page says why, with People and setup to open', async () => {
+    serve()
+    const why = "Nothing was saved, because that is Kevin Omondi's number, not a WhatsApp Business number. This is for connecting your organisation's own WhatsApp Business number. To let a team member check in on WhatsApp, add their number on People and setup."
+    api.connectWhatsapp.mockRejectedValue({ response: { data: { message: why } } })
+    open(GRACE, 'whatsapp')
+    const connect = await screen.findByRole('button', { name: 'Connect' })
+    fireEvent.change(screen.getByRole('textbox', { name: 'Phone number ID' }), { target: { value: '0712 345 678' } })
+    fireEvent.click(connect)
+    await waitFor(() => expect(screen.getAllByRole('alert').some((a) => a.textContent === why)).toBe(true))
+    const alert = screen.getAllByRole('alert').find((a) => a.textContent === why)!
+    expect(within(alert).getByRole('link', { name: 'People and setup' }).getAttribute('href')).toBe('/grounds')
   })
 
   it('once saved, step 3 shows the address and token to copy, and waits for Meta', async () => {

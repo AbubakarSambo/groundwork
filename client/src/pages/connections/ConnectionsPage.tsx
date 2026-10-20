@@ -9,6 +9,7 @@ import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { possessiveOf } from '@/lib/a-possessive'
 import { Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
 import { WhatsAppKeysNeedTypingAgainNote, WhatsAppKeysRetypeForm } from './WhatsAppKeysNeedTypingAgain'
+import { THIS_IS_FOR_YOUR_OWN_NUMBER, WithPeopleAndSetupLinked } from './a-team-members-number-goes-on-people-and-setup'
 import {
   Page, PageTitle, Section, Panel, Stack, SubHeading, FieldRows, FieldRow, Button, Tag, TextField, Note, Folded, OpsConsoleExample, WhatsAppConversationExample,
 } from '@/components/gw/ui'
@@ -382,18 +383,27 @@ function WhatsAppSection({ orgName, glance }: { orgName: string; glance: { peopl
   })
 
   const whose = orgName ? `${possessiveOf(orgName)} WhatsApp Business number` : 'your WhatsApp Business number'
+  /* Switched on but not finished (Drop Access, 21 October): the server says Groundwork's own number is in use, and this says so. */
+  const notInUse = !!connection?.enabled && connection.inUse === false && !!connection.notInUseSays
   return (
-    <Section heading="WhatsApp" action={connection ? <Tag tone={connection.enabled ? 'proven' : 'plain'}>{connection.enabled ? 'Connected' : 'Switched off'}</Tag> : undefined}>
+    <Section heading="WhatsApp" action={connection ? <Tag tone={notInUse ? 'attention' : connection.enabled ? 'proven' : 'plain'}>{notInUse ? 'Not finished' : connection.enabled ? 'Connected' : 'Switched off'}</Tag> : undefined}>
       <Panel>
         {connection ? (
           <Stack gap={12}>
             <WhatsAppKeysNeedTypingAgainNote connection={connection} />
             {connection.keysNeedTypingAgain && <WhatsAppKeysRetypeForm connection={connection} />}
+            {notInUse ? (
+              <>
+                <p className="gwui-panel-text-muted">{connection.notInUseSays}</p>
+                <p className="gwui-panel-text-muted"><WithPeopleAndSetupLinked text={THIS_IS_FOR_YOUR_OWN_NUMBER} /></p>
+              </>
+            ) : (
             <p className="gwui-panel-text-muted">
               {connection.displayNumber
                 ? <>Your people check in by replying to <b>{connection.displayNumber}</b>, {whose}. A reply is their check-in, exactly as if typed here.</>
                 : <>Your people check in by replying to {whose}. A reply is their check-in, exactly as if typed here.</>}
             </p>
+            )}
             {glance && (
               <div className="gwui-stat-row">
                 {countLines(glance).map(c => (
