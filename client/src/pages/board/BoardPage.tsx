@@ -148,6 +148,7 @@ import { whenTheBoardLastChanged, whenTheBoardLastChangedInShort, whenItRanOutOf
 import { ThePicturedSalesBoard, theScheduleInWords, ThePicturedOwnDeals, ThePicturedAskBar, GroundworkRecommends } from './pictured/ThePicturedSalesBoard'
 import { ThePicturedBoard } from './pictured/ThePicturedBoard'
 import { MessageCircle } from 'lucide-react'
+import { TheMorningAtTheTop } from './pictured/TheMorningAtTheTop'
 import { TheLightSalesBoard, TheLightNeedsYou, TheLightBesideTheHeadline, TheLightBoxes, TheLightSummaryFirst } from './TheLightSalesBoard'
 import { TheCollectionsBoard } from './pictured/TheCollectionsBoard'
 import { TheMatterBoard } from './pictured/TheMatterBoard'
@@ -2709,6 +2710,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           <p role="note" className="gwui-fs-15 gwui-ink-text gwui-mt-8" style={{lineHeight: 1.55}}>{b.readOnlyNote}</p>
         )}
 
+        {/* The direct morning (pictured/TheMorningAtTheTop.tsx): served to the lead alone where her organisation's switch is on; then the board as it is. */}
+        {!groundId && (b as any).theMorning && <TheMorningAtTheTop m={(b as any).theMorning} b={b} />}
         {picturedCollections && b.collections && (
           <TheCollectionsBoard
             board={b.collections}
