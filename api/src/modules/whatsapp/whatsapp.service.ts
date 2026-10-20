@@ -64,7 +64,7 @@ export function metaErrorCode(body: string): string {
 }
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
-import { ALREADY_GO_BY_EMAIL, AN_OPENING, BY_EMAIL_ROUTINE, BY_EMAIL_AFTER_THEIR_OWN, THE_OPENING_EMAILS, oneMessage, theOnceKey, theSenderFor, theSubjectFor, theWordsForAnEmail, whatsAppCouldNotTakeIt } from './by-email-instead';
+import { META_REFUSED_IT, ALREADY_GO_BY_EMAIL, AN_OPENING, BY_EMAIL_ROUTINE, BY_EMAIL_AFTER_THEIR_OWN, THE_OPENING_EMAILS, oneMessage, theOnceKey, theSenderFor, theSubjectFor, theWordsForAnEmail, whatsAppCouldNotTakeIt } from './by-email-instead';
 import { hasBeenToldOnce, nowToldOnce } from '../engagement/a-message-sent-once';
 import { WhatsAppAddOnService } from '../billing/whatsapp-add-on.service';
 import { aLocalForm, callingCodeOf, formsOfTheSameNumber, tidyANumber } from './a-number-whatsapp-can-reach';
@@ -428,6 +428,7 @@ export class WhatsAppService implements OnModuleInit {
     const result = await this.post(ours.phoneNumberId ?? '', ours.accessToken ?? '', to, await this.namedForSomebodyInTwoOrganisations(org, to, text, context));
     if (result.sent) this.logger.log(`WhatsApp message sent to ${to}`);
     await this.writeItDown(org, to, result, context);
+    if (!result.sent && result.status) await this.byEmailInstead(org, to, text, context, META_REFUSED_IT);
     return this.counted(org, result);
   }
 
@@ -635,6 +636,7 @@ export class WhatsAppService implements OnModuleInit {
     const result = await this.deliver(own.phoneNumberId, theirKey(own, 'accessToken'), to, await this.namedForSomebodyInTwoOrganisations(organizationId, to, text, context));
     if (result.sent) await this.prisma.whatsAppConnection.update({ where: { id: own.id }, data: { lastOutboundAt: new Date() } }).catch(() => undefined);
     await this.writeItDown(organizationId, to, result, context);
+    if (!result.sent && result.status) await this.byEmailInstead(organizationId, to, text, context, META_REFUSED_IT);
     return this.counted(organizationId, result);
   }
 
@@ -1045,6 +1047,8 @@ export class WhatsAppService implements OnModuleInit {
       result = { sent: false, error: err?.message ?? 'template send failed' };
     }
     await this.writeItDown(organizationId, to, result, { ...context, kind: `${context.kind}:template` });
+    /* Meta answered and refused it: the same words go by email instead (by-email-instead.ts). */
+    if (!result.sent && result.status) await this.byEmailInstead(organizationId, to, text, context, META_REFUSED_IT);
     return this.counted(organizationId, result);
   }
 
