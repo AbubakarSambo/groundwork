@@ -83,7 +83,7 @@ import { howACheckInIsGoing } from './how-a-check-in-is-going';
 import { theGlanceAsThisReaderMayReadIt, whatIsInTheWay } from './what-a-manager-needs-at-a-glance';
 import { totalSessionsFor } from './session-count';
 import { readPeopleAndSetup } from './people-and-setup';
-import { readReferencesAndResources, readTheEvidence, aLineToKeep, aKeyFactFrom, type EvidenceQuery } from './references-and-resources';
+import { readReferencesAndResources, readTheEvidence, aLineToKeep, aKeyFactFrom, referencesSaidDirectly, type EvidenceQuery } from './references-and-resources';
 import { theRelease1bTabsAreOn } from './release-1b-tabs';
 import { theSessionClock } from '../board/one-count-for-the-sessions';
 import { answeredOnALink, aLinkRoundIsReady } from './an-open-link-has-no-roster';
@@ -8325,7 +8325,9 @@ export class GroundsService {
   async referencesAndResources(groundId: string, userId: string) {
     await refuseSomeoneAwaitingTheOrganisation(this.prisma as any, userId, CANNOT_CHECK_IN_YET);
     await this.assertMaySeeGround(groundId, userId);
-    return withTheDirectMorningSaid(await readReferencesAndResources(this.prisma as any, { groundId, userId, contextEnabled: this.contextEnabled() }), await theDirectMorningIsOnFor(this.prisma, groundId));
+    const served = await readReferencesAndResources(this.prisma as any, { groundId, userId, contextEnabled: this.contextEnabled() });
+    const direct = await theDirectMorningIsOnFor(this.prisma, groundId);
+    return withTheDirectMorningSaid(direct ? referencesSaidDirectly(served) : served, direct);
   }
 
   /** One page of the evidence this reader may read (Release 1B, pull request 2 of 3). */

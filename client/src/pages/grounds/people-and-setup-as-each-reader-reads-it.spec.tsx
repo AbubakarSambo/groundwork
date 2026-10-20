@@ -252,3 +252,27 @@ describe('Mercy, a team member, reads only her short page', () => {
     expect(container.textContent).toBe('')
   })
 })
+
+/**
+ * WITH THE DIRECT MORNING ON (Hafsah, 20 October 2026; `directMorningOn` on the check-in, GET /grounds/:id): Grace's page drops the
+ * line explaining what the scenario and kind of work decide, and the line explaining what the report shows. Every setting, problem
+ * and fix is the same; who sees what is the same setting either way.
+ */
+describe('Grace’s People and setup, with the direct morning on', () => {
+  it('no explanation of Groundwork, and every section, problem and setting as before', async () => {
+    ;(groundsApi.peopleAndSetup as any).mockResolvedValue({ ...SERVED_TO_GRACE, directMorning: true })
+    renderPage(props({ ground: { ...theSalesCheckIn(), directMorningOn: true } }))
+    await screen.findByText('5 people answer every weekday, until 30 October, on WhatsApp or here.')
+    expect(screen.queryByText('The scenario and kind of work decide the board, the reports, and what each check-in asks about.')).toBeNull()
+    expect(document.body.textContent).not.toMatch(/the report shows where (the team|you) agree/)
+    expect(screen.getByText("Peter Ouma can't start, because the invitation to Peter bounced.")).toBeTruthy()
+    expect(screen.getByText('5 of 15 sessions done. Sessions already done are never removed.')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Who sees what' })).toBeTruthy()
+  })
+  it('off, the two lines read as they did', async () => {
+    ;(groundsApi.peopleAndSetup as any).mockResolvedValue(SERVED_TO_GRACE)
+    renderPage(props({ ground: { ...theSalesCheckIn(), directMorningOn: false } }))
+    await screen.findByText('5 people answer every weekday, until 30 October, on WhatsApp or here.')
+    expect(screen.getByText('The scenario and kind of work decide the board, the reports, and what each check-in asks about.')).toBeTruthy()
+  })
+})

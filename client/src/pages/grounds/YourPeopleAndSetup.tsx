@@ -1,3 +1,4 @@
+import { isTheDirectMorningOn } from '@/lib/the-direct-morning'
 import { useQuery } from '@tanstack/react-query'
 import { groundsApi, type PeopleAndSetup } from '@/api/grounds'
 import { Panel, FieldRows, FieldRow, Text, Note, Stack } from '@/components/gw/ui'
@@ -43,7 +44,8 @@ export function YourPeopleAndSetup({ groundId }: { groundId: string }) {
           <FieldRow label="Your sessions" value={sessionsCompletedSentence(m.yourSessionsDone, m.sessionsPlanned)} />
           {m.runsIt && <FieldRow label="Runs it" value={m.runsIt} />}
         </FieldRows>
-        <Note>{m.whoSeesWhat}</Note>
+        {/* The direct morning: no note about who sees what. Who sees what is the backend's rule, the same either way. */}
+        {!isTheDirectMorningOn(data) && <Note>{m.whoSeesWhat}</Note>}
       </Stack>
     </Panel>
   )

@@ -1,3 +1,4 @@
+import { TheDirectMorning, useTheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
 import { useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -59,7 +60,8 @@ export function ReferencesAndResourcesPage({ groundId, ground, isTheLead }: { gr
   if (isLoading) return <Note role="status">Getting References and resources…</Note>
   if (error || !data) return <Callout tone="warning">References and resources could not be read just now. Try again in a moment.</Callout>
   if (!data.on) return null
-  return <ThePage groundId={groundId} served={data} ground={ground} isTheLead={isTheLead} />
+  /* The direct morning (lib/the-direct-morning.tsx): said once for the page, from what it is served. */
+  return <TheDirectMorning on={isTheDirectMorningOn(data)}><ThePage groundId={groundId} served={data} ground={ground} isTheLead={isTheLead} /></TheDirectMorning>
 }
 
 function ThePage({ groundId, served, ground, isTheLead }: { groundId: string; served: Served; ground: any; isTheLead: boolean }) {
@@ -383,6 +385,7 @@ function QuestionsAndAnswers({ served }: { served: Served }) {
 /* ------------------------------------------------------------------------------------------------------- People */
 
 function People({ groundId, people, onDone }: { groundId: string; people: NonNullable<Served['people']>; onDone: () => void }) {
+  const direct = useTheDirectMorning()
   const [q, setQ] = useState('')
   const [editing, setEditing] = useState<{ pid: string; kind: 'PERSON_NOTE' | 'HELP_WITH'; lineId: string | null; text: string } | null>(null)
   const save = useMutation({
@@ -410,7 +413,7 @@ function People({ groundId, people, onDone }: { groundId: string; people: NonNul
     )
   )
   return (
-    <Section heading="People" note="Only you see this. Your notes on each person. They never see them. Their check-ins do not use them yet.">
+    <Section heading="People" note={direct ? 'Your notes on each person. Their check-ins do not use them yet.' : 'Only you see this. Your notes on each person. They never see them. Their check-ins do not use them yet.'}>
       <Stack gap={10}>
         {people.length > 5 && (
           <FlexRow gap={8} align="center" wrap>
@@ -452,6 +455,7 @@ function AddSomething({ groundId, kind, onKind, people, contextEnabled, onDone }
   contextEnabled: boolean
   onDone: () => void
 }) {
+  const direct = useTheDirectMorning()
   const [text, setText] = useState('')
   const [label, setLabel] = useState('')
   const [who, setWho] = useState('')
@@ -499,7 +503,7 @@ function AddSomething({ groundId, kind, onKind, people, contextEnabled, onDone }
                   <option value="">Choose a person</option>
                   {people.map((p) => <option key={p.participantId} value={p.participantId}>{p.name}</option>)}
                 </Select>
-                <Note tone="muted">Only you see this. It shapes their check-ins, and they never see it.</Note>
+                <Note tone="muted">{direct ? 'It shapes their check-ins.' : 'Only you see this. It shapes their check-ins, and they never see it.'}</Note>
               </div>
             )}
             {kind === 'KEY_FACT' && (

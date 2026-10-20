@@ -98,3 +98,17 @@ describe('needsSaidDirectly (Today and You, with the direct morning on)', () => 
     ]);
   });
 });
+
+import { referencesSaidDirectly, THE_LEADS_TOP_LINE } from '../grounds/references-and-resources';
+
+describe('referencesSaidDirectly (References and resources, with the direct morning on)', () => {
+  it('Grace reads what the page is, with no note about who can read or add to it, and no line about Groundwork writing the purpose', () => {
+    const served = { on: true, view: 'lead', topLine: THE_LEADS_TOP_LINE, about: { purpose: 'This check-in is about your sales for water dispensers in Nairobi.', whose: 'Groundwork wrote this from Grace’s words at setup.', keyFacts: [] }, people: [{ name: 'Kevin' }] };
+    expect(referencesSaidDirectly(served)).toEqual({ ...served, topLine: 'Your team’s reference for this work.', about: { ...served.about, whose: null } });
+  });
+  it('Kevin’s top line already says only who keeps it, and stays as it is; a page that is off is passed on', () => {
+    const kevin = { on: true, view: 'member', topLine: 'Your team’s reference for this work, kept by Grace.', about: { purpose: null, whose: null } };
+    expect(referencesSaidDirectly(kevin)).toEqual(kevin);
+    expect(referencesSaidDirectly({ on: false })).toEqual({ on: false });
+  });
+});
