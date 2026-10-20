@@ -1,4 +1,6 @@
 import { thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
+import { theDirectMorningIsOnFor, theDirectMorningIsOn as theOrganisationsDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
+import { withTheDirectMorning, whichDirectBlockRan, THE_DIRECT_TEAM_REPORT, THE_DIRECT_JUDGEMENT, THE_DIRECT_OWN_REPORT } from './the-direct-morning-is-written-straight';
 import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
 import { whatTheSwitchboardServes, type TheSwitchboardServed } from '../board/the-switchboard';
 import { theCorrectionsOnTheCheckIn, withWhatACorrectionSettled, whoIsBehindALabel } from './a-correction-is-their-latest-word';
@@ -1311,7 +1313,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
       roundNow,
       totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null,
     );
-    const systemPrompt = synthesisVersion.content + "\n\n" + SYNTHESIS_RULES + "\n\n" + buildLeadershipPatternBlock() + "\n\n" + HOW_TO_READ_A_DISPUTED_LINE + (theSituation ? "\n\n" + theSituation : "") + ((ground as any).simplerWords ? "\n\n" + THE_REPORT_IN_SIMPLER_WORDS : "");
+    /* The direct morning (the-direct-morning-is-written-straight): for a switched-on organisation the code's block goes LAST, after the
+       stored version and every code block, so it runs whatever version is stored. Off, the prompt is exactly as it was. */
+    const theDirectMorning = await theOrganisationsDirectMorningIsOn(this.prisma, (ground as any).organizationId);
+    const systemPrompt = withTheDirectMorning(synthesisVersion.content + "\n\n" + SYNTHESIS_RULES + "\n\n" + buildLeadershipPatternBlock() + "\n\n" + HOW_TO_READ_A_DISPUTED_LINE + (theSituation ? "\n\n" + theSituation : "") + ((ground as any).simplerWords ? "\n\n" + THE_REPORT_IN_SIMPLER_WORDS : ""), THE_DIRECT_TEAM_REPORT, theDirectMorning);
 
 
     // Note any invited party who contributed no record - surfaced as an absence,
@@ -2541,7 +2546,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       /* An evaluation check-in is about one person, who reads this: a performance plan, a promotion, a renewal
          and a probation (decision 75, item 25). */
       aboutOnePerson: isEvaluationCheckIn((ground as any).scenario),
-    });
+    }, theDirectMorning);
 
     /*
      * AND THE PRODUCT'S OWN SENTENCES ARE HELD TO THE RECORD'S NUMBERS, the same as the judgement's.
@@ -2965,7 +2970,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
          * The guides are the only part of engagement not derived from this
          * synthesis, so they are the only part carried across.
          */
-        engagement: enrichedEngagement as any,
+        engagement: { ...enrichedEngagement, ...whichDirectBlockRan(theDirectMorning) } as any,
         inferences: inferencesKept as any,
         leadershipGaps: (((result as any).leadershipGaps ?? []).length ? (result as any).leadershipGaps : undefined) as any,
         promptVersionId: synthesisVersion.id,
@@ -2986,7 +2991,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         centralQuestion: theQuestionOnly(result.centralQuestion) ?? result.centralQuestion,
         // Carry the private guides across. See the note on the create branch:
         // this write is what destroyed them on every session after the first.
-        engagement: { ...enrichedEngagement, ...(existingGuides ? { postReportGuides: existingGuides } : {}) } as any,
+        engagement: { ...enrichedEngagement, ...(existingGuides ? { postReportGuides: existingGuides } : {}), ...whichDirectBlockRan(theDirectMorning) } as any,
         inferences: inferencesKept as any,
         leadershipGaps: (((result as any).leadershipGaps ?? []).length ? (result as any).leadershipGaps : undefined) as any,
         promptVersionId: synthesisVersion.id,
@@ -5074,6 +5079,9 @@ happened, and what is in the way.`;
         leadName: asARoom ? room!.leadName : null,
       });
     }
+    /* The direct morning's block goes after whichever instruction runs, stored or code (the-direct-morning-is-written-straight). */
+    const theDirectMorning = await theDirectMorningIsOnFor(this.prisma, groundId);
+    instruction = withTheDirectMorning(instruction, THE_DIRECT_JUDGEMENT, theDirectMorning);
 
     const judgement = await this.anthropic.extract<any>(
       instruction,
@@ -5180,7 +5188,7 @@ happened, and what is in the way.`;
     if (onFile.leftOut.length) this.logger.warn(`The judgement on ${groundId}: left out ${onFile.leftOut.length} line(s) about proof the record already holds: ${onFile.leftOut.map((x) => `"${x}"`).join(', ')}`);
     this.logger.log(`Judged ${answers.length} answer(s) on ${groundId} over ${frame.length} fields.`);
     /* Which instruction wrote it: the stored version's id, or null where the code text ran. */
-    return { judgement: { ...kept, promptVersionId: stored?.id ?? null }, table };
+    return { judgement: { ...kept, promptVersionId: stored?.id ?? null, ...whichDirectBlockRan(theDirectMorning) }, table };
   }
 
   private async extractAndStoreLeadSignals(groundId: string, initiatorUserId: string): Promise<void> {
@@ -6143,6 +6151,7 @@ happened, and what is in the way.`;
   private async pictureInPlainSentences(
     facts: PersonFacts[],
     about: { peopleAnswered: number; peopleExpected: number; differenceTopics: string[]; aboutOnePerson: boolean },
+    theDirectMorning = false,
   ): Promise<ThePicture> {
     /* The label is what is stored; the name is swapped in at the read. The model is given the label
        so that whatever it writes still goes through the same name resolution as everything else. */
@@ -6153,7 +6162,7 @@ happened, and what is in the way.`;
 
     try {
       const written = await this.anthropic.extract<ThePicture>(
-        thePictureInstruction(about),
+        withTheDirectMorning(thePictureInstruction(about), THE_DIRECT_TEAM_REPORT, theDirectMorning),
         [{ role: 'user', content: facts.map((f) => factsAsLines(f, nameFor)).join('\n\n') }],
         THE_PICTURE_SCHEMA as any,
         { patient: true },
@@ -8355,6 +8364,7 @@ happened, and what is in the way.`;
       return planned !== null && held >= planned;
     })().catch(() => false);
 
+    const theDirectMorning = await theDirectMorningIsOnFor(this.prisma, report.groundId);
     await Promise.all(
       participantIds.map(async (participantId) => {
         try {
@@ -8370,7 +8380,7 @@ happened, and what is in the way.`;
 
           const result = await this.anthropic.extract<PostReportGuide>(
             /* The end of a run is a different conversation - see THE_RUN_IS_OVER. */
-            theRunIsOver ? POST_REPORT_GUIDE_PROMPT + THE_RUN_IS_OVER : POST_REPORT_GUIDE_PROMPT,
+            withTheDirectMorning(theRunIsOver ? POST_REPORT_GUIDE_PROMPT + THE_RUN_IS_OVER : POST_REPORT_GUIDE_PROMPT, THE_DIRECT_OWN_REPORT, theDirectMorning),
             [{ role: 'user', content: corpus }],
             POST_REPORT_GUIDE_SCHEMA,
           );
@@ -8407,7 +8417,7 @@ happened, and what is in the way.`;
               .join(', ');
             const retry = await this.anthropic
               .extract<PostReportGuide>(
-                POST_REPORT_GUIDE_PROMPT,
+                withTheDirectMorning(POST_REPORT_GUIDE_PROMPT, THE_DIRECT_OWN_REPORT, theDirectMorning),
                 [{
                   role: 'user',
                   content:
