@@ -55,6 +55,10 @@ describe('Grace’s direct morning, Tuesday 20 October, Drop Access (test), from
       { key: 'team', heading: 'Your team today', lines: [
         "Kevin's sale to Roysambu Gym has no proof yet, so ask Kevin for the payment record.",
         'Mercy has 2 sales with proof, so tell Mercy well done.',
+        /* Nudges that get answers (20 October): each person who keeps checking in on time is credited for it, by name, facts only. */
+        'Peter checked in on time 6 days running.',
+        'Kevin checked in on time 6 days running.',
+        'Mercy checked in on time 4 days running.',
       ] },
     ]);
   });
@@ -100,7 +104,7 @@ describe('the summary she is sent, with the switch on', () => {
       "Will we reach 120 units sold by 30 October?\n75 of 120 sold, 47 paid.\nNone of the open deals is likely by 30 October.\nYou're 45 short, and the open deals cover only 40 of them, so the team needs new leads this week.",
       'What needs you today\nJuja Hardware wants 5 units at KES 4,500 instead of 5,000, and Joseph is waiting for a yes or no from Management, so get it for Joseph.\nPeter has been waiting on you since Thursday for a specific area to focus on.\nPeter is waiting for a list of leads for this week, and nobody has been named to give it, so send it or say who will.',
       'About to close\nNgong Road Minimart pays KES 25,000 for 5 units on delivery tomorrow.',
-      "Your team today\nKevin's sale to Roysambu Gym has no proof yet, so ask Kevin for the payment record.\nMercy has 2 sales with proof, so tell Mercy well done.",
+      "Your team today\nKevin's sale to Roysambu Gym has no proof yet, so ask Kevin for the payment record.\nMercy has 2 sales with proof, so tell Mercy well done.\nPeter checked in on time 6 days running.\nKevin checked in on time 6 days running.\nMercy checked in on time 4 days running.",
       `Your board is here ${BASE}/grounds/${DROP}/board`,
     ].join('\n\n'));
     /* Once a day: the 9am sweep does not send it again. */
