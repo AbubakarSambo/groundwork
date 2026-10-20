@@ -3,6 +3,7 @@ import { useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { groundsApi, type MyWork, type ABehaviourRead } from '@/api/grounds'
+import { TheirRecord } from '@/components/gw/TheirRecord'
 import {
   Section, Panel, Note, Callout, Stack, FlexRow, Tag, Text, Select, RowList, Row, NumberTiles, FieldRows, FieldRow, Button,
 } from '@/components/gw/ui'
@@ -100,6 +101,9 @@ function ThePage({ groundId, served, onPerson, rest, onAllYourReports }: {
         ? <Performing served={served} heading={self ? 'How you’re performing' : `How ${first} is performing`} />
         : <Section heading={self ? 'How you’re performing' : `How ${first} is performing`}><Note tone="muted">{served.performing.note}</Note></Section>}
       {(judged || served.coaching.better.length > 0) && <Coaching served={served} />}
+
+      {/* THEIR RECORD, AND THE COACHING GROUNDWORK GAVE THEM: only where the server sends it (the direct morning). */}
+      {served.record && <TheirRecord record={served.record} />}
 
       {/* YOUR CHECK-INS AND YOUR REPORTS, side by side */}
       <div className="gwui-two-up">

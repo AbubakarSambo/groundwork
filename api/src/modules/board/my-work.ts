@@ -14,6 +14,9 @@ import { isASalesKind, oneOfTheKinds, RECORDS_FOR_EACH_KIND, type AServedRecord 
 import { plainNameOf } from '../patterns/plain-pattern-names';
 import { THE_SEVEN_BEHAVIOURS, WHERE_THE_WORDS_COME_FROM, theBehaviour, type ABehaviourKey } from '../patterns/the-seven-behaviours';
 import { thePersonJudgementsAreOn, NOT_SHOWN_IN_THIS_ORGANISATION } from '../organisation/person-judgements';
+import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
+import { readThePersonsRecord, readTheirOtherRecords } from './the-persons-record-store';
+import { theRecordInWords, acrossTheirCheckIns, type TheRecordInWords } from './the-persons-record-in-words';
 
 /**
  * MY WORK, AS EACH READER IS SERVED IT (Release 1B, pull request 3 of 3; Hafsah's references-and-my-work.md of 17 October 2026,
@@ -105,6 +108,12 @@ export interface MyWorkServed {
     rows: { id: string; name: string; stage: string | null; next: string; nextBooked: boolean; proof: string; proven: boolean }[];
     emptySays: string;
   };
+  /**
+   * THE PERSON'S RECORD AND THE COACHING GROUNDWORK GAVE THEM (Groundwork does the managing, part 1), as last built from the record
+   * (the-persons-record-store.ts), in plain words with its evidence. Only where the direct morning and judgements of a person are both
+   * on; absent everywhere else, so the page reads as before. `acrossYourCheckIns` is in the person's own payload alone.
+   */
+  record?: TheRecordInWords & { acrossYourCheckIns?: { heading: string; lines: string[] } };
 }
 
 export type MyWork = { on: false } | MyWorkServed;
@@ -416,7 +425,8 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
       const by = String(d.dueSaid ?? '').trim().replace(/^by\s+/i, '');
       return {
         id: d.id,
-        text: `${who} ${who === 'You' ? 'are' : 'is'} waiting on ${self ? 'you' : first} for ${String(d.what).trim().replace(/[.\s]+$/, '')}.`,
+        /* "Wanjiru is waiting on you to see the payment for FN-004 in the bank", never "for to see" (Muchemi & Co, second night run). */
+        text: `${who} ${who === 'You' ? 'are' : 'is'} waiting on ${self ? 'you' : first} ${/^to\b/i.test(String(d.what).trim()) ? '' : 'for '}${String(d.what).trim().replace(/[.\s]+$/, '')}.`,
         when: by ? `By ${by}` : `Since ${aDay(d.createdAt, r.timeZone)}`,
       };
     });
@@ -751,7 +761,23 @@ export async function readMyWork(
     now,
     timeZone,
   };
-  return { ...myWorkFrom(record, ground.label || 'This check-in'), ...(peopleList ? { people: peopleList } : {}) };
+  const page = myWorkFrom(record, ground.label || 'This check-in');
+  /* The person's record, read from where it is kept and never rebuilt here: the person's own, or, for the lead, the person's in this check-in. */
+  const theirRecord = judgements && page.on === true && !(page as any).judgements && await theDirectMorningIsOn(prisma, ground.organizationId)
+    ? await theRecordOnTheirPage(prisma, { groundId: ground.id, organizationId: ground.organizationId, label: ground.label || 'this check-in', pid, firstName: firstOf(name), self: reader === 'self', userId: person.userId ?? null })
+    : null;
+  return { ...page, ...(theirRecord ? { record: theirRecord } : {}), ...(peopleList ? { people: peopleList } : {}) };
+}
+
+/** The record part of the page, for the person or the lead. Across their other check-ins only for the person themself. */
+async function theRecordOnTheirPage(prisma: any, o: { groundId: string; organizationId: string | null; label: string; pid: string; firstName: string; self: boolean; userId: string | null }): Promise<MyWorkServed['record'] | null> {
+  const stored = await readThePersonsRecord(prisma, o.pid);
+  if (!stored) return null;
+  const words = theRecordInWords(stored.record, stored.coaching, { self: o.self, firstName: o.firstName }, o.label);
+  if (!o.self) return words;
+  const others = await readTheirOtherRecords(prisma, o.userId, o.organizationId, o.groundId);
+  const lines = acrossTheirCheckIns(others.map((x) => ({ label: x.label, record: x.stored.record })));
+  return lines.length ? { ...words, acrossYourCheckIns: { heading: 'In your other check-ins', lines } } : words;
 }
 
 /** The page with nobody on it yet: the lead runs a check-in nobody checks in to yet. */
