@@ -1951,7 +1951,7 @@ export class GroundsService {
         /* For `guestIn`: whose workspace this check-in belongs to. And whether it has a WhatsApp
            number, which is what the "where people answer this" setting needs - riding along on a
            read that already has the organisation in hand, rather than a second query. */
-        organization: { select: { name: true, release1bTabsOn: true, whatsappConnection: { select: { enabled: true } } } },
+        organization: { select: { name: true, release1bTabsOn: true, directMorningOn: true, whatsappConnection: { select: { enabled: true } } } },
         /**
          * WHAT THE WHOLE CHECK-IN IS AIMING AT. Written by the lead's own check-in alongside the
          * per-person expectations, and never read back until now - so the Context page had a band
@@ -2007,7 +2007,7 @@ export class GroundsService {
                name is actually needed. The WhatsApp connection rides along for the same reason it
                does above - and it has to be here too, or a cross-org lead is the one person who
                cannot see the setting. */
-            organization: { select: { name: true, release1bTabsOn: true, whatsappConnection: { select: { enabled: true } } } },
+            organization: { select: { name: true, release1bTabsOn: true, directMorningOn: true, whatsappConnection: { select: { enabled: true } } } },
             /**
              * THE SAME LIST AS THE PRIMARY READ ABOVE, and it has to stay that way: this is the
              * cross-org participant's path, and anything missing here is a field that exists for
@@ -3017,6 +3017,8 @@ export class GroundsService {
       orgHasWhatsApp,
       /* Release 1B's new check-in tabs for this organisation (release-1b-tabs.ts): which People and setup the page draws. A yes or no, nothing about anybody. */
       release1bTabsOn: (ground as any).organization?.release1bTabsOn === true,
+      /* The direct morning for this organisation (organisation/the-direct-morning-switch.ts): which words the screens say. A yes or no, nothing about anybody. */
+      directMorningOn: (ground as any).organization?.directMorningOn === true,
       alignment,
       daysLeft,
       endsOn,
