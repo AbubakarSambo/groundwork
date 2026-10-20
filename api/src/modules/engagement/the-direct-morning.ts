@@ -55,7 +55,7 @@ export interface TheMorningPart {
   key: AMorningPartKey;
   /** The heading on the board, in the prototype's words. */
   heading: string;
-  /** The words the message opens the part with: "Target:", "Needs you today:", "Closing:", "Your team:". */
+  /** The words the message opens the part with: "Target:", "Needs you today:", "Closing:", "Your team:". These four colon labels stay: they are Hafsah's one allowed exception to the wording rule (21 October), so no wording check should take them out. */
   lead: string;
   lines: AMorningLine[];
 }
