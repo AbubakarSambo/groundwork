@@ -170,6 +170,14 @@ describe('every surface that hands out whose number it is', () => {
     /* Engine test, second run: the facts each conversation and each judgement is given about deals. */
     'modules/conversation/their-own-deals-and-what-is-on-file.ts': "reads a deal's owner (a work item) to keep only the person's own deals, and only their own target, which the caller reads for them; never another person's number",
     'modules/reports/proof-on-file-is-never-asked-for.ts': "reads a sale's owner (a work item) to name whose sale it is in the judgement, which only the lead who runs the check-in reads; never a target or a number",
+    /* The direct morning, 19 October. The lead's four parts read the team's aim only from the board as already served to her (objectives that
+       went through targetsFor in board.service), and a matter's deadlines by their owner (work items) to say whose they are. It is sent to
+       the lead who runs the check-in alone. */
+    'modules/engagement/the-direct-morning.ts': "reads the team's aim only from the lead's board as served (already through targetsFor), and a deadline's owner (a work item); sent to the lead alone",
+    /* "Somebody has checked in" says what they reported: it reads that person's own work items (deals and fee notes) by their own id, for the lead who runs the check-in. Never a target or a number on one. */
+    'modules/engagement/what-they-reported.ts': "reads one person's own work items by their own id to say what they reported, for the lead who runs the check-in; never a target or a number",
+    /* Each team member's personal opening: their own deals (work items), kept by their own id, and the people at each of their customers. Never a target or anybody else's number. */
+    'modules/conversation/the-one-thing-today.ts': "keeps only the person's own deals and bills (work items) by their own id for their own opening; never a target or anybody else's number",
   };
 
   it('goes through the one rule, or says why it is not a reader', () => {
