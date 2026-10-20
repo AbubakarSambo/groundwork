@@ -205,9 +205,10 @@ describe('only the lead who runs the check-in is served it', () => {
   it('the board adds it only for the lead, after every wall, and only through theDirectMorningFor', () => {
     const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'board', 'board.service.ts'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-    const at = src.indexOf('(asServed as any).theMorning = asServedOnTheBoard(morning)');
+    /* Changed 20 October (nudges that get answers): the morning is served with the lead's nudge buttons beside it, still only through theDirectMorningFor. */
+    const at = src.indexOf('(asServed as any).theMorning = { ...asServedOnTheBoard(morning)');
     expect(at).toBeGreaterThan(0);
-    const before = src.slice(Math.max(0, at - 400), at);
+    const before = src.slice(Math.max(0, at - 700), at);
     expect(before).toMatch(/if \(isInitiator\) \{\s*const morning = await theDirectMorningFor\(this\.prisma, \{ groundId, leadUserId: requestingUserId, board: asServed, now \}\)/);
   });
 });

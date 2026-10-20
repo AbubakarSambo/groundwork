@@ -25,7 +25,8 @@ export function whatsAppCouldNotTakeIt(because: string | null | undefined): bool
 }
 
 /** Messages that already go by email, by their own sender, when WhatsApp does not take them: never a second email. */
-export const ALREADY_GO_BY_EMAIL: ReadonlySet<string> = new Set(['lead-summary', 'request-waiting', 'requests-waiting', 'request-decided']);
+/* The lead's own nudge chooses its one channel itself (engagement/the-leads-own-nudge.ts), so it is never emailed a second time from here. */
+export const ALREADY_GO_BY_EMAIL: ReadonlySet<string> = new Set(['lead-summary', 'request-waiting', 'requests-waiting', 'request-decided', 'lead-nudge']);
 /** A check-in opening: told once, on one channel. */
 export const AN_OPENING: ReadonlySet<string> = new Set(['checkin-open', 'checkin-catch-up']);
 /** The emails that open a check-in for a person. */

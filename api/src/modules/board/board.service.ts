@@ -1,4 +1,5 @@
 import { theDirectMorningFor, asServedOnTheBoard } from '../engagement/the-direct-morning';
+import { theNudgesOnTheBoard } from '../engagement/the-leads-own-nudge';
 import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
 import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { theRelease1bTabsAreOn } from '../grounds/release-1b-tabs';
@@ -3866,7 +3867,21 @@ export class BoardService {
        */
       if (isInitiator) {
         const morning = await theDirectMorningFor(this.prisma, { groundId, leadUserId: requestingUserId, board: asServed, now }).catch(() => null);
-        if (morning) (asServed as any).theMorning = asServedOnTheBoard(morning);
+        if (morning) {
+          /*
+           * "NUDGE PETER" (engagement/the-leads-own-nudge.ts): each team member who has not answered today, past their usual time or after
+           * a missed day, with the button's words, to the lead alone, at the top and on their row of "The team today". The route that sends
+           * it refuses anybody but her; this only says who she may nudge, and whether she already has today ("Nudged at 10:40").
+           */
+          const nudges = await theNudgesOnTheBoard(this.prisma, (ground as any).organizationId ?? null, morning.mayBeNudged ?? [], now).catch(() => [] as Awaited<ReturnType<typeof theNudgesOnTheBoard>>);
+          (asServed as any).theMorning = { ...asServedOnTheBoard(morning), ...(nudges.length ? { nudges } : {}) };
+          if (nudges.length && Array.isArray((asServed as any).eachPersonToday)) {
+            (asServed as any).eachPersonToday = ((asServed as any).eachPersonToday as any[]).map((row) => {
+              const n = nudges.find((x) => x.participantId === row.participantId);
+              return n ? { ...row, nudge: n } : row;
+            });
+          }
+        }
       }
       /* The anchor scenario's own parts (request 149), added after every wall above: only whoever runs an anchor check-in, only with the switch on. */
       const roundOpensAt = (checkIns as any[]).filter((c) => c.sessionNumber === openRound).map((c) => c.availableFrom ?? c.startedAt).filter(Boolean).sort((a: Date, b: Date) => a.getTime() - b.getTime())[0] ?? null;

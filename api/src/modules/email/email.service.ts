@@ -1610,6 +1610,21 @@ export class EmailService implements OnModuleInit {
     return context.outcome ?? 'sent';
   }
 
+  /**
+   * THE LEAD'S OWN NUDGE, BY EMAIL (nudges that get answers, 20 October; engagement/the-leads-own-nudge.ts): one message from the lead by
+   * name, about the person's one thing today, where it could not go on WhatsApp. Pressed by the lead, so never counted as the day's routine
+   * message and never held for it; still held for quiet hours, and stopped by the person's own stop link or opt-out. Says what became of it.
+   */
+  async sendTheLeadsNudge(email: string, subject: string, lines: string[], linkLabel: string, linkUrl: string, participantId: string): Promise<'sent' | 'held' | 'suppressed'> {
+    const context: DeliveryContext = { kind: 'REMINDER', participantId };
+    await this.sendEmail({
+      to: email,
+      subject,
+      html: this.layout(lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('') + `<p><a href="${linkUrl}">${escapeHtml(linkLabel)}</a></p>`),
+    }, context, 'sendTheLeadsNudge');
+    return context.outcome ?? 'sent';
+  }
+
   /** WHO HAS GONE QUIET, as an insight to the lead (decision 109, journeys 7 and 9). Says what became of it. Words: engagement/who-has-gone-quiet.ts. */
   async sendWhoHasGoneQuiet(email: string, subject: string, lines: string[], linkLabel: string, linkUrl: string): Promise<'sent' | 'held' | 'suppressed'> {
     const context: DeliveryContext = { kind: 'OTHER' };
