@@ -19,7 +19,7 @@ describe('the lead adds a WhatsApp number', () => {
       groundParticipant: { findFirst: jest.fn(async () => ({ id: 'p-brian', email: 'brian@muchemi.test', userId: null, nameGiven: 'Brian Kiptoo', user: userPhone ? { firstName: 'Brian', lastName: 'Kiptoo', phoneNumber: userPhone } : null })) },
       person: {
         /* The organisation's other numbers are Kenyan, so a number typed without a code is read as Kenyan. */
-        findMany: jest.fn(async () => [{ phone: '+254722000201' }]),
+        findMany: jest.fn(async (q: any) => (q?.where?.OR ? (entry ? [entry] : []) : [{ phone: '+254722000201' }])),
         findFirst: jest.fn(async () => entry),
         create: jest.fn(async (a: any) => { made.push(a.data); return { id: 'person-brian' }; }),
         update: jest.fn(async (a: any) => { updated.push(a); return {}; }),

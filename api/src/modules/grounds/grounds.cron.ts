@@ -1310,16 +1310,18 @@ export class GroundsCron implements OnApplicationBootstrap {
       try {
         const g = ci.participant.ground;
         if (keptOffThePhone(g) || !turnedOn.has(g.organizationId) || !ci.participant.email) continue;
-        const before = await this.prisma.whatsAppSend.findFirst({ where: { checkInId: ci.id, kind: { startsWith: 'checkin-open' } }, select: { id: true } });
-        if (before) continue;
         /* One number for a person: the roster's, or else the one on their sign-in (an admin saving it on People writes there). */
         const person = await this.prisma.person.findFirst({
-          where: { organizationId: g.organizationId, email: { equals: ci.participant.email, mode: 'insensitive' }, active: true },
+          where: { organizationId: g.organizationId, email: { equals: ci.participant.email, mode: 'insensitive' }, active: true, phone: { not: null } },
+          orderBy: { updatedAt: 'desc' },
           select: { phone: true, givenName: true },
         });
         const signIn = person?.phone ? null : await this.prisma.user.findFirst({ where: { email: { equals: ci.participant.email, mode: 'insensitive' }, deletedAt: null }, select: { phoneNumber: true, firstName: true } });
         const phone = person?.phone ?? signIn?.phoneNumber ?? null;
         if (!phone) continue;
+        /* Told once per number (Drop Access, 21 October; findings 1.4 E): an opening to a number since changed never stops the one to the new number. */
+        const before = await this.prisma.whatsAppSend.findFirst({ where: { checkInId: ci.id, kind: { startsWith: 'checkin-open' }, phone: { in: formsOfTheSameNumber(phone) } }, select: { id: true } });
+        if (before) continue;
         const said = theCheckInIsOpen({ firstName: person?.givenName ?? signIn?.firstName ?? null, label: g.label }, g.simplerWords);
         await this.whatsapp.sendFor(g.organizationId, phone, said.text, { checkInId: ci.id, kind: said.kind, params: said.params });
         sent++;

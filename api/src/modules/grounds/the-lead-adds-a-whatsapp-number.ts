@@ -2,7 +2,9 @@ import { BadRequestException, ForbiddenException, NotFoundException } from '@nes
 import { tidyANumberFor } from '../whatsapp/the-organisations-country';
 import { theCheckInIsOpen } from '../whatsapp/what-goes-to-a-phone';
 import { whereTheyAreOnWhatsApp, WHERE_ON_WHATSAPP_SAYS, type WhereOnWhatsApp } from '../whatsapp/where-they-are-on-whatsapp';
-import { refuseANumberOnSomebodyElse, aSignInsNumberChanged } from '../whatsapp/one-number-for-a-person';
+import { refuseANumberOnSomebodyElse, aSignInsNumberChanged, everyRosterEntryTakesTheNumber, theNumberOnRecord } from '../whatsapp/one-number-for-a-person';
+import { formsOfTheSameNumber, WRITE_THE_FULL_NUMBER } from '../whatsapp/a-number-whatsapp-can-reach';
+import { organisationsThatTurnedWhatsAppOn } from '../whatsapp/only-where-whatsapp-is-turned-on';
 
 /**
  * THE LEAD ADDS SOMEBODY'S WHATSAPP NUMBER (Hafsah, 13 October 2026, evening, D1 and D2: "add your phone number, or your
@@ -37,8 +39,10 @@ export async function theLeadAddsAWhatsAppNumber(
   if (!removing) {
     try {
       phone = await tidyANumberFor(prisma, input.organizationId, String(input.phone));
-    } catch {
-      throw new BadRequestException(NOT_A_NUMBER);
+    } catch (err: any) {
+      /* The sentence that says what is wrong with it ("write the whole number with the country code"), not a guess that it is not a number. */
+      const said = typeof err?.response?.message === 'string' ? err.response.message : null;
+      throw new BadRequestException(said === WRITE_THE_FULL_NUMBER ? said : NOT_A_NUMBER);
     }
   }
 
@@ -49,13 +53,13 @@ export async function theLeadAddsAWhatsAppNumber(
   if (!p?.email) throw new NotFoundException('That person is not in this check-in, so check the name and try again.');
   const name = (p.user?.firstName || p.nameGiven || 'This person').toString().trim();
 
-  const entry = await prisma.person.findFirst({ where: { organizationId: input.organizationId, email: { equals: p.email, mode: 'insensitive' } }, select: { id: true, phone: true } });
-  /* Never a number that is already somebody else's sign-in. */
-  await refuseANumberOnSomebodyElse(prisma, phone, p.userId ?? null);
+  /* Never a number that is already somebody else's sign-in. Said with the colleague's name when they are in this organisation. */
+  await refuseANumberOnSomebodyElse(prisma, phone, p.userId ?? null, input.organizationId);
 
-  if (entry) {
-    await prisma.person.update({ where: { id: entry.id }, data: { phone } });
-  } else if (phone) {
+  /* EVERY ROSTER ENTRY THAT IS THIS PERSON takes it, not the first one found (Drop Access, 21 October): with two entries, the number
+     was saved on one and the screen and the sender could read the other. */
+  const entries = await everyRosterEntryTakesTheNumber(prisma, input.organizationId, { userId: p.userId ?? null, email: p.email }, phone);
+  if (!entries && phone) {
     await prisma.person.create({
       data: {
         organizationId: input.organizationId,
@@ -74,8 +78,13 @@ export async function theLeadAddsAWhatsAppNumber(
   }
   /* One number for a person: their sign-in holds the same number, so the opening and inbound routing read one thing. */
   if (p.userId) {
-    await prisma.user.update({ where: { id: p.userId }, data: { phoneNumber: phone } }).catch(() => undefined);
-    await aSignInsNumberChanged(prisma, p.userId, phone).catch(() => undefined);
+    /* Never silently: a sign-in that could not take the number says so, and the screen shows it (Drop Access, 21 October). */
+    try {
+      await prisma.user.update({ where: { id: p.userId }, data: { phoneNumber: phone } });
+    } catch {
+      throw new BadRequestException(`${name}'s WhatsApp number could not be saved on their sign-in, so Groundwork would not reach them there. Try again, and if it happens again, contact Groundwork.`);
+    }
+    await aSignInsNumberChanged(prisma, p.userId, phone, input.organizationId).catch(() => undefined);
   }
   return { said: phone ? THE_NUMBER_IS_KEPT(name) : THE_NUMBER_IS_REMOVED(name), phone };
 }
@@ -95,12 +104,12 @@ export async function whereEachPersonIsOnWhatsApp(
   if (!runsIt && input.role !== 'ADMIN') throw new ForbiddenException('Only the person who runs this check-in, or an administrator of the organisation, can see the WhatsApp numbers on it.');
   const people: any[] = await prisma.groundParticipant.findMany({
     where: { groundId: input.groundId },
-    select: { id: true, email: true, user: { select: { phoneNumber: true } } },
+    select: { id: true, email: true, userId: true, user: { select: { phoneNumber: true } } },
   });
   const out = [];
   for (const p of people) {
-    const entry = p.email ? await prisma.person.findFirst({ where: { organizationId: input.organizationId, email: { equals: p.email, mode: 'insensitive' } }, select: { phone: true } }).catch(() => null) : null;
-    const phone = entry?.phone ?? p.user?.phoneNumber ?? null;
+    /* Every roster entry that is this person, then their sign-in: the same number the opening reads (one-number-for-a-person.ts). */
+    const phone = (await theNumberOnRecord(prisma, input.organizationId, { userId: p.userId ?? null, email: p.email }).catch(() => null)) ?? p.user?.phoneNumber ?? null;
     const whatsapp = await whereTheyAreOnWhatsApp(prisma, phone).catch(() => (phone ? 'not-connected' : 'no-number') as WhereOnWhatsApp);
     out.push({ participantId: p.id, phone, whatsapp, says: WHERE_ON_WHATSAPP_SAYS[whatsapp] });
   }
@@ -128,9 +137,32 @@ export async function theOpeningGoesToTheNumberJustAdded(
     select: { id: true, participant: { select: { user: { select: { firstName: true } }, nameGiven: true, ground: { select: { label: true, overWhatsApp: true, simplerWords: true } } } } },
   });
   if (!ci || ci.participant?.ground?.overWhatsApp === false) return false;
-  const before = await prisma.whatsAppSend?.findFirst?.({ where: { checkInId: ci.id, kind: { startsWith: 'checkin-open' } }, select: { id: true } });
+  /* Told once per number (Drop Access, 21 October; findings 1.4 E): an opening that went to the old number, or failed there, never stops the one to the number just added. */
+  const before = await prisma.whatsAppSend?.findFirst?.({ where: { checkInId: ci.id, kind: { startsWith: 'checkin-open' }, phone: { in: formsOfTheSameNumber(input.phone) } }, select: { id: true } });
   if (before) return false;
   const said = theCheckInIsOpen({ firstName: ci.participant?.user?.firstName ?? ci.participant?.nameGiven ?? null, label: ci.participant.ground.label }, ci.participant.ground.simplerWords);
   await send.sendFor(input.organizationId, input.phone, said.text, { checkInId: ci.id, kind: said.kind, params: said.params });
   return true;
+}
+
+/**
+ * A NUMBER JUST SAVED, BY THE PERSON IN SETTINGS, BY AN ADMIN ON PEOPLE, OR BY A LEAD ON A CHECK-IN'S PEOPLE (Drop Access, 21 October).
+ * Each check-in open for them in this organisation sends its opening there now: the first one as Groundwork's approved first contact,
+ * on a number nothing has gone to yet. The sender keeps quiet hours, STOP and the day's one routine message; never twice per number.
+ */
+export async function theOpeningsGoToANumberJustSaved(
+  prisma: any,
+  whatsapp: { sendFor: (organizationId: string, phone: string, text: string, ctx: any) => Promise<any>; isEnabled(): Promise<boolean> },
+  input: { organizationId: string; phone: string; userId?: string | null; participantIds?: string[] },
+): Promise<number> {
+  const on = (await organisationsThatTurnedWhatsAppOn(prisma, whatsapp as any, [input.organizationId])).has(input.organizationId);
+  if (!on) return 0;
+  const or = [...(input.userId ? [{ userId: input.userId }] : []), ...((input.participantIds ?? []).length ? [{ id: { in: input.participantIds } }] : [])];
+  if (!or.length) return 0;
+  const theirs: any[] = (await prisma.groundParticipant.findMany({ where: { OR: or, leftAt: null, ground: { organizationId: input.organizationId } }, select: { id: true, groundId: true } })) ?? [];
+  let went = 0;
+  for (const p of theirs) {
+    if (await theOpeningGoesToTheNumberJustAdded(prisma, whatsapp, { groundId: p.groundId, participantId: p.id, organizationId: input.organizationId, phone: input.phone }, true)) went += 1;
+  }
+  return went;
 }

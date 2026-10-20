@@ -34,7 +34,7 @@ import { whoHasNotJoinedYet, theNotJoinedYetLine } from './invited-not-joined-ye
 import { aNameTypedInLowerCase } from '../../common/a-name-typed-in-lower-case';
 import { whoASessionCounts } from './the-lead-checks-in-when-they-choose';
 import { openTheLeadsCheckIn } from './check-in-yourself';
-import { theLeadAddsAWhatsAppNumber, whereEachPersonIsOnWhatsApp, theOpeningGoesToTheNumberJustAdded } from './the-lead-adds-a-whatsapp-number';
+import { theLeadAddsAWhatsAppNumber, whereEachPersonIsOnWhatsApp, theOpeningGoesToTheNumberJustAdded, theOpeningsGoToANumberJustSaved } from './the-lead-adds-a-whatsapp-number';
 import { waitsOnAManagingOnlyLead } from './the-lead-who-only-asks';
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException, Optional, GoneException } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
@@ -8184,8 +8184,9 @@ export class GroundsService {
       try {
         const whatsapp = this.moduleRef?.get(WhatsAppService, { strict: false });
         if (whatsapp) {
-          const on = (await organisationsThatTurnedWhatsAppOn(this.prisma, whatsapp as any, [input.organizationId])).has(input.organizationId);
-          await theOpeningGoesToTheNumberJustAdded(this.prisma, whatsapp as any, { groundId: input.groundId, participantId: input.participantId, organizationId: input.organizationId, phone: kept.phone }, on);
+          /* This check-in, and every other one open for them here when they have a sign-in. */
+          const signIn = await this.prisma.groundParticipant.findUnique({ where: { id: input.participantId }, select: { userId: true } }).catch(() => null);
+          await theOpeningsGoToANumberJustSaved(this.prisma, whatsapp as any, { organizationId: input.organizationId, phone: kept.phone, userId: signIn?.userId ?? null, participantIds: [input.participantId] });
         }
       } catch (err: any) {
         this.logger.warn(`The WhatsApp opening for a number just added could not go: ${err?.message}`);
