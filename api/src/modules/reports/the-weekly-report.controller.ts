@@ -1,3 +1,4 @@
+import { withTheDirectMorningSaid } from '../organisation/the-screen-is-told-the-direct-morning';
 import { Controller, Get, Param, Query, Optional } from '@nestjs/common';
 import { theDirectMorningIsOnFor } from '../organisation/the-direct-morning-switch';
 import { inTheDirectMorningsWords } from './the-direct-morning-says-the-fact';
@@ -33,6 +34,8 @@ export class TheWeeklyReportController {
     await this.weekly.noteTheLeadRead(groundId, served?.weekStart ?? null, userId);
     /* The light report's one fact for each folded line (sales-first.md, section 2, rule 3), from the week as this reader is served it. */
     /* The direct morning: the product's own hedges say the fact or nothing, as served (the-direct-morning-says-the-fact). Off, as before. */
-    return inTheDirectMorningsWords(withItsFacts(served, theWeeklyReportAtAGlance), await theDirectMorningIsOnFor(this.prisma, groundId));
+    const on = await theDirectMorningIsOnFor(this.prisma, groundId);
+    /* And the page is told it, as one yes or no for its fixed words (organisation/the-screen-is-told-the-direct-morning.ts). */
+    return withTheDirectMorningSaid(inTheDirectMorningsWords(withItsFacts(served, theWeeklyReportAtAGlance), on), on);
   }
 }

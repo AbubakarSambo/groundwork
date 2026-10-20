@@ -1,3 +1,5 @@
+import { withTheDirectMorningSaid } from '../organisation/the-screen-is-told-the-direct-morning';
+import { theDirectMorningIsOnFor } from '../organisation/the-direct-morning-switch';
 import { thePersonJudgementsAreOn, thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
 import { theNumberIsOnlyADay } from '../conversation/a-day-is-not-a-target';
 import { readWhereEachPersonIsGettingStarted } from './getting-each-person-started';
@@ -8315,14 +8317,15 @@ export class GroundsService {
   async peopleAndSetup(groundId: string, organizationId: string, userId: string) {
     await refuseSomeoneAwaitingTheOrganisation(this.prisma as any, userId, CANNOT_CHECK_IN_YET);
     await this.assertMaySeeGround(groundId, userId);
-    return readPeopleAndSetup(this.prisma as any, { groundId, organizationId, userId });
+    /* The direct morning (organisation/the-screen-is-told-the-direct-morning.ts): one yes or no for the page's fixed words. It shows nothing more. */
+    return withTheDirectMorningSaid(await readPeopleAndSetup(this.prisma as any, { groundId, organizationId, userId }), await theDirectMorningIsOnFor(this.prisma, groundId));
   }
 
   /** References and resources, as this reader may read it (Release 1B, pull request 2 of 3). Asked after the check-in's own read rules. */
   async referencesAndResources(groundId: string, userId: string) {
     await refuseSomeoneAwaitingTheOrganisation(this.prisma as any, userId, CANNOT_CHECK_IN_YET);
     await this.assertMaySeeGround(groundId, userId);
-    return readReferencesAndResources(this.prisma as any, { groundId, userId, contextEnabled: this.contextEnabled() });
+    return withTheDirectMorningSaid(await readReferencesAndResources(this.prisma as any, { groundId, userId, contextEnabled: this.contextEnabled() }), await theDirectMorningIsOnFor(this.prisma, groundId));
   }
 
   /** One page of the evidence this reader may read (Release 1B, pull request 2 of 3). */
