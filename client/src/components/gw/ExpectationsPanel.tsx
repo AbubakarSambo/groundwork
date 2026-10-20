@@ -308,13 +308,13 @@ function TrackedElsewhere({
 
       {looking !== null && (
         <div style={{ display: 'flex', gap: 8, marginTop: 7 }}>
-          <input
+          <input className="gwui-input"
             autoFocus
             value={looking}
             onChange={e => setLooking(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && looking.trim()) looked.mutate(looking.trim()) }}
             placeholder="What does it say now?"
-            style={{ flex: 1, padding: '7px 10px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none' }}
+            style={{ flex: 1 }}
           />
           <button className="gwui-btn gwui-btn-primary gwui-btn-small"
             onClick={() => looking.trim() && looked.mutate(looking.trim())}

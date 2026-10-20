@@ -57,11 +57,11 @@ export function ThatIsOnTheRecord({ groundId }: { groundId: string }) {
         <div style={{ marginTop: 10 }}>
           <label htmlFor="record-email" style={{ display: 'block', fontSize: 12.5, color: 'var(--gw-sub)', marginBottom: 4 }}>Where should your report go?</label>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <input
+            <input className="gwui-input"
               id="record-email" type="email" autoComplete="email" value={email}
               onChange={(e) => { setEmail(e.target.value); setProblem('') }}
               placeholder="you@work.com"
-              style={{ flex: '1 1 220px', padding: '9px 12px', fontSize: 14, borderRadius: 8, border: '1px solid var(--gw-border)', fontFamily: 'inherit' }}
+              style={{ flex: '1 1 220px' }}
             />
             <button className="gwui-btn gwui-btn-primary gwui-btn-small"
               onClick={() => { if (!looksLikeAnAddress(email)) { setProblem('That does not look like an email address.'); return } change.mutate() }}

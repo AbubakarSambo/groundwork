@@ -109,12 +109,12 @@ export function AddADocument({
       <label htmlFor="gw-add-doc-note" style={{ display: 'block', fontSize: 13, color: 'var(--gw-text)', margin: '16px 0 6px' }}>
         <b>What should it be used for?</b> One line is enough; you can skip it.
       </label>
-      <input
+      <input className="gwui-input"
         id="gw-add-doc-note"
         value={note}
         maxLength={500}
         onChange={(e) => setNote(e.target.value)}
-        style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', fontSize: 13.5, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit' }}
+        style={{ width: '100%' }}
       />
 
       {isRead && took.length > 0 && (

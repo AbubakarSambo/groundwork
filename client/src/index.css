@@ -555,12 +555,15 @@ button, input, select, textarea { font-family: inherit; }
 .gw-input,
 .gw-select,
 .gw-ta {
+  /* The kit's field (app.css .input): 48px, 16px words (a phone zooms into anything smaller),
+     10px corners and the stronger warm line at 1.5px. */
   width: 100%;
-  padding: 10px 12px;
-  font-size: 13px;
-  border: 1px solid var(--gw-rule-2);
-  border-radius: var(--gw-radius);
-  background: #FFFFFF;
+  min-height: 48px;
+  padding: 10px 16px;
+  font-size: 16px;
+  border: 1.5px solid var(--gw-rule-2);
+  border-radius: 10px;
+  background: var(--gw-card);
   color: var(--gw-text);
   font-family: inherit;
   outline: none;
@@ -570,7 +573,7 @@ button, input, select, textarea { font-family: inherit; }
    whole signal. A ring rather than a hairline, because a one-pixel colour change is not a focus
    state anybody using a keyboard can see. */
 .gw-input:focus, .gw-select:focus, .gw-ta:focus {
-  border-color: #0C447C;
+  border-color: var(--gw-navy);
   box-shadow: 0 0 0 3px rgba(12, 68, 124, .12);
 }
 .gw-ta { resize: vertical; line-height: 1.5; }

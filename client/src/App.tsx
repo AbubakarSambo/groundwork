@@ -209,9 +209,8 @@ function RequirePlatformAdmin({ children }: { children: JSX.Element }) {
             It is not part of your organisation's admin, and there is nothing here that affects your
             check-ins. Being an admin in your own organisation does not include it.
           </div>
-          <Link
+          <Link className="gwui-btn gwui-btn-primary"
             to="/grounds"
-            style={{ display: 'inline-block', padding: '9px 18px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', textDecoration: 'none', fontSize: 13, fontWeight: 700 }}
           >Go to my check-ins</Link>
         </div>
       </div>
@@ -326,15 +325,13 @@ function AFrontDoorOfItsOwn() {
           not work here.
         </p>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <a
+          <a className="gwui-btn gwui-btn-primary"
             href="/start"
-            style={{ display: 'inline-block', background: 'var(--gw-navy)', color: 'white', padding: '10px 18px', borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}
           >
             Start a check-in
           </a>
-          <a
+          <a className="gwui-btn gwui-btn-secondary"
             href="/auth"
-            style={{ display: 'inline-block', border: '1px solid var(--gw-border)', color: 'var(--gw-text)', padding: '10px 18px', borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}
           >
             Sign in
           </a>

@@ -192,8 +192,9 @@ export function AnswerFirstPage() {
     minHeight: '100dvh', display: 'flex', flexDirection: 'column',
   }
   const field: React.CSSProperties = {
-    width: '100%', padding: '11px 16px', fontSize: 15, borderRadius: 21,
-    border: '1px solid var(--gw-border)', fontFamily: 'inherit', outline: 'none', background: 'white',
+    /* The kit's field (app.css .input), as the check-in's own composer draws it. */
+    width: '100%', padding: '12px 16px', fontSize: 16, border: '1.5px solid var(--gw-rule-2)', borderRadius: 10, background: 'var(--gw-card)', color: 'var(--gw-text)',
+    fontFamily: 'inherit', outline: 'none',
   }
 
   /*

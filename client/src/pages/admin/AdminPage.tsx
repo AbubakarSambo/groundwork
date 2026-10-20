@@ -205,7 +205,7 @@ function DeliveryAlertRow() {
       </div>
       {editing ? (
         <form onSubmit={(e) => { e.preventDefault(); save.mutate() }} style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-          <input type="email" value={value} onChange={e => setValue(e.target.value)} placeholder="ops@myground.work" aria-label="Address for the daily delivery alert" style={{ width: 220, maxWidth: '100%', padding: '5px 8px', fontSize: 13, borderRadius: 6, border: '1px solid var(--gw-border)', fontFamily: 'inherit' }} />
+          <input className="gwui-input" type="email" value={value} onChange={e => setValue(e.target.value)} placeholder="ops@myground.work" aria-label="Address for the daily delivery alert" style={{ width: 220, maxWidth: '100%' }} />
           <button className="gwui-btn gwui-btn-primary gwui-btn-small" type="submit" disabled={save.isPending} >Save</button>
           <button type="button" onClick={() => { setEditing(false); setErr(null) }} style={{ padding: '5px 10px', borderRadius: 6, background: 'none', color: 'var(--gw-muted)', fontSize: 12, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
         </form>
@@ -845,8 +845,8 @@ function FreeRunsPanel() {
   if (error || !data) return <SectionFailed what="Free runs" error={error} retry={() => refetch()} />
 
   const field: React.CSSProperties = {
-    padding: '7px 10px', border: '1px solid var(--gw-border)', borderRadius: 7,
-    fontSize: 13, fontFamily: 'inherit', background: 'white', color: 'var(--gw-text)',
+    /* The kit's field (app.css .input). */
+    padding: '12px 16px', fontSize: 16, border: '1.5px solid var(--gw-rule-2)', borderRadius: 10, background: 'var(--gw-card)', color: 'var(--gw-text)', fontFamily: 'inherit',
   }
 
   return (
@@ -1425,11 +1425,11 @@ function OrgsTab({ orgs }: { orgs: OrgListItem[] }) {
 
   return (
     <div>
-      <input
+      <input className="gwui-input"
         value={search}
         onChange={e => setSearch(e.target.value)}
         placeholder="Search orgs…"
-        style={{ width: '100%', padding: '9px 12px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', marginBottom: 14, boxSizing: 'border-box' }}
+        style={{ width: '100%', marginBottom: 14 }}
       />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {filtered.map(org => (

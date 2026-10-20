@@ -319,11 +319,11 @@ function CodeManagementSection({ codes, onDisable }: { codes: AdminCode[]; onDis
   return (
     <section>
       <div style={SL}>Access codes</div>
-      <input
+      <input className="gwui-input"
         value={search}
         onChange={e => setSearch(e.target.value)}
         placeholder="Filter by code or creator…"
-        style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', marginBottom: 10, boxSizing: 'border-box' }}
+        style={{ width: '100%', marginBottom: 10 }}
       />
       <div style={{ overflowX: 'auto' }}>
         <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
@@ -607,13 +607,13 @@ function AdminManagementSection({
         )}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 14 }}>
-          <input
+          <input className="gwui-input"
             type="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
             placeholder="them@example.com"
             required
-            style={{ flex: 1, padding: '9px 12px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', outline: 'none' }}
+            style={{ flex: 1 }}
             onFocus={e => { e.target.style.borderColor = 'var(--gw-navy)' }}
             onBlur={e => { e.target.style.borderColor = 'var(--gw-border)' }}
           />
@@ -819,14 +819,14 @@ function OpsAccessSection() {
                 }}
                 style={{ display: 'flex', gap: 8, marginTop: 8 }}
               >
-                <input
+                <input className="gwui-input"
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="the Groundwork account they sign in with"
                   required
                   autoFocus
-                  style={{ flex: 1, padding: '8px 11px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', outline: 'none' }}
+                  style={{ flex: 1 }}
                 />
                 <button className="gwui-btn gwui-btn-primary gwui-btn-small"
                   type="submit"
@@ -867,11 +867,11 @@ function UserUsageSection({ users }: { users: UserUsage[] }) {
   return (
     <section>
       <div style={SL}>What each person has done</div>
-      <input
+      <input className="gwui-input"
         value={search}
         onChange={e => setSearch(e.target.value)}
         placeholder="Filter by email…"
-        style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', marginBottom: 10, boxSizing: 'border-box' }}
+        style={{ width: '100%', marginBottom: 10 }}
       />
       <div style={{ overflowX: 'auto' }}>
         <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>

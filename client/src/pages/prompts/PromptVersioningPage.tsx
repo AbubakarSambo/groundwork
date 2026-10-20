@@ -467,8 +467,8 @@ function DraftEditor({
         <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--gw-text)', display: 'block', marginBottom: 4 }}>
           Change summary
         </label>
-        <input
-          style={{ width: '100%', boxSizing: 'border-box', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 4, padding: '8px 10px', fontFamily: 'inherit' }}
+        <input className="gwui-input"
+          style={{ width: '100%' }}
           value={summary}
           onChange={(e) => { setSummary(e.target.value); scheduleAutoSave() }}
           placeholder="What changed and why?"

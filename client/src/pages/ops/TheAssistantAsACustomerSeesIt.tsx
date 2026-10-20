@@ -1029,7 +1029,7 @@ export function TheAssistantAsACustomerSeesIt() {
             </button>
           </>
         )}
-        <input
+        <input className="gwui-input"
           value={typing}
           onChange={(e) => setTyping(e.target.value)}
           disabled={!session || busy}
@@ -1053,16 +1053,7 @@ export function TheAssistantAsACustomerSeesIt() {
                 : 'Ask about your objectives, people or what is due'
           }
           aria-label="Message"
-          style={{
-            flex: 1,
-            padding: '8px 11px',
-            borderRadius: 8,
-            border: '1px solid var(--gw-border)',
-            fontSize: 13,
-            fontFamily: 'inherit',
-            background: 'white',
-            outline: 'none',
-          }}
+          style={{ flex: 1 }}
         />
         <button className="gwui-btn gwui-btn-primary gwui-btn-small"
           type="submit"

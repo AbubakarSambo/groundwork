@@ -97,8 +97,9 @@ export function TalkToUsPage() {
 
   const label = { display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--gw-sub)', marginBottom: 5 } as const
   const field = {
-    width: '100%', padding: '10px 12px', fontSize: 14, border: '1px solid var(--gw-border)',
-    borderRadius: 8, fontFamily: 'inherit', boxSizing: 'border-box' as const, marginBottom: 14,
+    /* The kit's field (app.css .input). */
+    width: '100%', padding: '12px 16px', fontSize: 16, border: '1.5px solid var(--gw-rule-2)', borderRadius: 10, background: 'var(--gw-card)', color: 'var(--gw-text)',
+    fontFamily: 'inherit', boxSizing: 'border-box' as const, marginBottom: 14,
   }
 
   if (said === 'sent') {

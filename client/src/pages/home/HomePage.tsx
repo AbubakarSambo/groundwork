@@ -99,28 +99,14 @@ export function HomePage() {
 
           {/* The mode pills went with the situation cards: Setup asks whether this is starting or underway itself. */}
           <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-            <textarea
+            <textarea className="gwui-input"
               ref={taRef}
               value={text}
               onChange={autoResize}
               onKeyDown={handleKey}
               placeholder={PLACEHOLDERS[mode]}
               rows={2}
-              style={{
-                flex: 1,
-                padding: '10px 12px',
-                fontSize: 14,
-                lineHeight: 1.55,
-                border: '1px solid var(--gw-border)',
-                borderRadius: 8,
-                background: 'white',
-                color: 'var(--gw-text)',
-                fontFamily: 'inherit',
-                outline: 'none',
-                transition: 'border-color 0.1s',
-                resize: 'none',
-                overflow: 'hidden',
-              }}
+              style={{ flex: 1, resize: 'none', overflow: 'hidden', minHeight: 48 }}
               onFocus={e => { e.target.style.borderColor = 'var(--gw-navy)' }}
               onBlur={e => { e.target.style.borderColor = 'var(--gw-border)' }}
             />

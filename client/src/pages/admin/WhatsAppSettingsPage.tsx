@@ -15,7 +15,8 @@ import { whatsAppSettingsApi, type OurWhatsAppSettings, type SaveOurWhatsAppSett
 
 const small = { fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55 } as const
 const label = { fontSize: 13, fontWeight: 700, display: 'block', marginBottom: 4 } as const
-const input = { width: '100%', boxSizing: 'border-box', padding: '8px 10px', fontSize: 14, borderRadius: 6, border: '1px solid var(--gw-border)', fontFamily: 'inherit', background: 'white', color: 'var(--gw-text)' } as const
+/* The kit's field (app.css .input). */
+const input = { width: '100%', boxSizing: 'border-box', padding: '12px 16px', fontSize: 16, border: '1.5px solid var(--gw-rule-2)', borderRadius: 10, background: 'var(--gw-card)', color: 'var(--gw-text)', fontFamily: 'inherit' } as const
 const card = { border: '1px solid var(--gw-border)', borderRadius: 8, padding: 16, marginTop: 16, background: 'var(--gw-card)' } as const
 
 type Plain = 'displayNumber' | 'phoneNumberId' | 'businessAccountId'

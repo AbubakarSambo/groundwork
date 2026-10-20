@@ -278,7 +278,7 @@ export function PricingPage() {
               {PLAN_DESCRIPTIONS.ENTERPRISE}
             </p>
           </div>
-          <a href="mailto:hello@myground.work" style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-navy)', borderRadius: 9, padding: '10px 20px', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+          <a className="gwui-btn gwui-btn-secondary" href="mailto:hello@myground.work" >
             Contact us
           </a>
         </div>

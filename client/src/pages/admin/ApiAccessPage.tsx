@@ -104,13 +104,13 @@ function Row({ request }: { request: ApiAccessRequest }) {
         )}
         {asking && (
           <>
-            <input
+            <input className="gwui-input"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder={asking === 'DECLINED' ? 'Why it is declined. They will read this.' : 'Why it is withdrawn. They will read this.'}
               aria-label="Why"
               autoFocus
-              style={{ flex: '1 1 260px', padding: '7px 10px', fontSize: 13, borderRadius: 6, border: '1px solid var(--gw-border)', fontFamily: 'inherit' }}
+              style={{ flex: '1 1 260px' }}
             />
             <button type="button" className="gwui-btn gwui-btn-primary gwui-btn-small" onClick={() => decide.mutate(asking)} disabled={decide.isPending || !note.trim()}>
               {asking === 'DECLINED' ? 'Decline' : 'Withdraw'}

@@ -34,7 +34,7 @@ function NotStaff() {
         <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 18 }}>
           It is not part of your organisation's admin, and there is nothing here that affects your check-ins.
         </div>
-        <Link to="/grounds" style={{ display: 'inline-block', padding: '9px 18px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', textDecoration: 'none', fontSize: 13, fontWeight: 700 }}>Go to my check-ins</Link>
+        <Link className="gwui-btn gwui-btn-primary" to="/grounds" >Go to my check-ins</Link>
       </div>
     </div>
   )

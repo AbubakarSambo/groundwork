@@ -380,7 +380,7 @@ export function Composer({ groundId, openCheckInId, openSessionNumber, totalSess
         </div>
       )}
 
-      <textarea
+      <textarea className="gwui-input"
         value={text}
         onChange={e => setText(e.target.value)}
         onKeyDown={e => {
@@ -388,7 +388,7 @@ export function Composer({ groundId, openCheckInId, openSessionNumber, totalSess
         }}
         placeholder="Note something for your next check-in…"
         rows={2}
-        style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--gw-border)', fontSize: 13.5, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical', outline: 'none', background: 'white' }}
+        style={{ width: '100%', resize: 'vertical' }}
       />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 8 }}>
         {/*

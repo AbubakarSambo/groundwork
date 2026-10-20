@@ -31,8 +31,8 @@ import { askNameFor } from '@/lib/ask-name'
  */
 const WRAP: React.CSSProperties = { maxWidth: 1180, margin: '0 auto', padding: '20px 16px 80px' }
 const INPUT: React.CSSProperties = {
-  padding: '7px 10px', borderRadius: 7, border: '1px solid var(--gw-border)',
-  fontSize: 12.5, fontFamily: 'inherit',
+  /* The kit's field (app.css .input). */
+  padding: '12px 16px', fontSize: 16, border: '1.5px solid var(--gw-rule-2)', borderRadius: 10, background: 'var(--gw-card)', color: 'var(--gw-text)', fontFamily: 'inherit',
 }
 
 function Surface({ n, name, cell, note, children }: {

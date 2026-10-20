@@ -210,11 +210,12 @@ const INPUT: React.CSSProperties = {
   display: 'block',
   width: '100%',
   marginTop: 4,
-  padding: '6px 8px',
-  fontSize: 13,
+  /* The kit's field (app.css .input). */
+  padding: '12px 16px',
+  fontSize: 16,
   fontFamily: 'inherit',
-  color: 'var(--gw-navy)',
-  border: '1px solid var(--gw-border)',
-  borderRadius: 6,
-  background: 'white',
+  color: 'var(--gw-text)',
+  border: '1.5px solid var(--gw-rule-2)',
+  borderRadius: 10,
+  background: 'var(--gw-card)',
 }
