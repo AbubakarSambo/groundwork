@@ -11,6 +11,7 @@ import { useAskStore } from '@/stores/ask'
 import { whenTheBoardLastChanged } from '../when-the-board-last-changed'
 import { TheDealsCanBeChanged, WhatShowsItBlock } from '../WorkRecords'
 import './pictured-board.css'
+import { useTheDirectMorning } from '@/lib/the-direct-morning'
 
 /**
  * THE SALES BOARD AS PICTURED, FOR WHOEVER RUNS IT (screen match, 16 October; the target is
@@ -388,6 +389,8 @@ function TheDays({ r, days, today }: { r: Any; days: string[]; today: string }) 
 }
 
 export function EveryDealDayByDay({ b, section, now, groundId, heading = 'Every deal, day by day', note = 'Grouped by what the proof says about closing this quarter', ownTag = null }: { b: Any; section: Any; now: Date; groundId: string; heading?: string; note?: string; ownTag?: string | null }) {
+  /* The direct morning (lib/the-direct-morning.tsx): no note that explains the board or says who sees what. */
+  const direct = useTheDirectMorning()
   const rows: Any[] = (section?.rows ?? []).filter((r: Any) => r.kind === 'deal')
   const [openId, setOpenId] = useState<string | null>(null)
   const { days, mondays } = useMemo(() => theSixWeeks(now), [now])
@@ -400,7 +403,7 @@ export function EveryDealDayByDay({ b, section, now, groundId, heading = 'Every 
   const lost: Any[] = Array.isArray(section.lost) ? section.lost : []
   return (
     <>
-    <Section heading={heading} note={note}>
+    <Section heading={heading} note={direct && note === 'Only yours' ? undefined : note}>
       {/* Each line of the key only where a row on the grid carries that mark (board review, sales piece D, item 3). */}
       <div className="pb-legend">
         {rows.some((r) => r.mark === 'proven' || (r.contactHistory ?? []).some((c: Any) => /proof/i.test(c.how ?? ''))) && <span><span className="pb-dot pb-dot-proof" />Contact with proof: a photo, a quote, a payment</span>}
@@ -436,7 +439,7 @@ export function EveryDealDayByDay({ b, section, now, groundId, heading = 'Every 
           </table>
         </div>
       )}
-      <p className="pb-below">Something here wrong? Anyone can correct what’s about their own work in their check-in; the change and the original both show here.</p>
+      {!direct && <p className="pb-below">Something here wrong? Anyone can correct what’s about their own work in their check-in; the change and the original both show here.</p>}
       {open && <TheOpenDeal r={open} groupNote={(section.groups ?? []).find((g: Any) => g.rowIds?.includes(open.id))} today={today} groundId={groundId} onChange={b.canEditFrame ? () => api.edit(open) : null} ownTag={ownTag} />}
       </>)}
       </TheDealsCanBeChanged>
@@ -457,9 +460,11 @@ export const NO_LESSON_ON_RECORD = 'Nothing on record teaches anything from it y
 export const NO_REASON_GIVEN_YET = 'Nobody has said why yet.'
 
 export function LostDeals({ lost, myParticipantId }: { lost: Any[]; myParticipantId: string | null }) {
+  /* The direct morning (lib/the-direct-morning.tsx): no note that explains the board or says who sees what. */
+  const direct = useTheDirectMorning()
   if (!lost.length) return null
   return (
-    <Section heading="Lost deals, and why" note={LOST_NOTE}>
+    <Section heading="Lost deals, and why" note={direct ? undefined : LOST_NOTE}>
       <div className="pb-grid pb-lost">
         <table>
           <thead>
@@ -638,6 +643,8 @@ export function aTagForTheWork(reason: string, deals: Any[], today: string, work
 }
 
 export function TheTeamToday({ b, deals: dealSection, today, groundId }: { b: Any; deals: Any; today: string; groundId: string }) {
+  /* The direct morning (lib/the-direct-morning.tsx): no note that explains the board or says who sees what. */
+  const direct = useTheDirectMorning()
   const rows: Any[] = b.eachPersonToday ?? []
   const dealsOf = (pid: string) => (dealSection?.rows ?? []).filter((d: Any) => d.kind === 'deal' && d.ownerParticipantId === pid)
   if (!rows.length) return null
@@ -673,7 +680,7 @@ export function TheTeamToday({ b, deals: dealSection, today, groundId }: { b: An
           )
         })}
       </div>
-      <p className="pb-foot">These are about the work. Open anyone to see what they said and what the proof shows.</p>
+      <p className="pb-foot">{direct ? 'Open anyone to see what they said and what the proof shows.' : 'These are about the work. Open anyone to see what they said and what the proof shows.'}</p>
     </Section>
   )
 }
@@ -727,6 +734,8 @@ export function Blockers({ b, groundId }: { b: Any; groundId: string }) {
 /* ------------------------------------------------------------------ what keeps coming up */
 
 export function WhatKeepsComingUp({ b }: { b: Any }) {
+  /* The direct morning (lib/the-direct-morning.tsx): no note that explains the board or says who sees what. */
+  const direct = useTheDirectMorning()
   /* A promise carried over three check-ins running is about the work too (standing decision 5, as changed on 18 October). */
   const carried: Any[] = (b.keepsComingUp ?? []).map((x: Any, i: number) => ({ id: `carried-${i}`, participantId: x.participantId, yours: x.yours, about: 'the work', whatHappened: x.says }))
   const all: Any[] = [...(b.patterns ?? []), ...carried]
@@ -736,9 +745,9 @@ export function WhatKeepsComingUp({ b }: { b: Any }) {
   const byHeading = new Map<string, Any[]>()
   for (const p of aboutWhatIsSaid) byHeading.set(p.heading, [...(byHeading.get(p.heading) ?? []), p])
   return (
-    <Section heading="What keeps coming up" note="Named after three check-ins in a row, never after one. Each describes the work">
+    <Section heading="What keeps coming up" note={direct ? undefined : 'Named after three check-ins in a row, never after one. Each describes the work'}>
       {all.length === 0 ? (
-        <Panel><p className="gwui-panel-text">Nothing has come up three check-ins in a row yet. When something does, it shows here, and the person it is about sees it first.</p></Panel>
+        <Panel><p className="gwui-panel-text">{direct ? 'Nothing has come up three check-ins in a row yet.' : 'Nothing has come up three check-ins in a row yet. When something does, it shows here, and the person it is about sees it first.'}</p></Panel>
       ) : (
         <div className="pb-two">
           <Panel>
@@ -763,7 +772,7 @@ export function WhatKeepsComingUp({ b }: { b: Any }) {
           </Panel>
         </div>
       )}
-      <p className="pb-foot">Each person sees what’s about them, and can answer it in their own words.</p>
+      {!direct && <p className="pb-foot">Each person sees what’s about them, and can answer it in their own words.</p>}
     </Section>
   )
 }
@@ -859,6 +868,8 @@ function theLastSessionThisWeek(b: Any, now: Date): string | null {
 }
 
 export function Reports({ b, groundId, sessionRows, navigate, now }: { b: Any; groundId: string; sessionRows: Any[]; navigate: (to: string) => void; now: Date }) {
+  /* The direct morning (lib/the-direct-morning.tsx): no note that explains the board or says who sees what. */
+  const direct = useTheDirectMorning()
   if (!sessionRows.length) return null
   const yesterday = new Date(now.getTime() - DAY)
   const titleOf = (r: Any) => {
@@ -894,7 +905,7 @@ export function Reports({ b, groundId, sessionRows, navigate, now }: { b: Any; g
   lastMonday.setUTCDate(lastMonday.getUTCDate() - ((lastMonday.getUTCDay() + 6) % 7) - 7)
   const [first, second] = sessionRows
   return (
-    <Section heading="Reports" note="Every session has two: each person’s own, and the team’s once you share it">
+    <Section heading="Reports" note={direct ? undefined : 'Every session has two: each person’s own, and the team’s once you share it'}>
       <div className="pb-rows">
         {sessionRow(first)}
         {row('this-week', 'This week', `Week ${week} so far.${written ? ` Written ${written}.` : ''}`,
@@ -913,11 +924,13 @@ export function Reports({ b, groundId, sessionRows, navigate, now }: { b: Any; g
 /* ------------------------------------------------------------------ help, other teams */
 
 export function HelpNobodyMentioned({ b }: { b: Any }) {
+  /* The direct morning (lib/the-direct-morning.tsx): no note that explains the board or says who sees what. */
+  const direct = useTheDirectMorning()
   const h = b.helpNobodyMentioned
   const lines: string[] = Array.isArray(h?.rows) ? h.rows.map((r: Any) => r.says ?? r.text ?? String(r)) : Array.isArray(h?.lines) ? h.lines : h?.says ? [h.says] : []
   if (!h || !lines.length) return null
   return (
-    <Section heading="Help nobody mentioned" note="You see the help, not who said it">
+    <Section heading="Help nobody mentioned" note={direct ? undefined : 'You see the help, not who said it'}>
       <Panel>{lines.map((l) => <p className="gwui-panel-text" key={l}>{l}</p>)}</Panel>
     </Section>
   )
@@ -954,13 +967,15 @@ function TheQuietOne({ quiet }: { quiet: { label: string; says: string } }) {
 }
 
 export function OpenIssues({ b, renderActions }: { b: Any; renderActions: (a: Any) => ReactNode }) {
+  /* The direct morning (lib/the-direct-morning.tsx): no note that explains the board or says who sees what. */
+  const direct = useTheDirectMorning()
   const data = b.openIssues
   const rows: Any[] = Array.isArray(data?.issues) ? data.issues : []
   if (!data) return null
   /* The kit shows Open issues only with issues in it (quality pass, 18 October, B-25; standing decision 4 of the findings). */
   if (b.releaseOneSalesBoard && !rows.length) return null
   return (
-    <Section heading="Open issues" note="Each one moving towards a decision. You always choose">
+    <Section heading="Open issues" note={direct ? undefined : 'Each one moving towards a decision. You always choose'}>
       {rows.length === 0 ? (
         <Panel><p className="gwui-panel-text">{data.why ?? 'Nothing is open.'}</p></Panel>
       ) : (
@@ -1070,9 +1085,11 @@ export function AskAboutThisBoard({ example }: { example: string }) {
 }
 
 export function GroundworkRecommends({ offers, onAnswer, busy }: { offers: PicturedBoardProps['recommendations']; onAnswer: (id: string, yes: boolean) => void; busy: boolean }) {
+  /* The direct morning (lib/the-direct-morning.tsx): no note that explains the board or says who sees what. */
+  const direct = useTheDirectMorning()
   if (!offers.length) return null
   return (
-    <Section heading="Groundwork recommends" foot="One suggestion at a time, only when there’s a real need. Say no once and it won’t come back.">
+    <Section heading="Groundwork recommends" foot={direct ? undefined : 'One suggestion at a time, only when there’s a real need. Say no once and it won’t come back.'}>
       <EdgeList label="Groundwork recommends">
         {offers.map((o) => (
           <EdgeRow

@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
+import { useTheDirectMorning } from '@/lib/the-direct-morning'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Section, Panel, Tag, Button, EdgeList, EdgeRow } from '@/components/gw/ui'
@@ -650,13 +651,15 @@ function AgreedOnDayOneAndSetUpApart({ b, personId }: { b: Any; personId: string
 
 /** What the lead still has to do before the board can fill in, each from the record. */
 function TheFirstSteps({ b, groundId }: { b: Any; groundId: string }) {
+  /* The direct morning (lib/the-direct-morning.tsx): the same short estimate the check-in itself gives. */
+  const direct = useTheDirectMorning()
   const mine = (b.checkInGrid?.rows ?? []).find((r: Any) => r.participantId === b.myParticipantId)
   const cells = Object.values(mine?.cells ?? {}) as string[]
   const iHaveAnswered = cells.includes('done')
   const invited = (b.participants ?? []).filter((x: Any) => x.id !== b.myParticipantId && !x.managingOnly).length
   return (
     <EdgeList label="Getting started">
-      {!iHaveAnswered && <EdgeRow kind="decide" title="Your own check-in" detail="About ten minutes" actions={<Button kind="secondary" size="small" to={`/grounds/${groundId}`}>Open</Button>} />}
+      {!iHaveAnswered && <EdgeRow kind="decide" title="Your own check-in" detail={direct ? 'A few minutes' : 'About ten minutes'} actions={<Button kind="secondary" size="small" to={`/grounds/${groundId}`}>Open</Button>} />}
       <EdgeRow kind="decide" title="Say what it’s for, and what counts" detail="In your own words" actions={<Button kind="secondary" size="small" to={`/grounds/${groundId}?tab=context`}>Open</Button>} />
       <EdgeRow kind="decide" title="Add the people in it" detail={invited === 1 ? '1 invited' : `${invited} invited`} actions={<Button kind="secondary" size="small" to={`/grounds/${groundId}?tab=settings`}>Open</Button>} />
     </EdgeList>

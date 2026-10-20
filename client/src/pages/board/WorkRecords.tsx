@@ -10,6 +10,7 @@ import { Link } from 'react-router-dom'
 import { Section, Panel, RowList, Row, Tag, Button, Modal, FieldLabel, TextField, TextArea, Select, StageTrack, ProofMark, Stack, Note, SubHeading, Folded } from '@/components/gw/ui'
 import { Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import { useTheDirectMorning } from '@/lib/the-direct-morning'
 
 /**
  * THE KIND OF WORK, SAID AS A SENTENCE (request 76). The eleven names the server stores are short
@@ -1327,6 +1328,8 @@ export function YourOwnRecordsSections({ groundId, kindOfWork, sections, myParti
   myParticipantId: string | null
   leadFirstName: string | null
 }) {
+  /* The direct morning (lib/the-direct-morning.tsx): no "Only yours." note. Which rows are hers is the backend's rule, the same either way. */
+  const direct = useTheDirectMorning()
   if (!sections?.length || !myParticipantId) return null
   const itemNoun = (kindOfWork ? ITEM_NOUN_FOR_KIND[kindOfWork] : 'Item').toLowerCase()
   const heading = (kindOfWork ? YOUR_OWN_HEADING[kindOfWork] : undefined) ?? `Your own ${itemNoun}s, day by day`
@@ -1335,7 +1338,7 @@ export function YourOwnRecordsSections({ groundId, kindOfWork, sections, myParti
     .filter((s): s is Extract<AServedWorkSection, { state: 'filled' | 'none-yet' }> => s.state !== 'not-known')
     .flatMap((s) => (s.rows ?? []).filter((r) => r.ownerParticipantId === myParticipantId))
   return (
-    <Section heading={heading} note="Only yours.">
+    <Section heading={heading} note={direct ? undefined : 'Only yours.'}>
       {/*
         BOARD FIX (sales B, item 3b): A READER WITH NO ROWS STILL READS A SENTENCE, NOT A MISSING
         SECTION. The engine itself sends every row ever said about this reader's own work (request

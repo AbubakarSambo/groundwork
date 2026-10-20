@@ -145,6 +145,7 @@ import { WhereEachPersonIs } from '@/components/gw/where-each-person-is'
 import { SplitOneTotalAcrossPeople } from '@/components/gw/split-one-total-across-people'
 import { WhatTheTargetAssumes } from '@/components/gw/TargetsBand'
 import { whenTheBoardLastChanged, whenTheBoardLastChangedInShort, whenItRanOutOfTime } from './when-the-board-last-changed'
+import { TheDirectMorning, useTheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
 import { ThePicturedSalesBoard, theScheduleInWords, ThePicturedOwnDeals, ThePicturedAskBar, GroundworkRecommends } from './pictured/ThePicturedSalesBoard'
 import { ThePicturedBoard } from './pictured/ThePicturedBoard'
 import { MessageCircle } from 'lucide-react'
@@ -469,9 +470,11 @@ function HiddenContributorRow({ groundId, label, evidence, isInitiator }: {
 const THE_WHOLE_CHECK_IN_ID = 'the-whole-check-in'
 
 function MaybeFolded({ fold, children }: { fold: boolean; children: ReactNode }) {
+  /* The direct morning: no note about who it is for. Who reads it is the backend's rule, the same either way. */
+  const direct = useTheDirectMorning()
   if (!fold) return <>{children}</>
   return (
-    <Folded id={THE_WHOLE_CHECK_IN_ID} summary="The whole check-in" note="Everything else from this check-in, for everyone in it.">
+    <Folded id={THE_WHOLE_CHECK_IN_ID} summary="The whole check-in" note={direct ? undefined : 'Everything else from this check-in, for everyone in it.'}>
       {children}
     </Folded>
   )
@@ -653,6 +656,8 @@ function TheParticipantsOwnView({ pictured = false, board, myFirstName = null, g
   myLatestCheckInId: string | null
 }) {
   const shared = teamPicture?.shared === true
+  /* The direct morning (lib/the-direct-morning.tsx): it is the team's report, and it says so. */
+  const direct = useTheDirectMorning()
   /*
    * THE ONBOARDING BOARD (day-30-and-60.txt): NEITHER "YOUR OWN ITEMS" NOR "YOUR SHARE". Both are
    * the sales board's own wording ("Your deals, day by day", "4 of your 5 sales so far"), and the
@@ -682,7 +687,9 @@ function TheParticipantsOwnView({ pictured = false, board, myFirstName = null, g
           */}
           <Text size="16" ink="dark" weight={700}>
             {/* The day it is for, where it is not today (quality pass, 18 October, R-1). */}
-            {shared ? (teamPicture?.forDay ? `The team’s report for ${teamPicture.forDay} is shared.` : 'Today’s team picture is shared.') : 'Today’s team picture isn’t shared yet.'}
+            {shared
+              ? (teamPicture?.forDay ? `The team’s report for ${teamPicture.forDay} is shared.` : direct ? 'Today’s team report is shared.' : 'Today’s team picture is shared.')
+              : direct ? 'Today’s team report isn’t shared yet.' : 'Today’s team picture isn’t shared yet.'}
           </Text>
           <div className="gwui-fs-15 gwui-ink-sub gwui-mt-4" style={{lineHeight: 1.55}}>
             {shared
@@ -720,7 +727,7 @@ function TheParticipantsOwnView({ pictured = false, board, myFirstName = null, g
               redirect kept only for the rare case nothing has completed for this reader yet.
             */
             <Link to={myLatestCheckInId ? `/checkin/${myLatestCheckInId}/report` : `/grounds/${groundId}/report`} className="gwui-plain-link gwui-fs-15 gwui-mt-4">
-              {teamPicture?.forDay ? 'Open it.' : 'Open today’s team picture.'}
+              {teamPicture?.forDay ? 'Open it.' : direct ? 'Open today’s team report.' : 'Open today’s team picture.'}
             </Link>
           )}
           {(shared || (teamPicture && 'yourOwnReport' in teamPicture && teamPicture.yourOwnReport)) && !!myLatestCheckInId && (
@@ -1463,6 +1470,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * `workRecords` here, deal grid or forecast - only her own records, already shown.
    */
   const isSalesOrg = isASalesKind((b as any).kindOfWork ?? null)
+  /* The direct morning (lib/the-direct-morning.tsx): one yes or no on the board as served. It changes words, never who sees what. */
+  const direct = isTheDirectMorningOn(b)
   /*
    * PROJECT BOARD REVIEW 1, FIX 11: THE TWO PROJECT SCENARIOS - "GET A NEW PROJECT OFF TO A GOOD
    * START" (NEW_PROJECT, eng.txt's own check-in) AND "GET A PROJECT BACK ON TRACK" (DRIFT). Used
@@ -2260,7 +2269,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               <div className="gwui-fs-13-5 gwui-ink-muted gwui-pt-10 gwui-pr-22 gwui-pb-10 gwui-pl-22 gwui-rule-top-dashed gwui-mt-4" style={{fontStyle: 'italic', lineHeight: 1.5}}>
                 {/* Board review, 1 October, item 4: "the lead's private report" said "the lead"
                     even to the lead themselves reading their own board. */}
-                Patterns about the work only. Anything that would read as a judgement about a person stays in {viewerRunsThisCheckIn ? 'your' : `${(groundForSignals as any)?.leadFirstName ?? 'the lead'}’s`} private report and never appears here.
+                {direct ? 'Patterns about the work only.' : <>Patterns about the work only. Anything that would read as a judgement about a person stays in {viewerRunsThisCheckIn ? 'your' : `${(groundForSignals as any)?.leadFirstName ?? 'the lead'}’s`} private report and never appears here.</>}
               </div>
             </Panel>
           </Section>
@@ -2546,6 +2555,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   )
 
   return (
+    <TheDirectMorning on={direct}>
     <Page>
       <MaybeTheLightSalesBoard glance={light ? b.atAGlance ?? null : null} readerRunsIt={lightLead}>
         {/*
@@ -2680,12 +2690,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         {/* The light sales board: "Updated Wed 23 Sep, 6pm ⓘ", the full sentence behind the ⓘ (approved rename). */}
         {shortUpdatedLine ? (
-          <UpdatedLine short={whenTheBoardLastChangedInShort(b.lastChangedAt)} full={whenTheBoardLastChanged(b.lastChangedAt)} />
-        ) : (
+          <UpdatedLine short={whenTheBoardLastChangedInShort(b.lastChangedAt)} full={whenTheBoardLastChanged(b.lastChangedAt, direct)} />
+        ) : whenTheBoardLastChanged(b.lastChangedAt, direct) ? (
           <p className="gwui-fs-15 gwui-ink-sub gwui-mt-14" style={{lineHeight: 1.55}}>
-            {whenTheBoardLastChanged(b.lastChangedAt)}
+            {whenTheBoardLastChanged(b.lastChangedAt, direct)}
           </p>
-        )}
+        ) : null}
         {/*
           OUT OF TIME, RIGHT UNDER "LAST UPDATED" (join-outoftime.txt). This is where a reader looks
           to find out why nothing on the board is moving, so this is where the reason sits - in the
@@ -3873,6 +3883,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           within one click.
         */}
         <Placed as="How to read this board">
+        {/* The direct morning: no explanation of how to read the board, and no "It’s not a verdict." */}
+        {!direct && (
         <div className="gwui-mt-12">
           <p className="gwui-fs-15 gwui-ink-sub gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0" style={{lineHeight: 1.55}}>
             {/*
@@ -3911,6 +3923,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             {howToRead ? 'Show less' : 'How to read this board'}
           </button>
         </div>
+        )}
         </Placed>
 
         {/*
@@ -5416,6 +5429,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         </>)}
       </MaybeTheLightSalesBoard>
     </Page>
+    </TheDirectMorning>
   )
 }
 
