@@ -28,6 +28,8 @@ import * as nodemailer from 'nodemailer';
 import { greeting } from './a-greeting-with-no-name';
 import { howLongInWords } from '../auth/how-long-a-link-lasts';
 import { shouldSayWhatGroundworkIs, withWhatGroundworkIs } from './what-groundwork-is';
+import { markedAsDirect, theDirectMarkOn, theDirectMorningForAMail, withoutTheDirectMark } from './a-direct-email';
+import { theReportReadyDirectly } from './the-direct-words';
 import { haveNotCheckedInSaid, type WhoIsLeft } from './who-has-not-checked-in-yet';
 import { whatTheTeamGets, whatTheLeadGets, THE_TEAM_BUTTON, THE_LEAD_BUTTON } from './one-line-one-link-one-report';
 import { thePartialPicture } from '../engagement/a-partial-picture-said-honestly';
@@ -594,7 +596,12 @@ export class EmailService implements OnModuleInit {
      * forgot were the ones nobody had read recently. See what-groundwork-is.ts for why the way-back-in
      * mails are excluded.
      */
-    options = { ...options, html: withWhatGroundworkIs(options.html, sender, shouldSayWhatGroundworkIs(sender) && !/Groundwork is where the people involved/.test(options.html) ? await this.whoSeesWhatYouSay(context, options.to) : undefined) };
+    /* THE DIRECT MORNING (a-direct-email.ts): with its switch on for this mail's organisation, no paragraph about Groundwork and no note about who sees what.
+       Read once: from the sender's mark where it read the switch, else here, and only where the paragraph would be added. Who can see what never changes. */
+    const marked = theDirectMarkOn(options.html);
+    options = { ...options, html: withoutTheDirectMark(options.html) };
+    const direct = marked ?? (shouldSayWhatGroundworkIs(sender) && !/Groundwork is where the people involved/.test(options.html) ? await theDirectMorningForAMail(this.prisma, options.to, context) : false);
+    if (!direct) options = { ...options, html: withWhatGroundworkIs(options.html, sender, shouldSayWhatGroundworkIs(sender) && !/Groundwork is where the people involved/.test(options.html) ? await this.whoSeesWhatYouSay(context, options.to) : undefined) };
 
     /*
      * EVERY MESSAGE CARRIES A WAY OUT, A TEXT PART, AND ITS OWN HEADERS - HERE, ONCE, FOR ALL
@@ -1383,9 +1390,12 @@ export class EmailService implements OnModuleInit {
    */
   async sendReportReady(email: string, groundLabel: string, reportUrl: string, sharedByAnAdminSentence?: string, groundId?: string, subjectLine?: string, theInsight?: string[], theChat?: { url: string; label: string },
     /* Who checked in for this picture, said to this reader (email/who-checked-in-for-this-picture.ts). Null when everybody asked has answered. */
-    whoCheckedIn?: string[] | null): Promise<void> {
+    whoCheckedIn?: string[] | null,
+    /* The direct morning's switch for this check-in's organisation, as the caller read it (a-direct-email.ts). Read here when it is not given. */
+    direct?: boolean): Promise<void> {
+    const isDirect = direct ?? (groundId ? await theDirectMorningForAMail(this.prisma, email, { groundId }) : false);
     /* Who can see what people said, as the invitation says it (whoSeesWhatYouSay): not "it does not quote anybody", which is not true. */
-    const whoSees = await this.whoSeesWhatYouSay(groundId ? { groundId } as DeliveryContext : undefined, email);
+    const whoSees = isDirect ? '' : await this.whoSeesWhatYouSay(groundId ? { groundId } as DeliveryContext : undefined, email);
     /* To the person who runs it, a question her own rule for a sale already answers is answered from the record (Hafsah, 19 October, point 5). */
     if (groundId && theInsight?.length) {
       const g = await Promise.resolve(theCheckInForAnEmail(this.prisma, groundId, { initiator: { select: { email: true } } }))?.catch?.(() => null);
@@ -1395,7 +1405,7 @@ export class EmailService implements OnModuleInit {
     }
     await this.sendEmail({
       to: email,
-      subject: subjectLine ?? `The shared picture for "${groundLabel}" is ready`,
+      subject: subjectLine ?? (isDirect ? `Your report for "${groundLabel}" is ready` : `The shared picture for "${groundLabel}" is ready`),
       /*
        * WHAT GROUNDWORK IS, AND WHO CAN SEE THIS.
        *
@@ -1404,7 +1414,7 @@ export class EmailService implements OnModuleInit {
        * mail whose whole job is to bring somebody back to read a shared record — sent, in the
        * ordinary case, to a participant who has met the product exactly once, ten minutes ago.
        */
-      html: this.layout(
+      html: isDirect ? this.layout(markedAsDirect(true) + theReportReadyDirectly(groundLabel, reportUrl, theInsight, whoCheckedIn, sharedByAnAdminSentence, theChat)) : this.layout(
         /* THE FINDING FIRST (engagement spec section 7) when the report has one for this reader; otherwise the notice it always was. */
         (theInsight?.length
           ? theInsight.map((l) => `<p>${escapeHtml(l)}</p>`).join('') + `<p>The shared picture for <strong>${escapeHtml(groundLabel)}</strong> is open to all of you at the same moment, with the detail behind this.</p>`
@@ -1614,7 +1624,7 @@ export class EmailService implements OnModuleInit {
    * moment a new session becomes available, carrying context from the last
    * check-in so the person doesn't have to remember where they left off.
    */
-  async sendSessionReady(email: string, groundLabel: string, checkInUrl: string, simplerWords?: boolean | null, missed?: string[] | null, groundId?: string): Promise<string | undefined> {
+  async sendSessionReady(email: string, groundLabel: string, checkInUrl: string, simplerWords?: boolean | null, missed?: string[] | null, groundId?: string, opening?: { subject: string; line: string } | null): Promise<string | undefined> {
     const words = THE_EMAILS.nextCheckInOpen(simplerWords);
     /* No "Last time: ..." line (NL-007). It quoted the person's own last record entry into a mailbox
        their administrators can read, forward and export - the one thing the product promises not to do. */
@@ -1622,8 +1632,9 @@ export class EmailService implements OnModuleInit {
     const theMissed = (missed ?? []).filter((l) => l.trim()).map((l) => `<p>${escapeHtml(l)}</p>`).join('');
     return this.sendEmail({
       to: email,
-      subject: `Your next check-in is open: ${groundLabel}`,
-      html: this.layout(`<p>${words.before} <strong>${escapeHtml(groundLabel)}</strong>${words.after}</p>${theMissed}<p><a href="${checkInUrl}">Check in</a></p>${groundId ? await this.theWhatsAppLine(email, { kind: 'REMINDER', groundId }, false) : ''}`),
+      /* The direct morning's personal opening (organisation/the-direct-morning-switch.ts), where the caller gives one; without it, as before. */
+      subject: opening ? opening.subject : `Your next check-in is open: ${groundLabel}`,
+      html: this.layout(`${opening ? `<p>${escapeHtml(opening.line)}</p>` : `<p>${words.before} <strong>${escapeHtml(groundLabel)}</strong>${words.after}</p>`}${theMissed}<p><a href="${checkInUrl}">Check in</a></p>${groundId ? await this.theWhatsAppLine(email, { kind: 'REMINDER', groundId }, false) : ''}`),
     }, undefined, 'sendSessionReady');
   }
 
