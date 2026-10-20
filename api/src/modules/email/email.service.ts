@@ -767,6 +767,7 @@ export class EmailService implements OnModuleInit {
     const url = `${this.frontendUrl}/set-password?token=${token}`;
     /* With the direct morning on, what the password does, and no sentence about what Groundwork is (a-direct-email.ts). */
     const direct = await theDirectMorningForAMail(this.prisma, email);
+    const thePassword = usesGoogle ? 'Setting a password means you can sign in without Google.' : 'Setting a password means you can come back and sign in with this email address and your password.';
     await this.sendEmail({
       to: email,
       subject: 'Set a password for Groundwork',
@@ -778,7 +779,9 @@ export class EmailService implements OnModuleInit {
        */
       html: this.layout(
         `<p>${greeting(firstName)}</p>` +
-        `<p>${direct ? '' : 'Groundwork is where you and the people you work with each say how a piece of work is actually going, separately, and get one shared picture back. '}${usesGoogle ? 'Setting a password means you can sign in without Google.' : 'Setting a password means you can come back and sign in with this email address and your password.'}</p>` +
+        (direct
+          ? `<p>${thePassword}</p>`
+          : `<p>Groundwork is where you and the people you work with each say how a piece of work is actually going, separately, and get one shared picture back. ${thePassword}</p>`) +
         `<p><a href="${url}">Set password</a></p>` +
         `<p style="color:#888;font-size:12px;">This link lasts ${howLongInWords('set a password from an email')} and can only be used once. If it has expired, ask for a new one from the sign-in page.</p>`,
       ),

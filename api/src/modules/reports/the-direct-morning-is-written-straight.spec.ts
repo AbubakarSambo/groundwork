@@ -61,7 +61,7 @@ describe('the team report, as the model is told to write it', () => {
     expect(synthesis.endsWith(`\n\n${THE_DIRECT_TEAM_REPORT}`)).toBe(true);
     expect(synthesis.indexOf('SYNTHESIS RULES')).toBeLessThan(synthesis.indexOf('THE DIRECT MORNING.'));
     expect(synthesis).toContain('it overrides every earlier line, stored or not, about voice, style, framing and what may be recommended');
-    expect(synthesis).toContain('A recommendation of what to do next is allowed and wanted');
+    expect(synthesis).toContain('Recommend what to do next: the next step on the work, who it sits with, and by when.');
     /* And the report says which stored version ran, and that the direct block ran after it. */
     const data = upserts.find((u) => u?.create?.promptVersionId)?.create;
     expect(data.promptVersionId).toBe('pv-synthesis-7');
@@ -163,7 +163,7 @@ describe('the blocks themselves', () => {
         expect(block).toContain(`"${p}"`);
       }
       expect(block).toMatch(/Never these words or ideas/);
-      expect(block).toContain('"No recommendations for what either person should do", "Do not say what either person should do next" and "Do not produce a verdict" no longer apply to the work');
+      expect(block).toContain('Three earlier lines no longer apply to the work. They are "No recommendations for what either person should do", "Do not say what either person should do next" and "Do not produce a verdict".');
       expect(block).toMatch(/Say the fact, or say nothing\./);
     }
   });

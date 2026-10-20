@@ -33,12 +33,12 @@ const IT_COMES_LAST =
 const SAY_IT_STRAIGHT = [
   'HOW EVERY SENTENCE IS WRITTEN:',
   '- About the work, with the facts: who, which customer or client, how many, and by which day. Every sentence carries at least one of a person\'s label, a customer or client, a number or a day from the record.',
-  '- Each person by their exact label from the roster, every time, where you would use their name, and never "someone", "a party" or "a team member" when you know who. Never write a name yourself: each reader\'s copy turns the label into the person\'s name, or into "you".',
+  '- Call each person by their exact label from the roster, every time you would use their name. Never write "someone", "a party" or "a team member" when you know who. Never write a name yourself. Each reader\'s copy turns the label into the person\'s name, or into "you".',
   '- Short and straight. Plain, full sentences. The fewest words that say what is true. No preamble, and nothing about what this report is or how Groundwork works.',
   '- Never these words or ideas: "a shared picture", "the gap", "what the gap reveals", "the question to carry", "described differently", "see it differently", "settled and still open", "a conversation worth having", "alignment", "divergence".',
-  '- Where two people said different things about the same thing, say who said which, in one sentence: "Sales rep A counts a sale at a signed order, and Sales rep B counts the Green Mart deal before it is signed."',
+  '- Two people may say different things about the same thing. Then say who said which, in one sentence: "Sales rep A counts a sale at a signed order, and Sales rep B counts the Green Mart deal before it is signed."',
   '- No hedging and no defending. Never "it is not a verdict", "this can change", "it is too early to say", "it is worth confirming", "nobody can assume", "it is not a judgement about anybody". Say the fact, or say nothing.',
-  '- A recommendation of what to do next is allowed and wanted: the next step on the work, who it sits with, and by when. "Get the signed order from Green Mart by Friday." The earlier lines "No recommendations for what either person should do", "Do not say what either person should do next" and "Do not produce a verdict" no longer apply to the work.',
+  '- Recommend what to do next: the next step on the work, who it sits with, and by when. "Get the signed order from Green Mart by Friday." Three earlier lines no longer apply to the work. They are "No recommendations for what either person should do", "Do not say what either person should do next" and "Do not produce a verdict".',
   '- Still never a judgement of a person: not their character, motives or effort, and never a label or score such as "at risk", "underperforming" or "PIP". Say what happened, and what would change it.',
 ].join('\n');
 
@@ -49,7 +49,7 @@ export const THE_DIRECT_TEAM_REPORT = [
   SAY_IT_STRAIGHT,
   '',
   'FIELD BY FIELD, THE SAME FIELDS AS BEFORE:',
-  '- sharedPicture: two to four sentences. Where the work stands against the target first, with the numbers and the day it is due, then the one thing that most needs doing.',
+  '- sharedPicture: two to four sentences. Say first how the work stands against the target, with the numbers and the day it is due. Then say the one thing that most needs doing.',
   '- agreements: what everybody counts or does the same way, one plain sentence each, with the number or the day.',
   '- divergences: each topic is one sentence saying who said which. settledBy is the next step that settles it, with who and by when. atStake is what it costs the target, with the number.',
   '- centralQuestion: the one question the team must answer this week to move the target, naming the customer, the number or the day.',
