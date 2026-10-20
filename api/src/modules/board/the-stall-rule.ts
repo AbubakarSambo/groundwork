@@ -11,6 +11,8 @@
 export const THE_SUGGESTED_DAYS = 3;
 export const THE_STALL_RULE_QUESTION = `Decide whether to drop a deal after ${THE_SUGGESTED_DAYS} working days with no answer`;
 export const NO_STALL_RULE_YET = 'No stall rule set yet';
+/** The question itself, as the lead is asked it; with the direct morning on it is also the item's heading in place of NO_STALL_RULE_YET. */
+export const THE_STALL_RULE_ASKED = `Do you want to drop a deal after ${THE_SUGGESTED_DAYS} working days with no answer?`;
 
 export const theStallRuleAsALine = (days: number) => `A deal is dropped after ${days} working days with no answer from the customer.`;
 export const theStallRuleDeclined = 'Groundwork offered a stall rule, and you said not now. No deal is dropped for going quiet.';

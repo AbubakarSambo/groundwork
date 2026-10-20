@@ -322,3 +322,34 @@ describe('the quality pass of 18 October, as each reader reads the board', () =>
     });
   });
 });
+
+/*
+ * WITH THE DIRECT MORNING ON (organizations.direct_morning_on), the same board says the stall question itself, with no "Groundwork
+ * suggests", and Kevin's share says his number with no note about who else sees it. Who is served what is unchanged: Kevin is still
+ * served his own share only, and Grace alone the stall question. Off, the lines above.
+ */
+describe('the quality pass of 18 October, with the direct morning on', () => {
+  let grace: any; let kevin: any;
+  beforeAll(async () => {
+    grace = await boardAs(theShortRun({ directMorning: true }), ...reader('Grace'));
+    kevin = await boardAs(theShortRun({ directMorning: true }), ...reader('Kevin'));
+  }, 120_000);
+
+  it('Grace is asked the stall question itself, and told what follows until she answers', () => {
+    const rule = (grace.leadActions ?? []).find((a: any) => a.id === 'the-stall-rule');
+    console.log(`GRACE READS, DIRECT:\n${rule.decision.question}\n${rule.decision.why}`);
+    expect(rule.text).toBe('Do you want to drop a deal after 3 working days with no answer?');
+    expect(rule.decision.question).toBe('Do you want to drop a deal after 3 working days with no answer?');
+    expect(rule.decision.why).toBe('No deal is marked cold or dropped for going quiet until you set this. Upper Hill Offices has not answered since 12 October, which is more than that.');
+    expect(rule.action.choices.map((c: any) => c.label)).toEqual(['Yes, 3 working days', 'Not now']);
+    expect(JSON.stringify(grace.leadActions)).not.toMatch(/Groundwork suggests|No stall rule set yet/);
+  });
+
+  it('Kevin reads his share with no note about who else sees it, and still only his own', () => {
+    console.log(`KEVIN READS, DIRECT:\n${kevin.yourShare.map((s: any) => [s.says, s.whoSees].filter(Boolean).join(' ')).join('\n')}`);
+    expect(kevin.yourShare).toEqual([expect.objectContaining({ says: 'You have sold 40 of your 40 units so far, all to Kilele Hotel, paid.' })]);
+    expect(kevin.yourShare[0].whoSees).toBeUndefined();
+    expect(JSON.stringify(kevin)).not.toMatch(/see your share|Greenfield|KES 38,000/);
+    expect(kevin.leadActions ?? []).toEqual([]);
+  });
+});

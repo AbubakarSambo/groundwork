@@ -769,14 +769,14 @@ function TheParticipantsOwnView({ pictured = false, board, myFirstName = null, g
           {pictured ? (
             /* As pictured: one panel, the share and who sees it in one line. */
             <Panel>
-              {yourShare.map((s) => <p className="gwui-panel-text" key={s.objectiveId}><span>{s.says}</span> <span>{s.whoSees}</span></p>)}
+              {yourShare.map((s) => <p className="gwui-panel-text" key={s.objectiveId}><span>{s.says}</span>{s.whoSees ? <> <span>{s.whoSees}</span></> : null}</p>)}
             </Panel>
           ) : (
           <Stack gap={8}>
             {yourShare.map((s) => (
               <div key={s.objectiveId}>
                 <p className="gwui-panel-text">{s.says}</p>
-                <Note tone="muted">{s.whoSees}</Note>
+                {s.whoSees ? <Note tone="muted">{s.whoSees}</Note> : null}
               </div>
             ))}
           </Stack>

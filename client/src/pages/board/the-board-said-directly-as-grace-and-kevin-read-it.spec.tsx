@@ -20,9 +20,26 @@ vi.mock('@/api/board', async (orig) => { const o: any = await orig(); return { .
 vi.mock('@/api/grounds', async (orig) => { const o: any = await orig(); return { ...o, groundsApi: { ...o.groundsApi, get: vi.fn().mockResolvedValue({ id: 'g1', label: 'Sales team, Q4', initiatorId: 'u-grace', leadFirstName: 'Grace' }) } } })
 vi.mock('@/api/today', () => ({ todayApi: { get: vi.fn().mockResolvedValue({ count: 0, line: null, comingUp: [], needs: [] }) } }))
 
+/*
+ * The fixture is the board as served with the switch off. With it on, the API also serves two things differently (board.service.ts):
+ * a rep's share comes with no `whoSees`, and the lead's stall item is the question itself, with no "Groundwork suggests". This makes
+ * the same change to the same served board, so the page is read as the API serves it on. api board/the-quality-pass-of-18-october
+ * checks the API's side from the record.
+ */
+function asTheApiServesItOn(b: any): any {
+  const out = structuredClone(b)
+  if (Array.isArray(out.yourShare)) out.yourShare = out.yourShare.map(({ whoSees: _gone, ...s }: any) => s)
+  out.leadActions = (out.leadActions ?? []).map((a: any) => a.id !== 'the-stall-rule' ? a : {
+    ...a,
+    text: a.decision.asked,
+    decision: { ...a.decision, question: a.decision.asked, why: a.decision.why.replace(/^Groundwork suggests dropping a deal after \d+ working days with no answer from the customer\. Until you set a rule, no deal is marked cold or dropped for going quiet\./, 'No deal is marked cold or dropped for going quiet until you set this.') },
+  })
+  return out
+}
+
 async function read(who: 'grace' | 'kevin', on: boolean): Promise<string[]> {
   me = { id: who === 'grace' ? 'u-grace' : 'u-kevin', firstName: who === 'grace' ? 'Grace' : 'Kevin', role: 'MEMBER' }
-  ;(boardApi.get as any).mockResolvedValue({ ...(SERVED as any)[who], directMorning: on })
+  ;(boardApi.get as any).mockResolvedValue({ ...(on ? asTheApiServesItOn((SERVED as any)[who]) : (SERVED as any)[who]), directMorning: on })
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const r = render(
     <QueryClientProvider client={qc}>
@@ -56,6 +73,7 @@ const GONE_FOR_GRACE = [
   'Nothing has come up three check-ins in a row yet. When something does, it shows here, and the person it is about sees it first.',
   'Each person sees what’s about them, and can answer it in their own words.',
   'Each one moving towards a decision. You always choose',
+  'No stall rule set yetGroundwork suggests dropping a deal after 3 working days with no answer from the customer. Until you set a rule, no deal is marked cold or dropped for going quiet. Upper Hill Offices has not answered since 13 October, which is more than that.Yes, 3 working daysNot now',
 ]
 const GONE_FOR_KEVIN = [
   'Today’s team picture is shared.',
@@ -63,6 +81,7 @@ const GONE_FOR_KEVIN = [
   'Only yours',
   'Built from what each person shared in their private check-in. Use it to see what’s going on and guide the conversation. It’s not a verdict.',
   'How to read this board',
+  'You have sold 49 of your 30 units so far, 46 paid (Savannah Cafe and Kilele Hotel) and 3 on your word (Roysambu Gym). Only you and Grace see your share.',
 ]
 const NEW_LINES = [
   'Last updated on Tuesday 20 October at 8am.',
@@ -70,6 +89,8 @@ const NEW_LINES = [
   'Nothing has come up three check-ins in a row yet.',
   'Today’s team report is shared.',
   'Open today’s team report.',
+  'Do you want to drop a deal after 3 working days with no answer?No deal is marked cold or dropped for going quiet until you set this. Upper Hill Offices has not answered since 13 October, which is more than that.Yes, 3 working daysNot now',
+  'You have sold 49 of your 30 units so far, 46 paid (Savannah Cafe and Kilele Hotel) and 3 on your word (Roysambu Gym).',
 ]
 
 describe('Grace’s board, as she runs "Sales team, Q4"', () => {
