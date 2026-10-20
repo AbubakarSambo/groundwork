@@ -199,7 +199,8 @@ describe('only the lead who runs the check-in is served it', () => {
     expect(await theDirectMorningFor(theNightRunsDatabase('drop', { directMorning: true }), { groundId: DROP, leadUserId: kevin, board: theLeadsBoard('drop'), now: NOW })).toBeNull();
   });
   it('the board adds it only for the lead, after every wall, and only through theDirectMorningFor', () => {
-    const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'board', 'board.service.ts'), 'utf8');
+    const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'board', 'board.service.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     const at = src.indexOf('(asServed as any).theMorning = asServedOnTheBoard(morning)');
     expect(at).toBeGreaterThan(0);
     const before = src.slice(Math.max(0, at - 400), at);

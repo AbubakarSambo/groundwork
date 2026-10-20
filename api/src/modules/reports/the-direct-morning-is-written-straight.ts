@@ -38,7 +38,7 @@ const SAY_IT_STRAIGHT = [
   '- Never these words or ideas: "a shared picture", "the gap", "what the gap reveals", "the question to carry", "described differently", "see it differently", "settled and still open", "a conversation worth having", "alignment", "divergence".',
   '- Two people may say different things about the same thing. Then say who said which, in one sentence: "Sales rep A counts a sale at a signed order, and Sales rep B counts the Green Mart deal before it is signed."',
   '- No hedging and no defending. Never "it is not a verdict", "this can change", "it is too early to say", "it is worth confirming", "nobody can assume", "it is not a judgement about anybody". Say the fact, or say nothing.',
-  '- Recommend what to do next: the next step on the work, who it sits with, and by when. "Get the signed order from Green Mart by Friday." Three earlier lines no longer apply to the work. They are "No recommendations for what either person should do", "Do not say what either person should do next" and "Do not produce a verdict".',
+  '- Recommend what to do next: the next step on the work, who it sits with, and by when. "Get the signed order from Green Mart by Friday." Three earlier lines no longer apply to the work. The first is "No recommendations for what either person should do". The second is "Do not say what either person should do next". The third is "Do not produce a verdict".',
   '- Still never a judgement of a person: not their character, motives or effort, and never a label or score such as "at risk", "underperforming" or "PIP". Say what happened, and what would change it.',
 ].join('\n');
 

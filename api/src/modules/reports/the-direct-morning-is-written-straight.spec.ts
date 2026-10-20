@@ -163,7 +163,7 @@ describe('the blocks themselves', () => {
         expect(block).toContain(`"${p}"`);
       }
       expect(block).toMatch(/Never these words or ideas/);
-      expect(block).toContain('Three earlier lines no longer apply to the work. They are "No recommendations for what either person should do", "Do not say what either person should do next" and "Do not produce a verdict".');
+      expect(block).toContain('Three earlier lines no longer apply to the work. The first is "No recommendations for what either person should do". The second is "Do not say what either person should do next". The third is "Do not produce a verdict".');
       expect(block).toMatch(/Say the fact, or say nothing\./);
     }
   });
