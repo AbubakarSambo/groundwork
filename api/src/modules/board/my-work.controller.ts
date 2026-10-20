@@ -4,6 +4,8 @@ import { BoardService } from './board.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CurrentUser } from '../../common';
 import { withoutComparisonsAnywhere } from '../reports/no-comparison-between-people';
+import { theDirectMorningIsOnFor } from '../organisation/the-direct-morning-switch';
+import { inTheDirectMorningsWords } from '../reports/the-direct-morning-says-the-fact';
 import { readMyWork } from './my-work';
 
 /**
@@ -21,6 +23,7 @@ export class MyWorkController {
   @Get()
   @ApiOperation({ summary: 'My work: one person’s page in this check-in, for that person or the lead (Release 1B)' })
   async get(@Param('id') id: string, @CurrentUser('id') userId: string, @Query('person') person?: string) {
-    return withoutComparisonsAnywhere(await readMyWork(this.prisma as any, this.board, { groundId: id, userId, personId: person || null }));
+    /* The direct morning: the product's own hedges say the fact or nothing, as served (reports/the-direct-morning-says-the-fact.ts). Off, as before. */
+    return inTheDirectMorningsWords(withoutComparisonsAnywhere(await readMyWork(this.prisma as any, this.board, { groundId: id, userId, personId: person || null })), await theDirectMorningIsOnFor(this.prisma, id));
   }
 }
