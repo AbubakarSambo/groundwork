@@ -27,10 +27,15 @@ function prismaFor(who: Who) {
       findMany: jest.fn(async () => []),
     },
     leaveRequest: { findMany: jest.fn(async () => []) },
-    person: { findFirst: jest.fn(async () => ({ phone: p.phone, whatsappLastInboundAt: p.wrote ? new Date('2026-10-10T09:00:00Z') : null })) },
+    person: {
+      findFirst: jest.fn(async () => ({ phone: p.phone, whatsappLastInboundAt: p.wrote ? new Date('2026-10-10T09:00:00Z') : null })),
+      /* Every roster entry that is them (one-number-for-a-person.ts, theNumberOnRecord). */
+      findMany: jest.fn(async () => (p.phone ? [{ phone: p.phone }] : [])),
+    },
     user: { findUnique: jest.fn(async () => ({ phoneNumber: null })) },
     organization: { findUnique: jest.fn(async () => ({ whatsappAddOnOn: true, whatsappFreeUntil: null })) },
-    whatsAppInboundMessage: { findFirst: jest.fn(async () => null) },
+    /* "Written from her number" is a message that came from the number she has now (Drop Access, 21 October: the stamp alone is not about this number). */
+    whatsAppInboundMessage: { findFirst: jest.fn(async () => (p.wrote ? { messageId: `ours:${p.phone}:wamid.1` } : null)) },
     whatsAppSend: { findFirst: jest.fn(async () => null) },
   };
 }
