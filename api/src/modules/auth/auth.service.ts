@@ -1,3 +1,4 @@
+import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 import { TheWaysToStopMail } from '../engagement/the-ways-to-stop-mail';
 import { theDomainOf, mayBeJoinedBy } from '../../common/an-email-domain';
 import { aPathInThisApp, theInviteLinkCodeIn } from '../../common/a-path-in-this-app';
@@ -1384,6 +1385,10 @@ export class AuthService {
     const belongsElsewhere = await this.belongsElsewhere(user.id, user.organizationId);
     return {
       ...this.theUserShape(user as unknown as UserWithOrg, belongsElsewhere), orgCode: user.organization.slug, emailNotifications: user.emailNotifications,
+      /* THE ORGANISATION'S OWN DAY, FOR THE SCREENS (B-094; browser test, 20 October 2026): the zone every sentence the engine writes
+         counts its days in, so a date the screen formats itself says the same day ("Session 3 opens on Monday 26 October", not Sunday
+         25 in a reader's browser an hour or two behind). */
+      organizationTimeZone: (await theOrganisationsZone(this.prisma as any, user.organizationId).catch(() => null)) ?? THE_PRODUCTS_OWN_ZONE,
       /* Their own WhatsApp number, on their own read only (reviewer, 14 October): Settings read "WhatsApp Not set" with
          Kevin's number saved, because this route never sent it. The sign-in's number, else the one on their roster entry. */
       phoneNumber: (user as any).phoneNumber ?? await this.theirRosterNumber(user.organizationId, user.id, user.email),
