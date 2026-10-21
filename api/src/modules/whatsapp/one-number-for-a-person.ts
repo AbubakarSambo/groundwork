@@ -48,7 +48,11 @@ export async function refuseANumberOnSomebodyElse(prisma: Db, number: string | n
     const entry = await Promise.resolve(prisma.person?.findFirst?.({
       where: {
         organizationId, phone: { in: forms }, active: true,
-        NOT: [...(ownUserId ? [{ linkedUserId: ownUserId }] : []), ...(email ? [{ email: { equals: email, mode: 'insensitive' } }] : [])],
+        /* Spelled with the empty case, because NOT on an empty column is never true in SQL: Sam's entry has no sign-in linked. */
+        AND: [
+          ...(ownUserId ? [{ OR: [{ linkedUserId: null }, { NOT: { linkedUserId: ownUserId } }] }] : []),
+          ...(email ? [{ OR: [{ email: null }, { NOT: { email: { equals: email, mode: 'insensitive' } } }] }] : []),
+        ],
       },
       select: { displayName: true, givenName: true, familyName: true, email: true },
     })).catch(() => null);

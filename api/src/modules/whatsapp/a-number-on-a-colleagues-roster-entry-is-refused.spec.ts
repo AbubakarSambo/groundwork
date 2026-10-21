@@ -13,7 +13,10 @@ function aDatabase() {
     { organizationId: 'org-da', linkedUserId: null, email: 'sam.1280@dropaccess.test', displayName: 'Sam Kamau', phone: '+254712345678', active: true },
     { organizationId: 'org-da', linkedUserId: 'u-lucy', email: 'lucy@dropaccess.test', displayName: 'Lucy Wanjiku', phone: '+254700500007', active: true },
   ];
-  const not = (p: any, w: any) => (w.NOT ?? []).some((n: any) => (n.linkedUserId && p.linkedUserId === n.linkedUserId) || (n.email && p.email?.toLowerCase() === n.email.equals.toLowerCase()));
+  /* Read as SQL reads it: a NOT on an empty column is never true, so each condition says its empty case itself. */
+  const one = (p: any, c: any): boolean => c.OR ? c.OR.some((x: any) => one(p, x)) : c.NOT ? (c.NOT.linkedUserId !== undefined ? p.linkedUserId != null && p.linkedUserId !== c.NOT.linkedUserId : p.email != null && p.email.toLowerCase() !== c.NOT.email.equals.toLowerCase())
+    : 'linkedUserId' in c ? p.linkedUserId === c.linkedUserId : 'email' in c ? p.email === c.email : true;
+  const not = (p: any, w: any) => !(w.AND ?? []).every((c: any) => one(p, c));
   const prisma: any = {
     user: {
       updateMany: async () => ({ count: 0 }),
