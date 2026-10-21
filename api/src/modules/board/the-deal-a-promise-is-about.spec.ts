@@ -33,3 +33,22 @@ describe('the deal a promise is about', () => {
     expect(upper.next).not.toBe('Kevin committed to follow up to understand their needs this week.');
   });
 });
+
+describe('planning ahead on My work', () => {
+  it('counts no deal that cannot buy now, and keeps a deal’s own dated step', async () => {
+    const { myWorkFrom } = await import('./my-work');
+    const row = (name: string, more: Record<string, any>) => ({ id: name, kind: 'deal', name, stage: 'Contacted', group: 'contacted', ownerParticipantId: 'p-mercy', fields: {}, ...more });
+    const page: any = myWorkFrom({
+      reader: 'self', person: { participantId: 'p-mercy', name: 'Mercy Wairimu', firstName: 'Mercy' }, leadFirst: 'Grace', kindOfWork: 'sales team',
+      items: [
+        row('Greenfield Supermarket', { next: 'Call Mrs. Achola first thing tomorrow' }),
+        row('Ngong Road Minimart', { next: 'Follow up with him on Monday' }),
+        row('the school lead', { fields: { 'Budget stated': "They wouldn't have the budget until January" } }),
+        row('Sunrise Primary School', { fields: { 'Budget stated': 'no budget this year' }, next: 'Follow up with them early next year, maybe January' }),
+      ] as any,
+      commitments: [], waitsOnThem: [], raised: [], credits: [], checkIns: [], ownLines: [], patterns: [], teamCoaching: [], helpWith: null,
+      target: null, now: new Date('2026-10-16T14:30:00Z'), timeZone: 'Africa/Nairobi',
+    } as any, 'Sales team, Q4');
+    expect(page.performing.behaviours.find((b: any) => b.key === 'planning-ahead')).toMatchObject({ verdict: 'Strength', happened: 'Every open deal you have has a next step and a day.' });
+  });
+});

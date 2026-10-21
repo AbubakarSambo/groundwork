@@ -53,7 +53,10 @@ export function whatHappensNext(
 ): WhatComesNext {
   const name = squash(record.name);
   /* Named in its words, or about this deal by the conversation it was made in (the-deal-a-promise-is-about). */
-  const promise = name.length >= 3 ? openPromises.find((c) => ` ${squash(c.text)} `.includes(` ${name} `) || (!!c.about && squash(c.about) === name)) : undefined;
+  const named = name.length >= 3 ? openPromises.find((c) => ` ${squash(c.text)} `.includes(` ${name} `)) : undefined;
+  /* One about it only by its conversation is used where it can be said as a step; otherwise the deal's own next step stands. */
+  const byItsConversation = !named && name.length >= 3 ? openPromises.find((c) => !!c.about && squash(c.about) === name && !!inOurVoice(c.text, 'them')) : undefined;
+  const promise = named ?? byItsConversation;
   if (promise) {
     const who = whoIs(promise.participantId);
     /* With the day they gave, where it is kept beside the words and not in them ("I'll follow up with him", "on Monday"). */

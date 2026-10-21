@@ -252,6 +252,9 @@ function theProofOf(r: TheRecordForOnePerson['items'][number]): { proven: boolea
   return { proven: false, says: 'None yet' };
 }
 
+/* What the record says when a customer cannot buy now (the person's record reads it the same way). */
+const CANNOT_BUY_NOW = /\b(?:no budget|can['’]?t afford|cannot afford|not affordable|until (?:january|february|march|april|may|june|july|august|september|october|november|december|next (?:year|month|quarter))|next year|said no|not interested)\b/i;
+
 /** Whether a next step names a day. */
 function hasADay(r: AServedRecord, now: Date): boolean {
   if (r.due) return true;
@@ -347,12 +350,14 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
         return read(b.key, strong ? 'Strength' : 'Needs work', `${You} kept ${kept.length} of ${settled.length} promises.`, `${Your} check-ins`);
       }
       case 'planning-ahead': {
-        if (!words.keepsItems || open.length < 2) return read(b.key, 'Not enough yet', '', null);
-        const without = open.filter((i) => !hasADay(i, r.now)).length;
-        const strong = without === 0 || (without === 1 && open.length >= 5);
+        /* A deal the record says cannot buy now ("no budget this year", "until January") has nothing to book yet: not counted here. */
+        const toPlan = open.filter((i) => !CANNOT_BUY_NOW.test(String(((i as any).fields ?? {})['Budget stated'] ?? '')));
+        if (!words.keepsItems || toPlan.length < 2) return read(b.key, 'Not enough yet', '', null);
+        const without = toPlan.filter((i) => !hasADay(i, r.now)).length;
+        const strong = without === 0 || (without === 1 && toPlan.length >= 5);
         const happened = without === 0
           ? `Every open ${words.itemWord} ${self ? 'you have' : `${first} has`} has a next step and a day.`
-          : `${without} of ${your} ${open.length} open ${words.itemsWord} ${without === 1 ? 'has' : 'have'} no next step with a day.`;
+          : `${without} of ${your} ${toPlan.length} open ${words.itemsWord} ${without === 1 ? 'has' : 'have'} no next step with a day.`;
         return read(b.key, strong ? 'Strength' : 'Needs work', happened, `${Your} ${words.itemsWord} today`);
       }
       case 'handling-blockers': {
