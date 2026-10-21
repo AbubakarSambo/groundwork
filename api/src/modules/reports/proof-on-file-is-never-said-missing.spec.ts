@@ -44,3 +44,16 @@ describe('and nowhere else in the judgement', () => {
     expect(out.judgement.theGap).toBe('Participant B reports that the price is a hurdle.');
   });
 });
+
+describe('nor any doubt about the proof of somebody whose every sale has it', () => {
+  it('is left out, from the third synthesis', () => {
+    const judgement = {
+      whatTheNumbersSay: [{ says: 'Participant A reports sales, but of two sales Participant A reported, only one has a payment record on file, and it is a deposit.', soWhat: 'The initiator cannot be sure of the sales numbers Participant A reports.' }],
+      whatToDo: [{ move: 'For each sale reported by a rep, ask for the signed order or the proof of payment.', because: 'Sales are being reported without either.', startWith: 'Participant A' }],
+    };
+    const out = withoutAsksForProofOnFile(judgement, SALES, whoIs);
+    expect(out.judgement.whatTheNumbersSay).toEqual([]);
+    /* "startWith" names who: the move is about Participant A's proof. */
+    expect(withoutAsksForProofOnFile({ whatToDo: [{ ...judgement.whatToDo[0], because: 'Participant A reports sales without either.' }] }, SALES, whoIs).judgement.whatToDo).toEqual([]);
+  });
+});

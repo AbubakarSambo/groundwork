@@ -74,10 +74,15 @@ function asksForProofOnFile(text: string, sales: readonly ASaleAndItsProof[]): b
  * of whose sales has one, is false by the record, and is left out.
  */
 const SAYS_IT_IS_MISSING = /\b(?:no|without|not have an?|does not have an?|lacks?|missing)\s+(?:written\s+)?(?:signed order or\s+)?(?:proof|payment record|record of payment|signed order)\b|\bnothing (?:written )?(?:is )?on file\b/i;
+/* Any line that doubts the proof: "only one has a payment record", "cannot be sure of the sales numbers", "ask for the signed order". */
+const DOUBTS_THE_PROOF = /\b(?:proof|payment records?|signed orders?|record of payment|written proof|sales numbers?)\b/i;
+const A_DOUBT = /\b(?:no|not|only|without|lacks?|missing|cannot be sure|can(?:not|['’]t) be (?:sure|trusted|relied on)|unproven|unbacked|ask (?:\w+ ){0,4}for)\b/i;
 function saysProofOnFileIsMissing(text: string, sales: readonly ASaleAndItsProof[], whoIs?: (pid: string | null) => string | null): boolean {
-  if (!SAYS_IT_IS_MISSING.test(text)) return false;
-  if (theSalesNamedIn(text, sales).some((s) => s.paid || s.signed)) return true;
+  const missing = SAYS_IT_IS_MISSING.test(text);
+  if (missing && theSalesNamedIn(text, sales).some((s) => s.paid || s.signed)) return true;
   if (!whoIs) return false;
+  /* About a person all of whose sales are backed, any doubt about their proof is false by the record (the synthesis checked again). */
+  if (!missing && !(DOUBTS_THE_PROOF.test(text) && A_DOUBT.test(text))) return false;
   const owners = [...new Set(sales.map((s) => s.ownerParticipantId))];
   return owners.some((pid) => {
     const who = whoIs(pid);
@@ -102,7 +107,7 @@ export function withoutAsksForProofOnFile<J extends Record<string, any>>(judgeme
   }
   if (Array.isArray(out.whatToDo)) {
     out.whatToDo = (out.whatToDo as any[]).filter((x) => {
-      const gone = saysProofOnFileIsMissing(`${x?.move ?? ''} ${x?.because ?? ''}`, sales, whoIs);
+      const gone = saysProofOnFileIsMissing(`${x?.move ?? ''} ${x?.because ?? ''} ${x?.startWith ? `(${x.startWith})` : ''}`, sales, whoIs);
       if (gone) leftOut.push(String(x?.move ?? ''));
       return !gone;
     });
