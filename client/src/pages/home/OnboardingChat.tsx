@@ -477,7 +477,7 @@ export function OnboardingChat() {
                   onClick={handleSubmit}
                   disabled={loading || !input.trim()}
                   className="gw-send-btn"
-                  style={{ height: 38 }}
+                  style={{ height: 44 }}
                 >
                   &#8593;
                 </button>

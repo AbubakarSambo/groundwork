@@ -271,15 +271,15 @@ export function YourWork({
                 <div key={s.id} style={{ padding: '11px 16px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                     <span className="gwui-panel-text">Session {s.sessionNumber}, your own</span>
-                    <Link to={`/checkin/${s.id}/report`} className="gwui-tap-40" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'underline' }}>Read</Link>
+                    <Link to={`/checkin/${s.id}/report`} className="gwui-tap-44" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'underline' }}>Read</Link>
                   </div>
                   {aTeamReportComes && (
                     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
                       <span className="gwui-panel-text">Session {s.sessionNumber}, the team’s</span>
                       {teamReleased
                         ? (onReadTeamReport
-                          ? <button type="button" onClick={onReadTeamReport} className="gwui-tap-40" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'underline', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}>Read</button>
-                          : <Link to={`/grounds/${groundId}/session/${s.sessionNumber}`} className="gwui-tap-40" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'underline' }}>Read</Link>)
+                          ? <button type="button" onClick={onReadTeamReport} className="gwui-tap-44" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'underline', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}>Read</button>
+                          : <Link to={`/grounds/${groundId}/session/${s.sessionNumber}`} className="gwui-tap-44" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'underline' }}>Read</Link>)
                         : <Tag tone="attention">Not shared yet</Tag>}
                     </div>
                   )}

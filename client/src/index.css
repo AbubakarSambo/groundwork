@@ -273,6 +273,22 @@ table { font-variant-numeric: lining-nums tabular-nums; }
 /* Every control takes the page's typeface. A browser draws a button, an input and a select in its
    own system font unless told otherwise, which is how a stray grey "Arial" button appeared. */
 button, input, select, textarea { font-family: inherit; }
+/*
+ * THE 44px FLOOR COVERS EVERYTHING YOU CAN TAP (Hafsah, 21 October): buttons, links in lists, chips and switches. Links inside a
+ * sentence are the only exception. Every button, folding summary, picker and control by role is at least 44px tall unless its own
+ * class says more; `:where` keeps this at no weight, so any class that sets its own height of 44px or more still wins. A control
+ * whose drawn shape must stay small (a switch, a tag you can tap, a coloured initial) keeps its shape and takes a 44px tap target
+ * instead (`.gwui-tap-target` and the list beside it, below). A button that sits inside a sentence takes `.gwui-in-a-sentence`.
+ */
+:where(button, summary, select, [role="button"], [role="switch"], [role="tab"]):not(.gwui-in-a-sentence) { min-height: 44px; }
+/* A TAP TARGET 44px TALL AROUND A SMALL DRAWN SHAPE: an invisible layer, centred on the control, at least 44px tall, so nothing drawn
+   moves or grows. Only as wide as the control itself, so it never reaches over the one beside it. */
+.gwui-tap-target, .gw-switch, .gwui-toggle, button.gwui-tag, .gw-rl-ini { position: relative; }
+/* The switches and a hand-drawn small control keep the height they are drawn at; the floor above would otherwise stretch them. */
+.gwui-tap-target, .gw-switch, .gwui-toggle { min-height: 0; }
+.gwui-tap-target::after, .gw-switch::after, .gwui-toggle::after, button.gwui-tag::after, .gw-rl-ini::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 50%; height: max(100%, 44px); transform: translateY(-50%);
+}
 
 #root {
   min-height: 100vh;
@@ -514,7 +530,7 @@ button, input, select, textarea { font-family: inherit; }
 
 .gw-btn-sm {
   /* The kit's chip (app.css .chip): a rounded choice, the surface colour with a hairline inside. */
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 14px;
   border-radius: 20px;
   font-size: 15px;
@@ -1543,8 +1559,8 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
 .gw-rl { background: var(--gw-page); border-right: 1px solid var(--gw-border); color: var(--gw-text); font-family: var(--gw-font-ui); }
 .gw-rl-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 14px 12px 8px; flex-shrink: 0; }
 .gw-rl-top.folded { flex-direction: column; padding: 14px 0 8px; }
-.gw-rl-brand { display: inline-flex; align-items: center; gap: 9px; color: var(--gw-navy); text-decoration: none; font-size: 17px; font-weight: 700; letter-spacing: -.02em; min-height: 40px; }
-.gw-rl-ic, .gw-rl-top .gw-tap44 { width: 34px; height: 34px; border-radius: 8px; border: 0; background: transparent; color: var(--gw-sub); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font: inherit; font-size: 18px; flex: none; }
+.gw-rl-brand { display: inline-flex; align-items: center; gap: 9px; color: var(--gw-navy); text-decoration: none; font-size: 17px; font-weight: 700; letter-spacing: -.02em; min-height: 44px; }
+.gw-rl-ic, .gw-rl-top .gw-tap44 { width: 44px; height: 44px; border-radius: 8px; border: 0; background: transparent; color: var(--gw-sub); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font: inherit; font-size: 18px; flex: none; }
 .gw-rl-ic:hover, .gw-rl-top .gw-tap44:hover { background: var(--gw-card); color: var(--gw-text); }
 /* The speech bubble beside the mark (D1): drawn pressed while Ask Groundwork is open beside the page. */
 .gw-ask-open[aria-expanded="true"] { background: var(--gw-card); color: var(--gw-navy); }
@@ -1557,7 +1573,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
 .gw-rl-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 0 10px 10px; display: flex; flex-direction: column; gap: 2px; min-height: 0; }
 .gw-rl-scroll.folded { align-items: center; padding: 4px 0; gap: 4px; }
 .gw-rl-h { display: flex; align-items: center; justify-content: space-between; padding: 14px 10px 4px; font-size: 13px; font-weight: 700; color: var(--gw-sub); }
-.gw-rl-h-link { color: var(--gw-sub); text-decoration: none; min-height: 28px; display: inline-flex; align-items: center; }
+.gw-rl-h-link { color: var(--gw-sub); text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; }
 .gw-rl-h-link:hover { color: var(--gw-text); text-decoration: underline; }
 .gw-rl-list { list-style: none; display: flex; flex-direction: column; gap: 2px; }
 .gw-rl-pages { margin-top: 12px; }
@@ -1587,7 +1603,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
   .gw-row-acts { position: static; opacity: 1; pointer-events: auto; background: none; }
   .gw-rail-row:hover .gw-rail-bdg, .gw-rail-row:focus-within .gw-rail-bdg { visibility: visible; }
 }
-.gw-ci-row { position: relative; flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px 8px; min-height: 36px; padding: 8px 8px 8px 10px; border-radius: 8px; text-decoration: none; color: var(--gw-text); font-size: 14.5px; line-height: 1.3; }
+.gw-ci-row { position: relative; flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px 8px; min-height: 44px; padding: 8px 8px 8px 10px; border-radius: 8px; text-decoration: none; color: var(--gw-text); font-size: 14.5px; line-height: 1.3; }
 .gw-ci-row:hover { background: var(--gw-card); }
 .gw-ci-row.on { background: var(--gw-card); font-weight: 700; box-shadow: inset 0 0 0 1px var(--gw-border); }
 .gw-ci-row.closed { color: var(--gw-sub); }
@@ -1604,14 +1620,14 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
 .gw-rail-bdg-plain { background: var(--gw-bg); color: var(--gw-sub); }
 .gw-rename { border: 0; background: none; color: var(--gw-sub); cursor: pointer; font-size: 13px; line-height: 1; flex-shrink: 0; font-family: inherit; }
 .gw-rl-rename-input { width: 100%; border: 1.5px solid var(--gw-rule-2); border-radius: 8px; background: var(--gw-card); color: var(--gw-text); font: inherit; font-size: 14.5px; padding: 6px 8px; }
-.gw-rl-fold { display: flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 10px; margin-top: 8px; border: 0; background: none; font: inherit; font-size: 13px; font-weight: 700; color: var(--gw-sub); cursor: pointer; text-align: left; border-radius: 8px; }
+.gw-rl-fold { display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 10px; margin-top: 8px; border: 0; background: none; font: inherit; font-size: 13px; font-weight: 700; color: var(--gw-sub); cursor: pointer; text-align: left; border-radius: 8px; }
 .gw-rl-fold:hover { color: var(--gw-text); background: var(--gw-card); }
-.gw-rl-nav { display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 0 10px; border-radius: 8px; font-size: 15px; color: var(--gw-text); text-decoration: none; }
+.gw-rl-nav { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 10px; border-radius: 8px; font-size: 15px; color: var(--gw-text); text-decoration: none; }
 .gw-rl-nav svg { color: var(--gw-sub); flex: none; }
 .gw-rl-nav:hover { background: var(--gw-card); }
 .gw-rl-nav.on { background: var(--gw-card); font-weight: 700; box-shadow: inset 0 0 0 1px var(--gw-border); }
 .gw-rl-nav.on svg { color: var(--gw-navy); }
-.gw-rl-nav.icon { width: 44px; height: 40px; padding: 0; justify-content: center; }
+.gw-rl-nav.icon { width: 44px; height: 44px; padding: 0; justify-content: center; }
 /* Today's count (C1): a round amber mark with the number, at the end of the row. */
 .gw-rl-count { margin-left: auto; min-width: 22px; height: 22px; padding: 0 6px; box-sizing: border-box; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; background: var(--gw-amber-t); color: #fff; font-size: 13px; font-weight: 700; }
 .gw-rl-needs { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--gw-border); display: flex; flex-direction: column; align-items: center; gap: 4px; }
@@ -1638,7 +1654,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
    always shown on a pinned row and on a device that cannot hover. */
 .gw-pin { border: 0; background: none; color: var(--gw-sub); cursor: pointer; line-height: 0; flex-shrink: 0; opacity: 0; border-radius: 6px; }
 /* The two buttons on a row: each its own 32x36 target, touching and never overlapping. */
-.gw-rail-row .gw-pin, .gw-rail-row .gw-rename { position: relative; width: 32px; height: 36px; padding: 0; margin: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; }
+.gw-rail-row .gw-pin, .gw-rail-row .gw-rename { position: relative; width: 32px; height: 44px; padding: 0; margin: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; }
 .gw-rail-row:hover .gw-pin, .gw-pin:focus-visible, .gw-pin.on { opacity: 1; }
 .gw-pin:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 1px; }
 .gw-pin.on { color: var(--gw-navy); }
@@ -1665,7 +1681,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
 @media (max-width: 360px) { .gw-phone-bar-item { font-size: 12px; padding: 6px 0; } }
 
 /* ── "JUMP TO" (A1) ─────────────────────────────────────────── */
-.gw-rl-jump { display: flex; align-items: center; gap: 10px; width: calc(100% - 20px); margin: 0 10px 6px; min-height: 40px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; font: inherit; font-size: 15px; color: var(--gw-sub); cursor: pointer; text-align: left; flex-shrink: 0; }
+.gw-rl-jump { display: flex; align-items: center; gap: 10px; width: calc(100% - 20px); margin: 0 10px 6px; min-height: 44px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; font: inherit; font-size: 15px; color: var(--gw-sub); cursor: pointer; text-align: left; flex-shrink: 0; }
 .gw-rl-jump:hover { background: var(--gw-card); color: var(--gw-text); }
 .gw-rl-jump:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 1px; }
 .gw-rl-jump kbd { margin-left: auto; font: inherit; font-size: 13px; color: var(--gw-sub); }
@@ -1690,7 +1706,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
    the cream page, a Literata heading and one plain sentence. Sign-in adds the dark panel. */
 .gw-auth-page { min-height: 100vh; background: var(--gw-page); padding: 12vh 16px 48px; display: flex; justify-content: center; align-items: flex-start; }
 .gw-auth-card { width: 100%; max-width: 444px; background: var(--gw-card); border: 1px solid var(--gw-border); border-radius: 12px; padding: 32px; }
-.gw-auth-brand { display: inline-flex; align-items: center; gap: 9px; color: var(--gw-navy); text-decoration: none; font-size: 18px; font-weight: 700; letter-spacing: -.01em; min-height: 32px; }
+.gw-auth-brand { display: inline-flex; align-items: center; gap: 9px; color: var(--gw-navy); text-decoration: none; font-size: 18px; font-weight: 700; letter-spacing: -.01em; min-height: 44px; }
 .gw-auth-brand:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 3px; border-radius: 4px; }
 .gw-auth-title { font-family: var(--gw-font-name); font-size: 28px; line-height: 1.2; font-weight: 500; color: var(--gw-text); margin: 18px 0 10px; }
 .gw-auth-sub { font-size: 16px; line-height: 1.5; color: var(--gw-sub); margin: 0 0 20px; overflow-wrap: anywhere; }
@@ -2197,5 +2213,5 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
 /* SCREEN FAULT 10: 32px tall on a phone, below the 40px floor every other tappable row control
    already has - same technique as `.gwui-plain-link`/`.gwui-open-link`, on this class's own name. */
 @media (max-width: 640px) {
-  .gwui-ci-tab { min-height: 40px; display: inline-flex; align-items: center; }
 }
+.gwui-ci-tab { min-height: 44px; display: inline-flex; align-items: center; }

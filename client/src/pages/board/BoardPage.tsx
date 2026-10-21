@@ -3832,7 +3832,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   `minHeight` grows the tap area without widening the pill's own left/right
                   padding or changing its rounded shape, border or background.
                 */
-                const skinStyle = { borderRadius: 20, background: s.state === 'current' ? 'var(--gw-green-bg)' : 'white', fontWeight: s.state === 'current' ? 700 : 500, display: 'inline-flex', alignItems: 'center', minHeight: 40, boxSizing: 'border-box' } as const
+                const skinStyle = { borderRadius: 20, background: s.state === 'current' ? 'var(--gw-green-bg)' : 'white', fontWeight: s.state === 'current' ? 700 : 500, display: 'inline-flex', alignItems: 'center', minHeight: 44, boxSizing: 'border-box' } as const
                 if (!been) return <div key={s.n} className={skinClass} style={skinStyle}>{face}</div>
                 return (
                   <button
@@ -4239,7 +4239,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                             finger needs. `inline-flex`/`minHeight` grows the hit area; the pill's
                             own padding, border, colour and corner radius are unchanged.
                           */
-                          className="gwui-fs-13 gwui-pt-2 gwui-pr-9 gwui-pb-2 gwui-pl-9 gwui-rule-blue gwui-ink-blue" style={{fontWeight: 700, borderRadius: 11, background: 'var(--gw-blue-bg)', cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', minHeight: 40, boxSizing: 'border-box'}}
+                          className="gwui-fs-13 gwui-pt-2 gwui-pr-9 gwui-pb-2 gwui-pl-9 gwui-rule-blue gwui-ink-blue" style={{fontWeight: 700, borderRadius: 11, background: 'var(--gw-blue-bg)', cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', minHeight: 44, boxSizing: 'border-box'}}
                         >
                           Use {o.suggestedCount}
                         </button>

@@ -225,3 +225,105 @@ describe('cream and navy, never grey', () => {
     expect(TOKENS).toMatch(/@theme inline \{[^}]*--color-secondary-foreground: var\(--gw-text\);/)
   })
 })
+
+/*
+ * EVERYTHING YOU CAN TAP IS AT LEAST 44px TALL (Hafsah, 21 October): buttons, links in lists, chips and switches. Links inside a
+ * sentence are the only exception. The browser test measured the sidebar's icons and Feedback at 34px, the chips at 40px, the
+ * switches at 28px and the session tags you can tap at 26px.
+ *
+ * Three checks. The floor itself is in the token file. No class drawn on something you can tap (a button, a link, a folding summary,
+ * a picker, or anything with a click or a control's role) declares a height under 44px, unless it keeps its small drawn shape and
+ * takes a 44px tap target around it. And no such element is given a height under 44px in its own inline style.
+ */
+describe('everything you can tap is at least 44px tall', () => {
+  const TAPPABLE_TAG = /<(button|a|Link|NavLink|summary|select|div|span|li|label|tr|td)\b((?:[^>=]|=>|=)*)>/g
+  const ACTS = /\bonClick=|role="(button|switch|tab|link|checkbox|radio)"/
+  const classesIn = (tag: string): string[] => {
+    const out: string[] = []
+    const at = tag.indexOf('className=')
+    if (at === -1) return out
+    let v = ''
+    const rest = tag.slice(at + 'className='.length)
+    if (rest[0] === '"') v = rest.slice(1, rest.indexOf('"', 1))
+    else if (rest[0] === '{') {
+      let depth = 0
+      let i = 0
+      for (; i < rest.length; i++) { if (rest[i] === '{') depth++; else if (rest[i] === '}') { depth--; if (depth === 0) break } }
+      const inner = rest.slice(1, i)
+      for (const m of inner.matchAll(/'([^']*)'|"([^"]*)"|`([^`]*)`/g)) v += ' ' + (m[1] ?? m[2] ?? m[3] ?? '').replace(/\$\{[^}]*\}/g, ' ')
+    }
+    for (const m of v.matchAll(/[A-Za-z][\w-]*/g)) out.push(m[0])
+    return out
+  }
+  const tappable: { file: string; tag: string; classes: string[] }[] = []
+  for (const f of files.filter((x) => x.endsWith('.tsx'))) {
+    const code = source(f)
+    for (const m of code.matchAll(TAPPABLE_TAG)) {
+      const el = m[1]
+      if (['div', 'span', 'li', 'label', 'tr', 'td'].includes(el) && !ACTS.test(m[0])) continue
+      tappable.push({ file: rel(f), tag: m[0], classes: classesIn(m[0]) })
+    }
+  }
+  const tappableClasses = new Set(tappable.flatMap((t) => t.classes))
+  const cssRules: { file: string; selector: string; body: string }[] = []
+  for (const f of files.filter((x) => x.endsWith('.css'))) {
+    for (const m of source(f).matchAll(/([^{}]+)\{([^{}]*)\}/g)) cssRules.push({ file: rel(f), selector: m[1].trim(), body: m[2] })
+  }
+  const lastPart = (sel: string) => sel.trim().split(/[\s>+~]+/).pop() ?? ''
+  const classesOf = (part: string) => [...part.matchAll(/\.([A-Za-z][\w-]*)/g)].map((m) => m[1])
+  /** The classes that keep a small drawn shape and take a 44px tap target around it instead. */
+  const tapTargets = new Set<string>()
+  for (const r of cssRules) {
+    if (!/height:\s*max\(100%,\s*44px\)/.test(r.body)) continue
+    for (const part of r.selector.split(',')) if (/::after|::before/.test(part)) classesOf(lastPart(part).replace(/::(after|before)$/, '')).forEach((c) => tapTargets.add(c))
+  }
+
+  it('the floor: every button, folding summary, picker and control by role is at least 44px tall, at no weight', () => {
+    expect(TOKENS).toMatch(/:where\(button, summary, select, \[role="button"\], \[role="switch"\], \[role="tab"\]\):not\(\.gwui-in-a-sentence\) \{ min-height: 44px; \}/)
+  })
+
+  it('a switch, a tag you can tap and a coloured initial keep their shape and take a 44px tap target', () => {
+    for (const c of ['gw-switch', 'gwui-toggle', 'gwui-tag', 'gw-rl-ini', 'gwui-tap-target']) expect(tapTargets.has(c), c).toBe(true)
+  })
+
+  it('no class drawn on something you can tap declares a height under 44px', () => {
+    const under: string[] = []
+    for (const r of cssRules) {
+      for (const h of r.body.matchAll(/(?<![-\w])(min-height|height)\s*:\s*(\d+(?:\.\d+)?)px/g)) {
+        if (Number(h[2]) >= 44 || Number(h[2]) === 0) continue
+        for (const part of r.selector.split(',')) {
+          if (/::?(before|after)|::-webkit|\bthead\b|sr-only|\binput\b|textarea/.test(part)) continue
+          const last = lastPart(part)
+          const cs = classesOf(last)
+          const anElement = /^(summary|button|select)\b/.test(last)
+          if (cs.some((c) => tapTargets.has(c))) continue
+          if (anElement || cs.some((c) => tappableClasses.has(c))) under.push(`${r.file}: ${part.trim()} { ${h[0]} }`)
+        }
+      }
+    }
+    expect(under).toEqual([])
+  })
+
+  it('no button, link or control is given a height under 44px in its own style, unless it takes the tap target', () => {
+    const under: string[] = []
+    for (const t of tappable) {
+      if (t.classes.some((c) => tapTargets.has(c))) continue
+      for (const h of t.tag.matchAll(/\b(minHeight|height)\s*:\s*(\d+(?:\.\d+)?)\b/g)) {
+        if (Number(h[2]) > 0 && Number(h[2]) < 44) under.push(`${t.file}: ${h[0]}`)
+      }
+    }
+    expect(under).toEqual([])
+  })
+
+  it('the controls the browser test measured are 44px: the sidebar icons, the chips, a small button and the menus', () => {
+    const rule = (css: string, sel: string) => css.match(new RegExp(`${sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} \\{([^}]*)\\}`))![1]
+    expect(rule(TOKENS, '.gw-rl-ic, .gw-rl-top .gw-tap44')).toMatch(/width: 44px; height: 44px;/)
+    expect(rule(UI_CSS, '.gwui-choice')).toMatch(/min-height: 44px;/)
+    expect(rule(TOKENS, '.gw-rl-nav')).toMatch(/min-height: 44px;/)
+    expect(rule(UI_CSS, '.gwui-tap-44')).toMatch(/min-height: 44px;/)
+    expect(rule(UI_CSS, '.gwui-icon-btn')).toMatch(/width: 44px; height: 44px;/)
+    /* Feedback is a <button> sized by its padding, so the floor holds it: it never opts out. */
+    expect(source(join(SRC, 'components/gw/AppShell.tsx'))).toMatch(/'gw-feedback-btn'/)
+    expect(source(join(SRC, 'components/gw/AppShell.tsx'))).not.toMatch(/gw-feedback-btn[^'"]*gwui-in-a-sentence/)
+  })
+})

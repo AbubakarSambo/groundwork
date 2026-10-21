@@ -139,7 +139,7 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 /* ── MARK (prototype: the three bars and "Groundwork", .brand) ──────────── */
 .gwui-mark {
   display: inline-flex; align-items: center; gap: 9px; color: var(--gw-navy); text-decoration: none;
-  font-size: 18px; font-weight: 700; letter-spacing: -.01em; min-height: 32px;
+  font-size: 18px; font-weight: 700; letter-spacing: -.01em; min-height: 44px;
 }
 .gwui-mark:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 3px; border-radius: 4px; }
 /* GROUP 3 REVIEW, BATCH B: the mark, with one action beside it - a signed-out reader's "Sign in"
@@ -407,7 +407,7 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 .gwui-folded { background: var(--gw-card); border: 1px solid var(--gw-border); border-radius: 12px; }
 .gwui-folded-summary {
   list-style: none; cursor: pointer; padding: 20px 22px; display: flex; align-items: baseline;
-  gap: 10px; flex-wrap: wrap; min-height: 26px;
+  gap: 10px; flex-wrap: wrap; min-height: 44px; box-sizing: border-box;
 }
 .gwui-folded-summary::-webkit-details-marker { display: none; }
 /* The prototype's small ▶ before the title, since this opens - a picture check found the marker
@@ -465,12 +465,10 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 .gwui-open-link:hover { text-decoration: underline; }
 /*
  * SCREEN FAULT 10: People's "Open" links were 34x22 on a phone - under the 40px floor every other
- * tappable row control already has. Same technique as `.gwui-tap-40`/`.gwui-plain-link` just
+ * tappable row control already has. Same technique as `.gwui-tap-44`/`.gwui-plain-link` just
  * above, on this class's own name since every caller already uses it unchanged.
  */
-@media (max-width: 640px) {
-  .gwui-open-link { min-height: 40px; display: inline-flex; align-items: center; }
-}
+.gwui-open-link { min-height: 44px; display: inline-flex; align-items: center; }
 /* A plain text link that still does something (not a navigation), for a control that must not
    compete with the page's one real primary button (Hafsah, 30 September, item 2). Same look as
    .gwui-open-link, under its own name for anywhere that isn't a list row. */
@@ -486,7 +484,7 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 .gwui-plain-link {
   font-size: 14.5px; font-weight: 700; color: var(--gw-navy); background: none; border: 0;
   padding: 0; cursor: pointer; font-family: inherit; text-decoration: underline;
-  min-height: 40px; display: inline-flex; align-items: center;
+  min-height: 44px; display: inline-flex; align-items: center;
 }
 /*
  * RELEASE WALKTHROUGH, 5 OCTOBER: THE SAME 40px FLOOR, FOR A CONTROL THAT CANNOT TAKE
@@ -500,34 +498,28 @@ a.gwui-person-row:hover { background: var(--gw-page); }
  * 640px these already clear 40px or sit beside enough else on the row that the extra room is not
  * needed.
  */
-@media (max-width: 640px) {
-  .gwui-tap-40 { min-height: 40px; display: inline-flex; align-items: center; }
-}
+/* 21 OCTOBER: 44px, AT EVERY WIDTH. Hafsah's 44px rule covers everything you can tap, links in lists and chips as well as buttons,
+   so the floor this comment describes is now 44px and no longer only on a phone (the class was `.gwui-tap-40`). */
+.gwui-tap-44 { min-height: 44px; display: inline-flex; align-items: center; }
 /*
  * THE CONTEXT CHAT'S "ATTACH A DOCUMENT" BUTTON (ContextChat.tsx), 34px SQUARE AT EVERY WIDTH
- * BEFORE THIS. Needs its own class, not `.gwui-tap-40`, because it grows in both directions, not
+ * BEFORE THIS. Needs its own class, not `.gwui-tap-44`, because it grows in both directions, not
  * just height - a fixed inline `width`/`height` cannot be widened by a later CSS rule, inline
  * styles always win over a stylesheet's `min-width`/`min-height`. Same 34px icon, same 8px corner,
  * at every width above 640px; a 40px square floor at phone width, same reasoning as
- * `.gwui-tap-40` just above.
+ * `.gwui-tap-44` just above.
  */
 .gwui-icon-btn {
-  width: 34px; height: 34px; border-radius: 8px; background: none; border: none;
+  width: 44px; height: 44px; border-radius: 8px; background: none; border: none;
   color: var(--gw-sub); font-size: 16px; cursor: pointer; font-family: inherit; flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
-}
-@media (max-width: 640px) {
-  .gwui-icon-btn { width: 40px; height: 40px; }
 }
 /*
  * SCREEN FAULT 5: THE HELP MODAL'S OWN CLOSE BUTTON WAS A FIXED 28px CIRCLE AT EVERY WIDTH.
  * Same floor as `.gwui-icon-btn` just above, on its own name because HelpModal.tsx sets this
  * button's other styles (position, background, colour) inline rather than through that class.
  */
-.gwui-help-close { width: 28px; height: 28px; }
-@media (max-width: 640px) {
-  .gwui-help-close { width: 40px; height: 40px; }
-}
+.gwui-help-close { width: 44px; height: 44px; }
 .gwui-invite-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
 /* A FIELD BESIDE ITS BUTTON, EVEN ON A PHONE (group 1 review, "Add it, switched off"): `.gwui-input`
    is `width: 100%` on its own, which inside a flex row computes a wide flex-basis and pushes the
@@ -636,7 +628,7 @@ a.gwui-person-row:hover { background: var(--gw-page); }
    one above the other, which is what the prototype and the name "stacked" both mean. */
 .gwui-choices-stacked { flex-direction: column; }
 .gwui-choice {
-  min-height: 40px; padding: 0 14px; border-radius: 8px; border: 0;
+  min-height: 44px; padding: 0 14px; border-radius: 8px; border: 0;
   box-shadow: inset 0 0 0 1.5px var(--gw-rule-2); background: var(--gw-card);
   font: inherit; font-family: var(--gw-font-ui); font-size: 15px; color: var(--gw-text); cursor: pointer;
 }
@@ -700,9 +692,6 @@ a.gwui-person-row:hover { background: var(--gw-page); }
  * extends the HIT area 6px past the pill on every side, 40px tall, without widening or heightening
  * what is actually drawn.
  */
-@media (max-width: 640px) {
-  .gwui-toggle::after { content: ''; position: absolute; inset: -6px; }
-}
 
 /* ── FORM FIELDS (prototype: label.f, .input) ─────────────────────────────── */
 .gwui-field-label { display: flex; flex-direction: column; gap: 6px; font-size: 14.5px; font-weight: 700; color: var(--gw-text); }
@@ -1713,7 +1702,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ci-header-title { margin: 0; font-size: 16px; font-weight: 700; color: var(--gw-text); line-height: 1.35; overflow-wrap: anywhere; }
 .gwui-ci-header-sub { font-size: 13px; color: var(--gw-sub); margin-top: 2px; }
 .gwui-ci-pause-wrap { position: relative; flex-shrink: 0; }
-.gwui-ci-pause-btn { background: none; border: none; padding: 6px 4px; font-size: 14px; font-weight: 700; color: var(--gw-navy); cursor: pointer; font-family: inherit; min-height: 36px; }
+.gwui-ci-pause-btn { background: none; border: none; padding: 6px 4px; font-size: 14px; font-weight: 700; color: var(--gw-navy); cursor: pointer; font-family: inherit; min-height: 44px; }
 .gwui-ci-menu { position: absolute; right: 0; top: 40px; z-index: 30; background: #fff; border: 1px solid var(--gw-border); border-radius: 12px; box-shadow: var(--gw-shadow-menu); padding: 6px; width: 260px; }
 .gwui-ci-menu-item { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; padding: 10px 12px; border-radius: 8px; background: none; border: none; cursor: pointer; font-family: inherit; font-size: 14px; text-align: left; }
 .gwui-ci-menu-item-title { font-weight: 700; color: var(--gw-text); }
@@ -1756,7 +1745,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 }
 
 /* "Finish my check-in now", once enough has been said. */
-.gwui-ci-finish-link { font-size: 13px; color: var(--gw-navy); background: none; border: none; cursor: pointer; text-decoration: underline; font-family: inherit; min-height: 32px; }
+.gwui-ci-finish-link { font-size: 13px; color: var(--gw-navy); background: none; border: none; cursor: pointer; text-decoration: underline; font-family: inherit; min-height: 44px; }
 
 /* Declining the session, and confirming it first. */
 .gwui-ci-settled-box { background: #fff; border: 1px solid var(--gw-border); border-radius: 10px; padding: 16px 18px; }
@@ -2308,7 +2297,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
  * select's own rounded pill and over the document card beside it rather than ever being capped at
  * the card's own edge.
  */
-.gwui-tag-control { border: 0; font: inherit; cursor: pointer; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.gwui-tag-control { min-height: 44px; border: 0; font: inherit; cursor: pointer; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 /* A CONTROL WHILE IT IS WORKING: the upload dropzone while a file is on its way in - the prototype
    never shows this state (nothing in it takes long enough to need one), so this is the product's
    own addition, not a value carried over from an old page. */
@@ -2412,7 +2401,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    "Shared pieces"). Each is written up in docs/the-parts-against-the-prototype.md. ===== */
 /* "Updated Wed 23 Sep, 6pm ⓘ", the full sentence one tap away */
 .gwui-upd { display: inline-block; margin-top: 12px; font-size: 14px; color: var(--gw-sub); }
-.gwui-upd > summary { cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 4px; min-height: 32px; }
+.gwui-upd > summary { cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 4px; min-height: 44px; }
 .gwui-upd > summary::-webkit-details-marker { display: none; }
 .gwui-upd > summary:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 2px; }
 .gwui-upd-full { display: block; margin-top: 4px; line-height: 1.5; max-width: 70ch; }
@@ -2462,7 +2451,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-need-btns { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 .gwui-need-btn-main, .gwui-need-btn-quiet { display: inline-flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 /* "Show all" after three */
-.gwui-show-all { background: none; border: 0; color: var(--gw-navy); font: inherit; font-weight: 700; font-size: 14px; padding: 8px 0; cursor: pointer; align-self: flex-start; min-height: 40px; }
+.gwui-show-all { background: none; border: 0; color: var(--gw-navy); font: inherit; font-weight: 700; font-size: 14px; padding: 8px 0; cursor: pointer; align-self: flex-start; min-height: 44px; }
 .gwui-show-all:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 2px; }
 /* Number tiles that swipe on a phone */
 .gwui-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
@@ -2474,7 +2463,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-menu { position: relative; display: inline-block; }
 .gwui-menu > summary { list-style: none; cursor: pointer; }
 .gwui-menu > summary::-webkit-details-marker { display: none; }
-.gwui-menu-btn { display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border: 1px solid var(--gw-rule-2); border-radius: 8px; background: var(--gw-card); color: var(--gw-text); font-weight: 700; font-size: 14px; box-sizing: border-box; }
+.gwui-menu-btn { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border: 1px solid var(--gw-rule-2); border-radius: 8px; background: var(--gw-card); color: var(--gw-text); font-weight: 700; font-size: 14px; box-sizing: border-box; }
 .gwui-menu-btn::after { content: " ▾"; white-space: pre; }
 .gwui-menu-btn-main { background: var(--gw-navy); border-color: var(--gw-navy); color: #fff; }
 .gwui-menu-btn:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 2px; }
@@ -2524,13 +2513,13 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-light-glance-name { font-weight: 700; font-size: 16px; color: var(--gw-text); }
 .gwui-light-glance-fact { font-size: 14px; color: var(--gw-sub); line-height: 1.45; }
 .gwui-light-full { margin-top: 18px; }
-.gwui-light-full > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; min-height: 40px; padding: 0 16px; border: 1px solid var(--gw-rule-2); border-radius: 8px; background: var(--gw-card); color: var(--gw-text); font-weight: 700; font-size: 14px; box-sizing: border-box; }
+.gwui-light-full > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border: 1px solid var(--gw-rule-2); border-radius: 8px; background: var(--gw-card); color: var(--gw-text); font-weight: 700; font-size: 14px; box-sizing: border-box; }
 .gwui-light-full > summary::-webkit-details-marker { display: none; }
 .gwui-light-full > summary:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 2px; }
 .gwui-light-full-body { margin-top: 4px; }
 /* The deal key, behind ⓘ for a team member (sales-first.md, section 1) */
 .gwui-key-info { display: inline-block; }
-.gwui-key-info > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px; font-size: 16px; color: var(--gw-sub); }
+.gwui-key-info > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; font-size: 16px; color: var(--gw-sub); }
 .gwui-key-info > summary::-webkit-details-marker { display: none; }
 .gwui-key-info > summary:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 2px; }
 .gwui-key-info[open] > .gwui-key-info-body { margin-top: 4px; }
@@ -2552,7 +2541,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-light-report-more-h { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 .gwui-light-report-note { font-size: 14.5px; color: var(--gw-sub); }
 .gwui-light-report-share { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
-.gwui-menu-item { display: block; width: 100%; text-align: left; background: none; border: 0; border-radius: 6px; padding: 10px 12px; font: inherit; font-size: 14.5px; color: var(--gw-text); cursor: pointer; min-height: 40px; }
+.gwui-menu-item { display: block; width: 100%; text-align: left; background: none; border: 0; border-radius: 6px; padding: 10px 12px; font: inherit; font-size: 14.5px; color: var(--gw-text); cursor: pointer; min-height: 44px; }
 .gwui-menu-item:hover { background: var(--gw-paper-2); }
 .gwui-menu-item:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: -2px; }
 .gwui-menu-item:disabled { color: var(--gw-sub); cursor: default; }

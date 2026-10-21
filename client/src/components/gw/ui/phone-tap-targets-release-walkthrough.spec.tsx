@@ -17,27 +17,29 @@ import { join } from 'path'
 const CSS = readFileSync(join(__dirname, 'gw-ui.css'), 'utf8')
 
 describe('phone tap targets, release walkthrough 5 October', () => {
-  it('.gwui-tap-40 gives any control a 40px floor at phone width without changing its own look', () => {
-    expect(CSS).toMatch(/@media \(max-width: 640px\) \{\s*\.gwui-tap-40 \{ min-height: 40px; display: inline-flex; align-items: center; \}/)
+  /* 21 October: Hafsah's 44px rule covers everything you can tap, at every width, so the floor is 44px and no longer only on a phone. */
+  it('.gwui-tap-44 gives any control a 44px floor without changing its own look', () => {
+    expect(CSS).toMatch(/\.gwui-tap-44 \{ min-height: 44px; display: inline-flex; align-items: center; \}/)
   })
 
-  it('.gwui-icon-btn keeps the attach button\'s 34px square above 640px, and grows it to 40px at phone width', () => {
-    expect(CSS).toMatch(/\.gwui-icon-btn \{[^}]*width: 34px; height: 34px/)
-    expect(CSS).toMatch(/@media \(max-width: 640px\) \{\s*\.gwui-icon-btn \{ width: 40px; height: 40px; \}/)
+  it('.gwui-icon-btn is a 44px square at every width', () => {
+    expect(CSS).toMatch(/\.gwui-icon-btn \{[^}]*width: 44px; height: 44px/)
+    expect(CSS).not.toMatch(/\.gwui-icon-btn \{ width: 40px; height: 40px; \}/)
   })
 
-  it('.gwui-toggle keeps its own 48x28 pill, with an invisible hit area past it at phone width', () => {
+  it('.gwui-toggle keeps its own 48x28 pill, with an invisible hit area 44px tall at every width', () => {
     expect(CSS).toMatch(/\.gwui-toggle \{[^}]*width: 48px; height: 28px/)
-    expect(CSS).toMatch(/@media \(max-width: 640px\) \{\s*\.gwui-toggle::after \{ content: ''; position: absolute; inset: -6px; \}/)
+    const TOKENS = readFileSync(join(__dirname, '../../../index.css'), 'utf8')
+    expect(TOKENS).toMatch(/\.gwui-toggle::after,[^{]*\{\s*content: ''; position: absolute; left: 0; right: 0; top: 50%; height: max\(100%, 44px\);/)
   })
 
   it('each flagged control actually takes the new class', () => {
     const read = (p: string) => readFileSync(join(__dirname, '../../../', p), 'utf8')
-    expect(read('components/gw/TargetsBand.tsx')).toMatch(/gwui-fs-13 gwui-ink-sub gwui-p-0 gwui-rule-none gwui-tap-40/)
-    expect(read('components/gw/EachPerson.tsx')).toMatch(/function Small[\s\S]*?className="gwui-tap-40"/)
-    expect(read('pages/report/RoundReportPage.tsx')).toMatch(/className="gwui-tap-40"[\s\S]*?Every session/)
-    expect(read('components/gw/checkin/YourWork.tsx')).toMatch(/className="gwui-tap-40" style=\{\{ fontSize: 12\.5[\s\S]*?\}\}>Read<\/Link>/)
-    expect(read('components/gw/WhatYouAreCarryingForward.tsx')).toMatch(/className="gwui-tap-40"[\s\S]*?Share with everyone/)
+    expect(read('components/gw/TargetsBand.tsx')).toMatch(/gwui-fs-13 gwui-ink-sub gwui-p-0 gwui-rule-none gwui-tap-44/)
+    expect(read('components/gw/EachPerson.tsx')).toMatch(/function Small[\s\S]*?className="gwui-tap-44"/)
+    expect(read('pages/report/RoundReportPage.tsx')).toMatch(/className="gwui-tap-44"[\s\S]*?Every session/)
+    expect(read('components/gw/checkin/YourWork.tsx')).toMatch(/className="gwui-tap-44" style=\{\{ fontSize: 12\.5[\s\S]*?\}\}>Read<\/Link>/)
+    expect(read('components/gw/WhatYouAreCarryingForward.tsx')).toMatch(/className="gwui-tap-44"[\s\S]*?Share with everyone/)
     expect(read('components/gw/ContextChat.tsx')).toMatch(/className="gwui-icon-btn"/)
   })
 })

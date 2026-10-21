@@ -284,7 +284,7 @@ describe('Toggle', () => {
 })
 
 describe('Choices', () => {
-  it('is a radio group, each choice 40px tall; the chosen one is navy and bold', () => {
+  it('is a radio group, each choice 44px tall; the chosen one is navy and bold', () => {
     render(
       <Choices
         label="Who can open a check-in"
@@ -296,7 +296,8 @@ describe('Choices', () => {
     expect(screen.getByRole('radiogroup', { name: 'Who can open a check-in' })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Admins only' })).toHaveClass('gwui-choice-on')
     expect(screen.getByRole('radio', { name: 'Everyone' })).not.toHaveClass('gwui-choice-on')
-    expect(CSS).toMatch(/\.gwui-choice \{[^}]*min-height: 40px/)
+    /* 44px since 21 October: Hafsah's 44px rule covers chips as well as buttons. */
+    expect(CSS).toMatch(/\.gwui-choice \{[^}]*min-height: 44px/)
     expect(CSS).toMatch(/\.gwui-choice-on \{[^}]*background: var\(--gw-navy\)/)
   })
 })

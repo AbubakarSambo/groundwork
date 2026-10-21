@@ -42,9 +42,9 @@ export function CheckInRow({ to, name, about, forWhat, needs, stands, standsTo, 
   return (
     <tr onClick={onClick}>
       <td>
-        {/* SCREEN FAULT 10: 25px TALL ON A PHONE, BELOW THE 40px TAP FLOOR - `.gwui-tap-40` (gw-ui.css)
+        {/* SCREEN FAULT 10: 25px TALL ON A PHONE, BELOW THE 40px TAP FLOOR - `.gwui-tap-44` (gw-ui.css)
             gives it one there without touching the 17px bold look at any other width. */}
-        <Link to={to} className="gwui-ci-table-name gwui-tap-40" onClick={e => e.stopPropagation()}>{name}</Link>
+        <Link to={to} className="gwui-ci-table-name gwui-tap-44" onClick={e => e.stopPropagation()}>{name}</Link>
         {about && <div className="gwui-ci-table-about">{about}</div>}
       </td>
       <td>{forWhat}</td>

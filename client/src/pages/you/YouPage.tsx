@@ -298,9 +298,9 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
                     <b>{r.checkIn}</b>
                     <span>{whenItWas(r.at, 'dayAndMonthLong')}</span>
                     {/* SCREEN FAULT 10: 30px tall on a phone, below the 40px tap floor -
-                        `.gwui-tap-40` (gw-ui.css), the same class YourWork.tsx's own "Read"
+                        `.gwui-tap-44` (gw-ui.css), the same class YourWork.tsx's own "Read"
                         links already use. */}
-                    <Link to={r.to} className="gwui-tap-40">Read</Link>
+                    <Link to={r.to} className="gwui-tap-44">Read</Link>
                   </Row>
                 ))}
               </RowList>
