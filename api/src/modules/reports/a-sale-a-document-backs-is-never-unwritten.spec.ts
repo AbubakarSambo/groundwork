@@ -21,7 +21,9 @@ describe("Mercy's sale to Mama Rose's kiosk, in Grace's weekly report", () => {
     expect(says).toContain("Mercy Wairimu counts 1 unit sold to Mama Rose's kiosk. A document backs it, but it does not show a payment.");
     expect(says).not.toContain('nothing written shows it yet');
   });
-  it('and with no document, says nothing written shows it, as before', () => {
-    expect(JSON.stringify(week(deal({ proven: false })))).toContain("Mercy Wairimu counts 1 unit sold to Mama Rose's kiosk, and nothing written shows it yet.");
+  /* Changed 21 October (final real-model check, item 14): under Grace's rule a sale with nothing written is not counted, so it is never said
+     to be "sold" ("Joseph Kariuki counts 15 units sold to Mama Pima Stores" when he had said it was not signed). */
+  it('and with no document, says nothing written shows it, and that it is not counted under her rule', () => {
+    expect(JSON.stringify(week(deal({ proven: false })))).toContain("Mama Rose's kiosk is on record as sold by Mercy Wairimu, and nothing written shows a payment or a signed order, so it is not counted as sold.");
   });
 });

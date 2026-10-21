@@ -1,3 +1,4 @@
+import { aDepositSaid } from '../board/a-deals-proof-is-about-that-deal';
 import type { ACriterion } from '../board/a-deals-four-criteria';
 import { STALLED_AFTER_WORKING_DAYS } from '../board/a-deal-that-has-stalled';
 import { theLostLine } from '../board/a-deal-that-was-dropped';
@@ -149,6 +150,10 @@ export const NO_SALE_YET = 'No sale so far this week.';
 /** "Nyama Choma Palace bought. There is a payment record.", as the kit says it. */
 export function aDealThatMoved(m: AMoveThisWeek, sayAs: HowSomebodyIsSaid): string {
   if (m.won) {
+    /* Not counted under her rule, and so never "bought" (final real-model check, item 14). */
+    if (m.notCounted && !m.proven) return `${m.name} is on record as sold, and nothing written shows a payment or a signed order, so it is not counted as sold.`;
+    /* A deposit only, said as a deposit (item 10). */
+    if (m.paid && m.deposit) return `${m.name} bought on a deposit${m.mpesaCode ? `, and M-Pesa code ${m.mpesaCode} shows it` : ''}. ${aDepositSaid(m.deposit)}`;
     /* An M-Pesa code given in words is the payment record, shown as "M-Pesa code" (Hafsah, 19 October). */
     if (m.paid && m.mpesaCode) return `${m.name} bought. M-Pesa code ${m.mpesaCode} shows the payment.`;
     if (m.paid) return `${m.name} bought. There is a payment record.`;
@@ -165,8 +170,9 @@ export function whatChangedInTheSalesWeek(w: TheSalesWeek, reader: AReaderOfTheW
   const mine = w.moves.filter((m) => reader.whole || (!!reader.me && m.ownerParticipantId === reader.me));
   /* Sales first, as the kit has them, then the other deals that moved forward. */
   const moved = [...mine.filter((m) => m.won), ...mine.filter((m) => !m.won)].map((m) => aDealThatMoved(m, sayAs));
-  const won = mine.filter((m) => m.won);
-  const paid = won.filter((m) => m.paid).length;
+  /* A sale not counted under her rule is not a sale this week; a deposit is a sale, and is not paid (items 10 and 14). */
+  const won = mine.filter((m) => m.won && !(m.notCounted && !m.proven));
+  const paid = won.filter((m) => m.paid && !m.deposit).length;
   const result = won.length === 0
     ? NO_SALE_YET
     : `${won.length} ${s(won.length, 'sale', 'sales')} so far this week${paid === won.length

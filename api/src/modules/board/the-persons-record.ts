@@ -328,7 +328,7 @@ export function aCheckInWasDue(c: ACheckInOfTheirs, now: Date): boolean {
  * session on record and read "did one of two check-ins" on Friday. Each of those days is a check-in he did not do. Empty for any session
  * answered, and for any check-in that does not open each working day.
  */
-export function theDaysAnOpenDailySessionWasMissed(c: ACheckInOfTheirs, now: Date, zone: string, daily: { workingDays?: number[] | null } | null | undefined): string[] {
+export function theDaysAnOpenDailySessionWasMissed(c: ACheckInOfTheirs, now: Date, zone: string, daily: { workingDays?: number[] | null } | null | undefined, throughToday = false): string[] {
   if (!daily || c.status === 'COMPLETED') return [];
   const opened = c.availableFrom ?? c.createdAt ?? null;
   if (!opened) return [];
@@ -339,7 +339,7 @@ export function theDaysAnOpenDailySessionWasMissed(c: ACheckInOfTheirs, now: Dat
   let k = key(new Date(opened));
   for (let n = 0; n < 400; n++) {
     k = new Date(new Date(`${k}T12:00:00Z`).getTime() + DAY).toISOString().slice(0, 10);
-    if (k >= today) break;
+    if (throughToday ? k > today : k >= today) break;
     if (works.has(new Date(`${k}T12:00:00Z`).getUTCDay())) out.push(k);
   }
   return out;

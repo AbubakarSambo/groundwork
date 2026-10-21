@@ -6566,7 +6566,13 @@ happened, and what is in the way.`;
     /* One count for the sessions: the board's own clock, except on a closed session's own report, which is
        about that session (request 117, part 3). */
     const clock = asOf ? null : await this.theBoardsClock(groundId, ground);
-    const sessionNumber = clock ? clock.current : theirNewest;
+    /*
+     * NEVER BEHIND THEIR OWN CHECK-INS (final real-model check, item 15). Peter's open session 2 held the board's round at 2, so Kevin, who had
+     * done session 3, read "This is session 2 of 15 of this work." in his own report. The board's round, or the newest session this person
+     * finished, whichever is later.
+     */
+    /* `theirNewest` is the newest they finished: the record holds only finished sessions. */
+    const sessionNumber = clock ? Math.max(clock.current, theirNewest) : theirNewest;
     const planned = clock?.planned ?? (ground.checkIns ?? []).reduce((n: number, c: any) => Math.max(n, c.sessionNumber ?? 0), 0);
 
     const map = roleMapFor((participant as any).detectedFunction);
