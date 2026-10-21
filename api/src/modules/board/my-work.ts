@@ -762,7 +762,15 @@ export async function readMyWork(
     now,
     timeZone,
   };
-  const page = myWorkFrom(record, ground.label || 'This check-in');
+  const built = myWorkFrom(record, ground.label || 'This check-in');
+  /*
+   * THE BOARD IS WITHHELD UNTIL THEY CHECK IN, AND THEIR ITEMS ARE READ FROM IT (browser test, 21 October 2026). Kevin, with session 7
+   * open and not answered, read "You have no deals on the board yet." beside the five deals the board holds for him. Until he checks in,
+   * the page says so in the same words the board uses, instead of saying something untrue.
+   */
+  const page: typeof built = served?.withheldUntilYouCheckIn && (built as any).items && !((built as any).items.rows ?? []).length
+    ? { ...(built as any), items: { ...(built as any).items, note: '', emptySays: `${reader === 'self' ? 'Your' : `${firstOf(name)}’s`} ${(built as any).items.heading?.replace(/^(Your|\S+’s) /, '') || 'items'} show here again once ${reader === 'self' ? 'you have' : `${firstOf(name)} has`} checked in for this session.` } } as any
+    : built;
   /* The person's record, read from where it is kept and never rebuilt here: the person's own, or, for the lead, the person's in this check-in. */
   const theirRecord = judgements && page.on === true && !(page as any).judgements && await theDirectMorningIsOn(prisma, ground.organizationId)
     ? await theRecordOnTheirPage(prisma, { groundId: ground.id, organizationId: ground.organizationId, label: ground.label || 'this check-in', pid, firstName: firstOf(name), self: reader === 'self', userId: person.userId ?? null, leadFirst, timeZone })
