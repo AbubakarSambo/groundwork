@@ -237,6 +237,8 @@ export function whatTheyDelivered(o: { participantId: string; name: string; role
   const role = String(o.role ?? '');
   const heading = /account/i.test(role) ? `What ${o.name} recorded as paid, with proof`
     : /paralegal/i.test(role) ? `What ${o.name} filed and followed up, with proof`
+    /* A borrower repays a loan; they do not collect it (browser test: "What Achieng collected, with proof"). */
+    : /borrower/i.test(role) ? `What ${o.name} repaid, with proof`
     : o.kind === 'collections' ? `What ${o.name} collected, with proof`
     : `What ${o.name} delivered, with proof`;
   return { heading, proven, onlySaid, empty: proven.length || onlySaid.length ? null : `Nothing ${o.name} said was paid, signed or done is on record yet.` };

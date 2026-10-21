@@ -271,3 +271,11 @@ describe('coaching on check-ins names only the part that fell short', () => {
     expect(stood.says).toBe('Achieng needs coaching on naming the item, what changed and the day.');
   });
 });
+
+describe('a borrower repays, and does not collect', () => {
+  it('Achieng’s part is headed with what she repaid', () => {
+    const { whatTheyDelivered } = require('./what-the-lead-reads-about-each-person');
+    expect(whatTheyDelivered({ participantId: 'p-achieng', name: 'Achieng', role: 'Borrower', kind: 'collections', board: null, stored: null }).heading).toBe('What Achieng repaid, with proof');
+    expect(whatTheyDelivered({ participantId: 'p-brian', name: 'Brian', role: 'Associate', kind: 'collections', board: null, stored: null }).heading).toBe('What Brian collected, with proof');
+  });
+});
