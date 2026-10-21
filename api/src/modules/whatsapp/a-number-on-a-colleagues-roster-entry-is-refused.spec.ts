@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { refuseANumberOnSomebodyElse, A_NUMBER_ON_A_COLLEAGUE } from './one-number-for-a-person';
+import { refuseANumberOnSomebodyElse, A_NUMBER_ON_A_COLLEAGUE_WITH_NO_SIGN_IN } from './one-number-for-a-person';
 import { formsOfTheSameNumber } from './a-number-whatsapp-can-reach';
 
 /**
@@ -33,8 +33,8 @@ describe('a number on a colleague’s roster entry is refused', () => {
   it('the two ways Grace typed it are the same number', () => {
     expect(formsOfTheSameNumber('+254712345678')).toEqual(expect.arrayContaining(['+254712345678', '0712345678']));
   });
-  it('Grace cannot give Lucy the number kept for Sam, and is told whose it is', async () => {
-    await expect(refuseANumberOnSomebodyElse(aDatabase(), '+254712345678', 'u-lucy', 'org-da')).rejects.toThrow(new BadRequestException(A_NUMBER_ON_A_COLLEAGUE('Sam Kamau')));
+  it('Grace cannot give Lucy the number kept for Sam, and is told whose it is and where it was added', async () => {
+    await expect(refuseANumberOnSomebodyElse(aDatabase(), '+254712345678', 'u-lucy', 'org-da')).rejects.toThrow(new BadRequestException(A_NUMBER_ON_A_COLLEAGUE_WITH_NO_SIGN_IN('Sam Kamau')));
   });
   it('Lucy keeping her own number is not refused by her own entry', async () => {
     await expect(refuseANumberOnSomebodyElse(aDatabase(), '+254700500007', 'u-lucy', 'org-da')).resolves.toBeUndefined();

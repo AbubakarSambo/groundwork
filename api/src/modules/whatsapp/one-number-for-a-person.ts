@@ -54,11 +54,11 @@ export async function refuseANumberOnSomebodyElse(prisma: Db, number: string | n
           ...(email ? [{ OR: [{ email: null }, { NOT: { email: { equals: email, mode: 'insensitive' } } }] }] : []),
         ],
       },
-      select: { displayName: true, givenName: true, familyName: true, email: true },
+      select: { displayName: true, givenName: true, familyName: true, email: true, linkedUserId: true },
     })).catch(() => null);
     if (entry) {
       const name = (entry.displayName || [entry.givenName, entry.familyName].filter(Boolean).join(' ') || entry.email || '').trim();
-      throw new BadRequestException(name ? A_NUMBER_ON_A_COLLEAGUE(name) : A_NUMBER_ON_SOMEBODY_ELSE);
+      throw new BadRequestException(!name ? A_NUMBER_ON_SOMEBODY_ELSE : entry.linkedUserId ? A_NUMBER_ON_A_COLLEAGUE(name) : A_NUMBER_ON_A_COLLEAGUE_WITH_NO_SIGN_IN(name));
     }
   }
   await Promise.resolve(prisma.user?.updateMany?.({ where: { phoneNumber: { in: forms }, deletedAt: { not: null }, ...(ownUserId ? { NOT: { id: ownUserId } } : {}) }, data: { phoneNumber: null } })).catch(() => undefined);
@@ -73,6 +73,10 @@ export async function refuseANumberOnSomebodyElse(prisma: Db, number: string | n
   const name = [other.firstName, other.lastName].filter(Boolean).join(' ').trim();
   throw new BadRequestException(colleague && name ? A_NUMBER_ON_A_COLLEAGUE(name) : A_NUMBER_ON_SOMEBODY_ELSE);
 }
+
+/** The same, for a colleague with no sign-in yet: their number is on their check-in's People and setup, not on People. */
+export const A_NUMBER_ON_A_COLLEAGUE_WITH_NO_SIGN_IN = (name: string) =>
+  `This number is already saved for ${name}, so it cannot be saved for somebody else too. Check the number, or change ${name}'s number on People and setup in their check-in first.`;
 
 /**
  * A PERSON'S NUMBER, AS EVERY SCREEN AND EVERY SENDER READS IT (Drop Access, 21 October). The roster first, then the sign-in. A person
