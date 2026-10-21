@@ -1,3 +1,4 @@
+import { notABlockerTheyRaised } from '../board/not-a-blocker-they-raised';
 import { thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
 import { theDirectMorningIsOnFor, theDirectMorningIsOn as theOrganisationsDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { withTheDirectMorning, whichDirectBlockRan, THE_DIRECT_TEAM_REPORT, THE_DIRECT_JUDGEMENT, THE_DIRECT_OWN_REPORT } from './the-direct-morning-is-written-straight';
@@ -6398,7 +6399,10 @@ happened, and what is in the way.`;
      * because the board left it out and this read did not. Her colleagues' own waits on her already say it:
      * "Baraka Mwangi and Amani Wekesa are waiting on you for the discount and the price list."
      */
-    const dependenciesNowReal = (dependenciesNow as any[]).filter((d) => !aWaitOnOneself(d)) as typeof dependenciesNow;
+    /* A customer's own budget or approval is where a deal stands: never "put the budget in writing" (final real-model check, item 2). */
+    const salesHere = isASalesKind((ground as any)?.kindOfWork);
+    const dependenciesNowReal = (dependenciesNow as any[]).filter((d) => !aWaitOnOneself(d))
+      .filter((d) => !notABlockerTheyRaised(d, { sales: salesHere, keepTheAsks: true, keepWhatCleared: true })) as typeof dependenciesNow;
     const dependencies = asOf
       ? (dependenciesNowReal as any[])
         .filter((d) => by(d.createdAt))
