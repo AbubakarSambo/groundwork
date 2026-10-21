@@ -1129,10 +1129,16 @@ export class GroundsCron implements OnApplicationBootstrap {
   async sendTheLeadsWeeklyLettersInner(now: Date = new Date()): Promise<{ tried: number }> {
     /* Every lead's check-ins, not the anchor's alone (engagement spec section 24). The anchor's own are kept only while its switch is on. */
     const anchorIsOn = await theAnchorScenarioIsOn(this.prisma);
+    /* The lead's own board, as she opens it, so the letter's target is the one her board says (Groundwork does the managing, part 2). Found by name, as the daily summary finds it. */
+    let boards: { get(groundId: string, userId: string): Promise<any> } | undefined;
+    try {
+      if (this.moduleRef) { const { BoardService } = await import('../board/board.service'); boards = this.moduleRef.get(BoardService, { strict: false }); }
+    } catch { boards = undefined; }
     const result = await sendTheLeadsWeeklyLetters(
       {
         prisma: this.prisma, email: this.email, frontendUrl: this.config.get<string>('resend.frontendUrl') || '',
         everyCheckIn: { anchorIsOn, weeklyReport: (g, at) => this.theLeadsOwnWeeklyReport(g, at) },
+        ...(boards ? { board: { get: (groundId: string, userId: string) => boards.get(groundId, userId) } } : {}),
       },
       now,
     ).catch((err: any) => { this.logger.warn(`The leads' weekly letters could not be sent: ${err?.message}`); return { tried: 0 }; });

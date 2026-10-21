@@ -39,6 +39,13 @@ export function TheirRecord({ record }: { record: ThePersonsRecordServed }) {
               </ul>
             )}
           </Panel>
+          {record.fromYourLead && record.fromYourLead.lines.length > 0 && (
+            <Panel heading={record.fromYourLead.heading}>
+              <ul className="gwui-panel-list">
+                {record.fromYourLead.lines.map((l) => <li key={l}>{l}</li>)}
+              </ul>
+            </Panel>
+          )}
           {record.acrossYourCheckIns && record.acrossYourCheckIns.lines.length > 0 && (
             <Panel heading={record.acrossYourCheckIns.heading}>
               <ul className="gwui-panel-list">

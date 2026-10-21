@@ -718,6 +718,8 @@ export type ThePersonsRecordServed = {
   coachingEmpty: string
   /** The person's own page alone. */
   acrossYourCheckIns?: { heading: string; lines: string[] }
+  /** What the lead praised them for, from her board. The person's own page and report alone. */
+  fromYourLead?: { heading: string; lines: string[] }
 }
 /** My work, as the server serves it to this reader (api board/my-work.ts). */
 export type ABehaviourRead = { key: string; name: string; verdict: 'Strength' | 'Needs work' | 'Not enough yet'; happened: string; means: string | null; toImprove: string | null; basedOn: string | null }

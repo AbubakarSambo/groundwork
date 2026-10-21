@@ -14,6 +14,9 @@ import { cleanText } from '../reports/what-the-record-actually-holds';
 import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { theirDay, twoMissedDaysSaid, notInTodaySaid, onTimeSaid, mayBeNudged, type ASessionOnRecord, type TheirDay } from './who-answers-and-when';
+import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
+import { readThePersonsRecord, type AStoredPersonsRecord } from '../board/the-persons-record-store';
+import { whoGroundworkCouldNotMove, type AKindOfCheckIn } from '../board/what-the-lead-reads-about-each-person';
 
 /**
  * THE DIRECT MORNING (Hafsah, 20 October 2026; behind `organizations.direct_morning_on`, organisation/the-direct-morning-switch.ts).
@@ -34,10 +37,16 @@ import { theirDay, twoMissedDaysSaid, notInTodaySaid, onTimeSaid, mayBeNudged, t
  * each deal's group, `toCloseTheGap`), so the summary and the board never disagree. Nothing is asked of the lead about her own
  * definitions: where she confirmed a rule (what counts as a sale, the stall rule), the board already applies it.
  *
- * WHAT IS NEVER SAID. Only what the lead's board already serves her, and the record of her own check-in. Nothing that judges a person:
- * no pattern, no coaching, no verdict and no label (person-judgements.ts holds those back, and nothing here reads them). A team line
- * says what happened and the move, about the work: a sale with proof, a promise not kept three check-ins running, leads that have not
- * answered, a check-in not made.
+ * WHAT IS NEVER SAID. Only what the lead's board already serves her, the record of her own check-in, and each person's stored record
+ * (board/the-persons-record-store.ts). No pattern, no verdict and no label. A team line says what happened and the move, about the work.
+ *
+ * ONLY WHAT NEEDS THE LEAD, IN THE MESSAGE (Groundwork does the managing, part 2; Hafsah, 21 October 2026). The summary and its email
+ * carry the target in one line, the decisions only she can make, and the people Groundwork could not move: a promise not kept three
+ * check-ins running, two check-ins missed in a row, and a person Groundwork already coached in their check-ins with nothing changed
+ * since (what-the-lead-reads-about-each-person.ts; read only where the organisation keeps judgements of a person on). Where none of
+ * that holds, one line says so: "Nothing needs you today." What is about to close, credit for a sale with proof or for checking in on
+ * time, a sale with no proof yet, leads gone quiet and a check-in not made today are Groundwork's to manage: they are marked
+ * `boardOnly`, stay at the top of her board, and are never put in the message.
  *
  * SHORT. Every line has a rank. Where the message has no room, the lines with the lowest rank go, whole, never cut mid-sentence; the
  * target's first line always stays.
@@ -49,13 +58,15 @@ export interface AMorningLine {
   text: string;
   /** Lower goes first when there is no room for everything; ties keep their order. */
   rank: number;
+  /** Shown at the top of the lead's board and never put in her morning message (Groundwork's to manage, not hers). */
+  boardOnly?: boolean;
 }
 
 export interface TheMorningPart {
   key: AMorningPartKey;
   /** The heading on the board, in the prototype's words. */
   heading: string;
-  /** The words the message opens the part with: "Target:", "Needs you today:", "Closing:", "Your team:". These four colon labels stay: they are Hafsah's one allowed exception to the wording rule (21 October), so no wording check should take them out. */
+  /** The words the message opens the part with: "Target:", "Needs you today:", "Closing:", "Your team:". These four colon labels stay: they are Hafsah's one allowed exception to the wording rule (21 October), so no wording check should take them out. Empty where the line says it alone ("Nothing needs you today."). */
   lead: string;
   lines: AMorningLine[];
 }
@@ -174,6 +185,8 @@ export interface TheSalesMorningInput {
   zone: string;
   /** For theThingWithItsDeal: what was said, by whom. */
   lines: { text: string; participantId: string | null }[];
+  /** Each person's stored record, by their place in the check-in. Absent where the organisation keeps judgements of a person off. */
+  records?: ReadonlyMap<string, AStoredPersonsRecord>;
 }
 
 const THE_TEAMS_AIM = (objectives: any[]) =>
@@ -209,27 +222,23 @@ export function theTargetLines(board: any, now: Date, zone: string): { lines: AM
   const rows = theDealRows(board);
   const likely = rows.filter((r) => r.group === 'likely' && !isWon(r));
   const likelyUnits = likely.reduce((n, r) => n + (theUnitsOf(r.fields) ?? 0), 0);
-  const lines: AMorningLine[] = [];
-  lines.push({ text: `${commas(sold)} of ${commas(target)} sold${paid !== null ? `, ${commas(paid)} paid` : ''}.`, rank: 0 });
-  lines.push({ text: likelyUnits > 0 ? `${commas(likelyUnits)} more likely${by ? ` by ${by}` : ''}.` : `None of the open deals is likely${by ? ` by ${by}` : ''}.`, rank: 1 });
+  /* THE TARGET IN ONE LINE (Hafsah, 21 October): sold, paid, what is likely by the target's day, the gap, and whether the open deals cover
+     it. "75 of 120 sold, 47 paid, 45 short, and the open deals cover 40." */
+  const said = [`${commas(sold)} of ${commas(target)} sold`, ...(paid !== null ? [`${commas(paid)} paid`] : []), ...(likelyUnits > 0 ? [`${commas(likelyUnits)} more likely${by ? ` by ${by}` : ''}`] : [])].join(', ');
   const gap = target - sold - likelyUnits;
   if (gap <= 0) {
-    lines.push({ text: sold >= target ? 'You have reached the target.' : 'With the likely deals, you reach the target.', rank: 1 });
-    return { lines, gap: Math.max(0, gap), target, heading };
+    return { lines: [{ text: sold >= target ? `${said}, and you have reached the target.` : `${said}, and with the likely deals you reach the target.`, rank: 0 }], gap: Math.max(0, gap), target, heading };
   }
   /* What the open deals hold: the deals the board lists to close the gap, else every open deal not already counted as likely. */
   const listed = new Set(((board?.toCloseTheGap?.deals ?? []) as any[]).map((d) => String(d?.name ?? '').trim().toLowerCase()).filter(Boolean));
   const open = rows.filter((r) => !isWon(r) && r.group !== 'likely' && (listed.size ? listed.has(String(r.name).trim().toLowerCase()) : OPEN_GROUPS.has(String(r.group))));
   const cover = open.reduce((n, r) => n + (theUnitsOf(r.fields) ?? 0), 0);
-  lines.push({
-    text: cover >= gap
-      ? `You're ${commas(gap)} short, and the open deals cover it if they close, so keep them moving.`
-      : cover > 0
-        ? `You're ${commas(gap)} short, and the open deals cover only ${commas(cover)} of them, so the team needs new leads this week.`
-        : `You're ${commas(gap)} short, and no open deal covers any of it, so the team needs new leads this week.`,
-    rank: 1,
-  });
-  return { lines, gap, target, heading };
+  const text = cover >= gap
+    ? `${said}, ${commas(gap)} short, and the open deals cover it if they close.`
+    : cover > 0
+      ? `${said}, ${commas(gap)} short, and the open deals cover ${commas(cover)}.`
+      : `${said}, ${commas(gap)} short, and no open deal covers any of it.`;
+  return { lines: [{ text, rank: 0 }], gap, target, heading };
 }
 
 const A_DECISION = /\b(?:decision|decide|approv\w*|yes or no|go-ahead|sign[- ]off on the price|price)\b/i;
@@ -344,7 +353,6 @@ export function theNeedsYouLines(input: TheSalesMorningInput, name: (pid: string
     const m = /^People in this check-in said different things about (.+?), so it needs settling\.?$/i.exec(String(d.question ?? '').trim());
     if (m) lines.push({ text: `People said different things about ${m[1]}, so settle it with them.`, rank: 6 });
   }
-  if (!lines.length) lines.push({ text: 'Nothing is waiting on you today.', rank: 6 });
   return { lines, first };
 }
 
@@ -401,8 +409,9 @@ export function theClosingLines(input: TheSalesMorningInput): AMorningLine[] {
     }
   }
   out.sort((a, b) => a.key.localeCompare(b.key));
-  if (!out.length) return [{ text: 'Nothing is booked to close in the next seven days.', rank: 7 }];
-  return out.map((o, i) => ({ text: o.text, rank: i === 0 ? 3 : 8 }));
+  /* What is about to close is the team's to close: on the board, never in the message (Hafsah, 21 October). */
+  if (!out.length) return [{ text: 'Nothing is booked to close in the next seven days.', rank: 7, boardOnly: true }];
+  return out.map((o, i) => ({ text: o.text, rank: i === 0 ? 3 : 8, boardOnly: true }));
 }
 
 /** 4. WHO ON THE TEAM NEEDS YOU, AND WHAT TO DO. One line each, the one that matters most for that person. */
@@ -416,6 +425,10 @@ export function theTeamLines(input: TheSalesMorningInput, name: (pid: string | n
     const who = name(p.id);
     if (!who) continue;
     const said: AMorningLine[] = [];
+    /* Somebody Groundwork already coached in their check-ins, with nothing changed since (what-the-lead-reads-about-each-person.ts). */
+    const notMoved = whoGroundworkCouldNotMove(input.records?.get(p.id) ?? null, who, 'sales');
+    /* Rank 2: when the message has no room, kept with the decisions only she can make, before a wait, a difference to settle or a promise carried over (Wanjiru's two check-ins in one message). */
+    if (notMoved) said.push({ text: notMoved, rank: 2 });
     /* A promise to a colleague not kept, three check-ins running. */
     const carried = input.carried.find((c) => c.participantId === p.id);
     if (carried) {
@@ -428,20 +441,46 @@ export function theTeamLines(input: TheSalesMorningInput, name: (pid: string | n
     said.push(...theCheckInLines(p.id, who, day, input.lastCheckIn, input.firstOpened, today, before, input.workingDays, input.zone));
     /* A sale on record with no proof. */
     const noProof = rows.filter((r) => r.ownerParticipantId === p.id && r.group === 'said-won');
-    if (noProof.length) said.push({ text: `${noProof.length === 1 ? `${who}'s sale to ${noProof[0].name} has` : `${who} has ${noProof.length} sales that have`} no proof yet, so ask ${who} for the payment record.`, rank: 12 });
+    if (noProof.length) said.push({ text: `${noProof.length === 1 ? `${who}'s sale to ${noProof[0].name} has` : `${who} has ${noProof.length} sales that have`} no proof yet, so ask ${who} for the payment record.`, rank: 12, boardOnly: true });
     /* Leads that have not answered for a week. */
     const silent = rows.filter((r) => r.ownerParticipantId === p.id && !isWon(r) && r.notAnsweringSince && keyIn(new Date(`${r.notAnsweringSince}T12:00:00Z`), 'UTC') <= plus(today, -7));
-    if (silent.length) said.push({ text: silent.length === 1 ? `${who}'s lead ${silent[0].name} hasn't answered in a week; tell ${who} to drop it.` : `${who} has ${silent.length} leads that haven't answered in a week; tell ${who} to drop them.`, rank: 11 });
+    if (silent.length) said.push({ text: silent.length === 1 ? `${who}'s lead ${silent[0].name} hasn't answered in a week; tell ${who} to drop it.` : `${who} has ${silent.length} leads that haven't answered in a week; tell ${who} to drop them.`, rank: 11, boardOnly: true });
     /* Sales with proof: said, so the lead can say well done. */
     const proven = rows.filter((r) => r.ownerParticipantId === p.id && r.group === 'won');
-    if (proven.length) said.push({ text: `${who} has ${proven.length} ${proven.length === 1 ? 'sale' : 'sales'} with proof, so tell ${who} well done.`, rank: 13 });
+    if (proven.length) said.push({ text: `${who} has ${proven.length} ${proven.length === 1 ? 'sale' : 'sales'} with proof, so tell ${who} well done.`, rank: 13, boardOnly: true });
     said.sort((a, b) => a.rank - b.rank);
     if (said[0]) out.push(said[0]);
     /* Credit for answering on time, beside whatever else is said about them (facts only, no label). */
     const credit = day && !day.lateToday && !day.missedDays.length ? onTimeSaid(who, day, today) : null;
-    if (credit) out.push({ text: credit, rank: 14 });
+    if (credit) out.push({ text: credit, rank: 14, boardOnly: true });
   }
   return out.sort((a, b) => a.rank - b.rank);
+}
+
+/**
+ * NOTHING NEEDS YOU TODAY (Hafsah, 21 October). Where no line of what needs her and no line about her team goes in the message, the
+ * part of what needs her is one line that says so, with no label in front of it: "Target: 75 of 120 sold, ... Nothing needs you today."
+ */
+export function withNothingNeedsYou(parts: TheMorningPart[]): { parts: TheMorningPart[]; nothing: boolean } {
+  const inTheMessage = (k: AMorningPartKey) => parts.filter((p) => p.key === k).flatMap((p) => p.lines).some((l) => !l.boardOnly);
+  if (inTheMessage('needsYou') || inTheMessage('team')) return { parts, nothing: false };
+  const nothing: TheMorningPart = { key: 'needsYou', heading: 'What needs you today', lead: '', lines: [{ text: 'Nothing needs you today.', rank: 1 }] };
+  const at = parts.findIndex((p) => p.key === 'needsYou');
+  const out = at >= 0 ? parts.map((p, i) => (i === at ? { ...nothing, lines: [...nothing.lines, ...p.lines] } : p)) : [...parts.slice(0, 1), nothing, ...parts.slice(1)];
+  return { parts: out, nothing: true };
+}
+
+/** The lines about the team Groundwork could not move, from each person's stored record, for the people who are not the lead. */
+function theRecordLines(people: { id: string; managingOnly?: boolean; left?: boolean }[], hers: ReadonlySet<string>, names: Map<string, string>, records: ReadonlyMap<string, AStoredPersonsRecord> | undefined, kind: AKindOfCheckIn): Map<string, AMorningLine> {
+  const out = new Map<string, AMorningLine>();
+  if (!records) return out;
+  for (const p of people) {
+    if (hers.has(p.id) || p.managingOnly || p.left) continue;
+    const who = names.get(p.id);
+    const line = who ? whoGroundworkCouldNotMove(records.get(p.id) ?? null, who, kind) : null;
+    if (line) out.set(p.id, { text: line, rank: 2 });
+  }
+  return out;
 }
 
 /**
@@ -456,16 +495,17 @@ export function theCheckInLines(
   if (day) {
     const two = twoMissedDaysSaid(who, day, workingDays);
     if (two) return [{ text: two, rank: 8 }];
+    /* One day not in yet is Groundwork's to chase (its reminders, and the lead's own Nudge button on the board): never in the message. */
     const notIn = notInTodaySaid(who, day, today);
-    if (notIn) return [{ text: notIn, rank: 10 }];
+    if (notIn) return [{ text: notIn, rank: 10, boardOnly: true }];
   }
   const last = lastCheckIn[pid] ?? null;
   const opened = firstOpened[pid] ?? null;
   if (last) {
     const k = keyIn(last, zone);
-    if (k < before) return [{ text: `${who} hasn't checked in ${sinceADay(k, today)}.`, rank: 10 }];
+    if (k < before) return [{ text: `${who} hasn't checked in ${sinceADay(k, today)}.`, rank: 10, boardOnly: true }];
   } else if (opened && keyIn(opened, zone) <= before) {
-    return [{ text: `${who} hasn't checked in yet.`, rank: 10 }];
+    return [{ text: `${who} hasn't checked in yet.`, rank: 10, boardOnly: true }];
   }
   return [];
 }
@@ -488,20 +528,21 @@ export function theSalesDirectMorning(input: TheSalesMorningInput): TheDirectMor
   const name = (pid: string | null) => (pid ? names.get(pid) ?? null : null);
   const target = theTargetLines(input.board, input.now, input.zone);
   const needs = theNeedsYouLines(input, name);
+  const { parts, nothing } = withNothingNeedsYou([
+    { key: 'target', heading: target.heading, lead: 'Target:', lines: target.lines },
+    { key: 'needsYou', heading: 'What needs you today', lead: 'Needs you today:', lines: needs.lines },
+    { key: 'closing', heading: 'About to close', lead: 'Closing:', lines: theClosingLines(input) },
+    { key: 'team', heading: 'Your team today', lead: 'Your team:', lines: theTeamLines(input, name) },
+  ]);
   const subject = [
     target.gap !== null && target.target !== null ? (target.gap > 0 ? `${commas(target.gap)} short of ${commas(target.target)}` : `${commas(target.target)} reached`) : null,
-    needs.first,
+    needs.first ?? (nothing ? 'nothing needs you today' : null),
   ].filter(Boolean) as string[];
   return {
     groundId: input.groundId,
     label: input.label,
     kind: 'sales',
-    parts: [
-      { key: 'target', heading: target.heading, lead: 'Target:', lines: target.lines },
-      { key: 'needsYou', heading: 'What needs you today', lead: 'Needs you today:', lines: needs.lines },
-      { key: 'closing', heading: 'About to close', lead: 'Closing:', lines: theClosingLines(input) },
-      { key: 'team', heading: 'Your team today', lead: 'Your team:', lines: theTeamLines(input, name) },
-    ],
+    parts,
     subjectAfterTheName: subject.length ? subject.join(', and ') : `today on ${input.label}`,
   };
 }
@@ -532,6 +573,8 @@ export interface TheCollectionsMorningInput {
   workingDays: number[] | null;
   now: Date;
   zone: string;
+  /** Each person's stored record, by their place in the check-in. Absent where the organisation keeps judgements of a person off. */
+  records?: ReadonlyMap<string, AStoredPersonsRecord>;
 }
 
 const listed = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}` : xs[0] ?? '');
@@ -567,13 +610,14 @@ export function theCollectionsDirectMorning(input: TheCollectionsMorningInput): 
     text: `${billMoney(owed, currency)} is owed on ${unpaid.length} ${plural(unpaid.length)}${noAmount ? `, and ${noAmount} of them have no amount on record` : ''}. ${proven.length ? `${billMoney(sum(proven), currency)} is paid with proof.` : 'Nothing is paid with proof yet.'}`,
     rank: 0,
   }];
-  if (onAWord.length) target.push({ text: `${listed(onAWord.map(numbered))} ${onAWord.length === 1 ? 'is' : 'are'} marked paid, ${billMoney(sum(onAWord), currency)}${onAWord.length > 1 ? ' in all' : ''}, with no proof filed.`, rank: 1 });
+  /* Marked paid with no proof is the people's to back (each one's record says it to the partner where Groundwork could not move them). */
+  if (onAWord.length) target.push({ text: `${listed(onAWord.map(numbered))} ${onAWord.length === 1 ? 'is' : 'are'} marked paid, ${billMoney(sum(onAWord), currency)}${onAWord.length > 1 ? ' in all' : ''}, with no proof filed.`, rank: 1, boardOnly: true });
   const fell = unpaid.filter((b) => theDueDay(b) === today);
   for (const b of fell) {
     const why = b.event?.event ? asHappened(b.event.event) : f(b, F.dueWhen) ? asHappened(f(b, F.dueWhen)) : '';
     target.push({ text: `${numbered(b)}${amountOf(b) ? `, ${billMoney(amountOf(b)!.value, amountOf(b)!.currency)},` : ''} fell due today${why ? `, because ${why}` : ''}.`, rank: 1 });
   }
-  if (!fell.length) target.push({ text: `No ${word} fell due today.`, rank: 6 });
+  if (!fell.length) target.push({ text: `No ${word} fell due today.`, rank: 6, boardOnly: true });
 
   /* 2. What needs the partner: a dispute, an event to confirm, what somebody waits on her for, a payment she marked with no proof. */
   const needs: AMorningLine[] = [];
@@ -602,7 +646,6 @@ export function theCollectionsDirectMorning(input: TheCollectionsMorningInput): 
     const row = servedRow(b);
     if (row && /as you said/i.test(row.payment?.says ?? '')) needs.push({ text: `You marked ${numbered(b)} paid, so file the bank slip or the M-Pesa message.`, rank: 5 });
   }
-  if (!needs.length) needs.push({ text: 'Nothing is waiting on you today.', rank: 6 });
 
   /* 3. Who to chase: the client, the amount, who follows it up. What fell due first, then what is behind, then a payment said with no proof. */
   const chase: { text: string; rank: number; key: string }[] = [];
@@ -626,17 +669,20 @@ export function theCollectionsDirectMorning(input: TheCollectionsMorningInput): 
   chase.sort((a, b) => a.rank - b.rank || a.key.localeCompare(b.key));
   if (!chase.length) chase.push({ text: `No ${word} needs chasing today.`, rank: 9, key: '' });
 
-  /* 4. The team: who has not checked in since the last working day. */
-  const team = theCheckInsNotMade(input.people, input.hers, input.lastCheckIn, input.firstOpened, today, input.workingDays, zone, names, input.sessions, now);
+  /* 4. The team: who Groundwork could not move, then who has not checked in since the last working day. */
+  const team = theCheckInsNotMade(input.people, input.hers, input.lastCheckIn, input.firstOpened, today, input.workingDays, zone, names, input.sessions, now, theRecordLines(input.people, input.hers, names, input.records, 'collections'));
+  const { parts, nothing } = withNothingNeedsYou([
+    /* What is owed and what is collected is the partner's target ("Target:", one of the four labels kept, 21 October). */
+    { key: 'target', heading: `What is owed, and what is paid`, lead: 'Target:', lines: target },
+    { key: 'needsYou', heading: 'What needs you today', lead: 'Needs you today:', lines: needs },
+    /* Who to chase is the team's to chase: on the board, never in the message. */
+    { key: 'closing', heading: 'Who to chase', lead: 'To chase:', lines: chase.map(({ text, rank }) => ({ text, rank, boardOnly: true })) },
+    { key: 'team', heading: 'Your team today', lead: 'Your team:', lines: team },
+  ]);
   return {
     groundId: input.groundId, label: input.label, kind: 'collections',
-    parts: [
-      { key: 'target', heading: `What is owed, and what is paid`, lead: 'Owed:', lines: target },
-      { key: 'needsYou', heading: 'What needs you today', lead: 'Needs you today:', lines: needs },
-      { key: 'closing', heading: 'Who to chase', lead: 'To chase:', lines: chase.map(({ text, rank }) => ({ text, rank })) },
-      { key: 'team', heading: 'Your team today', lead: 'Your team:', lines: team },
-    ],
-    subjectAfterTheName: `${billMoney(owed, currency)} owed${first ? `, and ${first}` : fell.length ? `, and ${fell.length === 1 ? `${numbered(fell[0])} fell due today` : `${fell.length} fell due today`}` : ''}`,
+    parts,
+    subjectAfterTheName: `${billMoney(owed, currency)} owed${first ? `, and ${first}` : fell.length ? `, and ${fell.length === 1 ? `${numbered(fell[0])} fell due today` : `${fell.length} fell due today`}` : nothing ? ', and nothing needs you today' : ''}`,
   };
 }
 
@@ -644,7 +690,7 @@ export function theCollectionsDirectMorning(input: TheCollectionsMorningInput): 
 export function theCheckInsNotMade(
   people: { id: string; managingOnly?: boolean; left?: boolean }[], hers: ReadonlySet<string>,
   lastCheckIn: Record<string, Date | null>, firstOpened: Record<string, Date | null>, today: string, workingDays: number[] | null, zone: string, names: Map<string, string>,
-  sessions?: ASessionOnRecord[], now?: Date,
+  sessions?: ASessionOnRecord[], now?: Date, fromTheRecord?: ReadonlyMap<string, AMorningLine>,
 ): AMorningLine[] {
   const before = theWorkingDayBefore(today, workingDays);
   const out: AMorningLine[] = [];
@@ -652,10 +698,12 @@ export function theCheckInsNotMade(
     if (hers.has(p.id) || p.managingOnly || p.left) continue;
     const who = names.get(p.id);
     if (!who) continue;
+    const notMoved = fromTheRecord?.get(p.id);
+    if (notMoved) out.push(notMoved);
     const day = sessions && now ? theirDay(p.id, sessions, now, zone) : null;
     out.push(...theCheckInLines(p.id, who, day, lastCheckIn, firstOpened, today, before, workingDays, zone));
     const credit = day && !day.lateToday && !day.missedDays.length ? onTimeSaid(who, day, today) : null;
-    if (credit) out.push({ text: credit, rank: 14 });
+    if (credit) out.push({ text: credit, rank: 14, boardOnly: true });
   }
   return out.sort((a, b) => a.rank - b.rank);
 }
@@ -665,7 +713,7 @@ export function theCheckInsNotMade(
  * people said that she has to settle), what is due in the next seven days, and who has not checked in. No target part: there is no
  * number to count.
  */
-export function theMatterDirectMorning(input: { groundId: string; label: string; board: any; people: TheCollectionsMorningInput['people']; hers: ReadonlySet<string>; waits: AWaitOnRecord[]; items: { kind: string; name: string; dueAt: Date | string | null; ownerParticipantId: string | null }[]; lastCheckIn: Record<string, Date | null>; firstOpened: Record<string, Date | null>; sessions?: ASessionOnRecord[]; workingDays: number[] | null; now: Date; zone: string }): TheDirectMorning {
+export function theMatterDirectMorning(input: { groundId: string; label: string; board: any; people: TheCollectionsMorningInput['people']; hers: ReadonlySet<string>; waits: AWaitOnRecord[]; items: { kind: string; name: string; dueAt: Date | string | null; ownerParticipantId: string | null }[]; lastCheckIn: Record<string, Date | null>; firstOpened: Record<string, Date | null>; sessions?: ASessionOnRecord[]; workingDays: number[] | null; now: Date; zone: string; records?: ReadonlyMap<string, AStoredPersonsRecord> }): TheDirectMorning {
   const today = keyIn(input.now, input.zone);
   const names = theNamesToCall(input.people.map((p) => ({ id: p.id, name: p.name })));
   const name = (pid: string | null) => (pid ? names.get(pid) ?? null : null);
@@ -693,20 +741,21 @@ export function theMatterDirectMorning(input: { groundId: string; label: string;
     const m = /^People in this check-in said different things about (.+?), so it needs settling\.?$/i.exec(String(d.question ?? '').trim());
     if (m) needs.push({ text: `People said different things about ${m[1]}, so settle it with them.`, rank: 5 });
   }
-  if (!needs.length) needs.push({ text: 'Nothing is waiting on you today.', rank: 6 });
   const lastDay = plus(today, 7);
   const due = input.items.filter((i) => i.dueAt && keyIn(new Date(i.dueAt), 'UTC') >= today && keyIn(new Date(i.dueAt), 'UTC') <= lastDay)
     .sort((a, b) => new Date(a.dueAt as any).getTime() - new Date(b.dueAt as any).getTime())
-    .map((i) => ({ text: `${capital(stop(i.name))} is due ${aDayFromToday(keyIn(new Date(i.dueAt as any), 'UTC'), today)}${name(i.ownerParticipantId) ? `, and ${name(i.ownerParticipantId)} has it` : ''}.`, rank: 7 }));
-  const team = theCheckInsNotMade(input.people, input.hers, input.lastCheckIn, input.firstOpened, today, input.workingDays, input.zone, names, input.sessions, input.now);
+    /* What is due this week is the team's to deliver: on the board, never in the message. */
+    .map((i) => ({ text: `${capital(stop(i.name))} is due ${aDayFromToday(keyIn(new Date(i.dueAt as any), 'UTC'), today)}${name(i.ownerParticipantId) ? `, and ${name(i.ownerParticipantId)} has it` : ''}.`, rank: 7, boardOnly: true }));
+  const team = theCheckInsNotMade(input.people, input.hers, input.lastCheckIn, input.firstOpened, today, input.workingDays, input.zone, names, input.sessions, input.now, theRecordLines(input.people, input.hers, names, input.records, 'matter'));
+  const { parts, nothing } = withNothingNeedsYou([
+    { key: 'needsYou', heading: 'What needs you today', lead: 'Needs you today:', lines: needs },
+    { key: 'closing', heading: 'Due in the next seven days', lead: 'Due this week:', lines: due },
+    { key: 'team', heading: 'Your team today', lead: 'Your team:', lines: team },
+  ]);
   return {
     groundId: input.groundId, label: input.label, kind: 'matter',
-    parts: [
-      { key: 'needsYou', heading: 'What needs you today', lead: 'Needs you today:', lines: needs },
-      { key: 'closing', heading: 'Due in the next seven days', lead: 'Due this week:', lines: due },
-      { key: 'team', heading: 'Your team today', lead: 'Your team:', lines: team },
-    ],
-    subjectAfterTheName: first ?? `today on ${input.label}`,
+    parts,
+    subjectAfterTheName: first ?? (nothing ? 'nothing needs you today' : `today on ${input.label}`),
   };
 }
 
@@ -736,7 +785,8 @@ export function theParagraph(mornings: TheDirectMorning[], room: number): { text
   const several = mornings.length > 1;
   type Piece = { m: number; p: number; l: number; text: string; rank: number };
   const pieces: Piece[] = [];
-  mornings.forEach((m, mi) => m.parts.forEach((part, pi) => part.lines.forEach((line, li) => pieces.push({ m: mi, p: pi, l: li, text: sentence(line.text), rank: line.rank }))));
+  /* A line marked for the board alone never goes in the message. */
+  mornings.forEach((m, mi) => m.parts.forEach((part, pi) => part.lines.forEach((line, li) => { if (!line.boardOnly) pieces.push({ m: mi, p: pi, l: li, text: sentence(line.text), rank: line.rank }); })));
   const kept = new Set(pieces.map((_, i) => i));
   const say = () => {
     const out: string[] = [];
@@ -744,7 +794,7 @@ export function theParagraph(mornings: TheDirectMorning[], room: number): { text
       const bits: string[] = [];
       m.parts.forEach((part, pi) => {
         const ls = pieces.map((x, i) => ({ x, i })).filter(({ x, i }) => kept.has(i) && x.m === mi && x.p === pi).map(({ x }) => x.text);
-        if (ls.length) bits.push(`${part.lead} ${ls.join(' ')}`);
+        if (ls.length) bits.push(part.lead ? `${part.lead} ${ls.join(' ')}` : ls.join(' '));
       });
       if (bits.length) out.push(`${several ? `In “${m.label}”. ` : ''}${bits.join(' ')}`);
     });
@@ -752,7 +802,8 @@ export function theParagraph(mornings: TheDirectMorning[], room: number): { text
   };
   let text = say();
   /* Leave out the lowest-ranked line, then the next, until it fits; the first line of each check-in's target always stays. */
-  const order = pieces.map((x, i) => ({ x, i })).filter(({ x }) => !(x.p === 0 && x.l === 0)).sort((a, b) => b.x.rank - a.x.rank || b.i - a.i);
+  const firstOfEach = new Set(mornings.map((_, mi) => pieces.findIndex((x) => x.m === mi)));
+  const order = pieces.map((x, i) => ({ x, i })).filter(({ i }) => !firstOfEach.has(i)).sort((a, b) => b.x.rank - a.x.rank || b.i - a.i);
   let leftOut = 0;
   for (const { i } of order) {
     if (text.length <= room) break;
@@ -763,10 +814,12 @@ export function theParagraph(mornings: TheDirectMorning[], room: number): { text
   return { text, leftOut };
 }
 
-/** The email: the same four parts, each under its heading, and the link to the board. */
+/** The email: the same parts as the message, each under its heading, and the link to the board. A line for the board alone is left out. */
 export function theEmailParts(mornings: TheDirectMorning[]): { heading: string; lines: string[] }[] {
   const several = mornings.length > 1;
-  return mornings.flatMap((m) => m.parts.filter((p) => p.lines.length).map((p) => ({ heading: several ? `${p.heading}, in ${m.label}` : p.heading, lines: p.lines.map((l) => sentence(l.text)) })));
+  return mornings.flatMap((m) => m.parts
+    .map((p) => ({ heading: several ? `${p.heading}, in ${m.label}` : p.heading, lines: p.lines.filter((l) => !l.boardOnly).map((l) => sentence(l.text)) }))
+    .filter((p) => p.lines.length));
 }
 
 export function theSubject(firstName: string | null | undefined, mornings: TheDirectMorning[]): string {
@@ -818,6 +871,8 @@ export async function theDirectMorningFor(
   }
   const kept = ground.overWhatsApp === false;
   const sessions = checkIns as ASessionOnRecord[];
+  /* Each person's stored record, read only (never rebuilt here), where the organisation keeps judgements of a person on. */
+  const records = await theStoredRecords(prisma, ground.organizationId, people.filter((p) => !p.isTheLead && !p.managingOnly && !p.left).map((p) => p.id), ground.id);
   const nudgeable = { mayBeNudged: whoMayBeNudged(people, hers, sessions, now, zone) };
 
   const waitsAll: AWaitOnRecord[] = ((await Promise.resolve(prisma?.groundDependency?.findMany?.({ where: { groundId: ground.id } })).catch(() => [])) ?? []) as any[];
@@ -830,7 +885,7 @@ export async function theDirectMorningFor(
     const served = opts.board?.collections ?? await theCollectionsBoardFor(prisma, ground.id, { runsIt: true, participantId: leadRow }, now).catch(() => null);
     const bills = await withTheEventsSaid(prisma, theBillsThisReaderMayRead(await theBillsOnRecord(prisma, ground.id), { runsIt: true, participantId: leadRow }), { userId: opts.leadUserId, isTheLead: true }, zone).catch(() => []);
     return {
-      ...theCollectionsDirectMorning({ groundId: ground.id, label: ground.label, billWord: collections.billWord, bills, served, people, hers, waits: openWaits, lastCheckIn, firstOpened, sessions, workingDays: ground.workingDays ?? null, now, zone }),
+      ...theCollectionsDirectMorning({ groundId: ground.id, label: ground.label, billWord: collections.billWord, bills, served, people, hers, waits: openWaits, lastCheckIn, firstOpened, sessions, workingDays: ground.workingDays ?? null, now, zone, records }),
       ...nudgeable,
       ...(kept ? { keptInTheApp: true } : {}),
     };
@@ -838,7 +893,7 @@ export async function theDirectMorningFor(
   if (!isASalesKind(ground.kindOfWork)) {
     const items: any[] = ((await Promise.resolve(prisma?.workItem?.findMany?.({ where: { groundId: ground.id } })).catch(() => [])) ?? []) as any[];
     return {
-      ...theMatterDirectMorning({ groundId: ground.id, label: ground.label, board: opts.board, people, hers, waits: openWaits, items, lastCheckIn, firstOpened, sessions, workingDays: ground.workingDays ?? null, now, zone }),
+      ...theMatterDirectMorning({ groundId: ground.id, label: ground.label, board: opts.board, people, hers, waits: openWaits, items, lastCheckIn, firstOpened, sessions, workingDays: ground.workingDays ?? null, now, zone, records }),
       ...nudgeable,
       ...(kept ? { keptInTheApp: true } : {}),
     };
@@ -854,9 +909,24 @@ export async function theDirectMorningFor(
   return {
     ...theSalesDirectMorning({
       board: opts.board, groundId: ground.id, label: ground.label, hers, people, waits: open, deals, carried, sales, lastCheckIn, firstOpened, sessions,
-      workingDays: ground.workingDays ?? null, now, zone, lines,
+      workingDays: ground.workingDays ?? null, now, zone, lines, records,
     }),
     ...nudgeable,
     ...(kept ? { keptInTheApp: true } : {}),
   };
+}
+
+/**
+ * Each person's stored record in this check-in, by their place in it, read only. Empty where the organisation keeps judgements of a
+ * person off (nothing is built for its people then, and nothing that reads one is said), or where none is kept yet.
+ */
+export async function theStoredRecords(prisma: any, organizationId: string | null | undefined, participantIds: string[], groundId: string): Promise<Map<string, AStoredPersonsRecord>> {
+  const out = new Map<string, AStoredPersonsRecord>();
+  if (!participantIds.length || !prisma?.personRecord?.findUnique) return out;
+  if (!(await thePersonJudgementsAreOn(prisma, organizationId))) return out;
+  for (const id of participantIds) {
+    const r = await readThePersonsRecord(prisma, id);
+    if (r && r.groundId === groundId) out.set(id, r);
+  }
+  return out;
 }

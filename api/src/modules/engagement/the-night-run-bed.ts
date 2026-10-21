@@ -95,3 +95,17 @@ export const theLeadOf = (g: AGroundOfTheRun): { userId: string; firstName: stri
   const p = R.participants.find((x: any) => x.userId === R.ground.initiatorId);
   return { userId: R.ground.initiatorId, firstName: p?.user?.firstName ?? '' };
 };
+
+/**
+ * The same database, with each person's record kept as the run would have kept it (board/the-persons-record-bed.ts: rebuilt each evening
+ * a check-in finished, and once more on Tuesday 20 October in the morning). Where judgements of a person are off, nothing is kept.
+ */
+export async function theNightRunsDatabaseWithRecords(g: AGroundOfTheRun, opts: { directMorning?: boolean; judgements?: boolean } = {}) {
+  const { theRunRebuiltEachEvening, theRunAsADatabase, aPersonRecordTable } = await import('../board/the-persons-record-bed');
+  const { rebuildThePersonsRecords } = await import('../board/the-persons-record-store');
+  const table = opts.judgements === false ? aPersonRecordTable() : await theRunRebuiltEachEvening(g, rebuildThePersonsRecords);
+  if (opts.judgements === false) await rebuildThePersonsRecords(theRunAsADatabase(g, { judgements: false, personRecord: table }), N[g].ground.id, new Date('2026-10-20T08:00:00Z'));
+  const db = theNightRunsDatabase(g, opts);
+  db.personRecord = table;
+  return db;
+}
