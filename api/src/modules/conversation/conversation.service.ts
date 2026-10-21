@@ -314,6 +314,7 @@ import { READ_WHAT_THEY_PROMISED, WHAT_THEY_PROMISED_SCHEMA, theOnesToKeep } fro
 import { theFullerPromise, nameTwoDifferentDates } from './the-same-promise-said-more-fully';
 import { aPromiseSomebodyElseMade } from './a-promise-somebody-else-made';
 import { clearTheWaitsSaidDone, clearTheWaitsAnEventEnded } from './a-wait-said-done-is-cleared';
+import { aWaitForTheirCheckIn, removeTheWaitsForACheckIn } from './a-wait-for-a-check-in-is-not-a-wait';
 import { keepThePromisesSaidDone } from './a-promise-said-done-is-kept';
 import { theReleaseOneSalesBoardIsOnFor } from '../board/release-one-sales-board';
 import { aCollectionsCheckInWithRelease2 } from '../grounds/release-2-collections';
@@ -7501,6 +7502,9 @@ ${told}` : '';
     )
       /* Then every open wait on this check-in that either side has now said is done is cleared, on the day it was said
          (Hafsah's point 14, Release 1). After both, so it reads this check-in's lines and its newest waits. */
+      /* A wait for somebody's check-in was never a wait on their work: any recorded before the rule is removed (final check, item 1). */
+      .then(() => removeTheWaitsForACheckIn(this.prisma, checkIn.groundId))
+      .then((n) => { if (n) this.logger.log(`Check-in ${checkIn.id}: removed ${n} wait(s) that were only for somebody's check-in.`); })
       .then(() => clearTheWaitsSaidDone(this.prisma, checkIn.groundId))
       .then((n) => { if (n) this.logger.log(`Check-in ${checkIn.id}: cleared ${n} wait(s) somebody said were done.`); })
       /* And every wait for an event, in any of the organisation's check-ins, that somebody has now said happened (messages test, fourth run). */
@@ -11558,6 +11562,8 @@ ${told}` : '';
       const onLabel = onParticipantId ? null : (d.onLabel?.trim() || d.onName?.trim() || null);
       /* Nobody waits on themselves: what is their own to do is not a wait (request 111 e). */
       if (aWaitOnOneself({ fromParticipantId: participantId, onParticipantId, onLabel })) continue;
+      /* A wait for somebody's check-in is not a wait on their work: it is never recorded (final check, item 1). */
+      if (aWaitForTheirCheckIn({ what: d.what, onParticipantId, onLabel }, ground.participants.map((p) => [p.user?.firstName ?? '', p.user?.lastName ?? ''].filter(Boolean)))) continue;
       const key = normalise(d.what);
 
       // Same person waiting on the same party for roughly the same thing.
