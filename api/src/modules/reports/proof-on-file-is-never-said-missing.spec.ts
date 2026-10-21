@@ -32,3 +32,15 @@ describe('a line that says proof on file is missing', () => {
     expect(said).toContain('Savannah Cafe, a sale Participant A said was made: a payment record for a deposit is on file, KES 15,000 of KES 30,000. It is sold on a deposit and not paid in full.');
   });
 });
+
+describe('and nowhere else in the judgement', () => {
+  it('"There is no payment record or signed order on file for either sale." about Participant A and Participant C is left out', () => {
+    const judgement = {
+      theGap: 'Participant B reports that the price is a hurdle. Participant A has no proof of payment on file for Kilele Hotel.',
+      whatThisCannotTellYou: [{ why: 'There is no payment record or signed order on file for either sale.', about: '', toKnow: 'Ask Participant A and Participant C for written proof of each sale.' }],
+    };
+    const out = withoutAsksForProofOnFile(judgement, SALES, whoIs);
+    expect(out.judgement.whatThisCannotTellYou).toEqual([]);
+    expect(out.judgement.theGap).toBe('Participant B reports that the price is a hurdle.');
+  });
+});

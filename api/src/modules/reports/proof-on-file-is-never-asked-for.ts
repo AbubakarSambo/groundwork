@@ -118,10 +118,16 @@ export function withoutAsksForProofOnFile<J extends Record<string, any>>(judgeme
     out.whatThisCannotTellYou = (out.whatThisCannotTellYou as any[]).filter((x) => {
       const all = [x?.why, x?.about, x?.toKnow].map((t) => String(t ?? '')).join(' ');
       const named = theSalesNamedIn(all, sales);
-      const gone = named.length > 0 && ABOUT_PAYMENT.test(all) && named.every((s) => s.paid);
+      const gone = (named.length > 0 && ABOUT_PAYMENT.test(all) && named.every((s) => s.paid)) || saysProofOnFileIsMissing(all, sales, whoIs);
       if (gone) leftOut.push(String(x?.about ?? x?.why ?? ''));
       return !gone;
     });
+  }
+  /* And the gap, sentence by sentence. */
+  if (typeof out.theGap === 'string') {
+    const sentences = out.theGap.split(/(?<=[.!?])\s+/);
+    const kept = sentences.filter((x: string) => !saysProofOnFileIsMissing(x, sales, whoIs));
+    if (kept.length < sentences.length) { leftOut.push(...sentences.filter((x: string) => !kept.includes(x))); out.theGap = kept.join(' '); }
   }
   return { judgement: out as J, leftOut };
 }
