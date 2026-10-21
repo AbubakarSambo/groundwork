@@ -121,7 +121,7 @@ export async function yourTeamPersonByPerson(
       name,
       role,
       delivered,
-      record: theirs ? theRecordInWords(theirs.record, theirs.coaching, { self: false, firstName: first }, label) : null,
+      record: theirs ? theRecordForTheBoard(theirs, first, label, o.kind) : null,
       whereTheyStand: stand,
       fromYou: done.filter((d) => d.participantId === p.id).map((d) => whatYouDidSaid(d, first, zone)),
       actions: theActionsFor(first, o.kind, openItems, others, delivered, stand),
@@ -132,6 +132,15 @@ export async function yourTeamPersonByPerson(
     note: 'Each person’s part is read from what they said in their check-ins and what is on file. It changes only when something new comes in. Only you see this.',
     people,
   };
+}
+
+/**
+ * Their record as their part of the board shows it. Off a sales check-in, what they said was paid or done is already what they delivered
+ * (each line with what shows it, or that nothing does), so it is said once, there, and not again in the record.
+ */
+function theRecordForTheBoard(stored: AStoredPersonsRecord, first: string, label: string, kind: AKindOfCheckIn): TheRecordInWords {
+  const words = theRecordInWords(stored.record, stored.coaching, { self: false, firstName: first }, label);
+  return kind === 'sales' ? words : { ...words, parts: words.parts.filter((p) => !/^What .+ said and what shows it$/.test(p.heading)) };
 }
 
 /* ------------------------------------------------------------------------------------------------ the lead's one-tap actions */

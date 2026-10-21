@@ -1006,7 +1006,39 @@ export interface ANudgeServed {
   nudgedAt: string | null
 }
 
+/**
+ * YOUR TEAM, PERSON BY PERSON (api board/your-team-person-by-person.ts): served to the lead who runs the check-in alone, with the direct
+ * morning on. Every sentence is the server's. `whereTheyStand` and `record` are absent where the organisation keeps judgements of a person off.
+ */
+export interface AnActionOnAPerson {
+  kind: 'praise' | 'plan' | 'deadline' | 'reassign'
+  label: string
+  does: string
+  suggested?: string
+  items?: { id: string; name: string; due: string | null }[]
+  to?: { participantId: string; name: string }[]
+}
+export interface APersonOnYourBoard {
+  participantId: string
+  name: string
+  role: string | null
+  delivered: { heading: string; proven: string[]; onlySaid: string[]; empty: string | null }
+  record: { heading: string; note: string; parts: { heading: string; says: string; toChange: string | null; evidence: string[] }[]; coaching: { said: string; since: string }[]; coachingEmpty: string } | null
+  whereTheyStand: { standing: 'doing well' | 'improving' | 'needs coaching' | 'needs a hard conversation'; says: string; evidence: string[] } | null
+  fromYou: string[]
+  actions: AnActionOnAPerson[]
+}
+export interface YourTeamServed {
+  heading: string
+  note: string
+  people: APersonOnYourBoard[]
+}
+
 export const boardApi = {
+  /** One tap of the lead on one person's part of her board. The server refuses anybody but the lead who runs the check-in. */
+  actOnAPerson: (groundId: string, participantId: string, body: { kind: AnActionOnAPerson['kind']; text?: string; itemId?: string; due?: string; toParticipantId?: string }) =>
+    apiClient.post<{ says: string }>(`/grounds/${groundId}/board/people/${participantId}/actions`, body).then((r) => r.data),
+
   /** The lead's one-tap nudge. The server refuses anybody but the lead who runs the check-in. */
   nudge: (groundId: string, participantId: string) =>
     apiClient.post<{ nudged: boolean; at: string | null; says: string; channel?: 'whatsapp' | 'email' | null }>(`/grounds/${groundId}/board/nudge/${participantId}`).then((r) => r.data),
