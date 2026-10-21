@@ -126,6 +126,18 @@ export function theRoundCappedAtThePlan(open: number, planned: number | null, ro
   return planned && planned > 0 && !ranPastThePlan ? Math.min(Math.max(open, 1), planned) : Math.max(open, 1);
 }
 
+/**
+ * WHO HOLDS THE SESSION CLOCK: somebody who checks in, has been let in (decision 77), and has joined. Somebody invited by email who has
+ * not opened the invitation yet (no sign-in, never joined) has a first session waiting, and it read as the check-in's own session: Grace
+ * added Sam on the seventh day, and People and setup said "Session 1 of 15. Session 2 finished on 14 October." (browser test, 21 October).
+ */
+export function holdsTheClock(p: { managingOnly?: boolean | null; userId?: string | null; joinedAt?: Date | string | null } & Record<string, any>, notLetInYet: (p: any) => boolean): boolean {
+  if (p.managingOnly) return false;
+  if (notLetInYet(p)) return false;
+  if ('userId' in p && p.userId == null && !p.joinedAt) return false;
+  return true;
+}
+
 export function theSessionClock(
   rows: (ASessionRow & { participantId: string })[],
   whoChecksIn: ReadonlySet<string>,
