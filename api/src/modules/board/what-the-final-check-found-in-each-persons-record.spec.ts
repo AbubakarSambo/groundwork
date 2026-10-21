@@ -200,3 +200,14 @@ describe('Wanjiru, who runs the fee notes, is not told she raised blockers when 
     expect(JSON.stringify(own)).not.toMatch(/raised four blockers/);
   });
 });
+
+describe('Grace reads Kevin’s Savannah Cafe as sold on a deposit (item 10)', () => {
+  it('never "a payment record shows it"', async () => {
+    const { whatTheyDelivered } = await import('./what-the-lead-reads-about-each-person');
+    const board = { workRecords: [{ section: 'Deal grid', rows: [
+      { kind: 'deal', name: 'Savannah Cafe', group: 'won', ownerParticipantId: 'p-kevin', fields: { Units: '6', Value: 'KES 30,000' }, paymentRecord: true, mpesaCode: 'RBT7Y3KQ2P', deposit: { paid: 15000, of: 30000, currency: 'KES', says: 'Deposit paid, KES 15,000 of KES 30,000.' } },
+    ] }] };
+    const d = whatTheyDelivered({ participantId: 'p-kevin', name: 'Kevin', role: null, kind: 'sales', board, stored: null });
+    expect(d.proven).toEqual(['Savannah Cafe is won for 6 units on a deposit, and the M-Pesa code RBT7Y3KQ2P shows it. Deposit paid, KES 15,000 of KES 30,000.']);
+  });
+});

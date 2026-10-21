@@ -238,6 +238,11 @@ export function whatTheyDelivered(o: { participantId: string; name: string; role
     const proven = rows.filter((r) => r.group === 'won').map((r) => {
       const amount = amountOf(r);
       const units = unitsOf(r);
+      /* A deposit only is said as a deposit, with the code that shows it, never "a payment record" (final real-model check, item 10). */
+      if (r.deposit?.says) {
+        const code = r.mpesaCode ? `, and the M-Pesa code ${r.mpesaCode} shows it` : '';
+        return `${r.name} is won${units ? ` for ${units} ${units === 1 ? 'unit' : 'units'}` : ''} on a deposit${code}. ${r.deposit.says}`;
+      }
       const shows = whatShowsIt(r, claims, o.name);
       return `${r.name} is won${units ? ` for ${units} ${units === 1 ? 'unit' : 'units'}` : ''}${amount ? `${units ? ' at' : ' for'} ${amount}` : ''}${shows ? `, and ${shows} shows it` : ''}.`;
     });
