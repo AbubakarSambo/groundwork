@@ -351,7 +351,10 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
       }
       case 'planning-ahead': {
         /* A deal the record says cannot buy now ("no budget this year", "until January") has nothing to book yet: not counted here. */
-        const toPlan = open.filter((i) => !CANNOT_BUY_NOW.test(String(((i as any).fields ?? {})['Budget stated'] ?? '')));
+        /* Off a sales team, a record the check-in holds neither a day nor a step for ("have them back", "what is due in court", read from a sentence)
+           says nothing about planning: only the ones with a day or a step are read (rebuild of the final check: Aisha and Brian on the litigation daily). */
+        const toPlan = open.filter((i) => !CANNOT_BUY_NOW.test(String(((i as any).fields ?? {})['Budget stated'] ?? '')))
+          .filter((i) => words.sales || !!i.due || !!String(i.nextStep ?? i.next ?? '').trim());
         if (!words.keepsItems || toPlan.length < 2) return read(b.key, 'Not enough yet', '', null);
         const without = toPlan.filter((i) => !hasADay(i, r.now)).length;
         const strong = without === 0 || (without === 1 && toPlan.length >= 5);

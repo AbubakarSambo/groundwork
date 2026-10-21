@@ -52,3 +52,17 @@ describe('planning ahead on My work', () => {
     expect(page.performing.behaviours.find((b: any) => b.key === 'planning-ahead')).toMatchObject({ verdict: 'Strength', happened: 'Every open deal you have has a next step and a day.' });
   });
 });
+
+describe('planning ahead off a sales team', () => {
+  it('reads no record the check-in holds neither a day nor a step for', async () => {
+    const { myWorkFrom } = await import('./my-work');
+    const row = (name: string, more: Record<string, any> = {}) => ({ id: name, kind: 'deadline', name, stage: null, group: 'open', ownerParticipantId: 'p-aisha', fields: {}, ...more });
+    const page: any = myWorkFrom({
+      reader: 'self', person: { participantId: 'p-aisha', name: 'Aisha Kamau', firstName: 'Aisha' }, leadFirst: 'Wanjiru', kindOfWork: 'a law firm matter',
+      items: [row('have them back'), row('The deadline'), row('all the witness statements'), row('the Jamii Clinics')] as any,
+      commitments: [], waitsOnThem: [], raised: [], credits: [], checkIns: [], ownLines: [], patterns: [], teamCoaching: [], helpWith: null,
+      target: null, now: new Date('2026-10-16T14:30:00Z'), timeZone: 'Africa/Nairobi',
+    } as any, 'Litigation team daily');
+    expect(page.performing.behaviours.find((b: any) => b.key === 'planning-ahead').verdict).toBe('Not enough yet');
+  });
+});
