@@ -58,7 +58,7 @@ describe('Grace’s direct morning, Tuesday 20 October, Drop Access (test), from
       { key: 'closing', heading: 'About to close', lines: ['Ngong Road Minimart pays KES 25,000 for 5 units on delivery tomorrow.'] },
       { key: 'team', heading: 'Your team today', lines: [
         /* Joseph's record (21 October): coached on proof after his first check-in, and nothing has changed since. */
-        'Joseph said 3 times that something was sold or paid, with nothing on file to show it, and took 2 of those back later. Groundwork asked for the proof and has coached Joseph on it since Monday 12 October, and nothing has changed, so call Joseph.',
+        'Joseph said 3 times that something was sold or paid with nothing on file, and took 2 back later. Groundwork asked for the proof and has coached Joseph since Monday 12 October, and nothing has changed, so call Joseph.',
         "Kevin's sale to Roysambu Gym has no proof yet, so ask Kevin for the payment record.",
         'Mercy has 2 sales with proof, so tell Mercy well done.',
         /* Nudges that get answers (20 October): each person who keeps checking in on time is credited for it, by name, facts only. */
@@ -97,7 +97,7 @@ describe('the summary she is sent, with the switch on', () => {
     expect(ctx.kind).toBe('lead-summary');
     expect(ctx.params[0]).toBe('Grace');
     expect(ctx.params[2]).toBe(`${BASE}/grounds/${DROP}/board`);
-    expect(ctx.params[1]).toBe('Target: 75 of 120 sold, 47 paid, 45 short, and the open deals cover 40. Needs you today: Juja Hardware wants 5 units at KES 4,500 instead of 5,000, and Joseph is waiting for a yes or no from Management, so get it for Joseph. Peter has been waiting on you since Thursday for a specific area to focus on. Peter is waiting for a list of leads for this week, and nobody has been named to give it, so send it or say who will. Your team: Joseph said 3 times that something was sold or paid, with nothing on file to show it, and took 2 of those back later. Groundwork asked for the proof and has coached Joseph on it since Monday 12 October, and nothing has changed, so call Joseph.');
+    expect(ctx.params[1]).toBe('Target: 75 of 120 sold, 47 paid, 45 short, and the open deals cover 40. Needs you today: Juja Hardware wants 5 units at KES 4,500 instead of 5,000, and Joseph is waiting for a yes or no from Management, so get it for Joseph. Peter has been waiting on you since Thursday for a specific area to focus on. Peter is waiting for a list of leads for this week, and nobody has been named to give it, so send it or say who will. Your team: Joseph said 3 times that something was sold or paid with nothing on file, and took 2 back later. Groundwork asked for the proof and has coached Joseph since Monday 12 October, and nothing has changed, so call Joseph.');
     const whole = TEMPLATES['lead-summary'].body.replace(/\{\{(\d+)\}\}/g, (_x: string, n: string) => ctx.params[Number(n) - 1]);
     expect(whole.length).toBeLessThanOrEqual(1024);
     const first = ctx.paramsFor.groundwork_first_contact[0];
@@ -109,7 +109,7 @@ describe('the summary she is sent, with the switch on', () => {
       'Good morning Grace.',
       'Will we reach 120 units sold by 30 October?\n75 of 120 sold, 47 paid, 45 short, and the open deals cover 40.',
       'What needs you today\nJuja Hardware wants 5 units at KES 4,500 instead of 5,000, and Joseph is waiting for a yes or no from Management, so get it for Joseph.\nPeter has been waiting on you since Thursday for a specific area to focus on.\nPeter is waiting for a list of leads for this week, and nobody has been named to give it, so send it or say who will.',
-      'Your team today\nJoseph said 3 times that something was sold or paid, with nothing on file to show it, and took 2 of those back later. Groundwork asked for the proof and has coached Joseph on it since Monday 12 October, and nothing has changed, so call Joseph.',
+      'Your team today\nJoseph said 3 times that something was sold or paid with nothing on file, and took 2 back later. Groundwork asked for the proof and has coached Joseph since Monday 12 October, and nothing has changed, so call Joseph.',
       `Your board is here ${BASE}/grounds/${DROP}/board`,
     ].join('\n\n'));
     /* Once a day: the 9am sweep does not send it again. */
@@ -180,7 +180,7 @@ describe('Wanjiru’s direct morning, Muchemi & Co (test): fee notes and the lit
         'You marked FN-004 for Kasarani Foods paid, so file the bank slip or the M-Pesa message.',
       ] },
       { heading: 'Your team today, in Fee notes', lines: [
-        'Aisha said 4 times that a client had paid, with nothing on file to show it, and took 1 of those back later. Groundwork asked for the proof and has coached Aisha on it since Monday 12 October, and nothing has changed, so call Aisha.',
+        'Aisha said 4 times that a client had paid with nothing on file, and took 1 back later. Groundwork asked for the proof and has coached Aisha since Monday 12 October, and nothing has changed, so call Aisha.',
       ] },
       { heading: 'What needs you today, in Litigation team daily', lines: [
         "Brian has been waiting since 13 October for the court's e-filing portal to be working.",

@@ -427,7 +427,8 @@ export function theTeamLines(input: TheSalesMorningInput, name: (pid: string | n
     const said: AMorningLine[] = [];
     /* Somebody Groundwork already coached in their check-ins, with nothing changed since (what-the-lead-reads-about-each-person.ts). */
     const notMoved = whoGroundworkCouldNotMove(input.records?.get(p.id) ?? null, who, 'sales');
-    if (notMoved) said.push({ text: notMoved, rank: 7 });
+    /* Rank 2: when the message has no room, kept with the decisions only she can make, before a wait, a difference to settle or a promise carried over (Wanjiru's two check-ins in one message). */
+    if (notMoved) said.push({ text: notMoved, rank: 2 });
     /* A promise to a colleague not kept, three check-ins running. */
     const carried = input.carried.find((c) => c.participantId === p.id);
     if (carried) {
@@ -477,7 +478,7 @@ function theRecordLines(people: { id: string; managingOnly?: boolean; left?: boo
     if (hers.has(p.id) || p.managingOnly || p.left) continue;
     const who = names.get(p.id);
     const line = who ? whoGroundworkCouldNotMove(records.get(p.id) ?? null, who, kind) : null;
-    if (line) out.set(p.id, { text: line, rank: 7 });
+    if (line) out.set(p.id, { text: line, rank: 2 });
   }
   return out;
 }

@@ -22,7 +22,7 @@ describe('Grace, Drop Access (test), on a normal day', () => {
   beforeAll(async () => { m = await morningOf('drop', await theNightRunsDatabaseWithRecords('drop', { directMorning: true })); });
 
   it('reads the target in one line, her decisions, and Joseph, whom Groundwork could not move', () => {
-    expect(theParagraph([m], 900).text).toBe('Target: 75 of 120 sold, 47 paid, 45 short, and the open deals cover 40. Needs you today: Juja Hardware wants 5 units at KES 4,500 instead of 5,000, and Joseph is waiting for a yes or no from Management, so get it for Joseph. Peter has been waiting on you since Thursday for a specific area to focus on. Peter is waiting for a list of leads for this week, and nobody has been named to give it, so send it or say who will. Your team: Joseph said 3 times that something was sold or paid, with nothing on file to show it, and took 2 of those back later. Groundwork asked for the proof and has coached Joseph on it since Monday 12 October, and nothing has changed, so call Joseph.');
+    expect(theParagraph([m], 900).text).toBe('Target: 75 of 120 sold, 47 paid, 45 short, and the open deals cover 40. Needs you today: Juja Hardware wants 5 units at KES 4,500 instead of 5,000, and Joseph is waiting for a yes or no from Management, so get it for Joseph. Peter has been waiting on you since Thursday for a specific area to focus on. Peter is waiting for a list of leads for this week, and nobody has been named to give it, so send it or say who will. Your team: Joseph said 3 times that something was sold or paid with nothing on file, and took 2 back later. Groundwork asked for the proof and has coached Joseph since Monday 12 October, and nothing has changed, so call Joseph.');
   });
 
   it('never names Kevin or Mercy in the message: they backed what they said, so neither is the problem', () => {
@@ -61,7 +61,7 @@ describe('Grace on a day nothing needs her', () => {
 describe('Wanjiru, Muchemi & Co (test)', () => {
   it('on fee notes reads what is owed, her decisions, and Aisha, whose payments are only said; never Njeri', async () => {
     const m = await morningOf('fees', await theNightRunsDatabaseWithRecords('fees', { directMorning: true }));
-    expect(theParagraph([m!], 900).text).toBe('Target: KES 180,000 is owed on 3 fee notes, and 2 of them have no amount on record. Nothing is paid with proof yet. Needs you today: Nyota Logistics disputes FN-008, saying the contract review was billed twice, and Brian follows it up, so decide whether to correct it. Brian has been waiting on you since 12 October for guidance on how to proceed with the double-billing claim. You marked FN-004 for Kasarani Foods paid, so file the bank slip or the M-Pesa message. Your team: Aisha said 4 times that a client had paid, with nothing on file to show it, and took 1 of those back later. Groundwork asked for the proof and has coached Aisha on it since Monday 12 October, and nothing has changed, so call Aisha.');
+    expect(theParagraph([m!], 900).text).toBe('Target: KES 180,000 is owed on 3 fee notes, and 2 of them have no amount on record. Nothing is paid with proof yet. Needs you today: Nyota Logistics disputes FN-008, saying the contract review was billed twice, and Brian follows it up, so decide whether to correct it. Brian has been waiting on you since 12 October for guidance on how to proceed with the double-billing claim. You marked FN-004 for Kasarani Foods paid, so file the bank slip or the M-Pesa message. Your team: Aisha said 4 times that a client had paid with nothing on file, and took 1 back later. Groundwork asked for the proof and has coached Aisha since Monday 12 October, and nothing has changed, so call Aisha.');
     expect(theMessage(m)).not.toMatch(/\bNjeri\b/);
   });
 
@@ -70,6 +70,20 @@ describe('Wanjiru, Muchemi & Co (test)', () => {
     expect(theEmailParts([m!]).map((p) => p.heading)).toEqual(['What needs you today']);
     expect(theMessage(m)).not.toMatch(/\bDavid\b/);
     expect(asServedOnTheBoard(m!).parts.find((p) => p.key === 'team')!.lines).toContain("Brian hasn't checked in since Friday.");
+  });
+});
+
+describe('Wanjiru’s two check-ins in one WhatsApp message', () => {
+  it('when there is no room for everything, Aisha is kept with the decisions only Wanjiru can make', async () => {
+    const fees = await morningOf('fees', await theNightRunsDatabaseWithRecords('fees', { directMorning: true }));
+    const lit = await morningOf('lit', await theNightRunsDatabaseWithRecords('lit', { directMorning: true }));
+    /* The room lead_daily_summary leaves for {{2}}: 1,024 characters, less the template's own words, her name and the link. */
+    const body = 'Good morning {{1}}. Here is today\'s summary of your check-ins. {{2}} You can open your board for the full picture here {{3}} If you would rather not hear from us here again today, reply "not now".';
+    const room = 1024 - body.replace(/\{\{\d+\}\}/g, '').length - 'Wanjiru'.length - `https://myground.work/grounds/${N.fees.ground.id}/board`.length - 4;
+    const text = theParagraph([fees!, lit!], room).text;
+    expect(text).toContain('Your team: Aisha said 4 times that a client had paid with nothing on file, and took 1 back later.');
+    expect(text).toContain('Nyota Logistics disputes FN-008');
+    expect(text.length).toBeLessThanOrEqual(room);
   });
 });
 

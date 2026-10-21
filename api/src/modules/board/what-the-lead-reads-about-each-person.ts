@@ -64,7 +64,7 @@ export function whoGroundworkCouldNotMove(stored: AStoredPersonsRecord | null | 
       if (!unproven.length) return null;
       const back = unproven.filter((x) => !!x.takenBack).length;
       const asked = unproven.some((x) => x.askedForProof);
-      return `${name} said ${times(unproven.length)} that ${whatTheySaid(unproven, kind)}, with nothing on file to show it${back ? `, and took ${back} of those back later` : ''}. Groundwork ${asked ? 'asked for the proof and has coached' : 'has coached'} ${name} on it ${since}, and ${after}, so call ${name}.`;
+      return `${name} said ${times(unproven.length)} that ${whatTheySaid(unproven, kind)} with nothing on file${back ? `, and took ${back} back later` : ''}. Groundwork ${asked ? 'asked for the proof and has coached' : 'has coached'} ${name} ${since}, and ${after}, so call ${name}.`;
     }
     case 'changes': {
       const one = r.changes.filter((x) => !x.putRight && x.what === 'units').pop();
