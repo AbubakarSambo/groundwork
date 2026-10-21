@@ -1167,6 +1167,15 @@ export class ReportsService {
     /* A deal's units are not a target (Drop Access run 1, item 27): they are not summed as one. */
     const numbers = howTheNumbersSit(withoutADealsFigure(objectivesForTheSums as any[], await theCustomersIfReleaseOne(this.prisma, groundId), (ground.participants ?? []).map((p: any) => p.user?.firstName ?? '').filter(Boolean)), answering);
     if (numbers.says) groundContextLines.push(numbers.says);
+    /*
+     * WHAT THE RECORD ALREADY COUNTS, SO A REPORT NEVER SAYS IT IS NOT KNOWN (final real-model check, item 12). The board said 40 units
+     * sold, and the report said "You do not have a current count of units sold." because Grace said she did not know it. Each target's
+     * count, as the board holds it, is given to the synthesis as a fact, beside the rule that not knowing it is not a different count.
+     */
+    const counted = await (this.prisma.groundObjective?.findMany?.({ where: { groundId, ownerParticipantId: null }, select: { name: true, target: true, count: true } }) ?? Promise.resolve([])).catch(() => [] as any[]);
+    for (const o of (counted as any[]).filter((x) => typeof x.target === 'number' && x.target > 0 && typeof x.count === 'number' && x.count > 0)) {
+      groundContextLines.push(`THE RECORD'S COUNT FOR "${o.name}": ${o.count} of ${o.target}, as the board shows it. Somebody saying they do not know this number, or that they made no sale themselves, has not said a different number: never write that the count is not known, or a difference about it.`);
+    }
     const leadSignals = Array.isArray(initiatorProfile?.signals) ? (initiatorProfile!.signals as string[]) : [];
     if (leadSignals.length) {
       groundContextLines.push(`LEAD PROFILE (from past grounds - use to add alignment recommendations at the end of the report):\n${leadSignals.map(s => `- ${s}`).join('\n')}`);
@@ -2621,7 +2630,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * on a sales check-in, a side whose every figure the other person said too, against the other's own deal, is not a difference
      * between them. Mercy said the team's 120 as Grace did, and Grace's board said they understood the goal differently.
      */
-    if (Array.isArray((result as any).divergences) && theCustomers) {
+    /* And on any check-in, a side that only says its person does not know a number is not a side (final real-model check, item 13). */
+    if (Array.isArray((result as any).divergences)) {
       const labelToId = new Map([...labelById.entries()].map(([id, l]) => [l, id]));
       const linesOf = (label: string) => {
         const id = labelToId.get(label);

@@ -7,7 +7,7 @@ import { cleanText } from '../reports/what-the-record-actually-holds';
 import { theStagesKept, type AStageOnRecord } from './a-deals-stages-are-kept';
 import { theDealWasDropped, type ADroppedDeal } from './a-deal-that-was-dropped';
 import { thePeopleAtEachCustomer } from './a-deal-that-has-stalled';
-import { theBackingDocuments, theDocumentBehind, thePaymentRecords, theSignedOrders, aPaymentRecordFor, theMPesaCodeFor, type ABackingDocument } from './a-deals-proof-is-about-that-deal';
+import { theBackingDocuments, theDocumentBehind, thePaymentRecords, theSignedOrders, aPaymentRecordFor, theMPesaCodeFor, theDepositFor, aDepositSaid, type ABackingDocument, type ADeposit } from './a-deals-proof-is-about-that-deal';
 import { aLineIsAbout } from './a-deals-value-and-buying-date';
 import { theDayTheyMeant } from '../grounds/when-a-handoff-is-due';
 import { aDaySaidInFull } from './a-day-said-in-full';
@@ -88,6 +88,8 @@ export interface ADealOnRecord {
    * counts. Where the caller has not asked for the rule (Release 1's switch off), it is `proven`, as before.
    */
   paid: boolean;
+  /** Where the only payment records are a deposit (theDepositFor): backs the sale, never said as paid. */
+  deposit?: ADeposit | null;
   /** Each stage it was put at, with its day, where they are kept (a-deals-stages-are-kept). Empty for a deal kept before. */
   stagesKept?: AStageOnRecord[];
   /** The day of the line its stage came from, or null for one added on the board. */
@@ -167,6 +169,10 @@ export interface ACountFromTheDeals {
    * backs, and those that rest on what somebody said. Only where the payment record is read (Release 1's sales board).
    */
   paidDeals?: { name: string; holds: number }[];
+  /** Backed by a deposit only: sold, and not paid in full (item 10 of the final check). */
+  depositDeals?: { name: string; holds: number; deposit: ADeposit }[];
+  /** What those deals hold, in the aim's measure. */
+  deposit?: number;
   signedDeals?: { name: string; holds: number; paysWhen: string | null }[];
   saidDeals?: { name: string; holds: number }[];
   /** Said to be won, and not counted, because the lead's rule needs a payment or a signed order and neither is on record. */
@@ -232,11 +238,16 @@ export function theCountFromTheDeals(
   let leftOut = 0;
   let currency: string | null = null;
   const paidDeals: { name: string; holds: number }[] = [];
+  const depositDeals: { name: string; holds: number; deposit: ADeposit }[] = [];
   const signedDeals: { name: string; holds: number; paysWhen: string | null }[] = [];
   const saidDeals: { name: string; holds: number }[] = [];
   const named = deals.some((d) => d.signed !== undefined);
+  /* Paid in full: a payment record, and not a deposit only. */
+  const paidInFull = (d: ADealOnRecord) => d.paid && !d.deposit;
+  let deposit = 0;
   const sortInto = (d: ADealOnRecord, holds: number) => {
-    if (d.paid) paidDeals.push({ name: d.name, holds });
+    if (d.paid && d.deposit) { depositDeals.push({ name: d.name, holds, deposit: d.deposit }); deposit += holds; }
+    else if (d.paid) paidDeals.push({ name: d.name, holds });
     else if (d.proven && d.signed) signedDeals.push({ name: d.name, holds, paysWhen: d.paysWhen ?? null });
     else if (!d.proven) saidDeals.push({ name: d.name, holds });
   };
@@ -247,7 +258,7 @@ export function theCountFromTheDeals(
     for (const { d, m } of each) {
       if (!m || (currency && m.currency && m.currency !== currency)) { leftOut += 1; continue; }
       count += m.amount;
-      if (d.paid) proven += m.amount;
+      if (paidInFull(d)) proven += m.amount;
       else if (d.proven) shown += m.amount;
       sortInto(d, m.amount);
     }
@@ -256,28 +267,29 @@ export function theCountFromTheDeals(
       const u = theUnitsOf(d.fields);
       if (u == null) { leftOut += 1; continue; }
       count += u;
-      if (d.paid) proven += u;
-      else if (d.proven) shown += u;
+      if (paidInFull(d)) proven += u;
+      else if (d.proven || d.paid) shown += u;
       sortInto(d, u);
     }
   } else {
     count = won.length;
-    proven = won.filter((d) => d.paid).length;
-    shown = won.filter((d) => !d.paid && d.proven).length;
+    proven = won.filter(paidInFull).length;
+    shown = won.filter((d) => !paidInFull(d) && (d.proven || d.paid)).length;
     for (const d of won) sortInto(d, 1);
   }
+  const onADeposit = deposit ? (what.counts === 'value' ? `, and ${money(currency, deposit)} on a deposit` : `, and ${read(deposit)} on a deposit`) : '';
   const said = count === 0
     ? 'Nothing has been sold yet.'
     : what.counts === 'value'
-      ? `${money(currency, count)} sold, ${money(currency, proven)} with proof of payment.`
-      : `${read(count)} sold, ${read(proven)} with proof of payment.`;
+      ? `${money(currency, count)} sold, ${money(currency, proven)} with proof of payment${onADeposit}.`
+      : `${read(count)} sold, ${read(proven)} with proof of payment${onADeposit}.`;
   const unsaid = what.counts === 'value' ? 'what it is worth' : 'how many units';
   const out = leftOut
     ? ` ${leftOut === 1 ? '1 won deal has' : `${read(leftOut)} won deals have`} no record of ${unsaid}, so ${leftOut === 1 ? 'it is' : 'they are'} not counted.`
     : '';
   return {
     counts: what.counts, count, proven, shown, leftOut, thing: what.thing, currency, says: `${said}${out}`,
-    ...(named ? { paidDeals, signedDeals, saidDeals } : {}),
+    ...(named ? { paidDeals, signedDeals, saidDeals, ...(depositDeals.length ? { depositDeals, deposit } : {}) } : {}),
     ...(notCountedDeals.length ? { notCountedDeals } : {}),
   };
 }
@@ -336,6 +348,8 @@ export function theSalesAnswer(c: ACountFromTheDeals, target: number, likely: nu
     const signed = c.signedDeals ?? [];
     const said = c.saidDeals ?? [];
     if (paid.length) parts.push(`${n(sum(paid))} ${isOrAre(sum(paid))} paid (${names(paid)})`);
+    const deposits = c.depositDeals ?? [];
+    if (deposits.length) parts.push(`${n(sum(deposits))} ${isOrAre(sum(deposits))} on a deposit (${deposits.map((x) => `${x.name}, ${aDepositSaid(x.deposit).replace(/^Deposit paid, /, '').replace(/\.$/, '')} paid`).join('; ')})`);
     if (signed.length) {
       const pays = signed.length === 1 && signed[0].paysWhen ? `, which ${signed[0].paysWhen}` : '';
       parts.push(`${n(sum(signed))} ${isOrAre(sum(signed))} on a signed order (${names(signed)})${pays}`);
@@ -458,6 +472,8 @@ export async function theDealsOnRecord(prisma: any, groundId: string, opts: { pa
       firstOnRecordAt: new Date(i.createdAt),
       proven,
       paid: opts.paymentRecord ? paidOnALine.length > 0 || paymentFiled.length > 0 : proven,
+      /* Only the payment records on the lines can say a deposit; a payment filed on the deal is read as paid, as before. */
+      deposit: opts.paymentRecord && paidOnALine.length && !paymentFiled.length ? theDepositFor({ name: i.name, fields }, payments) : null,
       paidOn: opts.paymentRecord
         ? [...paidOnALine, ...paymentFiled.map((e) => e.createdAt)].sort((a, b) => a.getTime() - b.getTime())[0] ?? null
         : null,

@@ -218,13 +218,15 @@ export function theTargetLines(board: any, now: Date, zone: string): { lines: AM
   const counted = aim.fromTheDeals ?? null;
   const sold = Number(counted?.sold ?? aim.count ?? 0);
   const paid = counted && typeof counted.proven === 'number' ? Number(counted.proven) : null;
+  /* Sold on a deposit only is said as such, never as paid (final real-model check, item 10). */
+  const onADeposit = counted && typeof counted.deposit === 'number' && counted.deposit > 0 ? Number(counted.deposit) : 0;
   const by = theAimsDay(aim.name) ?? null;
   const rows = theDealRows(board);
   const likely = rows.filter((r) => r.group === 'likely' && !isWon(r));
   const likelyUnits = likely.reduce((n, r) => n + (theUnitsOf(r.fields) ?? 0), 0);
   /* THE TARGET IN ONE LINE (Hafsah, 21 October): sold, paid, what is likely by the target's day, the gap, and whether the open deals cover
      it. "75 of 120 sold, 47 paid, 45 short, and the open deals cover 40." */
-  const said = [`${commas(sold)} of ${commas(target)} sold`, ...(paid !== null ? [`${commas(paid)} paid`] : []), ...(likelyUnits > 0 ? [`${commas(likelyUnits)} more likely${by ? ` by ${by}` : ''}`] : [])].join(', ');
+  const said = [`${commas(sold)} of ${commas(target)} sold`, ...(paid !== null ? [`${commas(paid)} paid`] : []), ...(onADeposit ? [`${commas(onADeposit)} on a deposit`] : []), ...(likelyUnits > 0 ? [`${commas(likelyUnits)} more likely${by ? ` by ${by}` : ''}`] : [])].join(', ');
   const gap = target - sold - likelyUnits;
   if (gap <= 0) {
     return { lines: [{ text: sold >= target ? `${said}, and you have reached the target.` : `${said}, and with the likely deals you reach the target.`, rank: 0 }], gap: Math.max(0, gap), target, heading };
@@ -233,8 +235,9 @@ export function theTargetLines(board: any, now: Date, zone: string): { lines: AM
   const listed = new Set(((board?.toCloseTheGap?.deals ?? []) as any[]).map((d) => String(d?.name ?? '').trim().toLowerCase()).filter(Boolean));
   const open = rows.filter((r) => !isWon(r) && r.group !== 'likely' && (listed.size ? listed.has(String(r.name).trim().toLowerCase()) : OPEN_GROUPS.has(String(r.group))));
   const cover = open.reduce((n, r) => n + (theUnitsOf(r.fields) ?? 0), 0);
+  /* How much the open deals hold against the gap, never only "they cover it" (final real-model check, item 11). */
   const text = cover >= gap
-    ? `${said}, ${commas(gap)} short, and the open deals cover it if they close.`
+    ? `${said}, ${commas(gap)} short, and the open deals hold ${commas(cover)}, which covers it if they close.`
     : cover > 0
       ? `${said}, ${commas(gap)} short, and the open deals cover ${commas(cover)}.`
       : `${said}, ${commas(gap)} short, and no open deal covers any of it.`;

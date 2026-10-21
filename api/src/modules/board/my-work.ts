@@ -236,6 +236,9 @@ const isFinished = (r: AServedRecord, lastStage: string | null) =>
   !r.lost && (r.group === 'won' || (!!lastStage && String(r.stage ?? '').toLowerCase() === lastStage.toLowerCase()));
 
 function theProofOf(r: TheRecordForOnePerson['items'][number]): { proven: boolean; says: string } {
+  /* A deposit only is sold, and not paid with proof: "Deposit paid, KES 15,000 of KES 30,000." (final real-model check, item 10). */
+  const deposit = (r as any).deposit as { says?: string } | undefined;
+  if (deposit?.says && !r.signedOrder) return { proven: false, says: deposit.says.replace(/\.$/, '') };
   const proof = (r.evidence ?? []).find((e) => e.countsAsProof);
   if (proof) return { proven: true, says: proof.readAs };
   if (r.signedOrder) return { proven: true, says: 'A signed order' };

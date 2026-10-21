@@ -48,7 +48,8 @@ import { eachDealInItsGroup } from './each-deal-in-its-group';
 import { aPromiseSomebodyElseMade } from '../conversation/a-promise-somebody-else-made';
 import { thePriceRangeAnswer, thePriceRangeDecision, THE_RANGE_QUESTION, type ARangeAnswer } from './a-deals-four-criteria';
 import { theDealWasDropped, theLostDeal } from './a-deal-that-was-dropped';
-import { theWordsNameTheDeal, theBackingDocuments, theDocumentBehind, thePaymentRecords, theSignedOrders, aPaymentRecordFor, theMPesaCodeFor, type ABackingDocument } from './a-deals-proof-is-about-that-deal';
+import { theStartOfATargetFromTheDeals } from './where-a-target-from-the-deals-started';
+import { theWordsNameTheDeal, theDepositFor, aDepositSaid, theBackingDocuments, theDocumentBehind, thePaymentRecords, theSignedOrders, aPaymentRecordFor, theMPesaCodeFor, type ABackingDocument } from './a-deals-proof-is-about-that-deal';
 import { withTheValueWorkedOut, withOnlyTheNumbersSaid, theBuyingDateOf, theBuyingDateTheySaid, BUYING_DATE, aLineIsAbout } from './a-deals-value-and-buying-date';
 import { theirLine, theirCheckInToday, HAS_NOT_CHECKED_IN_TODAY, CHECKED_IN_TODAY } from './each-persons-line-today';
 import { withoutADealsFigure } from './a-deals-units-are-not-a-target';
@@ -1341,6 +1342,15 @@ export class BoardService {
       for (const s of firstSnapshots) if (!firstSession.has(s.objectiveId)) firstSession.set(s.objectiveId, (s as any).sessionNumber);
       /* Only while that 0 is the newest session's: a 0 that an earlier session closed on, followed by a later session, is a real start. */
       const theFirstCount = (o: { id: string; count: number }) => startOf.get(o.id) === 0 && o.count > 0 && (snapshotsOf.get(o.id) ?? 0) <= 1 && firstSession.get(o.id) === maxSession;
+      /*
+       * A TARGET COUNTED FROM THE DEALS STARTS WHERE THE DEALS STOOD BEFORE ANYBODY ANSWERED (final real-model check, item 12). Grace's
+       * "Units sold by 30 October" was set before Monday's check-ins, and its first snapshot was taken when Monday's round closed, after
+       * Kevin sold 40 units at Kilele Hotel, so the board said "It was 40 at the start and is 40 now". Where the target was on record before
+       * the first answer of the session it was first counted at, its start is what the deals held then: what was won before that answer.
+       */
+      const firstAnswerAt = (n: number | undefined) => (checkIns as any[]).filter((c) => c.sessionNumber === n && c.completedAt && !c.isSetup).map((c) => new Date(c.completedAt).getTime()).sort((a, b) => a - b)[0] ?? null;
+      const theStartOf = (o: { id: string; count: number; createdAt?: Date | null; ownerParticipantId?: string | null }): number | null =>
+        theStartOfATargetFromTheDeals(o, countedFromTheDeals.get(o.id) ?? null, firstAnswerAt(firstSession.get(o.id)), theDealsCounted, startOf.get(o.id) ?? null);
 
       /*
        * AND WHAT THE LEAD SAYS IS NOT SETTLED ABOUT THIS NUMBER, next to the number.
@@ -1396,7 +1406,7 @@ export class BoardService {
       out.objectives = (mayReadUntold as typeof ground.objectives).map((o) => ({
         /* The lead's own direction where they set one (decision 69); otherwise the words of the name, as before. */
         journey: theJourneySoFar({
-          start: theFirstCount(o) ? null : (startOf.get(o.id) ?? null), now: o.count, target: o.target, name: o.name, direction: asADirection((o as any).direction),
+          start: theFirstCount(o) ? null : theStartOf(o as any), now: o.count, target: o.target, name: o.name, direction: asADirection((o as any).direction),
           /* A date to meet says its day, and whether it has passed, on the board's own clock (decision 75, item 17). */
           dueDay: theDayItIsDue((o as any).dueOn, now), isPast: aDeadlineHasPassed((o as any).dueOn, now),
         }),
@@ -1417,7 +1427,7 @@ export class BoardService {
         notSettled: whatIsNotSettledAbout({ name: o.name, target: o.target }, notSettledLines),
         id: o.id, name: o.name, count: o.count, prevCount: theFirstCount(o) ? null : o.prevCount, target: o.target,
         /* Where the count comes from the deals on record (a sales aim), what they hold, in the prototype's words: "65 sold, 40 with proof of payment." */
-        fromTheDeals: (() => { const c = countedFromTheDeals.get(o.id); return c ? { counts: c.counts, sold: c.count, proven: c.proven, shown: c.shown ?? 0, currency: c.currency, says: c.says } : null; })(),
+        fromTheDeals: (() => { const c = countedFromTheDeals.get(o.id); return c ? { counts: c.counts, sold: c.count, proven: c.proven, shown: c.shown ?? 0, ...(c.deposit ? { deposit: c.deposit } : {}), currency: c.currency, says: c.says } : null; })(),
         /* What the target assumes (U.7), to whoever may read the target, and to nobody else. */
         assumes: Array.isArray((o as any).assumes) ? ((o as any).assumes as string[]).filter((a) => typeof a === 'string' && a.trim()) : [],
         /* Where nothing is written down, said plainly rather than left empty (request 115 c). Nothing is made up. */
@@ -2768,10 +2778,14 @@ export class BoardService {
             delete worked[BUYING_DATE];
             r.fields = worked;
             r.paymentRecord = aPaymentRecordFor({ name: r.name, fields: worked }, paymentLines);
+            /* A deposit only is said as a deposit, never as paid (final real-model check, item 10): "Deposit paid, KES 15,000 of KES 30,000." */
+            const deposit = r.paymentRecord ? theDepositFor({ name: r.name, fields: worked }, paymentLines) : null;
+            if (deposit) (r as any).deposit = { ...deposit, says: aDepositSaid(deposit) };
             /* An M-Pesa code given in words is the payment record, shown as "M-Pesa code" (Hafsah, 19 October; theMPesaCodeFor). */
             const shownByADocument = r.paymentRecord && aPaymentRecordFor({ name: r.name, fields: worked }, thePaymentRecords(provenHere.filter((l) => !!l.anchoredDocumentId), docOf));
             const code = r.paymentRecord && !shownByADocument ? theMPesaCodeFor({ name: r.name, fields: worked }, provenHere) : null;
             if (code) { (r as any).mpesaCode = code; r.known = 'proof'; r.mark = 'proven'; r.knownSays = `M-Pesa code ${code} shows it.`; }
+            if (deposit) r.knownSays = code ? `M-Pesa code ${code} shows the deposit. ${aDepositSaid(deposit)}` : aDepositSaid(deposit);
             r.signedOrder = aPaymentRecordFor({ name: r.name, fields: worked }, signedOrderLines);
             /*
              * LOST: the customer said no, or the rep gave it up (Drop Access run 1, A5; Hafsah, 18 October: a Lost stage), with the
@@ -3262,7 +3276,8 @@ export class BoardService {
           const units = theUnitsOf(r.fields ?? null);
           const forUnits = units ? ` for ${units} ${units === 1 ? 'unit' : 'units'}` : '';
           const proofDay = ((r.contactHistory ?? []) as any[]).filter((c) => /proof/i.test(String(c.how ?? ''))).map((c) => String(c.on)).sort()[0] ?? null;
-          if (r.paymentRecord) put(proofDay, 0, `${r.name} paid${forUnits}.`);
+          if (r.paymentRecord && r.deposit) put(proofDay, 0, `${r.name} paid a deposit${forUnits}, ${String(r.deposit.says ?? '').replace(/^Deposit paid, /, '').replace(/\.$/, '')}.`.replace(/, A deposit is paid\.$/, '.'));
+          else if (r.paymentRecord) put(proofDay, 0, `${r.name} paid${forUnits}.`);
           else if (r.signedOrder) put(proofDay, 1, `${r.name} signed${forUnits}.`);
           const yes = String(r.fields?.['Quote accepted'] ?? '').slice(0, 10);
           if (/^\d{4}-\d{2}-\d{2}$/.test(yes)) put(yes, 2, `${r.name} said yes${units ? ` to ${units} ${units === 1 ? 'unit' : 'units'}` : ' to the quote'}.`);

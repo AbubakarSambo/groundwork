@@ -65,7 +65,8 @@ describe('Grace’s letter, Drop Access (test)', () => {
 describe('Wanjiru’s letters, Muchemi & Co (test)', () => {
   it('on fee notes: what is owed, and Aisha, whose payments are only said, in her own words with the days', async () => {
     const { lines } = await theLetterOf('fees', { directMorning: true });
-    expect(lines).toContain('Here is where the target stands. KES 180,000 is owed on 3 fee notes, and 2 of them have no amount on record. Nothing is paid with proof yet.');
+    expect(lines).toContain(/* Changed 21 October (final real-model check, item 9): FN-004, FN-006 and FN-007 are marked paid only on somebody's word, so they are owed. */
+      'Here is where the target stands. KES 850,000 is owed on 6 fee notes, and 2 of them have no amount on record. 3 of them are marked paid on somebody’s word, with no slip or message on file. Nothing is paid with proof yet.');
     expect(lines).toContain('Here is who needs you. Aisha said 4 times that a client had paid with nothing on file, and took 1 back later. Groundwork asked for the proof and has coached Aisha since Monday 12 October, and nothing has changed, so call Aisha. On Monday 19 October Aisha said “FN-006 for Baraka Hardware has been paid.” Nothing on file shows it yet. On Monday 12 October Aisha said “the bursar at Upendo Schools confirmed it\'s sorted.” Nothing on file shows it yet. On Monday 12 October Aisha said “I think they\'ve paid, I believe it went through on Friday.” On Monday 19 October Aisha said “I was mistaken; Jamii Clinics hasn\'t actually paid yet.”');
     expect(lines.join(' ')).not.toMatch(/Here is who needs you.*\bNjeri\b/);
   });

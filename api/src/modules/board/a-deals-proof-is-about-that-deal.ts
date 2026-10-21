@@ -151,6 +151,47 @@ export function aPaymentRecordFor(deal: { name: string; fields?: Record<string, 
   return payments.some((p) => theWordsNameTheDeal(p.text, deal));
 }
 
+/**
+ * A DEPOSIT IS NOT A FULL PAYMENT (final real-model check, item 10). Jane at Savannah Cafe paid a KES 15,000 deposit on a KES 30,000
+ * order, and the board, the morning and the weekly report counted the cafe's 6 units as paid ("6 units, paid", "47 paid", "46 with
+ * proof"). Where every payment record about a deal is a deposit, or pays less than the deal is worth, it is a deposit: what was paid, and
+ * of what. It still backs the sale (Hafsah, 17 October: "Won: paid, or a deposit received, with a payment record"); it is never said as paid.
+ */
+export interface ADeposit { paid: number | null; of: number | null; currency: string }
+const AMOUNT = /\b(KES|KSh|Ksh|Kshs|USD|NGN|₦|\$)\.?\s?([\d][\d,]*(?:\.\d+)?)\s*(k|thousand|m|million)?\b/i;
+const amountIn = (t: string): { amount: number; currency: string } | null => {
+  const m = AMOUNT.exec(String(t ?? ''));
+  if (!m) return null;
+  let n = Number(m[2].replace(/,/g, ''));
+  if (/^(k|thousand)$/i.test(m[3] ?? '')) n *= 1e3;
+  if (/^(m|million)$/i.test(m[3] ?? '')) n *= 1e6;
+  return { amount: n, currency: /^k/i.test(m[1]) ? 'KES' : m[1].toUpperCase() };
+};
+const valueOf = (fields: Record<string, string> | null | undefined): number | null => {
+  const v = Object.entries(fields ?? {}).find(([k]) => /^(?:deal\s+)?(?:value|amount|worth|size|quoted)$/i.test(k.trim()))?.[1];
+  const m = v ? /([\d][\d,]*(?:\.\d+)?)\s*(k|thousand|m|million)?/i.exec(String(v)) : null;
+  if (!m) return null;
+  let n = Number(m[1].replace(/,/g, ''));
+  if (/^(k|thousand)$/i.test(m[2] ?? '')) n *= 1e3;
+  if (/^(m|million)$/i.test(m[2] ?? '')) n *= 1e6;
+  return n;
+};
+export function theDepositFor(deal: { name: string; fields?: Record<string, string> | null }, payments: readonly { text: string }[]): ADeposit | null {
+  const about = payments.filter((p) => theWordsNameTheDeal(p.text, deal));
+  if (!about.length) return null;
+  const of = valueOf(deal.fields);
+  const reads = about.map((p) => ({ deposit: /\bdeposit\b|\badvance\b|\bpart[\s-]payment\b/i.test(p.text), money: amountIn(p.text) }));
+  const each = reads.map((r) => r.deposit || (!!r.money && of !== null && r.money.amount < of));
+  if (!each.every(Boolean)) return null;
+  const paid = reads.map((r) => r.money?.amount ?? 0).reduce((a, b) => Math.max(a, b), 0) || null;
+  return { paid, of, currency: reads.find((r) => r.money)?.money?.currency ?? 'KES' };
+}
+/** "Deposit paid, KES 15,000 of KES 30,000." */
+export const aDepositSaid = (d: ADeposit): string => {
+  const k = (n: number) => `${d.currency} ${Math.round(n).toLocaleString('en-US')}`;
+  return d.paid && d.of ? `Deposit paid, ${k(d.paid)} of ${k(d.of)}.` : d.paid ? `Deposit paid, ${k(d.paid)}.` : 'A deposit is paid.';
+};
+
 /** For a served line: the document's words where it can be read, and the day it was added. */
 export function theDocumentBehind(anchoredDocumentId: string | null | undefined, docOf: Map<string, ABackingDocument>): { documentWords: string | null; documentOn: Date | null } {
   const d = anchoredDocumentId ? docOf.get(anchoredDocumentId) : undefined;
