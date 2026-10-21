@@ -19,6 +19,10 @@ import { everyLineTheFinalCheckPasses } from '../conversation/the-final-check';
 import { whatTheRecordHolds } from '../conversation/what-the-record-holds';
 import { dedupeDependencies, theSameThingInOtherWords } from '../board/reads';
 import { theirClosedSessions } from '../grounds/missed-check-ins';
+import { theDirectMorningFor, theStoredRecords } from '../engagement/the-direct-morning';
+import { whatMovedWithProof, whoNeedsYouThisWeek, type AKindOfCheckIn } from '../board/what-the-lead-reads-about-each-person';
+import { isASalesKind, oneOfTheKinds } from '../board/the-kind-of-work';
+import { theCollectionsTypeFor } from '../board/the-collections-record';
 
 /**
  * THE LEAD'S WEEKLY LETTER (docs/anchor-scenario-plan.md, piece 29; the prototype's "one weekly letter",
@@ -108,6 +112,17 @@ export interface AWeekInOneCheckIn {
   missedBy?: { name: string; missed: number; of: number }[];
   /** Release 1's sales board is on for the check-in's organisation: counts in one form, one decision said once, what was tried in full. Never said. */
   releaseOne?: boolean;
+  /**
+   * WHAT THE LEAD READS ABOUT THE WEEK FROM THE RECORD (Groundwork does the managing, part 2), only where the organisation's direct morning is
+   * on (theWeekForTheLead). Each is absent when it has nothing to say, and a letter built without them is the letter it always was.
+   *
+   * The target in one line, as her morning summary and her board say it: "75 of 120 sold, 47 paid, 45 short, and the open deals cover 40."
+   */
+  theTarget?: string | null;
+  /** What moved this week with proof: what each person said, in their words and with the day, and what on file shows it. */
+  movedWithProof?: string[];
+  /** Who needs her, with the evidence: the person Groundwork could not move, then their lines with the days. */
+  needsYou?: { says: string; evidence: string[] }[];
 }
 
 const aName = (n: string) => n;
@@ -213,6 +228,11 @@ export const somethingUsefulHappened = (w: AWeekInOneCheckIn): boolean => w.ofHo
 /** The sentences after the week's counts, for one check-in: what moved, what Groundwork is already doing, what to do, and what to start next. */
 export function theRestOfTheWeekIn(w: AWeekInOneCheckIn, roomForToDo: number): string[] {
   const out: string[] = [];
+  /* The record's own parts first, where the direct morning is on: the target, what moved with proof, and who needs her. */
+  if (w.theTarget) out.push(`Here is where the target stands. ${w.theTarget}`);
+  const proved = (w.movedWithProof ?? []).slice(0, 4);
+  if (proved.length) out.push(`Here is what moved this week, with what shows it. ${proved.join(' ')}`);
+  for (const [i, n] of (w.needsYou ?? []).slice(0, 3).entries()) out.push(`${i === 0 ? 'Here is who needs you. ' : ''}${n.says}${n.evidence.length ? ` ${n.evidence.join(' ')}` : ''}`);
   const moved = withoutRepeats(w.moved ?? []).slice(0, 3);
   if (moved.length) out.push(`Here is what moved this week. ${moved.join(' ')}`);
   const reminded = (w.reminded ?? []).filter(aNameToList).filter((n) => w.notYet.includes(n));
@@ -276,6 +296,31 @@ export async function theReportsWordsHeldToTheRecord<R extends { moved: string[]
   } catch {
     return report;
   }
+}
+
+/**
+ * THE WEEK FOR THE LEAD, FROM THE RECORD (Groundwork does the managing, part 2; Hafsah, 21 October 2026), for the lead who runs the check-in
+ * and only where her organisation's direct morning is on (theDirectMorningFor returns nothing otherwise). Results against the target, as her
+ * morning summary and board say them; what moved this week with proof, from each person's stored record; and who needs her, with the evidence
+ * (what they said against what was proved, promises, changed figures, with the days and their lines). The people's records are read only
+ * where the organisation keeps judgements of a person on. Nothing is sent that was not sent before: these are sentences in the same letter.
+ */
+export async function theWeekForTheLead(
+  prisma: any, g: { id: string; label: string; initiatorId: string }, now: Date, board?: { get(groundId: string, userId: string): Promise<any> },
+): Promise<Pick<AWeekInOneCheckIn, 'theTarget' | 'movedWithProof' | 'needsYou'>> {
+  if (!(await theDirectMorningIsOnFor(prisma, g.id))) return {};
+  const ground = await Promise.resolve(prisma.ground?.findUnique?.({ where: { id: g.id }, select: { organizationId: true, kindOfWork: true, participants: { select: { id: true, userId: true, managingOnly: true, leftAt: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } } } })).catch(() => null) as any;
+  if (!ground) return {};
+  const served = board ? await board.get(g.id, g.initiatorId).catch(() => null) : null;
+  const morning = served ? await theDirectMorningFor(prisma, { groundId: g.id, leadUserId: g.initiatorId, board: served, now }).catch(() => null) : null;
+  const theTarget = morning?.parts.find((p) => p.key === 'target')?.lines[0]?.text ?? null;
+  const team = ((ground.participants ?? []) as any[]).filter((p) => p.userId !== g.initiatorId && !p.managingOnly && !p.leftAt);
+  const records = await theStoredRecords(prisma, ground.organizationId, team.map((p) => p.id), g.id);
+  const people = team.map((p) => ({ name: nameToCall(p), stored: records.get(p.id) ?? null })).filter((p) => !!p.name);
+  const kind: AKindOfCheckIn = isASalesKind(oneOfTheKinds(ground.kindOfWork)) ? 'sales' : (await theCollectionsTypeFor(prisma, g.id).catch(() => null)) ? 'collections' : 'matter';
+  const movedWithProof = whatMovedWithProof(people, new Date(now.getTime() - WEEK), now);
+  const needsYou = whoNeedsYouThisWeek(people, kind, g.label);
+  return { ...(theTarget ? { theTarget } : {}), ...(movedWithProof.length ? { movedWithProof } : {}), ...(needsYou.length ? { needsYou } : {}) };
 }
 
 const TERMINAL: GroundStatus[] = A_GROUND_NO_MESSAGE_IS_ABOUT;
@@ -391,6 +436,8 @@ export async function sendTheLeadsWeeklyLetters(
      * its switch is on. `weeklyReport` reads the lead's own weekly report as she is served it (what moved, what to do), and may be absent.
      */
     everyCheckIn?: { anchorIsOn: boolean; weeklyReport?: (g: { id: string; initiatorId: string }, now: Date) => Promise<{ moved: string[]; toDo: { do: string; why: string }[] } | null> };
+    /** The lead's own board, as she opens it, so the letter's target is the one her board and her morning summary say. Optional. */
+    board?: { get(groundId: string, userId: string): Promise<any> };
   },
   now: Date = new Date(),
 ): Promise<{ tried: number }> {
@@ -429,6 +476,11 @@ export async function sendTheLeadsWeeklyLetters(
         const fellDue = g.organizationId
           ? await theFeeNotesThatFellDueOnAnEvent(prisma, { userId: leadId, organizationId: g.organizationId }, [g.id], new Date(now.getTime() - 7 * 86_400_000)).catch(() => [])
           : [];
+        /* What the record shows this week, where the direct morning is on: what moved with proof takes the place of what the report
+           said moved (the record's fee notes that fell due stay first); off, nothing here and the letter as before. */
+        const fromTheRecord = await theWeekForTheLead(prisma, g, now, deps.board).catch(() => ({} as Awaited<ReturnType<typeof theWeekForTheLead>>));
+        if (fromTheRecord.movedWithProof?.length) w.moved = [];
+        Object.assign(w, fromTheRecord);
         if (fellDue.length) w.moved = [...fellDue.map((f) => f.text), ...(w.moved ?? [])];
         weeks.push(w);
       }

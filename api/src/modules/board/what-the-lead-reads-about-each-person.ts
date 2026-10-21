@@ -221,17 +221,35 @@ export function whatTheyDelivered(o: { participantId: string; name: string; role
 
 /* ------------------------------------------------------------------------------------------------ the weekly letter */
 
-/** What moved this week with proof, one sentence each: what they said, in their words, and what shows it. */
-export function whatMovedWithProof(people: { name: string; stored: AStoredPersonsRecord | null }[], since: Date, until: Date): string[] {
-  const out: { at: number; text: string }[] = [];
+/**
+ * What moved this week with proof, at most `atMost`, the latest kept, said in the order it happened: what they said, in their words and
+ * with the day, and what shows it. The same customer said twice on one day by one person is said once, in the fuller words.
+ */
+export function whatMovedWithProof(people: { name: string; stored: AStoredPersonsRecord | null }[], since: Date, until: Date, atMost = 5): string[] {
+  const out = new Map<string, { at: number; c: AClaim; name: string }>();
   for (const p of people) {
     for (const c of p.stored?.record.claims ?? []) {
       const at = new Date(c.at).getTime();
       if (!c.proven || at < since.getTime() || at > until.getTime()) continue;
-      out.push({ at, text: aClaimSaidFor(c, { self: false, firstName: p.name }) });
+      const key = c.about ? `${p.name}|${c.about}|${c.on}` : `${p.name}|${c.lineId}`;
+      const had = out.get(key);
+      if (!had || c.said.length > had.c.said.length) out.set(key, { at, c, name: p.name });
     }
   }
-  return out.sort((a, b) => a.at - b.at).map((x) => x.text);
+  return [...out.values()].sort((a, b) => a.at - b.at).slice(-atMost).map((x) => aClaimSaidFor(x.c, { self: false, firstName: x.name }));
+}
+
+/** The evidence behind what they said with nothing on file: their latest claims in their words with the day, what they took back, once each, and a figure that changed. */
+function theProofEvidence(stored: AStoredPersonsRecord, name: string, words: TheRecordInWords, atMost = 4): string[] {
+  const q = (t: string) => `“${String(t ?? '').trim().replace(/^[“"]|[”"]$/g, '')}”`;
+  const out: string[] = [];
+  const said = new Set<string>();
+  for (const c of [...stored.record.claims].filter((x) => !x.proven).reverse()) {
+    out.push(`On ${c.on} ${name} said ${q(c.said)}${c.takenBack ? '' : ' Nothing on file shows it yet.'}`);
+    if (c.takenBack && !said.has(c.takenBack.lineId)) { said.add(c.takenBack.lineId); out.push(`On ${c.takenBack.on} ${name} said ${q(c.takenBack.said)}`); }
+  }
+  const figure = (words.parts.find((x) => /^Figures that changed$/.test(x.heading))?.evidence ?? []).find((e) => !/put the figure/.test(e));
+  return [...out.slice(0, figure ? atMost - 1 : atMost), ...(figure ? [figure] : [])];
 }
 
 /**
@@ -246,8 +264,7 @@ export function whoNeedsYouThisWeek(people: { name: string; stored: AStoredPerso
     const c = theCoachingThatDidNotWork(p.stored.coaching)!;
     const words: TheRecordInWords = theRecordInWords(p.stored.record, p.stored.coaching, { self: false, firstName: p.name }, label);
     const part: APartOfTheRecord | undefined = words.parts.find((x) => THE_PART[c.about].test(x.heading));
-    const figures = c.about === 'proof' ? (words.parts.find((x) => /^Figures that changed$/.test(x.heading))?.evidence ?? []).filter((e) => !/put the figure/.test(e)) : [];
-    out.push({ says, evidence: [...(part?.evidence ?? []).filter((e) => !/ shows it\.$/.test(e)), ...figures].slice(0, 3) });
+    out.push({ says, evidence: c.about === 'proof' ? theProofEvidence(p.stored, p.name, words) : (part?.evidence ?? []).filter((e) => !/ shows it\.$/.test(e)).slice(0, 3) });
   }
   return out;
 }
