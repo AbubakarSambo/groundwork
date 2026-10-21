@@ -257,3 +257,17 @@ describe('the one-tap actions', () => {
     expect(personOf(t, 'Mercy').fromYou).toEqual([]);
   });
 });
+
+/*
+ * BROWSER TEST, 21 OCTOBER 2026: the borrowers of Pesa Ndogo Lenders (test) checked in five Mondays running, all on time, and Halima read
+ * "Achieng needs coaching on checking in on time and naming the item, what changed and the day." Only the part that fell short is named.
+ */
+describe('coaching on check-ins names only the part that fell short', () => {
+  it('somebody on time every week, never naming the item, needs coaching on naming the item only', () => {
+    const { whereTheyStand } = require('./what-the-lead-reads-about-each-person');
+    const checkIns = [1, 2, 3, 4, 5].map((n) => ({ checkInId: `c${n}`, sessionNumber: n, on: `Monday ${n} October`, done: true, onTime: true, specific: false }));
+    const record = { claims: [], changes: [], promises: [], blockers: [], focus: [], checkIns, summary: { claims: 0, proven: 0, changed: 0, keptOnTime: 0, keptLate: 0, notDone: 0, late: 0, blockersRaised: 0, blockersTriedFirst: 0, checkInsDue: 5, checkInsDone: 5, checkInsOnTime: 5, checkInsSpecific: 0, promisesDue: 0 } };
+    const stood = whereTheyStand({ groundId: 'g', participantId: 'p-achieng', record, coaching: [], lastSession: 5, builtAt: new Date() } as any, 'Achieng', 'Freezer loans, cohort 1');
+    expect(stood.says).toBe('Achieng needs coaching on naming the item, what changed and the day.');
+  });
+});
