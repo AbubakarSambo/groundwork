@@ -83,7 +83,7 @@ function ThePage({ groundId, served, ground, isTheLead }: { groundId: string; se
           </FlexRow>
         </FlexRow>
         {served.mayAdd && adding && (
-          <AddSomething groundId={groundId} kind={adding} onKind={setAdding} people={people} contextEnabled={ground?.contextEnabled === true}
+          <AddSomething groundId={groundId} kind={adding} onKind={setAdding} people={people} alsoSeenBy={served.peopleAlsoSeenBy} contextEnabled={ground?.contextEnabled === true}
             onDone={() => { setAdding(null); refresh() }} />
         )}
       </div>
@@ -94,7 +94,7 @@ function ThePage({ groundId, served, ground, isTheLead }: { groundId: string; se
       <Documents served={served} />
       <Evidence groundId={groundId} served={served} />
       <QuestionsAndAnswers served={served} />
-      {served.people && <People groundId={groundId} people={served.people} onDone={refresh} />}
+      {served.people && <People groundId={groundId} people={served.people} alsoSeenBy={served.peopleAlsoSeenBy} onDone={refresh} />}
     </Stack>
   )
 }
@@ -384,7 +384,10 @@ function QuestionsAndAnswers({ served }: { served: Served }) {
 
 /* ------------------------------------------------------------------------------------------------------- People */
 
-function People({ groundId, people, onDone }: { groundId: string; people: NonNullable<Served['people']>; onDone: () => void }) {
+/** "Only you see this" where nobody else may read People, else "Only you see this, and Otieno, the admin who set up this check-in" (21 October). The server names who. */
+const onlyYouSeeThis = (alsoSeenBy?: string | null) => (alsoSeenBy?.trim() ? `Only you see this, and ${alsoSeenBy.trim()}.` : 'Only you see this.')
+
+function People({ groundId, people, alsoSeenBy, onDone }: { groundId: string; people: NonNullable<Served['people']>; alsoSeenBy?: string; onDone: () => void }) {
   const direct = useTheDirectMorning()
   const [q, setQ] = useState('')
   const [editing, setEditing] = useState<{ pid: string; kind: 'PERSON_NOTE' | 'HELP_WITH'; lineId: string | null; text: string } | null>(null)
@@ -413,7 +416,7 @@ function People({ groundId, people, onDone }: { groundId: string; people: NonNul
     )
   )
   return (
-    <Section heading="People" note={direct ? 'Your notes on each person. Their check-ins do not use them yet.' : 'Only you see this. Your notes on each person. They never see them. Their check-ins do not use them yet.'}>
+    <Section heading="People" note={direct ? 'Your notes on each person. Their check-ins do not use them yet.' : `${onlyYouSeeThis(alsoSeenBy)} Your notes on each person. They never see them. Their check-ins do not use them yet.`}>
       <Stack gap={10}>
         {people.length > 5 && (
           <FlexRow gap={8} align="center" wrap>
@@ -447,7 +450,8 @@ function People({ groundId, people, onDone }: { groundId: string; people: NonNul
 
 /* ---------------------------------------------------------------------------------------------- Add, the lead's */
 
-function AddSomething({ groundId, kind, onKind, people, contextEnabled, onDone }: {
+function AddSomething({ groundId, kind, onKind, people, alsoSeenBy, contextEnabled, onDone }: {
+  alsoSeenBy?: string
   groundId: string
   kind: AReferenceKind | 'DOCUMENT' | 'PLAN'
   onKind: (k: AReferenceKind | 'DOCUMENT' | 'PLAN') => void
@@ -503,7 +507,7 @@ function AddSomething({ groundId, kind, onKind, people, contextEnabled, onDone }
                   <option value="">Choose a person</option>
                   {people.map((p) => <option key={p.participantId} value={p.participantId}>{p.name}</option>)}
                 </Select>
-                <Note tone="muted">{direct ? 'It shapes their check-ins.' : 'Only you see this. It shapes their check-ins, and they never see it.'}</Note>
+                <Note tone="muted">{direct ? 'It shapes their check-ins.' : `${onlyYouSeeThis(alsoSeenBy)} It shapes their check-ins, and they never see it.`}</Note>
               </div>
             )}
             {kind === 'KEY_FACT' && (

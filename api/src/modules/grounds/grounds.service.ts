@@ -121,7 +121,7 @@ import { isASecondOrganisation, GUEST_ROLE } from '../participants/joining-a-sec
 import { aNameOutOfAnAddress } from '../users/a-name-out-of-an-address';
 import { theLeadsWordsAbout } from './the-leads-words-about-someone';
 import { timelineDaysForAChosenEnd } from './session-count';
-import { adminsThisOrg, askedToApproveIt, readsAsAnAdmin, maySee, groundsAViewerMayList, WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS } from './who-may-read-this-check-in';
+import { adminsThisOrg, askedToApproveIt, readsAsAnAdmin, readsTheLeadsPeopleNotes, maySee, groundsAViewerMayList, WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS } from './who-may-read-this-check-in';
 import { EVALUATION_SCENARIOS, isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { whoMayConfirmSetup, confirmedByAnAdminSentence, briefChangedByAnAdminSentence, ONLY_THE_LEAD_CONFIRMS_SETUP, onlyTheLeadConfirmsSetup, type SetupConfirmDecision } from './who-may-confirm-setup';
 import { inviteExpiryFrom } from '../participants/how-long-an-invite-lasts';
@@ -2751,7 +2751,9 @@ export class GroundsService {
     const privateFileNamesHere = theLeadReadsThese ? [] : namesNotEverybodyMayOpen(
       await (this.prisma.groundDocument?.findMany?.({ where: { groundId: id }, select: { fileName: true, visibility: true } }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]),
     );
-    const contextItems = theLinesFor(contextLines as any, { isTheLead: theLeadReadsThese })
+    /* Her People notes and a plan for a person: the lead, and an admin only if they set it up or approved it (Hafsah, 21 October). */
+    const readsThePeopleNotes = readsTheLeadsPeopleNotes({ ...viewer, userId: requestingUserId } as any, ground as any);
+    const contextItems = theLinesFor(contextLines as any, { isTheLead: theLeadReadsThese, readsThePeopleNotes })
       .map((l: any) => (privateFileNamesHere.length ? { ...l, text: withoutPrivateFileNames(l.text ?? '', privateFileNamesHere) } : l));
     /* The lead's questions for people, one card each: never built for anybody else. See questionsForPeople. */
     const questionsForPeople = (isInitiatorViewer || viewerReadsAsAnAdmin) ? await this.theQuestionsForPeople(id).catch(() => []) : undefined;

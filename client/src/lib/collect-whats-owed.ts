@@ -82,8 +82,9 @@ export interface TheCollectionsBoard {
     }[]
   }
   patterns: { heading: string; note: string; rows: { title: string; says: string; tag: string }[]; empty: string | null; foot: string }
-  followUp: { heading: string; rows: { what: string; howMany: string; whatFollowed: string }[]; empty: string | null }
-  systems: { heading: string; says: string }
+  /** The lead's two sections: not served to a borrower (21 October), so not drawn for one. */
+  followUp: { heading: string; rows: { what: string; howMany: string; whatFollowed: string }[]; empty: string | null } | null
+  systems: { heading: string; says: string } | null
   heading: null | {
     heading: string
     outcomes: { says: string; more: string }[]

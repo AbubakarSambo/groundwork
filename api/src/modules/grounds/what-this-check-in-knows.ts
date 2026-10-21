@@ -60,9 +60,17 @@ export interface AContextLine {
  * shared, and nothing about anybody - including nothing about themselves, because a lead's read of
  * somebody is not a message to them and was never written as one.
  */
-export function theLinesFor(lines: AContextLine[], opts: { isTheLead: boolean }): AContextLine[] {
+/**
+ * THE LEAD'S PEOPLE NOTES, AND A PLAN STARTED FROM THE BOARD (Hafsah, 21 October). Her note on a person and what she wants to help
+ * them with (a plan from the board's "Start a plan" is kept as one) are read by the lead who runs the check-in, and by an admin only
+ * if that admin set up or approved it (`readsTheLeadsPeopleNotes`, who-may-read-this-check-in.ts). Every other admin, who reads the
+ * check-in's other lines as the lead does, is served none of them. Left out, the answer is no.
+ */
+export const THE_LEADS_PEOPLE_NOTES: ReadonlySet<ContextItemKind> = new Set([ContextItemKind.PERSON_NOTE, ContextItemKind.HELP_WITH]);
+
+export function theLinesFor(lines: AContextLine[], opts: { isTheLead: boolean; readsThePeopleNotes?: boolean }): AContextLine[] {
   const live = (lines ?? []).filter((l) => l?.text?.trim() && !l.closedAt);
-  if (opts.isTheLead) return live;
+  if (opts.isTheLead) return opts.readsThePeopleNotes === true ? live : live.filter((l) => !THE_LEADS_PEOPLE_NOTES.has(l.kind));
   return live.filter((l) => !ABOUT_SOMEBODY.has(l.kind) && l.audience === 'EVERYONE');
 }
 

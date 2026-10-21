@@ -16,7 +16,8 @@ describe('QuickReplies', () => {
     expect(pill.style.background).toBe('var(--gw-card)')
     expect(pill.style.boxShadow).toContain('inset')
     expect(pill.style.borderRadius).toBe('20px')
-    expect(pill.style.minHeight).toBe('40px')
+    /* 44px since 21 October: a chip is held to the same 44px as a button. */
+    expect(pill.style.minHeight).toBe('44px')
   })
 
   it('reports the exact item picked', async () => {

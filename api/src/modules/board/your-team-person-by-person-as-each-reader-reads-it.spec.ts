@@ -92,7 +92,7 @@ describe('Grace reads her team, Drop Access (test)', () => {
     const j = personOf(t, 'Joseph');
     expect(j.actions.map((a: any) => [a.kind, a.label, a.does])).toEqual([
       ['praise', 'Praise Joseph', 'Keeps your words in Joseph’s record, where Joseph reads them on My work and in Joseph’s own report. No message is sent.'],
-      ['plan', 'Start a plan', 'Keeps what you want to help Joseph with, here and under People on References and resources. Only you and your organisation’s admins read it, and nothing is sent to Joseph.'],
+      ['plan', 'Start a plan', 'Keeps what you want to help Joseph with, here and under People on References and resources. Only you read it. Nothing is sent to Joseph.'],
       ['deadline', 'Set a deadline', 'Puts a due day on one of Joseph’s records. It shows on that record on your board, and nothing is sent to Joseph.'],
       ['reassign', 'Reassign leads', 'Gives one of Joseph’s records to somebody else on the team. From then on it is theirs on the board and in their check-ins. Nothing is sent to either of them.'],
     ]);
@@ -219,7 +219,7 @@ describe('the one-tap actions', () => {
   it('start a plan keeps a People line about Joseph that only Grace reads, and is never shown to Joseph', async () => {
     const a = aDatabaseForTheActions();
     const r = await theLeadActsOnAPerson(a.db, a.write, DROP, JOSEPH.participantId, GRACE, { kind: 'plan', text: 'Help Joseph with adding proof when saying something is done.' });
-    expect(r.says).toBe('Your plan for Joseph is kept here and under People on References and resources. Only you and your organisation’s admins read it.');
+    expect(r.says).toBe('Your plan for Joseph is kept here and under People on References and resources. Only you read it.');
     expect(a.lines).toEqual([expect.objectContaining({ kind: 'HELP_WITH', audience: 'LEAD_ONLY', aboutParticipantId: JOSEPH.participantId, text: 'Help Joseph with adding proof when saying something is done.' })]);
     expect(a.kept[0]).toMatchObject({ kind: 'PLAN', itemId: 'l-1' });
     a.db.personRecord = await theRunRebuiltEachEvening('drop', rebuildThePersonsRecords);

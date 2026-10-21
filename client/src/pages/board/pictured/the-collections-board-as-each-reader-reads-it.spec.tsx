@@ -102,6 +102,16 @@ describe('the small lender', () => {
     expect(screen.getByText('Your repayment of KES 12,000 fell due on 12 October, and it is not paid yet. You promised to pay by Friday 23 October.')).toBeTruthy()
     expect(text()).not.toMatch(/Peter|Achieng|Halima/)
   })
+
+  /* The server does not serve a borrower the lead's two sections (21 October), so Musa's board draws neither; Halima's draws both. */
+  it('Musa reads neither "Support given, and whether it helped" nor "What the systems show"; Halima reads both', () => {
+    draw(S.boards.musa)
+    expect(text()).not.toMatch(/Support given|whether it helped|What the systems show|repayment system/)
+    document.body.innerHTML = ''
+    draw(S.boards.halima)
+    expect(screen.getByText('Support given, and whether it helped')).toBeTruthy()
+    expect(screen.getByText('What the systems show')).toBeTruthy()
+  })
 })
 
 describe('the reports', () => {

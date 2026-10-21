@@ -204,6 +204,19 @@ describe('the lead, Grace, reads every section', () => {
     expect(r.people.map((p: any) => p.name)).toEqual(['Kevin Omondi', 'Mercy Wairimu', 'Joseph Kariuki']);
   });
 
+  /* 21 October: who else sees People, named exactly: nobody where Grace set it up and nobody approved it; Naomi where she set it up. */
+  it('People says only Grace sees it, unless an admin set it up or approved it, and then names that admin', async () => {
+    const { prisma } = theSalesCheckIn();
+    prisma.user.findMany = jest.fn(async () => [{ id: 'u-naomi', firstName: 'Naomi', role: 'ADMIN', organizationId: 'org-drop' }]);
+    const ground = await prisma.ground.findFirst();
+    Object.assign(ground, { createdByUserId: 'u-grace', approvedById: null });
+    expect(((await read(prisma, 'u-grace')) as any).peopleAlsoSeenBy).toBe('');
+    Object.assign(ground, { createdByUserId: 'u-naomi' });
+    expect(((await read(prisma, 'u-grace')) as any).peopleAlsoSeenBy).toBe('Naomi, the admin who set up this check-in');
+    /* Never served to anybody but the lead. */
+    expect('peopleAlsoSeenBy' in ((await read(prisma, 'u-kevin')) as any)).toBe(false);
+  });
+
   it('Documents she may open, with who can see each, and every piece of evidence, newest first', async () => {
     const { prisma } = theSalesCheckIn();
     const r: any = await read(prisma, 'u-grace');

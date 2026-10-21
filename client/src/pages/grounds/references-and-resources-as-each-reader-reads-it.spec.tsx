@@ -140,6 +140,16 @@ describe('Grace, who runs it, reads every section in the pictures’ order', () 
     expect(screen.getByText('Written before References and resources. Their check-ins do not use these.')).toBeTruthy()
   })
 
+  /* 21 October: People says who else may read it, as the server names them; only you where nobody else may. */
+  it('People says only you where nobody else may read it, and names the admin who set it up where one did', async () => {
+    const { unmount } = renderAs({ ...SERVED_TO_GRACE, peopleAlsoSeenBy: '' }, true)
+    expect(await screen.findByText('Only you see this. Your notes on each person. They never see them. Their check-ins do not use them yet.')).toBeTruthy()
+    unmount()
+    renderAs({ ...SERVED_TO_GRACE, peopleAlsoSeenBy: 'Otieno, the admin who set up this check-in' }, true)
+    expect(await screen.findByText('Only you see this, and Otieno, the admin who set up this check-in. Your notes on each person. They never see them. Their check-ins do not use them yet.')).toBeTruthy()
+    expect(screen.queryByText(/^Only you see this\. Your notes on each person/)).toBeNull()
+  })
+
   it('Documents with who can see each, and every piece of evidence with what it belongs to', async () => {
     renderAs(SERVED_TO_GRACE, true)
     await screen.findByText('Juja Hardware price request.pdf')

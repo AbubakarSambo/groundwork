@@ -129,17 +129,21 @@ export function TheCollectionsBoard({ board: c, onRecordTheDecision, onAnswer, a
         </Panel>
       </Section>
 
-      <Section heading={c.followUp.heading}>
-        <Panel>
-          {c.followUp.rows.length ? c.followUp.rows.map((f) => (
-            <div className="pb-kv" key={f.what}><b>{f.what}</b><span>{`${f.howMany}. ${f.whatFollowed}`}</span></div>
-          )) : <p className="gwui-panel-text">{c.followUp.empty}</p>}
-        </Panel>
-      </Section>
+      {c.followUp && (
+        <Section heading={c.followUp.heading}>
+          <Panel>
+            {c.followUp.rows.length ? c.followUp.rows.map((f) => (
+              <div className="pb-kv" key={f.what}><b>{f.what}</b><span>{`${f.howMany}. ${f.whatFollowed}`}</span></div>
+            )) : <p className="gwui-panel-text">{c.followUp!.empty}</p>}
+          </Panel>
+        </Section>
+      )}
 
-      <Section heading={c.systems.heading}>
-        <Panel><p className="gwui-panel-text">{c.systems.says}</p></Panel>
-      </Section>
+      {c.systems && (
+        <Section heading={c.systems.heading}>
+          <Panel><p className="gwui-panel-text">{c.systems.says}</p></Panel>
+        </Section>
+      )}
 
       {c.heading && (
         <Section heading={c.heading.heading}>

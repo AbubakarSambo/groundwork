@@ -165,7 +165,7 @@ export function EntryChat() {
                 onClick={send}
                 disabled={loading || !opened}
                 className="gw-send-btn"
-                style={{ height: 38 }}
+                style={{ height: 44 }}
               >
                 &#8593;
               </button>

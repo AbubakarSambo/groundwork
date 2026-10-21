@@ -707,6 +707,8 @@ export type ReferencesAndResources =
       evidenceGroups?: APieceOfEvidence['group'][]
       questions: { total: number; items: { asked: string; answer: string; who: string }[]; emptySays: string }
       people?: { participantId: string; name: string; role: string | null; note: AReferenceLine | null; helpWith: AReferenceLine | null; earlier: string[] }[]
+      /** Who else sees People, as the server says it ("Otieno, the admin who set up this check-in"), or empty where nobody else does. */
+      peopleAlsoSeenBy?: string
     }
 
 /** A person's record and the coaching Groundwork gave them, in the server's own words (api board/the-persons-record-in-words.ts). */

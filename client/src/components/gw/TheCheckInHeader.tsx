@@ -142,10 +142,10 @@ export function TheCheckInHeader({
         underlined navy - not plain grey text (picture-check round 6, item B).
       */}
       <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginBottom: 6 }}>
-        {/* SCREEN FAULT 10: 16px tall on a phone - `.gwui-tap-40` (gw-ui.css) gives it the same
+        {/* SCREEN FAULT 10: 16px tall on a phone - `.gwui-tap-44` (gw-ui.css) gives it the same
             40px floor every other tappable link on this header already has, without touching its
             size or look at any other width. */}
-        <Link to="/grounds" className="gwui-tap-40" style={{ color: 'var(--gw-navy)', textDecoration: 'underline' }}>Check-ins</Link>
+        <Link to="/grounds" className="gwui-tap-44" style={{ color: 'var(--gw-navy)', textDecoration: 'underline' }}>Check-ins</Link>
         {' / '}{title}
       </div>
 
