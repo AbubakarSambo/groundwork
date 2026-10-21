@@ -5,7 +5,7 @@ import { aLineNamesTheCustomer } from '../board/one-deal-per-customer';
 import { KINDS_THAT_ARE_NOT_WORK } from '../board/the-kind-of-work';
 import { weCouldNotReadIt } from './a-document-we-could-not-read-is-not-a-source';
 import { aCollectionsCheckInWithRelease2 } from '../grounds/release-2-collections';
-import { BILL, LOAN_OWED, aBillIsNamed } from '../board/the-collections-record';
+import { BILL, LOAN_OWED, F, aBillIsNamed } from '../board/the-collections-record';
 
 /**
  * PROOF ADDED IN A CHECK-IN IS FILED ON ITS ITEM (Release 1B, pull request 2 of 3; Hafsah, 18 October 2026: "Proof added in a
@@ -50,6 +50,10 @@ export function theItemItNames(words: string, items: AnItem[], participantId: st
   if (ownLoans.length === 1) return ownLoans[0];
   const named = items.filter((i) => !KINDS_THAT_ARE_NOT_WORK.includes(i.kind) && i.kind !== LOAN_OWED && (String(i.name ?? '').trim().length >= 3 || i.kind === BILL)).filter((i) =>
     i.kind === 'deal' ? theWordsNameTheDeal(words, { name: i.name, fields: i.fields ?? null }) : i.kind === BILL ? aBillIsNamed(words, i) : aLineNamesTheCustomer(words, i.name));
+  /* A bill named by its own number is the one: Njeri's slip reads "From: Kasarani Foods Ltd ... Reference: FN-004", which names FN-004 by its
+     number and the client's row only by its name, and was filed on nothing (final real-model check, item 9). */
+  const byNumber = named.filter((i) => i.kind === BILL && /\d/.test(String(i.fields?.[F.number] ?? i.name ?? '')) && aBillIsNamed(words, { name: /\d/.test(i.name) ? i.name : '', fields: { [F.number]: i.fields?.[F.number] ?? '' } }));
+  if (byNumber.length === 1) return byNumber[0];
   const theirs = named.filter((i) => participantId && i.ownerParticipantId === participantId);
   if (theirs.length === 1) return theirs[0];
   if (theirs.length > 1) return null;

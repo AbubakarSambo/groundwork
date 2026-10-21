@@ -48,14 +48,21 @@ const squash = (t: string) => (t ?? '').toLowerCase().replace(/[‘’“”'"]/
 
 export function whatHappensNext(
   record: { name: string },
-  openPromises: { participantId: string | null; text: string }[],
+  openPromises: { participantId: string | null; text: string; whenSaid?: string | null; about?: string | null }[],
   whoIs: (participantId: string | null) => string,
 ): WhatComesNext {
   const name = squash(record.name);
-  const promise = name.length >= 3 ? openPromises.find((c) => ` ${squash(c.text)} `.includes(` ${name} `)) : undefined;
+  /* Named in its words, or about this deal by the conversation it was made in (the-deal-a-promise-is-about). */
+  const named = name.length >= 3 ? openPromises.find((c) => ` ${squash(c.text)} `.includes(` ${name} `)) : undefined;
+  /* One about it only by its conversation is used where it can be said as a step; otherwise the deal's own next step stands. */
+  const byItsConversation = !named && name.length >= 3 ? openPromises.find((c) => !!c.about && squash(c.about) === name && !!inOurVoice(c.text, 'them')) : undefined;
+  const promise = named ?? byItsConversation;
   if (promise) {
     const who = whoIs(promise.participantId);
-    const clause = inOurVoice(promise.text, who === 'You' ? 'you' : 'them');
+    /* With the day they gave, where it is kept beside the words and not in them ("I'll follow up with him", "on Monday"). */
+    const when = String(promise.whenSaid ?? '').trim().replace(/[.\s]+$/, '');
+    const text = when && !squash(promise.text).includes(squash(when)) ? `${promise.text.trim().replace(/[.\s]+$/, '')} ${when}` : promise.text;
+    const clause = inOurVoice(text, who === 'You' ? 'you' : 'them');
     const says = clause ? `${who} committed to ${clause}.` : `${who} made a commitment about it, which is in the record.`;
     return { next: says, nextStep: clause ? aStepOnItsOwn(clause) : null, nextKnown: 'said', nextSays: says };
   }

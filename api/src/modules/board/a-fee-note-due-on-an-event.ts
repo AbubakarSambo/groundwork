@@ -189,9 +189,21 @@ export function whatALineDoesToABill(
     const otherMatters = waiting.filter((b) => b.id !== bill.id && sameEvent(b) && plainWords(b.client) === plainWords(bill.client) && plainWords(b.matter) !== plainWords(bill.matter));
     return otherMatters.length ? { does: 'may make it due', day } : { does: 'makes it due', day };
   }
-  /* Close, and not clearly the same: never a change, only a question for the lead. A line that says plainly it has not happened is not asked about. */
+  /*
+   * THE EVENT SAID TO HAVE HAPPENED, WITH NO MATTER NAMED: asked about first (final real-model check, item 9). Brian's "I filed the reply
+   * today, with assistance from a colleague, as the e-filing portal was not working for me yesterday." says the filing happened; the "not"
+   * is about the portal, and the reading of the event already looks for "not" beside the filing itself.
+   */
+  if (ev && said.happened && !names) {
+    const namesAnother = waiting.some((b) => b.id !== bill.id && whatALineNames(line.text, b));
+    return namesAnother ? { does: 'nothing' } : { does: 'may make it due', day };
+  }
+  /* Close, and not clearly the same: never a change, only a question for the lead. A line that says plainly it has not happened is not asked
+     about, and nor is one about what might happen or stop it: Wanjiru's "The most likely thing to stop the Kasarani Foods reply from being
+     filed this week is ..." asked "Did fee note FN-005 for Kasarani Foods fall due on 13 October?" (item 9). */
   const saysNotYet = /\b(?:not|never)\b|n't\b|\bnot yet\b/.test(plainWords(line.text));
-  if (saysNotYet) return { does: 'nothing' };
+  const aboutWhatMayHappen = /\b(?:if|will|would|could|might|may|likely|stop|stops|being|going to|expect|expects|plan|plans|hope|before|until|once|need|needs|must)\b|['’]ll\b/i.test(plainWords(line.text));
+  if (saysNotYet || aboutWhatMayHappen) return { does: 'nothing' };
   if (names && (said.touches || (!ev && eventWordsMet(line.text, bill.dueWhen)))) return { does: 'may make it due', day };
   if (ev && said.happened && !names) {
     /* The event, with no matter named: asked about only where the line names no other waiting bill's client or matter either. */

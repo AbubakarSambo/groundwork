@@ -314,6 +314,9 @@ import { READ_WHAT_THEY_PROMISED, WHAT_THEY_PROMISED_SCHEMA, theOnesToKeep } fro
 import { theFullerPromise, nameTwoDifferentDates } from './the-same-promise-said-more-fully';
 import { aPromiseSomebodyElseMade } from './a-promise-somebody-else-made';
 import { clearTheWaitsSaidDone, clearTheWaitsAnEventEnded } from './a-wait-said-done-is-cleared';
+import { aWaitForTheirCheckIn, removeTheWaitsForACheckIn } from './a-wait-for-a-check-in-is-not-a-wait';
+import { whereTheirNumberStands } from './something-they-could-not-have-said-themselves';
+import { fileTheProofOnItsItem } from '../documents/proof-filed-on-its-item';
 import { keepThePromisesSaidDone } from './a-promise-said-done-is-kept';
 import { theReleaseOneSalesBoardIsOnFor } from '../board/release-one-sales-board';
 import { aCollectionsCheckInWithRelease2 } from '../grounds/release-2-collections';
@@ -5805,7 +5808,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       if (theOneThingBack) return '';
       const [board, mine, turns] = await Promise.all([
         (this.prisma.groundObjective?.findMany?.({
-          where: { groundId: checkIn.groundId }, select: { target: true, name: true, ownerParticipantId: true },
+          where: { groundId: checkIn.groundId }, select: { target: true, name: true, ownerParticipantId: true, count: true },
         }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]),
         (this.prisma.personObjective?.findMany?.({
           where: { groundId: checkIn.groundId, participantId: checkIn.participantId }, select: { dueDate: true },
@@ -5825,10 +5828,15 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       const standing = theNumbersIn(
         answers.map((t: any) => t.content ?? '').filter((c: string) => saysWhereItStands(c)).join(' '),
       );
+      /*
+       * A SALES NUMBER STANDS WHERE THE RECORD COUNTS IT, NEVER AT A LEAD'S UNITS (final real-model check, item 16). Mercy was told "You are
+       * at 25 of 30 for Mrs Achola" (25 was Mrs Achola's interest, nothing sold) and Joseph "You are at 20 units towards the 30 unit target"
+       * (Juja Hardware's 20, wanted, not bought). Where their own number is counted from the deals, where it stands is that count.
+       */
       return somethingTheyCouldNotHaveSaid({
         whole: whole ? { name: whole.name, target: whole.target } : null,
         parts: owned.map((o: any) => ({ target: o.target, theirs: o.ownerParticipantId === checkIn.participantId })),
-        standsAt: standing.length ? Math.max(...standing) : null,
+        standsAt: whereTheirNumberStands(theirs ?? null, standing),
         theirTarget: theirs?.target ?? null,
         daysLeft,
         answersSoFar: answers.length,
@@ -7501,6 +7509,9 @@ ${told}` : '';
     )
       /* Then every open wait on this check-in that either side has now said is done is cleared, on the day it was said
          (Hafsah's point 14, Release 1). After both, so it reads this check-in's lines and its newest waits. */
+      /* A wait for somebody's check-in was never a wait on their work: any recorded before the rule is removed (final check, item 1). */
+      .then(() => removeTheWaitsForACheckIn(this.prisma, checkIn.groundId))
+      .then((n) => { if (n) this.logger.log(`Check-in ${checkIn.id}: removed ${n} wait(s) that were only for somebody's check-in.`); })
       .then(() => clearTheWaitsSaidDone(this.prisma, checkIn.groundId))
       .then((n) => { if (n) this.logger.log(`Check-in ${checkIn.id}: cleared ${n} wait(s) somebody said were done.`); })
       /* And every wait for an event, in any of the organisation's check-ins, that somebody has now said happened (messages test, fourth run). */
@@ -11558,6 +11569,8 @@ ${told}` : '';
       const onLabel = onParticipantId ? null : (d.onLabel?.trim() || d.onName?.trim() || null);
       /* Nobody waits on themselves: what is their own to do is not a wait (request 111 e). */
       if (aWaitOnOneself({ fromParticipantId: participantId, onParticipantId, onLabel })) continue;
+      /* A wait for somebody's check-in is not a wait on their work: it is never recorded (final check, item 1). */
+      if (aWaitForTheirCheckIn({ what: d.what, onParticipantId, onLabel }, ground.participants.map((p) => [p.user?.firstName ?? '', p.user?.lastName ?? ''].filter(Boolean)))) continue;
       const key = normalise(d.what);
 
       // Same person waiting on the same party for roughly the same thing.
@@ -12007,6 +12020,17 @@ ${told}` : '';
       where: { groundId: checkIn.groundId, participantId: checkIn.participantId },
       orderBy: { createdAt: 'desc' },
     });
+
+    /*
+     * THE DOCUMENT THIS CHECK-IN ACKNOWLEDGES WAS ADDED IN THE CHECK-IN (final real-model check, item 9). Njeri's Equity slip for FN-004
+     * was sent with no word that it came from her check-in, so it was never filed on FN-004, and Wanjiru's morning said "Nothing is paid
+     * with proof yet." for four mornings. Where the check-in itself says it has a document, the document is filed on its item as proof,
+     * once, by the same rule as an upload from the check-in (proof-filed-on-its-item.ts).
+     */
+    if (doc && !(await this.prisma.itemEvidence?.findFirst?.({ where: { documentId: doc.id }, select: { id: true } }).catch(() => null))) {
+      await fileTheProofOnItsItem(this.prisma as any, { id: doc.id, groundId: checkIn.groundId, participantId: checkIn.participantId, fileName: doc.fileName, mimeType: doc.mimeType, uploaderNote: (doc as any).uploaderNote ?? null, content: doc.content })
+        .catch((err: any) => this.logger.warn(`Could not file ${doc.fileName} as evidence from check-in ${checkIn.id}: ${err?.message ?? err}`));
+    }
 
     const systemPrompt =
       'You are Groundwork. A supporting document has just been attached to this check-in session. Acknowledge it by name in one sentence. Then ask one question: what does this document confirm about what you have described? Wait for their answer before asking about complications. Warm, direct, brief. Do not summarise the document. Do not make a judgement. Do not list questions.';

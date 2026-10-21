@@ -43,7 +43,7 @@ const LIB = {
   promises: 'Doing what you said builds trust fast.',
   planningNeeds: 'Work without a booked next step stalls.',
   planningImprove: 'Book the next step, with a day, before you finish each piece of work.',
-  blockersNeeds: 'Raising blockers without trying to clear them can look like excuses.',
+  blockersNeeds: 'Raising a blocker without saying what you tried makes it hard for others to help.',
   blockersImprove: 'Try one thing before you raise a blocker, and say what you tried.',
   rightNeeds: 'Time spent on the wrong work is taken from the right work.',
   rightImprove: 'Check each piece of work fits the plan before you spend time on it, and let go of what isn’t moving.',

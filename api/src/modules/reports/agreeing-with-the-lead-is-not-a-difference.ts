@@ -56,6 +56,22 @@ export function isNotADifferenceBetweenThem(
   return one(a, b) || one(b, a);
 }
 
+/**
+ * NOT KNOWING A NUMBER IS NOT A DIFFERENT NUMBER (final real-model check, item 13). Grace said "I don't know the team's current total units
+ * sold with proof yet. That's what I want to see in their check-ins today." and "I haven't made any specific sales today." Kevin had sold 40
+ * units at Kilele Hotel with proof. The report wrote a difference, "you said that no new sales confirmed, while Kevin Omondi said that 40
+ * units sold with proof", with her side "Your account indicates that you do not have a current count of the team's sales." She did not say
+ * a different count; she said she did not have one, and of her own sales. A side that only says its person does not know, has no count yet,
+ * or made no sale of their own is not a side of a difference.
+ */
+const ONLY_NOT_KNOWING = /\b(?:do(?:es)? not (?:have|know)|don['’]t (?:have|know)|did not (?:have|know)|didn['’]t (?:have|know)|has not got|have not got|not (?:yet )?know(?:n)?|unsure|not sure|no (?:current )?(?:count|total|figure|number)|(?:is|are) (?:still )?waiting (?:for|on) (?:the )?(?:team(?:['’]s)? )?(?:check[\s-]?ins?|updates?|numbers?)|(?:has|have) not made any|haven['’]t made any|hasn['’]t made any|no new sales of (?:her|his|their) own)\b/i;
+export function aSideThatOnlyDoesNotKnow(view: string): boolean {
+  const v = String(view ?? '').trim();
+  if (!v || !ONLY_NOT_KNOWING.test(v)) return false;
+  /* A figure of their own beside it is a position ("does not know the exact total, but thinks it is about 30"). */
+  return !/\b(?:but|though|thinks|believes|says it is|estimates?)\b/i.test(v) || !FIGURES_IN_A_VIEW(v).length;
+}
+
 /** The differences with every one that is not a difference between its two people left out, and the topics left out, for the log. */
 export function withoutDifferencesNobodyHad<D extends { topic?: unknown; positions?: unknown }>(
   divergences: readonly D[],
@@ -66,7 +82,7 @@ export function withoutDifferencesNobodyHad<D extends { topic?: unknown; positio
   const leftOut: string[] = [];
   const kept = (divergences ?? []).filter((d) => {
     const sides = (Array.isArray(d?.positions) ? d.positions : []).map((x: any) => ({ label: String(x?.participantLabel ?? ''), view: String(x?.view ?? '') }));
-    const gone = isNotADifferenceBetweenThem(sides, linesOf, customers, people);
+    const gone = sides.some((x: ASide) => aSideThatOnlyDoesNotKnow(x.view)) || isNotADifferenceBetweenThem(sides, linesOf, customers, people);
     if (gone) leftOut.push(String(d?.topic ?? ''));
     return !gone;
   });

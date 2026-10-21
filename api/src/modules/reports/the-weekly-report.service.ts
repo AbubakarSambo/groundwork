@@ -1,3 +1,4 @@
+import { theDaysAnOpenDailySessionWasMissed } from '../board/the-persons-record';
 import { thePersonJudgementsAreOn, thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
 import { NOT_A_QUIET_CLOSE, wasAQuietClose } from '../grounds/an-answer-includes-a-refusal';
 import { theConfirmedWaits, theNoteBesideTheClaim } from '../grounds/a-wait-is-the-speakers-account';
@@ -147,6 +148,20 @@ export function namesOffFor(parties: any[], labels: Map<string, string>): (text:
  */
 @Injectable()
 export class TheWeeklyReportService {
+  /**
+   * THE DAYS A DAILY SESSION STAYED OPEN THIS WEEK. Peter answered on Monday, and his Tuesday session stayed open through Wednesday, because a
+   * daily check-in opens no new session until the open one is answered; the week counted 14 check-ins due where 15 were (Wednesday evening).
+   */
+  private async theDaysLeftOpenThisWeek(ground: any, due: any[], start: Date, at: Date): Promise<number> {
+    if (String(ground?.cadence ?? '').toUpperCase() !== 'DAILY') return 0;
+    const zone = (await theOrganisationsZone(this.prisma as any, ground.organizationId).catch(() => null)) ?? THE_PRODUCTS_OWN_ZONE;
+    const first = new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(start);
+    const workingDays = Array.isArray(ground?.workingDays) ? ground.workingDays : null;
+    return due.filter((c) => c.status !== CheckInStatus.COMPLETED && !c.optional)
+      /* Today's check-in is due today: the week is counted through today, as the sessions answered today are. */
+      .reduce((n, c) => n + theDaysAnOpenDailySessionWasMissed(c, at, zone, { workingDays }, true).filter((k) => k >= first).length, 0);
+  }
+
   private readonly logger = new Logger(TheWeeklyReportService.name);
 
   constructor(private prisma: PrismaService) {}
@@ -166,7 +181,7 @@ export class TheWeeklyReportService {
     const ground: any = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
-        initiatorId: true, cadence: true, kindOfWork: true, workStages: true, organizationId: true,
+        initiatorId: true, cadence: true, workingDays: true, kindOfWork: true, workStages: true, organizationId: true,
         participants: { select: { id: true, userId: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, roleAsDescribed: true, ...WHAT_SAYS_SOMEBODY_JOINED, user: { select: { firstName: true, lastName: true, email: true } } } },
         objectives: { select: { id: true, name: true, target: true, count: true, direction: true, ownerParticipantId: true, setByParticipantId: true, isADecisionAboutAPerson: true } },
       } as any,
@@ -433,7 +448,8 @@ export class TheWeeklyReportService {
       lastAt: lastAt ? lastAt.toISOString() : null,
       periods,
       eachPerson,
-      checkIns: { due: due.length, made },
+      /* A daily session left open is due once for each working day of the week it stayed open (final real-model check, item 14). */
+      checkIns: { due: due.length + (await this.theDaysLeftOpenThisWeek(ground, due, start, at)), made },
       counts,
       targets,
       namedByMoreThanOne,

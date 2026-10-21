@@ -61,7 +61,7 @@ function ThePerson({ groundId, p }: { groundId: string; p: APersonOnYourBoard })
           </FoldedLine>
         ))}
         {/* The coaching Groundwork gave, when, and whether it worked; one already beside where they stand is not said again. */}
-        {p.record && (p.record.coaching.length === 0 || otherCoaching.length > 0) && (
+        {p.record && ((p.record.coaching.length === 0 && !!p.record.coachingEmpty) || otherCoaching.length > 0) && (
           <FoldedLine name="Coaching from Groundwork">
             {p.record.coaching.length === 0 ? <Note tone="muted">{p.record.coachingEmpty}</Note> : (
               <ul className="gwui-panel-list">

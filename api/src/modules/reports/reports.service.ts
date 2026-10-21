@@ -1,3 +1,5 @@
+import { theSessionsHeld } from './the-sessions-held';
+import { notABlockerTheyRaised } from '../board/not-a-blocker-they-raised';
 import { thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
 import { theDirectMorningIsOnFor, theDirectMorningIsOn as theOrganisationsDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { withTheDirectMorning, whichDirectBlockRan, THE_DIRECT_TEAM_REPORT, THE_DIRECT_JUDGEMENT, THE_DIRECT_OWN_REPORT } from './the-direct-morning-is-written-straight';
@@ -1167,6 +1169,15 @@ export class ReportsService {
     /* A deal's units are not a target (Drop Access run 1, item 27): they are not summed as one. */
     const numbers = howTheNumbersSit(withoutADealsFigure(objectivesForTheSums as any[], await theCustomersIfReleaseOne(this.prisma, groundId), (ground.participants ?? []).map((p: any) => p.user?.firstName ?? '').filter(Boolean)), answering);
     if (numbers.says) groundContextLines.push(numbers.says);
+    /*
+     * WHAT THE RECORD ALREADY COUNTS, SO A REPORT NEVER SAYS IT IS NOT KNOWN (final real-model check, item 12). The board said 40 units
+     * sold, and the report said "You do not have a current count of units sold." because Grace said she did not know it. Each target's
+     * count, as the board holds it, is given to the synthesis as a fact, beside the rule that not knowing it is not a different count.
+     */
+    const counted = await (this.prisma.groundObjective?.findMany?.({ where: { groundId, ownerParticipantId: null }, select: { name: true, target: true, count: true } }) ?? Promise.resolve([])).catch(() => [] as any[]);
+    for (const o of (counted as any[]).filter((x) => typeof x.target === 'number' && x.target > 0 && typeof x.count === 'number' && x.count > 0)) {
+      groundContextLines.push(`THE RECORD'S COUNT FOR "${o.name}": ${o.count} of ${o.target}, as the board shows it. Somebody saying they do not know this number, or that they made no sale themselves, has not said a different number: never write that the count is not known, or a difference about it.`);
+    }
     const leadSignals = Array.isArray(initiatorProfile?.signals) ? (initiatorProfile!.signals as string[]) : [];
     if (leadSignals.length) {
       groundContextLines.push(`LEAD PROFILE (from past grounds - use to add alignment recommendations at the end of the report):\n${leadSignals.map(s => `- ${s}`).join('\n')}`);
@@ -2621,7 +2632,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * on a sales check-in, a side whose every figure the other person said too, against the other's own deal, is not a difference
      * between them. Mercy said the team's 120 as Grace did, and Grace's board said they understood the goal differently.
      */
-    if (Array.isArray((result as any).divergences) && theCustomers) {
+    /* And on any check-in, a side that only says its person does not know a number is not a side (final real-model check, item 13). */
+    if (Array.isArray((result as any).divergences)) {
       const labelToId = new Map([...labelById.entries()].map(([id, l]) => [l, id]));
       const linesOf = (label: string) => {
         const id = labelToId.get(label);
@@ -5054,6 +5066,16 @@ happened, and what is in the way.`;
         namedByMoreThanOne(shared),
       );
       /* What is on file for each sale, so a sale with a payment record on file is never asked about again (proof-on-file-is-never-asked-for). */
+      /*
+       * THE SESSIONS HELD, AND WHO ANSWERED EACH (final real-model check, follow-up 2). The judgement said "The initiator has not held the daily
+       * check-ins the initiator said the initiator would hold" of Grace, who had answered every one of the three, because all it was told was her
+       * open promise of "daily check-ins". The sessions on record, by day, and how many each person answered, are given as facts.
+       */
+      {
+        const done = ((await (this.prisma.checkIn?.findMany?.({ where: { groundId, status: CheckInStatus.COMPLETED, isSetup: false }, select: { participantId: true, sessionNumber: true, completedAt: true } }) ?? Promise.resolve([] as any[]))?.catch?.(() => [] as any[])) ?? []) as any[];
+        const sessionsHeld = theSessionsHeld(done, room!.people.map((p) => ({ participantId: p.participantId, who: p.who })));
+        if (sessionsHeld) material = `${material}\n\n${sessionsHeld}`;
+      }
       if (salesAndProof.length) {
         const whoOwns = (pid: string | null) => room!.people.find((p) => p.participantId === pid)?.who ?? null;
         material = `${material}\n\n${whatIsOnFileForEachSale(salesAndProof, whoOwns)}`;
@@ -5184,7 +5206,7 @@ happened, and what is in the way.`;
       if (numbers.leftOut.length) this.logger.warn(`The judgement on ${groundId}: left out ${numbers.leftOut.length} line(s) with a number no block holds: ${numbers.leftOut.map((x) => `"${x}"`).join(', ')}`);
     }
     /* And a line the record proves false about proof on file is left out (proof-on-file-is-never-asked-for). */
-    const onFile = withoutAsksForProofOnFile(kept, salesAndProof);
+    const onFile = withoutAsksForProofOnFile(kept, salesAndProof, asARoom ? (pid) => room!.people.find((p) => p.participantId === pid)?.who ?? null : undefined);
     kept = onFile.judgement;
     if (onFile.leftOut.length) this.logger.warn(`The judgement on ${groundId}: left out ${onFile.leftOut.length} line(s) about proof the record already holds: ${onFile.leftOut.map((x) => `"${x}"`).join(', ')}`);
     this.logger.log(`Judged ${answers.length} answer(s) on ${groundId} over ${frame.length} fields.`);
@@ -6388,7 +6410,11 @@ happened, and what is in the way.`;
      * because the board left it out and this read did not. Her colleagues' own waits on her already say it:
      * "Baraka Mwangi and Amani Wekesa are waiting on you for the discount and the price list."
      */
-    const dependenciesNowReal = (dependenciesNow as any[]).filter((d) => !aWaitOnOneself(d)) as typeof dependenciesNow;
+    /* A customer's own budget or approval is where a deal stands: never "put the budget in writing" (final real-model check, item 2). */
+    const salesHere = isASalesKind((ground as any)?.kindOfWork
+      ?? ((await this.prisma.ground?.findUnique?.({ where: { id: groundId }, select: { kindOfWork: true } })?.catch?.(() => null)) as any)?.kindOfWork);
+    const dependenciesNowReal = (dependenciesNow as any[]).filter((d) => !aWaitOnOneself(d))
+      .filter((d) => !notABlockerTheyRaised(d, { sales: salesHere, keepTheAsks: true, keepWhatCleared: true })) as typeof dependenciesNow;
     const dependencies = asOf
       ? (dependenciesNowReal as any[])
         .filter((d) => by(d.createdAt))
@@ -6556,7 +6582,13 @@ happened, and what is in the way.`;
     /* One count for the sessions: the board's own clock, except on a closed session's own report, which is
        about that session (request 117, part 3). */
     const clock = asOf ? null : await this.theBoardsClock(groundId, ground);
-    const sessionNumber = clock ? clock.current : theirNewest;
+    /*
+     * NEVER BEHIND THEIR OWN CHECK-INS (final real-model check, item 15). Peter's open session 2 held the board's round at 2, so Kevin, who had
+     * done session 3, read "This is session 2 of 15 of this work." in his own report. The board's round, or the newest session this person
+     * finished, whichever is later.
+     */
+    /* `theirNewest` is the newest they finished: the record holds only finished sessions. */
+    const sessionNumber = clock ? Math.max(clock.current, theirNewest) : theirNewest;
     const planned = clock?.planned ?? (ground.checkIns ?? []).reduce((n: number, c: any) => Math.max(n, c.sessionNumber ?? 0), 0);
 
     const map = roleMapFor((participant as any).detectedFunction);

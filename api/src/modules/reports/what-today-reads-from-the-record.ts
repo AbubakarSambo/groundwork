@@ -1,3 +1,4 @@
+import { notABlockerTheyRaised } from '../board/not-a-blocker-they-raised';
 import { thePersonJudgementsAreOn, thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
 import { dedupeDependencies } from '../board/reads';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
@@ -268,8 +269,11 @@ export async function forTheLeadFrom(prisma: any, groundId: string, l: Loaded, r
   const lead = participants.find((p) => p.userId === reader.userId) ?? null;
   /* What Release 1 changes here (one wait said once, what changes said as the waiting person's, a side that said nothing left out) is read only where its switch is on. */
   const releaseOne = await theReleaseOneSalesBoardIsOn(prisma, (ground as any).organizationId).catch(() => false);
+  /* A customer's own budget or approval is where a deal stands, not something for her to decide (final real-model check, item 2). */
+  const salesHere = isASalesKind((ground as any).kindOfWork);
   const open = ((ground.dependencies ?? []) as any[])
-    .filter((d) => d.status !== 'CLEARED' && (d.what ?? '').trim() && d.fromParticipantId !== lead?.id);
+    .filter((d) => d.status !== 'CLEARED' && (d.what ?? '').trim() && d.fromParticipantId !== lead?.id)
+    .filter((d) => !notABlockerTheyRaised(d, { sales: salesHere, keepTheAsks: true, keepWhatCleared: true }));
   /* Newest row of each thing wins: a handoff somebody stopped calling blocking is not blocking. */
   const current = oneRowPerThing(open);
   const onTheLead = (d: any) => !!lead && d.onParticipantId === lead.id;
@@ -308,7 +312,9 @@ export async function forTheLeadFrom(prisma: any, groundId: string, l: Loaded, r
       why = `${andList(waiting)} cannot move until it is settled${onWho ? `, and it is waiting on ${onWho}` : ''}.`;
     }
     const thenAsSaid = rows.map((r) => (r.then ?? '').trim()).find(Boolean);
-    const then = releaseOne ? whatChangesSaidAsTheirs(thenAsSaid ?? '', waiting.length === 1 ? waiting[0] : null) : thenAsSaid;
+    const asTheirs = releaseOne ? whatChangesSaidAsTheirs(thenAsSaid ?? '', waiting.length === 1 ? waiting[0] : null) : thenAsSaid;
+    /* Only a whole clause, with who and what happens: "it to close this week for sure" is not one (final real-model check, item 14). */
+    const then = asTheirs && aWholeClause(asTheirs) ? asTheirs : null;
     out.push({
       id: `handoff-${d.id}`,
       decide,
@@ -508,6 +514,17 @@ export async function todayHeldToTheRecord<T extends { sinceLast?: SinceLast; fo
   } catch {
     return today;
   }
+}
+
+/**
+ * A WHOLE CLAUSE: somebody or something, then what happens to it ("the school lead will convert", "it will count as 20 units sold", "The
+ * reply can be filed."). Joseph's "I expect it to close this week for sure." was kept as "it to close this week for sure", and Grace's weekly
+ * report read "Once it is settled, it to close this week for sure." A piece that starts with a bare verb ("file the affidavit", "reviewing
+ * the draft") or has no verb after its subject ("it to close") is not said after "Once it is settled".
+ */
+export function aWholeClause(t: string): boolean {
+  return /^(?:(?:the|a|an|this|that|their|his|her|its|our|my)\s+)?[\p{L}\d'’-]+(?:\s+(?:for|of|at|in|on)?\s*[\p{L}\d'’.,-]+){0,6}?\s+(?:will|would|can|could|is|are|was|were|has|have|had|should|may|might|must|counts?|goes|comes?|gets?|becomes?|starts?|moves?)\b/iu.test(String(t ?? '').trim())
+    && !/^[\p{L}'’-]+\s+to\s+[\p{L}]+/iu.test(String(t ?? '').trim());
 }
 
 /**

@@ -8,7 +8,7 @@ import { PLAIN_PATTERN_NAMES } from './plain-pattern-names';
 const THE_SPEC: [string, string, string, string][] = [
   ['Keeping promises', 'Doing what you said builds trust fast.', 'Promises that slip make it hard for others to rely on you.', 'Promise less, and say early when a date will move.'],
   ['Planning ahead', 'A booked next step keeps work moving.', 'Work without a booked next step stalls.', 'Book the next step, with a day, before you finish each piece of work.'],
-  ['Handling blockers', 'Clearing blockers yourself shows ownership.', 'Raising blockers without trying to clear them can look like excuses.', 'Try one thing before you raise a blocker, and say what you tried.'],
+  ['Handling blockers', 'Clearing blockers yourself shows ownership.', 'Raising a blocker without saying what you tried makes it hard for others to help.', 'Try one thing before you raise a blocker, and say what you tried.'],
   ['Working on the right things', 'Your time goes where it counts.', 'Time spent on the wrong work is taken from the right work.', 'Check each piece of work fits the plan before you spend time on it, and let go of what isn’t moving.'],
   ['Backing claims with proof', 'Proof makes your work easy to trust.', 'Claims without proof can be read as guesses.', 'Add the photo, slip or link when you say something is done.'],
   ['Helping your team', 'Helping teammates is what strong team players do.', 'Working alone when others are stuck slows the whole team.', 'Offer one piece of help a week where you know the answer.'],
@@ -24,6 +24,8 @@ describe('the seven behaviours in the behaviour and pattern library', () => {
     for (const b of THE_SEVEN_BEHAVIOURS) {
       for (const code of b.nearestPatterns) expect(PLAIN_PATTERN_NAMES[code]).toBeDefined();
       for (const line of [b.strength, b.needsWork, b.toImprove, b.keepDoing]) expect(line).not.toMatch(/\b(pip|exit|at risk|score)\b/i);
+      /* Nor a judgement of the person's motives: "can look like excuses" was removed everywhere (final real-model check, item 2). */
+      for (const line of [b.strength, b.needsWork, b.toImprove, b.keepDoing]) expect(line).not.toMatch(/\bexcuses?\b/i);
     }
   });
 });

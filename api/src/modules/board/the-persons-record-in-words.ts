@@ -32,7 +32,8 @@ export interface TheRecordInWords {
   note: string;
   parts: APartOfTheRecord[];
   coaching: ACoachingInWords[];
-  coachingEmpty: string;
+  /** Only where no coaching is served beside it: never "has not coached" next to coaching (final real-model check, item 20). */
+  coachingEmpty: string | null;
   /** What the lead who runs the check-in praised them for (board/your-team-person-by-person.ts). In the person's own payload alone. */
   fromYourLead?: { heading: string; lines: string[] };
 }
@@ -126,18 +127,23 @@ export function theRecordInWords(r: ThePersonsRecord, coaching: readonly ACoachi
   /* Figures that changed. A sale or payment taken back is said once, with the claim it took back, above. */
   const figures = r.changes.filter((c) => c.what === 'units');
   if (figures.length) {
-    const changed = figures.filter((c) => !c.putRight);
+    const changed = figures.filter((c) => !c.putRight && !c.reason);
+    const saidWhy = figures.filter((c) => !c.putRight && c.reason);
     const putRight = figures.filter((c) => c.putRight);
     const says = changed.length
       ? `${changed.length === 1 ? 'One figure' : `${cap(inWords(changed.length))} figures`} ${w.self ? 'you gave' : `${w.first} gave`} changed from one check-in to the next, with nothing said about why.`
-      : `${You(w)} put ${putRight.length === 1 ? 'a figure' : 'figures'} right ${w.self ? 'yourself' : 'without being asked'}.`;
+      : saidWhy.length
+        ? `${saidWhy.length === 1 ? 'One figure' : `${cap(inWords(saidWhy.length))} figures`} ${w.self ? 'you gave' : `${w.first} gave`} changed from one check-in to the next, and ${w.self ? 'you' : w.first} said why.`
+        : `${You(w)} put ${putRight.length === 1 ? 'a figure' : 'figures'} right ${w.self ? 'yourself' : 'without being asked'}.`;
     parts.push({
       heading: 'Figures that changed',
       says,
       toChange: changed.length ? `Saying so ${w.self ? 'yourself' : 'at once'} when a figure changes, with what shows the new one, would change this.` : null,
       evidence: figures.map((c) => (c.putRight
         ? `${You(w)} put the figure for ${c.about} right ${w.self ? 'yourself' : 'without being asked'}, from ${c.from} units to ${c.to}, on ${c.toOn}.`
-        : `On ${c.fromOn} ${you(w)} said ${c.from} units for ${c.about}, and on ${c.toOn} ${you(w)} said ${c.to} units.`)),
+        : c.reason
+          ? `On ${c.fromOn} ${you(w)} said ${c.from} units for ${c.about}, and on ${c.toOn} ${you(w)} said ${quote(c.reason)}`
+          : `On ${c.fromOn} ${you(w)} said ${c.from} units for ${c.about}, and on ${c.toOn} ${you(w)} said ${c.to} units.`)),
     });
   }
 
@@ -148,8 +154,8 @@ export function theRecordInWords(r: ThePersonsRecord, coaching: readonly ACoachi
     parts.push({
       heading: `Where ${your(w)} time went`,
       says: talked.length
-        ? `${talked.map((f) => f.deal).join(' and ')} cannot buy now, and ${you(w)} talked about ${talked.length === 1 ? 'it' : 'them'} in ${plural(new Set(talked.flatMap((f) => f.sessions)).size, 'check-in')} after that was on record.`
-        : `${notNow.map((f) => f.deal).join(' and ')} cannot buy now, and ${you(w)} ${w.self ? 'have' : 'has'} not spent a check-in on ${notNow.length === 1 ? 'it' : 'them'} since.`,
+        ? `${cap(talked.map((f) => f.deal).join(' and '))} cannot buy now, and ${you(w)} talked about ${talked.length === 1 ? 'it' : 'them'} in ${plural(new Set(talked.flatMap((f) => f.sessions)).size, 'check-in')} after that was on record.`
+        : `${cap(notNow.map((f) => f.deal).join(' and '))} cannot buy now, and ${you(w)} ${w.self ? 'have' : 'has'} not spent a check-in on ${notNow.length === 1 ? 'it' : 'them'} since.`,
       toChange: talked.some((f) => f.sessions.length >= 3) ? 'Putting that time into a deal that can buy would change this.' : null,
       evidence: notNow.map((f) => `On ${f.becauseOn} ${you(w)} said ${quote(f.because ?? '')}`),
     });
@@ -164,7 +170,13 @@ export function theRecordInWords(r: ThePersonsRecord, coaching: readonly ACoachi
         ? `${You(w)} raised one blocker, and ${tried ? 'said' : 'did not say'} what ${w.self ? 'you had' : 'had been'} tried first.`
         : `${You(w)} raised ${plural(r.blockers.length, 'blocker')} and said what ${w.self ? 'you had' : 'had been'} tried first on ${tried === r.blockers.length ? 'all of them' : `${inWords(tried)} of them`}.`,
       toChange: r.blockers.length >= 2 && tried / r.blockers.length < 0.5 ? `Trying one thing before raising a blocker, and saying what was tried, would change this.` : null,
-      evidence: r.blockers.map((b) => `On ${b.on} ${you(w)} raised a blocker, waiting ${/^to\b/i.test(b.what) ? '' : 'for '}${lowerFirst(b.what.replace(/[.\s]+$/, ''))}, ${b.triedFirst ? (b.tried ? `and said what had been tried, ${quote(b.tried)}` : 'and said what had been tried') : `and did not say what ${w.self ? 'you had' : 'had been'} tried first`}.`),
+      evidence: r.blockers.map((b) => {
+        const waiting = `On ${b.on} ${you(w)} raised a blocker, waiting ${/^to\b/i.test(b.what) ? '' : 'for '}${lowerFirst(b.what.replace(/[.\s]+$/, ''))}`;
+        /* What they tried, said on another day, is said with its own day (final check, item 18): before it was raised, or after. */
+        if (b.triedFirst && b.tried && b.triedOn) return `${waiting}, and on ${b.triedOn} ${you(w)} had already said what was tried, ${quote(b.tried)}.`;
+        if (!b.triedFirst && b.tried && b.triedOn) return `${waiting}, and did not say what ${w.self ? 'you had' : 'had been'} tried first. On ${b.triedOn} ${you(w)} said what was tried after that, ${quote(b.tried)}.`;
+        return `${waiting}, ${b.triedFirst ? (b.tried ? `and said what had been tried, ${quote(b.tried)}` : 'and said what had been tried') : `and did not say what ${w.self ? 'you had' : 'had been'} tried first`}.`;
+      }),
     });
   }
 
@@ -187,7 +199,7 @@ export function theRecordInWords(r: ThePersonsRecord, coaching: readonly ACoachi
       : `This is read from what ${w.first} said in ${w.first}’s check-ins and what is on file. It changes only when something new comes in.`,
     parts,
     coaching: coaching.map((c) => theCoachingInWords(c, w)),
-    coachingEmpty: w.self ? 'Groundwork has not coached you on anything yet.' : `Groundwork has not coached ${w.first} on anything yet.`,
+    coachingEmpty: coaching.length ? null : w.self ? 'Groundwork has not coached you on anything yet.' : `Groundwork has not coached ${w.first} on anything yet.`,
   };
 }
 

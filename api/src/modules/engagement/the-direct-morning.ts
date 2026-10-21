@@ -218,13 +218,15 @@ export function theTargetLines(board: any, now: Date, zone: string): { lines: AM
   const counted = aim.fromTheDeals ?? null;
   const sold = Number(counted?.sold ?? aim.count ?? 0);
   const paid = counted && typeof counted.proven === 'number' ? Number(counted.proven) : null;
+  /* Sold on a deposit only is said as such, never as paid (final real-model check, item 10). */
+  const onADeposit = counted && typeof counted.deposit === 'number' && counted.deposit > 0 ? Number(counted.deposit) : 0;
   const by = theAimsDay(aim.name) ?? null;
   const rows = theDealRows(board);
   const likely = rows.filter((r) => r.group === 'likely' && !isWon(r));
   const likelyUnits = likely.reduce((n, r) => n + (theUnitsOf(r.fields) ?? 0), 0);
   /* THE TARGET IN ONE LINE (Hafsah, 21 October): sold, paid, what is likely by the target's day, the gap, and whether the open deals cover
      it. "75 of 120 sold, 47 paid, 45 short, and the open deals cover 40." */
-  const said = [`${commas(sold)} of ${commas(target)} sold`, ...(paid !== null ? [`${commas(paid)} paid`] : []), ...(likelyUnits > 0 ? [`${commas(likelyUnits)} more likely${by ? ` by ${by}` : ''}`] : [])].join(', ');
+  const said = [`${commas(sold)} of ${commas(target)} sold`, ...(paid !== null ? [`${commas(paid)} paid`] : []), ...(onADeposit ? [`${commas(onADeposit)} on a deposit`] : []), ...(likelyUnits > 0 ? [`${commas(likelyUnits)} more likely${by ? ` by ${by}` : ''}`] : [])].join(', ');
   const gap = target - sold - likelyUnits;
   if (gap <= 0) {
     return { lines: [{ text: sold >= target ? `${said}, and you have reached the target.` : `${said}, and with the likely deals you reach the target.`, rank: 0 }], gap: Math.max(0, gap), target, heading };
@@ -233,8 +235,9 @@ export function theTargetLines(board: any, now: Date, zone: string): { lines: AM
   const listed = new Set(((board?.toCloseTheGap?.deals ?? []) as any[]).map((d) => String(d?.name ?? '').trim().toLowerCase()).filter(Boolean));
   const open = rows.filter((r) => !isWon(r) && r.group !== 'likely' && (listed.size ? listed.has(String(r.name).trim().toLowerCase()) : OPEN_GROUPS.has(String(r.group))));
   const cover = open.reduce((n, r) => n + (theUnitsOf(r.fields) ?? 0), 0);
+  /* How much the open deals hold against the gap, never only "they cover it" (final real-model check, item 11). */
   const text = cover >= gap
-    ? `${said}, ${commas(gap)} short, and the open deals cover it if they close.`
+    ? `${said}, ${commas(gap)} short, and the open deals hold ${commas(cover)}, which covers it if they close.`
     : cover > 0
       ? `${said}, ${commas(gap)} short, and the open deals cover ${commas(cover)}.`
       : `${said}, ${commas(gap)} short, and no open deal covers any of it.`;
@@ -597,7 +600,8 @@ export function theCollectionsDirectMorning(input: TheCollectionsMorningInput): 
   const whoOwes = (b: ABillOnTheBoard) => (input.loans ? Name(b.ownerParticipantId) ?? 'A borrower' : f(b, F.client) || f(b, F.matter) || b.name);
   /* A loan is said as the borrower's ("Peter’s loan"), never "loan for loan" (browser test, 21 October 2026). */
   const numbered = (b: ABillOnTheBoard) => (input.loans ? `${whoOwes(b)}’s loan` : `${f(b, F.number) || b.name} for ${whoOwes(b)}`);
-  const amountOf = (b: ABillOnTheBoard) => anAmount(f(b, F.amount));
+  /* The amount, or for a paid bill the amount paid, where the record kept no amount (the board reads the same, theBillsOnRecord). */
+  const amountOf = (b: ABillOnTheBoard) => anAmount(f(b, F.amount)) ?? (b.stage === 'Paid' ? anAmount(f(b, F.paid)) : null);
   const servedRow = (b: ABillOnTheBoard) => (input.served?.every?.rows ?? []).find((r) => r.id === b.id) ?? null;
   const paid = bills.filter((b) => b.stage === 'Paid');
   const proven = paid.filter((b) => (b.proof ?? []).length > 0);
@@ -605,13 +609,19 @@ export function theCollectionsDirectMorning(input: TheCollectionsMorningInput): 
   const unpaid = bills.filter((b) => b.stage !== 'Paid');
   let currency = 'KES';
   const sum = (xs: ABillOnTheBoard[]) => xs.reduce((n, b) => { const a = amountOf(b); if (a) currency = a.currency; return n + (a?.value ?? 0); }, 0);
-  const owed = sum(unpaid);
-  const noAmount = unpaid.filter((b) => !amountOf(b)).length;
+  /*
+   * OWED IS EVERYTHING NOT PAID WITH PROOF (final real-model check, item 9). A payment counts only when it is in the bank, so a bill
+   * marked paid on somebody's word is still owed, and is said so beside it. "KES 70,000 is owed on 3 fee notes" left out FN-006 and FN-007,
+   * which were paid only on Aisha's word.
+   */
+  const owedBills = [...unpaid, ...onAWord];
+  const owed = sum(owedBills);
+  const noAmount = owedBills.filter((b) => !amountOf(b)).length;
   const plural = (n: number) => (n === 1 ? word : `${word}s`);
 
   /* 1. What is owed, what is paid with proof, and what fell due today and why. */
   const target: AMorningLine[] = [{
-    text: `${billMoney(owed, currency)} is owed on ${unpaid.length} ${plural(unpaid.length)}${noAmount ? `, and ${noAmount} of them have no amount on record` : ''}. ${proven.length ? `${billMoney(sum(proven), currency)} is paid with proof.` : 'Nothing is paid with proof yet.'}`,
+    text: `${billMoney(owed, currency)} is owed on ${owedBills.length} ${plural(owedBills.length)}${noAmount ? `, and ${noAmount === owedBills.length ? (noAmount === 1 ? 'it has' : 'none of them has') : `${noAmount} of them ${noAmount === 1 ? 'has' : 'have'}`} no amount on record` : ''}.${onAWord.length ? ` ${onAWord.length === 1 ? 'One of them is' : `${onAWord.length} of them are`} marked paid on somebody’s word, with no slip or message on file.` : ''} ${proven.length ? `${billMoney(sum(proven), currency)} is paid with proof.` : 'Nothing is paid with proof yet.'}`,
     rank: 0,
   }];
   /* Marked paid with no proof is the people's to back (each one's record says it to the partner where Groundwork could not move them). */
@@ -648,7 +658,8 @@ export function theCollectionsDirectMorning(input: TheCollectionsMorningInput): 
   }
   for (const b of onAWord) {
     const row = servedRow(b);
-    if (row && /as you said/i.test(row.payment?.says ?? '')) needs.push({ text: `You marked ${numbered(b)} paid, so file the bank slip or the M-Pesa message.`, rank: 5 });
+    /* Only where she said it herself, in her own line: never of a bill somebody else said was paid (item 9). */
+    if (row && /as you said/i.test(row.payment?.says ?? '') && (!b.paidSaidBy || input.hers.has(b.paidSaidBy))) needs.push({ text: `You said ${numbered(b)} is paid, so file the bank slip or the M-Pesa message.`, rank: 5 });
   }
 
   /* 3. Who to chase: the client, the amount, who follows it up. What fell due first, then what is behind, then a payment said with no proof. */
@@ -743,7 +754,8 @@ export function theMatterDirectMorning(input: { groundId: string; label: string;
   }
   for (const d of ((input.board?.decisions ?? []) as any[]).filter((x) => x?.source === 'divergence' && /^you$/i.test(String(x?.owner ?? '')))) {
     const m = /^People in this check-in said different things about (.+?), so it needs settling\.?$/i.exec(String(d.question ?? '').trim());
-    if (m) needs.push({ text: `People said different things about ${m[1]}, so settle it with them.`, rank: 5 });
+    /* Never about "this" or "it": a line with no thing in it tells her nothing to settle (final real-model check, item 9). */
+    if (m && !/^(?:this|that|it|them|these|those|the same thing)$/i.test(m[1].trim())) needs.push({ text: `People said different things about ${m[1]}, so settle it with them.`, rank: 5 });
   }
   const lastDay = plus(today, 7);
   const due = input.items.filter((i) => i.dueAt && keyIn(new Date(i.dueAt), 'UTC') >= today && keyIn(new Date(i.dueAt), 'UTC') <= lastDay)
@@ -848,7 +860,7 @@ export async function theDirectMorningFor(
   const now = opts.now ?? new Date();
   const ground = await Promise.resolve(prisma?.ground?.findUnique?.({
     where: { id: opts.groundId },
-    select: { id: true, label: true, organizationId: true, initiatorId: true, kindOfWork: true, scenario: true, workingDays: true, overWhatsApp: true,
+    select: { id: true, label: true, organizationId: true, initiatorId: true, kindOfWork: true, scenario: true, workingDays: true, overWhatsApp: true, cadence: true,
       participants: { select: { id: true, userId: true, partyType: true, nameGiven: true, managingOnly: true, leftAt: true, user: { select: { firstName: true, lastName: true } } } } },
   })).catch(() => null) as any;
   if (!ground || ground.initiatorId !== opts.leadUserId) return null;
@@ -874,7 +886,8 @@ export async function theDirectMorningFor(
     if (!lastCheckIn[c.participantId] || at > (lastCheckIn[c.participantId] as Date)) lastCheckIn[c.participantId] = at;
   }
   const kept = ground.overWhatsApp === false;
-  const sessions = checkIns as ASessionOnRecord[];
+  /* A daily check-in's open session is missed on each working day it stays open (item 5 of the final check). */
+  const sessions = checkIns.map((c) => ({ ...c, opensDaily: String(ground.cadence ?? '').toUpperCase() === 'DAILY', workingDays: ground.workingDays ?? null })) as ASessionOnRecord[];
   /* Each person's stored record, read only (never rebuilt here), where the organisation keeps judgements of a person on. */
   const records = await theStoredRecords(prisma, ground.organizationId, people.filter((p) => !p.isTheLead && !p.managingOnly && !p.left).map((p) => p.id), ground.id);
   const nudgeable = { mayBeNudged: whoMayBeNudged(people, hers, sessions, now, zone) };

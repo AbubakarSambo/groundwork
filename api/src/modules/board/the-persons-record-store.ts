@@ -5,7 +5,7 @@ import { theMarkOf, whoAddedEachBackingDocument, WHAT_A_MARK_READS } from '../re
 import { theRecordForPromises, thePromisesSaidDone } from '../conversation/a-promise-said-done-is-kept';
 import { theMPesaCodesSaid } from '../conversation/an-mpesa-code-is-asked-about-once';
 import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
-import { thePersonsRecord, theCoachingFollowedUp, theRecordForOneSession, type ThePersonsInputs, type ThePersonsRecord, type ACoaching, type AnItemOfTheirs } from './the-persons-record';
+import { thePersonsRecord, theCoachingFollowedUp, theCoachingTheRecordStillHolds, theRecordForOneSession, type ThePersonsInputs, type ThePersonsRecord, type ACoaching, type AnItemOfTheirs } from './the-persons-record';
 import { theRecordInWords, type TheRecordInWords } from './the-persons-record-in-words';
 import { thePraiseFromYourLead } from './the-praise-from-your-lead';
 
@@ -44,7 +44,7 @@ export async function readTheInputs(prisma: any, groundId: string, now: Date = n
   const ground: any = await prisma.ground.findUnique({
     where: { id: groundId },
     select: {
-      id: true, organizationId: true, kindOfWork: true, initiatorId: true,
+      id: true, organizationId: true, kindOfWork: true, initiatorId: true, cadence: true, workingDays: true,
       organization: { select: { timeZone: true } },
       participants: { select: { id: true, userId: true, managingOnly: true, user: { select: { firstName: true, lastName: true } } } },
     },
@@ -110,6 +110,9 @@ export async function readTheInputs(prisma: any, groundId: string, now: Date = n
       now,
       zone,
       sales,
+      daily: String(ground.cadence ?? '').toUpperCase() === 'DAILY' ? { workingDays: ground.workingDays ?? null } : null,
+      namesHere: ((ground.participants ?? []) as any[]).map((x) => [x.user?.firstName ?? '', x.user?.lastName ?? ''].filter(Boolean)),
+      runsIt: !!p.userId && p.userId === ground.initiatorId,
       checkIns: theirCheckIns,
       lines: (rows as any[]).filter((l) => l.participantId === p.id).map((l) => ({
         id: l.id, checkInId: l.checkInId ?? null, sessionNumber: l.checkInId ? checkInOf.get(l.checkInId)?.sessionNumber ?? null : null,
@@ -152,7 +155,7 @@ export async function rebuildThePersonsRecords(prisma: any, groundId: string, no
     const coachedBefore: ACoaching[] = Array.isArray(before?.coaching) ? (before.coaching as any[]) : [];
     /* The coaching is read again, and a new one chosen, only when a new check-in of theirs has finished. */
     const newSession = lastSession !== null && lastSession !== (before?.lastSession ?? null);
-    const coaching = newSession ? theCoachingFollowedUp(coachedBefore, record, lastSession, now, zone) : coachedBefore;
+    const coaching = newSession ? theCoachingFollowedUp(coachedBefore, record, lastSession, now, zone, input.sales) : theCoachingTheRecordStillHolds(coachedBefore, record);
     const p = (read.ground.participants as any[]).find((x) => x.id === input.participantId);
     const data = {
       groundId, organizationId: read.ground.organizationId ?? null, userId: p?.userId ?? null,

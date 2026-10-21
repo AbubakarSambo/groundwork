@@ -57,6 +57,11 @@ export interface ABillOnTheBoard {
   proof: APayment[];
   /** The check-ins whose lines named this bill. */
   saidIn: string[];
+  /** Who said, in their own line, that it is paid (the first to say so), where somebody did. */
+  paidSaidBy?: string | null;
+  /** Lines of another check-in of the organisation that say it is paid, as kept (theBillsOnRecord), and as this reader may read them. */
+  paidSaidElsewhere?: ALineKeptHere[];
+  paidElsewhere?: AnEventSaid[];
   /**
    * WHERE IT FELL DUE ON AN EVENT (a-fee-note-due-on-an-event): the day, the event it waited for, and the line that said it happened,
    * in its own words only where this reader may read that check-in's words, else null. Set by the board's service, for this reader.
@@ -67,6 +72,9 @@ export interface ABillOnTheBoard {
 }
 
 /** A line from a matter check-in about the event a bill waits for, as this reader may read it. */
+/** A line kept from another check-in (a-fee-note-due-on-an-event's ALineKept, said here without importing it). */
+export interface ALineKeptHere { lineId: string; groundId: string; label: string; saidBy: string | null; text: string; at: string; day: string }
+
 export interface AnEventSaid {
   /** The day it fell due (or would), as YYYY-MM-DD. */
   day: string;
@@ -449,10 +457,22 @@ export function buildTheCollectionsBoard(input: TheCollectionsInput): TheCollect
     const payment: ACollectionsRow['payment'] = group === 'paid'
       ? (r.proof.length
         ? { says: `Paid${paidDay ? ` on ${aDayInWords(paidDay, zone)}` : ''}, with proof`, mark: 'proven' }
-        : { says: `Paid, as ${midName(r.ownerParticipantId)} said`, mark: 'said' })
+        : { says: `Paid, as ${midName(r.paidSaidBy ?? r.ownerParticipantId)} said`, mark: 'said' })
       : promise
         ? { says: promise.missed ? `Promised for ${aDayInWords(promise.by, zone)}, and missed` : `Promised for ${aDayInWords(promise.by, zone)}`, mark: 'none' }
         : { says: field(r, F.paid) ? `${stop(field(r, F.paid))} paid, as ${midName(r.ownerParticipantId)} said` : 'Not paid', mark: field(r, F.paid) ? 'said' : 'none' };
+    /* Said in another check-in to be paid, and not paid with proof here: said beside it, as this reader may read it (item 7). */
+    const saidElsewhere = !r.proof.length ? (r.paidElsewhere ?? [])[0] : undefined;
+    if (saidElsewhere) {
+      const where = `in ${saidElsewhere.from} on ${aDayInWords(saidElsewhere.saidOn, zone)}`;
+      const by = saidElsewhere.by ? (saidElsewhere.by === 'You' ? 'you' : saidElsewhere.by) : null;
+      payment.says = payment.mark === 'said' && by && new RegExp(`as ${by} said$`).test(payment.says)
+        ? `${payment.says} here and ${where}`
+        : payment.mark === 'none'
+          ? `Not paid with proof, but ${by ?? 'somebody'} said ${where} that it is paid`
+          : `${payment.says}, and ${by ?? 'somebody'} said ${where} that it is paid`;
+      if (payment.mark === 'none') payment.mark = 'said';
+    }
     const nextStep = field(r, F.nextStep);
     const nextBy = aDay(field(r, F.nextStepBy));
     const next = nextStep ? `${Cap(stop(nextStep))}${nextBy ? `, by ${aDayInWords(nextBy, zone, true)}` : ''}.` : group === 'paid' ? 'Nothing more.' : 'Nothing booked yet.';

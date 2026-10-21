@@ -1,3 +1,4 @@
+import { aDepositSaid } from '../board/a-deals-proof-is-about-that-deal';
 import type { ADealOnRecord } from '../board/a-sales-aim-is-counted-from-the-deals';
 import { theCriteriaOnRecord, THE_FOUR } from '../board/a-deals-four-criteria';
 import { aLineIsAbout } from '../board/a-deals-value-and-buying-date';
@@ -93,8 +94,12 @@ export function theSalesWeekInWords(input: {
     const sold: string[] = theirWon.map((d) => {
       const u = theUnitsOf(d);
       const units = u === null ? '' : `${u} ${u === 1 ? 'unit' : 'units'}`;
+      /* A deposit only is never "paid" (final real-model check, item 10). */
+      if (d.paid && d.deposit) return `${L} sold ${units || 'it'} to ${d.name} on a deposit. ${aDepositSaid(d.deposit)}`;
       if (d.paid) return `${L} sold ${units || 'it'}, paid, to ${d.name}.`;
       if (d.signed) return `${L} has ${units ? `${units} on a signed order` : 'a signed order'} from ${d.name}.`;
+      /* Her rule says a sale counts only with a payment or a signed order: one with neither is not counted, and never said as sold (item 14). */
+      if (input.aSaleNeedsProof && !d.proven) return `${d.name.charAt(0).toUpperCase()}${d.name.slice(1)} is on record as sold by ${L}, and nothing written shows a payment or a signed order, so it is not counted as sold.`;
       /* A document she added backs it (engine test: Mercy's mama-rose-receipt.txt, Friday 16 October): never "nothing written". */
       if (d.proven) return `${L} counts ${units ? `${units} sold to` : 'a sale to'} ${d.name}. A document backs it, but it does not show a payment.`;
       return `${L} counts ${units ? `${units} sold to` : 'a sale to'} ${d.name}, and nothing written shows it yet.`;
@@ -194,7 +199,11 @@ export function theSalesWeekInWords(input: {
   /* d. Her rule for a sale, where somebody counted one before there was a payment or a signed order. */
   if (input.aSaleNeedsProof) {
     const early = deals.filter((d) => won(d) && !d.dropped).map((d) => {
-      const wonOn = (d.stagesKept ?? []).filter((s) => String(s.stage).toLowerCase() === input.lastStage.toLowerCase()).map((s) => new Date(s.on)).sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
+      /* The day it was said to be sold, from the line that said it, where that came before the record kept it (item 14: the Githurai shop
+         was said on Tuesday 13 October and kept when the next check-in ended, on the 14th). */
+      const keptOn = (d.stagesKept ?? []).filter((s) => String(s.stage).toLowerCase() === input.lastStage.toLowerCase()).map((s) => new Date(s.on)).sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
+      const saidOn = d.stageSaidOn && (d.stagesKept ?? []).some((s) => String(s.stage).toLowerCase() === input.lastStage.toLowerCase() && s.by === 'check-in') ? new Date(d.stageSaidOn) : null;
+      const wonOn = keptOn && saidOn && saidOn.getTime() < keptOn.getTime() ? saidOn : keptOn;
       const docs = lines.filter((l) => l.anchoredDocumentId && aLineIsAbout(l.text, d)).map((l) => input.documents.find((x) => x.id === l.anchoredDocumentId)?.createdAt).filter((x): x is Date => !!x);
       const proofOn = [d.paidOn ?? null, ...docs].filter((x): x is Date => !!x).sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
       return wonOn && inTheWeek(wonOn) && (!proofOn || aDayKey(proofOn, input.zone) > aDayKey(wonOn, input.zone)) ? { d, wonOn, proofOn: proofOn as Date | null } : null;

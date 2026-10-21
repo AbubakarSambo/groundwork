@@ -1,4 +1,7 @@
 import { aWaitSomebodyElseChases } from './a-wait-somebody-else-chases';
+import { notABlockerTheyRaised } from './not-a-blocker-they-raised';
+import { theDaysAnOpenDailySessionWasMissed } from './the-persons-record';
+import { whatTheyTriedFirst } from './what-they-tried-first';
 import { saidWhatTheyTried } from '../grounds/a-wait-is-the-speakers-account';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { theRelease1bTabsAreOn } from '../grounds/release-1b-tabs';
@@ -192,6 +195,14 @@ export interface TheRecordForOnePerson {
   target: { count: number; target: number } | null;
   now: Date;
   timeZone: string;
+  /** The check-in opens a session each working day, on these days (cadence DAILY). */
+  daily?: { workingDays?: number[] | null } | null;
+  /** Their own words in their check-ins, to date what they said they tried (what-they-tried-first.ts). */
+  theirTurns?: { content: string; at: Date | string }[];
+  /** Everybody's names in this check-in, to tell a wait on people here. */
+  namesHere?: string[][];
+  /** The person whose page it is runs the check-in. */
+  personRunsIt?: boolean;
 }
 
 const DAY = 86_400_000;
@@ -227,6 +238,10 @@ const isFinished = (r: AServedRecord, lastStage: string | null) =>
   !r.lost && (r.group === 'won' || (!!lastStage && String(r.stage ?? '').toLowerCase() === lastStage.toLowerCase()));
 
 function theProofOf(r: TheRecordForOnePerson['items'][number]): { proven: boolean; says: string } {
+  /* A deposit only is sold, and not paid with proof: "Deposit paid, KES 15,000 of KES 30,000." (final real-model check, item 10). */
+  /* Backed, by a payment: but never said as paid (the page's numbers say it apart). */
+  const deposit = (r as any).deposit as { says?: string } | undefined;
+  if (deposit?.says && !r.signedOrder) return { proven: true, says: deposit.says.replace(/\.$/, '') };
   const proof = (r.evidence ?? []).find((e) => e.countsAsProof);
   if (proof) return { proven: true, says: proof.readAs };
   if (r.signedOrder) return { proven: true, says: 'A signed order' };
@@ -236,6 +251,9 @@ function theProofOf(r: TheRecordForOnePerson['items'][number]): { proven: boolea
   if (any) return { proven: false, says: any.readAs };
   return { proven: false, says: 'None yet' };
 }
+
+/* What the record says when a customer cannot buy now (the person's record reads it the same way). */
+const CANNOT_BUY_NOW = /\b(?:no budget|can['’]?t afford|cannot afford|not affordable|until (?:january|february|march|april|may|june|july|august|september|october|november|december|next (?:year|month|quarter))|next year|said no|not interested)\b/i;
 
 /** Whether a next step names a day. */
 function hasADay(r: AServedRecord, now: Date): boolean {
@@ -286,7 +304,9 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
   const promises = r.commitments.filter((c) => c.explicit !== false);
   const settled = promises.filter((c) => c.status === 'DONE' || c.status === 'NOT_DONE');
   const kept = settled.filter((c) => c.status === 'DONE');
-  const due = r.checkIns.filter((c) => wasDue(c, r.now)).sort((a, b) => a.sessionNumber - b.sessionNumber);
+  /* A daily session left open counts once for each working day it stayed open, as the person's record counts it (final check, item 5). */
+  const due = r.checkIns.filter((c) => wasDue(c, r.now)).sort((a, b) => a.sessionNumber - b.sessionNumber)
+    .flatMap((c) => [c, ...theDaysAnOpenDailySessionWasMissed(c as any, r.now, r.timeZone, r.daily).map(() => c)]);
   const done = due.filter((c) => c.status === 'COMPLETED');
   const onTime = done.filter(wasOnTime);
   /*
@@ -297,9 +317,11 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
    */
   const specific = done.filter((c) => c.specificityLevel === 'specific' || (c.specificityDimensions as any)?.checkable === 'specific');
   /* Not a blocker of theirs to have tried on: a wait a colleague here is chasing or has promised (a-wait-somebody-else-chases). */
-  const raised = dedupeDependencies(r.raised.filter((d) => d.onParticipantId !== r.person.participantId && !aWaitSomebodyElseChases(String((d as any).what ?? ''), r.othersChase ?? [])) as any[]) as AHandoffRow[];
-  /* What they said they tried first: Peter's "I haven't done anything about that yet" was counted as something tried (Drop Access, second night run). */
-  const tried = raised.filter((d) => saidWhatTheyTried(d.triedSaid));
+  /* Nor a customer's own budget or approval, asking for a view, or waiting for a check-in (final check, item 2). */
+  const raised = dedupeDependencies(r.raised.filter((d) => d.onParticipantId !== r.person.participantId && !aWaitSomebodyElseChases(String((d as any).what ?? ''), r.othersChase ?? []) && !notABlockerTheyRaised(d as any, { sales: words.sales, namesHere: r.namesHere, theLeadOnHerTeam: r.personRunsIt })) as any[]) as AHandoffRow[];
+  /* What they said they tried first: Peter's "I haven't done anything about that yet" was counted as something tried (Drop Access, second night run);
+     and something tried after it was raised was not tried first, read as their record reads it (what-they-tried-first.ts, final check items 6 and 18). */
+  const tried = raised.filter((d) => whatTheyTriedFirst(d as any, r.raised as any, r.theirTurns ?? [], r.timeZone).first);
   const cleared = raised.filter((d) => d.status === 'CLEARED');
   const creditors = [...new Set(r.credits.map((c) => c.fromName ?? 'A colleague'))];
   const creditCheckIns = new Set(r.credits.map((c, i) => c.checkInId ?? `credit-${i}`)).size;
@@ -328,12 +350,17 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
         return read(b.key, strong ? 'Strength' : 'Needs work', `${You} kept ${kept.length} of ${settled.length} promises.`, `${Your} check-ins`);
       }
       case 'planning-ahead': {
-        if (!words.keepsItems || open.length < 2) return read(b.key, 'Not enough yet', '', null);
-        const without = open.filter((i) => !hasADay(i, r.now)).length;
-        const strong = without === 0 || (without === 1 && open.length >= 5);
+        /* A deal the record says cannot buy now ("no budget this year", "until January") has nothing to book yet: not counted here. */
+        /* Off a sales team, a record the check-in holds neither a day nor a step for ("have them back", "what is due in court", read from a sentence)
+           says nothing about planning: only the ones with a day or a step are read (rebuild of the final check: Aisha and Brian on the litigation daily). */
+        const toPlan = open.filter((i) => !CANNOT_BUY_NOW.test(String(((i as any).fields ?? {})['Budget stated'] ?? '')))
+          .filter((i) => words.sales || !!i.due || !!String(i.nextStep ?? i.next ?? '').trim());
+        if (!words.keepsItems || toPlan.length < 2) return read(b.key, 'Not enough yet', '', null);
+        const without = toPlan.filter((i) => !hasADay(i, r.now)).length;
+        const strong = without === 0 || (without === 1 && toPlan.length >= 5);
         const happened = without === 0
           ? `Every open ${words.itemWord} ${self ? 'you have' : `${first} has`} has a next step and a day.`
-          : `${without} of ${your} ${open.length} open ${words.itemsWord} ${without === 1 ? 'has' : 'have'} no next step with a day.`;
+          : `${without} of ${your} ${toPlan.length} open ${words.itemsWord} ${without === 1 ? 'has' : 'have'} no next step with a day.`;
         return read(b.key, strong ? 'Strength' : 'Needs work', happened, `${Your} ${words.itemsWord} today`);
       }
       case 'handling-blockers': {
@@ -379,7 +406,10 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
       }
       case 'check-in-quality': {
         if (due.length < 3) return read(b.key, 'Not enough yet', '', null);
-        const strong = done.length / due.length >= 0.8 && onTime.length / due.length >= 0.7 && (done.length ? specific.length / done.length : 0) >= 0.7;
+        /* Needs work by the same bar their record is coached on: at least two that fell short, missed, late or vague (final check, item 3).
+           One missed check-in in four is not "Needs work" here while their record does not coach on it. */
+        const fellShort = due.length - done.filter((c) => wasOnTime(c) && (c.specificityLevel === 'specific' || (c.specificityDimensions as any)?.checkable === 'specific')).length;
+        const strong = fellShort < 2 || (done.length / due.length >= 0.8 && onTime.length / due.length >= 0.7 && (done.length ? specific.length / done.length : 0) >= 0.7);
         const timing = onTime.length === done.length ? ' on time' : `, ${onTime.length} of them on time`;
         const happened = `${You} did ${done.length} of ${plural(due.length, 'check-in')}${timing}. ${specific.length} of ${done.length} ${specific.length === 1 ? 'was' : 'were'} specific.`;
         return read(b.key, strong ? 'Strength' : 'Needs work', happened, plural(due.length, 'check-in'));
@@ -402,10 +432,13 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
   };
   const soldUnits = words.sales && r.target ? unitsIn(finished) : null;
   const inUnits = soldUnits !== null && soldUnits > 0 && soldUnits === r.target?.count && soldUnits !== finished.length;
+  /* Sold on a deposit is said apart from paid, never as "with proof" of payment (final real-model check, item 10: "46 with proof"). */
+  const onADeposit = proven.filter((i) => !!(i as any).deposit && !i.signedOrder);
+  const paidInFull = proven.filter((i) => !onADeposit.includes(i));
   if (words.keepsItems && items.length) {
     numbers.push(inUnits
-      ? { value: String(soldUnits), label: `${words.doneWord}, ${unitsIn(proven) ?? 0} with proof` }
-      : { value: String(finished.length), label: `${words.doneWord}, ${proven.length} with proof` });
+      ? { value: String(soldUnits), label: onADeposit.length ? `${words.doneWord}, ${unitsIn(paidInFull) ?? 0} paid with proof, ${unitsIn(onADeposit) ?? 0} on a deposit` : `${words.doneWord}, ${unitsIn(proven) ?? 0} with proof` }
+      : { value: String(finished.length), label: onADeposit.length ? `${words.doneWord}, ${paidInFull.length} paid with proof, ${onADeposit.length} on a deposit` : `${words.doneWord}, ${proven.length} with proof` });
   }
   if (r.target) {
     numbers.push(r.target.count > r.target.target
@@ -627,6 +660,7 @@ const GROUND_SELECT = {
   id: true, label: true, organizationId: true, initiatorId: true, scenario: true, kindOfWork: true, peersVisibleToEachOther: true,
   initiator: { select: { firstName: true, lastName: true } },
   organization: { select: { timeZone: true } },
+  cadence: true, workingDays: true,
   participants: {
     select: {
       id: true, userId: true, email: true, nameGiven: true, partyType: true, managingOnly: true, createdAt: true,
@@ -761,6 +795,11 @@ export async function readMyWork(
     target: target ? { count: target.count ?? 0, target: target.target } : null,
     now,
     timeZone,
+    daily: String((ground as any).cadence ?? '').toUpperCase() === 'DAILY' ? { workingDays: (ground as any).workingDays ?? null } : null,
+    theirTurns: ((await (prisma.conversationTurn?.findMany?.({ where: { checkIn: { groundId: ground.id, participantId: pid }, role: 'PERSON' }, select: { content: true, createdAt: true }, orderBy: { createdAt: 'asc' } })?.catch?.(() => []) ?? [])) as any[] ?? [])
+      .map((x: any) => ({ content: String(x.content ?? ''), at: x.createdAt })),
+    namesHere: participants.map((p: any) => [p.user?.firstName ?? '', p.user?.lastName ?? ''].filter(Boolean)),
+    personRunsIt: !!person.userId && person.userId === ground.initiatorId,
   };
   const built = myWorkFrom(record, ground.label || 'This check-in');
   /*

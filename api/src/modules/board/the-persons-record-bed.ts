@@ -11,13 +11,13 @@ export const R2: any = (RUN as any).default ?? RUN;
 export type AGroundOfTheRun = 'drop' | 'fees' | 'lit';
 
 const DATE = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z$/;
-const dated = (v: any): any => {
+export const dated = (v: any): any => {
   if (Array.isArray(v)) return v.map(dated);
   if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, k === 'fields' || k === 'specificityDimensions' ? x : dated(x)]));
   return typeof v === 'string' && DATE.test(v) ? new Date(v) : v;
 };
 const same = (a: any, b: any) => (a instanceof Date && b instanceof Date ? a.getTime() === b.getTime() : a === b);
-function matches(row: any, where: any): boolean {
+export function matches(row: any, where: any): boolean {
   if (!where) return true;
   return Object.entries(where).every(([k, w]: [string, any]) => {
     if (k === 'AND') return (w as any[]).every((x) => matches(row, x));
@@ -40,14 +40,14 @@ function matches(row: any, where: any): boolean {
     return true;
   });
 }
-const table = (rows: any[]) => ({
+export const table = (rows: any[]) => ({
   findMany: jest.fn(async (args: any = {}) => structuredClone(rows.filter((r) => matches(r, args?.where)))),
   findFirst: jest.fn(async (args: any = {}) => structuredClone(rows.find((r) => matches(r, args?.where)) ?? null)),
   findUnique: jest.fn(async (args: any = {}) => structuredClone(rows.find((r) => matches(r, args?.where)) ?? null)),
   count: jest.fn(async (args: any = {}) => rows.filter((r) => matches(r, args?.where)).length),
 });
-const nothing: any = new Proxy({}, { get: (_t, m: string) => jest.fn(async () => (m === 'findMany' ? [] : m === 'count' ? 0 : null)) });
-const withNothing = (t: any) => new Proxy(t, { get: (x, k: string) => (k in x ? x[k] : nothing) });
+export const nothing: any = new Proxy({}, { get: (_t, m: string) => jest.fn(async () => (m === 'findMany' ? [] : m === 'count' ? 0 : null)) });
+export const withNothing = (t: any) => new Proxy(t, { get: (x, k: string) => (k in x ? x[k] : nothing) });
 
 /** Where the people's records are kept, in memory, for one test. */
 export function aPersonRecordTable(rows: any[] = []) {

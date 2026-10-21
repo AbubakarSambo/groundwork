@@ -27,7 +27,7 @@ export function TheirRecord({ record }: { record: ThePersonsRecordServed }) {
               </Stack>
             </Panel>
           ))}
-          <Panel heading="Coaching from Groundwork">
+          {(record.coaching.length > 0 || !!record.coachingEmpty) && <Panel heading="Coaching from Groundwork">
             {record.coaching.length === 0 ? <Note tone="muted">{record.coachingEmpty}</Note> : (
               <ul className="gwui-panel-list">
                 {record.coaching.map((c) => (
@@ -38,7 +38,7 @@ export function TheirRecord({ record }: { record: ThePersonsRecordServed }) {
                 ))}
               </ul>
             )}
-          </Panel>
+          </Panel>}
           {record.fromYourLead && record.fromYourLead.lines.length > 0 && (
             <Panel heading={record.fromYourLead.heading}>
               <ul className="gwui-panel-list">

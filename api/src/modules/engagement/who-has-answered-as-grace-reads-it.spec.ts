@@ -80,9 +80,12 @@ describe('Grace’s morning and the top of her board, with the switch on', () =>
 
   it('after two missed days in a row, says so plainly with the days, and tells Grace to call', async () => {
     const m = await morningAt(new Date('2026-10-22T06:00:00Z'), { rows: josephMissesTwoDays() });
-    expect(team(m)[0]).toBe("Joseph hasn't checked in for 2 days, on Tuesday 20 October and Wednesday 21 October, so call Joseph.");
-    /* The same line in her email, under its heading. */
-    expect(theEmailParts([m!]).find((p) => p.heading === 'Your team today')!.lines[0]).toBe(team(m)[0]);
+    expect(team(m)).toContain("Joseph hasn't checked in for 2 days, on Tuesday 20 October and Wednesday 21 October, so call Joseph.");
+    /* In this record nobody else answered on those days either: Peter's daily session opened on Tuesday 20 October stayed open through
+       Wednesday 21, and each of those days is now counted as missed too (final real-model check, item 5). */
+    expect(team(m)).toContain("Peter hasn't checked in for 2 days, on Tuesday 20 October and Wednesday 21 October, so call Peter.");
+    /* The same lines in her email, under their heading. */
+    expect(theEmailParts([m!]).find((p) => p.heading === 'Your team today')!.lines).toEqual(expect.arrayContaining(team(m).filter((l) => /so call/.test(l))));
     expect(m!.mayBeNudged!.map((p) => p.participantId)).toContain(JOSEPH);
   });
 

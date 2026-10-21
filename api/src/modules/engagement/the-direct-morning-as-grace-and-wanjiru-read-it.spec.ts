@@ -172,12 +172,11 @@ describe('Wanjiru’s direct morning, Muchemi & Co (test): fee notes and the lit
     /* Changed 21 October: who to chase, what is marked paid with no proof and "No fee note fell due today." stay on the board; Aisha's record says Groundwork could not move her, and a check-in not made since Friday is Groundwork's to chase. */
     expect(theEmailParts([fees!, lit!])).toEqual([
       { heading: 'What is owed, and what is paid, in Fee notes', lines: [
-        'KES 180,000 is owed on 3 fee notes, and 2 of them have no amount on record. Nothing is paid with proof yet.',
+        'KES 850,000 is owed on 6 fee notes, and 2 of them have no amount on record. 3 of them are marked paid on somebody’s word, with no slip or message on file. Nothing is paid with proof yet.',
       ] },
       { heading: 'What needs you today, in Fee notes', lines: [
         'Nyota Logistics disputes FN-008, saying the contract review was billed twice, and Brian follows it up, so decide whether to correct it.',
         'Brian has been waiting on you since 12 October for guidance on how to proceed with the double-billing claim.',
-        'You marked FN-004 for Kasarani Foods paid, so file the bank slip or the M-Pesa message.',
       ] },
       { heading: 'Your team today, in Fee notes', lines: [
         'Aisha said 4 times that a client had paid with nothing on file, and took 1 back later. Groundwork asked for the proof and has coached Aisha since Monday 12 October, and nothing has changed, so call Aisha.',
@@ -189,7 +188,7 @@ describe('Wanjiru’s direct morning, Muchemi & Co (test): fee notes and the lit
         'People said different things about the current status of the Kasarani Foods reply, so settle it with them.',
       ] },
     ]);
-    expect(theSubject('Wanjiru', [fees!, lit!])).toBe('Wanjiru: KES 180,000 owed, and Nyota Logistics disputes FN-008');
+    expect(theSubject('Wanjiru', [fees!, lit!])).toBe('Wanjiru: KES 850,000 owed, and Nyota Logistics disputes FN-008');
   });
 });
 

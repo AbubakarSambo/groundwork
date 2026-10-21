@@ -75,7 +75,7 @@ describe('Grace reads her team, Drop Access (test)', () => {
       ],
       about: 'proof',
     });
-    expect(j.record.parts.find((p: any) => p.heading === 'Figures that changed').evidence).toEqual(['On Monday 12 October Joseph said 10 units for Mama Pima Stores, and on Tuesday 13 October Joseph said 15 units.']);
+    expect(j.record.parts.find((p: any) => p.heading === 'Figures that changed').evidence).toEqual(['On Monday 12 October Joseph said 10 units for Mama Pima Stores, and on Tuesday 13 October Joseph said “Mama Pima is 15 units now, she\'s expanding.”']);
   });
 
   it('Peter needs coaching on one thing, with the coaching Groundwork has just given him', () => {
@@ -92,7 +92,7 @@ describe('Grace reads her team, Drop Access (test)', () => {
     const j = personOf(t, 'Joseph');
     expect(j.actions.map((a: any) => [a.kind, a.label, a.does])).toEqual([
       ['praise', 'Praise Joseph', 'Keeps your words in Joseph’s record, where Joseph reads them on My work and in Joseph’s own report. No message is sent.'],
-      ['plan', 'Start a plan', 'Keeps what you want to help Joseph with, here and under People on References and resources. Only you read it, and nothing is sent to Joseph.'],
+      ['plan', 'Start a plan', 'Keeps what you want to help Joseph with, here and under People on References and resources. Only you and your organisation’s admins read it, and nothing is sent to Joseph.'],
       ['deadline', 'Set a deadline', 'Puts a due day on one of Joseph’s records. It shows on that record on your board, and nothing is sent to Joseph.'],
       ['reassign', 'Reassign leads', 'Gives one of Joseph’s records to somebody else on the team. From then on it is theirs on the board and in their check-ins. Nothing is sent to either of them.'],
     ]);
@@ -121,7 +121,8 @@ describe('Wanjiru reads her teams, Muchemi & Co (test)', () => {
   it('on the litigation team, David’s check-ins got worse after one check-in since his coaching: coaching still, with the evidence', async () => {
     const t: any = await teamOf('lit');
     const d = personOf(t, 'David');
-    expect(d.whereTheyStand.says).toBe('David needs coaching on checking in on time and naming the item, what changed and the day.');
+    /* His daily session left open on Friday 16 and Monday 19 October counts as two check-ins not done (final real-model check, item 5). */
+    expect(d.whereTheyStand.says).toBe('David needs coaching on checking in every time, checking in on time and naming the item, what changed and the day.');
     expect(d.whereTheyStand.evidence).toContain('How specific and on time David’s check-ins are has got worse since then.');
     expect(d.actions[3].label).toBe('Reassign work');
   });
@@ -218,7 +219,7 @@ describe('the one-tap actions', () => {
   it('start a plan keeps a People line about Joseph that only Grace reads, and is never shown to Joseph', async () => {
     const a = aDatabaseForTheActions();
     const r = await theLeadActsOnAPerson(a.db, a.write, DROP, JOSEPH.participantId, GRACE, { kind: 'plan', text: 'Help Joseph with adding proof when saying something is done.' });
-    expect(r.says).toBe('Your plan for Joseph is kept here and under People on References and resources. Only you read it.');
+    expect(r.says).toBe('Your plan for Joseph is kept here and under People on References and resources. Only you and your organisation’s admins read it.');
     expect(a.lines).toEqual([expect.objectContaining({ kind: 'HELP_WITH', audience: 'LEAD_ONLY', aboutParticipantId: JOSEPH.participantId, text: 'Help Joseph with adding proof when saying something is done.' })]);
     expect(a.kept[0]).toMatchObject({ kind: 'PLAN', itemId: 'l-1' });
     a.db.personRecord = await theRunRebuiltEachEvening('drop', rebuildThePersonsRecords);
