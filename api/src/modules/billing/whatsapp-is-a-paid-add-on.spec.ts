@@ -266,7 +266,7 @@ describe('Baridi after its trial, paying for Small Team, without the add-on', ()
     /* Changed 2 October (decision 82, item 4): somebody who wrote in the last 24 hours is now told once
        why. This person last wrote three days ago, so nothing at all can go to them. */
     prisma.person = { findFirst: jest.fn(async () => ({ whatsappStoppedAt: null, whatsappLastInboundAt: new Date(Date.now() - 3 * 86_400_000) })) };
-    prisma.whatsAppConnection = { findUnique: jest.fn(async () => ({ id: 'c1', enabled: true, phoneNumberId: '123456', accessToken: 'test-token' })) };
+    prisma.whatsAppConnection = { findUnique: jest.fn(async () => ({ id: 'c1', enabled: true, phoneNumberId: '123456', accessToken: 'test-token', appSecret: 'test-secret', verifyToken: 'v', webhookVerifiedAt: new Date('2026-10-01') })) };
     const realFetch = (global as any).fetch;
     const fetchSpy = jest.fn(async () => ({ ok: true, status: 200 }));
     (global as any).fetch = fetchSpy;

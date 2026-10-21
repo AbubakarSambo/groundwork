@@ -78,6 +78,8 @@ type UserWithOrg = {
 import { whereTheyBelong, ROLE_FOR_SOMEBODY_EXPECTED } from './they-are-already-on-somebodys-roster';
 import { connectWhatsAppFor } from '../whatsapp/connect-whatsapp';
 import { aSignInsNumberChanged, aRosterNumberChanged, refuseANumberOnSomebodyElse, aSignInWithNoNumberTakesTheRosters, theSignInOf } from '../whatsapp/one-number-for-a-person';
+import { itSendsFromTheirNumber, WHAT_SAYS_IT_WORKS } from '../whatsapp/a-connection-that-works';
+import { theOpeningsGoToANumberJustSaved } from '../grounds/the-lead-adds-a-whatsapp-number';
 
 /**
  * For an address that already has an account: the draft token a new address would have been given
@@ -1668,14 +1670,18 @@ export class AuthService {
        organisation's country, or is refused with a sentence asking for the whole number (survey item 6). */
     if (dto.phoneNumber !== undefined) userUpdate.phoneNumber = dto.phoneNumber?.trim() ? await tidyANumberFor(this.prisma as any, me.organizationId, dto.phoneNumber) : null;
     /* A number on somebody else's sign-in is refused with a sentence, before anything is written (decision 106 item 3). */
-    if (dto.phoneNumber !== undefined) await refuseANumberOnSomebodyElse(this.prisma, userUpdate.phoneNumber as string | null, userId);
+    if (dto.phoneNumber !== undefined) await refuseANumberOnSomebodyElse(this.prisma, userUpdate.phoneNumber as string | null, userId, me.organizationId);
 
     /* Only the person's own row. The organisation is changed through PATCH /users/organization, by an admin. */
     if (Object.keys(userUpdate).length) {
       await this.prisma.user.update({ where: { id: userId }, data: userUpdate });
     }
     /* And their roster entry follows, so the number they typed is the one they are written to and recognised by. */
-    if (dto.phoneNumber !== undefined) await aSignInsNumberChanged(this.prisma, userId, (userUpdate.phoneNumber as string | null) ?? null);
+    if (dto.phoneNumber !== undefined) await aSignInsNumberChanged(this.prisma, userId, (userUpdate.phoneNumber as string | null) ?? null, me.organizationId);
+    /* A number they add or change themselves gets the opening of each check-in open for them, as one a lead or an admin adds does (Drop Access, 21 October). */
+    if (userUpdate.phoneNumber && (userUpdate.phoneNumber as string) !== (me.phoneNumber ?? null) && me.organizationId && this.whatsapp) {
+      await theOpeningsGoToANumberJustSaved(this.prisma, this.whatsapp as any, { userId, organizationId: me.organizationId, phone: userUpdate.phoneNumber as string }).catch(() => undefined);
+    }
 
     return this.getProfile(userId);
   }
@@ -1827,9 +1833,9 @@ export class AuthService {
   async whatsappIsOn(organizationId: string): Promise<boolean> {
     const [platform, own] = await Promise.all([
       this.whatsapp?.isEnabled?.().catch(() => false) ?? Promise.resolve(false),
-      this.prisma.whatsAppConnection.findUnique({ where: { organizationId }, select: { enabled: true } }).catch(() => null),
+      this.prisma.whatsAppConnection.findUnique({ where: { organizationId }, select: WHAT_SAYS_IT_WORKS }).catch(() => null),
     ]);
-    return !!platform || !!own?.enabled;
+    return !!platform || itSendsFromTheirNumber(own);
   }
 
   /**

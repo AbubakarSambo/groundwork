@@ -178,6 +178,10 @@ describe('every surface that hands out whose number it is', () => {
     'modules/engagement/what-they-reported.ts': "reads one person's own work items by their own id to say what they reported, for the lead who runs the check-in; never a target or a number",
     /* Each team member's personal opening: their own deals (work items), kept by their own id, and the people at each of their customers. Never a target or anybody else's number. */
     'modules/conversation/the-one-thing-today.ts': "keeps only the person's own deals and bills (work items) by their own id for their own opening; never a target or anybody else's number",
+    /* Groundwork does the managing, part 1: each person's record reads a deal's or a bill's owner (a work item) to keep figures and focus to their own items. */
+    'modules/board/the-persons-record-store.ts': "reads a deal's or a bill's owner (a work item) to keep a person's figures and focus to their own items; never a target or a number",
+    /* Groundwork does the managing, part 2: each person's part of the lead's board reads their own records (work items) by their own id, for the deadline and reassign taps, and is served to the lead who runs the check-in alone. Never a target. */
+    'modules/board/your-team-person-by-person.ts': "reads each person's own records (work items) by their own id, for the lead who runs the check-in alone; never a target or a number",
   };
 
   it('goes through the one rule, or says why it is not a reader', () => {

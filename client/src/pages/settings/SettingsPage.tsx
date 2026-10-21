@@ -186,7 +186,8 @@ export function SettingsPage() {
   const savePhone = useMutation({
     mutationFn: (val: string | null) => authApi.setPhoneNumber(val),
     onSuccess: (updated) => { updateUser(updated); setEditingPhone(false); toast.success('Saved.') },
-    onError: () => toast.error('That did not save. Try again.'),
+    /* The server's own sentence, which says why (Drop Access, 21 October): a number on somebody else's sign-in, or one that needs its country code. */
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. Try again.'),
   })
 
   const [emailNotif, setEmailNotif] = useState((user?.emailNotifications ?? true) && !user?.emailsStoppedFromAMail)

@@ -1,3 +1,5 @@
+import { hasBeenToldOnce } from '../engagement/a-message-sent-once';
+import { anOpeningToldByEmailInstead } from '../whatsapp/by-email-instead';
 import { whatsAppIsOnFor } from '../whatsapp/only-where-whatsapp-is-turned-on';
 import { keptOffThePhone } from '../whatsapp/a-check-in-kept-off-the-phone';
 
@@ -32,6 +34,8 @@ export async function theEmailOpeningShould(
   ci: { id: string; availableFrom?: Date | string | null; participant: { email: string | null; userId: string | null; user?: { phoneNumber?: string | null } | null; ground: { organizationId: string; overWhatsApp?: boolean | null } } },
   now: Date = new Date(),
 ): Promise<'send' | 'skip' | 'wait'> {
+  /* Already told by email instead, when WhatsApp could not take the opening (by-email-instead.ts): one channel, one email. */
+  if (prisma.platformSetting?.findUnique && (await hasBeenToldOnce(prisma, anOpeningToldByEmailInstead(ci.id)).catch(() => false))) return 'skip';
   const rows: any[] = await Promise.resolve(prisma.whatsAppSend?.findMany?.({ where: { checkInId: ci.id, kind: { startsWith: 'checkin-open' } }, select: { kind: true, sentAt: true } }) ?? []).catch(() => []);
   const became = whatBecameOfIt(Array.isArray(rows) ? rows : []);
   if (became === 'went') return 'skip';

@@ -230,8 +230,19 @@ export const THE_FOUR_OF_19_OCTOBER = {
   promiseDue: aTemplate('groundwork_promise_due', 'Hi {{1}}, you said you would {{2}} by {{3}}. Reply DONE if it is done, or tell me what changed.'),
 } as const;
 export const THE_FOUR_NAMES: string[] = Object.values(THE_FOUR_OF_19_OCTOBER).map((t) => t.name);
-/** Every name the product may use: the ones it starts with today, and the four of 19 October. */
-export const THE_NAMES_WE_MAY_USE: string[] = [...new Set([...THE_NAMES_TO_SUBMIT, ...THE_FOUR_NAMES])];
+/*
+ * THE TEMPLATE OF 21 OCTOBER (Hafsah's answers of 21 October; docs/whatsapp-templates.md, "The new template of 21 October"), word for
+ * word, for Abubakar to submit. It replaces checkin_closes_soon (which says "Five minutes now") by the same three rules as the four above:
+ * only once its name is listed, only outside the 24 hours, and only with every blank. It has checkin_closes_soon's three blanks in the same
+ * order (first name, the check-in's name, the closing time), so the closing reminder's own words fill it. It counts as that day's routine
+ * message, as checkin_closes_soon does. Until it is approved and listed, checkin_closes_soon goes as today.
+ */
+export const THE_ONE_OF_21_OCTOBER = {
+  closesSoon: aTemplate('groundwork_checkin_closes_soon_v2', 'Hi {{1}}, your check-in for {{2}} closes at {{3}}. It takes about ten minutes, and you can answer right here.'),
+} as const;
+export const THE_NAMES_OF_21_OCTOBER: string[] = Object.values(THE_ONE_OF_21_OCTOBER).map((t) => t.name);
+/** Every name the product may use: the ones it starts with today, the four of 19 October and the one of 21 October. */
+export const THE_NAMES_WE_MAY_USE: string[] = [...new Set([...THE_NAMES_TO_SUBMIT, ...THE_FOUR_NAMES, ...THE_NAMES_OF_21_OCTOBER])];
 
 /** Which of the four goes in place of a message, first, before the template that message has always had. */
 export const THE_NEWER_TEMPLATE_FIRST: Record<string, ATemplate[]> = {
@@ -243,10 +254,12 @@ export const THE_NEWER_TEMPLATE_FIRST: Record<string, ATemplate[]> = {
   'report-retry': [THE_FOUR_OF_19_OCTOBER.yourReport],
   /* The person's own promise, never anybody else's, with the day it was due; a sender that has no day for it does not offer its blanks. */
   'anchor-follow-up': [THE_FOUR_OF_19_OCTOBER.promiseDue],
+  /* The closing reminder: groundwork_checkin_closes_soon_v2 once it is listed, checkin_closes_soon until then. */
+  'closes-soon': [THE_ONE_OF_21_OCTOBER.closesSoon],
 };
 
-/* groundwork_checkin_open_v2 has checkin_open's two blanks, in the same order: the opening's own words fill it. The others say a message's own blanks. */
-const THE_SAME_BLANKS_AS_BEFORE: ReadonlySet<string> = new Set(['groundwork_checkin_open_v2']);
+/* groundwork_checkin_open_v2 has checkin_open's two blanks, and groundwork_checkin_closes_soon_v2 has checkin_closes_soon's three, in the same order: the message's own words fill them. The others say a message's own blanks. */
+const THE_SAME_BLANKS_AS_BEFORE: ReadonlySet<string> = new Set(['groundwork_checkin_open_v2', 'groundwork_checkin_closes_soon_v2']);
 const howManyBlanks = (body: string) => new Set([...body.matchAll(/\{\{(\d+)\}\}/g)].map((m) => m[1])).size;
 
 /** The template a message goes as outside the 24 hours, and the words for its blanks; null when none is approved for it. */

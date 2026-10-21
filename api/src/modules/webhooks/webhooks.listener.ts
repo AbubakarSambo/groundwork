@@ -1,3 +1,5 @@
+import { formsOfTheSameNumber } from '../whatsapp/a-number-whatsapp-can-reach';
+import { theNumberOnRecord } from '../whatsapp/one-number-for-a-person';
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
@@ -146,7 +148,10 @@ export class WebhooksListener {
     const person = e.personExternalId
       ? await this.prisma.person.findFirst({ where: { organizationId: ground.organizationId, externalId: e.personExternalId }, select: { phone: true } })
       : null;
-    const phone = person?.phone ?? participant.user?.phoneNumber ?? null;
+    /* Then every roster entry that is this person, then their sign-in: the number People and setup shows (one-number-for-a-person.ts). */
+    const phone = person?.phone
+      ?? (await theNumberOnRecord(this.prisma as any, ground.organizationId, { userId: participant.userId, email: participant.user?.email ?? participant.email }).catch(() => null))
+      ?? participant.user?.phoneNumber ?? null;
     if (!phone) return;
     /*
      * EVERYBODY WITH A NUMBER IS TOLD ON WHATSAPP (Hafsah's D2, put back after production, 15 October). "One channel for an
@@ -159,7 +164,8 @@ export class WebhooksListener {
     const leave = await leaveOfThePeopleOn(this.prisma, [e.groundId]);
     if (awayUntilOn(leave.get(participant.id))) return;
     /* Told once: somebody invited by their number was already sent this opening before they joined (D2). */
-    const already = await Promise.resolve((this.prisma as any).whatsAppSend?.findFirst?.({ where: { checkInId: e.checkInId, kind: { startsWith: 'checkin-open' } }, select: { id: true } })).catch(() => null);
+    /* Once per number (Drop Access, 21 October; findings 1.4 E): one that went to a number since changed does not stop this one. */
+    const already = await Promise.resolve((this.prisma as any).whatsAppSend?.findFirst?.({ where: { checkInId: e.checkInId, kind: { startsWith: 'checkin-open' }, phone: { in: formsOfTheSameNumber(phone) } }, select: { id: true } })).catch(() => null);
     if (already) return;
     /*
      * ONE CHANNEL PER OPENING, FOR SOMEBODY LET IN (messages test, 19 October, the rule check). Amos asked to join through the link, was let in at

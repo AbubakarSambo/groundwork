@@ -14,6 +14,7 @@ import { CLOSE_SHEET, Block } from './the-shape-every-close-is-drawn-in'
 import { KIND } from './WhatWasTakenFromWhatYouSaid'
 import { FoldedLine } from './ui/FoldedLine'
 import { ProofMark } from './ui/ProofMark'
+import { TheirRecord } from './TheirRecord'
 
 /**
  * THE END OF A SIGNED-IN CHECK-IN, REBUILT AS A · SESSION.
@@ -228,6 +229,8 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
 
   const d: any = session.data
   const r: any = whole.data
+  /* What Groundwork followed up for you: your own record for this session and the coaching it gave you, only where the server sends it. */
+  const yourRecord = d?.yourRecord ?? null
   const closed = (r as any)?.status === 'CLOSED' || (r as any)?.groundStatus === 'CLOSED'
 
   const mine: MyRow[] = ((r?.myRows ?? []) as MyRow[]).filter(x => x.sessionNumber === sessionNumber)
@@ -591,6 +594,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
               {toThinkAbout.map((t) => <p key={t} className="pb-own-think">{t}</p>)}
             </section>
           )}
+          {yourRecord && <TheirRecord record={yourRecord} />}
           {!closed && (
             <button type="button" className="pb-own-wrong" onClick={() => correct.mutate()} disabled={correct.isPending}>
               {correct.isPending ? 'Opening…' : 'Something here isn’t right'}
@@ -634,6 +638,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
             {toThinkAbout.map((t) => <p key={t} className="pb-own-think">{t}</p>)}
           </section>
         )}
+        {yourRecord && <TheirRecord record={yourRecord} />}
         {!closed && (
           <button type="button" className="pb-own-wrong" onClick={() => correct.mutate()} disabled={correct.isPending}>
             {correct.isPending ? 'Opening…' : 'Something here isn’t right'}
@@ -681,6 +686,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
             </div>
           )}
           {checkableJSX}
+          {yourRecord && <div className="gw-blk"><TheirRecord record={yourRecord} /></div>}
         </>
       ) : (
         <>
@@ -690,6 +696,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
           {openJSX}
           {carryJSX}
           {checkableJSX}
+          {yourRecord && <div className="gw-blk"><TheirRecord record={yourRecord} /></div>}
         </>
       )}
 

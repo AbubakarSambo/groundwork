@@ -1,4 +1,5 @@
 import { theDirectMorningFor, asServedOnTheBoard } from '../engagement/the-direct-morning';
+import { yourTeamPersonByPerson, theLeadActsOnAPerson, type AnActionAsked } from './your-team-person-by-person';
 import { theNudgesOnTheBoard } from '../engagement/the-leads-own-nudge';
 import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
 import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
@@ -3881,6 +3882,13 @@ export class BoardService {
               return n ? { ...row, nudge: n } : row;
             });
           }
+          /*
+           * YOUR TEAM, PERSON BY PERSON (your-team-person-by-person.ts; Groundwork does the managing, part 2): for her monthly look, each
+           * person's delivered work with proof, their record and coaching, where they stand (only where judgements of a person are on),
+           * and her one-tap actions. To the lead alone, beside the direct morning; the action route refuses anybody else.
+           */
+          const team = await yourTeamPersonByPerson(this.prisma, { groundId, leadUserId: requestingUserId, board: asServed, kind: morning.kind, now }).catch(() => null);
+          if (team?.people.length) (asServed as any).yourTeam = team;
         }
       }
       /* The anchor scenario's own parts (request 149), added after every wall above: only whoever runs an anchor check-in, only with the switch on. */
@@ -4437,6 +4445,11 @@ export class BoardService {
     /* The stage it is put at, kept with its day (a-deals-stages-are-kept). */
     if (data.stage) data.fields = withTheStageKept(data.fields ?? {}, data.stage, new Date(), 'board');
     return (this.prisma as any).workItem.create({ data: { groundId, ...data, addedByUserId: requestingUserId } });
+  }
+
+  /** One tap of the lead on one person's part of her board: praise, start a plan, set a deadline, reassign (your-team-person-by-person.ts). */
+  async actOnAPerson(groundId: string, participantId: string, requestingUserId: string, asked: AnActionAsked) {
+    return theLeadActsOnAPerson(this.prisma, { updateWorkItem: (g, i, u, dto) => this.updateWorkItem(g, i, u, dto) }, groundId, participantId, requestingUserId, asked ?? {});
   }
 
   async updateWorkItem(groundId: string, itemId: string, requestingUserId: string, dto: WorkItemInput) {

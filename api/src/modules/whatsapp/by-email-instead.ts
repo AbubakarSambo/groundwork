@@ -19,10 +19,21 @@ import { FIRST_CONTACT_NOT_APPROVED } from './the-first-message-to-a-number';
  * Applies to everyone: it replaces a message that today silently fails.
  */
 
+/**
+ * META ITSELF REFUSED IT (Drop Access, 21 October 2026; findings 2.2). A message Groundwork sent and Meta answered with a refusal (a new
+ * number Meta will not deliver to yet, a template it rejected, a number that is not on WhatsApp) went nowhere, and only the window and
+ * the first-contact refusals had an email. The person is owed it by email for this reason too. "WhatsApp is not configured" is not
+ * this: nothing was tried.
+ */
+export const META_REFUSED_IT = 'Meta refused this message, so it was not delivered on WhatsApp';
+
 /** The reasons WhatsApp gives for a message it could not take, where the person is owed it by email. */
 export function whatsAppCouldNotTakeIt(because: string | null | undefined): boolean {
-  return because === OUTSIDE_THE_WINDOW || because === FIRST_CONTACT_NOT_APPROVED;
+  return because === OUTSIDE_THE_WINDOW || because === FIRST_CONTACT_NOT_APPROVED || because === META_REFUSED_IT;
 }
+
+/** The key byEmailInstead keeps for an opening it sent by email, so the opening's own email sweep does not send a second one. */
+export const anOpeningToldByEmailInstead = (checkInId: string) => `whatsapp-by-email.${checkInId}.checkin-open`;
 
 /** Messages that already go by email, by their own sender, when WhatsApp does not take them: never a second email. */
 /* The lead's own nudge chooses its one channel itself (engagement/the-leads-own-nudge.ts), so it is never emailed a second time from here. */

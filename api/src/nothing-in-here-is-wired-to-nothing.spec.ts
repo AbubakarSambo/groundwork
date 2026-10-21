@@ -57,6 +57,7 @@ const NOT_WIRED_ON_PURPOSE: Record<string, string> = {
   /* Hafsah's quality pass, 18 October: the short run's record (Drop Access, gw_sweep_drop3), as the board specs and the report specs read it. */
   'the-short-run-harness.ts': 'test-only set-up: the short run of Drop Access as the board specs read it; nothing in the product should import it',
   'the-short-run-reports-bed.ts': 'test-only stand-in database holding the short run of Drop Access for the report specs; nothing in the product should import it',
+  'the-persons-record-bed.ts': 'test-only stand-in database holding the second night run for the people\'s records specs; nothing in the product should import it',
   'request-92-harness.ts': 'test-only set-up shared by the request 92 specs in assistant/ and grounds/; nothing in the product should import it',
   // Duplicated deliberately into the client, and documented there.
   'what-this-ground-can-tell-you.ts': 'shares its rules with client/src/lib/contextStrength.ts by deliberate duplication - see the header in both',

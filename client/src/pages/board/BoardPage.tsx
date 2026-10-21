@@ -150,6 +150,7 @@ import { ThePicturedSalesBoard, theScheduleInWords, ThePicturedOwnDeals, ThePict
 import { ThePicturedBoard } from './pictured/ThePicturedBoard'
 import { MessageCircle } from 'lucide-react'
 import { TheMorningAtTheTop } from './pictured/TheMorningAtTheTop'
+import { YourTeamPersonByPerson } from './pictured/YourTeamPersonByPerson'
 import { TheLightSalesBoard, TheLightNeedsYou, TheLightBesideTheHeadline, TheLightBoxes, TheLightSummaryFirst } from './TheLightSalesBoard'
 import { TheCollectionsBoard } from './pictured/TheCollectionsBoard'
 import { TheMatterBoard } from './pictured/TheMatterBoard'
@@ -2719,6 +2720,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {/* The direct morning (pictured/TheMorningAtTheTop.tsx): served to the lead alone where her organisation's switch is on; then the board as it is. */}
         {!groundId && (b as any).theMorning && <TheMorningAtTheTop m={(b as any).theMorning} b={b} />}
+        {/* Your team, person by person (pictured/YourTeamPersonByPerson.tsx): served to the lead alone, beside the direct morning, for her monthly look. */}
+        {!groundId && (b as any).yourTeam && id && <YourTeamPersonByPerson groundId={id} team={(b as any).yourTeam} />}
         {picturedCollections && b.collections && (
           <TheCollectionsBoard
             board={b.collections}

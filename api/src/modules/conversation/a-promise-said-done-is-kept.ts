@@ -250,8 +250,19 @@ export function whoAPromiseIsAbout(p: AnOpenPromise, answers: AnAnswerOnRecord[]
   const before = at > 0 && mine[at - 1].checkInId === mine[at].checkInId ? named(mine[at - 1].said) : [];
   const both = inTheQuestion.filter((n) => before.includes(n));
   const candidates = both.length ? both : [...new Set([...inTheQuestion, ...before])];
-  return candidates.length === 1 ? candidates[0] : null;
+  if (candidates.length === 1) return candidates[0];
+  /*
+   * ASKED ONLY WHEN, SO THE QUESTION BEFORE SAYS WHO (Drop Access, Kevin, Tuesday 13 October). "Did you confirm with Jane that Jane received
+   * the quote?" "Not yet, I literally just sent it. I'll follow up soon." "What day is "soon" for you?" "I'll call her tomorrow morning."
+   * "Her" is Jane: the question it answered asked only for a day, and the one before it named her.
+   */
+  if (!candidates.length && ONLY_WHEN.test(mine[at].asked) && at > 0 && mine[at - 1].checkInId === mine[at].checkInId) {
+    const earlier = named(mine[at - 1].asked);
+    if (earlier.length === 1) return earlier[0];
+  }
+  return null;
 }
+const ONLY_WHEN = /\b(?:what day|which day|what date|which date|by when|what time|when (?:will|would|do|are|is|can))\b/i;
 const THEY_ANSWERED = /\b(?:is|isn't|is not|was|wasn't|was not|are|aren't)\s+(?:still\s+)?(?:not\s+)?(?:ready|interested|keen|happy|sure|deciding|thinking)\b|\b(?:said|says|told me|wants|wanted|agreed|declined|decided|refused|accepted|rejected|confirmed|signed|paid|ordered|bought|asked for)\b/i;
 const THEY_COULD_NOT_BE_REACHED = /\b(?:hasn't|has not|haven't|have not|didn't|did not|not)\s+(?:replied|answered|responded|picked up|returned|got back|called back)|\bno (?:reply|answer|response)\b|\bcould(?:n't| not) (?:reach|get hold of|get through)\b|\bunreachable\b|\bvoicemail\b|\bnot answering\b/i;
 export function theyFollowedUpAndWereAnswered(text: string, who: string): boolean {

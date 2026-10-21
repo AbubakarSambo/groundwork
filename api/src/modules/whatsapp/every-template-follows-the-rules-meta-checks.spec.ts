@@ -1,5 +1,3 @@
-/* KNOWN FAILURE (Release 1, pull request 1, 18 October 2026): this test fails on origin/staging (cbc1927ed) too, run the
-   same way, so this pull request does not cause it: it pins template words in docs/whatsapp-templates.md that staging's notes do not hold yet. Left in place, not changed, so it is fixed in its own change. */
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { TEMPLATES, fill } from './a-message-outside-the-window';

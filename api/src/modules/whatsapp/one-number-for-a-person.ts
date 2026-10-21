@@ -22,32 +22,93 @@ export const A_NUMBER_ON_SOMEBODY_ELSE =
 
 type Db = any;
 
-/** Refuses, with a sentence, a number that is already on a sign-in other than this one. */
-export async function refuseANumberOnSomebodyElse(prisma: Db, number: string | null | undefined, ownUserId: string | null | undefined): Promise<void> {
+/** The same refusal, naming the colleague whose number it is when they are in the same organisation: an admin there already sees it on People. */
+export const A_NUMBER_ON_A_COLLEAGUE = (name: string) =>
+  `This number is already saved for ${name}, so it cannot be saved for somebody else too. Check the number, or change ${name}'s number on People first.`;
+
+/**
+ * Refuses, with a sentence, a number that is already on a sign-in other than this one.
+ *
+ * A SIGN-IN THAT WAS DELETED NEVER HOLDS A NUMBER (Drop Access, 21 October). `users.phone_number` is unique across Groundwork, deleted
+ * sign-ins included, so a number left on a deleted sign-in was refused by the database with no sentence, or, from a check-in's people
+ * list, not saved at all with nothing said. It is taken off the deleted sign-in first: nobody signs in with it, and the record stays.
+ */
+export async function refuseANumberOnSomebodyElse(prisma: Db, number: string | null | undefined, ownUserId: string | null | undefined, organizationId?: string | null): Promise<void> {
   if (!number) return;
+  const forms = formsOfTheSameNumber(number);
+  await Promise.resolve(prisma.user?.updateMany?.({ where: { phoneNumber: { in: forms }, deletedAt: { not: null }, ...(ownUserId ? { NOT: { id: ownUserId } } : {}) }, data: { phoneNumber: null } })).catch(() => undefined);
   const other = await prisma.user?.findFirst?.({
-    where: { phoneNumber: { in: formsOfTheSameNumber(number) }, deletedAt: null, ...(ownUserId ? { NOT: { id: ownUserId } } : {}) },
-    select: { id: true },
+    where: { phoneNumber: { in: forms }, deletedAt: null, ...(ownUserId ? { NOT: { id: ownUserId } } : {}) },
+    select: { id: true, firstName: true, lastName: true },
   });
-  if (other && other.id !== ownUserId) throw new BadRequestException(A_NUMBER_ON_SOMEBODY_ELSE);
+  if (!other || other.id === ownUserId) return;
+  const colleague = organizationId
+    ? await Promise.resolve(prisma.organizationMembership?.findFirst?.({ where: { userId: other.id, organizationId }, select: { userId: true } })).catch(() => null)
+    : null;
+  const name = [other.firstName, other.lastName].filter(Boolean).join(' ').trim();
+  throw new BadRequestException(colleague && name ? A_NUMBER_ON_A_COLLEAGUE(name) : A_NUMBER_ON_SOMEBODY_ELSE);
+}
+
+/**
+ * A PERSON'S NUMBER, AS EVERY SCREEN AND EVERY SENDER READS IT (Drop Access, 21 October). The roster first, then the sign-in. A person
+ * can have more than one roster entry (one from the HR system, one Groundwork made when a lead added their number); reading the first
+ * one found, with no order, could read the entry without the number just saved on the other. Every entry that is this person is read,
+ * the most recently changed one with a number wins, and the sign-in's number is used when no entry has one.
+ */
+export async function theNumberOnRecord(prisma: Db, organizationId: string, who: { userId?: string | null; email?: string | null }): Promise<string | null> {
+  const or = [...(who.userId ? [{ linkedUserId: who.userId }] : []), ...(who.email ? [{ email: { equals: who.email.trim(), mode: 'insensitive' } }] : [])];
+  const entries: any[] = or.length
+    ? (await Promise.resolve(prisma.person?.findMany?.({ where: { organizationId, OR: or, phone: { not: null } }, orderBy: { updatedAt: 'desc' }, select: { phone: true } })).catch(() => [])) ?? []
+    : [];
+  const onTheRoster = (entries ?? []).find((e: any) => e?.phone)?.phone ?? null;
+  if (onTheRoster) return onTheRoster;
+  if (!who.userId) return null;
+  const user = await Promise.resolve(prisma.user?.findUnique?.({ where: { id: who.userId }, select: { phoneNumber: true } })).catch(() => null);
+  return user?.phoneNumber ?? null;
+}
+
+/**
+ * THE SAME NUMBER ON EVERY ROSTER ENTRY THAT IS THIS PERSON, and their "last wrote" stamp cleared when it changes: the stamp was about
+ * the old number, and kept, it read a new number that has never written as already connected (findings 1.4 D). Returns how many
+ * entries there were.
+ */
+export async function everyRosterEntryTakesTheNumber(prisma: Db, organizationId: string, who: { userId?: string | null; email?: string | null }, number: string | null): Promise<number> {
+  const or = [...(who.userId ? [{ linkedUserId: who.userId }] : []), ...(who.email ? [{ email: { equals: who.email.trim(), mode: 'insensitive' } }] : [])];
+  if (!or.length || !prisma.person?.findMany) return 0;
+  const entries: any[] = (await prisma.person.findMany({ where: { organizationId, OR: or }, select: { id: true, phone: true } })) ?? [];
+  for (const e of entries) {
+    if ((e.phone ?? null) === number) continue;
+    await prisma.person.update({ where: { id: e.id }, data: { phone: number, whatsappLastInboundAt: null } });
+  }
+  return entries.length;
 }
 
 /** The roster entries that are this sign-in, in one organisation: linked to it, or carrying its address. */
 async function rosterEntriesOf(prisma: Db, organizationId: string, user: { id: string; email?: string | null }) {
   return (await prisma.person?.findMany?.({
-    where: { organizationId, OR: [{ linkedUserId: user.id }, ...(user.email ? [{ email: user.email.toLowerCase() }] : [])] },
+    where: { organizationId, OR: [{ linkedUserId: user.id }, ...(user.email ? [{ email: { equals: user.email.trim(), mode: 'insensitive' } }] : [])] },
     select: { id: true, phone: true },
   })) ?? [];
 }
 
 /** The sign-in's number was set or cleared (Settings, or an admin editing the sign-in): the roster follows. */
-export async function aSignInsNumberChanged(prisma: Db, userId: string, number: string | null): Promise<void> {
+export async function aSignInsNumberChanged(prisma: Db, userId: string, number: string | null, alsoIn?: string | null): Promise<void> {
   const user = await prisma.user?.findUnique?.({ where: { id: userId }, select: { id: true, email: true, organizationId: true } })?.catch?.(() => null);
-  if (!user?.organizationId || !prisma.person?.update) return;
-  const entries = await rosterEntriesOf(prisma, user.organizationId, user);
-  for (const e of entries) {
-    if ((e.phone ?? null) === number) continue;
-    await prisma.person.update({ where: { id: e.id }, data: { phone: number } });
+  if (!user || !prisma.person?.update) return;
+  /*
+   * EVERY ORGANISATION THEY BELONG TO, NOT ONLY THE ONE THEY LAST LOOKED AT (Drop Access, 21 October). `organizationId` on a sign-in
+   * is the organisation they last switched to, so an admin of Drop Access saving Kevin's number while Kevin was looking at another
+   * organisation changed Kevin's sign-in and left Drop Access's roster with the old number, which is the one every sender reads first.
+   */
+  const memberships: any[] = (await Promise.resolve(prisma.organizationMembership?.findMany?.({ where: { userId }, select: { organizationId: true } })).catch(() => [])) ?? [];
+  const orgs = [...new Set([alsoIn, user.organizationId, ...memberships.map((m: any) => m?.organizationId)].filter((o): o is string => !!o))];
+  for (const organizationId of orgs) {
+    const entries = await rosterEntriesOf(prisma, organizationId, user);
+    for (const e of entries) {
+      if ((e.phone ?? null) === number) continue;
+      /* The stamp was about the old number (findings 1.4 D). */
+      await prisma.person.update({ where: { id: e.id }, data: { phone: number, whatsappLastInboundAt: null } });
+    }
   }
 }
 

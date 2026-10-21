@@ -40,7 +40,7 @@ import { whoHasNotJoinedYet, theNotJoinedYetLine } from './invited-not-joined-ye
 import { aNameTypedInLowerCase } from '../../common/a-name-typed-in-lower-case';
 import { whoASessionCounts } from './the-lead-checks-in-when-they-choose';
 import { openTheLeadsCheckIn } from './check-in-yourself';
-import { theLeadAddsAWhatsAppNumber, whereEachPersonIsOnWhatsApp, theOpeningGoesToTheNumberJustAdded } from './the-lead-adds-a-whatsapp-number';
+import { theLeadAddsAWhatsAppNumber, whereEachPersonIsOnWhatsApp, theOpeningGoesToTheNumberJustAdded, theOpeningsGoToANumberJustSaved } from './the-lead-adds-a-whatsapp-number';
 import { waitsOnAManagingOnlyLead } from './the-lead-who-only-asks';
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException, Optional, GoneException } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
@@ -48,6 +48,7 @@ import { seatsIn } from '../../common/seats';
 import { whetherThereIsRoomForOneMore, type SeatAnswer } from './added-but-waiting-for-a-seat';
 import { whatTheDocumentsSay, stillNeedsSomethingInWriting } from './what-the-documents-say';
 import { whatFitsInTheRoom, tellThemWhatIsMissing } from '../conversation/a-prompt-that-ran-out-of-room-says-so';
+import { itSendsFromTheirNumber, WHAT_SAYS_IT_WORKS } from '../whatsapp/a-connection-that-works';
 import { daysRemaining, deadlineOf, clockStartsAt } from './when-the-clock-starts';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
@@ -5715,9 +5716,9 @@ export class GroundsService {
     if (over === true) {
       const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true } });
       const connected = ground
-        ? await this.prisma.whatsAppConnection.findUnique({ where: { organizationId: ground.organizationId }, select: { enabled: true } })
+        ? await this.prisma.whatsAppConnection.findUnique({ where: { organizationId: ground.organizationId }, select: WHAT_SAYS_IT_WORKS })
         : null;
-      if (!connected?.enabled) {
+      if (!itSendsFromTheirNumber(connected)) {
         throw new BadRequestException('This organisation has no WhatsApp number connected yet. Connect one on the Connect page first.');
       }
     }
@@ -8403,8 +8404,9 @@ export class GroundsService {
       try {
         const whatsapp = this.moduleRef?.get(WhatsAppService, { strict: false });
         if (whatsapp) {
-          const on = (await organisationsThatTurnedWhatsAppOn(this.prisma, whatsapp as any, [input.organizationId])).has(input.organizationId);
-          await theOpeningGoesToTheNumberJustAdded(this.prisma, whatsapp as any, { groundId: input.groundId, participantId: input.participantId, organizationId: input.organizationId, phone: kept.phone }, on);
+          /* This check-in, and every other one open for them here when they have a sign-in. */
+          const signIn = await this.prisma.groundParticipant.findUnique({ where: { id: input.participantId }, select: { userId: true } }).catch(() => null);
+          await theOpeningsGoToANumberJustSaved(this.prisma, whatsapp as any, { organizationId: input.organizationId, phone: kept.phone, userId: signIn?.userId ?? null, participantIds: [input.participantId] });
         }
       } catch (err: any) {
         this.logger.warn(`The WhatsApp opening for a number just added could not go: ${err?.message}`);

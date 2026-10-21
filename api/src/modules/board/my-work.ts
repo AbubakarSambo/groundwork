@@ -1,4 +1,5 @@
 import { aWaitSomebodyElseChases } from './a-wait-somebody-else-chases';
+import { saidWhatTheyTried } from '../grounds/a-wait-is-the-speakers-account';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { theRelease1bTabsAreOn } from '../grounds/release-1b-tabs';
 import { theReferencesTemplateFor } from '../grounds/the-references-template';
@@ -13,6 +14,10 @@ import { isASalesKind, oneOfTheKinds, RECORDS_FOR_EACH_KIND, type AServedRecord 
 import { plainNameOf } from '../patterns/plain-pattern-names';
 import { THE_SEVEN_BEHAVIOURS, WHERE_THE_WORDS_COME_FROM, theBehaviour, type ABehaviourKey } from '../patterns/the-seven-behaviours';
 import { thePersonJudgementsAreOn, NOT_SHOWN_IN_THIS_ORGANISATION } from '../organisation/person-judgements';
+import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
+import { readThePersonsRecord, readTheirOtherRecords } from './the-persons-record-store';
+import { theRecordInWords, acrossTheirCheckIns, type TheRecordInWords } from './the-persons-record-in-words';
+import { thePraiseFromYourLead } from './the-praise-from-your-lead';
 
 /**
  * MY WORK, AS EACH READER IS SERVED IT (Release 1B, pull request 3 of 3; Hafsah's references-and-my-work.md of 17 October 2026,
@@ -104,6 +109,12 @@ export interface MyWorkServed {
     rows: { id: string; name: string; stage: string | null; next: string; nextBooked: boolean; proof: string; proven: boolean }[];
     emptySays: string;
   };
+  /**
+   * THE PERSON'S RECORD AND THE COACHING GROUNDWORK GAVE THEM (Groundwork does the managing, part 1), as last built from the record
+   * (the-persons-record-store.ts), in plain words with its evidence. Only where the direct morning and judgements of a person are both
+   * on; absent everywhere else, so the page reads as before. `acrossYourCheckIns` is in the person's own payload alone.
+   */
+  record?: TheRecordInWords & { acrossYourCheckIns?: { heading: string; lines: string[] } };
 }
 
 export type MyWork = { on: false } | MyWorkServed;
@@ -287,7 +298,8 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
   const specific = done.filter((c) => c.specificityLevel === 'specific' || (c.specificityDimensions as any)?.checkable === 'specific');
   /* Not a blocker of theirs to have tried on: a wait a colleague here is chasing or has promised (a-wait-somebody-else-chases). */
   const raised = dedupeDependencies(r.raised.filter((d) => d.onParticipantId !== r.person.participantId && !aWaitSomebodyElseChases(String((d as any).what ?? ''), r.othersChase ?? [])) as any[]) as AHandoffRow[];
-  const tried = raised.filter((d) => String(d.triedSaid ?? '').trim());
+  /* What they said they tried first: Peter's "I haven't done anything about that yet" was counted as something tried (Drop Access, second night run). */
+  const tried = raised.filter((d) => saidWhatTheyTried(d.triedSaid));
   const cleared = raised.filter((d) => d.status === 'CLEARED');
   const creditors = [...new Set(r.credits.map((c) => c.fromName ?? 'A colleague'))];
   const creditCheckIns = new Set(r.credits.map((c, i) => c.checkInId ?? `credit-${i}`)).size;
@@ -414,7 +426,8 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
       const by = String(d.dueSaid ?? '').trim().replace(/^by\s+/i, '');
       return {
         id: d.id,
-        text: `${who} ${who === 'You' ? 'are' : 'is'} waiting on ${self ? 'you' : first} for ${String(d.what).trim().replace(/[.\s]+$/, '')}.`,
+        /* "Wanjiru is waiting on you to see the payment for FN-004 in the bank", never "for to see" (Muchemi & Co, second night run). */
+        text: `${who} ${who === 'You' ? 'are' : 'is'} waiting on ${self ? 'you' : first} ${/^to\b/i.test(String(d.what).trim()) ? '' : 'for '}${String(d.what).trim().replace(/[.\s]+$/, '')}.`,
         when: by ? `By ${by}` : `Since ${aDay(d.createdAt, r.timeZone)}`,
       };
     });
@@ -749,7 +762,25 @@ export async function readMyWork(
     now,
     timeZone,
   };
-  return { ...myWorkFrom(record, ground.label || 'This check-in'), ...(peopleList ? { people: peopleList } : {}) };
+  const page = myWorkFrom(record, ground.label || 'This check-in');
+  /* The person's record, read from where it is kept and never rebuilt here: the person's own, or, for the lead, the person's in this check-in. */
+  const theirRecord = judgements && page.on === true && !(page as any).judgements && await theDirectMorningIsOn(prisma, ground.organizationId)
+    ? await theRecordOnTheirPage(prisma, { groundId: ground.id, organizationId: ground.organizationId, label: ground.label || 'this check-in', pid, firstName: firstOf(name), self: reader === 'self', userId: person.userId ?? null, leadFirst, timeZone })
+    : null;
+  return { ...page, ...(theirRecord ? { record: theirRecord } : {}), ...(peopleList ? { people: peopleList } : {}) };
+}
+
+/** The record part of the page, for the person or the lead. Across their other check-ins only for the person themself. */
+async function theRecordOnTheirPage(prisma: any, o: { groundId: string; organizationId: string | null; label: string; pid: string; firstName: string; self: boolean; userId: string | null; leadFirst?: string; timeZone?: string }): Promise<MyWorkServed['record'] | null> {
+  const stored = await readThePersonsRecord(prisma, o.pid);
+  if (!stored) return null;
+  const words = theRecordInWords(stored.record, stored.coaching, { self: o.self, firstName: o.firstName }, o.label);
+  if (!o.self) return words;
+  /* What the lead praised them for, from her board (Groundwork does the managing, part 2): theirs to read, in their own record. */
+  const praise = await thePraiseFromYourLead(prisma, o.pid, o.leadFirst ?? '', o.timeZone || 'Africa/Nairobi');
+  const others = await readTheirOtherRecords(prisma, o.userId, o.organizationId, o.groundId);
+  const lines = acrossTheirCheckIns(others.map((x) => ({ label: x.label, record: x.stored.record })));
+  return { ...words, ...(praise ? { fromYourLead: praise } : {}), ...(lines.length ? { acrossYourCheckIns: { heading: 'In your other check-ins', lines } } : {}) };
 }
 
 /** The page with nobody on it yet: the lead runs a check-in nobody checks in to yet. */
