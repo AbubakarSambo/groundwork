@@ -8,7 +8,8 @@ import { theCollectionsServedToTheScreen } from './__fixtures__/the-collections-
 describe('the collections board says its small print whole, to each reader', () => {
   it('one row is said as one, and many as many', async () => {
     const { boards } = (await theCollectionsServedToTheScreen()) as any;
-    expect(boards.musa.every.foot).toBe('Its proof is filed on it, from the slips and messages people added.');
+    /* Musa's one loan has nothing filed on it (he promised to pay by Friday), so it says so, not that its proof is filed. */
+    expect(boards.musa.every.foot).toBe('Nothing is filed on it yet. A slip or a message added to it shows here.');
     expect(boards.wanjiru.every.foot).toMatch(/^All \w+ are shown\. Each one’s proof is filed on it/);
   });
   it('"yours to judge" is said to whoever runs it, and to nobody else', async () => {

@@ -490,7 +490,7 @@ export function buildTheCollectionsBoard(input: TheCollectionsInput): TheCollect
     empty: eachRow.length ? null : answer,
     /* Browser test, 20 October: a borrower with one loan read "It is shown. Each one’s proof is filed on it". One row is said as one. */
     foot: !eachRow.length ? null
-      : eachRow.length === 1 ? 'Its proof is filed on it, from the slips and messages people added.'
+      : eachRow.length === 1 ? ((eachRow[0].proof ?? []).length || eachRow[0].payment?.mark === 'proven' ? 'Its proof is filed on it, from the slips and messages people added.' : 'Nothing is filed on it yet. A slip or a message added to it shows here.')
       : `All ${countLower(eachRow.length)} are shown. Each one’s proof is filed on it, from the slips and messages people added.`,
   };
 

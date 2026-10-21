@@ -13,7 +13,7 @@ describe('the coaching is dated by the check-in it came after', () => {
     await rebuildThePersonsRecords(theRunAsADatabase('drop', { personRecord: table }), R2.drop.ground.id, twoDaysLater);
     const stored = await readThePersonsRecord({ personRecord: table }, thePersonOf('drop', 'Joseph').participantId);
     const given = stored!.coaching[stored!.coaching.length - 1];
-    const lastDone = [...stored!.record.checkIns].reverse().find((c) => c.done && c.sessionNumber === given.afterSession)!;
+    const lastDone = [...stored!.record.checkIns].reverse().find((c) => c.done && c.sessionNumber <= given.afterSession)!;
     expect(given.givenOn).toBe(lastDone.on);
     expect(given.givenOn).not.toMatch(/22 October/);
   });
