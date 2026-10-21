@@ -61,9 +61,9 @@ describe('People\'s "Open" link (.gwui-open-link)', () => {
 })
 
 describe('the suites toggle and the feedback trigger (already fixed, proven here so nobody re-breaks them)', () => {
-  /* Since 21 October the switch answers 44px tall at every width, through the shared tap target in index.css. */
+  /* Since 21 October the switch answers 44px tall at every width, through the shared tap target in gw-ui.css. */
   it('the toggle answers 44px tall, past its own visible pill', () => {
-    expect(INDEX_CSS).toMatch(/\.gwui-toggle::after,[^{]*\{\s*content: ''; position: absolute; left: 0; right: 0; top: 50%; height: max\(100%, 44px\);/)
+    expect(GW_UI_CSS).toMatch(/\.gwui-toggle::after,[^{]*\{\s*content: ''; position: absolute; left: 0; right: 0; top: 50%; height: max\(100%, 44px\);/)
   })
 
   it('the page reserves room at the foot so the feedback trigger never covers the last line', () => {

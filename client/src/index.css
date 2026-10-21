@@ -273,22 +273,6 @@ table { font-variant-numeric: lining-nums tabular-nums; }
 /* Every control takes the page's typeface. A browser draws a button, an input and a select in its
    own system font unless told otherwise, which is how a stray grey "Arial" button appeared. */
 button, input, select, textarea { font-family: inherit; }
-/*
- * THE 44px FLOOR COVERS EVERYTHING YOU CAN TAP (Hafsah, 21 October): buttons, links in lists, chips and switches. Links inside a
- * sentence are the only exception. Every button, folding summary, picker and control by role is at least 44px tall unless its own
- * class says more; `:where` keeps this at no weight, so any class that sets its own height of 44px or more still wins. A control
- * whose drawn shape must stay small (a switch, a tag you can tap, a coloured initial) keeps its shape and takes a 44px tap target
- * instead (`.gwui-tap-target` and the list beside it, below). A button that sits inside a sentence takes `.gwui-in-a-sentence`.
- */
-:where(button, summary, select, [role="button"], [role="switch"], [role="tab"]):not(.gwui-in-a-sentence) { min-height: 44px; }
-/* A TAP TARGET 44px TALL AROUND A SMALL DRAWN SHAPE: an invisible layer, centred on the control, at least 44px tall, so nothing drawn
-   moves or grows. Only as wide as the control itself, so it never reaches over the one beside it. */
-.gwui-tap-target, .gw-switch, .gwui-toggle, button.gwui-tag, .gw-rl-ini { position: relative; }
-/* The switches and a hand-drawn small control keep the height they are drawn at; the floor above would otherwise stretch them. */
-.gwui-tap-target, .gw-switch, .gwui-toggle { min-height: 0; }
-.gwui-tap-target::after, .gw-switch::after, .gwui-toggle::after, button.gwui-tag::after, .gw-rl-ini::after {
-  content: ''; position: absolute; left: 0; right: 0; top: 50%; height: max(100%, 44px); transform: translateY(-50%);
-}
 
 #root {
   min-height: 100vh;

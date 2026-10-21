@@ -758,3 +758,24 @@ width" symptom `.gwui-row > .gwui-btn { justify-self: start; }` already names (B
 3, part 7's follow-up, above) also reached a bare `Tag`: on `YourRequestsPage.tsx` at 375 wide,
 "Waiting"/"Approved" stretched edge to edge of the row once its grid collapsed to one column.
 Fixed the same way, scoped to `.gwui-tag` only: `.gwui-row > .gwui-tag { justify-self: start; }`.
+
+## Hafsah, 21 October: everything you can tap is at least 44px tall
+
+Hafsah's answer of 21 October: the 44px rule covers buttons, links in lists, chips and switches, and a link inside a sentence is
+the only exception. The browser test measured the sidebar's icons and Feedback at 34px, the chips at 40px, the switches at 28px and
+the session tags you can tap at 26px. Three shared parts, all in gw-ui.css, under "The 44px floor and the tap target":
+
+**The floor** (no class): `:where(button, summary, select, [role="button"], [role="switch"], [role="tab"])` is at least 44px tall.
+`:where` gives it no weight, so a part that sets its own height of 44px or more still wins.
+
+**`.gwui-in-a-sentence`**: a button that sits inside a sentence and reads as a link in it. It is left out of the floor, the one
+exception Hafsah named.
+
+**`.gwui-tap-target`**: a control whose drawn shape must stay small (the admin page's hand-drawn switches) keeps its own height and
+takes an invisible layer at least 44px tall, centred on it and only as wide as it. The same layer is given to `.gw-switch`,
+`.gwui-toggle` (in place of its old phone-only `inset: -6px`), a tag you can tap (`button.gwui-tag`, the session tags on Every
+session) and the folded sidebar's coloured initials (`.gw-rl-ini`).
+
+**`.gwui-tap-44`** is `.gwui-tap-40` above, renamed: the same `min-height`/`inline-flex` floor, now 44px and at every width, not
+only on a phone. `.gwui-icon-btn` and `.gwui-help-close` are 44px squares at every width, and `.gwui-open-link`, `.gwui-plain-link`,
+`.gwui-choice`, the small menus and the folding summaries are 44px tall. The guard is the-kits-look-holds.spec.ts.

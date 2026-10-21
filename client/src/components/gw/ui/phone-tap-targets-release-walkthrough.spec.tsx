@@ -29,8 +29,7 @@ describe('phone tap targets, release walkthrough 5 October', () => {
 
   it('.gwui-toggle keeps its own 48x28 pill, with an invisible hit area 44px tall at every width', () => {
     expect(CSS).toMatch(/\.gwui-toggle \{[^}]*width: 48px; height: 28px/)
-    const TOKENS = readFileSync(join(__dirname, '../../../index.css'), 'utf8')
-    expect(TOKENS).toMatch(/\.gwui-toggle::after,[^{]*\{\s*content: ''; position: absolute; left: 0; right: 0; top: 50%; height: max\(100%, 44px\);/)
+    expect(CSS).toMatch(/\.gwui-toggle::after,[^{]*\{\s*content: ''; position: absolute; left: 0; right: 0; top: 50%; height: max\(100%, 44px\);/)
   })
 
   it('each flagged control actually takes the new class', () => {

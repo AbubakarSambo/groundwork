@@ -231,7 +231,7 @@ describe('cream and navy, never grey', () => {
  * sentence are the only exception. The browser test measured the sidebar's icons and Feedback at 34px, the chips at 40px, the
  * switches at 28px and the session tags you can tap at 26px.
  *
- * Three checks. The floor itself is in the token file. No class drawn on something you can tap (a button, a link, a folding summary,
+ * Three checks. The floor itself is in the kit's stylesheet, gw-ui.css. No class drawn on something you can tap (a button, a link, a folding summary,
  * a picker, or anything with a click or a control's role) declares a height under 44px, unless it keeps its small drawn shape and
  * takes a 44px tap target around it. And no such element is given a height under 44px in its own inline style.
  */
@@ -279,7 +279,7 @@ describe('everything you can tap is at least 44px tall', () => {
   }
 
   it('the floor: every button, folding summary, picker and control by role is at least 44px tall, at no weight', () => {
-    expect(TOKENS).toMatch(/:where\(button, summary, select, \[role="button"\], \[role="switch"\], \[role="tab"\]\):not\(\.gwui-in-a-sentence\) \{ min-height: 44px; \}/)
+    expect(UI_CSS).toMatch(/:where\(button, summary, select, \[role="button"\], \[role="switch"\], \[role="tab"\]\):not\(\.gwui-in-a-sentence\) \{ min-height: 44px; \}/)
   })
 
   it('a switch, a tag you can tap and a coloured initial keep their shape and take a 44px tap target', () => {
