@@ -112,6 +112,7 @@ export async function readTheInputs(prisma: any, groundId: string, now: Date = n
       sales,
       daily: String(ground.cadence ?? '').toUpperCase() === 'DAILY' ? { workingDays: ground.workingDays ?? null } : null,
       namesHere: ((ground.participants ?? []) as any[]).map((x) => [x.user?.firstName ?? '', x.user?.lastName ?? ''].filter(Boolean)),
+      runsIt: !!p.userId && p.userId === ground.initiatorId,
       checkIns: theirCheckIns,
       lines: (rows as any[]).filter((l) => l.participantId === p.id).map((l) => ({
         id: l.id, checkInId: l.checkInId ?? null, sessionNumber: l.checkInId ? checkInOf.get(l.checkInId)?.sessionNumber ?? null : null,

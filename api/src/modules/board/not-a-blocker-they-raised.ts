@@ -37,9 +37,12 @@ const A_CUSTOMERS_OWN = /^(?:(?:the|their|its|a|an|her|his|board'?s?|school'?s?|
  * Is this wait something other than a blocker the person raised? On a sales check-in a customer's own budget, approval or decision is
  * where the deal stands; on any check-in, asking for a view or ideas is not a blocker, and nor is waiting for somebody's check-in.
  */
-export function notABlockerTheyRaised(d: AWaitTheyRaised, how: { sales: boolean; namesHere?: string[][]; keepTheAsks?: boolean; keepWhatCleared?: boolean }): boolean {
+export function notABlockerTheyRaised(d: AWaitTheyRaised, how: { sales: boolean; namesHere?: string[][]; keepTheAsks?: boolean; keepWhatCleared?: boolean; theLeadOnHerTeam?: boolean }): boolean {
   const what = String(d.what ?? '').trim();
   if (!what) return true;
+  /* The lead waiting on somebody in her own check-in for their part is her following their work, not a blocker of hers (Wanjiru's fee notes,
+     "confirmation that payment is in the bank" from Njeri and "the follow-up on FN-004" from Brian, were four blockers "with nothing tried"). */
+  if (how.theLeadOnHerTeam && d.onParticipantId) return true;
   if (aWaitForTheirCheckIn({ what, onParticipantId: d.onParticipantId ?? null, onLabel: d.onLabel ?? null }, how.namesHere ?? [])) return true;
   /* On the board an ask for the lead's view still needs her answer, so it is kept there (`keepTheAsks`), and only never held against them. */
   if (ASKING_FOR_A_VIEW.test(what) && !(how.keepTheAsks && d.onParticipantId)) return true;

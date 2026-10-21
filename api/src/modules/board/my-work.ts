@@ -201,6 +201,8 @@ export interface TheRecordForOnePerson {
   theirTurns?: { content: string; at: Date | string }[];
   /** Everybody's names in this check-in, to tell a wait on people here. */
   namesHere?: string[][];
+  /** The person whose page it is runs the check-in. */
+  personRunsIt?: boolean;
 }
 
 const DAY = 86_400_000;
@@ -237,8 +239,9 @@ const isFinished = (r: AServedRecord, lastStage: string | null) =>
 
 function theProofOf(r: TheRecordForOnePerson['items'][number]): { proven: boolean; says: string } {
   /* A deposit only is sold, and not paid with proof: "Deposit paid, KES 15,000 of KES 30,000." (final real-model check, item 10). */
+  /* Backed, by a payment: but never said as paid (the page's numbers say it apart). */
   const deposit = (r as any).deposit as { says?: string } | undefined;
-  if (deposit?.says && !r.signedOrder) return { proven: false, says: deposit.says.replace(/\.$/, '') };
+  if (deposit?.says && !r.signedOrder) return { proven: true, says: deposit.says.replace(/\.$/, '') };
   const proof = (r.evidence ?? []).find((e) => e.countsAsProof);
   if (proof) return { proven: true, says: proof.readAs };
   if (r.signedOrder) return { proven: true, says: 'A signed order' };
@@ -312,7 +315,7 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
   const specific = done.filter((c) => c.specificityLevel === 'specific' || (c.specificityDimensions as any)?.checkable === 'specific');
   /* Not a blocker of theirs to have tried on: a wait a colleague here is chasing or has promised (a-wait-somebody-else-chases). */
   /* Nor a customer's own budget or approval, asking for a view, or waiting for a check-in (final check, item 2). */
-  const raised = dedupeDependencies(r.raised.filter((d) => d.onParticipantId !== r.person.participantId && !aWaitSomebodyElseChases(String((d as any).what ?? ''), r.othersChase ?? []) && !notABlockerTheyRaised(d as any, { sales: words.sales, namesHere: r.namesHere })) as any[]) as AHandoffRow[];
+  const raised = dedupeDependencies(r.raised.filter((d) => d.onParticipantId !== r.person.participantId && !aWaitSomebodyElseChases(String((d as any).what ?? ''), r.othersChase ?? []) && !notABlockerTheyRaised(d as any, { sales: words.sales, namesHere: r.namesHere, theLeadOnHerTeam: r.personRunsIt })) as any[]) as AHandoffRow[];
   /* What they said they tried first: Peter's "I haven't done anything about that yet" was counted as something tried (Drop Access, second night run);
      and something tried after it was raised was not tried first, read as their record reads it (what-they-tried-first.ts, final check items 6 and 18). */
   const tried = raised.filter((d) => whatTheyTriedFirst(d as any, r.raised as any, r.theirTurns ?? [], r.timeZone).first);
@@ -395,7 +398,10 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
       }
       case 'check-in-quality': {
         if (due.length < 3) return read(b.key, 'Not enough yet', '', null);
-        const strong = done.length / due.length >= 0.8 && onTime.length / due.length >= 0.7 && (done.length ? specific.length / done.length : 0) >= 0.7;
+        /* Needs work by the same bar their record is coached on: at least two that fell short, missed, late or vague (final check, item 3).
+           One missed check-in in four is not "Needs work" here while their record does not coach on it. */
+        const fellShort = due.length - done.filter((c) => wasOnTime(c) && (c.specificityLevel === 'specific' || (c.specificityDimensions as any)?.checkable === 'specific')).length;
+        const strong = fellShort < 2 || (done.length / due.length >= 0.8 && onTime.length / due.length >= 0.7 && (done.length ? specific.length / done.length : 0) >= 0.7);
         const timing = onTime.length === done.length ? ' on time' : `, ${onTime.length} of them on time`;
         const happened = `${You} did ${done.length} of ${plural(due.length, 'check-in')}${timing}. ${specific.length} of ${done.length} ${specific.length === 1 ? 'was' : 'were'} specific.`;
         return read(b.key, strong ? 'Strength' : 'Needs work', happened, plural(due.length, 'check-in'));
@@ -418,10 +424,13 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
   };
   const soldUnits = words.sales && r.target ? unitsIn(finished) : null;
   const inUnits = soldUnits !== null && soldUnits > 0 && soldUnits === r.target?.count && soldUnits !== finished.length;
+  /* Sold on a deposit is said apart from paid, never as "with proof" of payment (final real-model check, item 10: "46 with proof"). */
+  const onADeposit = proven.filter((i) => !!(i as any).deposit && !i.signedOrder);
+  const paidInFull = proven.filter((i) => !onADeposit.includes(i));
   if (words.keepsItems && items.length) {
     numbers.push(inUnits
-      ? { value: String(soldUnits), label: `${words.doneWord}, ${unitsIn(proven) ?? 0} with proof` }
-      : { value: String(finished.length), label: `${words.doneWord}, ${proven.length} with proof` });
+      ? { value: String(soldUnits), label: onADeposit.length ? `${words.doneWord}, ${unitsIn(paidInFull) ?? 0} paid with proof, ${unitsIn(onADeposit) ?? 0} on a deposit` : `${words.doneWord}, ${unitsIn(proven) ?? 0} with proof` }
+      : { value: String(finished.length), label: onADeposit.length ? `${words.doneWord}, ${paidInFull.length} paid with proof, ${onADeposit.length} on a deposit` : `${words.doneWord}, ${proven.length} with proof` });
   }
   if (r.target) {
     numbers.push(r.target.count > r.target.target
@@ -782,6 +791,7 @@ export async function readMyWork(
     theirTurns: ((await (prisma.conversationTurn?.findMany?.({ where: { checkIn: { groundId: ground.id, participantId: pid }, role: 'PERSON' }, select: { content: true, createdAt: true }, orderBy: { createdAt: 'asc' } })?.catch?.(() => []) ?? [])) as any[] ?? [])
       .map((x: any) => ({ content: String(x.content ?? ''), at: x.createdAt })),
     namesHere: participants.map((p: any) => [p.user?.firstName ?? '', p.user?.lastName ?? ''].filter(Boolean)),
+    personRunsIt: !!person.userId && person.userId === ground.initiatorId,
   };
   const built = myWorkFrom(record, ground.label || 'This check-in');
   /*

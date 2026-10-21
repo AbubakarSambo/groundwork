@@ -54,6 +54,8 @@ describe('Kevin and Mercy, who checked in every day of the run (item 3)', () => 
     const part = page.record.parts.find((p: any) => /check-ins$/.test(p.heading));
     /* Thursday's session opened at 08:00 on Thursday 15 October and was not done by Friday evening: both say so, the same way. */
     expect(quality.happened).toBe('You did 3 of 4 check-ins on time. 3 of 3 were specific.');
+    /* One missed in four is not "Needs work" while the record does not coach on it: the same bar. */
+    expect(quality.verdict).toBe('Strength');
     expect(part.says).toBe('You did three of four check-ins, all on time. Three of them named the item, what changed and the day.');
     /* On Thursday morning, before that session opened, it is not counted anywhere. */
     const thursday = await theirRecord('drop', who, true, THURSDAY_MORNING);
@@ -172,5 +174,29 @@ describe('a sentence about the process is not a payment said (item 10)', () => {
     const { aClaimIn } = await import('./the-persons-record');
     expect(aClaimIn('With Kilele Hotel, Mr. Ochieng was really happy with how quickly everything went through.')).toBeNull();
     expect(aClaimIn('For Jamii Clinics, FN-007, I think they\'ve paid, it went through on Friday.')).toBe('payment');
+  });
+});
+
+describe('Kevin’s numbers on My work say the deposit apart (item 10)', () => {
+  it('reads 46 sold, 40 paid with proof, 6 on a deposit, and his proof is not called missing', async () => {
+    const { myWorkFrom } = await import('./my-work');
+    const row = (name: string, units: string, more: Record<string, any>) => ({ id: name, kind: 'deal', name, stage: 'Won', group: 'won', ownerParticipantId: 'p-kevin', fields: { Units: units }, ...more });
+    const page: any = myWorkFrom({
+      reader: 'self', person: { participantId: 'p-kevin', name: 'Kevin Omondi', firstName: 'Kevin' }, leadFirst: 'Grace', kindOfWork: 'sales team',
+      items: [row('Kilele Hotel', '40', { paymentRecord: true }), row('Savannah Cafe', '6', { paymentRecord: true, deposit: { paid: 15000, of: 30000, currency: 'KES', says: 'Deposit paid, KES 15,000 of KES 30,000.' } })] as any,
+      commitments: [], waitsOnThem: [], raised: [], credits: [], checkIns: [], ownLines: [], patterns: [], teamCoaching: [], helpWith: null,
+      target: { count: 46, target: 30 }, now: new Date('2026-10-16T14:30:00Z'), timeZone: 'Africa/Nairobi',
+    } as any, 'Sales team, Q4');
+    expect(page.numbers[0]).toEqual({ value: '46', label: 'sold, 40 paid with proof, 6 on a deposit' });
+    expect(page.performing.behaviours.find((b: any) => b.key === 'backing-claims-with-proof')).toMatchObject({ verdict: 'Strength', happened: 'Every one of your 2 sales has proof.' });
+  });
+});
+
+describe('Wanjiru, who runs the fee notes, is not told she raised blockers when she waits on her own team', () => {
+  it('her My work does not say she raised four blockers with nothing tried', async () => {
+    const page = await theirMyWork('fees', 'Wanjiru');
+    expect(page.performing.behaviours.find((b: any) => b.key === 'handling-blockers').verdict).toBe('Not enough yet');
+    const own = await theirRecord('fees', 'Wanjiru', true);
+    expect(JSON.stringify(own)).not.toMatch(/raised four blockers/);
   });
 });

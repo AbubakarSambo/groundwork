@@ -125,6 +125,8 @@ export interface ThePersonsInputs {
   daily?: { workingDays?: number[] | null } | null;
   /** Everybody's names in this check-in, first and last, to tell a wait on people here ("Kevin, Mercy, Joseph, and Peter"). */
   namesHere?: string[][];
+  /** This person runs the check-in. */
+  runsIt?: boolean;
 }
 
 /* ------------------------------------------------------------------------------------------------ the entries */
@@ -592,7 +594,7 @@ export function thePersonsRecord(input: ThePersonsInputs): ThePersonsRecord {
   const raised = dedupeDependencies(input.blockers
     .filter((d) => d.onParticipantId !== input.participantId && !aWaitSomebodyElseChases(String(d.what ?? ''), input.othersChase ?? []))
     /* A customer's own budget or approval, asking for a view, or waiting for a check-in is not a blocker they raised (final check, item 2). */
-    .filter((d) => !notABlockerTheyRaised(d as any, { sales: input.sales, namesHere: input.namesHere })) as any[]) as ABlockerOfTheirs[];
+    .filter((d) => !notABlockerTheyRaised(d as any, { sales: input.sales, namesHere: input.namesHere, theLeadOnHerTeam: input.runsIt })) as any[]) as ABlockerOfTheirs[];
   /*
    * DATES AND QUOTES FROM THE SAME LINE (final real-model check, item 18). Two waits said as one keep the fuller words, and those words are
    * dated by the row that holds them, not by the first row ("On Monday 12 October Mercy raised a blocker, waiting for ideas ..." was said
