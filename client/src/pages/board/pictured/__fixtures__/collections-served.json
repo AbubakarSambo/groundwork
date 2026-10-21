@@ -904,21 +904,8 @@
     "empty": "Nothing has come up in three check-ins in a row yet.",
     "foot": null
    },
-   "followUp": {
-    "heading": "Support given, and whether it helped",
-    "rows": [
-     {
-      "what": "A day promised to pay by",
-      "howMany": "One promise",
-      "whatFollowed": "None has fallen due yet."
-     }
-    ],
-    "empty": null
-   },
-   "systems": {
-    "heading": "What the systems show",
-    "says": "Nothing is connected yet. When the repayment system is connected, what it shows will be here, beside what borrowers said."
-   },
+   "followUp": null,
+   "systems": null,
    "heading": null
   }
  },
