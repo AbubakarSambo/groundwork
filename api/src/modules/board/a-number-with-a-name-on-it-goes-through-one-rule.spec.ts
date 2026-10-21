@@ -181,6 +181,8 @@ describe('every surface that hands out whose number it is', () => {
     /* Groundwork does the managing, part 1: each person's record reads a deal's or a bill's owner (a work item) to keep figures and focus to their own items. */
     'modules/board/the-persons-record-store.ts': "reads a deal's or a bill's owner (a work item) to keep a person's figures and focus to their own items; never a target or a number",
     /* Groundwork does the managing, part 2: each person's part of the lead's board reads their own records (work items) by their own id, for the deadline and reassign taps, and is served to the lead who runs the check-in alone. Never a target. */
+    /* The final real-model check's follow-up: which of a person's own deals a promise of theirs is about, read from their own conversation. Never a target. */
+    'modules/board/the-deal-a-promise-is-about.ts': "reads a deal's owner (a work item) only to keep a person's promise to their own deals; serves nobody, never a target or a number",
     'modules/board/your-team-person-by-person.ts': "reads each person's own records (work items) by their own id, for the lead who runs the check-in alone; never a target or a number",
   };
 

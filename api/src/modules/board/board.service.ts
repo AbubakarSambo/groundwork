@@ -49,6 +49,7 @@ import { aPromiseSomebodyElseMade } from '../conversation/a-promise-somebody-els
 import { thePriceRangeAnswer, thePriceRangeDecision, THE_RANGE_QUESTION, type ARangeAnswer } from './a-deals-four-criteria';
 import { theDealWasDropped, theLostDeal } from './a-deal-that-was-dropped';
 import { theStartOfATargetFromTheDeals } from './where-a-target-from-the-deals-started';
+import { theDealsThePromisesAreAbout } from './the-deal-a-promise-is-about';
 import { notABlockerTheyRaised } from './not-a-blocker-they-raised';
 import { theWordsNameTheDeal, theDepositFor, aDepositSaid, theBackingDocuments, theDocumentBehind, thePaymentRecords, theSignedOrders, aPaymentRecordFor, theMPesaCodeFor, type ABackingDocument } from './a-deals-proof-is-about-that-deal';
 import { withTheValueWorkedOut, withOnlyTheNumbersSaid, theBuyingDateOf, theBuyingDateTheySaid, BUYING_DATE, aLineIsAbout } from './a-deals-value-and-buying-date';
@@ -2630,10 +2631,19 @@ export class BoardService {
       /* How each record is known, by the same mark every line carries (request 107 c). */
       const whoAddedTheirs = await whoAddedEachBackingDocument(this.prisma, sources as any[]).catch(() => new Map<string, string | null>());
       /* What happens next: an open commitment that names the record, said by somebody this reader may read about it. */
-      const openPromises = items.length
+      const openPromisesAsKept = items.length
         ? ((await ((this.prisma as any).groundCommitment?.findMany?.({ where: { groundId }, orderBy: { createdAt: 'asc' } }) ?? Promise.resolve([])).catch(() => [])) as any[])
           .filter((c) => String(c.status ?? '').toUpperCase() === 'UNKNOWN')
         : [];
+      /* Which deal each promise is about, from the conversation it was made in, where its words name none (the-deal-a-promise-is-about). */
+      const promiseTurns = openPromisesAsKept.length && (items as any[]).some((i) => i.kind === 'deal')
+        ? ((((await (this.prisma.conversationTurn?.findMany?.({ where: { checkIn: { groundId } }, select: { checkInId: true, role: true, content: true, createdAt: true, checkIn: { select: { participantId: true } } }, orderBy: { createdAt: 'asc' } }) ?? Promise.resolve([]))?.catch?.(() => [])) ?? []) as any[])
+          .map((t) => ({ checkInId: t.checkInId ?? null, participantId: t.checkIn?.participantId ?? null, role: String(t.role), content: String(t.content ?? ''), createdAt: t.createdAt })))
+        : [];
+      const aboutDeal = promiseTurns.length
+        ? theDealsThePromisesAreAbout(openPromisesAsKept, promiseTurns, (items as any[]).filter((i) => i.kind === 'deal').map((i) => ({ name: String(i.name ?? ''), ownerParticipantId: (i.sourceEntryId ? lineOf.get(i.sourceEntryId)?.participantId : null) ?? i.ownerParticipantId ?? null })))
+        : new Map<string, string>();
+      const openPromises = openPromisesAsKept.map((c) => (aboutDeal.has(c.id) ? { ...c, about: aboutDeal.get(c.id) } : c));
       /* Whoever runs it reads every commitment about a record; anybody else only their own and the record holder's, never the lead's (decisions 4 and 30). */
       const runsIt = isInitiator || runsItForAPattern(ground as any, requestingUserId) || (runsThisGround && !isEvaluationCheckIn(ground.scenario));
       /*
