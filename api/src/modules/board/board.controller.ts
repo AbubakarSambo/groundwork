@@ -176,6 +176,12 @@ export class BoardController {
     return this.board.updateWorkItem(id, itemId, userId, dto ?? {});
   }
 
+  @Post('people/:participantId/actions')
+  @ApiOperation({ summary: 'Lead only: praise one person, start a plan for them, set a deadline on one of their records, or give one of their records to somebody else. Kept in the record; no message is sent.' })
+  async actOnAPerson(@Param('id') id: string, @Param('participantId') participantId: string, @CurrentUser('id') userId: string, @Body() dto: { kind?: string; text?: string; itemId?: string; due?: string; toParticipantId?: string }) {
+    return this.board.actOnAPerson(id, participantId, userId, dto ?? {});
+  }
+
   @Post('work-items/:itemId/claim')
   @ApiOperation({ summary: 'Lead only: answer whether a record somebody says is theirs is theirs. Only a yes sets the owner.' })
   async answerAClaimOnARecord(@Param('id') id: string, @Param('itemId') itemId: string, @CurrentUser('id') userId: string, @Body() dto: { yes?: boolean }) {

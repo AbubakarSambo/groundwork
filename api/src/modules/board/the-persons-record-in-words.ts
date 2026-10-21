@@ -33,6 +33,8 @@ export interface TheRecordInWords {
   parts: APartOfTheRecord[];
   coaching: ACoachingInWords[];
   coachingEmpty: string;
+  /** What the lead who runs the check-in praised them for (board/your-team-person-by-person.ts). In the person's own payload alone. */
+  fromYourLead?: { heading: string; lines: string[] };
 }
 
 const NUMBER_WORDS = ['none', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];

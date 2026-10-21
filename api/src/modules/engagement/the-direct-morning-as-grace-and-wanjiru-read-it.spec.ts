@@ -169,7 +169,7 @@ describe('Wanjiru’s direct morning, Muchemi & Co (test): fee notes and the lit
   it('says what is owed and paid with proof, what fell due and why, who to chase, what needs the partner, and the team', async () => {
     const fees = await theDirectMorningFor(await theNightRunsDatabaseWithRecords('fees', { directMorning: true }), { groundId: N.fees.ground.id, leadUserId: theLeadOf('fees').userId, board: theLeadsBoard('fees'), now: NOW });
     const lit = await theDirectMorningFor(await theNightRunsDatabaseWithRecords('lit', { directMorning: true }), { groundId: N.lit.ground.id, leadUserId: theLeadOf('lit').userId, board: theLeadsBoard('lit'), now: NOW });
-    /* Changed 21 October: who to chase, what is marked paid with no proof and "No fee note fell due today." stay on the board; Aisha's and David's records say who Groundwork could not move. */
+    /* Changed 21 October: who to chase, what is marked paid with no proof and "No fee note fell due today." stay on the board; Aisha's record says Groundwork could not move her, and a check-in not made since Friday is Groundwork's to chase. */
     expect(theEmailParts([fees!, lit!])).toEqual([
       { heading: 'What is owed, and what is paid, in Fee notes', lines: [
         'KES 180,000 is owed on 3 fee notes, and 2 of them have no amount on record. Nothing is paid with proof yet.',
@@ -187,9 +187,6 @@ describe('Wanjiru’s direct morning, Muchemi & Co (test): fee notes and the lit
         'Brian has been waiting on you since Thursday about the Nyota Logistics fee dispute.',
         'People said different things about who is assigned to the Jamii Clinics employment claim, so settle it with them.',
         'People said different things about the current status of the Kasarani Foods reply, so settle it with them.',
-      ] },
-      { heading: 'Your team today, in Litigation team daily', lines: [
-        'David did 4 of 5 check-ins, 1 of them on time, and 2 named the item, what changed and the day. Groundwork has coached David on it since Thursday 15 October, and it has got worse, so call David.',
       ] },
     ]);
     expect(theSubject('Wanjiru', [fees!, lit!])).toBe('Wanjiru: KES 180,000 owed, and Nyota Logistics disputes FN-008');

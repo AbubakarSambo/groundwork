@@ -7,6 +7,7 @@ import { theMPesaCodesSaid } from '../conversation/an-mpesa-code-is-asked-about-
 import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
 import { thePersonsRecord, theCoachingFollowedUp, theRecordForOneSession, type ThePersonsInputs, type ThePersonsRecord, type ACoaching, type AnItemOfTheirs } from './the-persons-record';
 import { theRecordInWords, type TheRecordInWords } from './the-persons-record-in-words';
+import { thePraiseFromYourLead } from './the-praise-from-your-lead';
 
 /**
  * WHERE EACH PERSON'S RECORD IS KEPT, AND WHEN IT IS REBUILT (Groundwork does the managing, part 1).
@@ -202,13 +203,15 @@ export async function readTheirOtherRecords(prisma: any, userId: string | null |
  */
 export async function yourRecordInYourReport(prisma: any, groundId: string, sessionNumber: number, userId: string): Promise<(TheRecordInWords) | null> {
   if (!userId) return null;
-  const ground = await Promise.resolve(prisma?.ground?.findUnique?.({ where: { id: groundId }, select: { organizationId: true, label: true } })).catch(() => null);
+  const ground = await Promise.resolve(prisma?.ground?.findUnique?.({ where: { id: groundId }, select: { organizationId: true, label: true, initiator: { select: { firstName: true } }, organization: { select: { timeZone: true } } } })).catch(() => null);
   if (!ground || !(await thePersonJudgementsAreOn(prisma, ground.organizationId))) return null;
   const me = await Promise.resolve(prisma?.groundParticipant?.findFirst?.({ where: { groundId, userId }, select: { id: true, user: { select: { firstName: true } } } })).catch(() => null);
   if (!me?.id) return null;
   const stored = await readThePersonsRecord(prisma, me.id);
   if (!stored || stored.groundId !== groundId) return null;
   const words = theRecordInWords(theRecordForOneSession(stored.record, sessionNumber), stored.coaching.filter((c) => c.afterSession <= sessionNumber), { self: true, firstName: String(me.user?.firstName ?? '') }, ground.label || 'this check-in');
-  if (!words.parts.length && !words.coaching.length) return null;
-  return { ...words, heading: 'What Groundwork followed up for you' };
+  /* What the lead praised them for, from her board (Groundwork does the managing, part 2), in their own report too. */
+  const praise = await thePraiseFromYourLead(prisma, me.id, String(ground.initiator?.firstName ?? '').trim(), ground.organization?.timeZone || 'Africa/Nairobi');
+  if (!words.parts.length && !words.coaching.length && !praise) return null;
+  return { ...words, ...(praise ? { fromYourLead: praise } : {}), heading: 'What Groundwork followed up for you' };
 }

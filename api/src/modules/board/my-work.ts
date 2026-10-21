@@ -17,6 +17,7 @@ import { thePersonJudgementsAreOn, NOT_SHOWN_IN_THIS_ORGANISATION } from '../org
 import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { readThePersonsRecord, readTheirOtherRecords } from './the-persons-record-store';
 import { theRecordInWords, acrossTheirCheckIns, type TheRecordInWords } from './the-persons-record-in-words';
+import { thePraiseFromYourLead } from './the-praise-from-your-lead';
 
 /**
  * MY WORK, AS EACH READER IS SERVED IT (Release 1B, pull request 3 of 3; Hafsah's references-and-my-work.md of 17 October 2026,
@@ -764,20 +765,22 @@ export async function readMyWork(
   const page = myWorkFrom(record, ground.label || 'This check-in');
   /* The person's record, read from where it is kept and never rebuilt here: the person's own, or, for the lead, the person's in this check-in. */
   const theirRecord = judgements && page.on === true && !(page as any).judgements && await theDirectMorningIsOn(prisma, ground.organizationId)
-    ? await theRecordOnTheirPage(prisma, { groundId: ground.id, organizationId: ground.organizationId, label: ground.label || 'this check-in', pid, firstName: firstOf(name), self: reader === 'self', userId: person.userId ?? null })
+    ? await theRecordOnTheirPage(prisma, { groundId: ground.id, organizationId: ground.organizationId, label: ground.label || 'this check-in', pid, firstName: firstOf(name), self: reader === 'self', userId: person.userId ?? null, leadFirst, timeZone })
     : null;
   return { ...page, ...(theirRecord ? { record: theirRecord } : {}), ...(peopleList ? { people: peopleList } : {}) };
 }
 
 /** The record part of the page, for the person or the lead. Across their other check-ins only for the person themself. */
-async function theRecordOnTheirPage(prisma: any, o: { groundId: string; organizationId: string | null; label: string; pid: string; firstName: string; self: boolean; userId: string | null }): Promise<MyWorkServed['record'] | null> {
+async function theRecordOnTheirPage(prisma: any, o: { groundId: string; organizationId: string | null; label: string; pid: string; firstName: string; self: boolean; userId: string | null; leadFirst?: string; timeZone?: string }): Promise<MyWorkServed['record'] | null> {
   const stored = await readThePersonsRecord(prisma, o.pid);
   if (!stored) return null;
   const words = theRecordInWords(stored.record, stored.coaching, { self: o.self, firstName: o.firstName }, o.label);
   if (!o.self) return words;
+  /* What the lead praised them for, from her board (Groundwork does the managing, part 2): theirs to read, in their own record. */
+  const praise = await thePraiseFromYourLead(prisma, o.pid, o.leadFirst ?? '', o.timeZone || 'Africa/Nairobi');
   const others = await readTheirOtherRecords(prisma, o.userId, o.organizationId, o.groundId);
   const lines = acrossTheirCheckIns(others.map((x) => ({ label: x.label, record: x.stored.record })));
-  return lines.length ? { ...words, acrossYourCheckIns: { heading: 'In your other check-ins', lines } } : words;
+  return { ...words, ...(praise ? { fromYourLead: praise } : {}), ...(lines.length ? { acrossYourCheckIns: { heading: 'In your other check-ins', lines } } : {}) };
 }
 
 /** The page with nobody on it yet: the lead runs a check-in nobody checks in to yet. */

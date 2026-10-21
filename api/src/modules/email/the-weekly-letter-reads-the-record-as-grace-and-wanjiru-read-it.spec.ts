@@ -70,8 +70,8 @@ describe('Wanjiru’s letters, Muchemi & Co (test)', () => {
     expect(lines.join(' ')).not.toMatch(/Here is who needs you.*\bNjeri\b/);
   });
 
-  it('on the litigation team: David, whose check-ins got worse after coaching, with each day', async () => {
+  it('on the litigation team, nobody yet: David’s check-ins got worse in the one check-in since his coaching, which is still Groundwork’s to coach', async () => {
     const { lines } = await theLetterOf('lit', { directMorning: true });
-    expect(lines).toContain('Here is who needs you. David did 4 of 5 check-ins, 1 of them on time, and 2 named the item, what changed and the day. Groundwork has coached David on it since Thursday 15 October, and it has got worse, so call David. On Wednesday 14 October, the check-in was done more than a day after it opened. On Thursday 15 October, the check-in was done more than a day after it opened. On Friday 16 October, the check-in was done more than a day after it opened.');
+    expect(lines.join(' ')).not.toMatch(/Here is who needs you/);
   });
 });

@@ -65,10 +65,10 @@ describe('Wanjiru, Muchemi & Co (test)', () => {
     expect(theMessage(m)).not.toMatch(/\bNjeri\b/);
   });
 
-  it('on the litigation team reads David, whose check-ins got worse after coaching; a check-in not made since Friday stays on the board', async () => {
+  it('on the litigation team, David is not in it yet: one check-in since his coaching is still Groundwork’s to coach, and a check-in not made since Friday stays on the board', async () => {
     const m = await morningOf('lit', await theNightRunsDatabaseWithRecords('lit', { directMorning: true }));
-    const team = theEmailParts([m!]).find((p) => p.heading === 'Your team today')!;
-    expect(team.lines).toEqual(['David did 4 of 5 check-ins, 1 of them on time, and 2 named the item, what changed and the day. Groundwork has coached David on it since Thursday 15 October, and it has got worse, so call David.']);
+    expect(theEmailParts([m!]).map((p) => p.heading)).toEqual(['What needs you today']);
+    expect(theMessage(m)).not.toMatch(/\bDavid\b/);
     expect(asServedOnTheBoard(m!).parts.find((p) => p.key === 'team')!.lines).toContain("Brian hasn't checked in since Friday.");
   });
 });

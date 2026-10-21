@@ -1478,6 +1478,33 @@ model PersonRecord {
   @@map("person_records")
 }
 
+/// WHAT THE LEAD DID ABOUT ONE PERSON, FROM THE BOARD (Groundwork does the managing, part 2; Hafsah, 21 October 2026). One row for each
+/// tap of the lead who runs the check-in on that person's part of her board: praise, a plan started, a deadline set, a lead reassigned.
+/// Kept beside the person's record, never rebuilt. A plan, a deadline and a reassignment also change what they change (a People line on
+/// References and resources, a record's due day, a record's owner); this row is what she did and when. No message is sent for any of it.
+/// Only praise is ever read by the person, in their own record.
+model PersonLeadAction {
+  id              String    @id @default(uuid())
+  groundId        String    @map("ground_id")
+  participantId   String    @map("participant_id")
+  byUserId        String    @map("by_user_id")
+  /// PRAISE, PLAN, DEADLINE or REASSIGN.
+  kind            String
+  /// The words as the lead and the person read them: what she praised, the plan she wrote, the record and its day, the record and who has it now.
+  says            String    @db.Text
+  /// The record a deadline or a reassignment was set on, the line a plan became, and who a record was reassigned to.
+  itemId          String?   @map("item_id")
+  toParticipantId String?   @map("to_participant_id")
+  dueOn           DateTime? @map("due_on")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  participant GroundParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@index([groundId])
+  @@index([participantId, createdAt])
+  @@map("person_lead_actions")
+}
+
 model GroundParticipant {
   /// Things a check-in asked this person for and did not get. See CheckInGap.
   gaps                       CheckInGap[]
@@ -1639,6 +1666,8 @@ model GroundParticipant {
   coachingState              CoachingState?
   /// Their record in this check-in, kept from the record (Groundwork does the managing). See PersonRecord.
   personRecord               PersonRecord?
+  /// What the lead who runs the check-in did about this person from the board (Groundwork does the managing, part 2). See PersonLeadAction.
+  leadActions                PersonLeadAction[]
   detectedFunction           String?           @map("detected_function")
   detectedFunctionConfidence Float?            @map("detected_function_confidence")
   detectedFunctionAt         DateTime?         @map("detected_function_at")

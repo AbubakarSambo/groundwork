@@ -24,9 +24,14 @@ import { theRecordInWords, theCoachingInWords, aClaimSaidFor, type TheRecordInWo
 
 export type AKindOfCheckIn = 'sales' | 'collections' | 'matter';
 
-/** The coaching Groundwork gave that has not worked: read again after at least one of their check-ins since, and the same or worse. */
+/**
+ * THE COACHING GROUNDWORK GAVE THAT HAS NOT WORKED, the point where the lead is told: read again after their check-ins since, and the same
+ * or worse. On what they said (proof, a figure that changed), one check-in since is enough, because the lead's numbers rest on it; on
+ * anything else, two, because one late or vague check-in is still Groundwork's to coach.
+ */
 export function theCoachingThatDidNotWork(coaching: readonly ACoaching[]): ACoaching | null {
-  return [...coaching].reverse().find((c) => !c.done && !!c.since && (c.outcome === 'the same' || c.outcome === 'worse')) ?? null;
+  return [...coaching].reverse().find((c) => !c.done && !!c.since && (c.outcome === 'the same' || c.outcome === 'worse')
+    && (c.about === 'proof' || c.about === 'changes' || (c.since.sessions?.length ?? 0) >= 2)) ?? null;
 }
 
 const times = (n: number) => (n === 1 ? 'once' : n === 2 ? 'twice' : `${n} times`);
@@ -121,7 +126,12 @@ export interface WhereTheyStand {
   says: string;
   /** The evidence beside it, one full sentence each, from the record and the coaching. */
   evidence: string[];
+  /** The one thing it is about, where it needs work. */
+  about?: AThingToCoach;
 }
+
+/** What a plan to help them would start from: "Help Joseph with adding proof when saying something is done." */
+export const aPlanToHelpWith = (name: string, about: AThingToCoach) => `Help ${name} with ${THE_SKILL[about]}.`;
 
 /**
  * ONE PLAIN LINE ON WHERE A PERSON STANDS, WITH THE EVIDENCE BESIDE IT, or null where nothing is on record yet. In this order:
@@ -144,12 +154,12 @@ export function whereTheyStand(stored: AStoredPersonsRecord | null | undefined, 
   const failed = theCoachingThatDidNotWork(coaching);
   const evidenceFor = (about: AThingToCoach, c: ACoaching | null) => [partSays(about), ...(c ? coachingSaid(c) : [])].filter((x): x is string => !!x);
 
-  if (failed && (failed.about === 'proof' || failed.about === 'changes' || (failed.since?.sessions.length ?? 0) >= 2)) {
-    return { standing: 'needs a hard conversation', says: `${name} needs a hard conversation about ${THE_PROBLEM[failed.about]}.`, evidence: evidenceFor(failed.about, failed) };
+  if (failed) {
+    return { standing: 'needs a hard conversation', says: `${name} needs a hard conversation about ${THE_PROBLEM[failed.about]}.`, evidence: evidenceFor(failed.about, failed), about: failed.about };
   }
-  if (open) return { standing: 'needs coaching', says: `${name} needs coaching on ${THE_SKILL[open.about]}.`, evidence: evidenceFor(open.about, open) };
+  if (open) return { standing: 'needs coaching', says: `${name} needs coaching on ${THE_SKILL[open.about]}.`, evidence: evidenceFor(open.about, open), about: open.about };
   const next = theOneThingToCoach(r);
-  if (next) return { standing: 'needs coaching', says: `${name} needs coaching on ${THE_SKILL[next]}.`, evidence: evidenceFor(next, null) };
+  if (next) return { standing: 'needs coaching', says: `${name} needs coaching on ${THE_SKILL[next]}.`, evidence: evidenceFor(next, null), about: next };
   const worked = [...coaching].reverse().find((c) => c.outcome === 'better') ?? null;
   const theGood = (['proof', 'promises', 'check-ins'] as AThingToCoach[]).map(partSays).filter((x): x is string => !!x);
   if (worked) return { standing: 'improving', says: `${name} is improving.`, evidence: [...coachingSaid(worked), ...theGood].slice(0, 4) };
@@ -180,7 +190,7 @@ const unitsOf = (r: any): number | null => { const n = Number(String(r?.fields?.
 /** What shows a won deal, from the board's own row, or the latest proven claim about it: "the M-Pesa code RCD8M1LS4W", "a payment record". */
 function whatShowsIt(row: any, claims: readonly AClaim[], name: string): string | null {
   const said = [...claims].reverse().find((c) => c.proven && c.about && String(c.about).toLowerCase() === String(row?.name ?? '').toLowerCase());
-  if (said?.proofSays) return said.proofSays.replace(/^A document you added$/, `a document ${name} added`).replace(/^A reference you typed$/, `a reference ${name} typed`).replace(/^A colleague confirmed it$/, 'a colleague’s confirmation').replace(/^The /, 'the').replace(/^A /, 'a ');
+  if (said?.proofSays) return said.proofSays.replace(/^A document you added$/, `a document ${name} added`).replace(/^A reference you typed$/, `a reference ${name} typed`).replace(/^A colleague confirmed it$/, 'a colleague’s confirmation').replace(/^The /, 'the ').replace(/^A /, 'a ');
   if (row?.paymentRecord) return 'a payment record';
   if (row?.signedOrder) return 'a signed order';
   return null;
