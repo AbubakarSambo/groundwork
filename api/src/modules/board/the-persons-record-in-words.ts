@@ -48,6 +48,16 @@ const You = (w: Who) => (w.self ? 'You' : w.first);
 const your = (w: Who) => (w.self ? 'your' : `${w.first}’s`);
 const Your = (w: Who) => (w.self ? 'Your' : `${w.first}’s`);
 
+/** One claim, with what shows it, for the person ("you") or for whoever runs the check-in (their first name). */
+export function aClaimSaidFor(c: AClaim, who: { self: boolean; firstName: string }): string {
+  return aClaimSaid(c, { self: who.self, first: who.firstName || 'This person' });
+}
+
+/** One promise, with what became of it, for the person or for whoever runs the check-in. */
+export function aPromiseSaidFor(p: APromise, who: { self: boolean; firstName: string }): string {
+  return aPromiseSaid(p, { self: who.self, first: who.firstName || 'This person' });
+}
+
 function aClaimSaid(c: AClaim, w: Who): string {
   const said = `On ${c.on} ${you(w)} said ${quote(c.said)}`;
   if (c.proven) return `${said} ${w.self ? (c.proofSays ?? 'Something on file') : String(c.proofSays ?? 'Something on file').replace(/\byou (added|typed)\b/, `${w.first} $1`)} shows it.`;
