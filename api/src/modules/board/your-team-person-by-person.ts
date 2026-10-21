@@ -87,13 +87,41 @@ export function thePraiseToSuggest(kind: AKindOfCheckIn, delivered: WhatTheyDeli
   return null;
 }
 
-function theActionsFor(first: string, kind: AKindOfCheckIn, items: { id: string; name: string; due: string | null }[], others: { participantId: string; name: string }[], delivered: WhatTheyDelivered, stand: WhereTheyStand | null, stored: AStoredPersonsRecord | null = null): AnAction[] {
+/**
+ * WHO ELSE READS A PLAN, SAID AS IT IS (Hafsah, 21 October). A plan is kept as the lead's People note on the person, which the lead reads,
+ * and an admin only if that admin set the check-in up or approved it (readsTheLeadsPeopleNotes); no other admin is served it. So the
+ * sentence names exactly those admins, by their first name, and says "Only you read it." where there are none.
+ */
+export async function theAdminsWhoAlsoReadYourPeopleNotes(
+  prisma: any,
+  ground: { organizationId: string; initiatorId: string; createdByUserId?: string | null; approvedById?: string | null },
+): Promise<string> {
+  const ids = [...new Set([ground.createdByUserId, ground.approvedById].filter((id): id is string => !!id && id !== ground.initiatorId))];
+  if (!ids.length) return '';
+  const users: any[] = (await Promise.resolve(prisma?.user?.findMany?.({ where: { id: { in: ids } }, select: { id: true, firstName: true, role: true, organizationId: true } })).catch(() => [])) ?? [];
+  const admin = (id: string | null | undefined) => users.find((u) => u.id === id && u.role === 'ADMIN' && u.organizationId === ground.organizationId) ?? null;
+  const setUp = ground.createdByUserId && ground.createdByUserId !== ground.initiatorId ? admin(ground.createdByUserId) : null;
+  const approved = ground.approvedById && ground.approvedById !== ground.initiatorId ? admin(ground.approvedById) : null;
+  const named = (u: any, role: string) => (String(u.firstName ?? '').trim() ? `${String(u.firstName).trim()}, the admin who ${role}` : `the admin who ${role}`);
+  if (setUp && approved && setUp.id === approved.id) return named(setUp, 'set up and approved this check-in');
+  if (setUp && approved) return `${named(setUp, 'set up this check-in')}, and ${named(approved, 'approved it')}`;
+  if (setUp) return named(setUp, 'set up this check-in');
+  if (approved) return named(approved, 'approved this check-in');
+  return '';
+}
+
+/** "Only you read it." or "Only you read it, and Amina, the admin who set up this check-in." */
+export function whoReadsAPlan(alsoReads: string): string {
+  return alsoReads ? `Only you read it, and ${alsoReads}.` : 'Only you read it.';
+}
+
+function theActionsFor(first: string, kind: AKindOfCheckIn, items: { id: string; name: string; due: string | null }[], others: { participantId: string; name: string }[], delivered: WhatTheyDelivered, stand: WhereTheyStand | null, stored: AStoredPersonsRecord | null = null, alsoReads = ''): AnAction[] {
   const praiseFor = thePraiseToSuggest(kind, delivered, stand, stored);
   const planFor = stand?.about ? aPlanToHelpWith(first, stand.about) : '';
   return [
     { kind: 'praise', label: `Praise ${first}`, does: `Keeps your words in ${first}’s record, where ${first} reads them on My work and in ${first}’s own report. No message is sent.`, ...(praiseFor ? { suggested: praiseFor } : {}) },
-    /* The lead and her organisation's admins read a plan: admins read the check-in's lines as the lead does (browser test, finding 26). */
-    { kind: 'plan', label: 'Start a plan', does: `Keeps what you want to help ${first} with, here and under People on References and resources. Only you and your organisation’s admins read it, and nothing is sent to ${first}.`, ...(planFor ? { suggested: planFor } : {}) },
+    /* Who reads a plan is the server's rule (readsTheLeadsPeopleNotes): the lead, and an admin only if they set it up or approved it. */
+    { kind: 'plan', label: 'Start a plan', does: `Keeps what you want to help ${first} with, here and under People on References and resources. ${whoReadsAPlan(alsoReads)} Nothing is sent to ${first}.`, ...(planFor ? { suggested: planFor } : {}) },
     { kind: 'deadline', label: 'Set a deadline', does: `Puts a due day on one of ${first}’s records. It shows on that record on your board, and nothing is sent to ${first}.`, items },
     { kind: 'reassign', label: kind === 'sales' ? 'Reassign leads' : 'Reassign work', does: `Gives one of ${first}’s records to somebody else on the team. From then on it is theirs on the board and in their check-ins. Nothing is sent to either of them.`, items, to: others },
   ];
@@ -108,7 +136,7 @@ export async function yourTeamPersonByPerson(
 ): Promise<YourTeamServed | null> {
   const ground: any = await Promise.resolve(prisma?.ground?.findUnique?.({
     where: { id: o.groundId },
-    select: { id: true, label: true, initiatorId: true, organizationId: true, participants: { select: { id: true, userId: true, partyType: true, nameGiven: true, managingOnly: true, leftAt: true, roleAsDescribed: true, user: { select: { firstName: true, lastName: true, jobTitle: true } } } } },
+    select: { id: true, label: true, initiatorId: true, organizationId: true, createdByUserId: true, approvedById: true, participants: { select: { id: true, userId: true, partyType: true, nameGiven: true, managingOnly: true, leftAt: true, roleAsDescribed: true, user: { select: { firstName: true, lastName: true, jobTitle: true } } } } },
   })).catch(() => null);
   if (!ground || ground.initiatorId !== o.leadUserId) return null;
   if (!(await theDirectMorningIsOn(prisma, ground.organizationId))) return null;
@@ -119,6 +147,7 @@ export async function yourTeamPersonByPerson(
   const items: any[] = (await Promise.resolve(prisma?.workItem?.findMany?.({ where: { groundId: ground.id }, select: { id: true, name: true, stage: true, ownerParticipantId: true, dueAt: true, fields: true } })).catch(() => [])) ?? [];
   const done: any[] = (await Promise.resolve(prisma?.personLeadAction?.findMany?.({ where: { groundId: ground.id }, orderBy: { createdAt: 'desc' } })).catch(() => [])) ?? [];
   const label = ground.label || 'this check-in';
+  const alsoReads = await theAdminsWhoAlsoReadYourPeopleNotes(prisma, ground);
   const people: APersonOnYourBoard[] = [];
   for (const p of team) {
     const name = fullNameOf(p);
@@ -139,7 +168,7 @@ export async function yourTeamPersonByPerson(
       record: theirs ? theRecordForTheBoard(theirs, first, label, o.kind, stand) : null,
       whereTheyStand: stand,
       fromYou: done.filter((d) => d.participantId === p.id).map((d) => whatYouDidSaid(d, first, zone)),
-      actions: theActionsFor(first, o.kind, openItems, others, delivered, stand, theirs),
+      actions: theActionsFor(first, o.kind, openItems, others, delivered, stand, theirs, alsoReads),
     });
   }
   return {
@@ -185,7 +214,7 @@ export async function theLeadActsOnAPerson(
 ): Promise<{ says: string }> {
   const ground: any = await prisma.ground.findUnique({
     where: { id: groundId },
-    select: { id: true, initiatorId: true, organizationId: true, participants: { select: { id: true, userId: true, partyType: true, nameGiven: true, managingOnly: true, leftAt: true, user: { select: { firstName: true, lastName: true } } } } },
+    select: { id: true, initiatorId: true, organizationId: true, createdByUserId: true, approvedById: true, participants: { select: { id: true, userId: true, partyType: true, nameGiven: true, managingOnly: true, leftAt: true, user: { select: { firstName: true, lastName: true } } } } },
   });
   if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
   if (ground.initiatorId !== userId) throw new ForbiddenException('Only the person who runs this check-in can do this.');
@@ -208,7 +237,7 @@ export async function theLeadActsOnAPerson(
     const line = aLineToKeep({ kind: 'HELP_WITH', text: asked.text, aboutParticipantId: participantId }, ground.participants, ground.initiatorId);
     const made = await prisma.groundContextItem.create({ data: { groundId, kind: line.kind as any, text: line.text, audience: line.audience as any, aboutParticipantId: line.aboutParticipantId, source: 'TYPED', authorUserId: userId }, select: { id: true } });
     await keep('PLAN', line.text, { itemId: made.id });
-    return { says: `Your plan for ${first} is kept here and under People on References and resources. Only you and your organisation’s admins read it.` };
+    return { says: `Your plan for ${first} is kept here and under People on References and resources. ${whoReadsAPlan(await theAdminsWhoAlsoReadYourPeopleNotes(prisma, ground))}` };
   }
   if (kind === 'deadline' || kind === 'reassign') {
     const item = await prisma.workItem.findFirst({ where: { id: String(asked.itemId ?? ''), groundId }, select: { id: true, name: true, ownerParticipantId: true } });

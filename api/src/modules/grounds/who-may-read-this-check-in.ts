@@ -159,6 +159,22 @@ export function readsAsAnAdmin(viewer: Viewer | null | undefined, checkIn: Check
   return adminsThisOrg(viewer, checkIn) || askedToApproveIt(viewer, checkIn);
 }
 
+/**
+ * WHO READS THE LEAD'S PRIVATE PEOPLE NOTES AND HER PLAN FOR A PERSON (Hafsah, 21 October). The lead who runs the check-in, and an
+ * admin of its organisation only if that admin set it up (`createdByUserId`) or approved it (`approvedById`). No other admin, however
+ * much else of the check-in they read, and never anybody in it or outside it.
+ */
+export function readsTheLeadsPeopleNotes(
+  viewer: Viewer | null | undefined,
+  checkIn: { organizationId: string; initiatorId?: string | null; createdByUserId?: string | null; approvedById?: string | null },
+): boolean {
+  const userId = viewer?.userId;
+  if (!userId) return false;
+  if (checkIn.initiatorId === userId) return true;
+  if (!adminsTheOrg(viewer, checkIn.organizationId)) return false;
+  return (!!checkIn.createdByUserId && checkIn.createdByUserId === userId) || (!!checkIn.approvedById && checkIn.approvedById === userId);
+}
+
 /** Runs it: the lead who started it, or an admin of its organisation covering for them. The write gate. */
 export function runsIt(userId: string, viewer: Viewer | null | undefined, checkIn: CheckInInView): boolean {
   return checkIn.initiatorId === userId || adminsThisOrg({ ...viewer, userId }, checkIn);
