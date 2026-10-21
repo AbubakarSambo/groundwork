@@ -2107,7 +2107,8 @@ export class BoardService {
     if (has('decisions')) {
       out.decisions = this.deriveDecisions(
         Array.isArray(reportSafe?.divergences) ? (reportSafe!.divergences as any[]) : [],
-        ground.dependencies,
+        /* "Mercy Wairimu is waiting on approval, so it needs deciding." was a school board's own approval (final real-model check, item 2). */
+        (ground.dependencies as any[]).filter((d) => !notABlockerTheyRaised(d, { sales: isASalesKind((ground as any).kindOfWork), keepTheAsks: true, keepWhatCleared: true })),
         nameOf,
         /*
          * AND WHAT THE LEAD WROTE DOWN AS STILL TO DECIDE, once they have shared it.

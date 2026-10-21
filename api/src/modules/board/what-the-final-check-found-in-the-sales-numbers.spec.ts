@@ -80,3 +80,11 @@ describe('not knowing a number is not a different number (item 13)', () => {
     expect(out.leftOut).toEqual([run.topic]);
   });
 });
+
+describe('two deals not counted are said in one plain sentence', () => {
+  it('"The 18 units of Mama Pima Stores and a shop in Githurai are not counted yet"', async () => {
+    const { theSalesAnswer } = await import('./a-sales-aim-is-counted-from-the-deals');
+    const said = theSalesAnswer({ counts: 'units', count: 47, proven: 41, leftOut: 0, thing: 'units', currency: null, says: '', paidDeals: [{ name: 'Kilele Hotel', holds: 40 }], signedDeals: [], saidDeals: [], notCountedDeals: [{ name: 'Mama Pima Stores', holds: 15 }, { name: 'a shop in Githurai', holds: 3 }] } as any, 120, 0);
+    expect(said).toContain('The 18 units of Mama Pima Stores and a shop in Githurai are not counted yet, because a sale counts only with a payment or a signed order.');
+  });
+});

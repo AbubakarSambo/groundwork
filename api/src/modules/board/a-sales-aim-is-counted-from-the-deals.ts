@@ -322,7 +322,10 @@ export function theSalesAnswer(c: ACountFromTheDeals, target: number, likely: nu
       const ns = xs.map((x) => x.name);
       const names = ns.length <= 1 ? ns.join('') : `${ns.slice(0, -1).join(', ')} and ${ns[ns.length - 1]}`;
       const holds = xs.reduce((t, x) => t + x.holds, 0);
-      const what = c.counts === 'units' && holds > 0 ? `${names}${xs.length === 1 ? "'s" : ''} ${read(holds)} ${holds === 1 ? 'unit is' : 'units are'}` : `${names} ${xs.length === 1 ? 'is' : 'are'}`;
+      /* Two or more: "The 18 units of Mama Pima Stores and a shop in Githurai are", never "Mama Pima Stores and a shop in Githurai 18 units are" (final check). */
+      const what = c.counts === 'units' && holds > 0
+        ? (xs.length === 1 ? `${names}'s ${read(holds)} ${holds === 1 ? 'unit is' : 'units are'}` : `the ${read(holds)} ${holds === 1 ? 'unit' : 'units'} of ${names} are`)
+        : `${names} ${xs.length === 1 ? 'is' : 'are'}`;
       return `${what.charAt(0).toUpperCase()}${what.slice(1)} not counted yet, because a sale counts only with a payment or a signed order.`;
     })()}`
     : '';
