@@ -1,3 +1,4 @@
+import { theSessionsHeld } from './the-sessions-held';
 import { notABlockerTheyRaised } from '../board/not-a-blocker-they-raised';
 import { thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
 import { theDirectMorningIsOnFor, theDirectMorningIsOn as theOrganisationsDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
@@ -5065,6 +5066,16 @@ happened, and what is in the way.`;
         namedByMoreThanOne(shared),
       );
       /* What is on file for each sale, so a sale with a payment record on file is never asked about again (proof-on-file-is-never-asked-for). */
+      /*
+       * THE SESSIONS HELD, AND WHO ANSWERED EACH (final real-model check, follow-up 2). The judgement said "The initiator has not held the daily
+       * check-ins the initiator said the initiator would hold" of Grace, who had answered every one of the three, because all it was told was her
+       * open promise of "daily check-ins". The sessions on record, by day, and how many each person answered, are given as facts.
+       */
+      {
+        const done = ((await (this.prisma.checkIn?.findMany?.({ where: { groundId, status: CheckInStatus.COMPLETED, isSetup: false }, select: { participantId: true, sessionNumber: true, completedAt: true } }) ?? Promise.resolve([] as any[]))?.catch?.(() => [] as any[])) ?? []) as any[];
+        const sessionsHeld = theSessionsHeld(done, room!.people.map((p) => ({ participantId: p.participantId, who: p.who })));
+        if (sessionsHeld) material = `${material}\n\n${sessionsHeld}`;
+      }
       if (salesAndProof.length) {
         const whoOwns = (pid: string | null) => room!.people.find((p) => p.participantId === pid)?.who ?? null;
         material = `${material}\n\n${whatIsOnFileForEachSale(salesAndProof, whoOwns)}`;
