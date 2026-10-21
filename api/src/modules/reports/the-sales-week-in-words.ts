@@ -99,7 +99,7 @@ export function theSalesWeekInWords(input: {
       if (d.paid) return `${L} sold ${units || 'it'}, paid, to ${d.name}.`;
       if (d.signed) return `${L} has ${units ? `${units} on a signed order` : 'a signed order'} from ${d.name}.`;
       /* Her rule says a sale counts only with a payment or a signed order: one with neither is not counted, and never said as sold (item 14). */
-      if (input.aSaleNeedsProof && !d.proven) return `${d.name} is on record as sold by ${L}, and nothing written shows a payment or a signed order, so it is not counted as sold.`;
+      if (input.aSaleNeedsProof && !d.proven) return `${d.name.charAt(0).toUpperCase()}${d.name.slice(1)} is on record as sold by ${L}, and nothing written shows a payment or a signed order, so it is not counted as sold.`;
       /* A document she added backs it (engine test: Mercy's mama-rose-receipt.txt, Friday 16 October): never "nothing written". */
       if (d.proven) return `${L} counts ${units ? `${units} sold to` : 'a sale to'} ${d.name}. A document backs it, but it does not show a payment.`;
       return `${L} counts ${units ? `${units} sold to` : 'a sale to'} ${d.name}, and nothing written shows it yet.`;

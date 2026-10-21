@@ -151,7 +151,7 @@ export const NO_SALE_YET = 'No sale so far this week.';
 export function aDealThatMoved(m: AMoveThisWeek, sayAs: HowSomebodyIsSaid): string {
   if (m.won) {
     /* Not counted under her rule, and so never "bought" (final real-model check, item 14). */
-    if (m.notCounted && !m.proven) return `${m.name} is on record as sold, and nothing written shows a payment or a signed order, so it is not counted as sold.`;
+    if (m.notCounted && !m.proven) return `${m.name.charAt(0).toUpperCase()}${m.name.slice(1)} is on record as sold, and nothing written shows a payment or a signed order, so it is not counted as sold.`;
     /* A deposit only, said as a deposit (item 10). */
     if (m.paid && m.deposit) return `${m.name} bought on a deposit${m.mpesaCode ? `, and M-Pesa code ${m.mpesaCode} shows it` : ''}. ${aDepositSaid(m.deposit)}`;
     /* An M-Pesa code given in words is the payment record, shown as "M-Pesa code" (Hafsah, 19 October). */

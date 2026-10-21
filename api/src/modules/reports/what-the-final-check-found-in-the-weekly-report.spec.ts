@@ -46,3 +46,10 @@ describe('what changes once it is settled', () => {
     expect(aWholeClause(t as string)).toBe(yes);
   });
 });
+
+describe('a name that starts a sentence takes a capital', () => {
+  it('"A shop in Githurai is on record as sold"', () => {
+    expect(aDealThatMoved({ name: 'a shop in Githurai', ownerParticipantId: 'p-joseph', from: null, to: 'Won', won: true, paid: false, proven: false, notCounted: true }, sayAs))
+      .toBe('A shop in Githurai is on record as sold, and nothing written shows a payment or a signed order, so it is not counted as sold.');
+  });
+});

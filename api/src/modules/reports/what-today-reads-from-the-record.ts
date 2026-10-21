@@ -1,3 +1,4 @@
+import { notABlockerTheyRaised } from '../board/not-a-blocker-they-raised';
 import { thePersonJudgementsAreOn, thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
 import { dedupeDependencies } from '../board/reads';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
@@ -268,8 +269,11 @@ export async function forTheLeadFrom(prisma: any, groundId: string, l: Loaded, r
   const lead = participants.find((p) => p.userId === reader.userId) ?? null;
   /* What Release 1 changes here (one wait said once, what changes said as the waiting person's, a side that said nothing left out) is read only where its switch is on. */
   const releaseOne = await theReleaseOneSalesBoardIsOn(prisma, (ground as any).organizationId).catch(() => false);
+  /* A customer's own budget or approval is where a deal stands, not something for her to decide (final real-model check, item 2). */
+  const salesHere = isASalesKind((ground as any).kindOfWork);
   const open = ((ground.dependencies ?? []) as any[])
-    .filter((d) => d.status !== 'CLEARED' && (d.what ?? '').trim() && d.fromParticipantId !== lead?.id);
+    .filter((d) => d.status !== 'CLEARED' && (d.what ?? '').trim() && d.fromParticipantId !== lead?.id)
+    .filter((d) => !notABlockerTheyRaised(d, { sales: salesHere, keepTheAsks: true, keepWhatCleared: true }));
   /* Newest row of each thing wins: a handoff somebody stopped calling blocking is not blocking. */
   const current = oneRowPerThing(open);
   const onTheLead = (d: any) => !!lead && d.onParticipantId === lead.id;
