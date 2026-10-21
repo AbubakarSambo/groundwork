@@ -6400,7 +6400,8 @@ happened, and what is in the way.`;
      * "Baraka Mwangi and Amani Wekesa are waiting on you for the discount and the price list."
      */
     /* A customer's own budget or approval is where a deal stands: never "put the budget in writing" (final real-model check, item 2). */
-    const salesHere = isASalesKind((ground as any)?.kindOfWork);
+    const salesHere = isASalesKind((ground as any)?.kindOfWork
+      ?? ((await this.prisma.ground?.findUnique?.({ where: { id: groundId }, select: { kindOfWork: true } })?.catch?.(() => null)) as any)?.kindOfWork);
     const dependenciesNowReal = (dependenciesNow as any[]).filter((d) => !aWaitOnOneself(d))
       .filter((d) => !notABlockerTheyRaised(d, { sales: salesHere, keepTheAsks: true, keepWhatCleared: true })) as typeof dependenciesNow;
     const dependencies = asOf
