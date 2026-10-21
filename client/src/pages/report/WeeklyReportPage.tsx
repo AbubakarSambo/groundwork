@@ -26,6 +26,37 @@ import { threeFromDifferentPlaces } from '@/lib/three-from-different-places'
  */
 
 
+/**
+ * THE WEEK FOR THE LEAD (browser test, 21 October 2026): the weekly letter's three parts, on the screen, first, as the server sends them to
+ * the person who runs the check-in where the direct morning is on. Absent, nothing is drawn and the report reads as before.
+ */
+export function TheWeekForTheLead({ w }: { w: NonNullable<import('@/api/reports').WeeklyReport['forTheLead']> }) {
+  return (
+    <>
+      {w.target && (
+        <Section heading="Where the target stands">
+          <div className="wr-panel"><p>{w.target}</p></div>
+        </Section>
+      )}
+      {w.movedWithProof.length > 0 && (
+        <Section heading="What moved this week, with what shows it">
+          <div className="wr-panel">{w.movedWithProof.map((line, i) => <p key={i}>{line}</p>)}</div>
+        </Section>
+      )}
+      {w.needsYou.length > 0 && (
+        <Section heading="Who needs you">
+          {w.needsYou.map((n, i) => (
+            <div key={i} className="wr-panel">
+              <p><b>{n.says}</b></p>
+              {n.evidence.map((e, j) => <p key={j}>{e}</p>)}
+            </div>
+          ))}
+        </Section>
+      )}
+    </>
+  )
+}
+
 export default function WeeklyReportPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -99,7 +130,7 @@ export default function WeeklyReportPage() {
    * report as it was, with each number's own sentence and the lead's way in, is one tap away (?whole=1). Same fields, same walls.
    */
   /* faith90-weekly-report.jpg (screen 58): a week nothing has come into yet reads as the check-in, and says it fills in once people check in. */
-  const nothingYet = !!data.saying && !(data.inNumbers ?? []).length && !(data.eachPerson ?? []).length && !(data.acrossTheTeam ?? []).length && !(data.threeInARow ?? []).length && !(data.forNextWeek ?? []).length && !data.saidAndProof
+  const nothingYet = !!data.saying && !(data.inNumbers ?? []).length && !(data.eachPerson ?? []).length && !(data.acrossTheTeam ?? []).length && !(data.threeInARow ?? []).length && !(data.forNextWeek ?? []).length && !data.saidAndProof && !data.forTheLead
   if (searchParams.get('whole') !== '1' && !week && nothingYet && ground) {
     return (
       <Page>
@@ -116,6 +147,7 @@ export default function WeeklyReportPage() {
       <Page>
         <PageTitle crumbs={crumbs} title={title} subtitle={direct ? undefined : data.whatThisIs} />
         {data.saying && <Note>{data.saying}</Note>}
+        {data.forTheLead && <TheWeekForTheLead w={data.forTheLead} />}
         {data.inNumbers && data.inNumbers.length > 0 && (
           <Section heading="The week in numbers">
             <div className="wr-tiles">
@@ -195,6 +227,7 @@ export default function WeeklyReportPage() {
       <Page>
         <PageTitle crumbs={crumbs} title={title} subtitle={direct ? undefined : data.whatThisIs} />
         {data.saying && <Note>{data.saying}</Note>}
+        {data.forTheLead && <TheWeekForTheLead w={data.forTheLead} />}
         {data.inNumbers && data.inNumbers.length > 0 && (
           <Section heading="The week in numbers">
             <NumberTiles label="The week in numbers" tiles={data.inNumbers.map((row, i) => ({ key: String(i), label: row.of, value: String(row.figure), sub: row.says }))} />

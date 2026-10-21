@@ -140,7 +140,7 @@ export interface TheCollectionsBoard {
   };
   stand: { heading: string; total: string; groups: { group: AGroup; label: string; count: number; says: string }[] };
   every: { heading: string; note: string; columns: string[]; rows: ACollectionsRow[]; empty: string | null; foot: string | null };
-  patterns: { heading: string; note: string; rows: { title: string; says: string; tag: string }[]; empty: string | null; foot: string };
+  patterns: { heading: string; note: string; rows: { title: string; says: string; tag: string }[]; empty: string | null; foot: string | null };
   followUp: { heading: string; rows: { what: string; howMany: string; whatFollowed: string }[]; empty: string | null };
   systems: { heading: string; says: string };
   heading: null | {
@@ -488,7 +488,10 @@ export function buildTheCollectionsBoard(input: TheCollectionsInput): TheCollect
       : ['Client and matter', 'Number', 'Amount', 'Who follows up', 'Falls due', 'Payment', 'What’s in the way, in their words', 'Next'],
     rows: eachRow,
     empty: eachRow.length ? null : answer,
-    foot: eachRow.length ? `${eachRow.length === 1 ? 'It is' : `All ${countLower(eachRow.length)} are`} shown. Each one’s proof is filed on it, from the slips and messages people added.` : null,
+    /* Browser test, 20 October: a borrower with one loan read "It is shown. Each one’s proof is filed on it". One row is said as one. */
+    foot: !eachRow.length ? null
+      : eachRow.length === 1 ? ((eachRow[0].proof ?? []).length || eachRow[0].payment?.mark === 'proven' ? 'Its proof is filed on it, from the slips and messages people added.' : 'Nothing is filed on it yet. A slip or a message added to it shows here.')
+      : `All ${countLower(eachRow.length)} are shown. Each one’s proof is filed on it, from the slips and messages people added.`,
   };
 
   /* ------------------------------------------------------------ one client, one kind of work, or how we bill? */
@@ -527,7 +530,9 @@ export function buildTheCollectionsBoard(input: TheCollectionsInput): TheCollect
     note: 'Patterns named after three check-ins in a row',
     rows: patternRows,
     empty: patternRows.length ? null : 'Nothing has come up in three check-ins in a row yet.',
-    foot: loans
+    /* "Yours to judge" is said to whoever runs it; a borrower or a colleague judges none of it (browser test, 20 October). */
+    foot: !reader.runsIt ? null
+      : loans
       ? 'Whether each is about one person, a place or the way the loans are set up is yours to judge.'
       : `Whether each is about one client, one kind of work or how you bill is yours to judge.`,
   };

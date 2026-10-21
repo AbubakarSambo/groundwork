@@ -13,7 +13,7 @@ export class RecommendedCheckInsController {
   @Get()
   @ApiOperation({ summary: 'The check-ins Groundwork recommends, waiting for your answer' })
   list(@CurrentUser() user: CurrentUserData, @Param('groundId') groundId: string) {
-    return this.offers.forTheLead(groundId, user.id);
+    return this.offers.forTheReader(groundId, user.id);
   }
 
   @Post(':offerId/yes')

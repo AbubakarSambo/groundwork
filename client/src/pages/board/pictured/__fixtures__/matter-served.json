@@ -1128,7 +1128,7 @@
           }
         ],
         "empty": null,
-        "foot": "Whether each is about one client, one kind of work or how you bill is yours to judge."
+        "foot": null
       },
       "followUp": {
         "heading": "Follow-up given, and whether it helped",

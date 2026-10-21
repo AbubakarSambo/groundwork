@@ -720,7 +720,9 @@ export function theCoachingFollowedUp(before: readonly ACoaching[], r: ThePerson
     about,
     said: theCoachingLine(r, about),
     afterSession: lastSession,
-    givenOn: dayIn(at, zone),
+    /* The day of the check-in it was given after, not the day the record was built (browser test, 21 October: a record built on
+       Wednesday for people who last checked in on Monday read "After Peter's check-in on Wednesday 21 October"). */
+    givenOn: [...r.checkIns].reverse().find((x) => x.sessionNumber <= lastSession && x.done && x.on)?.on ?? dayIn(at, zone),
     givenAt: at.toISOString(),
     before: howItWent(r, about, (n) => typeof n === 'number' && n <= lastSession),
     since: null,

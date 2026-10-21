@@ -104,6 +104,8 @@ export const reportsApi = {
 
 /** `GET /grounds/:groundId/report/week`. See reportsApi.week above for how it is drawn. */
 export interface WeeklyReport {
+  /** For the person who runs the check-in, where the direct morning is on, the latest week only: the weekly letter's three parts (#396). */
+  forTheLead?: { target: string | null; movedWithProof: string[]; needsYou: { says: string; evidence: string[] }[] }
   /** The light report's one fact for each folded part, from the week as this reader is served it (api/src/modules/reports/a-report-at-a-glance.ts). */
   inThisReport?: { threeInARow?: string; saidAndProof?: string; whatChanged?: string }
   weekStart: string | null

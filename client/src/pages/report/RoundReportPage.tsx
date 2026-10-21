@@ -97,7 +97,7 @@ export default function RoundReportPage() {
           canRunThisCheckIn={canRunThisCheckIn}
           isAParty={isAParty}
           active="report"
-          tabs={checkInHeaderTabs({ id, contextEnabled, canRunThisCheckIn, isAParty })}
+          tabs={checkInHeaderTabs({ id, contextEnabled, canRunThisCheckIn, isAParty, ground: ground as any })}
         />
       )}
 

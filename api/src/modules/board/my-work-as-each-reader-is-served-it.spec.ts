@@ -343,3 +343,17 @@ describe('myWorkSaidDirectly', () => {
     expect(myWorkSaidDirectly({ on: false })).toEqual({ on: false });
   });
 });
+
+/*
+ * BROWSER TEST, 21 OCTOBER 2026: Kevin, with this session open and not answered, is served a withheld board, and My work read "You have
+ * no deals on the board yet." beside the deals the board holds for him. It says when they show again instead.
+ */
+describe('My work while the board waits for their check-in', () => {
+  it('Kevin reads when his deals show again, not that he has none', async () => {
+    const c = theSalesCheckIn();
+    const withheld = { get: async () => ({ renders: true, withheldUntilYouCheckIn: true, saying: 'You will be able to open it as soon as you have checked in.' }) };
+    const page = (await readMyWork(c.prisma, withheld, { groundId: 'g-sales', userId: 'u-kevin' }, NOW)) as MyWorkServed;
+    expect(page.items.emptySays).toBe('Your deals show here again once you have checked in for this session.');
+    expect(JSON.stringify(page)).not.toMatch(/no deals on the board/);
+  });
+});

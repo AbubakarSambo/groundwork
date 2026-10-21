@@ -18,7 +18,7 @@ import { theGlanceInASentence } from './the-glance-in-a-sentence';
 import { aPartyOutside, aWaitOnOneself, theWaitsAsABoardReadsThem } from './a-thing-is-not-somebody';
 import { theClaimOn, theClaimQuestion, afterTheLeadsAnswer, whatIsNotADetail, theAnswerSaidBack } from './a-claim-on-a-record-is-checked-first';
 import { whoSeesThisDifferently } from './who-sees-this-differently';
-import { theRoundCappedAtThePlan, whatEachSessionSays } from './one-count-for-the-sessions';
+import { holdsTheClock, theRoundCappedAtThePlan, whatEachSessionSays } from './one-count-for-the-sessions';
 import { aWaitSaidInFull } from './a-wait-said-in-full';
 import { howOftenItWasRaised } from './how-often-it-was-raised';
 import { theBlockers } from './the-blockers';
@@ -788,7 +788,7 @@ export class BoardService {
        round with nothing in it. The rule now lives in one function and both callers ask it. */
     /* Nobody an admin has not let in yet holds the round open (decision 77). */
     /* Decision 133: the round's clock is the team's; the lead checks in when they choose. */
-    const givers = new Set(ground.participants.filter((p: any) => owesThisSession(p) && !isNotLetInYet(p)).map((p: any) => p.id));
+    const givers = new Set(ground.participants.filter((p: any) => owesThisSession(p) && holdsTheClock(p, isNotLetInYet)).map((p: any) => p.id));
     const mine = checkIns.filter((c) => givers.has(c.participantId));
     const openRound = mine.length ? whichRoundIsOpen(mine as any) : maxSession;
     /* THE BOARD IS EVERY SESSION. The session report runs its engines over one session's rows; the

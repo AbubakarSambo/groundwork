@@ -1,3 +1,4 @@
+import { theZoneDatesAreIn } from '@/lib/a-date-reads-the-same-everywhere'
 import { useTheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -28,9 +29,9 @@ import type { TheCollectionsTeamReport } from '@/lib/collect-whats-owed'
 type Any = any
 
 const firstName = (n: string | null | undefined) => (n ?? '').trim().split(/\s+/)[0] || ''
-const aDay = (at: string | Date) => new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Africa/Lagos' }).format(new Date(at))
-const aTime = (at: string | Date) => new Intl.DateTimeFormat('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Africa/Lagos' }).format(new Date(at)).replace(':00', '').replace(/\s/g, '').toLowerCase()
-const isoDay = (at: string | Date) => new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Africa/Lagos' }).format(new Date(at))
+const aDay = (at: string | Date) => new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: theZoneDatesAreIn() }).format(new Date(at))
+const aTime = (at: string | Date) => new Intl.DateTimeFormat('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: theZoneDatesAreIn() }).format(new Date(at)).replace(':00', '').replace(/\s/g, '').toLowerCase()
+const isoDay = (at: string | Date) => new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: theZoneDatesAreIn() }).format(new Date(at))
 const listed = (names: string[]) => (names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0] ?? '')
 const RELY: Record<string, string> = { thin: 'low', partial: 'medium', solid: 'high' }
 const theNoFor = (yes: string) => (/^Yes, it /.test(yes) ? 'No, it doesn’t' : 'No')

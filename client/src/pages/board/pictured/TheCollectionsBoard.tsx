@@ -118,7 +118,7 @@ export function TheCollectionsBoard({ board: c, onRecordTheDecision, onAnswer, a
         ) : <Panel><p className="gwui-panel-text">{c.every.empty}</p></Panel>}
       </Section>
 
-      <Section heading={c.patterns.heading} note={c.patterns.note} foot={c.patterns.foot}>
+      <Section heading={c.patterns.heading} note={c.patterns.note} foot={c.patterns.foot ?? undefined}>
         <Panel>
           {c.patterns.rows.length ? c.patterns.rows.map((p) => (
             <div className="pb-card-top" key={p.title}>

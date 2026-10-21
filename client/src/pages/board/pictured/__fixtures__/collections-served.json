@@ -491,7 +491,7 @@
      }
     ],
     "empty": null,
-    "foot": "Whether each is about one client, one kind of work or how you bill is yours to judge."
+    "foot": null
    },
    "followUp": {
     "heading": "Follow-up given, and whether it helped",
@@ -602,7 +602,7 @@
     "note": "Patterns named after three check-ins in a row",
     "rows": [],
     "empty": "Nothing has come up in three check-ins in a row yet.",
-    "foot": "Whether each is about one client, one kind of work or how you bill is yours to judge."
+    "foot": null
    },
    "followUp": {
     "heading": "Follow-up given, and whether it helped",
@@ -895,14 +895,14 @@
      }
     ],
     "empty": null,
-    "foot": "It is shown. Each one’s proof is filed on it, from the slips and messages people added."
+    "foot": "Nothing is filed on it yet. A slip or a message added to it shows here."
    },
    "patterns": {
     "heading": "One person, a place, or the model?",
     "note": "Patterns named after three check-ins in a row",
     "rows": [],
     "empty": "Nothing has come up in three check-ins in a row yet.",
-    "foot": "Whether each is about one person, a place or the way the loans are set up is yours to judge."
+    "foot": null
    },
    "followUp": {
     "heading": "Support given, and whether it helped",

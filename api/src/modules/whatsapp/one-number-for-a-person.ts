@@ -33,9 +33,34 @@ export const A_NUMBER_ON_A_COLLEAGUE = (name: string) =>
  * sign-ins included, so a number left on a deleted sign-in was refused by the database with no sentence, or, from a check-in's people
  * list, not saved at all with nothing said. It is taken off the deleted sign-in first: nobody signs in with it, and the record stays.
  */
-export async function refuseANumberOnSomebodyElse(prisma: Db, number: string | null | undefined, ownUserId: string | null | undefined, organizationId?: string | null): Promise<void> {
+export async function refuseANumberOnSomebodyElse(prisma: Db, number: string | null | undefined, ownUserId: string | null | undefined, organizationId?: string | null, ownEmail?: string | null): Promise<void> {
   if (!number) return;
   const forms = formsOfTheSameNumber(number);
+  /*
+   * AND A NUMBER ALREADY ON SOMEBODY ELSE'S ROSTER ENTRY IN THIS ORGANISATION (browser test, 21 October 2026). Grace kept
+   * "+254 712 345 678" for Sam on People and setup (Sam has no sign-in yet, so the number is on his roster entry), then typed
+   * "0712345678" for Lucy on People, and it was saved: two people with one number, and every opening for one could go to the other.
+   * An entry that is this person (linked to their sign-in, or with their email) is theirs, and never refuses them.
+   */
+  if (organizationId) {
+    const own = ownUserId && !ownEmail ? await Promise.resolve(prisma.user?.findUnique?.({ where: { id: ownUserId }, select: { email: true } })).catch(() => null) : null;
+    const email = (ownEmail ?? own?.email ?? '').trim();
+    const entry = await Promise.resolve(prisma.person?.findFirst?.({
+      where: {
+        organizationId, phone: { in: forms }, active: true,
+        /* Spelled with the empty case, because NOT on an empty column is never true in SQL: Sam's entry has no sign-in linked. */
+        AND: [
+          ...(ownUserId ? [{ OR: [{ linkedUserId: null }, { NOT: { linkedUserId: ownUserId } }] }] : []),
+          ...(email ? [{ OR: [{ email: null }, { NOT: { email: { equals: email, mode: 'insensitive' } } }] }] : []),
+        ],
+      },
+      select: { displayName: true, givenName: true, familyName: true, email: true, linkedUserId: true },
+    })).catch(() => null);
+    if (entry) {
+      const name = (entry.displayName || [entry.givenName, entry.familyName].filter(Boolean).join(' ') || entry.email || '').trim();
+      throw new BadRequestException(!name ? A_NUMBER_ON_SOMEBODY_ELSE : entry.linkedUserId ? A_NUMBER_ON_A_COLLEAGUE(name) : A_NUMBER_ON_A_COLLEAGUE_WITH_NO_SIGN_IN(name));
+    }
+  }
   await Promise.resolve(prisma.user?.updateMany?.({ where: { phoneNumber: { in: forms }, deletedAt: { not: null }, ...(ownUserId ? { NOT: { id: ownUserId } } : {}) }, data: { phoneNumber: null } })).catch(() => undefined);
   const other = await prisma.user?.findFirst?.({
     where: { phoneNumber: { in: forms }, deletedAt: null, ...(ownUserId ? { NOT: { id: ownUserId } } : {}) },
@@ -48,6 +73,10 @@ export async function refuseANumberOnSomebodyElse(prisma: Db, number: string | n
   const name = [other.firstName, other.lastName].filter(Boolean).join(' ').trim();
   throw new BadRequestException(colleague && name ? A_NUMBER_ON_A_COLLEAGUE(name) : A_NUMBER_ON_SOMEBODY_ELSE);
 }
+
+/** The same, for a colleague with no sign-in yet: their number is on their check-in's People and setup, not on People. */
+export const A_NUMBER_ON_A_COLLEAGUE_WITH_NO_SIGN_IN = (name: string) =>
+  `This number is already saved for ${name}, so it cannot be saved for somebody else too. Check the number, or change ${name}'s number on People and setup in their check-in first.`;
 
 /**
  * A PERSON'S NUMBER, AS EVERY SCREEN AND EVERY SENDER READS IT (Drop Access, 21 October). The roster first, then the sign-in. A person

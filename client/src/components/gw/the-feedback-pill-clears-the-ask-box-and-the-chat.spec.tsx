@@ -53,6 +53,11 @@ describe('the feedback pill clears the ask box and the chat', () => {
     expect(trigger(mount('/grounds/g1/board').container)).toBeNull()
   })
 
+  /* Browser test, 20 October: at 1280 by 900 it sat on "Add people" as People and setup opened. */
+  it('is hidden on a check-in\'s People and setup, clear of "Add people" and the controls down its right edge', () => {
+    expect(trigger(mount('/grounds/g1?tab=settings').container)).toBeNull()
+  })
+
   it('keeps its plain bottom-right rest position everywhere else', () => {
     const btn = trigger(mount('/grounds').container)
     expect(btn!.style.bottom).toBe('20px')

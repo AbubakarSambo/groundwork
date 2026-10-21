@@ -515,7 +515,8 @@ function OnePersonAPlaceOrTheModel({ b }: { b: Any }) {
         {all.length ? all.map((x) => (
           <div className="pb-kv" key={x.id}><b>{x.yours ? 'You' : nameOf.get(x.participantId) ?? ''}</b><span>{x.whatHappened}</span></div>
         )) : <p className="gwui-panel-text">Nothing has come up three check-ins in a row yet.</p>}
-        <p className="pb-foot">Whether each is about one person, a place or the way the loans are set up is yours to judge. Groundwork does not label it.</p>
+        {/* Said to whoever runs it; somebody in the cohort judges none of it (browser test, 20 October). */}
+        {b.canEditFrame ? <p className="pb-foot">Whether each is about one person, a place or the way the loans are set up is yours to judge. Groundwork does not label it.</p> : null}
       </Panel>
     </Section>
   )

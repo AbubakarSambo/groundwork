@@ -417,15 +417,13 @@ function HiddenContributorRow({ groundId, label, evidence, isInitiator }: {
             <input
               type="email" autoFocus placeholder="their@email.com"
               value={email} onChange={e => setEmail(e.target.value)}
-              className="gwui-rule gwui-fs-13 gwui-pt-7 gwui-pb-7 gwui-pl-10 gwui-pr-10"
-              style={{ borderRadius: 6, fontFamily: 'inherit', outline: 'none' }}
+              className="gwui-input"
             />
             {!isInitiator && (
               <input
                 type="text" placeholder="Their name (optional)"
                 value={name} onChange={e => setName(e.target.value)}
-                className="gwui-rule gwui-fs-13 gwui-pt-7 gwui-pb-7 gwui-pl-10 gwui-pr-10"
-                style={{ borderRadius: 6, fontFamily: 'inherit', outline: 'none' }}
+                className="gwui-input"
               />
             )}
             {emailError && <Text size="13" ink="red">{emailError}</Text>}
@@ -4269,13 +4267,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       value={newObjName}
                       onChange={(e) => setNewObjName(e.target.value)}
                       placeholder="Add a target, e.g. Paying companies"
-                      className="gwui-pt-7 gwui-pr-10 gwui-pb-7 gwui-pl-10 gwui-fs-13-5 gwui-rule" style={{flex: 1, minWidth: 200, borderRadius: 7, fontFamily: 'inherit', outline: 'none'}}
+                      className="gwui-input" style={{flex: 1, minWidth: 200}}
                     />
                     <input
                       value={newObjTarget}
                       onChange={(e) => setNewObjTarget(e.target.value.replace(/[^0-9]/g, ''))}
                       placeholder="how many"
-                      className="gwui-pt-7 gwui-pr-10 gwui-pb-7 gwui-pl-10 gwui-fs-13-5 gwui-rule" style={{width: 96, borderRadius: 7, fontFamily: 'inherit', outline: 'none'}}
+                      className="gwui-input" style={{flex: '0 0 120px', width: 120}}
                     />
                     {/*
                       SECONDARY, NOT NAVY (Hafsah, 30 September, item 2: "at most one primary
@@ -5168,9 +5166,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     <form noValidate onSubmit={(e) => { e.preventDefault(); if (pollQ.trim() && pollOpts.trim() && !savePoll.isPending) savePoll.mutate() }}>
                       <Stack gap={8}>
                       <input value={pollQ} onChange={(e) => setPollQ(e.target.value)} placeholder="What are you finding a time for?"
-                        className="gwui-pt-7 gwui-pr-10 gwui-pb-7 gwui-pl-10 gwui-fs-13-5 gwui-rule" style={{borderRadius: 7, fontFamily: 'inherit', outline: 'none'}} />
+                        className="gwui-input" />
                       <textarea value={pollOpts} onChange={(e) => setPollOpts(e.target.value)} placeholder={'One time per line\nTue 16:00\nWed 09:00'}
-                        className="gwui-pt-7 gwui-pr-10 gwui-pb-7 gwui-pl-10 gwui-fs-13-5 gwui-rule" style={{minHeight: 68, borderRadius: 7, fontFamily: 'inherit', outline: 'none', resize: 'vertical'}} />
+                        className="gwui-input" />
                       {b.poll && (
                         <Text size="13" ink="amber">
                           Changing the times clears everyone's availability, because an answer to a question that changed is not an answer.
@@ -5496,7 +5494,7 @@ function AskTheBoard({ firstBlocker, myParticipantId }: {
         onChange={(e) => setDraft(e.target.value)}
         placeholder={placeholder}
         aria-label="Ask about this board"
-        className="gwui-pt-11 gwui-pr-14 gwui-pb-11 gwui-pl-14 gwui-rule gwui-fs-13-5 gwui-ink-text" style={{flex: 1, borderRadius: 8, background: 'white', fontFamily: 'inherit'}}
+        className="gwui-input" style={{flex: 1}}
       />
       {/*
         Secondary, not navy: the board's one primary is "Your check-in", in the header. The

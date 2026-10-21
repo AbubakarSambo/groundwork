@@ -54,7 +54,7 @@ export async function theLeadAddsAWhatsAppNumber(
   const name = (p.user?.firstName || p.nameGiven || 'This person').toString().trim();
 
   /* Never a number that is already somebody else's sign-in. Said with the colleague's name when they are in this organisation. */
-  await refuseANumberOnSomebodyElse(prisma, phone, p.userId ?? null, input.organizationId);
+  await refuseANumberOnSomebodyElse(prisma, phone, p.userId ?? null, input.organizationId, p.email);
 
   /* EVERY ROSTER ENTRY THAT IS THIS PERSON takes it, not the first one found (Drop Access, 21 October): with two entries, the number
      was saved on one and the screen and the sender could read the other. */

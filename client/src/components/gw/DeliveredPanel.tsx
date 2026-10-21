@@ -95,7 +95,8 @@ export function DeliveredPanel({
           <select
             value={against}
             onChange={e => setAgainst(e.target.value)}
-            style={{ padding: '9px 11px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 12.5, fontFamily: 'inherit', color: against ? 'var(--gw-text)' : 'var(--gw-muted)', background: 'white' }}
+            className="gwui-input"
+            style={{ width: 'auto', maxWidth: '100%', color: against ? 'var(--gw-text)' : 'var(--gw-muted)' }}
           >
             {/* Work nobody asked for belongs here too. It is exactly the contribution a report
                 built only from stated expectations cannot see. */}

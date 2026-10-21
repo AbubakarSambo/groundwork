@@ -1,5 +1,5 @@
 import type { AStoredPersonsRecord } from './the-persons-record-store';
-import { theOneThingToCoach, type ACoaching, type AThingToCoach, type AClaim } from './the-persons-record';
+import { theOneThingToCoach, type ACoaching, type AThingToCoach, type AClaim, type ThePersonsRecord } from './the-persons-record';
 import { theRecordInWords, theCoachingInWords, aClaimSaidFor, type TheRecordInWords, type APartOfTheRecord } from './the-persons-record-in-words';
 
 /**
@@ -101,6 +101,19 @@ const THE_SKILL: Record<AThingToCoach, string> = {
   focus: 'spending time on deals that can buy',
   'check-ins': 'checking in on time and naming the item, what changed and the day',
 };
+/**
+ * The skill, said for this person (browser test, 21 October 2026): "checking in on time and naming the item" was said of borrowers who
+ * checked in on time five weeks running. For their check-ins, only the parts that fell short are named.
+ */
+function theSkillFor(about: AThingToCoach, s: ThePersonsRecord['summary']): string {
+  if (about !== 'check-ins') return THE_SKILL[about];
+  const parts = [
+    ...(s.checkInsDue && s.checkInsDone / s.checkInsDue < 0.8 ? ['checking in every time'] : []),
+    ...(s.checkInsDue && s.checkInsOnTime / s.checkInsDue < 0.7 ? ['checking in on time'] : []),
+    ...((s.checkInsDone ? s.checkInsSpecific / s.checkInsDone : 0) < 0.7 ? ['naming the item, what changed and the day'] : []),
+  ];
+  return parts.length ? (parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}` : parts[0]) : THE_SKILL[about];
+}
 /** What one thing is, said as what happened ("needs a hard conversation about ..."). */
 const THE_PROBLEM: Record<AThingToCoach, string> = {
   proof: 'saying things were done with nothing on file to show it',
@@ -157,9 +170,9 @@ export function whereTheyStand(stored: AStoredPersonsRecord | null | undefined, 
   if (failed) {
     return { standing: 'needs a hard conversation', says: `${name} needs a hard conversation about ${THE_PROBLEM[failed.about]}.`, evidence: evidenceFor(failed.about, failed), about: failed.about };
   }
-  if (open) return { standing: 'needs coaching', says: `${name} needs coaching on ${THE_SKILL[open.about]}.`, evidence: evidenceFor(open.about, open), about: open.about };
+  if (open) return { standing: 'needs coaching', says: `${name} needs coaching on ${theSkillFor(open.about, s)}.`, evidence: evidenceFor(open.about, open), about: open.about };
   const next = theOneThingToCoach(r);
-  if (next) return { standing: 'needs coaching', says: `${name} needs coaching on ${THE_SKILL[next]}.`, evidence: evidenceFor(next, null), about: next };
+  if (next) return { standing: 'needs coaching', says: `${name} needs coaching on ${theSkillFor(next, s)}.`, evidence: evidenceFor(next, null), about: next };
   const worked = [...coaching].reverse().find((c) => c.outcome === 'better') ?? null;
   const theGood = (['proof', 'promises', 'check-ins'] as AThingToCoach[]).map(partSays).filter((x): x is string => !!x);
   if (worked) return { standing: 'improving', says: `${name} is improving.`, evidence: [...coachingSaid(worked), ...theGood].slice(0, 4) };
@@ -224,6 +237,8 @@ export function whatTheyDelivered(o: { participantId: string; name: string; role
   const role = String(o.role ?? '');
   const heading = /account/i.test(role) ? `What ${o.name} recorded as paid, with proof`
     : /paralegal/i.test(role) ? `What ${o.name} filed and followed up, with proof`
+    /* A borrower repays a loan; they do not collect it (browser test: "What Achieng collected, with proof"). */
+    : /borrower/i.test(role) ? `What ${o.name} repaid, with proof`
     : o.kind === 'collections' ? `What ${o.name} collected, with proof`
     : `What ${o.name} delivered, with proof`;
   return { heading, proven, onlySaid, empty: proven.length || onlySaid.length ? null : `Nothing ${o.name} said was paid, signed or done is on record yet.` };

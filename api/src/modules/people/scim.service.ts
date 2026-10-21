@@ -181,7 +181,7 @@ export class ScimService {
     if (phoneChanged && prior) data.whatsappLastInboundAt = null;
     if (phoneChanged && data.phone) {
       const own = await theSignInOf(this.prisma, { organizationId, linkedUserId: prior?.linkedUserId ?? null, email: data.email ?? prior?.email ?? null });
-      await refuseANumberOnSomebodyElse(this.prisma, data.phone, own?.id ?? null, organizationId);
+      await refuseANumberOnSomebodyElse(this.prisma, data.phone, own?.id ?? null, organizationId, data.email ?? prior?.email ?? null);
     }
 
     const row = prior

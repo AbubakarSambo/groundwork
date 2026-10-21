@@ -20,7 +20,8 @@ describe('the lead adds a WhatsApp number', () => {
       person: {
         /* The organisation's other numbers are Kenyan, so a number typed without a code is read as Kenyan. */
         findMany: jest.fn(async (q: any) => (q?.where?.OR ? (entry ? [entry] : []) : [{ phone: '+254722000201' }])),
-        findFirst: jest.fn(async () => entry),
+        /* The roster refusal (a number on a colleague's entry) asks with the person's own entries left out; Brian's own entry is his. */
+        findFirst: jest.fn(async (q: any) => (q?.where?.AND?.some?.((c: any) => c.OR?.some?.((o: any) => o.NOT?.email?.equals === 'brian@muchemi.test')) ? null : entry)),
         create: jest.fn(async (a: any) => { made.push(a.data); return { id: 'person-brian' }; }),
         update: jest.fn(async (a: any) => { updated.push(a); return {}; }),
       },

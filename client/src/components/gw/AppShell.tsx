@@ -180,6 +180,10 @@ function FeedbackWidget() {
   const hideTrigger = location.pathname === '/more' || location.pathname.startsWith('/checkin/')
     || location.pathname === '/chat' || location.pathname === '/settings/suites' || location.pathname === '/org/members'
     || location.pathname === '/settings'
+    /* BROWSER TEST, 20 OCTOBER: AND A CHECK-IN'S "PEOPLE AND SETUP", FOR THE SAME REASON AS PEOPLE. At 1280 by 900 the
+       trigger's bottom-right corner sat on "Add people" as the page opened, and a click meant for it opened Feedback; the
+       page has a dozen more controls down the same right edge. "Send feedback" on the person's own menu still opens it. */
+    || (/^\/grounds\/[^/]+$/.test(location.pathname) && new URLSearchParams(location.search).get('tab') === 'settings')
     || isGroundsBoard
     || (location.pathname === '/start' && fillsInPanelShowing)
     || askOpen
@@ -576,8 +580,8 @@ function FeedbackWidget() {
                       ))}
                     </div>
                     <input type="email" placeholder="Your email, if you'd like a reply" value={contactEmail} onChange={e => setContactEmail(e.target.value)}
-                      className="gwui-fb-field"
-                      style={{ width: '100%', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 10 }} />
+                      className="gwui-fb-field gwui-input"
+                      style={{ boxSizing: 'border-box', marginBottom: 10 }} />
                   </>
                 )}
 
@@ -605,8 +609,8 @@ function FeedbackWidget() {
                       className="gwui-fb-field"
                       style={{ width: '100%', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', minHeight: 100, boxSizing: 'border-box', marginBottom: 10 }} />
                     <input type="email" placeholder="Your email, if you'd like a reply" value={contactEmail} onChange={e => setContactEmail(e.target.value)}
-                      className="gwui-fb-field"
-                      style={{ width: '100%', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 10 }} />
+                      className="gwui-fb-field gwui-input"
+                      style={{ boxSizing: 'border-box', marginBottom: 10 }} />
                   </>
                 )}
 

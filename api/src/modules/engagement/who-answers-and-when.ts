@@ -58,6 +58,12 @@ export interface TheirDay {
   onTimeRunning: number;
   /** The day of the latest of those, or null. */
   onTimeLastDay: string | null;
+  /**
+   * What one of those sessions is, read from the days they opened (browser test, 20 October 2026: a weekly check-in read "5 days
+   * running"). 'day' where each opened within four days of the one before (a daily check-in, over a weekend); 'week' where each
+   * opened five to nine days after the one before; 'time' otherwise. Absent on a day built before this was kept, which reads as 'day'.
+   */
+  onTimeEvery?: 'day' | 'week' | 'time';
 }
 
 const DAY = 86_400_000;
@@ -159,14 +165,18 @@ export function theirDay(participantId: string, all: ASessionOnRecord[], now: Da
   /* On time, running: their latest sessions, newest first, skipping today's while it is still open and not late. */
   let onTimeRunning = 0;
   let onTimeLastDay: string | null = null;
+  const runningOpened: string[] = [];
   for (const c of [...mine].reverse()) {
     const opened = aDayIn(openedAt(c)!, zone);
     if (!answeredOn(c) && opened === today && !lateToday) continue;
     if (!onTimeFor(c)) break;
     onTimeRunning++;
     onTimeLastDay = onTimeLastDay ?? answeredOn(c);
+    runningOpened.push(opened);
   }
-  return { participantId, dueToday, answeredToday, answeredOnTimeToday, lateAfter, lateToday, lastCheckedIn, missedDays, onTimeRunning, onTimeLastDay };
+  const gaps = runningOpened.slice(1).map((d, i) => Math.round((new Date(`${runningOpened[i]}T12:00:00Z`).getTime() - new Date(`${d}T12:00:00Z`).getTime()) / 86_400_000));
+  const onTimeEvery: TheirDay['onTimeEvery'] = gaps.every((g) => g <= 4) ? 'day' : gaps.every((g) => g >= 5 && g <= 9) ? 'week' : 'time';
+  return { participantId, dueToday, answeredToday, answeredOnTimeToday, lateAfter, lateToday, lastCheckedIn, missedDays, onTimeRunning, onTimeLastDay, onTimeEvery };
 }
 
 /** Whether the days follow one another, counting only the days the team works. */
@@ -192,9 +202,13 @@ export function twoMissedDaysSaid(who: string, d: TheirDay, workingDays: number[
   if (n < 2) return null;
   const names = d.missedDays.map(aDayByName);
   if (oneAfterAnother(d.missedDays, workingDays)) {
+    /* A check-in that opens once a week is missed in weeks, not days (browser test, 21 October 2026: a borrower who checks in each
+       Monday read "Peter hasn't checked in for 4 days, since Monday 28 September"). */
+    const gap = d.missedDays.length > 1 ? Math.round((new Date(`${d.missedDays[1]}T12:00:00Z`).getTime() - new Date(`${d.missedDays[0]}T12:00:00Z`).getTime()) / 86_400_000) : 1;
+    const unit = gap >= 5 && gap <= 9 ? 'weeks' : 'days';
     return n === 2
-      ? `${who} hasn't checked in for 2 days, on ${listed(names)}, so call ${who}.`
-      : `${who} hasn't checked in for ${n} days, since ${names[0]}, so call ${who}.`;
+      ? `${who} hasn't checked in for 2 ${unit}, on ${listed(names)}, so call ${who}.`
+      : `${who} hasn't checked in for ${n} ${unit}, since ${names[0]}, so call ${who}.`;
   }
   return `${who} hasn't checked in the last ${n} times the check-in opened, on ${listed(names)}, so call ${who}.`;
 }
@@ -207,9 +221,15 @@ export function notInTodaySaid(who: string, d: TheirDay, today: string): string 
     : `${who} hasn't checked in today, and has not checked in yet.`;
 }
 
+/** "5 days running" for a daily check-in, "5 weeks running" for a weekly one, "5 check-ins in a row" otherwise. */
+function running(d: TheirDay): string {
+  const n = d.onTimeRunning;
+  return d.onTimeEvery === 'week' ? `${n} weeks running` : d.onTimeEvery === 'time' ? `${n} check-ins in a row` : `${n} days running`;
+}
+
 /** "Kevin checked in on time 5 days running." / "Kevin checked in on time today." Null with nothing to credit. */
 export function onTimeSaid(who: string, d: TheirDay, today: string): string | null {
-  if (d.onTimeRunning >= 2) return `${who} checked in on time ${d.onTimeRunning} days running.`;
+  if (d.onTimeRunning >= 2) return `${who} checked in on time ${running(d)}.`;
   if (d.onTimeRunning === 1 && d.onTimeLastDay === today) return `${who} checked in on time today.`;
   return null;
 }
@@ -218,7 +238,7 @@ export function onTimeSaid(who: string, d: TheirDay, today: string): string | nu
 export function onTimeSaidToYou(d: TheirDay, today: string): string | null {
   if (!d.onTimeRunning || !d.onTimeLastDay) return null;
   const when = d.onTimeLastDay === today ? 'today' : whenTheyLastCheckedIn(d.onTimeLastDay, today);
-  return d.onTimeRunning >= 2 ? `You checked in on time ${when}, ${d.onTimeRunning} days running.` : `You checked in on time ${when}.`;
+  return d.onTimeRunning >= 2 ? `You checked in on time ${when}, ${running(d)}.` : `You checked in on time ${when}.`;
 }
 
 /** Whether the lead may nudge them today: their session is open and not answered, and they are late today or missed a day before it. */

@@ -185,6 +185,31 @@ it('draws a lending cohort with where it stands, every trader, and what keeps co
   expect(screen.getByRole('link', { name: 'See every other part of this board' })).toBeTruthy()
 })
 
+it('the cohort board says "yours to judge" to whoever runs it, and not to a trader in the cohort (browser test, 20 October)', async () => {
+  const cohort = (canEditFrame: boolean) => ({
+    groundId: 'g-l', renders: true, mode: 'SHARED', family: 'COHORT', sections: [], title: 'Asset loans, cohort 3', scenario: 'COHORT_CHECK', kindOfWork: 'asset loans',
+    myParticipantId: canEditFrame ? 'p-lead' : 'p-m', canEditFrame, readOnlyNote: null,
+    participants: [{ id: 'p-lead', name: 'Mercy Chepkoech', partyType: 'INITIATOR', managingOnly: true }, { id: 'p-m', name: 'Musa Abdi', partyType: 'PARTICIPANT' }],
+    workRecords: [], patterns: [],
+    whereTheCohortStands: { heading: 'Where the cohort stands', says: '1 person is in this cohort.', groups: [] },
+  })
+  for (const [canEditFrame, shown] of [[true, true], [false, false]] as const) {
+    ;(boardApi.get as any).mockResolvedValue(cohort(canEditFrame))
+    ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u-lead', leadFirstName: 'Mercy', cadence: 'WEEKLY', cadenceAnchorDay: 1, participants: [], checkIns: [], roundCompletions: [], contextItems: [] })
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const { unmount } = render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={['/grounds/g-l/board']}>
+          <Routes><Route path="/grounds/:id/board" element={<BoardPage />} /></Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    expect(await screen.findByText('One person, a place, or the model?')).toBeTruthy()
+    expect(!!screen.queryByText(/is yours to judge/)).toBe(shown)
+    unmount()
+  }
+})
+
 it('draws people asked once with the report in short, each group, what they named, where they disagree and who has not answered (mvnext-board.jpg)', async () => {
   ;(boardApi.get as any).mockResolvedValue({
     groundId: 'g-mv', renders: true, mode: 'SHARED', family: 'SNAPSHOT', sections: [], title: 'MarketView, where next', scenario: 'DISCOVERY', kindOfWork: 'MarketView where next',

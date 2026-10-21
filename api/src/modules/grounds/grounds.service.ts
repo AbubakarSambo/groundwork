@@ -86,7 +86,7 @@ import { totalSessionsFor } from './session-count';
 import { readPeopleAndSetup } from './people-and-setup';
 import { readReferencesAndResources, readTheEvidence, aLineToKeep, aKeyFactFrom, referencesSaidDirectly, type EvidenceQuery } from './references-and-resources';
 import { theRelease1bTabsAreOn } from './release-1b-tabs';
-import { theSessionClock } from '../board/one-count-for-the-sessions';
+import { holdsTheClock, theSessionClock } from '../board/one-count-for-the-sessions';
 import { answeredOnALink, aLinkRoundIsReady } from './an-open-link-has-no-roster';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
 import { BoardFamily, familyFor } from '../board/board-families';
@@ -2076,7 +2076,7 @@ export class GroundsService {
     const sessionClock = theSessionClock(
       (((ground as any).checkIns ?? []) as any[]).filter((c) => !c.isSetup),
       /* Nobody an admin has not let in yet holds the clock back (decision 77). */
-      new Set((((ground as any).participants ?? []) as any[]).filter((p) => !p.managingOnly && !isNotLetInYet(p)).map((p) => p.id)),
+      new Set((((ground as any).participants ?? []) as any[]).filter((p) => holdsTheClock(p, isNotLetInYet)).map((p) => p.id)),
       noEnd ? null : totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null,
       new Date(),
       /* A finished round hands the count on only with Release 1's sales board on, as the board's header reads it. */

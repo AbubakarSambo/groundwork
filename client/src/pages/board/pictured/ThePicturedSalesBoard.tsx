@@ -1,3 +1,4 @@
+import { theZoneDatesAreIn } from '@/lib/a-date-reads-the-same-everywhere'
 import { ItsEvidence } from '@/components/gw/ItsEvidence'
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
@@ -340,7 +341,7 @@ export function WhatNeedsYou({ b, renderActions, groundId, deals, sessionRows, m
 /* ------------------------------------------------------------------ every deal, day by day */
 
 const DAY = 86_400_000
-export const isoDay = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Lagos', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
+export const isoDay = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: theZoneDatesAreIn(), year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
 
 /** Weekdays from the Monday four weeks before this one to the Friday of next week: six weeks, thirty days. */
 function theSixWeeks(now: Date): { days: string[]; mondays: string[] } {
