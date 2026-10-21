@@ -597,7 +597,8 @@ export function theCollectionsDirectMorning(input: TheCollectionsMorningInput): 
   const whoOwes = (b: ABillOnTheBoard) => (input.loans ? Name(b.ownerParticipantId) ?? 'A borrower' : f(b, F.client) || f(b, F.matter) || b.name);
   /* A loan is said as the borrower's ("Peter’s loan"), never "loan for loan" (browser test, 21 October 2026). */
   const numbered = (b: ABillOnTheBoard) => (input.loans ? `${whoOwes(b)}’s loan` : `${f(b, F.number) || b.name} for ${whoOwes(b)}`);
-  const amountOf = (b: ABillOnTheBoard) => anAmount(f(b, F.amount));
+  /* The amount, or for a paid bill the amount paid, where the record kept no amount (the board reads the same, theBillsOnRecord). */
+  const amountOf = (b: ABillOnTheBoard) => anAmount(f(b, F.amount)) ?? (b.stage === 'Paid' ? anAmount(f(b, F.paid)) : null);
   const servedRow = (b: ABillOnTheBoard) => (input.served?.every?.rows ?? []).find((r) => r.id === b.id) ?? null;
   const paid = bills.filter((b) => b.stage === 'Paid');
   const proven = paid.filter((b) => (b.proof ?? []).length > 0);
@@ -605,13 +606,19 @@ export function theCollectionsDirectMorning(input: TheCollectionsMorningInput): 
   const unpaid = bills.filter((b) => b.stage !== 'Paid');
   let currency = 'KES';
   const sum = (xs: ABillOnTheBoard[]) => xs.reduce((n, b) => { const a = amountOf(b); if (a) currency = a.currency; return n + (a?.value ?? 0); }, 0);
-  const owed = sum(unpaid);
-  const noAmount = unpaid.filter((b) => !amountOf(b)).length;
+  /*
+   * OWED IS EVERYTHING NOT PAID WITH PROOF (final real-model check, item 9). A payment counts only when it is in the bank, so a bill
+   * marked paid on somebody's word is still owed, and is said so beside it. "KES 70,000 is owed on 3 fee notes" left out FN-006 and FN-007,
+   * which were paid only on Aisha's word.
+   */
+  const owedBills = [...unpaid, ...onAWord];
+  const owed = sum(owedBills);
+  const noAmount = owedBills.filter((b) => !amountOf(b)).length;
   const plural = (n: number) => (n === 1 ? word : `${word}s`);
 
   /* 1. What is owed, what is paid with proof, and what fell due today and why. */
   const target: AMorningLine[] = [{
-    text: `${billMoney(owed, currency)} is owed on ${unpaid.length} ${plural(unpaid.length)}${noAmount ? `, and ${noAmount} of them have no amount on record` : ''}. ${proven.length ? `${billMoney(sum(proven), currency)} is paid with proof.` : 'Nothing is paid with proof yet.'}`,
+    text: `${billMoney(owed, currency)} is owed on ${owedBills.length} ${plural(owedBills.length)}${noAmount ? `, and ${noAmount === owedBills.length ? (noAmount === 1 ? 'it has' : 'none of them has') : `${noAmount} of them ${noAmount === 1 ? 'has' : 'have'}`} no amount on record` : ''}.${onAWord.length ? ` ${onAWord.length === 1 ? 'One of them is' : `${onAWord.length} of them are`} marked paid on somebody’s word, with no slip or message on file.` : ''} ${proven.length ? `${billMoney(sum(proven), currency)} is paid with proof.` : 'Nothing is paid with proof yet.'}`,
     rank: 0,
   }];
   /* Marked paid with no proof is the people's to back (each one's record says it to the partner where Groundwork could not move them). */
@@ -648,7 +655,8 @@ export function theCollectionsDirectMorning(input: TheCollectionsMorningInput): 
   }
   for (const b of onAWord) {
     const row = servedRow(b);
-    if (row && /as you said/i.test(row.payment?.says ?? '')) needs.push({ text: `You marked ${numbered(b)} paid, so file the bank slip or the M-Pesa message.`, rank: 5 });
+    /* Only where she said it herself, in her own line: never of a bill somebody else said was paid (item 9). */
+    if (row && /as you said/i.test(row.payment?.says ?? '') && (!b.paidSaidBy || input.hers.has(b.paidSaidBy))) needs.push({ text: `You said ${numbered(b)} is paid, so file the bank slip or the M-Pesa message.`, rank: 5 });
   }
 
   /* 3. Who to chase: the client, the amount, who follows it up. What fell due first, then what is behind, then a payment said with no proof. */
@@ -743,7 +751,8 @@ export function theMatterDirectMorning(input: { groundId: string; label: string;
   }
   for (const d of ((input.board?.decisions ?? []) as any[]).filter((x) => x?.source === 'divergence' && /^you$/i.test(String(x?.owner ?? '')))) {
     const m = /^People in this check-in said different things about (.+?), so it needs settling\.?$/i.exec(String(d.question ?? '').trim());
-    if (m) needs.push({ text: `People said different things about ${m[1]}, so settle it with them.`, rank: 5 });
+    /* Never about "this" or "it": a line with no thing in it tells her nothing to settle (final real-model check, item 9). */
+    if (m && !/^(?:this|that|it|them|these|those|the same thing)$/i.test(m[1].trim())) needs.push({ text: `People said different things about ${m[1]}, so settle it with them.`, rank: 5 });
   }
   const lastDay = plus(today, 7);
   const due = input.items.filter((i) => i.dueAt && keyIn(new Date(i.dueAt), 'UTC') >= today && keyIn(new Date(i.dueAt), 'UTC') <= lastDay)

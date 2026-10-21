@@ -27,7 +27,7 @@ export function theCheckAsADatabase(g: AGroundOfTheCheck, opts: { directMorning?
     initiator: (() => { const p = x.participants.find((y: any) => y.userId === x.ground.initiatorId); return p ? { firstName: p.user?.firstName ?? null, lastName: p.user?.lastName ?? null, email: p.email } : null; })(),
     participants: x.participants,
   });
-  const org = { ...orgOf(R), directMorningOn: opts.directMorning ?? false, personJudgementsOn: opts.judgements ?? true, release1bTabsOn: true, release1SalesBoardOn: true };
+  const org = { ...orgOf(R), directMorningOn: opts.directMorning ?? false, personJudgementsOn: opts.judgements ?? true, release1bTabsOn: true, release1SalesBoardOn: true, release2CollectionsOn: true, billWord: /Muchemi/.test(orgOf(R)?.name ?? '') ? 'fee note' : null };
   const whose = new Map((R.checkIns as any[]).map((c) => [c.id, c.participantId]));
   return withNothing({
     organization: { findUnique: jest.fn(async () => structuredClone(org)), findMany: jest.fn(async () => [structuredClone(org)]) },

@@ -57,6 +57,8 @@ export interface ABillOnTheBoard {
   proof: APayment[];
   /** The check-ins whose lines named this bill. */
   saidIn: string[];
+  /** Who said, in their own line, that it is paid (the first to say so), where somebody did. */
+  paidSaidBy?: string | null;
   /**
    * WHERE IT FELL DUE ON AN EVENT (a-fee-note-due-on-an-event): the day, the event it waited for, and the line that said it happened,
    * in its own words only where this reader may read that check-in's words, else null. Set by the board's service, for this reader.
@@ -449,7 +451,7 @@ export function buildTheCollectionsBoard(input: TheCollectionsInput): TheCollect
     const payment: ACollectionsRow['payment'] = group === 'paid'
       ? (r.proof.length
         ? { says: `Paid${paidDay ? ` on ${aDayInWords(paidDay, zone)}` : ''}, with proof`, mark: 'proven' }
-        : { says: `Paid, as ${midName(r.ownerParticipantId)} said`, mark: 'said' })
+        : { says: `Paid, as ${midName(r.paidSaidBy ?? r.ownerParticipantId)} said`, mark: 'said' })
       : promise
         ? { says: promise.missed ? `Promised for ${aDayInWords(promise.by, zone)}, and missed` : `Promised for ${aDayInWords(promise.by, zone)}`, mark: 'none' }
         : { says: field(r, F.paid) ? `${stop(field(r, F.paid))} paid, as ${midName(r.ownerParticipantId)} said` : 'Not paid', mark: field(r, F.paid) ? 'said' : 'none' };
