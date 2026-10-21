@@ -3,11 +3,22 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { AnthropicService } from '../conversation/anthropic.service';
-import { GroundworkEvents, type RoundCompletedEvent, type CheckInCompletedEvent } from '../../common/events';
-import { oneOfTheKinds, theRecordsPrompt, THE_RECORDS_SCHEMA, onlyRecordsTheLinesSay, theSameName, type AnOfferedRecord, type APersonALineMayName , KINDS_THAT_ARE_NOT_WORK } from './the-kind-of-work';
+import { GroundworkEvents, type RoundCompletedEvent, type CheckInCompletedEvent, type KindOfWorkReadEvent } from '../../common/events';
+import { theReleaseOneSalesBoardIsOn } from './release-one-sales-board';
+import { theBuyingDateTheySaid, BUYING_DATE } from './a-deals-value-and-buying-date';
+import { withTheCriteriaSaid, thePriceRangeAnswer, theLeadsRangeAnswerIn, THE_RANGE_QUESTION } from './a-deals-four-criteria';
+import { theAnswerAsALine } from './what-needs-you-and-what-to-do';
+import { oneOfTheKinds, isASalesKind, theRecordsPrompt, THE_RECORDS_SCHEMA, onlyRecordsTheLinesSay, theSameName, type AnOfferedRecord, type APersonALineMayName , KINDS_THAT_ARE_NOT_WORK } from './the-kind-of-work';
 import { theRoomsLabelFor } from './the-room-is-stored-with-labels';
+import { fileTheBillsSaid } from './the-collections-record';
+import { fileTheFeeNotesDueOnAnEvent } from './a-fee-note-due-on-an-event';
 import { withAClaim } from './a-claim-on-a-record-is-checked-first';
-import { theSameCustomer } from './one-deal-per-customer';
+import { withTheStageKept, theStagesToKeep } from './a-deals-stages-are-kept';
+import { theSameCustomer, aDealTheLeadNamedBecomesTheReps } from './one-deal-per-customer';
+import { aDealNamedAsAPerson, theDealThePersonIsAt, thePersonsDetailsOnTheDeal, theQuestionBefore } from './a-deals-contact-is-never-a-deal';
+import { theDealsOnRecord, theAimsTheDealsCount, theSalesStages } from './a-sales-aim-is-counted-from-the-deals';
+import { whatTheOwnerSaidOfEachDeal } from './what-the-owner-said-of-each-deal';
+import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 import {
   WHAT_THE_RECORD_SAYS_PROMPT,
   WHAT_THE_RECORD_SAYS_SCHEMA,
@@ -59,22 +70,68 @@ export class BoardListener {
    */
   @OnEvent(GroundworkEvents.CHECK_IN_COMPLETED)
   async onCheckInCompleted(e: CheckInCompletedEvent) {
+    await this.readTheRecordsFrom(e);
+    /*
+     * ON A MATTER CHECK-IN WITH RELEASE 2 ON, A FEE NOTE WAITING FOR AN EVENT THIS CHECK-IN REPORTS FALLS DUE THAT DAY
+     * (a-fee-note-due-on-an-event). No model; never a guess: a line that only comes close is kept for the lead to confirm.
+     * Anywhere else this returns null at once and writes nothing.
+     */
+    await fileTheFeeNotesDueOnAnEvent({ prisma: this.prisma, logger: this.logger }, e).catch(() => null);
+    /* What the owner said of each deal, read from their own turns with no model (what-the-owner-said-of-each-deal). */
+    await this.fileWhatTheOwnerSaid(e.groundId, e.checkInId, typeof e.sessionNumber === 'number' ? e.sessionNumber : null);
+    /* The lead's answer on a price range, said in her own check-in, is kept as her Yes or No on the board is (Drop Access run 1, A6). */
+    await this.fileTheLeadsRangeAnswer(e.groundId);
+    /* The deals may have moved, so the aims they count are counted again (a-sales-aim-is-counted-from-the-deals). */
+    await this.countTheAimsFromTheDeals(e.groundId, null);
+  }
+
+
+  /**
+   * THE KIND OF WORK ARRIVED AFTER THE SESSION (local test of staging, 15 October). Hafsah set up Drop Access's "Sales
+   * check-in" from /start: her first session finished as the check-in was made, while the kind of work was still being
+   * read, so the reading above found no kind and kept nothing. Kevin's Kilimani deal for 12 cartons, which she named,
+   * never reached "Every deal, day by day". Once the kind is read, each finished session is read for its records, the same
+   * way; a record already on the board is moved on, never written twice.
+   */
+  @OnEvent(GroundworkEvents.KIND_OF_WORK_READ)
+  async onKindOfWorkRead(e: KindOfWorkReadEvent) {
+    const done = await Promise.resolve((this.prisma as any).checkIn?.findMany?.({
+      where: { groundId: e.groundId, status: 'COMPLETED' },
+      select: { id: true },
+      orderBy: { createdAt: 'asc' },
+    })).catch(() => []);
+    for (const c of (done ?? []) as any[]) {
+      await this.readTheRecordsFrom({ groundId: e.groundId, checkInId: c.id });
+      await this.fileWhatTheOwnerSaid(e.groundId, c.id, null);
+    }
+    if ((done ?? []).length) await this.countTheAimsFromTheDeals(e.groundId, null);
+  }
+
+  private async readTheRecordsFrom(e: { groundId: string; checkInId: string; sessionNumber?: number | null }) {
+    /*
+     * ON A "COLLECT WHAT'S OWED" CHECK-IN WITH RELEASE 2 ON, EACH BILL SAID IS ONE ROW (the-collections-record). Its own reading, in
+     * place of the kind of work's: a fee notes check-in read as "a law firm matter" keeps fee notes, never deadlines. Null means it is
+     * not one, and the reading below runs exactly as before.
+     */
+    if ((await fileTheBillsSaid({ prisma: this.prisma, anthropic: this.anthropic as any, logger: this.logger }, e, THE_RECORDS_SCHEMA).catch(() => null)) !== null) return;
     try {
       const ground = await this.prisma.ground.findUnique({
         where: { id: e.groundId },
         select: {
           kindOfWork: true, workStages: true,
           /* Who is in the check-in, so a record the speaker says is somebody else's is theirs (item 21). */
-          participants: { select: { id: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
+          participants: { select: { id: true, nameGiven: true, partyType: true, user: { select: { firstName: true, lastName: true } } } },
         },
       }) as any;
       const kind = oneOfTheKinds(ground?.kindOfWork);
       if (!kind) return;
       const said = await this.prisma.recordEntry.findMany({
         where: { checkInId: e.checkInId, disputedAt: null },
-        select: { id: true, text: true, participantId: true },
+        /* In the order they were said, so a line can go on from the one before it (onlyRecordsTheLinesSay). */
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, text: true, participantId: true, createdAt: true },
       });
-      const lines = said.map((l: any) => ({ id: l.id, text: cleanText(l.text), participantId: l.participantId })).filter((l: any) => l.text);
+      const lines = said.map((l: any) => ({ id: l.id, text: cleanText(l.text), participantId: l.participantId, createdAt: l.createdAt ? new Date(l.createdAt) : new Date() })).filter((l: any) => l.text);
       if (!lines.length) return;
       const people: APersonALineMayName[] = ((ground?.participants ?? []) as any[]).map((p) => ({
         id: p.id, firstName: p.user?.firstName ?? null, lastName: p.user?.lastName ?? null, nameGiven: p.nameGiven ?? null,
@@ -84,22 +141,70 @@ export class BoardListener {
         return (p ? [p.firstName, p.lastName].filter(Boolean).join(' ').trim() || (p.nameGiven ?? '').trim() : '') || 'Somebody';
       };
       const everybody = people.map((p) => nameOf(p.id)).filter((n) => n !== 'Somebody');
+      /* The deals on record with the person each is dealt with through, so a line naming only "Rose" is about her deal (point 6). */
+      const dealsOnRecord = isASalesKind(kind)
+        ? ((await (this.prisma as any).workItem.findMany({ where: { groundId: e.groundId, kind: 'deal' }, select: { name: true, fields: true, ownerParticipantId: true } }).catch(() => [])) as any[])
+        : [];
+      const withContacts = dealsOnRecord.map((d) => ({ name: String(d.name), contact: String((d.fields as any)?.Contact ?? '').trim() })).filter((d) => d.contact);
       const answer = await this.anthropic.extract<{ records?: AnOfferedRecord[] }>(
         theRecordsPrompt(kind),
         [{
           role: 'user',
           content: [
             ...(everybody.length ? [`People in this check-in: ${everybody.join(', ')}.`, ''] : []),
+            ...(withContacts.length ? [`Deals on record, with the person at each customer: ${withContacts.map((d) => `${d.name} (${d.contact})`).join(', ')}.`, ''] : []),
             ...lines.map((l: any) => `[${l.id}] ${nameOf(l.participantId)} said: ${l.text}`),
           ].join('\n'),
         }],
         THE_RECORDS_SCHEMA,
       );
-      const kept = onlyRecordsTheLinesSay(kind, answer?.records ?? [], lines, ground?.workStages, people);
+      const kept = onlyRecordsTheLinesSay(kind, answer?.records ?? [], lines, ground?.workStages, people, dealsOnRecord.map((d) => ({ name: String(d.name), fields: d.fields as any, ownerParticipantId: d.ownerParticipantId ?? null })));
       const speakerOf = new Map(lines.map((l: any) => [l.id, l.participantId]));
-      if (!kept.length) return;
-      const already = await (this.prisma as any).workItem.findMany({ where: { groundId: e.groundId, kind: { notIn: KINDS_THAT_ARE_NOT_WORK } }, select: { id: true, kind: true, name: true, fields: true, ownerParticipantId: true } });
-      for (const r of kept) {
+      /*
+       * WHICH CHECK-IN SAID EACH OF A DEAL'S FOUR CRITERIA (Hafsah's answer to Needs Hafsah 7; a-deals-four-criteria): the need,
+       * the budget the customer stated, the decision maker and the buying date are kept on the deal's details, and beside them,
+       * never served, the check-in and session that said each one.
+       */
+      const saidIn = { checkInId: e.checkInId, sessionNumber: typeof e.sessionNumber === 'number' ? e.sessionNumber : null, on: new Date() };
+      const stamped = (r: { kind: string }, before: unknown, after: Record<string, unknown>) => (isASalesKind(kind) && r.kind === 'deal' ? withTheCriteriaSaid(before as any, after, saidIn) : after);
+      if (!kept.length) {
+        if (isASalesKind(kind)) await this.fileTheBuyingDatesSaid(e.groundId, lines, saidIn);
+        return;
+      }
+      const leadIds = new Set<string>(((ground?.participants ?? []) as any[]).filter((p) => p.partyType === 'INITIATOR').map((p) => p.id));
+      const already = await (this.prisma as any).workItem.findMany({ where: { groundId: e.groundId, kind: { notIn: KINDS_THAT_ARE_NOT_WORK } }, select: { id: true, kind: true, name: true, fields: true, ownerParticipantId: true, stage: true, sourceEntryId: true, createdAt: true } });
+      /*
+       * EACH STAGE A DEAL IS PUT AT IS KEPT, WITH ITS DAY (a-deals-stages-are-kept). A deal kept before its stages were is
+       * kept first at the stage it stood at, as of the day of the line that stage came from, so the move from it counts.
+       */
+      const earlierIds = (already as any[]).map((a) => a.sourceEntryId).filter(Boolean);
+      const saidOn = new Map<string, Date>(earlierIds.length
+        ? (((await (this.prisma as any).recordEntry?.findMany?.({ where: { id: { in: earlierIds } }, select: { id: true, createdAt: true } })?.catch?.(() => [])) ?? []) as any[]).map((l) => [l.id, new Date(l.createdAt)])
+        : []);
+      const keptAt = new Date();
+      const theStageOf = (a: any, stage: string | null | undefined, fields: unknown) => {
+        const kept = withTheStageKept(fields, stage, keptAt, 'check-in', { stage: a.stage ?? null, since: (a.sourceEntryId && saidOn.get(a.sourceEntryId)) || (a.createdAt ? new Date(a.createdAt) : null) });
+        /* Kept in hand too, so a second line about the same deal in this check-in adds to what the first one wrote. */
+        a.fields = kept;
+        return kept;
+      };
+      /* This check-in's turns, read once, only where a deal is named as a person (a-deals-contact-is-never-a-deal). */
+      let turnsHere: { role: string; content: string | null }[] | null = null;
+      for (let r of kept) {
+        /*
+         * A PERSON NAMED AS A DEAL'S CONTACT IS NEVER A DEAL (Drop Access short run, item 8): "Mr Kariuki wants five units", said
+         * about Juja Hardware, is Juja Hardware's, with Mr Kariuki as its contact. With no deal it is surely about, none is kept.
+         */
+        if (isASalesKind(kind) && r.kind === 'deal' && aDealNamedAsAPerson(r as any)) {
+          const speaker = speakerOf.get(r.sourceEntryId) ?? r.ownerParticipantId ?? null;
+          if (turnsHere === null) {
+            turnsHere = ((await (this.prisma as any).conversationTurn?.findMany?.({ where: { checkInId: e.checkInId }, orderBy: { createdAt: 'asc' }, select: { role: true, content: true } })?.catch?.(() => [])) ?? []) as any[];
+          }
+          const lineText = String(lines.find((l: any) => l.id === r.sourceEntryId)?.text ?? '');
+          const at = theDealThePersonIsAt(r as any, (already as any[]).filter((a) => a.kind === 'deal' && (a.ownerParticipantId ?? null) === speaker), theQuestionBefore(turnsHere ?? [], lineText));
+          if (!at) { this.logger.log(`A deal named as a person ("${r.name}") was not kept: no deal it is surely about.`); continue; }
+          r = { ...r, name: at.name, fields: thePersonsDetailsOnTheDeal(at, r as any) as any, ownerParticipantId: at.ownerParticipantId ?? r.ownerParticipantId };
+        }
         /* "a four-hour acknowledgement" and "the four-hour acknowledgement" are one record (item 21). */
         const same = (already as any[]).find((a) => a.kind === r.kind && (a.name.trim().toLowerCase() === r.name.trim().toLowerCase()
           || (theSameName(a.name) === theSameName(r.name) && (a.ownerParticipantId ?? null) === (r.ownerParticipantId ?? null))))
@@ -111,11 +216,43 @@ export class BoardListener {
            * written from, so a lead's "Kevin also sold 10 units to Bahari Cafe" moved Kevin's deal under Grace's
            * name. A line by somebody else moves its stage and details on, and the owner's own line stays its source.
            */
-          const fromSomebodyElse = !!same.ownerParticipantId && speakerOf.get(r.sourceEntryId) !== same.ownerParticipantId;
+          const speaker = speakerOf.get(r.sourceEntryId) ?? null;
+          /*
+           * A DEAL THE LEAD NAMED IS THE REP'S ONCE THE REP SPEAKS OF IT (Drop Access, 16 October). Grace's setup named the team's
+           * deals ("Greenfield Supermarket, 25 units, Mercy"), which made Greenfield a deal under Grace; Mercy's own account of it
+           * then only moved its stage, and the board showed Mercy's deal as Grace's. When the record came from the lead's own line
+           * and somebody else in the check-in now says it, it becomes theirs, from their line. See aDealTheLeadNamedBecomesTheReps.
+           */
+          if (aDealTheLeadNamedBecomesTheReps(same.ownerParticipantId, speaker, leadIds, r.kind)) {
+            const before = same.fields;
+            const fields = stamped(r, before, theStageOf(same, r.stage, { ...r.fields, ...theStagesToKeep(same.fields) }));
+            same.fields = fields;
+            await (this.prisma as any).workItem.update({
+              where: { id: same.id },
+              /* From the rep's own account only: the lead's details about somebody else's deal are not carried over. */
+              data: { stage: r.stage ?? null, dueAt: r.dueAt ?? null, fields, ownerParticipantId: speaker, sourceEntryId: r.sourceEntryId },
+            });
+            same.ownerParticipantId = speaker;
+            if (r.stage) same.stage = r.stage;
+            continue;
+          }
+          const fromSomebodyElse = !!same.ownerParticipantId && speaker !== same.ownerParticipantId;
+          /*
+           * A CHECK-IN NEVER MOVES A DEAL BACK A STAGE (the four criteria, Drop Access test bed, 18 October). Juja Hardware was at
+           * Pitched; Joseph said the owner "still wants 5 units", which reads as the customer's need, and the deal went back to Need
+           * established. On a sales team, a stage earlier than the one on record is not taken from a check-in; the lead can still
+           * move it on the board.
+           */
+          const stage = r.stage && !(isASalesKind(kind) && r.kind === 'deal' && anEarlierStage(r.stage, same.stage, ground?.workStages)) ? r.stage : null;
+          const before = same.fields;
+          const fields = stamped(r, before, theStageOf(same, stage, !same.ownerParticipantId && r.ownerParticipantId && r.ownerParticipantId === speakerOf.get(r.sourceEntryId)
+            ? withAClaim({ ...((same.fields as any) ?? {}), ...r.fields }, r.ownerParticipantId, r.sourceEntryId ?? null, new Date())
+            : { ...((same.fields as any) ?? {}), ...r.fields }));
+          same.fields = fields;
           await (this.prisma as any).workItem.update({
             where: { id: same.id },
             data: {
-              ...(r.stage ? { stage: r.stage } : {}),
+              ...(stage ? { stage } : {}),
               ...(r.dueAt ? { dueAt: r.dueAt } : {}),
               /*
                * A record added on the board with nobody's name on it does not become the deal of whoever then
@@ -124,31 +261,172 @@ export class BoardListener {
                * a-claim-on-a-record-is-checked-first). One with a name keeps it.
                */
               /* Only the speaker's own claim. A record somebody says is a colleague's is not that colleague's claim. */
-              fields: !same.ownerParticipantId && r.ownerParticipantId && r.ownerParticipantId === speakerOf.get(r.sourceEntryId)
-                ? withAClaim({ ...((same.fields as any) ?? {}), ...r.fields }, r.ownerParticipantId, r.sourceEntryId ?? null, new Date())
-                : { ...((same.fields as any) ?? {}), ...r.fields },
+              fields,
               ...(fromSomebodyElse ? {} : { sourceEntryId: r.sourceEntryId }),
             },
           });
+          if (stage) same.stage = stage;
         } else {
-          const made = await (this.prisma as any).workItem.create({ data: { groundId: e.groundId, ...r } });
-          (already as any[]).push({ id: made?.id, kind: r.kind, name: r.name, fields: r.fields, ownerParticipantId: r.ownerParticipantId ?? null });
+          const fields = stamped(r, null, r.stage ? withTheStageKept(r.fields, r.stage, keptAt, 'check-in') : r.fields);
+          const made = await (this.prisma as any).workItem.create({ data: { groundId: e.groundId, ...r, fields } });
+          (already as any[]).push({ id: made?.id, kind: r.kind, name: r.name, fields, ownerParticipantId: r.ownerParticipantId ?? null, stage: r.stage ?? null, sourceEntryId: r.sourceEntryId ?? null, createdAt: keptAt });
         }
       }
       this.logger.log(`Kept ${kept.length} record(s) of ${kind} from check-in ${e.checkInId}.`);
+      if (isASalesKind(kind)) await this.fileTheBuyingDatesSaid(e.groundId, lines, saidIn);
     } catch (err: any) {
       this.logger.warn(`Reading the records for check-in ${e.checkInId} failed: ${err?.message}`);
     }
   }
 
+  /**
+   * WHAT A DEAL'S OWNER SAID OF IT, FILED ON THE DEAL (Hafsah's quality pass, 18 October; what-the-owner-said-of-each-deal). After
+   * the model's read of a sales check-in, the owner's own turns are read in order, with no model, and what they plainly say of each
+   * of their deals is kept: a quote and its amount (and the stage Quoted, never a stage back), the units wanted, the customer's yes
+   * to a quote, who decides, the person at the customer, the day a deposit is paid. Also run over the check-ins already on record
+   * by scripts/what-the-owner-said-of-each-deal.ts. Returns how many deals it changed.
+   */
+  async fileWhatTheOwnerSaid(groundId: string, checkInId: string, sessionNumber: number | null, keptAt: Date = new Date()): Promise<number> {
+    try {
+      const ground = await this.prisma.ground.findUnique({
+        where: { id: groundId },
+        select: { kindOfWork: true, workStages: true, participants: { select: { id: true, user: { select: { firstName: true } } } } } as any,
+      }) as any;
+      if (!isASalesKind(oneOfTheKinds(ground?.kindOfWork))) return 0;
+      const checkIn = await (this.prisma as any).checkIn.findUnique({ where: { id: checkInId }, select: { participantId: true } });
+      if (!checkIn?.participantId) return 0;
+      const deals = ((await (this.prisma as any).workItem.findMany({ where: { groundId, kind: 'deal', ownerParticipantId: checkIn.participantId }, select: { id: true, name: true, stage: true, fields: true } })) ?? []) as any[];
+      if (!deals.length) return 0;
+      const turns = ((await (this.prisma as any).conversationTurn.findMany({ where: { checkInId }, orderBy: { createdAt: 'asc' }, select: { role: true, content: true, createdAt: true } })) ?? []) as any[];
+      const ourNames = ((ground?.participants ?? []) as any[]).map((p) => String(p.user?.firstName ?? '')).filter(Boolean);
+      const said = whatTheOwnerSaidOfEachDeal(deals.map((d) => ({ id: d.id, name: d.name, stage: d.stage ?? null, fields: d.fields ?? null })), turns, ourNames);
+      const saidIn = { checkInId, sessionNumber, on: keptAt };
+      for (const [id, w] of said) {
+        const d = deals.find((x) => x.id === id);
+        const moved = w.stage && !anEarlierStage(w.stage, d.stage, ground?.workStages) ? w.stage : null;
+        /* The customer's no, said of it without its name, is kept on it unseen, for the board's lost deals (a-deal-that-was-dropped). */
+        const dropped = w.dropped && !(d.fields as any)?._dropped ? { _dropped: w.dropped } : {};
+        const after = withTheStageKept({ ...((d.fields as any) ?? {}), ...w.set, ...dropped }, moved, keptAt, 'check-in', { stage: d.stage ?? null, since: null });
+        await (this.prisma as any).workItem.update({ where: { id }, data: { ...(moved ? { stage: moved } : {}), fields: withTheCriteriaSaid(d.fields as any, after, saidIn) } });
+      }
+      return said.size;
+    } catch (err: any) {
+      this.logger.warn(`Filing what the owner said of each deal for check-in ${checkInId} failed: ${err?.message}`);
+      return 0;
+    }
+  }
+
+  /**
+   * A CUSTOMER'S BUYING DATE IS FILED ON THEIR DEAL (Hafsah's point 6, 17 October). "Rose said she will buy the two units at the
+   * end of the month, on October 30th." names no customer, only Rose, the Mama Mboga Mart deal's contact. Each line by a deal's
+   * owner that is about the deal (its name or its contact) and says when the customer will buy files that day on the deal as its
+   * "Buying date": the customer's, never the rep's own commitment. The latest said wins. Nothing else on the deal changes. Also
+   * run over a check-in's lines already on record by scripts/the-buying-dates-said.ts.
+   */
+  async fileTheBuyingDatesSaid(groundId: string, lines: { text: string; participantId: string | null; createdAt: Date | string }[], saidIn?: { checkInId: string | null; sessionNumber: number | null; on: Date }): Promise<number> {
+    try {
+      const deals = (await (this.prisma as any).workItem.findMany({ where: { groundId, kind: 'deal' }, select: { id: true, name: true, fields: true, ownerParticipantId: true } })) as any[];
+      let filed = 0;
+      for (const d of deals) {
+        const day = theBuyingDateTheySaid({ name: d.name, ownerParticipantId: d.ownerParticipantId, fields: d.fields as any }, lines);
+        if (!day || (d.fields as any)?.[BUYING_DATE] === day) continue;
+        const after = { ...((d.fields as any) ?? {}), [BUYING_DATE]: day };
+        await (this.prisma as any).workItem.update({ where: { id: d.id }, data: { fields: saidIn ? withTheCriteriaSaid(d.fields as any, after, saidIn) : after } });
+        filed += 1;
+      }
+      return filed;
+    } catch (err: any) {
+      this.logger.warn(`Filing the buying dates said on ${groundId} failed: ${err?.message}`);
+      return 0;
+    }
+  }
+
+  /**
+   * THE LEAD'S ANSWER ON A PRICE RANGE, FROM HER OWN CHECK-IN (Drop Access run 1, A6; a-deals-four-criteria, theRangeAnswerSaid).
+   * Grace said on day 10 "I decided that Tuskys Westgate's budget range counts, so Mercy's quote is fine." Kept exactly as her Yes
+   * or No on the board keeps it (BoardService.answerThePriceRange): one line in how we work, read by everybody, in the same words,
+   * written once. Only her own lines are read, only on a sales check-in, and never where an answer is on record already. Also run
+   * over the lines already on record by scripts/the-leads-range-answer-said.ts. Returns whether it wrote the line.
+   */
+  async fileTheLeadsRangeAnswer(groundId: string): Promise<boolean> {
+    try {
+      const ground = await this.prisma.ground.findUnique({
+        where: { id: groundId },
+        select: { kindOfWork: true, initiatorId: true, organizationId: true, participants: { select: { id: true, userId: true, partyType: true } } } as any,
+      }) as any;
+      if (!isASalesKind(oneOfTheKinds(ground?.kindOfWork)) || !ground?.initiatorId) return false;
+      /* A line everybody reads in how we work, so only with Release 1's sales board on, where the question itself is asked. */
+      if (!(await theReleaseOneSalesBoardIsOn(this.prisma, ground.organizationId))) return false;
+      if (await thePriceRangeAnswer(this.prisma, groundId)) return false;
+      const leads = ((ground.participants ?? []) as any[]).filter((p) => p.userId === ground.initiatorId || p.partyType === 'INITIATOR').map((p) => p.id);
+      if (!leads.length) return false;
+      const theirs = (await this.prisma.recordEntry.findMany({
+        where: { participantId: { in: leads }, disputedAt: null },
+        select: { text: true, createdAt: true },
+      })) as any[];
+      const answer = theLeadsRangeAnswerIn(theirs.map((l) => ({ text: cleanText(String(l.text ?? '')), createdAt: l.createdAt })));
+      if (!answer) return false;
+      await (this.prisma as any).groundContextItem.create({
+        data: { groundId, kind: 'WAY_OF_WORKING', text: theAnswerAsALine(THE_RANGE_QUESTION, answer === 'yes'), audience: 'EVERYONE', source: 'CHECK_IN', authorUserId: ground.initiatorId },
+      });
+      this.logger.log(`Kept the lead's answer on a price range from her check-in on ${groundId}.`);
+      return true;
+    } catch (err: any) {
+      this.logger.warn(`Keeping the lead's answer on a price range for ${groundId} failed: ${err?.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * A SALES AIM IS COUNTED FROM THE DEALS ON RECORD (Hafsah's answers of 17 October; a-sales-aim-is-counted-from-the-deals).
+   * When something new comes in, the count kept on each aim the deals count is brought up to the deals, and, when a round
+   * has closed, so is that round's snapshot, which was taken before. Returns the ids it counted, so the read of numbers
+   * from what was said leaves them alone. Best effort: if this fails, the board still counts from the deals when it is read.
+   */
+  async countTheAimsFromTheDeals(groundId: string, sessionNumber: number | null, now: Date = new Date()): Promise<Set<string>> {
+    const counted = new Set<string>();
+    try {
+      const ground = await this.prisma.ground.findUnique({
+        where: { id: groundId },
+        select: { kindOfWork: true, workStages: true, organizationId: true, objectives: { select: { id: true, name: true, ownerParticipantId: true, count: true } } } as any,
+      }) as any;
+      if (!isASalesKind(ground?.kindOfWork) || !(ground?.objectives ?? []).length) return counted;
+      /* Only with Release 1's sales board switched on for the organisation (release-one-sales-board). Off, each aim's count is
+         read from what was said, as it was before, so the board it returns to reads the count it had. */
+      if (!(await theReleaseOneSalesBoardIsOn(this.prisma, ground.organizationId))) return counted;
+      const deals = await theDealsOnRecord(this.prisma, groundId, { paymentRecord: true });
+      const zone = (await theOrganisationsZone(this.prisma as any, ground.organizationId)) ?? THE_PRODUCTS_OWN_ZONE;
+      const counts = theAimsTheDealsCount(ground.objectives, deals, theSalesStages(ground.workStages), now, zone);
+      for (const o of ground.objectives as any[]) {
+        const c = counts.get(o.id);
+        if (!c) continue;
+        counted.add(o.id);
+        if (o.count !== c.count) {
+          await this.prisma.groundObjective.update({ where: { id: o.id }, data: { count: Math.round(c.count) } }).catch(() => undefined);
+        }
+        if (sessionNumber != null) {
+          await (this.prisma as any).groundObjectiveSnapshot?.updateMany?.({
+            where: { groundId, objectiveId: o.id, sessionNumber },
+            data: { count: Math.round(c.count) },
+          })?.catch?.(() => undefined);
+        }
+      }
+    } catch (err: any) {
+      this.logger.warn(`Counting the aims from the deals for ${groundId} failed: ${err?.message}`);
+    }
+    return counted;
+  }
+
   @OnEvent(GroundworkEvents.ROUND_COMPLETED)
   async onRoundCompleted(e: RoundCompletedEvent) {
     await this.readWhatTheRoomIsAbout(e);
+    /* An aim the deals count is counted from them, never read off what was said (Hafsah's answer of 17 October). */
+    const fromTheDeals = await this.countTheAimsFromTheDeals(e.groundId, e.sessionNumber);
     try {
-      const targets = await this.prisma.groundObjective.findMany({
+      const targets = (await this.prisma.groundObjective.findMany({
         where: { groundId: e.groundId },
         select: { id: true, name: true, target: true, count: true, prevCount: true, ownerParticipantId: true, suggestedCount: true, suggestedSaid: true },
-      });
+      })).filter((t) => !fromTheDeals.has(t.id));
       if (!targets.length) return;
 
       /*
@@ -281,4 +559,14 @@ export class BoardListener {
       this.logger.warn(`Reading what the room is about for ${e.groundId} failed: ${err?.message}`);
     }
   }
+}
+
+/** Whether `next` comes before `now` in the check-in's stages (the lead's own, or the kit's six). */
+function anEarlierStage(next: string | null | undefined, now: string | null | undefined, leadsStages: unknown): boolean {
+  const own = Array.isArray(leadsStages) ? (leadsStages as unknown[]).filter((x): x is string => typeof x === 'string' && !!x.trim()) : [];
+  const order = own.length ? own : ['Contacted', 'Need established', 'Pitched', 'Qualified', 'Quoted', 'Won'];
+  const at = (s: string | null | undefined) => order.findIndex((x) => x.trim().toLowerCase() === String(s ?? '').trim().toLowerCase());
+  const a = at(next);
+  const b = at(now);
+  return a >= 0 && b >= 0 && a < b;
 }

@@ -1,5 +1,6 @@
 import { organisationsThatTurnedWhatsAppOn } from '../whatsapp/only-where-whatsapp-is-turned-on';
-import { theOpeningGoesToTheNumberJustAdded } from '../grounds/the-lead-adds-a-whatsapp-number';
+import { theWordForTheBill, aWordForTheBillMayBe } from '../grounds/collect-whats-owed';
+import { theOpeningsGoToANumberJustSaved } from '../grounds/the-lead-adds-a-whatsapp-number';
 import { whereTheyAreOnWhatsApp, WHERE_ON_WHATSAPP_SAYS, type WhereOnWhatsApp } from '../whatsapp/where-they-are-on-whatsapp';
 import { aNameTypedInLowerCase } from '../../common/a-name-typed-in-lower-case';
 import { theOrganisationsZone, isAZone, forgetTheOrganisationsZone } from '../../common/the-organisations-own-day';
@@ -31,6 +32,7 @@ import { theInvitationsWaiting, keepThemWaiting, stopWaiting, type AnInvitationW
 import { aLineOrNothing, wouldMakeALoop, CANNOT_REPORT_TO_THEMSELVES, THAT_WOULD_MAKE_A_LOOP, NOT_IN_THIS_ORGANISATION } from './where-they-sit';
 import { groundsAViewerMayList } from '../grounds/who-may-read-this-check-in';
 import { fullNameToCall } from '../engagement/a-name-to-call-them';
+import { itSendsFromTheirNumber, WHAT_SAYS_IT_WORKS } from '../whatsapp/a-connection-that-works';
 
 @Injectable()
 export class UsersService {
@@ -76,7 +78,7 @@ export class UsersService {
         select: { subscriptionPlan: true, subscriptionStatus: true, freeUntil: true, freePlan: true },
       }),
       this.prisma.apiCredential.count({ where: { organizationId, revokedAt: null } }),
-      this.prisma.whatsAppConnection.findUnique({ where: { organizationId }, select: { enabled: true } }).catch(() => null),
+      this.prisma.whatsAppConnection.findUnique({ where: { organizationId }, select: WHAT_SAYS_IT_WORKS }).catch(() => null),
       readerId ? this.prisma.user.findUnique({ where: { id: readerId }, select: { welcomeCardSeenAt: true } }) : null,
       /* Off when there is no WhatsApp service here at all, which is the safe direction. */
       this.whatsapp ? this.whatsapp.isEnabled().catch(() => false) : Promise.resolve(false),
@@ -90,7 +92,7 @@ export class UsersService {
       paying: isCovered(org ?? { subscriptionPlan: null, subscriptionStatus: null }),
       connected: keys > 0,
       whatsappOn,
-      whatsappConnected: !!wa?.enabled,
+      whatsappConnected: itSendsFromTheirNumber(wa),
       welcomeCardSeen: !!reader?.welcomeCardSeenAt,
     };
   }
@@ -99,6 +101,23 @@ export class UsersService {
   async theTimeZone(organizationId: string) {
     const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { timeZone: true } });
     return { timeZone: org?.timeZone ?? null, inUse: await theOrganisationsZone(this.prisma as any, organizationId) };
+  }
+
+  /**
+   * THE ORGANISATION'S OWN WORD FOR A BILL (release plan, Release 2): "fee note" at a law firm, "invoice" where nobody has said.
+   * Read and changed by an admin of the organisation; the scenario "Collect what's owed" uses it in what it says.
+   */
+  async theWordForTheBill(organizationId: string) {
+    const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { billWord: true } });
+    const word = theWordForTheBill(org);
+    return { word, setHere: !!org?.billWord, says: org?.billWord ? `Your organisation calls a bill a ${word}.` : `Nobody has said what your organisation calls a bill, so Groundwork says ${word}.` };
+  }
+
+  async setTheWordForTheBill(organizationId: string, word: unknown) {
+    const ok = aWordForTheBillMayBe(word);
+    if (!ok.ok) throw new BadRequestException(ok.says);
+    await this.prisma.organization.update({ where: { id: organizationId }, data: { billWord: ok.word } });
+    return this.theWordForTheBill(organizationId);
   }
 
   async setTheTimeZone(organizationId: string, timeZone: string | null) {
@@ -743,6 +762,25 @@ export class UsersService {
 
     /* Where each person is on WhatsApp, from the record (pilots on WhatsApp, 14 October): their number, and whether it is
        connected, waiting for their first message, or not connected yet. Read by an admin of this organisation only. */
+    /*
+     * THE NUMBER EVERY SENDER USES, NOT ONLY THE ONE ON THE SIGN-IN (Drop Access, 21 October). A number a lead added on a check-in's
+     * people list, or the HR system sent, is kept on the organisation's roster, and the openings go to it; this list read the sign-in
+     * alone, so a number saved there could not be found here. The roster's number first, then the sign-in's, as the senders read it.
+     */
+    const onTheRoster = new Map<string, string>();
+    if (users.length) {
+      const entries: any[] = await Promise.resolve((this.prisma as any).person?.findMany?.({
+        where: { organizationId, phone: { not: null }, OR: [{ linkedUserId: { in: ids } }, { email: { in: users.map((u) => u.email), mode: 'insensitive' } }] },
+        orderBy: { updatedAt: 'desc' },
+        select: { phone: true, linkedUserId: true, email: true },
+      })).catch(() => []);
+      const idOf = new Map(users.map((u) => [u.email.toLowerCase(), u.id]));
+      for (const e of entries ?? []) {
+        const who = (e.linkedUserId && ids.includes(e.linkedUserId) ? e.linkedUserId : null) ?? idOf.get(String(e.email ?? '').toLowerCase());
+        if (who && e.phone && !onTheRoster.has(who)) onTheRoster.set(who, e.phone);
+      }
+    }
+    for (const u of users as any[]) u.phoneNumber = onTheRoster.get(u.id) ?? u.phoneNumber ?? null;
     const onWhatsApp = new Map<string, WhereOnWhatsApp>();
     await Promise.all(users.map(async (u) => onWhatsApp.set(u.id, await whereTheyAreOnWhatsApp(this.prisma, u.phoneNumber).catch(() => (u.phoneNumber ? 'not-connected' : 'no-number') as WhereOnWhatsApp))));
 
@@ -903,8 +941,18 @@ export class UsersService {
   }
 
   async update(id: string, organizationId: string, dto: UpdateUserDto, _actingUserId: string) {
-    const user = await this.prisma.user.findFirst({ where: { id, organizationId } });
-    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
+    /*
+     * SOMEBODY WHO BELONGS HERE, WHICHEVER ORGANISATION THEY LAST LOOKED AT (Drop Access, 21 October). This read `User.organizationId`,
+     * the organisation a person last switched to, so an admin saving the number of somebody listed on People, who was looking at another
+     * organisation of theirs, was told "We could not find that sign-in" and nothing was saved. Their membership here says they belong,
+     * and with which role here.
+     */
+    const found = await this.prisma.user.findFirst({ where: { id, OR: [{ organizationId }, { memberships: { some: { organizationId } } }] } });
+    if (!found) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
+    const here = found.organizationId === organizationId
+      ? null
+      : await Promise.resolve((this.prisma as any).organizationMembership?.findFirst?.({ where: { userId: id, organizationId }, select: { role: true } })).catch(() => null);
+    const user = here?.role ? { ...found, role: here.role as any } : found;
 
     if (dto.email && dto.email.toLowerCase() !== user.email) {
       const taken = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
@@ -961,7 +1009,7 @@ export class UsersService {
        transaction, so a number that needs its country refuses with a sentence and nothing is half written. */
     const phoneNumber = dto.phoneNumber === undefined ? undefined : dto.phoneNumber?.trim() ? await tidyANumberFor(this.prisma as any, organizationId, dto.phoneNumber) : null;
     /* A number on somebody else's sign-in is refused with a sentence, before anything is written (decision 106 item 3). */
-    if (phoneNumber !== undefined) await refuseANumberOnSomebodyElse(this.prisma, phoneNumber, id);
+    if (phoneNumber !== undefined) await refuseANumberOnSomebodyElse(this.prisma, phoneNumber, id, organizationId);
     const done = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.user.update({
         where: { id },
@@ -981,14 +1029,10 @@ export class UsersService {
       return { ...updated, role: dto.role as string };
     });
     /* The roster entry follows the sign-in (decision 106 item 3). */
-    if (phoneNumber !== undefined) await aSignInsNumberChanged(this.prisma, id, phoneNumber);
+    if (phoneNumber !== undefined) await aSignInsNumberChanged(this.prisma, id, phoneNumber, organizationId);
     /* A number an admin adds on People is their first contact on WhatsApp: each open session's opening goes there now (D2; pilots on WhatsApp, 14 October). */
     if (phoneNumber && this.whatsapp) {
-      try {
-        const on = (await organisationsThatTurnedWhatsAppOn(this.prisma, this.whatsapp as any, [organizationId])).has(organizationId);
-        const theirs: any[] = await this.prisma.groundParticipant.findMany({ where: { userId: id, leftAt: null, ground: { organizationId } }, select: { id: true, groundId: true } });
-        for (const p of theirs) await theOpeningGoesToTheNumberJustAdded(this.prisma, this.whatsapp as any, { groundId: p.groundId, participantId: p.id, organizationId, phone: phoneNumber }, on);
-      } catch { /* The number is kept whether or not the opening could go. */ }
+      await theOpeningsGoToANumberJustSaved(this.prisma, this.whatsapp as any, { userId: id, organizationId, phone: phoneNumber }).catch(() => undefined);
     }
     /* A new admin may be the one an appeal of a review waits for (decision 113); the reviews suite tells them. */
     if (dto.role === 'ADMIN') this.events?.emit?.(GroundworkEvents.ADMIN_MADE, { organizationId, userId: id } satisfies AdminMadeEvent);

@@ -261,15 +261,20 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
                     to={p.path}
                     aria-current={here ? 'page' : undefined}
                     style={{
-                      display: 'block',
-                      padding: '5px 8px',
+                      /* The kit's rail (app.css .nav, .nav.on): the page you are on is the surface
+                         with a hairline and bold words, not a navy fill. */
+                      display: 'flex',
+                      alignItems: 'center',
+                      minHeight: 40,
+                      padding: '0 8px',
                       marginLeft: -8,
-                      borderRadius: 6,
-                      fontSize: 13,
+                      borderRadius: 8,
+                      fontSize: 14,
                       textDecoration: 'none',
-                      fontWeight: here ? 700 : 500,
-                      color: here ? 'white' : 'var(--gw-navy)',
-                      background: here ? 'var(--gw-navy)' : 'transparent',
+                      fontWeight: here ? 700 : 400,
+                      color: 'var(--gw-text)',
+                      background: here ? 'var(--gw-card)' : 'transparent',
+                      boxShadow: here ? 'inset 0 0 0 1px var(--gw-border)' : 'none',
                     }}
                   >
                     {p.name}

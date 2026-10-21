@@ -231,7 +231,6 @@ export function Message({ role, content }: { role: 'AI' | 'PERSON'; content: str
         fontSize: 14,
         lineHeight: 1.65,
         whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0,
-        boxShadow: mine ? 'none' : '0 1px 3px rgba(0,0,0,.06)',
       }}
     >
       {nothingInternalReachesTheBubble(content)}
@@ -319,10 +318,10 @@ export function Composer({ groundId, openCheckInId, openSessionNumber, totalSess
   if (openCheckInId) {
     return (
       <div style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 14, marginTop: 18 }}>
-        <button
+        <button className="gwui-btn gwui-btn-primary"
           onClick={() => (onOpenSession ? onOpenSession() : navigate(`/checkin/${openCheckInId}`))}
           disabled={openPending}
-          style={{ width: '100%', padding: '13px 16px', borderRadius: 10, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+          style={{ width: '100%' }}
         >
           {/* The total rides along here on purpose. In the card view it lived on the
               open-session card; in a conversation there is nowhere else for "how
@@ -381,7 +380,7 @@ export function Composer({ groundId, openCheckInId, openSessionNumber, totalSess
         </div>
       )}
 
-      <textarea
+      <textarea className="gwui-input"
         value={text}
         onChange={e => setText(e.target.value)}
         onKeyDown={e => {
@@ -389,7 +388,7 @@ export function Composer({ groundId, openCheckInId, openSessionNumber, totalSess
         }}
         placeholder="Note something for your next check-in…"
         rows={2}
-        style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--gw-border)', fontSize: 13.5, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical', outline: 'none', background: 'white' }}
+        style={{ width: '100%', resize: 'vertical' }}
       />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 8 }}>
         {/*
@@ -429,10 +428,10 @@ export function Composer({ groundId, openCheckInId, openSessionNumber, totalSess
             onChange={e => { const f = e.target.files?.[0]; if (f) upload.mutate(f); e.target.value = '' }}
           />
         </label>
-        <button
+        <button className="gwui-btn gwui-btn-primary"
           onClick={() => text.trim() && add.mutate(text.trim())}
           disabled={!text.trim() || add.isPending}
-          style={{ flexShrink: 0, padding: '9px 16px', borderRadius: 8, background: text.trim() ? 'var(--gw-navy)' : 'var(--gw-border)', color: text.trim() ? 'white' : 'var(--gw-muted)', fontSize: 13, fontWeight: 700, border: 'none', cursor: text.trim() ? 'pointer' : 'default', fontFamily: 'inherit' }}
+          style={{ flexShrink: 0 }}
         >
           {add.isPending ? 'Saving…' : 'Note it'}
         </button>
@@ -538,10 +537,10 @@ export function GroundChat({
           first session, when there is nothing above it.
         */}
         {isParty && openCheckInId && sessions.length > 0 && (
-          <button
+          <button className="gwui-btn gwui-btn-primary"
             onClick={() => (onOpenSession ? onOpenSession() : navigate(`/checkin/${openCheckInId}`))}
             disabled={openPending}
-            style={{ width: '100%', padding: '13px 16px', borderRadius: 10, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 6 }}
+            style={{ width: '100%', marginBottom: 6 }}
           >
             Do check-in {openSessionNumber ?? sessions.length + 1}{totalSessions ? ` of ${totalSessions}` : ''} · about ten minutes
           </button>

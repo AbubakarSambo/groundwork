@@ -66,7 +66,8 @@ describe('after one routine email, to Vera', () => {
     const w = world();
     await w.emailed('vera@x.test', 'sendNudge');
     expect(await w.ask('+254700000001', 'overdue')).toBe(NOT_TODAY);
-    expect(await w.ask('+254700000001', 'lead-summary')).toBe(NOT_TODAY);
+    /* Changed 18 October (standing decision, Drop Access run 1 item 16): the lead's daily summary is her one routine message and it wins; the morning's routine email waits for it instead. */
+    expect(await w.ask('+254700000001', 'lead-summary')).toBeNull();
   });
 
   it('but a check-in opening or closing, and an approval, still reach her on WhatsApp', async () => {
@@ -132,6 +133,7 @@ describe('nobody else, and no other day', () => {
 
 describe('what counts as routine', () => {
   it('is the mail Groundwork decided to send, without the openings, closings and approvals', () => {
+    /* "Runs out in 7 days" stays an email of its own, the only warning before a check-in is stalled (Release 1, pull request 5). */
     for (const s of ['sendSessionReady', 'sendTimeRunningOut', 'sendStalledNotification', 'sendReopenedNotification', 'sendApprovalsSummary', 'sendWebhookEndpointDying']) expect(ROUTINE_EMAILS.has(s)).toBe(false);
     for (const s of ['sendNudge', 'sendAbsenceReminder', 'sendRoundDigest', 'sendFeedbackRequest']) expect(ROUTINE_EMAILS.has(s)).toBe(true);
     /* Not routine, and never held for the day's one: what was asked for by a press or a request, what is billing, an invitation about to lapse, a participant being blocked, and the lead's Friday letter (it outranks the morning's WhatsApp summary). */

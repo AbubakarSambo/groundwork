@@ -27,10 +27,11 @@
  */
 
 /** What the link says on the mail. Plain, and it does not thank them for anything. */
-export const STOP_LINE = (url: string): string =>
-  `<p style="font-size:12px;color:#9B9590;margin-top:22px;">` +
-  `Would you rather we stopped reminding you? <a href="${url}" style="color:#9B9590;">Stop the reminders</a>. ` +
-  `Your invitation keeps working, and nothing is recorded either way.` +
+/* With the direct morning on (email/a-direct-email.ts) the way out is the link alone, without the note about what is recorded. */
+export const STOP_LINE = (url: string, direct = false): string =>
+  `<p style="font-size:13px;color:#4E4236;margin-top:22px;">` +
+  `Would you rather we stopped reminding you? <a href="${url}" style="color:#4E4236;">Stop the reminders</a>.` +
+  (direct ? '' : ` Your invitation keeps working, and nothing is recorded either way.`) +
   `</p>`;
 
 /** And what the page says back, once. It has to be believable to somebody who has had enough. */

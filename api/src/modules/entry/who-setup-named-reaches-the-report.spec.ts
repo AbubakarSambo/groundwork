@@ -24,7 +24,7 @@ describe('who setup named reaches the report', () => {
 
   it('the report route takes the list setup collected', () => {
     expect(controller).toMatch(/peopleNamed\?: string\[\];/);
-    expect(controller).toMatch(/this\.service\.report\([^)]*dto\.peopleNamed\)/);
+    expect(controller).toMatch(/this\.service\.report\([^)]*dto\.peopleNamed[,)]/);
   });
 
   it('and the read is handed it, not left to find it in the turns', () => {

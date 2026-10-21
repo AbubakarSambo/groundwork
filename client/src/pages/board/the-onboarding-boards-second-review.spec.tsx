@@ -130,14 +130,14 @@ describe('fix 1: the new hire reads the same open sections as his lead, not one 
 })
 
 describe('fix 2: every history heading is true of what is under it', () => {
-  it('the lead reads the new hire’s row under his name, and her own row under "Your own record"', async () => {
+  /* Screen match, 16 October: the lead's onboarding board as pictured shows the new hire's history only (kwame-board.jpg); "Your own record" is not on it. */
+  it('the lead reads the new hire’s history under his name, and no "Your own record"', async () => {
     me = { id: 'u-amina', firstName: 'Amina', role: 'MEMBER' }
     renderBoard(boardAsLead())
     await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })
-    const tobis = screen.getByText('Tobi’s history').closest('section') as HTMLElement
+    const tobis = screen.getByText(/^Tobi’s history/).closest('section') as HTMLElement
     expect(within(tobis).getByText('Tobi Adewale has answered 4 sessions and made 7 commitments.')).toBeTruthy()
-    const own = screen.getByText('Your own record').closest('section') as HTMLElement
-    expect(within(own).getByText('You have answered 4 sessions.')).toBeTruthy()
+    expect(screen.queryByText('Your own record')).toBeNull()
   })
 
   it('the new hire reads "Your history", never "Tobi’s history"', async () => {
@@ -153,37 +153,16 @@ describe('fix 2: every history heading is true of what is under it', () => {
   })
 })
 
-describe('fix 4: a not-known work-record entry is left out once a filled section already draws under the same heading', () => {
-  /*
-   * PHONE CHECK, ITEM 8: SAID ONCE, NOT TWICE (OR THREE TIMES). These two assertions used to
-   * expect the "Groundwork does not know..." sentence 2 or 3 times over - the very bug the phone
-   * check found on this board (five near-identical blocks, each the same sentence). Now that every
-   * remaining not-known work-record reads the same `why` collapses to the one sentence (BoardPage's
-   * `workRecordsAllNotKnownSameWhy`, widened from project boards to onboarding too), this checks it
-   * reads once, with no stray "Deal grid" or "Every deadline" heading beside it - "Work plan" is
-   * still left out of the fold entirely, since the switchboard's own filled one already draws.
-   */
-  it('leaves "Work plan" (not-known) out of the fold, since the switchboard’s own filled "Work plan" already draws, and says the rest once', async () => {
+/*
+ * Screen match, 16 October: the lead's onboarding board as pictured has no fold and no "Work plan" section
+ * (kwame-board.jpg). These two used to pin how the fold said the not-known sentence once; there is no fold now.
+ */
+describe('fix 4, as pictured: no fold on the lead’s onboarding board', () => {
+  it('reads no "Groundwork does not know..." sentence and no fold', async () => {
     me = { id: 'u-amina', firstName: 'Amina', role: 'MEMBER' }
     renderBoard(boardAsLead())
     await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })
-    const workPlanHeadings = screen.getAllByText('Work plan')
-    expect(workPlanHeadings).toHaveLength(1)
-    expect(screen.getByText('Who is doing what, and by when.')).toBeTruthy()
-    expect(screen.getAllByText('Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind.')).toHaveLength(1)
-    const fold = screen.getByText('Everything else from this check-in').closest('details') as HTMLElement
-    expect(within(fold).queryByText('Deal grid')).toBeNull()
-    expect(within(fold).queryByText('Every deadline')).toBeNull()
-  })
-
-  it('without a filled "Work plan", the not-known entries still say the one sentence once, with no per-section heading', async () => {
-    me = { id: 'u-amina', firstName: 'Amina', role: 'MEMBER' }
-    renderBoard(boardAsLead({ workPlan: undefined }))
-    await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })
-    expect(screen.getAllByText('Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind.')).toHaveLength(1)
-    const fold = screen.getByText('Everything else from this check-in').closest('details') as HTMLElement
-    expect(within(fold).queryByText('Work plan')).toBeNull()
-    expect(within(fold).queryByText('Deal grid')).toBeNull()
-    expect(within(fold).queryByText('Every deadline')).toBeNull()
+    expect(screen.queryByText('Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind.')).toBeNull()
+    expect(screen.queryByText('Everything else from this check-in')).toBeNull()
   })
 })

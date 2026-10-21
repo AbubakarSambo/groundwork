@@ -1,3 +1,4 @@
+import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
 import { WAITING_TO_BE_LET_IN } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { asksWhatWeKnowOfTheirJob, parseAJobCorrection, theCorrectionSaidBack, whatTheyToldUs, SHARE_KIND as JOB_CORRECTION_KIND } from './my-job-in-ask';
 import { correctTheirJob, theirJobForThem } from '../suites/correct-their-job';
@@ -43,7 +44,7 @@ import {
 import { KnowledgeService, STOPWORDS } from '../knowledge/knowledge.service';
 import {
   ADDED_TO_THE_HANDBOOK, FOR_THE_ORGANISATION, NOT_ADDED, NO_WORDS_IN_IT, OFFER_FOR_THE_ORGANISATION, ONLY_AN_ADMIN_ADDS_ONE,
-  ORGANISATION_DOCUMENT_KIND, SAYS_IT_IS_FOR_THE_ORGANISATION, itsParts, whatTheDocumentSays,
+  ORGANISATION_DOCUMENT_KIND, SAYS_IT_IS_FOR_THE_ORGANISATION, SAYS_IT_IS_FOR_THE_WHOLE_ORGANISATION, itsParts, whatTheDocumentSays,
 } from './a-document-for-the-whole-organisation';
 import { keptForTheOrganisation, keptThatTouches, mayReadWhatIsKept } from '../knowledge/organisation-memory';
 import { LeaveBoardService } from '../suites/the-leave-board.service';
@@ -1112,6 +1113,10 @@ export class AssistantService {
       return rules('how_am_i_doing', text('I cannot match you to a check-in, so I have nothing to go on yet.'));
     }
 
+    /* Judgements of a person off for the organisation: no coaching step is told (organisation/person-judgements.ts). */
+    if (!(await thePersonJudgementsAreOn(this.prisma, organizationId))) {
+      return rules('how_am_i_doing', text('Your organisation does not show coaching about people here, so there is no step to tell you. What you said you would do is on your page.'));
+    }
     const state = await this.prisma.coachingState.findFirst({
       /* On WhatsApp, never a step from a check-in kept in the app (decision 82, item 7). */
       where: { participant: { email: person.email, ground: { organizationId }, ...this.notInAKeptCheckIn(await keptInTheApp(this.prisma as any, organizationId)) } },
@@ -3419,6 +3424,15 @@ export class AssistantService {
     const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { id: true } });
     const document = asksToAddADocument(message);
     if (document && person) {
+      /*
+       * "FOR THE WHOLE ORGANISATION" IS WHERE IT GOES, EVEN WITH A CHECK-IN'S SETUP CONVERSATION OPEN (local test of staging,
+       * 15 October). Hafsah, an admin who runs "Sales check-in", pressed Ask's "+" while its setup conversation was waiting;
+       * she sent "I want to add a document for the whole organisation." and read "It will go on "Sales check-in"". An admin
+       * who says so is offered the organisation's own document, exactly as with no conversation open.
+       */
+      if (document === 'wants' && SAYS_IT_IS_FOR_THE_WHOLE_ORGANISATION.test(message) && (await this.isAnAdminHere(organizationId, userId).catch(() => false))) {
+        return this.offerADocumentForTheOrganisation(organizationId);
+      }
       if (document === 'wants') return this.addADocument(organizationId, person.id, who, message, groundId, userId);
       return this.whatTheDocumentHolds(organizationId, person.id, who, userId, groundId, message);
     }

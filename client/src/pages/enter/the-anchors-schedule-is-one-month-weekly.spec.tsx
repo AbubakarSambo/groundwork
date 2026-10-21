@@ -80,6 +80,8 @@ describe("the anchor's schedule default is one month, weekly", () => {
     seedAnchorDraft()
     renderPage()
     const emailField = await screen.findByPlaceholderText(/your@email/i, {}, { timeout: 4000 })
+    /* The save step asks "Your name" now (local test of staging, 15 October). */
+    { const yourName = screen.queryByPlaceholderText('Your name'); if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } }) }
     fireEvent.change(emailField, { target: { value: 'lead@x.test' } })
     fireEvent.click(screen.getByRole('button', { name: /^Start my Groundwork\.$/i }))
 
@@ -109,6 +111,8 @@ describe('screen fault 2 (live walk, 6 October 2026): the name is the served sen
     seedAnchorDraft()
     renderPage()
     const emailField = await screen.findByPlaceholderText(/your@email/i, {}, { timeout: 4000 })
+    /* The save step asks "Your name" now (local test of staging, 15 October). */
+    { const yourName = screen.queryByPlaceholderText('Your name'); if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } }) }
     fireEvent.change(emailField, { target: { value: 'lead@x.test' } })
     fireEvent.click(screen.getByRole('button', { name: /^Start my Groundwork\.$/i }))
 
@@ -121,6 +125,8 @@ describe('screen fault 2 (live walk, 6 October 2026): the name is the served sen
     seedAnchorDraft()
     renderPage()
     const emailField = await screen.findByPlaceholderText(/your@email/i, {}, { timeout: 4000 })
+    /* The save step asks "Your name" now (local test of staging, 15 October). */
+    { const yourName = screen.queryByPlaceholderText('Your name'); if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } }) }
     fireEvent.change(emailField, { target: { value: 'lead@x.test' } })
     fireEvent.click(screen.getByRole('button', { name: /^Start my Groundwork\.$/i }))
 

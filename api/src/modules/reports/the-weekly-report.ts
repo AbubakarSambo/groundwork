@@ -34,6 +34,7 @@ import { aDeadlineIsDone } from '../board/a-measure-that-goes-down-is-still-goin
 import { aCountThatMovedSaid, theMoneyItCountsIn } from './a-count-that-moved-is-one-sentence';
 import { inOurVoice } from './what-the-record-shows-over-time';
 import { theWeekOf } from './the-weekly-sentence-about-each-person';
+import type { TheSalesWeek, ATargetFromTheDeals } from './the-sales-week-in-numbers';
 
 /* ------------------------------------------------------------------------------------------------
  * WHAT IS KEPT WHEN A CHECK-IN COMES IN. Report labels, never names.
@@ -51,6 +52,12 @@ export interface AWeeksTarget {
   from: number | null;
   /** The person who holds it set it themselves (decision 75, item 37). Absent on a week kept before. */
   setByTheHolder?: boolean;
+  /** On a sales check-in: set by whoever runs it, set on the board, and what the deals on record hold for it (the-sales-week-in-numbers). */
+  setByTheLead?: boolean;
+  setOnTheBoard?: boolean;
+  fromTheDeals?: ATargetFromTheDeals | null;
+  /** On a sales check-in, the count as read from what was said, before the deals counted it; served where Release 1's board is off. */
+  countSaid?: number;
 }
 
 export interface AWeeksCommitment {
@@ -91,13 +98,17 @@ export interface AWeeksCount {
   fromMemory: number;
 }
 
-export type WhereItComesFrom = 'a blocker' | 'a disagreement' | 'something that kept happening' | 'the plan' | 'your own notes';
+export type WhereItComesFrom = 'a blocker' | 'a blocker that keeps coming back' | 'a disagreement' | 'something that kept happening' | 'the plan' | 'your own notes';
 
 export interface AThingForTheLead {
   do: string;
   why: string;
   changes?: string;
   from: WhereItComesFrom;
+  /** A difference on a sales check-in that is only a target said again (point 9): left out at the read where Release 1's switch is on. */
+  onlyATargetSaidAgain?: true;
+  /** A goal the lead set and has not told its person about (a-goal-not-told-stays-with-the-lead). */
+  untoldGoal?: true;
 }
 
 export interface TheWeeksFacts {
@@ -119,6 +130,8 @@ export interface TheWeeksFacts {
   cleared: AWeeksHandoff[];
   /** For the person who runs the check-in only, written by report label. */
   forTheLead: AThingForTheLead[];
+  /** On a sales check-in only: what the deals on record did this week, counts only (the-sales-week-in-numbers). */
+  sales?: TheSalesWeek;
 }
 
 /** The row as stored: the first version kept only the array of sentences. */
@@ -146,15 +159,30 @@ function aDayInLagos(d: Date): { day: number; month: string; key: string } {
 
 /**
  * "This week, 21 to 23 Sep, so far", as the prototype heads it, while the week is still going. A week
- * that has ended reads "The week of 21 to 25 Sep". The last day is the day the last check-in came in.
+ * that has ended reads "The week of 21 to 25 Sep", to the day the last check-in came in; a week still going runs to today.
  */
-export function theWeeksHeading(weekStart: string, lastAt: Date | string | null, now: Date = new Date()): string {
+export function theWeeksHeading(
+  weekStart: string, lastAt: Date | string | null, now: Date = new Date(),
+  /*
+   * A DAILY CHECK-IN'S WEEK RUNS TO ITS LAST CHECK-IN, AND SAYS WHEN IT WAS WRITTEN (quality pass, 18 October, W-1): Grace read "This week,
+   * 12 to 18 Oct, so far" on a report written on Thursday 15 October from check-ins up to Wednesday 14 October. Each day of a daily
+   * check-in has its own check-in, so the days after the last one are days nothing came in yet.
+   */
+  opts: { cadence?: string | null; writtenAt?: Date | string | null } = {},
+): string {
   const start = aDayInLagos(new Date(`${weekStart}T00:00:00+01:00`));
-  const end = lastAt ? aDayInLagos(new Date(lastAt)) : start;
+  /* While the week is going, "so far" runs to today (screen match, 16 October: a weekly check-in that met on Monday read
+     "This week, 21 Sep, so far" on Wednesday; the picture says "21 to 23 Sep"). A week that has ended runs to its last check-in. */
+  const going = theWeekOf(now).key === weekStart;
+  const daily = opts.cadence === 'DAILY' && !!lastAt;
+  const end = going && !daily ? aDayInLagos(now) : lastAt ? aDayInLagos(new Date(lastAt)) : start;
   const range = end.key <= start.key
     ? `${start.day} ${start.month}`
     : start.month === end.month ? `${start.day} to ${end.day} ${end.month}` : `${start.day} ${start.month} to ${end.day} ${end.month}`;
-  return theWeekOf(now).key === weekStart ? `This week, ${range}, so far` : `The week of ${range}`;
+  if (!going) return `The week of ${range}`;
+  const written = daily && opts.writtenAt ? new Date(opts.writtenAt) : null;
+  const writtenDay = written ? new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Africa/Lagos' }).format(written) : null;
+  return writtenDay && aDayInLagos(written as Date).key > end.key ? `This week, ${range}, so far. Written ${writtenDay}.` : `This week, ${range}, so far`;
 }
 
 /** The sentence under the heading, from the prototype. A check-in that is not daily has no daily reports. */
@@ -211,7 +239,9 @@ export type Whose = 'team' | 'you' | { label: string };
    A capital word followed by "is", "has", "will" and the like is somebody, unless it is an ordinary word such as "The". */
 const AN_ORDINARY_FIRST_WORD = /^(?:The|A|An|This|That|These|Those|My|Our|Your|Their|His|Her|Its|Next|Every|Each|All|Some|No|Any|It|There)\b/;
 const SOMEBODY_FIRST = /^\p{Lu}\p{Ll}+(?:['’]s)?\s+(?:is|are|was|has|had|will|would|wants|aims|plans|hopes|needs|said|says|set)\b/u;
-const lowerFirst = (s: string) => (/^\p{Lu}\p{Ll}/u.test(s) && !/^\p{Lu}\p{Ll}+\s+\p{Lu}/u.test(s) && (AN_ORDINARY_FIRST_WORD.test(s) || !SOMEBODY_FIRST.test(s)) ? s.charAt(0).toLowerCase() + s.slice(1) : s);
+/* A name said as whose it is, "Aisha’s share", stays a name too (screen match, 16 October: the tile read "aisha's share"). */
+const A_NAME_AS_WHOSE = /^\p{Lu}\p{Ll}+['’]s\s/u;
+const lowerFirst = (s: string) => (/^\p{Lu}\p{Ll}/u.test(s) && !(A_NAME_AS_WHOSE.test(s) && !AN_ORDINARY_FIRST_WORD.test(s) && !/^Today['’]s\s/.test(s)) && !/^\p{Lu}\p{Ll}+\s+\p{Lu}/u.test(s) && (AN_ORDINARY_FIRST_WORD.test(s) || !SOMEBODY_FIRST.test(s)) ? s.charAt(0).toLowerCase() + s.slice(1) : s);
 
 /**
  * ONE TARGET, AS THE WEEK MOVED IT. The aim or limit itself, and whether it has been reached or gone
@@ -228,7 +258,10 @@ export function aTargetThisWeek(t: AWeeksTarget, whose: Whose, againstTheAim: bo
   /* A share is said with its "%" (decision 75, item 17). */
   const n = (x: number) => (direction === 'RATE' ? `${aNumberPeopleCanRead(x)}%` : `${aNumberPeopleCanRead(x)}${money && x !== 0 ? ` ${money}` : ''}`);
   /* A person's own aim is said as theirs, never as a number somebody set for them (decision 75, item 37). */
-  const whoseWords = whose === 'team' ? ''
+  /* "Aisha’s share" already says whose it is: ", Aisha Otieno's number" after it said it twice. */
+  const firstOfWhose = typeof whose === 'object' ? (whose.label.trim().split(/\s+/)[0] ?? '') : '';
+  const alreadySaysWhose = !!firstOfWhose && new RegExp(`^${firstOfWhose.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['’]s\\s`, 'u').test(readable);
+  const whoseWords = whose === 'team' || alreadySaysWhose ? ''
     /* "3 shops in Kilimani, your own aim" and ", Amani Wekesa's own aim" (request 117, part 11). */
     : t.setByTheHolder ? (whose === 'you' ? ', your own aim' : `, ${whose.label}'s own aim`)
       : whose === 'you' ? ', your own number' : `, ${whose.label}'s number`;
@@ -345,6 +378,8 @@ export function whatWasSaidAndWhatTheProofShows(c: Omit<AWeeksCount, 'participan
 export interface WhatChanged {
   moved: string[];
   dropped: string[];
+  /** How somebody changed the way they work this week, as the kit's "Adapted" (quality pass, 18 October, W-6). Only where there is one. */
+  adapted?: string[];
   result: string[];
 }
 
@@ -433,14 +468,27 @@ export interface AThingToDo {
   comesFrom: string;
 }
 
+/*
+ * As every weekly report's picture says it (screen match, 16 October): "This comes from a blocker." for a wait raised this
+ * week, "This comes from a blocker that keeps coming back." for one still open from before the week began, "From a
+ * pattern" for something that kept happening, "Decision needed" for something the lead wrote down to decide, and "From
+ * your commitments" for what the reader said they would do (programme-, founder-, support-, eng- and ops-weekly-report).
+ */
 export const COMES_FROM: Record<WhereItComesFrom | 'what you said you would do', string> = {
   'a blocker': 'This comes from a blocker.',
+  'a blocker that keeps coming back': 'This comes from a blocker that keeps coming back.',
   'a disagreement': 'This comes from a disagreement in the team.',
-  'something that kept happening': 'This comes from something that kept happening.',
+  'something that kept happening': 'From a pattern',
   'the plan': 'This comes from the plan.',
-  'your own notes': 'This comes from something you wrote down to decide.',
-  'what you said you would do': 'This comes from what you said you would do.',
+  'your own notes': 'Decision needed',
+  'what you said you would do': 'From your commitments',
 };
+
+/** A wait still open from before the week began has come back week after week, and is told as one. */
+export function aBlockerFromBeforeTheWeek(from: WhereItComesFrom, raisedAt: Date | string | null | undefined, weekStart: Date): WhereItComesFrom {
+  if (from !== 'a blocker' || !raisedAt) return from;
+  return new Date(raisedAt).getTime() < weekStart.getTime() ? 'a blocker that keeps coming back' : from;
+}
 
 /** Where one of Today's "what only the lead can settle" items comes from, read off its id. */
 export function whereItComesFrom(id: string): WhereItComesFrom {
@@ -469,3 +517,21 @@ export function yourOwnToDo(c: AWeeksCommitment): AThingToDo | null {
 }
 
 export const ourVoice = inOurVoice;
+
+/**
+ * THE WEEK AS IT READ BEFORE RELEASE 1'S SALES BOARD (release-one-sales-board), for an organisation that has it switched off:
+ * no week's deals, and each target at the count read from what was said. Pure; the stored week is never changed.
+ */
+export function asTheWeekReadBeforeReleaseOne<F extends { sales?: unknown; targets?: AWeeksTarget[] } | null | undefined>(facts: F): F {
+  if (!facts) return facts;
+  const { sales: _sales, ...rest } = facts as any;
+  void _sales;
+  return {
+    ...rest,
+    targets: ((facts as any).targets ?? []).map((t: AWeeksTarget) => {
+      const { fromTheDeals: _f, setByTheLead: _l, setOnTheBoard: _b, countSaid, ...kept } = t;
+      void _f; void _l; void _b;
+      return { ...kept, count: typeof countSaid === 'number' ? countSaid : t.count };
+    }),
+  } as F;
+}

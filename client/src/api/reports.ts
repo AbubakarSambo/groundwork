@@ -54,6 +54,14 @@ export const reportsApi = {
 
   /* The route replies with when it happened, not the whole report (engine answer 43a) - the
      report itself is refetched separately once the release invalidates its query. */
+  /** "Hold it": today's team report waits until the lead shares it herself (Hafsah's answer 5, 16 October 2026). */
+  hold: (groundId: string) =>
+    apiClient.post<{ sessionNumber: number; held: boolean; says: string }>(`/grounds/${groundId}/report/hold`).then(r => r.data),
+
+  /** When today's team report is shared, as this reader is told it: the lead's words, or a team member's. */
+  sharing: (groundId: string) =>
+    apiClient.get<{ sessionNumber: number; shared: boolean; held: boolean; at: string | null; says: string }>(`/grounds/${groundId}/report/sharing`, { skipNotFoundToast: true } as any).then(r => r.data),
+
   release: (groundId: string) =>
     apiClient.post<{ groundId: string; releasedAt: string }>(`/grounds/${groundId}/report/release`).then(r => r.data),
 
@@ -96,6 +104,8 @@ export const reportsApi = {
 
 /** `GET /grounds/:groundId/report/week`. See reportsApi.week above for how it is drawn. */
 export interface WeeklyReport {
+  /** For the person who runs the check-in, where the direct morning is on, the latest week only: the weekly letter's three parts (#396). */
+  forTheLead?: { target: string | null; movedWithProof: string[]; needsYou: { says: string; evidence: string[] }[] }
   /** The light report's one fact for each folded part, from the week as this reader is served it (api/src/modules/reports/a-report-at-a-glance.ts). */
   inThisReport?: { threeInARow?: string; saidAndProof?: string; whatChanged?: string }
   weekStart: string | null
@@ -106,9 +116,13 @@ export interface WeeklyReport {
   inNumbers?: { figure: string; of: string; says: string }[]
   eachPerson: { who: string; isYou: boolean; says: string }[]
   acrossTheTeam?: string[]
+  /** On a sales check-in (Release 1): what this week shows, in paragraphs read from the deals, drawn in place of eachPerson and acrossTheTeam. */
+  whatThisWeekShows?: string[]
   threeInARow?: { who: string; isYou: boolean; says: string }[]
   saidAndProof?: string | null
-  whatChanged?: { moved: string[]; dropped: string[]; result: string[] }
+  whatChanged?: { moved: string[]; dropped: string[]; adapted?: string[]; result: string[] }
+  /** A sales week read from the record: forNextWeek is in the order to do it (quality pass, 18 October, W-7). */
+  forNextWeekIsRanked?: boolean
   forNextWeek?: { do: string; why: string; comesFrom: string }[]
 }
 

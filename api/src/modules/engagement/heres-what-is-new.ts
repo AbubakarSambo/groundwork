@@ -1,3 +1,4 @@
+import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { whoHasNotJoinedYet, WHAT_SAYS_SOMEBODY_JOINED } from '../grounds/invited-not-joined-yet';
 import { wasAQuietClose } from '../grounds/an-answer-includes-a-refusal';
 import { CheckInStatus, GroundStatus } from '@prisma/client';
@@ -75,10 +76,13 @@ export function theWhatIsNewWords(firstName: string | null | undefined, checkIns
   const follow = theFollowUpSentence(checkIns);
   /* NOTHING NEW TO SAY, NOTHING SENT (decision 109 review): the one new thing is the follow-up, so a lead with no check-in it applies to is not written to. */
   if (!follow) return null;
+  /* The check-in its count is about, as the body says it (messages test, 19 October, finding 17): "Nobody has checked in on "Sales team, Q4" yet"
+     was held for Grace on Monday at 21:30, after all five had checked in for the first; the count was about the second. */
+  const forIt = checkIns.length === 1 && checkIns[0].round ? ` for ${theCheckIn(checkIns[0].round)}` : '';
   const subject = checkIns.length === 1
     ? (checkIns[0].answered <= 0
-      ? `Nobody has checked in on "${checkIns[0].label}" yet, and here is what is new`
-      : `${cap(aNumberInWords(checkIns[0].answered))} of ${aNumberInWords(checkIns[0].ofHowMany)} people ${checkIns[0].answered === 1 ? 'has' : 'have'} checked in on "${checkIns[0].label}", and here is what is new`)
+      ? `Nobody has checked in${forIt} on "${checkIns[0].label}" yet, and here is what is new`
+      : `${cap(aNumberInWords(checkIns[0].answered))} of ${aNumberInWords(checkIns[0].ofHowMany)} people ${checkIns[0].answered === 1 ? 'has' : 'have'} checked in${forIt} on "${checkIns[0].label}", and here is what is new`)
     : `Here is where your ${aNumberInWords(checkIns.length + andMore)} check-ins stand, and what is new`;
   const lines = [
     `Hello ${firstName?.trim() || 'there'}. Here is where your check-ins stand today.`,
@@ -137,8 +141,10 @@ export async function sendHeresWhatIsNew(
   let tried = 0;
   for (const [leadId, theirs] of byLead) {
     try {
-      const user = await prisma.user.findUnique({ where: { id: leadId }, select: { email: true, firstName: true, deletedAt: true, isActive: true } });
+      const user = await prisma.user.findUnique({ where: { id: leadId }, select: { email: true, firstName: true, deletedAt: true, isActive: true, organizationId: true } });
       if (!user?.email || user.deletedAt || user.isActive === false) continue;
+      /* WITH THE DIRECT MORNING ON, NO EMAIL ABOUT WHAT GROUNDWORK NOW DOES (email/a-direct-email.ts): it is about the product, not her work. */
+      if (await theDirectMorningIsOn(prisma, user.organizationId)) continue;
       const had = await prisma.notification.findFirst({ where: { channel: 'email', sender: WHATS_NEW_SENDER, toAddress: user.email.trim().toLowerCase(), outcome: 'sent' }, select: { id: true } });
       if (had || await isAlreadyHeld(prisma, WHATS_NEW_SENDER, user.email)) continue;
       const stands: AnExistingCheckIn[] = [];

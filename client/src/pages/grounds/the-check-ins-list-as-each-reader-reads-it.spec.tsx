@@ -99,7 +99,8 @@ describe('the check-ins list, as Hafsah reads it (she runs two and is in two)', 
     const table = await screen.findByRole('table', { name: 'You run' })
     expect([...table.querySelectorAll('th')].map(th => th.textContent)).toEqual(['Check-in', 'What it’s for', 'Needs you', 'Where it stands'])
     expect(rowsOf(table)).toEqual([
-      ['Sales team, Q36 people. Daily, weekdays. Session 6 of 12.', 'Set goals and keep the team on track', 'Waiting on Omar', '4 of 5 answeredThe sales deck is holding it up.'],
+      /* check-ins.jpg: a daily check-in's team report is there to read and share once anybody is in, so it reads "Today’s report ready", not who it waits on. */
+      ['Sales team, Q36 people. Daily, weekdays. Session 6 of 12.', 'Set goals and keep the team on track', 'Today’s report ready', '4 of 5 answeredThe sales deck is holding it up.'],
       ['Kwame, first 90 daysKwame and you. Weekly, Mondays. Session 12 of 12, finished.', 'Help a new hire get started', '', 'Decide how it ends'],
     ])
     expect(table.textContent).not.toMatch(/Hafsah|·|Led by|Progress|In the way/)

@@ -167,12 +167,13 @@ export function whatThePersonReadsOfTheirOwnUntoldGoals(
   meId: string | null,
   leadName: string,
   now: Date = new Date(),
+  opts: { releaseOne?: boolean } = {},
 ): string[] {
   if (!meId) return [];
   const out: string[] = [];
   for (const g of untold) {
     if (g.participantId !== meId || !aWeekHasPassedSinceNotTold(g, now)) continue;
-    const s = whatThePersonReadsAfterAWeek(leadName, g.area);
+    const s = whatThePersonReadsAfterAWeek(leadName, g.area, opts);
     if (!out.includes(s)) out.push(s);
   }
   return out;

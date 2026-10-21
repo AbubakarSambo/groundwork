@@ -1,7 +1,11 @@
-import { useNavigate, useParams } from 'react-router-dom'
+import { TheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { ThePicturedTeamReport, TheTeamReportIsNotSharedYet } from './pictured/ThePicturedTeamReport'
+import { reportsApi } from '@/api/reports'
 import { useQuery } from '@tanstack/react-query'
 import { TheSessionsReport } from '@/components/gw/TheSessionsReport'
 import { groundsApi } from '@/api/grounds'
+import { isASalesKind } from '@/lib/a-sales-kind'
 import { whoIsInRound } from '@/lib/who-is-in-this-round'
 import { useAuthStore } from '@/stores/auth'
 import { plannedSessionsFor } from '@/lib/sessionCount'
@@ -19,6 +23,7 @@ import { GroundGone } from '@/components/gw/GroundGone'
 export default function RoundReportPage() {
   const { id, sessionNumber } = useParams<{ id: string; sessionNumber: string }>()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const user = useAuthStore((st) => st.user)
   const n = Number(sessionNumber)
   /*
@@ -44,15 +49,36 @@ export default function RoundReportPage() {
    * the same two statuses. The same two reasons GroundAdminPage and GroundParticipantPage already
    * read as "gone" (GW-PRI-04: one screen, whichever reason) apply here too.
    */
+  /* Whether this session's team report has been shared, for a person who checks in (team-report-as-participant.jpg). */
+  const { data: shaped } = useQuery({
+    queryKey: ['session-shaped-report', id, n],
+    queryFn: () => reportsApi.sessionReport(id!, n),
+    enabled: !!id && Number.isFinite(n) && !!ground && (ground as any)?.initiatorId !== user?.id,
+    retry: false,
+  })
   const definitelyGone = isError && [404, 403].includes((error as any)?.response?.status)
   if (definitelyGone) return <GroundGone />
 
   const canRunThisCheckIn = !!user?.id && (ground as any)?.initiatorId === user.id
   const isAParty = !!(ground as any)?.viewerIsInitiator || !!(ground as any)?.participants?.some((p: any) => p.userId === user?.id)
   const contextEnabled = (ground as any)?.contextEnabled === true
+  /* The direct morning (lib/the-direct-morning.tsx), from the check-in this page already reads, said once for what it draws. */
+  const direct = isTheDirectMorningOn(ground)
   const plannedSessions = ground ? plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).plannedSessions) : null
 
+  /*
+   * SCREEN MATCH, 16 OCTOBER: THE TEAM'S REPORT AS PICTURED, FOR WHOEVER RUNS THE CHECK-IN (team-report.jpg). The whole
+   * report as it was stays one tap away, on "See every other part of this report" (?whole=1).
+   */
+  if (id && ground && canRunThisCheckIn && Number.isFinite(n) && searchParams.get('whole') !== '1') {
+    return <TheDirectMorning on={direct}><ThePicturedTeamReport groundId={id} sessionNumber={n} ground={ground} /></TheDirectMorning>
+  }
+  if (id && ground && !canRunThisCheckIn && isAParty && shaped && (shaped as any).released === false && searchParams.get('whole') !== '1') {
+    return <TheDirectMorning on={direct}><TheTeamReportIsNotSharedYet groundId={id} sessionNumber={n} ground={ground} /></TheDirectMorning>
+  }
+
   return (
+    <TheDirectMorning on={direct}>
     <div style={{ maxWidth: 1060, margin: '0 auto', padding: '20px 20px 60px' }}>
       {/*
         U.10 PICTURE-CHECK ROUND 6, ITEM I: THE SAME SHARED HEADER EVERY CHECK-IN PAGE NOW USES.
@@ -71,7 +97,7 @@ export default function RoundReportPage() {
           canRunThisCheckIn={canRunThisCheckIn}
           isAParty={isAParty}
           active="report"
-          tabs={checkInHeaderTabs({ id, contextEnabled, canRunThisCheckIn, isAParty })}
+          tabs={checkInHeaderTabs({ id, contextEnabled, canRunThisCheckIn, isAParty, ground: ground as any })}
         />
       )}
 
@@ -94,11 +120,12 @@ export default function RoundReportPage() {
           <TheSessionsReport
             groundId={id}
             sessionNumber={n}
-            light={(ground as any)?.kindOfWork === 'sales org'}
+            light={isASalesKind((ground as any)?.kindOfWork)}
             totalInThisRound={ground ? whoIsInRound(((ground as any).participants ?? []), n, (ground as any).scenario, (ground as any).checkIns ?? []).length : null}
           />
         )}
       </div>
     </div>
+    </TheDirectMorning>
   )
 }

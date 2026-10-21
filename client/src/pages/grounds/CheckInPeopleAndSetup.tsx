@@ -1,4 +1,7 @@
 import { useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { groundsApi } from '@/api/grounds'
+import { toast } from 'sonner'
 import {
   Section, Panel, FieldRows, FieldRow, SwitchRow, Choices, TextField, Select, FieldLabel,
   Button, Note, Callout,
@@ -16,6 +19,7 @@ import { SELECTABLE_CADENCES, sessionsFor, cadenceLabel } from '@/lib/cadence'
 import { scenarioLabel } from '@/lib/scenario-catalog'
 import { whenItWas, theLastDay } from '@/lib/a-date-reads-the-same-everywhere'
 import { whenTheCheckInsLand, type Cadence } from '@/components/gw/when-the-check-ins-land'
+import { PeopleAndSetupAsPictured } from './PeopleAndSetupAsPictured'
 
 /**
  * "PEOPLE AND SETUP" (the lead's check-in tab), rebuilt from `components/gw/ui`.
@@ -68,7 +72,7 @@ import { whenTheCheckInsLand, type Cadence } from '@/components/gw/when-the-chec
  * `whatToDoToday`) - never "3 days, then 4 more, then 7 more". This says that plainly instead of
  * joining the days with "or", which read as a choice rather than a schedule.
  */
-function chasingSentence(days: number[]): string {
+export function chasingSentence(days: number[]): string {
   const sorted = [...days].sort((a, b) => a - b)
   const [first, ...rest] = sorted
   const day = (n: number) => `${n} day${n === 1 ? '' : 's'}`
@@ -182,7 +186,7 @@ export function peersVisibilitySentence(args: {
   return `${who}, once the team's report is shared. ${notNamed}`
 }
 
-export function CheckInPeopleAndSetup(props: {
+export type PeopleAndSetupProps = {
   ground: any
   user: any
   id: string
@@ -245,7 +249,18 @@ export function CheckInPeopleAndSetup(props: {
   confirmDelete: boolean; setConfirmDelete: (v: boolean) => void
   deleteError: string | null; setDeleteError: (v: string | null) => void
   removeGround: { mutate: () => void; isPending: boolean }
-}) {
+}
+
+/**
+ * RELEASE 1B (pull request 1 of 3): WITH THE ORGANISATION'S SWITCH ON, PEOPLE AND SETUP IS THE B8 PICTURES' PAGE
+ * (PeopleAndSetupAsPictured.tsx); OFF, IT IS TODAY'S PAGE BELOW, EXACTLY AS IT WAS. The server says which (`release1bTabsOn` on
+ * GET /grounds/:id); two components rather than an early return, so neither page's hooks depend on the other's.
+ */
+export function CheckInPeopleAndSetup(props: PeopleAndSetupProps) {
+  return props.ground?.release1bTabsOn === true ? <PeopleAndSetupAsPictured {...props} /> : <TodaysPeopleAndSetup {...props} />
+}
+
+function TodaysPeopleAndSetup(props: PeopleAndSetupProps) {
   const {
     ground, user, navigate, isInitiator, isOrgAdmin, viewerIsAParty, mySessionsDone, plannedSessions,
   } = props
@@ -680,7 +695,12 @@ export function CheckInPeopleAndSetup(props: {
           onChange={(on) => props.setWorkTogether.mutate(on)}
           disabled={!canEditRunOrAdmin || props.setWorkTogether.isPending}
         />
-        {/* THE TEAM'S REPORT SHARING IS NOT A SETTING HERE. Release happens from the report itself
+        {/* THE TEAM'S REPORT CAN SHARE ITSELF AT A SET TIME, ONLY WHERE IT IS TURNED ON (Hafsah, 18 October 2026).
+            Off is how every check-in made before this works, and keeps working. A one-time check-in has no time. */}
+        {ground.cadence !== 'ONE_TIME' && (
+          <TheReportSharesItself ground={ground} canChange={canEditRunOrAdmin} />
+        )}
+        {/* THE TEAM'S REPORT, AS IT STANDS. Sharing it now happens from the report itself; whether it shares itself is the switch above
             (Board/Context), so this row says the true, current state rather than offering a control
             this tab does not have.
 
@@ -846,4 +866,30 @@ export function theRhythmLine(ground: { cadence?: any; timelineDays?: number | n
   const n = ground.timelineDays ? sessionsFor(ground.timelineDays, ground.cadence) : null
   if ((ground as any).runsUntilItIsEnded || n == null) return `${cadenceLabel(ground.cadence)}, until you end it.${anchor}`
   return `${cadenceLabel(ground.cadence)}. ${n} session${n === 1 ? '' : 's'} in total.${anchor}`
+}
+
+export function TheReportSharesItself({ ground, canChange }: { ground: any; canChange: boolean }) {
+  const qc = useQueryClient()
+  const at: string | null = ground?.reportSharesAt ?? null
+  const setIt = useMutation({
+    mutationFn: (time: string | null) => groundsApi.setReportSharesAt(ground.id, time),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['ground', ground.id] }),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not change. The report is still shared the same way. Try again in a moment.'),
+  })
+  const clock = (hhmm: string) => {
+    const [h, m] = hhmm.split(':').map(Number)
+    const h12 = h % 12 === 0 ? 12 : h % 12
+    return `${h12}${m ? `:${String(m).padStart(2, '0')}` : ''}${h >= 12 ? 'pm' : 'am'}`
+  }
+  return (
+    <SwitchRow
+      title="Share the team's report by itself"
+      detail={at
+        ? `The team's report shares itself at ${clock(at)} in your organisation's day, unless you choose "Hold it" first.`
+        : 'Off. The team’s report is shared once everyone has checked in, or when you share it.'}
+      on={!!at}
+      onChange={(on) => setIt.mutate(on ? '18:30' : null)}
+      disabled={!canChange || setIt.isPending}
+    />
+  )
 }

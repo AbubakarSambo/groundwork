@@ -8,6 +8,7 @@
 
 import { askName } from '../assistant/ask-name';
 import { theConversationWorthHavingSaying } from '../grounds/what-is-sent-in-simpler-words';
+import { theFindingOnItsOwn } from '../engagement/the-first-insight';
 
 export interface AnOpenCheckIn {
   id: string;
@@ -111,22 +112,57 @@ export function nothingToReadYet(report: any): boolean {
   return !!report && report.state === 'forming' && (report.whereThingsStand?.agreed ?? 0) === 0 && (report.whereThingsStand?.stillOpen ?? 0) === 0;
 }
 
-export const THANKS_YOUR_ANSWER_IS_IN = (label: string) =>
-  `Thank you, your answer for ${label} is in. The shared picture is made once everyone has answered, and you will be told as soon as there is something to read.`;
+/**
+ * A REPORT NOTICE WITH NOTHING IN IT IS NOT A REPORT NOTICE (Drop Access run 1, items 22 and 23). Outside the 24 hours the notice can only go
+ * as groundwork_report_ready, "Your report for {{1}} is ready. {{2}} Open Groundwork to read it.", and with nothing agreed or open yet {{2}}
+ * was "Not everyone has answered yet, so there is nothing to agree or differ with." or "Everybody has answered. The report has not yet found
+ * anything they agree or differ on." The second went to Joseph at 11:30 on days Grace was told at 15:30 that two differences were still open;
+ * the first was Grace's very first WhatsApp message. A notice is worth its template only when the report has something agreed or open;
+ * otherwise it is a thank-you said inside the 24 hours only (its own kind, with no template), and nothing outside them.
+ */
+export const THANKS_ONLY = 'report-thanks';
+const SAYS_NOTHING_YET = /has not yet found anything|nothing to agree or differ/i;
+export function aReportWorthItsTemplate(report: any): boolean {
+  if (!report) return false;
+  const counted = (report.whereThingsStand?.agreed ?? 0) > 0 || (report.whereThingsStand?.stillOpen ?? 0) > 0;
+  if (counted) return true;
+  /* A report of one person's own work has no agreements to count and still says something; only "nothing yet" says nothing. */
+  return !nothingToReadYet(report) && !SAYS_NOTHING_YET.test(String(report.whereThingsStand?.saying ?? ''));
+}
 
-export function reportAsText(report: any, label: string, simplerWords?: boolean | null): string {
+/* With the direct morning on (email/a-direct-email.ts): thanked, and told what comes, with no "shared picture". */
+export const THANKS_YOUR_ANSWER_IS_IN = (label: string, direct = false) =>
+  direct
+    ? `Thank you, your answer for ${label} is in. You will be told when the report is ready.`
+    : `Thank you, your answer for ${label} is in. The shared picture is made once everyone has answered, and you will be told as soon as there is something to read.`;
+
+/**
+ * WHERE THINGS STAND, DIRECTLY (direct morning, part 4). The first thing the report served to this reader names as still open, as a whole
+ * sentence, in place of "Three things are settled, and one is still open." Where nothing is open it says so; where the report says nothing
+ * yet, its own line stands. The same report as the reader is served it, so it carries the same walls.
+ */
+export function whereThingsStandDirectly(report: any, label: string): string {
+  const found = theFindingOnItsOwn(report, label);
+  const said = found?.finding
+    ?? ((report?.whereThingsStand?.stillOpen ?? 0) === 0 && (report?.whereThingsStand?.agreed ?? 0) > 0 ? 'Nothing in it is still open.' : String(report?.whereThingsStand?.saying ?? ''));
+  const x = said.replace(/\s+/g, ' ').trim();
+  return x.length <= ONE_SHORT_LINE ? x : `${x.slice(0, ONE_SHORT_LINE - 1).replace(/\s+\S*$/, '')}…`;
+}
+
+export function reportAsText(report: any, label: string, simplerWords?: boolean | null, direct = false): string {
   const lines: string[] = [`Your report for ${label} is ready.`];
-  if (report?.whereThingsStand?.saying) lines.push(report.whereThingsStand.saying);
+  if (direct) { const d = whereThingsStandDirectly(report, label); if (d) lines.push(d); }
+  else if (report?.whereThingsStand?.saying) lines.push(report.whereThingsStand.saying);
   const glance = (report?.atAGlance ?? []) as { label: string; value: string; sub?: string }[];
   /* Each read is its own sentence, not "Label: value (note)". The note is already a sentence; without one, the label and value make one. */
   const sentence = (t: string) => { const x = t.trim().replace(/\s+/g, ' '); return `${x.charAt(0).toUpperCase()}${x.slice(1)}${/[.!?]$/.test(x) ? '' : '.'}`; };
   const lower = (t: string) => `${t.charAt(0).toLowerCase()}${t.slice(1)}`;
   const reads = glance.map((g) => (g.sub?.trim() ? sentence(g.sub) : g.value?.trim() ? sentence(`${g.label} is ${lower(g.value.trim())}`) : '')).filter(Boolean);
   if (reads.length) lines.push(reads.join(' '));
-  if (report?.theConversationWorthHaving) lines.push(`${theConversationWorthHavingSaying(simplerWords)} ${report.theConversationWorthHaving}`);
+  if (report?.theConversationWorthHaving) lines.push(direct ? String(report.theConversationWorthHaving) : `${theConversationWorthHavingSaying(simplerWords)} ${report.theConversationWorthHaving}`);
   const whole = lines.join('\n\n');
   /* Where the whole report would not fit in one WhatsApp message, one short line, and the app for the rest. */
-  return whole.length <= A_TEXT_MESSAGE_LIMIT ? whole : `${reportAsOneLine(report, label)} Open Groundwork to read it.`;
+  return whole.length <= A_TEXT_MESSAGE_LIMIT ? whole : `${reportAsOneLine(report, label, direct)} Open Groundwork to read it.`;
 }
 
 /** WhatsApp's limit for one ordinary message. */
@@ -150,8 +186,8 @@ export function whereThingsStandInOneLine(report: any): string {
 }
 
 /** "Your report for the sales team is ready. <where things stand, one line>" */
-export function reportAsOneLine(report: any, label: string): string {
-  const line = whereThingsStandInOneLine(report);
+export function reportAsOneLine(report: any, label: string, direct = false): string {
+  const line = direct ? whereThingsStandDirectly(report, label) : whereThingsStandInOneLine(report);
   return line ? `Your report for ${label} is ready. ${line}` : `Your report for ${label} is ready.`;
 }
 
@@ -160,8 +196,9 @@ export function reportAsOneLine(report: any, label: string): string {
  * line of where things stand. Never a line break: WhatsApp refuses a blank with one, and the report
  * as written has several. The template says "Open Groundwork to read it." itself.
  */
-export function reportAsTemplateBlanks(report: any, label: string): string[] {
-  return [label, whereThingsStandInOneLine(report) || 'It is in Groundwork under Report.'];
+export function reportAsTemplateBlanks(report: any, label: string, direct = false): string[] {
+  /* With the direct morning on, the blank carries the finding; the template's approved words around it are never changed. */
+  return [label, (direct ? whereThingsStandDirectly(report, label) : whereThingsStandInOneLine(report)) || 'It is in Groundwork under Report.'];
 }
 
 /** ISO 639-1 codes we will converse in. Anything else falls back to English with the person told so. */

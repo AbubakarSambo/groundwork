@@ -1,0 +1,63 @@
+/**
+ * RELEASE 1'S SALES BOARD, A SWITCH PER ORGANISATION (release plan, Part 0, "Existing users: in every release").
+ *
+ * "Each release's new boards sit behind a switch per organisation ... switch it on for the test organisations; then on
+ * staging; then for real clients, one at a time ... If a real client's board looks wrong, switching it off returns them to
+ * their previous board with nothing lost."
+ *
+ * WHERE IT IS KEPT. `Organization.release1SalesBoardOn`, false for every organisation until Groundwork staff switch it on
+ * (Admin, Orgs: PATCH /admin/organisations/:id/release-one-sales-board) or a script does for a test organisation
+ * (scripts/the-release-one-sales-board.ts). A row that cannot be read reads as off: it fails closed, to the board people had.
+ *
+ * WHAT IT HOLDS BACK, AND ONLY THAT (the final surface, never the writers; "default on, hold the last inch"):
+ *  - on the board: each sales aim counted from the deals ("65 sold, 65 with proof of payment", the headline in the
+ *    prototype's shape, your share in sales), a customer's reply moved onto its deal, the lead's yes-or-no answer to a wait
+ *    in What needs you, each deal at the stall rule, and the heading of To close the gap;
+ *  - in the board listener: keeping a sales aim's stored count at the deals (off, the count is read from what was said, as before);
+ *  - in the weekly report: the week's deals and the sales targets they count, the kit's five numbers, What this week shows,
+ *    a promise carried over three check-ins running, What changed with Adapted, For you to do next week in order, and a daily
+ *    check-in's week to its last check-in (Release 1, pull request 4);
+ *  - in the team report (Release 1, pull request 4): the title, In short, What moved, each person marked proven or said with
+ *    Will do, Where people see it differently, How much it can rely on, What I don't know yet, Why the numbers don't match,
+ *    the closing line, a person correcting themselves settling a difference, and "1 of the 5 commitments has";
+ *  - in each person's own report (Release 1, pull request 4): the you-lines, a document's date over memory, a customer's
+ *    promise on the deal, One thing to think about, the story paragraph, and each line said once;
+ *  - in Today and the lead's list: one wait said once, what changes said as the waiting person's, a side that said nothing
+ *    left out, and a difference that is only a target said again or settled by a correction left out.
+ * Whatever the switch says: a participant's report carries only their own engagement row and session count (own-reads-only),
+ * because each person's load is private, always.
+ *  - in the conversation and the messages (Release 1, pull request 5): what a sales check-in gathers (the stored prompt
+ *    kind_of_work.sales_org, the four criteria and the proof asked once), a promise said done kept on the record, another rep's
+ *    customers never put to a rep, the lead's morning summary read from the deals with what is due today and tomorrow, its
+ *    lines chosen part by part and its counts in one form, an answer she owes with no day of its own, a wait past its day on
+ *    somebody outside the check-in, her promise said once inside the decision it answers, what was tried said in full in the
+ *    messages in place of the "Not backed:" note, the weekly letter's counts in one form and one decision said once, a report
+ *    notice with nothing in it said as a thank-you inside the 24 hours only, and a goal not told worded as a sentence in the
+ *    message a person reads a week on.
+ * The deal rows and each stage kept with its day run either way, because they only add. The rules every organisation has
+ * whatever the switch says (each opening on one channel, quiet hours ending at seven in the organisation's zone, one routine
+ * message a day with the lead's summary as hers, and the corrections of what was untrue) are listed in docs/pull-request.md.
+ */
+export const THE_RELEASE_ONE_SALES_BOARD = 'release1SalesBoardOn';
+
+type Reader = { organization?: { findUnique: (a: any) => Promise<any> } } | any;
+
+export async function theReleaseOneSalesBoardIsOn(prisma: Reader, organizationId: string | null | undefined): Promise<boolean> {
+  if (!organizationId) return false;
+  try {
+    const org = await prisma?.organization?.findUnique?.({ where: { id: organizationId }, select: { release1SalesBoardOn: true } });
+    return org?.release1SalesBoardOn === true;
+  } catch {
+    return false;
+  }
+}
+
+/** The same, read from a check-in. */
+export async function theReleaseOneSalesBoardIsOnFor(prisma: Reader, groundId: string): Promise<boolean> {
+  try {
+    const g = await prisma?.ground?.findUnique?.({ where: { id: groundId }, select: { organizationId: true } });
+    return theReleaseOneSalesBoardIsOn(prisma, g?.organizationId ?? null);
+  } catch {
+    return false;
+  }
+}

@@ -51,8 +51,6 @@ function Row({ request }: { request: ApiAccessRequest }) {
   })
 
   const small = { fontSize: 12.5, color: 'var(--gw-sub)' } as const
-  const btn = { fontSize: 13, padding: '7px 14px', borderRadius: 6, border: '1px solid var(--gw-border)', background: 'white', color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit' } as const
-  const primary = { ...btn, background: 'var(--gw-navy)', color: 'white', border: 'none', fontWeight: 600 } as const
 
   return (
     <div style={{ border: '1px solid var(--gw-border)', borderRadius: 8, padding: 16, marginBottom: 12, background: 'var(--gw-card)' }}>
@@ -76,7 +74,7 @@ function Row({ request }: { request: ApiAccessRequest }) {
                 <strong>{f.kind.replace(/-/g, ' ')}</strong> · {whenItWas(f.raisedAt, 'dayAndTime')}
                 <div style={{ color: 'var(--gw-text)' }}>{f.detail}</div>
               </div>
-              <button type="button" onClick={() => clearFlag.mutate(f.id)} disabled={clearFlag.isPending} style={btn}>Looked at</button>
+              <button type="button" onClick={() => clearFlag.mutate(f.id)} disabled={clearFlag.isPending} className="gwui-btn gwui-btn-secondary gwui-btn-small">Looked at</button>
             </div>
           ))}
         </div>
@@ -94,30 +92,30 @@ function Row({ request }: { request: ApiAccessRequest }) {
       <div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
         {request.status === 'PENDING' && !asking && (
           <>
-            <button type="button" style={primary} onClick={() => decide.mutate('APPROVED')} disabled={decide.isPending}>Let them in</button>
-            <button type="button" style={btn} onClick={() => setAsking('DECLINED')}>Decline</button>
+            <button type="button" className="gwui-btn gwui-btn-primary gwui-btn-small" onClick={() => decide.mutate('APPROVED')} disabled={decide.isPending}>Let them in</button>
+            <button type="button" className="gwui-btn gwui-btn-secondary gwui-btn-small" onClick={() => setAsking('DECLINED')}>Decline</button>
           </>
         )}
         {(request.status === 'DECLINED' || request.status === 'WITHDRAWN') && !asking && (
-          <button type="button" style={primary} onClick={() => decide.mutate('APPROVED')} disabled={decide.isPending}>Let them in</button>
+          <button type="button" className="gwui-btn gwui-btn-primary gwui-btn-small" onClick={() => decide.mutate('APPROVED')} disabled={decide.isPending}>Let them in</button>
         )}
         {request.status === 'APPROVED' && !asking && (
-          <button type="button" style={btn} onClick={() => setAsking('WITHDRAWN')}>Withdraw access</button>
+          <button type="button" className="gwui-btn gwui-btn-secondary gwui-btn-small" onClick={() => setAsking('WITHDRAWN')}>Withdraw access</button>
         )}
         {asking && (
           <>
-            <input
+            <input className="gwui-input"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder={asking === 'DECLINED' ? 'Why it is declined. They will read this.' : 'Why it is withdrawn. They will read this.'}
               aria-label="Why"
               autoFocus
-              style={{ flex: '1 1 260px', padding: '7px 10px', fontSize: 13, borderRadius: 6, border: '1px solid var(--gw-border)', fontFamily: 'inherit' }}
+              style={{ flex: '1 1 260px' }}
             />
-            <button type="button" style={primary} onClick={() => decide.mutate(asking)} disabled={decide.isPending || !note.trim()}>
+            <button type="button" className="gwui-btn gwui-btn-primary gwui-btn-small" onClick={() => decide.mutate(asking)} disabled={decide.isPending || !note.trim()}>
               {asking === 'DECLINED' ? 'Decline' : 'Withdraw'}
             </button>
-            <button type="button" style={btn} onClick={() => { setAsking(null); setNote('') }}>Cancel</button>
+            <button type="button" className="gwui-btn gwui-btn-secondary gwui-btn-small" onClick={() => { setAsking(null); setNote('') }}>Cancel</button>
           </>
         )}
       </div>

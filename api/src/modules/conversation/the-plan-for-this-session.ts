@@ -103,6 +103,8 @@ export interface WhatThePlannerGets {
   patterns: { code: string; name: string; observation: string | null; periods: number; probe: string | null }[];
   coachingStep: string | null;
   howTheyAnswer: string | null;
+  /** What this kind of check-in must gather for its board, and the person's own records so far (a sales check-in's deals and leads). */
+  kindOfWorkNeeds?: string | null;
 }
 
 const clip = (s: string, n: number): string => (s.length > n ? `${s.slice(0, n - 3).trimEnd()}...` : s);
@@ -122,6 +124,12 @@ export function theBriefForThePlanner(w: WhatThePlannerGets): string {
     );
   }
   if (w.leadBrief) parts.push(`THE LEAD'S BRIEF TO THE PRODUCT (an instruction to you, not this person's words): ${clip(w.leadBrief, 900)}${w.person.isLead ? '' : ` ${THE_BRIEF_IS_CONTEXT_ONLY} Never put its sentences in the plan as words to say.`}`);
+  /*
+   * WHAT THE BOARD NEEDS COMES FIRST IN A SALES CHECK-IN (Drop Access, 16 October). Mercy's second and third daily check-ins were
+   * planned around the samples Joseph owed her, and never asked about Greenfield's signed order, its delivery or her new lead, so
+   * none of it reached the board. Coaching and the patterns still have their place; they fit around the customers, not instead.
+   */
+  if (w.kindOfWorkNeeds) parts.push(`WHAT THIS CHECK-IN MUST GATHER (the team's board is built only from it). Cover every customer they worked on since they last checked in, and the customers in their list below that have not come up, before anything else. The questions and doneWhen must cover it; mustEstablish may be about one of those customers; a coaching move fits around it, never in place of it.\n${w.kindOfWorkNeeds}`);
   if (w.recordAlreadyHolds) parts.push(w.recordAlreadyHolds);
   if (w.doesNotAddUp) parts.push(w.doesNotAddUp);
   if (w.earlier.length) {

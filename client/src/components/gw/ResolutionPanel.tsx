@@ -271,15 +271,7 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
           type="button"
           onClick={() => picked && setConfirming(true)}
           disabled={!picked || !why.trim() || proposeMut.isPending}
-          className={`gwui-rule gwui-fs-13 gwui-pt-10 gwui-pr-18 gwui-pb-10 gwui-pl-18 ${picked && why.trim() ? 'gwui-ink-white' : 'gwui-ink-subd'}`}
-          style={{
-            borderRadius: 7, fontFamily: 'inherit', fontWeight: 700,
-            /* A BUTTON WAITING FOR A CHOICE IS STILL A BUTTON SOMEBODY HAS TO READ.
-               Paper with a line round it says "not yet" and the words stay legible. */
-            background: picked && why.trim() ? 'var(--gw-dark)' : 'white',
-            borderColor: picked && why.trim() ? 'var(--gw-dark)' : undefined,
-            cursor: picked && why.trim() && !proposeMut.isPending ? 'pointer' : 'default',
-          }}
+          className="gwui-btn gwui-btn-primary"
         >
           {proposeMut.isPending ? 'Saving…' : leadDecides ? 'Save the outcome and end it' : 'This is my answer'}
         </button>

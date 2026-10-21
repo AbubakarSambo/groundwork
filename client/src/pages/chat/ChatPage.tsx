@@ -1,4 +1,6 @@
+import { TheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
 import { ANSWER_ON_WHATSAPP_INSTEAD } from '@/lib/answer-on-whatsapp-instead'
+import { WaitingForYouToConfirm } from '@/components/gw/ThePlanPage'
 import { CheckInOnWhatsApp } from '@/components/gw/CheckInOnWhatsApp'
 import { useState, useEffect, useRef } from 'react'
 import { nothingInternalReachesTheBubble } from '@/lib/nothing-internal-reaches-the-bubble'
@@ -185,6 +187,8 @@ export function ChatPage() {
     retry: false,
   })
   const checkInName: string = groundLabel || (ground.data as any)?.label || ''
+  /* The direct morning (lib/the-direct-morning.tsx): the fixed lines on this screen are direct where the organisation's switch is on. */
+  const direct = isTheDirectMorningOn(ground.data)
   const [brief, setBrief] = useState<CheckInBrief | null>(null)
   /**
    * "CONNECT WHATSAPP" (decision 106, 5 October, night): served on the person's own transcript
@@ -412,6 +416,11 @@ export function ChatPage() {
       })
     },
     onSuccess: res => {
+      /* The session whose round had closed was closed as missed and today's opened instead: this page follows it, so what is said goes there. */
+      if (res.checkInId && res.checkInId !== checkInId) {
+        navigate(`/checkin/${res.checkInId}`, { replace: true, state: { ...((location.state as any) ?? {}), sessionNumber: sessionNumber + 1 } })
+        return
+      }
       setMsgs([{ id: 'ai-open', role: 'AI', content: res.reply, suggestedAnswers: res.suggestedAnswers, ideaOffer: res.ideaOffer, requestOffer: res.requestOffer, openTheRequest: res.openTheRequest }])
       if (res.groundId && !groundId) setGroundId(res.groundId)
       if (res.brief) setBrief(res.brief)
@@ -658,7 +667,8 @@ export function ChatPage() {
      */
     mutationFn: ({ file, ctx }: { file: File; ctx: string }) => {
       if (!groundId) throw new Error('groundId missing')
-      return documentsApi.upload(groundId, file, false, ctx)
+      /* Added in the check-in itself: with Release 1B's switch on, the server files it as evidence on its item. */
+      return documentsApi.upload(groundId, file, false, ctx, { fromTheCheckIn: true })
     },
     onSuccess: async (doc, { ctx }) => {
       /* Now that it has landed, the sheet can go. */
@@ -922,6 +932,15 @@ export function ChatPage() {
      * fallback below.
      */
     const localId = `local-${Date.now()}`
+    /*
+     * THE SAME WORDS, SAID AGAIN TO THE NEXT QUESTION (Drop Access, item 26). Only when this answer is word for word their last
+     * one, the question on their screen goes with it, so the server knows they read the reply and are answering it, rather than
+     * pressing twice. Any other answer goes as it always has.
+     */
+    const lastOfTheirs = [...msgs].reverse().find(m => m.role === 'PERSON')?.content ?? null
+    const answering = lastOfTheirs != null && lastOfTheirs.trim() === message.trim()
+      ? ([...msgs].reverse().find(m => m.role === 'AI' && m.content && m.content !== '…')?.content ?? null)
+      : null
     const optimisticTurn: Msg[] = [{ id: localId, role: 'PERSON', content: message }, { id: aiId, role: 'AI', content: '…' }]
     setMsgs(v => [...v, ...optimisticTurn])
     /**
@@ -939,7 +958,10 @@ export function ChatPage() {
      * else runs, so the `onDelta`/`onDone` maps below always have something to find,
      * whatever the timing of the stream.
      */
-    setDisplayedMsgs(v => [...v, ...optimisticTurn])
+    /* From `msgs`, whole, not from what the typewriter has shown so far (Drop Access, 16 October): Mercy answered while the first
+       question was still being typed out, and it stayed on her screen as "Last t" for the rest of the check-in, because the
+       typewriter is not resumed while a stream runs. */
+    setDisplayedMsgs([...msgs, ...optimisticTurn])
     /**
      * Promote the echo once the server has actually answered.
      *
@@ -953,7 +975,7 @@ export function ChatPage() {
     let started = false
     streamingRef.current = true
     try {
-      await streamMessage(checkInId, message, {
+      const handlers: Parameters<typeof streamMessage>[2] = {
         onDelta: (text) => {
           started = true
           acc += text
@@ -972,7 +994,8 @@ export function ChatPage() {
           if (r.endCard) setEndCard(r.endCard)
         },
         onError: (m) => { throw new Error(m) },
-      })
+      }
+      await (answering ? streamMessage(checkInId, message, handlers, answering) : streamMessage(checkInId, message, handlers))
       streamingRef.current = false
       setLoading(false)
     } catch (err) {
@@ -982,7 +1005,7 @@ export function ChatPage() {
         setMsgs(v => v.filter(m => m.id !== aiId)) // drop the empty AI bubble; keep the person's message
         setDisplayedMsgs(v => v.filter(m => m.id !== aiId))
         try {
-          const res = await conversationApi.send(checkInId, message)
+          const res = await (answering ? conversationApi.send(checkInId, message, answering) : conversationApi.send(checkInId, message))
           acknowledge()
           setMsgs(v => v.concat({ id: `ai-${Date.now()}`, role: 'AI', content: res.endCard ? closingMessageText(res.reply, res.endCard) : res.reply, closesTheCheckIn: !!res.sessionComplete && !res.endCard, suggestedAnswers: res.suggestedAnswers, ideaOffer: res.ideaOffer, requestOffer: res.requestOffer, openTheRequest: res.openTheRequest }))
           if (res.sessionComplete) setDone(true)
@@ -1221,6 +1244,7 @@ export function ChatPage() {
       every size, colour and spacing of this screen's own markup in gw-ui.css's `.gwui-ci-*`
       classes rather than an inline style.
     */
+    <TheDirectMorning on={direct}>
     <div className="gwui-ci-page">
       <div className="gwui-ci-wrap">
       {/**
@@ -1263,7 +1287,7 @@ export function ChatPage() {
                         ? `Correcting session ${correctingSession}`
                         : isFinalSession
                           ? `Closing session ${sessionNumber}. This is your final account.`
-                          : 'About ten minutes'
+                          : direct ? 'A few minutes' : 'About ten minutes'
                   }
                   mayPause={opened && !completed && !declined}
                   /* Not in the bare frame: the only control on that screen should not lead out of the thing
@@ -1554,7 +1578,7 @@ export function ChatPage() {
                   {brief!.alsoSay && (
                     <p className="gwui-panel-text-muted">{brief!.alsoSay}</p>
                   )}
-                  <p className="gwui-panel-text-muted">Answer in your own words. You are not expected to agree with any of it.</p>
+                  {!direct && <p className="gwui-panel-text-muted">Answer in your own words. You are not expected to agree with any of it.</p>}
                 </div>
               )}
               {priorRecordLines.length > 0 && (
@@ -1722,6 +1746,14 @@ export function ChatPage() {
               onChange={() => { setDone(false); taRef.current?.focus() }}
             />
           )}
+          {/*
+            THE TARGETS YOU GAVE, AT THE END OF YOUR OWN CHECK-IN (Hafsah, 18 October). Once the lead has finished, the targets read
+            from her words wait here as one card, for her to confirm or correct before they go on record. The server holds them back
+            only on a sales check-in with Release 1's sales board on, so with it off nothing shows here.
+          */}
+          {completed && groundId && (ground.data as any)?.viewerIsInitiator && (
+            <WaitingForYouToConfirm groundId={groundId} lookAgain onlyTheTargetsYouGave />
+          )}
           {/* THE END OF A SESSION (fix list, item 5): the next one can be answered on WhatsApp. Only where the server serves the way to connect. */}
           {(done || completed) && !declined && connectWhatsApp && (
             <CheckInOnWhatsApp link={connectWhatsApp.link} label={connectWhatsApp.says} testId="check-in-on-whatsapp-next-time" />
@@ -1799,7 +1831,7 @@ export function ChatPage() {
                   <li>This cannot be undone for this session.</li>
                   <li>The session finishes without your answers, so nobody is left waiting on you.</li>
                   <li>The report will say you declined. It will not guess at what you would have said.</li>
-                  <li>Nothing you have written here is shown to anyone.</li>
+                  {!direct && <li>Nothing you have written here is shown to anyone.</li>}
                 </ul>
                 <div className="gwui-ci-confirm-actions">
                   <Button kind="primary" onClick={() => decline.mutate()} disabled={decline.isPending}>
@@ -1976,5 +2008,6 @@ export function ChatPage() {
         </div>
       )}
     </div>
+    </TheDirectMorning>
   )
 }

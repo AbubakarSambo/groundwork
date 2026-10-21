@@ -372,6 +372,18 @@ export class AdminController {
     return this.adminService.setCoachingLive(!!body?.live, userId);
   }
 
+  @Get('delivery-alert')
+  @ApiOperation({ summary: 'The address the daily delivery alert goes to, and whether it was saved here or comes from the server setting' })
+  getDeliveryAlert() {
+    return this.adminService.getDeliveryAlert();
+  }
+
+  @Patch('delivery-alert')
+  @ApiOperation({ summary: 'Set the address the daily delivery alert goes to. An empty value clears it.' })
+  setDeliveryAlert(@CurrentUser('id') userId: string, @Body() body: { email: string }) {
+    return this.adminService.setDeliveryAlert(body?.email ?? '', userId);
+  }
+
   @Get('correction-window')
   @ApiOperation({ summary: 'How many days somebody has to correct their own record after a report is released' })
   getCorrectionWindow() {
@@ -495,6 +507,42 @@ export class AdminController {
     return this.adminService.removePlatformAdmin(userId, callerId);
   }
 
+
+  /**
+   * RELEASE 1'S SALES BOARD, ONE ORGANISATION AT A TIME (release plan, Part 0: "switch it on for the test organisations; then
+   * on staging; then for real clients, one at a time"). Staff only, by the guard on this controller. Off returns the
+   * organisation to the board it had, with nothing lost.
+   */
+  @Patch('organisations/:organizationId/release-one-sales-board')
+  @ApiOperation({ summary: "Switch Release 1's sales board on or off for one organisation" })
+  setReleaseOneSalesBoard(@Param('organizationId') organizationId: string, @Body() dto: { on?: unknown }) {
+    if (typeof dto?.on !== 'boolean') throw new BadRequestException('Say whether the new sales board should be on or off for this organisation.');
+    return this.adminService.setReleaseOneSalesBoard(organizationId, dto.on);
+  }
+
+  /**
+   * RELEASE 1B'S NEW CHECK-IN TABS, ONE ORGANISATION AT A TIME (Hafsah, 18 October 2026: test organisations first, then real
+   * clients one at a time once she says so). Staff only, by the guard on this controller. Off returns the organisation to the
+   * tabs it had, with nothing lost.
+   */
+  @Patch('organisations/:organizationId/release-1b-tabs')
+  @ApiOperation({ summary: "Switch Release 1B's new check-in tabs on or off for one organisation" })
+  setRelease1bTabs(@Param('organizationId') organizationId: string, @Body() dto: { on?: unknown }) {
+    if (typeof dto?.on !== 'boolean') throw new BadRequestException('Say whether the new check-in tabs should be on or off for this organisation.');
+    return this.adminService.setRelease1bTabs(organizationId, dto.on);
+  }
+
+  /**
+   * RELEASE 2, COLLECT WHAT'S OWED, ONE ORGANISATION AT A TIME (release plan, Release 2: test organisations first, then Muchemi
+   * & Co once Hafsah says so). Staff only, by the guard on this controller. Off returns the organisation to what it had, with
+   * nothing lost.
+   */
+  @Patch('organisations/:organizationId/release-2-collections')
+  @ApiOperation({ summary: "Switch Release 2 (collect what's owed) on or off for one organisation" })
+  setRelease2Collections(@Param('organizationId') organizationId: string, @Body() dto: { on?: unknown }) {
+    if (typeof dto?.on !== 'boolean') throw new BadRequestException('Say whether Release 2 should be on or off for this organisation.');
+    return this.adminService.setRelease2Collections(organizationId, dto.on);
+  }
 
   /**
    * A FREE RUN ON THE HOUSE, GIVEN TO AN ADDRESS BEFORE THERE IS AN ORGANISATION. One month unless staff

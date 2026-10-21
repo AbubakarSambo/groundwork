@@ -19,7 +19,8 @@ describe('the text part', () => {
     expect(t).toBe('Hi & hello\n\nRead it (https://x.test/go)');
   });
   it('is passed to the provider on every production send', () => {
-    expect(send).toMatch(/const text = plainTextOf\(options\.html\);/);
+    /* Changed 19 October: a sender may give its own text part where the HTML is a table (the daily delivery alert); every other send still reads it off the HTML. */
+    expect(send).toMatch(/const text = options\.text \?\? plainTextOf\(options\.html\);/);
     expect(send).toMatch(/emails\.send\(\{ from: this\.fromEmail, \.\.\.options, text,/);
   });
 });

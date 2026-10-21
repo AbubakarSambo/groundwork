@@ -120,7 +120,8 @@ describe('"Change since last check-in" and "The 90 days, in three steps" (reques
 
     expect(screen.getByText('Change since last check-in')).toBeTruthy()
     expect(screen.getByText('Between session 2 and session 3.')).toBeTruthy()
-    expect(screen.getByText('Commitments')).toBeTruthy()
+    // Screen match: "Commitments" is also a line of the person's history now (kwame-board.jpg).
+    expect(screen.getAllByText('Commitments').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Late').length).toBeGreaterThan(0)
     expect(screen.getByText('Moved')).toBeTruthy()
     expect(screen.getByText('Held')).toBeTruthy()
@@ -133,17 +134,18 @@ describe('"Change since last check-in" and "The 90 days, in three steps" (reques
     await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })
 
     expect(screen.getByText('The 90 days, in three steps')).toBeTruthy()
-    expect(screen.getByText('Is Tobi Adewale settled in?')).toBeTruthy()
-    expect(screen.getByText('Is Tobi Adewale doing the job?')).toBeTruthy()
-    expect(screen.getByText('What you need to decide')).toBeTruthy()
+    // Screen match, 16 October: each step reads as kwame-board.jpg has it, "After 30 days: is ... settled in?".
+    expect(screen.getByText('After 30 days: is Tobi Adewale settled in?')).toBeTruthy()
+    expect(screen.getByText('After 60 days: is Tobi Adewale doing the job?')).toBeTruthy()
+    expect(screen.getByText('After 90 days: what you need to decide')).toBeTruthy()
     expect(screen.getByText(/2 goals were agreed for Tobi Adewale to be met by day 30\./)).toBeTruthy()
     expect(screen.getByText(/This step comes on 30 October\./)).toBeTruthy()
   })
 
-  it('draws "You and Tobi Adewale see the same pictures." to the lead, not the prototype\'s own Wairimu and Kwame', async () => {
+  it('draws "You and Tobi see the same pictures." to the lead (first names, as kwame-board.jpg has them), not the prototype\'s own Wairimu and Kwame', async () => {
     renderBoard(boardAsLead())
     await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })
-    expect(screen.getByText('You and Tobi Adewale see the same pictures.')).toBeTruthy()
+    expect(screen.getByText('You and Tobi see the same pictures.')).toBeTruthy()
     expect(screen.queryByText(/Wairimu/)).toBeNull()
     expect(screen.queryByText(/Kwame/)).toBeNull()
   })
@@ -184,27 +186,16 @@ describe('"Change since last check-in" and "The 90 days, in three steps" (reques
     expect(screen.queryByText('The 90 days, in three steps')).toBeNull()
   })
 
-  it('draws "What keeps coming up" out of the fold, with coaching straight after, the same as the sales and project boards', async () => {
+  /*
+   * SCREEN MATCH, 16 OCTOBER: THE ONBOARDING BOARD AS PICTURED (kwame-board.jpg) HAS NO "WHAT KEEPS COMING UP" AND
+   * NO COACHING FOR THE LEAD. Was: both drawn out of the fold. What keeps coming up about the new hire is on their own
+   * page (one person's page, person-page.jpg), opened from the board. Listed for Hafsah in the morning report.
+   */
+  it('draws no "What keeps coming up" on the lead’s onboarding board as pictured', async () => {
     renderBoard(boardAsLead({
       patterns: [{ id: 'pt-1', participantId: 'p-tobi', code: 'A2', about: 'the work', yours: false, says: 'Tobi raises blockers late in the week.', who: 'Tobi Adewale' }],
-      coaching: {
-        yours: {
-          showingUp: 'Keep saying what you did about anything that stalled.',
-          whyItMatters: 'It makes your record easy to check later.',
-          beforeNextTime: ['Say what you did about anything that stalled.'],
-          general: true,
-          role: null,
-          whyNoRoleMap: null,
-        },
-        eachPerson: null,
-      },
     }))
     await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })
-    expect(screen.getByText('What keeps coming up')).toBeTruthy()
-    const main = document.body.textContent ?? ''
-    const iPatterns = main.indexOf('What keeps coming up')
-    const iCoaching = main.indexOf('Keep saying what you did about anything that stalled.')
-    expect(iPatterns).toBeGreaterThan(-1)
-    expect(iCoaching).toBeGreaterThan(iPatterns)
+    expect(screen.queryByText('What keeps coming up')).toBeNull()
   })
 })

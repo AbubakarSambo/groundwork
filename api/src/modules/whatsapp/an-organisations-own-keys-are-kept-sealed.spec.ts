@@ -48,7 +48,7 @@ describe('saving the keys', () => {
 
   it('what is kept in the database is sealed, and what the admin reads back is only the last four letters', async () => {
     const { svc, rows } = setup();
-    const read = await svc.connect('org-baridi', { phoneNumberId: '109822345561', displayNumber: '+254 709 000 111', accessToken: TOKEN, appSecret: SECRET });
+    const read = await svc.connect('org-baridi', { businessAccountId: '204455667788', phoneNumberId: '109822345561', displayNumber: '+254 709 000 111', accessToken: TOKEN, appSecret: SECRET });
     expect(isSealed(rows[0].accessToken) && isSealed(rows[0].appSecret)).toBe(true);
     expect(JSON.stringify(rows[0])).not.toContain(TOKEN);
     expect(JSON.stringify(rows[0])).not.toContain(SECRET);
@@ -61,7 +61,7 @@ describe('saving the keys', () => {
 
   it('they open for Baridi, in their own place, and for nobody else', async () => {
     const { svc, rows } = setup();
-    await svc.connect('org-baridi', { phoneNumberId: '109822345561', accessToken: TOKEN, appSecret: SECRET });
+    await svc.connect('org-baridi', { businessAccountId: '204455667788', displayNumber: '+254 709 000 111', phoneNumberId: '109822345561', accessToken: TOKEN, appSecret: SECRET });
     expect(theirKey(rows[0], 'accessToken')).toBe(TOKEN);
     expect(theirKey(rows[0], 'appSecret')).toBe(SECRET);
     /* Copied into another organisation's row, or into the other key's place: nothing opens. */
@@ -74,11 +74,11 @@ describe('saving the keys', () => {
 
   it('saving again without a new token keeps the sealed ones, and a new one is sealed again', async () => {
     const { svc, rows } = setup();
-    await svc.connect('org-baridi', { phoneNumberId: '109822345561', accessToken: TOKEN, appSecret: SECRET });
+    await svc.connect('org-baridi', { businessAccountId: '204455667788', displayNumber: '+254 709 000 111', phoneNumberId: '109822345561', accessToken: TOKEN, appSecret: SECRET });
     const first = rows[0].accessToken;
-    await svc.connect('org-baridi', { phoneNumberId: '109822345562', displayNumber: '+254 709 000 222' });
+    await svc.connect('org-baridi', { businessAccountId: '204455667788', phoneNumberId: '109822345562', displayNumber: '+254 709 000 222' });
     expect(rows[0].accessToken).toBe(first);
-    await svc.connect('org-baridi', { phoneNumberId: '109822345562', accessToken: 'EAAG-a-new-token-77777777' });
+    await svc.connect('org-baridi', { businessAccountId: '204455667788', displayNumber: '+254 709 000 111', phoneNumberId: '109822345562', accessToken: 'EAAG-a-new-token-77777777' });
     expect(theirKey(rows[0], 'accessToken')).toBe('EAAG-a-new-token-77777777');
     expect(theirKey(rows[0], 'appSecret')).toBe(SECRET);
   });
@@ -86,7 +86,7 @@ describe('saving the keys', () => {
   it('on a server with no key nothing is saved, and the admin is told why in a sentence', async () => {
     delete process.env.SETTINGS_ENCRYPTION_KEY;
     const { svc, rows, prisma } = setup();
-    await expect(svc.connect('org-baridi', { phoneNumberId: '109822345561', accessToken: TOKEN, appSecret: SECRET })).rejects.toThrow(new BadRequestException(THE_SERVER_HAS_NO_KEY));
+    await expect(svc.connect('org-baridi', { businessAccountId: '204455667788', displayNumber: '+254 709 000 111', phoneNumberId: '109822345561', accessToken: TOKEN, appSecret: SECRET })).rejects.toThrow(new BadRequestException(THE_SERVER_HAS_NO_KEY));
     expect(rows).toEqual([]);
     expect(prisma.whatsAppConnection.upsert).not.toHaveBeenCalled();
     /* What the customer's admin reads is about us, and never names a setting. */
@@ -96,13 +96,13 @@ describe('saving the keys', () => {
 
   it('an organisation already connected can still save its display number with no key on the server, and its keys stay as they were; only a NEW secret needs the key', async () => {
     const { svc, rows } = setup();
-    await svc.connect('org-baridi', { phoneNumberId: '109822345561', accessToken: TOKEN, appSecret: SECRET });
+    await svc.connect('org-baridi', { businessAccountId: '204455667788', displayNumber: '+254 709 000 111', phoneNumberId: '109822345561', accessToken: TOKEN, appSecret: SECRET });
     const sealedBefore = { a: rows[0].accessToken, b: rows[0].appSecret };
     delete process.env.SETTINGS_ENCRYPTION_KEY;
-    const read: any = await svc.connect('org-baridi', { phoneNumberId: '109822345561', displayNumber: '+254 709 000 111' });
+    const read: any = await svc.connect('org-baridi', { businessAccountId: '204455667788', phoneNumberId: '109822345561', displayNumber: '+254 709 000 111' });
     expect(read.displayNumber).toBe('+254 709 000 111');
     expect({ a: rows[0].accessToken, b: rows[0].appSecret }).toEqual(sealedBefore);
-    await expect(svc.connect('org-baridi', { phoneNumberId: '109822345561', accessToken: 'a-new-token-1234' })).rejects.toThrow(new BadRequestException(THE_SERVER_HAS_NO_KEY));
+    await expect(svc.connect('org-baridi', { businessAccountId: '204455667788', displayNumber: '+254 709 000 111', phoneNumberId: '109822345561', accessToken: 'a-new-token-1234' })).rejects.toThrow(new BadRequestException(THE_SERVER_HAS_NO_KEY));
     expect(rows[0].accessToken).toBe(sealedBefore.a);
   });
 });
@@ -115,7 +115,7 @@ describe('using the keys', () => {
 
   it('a test message goes out with the token as typed, from the organisation’s own number id', async () => {
     const { svc } = setup();
-    await svc.connect('org-baridi', { phoneNumberId: '109822345561', accessToken: TOKEN, appSecret: SECRET });
+    await svc.connect('org-baridi', { businessAccountId: '204455667788', displayNumber: '+254 709 000 111', phoneNumberId: '109822345561', accessToken: TOKEN, appSecret: SECRET });
     const fetchSpy = jest.fn(async () => ({ ok: true, status: 200 }));
     (global as any).fetch = fetchSpy;
     (svc as any).tidyFor = async (_o: string, n: string) => n;
@@ -127,7 +127,7 @@ describe('using the keys', () => {
 
   it('a message from Meta is checked with the secret as typed: signed with it passes, signed with anything else is refused', async () => {
     const { svc, rows } = setup();
-    await svc.connect('org-baridi', { phoneNumberId: '109822345561', accessToken: TOKEN, appSecret: SECRET });
+    await svc.connect('org-baridi', { businessAccountId: '204455667788', displayNumber: '+254 709 000 111', phoneNumberId: '109822345561', accessToken: TOKEN, appSecret: SECRET });
     const raw = Buffer.from('{"entry":[]}');
     const signed = (secret: string) => ({ 'x-hub-signature-256': `sha256=${crypto.createHmac('sha256', secret).update(raw).digest('hex')}` });
     expect(() => svc.verifySignatureWith(theirKey(rows[0], 'appSecret'), signed(SECRET), raw)).not.toThrow();
@@ -162,7 +162,9 @@ describe('keys that cannot be opened', () => {
   async function sealedUnderKeyA() {
     process.env.SETTINGS_ENCRYPTION_KEY = KEY;
     const made = setup();
-    await made.svc.connect('org-baridi', { phoneNumberId: '109822345561', accessToken: TOKEN, appSecret: SECRET });
+    await made.svc.connect('org-baridi', { businessAccountId: '204455667788', displayNumber: '+254 709 000 111', phoneNumberId: '109822345561', accessToken: TOKEN, appSecret: SECRET });
+    /* Meta checked its webhook address, so this is the number in use (a-connection-that-works.ts): only then do its own keys decide. */
+    made.rows[0].webhookVerifiedAt = new Date();
     return made;
   }
   const raw = Buffer.from('{"entry":[]}');
@@ -209,11 +211,11 @@ describe('telling somebody when keys cannot be opened', () => {
   it('the start-up count names the organisations, never a key; their admin reads a plain sentence; an organisation whose keys open reads nothing of it', async () => {
     process.env.SETTINGS_ENCRYPTION_KEY = KEY;
     const { svc, rows } = setup();
-    await svc.connect('org-baridi', { phoneNumberId: '109822345561', accessToken: TOKEN, appSecret: SECRET });
-    await svc.connect('org-fine', { phoneNumberId: '109822345562', accessToken: TOKEN, appSecret: SECRET });
+    await svc.connect('org-baridi', { businessAccountId: '204455667788', displayNumber: '+254 709 000 111', phoneNumberId: '109822345561', accessToken: TOKEN, appSecret: SECRET });
+    await svc.connect('org-fine', { businessAccountId: '204455667788', displayNumber: '+254 709 000 111', phoneNumberId: '109822345562', accessToken: TOKEN, appSecret: SECRET });
     process.env.SETTINGS_ENCRYPTION_KEY = crypto.randomBytes(32).toString('base64');
     /* Fine's keys were re-typed under the new key. */
-    await svc.connect('org-fine', { phoneNumberId: '109822345562', accessToken: TOKEN, appSecret: SECRET });
+    await svc.connect('org-fine', { businessAccountId: '204455667788', displayNumber: '+254 709 000 111', phoneNumberId: '109822345562', accessToken: TOKEN, appSecret: SECRET });
     const logged: string[] = [];
     (svc as any).logger = { log: () => undefined, warn: () => undefined, error: (m: string) => logged.push(m) };
     await svc.sealWhatWasKeptPlain();

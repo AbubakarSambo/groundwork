@@ -57,12 +57,12 @@ const PARTICIPANT_BOARD = {
   yourShareSays: 'There is no number of yours on this board yet, so there is no share to show.',
 }
 
-function renderBoard(board: any) {
+function renderBoard(board: any, at = '/grounds/g1/board') {
   ;(boardApi.get as any).mockResolvedValue(board)
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={['/grounds/g1/board']}>
+      <MemoryRouter initialEntries={[at]}>
         <Routes><Route path="/grounds/:id/board" element={<BoardPage />} /></Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -70,9 +70,21 @@ function renderBoard(board: any) {
 }
 
 describe('fix 11, on a project board', () => {
-  it('puts "Who checked in" before "Blockers", and moves "Open issues" into the end fold', async () => {
+  /*
+   * Screen match, 16 October: the lead of an engineering release first reads eng-board.jpg's own board, which has no
+   * "Open issues". Nothing is lost: "See every other part of this board" opens the whole board as it was, where this
+   * fix's guarantee holds exactly as before.
+   */
+  it('keeps the whole board one tap away from the board drawn as pictured', async () => {
     me = { id: 'p-lead', firstName: 'Wanjiru', role: 'MEMBER' }
     renderBoard(LEAD_BOARD)
+    await screen.findByRole('heading', { name: 'Engineering release, test' })
+    expect(screen.getByRole('link', { name: 'See every other part of this board' }).getAttribute('href')).toBe('/grounds/g1/board?whole=1')
+  })
+
+  it('puts "Who checked in" before "Blockers", and moves "Open issues" into the end fold', async () => {
+    me = { id: 'p-lead', firstName: 'Wanjiru', role: 'MEMBER' }
+    renderBoard(LEAD_BOARD, '/grounds/g1/board?whole=1')
     await screen.findByRole('heading', { name: 'Engineering release, test' })
 
     const body = document.body.textContent ?? ''

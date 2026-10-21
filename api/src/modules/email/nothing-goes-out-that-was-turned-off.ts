@@ -84,10 +84,10 @@ export const GOVERNED_BY_THE_DIGEST_SWITCH: ReadonlySet<string> = new Set(['send
  * the person themselves to do something, or tell them they have missed it.
  */
 export const NOT_SENT_WHILE_AWAY: ReadonlySet<string> = new Set([
-  'sendNudge', 'sendAbsenceReminder', 'sendSessionReady', 'sendInviteAboutToLapse', 'sendFeedbackRequest',
+  'sendNudge', 'sendAbsenceReminder', 'sendSessionReady', 'sendInviteAboutToLapse', 'sendFeedbackRequest', 'sendTheLeadsNudge',
 ]);
 
-export const GOVERNED_BY_THE_NUDGE_SWITCH: ReadonlySet<string> = new Set(['sendNudge', 'sendAbsenceReminder', 'sendLeadFirstCheckIn']);
+export const GOVERNED_BY_THE_NUDGE_SWITCH: ReadonlySet<string> = new Set(['sendNudge', 'sendAbsenceReminder', 'sendLeadFirstCheckIn', 'sendTheLeadsNudge']);
 
 /**
  * Whether this goes out. The whole decision, in one function, called from one place.
@@ -174,6 +174,8 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   /* To our own roster, about the running of the product. Exempt from the customer-facing preference:
      an API-access request has to reach somebody. */
   sendTeamAlert: 'operational',
+  /* Groundwork's own morning list of what did not go out yesterday, to the one platform address set for it (engagement/the-daily-delivery-alert.ts). */
+  sendTheDailyDeliveryAlert: 'operational',
 
   /* They took part; this is the outcome. */
   sendReportReady: 'asked for',
@@ -229,6 +231,10 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendNudge: 'we decided to send it',
   /* The lead pressed "Remind": still a reminder, so the person's own opt-out stops it, but never counted or held for the day's one. */
   sendNudgeFromAPress: 'we decided to send it',
+  /* The lead pressed "Nudge Peter" (engagement/the-leads-own-nudge.ts): one message from her by name, about Peter's one thing today. A
+     reminder, so his own stop link and opt-out stop it and it waits for quiet hours to end; never counted or held as the day's one routine
+     message (it is not in ROUTINE_EMAILS), and never sent to somebody on approved leave. */
+  sendTheLeadsNudge: 'we decided to send it',
   /* "Send me that" from the assistant: they asked for it. */
   sendMeThat: 'asked for',
   sendInviteAboutToLapse: 'we decided to send it',
@@ -279,6 +285,12 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendMissedCheckIns: 'we decided to send it',
   /* What is outstanding for a lead, once each morning when something is (decision 120). */
   sendTheLeadsDailyNudge: 'we decided to send it',
+  /* The direct morning (behind organizations.direct_morning_on): the lead's daily summary in its four parts. It is sent under the daily nudge's name, so it is still her one routine message of the day. */
+  sendTheDirectMorning: 'we decided to send it',
+  /* A message WhatsApp could not take, by email instead (whatsapp/by-email-instead.ts): the day's routine one and a notice are ours to send; the thank-you and the report follow the person's own check-in. */
+  sendTheRoutineMessageByEmail: 'we decided to send it',
+  sendTheMessageByEmail: 'we decided to send it',
+  sendTheAnswerByEmail: 'asked for',
 };
 
 export function whatThisMailIs(sender: string): WhatKindOfMail {

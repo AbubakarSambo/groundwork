@@ -130,10 +130,19 @@ export function digestSubject(f: DigestFacts): string {
   return `${f.groundLabel} - session ${f.sessionNumber} is complete`;
 }
 
-export function digestBody(f: DigestFacts, unsubscribeUrl: string): string {
-  const attention = f.needsAttention === 0
+/**
+ * `direct`: the direct morning is on for the check-in's organisation (a-direct-email.ts). The link is said in a sentence, and the second
+ * way to stop these emails is left out: the footer every mail of this kind carries already has it.
+ */
+export function digestBody(f: DigestFacts, unsubscribeUrl: string, direct = false): string {
+  /* WHAT IT IS, WITH NO NAME IN IT (messages test, 19 October: "1 thing needs attention" did not say what). The count is of the waits still
+     open; who waits on whom, and for what, stays behind the link with the rest. */
+  const n = f.needsAttention;
+  const inWords = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+  const count = n <= 10 ? inWords[n] : String(n);
+  const attention = n === 0
     ? 'Nothing is flagged for attention.'
-    : `${f.needsAttention} ${f.needsAttention === 1 ? 'thing needs' : 'things need'} attention.`;
+    : `${count.charAt(0).toUpperCase()}${count.slice(1)} ${n === 1 ? 'thing somebody is waiting for is' : 'things people are waiting for are'} still open, and the check-in's board shows who is waiting and for what.`;
 
   /* Reviewer, 14 October: "Everyone has checked in... 3 people took part" when only the lead had.
      "Everyone" only when everyone gave an account; otherwise how many of how many, from the record. */
@@ -144,6 +153,7 @@ export function digestBody(f: DigestFacts, unsubscribeUrl: string): string {
       `${of} ${of === 1 ? 'person' : 'people'} took part. ${attention}`]
     : [`Session ${f.sessionNumber} of ${f.groundLabel} has closed.`,
       `${gave} of ${of} ${of === 1 ? 'person' : 'people'} checked in. ${attention}`];
+  if (direct) return [...said, `Read it on the check-in's board at ${f.permalink}`].join('\n');
   return [
     ...said,
     /* The link is the point of the mail. What was actually said stays behind it, under whatever

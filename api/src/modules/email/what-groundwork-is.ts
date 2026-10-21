@@ -70,7 +70,7 @@ export function shouldSayWhatGroundworkIs(sender: string | undefined): boolean {
  * until the record is released to everybody at the same time, and the record does not quote you", which is not true (decision 4).
  */
 export function whatGroundworkIs(whoSees: string): string {
-  return '<p style="font-size:12px;color:#9B9590;line-height:1.6;margin-top:20px;border-top:1px solid #E8E5DE;padding-top:12px;">' +
+  return '<p style="font-size:13px;color:#4E4236;line-height:1.6;margin-top:20px;border-top:1px solid #EDE5D6;padding-top:12px;">' +
     'Groundwork is where the people involved in a piece of work each give their own account of it, and get one shared record back. ' +
     `${whoSees.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</p>`;
 }

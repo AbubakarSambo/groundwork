@@ -4,7 +4,7 @@ import { Injectable, Logger, NotFoundException, BadRequestException } from '@nes
 import { isASecondOrganisation, GUEST_ROLE } from './joining-a-second-organisation';
 import { JwtService } from '@nestjs/jwt';
 import * as crypto from 'crypto';
-import { needsApproval, isAnAdminOf, whoToAsk, WAITING_TO_BE_LET_IN } from './nobody-joins-your-company-by-being-invited-to-a-check-in';
+import { needsApproval, isAnAdminOf, whoToAsk, howTheyStandIn, WAITING_TO_BE_LET_IN } from './nobody-joins-your-company-by-being-invited-to-a-check-in';
 
 import { HELD_FOR_A_SEAT } from './held-for-a-seat';
 import { namedWhenAnAdminApproved, theyWaitForAnAdmin, whatHappensWhenYouJoin } from './named-when-an-admin-approved';
@@ -339,10 +339,8 @@ export class ParticipantsService {
           })) !== null
         : false;
       /* Whoever added THIS person - the lead, or the admin who set the check-in up for them (U.4). */
-      const inviter = await tx.user.findUnique({
-        where: { id: whoToAsk(participant.addedByUserId, ground.initiatorId) },
-        select: { role: true, organizationId: true },
-      });
+      /* As they stand in the check-in's organisation, not in whichever one they have open now (15 October). */
+      const inviter = await howTheyStandIn(tx, whoToAsk(participant.addedByUserId, ground.initiatorId), ground.organizationId);
       const wait = needsApproval({
         groundOrganizationId: ground.organizationId,
         theirHomeOrganizationId: user?.organizationId ?? null,
@@ -352,7 +350,7 @@ export class ParticipantsService {
         addedByAnAdminOfThisOrg: isAnAdminOf(ground.organizationId, inviter)
           /* Named on the check-in when an admin approved it: let in by that approval (Hafsah, 12 October). */
           || namedWhenAnAdminApproved(ground as any, participant as any, (ground as any).approvedById
-            ? await tx.user.findUnique({ where: { id: (ground as any).approvedById }, select: { role: true, organizationId: true } })
+            ? await howTheyStandIn(tx, (ground as any).approvedById, ground.organizationId)
             : null),
       });
 
@@ -463,7 +461,15 @@ export class ParticipantsService {
     // Send a password setup link so the participant can return after their
     // initial session without being locked out. Only send when no password
     // is set - existing accounts that already have one don't need this.
-    if (!user.passwordHash) {
+    /*
+     * ONE EMAIL WHILE ITS LINK STILL WORKS (messages test, 19 October, finding 17): Brian accepted his Fee notes invitation and, minutes later and
+     * signed in, his Litigation team daily one, and was sent "Set a password for Groundwork" twice. A setup link sent and not used or run out is
+     * still his way in, so no second one goes.
+     */
+    const aLiveSetupLink = !user.passwordHash
+      ? await Promise.resolve((this.prisma as any).emailVerificationToken?.findFirst?.({ where: { userId: user.id, type: TokenType.PASSWORD_SETUP, usedAt: null, expiresAt: { gt: new Date() } }, select: { id: true } })).catch(() => null)
+      : null;
+    if (!user.passwordHash && !aLiveSetupLink) {
       const setupToken = crypto.randomBytes(32).toString('hex');
       await this.prisma.emailVerificationToken.create({
         data: {

@@ -1,3 +1,4 @@
+import { theContextTabsName } from '@/lib/the-references-tab'
 /**
  * ONE TAB ORDER FOR A GROUND, WHOEVER IS LOOKING.
  *
@@ -122,13 +123,15 @@ export const FIRST_TAB: GroundTabKey = 'chat'
  * TheCheckInHeader.tsx's own note); kept reachable as a sixth, unconditionally.
  */
 export function checkInHeaderTabs({
-  id, contextEnabled, canRunThisCheckIn, isAParty,
-}: { id: string } & TabContext): { key: string; label: string; to: string }[] {
+  id, contextEnabled, canRunThisCheckIn, isAParty, ground,
+}: { id: string; ground?: { release1bTabsOn?: boolean } | null } & TabContext): { key: string; label: string; to: string }[] {
   const myWorkTab = canRunThisCheckIn ? 'sessions' : 'record'
   return [
     { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
     ...(canRunThisCheckIn || isAParty ? [{ key: 'chat', label: 'Check-in', to: `/grounds/${id}` }] : []),
-    { key: 'context', label: contextEnabled ? 'Context and resources' : 'Documents', to: `/grounds/${id}?tab=context` },
+    /* Named as the check-in page names it: "References and resources" where Release 1B is on (browser test, 20 October:
+       the report pages still said "Context and resources" beside a check-in page that said "References and resources"). */
+    { key: 'context', label: theContextTabsName(ground, contextEnabled ? 'Context and resources' : 'Documents'), to: `/grounds/${id}?tab=context` },
     ...(canRunThisCheckIn || isAParty ? [{ key: myWorkTab, label: 'My work', to: `/grounds/${id}?tab=${myWorkTab}` }] : []),
     { key: 'settings', label: 'People and setup', to: `/grounds/${id}?tab=settings` },
     { key: 'report', label: 'Report', to: `/grounds/${id}?tab=report` },

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, ParseIntPipe, Query } from '@nestjs/common';
 import { IsBoolean, MinLength } from 'class-validator';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IsOptional, IsInt, Min, Max, IsEnum, IsIn, IsArray } from 'class-validator';
@@ -356,6 +356,17 @@ export class GroundsController {
     return this.grounds.listAwaitingApproval(user.organizationId, user.id);
   }
 
+  /**
+   * THE SITUATIONS THIS ORGANISATION MAY START BEYOND THE USUAL LIST (Release 2): "Collect what's owed" where its Release 2
+   * switch is on. A yes or no about the organisation, nothing about anybody. Declared before `:id`, for the reason above. The
+   * server asks again when the check-in is created.
+   */
+  @Get('situations-offered')
+  @ApiOperation({ summary: 'Whether this organisation may start a check-in to collect what is owed (Release 2)' })
+  async situationsOffered(@CurrentUser() user: CurrentUserData) {
+    return this.grounds.situationsOffered(user.organizationId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a ground (status, participants, check-ins)' })
   async get(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
@@ -587,6 +598,74 @@ export class GroundsController {
   @ApiOperation({ summary: "Each person's WhatsApp number and status on this check-in (whoever runs the check-in, or an admin)" })
   async whereEachPersonIsOnWhatsApp(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
     return this.grounds.whereEachPersonIsOnWhatsApp({ groundId: id, organizationId: user.organizationId, userId: user.id, role: user.role });
+  }
+
+  /** Each person on this check-in, from their invitation to coming back on their own (whoever runs it, or an admin). */
+  @Get(':id/participants/getting-started')
+  @ApiOperation({ summary: 'Each person on this check-in, from their invitation to checking in on their own (whoever runs the check-in, or an admin)' })
+  async whereEachPersonIsGettingStarted(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
+    return this.grounds.whereEachPersonIsGettingStarted({ groundId: id, organizationId: user.organizationId, userId: user.id, role: user.role });
+  }
+
+  /**
+   * PEOPLE AND SETUP, AS THIS READER IS SERVED IT (Release 1B, pull request 1 of 3): the lead the whole page, an admin who
+   * does not run it the whole page with no ending, a team member only their short page. `{ on: false }` while Release 1B's
+   * switch is off for the organisation. Only reads. See people-and-setup.ts.
+   */
+  @Get(':id/people-and-setup')
+  @ApiOperation({ summary: 'People and setup, as this reader may read it (the lead, an admin who does not run it, or a team member)' })
+  async peopleAndSetup(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
+    return this.grounds.peopleAndSetup(id, user.organizationId, user.id);
+  }
+
+  /**
+   * REFERENCES AND RESOURCES, AS THIS READER IS SERVED IT (Release 1B, pull request 2 of 3): the lead every section, a team
+   * member never People, the lead's notes or a document they may not open. `{ on: false }` while Release 1B's switch is off
+   * for the organisation. Only reads. See references-and-resources.ts.
+   */
+  @Get(':id/references-and-resources')
+  @ApiOperation({ summary: 'References and resources, as this reader may read it (the lead, a team member, or an admin)' })
+  async referencesAndResources(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.grounds.referencesAndResources(id, userId);
+  }
+
+  /** One page of the evidence this reader may read: the lead all of it, each person only their own. 25 to a page, newest first. */
+  @Get(':id/references-and-resources/evidence')
+  @ApiOperation({ summary: 'One page of the evidence on References and resources, with search and filters' })
+  async referencesEvidence(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Query('page') page?: string,
+    @Query('q') q?: string,
+    @Query('group') group?: string,
+    @Query('person') person?: string,
+    @Query('when') when?: string,
+  ) {
+    const w = when === 'week' || when === 'month' || when === 'quarter' ? when : 'any';
+    return this.grounds.referencesEvidence(id, userId, { page: Number(page) || 1, q, group, person, when: w });
+  }
+
+  /** The lead adds a line to References and resources. Anybody else is refused at the server. */
+  @Post(':id/references-and-resources/lines')
+  @ApiOperation({ summary: 'Add a line to References and resources (the lead only)' })
+  async addAReference(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: { kind?: string; text?: string; label?: string; aboutParticipantId?: string | null },
+  ) {
+    return this.grounds.addAReference(id, userId, dto ?? {});
+  }
+
+  /** The lead rewords or removes a line on References and resources. Anybody else is refused at the server. */
+  @Patch(':id/references-and-resources/lines/:lineId')
+  @ApiOperation({ summary: 'Change or remove a line on References and resources (the lead only)' })
+  async changeAReference(
+    @Param('id') id: string,
+    @Param('lineId') lineId: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: { text?: string; label?: string; closed?: boolean },
+  ) {
+    return this.grounds.changeAReference(id, userId, lineId, dto ?? {});
   }
 
   @Get(':id/mediator-brief')
@@ -867,6 +946,16 @@ export class GroundsController {
     return this.grounds.setPeerVisibility(id, userId, !!body.visible);
   }
 
+  @Patch(':id/report-shares-at')
+  @ApiOperation({ summary: "Whether the team's report shares itself at a set time of day (empty is off)" })
+  async setReportSharesAt(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() body: { time: string | null },
+  ) {
+    return this.grounds.setReportSharesAt(id, userId, body?.time ?? null);
+  }
+
   @Patch(':id/people-work-together')
   @ApiOperation({ summary: "Whether the parties on this ground see each other's work - decides whether fairness reads have anything to stand on" })
   async setPeopleWorkTogether(
@@ -875,6 +964,17 @@ export class GroundsController {
     @Body() body: { together: boolean },
   ) {
     return this.grounds.setPeopleWorkTogether(id, userId, !!body.together);
+  }
+
+  /** Release 2: the lead confirms this check-in's type in "What it is" (board/the-switchboard.ts). */
+  @Patch(':id/check-in-type')
+  @ApiOperation({ summary: "The lead confirms the type of this check-in, one of the types its scenario offers (Release 2)" })
+  async confirmTheType(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() body: { type?: unknown },
+  ) {
+    return this.grounds.confirmTheType(id, userId, body ?? {});
   }
 
   @Patch(':id/kind-of-work')

@@ -73,6 +73,26 @@ export function theKeyOf(item: string): string | null {
   return key;
 }
 
+/**
+ * ANOTHER REP'S DEALS ARE NEVER HANDED TO THIS ONE (Drop Access short run, item 6): the names of the customers on record that are
+ * not this person's own (another rep's, or nobody's yet).
+ */
+export function theCustomersThatAreNotTheirs(rows: { name: string; ownerParticipantId: string | null }[], participantId: string | null): string[] {
+  const mine = new Set(rows.filter((r) => !!participantId && r.ownerParticipantId === participantId).map((r) => String(r.name ?? '').trim().toLowerCase()));
+  return [...new Set(rows.filter((r) => !participantId || r.ownerParticipantId !== participantId).map((r) => String(r.name ?? '').trim()).filter((n) => n && !mine.has(n.toLowerCase())))];
+}
+
+/** Where a set was named, with those customers' names taken out, so no set is made of them (the whole name, never a word of it). */
+export function withoutTheseCustomers(namedIn: WhereASetWasNamed[], customers: string[]): WhereASetWasNamed[] {
+  if (!customers.length) return namedIn;
+  const longestFirst = [...customers].sort((a, b) => b.length - a.length);
+  return namedIn.map((w) => {
+    let text = w.text;
+    for (const c of longestFirst) text = text.replace(new RegExp(`\\b${c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi'), '');
+    return { ...w, text };
+  });
+}
+
 function mentions(text: string, key: string): boolean {
   const t = ` ${(text ?? '').toLowerCase().replace(/co-?operative|cooperative|\bcoop\b/g, 'co-op').replace(/[’']s\b/g, '')} `;
   const k = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

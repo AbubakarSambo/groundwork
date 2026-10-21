@@ -1,3 +1,4 @@
+import { itSendsFromTheirNumber, NOT_FINISHED_SO_GROUNDWORKS_NUMBER } from '../whatsapp/a-connection-that-works';
 import { answerFirst } from '../whatsapp/answer-the-webhook-then-do-the-work';
 import { Body, Controller, Delete, Get, HttpCode, Logger, Param, Post, Put, Query, Req, Res, BadRequestException, UseGuards } from '@nestjs/common';
 import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
@@ -5,7 +6,7 @@ import { MachineTokenGuard, RequiresScope, type MachineCaller } from './machine-
 import { A_MESSAGE_MAX } from '../../common/dto';
 import { ConfigService } from '@nestjs/config';
 import { LANGUAGES_WE_CONVERSE_IN } from './a-whatsapp-message-is-routed';
-import { THE_NAMES_TO_SUBMIT } from '../whatsapp/a-message-outside-the-window';
+import { THE_NAMES_TO_SUBMIT, THE_NAMES_WE_MAY_USE } from '../whatsapp/a-message-outside-the-window';
 import { ApiExcludeEndpoint, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
@@ -66,6 +67,8 @@ export class WhatsAppForAnOrganisationController {
 
   /* Every template the product starts (THE_NAMES_TO_SUBMIT). Every other send is a reply, which needs no template. */
   private static readonly THE_ONES_WE_START = THE_NAMES_TO_SUBMIT;
+  /* With the four of 19 October (docs/whatsapp-templates.md), which an organisation with its own number may list once Meta approves them. None is needed to start a conversation, and none is on the page's list yet: they are submitted by Groundwork first (docs/release-questions.md). */
+  private static readonly THE_ONES_WE_MAY_USE = THE_NAMES_WE_MAY_USE;
 
   /* ---------------- the admin half ---------------- */
 
@@ -111,6 +114,8 @@ export class WhatsAppForAnOrganisationController {
           phoneNumberId: true, businessAccountId: true, displayNumber: true, approvedTemplates: true, enabled: true,
           connectedAt: true, lastInboundAt: true, lastOutboundAt: true, webhookVerifiedAt: true,
           verifyToken: true,
+          /* Read only to say whether the row works (a-connection-that-works.ts); never served. */
+          accessToken: true, appSecret: true,
         },
       }),
       this.prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true } }),
@@ -130,6 +135,9 @@ export class WhatsAppForAnOrganisationController {
           lastOutboundAt: row.lastOutboundAt,
           /* U.18: the callback address is proven once Meta's handshake answered, or a message came in through it. */
           webhookProvenAt: row.webhookVerifiedAt ?? row.lastInboundAt ?? null,
+          /* Whether this is the number in use. A row switched on but half set up, or never proven, is not: Groundwork's own number is (Drop Access, 21 October). */
+          inUse: itSendsFromTheirNumber(row),
+          ...(row.enabled && !itSendsFromTheirNumber(row) ? { notInUseSays: NOT_FINISHED_SO_GROUNDWORKS_NUMBER } : {}),
         }
       : null;
     const ours = this.config.get<string[]>('whatsapp.approvedTemplates') ?? [];
@@ -148,7 +156,8 @@ export class WhatsAppForAnOrganisationController {
       ...whatsAppAsTheAdminReadsIt({
         organizationId,
         organisationName: org?.name ?? '',
-        own: row ? { enabled: row.enabled, displayNumber: row.displayNumber, verifyTokenSet: !!row.verifyToken } : null,
+        /* A row switched on but not finished is read as no connection, as the sender reads it: Groundwork's number is in use. */
+        own: row && (!row.enabled || itSendsFromTheirNumber(row)) ? { enabled: row.enabled, displayNumber: row.displayNumber, verifyTokenSet: !!row.verifyToken } : null,
         groundwork: {
           credentialsConfigured: toggle.credentialsConfigured,
           switchedOn: toggle.adminEnabled,
@@ -190,9 +199,9 @@ export class WhatsAppForAnOrganisationController {
     @Body() dto: { approved?: string[] },
   ) {
     const asked = Array.isArray(dto?.approved) ? dto.approved : [];
-    const unknown = asked.filter((n) => !WhatsAppForAnOrganisationController.THE_ONES_WE_START.includes(n));
+    const unknown = asked.filter((n) => !WhatsAppForAnOrganisationController.THE_ONES_WE_MAY_USE.includes(n));
     if (unknown.length) {
-      throw new BadRequestException(`Not one of ours: ${unknown.join(', ')}. The names are ${WhatsAppForAnOrganisationController.THE_ONES_WE_START.join(', ')}.`);
+      throw new BadRequestException(`Not one of ours: ${unknown.join(', ')}. The names are ${WhatsAppForAnOrganisationController.THE_ONES_WE_MAY_USE.join(', ')}.`);
     }
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } });
     if (!own) throw new BadRequestException('Connect your WhatsApp number first.');

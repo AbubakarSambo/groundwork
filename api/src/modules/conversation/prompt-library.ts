@@ -11,6 +11,7 @@ import { alreadyEstablished } from './setup-already-asked-this';
 import { whatThisCheckInIsFor, whichStage, THE_SCENARIO_TABLE, type Stage } from './the-scenario-table';
 import { NOTHING_HERE_IS_PLEASED_WITH_YOU } from './nothing-here-is-pleased-with-you';
 import { GroundScenario, PartyType, GroundMoment } from '@prisma/client';
+import { SALES_CHECK_IN_GATHERS_KEY, SALES_CHECK_IN_GATHERS_PROMPT } from './what-a-sales-check-in-gathers';
 import { FIRST_CHECK_IN_ROLE_KEY, FIRST_CHECK_IN_ROLE_PROMPT, ROLE_READING_KEY, ROLE_READING_PROMPT } from './their-role-in-the-first-check-in';
 import { ALIGNMENT_FEED_ONLY_CODES, PATTERN_DETECTION_PROMPT, PATTERN_DETECTION_PROMPT_KEY } from '../patterns/pattern-library';
 import { whereInTheRun } from './where-in-the-run';
@@ -3024,6 +3025,38 @@ KEEP IT SHORT: about five minutes. This is a standing read, not a deep account -
 RECORD: The record should show what this person owns and is working to, what moved against it since last time, what is stuck and on whom, and any change to the target itself and who agreed it. Across sessions the useful signal is the same thing stuck three reads running, and work that is busy but not against anything anyone agreed.`;
 
 /**
+ * COLLECT WHAT'S OWED (COLLECTIONS, release plan, Release 2). Reached only where the organisation's Release 2 switch is on, and
+ * only by a new check-in. It is the recurring read's shape (PULSE_CHECK_PACK) about named bills: the exception the release plan
+ * allows the conversation is what it gathers, so it asks about each open bill by name for what the collections board will need,
+ * once each, and nothing else (release plan, Part 0 and Part 1A). No sales question is ever asked here.
+ */
+const COLLECTIONS_PACK = `MOMENT: A regular read on what is owed and whether it is being paid.
+
+PURPOSE: The lead wants to know which bills are due, why each one is due, what has been paid with proof, and what is in the way. A bill is whatever this organisation calls it: an invoice, a fee note, or a loan repayment. Use the word the person uses.
+
+WHO ANSWERS: either the people who follow up the clients who owe, or the people who owe, checking in for themselves. Read which from the context and from what they say, and speak to them as that.
+
+FIRST SESSION - ESTABLISH WHAT THIS PERSON FOLLOWS UP OR OWES. Ask which bills are theirs, by name: the client or the matter, and the amount of each.
+
+EVERY SESSION - FOR EACH OPEN BILL, BY NAME, ONLY WHAT IS MISSING:
+- the amount, in full, not a part of it;
+- what makes it due: a date, or an event (for example a filing or a hearing), and whether that has happened;
+- what has been paid, and the proof of it: a record in the accounting system, a bank slip or a mobile money message;
+- any date the client promised to pay by, in the client's own words;
+- what is in the way, in their own words.
+Ask once per missing item. Never ask again for what is already on record.
+
+PAID MEANS PROOF. A payment somebody says came in, with no record, is what they said, not paid. Ask for the record once, and if there is none, keep it as said.
+
+A PROMISE IS THE PROMISE OF WHOEVER MADE IT. A client's promise to pay belongs to that bill, not to the person checking in. The person checking in is responsible only for what they said they would do.
+
+NEVER RAISE OR WRITE A BILL. Groundwork does not raise or draft a bill. If a bill should have gone out and did not, record that, and who would raise it.
+
+KEEP IT SHORT: about ten minutes.
+
+RECORD: The record should show each bill this person follows up or owes, by name, with its amount, what makes it due, what has been paid and the proof, any promised date in the client's words, what is in the way, and what this person said they would do next, with its day.`;
+
+/**
  * GET UPDATES FROM YOUR TEAM. THE LIGHTEST SITUATION IN THE PRODUCT, AND THE ONLY ONE WHERE THE
  * QUESTION IS NOT OURS.
  *
@@ -3551,6 +3584,7 @@ export const SCENARIO_PACKS: Record<GroundScenario, string> = {
   SNAPSHOT: SNAPSHOT_PACK,
   DISCOVERY: DISCOVERY_PACK,
   TEAM_UPDATES: TEAM_UPDATES_PACK,
+  COLLECTIONS: COLLECTIONS_PACK,
   REALIGN_TEAM: REALIGN_TEAM_PACK,
   OPEN_READ: OPEN_READ_PACK,
   PIP: PIP_PACK,
@@ -3773,6 +3807,10 @@ function theScenariosOwnPack(
        is that everybody is answering the same one line. See TEAM_UPDATES_PACK. */
     case GroundScenario.TEAM_UPDATES:
       return TEAM_UPDATES_PACK;
+
+    /* The same pack for both sides: the lead follows up bills too, and the board reads everybody's bills the same way. */
+    case GroundScenario.COLLECTIONS:
+      return COLLECTIONS_PACK;
 
     case GroundScenario.REALIGN_TEAM:
       return REALIGN_TEAM_PACK;
@@ -4056,6 +4094,7 @@ function resolveRelationshipHistory(
     case GroundScenario.OKR_ALIGNMENT:
     case GroundScenario.WORKPLAN_BUDGET:
     case GroundScenario.PULSE_CHECK:
+    case GroundScenario.COLLECTIONS:
     case GroundScenario.REALIGN_TEAM:
     case GroundScenario.BOARD_STRATEGY:
     case GroundScenario.COHORT_CHECK:
@@ -4085,6 +4124,7 @@ function relationshipTypeFromScenario(scenario: GroundScenario): string {
     case GroundScenario.OKR_ALIGNMENT: return 'okr_alignment';
     case GroundScenario.WORKPLAN_BUDGET: return 'workplan_budget';
     case GroundScenario.PULSE_CHECK: return 'pulse_check';
+    case GroundScenario.COLLECTIONS: return 'collections';
     case GroundScenario.REALIGN_TEAM: return 'team_realignment';
     case GroundScenario.BOARD_STRATEGY: return 'board_strategy';
     case GroundScenario.COHORT_CHECK: return 'cohort_member';
@@ -4402,6 +4442,7 @@ export function registerFor(scenario: GroundScenario): string {
       );
     case GroundScenario.SNAPSHOT:
     case GroundScenario.PULSE_CHECK:
+    case GroundScenario.COLLECTIONS:
     /* Two minutes of somebody's day, answering one question from their own manager. If any register
        in this file must not read as a form, it is this one. */
     case GroundScenario.TEAM_UPDATES:
@@ -5159,6 +5200,8 @@ export const SEED_PROMPTS: { key: string; content: string }[] = [
   { key: ROLE_READING_KEY, content: ROLE_READING_PROMPT },
   /* The judgement over a check-in's people (change 4): seeded, so the version stored is the one that runs and the judgement's promptVersionId names it. Filled with fillTheJudgement, as the code text is. */
   { key: THE_JUDGEMENT_ROOM_KEY, content: theRoomJudgementTemplate() },
+  /* What a sales check-in gathers for the board (Hafsah, 16 October 2026): the version stored here is the one that runs, and the turn hands its id back. */
+  { key: SALES_CHECK_IN_GATHERS_KEY, content: SALES_CHECK_IN_GATHERS_PROMPT },
   ...buildPartySeeds(),
 ];
 

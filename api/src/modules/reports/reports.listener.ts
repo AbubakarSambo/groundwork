@@ -1,3 +1,4 @@
+import { CLOSED_BY_THE_CLOCK } from '../../common/closed-by-the-clock';
 import { nameToCall } from '../engagement/a-name-to-call-them';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { whoIsLeftToCheckIn } from '../email/who-has-not-checked-in-yet';
@@ -12,6 +13,7 @@ import { EmailService } from '../email/email.service';
 import { GroundworkEvents, CheckInCompletedEvent, GroundActivatedEvent } from '../../common';
 import { GroundStatus, PartyType, ReportActivationStatus, CheckInStatus } from '@prisma/client';
 import { hasEnded, isHeld, hasStalled, isShut } from '../grounds/a-ground-that-has-ended';
+import { theTimeItSharesItself } from './a-report-shares-itself';
 
 /**
  * Bridges domain events to report generation. Lives in the reports module so
@@ -123,14 +125,22 @@ export class ReportsListener {
       // Once everyone is through, this is the real moment: mutual reveal,
       // billing activation, "your report is ready" notifications.
       this.logger.log(`All parties through session ${sessionNumber}. Releasing report and activating ground ${event.groundId}.`);
-      const g = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { organizationId: true, status: true } });
+      const g = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { organizationId: true, status: true, cadence: true, reportSharesAt: true } as any }) as any;
       if (g) {
-        await this.reports.release(event.groundId, g.organizationId);
-        /* release() now releases this session's picture on its own and tells people itself (decision 76, item 4);
-           this stays as the backstop for anybody it missed. Once per person per round, so nobody is told twice. */
-        await this.reports.tellThemTheReportIsReady(event.groundId, sessionNumber).catch((err: any) =>
-          this.logger.warn(`Telling the round on ${event.groundId} failed: ${err?.message}`),
-        );
+        /*
+         * A REPORT SHARES ITSELF AT ITS SET TIME, NOT THE MOMENT EVERYONE IS IN (Hafsah's answers 1 and 5, 16 October 2026).
+         * A check-in that repeats waits for its set time (or the lead's own "Share now"), so the lead can read it first and
+         * hold it; the job that shares it is ReportsService.shareTheReportsWhoseTimeHasCome. A one-time check-in has no set
+         * time and shares now, as it always did.
+         */
+        if (!theTimeItSharesItself(g)) {
+          await this.reports.release(event.groundId, g.organizationId);
+          /* release() now releases this session's picture on its own and tells people itself (decision 76, item 4);
+             this stays as the backstop for anybody it missed. Once per person per round, so nobody is told twice. */
+          await this.reports.tellThemTheReportIsReady(event.groundId, sessionNumber).catch((err: any) =>
+            this.logger.warn(`Telling the round on ${event.groundId} failed: ${err?.message}`),
+          );
+        }
         /*
          * THE REPORT OF THE LAST SESSION MUST NOT REOPEN THE GROUND. Releasing normally means the
          * ground is live, and for the closing session it is the opposite: the report lands after
@@ -236,6 +246,13 @@ export class ReportsListener {
     });
     if (!ground?.initiator?.email) return;
     if (!ground.participants.find((p) => p.id === event.participantId)?.checkIns.length) return;
+    /*
+     * A CHECK-IN THE CLOCK CLOSED IS NOT "<NAME> HAS CHECKED IN" (Drop Access run 1, item 12). Joseph's day 5 check-in was closed by the
+     * clock at 23:30 after he had said only "I do not know", and Grace was emailed "Joseph Kariuki has checked in ... Everyone has now
+     * checked in." He had not finished. What he said is kept and read in the report; the lead is not told he checked in.
+     */
+    const closed: any = await Promise.resolve((this.prisma as any).checkIn?.findUnique?.({ where: { id: event.checkInId }, select: { closedReason: true } })).catch(() => null);
+    if (closed?.closedReason === CLOSED_BY_THE_CLOCK) return;
 
     const who = ground.participants.find((p) => p.id === event.participantId);
     const participantEmail = who?.user?.email;
@@ -253,7 +270,7 @@ export class ReportsListener {
     const nameOf = (p: (typeof counted)[number]) => (p.user?.email === ground.initiator.email ? 'you' : nameToCall({ user: p.user as any }));
     const answered = counted.filter((p) => p.checkIns.length > 0).map(nameOf).filter((x) => !!x).sort((a, b) => (a === 'you' ? -1 : b === 'you' ? 1 : 0));
     const youAreStillToAnswer = counted.some((p) => nameOf(p) === 'you') && !answered.includes('you');
-    await this.email.sendParticipantCheckedIn(ground.initiator.email, participantName, ground.label, groundUrl, stillPending, { answered, ofHowMany: counted.length, youAreStillToAnswer });
+    await this.email.sendParticipantCheckedIn(ground.initiator.email, participantName, ground.label, groundUrl, stillPending, { answered, ofHowMany: counted.length, youAreStillToAnswer }, { groundId: event.groundId, participantId: event.participantId, checkInId: event.checkInId });
   }
 
   /**

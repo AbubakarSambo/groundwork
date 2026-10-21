@@ -16,6 +16,7 @@ import { theEngagementMoment } from '../engagement/the-engagement-release-moment
 import { hasBeenToldOnce, nowToldOnce, isAlreadyHeld } from '../engagement/a-message-sent-once';
 import { nobodyElseIsIn, theLeadsFirstWords } from '../engagement/the-leads-own-first-check-in';
 import { theNudgeLineFor } from '../engagement/a-follow-up-from-their-own-record';
+import { theSameWordsAgain, rememberTheWords, writeDownTheSkip } from '../engagement/never-the-same-words-twice';
 import { WorkspaceNotifierService } from '../workspace/workspace-notifier.service';
 import {
   whatToDoToday,
@@ -416,6 +417,13 @@ export class RemindService {
 
       try {
         const theName = await nameFor({ userId: participant.userId, email: participant.email }, checkIn.groundId, checkIn.ground.label);
+        /* After two missed days, never the same words twice in a row (engagement/never-the-same-words-twice.ts; direct morning only). */
+        const theLine = await theNudgeLineFor(this.prisma, { ...(checkIn.ground as any), id: checkIn.groundId }, (checkIn as any).createdAt, participant.id);
+        const words = [`A reminder about your check-in for ${theName}.`, theLine ?? ''].join(' ').trim();
+        if (await theSameWordsAgain(this.prisma, { groundId: checkIn.groundId, participantId: participant.id, words, now })) {
+          await writeDownTheSkip(this.prisma, { channel: 'email', to: participant.email, sender: 'sendNudge', organizationId: (checkIn.ground as any).organizationId });
+          continue;
+        }
         const went = await this.email.sendNudge(
           participant.email,
           theName,
@@ -423,7 +431,7 @@ export class RemindService {
           undefined,
           otherPartyCompleted,
           /* Their own last open promise, to them only, on an anchor check-in (piece 30). */
-          await theNudgeLineFor(this.prisma, { ...(checkIn.ground as any), id: checkIn.groundId }, (checkIn as any).createdAt, participant.id),
+          theLine,
           /* So the reminder carries its own way out. */
           participant.id,
           (checkIn.ground as any).simplerWords,
@@ -432,6 +440,7 @@ export class RemindService {
         /* A reminder the one-a-day rule or the person's own choice refused did not go, so it does not use up their chase: it is tried again, and the
            lead is never told somebody was "reminded" when they were not (decision 109 review). */
         if ((went as unknown) === 'suppressed') continue;
+        await rememberTheWords(this.prisma, checkIn.groundId, participant.id, words, now);
         await this.prisma.groundParticipant.update({
           where: { id: participant.id },
           data: { lastNudgedAt: now },

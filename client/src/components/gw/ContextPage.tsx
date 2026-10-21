@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
+import { isASalesKind } from '@/lib/a-sales-kind'
 import { documentsApi } from '@/api/documents'
 import { askApi } from '@/api/ask'
 import { toast } from 'sonner'
 import { personLabel, peopleLabels, firstNameOrLabel, atTheStart } from '@/lib/utils'
-import { Section, Panel, Button, TextArea, Tag, Note, Callout, Choices, SubHeading, FoldedLine, SmallMenu } from '@/components/gw/ui'
+import { Section, Panel, Button, TextArea, Tag, Note, Callout, Choices, SubHeading, FoldedLine, SmallMenu, RowList, Row } from '@/components/gw/ui'
 import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
 import { scrollToId } from '@/lib/scroll-to'
 import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
@@ -72,6 +73,7 @@ export function ContextPage({
   ground,
   role,
   viewerUserId,
+  only,
 }: {
   ground: any
   /** 'lead' is whoever runs this check-in, including an org admin reading with their eyes. */
@@ -94,6 +96,13 @@ export function ContextPage({
    */
   role: 'lead' | 'admin' | 'party'
   viewerUserId?: string | null
+  /**
+   * RELEASE 1B (pull request 3 of 3): ONLY THE PARTS THAT MOVE TO MY WORK. With Release 1B's switch on, References and resources
+   * no longer draws the targets, the plan as agreed, each person's card and what people are down as doing ("progress and
+   * promises, which belong on the board and in My work"), so My work draws them, here, by this same code, with the same words,
+   * controls and rules. Left out, the page is exactly as before.
+   */
+  only?: 'what-moved-to-my-work'
 }) {
   const id: string = ground.id
   const qc = useQueryClient()
@@ -440,7 +449,7 @@ export function ContextPage({
    * one-line fact on each folded part is counted from what the server sent this reader (the ground
    * read, the documents read), never read off the screen, and says only what those hold.
    */
-  const light = (ground as any).kindOfWork === 'sales org'
+  const light = isASalesKind((ground as any).kindOfWork)
   const onAPhone = useIsAPhone()
   const thePageAtAGlance = (() => {
     const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
@@ -677,6 +686,25 @@ export function ContextPage({
 
     </>
   )
+  /*
+   * THE PLAN, AS AGREED (Hafsah, 18 October; the prototype's full Context page: "10 new leads a week", "Samuel, Weekly"). The
+   * server builds each line from the record (confirmed plan cards, and targets a person carries on a cadence) and sends only what
+   * this reader may read. With nothing on record it sends none, and the section is left out: the prototype has no empty wording.
+   */
+  const planAsAgreed: { id: string; what: string; who: string; when: string }[] = (ground as any).planAsAgreed ?? []
+  const thePlanRows = planAsAgreed.length > 0 ? (
+      <Panel pad={false}>
+        <RowList label="The plan, as agreed">
+          {planAsAgreed.map((l) => (
+            <Row key={l.id} columns="1fr auto" inset="panel">
+              <span>{l.what}</span>
+              <Note tone="muted">{`${l.who}, ${l.when}`}</Note>
+            </Row>
+          ))}
+        </RowList>
+      </Panel>
+  ) : null
+  const partPlan = thePlanRows ? <><Section heading="The plan, as agreed" />{thePlanRows}</> : null
   const partE = (
     <>
             {/*
@@ -1435,6 +1463,17 @@ export function ContextPage({
     </>
   )
 
+  if (only === 'what-moved-to-my-work') {
+    return (
+      <div data-gw-moved-to-my-work>
+        {partD}
+        {partPlan}
+        {partF}
+        {partH}
+      </div>
+    )
+  }
+
   return (
     <div>
             {/*
@@ -1469,6 +1508,7 @@ export function ContextPage({
                 {partG}
                 {partH}
                 {partI}
+                {partPlan}
               </>
             )}
             {/*
@@ -1494,6 +1534,9 @@ export function ContextPage({
                   )}
                   {(isTheLead || theBuckets.some((b) => b.lines.length > 0)) && (
                     <FoldedLine name="How we work" fact={thePageAtAGlance.howWeWork}>{partI}</FoldedLine>
+                  )}
+                  {partPlan && (
+                    <FoldedLine name="The plan, as agreed" fact={planAsAgreed.length === 1 ? '1 line agreed' : `${planAsAgreed.length} lines agreed`}>{thePlanRows}</FoldedLine>
                   )}
                   <FoldedLine name="Documents" fact={thePageAtAGlance.documents}>{partG}</FoldedLine>
                   {isLead && <FoldedLine name="Each person’s card" fact={thePageAtAGlance.people}>{partF}</FoldedLine>}

@@ -119,8 +119,16 @@ export function eachLineInTheirName<T extends AWhoOwnsWhatRow>(
     return {
       ...row,
       items: row.items.map((item: any) => {
-        const { saidAs, ...rest } = item ?? {};
+        const { saidAs, theNameForHim, ...rest } = item ?? {};
         const text = typeof rest?.text === 'string' ? rest.text.trim() : '';
+        /*
+         * WHO "HIM" IS (who-him-is-in-their-check-in): their words with the name in place of "him", served beside the quote and
+         * only where the quote is still exactly the words it was read from, so no wall above is undone. Their words in the
+         * marks are never changed.
+         */
+        const withTheName = (saidAs === 'their-words' || saidAs === 'their-sentences') && theNameForHim && theNameForHim.wordsWithHim?.trim() === text
+          ? { withTheName: String(theNameForHim.withTheName) }
+          : {};
         /* Already said as theirs (this ran once before on it): left as it is. */
         const alreadyTheirs = saidAs === undefined && (text.startsWith(`${who} said`) || text.startsWith(`${who} has `) || text.startsWith(`${who} have `));
         if (!text || notTheirWords.includes(text) || alreadyTheirs) return item ? rest : item;
@@ -132,8 +140,8 @@ export function eachLineInTheirName<T extends AWhoOwnsWhatRow>(
         if (saidAs === 'what-they-committed-to') return { ...rest, text: `${who} committed to ${text.replace(/[.!?]+$/, '')}.`, itsKindIsSaid: true };
         /* Their own marks inside a quote become single ones, so one quote is never closed by another. */
         const words = text.replace(/["“”]/g, "'");
-        if (saidAs === 'their-sentences') return { ...rest, text: `${who} said, "${/[.!?]$/.test(words) ? words : `${words}.`}"` };
-        return { ...rest, text: oneLineInTheirName(words, who, rest.type) };
+        if (saidAs === 'their-sentences') return { ...rest, ...withTheName, text: `${who} said, "${/[.!?]$/.test(words) ? words : `${words}.`}"` };
+        return { ...rest, ...withTheName, text: oneLineInTheirName(words, who, rest.type) };
       }),
     };
   });

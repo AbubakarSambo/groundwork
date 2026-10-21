@@ -46,24 +46,31 @@ describe('the composer stays where a thumb is', () => {
   })
 })
 
+/*
+ * UPDATED 20 October (the kit's design everywhere): "I am done" is the kit's secondary button now
+ * (the shared `gwui-btn gwui-btn-secondary` classes, 44px tall) instead of a hand-styled 40px pill.
+ * These three read its style from the source, so they now read the classes. The words, where it
+ * sits and what it does are unchanged.
+ */
 describe('finishing is visible', () => {
-  it('is a button, not an underlined link', () => {
-    /* The one inside the pinned composer - there is an earlier `setPhase('address')` on the path
-       the engine takes when it closes the session itself. */
+  /* The one inside the pinned composer - there is an earlier `setPhase('address')` on the path
+     the engine takes when it closes the session itself. */
+  const theTag = () => {
     const at = CODE.lastIndexOf("setPhase('address')")
-    const done = CODE.slice(at, at + 500)
-    expect(done).toMatch(/borderRadius: 20/)
-    expect(done).not.toMatch(/textDecoration: 'underline'/)
+    return CODE.slice(CODE.lastIndexOf('<button', at), at + 200)
+  }
+  it('is a button, not an underlined link', () => {
+    expect(theTag()).toMatch(/className="gwui-btn gwui-btn-secondary"/)
+    expect(theTag()).not.toMatch(/textDecoration: 'underline'/)
   })
 
-  /* Forty pixels is the smallest thing a thumb hits reliably. */
+  /* Forty-four pixels: the kit's button, and what a thumb hits reliably. */
   it('and is big enough to hit', () => {
-    const at = CODE.lastIndexOf("setPhase('address')")
-    expect(CODE.slice(at, at + 500)).toMatch(/minHeight: 40/)
+    expect(theTag()).not.toMatch(/gwui-btn-small/)
   })
 
   it('and sits beside the send button rather than under the input', () => {
-    expect(CODE).toMatch(/justifyContent: 'space-between'[^}]*\}\}>\s*<button onClick=\{\(\) => setPhase\('address'\)\}/)
+    expect(CODE).toMatch(/justifyContent: 'space-between'[^}]*\}\}>\s*<button className="gwui-btn gwui-btn-secondary" onClick=\{\(\) => setPhase\('address'\)\}/)
   })
 
   /* Nobody should press it wondering whether it throws away what they have just typed. */

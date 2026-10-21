@@ -1,3 +1,4 @@
+import { YourPeopleAndSetup } from './YourPeopleAndSetup'
 import { MyCheckInSessions } from '@/components/gw/MyCheckInSessions'
 import { howItEnded, hasStalled } from '@/lib/a-ground-that-has-ended'
 import { theRhythmInFull } from '@/lib/the-closing-after-your-first-check-in'
@@ -25,6 +26,9 @@ import { BetweenCheckIns } from '@/components/gw/BetweenCheckIns'
 import { MyParticipation } from '@/components/gw/MyParticipation'
 import { SharedReportForAParty } from '@/components/gw/SharedReportForAParty'
 import { ContextPage } from '@/components/gw/ContextPage'
+import { ReferencesAndResourcesPage } from './ReferencesAndResources'
+import { MyWorkPage } from './MyWorkPage'
+import { theContextTabsName } from '@/lib/the-references-tab'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 
@@ -677,7 +681,7 @@ export function GroundParticipantPage() {
           tabs={[
             { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
             { key: 'checkin', label: 'Check-in' },
-            { key: 'context', label: contextEnabled ? 'Context and resources' : 'Documents' },
+            { key: 'context', label: theContextTabsName(ground as any, contextEnabled ? 'Context and resources' : 'Documents') },
             { key: 'mywork', label: 'My work' },
             { key: 'people', label: 'People and setup' },
           ]}
@@ -923,7 +927,11 @@ export function GroundParticipantPage() {
 
         {/* CHECK-IN TAB */}
         {/* MY RECORD TAB */}
-        {tab === 'record' && (
+        {/* RELEASE 1B (pull request 3 of 3): with the organisation's switch on, My work is the B7 page, served to this person as
+            their own (MyWorkPage.tsx), with the rest of today's page and the parts that left References and resources under it.
+            Off, today's page exactly as it was. */}
+        {tab === 'record' && (() => {
+          const yours = (
           <YourWork
             groundId={id!}
             ground={ground}
@@ -956,8 +964,13 @@ export function GroundParticipantPage() {
             /* A party's "the team's, Read" opens the fuller shared-report reading experience below,
                not a bare per-session link - see the note on `onReadTeamReport` in YourWork.tsx. */
             onReadTeamReport={() => goTab('report')}
+            asTheRestOfMyWork={(ground as any).release1bTabsOn === true}
           />
-        )}
+          )
+          return (ground as any).release1bTabsOn === true
+            ? <MyWorkPage groundId={id!} onAllYourReports={() => goTab('report')} rest={<>{yours}<ContextPage ground={ground} role={isInitiator ? 'lead' : 'party'} viewerUserId={user?.id} only="what-moved-to-my-work" /></>} />
+            : yours
+        })()}
 
         {/* REPORT TAB */}
         {tab === 'report' && (
@@ -1013,9 +1026,10 @@ export function GroundParticipantPage() {
           order, with a stray heading and buttons pointing at a chat this page does not have. One
           file now owns the bands and their order - see ContextPage.
         */}
-        {tab === 'docs' && (
-          <ContextPage ground={ground} role={isInitiator ? 'lead' : 'party'} viewerUserId={user?.id} />
-        )}
+        {/* RELEASE 1B (pull request 2 of 3): References and resources where the organisation's switch is on; off, as before. */}
+        {tab === 'docs' && ((ground as any).release1bTabsOn === true
+          ? <ReferencesAndResourcesPage groundId={id ?? ''} ground={ground} isTheLead={isInitiator} />
+          : <ContextPage ground={ground} role={isInitiator ? 'lead' : 'party'} viewerUserId={user?.id} />)}
 
         {/* SETTINGS TAB */}
         {/*
@@ -1027,7 +1041,9 @@ export function GroundParticipantPage() {
           one banned prop this div had) moves to a class; `display`/`flexDirection` are not banned
           and stay inline, keeping the flex context `order` needs.
         */}
-        {tab === 'settings' && (
+        {/* RELEASE 1B (pull request 1 of 3): with the organisation's switch on, a team member reads only the short page the
+            server serves them (YourPeopleAndSetup.tsx). Off, the tab below reads exactly as it did. */}
+        {tab === 'settings' && ((ground as any).release1bTabsOn === true ? <YourPeopleAndSetup groundId={id ?? ''} /> : (
           <div className="gwui-gap-10" style={{ display: 'flex', flexDirection: 'column' }}>
             {/*
               ROUND 4, ITEM A STEP 2: "WHO IS IN THIS", MOVED HERE FROM THE CHECK-IN TAB.
@@ -1075,7 +1091,7 @@ export function GroundParticipantPage() {
               totalSessions={totalSessions ?? null}
             />
           </div>
-        )}
+        ))}
       </div>
 
       {/* REVIEW ROUND 3, ITEM 2: THE PAYWALL, PULLED OUT INTO A SHARED COMPONENT (see useOpenSession.ts) */}

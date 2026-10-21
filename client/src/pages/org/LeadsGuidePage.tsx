@@ -106,9 +106,8 @@ export function LeadsGuidePage() {
         </p>
       </div>
 
-      <button
+      <button className="gwui-btn gwui-btn-primary"
         onClick={() => navigate('/grounds/new')}
-        style={{ padding: '12px 24px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
       >
         Open a check-in
       </button>

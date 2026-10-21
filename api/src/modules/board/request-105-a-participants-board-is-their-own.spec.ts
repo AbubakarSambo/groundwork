@@ -47,6 +47,8 @@ const A_PARTICIPANTS_FIELDS = new Set([
   'risks', 'workPlan', 'timeline', 'personHistory', 'blockerCheck', 'evidenceIndex', 'obligations', 'whoWaitedOnWhom', 'contradictions',
   'whoOwnsWhat', 'contribution', 'patterns', 'workRecords', 'objectives', 'yourShare', 'blockers', 'dependencies', 'stillUnanswered',
   'coverage', 'teamPicture', 'byArea', 'reportedAgainstCriteria',
+  /* Whether the organisation has Release 1's sales board on: an organisation's switch, about nobody (Hafsah's point 6, 17 October). */
+  'releaseOneSalesBoard',
   /* Only once the team's picture is shared. */
   'divergence', 'whatTheAnswersSay', 'whatTheRoomIsAbout', 'whatTheRoomIsAboutNote', 'quickRead', 'forecast',
 ]);

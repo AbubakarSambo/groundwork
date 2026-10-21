@@ -1,3 +1,4 @@
+import { useTheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -13,6 +14,7 @@ import { CLOSE_SHEET, Block } from './the-shape-every-close-is-drawn-in'
 import { KIND } from './WhatWasTakenFromWhatYouSaid'
 import { FoldedLine } from './ui/FoldedLine'
 import { ProofMark } from './ui/ProofMark'
+import { TheirRecord } from './TheirRecord'
 
 /**
  * THE END OF A SIGNED-IN CHECK-IN, REBUILT AS A · SESSION.
@@ -63,6 +65,8 @@ interface MyRow {
   how?: string | null
   checkInId: string | null
   sessionNumber: number | null
+  /** The line as read with a document's date where the document dates it differently (served on Release 1's sales check-ins). */
+  readAs?: string | null
 }
 
 /**
@@ -156,10 +160,12 @@ const SAYS: Record<string, { word: string; dot: string }> = {
   unspoken: { word: 'not spoken to', dot: 'var(--gw-border)' },
 }
 
-export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, light = false }: {
+export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, light = false, pictured = false }: {
   checkInId: string
   groundId: string
   sessionNumber: number
+  /** Your own report exactly as own-report.jpg draws it (screen match, screen 42). Everything else this card shows is on ?whole=1. */
+  pictured?: boolean
   /** The light own report, for a sales check-in (sales-first.md, sections 2 and 5). Other kinds read it as before. */
   light?: boolean
 }) {
@@ -200,6 +206,8 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
     enabled: !!groundId,
     retry: false,
   })
+  /* The direct morning (lib/the-direct-morning.tsx): no privacy note, and the team's report is called the team's report. */
+  const direct = useTheDirectMorning() || isTheDirectMorningOn(ground.data)
   const mySpecificity = useQuery({
     queryKey: ['my-specificity', groundId],
     queryFn: () => groundsApi.getMySpecificity(groundId),
@@ -221,6 +229,8 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
 
   const d: any = session.data
   const r: any = whole.data
+  /* What Groundwork followed up for you: your own record for this session and the coaching it gave you, only where the server sends it. */
+  const yourRecord = d?.yourRecord ?? null
   const closed = (r as any)?.status === 'CLOSED' || (r as any)?.groundStatus === 'CLOSED'
 
   const mine: MyRow[] = ((r?.myRows ?? []) as MyRow[]).filter(x => x.sessionNumber === sessionNumber)
@@ -476,7 +486,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
           {note?.showingUp && (
             <div style={{ marginTop: 12, background: 'var(--gw-blue-bg)', borderRadius: 8, padding: '11px 13px' }}>
               {/* Navy on the blue tint, never a grey ink on a tinted ground. */}
-              <div className="gw-stamp" style={{ color: 'var(--gw-navy)', marginBottom: 6 }}>Written for you. It is not part of the shared picture.</div>
+              {!direct && <div className="gw-stamp" style={{ color: 'var(--gw-navy)', marginBottom: 6 }}>Written for you. It is not part of the shared picture.</div>}
               <p className="gw-p" style={{ margin: 0, color: 'var(--gw-navy)', maxWidth: '68ch' }}>{note.showingUp}</p>
               {note.whyItMatters && <p className="gw-small" style={{ margin: '6px 0 0', color: 'var(--gw-navy)', maxWidth: '68ch' }}>{note.whyItMatters}</p>}
               {(note.beforeNextTime ?? []).length > 0 && (
@@ -517,14 +527,126 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
               mostUseful={mySpecificity.data?.mostUseful ?? null}
               strongest={mySpecificity.data?.strongest ?? null}
             />
-            <p className="gw-small" style={{ margin: 0, color: 'var(--gw-sub)', maxWidth: '68ch' }}>
-              Yours alone. It is a read of how checkable this sitting is, not a mark on you.
-            </p>
+            {!direct && (
+              <p className="gw-small" style={{ margin: 0, color: 'var(--gw-sub)', maxWidth: '68ch' }}>
+                Yours alone. It is a read of how checkable this sitting is, not a mark on you.
+              </p>
+            )}
           </>)}
         </div>
       )}
     </>
   )
+
+  /*
+   * YOUR OWN REPORT, AS PICTURED (own-report.jpg, screen 42). "What you did well" in its own panel, the session's own two
+   * sentences, "What you told us" as a list with each line's mark and where it comes from, "One thing to think about" in
+   * its own panel with one thing to think about, and "Something here isn't right". Every line is this person's own, served
+   * to them alone, as before. The rest of this card (the masthead, the folds, the rest of the private note, how checkable
+   * it was, each line's own take-back) is on the page as it was, one tap away (?whole=1).
+   */
+  if (pictured) {
+    /* Release 1's sales own report (Hafsah's points 21 and 22): no second summary paragraph, and one question about one of your own deals that is stuck. */
+    const releaseOne = d?.releaseOneSalesReport === true
+    const story: string | null = releaseOne ? null : artifact.data?.artifact?.summary ?? null
+    const aQuestion: string | null = ((note?.beforeNextTime ?? []) as string[]).find((b) => /\?\s*$/.test(b)) ?? null
+    /* Each line once (Drop Access short run, item 14), on Release 1's sales check-in: a line in What you did well is not listed again under What you told us. */
+    const toldUs = releaseOne ? said.filter((x) => !didWell.includes(x)) : said
+    const toThinkAbout: string[] = releaseOne
+      ? (d?.forYouToThinkAbout ? [d.forYouToThinkAbout as string] : [])
+      : carry ? [carry] : [note?.showingUp, aQuestion].filter(Boolean) as string[]
+    /*
+     * Quality pass, 18 October, O-1 to O-6: on Release 1's sales check-in the server reads your own report from your own deals and
+     * lines (your-own-report-from-the-record): what you did well in your own name, the kit's story, and what you told us said once.
+     */
+    const own: { didWell: { text: string; how: string | null; mark: string }[]; story: string | null; toldUs: { text: string; how: string | null; mark: string }[] } | null = releaseOne ? d?.yourOwnReport ?? null : null
+    if (own) {
+      return (
+        <div className="pb-own-body">
+          {own.didWell.length > 0 && (
+            <section className="pb-own-panel" aria-label="What you did well">
+              <h2 className="pb-own-h">What you did well</h2>
+              <ul className="pb-own-list">
+                {own.didWell.map((x) => <li key={x.text}><ProofMark mark={x.mark} /><span>{x.text}{x.how ? ` ${x.how}` : ''}</span></li>)}
+              </ul>
+            </section>
+          )}
+          {own.story && <p className="pb-own-story">{own.story}</p>}
+          {own.toldUs.length > 0 && (
+            <section aria-label="What you told us">
+              <h2 className="pb-own-h pb-own-h-rule">What you told us</h2>
+              <ul className="pb-own-told">
+                {own.toldUs.map((x) => (
+                  <li key={x.text}>
+                    <ProofMark mark={x.mark} />
+                    <div>
+                      <span>{x.text}</span>
+                      {x.how && <span className="pb-own-how">{x.how}</span>}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          {toThinkAbout.length > 0 && (
+            <section className="pb-own-panel" aria-label="One thing to think about">
+              <h2 className="pb-own-h">One thing to think about</h2>
+              {toThinkAbout.map((t) => <p key={t} className="pb-own-think">{t}</p>)}
+            </section>
+          )}
+          {yourRecord && <TheirRecord record={yourRecord} />}
+          {!closed && (
+            <button type="button" className="pb-own-wrong" onClick={() => correct.mutate()} disabled={correct.isPending}>
+              {correct.isPending ? 'Opening…' : 'Something here isn’t right'}
+            </button>
+          )}
+        </div>
+      )
+    }
+    return (
+      <div className="pb-own-body">
+        {didWell.length > 0 && (
+          <section className="pb-own-panel" aria-label="What you did well">
+            <h2 className="pb-own-h">What you did well</h2>
+            <ul className="pb-own-list">
+              {didWell.map((x) => (
+                <li key={x.id}><ProofMark mark={x.mark} /><span>{x.readAs ?? x.text}{x.how ? ` ${x.how}` : ''}</span></li>
+              ))}
+            </ul>
+          </section>
+        )}
+        {story && <p className="pb-own-story">{story}</p>}
+        {toldUs.length > 0 && (
+          <section aria-label="What you told us">
+            <h2 className="pb-own-h pb-own-h-rule">What you told us</h2>
+            <ul className="pb-own-told">
+              {toldUs.map((x) => (
+                <li key={x.id} className={x.disputedAt ? 'pb-own-gone' : undefined}>
+                  <ProofMark mark={x.mark ?? 'said'} />
+                  <div>
+                    <span>{x.readAs ?? x.text}</span>
+                    {(x.how || x.typeSays) && <span className="pb-own-how">{x.how ?? x.typeSays}</span>}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+        {toThinkAbout.length > 0 && (
+          <section className="pb-own-panel" aria-label="One thing to think about">
+            <h2 className="pb-own-h">One thing to think about</h2>
+            {toThinkAbout.map((t) => <p key={t} className="pb-own-think">{t}</p>)}
+          </section>
+        )}
+        {yourRecord && <TheirRecord record={yourRecord} />}
+        {!closed && (
+          <button type="button" className="pb-own-wrong" onClick={() => correct.mutate()} disabled={correct.isPending}>
+            {correct.isPending ? 'Opening…' : 'Something here isn’t right'}
+          </button>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="gw-close" style={{ margin: '16px 0 8px', background: 'var(--gw-card)', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
@@ -545,7 +667,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
           {/* The date this sitting happened. A report with no date on it is a report somebody
               cannot place against anything else that was going on that week. */}
           {thisSitting?.completedAt ? `, on ${whenItWas(thisSitting.completedAt, 'dayAndMonth')}` : ''}
-          {'. Only you read this part.'}
+          {direct ? '.' : '. Only you read this part.'}
         </div>
       </div>
 
@@ -564,6 +686,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
             </div>
           )}
           {checkableJSX}
+          {yourRecord && <div className="gw-blk"><TheirRecord record={yourRecord} /></div>}
         </>
       ) : (
         <>
@@ -573,6 +696,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
           {openJSX}
           {carryJSX}
           {checkableJSX}
+          {yourRecord && <div className="gw-blk"><TheirRecord record={yourRecord} /></div>}
         </>
       )}
 
@@ -612,7 +736,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
         >
           {/* The shared half is a different report and it lives on its own page. It is not copied
               here: that copy is what made one finding reach one person on four screens. */}
-          See the shared picture for this session
+          {direct ? 'See the team’s report for this session' : 'See the shared picture for this session'}
         </button>
         {/*
           A REPORT YOU CANNOT ARGUE WITH IS A REPORT YOU STOP TRUSTING.
@@ -654,7 +778,9 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
           already scoped to `sessionNumber` above - this session's own state, not the ground's.
         */}
         <div className="gw-mini" style={{ color: 'var(--gw-sub)', maxWidth: '68ch' }}>
-          {d?.released
+          {direct
+            ? (d?.released ? 'The team’s report is shared.' : 'The team’s report is not shared yet.')
+            : d?.released
             ? 'The shared picture is open, and everyone reads the same report.'
             : 'This half is yours. The shared picture opens to everybody at the same moment.'}
         </div>

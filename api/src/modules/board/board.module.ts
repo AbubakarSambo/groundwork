@@ -3,8 +3,12 @@ import { BoardService } from './board.service';
 import { BoardListener } from './board.listener';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { BoardController } from './board.controller';
+import { MyWorkController } from './my-work.controller';
 import { GroundsModule } from '../grounds/grounds.module';
 import { ReportsModule } from '../reports/reports.module';
+import { TheLeadsOwnNudgeController } from './the-leads-own-nudge.controller';
+import { TheLeadsOwnNudgeService } from '../engagement/the-leads-own-nudge';
+import { ThePersonsRecordService } from './the-persons-record.service';
 
 @Module({
   /*
@@ -23,8 +27,8 @@ import { ReportsModule } from '../reports/reports.module';
    * reason as above.
    */
   imports: [forwardRef(() => GroundsModule), forwardRef(() => ReportsModule)],
-  controllers: [BoardController],
-  providers: [BoardService, BoardListener, AnthropicService],
+  controllers: [BoardController, MyWorkController, TheLeadsOwnNudgeController],
+  providers: [BoardService, BoardListener, AnthropicService, TheLeadsOwnNudgeService, ThePersonsRecordService],
   exports: [BoardService],
 })
 export class BoardModule {}

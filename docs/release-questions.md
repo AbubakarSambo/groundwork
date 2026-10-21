@@ -150,6 +150,19 @@ A report for a team now runs three independent model calls together, and after i
 | Approved, and WhatsApp switched on. | Each organisation's messages are counted per calendar month (`whatsapp_monthly_use`), and at its plan's limit nothing more goes by WhatsApp until the next month; its admins are emailed once. The limits are a proposal until Hafsah answers. |
 | Some approved. | List them in `WHATSAPP_APPROVED_TEMPLATES` on the host, and switch WhatsApp on later, on Hafsah's word, not on release day. |
 
+### 10a. For Abubakar: submit new WhatsApp templates that say "about ten minutes" (Hafsah, 18 October)
+
+The Meta-approved templates `checkin_open`, `checkin_closes_soon` and `checkin_your_view_matters` say a check-in takes "five minutes". Hafsah's rule is "about ten minutes", and the approved templates are never changed. **To do:** submit new templates, with new names, whose words say "about ten minutes", and tell Hafsah when Meta approves them. Until then the approved ones go out unchanged.
+
+### 10a-2. For Abubakar: Release 1, pull request 5 (19 October)
+
+1. **A new table and a new scheduled job.** `scheduled_whatsapp_messages` holds a WhatsApp message Groundwork starts in quiet hours (after 8 in the evening and before 7 in the morning, where the organisation is), and `held-for-the-night.cron.ts` sends it at 7, every fifteen minutes, under its own lock (920015). Can the host run one more fifteen-minute job, once only, as it runs the held mail? If the job does not run, nothing is lost: the rows wait, and the message is in the app.
+2. **Which time zone is an organisation in?** Quiet hours read the organisation's named zone, else where most of its people's numbers are, else Lagos. An organisation with no zone and no numbers is read in Lagos time. Please say if any live organisation should have its zone set first.
+3. **The lead's morning summary goes at 9 in Lagos time**, and routine mail to somebody who runs a check-in now waits until half an hour after it (08:30 UTC) and goes only if the summary did not. A lead in a zone far from Lagos would have that mail held into her afternoon. Is 9 in Lagos right for the live leads, or should the summary's hour be each organisation's?
+4. **For Hafsah: "runs out in 7 days" stays its own email.** On Drop Access it was folded into the lead's summary as a risk. It is the only warning before a check-in is stalled, and the summary's lines can be cut for room, so this pull request keeps it as an email of its own for every organisation (it no longer holds the summary back). Should it fold into the summary once the summary is sure to carry it?
+5. **For Hafsah: what applies to every organisation.** The pull request lists, in `docs/pull-request.md`, what every organisation reads differently whatever the switch says: her standing rules (one channel per opening, quiet hours ending at 7 where the organisation is, one routine message a day with the lead's summary as hers, "about ten minutes") and the corrections of things that were untrue. Everything else new is behind Release 1's switch. Please confirm the list.
+6. **Submit the four new WhatsApp templates, then list them (Hafsah, 19 October).** In Meta Business Manager, open WhatsApp Manager, then Message templates, then Create template, and submit the four in `docs/whatsapp-templates.md`, "The four new templates of 19 October": `groundwork_checkin_open_v2`, `groundwork_checkin_thanks`, `groundwork_your_report_ready` and `groundwork_promise_due`. Category Utility, language English, each body and its samples exactly as written there. Once Meta approves one, add its name to `WHATSAPP_APPROVED_TEMPLATES` on production (and on staging, once staging WhatsApp is set up). Groundwork uses a template only when its name is in that list. Until then, a message WhatsApp cannot take goes by email instead. Once `groundwork_checkin_open_v2` is approved and listed, `checkin_open` stops being used for new openings: leave it approved in Meta, but unused. Will you submit them, and tell Hafsah when each one is approved?
+
 ### 10b. WhatsApp on the Connections page: the API's public address, and Groundwork's own number
 
 Two new settings, neither a secret, both optional (see `docs/deploy.md`, section 3).
@@ -316,3 +329,52 @@ From the earlier "Needs Hafsah" lists, still open and not blocking:
 - Deal stages (Contacted, Need, Pitched and so on): the engine has none, so that part of the weekly report is not built.
 - Who may mark somebody else's to-do as done.
 - Week 0's next step (the recommendation is option 2).
+
+### Release 1B, pull request 2 of 3: References and resources (19 October)
+
+These do not block the pull request, which is off for every organisation, but each should be answered before the switch is turned on for a real client.
+
+1. **The lead's People note does not reach that person's own check-in yet: it waits for Hafsah.** Hafsah's spec and her brief of 18 October say the check-in "reads the lead's People note for the person it's talking to". Decision 32 (27 September) said a lead's private notes about a person never reach the model in that person's own session. A privacy rule changes only on her word, so the code is built as narrowly as both allow (only notes written in the new People section, only in that one person's own check-in, never the lead's, never quoted) and held off by one line, `THE_PEOPLE_NOTES_REACH_THEIR_OWN_CHECK_IN`, which is off. Until she says yes, the People notes stay on the page and the page says "Their check-ins do not use them yet." Should the check-in read them?
+2. **Suggested from your check-ins.** Nothing yet picks a rule or guideline out of the lead's own check-in. The section shows a plan's proposals still waiting for her instead. Should the lead's check-in offer what she says as a rule, the way the prototype draws it?
+3. **Questions and answers, and Ask about this work.** Ask does not keep the questions asked about one check-in, does not answer only from this page with its source, and does not send an unanswered question to the lead. The button opens Ask set to this check-in; the section says nobody has asked yet. Build these in Ask?
+4. **A document a team member shares in a check-in** is filed as evidence where it is proof. It is not yet put on the lead's board for her to decide whether to add it to Documents. Should it be?
+
+### Release 1B, pull request 3 of 3: My work (19 October)
+
+These do not block the pull request, which is off for every organisation, but each should be answered before the switch is turned on for a real client.
+
+1. **The lead's note for a person is not on that person's own My work yet: it waits for Hafsah.** The spec puts "the lead's note for this person (from People)" under Coaching, and the B7 pictures show it to the person ("Grace’s note for you"). References and resources says People is "Never shown to the person", and decision 32 keeps a lead's private notes about a person away from that person. A privacy rule changes only on her word, so the lead reads her own note on the person's page ("Your note for Mercy") and the person does not, held off by one line, `THE_LEADS_NOTE_SHOWS_ON_THEIR_OWN_MY_WORK`, which is off. Should the person read the lead's "Help them with" line on their own My work?
+2. **Two behaviours cannot yet be read as fully as the spec asks.** Handling blockers counts blockers raised and how many say what was tried first (the record keeps what was tried, not who cleared a blocker or how long it was felt before it was raised). Working on the right things reads Needs work only from a customer who has stopped answering and is still being chased, or a confirmed pattern about busy work; nothing yet reads lead fit or the team's own "stop after three calls" rule, so it never reads Strength, and reads "Not enough yet" otherwise. Helping your team reads Strength from colleagues' credit and never Needs work. Build these readings, or keep them as they are?
+3. **Two "Keep doing" lines are ours.** The pictures have no Keep doing line for Handling blockers or Working on the right things, so "Trying one thing yourself before you raise a blocker." and "Spending your time where it counts." were written from the spec's strength lines. Keep them, or give the words?
+4. **Your reports, one line each.** A person's own report has no one-line summary stored, so each line is the person's own first sentence from that check-in, in quotes. Is that right, or should each report get a one-line summary?
+
+### Release 2, pull request 1 of 3: the switchboard foundation and Collect what's owed (19 October)
+
+These do not block the pull request, which is off for every organisation, but each should be answered before the switch is turned on for Muchemi & Co.
+
+1. **The default rhythm for a new collections check-in.** The prototype's SIT_SCHED has no row for COLLECTIONS. It takes weekly, over twelve weeks (the release plan's weekly collections check-in, and the clock the other weekly standing read has, under the twenty-session cap). Is weekly on Mondays, ongoing, what Hafsah wants, as the B8 fee notes picture ("Weekly on Mondays", "until you end it") suggests?
+2. **The working label.** "Collect what’s owed" is used everywhere a scenario is named, as the release plan and the B8 picture say. Is it the name to keep?
+3. **The organisation's word for a bill has a route and no screen.** An admin can set it (`PATCH /users/organization/word-for-the-bill`); where should it be set on screen: on the Company page, or in References and resources?
+4. **Where the type is read from when the lead's words say neither.** The organisation's record means its word for a bill, or a type its leads confirmed on another collections check-in. Where neither says, the lead is asked to choose rather than given a guess. Is that right, or should "fee notes or invoices" be the default?
+5. **A sales organisation has no switchboard type yet.** "sales org" is served Release 1's sales board by Release 1's own code; the switchboard gives it no row until Release 4 draws the sales organisation's own board.
+
+### Release 2, pull request 2 of 3: the collections board and its reports (19 October)
+
+These do not block the pull request, which is off for every organisation, but each should be answered before the switch is turned on for Muchemi & Co or a lender.
+
+1. **Should the person who handles accounts read every fee note?** The B8 picture's rule is "Each person sees their own; the partner sees all", so Njeri, who records payments and follows up none, reads none on the board or in her reports, though she adds the slips. The same picture offers "Everyone sees all" as the other choice, which is not built yet. Keep it so, give accounts every fee note, or build the choice?
+2. **The loans board's groups.** The kit's "Repaying and trading" and "Behind, but trading" need a borrower's trading on record, which a check-in only sometimes has. The board uses "Repaying on time", "Behind, but in touch", "Genuinely blocked", "Not heard from" and "Repaid", and shows trading in the Business column where a borrower said it. Keep these, or use the kit's words?
+3. **When is a client "not heard from"?** Past due, with no promise, and nobody has spoken to the client for three weeks; for a borrower, no check-in for three weeks. Is three weeks right?
+4. **What counts as proof of payment.** Only a payment document filed on the bill: a bank slip, an M-Pesa message or a record from the accounting system, added in a check-in. A person saying "I have the slip" stays "said". Is that right, and should a document added in References and resources count too?
+5. **"Where this is heading" lays out outcomes for the lead** (follow up the ones behind, settle the disputed ones, raise the ones not yet raised, ask for proof of what is said to be paid). A person never reads it. Are these the outcomes she wants, or should the list be hers to set?
+
+
+### Release 2, pull request 3 of 3: the matter board, due on an event, and fee notes in References and resources (19 October)
+
+These do not block the pull request, which is off for every organisation.
+
+1. **The kit's other matter sections.** "More confident than the evidence allows", "This may change the strategy", the handover card and "Where this is heading" have nothing on record for a matter yet, so they are not drawn. Should they wait for a later release, or be drawn now with a sentence saying nothing is on record?
+2. **Who reads every fee line on the matter board.** The lead of the fee notes check-in reads every fee note; anybody else only their own. Where the litigation lead is not the lead of the fee notes check-in, she reads only her own. Is that right, or should whoever runs the litigation check-in read every fee line?
+3. **What a matter is.** A matter is one the firm bills on that the litigation check-in names. A matter with no fee note is not drawn. Should the check-in keep its own list of matters?
+4. **Near misses.** A line that names the matter and the last word of the event and its verb ("the mention date is set" beside "the hearing date is set"), or the event with no matter named, is asked about; nothing else is. Is that the right line, or too often or too seldom?
+5. **The team report for a legal matter** keeps today's shape; the switchboard row names "each matter's fees, in one line" for it, not built in this pull request. Build it next?

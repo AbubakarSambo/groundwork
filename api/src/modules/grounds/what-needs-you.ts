@@ -496,3 +496,18 @@ export function whatNeedsYou(
     comingUp: comingUp.sort((a, b) => time(a.at)! - time(b.at)!).slice(0, 5),
   };
 }
+
+/**
+ * WHAT NEEDS YOU, SAID DIRECTLY (the direct morning, Hafsah, 20 October 2026; organisation/the-direct-morning-switch.ts). Where the
+ * switch is on, a check-in's estimate is "A few minutes." (the check-in page says the same) and carries no line about how the
+ * product reads the answers, and your own report carries no "Only you see it." Nothing else changes: which needs a reader is served is decided before this, the same either way.
+ */
+export function needsSaidDirectly<T extends { detail?: string | null }>(needs: T[]): T[] {
+  return needs.map((n) => {
+    if (typeof n?.detail !== 'string') return n;
+    if (/^About ten minutes\./.test(n.detail)) return { ...n, detail: 'A few minutes.' };
+    /* "Your own report for Sales team, Q4" needs no "Only you see it." under it: who reads it is the backend's rule. */
+    if (n.detail === 'Only you see it.') return { ...n, detail: null };
+    return n;
+  });
+}

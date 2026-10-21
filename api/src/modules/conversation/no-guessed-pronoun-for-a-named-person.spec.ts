@@ -44,3 +44,12 @@ describe('Groundwork does not give a named person a pronoun it was never told', 
     expect(pronounRules('Did Amani sign the order?')).toEqual([]);
   });
 });
+
+describe('a business is not a person (Drop Access, 16 October)', () => {
+  it('"Jane Mwende at Savannah Cafe ... sent her a quote" never becomes "sent Cafe a quote"', () => {
+    const { withoutAGuessedPronoun } = require('./no-guessed-pronoun-for-a-named-person');
+    const out = withoutAGuessedPronoun('So you sent her a quote for 6 units.', 'I sent Jane Mwende at Savannah Cafe the price list.', ['I sent Jane Mwende at Savannah Cafe the price list.']);
+    expect(out).not.toMatch(/Cafe/);
+    expect(out).toMatch(/Mwende|Jane/);
+  });
+});

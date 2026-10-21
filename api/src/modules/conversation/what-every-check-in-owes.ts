@@ -153,6 +153,11 @@ export const WHAT_EACH_SITUATION_ADDS: Record<string, Owed[]> = {
   PULSE_CHECK: [
     { id: 'right-now', what: 'how the work is going right now, not in general', role: ['member', 'partner'], stage: ['first', 'middle'], satisfiedBy: [T.INTENT, T.WORRY, T.TENSION] },
   ],
+  /* Collect what's owed (Release 2): each bill by name, and what is in the way of it being paid. */
+  COLLECTIONS: [
+    { id: 'each-bill', what: 'each bill they follow up or owe, by name, with its amount', role: ['member', 'partner'], stage: ['first'], satisfiedBy: [T.COMMITMENT, T.INTENT] },
+    { id: 'in-the-way', what: 'what is in the way of each one being paid, as they put it', role: ['member', 'partner'], stage: ['first', 'middle'], satisfiedBy: [T.WORRY, T.ASK] },
+  ],
   DRIFT: [
     { id: 'what-they-think', what: 'what they think is actually wrong', role: ['lead', 'member', 'partner'], stage: ['first'], satisfiedBy: [T.WORRY, T.TENSION, T.OPERATING_DIFFERENCE] },
     { id: 'needs-changing', what: 'what would have to change for it to come right', role: ['lead', 'member', 'partner'], stage: ['middle', 'last'], satisfiedBy: [T.ASK, T.COMMITMENT] },

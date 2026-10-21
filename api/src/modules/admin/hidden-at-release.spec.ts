@@ -23,22 +23,23 @@ describe('the anchor scenario switch (piece 0 of docs/anchor-scenario-plan.md)',
 });
 
 describe('the three settings, with no row at all', () => {
-  it('offer sales and engineering of the eleven kinds, keep the billing parts off, and have Context in Ask (on since it moved there)', async () => {
+  it('offer sales (a team, or an organisation of several teams) and engineering of the twelve kinds, keep the billing parts off, and have Context in Ask (on since it moved there)', async () => {
     const p = settings({});
-    expect(await theBoardKindsOffered(p)).toEqual(['sales org', 'engineering release']);
+    expect(await theBoardKindsOffered(p)).toEqual(['sales team', 'sales org', 'engineering release']);
     expect(await contextIsInAskGroundwork(p)).toBe(true);
     expect(await theNewBillingPartsAreShown(p)).toBe(false);
   });
   it('read a broken row as the default, never as everything on', async () => {
     const p = settings({ 'release.boardKindsOffered': 'nonsense', 'release.contextInAskGroundwork': 'yes', 'release.planAndBillingNewParts': { on: 'true' } });
-    expect(await theBoardKindsOffered(p)).toEqual(['sales org', 'engineering release']);
+    expect(await theBoardKindsOffered(p)).toEqual(['sales team', 'sales org', 'engineering release']);
     /* A context row nobody can read fails closed: off, not on by guesswork. */
     expect(await contextIsInAskGroundwork(p)).toBe(false);
     expect(await theNewBillingPartsAreShown(p)).toBe(false);
   });
   it('turn on when the row says so', async () => {
     const p = settings({ 'release.boardKindsOffered': { kinds: ['sales org', 'a law firm matter'] }, 'release.contextInAskGroundwork': { on: true }, 'release.planAndBillingNewParts': { on: true } });
-    expect(await theBoardKindsOffered(p)).toEqual(['sales org', 'a law firm matter']);
+    /* A row written before "sales team" existed: where sales is offered, a sales team is too (Release 1). */
+    expect(await theBoardKindsOffered(p)).toEqual(['sales team', 'sales org', 'a law firm matter']);
     expect(await contextIsInAskGroundwork(p)).toBe(true);
     expect(await theNewBillingPartsAreShown(p)).toBe(true);
     expect(await aKindMayBeGiven(settings({}), 'a law firm matter', 'a law firm matter')).toBe(true);
@@ -69,7 +70,7 @@ describe('boards for kinds of work nobody uses yet', () => {
   it('does not let a lead give a NEW check-in a kind that is not offered, and says so in a sentence', async () => {
     const { svc, updates } = grounds(aCheckIn(), {});
     await expect(svc.setKindOfWork('g1', 'lead', { kind: 'a law firm matter' })).rejects.toThrow(
-      'Groundwork does not offer that kind of work yet. Choose one of these: sales org, engineering release.',
+      'Groundwork does not offer that kind of work yet. Choose one of these: sales team, sales org, engineering release.',
     );
     expect(updates).toEqual([]);
   });
@@ -195,7 +196,7 @@ describe('onboarding and project check-ins get their board without a kind', () =
     expect(SCENARIO_FAMILY.NEW_PROJECT).toBe(BoardFamily.DELIVERY);
   });
   it('offers nothing but the two kinds the paid client needs', () => {
-    expect([...KINDS_OFFERED_AT_RELEASE]).toEqual(['sales org', 'engineering release']);
+    expect([...KINDS_OFFERED_AT_RELEASE]).toEqual(['sales team', 'sales org', 'engineering release']);
   });
 });
 

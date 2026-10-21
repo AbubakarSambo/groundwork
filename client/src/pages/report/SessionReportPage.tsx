@@ -1,11 +1,13 @@
+import { TheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { TheLeadsOwnWayIn } from '@/components/gw/TheLeadsOwnWayIn'
 import { isSessionShared } from '@/lib/session-rows'
 import { useMemo } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { conversationApi } from '@/api/conversation'
 import { groundsApi } from '@/api/grounds'
+import { isASalesKind } from '@/lib/a-sales-kind'
 import { reportsApi } from '@/api/reports'
 import { InferenceReviewPanel } from '@/components/InferenceReviewPanel'
 import { TheSessionsReport } from '@/components/gw/TheSessionsReport'
@@ -27,6 +29,8 @@ import { useBackOrFallback } from '@/lib/a-back-button-never-leaves-groundwork'
 import { TheCheckInHeader } from '@/components/gw/TheCheckInHeader'
 import { checkInHeaderTabs } from '@/pages/grounds/ground-tabs'
 import { Page, Button, Panel, Callout, Section, SubHeading, Note, Tag, Stack } from '@/components/gw/ui'
+import { TheCollectionsOwnReportSections } from '../board/pictured/TheCollectionsBoard'
+import '../board/pictured/pictured-board.css'
 
 /**
  * U.9 RE-REVIEW: "WHAT YOU SHARED:" IS A LABEL BOLTED ONTO A SENTENCE WITH A COLON.
@@ -70,6 +74,7 @@ export default function SessionReportPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const viewerUserId = useAuthStore(st => st.user?.id)
+  const [searchParams] = useSearchParams()
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['session-report', checkInId],
@@ -126,6 +131,8 @@ export default function SessionReportPage() {
 
   /* Only the person who runs the check-in is offered these: a party cannot change either, and
      telling somebody about a setting they have no access to is worse than not mentioning it. */
+  /* The direct morning (lib/the-direct-morning.tsx), from the check-in this page already reads. */
+  const direct = isTheDirectMorningOn(ground)
   const amTheInitiator = ((ground as any)?.participants ?? []).some(
     (p: any) => p.userId === viewerUserId && p.partyType === 'INITIATOR',
   )
@@ -193,6 +200,14 @@ export default function SessionReportPage() {
     refetchInterval: (q: any) => (theTeamsReportIsBehind(q?.state?.data, ground) ? 5_000 : false),
   })
   const readingThePreviousVersion = useMemo(() => theTeamsReportIsBehind(groundReport, ground), [groundReport, ground])
+  /* When the team's report reaches this reader (Hafsah's answers 1 and 5, 16 October 2026): "It is usually shared by 6:30pm." */
+  const { data: sharing } = useQuery({
+    queryKey: ['report-sharing', data?.groundId],
+    queryFn: () => reportsApi.sharing(data!.groundId as string),
+    enabled: !!data?.groundId && !!(ground as any)?.report,
+    retry: false,
+    staleTime: 30_000,
+  })
 
   /**
    * CORRECTING IT, from the page that shows it.
@@ -263,7 +278,46 @@ export default function SessionReportPage() {
      goes instead. */
   const back = useBackOrFallback('/grounds', 'Back to your check-ins')
 
+  /*
+   * SCREEN MATCH, 16 OCTOBER: YOUR OWN REPORT AS PICTURED (own-report.jpg), for a sales check-in, where the light own
+   * report already lives. The check-in's name and the day, "Only you", "Your report", your own report itself, and
+   * whether the team's report is shared yet. Everything else this page shows is one tap away (?whole=1).
+   */
+  if (!isLoading && !isError && data?.groundId && data?.sessionNumber && isASalesKind((ground as any)?.kindOfWork) && searchParams.get('whole') !== '1') {
+    const teamShared = !!shape && (shape as any).released === true
+    const checkInLabel: string = (ground as any)?.label ?? 'This check-in'
+    return (
+      <TheDirectMorning on={direct}>
+      <Page>
+        <div className="pb-own">
+          <div className="pb-own-top">
+            <span className="pb-sub">{`${checkInLabel}${data.finishedAt ? `, ${whenItWas(data.finishedAt, 'dayAndMonthLong')}` : ''}`}</span>
+            {!direct && <Tag>Only you</Tag>}
+          </div>
+          <h1 className="pb-own-title">Your report</h1>
+          {/* Credit for checking in on time (api engagement/who-answers-and-when.ts): served to the person whose report it is, with the direct morning on. */}
+          {data.onTime && <p className="pb-on-time">{data.onTime}</p>}
+          <TheCheckInYouJustFinished checkInId={checkInId!} groundId={data.groundId as string} sessionNumber={data.sessionNumber as number} light pictured />
+          <div className="pb-own-team">
+            <div>
+              <b>The team’s report</b>
+              <p className="pb-sub">{teamShared ? ((shape as any)?.releaseOneSalesReport === true || direct ? 'Shared. Open it.' : 'Shared. Open it to read the whole team’s picture.') : `Not shared yet.${sharing?.says && !sharing.shared ? ` ${sharing.says.replace(/ You’ll get an email when.*$/, '')}` : ''}`}</p>
+            </div>
+            {teamShared
+              ? <Link className="gwui-plain-link" to={`/grounds/${data.groundId}/session/${data.sessionNumber}`}>Open it</Link>
+              : <Tag tone="attention">Waiting</Tag>}
+          </div>
+          <div className="pb-whole-board-link">
+            <Link to={`/checkin/${checkInId}/report?whole=1`} className="gwui-plain-link">See every other part of this report</Link>
+          </div>
+        </div>
+      </Page>
+      </TheDirectMorning>
+    )
+  }
+
   return (
+    <TheDirectMorning on={direct}>
     <Page>
       {/*
         U.10 PICTURE-CHECK ROUND 6, ITEM I: THE SHARED HEADER, ONCE THE PAGE HAS SOMETHING TO
@@ -283,7 +337,7 @@ export default function SessionReportPage() {
           isAParty
           hasOpenSessionNow={hasOpenSessionNow}
           active="report"
-          tabs={checkInHeaderTabs({ id: data.groundId as string, contextEnabled, canRunThisCheckIn: amTheInitiator, isAParty: true })}
+          tabs={checkInHeaderTabs({ id: data.groundId as string, contextEnabled, canRunThisCheckIn: amTheInitiator, isAParty: true, ground: ground as any })}
         />
       ) : (
         <button type="button" onClick={back.onClick} className="gwui-plain-link">
@@ -377,10 +431,13 @@ export default function SessionReportPage() {
             <Tag>Only you</Tag>
           </div>
           <Note>What you said this session, and what to do with it.</Note>
+          {data?.onTime && <p className="pb-on-time">{data.onTime}</p>}
 
           <Stack gap={18}>
           {/* Simple and visual, and only on this half. See the component's own note for why. */}
           <HowSpecificThisSessionWas level={shape?.howClearThisWas?.level} />
+          {/* Release 2: on a "Collect what's owed" check-in, your own report on the bills you follow up (or your own loan), as the server words it. */}
+          {(shape as any)?.collectionsOwnReport && <TheCollectionsOwnReportSections r={(shape as any).collectionsOwnReport} />}
 
           {/*
             THE TOP HALF WAS A SECOND COPY OF THE BOTTOM HALF.
@@ -405,10 +462,10 @@ export default function SessionReportPage() {
           {!isLoading && !isError && !data?.report && !(groundReport as any)?.soloArtifact && amTheInitiator && !data?.finishedAt && data?.groundId && (
             <Panel>
               <Stack gap={10}>
-                <SubHeading>Own reports are private</SubHeading>
-                <Note>Each person’s own report is theirs alone. Yours appears here after your own check-in.</Note>
+                <SubHeading>{direct ? 'Your own report' : 'Own reports are private'}</SubHeading>
+                <Note>{direct ? 'Yours appears here after your own check-in.' : 'Each person’s own report is theirs alone. Yours appears here after your own check-in.'}</Note>
                 {!['CLOSED', 'RESOLVED', 'STALLED', 'PAUSED'].includes((ground as any)?.status) && <TheLeadsOwnWayIn groundId={data.groundId as string} />}
-                <Note>Your check-ins here are optional. Check in when you want your own view in the picture.</Note>
+                {!direct && <Note>Your check-ins here are optional. Check in when you want your own view in the picture.</Note>}
               </Stack>
             </Panel>
           )}
@@ -472,7 +529,7 @@ export default function SessionReportPage() {
                 checkInId={checkInId!}
                 groundId={data!.groundId as string}
                 sessionNumber={data!.sessionNumber as number}
-                light={(ground as any)?.kindOfWork === 'sales org'}
+                light={isASalesKind((ground as any)?.kindOfWork)}
               />
             )}
 
@@ -590,7 +647,7 @@ export default function SessionReportPage() {
           */}
           {data?.finishedAt && (
             <Stack gap={10}>
-              <Note>This record is yours. You can keep your own copy, and it will always be here for you.</Note>
+              <Note>{direct ? 'You can keep your own copy.' : 'This record is yours. You can keep your own copy, and it will always be here for you.'}</Note>
               <button
                 type="button"
                 disabled={downloadRecord.isPending}
@@ -651,7 +708,7 @@ export default function SessionReportPage() {
             own-report.txt: "The team’s report / Not shared yet"). The done page's own rule and tags: this
             session's own release, never another session's.
           */}
-          {(ground as any)?.kindOfWork === 'sales org' ? (
+          {isASalesKind((ground as any)?.kindOfWork) ? (
             <div className="gwui-sentence-row">
               <SubHeading>The team’s report</SubHeading>
               {isSessionShared((ground as any)?.report, data.sessionNumber as number)
@@ -685,15 +742,18 @@ export default function SessionReportPage() {
             on Rukia Otieno for 3 things", which is exactly what it claimed never happened. The
             sentence now says only what is true and actually enforced.
           */}
+          {/* The direct morning: when it closed, and nothing that explains or defends the report. Who reads what is the backend's rule. */}
+          {direct ? (shape?.state === 'final' && <Note>{`Closed${shape.takenAt ? ` ${whenItWas(shape.takenAt, 'day')}` : ''}.`}</Note>) : (
           <Note>
             {shape?.state === 'final'
               ? `Closed${shape.takenAt ? ` ${whenItWas(shape.takenAt, 'day')}` : ''}. This does not change. What each person said about their own work can appear here. Nobody's private judgement of somebody else does.`
               : 'Everybody’s side of this session, together, and it updates as people check in. What each person said about their own work can appear here. Nobody\'s private judgement of somebody else does.'}
           </Note>
+          )}
           <TheSessionsReport
             groundId={data.groundId}
             sessionNumber={data.sessionNumber}
-            light={(ground as any)?.kindOfWork === 'sales org'}
+            light={isASalesKind((ground as any)?.kindOfWork)}
             totalInThisRound={ground ? whoIsInRound(((ground as any).participants ?? []), data.sessionNumber, (ground as any).scenario, (ground as any).checkIns ?? []).length : null}
           />
           {/* A self-correction shows up as a flagged, dated entry rather than being blended in
@@ -803,6 +863,7 @@ export default function SessionReportPage() {
         </div>
       )}
     </Page>
+    </TheDirectMorning>
   )
 }
 

@@ -33,6 +33,11 @@ const OPTIONS: Record<DatePurpose, Intl.DateTimeFormatOptions> = {
 
 let theDisplayTimezone: string | undefined
 
+/** The zone dates are said in: the one a surface set, or else the product's own (West Africa), for the few that always named one. */
+export function theZoneDatesAreIn(): string {
+  return theDisplayTimezone ?? 'Africa/Lagos'
+}
+
 export function setDisplayTimezone(tz: string | null | undefined): void {
   if (!tz) return
   try {

@@ -3,6 +3,7 @@ import { ProofMark } from '@/components/gw/ui/ProofMark'
 import { FoldedLine } from '@/components/gw/ui/FoldedLine'
 import '@/components/gw/ui/gw-ui.css'
 import type { TheEndCard as EngineEndCard } from '@/api/conversation'
+import { useTheDirectMorning } from '@/lib/the-direct-morning'
 
 /**
  * THE END CARD (B3, docs/prototype/screens/B3-the-check-in/check-in-end-card.txt).
@@ -75,10 +76,16 @@ export function TheEndCard({
   onFinish: () => void
   onChange: () => void
 }) {
+  /*
+   * THE DIRECT MORNING (lib/the-direct-morning.tsx): what goes in the record, when the next one opens, and what the engine says
+   * happens next. No line about why answering matters, no reassurance and no line about who sees it. Who sees it is the
+   * backend's rule, the same either way.
+   */
+  const direct = useTheDirectMorning()
   const record = (engine?.inYourRecord ?? []).filter(l => typeof l?.says === 'string' && l.says.trim())
   const fromTheEngine = (engine?.next ?? []).filter(l => typeof l === 'string' && l.trim())
   /* When the next one opens is said once, as its own line above the fold (sales-first.md, section 5). */
-  const next = [
+  const next = direct ? fromTheEngine : [
     ...fromTheEngine,
     'If you don’t want to talk about something yet, that’s fine. You can leave it for now.',
   ]
@@ -115,6 +122,14 @@ export function TheEndCard({
       {nextOpens && <p className="gwui-ci-endcard-body gwui-ci-endcard-nextopens">{nextOpens}</p>}
 
       {/* Why answering matters and what happens next, folded behind one line (the light prototype's s68). */}
+      {direct ? (next.length > 0 && (
+        <div className="gwui-ci-endcard-more-body">
+          <h3 className="gwui-ci-endcard-heading">What happens next</h3>
+          <ul className="gwui-ci-endcard-next">
+            {next.map((l, i) => <li key={i} className="gwui-ci-endcard-body">{l}</li>)}
+          </ul>
+        </div>
+      )) : (
       <FoldedLine name={leadName ? 'Why answering matters, and what happens next' : 'What happens next'}>
         <div className="gwui-ci-endcard-more-body">
           {leadName && (
@@ -133,8 +148,9 @@ export function TheEndCard({
           </div>
         </div>
       </FoldedLine>
+      )}
 
-      {othersCanSeeWhatYouSay !== undefined && (
+      {!direct && othersCanSeeWhatYouSay !== undefined && (
         <p className="gwui-ci-endcard-body">
           {othersCanSeeWhatYouSay
             ? 'Your team will see what you said today, and a short summary of what moved.'

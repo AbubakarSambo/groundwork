@@ -64,7 +64,7 @@ describe('Amina, with two check-ins open', () => {
   it('finishing one offers the next, and remembers it', async () => {
     const h = anInboundHarness({ open: [{ ...SALES, status: 'IN_PROGRESS' }, RENEWALS], thread: { checkInId: 'ci-sales' } });
     await h.service.handle('org-1', h.message('finish'), 'ours');
-    expect(h.said).toEqual(['Your check-in is complete and on record. Your report follows in a moment.\n\nYou also have "Renewals" open. Reply START when you are ready to begin it.']);
+    expect(h.said).toEqual(['Your check-in is complete and on record.\n\nYou also have "Renewals" open. Reply START when you are ready to begin it.']);
     expect(h.thread()?.checkInId).toBe('ci-renewals');
   });
 

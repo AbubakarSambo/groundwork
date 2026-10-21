@@ -1,3 +1,5 @@
+import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
+import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
 import { theCheckInsHeldForASeat } from '../participants/held-for-a-seat';
 import { WAITING_TO_BE_LET_IN } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
@@ -7,6 +9,8 @@ import { areaOfGoalOrFallback } from './the-area-of-a-goal-is-worded-once';
 import { ForbiddenException, Injectable, Optional } from '@nestjs/common';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { PrismaService } from '../prisma/prisma.service';
+import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
+import { needsSaidDirectly } from './what-needs-you';
 import { theirApprovedLeave } from '../suites/who-is-away';
 import { GroundsService } from './grounds.service';
 import { yourBoard, type YourBoard, type YourPattern } from './your-board';
@@ -17,6 +21,7 @@ import { SuggestionsService } from '../suggestions/suggestions.service';
 import type { ForThePerson } from '../suggestions/a-suggestion-told-like-a-signal';
 import { askedOfYou, type AskedOfYou } from './asked-of-you';
 import { theDayIn } from './when-a-handoff-is-due';
+import { whenThesePromisesWereKept } from '../conversation/a-promise-said-done-is-kept';
 import {
   PATTERN_ROW_SELECT, servedPatterns, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson,
   type APatternRow,
@@ -45,8 +50,10 @@ export class YourBoardService {
   async forReader(
     reader: { userId: string; email: string; organizationId: string; role: string },
     askedFor?: string | null,
-  ): Promise<YourBoard & { suggestionsAboutYou?: ForThePerson[]; askedOfYou?: AskedOfYou }> {
+  ): Promise<YourBoard & { suggestionsAboutYou?: ForThePerson[]; askedOfYou?: AskedOfYou; directMorning?: boolean }> {
     if (askedFor && askedFor !== reader.userId) throw new ForbiddenException(NOT_YOURS);
+    /* Judgements of a person off for this organisation: no coaching step and no pattern about the reader (organisation/person-judgements.ts). */
+    const judged = await thePersonJudgementsAreOn(this.prisma, reader.organizationId);
 
     const list = ((await this.grounds.list(reader.organizationId, reader.userId, reader.email, reader.role)) ?? []) as any[];
     /* Only the check-ins in this organisation that you run or take part in, and only your own place in each. */
@@ -81,7 +88,7 @@ export class YourBoardService {
               const lead = (g?.participants ?? []).find((p: any) => p.userId === g?.initiatorId);
               const leadName = theFirstNameOfAParticipant(lead) || 'Your lead';
               const area = await areaOfGoalOrFallback(this.prisma, o.text);
-              return { ...o, text: whatThePersonReadsAfterAWeek(leadName, area) };
+              return { ...o, text: whatThePersonReadsAfterAWeek(leadName, area, { releaseOne: await theReleaseOneSalesBoardIsOn(this.prisma, g?.organizationId ?? reader.organizationId).catch(() => false) }) };
             })))
         : none,
       participantIds.length
@@ -98,7 +105,7 @@ export class YourBoardService {
             orderBy: { createdAt: 'asc' },
           })
         : none,
-      participantIds.length
+      participantIds.length && judged
         ? this.prisma.coachingState.findMany({
             where: { participantId: { in: participantIds } },
             select: { participantId: true, currentStep: true, updatedAt: true },
@@ -131,7 +138,7 @@ export class YourBoardService {
        * below still runs it through the one rule (patterns/who-reads-a-pattern.ts) rather than
        * trusting that, so three check-ins and a plain name are still required.
        */
-      participantIds.length
+      participantIds.length && judged
         ? this.prisma.patternDetection.findMany({
             where: { participantId: { in: participantIds } },
             select: {
@@ -153,6 +160,20 @@ export class YourBoardService {
         : none,
     ]);
 
+    /*
+     * WHAT THE RECORD SAYS IS DONE IS NOT LISTED AS OPEN (messages test, third run, item 4). Mercy said on Monday "I'll follow up with
+     * Joseph again", and on Wednesday "I called Joseph yesterday about the samples, and he said he'll have them ready by Thursday." Her
+     * week on Thursday listed it under "Two things you said you would do are still open". The same reading the lead's summary uses
+     * (a-promise-said-done-is-kept) is applied here, as served: nothing is written, and only her own promises are read.
+     */
+    const openOnes = [
+      ...(commitments as any[]).filter((c) => c.status === 'UNKNOWN' && c.participantId && c.createdAt).map((c) => ({ id: c.id, groundId: c.groundId, participantId: c.participantId, text: c.text, createdAt: c.createdAt })),
+      ...(objectives as any[]).filter((o) => (o.status ?? 'OPEN') === 'OPEN' && o.authoredBy === 'self' && ['COMMITMENT', 'TODO'].includes(o.kind) && o.createdAt).map((o) => ({ id: o.id, groundId: o.groundId, participantId: o.participantId, text: o.text, createdAt: o.createdAt })),
+    ];
+    const keptSaid = openOnes.length ? await whenThesePromisesWereKept(this.prisma as any, openOnes).catch(() => new Map<string, Date>()) : new Map<string, Date>();
+    const commitmentsRead = (commitments as any[]).map((c) => (keptSaid.has(c.id) ? { ...c, status: 'DONE', settledBy: 'SAID', settledAt: keptSaid.get(c.id) } : c));
+    const objectivesRead = (objectives as any[]).map((o) => (keptSaid.has(o.id) ? { ...o, status: 'MET' } : o));
+
     /* Groundwork's suggestions about you, in the shape the person it is about may read (facts and
        the decision with its reasons, never the verdict). Left off when there are none. */
     const aboutYou = this.suggestions ? await this.suggestions.aboutYou({ userId: reader.userId, organizationId: reader.organizationId }) : [];
@@ -171,9 +192,9 @@ export class YourBoardService {
     });
 
     const board = yourBoard(mine, { userId: reader.userId, organizationId: reader.organizationId }, {
-      objectives: objectives as any,
+      objectives: objectivesRead as any,
       ownedTargets: this.onlyYours(targetsYouMayRead, participantIds),
-      commitments: commitments as any,
+      commitments: commitmentsRead as any,
       coaching: coaching as any,
       todos: todos as any,
       leave: await theirApprovedLeave(this.prisma as any, reader.userId, reader.organizationId),
@@ -188,6 +209,7 @@ export class YourBoardService {
      * written from your own answers, and only through the link that reads it, which is yours alone.
      */
     const ownReportsHeld = await this.theOwnReportsOfCheckInsHeldForASeat(reader);
+    const direct = await theDirectMorningIsOn(this.prisma, reader.organizationId);
     const withHeld = ownReportsHeld.length
       ? { ...board, ownReports: [...board.ownReports, ...ownReportsHeld.filter((h) => !board.ownReports.some((r) => r.to === h.to))].sort((a, b) => (b.at ?? '').localeCompare(a.at ?? '')) }
       : board;
@@ -197,6 +219,9 @@ export class YourBoardService {
       ...(aboutYou.length ? { suggestionsAboutYou: aboutYou } : {}),
       ...(asked ? { askedOfYou: asked } : {}),
       ...(patterns.length ? { patterns } : {}),
+      /* The direct morning (organisation/the-screen-is-told-the-direct-morning.ts): one yes or no for the page's fixed words. It shows nothing more. */
+      ...(direct ? { turns: needsSaidDirectly(withHeld.turns ?? []) } : {}),
+      directMorning: direct,
     };
   }
 

@@ -1,3 +1,4 @@
+import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 /**
  * A WAIT ON A COLLEAGUE IS THE SPEAKER'S ACCOUNT, NOT A FACT ABOUT THE COLLEAGUE (decision 137;
  * decision 139, must-fix 4).
@@ -100,6 +101,35 @@ export async function theConfirmedWaits(
     }) ?? [],
   ).catch(() => []);
   for (const w of onSomebody) if (theWaitIsConfirmed(w, Array.isArray(promises) ? promises : [])) confirmed.add(w.id);
+  /*
+   * OR THEY SAID IT IS THEIRS, IN THEIR OWN WORDS (messages test, fourth run). Joseph's week on Thursday 15 October said "Mercy Wairimu says
+   * the work is waiting for "the sample units he promised" from you ... That is what Mercy Wairimu said, and you have not said it yourself."
+   * On Wednesday he had said "I wish I had remembered the samples for Mercy. I've had them ready since Monday." A line of the colleague's own
+   * that names the thing and the person waiting confirms it.
+   */
+  const left = onSomebody.filter((w) => !confirmed.has(w.id));
+  if (!left.length) return confirmed;
+  try {
+    const fromOf = new Map<string, string | null>(left.filter((w) => (w as any).fromParticipantId).map((w) => [w.id, (w as any).fromParticipantId]));
+    const unknown = left.filter((w) => !fromOf.has(w.id)).map((w) => w.id);
+    if (unknown.length) {
+      const rows: any[] = (await Promise.resolve(prisma?.groundDependency?.findMany?.({ where: { id: { in: unknown } }, select: { id: true, fromParticipantId: true } })).catch(() => [])) ?? [];
+      for (const r of Array.isArray(rows) ? rows : []) fromOf.set(r.id, r.fromParticipantId ?? null);
+    }
+    const fromIds = [...new Set([...fromOf.values()].filter((x): x is string => !!x))];
+    if (!fromIds.length) return confirmed;
+    const people: any[] = (await Promise.resolve(prisma?.groundParticipant?.findMany?.({ where: { id: { in: fromIds } }, select: { id: true, nameGiven: true, user: { select: { firstName: true } } } })).catch(() => [])) ?? [];
+    const firstOf = new Map<string, string>((Array.isArray(people) ? people : []).map((p) => [p.id, String(p.user?.firstName ?? p.nameGiven ?? '').trim().split(/\s+/)[0] ?? '']));
+    const lines: any[] = (await Promise.resolve(prisma?.recordEntry?.findMany?.({ where: { participantId: { in: [...new Set(left.map((w) => w.onParticipantId as string))] }, disputedAt: null }, select: { participantId: true, text: true } })).catch(() => [])) ?? [];
+    for (const w of left) {
+      const first = firstOf.get(fromOf.get(w.id) ?? '') ?? '';
+      if (first.length < 2) continue;
+      const them = new RegExp(`\\b${first.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+      if ((Array.isArray(lines) ? lines : []).some((l) => l.participantId === w.onParticipantId && them.test(String(l.text ?? '')) && theirOwnPromiseNamesIt(w.what, String(l.text ?? '')))) confirmed.add(w.id);
+    }
+  } catch {
+    /* Not being able to read it confirms nothing. */
+  }
   return confirmed;
 }
 
@@ -110,7 +140,9 @@ export async function theConfirmedWaits(
  * speaker's own words about it (what they said they did, `triedSaid`, and the stored wait text): what they tried to unblock it, or that they
  * have not said. It is a fact about the record, never a label on either person. The "Tried:" and "Not backed:" forms are Hafsah's own wording.
  */
-const AN_ATTEMPT = /\b(nudg\w*|chas\w*|follow\w*[ -]up|followed up|asked (?:again|twice|him|her|them|\w+ again)|re-?asked|remind\w*|call(?:ed)?|phon\w*|rang|email\w*|messag\w*|text\w*|whatsapp\w*|wrote|sent (?:him|her|them|a)\b|raised it|took it (?:to|above)|escalat\w*|spoke (?:to|with)|talked (?:to|with)|went to (?:see|his|her|their))\b/i;
+/* "asked Grace about the price" is an attempt too (Drop Access run 1, item 18: Joseph's "I've asked Grace about the price" was read as nothing tried). */
+/* "I've tried Paul a couple of times" and "a reply to my calls" are attempts too (Drop Access, second night run, Kevin); "I haven't tried" is not. */
+const AN_ATTEMPT = /\b(nudg\w*|chas\w*|follow\w*[ -]up|followed up|asked (?:again|twice|him|her|them|\w+ again|(?!for\b|if\b|whether\b|me\b|us\b|to\b)\w+ (?:about|for|if|whether|to)\b)|re-?asked|remind\w*|call(?:ed|s)?|phon\w*|rang|email\w*|messag\w*|text\w*|whatsapp\w*|wrote|sent (?:him|her|them|a)\b|raised it|took it (?:to|above)|escalat\w*|spoke (?:to|with)|talked (?:to|with)|went to (?:see|his|her|their)|(?<!(?:n['’]t|not|never)\s)tried (?!nothing\b|anything\b)\w+)\b/i;
 
 export const NOT_BACKED = 'Not backed: no attempt to unblock mentioned.';
 
@@ -121,6 +153,16 @@ function theAttemptSaid(w: { what?: string | null; triedSaid?: string | null }):
     if (text && AN_ATTEMPT.test(text)) return text;
   }
   return null;
+}
+
+/*
+ * WHAT THEY SAID THEY TRIED FIRST, WHERE THEY SAID ANYTHING (Drop Access, second night run). Peter's "I haven't done anything about that
+ * yet" was kept as what he had tried, and My work counted it as something tried first. Words that say nothing was tried are not.
+ */
+const NOTHING_TRIED = /\b(?:haven['’]t|have not|hasn['’]t|has not|didn['’]t|did not|not yet|nothing|no one|nobody)\b|^\s*no\b|^\s*none\b/i;
+export function saidWhatTheyTried(triedSaid: string | null | undefined): boolean {
+  const t = String(triedSaid ?? '').trim();
+  return !!t && !NOTHING_TRIED.test(t);
 }
 
 /** Is the speaker's attempt to unblock it in the record? The same check the note uses, so a wait the note says they tried is confirmed. */
@@ -155,6 +197,26 @@ export function whatTheyCouldHaveDone(names: WhoTheNoteNames = {}): string {
   /* The lead is the one waited on, or the one waiting: there is nobody above them here to raise it with. */
   if (theSame(on, lead) || theSame(by, lead)) return `${by} could have messaged ${on} or asked again.`;
   return `${by} could have messaged ${on}, asked again, or raised it with ${lead}.`;
+}
+
+/**
+ * WHAT THEY TRIED, IN A FULL SENTENCE, OR NOTHING: the note a MESSAGE carries (Drop Access run 1, item 18). Grace's Friday letter read
+ * "Joseph says the work is waiting on you for a decision on the KES 4,500 price for Juja Hardware. Not backed: no attempt to unblock
+ * mentioned. Joseph could have messaged you or asked again." It was clipped, it judged, and it was untrue: Joseph had said "I've asked
+ * Grace about the price" and "I asked her already" about the same wait, said again in other words. Read from every time the wait was
+ * said (dedupeDependencies keeps the fullest words and the day), a message says what was tried in the speaker's own words with the
+ * day, "Joseph said on Friday 23 October, “I've asked Grace about the price.”", or says nothing beside the claim. The board keeps
+ * Hafsah's "Tried:" and "Not backed:" note (change 4) until she says otherwise.
+ */
+export function whatTheyTriedInFull(w: { what?: string | null; triedSaid?: string | null; triedSaidAt?: Date | string | null; createdAt?: Date | string | null }, by: string | null | undefined): string {
+  const text = theAttemptSaid(w);
+  if (!text) return '';
+  const who = String(by ?? '').trim() || 'They';
+  const Who = /^you$/i.test(who) ? 'You' : who.charAt(0).toUpperCase() + who.slice(1);
+  const at = w.triedSaidAt ?? w.createdAt ?? null;
+  const day = at ? whenItWas(at, 'weekdayAndDay') : null;
+  const words = text.replace(/\s+/g, ' ').trim().replace(/[.\s]+$/, '');
+  return `${Who} said${day ? ` on ${day}` : ''}, “${words.charAt(0).toUpperCase()}${words.slice(1)}.”`;
 }
 
 /**

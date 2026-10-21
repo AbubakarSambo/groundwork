@@ -223,6 +223,12 @@ class EntryReportDto {
   @IsOptional()
   @IsObject()
   anchorItems?: Record<string, unknown>;
+
+  /* What the lead said in setup, in her own words, so her report knows her own role and what she said about each person (15 October). */
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  leadsOwnWords?: string[];
 }
 
 class ContributorDto {
@@ -625,7 +631,7 @@ export class EntryController {
   @Post('report')
   @Throttle({ global: { limit: 20, ttl: 60000 } })
   async report(@Body() dto: EntryReportDto) {
-    const report = await this.service.report(dto.messages, dto.scenario, dto.groundLabel, dto.anchorItems, dto.peopleNamed);
+    const report = await this.service.report(dto.messages, dto.scenario, dto.groundLabel, dto.anchorItems, dto.peopleNamed, dto.leadsOwnWords);
     return { report };
   }
 }

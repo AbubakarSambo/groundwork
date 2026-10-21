@@ -1,3 +1,5 @@
+import { formsOfTheSameNumber } from '../whatsapp/a-number-whatsapp-can-reach';
+import { theNumberOnRecord } from '../whatsapp/one-number-for-a-person';
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
@@ -8,6 +10,9 @@ import { roundCompletedPayload, checkInCompletedPayload, checkInOpenedPayload, b
 import { WorkspaceNotifierService } from '../workspace/workspace-notifier.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { theCheckInIsOpen } from '../whatsapp/what-goes-to-a-phone';
+import { aTeamMembersOpeningFor } from '../conversation/the-one-thing-today';
+import { theSameWordsAgain, rememberTheWords, writeDownTheSkip } from '../engagement/never-the-same-words-twice';
+import { isHeldForTheNight } from '../whatsapp/quiet-hours-are-the-organisations';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { leaveOfThePeopleOn, awayUntilOn } from '../suites/who-is-away';
 
@@ -143,7 +148,10 @@ export class WebhooksListener {
     const person = e.personExternalId
       ? await this.prisma.person.findFirst({ where: { organizationId: ground.organizationId, externalId: e.personExternalId }, select: { phone: true } })
       : null;
-    const phone = person?.phone ?? participant.user?.phoneNumber ?? null;
+    /* Then every roster entry that is this person, then their sign-in: the number People and setup shows (one-number-for-a-person.ts). */
+    const phone = person?.phone
+      ?? (await theNumberOnRecord(this.prisma as any, ground.organizationId, { userId: participant.userId, email: participant.user?.email ?? participant.email }).catch(() => null))
+      ?? participant.user?.phoneNumber ?? null;
     if (!phone) return;
     /*
      * EVERYBODY WITH A NUMBER IS TOLD ON WHATSAPP (Hafsah's D2, put back after production, 15 October). "One channel for an
@@ -156,11 +164,45 @@ export class WebhooksListener {
     const leave = await leaveOfThePeopleOn(this.prisma, [e.groundId]);
     if (awayUntilOn(leave.get(participant.id))) return;
     /* Told once: somebody invited by their number was already sent this opening before they joined (D2). */
-    const already = await Promise.resolve((this.prisma as any).whatsAppSend?.findFirst?.({ where: { checkInId: e.checkInId, kind: { startsWith: 'checkin-open' } }, select: { id: true } })).catch(() => null);
+    /* Once per number (Drop Access, 21 October; findings 1.4 E): one that went to a number since changed does not stop this one. */
+    const already = await Promise.resolve((this.prisma as any).whatsAppSend?.findFirst?.({ where: { checkInId: e.checkInId, kind: { startsWith: 'checkin-open' }, phone: { in: formsOfTheSameNumber(phone) } }, select: { id: true } })).catch(() => null);
     if (already) return;
-    const said = theCheckInIsOpen({ firstName: participant.user?.firstName, label: ground.label }, ground.simplerWords);
+    /*
+     * ONE CHANNEL PER OPENING, FOR SOMEBODY LET IN (messages test, 19 October, the rule check). Amos asked to join through the link, was let in at
+     * 09:15 and emailed "You can start your check-in now", added his number, and at 09:30 was sent this opening for the same first session. The
+     * approval email is that session's opening, on email: where it was sent after this check-in was made, the first session is not told again.
+     */
+    if (e.sessionNumber === 1 && await this.theApprovalEmailOpenedIt(e.checkInId, participant)) return;
+    const today = theCheckInIsOpen({ firstName: participant.user?.firstName, label: ground.label }, ground.simplerWords);
+    /*
+     * WITH THE DIRECT MORNING ON, THE ONE THING THAT MATTERS TO THEM TODAY IS THE MESSAGE (part 3; conversation/the-one-thing-today). Inside
+     * the 24 hours the personal line goes as the free message and is their check-in's first question; outside them the approved template
+     * goes exactly as it is, from the same blanks, and the personal line is the first thing they read once they reply START. Off, or with
+     * nothing specific on record, the notice is today's, word for word.
+     */
+    const personal = await aTeamMembersOpeningFor(this.prisma, { groundId: e.groundId, participantId: participant.id, sessionNumber: e.sessionNumber }).catch(() => null);
+    const said = personal ? { ...today, text: personal.text } : today;
+    /* After two missed days, never the same words twice in a row (engagement/never-the-same-words-twice.ts; direct morning only). */
+    if (await theSameWordsAgain(this.prisma, { groundId: e.groundId, participantId: participant.id, words: said.text })) {
+      await writeDownTheSkip(this.prisma, { channel: 'whatsapp', to: participant.user?.email ?? participant.email ?? phone, sender: said.kind, organizationId: ground.organizationId });
+      return;
+    }
     /* Business-initiated: goes as free text inside the window, as a template outside it, or not at all. */
-    await this.whatsapp.sendFor(ground.organizationId, phone, said.text, { checkInId: e.checkInId, kind: said.kind, params: said.params });
+    const went = await this.whatsapp.sendFor(ground.organizationId, phone, said.text, { checkInId: e.checkInId, kind: said.kind, params: said.params });
+    if (went?.sent || isHeldForTheNight(went?.error)) await rememberTheWords(this.prisma, e.groundId, participant.id, said.text);
+  }
+
+  /** Whether "You can start your check-in now" went to this person after this check-in was made: that email opened it. */
+  private async theApprovalEmailOpenedIt(checkInId: string, participant: { email: string | null; user?: { email?: string | null } | null }): Promise<boolean> {
+    const ci = await Promise.resolve((this.prisma as any).checkIn?.findUnique?.({ where: { id: checkInId }, select: { createdAt: true, status: true } })).catch(() => null);
+    if (!ci?.createdAt || (ci.status && ci.status !== 'NOT_STARTED')) return false;
+    const addresses = [...new Set([participant.email, participant.user?.email].filter((a): a is string => !!a && !!a.trim()).map((a) => a.trim().toLowerCase()))];
+    if (!addresses.length) return false;
+    const told = await Promise.resolve((this.prisma as any).notification?.findFirst?.({
+      where: { channel: 'email', sender: 'sendYouAreInNow', outcome: { in: ['sent', 'held'] }, OR: addresses.map((a) => ({ toAddress: { equals: a, mode: 'insensitive' } })), createdAt: { gte: ci.createdAt } },
+      select: { id: true },
+    })).catch(() => null);
+    return !!told;
   }
 
   @OnEvent(GroundworkEvents.CHECK_IN_COMPLETED)

@@ -31,8 +31,8 @@ import { askNameFor } from '@/lib/ask-name'
  */
 const WRAP: React.CSSProperties = { maxWidth: 1180, margin: '0 auto', padding: '20px 16px 80px' }
 const INPUT: React.CSSProperties = {
-  padding: '7px 10px', borderRadius: 7, border: '1px solid var(--gw-border)',
-  fontSize: 12.5, fontFamily: 'inherit',
+  /* The kit's field (app.css .input). */
+  padding: '12px 16px', fontSize: 16, border: '1.5px solid var(--gw-rule-2)', borderRadius: 10, background: 'var(--gw-card)', color: 'var(--gw-text)', fontFamily: 'inherit',
 }
 
 function Surface({ n, name, cell, note, children }: {
@@ -185,10 +185,7 @@ export default function EveryReportSideBySide() {
           Session
           <input value={s} onChange={(e) => setS(e.target.value)} inputMode="numeric" style={{ ...INPUT, width: 80 }} />
         </label>
-        <button type="submit" style={{
-          padding: '8px 14px', borderRadius: 7, border: 'none', background: 'var(--gw-navy)',
-          color: 'white', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-        }}>
+        <button className="gwui-btn gwui-btn-primary gwui-btn-small" type="submit" >
           Show them
         </button>
       </form>

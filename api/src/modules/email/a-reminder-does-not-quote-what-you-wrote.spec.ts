@@ -20,7 +20,8 @@ describe('the session-ready sweep', () => {
     expect(service).not.toContain('Last time:');
     /* The one addition is `missed`, the product's own decision-136 lines folded into the opening (reviewer, 14 October); nothing the person wrote. */
     /* And `groundId`, only to find whether WhatsApp is on for its organisation (fix list, item 5). */
-    expect(service).toMatch(/async sendSessionReady\(email: string, groundLabel: string, checkInUrl: string, simplerWords\?: boolean \| null, missed\?: string\[\] \| null, groundId\?: string\)/);
+    /* And `opening`, the direct morning's personal line, built by the product from the record and given only where the switch is on (20 October). */
+    expect(service).toMatch(/async sendSessionReady\(email: string, groundLabel: string, checkInUrl: string, simplerWords\?: boolean \| null, missed\?: string\[\] \| null, groundId\?: string, opening\?: \{ subject: string; line: string \} \| null\)/);
     expect(sweep).toMatch(/theMissedNoticeToFold\(this\.prisma, p\.userId, p\.id, now\)/);
   });
 });

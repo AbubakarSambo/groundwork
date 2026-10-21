@@ -13,6 +13,9 @@ import { railAttention } from '@/lib/rail-attention'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ContextPage } from '@/components/gw/ContextPage'
+import { ReferencesAndResourcesPage } from './ReferencesAndResources'
+import { MyWorkPage } from './MyWorkPage'
+import { theContextTabsName } from '@/lib/the-references-tab'
 import { YourWork } from '@/components/gw/checkin/YourWork'
 import { Note, Callout, Button, Panel, Stack, Avatar, Tag, TextField, SubHeading, Empty, Folded, Modal, Section } from '@/components/gw/ui'
 import { TheLeadsOwnWayIn, YOU_CHECK_IN_WHEN_YOU_CHOOSE } from '@/components/gw/TheLeadsOwnWayIn'
@@ -1491,7 +1494,10 @@ export function GroundAdminPage() {
    * `report` is where that row's own two links (see `!viewerIsAParty` below) already expect to send
    * her back from.
    */
-  const myWorkDefault: Tab = isInitiator ? (viewerIsAParty ? 'checkins' : 'report') : 'myrecord'
+  /* RELEASE 1B (pull request 3 of 3): with the organisation's switch on, the lead's My work lands on the B7 page (MyWorkPage.tsx),
+     where she chooses whose work to read; "Every session" and "Who has answered" stay one press away. Off, as before. */
+  const release1bOn = (ground as any)?.release1bTabsOn === true
+  const myWorkDefault: Tab = release1bOn && isInitiator ? 'myrecord' : isInitiator ? (viewerIsAParty ? 'checkins' : 'report') : 'myrecord'
   const outerTabOf = (t: Tab): string => {
     if (t === 'chat') return 'checkin'
     if (t === 'docs') return 'context'
@@ -1650,7 +1656,7 @@ export function GroundAdminPage() {
             [
               { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
               { key: 'checkin', label: 'Check-in' },
-              { key: 'context', label: contextEnabled ? 'Context and resources' : 'Documents' },
+              { key: 'context', label: theContextTabsName(ground as any, contextEnabled ? 'Context and resources' : 'Documents') },
               { key: 'mywork', label: 'My work' },
               { key: 'people', label: 'People and setup' },
             ].filter(t => t.key === 'checkin'
@@ -2154,11 +2160,22 @@ export function GroundAdminPage() {
           <div className="gwui-button-row">
             {isInitiator && tab !== 'report' && <button type="button" className="gwui-plain-link" onClick={() => goTab('report')}>Every session</button>}
             {isInitiator && tab !== 'checkins' && <button type="button" className="gwui-plain-link" onClick={() => goTab('checkins')}>Who has answered</button>}
-            {viewerIsAParty && <button type="button" className="gwui-plain-link" onClick={() => goTab('myrecord')}>Your own record</button>}
+            {release1bOn && isInitiator
+              ? <button type="button" className="gwui-plain-link" onClick={() => goTab('myrecord')}>Each person’s work</button>
+              : viewerIsAParty && <button type="button" className="gwui-plain-link" onClick={() => goTab('myrecord')}>Your own record</button>}
           </div>
         )}
 
-        {tab === 'myrecord' && viewerIsAParty && (
+        {/* RELEASE 1B (pull request 3 of 3): with the organisation's switch on, My work is the B7 page, served by the server to the
+            lead for any person in it and to a person for themselves (MyWorkPage.tsx), with the rest of today's page and the parts
+            that left References and resources under it. Off, today's page exactly as it was. */}
+        {tab === 'myrecord' && release1bOn && (isInitiator || viewerIsAParty) && (
+          <MyWorkPage
+            groundId={id!}
+            onAllYourReports={() => goTab('report')}
+            rest={
+              <>
+                {viewerIsAParty && (
           <YourWork
             groundId={id!}
             ground={ground}
@@ -2185,6 +2202,48 @@ export function GroundAdminPage() {
                reached without a visible sub-tab. See the notes on these props in YourWork.tsx. */
             onSeeEverySession={() => goTab('report')}
             onSeeRoster={() => goTab('checkins')}
+            asTheRestOfMyWork={release1bOn}
+          />
+                )}
+                {isInitiator && !viewerIsAParty && (
+                  <div className="gwui-button-row">
+                    <button type="button" className="gwui-plain-link" onClick={() => goTab('report')}>Every session</button>
+                    <button type="button" className="gwui-plain-link" onClick={() => goTab('checkins')}>Who has answered</button>
+                  </div>
+                )}
+                <ContextPage ground={ground} role={isInitiator ? 'lead' : canRunThisGround ? 'admin' : 'party'} viewerUserId={user?.id} only="what-moved-to-my-work" />
+              </>
+            }
+          />
+        )}
+        {tab === 'myrecord' && viewerIsAParty && !release1bOn && (
+          <YourWork
+            groundId={id!}
+            ground={ground}
+            myRecord={myRecord}
+            mySoloReport={mySoloReport}
+            refetchSoloReport={refetchSoloReport}
+            specificity={mySpecificity}
+            /* The lead's page does not fetch the shared report - see the note this replaced
+               ("corroborated"/"documentBackedPct" read null for the same reason). */
+            report={null}
+            totalSessions={plannedSessions ?? null}
+            completedCount={mySessionsDone}
+            myFinishedSessions={mySessions}
+            sessionDots={mySessionDots}
+            myParticipant={myParticipant}
+            /* GROUP 3'S REVIEW, BATCH A FAULT 6: see the matching note on GroundParticipantPage.tsx. */
+            myName={myParticipant ? personLabel(myParticipant) : null}
+            leadFirstName={(ground as any)?.leadFirstName}
+            otherParties={(ground.participants ?? [])
+              .filter((p: any) => p.userId !== user?.id)
+              .map((p: any) => ({ id: p.id, name: personLabel(p), email: p.email }))}
+            aTeamReportComes={!!(ground as any)?.aTeamReportComes}
+            /* Both quiet links at the foot: this page's own "report" and "checkins" tabs, unchanged,
+               reached without a visible sub-tab. See the notes on these props in YourWork.tsx. */
+            onSeeEverySession={() => goTab('report')}
+            onSeeRoster={() => goTab('checkins')}
+            asTheRestOfMyWork={release1bOn}
           />
         )}
 
@@ -2873,13 +2932,17 @@ export function GroundAdminPage() {
           admin either - only the check-in's own lead may change what it says it is for; an admin
           still reads it, like everybody else in the check-in.
         */}
-        {tab === 'docs' && (
+        {/* RELEASE 1B (pull request 2 of 3): with the organisation's switch on, the tab is References and resources, served to
+            each reader as their own view (ReferencesAndResources.tsx). Off, today's Context page, exactly as it was. */}
+        {tab === 'docs' && ((ground as any).release1bTabsOn === true ? (
+          <ReferencesAndResourcesPage groundId={id ?? ''} ground={ground} isTheLead={isInitiator} />
+        ) : (
           <ContextPage
             ground={ground}
             role={isInitiator ? 'lead' : canRunThisGround ? 'admin' : 'party'}
             viewerUserId={user?.id}
           />
-        )}
+        ))}
 
         {/* REPORT */}
         {/*

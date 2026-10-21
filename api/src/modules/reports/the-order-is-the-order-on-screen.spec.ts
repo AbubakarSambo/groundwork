@@ -85,7 +85,9 @@ describe('the order on the page is the order that was declared', () => {
          * A fold drawn through the page's own `theFold("...", ...)` (which picks `Folded summary=` or
          * the light page's `FoldedLine name=`) is the label where it is drawn too, so it counts.
          */
-        const i = src.search(new RegExp(`(?:(?:label|summary)=|theFold\\()["']${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']`));
+        /* And a label the direct morning's switch words differently ("label={direct ? 'What to do next' : 'The conversation worth having now'}") is still that label, drawn in the same place. */
+        const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const i = src.search(new RegExp(`(?:(?:label|summary)=|theFold\\()["']${escaped}["']|(?:label|summary)=\\{direct \\? '[^']*' : '${escaped}'\\}`));
         expect(`${s.cell} draws "${label}": ${i > -1}`).toContain('true');
         return { block, i };
       });

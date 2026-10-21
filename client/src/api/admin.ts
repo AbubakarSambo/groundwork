@@ -24,6 +24,12 @@ export interface CoachingBatch {
   }[]
 }
 
+/** Where the daily delivery alert goes: saved here, from the server setting, or nowhere (nothing is sent). */
+export interface DeliveryAlert {
+  email: string | null
+  from: 'here' | 'server' | null
+}
+
 export interface CorrectionWindow {
   days: number
   default: number
@@ -138,6 +144,19 @@ export const adminApi = {
   setCoachingLive: (live: boolean) =>
     apiClient.patch<{ live: boolean }>('/admin/coaching', { live }).then(r => r.data),
 
+  /** Release 1's sales board, switched on or off for one organisation (staff only). The server says back what changed. */
+  setReleaseOneSalesBoard: (organizationId: string, on: boolean) =>
+    apiClient.patch<{ id: string; name: string; release1SalesBoardOn: boolean; says: string }>(`/admin/organisations/${organizationId}/release-one-sales-board`, { on }).then(r => r.data),
+
+  /** Release 1B's new check-in tabs, switched on or off for one organisation (staff only). The server says back what changed. */
+  setRelease1bTabs: (organizationId: string, on: boolean) =>
+    apiClient.patch<{ id: string; name: string; release1bTabsOn: boolean; says: string }>(`/admin/organisations/${organizationId}/release-1b-tabs`, { on }).then(r => r.data),
+  setRelease2Collections: (organizationId: string, on: boolean) =>
+    apiClient.patch<{ id: string; name: string; release2CollectionsOn: boolean; says: string }>(`/admin/organisations/${organizationId}/release-2-collections`, { on }).then(r => r.data),
+
+  getDeliveryAlert: () => apiClient.get<DeliveryAlert>('/admin/delivery-alert').then(r => r.data),
+  setDeliveryAlert: (email: string) =>
+    apiClient.patch<DeliveryAlert>('/admin/delivery-alert', { email }).then(r => r.data),
   getCorrectionWindow: () => apiClient.get<CorrectionWindow>('/admin/correction-window').then(r => r.data),
   setCorrectionWindow: (days: number) =>
     apiClient.patch<CorrectionWindow>('/admin/correction-window', { days }).then(r => r.data),

@@ -79,16 +79,10 @@ export function SplitOneTotalAcrossPeople({ groundId }: { groundId: string }) {
             style={{ ...boxStyle, resize: 'vertical' }}
           />
         </label>
-        <button
+        <button className="gwui-btn gwui-btn-primary"
           onClick={() => propose.mutate()}
           disabled={!total.trim() || !paste.trim() || propose.isPending}
-          className="gwui-fs-13 gwui-ink-white gwui-pt-8 gwui-pr-14 gwui-pb-8 gwui-pl-14 gwui-rule-none"
-          style={{
-            justifySelf: 'start', borderRadius: 8,
-            background: 'var(--gw-navy)', fontWeight: 700,
-            fontFamily: 'inherit', cursor: 'pointer',
-            opacity: !total.trim() || !paste.trim() || propose.isPending ? 0.5 : 1,
-          }}
+          style={{ justifySelf: 'start' }}
         >
           {propose.isPending ? 'Working it out…' : 'Show me the numbers'}
         </button>

@@ -1,3 +1,4 @@
+import { theDatesIn } from './a-day-is-not-a-target';
 /**
  * "UNITS OF TEA SOLD IN ABUJA (10,000)" AND "10,000 UNITS (10,000)", ON THE SAME BOARD.
  *
@@ -105,7 +106,15 @@ export function isTheSameFigureWordedAgain(fresh: AnAim, existing: AnAim[]): boo
    (run 7, 21 Sep 2026). The figure in the name is the target it did not carry. */
 const SCALE: Record<string, number> = { k: 1e3, m: 1e6, mn: 1e6, bn: 1e9, thousand: 1e3, million: 1e6, billion: 1e9 };
 export function theFigureInTheName(name: string | null | undefined): number | null {
-  const m = /(?<![\d.])(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)\s?(k|m|mn|bn|thousand|million|billion)?\b/i.exec(name ?? '');
+  /* The first figure that is not part of a date: "filed on time on 22 October" holds a day, not 22 of anything (local test of staging, 15 October). */
+  const dates = theDatesIn(name);
+  const re = /(?<![\d.])(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)\s?(k|m|mn|bn|thousand|million|billion)?\b/gi;
+  let m: RegExpExecArray | null = null;
+  for (let x = re.exec(name ?? ''); x; x = re.exec(name ?? '')) {
+    const at = x.index ?? 0;
+    const end = at + x[1].length;
+    if (!dates.some(([a, b]) => at >= a && end <= b)) { m = x; break; }
+  }
   if (!m) return null;
   const n = Number(m[1].replace(/,/g, '')) * (SCALE[(m[2] ?? '').toLowerCase()] ?? 1);
   /* A RATE IS A TARGET AT ANY SIZE. "under 8% arrears" sat on a sales board with no number, and the

@@ -252,3 +252,22 @@ describe('buildSessionRows: agrees with the board’s own grid about who joined 
     expect(session2?.total).toBe(2)
   })
 })
+
+/* Screen match, 16 October: the board's roster also lists somebody an admin has not let in yet, whom the lead's own ground
+   leaves out (decision 77). That is not a restricted read: the lead's own count stays. */
+describe('buildSessionRows: a roster that is longer only by somebody not let in yet', () => {
+  it('still counts who has checked in, for the lead', () => {
+    const ground = {
+      participants: [
+        { id: 'p-w', userId: 'u-w', name: 'Wairimu', managingOnly: true },
+        { id: 'p-a', userId: 'u-a', name: 'Aisha', managingOnly: false },
+        { id: 'p-b', userId: 'u-b', name: 'Brian', managingOnly: false },
+      ],
+      checkIns: [{ id: 'c1', participantId: 'p-a', sessionNumber: 38, status: 'COMPLETED', isSetup: false, completedAt: '2026-09-23T14:00:00.000Z' }],
+      roundCompletions: [],
+    }
+    const full = [...ground.participants, { id: 'p-peter', managingOnly: false }]
+    const row = buildSessionRows(ground, 'u-w', (p: any) => p.name ?? 'a colleague', full).find((r) => r.sessionNumber === 38)
+    expect(row?.answered).toBe(1)
+  })
+})

@@ -11,8 +11,9 @@ import { isNotLetInYet, whoIsNotLetInYet } from './who-an-admin-did-not-let-in';
 import { whoHasNotJoinedYet } from './invited-not-joined-yet';
 import { theFreeTrialLine } from './the-free-trial-on-today';
 import { PrismaService } from '../prisma/prisma.service';
+import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { GroundsService } from './grounds.service';
-import { whatNeedsYou, type Need, type WhatNeedsYou } from './what-needs-you';
+import { whatNeedsYou, needsSaidDirectly, type Need, type WhatNeedsYou } from './what-needs-you';
 import { LeaveBoardService } from '../suites/the-leave-board.service';
 import { whoIsAwayOn } from '../suites/who-is-away';
 import { TimeSheetsService } from '../suites/the-time-sheets.service';
@@ -310,7 +311,7 @@ export class WhatNeedsYouService {
    * absent for anybody who runs no check-in here, and for a lead with nothing to add; a sentence Today already says (a card, or the daily nudge's page) is not said
    * again.
    */
-  async today(userId: string, email: string, organizationId: string, role: string): Promise<WhatNeedsYou & { forTheLead?: WhatTheLeadIsToldOnToday }> {
+  async today(userId: string, email: string, organizationId: string, role: string): Promise<WhatNeedsYou & { forTheLead?: WhatTheLeadIsToldOnToday; directMorning?: boolean }> {
     const told = await this.forReader(userId, email, organizationId, role);
     /* Their own missed check-ins, told to them first (decision 136). Read only for this reader, about their own rows. */
     const missed = await this.missedCheckInsOf(userId, organizationId).catch(() => [] as Need[]);
@@ -333,7 +334,10 @@ export class WhatNeedsYouService {
       { userId, role, organizationId },
       { alreadySaid, weeklyReport: weekly ? (groundId, at) => weekly.read(groundId, { userId, role, organizationId }, at) : undefined },
     ).catch(() => null);
-    return forTheLead ? { ...told, forTheLead } : told;
+    /* The direct morning (organisation/the-screen-is-told-the-direct-morning.ts): one yes or no for the page's fixed words. It shows nothing more. */
+    const directMorning = await theDirectMorningIsOn(this.prisma, organizationId);
+    if (directMorning) { told.needs = needsSaidDirectly(told.needs); }
+    return forTheLead ? { ...told, forTheLead, directMorning } : { ...told, directMorning };
   }
 
   /** The reason a person gives for missing their check-ins, on their own latest missed check-in only (decision 136). */

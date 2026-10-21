@@ -165,6 +165,12 @@ describe('only a sales check-in is read', () => {
     expect(extract).not.toHaveBeenCalled();
   });
 
+  it('a sales team (Release 1: one lead and the reps under them) is read exactly as a sales organisation is', async () => {
+    const { svc, created } = setup({ kindOfWork: 'sales team', model: said });
+    expect(await svc.write(event)).toBe(1);
+    expect(created).toEqual([{ organizationId: ORG, counterpartyExternalId: 'crm-green', says: 'Quote sent. Buys in January.', promptVersionId: 'pv-7' }]);
+  });
+
   it('a check-in with no kind of work writes none', async () => {
     const { svc, extract } = setup({ kindOfWork: null, model: said });
     expect(await svc.write(event)).toBe(0);

@@ -84,7 +84,7 @@ export class ConversationController {
   @Post(':id/messages')
   @ApiOperation({ summary: 'Send a message and get the AI reply' })
   async send(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: SendMessageDto) {
-    return this.conversation.sendMessage(id, userId, dto.message);
+    return this.conversation.sendMessage(id, userId, dto.message, { answering: dto.answering ?? null });
   }
 
   @Post(':id/messages/stream')
@@ -96,7 +96,7 @@ export class ConversationController {
     res.flushHeaders?.();
     const write = (data: unknown) => res.write(`data: ${JSON.stringify(data)}\n\n`);
     try {
-      for await (const evt of this.conversation.sendMessageStream(id, userId, dto.message)) {
+      for await (const evt of this.conversation.sendMessageStream(id, userId, dto.message, dto.answering ?? null)) {
         write(evt);
       }
     } catch (err: any) {

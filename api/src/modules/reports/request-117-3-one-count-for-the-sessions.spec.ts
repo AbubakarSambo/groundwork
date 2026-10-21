@@ -29,17 +29,21 @@ function heldOpenByFaraji() {
 }
 
 describe('request 117 (3): one count for the sessions', () => {
-  it('Rukia\'s coaching note says the session the header says', async () => {
+  /*
+   * Changed 21 October (final real-model check, item 15): a person's own note is never behind their own check-ins. Kevin, who had done
+   * session 3, read "This is session 2 of 15 of this work." because Peter's open session 2 held the round. Rukia and Amani have done
+   * session 2, so their own notes say session 2; the board's header still says the round, and the lead's questions still count it.
+   */
+  it('Rukia\'s coaching note says the session she has done, not the round Faraji holds open', async () => {
     const svc = heldOpenByFaraji();
     const c: any = await svc.coachingForTheBoard('g1', 'u-rukia');
-    expect(c.yours.whyItMatters).toMatch(/^This is session 1 of 12 of this work\./);
-    expect(everyString(c.yours).join(' ')).not.toMatch(/session 2/);
+    expect(c.yours.whyItMatters).toMatch(/^This is session 2 of 12 of this work\./);
   });
 
-  it('Amani, who has done session 2, reads the same session in her own note', async () => {
+  it('Amani, who has done session 2, reads session 2 in her own note', async () => {
     const svc = heldOpenByFaraji();
     const c: any = await svc.coachingForTheBoard('g1', 'u-amani');
-    expect(c.yours.whyItMatters).toMatch(/^This is session 1 of 12 of this work\./);
+    expect(c.yours.whyItMatters).toMatch(/^This is session 2 of 12 of this work\./);
   });
 
   it.each([['Rukia', 'u-rukia'], ['Grace, who set it up', 'u-grace']])('%s is told only Faraji has not answered this session, never Baraka or Neema', async (_who, userId) => {

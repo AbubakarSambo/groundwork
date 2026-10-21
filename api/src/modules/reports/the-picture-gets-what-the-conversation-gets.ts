@@ -27,10 +27,11 @@ export interface APersonOnRecord {
 }
 
 /** The block the synthesis reads: per person, what the record itself says does not add up. */
-export function whatDoesNotAddUpPerPerson(people: APersonOnRecord[], thisSession: number): string {
+export function whatDoesNotAddUpPerPerson(people: APersonOnRecord[], thisSession: number, onASalesCheckIn: { customers?: string[] | null; people?: string[] } = {}): string {
   const lines: string[] = [];
   for (const p of people) {
-    const diffs: ADifference[] = whatDoesNotAddUp({ said: p.said, thisSession, targets: p.targets, sessionsLeft: null, aiTurnsThisSession: [] });
+    /* On a sales check-in, one customer's units are that deal's (Drop Access run 1, items 27 and 28; answer 7). */
+    const diffs: ADifference[] = whatDoesNotAddUp({ said: p.said, thisSession, targets: p.targets, sessionsLeft: null, aiTurnsThisSession: [], customers: onASalesCheckIn.customers ?? null, people: onASalesCheckIn.people ?? [] });
     if (!diffs.length) continue;
     lines.push(`${p.label}:`);
     for (const d of diffs.slice(0, 3)) lines.push(`  - ${d.kind}: ${d.lines.join(' ')}`);

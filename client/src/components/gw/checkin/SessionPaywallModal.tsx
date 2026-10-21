@@ -56,10 +56,10 @@ export function SessionPaywallModal({
                 <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 12 }}>
                   Not ready to pay yet? Keep using Groundwork until you are confident it is delivering value. Add another free session and continue your Check-in.
                 </div>
-                <button
+                <button className="gwui-btn gwui-btn-secondary"
                   onClick={() => paywall.claimFreeExtension.mutate()}
                   disabled={paywall.claimFreeExtension.isPending}
-                  style={{ width: '100%', padding: '10px', borderRadius: 7, background: 'var(--gw-green-t)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: paywall.claimFreeExtension.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: paywall.claimFreeExtension.isPending ? 0.7 : 1 }}
+                  style={{ width: '100%' }}
                 >
                   {paywall.claimFreeExtension.isPending ? 'Adding...' : 'Continue for free'}
                 </button>
@@ -71,16 +71,16 @@ export function SessionPaywallModal({
               <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 12 }}>
                 Your team is getting value from Groundwork. Unlock unlimited check-ins and unlimited sessions for everyone in your organisation with one simple monthly subscription.
               </div>
-              <button
+              <button className="gwui-btn gwui-btn-primary"
                 onClick={() => paywall.createSubscription.mutate('STARTER')}
                 disabled={paywall.createSubscription.isPending}
-                style={{ width: '100%', padding: '10px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: paywall.createSubscription.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: paywall.createSubscription.isPending ? 0.7 : 1, marginBottom: 8 }}
+                style={{ width: '100%', marginBottom: 8 }}
               >
                 {paywall.createSubscription.isPending ? 'Redirecting...' : 'Upgrade organisation'}
               </button>
-              <button
+              <button className="gwui-btn gwui-btn-secondary"
                 onClick={() => navigate('/pricing')}
-                style={{ width: '100%', padding: '8px', borderRadius: 7, background: 'none', color: 'var(--gw-navy)', fontSize: 12, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
+                style={{ width: '100%' }}
               >
                 View all plans
               </button>
@@ -96,10 +96,10 @@ export function SessionPaywallModal({
               remindedSays ? (
                 <div style={{ fontSize: 13, color: 'var(--gw-sub-d)', lineHeight: 1.6, marginBottom: 14 }}>{remindedSays}</div>
               ) : (
-                <button
+                <button className="gwui-btn gwui-btn-secondary"
                   onClick={() => remindTheAdmins.mutate()}
                   disabled={remindTheAdmins.isPending}
-                  style={{ width: '100%', padding: '9px 14px', marginBottom: 14, borderRadius: 7, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: remindTheAdmins.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
+                  style={{ width: '100%', marginBottom: 14 }}
                 >
                   {remindTheAdmins.isPending ? 'Reminding…' : 'Remind them'}
                 </button>
@@ -117,12 +117,11 @@ export function SessionPaywallModal({
                 value={paywall.code}
                 onChange={e => { paywall.setCode(e.target.value); paywall.setCodeMsg(null) }}
                 placeholder="Enter code"
-                style={{ flex: 1, padding: '9px 11px', fontSize: 13, fontFamily: 'inherit', border: `1px solid ${paywall.codeMsg && !paywall.codeMsg.ok ? 'var(--gw-danger)' : 'var(--gw-border)'}`, borderRadius: 7, background: 'var(--gw-paper-2)', color: 'var(--gw-dark)', outline: 'none' }}
+                className="gwui-input" style={{ flex: 1, ...(paywall.codeMsg && !paywall.codeMsg.ok ? { borderColor: 'var(--gw-danger)' } : {}) }}
               />
-              <button
+              <button className="gwui-btn gwui-btn-primary gwui-btn-small"
                 onClick={() => paywall.redeem.mutate()}
                 disabled={!paywall.code.trim() || paywall.redeem.isPending}
-                style={{ padding: '9px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: !paywall.code.trim() ? 'not-allowed' : 'pointer', opacity: !paywall.code.trim() ? 0.45 : 1, fontFamily: 'inherit', whiteSpace: 'nowrap' }}
               >
                 {paywall.redeem.isPending ? 'Checking...' : 'Apply'}
               </button>

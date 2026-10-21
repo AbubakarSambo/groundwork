@@ -75,7 +75,7 @@ describe('the mail actually carries it', () => {
   });
 
   it('and on the reminder, which is the thing being stopped', () => {
-    expect(email).toMatch(/sendNudge[\s\S]{0,1600}theWayToStopBeingChased/);
+    expect(email).toMatch(/sendNudge[\s\S]{0,2400}theWayToStopBeingChased/);
   });
 
   it('minted once and kept, not tied to the invite token that is cleared on accept', () => {

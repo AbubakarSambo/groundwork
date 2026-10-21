@@ -35,6 +35,23 @@ export type Verdict =
   | { kind: 'the same answer, already answered'; reply: string }
   | { kind: 'the same answer, still working' };
 
+/*
+ * AND THE SAME WORDS AFTER THE REPLY HAS BEEN READ ARE A NEW ANSWER (Drop Access run 1, item 26). Joseph answered "I do not
+ * know." to "Who on your side would know?", and every time he said it again he was handed the same question back, twelve times
+ * in a row, because the same words inside two minutes were read as a second press of the first answer. A second press is sent
+ * before its reply reaches the screen. Where the app says which question was on the person's screen when they answered
+ * (`onTheirScreen`), and it is the reply this check would hand back, they have read that reply and are answering it: that is
+ * a new answer, and it is answered. Without it (an older app, WhatsApp, the API), nothing changes.
+ */
+const bones = (t: string | null | undefined) => String(t ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+export function theyHaveReadIt(reply: string, onTheirScreen: string | null | undefined): boolean {
+  const shown = bones(onTheirScreen);
+  const said = bones(reply);
+  if (!shown || !said) return false;
+  /* The screen may carry more than the saved reply (the context put above an opener, the closing card's words) or less. */
+  return shown === said || shown.endsWith(said) || said.endsWith(shown) || shown.includes(said);
+}
+
 /**
  * `turns` in the order they were written. `now` is passed in rather than read, so the window is
  * testable without waiting two minutes.
@@ -43,6 +60,7 @@ export function isThisTheSameAnswerAgain(
   turns: readonly ATurnAlreadyThere[],
   message: string,
   now: Date = new Date(),
+  onTheirScreen?: string | null,
 ): Verdict {
   const said = message.trim();
   if (!said) return { kind: 'a new answer' };
@@ -57,6 +75,7 @@ export function isThisTheSameAnswerAgain(
 
   const answeredAfter = turns.slice(index + 1).find((t) => t.role === 'AI');
   if (answeredAfter) {
+    if (theyHaveReadIt(answeredAfter.content, onTheirScreen)) return { kind: 'a new answer' };
     return { kind: 'the same answer, already answered', reply: answeredAfter.content };
   }
   return { kind: 'the same answer, still working' };

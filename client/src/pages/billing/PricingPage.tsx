@@ -159,10 +159,10 @@ export function PricingPage() {
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--gw-navy)' }}>{`$0 for ${trialLength}`}</div>
                 {!user && (
-                  <button
+                  <button className="gwui-btn gwui-btn-primary"
                     type="button"
                     onClick={() => navigate('/auth?next=/pricing')}
-                    style={{ marginTop: 12, fontSize: 13, fontWeight: 600, background: 'var(--gw-navy)', color: '#fff', border: 'none', borderRadius: 9, padding: '10px 16px', cursor: 'pointer' }}
+                    style={{ marginTop: 12 }}
                   >
                     {oneMonth ? 'Start your free month' : `Start your free ${trialLength}`}
                   </button>
@@ -248,10 +248,9 @@ export function PricingPage() {
               <p style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 16, flexGrow: 1 }}>
                 {PLAN_DESCRIPTIONS[plan]}
               </p>
-              <button
+              <button className="gwui-btn gwui-btn-primary"
                 onClick={() => handleSubscribe(plan)}
                 disabled={subscribeMut.isPending && subscribingPlan === plan}
-                style={{ fontSize: 13, fontWeight: 600, background: 'var(--gw-navy)', color: '#fff', border: 'none', borderRadius: 9, padding: '10px 0', cursor: 'pointer', opacity: subscribeMut.isPending && subscribingPlan === plan ? 0.6 : 1 }}
               >
                 {subscribeMut.isPending && subscribingPlan === plan ? 'Loading...' : 'Subscribe'}
               </button>
@@ -279,7 +278,7 @@ export function PricingPage() {
               {PLAN_DESCRIPTIONS.ENTERPRISE}
             </p>
           </div>
-          <a href="mailto:hello@myground.work" style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-navy)', borderRadius: 9, padding: '10px 20px', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+          <a className="gwui-btn gwui-btn-secondary" href="mailto:hello@myground.work" >
             Contact us
           </a>
         </div>

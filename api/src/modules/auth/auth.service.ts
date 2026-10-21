@@ -1,8 +1,9 @@
+import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 import { TheWaysToStopMail } from '../engagement/the-ways-to-stop-mail';
 import { theDomainOf, mayBeJoinedBy } from '../../common/an-email-domain';
 import { aPathInThisApp, theInviteLinkCodeIn } from '../../common/a-path-in-this-app';
 import { whatTheirWorkspaceIsCalled } from './a-roster-row-is-not-a-life-sentence';
-import { needsApproval, isAnAdminOf, whoToAsk } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
+import { needsApproval, isAnAdminOf, whoToAsk, howTheyStandIn } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { tellTheAdminsSomebodyIsWaiting } from '../participants/somebody-is-waiting-at-the-door';
 import { hashed } from './a-token-is-stored-as-its-hash';
 import { sessionClaims, ASessionHolder, SignedInVia } from './a-session-token';
@@ -77,6 +78,8 @@ type UserWithOrg = {
 import { whereTheyBelong, ROLE_FOR_SOMEBODY_EXPECTED } from './they-are-already-on-somebodys-roster';
 import { connectWhatsAppFor } from '../whatsapp/connect-whatsapp';
 import { aSignInsNumberChanged, aRosterNumberChanged, refuseANumberOnSomebodyElse, aSignInWithNoNumberTakesTheRosters, theSignInOf } from '../whatsapp/one-number-for-a-person';
+import { itSendsFromTheirNumber, WHAT_SAYS_IT_WORKS } from '../whatsapp/a-connection-that-works';
+import { theOpeningsGoToANumberJustSaved } from '../grounds/the-lead-adds-a-whatsapp-number';
 
 /**
  * For an address that already has an account: the draft token a new address would have been given
@@ -348,7 +351,7 @@ export class AuthService {
         await this.prisma.emailVerificationToken.create({
           data: { userId: user.id, token: hashed(token), type: TokenType.PASSWORD_SETUP, expiresAt: expiresAtFor('set a password from an email') },
         });
-        this.emailService.sendAddPasswordEmail(user.email, user.firstName, token).catch((err) =>
+        this.emailService.sendAddPasswordEmail(user.email, user.firstName, token, true).catch((err) =>
           this.logger.error(`Failed to send add-password email to ${user.email}: ${err.message}`),
         );
         refuse('they sign in with Google and have no password');
@@ -448,10 +451,8 @@ export class AuthService {
       });
       if (invitedTo?.ground) {
         const orgId = invitedTo.ground.organizationId;
-        const inviter = await this.prisma.user.findUnique({
-          where: { id: whoToAsk(invitedTo.addedByUserId, invitedTo.ground.initiatorId) },
-          select: { role: true, organizationId: true },
-        });
+        /* As they stand in the check-in's organisation, not in whichever one they have open now (15 October). */
+        const inviter = await howTheyStandIn(this.prisma, whoToAsk(invitedTo.addedByUserId, invitedTo.ground.initiatorId), orgId);
         const wait = needsApproval({
           groundOrganizationId: orgId,
           theirHomeOrganizationId: null,
@@ -815,8 +816,22 @@ export class AuthService {
        * company's name.
        */
       const localPart = lower.split('@')[0].replace(/[._\-+]/g, ' ').trim();
-      const typedFirstName = typeof draft?.payload?.firstName === 'string' ? draft.payload.firstName.trim().slice(0, 40) : '';
+      /*
+       * THE NAME SHE GAVE, SPLIT AS SHE WROTE IT (local test of staging, 15 October). The check-in's own save step asks
+       * "Your name" now: Hafsah, who saved from /start where nothing asked, sent invitations as "Hjumare would like your
+       * take on Sales check-in" and was greeted "Hi Hjumare", a piece of her address. "Hafsah Jumare" is Hafsah, and
+       * Jumare is her last name, never all of it in the first name. The address is only the last resort, for a door that
+       * sends no name at all.
+       */
+      const typedName = typeof draft?.payload?.firstName === 'string'
+        ? [draft.payload.firstName, typeof draft?.payload?.lastName === 'string' ? draft.payload.lastName : ''].join(' ').replace(/\s+/g, ' ').trim()
+        : '';
+      const typedFirstName = typedName ? typedName.split(' ')[0].slice(0, 40) : '';
+      const typedLastName = typedName ? typedName.split(' ').slice(1).join(' ').slice(0, 100) : '';
       const firstName = typedFirstName || (localPart.charAt(0).toUpperCase() + localPart.slice(1).split(' ')[0]).slice(0, 40) || 'User';
+      /* The name is kept on the waiting sign-up, not in the check-in's own draft, which the commit reads field by field. */
+      const { firstName: _givenFirst, lastName: _givenLast, ...theDraftsOwnPayload } = (draft?.payload ?? {}) as Record<string, any>;
+      void _givenFirst; void _givenLast;
 
       /**
        * NOTHING IS CREATED UNTIL THE ADDRESS IS PROVED.
@@ -855,10 +870,11 @@ export class AuthService {
           email: lower,
           token,
           firstName,
+          ...(typedLastName ? { lastName: typedLastName } : {}),
           orgName: typedOrgName || null,
           ...(passwordHash ? { passwordHash, passwordKeyHash: keyed!.keyHash } : {}),
           next: goingTo,
-          payload: (draft?.payload ?? {}) as any,
+          payload: theDraftsOwnPayload as any,
           history: (draft?.history ?? []) as any,
           draftToken: dt ?? null,
           expiresAt: expiresAtFor('verify an address'),
@@ -899,8 +915,9 @@ export class AuthService {
           ...(draft
             ? {
                 firstName,
+                lastName: typedLastName || null,
                 orgName: typedOrgName || null,
-                payload: (draft.payload ?? {}) as any,
+                payload: theDraftsOwnPayload as any,
                 history: (draft.history ?? []) as any,
                 draftToken: dt ?? null,
               }
@@ -1370,6 +1387,10 @@ export class AuthService {
     const belongsElsewhere = await this.belongsElsewhere(user.id, user.organizationId);
     return {
       ...this.theUserShape(user as unknown as UserWithOrg, belongsElsewhere), orgCode: user.organization.slug, emailNotifications: user.emailNotifications,
+      /* THE ORGANISATION'S OWN DAY, FOR THE SCREENS (B-094; browser test, 20 October 2026): the zone every sentence the engine writes
+         counts its days in, so a date the screen formats itself says the same day ("Session 3 opens on Monday 26 October", not Sunday
+         25 in a reader's browser an hour or two behind). */
+      organizationTimeZone: (await theOrganisationsZone(this.prisma as any, user.organizationId).catch(() => null)) ?? THE_PRODUCTS_OWN_ZONE,
       /* Their own WhatsApp number, on their own read only (reviewer, 14 October): Settings read "WhatsApp Not set" with
          Kevin's number saved, because this route never sent it. The sign-in's number, else the one on their roster entry. */
       phoneNumber: (user as any).phoneNumber ?? await this.theirRosterNumber(user.organizationId, user.id, user.email),
@@ -1649,14 +1670,18 @@ export class AuthService {
        organisation's country, or is refused with a sentence asking for the whole number (survey item 6). */
     if (dto.phoneNumber !== undefined) userUpdate.phoneNumber = dto.phoneNumber?.trim() ? await tidyANumberFor(this.prisma as any, me.organizationId, dto.phoneNumber) : null;
     /* A number on somebody else's sign-in is refused with a sentence, before anything is written (decision 106 item 3). */
-    if (dto.phoneNumber !== undefined) await refuseANumberOnSomebodyElse(this.prisma, userUpdate.phoneNumber as string | null, userId);
+    if (dto.phoneNumber !== undefined) await refuseANumberOnSomebodyElse(this.prisma, userUpdate.phoneNumber as string | null, userId, me.organizationId);
 
     /* Only the person's own row. The organisation is changed through PATCH /users/organization, by an admin. */
     if (Object.keys(userUpdate).length) {
       await this.prisma.user.update({ where: { id: userId }, data: userUpdate });
     }
     /* And their roster entry follows, so the number they typed is the one they are written to and recognised by. */
-    if (dto.phoneNumber !== undefined) await aSignInsNumberChanged(this.prisma, userId, (userUpdate.phoneNumber as string | null) ?? null);
+    if (dto.phoneNumber !== undefined) await aSignInsNumberChanged(this.prisma, userId, (userUpdate.phoneNumber as string | null) ?? null, me.organizationId);
+    /* A number they add or change themselves gets the opening of each check-in open for them, as one a lead or an admin adds does (Drop Access, 21 October). */
+    if (userUpdate.phoneNumber && (userUpdate.phoneNumber as string) !== (me.phoneNumber ?? null) && me.organizationId && this.whatsapp) {
+      await theOpeningsGoToANumberJustSaved(this.prisma, this.whatsapp as any, { userId, organizationId: me.organizationId, phone: userUpdate.phoneNumber as string }).catch(() => undefined);
+    }
 
     return this.getProfile(userId);
   }
@@ -1808,9 +1833,9 @@ export class AuthService {
   async whatsappIsOn(organizationId: string): Promise<boolean> {
     const [platform, own] = await Promise.all([
       this.whatsapp?.isEnabled?.().catch(() => false) ?? Promise.resolve(false),
-      this.prisma.whatsAppConnection.findUnique({ where: { organizationId }, select: { enabled: true } }).catch(() => null),
+      this.prisma.whatsAppConnection.findUnique({ where: { organizationId }, select: WHAT_SAYS_IT_WORKS }).catch(() => null),
     ]);
-    return !!platform || !!own?.enabled;
+    return !!platform || itSendsFromTheirNumber(own);
   }
 
   /**

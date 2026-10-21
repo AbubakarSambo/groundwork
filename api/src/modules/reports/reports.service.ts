@@ -1,3 +1,21 @@
+import { theSessionsHeld } from './the-sessions-held';
+import { notABlockerTheyRaised } from '../board/not-a-blocker-they-raised';
+import { thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
+import { theDirectMorningIsOnFor, theDirectMorningIsOn as theOrganisationsDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
+import { withTheDirectMorning, whichDirectBlockRan, THE_DIRECT_TEAM_REPORT, THE_DIRECT_JUDGEMENT, THE_DIRECT_OWN_REPORT } from './the-direct-morning-is-written-straight';
+import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
+import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
+import { whatTheSwitchboardServes, type TheSwitchboardServed } from '../board/the-switchboard';
+import { theCorrectionsOnTheCheckIn, withWhatACorrectionSettled, whoIsBehindALabel } from './a-correction-is-their-latest-word';
+import { theReleaseOneSalesBoardIsOnFor } from '../board/release-one-sales-board';
+import { theSalesAndTheirProof, whatIsOnFileForEachSale, withoutAsksForProofOnFile } from './proof-on-file-is-never-asked-for';
+import { theDealsOnRecord } from '../board/a-sales-aim-is-counted-from-the-deals';
+import { withoutDifferencesNobodyHad } from './agreeing-with-the-lead-is-not-a-difference';
+import { isASalesKind } from '../board/the-kind-of-work';
+import { withoutADealsFigure, theCustomersOnRecordIfSales } from '../board/a-deals-units-are-not-a-target';
+/** The customers on record on a sales check-in, only where Release 1's switch is on for its organisation; null otherwise, so the report is built as before. */
+const theCustomersIfReleaseOne = async (prisma: any, groundId: string): Promise<string[] | null> =>
+  (await theReleaseOneSalesBoardIsOnFor(prisma, groundId).catch(() => false)) ? theCustomersOnRecordIfSales(prisma, groundId) : null;
 import { HOW, whatProvedIt } from '../conversation/the-end-card';
 import { filesSentWith } from './files-sent-with-a-check-in';
 import { aRoleOrNothing } from '../../common/a-role-or-nothing';
@@ -13,6 +31,8 @@ import { aWaitOnOneself } from '../board/a-thing-is-not-somebody';
 import { notToldYet, withoutGoalsNotToldIn } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { aCheckInStartedFromTheAnchor } from '../conversation/the-anchor-weekly-check-in';
 import { theWordsOfWhatTheLeadHasNotToldThemAbout, theyRunThisCheckIn } from '../board/an-untold-goal-is-not-a-board-objective';
+import { whatIDontKnowYet } from './what-i-dont-know-yet';
+import { theOpenQuestionsThenTheDeals } from './the-sales-team-report-from-the-record';
 import { onceAcrossCopies, theHour, theWeek } from '../prisma/once-across-copies';
 import { theJudgementWithItsConversationPoints } from './the-judgement-and-a-goal-not-told';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from './no-internal-label-reaches-anyone';
@@ -85,6 +105,8 @@ const patternCatalogue = () => (patternByCode ??= new Map(
   [...BAD_FAITH_CODES, ...POSITIVE_CODES, ...CARRYING_CODES].map((c) => [c.code, c]),
 ));
 import { cleanText } from './what-the-record-actually-holds';
+import { withTheSalesReadings, theirOwnLinesReadRight } from './the-sales-readings-for-a-report';
+import { withTheCollectionsReadings } from './the-collections-readings-for-a-report';
 import { theMarksOfAReport, markTheRows, withTheMarksOnItsLines, WHAT_EACH_MARK_SAYS } from './the-mark-on-every-line';
 import { theMarkOf, whoAddedEachBackingDocument, WHAT_A_MARK_READS, type HowALineIsKnown } from './how-a-line-is-known';
 import { withoutAGuessedPronoun } from './nobody-is-he-or-she-here';
@@ -99,7 +121,7 @@ import { whatTheyCouldTry } from './what-you-could-try-next';
 import { theQuestionOnly } from './the-question-ends-at-the-question-mark';
 import { whatSituationThisIsAbout } from './what-situation-this-report-is-about';
 import { totalSessionsFor } from '../grounds/session-count';
-import { theSessionClock } from '../board/one-count-for-the-sessions';
+import { holdsTheClock, theSessionClock } from '../board/one-count-for-the-sessions';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { hasEnded } from '../grounds/a-ground-that-has-ended';
 import { nobodyHasSaidWhoArrangedAnything } from '../conversation/who-secured-that-meeting';
@@ -225,7 +247,10 @@ import { CANNOT_READ_THE_REPORT_YET } from '../participants/nobody-joins-your-co
 import { documentBackedShare } from './backed-by-a-document';
 import { howManyHaveAnswered, howManyInTheRoundAnswered } from './how-many-have-answered';
 import { NOT_A_QUIET_CLOSE, aQuietCloseWhere, AN_ANSWER } from '../grounds/an-answer-includes-a-refusal';
+import { whoCheckedInForThisPicture, type SomebodyAskedThisSession } from '../email/who-checked-in-for-this-picture';
 import { theInferencesOfSession, keptWithEachSessionsOwn } from './each-sessions-inferences-are-its-own';
+import { theTimeItSharesItself, isThisSessionHeld, withThisSessionHeld, whenItSharesItself, whatTheLeadIsToldAboutSharing, whatATeamMemberIsToldAboutSharing, type HowItIsShared } from './a-report-shares-itself';
+import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 import { asTheReleasedSessionHadIt, isThisSessionReleased, releasedSessionsOf, theLatestReleasedSession, theSessionTheReportHolds, thisSessionIsNotSharedYet, whatReleasingThisSessionDoes, withThisSessionReleased, youAreReadingAnEarlierSession } from './each-sessions-picture-is-released-on-its-own';
 import { aRoleInTheirOwnWords, withoutTheLeadsDescriptionOfAnyone, deeplyWithoutTheLeadsDescriptionOfAnyone, theShareableTextFor } from '../grounds/the-leads-words-about-someone';
 
@@ -1141,8 +1166,18 @@ export class ReportsService {
     }) ?? Promise.resolve([]))
       .catch(() => [] as { name: string; target: number | null; ownerParticipantId: string | null; direction?: string | null }[]);
     const answering = (ground.participants ?? []).filter((p: any) => !p.managingOnly).length;
-    const numbers = howTheNumbersSit(objectivesForTheSums, answering);
+    /* A deal's units are not a target (Drop Access run 1, item 27): they are not summed as one. */
+    const numbers = howTheNumbersSit(withoutADealsFigure(objectivesForTheSums as any[], await theCustomersIfReleaseOne(this.prisma, groundId), (ground.participants ?? []).map((p: any) => p.user?.firstName ?? '').filter(Boolean)), answering);
     if (numbers.says) groundContextLines.push(numbers.says);
+    /*
+     * WHAT THE RECORD ALREADY COUNTS, SO A REPORT NEVER SAYS IT IS NOT KNOWN (final real-model check, item 12). The board said 40 units
+     * sold, and the report said "You do not have a current count of units sold." because Grace said she did not know it. Each target's
+     * count, as the board holds it, is given to the synthesis as a fact, beside the rule that not knowing it is not a different count.
+     */
+    const counted = await (this.prisma.groundObjective?.findMany?.({ where: { groundId, ownerParticipantId: null }, select: { name: true, target: true, count: true } }) ?? Promise.resolve([])).catch(() => [] as any[]);
+    for (const o of (counted as any[]).filter((x) => typeof x.target === 'number' && x.target > 0 && typeof x.count === 'number' && x.count > 0)) {
+      groundContextLines.push(`THE RECORD'S COUNT FOR "${o.name}": ${o.count} of ${o.target}, as the board shows it. Somebody saying they do not know this number, or that they made no sale themselves, has not said a different number: never write that the count is not known, or a difference about it.`);
+    }
     const leadSignals = Array.isArray(initiatorProfile?.signals) ? (initiatorProfile!.signals as string[]) : [];
     if (leadSignals.length) {
       groundContextLines.push(`LEAD PROFILE (from past grounds - use to add alignment recommendations at the end of the report):\n${leadSignals.map(s => `- ${s}`).join('\n')}`);
@@ -1290,7 +1325,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
       roundNow,
       totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null,
     );
-    const systemPrompt = synthesisVersion.content + "\n\n" + SYNTHESIS_RULES + "\n\n" + buildLeadershipPatternBlock() + "\n\n" + HOW_TO_READ_A_DISPUTED_LINE + (theSituation ? "\n\n" + theSituation : "") + ((ground as any).simplerWords ? "\n\n" + THE_REPORT_IN_SIMPLER_WORDS : "");
+    /* The direct morning (the-direct-morning-is-written-straight): for a switched-on organisation the code's block goes LAST, after the
+       stored version and every code block, so it runs whatever version is stored. Off, the prompt is exactly as it was. */
+    const theDirectMorning = await theOrganisationsDirectMorningIsOn(this.prisma, (ground as any).organizationId);
+    const systemPrompt = withTheDirectMorning(synthesisVersion.content + "\n\n" + SYNTHESIS_RULES + "\n\n" + buildLeadershipPatternBlock() + "\n\n" + HOW_TO_READ_A_DISPUTED_LINE + (theSituation ? "\n\n" + theSituation : "") + ((ground as any).simplerWords ? "\n\n" + THE_REPORT_IN_SIMPLER_WORDS : ""), THE_DIRECT_TEAM_REPORT, theDirectMorning);
 
 
     // Note any invited party who contributed no record - surfaced as an absence,
@@ -1559,10 +1597,13 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
     /* The product's own arithmetic, per person, handed to the synthesis the way it is handed to the
        conversation. See the-picture-gets-what-the-conversation-gets. */
-    const objectivesForTheGaps = await (this.prisma.groundObjective?.findMany?.({
+    /* On a sales check-in, a number about one customer's deal is never a target, nor one count against another customer's (answer 7). */
+    const theCustomers = await theCustomersIfReleaseOne(this.prisma, groundId);
+    const theFirstNames = parties.map((p: any) => p.user?.firstName ?? '').filter(Boolean) as string[];
+    const objectivesForTheGaps = withoutADealsFigure(await (this.prisma.groundObjective?.findMany?.({
       where: { groundId },
       select: { name: true, target: true, count: true, ownerParticipantId: true, setByParticipantId: true },
-    }) ?? Promise.resolve([])).catch(() => [] as any[]);
+    }) ?? Promise.resolve([])).catch(() => [] as any[]) as any[], theCustomers, theFirstNames);
     const doesNotAddUpPerPerson = whatDoesNotAddUpPerPerson(
       parties.map((p: any) => ({
         participantId: p.id,
@@ -1575,6 +1616,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
           .map((o) => ({ name: o.name, target: o.target, count: o.count ?? 0, yours: o.ownerParticipantId === p.id, setByThem: o.setByParticipantId === p.id })),
       })),
       roundNow,
+      { customers: theCustomers, people: theFirstNames },
     );
 
     const privateFileNames = namesNotEverybodyMayOpen(
@@ -2405,6 +2447,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
         targets: (objectivesForTheGaps as any[])
           .filter((o) => !o.ownerParticipantId || o.ownerParticipantId === p.id)
           .map((o) => ({ name: o.name, target: o.target, count: o.count ?? 0, yours: o.ownerParticipantId === p.id, setByThem: o.setByParticipantId === p.id })),
+        /* On a sales check-in, one customer's figure is only set against the same customer's (the-facts-about-a-person). */
+        customers: theCustomers,
+        people: theFirstNames,
       }, roundNow))
       .filter((f): f is NonNullable<typeof f> => !!f);
     const howManyDifferences = Array.isArray((result as any).divergences) ? (result as any).divergences.length : 0;
@@ -2513,7 +2558,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       /* An evaluation check-in is about one person, who reads this: a performance plan, a promotion, a renewal
          and a probation (decision 75, item 25). */
       aboutOnePerson: isEvaluationCheckIn((ground as any).scenario),
-    });
+    }, theDirectMorning);
 
     /*
      * AND THE PRODUCT'S OWN SENTENCES ARE HELD TO THE RECORD'S NUMBERS, the same as the judgement's.
@@ -2582,6 +2627,27 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * carry a number that is already in it.
      */
     await atStakePass;
+    /*
+     * A DIFFERENCE NOBODY HAD IS NOT KEPT, before the judgement reads the differences (agreeing-with-the-lead-is-not-a-difference):
+     * on a sales check-in, a side whose every figure the other person said too, against the other's own deal, is not a difference
+     * between them. Mercy said the team's 120 as Grace did, and Grace's board said they understood the goal differently.
+     */
+    /* And on any check-in, a side that only says its person does not know a number is not a side (final real-model check, item 13). */
+    if (Array.isArray((result as any).divergences)) {
+      const labelToId = new Map([...labelById.entries()].map(([id, l]) => [l, id]));
+      const linesOf = (label: string) => {
+        const id = labelToId.get(label);
+        return id ? records.filter((r) => r.participant.id === id).map((r) => cleanText(r.text)) : null;
+      };
+      const nobodyHad = withoutDifferencesNobodyHad((result as any).divergences, linesOf, theCustomers, theFirstNames);
+      if (nobodyHad.leftOut.length) {
+        this.logger.log(`Report for ground ${groundId}: ${nobodyHad.leftOut.length} difference(s) left out, because each side's figures were the other person's too. First: ${nobodyHad.leftOut[0]}`);
+        (result as any).divergences = nobodyHad.divergences;
+        /* And the question drawn from one that went, as a correction's are (a-correction-is-their-latest-word). */
+        const topics = nobodyHad.leftOut.map((t) => t.trim().replace(/[.!?]+$/, '')).filter(Boolean);
+        if (typeof (result as any).centralQuestion === 'string' && topics.some((t) => (result as any).centralQuestion.includes(t))) (result as any).centralQuestion = null;
+      }
+    }
     const theJudgement = await this.judgeTheAnswers(groundId, {
       /*
        * THE ROOM, for a ground too small for counts to mean anything. Built from what synthesis has
@@ -2771,6 +2837,33 @@ Close the report by framing - neutrally, without recommending one - the choice n
     }
 
     /*
+     * A PERSON CORRECTING THEMSELVES SETTLES IT (Drop Access short run, item 1). Mercy's "I mistakenly said it was KES 120,000, but
+     * it's actually KES 125,000." is her latest word, not a difference between people: a difference whose every side is the person
+     * who corrected a figure, and a judgement line that names the figure they corrected, are not kept. From their own words, in code,
+     * behind Release 1's switch (release-one-sales-board).
+     */
+    try {
+      /* Where Release 1's switch is on for the organisation; off, the report is written as before. */
+      const corrections = (await theReleaseOneSalesBoardIsOnFor(this.prisma, groundId).catch(() => false)) ? await theCorrectionsOnTheCheckIn(this.prisma, groundId) : [];
+      if (corrections.length) {
+        const labelOf = labelsForParties((ground as any).participants ?? []);
+        const whoIs = whoIsBehindALabel((ground as any).participants ?? [], labelOf);
+        const settled = withWhatACorrectionSettled(
+          { divergences: (result as any).divergences, centralQuestion: (result as any).centralQuestion, theJudgement: theJudgement ? theJudgement.judgement : undefined },
+          corrections, whoIs,
+        );
+        if (settled.leftOut.length) {
+          this.logger.log(`Report for ground ${groundId}: ${settled.leftOut.length} part(s) left out, settled by a person's own correction. First: ${settled.leftOut[0]}`);
+          (result as any).divergences = settled.report.divergences;
+          (result as any).centralQuestion = settled.report.centralQuestion;
+          if (theJudgement && settled.report.theJudgement) theJudgement.judgement = settled.report.theJudgement;
+        }
+      }
+    } catch (err: any) {
+      this.logger.warn(`Report for ground ${groundId}: a correction could not be read (${err?.message}). The report is kept as written.`);
+    }
+
+    /*
      * THE FOUR MARKS ON EVERY LINE THE SYNTHESIS WROTE (week 6b, decision 43), worked out HERE, when the
      * report is built from the record, and stored with it. Opening a report reads them and asks nothing.
      * The product decides each mark from the record lines behind the line, never the model. Best effort:
@@ -2890,7 +2983,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
          * The guides are the only part of engagement not derived from this
          * synthesis, so they are the only part carried across.
          */
-        engagement: enrichedEngagement as any,
+        engagement: { ...enrichedEngagement, ...whichDirectBlockRan(theDirectMorning) } as any,
         inferences: inferencesKept as any,
         leadershipGaps: (((result as any).leadershipGaps ?? []).length ? (result as any).leadershipGaps : undefined) as any,
         promptVersionId: synthesisVersion.id,
@@ -2911,7 +3004,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         centralQuestion: theQuestionOnly(result.centralQuestion) ?? result.centralQuestion,
         // Carry the private guides across. See the note on the create branch:
         // this write is what destroyed them on every session after the first.
-        engagement: { ...enrichedEngagement, ...(existingGuides ? { postReportGuides: existingGuides } : {}) } as any,
+        engagement: { ...enrichedEngagement, ...(existingGuides ? { postReportGuides: existingGuides } : {}), ...whichDirectBlockRan(theDirectMorning) } as any,
         inferences: inferencesKept as any,
         leadershipGaps: (((result as any).leadershipGaps ?? []).length ? (result as any).leadershipGaps : undefined) as any,
         promptVersionId: synthesisVersion.id,
@@ -3475,6 +3568,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     })();
     const shape = theSessionReport({
       sessionNumber,
+      releaseOne: await theReleaseOneSalesBoardIsOnFor(this.prisma, groundId).catch(() => false),
       runsUntilEnded: !!(ground as any).runsUntilEnded,
       whoEndsIt,
       /* The one rule the board and the engine use (session-count.ts): a one-time check-in is one,
@@ -3810,7 +3904,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * after three periods, in plain words; and the picture carries none, because it is shared and a
      * pattern never is. Nothing at all while patterns are not served, and then not even the read.
      */
-    const patternRowsForPage = PATTERNS_ARE_SERVED
+    /* Judgements of a person off for this organisation: no pattern about anybody in the report (organisation/person-judgements.ts). */
+    const patternRowsForPage = PATTERNS_ARE_SERVED && (await thePersonJudgementsAreOnFor(this.prisma, groundId))
       ? await this.prisma.patternDetection.findMany({ where: { groundId }, orderBy: [{ lastSeenAt: 'desc' }], select: PATTERN_ROW_SELECT })
       : [];
     /* A report for session N shows only what had reached three periods BY session N - not the
@@ -4879,6 +4974,10 @@ happened, and what is in the way.`;
      * the people instead. Same schema out, so nothing downstream knows which one ran.
      */
     let material = table;
+    /* On a sales check-in with Release 1's switch on, each sale and what is on file for it, from the same rows the headline counts. */
+    const salesAndProof = (await theReleaseOneSalesBoardIsOnFor(this.prisma, groundId).catch(() => false))
+      ? theSalesAndTheirProof(await theDealsOnRecord(this.prisma, groundId, { paymentRecord: true }).catch(() => []))
+      : [];
     let instruction = theJudgementInstruction(
       'whoever called this check-in',
       'what to do next about the people and the work it covers',
@@ -4966,6 +5065,21 @@ happened, and what is in the way.`;
         sessions,
         namedByMoreThanOne(shared),
       );
+      /* What is on file for each sale, so a sale with a payment record on file is never asked about again (proof-on-file-is-never-asked-for). */
+      /*
+       * THE SESSIONS HELD, AND WHO ANSWERED EACH (final real-model check, follow-up 2). The judgement said "The initiator has not held the daily
+       * check-ins the initiator said the initiator would hold" of Grace, who had answered every one of the three, because all it was told was her
+       * open promise of "daily check-ins". The sessions on record, by day, and how many each person answered, are given as facts.
+       */
+      {
+        const done = ((await (this.prisma.checkIn?.findMany?.({ where: { groundId, status: CheckInStatus.COMPLETED, isSetup: false }, select: { participantId: true, sessionNumber: true, completedAt: true } }) ?? Promise.resolve([] as any[]))?.catch?.(() => [] as any[])) ?? []) as any[];
+        const sessionsHeld = theSessionsHeld(done, room!.people.map((p) => ({ participantId: p.participantId, who: p.who })));
+        if (sessionsHeld) material = `${material}\n\n${sessionsHeld}`;
+      }
+      if (salesAndProof.length) {
+        const whoOwns = (pid: string | null) => room!.people.find((p) => p.participantId === pid)?.who ?? null;
+        material = `${material}\n\n${whatIsOnFileForEachSale(salesAndProof, whoOwns)}`;
+      }
       instruction = theJudgementOverARoom(
         'whoever called this check-in',
         'what to do next about the people and the work it covers',
@@ -4988,6 +5102,9 @@ happened, and what is in the way.`;
         leadName: asARoom ? room!.leadName : null,
       });
     }
+    /* The direct morning's block goes after whichever instruction runs, stored or code (the-direct-morning-is-written-straight). */
+    const theDirectMorning = await theDirectMorningIsOnFor(this.prisma, groundId);
+    instruction = withTheDirectMorning(instruction, THE_DIRECT_JUDGEMENT, theDirectMorning);
 
     const judgement = await this.anthropic.extract<any>(
       instruction,
@@ -5088,9 +5205,13 @@ happened, and what is in the way.`;
       kept = numbers.judgement;
       if (numbers.leftOut.length) this.logger.warn(`The judgement on ${groundId}: left out ${numbers.leftOut.length} line(s) with a number no block holds: ${numbers.leftOut.map((x) => `"${x}"`).join(', ')}`);
     }
+    /* And a line the record proves false about proof on file is left out (proof-on-file-is-never-asked-for). */
+    const onFile = withoutAsksForProofOnFile(kept, salesAndProof, asARoom ? (pid) => room!.people.find((p) => p.participantId === pid)?.who ?? null : undefined);
+    kept = onFile.judgement;
+    if (onFile.leftOut.length) this.logger.warn(`The judgement on ${groundId}: left out ${onFile.leftOut.length} line(s) about proof the record already holds: ${onFile.leftOut.map((x) => `"${x}"`).join(', ')}`);
     this.logger.log(`Judged ${answers.length} answer(s) on ${groundId} over ${frame.length} fields.`);
     /* Which instruction wrote it: the stored version's id, or null where the code text ran. */
-    return { judgement: { ...kept, promptVersionId: stored?.id ?? null }, table };
+    return { judgement: { ...kept, promptVersionId: stored?.id ?? null, ...whichDirectBlockRan(theDirectMorning) }, table };
   }
 
   private async extractAndStoreLeadSignals(groundId: string, initiatorUserId: string): Promise<void> {
@@ -5164,6 +5285,85 @@ happened, and what is in the way.`;
    * share it in their place, and the report and its notification say who shared it and why. See
    * who-shared-it-because-the-lead-left.ts.
    */
+  /**
+   * "HOLD IT" (Hafsah's answer 5, 16 October 2026): the lead keeps today's team report to herself until she shares it.
+   * Only the person who runs the check-in holds it, the same rule as sharing it (request 57). The session held is the
+   * one the report holds now; a session already shared cannot be held back. See a-report-shares-itself.ts.
+   */
+  async holdAsTheLead(groundId: string, userId: string, organizationId: string): Promise<{ sessionNumber: number; held: boolean; says: string }> {
+    const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId }, select: { initiatorId: true, cadence: true, reportSharesAt: true, report: { select: { releasedAt: true, releasedSessions: true, heldSessions: true } } } as any }) as any;
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    if (ground.initiatorId !== userId) throw new ForbiddenException('Only the person who runs this check-in can hold its report.');
+    if (!ground.report) throw new NotFoundException('This report is not written yet, so check again once somebody has checked in.');
+    const sessionNumber = await theSessionTheReportHolds(this.prisma, groundId);
+    if (isThisSessionReleased(ground.report, sessionNumber)) {
+      throw new BadRequestException('Today’s report is already shared with the team, so it cannot be held now.');
+    }
+    await this.prisma.report.update({ where: { groundId }, data: { heldSessions: withThisSessionHeld(ground.report, sessionNumber) } as any });
+    return { sessionNumber, held: true, says: whatTheLeadIsToldAboutSharing(sessionNumber, false, true, theTimeItSharesItself(ground)).says };
+  }
+
+  /**
+   * WHEN TODAY'S TEAM REPORT IS SHARED, AS THIS READER IS TOLD IT. The lead reads whether it shares itself, when, and
+   * whether she held it; a team member reads when it will reach them and never whether it was held; an admin who does
+   * not run it reads it as the lead does, without the hold. Facts about sharing only: nothing of the report itself.
+   */
+  async howTodaysReportIsShared(groundId: string, requestingUserId: string, requestingUserOrgId?: string): Promise<HowItIsShared | null> {
+    const ground = await (this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { initiatorId: true, organizationId: true, createdByUserId: true, cadence: true, reportSharesAt: true, participants: { select: { userId: true, partyType: true, user: { select: { firstName: true } } } }, report: { select: { releasedAt: true, releasedSessions: true, heldSessions: true } } } as any,
+    }) as Promise<any>).catch(() => null);
+    if (!ground?.report) return null;
+    const isLead = ground.initiatorId === requestingUserId;
+    const isAParty = (ground.participants ?? []).some((p: any) => p.userId === requestingUserId);
+    const isAdmin = !isLead && !isAParty && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground, groundId).catch(() => false));
+    if (!isLead && !isAParty && !isAdmin) return null;
+    const sessionNumber = await theSessionTheReportHolds(this.prisma, groundId);
+    const shared = isThisSessionReleased(ground.report, sessionNumber);
+    const held = isThisSessionHeld(ground.report, sessionNumber);
+    const time = theTimeItSharesItself(ground);
+    if (isLead || isAdmin) return whatTheLeadIsToldAboutSharing(sessionNumber, shared, isLead ? held : false, isLead || !held ? time : null);
+    const lead = (ground.participants ?? []).find((p: any) => p.userId === ground.initiatorId);
+    return whatATeamMemberIsToldAboutSharing(sessionNumber, shared, held, time, String(lead?.user?.firstName ?? '').trim());
+  }
+
+  /**
+   * THE REPORTS WHOSE TIME HAS COME SHARE THEMSELVES (Hafsah's answers 1 and 5, 16 October 2026). Run every quarter
+   * hour by the reports cron. For each check-in that repeats and is running, the session its report holds is shared
+   * once its set time has come round after the session's first check-in, unless it is shared already or the lead held
+   * it. Sharing goes through release(), the one way a report is shared, which tells people once each.
+   */
+  async shareTheReportsWhoseTimeHasCome(now: Date = new Date()): Promise<{ shared: number }> {
+    const grounds = await (this.prisma.ground.findMany({
+      where: { cadence: { not: 'ONE_TIME' }, status: { in: ['OPEN', 'AWAITING_PARTIES', 'ACTIVE'] as any }, report: { isNot: null } } as any,
+      select: { id: true, organizationId: true, cadence: true, reportSharesAt: true, report: { select: { releasedAt: true, releasedSessions: true, heldSessions: true } } } as any,
+    }) as Promise<any[]>).catch(() => [] as any[]);
+    let shared = 0;
+    for (const g of grounds) {
+      try {
+        const time = theTimeItSharesItself(g);
+        if (!time || !g.report) continue;
+        const sessionNumber = await theSessionTheReportHolds(this.prisma, g.id);
+        if (isThisSessionReleased(g.report, sessionNumber) || isThisSessionHeld(g.report, sessionNumber)) continue;
+        const first = await this.prisma.checkIn.findFirst({
+          where: { groundId: g.id, sessionNumber, status: CheckInStatus.COMPLETED, isSetup: false, completedAt: { not: null } },
+          orderBy: { completedAt: 'asc' },
+          select: { completedAt: true },
+        });
+        if (!first?.completedAt) continue;
+        const zone = (await theOrganisationsZone(this.prisma as any, g.organizationId).catch(() => null)) ?? THE_PRODUCTS_OWN_ZONE;
+        if (now.getTime() < whenItSharesItself(first.completedAt, time, zone).getTime()) continue;
+        await this.release(g.id, g.organizationId);
+        await this.tellThemTheReportIsReady(g.id, sessionNumber).catch(() => undefined);
+        shared += 1;
+      } catch (err: any) {
+        this.logger.warn(`Sharing the report of ${g.id} at its set time failed: ${err?.message}`);
+      }
+    }
+    if (shared) this.logger.log(`${shared} report(s) shared themselves at their set time.`);
+    return { shared };
+  }
+
   async releaseAsTheLead(groundId: string, userId: string, organizationId: string) {
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId }, select: { initiatorId: true } });
     if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
@@ -5299,11 +5499,12 @@ happened, and what is in the way.`;
     ground: { id: string; label: string; initiatorId: string; organizationId: string; simplerWords?: boolean | null },
     p: { userId: string | null },
     sessionNumber: number,
+    direct = false,
   ) {
     if (!p.userId) return null;
     /* As if released: this goes out at the moment of release, before it is stamped, and a participant's own read of the team's picture is withheld until then. */
     const report = await this.sessionReport(ground.id, sessionNumber, p.userId, ground.organizationId, true);
-    return theFirstInsight(report, ground.label, { isTheLead: p.userId === ground.initiatorId, simplerWords: ground.simplerWords });
+    return theFirstInsight(report, ground.label, { isTheLead: p.userId === ground.initiatorId, simplerWords: ground.simplerWords, direct });
   }
 
   /**
@@ -5325,11 +5526,11 @@ happened, and what is in the way.`;
     return found ? { ...none, ...found } : none;
   }
 
-  private async theReportReadySubject(ground: { id: string; label: string; initiatorId: string }, p: { userId: string | null }): Promise<string | undefined> {
+  private async theReportReadySubject(ground: { id: string; label: string; initiatorId: string }, p: { userId: string | null }, direct = false): Promise<string | undefined> {
     const stood = await theOpenSession(this.prisma, ground.id, ground.initiatorId);
     const isTheLead = !!p.userId && p.userId === ground.initiatorId;
     const facts = isTheLead ? theFactsOfTheWeek(await theWeekOf(this.prisma, ground, new Date())) : null;
-    return theSharedPictureSubject(ground.label, stood, facts);
+    return theSharedPictureSubject(ground.label, stood, facts, direct);
   }
 
   /**
@@ -5352,7 +5553,7 @@ happened, and what is in the way.`;
   async tellThemTheReportIsReady(groundId: string, sessionNumber: number, onlyParticipantId?: string, sharedByAnAdminSentence?: string): Promise<{ attempted: number; failed: number }> {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      include: { participants: { include: { user: { select: { passwordHash: true } } } } },
+      include: { participants: { include: { user: { select: { passwordHash: true, firstName: true, lastName: true } } } } },
     });
     if (!ground) return { attempted: 0, failed: 0 };
     const frontend = this.config.get<string>('resend.frontendUrl');
@@ -5380,6 +5581,18 @@ happened, and what is in the way.`;
       /* Somebody who was asked and said no is not sent it. Null is nobody asked, which is everybody the lead invited. */
       && (p as any).wantsTheReport !== false,
     );
+    /*
+     * WHO WAS ASKED FOR THIS SESSION, AND WHO ANSWERED, from its own rows (messages test, 19 October, finding 2). A picture released at the end
+     * of the day goes with whoever answered, so the mail says who did rather than "everybody has now checked in".
+     */
+    const thisSession = ((await (this.prisma.checkIn?.findMany?.({ where: { groundId, sessionNumber }, select: { participantId: true, status: true } }) ?? Promise.resolve([] as any[])).catch(() => [] as any[])) as any[]);
+    const asked: SomebodyAskedThisSession[] = thisSession.map((c: any) => {
+      const who = ground.participants.find((x) => x.id === c.participantId) as any;
+      const name = [who?.user?.firstName, who?.user?.lastName].filter((x: any) => typeof x === 'string' && x.trim()).join(' ').trim() || (who?.nameGiven ?? '').trim() || null;
+      return { participantId: c.participantId, name, answered: c.status === CheckInStatus.COMPLETED && !saidNothing.has(c.participantId) };
+    });
+    /* The direct morning's switch, read once for this check-in's organisation (email/a-direct-email.ts). */
+    const direct = owed.length ? await theDirectMorningIsOn(this.prisma, (ground as any).organizationId) : false;
     let failed = 0;
     for (const p of owed) {
       try {
@@ -5390,14 +5603,15 @@ happened, and what is in the way.`;
         if (aStandingUpdate && theOneLine) await this.email.sendTeamUpdateAllIn(p.email, theOneLine, ground.participants.length, linkFor(p), sharedByAnAdminSentence);
         else {
           /* The finding itself, as this reader is served the report (spec section 7). Where it cannot be read, the notice goes as it always did. */
-          const insight = await this.theInsightFor(ground, p, sessionNumber).catch(() => null);
-          const subject = (insight?.subjectForTheLead) ?? await this.theReportReadySubject(ground, p).catch(() => undefined);
+          const insight = await this.theInsightFor(ground, p, sessionNumber, direct).catch(() => null);
+          const subject = (insight?.subjectForTheLead) ?? await this.theReportReadySubject(ground, p, direct).catch(() => undefined);
           /* WHERE THERE IS A FINDING, "I CAN HELP YOU DO THAT" (request 198): a way into Ask about this check-in, for the lead, and for a participant only where the report served to them names one. */
           /* Only for somebody who signs in with a password: a person who comes in on an invite link is taken only to the report (the invite page honours no other path). */
           const chat = insight?.hasAFinding && p.user?.passwordHash
             ? { url: `${frontend}/chat?about=${groundId}`, label: p.userId === ground.initiatorId ? 'I can help you do that' : 'I can help you talk it through' }
             : undefined;
-          await this.email.sendReportReady(p.email, ground.label, linkFor(p), sharedByAnAdminSentence, ground.id, subject, insight?.lines, chat);
+          const whoCheckedIn = whoCheckedInForThisPicture(ground.label, sessionNumber, asked, p.id, peersAreNamedOn(ground as any, { participantId: p.id }));
+          await this.email.sendReportReady(p.email, ground.label, linkFor(p), sharedByAnAdminSentence, ground.id, subject, insight?.lines, chat, whoCheckedIn, direct);
         }
       } catch (err: any) {
         failed += 1;
@@ -5963,6 +6177,7 @@ happened, and what is in the way.`;
   private async pictureInPlainSentences(
     facts: PersonFacts[],
     about: { peopleAnswered: number; peopleExpected: number; differenceTopics: string[]; aboutOnePerson: boolean },
+    theDirectMorning = false,
   ): Promise<ThePicture> {
     /* The label is what is stored; the name is swapped in at the read. The model is given the label
        so that whatever it writes still goes through the same name resolution as everything else. */
@@ -5973,7 +6188,7 @@ happened, and what is in the way.`;
 
     try {
       const written = await this.anthropic.extract<ThePicture>(
-        thePictureInstruction(about),
+        withTheDirectMorning(thePictureInstruction(about), THE_DIRECT_TEAM_REPORT, theDirectMorning),
         [{ role: 'user', content: facts.map((f) => factsAsLines(f, nameFor)).join('\n\n') }],
         THE_PICTURE_SCHEMA as any,
         { patient: true },
@@ -6145,8 +6360,8 @@ happened, and what is in the way.`;
    */
   private async whatTheRecordHoldsFor(groundId: string, ground: any, asOf?: AsOfARound) {
     const [detectionsNow, dependenciesNow, entriesNow, docsNow, sessionsNow] = await Promise.all([
-      /* Not even read while patterns are not served. */
-      PATTERNS_ARE_SERVED
+      /* Not even read while patterns are not served, or where the organisation keeps judgements of a person off. */
+      PATTERNS_ARE_SERVED && (await thePersonJudgementsAreOnFor(this.prisma, groundId))
         ? this.prisma.patternDetection.findMany({
           where: { groundId },
           orderBy: { lastSeenAt: 'desc' },
@@ -6195,7 +6410,11 @@ happened, and what is in the way.`;
      * because the board left it out and this read did not. Her colleagues' own waits on her already say it:
      * "Baraka Mwangi and Amani Wekesa are waiting on you for the discount and the price list."
      */
-    const dependenciesNowReal = (dependenciesNow as any[]).filter((d) => !aWaitOnOneself(d)) as typeof dependenciesNow;
+    /* A customer's own budget or approval is where a deal stands: never "put the budget in writing" (final real-model check, item 2). */
+    const salesHere = isASalesKind((ground as any)?.kindOfWork
+      ?? ((await this.prisma.ground?.findUnique?.({ where: { id: groundId }, select: { kindOfWork: true } })?.catch?.(() => null)) as any)?.kindOfWork);
+    const dependenciesNowReal = (dependenciesNow as any[]).filter((d) => !aWaitOnOneself(d))
+      .filter((d) => !notABlockerTheyRaised(d, { sales: salesHere, keepTheAsks: true, keepWhatCleared: true })) as typeof dependenciesNow;
     const dependencies = asOf
       ? (dependenciesNowReal as any[])
         .filter((d) => by(d.createdAt))
@@ -6240,6 +6459,7 @@ happened, and what is in the way.`;
    * Null when there is nothing to serve, so the board draws nothing rather than an empty block.
    */
   async coachingForTheBoard(groundId: string, requestingUserId: string, opts: { adminReadsIt?: boolean } = {}): Promise<{ yours: any; eachPerson: any } | null> {
+    if (!(await thePersonJudgementsAreOnFor(this.prisma, groundId))) return null;
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       include: { participants: { include: { user: { select: { firstName: true, lastName: true, email: true } } } }, report: true },
@@ -6282,7 +6502,14 @@ happened, and what is in the way.`;
         })
         : Promise.resolve(null),
     ]);
-    const blame = (note || probes) ? await this.theBlameHeld(groundId, participant?.id) : null;
+    const heldForBlame = (note || probes) ? await this.theBlameHeld(groundId, participant?.id) : null;
+    /*
+     * THE KIT'S SALES BOARD HAS NO "TRIED:" OR "NOT BACKED:" BESIDE A CLAIM (Hafsah, 18 October, answer 5), and the coaching served on
+     * that board follows it (Drop Access short run, item 15: Amina, an admin, still read "Not backed: no attempt to unblock
+     * mentioned." in the probes on the sales board). The claim stays the speaker's account; only the note beside it goes.
+     */
+    const noNoteHere = !!heldForBlame && isASalesKind((ground as any).kindOfWork) && await theReleaseOneSalesBoardIsOnFor(this.prisma, groundId).catch(() => false);
+    const blame = heldForBlame && noNoteHere ? { ...heldForBlame, withTheNote: false } : heldForBlame;
     const yours = this.readAsItWillBeRead(note, groundId, 'the coaching note', quotable, blame);
     const eachPerson = this.readAsItWillBeRead(probes, groundId, 'the probe list', quotable, blame && { ...blame, speaker: null });
     if (!yours && !eachPerson) return null;
@@ -6304,9 +6531,11 @@ happened, and what is in the way.`;
       where: { groundId },
       select: { participantId: true, sessionNumber: true, status: true, isSetup: true, availableFrom: true, startedAt: true, completedAt: true },
     }) ?? Promise.resolve([] as any[]))?.catch?.(() => [] as any[])) ?? []) as any[];
-    const givers = new Set(((ground?.participants ?? []) as any[]).filter((p) => !p.managingOnly && !isNotLetInYet(p)).map((p) => p.id));
+    const givers = new Set(((ground?.participants ?? []) as any[]).filter((p) => holdsTheClock(p, isNotLetInYet)).map((p) => p.id));
     const planned = totalSessionsFor(ground?.timelineDays, ground?.cadence) ?? null;
-    const clock = theSessionClock(rows.filter((c) => !c.isSetup) as any, givers, planned);
+    /* A finished round hands the count on only with Release 1's sales board on, as the board's header reads it. */
+    const handOn = await theReleaseOneSalesBoardIsOn(this.prisma, ground?.organizationId ?? null).catch(() => false);
+    const clock = theSessionClock(rows.filter((c) => !c.isSetup) as any, givers, planned, new Date(), handOn);
     return { current: clock.currentSession, planned: clock.plannedSessions };
   }
 
@@ -6353,7 +6582,13 @@ happened, and what is in the way.`;
     /* One count for the sessions: the board's own clock, except on a closed session's own report, which is
        about that session (request 117, part 3). */
     const clock = asOf ? null : await this.theBoardsClock(groundId, ground);
-    const sessionNumber = clock ? clock.current : theirNewest;
+    /*
+     * NEVER BEHIND THEIR OWN CHECK-INS (final real-model check, item 15). Peter's open session 2 held the board's round at 2, so Kevin, who had
+     * done session 3, read "This is session 2 of 15 of this work." in his own report. The board's round, or the newest session this person
+     * finished, whichever is later.
+     */
+    /* `theirNewest` is the newest they finished: the record holds only finished sessions. */
+    const sessionNumber = clock ? Math.max(clock.current, theirNewest) : theirNewest;
     const planned = clock?.planned ?? (ground.checkIns ?? []).reduce((n: number, c: any) => Math.max(n, c.sessionNumber ?? 0), 0);
 
     const map = roleMapFor((participant as any).detectedFunction);
@@ -6580,6 +6815,8 @@ happened, and what is in the way.`;
     closedAt: Date | null,
     period: number,
   ): Promise<{ coaching?: any; probes?: any; inferences?: any[] }> {
+    /* Judgements of a person off for this organisation: no coaching or probe about anybody (organisation/person-judgements.ts). */
+    if (!(await thePersonJudgementsAreOnFor(this.prisma, groundId))) return {};
     const holds = await theSessionTheReportHolds(this.prisma, groundId);
     const asOf = await this.whereThisSessionIsCut(groundId, sessionNumber, closedAt, period);
     const labels = labelsForParties(ground.participants as any);
@@ -6881,7 +7118,7 @@ happened, and what is in the way.`;
     return (this.prisma.recordEntry?.findMany?.({
         where: { participantId },
         orderBy: [{ createdAt: 'asc' }],
-        select: { id: true, participantId: true, type: true, text: true, disputedAt: true, documentSays: true, ...WHAT_A_MARK_READS, checkIn: { select: { id: true, sessionNumber: true } } },
+        select: { id: true, participantId: true, type: true, text: true, createdAt: true, disputedAt: true, documentSays: true, ...WHAT_A_MARK_READS, checkIn: { select: { id: true, sessionNumber: true } } },
       }) ?? Promise.resolve([] as any[]))
       .then(async (rows: any[]) => {
         /* How each of their own lines is known, by the one rule (week 6b). Read from stored columns. */
@@ -6899,9 +7136,12 @@ happened, and what is in the way.`;
           /* What the line is called, filled in from the record, never from the kind the model gave it (night quality run 2). */
           ...(whatALineOfTheirsIsCalled({ type: r.type, text: cleanText(r.text), mark }) ? { typeSays: whatALineOfTheirsIsCalled({ type: r.type, text: cleanText(r.text), mark }) } : {}),
           checkInId: r.checkIn?.id ?? null, sessionNumber: r.checkIn?.sessionNumber ?? null,
+          createdAt: r.createdAt ?? null,
           };
         });
       })
+      /* On a sales check-in with Release 1's switch on, a customer's promise and a document's date read right (points 19 and 20). */
+      .then((rows: any[]) => theirOwnLinesReadRight(this.prisma, participantId, rows).catch(() => rows))
       .catch(() => [] as any[]);
   }
 
@@ -7149,10 +7389,78 @@ happened, and what is in the way.`;
     await recordThatTheLeadRead(this.prisma, groundId, sessionNumber, userId).catch((err: any) => this.logger?.warn?.(`A report read was not recorded: ${err?.message}`));
   }
 
+  /**
+   * WHAT THE SWITCHBOARD PICKS FOR THIS CHECK-IN'S REPORTS (board/the-switchboard.ts), as `{ switchboard }` where the organisation's
+   * Release 2 switch is on, or nothing at all, so a report served where it is off is exactly what it was. Called only after the
+   * report itself was allowed to this reader; it reads the check-in's scenario and type, nothing about a person.
+   */
+  async theSwitchboardsPickFor(groundId: string): Promise<{ switchboard?: TheSwitchboardServed }> {
+    try {
+      const g = await this.prisma.ground.findUnique({
+        where: { id: groundId },
+        select: { organizationId: true, scenario: true, kindOfWork: true, kindOfWorkSetBy: true, checkInType: true, checkInTypeConfirmedAt: true } as any,
+      });
+      const served = g ? await whatTheSwitchboardServes(this.prisma, g as any) : null;
+      return served ? { switchboard: served } : {};
+    } catch {
+      return {};
+    }
+  }
+
   async sessionReport(groundId: string, sessionNumber: number, requestingUserId: string, requestingUserOrgId?: string, asIfReleased = false) {
     await this.refuseSomeoneNotYetLetIn(requestingUserId, groundId);
     const served = await this.sessionReportAsBuilt(groundId, sessionNumber, requestingUserId, requestingUserOrgId, asIfReleased);
-    return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, served);
+    /* What I don't know yet is added before the last read, so it goes through the same wall as every other line. So are, on a
+       sales check-in with Release 1's switch on, what the deals say, for each reader only what is theirs (the-sales-readings-for-a-report). */
+    return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, await this.withWhatIDontKnowYet(groundId, sessionNumber, requestingUserId, requestingUserOrgId,
+      /* And, where the switchboard picks the collections board, the bills' own team report or the reader's own (the-collections-readings-for-a-report). */
+      await withTheSalesReadings(this.prisma, groundId, sessionNumber, requestingUserId, served).catch(() => served)
+        .then((x) => withTheCollectionsReadings(this.prisma, groundId, sessionNumber, requestingUserId, x).catch(() => x))));
+  }
+
+  /**
+   * "WHAT I DON'T KNOW YET", FOR WHOEVER RUNS THE CHECK-IN ONLY (screen match; what-i-dont-know-yet.ts). The open gaps
+   * of this check-in, by the board's own rule for who reads them (`stillUnanswered`): the lead, the admin who set it up
+   * and an admin who reads it. Anybody else is served the report without the field at all.
+   */
+  private async withWhatIDontKnowYet<T>(groundId: string, sessionNumber: number, requestingUserId: string, requestingUserOrgId: string | undefined, servedAsRead: T): Promise<T> {
+    if (!servedAsRead || typeof servedAsRead !== 'object') return servedAsRead;
+    /* On a sales check-in with Release 1's switch on, what the deals cannot tell yet comes with the report (the-sales-readings-for-a-report); it is served here, under the same wall, and never as a field of its own. */
+    const { whatIsNotKnownYetFromTheDeals: fromTheDeals, ...rest } = servedAsRead as any;
+    const served = rest as T;
+    const ground = await (this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: {
+        id: true, organizationId: true, initiatorId: true, createdByUserId: true, scenario: true, status: true, approvedById: true,
+        participants: { select: { id: true, userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true } } } },
+      } as any,
+    }) as Promise<any>).catch(() => null);
+    if (!ground) return served;
+    const inItAsAPerson = (ground.participants ?? []).some((p: any) => p.userId === requestingUserId && !p.managingOnly);
+    const runsIt = ground.initiatorId === requestingUserId
+      || (!inItAsAPerson && (theyRunThisCheckIn(requestingUserId, ground) || (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground, groundId).catch(() => false))));
+    if (!runsIt) return served;
+    const gaps = await ((this.prisma as any).checkInGap?.findMany?.({
+      where: { groundId, answeredAt: null },
+      select: { participantId: true, what: true, firstRound: true, asked: true, certain: true },
+    }) ?? Promise.resolve([])).catch(() => []);
+    const nameOf = (pid: string) => {
+      const p = (ground.participants ?? []).find((x: any) => x.id === pid);
+      return ((p?.user?.firstName ?? p?.nameGiven ?? '') as string).trim().split(/\s+/)[0] || null;
+    };
+    if (Array.isArray(fromTheDeals)) {
+      /*
+       * Quality pass, 18 October, T-10 and T-11: a question is listed only where Groundwork asked it in those words and it was not
+       * answered (Mercy answered "How are you making your number?" on 13 October), the reader's own is said to them as "you", the
+       * same question is listed once, and what the deals cannot tell yet follows.
+       */
+      const me = (ground.participants ?? []).find((p: any) => p.userId === requestingUserId);
+      const turns = ((await ((this.prisma as any).conversationTurn?.findMany?.({
+        where: { checkIn: { groundId } }, select: { checkInId: true, role: true, content: true, checkIn: { select: { participantId: true } } }, orderBy: { createdAt: 'asc' },
+      }) ?? Promise.resolve([])).catch(() => [])) ?? []) as any[];
+      return { ...(served as any), whatIDontKnowYet: theOpenQuestionsThenTheDeals(gaps as any[], turns, me?.id ?? null, nameOf, fromTheDeals, sessionNumber) };
+    }
+    return { ...(served as any), whatIDontKnowYet: whatIDontKnowYet(gaps as any[], sessionNumber, nameOf) };
   }
 
   /**
@@ -7507,7 +7815,7 @@ happened, and what is in the way.`;
            anonymously shared report loses its identifying detail, and a read that skips it would
            name people on a check-in shared without names. */
         overTime: (this.asItWasShared(
-          { ...(ground as any), report: { overTime: overTimeForThisReader((ground.report as any)?.overTime as any, { isLead: isInitiator || isOrgAdmin, participantId: participant?.id ?? null }, { meetingsOnRecord: await meetingsOnRecordFor(this.prisma, (ground as any).id) }) } },
+          { ...(ground as any), report: { overTime: overTimeForThisReader((ground.report as any)?.overTime as any, { isLead: isInitiator || isOrgAdmin, participantId: participant?.id ?? null }, { meetingsOnRecord: await meetingsOnRecordFor(this.prisma, (ground as any).id), judgements: await thePersonJudgementsAreOnFor(this.prisma, (ground as any).id) }) } },
           participant?.id ?? null,
           isInitiator || isOrgAdmin,
         ) as any).overTime,
@@ -7675,7 +7983,7 @@ happened, and what is in the way.`;
        */
       /* And named through the wrapper, for the reason in the forming branch above. */
       overTime: (this.asItWasShared(
-        { ...(ground as any), report: { overTime: overTimeForThisReader((ground.report as any)?.overTime as any, { isLead: isInitiator || isOrgAdmin, participantId: participant?.id ?? null }, { meetingsOnRecord: await meetingsOnRecordFor(this.prisma, (ground as any).id) }) } },
+        { ...(ground as any), report: { overTime: overTimeForThisReader((ground.report as any)?.overTime as any, { isLead: isInitiator || isOrgAdmin, participantId: participant?.id ?? null }, { meetingsOnRecord: await meetingsOnRecordFor(this.prisma, (ground as any).id), judgements: await thePersonJudgementsAreOnFor(this.prisma, (ground as any).id) }) } },
         participant?.id ?? null,
         isInitiator || isOrgAdmin,
       ) as any).overTime,
@@ -8092,6 +8400,7 @@ happened, and what is in the way.`;
       return planned !== null && held >= planned;
     })().catch(() => false);
 
+    const theDirectMorning = await theDirectMorningIsOnFor(this.prisma, report.groundId);
     await Promise.all(
       participantIds.map(async (participantId) => {
         try {
@@ -8107,7 +8416,7 @@ happened, and what is in the way.`;
 
           const result = await this.anthropic.extract<PostReportGuide>(
             /* The end of a run is a different conversation - see THE_RUN_IS_OVER. */
-            theRunIsOver ? POST_REPORT_GUIDE_PROMPT + THE_RUN_IS_OVER : POST_REPORT_GUIDE_PROMPT,
+            withTheDirectMorning(theRunIsOver ? POST_REPORT_GUIDE_PROMPT + THE_RUN_IS_OVER : POST_REPORT_GUIDE_PROMPT, THE_DIRECT_OWN_REPORT, theDirectMorning),
             [{ role: 'user', content: corpus }],
             POST_REPORT_GUIDE_SCHEMA,
           );
@@ -8144,7 +8453,7 @@ happened, and what is in the way.`;
               .join(', ');
             const retry = await this.anthropic
               .extract<PostReportGuide>(
-                POST_REPORT_GUIDE_PROMPT,
+                withTheDirectMorning(POST_REPORT_GUIDE_PROMPT, THE_DIRECT_OWN_REPORT, theDirectMorning),
                 [{
                   role: 'user',
                   content:

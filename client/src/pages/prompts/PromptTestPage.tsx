@@ -126,10 +126,9 @@ function ConversationLane({
           )}
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
-          <button
+          <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
             onClick={() => fileRef.current?.click()}
             title="Attach a text document to this lane"
-            style={{ fontSize: 11, color: 'var(--gw-sub)', background: 'none', border: '1px solid var(--gw-border)', borderRadius: 4, padding: '3px 8px', cursor: 'pointer', fontFamily: 'inherit' }}
           >
             Doc
           </button>
@@ -168,15 +167,10 @@ function ConversationLane({
           rows={2}
           style={{ flex: 1, resize: 'none', fontSize: 12, fontFamily: 'inherit', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '7px 9px', lineHeight: 1.5, color: 'var(--gw-text)' }}
         />
-        <button
+        <button className="gwui-btn gwui-btn-primary gwui-btn-small"
           onClick={send}
           disabled={!lane.input.trim() || sendMutation.isPending}
-          style={{
-            padding: '8px 12px', borderRadius: 6, background: ACCENT, color: 'white',
-            fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-            opacity: (!lane.input.trim() || sendMutation.isPending) ? 0.5 : 1,
-            flexShrink: 0,
-          }}
+          style={{ flexShrink: 0 }}
         >
           ↑
         </button>
@@ -262,15 +256,13 @@ export function PromptTestPage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: editingPrompt ? '1px solid var(--gw-border)' : 'none' }}>
             <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)' }}>Prompt engine</span>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button
+              <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
                 onClick={() => { setSystemPrompt(DEFAULT_PROMPT); setEditingPrompt(false) }}
-                style={{ fontSize: 11, color: 'var(--gw-muted)', background: 'none', border: '1px solid var(--gw-border)', borderRadius: 4, padding: '3px 8px', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Reset to default
               </button>
-              <button
+              <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
                 onClick={() => setEditingPrompt(e => !e)}
-                style={{ fontSize: 11, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-navy)', borderRadius: 4, padding: '3px 8px', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}
               >
                 {editingPrompt ? 'Done' : 'Edit'}
               </button>
@@ -321,14 +313,9 @@ export function PromptTestPage() {
                 </select>
               </div>
             </div>
-            <button
+            <button className="gwui-btn gwui-btn-primary"
               onClick={() => generateReport.mutate()}
               disabled={generateReport.isPending || !hasEnoughData}
-              style={{
-                padding: '10px 18px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white',
-                fontSize: 13, fontWeight: 700, border: 'none', cursor: generateReport.isPending || !hasEnoughData ? 'not-allowed' : 'pointer',
-                fontFamily: 'inherit', opacity: generateReport.isPending || !hasEnoughData ? 0.5 : 1,
-              }}
             >
               {generateReport.isPending ? 'Generating…' : 'Generate reports'}
             </button>

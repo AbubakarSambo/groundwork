@@ -332,7 +332,7 @@ describe('the + button', () => {
     expect(await findByText('What does it show? One line is enough; you can skip it.')).toBeTruthy()
     fireEvent.change(screen.getByLabelText('What does it show?'), { target: { value: 'The quote I sent' } })
     fireEvent.click(screen.getByRole('button', { name: 'Add to session' }))
-    await waitFor(() => expect(documentsApi.upload).toHaveBeenCalledWith('g1', photo, false, 'The quote I sent'))
+    await waitFor(() => expect(documentsApi.upload).toHaveBeenCalledWith('g1', photo, false, 'The quote I sent', { fromTheCheckIn: true }))
     expect(await findByText('You added “green-mart-quote.heic”. Only you can open it.', {}, { timeout: 5000 })).toBeTruthy()
   })
 })

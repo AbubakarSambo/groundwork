@@ -1,4 +1,9 @@
+import { theOrganisationsZone } from '../../common/the-organisations-own-day';
+import { aTeamMembersOpeningFor } from '../conversation/the-one-thing-today';
+import { theSameWordsAgain, rememberTheWords, writeDownTheSkip } from '../engagement/never-the-same-words-twice';
+import { isHeldForTheNight } from '../whatsapp/quiet-hours-are-the-organisations';
 import { theyAreConnectedOnWhatsApp } from '../whatsapp/connect-whatsapp';
+import { theEmailOpeningShould, whatBecameOfIt, THE_WHATSAPP_OPENING_MAY_TAKE_MS } from './an-opening-goes-on-one-channel';
 import { theCheckInIsOpen } from '../whatsapp/what-goes-to-a-phone';
 import { Injectable, Logger, OnApplicationBootstrap, Optional } from '@nestjs/common';
 import { owesThisSession } from './the-lead-checks-in-when-they-choose';
@@ -51,6 +56,7 @@ import { theRanOutOfTimeSubject } from '../engagement/the-leads-subjects-carry-t
 import { sendTheTestCheckInMessages } from '../engagement/a-test-check-in-moves-on';
 import { theirPromiseToFollowUp } from '../engagement/a-follow-up-from-their-own-record';
 import { theOpeningNeverReachedThem, itHasBeenOpenLongEnough } from '../engagement/a-person-the-opening-never-reached';
+import { itWasOpenedByEmailOnly } from '../whatsapp/a-session-opened-by-email';
 import { formsOfTheSameNumber } from '../whatsapp/a-number-whatsapp-can-reach';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { isNotLetInYet } from './who-an-admin-did-not-let-in';
@@ -792,12 +798,14 @@ export class GroundsCron implements OnApplicationBootstrap {
       select: {
         id: true,
         groundId: true,
+        sessionNumber: true,
+        availableFrom: true,
         participant: {
           select: {
             id: true,
             email: true,
             userId: true,
-            ground: { select: { label: true, simplerWords: true, organizationId: true } },
+            ground: { select: { label: true, simplerWords: true, organizationId: true, overWhatsApp: true } },
             /* No recordEntries here, structurally (NL-007): this sweep used to put the person's last
                private record line into the mail and the WhatsApp body as "Last time: ...". The product's
                central promise is that nothing they wrote reaches a mailbox; the reminder never needed it. */
@@ -834,11 +842,40 @@ export class GroundsCron implements OnApplicationBootstrap {
         /* Hafsah, 14 October (later): for somebody on WhatsApp, the missed-check-ins notice goes in their WhatsApp check-in too,
            never by email. It stays on Today, and is said before the first question once they reply (whatsapp-for-an-organisation). */
         if (await theyAreConnectedOnWhatsApp(this.prisma, { organizationId: (p.ground as any).organizationId, userId: p.userId, email: p.email })) {
+          /*
+           * UNLESS THE WHATSAPP OPENING DID NOT GO (Drop Access, 21 October). Somebody connected was told on WhatsApp alone, so when Meta
+           * refused that opening they were told nothing at all. Now: it went, or is held for the night, and no email goes; it is still
+           * on its way, and the email waits for the next sweep (half an hour at most); it was tried and did not go, and the email goes.
+           */
+          const tried: any[] = await Promise.resolve(this.prisma.whatsAppSend.findMany({ where: { checkInId: ci.id, kind: { startsWith: 'checkin-open' } }, select: { kind: true, sentAt: true } })).catch(() => []);
+          const became = whatBecameOfIt(Array.isArray(tried) ? tried : []);
+          const since = (ci as any).availableFrom ? new Date((ci as any).availableFrom).getTime() : now.getTime();
+          if (became === 'not-yet' && now.getTime() - since < THE_WHATSAPP_OPENING_MAY_TAKE_MS) continue;
+          if (became !== 'did-not-go') {
+            await this.prisma.checkIn.update({ where: { id: ci.id }, data: { sessionReadyNotifiedAt: now } });
+            continue;
+          }
+        }
+        /* ONE CHANNEL FOR EVERY OPENING (release plan Part 0; Drop Access run 1, item 10): when the WhatsApp opening went, or is held
+           for the night, no email goes; while it is still on its way the email waits for the next sweep. See an-opening-goes-on-one-channel. */
+        const should = await theEmailOpeningShould(this.prisma, ci as any, now);
+        if (should === 'wait') continue;
+        if (should === 'skip') {
           await this.prisma.checkIn.update({ where: { id: ci.id }, data: { sessionReadyNotifiedAt: now } });
           continue;
         }
-        const went = await this.email.sendSessionReady(p.email, await nameFor({ userId: p.userId, email: p.email }, ci.groundId, p.ground.label), checkInUrl, p.ground.simplerWords, missed?.lines ?? null, ci.groundId);
+        /* With the direct morning on, the one thing that matters to them today is the email's opening line and its subject (conversation/the-one-thing-today); off, or nothing specific on record, the email is today's. */
+        const personal = await aTeamMembersOpeningFor(this.prisma, { groundId: ci.groundId, participantId: p.id, sessionNumber: (ci as any).sessionNumber ?? null, now }).catch(() => null);
+        /* After two missed days, never the same words twice in a row (engagement/never-the-same-words-twice.ts; direct morning only). */
+        const words = [personal?.text ?? `Your next check-in is open: ${p.ground.label}`, ...(missed?.lines ?? [])].join(' ');
+        if (await theSameWordsAgain(this.prisma, { groundId: ci.groundId, participantId: p.id, words, now })) {
+          await writeDownTheSkip(this.prisma, { channel: 'email', to: p.email, sender: 'sendSessionReady', organizationId: (p.ground as any).organizationId });
+          await this.prisma.checkIn.update({ where: { id: ci.id }, data: { sessionReadyNotifiedAt: now } });
+          continue;
+        }
+        const went = await this.email.sendSessionReady(p.email, await nameFor({ userId: p.userId, email: p.email }, ci.groundId, p.ground.label), checkInUrl, p.ground.simplerWords, missed?.lines ?? null, ci.groundId, personal ? { subject: personal.subject, line: personal.text } : null);
         if (missed && went !== 'suppressed') await rememberTheMissedNoticeTold(this.prisma, missed.key, (went ?? 'sent') as any, { sender: 'sendSessionReady', to: p.email });
+        if (went !== 'suppressed') await rememberTheWords(this.prisma, ci.groundId, p.id, words, now);
 
         await this.prisma.checkIn.update({ where: { id: ci.id }, data: { sessionReadyNotifiedAt: now } });
       } catch (err: any) {
@@ -925,9 +962,16 @@ export class GroundsCron implements OnApplicationBootstrap {
         if (!phone) continue;
         const catchUp = !what;
         if (catchUp && !(await theOpeningNeverReachedThem(this.prisma, ci, formsOfTheSameNumber(phone), now))) continue;
+        /* A session opened by email, and not on WhatsApp, is not reminded "due tomorrow" on WhatsApp (point 8, 19 October; a-session-opened-by-email.ts). */
+        if (what === 'due-tomorrow' && (await itWasOpenedByEmailOnly(this.prisma, ci, [ci.participant.email, user?.email]))) continue;
         const who = { firstName: user?.firstName, label: await nameFor({ userId: ci.participant.userId, email: ci.participant.email }, ci.groundId, ci.ground.label) };
         let said;
-        if (catchUp) said = theCheckInIsStillOpen(who, ci.ground.simplerWords);
+        /* The opening that never reached them, again: with the direct morning on, its free message is the one thing that matters to them today (the template outside the 24 hours is unchanged). */
+        if (catchUp) {
+          said = theCheckInIsStillOpen(who, ci.ground.simplerWords);
+          const personal = await aTeamMembersOpeningFor(this.prisma, { groundId: ci.groundId, participantId: ci.participantId, sessionNumber: ci.sessionNumber, now }).catch(() => null);
+          if (personal) said = { ...said, text: personal.text };
+        }
         else if (what === 'overdue') said = itIsOverdue(who, ci.ground.simplerWords);
         else if (what === 'due-tomorrow') said = itIsDueTomorrow(who, dueAt!, ci.ground.simplerWords);
         else {
@@ -949,7 +993,16 @@ export class GroundsCron implements OnApplicationBootstrap {
         const kept = best.get(key);
         if (kept && kept.rank <= rank) continue;
         const message = said;
-        best.set(key, { rank, go: () => this.whatsapp.sendFor(ci.ground.organizationId, phone, message.text, { checkInId: ci.id, kind: message.kind, params: message.params }) });
+        best.set(key, { rank, go: async () => {
+          /* After two missed days, never the same words twice in a row (engagement/never-the-same-words-twice.ts; direct morning only). */
+          if (await theSameWordsAgain(this.prisma, { groundId: ci.groundId, participantId: ci.participantId, words: message.text, now })) {
+            await writeDownTheSkip(this.prisma, { channel: 'whatsapp', to: ci.participant.email ?? user?.email ?? phone, sender: message.kind, organizationId: ci.ground.organizationId });
+            return;
+          }
+          const went = await this.whatsapp.sendFor(ci.ground.organizationId, phone, message.text, { checkInId: ci.id, kind: message.kind, params: message.params });
+          if (went?.sent || isHeldForTheNight(went?.error)) await rememberTheWords(this.prisma, ci.groundId, ci.participantId, message.text, now);
+          return went;
+        } });
       } catch (err: any) {
         this.logger.warn(`WhatsApp reminder failed for check-in ${ci.id}: ${err?.message}`);
       }
@@ -993,12 +1046,40 @@ export class GroundsCron implements OnApplicationBootstrap {
   }
 
   async sendTheLeadsDailyNudgesInner(now: Date = new Date()): Promise<{ tried: number }> {
+    /* The lead's own board, as she opens it, so her summary says what her board says (point 1, 19 October). Found by name, without importing the board's module here. */
+    let boards: { get(groundId: string, userId: string): Promise<any> } | undefined;
+    try {
+      if (this.moduleRef) { const { BoardService } = await import('../board/board.service'); boards = this.moduleRef.get(BoardService, { strict: false }); }
+    } catch { boards = undefined; }
     const result = await sendTheLeadsDailyNudges(
-      { prisma: this.prisma, whatsapp: this.whatsapp as any, email: this.email as any, boards: { leave: this.leave, timeSheets: this.timeSheets, spending: this.spending }, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
+      { prisma: this.prisma, whatsapp: this.whatsapp as any, email: this.email as any, boards: { leave: this.leave, timeSheets: this.timeSheets, spending: this.spending }, frontendUrl: this.config.get<string>('resend.frontendUrl') || '', ...(boards ? { board: { get: (groundId: string, userId: string) => boards.get(groundId, userId) } } : {}) },
       now,
     ).catch((err: any) => { this.logger.warn(`The leads' daily nudges could not be sent: ${err?.message}`); return { tried: 0 }; });
     if (result.tried) this.logger.log(`Lead daily nudge: ${result.tried} tried.`);
     return result;
+  }
+
+  /**
+   * THE DIRECT MORNING BY SEVEN (engagement/the-direct-morning.ts; Hafsah, 20 October 2026): every quarter hour, for the organisations whose
+   * switch is on, the lead's morning summary goes in the hour from seven where the organisation is, before the check-ins open, once a day
+   * a lead. The 9am sweep above sends it only to a lead it did not reach. Organisations with the switch off are never read here.
+   */
+  @Cron('*/15 * * * *', { timeZone: 'UTC' })
+  async sendTheDirectMorningsAtSeven() {
+    await onceAcrossCopies(this.prisma, 'direct-morning-at-seven', new Date().toISOString().slice(0, 16), () => this.sendTheDirectMorningsAtSevenInner());
+  }
+
+  async sendTheDirectMorningsAtSevenInner(now: Date = new Date()): Promise<{ tried: number }> {
+    const any = await (this.prisma as any).organization.findFirst({ where: { directMorningOn: true }, select: { id: true } }).catch(() => null);
+    if (!any) return { tried: 0 };
+    let boards: { get(groundId: string, userId: string): Promise<any> } | undefined;
+    try {
+      if (this.moduleRef) { const { BoardService } = await import('../board/board.service'); boards = this.moduleRef.get(BoardService, { strict: false }); }
+    } catch { boards = undefined; }
+    return sendTheLeadsDailyNudges(
+      { prisma: this.prisma, whatsapp: this.whatsapp as any, email: this.email as any, boards: { leave: this.leave, timeSheets: this.timeSheets, spending: this.spending }, frontendUrl: this.config.get<string>('resend.frontendUrl') || '', ...(boards ? { board: { get: (groundId: string, userId: string) => boards.get(groundId, userId) } } : {}) },
+      now, { onlyTheDirectMorningAt7: true },
+    ).catch((err: any) => { this.logger.warn(`The direct mornings could not be sent: ${err?.message}`); return { tried: 0 }; });
   }
 
   /** The old name of the job, kept so the journeys and the test bed that call it by that name still run the one morning job. */
@@ -1048,10 +1129,16 @@ export class GroundsCron implements OnApplicationBootstrap {
   async sendTheLeadsWeeklyLettersInner(now: Date = new Date()): Promise<{ tried: number }> {
     /* Every lead's check-ins, not the anchor's alone (engagement spec section 24). The anchor's own are kept only while its switch is on. */
     const anchorIsOn = await theAnchorScenarioIsOn(this.prisma);
+    /* The lead's own board, as she opens it, so the letter's target is the one her board says (Groundwork does the managing, part 2). Found by name, as the daily summary finds it. */
+    let boards: { get(groundId: string, userId: string): Promise<any> } | undefined;
+    try {
+      if (this.moduleRef) { const { BoardService } = await import('../board/board.service'); boards = this.moduleRef.get(BoardService, { strict: false }); }
+    } catch { boards = undefined; }
     const result = await sendTheLeadsWeeklyLetters(
       {
         prisma: this.prisma, email: this.email, frontendUrl: this.config.get<string>('resend.frontendUrl') || '',
         everyCheckIn: { anchorIsOn, weeklyReport: (g, at) => this.theLeadsOwnWeeklyReport(g, at) },
+        ...(boards ? { board: { get: (groundId: string, userId: string) => boards.get(groundId, userId) } } : {}),
       },
       now,
     ).catch((err: any) => { this.logger.warn(`The leads' weekly letters could not be sent: ${err?.message}`); return { tried: 0 }; });
@@ -1292,16 +1379,18 @@ export class GroundsCron implements OnApplicationBootstrap {
       try {
         const g = ci.participant.ground;
         if (keptOffThePhone(g) || !turnedOn.has(g.organizationId) || !ci.participant.email) continue;
-        const before = await this.prisma.whatsAppSend.findFirst({ where: { checkInId: ci.id, kind: { startsWith: 'checkin-open' } }, select: { id: true } });
-        if (before) continue;
         /* One number for a person: the roster's, or else the one on their sign-in (an admin saving it on People writes there). */
         const person = await this.prisma.person.findFirst({
-          where: { organizationId: g.organizationId, email: { equals: ci.participant.email, mode: 'insensitive' }, active: true },
+          where: { organizationId: g.organizationId, email: { equals: ci.participant.email, mode: 'insensitive' }, active: true, phone: { not: null } },
+          orderBy: { updatedAt: 'desc' },
           select: { phone: true, givenName: true },
         });
         const signIn = person?.phone ? null : await this.prisma.user.findFirst({ where: { email: { equals: ci.participant.email, mode: 'insensitive' }, deletedAt: null }, select: { phoneNumber: true, firstName: true } });
         const phone = person?.phone ?? signIn?.phoneNumber ?? null;
         if (!phone) continue;
+        /* Told once per number (Drop Access, 21 October; findings 1.4 E): an opening to a number since changed never stops the one to the new number. */
+        const before = await this.prisma.whatsAppSend.findFirst({ where: { checkInId: ci.id, kind: { startsWith: 'checkin-open' }, phone: { in: formsOfTheSameNumber(phone) } }, select: { id: true } });
+        if (before) continue;
         const said = theCheckInIsOpen({ firstName: person?.givenName ?? signIn?.firstName ?? null, label: g.label }, g.simplerWords);
         await this.whatsapp.sendFor(g.organizationId, phone, said.text, { checkInId: ci.id, kind: said.kind, params: said.params });
         sent++;
@@ -1410,7 +1499,7 @@ export class GroundsCron implements OnApplicationBootstrap {
       select: {
         id: true,
         email: true,
-        ground: { select: { id: true, label: true } },
+        ground: { select: { id: true, label: true, organizationId: true, report: { select: { releasedAt: true } } } },
         user: { select: { emailNotifications: true } },
       },
     });
@@ -1423,7 +1512,9 @@ export class GroundsCron implements OnApplicationBootstrap {
         if ((await howManyReportReadyRemindersWereSent(this.prisma as any, p.email, p.ground.label)) >= THE_MOST_REPORT_READY_REMINDERS) continue;
         /* Not again within NUDGE_THROTTLE_DAYS of the last one that went, read from the record of messages. */
         if ((await howManyReportReadyRemindersWereSent(this.prisma as any, p.email, p.ground.label, throttleBefore)) > 0) continue;
-        await this.email.sendActivationRevealReminder(p.email, p.ground.label, `${frontend}/grounds/${p.ground.id}/report`);
+        /* The day it became ready, in the organisation's own zone (messages test, 19 October, finding 1), never "a few days". */
+        const zone = (p.ground as any).organizationId ? await theOrganisationsZone(this.prisma as any, (p.ground as any).organizationId).catch(() => null) : null;
+        await this.email.sendActivationRevealReminder(p.email, p.ground.label, `${frontend}/grounds/${p.ground.id}/report`, (p.ground as any).report?.releasedAt ?? null, zone);
         revealReminders++;
       } catch (err: any) {
         this.logger.error(`Reveal reminder failed for participant ${p.id}: ${err.message}`);

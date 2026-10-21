@@ -25,7 +25,9 @@ export function howMuchRoomIsLeft(answersSoFar: number): string | null {
 }
 
 /** The refusal itself, for somebody who has reached it. */
-export function theCeilingIsReached(): string {
+/** `direct`: the direct morning is on (email/a-direct-email.ts), so nothing is said about the record being safe. */
+export function theCeilingIsReached(direct = false): string {
+  if (direct) return 'This session is full at twenty answers. Finish the check-in, and it will be written up. You can open another session afterwards to add more.';
   return (
     'This session is full. It holds twenty answers, and everything you have said is on the record. ' +
     'Finish the check-in, and it will be written up. You can open another session afterwards to add more. ' +

@@ -17,11 +17,15 @@
 export const THE_REPORT_IN_SIMPLER_WORDS =
   'THIS CHECK-IN USES SIMPLER WORDS, FOR EVERYBODY IN IT. Write every sentence of the report in short sentences, one idea in each, using everyday words that a person with basic English knows. Use no idioms and no figures of speech. Keep every fact, number, name and quote exactly as it is: simpler words never mean fewer facts.';
 
-/** What WhatsApp says when the person writes "finish" and the check-in is closed. */
+/**
+ * What WhatsApp says when the person writes "finish" and the check-in is closed. Only what has happened (a Pulse check on
+ * production, 15 October): "Your report follows in a moment" was followed by "The shared picture is made once everyone
+ * has answered", so the first was untrue. The message after this one says what comes next, whichever it is.
+ */
 export function theCheckInIsCompleteSaying(simplerWords?: boolean | null): string {
   return simplerWords
-    ? 'Your check-in is finished, and your answers are saved. Your report will come in a moment.'
-    : 'Your check-in is complete and on record. Your report follows in a moment.';
+    ? 'Your check-in is finished, and your answers are saved.'
+    : 'Your check-in is complete and on record.';
 }
 
 /** What WhatsApp adds when there is enough to close and the person has not said "finish". */
@@ -88,7 +92,9 @@ export const THE_EMAILS = {
     simplerWords
       ? { stillOpen: 'is still open. It takes about ten minutes. Your answers go into the report.', theOtherHasAnswered: 'The other person has already answered. Yours is the last answer we need.' }
       : { stillOpen: 'is still open. About ten minutes now puts your view into the shared picture, and you read it too.', theOtherHasAnswered: 'They have already shared their side. Yours is the last one we are waiting for.' },
+  /** The same, with the direct morning on (email/a-direct-email.ts): how long it takes, and that everybody else is in, and nothing about a shared picture. */
+  nudgeDirect: () => ({ stillOpen: 'is still open. It takes about ten minutes.', theOtherHasAnswered: 'Everyone else has checked in. Yours is the last one.' }),
   /** "A new check-in is ready for X." */
   nextCheckInOpen: (simplerWords?: boolean | null) =>
-    simplerWords ? { before: 'Your next check-in for', after: ' is open. It takes about ten minutes. Your answers go into the report.' } : { before: 'A new check-in is ready for', after: '. Answering keeps the picture you and your team read up to date.' },
+    simplerWords ? { before: 'Your next check-in for', after: ' is open. It takes about ten minutes. Your answers go into the report.' } : { before: 'A new check-in is ready for', after: '. It takes about ten minutes, and answering keeps the picture you and your team read up to date.' },
 } as const;

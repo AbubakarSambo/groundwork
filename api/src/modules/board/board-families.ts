@@ -127,6 +127,12 @@ export const SCENARIO_FAMILY: Record<GroundScenario, BoardFamily> = {
   PULSE_CHECK: BoardFamily.RECURRING,
   /* Same board as the other recurring read: what each person said, period after period. */
   TEAM_UPDATES: BoardFamily.UPDATE,
+  /**
+   * COLLECT WHAT'S OWED IS A RECURRING READ OF NAMED BILLS (release plan, Release 2). The family decides only the board's
+   * sections; the switchboard (the-switchboard.ts) picks the collections board for it where Release 2 is on and that board is
+   * built (Release 2, pull request 2). Until then it is drawn as the other recurring read is.
+   */
+  COLLECTIONS: BoardFamily.RECURRING,
 
   // Sensing the mood: transparency would poison these.
   /**

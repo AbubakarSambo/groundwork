@@ -237,6 +237,18 @@ describe('Grace, inside the free trial’s months', () => {
     expect(text()).not.toContain('Your free 3 months end on')
   })
 
+  /* Local test of staging, 15 October: Drop Access, in its free month, read "0 sessions left", "Free extension available"
+     and "Add sessions" on a check-in with 55 of its 56 sessions to come. Nothing counts a session while a free run covers them. */
+  it('a check-in in the free months reads unlimited sessions, never "0 sessions left" or "Add sessions"', async () => {
+    m.pricing = { ...m.pricing, trial: TRIAL_ON }
+    m.status = { subscription: { plan: null, status: null, periodEnd: null, endsAt: null, freeExtensionUsed: false }, people: { count: 4, cap: 20 }, onTheHouse: { plan: 'SMALL_TEAM', until: inDays(30), freeTrial: true }, activeGrounds: [], card: null, invoices: [] }
+    const { groundsApi } = await import('@/api/grounds')
+    ;(groundsApi.list as any).mockResolvedValueOnce([{ id: 'g1', label: 'Sales check-in', sessionsBalance: 0, isFreeGround: false, org: { freeExtensionUsed: false } }])
+    renderIt()
+    expect(await screen.findByText('Your check-in has unlimited sessions and reports on this plan. Nothing is counted or charged per session.')).toBeTruthy()
+    expect(text()).not.toMatch(/sessions? left|Free extension available|Add sessions/)
+  })
+
   it('seven days before the end, reads what keeps it running', async () => {
     m.pricing = { ...m.pricing, trial: TRIAL_ON }
     m.status = { subscription: { plan: null, status: null, periodEnd: null, endsAt: null, freeExtensionUsed: false }, people: { count: 12, cap: 20 }, onTheHouse: { plan: 'SMALL_TEAM', until: inDays(5), freeTrial: true }, activeGrounds: [], card: null, invoices: [] }

@@ -287,9 +287,8 @@ export function ContextChat({ groundId }: { groundId: string }) {
           about how it is going - or paste it all in at once. It fills in this page as you go, and
           what lands here guides the check-ins and the coaching. Nothing is written until you say so.
         </div>
-        <button
+        <button className="gwui-btn gwui-btn-primary gwui-btn-small"
           onClick={start}
-          style={{ background: 'var(--gw-navy)', border: 'none', borderRadius: 7, padding: '9px 15px', fontSize: 13, fontWeight: 700, color: 'white', cursor: 'pointer', fontFamily: 'inherit' }}
         >
           Start the conversation
         </button>
@@ -391,16 +390,14 @@ export function ContextChat({ groundId }: { groundId: string }) {
         <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '12px 14px', marginBottom: 14 }}>
           <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, marginBottom: 10, whiteSpace: 'pre-wrap' }}>{proposal.say}</div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button
+            <button className="gwui-btn gwui-btn-primary gwui-btn-small"
               onClick={() => confirm.mutate()}
               disabled={confirm.isPending}
-              style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit' }}
             >
               {confirm.isPending ? 'Saving…' : 'Yes, set it'}
             </button>
-            <button
+            <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
               onClick={() => setProposal(null)}
-              style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit' }}
             >
               Not that
             </button>
@@ -454,12 +451,12 @@ export function ContextChat({ groundId }: { groundId: string }) {
             onKeyDown={e => { if (e.key === 'Enter') submit() }}
             data-gw-context-chat-input
             placeholder="Type your answer…"
-            style={{ flex: 1, padding: '8px 4px', border: 'none', fontSize: 13.5, fontFamily: 'inherit', outline: 'none', background: 'transparent' }}
+            style={{ flex: 1, minHeight: 44, padding: '8px 4px', border: 'none', fontSize: 16, fontFamily: 'inherit', outline: 'none', background: 'transparent' }}
           />
-          <button
+          <button className="gwui-btn gwui-btn-primary gwui-btn-small"
             onClick={submit}
             disabled={!text.trim() || send.isPending}
-            style={{ padding: '8px 16px', borderRadius: 8, background: text.trim() ? 'var(--gw-navy)' : 'var(--gw-bg)', color: text.trim() ? 'white' : 'var(--gw-muted)', border: 'none', cursor: text.trim() ? 'pointer' : 'default', fontSize: 13, fontWeight: 700, fontFamily: 'inherit', flexShrink: 0 }}
+            style={{ flexShrink: 0 }}
           >
             Send
           </button>

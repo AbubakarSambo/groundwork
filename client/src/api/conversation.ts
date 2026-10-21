@@ -27,7 +27,7 @@ export interface CheckInBrief {
  * docs/requests-to-engine.md, request 7; the screen draws nothing until they come.
  */
 /** `mayCompleteAfter`: the turn floor the server holds this check-in to. The screen offers to finish at that count and not before, so the offer is never refused. */
-export interface OpenCheckInResponse { reply: string; groundId?: string; brief?: CheckInBrief | null; mayCompleteAfter?: number; suggestedAnswers?: string[]; ideaOffer?: TheIdeaOfferInTheCheckIn | null; requestOffer?: TheRequestOfferInTheCheckIn | null; openTheRequest?: TheRequestToOpen | null }
+export interface OpenCheckInResponse { reply: string; /** The session actually opened, where the one asked for had a round that had closed and today's was opened instead. */ checkInId?: string; groundId?: string; brief?: CheckInBrief | null; mayCompleteAfter?: number; suggestedAnswers?: string[]; ideaOffer?: TheIdeaOfferInTheCheckIn | null; requestOffer?: TheRequestOfferInTheCheckIn | null; openTheRequest?: TheRequestToOpen | null }
 /*
  * THE END CARD'S PARTS THAT ONLY THE ENGINE CAN WRITE (B3, check-in-end-card.txt), sent with the reply
  * that closes the conversation. Asked of the engine workspace in docs/requests-to-engine.md,
@@ -63,12 +63,14 @@ export async function streamMessage(
   checkInId: string,
   message: string,
   handlers: { onDelta: (text: string) => void; onDone: (r: SendMessageResponse) => void; onError?: (m: string) => void },
+  /* The last thing Groundwork said that is on their screen: the same words twice after it is read are a new answer (item 26). */
+  answering?: string | null,
 ): Promise<void> {
   const token = localStorage.getItem('token')
   const res = await fetch(`${API_BASE}/check-ins/${checkInId}/messages/stream`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: token ? `Bearer ${token}` : '' },
-    body: JSON.stringify({ message }),
+    body: JSON.stringify(answering ? { message, answering } : { message }),
   })
   if (!res.ok || !res.body) throw new Error(`stream failed: ${res.status}`)
   const reader = res.body.getReader()
@@ -115,8 +117,8 @@ export const conversationApi = {
   open: (checkInId: string) =>
     apiClient.post<OpenCheckInResponse>(`/check-ins/${checkInId}/open`, undefined, { skipForbiddenToast: true, skipNotFoundToast: true, skipServerErrorToast: true } as any).then(r => r.data),
 
-  send: (checkInId: string, message: string) =>
-    apiClient.post<SendMessageResponse>(`/check-ins/${checkInId}/messages`, { message }).then(r => r.data),
+  send: (checkInId: string, message: string, answering?: string | null) =>
+    apiClient.post<SendMessageResponse>(`/check-ins/${checkInId}/messages`, answering ? { message, answering } : { message }).then(r => r.data),
 
   complete: (checkInId: string) =>
     apiClient.post(`/check-ins/${checkInId}/complete`).then(r => r.data),
@@ -147,7 +149,7 @@ export const conversationApi = {
    */
   sessionReport: (checkInId: string) =>
     apiClient.get(`/check-ins/${checkInId}/session-report`, { skipNotFoundToast: true, skipForbiddenToast: true } as any)
-      .then(r => r.data as { report: import('./entry').EntryReport | null; finishedAt: string | null; sessionNumber: number | null; groundId: string | null; isInitiator: boolean; state?: 'ready' | 'open' | 'not-kept'; says?: string }),
+      .then(r => r.data as { report: import('./entry').EntryReport | null; finishedAt: string | null; sessionNumber: number | null; groundId: string | null; isInitiator: boolean; state?: 'ready' | 'open' | 'not-kept'; says?: string; onTime?: string }),
 
   documentReceived: (checkInId: string) =>
     apiClient.post<{ reply: string }>(`/check-ins/${checkInId}/document-received`).then(r => r.data),

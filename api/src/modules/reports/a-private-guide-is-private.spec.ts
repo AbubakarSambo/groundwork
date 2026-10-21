@@ -96,7 +96,8 @@ describe('a private guide is private', () => {
     const e = asParticipant().engagement as any;
     expect(e.concernFlags).toBeUndefined();
     expect(e.specificitySignal).toEqual({ 'Renewals owner': 'high' });
-    expect(e.parties.find((p: any) => p.label === 'the initiator').specificityLabel).toBeUndefined();
+    /* 18 October (Hafsah's quality pass, R-7): a participant keeps only their own row, so a colleague's row is gone, rating and all. */
+    expect(e.parties.find((p: any) => p.label === 'the initiator')?.specificityLabel).toBeUndefined();
     expect(e.parties.find((p: any) => p.label === 'Renewals owner').specificityLabel).toBe('high');
     expect((asParticipant() as any).leadershipGaps).toBeUndefined();
   });

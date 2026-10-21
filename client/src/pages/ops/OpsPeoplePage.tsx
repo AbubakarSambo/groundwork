@@ -62,23 +62,13 @@ function Capability({
 
   return (
     <>
-      <button
+      <button className={`gwui-choice${held ? ' gwui-choice-on' : ''}`}
         type="button"
         onClick={() => change.mutate()}
         disabled={change.isPending || !person.active}
         aria-pressed={held}
         title={held ? `Take ${capability} away from ${person.displayName}` : `Give ${person.displayName} ${capability}`}
-        style={{
-          border: '1px solid var(--gw-border)',
-          borderRadius: 20,
-          padding: '2px 9px',
-          margin: '0 4px 4px 0',
-          fontSize: 11,
-          cursor: person.active ? 'pointer' : 'default',
-          background: held ? 'var(--gw-navy)' : 'white',
-          color: held ? 'white' : 'var(--gw-sub)',
-          opacity: person.active ? 1 : 0.5,
-        }}
+        style={{ margin: '0 4px 4px 0' }}
       >
         {capability}
       </button>
@@ -183,10 +173,10 @@ export default function OpsPeoplePage() {
             {p.holdsNothing && p.active && (
               <span style={{ fontSize: 12, color: 'var(--gw-red-t)' }}>holds nothing at all</span>
             )}
-            <button
+            <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
               type="button"
               onClick={() => setActive.mutate({ key: p.key, active: !p.active })}
-              style={{ ...CARD, padding: '3px 10px', fontSize: 11.5, cursor: 'pointer', marginLeft: 'auto' }}
+              style={{ marginLeft: 'auto' }}
             >
               {p.active ? 'They have left' : 'They are back'}
             </button>

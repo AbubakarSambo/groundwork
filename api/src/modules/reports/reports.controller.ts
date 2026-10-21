@@ -1,4 +1,8 @@
-import { Controller, Get, Post, Param, Body, NotFoundException, ForbiddenException, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, NotFoundException, ForbiddenException, ParseIntPipe, Optional } from '@nestjs/common';
+import { theDirectMorningIsOnFor } from '../organisation/the-direct-morning-switch';
+import { inTheDirectMorningsWords } from './the-direct-morning-says-the-fact';
+import { yourRecordInYourReport } from '../board/the-persons-record-store';
+import { PrismaService } from '../prisma/prisma.service';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ReportsService } from './reports.service';
 import { releasedSessionsOf, whatReleasingThisSessionDoes } from './each-sessions-picture-is-released-on-its-own';
@@ -16,7 +20,12 @@ import { theSessionReportAtAGlance, withItsFacts } from './a-report-at-a-glance'
 @ApiBearerAuth()
 @Controller('grounds/:groundId/report')
 export class ReportsController {
-  constructor(private readonly reports: ReportsService) {}
+  constructor(private readonly reports: ReportsService, @Optional() private readonly prisma?: PrismaService) {}
+
+  /** The direct morning: the product's own hedges say the fact or nothing, as served (the-direct-morning-says-the-fact). Off, as before. */
+  private async direct<T>(groundId: string, served: T): Promise<T> {
+    return inTheDirectMorningsWords(served, await theDirectMorningIsOnFor(this.prisma, groundId));
+  }
 
   @Get()
   @ApiOperation({ summary: 'Get the released report (party or org admin)' })
@@ -25,7 +34,7 @@ export class ReportsController {
     @CurrentUser('id') userId: string,
     @CurrentUser('organizationId') organizationId: string,
   ) {
-    return this.reports.get(groundId, userId, organizationId);
+    return this.direct(groundId, await this.reports.get(groundId, userId, organizationId));
   }
 
   /**
@@ -59,7 +68,7 @@ export class ReportsController {
     @CurrentUser('id') userId: string,
     @CurrentUser('organizationId') organizationId: string,
   ) {
-    return this.reports.rounds(groundId, userId, organizationId);
+    return this.direct(groundId, await this.reports.rounds(groundId, userId, organizationId));
   }
 
   /**
@@ -80,7 +89,23 @@ export class ReportsController {
     /* Decision 133: the lead's reading is recorded, once per open, after the read was allowed. Never a rebuild. */
     await this.reports.noteTheLeadRead(groundId, sessionNumber, userId);
     /* The light report's one fact for each folded line (sales-first.md, section 2, rule 3), from the report as this reader is served it, after every wall. */
-    return withItsFacts(report, theSessionReportAtAGlance);
+    const served = withItsFacts(report, theSessionReportAtAGlance);
+    /* What the switchboard picks for the reports, only where Release 2 is on (board/the-switchboard.ts); off, the report is served exactly as before. */
+    const pick = served && typeof served === 'object' && !Array.isArray(served) ? ((await this.reports.theSwitchboardsPickFor?.(groundId).catch(() => ({}))) ?? {}) : {};
+    const withPick = (pick as any).switchboard ? { ...(served as object), switchboard: (pick as any).switchboard } : served;
+    return this.direct(groundId, await this.withYourRecord(groundId, sessionNumber, userId, withPick));
+  }
+
+  /**
+   * THE READER'S OWN RECORD IN THEIR OWN REPORT (Groundwork does the managing, part 1): what they said in this session and what shows it,
+   * their promises that are late, and the coaching Groundwork gave them and whether it worked. The reader's own alone, read from where it
+   * is kept and never rebuilt here. Only where the direct morning is on; off, the report is served exactly as before.
+   */
+  private async withYourRecord<T>(groundId: string, sessionNumber: number, userId: string, served: T): Promise<T> {
+    if (!this.prisma || !served || typeof served !== 'object' || Array.isArray(served)) return served;
+    if (!(await theDirectMorningIsOnFor(this.prisma, groundId))) return served;
+    const yourRecord = await yourRecordInYourReport(this.prisma, groundId, sessionNumber, userId).catch(() => null);
+    return yourRecord ? { ...(served as object), yourRecord } as T : served;
   }
 
   /**
@@ -102,6 +127,30 @@ export class ReportsController {
   @ApiOperation({ summary: 'Manually trigger or retry report synthesis (admin only)' })
   async generate(@Param('groundId') groundId: string, @CurrentUser('id') userId: string, @CurrentUser('organizationId') organizationId: string) {
     return this.reports.generateForAdmin(groundId, organizationId, userId);
+  }
+
+  /** "Hold it": the lead keeps today's team report to herself until she shares it (Hafsah's answer 5, 16 October 2026). */
+  @Post('hold')
+  @ApiOperation({ summary: "Hold today's team report so it does not share itself at its set time" })
+  async hold(
+    @Param('groundId') groundId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('organizationId') organizationId: string,
+  ) {
+    return this.reports.holdAsTheLead(groundId, userId, organizationId);
+  }
+
+  /** When today's team report is shared, as this reader is told it. Nothing of the report itself. */
+  @Get('sharing')
+  @ApiOperation({ summary: "When today's team report is shared, as this reader is told it" })
+  async sharing(
+    @Param('groundId') groundId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('organizationId') organizationId: string,
+  ) {
+    const said = await this.reports.howTodaysReportIsShared(groundId, userId, organizationId);
+    if (!said) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    return said;
   }
 
   /* No role gate here. The person who runs a check-in may be a member with "Can open check-ins", and the

@@ -1,3 +1,5 @@
+import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
+import { localHour } from '../email/nothing-lands-at-3am';
 import { keptOffThePhone } from './a-check-in-kept-off-the-phone';
 import { RELEASE_MOMENT_KEY, theMomentIn } from '../grounds/the-release-moment';
 import { awayUntilOn, leaveOfThePeopleOn } from '../suites/who-is-away';
@@ -47,11 +49,13 @@ export const CARRY_ON = 'carry-on';
 export const CLOSES_IN_HALF_AN_HOUR = 'closes-in-half-an-hour';
 export const CLOSED_BY_THE_CLOCK = 'closed-by-the-clock';
 
-/** Three hours of quiet before the one reminder; only between seven in the morning and eight at night in Lagos. */
+/**
+ * Three hours of quiet before the one reminder; only between seven in the morning and eight at night where the organisation is
+ * (release plan Part 0: quiet hours are the organisation's; it was Lagos for everybody, so a team in Nairobi was reminded at 9pm).
+ */
 export const QUIET_BEFORE_THE_REMINDER_MS = 3 * 60 * 60 * 1000;
-const LAGOS_OFFSET_HOURS = 1;
-export function withinTheDay(now: Date): boolean {
-  const h = (now.getUTCHours() + LAGOS_OFFSET_HOURS) % 24;
+export function withinTheDay(now: Date, zone: string = THE_PRODUCTS_OWN_ZONE): boolean {
+  const h = localHour(now, zone);
   return h >= 7 && h < 20;
 }
 
@@ -68,8 +72,8 @@ export function closesInHalfAnHourSaying(label: string, simplerWords?: boolean |
 export type WhyTheClockClosedIt = 'quiet' | 'age';
 export function closedByTheClockSaying(label: string, simplerWords?: boolean | null, why: WhyTheClockClosedIt = 'quiet'): string {
   const because = why === 'age' ? 'it has been open for two days' : 'nothing was said for twelve hours';
-  if (simplerWords) return `Your check-in for "${label}" has closed, because ${because}. Everything you said is saved. Your report will come in a moment.`;
-  return `Your check-in for "${label}" has closed, because ${because}. Everything you said is kept on the record, and your report follows in a moment.`;
+  if (simplerWords) return `Your check-in for "${label}" has closed, because ${because}. Everything you said is saved.`;
+  return `Your check-in for "${label}" has closed, because ${because}. Everything you said is kept on the record.`;
 }
 
 type Sender = { sendFor: (org: string, phone: string, text: string, context: { checkInId?: string; kind?: string; params?: string[] }) => Promise<{ sent: boolean }> };
@@ -122,11 +126,12 @@ export async function remindThemToCarryOn(prisma: any, whatsapp: Sender, checkIn
   if (checkIn.warningFiredAt) return false;
   if (!lastTurn || lastTurn.role !== 'AI') return false;
   const quiet = now.getTime() - new Date(lastTurn.createdAt).getTime();
-  if (quiet < QUIET_BEFORE_THE_REMINDER_MS || !withinTheDay(now)) return false;
+  if (quiet < QUIET_BEFORE_THE_REMINDER_MS) return false;
   const already = await prisma.whatsAppSend?.findFirst?.({ where: { checkInId: checkIn.id, kind: { startsWith: CARRY_ON } }, select: { id: true } })?.catch?.(() => null);
   if (already) return false;
   const to = await theirPhoneForThisSession(prisma, checkIn.id, { now, skipIfAway: true });
   if (!to) return false;
+  if (!withinTheDay(now, (await theOrganisationsZone(prisma, to.organizationId).catch(() => null)) ?? THE_PRODUCTS_OWN_ZONE)) return false;
   return (await whatsapp.sendFor(to.organizationId, to.phone, carryOnSaying(to.firstName, to.label, to.simplerWords), { checkInId: checkIn.id, kind: CARRY_ON })).sent;
 }
 

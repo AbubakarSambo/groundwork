@@ -1,13 +1,16 @@
-import { createContext, useContext, useState } from 'react'
+import { ItsEvidence } from '@/components/gw/ItsEvidence'
+import { createContext, useContext, useState, type ReactNode } from 'react'
 import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { boardApi, KIND_OF_WORK_OPTIONS, type AServedWorkSection, type AServedWorkRow, type KindOfWork, type WorkItemInput } from '@/api/board'
+import { isASalesKind } from '@/lib/a-sales-kind'
 import { groundsApi } from '@/api/grounds'
 import { Link } from 'react-router-dom'
 import { Section, Panel, RowList, Row, Tag, Button, Modal, FieldLabel, TextField, TextArea, Select, StageTrack, ProofMark, Stack, Note, SubHeading, Folded } from '@/components/gw/ui'
 import { Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import { useTheDirectMorning } from '@/lib/the-direct-morning'
 
 /**
  * THE KIND OF WORK, SAID AS A SENTENCE (request 76). The eleven names the server stores are short
@@ -23,7 +26,8 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
  * two can ever be on screen at once.
  */
 const KIND_OF_WORK_SENTENCE: Record<KindOfWork, string> = {
-  'sales org': "This check-in is about a sales team and its deals.",
+  'sales team': 'This check-in is about a sales team and its deals.',
+  'sales org': 'This check-in is about a sales organisation of several teams, and its deals.',
   'engineering release': 'This check-in is about an engineering release.',
   'support desk': 'This check-in is about a support desk and its tickets.',
   'distribution operations': 'This check-in is about distribution operations.',
@@ -47,8 +51,9 @@ const KIND_OF_WORK_SENTENCE: Record<KindOfWork, string> = {
  * sends is still one of the engine's own eleven names (`KIND_OF_WORK_OPTIONS`) - only the label a
  * person reads changes.
  */
-const KIND_OF_WORK_OPTION_LABEL: Record<KindOfWork, string> = {
-  'sales org': 'A sales team and its deals',
+export const KIND_OF_WORK_OPTION_LABEL: Record<KindOfWork, string> = {
+  'sales team': 'One sales team and its deals',
+  'sales org': 'A sales organisation of several teams, and its deals',
   'engineering release': 'An engineering release',
   'support desk': 'A support desk and its tickets',
   'distribution operations': 'Distribution operations',
@@ -100,6 +105,7 @@ const DEAL_GRID_HEADING: Partial<Record<KindOfWork, string>> = {
      (docs/prototype/screens/B5-the-board/board-as-lead.txt, "Every deal, day by day") is the one
      this component actually draws for - WorkRecordsSections is only ever called from the Board
      page (BoardPage.tsx), never from the G1 example-check-ins screen the old heading quoted. */
+  'sales team': 'Every deal, day by day',
   'sales org': 'Every deal, day by day',
   /* Phase 2 of the board task, 1 October: the prototype's own eng example
      (docs/prototype/screens/G1-example-check-ins/eng.txt) heads this table "Every task, and
@@ -132,6 +138,7 @@ const WORK_PLAN_HEADING: Partial<Record<KindOfWork, string>> = {
  * `note` (Section's own slot for it) and the-prototype-count tests can't drift apart.
  */
 const DEAL_GRID_NOTE: Partial<Record<KindOfWork, string>> = {
+  'sales team': 'Grouped by what the proof says about closing this quarter.',
   'sales org': 'Grouped by what the proof says about closing this quarter.',
 }
 
@@ -192,6 +199,7 @@ const THEMES_NOTE: Partial<Record<KindOfWork, string>> = {
 
 /** The word for one row's kind, at the head of its own column ("Deal", "Task", "Item", "Trader"...). */
 const ITEM_NOUN_FOR_KIND: Record<KindOfWork, string> = {
+  'sales team': 'Deal',
   'sales org': 'Deal',
   'engineering release': 'Task',
   'support desk': 'Ticket',
@@ -212,6 +220,7 @@ const ITEM_NOUN_FOR_KIND: Record<KindOfWork, string> = {
 
 /** The word for whose it is, at the head of the owner column ("Rep" for sales, "Agent" for support desk...). */
 const OWNER_LABEL_FOR_KIND: Record<KindOfWork, string> = {
+  'sales team': 'Rep',
   'sales org': 'Rep',
   'engineering release': 'Owner',
   'support desk': 'Agent',
@@ -398,7 +407,7 @@ function WhatShowsIt({ row, leadFirstName, readerIsLead }: { row: AServedWorkRow
 /** `WhatShowsIt`, with its usual small top margin - written once, since every list that draws a
     record (the generic table, the sales deal grid, the timeline, the parties, the themes list)
     wrapped it in the exact same one-off class. */
-function WhatShowsItBlock(props: { row: AServedWorkRow; leadFirstName: string | null; readerIsLead: boolean }) {
+export function WhatShowsItBlock(props: { row: AServedWorkRow; leadFirstName: string | null; readerIsLead: boolean }) {
   return <div className="gwui-mt-4"><WhatShowsIt {...props} /></div>
 }
 
@@ -684,7 +693,7 @@ function SalesDealGridHead() {
  * (the engine's own `groupsNote`), so a tick here would be invented, not read off the record.
  */
 function DealDetail({ row, groundId }: { row: AServedWorkRow; groundId: string }) {
-  const hasDetail = !!row.groupSays || !!row.contactHistory?.length || !!row.theirRead || !!row.valueSays
+  const hasDetail = !!row.groupSays || !!row.contactHistory?.length || !!row.theirRead || !!row.valueSays || !!row.evidence?.length
   if (!hasDetail) return null
   return (
     <Folded summary="Why it’s here">
@@ -705,6 +714,7 @@ function DealDetail({ row, groundId }: { row: AServedWorkRow; groundId: string }
             {row.contactHistorySays && <Note tone="muted">{row.contactHistorySays}</Note>}
           </div>
         )}
+        <ItsEvidence evidence={row.evidence} />
         {row.theirRead && (
           <div>
             <SubHeading as="h3">{row.theirRead.says}</SubHeading>
@@ -1096,7 +1106,7 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
   /* BOARD REVIEW, SALES PIECE C: the sales org's own Deal grid draws its own head and row shape
      (item 3 a, c, d - see `SalesDealGridHead`/`SalesDealGridRow`), not the generic table every
      other kind of work shares. */
-  const isSalesDealGrid = isDealGrid && kindOfWork === 'sales org'
+  const isSalesDealGrid = isDealGrid && isASalesKind(kindOfWork)
   /*
    * PROJECT BOARD REVIEW 1, FIX 10: "NOT RIGHT? TELL THE CHECK-IN" ON THE ENGINEERING GRID TOO.
    * eng.txt's own grid carries this line under its rows ("Something here wrong? Anyone can
@@ -1203,6 +1213,18 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
       {isSalesDealGrid ? <Stack gap={12}><DealGridKey rows={dealGridRows} />{dealGridContent}</Stack> : dealGridContent}
 
       {/*
+        LOST DEALS, AND WHY (Hafsah, 18 October: a Lost stage). Never in a group or an open total; one line each, in the
+        server's own sentences: what happened and why, in the rep's words, what shows it, and a lesson only where the record has one.
+      */}
+      {isSalesDealGrid && 'lost' in section && (section.lost ?? []).length > 0 && (
+        <Stack gap={6}>
+          <SubHeading>Lost deals, and why</SubHeading>
+          <Note tone="muted">A reason with no source stays unverified. An unknown reason is flagged, because it can’t be learned from.</Note>
+          {(section.lost ?? []).map((l) => <Note key={`lost-${l.id}`}>{[l.says, l.reasonFrom, l.lesson].filter(Boolean).join(' ')}</Note>)}
+        </Stack>
+      )}
+
+      {/*
         REQUEST 112 (a): WHAT THE RECORD CANNOT SUPPORT, SAID PLAINLY ONCE UNDER THE GRID
         ("Nothing on record says what a deal must show at each stage..."). Never claimed by a
         group's own heading or reason - said once, here, so no group reads as more than it is.
@@ -1253,7 +1275,7 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
       )}
 
       {canAdd && (
-        <div className="gwui-mt-14">
+        <div className="pb-add-record">
           {/* Board review, 1 October, item 8: this only opens the form below (a fold) - the real
               mutation is that form's own submit button, which stays a real button. A boxed
               secondary button here counted as a second control for one action. */}
@@ -1295,6 +1317,7 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
 /** The prototype's own heading for this reader's own records (board-as-participant.txt: "Your
     deals, day by day"), where it has one - otherwise the same shape every other kind uses. */
 const YOUR_OWN_HEADING: Partial<Record<KindOfWork, string>> = {
+  'sales team': 'Your deals, day by day',
   'sales org': 'Your deals, day by day',
 }
 
@@ -1305,15 +1328,17 @@ export function YourOwnRecordsSections({ groundId, kindOfWork, sections, myParti
   myParticipantId: string | null
   leadFirstName: string | null
 }) {
+  /* The direct morning (lib/the-direct-morning.tsx): no "Only yours." note. Which rows are hers is the backend's rule, the same either way. */
+  const direct = useTheDirectMorning()
   if (!sections?.length || !myParticipantId) return null
   const itemNoun = (kindOfWork ? ITEM_NOUN_FOR_KIND[kindOfWork] : 'Item').toLowerCase()
   const heading = (kindOfWork ? YOUR_OWN_HEADING[kindOfWork] : undefined) ?? `Your own ${itemNoun}s, day by day`
-  const isSalesDeals = kindOfWork === 'sales org'
+  const isSalesDeals = isASalesKind(kindOfWork)
   const mine = sections
     .filter((s): s is Extract<AServedWorkSection, { state: 'filled' | 'none-yet' }> => s.state !== 'not-known')
     .flatMap((s) => (s.rows ?? []).filter((r) => r.ownerParticipantId === myParticipantId))
   return (
-    <Section heading={heading} note="Only yours.">
+    <Section heading={heading} note={direct ? undefined : 'Only yours.'}>
       {/*
         BOARD FIX (sales B, item 3b): A READER WITH NO ROWS STILL READS A SENTENCE, NOT A MISSING
         SECTION. The engine itself sends every row ever said about this reader's own work (request
@@ -1425,7 +1450,7 @@ export function WorkRecordsSections({ groundId, kindOfWork, sections, participan
  */
 function TheShapeOfTheWork({ stages, counts, itemNoun }: { stages: string[]; counts: Record<string, number>; itemNoun: string }) {
   return (
-    <div className="gwui-mt-14">
+    <div className="pb-add-record">
       <p className="gwui-mb-8 gwui-fs-16 gwui-ink-text" style={{fontWeight: 700}}>The shape of the work</p>
       <StageTrack stages={stages} counts={counts} itemNoun={itemNoun} />
     </div>
@@ -1445,4 +1470,68 @@ export function TheShapeOfTheWorkStrip({ kindOfWork, sections }: { kindOfWork?: 
   for (const row of section.rows) { const st = row.stageSays ?? row.stage; if (st) stageCounts[st] = (stageCounts[st] ?? 0) + 1 }
   const itemNoun = kindOfWork ? ITEM_NOUN_FOR_KIND[kindOfWork] : 'Item'
   return <TheShapeOfTheWork stages={section.stages} counts={stageCounts} itemNoun={itemNoun} />
+}
+
+/**
+ * CHANGING A DEAL, CONFIRMING WHOSE IT IS, AND ADDING ONE, FOR THE BOARD AS PICTURED (screen match, 16
+ * October; pictured/ThePicturedSalesBoard.tsx). The same mutations and the same form as the deal grid
+ * above, so nothing the lead could do on the old grid is lost: "Change" (with "Remove this record"),
+ * the claim's yes and no (decision 76, item 3), and "Add a record".
+ */
+export function TheDealsCanBeChanged({ groundId, section, participants, canEdit, children }: {
+  groundId: string
+  section: Extract<AServedWorkSection, { rows: AServedWorkRow[] }>
+  participants: { id: string; name: string | null }[]
+  canEdit: boolean
+  children: (api: { edit: (row: AServedWorkRow) => void; claim: (row: AServedWorkRow, yes: boolean) => void; claimPending: boolean }) => ReactNode
+}) {
+  const qc = useQueryClient()
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['board', groundId] })
+  const [adding, setAdding] = useState(false)
+  const [editingRow, setEditingRow] = useState<AServedWorkRow | null>(null)
+  const addItem = useMutation({
+    mutationFn: (dto: WorkItemInput) => boardApi.addWorkItem(groundId, dto),
+    onSuccess: () => { setAdding(false); invalidate() },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That record was not added. What you typed is still here, so try again.'),
+  })
+  const updateItem = useMutation({
+    mutationFn: (v: { itemId: string; dto: WorkItemInput }) => boardApi.updateWorkItem(groundId, v.itemId, v.dto),
+    onSuccess: () => { setEditingRow(null); invalidate() },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That change was not saved. Nothing has changed, so try again.'),
+  })
+  const removeItem = useMutation({
+    mutationFn: (itemId: string) => boardApi.deleteWorkItem(groundId, itemId),
+    onSuccess: () => { setEditingRow(null); invalidate() },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That record was not removed. Nothing has changed, so try again.'),
+  })
+  const claimItem = useMutation({
+    mutationFn: (v: { itemId: string; yes: boolean }) => boardApi.claimWorkItem(groundId, v.itemId, v.yes),
+    onSuccess: (data) => { invalidate(); if (data?.saidBack) toast.success(data.saidBack) },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. Nothing has changed, so try again.'),
+  })
+  const canAdd = canEdit && !!ITEM_KINDS_FOR_HOLDS[section.holds]?.length
+  return (
+    <>
+      {children({ edit: setEditingRow, claim: (row, yes) => claimItem.mutate({ itemId: row.id, yes }), claimPending: claimItem.isPending })}
+      {canAdd && (
+        <div className="pb-add-record">
+          <button onClick={() => setAdding(true)} className="gwui-plain-link">Add a record</button>
+        </div>
+      )}
+      {adding && (
+        <WorkItemForm section={section} participants={participants} editing={null} onClose={() => setAdding(false)} onSaved={(dto) => addItem.mutate(dto)} />
+      )}
+      {editingRow && (
+        <WorkItemForm
+          section={section}
+          participants={participants}
+          editing={editingRow}
+          onClose={() => setEditingRow(null)}
+          onSaved={(dto) => updateItem.mutate({ itemId: editingRow.id, dto })}
+          onRemove={canEdit ? () => removeItem.mutate(editingRow.id) : undefined}
+          removing={removeItem.isPending}
+        />
+      )}
+    </>
+  )
 }

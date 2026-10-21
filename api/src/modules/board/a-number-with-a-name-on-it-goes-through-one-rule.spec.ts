@@ -122,7 +122,68 @@ describe('every surface that hands out whose number it is', () => {
     /* Decision 120: the lead's daily nudge names a team target that is behind. It selects only targets with nobody's name on them (ownerParticipantId null, never a decision about a person), so it
        serves no owner and no one person's number, and it goes to the lead who runs the check-in, whom targetsFor shows every target. */
     'modules/engagement/the-leads-daily-nudge.ts': 'reads only team targets with nobody\'s name on them, for the lead who runs the check-in; never an owner and never one person\'s number',
+    /* Drop Access, 16 October: a sales check-in's conversation is given the person's own deals and leads (work items), read by their own id. Never a target or anybody else's. */
+    'modules/conversation/what-a-sales-check-in-gathers.ts': "reads only the person's own deals and leads (work items), by their own id, for their own check-in; never a target or a number",
     'modules/board/__fixtures__/sales-board-review-5.ts': 'test rows for the request 117 specs; the board asks targetsFor',
+    /* Drop Access, 17 October: counts a sales aim from the deals on record. It reads a deal's owner and an aim's owner only to count each
+       person's own deals; the board and the weekly report hand the counts on only through targetsFor. */
+    'modules/board/a-sales-aim-is-counted-from-the-deals.ts': "counts each aim from the deals its holder owns; serves nobody, and its callers ask targetsFor before anything is read",
+    /* Drop Access, 17 October: places a wait on a customer on its deal. It reads a deal's owner (a work item), never a target or a number. */
+    'modules/board/a-customers-reply-is-on-its-deal.ts': 'reads the owner of a deal (a work item) to place a wait on it, never a target or a number',
+    /* Drop Access run 1, item 15: the lead's morning summary says which deals have stalled. It reads a deal's name and owner (work items), never a target or a number, for the lead who runs the check-in. */
+    'modules/board/the-deals-that-have-stalled.ts': "reads each deal's name and owner (work items) to say which has stalled, for the lead who runs the check-in; never a target or a number",
+    /* Drop Access, 17 October: the sales week in numbers. It is handed only the rows the-weekly-report.service.ts has already passed through targetsFor for this reader. */
+    'modules/reports/the-sales-week-in-numbers.ts': 'the shape and sentence of a sales target in a week; its service asks targetsFor before handing rows in',
+    /* Drop Access, 18 October: a sales check-in's reports read from the deals. It reads a deal's owner (a work item) to say what moved and to
+       ask a person about their own deal; it never reads a target or an aim. Its caller hands each reader only their own deals or the team's day. */
+    'modules/reports/a-sales-report-read-from-the-deals.ts': "reads the owner of a deal (a work item) to say what moved or ask about one's own deal; never a target or a number",
+    /* Hafsah, 18 October: a lost deal is listed once, with whose it is. It reads a deal's owner (a work item) from rows the board has already narrowed for this reader; never a target or a number. */
+    'modules/board/each-deal-in-its-group.ts': "lists each lost deal with its owner (a work item), from rows already narrowed for this reader; never a target or a number",
+    /* Hafsah, 18 October: the Context tab reads each target once. It only leaves out a target or an expectation that says a target again; grounds.service asks targetsFor over what is left before anything is served. */
+    'modules/grounds/the-context-reads-each-target-once.ts': 'only leaves out targets said again; serves nobody, and grounds.service asks targetsFor over what is left',
+    /* Hafsah, 18 October: the targets from the lead's words wait for her yes. It shapes a held target (whose it is) for a card served to the lead alone, whom targetsFor shows every target. */
+    'modules/grounds/the-leads-targets-wait-for-her-yes.ts': "shapes a held target for the lead's own confirm card, which only the lead is served; she reads every target",
+    /* Drop Access short run, item 6: a rep is asked only about their own deals. It reads a deal's owner (a work item) to leave another rep's customers out of what this rep is asked; never a target or a number. */
+    /* Hafsah's quality pass, 18 October: what each deal still needs, and from whom. It reads a deal's owner (a work item) to say whose step it is, from rows and waits the board has already narrowed for this reader; never a target or a number. */
+    'modules/board/what-a-deal-still-needs.ts': "reads the owner of a deal (a work item) to say whose step it is, from rows and waits already narrowed for this reader; never a target or a number",
+    /* Hafsah's quality pass, 18 October, Q6: what to coach each rep this week. It reads each deal's owner (a work item) to say whose work a line is about, for the lead alone; never a target or a number. */
+    'modules/board/what-to-coach-this-week.ts': "reads the owner of a deal (a work item) to say whose work a line is about, for whoever runs the check-in; never a target or a number",
+    'modules/conversation/asking-for-what-they-left-out.ts': "reads the owner of a deal (a work item) only to leave another rep's customers out of what this rep is asked; never a target or a number",
+    /* Hafsah's quality pass, 18 October, sections 4 to 6: the sales reports read from the record. Each reads a deal's owner (a work item), and each person's
+       own target only where the reader may read it: the lead, who runs the check-in and whom targetsFor shows every target, or that person about their own. */
+    'modules/reports/the-sales-readings-for-a-report.ts': "reads a deal's owner (a work item) and each person's target only for the lead who runs it, or for that person's own report; never another person's number to a person",
+    'modules/reports/the-sales-team-report-from-the-record.ts': "shapes the team's report from the deals and the targets its caller hands in for the lead alone; serves nobody itself",
+    'modules/reports/the-sales-week-in-words.ts': "keeps each person's lines by label with their own target; the weekly read hands a person only their own lines and the lead every line",
+    /* Release 1B, pull request 2 of 3: proof added in a check-in is filed on its item. It reads a work item's owner only to prefer the person's own item when filing; it serves nobody, and never reads a target or a number. */
+    'modules/documents/proof-filed-on-its-item.ts': "reads a work item's owner only to file proof on the person's own item; serves nobody, never a target or a number",
+    /* Release 2, pull request 2 of 3: the collections record, board and reports. Each reads a bill's owner (a work item: a fee note, an invoice or a loan) to say who
+       follows it up, and the service walls the bills to the reader before anything is built (the lead every bill, a person their own). None reads a target or a number on one. */
+    'modules/board/the-collections-record.ts': "writes each bill as a work item owned by the person who said it; serves nobody, never a target or a number",
+    'modules/board/the-collections-board.ts': "reads a bill's owner (a work item) to say who follows it up, from bills already walled for this reader; never a target or a number",
+    'modules/board/the-collections-board.service.ts': "reads each bill's owner (a work item) to wall the bills to the reader before the board is built; never a target or a number",
+    'modules/reports/the-collections-reports.ts': "reads a bill's owner (a work item) to say whose it is, from bills already walled for this reader; never a target or a number",
+    'modules/board/a-fee-note-due-on-an-event.ts': "reads the bills that wait for an event (work items) to write their day from a matter check-in's line; serves nobody, never a target or a number",
+    'modules/board/the-matter-board.ts': "reads a deadline's or a wait's owner (work items) to say they are the reader's own, from rows already walled for this reader; never a target or a number",
+    'modules/board/the-matter-board.service.ts': "reads each deadline's owner (a work item) to wall the matter board to the reader before it is built; never a target or a number",
+    'modules/grounds/__fixtures__/muchemi-and-co.ts': 'hand-written test rows for Release 2: fee notes as work items, never a target',
+    'modules/grounds/__fixtures__/a-small-lender.ts': 'hand-written test rows for Release 2: loans as work items, never a target',
+    /* Engine test, second run: the facts each conversation and each judgement is given about deals. */
+    'modules/conversation/their-own-deals-and-what-is-on-file.ts': "reads a deal's owner (a work item) to keep only the person's own deals, and only their own target, which the caller reads for them; never another person's number",
+    'modules/reports/proof-on-file-is-never-asked-for.ts': "reads a sale's owner (a work item) to name whose sale it is in the judgement, which only the lead who runs the check-in reads; never a target or a number",
+    /* The direct morning, 19 October. The lead's four parts read the team's aim only from the board as already served to her (objectives that
+       went through targetsFor in board.service), and a matter's deadlines by their owner (work items) to say whose they are. It is sent to
+       the lead who runs the check-in alone. */
+    'modules/engagement/the-direct-morning.ts': "reads the team's aim only from the lead's board as served (already through targetsFor), and a deadline's owner (a work item); sent to the lead alone",
+    /* "Somebody has checked in" says what they reported: it reads that person's own work items (deals and fee notes) by their own id, for the lead who runs the check-in. Never a target or a number on one. */
+    'modules/engagement/what-they-reported.ts': "reads one person's own work items by their own id to say what they reported, for the lead who runs the check-in; never a target or a number",
+    /* Each team member's personal opening: their own deals (work items), kept by their own id, and the people at each of their customers. Never a target or anybody else's number. */
+    'modules/conversation/the-one-thing-today.ts': "keeps only the person's own deals and bills (work items) by their own id for their own opening; never a target or anybody else's number",
+    /* Groundwork does the managing, part 1: each person's record reads a deal's or a bill's owner (a work item) to keep figures and focus to their own items. */
+    'modules/board/the-persons-record-store.ts': "reads a deal's or a bill's owner (a work item) to keep a person's figures and focus to their own items; never a target or a number",
+    /* Groundwork does the managing, part 2: each person's part of the lead's board reads their own records (work items) by their own id, for the deadline and reassign taps, and is served to the lead who runs the check-in alone. Never a target. */
+    /* The final real-model check's follow-up: which of a person's own deals a promise of theirs is about, read from their own conversation. Never a target. */
+    'modules/board/the-deal-a-promise-is-about.ts': "reads a deal's owner (a work item) only to keep a person's promise to their own deals; serves nobody, never a target or a number",
+    'modules/board/your-team-person-by-person.ts': "reads each person's own records (work items) by their own id, for the lead who runs the check-in alone; never a target or a number",
   };
 
   it('goes through the one rule, or says why it is not a reader', () => {

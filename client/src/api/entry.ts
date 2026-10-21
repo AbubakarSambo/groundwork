@@ -287,8 +287,10 @@ export const entryApi = {
      * server reads nothing from an absent field.
      */
     anchorItems?: Record<string, unknown>,
+    /* What she said in setup, in her own words, so her report knows her own role and each person's part (15 October). */
+    leadsOwnWords?: string[],
   ) =>
-    apiClient.post<{ report: EntryReport | null }>('/entry/report', { messages, scenario, groundLabel, peopleNamed, anchorItems }).then(r => r.data),
+    apiClient.post<{ report: EntryReport | null }>('/entry/report', { messages, scenario, groundLabel, peopleNamed, anchorItems, ...(leadsOwnWords?.length ? { leadsOwnWords } : {}) }).then(r => r.data),
 
   commit: (payload: {
     groundLabel: string

@@ -64,8 +64,14 @@ export function theBoardAtAGlance(b: any, opts: { readerCheckedInThisRound: bool
     else if (typeof o.assumesSays === 'string' && o.assumesSays.trim()) assumesEach[o.id] = o.assumesSays.trim().replace(/\.$/, '');
   }
   const stages = Array.isArray(b.reportedAgainstCriteria?.stages) ? b.reportedAgainstCriteria.stages : [];
-  const lastStage = [...stages].reverse().find((s: any) => typeof s.reported === 'number' && s.reported > 0);
-  if (lastStage) lines.reported = `${lastStage.stage}: ${lastStage.reported} said, ${lastStage.withProof ?? 0} with proof`;
+  /* The furthest stage a deal moves forward to: Lost is where a deal left, not how far the work got (found reading Grace's board, 18 October). */
+  const lastStage = [...stages].reverse().find((s: any) => typeof s.reported === 'number' && s.reported > 0 && !/^lost$/i.test(String(s.stage ?? '').trim()));
+  /* With the stage rules on record (Release 1), said and met, as "Reported vs criteria met" counts them: Won is met with a signed
+     order or a payment record (Hafsah, 18 October, answer 2), so a won said in words alone is never counted here as met. Proof of
+     payment is counted apart, on the aim ("71 sold, 40 with proof of payment."). */
+  if (lastStage) lines.reported = typeof lastStage.met === 'number'
+    ? `${lastStage.stage}: ${lastStage.reported} said, ${lastStage.met} met`
+    : `${lastStage.stage}: ${lastStage.reported} said, ${lastStage.withProof ?? 0} with proof`;
   const aims = teamAims(b).slice(0, 2);
   /* The served name is already a sentence ("The team is aiming for 25 freezers sold."), so the fact is the numbers and the word the record gives it. */
   if (aims.length) lines.targetsOverTime = aims.map((o: any) => `${o.journey?.now ?? o.count ?? 0} of ${o.target}${o.stands?.word ? `, ${String(o.stands.word).toLowerCase()}` : ''}`).join('; ');

@@ -43,6 +43,9 @@ export function intoSentences(text: string): string[] {
     let end = i + 1;
     /* Take the run of terminators and the whitespace after them, so "Really?! Next" splits once. */
     while (end < text.length && '.!?'.includes(text[end])) end++;
+    /* A full stop inside a word is not the end of a sentence: "mpesa-kilele-hotel.pdf is the M-Pesa message" was cut after "hotel.",
+       and Kevin read "The mpesa-kilele-hotel.That counts as proof for that deal." (final real-model check, item 17). */
+    if (ch === '.' && end === i + 1 && end < text.length && /[\p{L}\d]/u.test(text[end]) && i > start && /[\p{L}\d_-]/u.test(text[i - 1])) continue;
     while (end < text.length && (text[end] === ' ' || text[end] === '\t')) end++;
     out.push(text.slice(start, end));
     start = end;

@@ -38,7 +38,7 @@ const NOT_A_BREAK = /\b(Mr|Mrs|Ms|Dr|Prof|St|No|vs|etc)\.$/;
 const LITTLE_WORDS = new Set('the and for but not has had have was were are been will would should could can did does his her its our their they them you your with from that this than then there what when who why how all any one two out off per into onto over about also just very more most some such too own same each both few many much shall may might must i me my we us he she it is be to of in on at by an as or if so do no up'.split(' '));
 const contentWords = (t: string): string[] => (t.toLowerCase().normalize('NFC').replace(/[\u2018\u2019']/g, '').match(/[\p{L}\p{N}]+/gu) ?? []).filter((w) => w.length > 2 && !LITTLE_WORDS.has(w));
 /** A person's turn as its sentences, each exactly as they typed it ("Mr." does not end one). */
-function sentencesOf(turn: string): string[] {
+export function sentencesOf(turn: string): string[] {
   const out: string[] = [];
   for (const line of turn.split(/\n+/)) {
     let from = 0;

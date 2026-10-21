@@ -1,3 +1,4 @@
+import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
 import type { PrismaService } from '../prisma/prisma.service';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { PATTERN_ROW_SELECT, seenAgainAfterTalk, servedPatterns, type APatternRow } from '../patterns/who-reads-a-pattern';
@@ -96,6 +97,8 @@ export async function thePatternsForTheBriefing(
   input: { organizationId: string; personUserId: string | null; readerUserId: string; first: string; now?: Date },
 ): Promise<{ patterns: APatternInTheBriefing[]; talkedThrough: string[] }> {
   if (!input.personUserId || input.personUserId === input.readerUserId) return { patterns: [], talkedThrough: [] };
+  /* Judgements of a person off for the organisation: no pattern about them in the briefing (organisation/person-judgements.ts). */
+  if (!(await thePersonJudgementsAreOn(prisma, input.organizationId))) return { patterns: [], talkedThrough: [] };
   const db = prisma as any;
   const theirs: any[] = ((await db.groundParticipant?.findMany?.({
     where: {

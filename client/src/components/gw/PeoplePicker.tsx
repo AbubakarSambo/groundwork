@@ -87,12 +87,12 @@ export function PeoplePicker({
   return (
     <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, background: 'white', marginBottom: 10 }}>
       <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--gw-border)', display: 'flex', gap: 8, alignItems: 'center' }}>
-        <input
+        <input className="gwui-input"
           aria-label="Find a colleague"
           placeholder={`Find a colleague (${candidates.length})`}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
+          style={{ flex: 1 }}
         />
         <button
           type="button"

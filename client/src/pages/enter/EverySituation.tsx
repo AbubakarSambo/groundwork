@@ -14,11 +14,25 @@ import { EVERY_SITUATION, FOR_EXAMPLE, HOW_IT_WORKS, THE_DOOR_SIGNED_OUT, THE_GR
  * own words, because that situation has no opening sentence of its own.
  */
 
-/** The cards under one heading, in the prototype's order. "Work through something else" ends the last group. */
-export function cardsUnder(group: (typeof THE_GROUPS_IN_ORDER)[number]['key']): ScenarioCard[] {
-  return SCENARIOS
-    .filter((c) => (c.scenario === 'OPEN_READ' ? group === 'off' : groupOfCard(c) === group))
-    .sort((a, b) => orderWithinGroup(a.cardKey) - orderWithinGroup(b.cardKey))
+/** A card offered only where the organisation's switch says so (Release 2's "Collect what's owed"), with the heading it sits under. */
+export interface ACardBehindASwitch {
+  card: ScenarioCard
+  group: (typeof THE_GROUPS_IN_ORDER)[number]['key']
+  /** Its own "For example" lines, since it has none in the list every card shares. */
+  forExample: [string, string]
+}
+
+/**
+ * The cards under one heading, in the prototype's order. "Work through something else" ends the last group. A card behind a
+ * switch goes last under its heading, and only when it is passed: with none passed, the list is exactly what it was.
+ */
+export function cardsUnder(group: (typeof THE_GROUPS_IN_ORDER)[number]['key'], alsoOffered: readonly ACardBehindASwitch[] = []): ScenarioCard[] {
+  return [
+    ...SCENARIOS
+      .filter((c) => (c.scenario === 'OPEN_READ' ? group === 'off' : groupOfCard(c) === group))
+      .sort((a, b) => orderWithinGroup(a.cardKey) - orderWithinGroup(b.cardKey)),
+    ...alsoOffered.filter((x) => x.group === group).map((x) => x.card),
+  ]
 }
 
 export function theOneLine(card: ScenarioCard): string {
@@ -31,8 +45,11 @@ export function EverySituation({
   onSend,
   onStart,
   onDescribe,
+  alsoOffered = [],
 }: {
   signedIn: boolean
+  /** Cards offered only where the organisation's switch is on, as the server says. None by default. */
+  alsoOffered?: readonly ACardBehindASwitch[]
   /** The sentence a card starts the conversation with, or nothing when it has none. */
   openerFor: (card: ScenarioCard) => string | undefined
   onSend: (text: string) => void
@@ -42,6 +59,7 @@ export function EverySituation({
   const [text, setText] = useState('')
   const [picked, setPicked] = useState<ScenarioCard | null>(null)
   const opener = picked ? openerFor(picked) : undefined
+  const forExample = picked ? (FOR_EXAMPLE[picked.cardKey] ?? alsoOffered.find((x) => x.card.cardKey === picked.cardKey)?.forExample) : undefined
   /* On a narrow screen the panel sits under the whole list, so picking brings it into view. */
   const panel = useRef<HTMLElement>(null)
   useEffect(() => {
@@ -74,18 +92,15 @@ export function EverySituation({
           <section key={group.key} style={{ marginBottom: 22 }} aria-label={group.heading}>
             <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-text)', margin: '0 0 10px' }}>{group.heading}</h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 10 }}>
-              {cardsUnder(group.key).map((card) => {
+              {cardsUnder(group.key, alsoOffered).map((card) => {
                 const chosen = picked?.cardKey === card.cardKey
                 return (
                   <button
+                    className={`gwui-choice-card${chosen ? ' gwui-choice-card-on' : ''}`}
                     key={card.cardKey}
                     type="button"
                     aria-pressed={chosen}
                     onClick={() => (card.scenario === 'OPEN_READ' ? onDescribe() : setPicked(card))}
-                    style={{
-                      textAlign: 'left', background: 'white', borderRadius: 8, padding: '12px 14px', cursor: 'pointer', fontFamily: 'inherit',
-                      border: chosen ? '2px solid var(--gw-text)' : '1px solid var(--gw-border)',
-                    }}
                   >
                     <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>{sentenceCase(card.label)}</span>
                     <span style={{ display: 'block', fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.45 }}>{theOneLine(card)}</span>
@@ -113,10 +128,10 @@ export function EverySituation({
           {HOW_IT_WORKS[picked.cardKey] && (
             <p style={{ fontSize: 13.5, color: 'var(--gw-text)', lineHeight: 1.5, margin: '0 0 12px' }}>{HOW_IT_WORKS[picked.cardKey]}</p>
           )}
-          {!!FOR_EXAMPLE[picked.cardKey] && (
+          {!!forExample && (
             <>
               <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginBottom: 4 }}>{EVERY_SITUATION.forExample}</div>
-              {FOR_EXAMPLE[picked.cardKey].map((e) => (
+              {forExample.map((e) => (
                 <p key={e} style={{ fontSize: 13.5, color: 'var(--gw-text)', lineHeight: 1.5, margin: '0 0 8px' }}>{e}</p>
               ))}
             </>

@@ -142,6 +142,13 @@ enum GroundScenario {
   /// report saying the numbers reconcile and nothing needs anybody. See the note on
   /// CONTRACT_REVIEW for why these are two cards rather than one.
   IMPLEMENTATION_TRACKING
+
+  /// COLLECT WHAT'S OWED (working label; release plan, Release 2). A team following up what people owe the organisation:
+  /// invoices or fee notes (staff follow up clients) or loans (those who owe check in themselves). Stages Invoiced, Due,
+  /// Reminded, Chased, Promised, Paid. Offered only where the organisation's Release 2 switch is on
+  /// (`Organization.release2CollectionsOn`), and only to a new check-in: no existing check-in's scenario is changed to it.
+  /// See board/the-switchboard.ts and grounds/collections.ts.
+  COLLECTIONS
 }
 
 //
@@ -578,6 +585,40 @@ model Organization {
   /// An organisation that was paying the old flat WhatsApp line when the new pricing came in keeps exactly that line until
   /// it adds a seat, switches WhatsApp off and on, or changes plan (fix list item 6). Then it moves to WhatsApp per person.
   whatsappFlatAddOnKept  Boolean   @default(false) @map("whatsapp_flat_add_on_kept")
+  /// RELEASE 1'S SALES BOARD, A SWITCH PER ORGANISATION (release plan, Part 0, "Existing users: in every release"). Off for
+  /// every organisation already here and every new one, until Groundwork staff switch it on (Admin, Orgs) or a script does
+  /// for a test organisation. Off: the board and the reports read as they did before Release 1's sales board. On (Release 1,
+  /// pull requests 3 and 4): the sales board counts each sales aim from the deals ("65 sold, 65 with proof of payment"), says
+  /// What needs you, To close the gap by what each deal holds, and the Context tab's targets once and "The plan, as agreed";
+  /// the team report, each person's own report and the weekly report of a sales check-in read from the deals; and (pull
+  /// request 5) a rep's check-in gathers what the board needs (the stored prompt kind_of_work.sales_org), a promise said done
+  /// is kept, and the lead's morning summary and the weekly letter read from the deals. The writers (deal rows, each stage
+  /// kept with its day, the week's deals kept on the weekly row) run either way, so switching it off loses nothing.
+  release1SalesBoardOn   Boolean   @default(false) @map("release_1_sales_board_on")
+  /// RELEASE 1B'S NEW CHECK-IN TABS, A SWITCH PER ORGANISATION (Hafsah, 18 October 2026). Off for every organisation until
+  /// Groundwork staff switch it on in Admin, Orgs, or a script does for a "(test)" organisation. On, People and setup reads as
+  /// the B8 pictures for the lead, a team member and an admin who does not run it; off, it reads exactly as before. It writes
+  /// nothing on its own: existing check-ins keep their cadence and every setting.
+  release1bTabsOn        Boolean   @default(false) @map("release_1b_tabs_on")
+  /// RELEASE 2, COLLECT WHAT'S OWED, A SWITCH PER ORGANISATION (release plan, Release 2). Off for every organisation until
+  /// Groundwork staff switch it on in Admin, Orgs, or a script does for a "(test)" organisation. On: the scenario picker
+  /// offers "Collect what's owed" for a new check-in, the switchboard (board/the-switchboard.ts) reads Release 2's rows, and
+  /// "What it is" on People and setup asks the lead to confirm the type. Off: everything reads and behaves as before.
+  release2CollectionsOn  Boolean   @default(false) @map("release_2_collections_on")
+  /// THE ORGANISATION'S OWN WORD FOR A BILL (release plan, Release 2): "fee note" for a law firm, for example. Null reads
+  /// as "invoice". Written only by an admin of the organisation (PATCH /users/organization/word-for-the-bill).
+  billWord               String?   @map("bill_word")
+  /// WHETHER ANYTHING THAT JUDGES A PERSON IS BUILT AND SERVED, A SWITCH PER ORGANISATION (production truth, 19 October 2026). On
+  /// for every organisation, as it has always been. Off: My work's behaviours, its focus line and its check-in quality counts,
+  /// coaching about a person, the pattern and verdict lines about a person, and suggestions about a person are neither built nor
+  /// served for that organisation (organisation/person-judgements.ts). The board, the summaries and the reports still go ahead.
+  personJudgementsOn     Boolean   @default(true) @map("person_judgements_on")
+  /// THE DIRECT MORNING, A SWITCH PER ORGANISATION (Hafsah, 20 October 2026). Off for every organisation until
+  /// scripts/the-direct-morning.ts sets it on for one, by its id. On: the lead's morning summary answers the target, what needs
+  /// her, what is about to close and who on the team needs her; her board opens at the same four parts; each team member's
+  /// opening names the one thing that matters to them today; and the messages, emails and screens say names, numbers,
+  /// customers and days without explaining Groundwork (organisation/the-direct-morning-switch.ts). Off: everything reads as before.
+  directMorningOn        Boolean   @default(false) @map("direct_morning_on")
   whatsappMonthlyUse     WhatsAppMonthlyUse[]
 
   companyStage CompanyStage? @map("company_stage")
@@ -1044,6 +1085,10 @@ model Ground {
   timelineWeeks    Int?    @map("timeline_weeks")
   cadence          Cadence @default(FORTNIGHTLY)
   cadenceAnchorDay Int?    @map("cadence_anchor_day") // weekly: 0=Sun..6=Sat ("every Monday"); monthly: 1-31 (day of month)
+  /// THE TIME OF DAY EACH SESSION'S TEAM REPORT SHARES ITSELF, "HH:MM" in the organisation's own day (Hafsah's answer 5, 16 October 2026:
+  /// "Reports share themselves at their set time unless the lead holds them"). Null means the product's default, 18:30, for a check-in that
+  /// repeats; a one-time check-in shares when everyone has checked in, as before. See reports/a-report-shares-itself.ts.
+  reportSharesAt   String? @map("report_shares_at") @db.VarChar(5)
 
   /// WHICH DAYS THIS TEAM WORKS. 0=Sun..6=Sat. Empty means every day, which is the honest default
   /// for a product that does not know whose week this is.
@@ -1094,6 +1139,13 @@ model Ground {
   /// Who set it: "read" when Groundwork read it from setup, "lead" when the lead chose it. A lead's
   /// choice is never overwritten by a later read.
   kindOfWorkSetBy   String?   @map("kind_of_work_set_by")
+  /// THE TYPE THE LEAD CONFIRMED (Release 2, the switchboard foundation; board/the-switchboard.ts). One of the switchboard's
+  /// types for this check-in's scenario ("invoices or fee notes", "loans"), written only when the lead confirms it in "What
+  /// it is" on People and setup, while the organisation's Release 2 switch is on. Null on every check-in that exists: an
+  /// existing check-in's type is read from its own record (its kind of work) each time it is read, and never written.
+  checkInType            String?   @map("check_in_type")
+  /// When the lead confirmed it. Null while nobody has.
+  checkInTypeConfirmedAt DateTime? @map("check_in_type_confirmed_at")
   /// WHERE THIS CHECK-IN WAS STARTED FROM, when it was started from the anchor link (docs/anchor-scenario-plan.md, piece 15). "anchor" or
   /// null. Written once, when the lead saves what they said in the anchor conversation and the anchor switch is on. A check-in that holds it
   /// keeps behaving as an anchor check-in even if the switch is later turned off. Null on every check-in that exists.
@@ -1278,6 +1330,8 @@ model Ground {
   dependencies               GroundDependency[]
   workMentions               WorkMention[]
   workItems                  WorkItem[]
+  /// Release 1B: proof added in check-ins, filed on its item (ItemEvidence).
+  itemEvidence               ItemEvidence[]
   poll                       GroundPoll?
   participantRequests        ParticipantRequest[]
   contributorCodeRedemptions ContributorCodeRedemption[]
@@ -1389,6 +1443,66 @@ model CoachingState {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("coaching_states")
+}
+
+/// A PERSON'S RECORD IN ONE CHECK-IN, KEPT FROM THE RECORD (Groundwork does the managing, part 1; Hafsah, 21 October 2026).
+///
+/// One row for each person in each check-in, beside the other rows derived about a person (CoachingState, PatternDetection). `record`
+/// holds every entry with its evidence (their own words, the day, the session, the ids behind it): what they said was sold, paid or
+/// signed and whether anything on file shows it, their promises and how each went, figures that changed, where their time went, the
+/// blockers they raised and what they tried first, and each check-in's quality. `coaching` holds what Groundwork coached them on, when,
+/// and whether it got better, stayed the same or got worse. Never a score or a label on the person.
+///
+/// Rebuilt only when something new comes in (a check-in finishing, promises settled after it), never when a page is opened
+/// (board/the-persons-record-store.ts). WHO READS IT: the person reads their own; whoever runs the check-in reads the rows of the
+/// people in it, as a manager would in a normal staff assessment; nobody else. A person's rows across check-ins are read for that
+/// person alone. Served only where the organisation's direct morning is on.
+model PersonRecord {
+  id             String   @id @default(uuid())
+  groundId       String   @map("ground_id")
+  participantId  String   @unique @map("participant_id")
+  organizationId String?  @map("organization_id")
+  userId         String?  @map("user_id")
+  record         Json
+  coaching       Json     @default("[]")
+  /// The last of their check-ins the coaching was read after.
+  lastSession    Int?     @map("last_session")
+  /// A fingerprint of the record it was built as, so a rebuild that finds nothing new writes nothing.
+  builtFrom      String   @map("built_from")
+  builtAt        DateTime @default(now()) @map("built_at")
+
+  participant GroundParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@index([groundId])
+  @@index([userId, organizationId])
+  @@map("person_records")
+}
+
+/// WHAT THE LEAD DID ABOUT ONE PERSON, FROM THE BOARD (Groundwork does the managing, part 2; Hafsah, 21 October 2026). One row for each
+/// tap of the lead who runs the check-in on that person's part of her board: praise, a plan started, a deadline set, a lead reassigned.
+/// Kept beside the person's record, never rebuilt. A plan, a deadline and a reassignment also change what they change (a People line on
+/// References and resources, a record's due day, a record's owner); this row is what she did and when. No message is sent for any of it.
+/// Only praise is ever read by the person, in their own record.
+model PersonLeadAction {
+  id              String    @id @default(uuid())
+  groundId        String    @map("ground_id")
+  participantId   String    @map("participant_id")
+  byUserId        String    @map("by_user_id")
+  /// PRAISE, PLAN, DEADLINE or REASSIGN.
+  kind            String
+  /// The words as the lead and the person read them: what she praised, the plan she wrote, the record and its day, the record and who has it now.
+  says            String    @db.Text
+  /// The record a deadline or a reassignment was set on, the line a plan became, and who a record was reassigned to.
+  itemId          String?   @map("item_id")
+  toParticipantId String?   @map("to_participant_id")
+  dueOn           DateTime? @map("due_on")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  participant GroundParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@index([groundId])
+  @@index([participantId, createdAt])
+  @@map("person_lead_actions")
 }
 
 model GroundParticipant {
@@ -1550,6 +1664,10 @@ model GroundParticipant {
   // [{ from, to }], to null while still away.
   leavePeriods               Json?             @map("leave_periods")
   coachingState              CoachingState?
+  /// Their record in this check-in, kept from the record (Groundwork does the managing). See PersonRecord.
+  personRecord               PersonRecord?
+  /// What the lead who runs the check-in did about this person from the board (Groundwork does the managing, part 2). See PersonLeadAction.
+  leadActions                PersonLeadAction[]
   detectedFunction           String?           @map("detected_function")
   detectedFunctionConfidence Float?            @map("detected_function_confidence")
   detectedFunctionAt         DateTime?         @map("detected_function_at")
@@ -2402,6 +2520,9 @@ model Report {
   /// released, never a later one as the report grows into it. Empty until anything is released.
   /// See reports/each-sessions-picture-is-released-on-its-own.ts.
   releasedSessions Int[]    @default([]) @map("released_sessions")
+  /// THE SESSIONS THE LEAD HELD ("Hold it", Hafsah's answer 5, 16 October 2026). A report shares itself at the check-in's set time unless
+  /// its session is here; a held session waits until the lead shares it herself. Read in reports/a-report-shares-itself.ts.
+  heldSessions     Int[]    @default([]) @map("held_sessions")
   createdAt       DateTime  @default(now()) @map("created_at")
   /// WHEN THIS WAS LAST WRITTEN, WHICH IS NOT WHEN THE ROW WAS MADE.
   ///
@@ -5453,6 +5574,8 @@ model GroundDocument {
   participant GroundParticipant? @relation(fields: [participantId], references: [id], onDelete: SetNull)
 
   proposals KnowledgeProposal[]
+  /// Release 1B: where this document was filed as evidence, when it was added as proof in a check-in.
+  evidence  ItemEvidence[]
 
   @@index([groundId, participantId])
   @@map("ground_documents")
@@ -5578,6 +5701,20 @@ enum ContextItemKind {
   QUESTION_FOR_PERSON
   /// Something involving two named people that belongs to neither alone.
   BETWEEN_PEOPLE
+  /// RELEASE 1B, REFERENCES AND RESOURCES (pull request 2 of 3). What a stage of the work needs ("Qualified: need, budget,
+  /// decision maker and buying date."), typed by the lead under How we work. About the work, so shared with the team.
+  STAGE_NEEDS
+  /// Coaching for the whole team ("Find the decision maker before quoting."), under How we work. Shared with the team.
+  COACHING
+  /// A risk to watch for ("A price below KES 4,200."), under How we work. A thing to look out for, never a status. Shared.
+  RISK
+  /// One of the key facts under About this work: the label on its first line, the fact on the next. Shared with the team.
+  KEY_FACT
+  /// The lead's note on one person, under People. The lead's alone, never shown to the person, never quoted; with Release
+  /// 1B's switch on it shapes that person's own check-in (Hafsah, 18 October). ABOUT_A_PERSON still reaches no check-in.
+  PERSON_NOTE
+  /// What the lead wants to help one person with, under People. The lead's alone, the same as PERSON_NOTE.
+  HELP_WITH
 }
 
 model GroundContextItem {
@@ -6393,6 +6530,23 @@ model ScenarioCandidate {
 /// is why this is a record keyed to the person rather than a setting on the organisation - a
 /// preference an admin can flip is not a preference, and the whole reason people answer honestly
 /// here is that the product does what it said it would.
+/// A WHATSAPP MESSAGE HELD FOR THE NIGHT (Hafsah's standing rule, release plan Part 0: "quiet hours end at 7am in the
+/// organisation's time zone"). A message Groundwork starts, asked to go between the evening and seven in the morning where the
+/// organisation is, is written here and sent at seven by held-for-the-night.cron.ts, which asks every other rule again then.
+model ScheduledWhatsApp {
+  id             String    @id @default(uuid())
+  organizationId String?   @map("organization_id")
+  phone          String
+  text           String    @db.Text
+  context        Json?
+  notBefore      DateTime  @map("not_before")
+  sentAt         DateTime? @map("sent_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@index([sentAt, notBefore])
+  @@map("scheduled_whatsapp_messages")
+}
+
 /// A MAIL HELD FOR THE MORNING, NOT DROPPED. When quiet hours apply, sendEmail writes the rendered
 /// mail here instead of sending it, and held-mail.cron.ts sends what is due. Before this, the digest
 /// loop logged "quiet_hours" and moved on: a round that completed at 21:00 local was never announced.
@@ -8676,4 +8830,38 @@ model ReportRead {
   @@unique([groundId, sessionNumber, userId])
   @@index([userId])
   @@map("report_reads")
+}
+
+/// PROOF ADDED IN A CHECK-IN, FILED ON ITS ITEM (Release 1B, pull request 2 of 3, References and resources; Hafsah, 18 October
+/// 2026: "Proof added in a check-in is read, filed on its item as evidence, and shown on the board beside that item").
+/// One row per document someone added in their check-in (on the web or WhatsApp), written once when it arrives and only while
+/// the organisation's Release 1B switch is on. Read with what the document was read as: which item it names (a deal, a work
+/// item), what kind of thing it is, and whether it counts as proof. Never rewritten when a page opens. The document itself
+/// keeps its own visibility; this row only says where it was filed.
+/// WHO READS IT: the lead of the check-in reads every row; each person reads only the rows for what they added.
+model ItemEvidence {
+  id            String   @id @default(uuid())
+  groundId      String   @map("ground_id")
+  documentId    String   @map("document_id")
+  /// Who added it: the person in the check-in.
+  participantId String?  @map("participant_id")
+  /// The item it was filed on, where its words name one. Null where none could be told apart.
+  workItemId    String?  @map("work_item_id")
+  /// The item's name when it was filed, so the list still says it if the item is renamed.
+  itemName      String?  @map("item_name")
+  /// What it was read as: "A signed order", "A payment", "A quote", "A photo" or "A document".
+  readAs        String   @map("read_as")
+  /// Whether it counts as proof. A visit photo, or a document with no order, payment or quote in it, does not.
+  countsAsProof Boolean  @default(false) @map("counts_as_proof")
+  /// One short line of what it shows, from the document's own words.
+  shows         String?  @db.Text
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  ground   Ground         @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  document GroundDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId])
+  @@index([groundId, createdAt])
+  @@index([workItemId])
+  @@map("item_evidence")
 }

@@ -2,6 +2,7 @@ import { readFileSync, existsSync } from 'fs'
 import { resolve } from 'path'
 import { describe, it, expect } from 'vitest'
 import { SCENARIO_FACTS, SCENARIO_KEYS, CADENCE_VALUE, RECOMMENDED_MOMENT, recommendedSessions } from './scenario-catalog'
+import { COLLECT_WHATS_OWED_FACTS } from './collect-whats-owed'
 
 /**
  * THE RECOMMENDED RHYTHM IS WRITTEN TWICE, AND MUST NOT BE ABLE TO DISAGREE.
@@ -23,8 +24,11 @@ import { SCENARIO_FACTS, SCENARIO_KEYS, CADENCE_VALUE, RECOMMENDED_MOMENT, recom
  */
 const ENGINE = resolve(__dirname, '../../../api/src/modules/grounds/grounds.service.ts')
 
-/** Engine situations that are never offered as a card. */
-const NOT_A_CARD = ['HELP_TEAM_UNDERSTAND']
+/**
+ * Engine situations that are never offered as a card in the catalogue. COLLECTIONS (Release 2) is offered only behind its switch,
+ * from its own file (collect-whats-owed.ts), so it is compared with that file below instead, never left uncompared.
+ */
+const NOT_A_CARD = ['HELP_TEAM_UNDERSTAND', 'COLLECTIONS']
 
 describe('the rhythm the card promises', () => {
   it('reads the engine from where this expects it', () => {
@@ -89,6 +93,18 @@ describe('the rhythm the card promises', () => {
       .filter((k) => moments[k] !== RECOMMENDED_MOMENT[k])
       .map((k) => `${k}: card says ${RECOMMENDED_MOMENT[k]}, engine creates ${moments[k]}`)
     expect(disagree).toEqual([])
+  })
+
+  it('Collect what’s owed, offered only behind its switch, is created at the rhythm its own file promises', () => {
+    /* Read straight from the engine's lines, since engineMap leaves it out of the catalogue comparison above. */
+    const line = (decl: string) => {
+      const start = src.indexOf(decl)
+      const body = start < 0 ? '' : src.slice(start, src.indexOf('};', start))
+      return body.match(/^\s*COLLECTIONS:\s*([^,]+),/m)?.[1]?.trim()
+    }
+    expect(line('RECOMMENDED_CADENCE')).toBe(`Cadence.${CADENCE_VALUE[COLLECT_WHATS_OWED_FACTS.cadence]}`)
+    expect(Number(line('DEFAULT_TIMELINE_DAYS'))).toBe(COLLECT_WHATS_OWED_FACTS.timelineDays)
+    expect(line('RECOMMENDED_MOMENT')).toBe('GroundMoment.STARTING')
   })
 
   it('and the check-in count on the card is arithmetic, not a guess', () => {

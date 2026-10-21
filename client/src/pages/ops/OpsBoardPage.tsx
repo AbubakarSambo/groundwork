@@ -254,11 +254,10 @@ function YourTodos({ personKey }: { personKey: string }) {
       <ul style={{ listStyle: 'none', margin: '8px 0 0', padding: 0 }}>
         {open.map((t) => (
           <li key={t.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', padding: '4px 0' }}>
-            <button
+            <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
               type="button"
               onClick={() => close.mutate(t.id)}
               aria-label={`Mark "${t.title}" done`}
-              style={{ ...CARD, padding: '2px 8px', fontSize: 11.5, cursor: 'pointer' }}
             >
               Done
             </button>
@@ -325,11 +324,10 @@ function WaitingOnYou() {
             <div style={{ fontSize: 13 }}>{a.requestSummary}</div>
             <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
               {(['APPROVED', 'CHANGES_REQUESTED', 'REJECTED'] as const).map((status) => (
-                <button
+                <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
                   key={status}
                   type="button"
                   onClick={() => decide.mutate({ id: a.id, status })}
-                  style={{ ...CARD, padding: '3px 9px', fontSize: 11.5, cursor: 'pointer' }}
                 >
                   {status === 'APPROVED' ? 'Approve' : status === 'REJECTED' ? 'No' : 'Changes'}
                 </button>
@@ -388,20 +386,11 @@ export default function OpsBoardPage() {
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16, alignItems: 'center' }}>
         {(listing.data?.boards ?? []).length > 1 &&
           (listing.data?.boards ?? []).map((b) => (
-            <button
+            <button className={`gwui-choice${b.key === boardKey ? ' gwui-choice-on' : ''}`}
               key={b.key}
               type="button"
               onClick={() => setChosen(b.key)}
               aria-current={b.key === boardKey}
-              style={{
-                ...CARD,
-                padding: '6px 12px',
-                cursor: 'pointer',
-                fontSize: 12.5,
-                fontWeight: b.key === boardKey ? 700 : 500,
-                background: b.key === boardKey ? 'var(--gw-navy)' : 'white',
-                color: b.key === boardKey ? 'white' : 'var(--gw-navy)',
-              }}
             >
               {b.name}
             </button>

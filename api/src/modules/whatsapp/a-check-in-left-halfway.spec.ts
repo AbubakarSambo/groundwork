@@ -73,7 +73,7 @@ describe('Amani, who stopped halfway on WhatsApp', () => {
   it('the close says once, with the true reason', async () => {
     let w = aWorld();
     expect(await tellThemTheClockClosedIt(w.prisma, w.whatsapp, 'ci-1', 'age')).toBe(true);
-    expect(w.sent[0].text).toBe('Your check-in for "Sales team, Q4" has closed, because it has been open for two days. Everything you said is kept on the record, and your report follows in a moment.');
+    expect(w.sent[0].text).toBe('Your check-in for "Sales team, Q4" has closed, because it has been open for two days. Everything you said is kept on the record.');
     w = aWorld({ closeTold: true });
     expect(await tellThemTheClockClosedIt(w.prisma, w.whatsapp, 'ci-1')).toBe(false);
   });
@@ -92,7 +92,7 @@ describe('Amani, who stopped halfway on WhatsApp', () => {
     await tellThemTheClockClosedIt(w.prisma, w.whatsapp, 'ci-1');
     expect(w.sent.map((s: any) => [s.kind, s.text])).toEqual([
       ['closes-in-half-an-hour', 'Your check-in for "Sales team, Q4" closes in 30 minutes if nothing else is said. Add anything you still want on the record now.'],
-      ['closed-by-the-clock', 'Your check-in for "Sales team, Q4" has closed, because nothing was said for twelve hours. Everything you said is kept on the record, and your report follows in a moment.'],
+      ['closed-by-the-clock', 'Your check-in for "Sales team, Q4" has closed, because nothing was said for twelve hours. Everything you said is kept on the record.'],
     ]);
   });
 

@@ -123,15 +123,15 @@ export function PaymentPage() {
                 value={code}
                 onChange={e => { setCode(e.target.value); setCodeMsg(null) }}
                 placeholder="Enter code"
-                style={{ width: '100%', padding: '9px 11px', fontSize: 13, fontFamily: 'inherit', border: `1px solid ${codeMsg && !codeMsg.ok ? 'var(--gw-danger)' : 'var(--gw-border)'}`, borderRadius: 7, background: 'var(--gw-paper-2)', color: 'var(--gw-dark)', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
+                className="gwui-input" style={{ boxSizing: 'border-box', marginBottom: 8, ...(codeMsg && !codeMsg.ok ? { borderColor: 'var(--gw-danger)' } : {}) }}
               />
               {codeMsg && (
                 <div style={{ fontSize: 12, color: codeMsg.ok ? 'var(--gw-green-t)' : 'var(--gw-danger)', marginBottom: 8 }}>{codeMsg.text}</div>
               )}
-              <button
+              <button className="gwui-btn gwui-btn-primary"
                 onClick={() => redeemCode.mutate()}
                 disabled={!code.trim() || redeemCode.isPending}
-                style={{ width: '100%', padding: '9px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: !code.trim() ? 'not-allowed' : 'pointer', opacity: !code.trim() ? 0.45 : 1, fontFamily: 'inherit' }}
+                style={{ width: '100%' }}
               >
                 {redeemCode.isPending ? 'Checking...' : 'Apply'}
               </button>

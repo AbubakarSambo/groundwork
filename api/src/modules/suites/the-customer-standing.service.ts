@@ -5,6 +5,7 @@ import { PromptsService } from '../prompts';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { GroundworkEvents, type CheckInCompletedEvent } from '../../common/events';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
+import { isASalesKind } from '../board/the-kind-of-work';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import {
   CUSTOMER_STANDING_PROMPT,
@@ -14,13 +15,13 @@ import {
   whatMayBeKept,
 } from './the-customer-standing';
 
-/** The kind of work a sales check-in is, exactly as `Ground.kindOfWork` stores it. */
+/** The kind of work a sales check-in is, exactly as `Ground.kindOfWork` stores it: a sales team, or a sales organisation of several teams (isASalesKind). */
 export const A_SALES_CHECK_IN = 'sales org';
 
 /**
  * WRITES WHERE A CUSTOMER STANDS, ONCE, WHEN A SALES CHECK-IN COMPLETES (request 28, part a).
  *
- * WHAT COUNTS AS A SALES CHECK-IN: the ground's kind of work is "sales org" (the kind the lead's own words
+ * WHAT COUNTS AS A SALES CHECK-IN: the ground's kind of work is "sales team" or "sales org" (the kind the lead's own words
  * and the brief gave it at setup, which the lead can change), and it is not an evaluation check-in (a
  * performance plan, a promotion or a renewal). Nothing else is read. A check-in with no kind of work is
  * not read, because guessing it is sales would put a customer's standing on a board out of a check-in
@@ -59,7 +60,7 @@ export class CustomerStandingService {
       where: { id: e.groundId },
       select: { organizationId: true, scenario: true, kindOfWork: true },
     });
-    if (!ground || ground.kindOfWork?.trim().toLowerCase() !== A_SALES_CHECK_IN || isEvaluationCheckIn(ground.scenario)) return 0;
+    if (!ground || !isASalesKind(ground.kindOfWork) || isEvaluationCheckIn(ground.scenario)) return 0;
     const org = ground.organizationId;
 
     const known = await this.prisma.subject.findMany({

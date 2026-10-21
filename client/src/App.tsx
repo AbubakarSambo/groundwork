@@ -78,6 +78,8 @@ import { GroundParticipantPage } from '@/pages/grounds/GroundParticipantPage'
 import { GroundPage } from '@/pages/grounds/GroundPage'
 import { ReportPage } from '@/pages/report/ReportPage'
 import WeeklyReportPage from '@/pages/report/WeeklyReportPage'
+import { ThePersonPage } from '@/pages/board/ThePersonPage'
+import { WhereTheBlockerStarted } from '@/pages/board/WhereTheBlockerStarted'
 import { BoardPage } from '@/pages/board/BoardPage'
 import EndingPage from '@/pages/grounds/EndingPage'
 import { TeamBoardsPage } from '@/pages/boards/TeamBoardsPage'
@@ -207,9 +209,8 @@ function RequirePlatformAdmin({ children }: { children: JSX.Element }) {
             It is not part of your organisation's admin, and there is nothing here that affects your
             check-ins. Being an admin in your own organisation does not include it.
           </div>
-          <Link
+          <Link className="gwui-btn gwui-btn-primary"
             to="/grounds"
-            style={{ display: 'inline-block', padding: '9px 18px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', textDecoration: 'none', fontSize: 13, fontWeight: 700 }}
           >Go to my check-ins</Link>
         </div>
       </div>
@@ -324,15 +325,13 @@ function AFrontDoorOfItsOwn() {
           not work here.
         </p>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <a
+          <a className="gwui-btn gwui-btn-primary"
             href="/start"
-            style={{ display: 'inline-block', background: 'var(--gw-navy)', color: 'white', padding: '10px 18px', borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}
           >
             Start a check-in
           </a>
-          <a
+          <a className="gwui-btn gwui-btn-secondary"
             href="/auth"
-            style={{ display: 'inline-block', border: '1px solid var(--gw-border)', color: 'var(--gw-text)', padding: '10px 18px', borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}
           >
             Sign in
           </a>
@@ -638,6 +637,10 @@ export default function App() {
             {import.meta.env.DEV && <Route path="/dev/conversation" element={<ConversationPreviewPage />} />}
             <Route path="/boards" element={<RequireOrgSetup><TeamBoardsPage /></RequireOrgSetup>} />
             <Route path="/grounds/:id/board" element={<RequireOrgSetup><BoardPage /></RequireOrgSetup>} />
+            {/* One person in a check-in, for whoever runs it (person-page.jpg), opened from "The team today". */}
+            <Route path="/grounds/:id/person/:participantId" element={<RequireOrgSetup><ThePersonPage /></RequireOrgSetup>} />
+            {/* Where a blocker started, step by step (where-a-blocker-started.jpg), from "See where it started". */}
+            <Route path="/grounds/:id/trace" element={<RequireOrgSetup><WhereTheBlockerStarted /></RequireOrgSetup>} />
             {/* U.11: "How does this end?", where the lead decides, with a reason. */}
             <Route path="/grounds/:id/end" element={<RequireOrgSetup><EndingPage /></RequireOrgSetup>} />
             {/*

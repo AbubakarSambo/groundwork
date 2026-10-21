@@ -68,6 +68,8 @@ describe('every organisation has WhatsApp on for a free month', () => {
     expect(read.says.onOrOff).toBe('WhatsApp is on for your organisation during its free month.');
     expect(read.says.freeMonth).toBe('WhatsApp is free until 13 November 2026. To keep it after that, add it to your subscription with the switch above.');
     expect(read.on).toBe(false);
+    /* The one fact every page reads (15 October): on for the organisation, which is what onOrOff says. */
+    expect(read.onForTheOrganisation).toBe(true);
   });
 
   it('a person in it is not told WhatsApp is off', async () => {

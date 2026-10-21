@@ -1,5 +1,6 @@
 import { withoutTheirWordsHandedBack, withoutAnAnswerToItsOwnQuestion } from '../conversation/a-reply-neither-hands-back-their-words-nor-answers-itself';
 import { asksAboutTheirJobAgain, withoutTheJobQuestion } from '../conversation/their-role-in-the-first-check-in';
+import { notTheLeadHerself, herSetupWordsAsATurn, howSheDescribesHerself, aLineThatDescribesNothing } from './the-lead-is-you-in-her-report';
 import { theSettersRole } from '../../common/a-role-or-nothing';
 import { askedToFinish, isTheWordFinish } from '../conversation/close-readiness';
 import { aFinishTooSoon } from '../conversation/a-finish-too-soon-is-said-plainly';
@@ -1795,7 +1796,7 @@ from finishing at all.`;
   }
 
 
-  async report(messages: ChatTurn[], scenario?: string, groundLabel?: string, anchorItems?: Record<string, unknown>, peopleNamed?: string[]): Promise<EntryReport | null> {
+  async report(messages: ChatTurn[], scenario?: string, groundLabel?: string, anchorItems?: Record<string, unknown>, peopleNamed?: string[], leadsOwnWords?: string[]): Promise<EntryReport | null> {
     messages = withoutBankDetailsAnywhere(messages);
     if (!messages || messages.length === 0) throw new BadRequestException('There was nothing to send, so write a message and try again.');
 
@@ -1814,12 +1815,15 @@ from finishing at all.`;
      * setup got a report saying "team members not named here" and an open item telling her to go and
      * name them. She had. The chat was given this list; the read was not.
      */
-    const alreadyNamed = (peopleNamed ?? []).map((p) => (p ?? '').trim()).filter(Boolean);
-    if (alreadyNamed.length) {
-      trimmed.unshift({
-        role: 'user',
-        content: `Before this conversation started I already named who is involved: ${alreadyNamed.join(', ')}. Treat these as named. Do not ask for them again and do not report them as missing.`,
-      } as ChatTurn);
+    /* Her own setup words, and never herself among the others (the-lead-is-you-in-her-report.ts, 15 October). */
+    const herWords = (leadsOwnWords ?? []).map((w) => String(w ?? '')).filter((w) => w.trim());
+    const alreadyNamed = notTheLeadHerself((peopleNamed ?? []).map((p) => (p ?? '').trim()).filter(Boolean), herWords);
+    const before = [
+      alreadyNamed.length ? `Before this conversation started I already named who is involved: ${alreadyNamed.join(', ')}. Treat these as named. Do not ask for them again and do not report them as missing.` : null,
+      herSetupWordsAsATurn(herWords),
+    ].filter(Boolean).join('\n\n');
+    if (before) {
+      trimmed.unshift({ role: 'user', content: before } as ChatTurn);
     }
 
     const report = await this.anthropic.extract<EntryReport>(
@@ -1867,7 +1871,16 @@ from finishing at all.`;
      * invitation. So the two lists are separated here, where it is arithmetic.
      * Nothing is dropped - everything the extractor found is still on the page.
      */
-    const split = splitMentions(report.mentionedPeople ?? []);
+    /* Never herself as somebody to invite ("The partner"), and a line saying nobody described a role is no role (15 October). */
+    const herself = howSheDescribesHerself(herWords);
+    const split = splitMentions(
+      notTheLeadHerself(report.mentionedPeople ?? [], herWords, (m: any) => m?.name ?? '')
+        .map((m: any) => (aLineThatDescribesNothing(m?.context) ? { ...m, context: '' } : m)),
+    );
+    if (herself.length && Array.isArray(report.areasRequiringAlignment)) {
+      const aboutHerAsSomebodyElse = new RegExp(`\\bthe (?:${herself.map((h) => h.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})(?:'s)?\\b`, 'i');
+      report.areasRequiringAlignment = (report.areasRequiringAlignment as any[]).filter((item) => !aboutHerAsSomebodyElse.test(JSON.stringify(item ?? '')));
+    }
 
     /*
      * AND A CARD HEADED "expect not yet shared" LOSES ITS HEADING, NOT ITS CONTENT.
@@ -2960,7 +2973,7 @@ from finishing at all.`;
 
     const ground = await this.prisma.ground.findUnique({
       where: { joinToken: dto.joinToken },
-      select: { id: true, status: true, endState: true, scenario: true },
+      select: { id: true, status: true, endState: true, scenario: true, label: true, organization: { select: { name: true } }, initiator: { select: { firstName: true, lastName: true } } },
     });
     if (!ground) throw new NotFoundException(whyThisDidNotWork('that link is not one we know'));
     /* Nobody is mailed a way into a check-in that is over or on hold. See grounds.service#getJoinPreview. */
@@ -2994,7 +3007,12 @@ from finishing at all.`;
     /* Sent, not awaited into the response: whether the mail provider is having a
        moment must not tell the caller whether that address exists here. */
     this.email
-      .sendJoinConfirmation(email, token)
+      .sendJoinConfirmation(email, token, {
+        firstName: dto.firstName?.trim() || null,
+        checkInLabel: (ground as any).label ?? null,
+        leadName: [(ground as any).initiator?.firstName, (ground as any).initiator?.lastName].filter(Boolean).join(' ').trim() || null,
+        organisationName: (ground as any).organization?.name ?? null,
+      })
       .catch((err) => this.logger.error(`join confirmation to ${email} failed: ${err?.message}`));
 
     this.logger.log(`join-ask: link sent for ground ${ground.id}`);
@@ -3195,7 +3213,7 @@ from finishing at all.`;
       this.email.sendAddPasswordEmail(email, user.firstName, setupToken).catch(() => null);
     }
     if (queuedForApproval) {
-      tellTheAdminsSomebodyIsWaiting({ prisma: this.prisma, email: this.email, logger: this.logger }, ground.organizationId, ground.id, ground.initiatorId, email)
+      tellTheAdminsSomebodyIsWaiting({ prisma: this.prisma, email: this.email, logger: this.logger }, ground.organizationId, ground.id, ground.initiatorId, email, { cameThroughTheLink: true })
         .catch((err: any) => this.logger.warn(`Could not tell the admins about ${email}: ${err.message}`));
     }
 

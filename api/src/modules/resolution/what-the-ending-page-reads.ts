@@ -1,3 +1,4 @@
+import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
 import { ForbiddenException } from '@nestjs/common';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { SuggestionsService } from '../suggestions/suggestions.service';
@@ -133,7 +134,7 @@ export async function theEndingPageFor(deps: Deps, groundId: string, userId: str
 
   /* The signals: the patterns this reader may read on this check-in, through the one rule. */
   let signals: AnEndingSignal[] = [];
-  if (PATTERNS_ARE_SERVED && (mine || runsIt)) {
+  if (PATTERNS_ARE_SERVED && (mine || runsIt) && (await thePersonJudgementsAreOn(prisma, ground.organizationId))) {
     const names = whoIsWhoIn(parties, ground.initiatorId, ground.cadence);
     const served = servedPatterns(ground.patternDetections ?? [], { participantId: mine?.id ?? null, runsIt }, names);
     const worded = await wordPatternEvidence(served, names.firstNameOf ?? (() => null), rememberedCompose(prisma, async () => null, false)).catch(() => served);

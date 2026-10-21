@@ -45,6 +45,11 @@ import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
 import { copy } from '@/components/gw/copying-can-fail'
+import { groundsApi } from '@/api/grounds'
+import {
+  COLLECT_WHATS_OWED, COLLECT_WHATS_OWED_CARD, COLLECT_WHATS_OWED_GROUP, COLLECT_WHATS_OWED_OPENER, COLLECT_WHATS_OWED_FOR_EXAMPLE,
+  soundsLikeCollectingWhatsOwed,
+} from '@/lib/collect-whats-owed'
 import { whatIsSetAndWhatIsNot, whenTheCheckInsLand } from '@/components/gw/when-the-check-ins-land'
 import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
 import { Button, Callout, Note, Section, TextField, TextArea, Bubble, Composer, PhaseSteps, Modal, Mark, GroundworkIsWriting } from '@/components/gw/ui'
@@ -1331,6 +1336,9 @@ function kindOfCheckIn(situation: string | undefined): string {
  * back at her rather than anything that tells them apart as HERS. `undefined` when there is no
  * lead name to use yet (nobody signed in, nothing typed) - a guess is worse than the plain label.
  */
+/** Said when the save step's name is left empty (local test of staging, 15 October). */
+export const WRITE_YOUR_NAME = 'Write your name, so the people you invite know who is asking.'
+
 export function leadNameGroundNameFallback(leadFirstName: string | undefined, situation: string | undefined): string | undefined {
   const name = (leadFirstName ?? '').trim()
   if (!name) return undefined
@@ -1474,6 +1482,19 @@ export function EntryChatPage() {
    * the whole complaint: "new hire does not ask you about the new hire".
    */
   const [pickedScenario, setPickedScenario] = useState<string | null>(null)
+  /**
+   * RELEASE 2: "COLLECT WHAT'S OWED" IS OFFERED ONLY WHERE THE ORGANISATION'S SWITCH IS ON. Asked of the server for somebody
+   * signed in; somebody signed out, or an organisation with the switch off, gets the list exactly as it was. The server asks again
+   * when the check-in is created, so this only decides what is shown.
+   */
+  const situationsOfferedQuery = useQuery({
+    queryKey: ['situations-offered'],
+    queryFn: () => groundsApi.situationsOffered(),
+    enabled: !!user,
+    retry: false,
+    staleTime: 60_000,
+  })
+  const collectionsOffered = !!user && situationsOfferedQuery.data?.collections === true
 
   /**
    * THE REFUSAL COMES BEFORE THE WORK, WHICH IS WHERE IT USED TO BE AND WHERE I MOVED IT FROM.
@@ -1781,6 +1802,9 @@ export function EntryChatPage() {
   const [, setNeedsPeople] = useState(false)
   const [orgName, setOrgName] = useState('')
   const [email, setEmail] = useState('')
+  /* "Your name", asked once at the save step (local test of staging, 15 October): never worked out from the address. */
+  const [yourName, setYourName] = useState('')
+  const [nameError, setNameError] = useState('')
   const [emailSent, setEmailSent] = useState(false)
   const [emailError, setEmailError] = useState('')
 
@@ -2330,7 +2354,7 @@ export function EntryChatPage() {
     try {
       /* The anchor's seven items go with the report too (request 166), so the lead's reveal says
          what she said rather than "not written down yet". Every other draft sends nothing here. */
-      const res = await entryApi.report(turns, scenario || undefined, groundName || undefined, onboardingSelections.peopleNamed, isAnchorDraft() ? onboardingSelections.anchorItems : undefined)
+      const res = await entryApi.report(turns, scenario || undefined, groundName || undefined, onboardingSelections.peopleNamed, isAnchorDraft() ? onboardingSelections.anchorItems : undefined, theirOwnSetupWords(onboardingHistory))
       setSessionReport(res.report)
       setReportTurnsForRetry(null)
       persistCheckin(turns, true, res.report ? JSON.stringify(res.report) : '')
@@ -2617,7 +2641,8 @@ export function EntryChatPage() {
           if (planned != null) { setSessions(planned); setPlannedFrom({ timelineDays: res.extracted.timelineDays, cadence: res.extracted.cadence ?? cadence }); setSessionsTypedByLead(false) }
         }
         // Background classify intent when we have initial
-        if (res.extracted.initial && !isAnchorDraft()) {
+        /* Nor is Collect what's owed (Release 2): the classifier does not know it, so any answer it gave would be wrong. */
+        if (res.extracted.initial && !isAnchorDraft() && pickedScenario !== 'COLLECTIONS' && scenarioNow !== 'COLLECTIONS') {
           /*
            * FAULT 1(a): AN ANCHOR DRAFT IS NEVER RECLASSIFIED.
            *
@@ -3210,6 +3235,11 @@ export function EntryChatPage() {
     if (addingContributorFor && addingContributorEmail.trim()) {
       if (!queueSuggestedContributor(addingContributorFor, addingContributorLabel)) return
     }
+    /* THE NAME SHE GIVES, ASKED ONCE (local test of staging, 15 October). Hafsah saved from here with nothing asking, and
+       her invitations went out as "Hjumare would like your take on Sales check-in", a piece of her address. */
+    const name = yourName.replace(/\s+/g, ' ').trim()
+    if (!name) { setNameError(WRITE_YOUR_NAME); return }
+    setNameError('')
     const trimmed = email.trim()
     if (!looksLikeAnAddress(trimmed)) { setEmailError(NOT_AN_ADDRESS); return }
     // NOTE: a hard "set a date first" gate used to live here, but the date
@@ -3227,7 +3257,7 @@ export function EntryChatPage() {
     // same-browser mirror (and the legacy path for old links).
     const commitPayload = buildCommitPayload()
       try {
-      const res = await authApi.entrySave(trimmed, { payload: commitPayload, history }, trap.filled)
+      const res = await authApi.entrySave(trimmed, { payload: { ...commitPayload, firstName: name }, history }, trap.filled)
       setEmailSent(true)
       if (res.draftToken) {
         setDraftToken(res.draftToken)
@@ -3488,6 +3518,16 @@ export function EntryChatPage() {
   /** Words typed at the door, or on the list, open the conversation as describing it yourself. */
   function describeItInYourOwnWords(text: string) {
     setSeeingEverySituation(false)
+    /*
+     * RELEASE 2: THE DETECTION WORDS (collect, owed, invoice, fee note, debtor, repay, loan, credit), the way the prototype's start
+     * screen reads what was typed. Only where the organisation's switch is on; anywhere else this reads exactly as before.
+     */
+    if (collectionsOffered && soundsLikeCollectingWhatsOwed(text)) {
+      setPickedSituation(COLLECT_WHATS_OWED)
+      setPickedScenario('COLLECTIONS')
+      sendOnboarding(text, 'COLLECTIONS')
+      return
+    }
     setPickedSituation('other')
     setPickedScenario(null)
     sendOnboarding(text, null)
@@ -4323,7 +4363,8 @@ export function EntryChatPage() {
                   {seeingEverySituation ? (
                     <EverySituation
                       signedIn={!!user}
-                      openerFor={(card) => whatThisCardSays(card.label)}
+                      openerFor={(card) => (card.cardKey === COLLECT_WHATS_OWED_CARD.cardKey ? COLLECT_WHATS_OWED_OPENER : whatThisCardSays(card.label))}
+                      alsoOffered={collectionsOffered ? [{ card: COLLECT_WHATS_OWED_CARD, group: COLLECT_WHATS_OWED_GROUP, forExample: COLLECT_WHATS_OWED_FOR_EXAMPLE }] : []}
                       onSend={describeItInYourOwnWords}
                       onDescribe={() => setSeeingEverySituation(false) /* back to the one box: describing it is the first screen (U.6 review) */}
                       onStart={(card, opener) => {
@@ -5133,6 +5174,10 @@ export function EntryChatPage() {
                 {trap.field}
                 {/* A form, so Enter and the button are one path and the page's own message is the only channel (noValidate). */}
                 <form noValidate onSubmit={e => { e.preventDefault(); handleSave() }}>
+                <TextField type="text" autoComplete="name" placeholder="Your name" aria-label="Your name" value={yourName} onChange={e => { setYourName(e.target.value); setNameError('') }}
+                  className={`gwui-ec-savecard-field ${nameError ? 'gwui-ec-savecard-field-error' : ''}`}
+                />
+                {nameError && <div className="gwui-ec-savecard-error">{nameError}</div>}
                 <TextField type="email" placeholder="your@email.com" value={email} onChange={e => { setEmail(e.target.value); setEmailError('') }}
                   className={`gwui-ec-savecard-field ${emailError ? 'gwui-ec-savecard-field-error' : ''}`}
                 />

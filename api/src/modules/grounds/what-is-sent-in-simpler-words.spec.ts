@@ -15,12 +15,12 @@ const REPORT = {
 
 describe('the WhatsApp messages after "finish"', () => {
   it('say what they always said with the switch off', () => {
-    expect(theCheckInIsCompleteSaying()).toBe('Your check-in is complete and on record. Your report follows in a moment.');
+    expect(theCheckInIsCompleteSaying()).toBe('Your check-in is complete and on record.');
     expect(theCheckInIsCompleteSaying(false)).toBe(theCheckInIsCompleteSaying());
     expect(enoughToCloseSaying(false)).toBe('That is enough to close this check-in. Reply "finish" to complete it, or keep going.');
   });
   it('say it in short plain sentences with the switch on', () => {
-    expect(theCheckInIsCompleteSaying(true)).toBe('Your check-in is finished, and your answers are saved. Your report will come in a moment.');
+    expect(theCheckInIsCompleteSaying(true)).toBe('Your check-in is finished, and your answers are saved.');
     expect(enoughToCloseSaying(true)).toBe('You have said enough to finish. Write "finish" to end this check-in, or keep talking.');
   });
 });
@@ -62,7 +62,8 @@ describe('an email about a check-in', () => {
   /* Decision 131: a reminder says in one short sentence what the person gets from answering. The email's words, never a submitted template's. */
   it('says what it always said with the switch off, and what the person gets from answering', () => {
     expect(THE_EMAILS.nudge(false).stillOpen).toBe('is still open. About ten minutes now puts your view into the shared picture, and you read it too.');
-    expect(THE_EMAILS.nextCheckInOpen(false).after).toBe('. Answering keeps the picture you and your team read up to date.');
+    /* Changed 18 October (Drop Access run 1, item 11): a check-in's length is said wherever an opening is, "about ten minutes" (release plan Part 0). */
+    expect(THE_EMAILS.nextCheckInOpen(false).after).toBe('. It takes about ten minutes, and answering keeps the picture you and your team read up to date.');
     expect(THE_EMAILS.nudge(false).theOtherHasAnswered).toBe('They have already shared their side. Yours is the last one we are waiting for.');
     expect(THE_EMAILS.nextCheckInOpen().before).toBe('A new check-in is ready for');
   });

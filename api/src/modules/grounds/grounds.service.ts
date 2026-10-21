@@ -1,3 +1,9 @@
+import { withTheDirectMorningSaid } from '../organisation/the-screen-is-told-the-direct-morning';
+import { theDirectMorningIsOnFor } from '../organisation/the-direct-morning-switch';
+import { thePersonJudgementsAreOn, thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
+import { theNumberIsOnlyADay } from '../conversation/a-day-is-not-a-target';
+import { readWhereEachPersonIsGettingStarted } from './getting-each-person-started';
+import { theShareTimeANewCheckInStartsWith, aTimeOfDay } from '../reports/a-report-shares-itself';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { organisationsThatTurnedWhatsAppOn } from '../whatsapp/only-where-whatsapp-is-turned-on';
 import { fullNameToCall } from '../engagement/a-name-to-call-them';
@@ -34,7 +40,7 @@ import { whoHasNotJoinedYet, theNotJoinedYetLine } from './invited-not-joined-ye
 import { aNameTypedInLowerCase } from '../../common/a-name-typed-in-lower-case';
 import { whoASessionCounts } from './the-lead-checks-in-when-they-choose';
 import { openTheLeadsCheckIn } from './check-in-yourself';
-import { theLeadAddsAWhatsAppNumber, whereEachPersonIsOnWhatsApp, theOpeningGoesToTheNumberJustAdded } from './the-lead-adds-a-whatsapp-number';
+import { theLeadAddsAWhatsAppNumber, whereEachPersonIsOnWhatsApp, theOpeningGoesToTheNumberJustAdded, theOpeningsGoToANumberJustSaved } from './the-lead-adds-a-whatsapp-number';
 import { waitsOnAManagingOnlyLead } from './the-lead-who-only-asks';
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException, Optional, GoneException } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
@@ -42,13 +48,14 @@ import { seatsIn } from '../../common/seats';
 import { whetherThereIsRoomForOneMore, type SeatAnswer } from './added-but-waiting-for-a-seat';
 import { whatTheDocumentsSay, stillNeedsSomethingInWriting } from './what-the-documents-say';
 import { whatFitsInTheRoom, tellThemWhatIsMissing } from '../conversation/a-prompt-that-ran-out-of-room-says-so';
+import { itSendsFromTheirNumber, WHAT_SAYS_IT_WORKS } from '../whatsapp/a-connection-that-works';
 import { daysRemaining, deadlineOf, clockStartsAt } from './when-the-clock-starts';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { aKindMayBeGiven, theBoardKindsOffered, theOldContextChatIsOpen } from '../admin/what-is-hidden-at-release';
 import { askNameOf } from '../assistant/ask-name';
-import { KINDS_OF_WORK, THE_KIND_OF_WORK_PROMPT, THE_KIND_OF_WORK_SCHEMA, oneOfTheKinds, theSetupWords } from '../board/the-kind-of-work';
+import { KINDS_OF_WORK, THE_KIND_OF_WORK_PROMPT, THE_KIND_OF_WORK_SCHEMA, oneOfTheKinds, isASalesKind, theSetupWords } from '../board/the-kind-of-work';
 import { PrismaService } from '../prisma/prisma.service';
 import { theNextDayTheyWork, workingDaysOf, theDaysItRunsOn } from './which-days-this-team-works';
 import { targetsFor } from '../board/whose-number-is-whose-business';
@@ -67,7 +74,7 @@ import { EmailService } from '../email/email.service';
 import { BillingService } from '../billing';
 import { UsageService } from '../usage/usage.service';
 import { CreateGroundDto, AddParticipantDto, CreateGroundForLeadDto } from './dto';
-import { GroundworkEvents, GroundActivatedEvent, CommitmentsSettledEvent } from '../../common';
+import { GroundworkEvents, GroundActivatedEvent, CommitmentsSettledEvent, KindOfWorkReadEvent } from '../../common';
 import { createHash } from 'node:crypto';
 import { ContextItemKind, GroundScenario, GroundStatus, PartyType, CheckInStatus, Cadence, UsageEventType, TokenType, Prisma, GroundMoment, ContextNoteAudience, DocumentVisibility } from '@prisma/client';
 import { endStatesFor } from '../resolution/end-states';
@@ -76,7 +83,10 @@ import { defaultModeFor, boardRendersFor } from '../board/board-families';
 import { howACheckInIsGoing } from './how-a-check-in-is-going';
 import { theGlanceAsThisReaderMayReadIt, whatIsInTheWay } from './what-a-manager-needs-at-a-glance';
 import { totalSessionsFor } from './session-count';
-import { theSessionClock } from '../board/one-count-for-the-sessions';
+import { readPeopleAndSetup } from './people-and-setup';
+import { readReferencesAndResources, readTheEvidence, aLineToKeep, aKeyFactFrom, referencesSaidDirectly, type EvidenceQuery } from './references-and-resources';
+import { theRelease1bTabsAreOn } from './release-1b-tabs';
+import { holdsTheClock, theSessionClock } from '../board/one-count-for-the-sessions';
 import { answeredOnALink, aLinkRoundIsReady } from './an-open-link-has-no-roster';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
 import { BoardFamily, familyFor } from '../board/board-families';
@@ -123,9 +133,16 @@ import { aLabelTheyCanTellApart } from './four-check-ins-with-the-same-name';
 import { howCheckableIsYoursAlone } from './how-checkable-is-yours-alone';
 import { writeADocumentsNumbers } from '../documents/write-a-documents-numbers';
 import { isThisSessionReleased, isTheTeamPictureNowShared, releasedSessionsOf } from '../reports/each-sessions-picture-is-released-on-its-own';
+import { theContextReadsEachTargetOnce, eachTargetOnceOnTheContextTab } from './the-context-reads-each-target-once';
+import { thePlanAsAgreed } from './the-plan-as-agreed';
+import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
+import { theRelease2CollectionsIsOn } from './release-2-collections';
+import { aKindTheSwitchboardNeeds, TYPES_A_SCENARIO_OFFERS, CHECK_IN_TYPE_LABEL, oneOfTheTypes } from '../board/the-switchboard';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
+  /* Twelve weeks at a week apart, under the twenty-session cap, the clock the other weekly standing read has (collect-whats-owed.ts). */
+  COLLECTIONS: 90,
   /** Short on purpose: nobody has named the situation yet, so committing months to it is a guess. */
   OPEN_READ: 30,
   NEW_HIRE: 90,
@@ -273,6 +290,8 @@ export const RECOMMENDED_MOMENT: Record<GroundScenario, GroundMoment> = {
   TEAM_UPDATES: GroundMoment.STARTING,
   /** The case is built from a period that has already happened. */
   RECOGNITION: GroundMoment.RECOGNITION,
+  /* STARTING, like the other recurring reads: the first session sets out what each person follows up, and every later one reads it. */
+  COLLECTIONS: GroundMoment.STARTING,
 
   // Closing something out.
   /** What the term delivered, judged against what it was meant to. */
@@ -333,6 +352,8 @@ export const RECOMMENDED_CADENCE: Record<GroundScenario, Cadence> = {
   DISCOVERY: Cadence.ONE_TIME,
   /* Her default of the three offered - daily, weekly, every two weeks. The other two are a click. */
   TEAM_UPDATES: Cadence.WEEKLY,
+  /* Weekly: the prototype's SIT_SCHED has no row for it, and the release plan's collections check-in is weekly (collect-whats-owed.ts). */
+  COLLECTIONS: Cadence.WEEKLY,
 };
 
 // All scenarios support any number of participants - the initiator decides who
@@ -618,6 +639,17 @@ export class GroundsService {
   }
 
   /**
+   * COLLECT WHAT'S OWED IS OFFERED ONLY WHERE RELEASE 2 IS ON (release plan, Release 2; release-2-collections.ts). The picker
+   * shows it only there, and the server says the same, so a new check-in with it is refused anywhere else, in a full sentence,
+   * before anything is spent or written. Every other situation is untouched.
+   */
+  private async aNewCheckInMayBeThisSituation(organizationId: string, scenario: GroundScenario | string | null | undefined): Promise<void> {
+    if (scenario !== GroundScenario.COLLECTIONS) return;
+    if (await theRelease2CollectionsIsOn(this.prisma, organizationId)) return;
+    throw new BadRequestException('Collecting what is owed is not open to your organisation yet, so choose another situation for this check-in.');
+  }
+
+  /**
    * @param creatorRole the caller's role in the organisation. A ground created by
    *   somebody who is not an ADMIN waits for one to accept it - her requirement, and
    *   the reason it is a parameter rather than a lookup is that the controller already
@@ -672,6 +704,8 @@ export class GroundsService {
   }
 
   async create(organizationId: string, initiatorId: string, dto: CreateGroundDto, creatorRole?: string) {
+    /* Collect what's owed only where the organisation's Release 2 switch is on; refused before anything is spent (release-2-collections.ts). */
+    await this.aNewCheckInMayBeThisSituation(organizationId, dto.scenario);
     /* A daily check-in nobody gave days for runs Monday to Friday (Hafsah, 15 October). */
     dto = { ...dto, workingDays: theDaysItRunsOn(dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario], dto.workingDays) };
     /* What this organisation already calls its check-ins, so a new one is not the fourth thing in
@@ -748,6 +782,8 @@ export class GroundsService {
         timelineStated: dto.runsUntilEnded === true || dto.timelineDays != null || !!dto.endsAt,
         cadenceStated: dto.cadence != null,
         cadence: dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario],
+        /* A new check-in starts with its scenario's default for sharing its report by itself (Hafsah, 18 October 2026). */
+        reportSharesAt: theShareTimeANewCheckInStartsWith(dto.scenario, dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario]),
         cadenceAnchorDay: dto.cadenceAnchorDay ?? null,
         workingDays: workingDaysOf(dto.workingDays),
         startsAt: this.theFirstDayTheyWork(dto.startsAt ? new Date(dto.startsAt) : null, dto.workingDays),
@@ -922,6 +958,7 @@ export class GroundsService {
    * reject them.
    */
   async createForLead(organizationId: string, adminUserId: string, dto: CreateGroundForLeadDto) {
+    await this.aNewCheckInMayBeThisSituation(organizationId, dto.scenario);
     dto = { ...dto, workingDays: theDaysItRunsOn(dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario], dto.workingDays) };
     const canCreate = await this.billing.canCreateGround(organizationId);
     if (!canCreate.allowed) {
@@ -964,6 +1001,8 @@ export class GroundsService {
           timelineStated: dto.runsUntilEnded === true || dto.timelineDays != null || !!dto.endsAt,
           cadenceStated: dto.cadence != null,
           cadence: dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario],
+          /* A new check-in starts with its scenario's default for sharing its report by itself (Hafsah, 18 October 2026). */
+          reportSharesAt: theShareTimeANewCheckInStartsWith(dto.scenario, dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario]),
           cadenceAnchorDay: dto.cadenceAnchorDay ?? null,
           workingDays: workingDaysOf(dto.workingDays),
           startsAt: this.theFirstDayTheyWork(dto.startsAt ? new Date(dto.startsAt) : null, dto.workingDays),
@@ -1915,7 +1954,7 @@ export class GroundsService {
         /* For `guestIn`: whose workspace this check-in belongs to. And whether it has a WhatsApp
            number, which is what the "where people answer this" setting needs - riding along on a
            read that already has the organisation in hand, rather than a second query. */
-        organization: { select: { name: true, whatsappConnection: { select: { enabled: true } } } },
+        organization: { select: { name: true, release1bTabsOn: true, directMorningOn: true, whatsappConnection: { select: { enabled: true } } } },
         /**
          * WHAT THE WHOLE CHECK-IN IS AIMING AT. Written by the lead's own check-in alongside the
          * per-person expectations, and never read back until now - so the Context page had a band
@@ -1971,7 +2010,7 @@ export class GroundsService {
                name is actually needed. The WhatsApp connection rides along for the same reason it
                does above - and it has to be here too, or a cross-org lead is the one person who
                cannot see the setting. */
-            organization: { select: { name: true, whatsappConnection: { select: { enabled: true } } } },
+            organization: { select: { name: true, release1bTabsOn: true, directMorningOn: true, whatsappConnection: { select: { enabled: true } } } },
             /**
              * THE SAME LIST AS THE PRIMARY READ ABOVE, and it has to stay that way: this is the
              * cross-org participant's path, and anything missing here is a field that exists for
@@ -2037,8 +2076,11 @@ export class GroundsService {
     const sessionClock = theSessionClock(
       (((ground as any).checkIns ?? []) as any[]).filter((c) => !c.isSetup),
       /* Nobody an admin has not let in yet holds the clock back (decision 77). */
-      new Set((((ground as any).participants ?? []) as any[]).filter((p) => !p.managingOnly && !isNotLetInYet(p)).map((p) => p.id)),
+      new Set((((ground as any).participants ?? []) as any[]).filter((p) => holdsTheClock(p, isNotLetInYet)).map((p) => p.id)),
       noEnd ? null : totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null,
+      new Date(),
+      /* A finished round hands the count on only with Release 1's sales board on, as the board's header reads it. */
+      await theReleaseOneSalesBoardIsOn(this.prisma, (ground as any).organizationId),
     );
 
     /*
@@ -2077,7 +2119,8 @@ export class GroundsService {
      * check-in, after three periods, in plain words, built by patterns/who-reads-a-pattern. Nothing
      * at all while patterns are not served, and then not even the reader lookup is made.
      */
-    const signals = PATTERNS_ARE_SERVED && !heldButAnswered
+    /* Judgements of a person off for this organisation: no pattern about anybody (organisation/person-judgements.ts). */
+    const signals = PATTERNS_ARE_SERVED && !heldButAnswered && (await thePersonJudgementsAreOn(this.prisma, (ground as any).organizationId ?? organizationId))
       ? await (async () => {
           const namesForPatterns = whoIsWhoIn(ground.participants as any, ground.initiatorId, (ground as any).cadence);
           const served = servedPatterns(
@@ -2363,7 +2406,7 @@ export class GroundsService {
           ...o,
           /* The plain sentence only - never the lead's own private note about telling them
              (`awarenessDetail`), which stays the lead's alone like any other private note. */
-          text: whatThePersonReadsAfterAWeek(leadFirst, await areaOfGoalOrFallback(this.prisma, o.text ?? '')),
+          text: whatThePersonReadsAfterAWeek(leadFirst, await areaOfGoalOrFallback(this.prisma, o.text ?? ''), { releaseOne: await theReleaseOneSalesBoardIsOn(this.prisma, (ground as any).organizationId).catch(() => false) }),
           awarenessDetail: null,
         })));
         objectiveRows = [...objectiveRows, ...worded];
@@ -2374,6 +2417,15 @@ export class GroundsService {
      * at once, and the map used to keep whichever row happened to come back last - so the page showed
      * one thing and the rest were invisible even though they were stored.
      */
+    /*
+     * EACH TARGET ONCE, AS THE BOARD READS IT (Hafsah, 18 October). A target said again, as a target or as somebody's expectation,
+     * is that target, and the Context tab lists it once. See the-context-reads-each-target-once.
+     */
+    if (theContextReadsEachTargetOnce((ground as any).kindOfWork, await theReleaseOneSalesBoardIsOn(this.prisma, (ground as any).organizationId))) {
+      const once = eachTargetOnceOnTheContextTab(((ground as any).objectives ?? []) as any[], objectiveRows as any[]);
+      (ground as any).objectives = once.targets;
+      objectiveRows = once.expectations as typeof objectiveRows;
+    }
     const objectivesByParticipant = new Map<string, typeof objectiveRows>();
     for (const o of objectiveRows) {
       const list = objectivesByParticipant.get(o.participantId) ?? [];
@@ -2966,6 +3018,10 @@ export class GroundsService {
        * which is the pattern this codebase has caught three times.
        */
       orgHasWhatsApp,
+      /* Release 1B's new check-in tabs for this organisation (release-1b-tabs.ts): which People and setup the page draws. A yes or no, nothing about anybody. */
+      release1bTabsOn: (ground as any).organization?.release1bTabsOn === true,
+      /* The direct morning for this organisation (organisation/the-direct-morning-switch.ts): which words the screens say. A yes or no, nothing about anybody. */
+      directMorningOn: (ground as any).organization?.directMorningOn === true,
       alignment,
       daysLeft,
       endsOn,
@@ -3105,6 +3161,24 @@ export class GroundsService {
       ...theWordsOfWhatTheLeadHasNotToldThemAbout(((ground as any).objectives ?? []) as any[], objectiveRowsAsStored as any[], (ground.participants ?? []) as any[], viewerRunsIt)
         .filter((t) => !objectiveRowsAsStored.some((o: any) => aWeekHasPassedSinceNotTold(o) && (o.text ?? '') === t)),
     ]);
+    /*
+     * THE PLAN, AS AGREED (Hafsah, 18 October; the prototype's Context page). From the targets and commitments this reader is
+     * already served, and the rows a plan card the lead confirmed wrote. Never invented; absent when nothing is on record.
+     * Behind Release 1's switch, on a sales check-in only: with it off the Context tab reads exactly as it did.
+     */
+    if (isASalesKind((ground as any).kindOfWork) && (await theReleaseOneSalesBoardIsOn(this.prisma, (ground as any).organizationId))) {
+      const confirmedRows = await ((this.prisma as any).planProposal?.findMany?.({ where: { groundId: id, status: 'CONFIRMED', becameId: { not: null } }, select: { becameId: true } }) ?? Promise.resolve([])).catch(() => [] as any[]);
+      const nameOfHere = (pid: string) => { const p = ((ground.participants ?? []) as any[]).find((x: any) => x.id === pid); return p?.user?.firstName ?? p?.nameGiven ?? null; };
+      const meHere = ((ground.participants ?? []) as any[]).find((p: any) => !!requestingUserId && p.userId === requestingUserId)?.id ?? null;
+      const plan = thePlanAsAgreed({
+        targets: (((thePage as any).objectives ?? []) as any[]),
+        commitments: (((thePage as any).commitments ?? []) as any[]),
+        confirmed: new Set((confirmedRows as any[]).map((r: any) => r.becameId).filter(Boolean)),
+        nameOf: nameOfHere,
+        meId: meHere,
+      });
+      if (plan.length) (thePage as any).planAsAgreed = plan;
+    }
     /* A goal whose whole sentence carried a number this reader may not read is not left as a goal with no words (it is not served, and what the person's own row says is said plainly). */
     /* In an anchor check-in the lead's own set-up (her aim, what it will cover, what a complete answer holds) is hers alone (decision 96, item 8). */
     /* The reader's own first name, as a possessive, is "your": "Zawadi's first weeks" is "Your first weeks" to Zawadi (privacy sweep, 7 October). */
@@ -4814,7 +4888,9 @@ export class GroundsService {
       held.some((h) => h.owner === owner && theSameMeasure(h.name, name) && (h.target == null || target == null || h.target === target));
     const rows: { groundId: string; name: string; target: number | null; ownerParticipantId: string | null; sortOrder: number; direction?: string | null }[] = [];
     let sortOrder = existing.length;
-    for (const t of got.teamTargets) {
+    for (const t0 of got.teamTargets) {
+      /* A number said only as a day is not the measure's target (local test of staging, 15 October). */
+      const t = theNumberIsOnlyADay(t0.name, t0.target) ? { ...t0, target: null } : t0;
       if (alreadyHeld('team', t.name, t.target)) continue;
       held.push({ owner: 'team', name: t.name, target: t.target });
       /* Decision 69: only a direction the lead said yes to on the list; otherwise not set. */
@@ -4822,6 +4898,7 @@ export class GroundsService {
     }
     for (const p of got.forPeople) {
       for (const t of p.targets) {
+        if (theNumberIsOnlyADay(t.name, t.number)) continue;
         if (alreadyHeld(p.participantId, t.name, t.number)) continue;
         held.push({ owner: p.participantId, name: t.name, target: t.number });
         rows.push({ groundId, name: t.name, target: t.number, ownerParticipantId: p.participantId, sortOrder: sortOrder++, direction: null });
@@ -5481,7 +5558,7 @@ export class GroundsService {
 
   /** Whether people on this check-in see each other's numbers, or only their own. */
   /**
-   * THE KIND OF WORK, READ FROM SETUP (request 76). One of the eleven kinds in
+   * THE KIND OF WORK, READ FROM SETUP (request 76). One of the twelve kinds in
    * board/the-kind-of-work.ts, read from the lead's own words and the brief with the model, and kept
    * only when the answer is exactly one of the eleven. Never over a lead's own choice: once the lead
    * has set it, only the lead changes it. Best effort: a failed read leaves it as it was.
@@ -5490,12 +5567,16 @@ export class GroundsService {
     try {
       const g = await this.prisma.ground.findUnique({
         where: { id: groundId },
-        select: { label: true, brief: true, endState: true, resolutionState: true, kindOfWorkSetBy: true, kindOfWork: true },
+        select: {
+          label: true, brief: true, endState: true, resolutionState: true, kindOfWorkSetBy: true, kindOfWork: true, organizationId: true,
+          /* The people's job titles, so a sales team is told by its reps and its sales manager as well as by its words (Release 1). */
+          participants: { select: { roleAsDescribed: true, user: { select: { jobTitle: true } } } },
+        },
       });
       if (!g || theReadingMustLeaveIt(g.kindOfWorkSetBy)) return;
       /* A check-in that already has a kind keeps it, offered or not (docs/deploy.md, "Hidden at release"). */
       const hasOne = oneOfTheKinds(g.kindOfWork);
-      const words = theSetupWords(g);
+      const words = theSetupWords(g, ((g.participants ?? []) as any[]).flatMap((p) => [p.user?.jobTitle, p.roleAsDescribed]));
       if (!words.trim()) return;
       const answer = await this.anthropic.extract<{ kind?: string }>(
         THE_KIND_OF_WORK_PROMPT,
@@ -5503,23 +5584,34 @@ export class GroundsService {
         THE_KIND_OF_WORK_SCHEMA,
       );
       const read = oneOfTheKinds(answer?.kind);
+      /*
+       * A SALES CHECK-IN KEEPS THE SALES KIND IT HOLDS (Release 1). "sales team" came in beside "sales org"; a check-in read as a
+       * sales org before keeps that, and one read as a sales team keeps that, when a later read of its words says the other. Only
+       * the lead moves it between the two (PATCH /grounds/:id/kind-of-work), so no existing check-in's kind is rewritten by a read.
+       */
+      if (read && hasOne && isASalesKind(read) && isASalesKind(hasOne)) return;
       /* A kind not offered at release is never given to a check-in by the read; one it already holds stays. */
-      const kind = read && (await aKindMayBeGiven(this.prisma, read, hasOne)) ? read : null;
+      /* Or one the switchboard needs where its switch is on for this organisation (messages test, 19 October, finding 19). */
+      const kind = read && ((await aKindMayBeGiven(this.prisma, read, hasOne)) || (await aKindTheSwitchboardNeeds(this.prisma, read, (g as any).organizationId))) ? read : null;
       if (read && !kind && hasOne) return;
       /* The model call above can take seconds, and the lead (or a script) may choose a kind meanwhile.
          So the write itself says "only if nobody else has chosen", in one statement, never a check
          made before the call. A choice made in the meantime is left exactly as it is. */
-      await this.prisma.ground.updateMany({
+      const written = await this.prisma.ground.updateMany({
         where: { id: groundId, OR: [{ kindOfWorkSetBy: null }, { kindOfWorkSetBy: 'read' }] },
         data: { kindOfWork: kind, kindOfWorkSetBy: kind ? 'read' : null },
       });
+      /* A kind where there was none: the sessions already finished are read for their records now (15 October). */
+      if (kind && !hasOne && (written as any)?.count) {
+        this.events?.emit?.(GroundworkEvents.KIND_OF_WORK_READ, { groundId } satisfies KindOfWorkReadEvent);
+      }
     } catch (err: any) {
       this.logger.warn(`Reading the kind of work for ${groundId} failed: ${err?.message}`);
     }
   }
 
   /**
-   * THE LEAD CHANGES THE KIND OF WORK, AND ITS STAGE NAMES. `kind` must be one of the eleven or null
+   * THE LEAD CHANGES THE KIND OF WORK, AND ITS STAGE NAMES. `kind` must be one of the twelve or null
    * (none of them); anything else is refused in plain words rather than stored. `stages` are the
    * organisation's own names, in order; an empty list goes back to the kind's defaults.
    */
@@ -5532,8 +5624,8 @@ export class GroundsService {
         throw new BadRequestException(`That is not one of the kinds of work Groundwork knows. Choose one of these: ${KINDS_OF_WORK.join(', ')}.`);
       }
       if (kind) {
-        const holds = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { kindOfWork: true } });
-        if (!(await aKindMayBeGiven(this.prisma, kind, holds?.kindOfWork))) {
+        const holds = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { kindOfWork: true, organizationId: true } });
+        if (!(await aKindMayBeGiven(this.prisma, kind, holds?.kindOfWork)) && !(await aKindTheSwitchboardNeeds(this.prisma, kind, holds?.organizationId))) {
           const offered = await theBoardKindsOffered(this.prisma);
           throw new BadRequestException(`Groundwork does not offer that kind of work yet. Choose ${offered.length ? `one of these: ${offered.join(', ')}` : 'none of them, because none is offered at the moment'}.`);
         }
@@ -5549,6 +5641,37 @@ export class GroundsService {
       where: { id: groundId },
       data,
       select: { id: true, kindOfWork: true, kindOfWorkSetBy: true, workStages: true },
+    });
+  }
+
+  /** Whether this organisation may start a check-in to collect what is owed (Release 2). A yes or no, nothing about anybody. */
+  async situationsOffered(organizationId: string): Promise<{ collections: boolean }> {
+    return { collections: await theRelease2CollectionsIsOn(this.prisma, organizationId) };
+  }
+
+  /**
+   * THE LEAD CONFIRMS THE TYPE (Release 2, the switchboard foundation; board/the-switchboard.ts). Written only here, only by the
+   * lead (or an admin once the lead has left, as every setting), only where the organisation's Release 2 switch is on, and only a
+   * type this check-in's scenario offers. Nothing else writes it, so no existing check-in's type is ever rewritten. Refusals are
+   * full sentences, and nothing is written with one.
+   */
+  async confirmTheType(groundId: string, requestingUserId: string, body: { type?: unknown }) {
+    await this.aSettingOnlyTheLeadMayChange(groundId, requestingUserId);
+    const g = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { id: true, scenario: true, organizationId: true } });
+    if (!g) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    if (!(await theRelease2CollectionsIsOn(this.prisma, g.organizationId))) {
+      throw new BadRequestException('Choosing the type of a check-in is not open to your organisation yet, so nothing was changed.');
+    }
+    const offered = TYPES_A_SCENARIO_OFFERS[g.scenario as GroundScenario];
+    if (!offered) throw new BadRequestException('This check-in has no type to choose. Its kind of work decides its board.');
+    const type = oneOfTheTypes(body?.type);
+    if (!type || !offered.includes(type)) {
+      throw new BadRequestException(`Choose one of these: ${offered.map((t) => CHECK_IN_TYPE_LABEL[t]).join(' or ')}.`);
+    }
+    return this.prisma.ground.update({
+      where: { id: groundId },
+      data: { checkInType: type, checkInTypeConfirmedAt: new Date() },
+      select: { id: true, checkInType: true, checkInTypeConfirmedAt: true },
     });
   }
 
@@ -5593,9 +5716,9 @@ export class GroundsService {
     if (over === true) {
       const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true } });
       const connected = ground
-        ? await this.prisma.whatsAppConnection.findUnique({ where: { organizationId: ground.organizationId }, select: { enabled: true } })
+        ? await this.prisma.whatsAppConnection.findUnique({ where: { organizationId: ground.organizationId }, select: WHAT_SAYS_IT_WORKS })
         : null;
-      if (!connected?.enabled) {
+      if (!itSendsFromTheirNumber(connected)) {
         throw new BadRequestException('This organisation has no WhatsApp number connected yet. Connect one on the Connect page first.');
       }
     }
@@ -5658,6 +5781,24 @@ export class GroundsService {
    * these grounds up for other people and often knows the answer when the lead is
    * still being onboarded.
    */
+  /**
+   * WHETHER THE TEAM'S REPORT SHARES ITSELF, AND AT WHAT TIME (Hafsah, 18 October 2026). Off is an empty time: the report
+   * is shared once everyone is in, or when the lead shares it, as every check-in made before this does. On is a time of day
+   * in the organisation's own day ("18:30"). The lead, or an admin once the lead has left, as for the other settings.
+   */
+  async setReportSharesAt(groundId: string, requestingUserId: string, time: string | null) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { initiatorId: true, organizationId: true, cadence: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
+    });
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    await this.mayConfirmSetupOn(ground, requestingUserId);
+    const at = time == null ? null : aTimeOfDay(time);
+    if (time != null && !at) throw new BadRequestException('Give the time as hours and minutes, for example 18:30.');
+    if (at && (ground as any).cadence === 'ONE_TIME') throw new BadRequestException('A one-time check-in shares its report once everyone is in, so it has no time to set.');
+    return this.prisma.ground.update({ where: { id: groundId }, data: { reportSharesAt: at } as any, select: { id: true, reportSharesAt: true } as any });
+  }
+
   async setPeopleWorkTogether(groundId: string, requestingUserId: string, together: boolean) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
@@ -8172,6 +8313,86 @@ export class GroundsService {
    * two is where this went wrong before - see the comment on the query.
    */
   /** D1 and D2 (13 October 2026, evening): see the-lead-adds-a-whatsapp-number.ts. */
+  /** Each person, from their invitation to coming back on their own (getting-each-person-started.ts). */
+  /** People and setup, as this reader may read it (Release 1B, pull request 1 of 3). Asked after the check-in's own read rules. */
+  async peopleAndSetup(groundId: string, organizationId: string, userId: string) {
+    await refuseSomeoneAwaitingTheOrganisation(this.prisma as any, userId, CANNOT_CHECK_IN_YET);
+    await this.assertMaySeeGround(groundId, userId);
+    /* The direct morning (organisation/the-screen-is-told-the-direct-morning.ts): one yes or no for the page's fixed words. It shows nothing more. */
+    return withTheDirectMorningSaid(await readPeopleAndSetup(this.prisma as any, { groundId, organizationId, userId }), await theDirectMorningIsOnFor(this.prisma, groundId));
+  }
+
+  /** References and resources, as this reader may read it (Release 1B, pull request 2 of 3). Asked after the check-in's own read rules. */
+  async referencesAndResources(groundId: string, userId: string) {
+    await refuseSomeoneAwaitingTheOrganisation(this.prisma as any, userId, CANNOT_CHECK_IN_YET);
+    await this.assertMaySeeGround(groundId, userId);
+    const served = await readReferencesAndResources(this.prisma as any, { groundId, userId, contextEnabled: this.contextEnabled() });
+    const direct = await theDirectMorningIsOnFor(this.prisma, groundId);
+    return withTheDirectMorningSaid(direct ? referencesSaidDirectly(served) : served, direct);
+  }
+
+  /** One page of the evidence this reader may read (Release 1B, pull request 2 of 3). */
+  async referencesEvidence(groundId: string, userId: string, query: EvidenceQuery) {
+    await refuseSomeoneAwaitingTheOrganisation(this.prisma as any, userId, CANNOT_CHECK_IN_YET);
+    await this.assertMaySeeGround(groundId, userId);
+    return (await readTheEvidence(this.prisma as any, { groundId, userId }, query)) ?? { on: false };
+  }
+
+  /**
+   * THE LEAD ADDS TO REFERENCES AND RESOURCES, AND NOBODY ELSE (Release 1B, pull request 2 of 3: "Only the lead adds to it";
+   * Hafsah, 18 October: team members "can't add to it"). The same gate as every other setup change (decision 63: the lead, or an
+   * admin standing in only once the lead has left the organisation), asked here at the server, so a team member's request is
+   * refused whatever the screen draws. Only while the organisation's switch is on.
+   */
+  private async aReferencesWriteIsAllowed(groundId: string, userId: string) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { id: true, initiatorId: true, organizationId: true, status: true, endState: true, scenario: true, participants: { select: { id: true, userId: true } } } as any,
+    }) as any;
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    if (!(await theRelease1bTabsAreOn(this.prisma as any, ground.organizationId))) {
+      throw new ForbiddenException('References and resources is not open for this organisation yet.');
+    }
+    const confirm = await this.mayConfirmSetupOn(ground, userId);
+    const refused = whyItRefuses(ground.status, ground.endState, confirm.as === 'lead' ? 'the lead' : 'anybody else', ground.scenario);
+    if (refused) throw new BadRequestException(refused);
+    return { ground, confirm, confirmedByAdminNote: confirm.as === 'admin' ? confirmedByAnAdminSentence(confirm.confirmedByName, confirm.leadName) : null };
+  }
+
+  async addAReference(groundId: string, userId: string, input: { kind?: string; text?: string; label?: string; aboutParticipantId?: string | null }) {
+    const { ground, confirmedByAdminNote } = await this.aReferencesWriteIsAllowed(groundId, userId);
+    const line = aLineToKeep(input, ground.participants ?? [], ground.initiatorId);
+    const made = await this.prisma.groundContextItem.create({
+      data: { groundId, kind: line.kind as any, text: line.text, audience: line.audience as any, aboutParticipantId: line.aboutParticipantId, source: 'TYPED', authorUserId: userId, confirmedByAdminNote },
+      select: { id: true, kind: true, text: true },
+    });
+    this.logger.log(`Ground ${groundId}: a ${line.kind} line was added on References and resources.`);
+    return made.kind === 'KEY_FACT' ? { id: made.id, kind: made.kind, ...aKeyFactFrom(made.id, made.text) } : made;
+  }
+
+  async changeAReference(groundId: string, userId: string, lineId: string, change: { text?: string; label?: string; closed?: boolean }) {
+    const { ground, confirmedByAdminNote } = await this.aReferencesWriteIsAllowed(groundId, userId);
+    const line = await this.prisma.groundContextItem.findFirst({ where: { id: lineId, groundId }, select: { id: true, kind: true, text: true, aboutParticipantId: true } }) as any;
+    if (!line) throw new NotFoundException('That line is no longer part of this check-in, so refresh the page.');
+    const PAGE_KINDS = ['WAY_OF_WORKING', 'STRATEGY', 'NOTE', 'STAGE_NEEDS', 'COACHING', 'RISK', 'KEY_FACT', 'PERSON_NOTE', 'HELP_WITH'];
+    if (!PAGE_KINDS.includes(String(line.kind))) throw new BadRequestException('That line is not changed from References and resources.');
+    let text: string | undefined;
+    if (typeof change?.text === 'string') {
+      const pageKind = line.kind === 'WAY_OF_WORKING' || line.kind === 'STRATEGY' || line.kind === 'NOTE' ? 'RULE' : line.kind;
+      const label = line.kind === 'KEY_FACT' ? (change.label ?? String(line.text ?? '').split('\n')[0]) : undefined;
+      text = aLineToKeep({ kind: pageKind, text: change.text, label, aboutParticipantId: line.aboutParticipantId }, ground.participants ?? [], ground.initiatorId).text;
+    }
+    return this.prisma.groundContextItem.update({
+      where: { id: line.id },
+      data: { ...(text ? { text } : {}), ...(change?.closed === undefined ? {} : { closedAt: change.closed ? new Date() : null }), confirmedByAdminNote },
+      select: { id: true, kind: true, text: true, closedAt: true },
+    });
+  }
+
+  async whereEachPersonIsGettingStarted(input: { groundId: string; organizationId: string; userId: string; role: string }) {
+    return readWhereEachPersonIsGettingStarted(this.prisma as any, input);
+  }
+
   async whereEachPersonIsOnWhatsApp(input: { groundId: string; organizationId: string; userId: string; role: string }) {
     return whereEachPersonIsOnWhatsApp(this.prisma as any, input);
   }
@@ -8183,8 +8404,9 @@ export class GroundsService {
       try {
         const whatsapp = this.moduleRef?.get(WhatsAppService, { strict: false });
         if (whatsapp) {
-          const on = (await organisationsThatTurnedWhatsAppOn(this.prisma, whatsapp as any, [input.organizationId])).has(input.organizationId);
-          await theOpeningGoesToTheNumberJustAdded(this.prisma, whatsapp as any, { groundId: input.groundId, participantId: input.participantId, organizationId: input.organizationId, phone: kept.phone }, on);
+          /* This check-in, and every other one open for them here when they have a sign-in. */
+          const signIn = await this.prisma.groundParticipant.findUnique({ where: { id: input.participantId }, select: { userId: true } }).catch(() => null);
+          await theOpeningsGoToANumberJustSaved(this.prisma, whatsapp as any, { organizationId: input.organizationId, phone: kept.phone, userId: signIn?.userId ?? null, participantIds: [input.participantId] });
         }
       } catch (err: any) {
         this.logger.warn(`The WhatsApp opening for a number just added could not go: ${err?.message}`);
@@ -8459,11 +8681,11 @@ export class GroundsService {
      * once, and gave no way to answer. None at all while patterns are not served.
      */
     const namesForOwnPatterns = whoIsWhoIn((participant as any).ground?.participants, (participant as any).ground?.initiatorId, (participant as any).ground?.cadence);
-    const servedOwn = servedPatterns(
+    const servedOwn = (await thePersonJudgementsAreOnFor(this.prisma, groundId)) ? servedPatterns(
       participant.patternDetections as any,
       { participantId: participant.id, runsIt: false },
       namesForOwnPatterns,
-    );
+    ) : [];
     /* Opening a page never asks the model (decision 7): kept wording only. */
     const patterns = await wordPatternEvidence(
       servedOwn,

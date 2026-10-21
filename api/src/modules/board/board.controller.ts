@@ -1,5 +1,9 @@
+import { withTheDirectMorningSaid } from '../organisation/the-screen-is-told-the-direct-morning';
 import { withoutComparisonsAnywhere } from '../reports/no-comparison-between-people';
-import { Controller, Get, Post, Patch, Delete, Param, Query, Body, BadRequestException } from '@nestjs/common';
+import { theDirectMorningIsOnFor } from '../organisation/the-direct-morning-switch';
+import { inTheDirectMorningsWords } from '../reports/the-direct-morning-says-the-fact';
+import { PrismaService } from '../prisma/prisma.service';
+import { Controller, Get, Post, Patch, Delete, Param, Query, Body, BadRequestException, Optional } from '@nestjs/common';
 import { IsString, IsInt, IsOptional, IsArray, IsBoolean, IsIn, MaxLength, Min, ArrayMaxSize, ValidateNested, Matches } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
@@ -99,7 +103,7 @@ class PollDto {
 @ApiBearerAuth()
 @Controller('grounds/:id/board')
 export class BoardController {
-  constructor(private board: BoardService) {}
+  constructor(private board: BoardService, @Optional() private prisma?: PrismaService) {}
 
   @Get()
   @ApiOperation({
@@ -113,7 +117,10 @@ export class BoardController {
   ) {
     const variant: CoverageVariant = coverage === 'bar' ? 'bar' : coverage === 'text' ? 'text' : DEFAULT_COVERAGE_VARIANT;
     /* No sentence that ranks a person against others reaches any reader (reports/no-comparison-between-people.ts). */
-    return withoutComparisonsAnywhere(await this.board.get(id, userId, variant));
+    /* The direct morning: the product's own hedges say the fact or nothing, as served (reports/the-direct-morning-says-the-fact.ts). Off, as before. */
+    const on = await theDirectMorningIsOnFor(this.prisma, id);
+    /* And the page is told it, as one yes or no for its fixed words (organisation/the-screen-is-told-the-direct-morning.ts). */
+    return withTheDirectMorningSaid(inTheDirectMorningsWords(withoutComparisonsAnywhere(await this.board.get(id, userId, variant)), on), on);
   }
 
   /**
@@ -169,6 +176,12 @@ export class BoardController {
     return this.board.updateWorkItem(id, itemId, userId, dto ?? {});
   }
 
+  @Post('people/:participantId/actions')
+  @ApiOperation({ summary: 'Lead only: praise one person, start a plan for them, set a deadline on one of their records, or give one of their records to somebody else. Kept in the record; no message is sent.' })
+  async actOnAPerson(@Param('id') id: string, @Param('participantId') participantId: string, @CurrentUser('id') userId: string, @Body() dto: { kind?: string; text?: string; itemId?: string; due?: string; toParticipantId?: string }) {
+    return this.board.actOnAPerson(id, participantId, userId, dto ?? {});
+  }
+
   @Post('work-items/:itemId/claim')
   @ApiOperation({ summary: 'Lead only: answer whether a record somebody says is theirs is theirs. Only a yes sets the owner.' })
   async answerAClaimOnARecord(@Param('id') id: string, @Param('itemId') itemId: string, @CurrentUser('id') userId: string, @Body() dto: { yes?: boolean }) {
@@ -181,6 +194,49 @@ export class BoardController {
   async answerADecision(@Param('id') id: string, @Param('itemId') itemId: string, @CurrentUser('id') userId: string, @Body() dto: { yes?: boolean }) {
     if (typeof dto?.yes !== 'boolean') throw new BadRequestException('Say yes or no.');
     return this.board.answerADecision(id, itemId, userId, dto.yes);
+  }
+
+  @Post('waits/:waitId/answer')
+  @ApiOperation({ summary: 'Lead only: answer yes or no to a wait on the lead that a yes or a no answers, such as an answer about a price. The answer goes in how we work, and the wait is cleared.' })
+  async answerAWaitOnTheLead(@Param('id') id: string, @Param('waitId') waitId: string, @CurrentUser('id') userId: string, @Body() dto: { yes?: boolean }) {
+    if (typeof dto?.yes !== 'boolean') throw new BadRequestException('Say yes or no.');
+    return this.board.answerAWaitOnTheLead(id, waitId, userId, dto.yes);
+  }
+
+  @Post('deals/:dealId/decide')
+  @ApiOperation({ summary: 'Lead only: answer yes or no to a decision the lead promised herself about a deal, such as a discount its customer asked for. The answer goes in how we work.' })
+  async answerADecisionTheLeadPromised(@Param('id') id: string, @Param('dealId') dealId: string, @CurrentUser('id') userId: string, @Body() dto: { yes?: boolean }) {
+    if (typeof dto?.yes !== 'boolean') throw new BadRequestException('Say yes or no.');
+    return this.board.answerADecisionTheLeadPromised(id, dealId, userId, dto.yes);
+  }
+
+  @Post('stall-rule/answer')
+  @ApiOperation({ summary: 'Lead only: set the suggested stall rule (drop a deal after 3 working days with no answer), or say not now. The answer goes in how we work.' })
+  async answerTheStallRule(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: { yes?: boolean }) {
+    if (typeof dto?.yes !== 'boolean') throw new BadRequestException('Say yes or no.');
+    return this.board.answerTheStallRule(id, userId, dto.yes);
+  }
+
+  @Post('due-on-an-event/answer')
+  @ApiOperation({ summary: 'Lead only, where Release 2 is on: say whether a line from a matter check-in made a fee note due. Yes writes the day; no keeps the line as answered.' })
+  async answerADueOnAnEvent(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: { itemId?: string; lineId?: string; yes?: boolean }) {
+    if (typeof dto?.yes !== 'boolean') throw new BadRequestException('Say yes or no.');
+    if (typeof dto?.itemId !== 'string' || typeof dto?.lineId !== 'string' || !dto.itemId || !dto.lineId) throw new BadRequestException('Say which fee note and which line this is about.');
+    return this.board.answerADueOnAnEvent(id, userId, dto.itemId, dto.lineId, dto.yes);
+  }
+
+  @Post('price-range/answer')
+  @ApiOperation({ summary: 'Lead only: answer whether a price range counts as a budget. The answer goes in how we work, and the board counts which deals are qualified by it.' })
+  async answerThePriceRange(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: { yes?: boolean }) {
+    if (typeof dto?.yes !== 'boolean') throw new BadRequestException('Say yes or no.');
+    return this.board.answerThePriceRange(id, userId, dto.yes);
+  }
+
+  @Post('not-relevant')
+  @ApiOperation({ summary: 'Lead only: say that what the organisation kept, offered as relevant, is not relevant to this check-in.' })
+  async sayItIsNotRelevant(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: { memoryIds?: string[] }) {
+    if (!Array.isArray(dto?.memoryIds) || !dto.memoryIds.length) throw new BadRequestException('Say which of what was offered is not relevant.');
+    return this.board.sayItIsNotRelevant(id, dto.memoryIds, userId);
   }
 
   @Delete('work-items/:itemId')

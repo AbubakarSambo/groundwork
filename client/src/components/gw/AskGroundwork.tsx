@@ -579,7 +579,8 @@ export function AskGroundwork({
             About
             <select value={aboutId} onChange={(e) => setChosen(e.target.value)}
               className="gwui-ask-about-select"
-              style={{ flex: 1, minWidth: 0, font: 'inherit', fontSize: 15, padding: '6px 8px', borderRadius: 8, border: '1px solid var(--gw-line)', background: 'var(--gw-card)', color: 'var(--gw-text)', maxWidth: '100%' }}>
+              /* The kit's field (48px, 16px words), as every other field: browser test, 20 October. */
+              style={{ flex: 1, minWidth: 0, font: 'inherit', fontSize: 16, minHeight: 48, padding: '0 12px', borderRadius: 10, border: '1.5px solid var(--gw-rule-2)', background: 'var(--gw-card)', color: 'var(--gw-text)', maxWidth: '100%' }}>
               <option value="">The whole organisation and your work</option>
               {aboutWithDates.map((g) => {
                 const apart = whatTellsItApart(aboutWithDates, g)

@@ -51,6 +51,11 @@ export interface AStartingRow {
 export interface AStartingState {
   heading: 'What was agreed at the start';
   rows: AStartingRow[];
+  /**
+   * kwame-board.jpg, "Confirmed by both on day 1": on a check-in about one person, where every goal agreed for them was
+   * written on day 1 and they confirmed it (`awareness: CONFIRMED`). Left out otherwise.
+   */
+  confirmed?: string;
 }
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -151,7 +156,10 @@ export function whatWasAgreedAtTheStart(a: {
 
   if (!rows.length) return NOTHING_WAS_AGREED_YET;
   rows.sort((x, y) => ORDER.indexOf(x.when) - ORDER.indexOf(y.when));
-  return { heading: 'What was agreed at the start', rows };
+  const agreed = a.goals.filter((g) => subjects.has(g.participantId) && r.personMayBeRead(g.participantId) && wasAgreed(g) && clean(g.text ?? '') && !['REFERENCE', 'COMMITMENT'].includes(String(g.kind ?? '').toUpperCase()));
+  const confirmedOnDayOne = new Set(agreed.map((g) => g.participantId)).size === 1 && dayOne !== null && agreed.length > 0
+    && agreed.every((g) => String(g.awareness ?? '').toUpperCase() === 'CONFIRMED' && theDayNumber(g.createdAt) === dayOne);
+  return { heading: 'What was agreed at the start', rows, ...(confirmedOnDayOne ? { confirmed: 'Confirmed by both on day 1' } : {}) };
 }
 
 /** Reads the goals of a check-in, as stored. Nothing is written. */
