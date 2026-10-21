@@ -1,6 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { theRelease1bTabsAreOn } from './release-1b-tabs';
-import { readsAsAnAdmin } from './who-may-read-this-check-in';
+import { readsAsAnAdmin, theAdminsWhoAlsoReadYourPeopleNotes } from './who-may-read-this-check-in';
 import { whatSomeoneWhoDoesNotRunItReads } from './what-someone-who-does-not-run-it-reads';
 import { theReferencesTemplateFor, theCollectionsReferencesTemplate, type TheReferencesTemplate } from './the-references-template';
 import { theRelease2CollectionsIsOn } from './release-2-collections';
@@ -142,6 +142,8 @@ export type ReferencesAndResources =
       evidenceGroups?: APieceOfEvidence['group'][];
       questions: { total: number; items: { asked: string; answer: string; who: string }[]; emptySays: string };
       people?: APersonInPeople[];
+      /** Who else sees People, for the lead: "Otieno, the admin who set up this check-in", or empty where nobody else does. Lead only. */
+      peopleAlsoSeenBy?: string;
     };
 
 const firstOf = (name: string | null | undefined) => (name ?? '').trim().split(/\s+/)[0] || '';
@@ -458,6 +460,7 @@ export async function readReferencesAndResources(
       const l = [...lines].reverse().find((x) => x.kind === kind && x.aboutParticipantId === pid && String(x.text ?? '').trim());
       return l ? { id: l.id, text: String(l.text).trim() } : null;
     };
+    out.peopleAlsoSeenBy = await theAdminsWhoAlsoReadYourPeopleNotes(prisma, ground);
     out.people = (ground.participants ?? [])
       .filter((p: any) => !p.managingOnly && p.userId !== ground.initiatorId)
       .map((p: any): APersonInPeople => ({

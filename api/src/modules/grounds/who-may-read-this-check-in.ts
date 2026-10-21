@@ -175,6 +175,30 @@ export function readsTheLeadsPeopleNotes(
   return (!!checkIn.createdByUserId && checkIn.createdByUserId === userId) || (!!checkIn.approvedById && checkIn.approvedById === userId);
 }
 
+/**
+ * WHO ELSE READS THE LEAD'S PEOPLE NOTES, SAID AS IT IS (Hafsah, 21 October). Her People notes, and a plan (kept as one), are read by the
+ * lead, and by an admin only if that admin set the check-in up or approved it (readsTheLeadsPeopleNotes, above); no other admin is served
+ * them. So the sentences that say who reads them (the board's plan, References and resources' People) name exactly those admins, by
+ * their first name, and say "Only you" where there are none. Empty where nobody else reads them.
+ */
+export async function theAdminsWhoAlsoReadYourPeopleNotes(
+  prisma: any,
+  ground: { organizationId: string; initiatorId: string; createdByUserId?: string | null; approvedById?: string | null },
+): Promise<string> {
+  const ids = [...new Set([ground.createdByUserId, ground.approvedById].filter((id): id is string => !!id && id !== ground.initiatorId))];
+  if (!ids.length) return '';
+  const users: any[] = (await Promise.resolve(prisma?.user?.findMany?.({ where: { id: { in: ids } }, select: { id: true, firstName: true, role: true, organizationId: true } })).catch(() => [])) ?? [];
+  const admin = (id: string | null | undefined) => users.find((u) => u.id === id && u.role === 'ADMIN' && u.organizationId === ground.organizationId) ?? null;
+  const setUp = ground.createdByUserId && ground.createdByUserId !== ground.initiatorId ? admin(ground.createdByUserId) : null;
+  const approved = ground.approvedById && ground.approvedById !== ground.initiatorId ? admin(ground.approvedById) : null;
+  const named = (u: any, role: string) => (String(u.firstName ?? '').trim() ? `${String(u.firstName).trim()}, the admin who ${role}` : `the admin who ${role}`);
+  if (setUp && approved && setUp.id === approved.id) return named(setUp, 'set up and approved this check-in');
+  if (setUp && approved) return `${named(setUp, 'set up this check-in')}, and ${named(approved, 'approved it')}`;
+  if (setUp) return named(setUp, 'set up this check-in');
+  if (approved) return named(approved, 'approved this check-in');
+  return '';
+}
+
 /** Runs it: the lead who started it, or an admin of its organisation covering for them. The write gate. */
 export function runsIt(userId: string, viewer: Viewer | null | undefined, checkIn: CheckInInView): boolean {
   return checkIn.initiatorId === userId || adminsThisOrg({ ...viewer, userId }, checkIn);

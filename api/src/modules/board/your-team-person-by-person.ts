@@ -5,6 +5,8 @@ import { readThePersonsRecord, type AStoredPersonsRecord } from './the-persons-r
 import { theRecordInWords, type TheRecordInWords } from './the-persons-record-in-words';
 import { whatTheyDelivered, whereTheyStand, aPlanToHelpWith, type AKindOfCheckIn, type WhatTheyDelivered, type WhereTheyStand } from './what-the-lead-reads-about-each-person';
 import { aLineToKeep } from '../grounds/references-and-resources';
+import { theAdminsWhoAlsoReadYourPeopleNotes } from '../grounds/who-may-read-this-check-in';
+export { theAdminsWhoAlsoReadYourPeopleNotes };
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 export { thePraiseFromYourLead } from './the-praise-from-your-lead';
 
@@ -85,29 +87,6 @@ export function thePraiseToSuggest(kind: AKindOfCheckIn, delivered: WhatTheyDeli
   if (s && s.keptOnTime + s.keptLate >= 2 && !s.late && !s.notDone) return 'Well done on keeping the promises you made.';
   if (s && s.checkInsDue >= 3 && s.checkInsDone === s.checkInsDue && s.checkInsOnTime === s.checkInsDone) return 'Well done on doing every check-in, and on time.';
   return null;
-}
-
-/**
- * WHO ELSE READS A PLAN, SAID AS IT IS (Hafsah, 21 October). A plan is kept as the lead's People note on the person, which the lead reads,
- * and an admin only if that admin set the check-in up or approved it (readsTheLeadsPeopleNotes); no other admin is served it. So the
- * sentence names exactly those admins, by their first name, and says "Only you read it." where there are none.
- */
-export async function theAdminsWhoAlsoReadYourPeopleNotes(
-  prisma: any,
-  ground: { organizationId: string; initiatorId: string; createdByUserId?: string | null; approvedById?: string | null },
-): Promise<string> {
-  const ids = [...new Set([ground.createdByUserId, ground.approvedById].filter((id): id is string => !!id && id !== ground.initiatorId))];
-  if (!ids.length) return '';
-  const users: any[] = (await Promise.resolve(prisma?.user?.findMany?.({ where: { id: { in: ids } }, select: { id: true, firstName: true, role: true, organizationId: true } })).catch(() => [])) ?? [];
-  const admin = (id: string | null | undefined) => users.find((u) => u.id === id && u.role === 'ADMIN' && u.organizationId === ground.organizationId) ?? null;
-  const setUp = ground.createdByUserId && ground.createdByUserId !== ground.initiatorId ? admin(ground.createdByUserId) : null;
-  const approved = ground.approvedById && ground.approvedById !== ground.initiatorId ? admin(ground.approvedById) : null;
-  const named = (u: any, role: string) => (String(u.firstName ?? '').trim() ? `${String(u.firstName).trim()}, the admin who ${role}` : `the admin who ${role}`);
-  if (setUp && approved && setUp.id === approved.id) return named(setUp, 'set up and approved this check-in');
-  if (setUp && approved) return `${named(setUp, 'set up this check-in')}, and ${named(approved, 'approved it')}`;
-  if (setUp) return named(setUp, 'set up this check-in');
-  if (approved) return named(approved, 'approved this check-in');
-  return '';
 }
 
 /** "Only you read it." or "Only you read it, and Amina, the admin who set up this check-in." */
