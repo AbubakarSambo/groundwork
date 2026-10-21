@@ -24,7 +24,7 @@ async function theRecordOf(g: 'drop' | 'fees', who: string, self = true) {
   const stored = await readThePersonsRecord({ personRecord: table }, p.participantId);
   if (!stored) throw new Error(`No record for ${who}`);
   const words = theRecordInWords(stored.record, stored.coaching, { self, firstName: who }, R2[g].ground.label);
-  const all = [words.heading, words.note, ...words.parts.flatMap((x) => [x.heading, x.says, x.toChange ?? '', ...x.evidence]), ...words.coaching.flatMap((c) => [c.said, c.since]), words.coachingEmpty].filter(Boolean);
+  const all = [words.heading, words.note, ...words.parts.flatMap((x) => [x.heading, x.says, x.toChange ?? '', ...x.evidence]), ...words.coaching.flatMap((c) => [c.said, c.since]), words.coachingEmpty].filter((x): x is string => !!x);
   return { stored, words, all, part: (h: RegExp) => words.parts.find((x) => h.test(x.heading)) ?? null };
 }
 

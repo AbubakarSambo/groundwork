@@ -1,3 +1,4 @@
+import { rebuildThePersonsRecords } from '../board/the-persons-record-store';
 import { theDirectMorningIsOnFor } from '../organisation/the-direct-morning-switch';
 import { theFeeNotesThatFellDueOnAnEvent } from '../board/a-fee-note-that-fell-due-said-to-the-lead';
 import { NOT_A_QUIET_CLOSE } from '../grounds/an-answer-includes-a-refusal';
@@ -311,6 +312,8 @@ export async function theWeekForTheLead(
   if (!(await theDirectMorningIsOnFor(prisma, g.id))) return {};
   const ground = await Promise.resolve(prisma.ground?.findUnique?.({ where: { id: g.id }, select: { organizationId: true, kindOfWork: true, participants: { select: { id: true, userId: true, managingOnly: true, leftAt: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } } } })).catch(() => null) as any;
   if (!ground) return {};
+  /* The week passing is something new in each person's record, as each morning (the-leads-daily-nudge): read current, never stale. */
+  await rebuildThePersonsRecords(prisma, g.id, now).catch(() => 0);
   const served = board ? await board.get(g.id, g.initiatorId).catch(() => null) : null;
   const morning = served ? await theDirectMorningFor(prisma, { groundId: g.id, leadUserId: g.initiatorId, board: served, now }).catch(() => null) : null;
   const theTarget = morning?.parts.find((p) => p.key === 'target')?.lines[0]?.text ?? null;

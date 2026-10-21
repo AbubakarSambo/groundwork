@@ -715,7 +715,7 @@ export type ThePersonsRecordServed = {
   note: string
   parts: { heading: string; says: string; toChange: string | null; evidence: string[] }[]
   coaching: { said: string; since: string }[]
-  coachingEmpty: string
+  coachingEmpty: string | null
   /** The person's own page alone. */
   acrossYourCheckIns?: { heading: string; lines: string[] }
   /** What the lead praised them for, from her board. The person's own page and report alone. */

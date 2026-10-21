@@ -78,7 +78,7 @@ export const THE_SEVEN_BEHAVIOURS: readonly ABehaviour[] = [
     name: 'Handling blockers',
     looksAt: 'Blockers raised against cleared by the person, and how quickly they were raised',
     strength: 'Clearing blockers yourself shows ownership.',
-    needsWork: 'Raising blockers without trying to clear them can look like excuses.',
+    needsWork: 'Raising a blocker without saying what you tried makes it hard for others to help.',
     toImprove: 'Try one thing before you raise a blocker, and say what you tried.',
     keepDoing: 'Trying one thing yourself before you raise a blocker.',
     linesFrom: 'the spec, added to the library',

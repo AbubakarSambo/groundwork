@@ -37,6 +37,13 @@ export interface ASessionOnRecord {
   availableFrom?: Date | string | null;
   createdAt?: Date | string | null;
   closedReason?: string | null;
+  /**
+   * The check-in opens a session each working day (cadence DAILY), and the working days it opens on. A daily session not answered stays
+   * open, and no new one opens until it is, so one open session can stand for several working days missed (final real-model check, item 5:
+   * Peter answered on Monday and nothing after, and the morning never said he had missed two days, because only Tuesday's session existed).
+   */
+  opensDaily?: boolean;
+  workingDays?: number[] | null;
 }
 
 export interface TheirDay {
@@ -159,6 +166,15 @@ export function theirDay(participantId: string, all: ASessionOnRecord[], now: Da
     if (k >= today || (lastCheckedIn && k <= lastCheckedIn)) continue;
     if (answeredOn(c) === k) continue;
     missed.add(k);
+  }
+  /* A daily session still open is missed on each working day since it opened, up to yesterday: no new session opened on those days. */
+  for (const c of mine) {
+    if (!c.opensDaily || answeredOn(c) || String(c.status ?? '').toUpperCase() === 'COMPLETED' || /auto|expired|timed|missed/i.test(String(c.closedReason ?? ''))) continue;
+    const works = (c.workingDays ?? []).length ? new Set(c.workingDays) : new Set([1, 2, 3, 4, 5]);
+    for (let k = aDayIn(openedAt(c)!, zone), n = 0; k < today && n < 400; k = plus(k, 1), n++) {
+      if (lastCheckedIn && k <= lastCheckedIn) continue;
+      if (works.has(noon(k).getUTCDay())) missed.add(k);
+    }
   }
   const missedDays = [...missed].sort();
 

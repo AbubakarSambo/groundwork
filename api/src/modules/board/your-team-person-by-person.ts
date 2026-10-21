@@ -70,15 +70,30 @@ export function whatYouDidSaid(a: { kind: string; says: string; createdAt: Date 
   }
 }
 
-function theActionsFor(first: string, kind: AKindOfCheckIn, items: { id: string; name: string; due: string | null }[], others: { participantId: string; name: string }[], delivered: WhatTheyDelivered, stand: WhereTheyStand | null): AnAction[] {
+/**
+ * THE PRAISE GROUNDWORK SUGGESTS, ONLY WHERE THE RECORD EARNS IT (final real-model check, item 19). "Well done on your work this month."
+ * was offered for Joseph, who said four sales were made with nothing on file, for Peter, who missed every day after Monday, and for Aisha.
+ * Praise is suggested only where the person is doing well or improving, and it names what the record shows; otherwise none is suggested
+ * and the lead writes her own, if she wants to.
+ */
+export function thePraiseToSuggest(kind: AKindOfCheckIn, delivered: WhatTheyDelivered, stand: WhereTheyStand | null, stored: AStoredPersonsRecord | null): string | null {
+  if (!stand || (stand.standing !== 'doing well' && stand.standing !== 'improving')) return null;
   const n = delivered.proven.length;
-  const praiseFor = !n ? 'Well done on your work this month.'
-    : kind === 'sales' ? `Well done on the ${n === 1 ? 'deal' : `${n} deals`} you won with proof.`
-    : 'Well done on backing what you said with proof.';
+  if (n && kind === 'sales') return `Well done on the ${n === 1 ? 'deal' : `${n} deals`} you won with proof.`;
+  const s = stored?.record.summary;
+  if (n || (s && s.claims && s.proven === s.claims)) return 'Well done on backing what you said with proof.';
+  if (s && s.keptOnTime + s.keptLate >= 2 && !s.late && !s.notDone) return 'Well done on keeping the promises you made.';
+  if (s && s.checkInsDue >= 3 && s.checkInsDone === s.checkInsDue && s.checkInsOnTime === s.checkInsDone) return 'Well done on doing every check-in, and on time.';
+  return null;
+}
+
+function theActionsFor(first: string, kind: AKindOfCheckIn, items: { id: string; name: string; due: string | null }[], others: { participantId: string; name: string }[], delivered: WhatTheyDelivered, stand: WhereTheyStand | null, stored: AStoredPersonsRecord | null = null): AnAction[] {
+  const praiseFor = thePraiseToSuggest(kind, delivered, stand, stored);
   const planFor = stand?.about ? aPlanToHelpWith(first, stand.about) : '';
   return [
-    { kind: 'praise', label: `Praise ${first}`, does: `Keeps your words in ${first}’s record, where ${first} reads them on My work and in ${first}’s own report. No message is sent.`, suggested: praiseFor },
-    { kind: 'plan', label: 'Start a plan', does: `Keeps what you want to help ${first} with, here and under People on References and resources. Only you read it, and nothing is sent to ${first}.`, ...(planFor ? { suggested: planFor } : {}) },
+    { kind: 'praise', label: `Praise ${first}`, does: `Keeps your words in ${first}’s record, where ${first} reads them on My work and in ${first}’s own report. No message is sent.`, ...(praiseFor ? { suggested: praiseFor } : {}) },
+    /* The lead and her organisation's admins read a plan: admins read the check-in's lines as the lead does (browser test, finding 26). */
+    { kind: 'plan', label: 'Start a plan', does: `Keeps what you want to help ${first} with, here and under People on References and resources. Only you and your organisation’s admins read it, and nothing is sent to ${first}.`, ...(planFor ? { suggested: planFor } : {}) },
     { kind: 'deadline', label: 'Set a deadline', does: `Puts a due day on one of ${first}’s records. It shows on that record on your board, and nothing is sent to ${first}.`, items },
     { kind: 'reassign', label: kind === 'sales' ? 'Reassign leads' : 'Reassign work', does: `Gives one of ${first}’s records to somebody else on the team. From then on it is theirs on the board and in their check-ins. Nothing is sent to either of them.`, items, to: others },
   ];
@@ -121,10 +136,10 @@ export async function yourTeamPersonByPerson(
       name,
       role,
       delivered,
-      record: theirs ? theRecordForTheBoard(theirs, first, label, o.kind) : null,
+      record: theirs ? theRecordForTheBoard(theirs, first, label, o.kind, stand) : null,
       whereTheyStand: stand,
       fromYou: done.filter((d) => d.participantId === p.id).map((d) => whatYouDidSaid(d, first, zone)),
-      actions: theActionsFor(first, o.kind, openItems, others, delivered, stand),
+      actions: theActionsFor(first, o.kind, openItems, others, delivered, stand, theirs),
     });
   }
   return {
@@ -138,8 +153,10 @@ export async function yourTeamPersonByPerson(
  * Their record as their part of the board shows it. Off a sales check-in, what they said was paid or done is already what they delivered
  * (each line with what shows it, or that nothing does), so it is said once, there, and not again in the record.
  */
-function theRecordForTheBoard(stored: AStoredPersonsRecord, first: string, label: string, kind: AKindOfCheckIn): TheRecordInWords {
-  const words = theRecordInWords(stored.record, stored.coaching, { self: false, firstName: first }, label);
+function theRecordForTheBoard(stored: AStoredPersonsRecord, first: string, label: string, kind: AKindOfCheckIn, stand: WhereTheyStand | null = null): TheRecordInWords {
+  const said = theRecordInWords(stored.record, stored.coaching, { self: false, firstName: first }, label);
+  /* "Mercy needs coaching on ..." is coaching served: "Groundwork has not coached Mercy on anything yet." is never beside it (item 20). */
+  const words = stand && (stand.standing === 'needs coaching' || stand.standing === 'needs a hard conversation') ? { ...said, coachingEmpty: null } : said;
   return kind === 'sales' ? words : { ...words, parts: words.parts.filter((p) => !/^What .+ said and what shows it$/.test(p.heading)) };
 }
 
@@ -191,7 +208,7 @@ export async function theLeadActsOnAPerson(
     const line = aLineToKeep({ kind: 'HELP_WITH', text: asked.text, aboutParticipantId: participantId }, ground.participants, ground.initiatorId);
     const made = await prisma.groundContextItem.create({ data: { groundId, kind: line.kind as any, text: line.text, audience: line.audience as any, aboutParticipantId: line.aboutParticipantId, source: 'TYPED', authorUserId: userId }, select: { id: true } });
     await keep('PLAN', line.text, { itemId: made.id });
-    return { says: `Your plan for ${first} is kept here and under People on References and resources. Only you read it.` };
+    return { says: `Your plan for ${first} is kept here and under People on References and resources. Only you and your organisation’s admins read it.` };
   }
   if (kind === 'deadline' || kind === 'reassign') {
     const item = await prisma.workItem.findFirst({ where: { id: String(asked.itemId ?? ''), groundId }, select: { id: true, name: true, ownerParticipantId: true } });

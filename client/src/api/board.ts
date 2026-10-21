@@ -1023,8 +1023,8 @@ export interface APersonOnYourBoard {
   name: string
   role: string | null
   delivered: { heading: string; proven: string[]; onlySaid: string[]; empty: string | null }
-  record: { heading: string; note: string; parts: { heading: string; says: string; toChange: string | null; evidence: string[] }[]; coaching: { said: string; since: string }[]; coachingEmpty: string } | null
-  whereTheyStand: { standing: 'doing well' | 'improving' | 'needs coaching' | 'needs a hard conversation'; says: string; evidence: string[] } | null
+  record: { heading: string; note: string; parts: { heading: string; says: string; toChange: string | null; evidence: string[] }[]; coaching: { said: string; since: string }[]; coachingEmpty: string | null } | null
+  whereTheyStand: { standing: 'doing well' | 'improving' | 'needs coaching' | 'needs a hard conversation' | 'too early to say'; says: string; evidence: string[] } | null
   fromYou: string[]
   actions: AnActionOnAPerson[]
 }

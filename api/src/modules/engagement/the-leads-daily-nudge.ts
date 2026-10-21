@@ -1,3 +1,4 @@
+import { rebuildThePersonsRecords } from '../board/the-persons-record-store';
 import { theFeeNotesThatFellDueOnAnEvent } from '../board/a-fee-note-that-fell-due-said-to-the-lead';
 import { theNewsThesePromisesWaitOn, type TheNewsGiven } from './a-promise-that-waits-on-news';
 import { theSalesMorning } from './the-sales-morning-from-the-record';
@@ -838,6 +839,12 @@ export async function sendTheDirectMorningTo(
   if (!deps.board) return 'nothing';
   const mornings: TheDirectMorning[] = [];
   for (const g of lead.grounds.filter((x) => !isEvaluationCheckIn(x.scenario))) {
+    /*
+     * A NEW DAY IS SOMETHING NEW IN THE RECORD (final real-model check, items 3 and 5). A check-in that opened and was not done, and a
+     * promise that passed its day, change each person's record without anybody checking in. Built only when the record behind it changed,
+     * once a morning, before the morning reads it, so My work, the board and the summary say the same count.
+     */
+    await rebuildThePersonsRecords(prisma, g.id, now).catch(() => 0);
     const board = await deps.board.get(g.id, lead.userId).catch(() => null);
     if (!board) continue;
     const m = await theDirectMorningFor(prisma, { groundId: g.id, leadUserId: lead.userId, board, now }).catch(() => null);

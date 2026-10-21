@@ -5,6 +5,8 @@ import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { dedupeDependencies } from './reads';
 import { aWaitSomebodyElseChases } from './a-wait-somebody-else-chases';
+import { notABlockerTheyRaised } from './not-a-blocker-they-raised';
+import { whatTheyTriedFirst } from './what-they-tried-first';
 import { intoSentences } from '../conversation/nothing-invented-reaches-them';
 import { saidWhatTheyTried } from '../grounds/a-wait-is-the-speakers-account';
 
@@ -119,6 +121,10 @@ export interface ThePersonsInputs {
   ourTurns: OneOfOurTurns[];
   /** Their own turns, to tell when in the check-in they said a thing: a line is kept after the check-in ends. */
   theirTurns?: OneOfOurTurns[];
+  /** The check-in opens a session each working day (cadence DAILY), on these days: a session left open is missed on each of them. */
+  daily?: { workingDays?: number[] | null } | null;
+  /** Everybody's names in this check-in, first and last, to tell a wait on people here ("Kevin, Mercy, Joseph, and Peter"). */
+  namesHere?: string[][];
 }
 
 /* ------------------------------------------------------------------------------------------------ the entries */
@@ -195,6 +201,8 @@ export interface ABlocker {
   on: string;
   triedFirst: boolean;
   tried: string | null;
+  /** The day they said what they tried, from the line it is in, where that is another day than the blocker (final check, item 18). */
+  triedOn?: string | null;
   cleared: boolean;
 }
 
@@ -251,7 +259,9 @@ const stop = (s: string) => { const x = String(s ?? '').trim(); return /[.!?”"
 export const asTheySaidIt = (raw: string) => stop(cleanText(String(raw ?? '').replace(/\[INFERRED:[^\]]*\]/g, '')).replace(/\s+([.,!?])/g, '$1'));
 
 /* Something said to be sold, paid or signed, in the past or now, and not a plan, a hope or a "not yet". */
-const A_PAYMENT = /\b(?:paid|went through|came through|is sorted|it['’]s sorted|deposit)\b/i;
+/* A payment, also as a fee notes team says it: "I have recorded KES 250,000 for FN-004" (Njeri, who keeps the bank record) and "Jamii said
+   they've cleared our fee note" (Aisha, in the litigation check-in) (final real-model check, items 4 and 7). */
+const A_PAYMENT = /\b(?:paid|went through|came through|is sorted|it['’]s sorted|deposit|(?:is|are|was|were) in the bank|cleared (?:our|the|their|its|his|her|that|this) (?:fee notes?|invoices?|bills?|balance|loan)|recorded (?:a payment|the payment|(?:KES|KSh|Ksh|USD|NGN|₦|\$)\s?[\d,]+))/i;
 const A_SALE = /\b(?:sold|bought|signed|closed|won)\b/i;
 const NOT_A_CLAIM = /\b(?:will|won['’]t|wont|going to|to be|expect|expects|expecting|if|once|hasn['’]t|haven['’]t|has not|have not|did not|didn['’]t|not|no|never|yet|nothing|need|needs|waiting|until|hope|plan|planning|might|could|should|would|soon)\b|['’]ll\b|n['’]t\b/i;
 /* Their own later words that it did not happen: "hasn't actually come through yet", "I was mistaken", "hasn't actually paid yet". */
@@ -310,6 +320,53 @@ export function aCheckInWasDue(c: ACheckInOfTheirs, now: Date): boolean {
   const opened = c.availableFrom ?? c.createdAt ?? null;
   return !!opened && t(opened) + DAY <= now.getTime();
 }
+/**
+ * THE WORKING DAYS A DAILY SESSION STAYED OPEN AND UNANSWERED, after the day it opened and before today (final real-model check, item 5).
+ * A daily check-in opens no new session until the open one is answered, so Peter, who answered on Monday and never again, had one open
+ * session on record and read "did one of two check-ins" on Friday. Each of those days is a check-in he did not do. Empty for any session
+ * answered, and for any check-in that does not open each working day.
+ */
+export function theDaysAnOpenDailySessionWasMissed(c: ACheckInOfTheirs, now: Date, zone: string, daily: { workingDays?: number[] | null } | null | undefined): string[] {
+  if (!daily || c.status === 'COMPLETED') return [];
+  const opened = c.availableFrom ?? c.createdAt ?? null;
+  if (!opened) return [];
+  const key = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+  const works = (daily.workingDays ?? []).length ? new Set(daily.workingDays) : new Set([1, 2, 3, 4, 5]);
+  const today = key(now);
+  const out: string[] = [];
+  let k = key(new Date(opened));
+  for (let n = 0; n < 400; n++) {
+    k = new Date(new Date(`${k}T12:00:00Z`).getTime() + DAY).toISOString().slice(0, 10);
+    if (k >= today) break;
+    if (works.has(new Date(`${k}T12:00:00Z`).getUTCDay())) out.push(k);
+  }
+  return out;
+}
+
+/*
+ * A PROMISE THEY SAID IS STILL NOT DONE (final real-model check, item 18). Mercy promised on Monday "I need to call Mrs. Achola today", and
+ * on Wednesday said "Still haven't called Greenfield, I know, I know." Her record said the promise was "past its day, with nothing said
+ * about it yet". A sentence of theirs, said after the promise was made, that says they have not done it, about the same thing (a word of
+ * the promise's own, such as "call", or the same customer), is them saying it was not done.
+ */
+const NOT_DONE_YET = /\b(?:still\s+)?(?:haven['’]?t|hasn['’]?t|have not|has not|didn['’]?t|did not|never)\b|\bnot yet\b/i;
+const PROMISE_ORDINARY = new Set(['need', 'needs', 'will', 'shall', 'today', 'tomorrow', 'this', 'that', 'with', 'them', 'they', 'their', 'there', 'about', 'from', 'week', 'morning', 'afternoon', 'evening', 'first', 'thing', 'follow', 'units', 'unit', 'also', 'still', 'know', 'just', 'going', 'make', 'sure', 'again', 'back', 'next']);
+const promiseWords = (x: string) => new Set(String(x ?? '').toLowerCase().replace(/[’']/g, "'").replace(/[^a-z' ]+/g, ' ').split(/\s+/)
+  .map((w) => w.replace(/'s$/, '').replace(/(?:ed|ing|s)$/, '')).filter((w) => w.length >= 4 && !PROMISE_ORDINARY.has(w)));
+export function theySaidItIsNotDone(c: { text: string; createdAt: Date | string }, due: Date, theirTurns: readonly OneOfOurTurns[], items: readonly AnItemOfTheirs[]): boolean {
+  const mine = promiseWords(c.text);
+  const itsItem = theItemNamed(c.text, items);
+  for (const turn of theirTurns) {
+    if (t(turn.at) <= t(c.createdAt)) continue;
+    for (const sentence of intoSentences(String(turn.content ?? ''))) {
+      if (!NOT_DONE_YET.test(sentence)) continue;
+      const sameItem = !!itsItem && theItemNamed(sentence, items)?.id === itsItem.id;
+      if (sameItem || [...promiseWords(sentence)].some((w) => mine.has(w))) return true;
+    }
+  }
+  return false;
+}
+
 /** Done within a day of opening. */
 export function aCheckInWasOnTime(c: ACheckInOfTheirs): boolean {
   if (c.status !== 'COMPLETED' || !c.completedAt) return false;
@@ -381,6 +438,8 @@ export function thePersonsRecord(input: ThePersonsInputs): ThePersonsRecord {
     const sentences = intoSentences(String(l.text ?? '').replace(/\b(Mr|Mrs|Ms|Dr|Prof|St)\./g, '$1\u2024')).map((s) => s.replace(/\u2024/g, '.').trim()).filter(Boolean);
     const kind = sentences.map(aClaimIn).find(Boolean) ?? null;
     if (!kind) continue;
+    /* A sale is a sales team's: "the client sent the signed affidavit" is not something Brian sold or signed (final check, item 6). */
+    if (kind === 'sale' && !input.sales) continue;
     const item = theItemNamed(l.text, items);
     const code = input.codes.find((c) => (l.text.includes(c.code)) || (item && theNamesOf(item).some((n) => aSentenceNames(c.sale, n))));
     let proof: AProofKind = 'nothing';
@@ -454,6 +513,8 @@ export function thePersonsRecord(input: ThePersonsInputs): ThePersonsRecord {
       keptAt = c.status === 'DONE' && c.settledAt ? new Date(c.settledAt) : saidDoneAt;
       outcome = dueEnd && keptAt && keptAt.getTime() > dueEnd ? 'kept late' : 'kept on time';
     } else if (c.status === 'NOT_DONE') outcome = 'not done';
+    /* They said themselves, after it was due, that it is still not done: that is said, not "nothing said about it" (item 18). */
+    else if (due && due.getTime() < today && theySaidItIsNotDone(c, due, input.theirTurns ?? [], items)) outcome = 'not done';
     else if (due && due.getTime() < today) outcome = 'late';
     promises.push({
       commitmentId: c.id,
@@ -523,17 +584,35 @@ export function thePersonsRecord(input: ThePersonsInputs): ThePersonsRecord {
 
   /* OWNERSHIP */
   const raised = dedupeDependencies(input.blockers
-    .filter((d) => d.onParticipantId !== input.participantId && !aWaitSomebodyElseChases(String(d.what ?? ''), input.othersChase ?? [])) as any[]) as ABlockerOfTheirs[];
-  const blockers: ABlocker[] = raised.map((d) => ({
-    dependencyId: d.id,
-    sessionNumber: sessionAt(d.createdAt),
-    what: asTheySaidIt(d.what),
-    on: dayIn(d.createdAt, zone),
-    /* What they said they tried first, the same reading as My work: "I haven't done anything about that yet" is not something tried. */
-    triedFirst: saidWhatTheyTried(d.triedSaid),
-    tried: saidWhatTheyTried(d.triedSaid) ? String(d.triedSaid).trim() : null,
-    cleared: String(d.status ?? '').toUpperCase() === 'CLEARED',
-  }));
+    .filter((d) => d.onParticipantId !== input.participantId && !aWaitSomebodyElseChases(String(d.what ?? ''), input.othersChase ?? []))
+    /* A customer's own budget or approval, asking for a view, or waiting for a check-in is not a blocker they raised (final check, item 2). */
+    .filter((d) => !notABlockerTheyRaised(d as any, { sales: input.sales, namesHere: input.namesHere })) as any[]) as ABlockerOfTheirs[];
+  /*
+   * DATES AND QUOTES FROM THE SAME LINE (final real-model check, item 18). Two waits said as one keep the fuller words, and those words are
+   * dated by the row that holds them, not by the first row ("On Monday 12 October Mercy raised a blocker, waiting for ideas ..." was said
+   * on Tuesday). What they said they tried is dated by the turn of theirs that holds those words: Brian's "I did follow up yesterday" was
+   * said on Wednesday about a blocker raised on Monday.
+   */
+  const theRowOfTheWords = (d: ABlockerOfTheirs) => input.blockers
+    .filter((x) => x.fromParticipantId === d.fromParticipantId && String(x.what ?? '').trim() === String(d.what ?? '').trim())
+    .sort((a, b) => t(a.createdAt) - t(b.createdAt))[0] ?? d;
+  const blockers: ABlocker[] = raised.map((d) => {
+    const at = theRowOfTheWords(d).createdAt;
+    /* What they tried on it, or on their own wait for the same thing, and whether by the day they raised it (what-they-tried-first.ts). */
+    const how = whatTheyTriedFirst({ ...d, createdAt: at }, input.blockers as any, (input.theirTurns ?? []).map((x) => ({ content: x.content, at: x.at })), zone);
+    const triedOn = how.triedAt ? dayIn(how.triedAt, zone) : null;
+    return {
+      dependencyId: d.id,
+      sessionNumber: sessionAt(at),
+      what: asTheySaidIt(d.what),
+      on: dayIn(at, zone),
+      /* "I haven't done anything about that yet" is not something tried; and something tried after it was raised was not tried first. */
+      triedFirst: how.first,
+      tried: how.tried,
+      triedOn: triedOn && triedOn !== dayIn(at, zone) ? triedOn : null,
+      cleared: String(d.status ?? '').toUpperCase() === 'CLEARED',
+    };
+  });
 
   /* CHECK-IN QUALITY */
   const checkIns: ACheckInRead[] = input.checkIns
@@ -546,7 +625,14 @@ export function thePersonsRecord(input: ThePersonsInputs): ThePersonsRecord {
       done: c.status === 'COMPLETED',
       onTime: aCheckInWasOnTime(c),
       specific: c.status === 'COMPLETED' && aCheckInWasSpecific(c),
-    }));
+    }))
+    /* A daily session left open stands for each working day since: each is a check-in not done (item 5). */
+    .flatMap((read) => {
+      const c = input.checkIns.find((x) => x.id === read.checkInId)!;
+      return [read, ...theDaysAnOpenDailySessionWasMissed(c, now, zone, input.daily).map((k) => ({
+        ...read, on: whenItWas(new Date(`${k}T12:00:00Z`), 'weekdayAndDay', 'UTC'), done: false, onTime: false, specific: false,
+      }))];
+    });
 
   return { claims, promises, changes, focus, blockers, checkIns, summary: theSummaryOf({ claims, promises, changes, focus, blockers, checkIns }) };
 }
@@ -673,11 +759,14 @@ export function theOneThingToCoach(r: ThePersonsRecord): AThingToCoach | null {
 }
 
 /** The coaching line for that one thing, from the behaviour and pattern library's own words, with their own example where there is one. */
-export function theCoachingLine(r: ThePersonsRecord, about: AThingToCoach): string {
+export function theCoachingLine(r: ThePersonsRecord, about: AThingToCoach, sales = true): string {
   switch (about) {
     case 'proof': {
       const one = r.claims.filter((c) => !c.proven && !c.takenBack && c.about).pop();
-      return `Add the photo, slip or link when you say something is done.${one ? ` For ${one.about}, that would be ${one.kind === 'payment' ? 'the payment slip, the bank statement or the M-Pesa message' : 'the signed order or the payment'}.` : ''}`;
+      /* The proof named fits the check-in's kind of work: "the signed order or the payment" is a sale's, never a court filing's (item 6). */
+      const proof = one?.kind === 'payment' ? 'the payment slip, the bank statement or the M-Pesa message'
+        : sales ? 'the signed order or the payment' : 'the document, the filing receipt or the email that shows it';
+      return `Add the photo, slip or link when you say something is done.${one ? ` For ${one.about}, that would be ${proof}.` : ''}`;
     }
     case 'changes': {
       const one = r.changes.filter((c) => !c.putRight).pop();
@@ -701,7 +790,28 @@ export function theCoachingLine(r: ThePersonsRecord, about: AThingToCoach): stri
  * the one it was given after, as better, the same, or worse than where it stood when it was given. A coaching that got better is done,
  * and the next one may be about something else; one that did not stays the one thing, and nothing new is added beside it.
  */
-export function theCoachingFollowedUp(before: readonly ACoaching[], r: ThePersonsRecord, lastSession: number | null, at: Date, zone: string): ACoaching[] {
+/**
+ * A COACHING THE RECORD NO LONGER HOLDS IS NOT KEPT (final real-model check, item 2). Mercy was coached on "trying something before raising
+ * a blocker" from waits that were a school's budget, a school board's approval and her own asks for ideas. Once the record reads those as
+ * what they are, nothing in it is left for that coaching to be about, so a coaching not yet done is kept only while the record, up to the
+ * check-in it was given after, still holds what it was given for.
+ */
+export function theCoachingTheRecordStillHolds(before: readonly ACoaching[], r: ThePersonsRecord): ACoaching[] {
+  return before.filter((c) => c.done || itNeededWorkThen(r, c.about, c.afterSession));
+}
+
+/**
+ * Whether the record, read up to that check-in, still holds something of this one thing that went badly: some of it, and fewer than half of
+ * it that went well. Aisha was coached on blockers after one wait whose earlier mentions said she had chased it; read again, the one blocker
+ * she raised was tried first, so nothing is left for that coaching to be about. One that still went badly is kept, however few.
+ */
+function itNeededWorkThen(r: ThePersonsRecord, about: AThingToCoach, afterSession: number): boolean {
+  const h = howItWent(r, about, (n) => typeof n === 'number' && n <= afterSession);
+  return h.of > 0 && h.good < 0.5;
+}
+
+export function theCoachingFollowedUp(beforeAsStored: readonly ACoaching[], r: ThePersonsRecord, lastSession: number | null, at: Date, zone: string, sales = true): ACoaching[] {
+  const before = theCoachingTheRecordStillHolds(beforeAsStored, r);
   const out: ACoaching[] = before.map((c) => {
     const since = howItWent(r, c.about, (n) => typeof n === 'number' && n > c.afterSession);
     if (!since.of) return { ...c, since: null, outcome: null };
@@ -718,7 +828,7 @@ export function theCoachingFollowedUp(before: readonly ACoaching[], r: ThePerson
   if (out.length && out[out.length - 1].about === about && out[out.length - 1].done) return out;
   out.push({
     about,
-    said: theCoachingLine(r, about),
+    said: theCoachingLine(r, about, sales),
     afterSession: lastSession,
     /* The day of the check-in it was given after, not the day the record was built (browser test, 21 October: a record built on
        Wednesday for people who last checked in on Monday read "After Peter's check-in on Wednesday 21 October"). */

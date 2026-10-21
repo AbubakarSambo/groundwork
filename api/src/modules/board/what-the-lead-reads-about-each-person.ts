@@ -90,7 +90,7 @@ export function whoGroundworkCouldNotMove(stored: AStoredPersonsRecord | null | 
 
 /* ------------------------------------------------------------------------------------------------ where they stand */
 
-export type AStanding = 'doing well' | 'improving' | 'needs coaching' | 'needs a hard conversation';
+export type AStanding = 'doing well' | 'improving' | 'needs coaching' | 'needs a hard conversation' | 'too early to say';
 
 /** What one thing is, said as something to get better at ("needs coaching on ..."). */
 const THE_SKILL: Record<AThingToCoach, string> = {
@@ -109,7 +109,8 @@ function theSkillFor(about: AThingToCoach, s: ThePersonsRecord['summary']): stri
   if (about !== 'check-ins') return THE_SKILL[about];
   const parts = [
     ...(s.checkInsDue && s.checkInsDone / s.checkInsDue < 0.8 ? ['checking in every time'] : []),
-    ...(s.checkInsDue && s.checkInsOnTime / s.checkInsDue < 0.7 ? ['checking in on time'] : []),
+    /* On time is read against the check-ins they did: somebody who missed most of them is told to check in, not also to be on time (item 5). */
+    ...(s.checkInsDone && s.checkInsOnTime / s.checkInsDone < 0.7 ? ['checking in on time'] : []),
     ...((s.checkInsDone ? s.checkInsSpecific / s.checkInsDone : 0) < 0.7 ? ['naming the item, what changed and the day'] : []),
   ];
   return parts.length ? (parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}` : parts[0]) : THE_SKILL[about];
@@ -175,6 +176,21 @@ export function whereTheyStand(stored: AStoredPersonsRecord | null | undefined, 
   if (next) return { standing: 'needs coaching', says: `${name} needs coaching on ${theSkillFor(next, s)}.`, evidence: evidenceFor(next, null), about: next };
   const worked = [...coaching].reverse().find((c) => c.outcome === 'better') ?? null;
   const theGood = (['proof', 'promises', 'check-ins'] as AThingToCoach[]).map(partSays).filter((x): x is string => !!x);
+  /*
+   * DOING WELL ONLY WHERE NOTHING FALLS SHORT (final real-model check, item 5). Peter answered on Monday and none of the days after, and his
+   * board said "Peter is doing well." beside "Peter did one of two check-ins". Brian's said it beside a promise past its day. Where the
+   * record holds something that fell short but not yet enough to coach on, it is too early to say, and the facts are given as they are.
+   */
+  const kept = s.keptOnTime + s.keptLate;
+  const shortOf = (['proof', 'promises', 'changes', 'check-ins'] as AThingToCoach[]).filter((a) =>
+    a === 'proof' ? s.claims > 0 && s.proven / s.claims < 0.5
+      : a === 'promises' ? s.late + s.notDone > kept
+      : a === 'changes' ? s.changed > 0
+      : s.checkInsDue > 0 && (s.checkInsDue - s.checkInsDone >= 2 || s.checkInsDone / s.checkInsDue < 0.75));
+  if (shortOf.length) {
+    const facts = (['proof', 'promises', 'changes', 'check-ins'] as AThingToCoach[]).map(partSays).filter((x): x is string => !!x);
+    return { standing: 'too early to say', says: `It is too early to say how ${name} is doing.`, evidence: [...(worked ? coachingSaid(worked) : []), ...facts].slice(0, 4) };
+  }
   if (worked) return { standing: 'improving', says: `${name} is improving.`, evidence: [...coachingSaid(worked), ...theGood].slice(0, 4) };
   return { standing: 'doing well', says: `${name} is doing well.`, evidence: theGood.slice(0, 3) };
 }

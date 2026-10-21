@@ -1,4 +1,7 @@
 import { aWaitSomebodyElseChases } from './a-wait-somebody-else-chases';
+import { notABlockerTheyRaised } from './not-a-blocker-they-raised';
+import { theDaysAnOpenDailySessionWasMissed } from './the-persons-record';
+import { whatTheyTriedFirst } from './what-they-tried-first';
 import { saidWhatTheyTried } from '../grounds/a-wait-is-the-speakers-account';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { theRelease1bTabsAreOn } from '../grounds/release-1b-tabs';
@@ -192,6 +195,12 @@ export interface TheRecordForOnePerson {
   target: { count: number; target: number } | null;
   now: Date;
   timeZone: string;
+  /** The check-in opens a session each working day, on these days (cadence DAILY). */
+  daily?: { workingDays?: number[] | null } | null;
+  /** Their own words in their check-ins, to date what they said they tried (what-they-tried-first.ts). */
+  theirTurns?: { content: string; at: Date | string }[];
+  /** Everybody's names in this check-in, to tell a wait on people here. */
+  namesHere?: string[][];
 }
 
 const DAY = 86_400_000;
@@ -286,7 +295,9 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
   const promises = r.commitments.filter((c) => c.explicit !== false);
   const settled = promises.filter((c) => c.status === 'DONE' || c.status === 'NOT_DONE');
   const kept = settled.filter((c) => c.status === 'DONE');
-  const due = r.checkIns.filter((c) => wasDue(c, r.now)).sort((a, b) => a.sessionNumber - b.sessionNumber);
+  /* A daily session left open counts once for each working day it stayed open, as the person's record counts it (final check, item 5). */
+  const due = r.checkIns.filter((c) => wasDue(c, r.now)).sort((a, b) => a.sessionNumber - b.sessionNumber)
+    .flatMap((c) => [c, ...theDaysAnOpenDailySessionWasMissed(c as any, r.now, r.timeZone, r.daily).map(() => c)]);
   const done = due.filter((c) => c.status === 'COMPLETED');
   const onTime = done.filter(wasOnTime);
   /*
@@ -297,9 +308,11 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
    */
   const specific = done.filter((c) => c.specificityLevel === 'specific' || (c.specificityDimensions as any)?.checkable === 'specific');
   /* Not a blocker of theirs to have tried on: a wait a colleague here is chasing or has promised (a-wait-somebody-else-chases). */
-  const raised = dedupeDependencies(r.raised.filter((d) => d.onParticipantId !== r.person.participantId && !aWaitSomebodyElseChases(String((d as any).what ?? ''), r.othersChase ?? [])) as any[]) as AHandoffRow[];
-  /* What they said they tried first: Peter's "I haven't done anything about that yet" was counted as something tried (Drop Access, second night run). */
-  const tried = raised.filter((d) => saidWhatTheyTried(d.triedSaid));
+  /* Nor a customer's own budget or approval, asking for a view, or waiting for a check-in (final check, item 2). */
+  const raised = dedupeDependencies(r.raised.filter((d) => d.onParticipantId !== r.person.participantId && !aWaitSomebodyElseChases(String((d as any).what ?? ''), r.othersChase ?? []) && !notABlockerTheyRaised(d as any, { sales: words.sales, namesHere: r.namesHere })) as any[]) as AHandoffRow[];
+  /* What they said they tried first: Peter's "I haven't done anything about that yet" was counted as something tried (Drop Access, second night run);
+     and something tried after it was raised was not tried first, read as their record reads it (what-they-tried-first.ts, final check items 6 and 18). */
+  const tried = raised.filter((d) => whatTheyTriedFirst(d as any, r.raised as any, r.theirTurns ?? [], r.timeZone).first);
   const cleared = raised.filter((d) => d.status === 'CLEARED');
   const creditors = [...new Set(r.credits.map((c) => c.fromName ?? 'A colleague'))];
   const creditCheckIns = new Set(r.credits.map((c, i) => c.checkInId ?? `credit-${i}`)).size;
@@ -627,6 +640,7 @@ const GROUND_SELECT = {
   id: true, label: true, organizationId: true, initiatorId: true, scenario: true, kindOfWork: true, peersVisibleToEachOther: true,
   initiator: { select: { firstName: true, lastName: true } },
   organization: { select: { timeZone: true } },
+  cadence: true, workingDays: true,
   participants: {
     select: {
       id: true, userId: true, email: true, nameGiven: true, partyType: true, managingOnly: true, createdAt: true,
@@ -761,6 +775,10 @@ export async function readMyWork(
     target: target ? { count: target.count ?? 0, target: target.target } : null,
     now,
     timeZone,
+    daily: String((ground as any).cadence ?? '').toUpperCase() === 'DAILY' ? { workingDays: (ground as any).workingDays ?? null } : null,
+    theirTurns: ((await (prisma.conversationTurn?.findMany?.({ where: { checkIn: { groundId: ground.id, participantId: pid }, role: 'PERSON' }, select: { content: true, createdAt: true }, orderBy: { createdAt: 'asc' } })?.catch?.(() => []) ?? [])) as any[] ?? [])
+      .map((x: any) => ({ content: String(x.content ?? ''), at: x.createdAt })),
+    namesHere: participants.map((p: any) => [p.user?.firstName ?? '', p.user?.lastName ?? ''].filter(Boolean)),
   };
   const built = myWorkFrom(record, ground.label || 'This check-in');
   /*

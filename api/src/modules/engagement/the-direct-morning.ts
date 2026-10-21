@@ -848,7 +848,7 @@ export async function theDirectMorningFor(
   const now = opts.now ?? new Date();
   const ground = await Promise.resolve(prisma?.ground?.findUnique?.({
     where: { id: opts.groundId },
-    select: { id: true, label: true, organizationId: true, initiatorId: true, kindOfWork: true, scenario: true, workingDays: true, overWhatsApp: true,
+    select: { id: true, label: true, organizationId: true, initiatorId: true, kindOfWork: true, scenario: true, workingDays: true, overWhatsApp: true, cadence: true,
       participants: { select: { id: true, userId: true, partyType: true, nameGiven: true, managingOnly: true, leftAt: true, user: { select: { firstName: true, lastName: true } } } } },
   })).catch(() => null) as any;
   if (!ground || ground.initiatorId !== opts.leadUserId) return null;
@@ -874,7 +874,8 @@ export async function theDirectMorningFor(
     if (!lastCheckIn[c.participantId] || at > (lastCheckIn[c.participantId] as Date)) lastCheckIn[c.participantId] = at;
   }
   const kept = ground.overWhatsApp === false;
-  const sessions = checkIns as ASessionOnRecord[];
+  /* A daily check-in's open session is missed on each working day it stays open (item 5 of the final check). */
+  const sessions = checkIns.map((c) => ({ ...c, opensDaily: String(ground.cadence ?? '').toUpperCase() === 'DAILY', workingDays: ground.workingDays ?? null })) as ASessionOnRecord[];
   /* Each person's stored record, read only (never rebuilt here), where the organisation keeps judgements of a person on. */
   const records = await theStoredRecords(prisma, ground.organizationId, people.filter((p) => !p.isTheLead && !p.managingOnly && !p.left).map((p) => p.id), ground.id);
   const nudgeable = { mayBeNudged: whoMayBeNudged(people, hers, sessions, now, zone) };
