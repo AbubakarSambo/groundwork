@@ -28,4 +28,10 @@ describe('somebody who has not joined does not hold the session clock', () => {
   it('a row read without the fields (an older reader) still counts, as before', () => {
     expect(holdsTheClock({ id: 'p-x', managingOnly: false }, notLetIn)).toBe(true);
   });
+  it('every count of the session reads the same rule: the check-in page, the board and the reports', () => {
+    const fs = require('fs'); const path = require('path');
+    for (const f of ['../grounds/grounds.service.ts', './board.service.ts', '../reports/reports.service.ts']) {
+      expect(fs.readFileSync(path.join(__dirname, f), 'utf8')).toMatch(/holdsTheClock\(p, isNotLetInYet\)/);
+    }
+  });
 });
