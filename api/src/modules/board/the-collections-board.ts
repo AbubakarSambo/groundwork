@@ -149,8 +149,9 @@ export interface TheCollectionsBoard {
   stand: { heading: string; total: string; groups: { group: AGroup; label: string; count: number; says: string }[] };
   every: { heading: string; note: string; columns: string[]; rows: ACollectionsRow[]; empty: string | null; foot: string | null };
   patterns: { heading: string; note: string; rows: { title: string; says: string; tag: string }[]; empty: string | null; foot: string | null };
-  followUp: { heading: string; rows: { what: string; howMany: string; whatFollowed: string }[]; empty: string | null };
-  systems: { heading: string; says: string };
+  /** The lead's two sections. Null on a borrower's own board: they are about the cohort and the lead's follow-up (21 October). */
+  followUp: { heading: string; rows: { what: string; howMany: string; whatFollowed: string }[]; empty: string | null } | null;
+  systems: { heading: string; says: string } | null;
   heading: null | {
     heading: string;
     outcomes: { says: string; more: string }[];
@@ -565,7 +566,7 @@ export function buildTheCollectionsBoard(input: TheCollectionsInput): TheCollect
     const paid = kept.filter((s) => s.stage === 'Paid').slice(-1)[0]?.on;
     return r.stage === 'Paid' && (!at || !paid || paid >= at);
   }).length;
-  const followRows: TheCollectionsBoard['followUp']['rows'] = [];
+  const followRows: NonNullable<TheCollectionsBoard['followUp']>['rows'] = [];
   const aFollow = (n: number) => (n ? `${count(n)} paid after it.` : 'None paid after it yet.');
   const reminded = reached('Reminded');
   if (reminded.length) followRows.push({ what: loans ? 'A reminder sent' : 'A written reminder sent', howMany: `${count(reminded.length)} ${reminded.length === 1 ? (loans ? 'loan' : bill) : (loans ? 'loans' : bills)}`, whatFollowed: aFollow(paidAfter(reminded, 'Reminded')) });
@@ -622,5 +623,12 @@ export function buildTheCollectionsBoard(input: TheCollectionsInput): TheCollect
     };
   }
 
-  return { type, billWord: bill, question, answer, answerFrom, bar, needsYou, stand, every, patterns, followUp, systems, heading };
+  /*
+   * A BORROWER IS NOT SERVED THE LEAD'S TWO SECTIONS (browser test, 21 October, finding 10; Hafsah's answer of 21 October). "Support
+   * given, and whether it helped" counts the reminders and calls made to the cohort, and "What the systems show" is the repayment system
+   * beside what borrowers said: both are about the whole cohort and the lead's own follow-up, and the prototype pictures them on the
+   * lead's loans board only. They are left off what is served to a borrower, not hidden on the screen; whoever runs it still reads both.
+   */
+  const aBorrower = loans && !reader.runsIt;
+  return { type, billWord: bill, question, answer, answerFrom, bar, needsYou, stand, every, patterns, followUp: aBorrower ? null : followUp, systems: aBorrower ? null : systems, heading };
 }

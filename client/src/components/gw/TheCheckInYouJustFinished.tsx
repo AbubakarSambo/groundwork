@@ -117,7 +117,7 @@ function Row({ row, onTakeBack, busy, light = false }: { row: MyRow; onTakeBack:
                 background: 'none', border: 'none', padding: 0, color: 'var(--gw-navy)',
                 cursor: busy ? 'wait' : 'pointer', fontFamily: 'inherit', textDecoration: 'underline',
                 /* A press on a phone needs somewhere to land that is not four pixels tall. */
-                minHeight: 32, display: 'inline-flex', alignItems: 'center',
+                minHeight: 44, display: 'inline-flex', alignItems: 'center',
               }}
             >
               Something here isn’t right
@@ -731,7 +731,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
           style={{
             background: 'none', border: 'none', padding: 0, color: 'var(--gw-navy)',
             cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', justifySelf: 'start',
-            minHeight: 36, display: 'inline-flex', alignItems: 'center', textAlign: 'left',
+            minHeight: 44, display: 'inline-flex', alignItems: 'center', textAlign: 'left',
           }}
         >
           {/* The shared half is a different report and it lives on its own page. It is not copied
@@ -757,7 +757,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
               style={{
                 background: 'none', border: 'none', padding: 0, color: 'var(--gw-navy)',
                 cursor: correct.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', textDecoration: 'underline',
-                minHeight: 36, display: 'inline-flex', alignItems: 'center', textAlign: 'left',
+                minHeight: 44, display: 'inline-flex', alignItems: 'center', textAlign: 'left',
               }}
             >
               {correct.isPending ? 'Opening…' : 'Something here isn’t right'}

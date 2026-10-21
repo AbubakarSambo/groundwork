@@ -134,7 +134,7 @@ describe('the praise Grace is offered, and the plan sentence (item 19, and the b
   });
   it('says truly who reads a plan: the lead and the organisation’s admins', async () => {
     const team = await theLeadsTeam('drop');
-    expect(personOf(team, 'Joseph').actions[1].does).toBe('Keeps what you want to help Joseph with, here and under People on References and resources. Only you and your organisation’s admins read it, and nothing is sent to Joseph.');
+    expect(personOf(team, 'Joseph').actions[1].does).toBe('Keeps what you want to help Joseph with, here and under People on References and resources. Only you read it. Nothing is sent to Joseph.');
   });
 });
 

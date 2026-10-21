@@ -265,7 +265,7 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
                          with a hairline and bold words, not a navy fill. */
                       display: 'flex',
                       alignItems: 'center',
-                      minHeight: 40,
+                      minHeight: 44,
                       padding: '0 8px',
                       marginLeft: -8,
                       borderRadius: 8,

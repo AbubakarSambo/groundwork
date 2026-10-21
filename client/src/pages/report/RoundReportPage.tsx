@@ -104,7 +104,7 @@ export default function RoundReportPage() {
       <div style={{ marginTop: 20 }}>
         <button
           onClick={() => navigate(`/grounds/${id}?tab=report`)}
-          className="gwui-tap-40"
+          className="gwui-tap-44"
           style={{ background: 'none', border: 'none', padding: 0, fontSize: 12.5, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 14 }}
         >
           &larr; Every session

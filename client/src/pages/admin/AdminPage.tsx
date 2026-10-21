@@ -81,7 +81,7 @@ function WhatsAppToggle() {
               : 'Waiting on WhatsApp Business API credentials - toggling this on will have no effect until those are set.'}
           </div>
         </div>
-        <button
+        <button className="gwui-tap-target"
           onClick={() => toggle.mutate(!data.adminEnabled)}
           disabled={toggle.isPending}
           style={{
@@ -134,7 +134,7 @@ function CoachingSwitch() {
               : `${data.count} ${data.count === 1 ? 'read' : 'reads'} so far. Read them before turning this on.`}
           </div>
         </div>
-        <button
+        <button className="gwui-tap-target"
           type="button"
           onClick={() => toggle.mutate(!data.live)}
           disabled={toggle.isPending}
@@ -728,7 +728,7 @@ export function FreeTrialRow() {
           </div>
           {err && <div role="alert" style={{ fontSize: 12, color: 'var(--gw-red-t)', marginTop: 4 }}>{err}</div>}
         </div>
-        <button
+        <button className="gwui-tap-target"
           type="button"
           onClick={() => toggle.mutate(!data.on)}
           disabled={toggle.isPending}
@@ -779,7 +779,7 @@ export function AnchorTrialRow() {
           </div>
           {err && <div role="alert" style={{ fontSize: 12, color: 'var(--gw-red-t)', marginTop: 4 }}>{err}</div>}
         </div>
-        <button
+        <button className="gwui-tap-target"
           type="button"
           onClick={() => toggle.mutate(!data.on)}
           disabled={toggle.isPending}
@@ -1320,7 +1320,7 @@ export function ReleaseOneSalesBoardSwitch({ org }: { org: Pick<OrgListItem, 'id
             : `${org.name} has its previous board. Switch the new sales board on for a test organisation first, and for a real client only once Hafsah says so.`}
         </div>
       </div>
-      <button
+      <button className="gwui-tap-target"
         type="button"
         onClick={() => toggle.mutate(!on)}
         disabled={toggle.isPending}
@@ -1360,7 +1360,7 @@ export function Release1bTabsSwitch({ org }: { org: Pick<OrgListItem, 'id' | 'na
             : `${org.name} has the People and setup tab it had before. Switch the new tabs on for a test organisation first, and for a real client only once Hafsah says so.`}
         </div>
       </div>
-      <button
+      <button className="gwui-tap-target"
         type="button"
         onClick={() => toggle.mutate(!on)}
         disabled={toggle.isPending}
@@ -1400,7 +1400,7 @@ export function Release2CollectionsSwitch({ org }: { org: Pick<OrgListItem, 'id'
             : `${org.name} cannot start a check-in to collect what is owed. Switch it on for a test organisation first, and for a real client only once Hafsah says so.`}
         </div>
       </div>
-      <button
+      <button className="gwui-tap-target"
         type="button"
         onClick={() => toggle.mutate(!on)}
         disabled={toggle.isPending}

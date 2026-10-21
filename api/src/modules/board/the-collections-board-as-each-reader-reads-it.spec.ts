@@ -188,3 +188,26 @@ describe('the board serves it only where the switchboard picks it, and is unchan
     expect(await (service(world) as any).theCollectionsBoardIfPicked(ground, WANJIRU, MUCHEMI_NOW)).toEqual({});
   });
 });
+
+/*
+ * PRIVACY: A BORROWER IS NEVER SERVED THE LEAD'S TWO SECTIONS (browser test, 21 October, finding 10; Hafsah's answer of 21 October).
+ * "Support given, and whether it helped" and "What the systems show" are about the cohort and the lead's follow-up. They are left off
+ * what the server sends a borrower, every borrower, not hidden on the screen; Halima, who runs it, is still served both.
+ */
+describe('a borrower is never served the lead’s two sections, and the lead still is', () => {
+  for (const [name, reader] of [['Musa', MUSA], ['Peter', PETER], ['Achieng', ACHIENG]] as const) {
+    it(`${name} is served neither "Support given, and whether it helped" nor "What the systems show"`, async () => {
+      const b: any = await board(LENDER_LOANS.id, reader);
+      expect(b.followUp).toBeNull();
+      expect(b.systems).toBeNull();
+      const words = everyWord(b);
+      for (const theLeads of ['Support given', 'whether it helped', 'What the systems show', 'repayment system', 'sent a reminder or spoke to a borrower']) expect(words).not.toContain(theLeads);
+    });
+  }
+
+  it('Halima, who runs it, is served both', async () => {
+    const b: any = await board(LENDER_LOANS.id, HALIMA);
+    expect(b.followUp.heading).toBe('Support given, and whether it helped');
+    expect(b.systems.heading).toBe('What the systems show');
+  });
+});
