@@ -21,6 +21,8 @@ import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch'
 import { readThePersonsRecord, readTheirOtherRecords } from './the-persons-record-store';
 import { theRecordInWords, acrossTheirCheckIns, type TheRecordInWords } from './the-persons-record-in-words';
 import { thePraiseFromYourLead } from './the-praise-from-your-lead';
+import { onePromiseOneState } from '../grounds/your-board';
+import { thePromisesAsTheRecordKeepsThem } from '../grounds/a-promise-said-done-is-read-the-same-everywhere';
 
 /**
  * MY WORK, AS EACH READER IS SERVED IT (Release 1B, pull request 3 of 3; Hafsah's references-and-my-work.md of 17 October 2026,
@@ -726,7 +728,7 @@ export async function readMyWork(
   const items = boardRows.filter((row: any) => row?.ownerParticipantId === pid);
   const patterns = ((served?.patterns ?? []) as any[]).filter((p: any) => p?.participantId === pid);
 
-  const [commitments, deps, mentions, checkIns, lines, objectives] = await Promise.all([
+  const [commitmentRows, deps, mentions, checkIns, lines, objectives, ownToDos] = await Promise.all([
     prisma.groundCommitment?.findMany?.({ where: { groundId: ground.id, participantId: pid }, orderBy: { createdAt: 'asc' } }).catch(() => []) ?? [],
     prisma.groundDependency?.findMany?.({ where: { groundId: ground.id, OR: [{ fromParticipantId: pid }, { onParticipantId: pid }] }, orderBy: { createdAt: 'asc' } }).catch(() => []) ?? [],
     prisma.workMention?.findMany?.({ where: { groundId: ground.id, aboutParticipantId: pid, kind: 'CREDIT' }, select: { sourceParticipantId: true, checkInId: true } }).catch(() => []) ?? [],
@@ -741,7 +743,26 @@ export async function readMyWork(
       orderBy: { createdAt: 'asc' },
     }).catch(() => []) ?? [],
     prisma.groundObjective?.findMany?.({ where: { groundId: ground.id, ownerParticipantId: pid }, select: { name: true, target: true, count: true, ownerParticipantId: true, isADecisionAboutAPerson: true }, orderBy: { sortOrder: 'asc' } }).catch(() => []) ?? [],
+    /* What they wrote down themselves as a promise or a to-do in this check-in: the second place a promise lives (onePromiseOneState). */
+    prisma.personObjective?.findMany?.({
+      where: { groundId: ground.id, participantId: pid, authoredBy: 'self', kind: { in: ['COMMITMENT', 'TODO'] } },
+      select: { id: true, groundId: true, participantId: true, text: true, kind: true, status: true, statusChangedAt: true, authoredBy: true, dueSaid: true, createdAt: true },
+      orderBy: { createdAt: 'asc' },
+    }).catch(() => []) ?? [],
   ]);
+
+  /*
+   * ONE PROMISE, ONE STATE (browser test, 21 October, Kevin). My work read the commitments alone, so a promise Kevin had kept read Late
+   * here and Kept on his own page. It now reads the promises the way the You board does: what the record says is done is done, and a
+   * commitment and his own to-do for the same promise are one promise, kept where either is kept.
+   */
+  const asKept = await thePromisesAsTheRecordKeepsThem(prisma, (commitmentRows as any[]) ?? [], (ownToDos as any[]) ?? []);
+  const commitments: ACommitmentRow[] = onePromiseOneState(asKept.commitments, asKept.objectives, () => ground.label ?? '', now)
+    .sort((a, b) => a.t - b.t)
+    .map((p) => ({
+      id: p.id, text: p.raw, whenSaid: p.whenSaid, status: p.status, settledAt: p.settledAt, createdAt: p.createdAt,
+      ...(p.explicit !== undefined ? { explicit: p.explicit } : {}),
+    }));
 
   /* Colleagues' own waits and promises here, to tell which waits are theirs to chase. Never served. */
   const [othersDeps, othersCommitments] = await Promise.all([
@@ -779,7 +800,7 @@ export async function readMyWork(
     ...(reader === 'self' && isLead ? { readerRunsIt: true } : {}),
     kindOfWork: ground.kindOfWork ?? null,
     items,
-    commitments: commitments as any[],
+    commitments,
     waitsOnThem: (deps as any[]).filter((d) => d.onParticipantId === pid).map((d) => ({ ...d, fromName: nameOf(d.fromParticipantId) })),
     raised: (deps as any[]).filter((d) => d.fromParticipantId === pid),
     othersChase: [

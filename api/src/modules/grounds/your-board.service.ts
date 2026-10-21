@@ -21,7 +21,7 @@ import { SuggestionsService } from '../suggestions/suggestions.service';
 import type { ForThePerson } from '../suggestions/a-suggestion-told-like-a-signal';
 import { askedOfYou, type AskedOfYou } from './asked-of-you';
 import { theDayIn } from './when-a-handoff-is-due';
-import { whenThesePromisesWereKept } from '../conversation/a-promise-said-done-is-kept';
+import { thePromisesAsTheRecordKeepsThem } from './a-promise-said-done-is-read-the-same-everywhere';
 import {
   PATTERN_ROW_SELECT, servedPatterns, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson,
   type APatternRow,
@@ -72,7 +72,7 @@ export class YourBoardService {
       participantIds.length
         ? this.prisma.personObjective.findMany({
             where: { groundId: { in: groundIds }, participantId: { in: participantIds } },
-            select: { id: true, groundId: true, participantId: true, text: true, kind: true, status: true, authoredBy: true, dueSaid: true, awareness: true, createdAt: true },
+            select: { id: true, groundId: true, participantId: true, text: true, kind: true, status: true, statusChangedAt: true, authoredBy: true, dueSaid: true, awareness: true, createdAt: true },
             orderBy: { createdAt: 'asc' },
           /* A goal the lead has not told you about is not on your board until they have. The lead of
              that check-in still reads it. See a-goal-not-told-stays-with-the-lead.
@@ -166,13 +166,7 @@ export class YourBoardService {
      * week on Thursday listed it under "Two things you said you would do are still open". The same reading the lead's summary uses
      * (a-promise-said-done-is-kept) is applied here, as served: nothing is written, and only her own promises are read.
      */
-    const openOnes = [
-      ...(commitments as any[]).filter((c) => c.status === 'UNKNOWN' && c.participantId && c.createdAt).map((c) => ({ id: c.id, groundId: c.groundId, participantId: c.participantId, text: c.text, createdAt: c.createdAt })),
-      ...(objectives as any[]).filter((o) => (o.status ?? 'OPEN') === 'OPEN' && o.authoredBy === 'self' && ['COMMITMENT', 'TODO'].includes(o.kind) && o.createdAt).map((o) => ({ id: o.id, groundId: o.groundId, participantId: o.participantId, text: o.text, createdAt: o.createdAt })),
-    ];
-    const keptSaid = openOnes.length ? await whenThesePromisesWereKept(this.prisma as any, openOnes).catch(() => new Map<string, Date>()) : new Map<string, Date>();
-    const commitmentsRead = (commitments as any[]).map((c) => (keptSaid.has(c.id) ? { ...c, status: 'DONE', settledBy: 'SAID', settledAt: keptSaid.get(c.id) } : c));
-    const objectivesRead = (objectives as any[]).map((o) => (keptSaid.has(o.id) ? { ...o, status: 'MET' } : o));
+    const { commitments: commitmentsRead, objectives: objectivesRead } = await thePromisesAsTheRecordKeepsThem(this.prisma as any, commitments as any[], objectives as any[]);
 
     /* Groundwork's suggestions about you, in the shape the person it is about may read (facts and
        the decision with its reasons, never the verdict). Left off when there are none. */

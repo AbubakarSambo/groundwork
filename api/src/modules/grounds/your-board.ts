@@ -351,6 +351,96 @@ function theFullerOf<T extends { text: string; when: string | null; open: boolea
 
 const STATE_SAYS: Record<SaidState, string> = { open: 'Open', kept: 'Kept', not_done: 'Not done' };
 
+/** One promise as the record reads it, with the row it was read from: what You and My work both show. */
+export interface APromiseAndItsState extends SomethingYouSaid {
+  groundId: string;
+  t: number;
+  open: boolean;
+  /** The person's own words, as they said them. */
+  raw: string;
+  /** Their own words for when, as said. */
+  whenSaid: string | null;
+  createdAt: Date | string | null;
+  /** When it was settled, kept or not kept: the commitment's own date, or the day a to-do was marked done. */
+  settledAt: Date | string | null;
+  /** False where the lead asked for it rather than the person saying it (a commitment's own field). */
+  explicit?: boolean | null;
+  /** The state in the commitment's own words: DONE, NOT_DONE or UNKNOWN. */
+  status: 'DONE' | 'NOT_DONE' | 'UNKNOWN';
+}
+
+/**
+ * ONE PROMISE, ONE STATE, READ BY EVERY PAGE THAT SHOWS IT (browser test, 21 October, Kevin). Kevin's You page listed "Call them by end of
+ * day tomorrow" as Kept, from the to-do he wrote himself and marked done, while My work listed the same promise, kept again as a
+ * commitment, as Late and said "You kept 0 of 1 promises": My work read the commitments alone. A promise lives in two places, a
+ * GroundCommitment and a self-authored PersonObjective (a to-do or a commitment they wrote), so the two are merged here, once, and both
+ * pages read the result.
+ *
+ * The engine's rules for one promise said twice (request 96), applied across both places a promise is kept: the same words with the
+ * same time are one promise, and the settled copy wins; a short open copy inside a fuller open copy, with no different time, is the
+ * fuller one, with the short one's time if it has none. Two different promises are never merged, and a settled promise is never folded
+ * into an open one. Matching reads the person's own words; what is shown is the action form (asAnAction). Dropped ones are gone, as
+ * they are elsewhere. The rows handed in are already the reader's own, in check-ins the reader may read.
+ */
+export function onePromiseOneState(
+  commitments: readonly (GroundCommitmentRow & { explicit?: boolean | null })[],
+  objectives: readonly (ObjectiveRow & { statusChangedAt?: Date | string | null })[],
+  labelOf: (groundId: string) => string,
+  now: Date = new Date(),
+): APromiseAndItsState[] {
+  const said: APromiseAndItsState[] = [];
+  const keysOf: string[] = [];
+  const addSaid = (item: APromiseAndItsState) => {
+    const raw = item.raw;
+    const key = `${item.groundId}\u0000${aCommitmentKey(raw, item.whenSaid)}`;
+    const same = keysOf.indexOf(key);
+    if (same !== -1) {
+      const settledBeatsOpen = said[same].state === 'open' && item.state !== 'open';
+      const sameWayFuller = (said[same].state === 'open') === (item.state === 'open') && raw.length > said[same].raw.length;
+      if (settledBeatsOpen || sameWayFuller) said[same] = { ...item, when: item.when ?? said[same].when, whenSaid: item.whenSaid ?? said[same].whenSaid };
+      return;
+    }
+    const fuller = said.findIndex((s) => !!theFullerOf({ ...s, text: s.raw }, { ...item, text: raw }));
+    if (fuller !== -1) {
+      const one = theFullerOf({ ...said[fuller], text: said[fuller].raw }, { ...item, text: raw })!;
+      const fromNew = one.id === item.id;
+      const [base, other] = fromNew ? [item, said[fuller]] : [said[fuller], item];
+      said[fuller] = { ...base, when: one.when, whenSaid: base.whenSaid ?? other.whenSaid };
+      keysOf[fuller] = key;
+      return;
+    }
+    said.push(item); keysOf.push(key);
+  };
+  for (const c of commitments) {
+    const state: SaidState | null =
+      c.status === 'DONE' ? 'kept' : c.status === 'NOT_DONE' ? 'not_done' : c.status === 'DROPPED' ? null : 'open';
+    const rawText = (c.text ?? '').trim();
+    if (!state || !rawText) continue;
+    const by = state !== 'open' && c.settledBy ? SETTLED_BY[c.settledBy] : undefined;
+    addSaid({
+      id: c.id, text: asAnAction(rawText), when: state === 'open' ? whenItWasFor(c.whenSaid, c.createdAt, now) : whenInOneForm(c.whenSaid),
+      checkIn: labelOf(c.groundId), state, stateSays: STATE_SAYS[state], ...(by ? { settledBy: by } : {}),
+      saidAt: c.createdAt ? new Date(c.createdAt).toISOString() : null, t: time(c.createdAt), open: state === 'open', groundId: c.groundId,
+      raw: rawText, whenSaid: c.whenSaid ?? null, createdAt: c.createdAt ?? null, settledAt: c.settledAt ?? null,
+      ...(c.explicit !== undefined ? { explicit: c.explicit } : {}),
+      status: state === 'kept' ? 'DONE' : state === 'not_done' ? 'NOT_DONE' : 'UNKNOWN',
+    });
+  }
+  for (const o of objectives) {
+    if (!o.kind || !THINGS_TO_DO.has(o.kind) || o.authoredBy !== 'self') continue;
+    const state: SaidState | null = (o.status ?? 'OPEN') === 'OPEN' ? 'open' : o.status === 'MET' ? 'kept' : null;
+    const rawText = (o.text ?? '').trim();
+    if (!state || !rawText) continue;
+    addSaid({
+      id: o.id, text: asAnAction(rawText), when: whenInOneForm(o.dueSaid), checkIn: labelOf(o.groundId), state, stateSays: STATE_SAYS[state],
+      saidAt: o.createdAt ? new Date(o.createdAt).toISOString() : null, t: time(o.createdAt), open: state === 'open', groundId: o.groundId,
+      raw: rawText, whenSaid: o.dueSaid ?? null, createdAt: o.createdAt ?? null, settledAt: state === 'kept' ? (o.statusChangedAt ?? null) : null,
+      status: state === 'kept' ? 'DONE' : 'UNKNOWN',
+    });
+  }
+  return said;
+}
+
 export function yourBoard(
   list: ListedCheckIn[],
   reader: BoardReader,
@@ -450,63 +540,10 @@ export function yourBoard(
     goals.push({ id: t.id, says: goalFromTarget(t, myFirstNames), checkIn: labelOf.get(t.groundId)! });
   }
 
-  /* What you said you would do, in your own check-ins. Dropped ones are gone, as they are elsewhere.
-     The same promise sometimes lives twice, in two different places - a GroundCommitment and a
-     self-authored PersonObjective both saying "I will plan shorter routes", one of them fuller and
-     dated - so the two sources below are merged through the one `addSaid`, never kept apart.
-     Merged (1 October) with the engine's own request 96 work: one form for every date
-     (whenInOneForm), the same promise matched by aCommitmentKey or theFullerOf, and settled
-     beating open. Matching reads the person's own words; what is shown is
-     the action form (asAnAction). */
-  const said: (SomethingYouSaid & { t: number; open: boolean; groundId: string })[] = [];
-  const rawOf: string[] = [];
-  const mineCommitments: GroundCommitmentRow[] = [];
-  const keysOf: string[] = [];
-  /* The engine's rules for one promise said twice (request 96), applied across both places a
-     promise is kept: the same words with the same time are one promise, and the settled copy wins;
-     a short open copy inside a fuller open copy, with no different time, is the fuller one, with
-     the short one's time if it has none. Two different promises are never merged, and a settled
-     promise is never folded into an open one. Matching reads the person's own words. */
-  const addSaid = (item: SomethingYouSaid & { t: number; open: boolean; groundId: string }, raw: string, whenSaid?: string | null) => {
-    const key = `${item.groundId}\u0000${aCommitmentKey(raw, whenSaid)}`;
-    const same = keysOf.indexOf(key);
-    if (same !== -1) {
-      const settledBeatsOpen = said[same].state === 'open' && item.state !== 'open';
-      const sameWayFuller = (said[same].state === 'open') === (item.state === 'open') && raw.length > rawOf[same].length;
-      if (settledBeatsOpen || sameWayFuller) { said[same] = { ...item, when: item.when ?? said[same].when }; rawOf[same] = raw; }
-      return;
-    }
-    const fuller = said.findIndex((s, i) => !!theFullerOf({ ...s, text: rawOf[i] }, { ...item, text: raw }));
-    if (fuller !== -1) {
-      const one = theFullerOf({ ...said[fuller], text: rawOf[fuller] }, { ...item, text: raw })!;
-      const fromNew = one.id === item.id;
-      const base = fromNew ? item : said[fuller];
-      said[fuller] = { ...base, when: one.when };
-      rawOf[fuller] = fromNew ? raw : rawOf[fuller];
-      keysOf[fuller] = key;
-      return;
-    }
-    said.push(item); rawOf.push(raw); keysOf.push(key);
-  };
-  for (const c of rows.commitments) {
-    if (!isMine(c.groundId, c.participantId)) continue;
-    mineCommitments.push(c);
-    const state: SaidState | null =
-      c.status === 'DONE' ? 'kept' : c.status === 'NOT_DONE' ? 'not_done' : c.status === 'DROPPED' ? null : 'open';
-    const rawText = (c.text ?? '').trim();
-    if (!state || !rawText) continue;
-    const checkIn = labelOf.get(c.groundId)!;
-    const by = state !== 'open' && c.settledBy ? SETTLED_BY[c.settledBy] : undefined;
-    addSaid({ id: c.id, text: asAnAction(rawText), when: state === 'open' ? whenItWasFor(c.whenSaid, c.createdAt, now) : whenInOneForm(c.whenSaid), checkIn, state, stateSays: STATE_SAYS[state], ...(by ? { settledBy: by } : {}), saidAt: c.createdAt ? new Date(c.createdAt).toISOString() : null, t: time(c.createdAt), open: state === 'open', groundId: c.groundId }, rawText, c.whenSaid);
-  }
-  for (const o of rows.objectives) {
-    if (!isMine(o.groundId, o.participantId)) continue;
-    if (!o.kind || !THINGS_TO_DO.has(o.kind) || o.authoredBy !== 'self') continue;
-    const state: SaidState | null = (o.status ?? 'OPEN') === 'OPEN' ? 'open' : o.status === 'MET' ? 'kept' : null;
-    const rawText = (o.text ?? '').trim();
-    if (!state || !rawText) continue;
-    addSaid({ id: o.id, text: asAnAction(rawText), when: whenInOneForm(o.dueSaid), checkIn: labelOf.get(o.groundId)!, state, stateSays: STATE_SAYS[state], saidAt: o.createdAt ? new Date(o.createdAt).toISOString() : null, t: time(o.createdAt), open: state === 'open', groundId: o.groundId }, rawText, o.dueSaid);
-  }
+  /* What you said you would do, in your own check-ins: the one reading of a promise and its state (onePromiseOneState, below), which
+     My work reads too, so the two pages never disagree about whether a promise was kept (browser test, 21 October, Kevin). */
+  const mineCommitments = rows.commitments.filter((c) => isMine(c.groundId, c.participantId));
+  const said = onePromiseOneState(mineCommitments, rows.objectives.filter((o) => isMine(o.groundId, o.participantId)), (g) => labelOf.get(g)!, now);
   const order: Record<SaidState, number> = { open: 0, kept: 1, not_done: 2 };
   said.sort((a, b) => order[a.state] - order[b.state] || a.t - b.t);
 
@@ -525,13 +562,13 @@ export function yourBoard(
     checkIns,
     turns,
     goals,
-    saidYoudDo: said.map(({ t: _t, open: _o, groundId: _g, ...s }) => s),
+    saidYoudDo: said.map(({ t: _t, open: _o, groundId: _g, raw: _r, whenSaid: _w, createdAt: _c, settledAt: _s, explicit: _e, status: _st, ...s }) => s),
     todos: rows.todos
       .filter((t) => (t.text ?? '').trim())
       .map((t) => ({ id: t.id, text: t.text.trim(), when: whenInOneForm(t.dueSaid) })),
     coaching,
     ownReports: ownReports.sort((a, b) => b.t - a.t).map(({ t: _t, ...r }) => r),
-    keptLately: keptLately(mineCommitments, now, rows.leave ?? []),
+    keptLately: keptLately(said, now, rows.leave ?? []),
   };
 }
 
