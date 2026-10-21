@@ -1,7 +1,7 @@
 import { FC, theCheckAsADatabase, THURSDAY_MORNING } from './the-final-check-bed';
 import { fileTheProofOnItsItem } from '../documents/proof-filed-on-its-item';
 import { theDirectMorningFor, theEmailParts, theMatterDirectMorning } from '../engagement/the-direct-morning';
-import { withTheAmountSaid } from './the-collections-board.service';
+import { withTheAmountSaid, theCollectionsBoardFor } from './the-collections-board.service';
 import { whatALineDoesToABill } from './a-fee-note-due-on-an-event';
 
 /**
@@ -66,5 +66,15 @@ describe('Wanjiru’s Thursday morning', () => {
       people: [], hers: new Set(), waits: [], items: [], lastCheckIn: {}, firstOpened: {}, workingDays: null, now: THURSDAY_MORNING, zone: 'Africa/Nairobi',
     });
     expect(JSON.stringify(m)).not.toMatch(/different things about this/);
+  });
+});
+
+describe('a payment Aisha said in the litigation daily reaches the fee notes (item 7)', () => {
+  it('Wanjiru reads beside FN-007 that Aisha also said it is paid in Litigation team daily, and it is still not paid with proof', async () => {
+    const { db } = await theFeeNotesWithTheSlipFiled();
+    const lead = FC.fees.participants.find((p: any) => p.userId === FC.fees.ground.initiatorId).id;
+    const board: any = await theCollectionsBoardFor(db, FC.fees.ground.id, { runsIt: true, participantId: lead }, THURSDAY_MORNING);
+    const fn007 = board.every.rows.find((r: any) => r.number === 'FN-007');
+    expect(fn007.payment).toEqual({ says: 'Paid, as Aisha said here and in Litigation team daily on 14 October', mark: 'said' });
   });
 });

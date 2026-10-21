@@ -41,9 +41,11 @@ export async function theBillsOnRecord(prisma: any, groundId: string): Promise<A
     select: { content: true, createdAt: true },
     orderBy: { createdAt: 'asc' },
   })).catch(() => [])) ?? []) as any[];
+  const elsewhere = await thePaymentsSaidElsewhere(prisma, groundId, items);
   return items.map((i) => ({
     id: i.id, kind: i.kind, name: i.name, stage: i.stage ?? null, ownerParticipantId: i.ownerParticipantId ?? null, dueAt: i.dueAt ?? null,
     fields: withTheAmountSaid(i, items, said.map((x) => String(x.content ?? ''))),
+    paidSaidElsewhere: elsewhere.get(i.id) ?? [],
     /* Who said it was paid: the person whose own line says so, never the person who first named the bill (item 9: "You marked FN-004 paid" of Wanjiru, when Njeri said it). */
     paidSaidBy: i.kind === BILL ? (lines.filter((l) => String(l.type ?? '').toUpperCase() === 'PROGRESS' && aBillIsNamed(String(l.text ?? ''), i) && aPaymentIsSaid(String(l.text ?? '')))
       .sort((a, b) => new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime())[0]?.participantId ?? null) : null,
@@ -52,6 +54,51 @@ export async function theBillsOnRecord(prisma: any, groundId: string): Promise<A
     proof: evidence.filter((e) => e.workItemId === i.id && e.readAs === 'A payment').map((e) => ({ readAs: e.readAs, shows: e.shows ?? null, on: e.createdAt, addedBy: e.participantId ?? null })),
     saidIn: [...new Set(lines.filter((l) => l.checkInId && (i.kind === LOAN_OWED ? l.participantId === i.ownerParticipantId : aBillIsNamed(String(l.text ?? ''), i))).map((l) => String(l.checkInId)))],
   }));
+}
+
+/**
+ * A PAYMENT SAID IN ANOTHER CHECK-IN OF THE ORGANISATION REACHES THE BILL (final real-model check, item 7). Aisha said in the litigation
+ * daily "Oh, and Jamii said they've cleared our fee note too", and the fee notes record never heard it. A line of another check-in in the
+ * same organisation that says a payment, and names one bill by its number, or by its client where that client has only one bill here
+ * and the line speaks of a bill ("fee note", "invoice", "bill"), is kept beside that bill. Who said it and the words are served only to a
+ * reader who may read that check-in (withTheEventsSaid).
+ */
+async function thePaymentsSaidElsewhere(prisma: any, groundId: string, items: any[]): Promise<Map<string, ALineKept[]>> {
+  const out = new Map<string, ALineKept[]>();
+  const bills = items.filter((i) => i.kind === BILL);
+  if (!bills.length) return out;
+  const g = await Promise.resolve(prisma?.ground?.findUnique?.({ where: { id: groundId }, select: { organizationId: true } })).catch(() => null) as any;
+  if (!g?.organizationId) return out;
+  const others = ((await Promise.resolve(prisma?.ground?.findMany?.({ where: { organizationId: g.organizationId }, select: { id: true, label: true } })).catch(() => [])) ?? []) as any[];
+  const otherIds = others.map((x) => x.id).filter((id) => id !== groundId);
+  if (!otherIds.length) return out;
+  const lines = ((await Promise.resolve(prisma?.recordEntry?.findMany?.({
+    where: { participant: { groundId: { in: otherIds } }, disputedAt: null, type: 'PROGRESS' },
+    select: { id: true, text: true, participantId: true, createdAt: true, participant: { select: { groundId: true } } },
+  })).catch(() => [])) ?? []) as any[];
+  const firstWord = (c: string) => String(c ?? '').trim().split(/\s+/)[0]?.toLowerCase() ?? '';
+  const clientOf = (b: any) => String(b.fields?.[F.client] ?? '').trim();
+  for (const l of lines) {
+    const text = String(l.text ?? '').replace(/\[[^\]]*\]/g, '').trim();
+    if (!text || !aPaymentIsSaid(text)) continue;
+    const lgid = l.participant?.groundId ?? null;
+    if (!lgid || lgid === groundId || !otherIds.includes(lgid)) continue;
+    const byNumber = bills.filter((b) => /\d/.test(String(b.fields?.[F.number] ?? '')) && aBillIsNamed(text, { name: '', fields: { [F.number]: b.fields?.[F.number] } }));
+    let bill = byNumber.length === 1 ? byNumber[0] : null;
+    if (!bill && !byNumber.length && /\b(?:fee notes?|invoices?|bills?)\b/i.test(text)) {
+      const lower = ` ${text.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ')} `;
+      const named = bills.filter((b) => firstWord(clientOf(b)).length >= 4 && lower.includes(` ${firstWord(clientOf(b))} `));
+      const clients = new Set(named.map((b) => clientOf(b).toLowerCase()));
+      /* One client: its one numbered fee note, beside a row for the client itself ("Jamii Clinics" beside FN-007). */
+      const numbered = named.filter((b) => /\d/.test(String(b.fields?.[F.number] ?? '')));
+      if (clients.size === 1) bill = named.length === 1 ? named[0] : numbered.length === 1 ? numbered[0] : null;
+    }
+    if (!bill) continue;
+    const at = new Date(l.createdAt ?? Date.now()).toISOString();
+    const kept: ALineKept = { lineId: l.id, groundId: lgid, label: String(others.find((x) => x.id === lgid)?.label ?? '').trim(), saidBy: l.participantId ?? null, text, at, day: at.slice(0, 10) };
+    out.set(bill.id, [...(out.get(bill.id) ?? []), kept]);
+  }
+  return out;
 }
 
 /* A payment said, in the past, with nothing in the sentence that says it is not so (the person's record reads it the same way). */
@@ -138,7 +185,7 @@ export async function theCollectionsBoardFor(prisma: any, groundId: string, read
  * and on which day, never the words or who said them. The lines that came close are given to the lead of this check-in only.
  */
 export async function withTheEventsSaid<T extends ABillOnTheBoard>(prisma: any, rows: T[], reader: { userId: string | null; isTheLead: boolean }, zone: string): Promise<T[]> {
-  const kept = (r: T) => [(r.fields ?? {})[DUE_ON_AN_EVENT], ...(reader.isTheLead && Array.isArray((r.fields ?? {})[MAY_BE_DUE]) ? ((r.fields ?? {})[MAY_BE_DUE] as any[]) : [])].filter(Boolean) as ALineKept[];
+  const kept = (r: T) => [(r.fields ?? {})[DUE_ON_AN_EVENT], ...(reader.isTheLead && Array.isArray((r.fields ?? {})[MAY_BE_DUE]) ? ((r.fields ?? {})[MAY_BE_DUE] as any[]) : []), ...((r as any).paidSaidElsewhere ?? [])].filter(Boolean) as ALineKept[];
   const groundIds = [...new Set(rows.flatMap((r) => kept(r).map((k) => k.groundId)).filter(Boolean))];
   if (!groundIds.length) return rows;
   const grounds = new Map<string, any>();
@@ -163,8 +210,10 @@ export async function withTheEventsSaid<T extends ABillOnTheBoard>(prisma: any, 
     const asWaiting = { id: r.id, groundId: '', stage: r.stage, client: String(f[F.client] ?? ''), matter: String(f[F.matter] ?? '') || null, dueWhen: event, notDueFrom: [] as string[] };
     const close = (reader.isTheLead && Array.isArray(f[MAY_BE_DUE]) ? (f[MAY_BE_DUE] as ALineKept[]) : [])
       .filter((c) => whatALineDoesToABill({ id: c.lineId, text: c.text, saidOn: c.day }, asWaiting, [asWaiting]).does !== 'nothing');
+    const elsewhere = ((r as any).paidSaidElsewhere ?? []) as ALineKept[];
     return {
       ...r,
+      ...(elsewhere.length ? { paidElsewhere: elsewhere.map((k) => asSaid(k, 'it is paid')) } : {}),
       ...(due && event ? { event: asSaid(due, event) } : {}),
       ...(close.length && event ? { toConfirm: close.map((c) => ({ ...asSaid(c, event), lineId: c.lineId })) } : {}),
     };

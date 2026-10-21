@@ -38,7 +38,8 @@ export function theCheckAsADatabase(g: AGroundOfTheCheck, opts: { directMorning?
     },
     groundParticipant: table(R.participants),
     checkIn: table(R.checkIns.map((c: any) => ({ ...c, turns: R.turns.filter((x: any) => x.checkInId === c.id) }))),
-    recordEntry: table(R.lines),
+    /* Each line knows its check-in, as `participant: { groundId }` reads it, and the other check-ins' lines are there when asked for. */
+    recordEntry: table(all.flatMap((x) => x.R.lines.map((l: any) => ({ ...l, participant: { groundId: x.R.ground.id } })))),
     groundCommitment: table(R.commitments),
     groundDependency: table(R.waits),
     conversationTurn: table(R.turns.map((x: any) => ({ ...x, checkIn: { participantId: whose.get(x.checkInId) ?? null, groundId: R.ground.id } }))),
