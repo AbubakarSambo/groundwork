@@ -202,9 +202,13 @@ export function twoMissedDaysSaid(who: string, d: TheirDay, workingDays: number[
   if (n < 2) return null;
   const names = d.missedDays.map(aDayByName);
   if (oneAfterAnother(d.missedDays, workingDays)) {
+    /* A check-in that opens once a week is missed in weeks, not days (browser test, 21 October 2026: a borrower who checks in each
+       Monday read "Peter hasn't checked in for 4 days, since Monday 28 September"). */
+    const gap = d.missedDays.length > 1 ? Math.round((new Date(`${d.missedDays[1]}T12:00:00Z`).getTime() - new Date(`${d.missedDays[0]}T12:00:00Z`).getTime()) / 86_400_000) : 1;
+    const unit = gap >= 5 && gap <= 9 ? 'weeks' : 'days';
     return n === 2
-      ? `${who} hasn't checked in for 2 days, on ${listed(names)}, so call ${who}.`
-      : `${who} hasn't checked in for ${n} days, since ${names[0]}, so call ${who}.`;
+      ? `${who} hasn't checked in for 2 ${unit}, on ${listed(names)}, so call ${who}.`
+      : `${who} hasn't checked in for ${n} ${unit}, since ${names[0]}, so call ${who}.`;
   }
   return `${who} hasn't checked in the last ${n} times the check-in opened, on ${listed(names)}, so call ${who}.`;
 }

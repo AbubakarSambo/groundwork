@@ -561,6 +561,8 @@ export interface TheCollectionsMorningInput {
   groundId: string;
   label: string;
   billWord: string;
+  /** A lender's loans, not invoices or fee notes: each is a borrower's, and said as theirs (browser test, 21 October 2026). */
+  loans?: boolean;
   bills: ABillOnTheBoard[];
   /** The collections board's own rows for this reader, for who said a bill is paid. */
   served: TheCollectionsBoard | null;
@@ -582,17 +584,19 @@ const listed = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')}
 export function theCollectionsDirectMorning(input: TheCollectionsMorningInput): TheDirectMorning {
   const { now, zone } = input;
   const today = keyIn(now, zone);
-  const word = input.billWord || 'invoice';
+  const word = input.loans ? 'loan' : input.billWord || 'invoice';
   const names = theNamesToCall(input.people.map((p) => ({ id: p.id, name: p.name })));
   const name = (pid: string | null) => (pid ? (input.hers.has(pid) ? 'you' : names.get(pid) ?? null) : null);
   const Name = (pid: string | null) => { const n = name(pid); return n ? capital(n) : null; };
   const f = (b: ABillOnTheBoard, k: string) => field(b.fields as any, k);
   /* Who follows a bill up: the person named for it, else the person who keeps it, as the board says it. */
-  const followerOf = (b: ABillOnTheBoard): string | null => String((b.fields as any)?._followsUp ?? '').trim() || b.ownerParticipantId || null;
+  /* A loan is the borrower's to repay, not to follow up: only somebody named for it follows it up (browser test: "Peter follows it up" of Peter's own loan). */
+  const followerOf = (b: ABillOnTheBoard): string | null => String((b.fields as any)?._followsUp ?? '').trim() || (input.loans ? null : b.ownerParticipantId) || null;
   /* A row with no number and no amount is not a bill anybody can chase ("the Nyota dispute"). */
   const bills = input.bills.filter((b) => f(b, F.number) || anAmount(f(b, F.amount)));
-  const whoOwes = (b: ABillOnTheBoard) => f(b, F.client) || f(b, F.matter) || b.name;
-  const numbered = (b: ABillOnTheBoard) => `${f(b, F.number) || b.name} for ${whoOwes(b)}`;
+  const whoOwes = (b: ABillOnTheBoard) => (input.loans ? Name(b.ownerParticipantId) ?? 'A borrower' : f(b, F.client) || f(b, F.matter) || b.name);
+  /* A loan is said as the borrower's ("Peter’s loan"), never "loan for loan" (browser test, 21 October 2026). */
+  const numbered = (b: ABillOnTheBoard) => (input.loans ? `${whoOwes(b)}’s loan` : `${f(b, F.number) || b.name} for ${whoOwes(b)}`);
   const amountOf = (b: ABillOnTheBoard) => anAmount(f(b, F.amount));
   const servedRow = (b: ABillOnTheBoard) => (input.served?.every?.rows ?? []).find((r) => r.id === b.id) ?? null;
   const paid = bills.filter((b) => b.stage === 'Paid');
@@ -656,9 +660,9 @@ export function theCollectionsDirectMorning(input: TheCollectionsMorningInput): 
     const followed = by ? (by === 'You' ? 'and you follow it up' : `and ${by} follows it up`) : 'and nobody follows it up yet, so name who will';
     if (due && due <= today) {
       const why = b.event?.event ? `, when ${asHappened(b.event.event)}` : '';
-      chase.push({ text: `${numbered(b)}${amount ? `, ${billMoney(amount.value, amount.currency)},` : ''} fell due ${due === today ? 'today' : `on ${dayAndMonth(due)}`}${why}, and nothing is paid yet. ${by ? `${by === 'You' ? 'You follow' : `${by} follows`} it up.` : 'Nobody follows it up yet, so name who will.'}`, rank: 4, key: due });
+      chase.push({ text: `${numbered(b)}${amount ? `, ${billMoney(amount.value, amount.currency)},` : ''} fell due ${due === today ? 'today' : `on ${dayAndMonth(due)}`}${why}, and nothing is paid yet.${by ? ` ${by === 'You' ? 'You follow' : `${by} follows`} it up.` : input.loans ? '' : ' Nobody follows it up yet, so name who will.'}`, rank: 4, key: due });
     } else if (amount) {
-      chase.push({ text: `${whoOwes(b)} owes ${billMoney(amount.value, amount.currency)} on ${f(b, F.number) || b.name}, ${followed}.`, rank: 8, key: due ?? '9999' });
+      chase.push({ text: input.loans ? `${whoOwes(b)} owes ${billMoney(amount.value, amount.currency)} on their loan${by ? `, ${followed}` : ''}.` : `${whoOwes(b)} owes ${billMoney(amount.value, amount.currency)} on ${f(b, F.number) || b.name}, ${followed}.`, rank: 8, key: due ?? '9999' });
     }
   }
   for (const b of onAWord) {
@@ -885,7 +889,7 @@ export async function theDirectMorningFor(
     const served = opts.board?.collections ?? await theCollectionsBoardFor(prisma, ground.id, { runsIt: true, participantId: leadRow }, now).catch(() => null);
     const bills = await withTheEventsSaid(prisma, theBillsThisReaderMayRead(await theBillsOnRecord(prisma, ground.id), { runsIt: true, participantId: leadRow }), { userId: opts.leadUserId, isTheLead: true }, zone).catch(() => []);
     return {
-      ...theCollectionsDirectMorning({ groundId: ground.id, label: ground.label, billWord: collections.billWord, bills, served, people, hers, waits: openWaits, lastCheckIn, firstOpened, sessions, workingDays: ground.workingDays ?? null, now, zone, records }),
+      ...theCollectionsDirectMorning({ groundId: ground.id, label: ground.label, billWord: collections.billWord, loans: collections.type === 'loans', bills, served, people, hers, waits: openWaits, lastCheckIn, firstOpened, sessions, workingDays: ground.workingDays ?? null, now, zone, records }),
       ...nudgeable,
       ...(kept ? { keptInTheApp: true } : {}),
     };
