@@ -75,7 +75,7 @@ describe('Grace reads her team, Drop Access (test)', () => {
       ],
       about: 'proof',
     });
-    expect(j.record.parts.find((p: any) => p.heading === 'Figures that changed').evidence).toEqual(['On Monday 12 October Joseph said 10 units for Mama Pima Stores, and on Tuesday 13 October Joseph said 15 units.']);
+    expect(j.record.parts.find((p: any) => p.heading === 'Figures that changed').evidence).toEqual(['On Monday 12 October Joseph said 10 units for Mama Pima Stores, and on Tuesday 13 October Joseph said “Mama Pima is 15 units now, she\'s expanding.”']);
   });
 
   it('Peter needs coaching on one thing, with the coaching Groundwork has just given him', () => {

@@ -180,6 +180,8 @@ export interface AChange {
   toOn: string;
   toAt: string;
   putRight: boolean;
+  /** Their own sentence saying why the figure changed ("she's expanding"), where they said why: a change they said themselves (item 8). */
+  reason?: string | null;
   lineIds: string[];
   askedAbout: boolean;
 }
@@ -543,9 +545,12 @@ export function thePersonsRecord(input: ThePersonsInputs): ThePersonsRecord {
         const to = said[k];
         const toLine = lines.find((l) => dayIn(l.createdAt, zone) === to.on && aLineNamesTheCustomer(l.text, d.name));
         const fromLine = lines.find((l) => dayIn(l.createdAt, zone) === from.on && aLineNamesTheCustomer(l.text, d.name));
+        /* Where they said why it changed, in the sentence that gives the new figure, the change is theirs and said (item 8). */
+        const sentence = toLine ? intoSentences(String(toLine.text ?? '')).find((x) => aLineNamesTheCustomer(x, d.name) && new RegExp(`\\b${to.units}\\b`).test(x)) ?? null : null;
+        const reason = !to.putRight && sentence && /\b(?:now|expand\w*|increas\w*|grow\w*|more|went up|upped|bigger|added|because|since)\b/i.test(sentence) ? asTheySaidIt(sentence) : null;
         changes.push({
           about: d.name, what: 'units', from: String(from.units), to: String(to.units), fromOn: from.on, toOn: to.on,
-          toAt: iso(toLine?.createdAt ?? now), putRight: to.putRight,
+          toAt: iso(toLine?.createdAt ?? now), putRight: to.putRight, reason,
           lineIds: [fromLine?.id, toLine?.id].filter(Boolean) as string[],
           askedAbout: !to.putRight && !!toLine && weAskedAfter(whenTheySaidIt(toLine, [d.name]), [d.name], input.ourTurns, ASKS_ABOUT_A_CHANGE),
         });
@@ -651,7 +656,8 @@ export function theSummaryOf(r: Omit<ThePersonsRecord, 'summary'>): TheSummary {
     keptLate: promises.filter((p) => p.outcome === 'kept late').length,
     notDone: promises.filter((p) => p.outcome === 'not done').length,
     late: promises.filter((p) => p.outcome === 'late').length,
-    changed: changes.filter((c) => !c.putRight).length,
+    /* A change they said themselves, with why, is not one "with nothing said about why". */
+    changed: changes.filter((c) => !c.putRight && !c.reason).length,
     putRight: changes.filter((c) => c.putRight).length,
     dealsThatCanBuy: focus.filter((f) => f.canBuy === 'yes').length,
     dealsThatCannotBuyNow: focus.filter((f) => f.canBuy === 'not now').length,

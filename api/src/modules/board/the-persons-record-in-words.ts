@@ -127,18 +127,23 @@ export function theRecordInWords(r: ThePersonsRecord, coaching: readonly ACoachi
   /* Figures that changed. A sale or payment taken back is said once, with the claim it took back, above. */
   const figures = r.changes.filter((c) => c.what === 'units');
   if (figures.length) {
-    const changed = figures.filter((c) => !c.putRight);
+    const changed = figures.filter((c) => !c.putRight && !c.reason);
+    const saidWhy = figures.filter((c) => !c.putRight && c.reason);
     const putRight = figures.filter((c) => c.putRight);
     const says = changed.length
       ? `${changed.length === 1 ? 'One figure' : `${cap(inWords(changed.length))} figures`} ${w.self ? 'you gave' : `${w.first} gave`} changed from one check-in to the next, with nothing said about why.`
-      : `${You(w)} put ${putRight.length === 1 ? 'a figure' : 'figures'} right ${w.self ? 'yourself' : 'without being asked'}.`;
+      : saidWhy.length
+        ? `${saidWhy.length === 1 ? 'One figure' : `${cap(inWords(saidWhy.length))} figures`} ${w.self ? 'you gave' : `${w.first} gave`} changed from one check-in to the next, and ${w.self ? 'you' : w.first} said why.`
+        : `${You(w)} put ${putRight.length === 1 ? 'a figure' : 'figures'} right ${w.self ? 'yourself' : 'without being asked'}.`;
     parts.push({
       heading: 'Figures that changed',
       says,
       toChange: changed.length ? `Saying so ${w.self ? 'yourself' : 'at once'} when a figure changes, with what shows the new one, would change this.` : null,
       evidence: figures.map((c) => (c.putRight
         ? `${You(w)} put the figure for ${c.about} right ${w.self ? 'yourself' : 'without being asked'}, from ${c.from} units to ${c.to}, on ${c.toOn}.`
-        : `On ${c.fromOn} ${you(w)} said ${c.from} units for ${c.about}, and on ${c.toOn} ${you(w)} said ${c.to} units.`)),
+        : c.reason
+          ? `On ${c.fromOn} ${you(w)} said ${c.from} units for ${c.about}, and on ${c.toOn} ${you(w)} said ${quote(c.reason)}`
+          : `On ${c.fromOn} ${you(w)} said ${c.from} units for ${c.about}, and on ${c.toOn} ${you(w)} said ${c.to} units.`)),
     });
   }
 

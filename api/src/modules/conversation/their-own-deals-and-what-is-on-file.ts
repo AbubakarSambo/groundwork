@@ -31,8 +31,15 @@ export interface AnOwnDeal {
 
 export interface ALineOfTheirs { text: string; createdAt: Date | string; participantId: string | null }
 
-/* "wants 5 units, not 4", "it's actually 5": a figure they put right themselves. */
-const THEY_PUT_IT_RIGHT = /\bnot\s+\d+\b|\bactually\b|\bcorrect(?:ed|ion)?\b|\bI (?:said|meant)\b/i;
+/*
+ * "wants 5 units, not 4", "correction from yesterday", "it was actually 8": a figure they put right themselves, because they say the earlier
+ * one was wrong. "Mama Pima is actually 15 units now, she's expanding." is a figure that changed, not one put right (final real-model check,
+ * item 8: the record said "Joseph put the figure for Mama Pima Stores right without being asked, from 10 units to 15.").
+ */
+const THEY_SAY_IT_WAS_WRONG = /\bnot\s+\d+\b|\bcorrect(?:ed|ion)?\b|\bI (?:said|meant)\b|\bmy (?:bad|mistake)\b|\bI was wrong\b|\bmistaken\b|\bwas (?:actually|really)\b|\bit was\s+\d+/i;
+const ACTUALLY = /\bactually\b/i;
+const IT_CHANGED = /\bnow\b|\bexpand\w*|\bincreas\w*|\bgrow\w*|\bmore\b|\bwent up\b|\bupped\b|\bbigger\b|\badded\b/i;
+const THEY_PUT_IT_RIGHT = { test: (s: string) => THEY_SAY_IT_WAS_WRONG.test(s) || (ACTUALLY.test(s) && !IT_CHANGED.test(s)) };
 
 /**
  * The units they gave for one deal, in the order they gave them, each with its day; the same figure said again is said once. Read

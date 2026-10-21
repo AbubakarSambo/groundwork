@@ -42,7 +42,7 @@ describe('Joseph, overstating, reads his own record', () => {
   });
   it('puts his two figures for Mama Pima side by side', async () => {
     const { part } = await theRecordOf('drop', 'Joseph');
-    expect(part(/figures/i)!.evidence).toEqual(['On Monday 12 October you said 10 units for Mama Pima Stores, and on Tuesday 13 October you said 15 units.']);
+    expect(part(/figures/i)!.evidence).toEqual(['On Monday 12 October you said 10 units for Mama Pima Stores, and on Tuesday 13 October you said “Mama Pima is 15 units now, she\'s expanding.”']);
   });
   it('was coached on proof after his first check-in, and the record says it has stayed the same', async () => {
     const { words, stored } = await theRecordOf('drop', 'Joseph');

@@ -144,3 +144,13 @@ describe('never "Groundwork has not coached" beside coaching (item 20)', () => {
     }
   });
 });
+
+describe('Joseph’s figure for Mama Pima Stores (item 8)', () => {
+  it('is a figure that changed, with his reason, never one he put right', async () => {
+    const own = await theirRecord('drop', 'Joseph', false);
+    const figures = own.parts.find((p) => p.heading === 'Figures that changed')!;
+    expect(figures.says).toBe('One figure Joseph gave changed from one check-in to the next, and Joseph said why.');
+    expect(figures.evidence).toEqual(['On Monday 12 October Joseph said 10 units for Mama Pima Stores, and on Tuesday 13 October Joseph said “Mama Pima is actually 15 units now, she\'s expanding.”']);
+    expect(JSON.stringify(own)).not.toMatch(/put the figure for Mama Pima Stores right/);
+  });
+});
