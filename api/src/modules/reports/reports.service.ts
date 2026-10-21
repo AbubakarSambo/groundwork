@@ -5195,7 +5195,7 @@ happened, and what is in the way.`;
       if (numbers.leftOut.length) this.logger.warn(`The judgement on ${groundId}: left out ${numbers.leftOut.length} line(s) with a number no block holds: ${numbers.leftOut.map((x) => `"${x}"`).join(', ')}`);
     }
     /* And a line the record proves false about proof on file is left out (proof-on-file-is-never-asked-for). */
-    const onFile = withoutAsksForProofOnFile(kept, salesAndProof);
+    const onFile = withoutAsksForProofOnFile(kept, salesAndProof, asARoom ? (pid) => room!.people.find((p) => p.participantId === pid)?.who ?? null : undefined);
     kept = onFile.judgement;
     if (onFile.leftOut.length) this.logger.warn(`The judgement on ${groundId}: left out ${onFile.leftOut.length} line(s) about proof the record already holds: ${onFile.leftOut.map((x) => `"${x}"`).join(', ')}`);
     this.logger.log(`Judged ${answers.length} answer(s) on ${groundId} over ${frame.length} fields.`);
