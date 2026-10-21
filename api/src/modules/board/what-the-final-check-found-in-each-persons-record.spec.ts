@@ -154,3 +154,15 @@ describe('Joseph’s figure for Mama Pima Stores (item 8)', () => {
     expect(JSON.stringify(own)).not.toMatch(/put the figure for Mama Pima Stores right/);
   });
 });
+
+describe('the board lists no customer’s own budget or approval as a blocker (item 2)', () => {
+  it('drops Mercy’s school and school board, keeps her ask of Grace, and keeps a real wait', async () => {
+    const { notABlockerTheyRaised } = await import('./not-a-blocker-they-raised');
+    const grace = thePersonOfTheCheck('drop', 'Grace').participantId;
+    const forTheBoard = { sales: true, keepTheAsks: true, keepWhatCleared: true };
+    expect(notABlockerTheyRaised({ what: 'the budget', onLabel: 'the school' }, forTheBoard)).toBe(true);
+    expect(notABlockerTheyRaised({ what: 'approval', onLabel: 'the school board' }, forTheBoard)).toBe(true);
+    expect(notABlockerTheyRaised({ what: 'thoughts on the payment plan idea for kiosks', onParticipantId: grace }, forTheBoard)).toBe(false);
+    expect(notABlockerTheyRaised({ what: 'the pricing for Juja Hardware', onLabel: 'us' }, forTheBoard)).toBe(false);
+  });
+});

@@ -37,14 +37,15 @@ const A_CUSTOMERS_OWN = /^(?:(?:the|their|its|a|an|her|his|board'?s?|school'?s?|
  * Is this wait something other than a blocker the person raised? On a sales check-in a customer's own budget, approval or decision is
  * where the deal stands; on any check-in, asking for a view or ideas is not a blocker, and nor is waiting for somebody's check-in.
  */
-export function notABlockerTheyRaised(d: AWaitTheyRaised, how: { sales: boolean; namesHere?: string[][] }): boolean {
+export function notABlockerTheyRaised(d: AWaitTheyRaised, how: { sales: boolean; namesHere?: string[][]; keepTheAsks?: boolean; keepWhatCleared?: boolean }): boolean {
   const what = String(d.what ?? '').trim();
   if (!what) return true;
   if (aWaitForTheirCheckIn({ what, onParticipantId: d.onParticipantId ?? null, onLabel: d.onLabel ?? null }, how.namesHere ?? [])) return true;
-  if (ASKING_FOR_A_VIEW.test(what)) return true;
+  /* On the board an ask for the lead's view still needs her answer, so it is kept there (`keepTheAsks`), and only never held against them. */
+  if (ASKING_FOR_A_VIEW.test(what) && !(how.keepTheAsks && d.onParticipantId)) return true;
   /* Something said to have come in the same check-in it was first mentioned ("Jamii said they've cleared our fee note too") is news, not a
      blocker: it was cleared on the day it was raised (final check, item 7). */
-  if (String(d.status ?? '').toUpperCase() === 'CLEARED' && d.createdAt && d.clearedAt
+  if (!how.keepWhatCleared && String(d.status ?? '').toUpperCase() === 'CLEARED' && d.createdAt && d.clearedAt
     && Math.abs(new Date(d.clearedAt).getTime() - new Date(d.createdAt).getTime()) < 18 * 3_600_000) return true;
   /* Only a wait on somebody outside the check-in (a customer) is read as the customer's own state. */
   if (how.sales && !d.onParticipantId && A_CUSTOMERS_OWN.test(what)) return true;

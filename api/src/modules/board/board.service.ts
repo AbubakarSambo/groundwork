@@ -49,6 +49,7 @@ import { aPromiseSomebodyElseMade } from '../conversation/a-promise-somebody-els
 import { thePriceRangeAnswer, thePriceRangeDecision, THE_RANGE_QUESTION, type ARangeAnswer } from './a-deals-four-criteria';
 import { theDealWasDropped, theLostDeal } from './a-deal-that-was-dropped';
 import { theStartOfATargetFromTheDeals } from './where-a-target-from-the-deals-started';
+import { notABlockerTheyRaised } from './not-a-blocker-they-raised';
 import { theWordsNameTheDeal, theDepositFor, aDepositSaid, theBackingDocuments, theDocumentBehind, thePaymentRecords, theSignedOrders, aPaymentRecordFor, theMPesaCodeFor, type ABackingDocument } from './a-deals-proof-is-about-that-deal';
 import { withTheValueWorkedOut, withOnlyTheNumbersSaid, theBuyingDateOf, theBuyingDateTheySaid, BUYING_DATE, aLineIsAbout } from './a-deals-value-and-buying-date';
 import { theirLine, theirCheckInToday, HAS_NOT_CHECKED_IN_TODAY, CHECKED_IN_TODAY } from './each-persons-line-today';
@@ -3063,8 +3064,15 @@ export class BoardService {
       const sessions = (checkIns as any[]).map((c) => ({ id: c.id, participantId: c.participantId, sessionNumber: c.sessionNumber, status: c.status, completedAt: c.completedAt ?? null, isSetup: !!c.isSetup, closedReason: c.closedReason ?? null, turns: c.turns }));
       const people = (ground.participants as any[]).map((p) => ({ id: p.id, managingOnly: !!p.managingOnly }));
       /* A quotation mark goes only round words found character for character in what that person typed. */
+      /*
+       * A CUSTOMER'S OWN BUDGET OR APPROVAL IS WHERE A DEAL STANDS, NOT A BLOCKER (final real-model check, item 2). Mercy's "the budget" from
+       * the school and "approval" from the school board were listed as her blockers with "Nobody has said what has been tried."; the deal
+       * row already says the school cannot buy now. An ask for ideas from the team is not one either; one for the lead's view stays, as hers.
+       */
+      const salesHere = isASalesKind((ground as any).kindOfWork);
+      const namesHere = (ground.participants as any[]).map((p) => [p.user?.firstName ?? '', p.user?.lastName ?? ''].filter(Boolean));
       const handoffs = withTheirWordsChecked(
-        (ground.dependencies ?? []) as any[],
+        ((ground.dependencies ?? []) as any[]).filter((d) => !notABlockerTheyRaised(d, { sales: salesHere, namesHere, keepTheAsks: true, keepWhatCleared: true })),
         await whatEachHandoffPersonTyped(this.prisma, (ground.dependencies ?? []) as any[], checkIns as any[]),
       ) as any[];
       /* Which waits on a colleague that colleague has confirmed (decision 137; change 4). */
