@@ -78,6 +78,9 @@ export function theNumbersIn(said: string): number[] {
     /* A SPAN OF TIME OR A HEADCOUNT IS NOT A PART OF A TARGET. "Greenfield's terms are 30 days" was read
        as 30 against 180,000,000 (smoke run 7). */
     if (/^\s*(days?|weeks?|months?|years?|hours?|minutes?|people|persons?|reps?|dealers?|accounts?|customers?|clients?|calls?|visits?|farmers?|members?|staff|of (?:the|them|my|our))\b/i.test(tail)) continue;
+    /* NOR A COUNT OF PLACES OR LEADS TO VISIT (final real-model check, item 16). Mercy said "around 5-10 more kiosks in Kawangware" and
+       was told "This check-in is aiming at 120. You said 10." A number of kiosks, shops, schools or leads is not a part of the units. */
+    if (/^\s*(?:more\s+|other\s+|new\s+|small\s+)?(?:kiosks?|shops?|stores?|outlets?|schools?|offices?|businesses|business|leads?|deals?|prospects?|sites?|branches|households?|families|groups?|demos?|meetings?)\b/i.test(tail)) continue;
     if (dated.has(n)) continue;
     /*
      * A FOUR-DIGIT NUMBER IN YEAR RANGE IS USUALLY A YEAR AND SOMETIMES A TARGET.

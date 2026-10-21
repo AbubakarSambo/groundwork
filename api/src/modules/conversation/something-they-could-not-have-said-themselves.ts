@@ -1,3 +1,4 @@
+import { whatASalesAimCounts } from '../board/a-sales-aim-is-counted-from-the-deals';
 /**
  * "THE GIVE SOMETHING ISN'T REALLY WORKING WELL HERE." PART 5, IN HER WORDS.
  *
@@ -98,4 +99,15 @@ It is arithmetic, not a verdict: say the number, do not say whether it is good o
   }
 
   return null;
+}
+
+/**
+ * WHERE THEIR OWN NUMBER STANDS (final real-model check, item 16). Mercy was told "You are at 25 of 30 for Mrs Achola, with about 3 weeks
+ * left." (25 was Mrs Achola's interest; nothing was sold) and Joseph "You are at 20 units towards the 30 unit target." (Juja Hardware's 20,
+ * wanted, not bought). Where their number is a sales aim counted from the deals on record ("units sold by 30 October"), it stands at that
+ * count, whatever they said; otherwise at the biggest figure they said beside a word for now, as before.
+ */
+export function whereTheirNumberStands(theirs: { name?: string | null; count?: number | null } | null, saidBesideNow: number[]): number | null {
+  if (theirs && typeof theirs.count === 'number' && whatASalesAimCounts(theirs.name) && whatASalesAimCounts(theirs.name)!.counts !== 'new leads') return theirs.count;
+  return saidBesideNow.length ? Math.max(...saidBesideNow) : null;
 }

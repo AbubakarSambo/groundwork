@@ -315,6 +315,7 @@ import { theFullerPromise, nameTwoDifferentDates } from './the-same-promise-said
 import { aPromiseSomebodyElseMade } from './a-promise-somebody-else-made';
 import { clearTheWaitsSaidDone, clearTheWaitsAnEventEnded } from './a-wait-said-done-is-cleared';
 import { aWaitForTheirCheckIn, removeTheWaitsForACheckIn } from './a-wait-for-a-check-in-is-not-a-wait';
+import { whereTheirNumberStands } from './something-they-could-not-have-said-themselves';
 import { fileTheProofOnItsItem } from '../documents/proof-filed-on-its-item';
 import { keepThePromisesSaidDone } from './a-promise-said-done-is-kept';
 import { theReleaseOneSalesBoardIsOnFor } from '../board/release-one-sales-board';
@@ -5807,7 +5808,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       if (theOneThingBack) return '';
       const [board, mine, turns] = await Promise.all([
         (this.prisma.groundObjective?.findMany?.({
-          where: { groundId: checkIn.groundId }, select: { target: true, name: true, ownerParticipantId: true },
+          where: { groundId: checkIn.groundId }, select: { target: true, name: true, ownerParticipantId: true, count: true },
         }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]),
         (this.prisma.personObjective?.findMany?.({
           where: { groundId: checkIn.groundId, participantId: checkIn.participantId }, select: { dueDate: true },
@@ -5827,10 +5828,15 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       const standing = theNumbersIn(
         answers.map((t: any) => t.content ?? '').filter((c: string) => saysWhereItStands(c)).join(' '),
       );
+      /*
+       * A SALES NUMBER STANDS WHERE THE RECORD COUNTS IT, NEVER AT A LEAD'S UNITS (final real-model check, item 16). Mercy was told "You are
+       * at 25 of 30 for Mrs Achola" (25 was Mrs Achola's interest, nothing sold) and Joseph "You are at 20 units towards the 30 unit target"
+       * (Juja Hardware's 20, wanted, not bought). Where their own number is counted from the deals, where it stands is that count.
+       */
       return somethingTheyCouldNotHaveSaid({
         whole: whole ? { name: whole.name, target: whole.target } : null,
         parts: owned.map((o: any) => ({ target: o.target, theirs: o.ownerParticipantId === checkIn.participantId })),
-        standsAt: standing.length ? Math.max(...standing) : null,
+        standsAt: whereTheirNumberStands(theirs ?? null, standing),
         theirTarget: theirs?.target ?? null,
         daysLeft,
         answersSoFar: answers.length,
