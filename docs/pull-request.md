@@ -1,3 +1,35 @@
+# The release to production, 21 October, for Abubakar
+
+This branch, `release-production-1021`, is made from `main` as it is today (`0f9308542`: the release of 15 October, #360, #362 and #364). Its product files are exactly staging's as of `cc19232d2` (after #398): Release 1 (#375 to #379), Release 1B (#380 to #382), Release 2 (#383 to #385), and #386 to #398. Every fix that is on `main` and not on staging is already on staging in its own form, so nothing of `main`'s is lost (the release commit says how each was checked). The WhatsApp hotfix branch `hotfix-whatsapp-silence-prod` is on staging as #386 and #393, so it does not need to be merged.
+
+## Before you merge, in this order
+
+- [ ] **Take a backup of the production database first, and write down the time.** Nothing else happens before it.
+- [ ] **Ten new migrations will run when the API starts.** Every one is add-only and can be run again: it adds a column, a table, an index or a value to a list, and changes no existing value. They were applied on a fresh local database after `main`'s migrations, with no difference from the schema afterwards.
+  1. `20261016090000_a_report_shares_itself_at_its_set_time`: adds `grounds.report_shares_at` (empty) and `reports.held_sessions` (an empty list).
+  2. `20261017120000_release_one_sales_board_switch`: adds `organizations.release_1_sales_board_on`, off.
+  3. `20261018120000_whatsapp_held_for_the_night`: adds the table `scheduled_whatsapp_messages`, empty.
+  4. `20261019120000_release_1b_tabs_switch`: adds `organizations.release_1b_tabs_on`, off.
+  5. `20261019180000_release_1b_references_and_resources`: adds six values to `ContextItemKind` and the table `item_evidence`, empty.
+  6. `20261019230000_release_2_collections_switch`: adds `COLLECTIONS` to `GroundScenario`, `organizations.release_2_collections_on` (off) and `bill_word` (empty), and `grounds.check_in_type` and `check_in_type_confirmed_at` (empty).
+  7. `20261020090000_person_judgements_switch`: adds `organizations.person_judgements_on`, **on** for every organisation, so everything reads as it does today.
+  8. `20261020150000_the_direct_morning_switch`: adds `organizations.direct_morning_on`, off.
+  9. `20261021120000_person_records`: adds the table `person_records`, empty.
+  10. `20261022090000_person_lead_actions`: adds the table `person_lead_actions`, empty.
+- [ ] **No new setting is required on Railway.** One optional one is new: `DELIVERY_ALERT_EMAIL`, the address that gets the daily alert when messages did not go. Nothing is sent while it is empty.
+- [ ] **Every new board and tab is behind a switch for each organisation, and every switch starts so that existing users read what they read today.** Do not change a switch on the same day as the migrations. After the release is up and checked, the one-off scripts in `api/scripts/` set them for one organisation at a time, by its id, and each says what it would do without `--yes`: `the-release-one-sales-board.ts`, `the-release-1b-tabs.ts`, `the-release-2-collections.ts`, `the-person-judgements.ts` (off for Drop Access) and `the-direct-morning.ts` (on for Drop Access, after Release 1's switch). None runs as part of a deploy. `docs/deploy.md`, "Switches", has the full table and the order.
+- [ ] **Rollback:** restore the backup and the old code together, never the code alone.
+
+## Known test failures, the same on staging
+
+Thirteen tests fail on this branch, and each fails the same on staging `cc19232d2`, so none comes from this release's building:
+- API: `grounds/links-between-check-ins-as-each-reader-reads-them.spec.ts` (two tests: the Sales board's waiting list reads "Distribution operations" where the test expects "Operations") and `grounds/groundwork-recommends-for-a-team-member-is-their-own-work.spec.ts` (one test: no offer is read).
+- Client: `pages/board/the-board-said-directly-as-grace-and-kevin-read-it.spec.tsx` (four tests, which look for "Last updated on Tuesday 20 October at 8am." and so depend on the day they run), `pages/grounds/who-else-can-see-it.spec.tsx` (two tests: the "Who else can see it" heading is not drawn), and four source-reading tests about `PeopleAndSetupAsPictured.tsx`, `GroundAdminPage.tsx`, `GroundParticipantPage.tsx`, `ground-tabs.ts` and the grounds API file.
+
+Six tests that read working documents not on `main` (`tools/score_run.py`, `docs/pattern-names.md`, `docs/modules.md`, `docs/the-parts-against-the-prototype.md`, a journey dump) are left out of this release, as in the release of 15 October. They stay on staging.
+
+---
+
 # The release, for Abubakar
 
 This replaces pull requests #324 and `groundwork-next-release`. It is made from your base as it is today (`59533562`, which already holds #322 and your seven commits of 6 October), and it holds only what the live product needs: product code, migrations, the tests that check how the product behaves, and three notes. It comes as two pull requests, merged in this order:
