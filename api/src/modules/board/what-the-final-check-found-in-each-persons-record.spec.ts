@@ -166,3 +166,11 @@ describe('the board lists no customer’s own budget or approval as a blocker (i
     expect(notABlockerTheyRaised({ what: 'the pricing for Juja Hardware', onLabel: 'us' }, forTheBoard)).toBe(false);
   });
 });
+
+describe('a sentence about the process is not a payment said (item 10)', () => {
+  it('"how quickly everything went through" is not a claim; "it went through on Friday" is', async () => {
+    const { aClaimIn } = await import('./the-persons-record');
+    expect(aClaimIn('With Kilele Hotel, Mr. Ochieng was really happy with how quickly everything went through.')).toBeNull();
+    expect(aClaimIn('For Jamii Clinics, FN-007, I think they\'ve paid, it went through on Friday.')).toBe('payment');
+  });
+});
