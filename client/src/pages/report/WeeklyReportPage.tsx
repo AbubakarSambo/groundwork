@@ -35,22 +35,22 @@ export function TheWeekForTheLead({ w }: { w: NonNullable<import('@/api/reports'
     <>
       {w.target && (
         <Section heading="Where the target stands">
-          <div className="panel pad"><p>{w.target}</p></div>
+          <p className="t-body">{w.target}</p>
         </Section>
       )}
       {w.movedWithProof.length > 0 && (
         <Section heading="What moved this week, with what shows it">
-          <div className="panel pad stack gw-gap-10">{w.movedWithProof.map((line, i) => <p key={i}>{line}</p>)}</div>
+          {/* The lead's own week is rows with thin rules, not more boxes after the prototype's own panels. */}
+          <div className="gw-ruled-rows">{w.movedWithProof.map((line, i) => <p key={i}>{line}</p>)}</div>
         </Section>
       )}
       {w.needsYou.length > 0 && (
         <Section heading="Who needs you">
-          {w.needsYou.map((n, i) => (
-            <div key={i} className="panel pad stack gw-gap-10">
-              <p><b>{n.says}</b></p>
-              {n.evidence.map((e, j) => <p key={j}>{e}</p>)}
-            </div>
-          ))}
+          <EdgeList label="Who needs you">
+            {w.needsYou.map((n, i) => (
+              <EdgeRow key={i} kind="look" title={n.says} detail={n.evidence.length ? <>{n.evidence.map((e, j) => <span key={j} className="gw-block">{e}</span>)}</> : undefined} />
+            ))}
+          </EdgeList>
         </Section>
       )}
     </>
