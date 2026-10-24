@@ -2411,8 +2411,11 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    roughly 150px empty gap above a check-in's own failure note before a single word of it (Dov's
    own account, review6/shots/b226-dov-mywork-390.png). Zeroed at narrow widths, where the gap was
    measured; written up in docs/the-parts-against-the-prototype.md. */
-@media (max-width: 640px) {
-  .gwui-ground-header-wrap .gwui-page-main { padding-bottom: 0; }
+/* At every width now (wip/ui, 24 October): on a computer the same 110px left an empty band above
+   My work. And the body under it starts at the header's own left edge, not 32px further left. */
+.gwui-ground-header-wrap .gwui-page-main { padding-bottom: 0; }
+@media (min-width: 641px) {
+  .gwui-ground-header-wrap + .gw-bd { padding-left: 48px; padding-right: 48px; }
 }
 
 /* ===== THE LIGHT PARTS (light prototype, 13 October 2026; docs/light-rebuild/sales-first.md,
