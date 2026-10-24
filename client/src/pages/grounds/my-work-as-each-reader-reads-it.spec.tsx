@@ -147,7 +147,7 @@ describe('My work, as each reader reads it', () => {
     expect(screen.getByText('your target')).toBeTruthy()
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
     expect(headings).toEqual(['Mercy’s work', 'Your focus this week', 'To do', 'What you achieved', 'How you’re performing', 'Coaching', 'Your deals'])
-    expect(screen.getByText('3 of your 5 open deals have no next step with a day.', { selector: '.gwui-callout *, .gwui-callout' })).toBeTruthy()
+    expect(screen.getByText('3 of your 5 open deals have no next step with a day.', { selector: '[data-gw-my-work-focus] *' })).toBeTruthy()
     expect(screen.getByText('Joseph is waiting on you for the Kiambu route notes.')).toBeTruthy()
     expect(screen.getByText('By Monday')).toBeTruthy()
     expect(screen.getByText('It was due on 16 October.')).toBeTruthy()

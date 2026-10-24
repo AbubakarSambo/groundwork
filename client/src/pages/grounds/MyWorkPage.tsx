@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import { groundsApi, type MyWork, type ABehaviourRead } from '@/api/grounds'
 import { TheirRecord } from '@/components/gw/TheirRecord'
 import {
-  Section, Panel, Note, Callout, Stack, FlexRow, Tag, Text, Select, RowList, Row, NumberTiles, FieldRows, FieldRow, Button,
+  Section, Panel, Note, Callout, Stack, Folded, FlexRow, Tag, Text, Select, RowList, Row, FieldRows, FieldRow, Button,
 } from '@/components/gw/ui'
 
 /**
@@ -82,7 +82,12 @@ function ThePage({ groundId, served, onPerson, rest, onAllYourReports }: {
       {/* THEIR NAME AND THREE NUMBERS */}
       <div data-gw-my-work-top>
         <Section heading={served.heading} note={served.topLine}>
-          <NumberTiles label="Your numbers" tiles={served.numbers.map((n, i) => ({ key: String(i), label: n.label, value: n.value }))} />
+          {/* B7: three small chips, the number large and its words beside it, not three wide tiles. */}
+          <div className="gwui-chips" role="list" aria-label="Your numbers">
+            {served.numbers.map((n, i) => (
+              <span key={i} className="gwui-chip" role="listitem"><b className="gwui-chip-value">{n.value}</b> <span className="gwui-chip-label">{n.label}</span></span>
+            ))}
+          </div>
         </Section>
       </div>
 
@@ -90,7 +95,8 @@ function ThePage({ groundId, served, onPerson, rest, onAllYourReports }: {
       {judged && (
         <Section heading={`${your} focus this week`}>
           {served.focus
-            ? <div data-gw-my-work-focus><Callout tone="info" title={served.focus.line}>{served.focus.why}</Callout></div>
+            /* B7: the focus is the one dark band on the page, its line in Literata. */
+            ? <div data-gw-my-work-focus className="gwui-focus-band"><p className="gwui-focus-line">{served.focus.line}</p><p className="gwui-focus-why">{served.focus.why}</p></div>
             : <Note tone="muted">{served.focusEmpty}</Note>}
         </Section>
       )}
@@ -138,7 +144,8 @@ function ThePage({ groundId, served, onPerson, rest, onAllYourReports }: {
 
       <Items groundId={groundId} served={served} />
 
-      {rest}
+      {/* B7 ends with the deals. Everything the page carried before B7 stays, folded under one line, so nothing is lost and the page is B7's length. */}
+      {rest && <Folded summary={self ? 'More from your check-ins' : `More from ${first}’s check-ins`}>{rest}</Folded>}
     </Stack>
   )
 }
