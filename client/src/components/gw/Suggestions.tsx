@@ -35,7 +35,7 @@ import { Button as UIButton, Stack } from '@/components/gw/ui'
  */
 
 const cardClass = 'gwui-fs-13-5 gwui-ink-text gwui-pt-16 gwui-pr-18 gwui-pb-16 gwui-pl-18 gwui-mb-18'
-const cardStyle: React.CSSProperties = { background: 'white', borderRadius: 12, lineHeight: 1.6, borderStyle: 'solid', borderWidth: 2, borderColor: 'var(--gw-text)' }
+const cardStyle: React.CSSProperties = { background: 'white', borderRadius: 12, lineHeight: 1.6, borderStyle: 'solid', borderWidth: 1, borderColor: 'var(--gw-rule-2)' }
 const h3Class = 'gwui-fs-16 gwui-mb-8'
 const h3Style: React.CSSProperties = { fontWeight: 800 }
 const subClass = 'gwui-fs-13 gwui-mt-12 gwui-mb-2'
@@ -233,7 +233,7 @@ function WhereYouStand({ s }: { s: SuggestionForThePerson }) {
   const busy = side.isPending || appeal.isPending
 
   return (
-    <section className="gwui-panel gwui-panel-pad" aria-label="Where you stand" style={{ borderStyle: 'solid', borderWidth: 2, borderColor: 'var(--gw-text)' }}>
+    <section className="gwui-panel gwui-panel-pad" aria-label="Where you stand" style={{ borderStyle: 'solid', borderWidth: 1, borderColor: 'var(--gw-rule-2)' }}>
       <h3 className={h3Class} style={h3Style}>Where you stand</h3>
       <div className={quietClass}>About your work in {s.checkIn.label}.</div>
       <div>{s.facts}</div>

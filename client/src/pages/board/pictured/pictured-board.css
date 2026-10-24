@@ -159,7 +159,7 @@
 /* D-2: the prototype's .btn.sec, an inset rule and no border. */
 .pb-wide-btn { display: flex; justify-content: center; align-items: center; min-height: 44px; border: 0; box-shadow: inset 0 0 0 1.5px var(--gw-rule-2); border-radius: 8px; background: var(--gw-card); font-weight: 700; font-size: 16px; color: var(--gw-text); text-decoration: none; }
 .pb-issue-next { font-size: 14px; font-weight: 700; margin: 0 0 8px; }
-.pb-convo { border: 2px solid var(--gw-text); border-radius: 10px; padding: 12px 14px; margin: 4px 0 8px; display: flex; flex-direction: column; gap: 4px; }
+.pb-convo { border: 1px solid var(--gw-rule-2); border-radius: 10px; padding: 12px 14px; margin: 4px 0 8px; display: flex; flex-direction: column; gap: 4px; }
 .pb-issue-acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
 .pb-report-row { display: grid; grid-template-columns: 200px minmax(0, 1fr) 140px 110px; gap: 16px; align-items: center; padding: 16px 18px; border-top: 1px solid var(--gw-border); font-size: 15px; }
 .pb-report-row:first-child { border-top: 0; }
@@ -245,9 +245,9 @@
 .pb-agreed-h { padding-bottom: 6px; border-bottom: 1px solid var(--gw-border); }
 .pb-agreed-row { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--gw-border); font-size: 15px; }
 .pb-agreed-row:last-child { border-bottom: 0; }
-.pb-apart { border: 2px solid var(--gw-text); border-radius: 10px; padding: 16px 20px; background: var(--gw-card); font-size: 15px; }
+.pb-apart { border: 1px solid var(--gw-rule-2); border-radius: 10px; padding: 16px 20px; background: var(--gw-card); font-size: 15px; }
 .pb-apart p { margin: 8px 0; }
-.pb-relevant { border: 2px solid var(--gw-text); border-radius: 10px; padding: 18px 22px; background: var(--gw-card); font-size: 16px; }
+.pb-relevant { border: 1px solid var(--gw-rule-2); border-radius: 10px; padding: 18px 22px; background: var(--gw-card); font-size: 16px; }
 .pb-relevant p { margin: 8px 0; }
 .pb-relevant-actions { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
 .pb-add-record { margin-top: 14px; }
@@ -265,7 +265,7 @@
 .pb-whole-board-link { margin-top: 28px; text-align: center; font-size: 15px; }
 /* team-report.jpg: the team's report for one session. */
 .pb-report-links { display: flex; gap: 18px; margin: 8px 0 18px; font-size: 15px; }
-.pb-share { display: flex; justify-content: space-between; align-items: center; gap: 18px; flex-wrap: wrap; border: 2px solid var(--gw-text); border-radius: 10px; padding: 16px 20px; background: var(--gw-card); margin-bottom: 18px; }
+.pb-share { display: flex; justify-content: space-between; align-items: center; gap: 18px; flex-wrap: wrap; border: 1px solid var(--gw-rule-2); border-radius: 10px; padding: 16px 20px; background: var(--gw-card); margin-bottom: 18px; }
 .pb-share .gwui-panel-text { margin: 4px 0 0; }
 .pb-share-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .pb-moved { border-top: 1px solid var(--gw-border); padding: 14px 18px; }
@@ -332,7 +332,7 @@
 .pb-sides .gwui-panel-text { margin: 0; font-size: 16px; line-height: 1.5; }
 .pb-cant-tell { max-width: 820px; color: var(--gw-sub); font-size: 16px; line-height: 1.5; }
 .pb-cant-tell p { margin: 0 0 4px; }
-.pb-question { border: 2px solid var(--gw-text); border-radius: 10px; padding: 18px 22px; background: var(--gw-card); margin: 28px 0 22px; }
+.pb-question { border: 1px solid var(--gw-rule-2); border-radius: 10px; padding: 18px 22px; background: var(--gw-card); margin: 28px 0 22px; }
 .pb-box-h { font-size: 21px; font-weight: 700; margin: 0 0 12px; }
 .pb-question .pb-read { font-size: 19px; margin-bottom: 10px; }
 .pb-question .pb-relevant-actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 14px 0 0; }

@@ -572,10 +572,9 @@ button, input, select, textarea { font-family: inherit; }
 /* Focus was doing two jobs and now does one: the field is already white, so the border is the
    whole signal. A ring rather than a hairline, because a one-pixel colour change is not a focus
    state anybody using a keyboard can see. */
-.gw-input:focus, .gw-select:focus, .gw-ta:focus {
-  border-color: var(--gw-navy);
-  box-shadow: 0 0 0 3px rgba(12, 68, 124, .12);
-}
+.gw-input:focus, .gw-select:focus, .gw-ta:focus { border-color: var(--gw-navy); }
+/* The prototype's focus ring (:focus-visible{outline:3px solid var(--act);outline-offset:2px}), on keyboard focus only. */
+.gw-input:focus-visible, .gw-select:focus-visible, .gw-ta:focus-visible, .gw-auth-input:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 2px; }
 .gw-ta { resize: vertical; line-height: 1.5; }
 .gw-er { font-size: 12px; color: var(--gw-red-t); margin-top: 5px; min-height: 16px; }
 
@@ -1698,7 +1697,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 .gw-auth-fld { margin-bottom: 16px; }
 .gw-auth-label { display: block; font-size: 14.5px; font-weight: 700; color: var(--gw-text); margin-bottom: 8px; }
 .gw-auth-input { width: 100%; min-height: 48px; padding: 0 16px; font: inherit; font-size: 16px; color: var(--gw-text); background: #fff; border: 1.5px solid var(--gw-rule-2); border-radius: 10px; outline: none; }
-.gw-auth-input:focus { border-color: var(--gw-navy); box-shadow: 0 0 0 3px rgba(12, 68, 124, .14); }
+.gw-auth-input:focus { border-color: var(--gw-navy); }
 .gw-auth-input::placeholder { color: var(--gw-muted); }
 .gw-auth-pw { position: relative; display: block; }
 .gw-auth-pw .gw-auth-input { padding-right: 76px; }
@@ -1851,7 +1850,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 .gw-tree ul { padding-left: 18px; }
 .gw-tree-level { color: var(--gw-sub); }
 .gw-people-filters { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
-.gw-people-filters input, .gw-people-filters select, .gw-people-actions select, .gw-people-actions input, .gw-one-edit input, .gw-one-edit select, .gw-one-field input { padding: 7px 10px; font: inherit; font-size: 13px; border: 1px solid var(--gw-border); border-radius: 7px; background: #fff; }
+.gw-people-filters input, .gw-people-filters select, .gw-people-actions select, .gw-people-actions input, .gw-one-edit input, .gw-one-edit select, .gw-one-field input { min-height: 44px; padding: 0 12px; font: inherit; font-size: 16px; border: 1.5px solid var(--gw-rule-2); border-radius: 10px; background: var(--gw-card); }
 .gw-people-chips { display: flex; gap: 6px; flex-wrap: wrap; }
 .gw-people-chips button { font: inherit; font-size: 12.5px; padding: 5px 10px; border-radius: 6px; border: 1px solid var(--gw-border); background: var(--gw-card); cursor: pointer; color: var(--gw-text); }
 .gw-people-chips button.on { background: var(--gw-navy); color: #fff; border-color: var(--gw-navy); }
@@ -2061,7 +2060,8 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 .gw-suite-ask > p { margin: 0; }
 .gw-suite-q { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .gw-suite-q label { font-size: 14px; font-weight: 600; color: var(--gw-text); }
-.gw-suite-q select, .gw-suite-q input, .gw-suite-q textarea { box-sizing: border-box; width: 100%; max-width: 100%; font: inherit; font-size: 14px; padding: 8px 10px; border: 1px solid var(--gw-border); border-radius: 7px; background: var(--gw-card); color: var(--gw-text); }
+.gw-suite-q select, .gw-suite-q input, .gw-suite-q textarea { box-sizing: border-box; width: 100%; max-width: 100%; font: inherit; font-size: 16px; min-height: 48px; padding: 0 16px; border: 1.5px solid var(--gw-rule-2); border-radius: 10px; background: var(--gw-card); color: var(--gw-text); }
+.gw-suite-q textarea { padding: 12px 16px; min-height: 96px; }
 .gw-suite-ask-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .gw-suites-already { list-style: none; padding: 4px 20px; margin: 0; }
 .gw-suites-already li { display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 12px 0; border-top: 1px solid var(--gw-border); font-size: 14px; }
@@ -2088,7 +2088,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 .gw-conn-back:hover, .gw-conn-back:focus-visible { text-decoration: underline; }
 .gw-wa-steps { list-style: none; margin: 16px 0 0; padding: 0; border-top: 1px solid var(--gw-border); }
 .gw-wa-step { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 16px; padding: 18px 0; border-bottom: 1px solid var(--gw-border); }
-.gw-wa-num { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; border: 2px solid var(--gw-border); color: var(--gw-sub); background: var(--gw-card); }
+.gw-wa-num { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; border: 1px solid var(--gw-border); color: var(--gw-sub); background: var(--gw-card); }
 .gw-wa-step.done .gw-wa-num { background: var(--gw-green-t); border-color: var(--gw-green-t); color: white; }
 .gw-wa-step.now .gw-wa-num { background: var(--gw-text); border-color: var(--gw-text); color: white; }
 .gw-wa-step.later h2 { color: var(--gw-sub); }
@@ -2116,7 +2116,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 .gw-bill-plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 12px; }
 .gw-bill-plan { margin-bottom: 0; display: flex; flex-direction: column; gap: 4px; }
 .gw-bill-plan .gw-btn-sec, .gw-bill-yours { margin-top: auto; text-align: center; }
-.gw-bill-mine { border: 2px solid var(--gw-navy); }
+.gw-bill-mine { border: 1px solid var(--gw-navy); }
 .gw-bill-enterprise { background: var(--gw-amber-bg); }
 .gw-bill-price { font-family: Georgia, 'Times New Roman', serif; font-size: 26px; margin: 4px 0 !important; }
 .gw-bill-yours { display: block; padding: 4px 10px; border-radius: 999px; background: var(--gw-blue-bg); color: var(--gw-navy); font-weight: 700; font-size: 13px; }
@@ -2148,7 +2148,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
   .gw-leave-off li { grid-template-columns: minmax(0, 1fr); gap: 2px; }
 }
 /* Time sheets (U.17, E suite-time.txt). */
-.gw-time-rule { border: 2px solid var(--gw-text); }
+.gw-time-rule { border: 1px solid var(--gw-rule-2); }
 .gw-time-rule b { display: block; margin-bottom: 4px; }
 .gw-time-table-wrap { overflow-x: auto; padding: 0; }
 .gw-time-table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
