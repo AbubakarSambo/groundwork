@@ -5,7 +5,6 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { ConversationCard } from './ConversationCard'
 
-const CSS = readFileSync(join(__dirname, 'gw-ui.css'), 'utf8')
 
 /**
  * THE FOCUSED CHECK-IN'S CARD FRAME (docs/prototype/source/app.css: `.ci-focus`, `.ci-card`).
