@@ -251,7 +251,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
   const n = sessionsUpToTheEnd(props) ?? sessionsFor(props.timelineDaysDraft, props.cadenceDraft) ?? 1
 
   return (
-    <div className="gwui-page-wrap">
+    <div className="gwui-page-wrap gwui-b-tab">
       {/* 1. HOW THIS CHECK-IN RUNS */}
       {/* B8: a small uppercase label, then the one line in Literata. */}
       <Panel as="section" aria-label="How this check-in runs">

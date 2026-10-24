@@ -72,6 +72,8 @@ function ThePage({ groundId, served, ground, isTheLead }: { groundId: string; se
   const people = served.people ?? []
 
   return (
+    /* B6: section headings in Literata, as the picture draws them (gwui-b-tab). */
+    <div className="gwui-b-tab">
     <Stack gap={30}>
       {/* THE TOP BAR: one line on what the page is, "Ask about this work", and "Add" for the lead. */}
       <div data-gw-references-top>
@@ -99,6 +101,7 @@ function ThePage({ groundId, served, ground, isTheLead }: { groundId: string; se
       <QuestionsAndAnswers served={served} />
       {served.people && <People groundId={groundId} people={served.people} alsoSeenBy={served.peopleAlsoSeenBy} onDone={refresh} />}
     </Stack>
+    </div>
   )
 }
 

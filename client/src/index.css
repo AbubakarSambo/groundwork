@@ -2093,7 +2093,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 .gw-conn-back:hover, .gw-conn-back:focus-visible { text-decoration: underline; }
 .gw-wa-steps { list-style: none; margin: 16px 0 0; padding: 0; border-top: 1px solid var(--gw-border); }
 .gw-wa-step { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 16px; padding: 18px 0; border-bottom: 1px solid var(--gw-border); }
-.gw-wa-num { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; border: 1px solid var(--gw-border); color: var(--gw-sub); background: var(--gw-card); }
+.gw-wa-num { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; border: 2px solid var(--gw-border); color: var(--gw-sub); background: var(--gw-card); }
 .gw-wa-step.done .gw-wa-num { background: var(--gw-green-t); border-color: var(--gw-green-t); color: white; }
 .gw-wa-step.now .gw-wa-num { background: var(--gw-text); border-color: var(--gw-text); color: white; }
 .gw-wa-step.later h2 { color: var(--gw-sub); }
@@ -2121,7 +2121,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 .gw-bill-plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 12px; }
 .gw-bill-plan { margin-bottom: 0; display: flex; flex-direction: column; gap: 4px; }
 .gw-bill-plan .gw-btn-sec, .gw-bill-yours { margin-top: auto; text-align: center; }
-.gw-bill-mine { border: 1px solid var(--gw-navy); }
+.gw-bill-mine { border: 2px solid var(--gw-navy); }
 .gw-bill-enterprise { background: var(--gw-amber-bg); }
 .gw-bill-price { font-family: Georgia, 'Times New Roman', serif; font-size: 26px; margin: 4px 0 !important; }
 .gw-bill-yours { display: block; padding: 4px 10px; border-radius: 999px; background: var(--gw-blue-bg); color: var(--gw-navy); font-weight: 700; font-size: 13px; }
@@ -2153,7 +2153,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
   .gw-leave-off li { grid-template-columns: minmax(0, 1fr); gap: 2px; }
 }
 /* Time sheets (U.17, E suite-time.txt). */
-.gw-time-rule { border: 1px solid var(--gw-rule-2); }
+.gw-time-rule { border: 2px solid var(--gw-text); }
 .gw-time-rule b { display: block; margin-bottom: 4px; }
 .gw-time-table-wrap { overflow-x: auto; padding: 0; }
 .gw-time-table { width: 100%; border-collapse: collapse; font-size: 14.5px; }

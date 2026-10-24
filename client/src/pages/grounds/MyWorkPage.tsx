@@ -68,6 +68,8 @@ function ThePage({ groundId, served, onPerson, rest, onAllYourReports }: {
   /* Judgements of a person are served unless the organisation keeps them off (api organisation/person-judgements.ts). */
   const judged = served.judgements !== false
   return (
+    /* B7: section headings in Literata, as the picture draws them (gwui-b-tab). */
+    <div className="gwui-b-tab">
     <Stack gap={30}>
       {/* THE LEAD CHOOSES WHOSE PAGE. Only in her payload. */}
       {served.people && served.people.length > 0 && (
@@ -147,6 +149,7 @@ function ThePage({ groundId, served, onPerson, rest, onAllYourReports }: {
       {/* B7 ends with the deals. Everything the page carried before B7 stays, folded under one line, so nothing is lost and the page is B7's length. */}
       {rest && <Folded summary={self ? 'More from your check-ins' : `More from ${first}’s check-ins`}>{rest}</Folded>}
     </Stack>
+    </div>
   )
 }
 

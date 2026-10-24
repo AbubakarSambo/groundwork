@@ -2632,3 +2632,5 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 /* B8, People and setup: the summary line in Literata, and a field's label small and quiet above it. */
 .gwui-b8-line { margin: 0; font-family: var(--gw-font-name); font-size: 19px; font-weight: 500; line-height: 1.35; color: var(--gw-text); }
 .gwui-b8-field-label { font-size: 13px; color: var(--gw-sub); }
+/* B6, B7 and B8 (References and resources, My work, People and setup): section headings in Literata, as the pictures draw them. */
+.gwui-b-tab .gwui-section-title { font-family: var(--gw-font-name); font-weight: 500; font-size: 22px; line-height: 1.25; }
