@@ -171,14 +171,14 @@
 .pb-claim { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; font-size: 14px; color: var(--gw-sub); }
 .pb-stage-word { box-shadow: none; background: transparent; padding: 0; font-size: 15px; font-weight: 400; color: var(--gw-text); }
 .pb-team-picture { background: var(--gw-amber-bg); border-color: var(--gw-amber-bg); }
-.pb-team-picture .gwui-btn { width: 100%; }
+.pb-team-picture .btn { width: 100%; }
 
 /* On a phone (board-phone.jpg): the header keeps its breadcrumb and the whole schedule line, with the
    buttons below the title; each deal stacks its parts down the row instead of running off the side. */
 @media (max-width: 640px) {
-  .gwui-page-wrap:has(.pb, .pb-grid) .gwui-cih .gwui-pt-crumb { display: flex; }
-  .gwui-page-wrap:has(.pb, .pb-grid) .gwui-cih .gwui-pt-row { flex-wrap: wrap; align-items: flex-end; }
-  .gwui-page-wrap:has(.pb, .pb-grid) .gwui-cih .gwui-pt-sub { font-size: 16px; display: block; overflow: visible; -webkit-line-clamp: unset; }
+  .wrap:has(.pb, .pb-grid) .gwui-cih .crumb { display: flex; }
+  .wrap:has(.pb, .pb-grid) .gwui-cih .gw-pt-row { flex-wrap: wrap; align-items: flex-end; }
+  .wrap:has(.pb, .pb-grid) .gwui-cih .gw-pt-sub { font-size: 16px; display: block; overflow: visible; -webkit-line-clamp: unset; }
   .pb-head { gap: 24px; }
   .pb-answer { font-size: 26px; }
   .pb-grid { overflow-x: visible; }
@@ -212,7 +212,7 @@
 .pb-trace-decision { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
 @media (max-width: 860px) { .pb-trace-row { grid-template-columns: 1fr; } }
 .pb-trace-intro { font-size: 17px; line-height: 1.45; color: var(--gw-sub); max-width: 720px; margin: 6px 0 0; }
-.gwui-page-wrap h2.pb-trace-title { font-size: 30px; }
+.wrap h2.pb-trace-title { font-size: 30px; }
 .pb-row-change { grid-template-columns: 160px minmax(0, 1fr) 100px; }
 .pb-row-board { grid-template-columns: minmax(0, 1fr) auto; color: var(--gw-text); text-decoration: none; }
 .pb-row-board:hover { background: var(--gw-paper); }
@@ -382,10 +382,10 @@
 /* The rest of the board, folded under its own headings (FoldTheRest.tsx): the heading row alone, divided by rules, until opened. */
 .pb-fold-the-rest { display: flex; flex-direction: column; border-top: 1px solid var(--gw-rule); }
 .pb-fold-the-rest > section.pb-fold, .pb-fold-the-rest section.pb-fold { border-bottom: 1px solid var(--gw-rule); margin: 0; }
-.pb-fold > .gwui-section-h { cursor: pointer; min-height: 44px; display: flex; align-items: center; padding: 6px 0; }
-.pb-fold > .gwui-section-h::after { content: '›'; margin-left: auto; font-size: 20px; color: var(--gw-sub); transition: transform .15s; }
-.pb-fold.pb-fold-open > .gwui-section-h::after { transform: rotate(90deg); }
-.pb-fold:not(.pb-fold-open) > :not(.gwui-section-h) { display: none; }
+.pb-fold > .sec-h { cursor: pointer; min-height: 44px; display: flex; align-items: center; padding: 6px 0; }
+.pb-fold > .sec-h::after { content: '›'; margin-left: auto; font-size: 20px; color: var(--gw-sub); transition: transform .15s; }
+.pb-fold.pb-fold-open > .sec-h::after { transform: rotate(90deg); }
+.pb-fold:not(.pb-fold-open) > :not(.sec-h) { display: none; }
 .pb-fold.pb-fold-open { padding-bottom: 16px; }
-.pb-fold > .gwui-section-h:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 2px; }
-@media (prefers-reduced-motion: reduce) { .pb-fold > .gwui-section-h::after { transition: none; } }
+.pb-fold > .sec-h:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .pb-fold > .sec-h::after { transition: none; } }

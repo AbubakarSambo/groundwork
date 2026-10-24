@@ -147,7 +147,7 @@ export function OpsQuarterPage() {
       {canOpen.data?.ready && mayOpen && (periods.data ?? []).find((p) => p.key === period)?.status !== 'OPEN' && (
         <section style={{ ...CARD, marginBottom: 14 }}>
           <p style={{ fontSize: 14, margin: 0 }}>{canOpen.data.says}</p>
-          <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+          <button className="btn sec sm"
             type="button"
             onClick={() => open.mutate()}
             disabled={open.isPending}
@@ -649,7 +649,7 @@ export function OpsApprovalsPage() {
           )}
           <div style={{ display: 'flex', gap: 6 }}>
             {(['APPROVED', 'CHANGES_REQUESTED', 'REJECTED'] as const).map((status) => (
-              <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+              <button className="btn sec sm"
                 key={status}
                 type="button"
                 onClick={() => decide.mutate({ id: a.id, status })}
@@ -1001,7 +1001,7 @@ export function OpsIntegrationPage() {
       </section>
 
       {s?.enabled && (
-        <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+        <button className="btn sec sm"
           type="button"
           onClick={() => push.mutate()}
           disabled={push.isPending}

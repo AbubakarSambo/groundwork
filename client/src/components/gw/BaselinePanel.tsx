@@ -146,7 +146,7 @@ export function BaselinePanel({ groundId, canState, groundStartedAt }: { groundI
       )}
 
       {canState && !open && (
-        <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+        <button className="btn sec sm"
           onClick={() => setOpen(true)}
           style={{ marginTop: 10 }}
         >
@@ -194,13 +194,13 @@ export function BaselinePanel({ groundId, canState, groundStartedAt }: { groundI
               </>
             )}
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              <button className="gwui-btn gwui-btn-primary gwui-btn-small"
+              <button className="btn pri sm"
                 onClick={() => state.mutate()}
                 disabled={state.isPending || (!success.trim() && !conditions.trim())}
               >
                 {state.isPending ? 'Recording…' : current ? 'Record as a new version' : 'Record it'}
               </button>
-              <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+              <button className="btn sec sm"
                 onClick={() => setOpen(false)}
               >
                 Cancel

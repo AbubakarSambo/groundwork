@@ -58,7 +58,7 @@ export function PostSessionPanel({ groundId, freeExtensionUsed, onDismiss }: Pro
             <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 12 }}>
               Not ready to pay yet? Keep using Groundwork until you are confident it is delivering value. Add another free session and continue your Check-in.
             </div>
-            <button className="gwui-btn gwui-btn-secondary"
+            <button className="btn sec"
               onClick={() => claimFreeExtensionMut.mutate()}
               disabled={claimFreeExtensionMut.isPending}
             >
@@ -80,13 +80,13 @@ export function PostSessionPanel({ groundId, freeExtensionUsed, onDismiss }: Pro
             Your team is getting value from Groundwork. Unlock unlimited check-ins and unlimited sessions for everyone in your organisation with one simple monthly subscription.
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button className="gwui-btn gwui-btn-primary"
+            <button className="btn pri"
               onClick={() => createSubscriptionMut.mutate('STARTER')}
               disabled={createSubscriptionMut.isPending}
             >
               {createSubscriptionMut.isPending ? 'Redirecting...' : 'Upgrade organisation'}
             </button>
-            <button className="gwui-btn gwui-btn-secondary"
+            <button className="btn sec"
               onClick={() => navigate('/pricing')}
             >
               View all plans

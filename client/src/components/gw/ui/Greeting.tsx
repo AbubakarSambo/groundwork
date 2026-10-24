@@ -8,9 +8,9 @@ import './gw-ui.css'
  */
 export function Greeting({ title, subtitle }: { title: string; subtitle: React.ReactNode }) {
   return (
-    <div className="gwui-greet-block">
-      <h1 className="gwui-greet">{title}</h1>
-      <p className="gwui-greet-sub">{subtitle}</p>
-    </div>
+    <header style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <h1 className="t-greet">{title}</h1>
+      <p className="t-body mut" style={{ fontSize: 18 }}>{subtitle}</p>
+    </header>
   )
 }

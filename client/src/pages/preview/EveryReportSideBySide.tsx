@@ -185,7 +185,7 @@ export default function EveryReportSideBySide() {
           Session
           <input value={s} onChange={(e) => setS(e.target.value)} inputMode="numeric" style={{ ...INPUT, width: 80 }} />
         </label>
-        <button className="gwui-btn gwui-btn-primary gwui-btn-small" type="submit" >
+        <button className="btn pri sm" type="submit" >
           Show them
         </button>
       </form>

@@ -1117,7 +1117,7 @@ export function ContextPage({
                       Delete was drawn on everybody's OPEN files and answered "Document not found".
                       Only the uploader may delete, so only the uploader is offered it. */}
                   {(doc as any).mine !== false && (
-                    <button onClick={() => deleteDoc.mutate(doc.id)} className="gwui-btn gwui-btn-quiet gwui-btn-small gwui-ink-red">Delete</button>
+                    <button onClick={() => deleteDoc.mutate(doc.id)} className="btn quiet sm gwui-ink-red">Delete</button>
                   )}
                 </div>
                 </div>

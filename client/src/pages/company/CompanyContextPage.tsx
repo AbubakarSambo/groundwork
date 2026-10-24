@@ -128,7 +128,7 @@ function Priority({ pr, readsTargets }: { pr: CompanyPriority; readsTargets: boo
   return (
     <Panel as="section" aria-label={`Priority ${pr.number}`}>
       <span className="gwui-note">Priority {pr.number}</span>
-      <h3 className="gwui-panel-heading">{pr.title}</h3>
+      <h3 className="t-h3">{pr.title}</h3>
       {readsTargets && success && (
         <>
           <p className="gwui-panel-text"><b>What success looks like</b> <Tag>Leadership only</Tag></p>

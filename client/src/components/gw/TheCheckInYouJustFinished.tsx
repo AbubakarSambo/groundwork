@@ -560,91 +560,32 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
      * lines (your-own-report-from-the-record): what you did well in your own name, the kit's story, and what you told us said once.
      */
     const own: { didWell: { text: string; how: string | null; mark: string }[]; story: string | null; toldUs: { text: string; how: string | null; mark: string }[] } | null = releaseOne ? d?.yourOwnReport ?? null : null
+    const correctIt = !closed ? (
+      <button type="button" className="btn quiet" style={{ alignSelf: 'flex-start', padding: 0 }} onClick={() => correct.mutate()} disabled={correct.isPending}>
+        {correct.isPending ? 'Opening…' : 'Something here isn’t right'}
+      </button>
+    ) : null
     if (own) {
       return (
-        <div className="pb-own-body">
-          {own.didWell.length > 0 && (
-            <section className="pb-own-panel" aria-label="What you did well">
-              <h2 className="pb-own-h">What you did well</h2>
-              <ul className="pb-own-list">
-                {own.didWell.map((x) => <li key={x.text}><ProofMark mark={x.mark} /><span>{x.text}{x.how ? ` ${x.how}` : ''}</span></li>)}
-              </ul>
-            </section>
-          )}
-          {own.story && <p className="pb-own-story">{own.story}</p>}
-          {own.toldUs.length > 0 && (
-            <section aria-label="What you told us">
-              <h2 className="pb-own-h pb-own-h-rule">What you told us</h2>
-              <ul className="pb-own-told">
-                {own.toldUs.map((x) => (
-                  <li key={x.text}>
-                    <ProofMark mark={x.mark} />
-                    <div>
-                      <span>{x.text}</span>
-                      {x.how && <span className="pb-own-how">{x.how}</span>}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-          {toThinkAbout.length > 0 && (
-            <section className="pb-own-panel" aria-label="One thing to think about">
-              <h2 className="pb-own-h">One thing to think about</h2>
-              {toThinkAbout.map((t) => <p key={t} className="pb-own-think">{t}</p>)}
-            </section>
-          )}
-          {yourRecord && <TheirRecord record={yourRecord} />}
-          {!closed && (
-            <button type="button" className="pb-own-wrong" onClick={() => correct.mutate()} disabled={correct.isPending}>
-              {correct.isPending ? 'Opening…' : 'Something here isn’t right'}
-            </button>
-          )}
-        </div>
+        <OwnReportAsPictured
+          didWell={own.didWell.map((x) => ({ key: x.text, mark: x.mark, text: `${x.text}${x.how ? ` ${x.how}` : ''}` }))}
+          story={own.story}
+          toldUs={own.toldUs.map((x) => ({ key: x.text, mark: x.mark, text: x.text, how: x.how }))}
+          toThinkAbout={toThinkAbout}
+          record={yourRecord}
+          correctIt={correctIt}
+        />
       )
     }
     return (
-      <div className="pb-own-body">
-        {didWell.length > 0 && (
-          <section className="pb-own-panel" aria-label="What you did well">
-            <h2 className="pb-own-h">What you did well</h2>
-            <ul className="pb-own-list">
-              {didWell.map((x) => (
-                <li key={x.id}><ProofMark mark={x.mark} /><span>{x.readAs ?? x.text}{x.how ? ` ${x.how}` : ''}</span></li>
-              ))}
-            </ul>
-          </section>
-        )}
-        {story && <p className="pb-own-story">{story}</p>}
-        {toldUs.length > 0 && (
-          <section aria-label="What you told us">
-            <h2 className="pb-own-h pb-own-h-rule">What you told us</h2>
-            <ul className="pb-own-told">
-              {toldUs.map((x) => (
-                <li key={x.id} className={x.disputedAt ? 'pb-own-gone' : undefined}>
-                  <ProofMark mark={x.mark ?? 'said'} />
-                  <div>
-                    <span>{x.readAs ?? x.text}</span>
-                    {(x.how || x.typeSays) && <span className="pb-own-how">{x.how ?? x.typeSays}</span>}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-        {toThinkAbout.length > 0 && (
-          <section className="pb-own-panel" aria-label="One thing to think about">
-            <h2 className="pb-own-h">One thing to think about</h2>
-            {toThinkAbout.map((t) => <p key={t} className="pb-own-think">{t}</p>)}
-          </section>
-        )}
-        {yourRecord && <TheirRecord record={yourRecord} />}
-        {!closed && (
-          <button type="button" className="pb-own-wrong" onClick={() => correct.mutate()} disabled={correct.isPending}>
-            {correct.isPending ? 'Opening…' : 'Something here isn’t right'}
-          </button>
-        )}
-      </div>
+      <OwnReportAsPictured
+        didWell={didWell.map((x) => ({ key: x.id, mark: x.mark, text: `${x.readAs ?? x.text}${x.how ? ` ${x.how}` : ''}` }))}
+        story={story}
+        toldUs={toldUs.map((x) => ({ key: x.id, mark: x.mark ?? 'said', text: x.readAs ?? x.text, how: x.how ?? x.typeSays ?? null, gone: !!x.disputedAt }))}
+        toThinkAbout={toThinkAbout}
+        record={yourRecord}
+        correctIt={correctIt}
+      />
     )
   }
 
@@ -785,6 +726,53 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
             : 'This half is yours. The shared picture opens to everybody at the same moment.'}
         </div>
       </div>
+    </div>
+  )
+}
+
+/* The person's own report, in the prototype's markup (own-report.jpg): what you did well in a panel, the story, what you
+   told us as ruled rows, one thing to think about in a panel, then the way to correct it. */
+function OwnReportAsPictured({ didWell, story, toldUs, toThinkAbout, record, correctIt }: {
+  didWell: { key: string; mark: any; text: string }[]
+  story: string | null | undefined
+  toldUs: { key: string; mark: any; text: string; how: string | null; gone?: boolean }[]
+  toThinkAbout: string[]
+  record: any
+  correctIt: React.ReactNode
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      {didWell.length > 0 && (
+        <section className="panel pad" aria-label="What you did well" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <h2 className="t-h3">What you did well</h2>
+          {didWell.map((x) => (
+            <div key={x.key} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}><ProofMark mark={x.mark} /><span className="t-small">{x.text}</span></div>
+          ))}
+        </section>
+      )}
+      {story && <p style={{ fontFamily: 'var(--name)', fontSize: 18, lineHeight: 1.5 }}>{story}</p>}
+      {toldUs.length > 0 && (
+        <section aria-label="What you told us">
+          <h2 className="t-h3" style={{ marginBottom: 4 }}>What you told us</h2>
+          {toldUs.map((x) => (
+            <div key={x.key} style={{ display: 'grid', gridTemplateColumns: '18px 1fr', gap: 10, padding: '10px 0', borderTop: '1px solid var(--rule)' }}>
+              <span style={{ marginTop: 4 }}><ProofMark mark={x.mark} /></span>
+              <span className="t-small" style={x.gone ? { textDecoration: 'line-through', color: 'var(--muted)' } : undefined}>
+                {x.text}
+                {x.how && <span className="mut" style={{ display: 'block', marginTop: 2 }}>{x.how}</span>}
+              </span>
+            </div>
+          ))}
+        </section>
+      )}
+      {toThinkAbout.length > 0 && (
+        <section className="panel pad" aria-label="One thing to think about" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <h2 className="t-body" style={{ fontWeight: 700 }}>One thing to think about</h2>
+          {toThinkAbout.map((t) => <p key={t} className="t-small">{t}</p>)}
+        </section>
+      )}
+      {record && <TheirRecord record={record} asOneFold />}
+      {correctIt}
     </div>
   )
 }

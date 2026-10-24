@@ -46,7 +46,7 @@ const ASK_CAPTION_FALLBACK = 'Ask about the company, your work or your check-ins
  * absent. 70px is two such lines (24px * 2) plus the same padding - the box still grows further as
  * somebody types (see the `onChange` below), this only fixes where it RESTS, empty.
  */
-const COMPOSER_RESTING_HEIGHT = '70px'
+const COMPOSER_RESTING_HEIGHT = '48px'
 
 /**
  * ASK (D1, U.14): the panel beside every page on a computer, and #/chat on a phone. Named for the
@@ -110,28 +110,9 @@ const isUploadStep = (b: NextStepBlock): b is NextStepBlock & { id: string } =>
 const uploadGroundId = (b: NextStepBlock & { id: string }): string =>
   (typeof b.context?.groundId === 'string' && b.context.groundId) || b.id
 
-const bubble = (mine: boolean): React.CSSProperties => ({
-  alignSelf: mine ? 'flex-end' : 'flex-start',
-  maxWidth: '82%',
-  padding: '10px 14px',
-  borderRadius: 14,
-  background: mine ? 'var(--gw-navy)' : 'var(--gw-slate)',
-  color: mine ? '#fff' : 'var(--gw-text)',
-  whiteSpace: 'pre-wrap',
-  /* Board review, sales piece C, item 10: the opening line ("Ask me about Sales team, Q3: a deal,
-     a target, or what to do next.") read cut off at 375px. `pre-wrap` alone wraps at a space, so
-     one long unbroken run - a long check-in label, a pasted id - could still push past the
-     bubble's own 82% width. This lets a word break rather than overflow it. */
-  overflowWrap: 'anywhere',
-  fontSize: 15,
-  lineHeight: 1.45,
-  margin: 0,
-})
-
-const chip: React.CSSProperties = {
-  border: '1px solid var(--gw-line)', background: 'var(--gw-card)', color: 'var(--gw-text)',
-  borderRadius: 999, padding: '8px 14px', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit',
-}
+/* The prototype's chat bubbles (.bub.me, .bub.them) and suggestion chips (.chip). */
+const bubble = (mine: boolean): string => (mine ? 'bub me' : 'bub them')
+const chip = 'chip'
 
 const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
@@ -482,19 +463,19 @@ export function AskGroundwork({
     const texts = new Set(reply.blocks.filter(isText).map((b) => b.body))
     return reply.blocks.map((b: AskBlock, i) => {
       const k = `${key}-${i}`
-      if (isText(b)) return <p key={k} style={bubble(false)}>{b.body}</p>
+      if (isText(b)) return <p key={k} className={bubble(false)}>{b.body}</p>
       if (isClaim(b)) {
         /* A claim with how it is known (request 16). The mark comes from the record, never from here. */
-        return <p key={k} style={bubble(false)}><Mark mark={b.mark} /> {b.says}</p>
+        return <p key={k} className={bubble(false)}><Mark mark={b.mark} /> {b.says}</p>
       }
       if (isProposal(b)) {
         return (
-          <div key={k} style={{ display: 'flex', flexDirection: 'column', gap: 8, alignSelf: 'flex-start', maxWidth: '82%' }}>
-            {!texts.has(b.summary) && <p style={bubble(false)}>{b.summary}</p>}
+          <div key={k} className="stack" style={{ gap: 8, alignSelf: 'flex-start', maxWidth: '82%' }}>
+            {!texts.has(b.summary) && <p className={bubble(false)}>{b.summary}</p>}
             {b.proposalId === latestProposalId && !answered.has(b.proposalId) && (
               <div style={{ display: 'flex', gap: 8 }}>
-                <button type="button" className="gw-b gw-b-primary gw-b-small" disabled={sending} onClick={() => answer(b.proposalId, true)}>Yes</button>
-                <button type="button" className="gw-b gw-b-secondary gw-b-small" disabled={sending} onClick={() => answer(b.proposalId, false)}>No</button>
+                <button type="button" className="btn pri sm" disabled={sending} onClick={() => answer(b.proposalId, true)}>Yes</button>
+                <button type="button" className="btn sec sm" disabled={sending} onClick={() => answer(b.proposalId, false)}>No</button>
               </div>
             )}
           </div>
@@ -502,9 +483,9 @@ export function AskGroundwork({
       }
       if (isPicker(b)) {
         return (
-          <div key={k} style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <div key={k} style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {b.options.map((o) => (
-              <button key={o.key} type="button" style={chip} disabled={sending || !isLatest} onClick={() => ask(o.label)}>{o.label}</button>
+              <button key={o.key} type="button" className={chip} disabled={sending || !isLatest} onClick={() => ask(o.label)}>{o.label}</button>
             ))}
           </div>
         )
@@ -515,13 +496,13 @@ export function AskGroundwork({
         if (isUploadStep(b)) {
           if (fileTaken) return null
           return (
-            <button key={k} type="button" style={chip} disabled={sending || reading}
+            <button key={k} type="button" className={chip} disabled={sending || reading}
               onClick={() => startUpload(uploadGroundId(b))}>
               {b.label}
             </button>
           )
         }
-        return <Link key={k} to={b.href} style={{ ...chip, alignSelf: 'flex-start', textDecoration: 'none' }}>{b.label}</Link>
+        return <Link key={k} to={b.href} className={chip} style={{ alignSelf: 'flex-start', textDecoration: 'none' }}>{b.label}</Link>
       }
       return null
     })
@@ -531,26 +512,14 @@ export function AskGroundwork({
   const askDisplayName = page.data?.askName ?? askNameFor(orgName)
 
   return (
-    <section aria-labelledby="gw-ask-title" style={{
-      display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0,
-      background: 'var(--gw-card)', border: '1px solid var(--gw-line)', borderRadius: onClose ? 0 : 12,
-    }}>
-      <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid var(--gw-line)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <h2 id="gw-ask-title" style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>{askDisplayName}</h2>
-          {onClose && (
-            <button type="button" className="gw-tap44" onClick={onClose} aria-label="Close"
-              style={{ border: 0, background: 'transparent', fontSize: 20, cursor: 'pointer', color: 'var(--gw-sub)' }}>×</button>
-          )}
-        </div>
-        {/*
-         * THE CAPTION, AND THE ONE LINE UNDER IT (decision 100; docs/ask-definition.md, "Its
-         * name"). Both served, both fixed - "Ask about the company, your work or your
-         * check-ins." and "You can also add context or documents to your check-ins here." -
-         * printed under the name exactly as they arrive.
-         */}
-        <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--gw-text)', lineHeight: 1.4 }}>{page.data?.caption ?? ASK_CAPTION_FALLBACK}</p>
-        {page.data?.addLine && <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{page.data.addLine}</p>}
+    <section aria-labelledby="gw-ask-title" className={onClose ? 'gw-ask-drawer' : 'chatpage'}>
+      <div className="asst-h" style={{ flexWrap: 'wrap' }}>
+        <b id="gw-ask-title" style={{ flex: 1 }}>{askDisplayName}</b>
+        {onClose && (
+          <button type="button" className="rl-ic" onClick={onClose} aria-label="Close">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
+        )}
         {about.length > 0 && (
           /*
            * ITEM 6: THE PICKER RAN PAST THE PANEL'S RIGHT EDGE. A flex item's default minimum width
@@ -575,12 +544,10 @@ export function AskGroundwork({
            * squeezing beside "About" - inline styles untouched, so item 6's own shrink-to-fit still
            * holds at every width this rule does not apply at.
            */
-          <label style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 14, color: 'var(--gw-sub)', minWidth: 0 }}>
-            About
+          <label className="t-small" style={{ display: 'flex', gap: 6, alignItems: 'center', width: '100%', marginTop: 6 }}>
+            <span className="mut">About</span>
             <select value={aboutId} onChange={(e) => setChosen(e.target.value)}
-              className="gwui-ask-about-select"
-              /* The kit's field (48px, 16px words), as every other field: browser test, 20 October. */
-              style={{ flex: 1, minWidth: 0, font: 'inherit', fontSize: 16, minHeight: 48, padding: '0 12px', borderRadius: 10, border: '1.5px solid var(--gw-rule-2)', background: 'var(--gw-card)', color: 'var(--gw-text)', maxWidth: '100%' }}>
+              className="input" style={{ minHeight: 36, padding: '0 8px', width: 'auto', maxWidth: 240 }}>
               <option value="">The whole organisation and your work</option>
               {aboutWithDates.map((g) => {
                 const apart = whatTellsItApart(aboutWithDates, g)
@@ -589,32 +556,32 @@ export function AskGroundwork({
             </select>
           </label>
         )}
-        <p style={{ margin: '10px 0 0', fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{PRIVATE_LINE}</p>
+        <p className="t-tiny mut" style={{ width: '100%', marginTop: 6 }}>{PRIVATE_LINE}</p>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--gw-page)' }}>
-        {page.data && !page.data.canAsk && page.data.why && <p style={bubble(false)}>{page.data.why}</p>}
+      <div className="asst-body">
+        {page.data && !page.data.canAsk && page.data.why && <p className={bubble(false)}>{page.data.why}</p>}
         {/*
          * THE GREETING (`welcome`): served once, the first time somebody opens Ask, then `null`
          * (docs/answers-from-engine.md, "Request 153, part two"). `said.length === 0` keeps it from
          * sitting on screen once this same visit has already asked something, ahead of the next
          * fetch of `/ask` that would clear it server-side too.
          */}
-        {page.data?.canAsk && page.data.welcome && said.length === 0 && <p style={bubble(false)}>{page.data.welcome}</p>}
+        {page.data?.canAsk && page.data.welcome && said.length === 0 && <p className={bubble(false)}>{page.data.welcome}</p>}
         {page.data?.canAsk && (page.data?.starters ?? []).length > 0 && (page.data?.turns ?? []).length === 0 && said.length === 0 && (
-          <div role="group" aria-label="Questions you could ask" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <div role="group" aria-label="Questions you could ask" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {(page.data?.starters ?? []).map((q) => (
-              <button key={q} type="button" style={chip} disabled={sending || reading} onClick={() => ask(q)}>{q}</button>
+              <button key={q} type="button" className={chip} disabled={sending || reading} onClick={() => ask(q)}>{q}</button>
             ))}
           </div>
         )}
         {(page.data?.turns ?? []).map((t, i) => (
-          <p key={`t-${i}`} style={bubble(t.from === 'you')}>{t.from === 'you' ? t.says : anOldAskAnswerReadsProperly(t.says)}</p>
+          <p key={`t-${i}`} className={bubble(t.from === 'you')}>{t.from === 'you' ? t.says : anOldAskAnswerReadsProperly(t.says)}</p>
         ))}
         {said.map((s, i) => s.from === 'you'
-          ? <p key={`s-${i}`} style={bubble(true)}>{s.says}</p>
+          ? <p key={`s-${i}`} className={bubble(true)}>{s.says}</p>
           : <div key={`s-${i}`} style={{ display: 'contents' }}>{drawBlocks(s.reply, i, i === latestGroundworkIndex, s.fileTaken)}</div>)}
-        {reading && <p style={bubble(false)}>{STILL_READING}</p>}
+        {reading && <p className={bubble(false)}>{STILL_READING}</p>}
         {sending && (
           /*
            * ITEM 3: A SIGN OF WORK WHILE WAITING. A reply can take up to 90 seconds, and until now
@@ -626,8 +593,8 @@ export function AskGroundwork({
           <>
             <GroundworkIsWriting name={askDisplayName} />
             {waitedAWhile && (
-              <p style={bubble(false)}>
-                <span role="status" style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
+              <p className={bubble(false)}>
+                <span role="status" className="t-tiny mut">
                   Still reading what you wrote. Nothing was lost, you do not need to send it again.
                 </span>
               </p>
@@ -651,24 +618,24 @@ export function AskGroundwork({
          * where it belongs) and after a failed load too (enabled - see `askOk`, above), not only
          * once `canAsk` has actually arrived true.
          */
-        <div style={{ borderTop: '1px solid var(--gw-line)' }}>
+        <div>
           {page.isError && (
-            <p role="alert" style={{ margin: '8px 12px 0', fontSize: 14, color: 'var(--gw-red-t)' }}>
+            <p role="alert" className="t-small" style={{ margin: '8px 12px 0', color: 'var(--con)' }}>
               Ask didn't load fully. Nothing you have asked is lost. It is usually the connection.
               {askWhy?.canRetry && (
                 <>
                   {' '}
-                  <button type="button" onClick={() => page.refetch()}
-                    style={{ fontSize: 14, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
+                  <button type="button" onClick={() => page.refetch()} className="btn quiet sm">
                     Try again
                   </button>
                 </>
               )}
             </p>
           )}
-          {!askSettled && <p role="status" style={{ margin: '8px 12px 0', fontSize: 13, color: 'var(--gw-sub)' }}>Getting Ask ready.</p>}
-          {problem && <p role="alert" style={{ margin: '8px 12px 0', fontSize: 14, color: 'var(--gw-red-t)' }}>{problem}</p>}
+          {!askSettled && <p role="status" className="t-tiny mut" style={{ margin: '8px 12px 0' }}>Getting Ask ready.</p>}
+          {problem && <p role="alert" className="t-small" style={{ margin: '8px 12px 0', color: 'var(--con)' }}>{problem}</p>}
           <Composer
+            variant="ask"
             inputRef={composerRef}
             value={draft}
             onChange={(v) => {
@@ -680,7 +647,7 @@ export function AskGroundwork({
             onSend={() => ask(draft, true)}
             disabled={sending || !askSettled}
             sendDisabled={!draft.trim()}
-            placeholder={page.data?.caption ?? 'Ask a question'}
+            placeholder={page.data?.caption ?? ASK_CAPTION_FALLBACK}
             ariaLabel={page.data?.caption ?? 'Ask a question'}
             maxLength={8000}
             /* THE "+" (Hafsah, 15 October): for whoever may add a document here, a lead for the check-ins they run

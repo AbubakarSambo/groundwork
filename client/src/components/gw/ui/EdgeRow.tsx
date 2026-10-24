@@ -45,19 +45,21 @@ export function EdgeRow({ kind, title, detail, actions }: {
    * "ready" leaves the word in exactly where a reader needs it and nowhere it is already said.
    */
   const reason = typeof title === 'string' && title.toLowerCase().includes('ready') ? undefined : EDGE_REASON[kind]
+  /* The prototype's row in a list (.item): a coloured edge (.sp), the line and its detail (.h, .s), then the action. */
+  const edge = ({ ready: 'rec', decide: 'act', look: 'att', concern: 'con' } as Record<string, string>)[kind] ?? 'act'
   return (
-    <li className="gwui-edge-row">
-      <span className={`gwui-edge-sp gwui-edge-sp-${kind}`} aria-hidden />
+    <div className="item" role="listitem">
+      <i className={`sp ${edge}`} aria-hidden />
       <div style={{ minWidth: 0 }}>
         {reason && <span className="gwui-sr-only">{reason} </span>}
-        <div className="gwui-edge-h">{title}</div>
-        {detail && <div className="gwui-edge-s">{detail}</div>}
+        <div className="h">{title}</div>
+        {detail && <div className="s">{detail}</div>}
       </div>
-      {actions && <div className="gwui-edge-acts">{actions}</div>}
-    </li>
+      {actions && <span className="acts" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{actions}</span>}
+    </div>
   )
 }
 
 export function EdgeList({ label, children }: { label: string; children: React.ReactNode }) {
-  return <ul className="gwui-edge-list" aria-label={label}>{children}</ul>
+  return <div className="list" role="list" aria-label={label}>{children}</div>
 }

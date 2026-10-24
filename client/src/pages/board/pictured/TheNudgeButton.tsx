@@ -21,7 +21,7 @@ export function TheNudgeButton({ groundId, nudge }: { groundId: string; nudge: A
   if (nudge.nudgedAt) return <span className="pb-nudged" data-nudged={nudge.participantId}>{nudge.says}</span>
   if (said) return <span className="pb-nudged" role="status" data-nudged={nudge.participantId}>{said}</span>
   return (
-    <button type="button" className="gwui-btn pb-nudge" disabled={go.isPending} onClick={() => go.mutate()} data-nudge={nudge.participantId}>
+    <button type="button" className="btn pb-nudge" disabled={go.isPending} onClick={() => go.mutate()} data-nudge={nudge.participantId}>
       {go.isPending ? `Nudging ${nudge.firstName}` : nudge.says}
     </button>
   )

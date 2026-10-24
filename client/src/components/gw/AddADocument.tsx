@@ -170,7 +170,7 @@ export function AddADocument({
       )}
 
       <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginTop: 18, flexWrap: 'wrap' }}>
-        <button className="gwui-btn gwui-btn-primary"
+        <button className="btn pri"
           onClick={() => keep.mutate()}
           disabled={keep.isPending || drop.isPending}
         >

@@ -126,7 +126,7 @@ function ConversationLane({
           )}
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
-          <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+          <button className="btn sec sm"
             onClick={() => fileRef.current?.click()}
             title="Attach a text document to this lane"
           >
@@ -167,7 +167,7 @@ function ConversationLane({
           rows={2}
           style={{ flex: 1, resize: 'none', fontSize: 12, fontFamily: 'inherit', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '7px 9px', lineHeight: 1.5, color: 'var(--gw-text)' }}
         />
-        <button className="gwui-btn gwui-btn-primary gwui-btn-small"
+        <button className="btn pri sm"
           onClick={send}
           disabled={!lane.input.trim() || sendMutation.isPending}
           style={{ flexShrink: 0 }}
@@ -256,12 +256,12 @@ export function PromptTestPage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: editingPrompt ? '1px solid var(--gw-border)' : 'none' }}>
             <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)' }}>Prompt engine</span>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+              <button className="btn sec sm"
                 onClick={() => { setSystemPrompt(DEFAULT_PROMPT); setEditingPrompt(false) }}
               >
                 Reset to default
               </button>
-              <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+              <button className="btn sec sm"
                 onClick={() => setEditingPrompt(e => !e)}
               >
                 {editingPrompt ? 'Done' : 'Edit'}
@@ -313,7 +313,7 @@ export function PromptTestPage() {
                 </select>
               </div>
             </div>
-            <button className="gwui-btn gwui-btn-primary"
+            <button className="btn pri"
               onClick={() => generateReport.mutate()}
               disabled={generateReport.isPending || !hasEnoughData}
             >

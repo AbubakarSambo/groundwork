@@ -1,3 +1,4 @@
+import type React from 'react'
 import { Section, Note, Callout, Stack, FoldedLine } from '@/components/gw/ui'
 import type { ThePersonsRecordServed } from '@/api/grounds'
 
@@ -7,10 +8,14 @@ import type { ThePersonsRecordServed } from '@/api/grounds'
  * (api board/the-persons-record-in-words.ts); who may read it is decided there, so nothing here hides anything. Drawn only where the
  * payload carries it, which is only where the organisation's direct morning is on.
  */
-export function TheirRecord({ record }: { record: ThePersonsRecordServed }) {
+export function TheirRecord({ record, asOneFold }: { record: ThePersonsRecordServed; asOneFold?: boolean }) {
+  /* On the person's own report it is one folded line, as the prototype keeps that page short; elsewhere a section. */
+  const Wrap = ({ children }: { children: React.ReactNode }) => asOneFold
+    ? <FoldedLine name={record.heading} fact={record.note}>{children}</FoldedLine>
+    : <Section heading={record.heading} note={record.note}>{children}</Section>
   return (
     <div data-gw-their-record>
-      <Section heading={record.heading} note={record.note}>
+      <Wrap>
         {/* One folded row per part, divided by thin rules as the prototype's lists are, not a card each. Every sentence is the server's. */}
         <div className="gwui-ruled">
           {record.parts.map((p) => (
@@ -54,7 +59,7 @@ export function TheirRecord({ record }: { record: ThePersonsRecordServed }) {
             </FoldedLine>
           )}
         </div>
-      </Section>
+      </Wrap>
     </div>
   )
 }

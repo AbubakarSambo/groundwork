@@ -164,7 +164,7 @@ function ForALead({ page }: { page: SuitesForALead }) {
         <div className="gwui-cards-3">
           {page.suites.map(s => (
             <Panel as="section" key={s.key} aria-label={s.name}>
-              <h3 className="gwui-panel-heading">{s.name}</h3>
+              <h3 className="t-h3">{s.name}</h3>
               <SuiteLine s={s} />
               {BOARDS[s.key] && <Link className="gwui-plain-link" to={BOARDS[s.key].to}>Open its board</Link>}
             </Panel>
@@ -284,7 +284,7 @@ function ASuite({ s, people, forYou }: { s: AdminSuite; people: SuitesForAnAdmin
     <Panel as="section" aria-label={s.name}>
       <div className="gwui-suite-head">
         <div>
-          <h3 className="gwui-panel-heading">{s.name}</h3>
+          <h3 className="t-h3">{s.name}</h3>
           <SuiteLine s={s} />
           {s.on && BOARDS[s.key] && <Link className="gwui-plain-link" to={forYou && s.key === 'spend' ? '/suite/spend/finance' : BOARDS[s.key].to}>{forYou && s.key === 'spend' ? 'Open the requests for finance' : 'Open its board'}</Link>}
           {s.on && s.questions.length > 0 && !asking && (

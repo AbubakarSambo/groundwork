@@ -961,7 +961,7 @@ export function WhereThisIsHeadingSection({ data, onRecordTheDecision }: {
           <p className="gwui-panel-text">{data.decided}</p>
         ) : (
           data.recordTheDecision && (
-            <button type="button" onClick={onRecordTheDecision} className="gwui-btn gwui-btn-secondary gwui-btn-small">
+            <button type="button" onClick={onRecordTheDecision} className="btn sec sm">
               {data.recordTheDecision}
             </button>
           )

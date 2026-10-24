@@ -159,7 +159,7 @@ export function PricingPage() {
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--gw-navy)' }}>{`$0 for ${trialLength}`}</div>
                 {!user && (
-                  <button className="gwui-btn gwui-btn-primary"
+                  <button className="btn pri"
                     type="button"
                     onClick={() => navigate('/auth?next=/pricing')}
                     style={{ marginTop: 12 }}
@@ -248,7 +248,7 @@ export function PricingPage() {
               <p style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 16, flexGrow: 1 }}>
                 {PLAN_DESCRIPTIONS[plan]}
               </p>
-              <button className="gwui-btn gwui-btn-primary"
+              <button className="btn pri"
                 onClick={() => handleSubscribe(plan)}
                 disabled={subscribeMut.isPending && subscribingPlan === plan}
               >
@@ -278,7 +278,7 @@ export function PricingPage() {
               {PLAN_DESCRIPTIONS.ENTERPRISE}
             </p>
           </div>
-          <a className="gwui-btn gwui-btn-secondary" href="mailto:hello@myground.work" >
+          <a className="btn sec" href="mailto:hello@myground.work" >
             Contact us
           </a>
         </div>

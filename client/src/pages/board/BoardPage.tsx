@@ -2650,7 +2650,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 !viewerRunsThisCheckIn && (noSessionOpenForReader || noSessionOpenForReaderFallback || iHaveNothingOpenOrPending) ? (
                   (whenTheNextSessionOpens ?? whenTheNextSessionOpensFallback) && <Note tone="muted">{whenTheNextSessionOpens ?? whenTheNextSessionOpensFallback}</Note>
                 ) : (
-                  <Link className="gwui-btn gwui-btn-primary"
+                  <Link className="btn pri"
                     to={`/grounds/${id}`}
                   >
                     {isAParty && !viewerRunsThisCheckIn ? 'Start my check-in' : 'Your check-in'}

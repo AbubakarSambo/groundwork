@@ -42,7 +42,7 @@ export function SignOutPage() {
     <AuthCard title="You’re signed out" sub="On this device.">
       <Stack gap={10}>
         <Button wide to="/auth">Sign in again</Button>
-        <a href={MARKETING_URL} className="gwui-btn gwui-btn-quiet gwui-btn-wide">Go to the home page</a>
+        <a href={MARKETING_URL} className="btn quiet wide">Go to the home page</a>
       </Stack>
     </AuthCard>
   )

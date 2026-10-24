@@ -128,7 +128,7 @@ export function WhosInItRoster({
       )}
 
       {isInitiator && showLink && ground.joinToken && (
-        <div className="gwui-panel gwui-panel-pad">
+        <div className="panel pad">
           <ShareSection joinToken={ground.joinToken} />
         </div>
       )}
@@ -388,7 +388,7 @@ export function AddPeopleForm({
   onShareCode: () => void
 }) {
   return (
-      <div className="gwui-panel gwui-panel-pad">
+      <div className="panel pad">
         <p className="gwui-switch-row-title">Add a person to this check-in</p>
         <ThisAddsASeat />
         {seatsFull && (
@@ -459,7 +459,7 @@ export function AddPeopleForm({
         </div>
 
         {queuedToAdd.length > 0 && (
-          <div className="gwui-panel">
+          <div className="panel">
             {queuedToAdd.map((q) => (
               <div key={q.email} className="gwui-field-row">
                 <div className="gwui-field-row-value">
@@ -472,7 +472,7 @@ export function AddPeopleForm({
                 <button
                   onClick={() => setQueuedToAdd(queuedToAdd.filter((x) => x.email !== q.email))}
                   aria-label={`Remove ${q.email}`}
-                  className="gwui-btn gwui-btn-quiet gwui-btn-small"
+                  className="btn quiet sm"
                 >
                   Remove
                 </button>

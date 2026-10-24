@@ -527,7 +527,7 @@ function GroupRows({ g, byId, openId, onOpen, days, today, api, claims, releaseO
             <div className="pb-deal-name">{r.name}</div>
             <div className="pb-deal-sub">{[firstName(r.owner) || 'Nobody is named for it yet.', r.valueLine ?? ('value' in r ? r.value : aValueKeptWithIt(r.fields))].filter(Boolean).join(', ')}</div>
           </td>
-          <td><span className="pb-stage"><span className={`pb-dot ${r.mark === 'proven' ? 'pb-dot-proof' : 'pb-dot-said'}`} />{r.stage ? <span className="gwui-tag gwui-tag-plain pb-stage-word">{r.stage}</span> : releaseOne ? NOT_CONTACTED_YET : 'No stage said yet.'}</span></td>
+          <td><span className="pb-stage"><span className={`pb-dot ${r.mark === 'proven' ? 'pb-dot-proof' : 'pb-dot-said'}`} />{r.stage ? <span className="tag plain pb-stage-word">{r.stage}</span> : releaseOne ? NOT_CONTACTED_YET : 'No stage said yet.'}</span></td>
           <td className="pb-last">{lastContactIn(r, today)}</td>
           <td colSpan={6}><TheDays r={r} days={days} today={today} /></td>
           <td className={r.group === 'cold' ? 'pb-next pb-next-stall' : r.next ? 'pb-next' : 'pb-next pb-next-none'}>
@@ -1084,7 +1084,7 @@ export function WhereThisIsHeading({ b, onRecordTheDecision, readOnly = false }:
           <div className="pb-decides">
             <b>{d.whoDecides}</b>
             <p>{d.groundworkDoesNotChoose}</p>
-            {d.decided ? <p>{d.decided}</p> : readOnly ? null : <button type="button" className="gwui-btn gwui-btn-secondary" onClick={onRecordTheDecision}>{d.recordTheDecision ?? 'Record the decision'}</button>}
+            {d.decided ? <p>{d.decided}</p> : readOnly ? null : <button type="button" className="btn sec" onClick={onRecordTheDecision}>{d.recordTheDecision ?? 'Record the decision'}</button>}
           </div>
         </div>
       </div>

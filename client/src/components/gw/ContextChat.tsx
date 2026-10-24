@@ -287,7 +287,7 @@ export function ContextChat({ groundId }: { groundId: string }) {
           about how it is going - or paste it all in at once. It fills in this page as you go, and
           what lands here guides the check-ins and the coaching. Nothing is written until you say so.
         </div>
-        <button className="gwui-btn gwui-btn-primary gwui-btn-small"
+        <button className="btn pri sm"
           onClick={start}
         >
           Start the conversation
@@ -390,13 +390,13 @@ export function ContextChat({ groundId }: { groundId: string }) {
         <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '12px 14px', marginBottom: 14 }}>
           <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, marginBottom: 10, whiteSpace: 'pre-wrap' }}>{proposal.say}</div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="gwui-btn gwui-btn-primary gwui-btn-small"
+            <button className="btn pri sm"
               onClick={() => confirm.mutate()}
               disabled={confirm.isPending}
             >
               {confirm.isPending ? 'Saving…' : 'Yes, set it'}
             </button>
-            <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+            <button className="btn sec sm"
               onClick={() => setProposal(null)}
             >
               Not that
@@ -453,7 +453,7 @@ export function ContextChat({ groundId }: { groundId: string }) {
             placeholder="Type your answer…"
             style={{ flex: 1, minHeight: 44, padding: '8px 4px', border: 'none', fontSize: 16, fontFamily: 'inherit', outline: 'none', background: 'transparent' }}
           />
-          <button className="gwui-btn gwui-btn-primary gwui-btn-small"
+          <button className="btn pri sm"
             onClick={submit}
             disabled={!text.trim() || send.isPending}
             style={{ flexShrink: 0 }}

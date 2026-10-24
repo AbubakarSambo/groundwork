@@ -119,7 +119,7 @@ export function DeliveredPanel({
           placeholder="Where someone can see it, for example a link, a document or a date"
         />
         <div>
-          <button className="gwui-btn gwui-btn-primary gwui-btn-small"
+          <button className="btn pri sm"
             onClick={() => add.mutate()}
             disabled={!text.trim() || add.isPending}
           >

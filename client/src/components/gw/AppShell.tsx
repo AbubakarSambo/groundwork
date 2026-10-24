@@ -615,14 +615,14 @@ function FeedbackWidget() {
                 )}
 
                 <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                  <button className="gwui-btn gwui-btn-secondary" onClick={() => hidePanel()}
+                  <button className="btn sec" onClick={() => hidePanel()}
                     >
                     Cancel
                   </button>
                   {whyNotValid() && (
                     <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', width: '100%', marginBottom: 6 }}>{whyNotValid()}</div>
                   )}
-                  <button className="gwui-btn gwui-btn-primary" onClick={submit} disabled={!valid()}
+                  <button className="btn pri" onClick={submit} disabled={!valid()}
                     style={{ flex: 1 }}>
                     Send
                   </button>
@@ -1566,6 +1566,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isBareCheckInRoute = /^\/checkin\/[^/]+$/.test(location.pathname)
   const checkInFocused = useCheckInFocusStore(s => s.focused)
   const onConversationPage = isBareCheckInRoute && checkInFocused
+  /* The prototype marks a focused check-in on the body (body.focus): on a phone its card then fills the screen. */
+  useEffect(() => {
+    document.body.classList.toggle('focus', onConversationPage)
+    return () => document.body.classList.remove('focus')
+  }, [onConversationPage])
   const consumePendingAskMessage = useAskStore(s => s.consumePendingMessage)
   /* Decision 65: a check-in's own Context and resources page tells Ask which one it was opened from. */
   const pendingAskOpenedFromGroundId = useAskStore(s => s.openedFromCheckInSetupGroundId)

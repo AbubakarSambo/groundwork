@@ -128,8 +128,8 @@ function ThePage({ p }: { p: Page }) {
         <Section heading="Named by more than one team" note="Nobody on a single team would see this">
           {p.namedByTeams.map(n => (
             <Panel as="section" key={n.id} aria-label={n.title}>
-              <div className="gwui-section-h">
-                <h3 className="gwui-panel-heading">{n.title}</h3>
+              <div className="sec-h">
+                <h3 className="t-h3">{n.title}</h3>
                 {n.touches && <span className="gwui-ink-sub">{n.touches}</span>}
               </div>
               <div className="gwui-cards-3">
@@ -185,7 +185,7 @@ function Priority({ pr }: { pr: CompanyPriority }) {
         <span className="gwui-note">Priority {pr.number}</span>
         {tag && <Tag tone="attention">{tag}</Tag>}
       </div>
-      <h3 className="gwui-panel-heading">{pr.title}</h3>
+      <h3 className="t-h3">{pr.title}</h3>
       {pr.reading?.says && <p className="gwui-panel-text">{pr.reading.says}</p>}
       {pr.staleSays && <p className="gwui-panel-text-muted">{pr.staleSays}</p>}
       {pr.fedBy && <p className="gwui-panel-text-muted">{pr.fedBy}</p>}

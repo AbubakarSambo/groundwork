@@ -26,7 +26,7 @@ export function TheLeadsReveal({ reveal }: { reveal: TheLeadsRevealShape | null 
   return (
     <div className="gwui-stack-18">
       <div>
-        <div className="gwui-section-title" style={{ fontSize: 22, fontWeight: 800 }}>{reveal.title}</div>
+        <div className="t-h2" style={{ fontSize: 22, fontWeight: 800 }}>{reveal.title}</div>
         <p className="gwui-panel-text" style={{ margin: '2px 0 0', color: 'var(--gw-sub)' }}>{reveal.subtitle}</p>
       </div>
 

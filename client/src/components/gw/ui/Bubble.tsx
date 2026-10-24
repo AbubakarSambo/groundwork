@@ -25,22 +25,8 @@ export function Bubble({ mine, children, opacity = 1 }: {
   opacity?: number
 }) {
   return (
-    <div
-      style={{
-        maxWidth: '82%',
-        alignSelf: mine ? 'flex-end' : 'flex-start',
-        background: mine ? 'var(--gw-ink)' : 'var(--gw-bg)',
-        color: mine ? 'white' : 'var(--gw-text)',
-        borderRadius: mine ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-        padding: '12px 16px',
-        fontSize: 16,
-        lineHeight: 1.5,
-        whiteSpace: 'pre-wrap',
-        overflowWrap: 'anywhere',
-        minWidth: 0,
-        opacity,
-      }}
-    >
+    /* The prototype's chat bubble (.bub.me, .bub.them). */
+    <div className={mine ? 'bub me' : 'bub them'} style={opacity === 1 ? undefined : { opacity }}>
       {children}
     </div>
   )

@@ -9,6 +9,8 @@ import '@fontsource/atkinson-hyperlegible/700.css'
 import '@fontsource/literata/400.css'
 import '@fontsource/literata/500.css'
 import './index.css'
+import './styles/prototype.css'
+import './styles/product.css'
 import './lib/posthog'
 import { registerServiceWorker } from './lib/service-worker'
 

@@ -391,7 +391,7 @@ export function SettingsPage() {
                     <span className="gwui-field-help">
                       Optional. Tap to say hello to Groundwork on WhatsApp.{' '}
                       <a
-                        className="gwui-btn gwui-btn-quiet gwui-btn-small"
+                        className="btn quiet sm"
                         href={user.connectWhatsApp.link}
                         target="_blank"
                         rel="noopener"

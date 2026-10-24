@@ -299,7 +299,7 @@ export function AnswerFirstPage() {
               Answer in your own words. It takes about ten minutes. The answers help everybody get a
               shared picture, and you will receive the consolidated report at the end.
             </p>
-            <button className="gwui-btn gwui-btn-primary" onClick={begin} disabled={busy}
+            <button className="btn pri" onClick={begin} disabled={busy}
               style={{ marginTop: 16 }}>
               {busy ? 'Starting...' : 'Start'}
             </button>
@@ -365,7 +365,7 @@ export function AnswerFirstPage() {
               </button>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, gap: 10 }}>
-              <button className="gwui-btn gwui-btn-secondary" onClick={() => setPhase('address')}
+              <button className="btn sec" onClick={() => setPhase('address')}
                 >
                 I am done
               </button>
@@ -422,7 +422,7 @@ export function AnswerFirstPage() {
               <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 10 }}>{whatIsStillNeeded(name, org, email)}</div>
             )}
             <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
-              <button className="gwui-btn gwui-btn-primary" onClick={() => finish(true)} disabled={busy || !email.trim() || !name.trim() || !org.trim()}
+              <button className="btn pri" onClick={() => finish(true)} disabled={busy || !email.trim() || !name.trim() || !org.trim()}
                 >
                 Done
               </button>

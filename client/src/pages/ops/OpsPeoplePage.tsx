@@ -173,7 +173,7 @@ export default function OpsPeoplePage() {
             {p.holdsNothing && p.active && (
               <span style={{ fontSize: 12, color: 'var(--gw-red-t)' }}>holds nothing at all</span>
             )}
-            <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+            <button className="btn sec sm"
               type="button"
               onClick={() => setActive.mutate({ key: p.key, active: !p.active })}
               style={{ marginLeft: 'auto' }}

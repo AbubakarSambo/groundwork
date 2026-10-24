@@ -186,7 +186,7 @@ export function TalkToUsPage() {
 
         {said && said !== 'sent' && <p className="gw-er" role="alert" style={{ fontSize: 13, marginBottom: 12 }}>{said}</p>}
 
-        <button className="gwui-btn gwui-btn-primary"
+        <button className="btn pri"
           type="submit"
           disabled={send.isPending || !longEnough}
         >

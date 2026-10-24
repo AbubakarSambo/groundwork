@@ -34,29 +34,21 @@ export function ConversationCard({ backLabel, backTo, onBack, backTitle, header,
   bodyRef?: React.RefObject<HTMLDivElement | null>
 }) {
   return (
-    <div className="gwui-conv-outer" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+    /* The prototype's focused check-in: .ci-focus, the quiet way back (.ci-back), then the card (.ci-card: .ci-h, .ci-b, .ci-c). */
+    <div className="ci-focus">
       {backLabel && (onBack || backTo) && (
-        <div className="gwui-conv-back-row">
+        <div className="ci-back" style={{ marginBottom: 12 }}>
           {onBack ? (
-            <button
-              type="button"
-              onClick={onBack}
-              title={backTitle}
-              style={{ fontWeight: 700, color: 'var(--gw-navy)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }}
-            >
-              ← {backLabel}
-            </button>
+            <button type="button" onClick={onBack} title={backTitle} className="btn quiet sm">← {backLabel}</button>
           ) : (
-            <Link to={backTo!} title={backTitle} style={{ fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'none' }}>
-              ← {backLabel}
-            </Link>
+            <Link to={backTo!} title={backTitle} className="btn quiet sm">← {backLabel}</Link>
           )}
         </div>
       )}
-      <div className="gwui-conv-card">
+      <div className="ci-card">
         {header}
         {banners}
-        <div ref={bodyRef} aria-live="polite" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div ref={bodyRef} aria-live="polite" className="ci-b">
           {children}
         </div>
         {footer}

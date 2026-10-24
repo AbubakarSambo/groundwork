@@ -359,7 +359,7 @@ export function TheOtherBoardsYouAreIn({ groundId }: { groundId: string }) {
         {rows.map((g) => {
           const reads = howARowReads(g, me?.id ?? null, now)
           return (
-            <Link key={g.id} to={`/grounds/${g.id}/board`} className="gwui-panel gwui-panel-pad pb-board-card">
+            <Link key={g.id} to={`/grounds/${g.id}/board`} className="panel pad pb-board-card">
               <b>{g.label}</b>
               <span>{reads.needs ? <Tag tone={reads.needs.tone}>{reads.needs.text}</Tag> : reads.stands ? <Tag tone="plain">{reads.stands}</Tag> : null}</span>
             </Link>

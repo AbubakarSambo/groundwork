@@ -5,7 +5,7 @@ import { todayApi, type Need } from '@/api/today'
 import { outstandingNotAlreadyShown } from './outstanding-not-already-shown'
 import { withComingUpTellingTwoApart } from './tell-apart-coming-up'
 import { useAuthStore } from '@/stores/auth'
-import { Page, Stack, Greeting, Section, EdgeList, EdgeRow, Button, Note, Empty, ComingUp } from '@/components/gw/ui'
+import { Page, Greeting, Section, EdgeList, EdgeRow, Button, Note, Empty, ComingUp } from '@/components/gw/ui'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { AdminFirstRun } from '@/pages/grounds/an-admin-lands-on-a-check-in-list'
 import { partOfTheDay, whenItComes } from './when-it-comes'
@@ -151,11 +151,12 @@ export function TodayPage() {
   /* What the lead's mail also tells her (request 198, b): the server's own sentences and links, drawn once. Absent for everybody else. */
   const nobodyHasStarted = data?.forTheLead?.nobodyHasStarted ?? []
   const whatIWouldDo = data?.forTheLead?.whatIWouldDoThisWeek ?? []
+  const allNeeds = needs.length + outstandingNeedsYou.length + overdueOnYourTeam.length + risks.length
 
   return (
     <Page>
       <div className="gwui-side">
-        <Stack gap={30}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
           {params.get('welcome') === '1' && (
             <YouAreIn checkIns={grounds.isSuccess ? (grounds.data?.length ?? 0) : null} mayStart={user?.mayOpenCheckIns !== false} />
           )}
@@ -172,7 +173,9 @@ export function TodayPage() {
           {/* Appeals to decide (C3, U.13): an admin's only. The server refuses anybody else. */}
           {user?.role === 'ADMIN' && <AppealsToDecide />}
 
-          <Section heading="What needs you" note={needs.length > 1 ? `${needs.length} things, most important first` : undefined}>
+          {/* ONE LIST, AS THE PROTOTYPE: what the lead's nudge adds (needs you, overdue on the team, risks) are rows in
+              "What needs you", most important first, never sections of their own. */}
+          <Section heading="What needs you" note={allNeeds > 1 ? `${allNeeds} things, most important first` : undefined}>
             {isLoading && <Note>Loading…</Note>}
             {isError && (
               <div>
@@ -180,8 +183,8 @@ export function TodayPage() {
                 <Button kind="secondary" size="small" onClick={() => refetch()} disabled={isFetching}>Try again</Button>
               </div>
             )}
-            {data && needs.length === 0 && <Empty>Nothing needs you right now.</Empty>}
-            {needs.length > 0 && (
+            {data && allNeeds === 0 && <Empty>Nothing needs you right now.</Empty>}
+            {allNeeds > 0 && (
               <EdgeList label="What needs you">
                 {/* ONE NAVY BUTTON (Hafsah, 30 September): the prototype's own Today draws every "Start it"
                     navy, but with two check-ins open that is two navy buttons at once. Only the first,
@@ -197,6 +200,9 @@ export function TodayPage() {
                       {n.missedReason && <TheReasonYouMissed checkInId={n.missedReason.checkInId} given={n.missedReason.given} />}
                     </>}
                   />
+                ))}
+                {[...outstandingNeedsYou, ...overdueOnYourTeam, ...risks].map((sentence) => (
+                  <EdgeRow key={sentence} kind="look" title={sentence} />
                 ))}
               </EdgeList>
             )}
@@ -226,37 +232,6 @@ export function TodayPage() {
                     title={r.appealSays ?? 'You can appeal this decision.'}
                     actions={<Button kind="secondary" size="small" to="/suite/reviews">{r.appealSays ? 'Open your appeal' : 'Appeal this decision'}</Button>}
                   />
-                ))}
-              </EdgeList>
-            </Section>
-          )}
-
-          {/* The lead's daily nudge's own link (decision 120): "Needs you", "Overdue on your team"
-              and "Risks", each left out while its own list is empty. `null` for anybody who is not
-              a lead, or who has nothing outstanding, so a member's Today is unaffected. */}
-          {outstandingNeedsYou.length > 0 && (
-            <Section heading="Needs you">
-              <EdgeList label="Needs you">
-                {outstandingNeedsYou.map((sentence) => (
-                  <EdgeRow key={sentence} kind="look" title={sentence} />
-                ))}
-              </EdgeList>
-            </Section>
-          )}
-          {overdueOnYourTeam.length > 0 && (
-            <Section heading="Overdue on your team">
-              <EdgeList label="Overdue on your team">
-                {overdueOnYourTeam.map((sentence) => (
-                  <EdgeRow key={sentence} kind="look" title={sentence} />
-                ))}
-              </EdgeList>
-            </Section>
-          )}
-          {risks.length > 0 && (
-            <Section heading="Risks">
-              <EdgeList label="Risks">
-                {risks.map((sentence) => (
-                  <EdgeRow key={sentence} kind="look" title={sentence} />
                 ))}
               </EdgeList>
             </Section>
@@ -296,7 +271,7 @@ export function TodayPage() {
             that changes every day comes first, and the one-time welcome comes after it.
           */}
           <AdminFirstRun />
-        </Stack>
+        </div>
 
         {comingUp.length > 0 && (
           <ComingUp items={withComingUpTellingTwoApart(comingUp).map(c => ({

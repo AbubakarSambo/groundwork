@@ -1635,7 +1635,7 @@ export function CreateGroundPage() {
                 <Stack gap={18}>
                   <Panel>
                     <Stack gap={10}>
-                      <h3 className="gwui-panel-heading">{noPlan ? 'No plan yet' : 'Subscribe to create more'}</h3>
+                      <h3 className="t-h3">{noPlan ? 'No plan yet' : 'Subscribe to create more'}</h3>
                       <p className="gwui-panel-text-muted">
                         {noPlan ?? `Your free plan includes ${freeLimit} check-ins. Subscribe for unlimited check-ins, sessions, and reports.`}
                       </p>

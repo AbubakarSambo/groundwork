@@ -206,11 +206,11 @@ function DeliveryAlertRow() {
       {editing ? (
         <form onSubmit={(e) => { e.preventDefault(); save.mutate() }} style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
           <input className="gwui-input" type="email" value={value} onChange={e => setValue(e.target.value)} placeholder="ops@myground.work" aria-label="Address for the daily delivery alert" style={{ width: 220, maxWidth: '100%' }} />
-          <button className="gwui-btn gwui-btn-primary gwui-btn-small" type="submit" disabled={save.isPending} >Save</button>
+          <button className="btn pri sm" type="submit" disabled={save.isPending} >Save</button>
           <button type="button" onClick={() => { setEditing(false); setErr(null) }} style={{ padding: '5px 10px', borderRadius: 6, background: 'none', color: 'var(--gw-muted)', fontSize: 12, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
         </form>
       ) : (
-        <button className="gwui-btn gwui-btn-secondary gwui-btn-small" type="button" onClick={() => { setValue(data.from === 'here' ? data.email ?? '' : ''); setEditing(true) }} style={{ flexShrink: 0 }}>{data.email ? 'Change' : 'Set an address'}</button>
+        <button className="btn sec sm" type="button" onClick={() => { setValue(data.from === 'here' ? data.email ?? '' : ''); setEditing(true) }} style={{ flexShrink: 0 }}>{data.email ? 'Change' : 'Set an address'}</button>
       )}
     </div>
   )
@@ -254,13 +254,13 @@ function CorrectionWindowRow() {
       {editing ? (
         <form onSubmit={(e) => { e.preventDefault(); save.mutate() }} style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
           <input type="number" min={0} max={data.max} step={1} value={value} onChange={e => setValue(e.target.value)} aria-label="Days to correct a record" style={{ width: 70, padding: '5px 8px', fontSize: 13, borderRadius: 6, border: '1px solid var(--gw-border)', fontFamily: 'inherit' }} />
-          <button className="gwui-btn gwui-btn-primary gwui-btn-small" type="submit" disabled={save.isPending} >Save</button>
+          <button className="btn pri sm" type="submit" disabled={save.isPending} >Save</button>
           <button type="button" onClick={() => { setEditing(false); setErr(null) }} style={{ padding: '5px 10px', borderRadius: 6, background: 'none', color: 'var(--gw-muted)', fontSize: 12, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
         </form>
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-navy)' }}>{data.days}</span>
-          <button className="gwui-btn gwui-btn-secondary gwui-btn-small" type="button" onClick={() => { setValue(String(data.days)); setEditing(true) }} >Edit</button>
+          <button className="btn sec sm" type="button" onClick={() => { setValue(String(data.days)); setEditing(true) }} >Edit</button>
         </div>
       )}
     </div>
@@ -349,13 +349,13 @@ function PlanCentsField({ row, field, what }: { row: PricingPlanRow; field: 'ext
           <input autoFocus aria-label={`${what} on ${row.label}, dollars a month`} value={value} placeholder="not sold" onChange={e => setValue(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') setEditing(false) }}
             style={{ width: 60, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--gw-border)', fontSize: 11, fontFamily: 'inherit' }} />
-          <button className="gwui-btn gwui-btn-primary gwui-btn-small" onClick={submit} disabled={save.isPending} >Save</button>
+          <button className="btn pri sm" onClick={submit} disabled={save.isPending} >Save</button>
           <button onClick={() => setEditing(false)} style={{ padding: '3px 8px', borderRadius: 6, background: 'none', color: 'var(--gw-muted)', fontSize: 11, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
         </>
       ) : (
         <>
           <span>{cents === null ? `${what} is not sold on this plan.` : `${what}: ${formatDollars(cents)} a month.`}</span>
-          <button className="gwui-btn gwui-btn-secondary gwui-btn-small" onClick={() => { setValue(cents === null ? '' : centsForEditing(cents)); setEditing(true) }}
+          <button className="btn sec sm" onClick={() => { setValue(cents === null ? '' : centsForEditing(cents)); setEditing(true) }}
             >
             Edit
           </button>
@@ -445,13 +445,13 @@ function PricingRow({ row }: { row: PricingPlanRow }) {
                 style={{ width: 74, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--gw-border)', fontSize: 11, fontFamily: 'inherit' }}
               />
               <span>people</span>
-              <button className="gwui-btn gwui-btn-primary gwui-btn-small" onClick={submitCap} disabled={saveCap.isPending} >Save</button>
+              <button className="btn pri sm" onClick={submitCap} disabled={saveCap.isPending} >Save</button>
               <button onClick={() => setEditingCap(false)} style={{ padding: '3px 8px', borderRadius: 6, background: 'none', color: 'var(--gw-muted)', fontSize: 11, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
             </>
           ) : (
             <>
               <span>{row.memberCap === null ? 'Unlimited people' : `Up to ${row.memberCap.toLocaleString('en-US')} people`}</span>
-              <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+              <button className="btn sec sm"
                 onClick={() => { setCapValue(row.memberCap === null ? '' : String(row.memberCap)); setEditingCap(true) }}
               >
                 Edit cap
@@ -473,7 +473,7 @@ function PricingRow({ row }: { row: PricingPlanRow }) {
             style={{ width: 70, padding: '5px 7px', borderRadius: 6, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit' }}
           />
           <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>/mo</span>
-          <button className="gwui-btn gwui-btn-primary gwui-btn-small"
+          <button className="btn pri sm"
             onClick={submit}
             disabled={save.isPending}
           >
@@ -491,7 +491,7 @@ function PricingRow({ row }: { row: PricingPlanRow }) {
           <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-navy)' }}>
             {row.amountCents === null ? 'Contact us' : formatMonthlyPrice(row.amountCents)}
           </span>
-          <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+          <button className="btn sec sm"
             hidden={row.amountCents === null}
             onClick={() => { setValue(centsForEditing(row.amountCents ?? 0)); setEditing(true) }}
           >
@@ -563,7 +563,7 @@ function FreeMemberLimitRow() {
             style={{ width: 64, padding: '5px 7px', borderRadius: 6, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit' }}
           />
           <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>people</span>
-          <button className="gwui-btn gwui-btn-primary gwui-btn-small"
+          <button className="btn pri sm"
             onClick={() => save.mutate()}
             disabled={save.isPending}
           >
@@ -579,7 +579,7 @@ function FreeMemberLimitRow() {
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-navy)' }}>{data.freeMemberLimit}</span>
-          <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+          <button className="btn sec sm"
             onClick={() => { setValue(String(data.freeMemberLimit)); setEditing(true) }}
           >
             Edit
@@ -638,13 +638,13 @@ function FreeGroundLimitRow() {
             onChange={e => setValue(e.target.value)}
             style={{ width: 62, padding: '5px 8px', fontSize: 13, borderRadius: 6, border: '1px solid var(--gw-border)', fontFamily: 'inherit' }}
           />
-          <button className="gwui-btn gwui-btn-primary gwui-btn-small"
+          <button className="btn pri sm"
             onClick={() => save.mutate()}
             disabled={save.isPending}
           >
             {save.isPending ? 'Saving...' : 'Save'}
           </button>
-          <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+          <button className="btn sec sm"
             onClick={() => { setEditing(false); setErr(null) }}
           >
             Cancel
@@ -653,7 +653,7 @@ function FreeGroundLimitRow() {
       ) : (
         <>
           <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-navy)' }}>{data.freeGroundLimit}</span>
-          <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+          <button className="btn sec sm"
             onClick={() => { setValue(String(data.freeGroundLimit)); setEditing(true) }}
           >
             Change
@@ -859,7 +859,7 @@ function FreeRunsPanel() {
         </select>
         <input id="free-run-note" value={note} onChange={e => setNote(e.target.value)}
                placeholder="why, for us" style={{ ...field, flex: '1 1 160px' }} />
-        <button className="gwui-btn gwui-btn-primary gwui-btn-small"
+        <button className="btn pri sm"
           onClick={() => grant.mutate()}
           disabled={!email.trim() || grant.isPending}
         >{grant.isPending ? 'Saving...' : 'Give them the months'}</button>
@@ -1583,7 +1583,7 @@ function InAppFeedback() {
                   </div>
                 </div>
                 {f.status === 'new' ? (
-                  <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+                  <button className="btn sec sm"
                     onClick={() => setStatus.mutate({ id: f.id, status: 'reviewed' })}
                     disabled={setStatus.isPending}
                     style={{ flexShrink: 0 }}
@@ -1698,7 +1698,7 @@ function PromptsTab({ navigate }: { navigate: (path: string) => void }) {
       <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>
         Conversation prompts are versioned and stored in the database. Changes are logged with a summary and activation is deliberate - deactivating a version does not delete it. Outcome data is tracked per version so you can compare fairness rates across prompt iterations.
       </div>
-      <button className="gwui-btn gwui-btn-primary"
+      <button className="btn pri"
         onClick={() => navigate('/prompts')}
         style={{ alignSelf: 'flex-start' }}
       >
@@ -1778,7 +1778,7 @@ function CoachTab({ rows, onChanged }: { rows: CoachRequestRow[]; onChanged: () 
           {NEXT[r.status] && NEXT[r.status].length > 0 && (
             <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
               {NEXT[r.status].map(next => (
-                <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+                <button className="btn sec sm"
                   key={next}
                   type="button"
                   onClick={async () => { await coachApi.setStatus(r.id, next); onChanged() }}
@@ -1852,7 +1852,7 @@ function InboxTab({ data, onRead }: {
               </div>
             )}
             {!m.readAt && (
-              <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+              <button className="btn sec sm"
                 type="button"
                 onClick={() => onRead(m.id)}
               >Mark read</button>
@@ -1931,7 +1931,7 @@ function CallRequestsTab({ data, onAnswered }: {
                 {r.note}
               </div>
             )}
-            <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+            <button className="btn sec sm"
               type="button"
               onClick={() => onAnswered(r.id)}
             >Mark answered</button>

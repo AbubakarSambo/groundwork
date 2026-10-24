@@ -233,7 +233,7 @@ function WhereYouStand({ s }: { s: SuggestionForThePerson }) {
   const busy = side.isPending || appeal.isPending
 
   return (
-    <section className="gwui-panel gwui-panel-pad" aria-label="Where you stand" style={{ borderStyle: 'solid', borderWidth: 2, borderColor: 'var(--gw-text)' }}>
+    <section className="panel pad" aria-label="Where you stand" style={{ borderStyle: 'solid', borderWidth: 2, borderColor: 'var(--gw-text)' }}>
       <h3 className={h3Class} style={h3Style}>Where you stand</h3>
       <div className={quietClass}>About your work in {s.checkIn.label}.</div>
       <div>{s.facts}</div>

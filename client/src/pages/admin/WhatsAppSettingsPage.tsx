@@ -127,7 +127,7 @@ function TheForm({ page }: { page: OurWhatsAppSettings }) {
             />
             <div style={{ ...small, marginTop: 4 }}>{hint} {s.saying}</div>
             {s.from === 'here' && (
-              <button type="button" className="gwui-btn gwui-btn-secondary gwui-btn-small" style={{ marginTop: 6 }} onClick={() => remove.mutate(key)} disabled={remove.isPending}>
+              <button type="button" className="btn sec sm" style={{ marginTop: 6 }} onClick={() => remove.mutate(key)} disabled={remove.isPending}>
                 Remove the saved {name.toLowerCase()}
               </button>
             )}
@@ -136,7 +136,7 @@ function TheForm({ page }: { page: OurWhatsAppSettings }) {
       })}
 
       <div style={{ marginTop: 18, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <button type="button" className="gwui-btn gwui-btn-primary gwui-btn-small" onClick={submit} disabled={save.isPending}>{save.isPending ? 'Saving…' : 'Save'}</button>
+        <button type="button" className="btn pri sm" onClick={submit} disabled={save.isPending}>{save.isPending ? 'Saving…' : 'Save'}</button>
         {message && <span style={{ fontSize: 13, color: message.ok ? 'var(--gw-green-t)' : 'var(--gw-red-t)' }}>{message.text}</span>}
       </div>
     </div>
@@ -155,7 +155,7 @@ function TheConnection() {
           <strong>{connection.data.connected ? 'Connected' : 'Not connected'}.</strong> {connection.data.saying.replace(/^(Connected|Not connected)\.\s*/, '')}
         </p>
       )}
-      <button type="button" className="gwui-btn gwui-btn-secondary gwui-btn-small" style={{ marginTop: 10 }} onClick={() => connection.refetch()} disabled={connection.isFetching}>Check again</button>
+      <button type="button" className="btn sec sm" style={{ marginTop: 10 }} onClick={() => connection.refetch()} disabled={connection.isFetching}>Check again</button>
     </div>
   )
 }
@@ -183,7 +183,7 @@ function TheTest() {
           aria-label="The number to send the test message to"
           style={{ ...input, flex: '1 1 220px', width: 'auto' }}
         />
-        <button type="button" className="gwui-btn gwui-btn-primary gwui-btn-small" onClick={() => test.mutate(to)} disabled={test.isPending || !to.trim()}>
+        <button type="button" className="btn pri sm" onClick={() => test.mutate(to)} disabled={test.isPending || !to.trim()}>
           {test.isPending ? 'Sending…' : 'Send a test message'}
         </button>
       </div>
@@ -236,7 +236,7 @@ export function WhatsAppSettingsPage() {
             {page.webhook.address && (
               <button
                 type="button"
-                className="gwui-btn gwui-btn-secondary gwui-btn-small" style={{ marginTop: 10 }}
+                className="btn sec sm" style={{ marginTop: 10 }}
                 onClick={() => { navigator.clipboard?.writeText(page.webhook.address ?? '').then(() => setCopied(true)).catch(() => undefined) }}
               >{copied ? 'Copied' : 'Copy the address'}</button>
             )}

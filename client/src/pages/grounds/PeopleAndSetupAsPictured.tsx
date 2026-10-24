@@ -251,7 +251,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
   const n = sessionsUpToTheEnd(props) ?? sessionsFor(props.timelineDaysDraft, props.cadenceDraft) ?? 1
 
   return (
-    <div className="gwui-page-wrap gwui-b-tab">
+    <div className="wrap gw-stack gwui-b-tab">
       {/* 1. HOW THIS CHECK-IN RUNS */}
       {/* B8: a small uppercase label, then the one line in Literata. */}
       <Panel as="section" aria-label="How this check-in runs">
@@ -633,7 +633,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
                 {nobodyElseAnswered && !props.confirmDelete && (
                   <Button kind="secondary" redText onClick={() => { props.setDeleteError(null); props.setConfirmDelete(true) }}>Delete this test</Button>
                 )}
-                <a className="gwui-btn gwui-btn-secondary gwui-btn-red-text" href={`/grounds/${id}/end`}>Decide how it ends</a>
+                <a className="btn sec red" href={`/grounds/${id}/end`}>Decide how it ends</a>
               </FlexRow>
             </FlexRow>
             {props.deleteError && <Note tone="error">{props.deleteError}</Note>}
@@ -653,7 +653,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
               {`You can't end a check-in you don't run. Ask us and we'll end it, usually the same day.`}
               {isOrgAdmin && (props.whoIsInThisLeadName ? ` ${props.whoIsInThisLeadName} runs it, so ending it ends something they are running.` : ' Somebody else runs it, so ending it ends something they are running.')}
             </Text>
-            <a className="gwui-btn gwui-btn-secondary gwui-btn-red-text" href={`mailto:hello@myground.work?subject=Archive check-in: ${encodeURIComponent(g?.label ?? '')}`}>Ask us to end this check-in</a>
+            <a className="btn sec red" href={`mailto:hello@myground.work?subject=Archive check-in: ${encodeURIComponent(g?.label ?? '')}`}>Ask us to end this check-in</a>
           </FlexRow>
         )}
       </Panel>
@@ -754,7 +754,7 @@ function TheJoinLink({ joinToken, label, joined, onShareCode }: { joinToken: str
         <Stack gap={8}>
           {qr && <img src={qr} alt="" width={140} height={140} />}
           <FlexRow gap={6}>
-            {qr && <a className="gwui-btn gwui-btn-secondary gwui-btn-small" href={qr} download="check-in-qr-code.png">Download</a>}
+            {qr && <a className="btn sec sm" href={qr} download="check-in-qr-code.png">Download</a>}
             <Button kind="secondary" size="small" onClick={printAPoster} disabled={!qr}>Print a poster</Button>
           </FlexRow>
         </Stack>

@@ -1,0 +1,28 @@
+/* WHAT THE PRODUCT HAS THAT THE PROTOTYPE DOES NOT, BUILT FROM THE PROTOTYPE'S OWN VALUES (prototype.css).
+   Kept short: anything here is a piece the prototype has no class for, never a second look for one it has. */
+
+/* The composer's field grows with what is typed (a pasted plan keeps its lines), at the prototype's .input height. */
+.gw-composer { position: relative; }
+.gw-composer textarea.input { flex: 1; min-width: 0; min-height: 48px; max-height: 120px; resize: none; padding: 11px 16px; line-height: 1.5; }
+.gw-composer-menu { position: absolute; bottom: 100%; left: 16px; margin-bottom: 8px; background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; box-shadow: 0 14px 40px rgba(26, 25, 22, .14); padding: 6px; z-index: 20; width: 260px; max-width: calc(100vw - 40px); }
+/* Ask's answers keep the line breaks they were written with. */
+.bub { white-space: pre-wrap; overflow-wrap: anywhere; }
+/* Ask beside a page on a computer: the prototype's .asst panel holds it; this fills it. */
+.gw-ask-drawer { display: flex; flex-direction: column; height: 100%; min-height: 0; background: var(--surface); }
+.gw-ask-drawer .asst-body, .chatpage .asst-body { min-height: 0; }
+/* A button that fills its row, and a secondary button that does something that cannot be undone. */
+.btn.wide { width: 100%; }
+.btn.sec.red { color: var(--con); }
+/* A button that cannot be pressed yet stays readable (Hafsah, 13 October): outlined, in the muted ink. */
+.btn:disabled, .btn[aria-disabled="true"] { cursor: not-allowed; filter: none; }
+.btn.pri:disabled, .btn.pri[aria-disabled="true"], .btn.sec:disabled, .btn.sec[aria-disabled="true"] { background: var(--surface); color: var(--muted); box-shadow: inset 0 0 0 1.5px var(--rule2); }
+.btn.quiet:disabled { color: var(--muted); }
+/* A section's own actions sit at the end of its heading, as the prototype's "See it all". */
+.gw-sec-action { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.sec { scroll-margin-top: 24px; }
+/* A long check-in scrolls inside its card, as a chat does, so the way back and the composer stay on screen. */
+.ci-card { height: calc(100dvh - 150px); }
+@media (max-width: 860px) { body.focus .ci-card { height: calc(100dvh - 60px); } }
+/* A plain text link for an action the prototype does not draw as a button (Hafsah, 24 October: fewer buttons). */
+.gw-link { background: none; border: 0; padding: 0; font: inherit; color: var(--act); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; text-align: left; }
+.gw-link:disabled { color: var(--muted); cursor: not-allowed; }

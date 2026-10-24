@@ -34,7 +34,7 @@ function NotStaff() {
         <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 18 }}>
           It is not part of your organisation's admin, and there is nothing here that affects your check-ins.
         </div>
-        <Link className="gwui-btn gwui-btn-primary" to="/grounds" >Go to my check-ins</Link>
+        <Link className="btn pri" to="/grounds" >Go to my check-ins</Link>
       </div>
     </div>
   )
@@ -85,7 +85,7 @@ function TheDoor() {
         />
         {problem && <div style={{ fontSize: 12.5, color: 'var(--gw-red-t)', marginTop: 8 }}>{problem}</div>}
         <div style={{ display: 'flex', gap: 8, marginTop: 14, alignItems: 'center' }}>
-          <button className="gwui-btn gwui-btn-primary"
+          <button className="btn pri"
             type="submit"
             disabled={verify.isPending || code.length !== 6}
           >

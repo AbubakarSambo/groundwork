@@ -217,7 +217,7 @@ export default function AskYourTeamOneThing({ onBack }: { onBack?: () => void })
         {trap.field}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 4 }}>
-          <button className="gwui-btn gwui-btn-primary"
+          <button className="btn pri"
             type="button" onClick={send} disabled={!canSend}
           >{sending ? 'Sending...' : 'Send'}</button>
           {missing && <span style={{ fontSize: 13, color: 'var(--gw-muted)' }}>{missing}</span>}

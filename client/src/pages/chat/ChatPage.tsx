@@ -1245,8 +1245,8 @@ export function ChatPage() {
       classes rather than an inline style.
     */
     <TheDirectMorning on={direct}>
-    <div className="gwui-ci-page">
-      <div className="gwui-ci-wrap">
+    <div className="main">
+      <div className="wrap">
       {/**
         * THE WAY OUT, ON THE LEFT, AND POINTED AT THE GROUND.
         *
@@ -1530,7 +1530,7 @@ export function ChatPage() {
             <button
               type="button"
               onClick={() => setShowAboutPanel(true)}
-              className="gwui-ci-about-link"
+              className="gw-link t-small" style={{ alignSelf: 'flex-start' }}
             >
               What this check-in is about, and what you said last time
             </button>
@@ -1797,9 +1797,9 @@ export function ChatPage() {
                 44px tall at every width, the same shared part every other action on this page
                 already uses, so this one no longer needs its own undersized class.
               */}
-              <Button kind="secondary" onClick={() => setDone(true)}>
+              <button type="button" className="gw-link" onClick={() => setDone(true)}>
                 Finish my check-in now
-              </Button>
+              </button>
             </div>
           )}
           {declined && (

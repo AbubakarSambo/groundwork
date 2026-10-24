@@ -15,16 +15,19 @@ export interface ComingUpItem {
 
 export function ComingUp({ items, heading = 'Coming up' }: { items: ComingUpItem[]; heading?: string }) {
   return (
-    <aside aria-labelledby="gwui-comingup-h" className="gwui-comingup-wrap">
-      <h2 id="gwui-comingup-h" className="gwui-comingup-h">{heading}</h2>
-      <ul className="gwui-comingup-list">
-        {items.map(i => (
-          <li key={i.when + i.what}>
-            <b>{i.when}</b>
-            <Link to={i.to}>{i.what}</Link>
-          </li>
-        ))}
-      </ul>
+    /* The prototype's "Coming up": a small heading, then rows with thin rules, the day beside what happens. */
+    <aside aria-labelledby="gwui-comingup-h" style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+      <section className="sec">
+        <h2 id="gwui-comingup-h" className="t-h3">{heading}</h2>
+        <div>
+          {items.map(i => (
+            <div key={i.when + i.what} style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 12, padding: '10px 0', borderTop: '1px solid var(--rule)' }}>
+              <b className="t-small">{i.when}</b>
+              <Link className="t-small" to={i.to} style={{ color: 'var(--ink)', textDecoration: 'none' }}>{i.what}</Link>
+            </div>
+          ))}
+        </div>
+      </section>
     </aside>
   )
 }

@@ -254,7 +254,7 @@ function YourTodos({ personKey }: { personKey: string }) {
       <ul style={{ listStyle: 'none', margin: '8px 0 0', padding: 0 }}>
         {open.map((t) => (
           <li key={t.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', padding: '4px 0' }}>
-            <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+            <button className="btn sec sm"
               type="button"
               onClick={() => close.mutate(t.id)}
               aria-label={`Mark "${t.title}" done`}
@@ -324,7 +324,7 @@ function WaitingOnYou() {
             <div style={{ fontSize: 13 }}>{a.requestSummary}</div>
             <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
               {(['APPROVED', 'CHANGES_REQUESTED', 'REJECTED'] as const).map((status) => (
-                <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+                <button className="btn sec sm"
                   key={status}
                   type="button"
                   onClick={() => decide.mutate({ id: a.id, status })}

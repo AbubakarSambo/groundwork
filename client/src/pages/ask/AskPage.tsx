@@ -4,8 +4,6 @@ import { useSearchParams } from 'react-router-dom'
 import { groundsApi } from '@/api/grounds'
 import { AskGroundwork } from '@/components/gw/AskGroundwork'
 import { useAskStore } from '@/stores/ask'
-import { useAuthStore } from '@/stores/auth'
-import { askNameFor } from '@/lib/ask-name'
 
 /**
  * #/chat (D1, ask-on-a-phone.txt): Ask Groundwork as a page of its own, which is how a phone opens
@@ -44,16 +42,6 @@ export function AskPage() {
    */
   const groundOnly = searchParams.get('ground')
   const askedAboutRef = useRef<string | null>(null)
-  /*
-   * B-163: THIS PAGE'S OWN HEADING SAID "CHAT", WHILE THE PANEL IT OPENS NAMES ITSELF AFTER THE
-   * ORGANISATION ("Ask Kijani Foods", decision 100). Read the same way AskGroundwork.tsx already
-   * does, from the signed-in person's own organisation, so a reader never sees two different names
-   * for the one assistant.
-   */
-  const authUser = useAuthStore(s => s.user) as any
-  const orgName = authUser?.organization?.name?.trim() || authUser?.organizationName || ''
-  const askDisplayName = askNameFor(orgName)
-
   const { data: ground, isFetched, isError: groundErrored } = useQuery({
     queryKey: ['ask-about-ground', about],
     queryFn: () => groundsApi.get(about!),
@@ -107,26 +95,10 @@ export function AskPage() {
   }, [about, isFetched, foundFetched, groundErrored, ground, found, queueMessage])
 
   return (
-    <div style={{ maxWidth: 680, margin: '0 auto', padding: '24px 16px 16px', display: 'flex', flexDirection: 'column', gap: 16, height: 'calc(100dvh - var(--gw-bottom-nav, 0px))', boxSizing: 'border-box' }}>
-      {/*
-        B-229 (REVIEW 5): THE WORD THAT OPENED THIS PAGE NEVER APPEARED ON IT. The phone's bottom
-        bar reads "Chat" (ask-on-a-phone.txt, A1-look-and-layout/more-menu-phone.txt and
-        layout-phone.txt all agree), and the prototype's own phone screen says so again, right
-        above the heading, before naming the assistant itself: "Chat / Ask Groundwork". This page
-        went straight to the heading with nothing connecting it back to the button that opened it -
-        read live at 390px as "Ask Riverbank Trading" with no sign it was what "Chat" meant. The
-        eyebrow restores that line, in the prototype's own word.
-
-        INLINE, NOT PageTitle.tsx's OWN EYEBROW CLASS: "one-off uses only go down"
-        (one-off-uses-only-go-down.spec.ts, Hafsah's decision of 2 October) keeps that one-off
-        class to PageTitle itself, so a second file reusing its name raw doesn't count as using the
-        shared part. This page draws its own heading rather than `<PageTitle>` (no crumbs, avatar
-        or action here), so the same two values are repeated inline instead of a new,
-        barely-different class.
-      */}
-      <p style={{ fontSize: 14.5, color: 'var(--gw-sub)', margin: '0 0 6px' }}>Chat</p>
-      <h1 style={{ margin: 0, fontFamily: 'var(--gw-font-name)', fontSize: 26, fontWeight: 500 }}>{askDisplayName}</h1>
-      <div style={{ flex: 1, minHeight: 0 }}>
+    /* The prototype's #/chat: the page title "Chat", then the assistant's own panel (.chatpage) under it. */
+    <div className="main"><div className="wrap">
+      <h1 className="t-title">Chat</h1>
+      <div style={{ height: 14 }} />
         <AskGroundwork
           initialMessage={pendingAskMessage}
           onSentInitialMessage={consumePendingAskMessage}
@@ -137,7 +109,6 @@ export function AskPage() {
              above. */
           aboutGroundId={about && !groundErrored ? about : (groundOnly || null)}
         />
-      </div>
-    </div>
+    </div></div>
   )
 }

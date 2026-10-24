@@ -130,7 +130,7 @@ export function WhatThisCheckInStillNeeds({
             is invited on the day rather than now.
           </div>
           {renderStartDate ?? (
-            <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+            <button className="btn sec sm"
               onClick={onGoToSetup}
             >
               Set a start date on People and setup &rarr;
@@ -155,7 +155,7 @@ export function WhatThisCheckInStillNeeds({
               ? <>You said {saidDate} in your check-in. The check-in itself is set to {timelineDays ?? 90} days, and everything that says days remaining counts against that, not against your date.</>
               : <>Nobody chose this, so it is {timelineDays ?? 90} days by default. Everything that says days remaining is counting against that number.</>}
           </div>
-          <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+          <button className="btn sec sm"
             onClick={onGoToSetup}
           >
             Change it on People and setup &rarr;
@@ -171,7 +171,7 @@ export function WhatThisCheckInStillNeeds({
               ? <>Your brief says &ldquo;{briefStandard}&rdquo;. That is being read as the standard until you set one here.</>
               : <>You said it in the session. It is not set as the standard, so nothing is being read against it.</>}
           </div>
-          <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+          <button className="btn sec sm"
             onClick={onGoToSetup}
           >
             Set it on People and setup →

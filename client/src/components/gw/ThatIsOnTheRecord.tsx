@@ -63,13 +63,13 @@ export function ThatIsOnTheRecord({ groundId }: { groundId: string }) {
               placeholder="you@work.com"
               style={{ flex: '1 1 220px' }}
             />
-            <button className="gwui-btn gwui-btn-primary gwui-btn-small"
+            <button className="btn pri sm"
               onClick={() => { if (!looksLikeAnAddress(email)) { setProblem('That does not look like an email address.'); return } change.mutate() }}
               disabled={change.isPending || !email.trim()}
             >
               {change.isPending ? 'Saving…' : 'Send it there'}
             </button>
-            <button className="gwui-btn gwui-btn-secondary gwui-btn-small" onClick={() => setEditing(false)} >
+            <button className="btn sec sm" onClick={() => setEditing(false)} >
               Keep it
             </button>
           </div>

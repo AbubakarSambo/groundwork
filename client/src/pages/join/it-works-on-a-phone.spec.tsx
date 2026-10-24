@@ -60,7 +60,7 @@ describe('finishing is visible', () => {
     return CODE.slice(CODE.lastIndexOf('<button', at), at + 200)
   }
   it('is a button, not an underlined link', () => {
-    expect(theTag()).toMatch(/className="gwui-btn gwui-btn-secondary"/)
+    expect(theTag()).toMatch(/className="btn sec"/)
     expect(theTag()).not.toMatch(/textDecoration: 'underline'/)
   })
 
@@ -70,7 +70,7 @@ describe('finishing is visible', () => {
   })
 
   it('and sits beside the send button rather than under the input', () => {
-    expect(CODE).toMatch(/justifyContent: 'space-between'[^}]*\}\}>\s*<button className="gwui-btn gwui-btn-secondary" onClick=\{\(\) => setPhase\('address'\)\}/)
+    expect(CODE).toMatch(/justifyContent: 'space-between'[^}]*\}\}>\s*<button className="btn sec" onClick=\{\(\) => setPhase\('address'\)\}/)
   })
 
   /* Nobody should press it wondering whether it throws away what they have just typed. */
