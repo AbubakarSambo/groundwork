@@ -68,7 +68,7 @@ export function WhichDaysTheyWork({
           }}
         />
         {/* The two quick choices as plain words, not more buttons beside the seven days (Hafsah, 24 October: fewer buttons). */}
-        <p className="t-small" role="group" aria-label="Weekdays or any day" style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+        <p className="t-small gw-links" role="group" aria-label="Weekdays or any day">
           <button type="button" className="gw-link" aria-pressed={weekdaysOnly} onClick={() => onChange([...WEEKDAYS])}>Weekdays only</button>
           <button type="button" className="gw-link" aria-pressed={days.length === 0} onClick={() => onChange([])}>Any day is fine</button>
         </p>

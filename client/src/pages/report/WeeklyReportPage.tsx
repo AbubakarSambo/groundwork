@@ -40,13 +40,13 @@ export function TheWeekForTheLead({ w }: { w: NonNullable<import('@/api/reports'
       )}
       {w.movedWithProof.length > 0 && (
         <Section heading="What moved this week, with what shows it">
-          <div className="panel pad stack" style={{ gap: 10 }}>{w.movedWithProof.map((line, i) => <p key={i}>{line}</p>)}</div>
+          <div className="panel pad stack gw-gap-10">{w.movedWithProof.map((line, i) => <p key={i}>{line}</p>)}</div>
         </Section>
       )}
       {w.needsYou.length > 0 && (
         <Section heading="Who needs you">
           {w.needsYou.map((n, i) => (
-            <div key={i} className="panel pad stack" style={{ gap: 10 }}>
+            <div key={i} className="panel pad stack gw-gap-10">
               <p><b>{n.says}</b></p>
               {n.evidence.map((e, j) => <p key={j}>{e}</p>)}
             </div>
@@ -159,16 +159,16 @@ export default function WeeklyReportPage() {
         {/* A sales check-in (Release 1): the server's paragraphs, read from the deals, as the kit has them. */}
         {(data.whatThisWeekShows ?? []).length > 0 ? (
           <Section heading="What this week shows">
-            <div className="panel pad stack" style={{ gap: 10 }}>{(data.whatThisWeekShows ?? []).map((p, i) => <p key={i}>{p}</p>)}</div>
+            <div className="panel pad stack gw-gap-10">{(data.whatThisWeekShows ?? []).map((p, i) => <p key={i}>{p}</p>)}</div>
             {/* sales-weekly-report.txt: the amber strip under the panel (quality pass, 18 October, W-8). */}
-            {(data.acrossTheTeam ?? []).map((line, i) => <div key={`att-${i}`} className="panel pad" style={{ background: 'var(--att-soft)', borderColor: 'transparent' }}><b>{line}</b></div>)}
+            {(data.acrossTheTeam ?? []).map((line, i) => <div key={`att-${i}`} className="panel pad gw-att-strip"><b>{line}</b></div>)}
           </Section>
         ) : (data.eachPerson.length > 0 || (data.acrossTheTeam && data.acrossTheTeam.length > 0)) && (
           <Section heading="What this week shows">
             {data.eachPerson.length > 0 && (
-              <div className="panel pad stack" style={{ gap: 10 }}>{data.eachPerson.map((p, i) => <p key={i}>{p.says}</p>)}</div>
+              <div className="panel pad stack gw-gap-10">{data.eachPerson.map((p, i) => <p key={i}>{p.says}</p>)}</div>
             )}
-            {(data.acrossTheTeam ?? []).map((line, i) => <div key={`att-${i}`} className="panel pad" style={{ background: 'var(--att-soft)', borderColor: 'transparent' }}><b>{line}</b></div>)}
+            {(data.acrossTheTeam ?? []).map((line, i) => <div key={`att-${i}`} className="panel pad gw-att-strip"><b>{line}</b></div>)}
           </Section>
         )}
         <Section heading="Things that happened in three check-ins in a row">
@@ -201,7 +201,7 @@ export default function WeeklyReportPage() {
             <EdgeList label="For you to do next week">
               {/* A sales week read from the record is in the order to do it (W-7), up to five; otherwise three from different places. */}
               {(data.forNextWeekIsRanked ? data.forNextWeek.slice(0, 5) : threeFromDifferentPlaces(data.forNextWeek)).map((row, i) => (
-                <EdgeRow key={i} kind="decide" title={row.do} detail={(row.why || row.comesFrom) ? <>{row.why}{row.comesFrom && <span className="tag plain" style={{ marginLeft: row.why ? 8 : 0 }}>{row.comesFrom}</span>}</> : undefined} />
+                <EdgeRow key={i} kind="decide" title={row.do} detail={(row.why || row.comesFrom) ? <>{row.why}{row.why && row.comesFrom ? ' ' : ''}{row.comesFrom && <span className="tag plain">{row.comesFrom}</span>}</> : undefined} />
               ))}
             </EdgeList>
           </Section>

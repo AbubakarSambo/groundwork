@@ -26,6 +26,12 @@ const walk = (dir: string) => {
   }
 }
 walk(SRC)
+/* 24 October (Hafsah: "one stylesheet, the prototype's"): styles/prototype.css is the prototype's stylesheet copied verbatim, the
+   source every look here is checked against, so it is not scanned as product code (its own marketing-site colours, dev bar and
+   pop-up shadows are the prototype's). What the product changes on top of it is in styles/product.css, which is scanned. */
+const PROTO_CSS = join(SRC, 'styles/prototype.css')
+const PROTO = readFileSync(PROTO_CSS, 'utf8')
+files.splice(files.indexOf(PROTO_CSS), 1)
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
 const source = (p: string) => strip(readFileSync(p, 'utf8'))
 const rel = (p: string) => relative(SRC, p)
@@ -58,16 +64,17 @@ describe('the two typefaces and lining figures', () => {
 
 describe('a button is the kit button', () => {
   it('the shared button: no border, 8px corners, 44px, bold', () => {
-    const rule = UI_CSS.match(/\.gwui-btn \{([^}]*)\}/)![1]
-    expect(rule).toMatch(/border: 0;/)
-    expect(rule).toMatch(/border-radius: 8px;/)
-    expect(rule).toMatch(/min-height: 44px;/)
-    expect(rule).toMatch(/font-weight: 700;/)
+    /* 24 October: the shared button is the prototype's own .btn. */
+    const rule = PROTO.match(/\.btn\{([^}]*)\}/)![1]
+    expect(rule).toMatch(/border:0;/)
+    expect(rule).toMatch(/border-radius:8px;/)
+    expect(rule).toMatch(/min-height:44px;/)
+    expect(rule).toMatch(/font-weight:700;/)
   })
 
   it('primary is flat navy with white words; secondary is the surface with a 1.5px hairline inside', () => {
-    expect(UI_CSS).toMatch(/\.gwui-btn-primary \{ background: var\(--gw-navy\); color: #fff; \}/)
-    expect(UI_CSS).toMatch(/\.gwui-btn-secondary \{ background: var\(--gw-card\);[^}]*box-shadow: inset 0 0 0 1\.5px var\(--gw-rule-2\); \}/)
+    expect(PROTO).toMatch(/\.btn\.pri\{background:var\(--navy\);color:#fff\}/)
+    expect(PROTO).toMatch(/\.btn\.sec\{background:var\(--surface\);[^}]*box-shadow:inset 0 0 0 1\.5px var\(--rule2\)\}/)
   })
 
   it('the older button classes have the same shape, so a page still using one looks the same', () => {
@@ -81,10 +88,9 @@ describe('a button is the kit button', () => {
   })
 
   it('a small button is 44px on a phone too', () => {
-    const at = UI_CSS.indexOf('  .gwui-btn-small { min-height: 44px; }')
-    expect(at).toBeGreaterThan(-1)
-    // inside the phone rule, not a second desktop size
-    expect(UI_CSS.lastIndexOf('@media (max-width: 640px)', at)).toBeGreaterThan(UI_CSS.lastIndexOf('}\n}', at))
+    /* 24 October: the prototype's small button is 36 then 40px; the product keeps its 44px tap floor on it at every width. */
+    const PRODUCT = readFileSync(join(SRC, 'styles/product.css'), 'utf8')
+    expect(PRODUCT).toMatch(/\.btn\.sm, \.chip, \.seg button, \.views a \{ min-height: 44px; \}/)
   })
 
   /*
@@ -96,7 +102,6 @@ describe('a button is the kit button', () => {
    */
   const ALLOWED: Record<string, number> = {
     'pages/admin/AdminPage.tsx': 7, // on/off switches
-    'components/gw/ui/Composer.tsx': 1, // the composer's own send, drawn to the kit already
     'pages/join/AnswerFirstPage.tsx': 1, // the round icon send beside the answer box
     'pages/ops/TheAssistantAsACustomerSeesIt.tsx': 1, // the launcher on the pictured customer site
     'components/gw/SharedReportForAParty.tsx': 1, // the board's own dark card, a way in rather than a button (the-board-reads-on-a-dark-ground.ts)
@@ -149,7 +154,7 @@ describe('no drop shadow except on a pop-up', () => {
     'components/gw/ui/gw-ui.css': 5, // the toast, the boards menu, a check-in's menu, the save card, a small menu
     'components/gw/AppShell.tsx': 2, // the feedback window, the Ask sheet
     'components/gw/HelpModal.tsx': 1,
-    'components/gw/ui/Composer.tsx': 1, // the + menu above the composer
+    'styles/product.css': 1, // the + menu above the composer
     'pages/admin/AdminDashboardPage.tsx': 1, // the confirm window
     'pages/ops/TheAssistantAsACustomerSeesIt.tsx': 1, // the assistant's panel, open over the page
   }
@@ -283,7 +288,8 @@ describe('everything you can tap is at least 44px tall', () => {
   })
 
   it('a switch, a tag you can tap and a coloured initial keep their shape and take a 44px tap target', () => {
-    for (const c of ['gw-switch', 'gwui-toggle', 'gwui-tag', 'gw-rl-ini', 'gwui-tap-target']) expect(tapTargets.has(c), c).toBe(true)
+    /* 24 October: the old gw-switch is gone (no page drew it); a tag is the prototype's .tag now. */
+    for (const c of ['gwui-toggle', 'tag', 'gw-rl-ini', 'gwui-tap-target']) expect(tapTargets.has(c), c).toBe(true)
   })
 
   it('no class drawn on something you can tap declares a height under 44px', () => {

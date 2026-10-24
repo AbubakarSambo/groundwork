@@ -120,9 +120,9 @@ function AboutThisWork({ groundId, served, ground, isTheLead }: { groundId: stri
               {a.whose && <Note>{a.whose}</Note>}
               {a.yourOwnWords && (
                 /* A plain fold with no box of its own: the prototype never puts a box inside a box. */
-                <details className="t-small">
-                  <summary className="gw-link" style={{ listStyle: 'none', display: 'inline' }}>What you wrote</summary>
-                  <p className="mut gwui-pre-line" style={{ marginTop: 6 }}>{a.yourOwnWords}</p>
+                <details className="t-small gw-plain-fold">
+                  <summary className="gw-link">What you wrote</summary>
+                  <p className="mut gwui-pre-line">{a.yourOwnWords}</p>
                 </details>
               )}
             </>
@@ -194,7 +194,7 @@ function Suggested({ groundId, items, onDone }: { groundId: string; items: NonNu
           </div>
         ))}
         {items.length > 2 && !showAll && (
-          <button type="button" className="gw-link t-small" style={{ alignSelf: 'flex-start' }} onClick={() => setShowAll(true)}>{`Show the other ${items.length - 2}`}</button>
+          <button type="button" className="gw-link t-small gw-start" onClick={() => setShowAll(true)}>{`Show the other ${items.length - 2}`}</button>
         )}
       </Stack>
     </Section>

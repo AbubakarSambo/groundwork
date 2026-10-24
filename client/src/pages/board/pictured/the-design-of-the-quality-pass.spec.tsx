@@ -11,6 +11,8 @@ const BOARD = read('pictured-board.css')
 const WEEK = read('..', '..', 'report', 'weekly-report.css')
 const UI = read('..', '..', '..', 'components', 'gw', 'ui', 'gw-ui.css')
 const INDEX = read('..', '..', '..', 'index.css')
+const PROTO = read('..', '..', '..', 'styles', 'prototype.css')
+const PRODUCT = read('..', '..', '..', 'styles', 'product.css')
 const rule = (css: string, selector: string) => {
   const at = css.indexOf(`${selector} {`)
   return at < 0 ? '' : css.slice(at, css.indexOf('}', at) + 1)
@@ -20,7 +22,8 @@ describe('the design of the quality pass', () => {
   it('D-2: "Every session" is the prototype’s .btn.sec (an inset rule, no border), and "Something here isn’t right" is 44px tall', () => {
     expect(rule(BOARD, '.pb-wide-btn')).toMatch(/border: 0;/)
     expect(rule(BOARD, '.pb-wide-btn')).toMatch(/box-shadow: inset 0 0 0 1\.5px var\(--gw-rule-2\)/)
-    expect(rule(BOARD, '.pb-own-wrong')).toMatch(/min-height: 44px/)
+    /* 24 October: "Something here isn't right" is the prototype's own .btn.quiet now (one stylesheet, the prototype's). */
+    expect(PROTO).toMatch(/\.btn\{min-height:44px/)
     expect(BOARD).not.toMatch(/\.pb-decides button \{/)
   })
 
@@ -31,18 +34,21 @@ describe('the design of the quality pass', () => {
 
   it('D-5, D-6: names and figures in the name face at weight 500, with lining figures, never the serif nobody defined', () => {
     expect(BOARD + WEEK).not.toMatch(/--gw-serif/)
-    for (const [css, sel] of [[BOARD, '.pb-own-title'], [BOARD, '.pb-own-story'], [BOARD, '.pb-fills-in h2'], [WEEK, '.wr-tile b']] as const) {
-      expect(rule(css, sel)).toMatch(/font-family: var\(--gw-font-name\)/)
-      expect(rule(css, sel)).toMatch(/font-weight: 500/)
+    /* 24 October: your own report's title is the prototype's .t-title and its story .gw-story (styles/product.css). */
+    expect(PROTO).toMatch(/\.t-title\{font-family:var\(--name\)[^}]*font-weight:500/)
+    for (const [css, sel] of [[PRODUCT, '.gw-story'], [BOARD, '.pb-fills-in h2'], [WEEK, '.wr-tile b']] as const) {
+      expect(rule(css, sel)).toMatch(/font-family: var\(--(gw-font-)?name\)/)
+      if (sel !== '.gw-story') expect(rule(css, sel)).toMatch(/font-weight: 500/)
     }
     expect(rule(BOARD, '.pb-answer')).toMatch(/font-variant-numeric: lining-nums/)
     expect(rule(WEEK, '.wr-tile b')).toMatch(/font-variant-numeric: lining-nums/)
-    expect(rule(UI, '.gwui-pt-title')).toMatch(/font-variant-numeric: lining-nums/)
+    expect(rule(PRODUCT, '.t-title, .t-greet')).toMatch(/font-variant-numeric: lining-nums/)
   })
 
   it('D-7: a stage and where a thing comes from are the prototype’s .tag', () => {
     expect(rule(BOARD, '.pb-step')).toMatch(/min-height: 26px; padding: 0 10px; border-radius: 13px; font-size: 13\.5px; font-weight: 700/)
-    expect(rule(WEEK, '.wr-row .wr-from')).toMatch(/min-height: 26px/)
+    /* 24 October: where a thing to do next week comes from is the prototype's own .tag.plain. */
+    expect(PROTO).toMatch(/\.tag\{[^}]*min-height:26px/)
   })
 
   it('D-8: the gap heading wraps in balanced lines', () => {

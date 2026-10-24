@@ -50,12 +50,12 @@ export function EdgeRow({ kind, title, detail, actions }: {
   return (
     <div className="item" role="listitem">
       <i className={`sp ${edge}`} aria-hidden />
-      <div style={{ minWidth: 0 }}>
+      <div className="gw-min0">
         {reason && <span className="gwui-sr-only">{reason} </span>}
         <div className="h">{title}</div>
         {detail && <div className="s">{detail}</div>}
       </div>
-      {actions && <span className="acts" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{actions}</span>}
+      {actions && <span className="acts gw-acts">{actions}</span>}
     </div>
   )
 }

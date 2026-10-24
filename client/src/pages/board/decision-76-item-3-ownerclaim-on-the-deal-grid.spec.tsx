@@ -94,9 +94,9 @@ describe('ownerClaim on the deal grid row, for the lead only', () => {
     const dealGrid = await screen.findByRole('region', { name: 'Every deal, day by day' })
     const yes = within(dealGrid).getByRole('button', { name: 'Yes' })
     const no = within(dealGrid).getByRole('button', { name: 'No' })
-    expect(yes.className).not.toMatch(/gwui-btn-primary/)
-    expect(no.className).not.toMatch(/gwui-btn-primary/)
-    expect(yes.className).toMatch(/gwui-btn-secondary/)
+    expect(yes.className).not.toMatch(/pri/)
+    expect(no.className).not.toMatch(/pri/)
+    expect(yes.className).toMatch(/sec/)
   })
 
   it('yes calls claimWorkItem with { yes: true }, on this check-in\'s own path, and shows saidBack', async () => {

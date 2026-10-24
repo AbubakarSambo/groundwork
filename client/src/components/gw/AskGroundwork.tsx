@@ -470,7 +470,7 @@ export function AskGroundwork({
       }
       if (isProposal(b)) {
         return (
-          <div key={k} className="stack" style={{ gap: 8, alignSelf: 'flex-start', maxWidth: '82%' }}>
+          <div key={k} className="stack gw-answer">
             {!texts.has(b.summary) && <p className={bubble(false)}>{b.summary}</p>}
             {b.proposalId === latestProposalId && !answered.has(b.proposalId) && (
               <div style={{ display: 'flex', gap: 8 }}>
@@ -483,7 +483,7 @@ export function AskGroundwork({
       }
       if (isPicker(b)) {
         return (
-          <div key={k} style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <div key={k} className="gw-chips">
             {b.options.map((o) => (
               <button key={o.key} type="button" className={chip} disabled={sending || !isLatest} onClick={() => ask(o.label)}>{o.label}</button>
             ))}
@@ -502,7 +502,7 @@ export function AskGroundwork({
             </button>
           )
         }
-        return <Link key={k} to={b.href} className={chip} style={{ alignSelf: 'flex-start', textDecoration: 'none' }}>{b.label}</Link>
+        return <Link key={k} to={b.href} className={`${chip} gw-start`}>{b.label}</Link>
       }
       return null
     })
@@ -513,13 +513,17 @@ export function AskGroundwork({
 
   return (
     <section aria-labelledby="gw-ask-title" className={onClose ? 'gw-ask-drawer' : 'chatpage'}>
-      <div className="asst-h" style={{ flexWrap: 'wrap' }}>
-        <b id="gw-ask-title" style={{ flex: 1 }}>{askDisplayName}</b>
+      <div className="asst-h gw-asst-h">
+        {/* Named for the organisation (decision 100), in the prototype's bold line; a heading for screen readers. */}
+        <b id="gw-ask-title" role="heading" aria-level={2} className="gw-grow">{askDisplayName}</b>
         {onClose && (
           <button type="button" className="rl-ic" onClick={onClose} aria-label="Close">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
           </button>
         )}
+        {/* The caption and the one line under it (decision 100), served and printed as they arrive, small, under the name. */}
+        <p className="t-small gw-full">{page.data?.caption ?? ASK_CAPTION_FALLBACK}</p>
+        {page.data?.addLine && <p className="t-tiny mut gw-full">{page.data.addLine}</p>}
         {about.length > 0 && (
           /*
            * ITEM 6: THE PICKER RAN PAST THE PANEL'S RIGHT EDGE. A flex item's default minimum width
@@ -544,10 +548,9 @@ export function AskGroundwork({
            * squeezing beside "About" - inline styles untouched, so item 6's own shrink-to-fit still
            * holds at every width this rule does not apply at.
            */
-          <label className="t-small" style={{ display: 'flex', gap: 6, alignItems: 'center', width: '100%', marginTop: 6 }}>
+          <label className="t-small gw-ask-about">
             <span className="mut">About</span>
-            <select value={aboutId} onChange={(e) => setChosen(e.target.value)}
-              className="input" style={{ minHeight: 36, padding: '0 8px', width: 'auto', maxWidth: 240 }}>
+            <select value={aboutId} onChange={(e) => setChosen(e.target.value)} className="input">
               <option value="">The whole organisation and your work</option>
               {aboutWithDates.map((g) => {
                 const apart = whatTellsItApart(aboutWithDates, g)
@@ -556,7 +559,7 @@ export function AskGroundwork({
             </select>
           </label>
         )}
-        <p className="t-tiny mut" style={{ width: '100%', marginTop: 6 }}>{PRIVATE_LINE}</p>
+        <p className="t-tiny mut gw-full">{PRIVATE_LINE}</p>
       </div>
 
       <div className="asst-body">
@@ -569,7 +572,7 @@ export function AskGroundwork({
          */}
         {page.data?.canAsk && page.data.welcome && said.length === 0 && <p className={bubble(false)}>{page.data.welcome}</p>}
         {page.data?.canAsk && (page.data?.starters ?? []).length > 0 && (page.data?.turns ?? []).length === 0 && said.length === 0 && (
-          <div role="group" aria-label="Questions you could ask" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <div role="group" aria-label="Questions you could ask" className="gw-chips">
             {(page.data?.starters ?? []).map((q) => (
               <button key={q} type="button" className={chip} disabled={sending || reading} onClick={() => ask(q)}>{q}</button>
             ))}
@@ -620,7 +623,7 @@ export function AskGroundwork({
          */
         <div>
           {page.isError && (
-            <p role="alert" className="t-small" style={{ margin: '8px 12px 0', color: 'var(--con)' }}>
+            <p role="alert" className="t-small gw-said-wrong">
               Ask didn't load fully. Nothing you have asked is lost. It is usually the connection.
               {askWhy?.canRetry && (
                 <>
@@ -632,8 +635,8 @@ export function AskGroundwork({
               )}
             </p>
           )}
-          {!askSettled && <p role="status" className="t-tiny mut" style={{ margin: '8px 12px 0' }}>Getting Ask ready.</p>}
-          {problem && <p role="alert" className="t-small" style={{ margin: '8px 12px 0', color: 'var(--con)' }}>{problem}</p>}
+          {!askSettled && <p role="status" className="t-tiny mut gw-comp-note">Getting Ask ready.</p>}
+          {problem && <p role="alert" className="t-small gw-said-wrong">{problem}</p>}
           <Composer
             variant="ask"
             inputRef={composerRef}
@@ -647,7 +650,7 @@ export function AskGroundwork({
             onSend={() => ask(draft, true)}
             disabled={sending || !askSettled}
             sendDisabled={!draft.trim()}
-            placeholder={page.data?.caption ?? ASK_CAPTION_FALLBACK}
+            placeholder={page.data?.caption ?? 'Ask a question'}
             ariaLabel={page.data?.caption ?? 'Ask a question'}
             maxLength={8000}
             /* THE "+" (Hafsah, 15 October): for whoever may add a document here, a lead for the check-ins they run

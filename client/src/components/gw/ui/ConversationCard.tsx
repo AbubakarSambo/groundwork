@@ -37,7 +37,7 @@ export function ConversationCard({ backLabel, backTo, onBack, backTitle, header,
     /* The prototype's focused check-in: .ci-focus, the quiet way back (.ci-back), then the card (.ci-card: .ci-h, .ci-b, .ci-c). */
     <div className="ci-focus">
       {backLabel && (onBack || backTo) && (
-        <div className="ci-back" style={{ marginBottom: 12 }}>
+        <div className="ci-back gw-ci-back">
           {onBack ? (
             <button type="button" onClick={onBack} title={backTitle} className="btn quiet sm">← {backLabel}</button>
           ) : (

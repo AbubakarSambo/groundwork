@@ -31,7 +31,7 @@ function myWork(payload: any) {
   render(<QueryClientProvider client={qc}><MemoryRouter><MyWorkPage groundId="g1" /></MemoryRouter></QueryClientProvider>)
 }
 async function theRecordOnThePage() {
-  return within((await screen.findByText(/record in /, { selector: 'h2, h3' })).closest('[data-gw-their-record]') as HTMLElement)
+  return within((await screen.findByText(/record in /, { selector: 'h2, h3, .gwui-fold-name' })).closest('[data-gw-their-record]') as HTMLElement)
 }
 
 describe('on My work', () => {

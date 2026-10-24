@@ -25,9 +25,10 @@ describe('ConversationCard', () => {
         <ConversationCard header={<div>Header</div>}>Body</ConversationCard>
       </MemoryRouter>,
     )
+    /* UPDATED 24 October: the prototype's own classes, .ci-focus around .ci-card. */
     const outer = container.firstElementChild as HTMLElement
-    expect(outer.className).toContain('gwui-conv-outer')
-    const card = outer.querySelector('.gwui-conv-card')
+    expect(outer.className).toContain('ci-focus')
+    const card = outer.querySelector('.ci-card')
     expect(card).toBeTruthy()
   })
 
@@ -61,14 +62,11 @@ describe('ConversationCard', () => {
   })
 
   it('is 560px, centred, bordered and rounded above 640px; full width, no side border, no radius, at or below it', () => {
-    const outerRule = CSS.slice(CSS.indexOf('.gwui-conv-outer {'), CSS.indexOf('.gwui-conv-outer {') + 60)
-    const cardRule = CSS.slice(CSS.indexOf('.gwui-conv-card {'), CSS.indexOf('.gwui-conv-card {') + 200)
-    expect(outerRule).toMatch(/max-width:\s*560px/)
-    expect(cardRule).toMatch(/border:\s*1px solid var\(--gw-border\)/)
-    expect(cardRule).toMatch(/border-radius:\s*16px/)
-    const mobile = CSS.slice(CSS.indexOf('@media (max-width: 640px) {\n  .gwui-conv-outer'))
-    expect(mobile).toMatch(/\.gwui-conv-outer \{ max-width: none; margin: 0; \}/)
-    expect(mobile).toMatch(/\.gwui-conv-card \{ border-radius: 0; border-left: none; border-right: none; \}/)
+    /* UPDATED 24 October: pinned in the prototype's own stylesheet, .ci-focus and .ci-card, and its phone rule for a focused check-in. */
+    const PROTO = readFileSync(join(__dirname, '../../../styles/prototype.css'), 'utf8')
+    expect(PROTO).toMatch(/\.ci-focus\{max-width:560px;margin:0 auto\}/)
+    expect(PROTO).toMatch(/\.ci-card\{[^}]*border:1px solid var\(--rule\);border-radius:16px/)
+    expect(PROTO).toMatch(/body\.focus \.ci-card\{border-radius:0;border-left:0;border-right:0/)
   })
 
   it('renders the header, banners, body and footer slots given to it, banners between header and the scroll', () => {

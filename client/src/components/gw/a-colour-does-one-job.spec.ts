@@ -14,7 +14,9 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
-const CSS = readFileSync(join(__dirname, '../../index.css'), 'utf8')
+/* UPDATED 24 October: the prototype's stylesheet and the product's small one are read too; most hover and selected rules now
+   live there (the product's own copies of them were removed). */
+const CSS = readFileSync(join(__dirname, '../../index.css'), 'utf8') + '\n' + readFileSync(join(__dirname, '../../styles/prototype.css'), 'utf8').replace(/\}/g, '}\n') + '\n' + readFileSync(join(__dirname, '../../styles/product.css'), 'utf8')
   /* Comments stripped before matching. This file explains its own colours at
      length, and a rule that only survives inside a comment is not a rule. */
   .replace(/\/\*[\s\S]*?\*\//g, '');
@@ -45,7 +47,8 @@ describe('the stylesheet', () => {
 
   it('and there are interaction rules to check, so the search is not passing on nothing', () => {
     expect(rulesFor(':hover').length).toBeGreaterThan(5);
-    expect(rulesFor('.selected').length).toBeGreaterThan(1);
+    /* 24 October: the prototype marks a chosen thing ".on" (.nav.on, .tab.on, .chip.on), not ".selected". */
+    expect(rulesFor('.selected').length + rulesFor('.on').length).toBeGreaterThan(1);
   });
 });
 

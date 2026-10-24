@@ -27,7 +27,7 @@ export function OpsWhatWeArePage() {
   const d = it.data
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader name="What we are" answers="What is this product, and what is it not?" />
 
       {d && (

@@ -55,7 +55,7 @@ export default function OpsMoatPage() {
   const d = moat.data
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader
         name={d?.title ?? 'The Groundwork Moat'}
         answers="What is the defensible advantage, and what have we built on it?"

@@ -96,7 +96,7 @@ function ThePage({ groundId, served, onPerson, rest, onAllYourReports }: {
       {/* THE FOCUS THIS WEEK, from the most important Needs work. Not served where the organisation keeps judgements of a person off. */}
       {/* B7: the focus is the one dark band on the page, named inside the band, not a section heading of its own. */}
       {judged && (served.focus
-        ? <section aria-label={`${your} focus this week`} data-gw-my-work-focus className="gwui-focus-band"><p className="gwui-focus-label">{`${your} focus this week`}</p><p className="gwui-focus-line">{served.focus.line}</p><p className="gwui-focus-why">{served.focus.why}</p></section>
+        ? <section aria-label={`${your} focus this week`} data-gw-my-work-focus className="gwui-focus-band"><p className="gw-focus-label">{`${your} focus this week`}</p><p className="gwui-focus-line">{served.focus.line}</p><p className="gwui-focus-why">{served.focus.why}</p></section>
         : <Note tone="muted">{served.focusEmpty}</Note>)}
 
       <ToDo served={served} askedOf={self ? 'Asked of you' : `Asked of ${first}`} />
@@ -134,7 +134,7 @@ function ThePage({ groundId, served, onPerson, rest, onAllYourReports }: {
                   </Row>
                 ))}
               </RowList>
-              {onAllYourReports && <div><button type="button" className="gw-link t-small" style={{ fontWeight: 700 }} onClick={onAllYourReports}>All your reports</button></div>}
+              {onAllYourReports && <div><button type="button" className="gw-link t-small gw-bold" onClick={onAllYourReports}>All your reports</button></div>}
             </Stack>
           )}
         </Panel>

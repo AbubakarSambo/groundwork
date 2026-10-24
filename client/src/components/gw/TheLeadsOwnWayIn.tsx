@@ -38,7 +38,7 @@ export function TheLeadsOwnWayIn({ groundId, saying, asLinks }: { groundId: stri
     <div data-testid="the-leads-own-way-in" style={{ display: 'grid', gap: 10 }}>
       {saying && <p className="gwui-panel-text" style={{ margin: 0 }}>{saying}</p>}
       {asLinks ? (
-        <p className="t-small" style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+        <p className="t-small gw-links">
           <button type="button" className="gw-link" onClick={checkInYourself} disabled={opening}>{opening ? 'Opening…' : 'Check in yourself'}</button>
           <button type="button" className="gw-link" onClick={() => showForCheckInSetup(groundId)}>Add context</button>
         </p>

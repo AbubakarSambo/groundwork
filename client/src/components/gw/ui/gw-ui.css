@@ -13,6 +13,7 @@
  * file uses them; where they do not (the --gw-muted / "faint" trap the audit found), it defines its
  * own token instead of silently reusing the wrong one.
  */
+:where(button, summary, select, [role="button"], [role="switch"], [role="tab"]):not(.gwui-in-a-sentence) { min-height: 44px; }
 
 .gwui-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
@@ -2450,7 +2451,6 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-chip-label { font-size: 14px; color: var(--gw-sub); }
 /* B7's focus this week: the one dark band, its line in Literata. */
 .gwui-focus-band { background: var(--gw-navy-d); color: #fff; border-radius: 12px; padding: 16px 18px; }
-.gwui-focus-label { margin: 0 0 6px; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gw-blue-b); }
 .gwui-focus-line { margin: 0; font-family: var(--gw-font-name); font-size: 19px; font-weight: 500; line-height: 1.35; color: #fff; }
 .gwui-focus-why { margin: 6px 0 0; font-size: 14.5px; color: var(--gw-blue-b); }
 /* B6, References and resources: the top band, a suggestion's compact row, and How we work's four parts side by side. */

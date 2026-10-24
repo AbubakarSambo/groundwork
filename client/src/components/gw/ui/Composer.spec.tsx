@@ -2,6 +2,10 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Composer } from './Composer'
+import { readFileSync } from 'fs'
+import { join } from 'path'
+const PROTO = readFileSync(join(__dirname, '../../../styles/prototype.css'), 'utf8')
+const rule = (sel: string) => { const i = PROTO.indexOf(sel + '{'); return i < 0 ? '' : PROTO.slice(i, PROTO.indexOf('}', i)) }
 
 /**
  * THE CHECK-IN'S FOOTER BAR (docs/prototype/source/app.css: `.ci-c`, `.ci-sq`; s29.js's
@@ -21,10 +25,13 @@ describe('Composer', () => {
    */
   it('the field is a bordered white box, not a bare, borderless field', () => {
     render(<Composer value="" onChange={() => {}} onSend={() => {}} />)
+    /* UPDATED 24 October (Hafsah: "one stylesheet, the prototype's"): the part is drawn with the prototype's own classes, so the
+       values are pinned in styles/prototype.css (read here as text, since jsdom applies no stylesheet), not as inline styles. */
     const field = screen.getByPlaceholderText('Type, or hold to speak')
-    expect(field.style.background).toBe('white')
-    expect(field.style.border).toBe('1.5px solid var(--gw-rule-2)')
-    expect(field.style.borderRadius).toBe('10px')
+    expect(field.className).toBe('input')
+    expect(rule('.input')).toMatch(/border:1.5px solid var\(--rule2\)/)
+    expect(rule('.input')).toMatch(/background:var\(--surface\)/)
+    expect(rule('.input')).toMatch(/border-radius:10px/)
   })
 
   it('the "+" is a 48px square, and only appears when offered', () => {
@@ -32,15 +39,16 @@ describe('Composer', () => {
     expect(screen.queryByRole('button', { name: /Add a photo/ })).toBeNull()
     rerender(<Composer value="" onChange={() => {}} onSend={() => {}} onPlus={() => {}} />)
     const plus = screen.getByRole('button', { name: 'Add a photo, a document or some text' })
-    expect(plus.style.width).toBe('48px')
-    expect(plus.style.height).toBe('48px')
+    expect(plus.className).toBe('btn sec ci-sq')
+    expect(rule('.ci-sq')).toMatch(/width:48px;height:48px/)
   })
 
   it('the send button is navy, with the up-arrow the prototype uses', () => {
     render(<Composer value="hello" onChange={() => {}} onSend={() => {}} />)
     const send = screen.getByRole('button', { name: 'Send' })
     expect(send.textContent).toBe('↑')
-    expect(send.style.background).toBe('var(--gw-navy)')
+    expect(send.className).toBe('btn pri ci-sq')
+    expect(PROTO).toMatch(/\.btn\.pri\{background:var\(--navy\)/)
   })
 
   it('reports what is typed, and sends on the send button', async () => {

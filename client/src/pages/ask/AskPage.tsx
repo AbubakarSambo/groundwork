@@ -97,8 +97,7 @@ export function AskPage() {
   return (
     /* The prototype's #/chat: the page title "Chat", then the assistant's own panel (.chatpage) under it. */
     <div className="main"><div className="wrap">
-      <h1 className="t-title">Chat</h1>
-      <div style={{ height: 14 }} />
+      <h1 className="t-title gw-chat-title">Chat</h1>
         <AskGroundwork
           initialMessage={pendingAskMessage}
           onSentInitialMessage={consumePendingAskMessage}

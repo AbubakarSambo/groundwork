@@ -115,7 +115,7 @@ export default function OpsPeoplePage() {
   })
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader name="The team" answers="Who is here, and what can each of them actually do?" />
 
       <Adder

@@ -156,7 +156,7 @@ export function TodayPage() {
   return (
     <Page>
       <div className="gwui-side">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+        <div className="gw-col-32">
           {params.get('welcome') === '1' && (
             <YouAreIn checkIns={grounds.isSuccess ? (grounds.data?.length ?? 0) : null} mayStart={user?.mayOpenCheckIns !== false} />
           )}

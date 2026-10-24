@@ -52,7 +52,7 @@ export function PageTitle({ eyebrow, crumbs, title, avatarInitials, subtitle, su
      actions at the right, as on the reports and the board. */
   return (
     <div className={center ? 'gwui-title-centre' : undefined}>
-      {eyebrow && <p className="t-small mut" style={{ marginBottom: 6 }}>{eyebrow}</p>}
+      {eyebrow && <p className="t-small mut gw-pt-eyebrow">{eyebrow}</p>}
       {crumbs && crumbs.length > 0 && (
         <nav className="crumb" aria-label="Where you are">
           {crumbs.map((c, i) => (
@@ -63,13 +63,13 @@ export function PageTitle({ eyebrow, crumbs, title, avatarInitials, subtitle, su
           ))}
         </nav>
       )}
-      <div className="gw-pt-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 24, flexWrap: 'wrap', marginTop: crumbs && crumbs.length > 0 ? 10 : 0 }}>
-        <div style={{ display: 'flex', gap: 16, alignItems: 'center', minWidth: 0 }}>
+      <div className="gw-pt-row">
+        <div className="gw-pt-head">
           {avatarInitials !== undefined && <Avatar initials={avatarInitials} size={56} />}
-          <div style={{ minWidth: 0 }}>
+          <div className="gw-min0">
             {title && <h1 className="t-title">{title}</h1>}
             {subtitle && (
-              <p className={subtitleTone === 'ink' ? 't-body gw-pt-sub' : 't-body mut gw-pt-sub'} style={{ marginTop: 4 }} role={subtitleRole}>
+              <p className={subtitleTone === 'ink' ? 't-body gw-pt-sub' : 't-body mut gw-pt-sub'} role={subtitleRole}>
                 {subtitle}
               </p>
             )}

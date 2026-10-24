@@ -18,7 +18,7 @@ export function OpsWorkplanPage() {
   const plan = useQuery({ queryKey: ['ops', 'workplan'], queryFn: opsApi.workplan, retry: false })
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader name="The workplan" answers="What are we doing, in what order, and what ends each part?" />
 
       {plan.data && (

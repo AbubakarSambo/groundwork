@@ -82,7 +82,7 @@ export function AuthSplit({ title, sub, children }: {
       }
     >
       {/* A2: the big greeting type for "Sign in", with its line under it, as the prototype's sign-in. */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div className="gw-col-10">
         <h1 className="t-greet">{title}</h1>
         {sub && <p className="t-body mut">{sub}</p>}
       </div>

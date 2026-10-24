@@ -111,7 +111,7 @@ describe('Grace, who runs it, reads every section in the pictures’ order', () 
     expect(adds[0].closest('[data-gw-references-top]')).toBeTruthy()
     await screen.findByText('120 dispensers sold with proof by 31 December.')
     expect(headings()).toEqual([
-      'About this work', 'What doing well looks like', 'Suggested from your check-ins', 'How we work', 'Documents', 'Evidence', 'Questions and answers', 'People',
+      'About this work', 'Suggested from your check-ins', 'How we work', 'Documents', 'Evidence', 'Questions and answers', 'People',
     ])
   })
 
@@ -168,7 +168,7 @@ describe('Kevin, a team member, never reads People, and cannot add', () => {
     renderAs(SERVED_TO_KEVIN, false)
     await screen.findByText('Your team’s reference for this work, kept by Grace.')
     await screen.findByText('120 dispensers sold with proof by 31 December.')
-    expect(headings()).toEqual(['About this work', 'What doing well looks like', 'How we work', 'Documents', 'Evidence', 'Questions and answers'])
+    expect(headings()).toEqual(['About this work', 'How we work', 'Documents', 'Evidence', 'Questions and answers'])
     expect(screen.queryByRole('button', { name: 'Add' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Remove' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Ask about this work' })).toBeTruthy()

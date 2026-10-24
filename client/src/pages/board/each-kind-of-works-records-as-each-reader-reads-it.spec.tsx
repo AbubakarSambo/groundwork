@@ -119,7 +119,7 @@ describe('the sales org’s Deal grid: filled, with stages, and a not-known Fore
     expect(within(dealGrid).queryByText('The value is KES 90K.')).toBeNull()
     expect(within(dealGrid).getByText('Nobody is named for it yet.')).toBeTruthy()
     expect(within(dealGrid).queryByText('Nobody named yet.')).toBeNull()
-    expect(within(dealGrid).getByText('Won', { selector: '.gwui-tag' })).toHaveClass('gwui-tag')
+    expect(within(dealGrid).getByText('Won', { selector: '.tag' })).toHaveClass('tag')
     expect(within(dealGrid).getByText('No stage said yet.')).toBeTruthy()
     /* The open deal (the first) says what shows it, in the person's own words. */
     expect(within(dealGrid).getByText('In the words of someone in this check-in,')).toBeTruthy()

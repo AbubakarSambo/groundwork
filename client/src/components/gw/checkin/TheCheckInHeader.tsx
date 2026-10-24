@@ -57,7 +57,8 @@ export function TheCheckInHeader({
   return (
     <div className="ci-h">
       <div>
-        <b className="t-body" style={{ display: 'block' }}>{title}</b>
+        {/* The prototype's bold line; a heading for screen readers. */}
+        <b className="t-body gw-block" role="heading" aria-level={1}>{title}</b>
         {underTitle && <div className="t-tiny mut">{underTitle}</div>}
       </div>
       {mayPause && (onStopForNow || onSkip) && (

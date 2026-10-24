@@ -305,7 +305,8 @@ describe('where it opens', () => {
     authApi.myWaiting (not mocked in this file) would be asked for real. */
     qc.setQueryData(['my-waiting'], { waiting: false })
     render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/chat']}><AskPage /></MemoryRouter></QueryClientProvider>)
-    expect(screen.getByRole('heading', { level: 1, name: 'Ask Baridi' })).toBeInTheDocument()
+    /* UPDATED 24 October: the prototype's #/chat is titled "Chat"; the panel under it is named for the organisation. */
+    expect(screen.getByRole('heading', { level: 1, name: 'Chat' })).toBeInTheDocument()
     expect(await screen.findByRole('heading', { level: 2, name: 'Ask Baridi' })).toBeInTheDocument()
     expect(await screen.findByText('Why is Green Mart next quarter?')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Close' })).toBeNull()

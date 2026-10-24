@@ -84,7 +84,7 @@ export default function OpsOverviewPage() {
   const ask = (n: number) => d?.questions?.find((q) => q.n === n)?.question ?? ''
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader name="Commercial overview" answers="Everything, in the order somebody asks." />
 
       {/*

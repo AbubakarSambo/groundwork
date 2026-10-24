@@ -82,8 +82,8 @@ describe('the header row, and "Runs it" as a blue tag', () => {
 
   it('"Runs it" is the blue tag; "Checks in" stays the plain one', () => {
     renderTable(false)
-    expect(screen.getByText('Runs it')).toHaveClass('gwui-tag-action')
-    expect(screen.getByText('Checks in')).toHaveClass('gwui-tag-plain')
+    expect(screen.getByText('Runs it')).toHaveClass('act')
+    expect(screen.getByText('Checks in')).toHaveClass('plain')
   })
 })
 

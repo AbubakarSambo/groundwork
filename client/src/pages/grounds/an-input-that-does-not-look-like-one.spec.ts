@@ -20,7 +20,8 @@ import { join } from 'path'
  * stylesheet defines.
  */
 const CLIENT = join(__dirname, '../..')
-const CSS = readFileSync(join(CLIENT, 'index.css'), 'utf8')
+/* UPDATED 24 October: the kit's stylesheet and the two in styles/ (the prototype's, and the product's small one) are stylesheets too. */
+const CSS = ['index.css', 'components/gw/ui/gw-ui.css', 'styles/prototype.css', 'styles/product.css'].map(f => readFileSync(join(CLIENT, f), 'utf8')).join('\n')
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const e of readdirSync(dir)) {

@@ -1530,7 +1530,7 @@ export function ChatPage() {
             <button
               type="button"
               onClick={() => setShowAboutPanel(true)}
-              className="gw-link t-small" style={{ alignSelf: 'flex-start' }}
+              className="gw-link t-small gw-start"
             >
               What this check-in is about, and what you said last time
             </button>

@@ -48,9 +48,10 @@ describe('no app chrome on the conversation', () => {
     expect(container.querySelector('.gw-feedback-btn')).toBeNull()
   })
 
-  it('the Feedback trigger is still offered elsewhere', () => {
+  /* UPDATED 24 October (Hafsah: fewer buttons): no page draws the floating pill now; "Send feedback" is on the person's menu. */
+  it('the floating Feedback trigger is drawn on no other page either', () => {
     const { container } = mount('/grounds')
-    expect(container.querySelector('.gw-feedback-btn')).toBeTruthy()
+    expect(container.querySelector('.gw-feedback-btn')).toBeNull()
   })
 
   it('<main> carries the room-giving-back class only on the conversation', () => {

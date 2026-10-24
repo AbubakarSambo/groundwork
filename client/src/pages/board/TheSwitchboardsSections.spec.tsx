@@ -246,7 +246,7 @@ describe('Blockers: one card per blocker, built from the server\'s own blockers 
   it('shows full sentences, with no colon-joined labels', async () => {
     renderBoard(AS_THE_LEAD)
     await screen.findByRole('heading', { name: 'Sales org, Q3' })
-    const card = screen.getByText(blockers[0].says).closest('div[class*="gwui-panel"]') as HTMLElement
+    const card = screen.getByText(blockers[0].says).closest('div[class*="panel"]') as HTMLElement
     expect(within(card).getByText(blockers[0].raised.says)).toBeTruthy()
     expect(within(card).getByText(blockers[0].proof.says)).toBeTruthy()
     expect(within(card).getByText(blockers[0].timeGiven)).toBeTruthy()

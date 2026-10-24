@@ -561,7 +561,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
      */
     const own: { didWell: { text: string; how: string | null; mark: string }[]; story: string | null; toldUs: { text: string; how: string | null; mark: string }[] } | null = releaseOne ? d?.yourOwnReport ?? null : null
     const correctIt = !closed ? (
-      <button type="button" className="btn quiet" style={{ alignSelf: 'flex-start', padding: 0 }} onClick={() => correct.mutate()} disabled={correct.isPending}>
+      <button type="button" className="btn quiet gw-start gw-pad0" onClick={() => correct.mutate()} disabled={correct.isPending}>
         {correct.isPending ? 'Opening…' : 'Something here isn’t right'}
       </button>
     ) : null
@@ -741,33 +741,33 @@ function OwnReportAsPictured({ didWell, story, toldUs, toThinkAbout, record, cor
   correctIt: React.ReactNode
 }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+    <div className="gw-col-18">
       {didWell.length > 0 && (
-        <section className="panel pad" aria-label="What you did well" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <section className="panel pad gw-col-10" aria-label="What you did well">
           <h2 className="t-h3">What you did well</h2>
           {didWell.map((x) => (
-            <div key={x.key} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}><ProofMark mark={x.mark} /><span className="t-small">{x.text}</span></div>
+            <div key={x.key} className="gw-mark-line"><ProofMark mark={x.mark} /><span className="t-small">{x.text}</span></div>
           ))}
         </section>
       )}
-      {story && <p style={{ fontFamily: 'var(--name)', fontSize: 18, lineHeight: 1.5 }}>{story}</p>}
+      {story && <p className="gw-story">{story}</p>}
       {toldUs.length > 0 && (
         <section aria-label="What you told us">
-          <h2 className="t-h3" style={{ marginBottom: 4 }}>What you told us</h2>
+          <h2 className="t-h3 gw-mb-4">What you told us</h2>
           {toldUs.map((x) => (
-            <div key={x.key} style={{ display: 'grid', gridTemplateColumns: '18px 1fr', gap: 10, padding: '10px 0', borderTop: '1px solid var(--rule)' }}>
-              <span style={{ marginTop: 4 }}><ProofMark mark={x.mark} /></span>
-              <span className="t-small" style={x.gone ? { textDecoration: 'line-through', color: 'var(--muted)' } : undefined}>
+            <div key={x.key} className="gw-told-row">
+              <span className="gw-mt-4"><ProofMark mark={x.mark} /></span>
+              <span className={x.gone ? 't-small gw-gone' : 't-small'}>
                 {x.text}
-                {x.how && <span className="mut" style={{ display: 'block', marginTop: 2 }}>{x.how}</span>}
+                {x.how && <span className="mut gw-block">{x.how}</span>}
               </span>
             </div>
           ))}
         </section>
       )}
       {toThinkAbout.length > 0 && (
-        <section className="panel pad" aria-label="One thing to think about" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <h2 className="t-body" style={{ fontWeight: 700 }}>One thing to think about</h2>
+        <section className="panel pad gw-col-6" aria-label="One thing to think about">
+          <h2 className="t-body gw-bold">One thing to think about</h2>
           {toThinkAbout.map((t) => <p key={t} className="t-small">{t}</p>)}
         </section>
       )}

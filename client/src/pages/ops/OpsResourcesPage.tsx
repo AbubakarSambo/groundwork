@@ -151,7 +151,7 @@ export function OpsResourcesPage() {
   const register = useQuery({ queryKey: ['ops', 'resources'], queryFn: opsApi.resources, retry: false })
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader
         name="Resources"
         answers="What are we putting in front of people, and does it match what we sell?"

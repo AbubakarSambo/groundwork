@@ -79,9 +79,12 @@ export function BaselinePanel({ groundId, canState, groundStartedAt, asFold }: {
       <Inner>
         {current ? (
           <>
+            {/* Folded, the line itself is the fold's own fact, so it is not said twice. */}
+            {!asFold && (
             <div style={{ fontSize: 13.5, color: 'var(--gw-text)', lineHeight: 1.65 }}>
               {current.successLooksLike ? withSentenceCase(current.successLooksLike) : 'Not stated yet.'}
             </div>
+            )}
             {current.conditions.length > 0 && (
               <div style={{ marginTop: 12 }}>
                 <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>What that rests on</div>

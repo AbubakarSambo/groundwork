@@ -201,7 +201,7 @@ export function WhatsAppSettingsPage() {
   const page = settings.data
 
   return (
-    <section className="gw-page" style={{ maxWidth: 820, margin: '0 auto', padding: '24px 16px 80px' }}>
+    <section style={{ maxWidth: 820, margin: '0 auto', padding: '24px 16px 80px' }}>
       <button
         type="button"
         onClick={() => navigate('/admin')}

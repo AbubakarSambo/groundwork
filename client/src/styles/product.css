@@ -4,7 +4,7 @@
 /* The composer's field grows with what is typed (a pasted plan keeps its lines), at the prototype's .input height. */
 .gw-composer { position: relative; }
 .gw-composer textarea.input { flex: 1; min-width: 0; min-height: 48px; max-height: 120px; resize: none; padding: 11px 16px; line-height: 1.5; }
-.gw-composer-menu { position: absolute; bottom: 100%; left: 16px; margin-bottom: 8px; background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; box-shadow: 0 14px 40px rgba(26, 25, 22, .14); padding: 6px; z-index: 20; width: 260px; max-width: calc(100vw - 40px); }
+.gw-composer-menu { position: absolute; bottom: 100%; left: 16px; margin-bottom: 8px; background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; box-shadow: var(--gw-shadow-menu); padding: 6px; z-index: 20; width: 260px; max-width: calc(100vw - 40px); }
 /* Ask's answers keep the line breaks they were written with. */
 .bub { white-space: pre-wrap; overflow-wrap: anywhere; }
 /* Ask beside a page on a computer: the prototype's .asst panel holds it; this fills it. */
@@ -29,4 +29,64 @@
 /* A setting that is on or off, as B8 draws it: a plain checkbox in the navy. */
 .gw-check { width: 20px; height: 20px; margin: 0; accent-color: var(--navy); cursor: pointer; flex: none; }
 /* The prototype's sign-in links sit at the two ends of their row; its own rule styles them as links (a), these are buttons. */
-.signlinks .btn { font-size: 14.5px; white-space: nowrap; min-height: 40px; padding: 0; }
+.signlinks .btn { font-size: 14.5px; white-space: nowrap; min-height: 44px; padding: 0; }
+
+/* Small layout pieces the prototype writes inline in its own markup; named here once so no component repeats them. */
+.gw-min0 { min-width: 0; }
+.gw-grow { flex: 1; }
+.gw-full { width: 100%; }
+.gw-start { align-self: flex-start; }
+.gw-acts, .gw-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.gw-pt-eyebrow { margin-bottom: 6px; }
+.gw-pt-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; flex-wrap: wrap; }
+.crumb + .gw-pt-row { margin-top: 10px; }
+.gw-pt-head { display: flex; gap: 16px; align-items: center; min-width: 0; }
+.gw-pt-sub { margin-top: 4px; }
+.gw-greeting { display: flex; flex-direction: column; gap: 8px; }
+.gw-greeting .t-body { font-size: 18px; }
+.gw-aside { display: flex; flex-direction: column; gap: 28px; }
+.gw-when-row { display: grid; grid-template-columns: 120px 1fr; gap: 12px; padding: 10px 0; border-top: 1px solid var(--rule); }
+.gw-when-row a { color: var(--ink); text-decoration: none; }
+.gw-when-row a:hover { text-decoration: underline; }
+.gw-ci-back { margin-bottom: 12px; }
+.gw-chat-title { margin-bottom: 14px; }
+.gw-asst-h { flex-wrap: wrap; }
+.gw-ask-about { display: flex; gap: 6px; align-items: center; width: 100%; margin-top: 6px; }
+.gw-ask-about .input { min-height: 36px; padding: 0 8px; width: auto; max-width: 240px; }
+.asst-h > .t-tiny { margin-top: 6px; }
+.gw-answer { gap: 8px; align-self: flex-start; max-width: 82%; }
+.gw-said-wrong { margin: 8px 12px 0; color: var(--con); }
+.gw-comp-note { margin: 8px 12px 0; }
+.gw-block { display: block; }
+.gw-bold { font-weight: 700; }
+.gw-pad0 { padding: 0; }
+.gw-mt-4 { margin-top: 4px; }
+.gw-mb-4 { margin-bottom: 4px; }
+.gw-gap-10 { gap: 10px; }
+.gw-col-6, .gw-col-10, .gw-col-18, .gw-col-32 { display: flex; flex-direction: column; }
+.gw-col-6 { gap: 6px; } .gw-col-10 { gap: 10px; } .gw-col-18 { gap: 18px; } .gw-col-32 { gap: 32px; }
+.gw-spread { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.gw-ruled-top { border-top: 1px solid var(--rule); padding-top: 14px; }
+.gw-links { display: flex; gap: 16px; flex-wrap: wrap; }
+.gw-plain-fold summary { list-style: none; display: inline; }
+.gw-plain-fold p { margin-top: 6px; }
+/* Your own report, as own-report.jpg: one narrow column. */
+.gw-own { max-width: 440px; margin: 0 auto; }
+.gw-own-in { padding: 8px 20px 40px; }
+.gw-mark-line { display: flex; gap: 10px; align-items: flex-start; }
+.gw-story { font-family: var(--name); font-size: 18px; line-height: 1.5; }
+.gw-told-row { display: grid; grid-template-columns: 18px 1fr; gap: 10px; padding: 10px 0; border-top: 1px solid var(--rule); }
+.gw-told-row .mut { margin-top: 2px; }
+.gw-gone { text-decoration: line-through; color: var(--muted); }
+/* What came up across the team in the weekly report: the prototype's amber strip. */
+.gw-att-strip { background: var(--att-soft); border-color: transparent; }
+/* A text link that is a tap target of its own keeps the 44px a thumb needs. */
+button.gw-link { min-height: 44px; display: inline-flex; align-items: center; }
+p button.gw-link, .t-small button.gw-link { min-height: 0; display: inline; }
+@media (max-width: 860px) { button.gw-link, p button.gw-link { min-height: 44px; display: inline-flex; } }
+/* Figures in the name face line up with the text around them (quality pass, D-6). */
+.t-title, .t-greet { font-variant-numeric: lining-nums; }
+/* B7: the focus band names itself inside the band, small and spaced. */
+.gw-focus-label { margin: 0 0 6px; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gw-blue-b); }
+/* The product's tap floor (44px for anything you can tap): the prototype's small button, chips, choices and view links are 36 to 40px. */
+.btn.sm, .chip, .seg button, .views a { min-height: 44px; }

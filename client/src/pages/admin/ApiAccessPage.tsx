@@ -136,7 +136,7 @@ export function ApiAccessPage() {
   const flagged = decided.filter((r) => r.flags.length > 0)
 
   return (
-    <section className="gw-page" style={{ maxWidth: 820, margin: '0 auto', padding: '24px 20px 80px' }}>
+    <section style={{ maxWidth: 820, margin: '0 auto', padding: '24px 20px 80px' }}>
       <button
         type="button"
         onClick={() => navigate('/admin/dashboard')}

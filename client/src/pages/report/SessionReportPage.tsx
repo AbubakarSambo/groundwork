@@ -291,19 +291,19 @@ export default function SessionReportPage() {
       <Page>
         {/* The prototype's own report: one narrow column, the check-in and day with "Only you", the title, the report, then
             whether the team's report is shared. */}
-        <div style={{ maxWidth: 440, margin: '0 auto' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 18, padding: '8px 20px 40px' }}>
+        <div className="gw-own">
+          <div className="gw-col-18 gw-own-in">
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="gw-spread">
               <span className="t-tiny mut">{`${checkInLabel}${data.finishedAt ? `, ${whenItWas(data.finishedAt, 'dayAndMonthLong')}` : ''}`}</span>
               {!direct && <Tag>Only you</Tag>}
             </div>
-            <h1 className="t-title" style={{ marginTop: 4 }}>Your report</h1>
+            <h1 className="t-title gw-mt-4">Your report</h1>
           </div>
           {/* Credit for checking in on time (api engagement/who-answers-and-when.ts): served to the person whose report it is, with the direct morning on. */}
           {data.onTime && <p className="t-small">{data.onTime}</p>}
           <TheCheckInYouJustFinished checkInId={checkInId!} groundId={data.groundId as string} sessionNumber={data.sessionNumber as number} light pictured />
-          <div style={{ borderTop: '1px solid var(--rule)', paddingTop: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+          <div className="gw-spread gw-ruled-top">
             <div>
               <b className="t-small">The team’s report</b>
               <div className="t-tiny mut">{teamShared ? ((shape as any)?.releaseOneSalesReport === true || direct ? 'Shared. Open it.' : 'Shared. Open it to read the whole team’s picture.') : `Not shared yet.${sharing?.says && !sharing.shared ? ` ${sharing.says.replace(/ You’ll get an email when.*$/, '')}` : ''}`}</div>

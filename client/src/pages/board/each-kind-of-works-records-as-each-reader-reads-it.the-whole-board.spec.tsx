@@ -112,7 +112,7 @@ describe('the sales org’s Deal grid: filled, with stages, and a not-known Fore
     expect(within(dealGrid).getByText('Nobody is named for it yet.')).toBeTruthy()
     expect(within(dealGrid).queryByText('Nobody named yet.')).toBeNull()
     /* One "Stage now" per row - a single tag, not the whole track. */
-    expect(within(dealGrid).getByText('Won', { selector: '.gwui-tag' })).toHaveClass('gwui-tag')
+    expect(within(dealGrid).getByText('Won', { selector: '.tag' })).toHaveClass('tag')
     expect(within(dealGrid).getByText('No stage said yet.')).toBeTruthy()
     /* The person's own words, in their own name, never a colon join and never a status tag - now
        part of the row's own detail (item 3 (c): "What shows it" has no column of its own here),

@@ -88,7 +88,7 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
 
   if (me.isError) {
     return (
-      <section className="gw-page" style={{ padding: 40, maxWidth: 640 }}>
+      <section style={{ padding: 40, maxWidth: 640 }}>
         <h1 style={{ fontSize: 20, marginBottom: 8 }}>This is not your system</h1>
         {/*
           * IT DID NOT SAY WHICH ACCOUNT IT MEANT.
@@ -161,7 +161,7 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
    */
   if (me.isPending) {
     return (
-      <section className="gw-page" style={{ padding: 40 }}>
+      <section style={{ padding: 40 }}>
         <p style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Opening the back office…</p>
       </section>
     )
@@ -178,7 +178,7 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
   const notYours = whyThisIsNotYours(location.pathname, me.data?.capabilities ?? [])
   if (notYours) {
     return (
-      <section className="gw-page" style={{ padding: 40, maxWidth: 620 }}>
+      <section style={{ padding: 40, maxWidth: 620 }}>
         <h1 style={{ fontSize: 20, marginBottom: 8 }}>That part is not yours to open</h1>
         <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 8 }}>
           {notYours.because === 'no capability'

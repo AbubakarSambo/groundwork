@@ -262,7 +262,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
             <div key={`${pr.participantId}-${pr.fix}-${pr.says}`} className="gwui-setup-problem">
               <FlexRow gap={12} justify="space-between" align="center" wrap>
                 <span>{pr.says}</span>
-                {pr.fix && FIX_SAID[pr.fix] && <button type="button" className="gw-link t-small" style={{ fontWeight: 700 }} onClick={() => fixIt(pr)}>{FIX_SAID[pr.fix]}</button>}
+                {pr.fix && FIX_SAID[pr.fix] && <button type="button" className="gw-link t-small gw-bold" onClick={() => fixIt(pr)}>{FIX_SAID[pr.fix]}</button>}
                 {pr.fix === 'let-them-in' && <Link className="gwui-open-link" to="/org/members">Let them in on People</Link>}
                 {pr.fix === 'view-plans' && <Link className="gwui-open-link" to="/billing">View plans</Link>}
               </FlexRow>

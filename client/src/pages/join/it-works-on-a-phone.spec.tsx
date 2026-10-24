@@ -66,7 +66,7 @@ describe('finishing is visible', () => {
 
   /* Forty-four pixels: the kit's button, and what a thumb hits reliably. */
   it('and is big enough to hit', () => {
-    expect(theTag()).not.toMatch(/gwui-btn-small/)
+    expect(theTag()).not.toMatch(/\bsm\b/)
   })
 
   it('and sits beside the send button rather than under the input', () => {

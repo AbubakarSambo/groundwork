@@ -104,7 +104,7 @@ export function TalkToUsPage() {
 
   if (said === 'sent') {
     return (
-      <section className="gw-page" style={{ maxWidth: 520, margin: '0 auto', padding: '56px 20px 80px' }}>
+      <section style={{ maxWidth: 520, margin: '0 auto', padding: '56px 20px 80px' }}>
         <BackOffThisPage />
         <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--gw-navy)', margin: '0 0 10px' }}>We have your request</h1>
         <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.7 }}>
@@ -119,7 +119,7 @@ export function TalkToUsPage() {
   }
 
   return (
-    <section className="gw-page" style={{ maxWidth: 520, margin: '0 auto', padding: '48px 20px 80px' }}>
+    <section style={{ maxWidth: 520, margin: '0 auto', padding: '48px 20px 80px' }}>
       <BackOffThisPage />
       <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--gw-navy)', margin: '0 0 8px' }}>Request a call</h1>
       {/*
