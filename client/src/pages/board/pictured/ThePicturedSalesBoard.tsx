@@ -293,7 +293,14 @@ export function WhatNeedsYou({ b, renderActions, groundId, deals, sessionRows, m
       })
     }
   }
-  for (const [i, d] of (b.decisions ?? []).entries()) {
+  /*
+   * WHAT NEEDS HER, ONCE (Hafsah, 24 October): the direct morning is no longer drawn above the board, so where the server serves its
+   * Needs you lines for this board they are this section's items, the same sentences as her morning. The board's own decisions are
+   * drawn only where there are none, so nothing is said twice.
+   */
+  const morningNeeds: string[] = ((b.theMorning?.parts ?? []) as Any[]).find((p: Any) => p.key === 'needsYou')?.lines ?? []
+  morningNeeds.forEach((line, i) => items.push({ key: `d-m${i}`, kind: 'look', title: String(line) }))
+  for (const [i, d] of (morningNeeds.length ? [] : (b.decisions ?? [])).entries()) {
     /* A wait is drawn once, as its own card under "Blockers" (what-needs-you-does-not-repeat-a-blocker). */
     if (d.source === 'blocker') continue
     /* A difference between people is followed under "Open issues" when that list is served. */
