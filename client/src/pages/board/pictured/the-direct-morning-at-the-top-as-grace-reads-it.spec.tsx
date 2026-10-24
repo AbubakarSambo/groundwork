@@ -51,8 +51,9 @@ describe('the top of the board, as Grace reads it', () => {
     expect(screen.queryByRole('button')).toBeNull()
   })
 
-  it('the board draws it only where the server served it, and the server serves it only to the lead with the switch on', () => {
+  /* Hafsah, 24 October: the direct morning belongs in the morning message; the board shows its own headline and What needs you, once. */
+  it('the board no longer draws it: it is the morning message’s', () => {
     const page = readFileSync(join(__dirname, '..', 'BoardPage.tsx'), 'utf8')
-    expect(page).toContain('{!groundId && (b as any).theMorning && <TheMorningAtTheTop m={(b as any).theMorning} b={b} />}')
+    expect(page).not.toContain('<TheMorningAtTheTop')
   })
 })

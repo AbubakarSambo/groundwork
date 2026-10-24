@@ -1,6 +1,7 @@
 import { theZoneDatesAreIn } from '@/lib/a-date-reads-the-same-everywhere'
 import { ItsEvidence } from '@/components/gw/ItsEvidence'
 import { useMemo, useState, type ReactNode } from 'react'
+import { FoldTheRest } from './FoldTheRest'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { reportsApi } from '@/api/reports'
@@ -1139,24 +1140,28 @@ export function ThePicturedSalesBoard(p: PicturedBoardProps) {
   const example = nextQuarterDeal ? `Why is ${nextQuarterDeal.name} next quarter?` : 'Who is waiting on whom?'
   return (
     <div className="pb">
+      {/* THE FIRST SCREEN, AS THE PROTOTYPE HAS IT (Hafsah, 24 October): the headline with what is closing the gap, What needs you, and the team. */}
       <HeadlineAndGap b={b} deals={deals} groups={groups} />
-      <WhatTheTargetAssumes b={b} />
       {/* An admin who only reads is never told "What needs you": it is not hers to do (the light board's rule, kept). */}
       {!p.readOnly && <WhatNeedsYou b={b} renderActions={p.renderActions} groundId={p.groundId} deals={deals} sessionRows={p.sessionRows} />}
-      {deals && <EveryDealDayByDay b={b} section={deals} now={now} groundId={p.groundId} />}
-      {p.otherRecords}
       <TheTeamToday b={b} deals={deals} today={isoDay(now)} groundId={p.groundId} />
-      {p.yourTeam}
-      <Blockers b={b} groundId={p.groundId} />
-      <WhatKeepsComingUp b={b} />
-      <ReportedAgainstCriteria b={b} />
-      <WhoCheckedIn b={b} />
-      {p.overTime}
+      {/* Everything else, folded under its own heading (FoldTheRest): the same sections and words, opened with a tap. */}
+      <FoldTheRest>
+        {deals && <EveryDealDayByDay b={b} section={deals} now={now} groundId={p.groundId} />}
+        {p.otherRecords}
+        {p.yourTeam}
+        <Blockers b={b} groundId={p.groundId} />
+        <OpenIssues b={b} renderActions={p.readOnly ? () => null : p.renderActions} />
+        <WhatKeepsComingUp b={b} />
+        <ReportedAgainstCriteria b={b} />
+        <WhoCheckedIn b={b} />
+        {p.overTime}
+        <HelpNobodyMentioned b={b} />
+        <WaitingOnOtherTeams groundId={p.groundId} />
+        <WhereThisIsHeading b={b} onRecordTheDecision={p.onRecordTheDecision} readOnly={p.readOnly} />
+      </FoldTheRest>
+      <WhatTheTargetAssumes b={b} />
       <Reports b={b} groundId={p.groundId} sessionRows={p.sessionRows} navigate={p.navigate} now={now} />
-      <HelpNobodyMentioned b={b} />
-      <WaitingOnOtherTeams groundId={p.groundId} />
-      <OpenIssues b={b} renderActions={p.readOnly ? () => null : p.renderActions} />
-      <WhereThisIsHeading b={b} onRecordTheDecision={p.onRecordTheDecision} readOnly={p.readOnly} />
       <AskAboutThisBoard example={example} />
       <GroundworkRecommends offers={p.recommendations} onAnswer={p.onAnswerRecommendation} busy={p.recommendationBusy} />
       {p.kindOfWork}

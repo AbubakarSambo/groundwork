@@ -378,3 +378,14 @@
 .pb-nudged { font-size: 14px; color: var(--gw-text); }
 /* "You checked in on time today, 5 days running." on your own report (SessionReportPage.tsx). */
 .pb-on-time { font-size: 15px; color: var(--gw-text); margin: 6px 0 0; }
+
+/* The rest of the board, folded under its own headings (FoldTheRest.tsx): the heading row alone, divided by rules, until opened. */
+.pb-fold-the-rest { display: flex; flex-direction: column; border-top: 1px solid var(--gw-rule); }
+.pb-fold-the-rest > section.pb-fold, .pb-fold-the-rest section.pb-fold { border-bottom: 1px solid var(--gw-rule); margin: 0; }
+.pb-fold > .gwui-section-h { cursor: pointer; min-height: 44px; display: flex; align-items: center; padding: 6px 0; }
+.pb-fold > .gwui-section-h::after { content: '›'; margin-left: auto; font-size: 20px; color: var(--gw-sub); transition: transform .15s; }
+.pb-fold.pb-fold-open > .gwui-section-h::after { transform: rotate(90deg); }
+.pb-fold:not(.pb-fold-open) > :not(.gwui-section-h) { display: none; }
+.pb-fold.pb-fold-open { padding-bottom: 16px; }
+.pb-fold > .gwui-section-h:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .pb-fold > .gwui-section-h::after { transition: none; } }

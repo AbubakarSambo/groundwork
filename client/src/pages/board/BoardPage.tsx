@@ -149,7 +149,6 @@ import { TheDirectMorning, useTheDirectMorning, isTheDirectMorningOn } from '@/l
 import { ThePicturedSalesBoard, theScheduleInWords, ThePicturedOwnDeals, ThePicturedAskBar, GroundworkRecommends } from './pictured/ThePicturedSalesBoard'
 import { ThePicturedBoard } from './pictured/ThePicturedBoard'
 import { MessageCircle } from 'lucide-react'
-import { TheMorningAtTheTop } from './pictured/TheMorningAtTheTop'
 import { YourTeamPersonByPerson } from './pictured/YourTeamPersonByPerson'
 import { TheLightSalesBoard, TheLightNeedsYou, TheLightBesideTheHeadline, TheLightBoxes, TheLightSummaryFirst } from './TheLightSalesBoard'
 import { TheCollectionsBoard } from './pictured/TheCollectionsBoard'
@@ -2718,8 +2717,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           <p role="note" className="gwui-fs-15 gwui-ink-text gwui-mt-8" style={{lineHeight: 1.55}}>{b.readOnlyNote}</p>
         )}
 
-        {/* The direct morning (pictured/TheMorningAtTheTop.tsx): served to the lead alone where her organisation's switch is on; then the board as it is. */}
-        {!groundId && (b as any).theMorning && <TheMorningAtTheTop m={(b as any).theMorning} b={b} />}
+        {/* The direct morning is the morning message's, not the board's (Hafsah, 24 October): the board shows its own headline and What needs you, once. */}
         {/* Your team, person by person (pictured/YourTeamPersonByPerson.tsx): served to the lead alone, beside the direct morning, for her monthly look. */}
         {/* On the pictured board it is drawn after the team today, where the prototype puts the people (see `yourTeam` below); elsewhere it stays here. */}
         {!groundId && (b as any).yourTeam && id && !(!picturedCollections && !picturedMatter && (((picturedLead && picturedManyInTeams) || picturedOtherKind) || (picturedLead && !picturedManyInTeams && !situationOrder))) && <YourTeamPersonByPerson groundId={id} team={(b as any).yourTeam} />}
