@@ -1075,7 +1075,7 @@ export function ContextPage({
                         visibility: e.target.value as 'OPEN' | 'OWN' | 'CLOSED',
                       })}
                       aria-label={`Who can read ${doc.name}`}
-                      className={`gwui-tag gwui-tag-control ${(doc as any).visibility === 'OPEN' ? 'gwui-tag-proven' : 'gwui-tag-plain'}`}
+                      className={`tag gwui-tag-control ${(doc as any).visibility === 'OPEN' ? 'rec' : 'plain'}`}
                     >
                       <option value="OPEN">Everyone</option>
                       <option value="OWN">Only you</option>
@@ -1104,7 +1104,7 @@ export function ContextPage({
                       title={(doc as any).visibility === 'OPEN'
                         ? 'Everyone in this check-in can read this. Click to make it yours only.'
                         : 'Only you can read this. Click to share it with everyone in this check-in.'}
-                      className={`gwui-tag gwui-tag-control ${(doc as any).visibility === 'OPEN' ? 'gwui-tag-proven' : 'gwui-tag-plain'}`}
+                      className={`tag gwui-tag-control ${(doc as any).visibility === 'OPEN' ? 'rec' : 'plain'}`}
                     >
                       {/* THE DESTINATION IN WORDS, as the design has it. "Everyone" and "Only me"
                           are what a person is choosing between; an icon or a switch makes them

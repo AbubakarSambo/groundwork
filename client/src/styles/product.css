@@ -93,3 +93,5 @@ p button.gw-link, .t-small button.gw-link { min-height: 0; display: inline; }
 /* Lines read one under another with the prototype's thin rule between them. */
 .gw-ruled-rows > * { padding: 12px 0; border-top: 1px solid var(--rule); }
 .gw-ruled-rows > :last-child { border-bottom: 1px solid var(--rule); }
+/* A column of sections 30px apart, where a part sits outside the page's own stack. */
+.gw-stack-30 > * + * { margin-top: 30px; }

@@ -50,7 +50,7 @@ export function TheCollectionsBoard({ board: c, onRecordTheDecision, onAnswer, a
                     <button
                       key={ch.label}
                       type="button"
-                      className={`gwui-btn ${/^No\b/.test(ch.label) ? 'gwui-btn-quiet' : 'gwui-btn-secondary'}`}
+                      className={`btn ${/^No\b/.test(ch.label) ? 'quiet' : 'sec'}`}
                       disabled={answering}
                       onClick={() => onAnswer(ch.route)}
                     >

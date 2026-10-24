@@ -218,7 +218,7 @@ export function TheLightBoxes() {
         <h2 id="gwui-light-else-h" className="t-h2">Everything else</h2>
         <span className="t-small mut">Tap any line to see more</span>
       </div>
-      <div className="gwui-section-body">
+      <div>
         <div className="gwui-boxes">
           {BOX_ORDER.map((box) => (
             <Box key={box} name={boxName(box, s.glance)} facts={s.glance.boxes?.[box] ?? []} defaultOpen={box === 'work' && s.onALaptop}>
@@ -262,7 +262,7 @@ export function TheLightSummaryFirst() {
           <h2 id="gwui-light-glance-h" className="t-h2">At a glance</h2>
           <span className="t-small mut">For you as an admin. The lead runs this check-in.</span>
         </div>
-        <div className="gwui-section-body">
+        <div>
           <div className="gwui-light-glance-rows">
             {BOX_ORDER.map((box) => (
               <div key={box} className="gwui-light-glance-row">

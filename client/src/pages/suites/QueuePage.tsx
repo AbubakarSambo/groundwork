@@ -248,7 +248,7 @@ export function QueuePage() {
          * for this one page.
          */
         <div className="sec">
-          <div className="gwui-section-body">
+          <div>
           <p className="gwui-panel-text">{data.says}</p>
           <Tabs
             label="Filter by suite"

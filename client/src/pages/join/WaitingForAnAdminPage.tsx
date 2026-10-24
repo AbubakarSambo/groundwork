@@ -98,7 +98,7 @@ export function WaitingForAnAdminPage() {
           <Step done>{`${who ?? 'An admin'} was asked, ${whenItWasAsked(w.askedAt)}`}</Step>
           <Step>{`${who ?? 'An admin'} lets you in`}</Step>
         </Steps>
-        <p className="gwui-pt-sub gwui-pt-sub-ink">
+        <p className="t-body gw-pt-sub">
           {/* B-147 follow-up: the prototype's own exact sentence (A3-organisations-and-joining/
               join-waiting.txt) says "check-in" here, not "session" - left as the prototype has
               it rather than swept into the session rename. */}

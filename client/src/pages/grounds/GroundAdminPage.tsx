@@ -2624,7 +2624,7 @@ export function GroundAdminPage() {
                                 }) : undefined}
                                 title={`Session ${ci.sessionNumber}: ${done ? `completed${ci.completedAt ? ' ' + whenItWas(ci.completedAt, 'dayAndMonthLong') : ''}` : going ? 'in progress' : 'not started'}${isMine ? (done ? ' - yours, open it to read your report' : ' - yours, open it') : ` - only ${p.email} can open their own session`}`}
                                 aria-label={`Session ${ci.sessionNumber}: ${done ? 'completed' : going ? 'in progress' : 'not started'}${isMine ? ', yours' : `, only ${p.email} can open it`}`}
-                                className={`gwui-tag gwui-tag-${tone}`}
+                                className={`tag ${({ proven: 'rec', attention: 'att', plain: 'plain' } as const)[tone]} gwui-tag-control`}
                               >
                                 {ci.sessionNumber}
                               </button>

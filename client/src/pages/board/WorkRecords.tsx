@@ -1418,14 +1418,14 @@ export function WorkRecordsSections({ groundId, kindOfWork, sections, participan
 
   if (collapseWhenAllNotKnown) {
     return (
-      <div className="gwui-page-wrap">
+      <div className="gw-stack-30">
         <Note tone="muted">{(sections[0] as { why: string }).why}</Note>
       </div>
     )
   }
 
   return (
-    <div className="gwui-page-wrap">
+    <div className="gw-stack-30">
       {sections.map((s) => (
         <WorkRecordSectionBlock
           key={s.section}

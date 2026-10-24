@@ -221,7 +221,7 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
             {turns.map((t, i) => (
               <div key={t.key} className="gwui-welcome-card">
                 <div className="gwui-welcome-card-head">
-                  <span className="gwui-edge-h">{t.title}</span>
+                  <span className="t-h3">{t.title}</span>
                   <Button
                     kind={t.action.label === 'Start it' && i === turns.findIndex(m => m.action.label === 'Start it') ? 'primary' : 'secondary'}
                     size="small"
