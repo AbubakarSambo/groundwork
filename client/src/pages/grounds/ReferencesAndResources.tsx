@@ -75,6 +75,8 @@ function ThePage({ groundId, served, ground, isTheLead }: { groundId: string; se
     <Stack gap={30}>
       {/* THE TOP BAR: one line on what the page is, "Ask about this work", and "Add" for the lead. */}
       <div data-gw-references-top>
+        {/* B6: the top line sits in a light band, with its two actions at the right. */}
+        <div className="gwui-ref-band">
         <FlexRow gap={12} align="center" wrap justify="space-between">
           <Text size="15" ink="sub" as="p">{served.topLine}</Text>
           <FlexRow gap={8} wrap>
@@ -82,6 +84,7 @@ function ThePage({ groundId, served, ground, isTheLead }: { groundId: string; se
             {served.mayAdd && <Button kind="primary" size="small" onClick={() => setAdding(adding ? null : 'RULE')}>Add</Button>}
           </FlexRow>
         </FlexRow>
+        </div>
         {served.mayAdd && adding && (
           <AddSomething groundId={groundId} kind={adding} onKind={setAdding} people={people} alsoSeenBy={served.peopleAlsoSeenBy} contextEnabled={ground?.contextEnabled === true}
             onDone={() => { setAdding(null); refresh() }} />
@@ -156,7 +159,8 @@ function Suggested({ groundId, items, onDone }: { groundId: string; items: NonNu
     <Section heading="Suggested from your check-ins">
       <Stack gap={10}>
         {items.map((s) => (
-          <Panel key={s.id}>
+          /* B6: one compact amber row each, what it says on the left and its three actions on the right. */
+          <div key={s.id} className="gwui-suggestion-row">
             <div data-gw-suggestion={s.id}>
               <Note tone="muted">{`${s.from}, ${s.what}.`}</Note>
               {editing?.id === s.id ? (
@@ -165,7 +169,8 @@ function Suggested({ groundId, items, onDone }: { groundId: string; items: NonNu
                 <Text size="15" weight={600} as="p">{s.says}</Text>
               )}
               {s.saidAs && <Note>{`The plan says “${s.saidAs}”`}</Note>}
-              <FlexRow gap={8} wrap>
+            </div>
+              <FlexRow gap={8} wrap align="center">
                 {editing?.id === s.id ? (
                   <>
                     <Button kind="secondary" size="small" onClick={() => edit.mutate(editing)} disabled={edit.isPending || !editing.says.trim()}>Save</Button>
@@ -179,8 +184,7 @@ function Suggested({ groundId, items, onDone }: { groundId: string; items: NonNu
                   </>
                 )}
               </FlexRow>
-            </div>
-          </Panel>
+          </div>
         ))}
       </Stack>
     </Section>
@@ -215,22 +219,23 @@ function HowWeWork({ groundId, served, onDone }: { groundId: string; served: Ser
   const h = served.howWeWork
   const empty = served.mayAdd ? 'Nothing here yet. Use Add to write the first one.' : 'Nothing here yet.'
   const part = (title: string, lines: AReferenceLine[]) => (
-    <div>
+    <Panel>
       <SubHeading as="h3">{title}</SubHeading>
       {lines.length ? <Lines lines={lines} onRemove={served.mayAdd ? (id) => remove.mutate(id) : undefined} /> : <Note tone="muted">{empty}</Note>}
-    </div>
+    </Panel>
   )
   return (
     <Section heading="How we work" note="Check-ins use these to guide each person and to know what to ask about.">
-      <Panel>
-        <Stack gap={12}>
+      {/* B6: the four parts side by side, one small panel each. */}
+      <Stack gap={8}>
+        <div className="gwui-four-up">
           {part('Rules', h.rules)}
           {part('What each stage needs', h.stageNeeds)}
           {part('Coaching', h.coaching)}
           {part('Risks to watch for', h.risks)}
-          {h.startingSetSays && <Note tone="muted">{h.startingSetSays}</Note>}
-        </Stack>
-      </Panel>
+        </div>
+        {h.startingSetSays && <Note tone="muted">{h.startingSetSays}</Note>}
+      </Stack>
     </Section>
   )
 }

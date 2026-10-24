@@ -2620,3 +2620,8 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-focus-band { background: var(--gw-navy-d); color: #fff; border-radius: 12px; padding: 16px 18px; }
 .gwui-focus-line { margin: 0; font-family: var(--gw-font-name); font-size: 19px; font-weight: 500; line-height: 1.35; color: #fff; }
 .gwui-focus-why { margin: 6px 0 0; font-size: 14.5px; color: var(--gw-blue-b); }
+/* B6, References and resources: the top band, a suggestion's compact row, and How we work's four parts side by side. */
+.gwui-ref-band { background: var(--gw-blue-bg); border-radius: 8px; padding: 10px 16px; }
+.gwui-suggestion-row { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; background: var(--gw-amber-bg); border: 1px solid var(--gw-amber-bd); border-radius: 8px; padding: 10px 14px; }
+@media (max-width: 640px) { .gwui-suggestion-row { grid-template-columns: 1fr; } }
+.gwui-four-up { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; align-items: start; }
