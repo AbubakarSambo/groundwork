@@ -33,7 +33,7 @@ type Any = any
 export type APicturedSection =
   | 'lastSession' | 'headline' | 'assumes' | 'needsYou' | 'deals' | 'agreedAtTheStart' | 'changeSinceLast' | 'ninetyDays'
   | 'history' | 'bothSeeIt' | 'teamToday' | 'blockers' | 'patterns' | 'reported' | 'whoCheckedIn' | 'overTime' | 'reports'
-  | 'everySession' | 'otherBoards' | 'help' | 'otherTeams' | 'openIssues' | 'heading' | 'ask' | 'recommends' | 'otherRecords' | 'kindOfWork'
+  | 'everySession' | 'otherBoards' | 'help' | 'otherTeams' | 'openIssues' | 'heading' | 'ask' | 'recommends' | 'otherRecords' | 'kindOfWork' | 'yourTeam'
   | 'participantNote' | 'priorities' | 'yourPart' | 'teamReport' | 'companyBoard'
   | 'theDecision' | 'accounts' | 'knownBelievedUnknown'
   | 'suggestion' | 'theCase'
@@ -731,6 +731,7 @@ export function ThePicturedBoard(p: PicturedBoardProps & { line?: string | null;
     ask: () => <AskAboutThisBoard example={example} />,
     recommends: () => <GroundworkRecommends offers={p.recommendations} onAnswer={p.onAnswerRecommendation} busy={p.recommendationBusy} />,
     otherRecords: () => p.otherRecords,
+    yourTeam: () => p.yourTeam,
     kindOfWork: () => p.kindOfWork,
     participantNote: () => <YouAreAParticipantHere leadFirstName={p.leadFirstName ?? null} />,
     priorities: () => <ThePrioritiesThisQuarter />,

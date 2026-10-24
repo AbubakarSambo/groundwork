@@ -1,11 +1,11 @@
 import { isTheDirectMorningOn } from '@/lib/the-direct-morning'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { groundsApi, type GroundCadence, type PeopleAndSetup, type ASetupProblem } from '@/api/grounds'
 import {
-  Section, Panel, FieldRows, FieldRow, SwitchRow, FieldLabel, TextField, Select, Button, Note, Callout, Stack, FlexRow,
+  Section, Panel, FieldRows, FieldRow, SwitchRow, FieldLabel, TextField, Select, Button, Note, Stack, FlexRow,
   PeopleTable, PeopleTableHead, PersonRow, Tag, Text, Folded,
 } from '@/components/gw/ui'
 import { AddPeopleForm, whereThisPersonIs } from '@/components/gw/WhosInItRoster'
@@ -254,17 +254,17 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
     <div className="gwui-page-wrap">
       {/* 1. HOW THIS CHECK-IN RUNS */}
       <Panel as="section" heading="How this check-in runs" aria-label="How this check-in runs">
-        <Stack gap={10}>
+        <Stack gap={8}>
           {page ? <Text size="18" as="p">{page.howItRuns}</Text> : servedFailed ? <Note>This part of the page could not be loaded. Try again in a moment.</Note> : null}
           {(page?.problems ?? []).map((pr) => (
-            <Callout key={`${pr.participantId}-${pr.fix}-${pr.says}`} tone="warning">
+            <div key={`${pr.participantId}-${pr.fix}-${pr.says}`} className="gwui-setup-problem">
               <FlexRow gap={12} justify="space-between" align="center" wrap>
                 <span>{pr.says}</span>
                 {pr.fix && FIX_SAID[pr.fix] && <Button kind="quiet" size="small" onClick={() => fixIt(pr)}>{FIX_SAID[pr.fix]}</Button>}
                 {pr.fix === 'let-them-in' && <Link className="gwui-open-link" to="/org/members">Let them in on People</Link>}
                 {pr.fix === 'view-plans' && <Link className="gwui-open-link" to="/billing">View plans</Link>}
               </FlexRow>
-            </Callout>
+            </div>
           ))}
         </Stack>
       </Panel>
@@ -272,16 +272,17 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
       {/* 2. WHAT IT IS */}
       <Section heading="What it is">
         <Panel>
-          <FieldRows>
-            <FieldRow
+          {/* B8: the three fields side by side, each label above its field. */}
+          <div className="gwui-three-fields">
+            <AFieldWithItsLabel
               label="Name"
               value={canEditRunOrAdmin
                 ? <TextField aria-label="Name" value={draft.label} onChange={(e) => set('label', e.target.value)} />
                 : g?.label}
             />
-            <FieldRow label="Scenario" value={g?.scenario ? scenarioLabel(g.scenario, g.brief) : 'Not set.'} />
+            <AFieldWithItsLabel label="Scenario" value={g?.scenario ? scenarioLabel(g.scenario, g.brief) : 'Not set.'} />
             {typeServed ? (
-            <FieldRow
+            <AFieldWithItsLabel
               label="Kind of work"
               value={typeServed.mayConfirm
                 ? (
@@ -293,7 +294,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
                 : (typeServed.offered.find((t) => t.type === typeServed.type)?.label ?? 'Nobody has said yet.')}
             />
             ) : (
-            <FieldRow
+            <AFieldWithItsLabel
               label="Kind of work"
               value={canEditRunOrAdmin && page
                 ? (
@@ -305,7 +306,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
                 : (g?.kindOfWork ? ((KIND_OF_WORK_OPTION_LABEL as Record<string, string>)[g.kindOfWork] ?? g.kindOfWork) : 'Nobody has said yet.')}
             />
             )}
-          </FieldRows>
+          </div>
           {typeServed && <Note>{typeServed.says}</Note>}
           {!direct && <Note>The scenario and kind of work decide the board, the reports, and what each check-in asks about.</Note>}
         </Panel>
@@ -355,7 +356,8 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
                 <div id={`person-${p.id}`} key={p.id}>
                   <PersonRow
                     extraColumns="minmax(170px, 1fr) 190px 210px"
-                    person={{ initials: initialsOf(row.name), name: row.name, level: isLead ? 'Runs it' : 'Checks in', email: p.userId ? p.email : undefined }}
+                    /* B8: the name and "Runs it" or "Checks in"; the address is on the person's own page and on hover. */
+                    person={{ initials: initialsOf(row.name), name: row.name, level: <span title={p.userId ? p.email : undefined}>{isLead ? 'Runs it' : 'Checks in'}</span> }}
                     help={row.help}
                   >
                     <span>
@@ -373,7 +375,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
                       {numberFor === p.id
                         ? <TheirNumber groundId={id} participantId={p.id} name={row.name} phone={phone} onDone={() => setNumberFor(null)} />
                         : phone
-                          ? <>{aNumberAsShown(phone)}{' '}<button type="button" className="gwui-plain-link" onClick={() => setNumberFor(p.id)}>Change</button>{onWhatsApp?.says ? <Text size="13" ink="sub" as="p">{onWhatsApp.says}</Text> : null}</>
+                          ? <>{aNumberAsShown(phone)}{' '}<button type="button" className="gwui-plain-link" onClick={() => setNumberFor(p.id)}>Change</button>{onWhatsApp?.says ? <span className="gwui-sr-only">{onWhatsApp.says}</span> : null}</>
                           : <>None yet{' '}<button type="button" className="gwui-plain-link" onClick={() => setNumberFor(p.id)}>Add a number</button></>}
                     </span>
                     <Stack gap={4}>
@@ -382,10 +384,12 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
                           {[1, 2, 3, 4, 5].map((i) => <i key={i} className={i <= stage.reached ? 'on' : undefined} />)}
                         </span>
                       )}
-                      <Tag tone={problem ? row.tone : 'proven'}>{problem || !stage ? row.statusText : STAGE_SAID[stage.reached]}</Tag>
-                      {stage && <Text size="13" ink="sub" as="p">{stage.says}</Text>}
-                      {row.sessionLine && <Text size="13" ink="sub" as="p">{row.sessionLine}</Text>}
-                      <Text size="13" ink="sub" as="p">{row.when}</Text>
+                      <span title={[stage?.says, row.sessionLine, row.when].filter(Boolean).join(' ')}>
+                        <Tag tone={problem ? row.tone : 'proven'}>{problem || !stage ? row.statusText : STAGE_SAID[stage.reached]}</Tag>
+                      </span>
+                      {/* B8 draws the bar and its label only. The sentences behind them are kept for anyone who needs them: one quiet line when something is wrong, the rest on hover and for screen readers. */}
+                      {problem && stage && <Text size="13" ink="sub" as="p">{stage.says}</Text>}
+                      <span className="gwui-sr-only">{[problem ? null : stage?.says, row.sessionLine, row.when].filter(Boolean).join(' ')}</span>
                     </Stack>
                   </PersonRow>
                 </div>
@@ -771,5 +775,15 @@ function TheJoinLink({ joinToken, label, joined, onShareCode }: { joinToken: str
         </Stack>
       </FlexRow>
     </Panel>
+  )
+}
+
+/** One field of B8's "What it is" row: its label above it, small and quiet, then the field or the plain value. */
+function AFieldWithItsLabel({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="gwui-field-with-label">
+      <span className="gwui-field-label">{label}</span>
+      {typeof value === 'string' ? <Text size="15" as="p">{value}</Text> : value}
+    </div>
   )
 }

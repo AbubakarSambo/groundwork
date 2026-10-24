@@ -21,7 +21,7 @@ const wrap = (ui: any) => render(<QueryClientProvider client={new QueryClient()}
 const partOf = (first: string) => {
   const p = (document.querySelectorAll('[data-actions-for]') as any)
   const person = [...drop.people, ...fees.people].find((x: any) => x.name.startsWith(`${first} `))
-  return [...p].find((el: any) => el.getAttribute('data-actions-for') === person.participantId).closest('.gwui-panel') ?? document.body
+  return [...p].find((el: any) => el.getAttribute('data-actions-for') === person.participantId).closest('section[aria-label]') ?? document.body
 }
 
 describe('Grace reads her team', () => {

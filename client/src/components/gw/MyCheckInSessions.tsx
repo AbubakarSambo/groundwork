@@ -49,31 +49,28 @@ export function MyCheckInSessions({ groundId }: { groundId: string }) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+    /* Rows divided by thin rules, as the prototype's lists are, not a box around each one. */
+    <div className="gwui-ruled">
       {sessions.map(s => {
         const open = openId === s.checkInId
         const label = s.isSelfCorrection
           ? `Added to session ${s.correctionOf ?? s.sessionNumber}, on ${whenItWas(s.date, 'full')}`
           : `Session ${s.sessionNumber}, on ${whenItWas(s.date, 'full')}`
         return (
-          <div key={s.checkInId} style={{ border: '1px solid var(--gw-border)', borderRadius: 10, background: 'white', overflow: 'hidden' }}>
+          <div key={s.checkInId} className="gwui-ruled-row">
             <button
               type="button"
               onClick={() => setOpenId(open ? null : s.checkInId)}
               aria-expanded={open}
-              style={{
-                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-                padding: '12px 14px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-                fontSize: 13.5, fontWeight: 600, color: 'var(--gw-text)', textAlign: 'left',
-              }}
+            className="gwui-session-row-btn"
             >
               <span>{label}</span>
-              <span style={{ fontSize: 12, color: 'var(--gw-navy)', fontWeight: 700, flexShrink: 0 }}>
+              <span className="gwui-session-row-open">
                 {open ? 'Hide' : 'Open'}
               </span>
             </button>
             {open && (
-              <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 12, borderTop: '1px solid var(--gw-border)', paddingTop: 12 }}>
+              <div className="gwui-session-row-body">
                 <SessionDivider
                   sessionNumber={s.sessionNumber}
                   date={s.date}

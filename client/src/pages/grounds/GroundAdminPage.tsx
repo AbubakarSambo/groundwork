@@ -1713,7 +1713,8 @@ export function GroundAdminPage() {
           Both this attention line and the session-line paragraph further down are wrapped on
           `isInitiator` now; an org admin who is not the lead still sees the one sentence above.
         */}
-        {isInitiator && (() => {
+        {/* The prototype draws nothing between the tabs and a tab's own content: these three lines belong to the check-in itself, so they sit on the Check-in tab only (B8 has "Give it more time" under When it runs). */}
+        {tab === 'chat' && isInitiator && (() => {
           const a = attention
           const say: { t: string; tone?: 'amber' | 'navy' } | null =
             a.kind === 'overdue' ? { t: a.daysLate === 1 ? 'Your turn. It is 1 day late.' : `Your turn. It is ${a.daysLate} days late.`, tone: 'amber' }
@@ -1746,7 +1747,7 @@ export function GroundAdminPage() {
           costs and how many people have still not answered, because the decision it is asking for
           is whether those people still will.
         */}
-        {(() => {
+        {tab === 'chat' && (() => {
           const left = whenItRunsOut(ground as any)
           if (left.state === 'fine') return null
           const said = sayHowLongIsLeft(left, ground.overdue ?? 0)
@@ -1797,7 +1798,7 @@ export function GroundAdminPage() {
         */}
         {/* REVIEW ROUND 3, ITEM 3: THE SESSION LINE (AND "How to run one") IS NOT FOR A
             NON-RUNNING ADMIN EITHER - same rule as the attention line above. */}
-        {isInitiator && (() => {
+        {tab === 'chat' && isInitiator && (() => {
           const parts: string[] = []
           /* B-215 (review 5): when the check-in has stalled, the "Out of time" box just above this
              line already says so in full. Pushing the same bare "Out of time" onto this line too
@@ -2008,7 +2009,7 @@ export function GroundAdminPage() {
           * right now" for a check-in she was never going to have.
           */}
         {tab === 'chat' && (
-          <div>
+          <div className="gwui-stack-32">
             {/*
              * PAST CHECK-INS ON THE CHECK-IN TAB, AS PRODUCTION HAS THEM (fix list, item 1, 14 October): a party reads their
              * own past conversations here (only their own words, enforced on the server); a lead or an admin who does not

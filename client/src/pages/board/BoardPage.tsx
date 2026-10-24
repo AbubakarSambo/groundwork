@@ -2721,7 +2721,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {/* The direct morning (pictured/TheMorningAtTheTop.tsx): served to the lead alone where her organisation's switch is on; then the board as it is. */}
         {!groundId && (b as any).theMorning && <TheMorningAtTheTop m={(b as any).theMorning} b={b} />}
         {/* Your team, person by person (pictured/YourTeamPersonByPerson.tsx): served to the lead alone, beside the direct morning, for her monthly look. */}
-        {!groundId && (b as any).yourTeam && id && <YourTeamPersonByPerson groundId={id} team={(b as any).yourTeam} />}
+        {/* On the pictured board it is drawn after the team today, where the prototype puts the people (see `yourTeam` below); elsewhere it stays here. */}
+        {!groundId && (b as any).yourTeam && id && !(!picturedCollections && !picturedMatter && (((picturedLead && picturedManyInTeams) || picturedOtherKind) || (picturedLead && !picturedManyInTeams && !situationOrder))) && <YourTeamPersonByPerson groundId={id} team={(b as any).yourTeam} />}
         {picturedCollections && b.collections && (
           <TheCollectionsBoard
             board={b.collections}
@@ -2753,7 +2754,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               ? ['headlineTargets', 'needsYou', 'everySale', 'reported', 'blockers', 'patterns', 'overTime', 'reports', 'otherBoards', 'heading', 'ask', 'recommends']
               : ['headlineTargets', 'needsYou', 'everySale', 'teamToday', 'reported', 'themes', 'byTeam', 'whoCheckedIn', 'blockers', 'patterns', 'overTime', 'reports', 'otherBoards', 'heading', 'ask', 'recommends'])
               /* With no piece of work on record yet, the kind of work's own empty table says so and offers to add one, in place of the table. */
-              .flatMap((k) => (k === 'everySale' && !(b.workRecords ?? []).some((x: any) => (x.section === 'Deal grid' || x.section === 'Work plan') && (x.rows ?? []).length) ? ['kindOfWork', 'otherRecords'] : [k]))) as any}
+              .flatMap((k) => (k === 'everySale' && !(b.workRecords ?? []).some((x: any) => (x.section === 'Deal grid' || x.section === 'Work plan') && (x.rows ?? []).length) ? ['kindOfWork', 'otherRecords'] : [k]))
+              /* The lead's person-by-person part goes after the team today, or before where this is heading when there is no team today. */
+              .flatMap((k, _i, all) => (k === 'teamToday' ? [k, 'yourTeam'] : k === 'heading' && !all.includes('teamToday') ? ['yourTeam', k] : [k]))) as any}
+            yourTeam={!groundId && (b as any).yourTeam && id ? <YourTeamPersonByPerson groundId={id} team={(b as any).yourTeam} /> : null}
             otherRecords={(
               <WorkRecordsSections
                 groundId={id!}
@@ -2821,6 +2825,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           <ThePicturedSalesBoard
             b={b}
             groundId={id!}
+            yourTeam={!groundId && (b as any).yourTeam && id ? <YourTeamPersonByPerson groundId={id} team={(b as any).yourTeam} /> : null}
             sessionRows={sessionRows as any[]}
             renderActions={(action) => <ActionButtons groundId={id!} action={action} />}
             overTime={overTimeSection()}

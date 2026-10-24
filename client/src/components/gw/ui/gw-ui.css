@@ -2595,3 +2595,16 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   .gwui-done-changed .gw-ladder-stages { gap: 4px; letter-spacing: -0.01em; }
   .gwui-done-changed .gw-ladder-stages li { overflow-wrap: normal; word-break: normal; }
 }
+
+/* THE PROTOTYPE'S DENSITY, AS CLASSES (wip/ui, 24 October): rows divided by thin rules, not boxes. */
+.gwui-stack-32 { display: flex; flex-direction: column; gap: 32px; }
+.gwui-three-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.gwui-field-with-label { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.gwui-setup-problem { background: var(--gw-amber-bg); border: 1px solid var(--gw-amber-bd); border-radius: 8px; padding: 4px 12px; font-size: 14.5px; color: var(--gw-text); }
+.gwui-ruled { border-top: 1px solid var(--gw-rule); }
+.gwui-ruled-row { border-bottom: 1px solid var(--gw-rule); }
+.gwui-person-part { border-bottom: 1px solid var(--gw-rule); padding: 18px 0; }
+.gwui-person-part-name { margin: 0; font-size: 17px; font-weight: 700; color: var(--gw-text); }
+.gwui-session-row-btn { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 10px 0; background: none; border: none; cursor: pointer; font-family: inherit; font-size: 15px; font-weight: 400; color: var(--gw-text); text-align: left; }
+.gwui-session-row-open { font-size: 14.5px; color: var(--gw-navy); font-weight: 700; flex-shrink: 0; }
+.gwui-session-row-body { padding: 4px 0 16px; display: flex; flex-direction: column; gap: 12px; }

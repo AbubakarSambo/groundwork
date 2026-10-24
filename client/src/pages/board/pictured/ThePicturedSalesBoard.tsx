@@ -47,6 +47,8 @@ export interface PicturedBoardProps {
   kindOfWork?: ReactNode
   /** The record's other sections that hold something (a forecast from another system), drawn as the board always drew them. */
   otherRecords?: ReactNode
+  /** The lead's person-by-person part (YourTeamPersonByPerson), drawn after the team today rather than above the board. */
+  yourTeam?: ReactNode
   /** An admin who only reads (read-only-view.jpg): the same board, with nothing to press that only whoever runs it may do. */
   readOnly?: boolean
 }
@@ -974,13 +976,16 @@ export function OpenIssues({ b, renderActions }: { b: Any; renderActions: (a: An
   /* The direct morning (lib/the-direct-morning.tsx): no note that explains the board or says who sees what. */
   const direct = useTheDirectMorning()
   const data = b.openIssues
-  const rows: Any[] = Array.isArray(data?.issues) ? data.issues : []
+  const all: Any[] = Array.isArray(data?.issues) ? data.issues : []
+  /* The picture shows a short row of issues. The first three are drawn, in the engine's order; the rest wait behind one quiet link. */
+  const [everyOne, setEveryOne] = useState(false)
+  const rows: Any[] = everyOne ? all : all.slice(0, 3)
   if (!data) return null
   /* The kit shows Open issues only with issues in it (quality pass, 18 October, B-25; standing decision 4 of the findings). */
-  if (b.releaseOneSalesBoard && !rows.length) return null
+  if (b.releaseOneSalesBoard && !all.length) return null
   return (
     <Section heading="Open issues" note={direct ? undefined : 'Each one moving towards a decision. You always choose'}>
-      {rows.length === 0 ? (
+      {all.length === 0 ? (
         <Panel><p className="gwui-panel-text">{data.why ?? 'Nothing is open.'}</p></Panel>
       ) : (
         <div className="pb-issues">
@@ -1013,6 +1018,11 @@ export function OpenIssues({ b, renderActions }: { b: Any; renderActions: (a: An
             )
           })}
         </div>
+      )}
+      {all.length > 3 && (
+        <Button kind="quiet" onClick={() => setEveryOne((v) => !v)} aria-expanded={everyOne}>
+          {everyOne ? 'Show the first three' : `Show all ${all.length}`}
+        </Button>
       )}
     </Section>
   )
@@ -1136,6 +1146,7 @@ export function ThePicturedSalesBoard(p: PicturedBoardProps) {
       {deals && <EveryDealDayByDay b={b} section={deals} now={now} groundId={p.groundId} />}
       {p.otherRecords}
       <TheTeamToday b={b} deals={deals} today={isoDay(now)} groundId={p.groundId} />
+      {p.yourTeam}
       <Blockers b={b} groundId={p.groundId} />
       <WhatKeepsComingUp b={b} />
       <ReportedAgainstCriteria b={b} />
