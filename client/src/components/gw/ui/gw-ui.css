@@ -768,6 +768,8 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-btn-primary { background: var(--gw-navy); color: #fff; }
 .gwui-btn-primary:hover:not(:disabled) { background: var(--gw-navy-d); }
 .gwui-btn-secondary { background: var(--gw-card); color: var(--gw-text); box-shadow: inset 0 0 0 1.5px var(--gw-rule-2); }
+/* The prototype's hover for a button that is not primary (.btn:hover{filter:brightness(.97)}). */
+.gwui-btn-secondary:hover:not(:disabled), .gwui-btn-danger:hover:not(:disabled) { filter: brightness(.97); }
 .gwui-btn-quiet { background: transparent; color: var(--gw-navy); padding: 0 8px; }
 .gwui-btn-quiet:hover:not(:disabled) { text-decoration: underline; }
 /* the danger kind (app.css: .btn.danger{background:var(--con);color:#fff}) - solid red, the
@@ -2627,3 +2629,6 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 @media (max-width: 640px) { .gwui-suggestion-row { grid-template-columns: 1fr; } }
 .gwui-four-up { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; align-items: start; }
 .gwui-composer-aside { padding: 4px 16px 8px; }
+/* B8, People and setup: the summary line in Literata, and a field's label small and quiet above it. */
+.gwui-b8-line { margin: 0; font-family: var(--gw-font-name); font-size: 19px; font-weight: 500; line-height: 1.35; color: var(--gw-text); }
+.gwui-b8-field-label { font-size: 13px; color: var(--gw-sub); }

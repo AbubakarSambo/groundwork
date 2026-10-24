@@ -253,9 +253,11 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
   return (
     <div className="gwui-page-wrap">
       {/* 1. HOW THIS CHECK-IN RUNS */}
-      <Panel as="section" heading="How this check-in runs" aria-label="How this check-in runs">
+      {/* B8: a small uppercase label, then the one line in Literata. */}
+      <Panel as="section" aria-label="How this check-in runs">
         <Stack gap={8}>
-          {page ? <Text size="18" as="p">{page.howItRuns}</Text> : servedFailed ? <Note>This part of the page could not be loaded. Try again in a moment.</Note> : null}
+          <h2 className="gwui-ci-prior-label gwui-m-0">How this check-in runs</h2>
+          {page ? <p className="gwui-b8-line">{page.howItRuns}</p> : servedFailed ? <Note>This part of the page could not be loaded. Try again in a moment.</Note> : null}
           {(page?.problems ?? []).map((pr) => (
             <div key={`${pr.participantId}-${pr.fix}-${pr.says}`} className="gwui-setup-problem">
               <FlexRow gap={12} justify="space-between" align="center" wrap>
@@ -782,7 +784,7 @@ function TheJoinLink({ joinToken, label, joined, onShareCode }: { joinToken: str
 function AFieldWithItsLabel({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="gwui-field-with-label">
-      <span className="gwui-field-label">{label}</span>
+      <span className="gwui-b8-field-label">{label}</span>
       {typeof value === 'string' ? <Text size="15" as="p">{value}</Text> : value}
     </div>
   )

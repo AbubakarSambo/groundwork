@@ -2689,7 +2689,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {shortUpdatedLine ? (
           <UpdatedLine short={whenTheBoardLastChangedInShort(b.lastChangedAt)} full={whenTheBoardLastChanged(b.lastChangedAt, direct)} />
         ) : whenTheBoardLastChanged(b.lastChangedAt, direct) ? (
-          <p className="gwui-fs-15 gwui-ink-sub gwui-mt-14" style={{lineHeight: 1.55}}>
+          /* The prototype's own size for it (t-tiny, 13px), directly under the tabs. */
+          <p className="gwui-fs-13 gwui-ink-sub gwui-mt-8" style={{lineHeight: 1.4}}>
             {whenTheBoardLastChanged(b.lastChangedAt, direct)}
           </p>
         ) : null}

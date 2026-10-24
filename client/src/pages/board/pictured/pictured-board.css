@@ -387,5 +387,5 @@
 .pb-fold.pb-fold-open > .gwui-section-h::after { transform: rotate(90deg); }
 .pb-fold:not(.pb-fold-open) > :not(.gwui-section-h) { display: none; }
 .pb-fold.pb-fold-open { padding-bottom: 16px; }
-.pb-fold > .gwui-section-h:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 2px; }
+.pb-fold > .gwui-section-h:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .pb-fold > .gwui-section-h::after { transition: none; } }
