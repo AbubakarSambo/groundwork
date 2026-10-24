@@ -119,9 +119,11 @@ function AboutThisWork({ groundId, served, ground, isTheLead }: { groundId: stri
               <p data-gw-references-purpose className="gwui-panel-text gwui-pre-line">{'“'}{a.purpose}{'”'}</p>
               {a.whose && <Note>{a.whose}</Note>}
               {a.yourOwnWords && (
-                <Folded summary="What you wrote">
-                  <p className="gwui-panel-text-muted gwui-pre-line">{a.yourOwnWords}</p>
-                </Folded>
+                /* A plain fold with no box of its own: the prototype never puts a box inside a box. */
+                <details className="t-small">
+                  <summary className="gw-link" style={{ listStyle: 'none', display: 'inline' }}>What you wrote</summary>
+                  <p className="mut gwui-pre-line" style={{ marginTop: 6 }}>{a.yourOwnWords}</p>
+                </details>
               )}
             </>
           ) : (
@@ -144,7 +146,7 @@ function AboutThisWork({ groundId, served, ground, isTheLead }: { groundId: stri
           </Panel>
         )}
         {/* "What doing well looks like" moves here from People and setup, with its versions and wording (Hafsah, 18 October). */}
-        <BaselinePanel groundId={groundId} canState={isTheLead} groundStartedAt={ground?.startsAt || ground?.createdAt} />
+        <BaselinePanel asFold groundId={groundId} canState={isTheLead} groundStartedAt={ground?.startsAt || ground?.createdAt} />
       </Stack>
     </Section>
   )
@@ -154,6 +156,7 @@ function AboutThisWork({ groundId, served, ground, isTheLead }: { groundId: stri
 
 function Suggested({ groundId, items, onDone }: { groundId: string; items: NonNullable<Served['suggested']>; onDone: () => void }) {
   const [editing, setEditing] = useState<{ id: string; says: string } | null>(null)
+  const [showAll, setShowAll] = useState(false)
   const failed = (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. Try again in a moment.')
   const add = useMutation({ mutationFn: (id: string) => groundsApi.confirmPlanCard(groundId, id, null), onSuccess: onDone, onError: failed })
   const dismiss = useMutation({ mutationFn: (id: string) => groundsApi.planCardNotNow(groundId, id), onSuccess: onDone, onError: failed })
@@ -161,7 +164,7 @@ function Suggested({ groundId, items, onDone }: { groundId: string; items: NonNu
   return (
     <Section heading="Suggested from your check-ins">
       <Stack gap={10}>
-        {items.map((s) => (
+        {items.slice(0, showAll ? items.length : 2).map((s, i) => (
           /* B6: one compact amber row each, what it says on the left and its three actions on the right. */
           <div key={s.id} className="gwui-suggestion-row">
             <div data-gw-suggestion={s.id}>
@@ -181,14 +184,18 @@ function Suggested({ groundId, items, onDone }: { groundId: string; items: NonNu
                   </>
                 ) : (
                   <>
-                    <Button kind="secondary" size="small" onClick={() => add.mutate(s.id)} disabled={add.isPending}>Add</Button>
+                    {/* B6: Add, Edit, and Dismiss as a plain word. Only the first card's Add is navy. */}
+                    <Button kind={i === 0 ? 'primary' : 'secondary'} size="small" onClick={() => add.mutate(s.id)} disabled={add.isPending}>Add</Button>
                     <Button kind="secondary" size="small" onClick={() => setEditing({ id: s.id, says: s.says })}>Edit</Button>
-                    <Button kind="quiet" size="small" onClick={() => dismiss.mutate(s.id)} disabled={dismiss.isPending}>Dismiss</Button>
+                    <button type="button" className="gw-link t-small" onClick={() => dismiss.mutate(s.id)} disabled={dismiss.isPending}>Dismiss</button>
                   </>
                 )}
               </FlexRow>
           </div>
         ))}
+        {items.length > 2 && !showAll && (
+          <button type="button" className="gw-link t-small" style={{ alignSelf: 'flex-start' }} onClick={() => setShowAll(true)}>{`Show the other ${items.length - 2}`}</button>
+        )}
       </Stack>
     </Section>
   )
@@ -205,7 +212,7 @@ function Lines({ lines, onRemove }: { lines: AReferenceLine[]; onRemove?: (id: s
             <span>{l.text}</span>
             {l.fromTheTemplate && <Tag>{'Groundwork’s'}</Tag>}
             {l.onlyYou && <Tag tone="attention">Only you</Tag>}
-            {onRemove && !l.fromTheTemplate && <Button kind="quiet" size="small" onClick={() => onRemove(l.id)}>Remove</Button>}
+            {onRemove && !l.fromTheTemplate && <button type="button" className="gw-link t-small" onClick={() => onRemove(l.id)}>Remove</button>}
           </FlexRow>
         </li>
       ))}
@@ -419,7 +426,7 @@ function People({ groundId, people, alsoSeenBy, onDone }: { groundId: string; pe
     ) : (
       <FlexRow gap={8} align="center" wrap>
         <span>{line?.text ?? (kind === 'PERSON_NOTE' ? 'No note yet.' : 'Nothing yet.')}</span>
-        <Button kind="quiet" size="small" onClick={() => setEditing({ pid: p.participantId, kind, lineId: line?.id ?? null, text: line?.text ?? '' })}>{line ? 'Change' : 'Add'}</Button>
+        <button type="button" className="gw-link t-small" onClick={() => setEditing({ pid: p.participantId, kind, lineId: line?.id ?? null, text: line?.text ?? '' })}>{line ? 'Change' : 'Add'}</button>
       </FlexRow>
     )
   )

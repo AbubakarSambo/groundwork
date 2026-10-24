@@ -177,7 +177,8 @@ function FeedbackWidget() {
    * as People; "Send feedback" on the person's own menu (and "More" on a phone) still opens the
    * same panel.
    */
-  const hideTrigger = location.pathname === '/more' || location.pathname.startsWith('/checkin/')
+  /* The prototype has no floating Feedback pill: "Send feedback" on the person's own menu opens it (Hafsah, 24 October: fewer buttons). */
+  const hideTrigger = true || location.pathname === '/more' || location.pathname.startsWith('/checkin/')
     || location.pathname === '/chat' || location.pathname === '/settings/suites' || location.pathname === '/org/members'
     || location.pathname === '/settings'
     /* BROWSER TEST, 20 OCTOBER: AND A CHECK-IN'S "PEOPLE AND SETUP", FOR THE SAME REASON AS PEOPLE. At 1280 by 900 the

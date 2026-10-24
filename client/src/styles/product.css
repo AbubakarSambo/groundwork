@@ -26,3 +26,7 @@
 /* A plain text link for an action the prototype does not draw as a button (Hafsah, 24 October: fewer buttons). */
 .gw-link { background: none; border: 0; padding: 0; font: inherit; color: var(--act); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; text-align: left; }
 .gw-link:disabled { color: var(--muted); cursor: not-allowed; }
+/* A setting that is on or off, as B8 draws it: a plain checkbox in the navy. */
+.gw-check { width: 20px; height: 20px; margin: 0; accent-color: var(--navy); cursor: pointer; flex: none; }
+/* The prototype's sign-in links sit at the two ends of their row; its own rule styles them as links (a), these are buttons. */
+.signlinks .btn { font-size: 14.5px; white-space: nowrap; min-height: 40px; padding: 0; }

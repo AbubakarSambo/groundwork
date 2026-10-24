@@ -67,12 +67,11 @@ export function WhichDaysTheyWork({
             onChange(workingDaysOf(next).sort((a, b) => a - b))
           }}
         />
-        <ToggleChoices
-          label="Weekdays or any day"
-          options={[{ key: 'weekdays', label: 'Weekdays only' }, { key: 'any', label: 'Any day is fine' }]}
-          values={[weekdaysOnly ? 'weekdays' : '', days.length === 0 ? 'any' : ''].filter(Boolean)}
-          onToggle={(key) => onChange(key === 'weekdays' ? [...WEEKDAYS] : [])}
-        />
+        {/* The two quick choices as plain words, not more buttons beside the seven days (Hafsah, 24 October: fewer buttons). */}
+        <p className="t-small" role="group" aria-label="Weekdays or any day" style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+          <button type="button" className="gw-link" aria-pressed={weekdaysOnly} onClick={() => onChange([...WEEKDAYS])}>Weekdays only</button>
+          <button type="button" className="gw-link" aria-pressed={days.length === 0} onClick={() => onChange([])}>Any day is fine</button>
+        </p>
         {/* Said in plain words, because seven small buttons do not tell anybody what will happen. */}
         <Text size="14-5" ink="sub" as="p">{whatTheDaysMean(value)}</Text>
       </Stack>

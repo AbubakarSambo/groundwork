@@ -16,7 +16,7 @@
  * exclusion on its own.
  */
 export function visiblePrimaryButtons(container: HTMLElement): Element[] {
-  return Array.from(container.querySelectorAll('.gwui-btn-primary')).filter(
+  return Array.from(container.querySelectorAll('.btn.pri')).filter(
     (el) => !el.closest('.gwui-ec-savecard-overlay-hidden'),
   )
 }

@@ -346,8 +346,9 @@ a.gwui-person-row:hover { background: var(--gw-page); }
   display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
   font-size: 14.5px;
 }
-.gwui-person-help-look { background: var(--gw-amber-bg); color: var(--gw-amber-t); }
-.gwui-person-help-concern { background: var(--gw-red-bg); color: var(--gw-red-t); }
+/* B8: what a person still needs reads as a line in their row, in its colour, with no box of its own. */
+.gwui-person-help-look { color: var(--gw-amber-t); background: none; padding: 0; }
+.gwui-person-help-concern { color: var(--gw-red-t); background: none; padding: 0; }
 /* The heading goes where the rows stack (1180px, below), not only on a phone: at 1024 the rows were
    cards under a heading that still named five columns, the last cut off (live walk, 6 October). */
 @media (max-width: 1180px) {
@@ -1598,13 +1599,14 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    real fault a picture check found here (coordinator, after the first pass): rgb(247, 241, 229)
    painted over #FDFBF6. */
 .gwui-split { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); background: var(--gw-page); }
-.gwui-split-form { padding: clamp(24px, 6vw, 96px); display: flex; flex-direction: column; }
-.gwui-split-body { max-width: 420px; width: 100%; margin: auto 0; padding-top: 32px; }
+/* A2 (the prototype's sign-in): the form's column is padded 56px 96px, the mark at its top, the heading 80px under it. */
+.gwui-split-form { padding: 56px 96px; display: flex; flex-direction: column; gap: 28px; }
+.gwui-split-body { max-width: 420px; width: 100%; margin: 80px 0 0; }
 /* The split form's own top-level rhythm (signin.jpg's source, s1.js: the form's outer column is
    `gap:24px` between its heading, its fields and the line under them) - clear space between the
    subtitle and the first field, the fault a picture check found here (coordinator, after the
    first pass): the heading and the form used to sit with no gap at all. */
-.gwui-split-body > * + * { margin-top: 24px; }
+.gwui-split-body > * + * { margin-top: 28px; }
 .gwui-split-panel { background: var(--gw-dark); color: #fff; padding: clamp(24px, 5vw, 72px); display: flex; flex-direction: column; justify-content: center; }
 .gwui-split-panel-line { font-family: var(--gw-font-name); font-size: 28px; line-height: 1.35; margin: 0 0 22px; max-width: 540px; }
 .gwui-split-panel-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; font-size: 16px; }
@@ -1614,9 +1616,9 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-split-dot-proven { background: var(--gw-green-b); }
 @media (max-width: 860px) {
   .gwui-split { grid-template-columns: minmax(0, 1fr); }
-  .gwui-split-panel { display: none; }
-  .gwui-split-form { padding: 24px 16px 40px; }
-  .gwui-split-body { margin: 0; padding-top: 28px; }
+  /* On a phone the prototype keeps the dark half, under the form. */
+  .gwui-split-form { padding: 56px 18px 28px; }
+  .gwui-split-panel { padding: 56px 18px; }
 }
 
 /* THE TWO SMALL TEXT ACTIONS UNDER A SIGN-IN FORM (signin.jpg: "Forgot password?" / "New here?
@@ -2535,6 +2537,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-chip-label { font-size: 14px; color: var(--gw-sub); }
 /* B7's focus this week: the one dark band, its line in Literata. */
 .gwui-focus-band { background: var(--gw-navy-d); color: #fff; border-radius: 12px; padding: 16px 18px; }
+.gwui-focus-label { margin: 0 0 6px; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gw-blue-b); }
 .gwui-focus-line { margin: 0; font-family: var(--gw-font-name); font-size: 19px; font-weight: 500; line-height: 1.35; color: #fff; }
 .gwui-focus-why { margin: 6px 0 0; font-size: 14.5px; color: var(--gw-blue-b); }
 /* B6, References and resources: the top band, a suggestion's compact row, and How we work's four parts side by side. */

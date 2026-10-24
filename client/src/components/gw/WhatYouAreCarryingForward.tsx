@@ -90,8 +90,8 @@ export function WhatYouAreCarryingForward({
                 <button
                   onClick={() => mySoloReport.shared ? setSoloSharedMut.mutate(false) : setShowShareConfirm(true)}
                   disabled={setSoloSharedMut.isPending}
-                  className="gwui-tap-44"
-                  style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: '1px solid var(--gw-border)', background: 'var(--gw-paper-2)', color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit' }}
+                  type="button"
+                  className="gw-link t-small"
                 >
                   {mySoloReport.shared ? 'Stop sharing' : 'Share with everyone'}
                 </button>

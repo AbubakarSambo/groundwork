@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import { groundsApi, type MyWork, type ABehaviourRead } from '@/api/grounds'
 import { TheirRecord } from '@/components/gw/TheirRecord'
 import {
-  Section, Panel, Note, Callout, Stack, Folded, FlexRow, Tag, Text, Select, RowList, Row, FieldRows, FieldRow, Button,
+  Section, Panel, Note, Callout, Stack, Folded, FlexRow, Tag, Text, Select, RowList, Row, FieldRows, FieldRow,
 } from '@/components/gw/ui'
 
 /**
@@ -94,14 +94,10 @@ function ThePage({ groundId, served, onPerson, rest, onAllYourReports }: {
       </div>
 
       {/* THE FOCUS THIS WEEK, from the most important Needs work. Not served where the organisation keeps judgements of a person off. */}
-      {judged && (
-        <Section heading={`${your} focus this week`}>
-          {served.focus
-            /* B7: the focus is the one dark band on the page, its line in Literata. */
-            ? <div data-gw-my-work-focus className="gwui-focus-band"><p className="gwui-focus-line">{served.focus.line}</p><p className="gwui-focus-why">{served.focus.why}</p></div>
-            : <Note tone="muted">{served.focusEmpty}</Note>}
-        </Section>
-      )}
+      {/* B7: the focus is the one dark band on the page, named inside the band, not a section heading of its own. */}
+      {judged && (served.focus
+        ? <section aria-label={`${your} focus this week`} data-gw-my-work-focus className="gwui-focus-band"><p className="gwui-focus-label">{`${your} focus this week`}</p><p className="gwui-focus-line">{served.focus.line}</p><p className="gwui-focus-why">{served.focus.why}</p></section>
+        : <Note tone="muted">{served.focusEmpty}</Note>)}
 
       <ToDo served={served} askedOf={self ? 'Asked of you' : `Asked of ${first}`} />
       <Achieved served={served} heading={self ? 'What you achieved' : `What ${first} achieved`} />
@@ -111,7 +107,7 @@ function ThePage({ groundId, served, onPerson, rest, onAllYourReports }: {
       {(judged || served.coaching.better.length > 0) && <Coaching served={served} />}
 
       {/* THEIR RECORD, AND THE COACHING GROUNDWORK GAVE THEM: only where the server sends it (the direct morning). */}
-      {served.record && <TheirRecord record={served.record} />}
+      {served.record && <TheirRecord record={served.record} asOneFold />}
 
       {/* YOUR CHECK-INS AND YOUR REPORTS, side by side */}
       <div className="gwui-two-up">
@@ -138,7 +134,7 @@ function ThePage({ groundId, served, onPerson, rest, onAllYourReports }: {
                   </Row>
                 ))}
               </RowList>
-              {onAllYourReports && <div><Button kind="quiet" size="small" onClick={onAllYourReports}>All your reports</Button></div>}
+              {onAllYourReports && <div><button type="button" className="gw-link t-small" style={{ fontWeight: 700 }} onClick={onAllYourReports}>All your reports</button></div>}
             </Stack>
           )}
         </Panel>

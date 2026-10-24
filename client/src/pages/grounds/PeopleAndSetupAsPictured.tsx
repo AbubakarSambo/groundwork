@@ -262,7 +262,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
             <div key={`${pr.participantId}-${pr.fix}-${pr.says}`} className="gwui-setup-problem">
               <FlexRow gap={12} justify="space-between" align="center" wrap>
                 <span>{pr.says}</span>
-                {pr.fix && FIX_SAID[pr.fix] && <Button kind="quiet" size="small" onClick={() => fixIt(pr)}>{FIX_SAID[pr.fix]}</Button>}
+                {pr.fix && FIX_SAID[pr.fix] && <button type="button" className="gw-link t-small" style={{ fontWeight: 700 }} onClick={() => fixIt(pr)}>{FIX_SAID[pr.fix]}</button>}
                 {pr.fix === 'let-them-in' && <Link className="gwui-open-link" to="/org/members">Let them in on People</Link>}
                 {pr.fix === 'view-plans' && <Link className="gwui-open-link" to="/billing">View plans</Link>}
               </FlexRow>
@@ -503,7 +503,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
                     {!g?.chasingStopped && <Note>{chasingSentence(recordReminderDays)}</Note>}
                   </Stack>
                 )}
-                <SwitchRow title="Tell me who never started" detail="A separate note to you when somebody has not opened it at all." on={draft.tellTheLead} onChange={(on) => set('tellTheLead', on)} />
+                <SwitchRow look="checkbox" title="Tell me who never started" detail="A separate note to you when somebody has not opened it at all." on={draft.tellTheLead} onChange={(on) => set('tellTheLead', on)} />
               </>
             ) : (
               <FieldRows>
@@ -534,9 +534,9 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
             />
           </FieldRows>
           {canEditRunOrAdmin && (
-            <SwitchRow title="Use simpler words" detail="Short sentences and everyday words, in the check-in and everything sent afterwards" on={draft.simplerWords} onChange={(on) => set('simplerWords', on)} />
+            <SwitchRow look="checkbox" title="Use simpler words" detail="Short sentences and everyday words, in the check-in and everything sent afterwards" on={draft.simplerWords} onChange={(on) => set('simplerWords', on)} />
           )}
-          <SwitchRow
+          <SwitchRow look="checkbox"
             title="When someone is blocked"
             detail="Ask what they’ve already tried, and offer ways through on their own report"
             on={draft.expectsUnblocking}

@@ -482,7 +482,7 @@ export function AuthPage() {
 
         <form noValidate onSubmit={submitPassword}>
           {trap.field}
-          <Stack gap={10}>
+          <Stack gap={8}>
             {/* "Email", not the prototype's "Your work email": which label to use is waiting for Hafsah. */}
             <AuthField
               id="signin-email"
@@ -501,7 +501,7 @@ export function AuthPage() {
               onChange={v => { setPassword(v); clearNotices() }}
             />
             {error && <AuthError>{error}</AuthError>}
-            <Button type="submit" wide disabled={signIn.isPending}>
+            <Button type="submit" wide size="big" disabled={signIn.isPending}>
               {signIn.isPending ? 'Signing you in…' : 'Sign in'}
             </Button>
             {/*
@@ -511,14 +511,14 @@ export function AuthPage() {
               It sends a link to the address typed above, through the same door as every sign-in
               link, and gives the same answer whether or not the address has an account.
             */}
-            <Button kind="secondary" wide disabled={sendLink.isPending} onClick={askForALink}>
+            <Button kind="secondary" wide size="big" disabled={sendLink.isPending} onClick={askForALink}>
               {sendLink.isPending ? 'Sending…' : 'Email me a sign-in link instead'}
             </Button>
             {googleButton('Sign in with Google')}
           </Stack>
         </form>
 
-        <div className="gwui-button-row">
+        <div className="signlinks">
           <Button kind="quiet" onClick={() => { clearNotices(); setView('forgot') }}>Forgot password?</Button>
           <Button kind="quiet" onClick={() => { clearNotices(); setView('create') }}>New here? Sign up</Button>
         </div>

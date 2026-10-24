@@ -107,7 +107,7 @@ export function StartingPointPanel({ groundId, canRecord }: { groundId: string; 
       </Section>
 
       {canRecord && !picking && (
-        <button className="btn sec sm"
+        <button type="button" className="gw-link t-small"
           onClick={() => setPicking(true)}
           style={{ marginTop: 10 }}
         >

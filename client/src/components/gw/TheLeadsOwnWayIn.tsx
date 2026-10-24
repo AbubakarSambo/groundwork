@@ -14,7 +14,7 @@ import { Button } from '@/components/gw/ui'
  *
  * Drawn only for the lead. The server refuses anybody else, so hiding it is not the rule, only manners.
  */
-export function TheLeadsOwnWayIn({ groundId, saying }: { groundId: string; saying?: string }) {
+export function TheLeadsOwnWayIn({ groundId, saying, asLinks }: { groundId: string; saying?: string; /** At the foot of a report, plain links: the prototype draws no buttons there. */ asLinks?: boolean }) {
   const navigate = useNavigate()
   const showForCheckInSetup = useAskStore((s) => s.showForCheckInSetup)
   const [opening, setOpening] = useState(false)
@@ -37,6 +37,12 @@ export function TheLeadsOwnWayIn({ groundId, saying }: { groundId: string; sayin
   return (
     <div data-testid="the-leads-own-way-in" style={{ display: 'grid', gap: 10 }}>
       {saying && <p className="gwui-panel-text" style={{ margin: 0 }}>{saying}</p>}
+      {asLinks ? (
+        <p className="t-small" style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+          <button type="button" className="gw-link" onClick={checkInYourself} disabled={opening}>{opening ? 'Opening…' : 'Check in yourself'}</button>
+          <button type="button" className="gw-link" onClick={() => showForCheckInSetup(groundId)}>Add context</button>
+        </p>
+      ) : (
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <Button kind="primary" onClick={checkInYourself} disabled={opening}>
           {opening ? 'Opening…' : 'Check in yourself'}
@@ -45,6 +51,7 @@ export function TheLeadsOwnWayIn({ groundId, saying }: { groundId: string; sayin
           Add context
         </Button>
       </div>
+      )}
       {failed && <p role="alert" className="gwui-panel-text" style={{ margin: 0 }}>{failed}</p>}
     </div>
   )

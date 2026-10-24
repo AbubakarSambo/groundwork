@@ -1,5 +1,5 @@
 import type React from 'react'
-import { Section, Note, Callout, Stack, FoldedLine } from '@/components/gw/ui'
+import { Section, Note, Stack, FoldedLine } from '@/components/gw/ui'
 import type { ThePersonsRecordServed } from '@/api/grounds'
 
 /**
@@ -21,7 +21,7 @@ export function TheirRecord({ record, asOneFold }: { record: ThePersonsRecordSer
           {record.parts.map((p) => (
             <FoldedLine key={p.heading} name={p.heading} fact={p.says}>
               <Stack gap={8}>
-                {p.toChange && <Callout tone="info">{p.toChange}</Callout>}
+                {p.toChange && <p className="t-small"><b>{p.toChange}</b></p>}
                 {p.evidence.length > 0 && (
                   <ul className="gwui-panel-list">
                     {p.evidence.map((e) => <li key={e}>{e}</li>)}

@@ -349,9 +349,9 @@ export function whereThisPersonIs(p: any, c: {
       tone: 'look',
       text: waitsForItsStart(p) ? 'Their invitation goes out on the morning the check-in starts.' : 'They have not joined yet.',
       action: !waitsForItsStart(p)
-        ? <Button size="small" kind="secondary" disabled={resendInvite.isPending} onClick={() => resendInvite.mutate(p.id)}>
+        ? <button type="button" className="gw-link t-small" disabled={resendInvite.isPending} onClick={() => resendInvite.mutate(p.id)}>
             {resendInvite.isPending && resendInvite.variables === p.id ? 'Sending…' : 'Resend invite'}
-          </Button>
+          </button>
         : undefined,
     }
   }

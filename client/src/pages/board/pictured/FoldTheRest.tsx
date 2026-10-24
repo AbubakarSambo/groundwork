@@ -13,7 +13,7 @@ export function FoldTheRest({ children, startOpen = import.meta.env.MODE === 'te
     const root = at.current
     if (!root) return
     /* Only the board's own sections, never a section drawn inside one of them. */
-    const heads = [...root.querySelectorAll<HTMLElement>(':scope section.gwui-section > .gwui-section-h')].filter((h) => !h.parentElement?.parentElement?.closest('section.gwui-section'))
+    const heads = [...root.querySelectorAll<HTMLElement>(':scope section.sec > .sec-h')].filter((h) => !h.parentElement?.parentElement?.closest('section.sec'))
     const off: (() => void)[] = []
     for (const h of heads) {
       const section = h.parentElement as HTMLElement
