@@ -1475,7 +1475,10 @@ export function ChatPage() {
                         The session started here carries on there: the next message on WhatsApp continues this one. */}
                     {/* With the line Hafsah asked for (fix list, item 5): "You can also check in on WhatsApp." */}
                     {connectWhatsApp && (
-                      <CheckInOnWhatsApp link={connectWhatsApp.link} label={ANSWER_ON_WHATSAPP_INSTEAD} testId="answer-on-whatsapp" />
+                      /* Inside the composer's own side padding, not against the screen's edge on a phone. */
+                      <div className="gwui-composer-aside">
+                        <CheckInOnWhatsApp link={connectWhatsApp.link} label={ANSWER_ON_WHATSAPP_INSTEAD} testId="answer-on-whatsapp" />
+                      </div>
                     )}
                   </div>
         )}
