@@ -1,5 +1,6 @@
 import { CheckInOnWhatsApp } from '@/components/gw/CheckInOnWhatsApp'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { aSentenceAsARow } from '@/lib/a-sentence-as-a-row'
 import { boardApi } from '@/api/board'
 import { toast } from 'sonner'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -57,10 +58,6 @@ import { todayGreetingLine } from '@/lib/the-greeting-line-does-not-claim-what-n
  * the page's own `gw-coming-up`. The two-column layout is the prototype's own shared `.side` shape
  * (`gwui-side`, gw-ui.css), not a layout built just for this page.
  */
-const SENTENCE_END = /(?<=[a-z0-9)”’])\.\s+(?=[A-Z])/
-const firstSentenceOf = (t: string) => { const [a, ...rest] = t.split(SENTENCE_END); return rest.length ? `${a}.` : t }
-const restAfterTheFirstSentence = (t: string) => t.split(SENTENCE_END).slice(1).join('. ')
-
 export function TodayPage() {
   const user = useAuthStore(s => s.user)
   const [params] = useSearchParams()
@@ -168,7 +165,7 @@ export function TodayPage() {
   const seen: Set<string>[] = []
   const once = (r: ARow) => {
     const w = wordsOf(r.title)
-    if (seen.some((x) => { const both = [...w].filter((y) => x.has(y)).length; return both >= 3 && both / Math.min(w.size, x.size) >= 0.6 })) return false
+    if (seen.some((x) => { const both = [...w].filter((y) => x.has(y)).length; return both >= 4 && both / Math.min(w.size, x.size) >= 0.7 })) return false
     seen.push(w)
     return true
   }
@@ -179,7 +176,7 @@ export function TodayPage() {
       const things = w.lines.slice(1)
       return { key: `week-${w.groundId}`, kind: 'look' as const, title: things[0] ?? w.lines[0], detail: things.length > 1 ? `In ${w.label}, and ${things.length - 1} more on its board.` : `In ${w.label}.`, action: { label: 'Open', to: `/grounds/${w.groundId}` } }
     }),
-    ...[...outstandingNeedsYou, ...overdueOnYourTeam, ...risks].map((sentence) => ({ key: sentence, kind: 'look' as const, title: sentence })),
+    ...[...outstandingNeedsYou, ...overdueOnYourTeam, ...risks].map((sentence) => ({ key: sentence, kind: 'look' as const, ...aSentenceAsARow(sentence) })),
   ].filter(once)
   const allNeeds = needs.length + moreRows.length
   const lineNudge = data?.lineNudge ?? null
@@ -234,8 +231,8 @@ export function TodayPage() {
                     key={n.key}
                     kind={n.kind}
                     /* One line of title: a second sentence goes to the detail line when there is none (Hafsah, 25 October). */
-                    title={n.detail ? n.title : firstSentenceOf(n.title)}
-                    detail={n.detail ?? (restAfterTheFirstSentence(n.title) || undefined)}
+                    title={aSentenceAsARow(n.title, n.detail).title}
+                    detail={aSentenceAsARow(n.title, n.detail).detail}
                     to={whereItGoes(n)}
                     actions={<>
                       <Button kind={n.action.label === 'Start it' && i === needs.findIndex((m: Need) => m.action.label === 'Start it') ? 'primary' : 'secondary'} size="small" to={whereItGoes(n)}>{n.action.label}</Button>

@@ -152,11 +152,13 @@ describe('Today: the lead’s daily nudge, "to see everything"', () => {
       risks: ['Bisi has been waiting on Omar for the price list since Monday 21 September.'],
     })
     open(WAIRIMU, LEAD_READ)
-    await screen.findByText('Kofi is waiting on you for the pricing for Q4 since Thursday 8 October.')
+    /* Each as a row: one line of title, the rest as its detail (Hafsah, 25 October). */
+    await screen.findByText('Kofi is waiting on you for the pricing for Q4.')
+    expect(screen.getByText('Since Thursday 8 October.')).toBeTruthy()
     const titles = rows().map(r => r.title)
     const at = (t: string) => titles.indexOf(t)
-    expect(at('Kofi is waiting on you for the pricing for Q4 since Thursday 8 October.')).toBeLessThan(at('Omar committed to “send the price list” by Tuesday 6 October, and it is six days late.'))
-    expect(at('Omar committed to “send the price list” by Tuesday 6 October, and it is six days late.')).toBeLessThan(at('Bisi has been waiting on Omar for the price list since Monday 21 September.'))
+    expect(at('Kofi is waiting on you for the pricing for Q4.')).toBeLessThan(at('Omar committed to “send the price list” by Tuesday 6 October.'))
+    expect(at('Omar committed to “send the price list” by Tuesday 6 October.')).toBeLessThan(at('Bisi has been waiting on Omar for the price list.'))
     expect(screen.queryByRole('heading', { name: 'Needs you' })).toBeNull()
     expect(screen.queryByRole('heading', { name: 'Risks' })).toBeNull()
   })
@@ -193,7 +195,7 @@ describe('Today: the lead’s daily nudge, "to see everything"', () => {
         { key: 'd', kind: 'decide', title: 'Decide whether a price range counts as a budget', detail: 'Brian and Miriam both raised it.', action: { label: 'Decide', to: '/x' }, groundId: 'g', organizationId: 'o' },
       ],
     })
-    expect(await screen.findByText('Kofi is waiting on you for the pricing for Q4 since Thursday 8 October.')).toBeTruthy()
+    expect(await screen.findByText('Kofi is waiting on you for the pricing for Q4.')).toBeTruthy()
     expect(screen.getAllByText('Decide whether a price range counts as a budget')).toHaveLength(1)
   })
 })
