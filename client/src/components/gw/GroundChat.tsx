@@ -286,7 +286,7 @@ export function Composer({ groundId, openCheckInId, openSessionNumber, totalSess
   const add = useMutation({
     mutationFn: (t: string) => groundsApi.addMyNote(groundId, t),
     onSuccess: () => { setText(''); qc.invalidateQueries({ queryKey: ['my-notes', groundId] }) },
-    onError: () => toast.error('The note did not save. It is still in the box - try again.'),
+    onError: () => toast.error('The note didn’t save. Try again.'),
   })
 
   const remove = useMutation({

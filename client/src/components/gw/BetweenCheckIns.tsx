@@ -138,7 +138,7 @@ export function BetweenCheckIns({ groundLabel, nextOpensSaying, groundId, canCha
       qc.invalidateQueries({ queryKey: ['my-notes', groundId] })
       toast.success('Noted. Your next check-in will ask you about it.')
     },
-    onError: () => toast.error('The note did not save. What you typed is still here - try again.'),
+    onError: () => toast.error('The note didn’t save. Try again.'),
   })
 
   const send = () => {

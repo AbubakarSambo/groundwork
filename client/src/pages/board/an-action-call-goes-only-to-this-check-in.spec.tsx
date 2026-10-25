@@ -109,7 +109,7 @@ describe('pressing a choice with a bad route', () => {
     fireEvent.click(button)
     await waitFor(() => expect(toast.error).toHaveBeenCalled())
     expect(apiClient.request).not.toHaveBeenCalled()
-    expect((toast.error as any).mock.calls[0][0]).toBe('That did not save. Nothing has changed, so try again.')
+    expect((toast.error as any).mock.calls[0][0]).toBe('That didn’t save. Try again.')
   })
 
   it('never sends a route to another ground', async () => {

@@ -172,7 +172,7 @@ export default function SessionReportPage() {
       qc.invalidateQueries({ queryKey: ['ground', data?.groundId] })
       toast.success('Saved. That is how often this runs now.')
     },
-    onError: () => toast.error('That did not save. Nothing has changed - try again.'),
+    onError: () => toast.error('That didn’t save. Try again.'),
   })
 
   /*

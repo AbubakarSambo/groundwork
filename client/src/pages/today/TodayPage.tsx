@@ -207,7 +207,7 @@ export function TodayPage() {
             {isLoading && <Note>Loading…</Note>}
             {isError && (
               <div>
-                <Note tone="error">What needs you did not load. Nothing you have written is affected.</Note>
+                <Note tone="error">What needs you didn’t load. Try again.</Note>
                 <Button kind="secondary" size="small" onClick={() => refetch()} disabled={isFetching}>Try again</Button>
               </div>
             )}

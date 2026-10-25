@@ -1219,7 +1219,7 @@ export function AppSidebar() {
                   <p className="gw-rl-empty">Nothing in progress yet.</p>
                 )}
                 {listFailed && !listLoaded && (
-                  <p className="gw-rl-empty" role="alert">Your check-ins did not load. Reload the page to try again.</p>
+                  <p className="gw-rl-empty" role="alert">Your check-ins didn’t load. Reload the page.</p>
                 )}
                 {/* The heading stays, because it is the way to the whole list, and says why it is empty. */}
                 {unpinned.length === 0 && pinned.length > 0 && (

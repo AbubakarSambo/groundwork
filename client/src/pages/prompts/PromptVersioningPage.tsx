@@ -377,7 +377,7 @@ function DraftEditor({
       if (data?.error === 'invariant_violation' && Array.isArray(data?.missing)) {
         setInvariantError(data.missing as string[])
       } else {
-        toast.error('The draft did not save. What you typed is still here - try again.')
+        toast.error('The draft didn’t save. Try again.')
       }
     },
   })

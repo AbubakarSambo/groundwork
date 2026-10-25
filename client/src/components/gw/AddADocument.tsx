@@ -75,7 +75,7 @@ export function AddADocument({
       toast.success(`${fileName} is in Context.`)
       onClose()
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. The document is still here and still private to you, so try again.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That didn’t save. Try again.'),
   })
   const drop = useMutation({
     mutationFn: () => documentsApi.remove(groundId, docId),

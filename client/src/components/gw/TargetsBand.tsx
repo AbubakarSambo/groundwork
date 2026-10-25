@@ -67,7 +67,7 @@ export function TargetsBand({
       setDraft('')
       qc.invalidateQueries({ queryKey: ['ground', groundId] })
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. What you wrote is still here, so try again.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That didn’t save. Try again.'),
   })
 
   const lead = participants.find((p: any) => p.partyType === 'INITIATOR')

@@ -321,7 +321,7 @@ export function KindOfWorkBanner({ groundId, kindOfWork, workStages, canEdit, ki
       setOpen(false)
       qc.invalidateQueries({ queryKey: ['board', groundId] })
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. Nothing has changed, so try again.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That didn’t save. Try again.'),
   })
 
   const sentence = kindOfWork
@@ -1019,7 +1019,7 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
   const claimItem = useMutation({
     mutationFn: (v: { itemId: string; yes: boolean }) => boardApi.claimWorkItem(groundId, v.itemId, v.yes),
     onSuccess: (data) => { invalidate(); if (data?.saidBack) toast.success(data.saidBack) },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. Nothing has changed, so try again.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That didn’t save. Try again.'),
   })
 
   const heading = sectionHeading(kindOfWork, section)
@@ -1507,7 +1507,7 @@ export function TheDealsCanBeChanged({ groundId, section, participants, canEdit,
   const claimItem = useMutation({
     mutationFn: (v: { itemId: string; yes: boolean }) => boardApi.claimWorkItem(groundId, v.itemId, v.yes),
     onSuccess: (data) => { invalidate(); if (data?.saidBack) toast.success(data.saidBack) },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. Nothing has changed, so try again.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That didn’t save. Try again.'),
   })
   const canAdd = canEdit && !!ITEM_KINDS_FOR_HOLDS[section.holds]?.length
   return (

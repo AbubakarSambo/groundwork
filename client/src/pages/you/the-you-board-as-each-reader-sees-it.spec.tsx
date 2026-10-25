@@ -303,7 +303,7 @@ describe('when the board does not load', () => {
     useAuthStore.setState({ user: MIRIAM, token: 't', isAuthenticated: true } as any)
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(<QueryClientProvider client={qc}><MemoryRouter><YouPage /></MemoryRouter></QueryClientProvider>)
-    expect(await screen.findByText('Your board did not load. Nothing you have written is affected.')).toBeInTheDocument()
+    expect(await screen.findByText('Your board didn’t load. Try again.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
   })
 })

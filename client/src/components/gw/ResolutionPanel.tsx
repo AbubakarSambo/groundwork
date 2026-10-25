@@ -95,7 +95,7 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
           : 'Your choice is recorded.',
       )
     },
-    onError: () => toast.error('That did not save. Your outcome and reason are still here, so you can try again.'),
+    onError: () => toast.error('That didn’t save. Try again.'),
   })
 
   const leadDecides = !!data?.leadDecides

@@ -118,7 +118,7 @@ describe('Wairimu, who runs the check-in', () => {
     fireEvent.click(await screen.findByText('Agree'))
     fireEvent.change(screen.getByLabelText('Your reasons, in a sentence or two'), { target: { value: 'My reasons.' } })
     fireEvent.click(screen.getByText('Save my decision'))
-    expect(await screen.findByText('That did not save. What you wrote is still here, so you can try again.')).toBeTruthy()
+    expect(await screen.findByText('That didn’t save. Try again.')).toBeTruthy()
     expect((screen.getByLabelText('Your reasons, in a sentence or two') as HTMLTextAreaElement).value).toBe('My reasons.')
   })
 

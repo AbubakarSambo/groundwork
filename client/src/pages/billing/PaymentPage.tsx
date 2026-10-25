@@ -54,7 +54,7 @@ export function PaymentPage() {
         setTimeout(() => navigate(groundId ? `/grounds/${groundId}` : '/grounds'), 1200)
       }
     },
-    onError: () => setCodeMsg({ ok: false, text: 'Something went wrong. Try again.' }),
+    onError: () => setCodeMsg({ ok: false, text: 'That didn’t work. Try again.' }),
   })
 
   return (

@@ -157,7 +157,7 @@ function AboutThisWork({ groundId, served, ground, isTheLead }: { groundId: stri
 function Suggested({ groundId, items, onDone }: { groundId: string; items: NonNullable<Served['suggested']>; onDone: () => void }) {
   const [editing, setEditing] = useState<{ id: string; says: string } | null>(null)
   const [showAll, setShowAll] = useState(false)
-  const failed = (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. Try again in a moment.')
+  const failed = (e: any) => toast.error(e?.response?.data?.message ?? 'That didn’t save. Try again.')
   const add = useMutation({ mutationFn: (id: string) => groundsApi.confirmPlanCard(groundId, id, null), onSuccess: onDone, onError: failed })
   const dismiss = useMutation({ mutationFn: (id: string) => groundsApi.planCardNotNow(groundId, id), onSuccess: onDone, onError: failed })
   const edit = useMutation({ mutationFn: (e: { id: string; says: string }) => groundsApi.editPlanCard(groundId, e.id, e.says), onSuccess: () => { setEditing(null); onDone() }, onError: failed })
@@ -411,7 +411,7 @@ function People({ groundId, people, alsoSeenBy, onDone }: { groundId: string; pe
       ? groundsApi.changeAReference(groundId, e.lineId, { text: e.text })
       : groundsApi.addAReference(groundId, { kind: e.kind, text: e.text, aboutParticipantId: e.pid })),
     onSuccess: () => { setEditing(null); onDone() },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. What you typed is still here, so try again.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That didn’t save. Try again.'),
   })
   const shown = people.filter((p) => !q.trim() || [p.name, p.role, p.note?.text, p.helpWith?.text].some((x) => String(x ?? '').toLowerCase().includes(q.trim().toLowerCase())))
   const editor = (p: (typeof people)[number], kind: 'PERSON_NOTE' | 'HELP_WITH', line: AReferenceLine | null) => (
@@ -483,7 +483,7 @@ function AddSomething({ groundId, kind, onKind, people, alsoSeenBy, contextEnabl
   const add = useMutation({
     mutationFn: () => groundsApi.addAReference(groundId, { kind: kind as AReferenceKind, text, ...(kind === 'KEY_FACT' ? { label } : {}), ...(kind === 'PERSON_NOTE' || kind === 'HELP_WITH' ? { aboutParticipantId: who } : {}) }),
     onSuccess: () => { toast.success('Added. Your team’s check-ins use it from now on.'); setText(''); setLabel(''); onDone() },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. What you typed is still here, so try again.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That didn’t save. Try again.'),
   })
   const upload = useMutation({
     mutationFn: (f: File) => documentsApi.upload(groundId, f),

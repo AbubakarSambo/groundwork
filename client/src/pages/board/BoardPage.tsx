@@ -511,7 +511,7 @@ function useRunBoardAction(groundId: string) {
   return useMutation({
     mutationFn: (route: NonNullable<AnAction['choices']>[number]['route']) => {
       if (!isARouteToThisCheckIn(groundId, route)) {
-        return Promise.reject(new Error('That did not save. Nothing has changed, so try again.'))
+        return Promise.reject(new Error('That didn’t save. Try again.'))
       }
       return apiClient.request({ method: route!.method, url: route!.path, data: route!.body }).then((r) => r.data)
     },
@@ -519,7 +519,7 @@ function useRunBoardAction(groundId: string) {
       qc.invalidateQueries({ queryKey: ['board', groundId] })
       if (data?.saidBack) toast.success(data.saidBack)
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. Nothing has changed, so try again.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That didn’t save. Try again.'),
   })
 }
 
@@ -1127,11 +1127,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           for (const left of opened.leftOut) toast.info(left.why)
           navigate('/start', { state: { anchorSetUp: opened } })
         } catch {
-          toast.error('That did not save. Try again.')
+          toast.error('That didn’t save. Try again.')
         }
       }
     },
-    onError: () => toast.error('That did not save. Try again.'),
+    onError: () => toast.error('That didn’t save. Try again.'),
   })
 
   /*
@@ -1211,7 +1211,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
       options: pollOpts.split('\n').map((o) => o.trim()).filter(Boolean),
     }),
     onSuccess: () => { setShowPollForm(false); setPollQ(''); setPollOpts(''); invalidate() },
-    onError: () => toast.error('The poll did not save. Your answers are still here - try again.'),
+    onError: () => toast.error('The poll didn’t save. Try again.'),
   })
 
   const togglePoll = useMutation({

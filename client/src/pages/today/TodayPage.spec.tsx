@@ -288,7 +288,7 @@ describe('when the read fails', () => {
     useAuthStore.setState({ user: WAIRIMU, token: 't', isAuthenticated: true } as any)
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(<QueryClientProvider client={qc}><MemoryRouter><TodayPage /></MemoryRouter></QueryClientProvider>)
-    expect(await screen.findByText('What needs you did not load. Nothing you have written is affected.')).toBeTruthy()
+    expect(await screen.findByText('What needs you didn’t load. Try again.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy()
     expect(screen.queryByText('Nothing needs you right now.')).toBeNull()
   })

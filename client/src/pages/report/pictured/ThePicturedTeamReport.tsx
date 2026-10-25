@@ -60,7 +60,7 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
   const answer = useMutation({
     mutationFn: (route: { method: string; path: string; body: Any }) => (route.method === 'PATCH' ? apiClient.patch(route.path, route.body) : apiClient.post(route.path, route.body)),
     onSuccess: (res: Any) => { qc.invalidateQueries({ queryKey: ['board', groundId] }); toast.success(res?.data?.saidBack ?? 'This is now in how we work.') },
-    onError: () => toast.error('That did not save. Nothing has changed, so try again.'),
+    onError: () => toast.error('That didn’t save. Try again.'),
   })
   const [opened, setOpened] = useState<string | null>(null)
   const rep: Any = r

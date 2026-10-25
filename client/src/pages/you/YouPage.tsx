@@ -93,7 +93,7 @@ export function YouPage() {
       {isLoading && <Note>Loading…</Note>}
       {isError && (
         <div>
-          <Note tone="error">Your board did not load. Nothing you have written is affected.</Note>
+          <Note tone="error">Your board didn’t load. Try again.</Note>
           <Button kind="secondary" size="small" onClick={() => refetch()} disabled={isFetching}>Try again</Button>
         </div>
       )}

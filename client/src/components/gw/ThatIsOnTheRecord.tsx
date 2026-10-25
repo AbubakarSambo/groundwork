@@ -31,7 +31,7 @@ export function ThatIsOnTheRecord({ groundId }: { groundId: string }) {
       setEditing(false)
       if (r.signInMoved) updateUser({ email: r.email })
     },
-    onError: (e: any) => setProblem(e?.response?.data?.message ?? 'That did not save. Try again.'),
+    onError: (e: any) => setProblem(e?.response?.data?.message ?? 'That didn’t save. Try again.'),
   })
   const at = nowAt ?? user?.email ?? null
 

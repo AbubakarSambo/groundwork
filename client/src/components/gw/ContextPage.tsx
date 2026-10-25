@@ -217,7 +217,7 @@ export function ContextPage({
       setBriefDraft(null)
       toast.success('Saved. Everyone in this check-in now reads this.')
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save - try again.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That didn’t save. Try again.'),
   })
 
   const uploadDoc = useMutation({
@@ -276,7 +276,7 @@ export function ContextPage({
     mutationFn: ({ itemId, status }: { itemId: string; status: 'DONE' | 'NOT_DONE' | 'DROPPED' }) =>
       groundsApi.setMyCommitment(id, itemId, status),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['ground', id] }),
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. Try again in a moment.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That didn’t save. Try again.'),
   })
 
   /*
@@ -295,7 +295,7 @@ export function ContextPage({
       toast.success('Added')
       qc.invalidateQueries({ queryKey: ['ground', id] })
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save - what you typed is still here, try again.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That didn’t save. Try again.'),
   })
 
   const changeLine = useMutation({

@@ -55,6 +55,8 @@ const ANSWERS = new RegExp([
   'nobody has been emailed', 'nobody has been sent', 'not been charged',
   'is unchanged', 'are saved', 'unaffected', 'on the record',
   'did not (change|save|send|upload|publish|activate|go through)',
+  /* "That didn't save. Try again." says what went wrong and what to do (Hafsah, 25 October: errors say what went wrong and what to do). */
+  'didn’t (save|send|load|work)\\. Try again',
   '(was|were) not (released|added|removed|approved|declined|discarded|activated)',
 ].join('|'), 'i')
 

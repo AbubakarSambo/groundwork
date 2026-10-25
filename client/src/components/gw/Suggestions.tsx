@@ -71,7 +71,7 @@ function TheAppealOutcome({ d, yours }: { d: TheAppealDecision; yours?: boolean 
   )
 }
 
-const DIDNT_SAVE = 'That did not save. What you wrote is still here, so you can try again.'
+const DIDNT_SAVE = 'That didn’t save. Try again.'
 
 /* ============================================================================ the lead */
 

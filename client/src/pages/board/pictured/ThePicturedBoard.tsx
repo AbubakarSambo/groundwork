@@ -675,7 +675,7 @@ function ThisMayBeRelevant({ b, groundId }: { b: Any; groundId: string }) {
   const notRelevant = useMutation({
     mutationFn: () => apiClient.post(`/grounds/${groundId}/board/not-relevant`, { memoryIds: items.map((i) => i.id) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['board', groundId] }),
-    onError: () => toast.error('That did not save. It is still offered here, so try again.'),
+    onError: () => toast.error('That didn’t save. Try again.'),
   })
   if (!items.length) return null
   return (

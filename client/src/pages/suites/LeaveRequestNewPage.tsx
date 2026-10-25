@@ -79,7 +79,7 @@ export function LeaveRequestNewPage() {
           <form className="gwui-suite-ask-alone" onSubmit={e => { e.preventDefault(); if (canSend) send.mutate() }}>
             {loadFailed && (
               <Note tone="error">
-                That did not load, and nothing has changed.{' '}
+                That didn’t load. Try again.{' '}
                 <Button kind="quiet" onClick={() => form.refetch()}>Try again</Button>
               </Note>
             )}
