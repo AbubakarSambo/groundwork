@@ -14,7 +14,6 @@ import { CLOSE_SHEET, Block } from './the-shape-every-close-is-drawn-in'
 import { KIND } from './WhatWasTakenFromWhatYouSaid'
 import { FoldedLine } from './ui/FoldedLine'
 import { ProofMark } from './ui/ProofMark'
-import { TheirRecord } from './TheirRecord'
 
 /**
  * THE END OF A SIGNED-IN CHECK-IN, REBUILT AS A · SESSION.
@@ -230,7 +229,6 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
   const d: any = session.data
   const r: any = whole.data
   /* What Groundwork followed up for you: your own record for this session and the coaching it gave you, only where the server sends it. */
-  const yourRecord = d?.yourRecord ?? null
   const closed = (r as any)?.status === 'CLOSED' || (r as any)?.groundStatus === 'CLOSED'
 
   const mine: MyRow[] = ((r?.myRows ?? []) as MyRow[]).filter(x => x.sessionNumber === sessionNumber)
@@ -572,7 +570,6 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
           story={own.story}
           toldUs={own.toldUs.map((x) => ({ key: x.text, mark: x.mark, text: x.text, how: x.how }))}
           toThinkAbout={toThinkAbout}
-          record={yourRecord}
           correctIt={correctIt}
         />
       )
@@ -583,7 +580,6 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
         story={story}
         toldUs={toldUs.map((x) => ({ key: x.id, mark: x.mark ?? 'said', text: x.readAs ?? x.text, how: x.how ?? x.typeSays ?? null, gone: !!x.disputedAt }))}
         toThinkAbout={toThinkAbout}
-        record={yourRecord}
         correctIt={correctIt}
       />
     )
@@ -627,7 +623,6 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
             </div>
           )}
           {checkableJSX}
-          {yourRecord && <div className="gw-blk"><TheirRecord record={yourRecord} /></div>}
         </>
       ) : (
         <>
@@ -637,7 +632,6 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
           {openJSX}
           {carryJSX}
           {checkableJSX}
-          {yourRecord && <div className="gw-blk"><TheirRecord record={yourRecord} /></div>}
         </>
       )}
 
@@ -732,12 +726,11 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
 
 /* The person's own report, in the prototype's markup (own-report.jpg): what you did well in a panel, the story, what you
    told us as ruled rows, one thing to think about in a panel, then the way to correct it. */
-function OwnReportAsPictured({ didWell, story, toldUs, toThinkAbout, record, correctIt }: {
+function OwnReportAsPictured({ didWell, story, toldUs, toThinkAbout, correctIt }: {
   didWell: { key: string; mark: any; text: string }[]
   story: string | null | undefined
   toldUs: { key: string; mark: any; text: string; how: string | null; gone?: boolean }[]
   toThinkAbout: string[]
-  record: any
   correctIt: React.ReactNode
 }) {
   return (
@@ -771,7 +764,7 @@ function OwnReportAsPictured({ didWell, story, toldUs, toThinkAbout, record, cor
           {toThinkAbout.map((t) => <p key={t} className="t-small">{t}</p>)}
         </section>
       )}
-      {record && <TheirRecord record={record} asOneFold />}
+      {/* Your record is on My work, not on your own report (Hafsah, 25 October). */}
       {correctIt}
     </div>
   )
