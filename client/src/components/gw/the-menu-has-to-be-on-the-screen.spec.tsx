@@ -69,6 +69,8 @@ describe('the menu has to be on the screen', () => {
     const inRail = (name: string) => [...rail.querySelectorAll('a, button')].filter(el => el.textContent?.trim() === name)
     expect(inRail('Check-ins').map(a => a.getAttribute('href'))).toEqual(['/grounds'])
     expect(inRail('People').map(a => a.getAttribute('href'))).toEqual(['/org/members'])
+    /* Connections and Plan and billing are in the organisation menu, which opens from the organisation at the top (Hafsah, 25 October). */
+    fireEvent.click(rail.querySelector('.gw-rl-org') as HTMLElement)
     expect(inRail('Connections').map(a => a.getAttribute('href'))).toEqual(['/settings/connections'])
     expect(inRail('Plan and billing').map(a => a.getAttribute('href'))).toEqual(['/billing'])
     expect(rail).toHaveTextContent('Test Org')

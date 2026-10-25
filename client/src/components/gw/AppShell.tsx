@@ -952,8 +952,14 @@ export function AppSidebar() {
 
   /* ONE GATE. Every door below comes out of `navItemsFor`, and is only sorted into its part here. */
   const items = navItemsFor(user, navOpts)
-  const pages = items.filter(i => !(i as any).adminOnly && !(i as any).platformAdminOnly && i.to !== '/grounds' && i.to !== '/settings')
-  const adminItems = items.filter(i => (i as any).adminOnly)
+  /*
+   * THE SIDEBAR IS THE PROTOTYPE'S (Hafsah, 25 October): your check-ins, then Today, Company, You, People for an admin, and Suites, as one
+   * list. Boards, Connections, All check-ins and Plan and billing are in the organisation menu, under its name at the top.
+   */
+  const IN_THE_ORG_MENU = ['/boards', '/settings/connections', '/billing']
+  const pages = items.filter(i => !(i as any).adminOnly && !(i as any).platformAdminOnly && i.to !== '/grounds' && i.to !== '/settings' && !IN_THE_ORG_MENU.includes(i.to))
+  const adminItems = items.filter(i => (i as any).adminOnly && !IN_THE_ORG_MENU.includes(i.to))
+  const orgMenuItems = [{ to: '/grounds', label: hiddenCount > 0 ? `All check-ins (${grounds.length})` : 'All check-ins' }, ...items.filter(i => IN_THE_ORG_MENU.includes(i.to)).map(i => ({ to: i.to, label: i.label }))]
   const staffItems = items.filter(i => (i as any).platformAdminOnly)
   /* "Jump to" offers only what this reader already sees: these check-ins and these doors. */
   const jumpItems = whatYouCanJumpTo(grounds as any, user?.id, items)
@@ -1131,6 +1137,10 @@ export function AppSidebar() {
             </button>
             {orgOpen && (
               <div className="gw-rl-menu gw-rl-menu-org" style={{ left: collapsed ? 70 : 10 }}>
+                {orgMenuItems.map(item => (
+                  <NavLink key={item.to} to={item.to} className="gw-rl-menu-item" onClick={() => setOrgOpen(false)}>{item.label}</NavLink>
+                ))}
+                <hr />
                 <div className="gw-rl-menu-h">Organisations</div>
                 <OrganisationChoices />
               </div>
@@ -1220,9 +1230,7 @@ export function AppSidebar() {
                     anything out - with how many there are only when they did. ALWAYS shown (Hafsah,
                     6 October): an admin with nothing waiting and nothing opened has no rows, and
                     this is then her way to every check-in. */}
-                <NavLink to="/grounds" className="gw-rl-nav">
-                  {hiddenCount > 0 ? `All check-ins (${grounds.length})` : 'All check-ins'}
-                </NavLink>
+                {/* "All check-ins" is in the organisation menu now, and the "Check-ins" heading above goes to the whole list. */}
                 {closed.length > 0 && (
                   <>
                     <button
@@ -1264,7 +1272,6 @@ export function AppSidebar() {
                     behind them is admin-only on the server too. */}
                 {adminItems.length > 0 && (
                   <>
-                    <div className="gw-rl-h"><span>{orgName}</span></div>
                     <ul className="gw-rl-list">
                       {adminItems.map(item => (
                         <li key={item.to}>

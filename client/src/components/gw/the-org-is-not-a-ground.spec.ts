@@ -152,7 +152,8 @@ describe('the group reads as a place', () => {
      * Settings now lives in the person's own menu ("Your settings"), so the group under the
      * organisation's name is exactly the admin-only pages, and it is drawn only when there are some.
      */
-    expect(SHELL).toMatch(/const adminItems = items\.filter\(i => \(i as any\)\.adminOnly\)/)
+    /* Less what is in the organisation menu now (Hafsah, 25 October). */
+    expect(SHELL).toMatch(/const adminItems = items\.filter\(i => \(i as any\)\.adminOnly && !IN_THE_ORG_MENU\.includes\(i\.to\)\)/)
     expect(SHELL).toMatch(/\{adminItems\.length > 0 && \(/)
   })
 })
