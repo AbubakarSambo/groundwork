@@ -34,6 +34,16 @@ export interface NotOffered {
 
 export const NOT_OFFERED_IN_CHAT: NotOffered[] = [
   {
+    area: 'direction',
+    why: 'the chat is the wrong shape',
+    because: 'Release 6: the company’s direction is set and approved on its own page, team by team, and each person recommits their own goals there. A goal changed by a sentence in chat would skip the lead who approves it.',
+  },
+  {
+    area: 'policy',
+    why: 'the chat is the wrong shape',
+    because: 'Release 9: a policy is read from its document and each rule is approved on the policy board. Approving rules one sentence at a time in chat would lose which document each rule came from.',
+  },
+  {
     area: 'learning',
     why: 'not a person’s question',
     because: 'Counts of how patterns, coaching steps and questions have gone, for Groundwork\'s own admin. Nobody inside a customer asks about them in chat.',

@@ -18,6 +18,7 @@ import { route, whatICanDoWith, Lane } from './the-router-is-deterministic';
 import { aPromiseAsASentence } from './a-promise-as-a-sentence';
 import { noSeatYetSays, whenIsMyNextCheckIn, whatMyCheckInIsFor, theCompanysPriorities, asksWhatTheCompanyIsWorkingOn, isTheStrategyMoving, THE_REQUEST_STARTERS, howToAskForLeaveOrSpending } from './about-your-check-ins-and-the-company';
 import { Reply, rules, text, picker, SourceBlock } from './a-reply-is-a-payload-not-a-string';
+import { isACorrection, whatTheyMean, theCorrectionAnswered } from './a-correction-said-in-ask';
 import { ReportsService } from '../reports/reports.service';
 import { askTheReportsDoor } from '../reports/one-persons-circumstances-stay-their-own';
 import { peersAreNamedOn } from '../reports/peers-are-named';
@@ -322,6 +323,22 @@ export class AssistantService {
        never linked is still this person for leave, hours and spending. */
     const userId = await theirSignIn(this.prisma, organizationId, me).catch(() => me?.linkedUserId ?? null);
 
+    /* A correction is checked against what they wrote, never shrugged at (a-correction-said-in-ask.ts, 26 October). */
+    if (userId && isACorrection(message)) {
+      const turns: any[] = await (this.prisma as any).conversationTurn.findMany({
+        where: { role: 'PERSON', checkIn: { participant: { userId } } },
+        orderBy: { createdAt: 'desc' }, take: 200,
+        select: { content: true, createdAt: true, checkIn: { select: { ground: { select: { label: true } } } } },
+      }).catch(() => []);
+      const theirs = (turns ?? []).map((t: any) => ({ text: String(t.content ?? ''), at: new Date(t.createdAt), label: t.checkIn?.ground?.label ?? null }));
+      const found = whatTheyMean(message, theirs);
+      const quoted = /["“]([^"”]{6,})["”]/.exec(message)?.[1]?.trim() ?? null;
+      if (!found && quoted) {
+        /* Words of theirs Groundwork quoted that nothing they wrote holds: off the record, so it is never said again. */
+        await (this.prisma as any).recordEntry.updateMany({ where: { participant: { userId }, text: { contains: quoted.slice(0, 120), mode: 'insensitive' }, disputedAt: null }, data: { disputedAt: new Date() } }).catch(() => undefined);
+      }
+      return rules('a_correction', text(theCorrectionAnswered(found, !found && !!quoted)));
+    }
     const reply = await this.answer(organizationId, personId, who, message, false, groundId, userId, openedFromSetup);
 
     /*
