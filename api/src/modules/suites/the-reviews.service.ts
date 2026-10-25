@@ -44,6 +44,8 @@ export const REVIEW_REFUSED = {
   notYet: 'This review cannot start yet, because a check-in that decides something about this person is still open. It can start once that check-in is decided.',
   writeSomething: 'Write something first.',
   onlyThePersonCorrects: 'Only the person this review is about can correct what it says about their work.',
+  onlyThePersonOrTheWriterUpdates: 'Only the person this review is about, or whoever writes it, can update it from the record.',
+  alreadyDecided: 'This review is decided, so it stays as it was read.',
   noSuchLine: 'That line is not in this review.',
   sayWhatIsTrue: 'Say what is true, in a sentence or two.',
   sayWhatAndWhy: 'Say what you decided, and why, in a sentence or two.',
@@ -595,6 +597,27 @@ export class ReviewsService {
    * correction is kept beside the line, in its own row, and the line and the record it came from never
    * change. A second correction of the same line is kept too; the latest is the one served.
    */
+  async updateFromTheRecord(reader: Reader, id: string) {
+    /*
+     * UPDATE FROM THE RECORD (Hafsah's answer on reviews, 25 October 2026). A review reads the record once, when it starts, and opening it
+     * never reads it again. While it is in progress, the person or whoever writes it may ask for it to be read again, from the same first
+     * day up to today: Joseph's first review still said he waited on Management after Grace had said yes. Corrections stay beside their lines.
+     */
+    const answers = await this.suiteAnswers(reader.organizationId);
+    const { row, person } = await this.theReview(reader, id);
+    if ((row as any).decidedAt) throw new BadRequestException(REVIEW_REFUSED.alreadyDecided);
+    const isThePerson = person.userId === reader.userId;
+    if (!isThePerson && !(await this.writes(reader, await this.roleOf(reader), person, answers.writer))) throw new ForbiddenException(REVIEW_REFUSED.onlyThePersonOrTheWriterUpdates);
+    const now = new Date();
+    const from = (row as any).recordFrom ? new Date((row as any).recordFrom) : new Date((row as any).startedAt);
+    const recordRead = await theRecordForAReview(this.prisma, {
+      organizationId: reader.organizationId, personUserId: person.userId, personExternalId: person.externalId, from, until: now,
+    });
+    await this.prisma.performanceReview.update({ where: { id: row.id }, data: { recordRead: recordRead as any, recordReadAt: now } as any });
+    await recordIt(this.prisma, { organizationId: reader.organizationId, suite: 'reviews', ref: row.id, kind: 'updated-from-the-record', byUserId: reader.userId, basis: { row: 'performance_reviews', id: row.id } });
+    return this.one(reader, id);
+  }
+
   async correct(reader: Reader, id: string, lineKey: string, whatIsTrue: string) {
     await this.suiteAnswers(reader.organizationId);
     const { row, person } = await this.theReview(reader, id);
@@ -977,7 +1000,7 @@ export class ReviewsService {
     }).catch(() => [])) ?? []);
     const latest = new Map<string, any>();
     for (const c of corrections) latest.set(c.lineKey, c);
-    const who = { isThePerson, userId: readerUserId, personFirst: first };
+    const who = { isThePerson, userId: readerUserId, personFirst: first, readOn: row.recordReadAt ? new Date(row.recordReadAt).toISOString().slice(0, 10) : null };
     const parts = THE_PARTS.map((part) => ({
       part,
       heading: thePartsHeading(part, who),

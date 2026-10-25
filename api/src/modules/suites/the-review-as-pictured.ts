@@ -7,6 +7,7 @@
  * cannot say, it says so and names who to ask.
  */
 import type { ARecordLine } from './the-record-read-for-a-review';
+import { theVaguePromiseIn, whatItWasSaid } from '../conversation/a-vague-promise-says-what-it-is';
 
 export interface AGoalVersionRead { name: string; target: number | null; outcome: string; newName: string | null; newTarget: number | null; decidedAt: string; decidedBy: string }
 export interface ADirectionChange { setAt: string; stops: { what: string; whoParticipantId?: string | null }[] }
@@ -80,9 +81,11 @@ export function theReviewAsPictured(input: {
 
   /* WHAT THEY COMMITTED TO, AND WHAT THEY DID: each commitment and what became of it, the clearest first. */
   const toneOf = { DONE: 'rec', NOT_DONE: 'con', DROPPED: 'att', OPEN: 'act' } as const;
+  /* What "it" was, in their own words, where the check-in asked (a-vague-promise-says-what-it-is). Their promise is never reworded. */
+  const itWas = (c: any) => { const w = whatItWasSaid(Who, theVaguePromiseIn(c.words)?.pronoun ?? 'it', c.whatItIs); return w ? `${w} ` : ''; };
   const committed = commitments.slice(0, 10).map((c) => ({
     title: clean(c.words).charAt(0).toUpperCase() + clean(c.words).slice(1),
-    says: c.status === 'DONE' ? `Done${c.settledOn ? ` on ${dayAndMonth(c.settledOn)}` : ''}.` : c.status === 'NOT_DONE' ? `Not done${c.settledOn ? `, marked on ${dayAndMonth(c.settledOn)}` : ''}.` : c.status === 'DROPPED' ? 'Dropped later.' : 'Still open when the review started.',
+    says: itWas(c) + (c.status === 'DONE' ? `Done${c.settledOn ? ` on ${dayAndMonth(c.settledOn)}` : ''}.` : c.status === 'NOT_DONE' ? `Not done${c.settledOn ? `, marked on ${dayAndMonth(c.settledOn)}` : ''}.` : c.status === 'DROPPED' ? 'Dropped later.' : 'Still open when the review started.'),
     tone: toneOf[c.status],
   }));
 
