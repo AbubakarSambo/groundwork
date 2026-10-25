@@ -23,6 +23,8 @@ export type SuiteOfARecord = 'leave' | 'spend' | 'time' | 'reviews';
 export type WhatHappened = 'asked' | 'told' | 'approved' | 'declined' | 'escalated' | 'started' | 'decided' | 'questioned' | 'answered'
   /* A later step's approver had already approved it at an earlier step, so the step was passed (who-may-decide.ts). */
   | 'passed'
+  /* A review in progress read again from the record, by the person or whoever writes it (the-reviews.service, updateFromTheRecord). */
+  | 'updated-from-the-record'
   /* Finance's part of a request to spend (build step 10). */
   | 'verified' | 'coded' | 'evidence' | 'exported' | 'paid'
   /* The person marked a line of their review as wrong and said what is true (build step 12). */

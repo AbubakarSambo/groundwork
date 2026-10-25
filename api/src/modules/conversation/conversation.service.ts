@@ -170,6 +170,7 @@ import { theOneWorthAsking, askAboutItBlockFor } from './what-keeps-happening-be
 import { mayCoach } from './participation-timeline';
 import { theirApprovedLeave } from '../suites/who-is-away';
 import { aNewIdeaIn, afterTheirTurn, anIdeaReadBackAsAPromise, withoutAskingWhatToCapture, anAnswerToTheIdeaOffer, ANSWERED_THE_IDEA_OFFER } from './ideas-from-the-team';
+import { askWhatItIs, askedWhatItIs, whatTheySaidItIs, SAID_WHAT_IT_IS } from './a-vague-promise-says-what-it-is';
 import { theSumsOnlyARequestSaid, whereARequestInAnOrdinaryCheckInGoes } from './a-request-in-an-ordinary-check-in-goes-to-ask';
 import { withoutARatingOfWhatHappened } from './the-anchor-does-not-rate-what-happened';
 import { aRequestAfterTheirTurn, theyAreAnsweringAnOffer, withoutACannotApprove, withoutAPromiseToPassItOn } from './a-request-offered-in-the-check-in';
@@ -2238,7 +2239,14 @@ export class ConversationService {
       this.logger.log(`Check-in ${checkIn.id}: what they said does not meet the objective; asking which it is.`);
     }
 
-    const fullSystem = [composed, inTheBaseline ? null : aboutTheirDeadline, numbersGap ? askWhichItIs(numbersGap) : null]
+    /* A promise named only by "it" or "that" is asked once what it is, when nothing else is being asked this turn (a-vague-promise-says-what-it-is). */
+    const whatItIs = inTheBaseline || aboutTheirDeadline || numbersGap ? null : askWhatItIs(message, repliesInThisCheckIn);
+    if (whatItIs) this.logger.log(`Check-in ${checkIn.id}: a promise named only by a pronoun; asking once what it is.`);
+    /* Their answer to that question is marked, so the promise keeps it in their words. */
+    const lastReply = await Promise.resolve((this.prisma.conversationTurn as any).findFirst?.({ where: { checkInId: checkIn.id, role: TurnRole.AI }, orderBy: { createdAt: 'desc' }, select: { content: true } }))
+      .catch(() => null) as { content: string | null } | null;
+    const saysWhatItIs = askedWhatItIs(lastReply?.content ?? '');
+    const fullSystem = [composed, inTheBaseline ? null : aboutTheirDeadline, numbersGap ? askWhichItIs(numbersGap) : null, whatItIs]
       .filter(Boolean)
       .join('\n\n')
       /* The anchor's short reminder, when it is in play, is read after everything else. */
@@ -2252,7 +2260,7 @@ export class ConversationService {
     const answersTheOfferShowing = anAnswerToTheIdeaOffer(message)
       && ((await (this.prisma as any).workItem?.count?.({ where: { groundId: checkIn.groundId, kind: 'idea-offered', ownerParticipantId: (checkIn as any).participantId ?? '' } })?.catch?.(() => 0)) ?? 0) > 0;
     const personTurn = await this.prisma.conversationTurn.create({
-      data: { checkInId: checkIn.id, role: TurnRole.PERSON, content: message, ...(answersTheOfferShowing ? { stage: ANSWERED_THE_IDEA_OFFER } : {}) },
+      data: { checkInId: checkIn.id, role: TurnRole.PERSON, content: message, ...(answersTheOfferShowing ? { stage: ANSWERED_THE_IDEA_OFFER } : saysWhatItIs ? { stage: SAID_WHAT_IT_IS } : {}) },
     });
     await this.keepTheDocumentDescription(checkIn.id, personTurn.id, message).catch((err) =>
       this.logger.warn(`Could not keep a document description on ${checkIn.id}: ${err?.message}`),
@@ -8585,7 +8593,7 @@ ${told}` : '';
       where: { id: checkInId },
       select: {
         groundId: true, sessionNumber: true, participantId: true,
-        turns: { where: { role: TurnRole.PERSON }, orderBy: { createdAt: 'asc' }, select: { content: true } },
+        turns: { where: { role: TurnRole.PERSON }, orderBy: { createdAt: 'asc' }, select: { content: true, stage: true } },
       },
     });
     if (!row?.participantId) return;
@@ -8657,6 +8665,8 @@ ${told}` : '';
           groundId: row.groundId,
           participantId: row.participantId,
           text: c.action.slice(0, 400),
+          /* What "it" is, where they were asked: their answer, as typed (a-vague-promise-says-what-it-is). */
+          whatItIs: whatTheySaidItIs(c.action, row.turns as any),
           outcome: c.outcome ?? null,
           whenSaid: c.when ?? null,
           explicit: true,
