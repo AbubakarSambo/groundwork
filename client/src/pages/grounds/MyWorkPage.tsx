@@ -150,7 +150,12 @@ function ThePage({ groundId, served, onPerson, rest, onAllYourReports }: {
 }
 
 function ToDo({ served, askedOf }: { served: Served; askedOf: string }) {
-  const { othersNeed, own, emptySays } = served.toDo
+  const { othersNeed: allOthers, own: allOwn, emptySays } = served.toDo
+  /* Three, then "and N more" (Hafsah, 25 October: lists stop at three). */
+  const [all, setAll] = useState(false)
+  const othersNeed = all ? allOthers : allOthers.slice(0, 3)
+  const own = all ? allOwn : allOwn.slice(0, Math.max(0, 3 - othersNeed.length))
+  const more = allOthers.length + allOwn.length - othersNeed.length - own.length
   return (
     <Section heading="To do">
       {othersNeed.length + own.length === 0 ? <Note tone="muted">{emptySays}</Note> : (
@@ -176,6 +181,7 @@ function ToDo({ served, askedOf }: { served: Served; askedOf: string }) {
           </RowList>
         </Panel>
       )}
+      {more > 0 && <button type="button" className="gw-link t-small gw-start" onClick={() => setAll(true)}>{`and ${more} more`}</button>}
     </Section>
   )
 }

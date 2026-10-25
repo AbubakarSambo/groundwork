@@ -315,6 +315,7 @@ function Evidence({ groundId, served }: { groundId: string; served: Served }) {
   })
   if (!served.evidence) return null
   const ev: AnEvidencePage = filtered && asked.data && 'items' in (asked.data as any) ? (asked.data as AnEvidencePage) : served.evidence
+  const [showAllEvidence, setShowAllEvidence] = useState(false)
   const first = ev.total ? (ev.page - 1) * ev.pageSize + 1 : 0
   const last = Math.min(ev.page * ev.pageSize, ev.total)
   return (
@@ -345,7 +346,8 @@ function Evidence({ groundId, served }: { groundId: string; served: Served }) {
           <>
             <Panel pad={false}>
               <RowList label="Evidence">
-                {ev.items.map((e) => (
+                {/* Three, then "and N more" (Hafsah, 25 October: lists stop at three). */}
+                {ev.items.slice(0, showAllEvidence ? undefined : 3).map((e) => (
                   <Row key={e.id} columns="2fr 2fr 1fr 1fr" inset="panel">
                     <div data-gw-evidence={e.id}>
                       <FlexRow gap={6} align="center" wrap>
@@ -361,14 +363,14 @@ function Evidence({ groundId, served }: { groundId: string; served: Served }) {
                 ))}
               </RowList>
             </Panel>
-            <FlexRow gap={8} align="center" wrap>
+            {!showAllEvidence && ev.items.length > 3 && <button type="button" className="gw-link t-small gw-start" onClick={() => setShowAllEvidence(true)}>{`and ${ev.total - 3} more`}</button>}
+            {(showAllEvidence || ev.items.length <= 3) && <FlexRow gap={8} align="center" wrap>
               <Note tone="muted">{`Newest first. ${first} to ${last} of ${ev.total.toLocaleString('en-GB')}.`}</Note>
               <Button kind="secondary" size="small" disabled={ev.page <= 1} onClick={() => setPage(ev.page - 1)}>Previous</Button>
               <Button kind="secondary" size="small" disabled={last >= ev.total} onClick={() => setPage(ev.page + 1)}>Next</Button>
-            </FlexRow>
+            </FlexRow>}
           </>
         )}
-        <Note tone="muted">{`On the board, each ${served.itemWord} shows its own evidence, so nobody has to scroll this list to find it.`}</Note>
       </Stack>
     </Section>
   )
@@ -405,6 +407,7 @@ const onlyYouSeeThis = (alsoSeenBy?: string | null) => (alsoSeenBy?.trim() ? `On
 function People({ groundId, people, alsoSeenBy, onDone }: { groundId: string; people: NonNullable<Served['people']>; alsoSeenBy?: string; onDone: () => void }) {
   const direct = useTheDirectMorning()
   const [q, setQ] = useState('')
+  const [showAllPeople, setShowAllPeople] = useState(false)
   const [editing, setEditing] = useState<{ pid: string; kind: 'PERSON_NOTE' | 'HELP_WITH'; lineId: string | null; text: string } | null>(null)
   const save = useMutation({
     mutationFn: (e: NonNullable<typeof editing>) => (e.lineId
@@ -440,7 +443,8 @@ function People({ groundId, people, alsoSeenBy, onDone }: { groundId: string; pe
           </FlexRow>
         )}
         {people.length === 0 && <Note tone="muted">Nobody else is in this check-in yet.</Note>}
-        {shown.map((p) => (
+        {/* Three, then "and N more" (lists stop at three); a search shows every match. */}
+        {(q.trim() || showAllPeople ? shown : shown.slice(0, 3)).map((p) => (
           <Panel key={p.participantId}>
             <div data-gw-person-note={p.participantId}>
               <Stack gap={6}>
@@ -458,6 +462,7 @@ function People({ groundId, people, alsoSeenBy, onDone }: { groundId: string; pe
             </div>
           </Panel>
         ))}
+        {!q.trim() && !showAllPeople && shown.length > 3 && <button type="button" className="gw-link t-small gw-start" onClick={() => setShowAllPeople(true)}>{`and ${shown.length - 3} more`}</button>}
       </Stack>
     </Section>
   )

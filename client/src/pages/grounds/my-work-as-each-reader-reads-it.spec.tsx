@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, within, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MyWorkPage } from './MyWorkPage'
@@ -152,6 +152,8 @@ describe('My work, as each reader reads it', () => {
     expect(screen.getByText('By Monday')).toBeTruthy()
     expect(screen.getByText('It was due on 16 October.')).toBeTruthy()
     expect(screen.getByText('Late')).toBeTruthy()
+    /* Three, then "and 2 more" (Hafsah, 25 October: lists stop at three); the rest open on a tap. */
+    fireEvent.click(screen.getByRole('button', { name: 'and 2 more' }))
     expect(screen.getByText('Done on 13 October.')).toBeTruthy()
     expect(screen.getByText('Greenfield Hardware was won, for KES 112,500.')).toBeTruthy()
     for (const b of behaviours('You')) {
