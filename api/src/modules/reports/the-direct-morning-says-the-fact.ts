@@ -93,6 +93,9 @@ export const THE_DIRECT_MORNINGS_WORDS: ARewrite[] = [
   { find: /^Both the lead and this person have said what this person is here to do\. If those two descriptions differ, that difference is the most useful thing on this page\.$/g, put: 'The lead and this person have both said what this person is here to do.' },
   /* conversation/where-a-sessions-report-stands.ts */
   { find: /^This session was finished, but no separate report was kept for it\. What you said, and what came from it, is shown on this page\.$/g, put: 'No report was kept for this session. What you said is below.' },
+  /* board/the-persons-record-in-words.ts, board/your-team-person-by-person.ts: how the product works, and a privacy note. */
+  { find: /^This is read from what (?:you|[^ ]+) said in (?:your|[^ ]+) check-ins and what is on file\. It changes only when something new comes in\.$/g, put: '' },
+  { find: /^Each person’s part is read from what they said in their check-ins and what is on file\. It changes only when something new comes in\. Only you see this\.$/g, put: '' },
   /* board/board.service.ts */
   { find: /^Groundwork does not follow an issue from the day it is raised to the day it is decided and done, so there is no list of open issues here\.[^]*$/g, put: '' },
 ];

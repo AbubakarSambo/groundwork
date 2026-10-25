@@ -162,6 +162,11 @@ describe('every sentence the code writes for these places is one the direct morn
     expect(saidTheDirectWay('Omar has not answered it yet. Next: Groundwork will ask him again in a later check-in.')).toBe('Omar has not answered it yet. They’ll be asked again in a later check-in.');
   });
 
+  it('says nothing about how a record is read', () => {
+    expect(saidTheDirectWay('This is read from what you said in your check-ins and what is on file. It changes only when something new comes in.')).toBe('');
+    expect(saidTheDirectWay('This is read from what Kevin said in Kevin’s check-ins and what is on file. It changes only when something new comes in.')).toBe('');
+  });
+
   it('a difference the report\'s writer named "described differently", as stored before the direct block', () => {
     expect(saidTheDirectWay('The status of a key 10-unit deal is described differently by two people.')).toBe('The status of a key 10-unit deal is not agreed.');
     expect(saidTheDirectWay('The payment status of fee note FN-004 for Kasarani Foods is described in three different ways.')).toBe('There are three different accounts of the payment status of fee note FN-004 for Kasarani Foods.');
