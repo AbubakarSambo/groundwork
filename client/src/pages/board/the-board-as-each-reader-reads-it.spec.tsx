@@ -545,3 +545,27 @@ describe('a target with its unit, as Wairimu adds it', () => {
     await waitFor(() => expect(create).toHaveBeenCalledWith(expect.any(String), { name: 'Units sold by 30 October', target: 120, unit: 'units' }))
   })
 })
+
+/* Polish round 1 dead end (25 October): the lead names whose goal a target is; nobody named is hers, as she runs it. Miriam is offered no choice. */
+describe('whose goal a target is', () => {
+  it('Wairimu can name somebody, or leave it as hers', async () => {
+    me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
+    const update = vi.fn().mockResolvedValue({});
+    (boardApi as any).updateObjective = update
+    renderBoard(AS_THE_LEAD)
+    expect(await screen.findByText(LAST_UPDATED)).toBeTruthy()
+    const whose = screen.getAllByLabelText('Whose goal')[0] as HTMLSelectElement
+    expect(whose.options[0].text).toBe('Yours, as you run this check-in')
+    if (whose.options.length > 1) {
+      fireEvent.change(whose, { target: { value: whose.options[1].value } })
+      await waitFor(() => expect(update).toHaveBeenCalledWith(expect.any(String), expect.any(String), { ownerParticipantId: whose.options[1].value }))
+    }
+  })
+
+  it('Miriam is offered no choice', async () => {
+    me = { id: 'u-miriam', firstName: 'Miriam', role: 'MEMBER' }
+    renderBoard(AS_MIRIAM)
+    expect(await screen.findByText(LAST_UPDATED)).toBeTruthy()
+    expect(screen.queryByLabelText('Whose goal')).toBeNull()
+  })
+})

@@ -4839,7 +4839,7 @@ export class BoardService {
     groundId: string,
     objectiveId: string,
     requestingUserId: string,
-    dto: { name?: string; target?: number | null; count?: number; assumes?: string[]; isADecisionAboutAPerson?: boolean; direction?: TargetDirection | null; dueOn?: string | null; unit?: string | null },
+    dto: { name?: string; target?: number | null; count?: number; assumes?: string[]; isADecisionAboutAPerson?: boolean; direction?: TargetDirection | null; dueOn?: string | null; unit?: string | null; ownerParticipantId?: string | null },
   ) {
     await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
     /* A person's own aim read from their promise (request 110): the lead's change puts it on the record first, as theirs. */
@@ -4869,6 +4869,8 @@ export class BoardService {
           ? { assumes: dto.assumes.map((a) => String(a ?? '').trim()).filter(Boolean).slice(0, 12) }
           : {}),
         ...(dto.target !== undefined ? { target: dto.target } : {}),
+        /* Whose goal it is, as the lead names it: somebody in this check-in, or null for whoever runs it (round 1, 25 October). */
+        ...(dto.ownerParticipantId !== undefined ? { ownerParticipantId: await this.whoOnThisGround(groundId, dto.ownerParticipantId) } : {}),
         /* The unit the lead writes; blank takes it off (round 1, 25 October). */
         ...(dto.unit !== undefined ? { unit: String(dto.unit ?? '').trim().slice(0, 12) || null } : {}),
         ...(dto.count !== undefined ? { count: dto.count, prevCount: existing.count } : {}),

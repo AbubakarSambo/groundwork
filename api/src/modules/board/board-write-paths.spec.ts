@@ -106,6 +106,19 @@ describe('a target carries the unit the lead writes (polish round 1, 25 October)
   });
 });
 
+describe('the lead names whose goal a target is (polish round 1, 25 October)', () => {
+  it('a person in the check-in, or nobody, which is whoever runs it', async () => {
+    const { service, objectiveUpdate } = makeService();
+    (service as any).prisma.groundParticipant = { ...(service as any).prisma.groundParticipant, findFirst: jest.fn(async ({ where }: any) => (where.id === 'p-kevin' && where.groundId === 'g1' ? { id: 'p-kevin' } : null)) };
+    await service.updateObjective('g1', 'o1', 'lead', { ownerParticipantId: 'p-kevin' });
+    expect(objectiveUpdate.mock.calls[0][0].data.ownerParticipantId).toBe('p-kevin');
+    await service.updateObjective('g1', 'o1', 'lead', { ownerParticipantId: null });
+    expect(objectiveUpdate.mock.calls[1][0].data.ownerParticipantId).toBeNull();
+    await service.updateObjective('g1', 'o1', 'lead', { ownerParticipantId: 'p-somebody-elsewhere' });
+    expect(objectiveUpdate.mock.calls[2][0].data.ownerParticipantId).toBeNull();
+  });
+});
+
 describe('A new target keeps what it assumes (Drop Access, 18 October)', () => {
   it('the lead writes what the target of 120 assumes when she makes it, and it is stored as she wrote it', async () => {
     const { service, objectiveCreate } = makeService();

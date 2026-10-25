@@ -4138,6 +4138,26 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                           </div>
                         )}
                         {/*
+                          WHOSE GOAL IT IS, SET BY THE LEAD (polish round 1, 25 October). With nobody named it is the goal of whoever
+                          runs this check-in, and that is who recommits it when the direction changes. The lead names somebody else here.
+                        */}
+                        {b.canEditFrame && (
+                          <label className="gwui-ink-sub gwui-fs-14 gwui-mt-2" style={{display: 'flex', alignItems: 'center', gap: 8, fontWeight: 400}}>
+                            Whose goal
+                            <select
+                              className="gwui-input" style={{width: 'auto', minHeight: 36}}
+                              value={o.ownerParticipantId ?? ''}
+                              onChange={async (e) => {
+                                try { await boardApi.updateObjective(id!, o.id, { ownerParticipantId: e.target.value || null }); invalidate() }
+                                catch { toast.error('That was not changed. Try again.') }
+                              }}
+                            >
+                              <option value="">Yours, as you run this check-in</option>
+                              {(b.participants ?? []).filter((p) => p.name && p.id !== b.myParticipantId && !p.managingOnly).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                            </select>
+                          </label>
+                        )}
+                        {/*
                           A NUMBER NOBODY HAS DEFINED IS NOT AN AGREED NUMBER, AND THE ROW SAYS SO.
                           "signed 12m" read as settled while the lead's own note, one page away, said
                           nobody had decided whether the 12m is signed or recognised revenue. The

@@ -1085,7 +1085,7 @@ export const boardApi = {
   createObjective: (groundId: string, dto: { name: string; target?: number | null; unit?: string | null }) =>
     apiClient.post(`/grounds/${groundId}/board/objectives`, dto).then((r) => r.data),
 
-  updateObjective: (groundId: string, objectiveId: string, dto: { name?: string; target?: number | null; count?: number; assumes?: string[]; unit?: string | null }) =>
+  updateObjective: (groundId: string, objectiveId: string, dto: { name?: string; target?: number | null; count?: number; assumes?: string[]; unit?: string | null; ownerParticipantId?: string | null }) =>
     apiClient.patch(`/grounds/${groundId}/board/objectives/${objectiveId}`, dto).then((r) => r.data),
 
   deleteObjective: (groundId: string, objectiveId: string) =>
