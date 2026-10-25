@@ -143,3 +143,19 @@ describe('the lead answered the decision', () => {
     expect(aLineSaysItIsDone(line('p-grace', 'I have not approved the KES 4,500 price yet.'), wait, none, none, leads)).toBe(false);
   });
 });
+
+describe('what waited for approval went out (real-model run, 25 October)', () => {
+  const wait = { id: 'w2', fromParticipantId: 'p-brian', onParticipantId: 'p-wanjiru', onLabel: null, what: 'approval for FN-009', createdAt: '2026-10-25T18:50:00Z', sourceCheckInId: 'c-2' };
+  const line = (participantId: string, text: string) => ({ id: 'l2', participantId, checkInId: 'c-3', type: 'PROGRESS', text, createdAt: '2026-10-25T19:10:00Z' });
+  const none = () => [] as string[];
+
+  it('is over when the one waiting says the same number was sent', () => {
+    expect(aLineSaysItIsDone(line('p-brian', 'I sent FN-009 to Kito Foods on Tuesday.'), wait, none)).toBe(true);
+  });
+
+  it('is not over for another number, somebody else, or "I will send it"', () => {
+    expect(aLineSaysItIsDone(line('p-brian', 'I sent FN-008 to Nyota Logistics.'), wait, none)).toBe(false);
+    expect(aLineSaysItIsDone(line('p-njeri', 'I sent FN-009 to Kito Foods.'), wait, none)).toBe(false);
+    expect(aLineSaysItIsDone(line('p-brian', 'I will send FN-009 to Kito Foods once it is approved.'), wait, none)).toBe(false);
+  });
+});
