@@ -386,6 +386,12 @@ export class SuitesController {
     return this.reviews.writeView({ userId: user.id, organizationId: user.organizationId }, id, dto.text);
   }
 
+  @Post('reviews/:id/update-from-the-record')
+  @ApiOperation({ summary: 'The person, or whoever writes the review, reads the record again for a review in progress. Opening a review never does this.' })
+  updateAReviewFromTheRecord(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
+    return this.reviews.updateFromTheRecord({ userId: user.id, organizationId: user.organizationId }, id);
+  }
+
   @Post('reviews/:id/lines/:key/correction')
   @ApiOperation({ summary: 'The person marks one line of their review as wrong and says what is true. It is kept beside the line, and the record is not changed.' })
   correctAReviewLine(@Param('id') id: string, @Param('key') key: string, @CurrentUser() user: CurrentUserData, @Body() dto: WordsDto) {
