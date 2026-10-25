@@ -5657,7 +5657,7 @@ export class GroundsService {
   async setTemplate(groundId: string, requestingUserId: string, body: { template?: unknown }) {
     await this.aSettingOnlyTheLeadMayChange(groundId, requestingUserId);
     const g = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true, workStages: true } });
-    if (!(await theRelease4TeamsIsOn(this.prisma, g?.organizationId))) throw new BadRequestException('Templates are not switched on for your organisation yet.');
+    if (!(await theRelease4TeamsIsOn(this.prisma, g?.organizationId))) throw new BadRequestException('That could not be found.');
     if (body.template === null) {
       return this.prisma.ground.update({ where: { id: groundId }, data: { templateId: null }, select: { id: true, templateId: true, workStages: true } });
     }

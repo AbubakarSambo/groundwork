@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { groundsApi, type ATemplate } from '@/api/grounds'
 import { Page, PageTitle, Section, Note } from '@/components/gw/ui'
+import { NotFoundPage } from '@/pages/notfound/NotFoundPage'
 
 /**
  * THE TEMPLATE LIBRARY (B1, templates.jpg; Release 4: "the 13 templates attachable to any team"). Every template, then the chosen
@@ -14,11 +15,12 @@ export function TemplatesPage() {
   const templates: ATemplate[] = q.data?.templates ?? []
   const [chosenId, setChosenId] = useState<string | null>(null)
   const t = templates.find((x) => x.id === chosenId) ?? templates[0] ?? null
+  /* Off for this organisation: the page is not there, and nothing says a switch exists (switches are Groundwork's own, 25 October). */
+  if (q.data && !q.data.on) return <NotFoundPage />
   return (
     <Page>
       <PageTitle title="Template library" subtitle="A template sets what is tracked, its stages, how targets read, how it rolls up and what the check-in asks. The lead attaches one in People and setup." />
       {q.isLoading && <Note>Loading the templates.</Note>}
-      {q.data && !q.data.on && <Note>Templates are not switched on for your organisation yet.</Note>}
       {t && (
         <div className="gw-templates">
           <nav aria-label="Templates" className="gw-templates-list">

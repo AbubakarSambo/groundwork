@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { policyApi } from '@/api/policy'
 import { Page, PageTitle, Section, Note, EdgeList, EdgeRow } from '@/components/gw/ui'
 import { useAuthStore } from '@/stores/auth'
+import { NotFoundPage } from '@/pages/notfound/NotFoundPage'
 
 /**
  * THE POLICY BOARD (Release 9; the Check-in Reports file's "The policy board"). Every rule the organisation runs on, by area, each with
@@ -14,7 +15,8 @@ export function PolicyBoardPage() {
   const org = (useAuthStore((s) => s.user) as any)?.organization?.name ?? ''
   const eyebrow = org ? `${org}, the organisation’s context` : 'The organisation’s context'
   if (q.isLoading) return <Page><PageTitle eyebrow={eyebrow} title="The policy board" /><Note>Loading the policy board.</Note></Page>
-  if (!q.data?.on || !q.data.board) return <Page><PageTitle eyebrow={eyebrow} title="The policy board" /><Note>The policy board is not switched on for your organisation yet.</Note></Page>
+  /* Off for this organisation: the page is not there, and nothing says a switch exists (switches are Groundwork's own, 25 October). */
+  if (!q.data?.on || !q.data.board) return <NotFoundPage />
   const b = q.data.board
   return (
     <Page>

@@ -1,3 +1,4 @@
+import { THE_ORGANISATION_SWITCHES, isAnOrganisationSwitch } from './the-organisation-switches';
 import {
   Injectable,
   NotFoundException,
@@ -89,6 +90,23 @@ export class AdminService implements OnApplicationBootstrap {
    * RELEASE 1'S SALES BOARD FOR ONE ORGANISATION (board/release-one-sales-board). Writes the one column and nothing else. Said
    * back in a full sentence, for the Orgs tab to show as it is given.
    */
+  /** Every switch of one organisation, as the ops team reads them (the-organisation-switches). Staff only, by the admin controller's guard. */
+  async theSwitchesOf(organizationId: string): Promise<{ id: string; name: string; switches: { key: string; name: string; on: boolean }[] }> {
+    const select = Object.fromEntries([['id', true], ['name', true], ...THE_ORGANISATION_SWITCHES.map((s) => [s.key, true])]);
+    const org: any = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: select as any });
+    if (!org) throw new NotFoundException('That organisation could not be found, so refresh the list and try again.');
+    return { id: org.id, name: org.name, switches: THE_ORGANISATION_SWITCHES.map((s) => ({ key: s.key, name: s.name, on: !!org[s.key] })) };
+  }
+
+  /** One switch of one organisation, on or off. Only the switches in the list; nothing else on the organisation is written. */
+  async setASwitch(organizationId: string, key: string, on: boolean) {
+    if (!isAnOrganisationSwitch(key)) throw new BadRequestException('That is not a switch an organisation has.');
+    const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { id: true } });
+    if (!org) throw new NotFoundException('That organisation could not be found, so refresh the list and try again.');
+    await this.prisma.organization.update({ where: { id: organizationId }, data: { [key]: on } as any });
+    return this.theSwitchesOf(organizationId);
+  }
+
   async setReleaseOneSalesBoard(organizationId: string, on: boolean): Promise<{ id: string; name: string; release1SalesBoardOn: boolean; says: string }> {
     const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { id: true } });
     if (!org) throw new NotFoundException('That organisation could not be found, so refresh the list and try again.');

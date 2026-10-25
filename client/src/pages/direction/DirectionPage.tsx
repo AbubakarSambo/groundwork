@@ -5,6 +5,7 @@ import { directionApi, type DirectionRead } from '@/api/direction'
 import { groundsApi } from '@/api/grounds'
 import { Page, PageTitle, Section, Note, EdgeList, EdgeRow, Tag, Button } from '@/components/gw/ui'
 import { useAuthStore } from '@/stores/auth'
+import { NotFoundPage } from '@/pages/notfound/NotFoundPage'
 
 const EDGE = { rec: 'ready', att: 'look', con: 'concern' } as const
 const fail = (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. Try again.')
@@ -22,7 +23,8 @@ export function DirectionPage() {
   const org = (useAuthStore((s) => s.user) as any)?.organization?.name ?? ''
   const d = q.data?.direction
   if (q.isLoading) return <Page><PageTitle title="Direction" /><Note>Loading the direction.</Note></Page>
-  if (!q.data?.on) return <Page><PageTitle title="Direction" /><Note>Direction is not switched on for your organisation yet.</Note></Page>
+  /* Off for this organisation: the page is not there, and nothing says a switch exists (switches are Groundwork's own, 25 October). */
+  if (!q.data?.on) return <NotFoundPage />
   const teamTab = d?.teams.find((t) => t.groundId === tab)
   return (
     <Page>

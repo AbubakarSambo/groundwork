@@ -1414,6 +1414,33 @@ export function Release2CollectionsSwitch({ org }: { org: Pick<OrgListItem, 'id'
   )
 }
 
+/**
+ * EVERY SWITCH OF ONE ORGANISATION, FOR GROUNDWORK'S OPS TEAM ONLY (Hafsah, 25 October 2026). Releases 1 to 9, direct language and the
+ * lead's read of each person, read and set here and nowhere a client can reach (the admin route, refused on the server to anyone
+ * who is not Groundwork staff).
+ */
+export function EverySwitchOf({ org }: { org: Pick<OrgListItem, 'id' | 'name'> }) {
+  const qc = useQueryClient()
+  const q = useQuery({ queryKey: ['org-switches', org.id], queryFn: () => adminApi.theSwitchesOf(org.id) })
+  const set = useMutation({
+    mutationFn: ({ key, on }: { key: string; on: boolean }) => adminApi.setASwitch(org.id, key, on),
+    onSuccess: (r) => { qc.setQueryData(['org-switches', org.id], r); qc.invalidateQueries({ queryKey: ['platform-org-list'] }) },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That could not be changed. Try again.'),
+  })
+  if (!q.data) return null
+  return (
+    <div style={{ paddingTop: 10, marginTop: 10, borderTop: '1px solid var(--gw-border)' }}>
+      <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>Every switch for {org.name}</div>
+      {q.data.switches.map((s) => (
+        <label key={s.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '4px 0', fontSize: 12.5 }}>
+          <span>{s.name}</span>
+          <input type="checkbox" checked={s.on} disabled={set.isPending} onChange={(e) => set.mutate({ key: s.key, on: e.target.checked })} aria-label={`${s.name} for ${org.name}`} />
+        </label>
+      ))}
+    </div>
+  )
+}
+
 function OrgsTab({ orgs }: { orgs: OrgListItem[] }) {
   const [search, setSearch] = useState('')
   const [open, setOpen] = useState<string | null>(null)
@@ -1464,6 +1491,7 @@ function OrgsTab({ orgs }: { orgs: OrgListItem[] }) {
            {open === org.id && <ReleaseOneSalesBoardSwitch org={org} />}
            {open === org.id && <Release1bTabsSwitch org={org} />}
            {open === org.id && <Release2CollectionsSwitch org={org} />}
+           {open === org.id && <EverySwitchOf org={org} />}
            {open === org.id && <PeopleInOrg organizationId={org.id} />}
           </div>
         ))}

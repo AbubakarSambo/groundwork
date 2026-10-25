@@ -20,7 +20,8 @@ export async function theRelease9PolicyIsOn(prisma: any, organizationId: string 
 
 type Reader = { userId: string; organizationId: string; role: string };
 
-const OFF = 'The policy board is not switched on for your organisation.';
+/* Off for this organisation: nothing says a switch exists (switches are Groundwork's own, 25 October). */
+const OFF = 'That could not be found.';
 const ONLY_AN_ADMIN = 'Only an admin can set up from documents or approve a rule.';
 const MOST_WORDS = 200_000;
 /** The key the approved rules are kept under in what Ask answers from, so each approval replaces the last version. */
@@ -99,7 +100,7 @@ export class PolicyService {
       }
     } else if (area === 'direction') {
       const on = (await Promise.resolve(db.organization?.findUnique?.({ where: { id: r.organizationId }, select: { release6DirectionOn: true } })).catch(() => null))?.release6DirectionOn === true;
-      if (!on) throw new BadRequestException('Direction is not switched on for your organisation, so these goals cannot be set as its direction yet.');
+      if (!on) throw new BadRequestException('That could not be found.');
       const any = await Promise.resolve(db.directionVersion?.findFirst?.({ where: { organizationId: r.organizationId } })).catch(() => null);
       if (any) throw new BadRequestException('A direction is already set. Change it on the Direction page.');
       await db.directionVersion.create({ data: { organizationId: r.organizationId, version: 1, setByUserId: r.userId, now: { believe: here.map((x) => x.data.goal).join(' ') }, whatChanged: {}, teams: [] } });

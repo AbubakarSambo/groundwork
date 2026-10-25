@@ -18,7 +18,8 @@ export async function theCurrentDirection(prisma: any, organizationId: string): 
 }
 
 type Reader = { userId: string; organizationId: string; role: string };
-const OFF = 'Direction is not switched on for your organisation yet.';
+/* Off for this organisation: nothing says a switch exists (switches are Groundwork's own, 25 October). */
+const OFF = 'That could not be found.';
 
 @Injectable()
 export class DirectionService {

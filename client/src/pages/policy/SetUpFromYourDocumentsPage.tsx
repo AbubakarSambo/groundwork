@@ -6,6 +6,7 @@ import { policyApi } from '@/api/policy'
 import { askNameFor } from '@/lib/ask-name'
 import { Page, PageTitle, Section, Note, EdgeList, EdgeRow, Panel, Button } from '@/components/gw/ui'
 import { useAuthStore } from '@/stores/auth'
+import { NotFoundPage } from '@/pages/notfound/NotFoundPage'
 
 const fail = (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. Try again.')
 
@@ -23,7 +24,8 @@ export function SetUpFromYourDocumentsPage() {
   const decide = useMutation({ mutationFn: (ruleId: string) => policyApi.decide(ruleId), onSuccess: () => { toast.success('Decided.'); done() }, onError: fail })
   const approve = useMutation({ mutationFn: (a: { area: string; heading: string }) => policyApi.approve(a.area), onSuccess: (_d, a) => { toast.success(`${a.heading} is approved.`); done() }, onError: fail })
   if (q.isLoading) return <Page><PageTitle eyebrow={eyebrow} title="Set up from your documents" /><Note>Loading.</Note></Page>
-  if (q.isError || !q.data?.setup) return <Page><PageTitle eyebrow={eyebrow} title="Set up from your documents" /><Note>{(q.error as any)?.response?.data?.message ?? 'Setting up from documents is not switched on for your organisation yet.'}</Note></Page>
+  /* Off for this organisation, or not theirs: the page is not there, and nothing says a switch exists (switches are Groundwork's own, 25 October). */
+  if (q.isError || !q.data?.setup) return <NotFoundPage />
   const s = q.data.setup
   return (
     <Page>

@@ -88,6 +88,6 @@ describe('Release 9: the other setup areas, as Grace sets them up', () => {
   it('never sets a direction over one already set, or where direction is off', async () => {
     const off = aBed(false);
     await off.svc.addDocument(GRACE, { name: '2027 strategy', text: 'x' });
-    await expect(off.svc.approve(GRACE, { area: 'direction' })).rejects.toThrow('Direction is not switched on for your organisation, so these goals cannot be set as its direction yet.');
+    await expect(off.svc.approve(GRACE, { area: 'direction' })).rejects.toThrow('That could not be found.');
   });
 });

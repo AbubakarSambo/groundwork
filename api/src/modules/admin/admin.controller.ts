@@ -513,6 +513,20 @@ export class AdminController {
    * on staging; then for real clients, one at a time"). Staff only, by the guard on this controller. Off returns the
    * organisation to the board it had, with nothing lost.
    */
+  /** Every switch of one organisation: Releases 1 to 9, direct language and the lead's read of each person. Staff only, by the guard on this controller. */
+  @Get('organisations/:organizationId/switches')
+  @ApiOperation({ summary: "Every switch of one organisation (Groundwork staff only)" })
+  theSwitchesOf(@Param('organizationId') organizationId: string) {
+    return this.adminService.theSwitchesOf(organizationId);
+  }
+
+  @Patch('organisations/:organizationId/switches/:key')
+  @ApiOperation({ summary: "Set one switch of one organisation on or off (Groundwork staff only)" })
+  setASwitch(@Param('organizationId') organizationId: string, @Param('key') key: string, @Body() dto: { on?: unknown }) {
+    if (typeof dto?.on !== 'boolean') throw new BadRequestException('Say whether the switch should be on or off.');
+    return this.adminService.setASwitch(organizationId, key, dto.on);
+  }
+
   @Patch('organisations/:organizationId/release-one-sales-board')
   @ApiOperation({ summary: "Switch Release 1's sales board on or off for one organisation" })
   setReleaseOneSalesBoard(@Param('organizationId') organizationId: string, @Body() dto: { on?: unknown }) {

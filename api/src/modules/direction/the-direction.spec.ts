@@ -112,7 +112,7 @@ describe('Release 6: recommitting, so nobody is judged against the old plan', ()
   it('only the person or their lead may decide, and nothing is written with the switch off', async () => {
     await expect(world({ ownerUserId: 'u-x', leadUserId: 'u-y' }).svc.recommit(MIRIAM, { objectiveId: 'o-miriam', outcome: 'stop' })).rejects.toThrow('Only the person whose goal it is, or their lead');
     const off = world({ on: false });
-    await expect(off.svc.recommit(MIRIAM, { objectiveId: 'o-miriam', outcome: 'stop' })).rejects.toThrow('Direction is not switched on');
+    await expect(off.svc.recommit(MIRIAM, { objectiveId: 'o-miriam', outcome: 'stop' })).rejects.toThrow('That could not be found.'); /* changed 25 October: an off switch is never named to a client */
     expect(off.writes).toEqual([]);
   });
 });

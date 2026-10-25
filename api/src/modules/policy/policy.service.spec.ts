@@ -46,7 +46,7 @@ describe('Release 9: setting up from documents, as Grace (an admin) and Kevin (a
   it('is off for every organisation until it is switched on', async () => {
     const { svc } = aBed(false);
     expect(await svc.board(GRACE)).toEqual({ on: false });
-    await expect(svc.addDocument(GRACE, { name: 'Leave policy', text: 'x' })).rejects.toThrow('The policy board is not switched on for your organisation.');
+    await expect(svc.addDocument(GRACE, { name: 'Leave policy', text: 'x' })).rejects.toThrow('That could not be found.');
   });
 
   it('lets only an admin add a document or approve, while anyone reads the board', async () => {

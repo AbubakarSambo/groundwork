@@ -56,10 +56,12 @@ describe('Release 9: the policy board, as Kevin (a member) and Grace (an admin) 
     expect(screen.getByText('Decide')).toBeTruthy()
   })
 
-  it('says it is not switched on where it is off', async () => {
+  /* Changed 25 October (Hafsah: switches are Groundwork's own): where it is off, the page is not there, and nothing names a switch. */
+  it('is not there where it is off, and says nothing about a switch', async () => {
     m.board.mockResolvedValue({ on: false })
     draw(<PolicyBoardPage />)
-    expect(await screen.findByText('The policy board is not switched on for your organisation yet.')).toBeTruthy()
+    expect(await screen.findByText('Nothing is at this address')).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(/switched on|switch/i)
   })
 })
 
