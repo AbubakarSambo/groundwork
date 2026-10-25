@@ -1,4 +1,5 @@
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
+import { TheWordForABill } from '@/components/gw/TheWordForABill'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
@@ -332,6 +333,7 @@ export function SettingsPage() {
               )}
               action={!editingOrgName && <Button kind="quiet" size="small" onClick={() => setEditingOrgName(true)}>Change</Button>}
             />
+            <TheWordForABill />
           </FieldRows>
           <p className="gwui-fine">
             Who can open a check-in, and whether new check-ins wait for an admin, are set on the{' '}
