@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useSuitesOnForYou } from '@/hooks/useSuitesOnForYou'
 import { Page, PageTitle, Section, Panel, Button, Tag, Toggle, Note, Empty, RowList, Row, FieldLabel, TextField, TextArea, Select, Modal } from '@/components/gw/ui'
 import { QueueLink } from './QueuePage'
+import { WhoLooksAfterWhat } from './WhoLooksAfterWhat'
 import { everySays } from './ReviewsBoardPage'
 
 /**
@@ -203,6 +204,8 @@ function ForAnAdmin({ page }: { page: SuitesForAnAdmin }) {
           </div>
         </Section>
       ))}
+
+      <WhoLooksAfterWhat />
 
       <Section heading="Already part of Groundwork" note="These don’t need switching on. Here is where each one lives.">
         <RowList label="Already part of Groundwork">
