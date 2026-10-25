@@ -120,3 +120,26 @@ describe('once it is cleared, as each reader reads it', () => {
     ]);
   });
 });
+
+/*
+ * Real-model run, 25 October: Joseph waited on "Management" for "a decision on whether to offer a unit at KES 4,500". Grace, who runs
+ * the check-in, said "I approved the KES 4,500 price for Juja Hardware for 5 units only." Her morning and Joseph's review still said he
+ * was waiting. The lead deciding it, with the same amount, answers it.
+ */
+describe('the lead answered the decision', () => {
+  const wait = { id: 'w1', fromParticipantId: 'p-joseph', onParticipantId: null, onLabel: 'Management', what: 'a decision on whether to offer a unit at KES 4,500', createdAt: '2026-10-14T11:08:50Z', sourceCheckInId: 'c-1' };
+  const line = (participantId: string, text: string) => ({ id: 'l1', participantId, checkInId: 'c-9', type: 'PROGRESS', text, createdAt: '2026-10-25T18:34:14Z' });
+  const leads = new Set(['p-grace']);
+  const none = () => [] as string[];
+
+  it('is cleared by the lead approving it, with the same amount', () => {
+    expect(aLineSaysItIsDone(line('p-grace', 'I approved the KES 4,500 price for Juja Hardware for 5 units only.'), wait, none, none, leads)).toBe(true);
+    expect(aLineSaysItIsDone(line('p-grace', 'I turned down the KES 4,500 price for Juja Hardware.'), wait, none, none, leads)).toBe(true);
+  });
+
+  it('is not cleared by somebody who does not run the check-in, another amount, or "I have not approved"', () => {
+    expect(aLineSaysItIsDone(line('p-mercy', 'I approved the KES 4,500 price for Juja Hardware.'), wait, none, none, leads)).toBe(false);
+    expect(aLineSaysItIsDone(line('p-grace', 'I approved the KES 4,800 price for Juja Hardware.'), wait, none, none, leads)).toBe(false);
+    expect(aLineSaysItIsDone(line('p-grace', 'I have not approved the KES 4,500 price yet.'), wait, none, none, leads)).toBe(false);
+  });
+});
