@@ -389,6 +389,17 @@ export class WhatsAppForAnOrganisationService {
     }
 
     if (!open.length && inTheApp.length) {
+      /*
+       * A REQUEST OR A DECISION IS NEVER LOST BEHIND A CHECK-IN KEPT IN THE APP (polish round 1, 25 October). Mercy asked for leave on
+       * WhatsApp, and Grace typed "approve", while each had a check-in waiting in the app: both were told only to answer the check-in in
+       * the app, and the request and the decision went nowhere. A leave, spending or hours request, or an approver's "approve",
+       * "decline" or question, goes to Ask, which says it back and acts only on a yes, exactly as when nothing is open. The check-in
+       * waiting in the app is left as it is.
+       */
+      if (who.personId && arrived.kind === 'text' && (looksLikeARequest(said) || ((aDecisionIn(said) || aQuestionAskedAboutARequest(said)) && (await this.aDecisionWaitsFor(organizationId, who.personId))))) {
+        await say(asATextMessage(await this.assistant.respondOnWhatsApp(organizationId, who.personId, said)) || 'Noted.');
+        return;
+      }
       const meant = inTheApp.find((c) => c.id === thread?.checkInId) ?? inTheApp[0];
       await say(answerItInTheApp(meant.label));
       return;

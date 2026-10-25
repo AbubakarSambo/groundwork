@@ -84,3 +84,33 @@ describe('the notices that start a conversation', () => {
     expect(cron.slice(at, at + 2500)).toMatch(/if \(keptOffThePhone\(ci\.ground\)\) continue;/);
   });
 });
+
+/*
+ * POLISH ROUND 1 (25 October): a request or a decision sent on WhatsApp is never lost because the person has a check-in waiting in the
+ * app. It goes to Ask, which says it back and acts only on a yes, and the check-in is left as it is.
+ */
+describe('a request or a decision sent on WhatsApp while a check-in waits in the app', () => {
+  it('a leave request goes to Ask, not into the check-in, and is not answered "answer it in the app"', async () => {
+    const h = anInboundHarness({ open: [PLAN] });
+    await h.service.handle('org-1', h.message('Can I take leave on Monday 26 and Tuesday 27 October?'));
+    expect(h.assistant.respond).toHaveBeenCalled();
+    expect(h.conversation.sendMessage).not.toHaveBeenCalled();
+    expect(h.said.join(' ')).not.toMatch(/kept in the Groundwork app/);
+  });
+
+  it('an approver\'s "approve" and "decline" go to Ask when something waits for them to decide', async () => {
+    for (const words of ['Approve Mercy\'s leave', 'Decline Peter\'s leave, we are two short that Friday']) {
+      const h = anInboundHarness({ open: [PLAN], decisionWaiting: true });
+      await h.service.handle('org-1', h.message(words));
+      expect(h.assistant.respond).toHaveBeenCalled();
+      expect(h.conversation.sendMessage).not.toHaveBeenCalled();
+      expect(h.said.join(' ')).not.toMatch(/kept in the Groundwork app/);
+    }
+  });
+
+  it('"approve" with nothing waiting to decide, and an ordinary answer, are told to answer in the app as before', async () => {
+    const h = anInboundHarness({ open: [PLAN], decisionWaiting: false });
+    await h.service.handle('org-1', h.message('Approve'));
+    expect(h.said[0]).toMatch(/kept in the Groundwork app/);
+  });
+});
