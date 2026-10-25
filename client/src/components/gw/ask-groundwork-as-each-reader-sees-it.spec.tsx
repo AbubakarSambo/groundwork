@@ -215,10 +215,11 @@ describe('two check-ins on "About" share one label', () => {
 describe('the starter questions, under the greeting', () => {
   const asked = () => within(screen.getByRole('group', { name: 'Questions you could ask' })).getAllByRole('button').map(b => b.textContent)
 
-  it('Wairimu, who has asked nothing yet, reads the greeting and then the six starters, served in decision 101’s order', async () => {
+  /* Three, as the prototype's Ask (Hafsah, 25 October: the prototype wins on every detail), the first three of decision 101's order. */
+  it('Wairimu, who has asked nothing yet, reads the greeting and then the first three starters, in decision 101’s order', async () => {
     panel(WAIRIMUS, '/grounds/g-sales/board')
     await screen.findByText(WELCOME)
-    expect(asked()).toEqual(STARTERS_WITH_A_CHECK_IN)
+    expect(asked()).toEqual(STARTERS_WITH_A_CHECK_IN.slice(0, 3))
   })
 
   it('pressing one asks it as her own question, about the check-in she is reading, and the starters go away', async () => {

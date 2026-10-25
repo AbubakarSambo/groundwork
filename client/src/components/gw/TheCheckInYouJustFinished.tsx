@@ -767,7 +767,7 @@ function OwnReportAsPictured({ didWell, story, toldUs, toThinkAbout, record, cor
       )}
       {toThinkAbout.length > 0 && (
         <section className="panel pad gw-col-6" aria-label="One thing to think about">
-          <h2 className="t-body gw-bold">One thing to think about</h2>
+          <b className="t-body">One thing to think about</b>
           {toThinkAbout.map((t) => <p key={t} className="t-small">{t}</p>)}
         </section>
       )}

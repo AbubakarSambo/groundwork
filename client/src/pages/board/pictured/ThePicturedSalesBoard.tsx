@@ -216,7 +216,8 @@ export function WhatTheTargetAssumes({ b }: { b: Any }) {
     <>
       {rows.map((o: Any) => (
         <Panel key={o.id}>
-          <h2 className="pb-panel-h">{`What the target of ${Number(o.target).toLocaleString('en-GB')} assumes`}</h2>
+          {/* A bold line in its panel, not a section heading, as the prototype's board draws it. */}
+          <b className="t-h3">{`What the target of ${Number(o.target).toLocaleString('en-GB')} assumes`}</b>
           <ul className="pb-bullets">
             {o.assumes.map((a: string) => <li key={a}>{a}</li>)}
           </ul>

@@ -577,7 +577,8 @@ export function AskGroundwork({
         {/* The questions you could ask, as the prototype's chips, after what has been said, until you ask something this visit. */}
         {page.data?.canAsk && (page.data?.starters ?? []).length > 0 && said.length === 0 && (
           <div role="group" aria-label="Questions you could ask" className="gw-chips">
-            {(page.data?.starters ?? []).map((q) => (
+            {/* Three, as the prototype's Ask. */}
+            {(page.data?.starters ?? []).slice(0, 3).map((q) => (
               <button key={q} type="button" className={chip} disabled={sending || reading} onClick={() => ask(q)}>{q}</button>
             ))}
           </div>
