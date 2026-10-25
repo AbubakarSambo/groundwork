@@ -121,6 +121,10 @@ describe('the same bill, moved on', () => {
     expect(after.fields['Paid']).toBeUndefined();
   });
 
+  it('the reader is told that a fee note said to be not paid yet is at Due (real-model run, 25 October: "Still nothing for FN-004")', () => {
+    expect(theCollectionsRecordsPrompt('invoices or fee notes', 'fee note')).toContain('is not paid yet ("still unpaid", "has not arrived", "nothing came in for it") gives it at "Due"');
+  });
+
   it('a day said without its year is the one nearest the day it was said', () => {
     expect(inTheYearItWasSaid('2023-10-31', 'Mr. Baraka said FN-004 will be paid by 31 October.', new Date('2026-10-25T09:00:00Z'))).toBe('2026-10-31');
     expect(inTheYearItWasSaid('2027-01-10', 'They will pay on 10 January.', new Date('2026-12-20T09:00:00Z'))).toBe('2027-01-10');
