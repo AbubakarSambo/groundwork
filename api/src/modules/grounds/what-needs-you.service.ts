@@ -342,7 +342,8 @@ export class WhatNeedsYouService {
     if (!directMorning) delete (told as any).lineNudge;
     /* SINCE YESTERDAY (C1, today-lead): what moved since the round before, for the check-in the line is about, read from the record the
        latest report reads (no model, nothing written). Only for the person who runs it. */
-    if (told.lineGroundId) {
+    /* Behind the direct morning, so an organisation with it off reads Today as before. */
+    if (directMorning && told.lineGroundId) {
       const g = await (this.prisma as any).ground.findUnique({ where: { id: told.lineGroundId }, select: { initiatorId: true, cadence: true } }).catch(() => null);
       if (g?.initiatorId === userId) {
         const read = await whatTodayReads(this.prisma as any, told.lineGroundId, { userId, isAdmin: false }).catch(() => ({} as any));
