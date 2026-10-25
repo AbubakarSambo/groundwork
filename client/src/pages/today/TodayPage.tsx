@@ -57,6 +57,10 @@ import { todayGreetingLine } from '@/lib/the-greeting-line-does-not-claim-what-n
  * the page's own `gw-coming-up`. The two-column layout is the prototype's own shared `.side` shape
  * (`gwui-side`, gw-ui.css), not a layout built just for this page.
  */
+const SENTENCE_END = /(?<=[a-z0-9)”’])\.\s+(?=[A-Z])/
+const firstSentenceOf = (t: string) => { const [a, ...rest] = t.split(SENTENCE_END); return rest.length ? `${a}.` : t }
+const restAfterTheFirstSentence = (t: string) => t.split(SENTENCE_END).slice(1).join('. ')
+
 export function TodayPage() {
   const user = useAuthStore(s => s.user)
   const [params] = useSearchParams()
@@ -158,8 +162,16 @@ export function TodayPage() {
    * you", most important first, each said once. A row the list already has (the same title) is not added again.
    */
   type ARow = { key: string; kind: Need['kind']; title: string; detail?: string; action?: { label: string; to: string } }
-  const seen = new Set<string>()
-  const once = (r: ARow) => { const k = r.title.trim().toLowerCase().replace(/[.!]+$/, ''); if (seen.has(k)) return false; seen.add(k); return true }
+  /* The same thing said in other words is a repeat too: most of its longer words already said in a row above. */
+  const COMMON = new Set(['about', 'after', 'again', 'their', 'there', 'these', 'those', 'which', 'while', 'would', 'could', 'should', 'since', 'today', 'until', 'waiting', 'answer', 'check', 'with', 'from', 'this', 'that', 'your', 'have', 'been', 'what'])
+  const wordsOf = (t: string) => new Set(t.toLowerCase().replace(/[’']s\b/g, '').split(/[^a-z0-9]+/).filter((w) => w.length >= 4 && !COMMON.has(w)))
+  const seen: Set<string>[] = []
+  const once = (r: ARow) => {
+    const w = wordsOf(r.title)
+    if (seen.some((x) => { const both = [...w].filter((y) => x.has(y)).length; return both >= 3 && both / Math.min(w.size, x.size) >= 0.6 })) return false
+    seen.push(w)
+    return true
+  }
   needs.forEach((n: Need) => once({ key: n.key, kind: n.kind, title: n.title }))
   const moreRows: ARow[] = [
     ...nobodyHasStarted.map((n) => ({ key: `started-${n.groundId}`, kind: 'look' as const, title: n.subject, detail: n.lines[0], action: { label: n.linkLabel, to: n.to } })),
@@ -179,7 +191,7 @@ export function TodayPage() {
 
   return (
     <Page>
-      <div className="gwui-side">
+      <div className="gwui-side gw-today">
         <div className="gw-col-32">
           {params.get('welcome') === '1' && (
             <YouAreIn checkIns={grounds.isSuccess ? (grounds.data?.length ?? 0) : null} mayStart={user?.mayOpenCheckIns !== false} />
@@ -221,8 +233,10 @@ export function TodayPage() {
                   <EdgeRow
                     key={n.key}
                     kind={n.kind}
-                    title={n.title}
-                    detail={n.detail ?? undefined}
+                    /* One line of title: a second sentence goes to the detail line when there is none (Hafsah, 25 October). */
+                    title={n.detail ? n.title : firstSentenceOf(n.title)}
+                    detail={n.detail ?? (restAfterTheFirstSentence(n.title) || undefined)}
+                    to={whereItGoes(n)}
                     actions={<>
                       <Button kind={n.action.label === 'Start it' && i === needs.findIndex((m: Need) => m.action.label === 'Start it') ? 'primary' : 'secondary'} size="small" to={whereItGoes(n)}>{n.action.label}</Button>
                       {n.missedReason && <TheReasonYouMissed checkInId={n.missedReason.checkInId} given={n.missedReason.given} />}
@@ -230,7 +244,7 @@ export function TodayPage() {
                   />
                 ))}
                 {moreRows.map((r) => (
-                  <EdgeRow key={r.key} kind={r.kind} title={r.title} detail={r.detail}
+                  <EdgeRow key={r.key} kind={r.kind} title={r.title} detail={r.detail} to={r.action?.to}
                     actions={r.action ? <Button kind="secondary" size="small" to={r.action.to}>{r.action.label}</Button> : undefined} />
                 ))}
               </EdgeList>

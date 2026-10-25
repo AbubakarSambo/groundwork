@@ -74,7 +74,8 @@ afterEach(() => { vi.useRealTimers() })
 const rows = () => [...document.querySelectorAll('.item')].map(li => ({
   title: li.querySelector('.h')?.textContent,
   detail: li.querySelector('.s')?.textContent ?? null,
-  action: [...li.querySelectorAll('a')].map(a => [a.textContent, a.getAttribute('href')]),
+  /* The row's own link (a row is tapped as a whole, as the prototype's phone Today) is its title, not its action. */
+  action: [...li.querySelectorAll('a:not(.gw-row-link)')].map(a => [a.textContent, a.getAttribute('href')]),
 }))
 
 describe('Today, as the lead', () => {

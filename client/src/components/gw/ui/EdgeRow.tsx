@@ -1,4 +1,5 @@
 import React from 'react'
+import { Link } from 'react-router-dom'
 import './gw-ui.css'
 
 /**
@@ -27,7 +28,9 @@ const EDGE_REASON: Partial<Record<EdgeKind, string>> = {
   concern: 'There is a problem.',
 }
 
-export function EdgeRow({ kind, title, detail, actions }: {
+export function EdgeRow({ kind, title, detail, actions, to }: {
+  /** Where the whole row goes when it is tapped (the prototype's phone rows have no button of their own). */
+  to?: string
   kind: EdgeKind
   title: string
   /** Usually one sentence; the no-seat warning also lists each person waiting under it. */
@@ -52,7 +55,7 @@ export function EdgeRow({ kind, title, detail, actions }: {
       <i className={`sp ${edge}`} aria-hidden />
       <div className="gw-min0">
         {reason && <span className="gwui-sr-only">{reason} </span>}
-        <div className="h">{title}</div>
+        <div className="h">{to ? <Link to={to} className="gw-row-link">{title}</Link> : title}</div>
         {detail && <div className="s">{detail}</div>}
       </div>
       {actions && <span className="acts gw-acts">{actions}</span>}
