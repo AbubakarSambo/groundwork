@@ -23,6 +23,7 @@ const ITEM_KINDS_FOR_HOLDS: Record<string, string[]> = {
   'deals': ['deal'],
   'releases and tasks': ['release', 'task'],
   'tickets': ['ticket'],
+  'the priorities across the teams': ['priority'],
   'incidents': ['incident'],
   'trader groups': ['group'],
   'commitments and decisions': ['commitment', 'decision'],

@@ -623,6 +623,8 @@ model Organization {
   release3InvoicesOn     Boolean   @default(false) @map("release_3_invoices_on")
   /// With Release 3 on: a sale won makes an invoice to raise in the organisation's "Collect what's owed" check-in. Off by default.
   invoicesAfterASaleOn   Boolean   @default(false) @map("invoices_after_a_sale_on")
+  /// Release 4, goals and targets for every kind of team (24 October 2026): each team type's board as its kit picture. Off for every organisation until switched on.
+  release4TeamsOn        Boolean   @default(false) @map("release_4_teams_on")
   whatsappMonthlyUse     WhatsAppMonthlyUse[]
 
   companyStage CompanyStage? @map("company_stage")
@@ -1158,6 +1160,8 @@ model Ground {
   /// them. Null means the kind's defaults, which are the prototype's (for sales: Contacted, Need
   /// established, Pitched, Qualified, Quoted, Won).
   workStages        Json?     @map("work_stages")
+  /// Release 4: one of the thirteen templates (board/the-thirteen-templates.ts), attached by the lead behind the Release 4 switch.
+  templateId        String?   @map("template_id")
   groundAuditLog  Json?     @map("ground_audit_log") // append-only JSON log of timeline/cadence changes
   createdByUserId String?   @map("created_by_user_id") // the admin who set this up for a lead; null for self-serve grounds
 
@@ -2136,6 +2140,8 @@ model GroundObjective {
   /// word-based guess (a-measure-that-goes-down-is-still-going-well.ts) until the lead sets one.
   /// The suggestion is never stored here; only what the lead confirmed is.
   direction TargetDirection?
+  /// Release 4: the target's unit ("%", "h", "KES"), so "91% of 90%" reads as written. Null reads "%" for a rate, nothing otherwise.
+  unit      String?   @map("unit")
   /// THE DATE TO MEET, for a target whose kind is DEADLINE (decision 75, item 17). Set by the lead, never
   /// read from the name. Null on every other kind, and on a deadline nobody has given a date for yet.
   dueOn     DateTime? @map("due_on") @db.Date

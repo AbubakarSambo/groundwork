@@ -205,6 +205,12 @@ export type BoardPresent = {
    */
   /** `whoSees` is left out where the direct morning is on: no note about who else sees it. */
   yourShare?: { objectiveId: string; says: string; whoSees?: string }[]
+  /** RELEASE 4, the lead and an admin: under each team target, each person's own target of the same name ("4 of 40"). */
+  eachPersonsOwn?: { objectiveId: string; people: { participantId: string; name: string; says: string }[] }[]
+  /** RELEASE 4, the lead and an admin: where the team's figure and the people's own figures do not add up, said from the record. */
+  whyTheNumbersDoNotMatch?: { objectiveId: string; says: string }[]
+  /** RELEASE 4: the template the lead attached, or null. */
+  template?: import('./grounds').ATemplate | null
   /**
    * REQUEST 110 (a): the sentence to show beside an empty `yourShare` ("There is no number of yours
    * on this board yet, so there is no share to show."). Sent only when `yourShare` is `[]`.
@@ -892,6 +898,7 @@ export const KIND_OF_WORK_OPTIONS = [
   'MarketView Q4',
   'a law firm matter',
   'a government programme',
+  'leadership',
 ] as const
 
 export type KindOfWork = (typeof KIND_OF_WORK_OPTIONS)[number]

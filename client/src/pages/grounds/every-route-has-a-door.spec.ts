@@ -71,6 +71,7 @@ const APP = readFileSync(join(SRC, 'App.tsx'), 'utf8')
  * redirects, and the auth flow. Each is genuinely doorless on purpose.
  */
 const REACHED_FROM_OUTSIDE = [
+  '/release-4-preview', // Release 4: hand-written boards, in development builds only (App.tsx), never offered on the product
   /* The page that shows every report surface at once. No door on purpose: it is a workbench, opened
      by pasting its address, and it goes once the surfaces have been checked against the templates.
      It was deleted once on the grounds that every surface had a home, which was the wrong test. */

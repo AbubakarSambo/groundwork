@@ -1,3 +1,6 @@
+import { theRelease4TeamsIsOn, theUnitOfATarget } from './release-4-teams';
+import { eachPersonsOwnBesideTheTeams, whyTheNumbersDoNotMatch } from './the-team-and-each-persons-figures';
+import { theTemplate } from './the-thirteen-templates';
 import { inAboutEightWords } from './what-happens-next-to-a-record';
 import { theDirectMorningFor, asServedOnTheBoard } from '../engagement/the-direct-morning';
 import { yourTeamPersonByPerson, theLeadActsOnAPerson, type AnActionAsked } from './your-team-person-by-person';
@@ -460,6 +463,8 @@ export class BoardService {
     let theDealsCounted: ADealOnRecord[] = [];
     /* Release 1's sales board, switched on per organisation (release-one-sales-board). Off, the board reads as it did before it. */
     const releaseOne = await theReleaseOneSalesBoardIsOn(this.prisma, (ground as any).organizationId);
+    /* Release 4 (release-4-teams): each team type's board as its kit picture, and each target with its unit. Off, as before. */
+    const releaseFour = await theRelease4TeamsIsOn(this.prisma, (ground as any).organizationId);
     /* The direct morning (organisation/the-direct-morning-switch): it changes the board's own words, never who reads what. Off, as before. */
     const direct = await theDirectMorningIsOn(this.prisma, (ground as any).organizationId).catch(() => false);
     /* The lead's answer on whether a price range counts as a budget, from how we work (a-deals-four-criteria). Release 1 only. */
@@ -982,12 +987,15 @@ export class BoardService {
       kindOfWork: oneOfTheKinds((ground as any).kindOfWork),
       /* Whether this organisation has Release 1's sales board switched on (release-one-sales-board), so the page draws what it serves. */
       releaseOneSalesBoard: releaseOne,
+      /* Release 4 (release-4-teams): each team type's board drawn as its kit picture, where the organisation has it on. Off, as before. */
+      /* Release 4 off, nothing new is served, so every reader gets exactly what they got before. On, the template the lead attached. */
+      ...(releaseFour ? { releaseFourTeams: true, template: theTemplate((ground as any).templateId) } : {}),
       /* What the switchboard picks for this scenario and type (the-switchboard.ts), only where Release 2 is on; off, the key is not served at all. */
       ...(await this.theSwitchboardsPick(ground as any)),
       /* The collections board, where the switchboard picks it, walled for this reader (the-collections-board.service). */
       ...(await this.theCollectionsBoardIfPicked(ground as any, { runsIt: isInitiator || theyRunIt, participantId: me?.id ?? null }, now)),
       /* The kinds a NEW check-in may be given at release. A check-in that holds another keeps it above. */
-      kindsOffered: await theBoardKindsOffered(this.prisma),
+      kindsOffered: await theBoardKindsOffered(this.prisma, (ground as any).organizationId),
       /* Whether a new anchor check-in can be started (release.anchorScenario). Off at release. Nothing on the board changes with it yet. */
       anchorScenarioOn: await theAnchorScenarioIsOn(this.prisma),
       /**
@@ -1531,6 +1539,20 @@ export class BoardService {
      * shown: the person running the check-in and an admin get no field, and a goal the lead has not
      * told them about is not here. Who else sees it is said by the check-in's own setting.
      */
+    /* RELEASE 4: EACH TARGET CARRIES ITS UNIT, as stored, or "%" for a share to keep at or above (a rate), so "91% of 90%" reads correctly. */
+    if (releaseFour && Array.isArray(out.objectives)) {
+      const stored = new Map(((ground.objectives ?? []) as any[]).map((o) => [o.id, o]));
+      out.objectives = (out.objectives as any[]).map((o) => ({ ...o, unit: theUnitOfATarget(stored.get(o.id) ?? o) }));
+    }
+    /*
+     * RELEASE 4: EACH PERSON'S OWN TARGET BESIDE THE TEAM'S, AND WHY THE NUMBERS DON'T MATCH (the-team-and-each-persons-figures). Only
+     * for whoever already reads every target here (the lead and an admin, the same `targetsFor` rule); read only from targets on record.
+     */
+    if (releaseFour && Array.isArray(out.objectives) && runsThisGround) {
+      const nameOfParticipant = (pid: string) => { const p = ((ground as any).participants ?? []).find((x: any) => x.id === pid); return p ? nameOf(p) : null; };
+      out.eachPersonsOwn = eachPersonsOwnBesideTheTeams(out.objectives as any[], nameOfParticipant);
+      out.whyTheNumbersDoNotMatch = whyTheNumbersDoNotMatch(out.objectives as any[], nameOfParticipant);
+    }
     if (!isInitiator && me?.id && Array.isArray(out.objectives)) {
       const mine = (out.objectives as any[]).filter((o) => o.ownerParticipantId === me.id && o.target != null);
       const leadName = theLeadsRow ? nameOf(theLeadsRow) : null;

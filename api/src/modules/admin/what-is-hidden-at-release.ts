@@ -1,3 +1,4 @@
+import { theRelease4TeamsIsOn } from '../board/release-4-teams';
 /**
  * WHAT THE RELEASE HIDES, AND THE THREE SETTINGS THAT HIDE IT (decisions 78, 88 and 90).
  *
@@ -73,9 +74,11 @@ export async function theKindsOfWorkOffered(prisma: Reader): Promise<string[]> {
  * (THE_SALES_KINDS), so wherever "sales org" is offered, "sales team" is offered too: a stored row written before "sales
  * team" existed (`{ "kinds": ["sales org", ...] }`) keeps meaning "sales is offered", and no row has to be rewritten.
  */
-export async function theBoardKindsOffered(prisma: Reader): Promise<KindOfWork[]> {
+export async function theBoardKindsOffered(prisma: Reader, organizationId?: string | null): Promise<KindOfWork[]> {
   const offered = (await theKindsOfWorkOffered(prisma)).map((k) => k.trim().toLowerCase());
   if (offered.includes('sales org') && !offered.includes('sales team')) offered.push('sales team');
+  /* Release 4: leadership is offered only to an organisation with Release 4 on. */
+  if (organizationId && !offered.includes('leadership') && (await theRelease4TeamsIsOn(prisma, organizationId))) offered.push('leadership');
   return KINDS_OF_WORK.filter((k) => offered.includes(k.toLowerCase()));
 }
 
@@ -83,9 +86,9 @@ export async function theBoardKindsOffered(prisma: Reader): Promise<KindOfWork[]
  * Whether this kind may be given to a check-in. A check-in that already has it is never asked: the
  * caller passes what the check-in holds now, and keeps it.
  */
-export async function aKindMayBeGiven(prisma: Reader, kind: string, whatItHoldsNow?: string | null): Promise<boolean> {
+export async function aKindMayBeGiven(prisma: Reader, kind: string, whatItHoldsNow?: string | null, organizationId?: string | null): Promise<boolean> {
   if (whatItHoldsNow && whatItHoldsNow.toLowerCase() === kind.toLowerCase()) return true;
-  return (await theBoardKindsOffered(prisma)).some((k) => k.toLowerCase() === kind.toLowerCase());
+  return (await theBoardKindsOffered(prisma, organizationId)).some((k) => k.toLowerCase() === kind.toLowerCase());
 }
 
 async function aSwitch(prisma: Reader, key: string): Promise<boolean> {

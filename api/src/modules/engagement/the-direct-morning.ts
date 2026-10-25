@@ -1,4 +1,5 @@
 import { isASalesKind } from '../board/the-kind-of-work';
+import { theTeamsTargetsSaid } from '../board/release-4-teams';
 import { theDealsOnRecord, theUnitsOf, type ADealOnRecord } from '../board/a-sales-aim-is-counted-from-the-deals';
 import { theOtherQuotesPrice } from '../board/what-needs-you-and-what-to-do';
 import { thePromisesCarriedOver, type APromiseCarriedOver } from '../board/a-promise-carried-over';
@@ -213,8 +214,13 @@ const theDealRows = (board: any): any[] => ((board?.workRecords ?? []) as any[])
 
 /** 1. ARE WE GOING TO HIT THE TARGET? */
 export function theTargetLines(board: any, now: Date, zone: string): { lines: AMorningLine[]; gap: number | null; target: number | null; heading: string } {
-  const aim = THE_TEAMS_AIM((board?.objectives ?? []) as any[]);
   const heading = String(board?.headline?.question ?? '').trim() || 'Will we reach the target?';
+  /* Release 4: a team that is not a sales team hears each of its targets with its unit, never "sold" (the-board release-4-teams). */
+  if (board?.releaseFourTeams && board?.kindOfWork && !isASalesKind(board.kindOfWork)) {
+    const said = theTeamsTargetsSaid(board);
+    if (said.length) return { lines: said.map((text, i) => ({ text, rank: i })), gap: null, target: null, heading };
+  }
+  const aim = THE_TEAMS_AIM((board?.objectives ?? []) as any[]);
   if (!aim) return { lines: [{ text: 'No team target is on record yet, so set one in your check-in.', rank: 0 }], gap: null, target: null, heading };
   const target = Number(aim.target);
   const counted = aim.fromTheDeals ?? null;

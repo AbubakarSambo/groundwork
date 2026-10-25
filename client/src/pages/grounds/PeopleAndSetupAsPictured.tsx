@@ -144,6 +144,14 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
    * confirmed. Where it is not served, the row is today's kind of work, exactly as before.
    */
   const typeServed = page?.checkInType ?? null
+  /* Release 4: the thirteen templates, offered to whoever may change the setup, only where the organisation has Release 4 on. */
+  const templatesQ = useQuery({ queryKey: ['templates'], queryFn: groundsApi.templates, enabled: !!id, staleTime: 5 * 60_000, retry: false })
+  const qcForTemplate = useQueryClient()
+  const attachTemplate = useMutation({
+    mutationFn: (template: string | null) => groundsApi.setTemplate(id, template),
+    onSuccess: () => { qcForTemplate.invalidateQueries({ queryKey: ['ground', id] }); qcForTemplate.invalidateQueries({ queryKey: ['board', id] }); toast.success('Saved. The board and the check-ins follow the template now.') },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. Try again.'),
+  })
   const [typeDraft, setTypeDraft] = useState<string>(typeServed?.type ?? '')
   useEffect(() => { setTypeDraft(typeServed?.type ?? '') }, [typeServed?.type, typeServed?.confirmed])
   const typeToConfirm = !!typeServed?.mayConfirm && !!typeDraft && (typeDraft !== typeServed.type || !typeServed.confirmed)
@@ -309,6 +317,22 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
             />
             )}
           </div>
+          {templatesQ.data?.on && (
+            <div className="gw-mt-4">
+              <AFieldWithItsLabel
+                label="Template"
+                value={canEditRunOrAdmin
+                  ? (
+                    <Select aria-label="Template" value={(g as any)?.templateId ?? ''} disabled={attachTemplate.isPending} onChange={(e) => attachTemplate.mutate(e.target.value || null)}>
+                      <option value="">None</option>
+                      {templatesQ.data.templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                    </Select>
+                  )
+                  : (templatesQ.data.templates.find((t) => t.id === (g as any)?.templateId)?.name ?? 'None')}
+              />
+              <Link to="/templates" className="t-small">See every template, and what each tracks</Link>
+            </div>
+          )}
           {typeServed && <Note>{typeServed.says}</Note>}
           {!direct && <Note>The scenario and kind of work decide the board, the reports, and what each check-in asks about.</Note>}
         </Panel>

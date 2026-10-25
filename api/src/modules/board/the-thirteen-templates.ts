@@ -1,0 +1,1293 @@
+/**
+ * THE THIRTEEN TEMPLATES (release plan, Release 4: "The 13 templates attachable to any team, each bringing its rows,
+ * stages, proof, stall rule and targets"). Copied from the prototype's template library (#/templates, SEED.TPL), word for
+ * word, with its "·" joins written as commas. A template is attached to a check-in by its lead behind the Release 4
+ * switch; it shapes what the board tracks and what the check-in asks. It never changes what anybody said.
+ */
+export interface ATemplateStage { stage: string; needs: string; verifiedBy: string; asks: string }
+export interface ATemplateTarget { name: string; reads: string; value: string }
+export interface ATemplate {
+  id: string
+  name: string
+  aim: string
+  shape: string
+  unitOfWork: string
+  rollsUpBy: string
+  verifiedBy: string
+  stallRule: string
+  ladder: ATemplateStage[]
+  targets: ATemplateTarget[]
+  howClaimsGetInflated: { name: string; says: string }[]
+  rulesALeadMightSay: { said: string; means: string }[]
+}
+
+export const THE_TEMPLATES: readonly ATemplate[] = [
+  {
+    "id": "hr",
+    "name": "HR, hiring",
+    "aim": "Fill critical roles and get every new hire through their first month.",
+    "shape": "Ladder",
+    "unitOfWork": "Candidate, per role",
+    "rollsUpBy": "Role and hiring manager",
+    "verifiedBy": "Applicant tracking system, signed contracts, payroll start date",
+    "stallRule": "A candidate with no new step in 7 days",
+    "ladder": [
+      {
+        "stage": "Applied",
+        "needs": "Named candidate, role, source",
+        "verifiedBy": "Application record",
+        "asks": "Which roles got new applicants, from where?"
+      },
+      {
+        "stage": "Screened",
+        "needs": "Screen call held, notes on fit",
+        "verifiedBy": "Screen notes",
+        "asks": "Who did you screen, and what's your read?"
+      },
+      {
+        "stage": "Interviewed",
+        "needs": "Interview panel named, scores in",
+        "verifiedBy": "Scorecards",
+        "asks": "Who interviewed them, and what did each say?"
+      },
+      {
+        "stage": "References checked",
+        "needs": "2 references spoken to",
+        "verifiedBy": "Reference notes",
+        "asks": "What did the references confirm or worry you about?"
+      },
+      {
+        "stage": "Offer made",
+        "needs": "Salary, start date, written offer",
+        "verifiedBy": "Offer letter",
+        "asks": "What did you offer, and when do they decide?"
+      },
+      {
+        "stage": "Offer accepted",
+        "needs": "Signed acceptance",
+        "verifiedBy": "Signed contract",
+        "asks": "Did they sign? When do they start?"
+      },
+      {
+        "stage": "Started",
+        "needs": "First day happened",
+        "verifiedBy": "Payroll start",
+        "asks": "Did they start on the agreed day?"
+      },
+      {
+        "stage": "Onboarded",
+        "needs": "30-day plan done",
+        "verifiedBy": "Plan with sign-off",
+        "asks": "What's left on their 30-day plan?"
+      }
+    ],
+    "targets": [
+      {
+        "name": "Roles filled",
+        "reads": "Up",
+        "value": "10 this quarter"
+      },
+      {
+        "name": "Time to hire",
+        "reads": "Lower is better",
+        "value": "≤ 45 days"
+      },
+      {
+        "name": "Offer acceptance",
+        "reads": "Rate",
+        "value": "≥ 80%"
+      },
+      {
+        "name": "Onboarding plans in place",
+        "reads": "Rate",
+        "value": "100%"
+      }
+    ],
+    "howClaimsGetInflated": [
+      {
+        "name": "Pipeline padding",
+        "says": "Candidates counted before anyone has screened them."
+      },
+      {
+        "name": "Waiting on the hiring manager",
+        "says": "Stuck without a date asked for."
+      },
+      {
+        "name": "Started = onboarded",
+        "says": "Day one counted as the finish line."
+      }
+    ],
+    "rulesALeadMightSay": [
+      {
+        "said": "“A hire isn't done until they've finished their first month.”",
+        "means": "Onboarded needs the 30-day plan signed off"
+      },
+      {
+        "said": "“No offer without two references.”",
+        "means": "Offer made needs 2 references first"
+      }
+    ]
+  },
+  {
+    "id": "finance",
+    "name": "Finance, collections and close",
+    "aim": "Collect on time, close the month by day 5, explain every transaction.",
+    "shape": "Ladder and deadlines",
+    "unitOfWork": "Invoice, per debtor; the month-end close checklist",
+    "rollsUpBy": "Debtor and age of the debt",
+    "verifiedBy": "Accounting system, bank statements, M-Pesa records",
+    "stallRule": "A promised payment date passes without payment",
+    "ladder": [
+      {
+        "stage": "Invoiced",
+        "needs": "Invoice sent, amount, due date",
+        "verifiedBy": "Accounting system",
+        "asks": "Which invoices went out today?"
+      },
+      {
+        "stage": "Due",
+        "needs": "Due date reached",
+        "verifiedBy": "Accounting system",
+        "asks": "Which debts fell due?"
+      },
+      {
+        "stage": "Reminded",
+        "needs": "Written reminder sent",
+        "verifiedBy": "Email or statement",
+        "asks": "Who got a reminder?"
+      },
+      {
+        "stage": "Chased",
+        "needs": "Spoke to a named person",
+        "verifiedBy": "Call note",
+        "asks": "Who did you speak to, and what did they say?"
+      },
+      {
+        "stage": "Promised",
+        "needs": "A payment date they gave",
+        "verifiedBy": "Their message",
+        "asks": "What date did they promise?"
+      },
+      {
+        "stage": "Paid",
+        "needs": "Money received",
+        "verifiedBy": "Bank or M-Pesa record",
+        "asks": "What came in, against which invoice?"
+      }
+    ],
+    "targets": [
+      {
+        "name": "Collected on time",
+        "reads": "Rate",
+        "value": "≥ 95%"
+      },
+      {
+        "name": "Days outstanding",
+        "reads": "Lower is better",
+        "value": "≤ 45 days"
+      },
+      {
+        "name": "Month-end close",
+        "reads": "Deadline",
+        "value": "By day 5"
+      },
+      {
+        "name": "Unexplained transactions",
+        "reads": "Zero",
+        "value": "0"
+      }
+    ],
+    "howClaimsGetInflated": [
+      {
+        "name": "Chased by email only",
+        "says": "A reminder counted as a conversation."
+      },
+      {
+        "name": "Promised, no date",
+        "says": "“They'll pay soon” with nothing to hold them to."
+      },
+      {
+        "name": "Close done, reconciliation not",
+        "says": "Books closed with items still unexplained."
+      }
+    ],
+    "rulesALeadMightSay": [
+      {
+        "said": "“If they miss a promised date, it goes to me.”",
+        "means": "Escalate after one missed promise"
+      },
+      {
+        "said": "“We close by the fifth, whatever happens.”",
+        "means": "Close deadline: day 5"
+      }
+    ]
+  },
+  {
+    "id": "procurement",
+    "name": "Procurement",
+    "aim": "Cut cost without breaking supply.",
+    "shape": "Events by supplier",
+    "unitOfWork": "Order, per supplier; sourcing request",
+    "rollsUpBy": "Category and supplier",
+    "verifiedBy": "Purchase orders, delivery notes, supplier invoices",
+    "stallRule": "A confirmed delivery date passes",
+    "ladder": [
+      {
+        "stage": "Requested",
+        "needs": "What, how many, by when",
+        "verifiedBy": "Purchase request",
+        "asks": "What was requested today?"
+      },
+      {
+        "stage": "Quoted",
+        "needs": "3 written quotes",
+        "verifiedBy": "Quote documents",
+        "asks": "How many quotes, and from whom?"
+      },
+      {
+        "stage": "Chosen",
+        "needs": "Supplier picked, with the reason",
+        "verifiedBy": "Decision note",
+        "asks": "Why this supplier?"
+      },
+      {
+        "stage": "Ordered",
+        "needs": "Purchase order sent",
+        "verifiedBy": "Purchase order",
+        "asks": "Which orders went out?"
+      },
+      {
+        "stage": "Date confirmed",
+        "needs": "Delivery date in writing",
+        "verifiedBy": "Supplier's message",
+        "asks": "Did they confirm the date in writing?"
+      },
+      {
+        "stage": "Delivered",
+        "needs": "Goods received",
+        "verifiedBy": "Delivery note",
+        "asks": "What arrived, and was it complete?"
+      },
+      {
+        "stage": "Checked",
+        "needs": "Quality checked",
+        "verifiedBy": "Inspection note",
+        "asks": "Was anything wrong with it?"
+      }
+    ],
+    "targets": [
+      {
+        "name": "Cost reduction",
+        "reads": "Lower is better",
+        "value": "−10% on last year"
+      },
+      {
+        "name": "Delivered on time",
+        "reads": "Rate",
+        "value": "≥ 95%"
+      },
+      {
+        "name": "Critical items with 3 suppliers",
+        "reads": "Up",
+        "value": "All 12"
+      }
+    ],
+    "howClaimsGetInflated": [
+      {
+        "name": "Single quote",
+        "says": "One quote treated as a comparison."
+      },
+      {
+        "name": "Verbal dates",
+        "says": "A delivery date nobody wrote down."
+      },
+      {
+        "name": "The supplier is always late",
+        "says": "Recurring failure blamed, never acted on."
+      }
+    ],
+    "rulesALeadMightSay": [
+      {
+        "said": "“Nothing over KES 100K without three quotes.”",
+        "means": "Quoted needs 3 quotes above KES 100K"
+      },
+      {
+        "said": "“Late twice and we find a backup.”",
+        "means": "A supplier late twice in 8 weeks needs a backup"
+      }
+    ]
+  },
+  {
+    "id": "marketing",
+    "name": "Marketing",
+    "aim": "Generate demand that sales actually accepts.",
+    "shape": "Ladder across the handoff to sales",
+    "unitOfWork": "Campaign; experiment",
+    "rollsUpBy": "Channel",
+    "verifiedBy": "Ad platforms, CRM, sales acceptance",
+    "stallRule": "A live campaign with no accepted leads in 2 weeks",
+    "ladder": [
+      {
+        "stage": "Planned",
+        "needs": "Audience, message, budget, hypothesis",
+        "verifiedBy": "Brief",
+        "asks": "What's the hypothesis?"
+      },
+      {
+        "stage": "Live",
+        "needs": "Running, with a start date",
+        "verifiedBy": "Ad platform",
+        "asks": "What went live?"
+      },
+      {
+        "stage": "Leads",
+        "needs": "Contacts captured",
+        "verifiedBy": "CRM",
+        "asks": "How many leads, from where?"
+      },
+      {
+        "stage": "Marketing-qualified",
+        "needs": "Meets the agreed fit criteria",
+        "verifiedBy": "CRM",
+        "asks": "How many met the criteria?"
+      },
+      {
+        "stage": "Accepted by sales",
+        "needs": "A rep took it on",
+        "verifiedBy": "Sales' acceptance",
+        "asks": "How many did sales accept, and why were others rejected?"
+      },
+      {
+        "stage": "Opportunity",
+        "needs": "A named deal with value",
+        "verifiedBy": "CRM stage",
+        "asks": "Which became real deals?"
+      }
+    ],
+    "targets": [
+      {
+        "name": "Leads",
+        "reads": "Up",
+        "value": "500"
+      },
+      {
+        "name": "Cost per lead",
+        "reads": "Lower is better",
+        "value": "≤ KES 800"
+      },
+      {
+        "name": "Accepted by sales",
+        "reads": "Rate",
+        "value": "≥ 30%"
+      },
+      {
+        "name": "Pipeline generated",
+        "reads": "Up",
+        "value": "KES 1M"
+      }
+    ],
+    "howClaimsGetInflated": [
+      {
+        "name": "Vanity leads",
+        "says": "Counted, never accepted by sales."
+      },
+      {
+        "name": "Stopped with no reason",
+        "says": "A campaign ended with nothing learned."
+      },
+      {
+        "name": "Attribution by hope",
+        "says": "Every deal credited to the last campaign."
+      }
+    ],
+    "rulesALeadMightSay": [
+      {
+        "said": "“A lead only counts if sales takes it.”",
+        "means": "Qualified needs sales acceptance"
+      },
+      {
+        "said": "“Every campaign gets a hypothesis.”",
+        "means": "Planned needs a hypothesis"
+      }
+    ]
+  },
+  {
+    "id": "cs",
+    "name": "Customer success",
+    "aim": "Keep customers, and notice risk before renewal.",
+    "shape": "Deadlines (renewals)",
+    "unitOfWork": "Account",
+    "rollsUpBy": "Renewal month and segment",
+    "verifiedBy": "Product usage, billing, support tickets",
+    "stallRule": "No contact in 30 days with an at-risk account",
+    "ladder": [
+      {
+        "stage": "Onboarding",
+        "needs": "Kickoff held, plan agreed",
+        "verifiedBy": "Onboarding plan",
+        "asks": "Where is each new account in onboarding?"
+      },
+      {
+        "stage": "Active",
+        "needs": "Using it weekly",
+        "verifiedBy": "Usage data",
+        "asks": "Which accounts dropped in usage?"
+      },
+      {
+        "stage": "At risk",
+        "needs": "A named reason",
+        "verifiedBy": "Usage, tickets or their words",
+        "asks": "What's the risk, in their words?"
+      },
+      {
+        "stage": "Save plan",
+        "needs": "Actions with an owner and date",
+        "verifiedBy": "Plan",
+        "asks": "Who owns the save, and by when?"
+      },
+      {
+        "stage": "Renewed",
+        "needs": "Signed or paid",
+        "verifiedBy": "Billing",
+        "asks": "Did they renew?"
+      },
+      {
+        "stage": "Churned",
+        "needs": "Left, with a reason",
+        "verifiedBy": "Their message",
+        "asks": "Why did they leave?"
+      }
+    ],
+    "targets": [
+      {
+        "name": "Retention",
+        "reads": "Rate",
+        "value": "≥ 95%"
+      },
+      {
+        "name": "Onboarding completed",
+        "reads": "Rate",
+        "value": "≥ 90%"
+      },
+      {
+        "name": "Active accounts",
+        "reads": "Rate",
+        "value": "≥ 80%"
+      },
+      {
+        "name": "Unresolved complaints",
+        "reads": "Lower is better",
+        "value": "< 5"
+      }
+    ],
+    "howClaimsGetInflated": [
+      {
+        "name": "Healthy by assumption",
+        "says": "No contact in 60 days, still marked healthy."
+      },
+      {
+        "name": "Save plan with no owner",
+        "says": "A plan nobody's doing."
+      },
+      {
+        "name": "Churn reason: price",
+        "says": "The default reason, never checked."
+      }
+    ],
+    "rulesALeadMightSay": [
+      {
+        "said": "“Anyone renewing in 60 days gets a call.”",
+        "means": "Renewal call 60 days out"
+      },
+      {
+        "said": "“No usage for two weeks means at risk.”",
+        "means": "At risk after 2 weeks without usage"
+      }
+    ]
+  },
+  {
+    "id": "legal",
+    "name": "Legal and compliance",
+    "aim": "Keep contracts reviewed and close compliance gaps.",
+    "shape": "Deadlines (renewals, reviews)",
+    "unitOfWork": "Contract; compliance item",
+    "rollsUpBy": "Counterparty and severity",
+    "verifiedBy": "Contract repository, e-signature, regulator filings",
+    "stallRule": "A review open longer than 5 days",
+    "ladder": [
+      {
+        "stage": "Received",
+        "needs": "Contract in, counterparty named",
+        "verifiedBy": "Repository",
+        "asks": "What came in?"
+      },
+      {
+        "stage": "Reviewed",
+        "needs": "Read in full, risks listed",
+        "verifiedBy": "Review note",
+        "asks": "What risks did you find?"
+      },
+      {
+        "stage": "Negotiating",
+        "needs": "Changes sent to the other side",
+        "verifiedBy": "Redline",
+        "asks": "What are we asking to change?"
+      },
+      {
+        "stage": "Agreed",
+        "needs": "Terms agreed",
+        "verifiedBy": "Final draft",
+        "asks": "What was agreed?"
+      },
+      {
+        "stage": "Signed",
+        "needs": "Both sides signed",
+        "verifiedBy": "E-signature record",
+        "asks": "Is it signed?"
+      },
+      {
+        "stage": "Recorded",
+        "needs": "Filed, renewal date set",
+        "verifiedBy": "Repository",
+        "asks": "Is the renewal date in the calendar?"
+      }
+    ],
+    "targets": [
+      {
+        "name": "Reviewed within 5 days",
+        "reads": "Rate",
+        "value": "100%"
+      },
+      {
+        "name": "Critical compliance gaps",
+        "reads": "Zero",
+        "value": "0"
+      },
+      {
+        "name": "Renewals handled before expiry",
+        "reads": "Rate",
+        "value": "100%"
+      }
+    ],
+    "howClaimsGetInflated": [
+      {
+        "name": "Reviewed, no flags",
+        "says": "A review with no risks written down."
+      },
+      {
+        "name": "Waiting on the other side",
+        "says": "No date asked for."
+      },
+      {
+        "name": "Filed, not diarised",
+        "says": "Signed but the renewal date isn't anywhere."
+      }
+    ],
+    "rulesALeadMightSay": [
+      {
+        "said": "“Anything with unlimited liability comes to me.”",
+        "means": "Escalate unlimited liability"
+      },
+      {
+        "said": "“Every contract gets a renewal date on day one.”",
+        "means": "Recorded needs a renewal date"
+      }
+    ]
+  },
+  {
+    "id": "research",
+    "name": "Research and data",
+    "aim": "Produce analysis people can trust and act on.",
+    "shape": "Ladder",
+    "unitOfWork": "Dataset; report",
+    "rollsUpBy": "Project and client",
+    "verifiedBy": "Repository and version history, reviewer sign-off",
+    "stallRule": "A dataset that hasn't moved in 10 days",
+    "ladder": [
+      {
+        "stage": "Sourced",
+        "needs": "Source named, access agreed",
+        "verifiedBy": "Source note",
+        "asks": "Where is the data from?"
+      },
+      {
+        "stage": "Collected",
+        "needs": "Data in hand",
+        "verifiedBy": "Repository",
+        "asks": "What did you collect?"
+      },
+      {
+        "stage": "Cleaned",
+        "needs": "Errors fixed, log kept",
+        "verifiedBy": "Cleaning log",
+        "asks": "What did you fix?"
+      },
+      {
+        "stage": "Validated",
+        "needs": "Checked by someone else",
+        "verifiedBy": "Reviewer's note",
+        "asks": "Who validated it, and what did they check?"
+      },
+      {
+        "stage": "Analysed",
+        "needs": "Findings written",
+        "verifiedBy": "Draft",
+        "asks": "What did you find?"
+      },
+      {
+        "stage": "Published",
+        "needs": "Shared with the decision maker",
+        "verifiedBy": "Report",
+        "asks": "Who got it?"
+      },
+      {
+        "stage": "Used",
+        "needs": "Informed a decision",
+        "verifiedBy": "Their decision",
+        "asks": "What did they decide with it?"
+      }
+    ],
+    "targets": [
+      {
+        "name": "Datasets delivered",
+        "reads": "Up",
+        "value": "10"
+      },
+      {
+        "name": "Reports",
+        "reads": "Up",
+        "value": "5"
+      },
+      {
+        "name": "Data errors",
+        "reads": "Lower is better",
+        "value": "< 2%"
+      },
+      {
+        "name": "Sources documented",
+        "reads": "Rate",
+        "value": "100%"
+      }
+    ],
+    "howClaimsGetInflated": [
+      {
+        "name": "Self-validated",
+        "says": "Checked by the person who cleaned it."
+      },
+      {
+        "name": "Findings without sources",
+        "says": "A number with no trail back."
+      },
+      {
+        "name": "Published = used",
+        "says": "Delivery counted as impact."
+      }
+    ],
+    "rulesALeadMightSay": [
+      {
+        "said": "“Nobody validates their own data.”",
+        "means": "Validated needs someone else"
+      },
+      {
+        "said": "“Every chart says where the number came from.”",
+        "means": "Published needs sources"
+      }
+    ]
+  },
+  {
+    "id": "enterprise",
+    "name": "Enterprise sales",
+    "aim": "Close large deals where the buyer is a committee, not a person.",
+    "shape": "Ladder",
+    "unitOfWork": "Account and deal",
+    "rollsUpBy": "Account executive and region",
+    "verifiedBy": "CRM, calendar, signed contracts, procurement portal",
+    "stallRule": "The decision date moves twice, or 14 days with no contact",
+    "ladder": [
+      {
+        "stage": "Account mapped",
+        "needs": "Org chart, who buys, who uses",
+        "verifiedBy": "Account map",
+        "asks": "Who's in the buying group?"
+      },
+      {
+        "stage": "Discovery",
+        "needs": "The problem in their words, and its cost",
+        "verifiedBy": "Their words",
+        "asks": "What does this problem cost them?"
+      },
+      {
+        "stage": "Champion",
+        "needs": "A named insider who acts for you",
+        "verifiedBy": "Something they did for you",
+        "asks": "What did your champion do for you this week?"
+      },
+      {
+        "stage": "Demo",
+        "needs": "Shown to the buying group",
+        "verifiedBy": "Calendar, attendees",
+        "asks": "Who was in the room?"
+      },
+      {
+        "stage": "Economic buyer",
+        "needs": "The person who signs, engaged",
+        "verifiedBy": "Their message or meeting",
+        "asks": "Have you met the person who signs?"
+      },
+      {
+        "stage": "Proposal",
+        "needs": "Priced, with a decision date",
+        "verifiedBy": "Proposal document",
+        "asks": "What's the decision date, and has it moved?"
+      },
+      {
+        "stage": "Procurement",
+        "needs": "In their buying process",
+        "verifiedBy": "Procurement portal",
+        "asks": "Which procurement step are you at?"
+      },
+      {
+        "stage": "Negotiation",
+        "needs": "Terms in discussion",
+        "verifiedBy": "Redline",
+        "asks": "What's still open, and what's the competitor offering?"
+      },
+      {
+        "stage": "Signed",
+        "needs": "Contract signed",
+        "verifiedBy": "Signed contract",
+        "asks": "Is it signed?"
+      }
+    ],
+    "targets": [
+      {
+        "name": "Qualified accounts",
+        "reads": "Up",
+        "value": "20"
+      },
+      {
+        "name": "Proposals",
+        "reads": "Up",
+        "value": "10"
+      },
+      {
+        "name": "Contracts",
+        "reads": "Up",
+        "value": "5"
+      },
+      {
+        "name": "Bookings",
+        "reads": "Up",
+        "value": "KES 10M"
+      }
+    ],
+    "howClaimsGetInflated": [
+      {
+        "name": "Champion by hope",
+        "says": "A friendly contact who can't move the deal."
+      },
+      {
+        "name": "The moving date",
+        "says": "A decision date that slips every month."
+      },
+      {
+        "name": "Competitor unknown",
+        "says": "“No one else is bidding.”"
+      }
+    ],
+    "rulesALeadMightSay": [
+      {
+        "said": "“No champion, no forecast.”",
+        "means": "A deal needs a champion to count in the forecast"
+      },
+      {
+        "said": "“If the date moves twice, it's not this quarter.”",
+        "means": "Decision date moved twice: out of this quarter"
+      }
+    ]
+  },
+  {
+    "id": "pm",
+    "name": "Project manager",
+    "aim": "Deliver the project on time and within budget, with every change to the plan agreed.",
+    "shape": "Deadlines (milestones) and budget",
+    "unitOfWork": "Milestone, per workstream",
+    "rollsUpBy": "Workstream and phase",
+    "verifiedBy": "Signed deliverables, invoices, the project plan's version history",
+    "stallRule": "A milestone date passes, or moves without being re-agreed",
+    "ladder": [
+      {
+        "stage": "Planned",
+        "needs": "Owner, date, what “done” means",
+        "verifiedBy": "Project plan",
+        "asks": "Which milestones are due in the next 2 weeks?"
+      },
+      {
+        "stage": "Started",
+        "needs": "Work begun, owner confirmed",
+        "verifiedBy": "Owner's update",
+        "asks": "Who's working on it, and is the date still real?"
+      },
+      {
+        "stage": "At risk",
+        "needs": "A named reason and a new date asked for",
+        "verifiedBy": "Their words",
+        "asks": "What's the risk, and what date would you commit to now?"
+      },
+      {
+        "stage": "Delivered",
+        "needs": "The deliverable handed over",
+        "verifiedBy": "Deliverable",
+        "asks": "What was handed over, to whom?"
+      },
+      {
+        "stage": "Accepted",
+        "needs": "Signed off by the receiver",
+        "verifiedBy": "Sign-off",
+        "asks": "Who signed it off?"
+      },
+      {
+        "stage": "Paid for",
+        "needs": "Invoice settled against budget",
+        "verifiedBy": "Invoice and payment",
+        "asks": "What did it cost against the budget line?"
+      }
+    ],
+    "targets": [
+      {
+        "name": "Milestones on time",
+        "reads": "Rate",
+        "value": "100%"
+      },
+      {
+        "name": "Budget",
+        "reads": "Ceiling",
+        "value": "≤ KES 10M"
+      },
+      {
+        "name": "Finish date",
+        "reads": "Deadline",
+        "value": "30 Nov"
+      },
+      {
+        "name": "Changes re-agreed",
+        "reads": "Rate",
+        "value": "100%"
+      }
+    ],
+    "howClaimsGetInflated": [
+      {
+        "name": "% complete",
+        "says": "A number with no deliverable behind it."
+      },
+      {
+        "name": "The date that quietly moves",
+        "says": "Slipped without anyone re-agreeing it."
+      },
+      {
+        "name": "Delivered, not accepted",
+        "says": "Handed over but never signed off."
+      }
+    ],
+    "rulesALeadMightSay": [
+      {
+        "said": "“If a date moves, I want to hear it from you, not the plan.”",
+        "means": "Date changes need re-agreement"
+      },
+      {
+        "said": "“Nothing counts until the client signs it off.”",
+        "means": "Milestone needs sign-off"
+      }
+    ]
+  },
+  {
+    "id": "product",
+    "name": "Product manager",
+    "aim": "Launch something customers use, with every decision traceable to evidence.",
+    "shape": "Decisions and adoption",
+    "unitOfWork": "Customer problem; product decision; feature",
+    "rollsUpBy": "Customer segment and feature",
+    "verifiedBy": "Product analytics, customer interviews, release notes",
+    "stallRule": "A decision with no evidence behind it, or a launched feature with no usage check after 2 weeks",
+    "ladder": [
+      {
+        "stage": "Problem heard",
+        "needs": "A named customer, the problem in their words",
+        "verifiedBy": "Interview note",
+        "asks": "Which customers told you what?"
+      },
+      {
+        "stage": "Evidence gathered",
+        "needs": "How many share it, and how it's measured",
+        "verifiedBy": "Notes and data",
+        "asks": "How many customers have this, and how do you know?"
+      },
+      {
+        "stage": "Decided",
+        "needs": "What was decided, why, and what would prove it wrong",
+        "verifiedBy": "Decision record",
+        "asks": "What did you decide, and what would change your mind?"
+      },
+      {
+        "stage": "Built",
+        "needs": "Shipped behind a flag or to beta",
+        "verifiedBy": "Release notes",
+        "asks": "What shipped?"
+      },
+      {
+        "stage": "Adopted",
+        "needs": "Used by the people it was for",
+        "verifiedBy": "Analytics",
+        "asks": "Who is using it after 2 weeks?"
+      },
+      {
+        "stage": "Kept",
+        "needs": "Still used after 6 weeks",
+        "verifiedBy": "Analytics",
+        "asks": "Did they keep using it?"
+      }
+    ],
+    "targets": [
+      {
+        "name": "Beta users",
+        "reads": "Up",
+        "value": "100"
+      },
+      {
+        "name": "Weekly active",
+        "reads": "Rate",
+        "value": "≥ 40%"
+      },
+      {
+        "name": "Paying customers",
+        "reads": "Up",
+        "value": "20"
+      },
+      {
+        "name": "Launch",
+        "reads": "Deadline",
+        "value": "30 Oct"
+      }
+    ],
+    "howClaimsGetInflated": [
+      {
+        "name": "Loudest customer",
+        "says": "One request treated as demand."
+      },
+      {
+        "name": "Shipped = done",
+        "says": "Launch counted as success, usage never checked."
+      },
+      {
+        "name": "Decision without a test",
+        "says": "Nothing named that would prove it wrong."
+      }
+    ],
+    "rulesALeadMightSay": [
+      {
+        "said": "“We don't build for one customer.”",
+        "means": "Evidence needs 3 or more customers"
+      },
+      {
+        "said": "“Every feature gets a usage check at two weeks.”",
+        "means": "Adopted checked at 2 weeks"
+      }
+    ]
+  },
+  {
+    "id": "launch",
+    "name": "New market launch",
+    "aim": "Launch in a new country with every workstream ready on the same date.",
+    "shape": "Workstreams and cross-team dependencies",
+    "unitOfWork": "Workstream milestone; cross-team dependency",
+    "rollsUpBy": "Workstream (regulatory, product, partners, sales, hiring)",
+    "verifiedBy": "Licences, signed partner agreements, hires' contracts, CRM",
+    "stallRule": "A dependency another team owns with no date for 3 days",
+    "ladder": [
+      {
+        "stage": "Scoped",
+        "needs": "Owner, date, what ready means",
+        "verifiedBy": "Launch plan",
+        "asks": "Which workstreams are behind their plan?"
+      },
+      {
+        "stage": "Waiting on",
+        "needs": "Another team named, with a date",
+        "verifiedBy": "Their confirmation",
+        "asks": "Who are you waiting on, and did they give a date?"
+      },
+      {
+        "stage": "In progress",
+        "needs": "Work visible",
+        "verifiedBy": "Owner's update",
+        "asks": "What moved this week?"
+      },
+      {
+        "stage": "Ready",
+        "needs": "Meets its readiness check",
+        "verifiedBy": "Checklist",
+        "asks": "What still stops it being ready?"
+      },
+      {
+        "stage": "Signed off",
+        "needs": "Launch lead confirms",
+        "verifiedBy": "Sign-off",
+        "asks": "Is it signed off for launch?"
+      }
+    ],
+    "targets": [
+      {
+        "name": "Operational readiness",
+        "reads": "Rate",
+        "value": "≥ 95%"
+      },
+      {
+        "name": "Distribution partners",
+        "reads": "Up",
+        "value": "3"
+      },
+      {
+        "name": "Customers",
+        "reads": "Up",
+        "value": "100"
+      },
+      {
+        "name": "Launch date",
+        "reads": "Deadline",
+        "value": "1 Dec"
+      }
+    ],
+    "howClaimsGetInflated": [
+      {
+        "name": "Blocked on “them”",
+        "says": "A dependency with no named team or date."
+      },
+      {
+        "name": "Ready by feel",
+        "says": "Called ready with no checklist."
+      },
+      {
+        "name": "Each team on track, launch late",
+        "says": "Every workstream green, but not on the same date."
+      }
+    ],
+    "rulesALeadMightSay": [
+      {
+        "said": "“Every dependency has a name and a date, or it's a risk.”",
+        "means": "Dependencies need an owner and date"
+      },
+      {
+        "said": "“Ready means the checklist, not the owner's word.”",
+        "means": "Ready needs the checklist"
+      }
+    ]
+  },
+  {
+    "id": "fieldofficer",
+    "name": "Field officer, registrations",
+    "aim": "Register traders and keep them active, market by market.",
+    "shape": "Volume, with market patterns",
+    "unitOfWork": "Trader; market visit",
+    "rollsUpBy": "Market and officer",
+    "verifiedBy": "Registration records, profile photos, first transaction in the app",
+    "stallRule": "A registered trader with no activity after 14 days",
+    "ladder": [
+      {
+        "stage": "Visited",
+        "needs": "Market, date, how many traders spoken to",
+        "verifiedBy": "Visit log with location",
+        "asks": "Which markets, and how many traders did you speak to?"
+      },
+      {
+        "stage": "Registered",
+        "needs": "Name, phone, stall",
+        "verifiedBy": "Registration record",
+        "asks": "How many registered, and which market?"
+      },
+      {
+        "stage": "Verified",
+        "needs": "ID or photo checked",
+        "verifiedBy": "Profile photo",
+        "asks": "How many profiles are complete?"
+      },
+      {
+        "stage": "Active",
+        "needs": "First use of the service",
+        "verifiedBy": "App record",
+        "asks": "Who hasn't used it yet, and why?"
+      },
+      {
+        "stage": "Retained",
+        "needs": "Still active after 30 days",
+        "verifiedBy": "App record",
+        "asks": "Who stopped, and what did they say?"
+      }
+    ],
+    "targets": [
+      {
+        "name": "Registrations",
+        "reads": "Up",
+        "value": "100 a week"
+      },
+      {
+        "name": "Profiles complete",
+        "reads": "Rate",
+        "value": "≥ 90%"
+      },
+      {
+        "name": "Active after registering",
+        "reads": "Rate",
+        "value": "≥ 80%"
+      }
+    ],
+    "howClaimsGetInflated": [
+      {
+        "name": "Registrations without activity",
+        "says": "Numbers up, nobody using it."
+      },
+      {
+        "name": "Market-day spikes",
+        "says": "One big day hiding four empty ones."
+      },
+      {
+        "name": "Same market every week",
+        "says": "Easy markets revisited, hard ones skipped."
+      }
+    ],
+    "rulesALeadMightSay": [
+      {
+        "said": "“A trader only counts when they've used it once.”",
+        "means": "Registered counts after first use"
+      },
+      {
+        "said": "“Every market gets a second visit within a month.”",
+        "means": "Revisit each market within 30 days"
+      }
+    ]
+  },
+  {
+    "id": "govapproval",
+    "name": "Government approval, stakeholders",
+    "aim": "Build the relationships and confirm the real approval pathway, stakeholder by stakeholder.",
+    "shape": "Stakeholder grid, showing who made each step happen",
+    "unitOfWork": "Stakeholder; the approval pathway, held as an assumption until confirmed",
+    "rollsUpBy": "Role in the decision (decides or influences) and office",
+    "verifiedBy": "Calendar invites, letters and replies, meeting notes, official documents such as terms of reference",
+    "stallRule": "A stakeholder with no step in 3 weeks, or a commitment carried 3 check-ins",
+    "ladder": [
+      {
+        "stage": "Identified",
+        "needs": "Named, with their role in the decision",
+        "verifiedBy": "Who named them",
+        "asks": "Who else decides this, and who told you?"
+      },
+      {
+        "stage": "Contacted",
+        "needs": "A letter, email or call",
+        "verifiedBy": "The letter or email",
+        "asks": "Who did you write to, and did they reply?"
+      },
+      {
+        "stage": "Met one-to-one",
+        "needs": "A meeting happened",
+        "verifiedBy": "Calendar invite, meeting note",
+        "asks": "Who set the meeting up: you or us?"
+      },
+      {
+        "stage": "Second contact",
+        "needs": "They replied or came back themselves",
+        "verifiedBy": "Their message",
+        "asks": "Did they get back to you on their own?"
+      },
+      {
+        "stage": "Briefed",
+        "needs": "Understood the proposal before the formal meeting",
+        "verifiedBy": "Meeting note",
+        "asks": "What did they understand before the workshop?"
+      },
+      {
+        "stage": "Supporting",
+        "needs": "Acted for the programme",
+        "verifiedBy": "What they did",
+        "asks": "What have they done for us since?"
+      }
+    ],
+    "targets": [
+      {
+        "name": "Stakeholders engaged",
+        "reads": "Up",
+        "value": "All who decide or influence"
+      },
+      {
+        "name": "Meetings he arranged himself",
+        "reads": "Rate",
+        "value": "Most of them"
+      },
+      {
+        "name": "Pathway confirmed",
+        "reads": "Up",
+        "value": "2 sources, one official"
+      },
+      {
+        "name": "Commitments carried 3+ check-ins",
+        "reads": "Zero",
+        "value": "0"
+      }
+    ],
+    "howClaimsGetInflated": [
+      {
+        "name": "Letters as relationships",
+        "says": "A letter counted as engagement."
+      },
+      {
+        "name": "One-source pathway",
+        "says": "A process mapped from one conversation."
+      },
+      {
+        "name": "Borrowed meetings",
+        "says": "Meetings the organisation set up, reported as his."
+      }
+    ],
+    "rulesALeadMightSay": [
+      {
+        "said": "“If the pathway only comes from one person, it isn't confirmed.”",
+        "means": "The pathway needs two sources, one official"
+      },
+      {
+        "said": "“I shouldn't have to chase you.”",
+        "means": "The organisation's chasers are recorded as dependency"
+      }
+    ]
+  }
+];
+
+export function theTemplate(id: unknown): ATemplate | null {
+  return typeof id === 'string' ? THE_TEMPLATES.find((t) => t.id === id) ?? null : null;
+}
+
+/** A target's unit, read from how the template writes its value: "≥ 80%" is a rate, "≤ 45 days" is days, "KES 1M" is money. */
+export function theUnitOfATemplateTarget(value: string): string | null {
+  if (/%/.test(value)) return '%';
+  if (/\bKES\b/.test(value)) return 'KES';
+  const m = value.match(/\d[\d,.]*\s*([a-z]+)\b/i);
+  return m ? m[1] : null;
+}
+
+/**
+ * WHAT THE CHECK-IN KNOWS OF THE TEAM'S TEMPLATE (Release 4). Code-side words added to the check-in, no stored prompt: the unit of
+ * work, the stages in order with what each needs and how it is shown, the question the template asks at each, and the stall rule.
+ * Only where the organisation's Release 4 switch is on and the lead attached a template; anywhere else it is empty and the
+ * check-in asks exactly as before.
+ */
+export function theTemplateBlock(t: ATemplate | null): string {
+  if (!t) return '';
+  const stages = t.ladder.map((s, i) => `${i + 1}. ${s.stage}: it needs ${s.needs.charAt(0).toLowerCase()}${s.needs.slice(1)}, shown by ${s.verifiedBy.charAt(0).toLowerCase()}${s.verifiedBy.slice(1)}. A question that fits: "${s.asks}"`).join('\n');
+  return [
+    `THIS TEAM'S WORK FOLLOWS THE "${t.name}" TEMPLATE, which its lead chose.`,
+    `One piece of work is ${t.unitOfWork.charAt(0).toLowerCase()}${t.unitOfWork.slice(1)}. The stages, in order:`,
+    stages,
+    `Ask which stage each piece of work they mention has reached, and what shows it. A stage counts as reached only when what it needs is there; if they say it is reached and it is not, ask for what it needs, plainly, once.`,
+    `A piece of work has stalled when: ${t.stallRule.charAt(0).toLowerCase()}${t.stallRule.slice(1)}. If one has, say so by its name and ask what happens next.`,
+    `Use these questions in your own words, one at a time, only where they fit what the person is telling you. Never read the list out.`,
+  ].join('\n');
+}

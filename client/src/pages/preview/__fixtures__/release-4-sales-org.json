@@ -1,0 +1,1501 @@
+{
+ "renders": true,
+ "mode": "SHARED",
+ "family": "DELIVERY",
+ "sections": [
+  "phaseSpine",
+  "quickRead",
+  "objectives",
+  "startingState",
+  "divergence",
+  "whatTheRoomIsAbout",
+  "whoOwnsWhat",
+  "dependencies",
+  "checkInGrid",
+  "contribution",
+  "coverage",
+  "cascade",
+  "hiddenContributors",
+  "patterns",
+  "decisions",
+  "poll"
+ ],
+ "scenario": "OKR_ALIGNMENT",
+ "coverageVariant": "text",
+ "groundStatus": "AWAITING_PARTIES",
+ "endState": null,
+ "overTime": {
+  "gaps": [
+   {
+    "say": "Kevin Omondi is down as \"Sales rep\", and nothing on record says what that role covers.",
+    "who": "Kevin Omondi",
+    "participantId": "9f2e58a4-06d8-4a0a-bddc-03cd96df027c"
+   },
+   {
+    "say": "Mercy Wairimu is down as \"Sales rep\", and nothing on record says what that role covers.",
+    "who": "Mercy Wairimu",
+    "participantId": "5632caa0-593e-48d5-910e-5c9ea5bc4fb2"
+   },
+   {
+    "say": "Joseph Kariuki is down as \"Sales rep\", and nothing on record says what that role covers.",
+    "who": "Joseph Kariuki",
+    "participantId": "2274e6af-8d37-4388-bd39-8a7aeb582d7b"
+   }
+  ],
+  "patterns": [],
+  "sessions": 6,
+  "stillOpen": [
+   "You are waiting on Kevin, Mercy, Joseph, and Peter for updates from each rep on their deals in progress, what was sold with proof, and what each does next for 5 sessions now, and nothing on record says anybody has chased it since.",
+   "You are waiting on Mr. Kiprop for acceptance of the proposal and either proof of payment or a signed order for the 20 units for 5 sessions now, and nothing on record says anybody has chased it since.",
+   "You are waiting on Mr Kiprop for an answer on the proposal for 20 units for 5 sessions now, and nothing on record says anybody has chased it since.",
+   "You are waiting on Kevin, Mercy, Joseph, and Peter for updates on their deals for 5 sessions now, and nothing on record says anybody has chased it since.",
+   "Joseph Kariuki is waiting on Management for a decision on whether to offer a unit at KES 4,500 for 5 sessions now, and nothing on record says anybody has chased it since.",
+   "Joseph Kariuki is waiting on Mama Pima for the M-Pesa payment for 5 sessions now, and nothing on record says anybody has chased it since.",
+   "Peter Njoroge is waiting on you for a specific area to focus on for 5 sessions now, and nothing on record says anybody has chased it since. This is work you owe Peter, not the other way round.",
+   "You are waiting on Mr. Kiprop for a response for 5 sessions now, and nothing on record says anybody has chased it since.",
+   "Mercy Wairimu is waiting on her manager for her manager's sign-off for 5 sessions now, and nothing on record says anybody has chased it since.",
+   "Joseph Kariuki is waiting on Mrs Atieno for \"her final decision on the number of units and confirmation of payment\" for 5 sessions now, and nothing on record says anybody has chased it since.",
+   "Joseph Kariuki is waiting on Juja Hardware for the signed agreement from Juja Hardware for 5 sessions now, and nothing on record says anybody has chased it since.",
+   "Joseph Kariuki is waiting for \"a decision on the KES 4,500 price\" for 5 sessions now, and nothing on record says anybody has chased it since. That waits on the pricing decision.",
+   "You are waiting on the reps for updates from the reps on their deals for 5 sessions now, and nothing on record says anybody has chased it since.",
+   "You are waiting on the reps for \"details on what happened to the 60 units\" for 5 sessions now, and nothing on record says anybody has chased it since.",
+   "Peter Njoroge is waiting for \"a list of leads for this week\" for 5 sessions now, and nothing on record says anybody has chased it since. That waits on an unknown source.",
+   "In session 1, you said, \"My main responsibility is to support the team in hitting those targets and to close my own deals.\" The time you gave for it was \"Right now\". It has been open for 5 sessions, and nobody has said whether it happened.",
+   "In session 2, you said, \"I will do that now.\" It has been open for 4 sessions, and nobody has said whether it happened.",
+   "In session 2, Kevin Omondi said, \"I'll follow up soon.\" It has been open for 4 sessions, and nobody has said whether it happened.",
+   "In session 2, Kevin Omondi said, \"I'll call her tomorrow morning.\" It has been open for 4 sessions, and nobody has said whether it happened.",
+   "In session 2, Joseph Kariuki said, \"I'll get that price to Juja Hardware\". The time Joseph Kariuki gave for it was \"this week\". It has been open for 4 sessions, and nobody has said whether it happened.",
+   "In session 2, Mercy Wairimu said, \"I'll also try to call Mrs. Achola at Greenfield\". It has been open for 4 sessions, and nobody has said whether it happened.",
+   "In session 2, Mercy Wairimu said, \"I'll check in with them\". The time Mercy Wairimu gave for it was \"in January\". It has been open for 4 sessions, and nobody has said whether it happened.",
+   "In session 3, you said, \"I'll follow up with him\". The time you gave for it was \"next week\". It has been open for 3 sessions, and nobody has said whether it happened.",
+   "In session 3, you said, \"I'll follow up with Mr. Kiprop\". The time you gave for it was \"on Monday\". It has been open for 3 sessions, and nobody has said whether it happened.",
+   "In session 3, you said, \"I'll send a reminder email on Monday, in addition to calling him\". It has been open for 3 sessions, and nobody has said whether it happened."
+  ],
+  "commitments": [
+   {
+    "say": "In session 1, you said, \"My main responsibility is to support the team in hitting those targets and to close my own deals.\" The time you gave for it was \"Right now\". It has been open for 5 sessions, and nobody has said whether it happened.",
+    "who": "You",
+    "what": "My main responsibility is to support the team in hitting those targets and to close my own deals.",
+    "when": "Right now",
+    "status": "UNKNOWN",
+    "leadLabel": "You",
+    "settledBy": null,
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "9594ee31-5f40-41d2-97fe-e87527405712",
+    "saidWordForWord": true,
+    "statedInSession": 1,
+    "whenSaidWordForWord": true
+   },
+   {
+    "say": "In session 1, Kevin Omondi said, \"I'll call Paul\". The time Kevin Omondi gave for it was \"tomorrow afternoon\". Kevin Omondi said later that it was not done.",
+    "who": "Kevin Omondi",
+    "what": "I'll call Paul",
+    "when": "tomorrow afternoon",
+    "status": "NOT_DONE",
+    "leadLabel": "You",
+    "settledBy": "SAID",
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "9f2e58a4-06d8-4a0a-bddc-03cd96df027c",
+    "saidWordForWord": true,
+    "statedInSession": 1,
+    "whenSaidWordForWord": true
+   },
+   {
+    "say": "In session 1, Mercy Wairimu said, \"I'll follow up with the remaining Kawangware kiosks this week to see if any are ready to commit.\" Mercy Wairimu said later that it was not done.",
+    "who": "Mercy Wairimu",
+    "what": "I'll follow up with the remaining Kawangware kiosks this week to see if any are ready to commit.",
+    "when": "this week",
+    "status": "NOT_DONE",
+    "leadLabel": "You",
+    "settledBy": "SAID",
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "5632caa0-593e-48d5-910e-5c9ea5bc4fb2",
+    "saidWordForWord": true,
+    "statedInSession": 1,
+    "whenSaidWordForWord": true
+   },
+   {
+    "say": "In session 1, Mercy Wairimu said, \"I'll follow up with the Kawangware kiosks\". The time Mercy Wairimu gave for it was \"by end of day Wednesday\". Mercy Wairimu said later that it was not done.",
+    "who": "Mercy Wairimu",
+    "what": "I'll follow up with the Kawangware kiosks",
+    "when": "by end of day Wednesday",
+    "status": "NOT_DONE",
+    "leadLabel": "You",
+    "settledBy": "SAID",
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "5632caa0-593e-48d5-910e-5c9ea5bc4fb2",
+    "saidWordForWord": true,
+    "statedInSession": 1,
+    "whenSaidWordForWord": true
+   },
+   {
+    "say": "In session 1, Mercy Wairimu said, \"I need to call Mrs. Achola at Greenfield Supermarket.\" The time Mercy Wairimu gave for it was \"by the end of today\". Mercy Wairimu said later that it was not done.",
+    "who": "Mercy Wairimu",
+    "what": "I need to call Mrs. Achola at Greenfield Supermarket.",
+    "when": "by the end of today",
+    "status": "NOT_DONE",
+    "leadLabel": "You",
+    "settledBy": "SAID",
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "5632caa0-593e-48d5-910e-5c9ea5bc4fb2",
+    "saidWordForWord": true,
+    "statedInSession": 1,
+    "whenSaidWordForWord": true
+   },
+   {
+    "say": "In session 2, you said, \"I will be checking in with the team on their deals shortly.\" You said later that it was not done.",
+    "who": "You",
+    "what": "I will be checking in with the team on their deals shortly.",
+    "when": null,
+    "status": "NOT_DONE",
+    "leadLabel": "You",
+    "settledBy": "SAID",
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "9594ee31-5f40-41d2-97fe-e87527405712",
+    "saidWordForWord": true,
+    "statedInSession": 2,
+    "whenSaidWordForWord": false
+   },
+   {
+    "say": "In session 2, you said, \"I will do that now.\" It has been open for 4 sessions, and nobody has said whether it happened.",
+    "who": "You",
+    "what": "I will do that now.",
+    "when": null,
+    "status": "UNKNOWN",
+    "leadLabel": "You",
+    "settledBy": null,
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "9594ee31-5f40-41d2-97fe-e87527405712",
+    "saidWordForWord": true,
+    "statedInSession": 2,
+    "whenSaidWordForWord": false
+   },
+   {
+    "say": "In session 2, Kevin Omondi said, \"I'll follow up soon.\" It has been open for 4 sessions, and nobody has said whether it happened.",
+    "who": "Kevin Omondi",
+    "what": "I'll follow up soon.",
+    "when": "soon",
+    "status": "UNKNOWN",
+    "leadLabel": "You",
+    "settledBy": null,
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "9f2e58a4-06d8-4a0a-bddc-03cd96df027c",
+    "saidWordForWord": true,
+    "statedInSession": 2,
+    "whenSaidWordForWord": true
+   },
+   {
+    "say": "In session 2, Kevin Omondi said, \"I'll call her tomorrow morning.\" It has been open for 4 sessions, and nobody has said whether it happened.",
+    "who": "Kevin Omondi",
+    "what": "I'll call her tomorrow morning.",
+    "when": "tomorrow morning",
+    "status": "UNKNOWN",
+    "leadLabel": "You",
+    "settledBy": null,
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "9f2e58a4-06d8-4a0a-bddc-03cd96df027c",
+    "saidWordForWord": true,
+    "statedInSession": 2,
+    "whenSaidWordForWord": true
+   },
+   {
+    "say": "In session 2, Joseph Kariuki said, \"I'll get that price to Juja Hardware\". The time Joseph Kariuki gave for it was \"this week\". It has been open for 4 sessions, and nobody has said whether it happened.",
+    "who": "Joseph Kariuki",
+    "what": "I'll get that price to Juja Hardware",
+    "when": "this week",
+    "status": "UNKNOWN",
+    "leadLabel": "You",
+    "settledBy": null,
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "2274e6af-8d37-4388-bd39-8a7aeb582d7b",
+    "saidWordForWord": true,
+    "statedInSession": 2,
+    "whenSaidWordForWord": true
+   },
+   {
+    "say": "In session 2, Joseph Kariuki said, \"I'll get it to him\". The time Joseph Kariuki gave for it was \"this week\". Joseph Kariuki said later that it was not done.",
+    "who": "Joseph Kariuki",
+    "what": "I'll get it to him",
+    "when": "this week",
+    "status": "NOT_DONE",
+    "leadLabel": "You",
+    "settledBy": "SAID",
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "2274e6af-8d37-4388-bd39-8a7aeb582d7b",
+    "saidWordForWord": true,
+    "statedInSession": 2,
+    "whenSaidWordForWord": true
+   },
+   {
+    "say": "In session 2, Peter Njoroge said, \"I'll follow up with Upper Hill Offices.\" Peter Njoroge said later that it was not done.",
+    "who": "Peter Njoroge",
+    "what": "I'll follow up with Upper Hill Offices.",
+    "when": null,
+    "status": "NOT_DONE",
+    "leadLabel": "You",
+    "settledBy": "SAID",
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "dfda363d-d9f3-4f01-bcb0-ae9f8d722f6f",
+    "saidWordForWord": true,
+    "statedInSession": 2,
+    "whenSaidWordForWord": false
+   },
+   {
+    "say": "In session 2, Mercy Wairimu said, \"I'll also try to call Mrs. Achola at Greenfield\". It has been open for 4 sessions, and nobody has said whether it happened.",
+    "who": "Mercy Wairimu",
+    "what": "I'll also try to call Mrs. Achola at Greenfield",
+    "when": null,
+    "status": "UNKNOWN",
+    "leadLabel": "You",
+    "settledBy": null,
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "5632caa0-593e-48d5-910e-5c9ea5bc4fb2",
+    "saidWordForWord": true,
+    "statedInSession": 2,
+    "whenSaidWordForWord": false
+   },
+   {
+    "say": "In session 2, Mercy Wairimu said, \"I'll check in with them\". The time Mercy Wairimu gave for it was \"in January\". It has been open for 4 sessions, and nobody has said whether it happened.",
+    "who": "Mercy Wairimu",
+    "what": "I'll check in with them",
+    "when": "in January",
+    "status": "UNKNOWN",
+    "leadLabel": "You",
+    "settledBy": null,
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "5632caa0-593e-48d5-910e-5c9ea5bc4fb2",
+    "saidWordForWord": true,
+    "statedInSession": 2,
+    "whenSaidWordForWord": true
+   },
+   {
+    "say": "In session 3, you said, \"I'll follow up with him\". The time you gave for it was \"next week\". It has been open for 3 sessions, and nobody has said whether it happened.",
+    "who": "You",
+    "what": "I'll follow up with him",
+    "when": "next week",
+    "status": "UNKNOWN",
+    "leadLabel": "You",
+    "settledBy": null,
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "9594ee31-5f40-41d2-97fe-e87527405712",
+    "saidWordForWord": true,
+    "statedInSession": 3,
+    "whenSaidWordForWord": true
+   },
+   {
+    "say": "In session 3, you said, \"I'll follow up with Mr. Kiprop\". The time you gave for it was \"on Monday\". It has been open for 3 sessions, and nobody has said whether it happened.",
+    "who": "You",
+    "what": "I'll follow up with Mr. Kiprop",
+    "when": "on Monday",
+    "status": "UNKNOWN",
+    "leadLabel": "You",
+    "settledBy": null,
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "9594ee31-5f40-41d2-97fe-e87527405712",
+    "saidWordForWord": true,
+    "statedInSession": 3,
+    "whenSaidWordForWord": true
+   },
+   {
+    "say": "In session 3, you said, \"I'll send a reminder email on Monday, in addition to calling him\". It has been open for 3 sessions, and nobody has said whether it happened.",
+    "who": "You",
+    "what": "I'll send a reminder email on Monday, in addition to calling him",
+    "when": "on Monday",
+    "status": "UNKNOWN",
+    "leadLabel": "You",
+    "settledBy": null,
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "9594ee31-5f40-41d2-97fe-e87527405712",
+    "saidWordForWord": true,
+    "statedInSession": 3,
+    "whenSaidWordForWord": true
+   },
+   {
+    "say": "In session 3, Peter Njoroge said, \"I'll try to reach them again next week to get those details.\" It has been open for 3 sessions, and nobody has said whether it happened.",
+    "who": "Peter Njoroge",
+    "what": "I'll try to reach them again next week to get those details.",
+    "when": "next week",
+    "status": "UNKNOWN",
+    "leadLabel": "You",
+    "settledBy": null,
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "dfda363d-d9f3-4f01-bcb0-ae9f8d722f6f",
+    "saidWordForWord": true,
+    "statedInSession": 3,
+    "whenSaidWordForWord": true
+   },
+   {
+    "say": "In session 4, you said, \"I will contact Mr. Kiprop to confirm the details for the site visit.\" It has been open for 2 sessions, and nobody has said whether it happened.",
+    "who": "You",
+    "what": "I will contact Mr. Kiprop to confirm the details for the site visit.",
+    "when": null,
+    "status": "UNKNOWN",
+    "leadLabel": "You",
+    "settledBy": null,
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "9594ee31-5f40-41d2-97fe-e87527405712",
+    "saidWordForWord": true,
+    "statedInSession": 4,
+    "whenSaidWordForWord": false
+   },
+   {
+    "say": "In session 4, you said, \"I will call Mr. Kiprop on Monday if he doesn't respond tomorrow.\" It has been open for 2 sessions, and nobody has said whether it happened.",
+    "who": "You",
+    "what": "I will call Mr. Kiprop on Monday if he doesn't respond tomorrow.",
+    "when": null,
+    "status": "UNKNOWN",
+    "leadLabel": "You",
+    "settledBy": null,
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "9594ee31-5f40-41d2-97fe-e87527405712",
+    "saidWordForWord": true,
+    "statedInSession": 4,
+    "whenSaidWordForWord": false
+   },
+   {
+    "say": "In session 4, you said, \"my plan for tomorrow is to focus on getting the 60 units from the warehouse and booking the delivery van.\" You said later that it was done.",
+    "who": "You",
+    "what": "my plan for tomorrow is to focus on getting the 60 units from the warehouse and booking the delivery van.",
+    "when": null,
+    "status": "DONE",
+    "leadLabel": "You",
+    "settledBy": "SAID",
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "9594ee31-5f40-41d2-97fe-e87527405712",
+    "saidWordForWord": true,
+    "statedInSession": 4,
+    "whenSaidWordForWord": false
+   },
+   {
+    "say": "In session 4, Mercy Wairimu said, \"I'll follow up with Mrs. Achola on Friday if I haven't heard from her by then to see if she's reviewed the quote and is ready to sign.\" It has been open for 2 sessions, and nobody has said whether it happened.",
+    "who": "Mercy Wairimu",
+    "what": "I'll follow up with Mrs. Achola on Friday if I haven't heard from her by then to see if she's reviewed the quote and is ready to sign.",
+    "when": "on Friday",
+    "status": "UNKNOWN",
+    "leadLabel": "You",
+    "settledBy": null,
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "5632caa0-593e-48d5-910e-5c9ea5bc4fb2",
+    "saidWordForWord": true,
+    "statedInSession": 4,
+    "whenSaidWordForWord": true
+   },
+   {
+    "say": "In session 5, you said, \"I'll be in touch with Mr. Kiprop to confirm the exact time and make arrangements for that.\" The time you gave for it was \"next Tuesday\". It has been open for 1 session, and nobody has said whether it happened.",
+    "who": "You",
+    "what": "I'll be in touch with Mr. Kiprop to confirm the exact time and make arrangements for that.",
+    "when": "next Tuesday",
+    "status": "UNKNOWN",
+    "leadLabel": "You",
+    "settledBy": null,
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "9594ee31-5f40-41d2-97fe-e87527405712",
+    "saidWordForWord": true,
+    "statedInSession": 5,
+    "whenSaidWordForWord": true
+   },
+   {
+    "say": "In session 5, Kevin Omondi said, \"I'll follow up with him\". The time Kevin Omondi gave for it was \"next week\". It has been open for 1 session, and nobody has said whether it happened.",
+    "who": "Kevin Omondi",
+    "what": "I'll follow up with him",
+    "when": "next week",
+    "status": "UNKNOWN",
+    "leadLabel": "You",
+    "settledBy": null,
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "9f2e58a4-06d8-4a0a-bddc-03cd96df027c",
+    "saidWordForWord": true,
+    "statedInSession": 5,
+    "whenSaidWordForWord": true
+   },
+   {
+    "say": "In session 5, Mercy Wairimu said, \"I'll call Mrs. Achola first thing Monday to get the manager's name and an estimated time for the sign-off.\" It has been open for 1 session, and nobody has said whether it happened.",
+    "who": "Mercy Wairimu",
+    "what": "I'll call Mrs. Achola first thing Monday to get the manager's name and an estimated time for the sign-off.",
+    "when": "first thing Monday",
+    "status": "UNKNOWN",
+    "leadLabel": "You",
+    "settledBy": null,
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "5632caa0-593e-48d5-910e-5c9ea5bc4fb2",
+    "saidWordForWord": true,
+    "statedInSession": 5,
+    "whenSaidWordForWord": true
+   },
+   {
+    "say": "In session 5, Mercy Wairimu said, \"I'll get it from Mrs. Achola on Monday.\" Mercy Wairimu said later that it was done.",
+    "who": "Mercy Wairimu",
+    "what": "I'll get it from Mrs. Achola on Monday.",
+    "when": "on Monday",
+    "status": "DONE",
+    "leadLabel": "You",
+    "settledBy": "SAID",
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "5632caa0-593e-48d5-910e-5c9ea5bc4fb2",
+    "saidWordForWord": true,
+    "statedInSession": 5,
+    "whenSaidWordForWord": true
+   },
+   {
+    "say": "In session 4, Joseph Kariuki said, \"I'll follow up on that.\" The time Joseph Kariuki gave for it was \"today\". Joseph Kariuki said later that it was not done.",
+    "who": "Joseph Kariuki",
+    "what": "I'll follow up on that.",
+    "when": "today",
+    "status": "NOT_DONE",
+    "leadLabel": "You",
+    "settledBy": "SAID",
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "2274e6af-8d37-4388-bd39-8a7aeb582d7b",
+    "saidWordForWord": true,
+    "statedInSession": 4,
+    "whenSaidWordForWord": true
+   },
+   {
+    "say": "In session 6, Kevin Omondi said, \"I can get it for you.\" The time Kevin Omondi gave for it was \"right now\". Nobody has said yet whether it happened.",
+    "who": "Kevin Omondi",
+    "what": "I can get it for you.",
+    "when": "right now",
+    "status": "UNKNOWN",
+    "leadLabel": "You",
+    "settledBy": null,
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "9f2e58a4-06d8-4a0a-bddc-03cd96df027c",
+    "saidWordForWord": true,
+    "statedInSession": 6,
+    "whenSaidWordForWord": true
+   },
+   {
+    "say": "In session 6, Kevin Omondi said, \"I'm going to follow up with a few new leads I have for hotels in the CBD.\" Nobody has said yet whether it happened.",
+    "who": "Kevin Omondi",
+    "what": "I'm going to follow up with a few new leads I have for hotels in the CBD.",
+    "when": null,
+    "status": "UNKNOWN",
+    "leadLabel": "You",
+    "settledBy": null,
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "9f2e58a4-06d8-4a0a-bddc-03cd96df027c",
+    "saidWordForWord": true,
+    "statedInSession": 6,
+    "whenSaidWordForWord": false
+   },
+   {
+    "say": "In session 6, Kevin Omondi said, \"I'll call them\". The time Kevin Omondi gave for it was \"by end of day tomorrow\". Nobody has said yet whether it happened.",
+    "who": "Kevin Omondi",
+    "what": "I'll call them",
+    "when": "by end of day tomorrow",
+    "status": "UNKNOWN",
+    "leadLabel": "You",
+    "settledBy": null,
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "9f2e58a4-06d8-4a0a-bddc-03cd96df027c",
+    "saidWordForWord": true,
+    "statedInSession": 6,
+    "whenSaidWordForWord": true
+   },
+   {
+    "say": "In session 6, Mercy Wairimu said, \"I need to arrange for her dispenser to be delivered.\" The time Mercy Wairimu gave for it was \"this week\". Nobody has said yet whether it happened.",
+    "who": "Mercy Wairimu",
+    "what": "I need to arrange for her dispenser to be delivered.",
+    "when": "this week",
+    "status": "UNKNOWN",
+    "leadLabel": "You",
+    "settledBy": null,
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "5632caa0-593e-48d5-910e-5c9ea5bc4fb2",
+    "saidWordForWord": true,
+    "statedInSession": 6,
+    "whenSaidWordForWord": true
+   },
+   {
+    "say": "In session 6, Mercy Wairimu said, \"I'll get it sorted out\". The time Mercy Wairimu gave for it was \"this week\". Nobody has said yet whether it happened.",
+    "who": "Mercy Wairimu",
+    "what": "I'll get it sorted out",
+    "when": "this week",
+    "status": "UNKNOWN",
+    "leadLabel": "You",
+    "settledBy": null,
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "5632caa0-593e-48d5-910e-5c9ea5bc4fb2",
+    "saidWordForWord": true,
+    "statedInSession": 6,
+    "whenSaidWordForWord": true
+   },
+   {
+    "say": "In session 6, Mercy Wairimu said, \"I will make a plan this week to identify and visit more bigger shops, and fewer kiosks.\" Nobody has said yet whether it happened.",
+    "who": "Mercy Wairimu",
+    "what": "I will make a plan this week to identify and visit more bigger shops, and fewer kiosks.",
+    "when": "this week",
+    "status": "UNKNOWN",
+    "leadLabel": "You",
+    "settledBy": null,
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "5632caa0-593e-48d5-910e-5c9ea5bc4fb2",
+    "saidWordForWord": true,
+    "statedInSession": 6,
+    "whenSaidWordForWord": true
+   },
+   {
+    "say": "In session 5, Joseph Kariuki said, \"I'll be sure to get it once we finalize the deal.\" It has been open for 1 session, and nobody has said whether it happened.",
+    "who": "Joseph Kariuki",
+    "what": "I'll be sure to get it once we finalize the deal.",
+    "when": "once we finalize the deal",
+    "status": "UNKNOWN",
+    "leadLabel": "You",
+    "settledBy": null,
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "2274e6af-8d37-4388-bd39-8a7aeb582d7b",
+    "saidWordForWord": true,
+    "statedInSession": 5,
+    "whenSaidWordForWord": true
+   },
+   {
+    "say": "In session 6, Peter Njoroge said, \"visit some more shops, like I planned\". Nobody has said yet whether it happened.",
+    "who": "Peter Njoroge",
+    "what": "visit some more shops, like I planned",
+    "when": null,
+    "status": "UNKNOWN",
+    "leadLabel": "You",
+    "settledBy": null,
+    "fromAPaste": false,
+    "restatedIn": [],
+    "theySaidIt": true,
+    "participantId": "dfda363d-d9f3-4f01-bcb0-ae9f8d722f6f",
+    "saidWordForWord": true,
+    "statedInSession": 6,
+    "whenSaidWordForWord": false
+   }
+  ],
+  "dependencies": [
+   {
+    "on": "Kevin, Mercy, Joseph, and Peter",
+    "say": "You are waiting on Kevin, Mercy, Joseph, and Peter for updates from each rep on their deals in progress, what was sold with proof, and what each does next for 5 sessions now, and nothing on record says anybody has chased it since.",
+    "from": "You",
+    "what": "updates from each rep on their deals in progress, what was sold with proof, and what each does next",
+    "chased": false,
+    "status": "WAITING",
+    "onParticipantId": null,
+    "sessionsWaiting": 5,
+    "fromParticipantId": "9594ee31-5f40-41d2-97fe-e87527405712"
+   },
+   {
+    "on": "Mr. Kiprop",
+    "say": "You are waiting on Mr. Kiprop for acceptance of the proposal and either proof of payment or a signed order for the 20 units for 5 sessions now, and nothing on record says anybody has chased it since.",
+    "from": "You",
+    "what": "acceptance of the proposal and either proof of payment or a signed order for the 20 units",
+    "chased": false,
+    "status": "WAITING",
+    "onParticipantId": null,
+    "sessionsWaiting": 5,
+    "fromParticipantId": "9594ee31-5f40-41d2-97fe-e87527405712"
+   },
+   {
+    "on": "Mr Kiprop",
+    "say": "You are waiting on Mr Kiprop for an answer on the proposal for 20 units for 5 sessions now, and nothing on record says anybody has chased it since.",
+    "from": "You",
+    "what": "an answer on the proposal for 20 units",
+    "chased": false,
+    "status": "WAITING",
+    "onParticipantId": null,
+    "sessionsWaiting": 5,
+    "fromParticipantId": "9594ee31-5f40-41d2-97fe-e87527405712"
+   },
+   {
+    "on": "Kevin, Mercy, Joseph, and Peter",
+    "say": "You are waiting on Kevin, Mercy, Joseph, and Peter for updates on their deals for 5 sessions now, and nothing on record says anybody has chased it since.",
+    "from": "You",
+    "what": "updates on their deals",
+    "chased": false,
+    "status": "WAITING",
+    "onParticipantId": null,
+    "sessionsWaiting": 5,
+    "fromParticipantId": "9594ee31-5f40-41d2-97fe-e87527405712"
+   },
+   {
+    "on": "Management",
+    "say": "Joseph Kariuki is waiting on Management for a decision on whether to offer a unit at KES 4,500 for 5 sessions now, and nothing on record says anybody has chased it since.",
+    "from": "Joseph Kariuki",
+    "what": "a decision on whether to offer a unit at KES 4,500",
+    "chased": false,
+    "status": "BLOCKING",
+    "onParticipantId": null,
+    "sessionsWaiting": 5,
+    "fromParticipantId": "2274e6af-8d37-4388-bd39-8a7aeb582d7b"
+   },
+   {
+    "on": "Mama Pima",
+    "say": "Joseph Kariuki is waiting on Mama Pima for the M-Pesa payment for 5 sessions now, and nothing on record says anybody has chased it since.",
+    "from": "Joseph Kariuki",
+    "what": "the M-Pesa payment",
+    "chased": false,
+    "status": "WAITING",
+    "onParticipantId": null,
+    "sessionsWaiting": 5,
+    "fromParticipantId": "2274e6af-8d37-4388-bd39-8a7aeb582d7b"
+   },
+   {
+    "on": "You",
+    "say": "Peter Njoroge is waiting on you for a specific area to focus on for 5 sessions now, and nothing on record says anybody has chased it since. This is work you owe Peter, not the other way round.",
+    "from": "Peter Njoroge",
+    "what": "a specific area to focus on",
+    "chased": false,
+    "status": "BLOCKING",
+    "onParticipantId": "9594ee31-5f40-41d2-97fe-e87527405712",
+    "sessionsWaiting": 5,
+    "fromParticipantId": "dfda363d-d9f3-4f01-bcb0-ae9f8d722f6f"
+   },
+   {
+    "on": "Mr. Kiprop",
+    "say": "You are waiting on Mr. Kiprop for a response for 5 sessions now, and nothing on record says anybody has chased it since.",
+    "from": "You",
+    "what": "a response",
+    "chased": false,
+    "status": "WAITING",
+    "onParticipantId": null,
+    "sessionsWaiting": 5,
+    "fromParticipantId": "9594ee31-5f40-41d2-97fe-e87527405712"
+   },
+   {
+    "on": "her manager",
+    "say": "Mercy Wairimu is waiting on her manager for her manager's sign-off for 5 sessions now, and nothing on record says anybody has chased it since.",
+    "from": "Mercy Wairimu",
+    "what": "her manager's sign-off",
+    "chased": false,
+    "status": "WAITING",
+    "onParticipantId": null,
+    "sessionsWaiting": 5,
+    "fromParticipantId": "5632caa0-593e-48d5-910e-5c9ea5bc4fb2"
+   },
+   {
+    "on": "Mrs Atieno",
+    "say": "Joseph Kariuki is waiting on Mrs Atieno for \"her final decision on the number of units and confirmation of payment\" for 5 sessions now, and nothing on record says anybody has chased it since.",
+    "from": "Joseph Kariuki",
+    "what": "her final decision on the number of units and confirmation of payment",
+    "chased": false,
+    "status": "WAITING",
+    "onParticipantId": null,
+    "sessionsWaiting": 5,
+    "fromParticipantId": "2274e6af-8d37-4388-bd39-8a7aeb582d7b"
+   },
+   {
+    "on": "Juja Hardware",
+    "say": "Joseph Kariuki is waiting on Juja Hardware for the signed agreement from Juja Hardware for 5 sessions now, and nothing on record says anybody has chased it since.",
+    "from": "Joseph Kariuki",
+    "what": "the signed agreement from Juja Hardware",
+    "chased": false,
+    "status": "WAITING",
+    "onParticipantId": null,
+    "sessionsWaiting": 5,
+    "fromParticipantId": "2274e6af-8d37-4388-bd39-8a7aeb582d7b"
+   },
+   {
+    "on": null,
+    "say": "Joseph Kariuki is waiting for \"a decision on the KES 4,500 price\" for 5 sessions now, and nothing on record says anybody has chased it since. That waits on the pricing decision.",
+    "from": "Joseph Kariuki",
+    "what": "a decision on the KES 4,500 price",
+    "chased": false,
+    "status": "BLOCKING",
+    "onParticipantId": null,
+    "sessionsWaiting": 5,
+    "fromParticipantId": "2274e6af-8d37-4388-bd39-8a7aeb582d7b"
+   },
+   {
+    "on": "the reps",
+    "say": "You are waiting on the reps for updates from the reps on their deals for 5 sessions now, and nothing on record says anybody has chased it since.",
+    "from": "You",
+    "what": "updates from the reps on their deals",
+    "chased": false,
+    "status": "WAITING",
+    "onParticipantId": null,
+    "sessionsWaiting": 5,
+    "fromParticipantId": "9594ee31-5f40-41d2-97fe-e87527405712"
+   },
+   {
+    "on": "the reps",
+    "say": "You are waiting on the reps for \"details on what happened to the 60 units\" for 5 sessions now, and nothing on record says anybody has chased it since.",
+    "from": "You",
+    "what": "details on what happened to the 60 units",
+    "chased": false,
+    "status": "WAITING",
+    "onParticipantId": null,
+    "sessionsWaiting": 5,
+    "fromParticipantId": "9594ee31-5f40-41d2-97fe-e87527405712"
+   },
+   {
+    "on": null,
+    "say": "Peter Njoroge is waiting for \"a list of leads for this week\" for 5 sessions now, and nothing on record says anybody has chased it since. That waits on an unknown source.",
+    "from": "Peter Njoroge",
+    "what": "a list of leads for this week",
+    "chased": false,
+    "status": "BLOCKING",
+    "onParticipantId": null,
+    "sessionsWaiting": 5,
+    "fromParticipantId": "dfda363d-d9f3-4f01-bcb0-ae9f8d722f6f"
+   }
+  ],
+  "cannotTellYou": [
+   "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+   "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+  ],
+  "toSettleFirst": [
+   "One thing is waiting on somebody in this check-in, and nothing on record says anybody has gone back about it. Ask whether it was raised outside the sessions, because the record cannot tell you.",
+   "15 things are waiting on somebody outside this check-in, and nothing on record says anybody has chased them. Ask what has been tried beyond writing to those people.",
+   "Nobody on record has said who arranged the meetings that happened. Ask who secured each one before crediting anybody with them."
+  ],
+  "inSessions": "in 6 sessions"
+ },
+ "canEditFrame": true,
+ "groundId": "baridi-sales-org",
+ "title": "Sales organisation, Q4",
+ "kindOfWork": "sales org",
+ "releaseFourTeams": true,
+ "releaseOneSalesBoard": false,
+ "directMorning": false,
+ "theMorning": null,
+ "yourTeam": null,
+ "myParticipantId": "p-amani",
+ "lastChangedAt": "2026-10-23T15:00:00.000Z",
+ "openIssues": null,
+ "keepsComingUp": null,
+ "leadActions": [],
+ "missedCheckIns": [],
+ "atTheStallRule": [],
+ "participants": [
+  {
+   "id": "p-amani",
+   "name": "Amani Njoroge",
+   "role": "Head of sales",
+   "managingOnly": true,
+   "signedOffAt": null,
+   "partyType": "INITIATOR"
+  },
+  {
+   "id": "p-kamau",
+   "name": "Kamau Mwangi",
+   "role": "Sales rep",
+   "managingOnly": false,
+   "signedOffAt": null,
+   "partyType": "PARTICIPANT"
+  },
+  {
+   "id": "p-omondi",
+   "name": "Omondi Were",
+   "role": "Sales rep",
+   "managingOnly": false,
+   "signedOffAt": null,
+   "partyType": "PARTICIPANT"
+  },
+  {
+   "id": "p-akinyi",
+   "name": "Akinyi Odhiambo",
+   "role": "Sales rep",
+   "managingOnly": false,
+   "signedOffAt": null,
+   "partyType": "PARTICIPANT"
+  },
+  {
+   "id": "p-nekesa",
+   "name": "Nekesa Wafula",
+   "role": "Sales rep",
+   "managingOnly": false,
+   "signedOffAt": null,
+   "partyType": "PARTICIPANT"
+  },
+  {
+   "id": "p-juma",
+   "name": "Juma Hamisi",
+   "role": "Sales rep",
+   "managingOnly": false,
+   "signedOffAt": null,
+   "partyType": "PARTICIPANT"
+  }
+ ],
+ "headline": {
+  "question": "Do we close 100 sales worth KES 8 million this quarter?",
+  "answer": "87 of the 100 sales are done, so 13 more are needed by 31 December. Only 11 open sales meet every rule and have a buying date in time.",
+  "bars": []
+ },
+ "objectives": [
+  {
+   "id": "o0",
+   "name": "Sales",
+   "count": 87,
+   "prevCount": 87,
+   "target": 100,
+   "delta": 0,
+   "isNew": false,
+   "ownerParticipantId": null,
+   "owner": null,
+   "askedOf": null,
+   "suggestedCount": null,
+   "journey": {
+    "direction": "up",
+    "start": null,
+    "now": 87,
+    "target": 100,
+    "say": "",
+    "covered": null
+   },
+   "stands": {
+    "word": "Close",
+    "says": ""
+   },
+   "unit": null
+  },
+  {
+   "id": "o1",
+   "name": "Revenue",
+   "count": 7.0,
+   "prevCount": 7.0,
+   "target": 8,
+   "delta": 0,
+   "isNew": false,
+   "ownerParticipantId": null,
+   "owner": null,
+   "askedOf": null,
+   "suggestedCount": null,
+   "journey": {
+    "direction": "up",
+    "start": null,
+    "now": 7.0,
+    "target": 8,
+    "say": "",
+    "covered": null
+   },
+   "stands": {
+    "word": "Close",
+    "says": ""
+   },
+   "unit": "KES million"
+  },
+  {
+   "id": "o2",
+   "name": "Qualified",
+   "count": 299,
+   "prevCount": 299,
+   "target": 320,
+   "delta": 0,
+   "isNew": false,
+   "ownerParticipantId": null,
+   "owner": null,
+   "askedOf": null,
+   "suggestedCount": null,
+   "journey": {
+    "direction": "up",
+    "start": null,
+    "now": 299,
+    "target": 320,
+    "say": "",
+    "covered": null
+   },
+   "stands": {
+    "word": "Close",
+    "says": ""
+   },
+   "unit": null
+  },
+  {
+   "id": "o3",
+   "name": "Check-in rate",
+   "count": 91,
+   "prevCount": 91,
+   "target": 95,
+   "delta": 0,
+   "isNew": false,
+   "ownerParticipantId": null,
+   "owner": null,
+   "askedOf": null,
+   "suggestedCount": null,
+   "journey": {
+    "direction": "up",
+    "start": null,
+    "now": 91,
+    "target": 95,
+    "say": "",
+    "covered": null
+   },
+   "stands": {
+    "word": "Close",
+    "says": ""
+   },
+   "unit": "%"
+  },
+  {
+   "id": "o4",
+   "name": "Follow-up within 48h",
+   "count": 86,
+   "prevCount": 86,
+   "target": 90,
+   "delta": 0,
+   "isNew": false,
+   "ownerParticipantId": null,
+   "owner": null,
+   "askedOf": null,
+   "suggestedCount": null,
+   "journey": {
+    "direction": "up",
+    "start": null,
+    "now": 86,
+    "target": 90,
+    "say": "",
+    "covered": null
+   },
+   "stands": {
+    "word": "Close",
+    "says": ""
+   },
+   "unit": "%"
+  }
+ ],
+ "decisions": [
+  {
+   "question": "Kamau and Juma are drifting.",
+   "why": "Each missed 3 or more days in each of the last 2 weeks. Ask their team leads to talk with them.",
+   "owner": "You",
+   "source": "decision"
+  },
+  {
+   "question": "People said 299 sales are qualified, but only 165 meet the rules.",
+   "why": "Most of the difference is in Industrial Area and Kisumu.",
+   "owner": "You",
+   "source": "decision"
+  },
+  {
+   "question": "Omondi does not name his visits, 2 weeks in a row.",
+   "why": "His team lead should go through 3 of his visits with him.",
+   "owner": "You",
+   "source": "decision"
+  },
+  {
+   "question": "Kamau, Juma and Nekesa have not been told their target.",
+   "why": "Their team leads set the targets, and nobody has told them yet.",
+   "owner": "You",
+   "source": "decision"
+  },
+  {
+   "question": "Nekesa’s qualified sales have no buying dates, 2 weeks in a row.",
+   "why": "Ask her for a date on each.",
+   "owner": "You",
+   "source": "decision"
+  }
+ ],
+ "workRecords": [
+  {
+   "section": "Deal grid",
+   "holds": "deals",
+   "state": "filled",
+   "stages": [],
+   "groups": null,
+   "rows": [
+    {
+     "id": "r0",
+     "kind": "deal",
+     "name": "Gikomba Cold Store",
+     "stage": "Quoted",
+     "owner": "Akinyi Odhiambo",
+     "ownerParticipantId": "p-akinyi",
+     "due": null,
+     "fields": {},
+     "mark": "proven",
+     "saidBy": "Akinyi Odhiambo",
+     "next": "Get a buying date."
+    },
+    {
+     "id": "r1",
+     "kind": "deal",
+     "name": "Kariokor Meats",
+     "stage": "Qualified",
+     "owner": "Akinyi Odhiambo",
+     "ownerParticipantId": "p-akinyi",
+     "due": null,
+     "fields": {},
+     "mark": "said",
+     "saidBy": "Akinyi Odhiambo",
+     "next": "Hold 30 November as the date."
+    },
+    {
+     "id": "r2",
+     "kind": "deal",
+     "name": "Industrial Foods",
+     "stage": "Won",
+     "owner": "Mwangi Kibet",
+     "ownerParticipantId": "p-mwangi",
+     "due": null,
+     "fields": {},
+     "mark": "proven",
+     "saidBy": "Mwangi Kibet",
+     "next": "Nothing more."
+    },
+    {
+     "id": "r3",
+     "kind": "deal",
+     "name": "Nyali Fresh",
+     "stage": "Committed",
+     "owner": "Fatuma Ali",
+     "ownerParticipantId": "p-fatuma",
+     "due": null,
+     "fields": {},
+     "mark": "proven",
+     "saidBy": "Fatuma Ali",
+     "next": "Delivery."
+    },
+    {
+     "id": "r4",
+     "kind": "deal",
+     "name": "Enterprise Road visits, 9 of them",
+     "stage": "Contacted",
+     "owner": "Omondi Were",
+     "ownerParticipantId": "p-omondi",
+     "due": null,
+     "fields": {},
+     "mark": "said",
+     "saidBy": "Omondi Were",
+     "next": "Name each customer."
+    },
+    {
+     "id": "r5",
+     "kind": "deal",
+     "name": "Kondele Meats",
+     "stage": "Qualified",
+     "owner": "Atieno Akoth",
+     "ownerParticipantId": "p-atieno",
+     "due": null,
+     "fields": {},
+     "mark": "said",
+     "saidBy": "Atieno Akoth",
+     "next": "Send the quote with a photo."
+    },
+    {
+     "id": "r6",
+     "kind": "deal",
+     "name": "Lakeview Supermarket",
+     "stage": "Qualified",
+     "owner": "Nekesa Wafula",
+     "ownerParticipantId": "p-nekesa",
+     "due": null,
+     "fields": {},
+     "mark": "said",
+     "saidBy": "Nekesa Wafula",
+     "next": "Ask for a buying date."
+    }
+   ]
+  }
+ ],
+ "eachPersonToday": [
+  {
+   "participantId": "p-kamau",
+   "who": "Kamau",
+   "line": "2 of 5 sales. Missed 3 or more days in each of the last 2 weeks.",
+   "checkedInToday": true
+  },
+  {
+   "participantId": "p-omondi",
+   "who": "Omondi",
+   "line": "2 of 5 sales. Visits not named.",
+   "checkedInToday": true
+  },
+  {
+   "participantId": "p-akinyi",
+   "who": "Akinyi",
+   "line": "6 of 5 sales.",
+   "checkedInToday": true
+  },
+  {
+   "participantId": "p-nekesa",
+   "who": "Nekesa",
+   "line": "3 of 5 sales. No buying dates.",
+   "checkedInToday": true
+  },
+  {
+   "participantId": "p-juma",
+   "who": "Juma",
+   "line": "1 of 5 sales.",
+   "checkedInToday": true
+  }
+ ],
+ "eachPerson": [
+  {
+   "participantId": "p-kamau",
+   "who": "Kamau",
+   "nameIsTheirRole": false,
+   "target": null,
+   "count": 0,
+   "reason": "answered",
+   "says": "2 of 5 sales. Missed 3 or more days in each of the last 2 weeks.",
+   "ask": null,
+   "notLetIn": false,
+   "notLetInBy": null,
+   "notLetInAt": null
+  },
+  {
+   "participantId": "p-omondi",
+   "who": "Omondi",
+   "nameIsTheirRole": false,
+   "target": null,
+   "count": 0,
+   "reason": "answered",
+   "says": "2 of 5 sales. Visits not named.",
+   "ask": null,
+   "notLetIn": false,
+   "notLetInBy": null,
+   "notLetInAt": null
+  },
+  {
+   "participantId": "p-akinyi",
+   "who": "Akinyi",
+   "nameIsTheirRole": false,
+   "target": null,
+   "count": 0,
+   "reason": "answered",
+   "says": "6 of 5 sales.",
+   "ask": null,
+   "notLetIn": false,
+   "notLetInBy": null,
+   "notLetInAt": null
+  },
+  {
+   "participantId": "p-nekesa",
+   "who": "Nekesa",
+   "nameIsTheirRole": false,
+   "target": null,
+   "count": 0,
+   "reason": "answered",
+   "says": "3 of 5 sales. No buying dates.",
+   "ask": null,
+   "notLetIn": false,
+   "notLetInBy": null,
+   "notLetInAt": null
+  },
+  {
+   "participantId": "p-juma",
+   "who": "Juma",
+   "nameIsTheirRole": false,
+   "target": null,
+   "count": 0,
+   "reason": "answered",
+   "says": "1 of 5 sales.",
+   "ask": null,
+   "notLetIn": false,
+   "notLetInBy": null,
+   "notLetInAt": null
+  }
+ ],
+ "patterns": [],
+ "byArea": {
+  "state": "filled",
+  "heading": "By team",
+  "areas": [
+   {
+    "area": "Industrial Area",
+    "records": 0,
+    "says": "31 of 40 sales. 120 said qualified, 61 meet the rules."
+   },
+   {
+    "area": "Kisumu",
+    "records": 0,
+    "says": "24 of 30 sales. 95 said qualified, 44 meet the rules."
+   },
+   {
+    "area": "Mombasa",
+    "records": 0,
+    "says": "32 of 30 sales. 84 said qualified, 60 meet the rules."
+   }
+  ]
+ },
+ "checkInGrid": {
+  "sessions": [
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10
+  ],
+  "rows": [
+   {
+    "participantId": "p-kamau",
+    "name": "Kamau Mwangi",
+    "role": "Sales rep",
+    "managingOnly": false,
+    "cells": {
+     "1": "done",
+     "2": "missed",
+     "3": "missed",
+     "4": "done",
+     "5": "missed",
+     "6": "done",
+     "7": "missed",
+     "8": "missed",
+     "9": "done",
+     "10": "missed"
+    }
+   },
+   {
+    "participantId": "p-omondi",
+    "name": "Omondi Were",
+    "role": "Sales rep",
+    "managingOnly": false,
+    "cells": {
+     "1": "done",
+     "2": "done",
+     "3": "done",
+     "4": "done",
+     "5": "done",
+     "6": "done",
+     "7": "done",
+     "8": "done",
+     "9": "done",
+     "10": "done"
+    }
+   },
+   {
+    "participantId": "p-akinyi",
+    "name": "Akinyi Odhiambo",
+    "role": "Sales rep",
+    "managingOnly": false,
+    "cells": {
+     "1": "done",
+     "2": "done",
+     "3": "done",
+     "4": "done",
+     "5": "done",
+     "6": "done",
+     "7": "done",
+     "8": "done",
+     "9": "done",
+     "10": "done"
+    }
+   },
+   {
+    "participantId": "p-nekesa",
+    "name": "Nekesa Wafula",
+    "role": "Sales rep",
+    "managingOnly": false,
+    "cells": {
+     "1": "done",
+     "2": "done",
+     "3": "done",
+     "4": "done",
+     "5": "done",
+     "6": "done",
+     "7": "done",
+     "8": "done",
+     "9": "done",
+     "10": "in-progress"
+    }
+   },
+   {
+    "participantId": "p-juma",
+    "name": "Juma Hamisi",
+    "role": "Sales rep",
+    "managingOnly": false,
+    "cells": {
+     "1": "done",
+     "2": "done",
+     "3": "missed",
+     "4": "missed",
+     "5": "done",
+     "6": "missed",
+     "7": "missed",
+     "8": "done",
+     "9": "missed",
+     "10": "done"
+    }
+   }
+  ]
+ },
+ "blockers": [
+  {
+   "id": "bl0",
+   "who": "Omondi Were",
+   "fromParticipantId": "p-omondi",
+   "onParticipantId": null,
+   "name": "customer names for the Enterprise Road visits",
+   "state": "waiting",
+   "says": "Omondi has not named the customers he visited on Enterprise Road.",
+   "raised": {
+    "times": 2,
+    "says": "2 times, from 14 to 21 October."
+   },
+   "proof": {
+    "state": "none",
+    "says": "Nothing on record proves the visits."
+   },
+   "timeGiven": null,
+   "holdingUp": "9 visits.",
+   "wouldClearIt": "Name each customer.",
+   "wouldClearItSays": null,
+   "on": "Omondi"
+  }
+ ],
+ "whatMovedEachDay": {
+  "2026-10-23": "Industrial Foods paid.",
+  "2026-10-22": "Nyali Fresh paid a deposit.",
+  "2026-10-21": "Gikomba Cold Store got a quote."
+ },
+ "reportedAgainstCriteria": {
+  "state": "filled",
+  "why": "",
+  "stages": [
+   {
+    "stage": "Contacted",
+    "reported": 640,
+    "met": 640,
+    "withProof": 640,
+    "says": "640 sales were reported at Contacted or later, and 640 meet what it needs."
+   },
+   {
+    "stage": "Need established",
+    "reported": 420,
+    "met": 380,
+    "withProof": 380,
+    "says": "420 sales were reported at Need established or later, and 380 meet what it needs."
+   },
+   {
+    "stage": "Pitched",
+    "reported": 360,
+    "met": 300,
+    "withProof": 300,
+    "says": "360 sales were reported at Pitched or later, and 300 meet what it needs."
+   },
+   {
+    "stage": "Qualified",
+    "reported": 299,
+    "met": 165,
+    "withProof": 165,
+    "says": "299 sales were reported at Qualified or later, and 165 meet what it needs."
+   },
+   {
+    "stage": "Quoted",
+    "reported": 150,
+    "met": 120,
+    "withProof": 120,
+    "says": "150 sales were reported at Quoted or later, and 120 meet what it needs."
+   },
+   {
+    "stage": "Won",
+    "reported": 87,
+    "met": 87,
+    "withProof": 87,
+    "says": "87 sales were reported at Won or later, and 87 meet what it needs."
+   }
+  ]
+ },
+ "whereThisIsHeading": {
+  "heading": "Where this is heading",
+  "about": "Set goals and keep the team on track",
+  "outcomes": [
+   {
+    "value": "ALIGNED",
+    "says": "The team is on course.",
+    "more": null
+   },
+   {
+    "value": "REACH_WITH_A_CHANGE",
+    "says": "The team can reach it, with a change in how the work is done.",
+    "more": null
+   },
+   {
+    "value": "GAPS_IDENTIFIED",
+    "says": "The target needs to change.",
+    "more": null
+   },
+   {
+    "value": "NOT_YET",
+    "says": "It is not settled yet, and more sessions are needed.",
+    "more": null
+   }
+  ],
+  "outcomesSays": null,
+  "signals": [
+   {
+    "says": "87 of 100 sales are done.",
+    "from": "13 more are needed by 31 December."
+   },
+   {
+    "says": "Only 165 of 299 qualified sales meet the rules.",
+    "from": "From the rules for each sales stage."
+   }
+  ],
+  "signalsSays": null,
+  "whatWouldSettleIt": [
+   "Whether 13 more sales with buying dates in time can be found by mid-November."
+  ],
+  "whatWouldSettleItSays": null,
+  "whoDecides": "You decide.",
+  "groundworkDoesNotChoose": "",
+  "recordTheDecision": "Record the decision",
+  "decided": null
+ }
+}

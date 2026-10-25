@@ -303,7 +303,7 @@ export async function readPeopleAndSetup(
     ? 'Nobody has answered with it yet.'
     : throughTheLink === 1 ? '1 person has answered with it.' : `${throughTheLink} people have answered with it.`;
 
-  const offered = await theBoardKindsOffered(prisma).catch(() => [] as string[]);
+  const offered = await theBoardKindsOffered(prisma, (ground as any).organizationId ?? null).catch(() => [] as string[]);
   const kindsOffered = ground.kindOfWork && !offered.includes(ground.kindOfWork) ? [...offered, ground.kindOfWork] : [...offered];
 
   const orgName = ground.organization?.name ?? 'your organisation';

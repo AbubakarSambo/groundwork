@@ -450,6 +450,7 @@ const BY_AREA_HEADING: Partial<Record<string, string>> = {
   'trader training programme': 'By county',
   /* Request 132: gov.txt groups the records by county too, for the same reason. */
   'a government programme': 'By county',
+  leadership: 'By team',
 }
 
 /**

@@ -1,4 +1,6 @@
 import { withTheDirectMorningSaid } from '../organisation/the-screen-is-told-the-direct-morning';
+import { THE_TEMPLATES, theTemplate } from '../board/the-thirteen-templates';
+import { theRelease4TeamsIsOn } from '../board/release-4-teams';
 import { theDirectMorningIsOnFor } from '../organisation/the-direct-morning-switch';
 import { thePersonJudgementsAreOn, thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
 import { theNumberIsOnlyADay } from '../conversation/a-day-is-not-a-target';
@@ -5627,7 +5629,7 @@ export class GroundsService {
       }
       if (kind) {
         const holds = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { kindOfWork: true, organizationId: true } });
-        if (!(await aKindMayBeGiven(this.prisma, kind, holds?.kindOfWork)) && !(await aKindTheSwitchboardNeeds(this.prisma, kind, holds?.organizationId))) {
+        if (!(await aKindMayBeGiven(this.prisma, kind, holds?.kindOfWork, holds?.organizationId)) && !(await aKindTheSwitchboardNeeds(this.prisma, kind, holds?.organizationId))) {
           const offered = await theBoardKindsOffered(this.prisma);
           throw new BadRequestException(`Groundwork does not offer that kind of work yet. Choose ${offered.length ? `one of these: ${offered.join(', ')}` : 'none of them, because none is offered at the moment'}.`);
         }
@@ -5644,6 +5646,35 @@ export class GroundsService {
       data,
       select: { id: true, kindOfWork: true, kindOfWorkSetBy: true, workStages: true },
     });
+  }
+
+  /**
+   * THE LEAD ATTACHES A TEMPLATE (Release 4: "the 13 templates attachable to any team, each bringing its rows, stages, proof, stall
+   * rule and targets"). Only the lead (or an admin once the lead has left), only where the organisation's Release 4 switch is on, only
+   * one of the thirteen. The template's stages become this check-in's own stage names unless the lead already named their own; its
+   * targets are offered, never written as numbers anybody has. `null` takes it off and leaves the stages as they are.
+   */
+  async setTemplate(groundId: string, requestingUserId: string, body: { template?: unknown }) {
+    await this.aSettingOnlyTheLeadMayChange(groundId, requestingUserId);
+    const g = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true, workStages: true } });
+    if (!(await theRelease4TeamsIsOn(this.prisma, g?.organizationId))) throw new BadRequestException('Templates are not switched on for your organisation yet.');
+    if (body.template === null) {
+      return this.prisma.ground.update({ where: { id: groundId }, data: { templateId: null }, select: { id: true, templateId: true, workStages: true } });
+    }
+    const t = theTemplate(body.template);
+    if (!t) throw new BadRequestException(`That is not one of Groundwork's templates. Choose one of these: ${THE_TEMPLATES.map((x) => x.name).join(', ')}.`);
+    const ownStages = Array.isArray(g?.workStages) && (g!.workStages as unknown[]).length > 0;
+    return this.prisma.ground.update({
+      where: { id: groundId },
+      data: { templateId: t.id, ...(ownStages ? {} : { workStages: t.ladder.map((s) => s.stage) }) },
+      select: { id: true, templateId: true, workStages: true },
+    });
+  }
+
+  /** The template library (#/templates), the same for everybody signed in to an organisation with Release 4 on. */
+  async theTemplates(organizationId: string | null | undefined) {
+    if (!(await theRelease4TeamsIsOn(this.prisma, organizationId))) return { on: false, templates: [] as typeof THE_TEMPLATES };
+    return { on: true, templates: THE_TEMPLATES };
   }
 
   /** Whether this organisation may start a check-in to collect what is owed (Release 2). A yes or no, nothing about anybody. */

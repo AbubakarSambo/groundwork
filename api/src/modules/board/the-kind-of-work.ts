@@ -38,6 +38,8 @@ export const KINDS_OF_WORK = [
   'MarketView Q4',
   'a law firm matter',
   'a government programme',
+  /* Release 4: a leadership team, its priorities across the teams. Offered only where Release 4 is on, and only chosen by the lead (never read from the setup words). */
+  'leadership',
 ] as const;
 
 export type KindOfWork = (typeof KINDS_OF_WORK)[number];
@@ -137,6 +139,10 @@ export const RECORDS_FOR_EACH_KIND: Record<KindOfWork, ARecordSection[]> = {
   ],
   'a government programme': [
     { section: 'Deal grid', holds: 'counties and their projects', itemKinds: ['county', 'project'] },
+  ],
+  leadership: [
+    { section: 'Themes', holds: 'the priorities across the teams', itemKinds: ['priority'] },
+    { section: 'Work plan', holds: 'commitments and decisions', itemKinds: ['commitment', 'decision'] },
   ],
 };
 
