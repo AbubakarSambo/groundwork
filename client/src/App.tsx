@@ -75,6 +75,8 @@ import { TodosPage } from '@/pages/suites/TodosPage'
 import { CustomersPage } from '@/pages/suites/CustomersPage'
 import { EquipmentPage } from '@/pages/suites/EquipmentPage'
 import { DirectionPage } from '@/pages/direction/DirectionPage'
+import { PolicyBoardPage } from '@/pages/policy/PolicyBoardPage'
+import { SetUpFromYourDocumentsPage } from '@/pages/policy/SetUpFromYourDocumentsPage'
 import { TemplatesPage } from '@/pages/templates/TemplatesPage'
 import { AskPage } from '@/pages/ask/AskPage'
 import { GroundParticipantPage } from '@/pages/grounds/GroundParticipantPage'
@@ -576,6 +578,9 @@ export default function App() {
             <Route path="/templates" element={<RequireOrgSetup><TemplatesPage /></RequireOrgSetup>} />
             {/* Release 6: the company's direction. */}
             <Route path="/direction" element={<RequireOrgSetup><DirectionPage /></RequireOrgSetup>} />
+            {/* Release 9: the policy board, and setting up from documents. */}
+            <Route path="/policies" element={<RequireOrgSetup><PolicyBoardPage /></RequireOrgSetup>} />
+            <Route path="/policies/setup" element={<RequireOrgSetup><SetUpFromYourDocumentsPage /></RequireOrgSetup>} />
             <Route path="/suite/onboard" element={<RequireOrgSetup><OnboardingBoardPage /></RequireOrgSetup>} />
             <Route path="/suite/mine" element={<RequireOrgSetup><YourRequestsPage /></RequireOrgSetup>} />
             <Route path="/suite/leave/new" element={<RequireOrgSetup><LeaveRequestNewPage /></RequireOrgSetup>} />

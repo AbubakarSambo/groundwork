@@ -633,6 +633,8 @@ model Organization {
   release7PeopleOn       Boolean   @default(false) @map("release_7_people_on")
   /// Release 8: the remaining situations, each with the board its situation switches on. Off for every organisation.
   release8SituationsOn   Boolean   @default(false) @map("release_8_situations_on")
+  /// Release 9: policy and setting up from documents. Off for every organisation.
+  release9PolicyOn       Boolean   @default(false) @map("release_9_policy_on")
   whatsappMonthlyUse     WhatsAppMonthlyUse[]
 
   companyStage CompanyStage? @map("company_stage")
@@ -8927,4 +8929,60 @@ model GoalVersion {
   @@index([organizationId, directionVersion])
   @@index([groundId])
   @@map("goal_versions")
+}
+
+/// RELEASE 9: a document an admin hands over to set up from (a handbook, a leave policy, an expense policy). Its words are
+/// kept so every rule read from it can say where it came from. Organisation-wide; only an admin adds one.
+model PolicyDocument {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  name           String
+  text           String
+  addedById      String?  @map("added_by_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([organizationId])
+  @@map("policy_documents")
+}
+
+/// RELEASE 9: one rule read from a document. Proposed until an admin approves its area; set aside when a disagreement is
+/// decided the other way. Nothing here is a setting by itself: approving writes the exact-fit ones into the suites.
+model PolicyRule {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  documentId     String?  @map("document_id")
+  area           String
+  says           String
+  document       String
+  where          String?
+  exceptionsBy   String?  @map("exceptions_by")
+  appliesTo      String?  @map("applies_to")
+  measure        String?
+  value          String?
+  state          String   @default("proposed")
+  changedOn      String?  @map("changed_on")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@index([organizationId, area])
+  @@map("policy_rules")
+}
+
+/// RELEASE 9: one record read from a document an admin handed over (a person from the staff list, a team from the org chart, a client,
+/// a goal from the strategy, a role from the job descriptions). Proposed until its area is approved; approving writes it into the
+/// product's own store for it. Nothing is sent to anybody.
+model SetupItem {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  documentId     String?  @map("document_id")
+  area           String
+  data           Json
+  document       String
+  where          String?
+  state          String   @default("proposed")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@index([organizationId, area])
+  @@map("setup_items")
 }

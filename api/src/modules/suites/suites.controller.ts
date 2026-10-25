@@ -122,6 +122,9 @@ class TimeRulesDto {
   @IsOptional() @IsNumber() hoursAWeek?: number | null;
   @IsOptional() @IsObject() cutOff?: Record<string, unknown> | null;
   @IsOptional() @IsObject() billable?: Record<string, unknown> | null;
+  /** Release 9: from a policy approved on the policy board. */
+  @IsOptional() @IsNumber() mostHoursADay?: number | null;
+  @IsOptional() @IsString() @MaxLength(10) weekLocksOn?: string | null;
 }
 
 /**
@@ -313,6 +316,12 @@ export class SuitesController {
   @ApiOperation({ summary: 'An admin sets the time sheet rules. A part given as null is cleared; one left out is kept.' })
   setTimeRules(@CurrentUser() user: CurrentUserData, @Body() dto: TimeRulesDto) {
     return this.suites.setTimeRules({ userId: user.id, organizationId: user.organizationId }, dto);
+  }
+
+  @Post('time/weeks/:weekOf/reopen')
+  @ApiOperation({ summary: 'Release 9: reopen a week that locked, by its Monday. For an admin, or whoever looks after finance.' })
+  reopenAWeek(@CurrentUser() user: CurrentUserData, @Param('weekOf') weekOf: string) {
+    return this.suites.reopenAWeek({ userId: user.id, organizationId: user.organizationId }, weekOf);
   }
 
   @Get('time/billing/export')
