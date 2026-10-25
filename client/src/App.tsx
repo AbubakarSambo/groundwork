@@ -74,6 +74,7 @@ import { FinancePage } from '@/pages/suites/FinancePage'
 import { TodosPage } from '@/pages/suites/TodosPage'
 import { CustomersPage } from '@/pages/suites/CustomersPage'
 import { EquipmentPage } from '@/pages/suites/EquipmentPage'
+import { DirectionPage } from '@/pages/direction/DirectionPage'
 import { TemplatesPage } from '@/pages/templates/TemplatesPage'
 import { AskPage } from '@/pages/ask/AskPage'
 import { GroundParticipantPage } from '@/pages/grounds/GroundParticipantPage'
@@ -573,6 +574,8 @@ export default function App() {
             <Route path="/settings/suites" element={<RequireOrgSetup><SuitesPage /></RequireOrgSetup>} />
             {/* Release 4: the template library (B1, #/templates). */}
             <Route path="/templates" element={<RequireOrgSetup><TemplatesPage /></RequireOrgSetup>} />
+            {/* Release 6: the company's direction. */}
+            <Route path="/direction" element={<RequireOrgSetup><DirectionPage /></RequireOrgSetup>} />
             <Route path="/suite/onboard" element={<RequireOrgSetup><OnboardingBoardPage /></RequireOrgSetup>} />
             <Route path="/suite/mine" element={<RequireOrgSetup><YourRequestsPage /></RequireOrgSetup>} />
             <Route path="/suite/leave/new" element={<RequireOrgSetup><LeaveRequestNewPage /></RequireOrgSetup>} />

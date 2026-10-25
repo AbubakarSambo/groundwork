@@ -106,6 +106,12 @@ p button.gw-link, .t-small button.gw-link { min-height: 0; display: inline; }
 .gw-ladder-head { border-top: 0; }
 .gw-template-target { display: grid; grid-template-columns: minmax(0, 1fr) 140px 160px; gap: 12px; }
 @media (max-width: 860px) { .gw-templates { grid-template-columns: 1fr; } .gw-template-target { grid-template-columns: 1fr; gap: 2px; } }
+/* Release 6, the direction: what changed as numbered steps; a brief line's three fields in one row. */
+.gw-numbered { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; counter-reset: gwn; }
+.gw-numbered li { counter-increment: gwn; display: grid; grid-template-columns: 22px 1fr; gap: 12px; align-items: baseline; }
+.gw-numbered li::before { content: counter(gwn); width: 22px; height: 22px; border-radius: 50%; background: var(--chat); font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.gw-brief-row { display: grid; grid-template-columns: 180px minmax(0, 1fr) 200px; gap: 8px; }
+@media (max-width: 640px) { .gw-brief-row { grid-template-columns: 1fr; } }
 
 /* A quiet button inside a sentence, as the prototype's "Send it to him on WhatsApp" (C1). */
 .gw-inline-btn { padding: 0 4px; vertical-align: baseline; }

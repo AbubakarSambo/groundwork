@@ -627,6 +627,8 @@ model Organization {
   release4TeamsOn        Boolean   @default(false) @map("release_4_teams_on")
   /// Release 5: projects (the project board, milestones leading to invoices, the funder brief). Off for every organisation.
   release5ProjectsOn     Boolean   @default(false) @map("release_5_projects_on")
+  /// Release 6: direction (the company's direction, each team's brief, each person's recommitment). Off for every organisation.
+  release6DirectionOn    Boolean   @default(false) @map("release_6_direction_on")
   whatsappMonthlyUse     WhatsAppMonthlyUse[]
 
   companyStage CompanyStage? @map("company_stage")
@@ -8876,4 +8878,49 @@ model ItemEvidence {
   @@index([groundId, createdAt])
   @@index([workItemId])
   @@map("item_evidence")
+}
+
+/// RELEASE 6: ONE VERSION OF THE COMPANY'S DIRECTION. A new direction is a new row; the earlier ones stay as the revisions. Read by
+/// everybody in the organisation; written by an admin. `teams` holds what it means for each team, and each lead's approval and brief.
+model DirectionVersion {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  version        Int
+  setByUserId    String?  @map("set_by_user_id")
+  setAt          DateTime @default(now()) @map("set_at")
+  /// The six parts of "Now": what we are trying to achieve, why it matters, what we believe, what we have learned, what matters most, who owns what.
+  now            Json
+  /// What changed, in five steps: what we assumed, what showed it was not true, what we learned, what we decided, the new direction.
+  whatChanged    Json     @map("what_changed")
+  /// Each team: its check-in, what the direction means for it, who approved it and when, and the lead's brief.
+  teams          Json
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@unique([organizationId, version])
+  @@map("direction_versions")
+}
+
+/// RELEASE 6: A GOAL AS IT STOOD WHEN THE DIRECTION CHANGED, and what became of it: continued, modified, replaced or stopped. A goal
+/// stopped or replaced leaves the live targets, so nobody is judged against the old plan; this row keeps what it was.
+model GoalVersion {
+  id                 String   @id @default(uuid())
+  organizationId     String   @map("organization_id")
+  groundId           String   @map("ground_id")
+  objectiveId        String?  @map("objective_id")
+  ownerParticipantId String?  @map("owner_participant_id")
+  directionVersion   Int      @map("direction_version")
+  name               String
+  target             Float?
+  count              Float?
+  unit               String?
+  /// continued, modified, replaced or stopped.
+  outcome            String
+  newName            String?  @map("new_name")
+  newTarget          Float?   @map("new_target")
+  decidedBy          String   @map("decided_by")
+  decidedAt          DateTime @default(now()) @map("decided_at")
+
+  @@index([organizationId, directionVersion])
+  @@index([groundId])
+  @@map("goal_versions")
 }

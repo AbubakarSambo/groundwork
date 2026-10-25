@@ -120,6 +120,8 @@ import { boardRendersFor } from '../board/board-families';
 import { whatThisSalesCheckInGathers } from './what-a-sales-check-in-gathers';
 import { THE_PEOPLE_NOTES, whatReferencesAndResourcesHold } from './what-references-and-resources-hold';
 import { whatTheOpenFeeNotesWaitFor } from './what-the-open-fee-notes-wait-for';
+import { theDirectionBlock } from '../direction/the-direction';
+import { theCurrentDirection, theRelease6DirectionIsOn } from '../direction/direction.service';
 import { theTemplate, theTemplateBlock } from '../board/the-thirteen-templates';
 import { theRelease4TeamsIsOn } from '../board/release-4-teams';
 import { whatThisPersonShouldRaise } from '../board/raising-invoices-on-time';
@@ -5700,6 +5702,17 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       return theTemplateBlock(theTemplate(g.templateId));
     })().catch(() => '');
     if (templateBlock) this.logger.log(`team-template check-in=${checkIn.id} on=yes`);
+    /* THE COMPANY'S DIRECTION (Release 6): what it means for this team, its brief, the questions now, and the goals stopped with the change,
+       never counted as missed. Code-side words, no stored prompt; only where Release 6 is on and this team is in the direction. */
+    const directionBlock = await (async () => {
+      const g = await this.prisma.ground.findUnique({ where: { id: (checkIn as any).groundId }, select: { organizationId: true } as any }) as any;
+      if (!g?.organizationId || !(await theRelease6DirectionIsOn(this.prisma, g.organizationId))) return '';
+      const d = await theCurrentDirection(this.prisma, g.organizationId);
+      if (!d) return '';
+      const stopped = await (this.prisma as any).goalVersion.findMany({ where: { organizationId: g.organizationId, groundId: (checkIn as any).groundId, outcome: { in: ['stopped', 'replaced', 'modified'] } }, select: { name: true } });
+      return theDirectionBlock(d, (checkIn as any).groundId, stopped.map((s: any) => ({ name: s.name, owner: null })));
+    })().catch(() => '');
+    if (directionBlock) this.logger.log(`direction check-in=${checkIn.id} on=yes`);
     /*
      * THEIR JOB (decision 129). In a person's FIRST check-in the conversation also learns what they are responsible for, what doing
      * well looks like, who they depend on and who depends on them, and what usually gets in their way, as a checklist the model works
@@ -6055,7 +6068,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const named: [string, string][] = [
       ['language', theirLanguage], ['intake', intakeBlock], ['pending', pendingLines.join('')], ['evidence', evidenceLines.join('')], ['theirWeek', theirWeek],
       ['howWeDoIt', howWeDoIt], ['style', styleBlock], ['clarification', clarificationContext], ['selfCorrection', selfCorrectionContext],
-      ['finalSession', finalSessionContext], ['returningUser', returningUserContext], ['roleProbe', roleProbeBlock], ['salesGathers', salesGathersBlock], ['references', referencesBlock], ['feeNotesWait', feeNotesWaitBlock], ['invoicesToRaise', invoicesToRaiseBlock], ['teamTemplate', templateBlock], ['theirJob', theJob], ['roleConfirm', roleConfirmationBlock], ['coaching', coachingBlock], ['patternProbe', patternProbeBlock],
+      ['finalSession', finalSessionContext], ['returningUser', returningUserContext], ['roleProbe', roleProbeBlock], ['salesGathers', salesGathersBlock], ['references', referencesBlock], ['feeNotesWait', feeNotesWaitBlock], ['invoicesToRaise', invoicesToRaiseBlock], ['teamTemplate', templateBlock], ['direction', directionBlock], ['theirJob', theJob], ['roleConfirm', roleConfirmationBlock], ['coaching', coachingBlock], ['patternProbe', patternProbeBlock],
       ['floorGiveBack', theFloorGiveBack], ['whoCarries', numbersAndOwners.whoCarries], ['whereItStands', numbersAndOwners.whereItStands], ['whoSecuredIt', whoSecuredIt],
       ['seenBefore', seenBefore], ['closeHeld', closeHeldLine], ['documentReadsDifferently', documentReadsDifferently], ['documentNotAsDescribed', documentNotAsDescribed], ['rhythm', rhythmNow], ['dynamicContext', dynamicContext], ['docs', docContext],
       ['docHint', docPromptHint], ['notes', notesBlock], ['deliveries', deliveriesBlock], ['burden', burden], ['putThisToThem', putThisToThem], ['whereItIs', whereItIs],
@@ -6199,7 +6212,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ['theirWeek', theirWeek], ['howWeDoIt', howWeDoIt], ['styleBlock', styleBlock],
       ['clarificationContext', clarificationContext], ['selfCorrectionContext', selfCorrectionContext],
       ['finalSessionContext', finalSessionContext], ['howLongThisRuns', howLongThisRuns], ['returningUserContext', returningUserContext],
-      ['roleProbeBlock', roleProbeBlock], ['salesGathersBlock', salesGathersBlock], ['referencesBlock', referencesBlock], ['feeNotesWaitBlock', feeNotesWaitBlock], ['invoicesToRaiseBlock', invoicesToRaiseBlock], ['templateBlock', templateBlock], ['theirJob', theJob], ['theJobThisTurn', theJobThisTurn], ['coachingBlock', coachingBlock],
+      ['roleProbeBlock', roleProbeBlock], ['salesGathersBlock', salesGathersBlock], ['referencesBlock', referencesBlock], ['feeNotesWaitBlock', feeNotesWaitBlock], ['invoicesToRaiseBlock', invoicesToRaiseBlock], ['templateBlock', templateBlock], ['directionBlock', directionBlock], ['theirJob', theJob], ['theJobThisTurn', theJobThisTurn], ['coachingBlock', coachingBlock],
       ['patternProbeBlock', patternProbeBlock], ['theHole', theHole], ['theOneThingToday', theOneThingToday], ['theOneThingBack', theOneThingBack],
       ['theFloorGiveBack', theFloorGiveBack], ['whoCarriesWhichPart', numbersAndOwners.whoCarries], ['whereTheNumberStands', numbersAndOwners.whereItStands], ['whoSecuredIt', whoSecuredIt],
       ['oneThingToDoBetter', oneThingToDoBetter],
@@ -6290,10 +6303,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     if (leanIsOnForThisProcess()) {
       const theLeanRules = [THE_LEAN_CORE, theirLanguage].filter(Boolean).join('\n\n');
-      return [THE_LEAN_CORE, theirLanguage, intakeBlock, recordAlreadyHolds, managingBlock, alreadyGiven, owedBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, finalSessionContext, returningUserContext, roleProbeBlock, salesGathersBlock, referencesBlock, feeNotesWaitBlock, invoicesToRaiseBlock, templateBlock, theJob, theJobThisTurn, roleConfirmationBlock, coachingBlock, patternProbeBlock, dynamicContext, docContext, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, theOneThingToday]
+      return [THE_LEAN_CORE, theirLanguage, intakeBlock, recordAlreadyHolds, managingBlock, alreadyGiven, owedBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, finalSessionContext, returningUserContext, roleProbeBlock, salesGathersBlock, referencesBlock, feeNotesWaitBlock, invoicesToRaiseBlock, templateBlock, directionBlock, theJob, theJobThisTurn, roleConfirmationBlock, coachingBlock, patternProbeBlock, dynamicContext, docContext, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, theOneThingToday]
         .filter(Boolean).join('\n\n').replace(/^[\s\S]*$/, (all) => theRulesKeptTheRestWithoutStandInLabels(all, theLeanRules, calledHere));
     }
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, theirDealsBlock, managingBlock, alreadyGiven, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, salesGathersBlock, referencesBlock, feeNotesWaitBlock, invoicesToRaiseBlock, templateBlock, theJob, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, theOneThingToday, burden, putThisToThem, askedWhenThisEnds, theJobThisTurn, theirHedge, theHole, salesGathers.last, heldBack, proofKindly, whereItIs, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n').replace(/^[\s\S]*$/, (all) => theRulesKeptTheRestWithoutStandInLabels(all, theRules, calledHere));
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, theirDealsBlock, managingBlock, alreadyGiven, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, salesGathersBlock, referencesBlock, feeNotesWaitBlock, invoicesToRaiseBlock, templateBlock, directionBlock, theJob, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, theOneThingToday, burden, putThisToThem, askedWhenThisEnds, theJobThisTurn, theirHedge, theHole, salesGathers.last, heldBack, proofKindly, whereItIs, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n').replace(/^[\s\S]*$/, (all) => theRulesKeptTheRestWithoutStandInLabels(all, theRules, calledHere));
   }
 
   /**
