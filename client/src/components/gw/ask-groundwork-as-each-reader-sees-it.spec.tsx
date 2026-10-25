@@ -236,10 +236,13 @@ describe('the starter questions, under the greeting', () => {
     expect(asked()).toEqual(STARTERS_WITH_NO_CHECK_IN)
   })
 
-  it('Miriam, who has asked before, reads her own questions and not the starters', async () => {
+  /* The prototype's Ask shows its question chips whatever was asked before (Hafsah, 25 October: add back what the prototype has):
+     after her own earlier questions, until she asks something this visit. */
+  it('Miriam, who has asked before, reads her own questions, then the starters after them', async () => {
     panel(MIRIAMS)
-    await screen.findByText('Green Mart said January, in writing.')
-    expect(screen.queryByRole('group', { name: 'Questions you could ask' })).toBeNull()
+    const answer = await screen.findByText('Green Mart said January, in writing.')
+    const chips = screen.getByRole('group', { name: 'Questions you could ask' })
+    expect(answer.compareDocumentPosition(chips) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   it('Tom, whom Ask Groundwork cannot answer yet, reads why and is offered no question', async () => {

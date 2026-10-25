@@ -571,16 +571,17 @@ export function AskGroundwork({
          * fetch of `/ask` that would clear it server-side too.
          */}
         {page.data?.canAsk && page.data.welcome && said.length === 0 && <p className={bubble(false)}>{page.data.welcome}</p>}
-        {page.data?.canAsk && (page.data?.starters ?? []).length > 0 && (page.data?.turns ?? []).length === 0 && said.length === 0 && (
+        {(page.data?.turns ?? []).map((t, i) => (
+          <p key={`t-${i}`} className={bubble(t.from === 'you')}>{t.from === 'you' ? t.says : anOldAskAnswerReadsProperly(t.says)}</p>
+        ))}
+        {/* The questions you could ask, as the prototype's chips, after what has been said, until you ask something this visit. */}
+        {page.data?.canAsk && (page.data?.starters ?? []).length > 0 && said.length === 0 && (
           <div role="group" aria-label="Questions you could ask" className="gw-chips">
             {(page.data?.starters ?? []).map((q) => (
               <button key={q} type="button" className={chip} disabled={sending || reading} onClick={() => ask(q)}>{q}</button>
             ))}
           </div>
         )}
-        {(page.data?.turns ?? []).map((t, i) => (
-          <p key={`t-${i}`} className={bubble(t.from === 'you')}>{t.from === 'you' ? t.says : anOldAskAnswerReadsProperly(t.says)}</p>
-        ))}
         {said.map((s, i) => s.from === 'you'
           ? <p key={`s-${i}`} className={bubble(true)}>{s.says}</p>
           : <div key={`s-${i}`} style={{ display: 'contents' }}>{drawBlocks(s.reply, i, i === latestGroundworkIndex, s.fileTaken)}</div>)}
