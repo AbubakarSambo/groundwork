@@ -317,6 +317,8 @@ export const reviewsApi = {
   one: async (id: string): Promise<AReview> => (await apiClient.get(`/suites/reviews/${id}`, { skipForbiddenToast: true } as any)).data,
   words: async (id: string, text: string): Promise<AReview> => (await apiClient.put(`/suites/reviews/${id}/words`, { text })).data,
   view: async (id: string, text: string): Promise<AReview> => (await apiClient.put(`/suites/reviews/${id}/view`, { text })).data,
+  /** The person, or whoever writes it, reads the record again for a review in progress. */
+  updateFromTheRecord: async (id: string): Promise<AReview> => (await apiClient.post(`/suites/reviews/${id}/update-from-the-record`)).data,
   correct: async (id: string, lineKey: string, text: string): Promise<AReview> =>
     (await apiClient.post(`/suites/reviews/${id}/lines/${encodeURIComponent(lineKey)}/correction`, { text })).data,
   decide: async (id: string, decision: string, reasons: string): Promise<AReview> =>

@@ -283,9 +283,24 @@ function WriteWordsForm({ label, text, save, reviewId }: {
 /** What Groundwork understands from the record. The person marks a line wrong and says what is true; nobody else can. */
 function TheRecordSection({ r, record }: { r: AReview; record: TheRecord }) {
   const person = r.reader === 'person'
+  const qc = useQueryClient()
+  const [problem, setProblem] = useState<string | null>(null)
+  /* Opening never reads the record again; the person or whoever writes it may, while it is in progress. */
+  const mayUpdate = !(r as any).decision && (person || !!(r as any).mayWrite)
+  const update = useMutation({
+    mutationFn: () => reviewsApi.updateFromTheRecord(r.id),
+    onSuccess: (x) => { setProblem(null); qc.setQueryData(['suite-review', r.id], x) },
+    onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
+  })
   return (
     <Section heading={person ? 'What Groundwork understands about your work' : `What Groundwork understands about ${r.firstName}’s work`}>
       <p className="gwui-panel-text">{record.intro}</p>
+      {mayUpdate && (
+        <p className="gwui-panel-text">
+          <Button kind="secondary" size="small" onClick={() => update.mutate()} disabled={update.isPending}>{update.isPending ? 'Updating…' : 'Update from the record'}</Button>
+        </p>
+      )}
+      {problem && <Note tone="error">{problem}</Note>}
       {record.whoReads && <p className="gwui-panel-text-muted">{record.whoReads}</p>}
       {record.parts.map(part => (
         <Panel key={part.part} as="section" aria-label={part.heading}>
