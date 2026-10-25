@@ -373,6 +373,13 @@ export class SuitesController {
     return this.reviews.writeWords({ userId: user.id, organizationId: user.organizationId }, id, dto.text);
   }
 
+  /** Release 7: the person drafts their own view from their running record. Nothing is kept until they save it. */
+  @Get('reviews/:id/self-review-draft')
+  @ApiOperation({ summary: 'Draft your own view of your review from your running record (Release 7). Only the person reviewed' })
+  selfReviewDraft(@CurrentUser() user: CurrentUserData, @Param('id') id: string) {
+    return this.reviews.selfReviewDraft({ userId: user.id, organizationId: user.organizationId }, id);
+  }
+
   @Put('reviews/:id/view')
   @ApiOperation({ summary: 'The person’s own view of their work' })
   reviewView(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: WordsDto) {

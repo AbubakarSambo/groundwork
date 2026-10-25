@@ -112,6 +112,7 @@ p button.gw-link, .t-small button.gw-link { min-height: 0; display: inline; }
 .gw-numbered li::before { content: counter(gwn); width: 22px; height: 22px; border-radius: 50%; background: var(--chat); font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
 .gw-brief-row { display: grid; grid-template-columns: 180px minmax(0, 1fr) 200px; gap: 8px; }
 @media (max-width: 640px) { .gw-brief-row { grid-template-columns: 1fr; } }
+.gw-caps { text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
 
 /* A quiet button inside a sentence, as the prototype's "Send it to him on WhatsApp" (C1). */
 .gw-inline-btn { padding: 0 4px; vertical-align: baseline; }
@@ -146,3 +147,5 @@ p button.gw-link, .t-small button.gw-link { min-height: 0; display: inline; }
   .gw-today .list .item:not(:first-child) .h { font-size: 16px; }
   .gw-today .list .item:not(:first-child) .s { font-size: 14px; }
 }
+/* A reading's evidence: short lines under it, no bullets. */
+.gw-evidence { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }

@@ -1,0 +1,43 @@
+{
+ "readings": [
+  {
+   "label": "Outcome",
+   "question": "Did the work produce what was intended?",
+   "says": "5 on “Corporate renewals”, against a first target of 5 and a later one of 8."
+  },
+  {
+   "label": "Adaptation",
+   "question": "Did Daniel notice new information and adjust well?",
+   "says": "When the direction changed on 15 September, Daniel changed or stopped their goal within 3 days."
+  },
+  {
+   "label": "Alignment",
+   "question": "Does Daniel’s work now serve the current direction?",
+   "says": "Yes, as far as the record shows. Nothing the team’s brief stops is still among the goals."
+  }
+ ],
+ "committedHeading": "What Daniel committed to, and what Daniel did",
+ "committed": [
+  {
+   "title": "Renew Lakeside’s contract",
+   "says": "Done on 20 August.",
+   "tone": "rec"
+  },
+  {
+   "title": "Set up a monthly call with each corporate account",
+   "says": "Not done, marked on 25 September.",
+   "tone": "con"
+  }
+ ],
+ "blockedOrDropped": [
+  {
+   "title": "Set up a monthly call with each corporate account",
+   "says": "The situation, mostly. Daniel was waiting on the accounts for a contact at four of the accounts.",
+   "tone": "att"
+  }
+ ],
+ "ownViewHeading": "Daniel’s own view",
+ "ownView": "“When the direction changed, I moved quickly.”",
+ "decidesHeading": "Wairimu decides",
+ "decides": "The review is a draft. Wairimu decides and gives the reasons. Daniel sees them, can add their side, and can appeal."
+}

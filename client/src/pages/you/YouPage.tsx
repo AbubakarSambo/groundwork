@@ -12,7 +12,7 @@ import {
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { whatTellsItApart } from '@/lib/tell-apart-the-same-name'
 import { WhereYouStandFromSuggestions } from '@/components/gw/Suggestions'
-import { PatternPanel } from '@/components/gw/ui'
+import { PatternPanel, EdgeList, EdgeRow } from '@/components/gw/ui'
 
 /**
  * THE YOU BOARD (C2, #/you, group 2 piece 2). The wording is copied from
@@ -258,6 +258,9 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
         </Section>
       )}
 
+      {/* RELEASE 7: your running record, from every check-in you are in (served with Release 7 on, to you alone). */}
+      {(b as any).runningRecord && <YourRunningRecord r={(b as any).runningRecord} />}
+
       {saidYoudDo.length > 0 && (
         <Section heading="What you said you’d do" note="From every check-in">
           {/*
@@ -366,5 +369,26 @@ function YourData() {
       </div>
       {failed && <p role="alert" className="gwui-panel-text-muted">Your file did not download. Try again.</p>}
     </Panel>
+  )
+}
+
+/** RELEASE 7: what you said you would do in every check-in, what became of it, and what shows it; and how you adapted. */
+export function YourRunningRecord({ r }: { r: { heading: string; inShort: string; rows: { id: string; title: string; said: string; became: string; shows: string; tone: string }[]; more: number; adapted: string[] } }) {
+  const EDGE: Record<string, 'ready' | 'look' | 'concern' | 'decide'> = { rec: 'ready', att: 'look', con: 'concern', act: 'decide' }
+  return (
+    <Section heading={r.heading} note={r.inShort}>
+      <EdgeList label={r.heading}>
+        {r.rows.slice(0, 3).map((x) => <EdgeRow key={x.id} kind={EDGE[x.tone] ?? 'look'} reason={null} title={x.title} detail={`${x.became} ${x.shows}`} />)}
+      </EdgeList>
+      {(r.rows.length > 3 || r.more > 0) && (
+        <details className="pb-fold">
+          <summary>{`and ${r.rows.length - 3 + r.more} more`}</summary>
+          <EdgeList label="The rest of your record">
+            {r.rows.slice(3).map((x) => <EdgeRow key={x.id} kind={EDGE[x.tone] ?? 'look'} reason={null} title={x.title} detail={`${x.became} ${x.shows}`} />)}
+          </EdgeList>
+        </details>
+      )}
+      {r.adapted.map((a) => <p key={a} className="t-small">{a}</p>)}
+    </Section>
   )
 }

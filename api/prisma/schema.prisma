@@ -629,6 +629,8 @@ model Organization {
   release5ProjectsOn     Boolean   @default(false) @map("release_5_projects_on")
   /// Release 6: direction (the company's direction, each team's brief, each person's recommitment). Off for every organisation.
   release6DirectionOn    Boolean   @default(false) @map("release_6_direction_on")
+  /// Release 7: the people scenarios and a review built from check-ins. Off for every organisation.
+  release7PeopleOn       Boolean   @default(false) @map("release_7_people_on")
   whatsappMonthlyUse     WhatsAppMonthlyUse[]
 
   companyStage CompanyStage? @map("company_stage")

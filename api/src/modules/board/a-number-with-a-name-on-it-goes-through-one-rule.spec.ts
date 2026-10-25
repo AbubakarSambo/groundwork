@@ -192,6 +192,7 @@ describe('every surface that hands out whose number it is', () => {
     'modules/direction/__fixtures__/baridi-direction.ts': 'hand-written test data for the direction specs',
     /* Release 7, a review built from check-ins: the person's own goals and their versions, read for that person's review only. */
     'modules/suites/the-reviews.service.ts': "reads the reviewed person's own goals and their versions, for that person's review, under the review's own readers",
+    'modules/suites/the-running-record.ts': "reads a person's own goal versions for their own running record and self-review, read by that person alone",
     'modules/board/your-team-person-by-person.ts': "reads each person's own records (work items) by their own id, for the lead who runs the check-in alone; never a target or a number",
   };
 
