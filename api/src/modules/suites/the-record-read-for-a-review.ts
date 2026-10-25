@@ -3,6 +3,7 @@ import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { inOurVoice } from '../reports/what-the-record-shows-over-time';
 import { theFirstNameFrom } from '../reports/a-title-is-not-a-first-name';
 import { isThisTheUntoldGoal, type AnUntoldGoalRow } from '../board/an-untold-goal-is-not-a-board-objective';
+import { theVaguePromiseIn, whatItWasSaid } from '../conversation/a-vague-promise-says-what-it-is';
 
 /**
  * THE REVIEW AS THE RECORD INTERPRETED (decision 85, item 4; build step 12 of
@@ -41,7 +42,7 @@ export type ARecordLine =
   | ({ key: string; kind: 'goal'; name: string; count: number; target: number | null; at: string; dueOn: string | null } & InACheckIn)
   | { key: string; kind: 'work-plan'; groundId: null; title: string; dueOn: string | null; status: string | null }
   | ({ key: string; kind: 'commitments'; first: string; last: string; made: number; done: number; notDone: number; dropped: number; open: number; delayed: number } & InACheckIn)
-  | ({ key: string; kind: 'commitment'; words: string; wordForWord: boolean; madeOn: string; status: 'DONE' | 'NOT_DONE' | 'DROPPED' | 'OPEN'; saidAgain: number; settledOn: string | null } & InACheckIn)
+  | ({ key: string; kind: 'commitment'; words: string; wordForWord: boolean; whatItIs?: string | null; madeOn: string; status: 'DONE' | 'NOT_DONE' | 'DROPPED' | 'OPEN'; saidAgain: number; settledOn: string | null } & InACheckIn)
   | ({ key: string; kind: 'blocker'; what: string; onUserId: string | null; onFirst: string | null; onLabel: string | null; saidOn: string; clearedOn: string | null } & InACheckIn);
 
 /** What one reader is allowed to read of the record: the check-ins they are in, and the ones they run. */
@@ -52,7 +53,8 @@ export interface WhatTheReaderIsIn {
 }
 
 /** How a line is said: to the person as "you", to anybody else with the person's first name. */
-export interface WhoReadsIt { isThePerson: boolean; userId: string; personFirst: string }
+/** `readOn`: the day the record was last read again with "Update from the record"; null when it is as read when the review started. */
+export interface WhoReadsIt { isThePerson: boolean; userId: string; personFirst: string; readOn?: string | null }
 
 const MOST_OF_EACH = { done: 6, delayed: 8, dropped: 5, blocked: 8 } as const;
 const day = (d: Date | string): string => new Date(d).toISOString().slice(0, 10);
@@ -103,7 +105,7 @@ export async function theRecordForAReview(
       db.groundObjective?.findMany?.({ where: { ownerParticipantId: { in: pids }, isADecisionAboutAPerson: false }, select: { id: true, ownerParticipantId: true, name: true, target: true, count: true, dueOn: true, updatedAt: true, createdAt: true } }).catch(() => []),
       db.groundCommitment?.findMany?.({
         where: { participantId: { in: pids }, explicit: true, source: { not: 'PASTE' }, createdAt: { gte: from, lte: until } },
-        select: { id: true, participantId: true, text: true, saidWordForWord: true, status: true, saidAgainIn: true, settledAt: true, createdAt: true },
+        select: { id: true, participantId: true, text: true, whatItIs: true, saidWordForWord: true, status: true, saidAgainIn: true, settledAt: true, createdAt: true },
       }).catch(() => []),
       db.groundDependency?.findMany?.({
         where: { fromParticipantId: { in: pids }, createdAt: { gte: from, lte: until } },
@@ -188,9 +190,11 @@ export async function theRecordForAReview(
     /* A line that cannot be said truly (their words are not word for word, and cannot be put in our voice) is left out. */
     if (!c.saidWordForWord && !inOurVoice(words)) continue;
     /* So is one that says nothing on its own, out of its check-in: "I will do that." */
-    if (saysNothingOnItsOwn(words)) continue;
+    /* Unless they said what "it" was when the check-in asked (a-vague-promise-says-what-it-is). */
+    if (saysNothingOnItsOwn(words) && !String(c.whatItIs ?? '').trim()) continue;
     lines.push({
       key: `commitment:${c.id}`, kind: 'commitment', groundId: c.ground.id, label: c.ground.label, words: words.slice(0, 400), wordForWord: !!c.saidWordForWord,
+      whatItIs: String(c.whatItIs ?? '').trim() || null,
       madeOn: day(c.createdAt), status: c.stood, saidAgain: c.again, settledOn: c.stood === 'DONE' || c.stood === 'NOT_DONE' ? (c.settledAt ? day(c.settledAt) : null) : null,
     });
   }
@@ -277,6 +281,7 @@ export function aRecordLineSaid(line: ARecordLine, r: WhoReadsIt): string {
   const who = r.isThePerson ? 'you' : r.personFirst;
   const Who = capital(who);
   const own = r.isThePerson ? 'own' : 'owns';
+  const asOf = r.readOn ? `on ${said(r.readOn)}, when the review was last updated from the record` : 'when this review started';
   switch (line.kind) {
     case 'worked': {
       if (line.personRanIt) return `${Who} ran “${line.label}”, and checked in ${times(line.checkIns)} ${between(line.first, line.last)}.`;
@@ -300,7 +305,7 @@ export function aRecordLineSaid(line: ARecordLine, r: WhoReadsIt): string {
       if (line.done) parts.push(`${line.done} ${line.done === 1 ? 'was' : 'were'} done`);
       if (line.notDone) parts.push(`${line.notDone} ${line.notDone === 1 ? 'was' : 'were'} not done`);
       if (line.dropped) parts.push(`${line.dropped} ${line.dropped === 1 ? 'was' : 'were'} dropped`);
-      if (line.open) parts.push(`${line.open} ${line.open === 1 ? 'was' : 'were'} still open when this review started`);
+      if (line.open) parts.push(`${line.open} ${line.open === 1 ? 'was' : 'were'} still open ${asOf}`);
       const of = line.made === 1 && parts.length === 1
         ? ` It ${parts[0].replace(/^1 (was|were) /, 'was ')}.`
         : parts.length === 1 ? ` All of them ${parts[0].replace(/^\d+ (was|were) /, 'were ')}.`
@@ -316,15 +321,17 @@ export function aRecordLineSaid(line: ARecordLine, r: WhoReadsIt): string {
       const stood = line.status === 'DONE' ? (line.settledOn ? ` It was done on ${said(line.settledOn)}.` : ' It was done.')
         : line.status === 'NOT_DONE' ? (line.settledOn ? ` It was marked as not done on ${said(line.settledOn)}.` : ' It was marked as not done.')
           : line.status === 'DROPPED' ? ' It was dropped later.'
-            : ' It was still open when this review started.';
-      return `${opener}${again}${stood}`;
+            : ` It was still open ${asOf}.`;
+      /* What "it" was, in their own words, where the check-in asked. Their promise is never reworded. */
+      const itWas = line.whatItIs ? whatItWasSaid(Who, theVaguePromiseIn(line.words)?.pronoun ?? theVaguePromiseIn(`I will ${line.words}`)?.pronoun ?? 'it', line.whatItIs) : null;
+      return `${opener}${itWas ? ` ${itWas}` : ''}${again}${stood}`;
     }
     case 'blocker': {
       const on = line.onUserId && line.onUserId === r.userId ? 'you' : line.onFirst ?? line.onLabel;
       /* "waiting on Amina for a meeting with Amina" says Amina twice; the thing waited for already names them. */
       const namedInIt = !!on && new RegExp(`\\b${on.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(line.what);
       const waiting = on && !namedInIt ? `waiting on ${on} for ${line.what}` : `waiting for ${line.what}`;
-      const cleared = line.clearedOn ? ` It cleared on ${said(line.clearedOn)}.` : ' It was still open when this review started.';
+      const cleared = line.clearedOn ? ` It cleared on ${said(line.clearedOn)}.` : ` It was still open ${asOf}.`;
       /* No pronoun is guessed for the person: they are "you", or the work is. */
       return `On ${said(line.saidOn)}, in “${line.label}”, ${r.isThePerson ? 'you said you were' : `${r.personFirst} said the work was`} ${waiting}.${cleared}`;
     }
