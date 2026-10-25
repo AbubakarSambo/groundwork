@@ -200,14 +200,31 @@ export default function WeeklyReportPage() {
           <Section heading="For you to do next week">
             <EdgeList label="For you to do next week">
               {/* A sales week read from the record is in the order to do it (W-7), up to five; otherwise three from different places. */}
-              {(data.forNextWeekIsRanked ? data.forNextWeek.slice(0, 5) : threeFromDifferentPlaces(data.forNextWeek)).map((row, i) => (
+              {/* Three, then "and N more" (Hafsah, 25 October: lists stop at three). */}
+              {(data.forNextWeekIsRanked ? data.forNextWeek.slice(0, 5) : threeFromDifferentPlaces(data.forNextWeek)).slice(0, 3).map((row, i) => (
                 <EdgeRow key={i} kind="decide" title={row.do} detail={(row.why || row.comesFrom) ? <>{row.why}{row.why && row.comesFrom ? ' ' : ''}{row.comesFrom && <span className="tag plain">{row.comesFrom}</span>}</> : undefined} />
               ))}
             </EdgeList>
+            {data.forNextWeekIsRanked && data.forNextWeek.slice(0, 5).length > 3 && (
+              <details className="pb-fold">
+                <summary>{`and ${data.forNextWeek.slice(0, 5).length - 3} more`}</summary>
+                <EdgeList label="And the rest for next week">
+                  {data.forNextWeek.slice(3, 5).map((row, i) => (
+                    <EdgeRow key={i} kind="decide" title={row.do} detail={(row.why || row.comesFrom) ? <>{row.why}{row.why && row.comesFrom ? ' ' : ''}{row.comesFrom && <span className="tag plain">{row.comesFrom}</span>}</> : undefined} />
+                  ))}
+                </EdgeList>
+              </details>
+            )}
           </Section>
         )}
         {/* The lead's own week (where the target stands, what moved with what shows it, who needs you), after every part the prototype draws. */}
-        {data.forTheLead && <TheWeekForTheLead w={data.forTheLead} />}
+        {/* Folded after the prototype's own parts: the prototype's week has no place for them (Hafsah, 25 October: the prototype wins). */}
+        {data.forTheLead && (data.forTheLead.target || data.forTheLead.movedWithProof.length > 0 || data.forTheLead.needsYou.length > 0) && (
+          <details className="pb-fold">
+            <summary>Where the target stands, and what moved with proof</summary>
+            <TheWeekForTheLead w={data.forTheLead} />
+          </details>
+        )}
         {/* Kept from the report as it was, though the picture has no place for it: the lead's own way in at the end of a report (decision of 14 October). */}
         {(ground as any)?.viewerIsInitiator && !['CLOSED', 'RESOLVED', 'STALLED', 'PAUSED'].includes((ground as any)?.status) && (
           <TheLeadsOwnWayIn groundId={id!} asLinks />
