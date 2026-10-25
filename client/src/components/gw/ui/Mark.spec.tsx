@@ -100,7 +100,7 @@ describe('SubHeading', () => {
 
   /* U.20 sixth round (Hafsah's first review): 14.5px, matching the prototype exactly - not 15px. */
   it('is about 14.5px bold ink, not Section\'s 21px', () => {
-    expect(CSS).toMatch(/\.gwui-subheading \{[^}]*font-size: 14\.5px/)
+    expect(CSS).toMatch(/\.gwui-subheading \{[^}]*font-size: 14px/)
     expect(CSS).toMatch(/\.gwui-subheading \{[^}]*font-weight: 700/)
     expect(CSS).toMatch(/\.gwui-subheading \{[^}]*color: var\(--gw-text\)/)
   })

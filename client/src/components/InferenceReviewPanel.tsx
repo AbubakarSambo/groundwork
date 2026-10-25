@@ -40,13 +40,13 @@ export function InferenceReviewPanel({ groundId, inferences }: Props) {
   return (
     // GROUP 3'S REVIEW, BATCH A FAULT 6: "INFERENCES" IS JARGON. Said plainly instead.
     <Folded summary="What we worked out from what you said" note={active.length === 1 ? 'There is one for you to check.' : `There are ${active.length} for you to check.`}>
-      <p style={{ fontSize: 13, color: 'var(--gw-sub)', margin: '0 0 12px', lineHeight: 1.6 }}>
+      <p style={{ fontSize: 13, color: 'var(--gw-sub)', margin: '0 0 12px', lineHeight: '21px' }}>
         These claims are not direct quotes from your session. They were inferred from what you said. If anything is not right, you can correct it through a short follow-up session.
       </p>
 
       {active.map((inf) => (
         <div key={inf.id} style={{ padding: '10px 0', borderTop: '1px solid var(--gw-border)' }}>
-          <p style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, margin: '0 0 4px' }}>
+          <p style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: '20px', margin: '0 0 4px' }}>
             "{inf.text}"
           </p>
           <p style={{ fontSize: 12, color: 'var(--gw-muted)', margin: '0 0 10px', lineHeight: 1.5 }}>

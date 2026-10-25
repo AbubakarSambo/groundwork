@@ -23,7 +23,7 @@ export function OpsWorkplanPage() {
 
       {plan.data && (
         <div style={{ ...CARD, marginBottom: 16 }}>
-          <p style={{ fontSize: 14.5, margin: 0, lineHeight: 1.6 }}>{plan.data.today.says}</p>
+          <p style={{ fontSize: 14, margin: 0, lineHeight: '22px' }}>{plan.data.today.says}</p>
         </div>
       )}
 
@@ -44,20 +44,20 @@ export function OpsWorkplanPage() {
             {p.running && <span style={{ ...LABEL, fontSize: 10 }}>running now</span>}
           </div>
 
-          <p style={{ fontSize: 14, margin: '6px 0 0', lineHeight: 1.6 }}>{p.intent}</p>
+          <p style={{ fontSize: 14, margin: '6px 0 0', lineHeight: '22px' }}>{p.intent}</p>
 
           <div style={{ marginTop: 10 }}>
             <div style={{ ...LABEL, fontSize: 10 }}>Done when</div>
-            <p style={{ fontSize: 13.5, margin: '3px 0 0', lineHeight: 1.6 }}>{p.exitCondition}</p>
+            <p style={{ fontSize: 14, margin: '3px 0 0', lineHeight: '22px' }}>{p.exitCondition}</p>
             {/* AN EXIT THAT IS A SENTENCE SAYS SO. Inventing a metric to fill
                 the column would produce a number that gets checked, believed,
                 and is about something else. */}
             <p
               style={{
-                fontSize: 12.5,
+                fontSize: 12,
                 color: p.checkable ? 'var(--gw-sub)' : 'var(--gw-amber-t)',
                 margin: '4px 0 0',
-                lineHeight: 1.55,
+                lineHeight: '19px',
               }}
             >
               {p.says}
@@ -65,7 +65,7 @@ export function OpsWorkplanPage() {
           </div>
 
           {p.permitsOperability && (
-            <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '10px 0 0', lineHeight: 1.55 }}>
+            <p style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '10px 0 0', lineHeight: '19px' }}>
               While this phase is running, work that makes the company able to operate - hiring,
               onboarding, writing down how we work - counts as a contribution on its own. Outside it,
               that work says what it unblocks instead.

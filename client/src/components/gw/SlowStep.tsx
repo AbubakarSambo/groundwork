@@ -34,7 +34,7 @@ export function SlowStep({ steps, note, everyMs = 9000 }: { steps: string[]; not
         <span>{steps[step]}…</span>
       </div>
       {note && (
-        <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 6, lineHeight: 1.5 }}>{note}</div>
+        <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 6, lineHeight: 1.5 }}>{note}</div>
       )}
     </div>
   )

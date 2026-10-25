@@ -72,7 +72,7 @@ export function EverySituation({
         <h1 style={{ fontFamily: 'var(--gw-font-name)', fontSize: 'clamp(24px, 5vw, 32px)', fontWeight: 500, lineHeight: 1.2, color: 'var(--gw-text)', margin: '0 0 8px' }}>
           {EVERY_SITUATION.heading}
         </h1>
-        <p style={{ fontSize: 15.5, color: 'var(--gw-sub)', lineHeight: 1.6, margin: '0 0 14px' }}>{EVERY_SITUATION.help}</p>
+        <p style={{ fontSize: 16, color: 'var(--gw-sub)', lineHeight: '26px', margin: '0 0 14px' }}>{EVERY_SITUATION.help}</p>
         <div style={{ display: 'flex', gap: 8, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: 8, marginBottom: 24 }}>
           <input
             className="gw-input"
@@ -103,7 +103,7 @@ export function EverySituation({
                     onClick={() => (card.scenario === 'OPEN_READ' ? onDescribe() : setPicked(card))}
                   >
                     <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>{sentenceCase(card.label)}</span>
-                    <span style={{ display: 'block', fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.45 }}>{theOneLine(card)}</span>
+                    <span style={{ display: 'block', fontSize: 13, color: 'var(--gw-sub)', lineHeight: '19px' }}>{theOneLine(card)}</span>
                   </button>
                 )
               })}
@@ -114,7 +114,7 @@ export function EverySituation({
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 18px' }}>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-text)' }}>{EVERY_SITUATION.somethingElse}</div>
-            <div style={{ fontSize: 13.5, color: 'var(--gw-sub)' }}>{EVERY_SITUATION.somethingElseHelp}</div>
+            <div style={{ fontSize: 14, color: 'var(--gw-sub)' }}>{EVERY_SITUATION.somethingElseHelp}</div>
           </div>
           <button type="button" className="gw-btn-sec" onClick={onDescribe}>{EVERY_SITUATION.describeIt}</button>
         </div>
@@ -122,17 +122,17 @@ export function EverySituation({
 
       {picked && (
         <aside ref={panel} aria-label={EVERY_SITUATION.youPicked} style={{ flex: '0 1 320px', background: 'white', border: '1px solid var(--gw-text)', borderRadius: 10, padding: 20, position: 'sticky', top: 16 }}>
-          <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginBottom: 6 }}>{EVERY_SITUATION.youPicked}</div>
+          <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 6 }}>{EVERY_SITUATION.youPicked}</div>
           <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 8 }}>{sentenceCase(picked.label)}</div>
-          <p style={{ fontSize: 13.5, color: 'var(--gw-text)', lineHeight: 1.5, margin: '0 0 12px' }}>{theOneLine(picked)}</p>
+          <p style={{ fontSize: 14, color: 'var(--gw-text)', lineHeight: 1.5, margin: '0 0 12px' }}>{theOneLine(picked)}</p>
           {HOW_IT_WORKS[picked.cardKey] && (
-            <p style={{ fontSize: 13.5, color: 'var(--gw-text)', lineHeight: 1.5, margin: '0 0 12px' }}>{HOW_IT_WORKS[picked.cardKey]}</p>
+            <p style={{ fontSize: 14, color: 'var(--gw-text)', lineHeight: 1.5, margin: '0 0 12px' }}>{HOW_IT_WORKS[picked.cardKey]}</p>
           )}
           {!!forExample && (
             <>
-              <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginBottom: 4 }}>{EVERY_SITUATION.forExample}</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 4 }}>{EVERY_SITUATION.forExample}</div>
               {forExample.map((e) => (
-                <p key={e} style={{ fontSize: 13.5, color: 'var(--gw-text)', lineHeight: 1.5, margin: '0 0 8px' }}>{e}</p>
+                <p key={e} style={{ fontSize: 14, color: 'var(--gw-text)', lineHeight: 1.5, margin: '0 0 8px' }}>{e}</p>
               ))}
             </>
           )}

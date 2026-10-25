@@ -692,7 +692,7 @@ function TheParticipantsOwnView({ pictured = false, board, myFirstName = null, g
               ? (teamPicture?.forDay ? `The team’s report for ${teamPicture.forDay} is shared.` : direct ? 'Today’s team report is shared.' : 'Today’s team picture is shared.')
               : direct ? 'Today’s team report isn’t shared yet.' : 'Today’s team picture isn’t shared yet.'}
           </Text>
-          <div className="gwui-fs-15 gwui-ink-sub gwui-mt-4" style={{lineHeight: 1.55}}>
+          <div className="gwui-fs-15 gwui-ink-sub gwui-mt-4" style={{lineHeight: '23px'}}>
             {shared
               ? null
               /* board-as-participant.txt: "Wairimu usually shares it by 7pm." - the server sends no
@@ -737,7 +737,7 @@ function TheParticipantsOwnView({ pictured = false, board, myFirstName = null, g
                   "...Your own report is ready now. / Read your own report"). The non-shared branch
                   above already carries this sentence as part of its own paragraph; the shared
                   branch had none at all. */}
-              {shared && <div className="gwui-fs-15 gwui-ink-sub gwui-mt-4" style={{lineHeight: 1.55}}>{teamPicture?.yourReportFor ? `Your report for ${teamPicture.yourReportFor} is ready.` : 'Your own report is ready now.'}</div>}
+              {shared && <div className="gwui-fs-15 gwui-ink-sub gwui-mt-4" style={{lineHeight: '23px'}}>{teamPicture?.yourReportFor ? `Your report for ${teamPicture.yourReportFor} is ready.` : 'Your own report is ready now.'}</div>}
               <div className="gwui-mt-10">
                 <UIButton kind="secondary" wide={pictured} to={`/checkin/${myLatestCheckInId}/report`}>Read your own report</UIButton>
               </div>
@@ -972,7 +972,7 @@ function DivergenceSectionBody({ heading, divergence, whyNothingYet, onlyOnePers
                   </div>
                 )}
                 {d.atStake && (
-                  <div className="gwui-fs-15 gwui-ink-sub gwui-mt-5" style={{lineHeight: 1.55}}>
+                  <div className="gwui-fs-15 gwui-ink-sub gwui-mt-5" style={{lineHeight: '23px'}}>
                     <span className="gwui-fs-13 gwui-ink-subd gwui-mb-2" style={{letterSpacing: '.1px', fontWeight: 700, display: 'block'}}>Why it matters</span>
                     {d.atStake}
                   </div>
@@ -1287,7 +1287,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           <div className="gwui-fs-13 gwui-ink-muted gwui-mb-8" style={{letterSpacing: '.1px', fontWeight: 700}}>
             No shared board here
           </div>
-          <div className="gwui-fs-14 gwui-ink-text gwui-mb-16" style={{lineHeight: 1.6}}>{data.reason}</div>
+          <div className="gwui-fs-14 gwui-ink-text gwui-mb-16" style={{lineHeight: '22px'}}>{data.reason}</div>
           <div className="gwui-button-row">
             <UIButton kind="primary" to={`/grounds/${id}/report`}>Read the report</UIButton>
             <UIButton kind="secondary" onClick={() => navigate(`/grounds/${id}`)}>Back to the check-in</UIButton>
@@ -2693,7 +2693,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           <UpdatedLine short={whenTheBoardLastChangedInShort(b.lastChangedAt)} full={whenTheBoardLastChanged(b.lastChangedAt, direct)} />
         ) : whenTheBoardLastChanged(b.lastChangedAt, direct) ? (
           /* The prototype's own size for it (t-tiny, 13px), directly under the tabs. */
-          <p className="gwui-fs-13 gwui-ink-sub gwui-mt-8" style={{lineHeight: 1.4}}>
+          <p className="gwui-fs-13 gwui-ink-sub gwui-mt-8" style={{lineHeight: '18px'}}>
             {whenTheBoardLastChanged(b.lastChangedAt, direct)}
           </p>
         ) : null}
@@ -2718,7 +2718,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           </Note>
         )}
         {b.readOnlyNote && (
-          <p role="note" className="gwui-fs-15 gwui-ink-text gwui-mt-8" style={{lineHeight: 1.55}}>{b.readOnlyNote}</p>
+          <p role="note" className="gwui-fs-15 gwui-ink-text gwui-mt-8" style={{lineHeight: '23px'}}>{b.readOnlyNote}</p>
         )}
 
         {/* The direct morning is the morning message's, not the board's (Hafsah, 24 October): the board shows its own headline and What needs you, once. */}
@@ -3251,7 +3251,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   {(b as any).theJudgement.whatThisCannotTellYou.map((w: { about: string; why?: string; toKnow?: string }, i: number) => (
                     <div key={i} className="gwui-panel-row">
                       <Stack gap={4}>
-                        <p className="gwui-panel-text" style={{ fontWeight: 600 }}>{w.about}</p>
+                        <p className="gwui-panel-text" style={{ fontWeight: 700 }}>{w.about}</p>
                         {w.why && <Note tone="muted">{w.why}</Note>}
                         {w.toKnow && <Note tone="muted">{w.toKnow}</Note>}
                       </Stack>
@@ -3905,7 +3905,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {/* The direct morning: no explanation of how to read the board, and no "It’s not a verdict." */}
         {!direct && (
         <div className="gwui-mt-12">
-          <p className="gwui-fs-15 gwui-ink-sub gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0" style={{lineHeight: 1.55}}>
+          <p className="gwui-fs-15 gwui-ink-sub gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0" style={{lineHeight: '23px'}}>
             {/*
               THE FOUNDER'S OWN CHECK-IN BOARD, AND ANY OTHER ONE-PERSON CHECK-IN: "each person
               shared in their private check-in" talks about a team that does not exist here - there
@@ -3918,16 +3918,16 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           </p>
           {howToRead && (
             <>
-              <p className="gwui-fs-15 gwui-ink-sub gwui-mt-7" style={{lineHeight: 1.55}}>
+              <p className="gwui-fs-15 gwui-ink-sub gwui-mt-7" style={{lineHeight: '23px'}}>
                 If something doesn&rsquo;t feel right, raise it in your next check-in. The board updates as people share more.
               </p>
-              <p className="gwui-fs-15 gwui-ink-sub gwui-mt-7" style={{lineHeight: 1.55}}>
+              <p className="gwui-fs-15 gwui-ink-sub gwui-mt-7" style={{lineHeight: '23px'}}>
                 Each person is shown in the context of their own role, not scored against everyone else.
               </p>
-              <p className="gwui-fs-15 gwui-ink-sub gwui-mt-7" style={{lineHeight: 1.55}}>
+              <p className="gwui-fs-15 gwui-ink-sub gwui-mt-7" style={{lineHeight: '23px'}}>
                 This is the shared picture from this round of check-ins. It can change as the picture changes.
               </p>
-              <p className="gwui-fs-15 gwui-ink-sub gwui-mt-7" style={{lineHeight: 1.55}}>
+              <p className="gwui-fs-15 gwui-ink-sub gwui-mt-7" style={{lineHeight: '23px'}}>
                 Where people see things differently or progress has stalled, you can see what each person shared and support them.
               </p>
             </>
@@ -4045,11 +4045,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           <Section heading="What this sits under">
             <Panel>
               {b.cascade.parentNamed && (
-                <div className="gwui-fs-16 gwui-ink-text gwui-mb-6" style={{fontWeight: 600, lineHeight: 1.35}}>
+                <div className="gwui-fs-16 gwui-ink-text gwui-mb-6" style={{fontWeight: 700, lineHeight: '22px'}}>
                   {b.cascade.parentNamed}
                 </div>
               )}
-              <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-fs-15 gwui-ink-sub" style={{lineHeight: 1.55}}>{b.cascade.why}</p>
+              <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-fs-15 gwui-ink-sub" style={{lineHeight: '23px'}}>{b.cascade.why}</p>
               {b.cascade.teamsNamed.length > 1 && (
                 <FlexRow gap={6} wrap className="gwui-mt-8">
                   {b.cascade.teamsNamed.map((t: string) => (
@@ -4120,7 +4120,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 return (
                   <Row key={o.id} columns="1fr" inset="panel">
                     <FlexRow gap={12} align="center" wrap>
-                      <div className="gwui-fs-16" style={{flex: 1, fontWeight: 600, minWidth: 160}}>
+                      <div className="gwui-fs-16" style={{flex: 1, fontWeight: 700, minWidth: 160}}>
                         {o.name}
                         {o.isNew && <span className="gwui-ml-7"><Tag tone="plain">new</Tag></span>}
                         {/*
@@ -4190,7 +4190,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       )}
                     </FlexRow>
                     {o.notSettled && (
-                      <div className="gwui-fs-15 gwui-ink-amber gwui-mt-5" style={{lineHeight: 1.55, maxWidth: '68ch'}}>{o.notSettled}</div>
+                      <div className="gwui-fs-15 gwui-ink-amber gwui-mt-5" style={{lineHeight: '23px', maxWidth: '68ch'}}>{o.notSettled}</div>
                     )}
                     {/* "What the target assumes" is drawn once, above everything, right after the
                         headline - see the new top-level section near the top of this component.
@@ -4394,10 +4394,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     ) : (b.whatTheRoomIsAbout.aims ?? []).map((a) => (
                       <Row key={a.aim} columns="1fr" inset="list">
                         <FlexRow gap={10} align="baseline">
-                          <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 600, flex: 1}}>{a.aim}</div>
+                          <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 700, flex: 1}}>{a.aim}</div>
                           <Tag>{a.held.length === 1 ? '1 person' : `${a.held.length} people`}</Tag>
                         </FlexRow>
-                        <div className="gwui-fs-15 gwui-ink-sub gwui-mt-3" style={{lineHeight: 1.5}}>{a.held.join(', ')}</div>
+                        <div className="gwui-fs-15 gwui-ink-sub gwui-mt-3" style={{lineHeight: '23px'}}>{a.held.join(', ')}</div>
                       </Row>
                     ))}
                     </RowList>
@@ -4414,10 +4414,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       ) : rows.map((r) => (
                         <Row key={r.name} columns="1fr" inset="list">
                           <FlexRow gap={10} align="baseline">
-                            <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 600, flex: 1}}>{r.name}</div>
+                            <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 700, flex: 1}}>{r.name}</div>
                             <Tag>{r.named.length}</Tag>
                           </FlexRow>
-                          <div className="gwui-fs-15 gwui-ink-sub gwui-mt-3" style={{lineHeight: 1.5}}>{r.named.join(', ')}</div>
+                          <div className="gwui-fs-15 gwui-ink-sub gwui-mt-3" style={{lineHeight: '23px'}}>{r.named.join(', ')}</div>
                         </Row>
                       ))}
                       </RowList>
@@ -4476,7 +4476,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       return (
                         <Row key={q.label} columns="1fr">
                           <span className="gw-sr-only">{q.label}</span>
-                          <div className={`gwui-fs-15 ${toneClass}`} style={{lineHeight: 1.5}}>{tileSentence(q)}</div>
+                          <div className={`gwui-fs-15 ${toneClass}`} style={{lineHeight: '23px'}}>{tileSentence(q)}</div>
                         </Row>
                       )
                     })}
@@ -4491,7 +4491,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     <Panel key={q.label} pad={false}>
                       <div className="gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14">
                         <span className="gw-sr-only">{q.label}</span>
-                        <div className={`gwui-fs-15 ${toneClass}`} style={{lineHeight: 1.5}}>{tileSentence(q)}</div>
+                        <div className={`gwui-fs-15 ${toneClass}`} style={{lineHeight: '23px'}}>{tileSentence(q)}</div>
                       </div>
                     </Panel>
                   )
@@ -4606,7 +4606,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   <FlexRow gap={11} align="baseline">
                     <span className="gwui-fs-17 gwui-ink-navy" style={{fontFamily: 'var(--gw-font-name)', minWidth: 18}}>{i + 1}</span>
                     <div style={{flex: 1}}>
-                      <div className="gwui-ink-dark gwui-fs-16" style={{fontWeight: 600}}>{d.question}</div>
+                      <div className="gwui-ink-dark gwui-fs-16" style={{fontWeight: 700}}>{d.question}</div>
                       <div className="gwui-fs-15 gwui-ink-muted gwui-mt-2">{d.why}</div>
                     </div>
                     {/* U.10: a name, not a verdict - the owner is who this is for, not a label on
@@ -4677,7 +4677,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       </div>
                     ) : said.map((it) => (
                       <div key={it.id} className="gwui-pt-10 gwui-pr-0 gwui-pb-10 gwui-pl-0 gwui-inner-row">
-                        <div className="gwui-fs-15" style={{lineHeight: 1.45}}>{theWordsOfALine(it.text)}</div>
+                        <div className="gwui-fs-15" style={{lineHeight: '22px'}}>{theWordsOfALine(it.text)}</div>
                         <FlexRow gap={6} align="baseline" wrap className="gwui-mt-4">
                           {/*
                             RECORD TYPES ARE THE GOAL VOCABULARY, SAID AS A SENTENCE. "success
@@ -4764,16 +4764,16 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-8">
                         {readerIsOnWhom
                           ? 'This is waiting on you.'
-                          : <>This is waiting on <span className="gwui-ink-dark" style={{fontWeight: 600}}>{onWhom}</span>.</>}
+                          : <>This is waiting on <span className="gwui-ink-dark" style={{fontWeight: 700}}>{onWhom}</span>.</>}
                       </div>
-                      <div className="gwui-fs-15 gwui-ink-dark gwui-mt-4" style={{lineHeight: 1.5}}>
+                      <div className="gwui-fs-15 gwui-ink-dark gwui-mt-4" style={{lineHeight: '23px'}}>
                         {/* `d.what` can open with a capitalised article ("The Mwangi agency") where the
                             same string also stands as a title elsewhere; mid-sentence here, only that
                             leading word is wrong (real-user walk, Kijani Foods, fault 1). */}
                         <b>{fromWord}</b> {needsWord} {midSentence(d.what)} from <b>{onWhomInSentence}</b>. {statusSaid}
                       </div>
                       {holdingUp && (
-                        <div className="gwui-rule-blue gwui-pt-8 gwui-pr-10 gwui-pb-8 gwui-pl-10 gwui-mt-8 gwui-fs-15 gwui-ink-text" style={{background: 'var(--gw-blue-bg)', borderRadius: 8, lineHeight: 1.5}}>
+                        <div className="gwui-rule-blue gwui-pt-8 gwui-pr-10 gwui-pb-8 gwui-pl-10 gwui-mt-8 gwui-fs-15 gwui-ink-text" style={{background: 'var(--gw-blue-bg)', borderRadius: 8, lineHeight: '23px'}}>
                           {holdingUp}
                         </div>
                       )}
@@ -4803,7 +4803,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           for itself would be a second copy of the rule, and the wrong one to get wrong.
         */}
         {(b as any).whyYouOnlySeeYourself && (
-          <div className="gwui-fs-13-5 gwui-ink-sub gwui-rule gwui-pt-11 gwui-pr-13 gwui-pb-11 gwui-pl-13 gwui-mb-10" style={{lineHeight: 1.6, background: 'var(--gw-bg)', borderRadius: 8, maxWidth: 620}}>
+          <div className="gwui-fs-13-5 gwui-ink-sub gwui-rule gwui-pt-11 gwui-pr-13 gwui-pb-11 gwui-pl-13 gwui-mb-10" style={{lineHeight: '22px', background: 'var(--gw-bg)', borderRadius: 8, maxWidth: 620}}>
             {(b as any).whyYouOnlySeeYourself}
           </div>
         )}
@@ -4841,7 +4841,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         sentence a person reads. */}
                     <Text size="13-5" ink="amber" weight={600} as="span">Nobody here has said what their role covers yet.</Text>
                   </FlexRow>
-                  <div className="gwui-fs-15 gwui-ink-navy gwui-rule-blue gwui-pt-8 gwui-pr-10 gwui-pb-8 gwui-pl-10 gwui-mt-8" style={{background: 'var(--gw-blue-bg)', borderRadius: 9, lineHeight: 1.5}}>
+                  <div className="gwui-fs-15 gwui-ink-navy gwui-rule-blue gwui-pt-8 gwui-pr-10 gwui-pb-8 gwui-pl-10 gwui-mt-8" style={{background: 'var(--gw-blue-bg)', borderRadius: 9, lineHeight: '23px'}}>
                     {b.contribution[0].note}
                   </div>
                 </div>
@@ -4873,7 +4873,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   {c.shown === false && c.remitDefined ? (
                     /* Too little on record to say anything about a person yet. A
                        hedge still reads as a verdict, so nothing is shown at all. */
-                    <div className="gwui-fs-15 gwui-ink-muted gwui-mt-8" style={{lineHeight: 1.45, fontStyle: 'italic'}}>
+                    <div className="gwui-fs-15 gwui-ink-muted gwui-mt-8" style={{lineHeight: '22px', fontStyle: 'italic'}}>
                       Not enough on record yet to say anything about this person's contribution. {c.basis}
                     </div>
                   ) : !c.remitDefined && c.note ? (
@@ -4884,7 +4884,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       drew it even when `c.note` was empty, so a reader saw a blank navy-on-blue
                       panel under the sentence that already told them there was nothing to show.
                     */
-                    <div className="gwui-fs-15 gwui-ink-navy gwui-rule-blue gwui-pt-8 gwui-pr-10 gwui-pb-8 gwui-pl-10 gwui-mt-8" style={{background: 'var(--gw-blue-bg)', borderRadius: 9, lineHeight: 1.45}}>
+                    <div className="gwui-fs-15 gwui-ink-navy gwui-rule-blue gwui-pt-8 gwui-pr-10 gwui-pb-8 gwui-pl-10 gwui-mt-8" style={{background: 'var(--gw-blue-bg)', borderRadius: 9, lineHeight: '22px'}}>
                       {c.note}
                     </div>
                   ) : !c.remitDefined ? null : (
@@ -4901,7 +4901,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         this whole section is already gated to whoever runs the check-in.
                       */}
                       {/* A position is never shown without its reason. */}
-                      <div className="gwui-mt-7 gwui-fs-15" style={{lineHeight: 1.45}}>
+                      <div className="gwui-mt-7 gwui-fs-15" style={{lineHeight: '22px'}}>
                         {c.reason}
                       </div>
                       {/* `Note tone="muted"` is the shared part for this, not a fresh one-off class pair. */}
@@ -5035,7 +5035,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     drawn only when its own text is there.
                   */}
                   {r.what && (
-                    <div className="gwui-mt-8 gwui-fs-15" style={{lineHeight: 1.45}}>
+                    <div className="gwui-mt-8 gwui-fs-15" style={{lineHeight: '22px'}}>
                       <span className="gwui-fs-13 gwui-ink-subd gwui-mb-2" style={{letterSpacing: '.1px', fontWeight: 700, display: 'block'}}>What people said</span>
                       {r.what}
                     </div>
@@ -5067,7 +5067,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               })}
 
               {b.coverage.reads.some((r) => r.shown === false) && (
-                <div className="gwui-fs-13-5 gwui-ink-muted gwui-mt-9" style={{lineHeight: 1.45}}>
+                <div className="gwui-fs-13-5 gwui-ink-muted gwui-mt-9" style={{lineHeight: '20px'}}>
                   {b.coverage.reads.filter((r) => r.shown === false).map((r) => r.name).join(', ')} {b.coverage.reads.filter((r) => r.shown === false).length === 1 ? 'is' : 'are'} not shown here yet. There is too little on record to say anything about where their work is landing, and a guess about that would be worse than a gap.
                 </div>
               )}
@@ -5123,8 +5123,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       </span>
                     )}
                   </FlexRow>
-                  <div className="gwui-fs-15 gwui-ink-text gwui-mt-4" style={{lineHeight: 1.45}}>{m.gap}</div>
-                  <div className="gwui-fs-15 gwui-ink-sub gwui-mt-4" style={{lineHeight: 1.45}}>{m.note}</div>
+                  <div className="gwui-fs-15 gwui-ink-text gwui-mt-4" style={{lineHeight: '22px'}}>{m.gap}</div>
+                  <div className="gwui-fs-15 gwui-ink-sub gwui-mt-4" style={{lineHeight: '22px'}}>{m.note}</div>
                 </div>
               ))}
               <div className="gwui-fs-13-5 gwui-ink-muted gwui-pt-10 gwui-pr-22 gwui-pb-16 gwui-pl-22 gwui-rule-top-dashed gwui-mt-4" style={{fontStyle: 'italic', lineHeight: 1.5}}>
@@ -5215,14 +5215,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 <>
                   <div className="gwui-fs-14 gwui-ink-dark gwui-pt-4 gwui-pr-0 gwui-pb-4 gwui-pl-0" style={{fontWeight: 700}}>
                     {b.poll.question}
-                    <span className="gwui-fs-13 gwui-ink-navy gwui-ml-8" style={{fontWeight: 600}}>tap your name to mark availability</span>
+                    <span className="gwui-fs-13 gwui-ink-navy gwui-ml-8" style={{fontWeight: 700}}>tap your name to mark availability</span>
                   </div>
                   {b.poll.options.map((o) => {
                     const max = Math.max(...b.poll!.options.map((x) => x.count))
                     const win = o.count === max && max > 0
                     return (
                       <FlexRow key={o.id} gap={10} align="center" className={`gwui-pt-8 gwui-pr-8 gwui-pb-8 gwui-pl-8 gwui-inner-row ${win ? 'gwui-win-row' : ''}`}>
-                        <div className="gwui-fs-16" style={{fontWeight: 600, minWidth: 110}}>{o.label}</div>
+                        <div className="gwui-fs-16" style={{fontWeight: 700, minWidth: 110}}>{o.label}</div>
                         {/* Only YOUR OWN availability is clickable. Everyone else is a
                             read-only indicator: the toggle endpoint acts on the caller,
                             so a clickable chip bearing someone else's name would set

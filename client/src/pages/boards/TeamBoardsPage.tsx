@@ -78,7 +78,7 @@ export function TeamBoardsPage() {
     return (
       <div style={WRAP}>
         <h1 style={H1}>Team boards</h1>
-        <p style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, maxWidth: '60ch' }}>
+        <p style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: '21px', maxWidth: '60ch' }}>
           No boards yet. A board is built the first time everybody on a check-in has answered a
           round. <Link to="/grounds" style={{ color: 'var(--gw-navy)' }}>Your check-ins are here.</Link>
         </p>
@@ -89,7 +89,7 @@ export function TeamBoardsPage() {
   return (
     <div style={WRAP}>
       <h1 style={H1}>Team boards</h1>
-      <p style={{ fontSize: 13, color: 'var(--gw-sub)', margin: '0 0 16px', maxWidth: '70ch', lineHeight: 1.55 }}>
+      <p style={{ fontSize: 13, color: 'var(--gw-sub)', margin: '0 0 16px', maxWidth: '70ch', lineHeight: '20px' }}>
         The shared picture from every check-in you can read. Switch between them here.
       </p>
 
@@ -149,4 +149,4 @@ export function TeamBoardsPage() {
 }
 
 const WRAP = { maxWidth: 1100, margin: '0 auto', padding: '28px 20px 80px' } as const
-const H1 = { fontSize: 22, fontWeight: 800, margin: '0 0 4px' } as const
+const H1 = { fontSize: 22, fontWeight: 700, margin: '0 0 4px' } as const

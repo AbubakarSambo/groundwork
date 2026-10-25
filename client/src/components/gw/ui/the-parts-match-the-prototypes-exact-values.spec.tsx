@@ -107,7 +107,7 @@ describe('Tag', () => {
   it('is 26px tall, round-ended, 13.5px bold - never a label on a person', () => {
     expect(PROTO).toMatch(/\.tag\{[^}]*min-height:26px/)
     expect(PROTO).toMatch(/\.tag\{[^}]*border-radius:13px/)
-    expect(PROTO).toMatch(/\.tag\{[^}]*font-size:13\.5px/)
+    expect(PROTO).toMatch(/\.tag\{[^}]*font-size:14px/)
     expect(PROTO).toMatch(/\.tag\{[^}]*font-weight:700/)
   })
 })
@@ -250,11 +250,12 @@ describe('PeopleTable / PersonRow / PersonCell', () => {
 })
 
 describe('Avatar', () => {
-  it('is a 34px circle by default, initials at size / 2.8', () => {
+  /* Changed 25 October (crisp text): the initials are a whole pixel, size / 2.8 rounded (12px for 34), never 12.1px. */
+  it('is a 34px circle by default, initials at size / 2.8 rounded to a whole pixel', () => {
     render(<Avatar initials="MW" />)
     const av = screen.getByText('MW')
     expect(av).toHaveClass('gwui-avatar')
-    expect(av).toHaveStyle({ width: '34px', height: '34px', fontSize: '12.1px' })
+    expect(av).toHaveStyle({ width: '34px', height: '34px', fontSize: '12px' })
   })
 
   it('a 56px avatar has 20px initials', () => {
@@ -396,7 +397,7 @@ describe('SwitchRow', () => {
     expect(screen.getByText('Check-ins wait for an admin')).toHaveClass('gwui-switch-row-title')
     expect(screen.getByText('Each new check-in waits for an admin before invitations go out.')).toHaveClass('gwui-switch-row-detail')
     expect(CSS).toMatch(/\.gwui-switch-row-title \{[^}]*font-size: 16px/)
-    expect(CSS).toMatch(/\.gwui-switch-row-detail \{[^}]*font-size: 14\.5px/)
+    expect(CSS).toMatch(/\.gwui-switch-row-detail \{[^}]*font-size: 14px/)
   })
 
   it('carries a real Toggle, named after its own title', () => {

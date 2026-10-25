@@ -29,7 +29,7 @@ describe('Composer', () => {
        values are pinned in styles/prototype.css (read here as text, since jsdom applies no stylesheet), not as inline styles. */
     const field = screen.getByPlaceholderText('Type, or hold to speak')
     expect(field.className).toBe('input')
-    expect(rule('.input')).toMatch(/border:1.5px solid var\(--rule2\)/)
+    expect(rule('.input')).toMatch(/border:1px solid var\(--rule2-crisp\)/)
     expect(rule('.input')).toMatch(/background:var\(--surface\)/)
     expect(rule('.input')).toMatch(/border-radius:10px/)
   })

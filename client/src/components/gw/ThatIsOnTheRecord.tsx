@@ -38,7 +38,7 @@ export function ThatIsOnTheRecord({ groundId }: { groundId: string }) {
   return (
     <section aria-label="Your answer is on the record" style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '16px 18px', marginBottom: 14 }}>
       <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>That is on the record. Thank you.</div>
-      <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.6, margin: 0 }}>
+      <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '22px', margin: 0 }}>
         {at
           ? <>When everybody has answered, the report goes to <strong style={{ color: 'var(--gw-text)' }}>{at}</strong>.</>
           : 'When everybody has answered, one report goes out with what each person said.'}
@@ -55,7 +55,7 @@ export function ThatIsOnTheRecord({ groundId }: { groundId: string }) {
       )}
       {editing && (
         <div style={{ marginTop: 10 }}>
-          <label htmlFor="record-email" style={{ display: 'block', fontSize: 12.5, color: 'var(--gw-sub)', marginBottom: 4 }}>Where should your report go?</label>
+          <label htmlFor="record-email" style={{ display: 'block', fontSize: 12, color: 'var(--gw-sub)', marginBottom: 4 }}>Where should your report go?</label>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <input className="gwui-input"
               id="record-email" type="email" autoComplete="email" value={email}

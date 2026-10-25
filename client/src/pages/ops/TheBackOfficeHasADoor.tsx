@@ -31,7 +31,7 @@ function NotStaff() {
     <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ textAlign: 'center', maxWidth: 380 }}>
         <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, letterSpacing: '-.01em', color: 'var(--gw-text)' }}>This part is for Groundwork staff</div>
-        <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 18 }}>
+        <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px', marginBottom: 18 }}>
           It is not part of your organisation's admin, and there is nothing here that affects your check-ins.
         </div>
         <Link className="btn pri" to="/grounds" >Go to my check-ins</Link>
@@ -69,7 +69,7 @@ function TheDoor() {
       >
         <div style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700 }}>Back office</div>
         <h1 style={{ fontSize: 20, margin: '6px 0 8px', letterSpacing: '-.01em', color: 'var(--gw-text)' }}>A code has gone to your email</h1>
-        <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.6, margin: 0 }}>
+        <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '22px', margin: 0 }}>
           {sentTo ? <>Sent to <strong style={{ color: 'var(--gw-text)' }}>{sentTo}</strong>.</> : send.isPending ? 'Sending…' : `To ${email ?? 'your address'}.`}{' '}
           Enter it once and the back office stays open on this account for a week. Signing in with Google skips this.
         </p>
@@ -83,7 +83,7 @@ function TheDoor() {
           aria-label="The code from your email"
           style={{ marginTop: 16, width: '100%', boxSizing: 'border-box', padding: '11px 12px', fontSize: 20, letterSpacing: '.25em', textAlign: 'center', borderRadius: 8, border: '1px solid var(--gw-border)', fontFamily: 'inherit', background: 'white' }}
         />
-        {problem && <div style={{ fontSize: 12.5, color: 'var(--gw-red-t)', marginTop: 8 }}>{problem}</div>}
+        {problem && <div style={{ fontSize: 12, color: 'var(--gw-red-t)', marginTop: 8 }}>{problem}</div>}
         <div style={{ display: 'flex', gap: 8, marginTop: 14, alignItems: 'center' }}>
           <button className="btn pri"
             type="submit"
@@ -95,11 +95,11 @@ function TheDoor() {
             type="button"
             onClick={() => send.mutate()}
             disabled={send.isPending}
-            style={{ fontSize: 12.5, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+            style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
           >
             Send it again
           </button>
-          <Link to="/grounds" style={{ marginLeft: 'auto', fontSize: 12.5, color: 'var(--gw-sub)', textDecoration: 'none', whiteSpace: 'nowrap' }}>← Groundwork</Link>
+          <Link to="/grounds" style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--gw-sub)', textDecoration: 'none', whiteSpace: 'nowrap' }}>← Groundwork</Link>
         </div>
       </form>
     </div>

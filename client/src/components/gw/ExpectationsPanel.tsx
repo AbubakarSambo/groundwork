@@ -275,7 +275,7 @@ function TrackedElsewhere({
         as one long link and the action was invisible.
       */}
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
-        <span style={{ fontSize: 11.5, color: 'var(--gw-muted)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: 12, color: 'var(--gw-muted)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           tracked in{' '}
           {url ? (
             <a href={url} target="_blank" rel="noreferrer" title={url} style={{ color: 'var(--gw-navy)' }}>
@@ -288,20 +288,20 @@ function TrackedElsewhere({
         {looking === null && (
           <button
             onClick={() => setLooking('')}
-            style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 600, color: 'var(--gw-navy)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}
+            style={{ flexShrink: 0, fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}
           >
             I just looked
           </button>
         )}
       </div>
 
-      <div style={{ fontSize: 12, color: stale ? 'var(--gw-amber-t)' : 'var(--gw-sub)', lineHeight: 1.55, marginTop: 2 }}>
+      <div style={{ fontSize: 12, color: stale ? 'var(--gw-amber-t)' : 'var(--gw-sub)', lineHeight: '19px', marginTop: 2 }}>
         {state && seenAt
           ? <>&ldquo;{state}&rdquo;, as of {agoWords(seenAt)}</>
           : 'Nobody has said what it says yet'}
       </div>
       {stale && (
-        <div style={{ fontSize: 11.5, color: 'var(--gw-amber-t)', marginTop: 2 }}>
+        <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', marginTop: 2 }}>
           That is old enough to have changed. Worth a look before the next session.
         </div>
       )}
@@ -424,7 +424,7 @@ export function ExpectationsPanel({
     if (bare) return null;
     return (
       <div style={{ marginBottom: 22 }}>
-        <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '13px 15px', fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+        <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '13px 15px', fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px' }}>
           Nothing yet. These come out of {viewerIsLead ? 'your' : 'the lead\u2019s'} own check-in, where they are asked what this is
           aiming at and then what they expect of each person. Until that happens, everyone is working
           to their own read of it.
@@ -464,7 +464,7 @@ export function ExpectationsPanel({
                 </span>
                 {o.authoredBy === 'self' && (
                   /** Rows from before one person owned expectations. Their own words are stronger, not weaker. */
-                  <span style={{ fontSize: 10.5, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', borderRadius: 10, padding: '1px 7px', fontWeight: 600 }}>
+                  <span style={{ fontSize: 10, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', borderRadius: 10, padding: '1px 7px', fontWeight: 700 }}>
                     in their own words
                   </span>
                 )}
@@ -472,14 +472,14 @@ export function ExpectationsPanel({
 
               {o.kind && (
                 <span style={{
-                  display: 'inline-block', fontSize: 10.5, fontWeight: 600, letterSpacing: '.03em',
+                  display: 'inline-block', fontSize: 10, fontWeight: 700, letterSpacing: '.03em',
                   padding: '1px 7px', borderRadius: 10, marginBottom: 4,
                   color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)',
                 }}>
                   {KIND_WORD[o.kind] ?? o.kind.toLowerCase()}
                 </span>
               )}
-              <div style={{ fontSize: 13.5, color: 'var(--gw-text)', lineHeight: 1.6 }}>{o.text}</div>
+              <div style={{ fontSize: 14, color: 'var(--gw-text)', lineHeight: '22px' }}>{o.text}</div>
               {/*
                 HOW WE WOULD KNOW, AND BY WHEN. The two answers that decide whether a session can
                 press on this at all. Shown even when the answer is "nothing checkable yet" - that is
@@ -503,14 +503,14 @@ export function ExpectationsPanel({
                   : stand.tone === 'done' ? 'var(--gw-green-t)'
                   : 'var(--gw-muted)'
                 return (
-                  <div style={{ fontSize: 11.5, fontWeight: stand.tone === 'late' ? 600 : 500, color: colour, marginTop: 3 }}>
+                  <div style={{ fontSize: 12, fontWeight: stand.tone === 'late' ? 600 : 500, color: colour, marginTop: 3 }}>
                     {stand.says}
                   </div>
                 )
               })()}
 
               {(o.check || o.dueSaid || o.dueKind === 'STANDING') && (
-                <div style={{ fontSize: 11.5, color: o.check === 'NOT_CHECKABLE' ? 'var(--gw-amber-t)' : 'var(--gw-muted)', marginTop: 3, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <div style={{ fontSize: 12, color: o.check === 'NOT_CHECKABLE' ? 'var(--gw-amber-t)' : 'var(--gw-muted)', marginTop: 3, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                   {o.check && <span>{CHECK_SENTENCE[o.check] ?? `You will know this is done by ${CHECK_WORD[o.check] ?? o.check}.`}</span>}
                   {o.dueSaid
                     ? <span>{dueSentence(o.dueSaid)}</span>
@@ -551,7 +551,7 @@ export function ExpectationsPanel({
                   <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 2 }}>
                     {isMine ? 'You said this is not right' : 'They said this is not right'}
                   </div>
-                  <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.55, fontStyle: 'italic' }}>
+                  <div style={{ fontSize: 12, color: 'var(--gw-text)', lineHeight: '19px', fontStyle: 'italic' }}>
                     &ldquo;{o.objection.trim()}&rdquo;
                   </div>
                 </div>
@@ -561,7 +561,7 @@ export function ExpectationsPanel({
                 <div
                   style={{
                     fontSize: 12,
-                    lineHeight: 1.55,
+                    lineHeight: '19px',
                     marginTop: 7,
                     color: line.tone === 'gap' ? 'var(--gw-amber-t)' : 'var(--gw-sub)',
                   }}
@@ -583,7 +583,7 @@ export function ExpectationsPanel({
                       paddingTop: 8,
                       borderTop: '1px solid var(--gw-border)',
                       fontSize: 12,
-                      lineHeight: 1.55,
+                      lineHeight: '19px',
                       color:
                         a.tone === 'good' ? 'var(--gw-green-t)'
                         : a.tone === 'gap' ? 'var(--gw-amber-t)'
@@ -620,7 +620,7 @@ export function ExpectationsPanel({
                 <button
                   onClick={() => scrollToId('gw-context-chat')}
                   style={{
-                    alignSelf: 'flex-start', marginTop: 8, fontSize: 11.5, fontWeight: 600,
+                    alignSelf: 'flex-start', marginTop: 8, fontSize: 12, fontWeight: 700,
                     color: 'var(--gw-navy)', background: 'none', border: 'none', padding: 0,
                     cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline',
                   }}
@@ -632,7 +632,7 @@ export function ExpectationsPanel({
           )
         }))}
       </div>
-      <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, marginTop: 9 }}>
+      <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: '19px', marginTop: 9 }}>
         {/*
           The one sentence that has to be here. Somebody reading their own expectation for the first
           time needs to know both that they cannot edit it and that they are not stuck with it.

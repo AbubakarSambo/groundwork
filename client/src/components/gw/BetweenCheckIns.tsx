@@ -196,12 +196,12 @@ export function BetweenCheckIns({ groundLabel, nextOpensSaying, groundId, canCha
           {asking && <GroundworkIsWriting />}
           {waitingNotes.length > 0 && (
             <div style={{ marginTop: 4 }}>
-              <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 6 }}>
+              <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 6 }}>
                 Waiting for your next check-in
               </div>
               {waitingNotes.map(n => (
                 <div key={n.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '9px 11px', marginBottom: 6 }}>
-                  <div style={{ flex: 1, fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.55, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0 }}>{n.text}</div>
+                  <div style={{ flex: 1, fontSize: 12, color: 'var(--gw-text)', lineHeight: '19px', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0 }}>{n.text}</div>
                   {confirmDeleteId === n.id ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: 12, color: 'var(--gw-muted)' }}>Delete this note?</span>

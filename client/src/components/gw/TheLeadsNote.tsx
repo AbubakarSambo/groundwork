@@ -6,7 +6,7 @@ export function TheLeadsNote({ role, className, style }: { role: string | null |
   if (!parts) return null
   return (
     <span data-leads-note className={className} style={{ display: 'block', ...style }}>
-      <strong style={{ display: 'block', fontWeight: 600 }}>{parts.heading}</strong>
+      <strong style={{ display: 'block', fontWeight: 700 }}>{parts.heading}</strong>
       {parts.note && <span style={{ display: 'block' }}>{parts.note}</span>}
     </span>
   )

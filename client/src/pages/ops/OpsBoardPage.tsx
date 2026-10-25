@@ -56,7 +56,7 @@ function Rows({ rows }: { rows: Array<Record<string, unknown>> }) {
 
   return (
     <div style={{ overflowX: 'auto', marginTop: 10 }}>
-      <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12.5 }}>
+      <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
         <thead>
           <tr>
             {columns.map((c) => (
@@ -99,8 +99,8 @@ function Number({ number }: { number: OpsNumber }) {
 
   const face = (
     <>
-      <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--gw-navy)' }}>{readable(number)}</div>
-      <div style={{ fontSize: 12.5, color: 'var(--gw-navy)', marginTop: 2, fontWeight: 600 }}>
+      <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--gw-navy)' }}>{readable(number)}</div>
+      <div style={{ fontSize: 12, color: 'var(--gw-navy)', marginTop: 2, fontWeight: 700 }}>
         {number.label}
       </div>
       <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4 }}>{number.says}</div>
@@ -167,10 +167,10 @@ function YourStanding({ personKey }: { personKey: string }) {
       <p style={LABEL}>What you brought</p>
       {targets.map((t) => (
         <div key={t.periodKey + String(t.isTargetListExpectation)} style={{ marginTop: 8 }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--gw-navy)' }}>
+          <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--gw-navy)' }}>
             {t.countedSoFar} of {t.targetCount}
           </div>
-          <div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>
+          <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
             {t.isTargetListExpectation ? 'this list' : t.period} · by{' '}
             {whenItWas(t.dueDate, 'day')}
           </div>
@@ -371,10 +371,10 @@ export default function OpsBoardPage() {
     <section style={{ padding: '28px 32px', maxWidth: 1100, margin: '0 auto' }}>
       <header style={{ marginBottom: 18 }}>
         <p style={LABEL}>The team's operating system</p>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-navy)', margin: '4px 0 2px' }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--gw-navy)', margin: '4px 0 2px' }}>
           {board.data?.name ?? 'Loading'}
         </h1>
-        <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', margin: 0 }}>{board.data?.answers}</p>
+        <p style={{ fontSize: 14, color: 'var(--gw-sub)', margin: 0 }}>{board.data?.answers}</p>
       </header>
 
       {/*
@@ -396,12 +396,12 @@ export default function OpsBoardPage() {
             </button>
           ))}
 
-        <label style={{ marginLeft: 'auto', fontSize: 12.5, color: 'var(--gw-sub)' }}>
+        <label style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--gw-sub)' }}>
           Period{' '}
           <select
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
-            style={{ fontSize: 12.5, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--gw-border)' }}
+            style={{ fontSize: 12, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--gw-border)' }}
           >
             {(periods.data ?? []).map((p) => (
               <option key={p.key} value={p.key}>

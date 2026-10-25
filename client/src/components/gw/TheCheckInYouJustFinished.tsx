@@ -438,7 +438,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
             <div style={{ display: 'grid', gap: 12, marginTop: open.length > 0 ? 14 : 0 }}>
               {couldTry.map(b => (
                 <div key={b.id} className="gw-try">
-                  <p className="gw-p" style={{ margin: '0 0 4px', color: 'var(--gw-text)', fontWeight: 600 }}>
+                  <p className="gw-p" style={{ margin: '0 0 4px', color: 'var(--gw-text)', fontWeight: 700 }}>
                     Ways through {'\u201C'}{b.what}{'\u201D'}
                   </p>
                   <ul style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 3 }}>

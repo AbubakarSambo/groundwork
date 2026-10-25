@@ -545,9 +545,9 @@ function FeedbackWidget() {
                   style={{
                     flex: 1, padding: '10px 4px', background: 'none', border: 'none',
                     borderBottom: tab === t ? '2px solid var(--gw-navy)' : '2px solid transparent',
-                    fontSize: 11, fontWeight: 600,
+                    fontSize: 11, fontWeight: 700,
                     color: tab === t ? 'var(--gw-text)' : 'rgba(0,0,0,.38)',
-                    cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center', lineHeight: 1.3,
+                    cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center', lineHeight: '14px',
                   }}
                 >
                   {tabLabel[t]}
@@ -562,7 +562,7 @@ function FeedbackWidget() {
                 ref={thankYouRef}
                 tabIndex={-1}
                 role="status"
-                style={{ textAlign: 'center', padding: '20px 0', color: 'var(--gw-green-t)', fontWeight: 600, fontSize: 14, outline: 'none' }}
+                style={{ textAlign: 'center', padding: '20px 0', color: 'var(--gw-green-t)', fontWeight: 700, fontSize: 14, outline: 'none' }}
               >
                 Thank you. We have your note.
               </div>
@@ -621,7 +621,7 @@ function FeedbackWidget() {
                     Cancel
                   </button>
                   {whyNotValid() && (
-                    <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', width: '100%', marginBottom: 6 }}>{whyNotValid()}</div>
+                    <div style={{ fontSize: 12, color: 'var(--gw-sub)', width: '100%', marginBottom: 6 }}>{whyNotValid()}</div>
                   )}
                   <button className="btn pri" onClick={submit} disabled={!valid()}
                     style={{ flex: 1 }}>

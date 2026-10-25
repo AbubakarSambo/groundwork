@@ -70,7 +70,7 @@ export function BillingCallbackPage() {
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--gw-page)', flexDirection: 'column', gap: 14, padding: 24 }}>
       {success ? (
         <>
-          <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--gw-green-bg)', border: '1.5px solid var(--gw-green-b)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
+          <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
             ✓
           </div>
 
@@ -82,7 +82,7 @@ export function BillingCallbackPage() {
                   {orgName ? `Done. ${orgName} is on ${PLAN_LABELS[confirmed]}.` : `Done. You are on ${PLAN_LABELS[confirmed]}.`}
                 </h1>
                 {peopleHere !== null && (
-                  <p style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', maxWidth: 340, lineHeight: 1.65, margin: 0 }}>
+                  <p style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', maxWidth: 340, lineHeight: '21px', margin: 0 }}>
                     {peopleHere === 1 ? 'You can check in.' : `All ${peopleHere} people can check in.`}
                   </p>
                 )}
@@ -93,7 +93,7 @@ export function BillingCallbackPage() {
                 <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--gw-navy)', letterSpacing: '-.01em', textAlign: 'center' }}>
                   Payment received.
                 </div>
-                <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', maxWidth: 380, lineHeight: 1.65 }}>
+                <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', maxWidth: 380, lineHeight: '21px' }}>
                   It is taking a moment to land on your account. Your <Link to="/billing" style={{ color: 'var(--gw-navy)' }}>billing page</Link> will show the {planFromUrl ? PLAN_LABELS[planFromUrl] : 'new'} plan as soon as it does - usually within a minute. Nothing more is needed from you.
                 </div>
               </>
@@ -102,7 +102,7 @@ export function BillingCallbackPage() {
                 <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--gw-navy)', letterSpacing: '-.01em', textAlign: 'center' }}>
                   Payment received. Activating...
                 </div>
-                <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', maxWidth: 340, lineHeight: 1.65 }}>
+                <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', maxWidth: 340, lineHeight: '21px' }}>
                   Thank you for supporting Groundwork. This takes a few seconds.
                 </div>
               </>
@@ -112,7 +112,7 @@ export function BillingCallbackPage() {
               <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--gw-navy)', letterSpacing: '-.01em' }}>
                 Payment received.
               </div>
-              <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', maxWidth: 340, lineHeight: 1.65 }}>
+              <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', maxWidth: 340, lineHeight: '21px' }}>
                 Thank you for supporting Groundwork. Redirecting you back...
               </div>
             </>
@@ -126,7 +126,7 @@ export function BillingCallbackPage() {
             this says what is true either way, without "Your bank declined it", which we cannot know.
           */}
           <h1 style={{ fontSize: 18, fontWeight: 700, color: 'var(--gw-navy)', margin: 0, textAlign: 'center' }}>The payment didn’t go through</h1>
-          <p style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', maxWidth: 340, lineHeight: 1.6, margin: 0 }}>
+          <p style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', maxWidth: 340, lineHeight: '21px', margin: 0 }}>
             You haven’t been charged, and your plan hasn’t changed.
           </p>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>

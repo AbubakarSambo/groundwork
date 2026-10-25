@@ -84,7 +84,7 @@ describe('Tag', () => {
 
   it('every tone has a style, and none is smaller than 13', () => {
     for (const t of ['proven', 'attention', 'action', 'concern', 'plain']) expect(CSS).toContain(`.gw-tag-${t}`)
-    expect(CSS).toMatch(/\.gw-tag \{[^}]*font-size: 13\.5px/)
+    expect(CSS).toMatch(/\.gw-tag \{[^}]*font-size: 14px/)
   })
 })
 

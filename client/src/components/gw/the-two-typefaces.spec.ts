@@ -64,7 +64,8 @@ describe('the two typefaces are served by the app itself', () => {
 const PROTO = strip(readFileSync(join(SRC, 'styles/prototype.css'), 'utf8'))
 describe('the type scale', () => {
   const size = (cls: string) => {
-    const m = PROTO.match(new RegExp(`\\.${cls}\\{[^}]*font-size:(?:clamp\\([^,]+,[^,]+,)?\\s*([0-9.]+)px`))
+    /* A size that scales with the screen is rounded to a whole pixel since 25 October (crisp text): round(nearest,clamp(min,vw,max),1px). The largest is read. */
+    const m = PROTO.match(new RegExp(`\\.${cls}\\{[^}]*font-size:(?:round\\(nearest,)?(?:clamp\\([^,]+,[^,]+,)?\\s*([0-9.]+)px`))
     if (!m) throw new Error(`.${cls} has no size`)
     return Number(m[1])
   }

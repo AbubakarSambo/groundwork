@@ -155,7 +155,7 @@ function ProtectedBlock({ header, body }: { header: string; body: string }) {
           {header}
         </pre>
       )}
-      <div style={{ fontSize: 10, color: 'var(--gw-amber-t)', fontWeight: 600, marginBottom: 2, paddingLeft: 2 }}>🔒 Protected</div>
+      <div style={{ fontSize: 10, color: 'var(--gw-amber-t)', fontWeight: 700, marginBottom: 2, paddingLeft: 2 }}>🔒 Protected</div>
       <pre style={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 4, padding: '8px 10px', margin: 0 }}>
         {body}
       </pre>
@@ -195,7 +195,7 @@ function DiffView({ oldContent, newContent }: { oldContent: string; newContent: 
   if (!hasChanges) return <div style={{ fontSize: 12, color: 'var(--gw-muted)', padding: '8px 0' }}>No changes from active version.</div>
 
   return (
-    <div style={{ fontFamily: 'monospace', fontSize: 11, lineHeight: 1.5, borderRadius: 4, overflow: 'hidden', border: '1px solid var(--gw-border)' }}>
+    <div style={{ fontFamily: 'monospace', fontSize: 11, lineHeight: '17px', borderRadius: 4, overflow: 'hidden', border: '1px solid var(--gw-border)' }}>
       {lines.map((line, i) => (
         <div
           key={i}
@@ -250,12 +250,12 @@ function VersionRow({
         onClick={onToggle}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', flexShrink: 0 }}>v{v.version}</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', flexShrink: 0 }}>v{v.version}</span>
           {v.isActive && (
-            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', borderRadius: 10, padding: '2px 8px', flexShrink: 0 }}>Active</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', borderRadius: 10, padding: '2px 8px', flexShrink: 0 }}>Active</span>
           )}
           {v.isDraft && (
-            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 10, padding: '2px 8px', flexShrink: 0 }}>Draft</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 10, padding: '2px 8px', flexShrink: 0 }}>Draft</span>
           )}
           <span style={{ fontSize: 11, color: 'var(--gw-muted)', flexShrink: 0 }}>{fmtDate(v.activatedAt ?? v.createdAt)}</span>
           {v.activatedBy && (
@@ -464,7 +464,7 @@ function DraftEditor({
 
       {/* Change summary */}
       <div style={{ marginBottom: 14 }}>
-        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--gw-text)', display: 'block', marginBottom: 4 }}>
+        <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)', display: 'block', marginBottom: 4 }}>
           Change summary
         </label>
         <input className="gwui-input"
@@ -486,7 +486,7 @@ function DraftEditor({
                     {block.header}
                   </pre>
                 )}
-                <div style={{ fontSize: 10, color: 'var(--gw-amber-t)', fontWeight: 600, marginBottom: 2, paddingLeft: 2 }}>
+                <div style={{ fontSize: 10, color: 'var(--gw-amber-t)', fontWeight: 700, marginBottom: 2, paddingLeft: 2 }}>
                   🔒 Protected - cannot be edited here.
                 </div>
                 <pre style={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 4, padding: '8px 10px', margin: 0 }}>
@@ -525,7 +525,7 @@ function DraftEditor({
 
       {invariantError && (
         <div style={{ background: 'var(--gw-red-bg)', border: '1px solid var(--gw-red-b)', borderRadius: 4, padding: '10px 14px', marginTop: 12, fontSize: 12, color: 'var(--gw-red-t)' }}>
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>These protected strings must be present:</div>
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>These protected strings must be present:</div>
           <ul style={{ margin: 0, paddingLeft: 18 }}>
             {invariantError.map((s, i) => <li key={i}>{s}</li>)}
           </ul>
@@ -568,7 +568,7 @@ function TestRunner({ version, promptKey }: { version: PromptVersion; promptKey:
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 6, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: 500 }}>
       {/* Banner */}
       <div style={{ background: 'var(--gw-amber-bg)', borderBottom: '1px solid var(--gw-amber-b)', padding: '8px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--gw-amber-t)' }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-amber-t)' }}>
           TEST MODE - {version.isDraft ? `Draft v${version.version}` : `v${version.version} (active)`} · {promptKey}
         </span>
         <span style={{ fontSize: 11, color: 'var(--gw-amber-t)' }}>Not a real conversation · No data written</span>
@@ -592,7 +592,7 @@ function TestRunner({ version, promptKey }: { version: PromptVersion; promptKey:
               borderRadius: m.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
               padding: '8px 12px',
               fontSize: 13,
-              lineHeight: 1.6,
+              lineHeight: '21px',
               whiteSpace: 'pre-wrap',
             }}
           >
@@ -786,12 +786,12 @@ export function PromptVersioningPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--gw-text)' }}>{selectedKey}</span>
                   {activeVersion && (
-                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', borderRadius: 10, padding: '3px 10px' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', borderRadius: 10, padding: '3px 10px' }}>
                       v{activeVersion.version} active
                     </span>
                   )}
                   {draft && (
-                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 10, padding: '3px 10px' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 10, padding: '3px 10px' }}>
                       draft v{draft.version}
                     </span>
                   )}

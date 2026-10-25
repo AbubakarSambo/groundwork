@@ -44,7 +44,7 @@ export function HowMuchThereIsToGoOn({ read }: { read: ConfidenceRead }) {
         padding: '16px 18px', marginBottom: 30,
       }}
     >
-      <h3 style={{ fontSize: 13.5, fontWeight: 800, margin: 0, color: 'var(--gw-text)' }}>
+      <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--gw-text)' }}>
         {BAND_SENTENCE[read.band]}
       </h3>
 
@@ -56,17 +56,17 @@ export function HowMuchThereIsToGoOn({ read }: { read: ConfidenceRead }) {
         <div style={{ width: `${pct}%`, height: '100%', background: 'var(--gw-navy)' }} />
       </div>
 
-      <p style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, maxWidth: '68ch' }}>
+      <p style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', lineHeight: '21px', maxWidth: '68ch' }}>
         {read.saying}
       </p>
 
       {read.reasons.length > 0 && (
-        <ul style={{ margin: '10px 0 0', paddingLeft: 17, fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.7, maxWidth: '68ch' }}>
+        <ul style={{ margin: '10px 0 0', paddingLeft: 17, fontSize: 12, color: 'var(--gw-sub)', lineHeight: '20px', maxWidth: '68ch' }}>
           {read.reasons.map((r, i) => <li key={i}>{r}</li>)}
         </ul>
       )}
       {read.note && (
-        <p style={{ margin: '10px 0 0', fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.6, maxWidth: '68ch' }}>{read.note}</p>
+        <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--gw-muted)', lineHeight: '19px', maxWidth: '68ch' }}>{read.note}</p>
       )}
     </section>
   )

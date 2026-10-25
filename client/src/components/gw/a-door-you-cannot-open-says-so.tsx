@@ -76,7 +76,7 @@ export function ADoorYouCannotOpen({
           name instead of "an admin"; until then the sentence stays as the server's own words, true
           for everybody who reads it.
         */}
-        <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.65, margin: '0 0 20px' }}>
+        <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '23px', margin: '0 0 20px' }}>
           {adminName
             ? `Your role here is not an admin’s. ${adminName} is an admin here and can change it.`
             : 'Your role here is not an admin’s. An admin can change it.'}
@@ -106,7 +106,7 @@ export function ADoorYouCannotOpen({
         <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--gw-navy)', margin: '0 0 10px' }}>
           Only an admin can connect your organisation’s WhatsApp number.
         </h1>
-        <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.65, margin: '0 0 20px' }}>
+        <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '23px', margin: '0 0 20px' }}>
           You can still answer your check-ins here.
         </p>
         <Button onClick={() => navigate('/grounds')}>Back to your check-ins</Button>
@@ -119,14 +119,14 @@ export function ADoorYouCannotOpen({
       <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--gw-navy)', margin: '0 0 10px' }}>
         You cannot {what} here
       </h1>
-      <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.65, margin: '0 0 8px' }}>
+      <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '23px', margin: '0 0 8px' }}>
         {what === 'open a check-in'
           ? 'Opening a check-in is limited to people your admin has named. You can still take part in any check-in somebody adds you to.'
           : what === 'connect your systems'
           ? 'Connecting your organisation’s systems is something its admins do.'
           : 'Adding people is something your organisation’s admins do.'}
       </p>
-      <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.65, margin: '0 0 20px' }}>
+      <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '23px', margin: '0 0 20px' }}>
         {/* Not a judgement, and said so plainly: a setting, and a person who can change it. */}
         This is a setting, not anything about you. An admin can change it.
       </p>

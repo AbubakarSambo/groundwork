@@ -715,7 +715,7 @@ export function GroundParticipantPage() {
             Null on a reader's own check-in, because "at your own company" is not information.
           */}
           {(ground as any).guestIn && (
-            <span className="gwui-note-navy" style={{ fontWeight: 600 }}>
+            <span className="gwui-note-navy" style={{ fontWeight: 700 }}>
               A guest check-in at {(ground as any).guestIn}.
             </span>
           )}
@@ -729,7 +729,7 @@ export function GroundParticipantPage() {
              * offers "Ask Mira for more time"). Mira's own version of this sentence sits in an amber
              * box ("Out of time", GroundAdminPage.tsx) - this reads the same tone here.
              */
-            <span className={hasStalled((ground as any).status) ? 'gwui-note-amber' : 'gwui-note-green'} style={{ fontWeight: 600 }}>
+            <span className={hasStalled((ground as any).status) ? 'gwui-note-amber' : 'gwui-note-green'} style={{ fontWeight: 700 }}>
               {/* B-215 (review 5): this read the bare word "Out of time" here, with no sentence -
                   unlike every other state this line can be in. Dov read it with nothing to tell
                   him what it meant or what, if anything, he could do. */}

@@ -37,7 +37,7 @@ describe('phone tap targets, release walkthrough 5 October', () => {
     expect(read('components/gw/TargetsBand.tsx')).toMatch(/gwui-fs-13 gwui-ink-sub gwui-p-0 gwui-rule-none gwui-tap-44/)
     expect(read('components/gw/EachPerson.tsx')).toMatch(/function Small[\s\S]*?className="gwui-tap-44"/)
     expect(read('pages/report/RoundReportPage.tsx')).toMatch(/className="gwui-tap-44"[\s\S]*?Every session/)
-    expect(read('components/gw/checkin/YourWork.tsx')).toMatch(/className="gwui-tap-44" style=\{\{ fontSize: 12\.5[\s\S]*?\}\}>Read<\/Link>/)
+    expect(read('components/gw/checkin/YourWork.tsx')).toMatch(/className="gwui-tap-44" style=\{\{ fontSize: 12[\s\S]*?\}\}>Read<\/Link>/)
     /* 24 October (fewer buttons): "Share with everyone" is a plain link now, and a link that is its own tap target keeps the
        44px floor on a phone through button.gw-link (styles/product.css). */
     expect(read('components/gw/WhatYouAreCarryingForward.tsx')).toMatch(/className="gw-link t-small"[\s\S]*?Share with everyone/)

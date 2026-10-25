@@ -31,7 +31,7 @@ export function WhoIsInThis({ parties, peersHidden, notOpenYet, viewerIsParty, l
 }) {
   return (
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '14px 16px' }}>
-      <div style={{ fontSize: 10.5, letterSpacing: '.5px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 6 }}>
+      <div style={{ fontSize: 10, letterSpacing: '.5px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 6 }}>
         Who is in this
       </div>
       {/*
@@ -41,7 +41,7 @@ export function WhoIsInThis({ parties, peersHidden, notOpenYet, viewerIsParty, l
         a genuinely single-party ground is a different thing and says so.
       */}
       {peersHidden && (
-        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px' }}>
           {viewerIsTheLead
             ? 'People on this check-in answer without seeing each other. You can see who is here.'
             : `${leadName ?? 'Your lead'} knows who is here. You will not see the others or what they wrote, and they will not see you.`}
@@ -103,7 +103,7 @@ export function WhoIsInThis({ parties, peersHidden, notOpenYet, viewerIsParty, l
           })}
         </div>
       )}
-      <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.6, marginTop: 8 }}>
+      <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: '19px', marginTop: 8 }}>
         {viewerIsParty === false
           ? 'When everyone has checked in, the report shows where the team agrees, where it differs, and what to do next.'
           : 'When everyone has checked in, the report shows where you agree, where you differ, and what to do next.'}

@@ -87,13 +87,13 @@ export function HomePage() {
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px' }}>
         <div style={{ width: '100%', maxWidth: 480 }}>
-          <div style={{ marginBottom: 8, fontSize: 11, fontWeight: 600, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.06em' }}>
+          <div style={{ marginBottom: 8, fontSize: 11, fontWeight: 700, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.06em' }}>
             Contribution intelligence
           </div>
-          <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--gw-text)', lineHeight: 1.2, marginBottom: 8, letterSpacing: '-.02em' }}>
+          <h1 style={{ fontSize: 26, fontWeight: 700, color: 'var(--gw-text)', lineHeight: '31px', marginBottom: 8, letterSpacing: '-.02em' }}>
             What are you working on?
           </h1>
-          <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 24 }}>
+          <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '23px', marginBottom: 24 }}>
             Name the situation and who is involved. Groundwork builds a record from both sides.
           </p>
 
@@ -120,7 +120,7 @@ export function HomePage() {
           </div>
 
           {faqAnswer && (
-            <div style={{ marginTop: 10, padding: '12px 14px', background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, fontSize: 14, lineHeight: 1.65, color: 'var(--gw-text)' }}>
+            <div style={{ marginTop: 10, padding: '12px 14px', background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, fontSize: 14, lineHeight: '23px', color: 'var(--gw-text)' }}>
               {faqAnswer}
             </div>
           )}

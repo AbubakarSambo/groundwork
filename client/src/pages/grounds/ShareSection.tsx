@@ -46,7 +46,7 @@ export function ShareSection({ joinToken }: { joinToken: string }) {
   return (
     <section aria-label={SHARE_A_LINK.heading} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: 16, marginTop: 14 }}>
       <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', margin: '0 0 3px' }}>{SHARE_A_LINK.heading}</h3>
-      <p style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.55, margin: '0 0 12px' }}>{SHARE_A_LINK.forWhom}</p>
+      <p style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '20px', margin: '0 0 12px' }}>{SHARE_A_LINK.forWhom}</p>
       <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         {qrDataUrl && (
           <img src={qrDataUrl} alt="" style={{ width: 100, height: 100, borderRadius: 6, border: '1px solid var(--gw-border)', flexShrink: 0 }} />
@@ -56,12 +56,12 @@ export function ShareSection({ joinToken }: { joinToken: string }) {
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             <button type="button" className="gw-btn-sec" onClick={copyLink}>{copied ? SHARE_A_LINK.copied : SHARE_A_LINK.copy}</button>
             {qrDataUrl && (
-              <a href={qrDataUrl} download="check-in-qr-code.png" style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)' }}>{SHARE_A_LINK.download}</a>
+              <a href={qrDataUrl} download="check-in-qr-code.png" style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)' }}>{SHARE_A_LINK.download}</a>
             )}
           </div>
         </div>
       </div>
-      <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, margin: '12px 0 0' }}>{SHARE_A_LINK.whoCanAnswer}</p>
+      <p style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px', margin: '12px 0 0' }}>{SHARE_A_LINK.whoCanAnswer}</p>
     </section>
   )
 }

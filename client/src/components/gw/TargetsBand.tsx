@@ -136,7 +136,7 @@ export function TargetsBand({
           </div>
           {/* A number nobody has defined is not an agreed number, said beside the number. */}
           {t.notSettled && (
-            <div className="gwui-fs-13 gwui-ink-amber gwui-mt-4" style={{ lineHeight: 1.5, maxWidth: '62ch' }}>{t.notSettled}</div>
+            <div className="gwui-fs-13 gwui-ink-amber gwui-mt-4" style={{ lineHeight: '20px', maxWidth: '62ch' }}>{t.notSettled}</div>
           )}
           {assumes.length > 0 && editing !== t.id && (
             <WhatTheTargetAssumes figure={figure} name={t.name} assumes={assumes} />
@@ -190,7 +190,7 @@ export function TargetsBand({
           with the others. The link sits at its right, as in the prototype. */}
       {isTheLead && (
         <div className="gwui-mb-8" style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <a href={`/grounds/${groundId}?tab=settings`} className="gwui-fs-13 gwui-ink-navy" style={{ fontWeight: 600 }}>
+          <a href={`/grounds/${groundId}?tab=settings`} className="gwui-fs-13 gwui-ink-navy" style={{ fontWeight: 700 }}>
             Change who sees them
           </a>
         </div>
@@ -240,7 +240,7 @@ export function WhatTheTargetAssumes({ figure, assumes, assumesSays }: {
       </div>
       {assumes.length ? (
         <>
-          <ul className="gwui-m-0 gwui-pl-18 gwui-fs-13 gwui-ink-text" style={{ lineHeight: 1.6 }}>
+          <ul className="gwui-m-0 gwui-pl-18 gwui-fs-13 gwui-ink-text" style={{ lineHeight: '21px' }}>
             {assumes.map((a, k) => <li key={k}>{a}</li>)}
           </ul>
           <div className="gwui-mt-6">

@@ -21,7 +21,7 @@ const rule = (css: string, selector: string) => {
 describe('the design of the quality pass', () => {
   it('D-2: "Every session" is the prototype’s .btn.sec (an inset rule, no border), and "Something here isn’t right" is 44px tall', () => {
     expect(rule(BOARD, '.pb-wide-btn')).toMatch(/border: 0;/)
-    expect(rule(BOARD, '.pb-wide-btn')).toMatch(/box-shadow: inset 0 0 0 1\.5px var\(--gw-rule-2\)/)
+    expect(rule(BOARD, '.pb-wide-btn')).toMatch(/box-shadow: inset 0 0 0 1px var\(--rule2-crisp\)/)
     /* 24 October: "Something here isn't right" is the prototype's own .btn.quiet now (one stylesheet, the prototype's). */
     expect(PROTO).toMatch(/\.btn\{min-height:44px/)
     expect(BOARD).not.toMatch(/\.pb-decides button \{/)
@@ -46,7 +46,7 @@ describe('the design of the quality pass', () => {
   })
 
   it('D-7: a stage and where a thing comes from are the prototype’s .tag', () => {
-    expect(rule(BOARD, '.pb-step')).toMatch(/min-height: 26px; padding: 0 10px; border-radius: 13px; font-size: 13\.5px; font-weight: 700/)
+    expect(rule(BOARD, '.pb-step')).toMatch(/min-height: 26px; padding: 0 10px; border-radius: 13px; font-size: 14px; font-weight: 700/)
     /* 24 October: where a thing to do next week comes from is the prototype's own .tag.plain. */
     expect(PROTO).toMatch(/\.tag\{[^}]*min-height:26px/)
   })

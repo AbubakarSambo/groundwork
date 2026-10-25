@@ -141,7 +141,7 @@ export function TheCheckInHeader({
         "Check-ins / Sales team, Q3" (board-as-lead.txt). "Check-ins" is a link in the prototype -
         underlined navy - not plain grey text (picture-check round 6, item B).
       */}
-      <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginBottom: 6 }}>
+      <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 6 }}>
         {/* SCREEN FAULT 10: 16px tall on a phone - `.gwui-tap-44` (gw-ui.css) gives it the same
             40px floor every other tappable link on this header already has, without touching its
             size or look at any other width. */}
@@ -151,11 +151,11 @@ export function TheCheckInHeader({
 
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
         <div>
-          <h1 style={{ fontFamily: 'var(--gw-font-name)', fontSize: 30, fontWeight: 600, color: 'var(--gw-text)', margin: 0, lineHeight: 1.15 }}>
+          <h1 style={{ fontFamily: 'var(--gw-font-name)', fontSize: 30, fontWeight: 700, color: 'var(--gw-text)', margin: 0, lineHeight: '35px' }}>
             {title}
           </h1>
           {cadenceLine && (
-            <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.5, margin: '6px 0 0' }}>{cadenceLine}</p>
+            <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.5, margin: '6px 0 0' }}>{cadenceLine}</p>
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>

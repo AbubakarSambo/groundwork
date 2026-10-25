@@ -44,7 +44,7 @@ import { MARK_WORDS, readMark, type MarkKind } from './the-mark'
 export function Zone({ label }: { label: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '30px 2px 2px' }}>
-      <span style={{ fontSize: 13, letterSpacing: '.1px', fontWeight: 800, color: 'var(--gw-navy)' }}>{label}</span>
+      <span style={{ fontSize: 13, letterSpacing: '.1px', fontWeight: 700, color: 'var(--gw-navy)' }}>{label}</span>
       <span style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
     </div>
   )
@@ -105,7 +105,7 @@ export function Sec({ title, src, n, on = 'light', size = 'default' }: { title: 
         <span
           aria-hidden
           style={{
-            fontSize: 11, fontWeight: 800, lineHeight: '18px', width: 18, height: 18, flexShrink: 0,
+            fontSize: 11, fontWeight: 700, lineHeight: '18px', width: 18, height: 18, flexShrink: 0,
             borderRadius: 9, textAlign: 'center',
             background: dark ? 'rgba(255,255,255,.14)' : 'var(--gw-blue-bg)',
             color: dark ? 'rgba(255,255,255,.75)' : 'var(--gw-navy)',
@@ -118,7 +118,7 @@ export function Sec({ title, src, n, on = 'light', size = 'default' }: { title: 
       {/* Beside the title where it fits, on its own line where it does not, and still right-aligned. */}
       {src && (
         <span style={{
-          fontSize: 10.5, color: dark ? 'rgba(255,255,255,.35)' : 'var(--gw-muted)',
+          fontSize: 10, color: dark ? 'rgba(255,255,255,.35)' : 'var(--gw-muted)',
           marginLeft: 'auto', textAlign: 'right', maxWidth: '100%', minWidth: 0,
         }}>
           {src}
@@ -169,7 +169,7 @@ export function Pill({ children, tone = 'flat', outline = false }: { children: R
   const c = m[tone] ?? m.flat
   return (
     <span style={{
-      fontSize: 10.5, fontWeight: 700, padding: '2px 9px', borderRadius: 11, background: c.bg, color: c.fg, whiteSpace: 'nowrap',
+      fontSize: 10, fontWeight: 700, padding: '2px 9px', borderRadius: 11, background: c.bg, color: c.fg, whiteSpace: 'nowrap',
       border: outline ? `1px solid ${c.b}` : 'none',
     }}>
       {children}
@@ -190,7 +190,7 @@ export function Stat({ label, value, caption, tone }: { label: string; value: st
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px', flex: 1, minWidth: 150 }}>
       <div style={{ fontSize: 12, letterSpacing: '.1px', color: 'var(--gw-muted)', fontWeight: 700 }}>{label}</div>
       <div style={{ fontFamily: 'var(--gw-font-name)', fontSize: 24, marginTop: 5, lineHeight: 1, color: colour }}>{value}</div>
-      {caption && <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 4, lineHeight: 1.45 }}>{caption}</div>}
+      {caption && <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4, lineHeight: '17px' }}>{caption}</div>}
     </div>
   )
 }

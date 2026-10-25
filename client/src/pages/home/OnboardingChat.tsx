@@ -443,7 +443,7 @@ export function OnboardingChat() {
                     cursor: 'pointer',
                     fontFamily: 'inherit',
                     textAlign: 'left',
-                    lineHeight: 1.4,
+                    lineHeight: '18px',
                     transition: 'border-color 0.12s, color 0.12s',
                   }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--gw-navy)'; e.currentTarget.style.color = 'var(--gw-navy)' }}
@@ -458,7 +458,7 @@ export function OnboardingChat() {
 
         {!done && (
           <>
-            <div style={{ padding: '4px 14px', borderTop: '1px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', background: 'var(--gw-bg)', lineHeight: 1.4 }}>
+            <div style={{ padding: '4px 14px', borderTop: '1px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', background: 'var(--gw-bg)', lineHeight: '15px' }}>
               Your words are private. Nothing is saved until you choose to save it.
             </div>
             {showInput && (

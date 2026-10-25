@@ -32,7 +32,7 @@ import { askNameFor } from '@/lib/ask-name'
 const WRAP: React.CSSProperties = { maxWidth: 1180, margin: '0 auto', padding: '20px 16px 80px' }
 const INPUT: React.CSSProperties = {
   /* The kit's field (app.css .input). */
-  padding: '12px 16px', fontSize: 16, border: '1.5px solid var(--gw-rule-2)', borderRadius: 10, background: 'var(--gw-card)', color: 'var(--gw-text)', fontFamily: 'inherit',
+  padding: '12px 16px', fontSize: 16, border: '1px solid var(--rule2-crisp)', borderRadius: 10, background: 'var(--gw-card)', color: 'var(--gw-text)', fontFamily: 'inherit',
 }
 
 function Surface({ n, name, cell, note, children }: {
@@ -49,14 +49,14 @@ function Surface({ n, name, cell, note, children }: {
           fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 11,
           fontWeight: 700, color: 'var(--gw-sub)',
         }}>{String(n).padStart(2, '0')}</span>
-        <h2 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--gw-text)' }}>{name}</h2>
+        <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: 'var(--gw-text)' }}>{name}</h2>
         <span style={{
-          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 10.5,
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 10,
           letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gw-navy)',
           background: 'var(--gw-blue-bg)', padding: '2px 7px', borderRadius: 5,
         }}>{cell}</span>
       </div>
-      <p style={{ fontSize: 12.5, color: 'var(--gw-text)', margin: '0 0 12px', maxWidth: '80ch' }}>{note}</p>
+      <p style={{ fontSize: 12, color: 'var(--gw-text)', margin: '0 0 12px', maxWidth: '80ch' }}>{note}</p>
       {children}
     </section>
   )
@@ -94,7 +94,7 @@ function ThePageItself({ to, tall }: { to: string; tall?: boolean }) {
 function NothingStored({ what }: { what: string }) {
   return (
     <div style={{ border: '1px dashed var(--gw-border)', borderRadius: 10, padding: 14, maxWidth: 620 }}>
-      <p style={{ fontSize: 12.5, color: 'var(--gw-text)', margin: 0, lineHeight: 1.55 }}>
+      <p style={{ fontSize: 12, color: 'var(--gw-text)', margin: 0, lineHeight: '19px' }}>
         Nothing was kept for {what}. The report somebody reads at the end is only stored when they
         came through the entry chat; an ordinary signed-in sitting computes its own and keeps
         nothing, so there is nothing here to open again. That is the state of the product, not a
@@ -110,7 +110,7 @@ function AsItIsSent({ head, lines }: { head: string; lines: string[] }) {
     <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: 16, maxWidth: 620, background: 'var(--gw-card)' }}>
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-sub-d)', marginBottom: 8 }}>{head}</div>
       {lines.map(l => (
-        <p key={l} style={{ fontSize: 13, color: 'var(--gw-text)', margin: '0 0 8px', lineHeight: 1.55 }}>{l}</p>
+        <p key={l} style={{ fontSize: 13, color: 'var(--gw-text)', margin: '0 0 8px', lineHeight: '20px' }}>{l}</p>
       ))}
     </div>
   )
@@ -166,7 +166,7 @@ export default function EveryReportSideBySide() {
 
   return (
     <div style={WRAP}>
-      <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 4px' }}>Every report surface</h1>
+      <h1 style={{ fontSize: 22, fontWeight: 700, margin: '0 0 4px' }}>Every report surface</h1>
       <p style={{ fontSize: 13, color: 'var(--gw-text)', margin: '0 0 18px', maxWidth: '80ch' }}>
         All of them, on one check-in, on real data. Four reports - two readers by two scopes - drawn by eight surfaces, two of which turn out to carry no report at all. This page is for
         judging the rebuild against what it replaces, and it goes when the last surface is ported.
@@ -176,12 +176,12 @@ export default function EveryReportSideBySide() {
         onSubmit={(e) => { e.preventDefault(); setParams({ ground: g, session: s }) }}
         style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 10 }}
       >
-        <label style={{ display: 'grid', gap: 4, fontSize: 11.5, color: 'var(--gw-text)' }}>
+        <label style={{ display: 'grid', gap: 4, fontSize: 12, color: 'var(--gw-text)' }}>
           Check-in id
           <input value={g} onChange={(e) => setG(e.target.value)} placeholder="the check-in these belong to"
             style={{ ...INPUT, width: 340 }} />
         </label>
-        <label style={{ display: 'grid', gap: 4, fontSize: 11.5, color: 'var(--gw-text)' }}>
+        <label style={{ display: 'grid', gap: 4, fontSize: 12, color: 'var(--gw-text)' }}>
           Session
           <input value={s} onChange={(e) => setS(e.target.value)} inputMode="numeric" style={{ ...INPUT, width: 80 }} />
         </label>
@@ -196,7 +196,7 @@ export default function EveryReportSideBySide() {
         <>
           <p style={{ fontSize: 12, color: 'var(--gw-text)', margin: '0 0 26px' }}>
             {checkInId
-              ? <>Your own sitting at session {sessionNumber}: <code style={{ fontSize: 11.5 }}>{checkInId}</code>{askedFor ? '' : ' - found for you.'}</>
+              ? <>Your own sitting at session {sessionNumber}: <code style={{ fontSize: 12 }}>{checkInId}</code>{askedFor ? '' : ' - found for you.'}</>
               : 'You have no sitting of your own on this one, so the three surfaces about your own half say so rather than drawing empty.'}
           </p>
 
@@ -251,7 +251,7 @@ export default function EveryReportSideBySide() {
           >
             {checkInId
               ? <TheCheckInYouJustFinished checkInId={checkInId} groundId={groundId} sessionNumber={sessionNumber} />
-              : <p style={{ fontSize: 12.5, color: 'var(--gw-text)' }}>You have no sitting of your own on this one.</p>}
+              : <p style={{ fontSize: 12, color: 'var(--gw-text)' }}>You have no sitting of your own on this one.</p>}
           </Surface>
 
           <Surface

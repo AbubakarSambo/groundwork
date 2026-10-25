@@ -36,7 +36,7 @@ const SL: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: 'var(--g
 function Stat({ val, label, accent, of }: { val: string | number; label: string; accent?: boolean; of?: number | null }) {
   return (
     <div style={{ ...C, flex: 1, minWidth: 100 }}>
-      <div style={{ fontSize: 22, fontWeight: 800, color: accent ? 'var(--gw-navy)' : 'var(--gw-navy)' }}>
+      <div style={{ fontSize: 22, fontWeight: 700, color: accent ? 'var(--gw-navy)' : 'var(--gw-navy)' }}>
         {val}{of != null && <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--gw-muted)', marginLeft: 5 }}>of {of}</span>}
       </div>
       <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 3 }}>{label}</div>
@@ -97,7 +97,7 @@ function WhatsAppToggle() {
       <div style={{ fontSize: 11, marginTop: 8, fontWeight: 700, color: data.live ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
         {data.live ? 'Live' : data.adminEnabled ? 'On, but not live (credentials missing)' : 'Off'}
       </div>
-      <Link to="/admin/whatsapp" style={{ display: 'inline-block', fontSize: 12.5, marginTop: 8, color: 'var(--gw-navy)' }}>
+      <Link to="/admin/whatsapp" style={{ display: 'inline-block', fontSize: 12, marginTop: 8, color: 'var(--gw-navy)' }}>
         Set Groundwork's WhatsApp number, its keys and the webhook
       </Link>
     </div>
@@ -259,7 +259,7 @@ function CorrectionWindowRow() {
         </form>
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-          <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-navy)' }}>{data.days}</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)' }}>{data.days}</span>
           <button className="btn sec sm" type="button" onClick={() => { setValue(String(data.days)); setEditing(true) }} >Edit</button>
         </div>
       )}
@@ -488,7 +488,7 @@ function PricingRow({ row }: { row: PricingPlanRow }) {
         </div>
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-          <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-navy)' }}>
+          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)' }}>
             {row.amountCents === null ? 'Contact us' : formatMonthlyPrice(row.amountCents)}
           </span>
           <button className="btn sec sm"
@@ -578,7 +578,7 @@ function FreeMemberLimitRow() {
         </div>
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-          <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-navy)' }}>{data.freeMemberLimit}</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)' }}>{data.freeMemberLimit}</span>
           <button className="btn sec sm"
             onClick={() => { setValue(String(data.freeMemberLimit)); setEditing(true) }}
           >
@@ -624,10 +624,10 @@ function FreeGroundLimitRow() {
     <div style={{ ...C, padding: '11px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 13, fontWeight: 700 }}>Free check-ins</div>
-        <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 1 }}>
+        <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 1 }}>
           Before an organisation needs a subscription. Zero means no free tier.
         </div>
-        {err && <div style={{ fontSize: 11.5, color: 'var(--gw-red-b)', marginTop: 4 }}>{err}</div>}
+        {err && <div style={{ fontSize: 12, color: 'var(--gw-red-b)', marginTop: 4 }}>{err}</div>}
       </div>
       {editing ? (
         <>
@@ -652,7 +652,7 @@ function FreeGroundLimitRow() {
         </>
       ) : (
         <>
-          <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-navy)' }}>{data.freeGroundLimit}</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)' }}>{data.freeGroundLimit}</span>
           <button className="btn sec sm"
             onClick={() => { setValue(String(data.freeGroundLimit)); setEditing(true) }}
           >
@@ -844,7 +844,7 @@ function FreeRunsPanel() {
 
   const field: React.CSSProperties = {
     /* The kit's field (app.css .input). */
-    padding: '12px 16px', fontSize: 16, border: '1.5px solid var(--gw-rule-2)', borderRadius: 10, background: 'var(--gw-card)', color: 'var(--gw-text)', fontFamily: 'inherit',
+    padding: '12px 16px', fontSize: 16, border: '1px solid var(--rule2-crisp)', borderRadius: 10, background: 'var(--gw-card)', color: 'var(--gw-text)', fontFamily: 'inherit',
   }
 
   return (
@@ -864,7 +864,7 @@ function FreeRunsPanel() {
           disabled={!email.trim() || grant.isPending}
         >{grant.isPending ? 'Saving...' : 'Give them the months'}</button>
       </div>
-      {said && <div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>{said}</div>}
+      {said && <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{said}</div>}
       <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>
         Months start when they sign up, not now. They see it on the sign-up screen and on their billing page.
       </div>
@@ -873,8 +873,8 @@ function FreeRunsPanel() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
           {data.map(r => (
             <div key={r.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '7px 10px',
-                                     border: '1px solid var(--gw-border)', borderRadius: 7, fontSize: 12.5, flexWrap: 'wrap' }}>
-              <span style={{ fontWeight: 600 }}>{r.email}</span>
+                                     border: '1px solid var(--gw-border)', borderRadius: 7, fontSize: 12, flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 700 }}>{r.email}</span>
               <span style={{ color: 'var(--gw-sub)' }}>{r.months} {r.months === 1 ? 'month' : 'months'}, {r.plan.replace('_', ' ').toLowerCase()}</span>
               <span style={{ color: r.state === 'running' ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
                 {r.state === 'waiting' ? 'waiting for them to sign up'
@@ -961,7 +961,7 @@ function SystemTab({ dash }: { dash: PlatformDashboardData }) {
             return (
               <div key={status} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <div style={{ fontSize: 12, color: 'var(--gw-text)', minWidth: 160, flexShrink: 0 }}>{fmt(status)}</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', minWidth: 28, textAlign: 'right', flexShrink: 0 }}>{count}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', minWidth: 28, textAlign: 'right', flexShrink: 0 }}>{count}</div>
                 <Bar pct={pct} />
                 <div style={{ fontSize: 11, color: 'var(--gw-muted)', minWidth: 70, textAlign: 'right', flexShrink: 0 }}>{pct.toFixed(0)}% of {total}</div>
               </div>
@@ -1015,7 +1015,7 @@ export function DropoffsTab({ data }: { data: UsageFunnelData }) {
           {visible.map(row => (
             <div key={row.session} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: 'white', background: 'var(--gw-navy)', borderRadius: 4, padding: '2px 6px', minWidth: 26, textAlign: 'center', flexShrink: 0 }}>S{row.session}</div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', minWidth: 32, textAlign: 'right', flexShrink: 0 }}>{row.completed}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', minWidth: 32, textAlign: 'right', flexShrink: 0 }}>{row.completed}</div>
               <Bar pct={s1 > 0 ? (row.completed / s1) * 100 : 0} />
               <div style={{ fontSize: 11, color: 'var(--gw-muted)', minWidth: 60, textAlign: 'right', flexShrink: 0 }}>
                 {row.session === 1 ? 'baseline' : row.dropOffRate != null ? `−${Math.round(row.dropOffRate * 100)}% of ${row.of}` : ' - '}
@@ -1062,7 +1062,7 @@ export function DropoffsTab({ data }: { data: UsageFunnelData }) {
                 {(data.avgSessionMinutes ?? []).map(row => (
                   <tr key={row.session}>
                     <td style={{ fontSize: 12, color: 'var(--gw-text)', padding: '4px 0', borderTop: '1px solid var(--gw-border)' }}>S{row.session}</td>
-                    <td style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', textAlign: 'right', padding: '4px 0', borderTop: '1px solid var(--gw-border)' }}>{row.avgMinutes ?? ' - '}</td>
+                    <td style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', textAlign: 'right', padding: '4px 0', borderTop: '1px solid var(--gw-border)' }}>{row.avgMinutes ?? ' - '}</td>
                     <td style={{ fontSize: 12, color: 'var(--gw-muted)', textAlign: 'right', padding: '4px 0', borderTop: '1px solid var(--gw-border)' }}>{row.n}</td>
                   </tr>
                 ))}
@@ -1078,7 +1078,7 @@ export function DropoffsTab({ data }: { data: UsageFunnelData }) {
           {[...data.byScenario].sort((a, b) => b.count - a.count).map(row => (
             <div key={row.scenario} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ fontSize: 12, color: 'var(--gw-text)', minWidth: 160, flexShrink: 0 }}>{fmt(row.scenario)}</div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', minWidth: 28, textAlign: 'right', flexShrink: 0 }}>{row.count}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', minWidth: 28, textAlign: 'right', flexShrink: 0 }}>{row.count}</div>
               <Bar pct={row.pct} />
               <div style={{ fontSize: 11, color: 'var(--gw-muted)', minWidth: 70, textAlign: 'right', flexShrink: 0 }}>{row.pct.toFixed(0)}% of {row.of}</div>
             </div>
@@ -1094,7 +1094,7 @@ export function DropoffsTab({ data }: { data: UsageFunnelData }) {
             return (
               <div key={row.status} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ fontSize: 12, color: 'var(--gw-text)', minWidth: 160, flexShrink: 0 }}>{fmt(row.status)}</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', minWidth: 28, textAlign: 'right', flexShrink: 0 }}>{row.count}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', minWidth: 28, textAlign: 'right', flexShrink: 0 }}>{row.count}</div>
                 <Bar pct={pct} />
                 <div style={{ fontSize: 11, color: 'var(--gw-muted)', minWidth: 70, textAlign: 'right', flexShrink: 0 }}>{pct.toFixed(0)}% of {row.of}</div>
               </div>
@@ -1152,7 +1152,7 @@ function ActivationSection({ activation }: { activation: ActivationFunnel | null
         <div style={{ ...C, display: 'flex', flexDirection: 'column', gap: 10 }}>
           {ACTIVATION_STAGE_ORDER.map((stage) => (
             <div key={stage} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', minWidth: 36, textAlign: 'right', flexShrink: 0 }}>{activation.reached[stage]}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', minWidth: 36, textAlign: 'right', flexShrink: 0 }}>{activation.reached[stage]}</div>
               <Bar pct={top > 0 ? (activation.reached[stage] / top) * 100 : 0} />
               <div style={{ fontSize: 12, color: 'var(--gw-text)', minWidth: 230, flexShrink: 0 }}>{ACTIVATION_STAGE_LABELS[stage]}</div>
             </div>
@@ -1229,7 +1229,7 @@ function ParticipantsSection({ participants }: { participants: ParticipantActiva
         <div style={{ ...C, display: 'flex', flexDirection: 'column', gap: 10 }}>
           {PARTICIPANT_REACHED_ORDER.map((step) => (
             <div key={step} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', minWidth: 36, textAlign: 'right', flexShrink: 0 }}>{participants.reached[step]}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', minWidth: 36, textAlign: 'right', flexShrink: 0 }}>{participants.reached[step]}</div>
               <Bar pct={top > 0 ? (participants.reached[step] / top) * 100 : 0} />
               <div style={{ fontSize: 12, color: 'var(--gw-text)', minWidth: 260, flexShrink: 0 }}>{PARTICIPANT_REACHED_LABELS[step]}</div>
             </div>
@@ -1272,16 +1272,16 @@ function PeopleInOrg({ organizationId }: { organizationId: string }) {
     queryFn: () => promptsApi.peopleIn(organizationId),
   })
 
-  if (isLoading) return <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', padding: '8px 0' }}>Loading the people…</div>
+  if (isLoading) return <div style={{ fontSize: 12, color: 'var(--gw-muted)', padding: '8px 0' }}>Loading the people…</div>
   /* Said, not swallowed: an empty panel where a list should be reads as nobody being there. */
-  if (error) return <div style={{ fontSize: 11.5, color: 'var(--gw-red-t)', padding: '8px 0' }}>Could not load the people in this organisation.</div>
-  if (!data?.people?.length) return <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', padding: '8px 0' }}>Nobody has a login here yet.</div>
+  if (error) return <div style={{ fontSize: 12, color: 'var(--gw-red-t)', padding: '8px 0' }}>Could not load the people in this organisation.</div>
+  if (!data?.people?.length) return <div style={{ fontSize: 12, color: 'var(--gw-muted)', padding: '8px 0' }}>Nobody has a login here yet.</div>
 
   return (
     <div style={{ display: 'grid', gap: 6, paddingTop: 10, marginTop: 10, borderTop: '1px solid var(--gw-border)' }}>
       {(data.people ?? []).map((p) => (
         <div key={p.id} style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', fontSize: 12 }}>
-          <span style={{ fontWeight: 600, color: 'var(--gw-text)', minWidth: 110 }}>{p.name ?? '(no name given)'}</span>
+          <span style={{ fontWeight: 700, color: 'var(--gw-text)', minWidth: 110 }}>{p.name ?? '(no name given)'}</span>
           <a href={`mailto:${p.email}`} style={{ color: 'var(--gw-navy)' }}>{p.email}</a>
           {p.phoneNumber && <span style={{ color: 'var(--gw-sub)' }}>{p.phoneNumber}</span>}
           <span style={{ color: 'var(--gw-muted)', fontSize: 11 }}>{p.role.toLowerCase()}</span>
@@ -1313,7 +1313,7 @@ export function ReleaseOneSalesBoardSwitch({ org }: { org: Pick<OrgListItem, 'id
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: 10, marginTop: 10, borderTop: '1px solid var(--gw-border)' }}>
       <div>
-        <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)' }}>The new sales board</div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)' }}>The new sales board</div>
         <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2, lineHeight: 1.5 }}>
           {on
             ? `${org.name} has the new sales board. Switching it off returns them to their previous board, and nothing is lost.`
@@ -1353,7 +1353,7 @@ export function Release1bTabsSwitch({ org }: { org: Pick<OrgListItem, 'id' | 'na
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: 10, marginTop: 10, borderTop: '1px solid var(--gw-border)' }}>
       <div>
-        <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)' }}>The new check-in tabs</div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)' }}>The new check-in tabs</div>
         <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2, lineHeight: 1.5 }}>
           {on
             ? `${org.name} has the new People and setup tab. Switching it off returns them to the tab they had, and no setting changes.`
@@ -1393,7 +1393,7 @@ export function Release2CollectionsSwitch({ org }: { org: Pick<OrgListItem, 'id'
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: 10, marginTop: 10, borderTop: '1px solid var(--gw-border)' }}>
       <div>
-        <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)' }}>Collect what’s owed</div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)' }}>Collect what’s owed</div>
         <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2, lineHeight: 1.5 }}>
           {on
             ? `${org.name} can start a check-in to collect what is owed. Switching it off returns them to what they had, and nothing is lost.`
@@ -1430,9 +1430,9 @@ export function EverySwitchOf({ org }: { org: Pick<OrgListItem, 'id' | 'name'> }
   if (!q.data) return null
   return (
     <div style={{ paddingTop: 10, marginTop: 10, borderTop: '1px solid var(--gw-border)' }}>
-      <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>Every switch for {org.name}</div>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>Every switch for {org.name}</div>
       {q.data.switches.map((s) => (
-        <label key={s.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '4px 0', fontSize: 12.5 }}>
+        <label key={s.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '4px 0', fontSize: 12 }}>
           <span>{s.name}</span>
           <input type="checkbox" checked={s.on} disabled={set.isPending} onChange={(e) => set.mutate({ key: s.key, on: e.target.checked })} aria-label={`${s.name} for ${org.name}`} />
         </label>
@@ -1539,7 +1539,7 @@ function UsageTab({ data }: { data: UsageStatsData }) {
                     transition: 'height .3s',
                   }}
                 />
-                <div style={{ fontSize: 8, color: 'var(--gw-muted)', textAlign: 'center', lineHeight: 1.2, whiteSpace: 'nowrap' }}>
+                <div style={{ fontSize: 8, color: 'var(--gw-muted)', textAlign: 'center', lineHeight: '10px', whiteSpace: 'nowrap' }}>
                   {date.split(' ')[0]}
                 </div>
               </div>
@@ -1605,7 +1605,7 @@ function InAppFeedback() {
             <div key={f.id} style={{ ...C, borderLeft: `3px solid ${f.status === 'new' ? 'var(--gw-navy)' : 'var(--gw-border)'}` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)' }}>{f.pill}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)' }}>{f.pill}</div>
                   <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 1 }}>
                     {f.tab.replace(/_/g, ' ')} · {timeAgo(f.createdAt)}
                   </div>
@@ -1623,7 +1623,7 @@ function InAppFeedback() {
                 )}
               </div>
               {f.text && (
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginTop: 6, whiteSpace: 'pre-wrap' }}>{f.text}</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px', marginTop: 6, whiteSpace: 'pre-wrap' }}>{f.text}</div>
               )}
             </div>
           ))}
@@ -1675,7 +1675,7 @@ function FeedbackTab({ data }: { data: FeedbackSummaryData }) {
                   <span style={{ fontSize: 11, color: 'var(--gw-muted)', whiteSpace: 'nowrap', marginLeft: 12 }}>{timeAgo(f.createdAt)}</span>
                 </div>
                 {f.note && (
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, fontStyle: 'italic', marginTop: 4 }}>"{f.note}"</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px', fontStyle: 'italic', marginTop: 4 }}>"{f.note}"</div>
                 )}
               </div>
             ))}
@@ -1693,7 +1693,7 @@ function ErrorsTab() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ ...C, borderLeft: '3px solid var(--gw-amber-b)' }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>No error sink connected</div>
-        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px' }}>
           Connect Sentry or add a <code style={{ fontSize: 11, background: 'var(--gw-bg)', padding: '1px 5px', borderRadius: 3 }}>POST /ops/errors</code> endpoint to surface recent exceptions here.
           The API already logs to console via NestJS Logger - redirect that output to a sink and expose it through the prompts controller.
         </div>
@@ -1723,7 +1723,7 @@ function ErrorsTab() {
 function PromptsTab({ navigate }: { navigate: (path: string) => void }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>
+      <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px' }}>
         Conversation prompts are versioned and stored in the database. Changes are logged with a summary and activation is deliberate - deactivating a version does not delete it. Outcome data is tracked per version so you can compare fairness rates across prompt iterations.
       </div>
       <button className="btn pri"
@@ -1760,14 +1760,14 @@ function CoachTab({ rows, onChanged }: { rows: CoachRequestRow[]; onChanged: () 
     return <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 32 }}>Nobody has asked to speak to a coach yet.</div>
   }
   const chip = (text: string, bg: string, fg: string) => (
-    <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', padding: '2px 7px', borderRadius: 4, background: bg, color: fg }}>{text}</span>
+    <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', padding: '2px 7px', borderRadius: 4, background: bg, color: fg }}>{text}</span>
   )
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {rows.map(r => (
         <div key={r.id} style={{ ...C, borderLeft: `3px solid ${r.status === 'new' ? 'var(--gw-navy)' : r.status === 'declined' ? 'var(--gw-border)' : 'var(--gw-green-b)'}` }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 5 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 700 }}>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>
               {r.name} &middot; {r.orgName}
               {/* The public form stopped asking, so this row can be empty and " . people" is not a fact. */}
               {r.teamSize?.trim() && <span style={{ fontWeight: 500, color: 'var(--gw-sub)' }}> &middot; {r.teamSize} people</span>}
@@ -1796,13 +1796,13 @@ function CoachTab({ rows, onChanged }: { rows: CoachRequestRow[]; onChanged: () 
               {!r.confirmationSentAt && chip('no email sent', 'var(--gw-red-bg)', 'var(--gw-red-t)')}
             </div>
           </div>
-          <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginBottom: 6 }}>
+          <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 6 }}>
             <a href={`mailto:${r.email}`} style={{ color: 'var(--gw-navy)' }}>{r.email}</a>
             {r.triedAlready === true && <span> &middot; has already tried opening a check-in</span>}
             {r.triedAlready === false && <span> &middot; has not tried the product yet</span>}
             <span> &middot; {whenItWas(r.createdAt, 'day')}</span>
           </div>
-          <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{r.intention}</div>
+          <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: '21px', whiteSpace: 'pre-wrap' }}>{r.intention}</div>
           {NEXT[r.status] && NEXT[r.status].length > 0 && (
             <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
               {NEXT[r.status].map(next => (
@@ -1840,7 +1840,7 @@ function InboxTab({ data, onRead }: {
   const messages = data.messages ?? []
   if (!messages.length) {
     return (
-      <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.7 }}>
+      <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '22px' }}>
         Nothing has come in yet. Mail to hello@myground.work lands here once Resend is forwarding it
         to the webhook - until then it only reaches whoever owns the mailbox.
       </div>
@@ -1849,7 +1849,7 @@ function InboxTab({ data, onRead }: {
 
   return (
     <div>
-      <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginBottom: 12 }}>
+      <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 12 }}>
         {data.unread} unread of {messages.length}. Reply from your own mail - this is here so
         nothing sits unseen.
       </div>
@@ -1863,7 +1863,7 @@ function InboxTab({ data, onRead }: {
               <div style={{ fontSize: 13, fontWeight: m.readAt ? 600 : 800, color: 'var(--gw-navy)' }}>
                 {m.subject?.trim() || '(no subject)'}
               </div>
-              <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 12, color: 'var(--gw-muted)', whiteSpace: 'nowrap' }}>
                 {whenItWas(m.receivedAt, 'dayAndTime')}
               </div>
             </div>
@@ -1875,7 +1875,7 @@ function InboxTab({ data, onRead }: {
             </div>
             {m.body && (
               /* Their words, as text. The sender's HTML is never stored and never rendered. */
-              <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.65, whiteSpace: 'pre-wrap', marginBottom: 8 }}>
+              <div style={{ fontSize: 12, color: 'var(--gw-text)', lineHeight: '20px', whiteSpace: 'pre-wrap', marginBottom: 8 }}>
                 {m.body}
               </div>
             )}
@@ -1918,7 +1918,7 @@ function CallRequestsTab({ data, onAnswered }: {
   const requests = data.requests ?? []
   if (!requests.length) {
     return (
-      <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.7 }}>
+      <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '22px' }}>
         Nobody is waiting on a call. Requests arrive here from the pricing page, the Connect page and
         the coach card, and stay until somebody marks them answered.
       </div>
@@ -1927,7 +1927,7 @@ function CallRequestsTab({ data, onAnswered }: {
 
   return (
     <div>
-      <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginBottom: 12 }}>
+      <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 12 }}>
         {requests.length} waiting. Ring them, agree what it costs, and invoice it afterwards -
         nothing here charges anybody.
       </div>
@@ -1935,10 +1935,10 @@ function CallRequestsTab({ data, onAnswered }: {
         {requests.map(r => (
           <div key={r.id} style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px', background: 'white' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 3 }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--gw-navy)' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)' }}>
                 {WHAT_IT_IS_ABOUT[r.about] ?? 'Something else'}
               </div>
-              <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 12, color: 'var(--gw-muted)', whiteSpace: 'nowrap' }}>
                 {whenItWas(r.askedAt, 'dayAndTime')}
               </div>
             </div>
@@ -1947,7 +1947,7 @@ function CallRequestsTab({ data, onAnswered }: {
               {r.email && <a href={`mailto:${r.email}`} style={{ color: 'var(--gw-navy)' }}>{r.email}</a>}
               {' · '}{r.orgName}
               <span style={{
-                marginLeft: 8, fontSize: 10.5, fontWeight: 700, letterSpacing: '.04em',
+                marginLeft: 8, fontSize: 10, fontWeight: 700, letterSpacing: '.04em',
                 textTransform: 'uppercase', padding: '2px 6px', borderRadius: 4,
                 background: r.paying ? 'var(--gw-green-bg)' : 'var(--gw-bg)',
                 color: r.paying ? 'var(--gw-green-t)' : 'var(--gw-sub)',
@@ -1955,7 +1955,7 @@ function CallRequestsTab({ data, onAnswered }: {
               }}>{r.paying ? 'Paying' : 'Free plan'}</span>
             </div>
             {r.note && (
-              <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.65, whiteSpace: 'pre-wrap', marginBottom: 8 }}>
+              <div style={{ fontSize: 12, color: 'var(--gw-text)', lineHeight: '20px', whiteSpace: 'pre-wrap', marginBottom: 8 }}>
                 {r.note}
               </div>
             )}
@@ -2089,7 +2089,7 @@ export function AdminPage() {
       {/* Nav */}
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--gw-bg)', borderBottom: '1px solid var(--gw-border)' }}>
         <div style={{ maxWidth: 760, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px' }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-navy)', letterSpacing: '-.01em' }}>Groundwork ops</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)', letterSpacing: '-.01em' }}>Groundwork ops</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             {/*
               * THE OTHER HALF OF THE BACK OFFICE, WHICH NOTHING LINKED TO.

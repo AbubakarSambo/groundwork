@@ -118,7 +118,7 @@ export function MyRecord({
                 it says so instead of restating the precondition.
               */}
               <div style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 6 }}>What this page will hold</div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', lineHeight: 1.6 }}>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', lineHeight: '19px' }}>
                 A line per session, each with how specific it was, and a trend across all
                 of them once there is more than one. Both appear here - this is the page where you
                 see how you are being read.
@@ -199,7 +199,7 @@ export function MyRecord({
           */}
 
           {myRecord && !myRecord.insightsLocked && (!myRecord.patterns || myRecord.patterns.length === 0) && (
-            <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, padding: '0 2px' }}>
+            <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: '19px', padding: '0 2px' }}>
               {/* REVIEW ROUND 3, ITEM 5: TWO SENTENCES, NOT A DASH-JOINED FRAGMENT. */}
               No patterns have surfaced yet. They appear once the same thing has been seen across
               several sessions. That is deliberate. One session is not a pattern.

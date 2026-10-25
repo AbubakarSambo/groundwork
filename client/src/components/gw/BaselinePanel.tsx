@@ -81,19 +81,19 @@ export function BaselinePanel({ groundId, canState, groundStartedAt, asFold }: {
           <>
             {/* Folded, the line itself is the fold's own fact, so it is not said twice. */}
             {!asFold && (
-            <div style={{ fontSize: 13.5, color: 'var(--gw-text)', lineHeight: 1.65 }}>
+            <div style={{ fontSize: 14, color: 'var(--gw-text)', lineHeight: '23px' }}>
               {current.successLooksLike ? withSentenceCase(current.successLooksLike) : 'Not stated yet.'}
             </div>
             )}
             {current.conditions.length > 0 && (
               <div style={{ marginTop: 12 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>What that rests on</div>
+                <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>What that rests on</div>
                 <ul style={{ margin: 0, paddingLeft: 17 }}>
                   {current.conditions.map((c, i) => (
-                    <li key={i} style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 2 }}>{c}</li>
+                    <li key={i} style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: '21px', marginBottom: 2 }}>{c}</li>
                   ))}
                 </ul>
-                <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, marginTop: 6 }}>
+                <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: '19px', marginTop: 6 }}>
                   Named now, the record can show which of these held. Unnamed, a missed outcome reads as
                   somebody underperforming.
                 </div>
@@ -107,7 +107,7 @@ export function BaselinePanel({ groundId, canState, groundStartedAt, asFold }: {
               * moved was stored, required, and shown nowhere. Found by rendering the panel on a ground
               * that had actually been restated, not by reading the code.
               */}
-            <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 10, lineHeight: 1.55 }}>
+            <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 10, lineHeight: '17px' }}>
               {/**
                 * B-141: version 1 is never a restatement, so its date is the check-in's own start
                 * date, not whenever the version-1 row happened to be written on the record
@@ -124,7 +124,7 @@ export function BaselinePanel({ groundId, canState, groundStartedAt, asFold }: {
             </div>
           </>
         ) : (
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px' }}>
             {/**
               * The reason to fill it in, in the lead's own terms. Not "this field is empty": what the
               * report will and will not be able to answer, which is the same framing
@@ -143,7 +143,7 @@ export function BaselinePanel({ groundId, canState, groundStartedAt, asFold }: {
           <Panel>
             {earlier.map(v => (
               <div key={v.version} style={{ marginBottom: 10, paddingBottom: 10, borderBottom: '1px solid var(--gw-border)' }}>
-                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>{withSentenceCase(v.successLooksLike)}</div>
+                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px' }}>{withSentenceCase(v.successLooksLike)}</div>
                 <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 4 }}>
                   Version {v.version}, until it was restated
                   {v.changeReason ? `. Changed because: ${v.changeReason}` : '.'}
@@ -172,7 +172,7 @@ export function BaselinePanel({ groundId, canState, groundStartedAt, asFold }: {
               * correction, and a corrected baseline stops being a record of what was believed at the
               * start. The old statement is above, to be read rather than overwritten.
               */}
-            <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>What would doing well look like?</div>
+            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>What would doing well look like?</div>
             <textarea className="gwui-input"
               value={success}
               onChange={e => setSuccess(e.target.value)}
@@ -180,7 +180,7 @@ export function BaselinePanel({ groundId, canState, groundStartedAt, asFold }: {
               placeholder="In your own words. Not a target for one person - what would make you say, at the end, that this went the way it should have."
               style={{ width: '100%' }}
             />
-            <div style={{ fontSize: 12.5, fontWeight: 700, margin: '12px 0 4px' }}>What has to be true for it? One per line.</div>
+            <div style={{ fontSize: 12, fontWeight: 700, margin: '12px 0 4px' }}>What has to be true for it? One per line.</div>
             <textarea className="gwui-input"
               value={conditions}
               onChange={e => setConditions(e.target.value)}
@@ -190,14 +190,14 @@ export function BaselinePanel({ groundId, canState, groundStartedAt, asFold }: {
             />
             {current && (
               <>
-                <div style={{ fontSize: 12.5, fontWeight: 700, margin: '12px 0 4px' }}>Why is this changing?</div>
+                <div style={{ fontSize: 12, fontWeight: 700, margin: '12px 0 4px' }}>Why is this changing?</div>
                 <input className="gwui-input"
                   value={reason}
                   onChange={e => setReason(e.target.value)}
                   placeholder="The priorities moved, the role changed, we got it wrong the first time"
                   style={{ width: '100%' }}
                 />
-                <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, marginTop: 6 }}>
+                <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: '19px', marginTop: 6 }}>
                   The version above stays on the record either way. A yardstick that moved with no reason
                   given reads worse than either version does on its own.
                 </div>

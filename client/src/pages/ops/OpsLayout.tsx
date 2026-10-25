@@ -180,14 +180,14 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
     return (
       <section style={{ padding: 40, maxWidth: 620 }}>
         <h1 style={{ fontSize: 20, marginBottom: 8 }}>That part is not yours to open</h1>
-        <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 8 }}>
+        <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '23px', marginBottom: 8 }}>
           {notYours.because === 'no capability'
             ? 'There is no such page in the back office.'
             : <>Opening <strong>{notYours.page}</strong> needs <code>{notYours.because}</code>, which you do not hold.</>}
         </p>
         {/* A setting, not a judgement — and the person who can change it, because a refusal with
             no next step reads as the product being broken. */}
-        <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 20 }}>
+        <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '23px', marginBottom: 20 }}>
           This is how your grants are set, not anything about you. Whoever runs the back office can change it.
         </p>
         <a className="gw-btn" href="/ops" style={{ textDecoration: 'none' }}>Back to your board</a>
@@ -252,7 +252,7 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
           if (pages.length === 0) return null
           return (
             <div key={group} style={{ marginBottom: 16 }}>
-              <p style={{ ...LABEL, fontSize: 9.5, marginBottom: 5 }}>{group}</p>
+              <p style={{ ...LABEL, fontSize: 10, marginBottom: 5 }}>{group}</p>
               {pages.map((p) => {
                 const here = location.pathname === p.path
                 return (
@@ -338,10 +338,10 @@ export function OpsHeader({ name, answers }: { name: string; answers: string }) 
   return (
     <header style={{ marginBottom: 18 }}>
       <p style={LABEL}>The team's operating system</p>
-      <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-navy)', margin: '4px 0 2px' }}>
+      <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--gw-navy)', margin: '4px 0 2px' }}>
         {name}
       </h1>
-      <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', margin: 0 }}>{answers}</p>
+      <p style={{ fontSize: 14, color: 'var(--gw-sub)', margin: 0 }}>{answers}</p>
     </header>
   )
 }

@@ -41,7 +41,7 @@ export function MyCheckInSessions({ groundId }: { groundId: string }) {
   }
   if (sessions.length === 0) {
     return (
-      <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+      <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px' }}>
         Nothing on record yet. Your first check-in starts the conversation, and everything you say
         in it stays here for you to come back to.
       </div>

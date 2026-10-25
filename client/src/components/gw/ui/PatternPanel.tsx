@@ -119,7 +119,7 @@ export function PatternPanel({
         is nothing to gate here beyond their presence.
       */}
       {(pattern.coachTowards || pattern.oneStep) && (
-        <div className="gwui-fs-13 gwui-ink-text gwui-mt-8" style={{ lineHeight: 1.55 }}>
+        <div className="gwui-fs-13 gwui-ink-text gwui-mt-8" style={{ lineHeight: '20px' }}>
           {pattern.coachTowards && <div>{pattern.coachTowards}</div>}
           {pattern.oneStep && <div className="gwui-mt-4">{pattern.oneStep}</div>}
         </div>

@@ -116,7 +116,7 @@ export function TheReportIsAListOfSessions({
   return (
     <section aria-labelledby="every-session">
       <h2 id="every-session" style={{ fontSize: 17, fontWeight: 700, margin: '0 0 4px', color: 'var(--gw-text)' }}>{EVERY_SESSION.heading}</h2>
-      <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.55, margin: '0 0 14px' }}>{EVERY_SESSION.intro}</p>
+      <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '22px', margin: '0 0 14px' }}>{EVERY_SESSION.intro}</p>
 
       {boardRenders && (
         <button
@@ -153,7 +153,7 @@ export function TheReportIsAListOfSessions({
       )}
 
       {rows.length === 0 ? (
-        <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: 20, fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+        <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: 20, fontSize: 14, color: 'var(--gw-sub)', lineHeight: '22px' }}>
           {EVERY_SESSION.nothingYet}
         </div>
       ) : (
@@ -172,10 +172,10 @@ export function TheReportIsAListOfSessions({
               <span style={{ minWidth: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '2px 16px' }}>
                 <span style={{ fontSize: 15, fontWeight: 700 }}>Session {r.sessionNumber}</span>
                 {r.opened
-                  ? <span style={{ fontSize: 13.5, color: 'var(--gw-sub)' }}>{sessionDay(r.opened)}</span>
-                  : r.opensOn && <span style={{ fontSize: 13.5, color: 'var(--gw-sub)' }}>opens on {sessionDay(r.opensOn)}</span>}
+                  ? <span style={{ fontSize: 14, color: 'var(--gw-sub)' }}>{sessionDay(r.opened)}</span>
+                  : r.opensOn && <span style={{ fontSize: 14, color: 'var(--gw-sub)' }}>opens on {sessionDay(r.opensOn)}</span>}
                 {checkedIn(r.answered, r.total) && (
-                  <span style={{ fontSize: 13.5, color: 'var(--gw-sub)' }}>{checkedIn(r.answered, r.total)}</span>
+                  <span style={{ fontSize: 14, color: 'var(--gw-sub)' }}>{checkedIn(r.answered, r.total)}</span>
                 )}
                 {!r.closed && r.waitingOn.length > 0 && (
                   <span style={{ flexBasis: '100%', fontSize: 13, color: 'var(--gw-sub)' }}>{stillToCheckIn(r.waitingOn)}</span>
