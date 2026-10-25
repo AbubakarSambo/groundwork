@@ -95,3 +95,8 @@ p button.gw-link, .t-small button.gw-link { min-height: 0; display: inline; }
 .gw-ruled-rows > :last-child { border-bottom: 1px solid var(--rule); }
 /* A column of sections 30px apart, where a part sits outside the page's own stack. */
 .gw-stack-30 > * + * { margin-top: 30px; }
+
+/* A quiet button inside a sentence, as the prototype's "Send it to him on WhatsApp" (C1). */
+.gw-inline-btn { padding: 0 4px; vertical-align: baseline; }
+/* A tag keeps the prototype's own line height wherever it sits, even inside small text. */
+.tag { line-height: 1.5; }

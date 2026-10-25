@@ -80,6 +80,12 @@ export interface WhatNeedsYou {
   freeTrial?: string | null;
   /** "You can also check in on WhatsApp.", with "Connect WhatsApp", when one of the reader's own check-ins is there to answer (fix list, item 5). */
   checkInOnWhatsApp?: { says: string; link: string; label: string } | null;
+  /** The check-in the line is about, when the reader runs it. */
+  lineGroundId?: string | null;
+  /** The one person the line names as not checked in yet, for the lead who runs it: the board's own nudge, offered beside the line. */
+  lineNudge?: { groundId: string; participantId: string; firstName: string } | null;
+  /** "Since yesterday": what moved since the round before, for the check-in the line is about. */
+  sinceYesterday?: { heading: string; says: string; also: string | null } | null;
 }
 
 /** The parts of a check-ins list row this reads. Everything else on the row is ignored. */
@@ -231,6 +237,8 @@ export function whatNeedsYou(
   const comingUp: ComingUp[] = [];
   let myOpenTurn: string | null = null;
   let line: { people: number; text: string } | null = null;
+  let lineGroundId: string | null = null;
+  let lineNudge: WhatNeedsYou['lineNudge'] = null;
 
   for (const g of list) {
     if ((g.status ?? '') === 'AWAITING_APPROVAL' || (g.status ?? '') === 'DECLINED') continue;
@@ -402,6 +410,10 @@ export function whatNeedsYou(
         /* Invited, not joined yet: named apart, never as missed and never in the count (decision 8 redone). */
         const notJoined = theNotJoinedYetLine((g.participants ?? []).filter((p: any) => p.notJoinedYet && !p.notLetIn && !p.managingOnly).map((p: any) => p?.user?.firstName?.trim() || null));
         const said = [whoHasNotYet(missing), whoDidNotCheckIn(missed), notJoined].filter(Boolean).join(' ');
+        lineGroundId = iRunIt ? g.id : null;
+        lineNudge = iRunIt && waitingIds.length === 1 && !missedIds.length && missing[0]?.name && !missing[0].isMe
+          ? { groundId: g.id, participantId: waitingIds[0], firstName: missing[0].name }
+          : null;
         line = {
           people: total,
           text: answered === 0
@@ -493,6 +505,7 @@ export function whatNeedsYou(
     needs,
     count: needs.length,
     line: said,
+    ...(line ? { lineGroundId, lineNudge } : {}),
     comingUp: comingUp.sort((a, b) => time(a.at)! - time(b.at)!).slice(0, 5),
   };
 }

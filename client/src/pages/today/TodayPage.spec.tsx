@@ -351,15 +351,18 @@ describe('the lead’s Today, with what her mail also tells her', () => {
     nobodyHasStarted: [{ groundId: 'd', label: 'Distributor review', subject: 'Nobody has started “Distributor review” yet, and Groundwork is following up', lines: ['You invited Kito and Lerato three days ago.', 'Groundwork is reminding them.'], linkLabel: 'See who has started', to: '/grounds/d' }],
     whatIWouldDoThisWeek: [{ groundId: 's', label: 'Sales team, Q3', lines: ['Here is what I would do this week.', 'Ask Omar about the Naivas order, because it has been open for a fortnight.'] }],
   }
-  it('draws each sentence once, with its link, for the lead', async () => {
+  /* Today is one list (Hafsah, 25 October: merge Needs you, Risks and From Groundwork into "What needs you", with no repeats): each is a row of it,
+     its title, one line of detail and its one action. */
+  it('draws each as a row of What needs you, once, with its link, for the lead', async () => {
     open(WAIRIMU, { ...LEAD_READ, forTheLead: FOR_THE_LEAD })
-    const region = await screen.findByRole('list', { name: 'From Groundwork' })
+    const region = await screen.findByRole('list', { name: 'What needs you' })
     expect(within(region).getAllByText('Nobody has started “Distributor review” yet, and Groundwork is following up')).toHaveLength(1)
-    expect(within(region).getByText('Groundwork is reminding them.')).toBeInTheDocument()
+    expect(within(region).getByText('You invited Kito and Lerato three days ago.')).toBeInTheDocument()
     expect(within(region).getByRole('link', { name: 'See who has started' })).toHaveAttribute('href', '/grounds/d')
-    expect(within(region).getByText('Here is what I would do this week.')).toBeInTheDocument()
     expect(within(region).getByText('Ask Omar about the Naivas order, because it has been open for a fortnight.')).toBeInTheDocument()
-    expect(within(region).getByRole('link', { name: 'Open the check-in' })).toHaveAttribute('href', '/grounds/s')
+    expect(within(region).getByText('In Sales team, Q3.')).toBeInTheDocument()
+    expect(within(region).getByRole('link', { name: 'Open' })).toHaveAttribute('href', '/grounds/s')
+    expect(screen.queryByRole('list', { name: 'From Groundwork' })).toBeNull()
   })
   it('draws nothing for a reader the server gave no key', async () => {
     open(MIRIAM, PARTICIPANT_READ)

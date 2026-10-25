@@ -1,11 +1,13 @@
 import { CheckInOnWhatsApp } from '@/components/gw/CheckInOnWhatsApp'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { boardApi } from '@/api/board'
+import { toast } from 'sonner'
 import { Link, useSearchParams } from 'react-router-dom'
 import { todayApi, type Need } from '@/api/today'
 import { outstandingNotAlreadyShown } from './outstanding-not-already-shown'
 import { withComingUpTellingTwoApart } from './tell-apart-coming-up'
 import { useAuthStore } from '@/stores/auth'
-import { Page, Greeting, Section, EdgeList, EdgeRow, Button, Note, Empty, ComingUp } from '@/components/gw/ui'
+import { Page, Greeting, Section, EdgeList, EdgeRow, Button, Note, Empty, ComingUp, Panel } from '@/components/gw/ui'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { AdminFirstRun } from '@/pages/grounds/an-admin-lands-on-a-check-in-list'
 import { partOfTheDay, whenItComes } from './when-it-comes'
@@ -151,7 +153,29 @@ export function TodayPage() {
   /* What the lead's mail also tells her (request 198, b): the server's own sentences and links, drawn once. Absent for everybody else. */
   const nobodyHasStarted = data?.forTheLead?.nobodyHasStarted ?? []
   const whatIWouldDo = data?.forTheLead?.whatIWouldDoThisWeek ?? []
-  const allNeeds = needs.length + outstandingNeedsYou.length + overdueOnYourTeam.length + risks.length
+  /*
+   * ONE LIST, AS THE PROTOTYPE (C1): what needs you, what the lead's nudge adds, and what Groundwork would do, as rows of "What needs
+   * you", most important first, each said once. A row the list already has (the same title) is not added again.
+   */
+  type ARow = { key: string; kind: Need['kind']; title: string; detail?: string; action?: { label: string; to: string } }
+  const seen = new Set<string>()
+  const once = (r: ARow) => { const k = r.title.trim().toLowerCase().replace(/[.!]+$/, ''); if (seen.has(k)) return false; seen.add(k); return true }
+  needs.forEach((n: Need) => once({ key: n.key, kind: n.kind, title: n.title }))
+  const moreRows: ARow[] = [
+    ...nobodyHasStarted.map((n) => ({ key: `started-${n.groundId}`, kind: 'look' as const, title: n.subject, detail: n.lines[0], action: { label: n.linkLabel, to: n.to } })),
+    ...whatIWouldDo.map((w) => {
+      const things = w.lines.slice(1)
+      return { key: `week-${w.groundId}`, kind: 'look' as const, title: things[0] ?? w.lines[0], detail: things.length > 1 ? `In ${w.label}, and ${things.length - 1} more on its board.` : `In ${w.label}.`, action: { label: 'Open', to: `/grounds/${w.groundId}` } }
+    }),
+    ...[...outstandingNeedsYou, ...overdueOnYourTeam, ...risks].map((sentence) => ({ key: sentence, kind: 'look' as const, title: sentence })),
+  ].filter(once)
+  const allNeeds = needs.length + moreRows.length
+  const lineNudge = data?.lineNudge ?? null
+  const nudge = useMutation({
+    mutationFn: () => boardApi.nudge(lineNudge!.groundId, lineNudge!.participantId),
+    onSuccess: () => toast.success(`Sent to ${lineNudge!.firstName}.`),
+    onError: () => toast.error('That didn’t send. Try again.'),
+  })
 
   return (
     <Page>
@@ -163,7 +187,11 @@ export function TodayPage() {
 
           <Greeting
             title={greeting}
-            subtitle={`${whenItWas(now, 'weekdayAndDay')}.${greetingLine ? ` ${greetingLine}` : ''}`}
+            subtitle={<>
+              {`${whenItWas(now, 'weekdayAndDay')}.${greetingLine ? ` ${greetingLine}` : ''}`}
+              {/* "Send it to him on WhatsApp" (C1), said with their name: the board's own nudge, for the one person not checked in yet. */}
+              {lineNudge && <>{' '}<button type="button" className="btn quiet sm gw-inline-btn gwui-in-a-sentence" onClick={() => nudge.mutate()} disabled={nudge.isPending || nudge.isSuccess}>{nudge.isSuccess ? 'Sent.' : `Remind ${lineNudge.firstName}`}</button></>}
+            </>}
           />
 
           {/* The free trial, one line, for an admin while it runs (Hafsah, 12 October). The server decides who reads it. */}
@@ -201,8 +229,9 @@ export function TodayPage() {
                     </>}
                   />
                 ))}
-                {[...outstandingNeedsYou, ...overdueOnYourTeam, ...risks].map((sentence) => (
-                  <EdgeRow key={sentence} kind="look" title={sentence} />
+                {moreRows.map((r) => (
+                  <EdgeRow key={r.key} kind={r.kind} title={r.title} detail={r.detail}
+                    actions={r.action ? <Button kind="secondary" size="small" to={r.action.to}>{r.action.label}</Button> : undefined} />
                 ))}
               </EdgeList>
             )}
@@ -237,28 +266,13 @@ export function TodayPage() {
             </Section>
           )}
 
-          {(nobodyHasStarted.length > 0 || whatIWouldDo.length > 0) && (
-            <Section heading="From Groundwork">
-              <EdgeList label="From Groundwork">
-                {nobodyHasStarted.map((n) => (
-                  <EdgeRow
-                    key={`started-${n.groundId}`}
-                    kind="look"
-                    title={n.subject}
-                    detail={n.lines.map((line, i) => <p key={i} className="gwui-panel-text">{line}</p>)}
-                    actions={<Button kind="secondary" size="small" to={n.to}>{n.linkLabel}</Button>}
-                  />
-                ))}
-                {whatIWouldDo.map((w) => (
-                  <EdgeRow
-                    key={`week-${w.groundId}`}
-                    kind="look"
-                    title={w.lines[0]}
-                    detail={[`This is for ${w.label}.`, ...w.lines.slice(1)].map((line, i) => <p key={i} className="gwui-panel-text">{line}</p>)}
-                    actions={<Button kind="secondary" size="small" to={`/grounds/${w.groundId}`}>Open the check-in</Button>}
-                  />
-                ))}
-              </EdgeList>
+          {/* SINCE YESTERDAY (C1): what moved since the round before, for the check-in the line is about. */}
+          {data?.sinceYesterday && (
+            <Section heading={data.sinceYesterday.heading}>
+              <Panel>
+                <p className="t-body">{data.sinceYesterday.says}</p>
+                {data.sinceYesterday.also && <p className="t-small mut">{data.sinceYesterday.also}</p>}
+              </Panel>
             </Section>
           )}
 
