@@ -96,15 +96,21 @@ export function theSilenceIsTheCustomers(text: string, dealName: string, side: W
  * won't buy this month." A customer who told the rep something, said something, asked something, or said they will not buy,
  * answered. A no is an answer too.
  */
-const THEY_SAID_SOMETHING = /\b(?:told|tells)\s+(?:me|us|him|her|them)\b|\b(?:says?|said)\b|\basked\b|\b(?:won['’]?t|will not|wouldn['’]?t|would not|is not|isn['’]?t|are not|aren['’]?t|not)\s+(?:be\s+)?(?:buy|buying|interested)\b/i;
+const THEY_SAID_SOMETHING = /\b(?:told|tells)\s+(?:me|us|him|her|them)\b|\b(?:says?|said)\b|\basked\b|\b(?:wants?|wanted|ordered|agreed)\b|\b(?:won['’]?t|will not|wouldn['’]?t|would not|is not|isn['’]?t|are not|aren['’]?t|not)\s+(?:be\s+)?(?:buy|buying|interested)\b/i;
 
 /** Whether a line says the customer answered: a reply verb, said of the customer's side (never of somebody on ours). */
 export function theCustomerAnswered(text: string, dealName: string, side: WhoIsOnOurSide = {}): boolean {
   const t = String(text ?? '');
   if (THEY_MOVED.test(t) && !/\b(?:not|no|never|hasn'?t|haven'?t)\b/i.test(t)) return true;
+  const theirs = new Set([...theCustomerIn(dealName), ...wordsOf(side.contact), ...(side.peopleThere ?? []).flatMap((n) => wordsOf(n))].filter((w) => w.length >= 3));
+  /* "I spoke to Paul at Upper Hill Offices" (real-model run, 25 October): speaking with somebody there is an answer. */
+  const spoke = /\b(?:spoke|spoken|talked|met)\s+(?:to|with)\s+(?:the\s+)?([A-Za-z][\w'’-]*)/i.exec(t);
+  if (spoke && !/\b(?:not|never|couldn['’]?t|could not|didn['’]?t)\s+(?:\w+\s+)?(?:spoke|speak|talk|meet)/i.test(t)) {
+    const w = spoke[1].toLowerCase();
+    if (theirs.has(w) || THE_CUSTOMER.has(w)) return true;
+  }
   const m = THEY_SAID_SOMETHING.exec(t);
   if (!m) return false;
-  const theirs = new Set([...theCustomerIn(dealName), ...wordsOf(side.contact), ...(side.peopleThere ?? []).flatMap((n) => wordsOf(n))].filter((w) => w.length >= 3));
   const ours = new Set((side.people ?? []).flatMap((n) => wordsOf(n)).filter((w) => w.length >= 3 && !theirs.has(w)));
   /* Whose words they are: the nearest name before the verb, in the same sentence. "I said" and "Grace said" are not the customer. */
   const before = wordsOf(t.slice(0, m.index).split(/[.!?;]\s/).pop());
