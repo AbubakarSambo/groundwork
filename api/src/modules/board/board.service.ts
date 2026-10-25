@@ -1,3 +1,4 @@
+import { inAboutEightWords } from './what-happens-next-to-a-record';
 import { theDirectMorningFor, asServedOnTheBoard } from '../engagement/the-direct-morning';
 import { yourTeamPersonByPerson, theLeadActsOnAPerson, type AnActionAsked } from './your-team-person-by-person';
 import { theNudgesOnTheBoard } from '../engagement/the-leads-own-nudge';
@@ -3202,7 +3203,7 @@ export class BoardService {
               const what = String(w.what ?? '').trim().replace(/[.\s]+$/, '');
               return { id: w.id, says: saidOf.get(w.id)!, step: `Waiting on ${String(w.onLabel).trim()} for ${/^[A-Z][a-z]/.test(what) ? what.charAt(0).toLowerCase() + what.slice(1) : what}` };
             });
-            if (!row.next && !row.nextStep) row.nextStep = row.waitingOnTheCustomer[row.waitingOnTheCustomer.length - 1].step;
+            if (!row.next && !row.nextStep) row.nextStep = inAboutEightWords(row.waitingOnTheCustomer[row.waitingOnTheCustomer.length - 1].step);
           }
         }
       }
@@ -3238,7 +3239,7 @@ export class BoardService {
             if (valueLine && valueLine !== row.value) row.valueLine = valueLine;
             if (!line) continue;
             row.next = line.says;
-            row.nextStep = line.says;
+            row.nextStep = inAboutEightWords(line.says);
             row.nextSays = line.says;
             row.nextKnown = 'said';
             if (line.on) row.nextOn = line.on.toISOString().slice(0, 10);

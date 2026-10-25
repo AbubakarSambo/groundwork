@@ -122,7 +122,8 @@ export function theHeading(gap: number, likely: number[], possible: (number | nu
   let k = 0;
   while (k < known.length && sum < left) { sum += known[k]; k += 1; }
   const n = possible.length;
-  if (sum < left) return `To close the gap, more than these ${inWords(n)} ${n === 1 ? 'deal is' : 'deals are'} needed`;
+  /* Short, as the prototype's "two of these three" (Hafsah, 25 October): every one of them, and more. */
+  if (sum < left) return n === 1 ? 'To close the gap, this one and more' : `To close the gap, all ${inWords(n)} and more`;
   return k === n ? (n === 1 ? 'To close the gap, this one' : n === 2 ? 'To close the gap, both of these' : `To close the gap, all ${inWords(n)} of these`) : `To close the gap, ${inWords(k)} of these ${inWords(n)}`;
 }
 
@@ -174,12 +175,10 @@ function byWhatEachDealHolds(
     const here = possible.length === 1 ? 'this one closes' : `all ${inWords(possible.length)} here close`;
     const also = likelyHold > 0 ? ' too' : '';
     const sum = all >= gap ? `that is ${n(all)}${thing(all)}, enough to close the gap.` : `that is ${n(all)}${thing(all)}, ${n(gap - all)} short.`;
-    const noNumber = possible.filter((r) => holds(r) == null).map((r) => r.name);
-    const unsaidHere = noNumber.length
-      ? ` ${noNumber.length === 1 ? noNumber[0] : `${noNumber.slice(0, -1).join(', ')} and ${noNumber[noNumber.length - 1]}`} ${noNumber.length === 1 ? 'has' : 'have'} no ${measure === 'units' ? 'number of units' : 'value'} yet.`
-      : '';
-    const start = likelyHold > 0 ? `The deals likely to close hold ${n(likelyHold)}${thing(likelyHold)}. ` : '';
-    return { gap, aim: aimName, deals, heading, says: `${start}Even if ${here}${also}, ${sum}${unsaidHere}` };
+    /* Customer names go in the list, not here (Hafsah, 25 October): the count of deals with no number, said once. */
+    const noNumber = possible.filter((r) => holds(r) == null).length;
+    const unsaidHere = noNumber ? ` ${noNumber === 1 ? 'One of them has' : `${inWords(noNumber).replace(/^./, (c) => c.toUpperCase())} of them have`} no ${measure === 'units' ? 'number of units' : 'value'} yet.` : '';
+    return { gap, aim: aimName, deals, heading, says: `Even if ${here}${also}, ${sum}${unsaidHere}` };
   }
   const these = `The ${possible.length === 1 ? 'open deal' : `${inWords(possible.length)} open deals`} still possible ${possible.length === 1 ? 'holds' : 'hold'} ${n(total)}${thing(total)} on record`;
   const so = !possible.length

@@ -86,13 +86,14 @@ describe('the quality pass of 18 October, as each reader reads the board', () =>
 
     it('Grace reads what each deal still needs and who owes it, one line each, from the record', () => {
       const step = (name: string) => deal(grace, name).nextStep;
-      expect(step('Mama Pima Stores')).toBe('Answer Wanjiru on KES 12,000 off 10 units, then call her next week.');
+      /* Next steps in about eight words (Hafsah, 25 October): the first step; a cut never drops a name, number or day. */
+      expect(step('Mama Pima Stores')).toBe('Answer Wanjiru on KES 12,000 off 10 units.');
       expect(step('Savannah Cafe')).toBe('Jane pays the KES 15,000 deposit on Friday 16 October.');
-      expect(step('Tuskys Westgate')).toBe('Joseph\'s samples, promised for Thursday 15 October. Nothing since says they came.');
+      expect(step('Tuskys Westgate')).toBe('Joseph\'s samples, promised for Thursday 15 October.');
       expect(step('Juja Hardware')).toBe('Your answer on KES 4,500 a unit, then a buying date from Mr Kariuki.');
-      expect(step('Ngong Road Minimart')).toBe('Kevin follows up with Ali on Monday 19 October. The quote of KES 20,000 is sent.');
+      expect(step('Ngong Road Minimart')).toBe('Kevin follows up with Ali on Monday 19 October.');
       expect(step('Kilele Hotel')).toBe('Kevin will schedule the delivery of the 40 units to Kilele Hotel.');
-      expect(step('Greenfield Supermarket')).toBe('Delivery on Friday 16 October, and Greenfield Supermarket pays on delivery.');
+      expect(step('Greenfield Supermarket')).toBe('Delivery on Friday 16 October, and Greenfield Supermarket pays.');
       for (const old of ['Send the quote, by tomorrow by noon', 'Speak to the owner', 'Pay a KES 15,000 deposit on Friday', 'Follow up with Wanjiru at Mama Pima Stores']) {
         expect(JSON.stringify(grid(grace).rows.map((r: any) => r.nextStep))).not.toContain(old);
       }
@@ -100,9 +101,9 @@ describe('the quality pass of 18 October, as each reader reads the board', () =>
 
     it('each rep reads their own deals\' steps said to them, and the lead\'s answer as Grace\'s', () => {
       expect(deal(joseph, 'Juja Hardware').nextStep).toBe('Grace\'s answer on KES 4,500 a unit, then a buying date from Mr Kariuki.');
-      expect(deal(kevin, 'Ngong Road Minimart').nextStep).toBe('You follow up with Ali on Monday 19 October. Your quote of KES 20,000 is sent.');
-      expect(deal(mercy, 'Tuskys Westgate').nextStep).toBe('Joseph\'s samples, promised for Thursday 15 October. Nothing since says they came.');
-      expect(deal(mercy, 'Mama Mboga Mart').nextStep).toBe('Nothing booked. Rose has your KES 10,000 quote. Ask Rose when Mama Mboga Mart will buy.');
+      expect(deal(kevin, 'Ngong Road Minimart').nextStep).toBe('You follow up with Ali on Monday 19 October.');
+      expect(deal(mercy, 'Tuskys Westgate').nextStep).toBe('Joseph\'s samples, promised for Thursday 15 October.');
+      expect(deal(mercy, 'Mama Mboga Mart').nextStep).toBe('Ask Rose when Mama Mboga Mart will buy. Nothing booked.');
       /* Never a colleague's deal. */
       expect(deal(mercy, 'Juja Hardware')).toBeUndefined();
       expect(deal(joseph, 'Tuskys Westgate')).toBeUndefined();
@@ -126,7 +127,8 @@ describe('the quality pass of 18 October, as each reader reads the board', () =>
 
     it('the gap paragraph is short and names the deal with no units', () => {
       /* With no stall rule set, Upper Hill Offices is open too (standing decision 4). */
-      expect(grace.toCloseTheGap.says).toBe('The deals likely to close hold 6 units. Even if all six here close too, that is 27 units, 28 short. Tuskys Westgate and Upper Hill Offices have no number of units yet.');
+      /* Customer names go in the list, not the paragraph (Hafsah, 25 October); the headline already says what is likely. */
+      expect(grace.toCloseTheGap.says).toBe('Even if all six here close too, that is 27 units, 28 short. Two of them have no number of units yet.');
     });
   });
 

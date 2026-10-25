@@ -178,7 +178,8 @@ export function HeadlineAndGap({ b, deals, groups }: { b: Any; deals: Any; group
         <Panel>
           <h2 className="pb-gap-h">{gapHeading}</h2>
           {gapSays && <p className="pb-note">{gapSays}</p>}
-          {possible.map((d: Any) => (
+          {/* Three, as "two of these three"; the rest behind "and N more" (Hafsah, 25 October). */}
+          {possible.slice(0, 3).map((d: Any) => (
             <div className="pb-gap-row" key={d.id}>
               <div className="pb-gap-row-top">
                 <span className="pb-gap-name">{d.name}</span>
@@ -188,6 +189,20 @@ export function HeadlineAndGap({ b, deals, groups }: { b: Any; deals: Any; group
               <div className={d.next || d.nextStep ? 'pb-gap-next' : 'pb-gap-next pb-gap-next-none'}>{d.nextStep ?? d.next ?? (b.releaseOneSalesBoard ? NOTHING_BOOKED : d.nextSays)}</div>
             </div>
           ))}
+          {possible.length > 3 && (
+            <details className="pb-fold">
+              <summary>{`and ${possible.length - 3} more`}</summary>
+              {possible.slice(3).map((d: Any) => (
+                <div className="pb-gap-row" key={d.id}>
+                  <div className="pb-gap-row-top">
+                    <span className="pb-gap-name">{d.name}</span>
+                    <span className="pb-gap-who">{firstName(d.owner)}</span>
+                  </div>
+                  <div className={d.next || d.nextStep ? 'pb-gap-next' : 'pb-gap-next pb-gap-next-none'}>{d.nextStep ?? d.next ?? (b.releaseOneSalesBoard ? NOTHING_BOOKED : d.nextSays)}</div>
+                </div>
+              ))}
+            </details>
+          )}
         </Panel>
       )}
     </div>
@@ -1149,6 +1164,8 @@ export function ThePicturedSalesBoard(p: PicturedBoardProps) {
     <div className="pb">
       {/* THE FIRST SCREEN, AS THE PROTOTYPE HAS IT (Hafsah, 24 October): the headline with what is closing the gap, What needs you, and the team. */}
       <HeadlineAndGap b={b} deals={deals} groups={groups} />
+      {/* Right under the gap, as the prototype's board has it. */}
+      <WhatTheTargetAssumes b={b} />
       {/* An admin who only reads is never told "What needs you": it is not hers to do (the light board's rule, kept). */}
       {!p.readOnly && <WhatNeedsYou b={b} renderActions={p.renderActions} groundId={p.groundId} deals={deals} sessionRows={p.sessionRows} />}
       <TheTeamToday b={b} deals={deals} today={isoDay(now)} groundId={p.groundId} />
@@ -1167,7 +1184,6 @@ export function ThePicturedSalesBoard(p: PicturedBoardProps) {
         <WaitingOnOtherTeams groundId={p.groundId} />
         <WhereThisIsHeading b={b} onRecordTheDecision={p.onRecordTheDecision} readOnly={p.readOnly} />
       </FoldTheRest>
-      <WhatTheTargetAssumes b={b} />
       <Reports b={b} groundId={p.groundId} sessionRows={p.sessionRows} navigate={p.navigate} now={now} />
       <AskAboutThisBoard example={example} />
       <GroundworkRecommends offers={p.recommendations} onAnswer={p.onAnswerRecommendation} busy={p.recommendationBusy} />

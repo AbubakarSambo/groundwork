@@ -44,6 +44,6 @@ describe("Mercy's Greenfield deal", () => {
       row('w-pima', 'Mama Pima Stores', 'Joseph', { Units: '10' }),
     ] }];
     const gap = toCloseTheGap('sales team' as any, sections, [{ name: '120 units sold by 30 October', target: 120, count: 40, fromTheDeals: { counts: 'units' } }], at('2026-10-30T00:00:00Z'), at('2026-10-13T08:00:00Z'), { inShort: true });
-    expect(gap?.says).toBe('Even if all six here close, that is 35 units, 45 short. Savannah Cafe, Upper Hill Offices, Tuskys Westgate and Juja Hardware have no number of units yet.');
+    expect(gap?.says).toBe(/* Customer names go in the list (Hafsah, 25 October). */ 'Even if all six here close, that is 35 units, 45 short. Four of them have no number of units yet.');
   });
 });
