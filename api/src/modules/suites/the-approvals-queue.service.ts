@@ -1,3 +1,4 @@
+import { whatWasAttachedSaid } from './what-was-attached-to-a-spend-request';
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AN_ADMIN_SWITCHES_IT_ON } from './a-suite-that-is-off-says-what-to-do';
@@ -72,6 +73,8 @@ export interface AQueueItem {
   clash: { count: number; names: string[]; says: string } | null;
   /** Set when the reader reads this only because they stand in for somebody on leave: who, until when, and the sentence. */
   standingIn: { name: string; until: string | null; says: string } | null;
+  /** A request to spend: what the person attached when they asked, if anything (polish round 1, 25 October). */
+  attached?: { name: string; kind: string | null; words: string | null } | null;
 }
 
 export interface TheQueue {
@@ -293,7 +296,9 @@ export class ApprovalsQueueService {
       const amount = num(r.amount);
       return {
         id: r.id, suite: 'spend', name: fullOf(r.userId), firstName: first, team, waitingSince: m.since.toISOString(), workingDaysWaiting: waited, pastTheDeadline,
-        says: `${first} asked to spend ${c.spendAnswers.currency ? `${c.spendAnswers.currency} ` : ''}${amount.toLocaleString('en-US')} on ${whatTheMoneyIsFor(r.what ?? '', c.lookups.knownNames)}.`,
+        says: `${first} asked to spend ${c.spendAnswers.currency ? `${c.spendAnswers.currency} ` : ''}${amount.toLocaleString('en-US')} on ${whatTheMoneyIsFor(r.what ?? '', c.lookups.knownNames)}.${(() => { const att = whatWasAttachedSaid(first || 'They', r as any); return att ? ` ${att}` : ''; })()}`,
+        /* What they attached, with its words where they could be read, for the approver to read before deciding (polish round 1, 25 October). */
+        attached: (r as any).attachedName ? { name: (r as any).attachedName, kind: (r as any).attachedKind, words: (r as any).attachedText ?? null } : null,
         waitedSays, where, amount, line: `${first}: ${spendInWords(amount, c.spendAnswers.currency, r.what ?? '', c.lookups.knownNames)}`, startsOn: null, endsOn: null, clash: null, standingIn,
       };
     }).filter((i) => i.name);

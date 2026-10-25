@@ -2856,6 +2856,11 @@ model SpendRequest {
   paidById       String?   @map("paid_by_id")
   /// The evidence finance has had: "receipt", "quote". Only that it was given; no file is kept.
   evidenceGiven  String[]  @default([]) @map("evidence_given")
+  /// WHAT THE PERSON ATTACHED WHEN THEY ASKED (polish round 1, 25 October): a receipt, or a proforma or quote. Its name, which it is,
+  /// and its words where it is a PDF or a text file (bank details taken out, as every document here). No file is kept.
+  attachedName   String?   @map("attached_name") @db.VarChar(200)
+  attachedKind   String?   @map("attached_kind") @db.VarChar(16)
+  attachedText   String?   @map("attached_text") @db.Text
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 

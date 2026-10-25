@@ -689,6 +689,11 @@ export const fileARequestApi = {
     (await apiClient.post('/suites/leave/requests', input, { skipNotFoundToast: true } as any)).data,
   spending: async (input: NewSpendingRequest): Promise<RequestFiled> =>
     (await apiClient.post('/suites/spend/requests', input, { skipNotFoundToast: true } as any)).data,
+  /** A receipt or a proforma, attached to the person's own request while it waits (polish round 1, 25 October). Only its name and words are kept. */
+  attachToSpending: async (id: string, file: File, kind: 'receipt' | 'quote'): Promise<{ id: string; says: string }> => {
+    const body = new FormData(); body.append('file', file); body.append('kind', kind)
+    return (await apiClient.post(`/suites/spend/requests/${id}/attachment`, body, { headers: { 'Content-Type': 'multipart/form-data' } })).data
+  },
   /** With the suite off this throws a 404 carrying the board's own off sentence; the form reads
       that straight from the error rather than treating it as a generic failure. */
   leaveForm: async (): Promise<LeaveFormInfo> =>

@@ -42,6 +42,7 @@ describe('Omar, who looks after finance', () => {
       id: o.id, name: 'Kamau Njenga', team: 'Operations', amount: 12000, what: 'fuel for Kisumu deliveries', category: 'Fuel',
       askedOn: '2026-10-05', approvedBy: ['Fatuma'], approvedOn: '2026-10-05',
       evidenceNeeded: ['receipt'], evidenceGiven: [], checked: null, code: null, paidOn: null,
+      attached: null, /* nothing attached when Kamau asked (field added 25 October, polish round 1) */
       said: [
         'Kamau Njenga, in Operations, asked on 5 October to spend KES 12,000 for fuel for Kisumu deliveries.',
         'It is for Fuel.',
@@ -107,7 +108,8 @@ describe('Omar, who looks after finance', () => {
     const o = await approvedFuel();
     const v = await o.finance.view(o.as('u-omar'), TODAY);
     expect(Object.keys(v)).toEqual(['reader', 'currency', 'toPay', 'paid', 'lines']);
-    expect(Object.keys(v.toPay[0]).sort()).toEqual(['amount', 'approvedBy', 'approvedOn', 'askedOn', 'category', 'checked', 'code', 'evidenceGiven', 'evidenceNeeded', 'id', 'name', 'paidOn', 'said', 'team', 'what']);
+    /* 'attached' added 25 October (polish round 1): the receipt or proforma the person attached is a field on the request itself, so finance reads it; still nothing else Groundwork knows. */
+    expect(Object.keys(v.toPay[0]).sort()).toEqual(['amount', 'approvedBy', 'approvedOn', 'askedOn', 'attached', 'category', 'checked', 'code', 'evidenceGiven', 'evidenceNeeded', 'id', 'name', 'paidOn', 'said', 'team', 'what']);
     /* No other table is read for it than the request, the people's names, the directory's team, the suite's rows and the budgets. */
     for (const t of ['leaveRequest', 'suiteQuestion', 'assistantProposal']) {
       for (const fn of Object.values(o.prisma[t] ?? {})) (fn as jest.Mock).mockClear?.();

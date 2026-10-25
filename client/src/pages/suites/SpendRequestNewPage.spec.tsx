@@ -14,7 +14,7 @@ import { useAuthStore } from '@/stores/auth'
  * category, and the categories themselves - never a limit of the form's own. `POST
  * /suites/spend/requests` answers `{ id, says }` on success.
  */
-vi.mock('@/api/suites', () => ({ fileARequestApi: { spending: vi.fn(), spendForm: vi.fn() } }))
+vi.mock('@/api/suites', () => ({ fileARequestApi: { spending: vi.fn(), spendForm: vi.fn(), attachToSpending: vi.fn() } }))
 import { fileARequestApi } from '@/api/suites'
 
 const BARAKA = { id: 'u-b', firstName: 'Baraka', role: 'MEMBER', organizationName: 'Sokoni Fresh' }
@@ -162,5 +162,32 @@ describe('Ask to spend money', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
     await waitFor(() => expect(screen.queryByText('That didn’t load. Try again.')).toBeNull())
     expect(fileARequestApi.spendForm).toHaveBeenCalledTimes(2)
+  })
+})
+
+/* Polish round 1 dead end (25 October): the form has a place for a receipt or a proforma, sent with the request. */
+describe('a receipt or proforma on the form', () => {
+  it('is attached to the request just sent, and both sentences are read', async () => {
+    ;(fileARequestApi.spending as any).mockResolvedValue({ id: 'sr-1', says: 'Your request to spend KES 3,500 is with Wanjiru.' })
+    ;(fileARequestApi.attachToSpending as any).mockResolvedValue({ id: 'sr-1', says: 'A proforma or quote is attached to your request.' })
+    open()
+    fireEvent.change(await screen.findByLabelText('Amount'), { target: { value: '3500' } })
+    fireEvent.change(screen.getByLabelText('What it is for'), { target: { value: 'the court filing fee' } })
+    const file = new File(['Filing fee KES 3,500'], 'proforma.pdf', { type: 'application/pdf' })
+    fireEvent.change(screen.getByLabelText('A receipt or proforma, if you have one'), { target: { files: [file] } })
+    expect(screen.getByLabelText('Which is it')).toHaveValue('quote')
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    await waitFor(() => expect(fileARequestApi.attachToSpending).toHaveBeenCalledWith('sr-1', file, 'quote'))
+    expect(await screen.findByText('Arrived at your requests')).toBeInTheDocument()
+  })
+
+  it('with no file, nothing is attached', async () => {
+    ;(fileARequestApi.spending as any).mockResolvedValue({ id: 'sr-2', says: 'Sent.' })
+    open()
+    fireEvent.change(await screen.findByLabelText('Amount'), { target: { value: '100' } })
+    fireEvent.change(screen.getByLabelText('What it is for'), { target: { value: 'pens' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    expect(await screen.findByText('Arrived at your requests')).toBeInTheDocument()
+    expect(fileARequestApi.attachToSpending).not.toHaveBeenCalled()
   })
 })
