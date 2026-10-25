@@ -631,6 +631,8 @@ model Organization {
   release6DirectionOn    Boolean   @default(false) @map("release_6_direction_on")
   /// Release 7: the people scenarios and a review built from check-ins. Off for every organisation.
   release7PeopleOn       Boolean   @default(false) @map("release_7_people_on")
+  /// Release 8: the remaining situations, each with the board its situation switches on. Off for every organisation.
+  release8SituationsOn   Boolean   @default(false) @map("release_8_situations_on")
   whatsappMonthlyUse     WhatsAppMonthlyUse[]
 
   companyStage CompanyStage? @map("company_stage")

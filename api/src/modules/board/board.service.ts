@@ -1,3 +1,5 @@
+import { theSituationBoard, theRelease8SituationsIsOn } from './release-8-situations';
+import { whereTheTimeWent } from './the-switchboards-own-sections';
 import { theRelease4TeamsIsOn, theUnitOfATarget } from './release-4-teams';
 import { theProjectBoard, theRelease5ProjectsIsOn, isAProject, aMilestoneAcceptedIsAnInvoiceToRaise } from './release-5-projects';
 import { eachPersonsOwnBesideTheTeams, whyTheNumbersDoNotMatch } from './the-team-and-each-persons-figures';
@@ -3126,6 +3128,12 @@ export class BoardService {
       if (personHistory.length) out.personHistory = personHistory;
       const blockerCheck = theBlockerCheck(handoffs, reader);
       if (blockerCheck.length) out.blockerCheck = blockerCheck;
+      /* RELEASE 8: where the time went, from what each person committed to, by the piece of work it names. Never hours. To whoever runs it. */
+      if (runsIt) {
+        const itemNames = ((out.workRecords ?? []) as any[]).flatMap((sec: any) => ((sec?.rows ?? []) as any[]).map((x: any) => String(x?.name ?? ''))).filter(Boolean);
+        const timeWent = whereTheTimeWent(mine.commitments, itemNames, reader);
+        if (timeWent.length) (out as any).whereTheTimeWent = timeWent;
+      }
       /* Their words, so only for those whose words this reader may read: their own, or everybody's where people see each other or the reader runs it. */
       const evidenceIndex = theEvidenceIndex(
         mine.lines.map((l) => ({ ...l, wordsMayBeRead: mayReadEveryone || l.participantId === me?.id || !peersWalled })),
@@ -3914,6 +3922,17 @@ export class BoardService {
          already says "you" for the reader where a sentence is true of several people (request 118, part 2). */
       /* And a sentence stored before the wording rules reads right as it is served (decision 91). */
       /* A line typed as an intention that intends nothing is sent with no kind (requests 127 item 4, 129 item 5), after every board that reads the kind. */
+      /*
+       * RELEASE 8: THE REMAINING SITUATIONS (release-8-situations). Which of the sections already served, after every wall above, this
+       * situation's board draws, and in which order. Built from the board this reader is served and nothing else. Off, nothing new.
+       */
+      const releaseEight = await theRelease8SituationsIsOn(this.prisma, (ground as any).organizationId);
+      /* The purple, situation-only sections are drawn on the kit boards too, only with Release 8 on. */
+      if (releaseEight) (walled as any).releaseEight = true;
+      if (!(walled as any).collections && !(walled as any).matter && !(walled as any).project && releaseEight) {
+        const situation = theSituationBoard(String((ground as any).scenario ?? ''), walled as any, { runsIt: isInitiator || theyRunIt });
+        if (situation) { (walled as any).situation = situation; (walled as any).releaseEightSituations = true; }
+      }
       if (Array.isArray((walled as any).whoOwnsWhat)) (walled as any).whoOwnsWhat = eachLineWithTheKindThatFits((walled as any).whoOwnsWhat);
       const asServed = everyActionHasALabel(aBoardWithNoEmptyLine(everyStoredSentenceReadsRight(withNoRatingNumber(yourOwnRowsSayYou(eachRepeatedSentenceSaidOnce(walled), me?.id ?? null)), (ground.participants ?? []).map((p: any) => nameOf(p.id)).filter((n: any): n is string => typeof n === 'string' && n.length > 1))));
       /*

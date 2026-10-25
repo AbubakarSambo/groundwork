@@ -1096,3 +1096,37 @@ export function theQuestionsForTheLead(
 
   return out.slice(0, MOST_QUESTIONS);
 }
+
+/**
+ * WHERE THE TIME WENT (the switchboard's purple section for a new hire, drift, a plan to get back on track and a contract renewal;
+ * Release 8). Read from what each person said they would do across the run, grouped by the piece of work each commitment names
+ * (a deal, a client, a milestone on this check-in's records). Never hours: hours from time sheets stay out of anything about a person.
+ * One sentence a person, the biggest first. Only for whoever runs the check-in, and only commitments the reader may read.
+ */
+export interface WhereTheTimeWent { participantId: string | null; who: string; says: string }
+
+export function whereTheTimeWent(commitments: ACommitment[], items: string[], r: WhoIsReading): WhereTheTimeWent[] {
+  const words = (t: string) => ` ${t.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ')} `;
+  const named = (text: string) => items.find((i) => i.trim().length >= 3 && words(text).includes(words(i)));
+  const byPerson = new Map<string, { pid: string | null; counts: Map<string, number>; total: number; sessions: Set<number> }>();
+  for (const c of commitments) {
+    if (!r.commitmentMayBeRead(c) || !c.participantId) continue;
+    const k = c.participantId;
+    const e = byPerson.get(k) ?? { pid: c.participantId, counts: new Map(), total: 0, sessions: new Set() };
+    const item = named(c.text) ?? 'other work';
+    e.counts.set(item, (e.counts.get(item) ?? 0) + 1);
+    e.total += 1;
+    if (c.statedInSession) e.sessions.add(c.statedInSession);
+    byPerson.set(k, e);
+  }
+  const NUM = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+  const n = (x: number) => (x < NUM.length ? NUM[x] : String(x));
+  return [...byPerson.values()].filter((e) => e.total >= 2).map((e) => {
+    const who = whoIs(r, e.pid);
+    const top = [...e.counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
+    const parts = top.map(([item, k], i) => (i === 0 ? `${n(k)} ${k === 1 ? 'was' : 'were'} about ${item}` : `${n(k)} about ${item}`));
+    const list = parts.length <= 1 ? parts.join('') : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+    const over = e.sessions.size ? ` over ${n(e.sessions.size)} check-in${e.sessions.size === 1 ? '' : 's'}` : '';
+    return { participantId: e.pid, who, says: `Of ${who === 'You' ? 'your' : `${who}’s`} ${n(e.total)} commitments${over}, ${list}.` };
+  }).sort((a, b) => b.says.length - a.says.length);
+}

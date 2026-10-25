@@ -1,5 +1,6 @@
 import { FoldTheRest } from './FoldTheRest'
 import { AddToTheProject } from './AddToTheProject'
+import { TheSituationsNote, WhatEachSidePromised, TheRisks, WhatHappenedDayByDay, WhatKeepsBeingRaised, TheSituationsWorkPlan } from './TheSituationsSections'
 import { useMemo, useState, type ReactNode } from 'react'
 import { useTheDirectMorning } from '@/lib/the-direct-morning'
 import { Link } from 'react-router-dom'
@@ -8,7 +9,7 @@ import { Section, Panel, Tag, Button, EdgeList, EdgeRow } from '@/components/gw/
 import { apiClient } from '@/api/client'
 import { toast } from 'sonner'
 import { reportsApi } from '@/api/reports'
-import { WhereTheCohortStandsSection, SupportGivenSection, ByWhoTheyAreSection, WhereTheyDisagreeSection, WhatTheSystemsShowSection, WhereWhatWasSaidAndTheSystemsDifferSection, WhereTheMatterStandsSection, WhatYouNeedToDecideSection, WhatChangedThisWeekSection, WhatEachLevelUnderstoodSection, WhatTheVisitLogShowsSection, TheCountiesSection } from '../TheSwitchboardsSections'
+import { EvidenceIndexSection, BusyOrMovingSection, ContradictionsSection, QuestionsForTheLeadSection, WhereTheCohortStandsSection, SupportGivenSection, ByWhoTheyAreSection, WhereTheyDisagreeSection, WhatTheSystemsShowSection, WhereWhatWasSaidAndTheSystemsDifferSection, WhereTheMatterStandsSection, WhatYouNeedToDecideSection, WhatChangedThisWeekSection, WhatEachLevelUnderstoodSection, WhatTheVisitLogShowsSection, TheCountiesSection } from '../TheSwitchboardsSections'
 import { aRealOrganisationName } from '@/lib/ask-name'
 import { groundsApi } from '@/api/grounds'
 import { isASalesKind } from '@/lib/a-sales-kind'
@@ -48,6 +49,8 @@ export type APicturedSection =
   | 'question' | 'systemsShow' | 'saidAndSystemsDiffer'
   | 'matterStands' | 'youNeedToDecide' | 'changedThisWeek'
   | 'eachLevel' | 'visitLog' | 'counties'
+  | 'situationNote' | 'situationThemes' | 'obligations' | 'situationTimeline' | 'situationPlan' | 'risks'
+  | 'whereTimeWent' | 'evidenceIndex' | 'busyOrMoving' | 'contradictions' | 'questionsForTheLead'
 
 const firstName = (n: string | null | undefined) => (n ?? '').trim().split(/\s+/)[0] || ''
 
@@ -873,6 +876,17 @@ export function ThePicturedBoard(p: PicturedBoardProps & { line?: string | null;
     agreedAndApart: () => <AgreedOnDayOneAndSetUpApart b={b} personId={p.personId ?? null} />,
     firstSteps: () => <TheFirstSteps b={b} groundId={p.groundId} />,
     mayBeRelevant: () => <ThisMayBeRelevant b={b} groundId={p.groundId} />,
+    situationNote: () => <TheSituationsNote b={b} />,
+    situationThemes: () => <WhatKeepsBeingRaised b={b} />,
+    obligations: () => <WhatEachSidePromised b={b} />,
+    situationTimeline: () => <WhatHappenedDayByDay b={b} />,
+    situationPlan: () => <TheSituationsWorkPlan b={b} />,
+    risks: () => <TheRisks b={b} />,
+    whereTimeWent: () => (b.whereTheTimeWent ?? []).length ? <Section heading="Where the time went"><EdgeList label="Where the time went">{(b.whereTheTimeWent as Any[]).map((x) => <EdgeRow key={x.participantId ?? x.who} kind="look" reason={null} title={x.says} />)}</EdgeList></Section> : null,
+    evidenceIndex: () => (b.evidenceIndex ?? []).length ? <EvidenceIndexSection rows={b.evidenceIndex} /> : null,
+    busyOrMoving: () => b.busyOrMoving ? <BusyOrMovingSection data={b.busyOrMoving} /> : null,
+    contradictions: () => (b.contradictions ?? []).length ? <ContradictionsSection rows={b.contradictions} /> : null,
+    questionsForTheLead: () => (b.questionsForTheLead ?? []).length ? <QuestionsForTheLeadSection rows={b.questionsForTheLead} /> : null,
     companyBoard: () => <div style={{ textAlign: 'center' }}><Button kind="quiet" to="/company">See the company board</Button></div>,
   }
   const at = p.foldAfter ? p.order.indexOf(p.foldAfter) : -1
