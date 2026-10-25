@@ -79,6 +79,14 @@ describe('Release 9: setting up from documents, as Grace reads it', () => {
     await waitFor(() => expect(m.decide).toHaveBeenCalledWith('l'))
   })
 
+  /* Round 1's dead end (25 October): the link went to /ask, which is no page. Ask is /chat. */
+  it('sends someone with no documents to the real Ask page', async () => {
+    m.setup.mockResolvedValue({ on: true, setup: SETUP })
+    draw(<SetUpFromYourDocumentsPage />)
+    const link = await screen.findByRole('link', { name: /^Ask/ }) as HTMLAnchorElement
+    expect(link.getAttribute('href')).toBe('/chat')
+  })
+
   it('reads a document only once it has a name and words', async () => {
     m.setup.mockResolvedValue({ on: true, setup: { ...SETUP, decideFirst: [], added: null } })
     m.addDocument.mockResolvedValue({ on: true, setup: SETUP })

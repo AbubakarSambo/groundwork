@@ -62,7 +62,7 @@ export function SetUpFromYourDocumentsPage() {
           {a.waitsOn && <p className="t-small t-red">{a.waitsOn}</p>}
         </Panel>
       ))}
-      <p className="t-small">{s.noDocuments.replace(/Ask .*\.$/, '')}<Link to="/ask" className="gw-link">{org ? askNameFor(org) : 'Ask'}</Link>.</p>
+      <p className="t-small">{s.noDocuments.replace(/Ask .*\.$/, '')}<Link to="/chat" className="gw-link">{org ? askNameFor(org) : 'Ask'}</Link>.</p>
       <Link to="/policies" className="gw-link t-small gw-start">See the policy board</Link>
     </Page>
   )
