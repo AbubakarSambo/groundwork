@@ -76,3 +76,21 @@ describe('a colleague not answering is not the customer going quiet', () => {
     expect(prisma.person.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { organizationId: 'org-1' } }));
   });
 });
+
+describe('speaking with somebody at the customer is an answer (real-model run, 25 October)', () => {
+  it('"I spoke to Paul at Upper Hill Offices. He wants 6 units" ends the silence', () => {
+    const lines = [
+      { text: 'I visited Upper Hill Offices on Monday. Paul was not in, so I left the brochure with reception. Upper Hill Offices has not answered since 14 October.', createdAt: '2026-10-19T09:00:00Z' },
+      { text: 'I spoke to Paul at Upper Hill Offices. He wants 6 units and a quote by Friday.', createdAt: '2026-10-25T09:00:00Z' },
+    ];
+    expect(notAnsweringSince('Upper Hill Offices', lines, { people: ['Peter Otieno'], contact: 'Paul' })).toBeNull();
+  });
+
+  it('"I could not speak to Paul" does not', () => {
+    const lines = [
+      { text: 'Upper Hill Offices has not answered since 14 October.', createdAt: '2026-10-19T09:00:00Z' },
+      { text: 'I tried, but I could not speak to Paul at Upper Hill Offices.', createdAt: '2026-10-25T09:00:00Z' },
+    ];
+    expect(notAnsweringSince('Upper Hill Offices', lines, { people: ['Peter Otieno'], contact: 'Paul' })).not.toBeNull();
+  });
+});
