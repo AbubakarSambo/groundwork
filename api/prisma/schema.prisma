@@ -2952,6 +2952,8 @@ model PerformanceReview {
   recordRead             Json?     @map("record_read")
   /// The first day of the period the record was read for. The last day is `startedAt`.
   recordFrom             DateTime? @map("record_from")
+  /// When the person or whoever writes it last pressed "Update from the record". Null: as read when the review started.
+  recordReadAt           DateTime? @map("record_read_at")
   /// THE APPEAL (decision 113, bug B-024). The person appeals a decided review, saying why; they may add to it
   /// until it is decided. It goes to an admin who is not whoever decided the review (and not the person).
   /// With no such admin it is saved and stays open, and `appealAskedForAdminAt` says the reviewer was asked to
@@ -5839,6 +5841,8 @@ model GroundCommitment {
   participantId String? @map("participant_id")
   /// The action, in the words it was written in.
   text          String  @db.Text
+  /// What "it" or "that" in the promise is, where the check-in asked: their answer, in their own words, never reworded.
+  whatItIs      String? @map("what_it_is") @db.Text
   /// What it is for, where that was said. Never invented.
   outcome       String? @db.Text
   /// The timing in its own words ("this week", "friday", "before Thursday") - never parsed to a date.
