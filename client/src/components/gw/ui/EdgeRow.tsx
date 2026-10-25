@@ -28,7 +28,9 @@ const EDGE_REASON: Partial<Record<EdgeKind, string>> = {
   concern: 'There is a problem.',
 }
 
-export function EdgeRow({ kind, title, detail, actions, to }: {
+export function EdgeRow({ kind, title, detail, actions, reason: givenReason, to }: {
+  /** What the edge colour means, for a screen reader, where the kind's own reason does not fit; null for none. */
+  reason?: string | null
   /** Where the whole row goes when it is tapped (the prototype's phone rows have no button of their own). */
   to?: string
   kind: EdgeKind
@@ -47,7 +49,7 @@ export function EdgeRow({ kind, title, detail, actions, to }: {
    * never, here, since the title always carries it; said only when the title does not already say
    * "ready" leaves the word in exactly where a reader needs it and nowhere it is already said.
    */
-  const reason = typeof title === 'string' && title.toLowerCase().includes('ready') ? undefined : EDGE_REASON[kind]
+  const reason = givenReason !== undefined ? givenReason : typeof title === 'string' && title.toLowerCase().includes('ready') ? undefined : EDGE_REASON[kind]
   /* The prototype's row in a list (.item): a coloured edge (.sp), the line and its detail (.h, .s), then the action. */
   const edge = ({ ready: 'rec', decide: 'act', look: 'att', concern: 'con' } as Record<string, string>)[kind] ?? 'act'
   return (

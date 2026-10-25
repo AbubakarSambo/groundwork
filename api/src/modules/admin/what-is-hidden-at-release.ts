@@ -1,4 +1,5 @@
 import { theRelease4TeamsIsOn } from '../board/release-4-teams';
+import { theRelease5ProjectsIsOn } from '../board/release-5-projects';
 /**
  * WHAT THE RELEASE HIDES, AND THE THREE SETTINGS THAT HIDE IT (decisions 78, 88 and 90).
  *
@@ -79,6 +80,8 @@ export async function theBoardKindsOffered(prisma: Reader, organizationId?: stri
   if (offered.includes('sales org') && !offered.includes('sales team')) offered.push('sales team');
   /* Release 4: leadership is offered only to an organisation with Release 4 on. */
   if (organizationId && !offered.includes('leadership') && (await theRelease4TeamsIsOn(prisma, organizationId))) offered.push('leadership');
+  /* Release 5: a funded project is offered only to an organisation with Release 5 on. */
+  if (organizationId && !offered.includes('a funded project') && (await theRelease5ProjectsIsOn(prisma, organizationId))) offered.push('a funded project', 'client delivery');
   return KINDS_OF_WORK.filter((k) => offered.includes(k.toLowerCase()));
 }
 

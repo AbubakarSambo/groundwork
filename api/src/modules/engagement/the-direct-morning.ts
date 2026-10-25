@@ -215,6 +215,12 @@ const theDealRows = (board: any): any[] => ((board?.workRecords ?? []) as any[])
 /** 1. ARE WE GOING TO HIT THE TARGET? */
 export function theTargetLines(board: any, now: Date, zone: string): { lines: AMorningLine[]; gap: number | null; target: number | null; heading: string } {
   const heading = String(board?.headline?.question ?? '').trim() || 'Will we reach the target?';
+  /* Release 5: a project's lead hears the next milestone and the tightest month, from the project board as served (release-5-projects). */
+  if (board?.releaseFiveProjects && board?.project) {
+    const next = ((board.project.plan ?? []) as any[]).find((r) => !/It is (accepted|paid for)\b/.test(String(r.says)));
+    const lines = [next ? `${next.title}${/,/.test(next.title) ? "," : ""} is next. ${next.says}` : 'Every milestone is accepted.', ...(board.project.money?.tightestSays ? [board.project.money.tightestSays] : [])];
+    return { lines: lines.map((text, i) => ({ text, rank: i })), gap: null, target: null, heading: String(board?.headline?.question ?? '').trim() || 'Will the project land on time and on budget?' };
+  }
   /* Release 4: a team that is not a sales team hears each of its targets with its unit, never "sold" (the-board release-4-teams). */
   if (board?.releaseFourTeams && board?.kindOfWork && !isASalesKind(board.kindOfWork)) {
     const said = theTeamsTargetsSaid(board);

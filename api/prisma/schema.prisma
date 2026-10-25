@@ -625,6 +625,8 @@ model Organization {
   invoicesAfterASaleOn   Boolean   @default(false) @map("invoices_after_a_sale_on")
   /// Release 4, goals and targets for every kind of team (24 October 2026): each team type's board as its kit picture. Off for every organisation until switched on.
   release4TeamsOn        Boolean   @default(false) @map("release_4_teams_on")
+  /// Release 5: projects (the project board, milestones leading to invoices, the funder brief). Off for every organisation.
+  release5ProjectsOn     Boolean   @default(false) @map("release_5_projects_on")
   whatsappMonthlyUse     WhatsAppMonthlyUse[]
 
   companyStage CompanyStage? @map("company_stage")

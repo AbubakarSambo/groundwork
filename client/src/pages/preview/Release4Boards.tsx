@@ -8,6 +8,8 @@ import engineering from './__fixtures__/release-4-engineering.json'
 import salesOrg from './__fixtures__/release-4-sales-org.json'
 import subscriptions from './__fixtures__/release-4-subscriptions.json'
 import leadership from './__fixtures__/release-4-leadership.json'
+import project from './__fixtures__/release-5-project.json'
+import { PROJECT_ORDER, PROJECT_FOLD_AFTER } from '@/pages/board/release-5-orders'
 import { useQueryClient } from '@tanstack/react-query'
 
 /**
@@ -21,6 +23,7 @@ const TYPES: Record<string, { label: string; org: string; about: string; board: 
   engineering: { label: 'Major release', org: 'Jenga Software (test)', about: '5 engineers. Daily check-ins until 30 October.', board: engineering },
   'sales-org': { label: 'Sales organisation, Q4', org: 'Baridi Sales (test)', about: '3 teams, 15 reps. Daily check-ins on weekdays.', board: salesOrg },
   leadership: { label: 'Leadership, Q4', org: 'Baridi Appliances (test)', about: 'The chief executive and three heads. Weekly check-ins. Read as Wairimu, a member.', board: leadership, member: true },
+  project: { label: 'Mastercard market study', org: 'A funded project (test)', about: 'Release 5. The leader, the project lead, finance and two team members. Weekly check-ins until 15 March.', board: project },
   subscriptions: { label: 'MarketView, Q4', org: 'MarketView (test)', about: 'Sales and product. Weekly check-ins, with Paystack and MarketView numbers each morning.', board: subscriptions },
 }
 
@@ -36,9 +39,9 @@ export function Release4Boards() {
     <div className="main" data-release-4-preview={b.kindOfWork}>
       <PageTitle crumbs={[{ label: 'Check-ins', to: '/grounds' }, { label: t.label }]} title={t.label} subtitle={`${t.org}. ${t.about}`} />
       <ThePicturedBoard
-        order={theRelease4Order(b.kindOfWork, !t.member) ?? []}
+        order={b.releaseFiveProjects ? PROJECT_ORDER : theRelease4Order(b.kindOfWork, !t.member) ?? []}
         leadFirstName={b._leadFirstName ?? null}
-        foldAfter={whereItFolds(b.kindOfWork)}
+        foldAfter={b.releaseFiveProjects ? PROJECT_FOLD_AFTER : whereItFolds(b.kindOfWork)}
         b={b}
         groundId={b.groundId}
         sessionRows={[]}

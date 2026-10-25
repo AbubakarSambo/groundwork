@@ -899,6 +899,8 @@ export const KIND_OF_WORK_OPTIONS = [
   'a law firm matter',
   'a government programme',
   'leadership',
+  'a funded project',
+  'client delivery',
 ] as const
 
 export type KindOfWork = (typeof KIND_OF_WORK_OPTIONS)[number]

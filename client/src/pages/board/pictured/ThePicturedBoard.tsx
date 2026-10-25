@@ -1,4 +1,5 @@
 import { FoldTheRest } from './FoldTheRest'
+import { AddToTheProject } from './AddToTheProject'
 import { useMemo, useState, type ReactNode } from 'react'
 import { useTheDirectMorning } from '@/lib/the-direct-morning'
 import { Link } from 'react-router-dom'
@@ -13,6 +14,7 @@ import { groundsApi } from '@/api/grounds'
 import { isASalesKind } from '@/lib/a-sales-kind'
 import { companyApi } from '@/api/company'
 import { useAuthStore } from '@/stores/auth'
+import { useAskStore } from '@/stores/ask'
 import { howARowReads, isFinished, type ListRow } from '@/pages/grounds/how-a-row-reads'
 import {
   HeadlineAndGap, WhatTheTargetAssumes, WhatNeedsYou, EveryDealDayByDay, TheTeamToday, Blockers, WhatKeepsComingUp,
@@ -36,6 +38,7 @@ export type APicturedSection =
   | 'history' | 'bothSeeIt' | 'teamToday' | 'blockers' | 'patterns' | 'reported' | 'whoCheckedIn' | 'overTime' | 'reports'
   | 'everySession' | 'otherBoards' | 'help' | 'otherTeams' | 'openIssues' | 'heading' | 'ask' | 'recommends' | 'otherRecords' | 'kindOfWork' | 'yourTeam'
   | 'participantNote' | 'priorities' | 'yourPart' | 'teamReport' | 'companyBoard' | 'template'
+  | 'plan' | 'money' | 'stakeholders' | 'projectComingUp' | 'offTrack'
   | 'theDecision' | 'accounts' | 'knownBelievedUnknown'
   | 'suggestion' | 'theCase'
   | 'fillsIn' | 'agreedAndApart' | 'firstSteps' | 'mayBeRelevant'
@@ -831,6 +834,11 @@ export function ThePicturedBoard(p: PicturedBoardProps & { line?: string | null;
     yourTeam: () => p.yourTeam,
     kindOfWork: () => p.kindOfWork,
     template: () => <TheTemplateSection b={b} />,
+    plan: () => <TheProjectsPlan b={b} groundId={p.groundId} />,
+    money: () => <MoneyInAndOut b={b} groundId={p.groundId} />,
+    stakeholders: () => <TheStakeholders b={b} groundId={p.groundId} />,
+    projectComingUp: () => <WhatIsComingUpOnTheProject b={b} />,
+    offTrack: () => <IfItGoesOffTrack b={b} />,
     participantNote: () => <YouAreAParticipantHere leadFirstName={p.leadFirstName ?? null} />,
     priorities: () => <ThePrioritiesThisQuarter />,
     yourPart: () => <YourPart b={b} />,
@@ -902,6 +910,81 @@ export function TheTemplateSection({ b }: { b: Any }) {
           </div>
         ))}
       </div>
+    </Section>
+  )
+}
+
+/* ---------------------------------------------------------------- Release 5: a project (the Check-in Reports file, "A project") */
+const PROJECT_EDGE: Record<string, 'ready' | 'decide' | 'look' | 'concern'> = { rec: 'ready', act: 'decide', att: 'look', con: 'concern' }
+
+/** The plan: each milestone in order, when it is due and what share of the contract it pays. */
+function TheProjectsPlan({ b, groundId }: { b: Any; groundId: string }) {
+  const rows: Any[] = b?.project?.plan ?? []
+  return (
+    <Section heading="The plan" note={rows.length ? undefined : 'No milestones are on record yet.'}>
+      {rows.length > 0 && <EdgeList label="The plan">{rows.map((r) => <EdgeRow key={r.id} kind={PROJECT_EDGE[r.tone] ?? 'decide'} title={r.title} detail={r.says} reason={null} />)}</EdgeList>}
+      {b.canEditFrame && <AddToTheProject groundId={groundId} what="milestone" participants={b.participants ?? []} />}
+    </Section>
+  )
+}
+
+/** Money in and out, a card for each month, and the tightest month said in its own card. */
+function MoneyInAndOut({ b, groundId }: { b: Any; groundId: string }) {
+  const m = b?.project?.money
+  const add = b.canEditFrame ? <AddToTheProject groundId={groundId} what="money" participants={b.participants ?? []} /> : null
+  if (!m?.months?.length) return <Section heading="Money in and out" note="Nothing about money is on record yet.">{add}</Section>
+  return (
+    <Section heading="Money in and out">
+      <div className="g3">
+        {(m.months as Any[]).map((x) => (
+          <div key={x.month} className="panel pad gw-col-6">
+            <b>{x.month}</b>
+            <p className="t-small">{x.says}</p>
+            {x.tightest && m.tightestSays && <p className="t-small"><b>{m.tightestSays}</b></p>}
+          </div>
+        ))}
+      </div>
+      {add}
+    </Section>
+  )
+}
+
+/** The stakeholders: who keeps in touch with each, and what they need, or that it is not known yet. */
+function TheStakeholders({ b, groundId }: { b: Any; groundId: string }) {
+  const rows: Any[] = b?.project?.stakeholders ?? []
+  return (
+    <Section heading="Stakeholders" note={rows.length ? undefined : 'No stakeholders are on record yet.'}>
+      {rows.length > 0 && <EdgeList label="Stakeholders">{rows.map((r) => <EdgeRow key={r.id} kind={PROJECT_EDGE[r.tone] ?? 'decide'} title={r.title} detail={r.says} reason={null} />)}</EdgeList>}
+      {b.canEditFrame && <AddToTheProject groundId={groundId} what="stakeholder" participants={b.participants ?? []} />}
+    </Section>
+  )
+}
+
+/** What is coming up: the funder's next update, with "Rehearse with me" opening Ask on the brief, and the next milestone's invoice. */
+function WhatIsComingUpOnTheProject({ b }: { b: Any }) {
+  const rows: Any[] = b?.project?.comingUp ?? []
+  const showWith = useAskStore((s) => s.showWith)
+  if (!rows.length) return null
+  return (
+    <Section heading="Coming up">
+      <EdgeList label="Coming up on the project">
+        {rows.map((r) => (
+          <EdgeRow key={r.id} kind="decide" title={r.title} detail={r.says}
+            actions={r.rehearse && r.brief ? <Button kind="secondary" size="small" onClick={() => showWith(`Rehearse this update with me. Here is the brief Groundwork drew from the record. ${r.brief}`)}>Rehearse with me</Button> : undefined} />
+        ))}
+      </EdgeList>
+    </Section>
+  )
+}
+
+/** If it goes off track: what is late, the money gap and the stakeholders at risk, from the record; or that nothing is. */
+function IfItGoesOffTrack({ b }: { b: Any }) {
+  const p = b?.project
+  if (!p) return null
+  return (
+    <Section heading="If it goes off track">
+      {(p.offTrack as string[]).length > 0 && <div className="gw-ruled-rows">{(p.offTrack as string[]).map((t) => <p key={t} className="t-small">{t}</p>)}</div>}
+      <p className="t-body">{p.offTrackSays}</p>
     </Section>
   )
 }

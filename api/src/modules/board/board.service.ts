@@ -1,4 +1,5 @@
 import { theRelease4TeamsIsOn, theUnitOfATarget } from './release-4-teams';
+import { theProjectBoard, theRelease5ProjectsIsOn, isAProject, aMilestoneAcceptedIsAnInvoiceToRaise } from './release-5-projects';
 import { eachPersonsOwnBesideTheTeams, whyTheNumbersDoNotMatch } from './the-team-and-each-persons-figures';
 import { theTemplate } from './the-thirteen-templates';
 import { inAboutEightWords } from './what-happens-next-to-a-record';
@@ -3819,6 +3820,13 @@ export class BoardService {
         /* Each deal in its group, with why, from the rows this reader is served (request 112 a). See each-deal-in-its-group. */
         walled.workRecords = eachDealInItsGroup(oneOfTheKinds((ground as any).kindOfWork), walled.workRecords, deadlineOf(ground as any), now, { countedFromTheDeals: releaseOne, contactedWhenSpokenOf: releaseOne, byBuyingDate: releaseOne, criteria: criteriaFor(), stallDays });
         walled.byArea = theWorkByArea(walled.workRecords);
+        /* RELEASE 5: a funded project's board (release-5-projects), from the same records this reader is served. Off, nothing new. */
+        if (isAProject((ground as any).kindOfWork) && (await theRelease5ProjectsIsOn(this.prisma, (ground as any).organizationId))) {
+          const rows = ((walled.workRecords ?? []) as any[]).flatMap((s: any) => (s.rows ?? []) as any[]);
+          const invoicesFollow = await Promise.resolve((this.prisma as any).organization?.findUnique?.({ where: { id: (ground as any).organizationId }, select: { release3InvoicesOn: true } })).then((o: any) => o?.release3InvoicesOn === true).catch(() => false);
+          walled.project = theProjectBoard(rows, now.toISOString().slice(0, 10), { invoicesFollow });
+          walled.releaseFiveProjects = true;
+        }
         const atEachStage = reportedAgainstTheRules(oneOfTheKinds((ground as any).kindOfWork), walled.workRecords, { criteria: !!criteriaFor() });
         if (atEachStage) walled.reportedAgainstCriteria = atEachStage;
         /* The stages said were read for that count only; they are not served on each row. */
@@ -4526,7 +4534,10 @@ export class BoardService {
     if (data.ownerParticipantId !== undefined && theClaimOn(item.fields)) {
       data.fields = afterTheLeadsAnswer(data.fields ?? item.fields, data.ownerParticipantId === theClaimOn(item.fields)!.participantId);
     }
-    return (this.prisma as any).workItem.update({ where: { id: itemId }, data });
+    const updated = await (this.prisma as any).workItem.update({ where: { id: itemId }, data });
+    /* Release 5: a milestone the lead moves to Accepted is an invoice to raise at once (release-5-projects). Off, nothing. */
+    if (item.kind === 'milestone' && data.stage === 'Accepted') await aMilestoneAcceptedIsAnInvoiceToRaise(this.prisma, groundId).catch(() => 0);
+    return updated;
   }
 
   /**

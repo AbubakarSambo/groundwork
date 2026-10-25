@@ -40,6 +40,11 @@ export const KINDS_OF_WORK = [
   'a government programme',
   /* Release 4: a leadership team, its priorities across the teams. Offered only where Release 4 is on, and only chosen by the lead (never read from the setup words). */
   'leadership',
+  /* Release 5: a funded or client project, its plan and milestones, money in and out, and stakeholders. Offered only where Release 5
+     is on, and only chosen by the lead. */
+  'a funded project',
+  /* Client delivery is a type of project (Hafsah, 25 October): the same board, for work delivered to a client. */
+  'client delivery',
 ] as const;
 
 export type KindOfWork = (typeof KINDS_OF_WORK)[number];
@@ -139,6 +144,16 @@ export const RECORDS_FOR_EACH_KIND: Record<KindOfWork, ARecordSection[]> = {
   ],
   'a government programme': [
     { section: 'Deal grid', holds: 'counties and their projects', itemKinds: ['county', 'project'] },
+  ],
+  'a funded project': [
+    { section: 'Timeline', holds: 'milestones', itemKinds: ['milestone'], stages: ['Planned', 'Started', 'At risk', 'Delivered', 'Accepted', 'Paid for'] },
+    { section: 'Forecast', holds: 'money in and out, by month', itemKinds: ['money'] },
+    { section: 'Obligations', holds: 'stakeholders', itemKinds: ['stakeholder'] },
+  ],
+  'client delivery': [
+    { section: 'Timeline', holds: 'milestones', itemKinds: ['milestone'], stages: ['Planned', 'Started', 'At risk', 'Delivered', 'Accepted', 'Paid for'] },
+    { section: 'Forecast', holds: 'money in and out, by month', itemKinds: ['money'] },
+    { section: 'Obligations', holds: 'stakeholders', itemKinds: ['stakeholder'] },
   ],
   leadership: [
     { section: 'Themes', holds: 'the priorities across the teams', itemKinds: ['priority'] },

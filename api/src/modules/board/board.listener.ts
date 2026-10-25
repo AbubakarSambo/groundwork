@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { aMilestoneAcceptedIsAnInvoiceToRaise } from './release-5-projects';
 import { OnEvent } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { cleanText } from '../reports/what-the-record-actually-holds';
@@ -86,6 +87,8 @@ export class BoardListener {
     await this.countTheAimsFromTheDeals(e.groundId, null);
     /* Release 3: where the organisation invoices after a sale, a deal won becomes an invoice to raise (raising-invoices-on-time). Off, this writes nothing. */
     await aSaleWonIsAnInvoiceToRaise(this.prisma, e.groundId).catch(() => 0);
+    /* Release 5: a project's milestone accepted is an invoice to raise (release-5-projects). Off, nothing. */
+    await aMilestoneAcceptedIsAnInvoiceToRaise(this.prisma, e.groundId).catch(() => 0);
   }
 
 
