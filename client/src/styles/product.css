@@ -100,3 +100,6 @@ p button.gw-link, .t-small button.gw-link { min-height: 0; display: inline; }
 .gw-inline-btn { padding: 0 4px; vertical-align: baseline; }
 /* A tag keeps the prototype's own line height wherever it sits, even inside small text. */
 .tag { line-height: 1.5; }
+/* A page held until you check in: one sentence and one button, centred in the column. */
+.gw-locked { max-width: 620px; margin: 48px auto; padding: 0 20px; }
+.gw-locked .panel { display: flex; flex-direction: column; gap: 16px; align-items: flex-start; }

@@ -166,7 +166,7 @@ export function AddADocument({
           ))}
         </div>
       ) : (
-        <div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>Only you can see this. Nobody else on the check-in can open it.</div>
+        <div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>Only you can open it.</div>
       )}
 
       <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginTop: 18, flexWrap: 'wrap' }}>

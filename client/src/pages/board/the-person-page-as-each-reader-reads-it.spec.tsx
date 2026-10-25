@@ -71,7 +71,7 @@ describe('one person’s page', () => {
   it('Brian, a colleague, is told the page is for whoever runs the check-in, and reads nothing about Miriam', async () => {
     me = { id: 'u-brian', firstName: 'Brian', role: 'MEMBER' }
     open()
-    expect(await screen.findByText('This page is for whoever runs this check-in. Each person’s own check-ins stay with them.')).toBeTruthy()
+    expect(await screen.findByText('Only the person who runs this check-in can open this.')).toBeTruthy()
     expect(screen.queryByText('Westgate Deli')).toBeNull()
     expect(screen.queryByText('“Strong with supermarkets.”')).toBeNull()
   })

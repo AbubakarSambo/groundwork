@@ -67,7 +67,7 @@ describe('Miriam reads her own You board', () => {
   it('opens with the prototype’s heading and says only she sees it', async () => {
     open(MIRIAM, MIRIAMS)
     expect(screen.getByRole('heading', { level: 1, name: 'You' })).toBeInTheDocument()
-    expect(screen.getByText('What’s yours, across your check-ins. Only you see this page.')).toBeInTheDocument()
+    expect(screen.getByText('What’s yours, across your check-ins.')).toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: 'Your board' })).toBeInTheDocument()
   })
 

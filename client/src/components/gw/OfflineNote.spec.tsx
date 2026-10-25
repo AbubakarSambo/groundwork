@@ -24,7 +24,7 @@ describe('OfflineNote', () => {
   it('shows the same offline sentence as offline.html as soon as the page is already offline', () => {
     setOnline(false)
     render(<OfflineNote />)
-    expect(screen.getByText("You're offline. Groundwork will open again when you're back online.")).toBeTruthy()
+    expect(screen.getByText("You’re offline. Reconnect to carry on.")).toBeTruthy()
   })
 
   it('appears the moment the browser fires "offline", and clears on "online" - no reload needed', () => {
@@ -33,7 +33,7 @@ describe('OfflineNote', () => {
     expect(screen.queryByText(/offline/i)).toBeNull()
 
     act(() => { setOnline(false); window.dispatchEvent(new Event('offline')) })
-    expect(screen.getByText(/You're offline/)).toBeTruthy()
+    expect(screen.getByText(/You’re offline/)).toBeTruthy()
 
     act(() => { setOnline(true); window.dispatchEvent(new Event('online')) })
     expect(screen.queryByText(/offline/i)).toBeNull()

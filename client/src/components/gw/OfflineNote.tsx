@@ -30,5 +30,5 @@ export function OfflineNote() {
 
   if (!isOffline) return null
 
-  return <Toast>You're offline. Groundwork will open again when you're back online.</Toast>
+  return <Toast>You’re offline. Reconnect to carry on.</Toast>
 }

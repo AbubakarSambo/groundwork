@@ -603,7 +603,8 @@ export class BoardService {
         withheldUntilYouCheckIn: true,
         mode: ground.mode,
         family: familyFor(ground.scenario),
-        saying: BECAUSE_YOURS_WOULD_BE_AN_ANSWER,
+        /* The direct morning says it in one line, with one button (Hafsah, 25 October). Off, as before. */
+        saying: direct ? 'Check in first, then you’ll see the board.' : BECAUSE_YOURS_WOULD_BE_AN_ANSWER,
       };
     }
 

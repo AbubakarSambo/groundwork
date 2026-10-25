@@ -88,7 +88,7 @@ export function YouPage() {
   return (
     <TheDirectMorning on={direct}>
     <Page>
-      <PageTitle title="You" subtitle={data ? theYouSubtitle(data.checkIns ?? [], direct) : 'What’s yours, across your check-ins. Only you see this page.'} />
+      <PageTitle title="You" subtitle={data ? theYouSubtitle(data.checkIns ?? [], direct) : 'What’s yours, across your check-ins.'} />
 
       {isLoading && <Note>Loading…</Note>}
       {isError && (

@@ -70,7 +70,7 @@ export function LeaveRequestNewPage() {
       <PageTitle
         crumbs={[{ label: 'Suites', to: '/suite/mine' }, { label: 'Request leave' }]}
         title="Request leave"
-        subtitle="Say when you will be away, and Groundwork will send it to the right person."
+        subtitle="Say when you’ll be away."
       />
       <Panel>
         {offSentence ? (

@@ -1307,17 +1307,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * answer is simply what the board is waiting on, and the fix is one click away.
    */
   if ((data as any).withheldUntilYouCheckIn) {
+    /* "Check in first, then you'll see the board." with one button (Hafsah, 25 October): no label above it, no way back offered. */
     return (
-      <div className="gwui-mt-48 gwui-mr-auto gwui-mb-48 gwui-ml-auto gwui-pt-0 gwui-pr-20 gwui-pb-0 gwui-pl-20" style={{maxWidth: 620}}>
+      <div className="gw-locked">
         <Panel>
-          <div className="gwui-fs-13 gwui-ink-muted gwui-mb-8" style={{letterSpacing: '.1px', fontWeight: 700}}>
-            Your answer first
-          </div>
-          <div className="gwui-fs-14 gwui-ink-text gwui-mb-16" style={{lineHeight: 1.6}}>{(data as any).saying}</div>
-          <div className="gwui-button-row">
-            <UIButton kind="primary" onClick={() => navigate(`/grounds/${id}`)}>Do my check-in</UIButton>
-            <UIButton kind="secondary" onClick={() => navigate('/grounds')}>Back to check-ins</UIButton>
-          </div>
+          <p className="t-body">{(data as any).saying}</p>
+          <UIButton kind="primary" onClick={() => navigate(`/grounds/${id}`)}>Do my check-in</UIButton>
         </Panel>
       </div>
     )

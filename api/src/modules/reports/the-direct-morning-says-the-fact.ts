@@ -71,6 +71,28 @@ export const THE_DIRECT_MORNINGS_WORDS: ARewrite[] = [
   /* board/the-kind-of-work.ts */
   { find: /^Groundwork does not keep this yet\. It needs (?:numbers from another system(?:, such as payment records)?|the ticket counts from the helpdesk itself)\.$/g, put: '' },
   { find: /^Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind\.$/g, put: '' },
+  /* The wording sweep (Hafsah, 25 October): one short sentence, what is true or what to do, never how the product works. */
+  /* board/each-kind-gets-its-own-board.ts */
+  { find: /^Groundwork does not keep which level each person works at, so each person's own words are shown in the order they joined, after the aim that was set\.$/g, put: 'Nobody’s level is on record, so each person’s words are in the order they joined.' },
+  { find: /^Groundwork does not keep which group each person belongs to, such as processors, distributors or researchers, so the answers cannot be shown by group yet\.$/g, put: 'Nobody’s group is on record, so the answers can’t be shown by group yet.' },
+  /* board/the-anchor-end-of-month.ts */
+  { find: /^Groundwork does not yet keep how each person saw things at the start, so it cannot say what changed in what they understand\.$/g, put: '' },
+  { find: /^Groundwork does not yet keep what changed in how you lead, so it has nothing to say here\.$/g, put: '' },
+  /* board/the-switchboards-own-sections.ts */
+  { find: /The goal still counts, and Groundwork will not tell its number until it has been talked through\./g, put: 'The goal counts. Its number is told once it’s talked through.' },
+  /* board/the-anchor-month-board.ts */
+  { find: /^Groundwork is checking in with the (\w+) (?:person who has|people who have) not yet answered this round\.$/g, put: (_a: string, n: string) => `${n.charAt(0).toUpperCase()}${n.slice(1)} ${n === 'one' ? 'person has' : 'people have'} not answered this round yet. They’re being asked.` },
+  { find: /^Groundwork will ask about the (\w+) (things?) people said they would do that (?:is|are) still open\.$/g, put: (_a: string, n: string, t: string) => `${n.charAt(0).toUpperCase()}${n.slice(1)} ${t} people said they’d do ${t === 'thing' ? 'is' : 'are'} still open.` },
+  { find: /^Groundwork will ask about the (\w+) (handoffs?) still waiting on someone\.$/g, put: (_a: string, n: string, h: string) => `${n.charAt(0).toUpperCase()}${n.slice(1)} ${h} ${h === 'handoff' ? 'is' : 'are'} still waiting on someone.` },
+  { find: /^Groundwork is waiting for the first check-ins to come in\.$/g, put: 'No check-ins yet.' },
+  { find: /^Groundwork is not asking anyone for more\.$/g, put: 'Nobody is being asked for more.' },
+  /* reports/what-i-dont-know-yet.ts */
+  { find: / Next: Groundwork will ask (\S+(?: \S+)?) again in a later check-in\./g, put: ' They’ll be asked again in a later check-in.' },
+  { find: / Next: Groundwork will not ask again, so that [^.]+ not pressed\. You could ask ([^.]+) yourself\./g, put: ' It won’t be asked again. You could ask $1 yourself.' },
+  /* grounds/role-clarity-is-not-a-score.ts */
+  { find: /^Both the lead and this person have said what this person is here to do\. If those two descriptions differ, that difference is the most useful thing on this page\.$/g, put: 'The lead and this person have both said what this person is here to do.' },
+  /* conversation/where-a-sessions-report-stands.ts */
+  { find: /^This session was finished, but no separate report was kept for it\. What you said, and what came from it, is shown on this page\.$/g, put: 'No report was kept for this session. What you said is below.' },
   /* board/board.service.ts */
   { find: /^Groundwork does not follow an issue from the day it is raised to the day it is decided and done, so there is no list of open issues here\.[^]*$/g, put: '' },
 ];

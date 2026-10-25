@@ -301,8 +301,8 @@ export function YourWork({
           direct
             ? 'Everything you’ve said, and what the proof shows.'
             : patterns.length > 0
-            ? 'Everything you’ve said, and what the proof shows. Only you see this page, apart from the pattern below.'
-            : 'Everything you’ve said, and what the proof shows. Only you see this page.'
+            ? 'Everything you’ve said, and what the proof shows.'
+            : 'Everything you’ve said, and what the proof shows.'
         }
       />}
 

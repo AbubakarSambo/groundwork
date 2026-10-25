@@ -78,7 +78,7 @@ export function TheLeadsReveal({ reveal }: { reveal: TheLeadsRevealShape | null 
         )}
 
         {(reveal.whatGroundworkWillExplore ?? []).length > 0 && (
-          <Panel heading="What Groundwork will explore">
+          <Panel heading="What it will ask about">
             <Stack gap={6}>
               {reveal.whatGroundworkWillExplore.map((s, i) => (
                 <p key={i} className="gwui-panel-text">{s}</p>

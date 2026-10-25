@@ -65,7 +65,7 @@ export function SpendRequestNewPage() {
       <PageTitle
         crumbs={[{ label: 'Suites', to: '/suite/mine' }, { label: 'Ask to spend money' }]}
         title="Ask to spend money"
-        subtitle="Say how much, and what it is for, and Groundwork will send it to the right person."
+        subtitle="Say how much and what it’s for."
       />
       <Panel>
         {offSentence ? (
