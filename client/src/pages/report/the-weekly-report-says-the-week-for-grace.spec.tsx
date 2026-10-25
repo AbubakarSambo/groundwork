@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 
@@ -37,7 +37,7 @@ describe('the weekly report says the week for Grace', () => {
     } }) as any)
     renderWeek()
     /* Folded after the prototype's own parts (Hafsah, 25 October): opened first. */
-    fireEvent.click(await screen.findByText('Where the target stands, and what moved with proof'))
+    ;((await screen.findByText('Where the target stands, and what moved with proof')).closest('details') as HTMLDetailsElement).open = true
     expect(await screen.findByRole('heading', { name: 'Where the target stands' })).toBeTruthy()
     expect(screen.getByText('75 of 120 sold, 47 paid, 45 short, and the open deals cover 40.')).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'What moved this week, with what shows it' })).toBeTruthy()
