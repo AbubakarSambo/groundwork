@@ -1,3 +1,4 @@
+import { asItReadsOnWhatsApp } from '../conversation/the-opening-line';
 import { theDirectMorningIsOn, theDirectMorningIsOnFor } from '../organisation/the-direct-morning-switch';
 import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
 import { isHeldForTheNight } from '../whatsapp/quiet-hours-are-the-organisations';
@@ -10,7 +11,7 @@ import { thePhonesOwnZone } from '../whatsapp/the-persons-own-time-zone';
 import { aLocationPinSaidBack } from '../documents/a-location-pin';
 import { createHash } from 'crypto';
 import { askNameOf } from '../assistant/ask-name';
-import { endsOnTheClose, endingWithoutTheFinishLine } from '../conversation/the-close-says-what-comes-next';
+import { endingWithoutTheFinishLine } from '../conversation/the-close-says-what-comes-next';
 import { askedToFinish } from '../conversation/close-readiness';
 import { Injectable, Optional, Logger } from '@nestjs/common';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
@@ -37,7 +38,7 @@ import { namesTheyCanTellApart } from '../../common/check-ins-you-can-tell-apart
 import { closingSoonestFirst, oneAtATime, theNextOne } from './several-check-ins-open';
 import { whenItIsDue } from '../whatsapp/what-goes-to-a-phone';
 import { formsOfTheSameNumber } from '../whatsapp/a-number-whatsapp-can-reach';
-import { theCheckInIsCompleteSaying, enoughToCloseSaying } from '../grounds/what-is-sent-in-simpler-words';
+import { theCheckInIsCompleteSaying } from '../grounds/what-is-sent-in-simpler-words';
 import { AnOpenCheckIn, whatTheFileIsCalled, sessionHeader, whichOneRows, whichOneAsText, pickedOne, pickedFromText, whatArrived, reportAsText, nothingToReadYet, THANKS_YOUR_ANSWER_IS_IN, reportAsTemplateBlanks, LANGUAGES_WE_CONVERSE_IN, A_FINISH_WORD, A_GREETING_ALONE, A_NOT_NOW, NOT_NOW_SAYING,
   NOT_ENOUGH_YET_TO_FINISH, isAnAskWord, A_BACK_WORD, A_WISH_TO_CARRY_ON_THE_CHECK_IN, isAGreetingOrARequestToStart, A_SWITCH_WORD, A_YES, A_NO, THE_WORDS, NOW_ASKING, ASKING_NEEDS_A_ROSTER_ENTRY, ASK_READS_WORDS,
   ONLY_ONE_OPEN, NONE_OPEN, BACK_IN, BACK_TO_NOTHING, ASKING, isAsking, wasIn, namedCheckIn, looksLikeARequest, shallITreatThisAs, YES_OR_NO, HELD_WORDS_PUT_IN, heldWordsNotPut, type ARequest, aReportWorthItsTemplate, THANKS_ONLY } from './a-whatsapp-message-is-routed';
@@ -195,7 +196,8 @@ export class WhatsAppForAnOrganisationService {
       if (aStrangerHearsNothing(text, out.who)) return;
       const t = intro ? `${intro}\n\n${text}` : text;
       intro = '';
-      await out.say(t);
+      /* On the phone the opening line says "Reply END" (the-opening-line.ts, 26 October). */
+      await out.say(asItReadsOnWhatsApp(t));
     };
 
     if (arrived.kind === 'other') { await say('I can read text, photos, documents and location pins here. Say it in words, or send the file.'); return; }
@@ -582,7 +584,7 @@ export class WhatsAppForAnOrganisationService {
     if (A_FINISH_WORD.test(text) && current.status === 'IN_PROGRESS') {
       try {
         /* Not waiting for the end card: Meta's webhook will not hold a reply for fifty seconds. */
-        await this.conversation.complete(current.id, userId!, { waitForTheCard: false });
+        await this.conversation.complete(current.id, userId!, { waitForTheCard: false, theyAskedToFinish: true });
         await this.prisma.whatsAppThread.deleteMany({ where: { organizationId, checkInId: current.id } }).catch(() => undefined);
         /* When it finishes, the next one is offered, and remembered, so START or an answer goes to it (decision 106 item 1). */
         const next = closingSoonestFirst(open.filter((c) => c.id !== current!.id))[0] ?? null;
@@ -651,9 +653,19 @@ export class WhatsAppForAnOrganisationService {
        * check-in'. The person said they are done, in their own words, so it closes as their "finish" would, and nothing more is asked.
        */
       if (r.sessionComplete && askedToFinish([text]) && await this.theirOwnWordsClosedIt(organizationId, from, current, userId!, open, r.reply, reply, say)) return;
+      /*
+       * IT ENDS ON ITS OWN (Hafsah, 26 October 2026). Groundwork closed it, so the server is finishing it already (ConversationService
+       * sendMessage): the person is told it is done and what comes next, never asked to reply "finish".
+       */
+      if (r.sessionComplete) {
+        await this.prisma.whatsAppThread.deleteMany({ where: { organizationId, checkInId: current.id } }).catch(() => undefined);
+        const next = closingSoonestFirst(open.filter((c) => c.id !== current.id))[0] ?? null;
+        if (next) await this.remember(organizationId, from, next.id);
+        const said = endingWithoutTheFinishLine(r.reply);
+        await say(`${reply ? `${reply}\n\n` : ''}${said ? `${said}\n\n` : ''}${theCheckInIsCompleteSaying(current.simplerWords)}${next ? `\n\n${theNextOne(next)}` : ''}`);
+        return;
+      }
       reply = reply ? `${reply}\n\n${r.reply}` : r.reply;
-      /* The close already says to reply "finish" (the-close-says-what-comes-next); said once. */
-      if (r.sessionComplete && !endsOnTheClose(r.reply)) reply += `\n\n${enoughToCloseSaying(current.simplerWords)}`;
       await say(reply);
     } catch (e: any) {
       const said = e?.response?.message ?? e?.message ?? 'That could not be answered just now. Try again in a moment.';

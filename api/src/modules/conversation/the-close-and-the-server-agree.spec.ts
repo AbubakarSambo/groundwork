@@ -36,9 +36,16 @@ async function bothEnds(personSaid: string[]) {
 }
 
 describe('the engine\'s close and the server\'s completion, on the same record', () => {
-  it('three short answers ending in "please finish": neither closes, so no goodbye is written for a refusal', async () => {
+  // Changed 26 October 2026 (Hafsah: item 2): a person's own finish is honoured with any answer, so both ends now close together (they still agree).
+  it('three short answers ending in "please finish": both close, because it is the person\'s own end', async () => {
     const { closes, server } = await bothEnds(['ok', 'fine', 'Please finish my check-in']);
-    expect(server).toMatch(/^refused: There is almost nothing here yet/);
+    expect(server).toBe('written');
+    expect(closes).toBe(true);
+  });
+
+  it('three short answers with no finish asked for: neither closes, so no goodbye is written for a refusal', async () => {
+    const { closes, server } = await bothEnds(['ok', 'fine', 'nothing']);
+    expect(server).toMatch(/^refused: /);
     expect(closes).toBe(false);
   });
 

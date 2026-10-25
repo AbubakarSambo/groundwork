@@ -40,7 +40,6 @@ import { whenTheNextOneOpens, whoElseAnswers, whoRunsThis } from '@/lib/what-the
 import { firstWordOfAName } from '@/lib/the-first-word-of-a-name'
 import { toast } from 'sonner'
 import { useCheckInFocusStore } from '@/stores/check-in-focus'
-import { answersTheServerKept } from '@/lib/answers-the-server-kept'
 import '@/components/gw/ui/gw-ui.css'
 
 /** ONE LIST. The OS dialog offered 23 extensions, the label's title a third list of 9, and the validator refused everything outside these 10 - so the dialog invited a refusal the product then issued. */
@@ -218,7 +217,7 @@ export function ChatPage() {
    * this reads `mayCompleteAfter` again, as it always has; the dead end above is still real and still
    * the engine's to close, tracked as request 47 - not something this page's gate can fix by itself.
    */
-  const [mayCompleteAfter, setMayCompleteAfter] = useState(5)
+  const [, setMayCompleteAfter] = useState(5)
   const isInitiator: boolean  = (location.state as any)?.isInitiator ?? false
   const isFinalSession: boolean = (location.state as any)?.isFinal ?? false
 
@@ -554,7 +553,8 @@ export function ChatPage() {
   })
 
   const complete = useMutation({
-    mutationFn: () => conversationApi.complete(checkInId!),
+    /* `ended`: the person pressed End session (26 October). */
+    mutationFn: (ended?: boolean) => conversationApi.complete(checkInId!, ended === true),
     /*
      * THE ONE-LINE QUESTION ENDS ON THE BOARD. Hafsah, 21 Sep 2026: "I check in on the update scenario...
      * then it should take me to the team board." Somebody who came through the one-line link has one
@@ -1745,7 +1745,7 @@ export function ChatPage() {
                 so the wait says what is happening.
               */
               whileFinishing={<SlowStep steps={CLOSING_STEPS} note="This one takes about half a minute. Nothing is lost if you wait." />}
-              onFinish={() => complete.mutate()}
+              onFinish={() => complete.mutate(false)}
               onChange={() => { setDone(false); taRef.current?.focus() }}
             />
           )}
@@ -1789,7 +1789,11 @@ export function ChatPage() {
               refusal below still hands the composer back in plain words on an early press either
               way - that part of the fourth review's fix stands - but the offer itself now waits
               for the one floor everybody reads. */}
-          {!done && !completed && !declined && opened && answersTheServerKept(msgs) >= mayCompleteAfter && (
+          {/*
+            END SESSION, ALWAYS THERE (Hafsah, 26 October 2026). From the first message, on the web and the phone layout alike. What was
+            said is kept and the next session picks up what is missing; with nothing said yet the server says so and the check-in stays open.
+          */}
+          {!done && !completed && !declined && opened && (
             <div className="gwui-ci-finish-wrap">
               {/*
                 SCREEN FAULT 3: A 32px TEXT LINK WAS THE ONLY WAY FORWARD HERE, BELOW THE 40px
@@ -1797,8 +1801,8 @@ export function ChatPage() {
                 44px tall at every width, the same shared part every other action on this page
                 already uses, so this one no longer needs its own undersized class.
               */}
-              <button type="button" className="gw-link" onClick={() => setDone(true)}>
-                Finish my check-in now
+              <button type="button" className="gw-link" onClick={() => complete.mutate(true)} disabled={complete.isPending}>
+                {complete.isPending ? 'Ending…' : 'End session'}
               </button>
             </div>
           )}

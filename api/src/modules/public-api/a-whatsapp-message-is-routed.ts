@@ -243,7 +243,8 @@ export const NOT_NOW_SAYING = 'All right. I will not write to you first again to
 export const NOT_ENOUGH_YET_TO_FINISH = 'I need a little more from you before this check-in can close. Please answer one or two more questions, then write "finish" again.';
 
 /** The words that close a session. Matched before the status is looked at, so "finish" on a session not yet opened gets an honest answer. */
-export const A_FINISH_WORD = /^\s*(finish|complete|done|close)\s*[.!]?\s*$/i;
+/* "end" and "end session" too, as the opening line says on the phone (26 October). Never "stop", which is WhatsApp's own opt-out. */
+export const A_FINISH_WORD = /^\s*(finish|complete|done|close|end|end session|end it)\s*[.!]?\s*$/i;
 
 /** Which organisation, when a number is on more than one roster. Same shape as the check-in list. */
 export function whichOrganisationAsText(orgs: { id: string; name: string }[]): string {

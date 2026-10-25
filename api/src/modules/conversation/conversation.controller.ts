@@ -111,8 +111,9 @@ export class ConversationController {
 
   @Post(':id/complete')
   @ApiOperation({ summary: 'Mark a check-in complete' })
-  async complete(@Param('id') id: string, @CurrentUser('id') userId: string) {
-    return this.conversation.complete(id, userId);
+  async complete(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() body?: { ended?: boolean }) {
+    /* "End session", pressed by the person: their own end, honoured with anything said (26 October). */
+    return this.conversation.complete(id, userId, body?.ended === true ? { theyAskedToFinish: true } : {});
   }
 
   @Post(':id/decline')

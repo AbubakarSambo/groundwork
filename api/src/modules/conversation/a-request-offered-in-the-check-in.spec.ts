@@ -200,7 +200,8 @@ describe('a yes to an offer never closes the check-in (B12)', () => {
 
   it('is asked before the close is judged, so the reply the model wrote as a goodbye cannot close it', () => {
     const src = withoutComments(readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8'));
-    expect(src).toContain('const signalled = !answeringAnOffer && (hadCloseMarker || theyAreLeaving || this.closesInOtherWords(reply, message));');
+    // Changed 26 October 2026 (Hafsah: item 4): the signal also takes the seventh answer; a yes to an offer still comes first and still cannot close it.
+    expect(src).toContain('const signalled = !answeringAnOffer && (hadCloseMarker || theyAreLeaving || this.closesInOtherWords(reply, message) || itIsTimeToClose(');
   });
 });
 

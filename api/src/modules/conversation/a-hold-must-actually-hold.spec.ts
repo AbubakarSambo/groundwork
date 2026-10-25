@@ -46,8 +46,20 @@ describe('every door into a session goes through the same door first', () => {
   /* Changed with the guard against two opens at once: `open` is now a wrapper that hands a second open the
      first one's answer, and the work, with the door as its first act, is in `openOnce`. The wrapper is
      keyed by who is asking, so waiting is never a way past the door. */
-  it.each(['openOnce', 'complete'])('%s opens the door before anything else', (method) => {
+  it.each(['openOnce'])('%s opens the door before anything else', (method) => {
     expect(firstStatementOf(method)).toMatch(/const checkIn = await this\.openTheDoor\(checkInId, (requestingUserId|who)\);/);
+  });
+
+  /* Changed 26 October 2026 (Hafsah: item 3): complete() first looks up, in memory, whether Groundwork is already finishing this session;
+     that reads no session. The door is still the first thing that touches it, on both paths: before waiting for that finish, and before anything else. */
+  it('complete opens the door before anything else', () => {
+    const body = bodyOf('complete', 2000);
+    expect(firstStatementOf('complete')).toBe('const inFlight = this.finishedByGroundwork?.get(checkInId);');
+    const door = body.indexOf('await this.openTheDoor(checkInId, requestingUserId)');
+    expect(door).toBeGreaterThan(-1);
+    expect(body.indexOf('await inFlight')).toBeGreaterThan(door);
+    const afterTheWait = body.slice(body.indexOf('await inFlight'));
+    expect(afterTheWait).toMatch(/^await inFlight;\s*if \(done\) return done;\s*\}\s*const checkIn = await this\.openTheDoor\(checkInId, requestingUserId\);/);
   });
 
   it('open does its work only through openOnce, and is keyed by who is asking', () => {

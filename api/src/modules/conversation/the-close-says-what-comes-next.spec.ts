@@ -55,7 +55,8 @@ describe('the close, as a person reads it', () => {
 
   it('is put on the turn that closed, after it is known to be closed', () => {
     const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-    const decided = src.indexOf("const sessionComplete = close.ready && (theyAreLeaving || !stillAsking(aiTurn.content ?? ''));");
+    // Changed 26 October 2026 (Hafsah: item 4): sessionComplete is a let now, since past seven answers the product closes too.
+    const decided = src.indexOf("let sessionComplete = close.ready && (theyAreLeaving || !stillAsking(aiTurn.content ?? ''));");
     const closed = src.indexOf("const closed = endingOnTheClose(aiTurn.content ?? '', how.door ?? 'web', await this.usesSimplerWords(checkIn.groundId));");
     expect(decided).toBeGreaterThan(0);
     expect(closed).toBeGreaterThan(decided);
@@ -85,7 +86,10 @@ describe('on a door that shows no end card, the close never says "Below"', () =>
     const wa = readFileSync(join(__dirname, '../public-api/whatsapp-for-an-organisation.service.ts'), 'utf8');
     const api = readFileSync(join(__dirname, '../public-api/a-check-in-a-customer-can-run.service.ts'), 'utf8');
     expect(wa).toContain("this.conversation.sendMessage(current.id, userId!, text, { door: 'whatsapp' })");
-    expect(wa).toContain('if (r.sessionComplete && !endsOnTheClose(r.reply))');
+    // Changed 26 October 2026 (Hafsah: item 3): an engine close on WhatsApp no longer asks for "finish" at all; the line is taken off and it says the check-in is complete.
+    expect(wa).toContain('const said = endingWithoutTheFinishLine(r.reply);');
+    expect(wa).toContain('theCheckInIsCompleteSaying(current.simplerWords)');
+    expect(wa).not.toContain('enoughToCloseSaying(current.simplerWords)');
     expect(api).toContain("content, { door: 'api' })");
   });
 });

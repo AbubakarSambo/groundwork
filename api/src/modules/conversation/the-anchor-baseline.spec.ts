@@ -3,6 +3,7 @@ import { ConversationService } from './conversation.service';
 import { ConversationContextService } from './context.service';
 import { ANCHOR_BASELINE_PROMPT, ANCHOR_BASELINE_PROMPT_KEY, THE_BASELINE_GUIDANCE, THE_BASELINE_REMINDER, theAnchorBaselineGuidance } from './the-anchor-baseline';
 import { READ_THIS_LAST } from './the-anchor-lead-conversation';
+import { withTheOpeningLine } from './the-opening-line';
 import { whatToDoAboutTheirDeadline } from './a-period-is-not-a-day';
 import { THE_NINE, withoutAnExampleAnswer, THE_BASELINE_CLOSING_REMINDER, everythingIsLearned, whatIsLearnedFrom } from './the-baseline-so-far';
 
@@ -139,7 +140,8 @@ describe('the team baseline says nothing of the lead\'s own conversation, and do
 
   it('opens a person on the lead\'s team on a question about their work, never "are you the person this check-in is about"', async () => {
     const out = await opened({ startedFrom: 'anchor', switchOn: true });
-    expect(out.reply).toBe('Thank you. What is taking most of your attention now?');
+    // Changed 26 October 2026 (Hafsah: item 1): a team member's first session is a check-in, so the opening line is in front of the same question.
+    expect(out.reply).toBe(withTheOpeningLine('Thank you. What is taking most of your attention now?'));
     expect(out.reply).not.toMatch(/is this check-in about you/);
   });
 

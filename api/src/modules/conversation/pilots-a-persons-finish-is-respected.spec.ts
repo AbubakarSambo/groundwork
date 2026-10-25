@@ -75,8 +75,9 @@ describe('a person saying they are done closes the check-in, whatever the model 
     /* Since the reviewer's 14 October pass, leaving before three answers closes too (leavingEarly). */
     expect(src).toContain("const theyAreLeaving = (!answeringAnOffer && askedToFinish([message]) && !tooFewAnswersToFinish(personTurnCount + 1");
     expect(src).toContain('|| leavingEarly;');
-    expect(src).toContain('(hadCloseMarker || theyAreLeaving || this.closesInOtherWords(reply, message))');
-    expect(src).toContain("const sessionComplete = close.ready && (theyAreLeaving || !stillAsking(aiTurn.content ?? ''));");
+    // Changed 26 October 2026 (Hafsah: item 4): the close is also signalled from the seventh answer, and past seven the product closes, so sessionComplete is a let.
+    expect(src).toContain('(hadCloseMarker || theyAreLeaving || this.closesInOtherWords(reply, message) || itIsTimeToClose(');
+    expect(src).toContain("let sessionComplete = close.ready && (theyAreLeaving || !stillAsking(aiTurn.content ?? ''));");
   });
 });
 

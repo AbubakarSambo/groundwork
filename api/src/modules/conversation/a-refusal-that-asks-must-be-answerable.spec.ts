@@ -42,7 +42,9 @@ describe('a refusal that asks must be answerable', () => {
 
   it('both thin-record refusals say they can be answered', () => {
     const flagged = COMPLETE.match(/canContinue: true/g) ?? [];
-    expect(flagged).toHaveLength(2);
+    // Changed 26 October 2026 (Hafsah: item 2): a third refusal, an end with nothing said yet, keeps the check-in open, so it is answerable too.
+    expect(flagged).toHaveLength(3);
+    expect(COMPLETE.slice(COMPLETE.indexOf('Nothing has been said yet'), COMPLETE.indexOf('Nothing has been said yet') + 300)).toContain('canContinue: true');
   });
 
   it('the thin-turn refusal is one of them', () => {

@@ -75,7 +75,8 @@ describe('and it is read rather than asked for', () => {
    * finished, so a guard that ran before the sentence existed did not run.
    */
   it('and after the goodbye exists, not before', () => {
-    const closeBuilt = SRC.indexOf('const sessionComplete = close.ready');
+    // Changed 26 October 2026 (Hafsah: item 4): sessionComplete is a let now, since past seven answers the product closes too.
+    const closeBuilt = SRC.indexOf('let sessionComplete = close.ready');
     expect(closeBuilt).toBeGreaterThan(-1);
     expect(SRC.indexOf('if (theReportIsNotTheirsYet(thisGroundsScenario))')).toBeGreaterThan(closeBuilt);
   });

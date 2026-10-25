@@ -54,30 +54,20 @@ describe('#4 END-CONFIRM: finishing a check-in requires explicit confirmation', 
     })
   })
 
-  it('does not finalise on the first click - it asks to confirm first', async () => {
+  /*
+   * CHANGED 26 OCTOBER 2026 (Hafsah: "End session" is always visible, and ending early keeps everything said). This file pinned the
+   * old confirm step, where "Finish my check-in now" brought up the end card and only "That’s right, finish" finalised. Now the
+   * person's own End session ends it at once, as their own end, and nothing is finalised before they press it.
+   */
+  it('nothing is finalised until End session is pressed', async () => {
     renderChat()
-    const trigger = await screen.findByText(/Finish my check-in now/i, {}, { timeout: 4000 })
-    fireEvent.click(trigger)
-    // a confirm step appears... (its fold's name and its own heading both say "what happens next" now, s68)
-    await screen.findAllByText(/What happens next/i)
-    // ...and nothing has been finalised yet
+    await screen.findByText('End session', {}, { timeout: 4000 })
     expect((conversationApi.complete as any)).not.toHaveBeenCalled()
   })
 
-  it('finalises only after the explicit "That’s right, finish" on the end card', async () => {
+  it('End session ends it at once, as the person’s own end', async () => {
     renderChat()
-    const trigger = await screen.findByText(/Finish my check-in now/i, {}, { timeout: 4000 })
-    fireEvent.click(trigger)
-    const finish = await screen.findByRole('button', { name: /That’s right, finish/i })
-    fireEvent.click(finish)
-    await waitFor(() => expect((conversationApi.complete as any)).toHaveBeenCalledTimes(1))
-  })
-
-  it('can back out of the confirmation without finalising', async () => {
-    renderChat()
-    const trigger = await screen.findByText(/Finish my check-in now/i, {}, { timeout: 4000 })
-    fireEvent.click(trigger)
-    fireEvent.click(await screen.findByRole('button', { name: /Change something/i }))
-    expect((conversationApi.complete as any)).not.toHaveBeenCalled()
+    fireEvent.click(await screen.findByText('End session', {}, { timeout: 4000 }))
+    await waitFor(() => expect((conversationApi.complete as any)).toHaveBeenCalledWith(expect.any(String), true))
   })
 })

@@ -25,7 +25,8 @@ const SRC = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8')
 describe('the opener is held to the same bar', () => {
   it('the opener is checked before it is stored, not after it is read', () => {
     const held = SRC.indexOf('theOpenerIsHeldToTheSameBar(checkIn.id');
-    const stored = SRC.indexOf('checkInId: checkIn.id, role: TurnRole.AI, content: opening');
+    // Changed 26 October 2026 (Hafsah: item 1): the stored opener now has the opening line in front (not on a correction); it is still checked first.
+    const stored = SRC.indexOf('checkInId: checkIn.id, role: TurnRole.AI, content: (checkIn as any).isSelfCorrection ? opening : withTheOpeningLine(opening)');
     expect(held).toBeGreaterThan(-1);
     expect(stored).toBeGreaterThan(held);
   });

@@ -4142,7 +4142,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                           runs this check-in, and that is who recommits it when the direction changes. The lead names somebody else here.
                         */}
                         {b.canEditFrame && (
-                          <label className="gwui-ink-sub gwui-fs-14 gwui-mt-2" style={{display: 'flex', alignItems: 'center', gap: 8, fontWeight: 400}}>
+                          <label className="gwui-ink-sub gwui-fs-14 gwui-mt-2">
+                            <FlexRow gap={8} align="center">
                             Whose goal
                             <select
                               className="gwui-input" style={{width: 'auto', minHeight: 36}}
@@ -4155,6 +4156,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                               <option value="">Yours, as you run this check-in</option>
                               {(b.participants ?? []).filter((p) => p.name && p.id !== b.myParticipantId && !p.managingOnly).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                             </select>
+                            </FlexRow>
                           </label>
                         )}
                         {/*

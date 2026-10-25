@@ -142,7 +142,9 @@ describe('every other situation (decision 133)', () => {
     fireEvent.change(box, { target: { value: 'A new project is starting.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
 
-    expect(await screen.findByText('What has the team actually shipped since the project started?')).toBeTruthy()
+    /* Changed 26 October 2026 (Hafsah): setup now closes with one line, "Done. Your board is set up, and your team’s first check-in
+       opens …", in front of the lead's first question in the same message. Still no fork, and the conversation still carries straight on. */
+    expect(await screen.findByText(/Done\. Your board is set up, and your team’s first check-in opens [\s\S]*What has the team actually shipped since the project started\?/)).toBeTruthy()
     expect(entryApi.chat).toHaveBeenCalledTimes(1)
     expect(screen.queryByText('I set this up and check in myself')).toBeNull()
     expect(screen.queryByText('I check in once to set the context, then only they check in')).toBeNull()

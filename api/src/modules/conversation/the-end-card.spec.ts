@@ -186,7 +186,8 @@ describe('at the closing reply', () => {
 
   it('is built after the goodbye, only when the conversation closed, and never holds the reply up', () => {
     const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-    expect(src).toContain('if (sessionComplete) this.startTheEndCard(checkIn as any, aiTurn.id);');
+    // Changed 26 October 2026 (Hafsah: item 3): the same start is now the first thing in a block that also finishes the session on its own.
+    expect(src).toMatch(/if \(sessionComplete\) \{\s*this\.startTheEndCard\(checkIn as any, aiTurn\.id\);/);
     expect(src).not.toMatch(/await this\.(theEndCardFor|startTheEndCard)\(/);
     /* Nothing waits on it, so it must never be started bare, with nothing to catch what fails. */
     expect(src).not.toMatch(/void this\.theEndCardFor\(/);
