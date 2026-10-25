@@ -19,3 +19,19 @@ describe('a next step, in about eight words', () => {
     expect(aStepOnItsOwn('collect the deposit, nothing is booked.')).toBe('Collect the deposit, nothing is booked');
   });
 });
+
+import { theHeading } from './to-close-the-gap';
+
+/* The gap's heading, short where the direct morning is on (Hafsah, 25 October), and as before where it is off. */
+describe('the gap heading, said short', () => {
+  it('says every one of them and more, short', () => {
+    expect(theHeading(55, [], [6, 4, 3, null, null, null, null], true)).toBe('To close the gap, all seven and more');
+    expect(theHeading(55, [], [6, 4, 3, null, null, null, null])).toBe('To close the gap, more than these seven deals are needed');
+  });
+});
+
+describe('a step after Nothing booked', () => {
+  it('puts the step first, and keeps Nothing booked', () => {
+    expect(inAboutEightWords('Nothing booked. Rose has your KES 10,000 quote. Ask Rose when Mama Mboga Mart will buy.')).toBe('Ask Rose when Mama Mboga Mart will buy. Nothing booked.');
+  });
+});

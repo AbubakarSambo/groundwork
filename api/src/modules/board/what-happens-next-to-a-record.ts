@@ -104,10 +104,11 @@ export function inAboutEightWords(step: string): string {
   /* One step, so one sentence: the first. */
   const parts = (step ?? '').trim().split(/(?<=[a-z0-9)”’])\.\s+(?=[A-Z])/);
   /* "Nothing booked." alone says no step: the step said last goes first, with it ("Ask Rose when Mama Mboga Mart will buy. Nothing booked."). */
-  const first = parts.length > 1
-    ? (parts[0].split(/\s+/).length <= 3 ? `${parts[parts.length - 1].replace(/\.$/, '')}. ${parts[0]}.` : `${parts[0]}.`)
-    : parts[0];
-  if (first !== parts[0] && first.split(/\s+/).length <= 12 && parts[0].split(/\s+/).length <= 3) return first;
+  if (parts.length > 1 && parts[0].split(/\s+/).length <= 3) {
+    const step = inAboutEightWords(parts[parts.length - 1].replace(/\.$/, ''));
+    return `${step.replace(/\.$/, '')}. ${parts[0].replace(/\.$/, '')}.`;
+  }
+  const first = parts.length > 1 ? `${parts[0]}.` : parts[0];
   const words = first.split(/\s+/).filter(Boolean);
   if (words.length <= 9) return first;
   /* What a cut would drop must hold no name, number or day: those stay ("Shorter, not vaguer"). */

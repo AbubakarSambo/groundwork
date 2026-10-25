@@ -3203,7 +3203,7 @@ export class BoardService {
               const what = String(w.what ?? '').trim().replace(/[.\s]+$/, '');
               return { id: w.id, says: saidOf.get(w.id)!, step: `Waiting on ${String(w.onLabel).trim()} for ${/^[A-Z][a-z]/.test(what) ? what.charAt(0).toLowerCase() + what.slice(1) : what}` };
             });
-            if (!row.next && !row.nextStep) row.nextStep = inAboutEightWords(row.waitingOnTheCustomer[row.waitingOnTheCustomer.length - 1].step);
+            if (!row.next && !row.nextStep) row.nextStep = direct ? inAboutEightWords(row.waitingOnTheCustomer[row.waitingOnTheCustomer.length - 1].step) : row.waitingOnTheCustomer[row.waitingOnTheCustomer.length - 1].step;
           }
         }
       }
@@ -3239,7 +3239,8 @@ export class BoardService {
             if (valueLine && valueLine !== row.value) row.valueLine = valueLine;
             if (!line) continue;
             row.next = line.says;
-            row.nextStep = inAboutEightWords(line.says);
+            /* In about eight words where the direct morning is on (Hafsah, 25 October); off, as before. */
+            row.nextStep = direct ? inAboutEightWords(line.says) : line.says;
             row.nextSays = line.says;
             row.nextKnown = 'said';
             if (line.on) row.nextOn = line.on.toISOString().slice(0, 10);
@@ -3802,7 +3803,7 @@ export class BoardService {
         /* To close the gap (request 115 c): to whoever is served the headline, from the deals they are served. See to-close-the-gap. */
         if (walled.headline && !aParticipantOnly) {
           const storedAims = new Map(((ground.objectives ?? []) as any[]).map((o) => [o.id, o]));
-          const gap = toCloseTheGap(oneOfTheKinds((ground as any).kindOfWork), walled.workRecords, ((walled.objectives ?? []) as any[]).map((o) => ({ ...o, dueOn: storedAims.get(o.id)?.dueOn ?? null })), deadlineOf(ground as any), now, { nothingBooked: releaseOne, inShort: releaseOne });
+          const gap = toCloseTheGap(oneOfTheKinds((ground as any).kindOfWork), walled.workRecords, ((walled.objectives ?? []) as any[]).map((o) => ({ ...o, dueOn: storedAims.get(o.id)?.dueOn ?? null })), deadlineOf(ground as any), now, { nothingBooked: releaseOne, inShort: releaseOne, short: direct });
           /* The heading ("To close the gap, two of these three") is Release 1's; off, the gap reads as it did before it. */
           if (gap && !releaseOne) delete (gap as any).heading;
           if (gap) walled.toCloseTheGap = gap;

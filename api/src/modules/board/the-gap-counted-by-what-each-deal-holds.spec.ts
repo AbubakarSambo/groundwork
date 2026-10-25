@@ -16,7 +16,7 @@ describe('the heading over the open deals', () => {
   it('says "all seven of these" only when all seven are needed and enough', () => {
     expect(theHeading(7, [], [1, 1, 1, 1, 1, 1, 1])).toBe('To close the gap, all seven of these');
     expect(theHeading(13, [], [6, 4, 3, null, null, null, null])).toBe('To close the gap, three of these seven');
-    expect(theHeading(55, [], [6, 4, 3, null, null, null, null])).toBe('To close the gap, all seven and more');
+    expect(theHeading(55, [], [6, 4, 3, null, null, null, null])).toBe('To close the gap, more than these seven deals are needed');
   });
 
   it('says how few would be enough, the largest first, as the prototype does', () => {
@@ -37,7 +37,7 @@ describe('Grace\'s board, an aim of 120 units with 65 sold', () => {
       row('c', 'Kasarani Gym', 'possible', { Units: '3' }), row('d', 'Mama Mboga Mart', 'possible', { Units: 'two' }),
       row('e', 'Tuskys Westgate', 'possible', {}), row('f', 'Juja Hardware', 'possible', {}), row('g', 'Upper Hill Offices', 'possible', {}),
     ]), [UNITS], END, NOW)!;
-    expect(gap.heading).toBe('To close the gap, all seven and more');
+    expect(gap.heading).toBe('To close the gap, more than these seven deals are needed');
     expect(gap.says).toBe('55 more units are needed by 30 October. The seven open deals still possible hold 15 units on record, so even if all of them close, 40 more units would be needed. Three of them have nothing on record for how many units, so they are not counted.');
   });
 

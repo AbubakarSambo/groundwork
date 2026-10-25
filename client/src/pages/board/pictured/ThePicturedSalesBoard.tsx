@@ -313,8 +313,13 @@ export function WhatNeedsYou({ b, renderActions, groundId, deals, sessionRows, m
    * Needs you lines for this board they are this section's items, the same sentences as her morning. The board's own decisions are
    * drawn only where there are none, so nothing is said twice.
    */
-  const morningNeeds: string[] = ((b.theMorning?.parts ?? []) as Any[]).find((p: Any) => p.key === 'needsYou')?.lines ?? []
-  morningNeeds.forEach((line, i) => items.push({ key: `d-m${i}`, kind: 'look', title: String(line) }))
+  const morningPart = ((b.theMorning?.parts ?? []) as Any[]).find((p: Any) => p.key === 'needsYou')
+  const morningNeeds: string[] = morningPart?.lines ?? []
+  /* As a row where the server gives one: a short title and one line of detail (Hafsah, 25 October); otherwise the sentence. */
+  morningNeeds.forEach((line, i) => {
+    const row = morningPart?.rows?.[i]
+    items.push({ key: `d-m${i}`, kind: 'look', title: row?.title ?? String(line), detail: row?.detail })
+  })
   for (const [i, d] of (morningNeeds.length ? [] : (b.decisions ?? [])).entries()) {
     /* A wait is drawn once, as its own card under "Blockers" (what-needs-you-does-not-repeat-a-blocker). */
     if (d.source === 'blocker') continue

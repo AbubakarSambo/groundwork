@@ -60,6 +60,8 @@ export interface AMorningLine {
   rank: number;
   /** Shown at the top of the lead's board and never put in her morning message (Groundwork's to manage, not hers). */
   boardOnly?: boolean;
+  /** The same thing as a board row (Hafsah, 25 October: one line of title, at most one line of detail). The message keeps `text`. */
+  row?: { title: string; detail?: string };
 }
 
 export interface TheMorningPart {
@@ -318,13 +320,19 @@ export function theNeedsYouLines(input: TheSalesMorningInput, name: (pid: string
     const say = onHer || !holder
       ? `${ask}, and ${rep} is waiting for your yes or no.`
       : `${ask}, and ${rep} is waiting for a yes or no from ${holder}, so get it for ${rep}.`;
-    lines.push({ text: say, rank: 2 });
+    lines.push({ text: say, rank: 2, row: {
+      title: `${p.deal.name} wants ${p.units ? `${p.units} units at ` : ''}${p.each}${p.list ? `, not ${commas(p.list)}` : ''}`,
+      detail: onHer || !holder
+        ? `${rep} is waiting for your yes or no.`
+        : `${rep} is waiting for a yes or no from ${holder}. Get it for ${rep}.`,
+    } });
     first = first ?? `${rep} needs your yes on ${p.deal.name}`;
   }
   /* Then a decision she said she would make, that a customer still waits on. */
   for (const d of input.sales?.decisionsSheOwes ?? []) {
     const m = /^You said(?: on (\d+ \w+))? that you would decide (?:on )?(.+?) for (.+?)(?:, and (.+?) is still waiting)?\.$/.exec(d.text);
-    lines.push({ text: m ? `${m[3]} wants ${m[2]}, and you said${m[1] ? ` on ${m[1]}` : ''} that you would decide.` : sentence(d.text), rank: 3 });
+    lines.push({ text: m ? `${m[3]} wants ${m[2]}, and you said${m[1] ? ` on ${m[1]}` : ''} that you would decide.` : sentence(d.text), rank: 3,
+      ...(m ? { row: { title: `Decide ${m[2]} for ${m[3]}`, detail: `You said${m[1] ? ` on ${m[1]}` : ''} that you would.` } } : {}) });
     first = first ?? (m ? `${m[3]} is waiting for your decision` : null);
   }
   /* Then what a rep waits on her for, and what a rep waits for that nobody has been named to give. */
@@ -339,7 +347,7 @@ export function theNeedsYouLines(input: TheSalesMorningInput, name: (pid: string
     const since = sinceADay(keyIn(new Date(w.createdAt), input.zone), today);
     if (w.onParticipantId && input.hers.has(w.onParticipantId)) {
       said.add(key);
-      lines.push({ text: aWaitOnYouSaid(rep, what, since), rank: 4 });
+      lines.push({ text: aWaitOnYouSaid(rep, what, since), rank: 4, row: { title: `${rep} is waiting on you`, detail: sentence(`${A_MATTER.test(what) && NO_PREPOSITION.test(what) ? 'About' : 'For'} ${what}, ${since}`) } });
       first = first ?? `${rep} is waiting on you`;
       continue;
     }
@@ -347,14 +355,15 @@ export function theNeedsYouLines(input: TheSalesMorningInput, name: (pid: string
       said.add(key);
       lines.push({ text: A_DECISION.test(what)
         ? `${rep} is waiting for ${what}, and nobody has been named to make it, so make it or say who will.`
-        : `${rep} is waiting for ${what}, and nobody has been named to give it, so send it or say who will.`, rank: 5 });
+        : `${rep} is waiting for ${what}, and nobody has been named to give it, so send it or say who will.`, rank: 5,
+        row: { title: `${rep} is waiting for ${what}`, detail: A_DECISION.test(what) ? 'Nobody is named to make it. Make it or say who will.' : 'Nobody is named to give it. Send it or say who will.' } });
       first = first ?? `${rep} is waiting on ${what}`;
     }
   }
   /* Then a difference people said that is hers to settle, as the board lists it. */
   for (const d of ((input.board?.decisions ?? []) as any[]).filter((x) => x?.source === 'divergence' && /^you$/i.test(String(x?.owner ?? '')))) {
     const m = /^People in this check-in said different things about (.+?), so it needs settling\.?$/i.exec(String(d.question ?? '').trim());
-    if (m) lines.push({ text: `People said different things about ${m[1]}, so settle it with them.`, rank: 6 });
+    if (m) lines.push({ text: `People said different things about ${m[1]}, so settle it with them.`, rank: 6, row: { title: `Settle ${m[1]}`, detail: 'People said different things about it.' } });
   }
   return { lines, first };
 }
@@ -783,13 +792,17 @@ export function theMatterDirectMorning(input: { groundId: string; label: string;
 export interface TheMorningServed {
   groundId: string;
   kind: TheDirectMorning['kind'];
-  parts: { key: AMorningPartKey; heading: string; lines: string[] }[];
+  parts: { key: AMorningPartKey; heading: string; lines: string[]; rows?: ({ title: string; detail?: string } | null)[] }[];
 }
 
 export const asServedOnTheBoard = (m: TheDirectMorning): TheMorningServed => ({
   groundId: m.groundId,
   kind: m.kind,
-  parts: m.parts.filter((p) => p.lines.length).map((p) => ({ key: p.key, heading: p.heading, lines: p.lines.map((l) => sentence(l.text)) })),
+  parts: m.parts.filter((p) => p.lines.length).map((p) => ({
+    key: p.key, heading: p.heading, lines: p.lines.map((l) => sentence(l.text)),
+    /* Each line as a board row where it has one; the message itself never reads these. */
+    ...(p.lines.some((l) => l.row) ? { rows: p.lines.map((l) => (l.row ? { title: l.row.title, ...(l.row.detail ? { detail: l.row.detail } : {}) } : null)) } : {}),
+  })),
 });
 
 /**
