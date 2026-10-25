@@ -264,7 +264,7 @@ function Documents({ served }: { served: Served }) {
   return (
     <Section heading="Documents" note={docs.notOpenToYou ? undefined : `${plural(docs.total, 'document')}.`}>
       {docs.notOpenToYou ? (
-        <Note>Documents here are shared by the people in this check-in, so you cannot open them from here.</Note>
+        <Note>You can’t open these documents from here.</Note>
       ) : docs.total === 0 ? (
         <Note tone="muted">{served.mayAdd ? 'No documents yet. Use Add to share one with your team.' : 'No documents have been shared with you yet.'}</Note>
       ) : (

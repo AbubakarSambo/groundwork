@@ -141,7 +141,7 @@ describe('the check-ins list, as an admin reads it', () => {
     expect(rowsOf(table)).toEqual([['Warehouse, Q3Run by Peter Otieno. Weekly.', 'Keep a read on live work', '', 'Just started']])
     expect(screen.queryByRole('table', { name: 'You run' })).toBeNull()
     /* U.5 review: and says first that none of these are theirs. */
-    expect(screen.getByText('You do not run any check-ins, and you are not in any yet.')).toBeTruthy()
+    expect(screen.getByText('No check-ins yet. Start one.')).toBeTruthy()
   })
 
   it('an admin who also runs one is not told they run none', async () => {

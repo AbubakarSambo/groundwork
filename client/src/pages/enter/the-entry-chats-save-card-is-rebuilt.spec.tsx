@@ -400,7 +400,7 @@ describe('changing how many sessions a check-in runs (fault 2, live walk, 6 Octo
     fireEvent.click(sessionsButton)
     expect(screen.getAllByLabelText('How many check-ins')[0]).toBeTruthy()
     expect(screen.getAllByText('How many check-ins').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('This is your plan for how many check-ins to run. You can change it at any time.').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('How many check-ins to run. You can change it.').length).toBeGreaterThan(0)
     expect(document.body.textContent).not.toContain('sessions:')
   })
 

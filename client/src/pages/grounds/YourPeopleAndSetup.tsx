@@ -19,7 +19,7 @@ type Reader = Extract<PeopleAndSetup, { view: 'reader' }>
 
 export function YourPeopleAndSetup({ groundId }: { groundId: string }) {
   const { data, isError } = useQuery({ queryKey: ['people-and-setup', groundId], queryFn: () => groundsApi.peopleAndSetup(groundId), enabled: !!groundId, retry: false })
-  if (isError) return <Note>This page could not be loaded. Try again in a moment.</Note>
+  if (isError) return <Note>That didn’t load. Try again.</Note>
   if (!data || !data.on) return null
   if (data.view === 'reader') {
     const r = data as Reader

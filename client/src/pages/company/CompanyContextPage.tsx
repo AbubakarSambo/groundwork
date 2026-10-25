@@ -71,7 +71,7 @@ export function CompanyContextPage() {
       {page.data && (
         <Section heading="Priorities" note="Everyone reads the priorities. Targets and numbers are leadership only.">
           {priorities.length === 0 ? (
-            <Empty>No priorities have come in from your organisation’s own systems yet.</Empty>
+            <Empty>No priorities yet.</Empty>
           ) : (
             <div className="gwui-cards-3">
               {priorities.map(pr => <Priority key={pr.id} pr={pr} readsTargets={page.data!.readsTargets} />)}

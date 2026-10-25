@@ -542,7 +542,7 @@ function TheirWhatsAppNumbersOpen({ groundId, people }: { groundId: string; peop
   }
   return (
     <div className="gwui-note" role="group" aria-label="WhatsApp numbers" data-testid="whatsapp-roster">
-      <p className="gwui-panel-text">Groundwork writes to each person on WhatsApp once their number is here, and they can answer there.</p>
+      <p className="gwui-panel-text">Add someone’s number and they can answer on WhatsApp.</p>
       {rows.map((r) => (
         <div key={r.id} data-testid={`whatsapp-row-${r.id}`}>
           <p className="gwui-panel-text">

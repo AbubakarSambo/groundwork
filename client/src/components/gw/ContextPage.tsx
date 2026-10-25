@@ -892,7 +892,7 @@ export function ContextPage({
             <Section heading="Resources" note="Shared, read, and what each checks" />
             {documentsAreNotOpenToYou && (
               <p data-gw-documents-not-open className="gwui-note">
-                Documents here are shared by the people in this check-in, so you cannot open them from here.
+                You can’t open these documents from here.
               </p>
             )}
 

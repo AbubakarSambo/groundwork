@@ -120,7 +120,7 @@ describe('Kwame, the person it is about', () => {
     expect(screen.getByText('Wairimu decided this on 30 September.')).toBeTruthy()
     expect(screen.getByText('Wairimu’s reason')).toBeTruthy()
     expect(screen.getByText(REASON)).toBeTruthy()
-    expect(screen.getByText('Your words are kept, and you can still correct them.')).toBeTruthy()
+    expect(screen.getByText('You can still correct your words.')).toBeTruthy()
     expect(container.textContent).not.toMatch(LABELS_ON_PEOPLE)
   })
 })

@@ -49,7 +49,7 @@ describe('Your work', () => {
   it('the title and subtitle, without the pattern clause while there is no pattern', async () => {
     mount()
     expect(await screen.findByRole('heading', { name: 'Your work' })).toBeTruthy()
-    expect(screen.getByText('Everything you’ve said, and what the proof shows.')).toBeTruthy()
+    expect(screen.getByText('Everything you’ve said, and what the proof shows. Only you see this page.')).toBeTruthy()
     expect(screen.queryByText(/apart from the pattern below/)).toBeNull()
   })
 

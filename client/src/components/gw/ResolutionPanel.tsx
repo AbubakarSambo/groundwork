@@ -165,7 +165,7 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
       )}
       {!viewerIsLead && viewerIsParty && (
         <div className="gwui-mt-12">
-          <Note>Your words are kept, and you can still correct them.</Note>
+          <Note>You can still correct your words.</Note>
         </div>
       )}
     </Panel>

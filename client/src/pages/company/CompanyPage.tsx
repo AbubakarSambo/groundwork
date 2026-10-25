@@ -103,7 +103,7 @@ function ThePage({ p }: { p: Page }) {
     <>
       <Section heading="Is the strategy moving?">
         {!p.priorities?.length ? (
-          <Empty>No priorities have come in from your organisation’s own systems yet.</Empty>
+          <Empty>No priorities yet.</Empty>
         ) : (
           <div className="gwui-cards-3">
             {p.priorities.map(pr => <Priority key={pr.id} pr={pr} />)}
