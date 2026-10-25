@@ -251,7 +251,8 @@ describe('a decline with a reason', () => {
     expect(sent).toEqual([{
       to: phoneOf('u-samuel'),
       text: 'Hi Samuel, your request for leave on Monday 19 October was declined by Wairimu. Wairimu said, “Sales is two short that week.” Open Groundwork to read it.',
-      context: { kind: 'request-decided', params: ['Samuel', 'leave on Monday 19 October', 'declined', 'Wairimu'] },
+      /* Changed 25 October (round 1): with a reason, the template that carries it, so it is said outside the 24 hours too. */
+      context: { kind: 'request-decided-with-reason', params: ['Samuel', 'leave on Monday 19 October', 'declined', 'Wairimu', 'Wairimu said, “Sales is two short that week.”'] },
     }]);
   });
 
