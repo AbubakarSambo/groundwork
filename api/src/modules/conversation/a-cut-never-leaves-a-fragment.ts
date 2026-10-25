@@ -37,6 +37,8 @@ export function isAFragment(text: string): boolean {
   const t = (text ?? '').trim();
   if (!t) return true;
   if (A_LEAD_IN.test(t) || ONLY_A_LEAD_IN.test(t)) return true;
+  /* It starts mid-sentence (real-model run, 25 October): the cut of an opening that said Peter's words back left "hasn't confirmed receiving it, or do you have a read receipt for the email?". */
+  if (/^[a-z]/.test(t)) return true;
   const words = t.split(/\s+/).filter(Boolean).length;
   return words < 5 && !t.includes('?');
 }

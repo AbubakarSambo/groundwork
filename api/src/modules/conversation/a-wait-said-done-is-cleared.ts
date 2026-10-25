@@ -121,10 +121,25 @@ function theLeadDecidedIt(line: ALineOnRecord, wait: AnOpenWait, leads: Readonly
   return sentences(line.text).some((s) => SHE_DECIDED.test(s) && !NOT_YET.test(s.replace(/\b(?:only|no more than)\b/gi, '')) && amounts.some((a) => amountsIn(s).includes(a)));
 }
 
+/*
+ * WHAT WAS WAITING FOR APPROVAL WENT OUT (real-model run, 25 October). Brian waited on Wanjiru for "approval for FN-009", then said
+ * "I sent FN-009 to Kito Foods on Tuesday." Her morning still said he was waiting on her for the approval. A wait for approval of a
+ * numbered thing (a fee note, an invoice, a quote) is over when the one waiting says that same number was sent, raised or filed.
+ */
+const A_NUMBER = /\b[A-Za-z]{1,6}[-\s]?\d{2,8}\b/g;
+const IT_WENT_OUT = /\b(?:sent|raised|issued|filed|submitted|delivered)\b/i;
+const numbersIn = (t: string) => (String(t ?? '').match(A_NUMBER) ?? []).map((n) => n.toLowerCase().replace(/[-\s]/g, ''));
+function whatWaitedForApprovalWentOut(line: ALineOnRecord, wait: AnOpenWait): boolean {
+  if (line.participantId !== wait.fromParticipantId || !/\bapprov/i.test(wait.what)) return false;
+  const numbers = numbersIn(wait.what);
+  if (!numbers.length) return false;
+  return sentences(line.text).some((s) => IT_WENT_OUT.test(s) && !NOT_YET.test(s) && numbersIn(s).some((n) => numbers.includes(n)));
+}
+
 /** Whether one line says this wait is done. `namesOf` gives a person's own names (first name, full name); `leads`, who runs the check-in. */
 export function aLineSaysItIsDone(line: ALineOnRecord, wait: AnOpenWait, namesOf: (participantId: string) => string[], atTheCustomer: (holder: string) => string[] = () => [], leads: ReadonlySet<string> = new Set()): boolean {
   if (String(line.type).toUpperCase() !== 'PROGRESS') return false;
-  if (theLeadDecidedIt(line, wait, leads)) return true;
+  if (theLeadDecidedIt(line, wait, leads) || whatWaitedForApprovalWentOut(line, wait)) return true;
   const byTheOneWaiting = line.participantId === wait.fromParticipantId;
   const byTheOneHoldingIt = !!wait.onParticipantId && line.participantId === wait.onParticipantId;
   const thing = theThingsOwnWords(wait.what);
