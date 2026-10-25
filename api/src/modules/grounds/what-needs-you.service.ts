@@ -1,3 +1,4 @@
+import { theInvoicesLateToRaiseFor } from '../board/raising-invoices-on-time';
 import { Injectable, Optional } from '@nestjs/common';
 import { theCheckInsHeldForASeat } from '../participants/held-for-a-seat';
 import { ModuleRef } from '@nestjs/core';
@@ -317,6 +318,17 @@ export class WhatNeedsYouService {
     /* Their own missed check-ins, told to them first (decision 136). Read only for this reader, about their own rows. */
     const missed = await this.missedCheckInsOf(userId, organizationId).catch(() => [] as Need[]);
     if (missed.length) { told.needs = [...missed, ...told.needs]; told.count = told.needs.length; }
+    /* RELEASE 3: each fee note late to raise in the check-ins this reader runs, in the same sentence as the morning summary (board/raising-invoices-on-time). Off, none. */
+    const runs = ((await Promise.resolve((this.prisma as any).ground?.findMany?.({ where: { organizationId, initiatorId: userId, scenario: 'COLLECTIONS' }, select: { id: true } })).catch(() => [])) ?? []) as { id: string }[];
+    const lateToRaise = runs.length ? await theInvoicesLateToRaiseFor(this.prisma as any, organizationId, runs.map((g) => g.id)).catch(() => []) : [];
+    if (lateToRaise.length) {
+      const asNeeds: Need[] = lateToRaise.map((l) => {
+        const [first, ...rest] = l.text.split(/(?<=\.)\s+/);
+        return { key: `late-to-raise-${l.billId}`, kind: 'look' as const, title: first, detail: rest.join(' '), action: { label: 'Open the board', to: `/grounds/${l.groundId}/board` }, groundId: l.groundId, organizationId } as any;
+      });
+      told.needs = [...asNeeds, ...told.needs];
+      told.count = told.needs.length;
+    }
     const onWhatsApp = await this.checkInOnWhatsAppFor(userId, email, organizationId, told.needs);
     if (onWhatsApp) (told as any).checkInOnWhatsApp = onWhatsApp;
     /* An admin whose organisation is on its free trial reads one line about it (Hafsah, 12 October). */

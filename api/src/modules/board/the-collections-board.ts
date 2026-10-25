@@ -2,6 +2,7 @@ import type { ACollectionsType } from '../grounds/collect-whats-owed';
 import { theBillsPlural } from '../grounds/collect-whats-owed';
 import { F, FOLLOWS_UP_ID, NOT_YET_RAISED, LOAN_OWED, aDay, thePromisesKept, theStagesKept } from './the-collections-record';
 import { asHappened, theEventAsSaid } from './a-fee-note-due-on-an-event';
+import { whenItShouldBeRaised, whenItWasDue } from './raising-invoices-on-time';
 
 /**
  * THE COLLECTIONS BOARD, BUILT FROM THE RECORD ONLY (release plan, Release 2, "The collections board (loans shape)"; the kit's
@@ -107,6 +108,8 @@ export interface TheCollectionsInput {
   stallRuleSet: boolean;
   /** The check-in's id, for the routes the lead answers with. */
   groundId?: string;
+  /** Release 3, raising invoices on time (raising-invoices-on-time), where it is on: who raises the invoices, and the pattern when they raise late. */
+  raising?: { raiser: string | null; pattern: { says: string; instances: string[] } | null; /** The lead's sentences for each one late to raise, the same as the morning's and Today's (raising-invoices-on-time). */ lateLines?: string[] };
 }
 
 export interface ACollectionsRow {
@@ -145,10 +148,14 @@ export interface TheCollectionsBoard {
     empty: string | null;
     /** Lines that came close to the event a bill waits for, for the lead to confirm (a-fee-note-due-on-an-event). Lead only. */
     toConfirm?: { id: string; title: string; says: string; choices: { label: string; route: { method: 'POST'; path: string; body: Record<string, unknown> } }[] }[];
+    /** Release 3: each one late to raise, in a sentence or two, for the lead's morning (engagement/the-direct-morning). Lead only. */
+    lateToRaise?: string[];
   };
   stand: { heading: string; total: string; groups: { group: AGroup; label: string; count: number; says: string }[] };
   every: { heading: string; note: string; columns: string[]; rows: ACollectionsRow[]; empty: string | null; foot: string | null };
   patterns: { heading: string; note: string; rows: { title: string; says: string; tag: string }[]; empty: string | null; foot: string | null };
+  /** Release 3 is on for this board (raising-invoices-on-time): a bill not raised yet is not owed, and the morning leaves it out of who to chase. */
+  raisingInvoices?: true;
   /** The lead's two sections. Null on a borrower's own board: they are about the cohort and the lead's follow-up (21 October). */
   followUp: { heading: string; rows: { what: string; howMany: string; whatFollowed: string }[]; empty: string | null } | null;
   systems: { heading: string; says: string } | null;
@@ -327,6 +334,19 @@ export function buildTheCollectionsBoard(input: TheCollectionsInput): TheCollect
   const need: { rank: number; title: string; says: string }[] = [];
   for (const { r, group } of rows) {
     const amt = amountOf(r);
+    /* RELEASE 3: ONE TO RAISE WHOSE DAY HAS COME says that day, why, how late it is, and who raises it; most overdue first. */
+    const toRaise = input.raising && !loans && r.stage === NOT_YET_RAISED ? whenItShouldBeRaised(r as any, today) : null;
+    if (toRaise) {
+      const late = Math.max(0, daysBetween(toRaise.day, today));
+      const raiser = input.raising?.raiser ?? null;
+      need.push({
+        /* Late to raise before anything else, the most overdue first. */
+        rank: late > 0 ? -late : 2,
+        title: late > 0 ? `A ${bill} for ${whoOf(r)} is ${late === 1 ? 'one day' : `${late} days`} late to raise` : `A ${bill} for ${whoOf(r)} is due to be raised today`,
+        says: `${whenItWasDue(toRaise)}${amt ? ` It is for ${money(amt.value, amt.currency)}.` : ''}${raiser ? ` ${raiser === 'You' ? 'You raise it, and have' : `${raiser} raises it, and has`} not said it is raised.` : ''}`,
+      });
+      continue;
+    }
     const amountWords = amt ? `, ${money(amt.value, amt.currency)}` : '';
     const follower = followerOf(r);
     const who = whoOf(r);
@@ -405,6 +425,7 @@ export function buildTheCollectionsBoard(input: TheCollectionsInput): TheCollect
     rows: need.slice(0, 5).map(({ title, says }) => ({ title, says })),
     empty: need.length || toConfirm.length ? null : (loans ? 'Nothing needs you on the loans right now.' : `Nothing needs you on the ${bills} right now.`),
     ...(toConfirm.length ? { toConfirm } : {}),
+    ...(reader.runsIt && input.raising?.lateLines?.length ? { lateToRaise: input.raising.lateLines } : {}),
   };
 
   /* ------------------------------------------------------------ where they stand */
@@ -546,6 +567,8 @@ export function buildTheCollectionsBoard(input: TheCollectionsInput): TheCollect
     const checkIns = new Set(xs.flatMap(({ r }) => r.saidIn));
     if (xs.length >= 2 && checkIns.size >= 3) patternRows.push({ title: Cap(stop(field(xs[0].r, F.inTheWay))), says: `${count(xs.length)} ${loans ? 'borrowers say' : `${bills} have`} it, said in ${checkIns.size} check-ins.`, tag: loans ? 'The model' : 'One kind of work' });
   }
+  /* RELEASE 3: the raising pattern, named after it has happened more than once, with its instances. */
+  if (input.raising?.pattern && reader.runsIt) patternRows.unshift({ title: input.raising.pattern.says, says: input.raising.pattern.instances.join(' '), tag: 'Raised late' } as any);
   const patterns = {
     heading: loans ? 'One person, a place, or the model?' : 'One client, one kind of work, or how we bill?',
     note: 'Patterns named after three check-ins in a row',
@@ -630,5 +653,5 @@ export function buildTheCollectionsBoard(input: TheCollectionsInput): TheCollect
    * lead's loans board only. They are left off what is served to a borrower, not hidden on the screen; whoever runs it still reads both.
    */
   const aBorrower = loans && !reader.runsIt;
-  return { type, billWord: bill, question, answer, answerFrom, bar, needsYou, stand, every, patterns, followUp: aBorrower ? null : followUp, systems: aBorrower ? null : systems, heading };
+  return { type, billWord: bill, question, answer, answerFrom, bar, needsYou, stand, every, patterns, followUp: aBorrower ? null : followUp, systems: aBorrower ? null : systems, heading, ...(input.raising ? { raisingInvoices: true as const } : {}) };
 }

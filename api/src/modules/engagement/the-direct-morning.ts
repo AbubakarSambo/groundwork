@@ -7,7 +7,7 @@ import { theCollectionsBoardFor } from '../board/the-collections-board.service';
 import type { TheCollectionsBoard, ABillOnTheBoard } from '../board/the-collections-board';
 import { anAmount, money as billMoney, theDueDay } from '../board/the-collections-board';
 import { theBillsOnRecord, theBillsThisReaderMayRead, withTheEventsSaid } from '../board/the-collections-board.service';
-import { F } from '../board/the-collections-record';
+import { F, NOT_YET_RAISED } from '../board/the-collections-record';
 import { asHappened } from '../board/a-fee-note-due-on-an-event';
 import { theCollectionsTypeFor } from '../board/the-collections-record';
 import { cleanText } from '../reports/what-the-record-actually-holds';
@@ -605,7 +605,12 @@ export function theCollectionsDirectMorning(input: TheCollectionsMorningInput): 
   /* A loan is the borrower's to repay, not to follow up: only somebody named for it follows it up (browser test: "Peter follows it up" of Peter's own loan). */
   const followerOf = (b: ABillOnTheBoard): string | null => String((b.fields as any)?._followsUp ?? '').trim() || (input.loans ? null : b.ownerParticipantId) || null;
   /* A row with no number and no amount is not a bill anybody can chase ("the Nyota dispute"). */
-  const bills = input.bills.filter((b) => f(b, F.number) || anAmount(f(b, F.amount)));
+  /*
+   * RELEASE 3: A BILL NOT RAISED YET IS NOT OWED. Nobody can chase or count money that has not been billed: "Kasarani Foods owes
+   * KES 250,000 on Kasarani Foods" chased a fee note Njeri had not raised. Where Release 3 is on, one at "Not yet raised" is said only
+   * under Needs you, as late to raise (raising-invoices-on-time); with it off, the morning reads exactly as before.
+   */
+  const bills = input.bills.filter((b) => f(b, F.number) || anAmount(f(b, F.amount))).filter((b) => !((input.served as any)?.raisingInvoices && b.stage === NOT_YET_RAISED));
   const whoOwes = (b: ABillOnTheBoard) => (input.loans ? Name(b.ownerParticipantId) ?? 'A borrower' : f(b, F.client) || f(b, F.matter) || b.name);
   /* A loan is said as the borrower's ("Peter’s loan"), never "loan for loan" (browser test, 21 October 2026). */
   const numbered = (b: ABillOnTheBoard) => (input.loans ? `${whoOwes(b)}’s loan` : `${f(b, F.number) || b.name} for ${whoOwes(b)}`);
@@ -650,6 +655,8 @@ export function theCollectionsDirectMorning(input: TheCollectionsMorningInput): 
     needs.push({ text: `${whoOwes(b)} disputes ${f(b, F.number) || b.name}, saying ${stop(f(b, F.disputed)).replace(/^./, (c) => c.toLowerCase())}${by && by !== 'You' ? `, and ${by} follows it up` : ''}, so decide whether to correct it.`, rank: 2 });
     first = first ?? `${whoOwes(b)} disputes ${f(b, F.number) || b.name}`;
   }
+  /* Release 3: an invoice late to raise, with the day it was due to go out and who raises it (board/raising-invoices-on-time). */
+  for (const l of (input.served?.needsYou as any)?.lateToRaise ?? []) needs.push({ text: l, rank: 1 });
   for (const c of input.served?.needsYou?.toConfirm ?? []) needs.push({ text: sentence(stop(c.title)), rank: 3 });
   const said = new Set<string>();
   for (const w of input.waits) {

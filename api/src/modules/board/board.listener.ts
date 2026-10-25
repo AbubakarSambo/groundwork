@@ -12,6 +12,7 @@ import { oneOfTheKinds, isASalesKind, theRecordsPrompt, THE_RECORDS_SCHEMA, only
 import { theRoomsLabelFor } from './the-room-is-stored-with-labels';
 import { fileTheBillsSaid } from './the-collections-record';
 import { fileTheFeeNotesDueOnAnEvent } from './a-fee-note-due-on-an-event';
+import { aSaleWonIsAnInvoiceToRaise } from './raising-invoices-on-time';
 import { withAClaim } from './a-claim-on-a-record-is-checked-first';
 import { withTheStageKept, theStagesToKeep } from './a-deals-stages-are-kept';
 import { theSameCustomer, aDealTheLeadNamedBecomesTheReps } from './one-deal-per-customer';
@@ -83,6 +84,8 @@ export class BoardListener {
     await this.fileTheLeadsRangeAnswer(e.groundId);
     /* The deals may have moved, so the aims they count are counted again (a-sales-aim-is-counted-from-the-deals). */
     await this.countTheAimsFromTheDeals(e.groundId, null);
+    /* Release 3: where the organisation invoices after a sale, a deal won becomes an invoice to raise (raising-invoices-on-time). Off, this writes nothing. */
+    await aSaleWonIsAnInvoiceToRaise(this.prisma, e.groundId).catch(() => 0);
   }
 
 

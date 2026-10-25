@@ -619,6 +619,10 @@ model Organization {
   /// opening names the one thing that matters to them today; and the messages, emails and screens say names, numbers,
   /// customers and days without explaining Groundwork (organisation/the-direct-morning-switch.ts). Off: everything reads as before.
   directMorningOn        Boolean   @default(false) @map("direct_morning_on")
+  /// Release 3, raising invoices on time (24 October 2026). Off for every organisation until switched on.
+  release3InvoicesOn     Boolean   @default(false) @map("release_3_invoices_on")
+  /// With Release 3 on: a sale won makes an invoice to raise in the organisation's "Collect what's owed" check-in. Off by default.
+  invoicesAfterASaleOn   Boolean   @default(false) @map("invoices_after_a_sale_on")
   whatsappMonthlyUse     WhatsAppMonthlyUse[]
 
   companyStage CompanyStage? @map("company_stage")
