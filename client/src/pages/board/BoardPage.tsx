@@ -1167,6 +1167,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
   const [newObjName, setNewObjName] = useState('')
   const [newObjTarget, setNewObjTarget] = useState('')
+  const [newObjUnit, setNewObjUnit] = useState('')
   const [pollQ, setPollQ] = useState('')
   const [pollOpts, setPollOpts] = useState('')
   const [showPollForm, setShowPollForm] = useState(false)
@@ -1180,8 +1181,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     mutationFn: () => boardApi.createObjective(id!, {
       name: newObjName.trim(),
       target: newObjTarget.trim() ? Number(newObjTarget) : null,
+      unit: newObjUnit.trim() || null,
     }),
-    onSuccess: () => { setNewObjName(''); setNewObjTarget(''); invalidate() },
+    onSuccess: () => { setNewObjName(''); setNewObjTarget(''); setNewObjUnit(''); invalidate() },
     onError: () => toast.error('The target was not added. What you typed is still here - try again.'),
   })
 
@@ -4293,6 +4295,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       onChange={(e) => setNewObjTarget(e.target.value.replace(/[^0-9]/g, ''))}
                       placeholder="how many"
                       className="gwui-input" style={{flex: '0 0 120px', width: 120}}
+                    />
+                    {/* What the number counts: "units", "%", "KES", "hours" (round 1 dead end, 25 October). */}
+                    <input
+                      value={newObjUnit}
+                      onChange={(e) => setNewObjUnit(e.target.value.slice(0, 12))}
+                      placeholder="unit, e.g. units or %"
+                      aria-label="Unit"
+                      className="gwui-input" style={{flex: '0 0 160px', width: 160}}
                     />
                     {/*
                       SECONDARY, NOT NAVY (Hafsah, 30 September, item 2: "at most one primary

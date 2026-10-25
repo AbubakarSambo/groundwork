@@ -96,6 +96,16 @@ describe('GW-BOARD-WRITE-01: only the initiator sets the frame', () => {
   });
 });
 
+describe('a target carries the unit the lead writes (polish round 1, 25 October)', () => {
+  it('"120" with "units" is stored with its unit; a blank unit is none', async () => {
+    const { service, objectiveCreate } = makeService();
+    await service.createObjective('g1', 'lead', { name: 'Units sold by 30 October', target: 120, unit: ' units ' });
+    expect(objectiveCreate.mock.calls[0][0].data.unit).toBe('units');
+    await service.createObjective('g1', 'lead', { name: 'Paying companies', target: 11, unit: '  ' });
+    expect(objectiveCreate.mock.calls[1][0].data.unit).toBeNull();
+  });
+});
+
 describe('A new target keeps what it assumes (Drop Access, 18 October)', () => {
   it('the lead writes what the target of 120 assumes when she makes it, and it is stored as she wrote it', async () => {
     const { service, objectiveCreate } = makeService();

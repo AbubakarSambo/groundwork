@@ -529,3 +529,19 @@ describe('the alignment feed', () => {
     expect(screen.queryByText('Alignment feed')).toBeNull()
   })
 })
+
+/* Polish round 1 dead end (25 October): a target can be given its unit on screen, and the unit is sent with it. */
+describe('a target with its unit, as Wairimu adds it', () => {
+  it('"Units sold by 30 October", 120, "units" goes to the server with its unit', async () => {
+    me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
+    const create = vi.fn().mockResolvedValue({});
+    (boardApi as any).createObjective = create
+    renderBoard(AS_THE_LEAD)
+    expect(await screen.findByText(LAST_UPDATED)).toBeTruthy()
+    fireEvent.change(screen.getByPlaceholderText('Add a target, e.g. Paying companies'), { target: { value: 'Units sold by 30 October' } })
+    fireEvent.change(screen.getByPlaceholderText('how many'), { target: { value: '120' } })
+    fireEvent.change(screen.getByLabelText('Unit'), { target: { value: 'units' } })
+    fireEvent.click(screen.getByText('Add target'))
+    await waitFor(() => expect(create).toHaveBeenCalledWith(expect.any(String), { name: 'Units sold by 30 October', target: 120, unit: 'units' }))
+  })
+})

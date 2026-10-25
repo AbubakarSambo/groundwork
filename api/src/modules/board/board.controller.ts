@@ -18,6 +18,10 @@ class ObjectiveDto {
   @IsOptional() @IsInt() @Min(0)
   target?: number | null;
 
+  /** What the number counts, as the lead writes it: "units", "%", "KES", "hours" (round 1 dead end, 25 October). */
+  @IsOptional() @IsString() @MaxLength(12)
+  unit?: string | null;
+
   @IsOptional() @IsInt() @Min(0)
   count?: number;
 
