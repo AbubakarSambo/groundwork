@@ -63,6 +63,8 @@ export interface ADocument {
   added: string;
   addedOn: string;
   summary: string | null;
+  /** What it is used for: the line the person gave when they added it, else what Groundwork will do with it (26 October 2026). */
+  usedFor?: string | null;
   whoCanSee: string;
   kind: 'Photos' | 'Spreadsheets' | 'PDFs' | 'Documents';
 }
@@ -407,6 +409,7 @@ export async function readReferencesAndResources(
         added: `${mineToo ? 'You' : by}, ${aDayIn(d.createdAt, timeZone)}`,
         addedOn: new Date(d.createdAt).toISOString().slice(0, 10),
         summary: suggests[0] ? String(suggests[0]).trim() : (mineToo && d.uploaderNote ? String(d.uploaderNote).trim() : null),
+        usedFor: d.uploaderNote && String(d.uploaderNote).trim() ? String(d.uploaderNote).trim() : (Array.isArray(d.assessment?.willDo) && d.assessment.willDo[0] ? String(d.assessment.willDo[0]).trim() : null),
         whoCanSee: whoCanSeeIt(d, { participantId: mine?.id ?? null, isLead }, by, firstOf(leadName)),
         kind: theKindOfDocument(d.mimeType, d.fileName),
       };

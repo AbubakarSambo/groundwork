@@ -30,6 +30,7 @@ export function AddADocument({
   docId,
   fileName,
   contextEnabled,
+  placeName = 'Context and resources',
   startingNote,
   onChooseAnother,
   onClose,
@@ -38,6 +39,8 @@ export function AddADocument({
   docId: string
   fileName: string
   contextEnabled: boolean
+  /** What the page it is added to is called: "References and resources" where Release 1B's tabs are on (26 October 2026). */
+  placeName?: string
   /** What they said they would show, where the upload was started from a promise. */
   startingNote?: string
   onChooseAnother: () => void
@@ -154,7 +157,7 @@ export function AddADocument({
         <div role="radiogroup" aria-label="Who can read it" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {([
             { v: 'OWN', title: 'Only you', says: 'Only you can open it. It shapes the questions in your own check-in.' },
-            { v: 'OPEN', title: 'Everyone in this check-in', says: 'They can open it from Context and resources.' },
+            { v: 'OPEN', title: 'Everyone in this check-in', says: `They can open it from ${placeName}.` },
           ] as const).map((o) => (
             <label key={o.v} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px 12px', borderRadius: 8, cursor: 'pointer', border: who === o.v ? '2px solid var(--gw-dark)' : '1px solid var(--gw-border)' }}>
               <input type="radio" name="gw-add-doc-who" checked={who === o.v} onChange={() => setWho(o.v)} style={{ marginTop: 3 }} />
@@ -174,7 +177,7 @@ export function AddADocument({
           onClick={() => keep.mutate()}
           disabled={keep.isPending || drop.isPending}
         >
-          {keep.isPending ? 'Saving…' : 'Add it to Context and resources'}
+          {keep.isPending ? 'Saving…' : `Add it to ${placeName}`}
         </button>
         <button
           onClick={() => drop.mutate()}

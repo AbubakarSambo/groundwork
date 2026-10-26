@@ -694,7 +694,7 @@ export type AReferenceKind = 'RULE' | 'STAGE_NEEDS' | 'COACHING' | 'RISK' | 'KEY
 export type AReferenceLine = { id: string; text: string; fromTheTemplate?: boolean; onlyYou?: boolean }
 export type APieceOfEvidence = { id: string; readAs: string; shows: string | null; summary?: string | null; usedFor?: string | null; belongsTo: string; addedBy: string; addedById: string | null; addedOn: string; on: string; countsAsProof: boolean; group: 'Orders and quotes' | 'Payments' | 'Photos' | 'Other documents' | 'Court filings' | 'Client letters' }
 export type AnEvidencePage = { total: number; page: number; pageSize: number; items: APieceOfEvidence[]; people: { id: string; name: string }[] }
-export type AReferenceDocument = { id: string; name: string; added: string; addedOn: string; summary: string | null; whoCanSee: string; kind: 'Photos' | 'Spreadsheets' | 'PDFs' | 'Documents' }
+export type AReferenceDocument = { id: string; name: string; added: string; addedOn: string; summary: string | null; usedFor?: string | null; whoCanSee: string; kind: 'Photos' | 'Spreadsheets' | 'PDFs' | 'Documents' }
 export type ReferencesAndResources =
   | { on: false }
   | {

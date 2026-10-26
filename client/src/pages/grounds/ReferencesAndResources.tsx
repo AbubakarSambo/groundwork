@@ -284,7 +284,10 @@ function Documents({ served }: { served: Served }) {
                     <Text size="14" weight={600}>{d.name}</Text>
                     <Text size="13" ink="sub">{d.added}</Text>
                   </div>
-                  <Text size="14">{d.summary ?? 'Not read yet.'}</Text>
+                  <div>
+                    <Text size="14">{d.summary ?? 'Not read yet.'}</Text>
+                    {d.usedFor && <Text size="13" ink="sub">{`Used for: ${d.usedFor}`}</Text>}
+                  </div>
                   <Text size="13" ink="sub">{d.whoCanSee}</Text>
                 </Row>
               ))}
@@ -510,7 +513,7 @@ function AddSomething({ groundId, kind, onKind, people, alsoSeenBy, contextEnabl
         {kind === 'PLAN' && <FromAPlan groundId={groundId} />}
         {kind === 'DOCUMENT' && (
           reviewing ? (
-            <AddADocument groundId={groundId} docId={reviewing.id} fileName={reviewing.name} contextEnabled={contextEnabled}
+            <AddADocument groundId={groundId} docId={reviewing.id} fileName={reviewing.name} contextEnabled={contextEnabled} placeName="References and resources"
               onChooseAnother={() => { setReviewing(null); fileInput.current?.click() }} onClose={() => { setReviewing(null); onDone() }} />
           ) : (
             <FlexRow gap={8} align="center" wrap>

@@ -57,6 +57,7 @@
           "added": "You, 1 September",
           "addedOn": "2026-09-01",
           "summary": "Rates and terms: payment within 30 days.",
+          "usedFor": null,
           "whoCanSee": "Everyone",
           "kind": "PDFs"
         },
@@ -66,6 +67,7 @@
           "added": "Njeri, 1 September",
           "addedOn": "2026-09-01",
           "summary": "When to raise, remind, call and escalate.",
+          "usedFor": null,
           "whoCanSee": "Everyone",
           "kind": "Documents"
         },
@@ -75,6 +77,7 @@
           "added": "You, 3 September",
           "addedOn": "2026-09-03",
           "summary": "Three fee notes of KES 250,000: on instruction, on filing the reply, on the hearing date.",
+          "usedFor": null,
           "whoCanSee": "Only you",
           "kind": "PDFs"
         }
@@ -225,6 +228,7 @@
           "added": "Wanjiru, 1 September",
           "addedOn": "2026-09-01",
           "summary": "Rates and terms: payment within 30 days.",
+          "usedFor": null,
           "whoCanSee": "Everyone",
           "kind": "PDFs"
         },
@@ -234,6 +238,7 @@
           "added": "Njeri, 1 September",
           "addedOn": "2026-09-01",
           "summary": "When to raise, remind, call and escalate.",
+          "usedFor": null,
           "whoCanSee": "Everyone",
           "kind": "Documents"
         }
